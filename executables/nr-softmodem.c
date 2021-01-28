@@ -568,6 +568,8 @@ void init_pdcp(void) {
   }
 }
 
+uint64_t RFsim_PropDelay = 0;
+
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
   start_background_system();
