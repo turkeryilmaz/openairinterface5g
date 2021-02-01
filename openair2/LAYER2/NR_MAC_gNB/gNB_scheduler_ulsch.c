@@ -1335,6 +1335,8 @@ void handle_nr_srs_measurements(const module_id_t module_id,
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
 }
 
+extern uint16_t NTN_gNB_k2;
+
 long get_K2(NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList,
             int time_domain_assignment,
             int mu) {
@@ -1343,13 +1345,14 @@ long get_K2(NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList,
   NR_PUSCH_TimeDomainResourceAllocation_t *tda = tdaList->list.array[time_domain_assignment];
 
   if (tda->k2)
-    return *tda->k2;
+    return *tda->k2+NTN_gNB_k2;
   else if (mu < 2)
-    return 1;
+    return 1+NTN_gNB_k2;
   else if (mu == 2)
-    return 2;
+    return 2+NTN_gNB_k2;
   else
-    return 3;
+    return 3+NTN_gNB_k2;
+
 }
 
 static bool nr_UE_is_to_be_scheduled(const NR_ServingCellConfigCommon_t *scc, int CC_id,  NR_UE_info_t* UE, frame_t frame, sub_frame_t slot, uint32_t ulsch_max_frame_inactivity)
@@ -1929,7 +1932,8 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   const int temp_tda = get_ul_tda(nr_mac, scc, frame, slot);
   NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
   int K2 = get_K2(tdaList, temp_tda, mu);
-  const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) & 1023;
+  //const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) & 1023;
+  const int sched_frame = (frame + (slot + K2) / nr_slots_per_frame[mu]) % MAX_FRAME_NUMBER;
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
   const int tda = get_ul_tda(nr_mac, scc, sched_frame, sched_slot);
   if (tda < 0)

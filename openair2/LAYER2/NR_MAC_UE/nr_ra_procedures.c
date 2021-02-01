@@ -812,6 +812,8 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
   return ra->ra_state;
 }
 
+extern uint16_t NTN_UE_k2; //the additional k2 value at UE
+
 void nr_get_RA_window(NR_UE_MAC_INST_t *mac){
 
   uint8_t mu, ra_ResponseWindow;
@@ -830,7 +832,7 @@ void nr_get_RA_window(NR_UE_MAC_INST_t *mac){
   else
     mu = scs;
 
-  ra->RA_window_cnt = ra->RA_offset*nr_slots_per_frame[mu]; // taking into account the 2 frames gap introduced by OAI gNB
+  ra->RA_window_cnt = NTN_UE_k2 + ra->RA_offset*nr_slots_per_frame[mu]; // taking into account the 2 frames gap introduced by OAI gNB
 
   switch (ra_ResponseWindow) {
     case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl1:
