@@ -203,10 +203,10 @@ uint32_t get_samples_slot_timestamp(int slot, const NR_DL_FRAME_PARMS *fp, uint8
   uint32_t samp_count = 0;
 
   if(!sl_ahead) {
-    for(uint8_t idx_slot = 0; idx_slot < slot; idx_slot++)
+    for(uint16_t idx_slot = 0; idx_slot < slot; idx_slot++)
       samp_count += fp->get_samples_per_slot(idx_slot, fp);
   } else {
-    for(uint8_t idx_slot = slot; idx_slot < slot+sl_ahead; idx_slot++)
+    for(uint16_t idx_slot = slot; idx_slot < slot+sl_ahead; idx_slot++)
       samp_count += fp->get_samples_per_slot(idx_slot, fp);
   }
   return samp_count;

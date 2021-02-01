@@ -692,6 +692,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 0);
 }
 
+extern uint16_t NTN_gNB_k2;
 static void nr_generate_Msg3_retransmission(module_id_t module_idP,
                                             int CC_id,
                                             frame_t frame,
@@ -706,8 +707,9 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
 
   NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
   int mu = ul_bwp->scs;
-  uint8_t K2 = *pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->k2;
-  const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) % 1024;
+  uint16_t K2 = *pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->k2 + NTN_gNB_k2;
+  //const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) % 1024;
+  const int sched_frame = (frame + (slot + K2) / nr_slots_per_frame[mu]) % MAX_FRAME_NUMBER;
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
 
   if (is_xlsch_in_slot(nr_mac->ulsch_slot_bitmap[sched_slot / 64], sched_slot)) {
@@ -897,7 +899,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
 
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   const int n_slots_frame = nr_slots_per_frame[mu];
-  uint8_t k2 = 0;
+  uint16_t k2 = 0;
   if (frame_type == TDD) {
     int msg3_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
     if (tdd->nrofUplinkSymbols != 0) {
@@ -913,7 +915,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
     for (int i=0; i<pusch_TimeDomainAllocationList->list.count; i++) {
       startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength;
       SLIV2SL(startSymbolAndLength, &StartSymbolIndex, &NrOfSymbols);
-      k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2;
+      k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2  + NTN_gNB_k2;
       LOG_D(NR_MAC,"Checking Msg3 TDA %d for Msg3_slot %d Msg3_start %d Msg3_nsymb %d: k2 %d, sliv %d,S %d L %d\n",
             i, msg3_slot, Msg3start, Msg3maxsymb, (int)k2, (int)pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength, StartSymbolIndex, NrOfSymbols);
       // we want to transmit in the uplink symbols of mixed slot or the first uplink slot
@@ -934,7 +936,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
   }
   else {
     ra->Msg3_tda_id = 0;
-    k2 = *pusch_TimeDomainAllocationList->list.array[0]->k2;
+    k2 = *pusch_TimeDomainAllocationList->list.array[0]->k2 + NTN_gNB_k2;
     abs_slot = current_slot + k2 + DELTA[mu]; // msg3 slot according to 8.3 in 38.213
     ra->Msg3_slot = abs_slot % nr_slots_per_frame[mu];
   }

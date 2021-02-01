@@ -425,6 +425,8 @@ static void get_channel_model_mode() {
 
 int NB_UE_INST = 1;
 uint64_t RFsim_PropDelay = 0;
+uint16_t NTN_UE_k2 = 0;
+uint16_t NTN_UE_slot_Rx_to_Tx = 0;
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;

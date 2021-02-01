@@ -59,6 +59,7 @@
 
 static prach_association_pattern_t prach_assoc_pattern;
 static void nr_ue_prach_scheduler(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);
+extern uint16_t NTN_UE_k2; //the additional k2 value at UE
 
 void fill_ul_config(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx, uint8_t pdu_type){
 
@@ -1425,6 +1426,8 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
   // k2 as per 3GPP TS 38.214 version 15.9.0 Release 15 ch 6.1.2.1.1
   // PUSCH time domain resource allocation is higher layer configured from uschTimeDomainAllocationList in either pusch-ConfigCommon
 
+  k2 = k2+NTN_UE_k2;
+  
   if (is_Msg3) {
 
     switch (mu) {
@@ -1452,11 +1455,7 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
                 DURATION_RX_TO_TX);
 
     *slot_tx = (current_slot + k2 + delta) % nr_slots_per_frame[mu];
-    if (current_slot + k2 + delta >= nr_slots_per_frame[mu]){
-      *frame_tx = (current_frame + 1) % 1024;
-    } else {
-      *frame_tx = current_frame;
-    }
+    *frame_tx = (current_frame + (current_slot + k2 + delta)/nr_slots_per_frame[mu]) % 1024;
 
   } else {
 
@@ -1467,7 +1466,7 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
 
     // Calculate TX slot and frame
     *slot_tx = (current_slot + k2) % nr_slots_per_frame[mu];
-    *frame_tx = ((current_slot + k2) > (nr_slots_per_frame[mu]-1)) ? (current_frame + 1) % 1024 : current_frame;
+    *frame_tx = (current_frame + (current_slot + k2)/nr_slots_per_frame[mu]) % 1024;
 
   }
 
