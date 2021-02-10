@@ -1011,6 +1011,7 @@ int main(int argc, char **argv)
         NR_SCHED_LOCK(&gNB_mac->sched_lock);
         nr_schedule_ue_spec(0, frame, slot, &Sched_INFO->DL_req, &Sched_INFO->TX_req);
         NR_SCHED_UNLOCK(&gNB_mac->sched_lock);
+        Sched_INFO.UL_tti_req  = &Sched_INFO->UL_tti_req_ahead[0][frame%MAX_NUM_UL_SCHED_FRAME][slot];
         Sched_INFO->module_id = 0;
         Sched_INFO->CC_id = 0;
         Sched_INFO->frame = frame;

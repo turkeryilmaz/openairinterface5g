@@ -87,8 +87,10 @@ void clear_nr_nfapi_information(gNB_MAC_INST *gNB,
   /* advance last round's future UL_tti_req to be ahead of current frame/slot */
   const int size = gNB->UL_tti_req_ahead_size;
   const int prev_slot = frameP * num_slots + slotP + size - 1;
-  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &gNB->UL_tti_req_ahead[CC_idP][prev_slot % size];
-  future_ul_tti_req->SFN = (prev_slot / num_slots) % 1024;
+  const int                     last_slot = (slotP + num_slots - 1) % num_slots;
+  frame_t                       LastFrame = slotP==0 ? ((frameP + MAX_FRAME_NUMBER - 1) % MAX_FRAME_NUMBER) : frameP;
+  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &gNB->UL_tti_req_ahead[CC_idP][LastFrame%MAX_NUM_UL_SCHED_FRAME][last_slot];
+  future_ul_tti_req->SFN = (LastFrame + MAX_NUM_UL_SCHED_FRAME) % MAX_FRAME_NUMBER;
   LOG_D(NR_MAC, "%d.%d UL_tti_req_ahead SFN.slot = %d.%d for index %d \n", frameP, slotP, future_ul_tti_req->SFN, future_ul_tti_req->Slot, prev_slot % size);
   /* future_ul_tti_req->Slot is fixed! */
   future_ul_tti_req->n_pdus = 0;
@@ -187,8 +189,13 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     const int num_slots = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
     const int size = gNB->vrb_map_UL_size;
     const int prev_slot = frame * num_slots + slot + size - 1;
-    uint16_t *vrb_map_UL = cc[CC_id].vrb_map_UL;
-    memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
+    const int last_slot = (slot + num_slots - 1) % num_slots;
+    frame_t LastFrame = slot==0 ? ((frame + MAX_FRAME_NUMBER - 1) % MAX_FRAME_NUMBER) : frame;
+    uint16_t *vrb_map_UL = cc[CC_id].vrb_map_UL[LastFrame%MAX_NUM_UL_SCHED_FRAME][last_slot];
+    memcpy(vrb_map_UL, &RC.nrmac[module_idP]->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
+
+    //uint16_t *vrb_map_UL = cc[CC_id].vrb_map_UL;
+    //memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
 
     clear_nr_nfapi_information(gNB, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req, &sched_info->UL_dci_req);
   }

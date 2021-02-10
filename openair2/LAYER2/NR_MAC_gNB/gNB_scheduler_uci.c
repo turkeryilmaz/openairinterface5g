@@ -46,7 +46,7 @@ static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
 {
 
   const int index = ul_buffer_index(pucch->frame, pucch->ul_slot, UE->current_UL_BWP.scs, nrmac->UL_tti_req_ahead_size);
-  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nrmac->UL_tti_req_ahead[0][index];
+  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nrmac->UL_tti_req_ahead[0][pucch->frame%MAX_NUM_UL_SCHED_FRAME][index];
   if (future_ul_tti_req->SFN != pucch->frame || future_ul_tti_req->Slot != pucch->ul_slot)
     LOG_W(MAC,
           "Current %d.%d : future UL_tti_req's frame.slot %4d.%2d does not match PUCCH %4d.%2d\n",
@@ -266,7 +266,7 @@ void nr_csi_meas_reporting(int Mod_idP,
 
       // going through the list of PUCCH resources to find the one indexed by resource_id
       const int index = ul_buffer_index(sched_frame, sched_slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
-      uint16_t *vrb_map_UL = &nrmac->common_channels[0].vrb_map_UL[index * MAX_BWP_SIZE];
+      uint16_t *vrb_map_UL = nrmac->common_channels[0].vrb_map_UL[sched_frame%MAX_NUM_UL_SCHED_FRAME][index];
       const int m = pucch_Config->resourceToAddModList->list.count;
       for (int j = 0; j < m; j++) {
         NR_PUCCH_Resource_t *pucchres = pucch_Config->resourceToAddModList->list.array[j];
@@ -1285,7 +1285,7 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
       // checking if in ul_slot the resources potentially to be assigned to this PUCCH are available
       set_pucch_allocation(ul_bwp, r_pucch, bwp_size, curr_pucch);
       const int index = ul_buffer_index(pucch_frame, pucch_slot, ul_bwp->scs, mac->vrb_map_UL_size);
-      uint16_t *vrb_map_UL = &mac->common_channels[CC_id].vrb_map_UL[index * MAX_BWP_SIZE];
+      uint16_t *vrb_map_UL = mac->common_channels[CC_id].vrb_map_UL[pucch_frame%MAX_NUM_UL_SCHED_FRAME][index];
       bool ret = test_pucch0_vrb_occupation(curr_pucch,
                                             vrb_map_UL,
                                             bwp_start,
@@ -1380,7 +1380,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
       }
       else {
         const int index = ul_buffer_index(SFN, slot, ul_bwp->scs, nrmac->vrb_map_UL_size);
-        uint16_t *vrb_map_UL = &nrmac->common_channels[CC_id].vrb_map_UL[index * MAX_BWP_SIZE];
+        uint16_t *vrb_map_UL = nrmac->common_channels[CC_id].vrb_map_UL[SFN%MAX_NUM_UL_SCHED_FRAME][index];
         const int bwp_start = ul_bwp->BWPStart;
         const int bwp_size = ul_bwp->BWPSize;
         set_pucch_allocation(ul_bwp, -1, bwp_size, curr_pucch);
