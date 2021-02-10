@@ -2892,16 +2892,24 @@ void UL_tti_req_ahead_initialization(gNB_MAC_INST * gNB, NR_ServingCellConfigCom
     size <<= 1; // to have enough room for feedback possibly beyond the frame we need a larger array at 15kHz SCS
 
   gNB->UL_tti_req_ahead_size = size;
-  gNB->UL_tti_req_ahead[CCid] = calloc(size, sizeof(nfapi_nr_ul_tti_request_t));
-  AssertFatal(gNB->UL_tti_req_ahead[CCid], "could not allocate memory for RC.nrmac[]->UL_tti_req_ahead[]\n");
+  gNB->UL_tti_req_ahead[CCid] = calloc(MAX_NUM_UL_SCHED_FRAME, sizeof(nfapi_nr_ul_tti_request_t *));
+  AssertFatal(gNB->UL_tti_req_ahead[CCid], "could not allocate memory for gNB->UL_tti_req_ahead[]\n");
+  for (int i = 0; i < MAX_NUM_UL_SCHED_FRAME; ++i) {
+    gNB->UL_tti_req_ahead[CCid][i] = calloc(n, sizeof(nfapi_nr_ul_tti_request_t));
+    AssertFatal(gNB->UL_tti_req_ahead[CCid][i], "could not allocate memory for gNB->UL_tti_req_ahead[][]\n");
+  }
   /* fill in slot/frame numbers: slot is fixed, frame will be updated by scheduler
    * consider that scheduler runs sl_ahead: the first sl_ahead slots are
    * already "in the past" and thus we put frame 1 instead of 0! */
-  for (int i = 0; i < size; ++i) {
-    int abs_slot = frameP * n + slotP + i;
-    nfapi_nr_ul_tti_request_t *req = &gNB->UL_tti_req_ahead[CCid][abs_slot % size];
-    req->SFN = abs_slot / n;
-    req->Slot = abs_slot % n;
+  for (int i = 0; i < MAX_NUM_UL_SCHED_FRAME; ++i) {
+    for (int j = 0; j < n; ++j) {
+      nfapi_nr_ul_tti_request_t *req = &gNB->UL_tti_req_ahead[CCid][i][j];
+      if (i == 0)
+        req->SFN = j < (gNB->if_inst->sl_ahead-1) ? MAX_NUM_UL_SCHED_FRAME : 0;
+      else
+        req->SFN = i;
+      req->Slot = j;
+    }
   }
 }
 
