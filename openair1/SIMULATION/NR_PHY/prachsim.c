@@ -62,6 +62,11 @@ char *parallel_config = NULL;
 char *worker_config = NULL;
 
 char *uecap_file;
+uint16_t NTN_UE_k2 = 0;
+uint16_t NTN_UE_slot_Rx_to_Tx = 0;
+uint16_t NTN_gNB_k2 = 0;
+uint16_t max_ul_sched_frame = 1;
+
 PHY_VARS_gNB *gNB;
 PHY_VARS_NR_UE *UE;
 RAN_CONTEXT_t RC;
