@@ -750,7 +750,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       return -1;
     }
 
-    if(rnti != ra->ra_rnti && rnti != SI_RNTI)
+    if(rnti != ra->ra_rnti && rnti != SI_RNTI && !get_softmodem_params()->no_harq)
       AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
                   "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
                   1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
@@ -1079,7 +1079,8 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     // according to TS 38.213 Table 9.2.3-1
     uint8_t feedback_ti = pucch_Config->dl_DataToUL_ACK->list.array[dci->pdsch_to_harq_feedback_timing_indicator.val][0];
 
-    AssertFatal(feedback_ti > DURATION_RX_TO_TX,
+    if(!get_softmodem_params()->no_harq)
+      AssertFatal(feedback_ti > DURATION_RX_TO_TX,
                 "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d). Min feedback time set in config file (min_rxtxtime).\n",
                 feedback_ti, DURATION_RX_TO_TX);
 
@@ -2209,6 +2210,10 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
         }
       }
     }
+  }
+
+  if(get_softmodem_params()->no_harq) {
+    number_harq_feedback = 0;
   }
 
   /* no any ack to transmit */

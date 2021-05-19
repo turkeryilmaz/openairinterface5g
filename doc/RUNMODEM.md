@@ -153,6 +153,38 @@ In summary:
 In phy-test mode it is possible to mimic the reception of UE Capabilities at gNB by passing through the command line parameter `--uecap_file` the location and file name of the input UE Capability file, e.g. `--uecap_file ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/uecap_ports1.xml` (1 layer) or `--uecap_file ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/uecap_ports2.xml` (2 layers).
 
 ## noS1 setup with OAI UE
+## no-harq setup with OAI
+
+The no-harq flag is used to run the gNB and UE without any Harq re-transmission.
+It shall always be executed along with --do-ra or --phy-test flag only.
+
+In order to run the no-harq, the following flag is needed for both the gNB and the UE:
+
+`--no-harq`
+
+### Run OAI in no-harq mode
+
+From the `cmake_targets/ran_build/build` folder:
+
+gNB on machine 1:
+
+`sudo ./nr-softmodem -O
+../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf
+--no-harq --phy-test`
+
+UE on machine 2:
+
+`sudo ./nr-uesoftmodem --no-harq --phy-test`
+
+With the RF simulator (on the same machine):
+
+`sudo RFSIMULATOR=gnb ./nr-softmodem -O
+../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf
+--no-harq --phy-test --rfsim --parallel-config PARALLEL_SINGLE_THREAD`
+
+`sudo RFSIMULATOR=127.0.0.1 ./nr-uesoftmodem --no-harq --phy-test --rfsim --parallel-config PARALLEL_SINGLE_THREAD`
+
+## SA setup with OAI
 
 Instead of randomly generated payload, in the phy-test mode we can also inject/receive user-plane traffic over a TUN interface. This is the so-called noS1 mode. 
 
