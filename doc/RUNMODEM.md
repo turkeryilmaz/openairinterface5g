@@ -150,6 +150,38 @@ You need to provide `--rrc_config_path` if you don't start the UE after the gNB
 in the same directory.
 
 ## noS1 setup with OAI UE
+## no-harq setup with OAI
+
+The no-harq flag is used to run the gNB and UE without any Harq re-transmission.
+It shall always be executed along with --do-ra or --phy-test flag only.
+
+In order to run the no-harq, the following flag is needed for both the gNB and the UE:
+
+`--no-harq`
+
+### Run OAI in no-harq mode
+
+From the `cmake_targets/ran_build/build` folder:
+
+gNB on machine 1:
+
+`sudo ./nr-softmodem -O
+../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf
+--no-harq --phy-test`
+
+UE on machine 2:
+
+`sudo ./nr-uesoftmodem --no-harq --phy-test`
+
+With the RF simulator (on the same machine):
+
+`sudo RFSIMULATOR=gnb ./nr-softmodem -O
+../../../targets/PROJECTS/GENERIC-LTE-EPC/CONF/gnb.band78.tm1.106PRB.usrpn300.conf
+--no-harq --phy-test --rfsim --parallel-config PARALLEL_SINGLE_THREAD`
+
+`sudo RFSIMULATOR=127.0.0.1 ./nr-uesoftmodem --no-harq --phy-test --rfsim --parallel-config PARALLEL_SINGLE_THREAD`
+
+## SA setup with OAI
 
 Instead of randomly generated payload, in the phy-test mode we can also inject/receive user-plane traffic over a TUN interface. This is the so-called noS1 mode. 
 
