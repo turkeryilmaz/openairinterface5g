@@ -320,7 +320,7 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
   return offset;
 }
 
-static void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_frame_t slot)
+void nr_store_dlsch_buffer(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
   UE_iterator(RC.nrmac[module_id]->UE_info.list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
@@ -603,12 +603,29 @@ static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
 }
 
-static void pf_dl(module_id_t module_id,
-                  frame_t frame,
-                  sub_frame_t slot,
-                  NR_UE_info_t **UE_list,
-                  int max_num_ue,
-                  int n_rb_sched)
+static void *nr_pf_dl_setup(void)
+{
+  void *data = malloc(MAX_MOBILES_PER_GNB * sizeof(float));
+  AssertFatal(data, "%s(): could not allocate data\n", __func__);
+  for (int i = 0; i < MAX_MOBILES_PER_ENB; i++)
+    *(float *) data = 0.0f;
+  return data;
+}
+static void nr_pf_dl_unset(void **data)
+{
+  DevAssert(data);
+  if (*data)
+    free(*data);
+  *data = NULL;
+}
+
+static void nr_pf_dl(module_id_t module_id,
+                     frame_t frame,
+                     sub_frame_t slot,
+                     NR_UE_info_t **UE_list,
+                     int max_num_ue,
+                     int n_rb_sched,
+                     void *data)
 {
   gNB_MAC_INST *mac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc=mac->common_channels[0].ServingCellConfigCommon;
@@ -860,6 +877,13 @@ static void pf_dl(module_id_t module_id,
     iterator++;
   }
 }
+nr_dl_sched_algo_t nr_proportional_fair_wbcqi_dl = {
+  .name  = "nr_proportional_fair_wbcqi_dl",
+  .setup = nr_pf_dl_setup,
+  .unset = nr_pf_dl_unset,
+  .run   = nr_pf_dl,
+  .data  = NULL
+};
 
 static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
@@ -881,15 +905,16 @@ static void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   max_sched_ues = min(max_sched_ues, MAX_DCI_CORESET);
 
   /* proportional fair scheduling algorithm */
-  pf_dl(module_id,
-        frame,
-        slot,
-        UE_info->list,
-        max_sched_ues,
-        bw);  // we set the whole BW as max number
+  RC.nrmac[module_id]->pre_processor_dl.dl_algo.run(module_id,
+                                                    frame,
+                                                    slot,
+                                                    UE_info->list,
+                                                    max_sched_ues,
+                                                    bw,
+                                                    RC.nrmac[module_id]->pre_processor_dl.dl_algo.data);
 }
 
-nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
+nr_pp_impl_param_dl_t nr_init_fr1_dlsch_preprocessor(int CC_id) {
   /* during initialization: no mutex needed */
   /* in the PF algorithm, we have to use the TBsize to compute the coefficient.
    * This would include the number of DMRS symbols, which in turn depends on
@@ -914,7 +939,12 @@ nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
     }
   }
 
-  return nr_fr1_dlsch_preprocessor;
+  nr_pp_impl_param_dl_t impl;
+  memset(&impl, 0, sizeof(impl));
+  impl.dl = nr_fr1_dlsch_preprocessor;
+  impl.dl_algo = nr_proportional_fair_wbcqi_dl;
+  impl.dl_algo.data = impl.dl_algo.setup();
+  return impl;
 }
 
 void nr_schedule_ue_spec(module_id_t module_id,
@@ -932,7 +962,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
     return;
 
   /* PREPROCESSOR */
-  gNB_mac->pre_processor_dl(module_id, frame, slot);
+  pthread_mutex_lock(&gNB_mac->UE_info.mutex);
+  gNB_mac->pre_processor_dl.dl(module_id, frame, slot);
+  pthread_mutex_unlock(&gNB_mac->UE_info.mutex);
+
   const int CC_id = 0;
   NR_ServingCellConfigCommon_t *scc = gNB_mac->common_channels[CC_id].ServingCellConfigCommon;
   NR_UEs_t *UE_info = &gNB_mac->UE_info;
