@@ -167,6 +167,7 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
           ssb_pdu->cell_id = frame_parms->Nid_cell;
           ssb_pdu->ssb_start_subcarrier = frame_parms->ssb_start_subcarrier;
           ssb_pdu->rsrp_dBm = ue->measurements.ssb_rsrp_dBm[frame_parms->ssb_index];
+          ssb_pdu->sinr_dB = ue->measurements.ssb_sinr_dB[frame_parms->ssb_index];
           ssb_pdu->radiolink_monitoring = RLM_in_sync; // TODO to be removed from here
           ssb_pdu->decoded_pdu = true;
         }

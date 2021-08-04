@@ -1064,10 +1064,11 @@ int handle_dci(module_id_t module_id, int cc_id, unsigned int gNB_index, frame_t
 
 }
 
-void handle_ssb_meas(NR_UE_MAC_INST_t *mac, uint8_t ssb_index, int16_t rsrp_dbm)
+void handle_ssb_meas(NR_UE_MAC_INST_t *mac, uint8_t ssb_index, int16_t rsrp_dbm, float sinr_dB)
 {
   mac->ssb_measurements.ssb_index = ssb_index;
   mac->ssb_measurements.ssb_rsrp_dBm = rsrp_dbm;
+  mac->ssb_measurements.ssb_sinr_dB = sinr_dB;
 }
 
 // L2 Abstraction Layer
@@ -1202,7 +1203,8 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
             if(rx_indication_body.ssb_pdu.decoded_pdu) {
               handle_ssb_meas(mac,
                               rx_indication_body.ssb_pdu.ssb_index,
-                              rx_indication_body.ssb_pdu.rsrp_dBm);
+                              rx_indication_body.ssb_pdu.rsrp_dBm,
+                              rx_indication_body.ssb_pdu.sinr_dB);
               ret_mask |= (handle_bcch_bch(dl_info->module_id, dl_info->cc_id, dl_info->gNB_index, dl_info->phy_data,
                                            rx_indication_body.ssb_pdu.pdu,
                                            rx_indication_body.ssb_pdu.additional_bits,

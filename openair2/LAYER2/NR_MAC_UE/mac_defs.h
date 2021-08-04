@@ -370,6 +370,8 @@ typedef struct {
   uint32_t ssb_index;
   /// SSB RSRP in dBm
   short ssb_rsrp_dBm;
+  /// measured SSB SINR in dB
+  float ssb_sinr_dB;
 } NR_SSB_meas_t;
 
 typedef struct NR_UL_TIME_ALIGNMENT {

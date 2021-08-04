@@ -132,6 +132,7 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
 
     }
 
+    ue->measurements.rx_power_tot[gNB_id] /= frame_parms->nb_antennas_rx;
     ue->measurements.rx_power_tot_dB[gNB_id] = (unsigned short) dB_fixed(ue->measurements.rx_power_tot[gNB_id]);
 
   }
@@ -232,19 +233,20 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   }
 
   rsrp /= nb_re;
-  ue->measurements.ssb_rsrp_dBm[ssb_index] = 10*log10(rsrp) +
-                                             30 - 10*log10(pow(2,30)) -
-                                             ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
-                                             dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
   ue->measurements.ssb_rsrp_dBm[ssb_index] = (10*log10(rsrp) - (int)ue->rfdevice.app_rx_gain[0]) - (int)openair0_cfg[0].rx_gain_offset[0];
 
-  LOG_D(PHY, "In %s: [UE %d] slot %d SS-RSRP: %d dBm/RE (%d)\n",
-    __FUNCTION__,
-    ue->Mod_id,
-    ssb_index,
-    ue->measurements.ssb_rsrp_dBm[ssb_index],
-    rsrp);
+  // to obtain non-integer dB value with a resoluion of 0.5dB
+  int SNRtimes10 = dB_fixed_x10(rsrp) - dB_fixed_x10(ue->measurements.n0_power_avg);
+  ue->measurements.ssb_sinr_dB[ssb_index] = SNRtimes10 / 10.0;
+
+  LOG_D(PHY,
+        "In %s: [UE %d] SSB index: %d, SS-RSRP: %d dBm/RE, SS-SINR: %f dB\n",
+        __FUNCTION__,
+        ue->Mod_id,
+        ssb_index,
+        ue->measurements.ssb_rsrp_dBm[ssb_index],
+        ue->measurements.ssb_sinr_dB[ssb_index]);
 
   // Send SS measurements to MAC
   fapi_nr_l1_measurements_t l1_measurements;
@@ -523,6 +525,7 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
 
   }
 
+  ue->measurements.n0_power_tot /= ue->frame_parms.nb_antennas_rx;
   ue->measurements.n0_power_tot_dB = (unsigned short) dB_fixed(ue->measurements.n0_power_tot);
   LOG_A(PHY, "aarx: %d\n", aarx);
 

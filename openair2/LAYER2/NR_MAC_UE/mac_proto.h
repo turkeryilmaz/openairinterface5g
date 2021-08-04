@@ -186,6 +186,12 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac,
 
 int nr_get_csi_measurements(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sched_t *pucch);
 
+uint8_t get_ssb_sinr_payload(NR_UE_MAC_INST_t *mac,
+                             PUCCH_sched_t *pucch,
+                             struct NR_CSI_ReportConfig *csi_reportconfig,
+                             NR_CSI_ResourceConfigId_t csi_ResourceConfigId,
+                             NR_CSI_MeasConfig_t *csi_MeasConfig);
+
 uint8_t get_ssb_rsrp_payload(NR_UE_MAC_INST_t *mac,
                              PUCCH_sched_t *pucch,
                              struct NR_CSI_ReportConfig *csi_reportconfig,
@@ -209,6 +215,8 @@ uint8_t nr_get_csi_payload(NR_UE_MAC_INST_t *mac,
                            int csi_report_id,
                            NR_CSI_MeasConfig_t *csi_MeasConfig);
 
+uint8_t get_sinr_index(float sinr);
+uint8_t get_sinr_diff_index(float best_sinr, float current_sinr);
 uint8_t get_rsrp_index(int rsrp);
 uint8_t get_rsrp_diff_index(int best_rsrp,int current_rsrp);
 
