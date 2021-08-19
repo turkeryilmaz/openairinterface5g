@@ -41,6 +41,8 @@ extern RAN_CONTEXT_t RC;
 
 //#define ENABLE_MAC_PAYLOAD_DEBUG 1
 
+uint8_t amc_flag = 0; // flag to use adaptive modulation and coding
+double sinr_offset_dl = 0.0; // additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC
 uint32_t target_dl_mcs = 9;
 uint32_t target_dl_Nl = 1;
 uint32_t target_dl_bw = 50;
@@ -154,7 +156,13 @@ void nr_preprocessor_phytest(module_id_t module_id,
                                                &tda_info,
                                                target_dl_Nl);
 
-  sched_pdsch->mcs = target_dl_mcs;
+  if (amc_flag) {
+    if (sched_ctrl->retrans_dl_harq.head == -1) { // first transmission only
+      float SINR = get_measured_sinr(sched_ctrl->CSI_report.ssb_cri_report.SINR);
+      sched_pdsch->mcs = get_MCS_from_SINR(SINR + sinr_offset_dl);
+    }
+  } else
+    sched_pdsch->mcs = target_dl_mcs;
   sched_pdsch->nrOfLayers = target_dl_Nl;
   sched_pdsch->Qm = nr_get_Qm_dl(sched_pdsch->mcs, dl_bwp->mcsTableIdx);
   sched_pdsch->R = nr_get_code_rate_dl(sched_pdsch->mcs, dl_bwp->mcsTableIdx);

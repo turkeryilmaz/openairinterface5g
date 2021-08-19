@@ -53,6 +53,13 @@
 #define WORD 32
 //#define SIZE_OF_POINTER sizeof (void *)
 
+// look-up table for AMC. Based on BLER vs SNR curves from the DLsim simulation
+// SNR Thresholds for MCS 0 - 28; with a resolution of 0.5dB; to maintain a BLER of 10^-3;
+//  [min <= ... < max] for each MCS
+const uint8_t Nr_MCS = 29; // 0-28
+float SINR_MCS_mapping[29] = {3,  3,    3.5, 4,  4.5,  5,    5.5, 6,  7,  7.5, 9.5, 10, 11, 11.5, 12.5,
+                              13, 13.5, 15,  16, 16.5, 17.5, 18,  19, 20, 21,  22,  23, 24, 25.5};
+
 const int get_dl_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot) {
 
   /* we assume that this function is mutex-protected from outside */
@@ -583,6 +590,19 @@ static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
 }
 
+uint8_t get_MCS_from_SINR(float SINR)
+{
+  for (int i = Nr_MCS - 1; i >= 0; i--) {
+    if (SINR >= SINR_MCS_mapping[i])
+      return i;
+  }
+  LOG_I(MAC, "SINR (%f dB) too low, no MCS possible to achieve BLER of 10^-3\n", SINR);
+  return 0;
+}
+
+extern uint8_t amc_flag; // flag to use adaptive modulation and coding
+extern double sinr_offset_dl; // additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC
+
 static void pf_dl(module_id_t module_id,
                   frame_t frame,
                   sub_frame_t slot,
@@ -657,7 +677,10 @@ static void pf_dl(module_id_t module_id,
       const NR_bler_options_t *bo = &mac->dl_bler;
       const int max_mcs_table = current_BWP->mcsTableIdx == 1 ? 27 : 28;
       const int max_mcs = min(sched_ctrl->dl_max_mcs, max_mcs_table);
-      if (bo->harq_round_max == 1)
+      if (amc_flag) {
+        float SINR = get_measured_sinr(sched_ctrl->CSI_report.ssb_cri_report.SINR);
+        sched_pdsch->mcs = min(get_MCS_from_SINR(SINR + sinr_offset_dl), max_mcs);
+      } else if (bo->harq_round_max == 1)
         sched_pdsch->mcs = max_mcs;
       else
         sched_pdsch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->dl_bler_stats, max_mcs, frame);

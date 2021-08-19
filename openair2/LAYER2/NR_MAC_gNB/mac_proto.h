@@ -455,4 +455,7 @@ void nr_mac_check_ul_failure(const gNB_MAC_INST *nrmac, int rnti, NR_UE_sched_ct
 
 void nr_mac_trigger_reconfiguration(const gNB_MAC_INST *nrmac, const NR_UE_info_t *UE);
 
+float get_measured_sinr(uint8_t index);
+uint8_t get_MCS_from_SINR(float SINR);
+
 #endif /*__LAYER2_NR_MAC_PROTO_H__*/

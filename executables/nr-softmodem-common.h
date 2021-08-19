@@ -130,13 +130,15 @@
 #define CONFIG_HLP_FI_ScalingFD  "Set the I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
 #define CONFIG_HLP_FD_ScalingFN  "Set the D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
 #define CONFIG_HLP_FD_ScalingFD  "Set the D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
-#define CONFIG_HLP_FO_PScaling "set P scaling factor of the PID controller for the frequency offset compensation"
-#define CONFIG_HLP_FO_IScaling "set I scaling factor of the PID controller for the frequency offset compensation"
-#define CONFIG_HLP_TP_Scaling "set scaling P for TO"
-#define CONFIG_HLP_TI_Scaling "set scaling I for TO"
-#define CONFIG_HLP_TO_Iinit    "Init the I part of the PI controller for timing offset compensation"
+#define CONFIG_HLP_FO_PScaling   "set P scaling factor of the PID controller for the frequency offset compensation"
+#define CONFIG_HLP_FO_IScaling   "set I scaling factor of the PID controller for the frequency offset compensation"
+#define CONFIG_HLP_TP_Scaling    "set scaling P for TO"
+#define CONFIG_HLP_TI_Scaling    "set scaling I for TO"
+#define CONFIG_HLP_TO_Iinit      "Init the I part of the PI controller for timing offset compensation"
 #define CONFIG_HLP_AGC           "Enable Receive Automatic Gain control"
 #define CONFIG_HLP_ULPC          "Enable NR Uplink power control for PUSCH and PUCCH"
+#define CONFIG_HLP_AMC           "flag to use adaptive modulation and coding: 1 = use AMC \n"
+#define CONFIG_HLP_SINR_OSET_DL  "Additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC \n"
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
