@@ -135,7 +135,7 @@
 #define CONFIG_HLP_TP_Scaling "set scaling P for TO"
 #define CONFIG_HLP_TI_Scaling "set scaling I for TO"
 #define CONFIG_HLP_TO_Iinit    "Init the I part of the PI controller for timing offset compensation"
-
+#define CONFIG_HLP_AGC           "Enable Receive Automatic Gain control"
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */

@@ -173,7 +173,12 @@ typedef struct {
   unsigned short n0_power_avg_dB;
   //! total estimated noise power (dBm)
   short n0_power_tot_dBm;
-
+  //! noise_floor in dB
+  unsigned int noise_figure_dB;
+  //! noise floor fixpoint in dB/RE
+  int noise_floor_fixed;
+  //! noise power spectral density
+  int noise_psd;
   // UE measurements
   //! estimated received spatial signal power (linear)
   fourDimArray_t *rx_spatial_power;
@@ -202,6 +207,8 @@ typedef struct {
 
   //! estimated rssi (dBm)
   short          rx_rssi_dBm[NUMBER_OF_CONNECTED_gNB_MAX];
+  //! estimated rssi (dB) fixed point
+  short          rx_rssi_fixed_point_dB[NUMBER_OF_CONNECTED_gNB_MAX];
   //! estimated correlation (wideband linear) between spatial channels (computed in dlsch_demodulation)
   int            rx_correlation[NUMBER_OF_CONNECTED_gNB_MAX][NB_ANTENNAS_RX][NR_MAX_NB_LAYERS*NR_MAX_NB_LAYERS];//
   //! estimated correlation (wideband dB) between spatial channels (computed in dlsch_demodulation)
@@ -238,6 +245,8 @@ typedef struct {
   UE_nr_rxtx_proc_t *meas_proc;
   pthread_t meas_thread;
   bool meas_running;
+  // update the flag to update rx gain value
+  short rx_gain_update;
 } PHY_NR_MEASUREMENTS;
 
 typedef struct {
@@ -685,6 +694,9 @@ typedef struct {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
+  // Enables Automatic gain control. controlled by --agc flag
+  int            enable_agc;
+
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {

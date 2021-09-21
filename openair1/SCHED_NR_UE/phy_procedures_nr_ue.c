@@ -312,7 +312,7 @@ void nr_ue_measurement_procedures(uint16_t l,
                                   uint32_t pdsch_est_size,
                                   int32_t dl_ch_estimates[][pdsch_est_size]) {
 
-  NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
+  int frame_rx   = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
   int gNB_id = proc->gNB_id;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_MEASUREMENT_PROCEDURES, VCD_FUNCTION_IN);
@@ -339,25 +339,16 @@ void nr_ue_measurement_procedures(uint16_t l,
         T_INT((int)(ue->measurements.rx_power_avg_dB[0] - ue->measurements.n0_power_avg_dB)),
         T_INT((int)ue->measurements.rx_power_avg_dB[0]),
         T_INT((int)ue->measurements.n0_power_avg_dB),
-        T_INT((int)ue->measurements.wideband_cqi_avg[0]));
+        T_INT((int)ue->measurements.wideband_cqi_avg[0]),
+        T_INT((int)ue->common_vars.freq_offset));
 #endif
+
+    if ((frame_rx % UPDATE_RX_GAIN == 0) && (ue->enable_agc)) {
+      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GAIN_CONTROL, VCD_FUNCTION_IN);
+      phy_adjust_gain_nr(ue);
+      VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GAIN_CONTROL, VCD_FUNCTION_OUT);
+    }
   }
-
-  // accumulate and filter timing offset estimation every subframe (instead of every frame)
-  if (( nr_slot_rx == 2) && (l==(2-frame_parms->Ncp))) {
-
-    // AGC
-
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GAIN_CONTROL, VCD_FUNCTION_IN);
-
-
-    //printf("start adjust gain power avg db %d\n", ue->measurements.rx_power_avg_dB[gNB_id]);
-    phy_adjust_gain_nr (ue,ue->measurements.rx_power_avg_dB[gNB_id],gNB_id);
-    
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_GAIN_CONTROL, VCD_FUNCTION_OUT);
-
-}
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_MEASUREMENT_PROCEDURES, VCD_FUNCTION_OUT);
 }
 

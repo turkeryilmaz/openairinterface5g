@@ -640,6 +640,19 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
     }
 
     LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
+    /* AGC RX GAIN */
+    /* USRP API Call for changing RX gain in a thread in mixed slot */
+    if ((UE->measurements.rx_gain_update == 1) &&
+        (proc->rx_slot_type == NR_MIXED_SLOT) &&
+        (proc->frame_rx % UPDATE_RX_GAIN == 0) &&
+        (proc->nr_slot_rx < 9)) {
+      /* reset averaging */
+      UE->init_averaging = 1;
+      /* Reset the rx gain update flag */
+      UE->measurements.rx_gain_update = 0;
+      /* Call the USRP API ina separate thread */
+      UE->rfdevice.trx_set_gains_func(&UE->rfdevice,&UE->rfdevice.openair0_cfg[0],1);
+    }
   }
 
   ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
