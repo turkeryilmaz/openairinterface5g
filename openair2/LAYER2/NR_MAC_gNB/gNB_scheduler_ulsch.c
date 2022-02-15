@@ -1627,6 +1627,9 @@ static int comparator(const void *p, const void *q) {
   return ((UEsched_t*)p)->coef < ((UEsched_t*)q)->coef;
 }
 
+extern uint8_t amc_flag; // flag to use adaptive modulation and coding
+extern double sinr_offset_ul; // additional SINR offset in [dB] applied to the measured SINR at gNB for UL AMC
+
 static void pf_ul(module_id_t module_id,
                   frame_t frame,
                   sub_frame_t slot,
@@ -1714,7 +1717,10 @@ static void pf_ul(module_id_t module_id,
     const NR_bler_options_t *bo = &nrmac->ul_bler;
     const int max_mcs_table = (current_BWP->mcs_table == 0 || current_BWP->mcs_table == 2) ? 28 : 27;
     const int max_mcs = min(bo->max_mcs, max_mcs_table); /* no per-user maximum MCS yet */
-    if (bo->harq_round_max == 1)
+    if (amc_flag) {
+      uint8_t MCS_temp = get_MCS_from_SINR(sched_ctrl->pusch_snrx10 / 10.0 + sinr_offset_ul);
+      sched_pusch->mcs = min(MCS_temp, max_mcs);
+    } else if (bo->harq_round_max == 1)
       sched_pusch->mcs = max_mcs;
     else
       sched_pusch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);

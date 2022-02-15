@@ -43,6 +43,7 @@ extern RAN_CONTEXT_t RC;
 
 uint8_t amc_flag = 0; // flag to use adaptive modulation and coding
 double sinr_offset_dl = 0.0; // additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC
+double sinr_offset_ul = 0.0; // additional SINR offset in [dB] applied to the measured SINR at gNB for UL AMC
 uint32_t target_dl_mcs = 9;
 uint32_t target_dl_Nl = 1;
 uint32_t target_dl_bw = 50;
@@ -286,8 +287,15 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
 
   sched_ctrl->cce_index = CCEIndex;
 
-  const int mcs = target_ul_mcs;
   NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
+  int mcs = sched_pusch->mcs;
+  if (amc_flag) {
+    if (sched_ctrl->retrans_ul_harq.head == -1) { // first transmission only
+      mcs = get_MCS_from_SINR(sched_ctrl->pusch_snrx10 / 10.0 + sinr_offset_ul);
+    }
+  } else
+    mcs = target_ul_mcs;
+
   sched_pusch->mcs = mcs;
   sched_ctrl->ul_bler_stats.mcs = mcs; /* for logging output */
   sched_pusch->rbStart = rbStart;

@@ -44,12 +44,14 @@
   {"FDC" ,                  CONFIG_HLP_FDopplerPrePost,0,                .iptr=&fdopplerPrePost,              .defintval=0,                     TYPE_INT32,  0},        \
   {"FC" ,                   CONFIG_HLP_FDopplerComp,   0,                .iptr=&fdopplerComp,                 .defintval=0,                     TYPE_INT32,  0},        \
   {"amc" ,                  CONFIG_HLP_AMC,            0,                .u8ptr=&amc_flag,                    .defdblval=0,                     TYPE_UINT8,  0},        \
-  {"sinr-offset-dl" ,       CONFIG_HLP_SINR_OSET_DL,   0,                .dblptr=&sinr_offset_dl,             .defdblval=0,                     TYPE_DOUBLE, 0}         \
+  {"sinr-offset-dl" ,       CONFIG_HLP_SINR_OSET_DL,   0,                .dblptr=&sinr_offset_dl,             .defdblval=0,                     TYPE_DOUBLE, 0},        \
+  {"sinr-offset-ul" ,       CONFIG_HLP_SINR_OSET_UL,   0,                .dblptr=&sinr_offset_ul,             .defdblval=0,                     TYPE_DOUBLE, 0}         \
 }
 // clang-format on
 
 extern uint8_t amc_flag; // flag to use adaptive modulation and coding
 extern double sinr_offset_dl; // additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC
+extern double sinr_offset_ul; // additional SINR offset in [dB] applied to the measured SINR at gNB for UL AMC
 extern uint32_t target_dl_mcs;
 extern uint32_t target_dl_Nl;
 extern uint32_t target_ul_Nl;

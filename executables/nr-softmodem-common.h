@@ -139,6 +139,7 @@
 #define CONFIG_HLP_ULPC          "Enable NR Uplink power control for PUSCH and PUCCH"
 #define CONFIG_HLP_AMC           "flag to use adaptive modulation and coding: 1 = use AMC \n"
 #define CONFIG_HLP_SINR_OSET_DL  "Additional SINR offset in [dB] applied to the reported SINR from UE for DL AMC \n"
+#define CONFIG_HLP_SINR_OSET_UL  "Additional SINR offset in [dB] applied to the measured SINR at gNB for UL AMC \n"
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
