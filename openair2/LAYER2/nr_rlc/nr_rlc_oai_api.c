@@ -643,7 +643,7 @@ void nr_rlc_add_srb(int rnti, int srb_id, const NR_RLC_BearerConfig_t *rlc_Beare
     LOG_E(RLC, "%s:%d:%s: SRB %d already exists for UE with RNTI %04x, do nothing\n", __FILE__, __LINE__, __FUNCTION__, srb_id, rnti);
   } else {
     /* hack: hardcode values for NR */
-    t_poll_retransmit = 45;
+    t_poll_retransmit = 4000;
     t_reassembly = 35;
     t_status_prohibit = 0;
     poll_pdu = -1;
