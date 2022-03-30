@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/platform_constants.h"
+#include "COMMON/platform_constants.h"
 #include "LTE_BCCH-BCH-Message.h"
 #include "LTE_RadioResourceConfigCommon.h"
 #include "LTE_RadioResourceConfigCommonSIB.h"
@@ -74,7 +74,7 @@
 #include "PHY/defs_common.h" // for PRACH_RESOURCES_t
 #include "PHY/LTE_TRANSPORT/transport_common.h"
 
-#include "radio/COMMON/common_lib.h"
+#include "targets/ARCH/COMMON/common_lib.h"
 
 /** @defgroup _mac  MAC
  * @ingroup _oai2

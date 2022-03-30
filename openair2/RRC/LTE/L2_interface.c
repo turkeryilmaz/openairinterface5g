@@ -48,6 +48,7 @@
 #include "intertask_interface.h"
 
 
+#include "openair3/SS/ss_eNB_context.h"
 extern RAN_CONTEXT_t RC;
 
 //------------------------------------------------------------------------------
@@ -79,11 +80,16 @@ mac_rrc_data_req(
   eNB_RRC_INST *rrc;
   rrc_eNB_carrier_data_t *carrier;
   LTE_BCCH_BCH_Message_t *mib;
+  LTE_SystemInformationBlockType1_t *SIB1;
+  LTE_SchedulingInfo_t *SchedulingInfo;
+  LTE_SIB_Type_t *sib_type;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms;
   rrc     = RC.rrc[Mod_idP];
-  carrier = &rrc->carrier[0];
+  carrier = &rrc->carrier[CC_id];
   mib     = &carrier->mib;
   mib_fembms     = &carrier->mib_fembms;
+  SIB1    = &carrier->SIB1;
+  SchedulingInfo = &SIB1->schedulingInfoList.list;
 
   if((Srb_id & RAB_OFFSET) == BCCH_SI_MBMS){
     if (frameP%8 == 0) {
@@ -115,6 +121,11 @@ mac_rrc_data_req(
                 "[eNB %d] MAC Request for SIB1 and SIB1 not initialized\n",Mod_idP);
 
     if ((frameP%2) == 0) {
+	if(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB1 == 0){
+         //stopSib1Transmission
+         LOG_D(RRC,"[eNB %d] CC_id:%d Frame %d : stopSib1Transmission\n",Mod_idP,CC_id,frameP);
+         return 0;
+      }
       memcpy(&buffer_pP[0],
              RC.rrc[Mod_idP]->carrier[CC_id].SIB1,
              RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB1);
@@ -147,7 +158,42 @@ mac_rrc_data_req(
       } /* LOG_DEBUGFLAG(DEBUG_RRC) */
 
       return(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB23);
-    } else {
+    }
+    else if ((true == RC.rrc[Mod_idP]->carrier[CC_id].sib4_Scheduled) && ((frameP%16) == 3)) {
+      memcpy(&buffer_pP[0],
+             RC.rrc[Mod_idP]->carrier[CC_id].SIB4,
+             RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB4);
+
+      if (LOG_DEBUGFLAG(DEBUG_RRC)) {
+        LOG_T(RRC,"[eNB %d] Frame %d : BCCH request => SIB 4\n",Mod_idP,frameP);
+
+        for (int i=0; i<RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB4; i++) {
+          LOG_T(RRC,"%x.",buffer_pP[i]);
+        }
+
+        LOG_T(RRC,"\n");
+      } /* LOG_DEBUGFLAG(DEBUG_RRC) */
+
+      return (RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB4);
+    }
+    else if ((true == RC.rrc[Mod_idP]->carrier[CC_id].sib5_Scheduled) && ((frameP%16) == 3)) {
+      memcpy(&buffer_pP[0],
+             RC.rrc[Mod_idP]->carrier[CC_id].SIB5,
+             RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB5);
+
+      if (LOG_DEBUGFLAG(DEBUG_RRC)) {
+        LOG_T(RRC,"[eNB %d] Frame %d : BCCH request => SIB 5\n",Mod_idP,frameP);
+
+        for (int i=0; i<RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB5; i++) {
+          LOG_T(RRC,"%x.",buffer_pP[i]);
+        }
+
+        LOG_T(RRC,"\n");
+      } /* LOG_DEBUGFLAG(DEBUG_RRC) */
+
+      return (RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB5);
+    }
+    else {
       return(0);
     }
   }
@@ -314,6 +360,30 @@ mac_rrc_data_ind(
   if((srb_idP & RAB_OFFSET) == CCCH) {
     LOG_D(RRC, "[eNB %d] Received SDU for CCCH on SRB %ld\n", module_idP, srb_idP);
     ctxt.brOption = brOption;
+
+//#ifdef ENB_SS
+    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    {
+      LOG_I(RRC,"RRC Sending CCCH PDU_IND/SS_RRC_PDU_IND(msg_Id:%d) to TASK_SS_SRB \n", SS_RRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0,  SS_RRC_PDU_IND);
+      if (message_p) {
+        /* Populate the message to SS */
+        SS_RRC_PDU_IND (message_p).sdu_size = sdu_lenP;
+        SS_RRC_PDU_IND (message_p).srb_id = 0;
+        SS_RRC_PDU_IND (message_p).rnti = rntiP;
+        SS_RRC_PDU_IND (message_p).physCellId = RC.rrc[module_idP]->carrier[CC_id].physCellId;
+        SS_RRC_PDU_IND (message_p).frame = ctxt.frame;
+        SS_RRC_PDU_IND (message_p).subframe = ctxt.subframe;
+        memset (SS_RRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
+        memcpy (SS_RRC_PDU_IND (message_p).sdu, sduP, sdu_lenP);
+
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB, 0, message_p);
+        if(send_res < 0) {
+          LOG_E(RRC,"Error in ending PDU_IND/SS_RRC_PDU_IND(msg_Id:%d) to TASK_SS_SRB\n", SS_RRC_PDU_IND);
+        }
+      }
+    }
+//#endif /** ENB_SS */
 
     /*Srb_info = &RC.rrc[module_idP]->carrier[CC_id].Srb0;
     if (sdu_lenP > 0) {

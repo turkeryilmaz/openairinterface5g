@@ -80,7 +80,9 @@ int stream_encrypt_eea1(stream_cipher_t *stream_cipher, uint8_t **out)
   DevAssert(stream_cipher->key_length == 16);
   DevAssert(out != NULL);
 
-  n = (stream_cipher->blength + 31) / 32;
+  n = ( stream_cipher->blength + 31 ) / 32;
+  int actual_buf_size =  stream_cipher->blength >> 3;
+
   zero_bit = stream_cipher->blength & 0x7;
 
   memset(&snow_3g_context, 0, sizeof(snow_3g_context));
@@ -121,8 +123,9 @@ int stream_encrypt_eea1(stream_cipher_t *stream_cipher, uint8_t **out)
 
   /* Exclusive-OR the input data with keystream to generate the output bit
   stream */
-  for (i = 0; i < n * 4; i++) {
-    stream_cipher->message[i] ^= *(((uint8_t *)KS) + i);
+  LOG_A(OSA,"stream_cipher->blength  %d loop till %d byte  KS size is %d\n",stream_cipher->blength, actual_buf_size,4*n);
+  for (i=0; i<actual_buf_size; i++) {
+    stream_cipher->message[i] ^= *(((uint8_t*)KS)+i);
   }
 
   if (zero_bit > 0) {

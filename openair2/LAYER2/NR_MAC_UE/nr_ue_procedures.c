@@ -364,6 +364,17 @@ int8_t nr_ue_decode_BCCH_DL_SCH(module_id_t module_id,
   return 0;
 }
 
+int8_t nr_ue_decode_paging(module_id_t module_id,
+                           int cc_id,
+                           uint8_t gNB_index,
+                           frame_t frame,
+                           slot_t slot,
+                           void *pduP,
+                           uint32_t pdu_len)
+{
+    return nr_mac_rrc_data_ind_ue(module_id, cc_id, gNB_index, frame, slot, P_RNTI, PCCH, (uint8_t *) pduP, pdu_len);
+}
+
 //  TODO: change to UE parameter, scs: 15KHz, slot duration: 1ms
 uint32_t get_ssb_frame(uint32_t test){
   return test;
@@ -797,7 +808,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       return -1;
     }
 
-    if(rnti != ra->ra_rnti && rnti != SI_RNTI)
+    if(rnti != ra->ra_rnti && rnti != SI_RNTI && rnti != P_RNTI)
       AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val >= DURATION_RX_TO_TX, "PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
                   1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
 
@@ -2828,6 +2839,15 @@ void nr_ue_send_sdu(nr_downlink_indication_t *dl_info, int pdu_id)
     case FAPI_NR_RX_PDU_TYPE_RAR:
     nr_ue_process_rar(dl_info, pdu_id);
     break;
+    case FAPI_NR_RX_PDU_TYPE_PCH:
+    nr_ue_decode_paging(dl_info->module_id,
+                        dl_info->cc_id,
+                        dl_info->gNB_index,
+                        dl_info->frame,
+                        dl_info->slot,
+                        dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.pdu,
+                        dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.pdu_length);
+    break;
     default:
     break;
   }
@@ -3597,7 +3617,7 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
           for (int i = 0; i < mac_len; i++) {
             LOG_D(NR_MAC, "%d: 0x%x\n", i, pduP[mac_subheader_len + i]);
           }
-          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0, mac->crnti, CCCH, pduP+mac_subheader_len, mac_len);
+          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, slot >> 1, mac->crnti, CCCH, pduP+mac_subheader_len, mac_len);
         }
         break;
       case DL_SCH_LCID_TCI_STATE_ACT_UE_SPEC_PDSCH:

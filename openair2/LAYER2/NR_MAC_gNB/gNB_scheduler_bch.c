@@ -139,6 +139,15 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
             mib_sdu_length);
     }
 
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIRECTION_DOWNLINK;
+    mac_pkt.rnti_type = WS_NO_RNTI;
+    mac_pkt.rnti      = 0xFFFF;
+    mac_pkt.harq_pid  = 0;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)&cc->MIB_pdu.payload[0], (int)mib_sdu_length);
+
     int8_t ssb_period = *scc->ssb_periodicityServingCell;
     uint8_t ssb_frame_periodicity = 1;  // every how many frames SSB are generated
 
@@ -328,6 +337,8 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
   int rbStart = type0_PDCCH_CSS_config->cset_start_rb;
+  if(RC.ss.mode >= SS_SOFTMODEM)
+    rbStart = 27;
 
   // Calculate number of PRB_DMRS
   uint8_t N_PRB_DMRS = pdsch->dmrs_parms.N_PRB_DMRS;
@@ -606,6 +617,18 @@ void schedule_nr_sib1(module_id_t module_idP,
       TX_req->Slot = slotP;
 
       type0_PDCCH_CSS_config->active = false;
+
+      T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(SI_RNTI),
+          T_INT(frameP), T_INT(slotP), T_INT(0), T_BUFFER(sib1_payload, sib1_sdu_length));
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIR_DOWNLINK;
+      mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_SI);
+      mac_pkt.rnti      = SI_RNTI;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sib1_payload, (int)sib1_sdu_length);
     }
   }
 }

@@ -279,6 +279,55 @@ static void openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_Rrc
   return;
 } // END openair_rrc_gNB_configuration
 
+char rrc_gNB_rblist_configuration(const module_id_t gnb_mod_idP,NRRrcRblistCfgReq *RblistConfig)
+{
+  int CC_id = RblistConfig->cell_index;
+
+  LOG_A(NR_RRC,"Inside rrc_gNB_rblist_configuration, CC_id: %d \n",CC_id);
+  AssertFatal(RblistConfig!=NULL,"RB list configuration input is null\n");
+  AssertFatal(RblistConfig->rb_count <= MAX_NR_RBS ,"RB Count exceed the Max RBs Supported");
+
+  for(int i=0;i<RblistConfig->rb_count;i++)
+  {
+    LOG_A(NR_RRC,"%s config RB Id:%d \n",__FUNCTION__,RblistConfig->rb_list[i].RbId);
+    int rbIndex = RblistConfig->rb_list[i].RbId; /*RB ID is used as a unique index in RB Array inside RC*/
+    AssertFatal(rbIndex <= MAX_NR_RBS, "RB Index exceed the Max RBs Supported");
+    NRRBConfig * rb_config =&RC.NR_RB_Config[CC_id][rbIndex];
+    if(rb_config->isRBConfigValid){
+      //Free old RBConfig storage
+      if(rb_config->Sdap){
+        ASN_STRUCT_FREE(asn_DEF_NR_SDAP_Config,rb_config->Sdap);
+        rb_config->Sdap = NULL;
+      }
+      if(rb_config->Pdcp){
+        ASN_STRUCT_FREE(asn_DEF_NR_PDCP_Config,rb_config->Pdcp);
+        rb_config->Pdcp = NULL;
+      }
+      if(rb_config->pdcpTransparentSN_Size){
+        FREEMEM(rb_config->pdcpTransparentSN_Size);
+        rb_config->pdcpTransparentSN_Size = NULL;
+      }
+      if(rb_config->RlcBearer){
+        ASN_STRUCT_FREE(asn_DEF_NR_RLC_BearerConfig,rb_config->RlcBearer);
+        rb_config->RlcBearer = NULL;
+      }
+      if(rb_config->DiscardULData){
+        FREEMEM(rb_config->DiscardULData);
+        rb_config->DiscardULData = NULL;
+      }
+      rb_config->isRBConfigValid = false;
+    }
+
+    rb_config->Sdap = RblistConfig->rb_list[i].RbConfig.Sdap;
+    rb_config->Pdcp = RblistConfig->rb_list[i].RbConfig.Pdcp;
+    rb_config->pdcpTransparentSN_Size = RblistConfig->rb_list[i].RbConfig.pdcpTransparentSN_Size;
+    rb_config->RlcBearer = RblistConfig->rb_list[i].RbConfig.RlcBearer;
+    rb_config->DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
+    rb_config->isRBConfigValid = true;
+  }
+  return 0;
+}
+
 static void rrc_gNB_process_AdditionRequestInformation(const module_id_t gnb_mod_idP, x2ap_ENDC_sgnb_addition_req_t *m)
 {
   struct NR_CG_ConfigInfo *cg_configinfo = NULL;
@@ -335,6 +384,163 @@ void apply_macrlc_config_reest(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *const ue
                      ue_context_pP->ue_context.masterCellGroup->rlc_BearerToAddModList);
 }
 
+int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance_t instance)
+{
+  const unsigned int Ttab[4] = {32,64,128,256};
+  uint8_t Tc;
+  /* uint8_t Tue; */
+  uint32_t pfoffset;
+  uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
+  uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
+  uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
+  uint32_t T;  /* DRX cycle */
+  uint8_t CC_id = SS_NR_PAGING_IND(msg_p).cell_index;
+  frame_type_t frame_type = RC.gNB[instance]->frame_parms.frame_type;
+  uint32_t length;
+  uint8_t buffer[RRC_BUF_SIZE];
+  uint8_t *message_buffer;
+  MessageDef *message_p;
+  struct NR_SIB1 *sib1 = RC.nrrrc[instance]->carrier.siblock1->message.choice.c1->choice.systemInformationBlockType1;
+
+  // TODO: set configuration from TTCN SYS message
+
+  /* get default DRX cycle from configuration */
+  Tc = sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.defaultPagingCycle;
+
+  /* set T = min(Tc,Tue) */
+  T = Ttab[Tc];
+  /* set N = PCCH-Config->nAndPagingFrameOffset */
+  switch (sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present) {
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_oneT:
+      N = T;
+      pfoffset = 0;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_halfT:
+      N = T/2;
+      pfoffset = 1;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_quarterT:
+      N = T/4;
+      pfoffset = 3;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_oneEighthT:
+      N = T/8;
+      pfoffset = 7;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_oneSixteenthT:
+      N = T/16;
+      pfoffset = 15;
+      break;
+    default:
+      LOG_E(NR_RRC, "[gNB %ld] In rrc_gNB_process_SS_PAGING_IND:  pfoffset error (pfoffset %d)\n",
+            instance, sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present);
+      return (-1);
+
+  }
+
+  switch (sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.ns) {
+    case NR_PCCH_Config__ns_four:
+      if(*sib1->servingCellConfigCommon->downlinkConfigCommon.initialDownlinkBWP.pdcch_ConfigCommon->choice.setup->pagingSearchSpace == 0){
+        LOG_E(NR_RRC, "[gNB %ld] In rrc_gNB_process_SS_PAGING_IND:  ns error only 1 or 2 is allowed when pagingSearchSpace is 0\n",
+              instance);
+        return (-1);
+      } else {
+        Ns = 4;
+      }
+      break;
+    case NR_PCCH_Config__ns_two:
+      Ns = 2;
+      break;
+    case NR_PCCH_Config__ns_one:
+      Ns = 1;
+      break;
+    default:
+      LOG_E(NR_RRC, "[gNB %ld] In rrc_gNB_process_SS_PAGING_IND: ns error (ns %ld)\n",
+            instance, sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.ns);
+      return (-1);
+  }
+
+  /* insert data to UE_PF_PO or update data in UE_PF_PO */
+  pthread_mutex_lock(&ue_pf_po_mutex);
+  uint8_t i = 0;
+
+  for (i = 0; i < MAX_MOBILES_PER_GNB; i++) {
+    if ((UE_PF_PO[CC_id][i].enable_flag == true && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(SS_NR_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != true)) {
+      /* set T = min(Tc,Tue) */
+      UE_PF_PO[CC_id][i].T = T;
+      /* set UE_ID */
+      UE_PF_PO[CC_id][i].ue_index_value = (uint16_t)SS_NR_PAGING_IND(msg_p).ue_index_value;
+      /* calculate PF and PO */
+      /* set PF_min and PF_offset: (SFN + PF_offset) mod T = (T div N)*(UE_ID mod N) */
+      /* UE_PF_PO[CC_id][i].PF_min = (T / N) * (UE_PF_PO[CC_id][i].ue_index_value % N); */
+      UE_PF_PO[CC_id][i].PF_min = (SS_NR_PAGING_IND(msg_p).sfn % T) + (UE_PF_PO[CC_id][i].ue_index_value % N);
+      /* UE_PF_PO[CC_id][i].PF_min =  SS_NR_PAGING_IND(msg_p).sfn % T; */
+      UE_PF_PO[CC_id][i].PF_offset = pfoffset;
+      /* set i_s */
+      /* i_s = floor(UE_ID/N) mod Ns */
+      i_s = (uint8_t)((UE_PF_PO[CC_id][i].ue_index_value / N) % Ns);
+      UE_PF_PO[CC_id][i].i_s = i_s;
+
+      if (Ns == 1)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? 9 : 0;
+      }
+      else if (Ns == 2)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 + (5 * i_s)) : (5 * i_s);
+      }
+      else if (Ns == 4)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 * (i_s & 1) + (5 * (i_s >> 1))) : ((i_s & 1) + (5 * (i_s >> 1)));
+      }
+      /* UE_PF_PO[CC_id][i].PO = SS_NR_PAGING_IND(msg_p).slot; */
+
+      if (UE_PF_PO[CC_id][i].enable_flag == true) {
+        //paging exist UE log
+        LOG_D(NR_RRC,"[gNB %ld] CC_id %d In rrc_gNB_process_SS_PAGING_IND: Update exist UE %d, T %d, N %d, PF %d, i_s %d, PF_offset %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value,
+              T, N, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].i_s, UE_PF_PO[CC_id][i].PF_offset);
+      } else {
+        /* set enable_flag */
+        UE_PF_PO[CC_id][i].enable_flag = true;
+        //paging new UE log
+        LOG_D(NR_RRC,"[gNB %ld] CC_id %d In rrc_gNB_process_SS_PAGING_IND: Insert a new UE %d, T %d, N %d, PF %d, i_s %d, PF_offset %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value,
+              T, N, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].i_s, UE_PF_PO[CC_id][i].PF_offset);
+      }
+      break;
+    }
+  }
+
+  pthread_mutex_unlock(&ue_pf_po_mutex);
+
+  /* Create message for PDCP (DLInformationTransfer_t) */
+  length = do_NR_Paging(instance, buffer, NULL, SS_NR_PAGING_IND(msg_p).num_paging_record,  SS_NR_PAGING_IND(msg_p).paging_recordList);
+
+  if (SS_NR_PAGING_IND(msg_p).paging_recordList) {
+    free(SS_NR_PAGING_IND(msg_p).paging_recordList);
+    SS_NR_PAGING_IND(msg_p).paging_recordList = NULL;
+  }
+
+  if (length == -1) {
+    LOG_I(NR_RRC, "do_NR_Paging error\n");
+    return -1;
+  }
+
+  message_p = itti_alloc_new_message(TASK_RRC_GNB, instance, RRC_PCCH_DATA_REQ);
+  message_buffer = itti_malloc(TASK_RRC_GNB, TASK_PDCP_ENB, length);
+  /* Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling). */
+  memcpy(message_buffer, buffer, length);
+  RRC_PCCH_DATA_REQ(message_p).sdu_size = length;
+  RRC_PCCH_DATA_REQ(message_p).sdu_p = message_buffer;
+  RRC_PCCH_DATA_REQ(message_p).mode = PDCP_TRANSMISSION_MODE_TRANSPARENT; /* not used */
+  RRC_PCCH_DATA_REQ(message_p).rnti = P_RNTI;
+  RRC_PCCH_DATA_REQ(message_p).ue_index = 0;
+  RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
+  LOG_A(NR_RRC, "[gNB %ld] CC_id %d In do_NR_Paging: send encoded buffer to PDCP buffer_size %d\n", instance, CC_id, length);
+  itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
+
+  return 0;
+}
+
 //-----------------------------------------------------------------------------
 static void rrc_gNB_generate_RRCSetup(instance_t instance,
                                       rnti_t rnti,
@@ -350,7 +556,7 @@ static void rrc_gNB_generate_RRCSetup(instance_t instance,
   unsigned char buf[1024];
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(instance);
   ue_p->xids[xid] = RRC_SETUP;
-  int size = do_RRCSetup(ue_context_pP, buf, xid, masterCellGroup, masterCellGroup_len, &rrc->configuration);
+  int size = do_RRCSetup(ue_context_pP, buf, 0 /*xid*/, masterCellGroup, masterCellGroup_len, &rrc->configuration);
   AssertFatal(size > 0, "do_RRCSetup failed\n");
   AssertFatal(size <= 1024, "memory corruption\n");
 
@@ -583,6 +789,133 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
                             : NR_RRC_RECONFIGURATION_DELAY_MS;
 
     nr_mac_enable_ue_rrc_processing_timer(ctxt_pP->module_id, ue_p->rnti, *rrc->carrier.servingcellconfigcommon->ssbSubcarrierSpacing, delay_ms);
+  }
+}
+
+//-----------------------------------------------------------------------------
+/*
+*  store rrcReconfiguration config in UE context
+*/
+void
+rrc_gNB_store_RRCReconfiguration(
+  const protocol_ctxt_t     *const ctxt_pP,
+  rrc_gNB_ue_context_t      *ue_context_pP,
+  NR_RRCReconfiguration_t * rrcReconfiguration
+)
+//-----------------------------------------------------------------------------
+{
+  NR_SRB_ToAddModList_t        **srb2addList = NULL;
+  NR_DRB_ToAddModList_t        **drb2addList = NULL;
+  NR_DRB_ToAddModList_t        **drb2releaseList = NULL;
+  NR_CellGroupConfig_t          *cellGroupConfig = NULL;
+  long xid;
+
+  AssertFatal (rrcReconfiguration!=NULL, "%s rrcReconfiguration is NULL\n",__FUNCTION__);
+  xid = rrcReconfiguration->rrc_TransactionIdentifier;
+  LOG_D(NR_RRC, "rrc_gNB_store_RRCReconfiguration for transaction %ld\n",xid);
+
+  srb2addList = &ue_context_pP->ue_context.SRB_configList2[xid];
+  drb2addList = &ue_context_pP->ue_context.DRB_configList2[xid];
+  drb2releaseList = &ue_context_pP->ue_context.DRB_Release_configList2[xid];
+
+  if(*srb2addList){
+    LOG_D(NR_RRC, "%s free old SRB_configList2 \n",__FUNCTION__);
+    ASN_STRUCT_FREE(asn_DEF_NR_SRB_ToAddModList,*srb2addList);
+    *srb2addList = NULL;
+  }
+  if(*drb2addList){
+    LOG_D(NR_RRC, "%s free old DRB_configList2 \n",__FUNCTION__);
+    ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToAddModList,*drb2addList);
+    *drb2addList = NULL;
+  }
+  if(*drb2releaseList){
+    LOG_D(NR_RRC, "%s free old DRB_Release_configList2 \n",__FUNCTION__);
+    ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToAddModList,*drb2releaseList);
+    *drb2releaseList = NULL;
+  }
+
+  if(rrcReconfiguration->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration && rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration){
+    NR_RRCReconfiguration_IEs_t * ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
+
+    if(ie->radioBearerConfig){
+      if(ie->radioBearerConfig->srb_ToAddModList){
+        LOG_D(NR_RRC, "%s store srb_ToAddModList\n",__FUNCTION__);
+        *srb2addList = ie->radioBearerConfig->srb_ToAddModList;
+        ie->radioBearerConfig->srb_ToAddModList = NULL; /* to avoid the content be released externally */
+      }
+      if(ie->radioBearerConfig->drb_ToAddModList){
+        LOG_D(NR_RRC, "%s store drb_ToAddModList\n",__FUNCTION__);
+        *drb2addList = ie->radioBearerConfig->drb_ToAddModList;
+        ie->radioBearerConfig->drb_ToAddModList = NULL; /* to avoid the content be released externally*/
+      }
+      if(ie->radioBearerConfig->drb_ToReleaseList){
+        LOG_D(NR_RRC, "%s store drb_ToReleaseList\n",__FUNCTION__);
+        *drb2releaseList = ie->radioBearerConfig->drb_ToReleaseList;
+        ie->radioBearerConfig->drb_ToReleaseList = NULL; /* to avoid the content be released externally*/
+      }
+    }
+
+    if(ie->nonCriticalExtension){
+      if(ie->nonCriticalExtension->masterCellGroup){
+        uper_decode(NULL,
+              &asn_DEF_NR_CellGroupConfig,
+              (void **)&cellGroupConfig,
+              (uint8_t *)ie->nonCriticalExtension->masterCellGroup->buf,
+              ie->nonCriticalExtension->masterCellGroup->size, 0, 0);
+
+        if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+          xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)cellGroupConfig);
+        }
+
+        if(cellGroupConfig){
+#if 1
+          NR_CellGroupConfig_t   *masterCellGroup = ue_context_pP->ue_context.masterCellGroup;
+          if(masterCellGroup && cellGroupConfig->rlc_BearerToAddModList){
+            /* we only care the added Bearer configuration here */
+            int count = cellGroupConfig->rlc_BearerToAddModList->list.count;
+            if(count && masterCellGroup->rlc_BearerToAddModList==NULL){
+              /* code would not get here */
+              masterCellGroup->rlc_BearerToAddModList = CALLOC(1,sizeof(struct NR_CellGroupConfig__rlc_BearerToAddModList));
+            }
+            LOG_D(NR_RRC, "%s add rlc_BearerConfig into UE masterCellGroup\n",__FUNCTION__);
+            for(int i=0; i < count; i++){
+              ASN_SEQUENCE_ADD(&masterCellGroup->rlc_BearerToAddModList->list, cellGroupConfig->rlc_BearerToAddModList->list.array[i]);
+            }
+            if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+              xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)masterCellGroup);
+            }
+            cellGroupConfig->rlc_BearerToAddModList->list.free = NULL; /*not free item pointer as it already added to another list */
+            asn_sequence_empty(&cellGroupConfig->rlc_BearerToAddModList->list);
+          }
+          ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,cellGroupConfig);
+#else
+          if(ue_context_pP->ue_context.masterCellGroup){
+            /* There is issue to free masterCellGroup content here.  */
+            ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,ue_context_pP->ue_context.masterCellGroup);
+          }
+          LOG_D(NR_RRC, "%s store cellGroupConfig\n",__FUNCTION__);
+          ue_context_pP->ue_context.masterCellGroup = cellGroupConfig;
+#endif
+        }
+      }
+    }
+  }
+
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+  if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
+    gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+    nr_mac_update_cellgroup(RC.nrmac[rrc->module_id], ue_p->rnti, ue_p->masterCellGroup);
+
+    uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList ?
+                        NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
+
+    nr_mac_enable_ue_rrc_processing_timer(ctxt_pP->module_id,
+                                          ue_context_pP->ue_context.rnti,
+                                          *rrc->carrier.servingcellconfigcommon->ssbSubcarrierSpacing,
+                                          delay_ms);
   }
 }
 
@@ -2390,6 +2723,26 @@ void rrc_gNB_process_initial_ul_rrc_message(const f1ap_initial_ul_rrc_message_t 
     i = 0;
     LOG_W(RRC, "initial UL RRC message nr_cellid %ld does not match RRC's %ld\n", ul_rrc->nr_cellid, RC.nrrrc[0]->nr_cellid);
   }
+
+  LOG_I(NR_RRC,"NRRRC Sending CCCH_PDU_IND/SS_NRRRC_PDU_IND to TASK_SS_SRB_GNB (msg_Id:%d) [SFN: %d, SF: %d] \n",
+    SS_NRRRC_PDU_IND, ctxt.frame, ctxt.subframe);
+  MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB_GNB, INSTANCE_DEFAULT, SS_NRRRC_PDU_IND);
+  if (message_p) {
+    /* Populate the message to SS */
+    SS_NRRRC_PDU_IND (message_p).sdu_size = ul_rrc->rrc_container_length;
+    SS_NRRRC_PDU_IND (message_p).srb_id = 0;
+    SS_NRRRC_PDU_IND (message_p).rnti = ul_rrc->crnti;
+    SS_NRRRC_PDU_IND (message_p).frame = ctxt.frame;
+    SS_NRRRC_PDU_IND (message_p).subframe = ctxt.subframe;
+    memset (SS_NRRRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
+    memcpy (SS_NRRRC_PDU_IND (message_p).sdu, ul_rrc->rrc_container, ul_rrc->rrc_container_length);
+
+    int send_res = itti_send_msg_to_task (TASK_SS_SRB_GNB, INSTANCE_DEFAULT, message_p);
+    if(send_res < 0) {
+      LOG_E(RRC,"Error in sending CCCH_PDU_IND/SS_NRRRC_PDU_IND to TASK_SS_SRB_GNB (msg_Id:%d) to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
+    }
+  }
+
   nr_rrc_gNB_decode_ccch(i, ul_rrc->crnti, ul_rrc->rrc_container, ul_rrc->rrc_container_length, ul_rrc->du2cu_rrc_container, ul_rrc->du2cu_rrc_container_length);
 
   if (ul_rrc->rrc_container)
@@ -3142,6 +3495,11 @@ void *rrc_gnb_task(void *args_p) {
         openair_rrc_gNB_configuration(instance, &NRRRC_CONFIGURATION_REQ(msg_p));
         break;
 
+      case NRRRC_RBLIST_CFG_REQ:
+        LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
+        rrc_gNB_rblist_configuration(instance, &NRRRC_RBLIST_CFG_REQ(msg_p));
+        break;
+
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
         AssertFatal(NODE_IS_CU(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST, need call by CU!\n");
@@ -3202,6 +3560,149 @@ void *rrc_gnb_task(void *args_p) {
 
       case E1AP_BEARER_CONTEXT_SETUP_RESP:
         rrc_gNB_process_e1_bearer_context_setup_resp(&E1AP_BEARER_CONTEXT_SETUP_RESP(msg_p), instance);
+      case SS_SS_NR_PAGING_IND:
+        LOG_A(NR_RRC, "Received Paging message from SS: %s\n", msg_name_p);
+        rrc_gNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
+        break;
+
+      case SS_NRRRC_PDU_REQ:
+        LOG_A(NR_RRC,"NR RRC received SS_NRRRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_NRRRC_PDU_REQ (msg_p).srb_id, SS_NRRRC_PDU_REQ (msg_p).sdu_size);
+
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                      instance,
+                                      GNB_FLAG_YES,
+                                      SS_NRRRC_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+        if ((SS_NRRRC_PDU_REQ(msg_p).srb_id) != 0)
+        {
+          NR_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+          LOG_A(NR_RRC, "Sending NR RRC PDU by nr_rrc_data_req function \n");
+
+          uper_decode(NULL,
+                      &asn_DEF_NR_DL_DCCH_Message,
+                      (void **)&dl_dcch_msg,
+                      (uint8_t *)SS_NRRRC_PDU_REQ(msg_p).sdu,
+                      SS_NRRRC_PDU_REQ(msg_p).sdu_size, 0, 0);
+
+          LOG_A(NR_RRC, "DL DCCH size: %d \n", SS_NRRRC_PDU_REQ(msg_p).sdu_size);
+
+          if (LOG_DEBUGFLAG(DEBUG_ASN1))
+          {
+            xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
+          }
+
+
+          if(dl_dcch_msg->message.choice.c1) {
+            if (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration)
+            {
+              struct rrc_gNB_ue_context_s * ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt.module_id], ctxt.rntiMaybeUEid);
+              LOG_A(NR_RRC, "[GNB %ld] SRB %d rnti %d rrcReconfiguration\n", instance, SS_NRRRC_PDU_REQ(msg_p).srb_id, SS_NRRRC_PDU_REQ(msg_p).rnti);
+              if(ue_context_p){
+                NR_RRCReconfiguration_t * rrcReconfiguration = dl_dcch_msg->message.choice.c1->choice.rrcReconfiguration;
+
+                /*---------------------------------------------------------------------------*/
+                /* The cellGroupConfig inside rrcReconfiguration from TTCN doesn't have rlc_config for some srb, upate it from bearList config */
+                if(rrcReconfiguration->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration && rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration){
+                  NR_RRCReconfiguration_IEs_t * ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
+                  if(ie->nonCriticalExtension && ie->nonCriticalExtension->masterCellGroup){
+                    NR_CellGroupConfig_t * cellGroupConfig = NULL;
+                    uper_decode(NULL,
+                                        &asn_DEF_NR_CellGroupConfig,
+                                        (void **)&cellGroupConfig,
+                                        (uint8_t *)ie->nonCriticalExtension->masterCellGroup->buf,
+                                        ie->nonCriticalExtension->masterCellGroup->size, 0, 0);
+
+                    if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+                      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)cellGroupConfig);
+                    }
+
+                    if(update_rrcReconfig_cellGroupConfig(&ctxt,ue_context_p,cellGroupConfig)){
+                      //we need to update the SDU as cellGroupConfig updated
+                      LOG_A(NR_RRC, "[GNB] update rrcReconfiguration DL_DCCH_Message message\n");
+                      uint8_t *buff = calloc(128,sizeof(uint8_t));
+                      asn_enc_rval_t  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
+                                                                                            NULL,
+                                                                                            (void *)cellGroupConfig,
+                                                                                            buff,
+                                                                                            128);
+                      ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,cellGroupConfig);
+                      if(enc_rval.encoded == -1) {
+                        LOG_E(NR_RRC, "ASN1 message CellGroupConfig encoding failed (%s)!\n",
+                        enc_rval.failed_type->name);
+                      }
+                      AssertFatal(enc_rval.encoded != -1, "[gNB AssertFatal]ASN1 message encoding CellGroupConfig failed (%s)!\n",enc_rval.failed_type->name);
+
+                      if (OCTET_STRING_fromBuf(ie->nonCriticalExtension->masterCellGroup, buff, (enc_rval.encoded+7)/8) == -1) {
+                        LOG_E(NR_RRC, "fatal: OCTET_STRING_fromBuf failed\n");
+                        AssertFatal(0, "OCTET_STRING_fromBuf failed\n");
+                      }
+                      free(buff);
+
+                      if (LOG_DEBUGFLAG(DEBUG_ASN1))
+                      {
+                        xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
+                      }
+
+                      enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_DCCH_Message,
+                                      NULL,
+                                      (void *)dl_dcch_msg,
+                                      SS_NRRRC_PDU_REQ (msg_p).sdu,
+                                      SDU_SIZE);
+                      if(enc_rval.encoded == -1) {
+                        LOG_E(NR_RRC, "[gNB AssertFatal]ASN1 message DL_DCCH_Message encoding failed (%s)!\n",enc_rval.failed_type->name);
+                      }
+                      AssertFatal(enc_rval.encoded != -1, "[gNB AssertFatal]ASN1 message encoding DL_DCCH_Message failed (%s)!\n",enc_rval.failed_type->name);
+
+                      SS_NRRRC_PDU_REQ (msg_p).sdu_size = ((enc_rval.encoded+7)/8);
+                      LOG_A(NR_RRC, "DL DCCH updated size: %d \n", SS_NRRRC_PDU_REQ(msg_p).sdu_size);
+                    }
+                  }
+                }
+                /*---------------------------------------------------------------------------*/
+                rrc_gNB_store_RRCReconfiguration(&ctxt,ue_context_p,rrcReconfiguration);
+              }
+            }
+            else if(dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)
+            {
+              rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt.module_id], ctxt.rntiMaybeUEid);
+              if (ue_context_p) {
+                LOG_I(NR_RRC, "rrcRelease UE rnti: %x \n", ctxt.rntiMaybeUEid);
+                ue_context_p->ue_context.ue_reestablishment_timer = 0;
+                ue_context_p->ue_context.ue_release_timer = 0; /* TODO: ue_release_timer is not checked in nr_rrc_subframe_process */
+                ue_context_p->ue_context.ue_release_timer_thres = 0;
+                ue_context_p->ue_context.ue_rrc_inactivity_timer = 0;
+                ue_context_p->ue_context.ue_release_timer_rrc = 1; /* ue_release_timer_rrc is used to check UE context release */
+                ue_context_p->ue_context.ue_release_timer_thres_rrc = 10;
+
+              /*
+                LOG_W(NR_RRC, "todo, sleep before removing UE %x \n", ctxt.rntiMaybeUEid);
+                sleep(1);
+                mac_remove_nr_ue(ctxt.module_id, ctxt.rntiMaybeUEid);
+                rrc_rlc_remove_ue(&ctxt);
+                pdcp_remove_UE(&ctxt);
+
+                LOG_I(NR_RRC, "removed UE %x \n", ctxt.rntiMaybeUEid);
+                */
+              }
+              else
+              {
+                LOG_W(NR_RRC, "ue_context_p is already NULL\n");
+              }
+            }
+          }
+
+          ASN_STRUCT_FREE(asn_DEF_NR_DL_DCCH_Message,dl_dcch_msg);
+
+          nr_rrc_data_req(&ctxt,
+            SS_NRRRC_PDU_REQ (msg_p).srb_id,
+            rrc_gNB_mui++,
+            SDU_CONFIRM_NO,
+            SS_NRRRC_PDU_REQ (msg_p).sdu_size,
+            SS_NRRRC_PDU_REQ (msg_p).sdu,
+            PDCP_TRANSMISSION_MODE_CONTROL);
+        }
+        break;
 
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);
@@ -3459,9 +3960,7 @@ int rrc_gNB_generate_pcch_msg(uint32_t tmsi, uint8_t paging_drx, instance_t inst
   pthread_mutex_unlock(&ue_pf_po_mutex);
 
   /* Create message for PDCP (DLInformationTransfer_t) */
-  length = do_NR_Paging (instance,
-                         buffer,
-                         tmsi);
+  length = do_NR_Paging(instance, buffer, &tmsi, 0, NULL);
 
   if (length == -1) {
     LOG_I(NR_RRC, "do_Paging error\n");

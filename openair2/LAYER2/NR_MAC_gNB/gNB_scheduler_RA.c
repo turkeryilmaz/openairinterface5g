@@ -1182,6 +1182,9 @@ static void nr_generate_Msg2(module_id_t module_idP,
       BWPSize = type0_PDCCH_CSS_config->num_rbs;
     }
 
+    if (RC.ss.mode == SS_SOFTMODEM)
+      BWPStart = 27;
+
     NR_ControlResourceSet_t *coreset = ra->coreset;
     AssertFatal(coreset != NULL,"Coreset cannot be null for RA-Msg2\n");
     const int coresetid = coreset->controlResourceSetId;
@@ -1397,6 +1400,15 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
     T(T_GNB_MAC_DL_RAR_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(ra->RA_rnti), T_INT(frameP),
       T_INT(slotP), T_INT(0), T_BUFFER(&tx_req->TLVs[0].value.direct[0], tx_req->TLVs[0].length));
+
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_DOWNLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_RA);
+    mac_pkt.rnti      = ra->RA_rnti;
+    mac_pkt.harq_pid  = 0;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_RAR_PDU", frameP, slotP, mac_pkt, (uint8_t *)&tx_req->TLVs[0].value.direct[0], (int)tx_req->TLVs[0].length);
 
     tx_req->PDU_length = pdsch_pdu_rel15->TBSize[0];
     tx_req->PDU_index = pduindex;
@@ -1927,6 +1939,16 @@ static void nr_generate_Msg4(module_id_t module_idP,
 
     AssertFatal(tb_size >= pdu_length,"Cannot allocate Msg4\n");
 
+    LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%ld BWPStart:%ld startSymbolIndex:%d nrOfSymbols:%d\n",
+                    rbSize,
+                    rbStart,
+                    BWPSize,
+                    BWPStart,
+                    msg4_tda.startSymbolIndex,
+                    msg4_tda.nrOfSymbols);
+    if (RC.ss.mode == SS_SOFTMODEM)
+        BWPStart = 27;
+
     int i = 0;
     uint16_t *vrb_map = cc[CC_id].vrb_map;
     while ((i < rbSize) && (rbStart + rbSize <= BWPSize)) {
@@ -2030,6 +2052,15 @@ static void nr_generate_Msg4(module_id_t module_idP,
 
     T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(ra->rnti),
       T_INT(frameP), T_INT(slotP), T_INT(current_harq_pid), T_BUFFER(harq->transportBlock, harq->tb_size));
+
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_DOWNLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_C);
+    mac_pkt.rnti      = ra->rnti;
+    mac_pkt.harq_pid  = current_harq_pid;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->transportBlock, (int)harq->tb_size);
 
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];

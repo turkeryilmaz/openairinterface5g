@@ -826,6 +826,25 @@ void RCconfig_NR_L1(void)
   }
 }
 
+void RCconfig_nr_ssparam(void) {
+  paramdef_t SSConfig_Params[] = GNB_SSPARAMS_DESC;
+  paramlist_def_t SSConfig_ParamList = {GNB_CONFIG_SS,NULL,0};
+  config_getlist( &SSConfig_ParamList,SSConfig_Params,sizeof(SSConfig_Params)/sizeof(paramdef_t), NULL);
+
+  if ( SSConfig_ParamList.numelt > 0) {
+    RC.ss.hostIp              = strdup(*(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_HOSTIP_IDX].strptr));
+    RC.ss.Sysport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSPORT_IDX].iptr);
+    RC.ss.Srbport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SRBPORT_IDX].iptr);
+    RC.ss.Vngport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VNGPORT_IDX].iptr);
+    RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VTPPORT_IDX].iptr);
+    RC.ss.Drbport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_DRBPORT_IDX].iptr);
+    RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_MODE_IDX].iptr);
+    RC.ss.SysportNR           = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSPORT_IDX].iptr);
+  }
+  LOG_W(GNB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d\n",
+                  RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport);
+}
+
 void RCconfig_nr_macrlc() {
   int j = 0;
   uint16_t prbbl[275] = {0};
@@ -1530,6 +1549,9 @@ int RCconfig_nr_parallel(void) {
   if(parallel_config == NULL) set_parallel_conf(parallel_conf);
   if(worker_config == NULL)   set_worker_conf(worker_conf);
 
+  RRM_FREE(worker_conf);
+  RRM_FREE(parallel_conf);
+
   return 0;
 }
 
@@ -2231,6 +2253,7 @@ void nr_read_config_and_init(void) {
   RCconfig_NR_L1();
   RCconfig_nr_prs();
   RCconfig_nr_macrlc();
+  RCconfig_nr_ssparam();
 
   LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
 

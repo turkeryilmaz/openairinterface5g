@@ -145,7 +145,7 @@ void RCconfig_L1(void) {
     // need to create some structures for VNF
     j = 0;
     RC.nb_L1_CC = malloc((1+RC.nb_L1_inst)*sizeof(int));
-    RC.nb_L1_CC[j]=1;
+    RC.nb_L1_CC[j]=MAX_NUM_CCs; // MultiCell: Initialization of nb_L1_CC with maximum number of CC
 
     if (RC.eNB[j] == NULL) {
       RC.eNB[j]                       = (PHY_VARS_eNB **)malloc((1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB **));
@@ -153,7 +153,7 @@ void RCconfig_L1(void) {
       memset(RC.eNB[j],0,(1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB***));
     }
 
-    for (i=0; i<RC.nb_L1_CC[j]; i++) {
+    for (i=0; i<MAX_NUM_CCs/*RC.nb_L1_CC[j]*/; i++) {
       if (RC.eNB[j][i] == NULL) {
         RC.eNB[j][i] = (PHY_VARS_eNB *)malloc(sizeof(PHY_VARS_eNB));
         memset((void *)RC.eNB[j][i],0,sizeof(PHY_VARS_eNB));
@@ -163,6 +163,25 @@ void RCconfig_L1(void) {
       }
     }
   }
+}
+
+void RCconfig_ssparam(void) {
+  paramdef_t SSConfig_Params[] = SSPARAMS_DESC;
+  paramlist_def_t SSConfig_ParamList = {CONFIG_SS,NULL,0};
+  config_getlist( &SSConfig_ParamList,SSConfig_Params,sizeof(SSConfig_Params)/sizeof(paramdef_t), NULL);
+
+  if ( SSConfig_ParamList.numelt > 0) {
+    RC.ss.hostIp              = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_HOSTIP_IDX].strptr));
+    RC.ss.Sysport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSPORT_IDX].iptr);
+    RC.ss.Srbport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SRBPORT_IDX].iptr);
+    RC.ss.Vngport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VNGPORT_IDX].iptr);
+    RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VTPPORT_IDX].iptr);
+    RC.ss.SysIndport          = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSINDPORT_IDX].iptr);
+    RC.ss.Drbport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_DRBPORT_IDX].iptr);
+    RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_MODE_IDX].iptr);
+  }
+  LOG_A(ENB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d SysIndport=%d Drbport=%d\n",
+                  RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport,RC.ss.SysIndport,RC.ss.Drbport);
 }
 
 void RCconfig_macrlc(void)
@@ -325,11 +344,24 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
 
         for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
+        //Firecell
+        for(int M=0;M < MAX_NUM_CCs; M++) {
+          RRCcfg->q_QualMin[M] = 0;
+          RRCcfg->q_RxLevMin[M] = -65;
+          RRCcfg->threshServingLow[M]=31;
+          RRCcfg->cellReselectionPriority[M]=7;
+          RRCcfg->sib3_q_RxLevMin[M]=-70;
+          RRCcfg->t_ReselectionEUTRA[M]=1;
+        }
 
         // In the configuration file it is in seconds. For RRC it has to be in milliseconds
         RRCcfg->rrc_inactivity_timer_thres = (*ENBParamList.paramarray[i][ENB_RRC_INACTIVITY_THRES_IDX].uptr) * 1000;
         RRCcfg->cell_identity = enb_id;
-        RRCcfg->tac = *ENBParamList.paramarray[i][ENB_TRACKING_AREA_CODE_IDX].uptr;
+        for(int M=0; M < MAX_NUM_CCs; M++) {
+          RRCcfg->tac[M] = *ENBParamList.paramarray[i][ENB_TRACKING_AREA_CODE_IDX].uptr;
+          RRCcfg->cellBarred[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
+          RRCcfg->intraFreqReselection[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed;
+        }
         AssertFatal(!ENBParamList.paramarray[i][ENB_MOBILE_COUNTRY_CODE_IDX_OLD].strptr
                     && !ENBParamList.paramarray[i][ENB_MOBILE_NETWORK_CODE_IDX_OLD].strptr,
                     "It seems that you use an old configuration file. Please change the existing\n"
@@ -344,14 +376,19 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
         if (PLMNParamList.numelt < 1 || PLMNParamList.numelt > 6)
           AssertFatal(0, "The number of PLMN IDs must be in [1,6], but is %d\n",
                       PLMNParamList.numelt);
+        for(int M=0;M < MAX_NUM_CCs; M++) {
+          RRCcfg->num_plmn[M] = PLMNParamList.numelt;
 
-        RRCcfg->num_plmn = PLMNParamList.numelt;
-
-        for (int l = 0; l < PLMNParamList.numelt; ++l) {
-          RRCcfg->mcc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
-          RRCcfg->mnc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
-          RRCcfg->mnc_digit_length[l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
-          AssertFatal(RRCcfg->mnc_digit_length[l] == 3 || RRCcfg->mnc[l] < 100, "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n", RRCcfg->mnc[l]);
+          for (int l = 0; l < PLMNParamList.numelt; ++l) {
+            RRCcfg->mcc[M][l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
+            RRCcfg->mnc[M][l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
+            RRCcfg->mnc_digit_length[M][l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
+            RRCcfg->cellReservedForOperatorUse[M][l] = LTE_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
+            AssertFatal(RRCcfg->mnc_digit_length[M][l] == 3
+                        || RRCcfg->mnc[M][l] < 100,
+                        "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
+                        RRCcfg->mnc[M][l]);
+          }
         }
 
         /* measurement reports enabled? */
@@ -2795,12 +2832,12 @@ void extract_and_decode_SI(int inst,int si_ind,uint8_t *si_container,int si_cont
               break;
 
             case LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4:
-              //carrier->sib4 = &typeandinfo->choice.sib4;
+              carrier->sib4 = &typeandinfo->choice.sib4;
               LOG_I( ENB_APP, "[RRC %"PRIu8"] Found SIB4\n", inst);
               break;
 
             case LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib5:
-              //carrier->sib5 = &typeandinfo->choice.sib5;
+              carrier->sib5 = &typeandinfo->choice.sib5;
               LOG_I( ENB_APP, "[RRC %"PRIu8"] Found SIB5\n", inst);
               break;
 
@@ -2913,6 +2950,7 @@ void read_config_and_init(void) {
   RCconfig_L1();
   LOG_I(PHY, "%s() RC.nb_L1_inst: %d\n", __FUNCTION__, RC.nb_L1_inst);
   RCconfig_macrlc();
+  RCconfig_ssparam();
   LOG_I(MAC, "%s() RC.nb_macrlc_inst: %d\n", __FUNCTION__, RC.nb_macrlc_inst);
 
   if (RC.nb_L1_inst > 0)

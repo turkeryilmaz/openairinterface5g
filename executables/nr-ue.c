@@ -220,6 +220,8 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
   }
   if (dl_tti_request) {
     int dl_tti_sfn_slot = NFAPI_SFNSLOT2HEX(dl_tti_request->SFN, dl_tti_request->Slot);
+    LOG_A(NR_MAC, "[%d %d] sfn/slot dl_tti_request received \n",
+    		 NFAPI_SFNSLOT2SFN(dl_tti_sfn_slot), NFAPI_SFNSLOT2SLOT(dl_tti_sfn_slot));
     nfapi_nr_tx_data_request_t *tx_data_request = unqueue_matching(&nr_tx_req_queue, MAX_QUEUE_SIZE, sfn_slot_matcher, &dl_tti_sfn_slot);
     if (!tx_data_request) {
       LOG_E(NR_MAC, "[%d %d] No corresponding tx_data_request for given dl_tti_request sfn/slot\n",
@@ -246,6 +248,26 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
   }
 }
 
+static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint16_t sfn_slot)
+{
+    /** Send VT ACK for SLOT */
+    if ( NULL != vt_ue_slot_ind)
+    {
+        LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
+                                            NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
+        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
+        NR_UL_IND_t ul_info = {
+                .vt_ue_slot_ind = *vt_ue_slot_ind,
+        };
+        send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
+        ul_info.vt_ue_slot_ind.sfn = 0;
+        ul_info.vt_ue_slot_ind.slot = 0;
+    } else {
+        LOG_D(NR_MAC, "VT is NULL\n");
+    }
+
+}
+
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
 {
   LOG_I(MAC, "Clearing Queues\n");
@@ -261,6 +283,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
   int last_sfn_slot = -1;
   uint16_t sfn_slot = 0;
 
+  nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind = (nfapi_ue_slot_indication_vt_t *) calloc(1, 
+                                  sizeof(nfapi_ue_slot_indication_vt_t));
   module_id_t mod_id = 0;
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++) {
@@ -280,6 +304,10 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       continue;
     }
     if (slot_ind) {
+    	frame_t frame = NFAPI_SFNSLOT2SFN(*slot_ind);
+        int slot = NFAPI_SFNSLOT2SLOT(*slot_ind);
+        LOG_A(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
+              frame, slot);
       sfn_slot = *slot_ind;
       free_and_zero(slot_ind);
     }
@@ -307,6 +335,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     }
     if (mac->scc == NULL && mac->scc_SIB == NULL) {
       LOG_D(MAC, "[NSA] mac->scc == NULL and [SA] mac->scc_SIB == NULL!\n");
+      if (1 /** MODE == VT */)
+        send_vt_slot_ack(vt_ue_slot_ind, sfn_slot);
       continue;
     }
 
@@ -357,6 +387,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       nr_ue_ul_scheduler(&ul_info);
     }
     process_queued_nr_nfapi_msgs(mac, sfn_slot);
+    if (1 /** MODE == VT */)
+      send_vt_slot_ack(vt_ue_slot_ind, sfn_slot);
   }
   return NULL;
 }

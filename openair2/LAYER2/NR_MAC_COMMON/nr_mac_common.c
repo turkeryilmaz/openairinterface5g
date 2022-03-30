@@ -2239,7 +2239,9 @@ void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs){
   uint32_t delta_arfcn = nrarfcn - N_OFFs;
 
   if(delta_arfcn%(nr_bandtable[i].step_size)!=0)
-    AssertFatal(1==0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
+//    AssertFatal(1 == 0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
+    LOG_E(NR_MAC, "fxn:%s nrarfcn %u is not on the channel raster for step size %lu", 
+      __FUNCTION__, nrarfcn, nr_bandtable[i].step_size);
 
 }
 

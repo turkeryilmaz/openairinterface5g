@@ -396,6 +396,41 @@ typedef enum {
 // clang-format on
 
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+/* SS configuration */
+
+#define CONFIG_SS                                          "SSConfig"
+#define CONFIG_SS_HOSTIP                                   "hostIp"
+#define CONFIG_SS_SYSPORT                                  "Sys_port"
+#define CONFIG_SS_SRBPORT                                  "Srb_port"
+#define CONFIG_SS_VNGPORT                                  "Vng_port"
+#define CONFIG_SS_VTPPORT                                  "Vtp_port"
+#define CONFIG_SS_SYSINDPORT                               "SysInd_port"
+#define CONFIG_SS_DRBPORT                                  "Drb_port"
+#define CONFIG_SS_MODE                                     "SSMode"
+
+#define CONFIG_SS_HOSTIP_IDX     0
+#define CONFIG_SS_SYSPORT_IDX    1
+#define CONFIG_SS_SRBPORT_IDX    2
+#define CONFIG_SS_VNGPORT_IDX    3
+#define CONFIG_SS_VTPPORT_IDX    4
+#define CONFIG_SS_SYSINDPORT_IDX 5
+#define CONFIG_SS_DRBPORT_IDX    6
+#define CONFIG_SS_MODE_IDX    7
+
+#define SSPARAMS_DESC {                                                                  \
+{CONFIG_SS_HOSTIP          ,                     NULL,     0,          uptr:NULL,        defstrval:"0.0.0.0",      TYPE_STRING,   0},     \
+{CONFIG_SS_SYSPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_SRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_VNGPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_VTPPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_SYSINDPORT      ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_DRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{CONFIG_SS_MODE            ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 #define ENB_CONFIG_STRING_MBMS_CONFIGURATION_DATA_LIST                     "mbms_configuration_data_list"
 
 #define ENB_CONFIG_STRING_MBMS_SYNC_AREA           "mbms_sync_area"

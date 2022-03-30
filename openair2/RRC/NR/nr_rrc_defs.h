@@ -370,6 +370,8 @@ typedef struct {
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
   int                                       p_gNB;
 
+  uint8_t                           *paging;
+  uint32_t                           sizeof_paging;
 } rrc_gNB_carrier_data_t;
 //---------------------------------------------------
 
