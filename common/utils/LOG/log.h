@@ -53,6 +53,7 @@
 #include <pthread.h>
 #include "T.h"
 #include <common/utils/utils.h>
+#include "ss-log.h"
 /*----------------------------------------------------------------------------*/
 #include <assert.h>
 #ifdef NDEBUG
@@ -283,6 +284,10 @@ typedef struct {
   char                   *filelog_name;
   uint64_t                debug_mask;
   uint64_t                dump_mask;
+#if 1
+  uint16_t                sfn;
+  uint8_t                 sf;
+#endif
 } log_t;
 
 
