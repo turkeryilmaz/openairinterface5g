@@ -128,6 +128,9 @@ set (NFAPI_USER_DIR  ${OPENAIR_DIR}/nfapi/oai_integration)
 set (OPENAIR1_DIR    ${OPENAIR_DIR}/openair1)
 set (OPENAIR2_DIR    ${OPENAIR_DIR}/openair2)
 set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
+set (SIDL_DIR        ${OPENAIR_DIR}/openair3/SS/Sidl/lib)
+set (SIDL_CMPLR      ${OPENAIR_DIR}/openair3/SS/Sidl/sidl)
+set (OPENAIR_TARGETS ${OPENAIR_DIR}/targets)
 set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
 set (OPENAIR_CMAKE   ${OPENAIR_DIR}/cmake_targets)
 set (OPENAIR_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
@@ -725,6 +728,7 @@ include_directories("${OPENAIR3_DIR}/NAS/COMMON/IES")
 include_directories("${OPENAIR3_DIR}/NAS/COMMON/UTIL")
 include_directories("${OPENAIR3_DIR}/SECU")
 include_directories("${OPENAIR3_DIR}/SCTP")
+include_directories("${OPENAIR3_DIR}/SS")
 include_directories("${OPENAIR3_DIR}/S1AP")
 include_directories("${OPENAIR2_DIR}/X2AP")
 include_directories("${OPENAIR2_DIR}/M2AP")
@@ -763,6 +767,7 @@ include_directories(${OPENAIR_DIR}/common/utils/hashtable)
 
 add_library(UTIL
   ${OPENAIR_DIR}/common/utils/LOG/log.c
+  ${OPENAIR_DIR}/common/utils/LOG/ss-tp.c
   ${OPENAIR_DIR}/common/utils/LOG/vcd_signal_dumper.c
   ${OPENAIR2_DIR}/UTIL/MATH/oml.c
   ${OPENAIR2_DIR}/UTIL/OPT/probe.c
@@ -1651,6 +1656,26 @@ add_library(MME_APP ${MME_APP_SRC})
 target_link_libraries(MME_APP PRIVATE m2ap m3ap)
 target_link_libraries(MME_APP PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
+#------------------------------------------------------
+include_directories (SIDL_SRC_DIR ${SIDL_CMPLR}/api)
+include_directories (SIDL_SRC_DIR ${SIDL_DIR}/acp/api)
+include_directories (SIDL_SRC_DIR ${SIDL_DIR}/adbg/api)
+include_directories (SIDL_SRC_DIR ${SIDL_DIR}/ser/api)
+set(SS_SRC
+  ${OPENAIR3_DIR}/SS/ss_eNB_port_man_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_sys_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_srb_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_vng_task.c
+)
+file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
+file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
+file(GLOB ss_adbg ${SIDL_DIR}/adbg/src/*.c)
+file(GLOB ss_ser ${SIDL_DIR}/ser/src/*.c)
+
+add_library(SS_SERVER ${ss_sidl} ${ss_acp} ${ss_adbg} ${ss_ser} ${SS_SRC})
+add_dependencies(SS_SERVER rrc_flag)
+#------------------------------------------------------
+
 set(SCTP_SRC
   ${OPENAIR3_DIR}/SCTP/sctp_common.c
   ${OPENAIR3_DIR}/SCTP/sctp_eNB_task.c
@@ -2156,7 +2181,7 @@ add_dependencies(lte-softmodem oai_iqplayer)
 
 target_link_libraries(lte-softmodem PRIVATE
   -Wl,--start-group
-  lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT MME_APP SCHED_LIB SCHED_RU_LIB
+  lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT SS_SERVER MME_APP SCHED_LIB SCHED_RU_LIB
   PHY_COMMON PHY PHY_RU  L2 L2_LTE NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
   ${NAS_UE_LIB} ITTI SIMU SIMU_ETH
   -Wl,--end-group z dl)
@@ -2164,6 +2189,7 @@ target_link_libraries(lte-softmodem PRIVATE
 target_link_libraries(lte-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp)
 target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+target_link_libraries (lte-softmodem lttng-ust)
 
 
 add_executable(oairu
@@ -2226,6 +2252,7 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 target_link_libraries(lte-uesoftmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})
 target_link_libraries(lte-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+target_link_libraries (lte-uesoftmodem lttng-ust)
 
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(lte-uesoftmodem PRIVATE

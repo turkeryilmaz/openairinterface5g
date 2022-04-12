@@ -232,6 +232,7 @@ typedef struct IttiMsgText_s {
 #include <openair2/COMMON/m2ap_messages_types.h>
 #include <openair2/COMMON/m3ap_messages_types.h>
 #include <openair2/COMMON/sctp_messages_types.h>
+#include <openair2/COMMON/ss_messages_types.h>
 #include <openair2/COMMON/udp_messages_types.h>
 #include <openair2/COMMON/gtpv1_u_messages_types.h>
 #include <openair2/COMMON/ngap_messages_types.h>

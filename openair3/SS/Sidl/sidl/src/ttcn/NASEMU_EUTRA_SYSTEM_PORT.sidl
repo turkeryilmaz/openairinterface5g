@@ -1,0 +1,75 @@
+/* vim: set ft=cpp:
+ *****************************************************************
+ *
+ * Module : NASEMU_EUTRA_SYSTEM_PORT SIDL DEFINITION
+ *
+ *****************************************************************
+ *
+ *  Copyright (c) 2009-2021 SEQUANS Communications.
+ *  All rights reserved.
+ *
+ *  This is confidential and proprietary source code of SEQUANS
+ *  Communications. The use of the present source code and all
+ *  its derived forms is exclusively governed by the restricted
+ *  terms and conditions set forth in the SEQUANS
+ *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
+ *  AGREEMENT. The present source code and all its derived
+ *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
+ *  Communications' products. The distribution/sale of the
+ *  present source code and all its derived forms is EXCLUSIVELY
+ *  RESERVED to regular LICENCE holder and otherwise STRICTLY
+ *  PROHIBITED.
+ *
+ *****************************************************************
+ */
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL common TTCN types and definitions.
+#include "TtcnCommon.sidl"
+
+METADATA_VAR(itf_name, "SysSrb");
+
+// TTCN namespaces
+METADATA_VAR(namespaces, "NasEmu_AspTypes_EUTRA");
+
+// Internal non-TTCN types
+METADATA_VAR(internal, "RRC_MSG_Request_Type RRC_MSG_Indication_Type");
+
+SIDL_UNION_ENUM(RRC_MSG_Request_Type) {
+	RRC_MSG_Request_Type_UNBOUND_VALUE,
+	RRC_MSG_Request_Type_Ccch,
+	RRC_MSG_Request_Type_Dcch
+};
+SIDL_UNION_BEGIN(RRC_MSG_Request_Type) {
+	SIDL_UNION_CASE(RRC_MSG_Request_Type_Ccch)
+		SIDL_DYNAMIC_WITH_PFX(RRC_MSG_Request_Type, uint8_t, Ccch);
+	SIDL_UNION_CASE(RRC_MSG_Request_Type_Dcch)
+		SIDL_DYNAMIC_WITH_PFX(RRC_MSG_Request_Type, uint8_t, Dcch);
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(RRC_MSG_Indication_Type) {
+	RRC_MSG_Indication_Type_UNBOUND_VALUE,
+	RRC_MSG_Indication_Type_Ccch,
+	RRC_MSG_Indication_Type_Dcch
+};
+SIDL_UNION_BEGIN(RRC_MSG_Indication_Type) {
+	SIDL_UNION_CASE(RRC_MSG_Indication_Type_Ccch)
+		SIDL_DYNAMIC_WITH_PFX(RRC_MSG_Indication_Type, uint8_t, Ccch);
+	SIDL_UNION_CASE(RRC_MSG_Indication_Type_Dcch)
+		SIDL_DYNAMIC_WITH_PFX(RRC_MSG_Indication_Type, uint8_t, Dcch);
+} SIDL_UNION_END;
+
+struct EUTRA_RRC_PDU_REQ {
+	struct ReqAspCommonPart_Type Common;
+	struct RRC_MSG_Request_Type RrcPdu;
+};
+
+struct EUTRA_RRC_PDU_IND {
+	struct IndAspCommonPart_Type Common;
+	struct RRC_MSG_Indication_Type RrcPdu;
+};
+
+NOTIFY ProcessToSS(struct EUTRA_RRC_PDU_IND* ToSS);
+ONEWAY ProcessFromSS(const struct EUTRA_RRC_PDU_REQ* FromSS);

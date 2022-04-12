@@ -106,6 +106,10 @@ int config_sync_var=-1;
 uint16_t runtime_phy_rx[29][6]; // SISO [MCS 0-28][RBs 0-5 : 6, 15, 25, 50, 75, 100]
 uint16_t runtime_phy_tx[29][6]; // SISO [MCS 0-28][RBs 0-5 : 6, 15, 25, 50, 75, 100]
 
+/** FC Cell config */
+pthread_cond_t cell_config_done_cond;
+pthread_mutex_t cell_config_done_mutex;
+int cell_config_done=-1;
 
 volatile int             oai_exit = 0;
 
