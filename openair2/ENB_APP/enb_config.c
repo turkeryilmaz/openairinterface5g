@@ -2949,7 +2949,11 @@ void read_config_and_init(void) {
 
   RCconfig_L1();
   LOG_I(PHY, "%s() RC.nb_L1_inst: %d\n", __FUNCTION__, RC.nb_L1_inst);
+<<<<<<< HEAD
   RCconfig_macrlc();
+=======
+  RCconfig_macrlc(macrlc_has_f1);
+>>>>>>> 4527c668fe... Added SIDL Delivery and Conf file Changes
   RCconfig_ssparam();
   LOG_I(MAC, "%s() RC.nb_macrlc_inst: %d\n", __FUNCTION__, RC.nb_macrlc_inst);
 
