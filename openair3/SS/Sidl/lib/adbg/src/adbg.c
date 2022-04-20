@@ -35,10 +35,6 @@
 // Internal includes
 #include "adbg.h"
 #include "acpCtx.h"
-#if 0
-// Tracepoint
-#include <lttng/tracelog.h>
-#endif
 
 adbgGlobalLogger_t adbgGlobalLogger = NULL;
 
@@ -217,10 +213,7 @@ void adbgPrintFormatLog(acpCtx_t ctx)
 	sz++;
 
 	SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > sz);
-#if 0
-        lttng_ust_tracelog(LTTNG_UST_TRACEPOINT_LOGLEVEL_DEBUG, "%s \n", 
-			(char*)ACP_CTX_CAST(ctx)->logFormatBuf);
-#endif
+
 	ACP_CTX_CAST(ctx)->logger((const char*)ACP_CTX_CAST(ctx)->logFormatBuf);
 	ACP_CTX_CAST(ctx)->logBufSize = 0;
 }
