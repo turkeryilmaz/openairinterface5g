@@ -733,6 +733,7 @@ include_directories("${OPENAIR3_DIR}/S1AP")
 include_directories("${OPENAIR2_DIR}/X2AP")
 include_directories("${OPENAIR2_DIR}/M2AP")
 include_directories("${OPENAIR2_DIR}/F1AP")
+include_directories("${OPENAIR3_DIR}/UDP")
 include_directories("${OPENAIR3_DIR}/ocp-gtpu")
 include_directories("${OPENAIR3_DIR}/M3AP")
 include_directories("${OPENAIR3_DIR}/MME_APP")
@@ -764,6 +765,11 @@ add_library(HASHTABLE
   ${OPENAIR_DIR}/common/utils/hashtable/obj_hashtable.c
 )
 include_directories(${OPENAIR_DIR}/common/utils/hashtable)
+
+add_library(msc MODULE ${OPENAIR_DIR}/common/utils/msc/msc.c )
+target_link_libraries (msc LFDS)
+
+include_directories(${OPENAIR_DIR}/common/utils/msc)
 
 add_library(UTIL
   ${OPENAIR_DIR}/common/utils/LOG/log.c
@@ -1684,6 +1690,9 @@ set(SCTP_SRC
 add_library(SCTP_CLIENT ${SCTP_SRC})
 target_link_libraries(SCTP_CLIENT PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
+add_library(UDP ${OPENAIR3_DIR}/UDP/udp_eNB_task.c)
+add_dependencies(UDP rrc_flag)
+
 set(NAS_SRC ${OPENAIR3_DIR}/NAS/)
 set(libnas_api_OBJS
   ${NAS_SRC}COMMON/API/NETWORK/as_message.c
@@ -2181,7 +2190,7 @@ add_dependencies(lte-softmodem oai_iqplayer)
 
 target_link_libraries(lte-softmodem PRIVATE
   -Wl,--start-group
-  lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT SS_SERVER MME_APP SCHED_LIB SCHED_RU_LIB
+  lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT SS_SERVER MME_APP UDP SCHED_LIB SCHED_RU_LIB
   PHY_COMMON PHY PHY_RU  L2 L2_LTE NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
   ${NAS_UE_LIB} ITTI SIMU SIMU_ETH
   -Wl,--end-group z dl)
@@ -2245,7 +2254,7 @@ target_link_libraries(lte-uesoftmodem PRIVATE
   -Wl,--start-group
   lte_rrc nr_rrc s1ap x2ap m2ap m3ap
   SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT MME_APP SCHED_RU_LIB SCHED_UE_LIB PHY_COMMON
-  PHY_UE PHY_RU L2_UE L2_LTE SIMU SIMU_ETH NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
+  PHY_UE PHY_RU L2_UE L2_LTE SIMU SIMU_ETH NFAPI_COMMON_LIB ${NFAPI_STATIC_LIB} NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
   ${NAS_UE_LIB} ITTI ${ATLAS_LIBRARIES}
   -Wl,--end-group z dl)
 
@@ -2285,7 +2294,7 @@ add_executable(nr-softmodem
 
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
-  UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
+  UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
   ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap
@@ -2347,8 +2356,8 @@ add_executable(nr-uesoftmodem
 
 target_link_libraries(nr-uesoftmodem PRIVATE
   -Wl,--start-group
-  nr_rrc SECU_CN SECU_OSA UTIL HASHTABLE SCHED_RU_LIB SCHED_NR_UE_LIB
-  PHY_COMMON PHY_NR_COMMON PHY_NR_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB
+  nr_rrc SECU_CN SECU_OSA UTIL HASHTABLE UDP SCHED_RU_LIB SCHED_NR_UE_LIB
+  PHY_COMMON PHY_NR_COMMON PHY_NR_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON NFAPI_COMMON_LIB ${NFAPI_STATIC_LIB}
   NFAPI_USER_LIB MISC_NFAPI_NR_LIB
   ITTI ${ATLAS_LIBRARIES} LIB_5GNAS_GNB LIB_NAS_SIMUE ${NAS_SIM_LIB} SIMU SIMU_ETH
   -Wl,--end-group z dl)
@@ -2604,7 +2613,7 @@ if (${T_TRACER})
         NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB NFAPI_VNF_LIB NFAPI_USER_LIB
         PHY_COMMON PHY PHY_UE PHY_NR PHY_NR_COMMON PHY_NR_UE PHY_RU PHY_MEX
         L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_NR MAC_UE_NR ngap
-        CN_UTILS GTPV1U SCTP_CLIENT MME_APP LIB_NAS_UE NB_IoT SIMU SIMU_ETH OPENAIR0_LIB
+        CN_UTILS GTPV1U SCTP_CLIENT MME_APP UDP LIB_NAS_UE NB_IoT SIMU SIMU_ETH OPENAIR0_LIB
         ldpc_orig ldpc_optim ldpc_optim8seg ldpc dfts)
     if (TARGET ${i})
       add_dependencies(${i} generate_T)

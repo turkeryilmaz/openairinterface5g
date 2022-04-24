@@ -53,9 +53,10 @@
 #include "ss_eNB_sys_task.h"
 #include "ss_eNB_context.h"
 
-//#include "udp_eNB_task.h"
+#include "udp_eNB_task.h"
 #include "ss_eNB_proxy_iface.h"
-//#include "common/utils/LOG/ss-log.h"
+#include "common/utils/LOG/ss-log.h"
+#include "msc.h"
 
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
@@ -171,7 +172,6 @@ int cell_config_done_indication()
   return 0;
 }
 
-#if 0
 /*
  * Function : sys_send_udp_msg
  * Description: Sends the UDP_INIT message to UDP_TASK to create the listening socket
@@ -231,7 +231,6 @@ static int sys_send_init_udp(const udpSockReq_t *req)
       UDP_INIT(message_p).port);
   return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
 }
-#endif
 
 static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
 {
@@ -994,11 +993,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
  */
 int sys_handle_pdcp_count_req(struct Pdcp_CountReq_Type *PdcpCount)
 {
-  int status = false;
   int returnState = RC.ss.State;
-  enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpCount;
-  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-  bool resVal = TRUE;
   int send_res = -1;
 
   switch (PdcpCount->d)
@@ -1091,26 +1086,23 @@ int sys_handle_pdcp_count_req(struct Pdcp_CountReq_Type *PdcpCount)
  */
 static void sys_send_proxy(void *msg, int msgLen)
 {
-#if 0
   LOG_SYS(SS_SYS_DUMMY_EVT, "In sys_send_proxy\n");
   uint32_t peerIpAddr;
   uint16_t peerPort = proxy_send_port;
 
   IPV4_STR_ADDR_TO_INT_NWBO(local_address, peerIpAddr, " BAD IP Address");
 
-LOG_SYS(SS_SYS_DUMMY_EVT, "******************* Sending CELL CONFIG length\n Buffer is :%d ", msgLen);
-int8_t *temp = msg;
-for(int i =0 ; i <msgLen;i++)
-{
-  
-  LOG_SYS(SS_SYS_DUMMY_EVT, "%x ", temp[i]);
-}
+  LOG_SYS(SS_SYS_DUMMY_EVT, "******************* Sending CELL CONFIG length\n Buffer is :%d ", msgLen);
+  int8_t *temp = msg;
+  for(int i =0 ; i <msgLen;i++)
+  {
+    LOG_SYS(SS_SYS_DUMMY_EVT, "%x ", temp[i]);
+  }
 
-LOG_SYS(SS_SYS_DUMMY_EVT, "\nCell Config End of Buffer\n ");
+  LOG_SYS(SS_SYS_DUMMY_EVT, "\nCell Config End of Buffer\n ");
 
   /** Send to proxy */
   sys_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);
-#endif
   return;
 }
 
@@ -1130,10 +1122,10 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
   attnConf->header.msg_id = SS_ATTN_LIST;
   attnConf->header.cell_id = SS_context.cellId;
   attnConf->attnVal = attnVal;
-  //IPV4_STR_ADDR_TO_INT_NWBO(local_address, peerIpAddr, " BAD IP Address");
+  IPV4_STR_ADDR_TO_INT_NWBO(local_address, peerIpAddr, " BAD IP Address");
 
   /** Send to proxy */
-  //sys_send_udp_msg((uint8_t *)attnConf, sizeof(attenuationConfigReq_t), 0, peerIpAddr, peerPort);
+  sys_send_udp_msg((uint8_t *)attnConf, sizeof(attenuationConfigReq_t), 0, peerIpAddr, peerPort);
   LOG_SYS(SS_SYS_DUMMY_EVT, "Out sys_cell_attn_update\n");
   return;
 }
@@ -1258,7 +1250,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
     LOG_SYS(SS_SYS_DUMMY_EVT, "[SYS] Invalid Pging request received\n");
   }
   send_sys_cnf(resType, resVal, cnfType, NULL);
-  LOG_SYS(SS_SYS_DUMMY_EVT, "[SYS] Exit sys_handle_paging_req Paging_IND processing\n", cellId);
+  LOG_SYS(SS_SYS_DUMMY_EVT, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
 }
 /*
  * Function : sys_handle_enquire_timing
@@ -1890,7 +1882,7 @@ void *ss_eNB_sys_task(void *arg)
   udpSockReq_t req;
   req.address = local_address;
   req.port = proxy_recv_port;
-  //sys_send_init_udp(&req);
+  sys_send_init_udp(&req);
   sleep(5);
 
   // Set the state to NOT_CONFIGURED for Cell Config processing mode
