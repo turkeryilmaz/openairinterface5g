@@ -47,6 +47,7 @@
 #include "pdcp_primitives.h"
 
 #include "UTIL/OSA/osa_defs.h"
+#include "msc.h"
 
 #include "LTE_UERadioAccessCapabilityInformation.h"
 

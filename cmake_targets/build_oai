@@ -37,6 +37,7 @@ set_openair_env
 gen_nvram_path=$OPENAIR_DIR/targets/bin
 conf_nvram_path=$OPENAIR_DIR/openair3/NAS/TOOLS/ue_eurecom_test_sfr.conf
 
+MSC_GEN=0
 XFORMS="True"
 SKIP_SHARED_LIB_FLAG="False"
 PRINT_STATS="False"

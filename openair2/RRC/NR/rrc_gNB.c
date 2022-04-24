@@ -70,6 +70,7 @@
 #include "rlc.h"
 #include "rrc_eNB_UE_context.h"
 #include "platform_types.h"
+#include "msc.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
 #include "T.h"
