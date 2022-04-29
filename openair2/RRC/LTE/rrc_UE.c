@@ -123,6 +123,10 @@ static const float RSRP_meas_mapping[98] = {-140, -139, -138, -137, -136, -135, 
 
 static const float RSRQ_meas_mapping[35] = {-19, -18.5, -18, -17.5, -17, -16.5, -16, -15.5, -15, -14.5, -14, -13.5, -13, -12.5, -12, -11.5, -11, -10.5,
                                             -10, -9.5,  -9,  -8.5,  -8,  -7.5,  -7,  -6.5,  -6,  -5.5,  -5,  -4.5,  -4,  -3.5,  -3,  -2.5,  -2};
+//TODO FC Temp for cell-selection
+int8_t rsrp_cell = -128;
+int8_t rsrq_cell = -128;
+
 // for malloc_clear
 #include "PHY/defs_UE.h"
 
