@@ -439,19 +439,51 @@ int send_mac_slot_indications(vnf_p7_t* vnf_p7)
 	return 0;
 }
 
-int send_mac_subframe_indications(vnf_p7_t* vnf_p7)
+void vnf_handle_subframe_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
+{
+        if (pRecvMsg == NULL || vnf_p7 == NULL)
+        {
+                NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s: NULL parameters\n", __FUNCTION__);
+        }
+        else
+        {
+                nfapi_subframe_indication_t ind;
+
+                if(nfapi_p7_message_unpack(pRecvMsg, recvMsgLen, &ind, sizeof(ind), &vnf_p7->_public.codec_config) < 0)
+                {
+                        NFAPI_TRACE(NFAPI_TRACE_ERROR, "%s: Failed to unpack message\n", __FUNCTION__);
+                }
+                else
+                {
+		        uint8_t *p = (uint8_t *)pRecvMsg;
+			/** TODO: FC: Change this way of extracting sfn_sf */
+			uint16_t sfnsf = p[16] << 8 | p[17];
+
+			vnf_p7->sf_start_time_hr = vnf_get_current_time_hr();
+                        if(vnf_p7->_public.subframe_indication)
+                        {
+				send_mac_subframe_indications(vnf_p7, sfnsf);
+                        }
+                }
+
+        }
+}
+
+int send_mac_subframe_indications(vnf_p7_t* vnf_p7, uint16_t sfn_sf)
 {
 	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;
 	while(curr != 0)
 	{
-		if(curr->in_sync == 1)
+		//if(curr->in_sync == 1)
+		if(1)
 		{
 			// ask for subframes in the future
 			//uint16_t sfn_sf_adv = increment_sfn_sf_by(curr->sfn_sf, 2);
 
 			//vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, sfn_sf_adv);
             // suggestion fix by Haruki NAOI
-			vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn_sf);
+			//vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn_sf);
+			vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, sfn_sf);
 		}
 
 		curr = curr->next;
@@ -2145,6 +2177,10 @@ void vnf_dispatch_p7_message(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_p7)
 		case NFAPI_UE_RELEASE_RESPONSE:
 			vnf_handle_ue_release_resp(pRecvMsg, recvMsgLen, vnf_p7);
 			break;
+
+		case NFAPI_SUBFRAME_INDICATION: /** FC */
+			vnf_handle_subframe_indication(pRecvMsg, recvMsgLen, vnf_p7);
+                        break;
 
 		default:
 			{

@@ -1450,6 +1450,42 @@ void *ue_standalone_pnf_task(void *context)
 
         break;
       }
+      case P7_CELL_SEARCH_IND:
+      {
+        vendor_nfapi_cell_search_indication_t cell_ind;
+        LOG_D(MAC, "CELL SEARCH IND Receievd\n");
+        if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+                                    sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+        {
+          LOG_E(MAC, "Message cell_ind failed to unpack\n");
+          break;
+        }
+
+        MessageDef *message_p;
+        int         i;
+        message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+	for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+		// TO DO
+		PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+                /** FIXME: What we need is EARFCN not Freq Offset. */
+		PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+		// TO DO
+		PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+		PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+		PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+
+                LOG_A(MAC, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+                                                     PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+                                                     PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+                                                     PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
+                                                     PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
+                itti_send_msg_to_task(TASK_RRC_UE, INSTANCE_DEFAULT, message_p);
+	}
+
+
+        break;
+
+      }
       default:
         LOG_E(MAC, "Case Statement has no corresponding nfapi message\n");
         break;
@@ -1684,6 +1720,11 @@ static void print_rx_ind(nfapi_rx_indication_t *p)
       encoded_size = nfapi_p7_message_pack(&UL->sr_ind, buffer, sizeof(buffer), NULL);
       LOG_I(MAC, "SR_IND sent to Proxy, Size: %d\n", encoded_size);
       break;
+    case NFAPI_SUBFRAME_INDICATION:
+      encoded_size = nfapi_p7_message_pack(&UL->vt_ue_sf_ind, buffer, sizeof(buffer), NULL);
+      LOG_I(MAC, "UE_SF_IND sent to Proxy, Size: %d\n", encoded_size);
+      break;
+
     default:
       LOG_I(MAC, "%s Unknown Message msg_type :: %u\n", __func__, msg_type);
       return;
@@ -1833,6 +1874,24 @@ char *nfapi_ul_config_req_to_string(nfapi_ul_config_request_t *req)
     }
     return result;
 }
+
+
+void fill_ue_slot_indication_UE_MAC(int Mod_id,
+                               int frame,
+                               int subframe,
+			       uint16_t ack_sfn_sf,
+                               UL_IND_t *UL_INFO)
+{
+  pthread_mutex_lock(&fill_ul_mutex.vt_ue_sf_mutex);
+
+  nfapi_ue_sf_indication_vt_t *ue_sf_ind = &UL_INFO->vt_ue_sf_ind;
+
+  ue_sf_ind->sfn_sf = frame << 4 | subframe;
+  ue_sf_ind->header.message_id = NFAPI_SUBFRAME_INDICATION;
+
+  pthread_mutex_unlock(&fill_ul_mutex.vt_ue_sf_mutex);
+}
+
 
 /* Dummy functions*/
 
