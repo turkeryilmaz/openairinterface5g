@@ -27,7 +27,7 @@ typedef enum
 	P7_VENDOR_EXT_REQ,
 	P7_VENDOR_EXT_IND,
 #if 1 /** TODO: FC Need clean up for OAI */
-        P7_CELL_SRCH_IND
+        P7_CELL_SEARCH_IND
 #endif
 
 } vendor_ext_message_id_e;
