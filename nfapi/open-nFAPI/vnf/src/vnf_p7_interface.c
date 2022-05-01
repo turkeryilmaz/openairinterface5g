@@ -518,7 +518,8 @@ if (selectRetval==-1 && errno == 22)
 				curr = curr->next;
 			}
 
-			send_mac_subframe_indications(vnf_p7, curr->sfn_sf);
+                        /** NOTE: The second argument (sfn_sf) has no significance */
+			send_mac_subframe_indications(vnf_p7, 0);
 
 		}
 		else if(selectRetval > 0)

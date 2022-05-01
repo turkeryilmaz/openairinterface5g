@@ -3272,9 +3272,9 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
   UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIwindowsize = siWindowLength_int[sib1->si_WindowLength];
   LOG_I( RRC, "[FRAME unknown][RRC_UE][MOD %02"PRIu8"][][--- MAC_CONFIG_REQ (SIB1 params eNB %"PRIu8") --->][MAC_UE][MOD %02"PRIu8"][]\n",
          ctxt_pP->module_id, eNB_index, ctxt_pP->module_id );
-  #if 0 /** TODO: To be enabled for sequans */
+  #if 1 /** TODO: To be enabled for sequans after cell config porting*/
   /** Cell selection changes for System Simulator */
-  uint32_t cell_id = BIT_STRING_to_uint32( &sib1->cellAccessRelatedInfo.cellIdentity );
+  uint32_t cell_id = 0; //BIT_STRING_to_uint32( &sib1->cellAccessRelatedInfo.cellIdentity );
   long qrxlevmin = sib1->cellSelectionInfo.q_RxLevMin;
   long qrxlevminoff = (sib1->cellSelectionInfo.q_RxLevMinOffset)?*sib1->cellSelectionInfo.q_RxLevMinOffset : 0;
   long pcomp = (sib1->p_Max)?*sib1->p_Max : 0;
@@ -3324,7 +3324,9 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
   UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIB1systemInfoValueTag = sib1->systemInfoValueTag;
 
   if (EPC_MODE_ENABLED) {
+#if 0 /** Firecell TODO Need code cleanup, this variable is kept on top */
     int cell_valid = 0; /** TODO: To be removed */
+#endif
 
     if (sib1->cellAccessRelatedInfo.cellBarred == LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred) {
       /* Cell is not barred */
@@ -3373,6 +3375,7 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
           break;
         }
       }
+    }
     }
 
     if (cell_valid == 0) {

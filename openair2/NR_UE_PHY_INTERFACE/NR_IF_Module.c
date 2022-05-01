@@ -47,6 +47,7 @@
 #include "openair2/GNB_APP/gnb_paramdef.h"
 #include "targets/ARCH/ETHERNET/USERSPACE/LIB/if_defs.h"
 #include <stdio.h>
+#include "vendor_ext.h"
 
 #define MAX_IF_MODULES 100
 
@@ -690,6 +691,23 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
   }
 }
 
+void check_and_process_slot_ind(nfapi_ue_slot_indication_vt_t *slot_ind, uint16_t frame, uint16_t slot)
+{
+    NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+
+    if (pthread_mutex_lock(&mac->mutex_dl_info)) abort();
+
+    if (slot_ind)
+    {
+        slot_ind->sfn = frame;
+        slot_ind->slot = slot;
+        LOG_D(NR_PHY, "[%d, %d] SLOT Indication\n", frame, slot);
+    }
+    
+    if (pthread_mutex_unlock(&mac->mutex_dl_info)) abort();
+}
+
+
 void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
                            nfapi_nr_tx_data_request_t *tx_data_request,
                            nfapi_nr_ul_dci_request_t *ul_dci_request,
@@ -929,7 +947,42 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
             }
             break;
         }
+        case P7_CELL_SEARCH_IND:
+        {
+          vendor_nfapi_cell_search_indication_t cell_ind;
+          LOG_D(NR_PHY, "CELL SEARCH IND Receievd\n");
+          if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+                                    sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+          {
+            LOG_E(NR_PHY, "Message cell_ind failed to unpack\n");
+            break;
+          }
 
+          MessageDef *message_p;
+          int         i;
+          message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+	  for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+	  	// TO DO
+	  	PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+                  /** FIXME: What we need is EARFCN not Freq Offset. */
+	  	PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+	  	// TO DO
+	  	PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+	  	PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+	  	PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+
+                LOG_A(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+                                                       PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+                                                       PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+                                                       PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
+                                                       PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
+                itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
+	  }
+
+
+          break;
+
+        }
         default:
             LOG_E(NR_PHY, "Invalid nFAPI message. Header ID %d\n",
                   header.message_id);

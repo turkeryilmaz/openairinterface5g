@@ -3487,8 +3487,7 @@ typedef struct {
 	uint16_t sfn_sf;
 } nfapi_subframe_indication_t;
 
-/** TODO: To be changed as VTUESF.indication, if Slot ind is differet structure */
-/** VTUESLOT.indication sent from UE as an ACK in the virtual time scenario */
+/** VTUESF.indication sent from UE as an ACK in the virtual time scenario */
 typedef nfapi_subframe_indication_t nfapi_ue_sf_indication_vt_t;
 
 typedef struct {

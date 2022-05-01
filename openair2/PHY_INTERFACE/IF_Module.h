@@ -164,6 +164,7 @@ typedef struct {
   pthread_mutex_t cqi_mutex;
   pthread_mutex_t rach_mutex;
   pthread_mutex_t vt_ue_sf_mutex;
+  pthread_mutex_t vt_ue_slot_mutex;
 } FILL_UL_INFO_MUTEX_t;
 
 /*Initial */
