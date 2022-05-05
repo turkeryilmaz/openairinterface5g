@@ -26,6 +26,14 @@
 #include "acpMsgIds.h"
 #include "serSysInd.h"
 
+void acpSysIndProcessToSSInitSrv(acpCtx_t _ctx, struct SYSTEM_IND** ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serSysIndProcessToSSInitSrv(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
+}
+
 int acpSysIndProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct SYSTEM_IND* ToSS)
 {
 	if (!acpCtxIsValid(_ctx)) {
@@ -48,7 +56,22 @@ int acpSysIndProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size
 	return serSysIndProcessToSSDecClt(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
+void acpSysIndProcessToSSFree0Clt(struct SYSTEM_IND* ToSS)
+{
+	serSysIndProcessToSSFree0Clt(ToSS);
+}
+
 void acpSysIndProcessToSSFreeClt(struct SYSTEM_IND* ToSS)
+{
+	serSysIndProcessToSSFreeClt(ToSS);
+}
+
+void acpSysIndProcessToSSFree0SrvClt(struct SYSTEM_IND* ToSS)
+{
+	serSysIndProcessToSSFree0Clt(ToSS);
+}
+
+void acpSysIndProcessToSSFreeSrvClt(struct SYSTEM_IND* ToSS)
 {
 	serSysIndProcessToSSFreeClt(ToSS);
 }

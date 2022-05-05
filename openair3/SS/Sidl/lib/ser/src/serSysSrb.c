@@ -25,6 +25,14 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serSysSrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_REQ** FromSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*FromSS = (struct EUTRA_RRC_PDU_REQ*)serMalloc(_mem, sizeof(struct EUTRA_RRC_PDU_REQ));
+	memset(*FromSS, 0, sizeof(struct EUTRA_RRC_PDU_REQ));
+}
+
 static int _serSysSrbEncPmchLogicalChannel_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PmchLogicalChannel_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -414,51 +422,12 @@ static int _serSysSrbEncTimingInfo_Type(unsigned char* _buffer, size_t _size, si
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbEncIntegrityErrorIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IntegrityErrorIndication_Type* p)
+static int _serSysSrbEncReqAspControlInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct ReqAspControlInfo_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	HTON_8(&_buffer[*_lidx], p->Nas, _lidx);
-	HTON_8(&_buffer[*_lidx], p->Pdcp, _lidx);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbEncErrorIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct ErrorIndication_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	_serSysSrbEncIntegrityErrorIndication_Type(_buffer, _size, _lidx, &p->Integrity);
-	HTON_32(&_buffer[*_lidx], p->System, _lidx);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbEncIndicationStatus_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union IndicationStatus_Type_Value* p, enum IndicationStatus_Type_Sel d)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	if (d == IndicationStatus_Type_Ok) {
-		HTON_8(&_buffer[*_lidx], p->Ok, _lidx);
-		return SIDL_STATUS_OK;
-	}
-	if (d == IndicationStatus_Type_Error) {
-		_serSysSrbEncErrorIndication_Type(_buffer, _size, _lidx, &p->Error);
-		return SIDL_STATUS_OK;
-	}
-
-	return SIDL_STATUS_ERROR;
-}
-
-static int _serSysSrbEncIndicationStatus_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IndicationStatus_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	{
-		size_t _tmp = (size_t)p->d;
-		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
-	}
-	_serSysSrbEncIndicationStatus_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+	HTON_8(&_buffer[*_lidx], p->CnfFlag, _lidx);
+	HTON_8(&_buffer[*_lidx], p->FollowOnFlag, _lidx);
 
 	return SIDL_STATUS_OK;
 }
@@ -502,7 +471,7 @@ static int _serSysSrbEncRlcBearerRouting_Type(unsigned char* _buffer, size_t _si
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbEncRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional* p)
+static int _serSysSrbEncRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -513,7 +482,7 @@ static int _serSysSrbEncRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRou
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbEncIndAspCommonPart_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IndAspCommonPart_Type* p)
+static int _serSysSrbEncReqAspCommonPart_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct ReqAspCommonPart_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -523,24 +492,24 @@ static int _serSysSrbEncIndAspCommonPart_Type(unsigned char* _buffer, size_t _si
 	}
 	_serSysSrbEncRoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
 	_serSysSrbEncTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
-	_serSysSrbEncIndicationStatus_Type(_buffer, _size, _lidx, &p->Status);
-	_serSysSrbEncRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
+	_serSysSrbEncReqAspControlInfo_Type(_buffer, _size, _lidx, &p->ControlInfo);
+	_serSysSrbEncRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbEncRRC_MSG_Indication_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union RRC_MSG_Indication_Type_Value* p, enum RRC_MSG_Indication_Type_Sel d)
+static int _serSysSrbEncRRC_MSG_Request_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union RRC_MSG_Request_Type_Value* p, enum RRC_MSG_Request_Type_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	if (d == RRC_MSG_Indication_Type_Ccch) {
+	if (d == RRC_MSG_Request_Type_Ccch) {
 		HTON_32(&_buffer[*_lidx], p->Ccch.d, _lidx);
 		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
 			HTON_8(&_buffer[*_lidx], p->Ccch.v[i1], _lidx);
 		}
 		return SIDL_STATUS_OK;
 	}
-	if (d == RRC_MSG_Indication_Type_Dcch) {
+	if (d == RRC_MSG_Request_Type_Dcch) {
 		HTON_32(&_buffer[*_lidx], p->Dcch.d, _lidx);
 		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
 			HTON_8(&_buffer[*_lidx], p->Dcch.v[i1], _lidx);
@@ -551,7 +520,7 @@ static int _serSysSrbEncRRC_MSG_Indication_Type_Value(unsigned char* _buffer, si
 	return SIDL_STATUS_ERROR;
 }
 
-static int _serSysSrbEncRRC_MSG_Indication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RRC_MSG_Indication_Type* p)
+static int _serSysSrbEncRRC_MSG_Request_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RRC_MSG_Request_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -559,26 +528,26 @@ static int _serSysSrbEncRRC_MSG_Indication_Type(unsigned char* _buffer, size_t _
 		size_t _tmp = (size_t)p->d;
 		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
 	}
-	_serSysSrbEncRRC_MSG_Indication_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+	_serSysSrbEncRRC_MSG_Request_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbEncEUTRA_RRC_PDU_IND(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_IND* p)
+static int _serSysSrbEncEUTRA_RRC_PDU_REQ(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_REQ* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysSrbEncIndAspCommonPart_Type(_buffer, _size, _lidx, &p->Common);
-	_serSysSrbEncRRC_MSG_Indication_Type(_buffer, _size, _lidx, &p->RrcPdu);
+	_serSysSrbEncReqAspCommonPart_Type(_buffer, _size, _lidx, &p->Common);
+	_serSysSrbEncRRC_MSG_Request_Type(_buffer, _size, _lidx, &p->RrcPdu);
 
 	return SIDL_STATUS_OK;
 }
 
-int serSysSrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_IND* ToSS)
+int serSysSrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_REQ* FromSS)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysSrbEncEUTRA_RRC_PDU_IND(_buffer, _size, _lidx, ToSS);
+	_serSysSrbEncEUTRA_RRC_PDU_REQ(_buffer, _size, _lidx, FromSS);
 
 	return SIDL_STATUS_OK;
 }
@@ -622,7 +591,7 @@ static int _serSysSrbDecSQN_PLMN_Identity(const unsigned char* _buffer, size_t _
 
 	_serSysSrbDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	NTOH_32(p->mnc.d, &_buffer[*_lidx], _lidx);
-	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
+	p->mnc.v = (SQN_MCC_MNC_Digit*)serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		NTOH_8(p->mnc.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -982,52 +951,12 @@ static int _serSysSrbDecTimingInfo_Type(const unsigned char* _buffer, size_t _si
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbDecIntegrityErrorIndication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct IntegrityErrorIndication_Type* p)
+static int _serSysSrbDecReqAspControlInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct ReqAspControlInfo_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	NTOH_8(p->Nas, &_buffer[*_lidx], _lidx);
-	NTOH_8(p->Pdcp, &_buffer[*_lidx], _lidx);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecErrorIndication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct ErrorIndication_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	_serSysSrbDecIntegrityErrorIndication_Type(_buffer, _size, _lidx, &p->Integrity);
-	NTOH_32(p->System, &_buffer[*_lidx], _lidx);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecIndicationStatus_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union IndicationStatus_Type_Value* p, enum IndicationStatus_Type_Sel d)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	if (d == IndicationStatus_Type_Ok) {
-		NTOH_8(p->Ok, &_buffer[*_lidx], _lidx);
-		return SIDL_STATUS_OK;
-	}
-	if (d == IndicationStatus_Type_Error) {
-		_serSysSrbDecErrorIndication_Type(_buffer, _size, _lidx, &p->Error);
-		return SIDL_STATUS_OK;
-	}
-
-	return SIDL_STATUS_ERROR;
-}
-
-static int _serSysSrbDecIndicationStatus_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct IndicationStatus_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	{
-		size_t _tmp;
-		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
-		p->d = (enum IndicationStatus_Type_Sel)_tmp;
-	}
-	_serSysSrbDecIndicationStatus_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+	NTOH_8(p->CnfFlag, &_buffer[*_lidx], _lidx);
+	NTOH_8(p->FollowOnFlag, &_buffer[*_lidx], _lidx);
 
 	return SIDL_STATUS_OK;
 }
@@ -1074,7 +1003,7 @@ static int _serSysSrbDecRlcBearerRouting_Type(const unsigned char* _buffer, size
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbDecRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct RlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional* p)
+static int _serSysSrbDecRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct RlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -1085,7 +1014,7 @@ static int _serSysSrbDecRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRou
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbDecIndAspCommonPart_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct IndAspCommonPart_Type* p)
+static int _serSysSrbDecReqAspCommonPart_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct ReqAspCommonPart_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -1096,27 +1025,27 @@ static int _serSysSrbDecIndAspCommonPart_Type(const unsigned char* _buffer, size
 	}
 	_serSysSrbDecRoutingInfo_Type(_buffer, _size, _lidx, _mem, &p->RoutingInfo);
 	_serSysSrbDecTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
-	_serSysSrbDecIndicationStatus_Type(_buffer, _size, _lidx, &p->Status);
-	_serSysSrbDecRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
+	_serSysSrbDecReqAspControlInfo_Type(_buffer, _size, _lidx, &p->ControlInfo);
+	_serSysSrbDecRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbDecRRC_MSG_Indication_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union RRC_MSG_Indication_Type_Value* p, enum RRC_MSG_Indication_Type_Sel d)
+static int _serSysSrbDecRRC_MSG_Request_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union RRC_MSG_Request_Type_Value* p, enum RRC_MSG_Request_Type_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	if (d == RRC_MSG_Indication_Type_Ccch) {
+	if (d == RRC_MSG_Request_Type_Ccch) {
 		NTOH_32(p->Ccch.d, &_buffer[*_lidx], _lidx);
-		p->Ccch.v = serMalloc(_mem, p->Ccch.d * sizeof(uint8_t));
+		p->Ccch.v = (uint8_t*)serMalloc(_mem, p->Ccch.d * sizeof(uint8_t));
 		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
 			NTOH_8(p->Ccch.v[i1], &_buffer[*_lidx], _lidx);
 		}
 		return SIDL_STATUS_OK;
 	}
-	if (d == RRC_MSG_Indication_Type_Dcch) {
+	if (d == RRC_MSG_Request_Type_Dcch) {
 		NTOH_32(p->Dcch.d, &_buffer[*_lidx], _lidx);
-		p->Dcch.v = serMalloc(_mem, p->Dcch.d * sizeof(uint8_t));
+		p->Dcch.v = (uint8_t*)serMalloc(_mem, p->Dcch.d * sizeof(uint8_t));
 		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
 			NTOH_8(p->Dcch.v[i1], &_buffer[*_lidx], _lidx);
 		}
@@ -1126,31 +1055,31 @@ static int _serSysSrbDecRRC_MSG_Indication_Type_Value(const unsigned char* _buff
 	return SIDL_STATUS_ERROR;
 }
 
-static int _serSysSrbDecRRC_MSG_Indication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct RRC_MSG_Indication_Type* p)
+static int _serSysSrbDecRRC_MSG_Request_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct RRC_MSG_Request_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
 	{
 		size_t _tmp;
 		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
-		p->d = (enum RRC_MSG_Indication_Type_Sel)_tmp;
+		p->d = (enum RRC_MSG_Request_Type_Sel)_tmp;
 	}
-	_serSysSrbDecRRC_MSG_Indication_Type_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
+	_serSysSrbDecRRC_MSG_Request_Type_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysSrbDecEUTRA_RRC_PDU_IND(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct EUTRA_RRC_PDU_IND* p)
+static int _serSysSrbDecEUTRA_RRC_PDU_REQ(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct EUTRA_RRC_PDU_REQ* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysSrbDecIndAspCommonPart_Type(_buffer, _size, _lidx, _mem, &p->Common);
-	_serSysSrbDecRRC_MSG_Indication_Type(_buffer, _size, _lidx, _mem, &p->RrcPdu);
+	_serSysSrbDecReqAspCommonPart_Type(_buffer, _size, _lidx, _mem, &p->Common);
+	_serSysSrbDecRRC_MSG_Request_Type(_buffer, _size, _lidx, _mem, &p->RrcPdu);
 
 	return SIDL_STATUS_OK;
 }
 
-int serSysSrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_IND** ToSS)
+int serSysSrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_REQ** FromSS)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -1159,8 +1088,8 @@ int serSysSrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsig
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*ToSS = serMalloc(_mem, sizeof(struct EUTRA_RRC_PDU_IND));
-	_serSysSrbDecEUTRA_RRC_PDU_IND(_buffer, _size, _lidx, _mem, *ToSS);
+	*FromSS = (struct EUTRA_RRC_PDU_REQ*)serMalloc(_mem, sizeof(struct EUTRA_RRC_PDU_REQ));
+	_serSysSrbDecEUTRA_RRC_PDU_REQ(_buffer, _size, _lidx, _mem, *FromSS);
 
 	return SIDL_STATUS_OK;
 }
@@ -1226,238 +1155,6 @@ static void _serSysSrbFreeRoutingInfo_Type(struct RoutingInfo_Type* p)
 	_serSysSrbFreeRoutingInfo_Type_Value(&p->v, p->d);
 }
 
-static void _serSysSrbFreeIndAspCommonPart_Type(struct IndAspCommonPart_Type* p)
-{
-	_serSysSrbFreeRoutingInfo_Type(&p->RoutingInfo);
-}
-
-static void _serSysSrbFreeRRC_MSG_Indication_Type_Value(union RRC_MSG_Indication_Type_Value* p, enum RRC_MSG_Indication_Type_Sel d)
-{
-	if (d == RRC_MSG_Indication_Type_Ccch) {
-		if (p->Ccch.v) {
-			serFree(p->Ccch.v);
-		}
-		return;
-	}
-	if (d == RRC_MSG_Indication_Type_Dcch) {
-		if (p->Dcch.v) {
-			serFree(p->Dcch.v);
-		}
-		return;
-	}
-}
-
-static void _serSysSrbFreeRRC_MSG_Indication_Type(struct RRC_MSG_Indication_Type* p)
-{
-	_serSysSrbFreeRRC_MSG_Indication_Type_Value(&p->v, p->d);
-}
-
-static void _serSysSrbFreeEUTRA_RRC_PDU_IND(struct EUTRA_RRC_PDU_IND* p)
-{
-	_serSysSrbFreeIndAspCommonPart_Type(&p->Common);
-	_serSysSrbFreeRRC_MSG_Indication_Type(&p->RrcPdu);
-}
-
-void serSysSrbProcessToSSFreeClt(struct EUTRA_RRC_PDU_IND* ToSS)
-{
-	if (ToSS) {
-		_serSysSrbFreeEUTRA_RRC_PDU_IND(ToSS);
-		serFree(ToSS);
-	}
-}
-
-static int _serSysSrbEncReqAspControlInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct ReqAspControlInfo_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	HTON_8(&_buffer[*_lidx], p->CnfFlag, _lidx);
-	HTON_8(&_buffer[*_lidx], p->FollowOnFlag, _lidx);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbEncRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	HTON_8(&_buffer[*_lidx], p->d, _lidx);
-	if (!p->d) return SIDL_STATUS_OK;
-	_serSysSrbEncRlcBearerRouting_Type(_buffer, _size, _lidx, &p->v);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbEncReqAspCommonPart_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct ReqAspCommonPart_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	{
-		size_t _tmp = (size_t)p->CellId;
-		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
-	}
-	_serSysSrbEncRoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
-	_serSysSrbEncTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
-	_serSysSrbEncReqAspControlInfo_Type(_buffer, _size, _lidx, &p->ControlInfo);
-	_serSysSrbEncRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbEncRRC_MSG_Request_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union RRC_MSG_Request_Type_Value* p, enum RRC_MSG_Request_Type_Sel d)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	if (d == RRC_MSG_Request_Type_Ccch) {
-		HTON_32(&_buffer[*_lidx], p->Ccch.d, _lidx);
-		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
-			HTON_8(&_buffer[*_lidx], p->Ccch.v[i1], _lidx);
-		}
-		return SIDL_STATUS_OK;
-	}
-	if (d == RRC_MSG_Request_Type_Dcch) {
-		HTON_32(&_buffer[*_lidx], p->Dcch.d, _lidx);
-		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
-			HTON_8(&_buffer[*_lidx], p->Dcch.v[i1], _lidx);
-		}
-		return SIDL_STATUS_OK;
-	}
-
-	return SIDL_STATUS_ERROR;
-}
-
-static int _serSysSrbEncRRC_MSG_Request_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RRC_MSG_Request_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	{
-		size_t _tmp = (size_t)p->d;
-		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
-	}
-	_serSysSrbEncRRC_MSG_Request_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbEncEUTRA_RRC_PDU_REQ(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_REQ* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	_serSysSrbEncReqAspCommonPart_Type(_buffer, _size, _lidx, &p->Common);
-	_serSysSrbEncRRC_MSG_Request_Type(_buffer, _size, _lidx, &p->RrcPdu);
-
-	return SIDL_STATUS_OK;
-}
-
-int serSysSrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_REQ* FromSS)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	_serSysSrbEncEUTRA_RRC_PDU_REQ(_buffer, _size, _lidx, FromSS);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecReqAspControlInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct ReqAspControlInfo_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	NTOH_8(p->CnfFlag, &_buffer[*_lidx], _lidx);
-	NTOH_8(p->FollowOnFlag, &_buffer[*_lidx], _lidx);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct RlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
-	if (!p->d) return SIDL_STATUS_OK;
-	_serSysSrbDecRlcBearerRouting_Type(_buffer, _size, _lidx, &p->v);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecReqAspCommonPart_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct ReqAspCommonPart_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	{
-		size_t _tmp;
-		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
-		p->CellId = (EUTRA_CellId_Type)_tmp;
-	}
-	_serSysSrbDecRoutingInfo_Type(_buffer, _size, _lidx, _mem, &p->RoutingInfo);
-	_serSysSrbDecTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
-	_serSysSrbDecReqAspControlInfo_Type(_buffer, _size, _lidx, &p->ControlInfo);
-	_serSysSrbDecRlcBearerRouting_Type_ReqAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecRRC_MSG_Request_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union RRC_MSG_Request_Type_Value* p, enum RRC_MSG_Request_Type_Sel d)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	if (d == RRC_MSG_Request_Type_Ccch) {
-		NTOH_32(p->Ccch.d, &_buffer[*_lidx], _lidx);
-		p->Ccch.v = serMalloc(_mem, p->Ccch.d * sizeof(uint8_t));
-		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
-			NTOH_8(p->Ccch.v[i1], &_buffer[*_lidx], _lidx);
-		}
-		return SIDL_STATUS_OK;
-	}
-	if (d == RRC_MSG_Request_Type_Dcch) {
-		NTOH_32(p->Dcch.d, &_buffer[*_lidx], _lidx);
-		p->Dcch.v = serMalloc(_mem, p->Dcch.d * sizeof(uint8_t));
-		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
-			NTOH_8(p->Dcch.v[i1], &_buffer[*_lidx], _lidx);
-		}
-		return SIDL_STATUS_OK;
-	}
-
-	return SIDL_STATUS_ERROR;
-}
-
-static int _serSysSrbDecRRC_MSG_Request_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct RRC_MSG_Request_Type* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	{
-		size_t _tmp;
-		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
-		p->d = (enum RRC_MSG_Request_Type_Sel)_tmp;
-	}
-	_serSysSrbDecRRC_MSG_Request_Type_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
-
-	return SIDL_STATUS_OK;
-}
-
-static int _serSysSrbDecEUTRA_RRC_PDU_REQ(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct EUTRA_RRC_PDU_REQ* p)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	_serSysSrbDecReqAspCommonPart_Type(_buffer, _size, _lidx, _mem, &p->Common);
-	_serSysSrbDecRRC_MSG_Request_Type(_buffer, _size, _lidx, _mem, &p->RrcPdu);
-
-	return SIDL_STATUS_OK;
-}
-
-int serSysSrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_REQ** FromSS)
-{
-	(void)_size; // TODO: generate boundaries checking
-
-	serMem_t _mem = serMemInit(_arena, _aSize);
-
-	size_t __lidx = 0;
-	size_t* _lidx = &__lidx;
-
-	*FromSS = serMalloc(_mem, sizeof(struct EUTRA_RRC_PDU_REQ));
-	_serSysSrbDecEUTRA_RRC_PDU_REQ(_buffer, _size, _lidx, _mem, *FromSS);
-
-	return SIDL_STATUS_OK;
-}
-
 static void _serSysSrbFreeReqAspCommonPart_Type(struct ReqAspCommonPart_Type* p)
 {
 	_serSysSrbFreeRoutingInfo_Type(&p->RoutingInfo);
@@ -1490,10 +1187,343 @@ static void _serSysSrbFreeEUTRA_RRC_PDU_REQ(struct EUTRA_RRC_PDU_REQ* p)
 	_serSysSrbFreeRRC_MSG_Request_Type(&p->RrcPdu);
 }
 
+void serSysSrbProcessFromSSFree0Srv(struct EUTRA_RRC_PDU_REQ* FromSS)
+{
+	if (FromSS) {
+		_serSysSrbFreeEUTRA_RRC_PDU_REQ(FromSS);
+	}
+}
+
 void serSysSrbProcessFromSSFreeSrv(struct EUTRA_RRC_PDU_REQ* FromSS)
 {
 	if (FromSS) {
 		_serSysSrbFreeEUTRA_RRC_PDU_REQ(FromSS);
 		serFree(FromSS);
+	}
+}
+
+void serSysSrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_IND** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct EUTRA_RRC_PDU_IND*)serMalloc(_mem, sizeof(struct EUTRA_RRC_PDU_IND));
+	memset(*ToSS, 0, sizeof(struct EUTRA_RRC_PDU_IND));
+}
+
+static int _serSysSrbEncIntegrityErrorIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IntegrityErrorIndication_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->Nas, _lidx);
+	HTON_8(&_buffer[*_lidx], p->Pdcp, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbEncErrorIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct ErrorIndication_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysSrbEncIntegrityErrorIndication_Type(_buffer, _size, _lidx, &p->Integrity);
+	HTON_32(&_buffer[*_lidx], p->System, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbEncIndicationStatus_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union IndicationStatus_Type_Value* p, enum IndicationStatus_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == IndicationStatus_Type_Ok) {
+		HTON_8(&_buffer[*_lidx], p->Ok, _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == IndicationStatus_Type_Error) {
+		_serSysSrbEncErrorIndication_Type(_buffer, _size, _lidx, &p->Error);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysSrbEncIndicationStatus_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IndicationStatus_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysSrbEncIndicationStatus_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbEncRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->d, _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysSrbEncRlcBearerRouting_Type(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbEncIndAspCommonPart_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IndAspCommonPart_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->CellId;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysSrbEncRoutingInfo_Type(_buffer, _size, _lidx, &p->RoutingInfo);
+	_serSysSrbEncTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
+	_serSysSrbEncIndicationStatus_Type(_buffer, _size, _lidx, &p->Status);
+	_serSysSrbEncRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbEncRRC_MSG_Indication_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union RRC_MSG_Indication_Type_Value* p, enum RRC_MSG_Indication_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == RRC_MSG_Indication_Type_Ccch) {
+		HTON_32(&_buffer[*_lidx], p->Ccch.d, _lidx);
+		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
+			HTON_8(&_buffer[*_lidx], p->Ccch.v[i1], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+	if (d == RRC_MSG_Indication_Type_Dcch) {
+		HTON_32(&_buffer[*_lidx], p->Dcch.d, _lidx);
+		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
+			HTON_8(&_buffer[*_lidx], p->Dcch.v[i1], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysSrbEncRRC_MSG_Indication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RRC_MSG_Indication_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysSrbEncRRC_MSG_Indication_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbEncEUTRA_RRC_PDU_IND(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_IND* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysSrbEncIndAspCommonPart_Type(_buffer, _size, _lidx, &p->Common);
+	_serSysSrbEncRRC_MSG_Indication_Type(_buffer, _size, _lidx, &p->RrcPdu);
+
+	return SIDL_STATUS_OK;
+}
+
+int serSysSrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_IND* ToSS)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysSrbEncEUTRA_RRC_PDU_IND(_buffer, _size, _lidx, ToSS);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecIntegrityErrorIndication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct IntegrityErrorIndication_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->Nas, &_buffer[*_lidx], _lidx);
+	NTOH_8(p->Pdcp, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecErrorIndication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct ErrorIndication_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysSrbDecIntegrityErrorIndication_Type(_buffer, _size, _lidx, &p->Integrity);
+	NTOH_32(p->System, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecIndicationStatus_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union IndicationStatus_Type_Value* p, enum IndicationStatus_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == IndicationStatus_Type_Ok) {
+		NTOH_8(p->Ok, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+	if (d == IndicationStatus_Type_Error) {
+		_serSysSrbDecErrorIndication_Type(_buffer, _size, _lidx, &p->Error);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysSrbDecIndicationStatus_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct IndicationStatus_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum IndicationStatus_Type_Sel)_tmp;
+	}
+	_serSysSrbDecIndicationStatus_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct RlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
+	if (!p->d) return SIDL_STATUS_OK;
+	_serSysSrbDecRlcBearerRouting_Type(_buffer, _size, _lidx, &p->v);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecIndAspCommonPart_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct IndAspCommonPart_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->CellId = (EUTRA_CellId_Type)_tmp;
+	}
+	_serSysSrbDecRoutingInfo_Type(_buffer, _size, _lidx, _mem, &p->RoutingInfo);
+	_serSysSrbDecTimingInfo_Type(_buffer, _size, _lidx, &p->TimingInfo);
+	_serSysSrbDecIndicationStatus_Type(_buffer, _size, _lidx, &p->Status);
+	_serSysSrbDecRlcBearerRouting_Type_IndAspCommonPart_Type_RlcBearerRouting_Optional(_buffer, _size, _lidx, &p->RlcBearerRouting);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecRRC_MSG_Indication_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union RRC_MSG_Indication_Type_Value* p, enum RRC_MSG_Indication_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == RRC_MSG_Indication_Type_Ccch) {
+		NTOH_32(p->Ccch.d, &_buffer[*_lidx], _lidx);
+		p->Ccch.v = (uint8_t*)serMalloc(_mem, p->Ccch.d * sizeof(uint8_t));
+		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
+			NTOH_8(p->Ccch.v[i1], &_buffer[*_lidx], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+	if (d == RRC_MSG_Indication_Type_Dcch) {
+		NTOH_32(p->Dcch.d, &_buffer[*_lidx], _lidx);
+		p->Dcch.v = (uint8_t*)serMalloc(_mem, p->Dcch.d * sizeof(uint8_t));
+		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
+			NTOH_8(p->Dcch.v[i1], &_buffer[*_lidx], _lidx);
+		}
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysSrbDecRRC_MSG_Indication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct RRC_MSG_Indication_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum RRC_MSG_Indication_Type_Sel)_tmp;
+	}
+	_serSysSrbDecRRC_MSG_Indication_Type_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysSrbDecEUTRA_RRC_PDU_IND(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct EUTRA_RRC_PDU_IND* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	_serSysSrbDecIndAspCommonPart_Type(_buffer, _size, _lidx, _mem, &p->Common);
+	_serSysSrbDecRRC_MSG_Indication_Type(_buffer, _size, _lidx, _mem, &p->RrcPdu);
+
+	return SIDL_STATUS_OK;
+}
+
+int serSysSrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_IND** ToSS)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	size_t __lidx = 0;
+	size_t* _lidx = &__lidx;
+
+	*ToSS = (struct EUTRA_RRC_PDU_IND*)serMalloc(_mem, sizeof(struct EUTRA_RRC_PDU_IND));
+	_serSysSrbDecEUTRA_RRC_PDU_IND(_buffer, _size, _lidx, _mem, *ToSS);
+
+	return SIDL_STATUS_OK;
+}
+
+static void _serSysSrbFreeIndAspCommonPart_Type(struct IndAspCommonPart_Type* p)
+{
+	_serSysSrbFreeRoutingInfo_Type(&p->RoutingInfo);
+}
+
+static void _serSysSrbFreeRRC_MSG_Indication_Type_Value(union RRC_MSG_Indication_Type_Value* p, enum RRC_MSG_Indication_Type_Sel d)
+{
+	if (d == RRC_MSG_Indication_Type_Ccch) {
+		if (p->Ccch.v) {
+			serFree(p->Ccch.v);
+		}
+		return;
+	}
+	if (d == RRC_MSG_Indication_Type_Dcch) {
+		if (p->Dcch.v) {
+			serFree(p->Dcch.v);
+		}
+		return;
+	}
+}
+
+static void _serSysSrbFreeRRC_MSG_Indication_Type(struct RRC_MSG_Indication_Type* p)
+{
+	_serSysSrbFreeRRC_MSG_Indication_Type_Value(&p->v, p->d);
+}
+
+static void _serSysSrbFreeEUTRA_RRC_PDU_IND(struct EUTRA_RRC_PDU_IND* p)
+{
+	_serSysSrbFreeIndAspCommonPart_Type(&p->Common);
+	_serSysSrbFreeRRC_MSG_Indication_Type(&p->RrcPdu);
+}
+
+void serSysSrbProcessToSSFree0Clt(struct EUTRA_RRC_PDU_IND* ToSS)
+{
+	if (ToSS) {
+		_serSysSrbFreeEUTRA_RRC_PDU_IND(ToSS);
+	}
+}
+
+void serSysSrbProcessToSSFreeClt(struct EUTRA_RRC_PDU_IND* ToSS)
+{
+	if (ToSS) {
+		_serSysSrbFreeEUTRA_RRC_PDU_IND(ToSS);
+		serFree(ToSS);
 	}
 }

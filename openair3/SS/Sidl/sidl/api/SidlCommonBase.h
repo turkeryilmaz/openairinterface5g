@@ -82,4 +82,11 @@ typedef OCTET_STRING_ELEMENT O1_Type[1];
 
 typedef OCTET_STRING_ELEMENT O4_Type[4];
 
+struct B8_Type_B8_List_Type_Dynamic {
+	size_t d;
+	B8_Type* v;
+};
+
+typedef struct B8_Type_B8_List_Type_Dynamic B8_List_Type;
+
 SIDL_END_C_INTERFACE

@@ -1687,6 +1687,23 @@ add_library(SS_SERVER ${ss_sidl} ${ss_acp} ${ss_adbg} ${ss_ser} ${SS_SRC})
 add_dependencies(SS_SERVER rrc_flag)
 #------------------------------------------------------
 
+#------------------------------------------------------
+include_directories (SIDL_SRC_DIR ${SIDL_CMPLR}/api)
+include_directories (SIDL_SRC_DIR ${SIDL_DIR}/acp/api)
+include_directories (SIDL_SRC_DIR ${SIDL_DIR}/adbg/api)
+include_directories (SIDL_SRC_DIR ${SIDL_DIR}/ser/api)
+set(SS_SRC
+  ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
+)
+file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
+file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
+file(GLOB ss_adbg ${SIDL_DIR}/adbg/src/*.c)
+file(GLOB ss_ser ${SIDL_DIR}/ser/src/*.c)
+
+add_library(SS_SERVER ${ss_sidl} ${ss_acp} ${ss_adbg} ${ss_ser} ${SS_SRC})
+add_dependencies(SS_SERVER rrc_flag)
+#------------------------------------------------------
+
 set(SCTP_SRC
   ${OPENAIR3_DIR}/SCTP/sctp_common.c
   ${OPENAIR3_DIR}/SCTP/sctp_eNB_task.c

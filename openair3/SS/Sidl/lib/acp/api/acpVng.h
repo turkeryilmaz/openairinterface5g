@@ -27,16 +27,32 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void acpVngProcessInitClt(acpCtx_t _ctx, struct EUTRA_VNG_CTRL_REQ** FromSS);
+
 int acpVngProcessEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_VNG_CTRL_REQ* FromSS);
 
 int acpVngProcessDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct EUTRA_VNG_CTRL_REQ** FromSS);
 
+void acpVngProcessFree0Srv(struct EUTRA_VNG_CTRL_REQ* FromSS);
+
 void acpVngProcessFreeSrv(struct EUTRA_VNG_CTRL_REQ* FromSS);
+
+void acpVngProcessFree0CltSrv(struct EUTRA_VNG_CTRL_REQ* FromSS);
+
+void acpVngProcessFreeCltSrv(struct EUTRA_VNG_CTRL_REQ* FromSS);
+
+void acpVngProcessInitSrv(acpCtx_t _ctx, struct EUTRA_VNG_CTRL_CNF** ToSS);
 
 int acpVngProcessEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_VNG_CTRL_CNF* ToSS);
 
 int acpVngProcessDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct EUTRA_VNG_CTRL_CNF** ToSS);
 
+void acpVngProcessFree0Clt(struct EUTRA_VNG_CTRL_CNF* ToSS);
+
 void acpVngProcessFreeClt(struct EUTRA_VNG_CTRL_CNF* ToSS);
+
+void acpVngProcessFree0SrvClt(struct EUTRA_VNG_CTRL_CNF* ToSS);
+
+void acpVngProcessFreeSrvClt(struct EUTRA_VNG_CTRL_CNF* ToSS);
 
 SIDL_END_C_INTERFACE

@@ -29718,6 +29718,38 @@ static void _adbgSys__PDCP_CountReq_Type(acpCtx_t _ctx, const struct PDCP_CountR
 	_adbgSys__PDCP_CountReq_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgSys__PDCP_HandoverInit_Type(acpCtx_t _ctx, const struct PDCP_HandoverInit_Type* p)
+{
+	adbgPrintLog(_ctx, "SourceCellId := %s (%d)", adbgSys__EUTRA_CellId_Type__ToString(p->SourceCellId), (int)p->SourceCellId);
+}
+
+static void _adbgSys__PDCP_HandoverControlReq_Type_Value(acpCtx_t _ctx, const union PDCP_HandoverControlReq_Type_Value* p, enum PDCP_HandoverControlReq_Type_Sel d)
+{
+	if (d == PDCP_HandoverControlReq_Type_HandoverInit) {
+		adbgPrintLog(_ctx, "HandoverInit := { ");
+		_adbgSys__PDCP_HandoverInit_Type(_ctx, &p->HandoverInit);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == PDCP_HandoverControlReq_Type_HandoverComplete) {
+		adbgPrintLog(_ctx, "HandoverComplete := %s", (p->HandoverComplete ? "true" : "false"));
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgSys__PDCP_HandoverControlReq_Type(acpCtx_t _ctx, const struct PDCP_HandoverControlReq_Type* p)
+{
+	_adbgSys__PDCP_HandoverControlReq_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgSys__RA_PDCCH_Order_Type(acpCtx_t _ctx, const struct RA_PDCCH_Order_Type* p)
+{
+	adbgPrintLog(_ctx, "PreambleIndex := %u", (unsigned int)p->PreambleIndex);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "PrachMaskIndex := %u", (unsigned int)p->PrachMaskIndex);
+}
+
 static void _adbgSys__UE_Category_v1020_Type_ue_Category_V1020_Optional(acpCtx_t _ctx, const struct UE_Category_v1020_Type_ue_Category_V1020_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
@@ -29885,6 +29917,18 @@ static void _adbgSys__SystemRequest_Type_Value(acpCtx_t _ctx, const union System
 	if (d == SystemRequest_Type_PdcpCount) {
 		adbgPrintLog(_ctx, "PdcpCount := { ");
 		_adbgSys__PDCP_CountReq_Type(_ctx, &p->PdcpCount);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SystemRequest_Type_PdcpHandoverControl) {
+		adbgPrintLog(_ctx, "PdcpHandoverControl := { ");
+		_adbgSys__PDCP_HandoverControlReq_Type(_ctx, &p->PdcpHandoverControl);
+		adbgPrintLog(_ctx, " }");
+		return;
+	}
+	if (d == SystemRequest_Type_PdcchOrder) {
+		adbgPrintLog(_ctx, "PdcchOrder := { ");
+		_adbgSys__RA_PDCCH_Order_Type(_ctx, &p->PdcchOrder);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}

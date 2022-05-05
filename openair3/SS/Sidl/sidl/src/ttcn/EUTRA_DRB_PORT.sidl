@@ -25,11 +25,13 @@
 // SIDL common TTCN types and definitions.
 #include "TtcnCommon.sidl"
 
+// Interface name.
 METADATA_VAR(itf_name, "Drb");
 
+// Restricted RATs.
 METADATA_VAR(rats, "EUTRA");
 
-// TTCN namespaces
+// TTCN namespaces.
 METADATA_VAR(namespaces, "EUTRA_ASP_DrbDefs");
 
 typedef ASN_NAME(C_RNTI) MAC_CTRL_C_RNTI_Type;
@@ -627,7 +629,7 @@ struct L2Data_Indication_Type {
 struct DRB_COMMON_REQ {
     struct ReqAspCommonPart_Type Common;
     struct L2Data_Request_Type U_Plane;
-    SIDL_OPTIONAL(Null_Type, SuppressPdcchForC_RNTI);
+    SIDL_OPTIONAL_WITH_PFX(DRB_COMMON_REQ, Null_Type, SuppressPdcchForC_RNTI);
 };
 
 struct DRB_COMMON_IND {

@@ -27,8 +27,8 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-void adbgHandshakeHandleFromSSLogIn(acpCtx_t _ctx, const struct AcpHandshake_Type* fromSS);
+void adbgHandshakeProcessLogIn(acpCtx_t _ctx, const struct AcpHandshakeReq* FromSS);
 
-void adbgHandshakeHandleToSSLogOut(acpCtx_t _ctx, const struct AcpHandshakeRsp_Type* toSS);
+void adbgHandshakeProcessLogOut(acpCtx_t _ctx, const struct AcpHandshakeCnf* ToSS);
 
 SIDL_END_C_INTERFACE

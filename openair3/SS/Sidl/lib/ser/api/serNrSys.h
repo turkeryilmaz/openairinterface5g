@@ -27,15 +27,23 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void serNrSysProcessInitClt(unsigned char* _arena, size_t _aSize, struct NR_SYSTEM_CTRL_REQ** FromSS);
+
 int serNrSysProcessEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_SYSTEM_CTRL_REQ* FromSS);
 
 int serNrSysProcessDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_SYSTEM_CTRL_REQ** FromSS);
 
+void serNrSysProcessFree0Srv(struct NR_SYSTEM_CTRL_REQ* FromSS);
+
 void serNrSysProcessFreeSrv(struct NR_SYSTEM_CTRL_REQ* FromSS);
+
+void serNrSysProcessInitSrv(unsigned char* _arena, size_t _aSize, struct NR_SYSTEM_CTRL_CNF** ToSS);
 
 int serNrSysProcessEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_SYSTEM_CTRL_CNF* ToSS);
 
 int serNrSysProcessDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_SYSTEM_CTRL_CNF** ToSS);
+
+void serNrSysProcessFree0Clt(struct NR_SYSTEM_CTRL_CNF* ToSS);
 
 void serNrSysProcessFreeClt(struct NR_SYSTEM_CTRL_CNF* ToSS);
 

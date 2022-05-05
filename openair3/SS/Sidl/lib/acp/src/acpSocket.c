@@ -35,6 +35,62 @@
 #include "acpSocket.h"
 #include "adbg.h"
 
+static int acpSocketSetOpts(int sock, bool isServer)
+{
+	SIDL_ASSERT(sock >= 0);
+	ACP_DEBUG_ENTER_LOG();
+
+	const int keepalive = 1;
+	const int keepalive_time = 30;
+	const int keepalive_intvl = 2;
+	const int keepalive_probes = 5;
+	const int reuse = 1;
+	const int syn_retries = 2; // Send a total of 3 SYN packets => Timeout ~7s
+	const int fcntl_args = O_NONBLOCK;
+
+	if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, (socklen_t)sizeof(keepalive)) == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
+	}
+	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepalive_time, (socklen_t)sizeof(keepalive_time)) == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
+	}
+	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepalive_intvl, (socklen_t)sizeof(keepalive_intvl)) == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
+	}
+	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepalive_probes, (socklen_t)sizeof(keepalive_probes)) == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
+	}
+	if (isServer) {
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse)) == -1) {
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			return -1;
+		}
+	} else {
+		if (setsockopt(sock, IPPROTO_TCP, TCP_SYNCNT, &syn_retries, (socklen_t)sizeof(syn_retries)) == -1) {
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			return -1;
+		}
+	}
+
+	int arg = fcntl(sock, F_GETFL, NULL);
+	if (arg == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
+	}
+	arg |= fcntl_args;
+	if (fcntl(sock, F_SETFL, arg) == -1) {
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
+	}
+
+	ACP_DEBUG_EXIT_LOG(NULL);
+	return 0;
+}
+
 int acpSocketConnect(IpAddress_t ipaddr, int port)
 {
 	ACP_DEBUG_ENTER_LOG();
@@ -43,41 +99,21 @@ int acpSocketConnect(IpAddress_t ipaddr, int port)
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = ntohl(ipaddr.v.ipv4);
-	int client_fd = -1;
+
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
 		ACP_DEBUG_EXIT_LOG(strerror(errno));
 		return -1;
 	}
 
-	// Configure KEEPALIVE
-	const int keepalive = 1;
-	const int keepalive_time = 30;
-	const int keepalive_intvl = 2;
-	const int keepalive_probes = 5;
-	const int syn_retries = 2; // Send a total of 3 SYN packets => Timeout ~7s
-
-	if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, (socklen_t)sizeof(keepalive)) == -1) {
-		goto _error;
-	}
-	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepalive_time, (socklen_t)sizeof(keepalive_time)) == -1) {
-		goto _error;
-	}
-	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepalive_intvl, (socklen_t)sizeof(keepalive_intvl)) == -1) {
-		goto _error;
-	}
-	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepalive_probes, (socklen_t)sizeof(keepalive_probes)) == -1) {
-		goto _error;
+	if (acpSocketSetOpts(sock, false) == -1) {
+		close(sock);
+		ACP_DEBUG_EXIT_LOG(strerror(errno));
+		return -1;
 	}
 
-	if (setsockopt(sock, IPPROTO_TCP, TCP_SYNCNT, &syn_retries, (socklen_t)sizeof(syn_retries)) == -1) {
-		goto _error;
-	}
-
-	client_fd = connect(sock, (struct sockaddr*)&sin, sizeof(sin));
-	if (client_fd == -1) {
-		int myerrno = errno;
-		if (myerrno == EINPROGRESS || myerrno == EAGAIN) {
+	if (connect(sock, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
+		if ((errno == EINPROGRESS) || (errno == EAGAIN)) {
 			fd_set fdset;
 			FD_ZERO(&fdset);
 			FD_SET(sock, &fdset);
@@ -87,33 +123,29 @@ int acpSocketConnect(IpAddress_t ipaddr, int port)
 			tv.tv_usec = 0;
 
 			if (select(sock + 1, NULL, &fdset, NULL, &tv) == 1) {
-				socklen_t optlen = sizeof(int);
 				int valopt;
-				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == 0) && !valopt) {
-					ACP_DEBUG_LOG("Connected to server: %s:%d", inet_ntoa(sin.sin_addr), port);
-					ACP_DEBUG_EXIT_LOG(NULL);
-					return sock;
+				socklen_t optlen = sizeof(valopt);
+				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == -1) || valopt) {
+					close(sock);
+					ACP_DEBUG_EXIT_LOG(strerror(errno));
+					return -1;
 				}
+			} else {
+				close(sock);
+				ACP_DEBUG_EXIT_LOG(strerror(errno));
+				return -1;
 			}
-		}
-
-		if (myerrno) {
-			goto _error;
+		} else {
+			close(sock);
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			return -1;
 		}
 	}
 
-	int arg = fcntl(sock, F_GETFL, NULL);
-	arg |= O_NONBLOCK;
-	fcntl(sock, F_SETFL, arg);
+	ACP_DEBUG_LOG("Connected to server %s:%d", inet_ntoa(sin.sin_addr), port);
 
-	ACP_DEBUG_LOG("Connected to server: %s:%d", inet_ntoa(sin.sin_addr), port);
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return sock;
-
-_error:
-	close(sock);
-	ACP_DEBUG_EXIT_LOG(strerror(errno));
-	return -1;
 }
 
 int acpSocketListen(IpAddress_t ipaddr, int port)
@@ -131,46 +163,14 @@ int acpSocketListen(IpAddress_t ipaddr, int port)
 		return -1;
 	}
 
-	// Configure KEEPALIVE
-	const int keepalive = 1;
-	const int keepalive_time = 30;
-	const int keepalive_intvl = 2;
-	const int keepalive_probes = 5;
-	if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, (socklen_t)sizeof(keepalive)) == -1) {
+	if (acpSocketSetOpts(sock, true) == -1) {
 		close(sock);
 		ACP_DEBUG_EXIT_LOG(strerror(errno));
 		return -1;
 	}
-	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepalive_time, (socklen_t)sizeof(keepalive_time)) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
-	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepalive_intvl, (socklen_t)sizeof(keepalive_intvl)) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
-	if (setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepalive_probes, (socklen_t)sizeof(keepalive_probes)) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
-
-	const int reuse = 1;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse)) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
-
-	int arg = fcntl(sock, F_GETFL, NULL);
-	arg |= O_NONBLOCK;
-	fcntl(sock, F_SETFL, arg);
 
 	if (bind(sock, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
-		int myerrno = errno;
-		if (myerrno == EINPROGRESS) {
+		if ((errno == EINPROGRESS) || (errno == EAGAIN)) {
 			fd_set fdset;
 			FD_ZERO(&fdset);
 			FD_SET(sock, &fdset);
@@ -180,23 +180,33 @@ int acpSocketListen(IpAddress_t ipaddr, int port)
 			tv.tv_usec = 0;
 
 			if (select(sock + 1, NULL, &fdset, NULL, &tv) == 1) {
-				socklen_t optlen = sizeof(int);
 				int valopt;
-				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == 0) && !valopt) {
-					return sock;
+				socklen_t optlen = sizeof(valopt);
+				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == -1) || valopt) {
+					close(sock);
+					ACP_DEBUG_EXIT_LOG(strerror(errno));
+					return -1;
 				}
+			} else {
+				close(sock);
+				ACP_DEBUG_EXIT_LOG(strerror(errno));
+				return -1;
 			}
+		} else {
+			close(sock);
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			return -1;
 		}
+	}
+
+	const int backlog = 3;
+	if (listen(sock, backlog) == -1) {
 		close(sock);
 		ACP_DEBUG_EXIT_LOG(strerror(errno));
 		return -1;
 	}
 
-	if (listen(sock, 3) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
+	ACP_DEBUG_LOG("Created listening server %s:%d", inet_ntoa(sin.sin_addr), port);
 
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return sock;
@@ -209,7 +219,7 @@ int acpSocketSelect(int sock, MSec_t socketTimeout)
 #endif
 
 	if (sock < 0) {
-		ACP_DEBUG_EXIT_TRACE_LOG("invalid socket argument");
+		ACP_DEBUG_EXIT_TRACE_LOG("Invalid socket argument");
 		return -1;
 	}
 
@@ -257,13 +267,12 @@ int acpSocketSelect(int sock, MSec_t socketTimeout)
 int acpSocketSelectMulti(int* sock, MSec_t socketTimeout, size_t peersSize, int* peers)
 {
 	SIDL_ASSERT(sock);
-
 #ifdef ACP_DEBUG_TRACE_FLOOD
 	ACP_DEBUG_ENTER_TRACE_LOG();
 #endif
 
 	if (*sock < 0) {
-		ACP_DEBUG_EXIT_TRACE_LOG("invalid socket argument");
+		ACP_DEBUG_EXIT_TRACE_LOG("Invalid socket argument");
 		return -1;
 	}
 
@@ -354,7 +363,7 @@ int acpSocketSend(int sock, size_t size, const unsigned char* buffer)
 #endif
 
 	if (sock < 0) {
-		ACP_DEBUG_EXIT_TRACE_LOG("invalid socket argument");
+		ACP_DEBUG_EXIT_TRACE_LOG("Invalid socket argument");
 		return -1;
 	}
 
@@ -364,16 +373,15 @@ int acpSocketSend(int sock, size_t size, const unsigned char* buffer)
 	do {
 		ssize_t bytes = send(sock, buffer + index, dataToWrite, MSG_DONTWAIT);
 		if (bytes <= 0) {
-			int err = errno;
-			if ((bytes < 0) && (err == EPIPE)) {
+			if ((bytes < 0) && (errno == EPIPE)) {
 				// TODO: fix infinite loop between select() > 0 and send() <= 0
 			} else if (bytes < 0) {
-				if ((err != EAGAIN) && (err != EPIPE)) {
+				if ((errno != EAGAIN) && (errno != EPIPE)) {
 					ACP_DEBUG_EXIT_TRACE_LOG(strerror(errno));
 					return -1;
 				}
 			}
-			if ((bytes == 0) || (err == EAGAIN)) {
+			if ((bytes == 0) || (errno == EAGAIN)) {
 				fd_set fdset;
 				FD_ZERO(&fdset);
 				FD_SET(sock, &fdset);
@@ -382,13 +390,14 @@ int acpSocketSend(int sock, size_t size, const unsigned char* buffer)
 				tv.tv_sec = 1;
 				tv.tv_usec = 0;
 
-				int ret = select(sock + 1, NULL, &fdset, NULL, &tv);
-				if (ret > 0) {
+				int err = select(sock + 1, NULL, &fdset, NULL, &tv);
+				if (err > 0) {
 					continue;
-				} else if (ret == 0) {
+				} else if (err == 0) {
 					continue;
 				}
 			}
+
 			ACP_DEBUG_EXIT_TRACE_LOG(strerror(errno));
 			return -1;
 		}
@@ -411,7 +420,7 @@ int acpSocketReceive(int sock, size_t size, unsigned char* buffer, MSec_t socket
 #endif
 
 	if (sock < 0) {
-		ACP_DEBUG_EXIT_TRACE_LOG("invalid socket argument");
+		ACP_DEBUG_EXIT_TRACE_LOG("Invalid socket argument");
 		return -1;
 	}
 
@@ -446,8 +455,9 @@ int acpSocketReceive(int sock, size_t size, unsigned char* buffer, MSec_t socket
 				break;
 			}
 
-			if (--attemps <= 0) break;
-
+			if (--attemps <= 0) {
+				break;
+			}
 		} while (available == 0);
 
 		if (available == 0) {

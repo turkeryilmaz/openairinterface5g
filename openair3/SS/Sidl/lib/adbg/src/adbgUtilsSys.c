@@ -187,6 +187,15 @@ const char* adbgUtilsSysAS_Security_TypeToStr(int select)
 	}
 }
 
+const char* adbgUtilsSysPDCP_HandoverControlReq_TypeToStr(int select)
+{
+	switch (select) {
+		case PDCP_HandoverControlReq_Type_HandoverInit: return "HandoverInit";
+		case PDCP_HandoverControlReq_Type_HandoverComplete: return "HandoverComplete";
+		default: return "unknown";
+	}
+}
+
 const char* adbgUtilsSysSystemRequest_TypeToStr(int select)
 {
 	switch (select) {
@@ -198,6 +207,8 @@ const char* adbgUtilsSysSystemRequest_TypeToStr(int select)
 		case SystemRequest_Type_Paging: return "Paging";
 		case SystemRequest_Type_L1MacIndCtrl: return "L1MacIndCtrl";
 		case SystemRequest_Type_PdcpCount: return "PdcpCount";
+		case SystemRequest_Type_PdcpHandoverControl: return "PdcpHandoverControl";
+		case SystemRequest_Type_PdcchOrder: return "PdcchOrder";
 		case SystemRequest_Type_UE_Cat_Info: return "UE_Cat_Info";
 		default: return "unknown";
 	}

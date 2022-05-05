@@ -25,6 +25,14 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serVngProcessInitClt(unsigned char* _arena, size_t _aSize, struct EUTRA_VNG_CTRL_REQ** FromSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*FromSS = (struct EUTRA_VNG_CTRL_REQ*)serMalloc(_mem, sizeof(struct EUTRA_VNG_CTRL_REQ));
+	memset(*FromSS, 0, sizeof(struct EUTRA_VNG_CTRL_REQ));
+}
+
 static int _serVngEncPmchLogicalChannel_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PmchLogicalChannel_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -594,7 +602,7 @@ static int _serVngDecSQN_PLMN_Identity(const unsigned char* _buffer, size_t _siz
 
 	_serVngDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	NTOH_32(p->mnc.d, &_buffer[*_lidx], _lidx);
-	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
+	p->mnc.v = (SQN_MCC_MNC_Digit*)serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		NTOH_8(p->mnc.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1101,7 +1109,7 @@ int serVngProcessDecSrv(const unsigned char* _buffer, size_t _size, unsigned cha
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*FromSS = serMalloc(_mem, sizeof(struct EUTRA_VNG_CTRL_REQ));
+	*FromSS = (struct EUTRA_VNG_CTRL_REQ*)serMalloc(_mem, sizeof(struct EUTRA_VNG_CTRL_REQ));
 	_serVngDecEUTRA_VNG_CTRL_REQ(_buffer, _size, _lidx, _mem, *FromSS);
 
 	return SIDL_STATUS_OK;
@@ -1178,12 +1186,27 @@ static void _serVngFreeEUTRA_VNG_CTRL_REQ(struct EUTRA_VNG_CTRL_REQ* p)
 	_serVngFreeReqAspCommonPart_Type(&p->Common);
 }
 
+void serVngProcessFree0Srv(struct EUTRA_VNG_CTRL_REQ* FromSS)
+{
+	if (FromSS) {
+		_serVngFreeEUTRA_VNG_CTRL_REQ(FromSS);
+	}
+}
+
 void serVngProcessFreeSrv(struct EUTRA_VNG_CTRL_REQ* FromSS)
 {
 	if (FromSS) {
 		_serVngFreeEUTRA_VNG_CTRL_REQ(FromSS);
 		serFree(FromSS);
 	}
+}
+
+void serVngProcessInitSrv(unsigned char* _arena, size_t _aSize, struct EUTRA_VNG_CTRL_CNF** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct EUTRA_VNG_CTRL_CNF*)serMalloc(_mem, sizeof(struct EUTRA_VNG_CTRL_CNF));
+	memset(*ToSS, 0, sizeof(struct EUTRA_VNG_CTRL_CNF));
 }
 
 static int _serVngEncConfirmationResult_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union ConfirmationResult_Type_Value* p, enum ConfirmationResult_Type_Sel d)
@@ -1314,7 +1337,7 @@ int serVngProcessDecClt(const unsigned char* _buffer, size_t _size, unsigned cha
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*ToSS = serMalloc(_mem, sizeof(struct EUTRA_VNG_CTRL_CNF));
+	*ToSS = (struct EUTRA_VNG_CTRL_CNF*)serMalloc(_mem, sizeof(struct EUTRA_VNG_CTRL_CNF));
 	_serVngDecEUTRA_VNG_CTRL_CNF(_buffer, _size, _lidx, _mem, *ToSS);
 
 	return SIDL_STATUS_OK;
@@ -1328,6 +1351,13 @@ static void _serVngFreeCnfAspCommonPart_Type(struct CnfAspCommonPart_Type* p)
 static void _serVngFreeEUTRA_VNG_CTRL_CNF(struct EUTRA_VNG_CTRL_CNF* p)
 {
 	_serVngFreeCnfAspCommonPart_Type(&p->Common);
+}
+
+void serVngProcessFree0Clt(struct EUTRA_VNG_CTRL_CNF* ToSS)
+{
+	if (ToSS) {
+		_serVngFreeEUTRA_VNG_CTRL_CNF(ToSS);
+	}
 }
 
 void serVngProcessFreeClt(struct EUTRA_VNG_CTRL_CNF* ToSS)

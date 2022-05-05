@@ -44,13 +44,13 @@ enum acpMsgLocalId {
 	ACP_LID_VngProcess = 0x90040500,
 	ACP_LID_DrbProcessFromSS = 0x90040600,
 	ACP_LID_DrbProcessToSS = 0x90040601,
-	ACP_LID_HandshakeHandleFromSS = 0x90040700,
-	ACP_LID_HandshakeHandleToSS = 0x90040701,
+	ACP_LID_HandshakeProcess = 0x90040700,
 	ACP_LID_SysIndProcessToSS = 0x90040800,
-
 	ACP_LID_NrSysSrbProcessFromSS = 0x90040900,
 	ACP_LID_NrSysSrbProcessToSS = 0x90040901,
 	ACP_LID_NrSysProcess = 0x90040A00,
+	ACP_LID_NrDrbProcessFromSS = 0x90040B00,
+	ACP_LID_NrDrbProcessToSS = 0x90040B01,
 };
 
 SIDL_END_C_INTERFACE

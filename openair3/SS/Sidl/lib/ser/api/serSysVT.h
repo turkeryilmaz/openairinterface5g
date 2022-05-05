@@ -27,16 +27,24 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-int serSysVTEnquireTimingUpdEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* TimingInfoToSS);
+void serSysVTEnquireTimingAckInitClt(unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** FromSS);
 
-int serSysVTEnquireTimingUpdDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** TimingInfoToSS);
+int serSysVTEnquireTimingAckEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* FromSS);
 
-void serSysVTEnquireTimingUpdFreeClt(struct VirtualTimeInfo_Type* TimingInfoToSS);
+int serSysVTEnquireTimingAckDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** FromSS);
 
-int serSysVTEnquireTimingAckEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* TimingInfoFromSS);
+void serSysVTEnquireTimingAckFree0Srv(struct VirtualTimeInfo_Type* FromSS);
 
-int serSysVTEnquireTimingAckDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** TimingInfoFromSS);
+void serSysVTEnquireTimingAckFreeSrv(struct VirtualTimeInfo_Type* FromSS);
 
-void serSysVTEnquireTimingAckFreeSrv(struct VirtualTimeInfo_Type* TimingInfoFromSS);
+void serSysVTEnquireTimingUpdInitSrv(unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** ToSS);
+
+int serSysVTEnquireTimingUpdEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* ToSS);
+
+int serSysVTEnquireTimingUpdDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** ToSS);
+
+void serSysVTEnquireTimingUpdFree0Clt(struct VirtualTimeInfo_Type* ToSS);
+
+void serSysVTEnquireTimingUpdFreeClt(struct VirtualTimeInfo_Type* ToSS);
 
 SIDL_END_C_INTERFACE

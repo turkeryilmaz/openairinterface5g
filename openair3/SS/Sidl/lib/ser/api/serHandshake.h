@@ -27,16 +27,24 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-int serHandshakeHandleFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct AcpHandshake_Type* fromSS);
+void serHandshakeProcessInitClt(unsigned char* _arena, size_t _aSize, struct AcpHandshakeReq** FromSS);
 
-int serHandshakeHandleFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct AcpHandshake_Type** fromSS);
+int serHandshakeProcessEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct AcpHandshakeReq* FromSS);
 
-void serHandshakeHandleFromSSFreeSrv(struct AcpHandshake_Type* fromSS);
+int serHandshakeProcessDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct AcpHandshakeReq** FromSS);
 
-int serHandshakeHandleToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct AcpHandshakeRsp_Type* toSS);
+void serHandshakeProcessFree0Srv(struct AcpHandshakeReq* FromSS);
 
-int serHandshakeHandleToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct AcpHandshakeRsp_Type** toSS);
+void serHandshakeProcessFreeSrv(struct AcpHandshakeReq* FromSS);
 
-void serHandshakeHandleToSSFreeClt(struct AcpHandshakeRsp_Type* toSS);
+void serHandshakeProcessInitSrv(unsigned char* _arena, size_t _aSize, struct AcpHandshakeCnf** ToSS);
+
+int serHandshakeProcessEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct AcpHandshakeCnf* ToSS);
+
+int serHandshakeProcessDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct AcpHandshakeCnf** ToSS);
+
+void serHandshakeProcessFree0Clt(struct AcpHandshakeCnf* ToSS);
+
+void serHandshakeProcessFreeClt(struct AcpHandshakeCnf* ToSS);
 
 SIDL_END_C_INTERFACE

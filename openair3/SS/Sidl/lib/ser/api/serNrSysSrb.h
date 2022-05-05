@@ -27,16 +27,24 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-int serNrSysSrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_RRC_PDU_IND* ToSS);
-
-int serNrSysSrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_RRC_PDU_IND** ToSS);
-
-void serNrSysSrbProcessToSSFreeClt(struct NR_RRC_PDU_IND* ToSS);
+void serNrSysSrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct NR_RRC_PDU_REQ** FromSS);
 
 int serNrSysSrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_RRC_PDU_REQ* FromSS);
 
 int serNrSysSrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_RRC_PDU_REQ** FromSS);
 
+void serNrSysSrbProcessFromSSFree0Srv(struct NR_RRC_PDU_REQ* FromSS);
+
 void serNrSysSrbProcessFromSSFreeSrv(struct NR_RRC_PDU_REQ* FromSS);
+
+void serNrSysSrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct NR_RRC_PDU_IND** ToSS);
+
+int serNrSysSrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_RRC_PDU_IND* ToSS);
+
+int serNrSysSrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_RRC_PDU_IND** ToSS);
+
+void serNrSysSrbProcessToSSFree0Clt(struct NR_RRC_PDU_IND* ToSS);
+
+void serNrSysSrbProcessToSSFreeClt(struct NR_RRC_PDU_IND* ToSS);
 
 SIDL_END_C_INTERFACE

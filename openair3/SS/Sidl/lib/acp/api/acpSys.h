@@ -27,16 +27,32 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void acpSysProcessInitClt(acpCtx_t _ctx, struct SYSTEM_CTRL_REQ** FromSS);
+
 int acpSysProcessEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct SYSTEM_CTRL_REQ* FromSS);
 
 int acpSysProcessDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct SYSTEM_CTRL_REQ** FromSS);
 
+void acpSysProcessFree0Srv(struct SYSTEM_CTRL_REQ* FromSS);
+
 void acpSysProcessFreeSrv(struct SYSTEM_CTRL_REQ* FromSS);
+
+void acpSysProcessFree0CltSrv(struct SYSTEM_CTRL_REQ* FromSS);
+
+void acpSysProcessFreeCltSrv(struct SYSTEM_CTRL_REQ* FromSS);
+
+void acpSysProcessInitSrv(acpCtx_t _ctx, struct SYSTEM_CTRL_CNF** ToSS);
 
 int acpSysProcessEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct SYSTEM_CTRL_CNF* ToSS);
 
 int acpSysProcessDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct SYSTEM_CTRL_CNF** ToSS);
 
+void acpSysProcessFree0Clt(struct SYSTEM_CTRL_CNF* ToSS);
+
 void acpSysProcessFreeClt(struct SYSTEM_CTRL_CNF* ToSS);
+
+void acpSysProcessFree0SrvClt(struct SYSTEM_CTRL_CNF* ToSS);
+
+void acpSysProcessFreeSrvClt(struct SYSTEM_CTRL_CNF* ToSS);
 
 SIDL_END_C_INTERFACE

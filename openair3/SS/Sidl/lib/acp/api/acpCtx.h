@@ -45,7 +45,9 @@ struct acpUserService {
 struct acpCtx {
 	/** Context pointer. */
 	acpCtx_t ptr;
-	/** Arena to devode received message. */
+	/** ACP client description. */
+	char* desc;
+	/** Arena to decode received message. */
 	unsigned char* arena;
 	/** Arena size to decode received message. */
 	size_t aSize;
@@ -61,16 +63,32 @@ struct acpCtx {
 	int peers[ACP_MAX_PEER_QTY];
 	/** Peers socket handshake state on server side. */
 	int peersHandshaked[ACP_MAX_PEER_QTY];
-	/** Peers socket descriptors size. */
+	/** Peers registered services. */
+	int* peersServices[ACP_MAX_PEER_QTY];
+	/** Peers registered services size. */
+	size_t peersServicesSize[ACP_MAX_PEER_QTY];
+	/** Peers size. */
 	size_t peersSize;
 	/** Last peer socket descriptor who sent the message. */
 	int lastPeer;
+	/** Last message type. */
+	int lastType;
+	/** Last message kind. */
+	int lastKind;
 	/** User ID map. */
 	struct acpUserService* userIdMap;
 	/** User ID map max size. */
 	size_t userIdMapMaxSize;
 	/** ID map size. */
 	size_t userIdMapSize;
+	/** Internal temporary buffer. */
+	unsigned char* tmpBuf;
+	/** Internal temporary buffer size. */
+	size_t tmpBufSize;
+	/** Internal opaque buffer. */
+	unsigned char* opaqueBuf;
+	/** Internal opaque buffer size. */
+	size_t opaqueBufSize;
 
 	/** Debug logger callback. */
 	void (*logger)(const char*);
@@ -115,6 +133,9 @@ int acpCtxResolveId(int id, const char* name);
 /** Gets message name from id (for debug). */
 const char* acpCtxGetMsgNameFromId(int id);
 
+/** Gets message name from id (strict case). */
+const char* acpCtxGetMsgNameFromIdStrict(int id);
+
 /** Gets message kind from id (for debug). */
 int acpCtxGetMsgKindFromId(int id);
 
@@ -123,5 +144,35 @@ const char* acpCtxGetItfNameFrom_localId(int id);
 
 /** Gets message kind from name */
 int acpCtxGetMsgKindFromName(const char* name);
+
+/** Sets ACP description. */
+int acpCtxSetDescription(struct acpCtx* ctx, const char* desc);
+
+/** Allocates temporary buffer. */
+void acpCtxAllocateTmpBuf(struct acpCtx* ctx, size_t size);
+
+/** Returns peer number from the socket. */
+int acpCtxGetPeerNum(struct acpCtx* ctx, int peer);
+
+/** Checks whether peer handshake is performed. */
+bool acpCtxPeerHandshaked(struct acpCtx* ctx, int peer);
+
+/** Checks whether any peer is handshaked. */
+bool acpCtxAnyPeerHandshaked(struct acpCtx* ctx);
+
+/** Sets peer to have been handshaked. */
+void acpCtxPeerSetHandshaked(struct acpCtx* ctx, int peer, int flag);
+
+/** Adds peer to the server context. */
+void acpCtxAddPeer(struct acpCtx* ctx, int peer);
+
+/** Removes peer from the server context. */
+void acpCtxRemovePeer(struct acpCtx* ctx, int peer);
+
+/** Checks whether a peer registered service. */
+bool acpCtxPeerRespondsToService(struct acpCtx* ctx, int peer, int type);
+
+/** Checks whether a peer registered service (check by peer number). */
+bool acpCtxPeerNumRespondsToService(struct acpCtx* ctx, int peerNum, int type);
 
 SIDL_END_C_INTERFACE

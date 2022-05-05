@@ -27,16 +27,32 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-int acpSysVTEnquireTimingUpdEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct VirtualTimeInfo_Type* TimingInfoToSS);
+void acpSysVTEnquireTimingAckInitClt(acpCtx_t _ctx, struct VirtualTimeInfo_Type** FromSS);
 
-int acpSysVTEnquireTimingUpdDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct VirtualTimeInfo_Type** TimingInfoToSS);
+int acpSysVTEnquireTimingAckEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct VirtualTimeInfo_Type* FromSS);
 
-void acpSysVTEnquireTimingUpdFreeClt(struct VirtualTimeInfo_Type* TimingInfoToSS);
+int acpSysVTEnquireTimingAckDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct VirtualTimeInfo_Type** FromSS);
 
-int acpSysVTEnquireTimingAckEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct VirtualTimeInfo_Type* TimingInfoFromSS);
+void acpSysVTEnquireTimingAckFree0Srv(struct VirtualTimeInfo_Type* FromSS);
 
-int acpSysVTEnquireTimingAckDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct VirtualTimeInfo_Type** TimingInfoFromSS);
+void acpSysVTEnquireTimingAckFreeSrv(struct VirtualTimeInfo_Type* FromSS);
 
-void acpSysVTEnquireTimingAckFreeSrv(struct VirtualTimeInfo_Type* TimingInfoFromSS);
+void acpSysVTEnquireTimingAckFree0CltSrv(struct VirtualTimeInfo_Type* FromSS);
+
+void acpSysVTEnquireTimingAckFreeCltSrv(struct VirtualTimeInfo_Type* FromSS);
+
+void acpSysVTEnquireTimingUpdInitSrv(acpCtx_t _ctx, struct VirtualTimeInfo_Type** ToSS);
+
+int acpSysVTEnquireTimingUpdEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct VirtualTimeInfo_Type* ToSS);
+
+int acpSysVTEnquireTimingUpdDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct VirtualTimeInfo_Type** ToSS);
+
+void acpSysVTEnquireTimingUpdFree0Clt(struct VirtualTimeInfo_Type* ToSS);
+
+void acpSysVTEnquireTimingUpdFreeClt(struct VirtualTimeInfo_Type* ToSS);
+
+void acpSysVTEnquireTimingUpdFree0SrvClt(struct VirtualTimeInfo_Type* ToSS);
+
+void acpSysVTEnquireTimingUpdFreeSrvClt(struct VirtualTimeInfo_Type* ToSS);
 
 SIDL_END_C_INTERFACE

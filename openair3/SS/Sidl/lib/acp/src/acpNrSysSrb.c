@@ -26,31 +26,12 @@
 #include "acpMsgIds.h"
 #include "serNrSysSrb.h"
 
-int acpNrSysSrbProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct NR_RRC_PDU_IND* ToSS)
+void acpNrSysSrbProcessFromSSInitClt(acpCtx_t _ctx, struct NR_RRC_PDU_REQ** FromSS)
 {
 	if (!acpCtxIsValid(_ctx)) {
-		return -ACP_ERR_INVALID_CTX;
+		SIDL_ASSERT(_ctx != _ctx);
 	}
-	size_t _lidx = ACP_HEADER_SIZE;
-	int _ret = serNrSysSrbProcessToSSEncSrv(_buffer, *_size, &_lidx, ToSS);
-	if (_ret == SIDL_STATUS_OK) {
-		acpBuildHeader(_ctx, ACP_LID_NrSysSrbProcessToSS, _lidx, _buffer);
-	}
-	*_size = _lidx;
-	return _ret;
-}
-
-int acpNrSysSrbProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct NR_RRC_PDU_IND** ToSS)
-{
-	if (!acpCtxIsValid(_ctx)) {
-		return -ACP_ERR_INVALID_CTX;
-	}
-	return serNrSysSrbProcessToSSDecClt(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
-}
-
-void acpNrSysSrbProcessToSSFreeClt(struct NR_RRC_PDU_IND* ToSS)
-{
-	serNrSysSrbProcessToSSFreeClt(ToSS);
+	serNrSysSrbProcessFromSSInitClt(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
 }
 
 int acpNrSysSrbProcessFromSSEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct NR_RRC_PDU_REQ* FromSS)
@@ -75,7 +56,72 @@ int acpNrSysSrbProcessFromSSDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, 
 	return serNrSysSrbProcessFromSSDecSrv(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
 }
 
+void acpNrSysSrbProcessFromSSFree0Srv(struct NR_RRC_PDU_REQ* FromSS)
+{
+	serNrSysSrbProcessFromSSFree0Srv(FromSS);
+}
+
 void acpNrSysSrbProcessFromSSFreeSrv(struct NR_RRC_PDU_REQ* FromSS)
 {
 	serNrSysSrbProcessFromSSFreeSrv(FromSS);
+}
+
+void acpNrSysSrbProcessFromSSFree0CltSrv(struct NR_RRC_PDU_REQ* FromSS)
+{
+	serNrSysSrbProcessFromSSFree0Srv(FromSS);
+}
+
+void acpNrSysSrbProcessFromSSFreeCltSrv(struct NR_RRC_PDU_REQ* FromSS)
+{
+	serNrSysSrbProcessFromSSFreeSrv(FromSS);
+}
+
+void acpNrSysSrbProcessToSSInitSrv(acpCtx_t _ctx, struct NR_RRC_PDU_IND** ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serNrSysSrbProcessToSSInitSrv(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
+}
+
+int acpNrSysSrbProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct NR_RRC_PDU_IND* ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		return -ACP_ERR_INVALID_CTX;
+	}
+	size_t _lidx = ACP_HEADER_SIZE;
+	int _ret = serNrSysSrbProcessToSSEncSrv(_buffer, *_size, &_lidx, ToSS);
+	if (_ret == SIDL_STATUS_OK) {
+		acpBuildHeader(_ctx, ACP_LID_NrSysSrbProcessToSS, _lidx, _buffer);
+	}
+	*_size = _lidx;
+	return _ret;
+}
+
+int acpNrSysSrbProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct NR_RRC_PDU_IND** ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		return -ACP_ERR_INVALID_CTX;
+	}
+	return serNrSysSrbProcessToSSDecClt(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
+}
+
+void acpNrSysSrbProcessToSSFree0Clt(struct NR_RRC_PDU_IND* ToSS)
+{
+	serNrSysSrbProcessToSSFree0Clt(ToSS);
+}
+
+void acpNrSysSrbProcessToSSFreeClt(struct NR_RRC_PDU_IND* ToSS)
+{
+	serNrSysSrbProcessToSSFreeClt(ToSS);
+}
+
+void acpNrSysSrbProcessToSSFree0SrvClt(struct NR_RRC_PDU_IND* ToSS)
+{
+	serNrSysSrbProcessToSSFree0Clt(ToSS);
+}
+
+void acpNrSysSrbProcessToSSFreeSrvClt(struct NR_RRC_PDU_IND* ToSS)
+{
+	serNrSysSrbProcessToSSFreeClt(ToSS);
 }

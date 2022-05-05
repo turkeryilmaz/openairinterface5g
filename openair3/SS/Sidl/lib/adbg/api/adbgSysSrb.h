@@ -27,8 +27,8 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-void adbgSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct EUTRA_RRC_PDU_IND* ToSS);
-
 void adbgSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct EUTRA_RRC_PDU_REQ* FromSS);
+
+void adbgSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct EUTRA_RRC_PDU_IND* ToSS);
 
 SIDL_END_C_INTERFACE

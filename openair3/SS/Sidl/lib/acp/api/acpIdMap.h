@@ -27,13 +27,19 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+enum acpKind {
+	ACP_NTF = 0,
+	ACP_ONEWAY = 1,
+	ACP_CMD = 2
+};
+
 /** Defines ACP Context. */
 struct acpIdMapService {
 	/** Service name. */
 	const char* name;
-	/** Service static local id. */
+	/** Service static local ID. */
 	unsigned int local_id;
-	/** Service remote id. */
+	/** Service remote ID. */
 	unsigned int remote_id;
 	/** Service kind (0 - NTF, 1 - ONEWAY, 2 - CMD). */
 	int kind;
@@ -42,7 +48,7 @@ struct acpIdMapService {
 struct acpIdMapItf {
 	/** SIDL interface name. */
 	const char* name;
-	/** interface id. */
+	/** Interface ID. */
 	int id;
 	/** Start index. */
 	int startIndex;

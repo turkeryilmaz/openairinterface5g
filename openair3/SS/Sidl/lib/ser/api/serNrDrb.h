@@ -22,29 +22,29 @@
 
 #pragma once
 
-#include "SIDL_NASEMU_EUTRA_SYSTEM_PORT.h"
+#include "SIDL_NR_DRB_PORT.h"
 #include "SidlCompiler.h"
 
 SIDL_BEGIN_C_INTERFACE
 
-void serSysSrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_REQ** FromSS);
+void serNrDrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_REQ** FromSS);
 
-int serSysSrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_REQ* FromSS);
+int serNrDrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DRB_COMMON_REQ* FromSS);
 
-int serSysSrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_REQ** FromSS);
+int serNrDrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_REQ** FromSS);
 
-void serSysSrbProcessFromSSFree0Srv(struct EUTRA_RRC_PDU_REQ* FromSS);
+void serNrDrbProcessFromSSFree0Srv(struct NR_DRB_COMMON_REQ* FromSS);
 
-void serSysSrbProcessFromSSFreeSrv(struct EUTRA_RRC_PDU_REQ* FromSS);
+void serNrDrbProcessFromSSFreeSrv(struct NR_DRB_COMMON_REQ* FromSS);
 
-void serSysSrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_IND** ToSS);
+void serNrDrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_IND** ToSS);
 
-int serSysSrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_RRC_PDU_IND* ToSS);
+int serNrDrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DRB_COMMON_IND* ToSS);
 
-int serSysSrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_RRC_PDU_IND** ToSS);
+int serNrDrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_IND** ToSS);
 
-void serSysSrbProcessToSSFree0Clt(struct EUTRA_RRC_PDU_IND* ToSS);
+void serNrDrbProcessToSSFree0Clt(struct NR_DRB_COMMON_IND* ToSS);
 
-void serSysSrbProcessToSSFreeClt(struct EUTRA_RRC_PDU_IND* ToSS);
+void serNrDrbProcessToSSFreeClt(struct NR_DRB_COMMON_IND* ToSS);
 
 SIDL_END_C_INTERFACE

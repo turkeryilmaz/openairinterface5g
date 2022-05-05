@@ -22,13 +22,30 @@
 
 #pragma once
 
-#include "SIDL_NASEMU_NR_SYSTEM_PORT.h"
-#include "adbg.h"
+#include "SIDL_NR_DRB_PORT.h"
 
 SIDL_BEGIN_C_INTERFACE
 
-void adbgNrSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* FromSS);
+const char* adbgUtilsNrDrbNR_HarqProcessAssignment_TypeToStr(int select);
 
-void adbgNrSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_RRC_PDU_IND* ToSS);
+const char* adbgUtilsNrDrbNR_MAC_ControlElementDL_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_MAC_ControlElementUL_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_MAC_PDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_RLC_UMD_PDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_RLC_AMD_PDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_RLC_AM_StatusPDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_RLC_PDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_PDCP_PDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbSDAP_PDU_TypeToStr(int select);
+
+const char* adbgUtilsNrDrbNR_L2DataList_TypeToStr(int select);
 
 SIDL_END_C_INTERFACE

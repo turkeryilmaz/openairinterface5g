@@ -27,16 +27,32 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void acpDrbProcessFromSSInitClt(acpCtx_t _ctx, struct DRB_COMMON_REQ** FromSS);
+
 int acpDrbProcessFromSSEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct DRB_COMMON_REQ* FromSS);
 
 int acpDrbProcessFromSSDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct DRB_COMMON_REQ** FromSS);
 
+void acpDrbProcessFromSSFree0Srv(struct DRB_COMMON_REQ* FromSS);
+
 void acpDrbProcessFromSSFreeSrv(struct DRB_COMMON_REQ* FromSS);
+
+void acpDrbProcessFromSSFree0CltSrv(struct DRB_COMMON_REQ* FromSS);
+
+void acpDrbProcessFromSSFreeCltSrv(struct DRB_COMMON_REQ* FromSS);
+
+void acpDrbProcessToSSInitSrv(acpCtx_t _ctx, struct DRB_COMMON_IND** ToSS);
 
 int acpDrbProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct DRB_COMMON_IND* ToSS);
 
 int acpDrbProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct DRB_COMMON_IND** ToSS);
 
+void acpDrbProcessToSSFree0Clt(struct DRB_COMMON_IND* ToSS);
+
 void acpDrbProcessToSSFreeClt(struct DRB_COMMON_IND* ToSS);
+
+void acpDrbProcessToSSFree0SrvClt(struct DRB_COMMON_IND* ToSS);
+
+void acpDrbProcessToSSFreeSrvClt(struct DRB_COMMON_IND* ToSS);
 
 SIDL_END_C_INTERFACE

@@ -10065,6 +10065,532 @@ typedef uint8_t ASN_NAME(UE_EUTRA_Capability_v1450_IEs, ue_CategoryDL_v1450); //
 
 typedef uint8_t ASN_NAME(UE_EUTRA_Capability_v1460_IEs, ue_CategoryDL_v1460); // OF (21)
 
+struct ASN_NAME(PhyLayerParameters) {
+	bool ue_TxAntennaSelectionSupported;
+	bool ue_SpecificRefSigsSupported;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm450),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm480),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm710),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm750),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm810),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm850),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm900P),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm900E),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm900R),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm1800),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), gsm1900),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), spare5),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), spare4),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), spare3),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), spare2),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), spare1)
+} ASN_ENUM(ASN_NAME(SupportedBandGERAN));
+
+typedef SIDL_DYNAMIC(ASN_ENUM(ASN_NAME(SupportedBandGERAN)), ASN_NAME(SupportedBandListGERAN)); // SIZE (1..64)
+
+struct ASN_NAME(IRAT_ParametersGERAN) {
+	ASN_NAME(SupportedBandListGERAN) supportedBandListGERAN;
+	bool interRAT_PS_HO_ToGERAN;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v920, e_RedirectionUTRA_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v920, e_RedirectionUTRA_r9));
+
+struct ASN_NAME(IRAT_ParametersUTRA_v920) {
+	ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v920, e_RedirectionUTRA_r9)) e_RedirectionUTRA_r9;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920, e_CSFB_1XRTT_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920, e_CSFB_1XRTT_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920, e_CSFB_ConcPS_Mob1XRTT_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920, e_CSFB_ConcPS_Mob1XRTT_r9));
+
+struct ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920) {
+	ASN_ENUM(ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920, e_CSFB_1XRTT_r9)) e_CSFB_1XRTT_r9;
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920, e_CSFB_ConcPS_Mob1XRTT_r9)), e_CSFB_ConcPS_Mob1XRTT_r9);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, intraFreqSI_AcquisitionForHO_r9)), supported)
+} ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, intraFreqSI_AcquisitionForHO_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, interFreqSI_AcquisitionForHO_r9)), supported)
+} ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, interFreqSI_AcquisitionForHO_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, utran_SI_AcquisitionForHO_r9)), supported)
+} ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, utran_SI_AcquisitionForHO_r9));
+
+struct ASN_NAME(NeighCellSI_AcquisitionParameters_r9) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, intraFreqSI_AcquisitionForHO_r9)), intraFreqSI_AcquisitionForHO_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, interFreqSI_AcquisitionForHO_r9)), interFreqSI_AcquisitionForHO_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(NeighCellSI_AcquisitionParameters_r9, utran_SI_AcquisitionForHO_r9)), utran_SI_AcquisitionForHO_r9);
+};
+
+struct ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), ASN_NAME(PhyLayerParameters), phyLayerParameters_r9);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), B32, featureGroupIndicators_r9); // SIZE (32)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), B32, featureGroupIndRel9Add_r9); // SIZE (32)
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), ASN_NAME(IRAT_ParametersGERAN), interRAT_ParametersGERAN_r9);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), ASN_NAME(IRAT_ParametersUTRA_v920), interRAT_ParametersUTRA_r9);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), ASN_NAME(IRAT_ParametersCDMA2000_1XRTT_v920), interRAT_ParametersCDMA2000_r9);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), ASN_NAME(NeighCellSI_AcquisitionParameters_r9), neighCellSI_AcquisitionParameters_r9);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, voiceOverPS_HS_UTRA_FDD_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, voiceOverPS_HS_UTRA_FDD_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, voiceOverPS_HS_UTRA_TDD128_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, voiceOverPS_HS_UTRA_TDD128_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_FDD_ToUTRA_FDD_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_FDD_ToUTRA_FDD_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_FDD_ToGERAN_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_FDD_ToGERAN_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_TDD128_ToGERAN_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_TDD128_ToGERAN_r9));
+
+struct ASN_NAME(IRAT_ParametersUTRA_v9c0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, voiceOverPS_HS_UTRA_FDD_r9)), voiceOverPS_HS_UTRA_FDD_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, voiceOverPS_HS_UTRA_TDD128_r9)), voiceOverPS_HS_UTRA_TDD128_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_FDD_ToUTRA_FDD_r9)), srvcc_FromUTRA_FDD_ToUTRA_FDD_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_FDD_ToGERAN_r9)), srvcc_FromUTRA_FDD_ToGERAN_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9)), srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9c0, srvcc_FromUTRA_TDD128_ToGERAN_r9)), srvcc_FromUTRA_TDD128_ToGERAN_r9);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v9d0, tm5_FDD_r9)), supported)
+} ASN_ENUM(ASN_NAME(PhyLayerParameters_v9d0, tm5_FDD_r9));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v9d0, tm5_TDD_r9)), supported)
+} ASN_ENUM(ASN_NAME(PhyLayerParameters_v9d0, tm5_TDD_r9));
+
+struct ASN_NAME(PhyLayerParameters_v9d0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v9d0, tm5_FDD_r9)), tm5_FDD_r9);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v9d0, tm5_TDD_r9)), tm5_TDD_r9);
+};
+
+typedef uint16_t ASN_NAME(FreqBandIndicator_v9e0); // OF (65..256)
+
+struct ASN_NAME(SupportedBandEUTRA_v9e0) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(SupportedBandEUTRA_v9e0), ASN_NAME(FreqBandIndicator_v9e0), bandEUTRA_v9e0);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(SupportedBandEUTRA_v9e0), ASN_NAME(SupportedBandListEUTRA_v9e0)); // SIZE (1..64)
+
+struct ASN_NAME(RF_Parameters_v9e0) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v9e0), ASN_NAME(SupportedBandListEUTRA_v9e0), supportedBandListEUTRA_v9e0);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9h0, mfbi_UTRA_r9)), supported)
+} ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9h0, mfbi_UTRA_r9));
+
+struct ASN_NAME(IRAT_ParametersUTRA_v9h0) {
+	ASN_ENUM(ASN_NAME(IRAT_ParametersUTRA_v9h0, mfbi_UTRA_r9)) mfbi_UTRA_r9;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(OTDOA_PositioningCapabilities_r10, otdoa_UE_Assisted_r10)), supported)
+} ASN_ENUM(ASN_NAME(OTDOA_PositioningCapabilities_r10, otdoa_UE_Assisted_r10));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(OTDOA_PositioningCapabilities_r10, interFreqRSTD_Measurement_r10)), supported)
+} ASN_ENUM(ASN_NAME(OTDOA_PositioningCapabilities_r10, interFreqRSTD_Measurement_r10));
+
+struct ASN_NAME(OTDOA_PositioningCapabilities_r10) {
+	ASN_ENUM(ASN_NAME(OTDOA_PositioningCapabilities_r10, otdoa_UE_Assisted_r10)) otdoa_UE_Assisted_r10;
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(OTDOA_PositioningCapabilities_r10, interFreqRSTD_Measurement_r10)), interFreqRSTD_Measurement_r10);
+};
+
+struct ASN_NAME(RF_Parameters_v10f0) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v10f0), B32, modifiedMPR_Behavior_r10); // SIZE (32)
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CA_MIMO_ParametersDL_v10i0, fourLayerTM3_TM4_r10)), supported)
+} ASN_ENUM(ASN_NAME(CA_MIMO_ParametersDL_v10i0, fourLayerTM3_TM4_r10));
+
+struct ASN_NAME(CA_MIMO_ParametersDL_v10i0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(CA_MIMO_ParametersDL_v10i0, fourLayerTM3_TM4_r10)), fourLayerTM3_TM4_r10);
+};
+
+struct ASN_NAME(BandParameters_v10i0) {
+	SIDL_DYNAMIC_OF_STRUCT_WITH_PFX(ASN_NAME(BandParameters_v10i0), ASN_NAME(CA_MIMO_ParametersDL_v10i0), bandParametersDL_v10i0); // SIZE (1..16)
+};
+
+struct ASN_NAME(BandCombinationParameters_v10i0) {
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(BandCombinationParameters_v10i0), ASN_NAME(BandParameters_v10i0), bandParameterList_v10i0); // SIZE (1..64)
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v10i0), ASN_NAME(SupportedBandCombination_v10i0)); // SIZE (1..128)
+
+struct ASN_NAME(RF_Parameters_v10i0) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v10i0), ASN_NAME(SupportedBandCombination_v10i0), supportedBandCombination_v10i0);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v10i0), ASN_NAME(SupportedBandCombinationAdd_v11d0)); // SIZE (1..256)
+
+struct ASN_NAME(RF_Parameters_v11d0) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v11d0), ASN_NAME(SupportedBandCombinationAdd_v11d0), supportedBandCombinationAdd_v11d0);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(Other_Parameters_v11d0, inDeviceCoexInd_UL_CA_r11)), supported)
+} ASN_ENUM(ASN_NAME(Other_Parameters_v11d0, inDeviceCoexInd_UL_CA_r11));
+
+struct ASN_NAME(Other_Parameters_v11d0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(Other_Parameters_v11d0, inDeviceCoexInd_UL_CA_r11)), inDeviceCoexInd_UL_CA_r11);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(RF_Parameters_v12b0, maxLayersMIMO_Indication_r12)), supported)
+} ASN_ENUM(ASN_NAME(RF_Parameters_v12b0, maxLayersMIMO_Indication_r12));
+
+struct ASN_NAME(RF_Parameters_v12b0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(RF_Parameters_v12b0, maxLayersMIMO_Indication_r12)), maxLayersMIMO_Indication_r12);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CE_Parameters_v1370, tm9_CE_ModeA_r13)), supported)
+} ASN_ENUM(ASN_NAME(CE_Parameters_v1370, tm9_CE_ModeA_r13));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CE_Parameters_v1370, tm9_CE_ModeB_r13)), supported)
+} ASN_ENUM(ASN_NAME(CE_Parameters_v1370, tm9_CE_ModeB_r13));
+
+struct ASN_NAME(CE_Parameters_v1370) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(CE_Parameters_v1370, tm9_CE_ModeA_r13)), tm9_CE_ModeA_r13);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(CE_Parameters_v1370, tm9_CE_ModeB_r13)), tm9_CE_ModeB_r13);
+};
+
+struct ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1370) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1370), ASN_NAME(CE_Parameters_v1370), ce_Parameters_v1370);
+};
+
+struct ASN_NAME(BandParameters_v1380) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(BandParameters_v1380), uint8_t, txAntennaSwitchDL_r13); // OF (1..32)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(BandParameters_v1380), uint8_t, txAntennaSwitchUL_r13); // OF (1..32)
+};
+
+struct ASN_NAME(BandCombinationParameters_v1380) {
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(BandCombinationParameters_v1380), ASN_NAME(BandParameters_v1380), bandParameterList_v1380); // SIZE (1..64)
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1380), ASN_NAME(SupportedBandCombination_v1380)); // SIZE (1..128)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1380), ASN_NAME(SupportedBandCombinationAdd_v1380)); // SIZE (1..256)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1380), ASN_NAME(SupportedBandCombinationReduced_v1380)); // SIZE (1..384)
+
+struct ASN_NAME(RF_Parameters_v1380) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1380), ASN_NAME(SupportedBandCombination_v1380), supportedBandCombination_v1380);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1380), ASN_NAME(SupportedBandCombinationAdd_v1380), supportedBandCombinationAdd_v1380);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1380), ASN_NAME(SupportedBandCombinationReduced_v1380), supportedBandCombinationReduced_v1380);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(CE_Parameters_v1380, tm6_CE_ModeA_r13)), supported)
+} ASN_ENUM(ASN_NAME(CE_Parameters_v1380, tm6_CE_ModeA_r13));
+
+struct ASN_NAME(CE_Parameters_v1380) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(CE_Parameters_v1380, tm6_CE_ModeA_r13)), tm6_CE_ModeA_r13);
+};
+
+struct ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1380) {
+	struct ASN_NAME(CE_Parameters_v1380) ce_Parameters_v1380;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(BandCombinationParameters_v1390, ue_CA_PowerClass_N_r13)), class2)
+} ASN_ENUM(ASN_NAME(BandCombinationParameters_v1390, ue_CA_PowerClass_N_r13));
+
+struct ASN_NAME(BandCombinationParameters_v1390) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(BandCombinationParameters_v1390, ue_CA_PowerClass_N_r13)), ue_CA_PowerClass_N_r13);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1390), ASN_NAME(SupportedBandCombination_v1390)); // SIZE (1..128)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1390), ASN_NAME(SupportedBandCombinationAdd_v1390)); // SIZE (1..256)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1390), ASN_NAME(SupportedBandCombinationReduced_v1390)); // SIZE (1..384)
+
+struct ASN_NAME(RF_Parameters_v1390) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1390), ASN_NAME(SupportedBandCombination_v1390), supportedBandCombination_v1390);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1390), ASN_NAME(SupportedBandCombinationAdd_v1390), supportedBandCombinationAdd_v1390);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1390), ASN_NAME(SupportedBandCombinationReduced_v1390), supportedBandCombinationReduced_v1390);
+};
+
+SIDL_UNION_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14)) {
+	ASN_ENUM_VAL(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14), UNBOUND_VALUE),
+	ASN_ENUM_VAL(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14), implicitValue),
+	ASN_ENUM_VAL(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14), explicitValue)
+};
+SIDL_UNION_BEGIN(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14)) {
+	SIDL_UNION_CASE(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14)_implicitValue)
+		Null implicitValue;
+	SIDL_UNION_CASE(ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14)_explicitValue)
+		uint8_t explicitValue; // OF (2..20)
+} SIDL_UNION_END;
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor1dot25_r14)), n3),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor1dot25_r14)), n6),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor1dot25_r14)), n9),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor1dot25_r14)), n12)
+} ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor1dot25_r14));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor7dot5_r14)), n1),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor7dot5_r14)), n2),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor7dot5_r14)), n3),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor7dot5_r14)), n4)
+} ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor7dot5_r14));
+
+struct ASN_NAME(MBMS_Parameters_v1470) {
+	struct ASN_NAME(MBMS_Parameters_v1470, mbms_MaxBW_r14) mbms_MaxBW_r14;
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor1dot25_r14)), mbms_ScalingFactor1dot25_r14);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(MBMS_Parameters_v1470, mbms_ScalingFactor7dot5_r14)), mbms_ScalingFactor7dot5_r14);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n8),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n12),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n16),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n20),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n24),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n28)
+} ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14));
+
+struct ASN_NAME(MIMO_UE_ParametersPerTM_v1470) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(MIMO_UE_ParametersPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), csi_ReportingAdvancedMaxPorts_r14);
+};
+
+struct ASN_NAME(MIMO_UE_Parameters_v1470) {
+	struct ASN_NAME(MIMO_UE_ParametersPerTM_v1470) parametersTM9_v1470;
+	struct ASN_NAME(MIMO_UE_ParametersPerTM_v1470) parametersTM10_v1470;
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v1470, srs_UpPTS_6sym_r14)), supported)
+} ASN_ENUM(ASN_NAME(PhyLayerParameters_v1470, srs_UpPTS_6sym_r14));
+
+struct ASN_NAME(PhyLayerParameters_v1470) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(PhyLayerParameters_v1470), ASN_NAME(MIMO_UE_Parameters_v1470), mimo_UE_Parameters_v1470);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v1470, srs_UpPTS_6sym_r14)), srs_UpPTS_6sym_r14);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n8),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n12),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n16),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n20),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n24),
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), n28)
+} ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14));
+
+struct ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470, csi_ReportingAdvancedMaxPorts_r14)), csi_ReportingAdvancedMaxPorts_r14);
+};
+
+struct ASN_NAME(MIMO_CA_ParametersPerBoBC_v1470) {
+	struct ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470) parametersTM9_v1470;
+	struct ASN_NAME(MIMO_CA_ParametersPerBoBCPerTM_v1470) parametersTM10_v1470;
+};
+
+struct ASN_NAME(BandParameters_v1470) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(BandParameters_v1470), ASN_NAME(MIMO_CA_ParametersPerBoBC_v1470), bandParametersDL_v1470);
+};
+
+struct ASN_NAME(BandCombinationParameters_v1470) {
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(BandCombinationParameters_v1470), ASN_NAME(BandParameters_v1470), bandParameterList_v1470); // SIZE (1..64)
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(BandCombinationParameters_v1470), uint8_t, srs_MaxSimultaneousCCs_r14); // OF (1..31)
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1470), ASN_NAME(SupportedBandCombination_v1470)); // SIZE (1..128)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1470), ASN_NAME(SupportedBandCombinationAdd_v1470)); // SIZE (1..256)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v1470), ASN_NAME(SupportedBandCombinationReduced_v1470)); // SIZE (1..384)
+
+struct ASN_NAME(RF_Parameters_v1470) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1470), ASN_NAME(SupportedBandCombination_v1470), supportedBandCombination_v1470);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1470), ASN_NAME(SupportedBandCombinationAdd_v1470), supportedBandCombinationAdd_v1470);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v1470), ASN_NAME(SupportedBandCombinationReduced_v1470), supportedBandCombinationReduced_v1470);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v14a0, ssp10_TDD_Only_r14)), supported)
+} ASN_ENUM(ASN_NAME(PhyLayerParameters_v14a0, ssp10_TDD_Only_r14));
+
+struct ASN_NAME(PhyLayerParameters_v14a0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(PhyLayerParameters_v14a0, ssp10_TDD_Only_r14)), ssp10_TDD_Only_r14);
+};
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SRS_CapabilityPerBandPair_v14b0, srs_FlexibleTiming_r14)), supported)
+} ASN_ENUM(ASN_NAME(SRS_CapabilityPerBandPair_v14b0, srs_FlexibleTiming_r14));
+
+typedef enum {
+	ASN_ENUM_VAL(ASN_ENUM(ASN_NAME(SRS_CapabilityPerBandPair_v14b0, srs_HARQ_ReferenceConfig_r14)), supported)
+} ASN_ENUM(ASN_NAME(SRS_CapabilityPerBandPair_v14b0, srs_HARQ_ReferenceConfig_r14));
+
+struct ASN_NAME(SRS_CapabilityPerBandPair_v14b0) {
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(SRS_CapabilityPerBandPair_v14b0, srs_FlexibleTiming_r14)), srs_FlexibleTiming_r14);
+	SIDL_OPTIONAL(ASN_ENUM(ASN_NAME(SRS_CapabilityPerBandPair_v14b0, srs_HARQ_ReferenceConfig_r14)), srs_HARQ_ReferenceConfig_r14);
+};
+
+struct ASN_NAME(BandParameters_v14b0) {
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(BandParameters_v14b0), ASN_NAME(SRS_CapabilityPerBandPair_v14b0), srs_CapabilityPerBandPairList_v14b0); // SIZE (1..64)
+};
+
+struct ASN_NAME(BandCombinationParameters_v14b0) {
+	SIDL_DYNAMIC_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(BandCombinationParameters_v14b0), ASN_NAME(BandParameters_v14b0), bandParameterList_v14b0); // SIZE (1..64)
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v14b0), ASN_NAME(SupportedBandCombination_v14b0)); // SIZE (1..128)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v14b0), ASN_NAME(SupportedBandCombinationAdd_v14b0)); // SIZE (1..256)
+
+typedef SIDL_DYNAMIC_OF_STRUCT(ASN_NAME(BandCombinationParameters_v14b0), ASN_NAME(SupportedBandCombinationReduced_v14b0)); // SIZE (1..384)
+
+struct ASN_NAME(RF_Parameters_v14b0) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v14b0), ASN_NAME(SupportedBandCombination_v14b0), supportedBandCombination_v14b0);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v14b0), ASN_NAME(SupportedBandCombinationAdd_v14b0), supportedBandCombinationAdd_v14b0);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(RF_Parameters_v14b0), ASN_NAME(SupportedBandCombinationReduced_v14b0), supportedBandCombinationReduced_v14b0);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v14b0_IEs, nonCriticalExtension) {
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v14b0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v14b0_IEs), ASN_NAME(RF_Parameters_v14b0), rf_Parameters_v14b0);
+	SIDL_OPTIONAL_OF_STRUCT(ASN_NAME(UE_EUTRA_Capability_v14b0_IEs, nonCriticalExtension), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v14a0_IEs) {
+	struct ASN_NAME(PhyLayerParameters_v14a0) phyLayerParameters_v14a0;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v14a0_IEs), ASN_NAME(UE_EUTRA_Capability_v14b0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v1470_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1470_IEs), ASN_NAME(MBMS_Parameters_v1470), mbms_Parameters_v1470);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1470_IEs), ASN_NAME(PhyLayerParameters_v1470), phyLayerParameters_v1470);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1470_IEs), ASN_NAME(RF_Parameters_v1470), rf_Parameters_v1470);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1470_IEs), ASN_NAME(UE_EUTRA_Capability_v14a0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v13e0a_IEs) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v13e0a_IEs), OCTET_STRING, lateNonCriticalExtension); // CONTAINING (ASN_NAME(UE_EUTRA_Capability_v13e0b_IEs))
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v13e0a_IEs), ASN_NAME(UE_EUTRA_Capability_v1470_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v1390_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1390_IEs), ASN_NAME(RF_Parameters_v1390), rf_Parameters_v1390);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1390_IEs), ASN_NAME(UE_EUTRA_Capability_v13e0a_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v1380_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1380_IEs), ASN_NAME(RF_Parameters_v1380), rf_Parameters_v1380);
+	struct ASN_NAME(CE_Parameters_v1380) ce_Parameters_v1380;
+	struct ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1380) fdd_Add_UE_EUTRA_Capabilities_v1380;
+	struct ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1380) tdd_Add_UE_EUTRA_Capabilities_v1380;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1380_IEs), ASN_NAME(UE_EUTRA_Capability_v1390_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v1370_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1370_IEs), ASN_NAME(CE_Parameters_v1370), ce_Parameters_v1370);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1370_IEs), ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1370), fdd_Add_UE_EUTRA_Capabilities_v1370);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1370_IEs), ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_v1370), tdd_Add_UE_EUTRA_Capabilities_v1370);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v1370_IEs), ASN_NAME(UE_EUTRA_Capability_v1380_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v12x0_IEs) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v12x0_IEs), OCTET_STRING, lateNonCriticalExtension);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v12x0_IEs), ASN_NAME(UE_EUTRA_Capability_v1370_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v12b0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v12b0_IEs), ASN_NAME(RF_Parameters_v12b0), rf_Parameters_v12b0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v12b0_IEs), ASN_NAME(UE_EUTRA_Capability_v12x0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v11x0_IEs) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v11x0_IEs), OCTET_STRING, lateNonCriticalExtension);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v11x0_IEs), ASN_NAME(UE_EUTRA_Capability_v12b0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v11d0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v11d0_IEs), ASN_NAME(RF_Parameters_v11d0), rf_Parameters_v11d0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v11d0_IEs), ASN_NAME(Other_Parameters_v11d0), otherParameters_v11d0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v11d0_IEs), ASN_NAME(UE_EUTRA_Capability_v11x0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v10i0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10i0_IEs), ASN_NAME(RF_Parameters_v10i0), rf_Parameters_v10i0);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10i0_IEs), OCTET_STRING, lateNonCriticalExtension); // CONTAINING (ASN_NAME(UE_EUTRA_Capability_v10j0_IEs))
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10i0_IEs), ASN_NAME(UE_EUTRA_Capability_v11d0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v10f0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10f0_IEs), ASN_NAME(RF_Parameters_v10f0), rf_Parameters_v10f0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10f0_IEs), ASN_NAME(UE_EUTRA_Capability_v10i0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v10c0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10c0_IEs), ASN_NAME(OTDOA_PositioningCapabilities_r10), otdoa_PositioningCapabilities_r10);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v10c0_IEs), ASN_NAME(UE_EUTRA_Capability_v10f0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v9h0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9h0_IEs), ASN_NAME(IRAT_ParametersUTRA_v9h0), interRAT_ParametersUTRA_v9h0);
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9h0_IEs), OCTET_STRING, lateNonCriticalExtension);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9h0_IEs), ASN_NAME(UE_EUTRA_Capability_v10c0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v9e0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9e0_IEs), ASN_NAME(RF_Parameters_v9e0), rf_Parameters_v9e0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9e0_IEs), ASN_NAME(UE_EUTRA_Capability_v9h0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v9d0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9d0_IEs), ASN_NAME(PhyLayerParameters_v9d0), phyLayerParameters_v9d0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9d0_IEs), ASN_NAME(UE_EUTRA_Capability_v9e0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v9c0_IEs) {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9c0_IEs), ASN_NAME(IRAT_ParametersUTRA_v9c0), interRAT_ParametersUTRA_v9c0);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9c0_IEs), ASN_NAME(UE_EUTRA_Capability_v9d0_IEs), nonCriticalExtension);
+};
+
+struct ASN_NAME(UE_EUTRA_Capability_v9a0_IEs) {
+	SIDL_OPTIONAL_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9a0_IEs), B32, featureGroupIndRel9Add_r9); // SIZE (32)
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9a0_IEs), ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), fdd_Add_UE_EUTRA_Capabilities_r9);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9a0_IEs), ASN_NAME(UE_EUTRA_CapabilityAddXDD_Mode_r9), tdd_Add_UE_EUTRA_Capabilities_r9);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(ASN_NAME(UE_EUTRA_Capability_v9a0_IEs), ASN_NAME(UE_EUTRA_Capability_v9c0_IEs), nonCriticalExtension);
+};
+
 typedef uint8_t ASN_NAME(UE_EUTRA_Capability, ue_Category); // OF (1..5)
 
 typedef uint8_t ASN_NAME(UE_RadioPagingInfo_r12, ue_Category_v1250); // OF (0)

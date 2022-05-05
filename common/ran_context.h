@@ -60,6 +60,8 @@ typedef struct RBConfig_s {
 }RBConfig;
 
 typedef struct {
+  /// Mode of eNB operation 0: Normal eNB operation 1: SS mode
+  uint8_t mode;
   /// RAN context config file name
   char *config_file_name;
   /// Number of RRC instances in this node

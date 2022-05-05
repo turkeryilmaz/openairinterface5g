@@ -25,6 +25,18 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serTestHelloFromSSInitClt(unsigned char* _arena, size_t _aSize, char** StrArray, size_t StrQty)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	if (StrQty) {
+		*StrArray = (char*)serMalloc(_mem, StrQty * sizeof(char));
+		memset(*StrArray, 0, StrQty * sizeof(char));
+	} else {
+		*StrArray = NULL;
+	}
+}
+
 int serTestHelloFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, size_t StrQty, const char* StrArray)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -47,7 +59,7 @@ int serTestHelloFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigne
 	size_t* _lidx = &__lidx;
 
 	NTOH_32(*StrQty, &_buffer[*_lidx], _lidx);
-	*StrArray = serMalloc(_mem, *StrQty * sizeof(char));
+	*StrArray = (char*)serMalloc(_mem, *StrQty * sizeof(char));
 	for (size_t i1 = 0; i1 < *StrQty; i1++) {
 		NTOH_8((*StrArray)[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -55,10 +67,28 @@ int serTestHelloFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigne
 	return SIDL_STATUS_OK;
 }
 
+void serTestHelloFromSSFree0Srv(char* StrArray)
+{
+	if (StrArray) {
+	}
+}
+
 void serTestHelloFromSSFreeSrv(char* StrArray)
 {
 	if (StrArray) {
 		serFree(StrArray);
+	}
+}
+
+void serTestHelloToSSInitSrv(unsigned char* _arena, size_t _aSize, char** StrArray, size_t StrQty)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	if (StrQty) {
+		*StrArray = (char*)serMalloc(_mem, StrQty * sizeof(char));
+		memset(*StrArray, 0, StrQty * sizeof(char));
+	} else {
+		*StrArray = NULL;
 	}
 }
 
@@ -84,12 +114,18 @@ int serTestHelloToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned 
 	size_t* _lidx = &__lidx;
 
 	NTOH_32(*StrQty, &_buffer[*_lidx], _lidx);
-	*StrArray = serMalloc(_mem, *StrQty * sizeof(char));
+	*StrArray = (char*)serMalloc(_mem, *StrQty * sizeof(char));
 	for (size_t i1 = 0; i1 < *StrQty; i1++) {
 		NTOH_8((*StrArray)[i1], &_buffer[*_lidx], _lidx);
 	}
 
 	return SIDL_STATUS_OK;
+}
+
+void serTestHelloToSSFree0Clt(char* StrArray)
+{
+	if (StrArray) {
+	}
 }
 
 void serTestHelloToSSFreeClt(char* StrArray)
@@ -139,6 +175,14 @@ int serTestPingDecClt(const unsigned char* _buffer, size_t _size, uint32_t* ToSS
 	NTOH_32(*ToSS, &_buffer[*_lidx], _lidx);
 
 	return SIDL_STATUS_OK;
+}
+
+void serTestEchoInitClt(unsigned char* _arena, size_t _aSize, struct EchoData** FromSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*FromSS = (struct EchoData*)serMalloc(_mem, sizeof(struct EchoData));
+	memset(*FromSS, 0, sizeof(struct EchoData));
 }
 
 static int _serTestEncEmpty(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Empty* p)
@@ -198,11 +242,11 @@ static int _serTestDecEchoData(const unsigned char* _buffer, size_t _size, size_
 		*_lidx += _tmpLen;
 	}
 	NTOH_32(p->emptyQty, &_buffer[*_lidx], _lidx);
-	p->emptyArray = serMalloc(_mem, p->emptyQty * sizeof(struct Empty));
+	p->emptyArray = (struct Empty*)serMalloc(_mem, p->emptyQty * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < p->emptyQty; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, &p->emptyArray[i1]);
 	}
-	p->eee = serMalloc(_mem, sizeof(struct Empty));
+	p->eee = (struct Empty*)serMalloc(_mem, sizeof(struct Empty));
 	_serTestDecEmpty(_buffer, _size, _lidx, p->eee);
 	_serTestDecEmpty(_buffer, _size, _lidx, &p->sss);
 
@@ -218,7 +262,7 @@ int serTestEchoDecSrv(const unsigned char* _buffer, size_t _size, unsigned char*
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*FromSS = serMalloc(_mem, sizeof(struct EchoData));
+	*FromSS = (struct EchoData*)serMalloc(_mem, sizeof(struct EchoData));
 	_serTestDecEchoData(_buffer, _size, _lidx, _mem, *FromSS);
 
 	return SIDL_STATUS_OK;
@@ -236,12 +280,27 @@ static void _serTestFreeEchoData(struct EchoData* p)
 	}
 }
 
+void serTestEchoFree0Srv(struct EchoData* FromSS)
+{
+	if (FromSS) {
+		_serTestFreeEchoData(FromSS);
+	}
+}
+
 void serTestEchoFreeSrv(struct EchoData* FromSS)
 {
 	if (FromSS) {
 		_serTestFreeEchoData(FromSS);
 		serFree(FromSS);
 	}
+}
+
+void serTestEchoInitSrv(unsigned char* _arena, size_t _aSize, struct EchoData** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct EchoData*)serMalloc(_mem, sizeof(struct EchoData));
+	memset(*ToSS, 0, sizeof(struct EchoData));
 }
 
 int serTestEchoEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EchoData* ToSS)
@@ -262,10 +321,17 @@ int serTestEchoDecClt(const unsigned char* _buffer, size_t _size, unsigned char*
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*ToSS = serMalloc(_mem, sizeof(struct EchoData));
+	*ToSS = (struct EchoData*)serMalloc(_mem, sizeof(struct EchoData));
 	_serTestDecEchoData(_buffer, _size, _lidx, _mem, *ToSS);
 
 	return SIDL_STATUS_OK;
+}
+
+void serTestEchoFree0Clt(struct EchoData* ToSS)
+{
+	if (ToSS) {
+		_serTestFreeEchoData(ToSS);
+	}
 }
 
 void serTestEchoFreeClt(struct EchoData* ToSS)
@@ -274,6 +340,14 @@ void serTestEchoFreeClt(struct EchoData* ToSS)
 		_serTestFreeEchoData(ToSS);
 		serFree(ToSS);
 	}
+}
+
+void serTestTest1InitClt(unsigned char* _arena, size_t _aSize, struct Output** out)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*out = (struct Output*)serMalloc(_mem, sizeof(struct Output));
+	memset(*out, 0, sizeof(struct Output));
 }
 
 static int _serTestEncChar_Foo_DynamicOptional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct char_Foo_DynamicOptional* p)
@@ -353,7 +427,7 @@ static int _serTestDecChar_Foo_DynamicOptional(const unsigned char* _buffer, siz
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(char));
+	p->v.v = (char*)serMalloc(_mem, p->v.d * sizeof(char));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -393,17 +467,17 @@ static int _serTestDecOutput(const unsigned char* _buffer, size_t _size, size_t*
 	_serTestDecChar_Koo_ArrayOptional(_buffer, _size, _lidx, &p->Koo);
 	_serTestDecInt_Bar_Optional(_buffer, _size, _lidx, &p->Bar);
 	NTOH_32(p->Zoo.d, &_buffer[*_lidx], _lidx);
-	p->Zoo.v = serMalloc(_mem, p->Zoo.d * sizeof(char));
+	p->Zoo.v = (char*)serMalloc(_mem, p->Zoo.d * sizeof(char));
 	for (size_t i1 = 0; i1 < p->Zoo.d; i1++) {
 		NTOH_8(p->Zoo.v[i1], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->ZQty, &_buffer[*_lidx], _lidx);
-	p->ZArray = serMalloc(_mem, p->ZQty * sizeof(char));
+	p->ZArray = (char*)serMalloc(_mem, p->ZQty * sizeof(char));
 	for (size_t i1 = 0; i1 < p->ZQty; i1++) {
 		NTOH_8(p->ZArray[i1], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->Far.d, &_buffer[*_lidx], _lidx);
-	p->Far.v = serMalloc(_mem, p->Far.d * sizeof(struct Empty));
+	p->Far.v = (struct Empty*)serMalloc(_mem, p->Far.d * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < p->Far.d; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, &p->Far.v[i1]);
 	}
@@ -420,7 +494,7 @@ int serTestTest1DecSrv(const unsigned char* _buffer, size_t _size, unsigned char
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*out = serMalloc(_mem, sizeof(struct Output));
+	*out = (struct Output*)serMalloc(_mem, sizeof(struct Output));
 	_serTestDecOutput(_buffer, _size, _lidx, _mem, *out);
 
 	return SIDL_STATUS_OK;
@@ -450,12 +524,27 @@ static void _serTestFreeOutput(struct Output* p)
 	}
 }
 
+void serTestTest1Free0Srv(struct Output* out)
+{
+	if (out) {
+		_serTestFreeOutput(out);
+	}
+}
+
 void serTestTest1FreeSrv(struct Output* out)
 {
 	if (out) {
 		_serTestFreeOutput(out);
 		serFree(out);
 	}
+}
+
+void serTestTest2InitSrv(unsigned char* _arena, size_t _aSize, struct Output** out)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*out = (struct Output*)serMalloc(_mem, sizeof(struct Output));
+	memset(*out, 0, sizeof(struct Output));
 }
 
 int serTestTest2EncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Output* out)
@@ -476,10 +565,17 @@ int serTestTest2DecClt(const unsigned char* _buffer, size_t _size, unsigned char
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*out = serMalloc(_mem, sizeof(struct Output));
+	*out = (struct Output*)serMalloc(_mem, sizeof(struct Output));
 	_serTestDecOutput(_buffer, _size, _lidx, _mem, *out);
 
 	return SIDL_STATUS_OK;
+}
+
+void serTestTest2Free0Clt(struct Output* out)
+{
+	if (out) {
+		_serTestFreeOutput(out);
+	}
 }
 
 void serTestTest2FreeClt(struct Output* out)
@@ -488,6 +584,31 @@ void serTestTest2FreeClt(struct Output* out)
 		_serTestFreeOutput(out);
 		serFree(out);
 	}
+}
+
+void serTestOtherInitClt(unsigned char* _arena, size_t _aSize, struct Empty** in1, char** in3Array, size_t in3Qty, char** in4, struct Empty** in9Array, size_t in9Qty, struct Empty2** in10, struct New** in11)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*in1 = (struct Empty*)serMalloc(_mem, sizeof(struct Empty));
+	memset(*in1, 0, sizeof(struct Empty));
+	if (in3Qty) {
+		*in3Array = (char*)serMalloc(_mem, in3Qty * sizeof(char));
+		memset(*in3Array, 0, in3Qty * sizeof(char));
+	} else {
+		*in3Array = NULL;
+	}
+	*in4 = NULL;
+	if (in9Qty) {
+		*in9Array = (struct Empty*)serMalloc(_mem, in9Qty * sizeof(struct Empty));
+		memset(*in9Array, 0, in9Qty * sizeof(struct Empty));
+	} else {
+		*in9Array = NULL;
+	}
+	*in10 = (struct Empty2*)serMalloc(_mem, sizeof(struct Empty2));
+	memset(*in10, 0, sizeof(struct Empty2));
+	*in11 = (struct New*)serMalloc(_mem, sizeof(struct New));
+	memset(*in11, 0, sizeof(struct New));
 }
 
 static int _serTestEncComplex(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Complex* p)
@@ -1021,7 +1142,7 @@ static int _serTestDecEmpty_dynamic_optional_struct_1_DynamicOptional(const unsi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct Empty));
+	p->v.v = (struct Empty*)serMalloc(_mem, p->v.d * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -1036,7 +1157,7 @@ static int _serTestDecEmpty_dynamic_optional_struct_2_DynamicOptional(const unsi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct Empty));
+	p->v.v = (struct Empty*)serMalloc(_mem, p->v.d * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -1051,7 +1172,7 @@ static int _serTestDecInt_dynamic_optional_int_1_DynamicOptional(const unsigned 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(int));
+	p->v.v = (int*)serMalloc(_mem, p->v.d * sizeof(int));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_32(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1066,7 +1187,7 @@ static int _serTestDecInt_dynamic_optional_int_2_DynamicOptional(const unsigned 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(int));
+	p->v.v = (int*)serMalloc(_mem, p->v.d * sizeof(int));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_32(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1129,7 +1250,7 @@ static int _serTestDecTestUnion_optional_union_pointer_1_Optional(const unsigned
 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
-	p->v = serMalloc(_mem, sizeof(struct TestUnion));
+	p->v = (struct TestUnion*)serMalloc(_mem, sizeof(struct TestUnion));
 	_serTestDecTestUnion(_buffer, _size, _lidx, p->v);
 
 	return SIDL_STATUS_OK;
@@ -1153,7 +1274,7 @@ static int _serTestDecTestUnion_dynamic_optional_union_1_DynamicOptional(const u
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct TestUnion));
+	p->v.v = (struct TestUnion*)serMalloc(_mem, p->v.d * sizeof(struct TestUnion));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serTestDecTestUnion(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -1168,7 +1289,7 @@ static int _serTestDecTestUnion_dynamic_optional_union_2_DynamicOptional(const u
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct TestUnion));
+	p->v.v = (struct TestUnion*)serMalloc(_mem, p->v.d * sizeof(struct TestUnion));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serTestDecTestUnion(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -1181,12 +1302,12 @@ static int _serTestDecNew(const unsigned char* _buffer, size_t _size, size_t* _l
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->dynamic_struct.d, &_buffer[*_lidx], _lidx);
-	p->dynamic_struct.v = serMalloc(_mem, p->dynamic_struct.d * sizeof(struct Empty));
+	p->dynamic_struct.v = (struct Empty*)serMalloc(_mem, p->dynamic_struct.d * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < p->dynamic_struct.d; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, &p->dynamic_struct.v[i1]);
 	}
 	NTOH_32(p->dynamic_ints.d, &_buffer[*_lidx], _lidx);
-	p->dynamic_ints.v = serMalloc(_mem, p->dynamic_ints.d * sizeof(int));
+	p->dynamic_ints.v = (int*)serMalloc(_mem, p->dynamic_ints.d * sizeof(int));
 	for (size_t i1 = 0; i1 < p->dynamic_ints.d; i1++) {
 		NTOH_32(p->dynamic_ints.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1204,7 +1325,7 @@ static int _serTestDecNew(const unsigned char* _buffer, size_t _size, size_t* _l
 	_serTestDecEmpty_dynamic_optional_struct_2_DynamicOptional(_buffer, _size, _lidx, _mem, &p->dynamic_optional_struct_2);
 	_serTestDecInt_dynamic_optional_int_1_DynamicOptional(_buffer, _size, _lidx, _mem, &p->dynamic_optional_int_1);
 	_serTestDecInt_dynamic_optional_int_2_DynamicOptional(_buffer, _size, _lidx, _mem, &p->dynamic_optional_int_2);
-	p->union_test_pointer = serMalloc(_mem, sizeof(struct TestUnion));
+	p->union_test_pointer = (struct TestUnion*)serMalloc(_mem, sizeof(struct TestUnion));
 	_serTestDecTestUnion(_buffer, _size, _lidx, p->union_test_pointer);
 	_serTestDecTestUnion(_buffer, _size, _lidx, &p->union_test);
 	_serTestDecTestUnion_optional_union_1_Optional(_buffer, _size, _lidx, &p->optional_union_1);
@@ -1225,11 +1346,11 @@ int serTestOtherDecSrv(const unsigned char* _buffer, size_t _size, unsigned char
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*in1 = serMalloc(_mem, sizeof(struct Empty));
+	*in1 = (struct Empty*)serMalloc(_mem, sizeof(struct Empty));
 	_serTestDecEmpty(_buffer, _size, _lidx, *in1);
 	NTOH_32(*in2, &_buffer[*_lidx], _lidx);
 	NTOH_32(*in3Qty, &_buffer[*_lidx], _lidx);
-	*in3Array = serMalloc(_mem, *in3Qty * sizeof(char));
+	*in3Array = (char*)serMalloc(_mem, *in3Qty * sizeof(char));
 	for (size_t i1 = 0; i1 < *in3Qty; i1++) {
 		NTOH_8((*in3Array)[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1252,13 +1373,13 @@ int serTestOtherDecSrv(const unsigned char* _buffer, size_t _size, unsigned char
 		*in8 = (SomeEnum)_tmp;
 	}
 	NTOH_32(*in9Qty, &_buffer[*_lidx], _lidx);
-	*in9Array = serMalloc(_mem, *in9Qty * sizeof(struct Empty));
+	*in9Array = (struct Empty*)serMalloc(_mem, *in9Qty * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < *in9Qty; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, (*&in9Array)[i1]);
 	}
-	*in10 = serMalloc(_mem, sizeof(struct Empty2));
+	*in10 = (struct Empty2*)serMalloc(_mem, sizeof(struct Empty2));
 	_serTestDecEmpty2(_buffer, _size, _lidx, *in10);
-	*in11 = serMalloc(_mem, sizeof(struct New));
+	*in11 = (struct New*)serMalloc(_mem, sizeof(struct New));
 	_serTestDecNew(_buffer, _size, _lidx, _mem, *in11);
 
 	return SIDL_STATUS_OK;
@@ -1360,6 +1481,25 @@ static void _serTestFreeNew(struct New* p)
 	_serTestFreeTestUnion_dynamic_optional_union_2_DynamicOptional(&p->dynamic_optional_union_2);
 }
 
+void serTestOtherFree0Srv(struct Empty* in1, char* in3Array, char* in4, struct Empty* in9Array, size_t in9Qty, struct Empty2* in10, struct New* in11)
+{
+	if (in1) {
+	}
+	if (in3Array) {
+	}
+	if (in4) {
+	}
+	if (in9Array) {
+		for (size_t i1 = 0; i1 < in9Qty; i1++) {
+		}
+	}
+	if (in10) {
+	}
+	if (in11) {
+		_serTestFreeNew(in11);
+	}
+}
+
 void serTestOtherFreeSrv(struct Empty* in1, char* in3Array, char* in4, struct Empty* in9Array, size_t in9Qty, struct Empty2* in10, struct New* in11)
 {
 	if (in1) {
@@ -1383,6 +1523,31 @@ void serTestOtherFreeSrv(struct Empty* in1, char* in3Array, char* in4, struct Em
 		_serTestFreeNew(in11);
 		serFree(in11);
 	}
+}
+
+void serTestOtherInitSrv(unsigned char* _arena, size_t _aSize, struct Empty** out1, char** out3Array, size_t out3Qty, char** out4, struct Empty** out9Array, size_t out9Qty, struct Empty2** out10, struct New** out11)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*out1 = (struct Empty*)serMalloc(_mem, sizeof(struct Empty));
+	memset(*out1, 0, sizeof(struct Empty));
+	if (out3Qty) {
+		*out3Array = (char*)serMalloc(_mem, out3Qty * sizeof(char));
+		memset(*out3Array, 0, out3Qty * sizeof(char));
+	} else {
+		*out3Array = NULL;
+	}
+	*out4 = NULL;
+	if (out9Qty) {
+		*out9Array = (struct Empty*)serMalloc(_mem, out9Qty * sizeof(struct Empty));
+		memset(*out9Array, 0, out9Qty * sizeof(struct Empty));
+	} else {
+		*out9Array = NULL;
+	}
+	*out10 = (struct Empty2*)serMalloc(_mem, sizeof(struct Empty2));
+	memset(*out10, 0, sizeof(struct Empty2));
+	*out11 = (struct New*)serMalloc(_mem, sizeof(struct New));
+	memset(*out11, 0, sizeof(struct New));
 }
 
 int serTestOtherEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Empty* out1, uint32_t out2, size_t out3Qty, const char* out3Array, const char* out4, bool out5, int out6, float out7, SomeEnum out8, size_t out9Qty, const struct Empty* out9Array, const struct Empty2* out10, const struct New* out11)
@@ -1429,11 +1594,11 @@ int serTestOtherDecClt(const unsigned char* _buffer, size_t _size, unsigned char
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*out1 = serMalloc(_mem, sizeof(struct Empty));
+	*out1 = (struct Empty*)serMalloc(_mem, sizeof(struct Empty));
 	_serTestDecEmpty(_buffer, _size, _lidx, *out1);
 	NTOH_32(*out2, &_buffer[*_lidx], _lidx);
 	NTOH_32(*out3Qty, &_buffer[*_lidx], _lidx);
-	*out3Array = serMalloc(_mem, *out3Qty * sizeof(char));
+	*out3Array = (char*)serMalloc(_mem, *out3Qty * sizeof(char));
 	for (size_t i1 = 0; i1 < *out3Qty; i1++) {
 		NTOH_8((*out3Array)[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1456,16 +1621,35 @@ int serTestOtherDecClt(const unsigned char* _buffer, size_t _size, unsigned char
 		*out8 = (SomeEnum)_tmp;
 	}
 	NTOH_32(*out9Qty, &_buffer[*_lidx], _lidx);
-	*out9Array = serMalloc(_mem, *out9Qty * sizeof(struct Empty));
+	*out9Array = (struct Empty*)serMalloc(_mem, *out9Qty * sizeof(struct Empty));
 	for (size_t i1 = 0; i1 < *out9Qty; i1++) {
 		_serTestDecEmpty(_buffer, _size, _lidx, (*&out9Array)[i1]);
 	}
-	*out10 = serMalloc(_mem, sizeof(struct Empty2));
+	*out10 = (struct Empty2*)serMalloc(_mem, sizeof(struct Empty2));
 	_serTestDecEmpty2(_buffer, _size, _lidx, *out10);
-	*out11 = serMalloc(_mem, sizeof(struct New));
+	*out11 = (struct New*)serMalloc(_mem, sizeof(struct New));
 	_serTestDecNew(_buffer, _size, _lidx, _mem, *out11);
 
 	return SIDL_STATUS_OK;
+}
+
+void serTestOtherFree0Clt(struct Empty* out1, char* out3Array, char* out4, struct Empty* out9Array, size_t out9Qty, struct Empty2* out10, struct New* out11)
+{
+	if (out1) {
+	}
+	if (out3Array) {
+	}
+	if (out4) {
+	}
+	if (out9Array) {
+		for (size_t i1 = 0; i1 < out9Qty; i1++) {
+		}
+	}
+	if (out10) {
+	}
+	if (out11) {
+		_serTestFreeNew(out11);
+	}
 }
 
 void serTestOtherFreeClt(struct Empty* out1, char* out3Array, char* out4, struct Empty* out9Array, size_t out9Qty, struct Empty2* out10, struct New* out11)

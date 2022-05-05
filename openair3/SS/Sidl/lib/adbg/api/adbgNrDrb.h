@@ -22,13 +22,13 @@
 
 #pragma once
 
-#include "SIDL_NASEMU_NR_SYSTEM_PORT.h"
+#include "SIDL_NR_DRB_PORT.h"
 #include "adbg.h"
 
 SIDL_BEGIN_C_INTERFACE
 
-void adbgNrSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* FromSS);
+void adbgNrDrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_DRB_COMMON_REQ* FromSS);
 
-void adbgNrSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_RRC_PDU_IND* ToSS);
+void adbgNrDrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_DRB_COMMON_IND* ToSS);
 
 SIDL_END_C_INTERFACE

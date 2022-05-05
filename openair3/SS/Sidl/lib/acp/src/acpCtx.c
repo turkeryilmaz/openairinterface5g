@@ -49,9 +49,12 @@ void acpCtxInit(void)
 acpCtx_t acpTakeCtx(void)
 {
 	ACP_DEBUG_ENTER_LOG();
+
 	for (int index = 0; index < ACP_MAX_CTX_QTY; index++) {
 		if (!_contexts[index].ptr) {
 			_contexts[index].ptr = &_contexts[index];
+
+			_contexts[index].desc = NULL;
 			_contexts[index].arena = NULL;
 			_contexts[index].aSize = 0;
 			_contexts[index].isServer = false;
@@ -61,13 +64,21 @@ acpCtx_t acpTakeCtx(void)
 			for (int peer = 0; peer < ACP_MAX_PEER_QTY; peer++) {
 				_contexts[index].peers[peer] = -1;
 				_contexts[index].peersHandshaked[peer] = 0;
+				_contexts[index].peersServices[peer] = NULL;
+				_contexts[index].peersServicesSize[peer] = 0;
 			}
 			_contexts[index].peersSize = 0;
 			_contexts[index].lastPeer = -1;
+			_contexts[index].lastType = 0;
+			_contexts[index].lastKind = -1;
 			_contexts[index].userIdMap = (struct acpUserService*)acpMalloc(ACP_USER_ID_DEFAULT_MAP_SIZE * sizeof(struct acpUserService));
 			SIDL_ASSERT(_contexts[index].userIdMap);
 			_contexts[index].userIdMapMaxSize = ACP_USER_ID_DEFAULT_MAP_SIZE;
 			_contexts[index].userIdMapSize = 0;
+			_contexts[index].tmpBuf = NULL;
+			_contexts[index].tmpBufSize = 0;
+			_contexts[index].opaqueBuf = NULL;
+			_contexts[index].opaqueBufSize = 0;
 
 			_contexts[index].logger = NULL;
 			_contexts[index].logBuf = NULL;
@@ -78,10 +89,12 @@ acpCtx_t acpTakeCtx(void)
 			_contexts[index].logFormatBufMaxSize = 0;
 
 			ACP_DEBUG_LOG("Adding a new context: index=%d, _contexts[%d].ptr=%p", index, index, _contexts[index].ptr);
+
 			ACP_DEBUG_EXIT_LOG(NULL);
 			return &_contexts[index];
 		}
 	}
+
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return NULL;
 }
@@ -89,15 +102,28 @@ acpCtx_t acpTakeCtx(void)
 void acpGiveCtx(acpCtx_t ctx)
 {
 	ACP_DEBUG_ENTER_LOG();
+
 	for (int index = 0; index < ACP_MAX_CTX_QTY; index++) {
 		if (_contexts[index].ptr == ctx) {
 			ACP_DEBUG_LOG("Clearing the context: index=%d, _contexts[%d].ptr=%p", index, index, _contexts[index].ptr);
 			_contexts[index].ptr = NULL;
+
+			if (_contexts[index].desc) {
+				acpFree(_contexts[index].desc);
+			}
 			if (_contexts[index].arena) {
 				acpFree(_contexts[index].arena);
 			}
+			for (int peer = 0; peer < ACP_MAX_PEER_QTY; peer++) {
+				if (_contexts[index].peersServices[peer]) {
+					acpFree(_contexts[index].peersServices[peer]);
+				}
+			}
 			if (_contexts[index].userIdMap) {
 				acpFree(_contexts[index].userIdMap);
+			}
+			if (_contexts[index].tmpBuf) {
+				acpFree(_contexts[index].tmpBuf);
 			}
 
 			if (_contexts[index].logBuf) {
@@ -110,6 +136,7 @@ void acpGiveCtx(acpCtx_t ctx)
 			break;
 		}
 	}
+
 	ACP_DEBUG_EXIT_LOG(NULL);
 }
 
@@ -156,11 +183,14 @@ int acpGetIndexFrom_localId_name(int id, const char* name)
 	// This is just to check that the current server service matches the generated one
 	if (name) {
 		size_t remoteNameOffset = strlen(acpItfMap[last_itf_id_index].name);
+		remoteNameOffset = 0; // Services names already have interface prefix in their names in this implementation
 
 		do {
 			if (service_id_index >= (int)acpIdMapSize) {
 #ifndef ACP_ASSERT_INTERFACE_MISMATCH
 				service_id_index = -ACP_ERR_UNKNOWN_SERVICE_NAME;
+#else
+				SIDL_ASSERT(service_id_index < (int)acpIdMapSize);
 #endif
 				break;
 			}
@@ -203,11 +233,13 @@ int acpGetIndexFrom_localId_name(int id, const char* name)
 			}
 		}
 	} else {
-#ifndef ACP_ASSERT_INTERFACE_MISMATCH
 		if (service_id_index >= (int)acpIdMapSize) {
+#ifndef ACP_ASSERT_INTERFACE_MISMATCH
 			service_id_index = -ACP_ERR_UNKNOWN_SERVICE_NAME;
-		}
+#else
+			SIDL_ASSERT(service_id_index < (int)acpIdMapSize);
 #endif
+		}
 	}
 
 	return service_id_index;
@@ -252,7 +284,7 @@ static int acpCtxSetMsgUserIdFromIndex(struct acpCtx* ctx, int index, int userId
 
 	ctx->userIdMap[userIdIndex].user_id = userId;
 	ctx->userIdMap[userIdIndex].id_index = index;
-	acpIdMap[index].remote_id = acpIdMap[index].local_id; // TODO: implement
+	acpIdMap[index].remote_id = acpIdMap[index].local_id;
 
 	return 0;
 }
@@ -297,17 +329,25 @@ int acpCtxResolveId(int id, const char* name)
 
 const char* acpCtxGetMsgNameFromId(int id)
 {
-	if (id == (int)ACP_SERVICE_PUSH_TYPE) return "SERVICE_PUSH";
 	int index = acpGetIndexFrom_localId_name(id, NULL);
 	if (index < 0 || index >= (int)acpIdMapSize) return "UNKNOWN";
 	return acpIdMap[index].name;
 }
 
+const char* acpCtxGetMsgNameFromIdStrict(int id)
+{
+	int index = acpGetIndexFrom_localId_name(id, NULL);
+	if (index < 0 || index >= (int)acpIdMapSize) {
+		SIDL_ASSERT(0);
+		return NULL;
+	}
+	return acpIdMap[index].name;
+}
+
 int acpCtxGetMsgKindFromId(int id)
 {
-	if (id == (int)ACP_SERVICE_PUSH_TYPE) return -1;
 	int index = acpGetIndexFrom_localId_name(id, NULL);
-	if (index < 0 || index >= (int)acpIdMapSize) return -ACP_ERR_SIDL_FAILURE;
+	if (index < 0 || index >= (int)acpIdMapSize) return -ACP_ERR_UNKNOWN_SERVICE_NAME;
 	return acpIdMap[index].kind;
 }
 
@@ -316,4 +356,119 @@ int acpCtxGetMsgKindFromName(const char* name)
 	int id = acpGetIndexFrom_name(name);
 	if (id < 0) return id;
 	return acpIdMap[id].kind;
+}
+
+int acpCtxSetDescription(struct acpCtx* ctx, const char* desc)
+{
+	size_t descLen = strlen(desc) + 1;
+	if (ctx->desc) {
+		acpFree(ctx->desc);
+	}
+	ctx->desc = (char*)acpMalloc(descLen);
+	SIDL_ASSERT(ctx->desc);
+	memcpy(ctx->desc, desc, descLen);
+	return 0;
+}
+
+void acpCtxAllocateTmpBuf(struct acpCtx* ctx, size_t size)
+{
+	if (ctx->tmpBuf && (ctx->tmpBufSize < size)) {
+		acpFree(ctx->tmpBuf);
+		ctx->tmpBuf = NULL;
+	}
+	if (!ctx->tmpBuf) {
+		ctx->tmpBuf = (unsigned char*)acpMalloc(size);
+	}
+	SIDL_ASSERT(ctx->tmpBuf);
+	ctx->tmpBufSize = size;
+}
+
+int acpCtxGetPeerNum(struct acpCtx* ctx, int peer)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peers[i] == peer) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+bool acpCtxPeerHandshaked(struct acpCtx* ctx, int peer)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peers[i] == peer) {
+			return (ctx->peersHandshaked[i] != 0) ? true : false;
+		}
+	}
+	return false;
+}
+
+bool acpCtxAnyPeerHandshaked(struct acpCtx* ctx)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peersHandshaked[i] > 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void acpCtxPeerSetHandshaked(struct acpCtx* ctx, int peer, int flag)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peers[i] == peer) {
+			ctx->peersHandshaked[i] = flag;
+			return;
+		}
+	}
+}
+
+void acpCtxAddPeer(struct acpCtx* ctx, int peer)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peers[i] == -1) {
+			ctx->peers[i] = peer;
+			ctx->peersHandshaked[i] = 0;
+			SIDL_ASSERT(!ctx->peersServices[i]);
+			ctx->peersSize++;
+			return;
+		}
+	}
+	SIDL_ASSERT(0);
+}
+
+void acpCtxRemovePeer(struct acpCtx* ctx, int peer)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peers[i] == peer) {
+			ctx->peers[i] = -1;
+			ctx->peersHandshaked[i] = 0;
+			if (ctx->peersServices[i]) {
+				acpFree(ctx->peersServices[i]);
+				ctx->peersServices[i] = NULL;
+				ctx->peersServicesSize[i] = 0;
+			}
+			ctx->peersSize--;
+			return;
+		}
+	}
+}
+
+bool acpCtxPeerRespondsToService(struct acpCtx* ctx, int peer, int type)
+{
+	int peerNum = acpCtxGetPeerNum(ctx, peer);
+	if (peerNum == -1) {
+		return false;
+	}
+	return acpCtxPeerNumRespondsToService(ctx, peerNum, type);
+}
+
+bool acpCtxPeerNumRespondsToService(struct acpCtx* ctx, int peerNum, int type)
+{
+	for (size_t i = 0; i < ctx->peersServicesSize[peerNum]; i++) {
+		if (ctx->peersServices[peerNum][i] == type) {
+			return true;
+		}
+	}
+	return false;
 }

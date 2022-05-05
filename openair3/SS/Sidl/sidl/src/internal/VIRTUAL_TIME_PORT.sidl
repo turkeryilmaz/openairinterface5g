@@ -24,9 +24,11 @@
 
 // SIDL common TTCN types and definitions.
 #include "TtcnCommon.sidl"
-#include "SidlCommon.sidl"
 
+// Interface name.
 METADATA_VAR(itf_name, "SysVT");
+
+// TTCN namespaces.
 METADATA_VAR(namespaces, "VirtualTime_TypesNS");
 
 struct VirtualTimeInfo_Type {
@@ -34,5 +36,5 @@ struct VirtualTimeInfo_Type {
 	struct SubFrameTiming_Type TimingInfo;
 };
 
-NOTIFY EnquireTimingUpd(const struct VirtualTimeInfo_Type* TimingInfoToSS);
-ONEWAY EnquireTimingAck(const struct VirtualTimeInfo_Type* TimingInfoFromSS);
+ONEWAY EnquireTimingAck(const struct VirtualTimeInfo_Type* FromSS);
+NOTIFY EnquireTimingUpd(struct VirtualTimeInfo_Type* ToSS);

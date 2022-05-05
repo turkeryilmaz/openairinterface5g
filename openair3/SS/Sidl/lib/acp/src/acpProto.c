@@ -27,44 +27,18 @@
 #include "acpProto.h"
 #include "acpCtx.h"
 
-void acpProcessPushMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
+void acpBuildHeader(acpCtx_t ctx, int type, size_t size, unsigned char* buffer)
 {
+	SIDL_ASSERT(ctx);
+	SIDL_ASSERT(buffer);
+	SIDL_ASSERT(size >= ACP_HEADER_SIZE);
+
 	struct acpCtx* c = ACP_CTX_CAST(ctx);
 
-	c->handle = (void*)(uintptr_t)((buffer[8] << 24) | (buffer[9] << 16) | (buffer[10] << 8) | (buffer[11]));
+	int handle = (int)(uintptr_t)(c->sHandle ? c->sHandle : c->handle);
+	int sidlStatus = 0;
 
-	size -= ACP_HEADER_SIZE;
-
-	struct acpWklmServicePushMessage* m = (struct acpWklmServicePushMessage*)&buffer[ACP_HEADER_SIZE];
-
-	size_t serviceQty = ntohl(m->serviceQty);
-	const uint8_t* p = (uint8_t*)m + 4;
-	size_t offset = 0;
-	size -= 4;
-	for (size_t i = 0; i < serviceQty; i++) {
-		const struct acpWklmService* s = (struct acpWklmService*)&p[offset];
-		const char* name = (char*)&p[offset + 4];
-
-		offset += 4;
-		while ((offset < size) && p[offset]) {
-			offset++;
-		}
-		offset++;
-		if (offset >= size) {
-			break;
-		}
-		acpCtxResolveId(ntohl(s->id), name);
-	}
-}
-
-void acpBuildHeader(acpCtx_t ctx, unsigned int type, size_t size, unsigned char* buffer)
-{
-	struct acpCtx* c = ACP_CTX_CAST(ctx);
-
-	uint32_t handle = (uint32_t)(uintptr_t)(c->sHandle ? c->sHandle : c->handle);
-	uint32_t status = 0;
-
-	size_t payloadSize = size - ACP_HEADER_SIZE; // payload size
+	int payloadSize = (int)size - ACP_HEADER_SIZE; // payload size
 
 	buffer[0] = 0x01;
 	buffer[1] = 0x06;
@@ -78,8 +52,51 @@ void acpBuildHeader(acpCtx_t ctx, unsigned int type, size_t size, unsigned char*
 	buffer[9] = (handle >> 16) & 0xFF;
 	buffer[10] = (handle >> 8) & 0xFF;
 	buffer[11] = handle & 0xFF;
-	buffer[12] = (status >> 24) & 0xFF;
-	buffer[13] = (status >> 16) & 0xFF;
-	buffer[14] = (status >> 8) & 0xFF;
-	buffer[15] = status & 0xFF;
+	buffer[12] = (sidlStatus >> 24) & 0xFF;
+	buffer[13] = (sidlStatus >> 16) & 0xFF;
+	buffer[14] = (sidlStatus >> 8) & 0xFF;
+	buffer[15] = sidlStatus & 0xFF;
+}
+
+int acpGetServicePayloadLength(size_t size, const unsigned char* buffer)
+{
+	SIDL_ASSERT(buffer);
+	SIDL_ASSERT(size >= ACP_HEADER_SIZE);
+
+	return (int)((buffer[2] << 8) | buffer[3]);
+}
+
+int acpGetServiceType(size_t size, const unsigned char* buffer)
+{
+	SIDL_ASSERT(buffer);
+	SIDL_ASSERT(size >= ACP_HEADER_SIZE);
+
+	return (int)((buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | (buffer[7]));
+}
+
+int acpGetServiceHandle(size_t size, const unsigned char* buffer)
+{
+	SIDL_ASSERT(buffer);
+	SIDL_ASSERT(size >= ACP_HEADER_SIZE);
+
+	return (int)((buffer[8] << 24) | (buffer[9] << 16) | (buffer[10] << 8) | (buffer[11]));
+}
+
+int acpGetServiceStatus(size_t size, const unsigned char* buffer)
+{
+	SIDL_ASSERT(buffer);
+	SIDL_ASSERT(size >= ACP_HEADER_SIZE);
+
+	return (int)((buffer[12] << 24) | (buffer[13] << 16) | (buffer[14] << 8) | (buffer[15]));
+}
+
+void acpSetServiceStatus(size_t size, unsigned char* buffer, int sidlStatus)
+{
+	SIDL_ASSERT(buffer);
+	SIDL_ASSERT(size >= ACP_HEADER_SIZE);
+
+	buffer[12] = (sidlStatus >> 24) & 0xFF;
+	buffer[13] = (sidlStatus >> 16) & 0xFF;
+	buffer[14] = (sidlStatus >> 8) & 0xFF;
+	buffer[15] = sidlStatus & 0xFF;
 }

@@ -25,6 +25,14 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serSysVTEnquireTimingAckInitClt(unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** FromSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*FromSS = (struct VirtualTimeInfo_Type*)serMalloc(_mem, sizeof(struct VirtualTimeInfo_Type));
+	memset(*FromSS, 0, sizeof(struct VirtualTimeInfo_Type));
+}
+
 static int _serSysVTEncSystemFrameNumberInfo_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SystemFrameNumberInfo_Type_Value* p, enum SystemFrameNumberInfo_Type_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -192,11 +200,11 @@ static int _serSysVTEncVirtualTimeInfo_Type(unsigned char* _buffer, size_t _size
 	return SIDL_STATUS_OK;
 }
 
-int serSysVTEnquireTimingUpdEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* TimingInfoToSS)
+int serSysVTEnquireTimingAckEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* FromSS)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysVTEncVirtualTimeInfo_Type(_buffer, _size, _lidx, TimingInfoToSS);
+	_serSysVTEncVirtualTimeInfo_Type(_buffer, _size, _lidx, FromSS);
 
 	return SIDL_STATUS_OK;
 }
@@ -373,7 +381,7 @@ static int _serSysVTDecVirtualTimeInfo_Type(const unsigned char* _buffer, size_t
 	return SIDL_STATUS_OK;
 }
 
-int serSysVTEnquireTimingUpdDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** TimingInfoToSS)
+int serSysVTEnquireTimingAckDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** FromSS)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -382,29 +390,43 @@ int serSysVTEnquireTimingUpdDecClt(const unsigned char* _buffer, size_t _size, u
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*TimingInfoToSS = serMalloc(_mem, sizeof(struct VirtualTimeInfo_Type));
-	_serSysVTDecVirtualTimeInfo_Type(_buffer, _size, _lidx, *TimingInfoToSS);
+	*FromSS = (struct VirtualTimeInfo_Type*)serMalloc(_mem, sizeof(struct VirtualTimeInfo_Type));
+	_serSysVTDecVirtualTimeInfo_Type(_buffer, _size, _lidx, *FromSS);
 
 	return SIDL_STATUS_OK;
 }
 
-void serSysVTEnquireTimingUpdFreeClt(struct VirtualTimeInfo_Type* TimingInfoToSS)
+void serSysVTEnquireTimingAckFree0Srv(struct VirtualTimeInfo_Type* FromSS)
 {
-	if (TimingInfoToSS) {
-		serFree(TimingInfoToSS);
+	if (FromSS) {
 	}
 }
 
-int serSysVTEnquireTimingAckEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* TimingInfoFromSS)
+void serSysVTEnquireTimingAckFreeSrv(struct VirtualTimeInfo_Type* FromSS)
+{
+	if (FromSS) {
+		serFree(FromSS);
+	}
+}
+
+void serSysVTEnquireTimingUpdInitSrv(unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct VirtualTimeInfo_Type*)serMalloc(_mem, sizeof(struct VirtualTimeInfo_Type));
+	memset(*ToSS, 0, sizeof(struct VirtualTimeInfo_Type));
+}
+
+int serSysVTEnquireTimingUpdEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct VirtualTimeInfo_Type* ToSS)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysVTEncVirtualTimeInfo_Type(_buffer, _size, _lidx, TimingInfoFromSS);
+	_serSysVTEncVirtualTimeInfo_Type(_buffer, _size, _lidx, ToSS);
 
 	return SIDL_STATUS_OK;
 }
 
-int serSysVTEnquireTimingAckDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** TimingInfoFromSS)
+int serSysVTEnquireTimingUpdDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct VirtualTimeInfo_Type** ToSS)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -413,15 +435,21 @@ int serSysVTEnquireTimingAckDecSrv(const unsigned char* _buffer, size_t _size, u
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*TimingInfoFromSS = serMalloc(_mem, sizeof(struct VirtualTimeInfo_Type));
-	_serSysVTDecVirtualTimeInfo_Type(_buffer, _size, _lidx, *TimingInfoFromSS);
+	*ToSS = (struct VirtualTimeInfo_Type*)serMalloc(_mem, sizeof(struct VirtualTimeInfo_Type));
+	_serSysVTDecVirtualTimeInfo_Type(_buffer, _size, _lidx, *ToSS);
 
 	return SIDL_STATUS_OK;
 }
 
-void serSysVTEnquireTimingAckFreeSrv(struct VirtualTimeInfo_Type* TimingInfoFromSS)
+void serSysVTEnquireTimingUpdFree0Clt(struct VirtualTimeInfo_Type* ToSS)
 {
-	if (TimingInfoFromSS) {
-		serFree(TimingInfoFromSS);
+	if (ToSS) {
+	}
+}
+
+void serSysVTEnquireTimingUpdFreeClt(struct VirtualTimeInfo_Type* ToSS)
+{
+	if (ToSS) {
+		serFree(ToSS);
 	}
 }

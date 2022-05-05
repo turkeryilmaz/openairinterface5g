@@ -27,15 +27,23 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void serVngProcessInitClt(unsigned char* _arena, size_t _aSize, struct EUTRA_VNG_CTRL_REQ** FromSS);
+
 int serVngProcessEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_VNG_CTRL_REQ* FromSS);
 
 int serVngProcessDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_VNG_CTRL_REQ** FromSS);
 
+void serVngProcessFree0Srv(struct EUTRA_VNG_CTRL_REQ* FromSS);
+
 void serVngProcessFreeSrv(struct EUTRA_VNG_CTRL_REQ* FromSS);
+
+void serVngProcessInitSrv(unsigned char* _arena, size_t _aSize, struct EUTRA_VNG_CTRL_CNF** ToSS);
 
 int serVngProcessEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct EUTRA_VNG_CTRL_CNF* ToSS);
 
 int serVngProcessDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct EUTRA_VNG_CTRL_CNF** ToSS);
+
+void serVngProcessFree0Clt(struct EUTRA_VNG_CTRL_CNF* ToSS);
 
 void serVngProcessFreeClt(struct EUTRA_VNG_CTRL_CNF* ToSS);
 
