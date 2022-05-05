@@ -754,6 +754,25 @@ static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
 
  srb_found:
   {
+      LOG_I(PDCP,"PDCP Sending DCCH PDU_IND to SS \n");
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, 0, SS_RRC_PDU_IND);
+      if (message_p) {
+        /* Populate the message and send to SS */
+        SS_RRC_PDU_IND (message_p).sdu_size = size;
+        SS_RRC_PDU_IND (message_p).srb_id = srb_id;
+        SS_RRC_PDU_IND (message_p).frame = nr_pdcp_current_time_last_frame;
+        SS_RRC_PDU_IND (message_p).rnti = ue->rnti;
+        SS_RRC_PDU_IND (message_p).subframe = nr_pdcp_current_time_last_subframe;
+        memset (SS_RRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
+        memcpy (SS_RRC_PDU_IND (message_p).sdu, buf, size);
+
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB, 0, message_p);
+        if(send_res < 0) {
+          LOG_E(PDCP,"Error in itti_send_msg_to_task");
+        }
+      }
+  }
+  {
        uint8_t *rrc_buffer_p = entity->is_gnb ?
 					itti_malloc(TASK_PDCP_ENB, TASK_RRC_GNB, size):
                                         itti_malloc(TASK_PDCP_UE, TASK_RRC_NRUE, size);

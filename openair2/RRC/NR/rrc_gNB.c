@@ -341,7 +341,7 @@ rrc_gNB_generate_RRCSetup(
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   ue_p->Srb0.Tx_buffer.payload_size = do_RRCSetup(ue_context_pP,
 						  (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
-						  rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id),
+						  0/*rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id)*/,
 						  masterCellGroup_from_DU,
 						  scc,&rrc->carrier);
 
@@ -782,13 +782,16 @@ rrc_gNB_generate_defaultRRCReconfiguration(
           rrc_gNB_mui,
           ctxt_pP->module_id,
           DCCH);
-      nr_rrc_data_req(ctxt_pP,
-          DCCH,
-          rrc_gNB_mui++,
-          SDU_CONFIRM_NO,
-          size,
-          buffer,
-          PDCP_TRANSMISSION_MODE_CONTROL);
+      if (RC.mode == SS_GNB)
+      {
+        nr_rrc_data_req(ctxt_pP,
+            DCCH,
+            rrc_gNB_mui++,
+            SDU_CONFIRM_NO,
+            size,
+            buffer,
+            PDCP_TRANSMISSION_MODE_CONTROL);
+      }
       // rrc_pdcp_config_asn1_req
 #endif
       // rrc_rlc_config_asn1_req
@@ -2517,7 +2520,10 @@ rrc_gNB_decode_dcch(
         /* configure ciphering */
         nr_rrc_pdcp_config_security(ctxt_pP, ue_context_p, 1);
 
-        rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+        if (RC.mode == SS_GNB)
+	{
+          rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+	}
         //rrc_gNB_generate_defaultRRCReconfiguration(ctxt_pP, ue_context_p);
         break;
         case NR_UL_DCCH_MessageType__c1_PR_securityModeFailure:
@@ -3682,6 +3688,41 @@ void *rrc_gnb_task(void *args_p) {
       case NGAP_UE_CONTEXT_RELEASE_COMMAND:
         rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(msg_p, msg_name_p, instance);
         break;
+
+      case SS_RRC_PDU_REQ:
+        LOG_A(NR_RRC,"NR RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size);
+
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                      instance,
+                                      GNB_FLAG_YES,
+                                      SS_RRC_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+        if ((SS_RRC_PDU_REQ(msg_p).srb_id) != 0)
+        {
+          NR_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+          LOG_A(NR_RRC, "Sending NR RRC PDU by nr_rrc_data_req function \n");
+
+          uper_decode(NULL,
+                      &asn_DEF_NR_DL_DCCH_Message,
+                      (void **)&dl_dcch_msg,
+                      (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
+                      SS_RRC_PDU_REQ(msg_p).sdu_size, 0, 0);
+
+          if (LOG_DEBUGFLAG(DEBUG_ASN1))
+          {
+            xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
+          }
+
+	  nr_rrc_data_req(&ctxt,
+          DCCH,
+          rrc_gNB_mui++,
+          SDU_CONFIRM_NO,
+          SS_RRC_PDU_REQ (msg_p).sdu_size,
+          SS_RRC_PDU_REQ (msg_p).sdu,
+          PDCP_TRANSMISSION_MODE_CONTROL);
+	}
+	break;
 
       default:
         LOG_E(NR_RRC, "[gNB %ld] Received unexpected message %s\n", instance, msg_name_p);

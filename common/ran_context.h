@@ -48,8 +48,13 @@
 #include "RRC/NR/nr_rrc_defs.h"
 #include <openair3/ocp-gtpu/gtpv1u_eNB_task.h>
 
+#define SS_GNB  0x00
+#define SS_SOFTMODEM    0x01
+#define SS_SOFTMODEM_SRB        0x02
 
 typedef struct {
+  /// Mode of eNB operation 0: Normal eNB operation 1: SS mode
+  uint8_t mode;
   /// RAN context config file name
   char *config_file_name;
   /// Number of RRC instances in this node
@@ -112,6 +117,9 @@ typedef struct {
   pthread_mutex_t ru_mutex;
   /// condition variable for signaling setup completion of an RU
   pthread_cond_t ru_cond;
+
+  /// SS Config variables
+  struct ss_config_s ss;
 } RAN_CONTEXT_t;
 
 extern RAN_CONTEXT_t RC;

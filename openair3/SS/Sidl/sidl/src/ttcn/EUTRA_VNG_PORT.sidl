@@ -1,0 +1,73 @@
+/* vim: set ft=cpp:
+ *****************************************************************
+ *
+ * Module : EUTRA_VNG_PORT SIDL DEFINITION
+ *
+ *****************************************************************
+ *
+ *  Copyright (c) 2009-2021 SEQUANS Communications.
+ *  All rights reserved.
+ *
+ *  This is confidential and proprietary source code of SEQUANS
+ *  Communications. The use of the present source code and all
+ *  its derived forms is exclusively governed by the restricted
+ *  terms and conditions set forth in the SEQUANS
+ *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
+ *  AGREEMENT. The present source code and all its derived
+ *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
+ *  Communications' products. The distribution/sale of the
+ *  present source code and all its derived forms is EXCLUSIVELY
+ *  RESERVED to regular LICENCE holder and otherwise STRICTLY
+ *  PROHIBITED.
+ *
+ *****************************************************************
+ */
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL common TTCN types and definitions.
+#include "TtcnCommon.sidl"
+
+METADATA_VAR(itf_name, "Vng");
+
+METADATA_VAR(projects, "NR5GC_IRAT ENDC");
+
+// TTCN namespaces
+METADATA_VAR(namespaces, "EUTRA_ASP_VirtualNoiseDefs");
+
+typedef Null_Type EUTRA_VngConfigConfirm_Type;
+typedef int32_t NocLevel_Type;
+
+struct EUTRA_VngConfigInfo_Type {
+	Dl_Bandwidth_Type Bandwidth;
+	NocLevel_Type NocLevel;
+};
+
+SIDL_UNION_ENUM(EUTRA_VngConfigRequest_Type) {
+	EUTRA_VngConfigRequest_Type_UNBOUND_VALUE,
+	EUTRA_VngConfigRequest_Type_Configure,
+	EUTRA_VngConfigRequest_Type_Activate,
+	EUTRA_VngConfigRequest_Type_Deactivate
+};
+
+SIDL_UNION_BEGIN(EUTRA_VngConfigRequest_Type) {
+	SIDL_UNION_CASE(EUTRA_VngConfigRequest_Type_Configure)
+		struct EUTRA_VngConfigInfo_Type Configure;
+	SIDL_UNION_CASE(EUTRA_VngConfigRequest_Type_Activate)
+		Null_Type Activate;
+	SIDL_UNION_CASE(EUTRA_VngConfigRequest_Type_Deactivate)
+		Null_Type Deactivate;
+} SIDL_UNION_END;
+
+struct EUTRA_VNG_CTRL_REQ {
+	struct ReqAspCommonPart_Type Common;
+	struct EUTRA_VngConfigRequest_Type Request;
+};
+
+struct EUTRA_VNG_CTRL_CNF {
+	struct CnfAspCommonPart_Type Common;
+	EUTRA_VngConfigConfirm_Type Confirm;
+};
+
+COMMAND Process(const struct EUTRA_VNG_CTRL_REQ* FromSS, struct EUTRA_VNG_CTRL_CNF* ToSS);
