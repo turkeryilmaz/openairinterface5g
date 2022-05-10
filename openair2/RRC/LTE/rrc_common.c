@@ -77,6 +77,69 @@ rrc_init_global_param(
   Rlc_info_am_config.rlc.rlc_am_info.t_poll_retransmit = 15;
   Rlc_info_am_config.rlc.rlc_am_info.t_reordering = 50;
   Rlc_info_am_config.rlc.rlc_am_info.t_status_prohibit = 10;
+
+  for(int i=0;i<MAX_RBS;i++)
+  {
+    RC.RB_Config[i].isRBConfigValid = FALSE;
+    memset(&RC.RB_Config[i],0,sizeof(RBConfig));
+  }
+
+  /*SRB1 Default Config for RLC and MAC*/
+  RC.RB_Config[1].RlcCfg.present = 1;
+  RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit = 15;
+  RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.pollPDU = 0;
+  RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.pollByte = 14;
+  RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold = 3;
+  RC.RB_Config[1].RlcCfg.choice.am.dl_AM_RLC.t_Reordering = 7;
+  RC.RB_Config[1].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit = 0;
+  RC.RB_Config[1].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
+  RC.RB_Config[1].Mac.ul_SpecificParameters->priority = 1;
+  RC.RB_Config[1].Mac.ul_SpecificParameters->prioritisedBitRate = 7;
+
+  /*SRB2 Default Config for RLC and MAC*/
+  RC.RB_Config[2].RlcCfg.present = LTE_RLC_Config_PR_am;
+  RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms15;
+  RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p8;
+  RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kB1000;
+  RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t32;
+  RC.RB_Config[2].RlcCfg.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+  RC.RB_Config[2].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms10;
+  RC.RB_Config[2].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
+  RC.RB_Config[2].Mac.ul_SpecificParameters->priority = 3;
+  RC.RB_Config[2].Mac.ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+
+  /*DRB Default Config for PDCP,RLC(AM) and MAC*/
+  RC.RB_Config[3].RlcCfg.present = LTE_RLC_Config_PR_am;
+  RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
+  RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
+  RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
+  RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
+  RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+  RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+  RC.RB_Config[3].PdcpCfg.rlc_AM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_AM));
+  RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired = FALSE;
+  RC.RB_Config[3].PdcpCfg.headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+  RC.RB_Config[3].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
+  RC.RB_Config[3].Mac.ul_SpecificParameters->priority = 12;
+  RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+  RC.RB_Config[3].PdcpCfg.discardTimer = CALLOC(1, sizeof(long));
+  *(RC.RB_Config[3].PdcpCfg.discardTimer) = LTE_PDCP_Config__discardTimer_infinity;
+
+  /*DRB Default Config for PDCP,RLC(UM) and MAC*/
+  RC.RB_Config[4].RlcCfg.present = LTE_RLC_Config_PR_um_Bi_Directional;
+  RC.RB_Config[4].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+  RC.RB_Config[4].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+  RC.RB_Config[4].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+  RC.RB_Config[4].PdcpCfg.rlc_UM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_UM));
+  RC.RB_Config[4].PdcpCfg.rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+  RC.RB_Config[4].PdcpCfg.headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+  RC.RB_Config[4].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
+  RC.RB_Config[4].Mac.ul_SpecificParameters->priority = 12;
+  RC.RB_Config[4].Mac.ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+  RC.RB_Config[4].PdcpCfg.discardTimer = CALLOC(1, sizeof(long));
+  *(RC.RB_Config[4].PdcpCfg.discardTimer) = LTE_PDCP_Config__discardTimer_infinity;
+
+
   return 0;
 }
 

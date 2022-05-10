@@ -2303,14 +2303,27 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       case 65: // 75ms, 10^-2, p0.7, mission critical voice, GBR
       case 66: // 100ms, 10^-2, p2, non-mission critical  voice , GBR
         // RLC
-        DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
-        DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-        DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-        DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
+          DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
+        } else {
+          DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
+          DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+        }
         // PDCP
         PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
         DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-        PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
+        } else {
+          PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+        }
         break;
 
       /*
@@ -2323,17 +2336,33 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       case 69: // 60ms, 10^-6, p0.5, mission critical delay sensitive data, Lowest Priority
       case 70: // 200ms, 10^-6, p5.5, mision critical data
         // RLC
-        DRB_rlc_config->present = LTE_RLC_Config_PR_am;
-        DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
-        DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
-        DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
-        DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
-        DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
-        DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
+          DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte;
+          DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
+        } else {
+          DRB_rlc_config->present = LTE_RLC_Config_PR_am;
+          DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
+          DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+        }
         // PDCP
         PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
         DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-        PDCP_rlc_AM->statusReportRequired = FALSE;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
+        } else {
+          PDCP_rlc_AM->statusReportRequired = FALSE;
+        }
         break;
 
       default :
@@ -2350,19 +2379,30 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         continue;
     }
 
-    DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+    //if (RC.mode == SS_SOFTMODEM) {
+    if(1) {
+      DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
+    } else {
+      DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+    }
     DRB_lchan_config = CALLOC(1, sizeof(*DRB_lchan_config));
     DRB_config->logicalChannelConfig = DRB_lchan_config;
     DRB_ul_SpecificParameters = CALLOC(1, sizeof(*DRB_ul_SpecificParameters));
     DRB_lchan_config->ul_SpecificParameters = DRB_ul_SpecificParameters;
 
-    if (ue_context_pP->ue_context.e_rab[i].param.qos.qci < 9 )
-      DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.e_rab[i].param.qos.qci-1] + 3;
-    // ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
-    else
-      DRB_ul_SpecificParameters->priority= 4;
+    //if (RC.mode == SS_SOFTMODEM) {
+    if(1) {
+      DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
+      DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
+    } else {
+      if (ue_context_pP->ue_context.e_rab[i].param.qos.qci < 9 )
+        DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.e_rab[i].param.qos.qci-1] + 3;
+      // ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
+      else
+        DRB_ul_SpecificParameters->priority= 4;
 
-    DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+        DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+    }
     //LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
     DRB_ul_SpecificParameters->bucketSizeDuration =
       LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
@@ -2523,7 +2563,12 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
     DRB_rlc_config = DRB_config->rlc_Config;
     DRB_pdcp_config = DRB_config->pdcp_Config;
-    *DRB_pdcp_config->discardTimer = LTE_PDCP_Config__discardTimer_infinity;
+    //if (RC.mode == SS_SOFTMODEM) {
+    if(1) {
+      *DRB_pdcp_config->discardTimer = *(RC.RB_Config[3].PdcpCfg.discardTimer);
+    } else {
+      *DRB_pdcp_config->discardTimer = LTE_PDCP_Config__discardTimer_infinity;
+    }
 
     switch (ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci) {
       /*
@@ -2539,10 +2584,18 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
       case 65: // 75ms, 10^-2, p0.7, mission critical voice, GBR
       case 66: // 100ms, 10^-2, p2, non-mission critical  voice , GBR
         // RLC
-        DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
-        DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-        DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-        DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
+          DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
+        } else {
+          DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
+          DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+        }
 
         // PDCP
         if (DRB_pdcp_config->rlc_AM) {
@@ -2557,7 +2610,12 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
         PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
         DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-        PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
+        } else {
+          PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+        }
         break;
 
       /*
@@ -2570,13 +2628,24 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
       case 69: // 60ms, 10^-6, p0.5, mission critical delay sensitive data, Lowest Priority
       case 70: // 200ms, 10^-6, p5.5, mision critical data
         // RLC
-        DRB_rlc_config->present = LTE_RLC_Config_PR_am;
-        DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
-        DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
-        DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
-        DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
-        DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
-        DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
+          DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte;
+          DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
+        } else {
+          DRB_rlc_config->present = LTE_RLC_Config_PR_am;
+          DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
+          DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
+          DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+          DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+        }
 
         // PDCP
         if (DRB_pdcp_config->rlc_AM) {
@@ -2591,7 +2660,12 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
         PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
         DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-        PDCP_rlc_AM->statusReportRequired = FALSE;
+        //if (RC.mode == SS_SOFTMODEM) {
+        if(1) {
+          PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
+        } else {
+          PDCP_rlc_AM->statusReportRequired = FALSE;
+        }
         break;
 
       default :
@@ -2604,16 +2678,27 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
         continue;
     }
 
-    DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+    //if (RC.mode == SS_SOFTMODEM) {
+    if(1) {
+      DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
+    } else {
+      DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+    }
     DRB_lchan_config = DRB_config->logicalChannelConfig;
     DRB_ul_SpecificParameters = DRB_lchan_config->ul_SpecificParameters;
 
-    if (ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci < 9 )
-      DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci-1] + 3;
-    else
-      DRB_ul_SpecificParameters->priority= 4;
+    //if (RC.mode == SS_SOFTMODEM) {
+    if(1) {
+      DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
+      DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
+    } else {
+      if (ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci < 9 )
+        DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci-1] + 3;
+      else
+        DRB_ul_SpecificParameters->priority= 4;
 
-    DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+      DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
+    }
     DRB_ul_SpecificParameters->bucketSizeDuration =
       LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
     ASN_SEQUENCE_ADD(&(DRB_configList2)->list, DRB_config);
@@ -2879,19 +2964,38 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   SRB2_rlc_config = CALLOC(1, sizeof(*SRB2_rlc_config));
   SRB2_config->rlc_Config = SRB2_rlc_config;
   SRB2_rlc_config->present = LTE_SRB_ToAddMod__rlc_Config_PR_explicitValue;
-  SRB2_rlc_config->choice.explicitValue.present = LTE_RLC_Config_PR_am;
-  SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms15;
-  SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p8;
-  SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kB1000;
-  SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t32;
-  SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
-  SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms10;
+//if (RC.mode == SS_SOFTMODEM)
+  if (1) {
+    SRB2_rlc_config->choice.explicitValue.present = RC.RB_Config[2].RlcCfg.present;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.pollByte;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
+    SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[2].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
+    SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[2].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
+  } else {
+    SRB2_rlc_config->choice.explicitValue.present = LTE_RLC_Config_PR_am;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms15;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p8;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kB1000;
+    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t32;
+    SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+    SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms10;
+  }
+  LOG_A(RRC,"rlc config present: %d, ul_AM_RLC.t_PollRetransmit: %d, ul_AM_RLC.pollPDU: %d, ul_AM_RLC.pollByte: %d, ul_AM_RLC.maxRetxThreshold: %d,dl_AM_RLC.t_Reordering: %d,dl_AM_RLC.t_StatusProhibit: %d \n",SRB2_rlc_config->choice.explicitValue.present,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
   SRB2_lchan_config = CALLOC(1, sizeof(*SRB2_lchan_config));
   SRB2_config->logicalChannelConfig = SRB2_lchan_config;
   SRB2_lchan_config->present = LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue;
   SRB2_ul_SpecificParameters = CALLOC(1, sizeof(*SRB2_ul_SpecificParameters));
-  SRB2_ul_SpecificParameters->priority = 3; // let some priority for SRB1 and dedicated DRBs
-  SRB2_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+//if (RC.mode == SS_SOFTMODEM)
+  if (1) {
+    SRB2_ul_SpecificParameters->priority = RC.RB_Config[2].Mac.ul_SpecificParameters->priority;
+    SRB2_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[2].Mac.ul_SpecificParameters->prioritisedBitRate;
+  } else {
+    SRB2_ul_SpecificParameters->priority = 3; // let some priority for SRB1 and dedicated DRBs
+    SRB2_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  }
+  LOG_A(RRC,"SRB2_ul_SpecificParameters->priority: %d, SRB2_ul_SpecificParameters->prioritisedBitRate: %d \n",SRB2_ul_SpecificParameters->priority,SRB2_ul_SpecificParameters->prioritisedBitRate);
   SRB2_ul_SpecificParameters->bucketSizeDuration = LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
   /* LCG for CCCH and DCCH is 0 as defined in 36331 */
   logicalchannelgroup = CALLOC(1, sizeof(long));
@@ -2927,18 +3031,44 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   DRB_rlc_config = CALLOC(1, sizeof(*DRB_rlc_config));
   DRB_config->rlc_Config = DRB_rlc_config;
 #ifdef RRC_DEFAULT_RAB_IS_AM
-  DRB_rlc_config->present = LTE_RLC_Config_PR_am;
-  DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
-  DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
-  DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
-  DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
-  DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
-  DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+  //if (RC.mode == SS_SOFTMODEM) {
+  if(1) {
+    /* DRB1 stored at index 3 in RC.RB_Config*/
+    DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
+    if(DRB_rlc_config->present == LTE_RLC_Config_PR_am) {
+      DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
+      DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
+      DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte;
+      DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
+      DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
+      DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
+    } else if(DRB_rlc_config->present == LTE_RLC_Config_PR_um_Bi_Directional) {
+      DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
+      DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
+      DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
+    }
+  } else {
+    DRB_rlc_config->present = LTE_RLC_Config_PR_am;
+    DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
+    DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
+    DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
+    DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
+    DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+    DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
+  }
 #else
-  DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
-  DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-  DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-  DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+  //if (RC.mode == SS_SOFTMODEM) {
+  if(1) {
+    DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
+    DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
+    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
+    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
+  } else {
+    DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
+    DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
+    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
+  }
 #endif
   DRB_pdcp_config = CALLOC(1, sizeof(*DRB_pdcp_config));
   DRB_config->pdcp_Config = DRB_pdcp_config;
@@ -2952,19 +3082,40 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 #ifdef RRC_DEFAULT_RAB_IS_AM // EXMIMO_IOT
   PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
   DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-  PDCP_rlc_AM->statusReportRequired = FALSE;
+  //if (RC.mode == SS_SOFTMODEM) {
+  if(1) {
+    PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
+  } else {
+    PDCP_rlc_AM->statusReportRequired = FALSE;
+  }
 #else
   PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
   DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-  PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+  //if (RC.mode == SS_SOFTMODEM) {
+  if(1) {
+    PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
+  } else {
+    PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
+  }
 #endif
-  DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+  //if (RC.mode == SS_SOFTMODEM) {
+  if(1) {
+    DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
+  } else {
+    DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
+  }
   DRB_lchan_config = CALLOC(1, sizeof(*DRB_lchan_config));
   DRB_config->logicalChannelConfig = DRB_lchan_config;
   DRB_ul_SpecificParameters = CALLOC(1, sizeof(*DRB_ul_SpecificParameters));
   DRB_lchan_config->ul_SpecificParameters = DRB_ul_SpecificParameters;
-  DRB_ul_SpecificParameters->priority = 12; // lower priority than srb1, srb2 and other dedicated bearer
-  DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8; // LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  //if (RC.mode == SS_SOFTMODEM) {
+  if(1) {
+    DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
+    DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
+  } else {
+    DRB_ul_SpecificParameters->priority = 12; // lower priority than srb1, srb2 and other dedicated bearer
+    DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8; // LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  }
   DRB_ul_SpecificParameters->bucketSizeDuration = LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
   // LCG for DTCH can take the value from 1 to 3 as defined in 36331: normally controlled by upper layers (like RRM)
   logicalchannelgroup_drb = CALLOC(1, sizeof(long));
@@ -6908,6 +7059,288 @@ void rrc_eNB_generate_RRCConnectionReestablishmentReject_unknown_UE(protocol_ctx
   ue_context_p->ue_context.ul_failure_timer = 500;  // 500 milliseconds to send the message and remove temporary entry
 }
 
+//-----------------------------------------------------------------------------
+char rrc_eNB_rblist_configuration(
+  const module_id_t enb_mod_idP,
+  RrcRblistCfgReq *RblistConfig
+)
+//-----------------------------------------------------------------------------
+{
+  protocol_ctxt_t ctxt;
+
+  LOG_A(RRC,"Inside rrc_eNB_rblist_configuration \n");
+  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, enb_mod_idP, ENB_FLAG_YES, NOT_A_RNTI, 0, 0,enb_mod_idP);
+  AssertFatal(RblistConfig!=NULL,"RB list configuration input is null\n");
+  AssertFatal(RblistConfig->rb_count <= MAX_RBS ,"RB Count exceed the Max RBs Supported");
+
+  for(int i=0;i<RblistConfig->rb_count;i++)
+  {
+    LOG_A(RRC,"i: %d ,RB Id:%d \n",i,RblistConfig->rb_list[i].RbId);
+    int rbIndex = RblistConfig->rb_list[i].RbId; /*RB ID is used as a unique index in RB Array inside RC*/
+    AssertFatal(rbIndex <= MAX_RBS, "RB Index exceed the Max RBs Supported");
+    RC.RB_Config[rbIndex].isRBConfigValid = TRUE;
+    if(RblistConfig->rb_list[i].RbConfig.isPDCPConfigValid == TRUE) {
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.rlc_AM == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.rlc_AM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_AM));
+        }
+        RC.RB_Config[rbIndex].PdcpCfg.rlc_AM->statusReportRequired = RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM->statusReportRequired;
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM);
+      }
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_UM != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.rlc_UM == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.rlc_UM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_UM));
+        }
+        RC.RB_Config[rbIndex].PdcpCfg.rlc_UM->pdcp_SN_Size = RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_UM->pdcp_SN_Size;
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_UM);
+      }
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.discardTimer != NULL)  {
+        if(RC.RB_Config[rbIndex].PdcpCfg.discardTimer == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.discardTimer = CALLOC(1, sizeof(long));
+        }
+        RC.RB_Config[rbIndex].PdcpCfg.discardTimer = RblistConfig->rb_list[i].RbConfig.Pdcp.discardTimer;
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.discardTimer);
+      }
+
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.present = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.present;
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.maxCID != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.maxCID == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.maxCID = CALLOC(1, sizeof(long));
+        }
+          RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.maxCID = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.maxCID;
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.maxCID);
+      }
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0001 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0001;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0002 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0002;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0003 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0003;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0004 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0004;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0006 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0006;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0101 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0101;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0102 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0101;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0103 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0103;
+      RC.RB_Config[rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0104 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0104;
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1 != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.ext1 == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.ext1 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext1));
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1->rn_IntegrityProtection_r10 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext1->rn_IntegrityProtection_r10 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext1->rn_IntegrityProtection_r10 = CALLOC(1, sizeof(long));
+          }
+          *(RC.RB_Config[rbIndex].PdcpCfg.ext1->rn_IntegrityProtection_r10) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1->rn_IntegrityProtection_r10);
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1->rn_IntegrityProtection_r10);
+        }
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1);
+      }
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2 != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.ext2 == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.ext2 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext2));
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2->pdcp_SN_Size_v1130 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext2->pdcp_SN_Size_v1130 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext2->pdcp_SN_Size_v1130 = CALLOC(1, sizeof(long));
+          }
+          *(RC.RB_Config[rbIndex].PdcpCfg.ext2->pdcp_SN_Size_v1130) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2->pdcp_SN_Size_v1130);
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2->pdcp_SN_Size_v1130);
+        }
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2);
+      }
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3 != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.ext3 == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.ext3 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext3));
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->ul_DataSplitDRB_ViaSCG_r12 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext3->ul_DataSplitDRB_ViaSCG_r12 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext3->ul_DataSplitDRB_ViaSCG_r12 = CALLOC(1, sizeof(bool));
+          }
+          *(RC.RB_Config[rbIndex].PdcpCfg.ext3->ul_DataSplitDRB_ViaSCG_r12) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->ul_DataSplitDRB_ViaSCG_r12);
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->ul_DataSplitDRB_ViaSCG_r12);
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->t_Reordering_r12 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext3->t_Reordering_r12 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext3->t_Reordering_r12 = CALLOC(1, sizeof(long));
+          }
+          *(RC.RB_Config[rbIndex].PdcpCfg.ext3->t_Reordering_r12) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->t_Reordering_r12);
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->t_Reordering_r12);
+        }
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3);
+      }
+
+       if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4 != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.ext4 == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.ext4 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4));
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4__ul_DataSplitThreshold_r13));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13->present;
+          RC.RB_Config[rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13->choice.setup = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13->choice.setup;
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13);
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->pdcp_SN_Size_v1310 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext4->pdcp_SN_Size_v1310 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext4->pdcp_SN_Size_v1310  = CALLOC(1, sizeof(long));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext4->pdcp_SN_Size_v1310 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->pdcp_SN_Size_v1310;
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->pdcp_SN_Size_v1310);
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4__statusFeedback_r13));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->present;
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13);
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13);
+          }
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13);
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13);
+          }
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13);
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13);
+          }
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13);
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13);
+          }
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13);
+        }
+       free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4);
+      }
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5 != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.ext5 == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.ext5 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5));
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5__ul_LWA_Config_r14));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->present;
+          RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DRB_ViaWLAN_r14 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DRB_ViaWLAN_r14;
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14);
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14);
+          }
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14);
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5__uplinkOnlyHeaderCompression_r14));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->present;
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14);
+            RC.RB_Config[rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.profiles_r14.profile0x0006_r14 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.profiles_r14.profile0x0006_r14;
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14);
+          }
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14);
+        }
+        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5);
+      }
+
+
+      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6 != NULL) {
+        if(RC.RB_Config[rbIndex].PdcpCfg.ext6 == NULL) {
+          RC.RB_Config[rbIndex].PdcpCfg.ext6 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6));
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6__uplinkDataCompression_r15));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->bufferSize_r15 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->bufferSize_r15;
+          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->dictionary_r15 != NULL) {
+            if(RC.RB_Config[rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->dictionary_r15 == NULL) {
+              RC.RB_Config[rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->dictionary_r15 = CALLOC(1, sizeof(long));
+            }
+            *(RC.RB_Config[rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->dictionary_r15) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->dictionary_r15);
+            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->dictionary_r15);
+          }
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15);
+        }
+        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15 != NULL) {
+          if(RC.RB_Config[rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15 == NULL) {
+            RC.RB_Config[rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6__pdcp_DuplicationConfig_r15));
+          }
+          RC.RB_Config[rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15->present;
+          RC.RB_Config[rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15->choice.setup.pdcp_Duplication_r15 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15->choice.setup.pdcp_Duplication_r15;
+          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15);
+        }
+     free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6);
+     }
+    }
+
+    if(RblistConfig->rb_list[i].RbConfig.isRLCConfigValid == TRUE) {
+      memcpy(&(RC.RB_Config[rbIndex].RlcCfg),&(RblistConfig->rb_list[i].RbConfig.Rlc),sizeof(struct LTE_RLC_Config));
+    }
+    if(RblistConfig->rb_list[i].RbConfig.isLogicalChannelIdValid == TRUE) {
+      RC.RB_Config[rbIndex].LogicalChannelId = RblistConfig->rb_list[i].RbConfig.LogicalChannelId;
+    }
+    if(RblistConfig->rb_list[i].RbConfig.isMacConfigValid == TRUE) {
+      if(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters != NULL) {
+        if(RC.RB_Config[rbIndex].Mac.ul_SpecificParameters == NULL) {
+          RC.RB_Config[rbIndex].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
+        }
+        RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->priority = RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters->priority;
+        RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate = RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters->prioritisedBitRate;
+        free(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters);
+     }
+
+     if(RblistConfig->rb_list[i].RbConfig.Mac.ext3 != NULL) {
+       if(RC.RB_Config[rbIndex].Mac.ext3 == NULL) {
+         RC.RB_Config[rbIndex].Mac.ext3 = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ext3));
+       }
+       if(RblistConfig->rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14 != NULL) {
+         if(RC.RB_Config[rbIndex].Mac.ext3->laa_UL_Allowed_r14 == NULL) {
+           RC.RB_Config[rbIndex].Mac.ext3->laa_UL_Allowed_r14 = CALLOC(1, sizeof(bool));
+         }
+         *(RC.RB_Config[rbIndex].Mac.ext3->laa_UL_Allowed_r14) = *(RblistConfig->rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14);
+         free(RblistConfig->rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14);
+       }
+       free(RblistConfig->rb_list[i].RbConfig.Mac.ext3);
+      }
+    }
+    if(RblistConfig->rb_list[i].RbConfig.isDiscardULDataValid == TRUE) {
+      RC.RB_Config[rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
+    }
+
+    LOG_A(RRC,"PDCP Config discardTimer: %d \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
+    LOG_A(RRC,"Present RLC Config: %d \n",RC.RB_Config[rbIndex].RlcCfg.present);
+    LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %d , am.ul_AM_RLC.LTE_PollPDU_t:%d, am.ul_AM_RLC.LTE_PollByte_t:%d, am.ul_AM_RLC.maxRetxThreshold: %d ,am.dl_AM_RLC.t_Reordering: %d,am.dl_AM_RLC.t_StatusProhibit: %d \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
+    LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %d, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %d, um_Bi_Directional.dl_UM_RLC.t_Reordering: %d \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
+    LOG_A(RRC,"LogicalChannelId: %d \n",RC.RB_Config[rbIndex].LogicalChannelId);
+    LOG_A(RRC,"Mac.ul_SpecificParameters->priority: %d, Mac.ul_SpecificParameters->prioritisedBitRate: %d \n",RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->priority,RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate);
+    LOG_A(RRC,"DiscardULData: %d \n",RC.RB_Config[rbIndex].DiscardULData);
+  }
+  return 0;
+}
+
 /*------------------------------------------------------------------------------*/
 int
 rrc_eNB_decode_ccch(
@@ -9532,6 +9965,11 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                  RLC_SDU_INDICATION(msg_p).is_successful,
                                  RLC_SDU_INDICATION(msg_p).srb_id,
                                  RLC_SDU_INDICATION(msg_p).message_id);
+      break;
+
+    case RRC_RBLIST_CFG_REQ:
+      LOG_A(RRC, "[eNB %d] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
+      rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
       break;
 
     default:
