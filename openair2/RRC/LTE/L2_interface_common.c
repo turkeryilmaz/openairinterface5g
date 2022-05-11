@@ -121,6 +121,30 @@ rrc_data_ind(
           Srb_id,
           sdu_sizeP,
           ctxt_pP->rnti);
+
+//#ifdef ENB_SS
+    if (RC.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    {
+      LOG_I(RRC,"L2 Interface Sending DCCH PDU_IND to SS \n");
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, ctxt_pP->instance,  SS_RRC_PDU_IND);
+      if (message_p) {
+        /* Populate the message and send to SS */
+        SS_RRC_PDU_IND (message_p).sdu_size = sdu_sizeP;
+        SS_RRC_PDU_IND (message_p).srb_id = DCCH_index;
+        SS_RRC_PDU_IND (message_p).frame = ctxt_pP->frame;
+        SS_RRC_PDU_IND (message_p).rnti = ctxt_pP->rnti;
+        SS_RRC_PDU_IND (message_p).subframe = ctxt_pP->subframe;
+        memset (SS_RRC_PDU_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
+        memcpy (SS_RRC_PDU_IND (message_p).sdu, buffer_pP, sdu_sizeP);
+
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB, ctxt_pP->instance, message_p);
+        if(send_res < 0) {
+          LOG_E(RRC,"Error in itti_send_msg_to_task");
+        }
+      }
+    }
+//#endif /** ENB_SS */
+
   }
 
   {

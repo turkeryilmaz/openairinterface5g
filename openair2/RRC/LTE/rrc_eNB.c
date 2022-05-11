@@ -6648,7 +6648,7 @@ rrc_eNB_generate_RRCConnectionSetup(
                                CC_id,
                                (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
                                (const uint8_t) RC.rrc[ctxt_pP->module_id]->carrier[CC_id].p_eNB, //at this point we do not have the UE capability information, so it can only be TM1 or TM2
-                               rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
+                               0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
                                SRB_configList,
                                &ue_context_pP->ue_context.physicalConfigDedicated);
   } else {
@@ -6658,7 +6658,7 @@ rrc_eNB_generate_RRCConnectionSetup(
                             CC_id,
                             (uint8_t *) ue_p->Srb0.Tx_buffer.Payload,
                             (uint8_t) RC.rrc[ctxt_pP->module_id]->carrier[CC_id].p_eNB, //at this point we do not have the UE capability information, so it can only be TM1 or TM2
-                            rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
+                            0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
                             SRB_configList,
                             &ue_context_pP->ue_context.physicalConfigDedicated);
   }
@@ -8103,12 +8103,17 @@ rrc_eNB_decode_dcch(
           xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
         }
 
+//#ifndef ENB_SS_SRB
+      if (RC.mode == SS_ENB)
+      {
         // confirm with PDCP about the security mode for DCCH
         //rrc_pdcp_config_req (enb_mod_idP, frameP, 1,CONFIG_ACTION_SET_SECURITY_MODE, (ue_mod_idP * NB_RB_MAX) + DCCH, 0x77);
         // continue the procedure
         rrc_eNB_generate_UECapabilityEnquiry(
           ctxt_pP,
           ue_context_p);
+      }
+//#endif
         break;
 
       case LTE_UL_DCCH_MessageType__c1_PR_securityModeFailure:
@@ -9533,6 +9538,145 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                  RLC_SDU_INDICATION(msg_p).srb_id,
                                  RLC_SDU_INDICATION(msg_p).message_id);
       break;
+
+//#ifdef ENB_SS
+    case SS_RRC_PDU_REQ:
+      if (RC.mode >= SS_SOFTMODEM)
+      {
+#if 0
+        pdcp_t  *pdcp_p   = NULL;
+        hashtable_rc_t  h_rc;
+        hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
+        uint8_t  rb_idx = 0;
+        uint8_t rbid_;
+        ss_get_pdcp_cnt_t  pc;
+#endif
+        LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size);
+
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                      instance,
+                                      ENB_FLAG_YES,
+                                      SS_RRC_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+
+
+        if ((SS_RRC_PDU_REQ(msg_p).srb_id) != 0)
+        {
+          LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+          LOG_A(RRC, "Sending RRC PDU by rrc_data_req function \n");
+
+          uper_decode(NULL,
+              &asn_DEF_LTE_DL_DCCH_Message,
+              (void **)&dl_dcch_msg,
+              (uint8_t *)SS_RRC_PDU_REQ (msg_p).sdu,
+              SS_RRC_PDU_REQ (msg_p).sdu_size,0,0);
+	  {
+            LOG_A (RRC, "DL-DCCH: ");
+	    for (int i = 0; i < SS_RRC_PDU_REQ (msg_p).sdu_size; i++) {
+	      LOG_A(RRC, "%x.", SS_RRC_PDU_REQ (msg_p).sdu[i]);
+	    }
+            LOG_A(RRC, "\n");
+	  }
+          LOG_P(RRC, "DL DCCH:", (uint8_t *)SS_RRC_PDU_REQ (msg_p).sdu ,SS_RRC_PDU_REQ (msg_p).sdu_size);
+
+          if (LOG_DEBUGFLAG(DEBUG_ASN1))
+          {
+            xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
+          }
+#if 0
+          if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry && as_security_conf_ciphering)
+          {
+            for (int i = 0; i < MAX_RBS; i++)
+            {
+              if (i < 3)
+              {
+                rbid_ = i;
+                key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 1);
+              }
+              else
+              {
+                rbid_ = i - 3;
+                key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 0);
+              }
+              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+              if (h_rc == HASH_TABLE_OK)
+              {
+                pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
+                pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
+              }
+            }
+          }
+
+          else if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
+          {
+            struct rrc_eNB_ue_context_s *ue_context_p = NULL;
+            ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+            LOG_A(RRC, "[eNB %d] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+            if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
+            {
+              LOG_A(RRC, "[eNB %d] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+              for (int i = 0; i < MAX_RBS; i++)
+              {
+                if (i < 3)
+                {
+                  rbid_ = i;
+                  key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 1);
+                }
+                else
+                {
+                  rbid_ = i - 3;
+                  key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 0);
+                }
+                h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+                if (h_rc == HASH_TABLE_OK)
+                {
+                  pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
+                }
+              }
+              rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
+            }
+          }
+#endif
+          rrc_data_req(&ctxt,
+          DCCH,
+          rrc_eNB_mui++,
+          SDU_CONFIRM_NO,
+          SS_RRC_PDU_REQ (msg_p).sdu_size,
+          SS_RRC_PDU_REQ (msg_p).sdu,
+          PDCP_TRANSMISSION_MODE_CONTROL);
+          /* TTCN triggered release, need to clean up the eNB's UE context
+           * the lower layer UE state , setting the UE release timer 10 SF
+           * rrc_subframe_process function will check each SF about the UE
+           * marked for release and do the clean up after 10 SF.
+           * 10 SF time is given to ensure the rrcConnectionRelease PDU
+           * is delivered to UE without any issue.
+           */
+          if (dl_dcch_msg->message.present == LTE_DL_DCCH_MessageType_PR_c1)
+          {
+            if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
+            {
+              struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
+              int release_num;
+
+              ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance],SS_RRC_PDU_REQ(msg_p).rnti);
+              LOG_A(RRC, "RRC Connection Release message received \n");
+              ue_context_pP->ue_context.ue_reestablishment_timer = 0;
+              ue_context_pP->ue_context.ue_release_timer = 1;
+              ue_context_pP->ue_context.ue_release_timer_thres = 10;
+              ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
+              ue_context_pP->ue_context.ue_release_timer_rrc = 0;
+              ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+#if 0
+	      security_mode_command_send = TRUE;
+              as_security_conf_ciphering = FALSE;
+#endif
+            }
+          }
+        }
+      }
+      break;
+//#endif
 
     default:
       LOG_E(RRC, "[eNB %ld] Received unexpected message %s\n", instance, msg_name_p);
