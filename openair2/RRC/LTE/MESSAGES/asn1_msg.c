@@ -2492,21 +2492,42 @@ do_RRCConnectionSetup(
   SRB1_rlc_config = CALLOC(1,sizeof(*SRB1_rlc_config));
   SRB1_config->rlc_Config   = SRB1_rlc_config;
   SRB1_rlc_config->present = LTE_SRB_ToAddMod__rlc_Config_PR_explicitValue;
-  SRB1_rlc_config->choice.explicitValue.present=LTE_RLC_Config_PR_am;
-  SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = rrc->srb1_timer_poll_retransmit;
-  SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU          = rrc->srb1_poll_pdu;
-  SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte         = rrc->srb1_poll_byte;
-  SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = rrc->srb1_max_retx_threshold;
-  SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering     = rrc->srb1_timer_reordering;
-  SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = rrc->srb1_timer_status_prohibit;
+
+//if (RC.mode == SS_SOFTMODEM)
+  if (1) {
+    SRB1_rlc_config->choice.explicitValue.present = RC.RB_Config[1].RlcCfg.present;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU          = RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte         = RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.pollByte;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
+    SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering     = RC.RB_Config[1].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
+    SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[1].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
+  } else {
+    SRB1_rlc_config->choice.explicitValue.present=LTE_RLC_Config_PR_am;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = rrc->srb1_timer_poll_retransmit;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU          = rrc->srb1_poll_pdu;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte         = rrc->srb1_poll_byte;
+    SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = rrc->srb1_max_retx_threshold;
+    SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering     = rrc->srb1_timer_reordering;
+    SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = rrc->srb1_timer_status_prohibit;
+  }
+  LOG_A(RRC,"do_RRCConnectionSetup: rlc config present: %d, am.ul_AM_RLC.t_PollRetransmit: %d, am.ul_AM_RLC.pollPDU: %d, am.ul_AM_RLC.pollByte: %d, ul_AM_RLC.maxRetxThreshold: %d, am.dl_AM_RLC.t_Reordering: %d, am.dl_AM_RLC.t_StatusProhibit: %d \n",SRB1_rlc_config->choice.explicitValue.present,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
+
   SRB1_lchan_config = CALLOC(1,sizeof(*SRB1_lchan_config));
   SRB1_config->logicalChannelConfig   = SRB1_lchan_config;
   SRB1_lchan_config->present = LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue;
   SRB1_ul_SpecificParameters = CALLOC(1,sizeof(*SRB1_ul_SpecificParameters));
   SRB1_lchan_config->choice.explicitValue.ul_SpecificParameters = SRB1_ul_SpecificParameters;
-  SRB1_ul_SpecificParameters->priority = 1;
-  //assign_enum(&SRB1_ul_SpecificParameters->prioritisedBitRate,LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity);
-  SRB1_ul_SpecificParameters->prioritisedBitRate=LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+//if (RC.mode == SS_SOFTMODEM)
+  if (1) {
+    SRB1_ul_SpecificParameters->priority = RC.RB_Config[1].Mac.ul_SpecificParameters->priority;
+    SRB1_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[1].Mac.ul_SpecificParameters->prioritisedBitRate;
+  } else {
+    SRB1_ul_SpecificParameters->priority = 1;
+    //assign_enum(&SRB1_ul_SpecificParameters->prioritisedBitRate,LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity);
+    SRB1_ul_SpecificParameters->prioritisedBitRate=LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  }
+  LOG_A(RRC,"do_RRCConnectionSetup: SRB1_ul_SpecificParameters->priority: %d, SRB1_ul_SpecificParameters->prioritisedBitRate: %d \n",SRB1_ul_SpecificParameters->priority,SRB1_ul_SpecificParameters->prioritisedBitRate);
   //assign_enum(&SRB1_ul_SpecificParameters->bucketSizeDuration,LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50);
   SRB1_ul_SpecificParameters->bucketSizeDuration=LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
   logicalchannelgroup = CALLOC(1,sizeof(long));
