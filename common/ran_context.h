@@ -47,6 +47,7 @@
 #include "RRC/LTE/rrc_defs.h"
 #include "RRC/NR/nr_rrc_defs.h"
 #include <openair3/ocp-gtpu/gtpv1u_eNB_task.h>
+#include "targets/ARCH/SS/ss_config.h"
 
 #define SS_ENB  0x00
 #define SS_SOFTMODEM    0x01

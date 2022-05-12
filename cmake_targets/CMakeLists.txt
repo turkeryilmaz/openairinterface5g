@@ -1317,7 +1317,7 @@ include_directories(${NFAPI_USER_DIR})
 
 # nFAPI lib selection based on the flag
 ############################################
-add_boolean_option(NFAPI_PRE_CLEANUP   False  "Flag for compilation without nFAPI Static lib")
+add_boolean_option(NFAPI_PRE_CLEANUP   True  "Flag for compilation without nFAPI Static lib")
 message("NFAPI_PRE_CLEANUP flag is ${NFAPI_PRE_CLEANUP}")
 
 if (NFAPI_PRE_CLEANUP)

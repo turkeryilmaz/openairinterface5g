@@ -764,13 +764,6 @@ typedef struct {
   uint32_t                           sizeof_paging[MAX_MOBILES_PER_ENB];
 } rrc_eNB_carrier_data_t;
 
-typedef struct ss_config_s {
-  const char* hostIp;
-  int Sysport;
-  int Srbport;
-  int Vngport;
-  int State;
-} ss_config;
 
 typedef struct eNB_RRC_INST_s {
   /// southbound midhaul configuration
