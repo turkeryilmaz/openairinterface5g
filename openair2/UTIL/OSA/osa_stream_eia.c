@@ -216,6 +216,9 @@ int stream_compute_integrity_eia1(stream_cipher_t *stream_cipher, uint8_t out[4]
   //printf ("MAC_I:%16X\n",MAC_I);
   MAC_I = hton_int32(MAC_I);
   memcpy(out, &MAC_I, 4);
+  LOG_A(OSA, "MAC-I Calculated for algorithm,\n"
+            "\tMAC-I %02x.%02x.%02x.%02x\n",
+            out[0], out[1], out[2], out[3]);
   return 0;
 }
 

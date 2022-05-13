@@ -122,6 +122,11 @@ pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 
+uint8_t security_mode_command_send = TRUE;
+uint8_t as_security_conf_ciphering;
+LTE_CipheringAlgorithm_r12_t  ciphering_algorithm;
+uint8_t ul_sqn,dl_sqn;
+
 void
 openair_rrc_on(
   const protocol_ctxt_t *const ctxt_pP
@@ -3648,13 +3653,22 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
         rrc_eNB_mui,
         ctxt_pP->module_id,
         DCCH);
-  rrc_data_req(ctxt_pP,
-               DCCH,
-               rrc_eNB_mui++,
-               SDU_CONFIRM_NO,
-               size,
-               buffer,
-               PDCP_TRANSMISSION_MODE_CONTROL);
+
+  uint8_t *kRRCenc = NULL;
+  uint8_t *kRRCint = NULL;
+  uint8_t *kUPenc = NULL;
+  int8_t security_modeP = 0xff;
+  if (RC.mode == SS_ENB)
+  {
+    rrc_data_req(ctxt_pP,
+                 DCCH,
+                 rrc_eNB_mui++,
+                 SDU_CONFIRM_NO,
+                 size,
+                 buffer,
+                 PDCP_TRANSMISSION_MODE_CONTROL);
+  }
+
   /* Refresh SRBs/DRBs */
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            *SRB_configList2, // NULL,
@@ -3677,6 +3691,55 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
                             0,
                             0
                            );
+  }
+
+  if (RC.mode > SS_ENB)
+  {
+    pdcp_t *pdcp_p = NULL;
+    rb_id_t rbid_ = 1;
+    hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 1);
+    int8_t h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+    if (h_rc == HASH_TABLE_OK)
+    {
+      kRRCenc = MALLOC(16);
+      kRRCint = MALLOC(32);
+      kUPenc = MALLOC(16);
+      memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
+      memcpy(kRRCint, pdcp_p->kRRCint, 32);
+      memcpy(kUPenc, pdcp_p->kUPenc, 16);
+      security_modeP = (pdcp_p->cipheringAlgorithm |(pdcp_p->integrityProtAlgorithm << 4) );
+      LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti \n", ctxt_pP->rnti);
+
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
+      h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+
+      if (h_rc == HASH_TABLE_OK)
+      {
+        LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rnti);
+        pdcp_config_set_security(
+            ctxt_pP,
+            pdcp_p,
+            DCCH1,
+            DCCH1 + 2,
+            security_modeP,
+            kRRCenc,
+            kRRCint,
+            kUPenc);
+      }
+      else
+      {
+        LOG_E(RRC,
+              PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH %u\n",
+              PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
+              DCCH);
+      }
+    }
+
+    else
+    {
+      LOG_A(RRC, "OSA Can't find Hash of UE rnti %x\n", rnti);
+    }
   }
 
   free(Sparams);
@@ -6526,26 +6589,32 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
     T_INT(ctxt_pP->frame),
     T_INT(ctxt_pP->subframe),
     T_INT(ctxt_pP->rnti));
+    int8_t security_modeP = 0xff;
+    if (RC.mode == SS_ENB)
+    {
+      /* Derive the keys from kenb */
+      if (DRB_configList != NULL)
+      {
+        derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
+                          ue_context_pP->ue_context.kenb,
+                          &kUPenc);
+      }
 
-  /* Derive the keys from kenb */
-  if (DRB_configList != NULL) {
-    derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                      ue_context_pP->ue_context.kenb,
-                      &kUPenc);
-  }
+      derive_key_rrc_enc(ue_context_pP->ue_context.ciphering_algorithm,
+                         ue_context_pP->ue_context.kenb,
+                         &kRRCenc);
+      derive_key_rrc_int(ue_context_pP->ue_context.integrity_algorithm,
+                         ue_context_pP->ue_context.kenb,
+                         &kRRCint);
+      security_modeP = 0xff;
+    }
 
-  derive_key_rrc_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                     ue_context_pP->ue_context.kenb,
-                     &kRRCenc);
-  derive_key_rrc_int(ue_context_pP->ue_context.integrity_algorithm,
-                     ue_context_pP->ue_context.kenb,
-                     &kRRCint);
   /* Refresh SRBs/DRBs */
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            SRB_configList, // NULL,
                            DRB_configList,
                            DRB_Release_configList2,
-                           0xff, // already configured during the securitymodecommand
+                           security_modeP, // already configured during the securitymodecommand
                            kRRCenc,
                            kRRCint,
                            kUPenc,
@@ -7339,6 +7408,71 @@ char rrc_eNB_rblist_configuration(
     LOG_A(RRC,"DiscardULData: %d \n",RC.RB_Config[rbIndex].DiscardULData);
   }
   return 0;
+}
+
+//-----------------------------------------------------------------------------
+char rrc_eNB_as_security_configuration_req(
+  const protocol_ctxt_t   *const ctxt_pP,
+  const module_id_t enb_mod_idP,
+  RrcAsSecurityConfigReq *ASSecConfReq
+)
+//-----------------------------------------------------------------------------
+{
+  pdcp_t  *pdcp_p   = NULL;
+  hashtable_rc_t                      h_rc;
+  hash_key_t                          key = HASHTABLE_NOT_A_KEY_VALUE;
+  ss_get_pdcp_cnt_t                   pc;
+  uint8_t                             rb_idx = 0;
+  uint8_t rbid_;
+  if (NULL == ctxt_pP) {
+    LOG_A(RRC, "No context to get PdcpCount\n");
+  }
+  LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
+  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
+  ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+  for (int i = 0; i < MAX_RBS; i++)
+  {
+    if (i < 3)
+    {
+      rbid_ = i;
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag, rbid_, 1);
+    }
+    else
+    {
+      rbid_ = i - 3;
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag, rbid_, 0);
+    }
+    h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
+    if (h_rc == HASH_TABLE_OK)
+    {
+      pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
+      ul_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn;
+      dl_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn;
+      if(((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) || ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn))
+      {
+        pdcp_config_set_security(
+          ctxt_pP,
+          pdcp_p,
+          DCCH,
+          DCCH+2,
+          (security_mode_command_send == TRUE)  ?
+          0 | (ASSecConfReq->Integrity.integrity_algorithm << 4) :
+          (ASSecConfReq->Ciphering.ciphering_algorithm ) |
+          (ASSecConfReq->Integrity.integrity_algorithm << 4),
+          ASSecConfReq->Ciphering.kRRCenc,
+          ASSecConfReq->Integrity.kRRCint,
+          ASSecConfReq->Ciphering.kUPenc);
+        security_mode_command_send = FALSE;
+        as_security_conf_ciphering = ASSecConfReq->Ciphering.ciphering_algorithm;
+        rb_idx++;
+      } else {
+        LOG_A(RRC,"AS Security configuration received from TTCN didn't applied \n");
+      }
+    } else {
+      LOG_A (PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
+                  rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
+    }
+  }
 }
 
 /*------------------------------------------------------------------------------*/
@@ -9976,14 +10110,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_RRC_PDU_REQ:
       if (RC.mode >= SS_SOFTMODEM)
       {
-#if 0
         pdcp_t  *pdcp_p   = NULL;
         hashtable_rc_t  h_rc;
         hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
         uint8_t  rb_idx = 0;
         uint8_t rbid_;
         ss_get_pdcp_cnt_t  pc;
-#endif
         LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
@@ -10017,7 +10149,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
-#if 0
           if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry && as_security_conf_ciphering)
           {
             for (int i = 0; i < MAX_RBS; i++)
@@ -10070,7 +10201,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
             }
           }
-#endif
           rrc_data_req(&ctxt,
           DCCH,
           rrc_eNB_mui++,
@@ -10100,16 +10230,37 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
-#if 0
 	      security_mode_command_send = TRUE;
               as_security_conf_ciphering = FALSE;
-#endif
             }
           }
         }
       }
       break;
 //#endif
+
+    case RRC_AS_SECURITY_CONFIG_REQ:
+      LOG_A(RRC,"[eNB %d] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %d \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+      for(int i=16;i<32;i++)
+      {
+        LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+      }
+      for(int j=0;j<16;j++)
+      {
+        LOG_D(RRC,"kRRCenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+      }
+      for(int k=0;k<16;k++)
+      {
+        LOG_D(RRC,"kUPenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+      }
+      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                    instance,
+                                    ENB_FLAG_YES,
+                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+                                    msg_p->ittiMsgHeader.lte_time.frame,
+                                    msg_p->ittiMsgHeader.lte_time.slot);
+      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+      break;
 
     case RRC_RBLIST_CFG_REQ:
       LOG_A(RRC, "[eNB %d] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);

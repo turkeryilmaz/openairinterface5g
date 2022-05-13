@@ -258,7 +258,32 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
   eNB->UL_INFO.subframe  = proc->subframe_rx;
   eNB->UL_INFO.module_id = eNB->Mod_id;
   eNB->UL_INFO.CC_id     = eNB->CC_id;
-  eNB->if_inst->UL_indication(&eNB->UL_INFO, (void*)proc);
+  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
+
+//#ifdef ENB_SS
+  if (RC.mode >= SS_SOFTMODEM)
+  {
+    MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_UPD_TIM_INFO);
+    if (message_p)
+    {
+      SS_UPD_TIM_INFO(message_p).sf = eNB->UL_INFO.subframe;
+      SS_UPD_TIM_INFO(message_p).sfn = eNB->UL_INFO.frame;
+
+      int send_res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+      if (send_res < 0)
+      {
+        printf("Error in itti_send_msg_to_task");
+        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
+      }
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d sf %d",
+            eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+
+    }
+#endif
+  }
+//#endif /** ENB_SS */
+
+
   AssertFatal((ret= pthread_mutex_unlock(&eNB->UL_INFO_mutex))==0,"error unlocking UL_INFO_mutex, return %d\n",ret);
   /* this conflict resolution may be totally wrong, to be tested */
   /* CONFLICT RESOLUTION: BEGIN */
