@@ -2362,21 +2362,12 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       case 65: // 75ms, 10^-2, p0.7, mission critical voice, GBR
       case 66: // 100ms, 10^-2, p2, non-mission critical  voice , GBR
         // RLC
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
           DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
           DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
           DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
-          DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
-          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
-          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         } else {
           DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
           DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
@@ -2386,14 +2377,8 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         // PDCP
         PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
         DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-<<<<<<< HEAD
         if(1) {
           PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_UM->pdcp_SN_Size;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         } else {
           PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
         }
@@ -2409,7 +2394,6 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       case 69: // 60ms, 10^-6, p0.5, mission critical delay sensitive data, Lowest Priority
       case 70: // 200ms, 10^-6, p5.5, mision critical data
         // RLC
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
@@ -2419,17 +2403,6 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
           DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
           DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
           DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
-          DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
-          DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
-          DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte;
-          DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
-          DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
-          DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         } else {
           DRB_rlc_config->present = LTE_RLC_Config_PR_am;
           DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
@@ -2442,19 +2415,11 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         // PDCP
         PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
         DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
         } else {
           PDCP_rlc_AM->statusReportRequired = false;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
-        } else {
-          PDCP_rlc_AM->statusReportRequired = FALSE;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         }
         break;
 
@@ -2472,14 +2437,8 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         continue;
     }
 
-<<<<<<< HEAD
     if(1) {
       DRB_pdcp_config->headerCompression.present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.headerCompression.present;
-=======
-    //if (RC.mode == SS_SOFTMODEM) {
-    if(1) {
-      DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
     } else {
       DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
     }
@@ -2488,24 +2447,13 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
     DRB_ul_SpecificParameters = CALLOC(1, sizeof(*DRB_ul_SpecificParameters));
     DRB_lchan_config->ul_SpecificParameters = DRB_ul_SpecificParameters;
 
-<<<<<<< HEAD
     if(1) {
       DRB_ul_SpecificParameters->priority = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].Mac.ul_SpecificParameters->priority;
       DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].Mac.ul_SpecificParameters->prioritisedBitRate;
-=======
-    //if (RC.mode == SS_SOFTMODEM) {
-    if(1) {
-      DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
-      DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
     } else {
       if (ue_context_pP->ue_context.e_rab[i].param.qos.qci < 9 )
         DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.e_rab[i].param.qos.qci-1] + 3;
       // ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
-<<<<<<< HEAD
-=======
-      else
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         DRB_ul_SpecificParameters->priority= 4;
 
         DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
@@ -2670,15 +2618,9 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
     DRB_rlc_config = DRB_config->rlc_Config;
     DRB_pdcp_config = DRB_config->pdcp_Config;
-<<<<<<< HEAD
     //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       *DRB_pdcp_config->discardTimer = *(RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.discardTimer);
-=======
-    //if (RC.mode == SS_SOFTMODEM) {
-    if(1) {
-      *DRB_pdcp_config->discardTimer = *(RC.RB_Config[3].PdcpCfg.discardTimer);
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
     } else {
       *DRB_pdcp_config->discardTimer = LTE_PDCP_Config__discardTimer_infinity;
     }
@@ -2697,21 +2639,12 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
       case 65: // 75ms, 10^-2, p0.7, mission critical voice, GBR
       case 66: // 100ms, 10^-2, p2, non-mission critical  voice , GBR
         // RLC
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
           DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
           DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
           DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
-          DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
-          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
-          DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         } else {
           DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
           DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
@@ -2732,15 +2665,9 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
         PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
         DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_UM->pdcp_SN_Size;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         } else {
           PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
         }
@@ -2756,7 +2683,6 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
       case 69: // 60ms, 10^-6, p0.5, mission critical delay sensitive data, Lowest Priority
       case 70: // 200ms, 10^-6, p5.5, mision critical data
         // RLC
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
@@ -2766,17 +2692,6 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
           DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
           DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
           DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
-          DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
-          DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
-          DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte;
-          DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
-          DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
-          DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         } else {
           DRB_rlc_config->present = LTE_RLC_Config_PR_am;
           DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
@@ -2800,19 +2715,11 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
         PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
         DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-<<<<<<< HEAD
         //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
         } else {
           PDCP_rlc_AM->statusReportRequired = false;
-=======
-        //if (RC.mode == SS_SOFTMODEM) {
-        if(1) {
-          PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
-        } else {
-          PDCP_rlc_AM->statusReportRequired = FALSE;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
         }
         break;
 
@@ -2826,32 +2733,19 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
         continue;
     }
 
-<<<<<<< HEAD
     //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       DRB_pdcp_config->headerCompression.present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.headerCompression.present;
-=======
-    //if (RC.mode == SS_SOFTMODEM) {
-    if(1) {
-      DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
     } else {
       DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
     }
     DRB_lchan_config = DRB_config->logicalChannelConfig;
     DRB_ul_SpecificParameters = DRB_lchan_config->ul_SpecificParameters;
 
-<<<<<<< HEAD
     //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       DRB_ul_SpecificParameters->priority = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].Mac.ul_SpecificParameters->priority;
       DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].Mac.ul_SpecificParameters->prioritisedBitRate;
-=======
-    //if (RC.mode == SS_SOFTMODEM) {
-    if(1) {
-      DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
-      DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
     } else {
       if (ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci < 9 )
         DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.modify_e_rab[i].param.qos.qci-1] + 3;
@@ -3127,7 +3021,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   SRB2_rlc_config = CALLOC(1, sizeof(*SRB2_rlc_config));
   SRB2_config->rlc_Config = SRB2_rlc_config;
   SRB2_rlc_config->present = LTE_SRB_ToAddMod__rlc_Config_PR_explicitValue;
-<<<<<<< HEAD
 //if (RC.ss.mode == SS_SOFTMODEM)
   if (1) {
     SRB2_rlc_config->choice.explicitValue.present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][2].RlcCfg.present;
@@ -3137,17 +3030,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][2].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
     SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][2].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
     SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][2].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
-=======
-//if (RC.mode == SS_SOFTMODEM)
-  if (1) {
-    SRB2_rlc_config->choice.explicitValue.present = RC.RB_Config[2].RlcCfg.present;
-    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
-    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
-    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.pollByte;
-    SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
-    SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[2].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
-    SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[2].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
   } else {
     SRB2_rlc_config->choice.explicitValue.present = LTE_RLC_Config_PR_am;
     SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms15;
@@ -3157,35 +3039,20 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
     SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms10;
   }
-<<<<<<< HEAD
   LOG_A(RRC,"rlc config present: %d, ul_AM_RLC.t_PollRetransmit: %ld, ul_AM_RLC.pollPDU: %ld, ul_AM_RLC.pollByte: %ld, ul_AM_RLC.maxRetxThreshold: %ld,dl_AM_RLC.t_Reordering: %ld,dl_AM_RLC.t_StatusProhibit: %ld \n",SRB2_rlc_config->choice.explicitValue.present,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
-=======
-  LOG_A(RRC,"rlc config present: %d, ul_AM_RLC.t_PollRetransmit: %d, ul_AM_RLC.pollPDU: %d, ul_AM_RLC.pollByte: %d, ul_AM_RLC.maxRetxThreshold: %d,dl_AM_RLC.t_Reordering: %d,dl_AM_RLC.t_StatusProhibit: %d \n",SRB2_rlc_config->choice.explicitValue.present,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
   SRB2_lchan_config = CALLOC(1, sizeof(*SRB2_lchan_config));
   SRB2_config->logicalChannelConfig = SRB2_lchan_config;
   SRB2_lchan_config->present = LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue;
   SRB2_ul_SpecificParameters = CALLOC(1, sizeof(*SRB2_ul_SpecificParameters));
-<<<<<<< HEAD
 //if (RC.ss.mode == SS_SOFTMODEM)
   if (1) {
     SRB2_ul_SpecificParameters->priority = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][2].Mac.ul_SpecificParameters->priority;
     SRB2_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][2].Mac.ul_SpecificParameters->prioritisedBitRate;
-=======
-//if (RC.mode == SS_SOFTMODEM)
-  if (1) {
-    SRB2_ul_SpecificParameters->priority = RC.RB_Config[2].Mac.ul_SpecificParameters->priority;
-    SRB2_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[2].Mac.ul_SpecificParameters->prioritisedBitRate;
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
   } else {
     SRB2_ul_SpecificParameters->priority = 3; // let some priority for SRB1 and dedicated DRBs
     SRB2_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
   }
-<<<<<<< HEAD
   LOG_A(RRC,"SRB2_ul_SpecificParameters->priority: %ld, SRB2_ul_SpecificParameters->prioritisedBitRate: %ld \n",SRB2_ul_SpecificParameters->priority,SRB2_ul_SpecificParameters->prioritisedBitRate);
-=======
-  LOG_A(RRC,"SRB2_ul_SpecificParameters->priority: %d, SRB2_ul_SpecificParameters->prioritisedBitRate: %d \n",SRB2_ul_SpecificParameters->priority,SRB2_ul_SpecificParameters->prioritisedBitRate);
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
   SRB2_ul_SpecificParameters->bucketSizeDuration = LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
   /* LCG for CCCH and DCCH is 0 as defined in 36331 */
   logicalchannelgroup = CALLOC(1, sizeof(long));
@@ -3294,7 +3161,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           DRB_rlc_config = CALLOC(1, sizeof(*DRB_rlc_config));
           DRB_config->rlc_Config = DRB_rlc_config;
 #ifdef RRC_DEFAULT_RAB_IS_AM
-<<<<<<< HEAD
           if(1) {
             /* DRB1 stored at index 3 in RC.RB_Config*/
             DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
@@ -3331,46 +3197,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
             DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
             DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
           }
-=======
-  //if (RC.mode == SS_SOFTMODEM) {
-  if(1) {
-    /* DRB1 stored at index 3 in RC.RB_Config*/
-    DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
-    if(DRB_rlc_config->present == LTE_RLC_Config_PR_am) {
-      DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
-      DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollPDU;
-      DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.pollByte;
-      DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold;
-      DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering;
-      DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = RC.RB_Config[3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit;
-    } else if(DRB_rlc_config->present == LTE_RLC_Config_PR_um_Bi_Directional) {
-      DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
-      DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
-      DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
-    }
-  } else {
-    DRB_rlc_config->present = LTE_RLC_Config_PR_am;
-    DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = LTE_T_PollRetransmit_ms50;
-    DRB_rlc_config->choice.am.ul_AM_RLC.pollPDU = LTE_PollPDU_p16;
-    DRB_rlc_config->choice.am.ul_AM_RLC.pollByte = LTE_PollByte_kBinfinity;
-    DRB_rlc_config->choice.am.ul_AM_RLC.maxRetxThreshold = LTE_UL_AM_RLC__maxRetxThreshold_t8;
-    DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
-    DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
-  }
-#else
-  //if (RC.mode == SS_SOFTMODEM) {
-  if(1) {
-    DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
-    DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
-    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength;
-    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering;
-  } else {
-    DRB_rlc_config->present = LTE_RLC_Config_PR_um_Bi_Directional;
-    DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength = LTE_SN_FieldLength_size10;
-    DRB_rlc_config->choice.um_Bi_Directional.dl_UM_RLC.t_Reordering = LTE_T_Reordering_ms35;
-  }
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
 #endif
           /* Avoid gcc warnings */
           (void)PDCP_rlc_AM;
@@ -3473,7 +3299,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     (void)PDCP_rlc_AM;
     (void)PDCP_rlc_UM;
 #ifdef RRC_DEFAULT_RAB_IS_AM // EXMIMO_IOT
-<<<<<<< HEAD
     PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
     DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
     if(1) {
@@ -3515,51 +3340,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     asn1cSeqAdd(&(*DRB_configList2)->list, DRB_config);
 
   }
-=======
-  PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
-  DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-  //if (RC.mode == SS_SOFTMODEM) {
-  if(1) {
-    PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
-  } else {
-    PDCP_rlc_AM->statusReportRequired = FALSE;
-  }
-#else
-  PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
-  DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-  //if (RC.mode == SS_SOFTMODEM) {
-  if(1) {
-    PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
-  } else {
-    PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
-  }
-#endif
-  //if (RC.mode == SS_SOFTMODEM) {
-  if(1) {
-    DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
-  } else {
-    DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
-  }
-  DRB_lchan_config = CALLOC(1, sizeof(*DRB_lchan_config));
-  DRB_config->logicalChannelConfig = DRB_lchan_config;
-  DRB_ul_SpecificParameters = CALLOC(1, sizeof(*DRB_ul_SpecificParameters));
-  DRB_lchan_config->ul_SpecificParameters = DRB_ul_SpecificParameters;
-  //if (RC.mode == SS_SOFTMODEM) {
-  if(1) {
-    DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
-    DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
-  } else {
-    DRB_ul_SpecificParameters->priority = 12; // lower priority than srb1, srb2 and other dedicated bearer
-    DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8; // LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
-  }
-  DRB_ul_SpecificParameters->bucketSizeDuration = LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
-  // LCG for DTCH can take the value from 1 to 3 as defined in 36331: normally controlled by upper layers (like RRM)
-  logicalchannelgroup_drb = CALLOC(1, sizeof(long));
-  *logicalchannelgroup_drb = 1;
-  DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
-  ASN_SEQUENCE_ADD(&(*DRB_configList)->list, DRB_config);
-  ASN_SEQUENCE_ADD(&(*DRB_configList2)->list, DRB_config);
->>>>>>> 16a52a412b... RBList Porting for 4G to New Repository
   /* MAC Main Config */
   // The different parts of MAC main config are set below
   mac_MainConfig = CALLOC(1, sizeof(*mac_MainConfig));
@@ -4191,6 +3971,55 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
         LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
       }
     }
+    else
+    {
+      LOG_A(RRC, "OSA Can't find Hash of UE rnti %x\n", rnti);
+    }
+  }
+
+  if (RC.mode > SS_ENB)
+  {
+    pdcp_t *pdcp_p = NULL;
+    rb_id_t rbid_ = 1;
+    hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 1);
+    int8_t h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+    if (h_rc == HASH_TABLE_OK)
+    {
+      kRRCenc = MALLOC(16);
+      kRRCint = MALLOC(32);
+      kUPenc = MALLOC(16);
+      memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
+      memcpy(kRRCint, pdcp_p->kRRCint, 32);
+      memcpy(kUPenc, pdcp_p->kUPenc, 16);
+      security_modeP = (pdcp_p->cipheringAlgorithm |(pdcp_p->integrityProtAlgorithm << 4) );
+      LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti \n", ctxt_pP->rnti);
+
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
+      h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+
+      if (h_rc == HASH_TABLE_OK)
+      {
+        LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rnti);
+        pdcp_config_set_security(
+            ctxt_pP,
+            pdcp_p,
+            DCCH1,
+            DCCH1 + 2,
+            security_modeP,
+            kRRCenc,
+            kRRCint,
+            kUPenc);
+      }
+      else
+      {
+        LOG_E(RRC,
+              PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH %u\n",
+              PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
+              DCCH);
+      }
+    }
+
     else
     {
       LOG_A(RRC, "OSA Can't find Hash of UE rnti %x\n", rnti);
@@ -7444,6 +7273,71 @@ char rrc_eNB_rblist_configuration(
   return 0;
 }
 
+//-----------------------------------------------------------------------------
+char rrc_eNB_as_security_configuration_req(
+  const protocol_ctxt_t   *const ctxt_pP,
+  const module_id_t enb_mod_idP,
+  RrcAsSecurityConfigReq *ASSecConfReq
+)
+//-----------------------------------------------------------------------------
+{
+  pdcp_t  *pdcp_p   = NULL;
+  hashtable_rc_t                      h_rc;
+  hash_key_t                          key = HASHTABLE_NOT_A_KEY_VALUE;
+  ss_get_pdcp_cnt_t                   pc;
+  uint8_t                             rb_idx = 0;
+  uint8_t rbid_;
+  if (NULL == ctxt_pP) {
+    LOG_A(RRC, "No context to get PdcpCount\n");
+  }
+  LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
+  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
+  ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+  for (int i = 0; i < MAX_RBS; i++)
+  {
+    if (i < 3)
+    {
+      rbid_ = i;
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag, rbid_, 1);
+    }
+    else
+    {
+      rbid_ = i - 3;
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag, rbid_, 0);
+    }
+    h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
+    if (h_rc == HASH_TABLE_OK)
+    {
+      pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
+      ul_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn;
+      dl_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn;
+      if(((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) || ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn))
+      {
+        pdcp_config_set_security(
+          ctxt_pP,
+          pdcp_p,
+          DCCH,
+          DCCH+2,
+          (security_mode_command_send == TRUE)  ?
+          0 | (ASSecConfReq->Integrity.integrity_algorithm << 4) :
+          (ASSecConfReq->Ciphering.ciphering_algorithm ) |
+          (ASSecConfReq->Integrity.integrity_algorithm << 4),
+          ASSecConfReq->Ciphering.kRRCenc,
+          ASSecConfReq->Integrity.kRRCint,
+          ASSecConfReq->Ciphering.kUPenc);
+        security_mode_command_send = FALSE;
+        as_security_conf_ciphering = ASSecConfReq->Ciphering.ciphering_algorithm;
+        rb_idx++;
+      } else {
+        LOG_A(RRC,"AS Security configuration received from TTCN didn't applied \n");
+      }
+    } else {
+      LOG_A (PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
+                  rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
+    }
+  }
+}
+
 /*------------------------------------------------------------------------------*/
 int
 rrc_eNB_decode_ccch(
@@ -10137,14 +10031,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_RRC_PDU_REQ:
       if (RC.mode >= SS_SOFTMODEM)
       {
-#if 0
         pdcp_t  *pdcp_p   = NULL;
         hashtable_rc_t  h_rc;
         hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
         uint8_t  rb_idx = 0;
         uint8_t rbid_;
         ss_get_pdcp_cnt_t  pc;
-#endif
         LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
@@ -10178,7 +10070,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
-#if 0
           if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry && as_security_conf_ciphering)
           {
             for (int i = 0; i < MAX_RBS; i++)
@@ -10231,7 +10122,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
             }
           }
-#endif
           rrc_data_req(&ctxt,
           DCCH,
           rrc_eNB_mui++,
@@ -10261,16 +10151,37 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
-#if 0
 	      security_mode_command_send = TRUE;
               as_security_conf_ciphering = FALSE;
-#endif
             }
           }
         }
       }
       break;
 //#endif
+
+    case RRC_AS_SECURITY_CONFIG_REQ:
+      LOG_A(RRC,"[eNB %d] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %d \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+      for(int i=16;i<32;i++)
+      {
+        LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+      }
+      for(int j=0;j<16;j++)
+      {
+        LOG_D(RRC,"kRRCenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+      }
+      for(int k=0;k<16;k++)
+      {
+        LOG_D(RRC,"kUPenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+      }
+      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                    instance,
+                                    ENB_FLAG_YES,
+                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+                                    msg_p->ittiMsgHeader.lte_time.frame,
+                                    msg_p->ittiMsgHeader.lte_time.slot);
+      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+      break;
 
     case RRC_RBLIST_CFG_REQ:
       LOG_A(RRC, "[eNB %d] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);

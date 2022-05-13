@@ -40,7 +40,7 @@
 #include "pdcp_primitives.h"
 
 //-----------------------------------------------------------------------------
-static
+//static
 uint32_t pdcp_get_next_count_tx(
   pdcp_t * const pdcp_pP,
   const srb_flag_t srb_flagP,
@@ -67,7 +67,7 @@ uint32_t pdcp_get_next_count_tx(
 }
 
 //-----------------------------------------------------------------------------
-static
+//static
 uint32_t pdcp_get_next_count_rx(
   pdcp_t * const pdcp_pP,
   const srb_flag_t srb_flagP,
@@ -151,7 +151,7 @@ pdcp_apply_security(
   }
 
   encrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
-  encrypt_params.blength    = sdu_buffer_size << 3;
+  encrypt_params.blength    = (sdu_buffer_size + 4)<< 3;
 
   buffer_encrypted = &pdcp_pdu_buffer[pdcp_header_len];
 
@@ -195,7 +195,7 @@ pdcp_validate_security(
   decrypt_params.bearer     = rb_id - 1;
   decrypt_params.count      = pdcp_get_next_count_rx(pdcp_pP, srb_flagP, hfn, sn);
   decrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
-  decrypt_params.blength    = (sdu_buffer_size - pdcp_header_len) << 3;
+  decrypt_params.blength    = ((sdu_buffer_size + 4) - pdcp_header_len) << 3;
   decrypt_params.key_length = 16;
 
   if (srb_flagP) {
