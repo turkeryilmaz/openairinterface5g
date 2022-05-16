@@ -279,7 +279,6 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
 
     }
-#endif
   }
 //#endif /** ENB_SS */
 
