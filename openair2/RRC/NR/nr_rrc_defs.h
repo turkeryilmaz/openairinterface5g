@@ -476,14 +476,6 @@ typedef enum {
   SS_STATE_MAX_STATE
 } SS_STATE_t;
 
-typedef struct ss_config_s {
-  const char* hostIp;
-  int Sysport;
-  int Srbport;
-  int Vngport;
-  int State;
-} ss_config;
-
 typedef struct {
   /* nea0 = 0, nea1 = 1, ... */
   int ciphering_algorithms[4];
