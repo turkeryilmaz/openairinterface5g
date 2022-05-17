@@ -2308,7 +2308,7 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       case 65: // 75ms, 10^-2, p0.7, mission critical voice, GBR
       case 66: // 100ms, 10^-2, p2, non-mission critical  voice , GBR
         // RLC
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
           DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
@@ -2323,7 +2323,7 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         // PDCP
         PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
         DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
         } else {
@@ -2341,7 +2341,7 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       case 69: // 60ms, 10^-6, p0.5, mission critical delay sensitive data, Lowest Priority
       case 70: // 200ms, 10^-6, p5.5, mision critical data
         // RLC
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
           DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
@@ -2362,7 +2362,7 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         // PDCP
         PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
         DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
         } else {
@@ -2384,7 +2384,7 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
         continue;
     }
 
-    //if (RC.mode == SS_SOFTMODEM) {
+    //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
     } else {
@@ -2395,7 +2395,7 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
     DRB_ul_SpecificParameters = CALLOC(1, sizeof(*DRB_ul_SpecificParameters));
     DRB_lchan_config->ul_SpecificParameters = DRB_ul_SpecificParameters;
 
-    //if (RC.mode == SS_SOFTMODEM) {
+    //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
       DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
@@ -2568,7 +2568,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
     DRB_rlc_config = DRB_config->rlc_Config;
     DRB_pdcp_config = DRB_config->pdcp_Config;
-    //if (RC.mode == SS_SOFTMODEM) {
+    //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       *DRB_pdcp_config->discardTimer = *(RC.RB_Config[3].PdcpCfg.discardTimer);
     } else {
@@ -2589,7 +2589,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
       case 65: // 75ms, 10^-2, p0.7, mission critical voice, GBR
       case 66: // 100ms, 10^-2, p2, non-mission critical  voice , GBR
         // RLC
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
           DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
@@ -2615,7 +2615,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
         PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
         DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
         } else {
@@ -2633,7 +2633,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
       case 69: // 60ms, 10^-6, p0.5, mission critical delay sensitive data, Lowest Priority
       case 70: // 200ms, 10^-6, p5.5, mision critical data
         // RLC
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
           DRB_rlc_config->choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[3].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
@@ -2665,7 +2665,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
 
         PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
         DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-        //if (RC.mode == SS_SOFTMODEM) {
+        //if (RC.ss.mode == SS_SOFTMODEM) {
         if(1) {
           PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
         } else {
@@ -2683,7 +2683,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
         continue;
     }
 
-    //if (RC.mode == SS_SOFTMODEM) {
+    //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
     } else {
@@ -2692,7 +2692,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
     DRB_lchan_config = DRB_config->logicalChannelConfig;
     DRB_ul_SpecificParameters = DRB_lchan_config->ul_SpecificParameters;
 
-    //if (RC.mode == SS_SOFTMODEM) {
+    //if (RC.ss.mode == SS_SOFTMODEM) {
     if(1) {
       DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
       DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
@@ -2969,7 +2969,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   SRB2_rlc_config = CALLOC(1, sizeof(*SRB2_rlc_config));
   SRB2_config->rlc_Config = SRB2_rlc_config;
   SRB2_rlc_config->present = LTE_SRB_ToAddMod__rlc_Config_PR_explicitValue;
-//if (RC.mode == SS_SOFTMODEM)
+//if (RC.ss.mode == SS_SOFTMODEM)
   if (1) {
     SRB2_rlc_config->choice.explicitValue.present = RC.RB_Config[2].RlcCfg.present;
     SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[2].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
@@ -2992,7 +2992,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   SRB2_config->logicalChannelConfig = SRB2_lchan_config;
   SRB2_lchan_config->present = LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue;
   SRB2_ul_SpecificParameters = CALLOC(1, sizeof(*SRB2_ul_SpecificParameters));
-//if (RC.mode == SS_SOFTMODEM)
+//if (RC.ss.mode == SS_SOFTMODEM)
   if (1) {
     SRB2_ul_SpecificParameters->priority = RC.RB_Config[2].Mac.ul_SpecificParameters->priority;
     SRB2_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[2].Mac.ul_SpecificParameters->prioritisedBitRate;
@@ -3036,7 +3036,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   DRB_rlc_config = CALLOC(1, sizeof(*DRB_rlc_config));
   DRB_config->rlc_Config = DRB_rlc_config;
 #ifdef RRC_DEFAULT_RAB_IS_AM
-  //if (RC.mode == SS_SOFTMODEM) {
+  //if (RC.ss.mode == SS_SOFTMODEM) {
   if(1) {
     /* DRB1 stored at index 3 in RC.RB_Config*/
     DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
@@ -3062,7 +3062,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
   }
 #else
-  //if (RC.mode == SS_SOFTMODEM) {
+  //if (RC.ss.mode == SS_SOFTMODEM) {
   if(1) {
     DRB_rlc_config->present = RC.RB_Config[3].RlcCfg.present;
     DRB_rlc_config->choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength = RC.RB_Config[3].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength;
@@ -3087,7 +3087,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 #ifdef RRC_DEFAULT_RAB_IS_AM // EXMIMO_IOT
   PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
   DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-  //if (RC.mode == SS_SOFTMODEM) {
+  //if (RC.ss.mode == SS_SOFTMODEM) {
   if(1) {
     PDCP_rlc_AM->statusReportRequired = RC.RB_Config[3].PdcpCfg.rlc_AM->statusReportRequired;
   } else {
@@ -3096,14 +3096,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 #else
   PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
   DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-  //if (RC.mode == SS_SOFTMODEM) {
+  //if (RC.ss.mode == SS_SOFTMODEM) {
   if(1) {
     PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[3].PdcpCfg.rlc_UM->pdcp_SN_Size;
   } else {
     PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
   }
 #endif
-  //if (RC.mode == SS_SOFTMODEM) {
+  //if (RC.ss.mode == SS_SOFTMODEM) {
   if(1) {
     DRB_pdcp_config->headerCompression.present = RC.RB_Config[3].PdcpCfg.headerCompression.present;
   } else {
@@ -3113,7 +3113,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   DRB_config->logicalChannelConfig = DRB_lchan_config;
   DRB_ul_SpecificParameters = CALLOC(1, sizeof(*DRB_ul_SpecificParameters));
   DRB_lchan_config->ul_SpecificParameters = DRB_ul_SpecificParameters;
-  //if (RC.mode == SS_SOFTMODEM) {
+  //if (RC.ss.mode == SS_SOFTMODEM) {
   if(1) {
     DRB_ul_SpecificParameters->priority = RC.RB_Config[3].Mac.ul_SpecificParameters->priority;
     DRB_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[3].Mac.ul_SpecificParameters->prioritisedBitRate;
@@ -3658,7 +3658,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   uint8_t *kRRCint = NULL;
   uint8_t *kUPenc = NULL;
   int8_t security_modeP = 0xff;
-  if (RC.mode == SS_ENB)
+  if (RC.ss.mode == SS_ENB)
   {
     rrc_data_req(ctxt_pP,
                  DCCH,
@@ -3693,7 +3693,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
                            );
   }
 
-  if (RC.mode > SS_ENB)
+  if (RC.ss.mode > SS_ENB)
   {
     pdcp_t *pdcp_p = NULL;
     rb_id_t rbid_ = 1;
@@ -6590,7 +6590,7 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
     T_INT(ctxt_pP->subframe),
     T_INT(ctxt_pP->rnti));
     int8_t security_modeP = 0xff;
-    if (RC.mode == SS_ENB)
+    if (RC.ss.mode == SS_ENB)
     {
       /* Derive the keys from kenb */
       if (DRB_configList != NULL)
@@ -8671,7 +8671,7 @@ rrc_eNB_decode_dcch(
         }
 
 //#ifndef ENB_SS_SRB
-      if (RC.mode == SS_ENB)
+      if (RC.ss.mode == SS_ENB)
       {
         // confirm with PDCP about the security mode for DCCH
         //rrc_pdcp_config_req (enb_mod_idP, frameP, 1,CONFIG_ACTION_SET_SECURITY_MODE, (ue_mod_idP * NB_RB_MAX) + DCCH, 0x77);
@@ -10108,7 +10108,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
 //#ifdef ENB_SS
     case SS_RRC_PDU_REQ:
-      if (RC.mode >= SS_SOFTMODEM)
+      if (RC.ss.mode >= SS_SOFTMODEM)
       {
         pdcp_t  *pdcp_p   = NULL;
         hashtable_rc_t  h_rc;

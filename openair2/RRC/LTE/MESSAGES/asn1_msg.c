@@ -2493,7 +2493,7 @@ do_RRCConnectionSetup(
   SRB1_config->rlc_Config   = SRB1_rlc_config;
   SRB1_rlc_config->present = LTE_SRB_ToAddMod__rlc_Config_PR_explicitValue;
 
-//if (RC.mode == SS_SOFTMODEM)
+//if (RC.ss.mode == SS_SOFTMODEM)
   if (1) {
     SRB1_rlc_config->choice.explicitValue.present = RC.RB_Config[1].RlcCfg.present;
     SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit = RC.RB_Config[1].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit;
@@ -2518,7 +2518,7 @@ do_RRCConnectionSetup(
   SRB1_lchan_config->present = LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue;
   SRB1_ul_SpecificParameters = CALLOC(1,sizeof(*SRB1_ul_SpecificParameters));
   SRB1_lchan_config->choice.explicitValue.ul_SpecificParameters = SRB1_ul_SpecificParameters;
-//if (RC.mode == SS_SOFTMODEM)
+//if (RC.ss.mode == SS_SOFTMODEM)
   if (1) {
     SRB1_ul_SpecificParameters->priority = RC.RB_Config[1].Mac.ul_SpecificParameters->priority;
     SRB1_ul_SpecificParameters->prioritisedBitRate = RC.RB_Config[1].Mac.ul_SpecificParameters->prioritisedBitRate;

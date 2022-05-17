@@ -261,7 +261,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
   eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
 
 //#ifdef ENB_SS
-  if (RC.mode >= SS_SOFTMODEM)
+  if (RC.ss.mode >= SS_SOFTMODEM)
   {
     MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_UPD_TIM_INFO);
     if (message_p)

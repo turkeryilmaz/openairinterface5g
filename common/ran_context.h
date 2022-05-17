@@ -49,10 +49,6 @@
 #include <openair3/ocp-gtpu/gtpv1u_eNB_task.h>
 #include "targets/ARCH/SS/ss_config.h"
 
-#define SS_ENB  0x00
-#define SS_SOFTMODEM    0x01
-#define SS_SOFTMODEM_SRB        0x02
-
 typedef struct RBConfig_s {
         bool isRBConfigValid;
         LTE_PDCP_Config_t PdcpCfg;
@@ -63,8 +59,6 @@ typedef struct RBConfig_s {
 }RBConfig;
 
 typedef struct {
-  /// Mode of eNB operation 0: Normal eNB operation 1: SS mode
-  uint8_t mode;
   /// RAN context config file name
   char *config_file_name;
   /// Number of RRC instances in this node

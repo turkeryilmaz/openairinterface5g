@@ -1886,12 +1886,12 @@ void *ss_eNB_sys_task(void *arg)
   sleep(5);
 
   // Set the state to NOT_CONFIGURED for Cell Config processing mode
-  if (RC.mode == SS_SOFTMODEM)
+  if (RC.ss.mode == SS_SOFTMODEM)
   {
     RC.ss.State = SS_STATE_NOT_CONFIGURED;
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
-  else if (RC.mode == SS_SOFTMODEM_SRB)
+  else if (RC.ss.mode == SS_SOFTMODEM_SRB)
   {
     RC.ss.State = SS_STATE_CELL_ACTIVE;
   }
