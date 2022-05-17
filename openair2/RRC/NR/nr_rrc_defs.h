@@ -466,7 +466,23 @@ typedef struct {
 
 } rrc_gNB_carrier_data_t;
 //---------------------------------------------------
+typedef enum {
+  SS_STATE_NOT_CONFIGURED = 0,
+  SS_STATE_CELL_CONFIGURED,
+  SS_STATE_CELL_ACTIVE,
+  SS_STATE_AS_SECURITY_ACTIVE,
+  SS_STATE_AS_RBS_ACTIVE,
+  SS_STATE_CELL_BROADCASTING,
+  SS_STATE_MAX_STATE
+} SS_STATE_t;
 
+typedef struct ss_config_s {
+  const char* hostIp;
+  int Sysport;
+  int Srbport;
+  int Vngport;
+  int State;
+} ss_config;
 
 typedef struct {
   /* nea0 = 0, nea1 = 1, ... */

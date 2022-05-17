@@ -353,6 +353,23 @@ int8_t nr_mac_rrc_data_ind(const module_id_t     module_idP,
     LOG_D(NR_RRC, "[gNB %d] Received SDU for CCCH on SRB %ld\n", module_idP, srb_idP);
     ctxt.brOption = brOption;
     if (sdu_lenP > 0) {
+      LOG_I(RRC,"RRC Sending CCCH PDU_IND to SS \n");
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, INSTANCE_DEFAULT, SS_RRC_PDU_IND);
+      if (message_p) {
+        /* Populate the message to SS */
+        SS_RRC_PDU_IND (message_p).sdu_size = sdu_lenP;
+        SS_RRC_PDU_IND (message_p).srb_id = 0;
+        SS_RRC_PDU_IND (message_p).rnti = rntiP;
+        SS_RRC_PDU_IND (message_p).frame = ctxt.frame;
+        SS_RRC_PDU_IND (message_p).subframe = ctxt.subframe;
+        memset (SS_RRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
+        memcpy (SS_RRC_PDU_IND (message_p).sdu, sduP, sdu_lenP);
+
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB, INSTANCE_DEFAULT, message_p);
+        if(send_res < 0) {
+          LOG_E(RRC,"Error in itti_send_msg_to_task");
+        }
+      }
       nr_rrc_gNB_decode_ccch(&ctxt, sduP, sdu_lenP, NULL, CC_id);
     }
   }

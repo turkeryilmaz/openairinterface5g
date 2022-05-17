@@ -49,6 +49,9 @@
 #include <openair3/ocp-gtpu/gtpv1u_eNB_task.h>
 #include "targets/ARCH/SS/ss_config.h"
 
+#define SS_GNB  0x00
+#define SS_SOFTMODEM    0x01
+#define SS_SOFTMODEM_SRB        0x02
 
 typedef struct {
   /// Mode of operation 0:Normal e/gNB operation 1:SS-mode

@@ -1,0 +1,56 @@
+/* vim: set ft=cpp:
+ *****************************************************************
+ *
+ * Module : SIDL commons.
+ *
+ * Purpose: Provide common SIDL types and definitions.
+ *
+ *****************************************************************
+ *
+ *  Copyright (c) 2009-2021 SEQUANS Communications.
+ *  All rights reserved.
+ *
+ *  This is confidential and proprietary source code of SEQUANS
+ *  Communications. The use of the present source code and all
+ *  its derived forms is exclusively governed by the restricted
+ *  terms and conditions set forth in the SEQUANS
+ *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
+ *  AGREEMENT. The present source code and all its derived
+ *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
+ *  Communications' products. The distribution/sale of the
+ *  present source code and all its derived forms is EXCLUSIVELY
+ *  RESERVED to regular LICENCE holder and otherwise STRICTLY
+ *  PROHIBITED.
+ *
+ *****************************************************************
+ */
+
+#pragma once
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL commons.
+#include "SidlCommon.sidl"
+
+typedef int16_t AbsoluteCellPower_Type;
+typedef uint8_t AttenuationValue_Type;
+
+SIDL_UNION_ENUM(Attenuation_Type) {
+	Attenuation_Type_UNBOUND_VALUE,
+	Attenuation_Type_Value,
+	Attenuation_Type_Off
+};
+SIDL_UNION_BEGIN(Attenuation_Type) {
+	SIDL_UNION_CASE(Attenuation_Type_Value)
+		AttenuationValue_Type Value;
+	SIDL_UNION_CASE(Attenuation_Type_Off)
+		Null_Type Off;
+} SIDL_UNION_END;
+
+typedef struct Attenuation_Type InitialAttenuation_Type;
+
+struct InitialCellPower_Type {
+	AbsoluteCellPower_Type MaxReferencePower;
+	InitialAttenuation_Type Attenuation;
+};

@@ -158,6 +158,8 @@ void *gNB_app_task(void *args_p)
 
   if (RC.nb_nr_macrlc_inst>0) RCconfig_nr_macrlc();
 
+  RCconfig_nr_ssparam();
+
   LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
 
   if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");

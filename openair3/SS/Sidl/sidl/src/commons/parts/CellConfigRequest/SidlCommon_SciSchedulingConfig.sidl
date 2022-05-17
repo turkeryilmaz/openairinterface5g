@@ -1,0 +1,75 @@
+/* vim: set ft=cpp:
+ *****************************************************************
+ *
+ * Module : SIDL commons.
+ *
+ * Purpose: Provide common SIDL types and definitions.
+ *
+ *****************************************************************
+ *
+ *  Copyright (c) 2009-2021 SEQUANS Communications.
+ *  All rights reserved.
+ *
+ *  This is confidential and proprietary source code of SEQUANS
+ *  Communications. The use of the present source code and all
+ *  its derived forms is exclusively governed by the restricted
+ *  terms and conditions set forth in the SEQUANS
+ *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
+ *  AGREEMENT. The present source code and all its derived
+ *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
+ *  Communications' products. The distribution/sale of the
+ *  present source code and all its derived forms is EXCLUSIVELY
+ *  RESERVED to regular LICENCE holder and otherwise STRICTLY
+ *  PROHIBITED.
+ *
+ *****************************************************************
+ */
+
+#pragma once
+
+// SIDL keywords.
+#include "msg.sidl"
+
+// SIDL commons.
+#include "SidlCommon.sidl"
+
+typedef uint8_t Itrp_Type;
+
+struct SL_Sci0Config_Type {
+	struct UplinkHoppingControl_Type Hopping;
+	struct FreqDomainSchedulExplicit_Type FreqDomainSchedul;
+	Itrp_Type Itrp;
+};
+
+struct Sci0SchedulingConfig_Type {
+	SIDL_OPTIONAL(ASN_NAME(C_RNTI), SL_RNTI_r12);
+	SIDL_OPTIONAL(N_PSCCH_Type, N_PSCCH);
+	SIDL_OPTIONAL_OF_STRUCT(SL_Sci0Config_Type, SL_Sheduling);
+};
+
+struct SL_Sci1Config_Type {
+	BIT_STRING FreqResourceAllocation;
+	B4_Type TimeGap;
+};
+
+struct Sci1SchedulingConfig_Type {
+	SIDL_OPTIONAL(ASN_NAME(C_RNTI), SL_V_RNTI_r12);
+	SIDL_OPTIONAL(B3_Type, CarrierIndicator);
+	SIDL_OPTIONAL(BIT_STRING, LowestIndexOfChannelAllocation);
+	SIDL_OPTIONAL(B2_Type, SL_Index);
+	SIDL_OPTIONAL(B3_Type, SL_SPS_ConfigurationIndex);
+	SIDL_OPTIONAL(B1_Type, SL_SPS_ActivationRelease);
+	SIDL_OPTIONAL_OF_STRUCT(SL_Sci1Config_Type, SL_SCI1_Scheduling);
+};
+
+SIDL_UNION_ENUM(SciSchedulingConfig_Type) {
+	SciSchedulingConfig_Type_UNBOUND_VALUE,
+	SciSchedulingConfig_Type_SCI0,
+	SciSchedulingConfig_Type_SCI1
+};
+SIDL_UNION_BEGIN(SciSchedulingConfig_Type) {
+	SIDL_UNION_CASE(SciSchedulingConfig_Type_SCI0)
+		struct Sci0SchedulingConfig_Type SCI0;
+	SIDL_UNION_CASE(SciSchedulingConfig_Type_SCI1)
+		struct Sci1SchedulingConfig_Type SCI1;
+} SIDL_UNION_END;

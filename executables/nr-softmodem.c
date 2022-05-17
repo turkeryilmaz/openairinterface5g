@@ -80,6 +80,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "gnb_paramdef.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "ss_gNB_srb_task.h"
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -351,6 +352,11 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
     }
+
+  if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
+    LOG_E(SCTP, "Create task for SS SRB failed\n");
+    return -1;
+  }
 
     LOG_I(NR_RRC,"Creating NR RRC gNB Task\n");
 
