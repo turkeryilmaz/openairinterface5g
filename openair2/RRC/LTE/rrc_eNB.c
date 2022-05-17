@@ -3977,7 +3977,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     }
   }
 
-  if (RC.mode > SS_ENB)
+  if (RC.ss.mode > SS_ENB)
   {
     pdcp_t *pdcp_p = NULL;
     rb_id_t rbid_ = 1;
@@ -10029,7 +10029,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         break;
 //#ifdef ENB_SS
     case SS_RRC_PDU_REQ:
-      if (RC.mode >= SS_SOFTMODEM)
+      if (RC.ss.mode >= SS_SOFTMODEM)
       {
         pdcp_t  *pdcp_p   = NULL;
         hashtable_rc_t  h_rc;

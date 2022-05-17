@@ -608,7 +608,7 @@ int main ( int argc, char **argv )
 
     /** TODO FC: Wait for Cell config, if SS RRC_CONFIGURATION_REQ will be triggered by TASK_SYS */
 
-    if (RC.mode == SS_SOFTMODEM) {
+    if (RC.ss.mode == SS_SOFTMODEM) {
       /** wait for signal */
       wait_cell_config("TASK_SYS");
 
