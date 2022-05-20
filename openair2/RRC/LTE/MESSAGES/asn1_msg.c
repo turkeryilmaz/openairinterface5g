@@ -936,7 +936,17 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   //  assign_enum(&(*sib1)->cellAccessRelatedInfo.intraFreqReselection,SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed);
   (*sib1)->cellAccessRelatedInfo.intraFreqReselection=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_notAllowed;
   (*sib1)->cellAccessRelatedInfo.csg_Indication=0;
-  (*sib1)->cellSelectionInfo.q_RxLevMin=-65;
+
+  if (RC.ss.mode == SS_SOFTMODEM)
+  {
+     LOG_D(RRC,"Updating q_RxLevMin: %d\n", configuration->q_RxLevMin);
+     (*sib1)->cellSelectionInfo.q_RxLevMin=configuration->q_RxLevMin;
+  }
+  else
+  {
+     (*sib1)->cellSelectionInfo.q_RxLevMin=-65;
+  }
+
   (*sib1)->cellSelectionInfo.q_RxLevMinOffset=NULL;
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
