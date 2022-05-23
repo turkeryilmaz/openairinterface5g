@@ -1,7 +1,7 @@
 #ifndef TC_ENCRYPTION_PLAIN_H
 #define TC_ENCRYPTION_PLAIN_H 
 
-#include "../../../util/byte_array.h"
+#include "../../util/byte_array.h"
 #include "../ie/tc_data_ie.h"
 
 

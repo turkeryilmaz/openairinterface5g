@@ -1,7 +1,7 @@
 #ifndef TC_ENCRYPTIOIN_ASN_H
 #define TC_ENCRYPTIOIN_ASN_H
 
-#include "../../../util/byte_array.h"
+#include "../../util/byte_array.h"
 #include "../ie/tc_data_ie.h"
 
 // Used for static polymorphism. 

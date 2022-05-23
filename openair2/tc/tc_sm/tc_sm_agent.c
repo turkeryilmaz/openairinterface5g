@@ -2,7 +2,7 @@
 #include "tc_sm_id.h"
 #include "enc/tc_enc_generic.h"
 #include "dec/tc_dec_generic.h"
-#include "../../util/alg_ds/alg/defer.h"
+#include "../util/alg_ds/alg/defer.h"
 
 
 #include <assert.h>
@@ -94,7 +94,6 @@ sm_ctrl_out_data_t on_control_tc_sm_ag(sm_agent_t* sm_agent, sm_ctrl_req_data_t 
   assert(sm_agent != NULL);
   assert(data != NULL);
   sm_tc_agent_t* sm = (sm_tc_agent_t*) sm_agent;
-
 
   sm_ag_if_wr_t wr = {.type = TC_CTRL_REQ_V0 };
   wr.tc_req_ctrl.hdr = tc_dec_ctrl_hdr(&sm->enc, data->len_hdr, data->ctrl_hdr);

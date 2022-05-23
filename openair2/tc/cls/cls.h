@@ -2,7 +2,7 @@
 #define CLS_H
 
 #include "../queue/queue.h"
-#include "../../flexric/src/sm/tc_sm/ie/tc_data_ie.h"
+#include "../tc_sm/ie/tc_data_ie.h"
 
 #include <stddef.h>
 #include <stdint.h>
