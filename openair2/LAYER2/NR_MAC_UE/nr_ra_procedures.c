@@ -40,6 +40,8 @@
 
 #include <executables/softmodem-common.h>
 
+extern uint16_t NTN_UE_k2; //the additional k2 value at UE
+
 int16_t get_prach_tx_power(module_id_t mod_id) {
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
@@ -596,7 +598,7 @@ void nr_Msg3_transmitted(module_id_t mod_id, uint8_t CC_id, frame_t frameP, slot
   // start contention resolution timer (cnt in slots)
   int RA_contention_resolution_timer_subframes = (nr_rach_ConfigCommon->ra_ContentionResolutionTimer + 1)<<3;
 
-  ra->RA_contention_resolution_target_frame = frameP + (RA_contention_resolution_timer_subframes/10);
+  ra->RA_contention_resolution_target_frame = frameP + NTN_UE_k2 + (RA_contention_resolution_timer_subframes/10);
   ra->RA_contention_resolution_target_slot = (slotP + (RA_contention_resolution_timer_subframes * subframes_per_slot)) % nr_slots_per_frame[mu];
 
   LOG_D(MAC,"In %s: [UE %d] CB-RA: contention resolution timer set in frame.slot %d.%d and expiring in %d.%d\n",
@@ -811,8 +813,6 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
 
   return ra->ra_state;
 }
-
-extern uint16_t NTN_UE_k2; //the additional k2 value at UE
 
 void nr_get_RA_window(NR_UE_MAC_INST_t *mac){
 
