@@ -10183,6 +10183,11 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
       break;
 
+    case SS_SS_PAGING_IND:
+      LOG_A(RRC, "[eNB %d] Received Paging message from SS: %s\n", instance, msg_name_p);
+      rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
+      break;
+
     case RRC_RBLIST_CFG_REQ:
       LOG_A(RRC, "[eNB %d] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
       rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
