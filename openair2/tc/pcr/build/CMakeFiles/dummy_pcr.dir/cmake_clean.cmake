@@ -1,0 +1,10 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o"
+  "libdummy_pcr.pdb"
+  "libdummy_pcr.so"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang C)
+  include(CMakeFiles/dummy_pcr.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

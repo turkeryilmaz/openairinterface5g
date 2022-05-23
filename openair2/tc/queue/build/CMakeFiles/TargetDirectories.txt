@@ -1,0 +1,4 @@
+/home/mir/workspace/tc/queue/build/CMakeFiles/rebuild_cache.dir
+/home/mir/workspace/tc/queue/build/CMakeFiles/edit_cache.dir
+/home/mir/workspace/tc/queue/build/CMakeFiles/codel_queue.dir
+/home/mir/workspace/tc/queue/build/CMakeFiles/fifo_queue.dir

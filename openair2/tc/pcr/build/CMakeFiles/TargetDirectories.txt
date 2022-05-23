@@ -1,0 +1,4 @@
+/home/mir/workspace/tc/pcr/build/CMakeFiles/rebuild_cache.dir
+/home/mir/workspace/tc/pcr/build/CMakeFiles/edit_cache.dir
+/home/mir/workspace/tc/pcr/build/CMakeFiles/bdp_pcr.dir
+/home/mir/workspace/tc/pcr/build/CMakeFiles/dummy_pcr.dir
