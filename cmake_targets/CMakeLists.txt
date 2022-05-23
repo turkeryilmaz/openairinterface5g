@@ -238,7 +238,7 @@ add_definitions("-DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAV
 set(commonOpts "-pipe -Wno-packed-bitfield-compat -fPIC -Wall -fno-strict-aliasing -rdynamic")
 
 set(CMAKE_C_FLAGS
-  "${CMAKE_C_FLAGS} ${C_FLAGS_PROCESSOR} ${commonOpts} -std=gnu99 -funroll-loops")
+  "${CMAKE_C_FLAGS} ${C_FLAGS_PROCESSOR} ${commonOpts} -std=gnu11 -funroll-loops")
 set(CMAKE_CXX_FLAGS
   "${CMAKE_CXX_FLAGS} ${C_FLAGS_PROCESSOR}  ${commonOpts} -std=c++11")
 
@@ -1780,6 +1780,38 @@ set(NR_PDCP_SRC
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/asn1_utils.c
   )
 
+set(NR_TC_SM_SRC
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/accumulate.c 
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/defer.c 
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/find.c
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/for_each.c
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/murmur_hash_32.c
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/lower_bound.c
+  ${OPENAIR2_DIR}/tc/alg_ds/alg/eq_float.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/seq_container/seq_arr.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/seq_container/seq_ring.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/seq_container/seq_list.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/seq_container/seq_deque.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/assoc_container/assoc_rb_tree.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/assoc_container/assoc_rb_tree_lck.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/assoc_container/assoc_ht_open_address.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/assoc_container/bimap.c
+  ${OPENAIR2_DIR}/tc/alg_ds/meter/meter.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/statistics/moving_average/mv_avg_time.c
+  ${OPENAIR2_DIR}/tc/alg_ds/ds/statistics/moving_average/mv_avg_elm.c
+  #  alg_ds/ds/trees/rb_tree.c
+  #main.c 
+  ${OPENAIR2_DIR}/tc/tc_api.c
+  ${OPENAIR2_DIR}/tc/tc.c 
+  ${OPENAIR2_DIR}/tc/pkt.c
+  ${OPENAIR2_DIR}/tc/time/time.c
+  ${OPENAIR2_DIR}/tc/plc_shp_pair.c
+  ${OPENAIR2_DIR}/tc/shp/shp.c
+  ${OPENAIR2_DIR}/tc/plc/plc.c
+  ${OPENAIR2_DIR}/tc/tc_sm/ie/tc_data_ie.c
+  )
+ 
+
 set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
@@ -1828,6 +1860,7 @@ set(L2_NR_SRC
   ${NR_RLC_SRC}
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
+  ${NR_TC_SM_SRC}
   ${NR_RRC_DIR}/rrc_gNB.c
   ${NR_RRC_DIR}/nr_rrc_common.c
   ${NR_RRC_DIR}/L2_nr_interface.c
@@ -1863,6 +1896,7 @@ set(NR_L2_SRC_UE
   ${NR_RLC_SRC}
   ${NR_PDCP_SRC}
   ${NR_SDAP_SRC}
+  ${NR_TC_SM_SRC}
   ${NR_UE_RRC_DIR}/L2_interface_ue.c
   ${NR_UE_RRC_DIR}/main_ue.c
   ${NR_RRC_DIR}/nr_rrc_config.c
@@ -2720,7 +2754,7 @@ target_link_libraries (nr-softmodem
   -Wl,--end-group z dl)
 
 target_link_libraries (nr-softmodem ${LIBXML2_LIBRARIES})
-target_link_libraries (nr-softmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${PROTOBUF_LIB}  ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES})
+target_link_libraries (nr-softmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${PROTOBUF_LIB}  ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES} ${OPENAIR_DIR}/executables/agent_if/libe2_agent.a)
 target_link_libraries (nr-softmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (nr-softmodem ${T_LIB})
 

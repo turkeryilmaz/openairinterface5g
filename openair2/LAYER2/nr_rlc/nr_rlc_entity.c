@@ -28,6 +28,14 @@
 #include "nr_rlc_entity_tm.h"
 
 #include "LOG/log.h"
+static void nr_rlc_entity_get_stats(
+    nr_rlc_entity_t *entity,
+    nr_rlc_statistics_t *out)
+{
+// printf("Stats from the RLC entity asked\n");
+  *out = entity->stats;
+}
+
 
 nr_rlc_entity_t *new_nr_rlc_entity_am(
     int rx_maxsize,
@@ -86,6 +94,8 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->common.reestablishment = nr_rlc_entity_am_reestablishment;
   ret->common.delete          = nr_rlc_entity_am_delete;
 
+  ret->common.get_stats       = nr_rlc_entity_get_stats;
+
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;
   ret->common.sdu_successful_delivery      = sdu_successful_delivery;
@@ -93,6 +103,7 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->common.max_retx_reached             = max_retx_reached;
   ret->common.max_retx_reached_data        = max_retx_reached_data;
 
+  ret->common.stats.mode = 0;  /* 0 for AM */
   return (nr_rlc_entity_t *)ret;
 }
 
@@ -136,9 +147,12 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
   ret->common.reestablishment = nr_rlc_entity_um_reestablishment;
   ret->common.delete          = nr_rlc_entity_um_delete;
 
+  ret->common.get_stats       = nr_rlc_entity_get_stats;
+
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;
 
+  ret->common.stats.mode = 1;  /* 1 for UM */
   return (nr_rlc_entity_t *)ret;
 }
 
@@ -167,8 +181,11 @@ nr_rlc_entity_t *new_nr_rlc_entity_tm(
   ret->common.reestablishment = nr_rlc_entity_tm_reestablishment;
   ret->common.delete          = nr_rlc_entity_tm_delete;
 
+  ret->common.get_stats       = nr_rlc_entity_get_stats;
+
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;
 
+  ret->common.stats.mode = 2;  /* 2 for TM */
   return (nr_rlc_entity_t *)ret;
 }

@@ -81,6 +81,27 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "nfapi/oai_integration/vendor_ext.h"
 
+//////////////////////////////////
+//// E2 Agent headers
+//////////////////////////////////
+#include "../openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h" 
+
+
+#include "agent_if/read/sm_ag_if_rd.h"
+#include "agent_if/sm_io.h"
+#include "agent_if/e2_agent_api.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_entity.h"
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp.h"
+#include <time.h>
+
+//////////////////////////////////
+//////////////////////////////////
+//////////////////////////////////
+
+
+
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
 int nfapi_sync_var=-1; //!< protected by mutex \ref nfapi_sync_mutex
@@ -600,6 +621,294 @@ void init_pdcp(void) {
   }
 }
 
+
+
+
+
+
+static
+const int mod_id = 0;
+
+static
+int64_t time_now_us(void)
+{
+  struct timespec tms;
+
+  /* The C11 way */
+  /* if (! timespec_get(&tms, TIME_UTC))  */
+
+  /* POSIX.1-2008 way */
+  if (clock_gettime(CLOCK_REALTIME,&tms)) {
+    return -1;
+  }
+  /* seconds, multiplied with 1 million */
+  int64_t micros = tms.tv_sec * 1000000;
+  /* Add full microseconds */
+  micros += tms.tv_nsec/1000;
+  /* round up if necessary */
+  if (tms.tv_nsec % 1000 >= 500) {
+    ++micros;
+  }
+  return micros;
+}
+
+
+static
+void read_mac_sm(mac_ind_msg_t* data)
+{
+  assert(data != NULL);
+
+  data->tstamp = time_now_us();
+
+//  assert(0!=0 && "Read MAC called");
+
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  const size_t num_ues = UE_info->num_UEs;
+
+  data->len_ue_stats = num_ues;
+  if(data->len_ue_stats > 0){
+    data->ue_stats = calloc(data->len_ue_stats, sizeof(mac_ue_stats_impl_t));
+    assert( data->ue_stats != NULL && "Memory exhausted" );
+  }
+
+  const NR_list_t* ue_list = &UE_info->list;
+  size_t i = 0;
+  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+    const NR_UE_sched_ctrl_t* sched_ctrl = &UE_info->UE_sched_ctrl[ue_id];
+    const NR_mac_stats_t* uestats = &UE_info->mac_stats[ue_id];
+    mac_ue_stats_impl_t* rd = &data->ue_stats[i];
+
+    rd->dl_aggr_tbs = uestats->dlsch_total_bytes;
+    rd->ul_aggr_tbs = uestats->ulsch_total_bytes_rx;
+
+
+    rd->rnti = UE_info->rnti[ue_id];
+    rd->dl_aggr_prb = uestats->dlsch_total_rbs; 
+    rd->ul_aggr_prb = uestats->ulsch_total_rbs;
+    rd->dl_aggr_retx_prb = uestats->dlsch_total_rbs_retx ;
+
+    rd->dl_aggr_bytes_sdus = uestats->lc_bytes_tx[3] ;
+    rd->ul_aggr_bytes_sdus = uestats->lc_bytes_rx[3];
+
+    rd->dl_aggr_sdus = uestats->dlsch_num_mac_sdu;
+    rd->ul_aggr_sdus = uestats->ulsch_num_mac_sdu;
+
+    rd->pusch_snr = (float) sched_ctrl->pusch_snrx10 / 10; //: float = -64;
+    rd->pucch_snr = (float) sched_ctrl->pucch_snrx10 / 10 ; //: float = -64;
+
+    // no CQI measurements implemented in OAI 5G yet
+    rd->wb_cqi = 0; 
+    rd->dl_mcs1 = sched_ctrl->sched_pdsch.mcs;
+    rd->ul_mcs1 = sched_ctrl->sched_pusch.mcs ;
+    rd->dl_mcs2 = 0; 
+    rd->ul_mcs2 = 0; 
+    rd->phr = sched_ctrl->ph; 
+
+    ++i;
+  }
+}
+
+static
+uint32_t num_act_rb(NR_UE_info_t const* UE_info)
+{
+  assert(UE_info!= NULL);
+
+  const NR_list_t* ue_list = &UE_info->list;
+
+  uint32_t act_rb = 0;
+  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+    uint16_t const rnti = UE_info->rnti[ue_id];
+    for(int rb_id = 1; rb_id < 6; ++rb_id ){
+      nr_rlc_statistics_t rlc = {0};
+      const int srb_flag = 0;
+      const int rc = nr_rlc_get_statistics(rnti, srb_flag, rb_id, &rlc);
+      if(rc == 1) ++act_rb;
+    }
+  }
+  return act_rb; 
+}
+
+
+static
+void read_rlc_sm(rlc_ind_msg_t* data)
+{
+  assert(data != NULL);
+
+  // use MAC structures to get RNTIs
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  uint32_t const act_rb = num_act_rb(UE_info); 
+
+  //assert(0!=0 && "Read RLC called");
+
+  data->len = act_rb;
+  if(data->len > 0){
+	  data->rb = calloc(data->len, sizeof(rlc_radio_bearer_stats_t));
+	  assert(data->rb != NULL && "Memory exhausted");
+  }
+
+  data->tstamp = time_now_us();
+
+  const NR_list_t* ue_list = &UE_info->list;
+  uint32_t i = 0;
+  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+    uint16_t const rnti = UE_info->rnti[ue_id];
+    //for every LC ID 
+    for(int rb_id = 1; rb_id < 6; ++rb_id ){
+      nr_rlc_statistics_t rb_rlc = {0};
+      const int srb_flag = 0;
+      const int rc = nr_rlc_get_statistics(rnti, srb_flag, rb_id, &rb_rlc);
+      if(rc == 0) continue;
+      rlc_radio_bearer_stats_t* sm_rb = &data->rb[i]; 
+
+      sm_rb->txpdu_pkts = rb_rlc.txpdu_pkts; 
+      sm_rb->txpdu_bytes =  rb_rlc.txpdu_bytes;        /* aggregated amount of transmitted bytes in RLC PDUs */
+      sm_rb->txpdu_wt_ms =  rb_rlc.txpdu_wt_ms;      /* aggregated head-of-line tx packet waiting time to be transmitted (i.e. send to the MAC layer) */
+      sm_rb->txpdu_dd_pkts = rb_rlc.txpdu_dd_pkts;      /* aggregated number of dropped or discarded tx packets by RLC */
+      sm_rb->txpdu_dd_bytes = rb_rlc.txpdu_dd_bytes;     /* aggregated amount of bytes dropped or discarded tx packets by RLC */
+      sm_rb->txpdu_retx_pkts = rb_rlc.txpdu_retx_pkts;    /* aggregated number of tx pdus/pkts to be re-transmitted (only applicable to RLC AM) */
+      sm_rb->txpdu_retx_bytes = rb_rlc.txpdu_retx_bytes ;   /* aggregated amount of bytes to be re-transmitted (only applicable to RLC AM) */
+      sm_rb->txpdu_segmented = rb_rlc.txpdu_segmented  ;    /* aggregated number of segmentations */
+      sm_rb->txpdu_status_pkts = rb_rlc.txpdu_status_pkts  ;  /* aggregated number of tx status pdus/pkts (only applicable to RLC AM) */
+      sm_rb->txpdu_status_bytes = rb_rlc.txpdu_status_bytes  ; /* aggregated amount of tx status bytes  (only applicable to RLC AM) */
+      sm_rb->txbuf_occ_bytes = rb_rlc.txbuf_occ_bytes  ;    /* current tx buffer occupancy in terms of amount of bytes (average: NOT IMPLEMENTED) */
+      sm_rb->txbuf_occ_pkts = rb_rlc.txbuf_occ_pkts  ;     /* current tx buffer occupancy in terms of number of packets (average: NOT IMPLEMENTED) */
+
+      /* RX */
+      sm_rb->rxpdu_pkts = rb_rlc.rxpdu_pkts ;         /* aggregated number of received RLC PDUs */
+      sm_rb->rxpdu_bytes = rb_rlc.rxpdu_bytes ;        /* amount of bytes received by the RLC */
+      sm_rb->rxpdu_dup_pkts = rb_rlc.rxpdu_dup_pkts ;     /* aggregated number of duplicate packets */
+      sm_rb->rxpdu_dup_bytes = rb_rlc.rxpdu_dup_bytes ;    /* aggregated amount of duplicated bytes */
+      sm_rb->rxpdu_dd_pkts = rb_rlc.rxpdu_dd_pkts ;      /* aggregated number of rx packets dropped or discarded by RLC */
+      sm_rb->rxpdu_dd_bytes = rb_rlc.rxpdu_dd_bytes ;     /* aggregated amount of rx bytes dropped or discarded by RLC */
+      sm_rb->rxpdu_ow_pkts = rb_rlc.rxpdu_ow_pkts ;      /* aggregated number of out of window received RLC pdu */
+      sm_rb->rxpdu_ow_bytes = rb_rlc.rxpdu_ow_bytes ;     /* aggregated number of out of window bytes received RLC pdu */
+      sm_rb->rxpdu_status_pkts = rb_rlc.rxpdu_status_pkts ;  /* aggregated number of rx status pdus/pkts (only applicable to RLC AM) */
+      sm_rb->rxpdu_status_bytes = rb_rlc.rxpdu_status_bytes ; /* aggregated amount of rx status bytes  (only applicable to RLC AM) */
+
+      sm_rb->rxbuf_occ_bytes = rb_rlc.rxbuf_occ_bytes ;    /* current rx buffer occupancy in terms of amount of bytes (average: NOT IMPLEMENTED) */
+      sm_rb->rxbuf_occ_pkts = rb_rlc.rxbuf_occ_pkts ;     /* current rx buffer occupancy in terms of number of packets (average: NOT IMPLEMENTED) */
+
+      /* TX */
+      sm_rb->txsdu_pkts = rb_rlc.txsdu_pkts ;         /* number of SDUs delivered */
+      sm_rb->txsdu_bytes = rb_rlc.txsdu_bytes ;        /* number of bytes of SDUs delivered */
+
+      /* RX */
+      sm_rb->rxsdu_pkts = rb_rlc.rxsdu_pkts ;         /* number of SDUs received */
+      sm_rb->rxsdu_bytes = rb_rlc.rxsdu_bytes ;        /* number of bytes of SDUs received */
+      sm_rb->rxsdu_dd_pkts = rb_rlc.rxsdu_dd_pkts ;      /* number of dropped or discarded SDUs */
+      sm_rb->rxsdu_dd_bytes = rb_rlc.rxsdu_dd_bytes ;     /* number of bytes of SDUs dropped or discarded */
+
+      sm_rb->mode = rb_rlc.mode;               /* 0: RLC AM, 1: RLC UM, 2: RLC TM */
+      sm_rb->rnti = rnti;
+      sm_rb->rbid = rb_id;
+
+      ++i;
+    }
+  }
+}
+
+
+static
+void read_pdcp_sm(pdcp_ind_msg_t* data)
+{
+  assert(data != NULL);
+
+  //assert(0!=0 && "Calling PDCP");
+  // for the moment and while we don't have a split base station, we use the
+  // MAC structures to obtain the RNTIs which we use to query the PDCP
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  uint32_t const act_rb = num_act_rb(UE_info); 
+
+  data->len = act_rb;
+  data->tstamp = time_now_us();
+//  data->slot = 0;
+
+  if(data->len > 0){
+    data->rb = calloc(data->len , sizeof(pdcp_radio_bearer_stats_t));
+    assert(data->rb != NULL && "Memory exhausted!");
+  }
+
+  size_t i = 0;
+  const NR_list_t* ue_list = &UE_info->list;
+  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+
+    const int rnti = UE_info->rnti[ue_id];
+    for(size_t rb_id = 1; rb_id < 6; ++rb_id){
+      nr_pdcp_statistics_t pdcp = {0};
+
+      const int srb_flag = 0;
+      const int rc = nr_pdcp_get_statistics(rnti, srb_flag, rb_id, &pdcp);
+
+      if(rc == 0) continue;
+
+      pdcp_radio_bearer_stats_t* rd = &data->rb[i];
+
+
+      rd->txpdu_pkts = pdcp.txpdu_pkts ;     /* aggregated number of tx packets */
+      rd->txpdu_bytes = pdcp.txpdu_bytes;    /* aggregated bytes of tx packets */
+      rd->txpdu_sn = pdcp.txpdu_sn ;       /* current sequence number of last tx packet (or TX_NEXT) */
+      rd->rxpdu_pkts = pdcp.rxpdu_pkts ;     /* aggregated number of rx packets */
+      rd->rxpdu_bytes = pdcp.rxpdu_bytes ;    /* aggregated bytes of rx packets */
+      rd->rxpdu_sn = pdcp.rxpdu_sn ;       /* current sequence number of last rx packet (or  RX_NEXT) */
+      rd->rxpdu_oo_pkts = pdcp.rxpdu_oo_pkts  ;       /* aggregated number of out-of-order rx pkts  (or RX_REORD) */
+      rd->rxpdu_oo_bytes = pdcp.rxpdu_oo_bytes  ; /* aggregated amount of out-of-order rx bytes */
+      rd->rxpdu_dd_pkts = pdcp.rxpdu_dd_pkts  ;  /* aggregated number of duplicated discarded packets (or dropped packets because of other reasons such as integrity failure) (or RX_DELIV) */
+      rd->rxpdu_dd_bytes = pdcp.rxpdu_dd_bytes; /* aggregated amount of discarded packets' bytes */
+      rd->rxpdu_ro_count = pdcp.rxpdu_ro_count  ; /* this state variable indicates the COUNT value following the COUNT value associated with the PDCP Data PDU which triggered t-Reordering. (RX_REORD) */
+      rd->txsdu_pkts = pdcp.txsdu_pkts ;     /* number of SDUs delivered */
+      rd->txsdu_bytes = pdcp.txsdu_bytes ;    /* number of bytes of SDUs delivered */
+      rd->rxsdu_pkts = pdcp.rxsdu_pkts ;     /* number of SDUs received */
+      rd->rxsdu_bytes = pdcp.rxsdu_bytes ;    /* number of bytes of SDUs received */
+      rd->rnti = rnti; 
+      rd->mode = pdcp.mode;               /* 0: PDCP AM, 1: PDCP UM, 2: PDCP TM */
+      rd->rbid = rb_id;
+
+      ++i;
+    }
+  }
+}
+
+
+
+
+
+static
+void read_RAN(sm_ag_if_rd_t* data)
+{
+  assert(data != NULL);
+  assert(data->type == MAC_STATS_V0 
+        || data->type == RLC_STATS_V0
+        || data->type == PDCP_STATS_V0
+        );
+
+  if(data->type == MAC_STATS_V0 ){
+    read_mac_sm(&data->mac_stats.msg);
+  //  printf("calling REAd MAC\n");
+  }else if(data->type == RLC_STATS_V0) {
+    read_rlc_sm(&data->rlc_stats.msg);
+  //  printf("calling REAd RLC\n");
+  } else if(data->type == PDCP_STATS_V0){
+    read_pdcp_sm(&data->pdcp_stats.msg);
+    //printf("calling REAd PDCP\n");
+//  } else if(RRC_STATS_V0){
+//    read_rrc_sm(&data->rrc_stats);
+  } else {
+    assert(0!=0 && "Unknown data type!");
+  }
+
+}
+
+static
+sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
+{
+  assert(data != NULL);
+  assert(0!=0 && "Not implemented");
+  sm_ag_if_ans_t ans = {.type = MAC_AGENT_IF_CTRL_ANS_V0 };
+
+  return ans;
+}
+
+
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
   start_background_system();
@@ -747,7 +1056,28 @@ int main( int argc, char **argv ) {
   }
 
   config_sync_var=0;
+//////////////////////////////////
+//////////////////////////////////
+//// Init the E2 Agent
 
+  sleep(2);
+  const gNB_RRC_INST* rrc = RC.nrrrc[mod_id];
+  assert(rrc != NULL && "rrc cannot be NULL");
+
+  const int mcc = rrc->configuration.mcc[0]; // 208; 
+  const int mnc = rrc->configuration.mnc[0]; // 94; 
+  const int mnc_digit_len = rrc->configuration.mnc_digit_length[0]; // 2;
+  const int nb_id = rrc->configuration.cell_identity; //42;
+  sm_io_ag_t io = {.read = read_RAN, .write = write_RAN};
+
+  printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nd_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+
+  args_t args = {0};
+  init_agent_api( mcc, mnc, mnc_digit_len, nb_id, io, args);
+//////////////////////////////////
+//////////////////////////////////
+
+ 
   if (NFAPI_MODE==NFAPI_MODE_PNF) {
     wait_nfapi_init("main?");
   }

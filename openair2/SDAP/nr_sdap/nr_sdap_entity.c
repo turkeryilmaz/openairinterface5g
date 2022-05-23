@@ -19,6 +19,9 @@
  *      contact@openairinterface.org
  */
 
+
+
+
 #include "nr_sdap_entity.h"
 #include "common/utils/LOG/log.h"
 #include <openair2/LAYER2/PDCP_v10.1.0/pdcp.h>
@@ -28,6 +31,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+
+#include "../../tc/tc_api.h"
+#include <stdatomic.h>
 
 typedef struct {
   nr_sdap_entity_t *sdap_entity_llist;
@@ -45,6 +51,59 @@ void nr_pdcp_submit_sdap_ctrl_pdu(int rnti, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_u
   ue->drb[sdap_ctrl_pdu_drb-1]->recv_sdu(ue->drb[sdap_ctrl_pdu_drb-1], (char*)&ctrl_pdu, SDAP_HDR_LENGTH, RLC_MUI_UNDEFINED);
   return;
 }
+
+static
+pthread_once_t tc_once = PTHREAD_ONCE_INIT; 
+
+//static
+//atomic_bool tc_configured = false;
+
+static
+void tc_egress_fun(uint16_t rnti, uint8_t rb_id_u, uint8_t* data, size_t sz)
+{
+  const srb_flag_t srb_flag=SRB_FLAG_NO;
+  const rb_id_t rb_id = rb_id_u;
+  const mui_t mui = RLC_MUI_UNDEFINED;
+  const confirm_t confirm = RLC_SDU_CONFIRM_NO;
+  const pdcp_transmission_mode_t pt_mode = PDCP_TRANSMISSION_MODE_DATA;
+  const uint32_t sourceL2Id=0;
+  const uint32_t destinationL2Id=0;
+
+  protocol_ctxt_t ctxt_p = {.module_id = 0 ,
+                            .enb_flag = 0 ,
+                            .instance = 0,
+                            .rnti = rnti ,
+                            .frame = 0,
+                            .subframe = 0,
+                            .eNB_index = 0,
+                            .brOption = 0
+  };
+
+  
+  boolean_t ret = pdcp_data_req(&ctxt_p,
+                                srb_flag,
+                                rb_id,
+                                mui,
+                                confirm,
+                                sz,
+                                data,
+                                pt_mode,
+                                &sourceL2Id,
+                                &destinationL2Id);
+  if(!ret)
+    printf("PDCP refused PDU\n");
+}
+
+
+static
+tc_handle_t* static_tc = NULL;
+
+static
+void configure_tc(void)
+{
+  tc_data_ind(static_tc, tc_egress_fun);
+}
+
 
 static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                                    protocol_ctxt_t *ctxt_p,
@@ -80,7 +139,38 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
     pdcp_ent_has_sdap = entity->qfi2drb_table[qfi].hasSdap;
   }
 
+
   if(!pdcp_ent_has_sdap){
+
+#ifdef TC_SM
+  assert(srb_flag == SRB_FLAG_NO);
+  assert(rb_id == 3);
+  assert(mui == RLC_MUI_UNDEFINED);
+  assert(confirm == RLC_SDU_CONFIRM_NO);
+  assert(pt_mode == PDCP_TRANSMISSION_MODE_DATA);
+  assert(*sourceL2Id == 0);
+  assert(*destinationL2Id == 0);
+
+
+  const uint32_t rnti = ctxt_p->rnti;
+
+  tc_rc_t tc_rc = tc_get_or_create(rnti, rb_id);
+
+  // Configure TC
+  if(static_tc == NULL){
+    static_tc = tc_rc.tc;
+    pthread_once(&tc_once, configure_tc);
+  }
+
+  uint8_t* data = sdu_buffer;
+  size_t sz = sdu_buffer_size;
+
+  // Ingress data (DL)
+  tc_rc = tc_data_req(tc_rc.tc, data, sz);
+
+#else
+    assert(0!=0 && "No SDAP");
+
     ret = pdcp_data_req(ctxt_p,
                         srb_flag,
                         sdap_drb_id,
@@ -91,6 +181,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                         pt_mode,
                         sourceL2Id,
                         destinationL2Id);
+#endif
 
     if(!ret)
       LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);
@@ -149,6 +240,36 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
    *
    * Downlink gNB side
    */
+
+
+#ifdef TC_SM
+
+  assert(srb_flag == SRB_FLAG_NO);
+  assert(rb_id == 3);
+  assert(mui == RLC_MUI_UNDEFINED);
+  assert(confirm == RLC_SDU_CONFIRM_NO);
+  assert(pt_mode == PDCP_TRANSMISSION_MODE_DATA);
+  assert(*sourceL2Id == 0);
+  assert(*destinationL2Id == 0);
+
+  const uint32_t rnti = ctxt_p->rnti;
+  tc_rc_t tc_rc = tc_get_or_create(rnti, rb_id);
+
+  // Configure TC
+  if(static_tc == NULL){
+    static_tc = tc_rc.tc;
+    pthread_once(&tc_once, configure_tc);
+  }
+
+  uint8_t* data = sdu_buffer;
+  size_t sz = sdu_buffer_size;
+
+  // Ingress data (DL)
+  tc_rc = tc_data_req(tc_rc.tc, data, sz);
+
+#else
+
+  assert(0!=0 && "SDAP active");
   ret = pdcp_data_req(ctxt_p,
                       srb_flag,
                       sdap_drb_id,
@@ -159,6 +280,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                       pt_mode,
                       sourceL2Id,
                       destinationL2Id);
+#endif
 
   if(!ret)
     LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);

@@ -665,12 +665,22 @@ typedef struct {
   uint64_t dlsch_errors;
   uint64_t dlsch_total_bytes;
   int dlsch_current_bytes;
+  int dlsch_total_rbs;
+  int dlsch_total_rbs_retx;
+  int dlsch_num_mac_sdu;
+
+
   uint64_t ulsch_rounds[8];
   uint64_t ulsch_errors;
   uint32_t ulsch_DTX;
   uint64_t ulsch_total_bytes_scheduled;
   uint64_t ulsch_total_bytes_rx;
   int ulsch_current_bytes;
+
+  int ulsch_total_rbs;
+  int ulsch_total_rbs_retx;
+  int ulsch_num_mac_sdu;
+
   uint32_t pucch0_DTX;
   int cumul_rsrp;
   uint8_t num_rsrp_meas;
