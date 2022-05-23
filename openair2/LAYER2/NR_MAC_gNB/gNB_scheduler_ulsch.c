@@ -215,6 +215,7 @@ int nr_process_mac_pdu(module_id_t module_idP,
 
 
     uint8_t done = 0;
+    int sdus = 0;
 
     NR_UE_info_t *UE_info = &RC.nrmac[module_idP]->UE_info;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE_info->UE_sched_ctrl[UE_id];
@@ -478,6 +479,8 @@ int nr_process_mac_pdu(module_id_t module_idP,
                            1,
                            NULL);
 
+          sdus += 1;
+
           /* Updated estimated buffer when receiving data */
           if (sched_ctrl->estimated_ul_buffer >= mac_len)
             sched_ctrl->estimated_ul_buffer -= mac_len;
@@ -515,6 +518,10 @@ int nr_process_mac_pdu(module_id_t module_idP,
           return 0;
         }
     }
+  NR_mac_stats_t *mac_stats = &UE_info->mac_stats[UE_id];
+  mac_stats->ulsch_num_mac_sdu += sdus;
+
+
   return 0;
 }
 

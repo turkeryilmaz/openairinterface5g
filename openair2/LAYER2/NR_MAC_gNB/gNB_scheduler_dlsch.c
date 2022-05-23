@@ -1418,6 +1418,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       uint8_t *bufEnd = buf + TBS - written;
       DevAssert(TBS > written);
       int dlsch_total_bytes = 0;
+      int sdus = 0;
       /* next, get RLC data */
       start_meas(&gNB_mac->rlc_data_req);
 
@@ -1470,10 +1471,19 @@ void nr_schedule_ue_spec(module_id_t module_id,
             header->L = htons(len);
             buf += len+sizeof(NR_MAC_SUBHEADER_LONG);
             dlsch_total_bytes += len;
+            sdus += 1;
             lcid_bytes += len;
           }
 
           UE_info->mac_stats[UE_id].lc_bytes_tx[lcid] += lcid_bytes;
+      NR_mac_stats_t *mac_stats = &UE_info->mac_stats[UE_id];
+      mac_stats->dlsch_total_bytes += TBS;
+      mac_stats->dlsch_current_bytes = TBS;
+      mac_stats->lc_bytes_tx[lcid] += lcid_bytes;// dlsch_total_bytes;
+      mac_stats->dlsch_total_rbs += sched_pdsch->rbSize;
+      mac_stats->dlsch_num_mac_sdu += sdus;
+
+
         }
       } else if (get_softmodem_params()->phy_test || get_softmodem_params()->do_ra) {
         /* we will need the large header, phy-test typically allocates all
@@ -1489,6 +1499,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           buf += sizeof(NR_MAC_SUBHEADER_LONG);
           header->L = htons(bufEnd-buf);
           dlsch_total_bytes += bufEnd-buf;
+          sdus += 1;
 
           for (; buf < bufEnd - 3; buf += 4) {
             uint32_t *buf32 = (uint32_t *)buf;
@@ -1511,8 +1522,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
         buf=bufEnd;
       }
 
-      UE_info->mac_stats[UE_id].dlsch_total_bytes += TBS;
-      UE_info->mac_stats[UE_id].dlsch_current_bytes = TBS;
+     // UE_info->mac_stats[UE_id].dlsch_total_bytes += TBS;
+     // UE_info->mac_stats[UE_id].dlsch_current_bytes = TBS;
+     // UE_info->mac_stats[UE_id].lc_bytes_tx[lcid] += dlsch_total_bytes;
+
       /* save retransmission information */
       harq->sched_pdsch = *sched_pdsch;
       /* save which time allocation has been used, to be used on

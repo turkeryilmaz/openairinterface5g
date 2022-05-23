@@ -52,6 +52,9 @@
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "executables/nr-softmodem.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_entity.h"
+#include "LAYER2/nr_rlc/nr_rlc_entity.h"
+
 
 #include <errno.h>
 #include <string.h>
