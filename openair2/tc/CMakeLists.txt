@@ -28,7 +28,7 @@ elseif(SANITIZER STREQUAL  "THREAD" )
   add_link_options("-fsanitize=thread;")
 
 elseif(SANITIZER STREQUAL "NONE" )
-  add_compile_options("-Wall; -Wextra; -g;")
+  #  add_compile_options("-Wall; -Wextra; -g;")
 endif()
 
 option(CODE_COVERAGE "Code coverage" OFF)
@@ -84,5 +84,5 @@ add_executable(tc
 target_link_libraries(tc -lpthread -ldl -lm )
 
 # For profiling and coverage purposes 
-target_link_libraries(tc /home/mir/workspace/tc/queue/build/libcodel_queue.so)
+#target_link_libraries(tc /home/mir/workspace/tc/queue/build/libcodel_queue.so)
 
