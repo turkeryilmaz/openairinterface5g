@@ -868,8 +868,22 @@ void read_pdcp_sm(pdcp_ind_msg_t* data)
   }
 }
 
+static
+void read_tc_sm(tc_ind_msg_t* data )
+{
+  assert(data != NULL);
 
+  //assert(0!=0 && "Calling PDCP");
+  // for the moment and while we don't have a split base station, we use the
+  // MAC structures to obtain the RNTIs which we use to query the PDCP
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  uint32_t const act_rb = num_act_rb(UE_info); 
 
+  data->len = act_rb;
+  data->tstamp = time_now_us();
+/
+
+}
 
 
 static
@@ -879,6 +893,7 @@ void read_RAN(sm_ag_if_rd_t* data)
   assert(data->type == MAC_STATS_V0 
         || data->type == RLC_STATS_V0
         || data->type == PDCP_STATS_V0
+        || data->type == TC_STATS_V0
         );
 
   if(data->type == MAC_STATS_V0 ){
@@ -890,6 +905,8 @@ void read_RAN(sm_ag_if_rd_t* data)
   } else if(data->type == PDCP_STATS_V0){
     read_pdcp_sm(&data->pdcp_stats.msg);
     //printf("calling REAd PDCP\n");
+  } else if(data->type == TC_STATS_V0){
+    read_tc_sm(&data->pdcp_stats.msg);
 //  } else if(RRC_STATS_V0){
 //    read_rrc_sm(&data->rrc_stats);
   } else {
