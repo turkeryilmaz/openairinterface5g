@@ -1,0 +1,1 @@
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -shared -Wl,-soname,librr_sch.so -o librr_sch.so CMakeFiles/rr_sch.dir/rr/rr_sch.c.o 

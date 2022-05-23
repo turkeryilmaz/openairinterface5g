@@ -1,0 +1,1 @@
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -lgcov -coverage -shared -Wl,-soname,libcodel_queue.so -o libcodel_queue.so CMakeFiles/codel_queue.dir/codel/codel_queue.c.o CMakeFiles/codel_queue.dir/home/mir/workspace/tc/alg_ds/alg/defer.c.o  -lm 
