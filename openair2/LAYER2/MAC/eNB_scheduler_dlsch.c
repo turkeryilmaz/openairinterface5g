@@ -2090,14 +2090,14 @@ schedule_PCH(module_id_t module_idP,
                                            i); // used for ue index
 
         if (pcch_sdu_length == 0) {
-          LOG_D(MAC, "[eNB %d] Frame %d subframe %d: PCCH not active(size = 0 byte)\n",
+          LOG_A(MAC, "[eNB %d] Frame %d subframe %d: PCCH not active(size = 0 byte)\n",
                 module_idP,
                 frameP,
                 subframeP);
           continue;
         }
 
-        LOG_D(MAC, "[eNB %d] Frame %d subframe %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
+        LOG_A(MAC, "[eNB %d] Frame %d subframe %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
               module_idP,
               frameP,
               subframeP,
@@ -2326,41 +2326,75 @@ schedule_PCH(module_id_t module_idP,
           memset((void *)dl_config_pdu,
                  0,
                  sizeof(nfapi_dl_config_request_pdu_t));
-          dl_config_pdu->pdu_type                                                        = NFAPI_DL_CONFIG_DLSCH_PDU_TYPE;
-          dl_config_pdu->pdu_size                                                        = (uint8_t)(2 + sizeof(nfapi_dl_config_dlsch_pdu));
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.pdu_index                              = eNB->pdu_index[CC_id];
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.rnti                                   = 0xFFFE;
+          if(RC.ss.mode ==SS_ENB)
+          {
+            dl_config_pdu->pdu_type = NFAPI_DL_CONFIG_DLSCH_PDU_TYPE;
+            dl_config_pdu->pdu_size = (uint8_t)(2 + sizeof(nfapi_dl_config_dlsch_pdu));
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.pdu_index = eNB->pdu_index[CC_id];
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.rnti = 0xFFFE;
 #ifdef FORMAT1C
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_allocation_type               = 3;   // format 1C
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_block_coding                  = getRIV(n_vrb_dl / n_rb_step,
-              first_rb / n_rb_step,
-              Lcrbs / n_rb_step);
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_allocation_type = 3; // format 1C
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_block_coding = getRIV(n_vrb_dl / n_rb_step,
+                                                                                   first_rb / n_rb_step,
+                                                                                   Lcrbs / n_rb_step);
 #else
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_allocation_type               = 2;   // format 1A/1B/1D
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_block_coding                  = getRIV(n_rb_dl,
-              first_rb,
-              4);
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.virtual_resource_block_assignment_flag = 0;   // localized
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_allocation_type = 2; // format 1A/1B/1D
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_block_coding = getRIV(n_rb_dl,
+                                                                                   first_rb,
+                                                                                   4);
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.virtual_resource_block_assignment_flag = 0; // localized
+
 #endif
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.modulation                             = 2; //QPSK
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.redundancy_version                     = 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transport_blocks                       = 1;// first block
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transport_block_to_codeword_swap_flag  = 0;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transmission_scheme                    = (cc->p_eNB==1 ) ? 0 : 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.number_of_layers                       = 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.number_of_subbands                     = 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.ue_category_capacity                   = 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.pa                                     = 4; // 0 dB
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.delta_power_offset_index               = 0;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.ngap                                   = 0;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.nprb                                   = get_subbandsize(cc->mib->message.dl_Bandwidth); // ignored
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transmission_mode                      = (cc->p_eNB==1 ) ? 1 : 2;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_prb_per_subband                 = 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_vector                          = 1;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel10.pdsch_start                           = 3;
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.ue_type                               = 0; // regular UE
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.pdsch_payload_type                    = 2; // not BR
-          dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.initial_transmission_sf_io            = 0xFFFF;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.modulation = 2; // QPSK
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.redundancy_version = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transport_blocks = 1; // first block
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transport_block_to_codeword_swap_flag = 0;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transmission_scheme = (cc->p_eNB == 1) ? 0 : 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.number_of_layers = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.number_of_subbands = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.ue_category_capacity = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.pa = 4; // 0 dB
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.delta_power_offset_index = 0;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.ngap = 0;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.nprb = get_subbandsize(cc->mib->message.dl_Bandwidth); // ignored
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transmission_mode = (cc->p_eNB == 1) ? 1 : 2;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_prb_per_subband = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_vector = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel10.pdsch_start = 3;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.ue_type = 0;            // regular UE
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.pdsch_payload_type = 2; // not BR
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.initial_transmission_sf_io = 0xFFFF;
+	  }
+          else
+          {
+            dl_config_pdu->pdu_type = NFAPI_DL_CONFIG_PCH_PDU_TYPE;
+            dl_config_pdu->pdu_size = (uint8_t)(2 + sizeof(nfapi_dl_config_pch_pdu));
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.tl.tag = NFAPI_DL_CONFIG_REQUEST_PCH_PDU_REL8_TAG;
+            //dl_config_pdu->pch_pdu.pch_pdu_rel8.length = rand_range(0, 42);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.pdu_index = eNB->pdu_index[CC_id];
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.p_rnti = 0xFFFE;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.resource_allocation_type = 2;//rand_range(2, 6);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.virtual_resource_block_assignment_flag = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.resource_block_coding = getRIV(n_rb_dl,
+                                                                                   first_rb,
+                                                                                   4);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.mcs = mcs;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.redundancy_version = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.number_of_transport_blocks = 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.transport_block_to_codeword_swap_flag = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.transmission_scheme = (cc->p_eNB == 1) ? 0 : 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.number_of_layers = 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.codebook_index = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.ue_category_capacity = 1; // rand_range(0, 14);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.pa = 4;                   // rand_range(0, 7);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.transmission_power = 6000;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.nprb = 0;//get_subbandsize(cc->mib->message.dl_Bandwidth);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.ngap = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel13.tl.tag = NFAPI_DL_CONFIG_REQUEST_PCH_PDU_REL13_TAG;
+            dl_config_pdu->pch_pdu.pch_pdu_rel13.ue_mode = 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel13.initial_transmission_sf_io = 0xFFFF;
+          }
+
           dl_req->number_pdu++;
           eNB->TX_req[CC_id].sfn_sf                                                      = (frameP<<4)+subframeP;
           TX_req = &eNB->TX_req[CC_id].tx_request_body.tx_pdu_list[eNB->TX_req[CC_id].tx_request_body.number_of_pdus];
@@ -2395,7 +2429,7 @@ schedule_PCH(module_id_t module_idP,
         eNB->eNB_stats[CC_id].total_pcch_buffer += pcch_sdu_length;
         eNB->eNB_stats[CC_id].pcch_mcs = mcs;
         //paging first_rb log
-        LOG_D(MAC,"[eNB %d] Frame %d subframe %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
+        LOG_A(MAC,"[eNB %d] Frame %d subframe %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
               module_idP,
               frameP,
               subframeP,

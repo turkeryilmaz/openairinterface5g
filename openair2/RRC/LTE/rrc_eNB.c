@@ -521,6 +521,160 @@ init_SI(
   pthread_mutex_unlock(&rrc->cell_info_mutex);
 }
 
+static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance_t instance) {
+  const unsigned int Ttab[4] = {32,64,128,256};
+  uint8_t Tc;  /* DRX cycle of UE */
+  uint32_t pcch_nB;  /* 4T, 2T, T, T/2, T/4, T/8, T/16, T/32 */
+  uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
+  uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
+  uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
+  uint32_t T;  /* DRX cycle */
+  uint8_t CC_id = 0;
+  LOG_A(RRC, "[eNB %d] In S1AP_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+   SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
+   SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
+  SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
+  SS_PAGING_IND(msg_p).sfn,
+  SS_PAGING_IND(msg_p).sf,
+  SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
+  (uint16_t)SS_PAGING_IND(msg_p).paging_recordList->ue_index_value);
+  //       S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc, );
+  lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
+  /* get nB from configuration */
+  /* get default DRX cycle from configuration */
+  Tc = (uint8_t)RC.rrc[instance]->configuration.radioresourceconfig[CC_id].pcch_defaultPagingCycle;
+  if (Tc < LTE_PCCH_Config__defaultPagingCycle_rf32 || Tc > LTE_PCCH_Config__defaultPagingCycle_rf256)
+  {
+    return;
+  }
+  /* set T = min(Tc,Tue) */
+  T = Ttab[Tc];
+  /* set pcch_nB = PCCH-Config->nB */
+  pcch_nB = (uint32_t)RC.rrc[instance]->configuration.radioresourceconfig[CC_id].pcch_nB;
+  switch (pcch_nB)
+  {
+  case LTE_PCCH_Config__nB_fourT:
+    Ns = 4;
+    break;
+  case LTE_PCCH_Config__nB_twoT:
+    Ns = 2;
+    break;
+  default:
+    Ns = 1;
+    break;
+  }
+  /* set N = min(T,nB) */
+  if (pcch_nB > LTE_PCCH_Config__nB_oneT)
+  {
+    switch (pcch_nB)
+    {
+    case LTE_PCCH_Config__nB_halfT:
+      N = T / 2;
+      break;
+    case LTE_PCCH_Config__nB_quarterT:
+      N = T / 4;
+      break;
+    case LTE_PCCH_Config__nB_oneEighthT:
+      N = T / 8;
+      break;
+    case LTE_PCCH_Config__nB_oneSixteenthT:
+      N = T / 16;
+      break;
+    case LTE_PCCH_Config__nB_oneThirtySecondT:
+      N = T / 32;
+      break;
+    default:
+      /* pcch_nB error */
+      LOG_E(RRC, "[eNB %d] In SS_PAGING_IND:  pcch_nB error (pcch_nB %d) \n",
+            instance, pcch_nB);
+      return (-1);
+    }
+  }
+  else
+  {
+    N = T;
+  }
+  /* insert data to UE_PF_PO or update data in UE_PF_PO */
+  pthread_mutex_lock(&ue_pf_po_mutex);
+  uint8_t i = 0;
+  for (i = 0; i < MAX_MOBILES_PER_ENB; i++)
+  {
+    if ((UE_PF_PO[CC_id][i].enable_flag == TRUE && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(S1AP_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != TRUE))
+    {
+      /* set T = min(Tc,Tue) */
+      UE_PF_PO[CC_id][i].T = T;
+      /* set UE_ID */
+      UE_PF_PO[CC_id][i].ue_index_value = (uint16_t)SS_PAGING_IND(msg_p).paging_recordList->ue_index_value;
+      /* calculate PF and PO */
+      /* set PF_min : SFN mod T = (T div N)*(UE_ID mod N) */
+      UE_PF_PO[CC_id][i].PF_min = (SS_PAGING_IND(msg_p).sfn % T) + (UE_PF_PO[CC_id][i].ue_index_value % N);
+     // UE_PF_PO[CC_id][i].PF_min =  SS_PAGING_IND(msg_p).sfn % T;
+      /* set PO */
+      /* i_s = floor(UE_ID/N) mod Ns */
+      i_s = (uint8_t)((UE_PF_PO[CC_id][i].ue_index_value / N) % Ns);
+      if (Ns == 1)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? 9 : 0;
+      }
+      else if (Ns == 2)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 + (5 * i_s)) : (5 * i_s);
+      }
+      else if (Ns == 4)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 * (i_s & 1) + (5 * (i_s >> 1))) : ((i_s & 1) + (5 * (i_s >> 1)));
+      }
+      //UE_PF_PO[CC_id][i].PO =  SS_PAGING_IND(msg_p).sf;
+      if (UE_PF_PO[CC_id][i].enable_flag == TRUE)
+      {
+        // paging exist UE log
+        LOG_A(RRC, "[eNB %d] CC_id %d In SS_PAGING_IND: Update exist UE %d, T %d, PF %d, PO %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO);
+      }
+      else
+      {
+        /* set enable_flag */
+        UE_PF_PO[CC_id][i].enable_flag = TRUE;
+        // paging new UE log
+        LOG_A(RRC, "[eNB %d] CC_id %d In SSAP_PAGING_IND: Insert a new UE %d, T %d, PF %d, PO %d N %d Ns %d i_s %d\n",
+        instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO,N,Ns,i_s);
+      }
+      break;
+    }
+  }
+  pthread_mutex_unlock(&ue_pf_po_mutex);
+  uint32_t length;
+  uint8_t buffer[RRC_BUF_SIZE];
+  uint8_t *message_buffer;
+  /* Transfer data to PDCP */
+  MessageDef *message_p;
+  message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_PCCH_DATA_REQ);
+  /* Create message for PDCP (DLInformationTransfer_t) */
+  length = do_Paging(instance,
+                     buffer,
+		     RRC_BUF_SIZE,
+                     SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity,
+                     SS_PAGING_IND(msg_p).paging_recordList->cn_domain);
+  if (length == -1)
+  {
+    LOG_I(RRC, "do_Paging error");
+    return -1;
+  }
+  message_buffer = itti_malloc(TASK_RRC_ENB, TASK_PDCP_ENB, length);
+  /* Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling). */
+  memcpy(message_buffer, buffer, length);
+  RRC_PCCH_DATA_REQ(message_p).sdu_size = length;
+  RRC_PCCH_DATA_REQ(message_p).sdu_p = message_buffer;
+  RRC_PCCH_DATA_REQ(message_p).mode = PDCP_TRANSMISSION_MODE_TRANSPARENT; /* not used */
+  RRC_PCCH_DATA_REQ(message_p).rnti = P_RNTI;
+  RRC_PCCH_DATA_REQ(message_p).ue_index = 0;
+  RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
+  LOG_A(RRC, "[eNB %d] CC_id %d In S1AP_PAGING_IND: send encdoed buffer to PDCP buffer_size %d\n", instance, CC_id, length);
+  itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
+  LOG_A(RRC, "[eNB %d] Exiting ,rrc_eNB_process_SS_PAGING_IND\n");
+  return (0);
+}
+
+
 /*------------------------------------------------------------------------------*/
 static void
 init_MCCH(
@@ -10260,6 +10414,11 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                     msg_p->ittiMsgHeader.lte_time.frame,
                                     msg_p->ittiMsgHeader.lte_time.slot);
       rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+      break;
+
+    case SS_SS_PAGING_IND:
+      LOG_A(RRC, "[eNB %d] Received Paging message from SS: %s\n", instance, msg_name_p);
+      rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
       break;
 
     case RRC_RBLIST_CFG_REQ:
