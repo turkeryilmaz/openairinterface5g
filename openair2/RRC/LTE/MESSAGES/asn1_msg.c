@@ -941,31 +941,6 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   {
 	  LOG_D(RRC,"Updating q_RxLevMin: %d\n", configuration->q_RxLevMin);
 	  (*sib1)->cellSelectionInfo.q_RxLevMin=configuration->q_RxLevMin;
-
-	  if (configuration->q_QualMin != 0 /*&& RC.ss.State > SS_STATE_CELL_CONFIGURED*/) 
-	  {
-		  LOG_A(RRC, "Updating q_QualMin: %ld\n", configuration->q_QualMin);
-		  (*sib1)->nonCriticalExtension = calloc (1, sizeof(struct LTE_SystemInformationBlockType1_v890_IEs));
-			if ((*sib1)->nonCriticalExtension == NULL)
-			{
-		  		LOG_E(RRC, "Error Allocating Memory\n");
-				return -1;
-			}
-		  (*sib1)->nonCriticalExtension->nonCriticalExtension  = calloc (1, sizeof(struct LTE_SystemInformationBlockType1_v920_IEs));
-			if ((*sib1)->nonCriticalExtension->nonCriticalExtension  == NULL)
-			{
-		  		LOG_E(RRC, "Error Allocating Memory\n");
-				return -1;
-			}
-		  (*sib1)->nonCriticalExtension->nonCriticalExtension->cellSelectionInfo_v920  = 
-				calloc (1, sizeof(struct LTE_CellSelectionInfo_v920));
-			if ((*sib1)->nonCriticalExtension->nonCriticalExtension->cellSelectionInfo_v920  == NULL)
-			{
-		  		LOG_E(RRC, "Error Allocating Memory\n");
-				return -1;
-			}
-		  (*sib1)->nonCriticalExtension->nonCriticalExtension->cellSelectionInfo_v920->q_QualMin_r9  = configuration->q_QualMin;
-	  } 
   }
   else
   { 
@@ -1007,7 +982,18 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   memset(sib1_890->nonCriticalExtension, 0, sizeof(LTE_SystemInformationBlockType1_v920_IEs_t));
   LTE_SystemInformationBlockType1_v920_IEs_t *sib1_920 = (*sib1_890).nonCriticalExtension;
   sib1_920->ims_EmergencySupport_r9 = NULL; // ptr
-  sib1_920->cellSelectionInfo_v920 = NULL;
+  /** TODO: Temporary hack */
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    if (configuration->q_QualMin != 0 /*&& RC.ss.State > SS_STATE_CELL_CONFIGURED*/) {
+    LOG_A(RRC, "Updating q_QualMin: %ld\n", configuration->q_QualMin);
+    sib1_920->cellSelectionInfo_v920 = calloc (1, sizeof(struct LTE_CellSelectionInfo_v920));
+    sib1_920->cellSelectionInfo_v920->q_QualMin_r9 = configuration->q_QualMin;
+    } else {
+        sib1_920->cellSelectionInfo_v920 = NULL;
+    }
+  } else {
+    sib1_920->cellSelectionInfo_v920 = NULL;
+  }
   sib1_920->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v1130_IEs_t));
   memset(sib1_920->nonCriticalExtension, 0, sizeof(LTE_SystemInformationBlockType1_v1130_IEs_t));
   //////Rel11
