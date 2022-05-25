@@ -95,6 +95,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp.h"
 #include <time.h>
+#include "openair2/tc/tc_api.h"
 
 //////////////////////////////////
 //////////////////////////////////
@@ -877,12 +878,23 @@ void read_tc_sm(tc_ind_msg_t* data )
   // for the moment and while we don't have a split base station, we use the
   // MAC structures to obtain the RNTIs which we use to query the PDCP
   const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
-  uint32_t const act_rb = num_act_rb(UE_info); 
+  const NR_list_t* ue_list = &UE_info->list;
+  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+    const int rnti = UE_info->rnti[ue_id];
+    int const rb_id = 4;
+    tc_rc_t rc = tc_get_or_create(rnti, rb_id);
 
-  data->len = act_rb;
-  data->tstamp = time_now_us();
-/
+    tc_ind_data_t ind = tc_ind_data(rc.tc);
+    *data = cp_tc_ind_msg(&ind.msg);
 
+    free_tc_ind_data(&ind);
+  } 
+
+  //uint32_t const act_rb = num_act_rb(UE_info); 
+  //data->len_q = act_rb;
+  //data->tstamp = time_now_us();
+
+  printf("Read TC called \n");	
 }
 
 
@@ -906,7 +918,7 @@ void read_RAN(sm_ag_if_rd_t* data)
     read_pdcp_sm(&data->pdcp_stats.msg);
     //printf("calling REAd PDCP\n");
   } else if(data->type == TC_STATS_V0){
-    read_tc_sm(&data->pdcp_stats.msg);
+    read_tc_sm(&data->tc_stats.msg);
 //  } else if(RRC_STATS_V0){
 //    read_rrc_sm(&data->rrc_stats);
   } else {
@@ -919,8 +931,21 @@ static
 sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
 {
   assert(data != NULL);
-  assert(0!=0 && "Not implemented");
-  sm_ag_if_ans_t ans = {.type = MAC_AGENT_IF_CTRL_ANS_V0 };
+
+  assert(data->type == TC_CTRL_REQ_V0);
+
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  const NR_list_t* ue_list = &UE_info->list;
+  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+    const int rnti = UE_info->rnti[ue_id];
+    int const rb_id = 4;
+    tc_rc_t rc = tc_get_or_create(rnti, rb_id);
+
+    // Configuration (add/delete)  
+    tc_ctrl_out_t out = tc_conf(rc.tc, &data->tc_req_ctrl.msg);
+  } 
+
+  sm_ag_if_ans_t ans = {.type = TC_AGENT_IF_CTRL_ANS_V0 };
 
   return ans;
 }
