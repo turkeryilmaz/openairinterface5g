@@ -38,20 +38,20 @@ SIDL_BEGIN_C_INTERFACE
 // clang-format off
 
 #ifdef ACP_DEBUG
-#define ACP_DEBUG_PREFIX_CLOG(ctx, fmt, args...) do { adbgPrintLog(ctx, "=== ACP_DEBUG: [%s] " fmt ": ", __FUNCTION__, ##args); } while (false)
-#define ACP_DEBUG_CLOG(ctx, fmt, args...) do { adbgPrintLog(ctx, "=== ACP_DEBUG: [%s] " fmt, __FUNCTION__, ##args); adbgPrintLog(ctx, NULL); } while (false)
-#define ACP_DEBUG_ENTER_CLOG(ctx) do { adbgPrintLog(ctx, ">>> ACP_DEBUG: Entering %s at %s:%d", __FUNCTION__, __FILE__, __LINE__); adbgPrintLog(ctx, NULL); } while (false)
+#define ACP_DEBUG_PREFIX_CLOG(ctx, fmt, args...) do { adbgPrintLog(ctx, "=== ACP_DEBUG: [%s:%d] " fmt ": ", __FILE__, __LINE__, ##args); } while (false)
+#define ACP_DEBUG_CLOG(ctx, fmt, args...) do { adbgPrintLog(ctx, "=== ACP_DEBUG: [%s:%d] " fmt, __FILE__, __LINE__, ##args); adbgPrintLog(ctx, NULL); } while (false)
+#define ACP_DEBUG_ENTER_CLOG(ctx) do { adbgPrintLog(ctx, ">>> ACP_DEBUG: Entering %s at [%s:%d]", __FUNCTION__, __FILE__, __LINE__); adbgPrintLog(ctx, NULL); } while (false)
 #define ACP_DEBUG_EXIT_CLOG(ctx, val) do { \
-		if (val != NULL) adbgPrintLog(ctx, "<<< ACP_DEBUG: Exiting %s at %s:%d with return code '%s'", __FUNCTION__, __FILE__, __LINE__, val); \
+		if (val != NULL) adbgPrintLog(ctx, "<<< ACP_DEBUG: Exiting %s at [%s:%d] with return code '%s'", __FUNCTION__, __FILE__, __LINE__, val); \
 		else adbgPrintLog(ctx, "<<< ACP_DEBUG: Exiting %s at %s:%d", __FUNCTION__, __FILE__, __LINE__); \
 		adbgPrintLog(ctx, NULL); \
 	} while (false)
-#define ACP_DEBUG_LOG(fmt, args...) do { adbgCheckAndSetGlobalLogger(); adbgGlobalLogger("=== ACP_DEBUG: [%s] " fmt, __FUNCTION__, ##args); } while (false)
-#define ACP_DEBUG_ENTER_LOG() do { adbgCheckAndSetGlobalLogger(); adbgGlobalLogger(">>> ACP_DEBUG: Entering %s at %s:%d", __FUNCTION__, __FILE__, __LINE__); } while (false)
+#define ACP_DEBUG_LOG(fmt, args...) do { adbgCheckAndSetGlobalLogger(); adbgGlobalLogger("=== ACP_DEBUG: [%s:%d] " fmt, __FILE__, __LINE__, ##args); } while (false)
+#define ACP_DEBUG_ENTER_LOG() do { adbgCheckAndSetGlobalLogger(); adbgGlobalLogger(">>> ACP_DEBUG: Entering %s at [%s:%d]", __FUNCTION__, __FILE__, __LINE__); } while (false)
 #define ACP_DEBUG_EXIT_LOG(val) do { \
 		adbgCheckAndSetGlobalLogger(); \
-		if (val != NULL) adbgGlobalLogger("<<< ACP_DEBUG: Exiting %s at %s:%d with return code '%s'", __FUNCTION__, __FILE__, __LINE__, val); \
-		else adbgGlobalLogger("<<< ACP_DEBUG: Exiting %s at %s:%d", __FUNCTION__, __FILE__, __LINE__); \
+		if (val != NULL) adbgGlobalLogger("<<< ACP_DEBUG: Exiting %s at [%s:%d] with return code '%s'", __FUNCTION__, __FILE__, __LINE__, val); \
+		else adbgGlobalLogger("<<< ACP_DEBUG: Exiting %s at [%s:%d]", __FUNCTION__, __FILE__, __LINE__); \
 	} while (false)
 
 #ifdef ACP_DEBUG_TRACE
