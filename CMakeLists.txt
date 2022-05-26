@@ -773,7 +773,6 @@ include_directories(${OPENAIR_DIR}/common/utils/msc)
 
 add_library(UTIL
   ${OPENAIR_DIR}/common/utils/LOG/log.c
-  ${OPENAIR_DIR}/common/utils/LOG/ss-tp.c
   ${OPENAIR_DIR}/common/utils/LOG/vcd_signal_dumper.c
   ${OPENAIR2_DIR}/UTIL/MATH/oml.c
   ${OPENAIR2_DIR}/UTIL/OPT/probe.c

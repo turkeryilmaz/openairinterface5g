@@ -63,14 +63,14 @@ enum MsgUserId
 extern SSConfigContext_t SS_context;
 static void ss_dumpReqMsg(struct SYSTEM_CTRL_REQ *msg)
 {
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "SysProcess: received from the TTCN\n");
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\tCommon:\n");
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\t\tCellId=%d\n", msg->Common.CellId);
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\t\tRoutingInfo=%d\n", msg->Common.RoutingInfo.d);
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\t\tTimingInfo=%d\n", msg->Common.TimingInfo.d);
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\t\tCnfFlag=%d\n", msg->Common.ControlInfo.CnfFlag);
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\t\tFollowOnFlag=%d\n", msg->Common.ControlInfo.FollowOnFlag);
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "\tRequest=%d\n", msg->Request.d);
+    LOG_A(RRC, "SysProcess: received from the TTCN\n");
+    LOG_A(RRC, "\tCommon:\n");
+    LOG_A(RRC, "\t\tCellId=%d\n", msg->Common.CellId);
+    LOG_A(RRC, "\t\tRoutingInfo=%d\n", msg->Common.RoutingInfo.d);
+    LOG_A(RRC, "\t\tTimingInfo=%d\n", msg->Common.TimingInfo.d);
+    LOG_A(RRC, "\t\tCnfFlag=%d\n", msg->Common.ControlInfo.CnfFlag);
+    LOG_A(RRC, "\t\tFollowOnFlag=%d\n", msg->Common.ControlInfo.FollowOnFlag);
+    LOG_A(RRC, "\tRequest=%d\n", msg->Request.d);
 }
 
 void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
@@ -91,7 +91,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     cnf.Common.Result.d = recvCnf.Common.Result.d;
     cnf.Common.Result.v.Success = recvCnf.Common.Result.v.Success;
     cnf.Confirm.d = recvCnf.Confirm.d;
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] Attn CNF received cellId %d result %d type %d \n",
+    LOG_A(RRC, "[SS-PORTMAN] Attn CNF received cellId %d result %d type %d \n",
                      cnf.Common.CellId,cnf.Common.Result.d, recvCnf.Confirm.d);
     switch (recvCnf.Confirm.d)
     {
@@ -136,7 +136,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     case SystemConfirm_Type_OCNG_Config:
     case SystemConfirm_Type_DirectIndicationInfo:
     default:
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
+        LOG_A(RRC, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
     }
 
     /* Encode message
@@ -151,14 +151,14 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     status = acpSendMsg(ctx_g, msgSize, buffer);
     if (status != 0)
     {
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
+        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
               status, acpGetSocketFd(ctx_g));
         acpFree(buffer);
         return;
     }
     else
     {
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] acpSendMsg Success \n");
+        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg Success \n");
     }
     // Free allocated buffer
     acpFree(buffer);
@@ -224,14 +224,14 @@ void ss_port_man_send_data(
     status = acpSendMsg(ctx_g, msgSize, buffer);
     if (status != 0)
     {
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
+        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
               status, acpGetSocketFd(ctx_g));
         acpFree(buffer);
         return;
     }
     else
     {
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] acpSendMsg Success \n");
+        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg Success \n");
     }
     // Free allocated buffer
     acpFree(buffer);
@@ -241,7 +241,7 @@ void ss_port_man_send_data(
 void ss_eNB_port_man_init(void)
 {
     IpAddress_t ipaddr;
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] Starting System Simulator Manager\n");
+    LOG_A(RRC, "[SS-PORTMAN] Starting System Simulator Manager\n");
 
     const char *hostIp;
     hostIp = RC.ss.hostIp;
@@ -266,11 +266,11 @@ void ss_eNB_port_man_init(void)
     int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_g);
     if (ret < 0)
     {
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] Connection failure err=%d\n", ret);
+        LOG_A(RRC, "[SS-PORTMAN] Connection failure err=%d\n", ret);
         return;
     }
     int fd1 = acpGetSocketFd(ctx_g);
-    LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] Connection performed : %d\n", fd1);
+    LOG_A(RRC, "[SS-PORTMAN] Connection performed : %d\n", fd1);
 
     //itti_subscribe_event_fd(TASK_SS_PORTMAN, fd1);
 
@@ -316,7 +316,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
         //Send Dummy Wake up ITTI message to SRB task.
         if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
         {
-            LOG_SYS(SS_PORTMAN_DUMMY_EVT,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
+            LOG_A(RRC,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, INSTANCE_DEFAULT, SS_RRC_PDU_IND);
             if (message_p)
             {
@@ -326,18 +326,18 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
                 SS_RRC_PDU_IND(message_p).rnti = -1;
                 SS_RRC_PDU_IND(message_p).frame = -1;
                 SS_RRC_PDU_IND(message_p).subframe = -1;
-                
+
                 int send_res = itti_send_msg_to_task(TASK_SS_SRB, INSTANCE_DEFAULT, message_p);
                 if (send_res < 0)
                 {
-                    LOG_SYS(RRC, "Error in itti_send_msg_to_task");
+                    LOG_A(RRC, "Error in itti_send_msg_to_task");
                 }
             }
         }
     }
     else
     {
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] received msg %d from the client.\n", userId);
+        LOG_A(RRC, "[SS-PORTMAN] received msg %d from the client.\n", userId);
         if (acpSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
             return;
 
@@ -370,13 +370,13 @@ void *ss_port_man_process_itti_msg(void *notUsed)
     if (received_msg != NULL)
     {
 
-        LOG_SYS(SS_PORTMAN_DUMMY_EVT, "[SS-PORTMAN] Received a message id : %d \n",
+        LOG_A(RRC, "[SS-PORTMAN] Received a message id : %d \n",
               ITTI_MSG_ID(received_msg));
         switch (ITTI_MSG_ID(received_msg))
         {
         case SS_SET_TIM_INFO:
         {
-            LOG_SYS(SS_PORTMAN_DUMMY_EVT, "Received timing info \n");
+            LOG_A(RRC, "Received timing info \n");
             ss_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_set_timinfo);
             result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
         }
@@ -384,7 +384,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
 
         case SS_SYS_PORT_MSG_CNF:
         {
-            LOG_SYS(SS_PORTMAN_DUMMY_EVT, "Received SS_SYS_PORT_MSG_CNF \n");
+            LOG_A(RRC, "Received SS_SYS_PORT_MSG_CNF \n");
             ss_port_man_send_cnf(*(SS_SYS_PORT_MSG_CNF(received_msg).cnf));
             result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
         }
@@ -395,7 +395,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
             break;
 
         default:
-            LOG_SYS(SS_PORTMAN_INVLALID_MSG, "Received unhandled message %d:%s\n",
+            LOG_A(RRC, "Received unhandled message %d:%s\n",
                   ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
             break;
         }
