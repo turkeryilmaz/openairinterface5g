@@ -534,7 +534,7 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 			ACP_DEBUG_CLOG(ctx, "Peer disconnected");
 		}
 		ACP_DEBUG_EXIT_TRACE_CLOG(ctx, NULL);
-		return 0;
+		return -ACP_ERR_SOCKCONN_ABORTED;
 	}
 	if (sz < 0) {
 		ACP_DEBUG_EXIT_TRACE_CLOG(ctx, "ACP_ERR_SOCK_ERROR");
