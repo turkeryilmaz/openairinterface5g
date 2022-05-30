@@ -781,14 +781,16 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   /* length in bits */
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
-
+#endif
   printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
-     initialNasMsg->data[2+i] = mac[i];
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
 }
 
@@ -906,8 +908,7 @@ void *nas_nrue_task(void *args_p)
             itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
             LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(RegistrationComplete)\n");
           }
-/* Workaround fix for the TTCN */
-#if 0
+
           as_nas_info_t pduEstablishMsg;
           memset(&pduEstablishMsg, 0, sizeof(as_nas_info_t));
           generatePduSessionEstablishRequest(Mod_id, uicc, &pduEstablishMsg);
@@ -920,7 +921,6 @@ void *nas_nrue_task(void *args_p)
             itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
             LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
           }
-#endif
         } else if(msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC){
             uint8_t offset = 0;
             uint8_t *payload_container = NULL;
