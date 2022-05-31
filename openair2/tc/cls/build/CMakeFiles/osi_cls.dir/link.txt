@@ -1,1 +1,1 @@
-/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -lgcov -coverage -shared -Wl,-soname,libosi_cls.so -o libosi_cls.so CMakeFiles/osi_cls.dir/osi/osi_cls.c.o 
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -lgcov -coverage -shared -Wl,-soname,libosi_cls.so -o libosi_cls.so CMakeFiles/osi_cls.dir/osi/osi_cls.c.o 

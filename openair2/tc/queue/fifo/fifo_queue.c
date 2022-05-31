@@ -103,7 +103,7 @@ void fifo_push(queue_t* q_base, void* data, size_t bytes)
 
   assert(q->bytes >= bytes && "Overflow detected");
 
-  printf("Ingressing pkt into FIFO queue number = %u \n", q_base->id );
+//  printf("Ingressing pkt into FIFO queue number = %u \n", q_base->id );
 }
 
 static

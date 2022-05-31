@@ -1,1 +1,1 @@
-/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -shared -Wl,-soname,libdummy_pcr.so -o libdummy_pcr.so CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o 
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -shared -Wl,-soname,libdummy_pcr.so -o libdummy_pcr.so CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o 

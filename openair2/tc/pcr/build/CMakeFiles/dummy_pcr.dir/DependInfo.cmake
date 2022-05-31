@@ -1,22 +1,14 @@
+
+# Consider dependencies only in project.
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)
+
 # The set of languages for which implicit dependencies are needed:
 set(CMAKE_DEPENDS_LANGUAGES
-  "C"
-  )
-# The set of files for implicit dependencies of each language:
-set(CMAKE_DEPENDS_CHECK_C
-  "/home/mir/workspace/tc/pcr/dummy/dummy_pcr.c" "/home/mir/workspace/tc/pcr/build/CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o"
-  )
-set(CMAKE_C_COMPILER_ID "GNU")
-
-# Preprocessor definitions for this target.
-set(CMAKE_TARGET_DEFINITIONS_C
-  "dummy_pcr_EXPORTS"
   )
 
-# The include file search paths:
-set(CMAKE_C_TARGET_INCLUDE_PATH
-  "../bdp"
-  "../dummy"
+# The set of dependency files which are needed:
+set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/tiwa/mir/oai-tc/openair2/tc/pcr/dummy/dummy_pcr.c" "CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o" "gcc" "CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o.d"
   )
 
 # Targets to which this target links.

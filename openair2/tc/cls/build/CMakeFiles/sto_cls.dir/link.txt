@@ -1,1 +1,1 @@
-/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -lgcov -coverage -shared -Wl,-soname,libsto_cls.so -o libsto_cls.so CMakeFiles/sto_cls.dir/sto/sto_cls.c.o 
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -lgcov -coverage -shared -Wl,-soname,libsto_cls.so -o libsto_cls.so CMakeFiles/sto_cls.dir/sto/sto_cls.c.o 

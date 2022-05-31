@@ -13,7 +13,7 @@ shp_t* shp_init(uint32_t time_window_us, uint32_t max_rate_kbps)
   shp_t* s = malloc(sizeof(shp_t));
   assert(s != NULL);
 
-  mtr_init(&s->m, time_window_us);
+  mtr_init(&s->m, time_window_us/1000);
 
   s->max_rate_kbps = max_rate_kbps;
   s->active = true;
@@ -47,7 +47,7 @@ shp_act_e shp_action(shp_t* s, uint32_t bytes)
 
   float rate_kbps = mtr_bndwdth_kbps(&s->m);
 
-  printf("Shaper rate = %f\n", rate_kbps);
+//  printf("Shaper rate = %f\n", rate_kbps);
 
   //if(rate_kbps > s->max_rate_kbps * 1000)
   if(rate_kbps > s->max_rate_kbps)

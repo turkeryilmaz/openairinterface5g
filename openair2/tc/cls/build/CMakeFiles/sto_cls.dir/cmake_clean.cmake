@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/sto_cls.dir/sto/sto_cls.c.o"
+  "CMakeFiles/sto_cls.dir/sto/sto_cls.c.o.d"
   "libsto_cls.pdb"
   "libsto_cls.so"
 )

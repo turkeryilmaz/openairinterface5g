@@ -122,10 +122,12 @@ void mv_avg_wnd_push_back(mv_avg_wnd_t* m, int64_t tstamp, uint32_t val)
 
   assert(tstamp_invariant(m,tstamp) == true);
  
-  size_t const elm = seq_size(&m->tstamps);
+  size_t elm = seq_size(&m->tstamps);
   if(elm >= 32768 ){
     // Call wnd_val to liberate memory
     mv_avg_wnd_val(m);
+    elm = seq_size(&m->tstamps);
+    assert(elm < 32768 && "Memory is increasing dangerously, maybe you should liberate using  mv_avg_wnd_val?");
   }
   assert(elm < 32768 && "Memory is increasing dangerously, maybe you should liberate using  mv_avg_wnd_val?");
 

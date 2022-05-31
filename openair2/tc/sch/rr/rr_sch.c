@@ -98,7 +98,7 @@ queue_t* rr_next_queue(sch_t* s_base)
       s->it_last_q = seq_front(&s->arr);
 
 
-    printf("Next queue has no packets\n");
+    //printf("Next queue has no packets\n");
 
     return NULL;
   }

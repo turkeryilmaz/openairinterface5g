@@ -6,7 +6,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set (CMAKE_C_FLAGS "-Wall -Wextra -std=gnu11 -g")
 
 
-set(SANITIZER "THREAD" CACHE STRING "Sanitizers")
+set(SANITIZER "NONE" CACHE STRING "Sanitizers")
 #set(SANITIZER "ADDRESS" CACHE STRING "Sanitizers")
 set_property(CACHE SANITIZER PROPERTY STRINGS "NONE" "ADDRESS" "THREAD")
 message(STATUS "Selected SANITIZER TYPE: ${SANITIZER}")

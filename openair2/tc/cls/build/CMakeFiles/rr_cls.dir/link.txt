@@ -1,1 +1,1 @@
-/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -lgcov -coverage -shared -Wl,-soname,librr_cls.so -o librr_cls.so CMakeFiles/rr_cls.dir/rr/rr_cls.c.o 
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -lgcov -coverage -shared -Wl,-soname,librr_cls.so -o librr_cls.so CMakeFiles/rr_cls.dir/rr/rr_cls.c.o 

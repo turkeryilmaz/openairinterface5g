@@ -410,7 +410,7 @@ void tc_egress_pkts(tc_t* tc)
     // Scheduler -> output from which queue
     queue_t* q = sch->next_queue(sch); 
     if(q == NULL || q->size(q) == 0) {
-      printf("Not egreesing, queue size == 0\n");
+      //printf("Not egreesing, queue size == 0\n");
       break;
     }
 
@@ -450,7 +450,7 @@ void tc_egress_pkts(tc_t* tc)
     if(shp->active){
       shp_bytes_fwd(shp, next_pkt->sz); 
     } 
-    printf("Forwarding the packet \n");
+    //printf("Forwarding the packet \n");
     // Inform the pacer
     pcr->bytes_fwd(tc->pcr, next_pkt->sz);
 
@@ -464,7 +464,7 @@ void tc_egress_pkts(tc_t* tc)
     q->pop(q);
     size_t const sz_after = q->size(q);
 
-    assert(sz_after == sz_before -1);
+    //assert(sz_after == sz_before -1);
 
     tc->egress_fun(tc->rnti, tc->rb_id, next_pkt->data, next_pkt->sz);
 
@@ -651,8 +651,8 @@ void tc_add_q_impl(tc_t* tc, const char* file_path, const char* init_func)
   seq_push_back(&tc->queues, &q, sizeof(queue_t*));
 
   // create policer 
-  const uint32_t drop_rate_kbps = 2000;
-  const uint32_t dev_rate_kbps =  2500;
+  const uint32_t drop_rate_kbps = 2000000;
+  const uint32_t dev_rate_kbps =  2500000;
   const uint32_t time_window_us = 100000; 
 
   plc_t* plc = plc_init(drop_rate_kbps, dev_rate_kbps, time_window_us, q, q);
@@ -676,11 +676,11 @@ tc_rc_t tc_add_q(tc_t* tc, tc_add_ctrl_queue_t const* add)
   assert(add != NULL);
 
   if(add->type == TC_QUEUE_CODEL) {
-    const char* file_path = "/home/mir/workspace/tc/queue/build/libcodel_queue.so"; 
+    const char* file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libcodel_queue.so"; 
     const char* init_func = "codel_init";
     tc_add_q_impl(tc, file_path, init_func);
   } else if(add->type == TC_QUEUE_FIFO) {
-    const char* file_path = "/home/mir/workspace/tc/queue/build/libfifo_queue.so"; 
+    const char* file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libfifo_queue.so"; 
     const char* init_func = "fifo_init";
     tc_add_q_impl(tc, file_path, init_func);
   } else {
@@ -884,7 +884,7 @@ tc_rc_t tc_mod_pcr(tc_t* tc , tc_mod_ctrl_pcr_t const* mod)
   if(mod->type == tc->pcr->type){
     tc->pcr->mod(tc->pcr, mod);
   } else if(mod->type == TC_PCR_DUMMY){
-    const char* pcr_file_path = "/home/mir/workspace/tc/pcr/build/libdummy_pcr.so";
+    const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libdummy_pcr.so";
     const char* pcr_init_func = "dummy_pcr_init";
     load_pcr(tc,pcr_file_path, pcr_init_func); 
     tc->pcr->mod(tc->pcr, mod);
@@ -892,7 +892,7 @@ tc_rc_t tc_mod_pcr(tc_t* tc , tc_mod_ctrl_pcr_t const* mod)
 
     tc->pcr->mod(tc->pcr, mod);
   } else if(mod->type == TC_PCR_5G_BDP){
-    const char* pcr_file_path = "/home/mir/workspace/tc/pcr/build/libbdp_pcr.so";
+    const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libbdp_pcr.so";
     const char* pcr_init_func = "bdp_pcr_init";
     load_pcr(tc,pcr_file_path, pcr_init_func); 
     printf("PCR BDP loaded \n");
@@ -928,18 +928,18 @@ void tc_load_defaults(tc_t* tc)
   assert(tc != NULL);
 
   //load default scheduler 
-  const char* sch_file_path = "/home/mir/workspace/tc/sch/build/librr_sch.so"; 
+  const char* sch_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/sch/build/librr_sch.so"; 
   const char* sch_init_func = "rr_init";
   load_sch(tc, sch_file_path, sch_init_func);
 
   //load default queue
-  const char* queue_file_path = "/home/mir/workspace/tc/queue/build/libfifo_queue.so" ; 
+  const char* queue_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libfifo_queue.so" ; 
   const char* queue_init_func = "fifo_init";
   queue_t* q = load_queue(tc, queue_file_path, queue_init_func);
 
   // create policer with NULL value
-  const uint32_t drop_rate_kbps = 1000;
-  const uint32_t dev_rate_kbps =  2000;
+  const uint32_t drop_rate_kbps = 1000000;
+  const uint32_t dev_rate_kbps =  2000000;
   const uint32_t time_window_us = 100000; 
 
   plc_t* plc = plc_init(drop_rate_kbps, dev_rate_kbps, time_window_us, q, q);
@@ -955,20 +955,25 @@ void tc_load_defaults(tc_t* tc)
   printf("SHAPER added \n");
 
   // create a Round-Robin classifier
-  //const char* cls_file_path = "/home/mir/workspace/tc/cls/build/librr_cls.so"; 
+  //const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/librr_cls.so"; 
   //const char* cls_init_func = "rr_cls_init";
 
 
-  const char* cls_file_path = "/home/mir/workspace/tc/cls/build/libosi_cls.so"; 
+  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libosi_cls.so"; 
   const char* cls_init_func = "osi_cls_init";
 
   load_cls(tc,q,cls_file_path, cls_init_func);
   printf("CLS added \n");
 
   // create a dummy pacer
-  const char* pcr_file_path = "/home/mir/workspace/tc/pcr/build/libbdp_pcr.so";
+  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libbdp_pcr.so";
   const char* pcr_init_func = "bdp_pcr_init";
   load_pcr(tc,pcr_file_path, pcr_init_func); 
+
+//  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libdummy_pcr.so";
+//  const char* pcr_init_func = "dummy_pcr_init";
+//  load_pcr(tc, pcr_file_path, pcr_init_func); 
+
   printf("PCR added \n");
 
   // init the hastable that maps Queues with Policers and Shapers
