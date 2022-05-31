@@ -41,7 +41,7 @@ float phy_tx_bytes(int32_t tx_bytes, int32_t drb_bytes, int32_t last_drb_bytes)
   if (phy_tx_bytes < 0)
     phy_tx_bytes = 0;
 
-  assert(phy_tx_bytes < 5000); // multithreaded enviroment...
+  assert(phy_tx_bytes < 50000); // multithreaded enviroment...
   return phy_tx_bytes;
 }
  
@@ -66,8 +66,8 @@ void update_bdp_vals(bdp_pcr_t* p)
   const float slack_time = slack_time_i != 0 ? (float)slack_time_i : 1000.0;
   p->last_slack_time = slack_time;
   const float last_bndwdth = phy_tx_bytes_v / slack_time;
-  const float bndwdth = ewma_bndwdth(p, last_bndwdth); 
-  assert(bndwdth < 4.0);
+  const float bndwdth = ewma_bndwdth(p, last_bndwdth);
+  assert(bndwdth < 400);
 
   p->last_time = now;
   p->last_drb_bytes = p->drb_bytes;
@@ -88,15 +88,18 @@ int64_t th_tx_bytes(bdp_pcr_t *p, int64_t last_time)
     elapsed_time = 1000;
   }
   const float perc_slack = (float)elapsed_time / 1000; 
-  const float mult_factor = perc_slack < 0.5 ? 1.0 : 1.5;
+  const float mult_factor = perc_slack < 0.5 ? 1.2 : 1.5;
 
-  const int64_t theoretical_tx =
+  int64_t theoretical_tx =
       p->bndwdth[0] > 0.1
-          ? mult_factor * elapsed_time * p->bndwdth[0] + 201
-          : p->drb_bytes < 2200 && elapsed_time > 0.5 && p->tx_bytes == 0 ? MTU_SIZE : 0;
+          ? mult_factor * elapsed_time * p->bndwdth[0] + 1400*2
+          : p->drb_bytes < 22000 && elapsed_time > 0.5 && p->tx_bytes == 0 ? MTU_SIZE : 0;
 
-  assert(p->bndwdth[0] < 4.0);
-  assert(theoretical_tx < 6000);
+  assert(p->bndwdth[0] < 400);
+  if(theoretical_tx  < 22000){
+    theoretical_tx = 22000; 
+  }
+  assert(theoretical_tx < 60000);
   printf("Theoretical tx = %ld \n", theoretical_tx );
   return theoretical_tx;
 }
@@ -126,19 +129,17 @@ pcr_act_e bdp_pcr_action(pcr_t* p_base, uint32_t bytes)
  
 
   lock_guard(&p->mtx);
-//  int rc = pthread_mutex_lock(&p->mtx);
-//  assert(rc == 0);
-//  defer( { rc = pthread_mutex_unlock(&p->mtx); assert(rc == 0);} );
 
   if (p->update_flag == true) {
-    puts("Updating the bdp");
+    //puts("Updating the bdp");
     p->update_flag = false;
     update_bdp_vals(p); 
-    // pthread_mutex_unlock(&p->mtx);
   }
-  const uint32_t max_bytes_per_tti = 2300; // Value for 25 PRBs and 28 MCS
+//  const uint32_t max_bytes_per_tti = 2300; // Value for 25 PRBs and 28 MCS
+  const uint32_t max_bytes_per_tti = 46000; // Value for 25 PRBs and 28 MCS
   if (p->tx_bytes + p->drb_bytes > max_bytes_per_tti) {
     puts("First wait" );
+    printf("p->tx_bytes %d p->drb_bytes %d > max_bytes_per_tti %d \n", p->tx_bytes, p->drb_bytes, max_bytes_per_tti);
     return PCR_WAIT; 
   }
 
@@ -149,6 +150,7 @@ pcr_act_e bdp_pcr_action(pcr_t* p_base, uint32_t bytes)
   const int64_t th_tx_bytes_v = th_tx_bytes(p, p->last_time);
   if (p->tx_bytes + p->drb_bytes + extra_packet > th_tx_bytes_v){ 
     puts("Second wait" );
+    printf("p->tx_bytes %d p->drb_bytes %d extra_packet %d th_tx_bytes_v %d \n ", p->tx_bytes, p->drb_bytes, extra_packet,  th_tx_bytes_v   );
     return PCR_WAIT;
   } 
   return PCR_PASS;
@@ -179,6 +181,10 @@ void bdp_pcr_mod(pcr_t* p_base, tc_mod_ctrl_pcr_t const* mod)
 
   p->update_flag = true;
   p->drb_bytes = mod-> bdp.drb_sz;
+  if( mod->bdp.tstamp - p->drb_bytes_tstamp > 1500){
+	 printf("Time difference BDP in us = %ld drb_bytes = %d \n",  mod->bdp.tstamp - p->drb_bytes_tstamp, mod->bdp.drb_sz );
+  }
+  printf("RLC DRB size = %d \n", p->drb_bytes);
   p->drb_bytes_tstamp = mod->bdp.tstamp;
 }
 
@@ -220,7 +226,7 @@ pcr_t* bdp_pcr_init(void)
 
   memset(&p->bndwdth, 0, sizeof(float)*4); 
  
-  p->bndwdth[0] = 2.0;
+  p->bndwdth[0] = 40.0;
 
   p->last_time = time_now_us();
   p->last_slack_time = 1000;
@@ -247,7 +253,6 @@ pcr_t* bdp_pcr_init(void)
 
   float const time_window_ms = 100.0;
   mtr_init(&p->m, time_window_ms );
-
 
   printf("BDP pacer init \n");
 

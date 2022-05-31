@@ -263,7 +263,7 @@ queue_t* osi_cls_dst_queue(cls_t* cls_base, const uint8_t* data, size_t size)
   assert(size > sizeof(struct udphdr) );
 
   if(seq_size(&cls->filters) == 0) {
-    printf("[OSI]: No filters found, early return \n");
+    //printf("[OSI]: No filters found, early return \n");
     return *(queue_t**)seq_front(&cls->queues);
   }
 

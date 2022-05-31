@@ -1,5 +1,5 @@
-/home/mir/workspace/tc/cls/build/CMakeFiles/rebuild_cache.dir
-/home/mir/workspace/tc/cls/build/CMakeFiles/edit_cache.dir
-/home/mir/workspace/tc/cls/build/CMakeFiles/sto_cls.dir
-/home/mir/workspace/tc/cls/build/CMakeFiles/rr_cls.dir
-/home/mir/workspace/tc/cls/build/CMakeFiles/osi_cls.dir
+/home/tiwa/mir/oai-tc/openair2/tc/cls/build/CMakeFiles/osi_cls.dir
+/home/tiwa/mir/oai-tc/openair2/tc/cls/build/CMakeFiles/sto_cls.dir
+/home/tiwa/mir/oai-tc/openair2/tc/cls/build/CMakeFiles/rr_cls.dir
+/home/tiwa/mir/oai-tc/openair2/tc/cls/build/CMakeFiles/edit_cache.dir
+/home/tiwa/mir/oai-tc/openair2/tc/cls/build/CMakeFiles/rebuild_cache.dir

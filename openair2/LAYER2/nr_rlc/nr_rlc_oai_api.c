@@ -38,6 +38,8 @@
 #include "common/ran_context.h"
 #include "NR_UL-CCCH-Message.h"
 
+#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
+
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
 extern RAN_CONTEXT_t RC;
@@ -779,6 +781,10 @@ static void add_drb_am(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
     //exit(1);
   }
 
+
+
+//	assert(0!=0 && "Here we are!");
+
   switch (r->present) {
   case NR_RLC_Config_PR_am: {
     struct NR_RLC_Config__am *am;
@@ -1114,3 +1120,27 @@ int nr_rlc_get_statistics(
 
   return ret;
 }
+
+nr_rlc_entity_buffer_status_t nr_rlc_get_buffer_status(int rnti,  int rb_id)
+{
+  assert(rnti > 0);
+  assert(rb_id >= 1 && rb_id <= 5);  
+
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  nr_rlc_ue_t* ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
+
+  nr_rlc_entity_t * rb = ue->drb[rb_id - 1];
+  int maxsize = 10000;
+  nr_rlc_entity_buffer_status_t bs = rb->buffer_status(rb, maxsize);
+
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
+
+  return bs;
+}
+
+
+
+
+
+
+

@@ -189,7 +189,7 @@ void codel_push(queue_t* q_base, void* data, size_t bytes)
 //    return (q_rc_t){.suceed = false, .reason = "Full Queue " }; 
   }
 
-  printf("Ingressing pkt into CoDel queue number = %u \n", q_base->id );
+//  printf("Ingressing pkt into CoDel queue number = %u \n", q_base->id );
 
   codel_queue_t* q = (codel_queue_t*)(q_base);
   codel_pkt_t p = {.data = data, .bytes = bytes, .tstamp = time_now_us() }; 

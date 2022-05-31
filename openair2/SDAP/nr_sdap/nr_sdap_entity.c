@@ -144,13 +144,15 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
 #ifdef TC_SM
   assert(srb_flag == SRB_FLAG_NO);
-  assert(rb_id == 3);
+  if(rb_id != 1){
+    printf("Unknown rb_id = %d \n", rb_id);
+  }
+  assert(rb_id == 1);
   assert(mui == RLC_MUI_UNDEFINED);
   assert(confirm == RLC_SDU_CONFIRM_NO);
   assert(pt_mode == PDCP_TRANSMISSION_MODE_DATA);
   assert(*sourceL2Id == 0);
   assert(*destinationL2Id == 0);
-
 
   const uint32_t rnti = ctxt_p->rnti;
 
@@ -168,6 +170,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   // Ingress data (DL)
   tc_rc = tc_data_req(tc_rc.tc, data, sz);
 
+   ret = true;
 #else
     assert(0!=0 && "No SDAP");
 

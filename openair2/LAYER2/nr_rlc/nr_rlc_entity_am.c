@@ -662,6 +662,9 @@ nacks_done:
     tx_next_ack = ack_sn;
   entity->tx_next_ack = tx_next_ack;
 
+
+  printf("[mir]: tx_bytes = %d \n", entity->tx_size );
+
   return;
 
 err:
@@ -1560,6 +1563,7 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
 
   /* update buffer status */
   entity->common.bstatus.tx_size -= pdu_size;
+  //printf("[mir]: Current buffer status = %d \n", entity->common.bstatus.tx_size );
 
   /* assign SN to SDU */
   sdu->sdu->sn = entity->tx_next;
@@ -1705,6 +1709,8 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
   /* update buffer status */
   entity->common.bstatus.tx_size += compute_pdu_header_size(entity, sdu)
                                     + sdu->size;
+
+  printf("[mir]: tx_size = %d \n", entity->common.bstatus.tx_size);
 }
 
 /*************************************************************************/

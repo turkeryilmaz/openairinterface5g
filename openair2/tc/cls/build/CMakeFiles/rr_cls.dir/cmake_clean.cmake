@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/rr_cls.dir/rr/rr_cls.c.o"
+  "CMakeFiles/rr_cls.dir/rr/rr_cls.c.o.d"
   "librr_cls.pdb"
   "librr_cls.so"
 )

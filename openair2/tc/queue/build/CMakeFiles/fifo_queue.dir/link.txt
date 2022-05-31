@@ -1,1 +1,1 @@
-/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -fsanitize=thread -lgcov -coverage -shared -Wl,-soname,libfifo_queue.so -o libfifo_queue.so CMakeFiles/fifo_queue.dir/fifo/fifo_queue.c.o CMakeFiles/fifo_queue.dir/home/mir/workspace/tc/alg_ds/alg/defer.c.o 
+/usr/bin/cc -fPIC -Wall -Wextra -std=gnu11 -g -g -lgcov -coverage -shared -Wl,-soname,libfifo_queue.so -o libfifo_queue.so CMakeFiles/fifo_queue.dir/fifo/fifo_queue.c.o CMakeFiles/fifo_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o 

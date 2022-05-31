@@ -1,6 +1,7 @@
 #include "pkt.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 pkt_t* init_pkt(uint8_t* data, size_t size)
 {
@@ -8,7 +9,10 @@ pkt_t* init_pkt(uint8_t* data, size_t size)
   assert(size < MTU_SIZE + 1);
   pkt_t* p = calloc(1, sizeof(pkt_t));
   assert(p != NULL);
-  p->data = data;
+  p->data = calloc(1, size);
+  assert(p->data != NULL && "Memory exhasuted");
+  memcpy(p->data, data, size);
+//  p->data = data;
   p->sz = size;
   return p;
 }

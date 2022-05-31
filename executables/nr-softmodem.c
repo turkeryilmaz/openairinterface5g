@@ -894,7 +894,7 @@ void read_tc_sm(tc_ind_msg_t* data )
   //data->len_q = act_rb;
   //data->tstamp = time_now_us();
 
-  printf("Read TC called \n");	
+  //printf("Read TC called \n");	
 }
 
 
@@ -943,6 +943,12 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
 
     // Configuration (add/delete)  
     tc_ctrl_out_t out = tc_conf(rc.tc, &data->tc_req_ctrl.msg);
+
+    printf("Succesfully conf called \n");	
+    printf("Succesfully conf called \n");	
+    printf("Succesfully conf called \n");	
+    printf("Succesfully conf called \n");	
+    printf("Succesfully conf called \n");	
   } 
 
   sm_ag_if_ans_t ans = {.type = TC_AGENT_IF_CTRL_ANS_V0 };

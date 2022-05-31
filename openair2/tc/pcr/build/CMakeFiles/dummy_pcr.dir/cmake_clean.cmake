@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o"
+  "CMakeFiles/dummy_pcr.dir/dummy/dummy_pcr.c.o.d"
   "libdummy_pcr.pdb"
   "libdummy_pcr.so"
 )

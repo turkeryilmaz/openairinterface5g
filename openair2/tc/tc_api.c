@@ -17,6 +17,9 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
+
+#include "../LAYER2/nr_rlc/nr_rlc_oai_api.h"
+
 // All the tc entities are saved in a binary tree.
 static
 //assoc_rb_tree_lck_t tc_entities;
@@ -44,8 +47,8 @@ int create_timer(void)
 
   const int flags_2 = 0;
   struct itimerspec *old_value = NULL; // not interested in how the timer was previously configured
-  const struct timespec it_interval = {.tv_sec = 0, .tv_nsec = 100000};  /* Interval for periodic timer */
-  const struct timespec it_value = {.tv_sec = 0, .tv_nsec = 100000};     /* Initial expiration */
+  const struct timespec it_interval = {.tv_sec = 0, .tv_nsec = 200000};  /* Interval for periodic timer */
+  const struct timespec it_value = {.tv_sec = 0, .tv_nsec = 200000};     /* Initial expiration */
   const struct itimerspec new_value = {.it_interval = it_interval, .it_value = it_value}; 
   int rc = timerfd_settime(tfd, flags_2, &new_value, old_value);
   assert(rc != -1);
@@ -81,6 +84,7 @@ void* tc_egress_task(void* arg)
   struct epoll_event events[maxevents];
   const int timeout_ms = 1000;
 
+  int count = 0; 
   while(b_stop_flag == false){
     const int events_ready = epoll_wait(efd, events, maxevents, timeout_ms); 
     if(events_ready == -1){
@@ -107,6 +111,7 @@ void* tc_egress_task(void* arg)
       last = assoc_end(&tc_entities);
     }
 
+    ++count;
     while(it != last){
       tc_t* tc = NULL;
       {
@@ -118,7 +123,14 @@ void* tc_egress_task(void* arg)
         lock_guard(&mtx);
         it = assoc_next(&tc_entities, it);
       }
+      if(count % 5 == 0){
+        nr_rlc_entity_buffer_status_t b = nr_rlc_get_buffer_status(tc->rnti, tc->rb_id);
+        tc_rc_t r = tc_drb_size(tc, b.tx_size);
+      }
+
     }
+
+  
   }
 
   int rc = close(efd);

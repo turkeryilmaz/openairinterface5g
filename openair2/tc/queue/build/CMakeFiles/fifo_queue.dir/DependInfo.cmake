@@ -1,23 +1,15 @@
+
+# Consider dependencies only in project.
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)
+
 # The set of languages for which implicit dependencies are needed:
 set(CMAKE_DEPENDS_LANGUAGES
-  "C"
-  )
-# The set of files for implicit dependencies of each language:
-set(CMAKE_DEPENDS_CHECK_C
-  "/home/mir/workspace/tc/queue/fifo/fifo_queue.c" "/home/mir/workspace/tc/queue/build/CMakeFiles/fifo_queue.dir/fifo/fifo_queue.c.o"
-  "/home/mir/workspace/tc/alg_ds/alg/defer.c" "/home/mir/workspace/tc/queue/build/CMakeFiles/fifo_queue.dir/home/mir/workspace/tc/alg_ds/alg/defer.c.o"
-  )
-set(CMAKE_C_COMPILER_ID "GNU")
-
-# Preprocessor definitions for this target.
-set(CMAKE_TARGET_DEFINITIONS_C
-  "fifo_queue_EXPORTS"
   )
 
-# The include file search paths:
-set(CMAKE_C_TARGET_INCLUDE_PATH
-  "../codel"
-  "../fifo"
+# The set of dependency files which are needed:
+set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/tiwa/mir/oai-tc/openair2/tc/queue/fifo/fifo_queue.c" "CMakeFiles/fifo_queue.dir/fifo/fifo_queue.c.o" "gcc" "CMakeFiles/fifo_queue.dir/fifo/fifo_queue.c.o.d"
+  "/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c" "CMakeFiles/fifo_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o" "gcc" "CMakeFiles/fifo_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o.d"
   )
 
 # Targets to which this target links.

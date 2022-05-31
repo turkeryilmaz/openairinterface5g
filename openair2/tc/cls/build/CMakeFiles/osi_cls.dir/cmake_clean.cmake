@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/osi_cls.dir/osi/osi_cls.c.o"
+  "CMakeFiles/osi_cls.dir/osi/osi_cls.c.o.d"
   "libosi_cls.pdb"
   "libosi_cls.so"
 )
