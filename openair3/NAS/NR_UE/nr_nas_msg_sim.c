@@ -671,14 +671,17 @@ static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMs
   /* length in bits */
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
+#endif
 
   printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
-     initialNasMsg->data[2+i] = mac[i];
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
 }
 
@@ -778,14 +781,16 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   /* length in bits */
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
-
+#endif
   printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
-     initialNasMsg->data[2+i] = mac[i];
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
 }
 

@@ -237,7 +237,6 @@ int8_t nr_rrc_ue_decode_secondary_cellgroup_config(const module_id_t module_id,
 // from LTE-RRC DL-DCCH RRCConnectionReconfiguration nr-secondary-cell-group-config (decoded)
 // RRCReconfiguration
 int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration){
-
   switch(rrcReconfiguration->criticalExtensions.present){
     case NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration:
       if(rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->radioBearerConfig != NULL){
@@ -2416,12 +2415,19 @@ nr_rrc_ue_establish_srb2(
                NR_DedicatedNAS_Message_t *dedicatedNAS_Message =
                    dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message;
 
-               MessageDef *msg_p;
+               MessageDef *msg_p,*message_p;
                msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
                NAS_DOWNLINK_DATA_IND(msg_p).UEid = ctxt_pP->module_id; // TODO set the UEid to something else ?
                NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length = dedicatedNAS_Message->size;
                NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data = dedicatedNAS_Message->buf;
                itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
+
+               /*Send NAS_CONN_ESTABLI_CNF for handling Registration Accept in DL-Info transfer*/
+               message_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
+               NAS_CONN_ESTABLI_CNF(message_p).errCode = AS_SUCCESS;
+               NAS_CONN_ESTABLI_CNF(message_p).nasMsg.length = dedicatedNAS_Message->size;
+               NAS_CONN_ESTABLI_CNF(message_p).nasMsg.data = dedicatedNAS_Message->buf;
+               itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, message_p);
              }
 	     }
 
