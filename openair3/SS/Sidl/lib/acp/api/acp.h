@@ -1,27 +1,17 @@
 /*
- *****************************************************************
+ * Copyright 2022 Sequans Communications.
  *
- * Module : Asynchronous Communication Protocol
- * Purpose: Interface
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *****************************************************************
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Copyright (c) 2019-2021 SEQUANS Communications.
- *  All rights reserved.
- *
- *  This is confidential and proprietary source code of SEQUANS
- *  Communications. The use of the present source code and all
- *  its derived forms is exclusively governed by the restricted
- *  terms and conditions set forth in the SEQUANS
- *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
- *  AGREEMENT. The present source code and all its derived
- *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
- *  Communications' products. The distribution/sale of the
- *  present source code and all its derived forms is EXCLUSIVELY
- *  RESERVED to regular LICENCE holder and otherwise STRICTLY
- *  PROHIBITED.
- *
- *****************************************************************
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #pragma once
@@ -326,6 +316,8 @@ enum acpErrorCode {
 	ACP_ERR_SIDL_FAILURE,
 	/** No server handle received. */
 	ACP_ERR_SHANDLE_UNAVAILABLE,
+	/** ACP version not match */
+	ACP_ERR_INVALID_VERSION,
 
 	ACP_ERR_QTY
 };

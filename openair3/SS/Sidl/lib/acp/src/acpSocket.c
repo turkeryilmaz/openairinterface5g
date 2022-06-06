@@ -1,30 +1,19 @@
 /*
- *****************************************************************
+ * Copyright 2022 Sequans Communications.
  *
- * Module : Asynchronous Communication Protocol
- * Purpose : Socket functions
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *****************************************************************
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Copyright (c) 2019-2021 SEQUANS Communications.
- *  All rights reserved.
- *
- *  This is confidential and proprietary source code of SEQUANS
- *  Communications. The use of the present source code and all
- *  its derived forms is exclusively governed by the restricted
- *  terms and conditions set forth in the SEQUANS
- *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
- *  AGREEMENT. The present source code and all its derived
- *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
- *  Communications' products. The distribution/sale of the
- *  present source code and all its derived forms is EXCLUSIVELY
- *  RESERVED to regular LICENCE holder and otherwise STRICTLY
- *  PROHIBITED.
- *
- *****************************************************************
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-// System includes
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -100,7 +89,8 @@ int acpSocketConnect(IpAddress_t ipaddr, int port)
 				socklen_t optlen = sizeof(int);
 				int valopt;
 				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == 0) && !valopt) {
-					ACP_DEBUG_EXIT_LOG(strerror(errno));
+					ACP_DEBUG_LOG("Connected to server: %s:%d", inet_ntoa(sin.sin_addr), port);
+					ACP_DEBUG_EXIT_LOG(NULL);
 					return sock;
 				}
 			}
@@ -110,6 +100,7 @@ int acpSocketConnect(IpAddress_t ipaddr, int port)
 		return -1;
 	}
 
+	ACP_DEBUG_LOG("Connected to server: %s:%d", inet_ntoa(sin.sin_addr), port);
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return sock;
 }
