@@ -1130,6 +1130,10 @@ nr_rlc_entity_buffer_status_t nr_rlc_get_buffer_status(int rnti,  int rb_id)
   nr_rlc_ue_t* ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
 
   nr_rlc_entity_t * rb = ue->drb[rb_id - 1];
+  if(rb == NULL){
+   printf("Unknown rb for rnti = % d rb_id = %d \n", rnti, rb_id); 
+   assert(0!=0 && "Unknwon rb for rnti!");
+  }
   int maxsize = 10000;
   nr_rlc_entity_buffer_status_t bs = rb->buffer_status(rb, maxsize);
 

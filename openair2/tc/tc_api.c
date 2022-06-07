@@ -170,6 +170,11 @@ void tc_stop(void)
   assoc_free(&tc_entities);
 }
 
+
+static
+char stdout_buf[1024];
+
+
 static
 void init_tc_api(void)
 {
@@ -180,6 +185,10 @@ void init_tc_api(void)
 
   rc = atexit(tc_stop);
   assert(rc == 0);
+
+  rc = setvbuf(stdout, stdout_buf, _IOFBF, 1024);
+  assert(rc == 0);
+
 }
 
 static inline

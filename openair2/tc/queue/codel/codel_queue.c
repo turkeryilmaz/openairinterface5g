@@ -108,7 +108,7 @@ dodequeue_result_t dodequeue(codel_queue_t *q, int64_t now) {
   // by the amount of time it takes to send such a packet on  
   // the bottleneck).  The 2nd term of the "if" does this.
   int64_t const sojourn_time = now - r.p->tstamp;
-  printf("CoDel sojourn_time = %ld \n", sojourn_time);
+  printf("CoDel sojourn_time = %ld id = %d \n", sojourn_time, q->base.id);
   if (sojourn_time < q->target_us || codel_bytes((queue_t*)q) <= q->maxpacket_) {   
     // went below - stay below for at least INTERVAL 
     q->first_above_time_ = 0; 
@@ -152,7 +152,8 @@ void codel_drop(codel_queue_t* q, codel_pkt_t* p)
 
   q->bytes -= p->bytes;
   q->pkts -= 1;
-  q->del(p->data);
+  if(q->del != NULL)
+    q->del(p->data);
   seq_erase(&q->impl,it_start, it_end);
   q->dropped_pkts += 1;
 }

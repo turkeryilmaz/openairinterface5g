@@ -378,6 +378,8 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
     return ;
   } 
 
+  printf("Pushing into queue id = %d\n", plc_q.q->id);
+
   // Ingress the packet in the queue
   plc_q.q->push(plc_q.q, p, sz);
 
@@ -440,7 +442,7 @@ void tc_egress_pkts(tc_t* tc)
     pcr_act_e p_act = check_pcr_action(pcr, next_pkt);
     if(p_act == PCR_WAIT){
       printf("Pacer waiting \n" );
-      break;
+      break; // common to all queues
     }
 
     // The shaper and the pacer agree to forward the pkt
@@ -469,9 +471,9 @@ void tc_egress_pkts(tc_t* tc)
     tc->egress_fun(tc->rnti, tc->rb_id, next_pkt->data, next_pkt->sz);
 
     free_pkt(next_pkt);
-    printf("Dequeuing packet from queue id = %d \n", q->id);
+    //printf("Dequeuing packet from queue id = %d with size = %lu \n", q->id ,q->size(q) );
     //free(next_pkt->data);
-    printf("Freeing the packet number = %d\n", counter);
+    //printf("Freeing the packet number = %d\n", counter);
     counter += 1;
   }
 }
@@ -935,6 +937,9 @@ void tc_load_defaults(tc_t* tc)
   //load default queue
   const char* queue_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libfifo_queue.so" ; 
   const char* queue_init_func = "fifo_init";
+//  const char* queue_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libcodel_queue.so"; 
+//  const char* queue_init_func = "codel_init";
+ 
   queue_t* q = load_queue(tc, queue_file_path, queue_init_func);
 
   // create policer with NULL value
@@ -955,12 +960,16 @@ void tc_load_defaults(tc_t* tc)
   printf("SHAPER added \n");
 
   // create a Round-Robin classifier
-  //const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/librr_cls.so"; 
-  //const char* cls_init_func = "rr_cls_init";
+//  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/librr_cls.so"; 
+//  const char* cls_init_func = "rr_cls_init";
 
+  // Stocastic classifier
+  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libsto_cls.so"; 
+  const char* cls_init_func = "sto_cls_init";
 
-  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libosi_cls.so"; 
-  const char* cls_init_func = "osi_cls_init";
+  // OSI classifier
+//  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libosi_cls.so"; 
+//  const char* cls_init_func = "osi_cls_init";
 
   load_cls(tc,q,cls_file_path, cls_init_func);
   printf("CLS added \n");

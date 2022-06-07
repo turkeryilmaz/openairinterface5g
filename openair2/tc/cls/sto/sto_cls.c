@@ -191,9 +191,18 @@ queue_t* sto_cls_dst_queue(cls_t* cls_base, const uint8_t* data, size_t size)
 //  uint32_t hash = murmur3_32((uint8_t*)&hdr->saddr, sizeof(uint32_t), hdr->daddr); // general purpose hashing function. Taken directly from https://en.wikipedia.org/wiki/MurmurHash
 //
   uint32_t seed = 724553; // prime number 
-  uint32_t hash = murmur3_32((uint8_t*)&tup, sizeof(tup), seed); // general purpose hashing function. Taken directly from https://en.wikipedia.org/wiki/MurmurHash
+  uint32_t hash = murmur3_32((uint8_t*)&tup, sizeof(tup), seed); // general purpose hashing function. See https://en.wikipedia.org/wiki/MurmurHash
   const size_t num_queues = seq_size(&cls->queues);
-  const size_t pos = hash % num_queues; 
+  size_t pos = hash % num_queues; 
+
+  // Shitty, just for visualization purposes
+  if(tup.protocol == IPPROTO_ICMP && num_queues > 1){
+    pos = 1; 
+    printf("ICMP traffic detected going to queue id = %lu \n", pos); 
+  }else {
+     pos = 0; 
+  }
+
   return *(queue_t**)seq_at(&cls->queues, pos);
 }
 
@@ -202,7 +211,8 @@ void sto_cls_pkt_fwd(cls_t* cls_base)
 {
   assert(cls_base != NULL);
   sto_cls_t* cls = (sto_cls_t*)cls_base;
-  assert(0!=0 && "Not implemented!!");
+  (void)cls; // noop
+  //assert(0!=0 && "Not implemented!!");
 }
 
 static
@@ -244,8 +254,6 @@ cls_t* sto_cls_init(void)
 
 
   cls->last = NULL;
-  
-
 
   seq_init(&cls->queues, sizeof(queue_t*));
   return (cls_t*)&cls->base; 

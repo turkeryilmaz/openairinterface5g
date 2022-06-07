@@ -938,7 +938,7 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
   const NR_list_t* ue_list = &UE_info->list;
   for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
     const int rnti = UE_info->rnti[ue_id];
-    int const rb_id = 4;
+    int const rb_id = 1;
     tc_rc_t rc = tc_get_or_create(rnti, rb_id);
 
     // Configuration (add/delete)  

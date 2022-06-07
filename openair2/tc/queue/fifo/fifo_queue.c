@@ -132,12 +132,14 @@ void fifo_pop(queue_t* q_base)
     q->front = -1;
 
 
+  int64_t const tstamp = time_now_us(); 
+
+  printf("FIFO poping from queue number %d elapsed_time = %ld num_pkts = %d \n", q_base->id, tstamp - p.tstamp, q->pkts);
   // Fill statistics
   {
     lock_guard(&q->mtx); 
 
     q->bytes -= p.bytes;
-    int64_t const tstamp = time_now_us(); 
     assert(tstamp >= p.tstamp && "Time is a monotonically increasing function");
     q->last_sojourn_time = tstamp - p.tstamp; 
 
@@ -147,7 +149,6 @@ void fifo_pop(queue_t* q_base)
     q->pkts -= 1;
   }
 
-  printf("FIFO poping from queue number %d \n", q_base->id);
 }
 
 static

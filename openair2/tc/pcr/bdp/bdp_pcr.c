@@ -41,7 +41,7 @@ float phy_tx_bytes(int32_t tx_bytes, int32_t drb_bytes, int32_t last_drb_bytes)
   if (phy_tx_bytes < 0)
     phy_tx_bytes = 0;
 
-  assert(phy_tx_bytes < 50000); // multithreaded enviroment...
+  assert(phy_tx_bytes < 80000); // multithreaded enviroment...
   return phy_tx_bytes;
 }
  
@@ -93,14 +93,14 @@ int64_t th_tx_bytes(bdp_pcr_t *p, int64_t last_time)
   int64_t theoretical_tx =
       p->bndwdth[0] > 0.1
           ? mult_factor * elapsed_time * p->bndwdth[0] + 1400*2
-          : p->drb_bytes < 22000 && elapsed_time > 0.5 && p->tx_bytes == 0 ? MTU_SIZE : 0;
+          : p->drb_bytes < 20000 && elapsed_time > 0.5 && p->tx_bytes == 0 ? MTU_SIZE : 0;
 
   assert(p->bndwdth[0] < 400);
-  if(theoretical_tx  < 22000){
-    theoretical_tx = 22000; 
+  if(theoretical_tx  < 20000){
+    theoretical_tx = 20000; 
   }
-  assert(theoretical_tx < 60000);
-  printf("Theoretical tx = %ld \n", theoretical_tx );
+  assert(theoretical_tx < 80000);
+  //printf("Theoretical tx = %ld \n", theoretical_tx );
   return theoretical_tx;
 }
 
@@ -136,7 +136,7 @@ pcr_act_e bdp_pcr_action(pcr_t* p_base, uint32_t bytes)
     update_bdp_vals(p); 
   }
 //  const uint32_t max_bytes_per_tti = 2300; // Value for 25 PRBs and 28 MCS
-  const uint32_t max_bytes_per_tti = 46000; // Value for 25 PRBs and 28 MCS
+  const uint32_t max_bytes_per_tti = 60000; // Value for 25 PRBs and 28 MCS
   if (p->tx_bytes + p->drb_bytes > max_bytes_per_tti) {
     puts("First wait" );
     printf("p->tx_bytes %d p->drb_bytes %d > max_bytes_per_tti %d \n", p->tx_bytes, p->drb_bytes, max_bytes_per_tti);
@@ -150,7 +150,7 @@ pcr_act_e bdp_pcr_action(pcr_t* p_base, uint32_t bytes)
   const int64_t th_tx_bytes_v = th_tx_bytes(p, p->last_time);
   if (p->tx_bytes + p->drb_bytes + extra_packet > th_tx_bytes_v){ 
     puts("Second wait" );
-    printf("p->tx_bytes %d p->drb_bytes %d extra_packet %d th_tx_bytes_v %d \n ", p->tx_bytes, p->drb_bytes, extra_packet,  th_tx_bytes_v   );
+    printf("p->tx_bytes %d p->drb_bytes %d extra_packet %d th_tx_bytes_v %ld \n ", p->tx_bytes, p->drb_bytes, extra_packet,  th_tx_bytes_v   );
     return PCR_WAIT;
   } 
   return PCR_PASS;
@@ -181,10 +181,9 @@ void bdp_pcr_mod(pcr_t* p_base, tc_mod_ctrl_pcr_t const* mod)
 
   p->update_flag = true;
   p->drb_bytes = mod-> bdp.drb_sz;
-  if( mod->bdp.tstamp - p->drb_bytes_tstamp > 1500){
-	 printf("Time difference BDP in us = %ld drb_bytes = %d \n",  mod->bdp.tstamp - p->drb_bytes_tstamp, mod->bdp.drb_sz );
-  }
-  printf("RLC DRB size = %d \n", p->drb_bytes);
+  //if( mod->bdp.tstamp - p->drb_bytes_tstamp > 1500){
+  printf("Time difference BDP in us = %ld RLC DRB size = %d \n",  mod->bdp.tstamp - p->drb_bytes_tstamp, mod->bdp.drb_sz );
+  //}
   p->drb_bytes_tstamp = mod->bdp.tstamp;
 }
 
