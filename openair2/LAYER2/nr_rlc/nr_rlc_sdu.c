@@ -21,6 +21,8 @@
 
 #include "nr_rlc_sdu.h"
 
+#include "openair2/tc/time/time.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -50,6 +52,10 @@ nr_rlc_sdu_segment_t *nr_rlc_new_sdu(
   ret->so       = 0;
   ret->is_first = 1;
   ret->is_last  = 1;
+
+
+  ret->tstamp = time_now_us();
+
 
   return ret;
 

@@ -20,6 +20,7 @@
  */
 
 #include "nr_rlc_entity_am.h"
+#include "openair2/tc/time/time.h" 
 
 #include <stdlib.h>
 #include <string.h>
@@ -1547,6 +1548,9 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
 
   sdu = entity->tx_list;
 
+  const int64_t now = time_now_us();
+  printf("[mir]: Time spent at the RLC = %ld \n", now - sdu->tstamp );
+
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
   /* not enough room for at least one byte of data? do nothing */
@@ -1563,7 +1567,6 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
 
   /* update buffer status */
   entity->common.bstatus.tx_size -= pdu_size;
-  //printf("[mir]: Current buffer status = %d \n", entity->common.bstatus.tx_size );
 
   /* assign SN to SDU */
   sdu->sdu->sn = entity->tx_next;

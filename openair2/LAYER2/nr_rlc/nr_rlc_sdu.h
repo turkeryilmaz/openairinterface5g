@@ -22,6 +22,8 @@
 #ifndef _NR_RLC_SDU_H_
 #define _NR_RLC_SDU_H_
 
+#include <stdint.h>
+
 typedef struct nr_rlc_sdu_t {
   int sn;
   int upper_layer_id;
@@ -42,6 +44,7 @@ typedef struct nr_rlc_sdu_segment_t {
   int so;
   int is_first;
   int is_last;
+  int64_t tstamp;
   struct nr_rlc_sdu_segment_t *next;
 } nr_rlc_sdu_segment_t;
 

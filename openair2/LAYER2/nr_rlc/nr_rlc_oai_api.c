@@ -42,6 +42,10 @@
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
+#include "openair2/tc/tc_api.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_entity_am.h"
+
+
 extern RAN_CONTEXT_t RC;
 
 #include <stdint.h>
@@ -220,6 +224,12 @@ tbs_size_t mac_rlc_data_req(
     ret = rb->generate_pdu(rb, buffer_pP, maxsize);
   } else {
     ret = 0;
+  }
+
+  if(channel_idP > 3 && rb != NULL){
+    tc_rc_t r = tc_get_or_create(rntiP, channel_idP - 4);
+    nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t*)rb;
+    r = tc_drb_size(r.tc, entity->tx_size);
   }
 
   nr_rlc_manager_unlock(nr_rlc_ue_manager);

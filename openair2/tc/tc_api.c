@@ -84,7 +84,7 @@ void* tc_egress_task(void* arg)
   struct epoll_event events[maxevents];
   const int timeout_ms = 1000;
 
-  int count = 0; 
+  //int count = 0; 
   while(b_stop_flag == false){
     const int events_ready = epoll_wait(efd, events, maxevents, timeout_ms); 
     if(events_ready == -1){
@@ -111,7 +111,7 @@ void* tc_egress_task(void* arg)
       last = assoc_end(&tc_entities);
     }
 
-    ++count;
+    //++count;
     while(it != last){
       tc_t* tc = NULL;
       {
@@ -123,10 +123,10 @@ void* tc_egress_task(void* arg)
         lock_guard(&mtx);
         it = assoc_next(&tc_entities, it);
       }
-      if(count % 5 == 0){
-        nr_rlc_entity_buffer_status_t b = nr_rlc_get_buffer_status(tc->rnti, tc->rb_id);
-        tc_rc_t r = tc_drb_size(tc, b.tx_size);
-      }
+  //    if(count % 5 == 0){
+  //      nr_rlc_entity_buffer_status_t b = nr_rlc_get_buffer_status(tc->rnti, tc->rb_id);
+  //      tc_rc_t r = tc_drb_size(tc, b.tx_size);
+  //    }
 
     }
 
