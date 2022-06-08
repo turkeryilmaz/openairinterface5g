@@ -39,13 +39,17 @@
 #define SS_RRC_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_req
 #define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
 #define SS_SYS_PROXY_MSG_CNF(mSGpTR)          (mSGpTR)->ittiMsg.udp_data_ind
-#define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind 
+#define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind
 
 
 /** VNG */
 #define SS_VNG_PROXY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ss_vng_proxy_req
 #define SS_VNG_PROXY_RESP(mSGpTR)             (mSGpTR)->ittiMsg.ss_vng_proxy_resp
 
+// VTP
+#define SS_VTP_PROXY_UPD(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_upd
+#define SS_VTP_PROXY_ACK(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_ack
+#define SS_VT_TIME_OUT(mSGpTR)                (mSGpTR)->ittiMsg.ss_vt_time_out
 #define SDU_SIZE                           (512)
 
 /** PORTMAN */
@@ -135,9 +139,9 @@ typedef struct ss_rrc_pdu_ind_s {
 /** VNG */
 
 typedef struct ss_vng_proxy_resp_s {
-  uint8_t     cell_id; /** Cell_id of the cell for 
+  uint8_t     cell_id; /** Cell_id of the cell for
                            which VNG request came */
-  uint32_t    sfn_sf;  /** Time at which response was 
+  uint32_t    sfn_sf;  /** Time at which response was
                            received from Proxy in the SYS task */
   uint8_t     status;  /** 0 Success: 1 Failure */
 } ss_vng_proxy_resp_t;
@@ -171,7 +175,7 @@ typedef enum VngCmd_e {
 } VngCmd;
 
 typedef struct ss_vng_proxy_req_s {
-  uint16_t    cell_id;    /** PCI of the cell for 
+  uint16_t    cell_id;    /** PCI of the cell for
                            which VNG request came */
   Dl_Bw_e     bw;         /** DL Bandwidth enum (ASN1) */
   int32_t     Noc_level;  /** 0 Success: 1 Failure */
@@ -196,4 +200,23 @@ typedef struct ss_paging_ind_s {
   uint8_t  sf;
   ss_paging_identity_t *paging_recordList;
 } ss_paging_ind_t;
+
+typedef enum VtpCmd_e {
+  VTP_DISABLE = 0,
+  VTP_ENABLE = 1
+  } VtpCmd;
+
+typedef struct ss_vtp_proxy_upd_s {
+  VtpCmd      cmd;
+  ss_upd_timinfo_t    tinfo;
+} ss_vtp_proxy_upd_t;
+
+typedef struct ss_vtp_proxy_ack_s {
+  VtpCmd      cmd;
+  ss_upd_timinfo_t    tinfo;
+} ss_vtp_proxy_ack_t;
+
+typedef struct ss_vt_time_out_s {
+  void *msg;
+} ss_vt_time_out_t;
 #endif /* SS_MESSAGES_TYPES_H_ */

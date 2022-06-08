@@ -2076,6 +2076,8 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_srb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vng_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_vtp_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)

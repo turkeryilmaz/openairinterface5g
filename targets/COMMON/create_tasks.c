@@ -45,6 +45,9 @@
 # include "ss_eNB_port_man_task.h"
 # include "ss_eNB_srb_task.h"
 # include "ss_eNB_vng_task.h"
+# include "ss_eNB_vtp_task.h"
+# include "ss_eNB_vt_timer_task.h"
+
 
 extern RAN_CONTEXT_t RC;
 
@@ -68,6 +71,14 @@ int create_tasks(uint32_t enb_nb) {
 
     rc = itti_create_task(TASK_VNG, ss_eNB_vng_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS VNG failed\n");
+
+    /* Task for support Virtual Time for TTCN  engine */
+    rc = itti_create_task(TASK_VTP, ss_eNB_vtp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS VTP failed\n");
+
+    /* Task for support Virtual Time timer management */
+    rc = itti_create_task(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS_VT_TIMER failed\n");
   }
 
   LOG_I(ENB_APP, "Creating ENB_APP eNB Task\n");
