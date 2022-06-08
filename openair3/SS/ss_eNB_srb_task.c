@@ -55,12 +55,14 @@
 #include "acpSysSrb.h"
 #include "acpSys.h"
 #include "ss_eNB_context.h"
+#include "ss_eNB_vt_timer_task.h"
 extern RAN_CONTEXT_t RC;
 SSConfigContext_t SS_context;
 static acpCtx_t ctx_srb_g = NULL;
 static uint16_t rnti_g = 0;
 static instance_t instance_g = 0;
 uint16_t ss_rnti_g = 0;
+bool rrcConnectionSetupSent = 0;
 
 enum MsgUserId
 {
@@ -158,6 +160,15 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 		ind.RrcPdu.d = RRC_MSG_Indication_Type_Dcch;
 		ind.RrcPdu.v.Dcch.d = pdu_ind->sdu_size;
 		ind.RrcPdu.v.Dcch.v = pdu_ind->sdu;
+		/*TODO: Work around fix for passing TC 9_3_2_1 with TTCN , shall be removed
+		 * once the handling of rrcConnectionSetup from TTCN is implemented in eNB
+		 */
+		if(ul_dcch_msg->message.choice.c1.present == LTE_UL_DCCH_MessageType__c1_PR_rrcConnectionSetupComplete &&
+				rrcConnectionSetupSent == 0)
+		{
+			printf("rcConnectionSetupComplete to be sent to TTCN- Sleeping for rrcConnectionSetup to be received as its not yet received by TTCN\n");
+			usleep(500);
+		}
 	}
 
 	/* Encode message
@@ -207,6 +218,15 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
                                     SS_RRC_PDU_REQ(message_p).sdu_size,0,0);
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
+			/*TODO: Work around fix for passing TC 9_3_2_1 with TTCN , shall be removed
+			 * once the handling of rrcConnectionSetup from TTCN is implemented in eNB
+			 */
+			if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup)
+			{
+				rrcConnectionSetupSent = 1;
+				printf("rcConnectionSetup received from TTCN- setting the flag rrcConnectionSetupSent =, 1\n");
+
+			}
 		}
 		else
 		{
@@ -219,6 +239,14 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
                                     SS_RRC_PDU_REQ(message_p).sdu_size,0,0);
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_DCCH_Message,(void *)dl_dcch_msg);
+			/*TODO: Work around fix for passing TC 9_3_2_1 with TTCN , shall be removed
+			 * once the handling of rrcConnectionSetup from TTCN is implemented in eNB
+			 */
+			if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
+			{
+			   rrcConnectionSetupSent = 0;
+                           printf("rcConnectionRelease received from TTCN- setting the flag rrcConnectionSetupSent = 0 \n");
+			}
 		}
 
 		LOG_A(ENB_APP, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d }",
@@ -226,13 +254,35 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			  req->RrcPdu.d == RRC_MSG_Request_Type_Ccch ? "CCCH" : "DCCH", SS_RRC_PDU_REQ(message_p).sdu_size);
 
 		SS_RRC_PDU_REQ(message_p).rnti = rnti_g;
-		int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
-		if (send_res < 0)
+        uint8_t msg_queued = 0;
+		if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
 		{
-			LOG_A(ENB_APP, "[SS_SRB] Error in itti_send_msg_to_task");
-		}
+			ss_set_timinfo_t tinfo, timer_tinfo;
+			tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
+			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
+			timer_tinfo = tinfo;
+			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
 
-		LOG_A(ENB_APP, "Send res: %d", send_res);
+			LOG_A(ENB_APP,"VT_TIMER SRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+
+			if(msg_queued)
+			{
+				 msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
+			}
+			LOG_A(ENB_APP, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+
+		}
+		if (!msg_queued)
+		{
+			int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
+			if (send_res < 0)
+			{
+				LOG_A(ENB_APP, "[SS_SRB] Error in itti_send_msg_to_task");
+			}
+
+			LOG_A(ENB_APP, "Send res: %d", send_res);
+		}
 	}
 }
 
@@ -245,7 +295,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 	while (1)
 	{
 		int userId = acpRecvMsg(ctx, &msgSize, buffer);
-		LOG_A(ENB_APP, "[SS_SRB] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+		LOG_D(ENB_APP, "[SS_SRB] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
 		// Error handling
 		if (userId < 0)
@@ -391,6 +441,25 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 			AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
 		};
 		break;
+
+#if 0    //Note: Future Use currently timeout is not triggered and the VT_TIMER sends the message to RRC_TASK directly
+		case SS_VT_TIME_OUT:
+		{
+			int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, SS_VT_TIME_OUT(received_msg).msg);
+			if (send_res < 0)
+			{
+				LOG_A(ENB_APP, "[SS_SRB] Error in itti_send_msg_to_task");
+			}
+
+			LOG_D(ENB_APP,"VT_TIMER [SS_SRB] Received Timeout sending SS_RRC_PDU_REQ to RRC curr SFN %d SF %d\n",
+					SS_context.sfn,SS_context.sf);
+
+			result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+			AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+		};
+
+		break;
+#endif
 		case TERMINATE_MESSAGE:
 			LOG_A(ENB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
 			itti_exit_task();

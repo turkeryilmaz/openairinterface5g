@@ -16,51 +16,28 @@
  * limitations under the License.
  *-------------------------------------------------------------------------------
  * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      conmnc_digit_lengtht@openairinterface.org
+ *      contact@openairinterface.org
  */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#ifndef SS_ENB_VTP_TASK_H_
+#define SS_ENB_VTP_TASK_H_
 
-/*! \file ss_config.h
-* \brief System Simulator configuration struct definitions and function prototypes
-* \author Anurag Asokan
-* \date 2022
-* \version 0.1
-* \company Firecell
-* \email: anurag.ashokan@firecell.io
-*/
+void *ss_eNB_vtp_process_itti_msg(void *);
+void *ss_eNB_vtp_task(void *arg);
 
-#ifndef __SS_CONFIG_H__
-#define __SS_CONFIG_H__
-
-#if 0 /** TODO: FC */
-typedef enum ss_mode {
-  SS_ENB = 0x00,
-  SS_VT,
-  SS_VT_SRB,
-} ss_mode_e;
-#else
-#define SS_ENB  		(0x00)
-#define SS_SOFTMODEM    	(0x01)
-#define SS_SOFTMODEM_SRB        (0x02)
-#endif
-
-typedef struct ss_config_s {
-  /** SS mode of operation */
-  uint8_t mode; /* 0: Normal eNB/gNB, 1: SS-Mode */
-  /** IP Address where the TTCN engine is running */
-  const char* hostIp;
-  /** SYS port number */
-  int Sysport;
-  /** SRB port number */
-  int Srbport;
-  /** VNG port number */
-  int Vngport;
-  /** VTP port number */
-  int Vtpport;
-  /** State info */
-  int State;
-  int vtp_ready;
-} ss_config_t;
-
-
-#endif /** __SS_CONFIG_H__ */
-/** @} */
+typedef enum VtpProxyCmd
+{
+    Vtp_Invalid_Resp = 0,
+    VTP_ENABLE_proxy = 1,
+    VTP_UPDATE_proxy,
+    VTP_ACK_proxy
+} VtpProxyCmd_e;
+typedef struct vtp_udpSockReq_s
+{
+  uint32_t  port;
+  char     *address;
+} vtp_udpSockReq_t;
+#endif /* SS_ENB_VNG_TASK_H_ */

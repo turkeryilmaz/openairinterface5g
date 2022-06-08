@@ -20,7 +20,7 @@
  */
 #ifndef _SS_ENB_PROXY_IFACE_
 #define _SS_ENB_PROXY_IFACE_
-
+#include "intertask_interface.h"
 typedef enum proxy_ss_message_id {
   SS_ATTN_LIST = 1,
   SS_ATTN_LIST_CNF = 2,
@@ -30,6 +30,9 @@ typedef enum proxy_ss_message_id {
   SS_CELL_RELEASE_CNF = 6,
   SS_VNG_CMD_REQ = 7,
   SS_VNG_CMD_RESP = 8,
+  SS_VTP_REQ = 9,
+  SS_VTP_RESP = 10,
+  SS_VTP_ENABLE = 11,
   SS_INVALID_MSG = 0xFF
 } proxy_ss_msgs_e;
 
@@ -90,5 +93,9 @@ typedef struct VngCmdResp_s
     uint8_t status;
 } VngCmdResp_t;
 
+typedef struct VtpCmdReq_s {
+  proxy_ss_header_t header;
+  ss_upd_timinfo_t    tinfo;
+} VtpCmdReq_t;
 
 #endif /* _SS_ENB_PROXY_IFACE_ */

@@ -16,51 +16,32 @@
  * limitations under the License.
  *-------------------------------------------------------------------------------
  * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      conmnc_digit_lengtht@openairinterface.org
+ *      contact@openairinterface.org
+ *
+ * AUTHOR  : Vijay Chadachan
+ * COMPANY : Firecell
+ * EMAIL   : Vijay.chadachan@firecell.io
  */
 
-/*! \file ss_config.h
-* \brief System Simulator configuration struct definitions and function prototypes
-* \author Anurag Asokan
-* \date 2022
-* \version 0.1
-* \company Firecell
-* \email: anurag.ashokan@firecell.io
-*/
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include "hashtable.h"
+#ifndef SS_ENB_VT_TIMER_TASK_H_
+#define SS_ENB_VT_TIMER_TASK_H_
 
-#ifndef __SS_CONFIG_H__
-#define __SS_CONFIG_H__
+void *ss_eNB_vt_timer_process_itti_msg(void *);
+void *ss_eNB_vt_timer_task(void *arg);
+uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_tinfo);
+uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t instance,void *msg);
 
-#if 0 /** TODO: FC */
-typedef enum ss_mode {
-  SS_ENB = 0x00,
-  SS_VT,
-  SS_VT_SRB,
-} ss_mode_e;
-#else
-#define SS_ENB  		(0x00)
-#define SS_SOFTMODEM    	(0x01)
-#define SS_SOFTMODEM_SRB        (0x02)
+typedef struct vt_timer_elm_s {
+  //uint8_t msg_type;     ///MSG type
+  task_id_t task_id;
+  instance_t instance;
+  ss_vt_time_out_t *msg; ///< Optional argument that will be passed when timer expires
+} vt_timer_elm_t ;
+
+
 #endif
-
-typedef struct ss_config_s {
-  /** SS mode of operation */
-  uint8_t mode; /* 0: Normal eNB/gNB, 1: SS-Mode */
-  /** IP Address where the TTCN engine is running */
-  const char* hostIp;
-  /** SYS port number */
-  int Sysport;
-  /** SRB port number */
-  int Srbport;
-  /** VNG port number */
-  int Vngport;
-  /** VTP port number */
-  int Vtpport;
-  /** State info */
-  int State;
-  int vtp_ready;
-} ss_config_t;
-
-
-#endif /** __SS_CONFIG_H__ */
-/** @} */
