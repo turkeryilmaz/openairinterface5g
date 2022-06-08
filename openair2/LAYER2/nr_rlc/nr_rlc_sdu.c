@@ -54,8 +54,10 @@ nr_rlc_sdu_segment_t *nr_rlc_new_sdu(
   ret->is_last  = 1;
 
 
-  ret->tstamp = time_now_us();
+  int64_t now = time_now_us();
+  printf("[mir]: Creating RLC SDU time %ld pkt_size %d \n", now, size );
 
+  ret->tstamp = time_now_us();
 
   return ret;
 
@@ -68,13 +70,17 @@ int nr_rlc_free_sdu_segment(nr_rlc_sdu_segment_t *sdu)
 {
   int ret = 0;
 
+  int64_t now = time_now_us();
+  printf("[mir]: Time spent at the RLC = %ld time %ld pkt_size %d \n", now - sdu->tstamp, now, sdu->sdu->size);
+
   sdu->sdu->free_count++;
   if (sdu->sdu->free_count == sdu->sdu->ref_count) {
     free(sdu->sdu->data);
     free(sdu->sdu);
     ret = 1;
   }
-  free(sdu);
+
+    free(sdu);
 
   return ret;
 }

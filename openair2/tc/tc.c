@@ -975,13 +975,13 @@ void tc_load_defaults(tc_t* tc)
   printf("CLS added \n");
 
   // create a dummy pacer
-  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libbdp_pcr.so";
-  const char* pcr_init_func = "bdp_pcr_init";
-  load_pcr(tc,pcr_file_path, pcr_init_func); 
+//  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libbdp_pcr.so";
+//  const char* pcr_init_func = "bdp_pcr_init";
+//  load_pcr(tc,pcr_file_path, pcr_init_func); 
 
-//  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libdummy_pcr.so";
-//  const char* pcr_init_func = "dummy_pcr_init";
-//  load_pcr(tc, pcr_file_path, pcr_init_func); 
+  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libdummy_pcr.so";
+  const char* pcr_init_func = "dummy_pcr_init";
+  load_pcr(tc, pcr_file_path, pcr_init_func); 
 
   printf("PCR added \n");
 

@@ -463,6 +463,12 @@ int get_mcs_from_bler(module_id_t mod_id, int CC_id, frame_t frame, sub_frame_t 
   else if (bler_stats->bler > nrmac->dl_bler_target_upper && old_mcs > 6)
     new_mcs -= 1;
 
+
+  // [mir]: max mcs
+  if(new_mcs > 10)
+    new_mcs = 10;
+
+
   // else we are within threshold boundaries
   bler_stats->last_frame_slot = now;
   bler_stats->mcs = new_mcs;

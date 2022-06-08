@@ -1370,6 +1370,7 @@ static boolean_t pdcp_data_req_drb(
     return 0;
   }
 
+  printf("[mir]: PDCP pkt size %d \n",  sdu_buffer_size);
   rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);

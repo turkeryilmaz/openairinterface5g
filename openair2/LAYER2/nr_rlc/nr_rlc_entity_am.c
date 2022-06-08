@@ -663,7 +663,6 @@ nacks_done:
     tx_next_ack = ack_sn;
   entity->tx_next_ack = tx_next_ack;
 
-
   printf("[mir]: tx_bytes = %d \n", entity->tx_size );
 
   return;
@@ -1548,8 +1547,8 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
 
   sdu = entity->tx_list;
 
-  const int64_t now = time_now_us();
-  printf("[mir]: Time spent at the RLC = %ld \n", now - sdu->tstamp );
+  //const int64_t now = time_now_us();
+  //printf("[mir]: Time spent at the RLC = %ld \n", now - sdu->tstamp );
 
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
@@ -1567,6 +1566,7 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
 
   /* update buffer status */
   entity->common.bstatus.tx_size -= pdu_size;
+  printf("[mir]: RLC DRB buffer = %ld time %ld \n", entity->common.bstatus.tx_size, time_now_us() );
 
   /* assign SN to SDU */
   sdu->sdu->sn = entity->tx_next;

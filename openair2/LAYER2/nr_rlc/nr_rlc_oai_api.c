@@ -226,11 +226,12 @@ tbs_size_t mac_rlc_data_req(
     ret = 0;
   }
 
-  if(channel_idP > 3 && rb != NULL){
-    tc_rc_t r = tc_get_or_create(rntiP, channel_idP - 4);
-    nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t*)rb;
-    r = tc_drb_size(r.tc, entity->tx_size);
-  }
+//  if(channel_idP > 3 && rb != NULL){
+////    tc_rc_t r = tc_get_or_create(rntiP, channel_idP - 4);
+//    nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t*)rb;
+//    printf("New RLC DRB size  = %d \n ", entity->tx_size);
+////    r = tc_drb_size(r.tc, entity->tx_size);
+//  }
 
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 
@@ -1144,7 +1145,7 @@ nr_rlc_entity_buffer_status_t nr_rlc_get_buffer_status(int rnti,  int rb_id)
    printf("Unknown rb for rnti = % d rb_id = %d \n", rnti, rb_id); 
    assert(0!=0 && "Unknwon rb for rnti!");
   }
-  int maxsize = 10000;
+  int maxsize = 100000;
   nr_rlc_entity_buffer_status_t bs = rb->buffer_status(rb, maxsize);
 
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
