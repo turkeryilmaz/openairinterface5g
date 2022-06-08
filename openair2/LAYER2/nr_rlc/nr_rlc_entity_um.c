@@ -28,6 +28,15 @@
 
 #include "LOG/log.h"
 
+
+#include "openair2/tc/time/time.h"
+
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+
 /* for a given SDU/SDU segment, computes the corresponding PDU header size */
 static int compute_pdu_header_size(nr_rlc_entity_um_t *entity,
                                    nr_rlc_sdu_segment_t *sdu)
@@ -384,7 +393,7 @@ discard:
 static int serialize_sdu(nr_rlc_entity_um_t *entity,
                          nr_rlc_sdu_segment_t *sdu, char *buffer, int bufsize)
 {
-  nr_rlc_pdu_encoder_t encoder;
+  nr_rlc_pdu_encoder_t encoder = {0};
 
   /* generate header */
   nr_rlc_pdu_encoder_init(&encoder, buffer, bufsize);
@@ -396,15 +405,20 @@ static int serialize_sdu(nr_rlc_entity_um_t *entity,
   if (sdu->is_first == 1 && sdu->is_last == 1) {
     nr_rlc_pdu_encoder_put_bits(&encoder, 0, 6);                       /* R */
   } else {
-    if (entity->sn_field_length == 12)
+    if (entity->sn_field_length == 12){
+      printf(" entity->sn_field_length == 12 \n");
       nr_rlc_pdu_encoder_put_bits(&encoder, 0, 2);                     /* R */
+    }
     nr_rlc_pdu_encoder_put_bits(&encoder, sdu->sdu->sn,
                                 entity->sn_field_length);             /* SN */
   }
 
-  if (!sdu->is_first)
+  if (!sdu->is_first){
+	  printf("!sdu->is_first \n" );
     nr_rlc_pdu_encoder_put_bits(&encoder, sdu->so, 16);               /* SO */
+  }
 
+  printf("so %d size %d byte %d bit %d \n", sdu->so, sdu->size, encoder.byte, encoder.bit);
   /* data */
   memcpy(buffer + encoder.byte, sdu->sdu->data + sdu->so, sdu->size);
 
@@ -425,6 +439,9 @@ static nr_rlc_sdu_segment_t *resegment(nr_rlc_sdu_segment_t *sdu,
   int pdu_header_size;
   int over_size;
   int old_is_last;
+
+
+  printf("Before Resegmenting SDU size %d so %d is_first %d is_last %d \n", sdu->size, sdu->so, sdu->is_first, sdu->is_last);
 
   sdu->sdu->ref_count++;
 
@@ -456,6 +473,10 @@ static nr_rlc_sdu_segment_t *resegment(nr_rlc_sdu_segment_t *sdu,
   next->so = sdu->so + sdu->size;
   next->is_first = 0;
 
+  printf("Resegmenting SDU size %d so %d is_first %d is_last %d \n", sdu->size, sdu->so, sdu->is_first, sdu->is_last);
+
+  printf("Resegmenting NEW SDU size %d so %d is_first %d is_last %d \n", next->size, next->so, next->is_first, next->is_last);
+
   entity->common.stats.txpdu_segmented++;
 
   return next;
@@ -476,9 +497,10 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
   /* not enough room for at least one byte of data? do nothing */
-  if (pdu_header_size + 1 > size)
+  if (pdu_header_size + 1 > size){
+    printf("not enough room for at least one byte of data? do nothing \n");
     return 0;
-
+  }
   entity->tx_list = entity->tx_list->next;
   if (entity->tx_list == NULL)
     entity->tx_end = NULL;
@@ -487,6 +509,8 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   sdu->sdu->sn = entity->tx_next;
 
   pdu_size = pdu_header_size + sdu->size;
+  int64_t now = time_now_us();
+  printf("sn %d pdu_size %d size %d time %ld \n", sdu->sdu->sn, pdu_size, size, now);
 
   /* update buffer status */
   entity->common.bstatus.tx_size -= pdu_size;
@@ -495,8 +519,11 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   if (pdu_size > size) {
     nr_rlc_sdu_segment_t *next_sdu;
     next_sdu = resegment(sdu, entity, size);
-    if (next_sdu == NULL)
+    printf("resegmenting \n");
+    if (next_sdu == NULL){
+      printf("next_sdu == NULL \n");
       return 0;
+    }
     /* put the second SDU back at the head of the TX list */
     next_sdu->next = entity->tx_list;
     entity->tx_list = next_sdu;
@@ -510,18 +537,25 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   }
 
   /* update tx_next if the SDU is an SDU segment and is the last */
-  if (!sdu->is_first && sdu->is_last)
+  if (!sdu->is_first && sdu->is_last){
+    printf("Updating the SN \n");
     entity->tx_next = (entity->tx_next + 1) % entity->sn_modulus;
-
+  }
   ret = serialize_sdu(entity, sdu, buffer, size);
+
+
+  uint8_t* a = (uint8_t*) buffer;
+  uint8_t* b = (uint8_t*)(buffer+1);
+  uint8_t* c = (uint8_t*)(buffer+2);
+  uint8_t* d = (uint8_t*)(buffer+3);
+
+  printf("a %u b %u c %u d %u \n",*a, *b, *c, *d);
 
   entity->tx_size -= sdu->size;
   nr_rlc_free_sdu_segment(sdu);
 
   entity->common.stats.txpdu_pkts++;
   entity->common.stats.txpdu_bytes += size;
-
-
 
   return ret;
 }
@@ -578,6 +612,30 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   }
 
   entity->tx_size += size;
+  printf("RLC UM [mir]: tx_size %d \n", entity->tx_size);
+
+  printf("RLC %p sz %d mui %d\n", buffer, size, sdu_id);
+  struct iphdr* hdr = (struct iphdr*) (buffer + 3);
+
+  if(hdr->protocol == IPPROTO_TCP) {
+
+   struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+    struct in_addr paddr;
+    paddr.s_addr = hdr->saddr;
+
+    char *strAdd2 = inet_ntoa(paddr);
+    printf("IP source address %s \n", strAdd2  );
+
+    paddr.s_addr = hdr->daddr;
+    strAdd2 = inet_ntoa(paddr);
+
+    printf("IP dst address %s \n", strAdd2  );
+
+    uint16_t const sport = ntohs(tcp->source);
+    uint16_t const dport = ntohs(tcp->dest);
+    printf("RLC Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+  }
 
   sdu = nr_rlc_new_sdu(buffer, size, sdu_id);
 

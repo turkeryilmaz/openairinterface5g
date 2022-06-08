@@ -38,6 +38,13 @@
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
 
+
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
     exit(1); \
@@ -1371,6 +1378,31 @@ static boolean_t pdcp_data_req_drb(
   }
 
   printf("[mir]: PDCP pkt size %d \n",  sdu_buffer_size);
+
+
+  struct iphdr* hdr = (struct iphdr*)sdu_buffer;
+
+  if(hdr->protocol == IPPROTO_TCP) {
+
+   struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+    struct in_addr paddr;
+    paddr.s_addr = hdr->saddr;
+
+    char *strAdd2 = inet_ntoa(paddr);
+    printf("PDCP: IP source address %s \n", strAdd2  );
+
+    paddr.s_addr = hdr->daddr;
+    strAdd2 = inet_ntoa(paddr);
+
+    printf("PDCP: IP dst address %s \n", strAdd2  );
+
+    uint16_t const sport = ntohs(tcp->source);
+    uint16_t const dport = ntohs(tcp->dest);
+    printf("PDCP Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+  }
+
+  printf("PDCP %p sz %d  muiP %d \n",sdu_buffer,  sdu_buffer_size,  muiP);
   rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);

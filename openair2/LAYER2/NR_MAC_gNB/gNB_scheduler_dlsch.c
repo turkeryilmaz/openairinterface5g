@@ -1438,6 +1438,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
             continue; // no data for this LC        tbs_size_t len = 0;
 
           int lcid_bytes=0;
+	  int const bytes_in_buffer = sched_ctrl->rlc_status[lcid].bytes_in_buffer;
           while (bufEnd-buf > sizeof(NR_MAC_SUBHEADER_LONG) + 1 ) {
             // we do not know how much data we will get from RLC, i.e., whether it
             // will be longer than 256B or not. Therefore, reserve space for long header, then
@@ -1445,7 +1446,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
             NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) buf;
             /* limit requested number of bytes to what preprocessor specified, or
              * such that TBS is full */
-            const rlc_buffer_occupancy_t ndata = min(sched_ctrl->rlc_status[lcid].bytes_in_buffer,
+            const rlc_buffer_occupancy_t ndata = min(bytes_in_buffer,
                                                  bufEnd-buf-sizeof(NR_MAC_SUBHEADER_LONG));
             tbs_size_t len = mac_rlc_data_req(module_id,
                                               rnti,
@@ -1458,8 +1459,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
                                               (char *)buf+sizeof(NR_MAC_SUBHEADER_LONG),
                                               0,
                                               0);
-            LOG_D(NR_MAC,
-                  "%4d.%2d RNTI %04x: %d bytes from %s %d (ndata %d, remaining size %ld)\n",
+            printf("%4d.%2d RNTI %04x: %d bytes from %s %d (ndata %d, remaining size %ld)\n",
                   frame,
                   slot,
                   rnti,

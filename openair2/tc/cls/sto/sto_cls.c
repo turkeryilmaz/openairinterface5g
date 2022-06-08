@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
@@ -158,9 +159,24 @@ five_tuple_t extract_five_tuple(uint8_t const* data, size_t sz)
 
   switch (hdr->protocol) {
   case IPPROTO_TCP: {
-    struct tcphdr *tcp = (struct tcphdr *)hdr;
-    ans.sport = tcp->source;
-    ans.dport = tcp->dest;
+//    struct tcphdr *tcp = (struct tcphdr *)(data + sizeof(struct iphdr));
+
+    struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+    struct in_addr paddr;
+    paddr.s_addr = hdr->saddr;
+
+    char *strAdd2 = inet_ntoa(paddr);
+    printf("IP source address %s \n", strAdd2  );
+
+    paddr.s_addr = hdr->daddr;
+    strAdd2 = inet_ntoa(paddr);
+
+    printf("IP dst address %s \n", strAdd2  );
+
+    ans.sport = ntohs(tcp->source);
+    ans.dport = ntohs(tcp->dest);
+    printf("Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), ans.sport, ans.dport);
     break;
   }
   case IPPROTO_UDP: {

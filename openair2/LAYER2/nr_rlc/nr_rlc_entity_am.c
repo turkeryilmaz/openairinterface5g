@@ -1674,6 +1674,7 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
                                char *buffer, int size,
                                int sdu_id)
 {
+//	assert(0!=0 && "Only UM supported" );
   nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t *)_entity;
   nr_rlc_sdu_segment_t *sdu;
 

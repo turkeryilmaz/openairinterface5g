@@ -28,6 +28,14 @@
 
 #include "LOG/log.h"
 
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+
+
+
 nr_rlc_sdu_segment_t *nr_rlc_new_sdu(
     char *buffer, int size,
     int upper_layer_id)
@@ -72,6 +80,26 @@ int nr_rlc_free_sdu_segment(nr_rlc_sdu_segment_t *sdu)
 
   int64_t now = time_now_us();
   printf("[mir]: Time spent at the RLC = %ld time %ld pkt_size %d \n", now - sdu->tstamp, now, sdu->sdu->size);
+
+  struct iphdr* hdr = (struct iphdr*) (sdu->sdu->data + 3);
+
+  if(hdr->protocol == IPPROTO_TCP) {
+
+   struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+    struct in_addr paddr;
+    paddr.s_addr = hdr->saddr;
+
+//    char *strAdd2 = inet_ntoa(paddr);
+//    printf("IP source address %s \n", strAdd2  );
+//    paddr.s_addr = hdr->daddr;
+//    strAdd2 = inet_ntoa(paddr);
+//    printf("IP dst address %s \n", strAdd2  );
+
+    uint16_t const sport = ntohs(tcp->source);
+    uint16_t const dport = ntohs(tcp->dest);
+    printf("RLC Egress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+  }
 
   sdu->sdu->free_count++;
   if (sdu->sdu->free_count == sdu->sdu->ref_count) {
