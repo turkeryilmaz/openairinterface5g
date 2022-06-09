@@ -32,7 +32,6 @@
 # include "RRC/LTE/MESSAGES/asn1_msg.h"
 # include "rrc_eNB_GTPV1U.h"
 # include "rrc_eNB_UE_context.h"
-# include "msc.h"
 
 #include "oai_asn1.h"
 #include "intertask_interface.h"

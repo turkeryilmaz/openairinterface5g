@@ -68,7 +68,6 @@
 
 #include "rlc.h"
 #include "platform_types.h"
-#include "msc.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
 #include "T.h"

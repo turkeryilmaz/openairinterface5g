@@ -61,18 +61,38 @@ enum MsgUserId
     MSG_SysProcess_userId = 1,
 };
 extern SSConfigContext_t SS_context;
+
+/*
+ * Function : ss_dumpReqMsg
+ * Description: Function for print the received message
+ * In :
+ * req  -
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 static void ss_dumpReqMsg(struct SYSTEM_CTRL_REQ *msg)
 {
-    LOG_A(RRC, "SysProcess: received from the TTCN\n");
-    LOG_A(RRC, "\tCommon:\n");
-    LOG_A(RRC, "\t\tCellId=%d\n", msg->Common.CellId);
-    LOG_A(RRC, "\t\tRoutingInfo=%d\n", msg->Common.RoutingInfo.d);
-    LOG_A(RRC, "\t\tTimingInfo=%d\n", msg->Common.TimingInfo.d);
-    LOG_A(RRC, "\t\tCnfFlag=%d\n", msg->Common.ControlInfo.CnfFlag);
-    LOG_A(RRC, "\t\tFollowOnFlag=%d\n", msg->Common.ControlInfo.FollowOnFlag);
-    LOG_A(RRC, "\tRequest=%d\n", msg->Request.d);
+    LOG_A(ENB_SS, "SysProcess: received from the TTCN\n");
+    LOG_A(ENB_SS, "\tCommon:\n");
+    LOG_A(ENB_SS, "\t\tCellId=%d\n", msg->Common.CellId);
+    LOG_A(ENB_SS, "\t\tRoutingInfo=%d\n", msg->Common.RoutingInfo.d);
+    LOG_A(ENB_SS, "\t\tTimingInfo=%d\n", msg->Common.TimingInfo.d);
+    LOG_A(ENB_SS, "\t\tCnfFlag=%d\n", msg->Common.ControlInfo.CnfFlag);
+    LOG_A(ENB_SS, "\t\tFollowOnFlag=%d\n", msg->Common.ControlInfo.FollowOnFlag);
+    LOG_A(ENB_SS, "\tRequest=%d\n", msg->Request.d);
 }
 
+/*
+ * Function : ss_port_man_send_cnf
+ * Description: Function for sending the confirmation to the TTCN on the basis of
+ * particular messages
+ * In :
+ * req  -
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
 {
     struct SYSTEM_CTRL_CNF cnf;
@@ -91,7 +111,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     cnf.Common.Result.d = recvCnf.Common.Result.d;
     cnf.Common.Result.v.Success = recvCnf.Common.Result.v.Success;
     cnf.Confirm.d = recvCnf.Confirm.d;
-    LOG_A(RRC, "[SS-PORTMAN] Attn CNF received cellId %d result %d type %d \n",
+    LOG_A(ENB_SS, "[SS-PORTMAN] Attn CNF received cellId %d result %d type %d \n",
                      cnf.Common.CellId,cnf.Common.Result.d, recvCnf.Confirm.d);
     switch (recvCnf.Confirm.d)
     {
@@ -136,7 +156,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     case SystemConfirm_Type_OCNG_Config:
     case SystemConfirm_Type_DirectIndicationInfo:
     default:
-        LOG_A(RRC, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
+        LOG_A(ENB_SS, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
     }
 
     /* Encode message
@@ -151,21 +171,28 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     status = acpSendMsg(ctx_g, msgSize, buffer);
     if (status != 0)
     {
-        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
+        LOG_A(ENB_SS, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
               status, acpGetSocketFd(ctx_g));
         acpFree(buffer);
         return;
     }
     else
     {
-        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg Success \n");
+        LOG_A(ENB_SS, "[SS-PORTMAN] acpSendMsg Success \n");
     }
     // Free allocated buffer
     acpFree(buffer);
 }
 
-//------------------------------------------------------------------------------
-// Function to send response to the SIDL client
+/*
+ * Function : ss_port_man_send_cnf
+ * Description: Function to send response to the TTCN/SIDL CLient
+ * In :
+ * req  -
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 void ss_port_man_send_data(
     instance_t instance,
     task_id_t task_id,
@@ -224,24 +251,32 @@ void ss_port_man_send_data(
     status = acpSendMsg(ctx_g, msgSize, buffer);
     if (status != 0)
     {
-        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
+        LOG_A(ENB_SS, "[SS-PORTMAN] acpSendMsg failed. Error : %d on fd: %d\n",
               status, acpGetSocketFd(ctx_g));
         acpFree(buffer);
         return;
     }
     else
     {
-        LOG_A(RRC, "[SS-PORTMAN] acpSendMsg Success \n");
+        LOG_A(ENB_SS, "[SS-PORTMAN] acpSendMsg Success \n");
     }
     // Free allocated buffer
     acpFree(buffer);
 }
 
-//------------------------------------------------------------------------------
+/*
+ * Function : ss_eNB_port_man_init
+ * Description: Function to initilize the portman task
+ * In :
+ * req  -
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 void ss_eNB_port_man_init(void)
 {
     IpAddress_t ipaddr;
-    LOG_A(RRC, "[SS-PORTMAN] Starting System Simulator Manager\n");
+    LOG_A(ENB_SS, "[SS-PORTMAN] Starting System Simulator Manager\n");
 
     const char *hostIp;
     hostIp = RC.ss.hostIp;
@@ -266,18 +301,26 @@ void ss_eNB_port_man_init(void)
     int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_g);
     if (ret < 0)
     {
-        LOG_A(RRC, "[SS-PORTMAN] Connection failure err=%d\n", ret);
+        LOG_A(ENB_SS, "[SS-PORTMAN] Connection failure err=%d\n", ret);
         return;
     }
     int fd1 = acpGetSocketFd(ctx_g);
-    LOG_A(RRC, "[SS-PORTMAN] Connection performed : %d\n", fd1);
+    LOG_A(ENB_SS, "[SS-PORTMAN] Connection performed : %d\n", fd1);
 
     //itti_subscribe_event_fd(TASK_SS_PORTMAN, fd1);
 
     itti_mark_task_ready(TASK_SS_PORTMAN);
 }
 
-//------------------------------------------------------------------------------
+/*
+ * Function : ss_eNB_read_from_socket
+ * Description: Function to read from the Socket
+ * In :
+ * req  -
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
 {
     struct SYSTEM_CTRL_REQ *req = NULL;
@@ -316,7 +359,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
         //Send Dummy Wake up ITTI message to SRB task.
         if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
         {
-            LOG_A(RRC,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
+            LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, INSTANCE_DEFAULT, SS_RRC_PDU_IND);
             if (message_p)
             {
@@ -330,14 +373,14 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
                 int send_res = itti_send_msg_to_task(TASK_SS_SRB, INSTANCE_DEFAULT, message_p);
                 if (send_res < 0)
                 {
-                    LOG_A(RRC, "Error in itti_send_msg_to_task");
+                    LOG_A(ENB_SS, "Error in itti_send_msg_to_task");
                 }
             }
         }
     }
     else
     {
-        LOG_A(RRC, "[SS-PORTMAN] received msg %d from the client.\n", userId);
+        LOG_A(ENB_SS, "[SS-PORTMAN] received msg %d from the client.\n", userId);
         if (acpSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
             return;
 
@@ -358,7 +401,15 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
     return;
 }
 
-//------------------------------------------------------------------------------
+/*
+ * Function : ss_port_man_process_itti_msg
+ * Description: Function to process ITTI messages received from the TTCN
+ * In :
+ * req  - request recived from the TTCN
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 void *ss_port_man_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
@@ -370,13 +421,13 @@ void *ss_port_man_process_itti_msg(void *notUsed)
     if (received_msg != NULL)
     {
 
-        LOG_A(RRC, "[SS-PORTMAN] Received a message id : %d \n",
+        LOG_A(ENB_SS, "[SS-PORTMAN] Received a message id : %d \n",
               ITTI_MSG_ID(received_msg));
         switch (ITTI_MSG_ID(received_msg))
         {
         case SS_SET_TIM_INFO:
         {
-            LOG_A(RRC, "Received timing info \n");
+            LOG_A(ENB_SS, "Received timing info \n");
             ss_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_set_timinfo);
             result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
         }
@@ -384,7 +435,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
 
         case SS_SYS_PORT_MSG_CNF:
         {
-            LOG_A(RRC, "Received SS_SYS_PORT_MSG_CNF \n");
+            LOG_A(ENB_SS, "Received SS_SYS_PORT_MSG_CNF \n");
             ss_port_man_send_cnf(*(SS_SYS_PORT_MSG_CNF(received_msg).cnf));
             result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
         }
@@ -395,7 +446,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
             break;
 
         default:
-            LOG_A(RRC, "Received unhandled message %d:%s\n",
+            LOG_A(ENB_SS, "Received unhandled message %d:%s\n",
                   ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
             break;
         }
@@ -410,7 +461,16 @@ void *ss_port_man_process_itti_msg(void *notUsed)
     return NULL;
 }
 
-//------------------------------------------------------------------------------
+/*
+ * Function : ss_eNB_port_man_task
+ * Description: The TASK_SS_PORTMAN main function handler. Initilizes
+ * the TASK_SS_PORTMAN state machine Init_State. Invoke the itti message
+ * In :
+ * req  - request recived from the TTCN
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
 void *ss_eNB_port_man_task(void *arg)
 {
     ss_eNB_port_man_init();
