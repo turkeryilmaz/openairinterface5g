@@ -35,7 +35,6 @@
 
 #include "common/utils/LOG/log.h"
 #include "rrc_eNB_UE_context.h"
-#include "msc.h"
 
 //------------------------------------------------------------------------------
 void

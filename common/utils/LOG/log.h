@@ -159,7 +159,7 @@ extern "C" {
 #define DEBUG_RLC          (1<<13)
 #define DEBUG_DLSCH_DECOD  (1<<14)
 #define UE_TIMING          (1<<20)
-
+#define DEBUG_ENB_SS       (1<<21)
 
 #define LOG_MASKMAP_INIT {\
     {"PRACH",       DEBUG_PRACH},\
@@ -178,6 +178,7 @@ extern "C" {
     {"RLC",         DEBUG_RLC},\
     {"DLSCH_DECOD", DEBUG_DLSCH_DECOD},\
     {"UE_TIMING",   UE_TIMING},\
+    {"ENB_SS",      DEBUG_ENB_SS},\
     {NULL,-1}\
   }
 
@@ -225,6 +226,7 @@ typedef enum {
   RAL_ENB,
   RAL_UE,
   ENB_APP,
+  ENB_SS,
   MCE_APP,
   MME_APP,
   FLEXRAN_AGENT,
