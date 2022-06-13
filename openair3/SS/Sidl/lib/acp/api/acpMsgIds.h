@@ -40,6 +40,7 @@ enum acpMsgLocalId {
 	ACP_LID_DrbProcessToSS = 0x90040601,
 	ACP_LID_HandshakeHandleFromSS = 0x90040700,
 	ACP_LID_HandshakeHandleToSS = 0x90040701,
+	ACP_LID_SysIndProcessToSS = 0x90040800
 };
 
 SIDL_END_C_INTERFACE

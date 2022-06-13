@@ -77,38 +77,7 @@ SIDL_UNION_BEGIN(HarqProcessAssignment_Type) {
         Null_Type Automatic;
 } SIDL_UNION_END;
 
-struct MAC_CTRL_PowerHeadRoom_Type {
-    B2_Type Reserved;
-    B6_Type Value;
-};
-
-struct ScellBitMap_Type {
-    B7_Type Value;
-    B1_Type Reserved;
-};
-
 typedef struct ScellBitMap_Type MAC_CTRL_ScellActDeact_Type;
-
-struct PH_Record_Type {
-    B1_Type P_Bit;
-    B1_Type V_Bit;
-    B6_Type Valve;
-    SIDL_OPTIONAL(B2_Type, Reserved);
-    SIDL_OPTIONAL(B6_Type, PCMaxc);
-};
-
-typedef SIDL_DYNAMIC_OF_STRUCT(PH_Record_Type, PH_RecordList_Type); /* 1..9 */
-typedef SIDL_DYNAMIC_OF_STRUCT(PH_Record_Type, DC_PH_RecordList_Type); /* 1..10 */
-
-struct MAC_CTRL_ExtPowerHeadRoom_Type {
-    struct ScellBitMap_Type EPH_Octet1;
-    PH_RecordList_Type PH_RecordList;
-};
-
-struct MAC_CTRL_DC_PowerHeadRoom_Type {
-    struct ScellBitMap_Type DC_PH_Octet1;
-    DC_PH_RecordList_Type DC_PH_RecordList;
-};
 
 struct MAC_CTRL_ElementList_Type {
     SIDL_OPTIONAL_OF_STRUCT(MAC_CTRL_ShortBSR_Type, ShortBSR);
