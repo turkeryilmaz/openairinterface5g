@@ -16,15 +16,11 @@
 
 #pragma once
 
-// SIDL keywords.
-#include "msg.sidl"
+#include "SIDL_EUTRA_SYSIND_PORT.h"
+#include "adbg.h"
 
-typedef uint8_t OCTET_STRING_ELEMENT;
-typedef uint8_t BIT_STRING_ELEMENT; // the whole octet contains a bit flag 0 or 1
-typedef char CHAR_STRING_ELEMENT;
+SIDL_BEGIN_C_INTERFACE
 
-typedef SIDL_DYNAMIC(OCTET_STRING_ELEMENT, OCTET_STRING);
-typedef SIDL_DYNAMIC(BIT_STRING_ELEMENT, BIT_STRING);
-typedef SIDL_DYNAMIC(CHAR_STRING_ELEMENT, CHAR_STRING);
+void adbgSysIndProcessToSSLogOut(acpCtx_t _ctx, const struct SYSTEM_IND* ToSS);
 
-typedef SIDL_DYNAMIC(int32_t, PREGEN_RECORD_OF_INTEGER);
+SIDL_END_C_INTERFACE

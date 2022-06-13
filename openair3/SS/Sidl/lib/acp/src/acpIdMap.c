@@ -25,6 +25,7 @@ const struct acpIdMapItf acpItfMap[] = {
 	{ "Vng", 5, 12, 1 },
 	{ "Drb", 6, 13, 2 },
 	{ "Handshake", 7, 15, 2 },
+	{ "SysInd", 8, 17, 1 },
 };
 
 const unsigned int acpItfMapSize = sizeof(acpItfMap) / sizeof(acpItfMap[0]);
@@ -63,7 +64,9 @@ struct acpIdMapService acpIdMap[] = {
 
 	// Handshake (internale) part
 	{ "HandshakeHandleFromSS", 0x90040700, (unsigned int)-1, 1 },
-	{ "HandshakeHandleToSS", 0x90040701, (unsigned int)-1, 0 }
+	{ "HandshakeHandleToSS", 0x90040701, (unsigned int)-1, 0 },
+
+	{ "SysIndProcessToSS", 0x90040800, (unsigned int)-1, 0},
 };
 
 const unsigned int acpIdMapSize = sizeof(acpIdMap) / sizeof(acpIdMap[0]);

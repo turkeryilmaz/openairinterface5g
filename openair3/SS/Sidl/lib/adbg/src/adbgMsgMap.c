@@ -18,6 +18,7 @@
 
 #include "serTest.h"
 #include "serSys.h"
+#include "serSysInd.h"
 #include "serSysSrb.h"
 #include "serVng.h"
 #include "serDrb.h"
@@ -25,6 +26,7 @@
 
 #include "adbgTest.h"
 #include "adbgSys.h"
+#include "adbgSysInd.h"
 #include "adbgSysSrb.h"
 #include "adbgVng.h"
 #include "adbgDrb.h"
@@ -175,8 +177,21 @@ void adbgMsgLogOutArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const u
 		}
 		return;
 	}
+
 	/* Handshake */
 	if (id == 0x90040701 /* HandshakeHandleToSS */) {
+		return;
+	}
+
+	if (id == 0x90040800 /* SysIndProccessToSS */) {
+		struct SYSTEM_IND* ToSS = NULL;
+		if (serSysIndProcessToSSDecClt(buffer, size, NULL, 0, &ToSS) == 0) {
+			adbgSysIndProcessToSSLogOut(ctx, ToSS);
+			serSysIndProcessToSSFreeClt(ToSS);
+		} else {
+			adbgPrintLog(ctx, "cannot decode buffer");
+			adbgPrintLog(ctx, NULL);
+		}
 		return;
 	}
 	SIDL_ASSERT(0);

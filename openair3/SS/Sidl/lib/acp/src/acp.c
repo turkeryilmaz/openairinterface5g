@@ -29,9 +29,9 @@
 #include "acpInternal.h"
 #include "adbg.h"
 #include "adbgMsg.h"
-
 #include "acpVer.h"
 #include "acpHandshake.h"
+
 
 // #define ACP_LOG_DEBUG(...) printf(__VA_ARGS__);
 #define ACP_LOG_DEBUG(...)
@@ -81,6 +81,16 @@ static bool acpPeerHandshaked(struct acpCtx* ctx, int peer)
 	return false;
 }
 
+static bool acpAnyPeerHandshaked(struct acpCtx* ctx)
+{
+	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
+		if (ctx->peersHandshaked[i] > 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static void acpPeerSetHandshaked(struct acpCtx* ctx, int peer, int flag)
 {
 	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
@@ -90,6 +100,7 @@ static void acpPeerSetHandshaked(struct acpCtx* ctx, int peer, int flag)
 		}
 	}
 }
+
 
 // ___________________________ / Interface // ___________________________
 
@@ -264,6 +275,8 @@ int acpGetMsgLocalId(size_t size, const unsigned char* buffer, enum acpMsgLocalI
 
 	return 0;
 }
+
+#ifdef ACP_USE_HANDSHAKE
 
 static int acpRecvMsgInternal(int sock, size_t size, unsigned char* buffer)
 {
@@ -482,6 +495,7 @@ static int acpConnectToSrv(struct acpCtx* ctx, int sock)
 	return ret;
 }
 
+#endif
 
 int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 {
@@ -617,6 +631,7 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 	int type = (int)((buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | (buffer[7]));
 	ACP_DEBUG_PREFIX_CLOG(ctx, "Receiving message '%s' (userId: %d, type: 0x%x)\r\n", acpGetMsgName(*size, buffer), userId, type);
 
+#ifdef ACP_USE_HANDSHAKE
 	if (ACP_CTX_CAST(ctx)->isServer) {
 		bool handshaked = acpPeerHandshaked(ctx, sock);
 		if(!handshaked && type != (int)ACP_LID_HandshakeHandleFromSS) {
@@ -629,7 +644,7 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 			struct AcpHandshake_Type *hs;
 
 			if(acpHandshakeHandleFromSSDecSrv(ctx, buffer, length + ACP_HEADER_SIZE, &hs) == 0) {
-				ACP_DEBUG_CLOG(ctx, "ACP version: cli_version=[%s, cksm: %s] srv_version=[%s, chksm: %s].", hs->acpVersion, hs->acpVerCksm, ACP_VERSION, ACP_VERSION_CKSM);
+								ACP_DEBUG_CLOG(ctx, "ACP version: cli_version=[%s, cksm: %s] srv_version=[%s, chksm: %s].", hs->acpVersion, hs->acpVerCksm, ACP_VERSION, ACP_VERSION_CKSM);
 				userId = acpHandleHandshakeFromClient(ctx, sock, hs);
 				acpHandshakeHandleFromSSFreeSrv(hs);
 			} else {
@@ -638,6 +653,7 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 			}
 		}
 	}
+#endif
 
 	if (userId >= 0) {
 #ifdef ACP_DEBUG
@@ -652,7 +668,7 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 {
 	SIDL_ASSERT(buffer);
 
-	ACP_DEBUG_ENTER_TRACE_CLOG(ctx);
+	// ACP_DEBUG_ENTER_TRACE_CLOG(ctx);
 
 	if (!acpCtxIsValid(ctx)) {
 		return -ACP_ERR_INVALID_CTX;
@@ -660,6 +676,11 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 
 	int sock = ACP_CTX_CAST(ctx)->sock;
 	if (ACP_CTX_CAST(ctx)->isServer) {
+
+		if ( ACP_CTX_CAST(ctx)->lastPeer == -1) {
+			ACP_CTX_CAST(ctx)->lastPeer = acpSocketAccept(sock);
+		}
+
 		sock = ACP_CTX_CAST(ctx)->lastPeer;
 		if (sock == -1) {
 			ACP_DEBUG_EXIT_TRACE_CLOG(ctx, "ACP_ERR_INVALID_CTX");
@@ -683,7 +704,7 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 	}
 	*/
 
-	ACP_DEBUG_EXIT_TRACE_CLOG(ctx, NULL);
+	// ACP_DEBUG_EXIT_TRACE_CLOG(ctx, NULL);
 	return 0;
 }
 
@@ -701,6 +722,8 @@ int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 		return -ACP_ERR_SOCKCONN_ABORTED;
 	}
 
+#ifdef ACP_USE_HANDSHAKE
+
 	int ret = acpConnectToSrv(ACP_CTX_CAST(ctx), sock);
 	if (ret < 0) {
 		acpSocketClose(sock);
@@ -715,6 +738,7 @@ int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 		acpSocketClose(sock);
 		return -ACP_ERR_NOT_CONNECTED;
 	}
+#endif
 #endif
 
 	ACP_CTX_CAST(ctx)->sock = sock;
@@ -802,7 +826,9 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 		ACP_DEBUG_EXIT_LOG("ACP_ERR_INVALID_CTX");
 		return -ACP_ERR_INVALID_CTX;
 	}
-
+#ifdef ACP_USE_HANDSHAKE
+	bool isOnlyNotify = true;
+#endif
 	if (msgTable) {
 		while (msgTable->name) {
 			int err = acpSetMsgId(_ctx, msgTable->name, msgTable->userId);
@@ -811,6 +837,18 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 				ACP_DEBUG_EXIT_LOG("acpSetMsgId failed");
 				return err;
 			}
+#ifdef ACP_USE_HANDSHAKE
+			err = acpCtxGetMsgKindFromName(msgTable->name);
+			if (err < 0) {
+				acpDeleteCtx(_ctx);
+				ACP_DEBUG_EXIT_LOG("acpSetMsgId failed");
+				return err;
+			}
+
+			if (err > 0) {
+				isOnlyNotify = false;
+			}
+#endif
 			msgTable++;
 		}
 	}
@@ -823,6 +861,18 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 	}
 
 	*ctx = _ctx;
+
+#ifdef ACP_USE_HANDSHAKE
+	if (isOnlyNotify) {
+		int ret = -1;
+		ACP_DEBUG_CLOG(*ctx, "Wait for handshake\r\n");
+		while(!acpAnyPeerHandshaked(ACP_CTX_CAST(*ctx)) || ret > 0) {
+			uint8_t buffer[256] = {};
+			size_t sz = sizeof(buffer);
+			ret = acpRecvMsg(*ctx, &sz, buffer);
+		}
+	}
+#endif
 
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return 0;
