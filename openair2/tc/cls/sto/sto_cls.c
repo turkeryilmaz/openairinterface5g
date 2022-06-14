@@ -163,26 +163,23 @@ five_tuple_t extract_five_tuple(uint8_t const* data, size_t sz)
 
     struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
 
-    struct in_addr paddr;
-    paddr.s_addr = hdr->saddr;
-
-    char *strAdd2 = inet_ntoa(paddr);
-    printf("IP source address %s \n", strAdd2  );
-
-    paddr.s_addr = hdr->daddr;
-    strAdd2 = inet_ntoa(paddr);
-
-    printf("IP dst address %s \n", strAdd2  );
+//    struct in_addr paddr;
+//    paddr.s_addr = hdr->saddr;
+//    char *strAdd2 = inet_ntoa(paddr);
+//    printf("IP source address %s \n", strAdd2  );
+//    paddr.s_addr = hdr->daddr;
+//    strAdd2 = inet_ntoa(paddr);
+//    printf("IP dst address %s \n", strAdd2  );
 
     ans.sport = ntohs(tcp->source);
     ans.dport = ntohs(tcp->dest);
-    printf("Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), ans.sport, ans.dport);
+//    printf("Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), ans.sport, ans.dport);
     break;
   }
   case IPPROTO_UDP: {
-    struct udphdr *udp = (struct udphdr *)hdr;
-    ans.sport = udp->source;
-    ans.dport = udp->dest;
+    struct udphdr *udp = (struct udphdr*)((uint32_t*)hdr + hdr->ihl);
+    ans.sport = ntohs(udp->source);
+    ans.dport = ntohs(udp->dest);
     break;
   }
   case IPPROTO_ICMP: {
@@ -204,19 +201,19 @@ queue_t* sto_cls_dst_queue(cls_t* cls_base, const uint8_t* data, size_t size)
 
   five_tuple_t tup = extract_five_tuple(data, size);
 
-//  uint32_t hash = murmur3_32((uint8_t*)&hdr->saddr, sizeof(uint32_t), hdr->daddr); // general purpose hashing function. Taken directly from https://en.wikipedia.org/wiki/MurmurHash
-//
   uint32_t seed = 724553; // prime number 
   uint32_t hash = murmur3_32((uint8_t*)&tup, sizeof(tup), seed); // general purpose hashing function. See https://en.wikipedia.org/wiki/MurmurHash
   const size_t num_queues = seq_size(&cls->queues);
   size_t pos = hash % num_queues; 
 
   // Shitty, just for visualization purposes
-  if(tup.protocol == IPPROTO_ICMP && num_queues > 1){
+  if(tup.sport > 9299 && tup.sport < 9350 && num_queues > 1){
     pos = 1; 
-    printf("ICMP traffic detected going to queue id = %lu \n", pos); 
-  }else {
+    printf( "Sto_cls protocol %d src_addr %d dst_add %d src_port %d dst_port %d to queue %d \n",tup.protocol, tup.saddr, tup.daddr, tup.sport, tup.dport, pos);
+//    printf("ICMP traffic detected going to queue id = %lu \n", pos); 
+  } else {
      pos = 0; 
+    printf( "Sto_cls  protocol %d src_addr %d dst_add %d src_port %d dst_port %d to queue %d \n",tup.protocol, tup.saddr, tup.daddr, tup.sport, tup.dport, pos);
   }
 
   return *(queue_t**)seq_at(&cls->queues, pos);

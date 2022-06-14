@@ -87,14 +87,14 @@ bool pkt_matches_L4_filter(const struct iphdr *hdr, const L4_filter_t *flt) {
   switch (hdr->protocol) {
   case IPPROTO_TCP: {
     struct tcphdr *tcp = (struct tcphdr *)hdr;
-    src_port = tcp->source;
-    dst_port = tcp->dest;
+    src_port = ntohs(tcp->source);
+    dst_port = ntohs(tcp->dest);
     break;
   }
   case IPPROTO_UDP: {
     struct udphdr *udp = (struct udphdr *)hdr;
-    src_port = udp->source;
-    dst_port = udp->dest;
+    src_port = ntohs(udp->source);
+    dst_port = ntohs(udp->dest);
     break;
   }
   case IPPROTO_ICMP: {

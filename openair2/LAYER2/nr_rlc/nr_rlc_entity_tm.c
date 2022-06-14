@@ -82,7 +82,7 @@ static int generate_tx_pdu(nr_rlc_entity_tm_t *entity, char *buffer, int size)
   /* update buffer status */
   entity->common.bstatus.tx_size -= sdu->size;
 
-  nr_rlc_free_sdu_segment(sdu);
+  nr_rlc_free_sdu_segment(NULL, sdu);
 
   return ret;
 }

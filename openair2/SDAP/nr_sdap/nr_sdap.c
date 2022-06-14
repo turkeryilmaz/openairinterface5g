@@ -20,6 +20,7 @@
  */
 
 #include "nr_sdap.h"
+#include "openair2/tc/time/time.h"
 
 boolean_t sdap_data_req(protocol_ctxt_t *ctxt_p,
                         const srb_flag_t srb_flag,
@@ -42,6 +43,9 @@ boolean_t sdap_data_req(protocol_ctxt_t *ctxt_p,
     return 0;
   }
 
+
+  int64_t now = time_now_us();
+
   boolean_t ret = sdap_entity->tx_entity(sdap_entity,
                                          ctxt_p,
                                          srb_flag,
@@ -55,6 +59,8 @@ boolean_t sdap_data_req(protocol_ctxt_t *ctxt_p,
                                          destinationL2Id,
                                          qfi,
                                          rqi);
+
+  printf("PDCP + SDAP latency %ld \n", time_now_us() - now );
   return ret;
 }
 

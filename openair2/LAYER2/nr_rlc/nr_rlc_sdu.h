@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+#include "openair2/LAYER2/nr_rlc/nr_rlc_entity.h"
+
 typedef struct nr_rlc_sdu_t {
   int sn;
   int upper_layer_id;
@@ -52,7 +54,7 @@ nr_rlc_sdu_segment_t *nr_rlc_new_sdu(
     char *buffer, int size,
     int upper_layer_id);
 /* return 1 if the SDU has been freed too, 0 if not (more segments to free) */
-int nr_rlc_free_sdu_segment(nr_rlc_sdu_segment_t *sdu);
+int nr_rlc_free_sdu_segment(nr_rlc_statistics_t* stats, nr_rlc_sdu_segment_t *sdu);
 void nr_rlc_sdu_segment_list_append(nr_rlc_sdu_segment_t **list,
                                     nr_rlc_sdu_segment_t **end,
                                     nr_rlc_sdu_segment_t *sdu);

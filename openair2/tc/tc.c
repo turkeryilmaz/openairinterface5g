@@ -5,6 +5,8 @@
 #include "pkt.h"
 #include "plc_shp_pair.h"
 
+#include "time/time.h"
+
 #include <assert.h>
 #include <dlfcn.h>
 #include <stdatomic.h>
@@ -362,6 +364,8 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
   assert(data != NULL);
   assert(sz != 0);
 
+  //int64_t now = time_now_us();
+
   lock_guard(&tc->mtx);
 
   pkt_t* p = init_pkt(data, sz);
@@ -378,7 +382,7 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
     return ;
   } 
 
-  printf("Pushing into queue id = %d\n", plc_q.q->id);
+//  printf("Pushing into queue id = %d\n", plc_q.q->id);
 
   // Ingress the packet in the queue
   plc_q.q->push(plc_q.q, p, sz);
@@ -389,6 +393,8 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
   // inform the classifier
   if(cls_q.cls != NULL)
    cls_q.cls->pkt_fwd(cls_q.cls); 
+
+  //printf("TC Ingress delay %ld \n", time_now_us() - now);
 }
 
 static
@@ -409,6 +415,7 @@ void tc_egress_pkts(tc_t* tc)
 
   sch_t* sch = tc->sch;
   for(;;){
+    //int64_t now = time_now_us(); 
     // Scheduler -> output from which queue
     queue_t* q = sch->next_queue(sch); 
     if(q == NULL || q->size(q) == 0) {
@@ -462,13 +469,15 @@ void tc_egress_pkts(tc_t* tc)
     // Pop the packet from the queue
     assert(q->size(q) > 0); 
 
-    size_t const sz_before = q->size(q);
+    //size_t const sz_before = q->size(q);
     q->pop(q);
-    size_t const sz_after = q->size(q);
+    //size_t const sz_after = q->size(q);
 
     //assert(sz_after == sz_before -1);
 
     tc->egress_fun(tc->rnti, tc->rb_id, next_pkt->data, next_pkt->sz);
+
+ //   printf("TC Egress delay %ld \n", time_now_us() - now);
 
     free_pkt(next_pkt);
     //printf("Dequeuing packet from queue id = %d with size = %lu \n", q->id ,q->size(q) );
@@ -647,6 +656,9 @@ void tc_add_q_impl(tc_t* tc, const char* file_path, const char* init_func)
   ++queue_id;
   assert(q != NULL);
   q->handle = handle;
+
+  assert(q->id < 128 && "128 queues added or bug?");
+  assert( queue_id < 128 && "128 queues added or bug?");
 
   lock_guard(&tc->mtx);
 
@@ -894,12 +906,15 @@ tc_rc_t tc_mod_pcr(tc_t* tc , tc_mod_ctrl_pcr_t const* mod)
 
     tc->pcr->mod(tc->pcr, mod);
   } else if(mod->type == TC_PCR_5G_BDP){
+//     int64_t now = time_now_us();
+//     printf("ctrl elapsed time %ld \n", now - mod->bdp.tstamp);
+    
     const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libbdp_pcr.so";
     const char* pcr_init_func = "bdp_pcr_init";
     load_pcr(tc,pcr_file_path, pcr_init_func); 
     printf("PCR BDP loaded \n");
 
-    tc->pcr->mod(tc->pcr, mod);
+//   // tc->pcr->mod(tc->pcr, mod);
   } else {
     assert(0!=0 && "Unknwon type");
   }
@@ -964,12 +979,12 @@ void tc_load_defaults(tc_t* tc)
 //  const char* cls_init_func = "rr_cls_init";
 
   // Stocastic classifier
-  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libsto_cls.so"; 
-  const char* cls_init_func = "sto_cls_init";
+//  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libsto_cls.so"; 
+//  const char* cls_init_func = "sto_cls_init";
 
   // OSI classifier
-//  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libosi_cls.so"; 
-//  const char* cls_init_func = "osi_cls_init";
+  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libosi_cls.so"; 
+  const char* cls_init_func = "osi_cls_init";
 
   load_cls(tc,q,cls_file_path, cls_init_func);
   printf("CLS added \n");

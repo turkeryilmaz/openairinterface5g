@@ -17,7 +17,7 @@
 #include <unistd.h>
 
 // __cleanup__ attributte as well as GLib library 
-#define QUEUE_MAX_CAP_NAIVE 16384
+#define QUEUE_MAX_CAP_NAIVE 163840
 
 typedef struct
 {

@@ -1,7 +1,7 @@
 /*
  * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
  * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
+l * this work for additional information regarding copyright ownership.
  * The OpenAirInterface Software Alliance licenses this file to You under
  * the OAI Public License, Version 1.1  (the "License"); you may not use this file
  * except in compliance with the License.
@@ -36,6 +36,8 @@
 #include "NR_MAC_COMMON/nr_mac_extern.h"
 #include "LAYER2/NR_MAC_gNB/mac_proto.h"
 
+#include "openair2/tc/time/time.h"
+
 /*NFAPI*/
 #include "nfapi_nr_interface.h"
 /*TAG*/
@@ -44,6 +46,19 @@
 /*Softmodem params*/
 #include "executables/softmodem-common.h"
 #include "../../../nfapi/oai_integration/vendor_ext.h"
+
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+#include <netinet/in.h>
+#include <sys/stat.h>
 
 ////////////////////////////////////////////////////////
 /////* DLSCH MAC PDU generation (6.1.2 TS 38.321) */////
@@ -397,6 +412,84 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
   return offset;
 }
 
+
+static
+pthread_once_t udp_is_initialized = PTHREAD_ONCE_INIT; 
+
+static
+pthread_t udp_thread;
+
+
+static
+FILE * g_fp = NULL;
+
+static
+int64_t g_last_time = 0;
+
+static 
+bool fp_openned = false;
+
+static
+int get_next_mcs(void)
+{
+  size_t len = 0;
+  char * line = NULL;
+  ssize_t read = getline(&line, &len, g_fp);
+  if(read == -1) return 10;
+
+  int const new_mcs = atoi(line);
+  printf("Getting new MCS %d time %ld \n", new_mcs, time_now_us() );
+
+  if (line)
+     free(line);
+
+  return new_mcs;
+}
+
+static
+void* udp_server(void* arg)
+{
+  const int port = 8086;
+  char buf[64] = {0};
+
+  int const sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+  assert(sockfd != -1 && "Error creating socket");
+
+  struct sockaddr_in serv_addr = {.sin_family = AF_INET,
+    .sin_port = htons(port),
+    .sin_addr.s_addr = INADDR_ANY};
+
+  int rc = bind(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr));
+  assert(rc != -1 && "Error while binding. Address already in use?");
+
+//  while(1){
+    struct sockaddr_in cli_addr = {0};
+    socklen_t len = sizeof(cli_addr); 
+    rc = recvfrom(sockfd, buf, 64, 0, (struct sockaddr *)&cli_addr,&len);
+    assert(rc > -1 && rc < 64 && "Buffer overflow");
+
+
+   g_fp = fopen("/home/tiwa/mir/flexric-tc-last/udp/UE_0_MCS.csv", "r");
+   if (g_fp == NULL)
+       exit(EXIT_FAILURE);
+
+  g_last_time = time_now_us(); 
+
+  printf("UDP MCS started  at %ld\n", g_last_time );
+
+  fp_openned = true;
+
+  close(sockfd);
+  return NULL;
+}
+
+static
+void udp_initialize(void)
+{
+  pthread_create( &udp_thread, NULL, udp_server, NULL );
+}
+
+
 #define BLER_UPDATE_FRAME 10
 #define BLER_FILTER 0.9f
 int get_mcs_from_bler(module_id_t mod_id, int CC_id, frame_t frame, sub_frame_t slot, int UE_id, int mcs_table) {
@@ -458,15 +551,24 @@ int get_mcs_from_bler(module_id_t mod_id, int CC_id, frame_t frame, sub_frame_t 
   if (bler_stats->rd2_bler > nrmac->dl_rd2_bler_threshold && old_mcs > 6) {
     new_mcs -= 2;
   } else if (bler_stats->rd2_bler < nrmac->dl_rd2_bler_threshold) {*/
+
   if (bler_stats->bler < nrmac->dl_bler_target_lower && old_mcs < max_mcs && dtx > 9)
     new_mcs += 1;
   else if (bler_stats->bler > nrmac->dl_bler_target_upper && old_mcs > 6)
     new_mcs -= 1;
 
-
+  pthread_once(&udp_is_initialized, udp_initialize);
   // [mir]: max mcs
-  if(new_mcs > 10)
-    new_mcs = 10;
+   if(fp_openned == true){
+     int64_t const now = time_now_us();
+     if(now - g_last_time > 20000 ){ // 20 ms
+       g_last_time = now; 
+       new_mcs = get_next_mcs();
+     }
+  } else {
+     if(new_mcs > 10)
+       new_mcs = 10;
+  }
 
 
   // else we are within threshold boundaries
@@ -1079,6 +1181,9 @@ nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(module_id_t module_id, int CC_id) {
 void nr_schedule_ue_spec(module_id_t module_id,
                          frame_t frame,
                          sub_frame_t slot) {
+
+
+
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_id];
 
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
@@ -1459,7 +1564,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
                                               (char *)buf+sizeof(NR_MAC_SUBHEADER_LONG),
                                               0,
                                               0);
-            printf("%4d.%2d RNTI %04x: %d bytes from %s %d (ndata %d, remaining size %ld)\n",
+            /*printf("%4d.%2d RNTI %04x: %d bytes from %s %d (ndata %d, remaining size %ld)\n",
                   frame,
                   slot,
                   rnti,
@@ -1468,7 +1573,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
                   lcid,
                   ndata,
                   bufEnd-buf-+sizeof(NR_MAC_SUBHEADER_LONG));
-
+*/
             if (len == 0)
               break;
 

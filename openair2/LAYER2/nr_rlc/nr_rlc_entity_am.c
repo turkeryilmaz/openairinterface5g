@@ -484,7 +484,7 @@ process_wait_list_head:
         prev_wait_list->next = cur_wait_list;
         if (cur_wait_list == entity->wait_end)
           end_wait_list = prev_wait_list;
-        if (nr_rlc_free_sdu_segment(cur)) {
+        if (nr_rlc_free_sdu_segment(NULL, cur)) {
           entity->tx_size -= sdu_size;
           entity->common.sdu_successful_delivery(
               entity->common.sdu_successful_delivery_data,
@@ -545,7 +545,7 @@ process_retransmit_list_head:
         /* update buffer status */
         entity->common.bstatus.retx_size -= compute_pdu_header_size(entity, cur)
                                             + cur->size;
-        if (nr_rlc_free_sdu_segment(cur)) {
+        if (nr_rlc_free_sdu_segment(NULL, cur)) {
           entity->tx_size -= sdu_size;
           entity->common.sdu_successful_delivery(
               entity->common.sdu_successful_delivery_data,
@@ -605,7 +605,7 @@ nacks_done:
     if (cur_wait_list == entity->wait_end)
       end_wait_list = prev_wait_list;
     cur_wait_list = cur_wait_list->next;
-    if (nr_rlc_free_sdu_segment(cur)) {
+    if (nr_rlc_free_sdu_segment(NULL, cur)) {
       entity->tx_size -= sdu_size;
       entity->common.sdu_successful_delivery(
           entity->common.sdu_successful_delivery_data,
@@ -625,7 +625,7 @@ nacks_done:
     /* update buffer status */
     entity->common.bstatus.retx_size -= compute_pdu_header_size(entity, cur)
                                         + cur->size;
-    if (nr_rlc_free_sdu_segment(cur)) {
+    if (nr_rlc_free_sdu_segment(NULL, cur)) {
       entity->tx_size -= sdu_size;
       entity->common.sdu_successful_delivery(
           entity->common.sdu_successful_delivery_data,
@@ -1890,7 +1890,7 @@ void nr_rlc_entity_am_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id)
                                     + cur->size;
 
   entity->tx_size -= cur->sdu->size;
-  nr_rlc_free_sdu_segment(cur);
+  nr_rlc_free_sdu_segment(NULL, cur);
 }
 
 static void clear_entity(nr_rlc_entity_am_t *entity)

@@ -56,6 +56,8 @@
 #include "LAYER2/nr_rlc/nr_rlc_entity.h"
 
 
+#include "openair2/tc/time/time.h"
+
 #include <errno.h>
 #include <string.h>
 
@@ -394,6 +396,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   // This schedules the DCI for Uplink and subsequently PUSCH
   nr_schedule_ulsch(module_idP, frame, slot);
 
+  int64_t now = time_now_us();
   // This schedules the DCI for Downlink and PDSCH
   start_meas(&gNB->schedule_dlsch);
   nr_schedule_ue_spec(module_idP, frame, slot); 
@@ -407,4 +410,9 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   stop_meas(&RC.nrmac[module_idP]->eNB_scheduler);
   
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ULSCH_SCHEDULER,VCD_FUNCTION_OUT);
+
+  int64_t elapsed_time = time_now_us() - now; 
+  if(elapsed_time > 0)
+    printf("Time_spent MAC %ld \n", elapsed_time);
+  
 }

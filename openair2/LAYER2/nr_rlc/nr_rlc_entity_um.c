@@ -497,10 +497,17 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   pdu_header_size = compute_pdu_header_size(entity, sdu);
 
   /* not enough room for at least one byte of data? do nothing */
-  if (pdu_header_size + 1 > size){
+  if (  pdu_header_size + 1 > size){
     printf("not enough room for at least one byte of data? do nothing \n");
     return 0;
   }
+
+  // [mir]: Save the BW
+ if(pdu_header_size + sdu->size > size){
+//    //printf("pdu_size > size %d %d so returning to avoid RLC segmentation \n", pdu_size, size);
+    return 0;
+ }
+
   entity->tx_list = entity->tx_list->next;
   if (entity->tx_list == NULL)
     entity->tx_end = NULL;
@@ -509,13 +516,14 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   sdu->sdu->sn = entity->tx_next;
 
   pdu_size = pdu_header_size + sdu->size;
-  int64_t now = time_now_us();
-  printf("sn %d pdu_size %d size %d time %ld \n", sdu->sdu->sn, pdu_size, size, now);
+  //int64_t now = time_now_us();
+  //printf("sn %d pdu_size %d size %d time %ld \n", sdu->sdu->sn, pdu_size, size, now);
 
   /* update buffer status */
   entity->common.bstatus.tx_size -= pdu_size;
+  entity->common.stats.txbuf_occ_bytes =  entity->common.bstatus.tx_size;
 
-  /* segment if necessary */
+   /* segment if necessary */
   if (pdu_size > size) {
     nr_rlc_sdu_segment_t *next_sdu;
     next_sdu = resegment(sdu, entity, size);
@@ -534,6 +542,8 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
     /* update buffer status */
     entity->common.bstatus.tx_size += compute_pdu_header_size(entity, next_sdu)
                                       + next_sdu->size;
+
+    entity->common.stats.txbuf_occ_bytes =  entity->common.bstatus.tx_size;
   }
 
   /* update tx_next if the SDU is an SDU segment and is the last */
@@ -544,15 +554,18 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   ret = serialize_sdu(entity, sdu, buffer, size);
 
 
-  uint8_t* a = (uint8_t*) buffer;
-  uint8_t* b = (uint8_t*)(buffer+1);
-  uint8_t* c = (uint8_t*)(buffer+2);
-  uint8_t* d = (uint8_t*)(buffer+3);
+  //uint8_t* a = (uint8_t*) buffer;
+  //uint8_t* b = (uint8_t*)(buffer+1);
+  //uint8_t* c = (uint8_t*)(buffer+2);
+  //uint8_t* d = (uint8_t*)(buffer+3);
 
-  printf("a %u b %u c %u d %u \n",*a, *b, *c, *d);
+  //printf("a %u b %u c %u d %u \n",*a, *b, *c, *d);
 
   entity->tx_size -= sdu->size;
-  nr_rlc_free_sdu_segment(sdu);
+
+
+
+  nr_rlc_free_sdu_segment(&entity->common.stats, sdu);
 
   entity->common.stats.txpdu_pkts++;
   entity->common.stats.txpdu_bytes += size;
@@ -614,6 +627,7 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   entity->tx_size += size;
   printf("RLC UM [mir]: tx_size %d \n", entity->tx_size);
 
+/*
   printf("RLC %p sz %d mui %d\n", buffer, size, sdu_id);
   struct iphdr* hdr = (struct iphdr*) (buffer + 3);
 
@@ -632,11 +646,11 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
 
     printf("IP dst address %s \n", strAdd2  );
 
-    uint16_t const sport = ntohs(tcp->source);
-    uint16_t const dport = ntohs(tcp->dest);
-    printf("RLC Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+    //uint16_t const sport = ntohs(tcp->source);
+    //uint16_t const dport = ntohs(tcp->dest);
+    //printf("RLC Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
   }
-
+*/
   sdu = nr_rlc_new_sdu(buffer, size, sdu_id);
 
   nr_rlc_sdu_segment_list_append(&entity->tx_list, &entity->tx_end, sdu);
@@ -644,6 +658,8 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   /* update buffer status */
   entity->common.bstatus.tx_size += compute_pdu_header_size(entity, sdu)
                                     + sdu->size;
+  entity->common.stats.txbuf_occ_bytes =  entity->common.bstatus.tx_size;
+
 }
 
 /*************************************************************************/
@@ -748,7 +764,9 @@ void nr_rlc_entity_um_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id)
   entity->common.bstatus.tx_size -= compute_pdu_header_size(entity, cur)
                                     + cur->size;
 
-  nr_rlc_free_sdu_segment(cur);
+  entity->common.stats.txbuf_occ_bytes =  entity->common.bstatus.tx_size;
+
+  nr_rlc_free_sdu_segment(&entity->common.stats, cur);
 }
 
 static void clear_entity(nr_rlc_entity_um_t *entity)

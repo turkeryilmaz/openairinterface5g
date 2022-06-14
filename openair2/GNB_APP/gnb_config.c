@@ -1108,8 +1108,8 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
 
     rrc->nr_cellid        = (uint64_t)*(GNBParamList.paramarray[i][GNB_NRCELLID_IDX].u64ptr);
 
-    // [mir]: use UM
-    rrc->um_on_default_drb = 1; // *(GNBParamList.paramarray[i][GNB_UMONDEFAULTDRB_IDX].uptr);
+    // [mir]: mir_UM use UM
+    rrc->um_on_default_drb = 1; //*(GNBParamList.paramarray[i][GNB_UMONDEFAULTDRB_IDX].uptr); //1
     if (strcmp(*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr), "local_mac") == 0) {
       
     } else if (strcmp(*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr), "cudu") == 0) {

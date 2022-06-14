@@ -220,14 +220,14 @@ tbs_size_t mac_rlc_data_req(
 
 
   if (rb != NULL) {
-    if(channel_idP > 3 &&  tb_sizeP < 1404 ){
-     ret = 0; 
-    } else {
+  //  if(channel_idP > 3 &&  tb_sizeP < 1404 ){
+  //   ret = 0; 
+  //  } else {
     rb->set_time(rb, nr_rlc_current_time);
     maxsize = tb_sizeP;
 
     ret = rb->generate_pdu(rb, buffer_pP, maxsize);
-    }
+  //  }
   } else {
     ret = 0;
   }

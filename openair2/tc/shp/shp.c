@@ -73,7 +73,6 @@ tc_shp_t shp_stat(shp_t* s)
   return ans;
 }
 
-
 void shp_mod(shp_t* s, tc_mod_ctrl_shp_t const* mod)
 {
   assert(s != NULL);
@@ -84,7 +83,6 @@ void shp_mod(shp_t* s, tc_mod_ctrl_shp_t const* mod)
   s->max_rate_kbps = mod->max_rate_kbps; 
 
   printf("Shaper modified successfully \n" );
-
 }
 
 

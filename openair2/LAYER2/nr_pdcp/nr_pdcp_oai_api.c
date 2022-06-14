@@ -1377,8 +1377,7 @@ static boolean_t pdcp_data_req_drb(
     return 0;
   }
 
-  printf("[mir]: PDCP pkt size %d \n",  sdu_buffer_size);
-
+  //printf("[mir]: PDCP pkt size %d \n",  sdu_buffer_size);
 
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
 
@@ -1386,23 +1385,20 @@ static boolean_t pdcp_data_req_drb(
 
    struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
 
-    struct in_addr paddr;
-    paddr.s_addr = hdr->saddr;
-
-    char *strAdd2 = inet_ntoa(paddr);
-    printf("PDCP: IP source address %s \n", strAdd2  );
-
-    paddr.s_addr = hdr->daddr;
-    strAdd2 = inet_ntoa(paddr);
-
-    printf("PDCP: IP dst address %s \n", strAdd2  );
+//    struct in_addr paddr;
+//    paddr.s_addr = hdr->saddr;
+//    char *strAdd2 = inet_ntoa(paddr);
+//    printf("PDCP: IP source address %s \n", strAdd2  );
+//    paddr.s_addr = hdr->daddr;
+//    strAdd2 = inet_ntoa(paddr);
+//    printf("PDCP: IP dst address %s \n", strAdd2  );
 
     uint16_t const sport = ntohs(tcp->source);
     uint16_t const dport = ntohs(tcp->dest);
     printf("PDCP Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
   }
 
-  printf("PDCP %p sz %d  muiP %d \n",sdu_buffer,  sdu_buffer_size,  muiP);
+//  printf("PDCP %p sz %d  muiP %d \n",sdu_buffer,  sdu_buffer_size,  muiP);
   rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);

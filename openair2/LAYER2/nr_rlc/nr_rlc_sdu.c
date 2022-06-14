@@ -74,21 +74,23 @@ oom:
   exit(1);
 }
 
-int nr_rlc_free_sdu_segment(nr_rlc_sdu_segment_t *sdu)
+int nr_rlc_free_sdu_segment(nr_rlc_statistics_t* stats,  nr_rlc_sdu_segment_t *sdu)
 {
   int ret = 0;
 
   int64_t now = time_now_us();
-  printf("[mir]: Time spent at the RLC = %ld time %ld pkt_size %d \n", now - sdu->tstamp, now, sdu->sdu->size);
+  printf("[mir]: Time_spent at the RLC = %ld time %ld pkt_size %d \n", now - sdu->tstamp, now, sdu->sdu->size);
 
-  struct iphdr* hdr = (struct iphdr*) (sdu->sdu->data + 3);
+  if(stats != NULL)
+    stats->txpdu_wt_ms = (now - sdu->tstamp) / 1000;
 
-  if(hdr->protocol == IPPROTO_TCP) {
+//  struct iphdr* hdr = (struct iphdr*) (sdu->sdu->data + 3);
+//  if(hdr->protocol == IPPROTO_TCP) {
 
-   struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+   //struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
 
-    struct in_addr paddr;
-    paddr.s_addr = hdr->saddr;
+   // struct in_addr paddr;
+    //paddr.s_addr = hdr->saddr;
 
 //    char *strAdd2 = inet_ntoa(paddr);
 //    printf("IP source address %s \n", strAdd2  );
@@ -96,10 +98,10 @@ int nr_rlc_free_sdu_segment(nr_rlc_sdu_segment_t *sdu)
 //    strAdd2 = inet_ntoa(paddr);
 //    printf("IP dst address %s \n", strAdd2  );
 
-    uint16_t const sport = ntohs(tcp->source);
-    uint16_t const dport = ntohs(tcp->dest);
-    printf("RLC Egress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
-  }
+    //uint16_t const sport = ntohs(tcp->source);
+    //uint16_t const dport = ntohs(tcp->dest);
+    //printf("RLC Egress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+//  }
 
   sdu->sdu->free_count++;
   if (sdu->sdu->free_count == sdu->sdu->ref_count) {
@@ -161,6 +163,6 @@ void nr_rlc_free_sdu_segment_list(nr_rlc_sdu_segment_t *l)
   while (l != NULL) {
     cur = l;
     l = l->next;
-    nr_rlc_free_sdu_segment(cur);
+    nr_rlc_free_sdu_segment(NULL, cur);
   }
 }

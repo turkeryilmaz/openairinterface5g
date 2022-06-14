@@ -167,7 +167,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   uint8_t* data = sdu_buffer;
   size_t sz = sdu_buffer_size;
 
-  printf("[mir]: SDAP size %d \n", sz);
+  //printf("[mir]: SDAP size %d \n", sz);
   // Ingress data (DL)
   tc_rc = tc_data_req(tc_rc.tc, data, sz);
 
