@@ -625,7 +625,7 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   }
 
   entity->tx_size += size;
-  printf("RLC UM [mir]: tx_size %d \n", entity->tx_size);
+  printf("RLC UM [mir]: tx_size %d tstamp %ld \n", entity->tx_size, time_now_us());
 
 /*
   printf("RLC %p sz %d mui %d\n", buffer, size, sdu_id);

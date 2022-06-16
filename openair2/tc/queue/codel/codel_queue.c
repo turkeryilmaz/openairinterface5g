@@ -242,11 +242,12 @@ void codel_pop(queue_t* q_base)
   seq_erase(&q->impl, it_start, it_end);
   size_t const after = seq_size(&q->impl);
   assert(after == before - 1);
-  if(codel_size(q_base) > 0){
+  size_t const sz = codel_size(q_base); 
+  if(sz > 0){
     codel_pkt_t* p = seq_front(&q->impl);
 	  assert(p->tstamp != 0);
   }
-  printf("CoDel poping from queue number %d \n", q_base->id);
+  printf("CoDel poping from queue number %d tstamp %ld bytes %ld sz %ld \n", q_base->id, time_now_us(), q->bytes, sz);
 }
 
 

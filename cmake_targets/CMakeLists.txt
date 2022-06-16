@@ -24,6 +24,9 @@
 cmake_minimum_required (VERSION 2.8)
 project (OpenAirInterface LANGUAGES C CXX)
 
+# mir
+#set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 include("macros.cmake")
 
 # System packages that are required
@@ -259,7 +262,9 @@ set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2 -Wl,-rpath -Wl,${C
 set(debugOpt "-ggdb2 -DMALLOC_CHECK_=3 -fno-delete-null-pointer-checks")
 set(CMAKE_C_FLAGS_DEBUG "${debugOpt} -O0")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${debugOpt} -O2")
-set(CMAKE_C_FLAGS_RELEASE "-O3")
+# mir
+#set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -flto")
+set(CMAKE_C_FLAGS_RELEASE "-O3  -flto")
 
 # Enable assert() for RelWithDebInfo builds
 string(REPLACE "-DNDEBUG" "" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")

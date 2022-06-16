@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>
@@ -82,24 +83,26 @@ bool pkt_matches_L3_filter(const struct iphdr *hdr, const L3_filter_t *flt) {
 
 static
 bool pkt_matches_L4_filter(const struct iphdr *hdr, const L4_filter_t *flt) {
-  int32_t src_port = 0;
-  int32_t dst_port = 0;
+  uint16_t src_port = 0;
+  uint16_t dst_port = 0;
   switch (hdr->protocol) {
   case IPPROTO_TCP: {
-    struct tcphdr *tcp = (struct tcphdr *)hdr;
+
+    struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
     src_port = ntohs(tcp->source);
     dst_port = ntohs(tcp->dest);
     break;
   }
   case IPPROTO_UDP: {
-    struct udphdr *udp = (struct udphdr *)hdr;
+    struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
     src_port = ntohs(udp->source);
     dst_port = ntohs(udp->dest);
     break;
   }
   case IPPROTO_ICMP: {
-    src_port = -1;
-    dst_port = -1;
+    //src_port = -1;
+    //dst_port = -1;
     break;
   }
   default:
@@ -107,6 +110,7 @@ bool pkt_matches_L4_filter(const struct iphdr *hdr, const L4_filter_t *flt) {
   }
   const uint32_t match_src_port =
       flt->src_port == flt_wildcard ? true : src_port == flt->src_port;
+  printf(" match_src_port %d flt_wildcard %d  src_port %d flt->src_port %d \n",  match_src_port, flt_wildcard, src_port , flt->src_port);
   const uint32_t match_dst_port =
       flt->dst_port == flt_wildcard ? true : dst_port == flt->dst_port;
   const uint32_t match_proto =
@@ -123,7 +127,30 @@ bool pkt_matches_L7_filter(const uint8_t *pkt, size_t size, const L7_filter_t *f
   return true;
 }
 
-bool pkt_matches_filter(const struct iphdr *hdr, tc_cls_osi_filter_t const* flt) {
+bool pkt_matches_filter(const struct iphdr *hdr, tc_cls_osi_filter_t const* flt) 
+{
+
+  if(hdr->protocol == IPPROTO_TCP) {
+
+   struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+    struct in_addr paddr;
+    paddr.s_addr = hdr->saddr;
+
+    char *strAdd2 = inet_ntoa(paddr);
+    printf("IP source address %s \n", strAdd2  );
+
+    paddr.s_addr = hdr->daddr;
+    strAdd2 = inet_ntoa(paddr);
+
+    printf("IP dst address %s \n", strAdd2  );
+
+    uint16_t const sport = ntohs(tcp->source);
+    uint16_t const dport = ntohs(tcp->dest);
+    printf("OSI CLS src %d dst %d \n", sport, dport);
+  } 
+
+
   bool l3 = pkt_matches_L3_filter(hdr, &flt->l3);
   bool l4 = pkt_matches_L4_filter(hdr, &flt->l4);
   bool l7 = pkt_matches_L7_filter((const uint8_t *)hdr, 0, &flt->l7);
@@ -148,6 +175,7 @@ void filter_free(filter_t* flt)
 };
 
 */
+
 static
 void osi_cls_free(cls_t* cls_base )
 {
@@ -236,6 +264,11 @@ bool match_filter(const void* value, const void* filter)
 {
  struct iphdr* ip =  (struct iphdr*)value;
  tc_cls_osi_filter_t* f = (tc_cls_osi_filter_t*)filter;  
+
+
+
+
+
  return pkt_matches_filter(ip, f);
 }
 

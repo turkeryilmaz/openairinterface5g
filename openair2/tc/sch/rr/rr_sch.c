@@ -73,14 +73,6 @@ void rr_del_queue(sch_t* s_base, queue_t** q)
   seq_erase(&s->arr, it, next);
 
   s->last_idx = 0;
-  
- // s->it_last_q = seq_front(&s->arr);
-
- // printf("Sched queue deleted = %p \n", *q);
-
-//  queue_t* q_it_last = *(queue_t**)s->it_last_q;
-
-//  printf("Sched queue it_last  = %p \n", q_it_last );
 }
 
 
@@ -98,55 +90,34 @@ queue_t* rr_next_queue(sch_t* s_base)
 
   queue_t* q = NULL;
   for(int i = 0; i < sz; ++i){
-  q = *(queue_t**)seq_at(&s->arr, s->last_idx);
-  assert(q != NULL);
+      q = *(queue_t**)seq_at(&s->arr, s->last_idx);
+      assert(q != NULL);
 
-  if(q->size(q) != 0){
-    printf("Scheduler Next Queue id = %u \n", q->id);
-    return q;
-  }
+      s->last_idx += 1; 
+      //printf("No pkts at queue id = %d \n", q->id);
+       if(s->last_idx >= sz)
+           s->last_idx = 0;
 
-  s->last_idx += 1; 
-  //printf("No pkts at queue id = %d \n", q->id);
-  if(s->last_idx >= sz)
-    s->last_idx = 0;
+      if(q->size(q) != 0){
+          printf("Scheduler Next Queue id = %u \n", q->id);
+	  return q;
+      }
   }
 
   return NULL;
 }
-
-/*
-  assert(s->it_last_q != seq_end(&s->arr));
-
-  assert(s->it_last_q != NULL);
-
-  queue_t* q = *(queue_t**)s->it_last_q;
-
-  if(q->size(q) == 0){
-    s->it_last_q = seq_next(&s->arr, s->it_last_q);
-    if(s->it_last_q == seq_end(&s->arr))
-      s->it_last_q = seq_front(&s->arr);
-
-    //printf("Next queue has no packets\n");
-
-    return NULL;
-  }
-*/
-//  printf("Scheduler Next Queue id = %u \n", q->id);
-//  return q;
-  //*(queue_t**)s->it_last_q;
-//}
 
 static
 void rr_pkt_fwd(sch_t* s_base)
 {
   rr_t* s = (rr_t*)s_base;
 
-  s->last_idx += 1;
+//  s->last_idx += 1;
+//  if(s->last_idx >= seq_size(&s->arr) ){
+//    s->last_idx = 0; 
+//  }
+
 //  s->it_last_q = seq_next(&s->arr, s->it_last_q);
-  if(s->last_idx >= seq_size(&s->arr) ){
-    s->last_idx = 0; 
-  }
  // if(s->it_last_q == seq_end(&s->arr))
  //   s->it_last_q = seq_front(&s->arr);
 

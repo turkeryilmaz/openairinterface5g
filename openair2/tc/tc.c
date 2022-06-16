@@ -397,15 +397,14 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
   //printf("TC Ingress delay %ld \n", time_now_us() - now);
 }
 
-static
-int counter = 0;
+//static
+//int counter = 0;
 
 void tc_egress_pkts(tc_t* tc)
 {
   assert(tc != NULL);
 
   if(tc == NULL) return;
-
 
   lock_guard(&tc->mtx);
 
@@ -419,7 +418,7 @@ void tc_egress_pkts(tc_t* tc)
     // Scheduler -> output from which queue
     queue_t* q = sch->next_queue(sch); 
     if(q == NULL || q->size(q) == 0) {
-      //printf("Not egreesing, queue size == 0\n");
+      printf("Not egresing, queue size == 0\n");
       break;
     }
 
@@ -435,6 +434,11 @@ void tc_egress_pkts(tc_t* tc)
     assert(pair != NULL);
     shp_t* shp = pair->shp;
     shp_act_e s_act = SHP_PASS; 
+    if(q->id == 2){
+     float const bnd = mtr_bndwdth_kbps(&shp->m);
+     double const wnd_ms = shp->m.avg_wnd.wnd_ms;
+     printf("queue id 2 max_rate_kbps %d active %d bndwdth_kbps %f wnd_ms %lf \n", shp->max_rate_kbps, shp->active, bnd, wnd_ms ); // a shaper per queue always exists
+    }
     if(shp->active == true){ 
       s_act = shp_action(shp, next_pkt->sz);
       if(s_act == SHP_WAIT){
@@ -448,7 +452,7 @@ void tc_egress_pkts(tc_t* tc)
     pcr_t* pcr = tc->pcr;
     pcr_act_e p_act = check_pcr_action(pcr, next_pkt);
     if(p_act == PCR_WAIT){
-      printf("Pacer waiting \n" );
+      printf("Not egresing, Pacer waiting \n" );
       break; // common to all queues
     }
 
@@ -483,7 +487,7 @@ void tc_egress_pkts(tc_t* tc)
     //printf("Dequeuing packet from queue id = %d with size = %lu \n", q->id ,q->size(q) );
     //free(next_pkt->data);
     //printf("Freeing the packet number = %d\n", counter);
-    counter += 1;
+    //counter += 1;
   }
 }
 
@@ -635,6 +639,10 @@ tc_rc_t tc_del_plc(tc_t* tc, tc_del_ctrl_plc_t const* del)
   return (tc_rc_t){.has_value = true, .tc = tc}; 
 }
 
+
+
+
+
 /////////
 /// QUEUE ADD/MOD/DEL
 /////////
@@ -642,13 +650,14 @@ tc_rc_t tc_del_plc(tc_t* tc, tc_del_ctrl_plc_t const* del)
 static
 void tc_add_q_impl(tc_t* tc, const char* file_path, const char* init_func)
 {
+/*
   void* handle = dlopen(file_path, RTLD_NOW);
   if(handle == NULL){
     const char* str = dlerror(); 
     printf("%s \n", str );
   }
   assert(handle != NULL && "Could not open the file path");
-  dlerror();    /* Clear any existing error */
+  dlerror();    // Clear any existing error 
   queue_t* (*fp)(uint32_t id ,void (*deleter)(void*) );
   fp = dlsym(handle, init_func);
   check_dl_error();
@@ -659,10 +668,11 @@ void tc_add_q_impl(tc_t* tc, const char* file_path, const char* init_func)
 
   assert(q->id < 128 && "128 queues added or bug?");
   assert( queue_id < 128 && "128 queues added or bug?");
+*/
 
   lock_guard(&tc->mtx);
 
-  seq_push_back(&tc->queues, &q, sizeof(queue_t*));
+  queue_t* q = load_queue(tc, file_path, init_func);
 
   // create policer 
   const uint32_t drop_rate_kbps = 2000000;
@@ -680,8 +690,12 @@ void tc_add_q_impl(tc_t* tc, const char* file_path, const char* init_func)
   map_q_plc_shp(&tc->htab, &q, &plc, &shp);// queue, policer and shaper are saved together  
 
   for_each(&tc->clss, seq_front(&tc->clss), seq_end(&tc->clss), add_queue_to_cls, &q);
-
 }
+
+
+
+
+
 
 static
 tc_rc_t tc_add_q(tc_t* tc, tc_add_ctrl_queue_t const* add)
@@ -698,11 +712,10 @@ tc_rc_t tc_add_q(tc_t* tc, tc_add_ctrl_queue_t const* add)
     const char* init_func = "fifo_init";
     tc_add_q_impl(tc, file_path, init_func);
   } else {
-    assert(0!=0 && "Unknwon queu type");
+    assert(0!=0 && "Unknwon queue type");
   }
 
   return (tc_rc_t){.has_value = true, .tc = tc}; 
-
 }
 
 static

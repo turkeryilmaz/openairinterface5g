@@ -172,7 +172,7 @@ void tc_stop(void)
 
 
 static
-char stdout_buf[1024];
+char stdout_buf[65536];
 
 
 static
@@ -186,7 +186,7 @@ void init_tc_api(void)
   rc = atexit(tc_stop);
   assert(rc == 0);
 
-  rc = setvbuf(stdout, stdout_buf, _IOFBF, 1024);
+  rc = setvbuf(stdout, stdout_buf, _IOFBF, 65536); // 1024);
   assert(rc == 0);
 
 }

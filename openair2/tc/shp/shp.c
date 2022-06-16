@@ -36,7 +36,9 @@ void shp_bytes_fwd(shp_t* s, uint32_t  bytes)
   assert(bytes != 0);
 
   int64_t tstamp = 0; // the meter will call the time_now function
-  mtr_push_back(&s->m, tstamp, bytes);
+  uint32_t bits = 8*bytes;
+  assert(bits > bytes && "Overflow detected");
+  mtr_push_back(&s->m, tstamp, bits);
 }
 
 

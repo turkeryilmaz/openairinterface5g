@@ -93,11 +93,11 @@ int64_t th_tx_bytes(bdp_pcr_t *p, int64_t last_time)
   int64_t theoretical_tx =
       p->bndwdth[0] > 0.1
           ? mult_factor * elapsed_time * p->bndwdth[0] + 1400*2
-          : p->drb_bytes < 20000 && elapsed_time > 0.5 && p->tx_bytes == 0 ? MTU_SIZE : 0;
+          : p->drb_bytes < 15000 && elapsed_time > 0.5 && p->tx_bytes == 0 ? MTU_SIZE : 0;
 
   assert(p->bndwdth[0] < 400);
-  if(theoretical_tx  < 20000){
-    theoretical_tx = 20000; 
+  if(theoretical_tx  < 15000){
+    theoretical_tx = 15000; 
   }
   assert(theoretical_tx < 80000);
   //printf("Theoretical tx = %ld \n", theoretical_tx );
@@ -136,7 +136,7 @@ pcr_act_e bdp_pcr_action(pcr_t* p_base, uint32_t bytes)
     update_bdp_vals(p); 
   }
 //  const uint32_t max_bytes_per_tti = 2300; // Value for 25 PRBs and 28 MCS
-  const uint32_t max_bytes_per_tti = 60000; // Value for 25 PRBs and 28 MCS
+  const uint32_t max_bytes_per_tti = 40000; // Value for 25 PRBs and 28 MCS
   if (p->tx_bytes + p->drb_bytes > max_bytes_per_tti) {
     puts("First wait" );
     printf("p->tx_bytes %d p->drb_bytes %d > max_bytes_per_tti %d \n", p->tx_bytes, p->drb_bytes, max_bytes_per_tti);
