@@ -637,30 +637,30 @@ static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMs
 
   /* Encode the first octet of the header (extended protocol discriminator) */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->header.protocol_discriminator, size);
-  
+
   /* Encode the security header type */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->header.security_header_type, size);
-  
+
   /* Encode the message authentication code */
   ENCODE_U32(initialNasMsg->data + size, sp_msg->header.message_authentication_code, size);
-  
+
   /* Encode the sequence number */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->header.sequence_number, size);
-  
-  
+
+
   /* Encode the extended protocol discriminator */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->plain.mm_msg.registration_complete.protocoldiscriminator, size);
-    
+
   /* Encode the security header type */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->plain.mm_msg.registration_complete.securityheadertype, size);
-    
+
   /* Encode the message type */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->plain.mm_msg.registration_complete.messagetype, size);
 
   if(sortransparentcontainer) {
     encode_registration_complete(&sp_msg->plain.mm_msg.registration_complete, initialNasMsg->data + size, length - size);
   }
-  
+
   initialNasMsg->length = length;
   stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
   stream_cipher.key_length = 16;
@@ -749,22 +749,30 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   mm_msg->uplink_nas_transport.pdusessionid = 10;
   mm_msg->uplink_nas_transport.requesttype = 1;
   size += 3;
+
+
+
+#if 0
   mm_msg->uplink_nas_transport.snssai.length = 4;
-  //Fixme: it seems there are a lot of memory errors in this: this value was on the stack, 
+  //Fixme: it seems there are a lot of memory errors in this: this value was on the stack,
   // but pushed  in a itti message to another thread
   // this kind of error seems in many places in 5G NAS
   mm_msg->uplink_nas_transport.snssai.value=calloc(1,4);
   mm_msg->uplink_nas_transport.snssai.value[0] = uicc->nssai_sst;
   mm_msg->uplink_nas_transport.snssai.value[1] = (uicc->nssai_sd>>16)&0xFF;
-  mm_msg->uplink_nas_transport.snssai.value[2] = (uicc->nssai_sd>>8)&0xFF; 
+  mm_msg->uplink_nas_transport.snssai.value[2] = (uicc->nssai_sd>>8)&0xFF;
   mm_msg->uplink_nas_transport.snssai.value[3] = (uicc->nssai_sd)&0xFF;
   size += (1+1+4);
+
+
   int dnnSize=strlen(uicc->dnnStr);
   mm_msg->uplink_nas_transport.dnn.value=calloc(1,dnnSize+1);
   mm_msg->uplink_nas_transport.dnn.length = dnnSize + 1;
   mm_msg->uplink_nas_transport.dnn.value[0] = dnnSize + 1;
+
   memcpy(mm_msg->uplink_nas_transport.dnn.value+1,uicc->dnnStr, dnnSize);
   size += (1+1+dnnSize+1);
+#endif
 
   // encode the message
   initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
@@ -831,7 +839,7 @@ void *nas_nrue_task(void *args_p)
 
   ue_security_key=(ue_sa_security_key_t **)calloc(1,sizeof(ue_sa_security_key_t*)*NB_UE_INST);
   itti_mark_task_ready (TASK_NAS_NRUE);
-  
+
   while(1) {
     // Wait for a message or an event
     itti_receive_msg (TASK_NAS_NRUE, &msg_p);
@@ -1006,9 +1014,9 @@ void *nas_nrue_task(void *args_p)
 	    if ((payload_container_length >= PAYLOAD_CONTAINER_LENGTH_MIN) &&
 		(payload_container_length <= PAYLOAD_CONTAINER_LENGTH_MAX))
 	      offset += (PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH + 3);
-	    if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length) 
+	    if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length)
 	      payload_container = pdu_buffer + offset;
-	    
+
 	    while(offset < payload_container_length) {
 	      if (*(payload_container + offset) == 0x29) { // PDU address IEI
 		if ((*(payload_container+offset+1) == 0x05) && (*(payload_container +offset+2) == 0x01)) { // IPV4
