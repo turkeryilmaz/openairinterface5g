@@ -62,7 +62,6 @@ static acpCtx_t ctx_srb_g = NULL;
 static uint16_t rnti_g = 0;
 static instance_t instance_g = 0;
 uint16_t ss_rnti_g = 0;
-bool rrcConnectionSetupSent = 0;
 
 enum MsgUserId
 {
@@ -100,8 +99,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
         LTE_UL_DCCH_Message_t               *ul_dcch_msg = NULL;
         LTE_UL_CCCH_Message_t               *ul_ccch_msg = NULL;
 
-	LOG_A(ENB_SS, "[SS_SRB] Reported rrc sdu_size:%d \t srb_id %d\n", pdu_ind->sdu_size, pdu_ind->srb_id);
-
+	LOG_A(ENB_SS, "[SS_SRB] Reported rrc sdu_size:%d \t srb_id %d rnti %d\n", pdu_ind->sdu_size, pdu_ind->srb_id, pdu_ind->rnti);
 	DevAssert(pdu_ind != NULL);
 	DevAssert(pdu_ind->sdu_size >= 0);
 	DevAssert(pdu_ind->srb_id >= 0);
@@ -169,15 +167,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 		ind.RrcPdu.d = RRC_MSG_Indication_Type_Dcch;
 		ind.RrcPdu.v.Dcch.d = pdu_ind->sdu_size;
 		ind.RrcPdu.v.Dcch.v = pdu_ind->sdu;
-		/*TODO: Work around fix for passing TC 9_3_2_1 with TTCN , shall be removed
-		 * once the handling of rrcConnectionSetup from TTCN is implemented in eNB
-		 */
-		if(ul_dcch_msg->message.choice.c1.present == LTE_UL_DCCH_MessageType__c1_PR_rrcConnectionSetupComplete &&
-				rrcConnectionSetupSent == 0)
-		{
-			printf("rcConnectionSetupComplete to be sent to TTCN- Sleeping for rrcConnectionSetup to be received as its not yet received by TTCN\n");
-			usleep(500);
-		}
+
 	}
 
 	/* Encode message
@@ -220,6 +210,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
         LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
 	MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, instance_g, SS_RRC_PDU_REQ);
 	assert(message_p);
+	instance_g = 0;
 	if (message_p)
 	{
 		/* Populate the message and send to SS */
@@ -236,15 +227,6 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
                                     SS_RRC_PDU_REQ(message_p).sdu_size,0,0);
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
-			/*TODO: Work around fix for passing TC 9_3_2_1 with TTCN , shall be removed
-			 * once the handling of rrcConnectionSetup from TTCN is implemented in eNB
-			 */
-			if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup)
-			{
-				rrcConnectionSetupSent = 1;
-				printf("rcConnectionSetup received from TTCN- setting the flag rrcConnectionSetupSent =, 1\n");
-
-			}
 		}
 		else
 		{
@@ -257,19 +239,11 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
                                     SS_RRC_PDU_REQ(message_p).sdu_size,0,0);
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_DCCH_Message,(void *)dl_dcch_msg);
-			/*TODO: Work around fix for passing TC 9_3_2_1 with TTCN , shall be removed
-			 * once the handling of rrcConnectionSetup from TTCN is implemented in eNB
-			 */
-			if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
-			{
-			   rrcConnectionSetupSent = 0;
-                           printf("rcConnectionRelease received from TTCN- setting the flag rrcConnectionSetupSent = 0 \n");
-			}
 		}
 
-		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d }",
+		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
 			  SS_RRC_PDU_REQ(message_p).srb_id,
-			  req->RrcPdu.d == RRC_MSG_Request_Type_Ccch ? "CCCH" : "DCCH", SS_RRC_PDU_REQ(message_p).sdu_size);
+			  req->RrcPdu.d == RRC_MSG_Request_Type_Ccch ? "CCCH" : "DCCH", SS_RRC_PDU_REQ(message_p).sdu_size ,rnti_g);
 
 		SS_RRC_PDU_REQ(message_p).rnti = rnti_g;
         uint8_t msg_queued = 0;
