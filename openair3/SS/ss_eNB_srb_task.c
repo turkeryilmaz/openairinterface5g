@@ -496,9 +496,6 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 			break;
 		}
 	}
-
-	ss_eNB_read_from_srb_socket(ctx_srb_g);
-
 	return NULL;
 }
 
@@ -538,15 +535,24 @@ static void ss_eNB_wait_hello(void)
  */
 void *ss_eNB_srb_task(void *arg)
 {
-	ss_eNB_srb_init();
-	ss_eNB_wait_hello();
-
 	while (1)
 	{
 		//LOG_A(ENB_SS,"[SS_SRB] Inside ss_eNB_srb_task \n");
 		(void)ss_eNB_srb_process_itti_msg(NULL);
 	}
-	acpFree(buffer);
+	//acpFree(buffer);
 
 	return NULL;
+}
+void *ss_eNB_srb_acp_task(void *arg)
+{
+	// printf("\n SRB ACP Task\n");
+	ss_eNB_srb_init();
+	ss_eNB_wait_hello();
+	while (1)
+	{
+		// printf("\nInside while srb acp task \n");
+		ss_eNB_read_from_srb_socket(ctx_srb_g);
+	}
+	acpFree(buffer);
 }
