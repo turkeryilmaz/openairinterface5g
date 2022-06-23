@@ -21,6 +21,8 @@
 
 METADATA_VAR(itf_name, "SysSrb");
 
+METADATA_VAR(rats, "EUTRA");
+
 // TTCN namespaces
 METADATA_VAR(namespaces, "NasEmu_AspTypes_EUTRA");
 

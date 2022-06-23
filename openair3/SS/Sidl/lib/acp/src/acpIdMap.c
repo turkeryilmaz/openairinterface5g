@@ -16,7 +16,6 @@
 
 #include "acpIdMap.h"
 
-
 const struct acpIdMapItf acpItfMap[] = {
 	{ "Test", 1, 0, 7 },
 	{ "Sys", 2, 7, 1 },
@@ -26,6 +25,7 @@ const struct acpIdMapItf acpItfMap[] = {
 	{ "Drb", 6, 13, 2 },
 	{ "Handshake", 7, 15, 2 },
 	{ "SysInd", 8, 17, 1 },
+	{ "NrSysSrb", 9, 18, 2 },
 };
 
 const unsigned int acpItfMapSize = sizeof(acpItfMap) / sizeof(acpItfMap[0]);
@@ -66,7 +66,12 @@ struct acpIdMapService acpIdMap[] = {
 	{ "HandshakeHandleFromSS", 0x90040700, (unsigned int)-1, 1 },
 	{ "HandshakeHandleToSS", 0x90040701, (unsigned int)-1, 0 },
 
+	// SysInd part
 	{ "SysIndProcessToSS", 0x90040800, (unsigned int)-1, 0},
+
+	// NrSysSrb part
+	{ "NrSysSrbProcessFromSS", 0x90040900, (unsigned int)-1, 1 },
+	{ "NrSysSrbProcessToSS", 0x90040901, (unsigned int)-1, 0 },
 };
 
 const unsigned int acpIdMapSize = sizeof(acpIdMap) / sizeof(acpIdMap[0]);
