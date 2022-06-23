@@ -454,6 +454,12 @@ typedef struct RrcConfigurationReq_s {
   long     q_RxLevMin;
   long     q_QualMin;
   long     p_MaxEUTRA;
+  
+  bool     ActiveParamPresent;
+  //SS: Cell Config Active Params
+  bool     RlcPduCCCH_Present;
+  uint8_t  RlcPduCCCH_Size;
+  uint8_t  RlcPduCCCH[100];
 
 } RrcConfigurationReq;
 

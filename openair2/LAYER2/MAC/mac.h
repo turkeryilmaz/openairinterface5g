@@ -511,7 +511,9 @@ typedef enum {
   MSG4,
   WAITMSG4ACK,
   MSGCRNTI,
-  MSGCRNTI_ACK
+  MSGCRNTI_ACK,
+  CBRAMSG4,
+  WAITMSG5
 } RA_state;
 
 /*!\brief  UE ULSCH scheduling states*/

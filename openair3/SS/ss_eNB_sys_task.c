@@ -443,6 +443,46 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 #endif
         }
       }
+      /* Active Parameters */
+      if (AddOrReconfigure->Active.d == true)
+      {
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent = true;
+        if (AddOrReconfigure->Active.v.RachProcedureConfig.d == true)
+        {
+          if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.d == true)
+          {
+            for (int i=0;i < (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.d);i++)
+            {
+              if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.d == ContentionResolutionCtrl_Type_TCRNTI_Based)
+              {
+                if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.d == TCRNTI_ContentionResolutionCtrl_Type_MacPdu)
+                {
+                  if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.d == ContentionResolution_ContainedDlschSdu_Type_RlcPduCCCH)
+                  {
+
+                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present = true;
+                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.d;
+                    memcpy(RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH,AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.v,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size);
+
+                  }
+                  else
+                  {
+                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present = false;
+                    if(RC.ss.State == SS_STATE_NOT_CONFIGURED)
+                    RC.ss.CBRA_flag = TRUE;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      else
+      {
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent = false;
+      }
+      LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n",RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size);
+      
       LOG_A(ENB_SS, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
       itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
     }

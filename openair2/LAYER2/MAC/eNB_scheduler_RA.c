@@ -91,7 +91,11 @@ uint16_t sfnsf_subtract_subframe(uint16_t frameP, uint16_t subframeP, int offset
   subtract_subframe(&frameP, &subframeP, offset);
   return frameP<<4|subframeP;
 }
-
+static void generate_macCeRrcConnectionSetup(module_id_t module_idP,
+              int CC_idP,
+              frame_t frameP,
+              sub_frame_t subframeP,
+              RA_t *ra);
 void
 add_msg3(module_id_t module_idP, int CC_id, RA_t *ra, frame_t frameP,
          sub_frame_t subframeP) {
@@ -911,7 +915,7 @@ generate_Msg4(module_id_t module_idP,
                                         UE_RNTI(module_idP,UE_id),1,  // 1 transport block
                                         &cc[CC_idP].CCCH_pdu.payload[0], 0);  // not used in this case
 
-      if (rrc_sdu_length > 0) {
+      if ((rrc_sdu_length > 0) || (RC.ss.CBRA_flag && (RC.ss.mode >SS_ENB))) {
         LOG_D(MAC,
               "[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: UE_id %d, rrc_sdu_length %d\n",
               module_idP, CC_idP, frameP, subframeP, UE_id, rrc_sdu_length);
@@ -977,7 +981,19 @@ generate_Msg4(module_id_t module_idP,
                                        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level, ra->rnti)) {
           dl_req_body->number_dci++;
           dl_req_body->number_pdu++;
-          ra->state = WAITMSG4ACK;
+          if(rrc_sdu_length)
+          {
+        	  ra->state = WAITMSG4ACK;
+          }
+          else if(RC.ss.mode > SS_ENB)
+          {
+               ra->state = CBRAMSG4;
+          }
+          else
+          {
+        	  LOG_E(MAC," ERRROR invalid state in RACH process [eNB %d][RAPROC] Frame %d, Subframe %d: in state:WAITMSG4ACK\n",
+        			  module_idP, frameP, subframeP);
+          }
           LOG_D(MAC,"[eNB %d][RAPROC] Frame %d, Subframe %d: state:WAITMSG4ACK\n", module_idP, frameP, subframeP);
           // increment Absolute subframe by 8 for Msg4 retransmission
           LOG_D(MAC,
@@ -1218,16 +1234,26 @@ check_Msg4_retransmission(module_id_t module_idP, int CC_idP,
       }     // Msg4 frame/subframe
     }     // regular LTE case
   } else {
-    LOG_D(MAC,
-          "[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d : Msg4 acknowledged\n",
-          module_idP, CC_idP, frameP, subframeP);
-    ra->state = IDLE;
-    LOG_D(MAC,"[eNB %d][RAPROC] Frame %d, Subframe %d: state:IDLE\n", module_idP, frameP, subframeP);
-    UE_id = find_UE_id(module_idP, ra->rnti);
-    DevAssert(UE_id != -1);
-    mac->UE_info.UE_template[UE_PCCID(module_idP, UE_id)][UE_id].configured = TRUE;
-    mac->UE_info.UE_template[UE_PCCID(module_idP, UE_id)][UE_id].pusch_repetition_levels=ra->pusch_repetition_levels;
-    cancel_ra_proc(module_idP, CC_idP, frameP, ra->rnti);
+    if (ra->state == CBRAMSG4)
+    {
+      LOG_D(MAC, "[eNB %d][RAPROC] CBRAMSG4 CC_id %d Frame %d, subframeP %d : Msg4 acknowledged\n",
+            module_idP, CC_idP, frameP, subframeP);
+      generate_macCeRrcConnectionSetup(module_idP, CC_idP, frameP,
+                                       subframeP, ra);
+    }
+    else
+    {
+      LOG_D(MAC,
+            "[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d : Msg4 acknowledged\n",
+            module_idP, CC_idP, frameP, subframeP);
+      ra->state = IDLE;
+      LOG_D(MAC, "[eNB %d][RAPROC] Frame %d, Subframe %d: state:IDLE\n", module_idP, frameP, subframeP);
+      UE_id = find_UE_id(module_idP, ra->rnti);
+      DevAssert(UE_id != -1);
+      mac->UE_info.UE_template[UE_PCCID(module_idP, UE_id)][UE_id].configured = TRUE;
+      mac->UE_info.UE_template[UE_PCCID(module_idP, UE_id)][UE_id].pusch_repetition_levels = ra->pusch_repetition_levels;
+      cancel_ra_proc(module_idP, CC_idP, frameP, ra->rnti);
+    }
   }
 }
 
@@ -1252,7 +1278,7 @@ schedule_RA(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
         generate_Msg2(module_idP, CC_id, frameP, subframeP, ra);
       else if (ra->state == MSG4 && ra->Msg4_frame == frameP && ra->Msg4_subframe == subframeP )
         generate_Msg4(module_idP, CC_id, frameP, subframeP, ra);
-      else if (ra->state == WAITMSG4ACK)
+      else if ((ra->state == WAITMSG4ACK) || ra->state == CBRAMSG4 || ra->state == WAITMSG5 )
         check_Msg4_retransmission(module_idP, CC_id, frameP,
                                   subframeP, ra);
     }     // for i=0 .. N_RA_PROC-1
@@ -1448,4 +1474,228 @@ void clear_ra_proc(module_id_t module_idP, int CC_id, frame_t frameP) {
     ra[i].rnti = 0;
     ra[i].msg3_round = 0;
   }
+}
+static void
+generate_macCeRrcConnectionSetup(module_id_t module_idP,
+              int CC_idP,
+              frame_t frameP,
+              sub_frame_t subframeP,
+              RA_t *ra)
+{
+
+	 eNB_MAC_INST *mac = RC.mac[module_idP];
+	  COMMON_channels_t *cc = mac->common_channels;
+	  UE_info_t *UE_info = &mac->UE_info;
+	  int16_t rrc_sdu_length = 0;
+	  uint16_t msg4_padding = 0;
+	  uint16_t msg4_post_padding = 0;
+	  uint16_t msg4_header = 0;
+	  int UE_id = -1;
+	  int first_rb = 0;
+	  int N_RB_DL = 0;
+	  uint8_t lcid = 0;
+	  uint8_t offset = 0;
+	  nfapi_dl_config_request_pdu_t   *dl_config_pdu = NULL;
+	  nfapi_dl_config_request_t      *dl_req = NULL;
+	  nfapi_dl_config_request_body_t *dl_req_body = NULL;
+
+	  first_rb = 0;
+
+
+	  dl_req        = &mac->DL_req[CC_idP];
+	  dl_req_body   = &dl_req->dl_config_request_body;
+	  dl_config_pdu = &dl_req_body->dl_config_pdu_list[dl_req_body->number_pdu];
+	  N_RB_DL = to_prb(cc[CC_idP].mib->message.dl_Bandwidth);
+	  UE_id = find_UE_id(module_idP, ra->rnti);
+
+	  if (UE_id < 0) {
+	    LOG_E(MAC, "Can't find UE for t-crnti %x, kill RA procedure for this UE\n",
+	          ra->rnti);
+	    cancel_ra_proc(module_idP, CC_idP, frameP, ra->rnti);
+	    return;
+	  }
+
+	  // set HARQ process round to 0 for this UE
+	  ra->harq_pid = frame_subframe2_dl_harq_pid(cc->tdd_Config,frameP,subframeP);
+
+
+     // check if there's data on the CCCH to send with Msg4
+     rrc_sdu_length = mac_rrc_data_req(module_idP, CC_idP, frameP, CCCH,
+                                       UE_RNTI(module_idP,UE_id),1,  // 1 transport block
+                                       &cc[CC_idP].CCCH_pdu.payload[0], 0);  // not used in this case
+
+     if (rrc_sdu_length > 0) {
+
+       //          AssertFatal(rrc_sdu_length > 0,
+       //          "[MAC][eNB Scheduler] CCCH not allocated, rrc_sdu_length: %d\n", rrc_sdu_length);
+       LOG_A(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: Generating Msg4 with "
+    		   "RRC Piggyback (RNTI %x) rrc_sdu_length %d UE_ID %d\n",
+             module_idP, CC_idP, frameP, subframeP, ra->rnti,rrc_sdu_length,UE_id);
+       /// Choose first 4 RBs for Msg4, should really check that these are free!
+       first_rb = 0;
+//       vrb_map[first_rb] = 1;
+//       vrb_map[first_rb + 1] = 1;
+//       vrb_map[first_rb + 2] = 1;
+//       vrb_map[first_rb + 3] = 1;
+       // Compute MCS/TBS for 3 PRB (coded on 4 vrb)
+      // msg4_header = 1 + 6 + 1;  // CR header, CR CE, SDU header
+
+       if ((rrc_sdu_length + msg4_header) <= 22) {
+         ra->msg4_mcs = 4;
+         ra->msg4_TBsize = 22;
+       } else if ((rrc_sdu_length + msg4_header) <= 28) {
+         ra->msg4_mcs = 5;
+         ra->msg4_TBsize = 28;
+       } else if ((rrc_sdu_length + msg4_header) <= 32) {
+         ra->msg4_mcs = 6;
+         ra->msg4_TBsize = 32;
+       } else if ((rrc_sdu_length + msg4_header) <= 41) {
+         ra->msg4_mcs = 7;
+         ra->msg4_TBsize = 41;
+       } else if ((rrc_sdu_length + msg4_header) <= 49) {
+         ra->msg4_mcs = 8;
+         ra->msg4_TBsize = 49;
+       } else if ((rrc_sdu_length + msg4_header) <= 57) {
+         ra->msg4_mcs = 9;
+         ra->msg4_TBsize = 57;
+       }
+
+       fill_nfapi_dl_dci_1A(dl_config_pdu, 4,  // aggregation_level
+                            ra->rnti,  // rnti
+                            1, // rnti_type, CRNTI
+                            ra->harq_pid,  // harq_process
+                            1, // tpc, none
+                            getRIV(N_RB_DL, first_rb, 4),  // resource_block_coding
+                            ra->msg4_mcs,  // mcs
+                            1 - UE_info->UE_template[CC_idP][UE_id].oldNDI[ra->harq_pid],
+                            0, // rv
+                            0);  // vrb_flag
+       UE_info->UE_template[CC_idP][UE_id].oldNDI[ra->harq_pid] = 1 - UE_info->UE_template[CC_idP][UE_id].oldNDI[ra->harq_pid];
+       printf(
+             "Frame %d, subframe %d: Msg4 DCI pdu_num %d (rnti %x,rnti_type %d,harq_pid %d, resource_block_coding (%p) %d\n",
+             frameP, subframeP, dl_req_body->number_pdu,
+             dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.rnti,
+             dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.rnti_type,
+             dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.harq_process,
+             &dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.resource_block_coding,
+             dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.resource_block_coding);
+       AssertFatal(dl_config_pdu->dci_dl_pdu.
+                   dci_dl_pdu_rel8.resource_block_coding < 8192,
+                   "resource_block_coding %u < 8192\n",
+                   dl_config_pdu->dci_dl_pdu.
+                   dci_dl_pdu_rel8.resource_block_coding);
+
+       if (!CCE_allocation_infeasible(module_idP, CC_idP, 1, subframeP,
+                                      dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level, ra->rnti)) {
+         dl_req_body->number_dci++;
+         dl_req_body->number_pdu++;
+         ra->state = WAITMSG5;
+         LOG_D(MAC,"[eNB %d][RAPROC] Frame %d, Subframe %d: state:WAITMSG4ACK\n", module_idP, frameP, subframeP);
+         // increment Absolute subframe by 8 for Msg4 retransmission
+         LOG_D(MAC,
+               "Frame %d, Subframe %d: Preparing for Msg4 retransmission currently %d.%d\n",
+               frameP, subframeP, ra->Msg4_frame,
+               ra->Msg4_subframe);
+         //get_retransmission_timing(mac->common_channels[CC_idP].tdd_Config,&ra->Msg4_frame,&ra->Msg4_subframe);
+//         LOG_D(MAC,
+//               "Frame %d, Subframe %d: Msg4 retransmission in %d.%d\n",
+//               frameP, subframeP, ra->Msg4_frame,
+//               ra->Msg4_subframe);
+         lcid = 0;
+         // put HARQ process round to 0
+         ra->harq_pid = frame_subframe2_dl_harq_pid(cc->tdd_Config,frameP,subframeP);
+         UE_info->UE_sched_ctrl[UE_id].round[CC_idP][ra->harq_pid] = 0;
+
+         if ((ra->msg4_TBsize - rrc_sdu_length - msg4_header) <= 2) {
+           msg4_padding = ra->msg4_TBsize - rrc_sdu_length - msg4_header;
+           msg4_post_padding = 0;
+         } else {
+           msg4_padding = 0;
+           msg4_post_padding = ra->msg4_TBsize - rrc_sdu_length - msg4_header - 1;
+         }
+
+         LOG_D(MAC,
+               "[eNB %d][RAPROC] CC_idP %d Frame %d subframeP %d Msg4 : TBS %d, sdu_len %d, msg4_header %d, msg4_padding %d, msg4_post_padding %d\n",
+               module_idP, CC_idP, frameP, subframeP,
+               ra->msg4_TBsize, rrc_sdu_length, msg4_header,
+               msg4_padding, msg4_post_padding);
+         DevAssert(UE_id != UE_INDEX_INVALID); // FIXME not sure how to gracefully return
+         // CHECK THIS: &cc[CC_idP].CCCH_pdu.payload[0]
+         int num_sdus = rrc_sdu_length > 0 ? 1 : 0;
+         offset = generate_dlsch_header((unsigned char *) mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char) UE_id].payload[0],
+                                        num_sdus,  //num_sdus
+                                        (unsigned short *) &rrc_sdu_length,  //
+                                        &lcid, // sdu_lcid
+                                        255, // no drx
+                                        31,  // no timing advance
+                                        ra->cont_res_id, // contention res id
+                                        msg4_padding,  // no padding
+                                        msg4_post_padding);
+         memcpy((void *) &mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char)UE_id].payload[0][(unsigned char)offset],
+                &cc[CC_idP].CCCH_pdu.payload[0], rrc_sdu_length);
+         // DLSCH Config
+         fill_nfapi_dlsch_config(&dl_req_body->dl_config_pdu_list[dl_req_body->number_pdu],
+                                 ra->msg4_TBsize,
+                                 mac->pdu_index[CC_idP],
+                                 ra->rnti,
+                                 2, // resource_allocation_type : format 1A/1B/1D
+                                 0,  // virtual_resource_block_assignment_flag : localized
+                                 getRIV(N_RB_DL, first_rb, 4), // resource_block_coding : RIV, 4 PRB
+                                 2,  // modulation: QPSK
+                                 0,  // redundancy version
+                                 1,  // transport_blocks
+                                 0,  // transport_block_to_codeword_swap_flag (0)
+                                 (cc->p_eNB == 1) ? 0 : 1, // transmission_scheme
+                                 1,  // number of layers
+                                 1,  // number of subbands
+                                 //0,                         // codebook index
+                                 1,  // ue_category_capacity
+                                 4,  // pa: 0 dB
+                                 0,  // delta_power_offset_index
+                                 0,  // ngap
+                                 1,  // NPRB = 3 like in DCI
+                                 (cc->p_eNB == 1) ? 1 : 2, // transmission mode
+                                 1,  // num_bf_prb_per_subband
+                                 1); // num_bf_vector
+         dl_req_body->number_pdu++;
+         LOG_D(MAC,
+               "Filled DLSCH config, pdu number %d, non-dci pdu_index %d\n",
+               dl_req_body->number_pdu, mac->pdu_index[CC_idP]);
+         // Tx request
+         mac->TX_req[CC_idP].sfn_sf =
+           fill_nfapi_tx_req(&mac->TX_req[CC_idP].tx_request_body,
+                             (frameP * 10) + subframeP,
+                             rrc_sdu_length+offset,
+                             mac->pdu_index[CC_idP],
+                             mac->UE_info.
+                             DLSCH_pdu[CC_idP][0][(unsigned char)UE_id].payload[0]);
+         mac->pdu_index[CC_idP]++;
+         dl_req->sfn_sf = mac->TX_req[CC_idP].sfn_sf;
+         LOG_D(MAC, "Filling UCI ACK/NAK information, cce_idx %d\n",
+               dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.cce_idx);
+         // Program PUCCH1a for ACK/NAK
+         // Program ACK/NAK for Msg4 PDSCH
+         fill_nfapi_uci_acknak(module_idP,
+                               CC_idP,
+                               ra->rnti,
+                               (frameP * 10) + subframeP,
+                               dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.cce_idx);
+         T(T_ENB_MAC_UE_DL_PDU_WITH_DATA, T_INT(module_idP),
+           T_INT(CC_idP), T_INT(ra->rnti), T_INT(frameP),
+           T_INT(subframeP), T_INT(0 /*harq_pid always 0? */ ),
+           T_BUFFER(&mac->UE_info.DLSCH_pdu[CC_idP][0][UE_id].
+                    payload[0], ra->msg4_TBsize));
+         trace_pdu(DIRECTION_DOWNLINK,
+                   (uint8_t *) mac->
+                   UE_info.DLSCH_pdu[CC_idP][0][(unsigned char)UE_id].payload[0],
+                   rrc_sdu_length, UE_id,  WS_C_RNTI,
+                   UE_RNTI(module_idP, UE_id), mac->frame,
+                   mac->subframe, 0, 0);
+
+       }
+     }
+     else
+     {
+    	 LOG_D(MAC,"NO RRC SETUP received yet Wait for next schedule\n");
+     }
 }

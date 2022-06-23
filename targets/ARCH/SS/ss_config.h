@@ -59,6 +59,7 @@ typedef struct ss_config_s {
   /** State info */
   int State;
   int vtp_ready;
+  int CBRA_flag;
 } ss_config_t;
 
 
