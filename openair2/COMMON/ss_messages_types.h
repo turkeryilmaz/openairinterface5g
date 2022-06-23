@@ -71,6 +71,9 @@
 #define SS_RRC_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_req
 #define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
 
+/** SYS IND */
+#define SS_SYSTEM_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_system_ind
+
 /** PORTMAN */
 typedef struct ss_sys_port_msg_ind {
   struct SYSTEM_CTRL_REQ* req;
