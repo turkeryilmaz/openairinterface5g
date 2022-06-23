@@ -31,4 +31,3 @@ struct AcpHandshakeRsp_Type {
 
 ONEWAY HandleFromSS(const struct AcpHandshake_Type* fromSS);
 NOTIFY HandleToSS(const struct AcpHandshakeRsp_Type* toSS);
-

@@ -21,6 +21,8 @@
 
 METADATA_VAR(itf_name, "Vng");
 
+METADATA_VAR(rats, "EUTRA");
+
 // TTCN namespaces
 METADATA_VAR(namespaces, "EUTRA_ASP_VirtualNoiseDefs");
 

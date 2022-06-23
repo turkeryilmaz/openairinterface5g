@@ -74,7 +74,7 @@ static bool acpPeerHandshaked(struct acpCtx* ctx, int peer)
 {
 	for (int i = 0; i < ACP_MAX_PEER_QTY; i++) {
 		if (ctx->peers[i] == peer) {
-			return (ctx->peersHandshaked[i] != 0)?true:false;
+			return (ctx->peersHandshaked[i] != 0) ? true : false;
 		}
 	}
 
@@ -276,8 +276,6 @@ int acpGetMsgLocalId(size_t size, const unsigned char* buffer, enum acpMsgLocalI
 	return 0;
 }
 
-#ifdef ACP_USE_HANDSHAKE
-
 static int acpRecvMsgInternal(int sock, size_t size, unsigned char* buffer)
 {
 	int length = 0;
@@ -328,10 +326,10 @@ static int acpRecvMsgInternal(int sock, size_t size, unsigned char* buffer)
 		return -ACP_ERR_SIDL_FAILURE;
 	}
 
-	return length+ACP_HEADER_SIZE;
+	return length + ACP_HEADER_SIZE;
 }
 
-static int acpHandleHandshakeFromClient(struct acpCtx* ctx, int sock, struct AcpHandshake_Type *hs)
+static int acpHandleHandshakeFromClient(struct acpCtx* ctx, int sock, struct AcpHandshake_Type* hs)
 {
 	struct AcpHandshakeRsp_Type hs_rsp;
 
@@ -341,31 +339,31 @@ static int acpHandleHandshakeFromClient(struct acpCtx* ctx, int sock, struct Acp
 	snprintf(hs_rsp.acpVerCksm, 63, "%s", ACP_VERSION_CKSM);
 
 	/* ACP version matched */
-	if(strncmp(ACP_VERSION, hs->acpVersion, strlen(ACP_VERSION)) == 0 && strncmp(ACP_VERSION_CKSM, hs->acpVerCksm, strlen(ACP_VERSION)) == 0) {
+	if (strncmp(ACP_VERSION, hs->acpVersion, strlen(ACP_VERSION)) == 0 && strncmp(ACP_VERSION_CKSM, hs->acpVerCksm, strlen(ACP_VERSION)) == 0) {
 		hs_rsp.acpVersionChk = true;
 	} else {
 		hs_rsp.acpVersionChk = false;
 	}
 
-	ACP_DEBUG_CLOG(ctx, "ACP version: %s", hs_rsp.acpVersionChk?"matched":"not matched");
+	ACP_DEBUG_CLOG(ctx, "ACP version: %s", hs_rsp.acpVersionChk ? "matched" : "not matched");
 
 	int ret = 0;
-	const size_t size = 16*1024;
+	const size_t size = 16 * 1024;
 	size_t bufSize = size;
 	unsigned char* buffer = (unsigned char*)acpMalloc(size);
 	SIDL_ASSERT(buffer);
 
 	ret = acpHandshakeHandleToSSEncSrv(ctx, buffer, &bufSize, &hs_rsp);
-	if( ret == 0) {
+	if (ret == 0) {
 		if (acpSocketSend(sock, bufSize, buffer) != (int)bufSize) {
 			ACP_DEBUG_CLOG(ctx, "Error: Failed to send HandshakeToSS message");
 			acpPeerSetHandshaked(ctx, sock, 0);
 			ret = -ACP_ERR_INTERNAL;
 		} else {
 			ACP_DEBUG_CLOG(ctx, "HandshakeToSS message sent");
-			//No fatal to be generated if handshake not well processed
+			// No fatal to be generated if handshake not well processed
 			acpPeerSetHandshaked(ctx, sock, 1);
-			//acpPeerSetHandshaked(ctx, sock, (hs_rsp.acpVersionChk?1:0));
+			// acpPeerSetHandshaked(ctx, sock, (hs_rsp.acpVersionChk?1:0));
 			ret = 0;
 		}
 	} else {
@@ -383,7 +381,7 @@ static int acpHandleHandshakeFromClient(struct acpCtx* ctx, int sock, struct Acp
 static int acpHandleHandshakeToServer(struct acpCtx* ctx, int sock)
 {
 	ACP_DEBUG_ENTER_CLOG(ctx);
-	const size_t size = 16*1024;
+	const size_t size = 16 * 1024;
 	unsigned char* buffer = (unsigned char*)acpMalloc(size);
 	SIDL_ASSERT(buffer);
 
@@ -392,15 +390,15 @@ static int acpHandleHandshakeToServer(struct acpCtx* ctx, int sock)
 
 	/* Send Handshake to Server */
 	struct AcpHandshake_Type hs;
-	struct AcpHandshakeRsp_Type *hs_rsp;
+	struct AcpHandshakeRsp_Type* hs_rsp;
 	size_t bufSize = size;
-	int    ret = 0;
+	int ret = 0;
 	memset(hs.acpVersion, 0, 32);
 	snprintf(hs.acpVersion, 31, "%s", ACP_VERSION);
 	memset(hs.acpVerCksm, 0, 64);
 	snprintf(hs.acpVerCksm, 63, "%s", ACP_VERSION_CKSM);
 	ret = acpHandshakeHandleFromSSEncClt(ctx, buffer, &bufSize, &hs);
-	if(ret == 0) {
+	if (ret == 0) {
 		int retry = 0;
 
 		if (acpSocketSend(sock, bufSize, buffer) != (int)bufSize) {
@@ -422,7 +420,7 @@ static int acpHandleHandshakeToServer(struct acpCtx* ctx, int sock)
 			/* FIXME: No message (timeout on socket), retry */
 			if (length == 0) {
 				retry++;
-				if(retry == 10) {
+				if (retry == 10) {
 					ret = -ACP_ERR_SOCK_TIMEOUT;
 					ACP_DEBUG_CLOG(ctx, "ERROR: No HandshakeToSSToSS message for ACP version handshake");
 					break;
@@ -441,7 +439,7 @@ static int acpHandleHandshakeToServer(struct acpCtx* ctx, int sock)
 			if (localId != ACP_LID_HandshakeHandleToSS) {
 				/* Discard message other than handshake rsp */
 				retry++;
-				if(retry == 10) {
+				if (retry == 10) {
 					ret = -ACP_ERR_SOCK_TIMEOUT;
 					break;
 				}
@@ -454,10 +452,10 @@ static int acpHandleHandshakeToServer(struct acpCtx* ctx, int sock)
 				break;
 			}
 
-			if(!hs_rsp->acpVersionChk) {
+			if (!hs_rsp->acpVersionChk) {
 				ACP_DEBUG_CLOG(ctx, "ERROR: ACP version Not Matched: cli_version=[%s, cksm: %s] srv_version=[%s, chksm: %s].", ACP_VERSION, ACP_VERSION_CKSM, hs_rsp->acpVersion, hs_rsp->acpVerCksm);
 				acpHandshakeHandleToSSFreeClt(hs_rsp);
-				ret = 0;//-ACP_ERR_INVALID_VERSION;
+				ret = 0; //-ACP_ERR_INVALID_VERSION;
 				break;
 			}
 
@@ -484,7 +482,7 @@ static int acpConnectToSrv(struct acpCtx* ctx, int sock)
 	/* Perform Handshake to Server */
 	int ret = acpHandleHandshakeToServer(ctx, sock);
 
-	if(ret != 0) {
+	if (ret != 0) {
 		ACP_DEBUG_EXIT_CLOG(ctx, "Error: Handshake failure");
 		return ret;
 	}
@@ -494,8 +492,6 @@ static int acpConnectToSrv(struct acpCtx* ctx, int sock)
 	ACP_DEBUG_EXIT_CLOG(ctx, NULL);
 	return ret;
 }
-
-#endif
 
 int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 {
@@ -631,17 +627,16 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 	int type = (int)((buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | (buffer[7]));
 	ACP_DEBUG_PREFIX_CLOG(ctx, "Receiving message '%s' (userId: %d, type: 0x%x)\r\n", acpGetMsgName(*size, buffer), userId, type);
 
-#ifdef ACP_USE_HANDSHAKE
 	if (ACP_CTX_CAST(ctx)->isServer) {
 		bool handshaked = acpPeerHandshaked(ctx, sock);
-		if(!handshaked && type != (int)ACP_LID_HandshakeHandleFromSS) {
+		if (!handshaked && type != (int)ACP_LID_HandshakeHandleFromSS) {
 			/* The first message should be HandshakeHandleFromSS from client */
 			ACP_DEBUG_PREFIX_CLOG(ctx, "Wrong message, should be HandshakeHandleFromSS\r\n");
 			userId = -ACP_ERR_INTERNAL;
-		} else if(type == (int)ACP_LID_HandshakeHandleFromSS) {
+		} else if (type == (int)ACP_LID_HandshakeHandleFromSS) {
 			/* Handle Handshake from Client */
 			/* FIXME: How about duplicate Handshake? */
-			struct AcpHandshake_Type *hs;
+			struct AcpHandshake_Type* hs;
 
 			if(acpHandshakeHandleFromSSDecSrv(ctx, buffer, length + ACP_HEADER_SIZE, &hs) == 0) {
 								ACP_DEBUG_CLOG(ctx, "ACP version: cli_version=[%s, cksm: %s] srv_version=[%s, chksm: %s].", hs->acpVersion, hs->acpVerCksm, ACP_VERSION, ACP_VERSION_CKSM);
@@ -653,7 +648,6 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 			}
 		}
 	}
-#endif
 
 	if (userId >= 0) {
 #ifdef ACP_DEBUG
@@ -722,8 +716,6 @@ int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 		return -ACP_ERR_SOCKCONN_ABORTED;
 	}
 
-#ifdef ACP_USE_HANDSHAKE
-
 	int ret = acpConnectToSrv(ACP_CTX_CAST(ctx), sock);
 	if (ret < 0) {
 		acpSocketClose(sock);
@@ -738,7 +730,6 @@ int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 		acpSocketClose(sock);
 		return -ACP_ERR_NOT_CONNECTED;
 	}
-#endif
 #endif
 
 	ACP_CTX_CAST(ctx)->sock = sock;
@@ -826,9 +817,7 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 		ACP_DEBUG_EXIT_LOG("ACP_ERR_INVALID_CTX");
 		return -ACP_ERR_INVALID_CTX;
 	}
-#ifdef ACP_USE_HANDSHAKE
 	bool isOnlyNotify = true;
-#endif
 	if (msgTable) {
 		while (msgTable->name) {
 			int err = acpSetMsgId(_ctx, msgTable->name, msgTable->userId);
@@ -837,7 +826,7 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 				ACP_DEBUG_EXIT_LOG("acpSetMsgId failed");
 				return err;
 			}
-#ifdef ACP_USE_HANDSHAKE
+
 			err = acpCtxGetMsgKindFromName(msgTable->name);
 			if (err < 0) {
 				acpDeleteCtx(_ctx);
@@ -848,7 +837,6 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 			if (err > 0) {
 				isOnlyNotify = false;
 			}
-#endif
 			msgTable++;
 		}
 	}
@@ -862,7 +850,6 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 
 	*ctx = _ctx;
 
-#ifdef ACP_USE_HANDSHAKE
 	if (isOnlyNotify) {
 		int ret = -1;
 		ACP_DEBUG_CLOG(*ctx, "Wait for handshake\r\n");
@@ -872,7 +859,6 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 			ret = acpRecvMsg(*ctx, &sz, buffer);
 		}
 	}
-#endif
 
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return 0;
