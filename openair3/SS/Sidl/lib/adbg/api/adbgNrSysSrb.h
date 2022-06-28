@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-#include "msg.sidl"
+#pragma once
 
-// SIDL common TTCN types and definitions.
-#include "SidlASN1.sidl"
-#include "SidlCommon.sidl"
-#include "SidlParts.sidl"
-#include "SidlVals.sidl"
+#include "SIDL_NASEMU_NR_SYSTEM_PORT.h"
+#include "adbg.h"
 
-// SIDL NR common TTCN types and definitions.
-#include "SidlNrCommon.sidl"
+SIDL_BEGIN_C_INTERFACE
 
-// SIDL should define anything to compile with castxml.
-SIDL_DUMMY(TtcnCommon);
+void adbgNrSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_RRC_PDU_IND* ToSS);
+
+void adbgNrSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* FromSS);
+
+SIDL_END_C_INTERFACE
