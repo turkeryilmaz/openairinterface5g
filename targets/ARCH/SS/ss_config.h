@@ -60,6 +60,8 @@ typedef struct ss_config_s {
   int State;
   int vtp_ready;
   int CBRA_flag;
+  int mac_rlc_data_ind_frame;
+  int mac_rlc_data_ind_subframe;
 } ss_config_t;
 
 
