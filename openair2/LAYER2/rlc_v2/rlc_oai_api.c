@@ -405,7 +405,8 @@ rb_found:
   /* used fields? */
   ctx.module_id = ue->module_id;
   ctx.rnti = ue->rnti;
-
+  ctx.frame = RC.ss.mac_rlc_data_ind_frame; /* Populating the frame received from Lower layer */
+   ctx.subframe = RC.ss.mac_rlc_data_ind_subframe; /* Populating the subframe received from Lower layer */
   is_enb = rlc_manager_get_enb_flag(rlc_ue_manager);
   ctx.enb_flag = is_enb;
 

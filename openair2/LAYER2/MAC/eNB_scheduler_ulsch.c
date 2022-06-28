@@ -873,6 +873,11 @@ rx_sdu(const module_id_t enb_mod_idP,
                 "[eNB %d] CC_id %d Frame %d : ULSCH -> UL-DCCH, received %d bytes form UE %d on LCID %d \n",
                 enb_mod_idP, CC_idP, frameP, rx_lengths[i], UE_id,
                 rx_lcids[i]);
+          if (RC.ss.mode > SS_ENB)
+          {
+        	  RC.ss.mac_rlc_data_ind_frame = frameP;
+        	  RC.ss.mac_rlc_data_ind_subframe = subframeP;
+          }
           mac_rlc_data_ind(enb_mod_idP, current_rnti, enb_mod_idP, frameP, ENB_FLAG_YES, MBMS_FLAG_NO, rx_lcids[i], (char *) payload_ptr, rx_lengths[i], 1, NULL);  //(unsigned int*)crc_status);
           UE_info->eNB_UE_stats[CC_idP][UE_id].num_pdu_rx[rx_lcids[i]] += 1;
           UE_info->eNB_UE_stats[CC_idP][UE_id].num_bytes_rx[rx_lcids[i]] += rx_lengths[i];
@@ -964,7 +969,11 @@ rx_sdu(const module_id_t enb_mod_idP,
                 UE_template_ptr->scheduled_ul_bytes = 0;
               }
             }
-
+            if (RC.ss.mode > SS_ENB)
+            {
+            	RC.ss.mac_rlc_data_ind_frame = frameP;
+            	RC.ss.mac_rlc_data_ind_subframe = subframeP;
+            }
               mac_rlc_data_ind(enb_mod_idP, current_rnti, enb_mod_idP, frameP, ENB_FLAG_YES, MBMS_FLAG_NO, rx_lcids[i], (char *) payload_ptr, rx_lengths[i], 1, NULL);
               UE_info->eNB_UE_stats[CC_idP][UE_id].num_pdu_rx[rx_lcids[i]] += 1;
               UE_info->eNB_UE_stats[CC_idP][UE_id].num_bytes_rx[rx_lcids[i]] += rx_lengths[i];
