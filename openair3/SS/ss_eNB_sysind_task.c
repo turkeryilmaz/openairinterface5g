@@ -107,6 +107,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind)
         ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
         ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.eutra_cellId;
 
+        LOG_A(ENB_SS,"[SS_SYSIND][SYSTEM_IND] Frame: %d, Subframe: %d, RAPID: %d, PRTPower: %d, BitMask: %d \n",p_ind->sfn,p_ind->sf,p_ind->ra_PreambleIndex,p_ind->prtPower_Type,p_ind->bitmask);
 
         /* Populate and Send the SYSTEM_IND to Client */
         ind.Indication.d = SystemIndication_Type_RachPreamble;
@@ -222,7 +223,7 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
                         else
                         {
                                 LOG_A(ENB_SS, "[SS_SYSIND] Received SS_SYSTEM_IND\n");
-                                if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                                if (RC.ss.State >= SS_STATE_CELL_CONFIGURED)
                                 {
                                         instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                                         ss_send_sysind_data(&received_msg->ittiMsg.ss_system_ind);
