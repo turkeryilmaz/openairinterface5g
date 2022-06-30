@@ -533,6 +533,9 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
   uint8_t CC_id = 0;
+  LOG_A(RRC, "eNB received SS_PAGING_IND with paging_recordList=%p systemInfoModification=%d\n", SS_PAGING_IND(msg_p).paging_recordList, SS_PAGING_IND(msg_p).systemInfoModification);
+  if (SS_PAGING_IND(msg_p).paging_recordList)
+  {
   LOG_A(RRC, "[eNB %d] In S1AP_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
    SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
    SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
@@ -673,6 +676,8 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
   LOG_A(RRC, "[eNB %d] CC_id %d In S1AP_PAGING_IND: send encdoed buffer to PDCP buffer_size %d\n", instance, CC_id, length);
   itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
+  }
+
   LOG_A(RRC, "[eNB %d] Exiting ,rrc_eNB_process_SS_PAGING_IND\n");
   return (0);
 }

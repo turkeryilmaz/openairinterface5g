@@ -1232,6 +1232,16 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
   bool resVal = TRUE;
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
+  if (message_p == NULL)
+  {
+    return -1;
+  }
+
+  SS_PAGING_IND(message_p).sfn = tinfo.sfn;
+  SS_PAGING_IND(message_p).sf = tinfo.sf;
+  SS_PAGING_IND(message_p).paging_recordList = NULL;
+  SS_PAGING_IND(message_p).systemInfoModification = false;
+
   switch (pagingRequest->Paging.message.d)
   {
   case PCCH_MessageType_c1:
@@ -1282,6 +1292,15 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
           LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
 
         }
+      }
+
+      if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d)
+      {
+         LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
+         if (Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
+         {
+           SS_PAGING_IND(message_p).systemInfoModification = true;
+         }
       }
     }
 

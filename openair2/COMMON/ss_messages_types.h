@@ -199,6 +199,7 @@ typedef struct ss_paging_ind_s {
   uint16_t sfn;
   uint8_t  sf;
   ss_paging_identity_t *paging_recordList;
+  bool systemInfoModification;
 } ss_paging_ind_t;
 
 typedef enum VtpCmd_e {
