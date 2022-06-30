@@ -412,6 +412,28 @@ struct PagingTrigger_Type {
 	SIDL_OPTIONAL(SubframeOffsetList_Type, SubframeOffsetList);
 };
 
+
+typedef enum {
+	IndicationAndControlMode_enable,
+	IndicationAndControlMode_disable
+} IndicationAndControlMode_Type;
+
+
+struct L1Mac_IndicationControl_Type {
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, RachPreamble);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, SchedReq);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, BSR);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, UL_HARQ);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, C_RNTI);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, PHR);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, HarqError);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, PeriodicRI);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, EPHR);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, PeriodicCQI);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, SRS);
+	SIDL_OPTIONAL(IndicationAndControlMode_Type, DC_PHR);
+};
+
 SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_UNBOUND_VALUE,
 	SystemRequest_Type_Cell,
@@ -421,7 +443,7 @@ SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_AS_Security,
 	// SystemRequest_Type_Sps,
 	SystemRequest_Type_Paging = 7,
-	// SystemRequest_Type_L1MacIndCtrl,
+	SystemRequest_Type_L1MacIndCtrl,
 	// SystemRequest_Type_RlcIndCtrl,
 	SystemRequest_Type_PdcpCount = 10,
 	// SystemRequest_Type_PdcpHandoverControl,
@@ -438,6 +460,7 @@ SIDL_UNION_ENUM(SystemRequest_Type) {
 	// SystemRequest_Type_LAA__SubframeConfiguration,
 	// SystemRequest_Type_MultipleUlSps
 };
+
 SIDL_UNION_BEGIN(SystemRequest_Type) {
 	SIDL_UNION_CASE(SystemRequest_Type_Cell)
 		struct CellConfigRequest_Type Cell;
@@ -452,7 +475,8 @@ SIDL_UNION_BEGIN(SystemRequest_Type) {
 	// SIDL_UNION_CASE(SystemRequest_Type_Sps)
 	SIDL_UNION_CASE(SystemRequest_Type_Paging)
 		struct PagingTrigger_Type Paging;
-	// SIDL_UNION_CASE(SystemRequest_Type_L1MacIndCtrl)
+	SIDL_UNION_CASE(SystemRequest_Type_L1MacIndCtrl)
+		struct L1Mac_IndicationControl_Type L1MacIndCtrl;
 	// SIDL_UNION_CASE(SystemRequest_Type_RlcIndCtrl)
 	SIDL_UNION_CASE(SystemRequest_Type_PdcpCount)
 		struct Pdcp_CountReq_Type PdcpCount;
