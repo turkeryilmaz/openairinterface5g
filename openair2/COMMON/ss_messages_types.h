@@ -52,6 +52,9 @@
 #define SS_VT_TIME_OUT(mSGpTR)                (mSGpTR)->ittiMsg.ss_vt_time_out
 #define SDU_SIZE                           (512)
 
+/** SYS IND */
+#define SS_SYSTEM_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_system_ind
+
 /** PORTMAN */
 typedef struct ss_sys_port_msg_ind {
   struct SYSTEM_CTRL_REQ* req;
@@ -224,4 +227,16 @@ typedef struct ss_vtp_proxy_ack_s {
 typedef struct ss_vt_time_out_s {
   void *msg;
 } ss_vt_time_out_t;
+
+/** SYS IND */
+typedef struct ss_system_ind_s
+{
+    bool           bitmask; //Flag for presence of optional parameter repetitionsPerPreambleAttempt
+    uint8_t        sfn;
+    uint16_t       sf;
+    uint8_t        ra_PreambleIndex;
+    bool           prtPower_Type;
+    uint32_t       repetitionsPerPreambleAttempt;
+} ss_system_ind_t;
+
 #endif /* SS_MESSAGES_TYPES_H_ */

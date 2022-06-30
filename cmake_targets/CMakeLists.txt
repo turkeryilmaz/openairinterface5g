@@ -2074,6 +2074,7 @@ include_directories (SIDL_SRC_DIR ${SIDL_DIR}/ser/api)
 set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_sys_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_sysind_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_srb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vng_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vtp_task.c
