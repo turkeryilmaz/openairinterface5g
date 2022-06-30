@@ -435,8 +435,34 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
        } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 3) {
         RRC_CONFIGURATION_REQ(msg_p).mnc[i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[2])<<0));
       }
-    }
 
+          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.d == true)
+          {
+              LOG_A(ENB_SS, "[SYS] [SIs] size=%d", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
+              for (int i=0; i< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d; ++i)
+              {
+                if (BCCH_DL_SCH_MessageType_c1 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.d)
+                {
+                   if (BCCH_DL_SCH_MessageType_c1_systemInformation == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.d)
+                   {
+                     if(SystemInformation_criticalExtensions_systemInformation_r8 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.d)
+                     {
+                       for(int j=0; j< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.d; j++)
+                       {
+                         if(SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                         {
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           }
 #if 0 /** FIXME: To be implemented later */
     RRC_CONFIGURATION_REQ(msg_p).tac =
     RRC_CONFIGURATION_REQ(msg_p).cell_identity =
@@ -1232,6 +1258,16 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
   bool resVal = TRUE;
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
+  if (message_p == NULL)
+  {
+    return -1;
+  }
+
+  SS_PAGING_IND(message_p).sfn = tinfo.sfn;
+  SS_PAGING_IND(message_p).sf = tinfo.sf;
+  SS_PAGING_IND(message_p).paging_recordList = NULL;
+  SS_PAGING_IND(message_p).systemInfoModification = false;
+
   switch (pagingRequest->Paging.message.d)
   {
   case PCCH_MessageType_c1:
@@ -1282,6 +1318,15 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
           LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
 
         }
+      }
+
+      if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d)
+      {
+         LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
+         if (Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
+         {
+           SS_PAGING_IND(message_p).systemInfoModification = true;
+         }
       }
     }
 
