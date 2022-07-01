@@ -1372,6 +1372,29 @@ static void sys_handle_enquire_timing(ss_set_timinfo_t *tinfo)
   }
 }
 
+static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacInd_Ctrl)
+{
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_L1MACIND_CTRL);
+  if (message_p)
+  {
+    LOG_A(ENB_SS,"[SYS] l1macind ctrl, prach preamble: %d\n",L1MacInd_Ctrl->RachPreamble.d);
+    if(L1MacInd_Ctrl->RachPreamble.d)
+    {
+      if(IndicationAndControlMode_enable == L1MacInd_Ctrl->RachPreamble.v)
+      {
+        SS_L1MACIND_CTRL(message_p).rachpreamble_enable = true;
+      } else {
+        SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
+      }
+    }
+    int send_res = itti_send_msg_to_task(TASK_MAC_ENB, INSTANCE_DEFAULT, message_p);
+    if (send_res < 0)
+    {
+      LOG_A(ENB_SS, "[SYS] Error sending to MAC");
+    }
+  }
+}
+
 /*
  * Function : sys_handle_as_security_req
  * Description: Funtion handler of SYS_PORT. Handles the UE
@@ -1664,6 +1687,12 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       pg_timinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
       sys_handle_paging_req(&(req->Request.v.Paging), pg_timinfo);
       break;
+
+    case SystemRequest_Type_L1MacIndCtrl:
+      LOG_A(ENB_SS, "[SYS] SystemRequest_Type L1MacIndCtrl received\n");
+      sys_handle_l1macind_ctrl(&(req->Request.v.L1MacIndCtrl));
+      break;
+
     case SystemRequest_Type_UNBOUND_VALUE:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_UNBOUND_VALUE received\n");
       break;
@@ -1789,6 +1818,12 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     valid = TRUE;
     sendDummyCnf = FALSE;
     cnfType = SystemConfirm_Type_Paging;
+    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+    break;
+   case SystemRequest_Type_L1MacIndCtrl:
+    valid = TRUE;
+    sendDummyCnf = FALSE;
+    cnfType = SystemConfirm_Type_L1MacIndCtrl;
     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
   default:
