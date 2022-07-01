@@ -301,6 +301,11 @@ void *mac_enb_task(void *arg)
         eNB_Config_Local_DRX(ITTI_MSG_DESTINATION_INSTANCE(received_msg), &received_msg->ittiMsg.rrc_mac_drx_config_req);
         break;
 
+      case SS_L1MACIND_CTRL:
+        LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL\n");
+        RC.ss.l1macind.rachpreamble_enable = received_msg->ittiMsg.ss_l1macind_ctrl.rachpreamble_enable;
+        break;
+
       case TERMINATE_MESSAGE:
         LOG_W(MAC, " *** Exiting MAC thread\n");
         itti_exit_task();

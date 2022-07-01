@@ -38,6 +38,7 @@ MESSAGE_DEF(SS_VNG_PROXY_RESP,                MESSAGE_PRIORITY_MED, ss_vng_proxy
 MESSAGE_DEF(SS_VTP_PROXY_UPD,                 MESSAGE_PRIORITY_MED, ss_vtp_proxy_upd_t                     , ss_vtp_proxy_upd)
 MESSAGE_DEF(SS_VTP_PROXY_ACK,                 MESSAGE_PRIORITY_MED, ss_vtp_proxy_ack_t                     , ss_vtp_proxy_ack)
 
-MESSAGE_DEF(SS_VT_TIME_OUT,                 MESSAGE_PRIORITY_MED, ss_vt_time_out_t                     , ss_vt_time_out)
+MESSAGE_DEF(SS_VT_TIME_OUT,                   MESSAGE_PRIORITY_MED, ss_vt_time_out_t                       , ss_vt_time_out)
 
-MESSAGE_DEF(SS_SS_PAGING_IND,                  MESSAGE_PRIORITY_MED, ss_paging_ind_t                      , ss_paging_ind)
+MESSAGE_DEF(SS_SS_PAGING_IND,                 MESSAGE_PRIORITY_MED, ss_paging_ind_t                        , ss_paging_ind)
+MESSAGE_DEF(SS_L1MACIND_CTRL,                 MESSAGE_PRIORITY_MED, ss_l1macind_ctrl_t                     , ss_l1macind_ctrl)

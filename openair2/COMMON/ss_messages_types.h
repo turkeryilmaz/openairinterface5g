@@ -40,7 +40,7 @@
 #define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
 #define SS_SYS_PROXY_MSG_CNF(mSGpTR)          (mSGpTR)->ittiMsg.udp_data_ind
 #define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind
-
+#define SS_L1MACIND_CTRL(mSGpTR)              (mSGpTR)->ittiMsg.ss_l1macind_ctrl
 
 /** VNG */
 #define SS_VNG_PROXY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ss_vng_proxy_req
@@ -118,6 +118,10 @@ typedef struct ss_req_pdcp_cnt_s {
   rnti_t rnti;
   uint8_t rb_id;
 } ss_req_pdcp_cnt_t;
+
+typedef struct ss_l1macind_ctrl_s {
+  bool rachpreamble_enable;
+} ss_l1macind_ctrl_t;
 
 /** SRB */
 typedef struct ss_rrc_pdu_req_s {

@@ -62,6 +62,7 @@ typedef struct ss_config_s {
   int CBRA_flag;
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
+  ss_l1macind_ctrl_t l1macind;
 } ss_config_t;
 
 
