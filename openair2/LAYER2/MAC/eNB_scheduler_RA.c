@@ -1427,17 +1427,19 @@ initiate_ra_proc(module_id_t module_idP,
             module_idP, CC_id, frameP, ra[i].Msg2_frame,
             ra[i].Msg2_subframe, i, ra[i].rnti, ra[i].state);
 
-      // Populate and send the SS_SYSTEM_IND to System Simulator
-      MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
-      SS_SYSTEM_IND(m).bitmask = false;
-      SS_SYSTEM_IND(m).sfn = frameP;
-      SS_SYSTEM_IND(m).sf = subframeP;
-      SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
-      SS_SYSTEM_IND(m).prtPower_Type = true;
-      SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
-      itti_send_msg_to_task(TASK_SS_SYSIND, module_idP, m);
-      LOG_A(MAC,"MAC Sending SS_SYSTEM_IND to System Simulator\n");
-
+      if(RC.ss.l1macind.rachpreamble_enable)
+      {
+        // Populate and send the SS_SYSTEM_IND to System Simulator
+        MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
+        SS_SYSTEM_IND(m).bitmask = false;
+        SS_SYSTEM_IND(m).sfn = frameP;
+        SS_SYSTEM_IND(m).sf = subframeP;
+        SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
+        SS_SYSTEM_IND(m).prtPower_Type = true;
+        SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
+        itti_send_msg_to_task(TASK_SS_SYSIND, module_idP, m);
+        LOG_A(MAC,"MAC Sending SS_SYSTEM_IND to System Simulator\n");
+      }
       return;
     }
   }
