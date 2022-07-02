@@ -1,29 +1,19 @@
-/* vim: set ft=cpp:
- *****************************************************************
+/*
+ * Copyright 2022 Sequans Communications.
  *
- * Module : EUTRA_SYSTEM_PORT SIDL DEFINITION
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *****************************************************************
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Copyright (c) 2009-2021 SEQUANS Communications.
- *  All rights reserved.
- *
- *  This is confidential and proprietary source code of SEQUANS
- *  Communications. The use of the present source code and all
- *  its derived forms is exclusively governed by the restricted
- *  terms and conditions set forth in the SEQUANS
- *  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
- *  AGREEMENT. The present source code and all its derived
- *  forms can ONLY and EXCLUSIVELY be used with SEQUANS
- *  Communications' products. The distribution/sale of the
- *  present source code and all its derived forms is EXCLUSIVELY
- *  RESERVED to regular LICENCE holder and otherwise STRICTLY
- *  PROHIBITED.
- *
- *****************************************************************
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-// SIDL keywords.
 #include "msg.sidl"
 
 // SIDL common TTCN types and definitions.
@@ -31,7 +21,7 @@
 
 METADATA_VAR(itf_name, "Sys");
 
-METADATA_VAR(projects, "NR5GC_IRAT ENDC");
+METADATA_VAR(rats, "EUTRA");
 
 // TTCN namespaces
 METADATA_VAR(namespaces, "EUTRA_ASP_TypeDefs");
@@ -415,6 +405,13 @@ struct UE_CategoryInfo_Type {
 	SIDL_OPTIONAL(UE_CategoryDL_v1460_Type, ue_CategoryDL_v1460);
 };
 
+typedef SIDL_DYNAMIC(int32_t, SubframeOffsetList_Type);
+
+struct PagingTrigger_Type {
+	struct ASN_NAME(PCCH_Message) Paging;
+	SIDL_OPTIONAL(SubframeOffsetList_Type, SubframeOffsetList);
+};
+
 SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_UNBOUND_VALUE,
 	SystemRequest_Type_Cell,
@@ -423,7 +420,7 @@ SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_EnquireTiming = 4,
 	SystemRequest_Type_AS_Security,
 	// SystemRequest_Type_Sps,
-	// SystemRequest_Type_Paging,
+	SystemRequest_Type_Paging = 7,
 	// SystemRequest_Type_L1MacIndCtrl,
 	// SystemRequest_Type_RlcIndCtrl,
 	SystemRequest_Type_PdcpCount = 10,
@@ -453,7 +450,8 @@ SIDL_UNION_BEGIN(SystemRequest_Type) {
 	SIDL_UNION_CASE(SystemRequest_Type_AS_Security)
 		struct AS_Security_Type AS_Security;
 	// SIDL_UNION_CASE(SystemRequest_Type_Sps)
-	// SIDL_UNION_CASE(SystemRequest_Type_Paging)
+	SIDL_UNION_CASE(SystemRequest_Type_Paging)
+		struct PagingTrigger_Type Paging;
 	// SIDL_UNION_CASE(SystemRequest_Type_L1MacIndCtrl)
 	// SIDL_UNION_CASE(SystemRequest_Type_RlcIndCtrl)
 	SIDL_UNION_CASE(SystemRequest_Type_PdcpCount)
