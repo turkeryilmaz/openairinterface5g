@@ -1397,6 +1397,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
     = rrconfig->prach_root;
   (*sib2)->radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex
     = rrconfig->prach_config_index;
+  LOG_A(RRC, "SIB2 prach_config_index=%d \n", rrconfig->prach_config_index);
   (*sib2)->radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag
     = rrconfig->prach_high_speed;
   (*sib2)->radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig
