@@ -172,7 +172,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
    ret = true;
 #else
-    assert(0!=0 && "No SDAP");
+    //assert(0!=0 && "No SDAP");
 
     ret = pdcp_data_req(ctxt_p,
                         srb_flag,
@@ -272,7 +272,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
 #else
 
-  assert(0!=0 && "SDAP active");
+  //assert(0!=0 && "SDAP active");
   ret = pdcp_data_req(ctxt_p,
                       srb_flag,
                       sdap_drb_id,

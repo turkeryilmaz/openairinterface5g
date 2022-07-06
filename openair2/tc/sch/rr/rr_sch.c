@@ -12,7 +12,8 @@ typedef struct rr_s
 {
   sch_t base;
   seq_arr_t arr; // queue_t* 
-  void* it_last_q;
+  uint32_t last_idx;
+//  void* it_last_q;
 } rr_t;
 
 static
@@ -31,9 +32,12 @@ void rr_add_queue(sch_t* s_base, queue_t** q)
   assert(s_base != NULL);
   rr_t* s = (rr_t*)s_base;
   assert(q != NULL);
+  queue_t* tmp = *q;
+  assert( tmp->type == TC_QUEUE_FIFO || tmp->type == TC_QUEUE_CODEL) ;
+  assert(tmp->id < 128 && "Did you added 128 queues?");
+
   seq_push_back(&s->arr, q, sizeof(queue_t*));
   printf("Adding queue %p to the Scheduler \n", *q );
-
 }
 
 
@@ -68,13 +72,15 @@ void rr_del_queue(sch_t* s_base, queue_t** q)
 
   seq_erase(&s->arr, it, next);
 
-  s->it_last_q = seq_front(&s->arr);
+  s->last_idx = 0;
+  
+ // s->it_last_q = seq_front(&s->arr);
 
-  printf("Sched queue deleted = %p \n", *q);
+ // printf("Sched queue deleted = %p \n", *q);
 
-  queue_t* q_it_last = *(queue_t**)s->it_last_q;
+//  queue_t* q_it_last = *(queue_t**)s->it_last_q;
 
-  printf("Sched queue it_last  = %p \n", q_it_last );
+//  printf("Sched queue it_last  = %p \n", q_it_last );
 }
 
 
@@ -83,9 +89,33 @@ queue_t* rr_next_queue(sch_t* s_base)
 {
   assert(s_base != NULL);
   rr_t* s = (rr_t*)s_base;
-  if(seq_size(&s->arr) == 0)
+  uint32_t const sz = seq_size(&s->arr); 
+  if(sz == 0)
     return NULL;
 
+  if(s->last_idx >= sz)
+    s->last_idx = 0;
+
+  queue_t* q = NULL;
+  for(int i = 0; i < sz; ++i){
+  q = *(queue_t**)seq_at(&s->arr, s->last_idx);
+  assert(q != NULL);
+
+  if(q->size(q) != 0){
+    printf("Scheduler Next Queue id = %u \n", q->id);
+    return q;
+  }
+
+  s->last_idx += 1; 
+  //printf("No pkts at queue id = %d \n", q->id);
+  if(s->last_idx >= sz)
+    s->last_idx = 0;
+  }
+
+  return NULL;
+}
+
+/*
   assert(s->it_last_q != seq_end(&s->arr));
 
   assert(s->it_last_q != NULL);
@@ -97,26 +127,30 @@ queue_t* rr_next_queue(sch_t* s_base)
     if(s->it_last_q == seq_end(&s->arr))
       s->it_last_q = seq_front(&s->arr);
 
-
     //printf("Next queue has no packets\n");
 
     return NULL;
   }
-
-  printf("Scheduler Next Queue id = %u \n", q->id);
-  return q;
+*/
+//  printf("Scheduler Next Queue id = %u \n", q->id);
+//  return q;
   //*(queue_t**)s->it_last_q;
-}
+//}
 
 static
 void rr_pkt_fwd(sch_t* s_base)
 {
   rr_t* s = (rr_t*)s_base;
-  s->it_last_q = seq_next(&s->arr, s->it_last_q);
-  if(s->it_last_q == seq_end(&s->arr))
-    s->it_last_q = seq_front(&s->arr);
 
-  printf("Pkt fwd called \n");
+  s->last_idx += 1;
+//  s->it_last_q = seq_next(&s->arr, s->it_last_q);
+  if(s->last_idx >= seq_size(&s->arr) ){
+    s->last_idx = 0; 
+  }
+ // if(s->it_last_q == seq_end(&s->arr))
+ //   s->it_last_q = seq_front(&s->arr);
+
+  //printf("Pkt fwd called \n");
 }
 
 static
@@ -155,7 +189,8 @@ sch_t* rr_init(void)
   s->base.del_queue =  rr_del_queue;
 
   seq_init(&s->arr, sizeof(queue_t*));
-  s->it_last_q = seq_end(&s->arr);
+  s->last_idx = 0;
+//  s->it_last_q = seq_end(&s->arr);
   return &s->base;
 }
 

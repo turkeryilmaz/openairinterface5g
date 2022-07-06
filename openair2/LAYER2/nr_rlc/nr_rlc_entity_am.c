@@ -663,7 +663,7 @@ nacks_done:
   entity->tx_next_ack = tx_next_ack;
 
 
-  printf("[mir]: tx_bytes = %d \n", entity->tx_size );
+  //printf("[mir]: tx_bytes = %d \n", entity->tx_size );
 
   return;
 
@@ -1710,7 +1710,7 @@ void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *_entity,
   entity->common.bstatus.tx_size += compute_pdu_header_size(entity, sdu)
                                     + sdu->size;
 
-  printf("[mir]: tx_size = %d \n", entity->common.bstatus.tx_size);
+  //printf("[mir]: tx_size = %d \n", entity->common.bstatus.tx_size);
 }
 
 /*************************************************************************/

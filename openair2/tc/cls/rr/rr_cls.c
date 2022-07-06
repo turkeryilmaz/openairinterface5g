@@ -97,7 +97,7 @@ queue_t* rr_cls_dst_queue(cls_t* cls_base, const uint8_t* data, size_t size)
 
   rr_cls_t* cls = (rr_cls_t*)cls_base;
 
-  printf("Last queue number RR %d \n", cls->last_q);
+  //printf("Last queue number RR %d \n", cls->last_q);
   void* it_q = seq_at(&cls->queues, cls->last_q);
   assert(it_q != NULL);
   queue_t* q = *(queue_t**)it_q; 
@@ -111,7 +111,7 @@ void rr_cls_pkt_fwd(cls_t* cls_base)
   rr_cls_t* cls = (rr_cls_t*)cls_base;
 
   const uint32_t num_queues = seq_size(&cls->queues);
-  printf("num_queues = %d \n", num_queues);
+  //printf("num_queues = %d \n", num_queues);
   if(num_queues == 0)
     return;
 

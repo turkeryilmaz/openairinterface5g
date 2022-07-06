@@ -1104,10 +1104,11 @@ bool allocate_ul_retransmission(module_id_t module_id,
   sched_ctrl->sched_pusch = *retInfo;
   NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
 
-  LOG_D(NR_MAC,
-        "%4d.%2d Allocate UL retransmission UE %d/RNTI %04x sched %4d.%2d (%d RBs)\n",
+  LOG_I(NR_MAC,
+        "%4d.%2d harq_pid %d Allocate UL retransmission UE %d/RNTI %04x sched %4d.%2d (%d RBs)\n",
         frame,
         slot,
+        harq_pid,
         UE_id,
         UE_info->rnti[UE_id],
         sched_pusch->frame,
@@ -1721,7 +1722,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot)
     sched_ctrl->last_ul_frame = sched_pusch->frame;
     sched_ctrl->last_ul_slot = sched_pusch->slot;
 
-    LOG_D(NR_MAC,
+    LOG_I(NR_MAC,
           "ULSCH/PUSCH: %4d.%2d RNTI %04x UL sched %4d.%2d DCI L %d start %2d RBS %3d startSymbol %2d nb_symbol %2d dmrs_pos %x MCS %2d TBS %4d HARQ PID %2d round %d RV %d NDI %d est %6d sched %6d est BSR %6d TPC %d\n",
           frame,
           slot,

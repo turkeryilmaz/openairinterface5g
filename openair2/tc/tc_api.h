@@ -1,7 +1,7 @@
 #ifndef TRAFFIC_CONTROL_API
 #define TRAFFIC_CONTROL_API 
 
-#define TC_SM
+//#define TC_SM
 
 #include <stdbool.h>
 #include <stddef.h>

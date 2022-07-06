@@ -346,7 +346,7 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
   //TODO change to accomodate for SRS
 
   frame_type_t frame_type = get_frame_type(*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
-  int temp_min_delay = 6; // k2 = 2 or 3 won'r work as well as higher values
+  int temp_min_delay = 5; // k2 = 2 or 3 won'r work as well as higher values
   if(frame_type==TDD && scc->tdd_UL_DL_ConfigurationCommon) {
 
     switch (scc->tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity) {
