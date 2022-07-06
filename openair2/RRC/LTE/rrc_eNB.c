@@ -10483,6 +10483,17 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       break;
 //#endif
 
+      case SS_DRB_PDU_REQ:
+        LOG_A(RRC, "[eNB %d] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                      instance,
+                                      ENB_FLAG_YES,
+                                      SS_DRB_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+        pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
+       break;
+
     case RRC_AS_SECURITY_CONFIG_REQ:
       LOG_A(RRC,"[eNB %d] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %d \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
       for(int i=16;i<32;i++)

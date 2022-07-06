@@ -46,6 +46,10 @@
 #define SS_VNG_PROXY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ss_vng_proxy_req
 #define SS_VNG_PROXY_RESP(mSGpTR)             (mSGpTR)->ittiMsg.ss_vng_proxy_resp
 
+/** DRB **/
+#define SS_DRB_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_drb_pdu_req
+#define SS_DRB_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_drb_pdu_ind
+
 // VTP
 #define SS_VTP_PROXY_UPD(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_upd
 #define SS_VTP_PROXY_ACK(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_ack
@@ -145,6 +149,20 @@ typedef struct ss_vng_proxy_resp_s {
                            received from Proxy in the SYS task */
   uint8_t     status;  /** 0 Success: 1 Failure */
 } ss_vng_proxy_resp_t;
+
+/** DRB **/
+typedef struct ss_drb_pdu_req_s {
+  uint8_t   drb_id;
+  uint32_t  sdu_size;
+  uint8_t   sdu[SDU_SIZE];
+  uint16_t  rnti;
+} ss_drb_pdu_req_t;
+
+typedef struct ss_drb_pdu_ind_s {
+  uint8_t   drb_id;
+  uint32_t  sdu_size;
+  uint8_t   sdu[SDU_SIZE];
+} ss_drb_pdu_ind_t;
 
 typedef enum carrierBandwidthEUTRA_dl_Bandwidth_e {
         carrierBandwidthEUTRA_dl_Bandwidth_e_n6 = 0,

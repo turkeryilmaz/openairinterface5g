@@ -46,6 +46,7 @@
 # include "ss_eNB_srb_task.h"
 # include "ss_eNB_vng_task.h"
 # include "ss_eNB_vtp_task.h"
+# include "ss_eNB_drb_task.h"
 # include "ss_eNB_vt_timer_task.h"
 
 
@@ -74,6 +75,9 @@ int create_tasks(uint32_t enb_nb) {
 
     rc = itti_create_task(TASK_VNG, ss_eNB_vng_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS VNG failed\n");
+
+    rc = itti_create_task(TASK_SS_DRB, ss_eNB_drb_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS DRB failed\n");
 
     /* Task for support Virtual Time for TTCN  engine */
     rc = itti_create_task(TASK_VTP, ss_eNB_vtp_task, NULL);
