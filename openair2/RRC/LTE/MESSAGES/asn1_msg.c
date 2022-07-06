@@ -4378,7 +4378,7 @@ uint8_t do_DLInformationTransfer(uint8_t Mod_id, uint8_t **buffer, uint8_t trans
 }
 
 uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
-                  ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain) {
+                  ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain, bool systemInfoModification) {
   LOG_D(RRC, "[eNB %d] do_Paging start\n", Mod_id);
   asn_enc_rval_t enc_rval;
   LTE_PCCH_Message_t pcch_msg;
@@ -4386,13 +4386,16 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   int j;
   pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
   pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
-  pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
+  pcch_msg.message.choice.c1.choice.paging.pagingRecordList = NULL;
   pcch_msg.message.choice.c1.choice.paging.systemInfoModification = NULL;
   pcch_msg.message.choice.c1.choice.paging.etws_Indication = NULL;
   pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
   asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
-  pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
 
+  if (ue_paging_identity.presenceMask != LTE_PagingUE_Identity_PR_NOTHING)
+  {
+  pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
+  pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
   if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
     /* Possible error on calloc */
     return (-1);
@@ -4430,6 +4433,14 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   ASN_SEQUENCE_ADD(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list, paging_record_p);
   LOG_D(RRC, "[eNB %d] do_Paging paging_record: cn_Domain %ld, ue_paging_identity.presenceMask %d, PagingRecordList.count %d\n",
         Mod_id, paging_record_p->cn_Domain, ue_paging_identity.presenceMask, pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count);
+  }
+  if (systemInfoModification)
+  {
+    LOG_A(RRC, "Handling of paging for systemInfoModification\n");
+    pcch_msg.message.choice.c1.choice.paging.systemInfoModification = calloc(1, sizeof(long));
+    *(pcch_msg.message.choice.c1.choice.paging.systemInfoModification) = LTE_Paging__systemInfoModification_true;
+  }
+
   enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_PCCH_Message, NULL, (void *)&pcch_msg,
                                    buffer, buffer_size);
 
