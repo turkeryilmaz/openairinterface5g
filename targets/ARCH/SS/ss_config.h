@@ -57,6 +57,8 @@ typedef struct ss_config_s {
   /** VTP port number */
   int Vtpport;
   int SysIndport;
+  /** DRB port number */
+  int Drbport;
   /** State info */
   int State;
   int vtp_ready;
