@@ -541,14 +541,17 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
 
   if (SS_PAGING_IND(msg_p).paging_recordList)
   {
-  LOG_A(RRC, "[eNB %d] In S1AP_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
-   SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
-   SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
-  SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
-  SS_PAGING_IND(msg_p).sfn,
-  SS_PAGING_IND(msg_p).sf,
-  SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
-  (uint16_t)SS_PAGING_IND(msg_p).paging_recordList->ue_index_value);
+    LOG_A(RRC, "[eNB %d] In S1AP_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+      SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
+      SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
+      SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
+      SS_PAGING_IND(msg_p).sfn,
+      SS_PAGING_IND(msg_p).sf,
+      SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
+      (uint16_t)SS_PAGING_IND(msg_p).ue_index_value);
+    memcpy(&ue_paging_identity, &(SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity), sizeof(ue_paging_identity_t));
+    cn_domain = SS_PAGING_IND(msg_p).paging_recordList->cn_domain;
+  }
   //       S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc, );
   lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
   /* get nB from configuration */
@@ -615,7 +618,7 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
       /* set T = min(Tc,Tue) */
       UE_PF_PO[CC_id][i].T = T;
       /* set UE_ID */
-      UE_PF_PO[CC_id][i].ue_index_value = (uint16_t)SS_PAGING_IND(msg_p).paging_recordList->ue_index_value;
+      UE_PF_PO[CC_id][i].ue_index_value = (uint16_t)SS_PAGING_IND(msg_p).ue_index_value;
       /* calculate PF and PO */
       /* set PF_min : SFN mod T = (T div N)*(UE_ID mod N) */
       UE_PF_PO[CC_id][i].PF_min = (SS_PAGING_IND(msg_p).sfn % T) + (UE_PF_PO[CC_id][i].ue_index_value % N);
@@ -653,9 +656,6 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
     }
   }
   pthread_mutex_unlock(&ue_pf_po_mutex);
-    memcpy(&ue_paging_identity, &(SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity), sizeof(ue_paging_identity_t));
-    cn_domain = SS_PAGING_IND(msg_p).paging_recordList->cn_domain;
-  }
   uint32_t length;
   uint8_t buffer[RRC_BUF_SIZE];
   uint8_t *message_buffer;

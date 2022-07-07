@@ -1438,7 +1438,7 @@ initiate_ra_proc(module_id_t module_idP,
         SS_SYSTEM_IND(m).prtPower_Type = true;
         SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
         itti_send_msg_to_task(TASK_SS_SYSIND, module_idP, m);
-        LOG_A(MAC,"MAC Sending SS_SYSTEM_IND to System Simulator\n");
+        LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with ra_PreambleIndex=%d to System Simulator\n", SS_SYSTEM_IND(m).ra_PreambleIndex);
       }
       return;
     }

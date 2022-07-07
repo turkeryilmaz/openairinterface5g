@@ -125,7 +125,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind)
                 LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] acpSysIndProcessToSSEncSrv Failure\n");
                 return;
         }
-        LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.eutra_cellId);
+        LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] Buffer msgSize=%d (!!2) to EUTRACell %d\n", (int)msgSize,SS_context.eutra_cellId);
 
         /* Send message */
         status = acpSendMsg(ctx_sysind_g, msgSize, buffer);

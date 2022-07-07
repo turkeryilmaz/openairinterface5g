@@ -1299,7 +1299,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
           SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi = stmsi_rx ;
            SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code =
                  bin_to_int(pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.v.s_TMSI.mmec,8);
-           SS_PAGING_IND(message_p).paging_recordList->ue_index_value = paging_ue_index_g;
+           SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
            paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
           break;
         case PagingUE_Identity_imsi:

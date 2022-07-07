@@ -191,10 +191,6 @@ typedef struct ss_vng_proxy_req_s {
 
 
 typedef struct ss_paging_identity_s {
-  /* UE identity index value.
-   * Specified in 3GPP TS 36.304
-   */
-  unsigned ue_index_value:10;
 
   /* UE paging identity */
   ue_paging_identity_t ue_paging_identity;
@@ -205,6 +201,12 @@ typedef struct ss_paging_identity_s {
 typedef struct ss_paging_ind_s {
   uint16_t sfn;
   uint8_t  sf;
+
+  /* UE identity index value.
+   * Specified in 3GPP TS 36.304
+   */
+  unsigned ue_index_value:10;
+
   ss_paging_identity_t *paging_recordList;
   bool systemInfoModification;
 } ss_paging_ind_t;
