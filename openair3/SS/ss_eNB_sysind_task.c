@@ -163,7 +163,6 @@ void ss_eNB_sysind_init(void)
 
 	const struct acpMsgTable msgTable[] = {
                 {"SysIndProcessToSS", MSG_SysIndProcessToSS_userId},
-                {"SysProcess", MSG_SysProcess_userId},
                 // The last element should be NULL
                 {NULL, 0}};
         
