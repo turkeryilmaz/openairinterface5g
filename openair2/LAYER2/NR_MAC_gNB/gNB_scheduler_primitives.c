@@ -3035,7 +3035,7 @@ void nr_mac_update_timers(module_id_t module_id,
         int dci_format = get_dci_format(sched_ctrl);
         const uint8_t num_dmrs_cdm_grps_no_data = (ubwp || ubwpd) ? 1 : 2;
         const uint8_t nrOfLayers = 1;
-        const int utda = get_ul_tda(RC.nrmac[module_id], scc, slot);
+        const int utda = get_ul_tda(RC.nrmac[module_id], scc, slot,-1);
 
         nr_set_pusch_semi_static(sib1,
                                  scc,

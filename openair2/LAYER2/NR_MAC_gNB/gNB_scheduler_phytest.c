@@ -354,7 +354,7 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
 
   const struct NR_PUSCH_TimeDomainResourceAllocationList *tdaList =
     sched_ctrl->active_ubwp->bwp_Common->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
-  const int temp_tda = get_ul_tda(nr_mac, scc, slot);
+  const int temp_tda = get_ul_tda(nr_mac, scc, slot,-1);
   if (temp_tda < 0)
     return false;
   AssertFatal(temp_tda < tdaList->list.count,
@@ -364,7 +364,7 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
   int K2 = get_K2(scc,NULL,sched_ctrl->active_ubwp, temp_tda, mu);
   const int sched_frame = frame + (slot + K2 >= nr_slots_per_frame[mu]);
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
-  const int tda = get_ul_tda(nr_mac, scc, sched_slot);
+  const int tda = get_ul_tda(nr_mac, scc, sched_slot,-1);
   if (tda < 0)
     return false;
   AssertFatal(tda < tdaList->list.count,

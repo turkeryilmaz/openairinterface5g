@@ -47,17 +47,19 @@ int get_dci_format(NR_UE_sched_ctrl_t *sched_ctrl) {
   return(dci_format);
 }
 
-const int get_ul_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot) {
+const int get_ul_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot, int dci_offset) {
 
   /* there is a mixed slot only when in TDD */
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
 
+  if (dci_offset > -1) return (((dci_offset + slot%10 == 0) ? 0 : 1)*(slot%10 + dci_offset + 2));
   if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
     const int nr_slots_period = tdd->nrofDownlinkSlots + tdd->nrofUplinkSlots + 1;
     if ((slot%nr_slots_period) == tdd->nrofDownlinkSlots)
       return 1;
   }
+  //LOG_I(NR_MAC,"slot %d offset %d\n",slot,dci_offset);
   return 0; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
 }
 
@@ -777,7 +779,7 @@ long get_K2(NR_ServingCellConfigCommon_t *scc,
   } else if(scc_sib1) {
     tda_list = scc_sib1->uplinkConfigCommon->initialUplinkBWP.pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list.array[time_domain_assignment];
   }
-
+  //LOG_I(NR_MAC,"tda : ***** %d\n",time_domain_assignment);
   if (tda_list->k2)
     return *tda_list->k2;
   else if (mu < 2)
@@ -1019,10 +1021,11 @@ static int comparator(const void *p, const void *q) {
 void pf_ul(module_id_t module_id,
            frame_t frame,
            sub_frame_t slot,
-	   NR_UE_info_t *UE_list[],
+	         NR_UE_info_t *UE_list[],
            int max_num_ue,
            int n_rb_sched,
-           uint16_t *rballoc_mask) {
+           uint16_t *rballoc_mask,
+           int dci_offset) {
 
   const int CC_id = 0;
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
@@ -1069,7 +1072,7 @@ void pf_ul(module_id_t module_id,
     LOG_D(NR_MAC,"pf_ul: UE %04x harq_pid %d\n",UE->rnti,sched_pusch->ul_harq_pid);
     if (sched_pusch->ul_harq_pid >= 0) {
       /* Allocate retransmission*/
-      const int tda = get_ul_tda(nrmac, scc, sched_pusch->slot);
+      const int tda = get_ul_tda(nrmac, scc, sched_pusch->slot, -1);
       bool r = allocate_ul_retransmission(nrmac, frame, slot, rballoc_mask, &n_rb_sched, UE, sched_pusch->ul_harq_pid, sib1, scc, tda);
       if (!r) {
         LOG_D(NR_MAC, "%4d.%2d UL retransmission UE RNTI %04x can NOT be allocated\n", frame, slot, UE->rnti);
@@ -1140,7 +1143,7 @@ void pf_ul(module_id_t module_id,
       const uint8_t nrOfLayers = 1;
       const uint8_t num_dmrs_cdm_grps_no_data = (sched_ctrl->active_ubwp || ubwpd) ? 1 : 2;
       int dci_format = get_dci_format(sched_ctrl);
-      const int tda = get_ul_tda(nrmac, scc, sched_pusch->slot);
+      const int tda = get_ul_tda(nrmac, scc, sched_pusch->slot, -1);
       if (ps->time_domain_allocation != tda
           || ps->dci_format != dci_format
           || ps->nrOfLayers != nrOfLayers
@@ -1263,7 +1266,7 @@ void pf_ul(module_id_t module_id,
     const uint8_t nrOfLayers = 1;
     const uint8_t num_dmrs_cdm_grps_no_data = (sched_ctrl->active_ubwp || ubwpd) ? 1 : 2;
     int dci_format = get_dci_format(sched_ctrl);
-    const int tda = get_ul_tda(nrmac, scc, sched_pusch->slot);
+    const int tda = get_ul_tda(nrmac, scc, sched_pusch->slot, -1);
     if (ps->time_domain_allocation != tda
         || ps->dci_format != dci_format
         || ps->nrOfLayers != nrOfLayers
@@ -1335,7 +1338,7 @@ void pf_ul(module_id_t module_id,
   }
 }
 
-bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot)
+bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot, int dci_offset)
 {
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   NR_COMMON_channels_t *cc = nr_mac->common_channels;
@@ -1359,14 +1362,15 @@ bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t
    * TDAs yet). If the TDA is negative, it means that there is no UL slot to
    * schedule now (slot + k2 is not UL slot) */
   NR_UE_sched_ctrl_t *sched_ctrl = &nr_mac->UE_info.list[0]->UE_sched_ctrl;
-  const int temp_tda = get_ul_tda(nr_mac, scc, slot);
+  const int temp_tda = get_ul_tda(nr_mac, scc, slot, dci_offset);
   int K2 = get_K2(scc, scc_sib1, sched_ctrl->active_ubwp, temp_tda, mu);
   const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) & 1023;
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
-  const int tda = get_ul_tda(nr_mac, scc, sched_slot);
+  const int tda = get_ul_tda(nr_mac, scc, sched_slot, -1);
   if (tda < 0)
     return false;
-  DevAssert(K2 == get_K2(scc, scc_sib1, sched_ctrl->active_ubwp, tda, mu));
+  //LOG_I(NR_MAC,"k2 %d temp_tda %d tda %d\n",K2, temp_tda, tda);  
+  //DevAssert(K2 == get_K2(scc, scc_sib1, sched_ctrl->active_ubwp, tda, mu));
 
   if (!is_xlsch_in_slot(nr_mac->ulsch_slot_bitmap[sched_slot / 64], sched_slot))
     return false;
@@ -1395,9 +1399,9 @@ bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t
   sched_ctrl->sched_pusch.frame = sched_frame;
   UE_iterator(nr_mac->UE_info.list, UE2) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE2->UE_sched_ctrl;
-    AssertFatal(K2 == get_K2(scc,scc_sib1,sched_ctrl->active_ubwp, tda, mu),
+    /*AssertFatal(K2 == get_K2(scc,scc_sib1,sched_ctrl->active_ubwp, tda, mu),
                 "Different K2, %d(UE%d) != %ld(UE%04x)\n",
-		K2, 0, get_K2(scc,scc_sib1,sched_ctrl->active_ubwp, tda, mu), UE2->rnti);
+		K2, 0, get_K2(scc,scc_sib1,sched_ctrl->active_ubwp, tda, mu), UE2->rnti);*/
     sched_ctrl->sched_pusch.slot = sched_slot;
     sched_ctrl->sched_pusch.frame = sched_frame;
   }
@@ -1460,7 +1464,8 @@ bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t
         nr_mac->UE_info.list,
         2,
         len,
-        rballoc_mask);
+        rballoc_mask,
+        dci_offset);
   return true;
 }
 
@@ -1499,11 +1504,15 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot)
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
   /* Uplink data ONLY can be scheduled when the current slot is downlink slot,
    * because we have to schedule the DCI0 first before schedule uplink data */
+
   if (!is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slot / 64], slot)) {
     LOG_D(NR_MAC, "Current slot %d is NOT DL slot, cannot schedule DCI0 for UL data\n", slot);
     return;
   }
-  bool do_sched = RC.nrmac[module_id]->pre_processor_ul(module_id, frame, slot);
+  //LOG_I(NR_MAC,"slot %d is DL\n",slot);
+  int nb_dci = 3;
+  for (int dci_idx = 0; dci_idx < nb_dci; dci_idx++){
+  bool do_sched = RC.nrmac[module_id]->pre_processor_ul(module_id, frame, slot, dci_idx);
   if (!do_sched)
     return;
 
@@ -1817,7 +1826,8 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot)
                  pusch_pdu,
                  &uldci_payload,
                  ps->dci_format,
-                 ps->time_domain_allocation,
+                 //ps->time_domain_allocation,
+                 get_ul_tda(nr_mac, scc, slot, dci_idx),
                  UE->UE_sched_ctrl.tpc0,
                  n_ubwp,
                  bwp_id);
@@ -1833,5 +1843,6 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot)
                        nr_mac->cset0_bwp_size);
 
     memset(sched_pusch, 0, sizeof(*sched_pusch));
+  }
   }
 }

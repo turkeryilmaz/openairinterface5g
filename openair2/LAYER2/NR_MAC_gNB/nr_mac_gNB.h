@@ -740,8 +740,8 @@ typedef void (*nr_pp_impl_dl)(module_id_t mod_id,
                               sub_frame_t slot);
 typedef bool (*nr_pp_impl_ul)(module_id_t mod_id,
                               frame_t frame,
-                              sub_frame_t slot);
-
+                              sub_frame_t slot,
+                              int dci_offset);
 /*! \brief top level eNB MAC structure */
 typedef struct gNB_MAC_INST_s {
   /// Ethernet parameters for northbound midhaul interface
