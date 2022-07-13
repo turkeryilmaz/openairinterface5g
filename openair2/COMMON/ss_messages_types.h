@@ -198,6 +198,12 @@ typedef struct ss_paging_identity_s {
   /* Indicates origin of paging */
   cn_domain_t cn_domain;
 }ss_paging_identity_t;
+
+typedef struct subframe_offset_list_s {
+  uint8_t num;
+  sub_frame_t subframe_offset[10];
+}subframe_offset_list_t;
+
 typedef struct ss_paging_ind_s {
   uint16_t sfn;
   uint8_t  sf;
@@ -209,6 +215,8 @@ typedef struct ss_paging_ind_s {
 
   ss_paging_identity_t *paging_recordList;
   bool systemInfoModification;
+  bool bSubframeOffsetListPresent;
+  subframe_offset_list_t subframeOffsetList;
 } ss_paging_ind_t;
 
 typedef enum VtpCmd_e {
@@ -234,8 +242,8 @@ typedef struct ss_vt_time_out_s {
 typedef struct ss_system_ind_s
 {
     bool           bitmask; //Flag for presence of optional parameter repetitionsPerPreambleAttempt
-    uint8_t        sfn;
-    uint16_t       sf;
+    frame_t        sfn;
+    sub_frame_t    sf;
     uint8_t        ra_PreambleIndex;
     bool           prtPower_Type;
     uint32_t       repetitionsPerPreambleAttempt;
