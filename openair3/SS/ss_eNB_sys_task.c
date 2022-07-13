@@ -1267,6 +1267,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   SS_PAGING_IND(message_p).sf = tinfo.sf;
   SS_PAGING_IND(message_p).paging_recordList = NULL;
   SS_PAGING_IND(message_p).systemInfoModification = false;
+  SS_PAGING_IND(message_p).bSubframeOffsetListPresent = false;
 
   switch (pagingRequest->Paging.message.d)
   {
@@ -1327,6 +1328,17 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
          {
            SS_PAGING_IND(message_p).systemInfoModification = true;
          }
+      }
+    }
+    if(pagingRequest->SubframeOffsetList.d)
+    {
+      LOG_A(ENB_SS, "[SYS] Subframe Offset List present in Paging request \n");
+      SS_PAGING_IND(message_p).bSubframeOffsetListPresent=true;
+      SS_PAGING_IND(message_p).subframeOffsetList.num = 0;
+      for (int i=0; i < pagingRequest->SubframeOffsetList.v.d; i++)
+      {
+        SS_PAGING_IND(message_p).subframeOffsetList.subframe_offset[i] = pagingRequest->SubframeOffsetList.v.v[i];
+        SS_PAGING_IND(message_p).subframeOffsetList.num++;
       }
     }
 
