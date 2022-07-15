@@ -536,12 +536,12 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   ue_paging_identity_t ue_paging_identity;
   cn_domain_t cn_domain=0;
 
-  LOG_A(RRC, "eNB received SS_PAGING_IND with paging_recordList=%p systemInfoModification=%d\n", SS_PAGING_IND(msg_p).paging_recordList, SS_PAGING_IND(msg_p).systemInfoModification);
+  LOG_A(RRC, "eNB received SS_PAGING_IND with paging_recordList=%p systemInfoModification=%d bSubframeOffsetListPresent=%d\n", SS_PAGING_IND(msg_p).paging_recordList, SS_PAGING_IND(msg_p).systemInfoModification, SS_PAGING_IND(msg_p).bSubframeOffsetListPresent);
   ue_paging_identity.presenceMask = 0;
 
   if (SS_PAGING_IND(msg_p).paging_recordList)
   {
-    LOG_A(RRC, "[eNB %d] In S1AP_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+    LOG_A(RRC, "[eNB %d] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
@@ -552,7 +552,6 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
     memcpy(&ue_paging_identity, &(SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity), sizeof(ue_paging_identity_t));
     cn_domain = SS_PAGING_IND(msg_p).paging_recordList->cn_domain;
   }
-  //       S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc, );
   lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
   /* get nB from configuration */
   /* get default DRX cycle from configuration */
@@ -613,7 +612,7 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   uint8_t i = 0;
   for (i = 0; i < MAX_MOBILES_PER_ENB; i++)
   {
-    if ((UE_PF_PO[CC_id][i].enable_flag == TRUE && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(S1AP_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != TRUE))
+    if ((UE_PF_PO[CC_id][i].enable_flag == TRUE && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(SS_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != TRUE))
     {
       /* set T = min(Tc,Tue) */
       UE_PF_PO[CC_id][i].T = T;
@@ -682,7 +681,7 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   RRC_PCCH_DATA_REQ(message_p).rnti = P_RNTI;
   RRC_PCCH_DATA_REQ(message_p).ue_index = 0;
   RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
-  LOG_A(RRC, "[eNB %d] CC_id %d In S1AP_PAGING_IND: send encdoed buffer to PDCP buffer_size %d\n", instance, CC_id, length);
+  LOG_A(RRC, "[eNB %d] CC_id %d In SS_PAGING_IND: send encdoed buffer to PDCP buffer_size %d\n", instance, CC_id, length);
   itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
   LOG_A(RRC, "[eNB %d] Exiting ,rrc_eNB_process_SS_PAGING_IND\n");
   return (0);
