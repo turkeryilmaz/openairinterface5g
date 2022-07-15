@@ -1409,6 +1409,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
                                    (void *)bcch_message,
                                    buffer,
                                    100);
+  LOG_P(RRC, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 100);
+
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformationBlockType1 Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
@@ -4804,22 +4806,10 @@ int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   static LTE_PCCH_Message_t pcch_msg;
   LTE_PagingRecord_t *paging_record_p = NULL;
   int j;
-<<<<<<< HEAD
   static uint8_t oneTimeProcessingFlag = 0;
   static uint8_t count = 0;
   /* This block of code will be one time */
   if (oneTimeProcessingFlag == 0)
-=======
-  pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
-  pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
-  pcch_msg.message.choice.c1.choice.paging.pagingRecordList = NULL;
-  pcch_msg.message.choice.c1.choice.paging.systemInfoModification = NULL;
-  pcch_msg.message.choice.c1.choice.paging.etws_Indication = NULL;
-  pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
-  asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
-
-  if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
->>>>>>> 2df072e8b0... Fixed warnings
   {
     LOG_A(RRC, "fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
