@@ -352,7 +352,8 @@ static void nr_drb_config(struct NR_RLC_Config *rlc_Config, NR_RLC_Config_PR rlc
       rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength =
           calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength));
       *rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
-      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = NR_T_Reassembly_ms15;
+      //rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = NR_T_Reassembly_ms15;
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = get_softmodem_params()->ntn_trs; // GETTING ENUM INDEX OF T_REASSEMBLY TIMER FROM THE CL
       break;
     case NR_RLC_Config_PR_am:
       // RLC AM Bearer configuration
