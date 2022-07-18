@@ -763,9 +763,30 @@ static void add_drb_um(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
 
   switch (r->present) {
   case NR_RLC_Config_PR_um_Bi_Directional: {
+    //printf("\n\n\n\n ENB_NAS_USE_TUN %ld enb_flag %d\n\n\n\n",ENB_NAS_USE_TUN, enb_flag);
     struct NR_RLC_Config__um_Bi_Directional *um;
     um = r->choice.um_Bi_Directional;
-    t_reassembly = decode_t_reassembly(um->dl_UM_RLC.t_Reassembly);
+    // FOLLOWING TO BE USED WHEN HARQ IS DISABLED
+    {
+      t_reassembly = decode_t_reassembly(um->dl_UM_RLC.t_Reassembly); // THIS WILL COLLECT THE VALUE FROM ENUM CORRESPONDING
+      // TO THE INDEX PROVIDED FROM CLP
+      t_reassembly = t_reassembly + get_softmodem_params()->ntn_trs_offset; // THIS WILL ADD THE OFFSET VALUE PROVIDED FROM CLP
+    }
+
+    // FOLLOWING TO BE USED WHEN HARQ IS ENABLED DO AS 7.2.2.1 FROM 38.821
+    /*
+    {
+      if(ENB_NAS_USE_TUN) // IF THE FUNCTION IS CALLED BY GNB
+      {
+        t_reassembly = t_reassembly + (get_softmodem_params()->ntn_rtd)*NR_MAX_DLSCH_HARQ_PROCESSES;
+      }
+      else // IF THE FUNCTION IS CALLED BY UE
+      {
+        t_reassembly = t_reassembly + (get_softmodem_params()->ntn_rtd)*NR_MAX_ULSCH_HARQ_PROCESSES;
+      }
+    }
+    */
+
     if (*um->dl_UM_RLC.sn_FieldLength != *um->ul_UM_RLC.sn_FieldLength) {
       LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
       exit(1);

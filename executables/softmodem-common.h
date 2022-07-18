@@ -110,6 +110,11 @@ extern "C"
 #define CONFIG_HLP_SYNC_REF      "Sync Reference in Sidelink\n"
 #define CONFIG_HLP_NID1          "Set NID1 value in Sidelink\n"
 #define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
+#define CONFIG_HLP_NTN_TRS       "softmodem params for ntn t-Reassembly timer"
+#define CONFIG_HLP_NTN_TRS_OFFSET  "softmodem params for ntn t-Reassembly timer offset in ms"
+#define CONFIG_HLP_NTN_TRD       "softmodem params for ntn t-Reordering timer"
+#define CONFIG_HLP_NTN_TRD_OFFSET       "softmodem params for ntn t-Reordering timer offset in ms"
+#define CONFIG_HLP_NTN_RTD       "softmodem params for ntn round trip delay ms"
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters common to eNodeB and UE                                                          */
@@ -147,6 +152,12 @@ extern "C"
 #define NID2                softmodem_params.nid2
 
 #define REORDER_THREAD_DISABLE    softmodem_params.reorder_thread_disable
+#define NTN_TRS             softmodem_params.ntn_trs
+#define NTN_TRS_OFFSET      softmodem_params.ntn_trs_offset
+#define NTN_TRD             softmodem_params.ntn_trd
+#define NTN_TRD_OFFSET      softmodem_params.ntn_trd_offset
+#define NTN_RTD             softmodem_params.ntn_rtd
+
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
 
 extern int usrp_tx_thread;
@@ -193,6 +204,11 @@ extern int usrp_tx_thread;
   {"disable-stats",         CONFIG_HLP_STATS_DISABLE, PARAMFLAG_BOOL, .iptr=&stats_disabled,                  .defintval=0,             TYPE_INT,    0},  \
   {"nid1",                  CONFIG_HLP_NID1,          0,              .iptr=&NID1,                            .defintval=10,            TYPE_INT,    0},  \
   {"nid2",                  CONFIG_HLP_NID2,          0,              .iptr=&NID2,                            .defintval=1,             TYPE_INT,    0},  \
+  {"ntn-trs",               CONFIG_HLP_NTN_TRS,       0,              .u8ptr=&NTN_TRS,                        .defintval=15,            TYPE_UINT8,  0},  \
+  {"ntn-trs-offset",        CONFIG_HLP_NTN_TRS_OFFSET,0,              .u16ptr=&NTN_TRS_OFFSET,                .defintval=0,             TYPE_UINT16, 0},  \
+  {"ntn-trd",               CONFIG_HLP_NTN_TRD,       0,              .u8ptr=&NTN_TRD,                        .defintval=36,            TYPE_UINT8,  0},  \
+  {"ntn-trd-offset",        CONFIG_HLP_NTN_TRD_OFFSET,0,              .u16ptr=&NTN_TRD_OFFSET,                .defintval=0,             TYPE_UINT16, 0},  \
+  {"ntn-rtd",               CONFIG_HLP_NTN_RTD,       0,              .u16ptr=&NTN_RTD,                       .defintval=0,             TYPE_UINT16, 0},  \
 }
 // clang-format on
 
@@ -236,6 +252,11 @@ extern int usrp_tx_thread;
                {"MONOLITHIC", "PNF", "VNF","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
                {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
                6 } }, \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -354,6 +375,11 @@ typedef struct {
   int            sync_ref;
   int            nid1;
   int            nid2;
+  uint8_t        ntn_trs;
+  uint16_t       ntn_trs_offset;
+  uint8_t        ntn_trd;
+  uint16_t       ntn_trd_offset;
+  uint16_t       ntn_rtd;
 } softmodem_params_t;
 
 extern uint64_t get_softmodem_optmask(void);
