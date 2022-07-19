@@ -524,4 +524,6 @@ void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_sched_ctrl_t *sche
 
 void abort_nr_dl_harq(NR_UE_info_t* UE, int8_t harq_pid);
 
+int pre_update_tdd_configuration(long periodicity, long nbDL, long nbUL, long nbSymbDL, long nbSymbUL);
+int update_tdd_configuration(module_id_t module_idP);
 #endif /*__LAYER2_NR_MAC_PROTO_H__*/

@@ -227,6 +227,10 @@ void get_coreset_rballoc(uint8_t *FreqDomainResource,int *n_rb,int *rb_offset) {
   *n_rb = 6*count;
 }
 
+
+
+
+
 int get_nb_periods_per_frame(uint8_t tdd_period) {
 
   int nb_periods_per_frame;

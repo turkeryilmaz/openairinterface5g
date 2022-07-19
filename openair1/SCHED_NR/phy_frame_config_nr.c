@@ -364,6 +364,7 @@ int nr_slot_select(nfapi_nr_config_request_scf_t *cfg, int nr_frame, int nr_slot
     }
 
     if(check_slot == NR_NUMBER_OF_SYMBOLS_PER_SLOT) {
+      //printf("slot %d is UL\n",nr_slot);
       return (NR_UPLINK_SLOT);
     }
 

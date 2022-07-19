@@ -164,7 +164,7 @@ void config_common(int Mod_idP, int pdsch_AntennaPorts, int pusch_AntennaPorts, 
 
   nfapi_nr_config_request_scf_t *cfg = &RC.nrmac[Mod_idP]->config[0];
   RC.nrmac[Mod_idP]->common_channels[0].ServingCellConfigCommon = scc;
-
+  RC.nrmac[Mod_idP]->tdd_update_flag = 0;
   // Carrier configuration
 
   cfg->carrier_config.dl_bandwidth.value = config_bandwidth(scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,

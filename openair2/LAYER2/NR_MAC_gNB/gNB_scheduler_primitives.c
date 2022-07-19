@@ -3091,3 +3091,105 @@ void UL_tti_req_ahead_initialization(gNB_MAC_INST * gNB, NR_ServingCellConfigCom
     req->Slot = i;
   }
 }
+
+
+
+int pre_update_tdd_configuration(long periodicity, long nbDL, long nbUL, long nbSymbDL, long nbSymbUL) {
+  gNB_MAC_INST *gNB = RC.nrmac[0];
+  NR_COMMON_channels_t *cc = gNB->common_channels;
+  NR_ServingCellConfigCommon_t        *scc     = cc->ServingCellConfigCommon;
+  gNB->new_tdd_UL_DL_ConfigurationCommon = CALLOC(1,sizeof(struct NR_TDD_UL_DL_ConfigCommon));
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity = periodicity;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots = nbDL;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots = nbUL;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols = nbSymbDL;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols = nbSymbUL;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = &scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern2 = NULL;
+  gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.ext1 = NULL;
+  //gNB->tdd_update_flag = 1;
+  return 0;
+}
+
+
+int update_tdd_configuration(module_id_t module_idP){
+  gNB_MAC_INST *gNB = RC.nrmac[module_idP];
+  NR_COMMON_channels_t *cc = gNB->common_channels;
+  NR_ServingCellConfigCommon_t        *scc     = cc->ServingCellConfigCommon;
+  nfapi_nr_config_request_scf_t *cfg = &RC.nrmac[module_idP]->config[0];
+
+  //free(scc->tdd_UL_DL_ConfigurationCommon);
+  //scc->tdd_UL_DL_ConfigurationCommon = gNB->new_tdd_UL_DL_ConfigurationCommon;
+  scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots = gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots;
+  scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots = gNB->new_tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
+  free(gNB->new_tdd_UL_DL_ConfigurationCommon);
+
+    LOG_D(NR_MAC, "Setting TDD configuration period to %d\n", cfg->tdd_table.tdd_period.value);
+    int periods_per_frame = set_tdd_config_nr(cfg,
+                                              scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+                                              scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots,
+                                              scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSymbols,
+                                              scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots,
+                                              scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols);
+    //LOG_E(NR_MAC,"TDD configuration  %d - %d\n",scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots, scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots);
+
+  if (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots < scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots - 1) gNB->max_nb_dci = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots / scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots;
+  else gNB->max_nb_dci = 1;
+
+
+    if (periods_per_frame < 0)
+      LOG_E(NR_MAC,"TDD configuration can not be done %d - %d\n",scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots, scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots);
+    else {
+      LOG_D(NR_MAC,"TDD has been properly configurated\n");
+      RC.nrmac[module_idP]->tdd_beam_association = (int16_t *)malloc16(periods_per_frame*sizeof(int16_t));
+    }
+
+  const int n = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
+
+    const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+
+    int nr_slots_period = n;
+    int nr_dl_slots = n;
+    int nr_ulstart_slot = 0;
+    if (tdd) {
+      nr_dl_slots = tdd->nrofDownlinkSlots + (tdd->nrofDownlinkSymbols != 0);
+      nr_ulstart_slot = tdd->nrofDownlinkSlots + (tdd->nrofUplinkSymbols == 0);
+      nr_slots_period /= get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+    }
+    else
+      // if TDD configuration is not present and the band is not FDD, it means it is a dynamic TDD configuration
+      AssertFatal(RC.nrmac[module_idP]->common_channels[0].frame_type == FDD,"Dynamic TDD not handled yet\n");
+    RC.nrmac[module_idP]->dlsch_slot_bitmap[0]  = 0;
+    RC.nrmac[module_idP]->dlsch_slot_bitmap[1]  = 0;
+    RC.nrmac[module_idP]->dlsch_slot_bitmap[2]  = 0;
+
+    RC.nrmac[module_idP]->ulsch_slot_bitmap[0] = 0;
+    RC.nrmac[module_idP]->ulsch_slot_bitmap[1] = 0;
+    RC.nrmac[module_idP]->ulsch_slot_bitmap[2] = 0;
+
+    for (int slot = 0; slot < n; ++slot) {
+      RC.nrmac[module_idP]->dlsch_slot_bitmap[slot / 64] |= (uint64_t)((slot % nr_slots_period) < nr_dl_slots) << (slot % 64);
+      RC.nrmac[module_idP]->ulsch_slot_bitmap[slot / 64] |= (uint64_t)((slot % nr_slots_period) >= nr_ulstart_slot) << (slot % 64);
+
+      LOG_D(NR_MAC, "In %s: slot %d DL %d UL %d\n",
+            __FUNCTION__,
+            slot,
+            (RC.nrmac[module_idP]->dlsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0,
+            (RC.nrmac[module_idP]->ulsch_slot_bitmap[slot / 64] & ((uint64_t)1 << (slot % 64))) != 0);
+    }
+
+
+  nfapi_nr_config_request_scf_t *gNB_config = &RC.gNB[module_idP]->gNB_config;
+  nfapi_nr_config_request_scf_t *ru_config = &RC.ru[0]->config;
+  memcpy((void*)&gNB_config->tdd_table, &cfg->tdd_table, sizeof(cfg->tdd_table));
+  memcpy((void*)&ru_config->tdd_table, &cfg->tdd_table, sizeof(cfg->tdd_table));
+
+
+  LOG_E(NR_MAC,"TDD configuration  %d - %d\n",scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots, scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots);
+
+
+  //gNB->tdd_update_flag = 0;
+
+
+}
+

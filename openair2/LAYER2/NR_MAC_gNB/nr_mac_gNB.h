@@ -853,6 +853,10 @@ typedef struct gNB_MAC_INST_s {
   uint8_t harq_round_max;
   uint8_t min_grant_prb;
   uint8_t min_grant_mcs;
+  uint8_t tdd_update_flag;
+  uint8_t max_nb_dci;
+
+  struct NR_TDD_UL_DL_ConfigCommon	*new_tdd_UL_DL_ConfigurationCommon;	
 } gNB_MAC_INST;
 
 #endif /*__LAYER2_NR_MAC_GNB_H__ */

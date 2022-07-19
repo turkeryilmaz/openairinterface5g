@@ -938,7 +938,6 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
   UE_iterator(UE_info->list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-
     if (sched_ctrl->ul_failure==1 && get_softmodem_params()->phy_test==0) continue;
 
     NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;

@@ -966,7 +966,7 @@ void nr_get_Msg3alloc(module_id_t module_id,
       k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2;
       int start_symbol_index,nr_of_symbols;
       SLIV2SL(pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength, &start_symbol_index, &nr_of_symbols);
-      LOG_D(NR_MAC,"Checking Msg3 TDA %d : k2 %d, sliv %d,S %d L %d\n",i,(int)k2,(int)pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength,start_symbol_index,nr_of_symbols);
+      LOG_W(NR_MAC,"Checking Msg3 TDA %d : k2 %d, sliv %d,S %d L %d\n",i,(int)k2,(int)pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength,start_symbol_index,nr_of_symbols);
       // we want to transmit in the uplink symbols of mixed slot AND assuming Msg2 was in the mixed slot
       if ((k2 + DELTA[mu])%nb_slots_per_period == 0) {
         temp_slot = current_slot + k2 + DELTA[mu]; // msg3 slot according to 8.3 in 38.213
@@ -1009,7 +1009,7 @@ void nr_get_Msg3alloc(module_id_t module_id,
       tdd_beam_association[num_tdd_period] = ra->beam_id;
   }
 
-  LOG_D(NR_MAC, "[RAPROC] Msg3 slot %d: current slot %u Msg3 frame %u k2 %u Msg3_tda_id %u\n", ra->Msg3_slot, current_slot, ra->Msg3_frame, k2,ra->Msg3_tda_id);
+  LOG_W(NR_MAC, "[RAPROC] Msg3 slot %d: current slot %u Msg3 frame %u k2 %u Msg3_tda_id %u\n", ra->Msg3_slot, current_slot, ra->Msg3_frame, k2,ra->Msg3_tda_id);
   uint16_t *vrb_map_UL =
       &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[ra->Msg3_slot * MAX_BWP_SIZE];
 
@@ -1146,7 +1146,7 @@ void nr_add_msg3(module_id_t module_idP, int CC_id, frame_t frameP, sub_frame_t 
     vrb_map_UL[i + ra->msg3_first_rb + ra->msg3_bwp_start] |= SL_to_bitmap(ra->msg3_startsymb, ra->msg3_nrsymb);
   }
 
-  LOG_D(NR_MAC, "[gNB %d][RAPROC] Frame %d, Slot %d : CC_id %d RA is active, Msg3 in (%d,%d)\n", module_idP, frameP, slotP, CC_id, ra->Msg3_frame, ra->Msg3_slot);
+  LOG_W(NR_MAC, "[gNB %d][RAPROC] Frame %d, Slot %d : CC_id %d RA is active, Msg3 in (%d,%d)\n", module_idP, frameP, slotP, CC_id, ra->Msg3_frame, ra->Msg3_slot);
 
   nfapi_nr_ul_tti_request_t *future_ul_tti_req = &RC.nrmac[module_idP]->UL_tti_req_ahead[CC_id][ra->Msg3_slot];
   AssertFatal(future_ul_tti_req->SFN == ra->Msg3_frame

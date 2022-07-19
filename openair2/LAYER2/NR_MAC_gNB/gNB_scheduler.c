@@ -123,6 +123,16 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   NR_COMMON_channels_t *cc = gNB->common_channels;
   NR_ServingCellConfigCommon_t        *scc     = cc->ServingCellConfigCommon;
 
+
+  //update TDD configuration if needed
+  //gNB->tdd_update_flag = 5;
+  int deltas[6] = {0,1,2,3,4,5};
+  if (slot == 0 && (frame & 127) == 0 /*&& gNB->tdd_update_flag == 1*/){
+    pre_update_tdd_configuration(6,2+deltas[gNB->tdd_update_flag],7-deltas[gNB->tdd_update_flag],6,4);
+    update_tdd_configuration(module_idP);
+    gNB->tdd_update_flag = (gNB->tdd_update_flag + 1 ) % 6;
+  }
+
   if (slot==0 && (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]>=257)) {
     //FR2
     const NR_TDD_UL_DL_Pattern_t *tdd = &scc->tdd_UL_DL_ConfigurationCommon->pattern1;

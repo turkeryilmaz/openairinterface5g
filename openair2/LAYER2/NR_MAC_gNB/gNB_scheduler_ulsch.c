@@ -52,15 +52,29 @@ const int get_ul_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon
   /* there is a mixed slot only when in TDD */
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
-
-  if (dci_offset > -1) return (((dci_offset + slot%10 == 0) ? 0 : 1)*(slot%10 + dci_offset + 2));
-  if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
-    const int nr_slots_period = tdd->nrofDownlinkSlots + tdd->nrofUplinkSlots + 1;
-    if ((slot%nr_slots_period) == tdd->nrofDownlinkSlots)
-      return 1;
+  if (tdd->nrofDownlinkSlots < tdd->nrofUplinkSlots - 1){
+    if (dci_offset > -1) return (((dci_offset + slot%10 == 0) ? 0 : 1)*(slot%10 + dci_offset + 2));
+    if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
+      const int nr_slots_period = tdd->nrofDownlinkSlots + tdd->nrofUplinkSlots + 1;
+      if ((slot%nr_slots_period) == tdd->nrofDownlinkSlots)
+        return 1;
+    }
+    //LOG_I(NR_MAC,"slot %d offset %d\n",slot,dci_offset);
+    return 0; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
   }
-  //LOG_I(NR_MAC,"slot %d offset %d\n",slot,dci_offset);
-  return 0; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
+  else {
+    /*if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
+      const int nr_slots_period = tdd->nrofDownlinkSlots + tdd->nrofUplinkSlots + 1;
+      if ((slot%nr_slots_period) == tdd->nrofDownlinkSlots)
+        return 1;
+    }*/
+    //LOG_I(NR_MAC,"slot %d offset %d\n",slot,dci_offset);
+    return tdd->nrofUplinkSlots > 2 ? tdd->nrofUplinkSlots - 1 : 4; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
+  }
+
+
+
+  
 }
 
 //  For both UL-SCH except:
@@ -1510,8 +1524,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot)
     return;
   }
   //LOG_I(NR_MAC,"slot %d is DL\n",slot);
-  int nb_dci = 3;
-  for (int dci_idx = 0; dci_idx < nb_dci; dci_idx++){
+  for (int dci_idx = 0; dci_idx < nr_mac->max_nb_dci; dci_idx++){
   bool do_sched = RC.nrmac[module_id]->pre_processor_ul(module_id, frame, slot, dci_idx);
   if (!do_sched)
     return;
