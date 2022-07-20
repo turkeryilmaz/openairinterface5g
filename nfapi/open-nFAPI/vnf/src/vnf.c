@@ -1145,30 +1145,37 @@ void vnf_handle_p4_p5_message(void *pRecvMsg, int recvMsgLen, int p5_idx, nfapi_
 	switch (messageHeader.message_id)
 	{
 		case NFAPI_PNF_PARAM_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_PNF_PARAM_RESPONSE\n");
 			vnf_handle_pnf_param_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_PNF_CONFIG_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_PNF_CONFIG_RESPONSE \n");
 			vnf_handle_pnf_config_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_PNF_START_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_PNF_START_RESPONSE\n");
 			vnf_handle_pnf_start_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_PNF_STOP_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_PNF_STOP_RESPONSE\n");
 			vnf_handle_pnf_stop_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_PARAM_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_PARAM_RESPONSE\n");
 			vnf_handle_param_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_CONFIG_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_CONFIG_RESPONSE \n");
 			vnf_handle_config_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_START_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_START_RESPONSE \n");
 			vnf_handle_start_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
@@ -1189,10 +1196,12 @@ void vnf_handle_p4_p5_message(void *pRecvMsg, int recvMsgLen, int p5_idx, nfapi_
 			break;
 
 		case NFAPI_CELL_SEARCH_RESPONSE:
+			fprintf(stdout, "swetank: NFAPI_CELL_SEARCH_RESPONSE\n");
 			vnf_handle_cell_search_response(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
 		case NFAPI_CELL_SEARCH_INDICATION:
+			fprintf(stdout, "swetank: NFAPI_CELL_SEARCH_INDICATION \n");
 			vnf_handle_cell_search_indication(pRecvMsg, recvMsgLen, config, p5_idx);
 			break;
 
