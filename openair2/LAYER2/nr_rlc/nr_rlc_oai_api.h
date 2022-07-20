@@ -50,3 +50,6 @@ void nr_drb_config(struct NR_RLC_Config *rlc_Config, NR_RLC_Config_PR rlc_config
 void nr_rlc_bearer_init_ul_spec(struct NR_LogicalChannelConfig *mac_LogicalChannelConfig);
 
 nr_rlc_entity_buffer_status_t nr_rlc_get_buffer_status(int rnti,  int rb_id);
+int nr_rlc_get_available_tx_space(
+  const rnti_t            rntiP,
+  const logical_chan_id_t channel_idP);

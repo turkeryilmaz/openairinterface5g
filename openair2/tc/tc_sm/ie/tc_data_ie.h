@@ -663,6 +663,8 @@ void free_tc_ctrl_shp(tc_ctrl_shp_t* shp);
 
 typedef struct{
   uint32_t drb_sz;
+  uint32_t nb_dl;
+  uint32_t nb_ul;
   int64_t tstamp;
 } tc_pcr_5g_bdp_t;
 

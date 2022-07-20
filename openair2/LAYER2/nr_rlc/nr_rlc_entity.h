@@ -102,9 +102,14 @@ typedef struct nr_rlc_entity_t {
 
   void (*reestablishment)(struct nr_rlc_entity_t *entity);
 
-  void (*delete)(struct nr_rlc_entity_t *entity);
+
+  void (*delete_entity)(struct nr_rlc_entity_t *entity);
 
   void (*get_stats)(struct nr_rlc_entity_t *entity, nr_rlc_statistics_t *out);
+  int (*available_tx_space)(struct nr_rlc_entity_t *entity);
+
+
+
   /* callbacks provided to the RLC module */
   void (*deliver_sdu)(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
                       char *buf, int size);

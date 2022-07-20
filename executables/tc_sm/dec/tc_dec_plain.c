@@ -1402,6 +1402,15 @@ size_t dec_tc_mod_ctrl_payload_pcr_bdp(uint8_t const* it, tc_pcr_5g_bdp_t* bdp)
   it += sizeof(bdp->drb_sz);
   size_t sz = sizeof(bdp->drb_sz);
 
+  memcpy(&bdp->nb_dl, it,  sizeof(bdp->nb_dl));
+  it += sizeof(bdp->nb_dl);
+  sz += sizeof(bdp->nb_dl);
+
+  memcpy(&bdp->nb_ul, it,  sizeof(bdp->nb_ul));
+  it += sizeof(bdp->nb_ul);
+  sz += sizeof(bdp->nb_ul);
+
+
   memcpy(&bdp->tstamp, it, sizeof(bdp->tstamp));
   it += sizeof(bdp->tstamp);
   sz += sizeof(bdp->tstamp);

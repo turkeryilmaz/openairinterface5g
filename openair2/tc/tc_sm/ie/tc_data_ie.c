@@ -1220,6 +1220,8 @@ tc_pcr_5g_bdp_t cp_tc_pcr_5g_bdp( tc_pcr_5g_bdp_t const* src)
   assert(src != NULL);
 
   tc_pcr_5g_bdp_t dst = {.drb_sz = src->drb_sz,
+                          .nb_dl = src->nb_dl,
+                           .nb_ul = src->nb_ul,
                         .tstamp = src->tstamp};
 
   return dst;

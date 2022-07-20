@@ -1158,7 +1158,7 @@ size_t cal_tc_ctrl_payload_pcr_mod_bdp(tc_pcr_5g_bdp_t const* bdp)
 {
   assert(bdp != NULL);
 
-  return sizeof(bdp->drb_sz) +
+  return sizeof(bdp->drb_sz) +  sizeof(bdp->nb_ul) + sizeof(bdp->nb_dl) + 
           sizeof(bdp->tstamp);
 }
 
@@ -2069,6 +2069,14 @@ size_t enc_tc_mod_ctrl_payload_pcr_bdp(uint8_t* it, tc_pcr_5g_bdp_t const* bdp)
   memcpy(it, &bdp->drb_sz, sizeof(bdp->drb_sz));
   it += sizeof(bdp->drb_sz);
   size_t sz = sizeof(bdp->drb_sz);
+
+  memcpy(it, &bdp->nb_dl, sizeof(bdp->nb_dl));
+  it += sizeof(bdp->nb_dl);
+  sz += sizeof(bdp->nb_dl);
+
+  memcpy(it, &bdp->nb_ul, sizeof(bdp->nb_ul));
+  it += sizeof(bdp->nb_ul);
+  sz += sizeof(bdp->nb_ul);
 
   memcpy(it, &bdp->tstamp, sizeof(bdp->tstamp));
   it += sizeof(bdp->tstamp);

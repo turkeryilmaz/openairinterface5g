@@ -85,14 +85,15 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->sn_modulus = 1 << ret->sn_field_length;
   ret->window_size = ret->sn_modulus / 2;
 
-  ret->common.recv_pdu        = nr_rlc_entity_am_recv_pdu;
-  ret->common.buffer_status   = nr_rlc_entity_am_buffer_status;
-  ret->common.generate_pdu    = nr_rlc_entity_am_generate_pdu;
-  ret->common.recv_sdu        = nr_rlc_entity_am_recv_sdu;
-  ret->common.set_time        = nr_rlc_entity_am_set_time;
-  ret->common.discard_sdu     = nr_rlc_entity_am_discard_sdu;
-  ret->common.reestablishment = nr_rlc_entity_am_reestablishment;
-  ret->common.delete          = nr_rlc_entity_am_delete;
+  ret->common.recv_pdu           = nr_rlc_entity_am_recv_pdu;
+  ret->common.buffer_status      = nr_rlc_entity_am_buffer_status;
+  ret->common.generate_pdu       = nr_rlc_entity_am_generate_pdu;
+  ret->common.recv_sdu           = nr_rlc_entity_am_recv_sdu;
+  ret->common.set_time           = nr_rlc_entity_am_set_time;
+  ret->common.discard_sdu        = nr_rlc_entity_am_discard_sdu;
+  ret->common.reestablishment    = nr_rlc_entity_am_reestablishment;
+  ret->common.delete_entity             = nr_rlc_entity_am_delete;
+  ret->common.available_tx_space = nr_rlc_entity_am_available_tx_space;
 
   ret->common.get_stats       = nr_rlc_entity_get_stats;
 
@@ -138,14 +139,15 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
   ret->sn_modulus = 1 << ret->sn_field_length;
   ret->window_size = ret->sn_modulus / 2;
 
-  ret->common.recv_pdu        = nr_rlc_entity_um_recv_pdu;
-  ret->common.buffer_status   = nr_rlc_entity_um_buffer_status;
-  ret->common.generate_pdu    = nr_rlc_entity_um_generate_pdu;
-  ret->common.recv_sdu        = nr_rlc_entity_um_recv_sdu;
-  ret->common.set_time        = nr_rlc_entity_um_set_time;
-  ret->common.discard_sdu     = nr_rlc_entity_um_discard_sdu;
-  ret->common.reestablishment = nr_rlc_entity_um_reestablishment;
-  ret->common.delete          = nr_rlc_entity_um_delete;
+  ret->common.recv_pdu           = nr_rlc_entity_um_recv_pdu;
+  ret->common.buffer_status      = nr_rlc_entity_um_buffer_status;
+  ret->common.generate_pdu       = nr_rlc_entity_um_generate_pdu;
+  ret->common.recv_sdu           = nr_rlc_entity_um_recv_sdu;
+  ret->common.set_time           = nr_rlc_entity_um_set_time;
+  ret->common.discard_sdu        = nr_rlc_entity_um_discard_sdu;
+  ret->common.reestablishment    = nr_rlc_entity_um_reestablishment;
+  ret->common.delete_entity             = nr_rlc_entity_um_delete;
+  ret->common.available_tx_space = nr_rlc_entity_um_available_tx_space;
 
   ret->common.get_stats       = nr_rlc_entity_get_stats;
 
@@ -172,14 +174,15 @@ nr_rlc_entity_t *new_nr_rlc_entity_tm(
 
   ret->tx_maxsize = tx_maxsize;
 
-  ret->common.recv_pdu        = nr_rlc_entity_tm_recv_pdu;
-  ret->common.buffer_status   = nr_rlc_entity_tm_buffer_status;
-  ret->common.generate_pdu    = nr_rlc_entity_tm_generate_pdu;
-  ret->common.recv_sdu        = nr_rlc_entity_tm_recv_sdu;
-  ret->common.set_time        = nr_rlc_entity_tm_set_time;
-  ret->common.discard_sdu     = nr_rlc_entity_tm_discard_sdu;
-  ret->common.reestablishment = nr_rlc_entity_tm_reestablishment;
-  ret->common.delete          = nr_rlc_entity_tm_delete;
+  ret->common.recv_pdu           = nr_rlc_entity_tm_recv_pdu;
+  ret->common.buffer_status      = nr_rlc_entity_tm_buffer_status;
+  ret->common.generate_pdu       = nr_rlc_entity_tm_generate_pdu;
+  ret->common.recv_sdu           = nr_rlc_entity_tm_recv_sdu;
+  ret->common.set_time           = nr_rlc_entity_tm_set_time;
+  ret->common.discard_sdu        = nr_rlc_entity_tm_discard_sdu;
+  ret->common.reestablishment    = nr_rlc_entity_tm_reestablishment;
+  ret->common.delete_entity             = nr_rlc_entity_tm_delete;
+  ret->common.available_tx_space = nr_rlc_entity_tm_available_tx_space;
 
   ret->common.get_stats       = nr_rlc_entity_get_stats;
 

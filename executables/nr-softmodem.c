@@ -663,8 +663,9 @@ void read_mac_sm(mac_ind_msg_t* data)
 
 //  assert(0!=0 && "Read MAC called");
 
-  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
-  const size_t num_ues = UE_info->num_UEs;
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info.list;
+
+  const size_t num_ues = RC.nrmac[mod_id]->UE_info.num_UEs;
 
   data->len_ue_stats = num_ues;
   if(data->len_ue_stats > 0){
@@ -672,27 +673,27 @@ void read_mac_sm(mac_ind_msg_t* data)
     assert( data->ue_stats != NULL && "Memory exhausted" );
   }
 
-  const NR_list_t* ue_list = &UE_info->list;
   size_t i = 0;
-  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
-    const NR_UE_sched_ctrl_t* sched_ctrl = &UE_info->UE_sched_ctrl[ue_id];
-    const NR_mac_stats_t* uestats = &UE_info->mac_stats[ue_id];
+  UE_iterator(UE_info, UE) {
+
+  const NR_UE_sched_ctrl_t* sched_ctrl = &UE->UE_sched_ctrl;
+    const NR_mac_stats_t* uestats = &UE->mac_stats;
     mac_ue_stats_impl_t* rd = &data->ue_stats[i];
 
-    rd->dl_aggr_tbs = uestats->dlsch_total_bytes;
-    rd->ul_aggr_tbs = uestats->ulsch_total_bytes_rx;
+    rd->dl_aggr_tbs =RC.nrmac[mod_id]->O_dl; // uestats->dlsch_total_bytes;
+    rd->ul_aggr_tbs = RC.nrmac[mod_id]->O_ul; //uestats->ulsch_total_bytes_rx;
 
 
-    rd->rnti = UE_info->rnti[ue_id];
-    rd->dl_aggr_prb = uestats->dlsch_total_rbs; 
-    rd->ul_aggr_prb = uestats->ulsch_total_rbs;
-    rd->dl_aggr_retx_prb = uestats->dlsch_total_rbs_retx ;
+    rd->rnti = UE->rnti;
+    rd->dl_aggr_prb = 0; //uestats->dlsch_total_rbs; 
+    rd->ul_aggr_prb = 0; //uestats->ulsch_total_rbs;
+    rd->dl_aggr_retx_prb = 0; //uestats->dlsch_total_rbs_retx ;
 
-    rd->dl_aggr_bytes_sdus = uestats->lc_bytes_tx[3] ;
-    rd->ul_aggr_bytes_sdus = uestats->lc_bytes_rx[3];
+    rd->dl_aggr_bytes_sdus = 0; //uestats->lc_bytes_tx[3] ;
+    rd->ul_aggr_bytes_sdus =0; // uestats->lc_bytes_rx[3];
 
-    rd->dl_aggr_sdus = uestats->dlsch_num_mac_sdu;
-    rd->ul_aggr_sdus = uestats->ulsch_num_mac_sdu;
+    rd->dl_aggr_sdus = 0;//uestats->dlsch_num_mac_sdu;
+    rd->ul_aggr_sdus = 0;//uestats->ulsch_num_mac_sdu;
 
     rd->pusch_snr = (float) sched_ctrl->pusch_snrx10 / 10; //: float = -64;
     rd->pucch_snr = (float) sched_ctrl->pucch_snrx10 / 10 ; //: float = -64;
@@ -707,6 +708,8 @@ void read_mac_sm(mac_ind_msg_t* data)
 
     ++i;
   }
+ RC.nrmac[mod_id]->O_ul = 0;
+ RC.nrmac[mod_id]->O_dl = 0;
 }
 
 static
@@ -714,11 +717,9 @@ uint32_t num_act_rb(NR_UE_info_t const* UE_info)
 {
   assert(UE_info!= NULL);
 
-  const NR_list_t* ue_list = &UE_info->list;
-
   uint32_t act_rb = 0;
-  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
-    uint16_t const rnti = UE_info->rnti[ue_id];
+  UE_iterator(UE_info, UE) {
+    const int rnti = UE->rnti;
     for(int rb_id = 1; rb_id < 6; ++rb_id ){
       nr_rlc_statistics_t rlc = {0};
       const int srb_flag = 0;
@@ -736,7 +737,7 @@ void read_rlc_sm(rlc_ind_msg_t* data)
   assert(data != NULL);
 
   // use MAC structures to get RNTIs
-  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info.list;
   uint32_t const act_rb = num_act_rb(UE_info); 
 
   //assert(0!=0 && "Read RLC called");
@@ -749,10 +750,10 @@ void read_rlc_sm(rlc_ind_msg_t* data)
 
   data->tstamp = time_now_us();
 
-  const NR_list_t* ue_list = &UE_info->list;
   uint32_t i = 0;
-  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
-    uint16_t const rnti = UE_info->rnti[ue_id];
+  UE_iterator(UE_info, UE) {
+
+    const int rnti = UE->rnti;
     //for every LC ID 
     for(int rb_id = 1; rb_id < 6; ++rb_id ){
       nr_rlc_statistics_t rb_rlc = {0};
@@ -817,7 +818,7 @@ void read_pdcp_sm(pdcp_ind_msg_t* data)
   //assert(0!=0 && "Calling PDCP");
   // for the moment and while we don't have a split base station, we use the
   // MAC structures to obtain the RNTIs which we use to query the PDCP
-  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info.list;
   uint32_t const act_rb = num_act_rb(UE_info); 
 
   data->len = act_rb;
@@ -830,10 +831,9 @@ void read_pdcp_sm(pdcp_ind_msg_t* data)
   }
 
   size_t i = 0;
-  const NR_list_t* ue_list = &UE_info->list;
-  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
+  UE_iterator(UE_info, UE) {
 
-    const int rnti = UE_info->rnti[ue_id];
+    const int rnti = UE->rnti;
     for(size_t rb_id = 1; rb_id < 6; ++rb_id){
       nr_pdcp_statistics_t pdcp = {0};
 
@@ -877,10 +877,9 @@ void read_tc_sm(tc_ind_msg_t* data )
   //assert(0!=0 && "Calling PDCP");
   // for the moment and while we don't have a split base station, we use the
   // MAC structures to obtain the RNTIs which we use to query the PDCP
-  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
-  const NR_list_t* ue_list = &UE_info->list;
-  for (int ue_id = ue_list->head; ue_id >= 0; ue_id = ue_list->next[ue_id]) {
-    const int rnti = UE_info->rnti[ue_id];
+  const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info.list;
+  UE_iterator(UE_info, UE) {
+    const int rnti = UE->rnti;
     int const rb_id = 4;
     tc_rc_t rc = tc_get_or_create(rnti, rb_id);
 
@@ -933,7 +932,9 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
   assert(data != NULL);
 
   assert(data->type == TC_CTRL_REQ_V0);
-  printf("Write function called!" );
+
+  printf("Write function called! %x\n", data->tc_req_ctrl.msg.pcr.mod.bdp.nb_ul);
+  pre_update_tdd_configuration(6,9-data->tc_req_ctrl.msg.pcr.mod.bdp.nb_ul,data->tc_req_ctrl.msg.pcr.mod.bdp.nb_ul,6,4);
 /*
   const NR_UE_info_t* UE_info = &RC.nrmac[mod_id]->UE_info;
   const NR_list_t* ue_list = &UE_info->list;
@@ -1218,10 +1219,10 @@ int main( int argc, char **argv ) {
   }
 
   for (int inst = 0; inst < NB_RU; inst++) {
+    kill_NR_RU_proc(inst);
     nr_phy_free_RU(RC.ru[inst]);
   }
 
-  free_lte_top();
   pthread_cond_destroy(&sync_cond);
   pthread_mutex_destroy(&sync_mutex);
   pthread_cond_destroy(&nfapi_sync_cond);
