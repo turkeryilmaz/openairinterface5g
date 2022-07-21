@@ -164,7 +164,8 @@ void config_common(int Mod_idP, int pdsch_AntennaPorts, int pusch_AntennaPorts, 
 
   nfapi_nr_config_request_scf_t *cfg = &RC.nrmac[Mod_idP]->config[0];
   RC.nrmac[Mod_idP]->common_channels[0].ServingCellConfigCommon = scc;
-  RC.nrmac[Mod_idP]->tdd_update_flag = 0;
+  RC.nrmac[Mod_idP]->tdd_update_flag = 1;
+  pre_update_tdd_configuration(6,7,2,6,4);
   // Carrier configuration
 
   cfg->carrier_config.dl_bandwidth.value = config_bandwidth(scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
@@ -349,7 +350,7 @@ void config_common(int Mod_idP, int pdsch_AntennaPorts, int pusch_AntennaPorts, 
     if(frequency_range == FR1)
       sco <<= cfg->ssb_config.scs_common.value; // 38.211 section 7.4.3.1 in FR1 it is expresses in terms of 15kHz SCS
   }
-
+  sco = 2;
   cfg->ssb_table.ssb_offset_point_a.value = absolute_diff/(12*scs_scaling) - 10; //absoluteFrequencySSB is the central frequency of SSB which is made by 20RBs in total
   cfg->ssb_table.ssb_offset_point_a.tl.tag = NFAPI_NR_CONFIG_SSB_OFFSET_POINT_A_TAG;
   cfg->num_tlv++;

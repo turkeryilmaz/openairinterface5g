@@ -158,6 +158,7 @@ int nr_process_mac_pdu( instance_t module_idP,
                NR_BSR_SHORT *bsr_s = (NR_BSR_SHORT *) ce_ptr;
                sched_ctrl->estimated_ul_buffer = 0;
                sched_ctrl->estimated_ul_buffer = NR_SHORT_BSR_TABLE[bsr_s->Buffer_size];
+               RC.nrmac[module_idP]->O_ul += NR_SHORT_BSR_TABLE[bsr_s->Buffer_size];
                LOG_D(NR_MAC,
                      "SHORT BSR at %4d.%2d, LCG ID %d, BS Index %d, BS value < %d, est buf %d\n",
                      frameP,
@@ -197,6 +198,7 @@ int nr_process_mac_pdu( instance_t module_idP,
                        NR_LONG_BSR_TABLE[pduP[mac_subheader_len + 1 + n]]);
                  sched_ctrl->estimated_ul_buffer +=
                        NR_LONG_BSR_TABLE[pduP[mac_subheader_len + 1 + n]];
+                  RC.nrmac[module_idP]->O_ul += NR_LONG_BSR_TABLE[pduP[mac_subheader_len + 1 + n]];
                  LOG_D(NR_MAC,
                        "LONG BSR at %4d.%2d, %d/%d (n/n_Lcg), BS Index %d, BS value < %d, total %d\n",
                        frameP,
@@ -376,6 +378,8 @@ int nr_process_mac_pdu( instance_t module_idP,
                            mac_len,
                            1,
                            NULL);
+
+          RC.nrmac[module_idP]->O_ul += mac_len;                 
 
           sdus += 1;
 
@@ -1655,7 +1659,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot)
           sched_ctrl->sched_ul_bytes,
           sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes,
           sched_ctrl->tpc0);
-    nr_mac->O_ul += (sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes);
+    //nr_mac->O_ul += (sched_ctrl->estimated_ul_buffer /*- sched_ctrl->sched_ul_bytes*/);
     /* PUSCH in a later slot, but corresponding DCI now! */
     nfapi_nr_ul_tti_request_t *future_ul_tti_req = &RC.nrmac[module_id]->UL_tti_req_ahead[0][sched_pusch->slot];
     AssertFatal(future_ul_tti_req->SFN == sched_pusch->frame
