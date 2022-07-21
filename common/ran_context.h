@@ -123,7 +123,8 @@ typedef struct {
   pthread_cond_t ru_cond;
   /// SS Config variables
   struct ss_config_s ss;
-
+  // Variable to store Transaction ID for SS in case of RRCReconfiguration
+  long rrc_Transaction_Identifier;
   RBConfig RB_Config[MAX_RBS];
 } RAN_CONTEXT_t;
 
