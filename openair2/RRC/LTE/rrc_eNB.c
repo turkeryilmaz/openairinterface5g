@@ -10097,6 +10097,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+            RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
             LOG_A(RRC, "[eNB %d] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
