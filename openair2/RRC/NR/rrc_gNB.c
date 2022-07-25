@@ -1856,89 +1856,88 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
   return 0;
 }
 
-void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
+void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *f1_setup_req, instance_t instance) {
+
   LOG_I(NR_RRC,"Received F1 Setup Request from gNB_DU %llu (%s)\n",(unsigned long long int)f1_setup_req->gNB_DU_id,f1_setup_req->gNB_DU_name);
+
   int cu_cell_ind = 0;
   MessageDef *msg_p =itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_SETUP_RESP);
   F1AP_SETUP_RESP (msg_p).num_cells_to_activate = 0;
   MessageDef *msg_p2=itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_GNB_CU_CONFIGURATION_UPDATE);
 
   for (int i = 0; i < f1_setup_req->num_cells_available; i++) {
-    for (int j=0; j<RC.nb_nr_inst; j++) {
-      gNB_RRC_INST *rrc = RC.nrrrc[j];
+
+    gNB_RRC_INST *rrc = RC.nrrrc[instance];
 
       if (rrc->configuration.mcc[0] == f1_setup_req->cell[i].mcc &&
           rrc->configuration.mnc[0] == f1_setup_req->cell[i].mnc &&
           rrc->nr_cellid == f1_setup_req->cell[i].nr_cellid) {
-	//fixme: multi instance is not consistent here
-	F1AP_SETUP_RESP (msg_p).gNB_CU_name  = rrc->node_name;
-        // check that CU rrc instance corresponds to mcc/mnc/cgi (normally cgi should be enough, but just in case)
-        LOG_W(NR_RRC, "instance %d sib1 length %d\n", i, f1_setup_req->sib1_length[i]);
-        AssertFatal(rrc->carrier.mib == NULL, "CU MIB is already initialized: double F1 setup request?\n");
-        asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
-                                  &asn_DEF_NR_BCCH_BCH_Message,
-                                  (void **)&rrc->carrier.mib,
-                                  f1_setup_req->mib[i],
-                                  f1_setup_req->mib_length[i]);
-        AssertFatal(dec_rval.code == RC_OK,
-                    "[gNB_CU %"PRIu8"] Failed to decode NR_BCCH_BCH_MESSAGE (%zu bits)\n",
-                    j,
-                    dec_rval.consumed );
+      //fixme: multi instance is not consistent here
+      F1AP_SETUP_RESP (msg_p).gNB_CU_name  = rrc->node_name;
+      // check that CU rrc instance corresponds to mcc/mnc/cgi (normally cgi should be enough, but just in case)
+      LOG_W(NR_RRC, "instance %d sib1 length %d\n", i, f1_setup_req->sib1_length[i]);
+      AssertFatal(rrc->carrier.mib == NULL, "CU MIB is already initialized: double F1 setup request?\n");
+      asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
+                                                     &asn_DEF_NR_BCCH_BCH_Message,
+                                                     (void **)&rrc->carrier.mib,
+                                                     f1_setup_req->mib[i],
+                                                     f1_setup_req->mib_length[i]);
+      AssertFatal(dec_rval.code == RC_OK,
+                  "[gNB_CU %"PRIu8"] Failed to decode NR_BCCH_BCH_MESSAGE (%zu bits)\n",
+                  (uint8_t)instance,
+                  dec_rval.consumed );
 
-        dec_rval = uper_decode_complete(NULL,
-                                        &asn_DEF_NR_SIB1, //&asn_DEF_NR_BCCH_DL_SCH_Message,
-                                        (void **)&rrc->carrier.siblock1_DU,
-                                        f1_setup_req->sib1[i],
-                                        f1_setup_req->sib1_length[i]);
-        AssertFatal(dec_rval.code == RC_OK,
-                    "[gNB_DU %"PRIu8"] Failed to decode NR_BCCH_DLSCH_MESSAGE (%zu bits)\n",
-                    j,
-                    dec_rval.consumed );
+      dec_rval = uper_decode_complete(NULL,
+                                      &asn_DEF_NR_SIB1,
+                                      (void **)&rrc->carrier.siblock1_DU,
+                                      f1_setup_req->sib1[i],
+                                      f1_setup_req->sib1_length[i]);
 
-        // Parse message and extract SystemInformationBlockType1 field
-        rrc->carrier.sib1 = rrc->carrier.siblock1_DU;
-        if ( LOG_DEBUGFLAG(DEBUG_ASN1)){
-          LOG_I(NR_RRC, "Printing received SIB1 container inside F1 setup request message:\n");
-          xer_fprint(stdout, &asn_DEF_NR_SIB1,(void *)rrc->carrier.sib1);
-        }
+      AssertFatal(dec_rval.code == RC_OK,
+                  "[gNB_DU %"PRIu8"] Failed to decode NR_BCCH_DLSCH_MESSAGE (%zu bits)\n",
+                  (uint8_t)instance,
+                  dec_rval.consumed );
 
-        rrc->carrier.physCellId = f1_setup_req->cell[i].nr_pci;
-
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).gNB_CU_name                                = rrc->node_name;
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mcc                           = rrc->configuration.mcc[0];
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mnc                           = rrc->configuration.mnc[0];
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mnc_digit_length              = rrc->configuration.mnc_digit_length[0];
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].nr_cellid                     = rrc->nr_cellid;
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].nrpci                         = f1_setup_req->cell[i].nr_pci;
-        int num_SI= 0;
-
-        if (rrc->carrier.SIB23) {
-          F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].SI_container[2]        = rrc->carrier.SIB23;
-          F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].SI_container_length[2] = rrc->carrier.sizeof_SIB23;
-          num_SI++;
-        }
-
-        F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].num_SI = num_SI;
-        cu_cell_ind++;
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).num_cells_to_activate = cu_cell_ind;
-	// send
-        break;
-      } else {// setup_req mcc/mnc match rrc internal list element
-        LOG_W(NR_RRC,"[Inst %d] No matching MCC/MNC: rrc->mcc/f1_setup_req->mcc %d/%d rrc->mnc/f1_setup_req->mnc %d/%d rrc->nr_cellid/f1_setup_req->nr_cellid %ld/%ld \n",
-              j, rrc->configuration.mcc[0], f1_setup_req->cell[i].mcc,
-                 rrc->configuration.mnc[0], f1_setup_req->cell[i].mnc,
-                 rrc->nr_cellid, f1_setup_req->cell[i].nr_cellid);
+      // Parse message and extract SystemInformationBlockType1 field
+      rrc->carrier.sib1 = rrc->carrier.siblock1_DU;
+      if (LOG_DEBUGFLAG(DEBUG_ASN1)){
+        LOG_I(NR_RRC, "Printing received SIB1 container inside F1 setup request message:\n");
+        xer_fprint(stdout, &asn_DEF_NR_SIB1,(void *)rrc->carrier.sib1);
       }
-    }// for (int j=0;j<RC.nb_inst;j++)
+
+      rrc->carrier.physCellId = f1_setup_req->cell[i].nr_pci;
+
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).gNB_CU_name = rrc->node_name;
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mcc = rrc->configuration.mcc[0];
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mnc = rrc->configuration.mnc[0];
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mnc_digit_length = rrc->configuration.mnc_digit_length[0];
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].nr_cellid = rrc->nr_cellid;
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].nrpci = f1_setup_req->cell[i].nr_pci;
+
+      int num_SI= 0;
+      if (rrc->carrier.SIB23) {
+        F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].SI_container[2]        = rrc->carrier.SIB23;
+        F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].SI_container_length[2] = rrc->carrier.sizeof_SIB23;
+        num_SI++;
+      }
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].num_SI = num_SI;
+
+      cu_cell_ind++;
+      F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).num_cells_to_activate = cu_cell_ind;
+
+    } else { // setup_req mcc/mnc match rrc internal list element
+      LOG_W(NR_RRC, "[Inst %d] No matching MCC/MNC: rrc->mcc/f1_setup_req->mcc %d/%d rrc->mnc/f1_setup_req->mnc %d/%d rrc->nr_cellid/f1_setup_req->nr_cellid %ld/%ld \n",
+            (uint8_t)instance, rrc->configuration.mcc[0], f1_setup_req->cell[i].mcc,
+            rrc->configuration.mnc[0], f1_setup_req->cell[i].mnc,
+            rrc->nr_cellid, f1_setup_req->cell[i].nr_cellid);
+    }
 
     if (cu_cell_ind == 0) {
       AssertFatal(1 == 0, "No cell found\n");
-    }  else {
+    } else {
       // send ITTI message to F1AP-CU task
-      itti_send_msg_to_task (TASK_CU_F1, 0, msg_p);
-
-      itti_send_msg_to_task (TASK_CU_F1, 0, msg_p2);
-
+      itti_send_msg_to_task (TASK_CU_F1, rrc->f1_instance, msg_p);
+      itti_send_msg_to_task (TASK_CU_F1, rrc->f1_instance, msg_p2);
     }
 
     // handle other failure cases

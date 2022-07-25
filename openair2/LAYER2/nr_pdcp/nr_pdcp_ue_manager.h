@@ -30,6 +30,7 @@ typedef void nr_pdcp_ue_manager_t;
 
 typedef struct nr_pdcp_ue_t {
   ue_id_t rntiMaybeUEid;
+  instance_t du_destination;
   nr_pdcp_entity_t *srb[3];
   nr_pdcp_entity_t *drb[MAX_DRBS_PER_UE];
 } nr_pdcp_ue_t;

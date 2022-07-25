@@ -67,7 +67,7 @@ void configure_nr_rrc(uint32_t gnb_id)
   msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
 
   if (RC.nrrrc[gnb_id]) {
-    RCconfig_NRRRC(msg_p,gnb_id, RC.nrrrc[gnb_id]);
+    RCconfig_NRRRC(msg_p, gnb_id, RC.nrrrc[gnb_id]);
     
     LOG_I(GNB_APP, "RRC starting with node type %d\n", RC.nrrrc[gnb_id]->node_type);
     LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
