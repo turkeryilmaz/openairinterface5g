@@ -91,6 +91,7 @@ typedef struct sctp_cnx_list_elm_s {
 
 static STAILQ_HEAD(sctp_cnx_list_head, sctp_cnx_list_elm_s) sctp_cnx_list;
 static uint16_t sctp_nb_cnx = 0;
+static uint16_t sctp_nb_accepted_associations = 0;
 
 //------------------------------------------------------------------------------
 struct sctp_cnx_list_elm_s *sctp_get_cnx(int32_t assoc_id, int sd)
@@ -1051,32 +1052,27 @@ sctp_eNB_read_from_socket(
 }
 
 //------------------------------------------------------------------------------
-void
-static sctp_eNB_flush_sockets(
-    struct epoll_event *events, int nb_events)
+static void sctp_eNB_flush_sockets(struct epoll_event *events, int nb_events)
 {
-    int i;
-    struct sctp_cnx_list_elm_s *sctp_cnx = NULL;
+  for (int i = 0; i < nb_events; i++) {
+    struct sctp_cnx_list_elm_s *sctp_cnx = sctp_get_cnx(-1, events[i].data.fd);
 
-    for (i = 0; i < nb_events; i++) {
-        sctp_cnx = sctp_get_cnx(-1, events[i].data.fd);
-
-        if (sctp_cnx == NULL) {
-            continue;
-        }
-
-        SCTP_DEBUG("Found data for descriptor %d\n", events[i].data.fd);
-
-        if (sctp_cnx->connection_type == SCTP_TYPE_CLIENT) {
-            sctp_eNB_read_from_socket(sctp_cnx);
-        }
-        else if (sctp_cnx->connection_type == SCTP_TYPE_MULTI_SERVER) {
-            sctp_eNB_accept_associations_multi(sctp_cnx);
-        }
-        else {
-            sctp_eNB_accept_associations(sctp_cnx);
-        }
+    if (sctp_cnx == NULL) {
+      continue;
     }
+
+    SCTP_DEBUG("Found data for descriptor %d\n", events[i].data.fd);
+
+    if (sctp_cnx->connection_type == SCTP_TYPE_CLIENT) {
+      sctp_eNB_read_from_socket(sctp_cnx);
+    } else if (sctp_cnx->connection_type == SCTP_TYPE_MULTI_SERVER) {
+      sctp_eNB_accept_associations_multi(sctp_cnx);
+    } else {
+      sctp_cnx->instance = sctp_nb_accepted_associations;
+      sctp_eNB_accept_associations(sctp_cnx);
+      sctp_nb_accepted_associations++;
+    }
+  }
 }
 
 //------------------------------------------------------------------------------

@@ -80,7 +80,7 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance,
                                uint32_t assoc_id,
                                uint32_t stream,
                                F1AP_F1AP_PDU_t *pdu) {
-  LOG_D(F1AP, "CU_handle_F1_SETUP_REQUEST\n");
+  LOG_I(F1AP, "(instance %li) CU_handle_F1_SETUP_REQUEST\n", instance);
   MessageDef                         *message_p;
   F1AP_F1SetupRequest_t              *container;
   F1AP_F1SetupRequestIEs_t           *ie;
@@ -571,7 +571,7 @@ int CU_handle_gNB_CU_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
     uint32_t assoc_id,
     uint32_t stream,
     F1AP_F1AP_PDU_t *pdu) {
-  LOG_I(F1AP,"Cell Configuration ok (assoc_id %d)\n",assoc_id);
+  LOG_I(F1AP,"Cell Configuration ok (instance %li, assoc_id %d)\n", instance, assoc_id);
   return(0);
 }
 

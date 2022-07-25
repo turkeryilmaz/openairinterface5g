@@ -89,7 +89,7 @@ int sctp_itti_send_association_ind(task_id_t task_id, instance_t instance,
   MessageDef                 *message_p;
   sctp_new_association_ind_t *sctp_new_association_ind_p;
 
-  message_p = itti_alloc_new_message(TASK_SCTP, 0, SCTP_NEW_ASSOCIATION_IND);
+  message_p = itti_alloc_new_message(TASK_SCTP, instance, SCTP_NEW_ASSOCIATION_IND);
 
   sctp_new_association_ind_p = &message_p->ittiMsg.sctp_new_association_ind;
 
