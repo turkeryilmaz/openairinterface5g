@@ -1551,6 +1551,7 @@ int RCconfig_NR_NG(MessageDef *msg_p, uint32_t i) {
               else
                 NGAP_REGISTER_GNB_REQ(msg_p).broadcast_plmn_num[l] = 0;
               */
+              NGAP_REGISTER_GNB_REQ(msg_p).broadcast_plmn_num[l] = 0;
 
               AssertFatal(NGAP_REGISTER_GNB_REQ(msg_p).broadcast_plmn_num[l] <= NGAP_REGISTER_GNB_REQ(msg_p).num_plmn,
                           "List of broadcast PLMN to be sent to AMF can not be longer than actual "
