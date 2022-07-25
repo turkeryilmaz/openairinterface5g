@@ -94,6 +94,12 @@ int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const u
 
 int8_t nr_rrc_ue_decode_NR_DL_DCCH_Message(const module_id_t module_id, const uint8_t gNB_index, const uint8_t *buffer, const uint32_t size);
 
+/**\brief Send measurements to RRC to perform the L3 measurements
+   \param module_id  module id
+   \param gNB_index  gNB index
+   \param cqi        channel quality indicator*/
+int8_t nr_mac_rrc_meas_ind_ue(module_id_t module_id, uint32_t gNB_index, uint8_t cqi);
+
 /**\brief interface between MAC and RRC thru SRB0 (RLC TM/no PDCP)
    \param module_id  module id
    \param CC_id      component carrier id
@@ -135,8 +141,6 @@ int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index);
 /**\brief RRC UE task.
    \param void *args_p Pointer on arguments to start the task. */
 void *rrc_nrue_task(void *args_p);
-
-void nr_rrc_handle_timers(NR_UE_Timers_Constants_t *timers);
 
 /**\brief RRC NSA UE task.
    \param void *args_p Pointer on arguments to start the task. */

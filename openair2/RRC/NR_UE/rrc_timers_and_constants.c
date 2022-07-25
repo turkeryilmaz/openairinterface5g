@@ -98,30 +98,6 @@ void nr_rrc_SI_timers(NR_UE_RRC_SI_INFO *SInfo)
   }
 }
 
-void nr_rrc_handle_timers(NR_UE_Timers_Constants_t *timers)
-{
-  // T304
-  if (timers->T304_active == true) {
-    timers->T304_cnt += 10;
-    if(timers->T304_cnt >= timers->T304_k) {
-      // TODO
-      // For T304 of MCG, in case of the handover from NR or intra-NR
-      // handover, initiate the RRC re-establishment procedure;
-      // In case of handover to NR, perform the actions defined in the
-      // specifications applicable for the source RAT.
-    }
-  }
-  if (timers->T310_active == true) {
-    timers->T310_cnt += 10;
-    if(timers->T310_cnt >= timers->T310_k) {
-      // TODO
-      // handle detection of radio link failure
-      // as described in 5.3.10.3 of 38.331
-      AssertFatal(false, "Radio link failure! Not handled yet!\n");
-    }
-  }
-}
-
 void nr_rrc_set_T304(NR_UE_Timers_Constants_t *tac, NR_ReconfigurationWithSync_t *reconfigurationWithSync)
 {
   if(reconfigurationWithSync) {

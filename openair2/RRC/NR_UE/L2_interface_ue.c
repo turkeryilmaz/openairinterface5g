@@ -39,6 +39,14 @@
 
 typedef uint32_t channel_t;
 
+int8_t nr_mac_rrc_meas_ind_ue(module_id_t module_id, uint32_t gNB_index, uint8_t cqi) {
+  MessageDef *message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_MEAS_DATA_IND);
+  NR_RRC_MAC_MEAS_DATA_IND(message_p).gnb_index = gNB_index;
+  NR_RRC_MAC_MEAS_DATA_IND(message_p).cqi = cqi;
+  itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
+  return 0;
+}
+
 void nr_mac_rrc_sync_ind(const module_id_t module_id,
                          const frame_t frame,
                          const bool in_sync)
