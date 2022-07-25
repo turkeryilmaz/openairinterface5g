@@ -38,6 +38,8 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_extern.h"
 extern void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_sched_ctrl_t *sched_ctrl);
 
+//#define SRS_IND_DEBUG
+
 int get_dci_format(NR_UE_sched_ctrl_t *sched_ctrl) {
 
   int dci_format = sched_ctrl->search_space && sched_ctrl->search_space->searchSpaceType &&
@@ -50,10 +52,11 @@ int get_dci_format(NR_UE_sched_ctrl_t *sched_ctrl) {
 const int get_ul_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int slot, int dci_offset) {
 
   /* there is a mixed slot only when in TDD */
+
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
   if (tdd->nrofDownlinkSlots < tdd->nrofUplinkSlots - 1){
-    if (dci_offset > -1) return (((dci_offset + slot%10 == 0) ? 0 : 1)*(slot%10 + dci_offset + 2));
+    if (dci_offset > -1) return (((slot)%10)*(nrmac->max_nb_dci - 1) + tdd->nrofDownlinkSlots + 1 + dci_offset);//(((dci_offset + slot%10 == 0) ? 0 : 1)*(slot%10 + dci_offset + 2));
     if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
       const int nr_slots_period = tdd->nrofDownlinkSlots + tdd->nrofUplinkSlots + 1;
       if ((slot%nr_slots_period) == tdd->nrofDownlinkSlots)
@@ -69,7 +72,7 @@ const int get_ul_tda(const gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon
         return 1;
     }*/
     //LOG_I(NR_MAC,"slot %d offset %d\n",slot,dci_offset);
-    return tdd->nrofUplinkSlots > 2 ? tdd->nrofUplinkSlots - 1 : 4; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
+    return tdd->nrofUplinkSlots > 3 ? tdd->nrofUplinkSlots  : 4; // if FDD or not mixed slot in TDD, for now use default TDA (TODO handle CSI-RS slots)
   }
 
 
@@ -790,6 +793,56 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
   }
 }
 
+void handle_nr_srs_measurements(const module_id_t module_id,
+                                const frame_t frame,
+                                const sub_frame_t slot,
+                                const rnti_t rnti,
+                                const uint16_t timing_advance,
+                                const uint8_t num_symbols,
+                                const uint8_t wide_band_snr,
+                                const uint8_t num_reported_symbols,
+                                nfapi_nr_srs_indication_reported_symbol_t* reported_symbol_list) {
+
+  LOG_D(NR_MAC, "(%d.%d) Received SRS indication for rnti: 0x%04x\n", frame, slot, rnti);
+
+#ifdef SRS_IND_DEBUG
+  LOG_I(NR_MAC, "frame = %i\n", frame);
+  LOG_I(NR_MAC, "slot = %i\n", slot);
+  LOG_I(NR_MAC, "rnti = 0x%04x\n", rnti);
+  LOG_I(NR_MAC, "timing_advance = %i\n", timing_advance);
+  LOG_I(NR_MAC, "num_symbols = %i\n", num_symbols);
+  LOG_I(NR_MAC, "wide_band_snr = %i (%i dB)\n", wide_band_snr, (wide_band_snr>>1)-64);
+  LOG_I(NR_MAC, "num_reported_symbols = %i\n", num_reported_symbols);
+  LOG_I(NR_MAC, "reported_symbol_list[0].num_rbs = %i\n", reported_symbol_list[0].num_rbs);
+  for(int rb = 0; rb < reported_symbol_list[0].num_rbs; rb++) {
+    LOG_I(NR_MAC, "reported_symbol_list[0].rb_list[%3i].rb_snr = %i (%i dB)\n",
+          rb, reported_symbol_list[0].rb_list[rb].rb_snr, (reported_symbol_list[0].rb_list[rb].rb_snr>>1)-64);
+  }
+#endif
+
+  NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, rnti);
+  if (!UE) {
+    LOG_W(NR_MAC, "Could not find UE for RNTI 0x%04x\n", rnti);
+    return;
+  }
+
+  gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
+  NR_mac_stats_t *stats = &UE->mac_stats;
+  stats->srs_wide_band_snr = (wide_band_snr>>1)-64;
+
+  const int ul_prbblack_SNR_threshold = nr_mac->ul_prbblack_SNR_threshold;
+  uint16_t *ulprbbl = nr_mac->ulprbbl;
+
+  memset(ulprbbl, 0, reported_symbol_list[0].num_rbs*sizeof(uint16_t));
+  for (int rb = 0; rb < reported_symbol_list[0].num_rbs; rb++) {
+    int snr = (reported_symbol_list[0].rb_list[rb].rb_snr>>1)-64;
+    if (snr < ul_prbblack_SNR_threshold) {
+      ulprbbl[rb] = 0x3FFF; // all symbols taken
+    }
+    LOG_D(NR_MAC, "ulprbbl[%3i] = 0x%x\n", rb, ulprbbl[rb]);
+  }
+}
+
 long get_K2(NR_ServingCellConfigCommon_t *scc,
             NR_ServingCellConfigCommonSIB_t *scc_sib1,
             NR_BWP_Uplink_t *ubwp,
@@ -1256,6 +1309,7 @@ void pf_ul(module_id_t module_id,
       if(nr_of_candidates>0)
 	break;
     }
+    LOG_D(NR_MAC, "%4d.%2d UL DCI nr_of_candidates %d\n", frame, slot, nr_of_candidates);
     int CCEIndex = find_pdcch_candidate(RC.nrmac[module_id],
                                         CC_id,
                                         sched_ctrl->aggregation_level,

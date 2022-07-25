@@ -3136,9 +3136,10 @@ int update_tdd_configuration(module_id_t module_idP){
                                               scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols);
     //LOG_E(NR_MAC,"TDD configuration  %d - %d\n",scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots, scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots);
 
-  if (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots < scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots - 1) gNB->max_nb_dci = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots / scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots;
+  if (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots < scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots - 1) gNB->max_nb_dci = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots / (scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots);
   else gNB->max_nb_dci = 1;
 
+    LOG_I(NR_MAC, "Setting TDD configuration dci to %d\n", gNB->max_nb_dci);
 
     if (periods_per_frame < 0)
       LOG_E(NR_MAC,"TDD configuration can not be done %d - %d\n",scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots, scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots);
