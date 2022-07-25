@@ -1163,6 +1163,7 @@ int8_t nr_ue_process_csirs_measurements(module_id_t module_id,
   LOG_D(NR_MAC,"(%d.%d) Received CSI-RS measurements\n", frame, slot);
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   memcpy(&mac->csirs_measurements, csirs_measurements, sizeof(*csirs_measurements));
+  nr_mac_rrc_meas_ind_ue(module_id, csirs_measurements->gNB_index, csirs_measurements->cqi);
   return 0;
 }
 
