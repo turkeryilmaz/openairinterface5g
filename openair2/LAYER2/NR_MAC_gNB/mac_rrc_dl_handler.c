@@ -328,7 +328,7 @@ void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd)
   du_remove_f1_ue_data(cmd->gNB_DU_ue_id);
 }
 
-void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
+void dl_rrc_message_transfer(int dest_itti, const f1ap_dl_rrc_message_t *dl_rrc)
 {
   LOG_D(NR_MAC,
         "DL RRC Message Transfer with %d bytes for RNTI %04x SRB %d\n",
