@@ -761,12 +761,16 @@ static void add_srb(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_SRB_ToAddMod *s
 {
   nr_pdcp_entity_t *pdcp_srb;
   nr_pdcp_ue_t *ue;
-  int t_Reordering=3000;
+  int t_Reordering=3000; // it was already hardcoded ?
 
   int srb_id = s->srb_Identity;
-  if (s->pdcp_Config == NULL ||
-      s->pdcp_Config->t_Reordering == NULL) t_Reordering = 3000;
-  else t_Reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
+  if (s->pdcp_Config == NULL || s->pdcp_Config->t_Reordering == NULL) {
+    t_Reordering = 3000; //
+    //t_Reordering = decode_t_reordering(get_softmodem_params()->ntn_trd) + get_softmodem_params()->ntn_trd_offset; // #NTN
+  } else {
+    t_Reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
+    //t_Reordering = t_Reordering + get_softmodem_params()->ntn_trd_offset; // #NTN
+  }
 
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
   ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, rntiMaybeUEid);
@@ -805,6 +809,7 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, struct NR_DRB_ToAddMod *s, in
   int t_reordering = -1;
   if (s->pdcp_Config->t_Reordering != NULL) {
     t_reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
+    printf("\n\n\n\n Came to line 954 add_drb_am and t_reordering is %d\n\n\n\n", t_reordering);
   }
 
   if (s->pdcp_Config->drb != NULL

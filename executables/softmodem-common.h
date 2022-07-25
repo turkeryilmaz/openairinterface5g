@@ -206,7 +206,7 @@ extern int usrp_tx_thread;
   {"nid2",                  CONFIG_HLP_NID2,          0,              .iptr=&NID2,                            .defintval=1,             TYPE_INT,    0},  \
   {"ntn-trs",               CONFIG_HLP_NTN_TRS,       0,              .u8ptr=&NTN_TRS,                        .defintval=15,            TYPE_UINT8,  0},  \
   {"ntn-trs-offset",        CONFIG_HLP_NTN_TRS_OFFSET,0,              .u16ptr=&NTN_TRS_OFFSET,                .defintval=0,             TYPE_UINT16, 0},  \
-  {"ntn-trd",               CONFIG_HLP_NTN_TRD,       0,              .u8ptr=&NTN_TRD,                        .defintval=36,            TYPE_UINT8,  0},  \
+  {"ntn-trd",               CONFIG_HLP_NTN_TRD,       0,              .u8ptr=&NTN_TRD,                        .defintval=35,            TYPE_UINT8,  0},  \
   {"ntn-trd-offset",        CONFIG_HLP_NTN_TRD_OFFSET,0,              .u16ptr=&NTN_TRD_OFFSET,                .defintval=0,             TYPE_UINT16, 0},  \
   {"ntn-rtd",               CONFIG_HLP_NTN_RTD,       0,              .u16ptr=&NTN_RTD,                       .defintval=0,             TYPE_UINT16, 0},  \
 }
