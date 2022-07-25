@@ -436,7 +436,7 @@ NR_RadioBearerConfig_t *get_default_rbconfig(int eps_bearer_id,
   drb->outOfOrderDelivery = NULL;
 
   drb_ToAddMod->pdcp_Config->moreThanOneRLC = NULL;
-  asn1cCallocOne(drb_ToAddMod->pdcp_Config->t_Reordering, NR_PDCP_Config__t_Reordering_ms3000);
+  asn1cCallocOne(drb_ToAddMod->pdcp_Config->t_Reordering, get_softmodem_params()->ntn_trd);   // this will just provide the index of the enum
   drb_ToAddMod->pdcp_Config->ext1 = NULL;
 
   asn1cSeqAdd(&rbconfig->drb_ToAddModList->list,drb_ToAddMod);
