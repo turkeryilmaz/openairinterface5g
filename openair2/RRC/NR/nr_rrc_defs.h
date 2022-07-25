@@ -381,8 +381,9 @@ typedef struct gNB_RRC_INST_s {
 
   ngran_node_t                                        node_type;
   uint32_t                                            node_id;
-  char                                               *node_name;
+  char                                                *node_name;
   int                                                 module_id;
+  instance_t                                          f1_instance;
   eth_params_t                                        eth_params_s;
   rrc_gNB_carrier_data_t                              carrier;
   uid_allocator_t                                     uid_allocator;

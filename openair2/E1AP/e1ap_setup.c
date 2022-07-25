@@ -79,7 +79,6 @@ MessageDef *RCconfig_NR_CU_E1(bool separate_CUUP_process)
   char aprefix[MAX_OPTNAME_SIZE * 2 + 8];
   sprintf(aprefix, "%s.[%i]", GNB_CONFIG_STRING_GNB_LIST, 0);
   int num_gnbs = GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt;
-  AssertFatal(num_gnbs == 1, "Support only one gNB per process\n");
 
   if (num_gnbs > 0) {
     config_getlist(&GNBParamList, GNBParams, sizeofArray(GNBParams), NULL);
