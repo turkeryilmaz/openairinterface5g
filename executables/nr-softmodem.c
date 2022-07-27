@@ -674,17 +674,17 @@ void read_mac_sm(mac_ind_msg_t* data)
   }
 
   size_t i = 0;
-  UE_iterator(UE_info, UE) {
+  if (num_ues > 0) {
 
-  const NR_UE_sched_ctrl_t* sched_ctrl = &UE->UE_sched_ctrl;
-    const NR_mac_stats_t* uestats = &UE->mac_stats;
+   // const NR_UE_sched_ctrl_t* sched_ctrl = &UE->UE_sched_ctrl;
+    //const NR_mac_stats_t* uestats = &UE->mac_stats;
     mac_ue_stats_impl_t* rd = &data->ue_stats[i];
 
     rd->dl_aggr_tbs =RC.nrmac[mod_id]->O_dl; // uestats->dlsch_total_bytes;
     rd->ul_aggr_tbs = RC.nrmac[mod_id]->O_ul; //uestats->ulsch_total_bytes_rx;
 
 
-    rd->rnti = UE->rnti;
+    rd->rnti = 0;//UE->rnti;
     rd->dl_aggr_prb = 0; //uestats->dlsch_total_rbs; 
     rd->ul_aggr_prb = 0; //uestats->ulsch_total_rbs;
     rd->dl_aggr_retx_prb = 0; //uestats->dlsch_total_rbs_retx ;
@@ -695,19 +695,20 @@ void read_mac_sm(mac_ind_msg_t* data)
     rd->dl_aggr_sdus = 0;//uestats->dlsch_num_mac_sdu;
     rd->ul_aggr_sdus = 0;//uestats->ulsch_num_mac_sdu;
 
-    rd->pusch_snr = (float) sched_ctrl->pusch_snrx10 / 10; //: float = -64;
-    rd->pucch_snr = (float) sched_ctrl->pucch_snrx10 / 10 ; //: float = -64;
+    rd->pusch_snr = 0;//(float) sched_ctrl->pusch_snrx10 / 10; //: float = -64;
+    rd->pucch_snr = 0;//(float) sched_ctrl->pucch_snrx10 / 10 ; //: float = -64;
 
     // no CQI measurements implemented in OAI 5G yet
     rd->wb_cqi = 0; 
-    rd->dl_mcs1 = sched_ctrl->sched_pdsch.mcs;
-    rd->ul_mcs1 = sched_ctrl->sched_pusch.mcs ;
+    rd->dl_mcs1 = 0;//sched_ctrl->sched_pdsch.mcs;
+    rd->ul_mcs1 = 0;//sched_ctrl->sched_pusch.mcs ;
     rd->dl_mcs2 = 0; 
     rd->ul_mcs2 = 0; 
-    rd->phr = sched_ctrl->ph; 
+    rd->phr = 0;//sched_ctrl->ph; 
 
     ++i;
   }
+  
  RC.nrmac[mod_id]->O_ul = 0;
  RC.nrmac[mod_id]->O_dl = 0;
 }

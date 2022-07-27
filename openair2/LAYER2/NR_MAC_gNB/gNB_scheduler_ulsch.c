@@ -382,7 +382,7 @@ int nr_process_mac_pdu( instance_t module_idP,
                            1,
                            NULL);
 
-          RC.nrmac[module_idP]->O_ul += mac_len;                 
+          //RC.nrmac[module_idP]->O_ul += mac_len;                 
 
           sdus += 1;
 
@@ -966,7 +966,7 @@ static bool allocate_ul_retransmission(gNB_MAC_INST *nrmac,
     while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
       rbStart++;
     if (rbStart + retInfo->rbSize > bwpSize) {
-      LOG_W(NR_MAC, "cannot allocate retransmission of RNTI %04x: no resources (rbStart %d, retInfo->rbSize %d, bwpSize %d\n", UE->rnti, rbStart, retInfo->rbSize, bwpSize);
+      LOG_D(NR_MAC, "%d.%d cannot allocate retransmission of RNTI %04x: no resources (rbStart %d, retInfo->rbSize %d, bwpSize %d\n", frame, slot, UE->rnti, rbStart, retInfo->rbSize, bwpSize);
       return false;
     }
     LOG_D(NR_MAC, "%s(): retransmission keeping TDA %d and TBS %d\n", __func__, tda, retInfo->tb_size);

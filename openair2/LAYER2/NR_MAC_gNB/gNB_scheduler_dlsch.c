@@ -534,7 +534,7 @@ bool allocate_dl_retransmission(module_id_t module_id,
                                       Y);
 
   if (CCEIndex<0) {
-    LOG_D(MAC, "%4d.%2d could not find CCE for DL DCI retransmission RNTI %04x\n",
+    LOG_W(MAC, "%4d.%2d could not find CCE for DL DCI retransmission RNTI %04x\n",
           frame, slot, UE->rnti);
     return false;
   }
@@ -1319,10 +1319,10 @@ void nr_schedule_ue_spec(module_id_t module_id,
                   lcid,
                   ndata,
                   bufEnd-buf-+sizeof(NR_MAC_SUBHEADER_LONG));
-
+            
             if (len == 0)
               break;
-
+            RC.nrmac[module_id]->O_dl -= len;
             header->R = 0;
             header->F = 1;
             header->LCID = lcid;
@@ -1334,6 +1334,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           }
 
           UE->mac_stats.dl.lc_bytes[lcid] += lcid_bytes;
+          
         }
       } else if (get_softmodem_params()->phy_test || get_softmodem_params()->do_ra) {
         /* we will need the large header, phy-test typically allocates all
