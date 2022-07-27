@@ -801,6 +801,10 @@ schedule_ue_spec(module_id_t module_idP,
       // Now check RLC information to compute number of required RBs
       // get maximum TBS size for RLC request
       const int nb_rb = ue_sched_ctrl->pre_nb_available_rbs[CC_id];
+      // Changed dlsch_mcs1 for sending full SDU to UE on DRB in System Simulator Mode
+      if (RC.ss.mode == SS_SOFTMODEM){
+        eNB_UE_stats->dlsch_mcs1 = 4;
+      }
       int TBS = get_TBS_DL(eNB_UE_stats->dlsch_mcs1, nb_rb);
       const uint32_t rbc = allocate_prbs_sub(nb_rb, N_RB_DL, N_RBG, ue_sched_ctrl->rballoc_sub_UE[CC_id]);
 
