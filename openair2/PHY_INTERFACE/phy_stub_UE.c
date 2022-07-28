@@ -1463,7 +1463,7 @@ void *ue_standalone_pnf_task(void *context)
 			  LOG_E(MAC, "Message cell_ind failed to unpack\n");
 			  break;
 		  }
-		  LOG_D(MAC, "CELL SEARCH IND Received: numlteCells:%d cell[1]:%d cell[2]:%d\n",
+		  LOG_D(MAC, "P7_CELL_SEARCH_IND Received: numlteCells:%d cell[1]:%d cell[2]:%d\n",
 				cell_ind.lte_cell_search_indication.number_of_lte_cells_found,
 				cell_ind.lte_cell_search_indication.lte_found_cells[0].pci,
 				cell_ind.lte_cell_search_indication.lte_found_cells[1].pci);
