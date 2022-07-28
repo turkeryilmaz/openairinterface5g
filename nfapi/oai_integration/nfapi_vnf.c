@@ -1633,57 +1633,57 @@ req->nfapi_config.tx_data_timing_offset.tl.tag = NFAPI_NR_NFAPI_TX_DATA_TIMING_O
 
 
 int param_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_param_response_t *resp) {
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_PARAM_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-	vnf_info *vnf = (vnf_info *)(config->user_data);
-	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-	pnf_info *pnf = vnf->pnfs;
-	phy_info *phy = pnf->phys;
-	struct sockaddr_in pnf_p7_sockaddr;
-	nfapi_config_request_t *req = &RC.mac[0]->config[0];
-	phy->remote_port = 32123;//resp->nfapi_config.p7_pnf_port.value;
-	memcpy(&pnf_p7_sockaddr.sin_addr.s_addr, &(resp->nfapi_config.p7_pnf_address_ipv4.address[0]), 4);
-	phy->remote_addr = inet_ntoa(pnf_p7_sockaddr.sin_addr);
-	// for now just 1
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %d.%d pnf p7 %s:%d timing %u %u %u %u\n", p5_idx, phy->id, phy->remote_addr, phy->remote_port, p7_vnf->timing_window, p7_vnf->periodic_timing_period, p7_vnf->aperiodic_timing_enabled,
-			p7_vnf->periodic_timing_period);
-	req->header.message_id = NFAPI_CONFIG_REQUEST;
-	req->header.phy_id = phy->id;
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Send NFAPI_CONFIG_REQUEST\n");
-	req->nfapi_config.p7_vnf_port.tl.tag = NFAPI_NFAPI_P7_VNF_PORT_TAG;
-	req->nfapi_config.p7_vnf_port.value = p7_vnf->local_port;
-	req->num_tlv++;
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] DJP local_port:%d\n", p7_vnf->local_port);
-	req->nfapi_config.p7_vnf_address_ipv4.tl.tag = NFAPI_NFAPI_P7_VNF_ADDRESS_IPV4_TAG;
-	struct sockaddr_in vnf_p7_sockaddr;
-	vnf_p7_sockaddr.sin_addr.s_addr = inet_addr(p7_vnf->local_addr);
-	memcpy(&(req->nfapi_config.p7_vnf_address_ipv4.address[0]), &vnf_p7_sockaddr.sin_addr.s_addr, 4);
-	req->num_tlv++;
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] DJP local_addr:%s\n", p7_vnf->local_addr);
-	req->nfapi_config.timing_window.tl.tag = NFAPI_NFAPI_TIMING_WINDOW_TAG;
-	req->nfapi_config.timing_window.value = p7_vnf->timing_window;
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Timing window:%u\n", p7_vnf->timing_window);
-	req->num_tlv++;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_PARAM_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+  vnf_info *vnf = (vnf_info *)(config->user_data);
+  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
+  pnf_info *pnf = vnf->pnfs;
+  phy_info *phy = pnf->phys;
+  struct sockaddr_in pnf_p7_sockaddr;
+  nfapi_config_request_t *req = &RC.mac[0]->config[0];
+  phy->remote_port = 32123;//resp->nfapi_config.p7_pnf_port.value;
+  memcpy(&pnf_p7_sockaddr.sin_addr.s_addr, &(resp->nfapi_config.p7_pnf_address_ipv4.address[0]), 4);
+  phy->remote_addr = inet_ntoa(pnf_p7_sockaddr.sin_addr);
+  // for now just 1
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %d.%d pnf p7 %s:%d timing %u %u %u %u\n", p5_idx, phy->id, phy->remote_addr, phy->remote_port, p7_vnf->timing_window, p7_vnf->periodic_timing_period, p7_vnf->aperiodic_timing_enabled,
+         p7_vnf->periodic_timing_period);
+  req->header.message_id = NFAPI_CONFIG_REQUEST;
+  req->header.phy_id = phy->id;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Send NFAPI_CONFIG_REQUEST\n");
+  req->nfapi_config.p7_vnf_port.tl.tag = NFAPI_NFAPI_P7_VNF_PORT_TAG;
+  req->nfapi_config.p7_vnf_port.value = p7_vnf->local_port;
+  req->num_tlv++;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] DJP local_port:%d\n", p7_vnf->local_port);
+  req->nfapi_config.p7_vnf_address_ipv4.tl.tag = NFAPI_NFAPI_P7_VNF_ADDRESS_IPV4_TAG;
+  struct sockaddr_in vnf_p7_sockaddr;
+  vnf_p7_sockaddr.sin_addr.s_addr = inet_addr(p7_vnf->local_addr);
+  memcpy(&(req->nfapi_config.p7_vnf_address_ipv4.address[0]), &vnf_p7_sockaddr.sin_addr.s_addr, 4);
+  req->num_tlv++;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] DJP local_addr:%s\n", p7_vnf->local_addr);
+  req->nfapi_config.timing_window.tl.tag = NFAPI_NFAPI_TIMING_WINDOW_TAG;
+  req->nfapi_config.timing_window.value = p7_vnf->timing_window;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Timing window:%u\n", p7_vnf->timing_window);
+  req->num_tlv++;
 
-	if(p7_vnf->periodic_timing_enabled || p7_vnf->aperiodic_timing_enabled) {
-		req->nfapi_config.timing_info_mode.tl.tag = NFAPI_NFAPI_TIMING_INFO_MODE_TAG;
-		req->nfapi_config.timing_info_mode.value = (p7_vnf->aperiodic_timing_enabled << 1) | (p7_vnf->periodic_timing_enabled);
-		req->num_tlv++;
+  if(p7_vnf->periodic_timing_enabled || p7_vnf->aperiodic_timing_enabled) {
+    req->nfapi_config.timing_info_mode.tl.tag = NFAPI_NFAPI_TIMING_INFO_MODE_TAG;
+    req->nfapi_config.timing_info_mode.value = (p7_vnf->aperiodic_timing_enabled << 1) | (p7_vnf->periodic_timing_enabled);
+    req->num_tlv++;
 
-		if(p7_vnf->periodic_timing_enabled) {
-			req->nfapi_config.timing_info_period.tl.tag = NFAPI_NFAPI_TIMING_INFO_PERIOD_TAG;
-			req->nfapi_config.timing_info_period.value = p7_vnf->periodic_timing_period;
-			req->num_tlv++;
-		}
-	}
+    if(p7_vnf->periodic_timing_enabled) {
+      req->nfapi_config.timing_info_period.tl.tag = NFAPI_NFAPI_TIMING_INFO_PERIOD_TAG;
+      req->nfapi_config.timing_info_period.value = p7_vnf->periodic_timing_period;
+      req->num_tlv++;
+    }
+  }
 
-	vendor_ext_tlv_2 ve2;
-	memset(&ve2, 0, sizeof(ve2));
-	ve2.tl.tag = VENDOR_EXT_TLV_2_TAG;
-	ve2.dummy = 2016;
-	req->vendor_extension = &ve2.tl;
-	nfapi_vnf_config_req(config, p5_idx, req);
-	printf("[VNF] Sent NFAPI_CONFIG_REQ num_tlv:%u\n",req->num_tlv);
-	return 0;
+  vendor_ext_tlv_2 ve2;
+  memset(&ve2, 0, sizeof(ve2));
+  ve2.tl.tag = VENDOR_EXT_TLV_2_TAG;
+  ve2.dummy = 2016;
+  req->vendor_extension = &ve2.tl;
+  nfapi_vnf_config_req(config, p5_idx, req);
+  printf("[VNF] Sent NFAPI_CONFIG_REQ num_tlv:%u\n",req->num_tlv);
+  return 0;
 }
 
 int nr_config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_config_response_scf_t *resp) {
