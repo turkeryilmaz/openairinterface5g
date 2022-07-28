@@ -204,7 +204,6 @@ extern "C"
     dl_config_req.dl_config_request_body.tl.tag = NFAPI_DL_CONFIG_REQUEST_BODY_TAG;
     dl_config_req.dl_config_request_body.number_pdu = rand_range(4, max_num_dl_pdus);
     uint16_t i = 0;
-	fprintf(stdout, "swetank: file:%s fxn:%s line:%d\n", __FILE__, __FUNCTION__, __LINE__);
     for(i = 0; i < dl_config_req.dl_config_request_body.number_pdu; ++i) {
       dl_config_pdus[i].pdu_type = rand_range(0, 11);
 

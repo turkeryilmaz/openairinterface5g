@@ -203,36 +203,6 @@ extern int single_thread_flag;
 extern uint16_t sf_ahead;
 extern uint16_t slot_ahead;
 
-void oai_create_enb(void) {
-	int bodge_counter=0;
-	PHY_VARS_eNB *eNB = RC.eNB[0][0];
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] RC.eNB[0][0]. Mod_id:%d CC_id:%d nb_CC[0]:%d abstraction_flag:%d single_thread_flag:%d if_inst:%p\n", eNB->Mod_id, eNB->CC_id, RC.nb_CC[0], eNB->abstraction_flag,
-			eNB->single_thread_flag, eNB->if_inst);
-	eNB->Mod_id  = bodge_counter;
-	eNB->CC_id   = bodge_counter;
-	eNB->abstraction_flag   = 0;
-	eNB->single_thread_flag = 0;//single_thread_flag;
-	RC.nb_CC[bodge_counter] = 1;
-
-	if (eNB->if_inst==0) {
-		eNB->if_inst = IF_Module_init(bodge_counter);
-	}
-
-	// This will cause phy_config_request to be installed. That will result in RRC configuring the PHY
-	// that will result in eNB->configured being set to TRUE.
-	// See we need to wait for that to happen otherwise the NFAPI message exchanges won't contain the right parameter values
-	if (RC.eNB[0][0]->if_inst==0 || RC.eNB[0][0]->if_inst->PHY_config_req==0 || RC.eNB[0][0]->if_inst->schedule_response==0) {
-		NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->if_inst->PHY_config_req is not installed - install it\n");
-		install_schedule_handlers(RC.eNB[0][0]->if_inst);
-	}
-
-	do {
-		NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for eNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
-		usleep(50000);
-	} while(eNB->configured != 1);
-
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB is now configured\n", __FUNCTION__);
-}
 
 void oai_enb_init(void) {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() About to call init_eNB_afterRU()\n", __FUNCTION__);
@@ -1724,7 +1694,7 @@ int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t
 	for(int i=0; i < pnf->num_phys; i++ )
 	{
 		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
-		fprintf(stdout, "swetank: fxn:%s phy_id added:%d\n", __FUNCTION__,phy->id);
+  		LOG_D(NFAPI_VNF, "MultiCell: fxn:%s phy_id added:%d\n", p5_idx, resp->header.phy_id);
 		phy +=1;
 	}
 	free(remote_addr);
@@ -1904,15 +1874,26 @@ void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
 }
 
 int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req) {
-	fprintf(stdout, "swetank: fxn:%s num_phy:%d\n", __FUNCTION__, vnf.pnfs[0].num_phys);
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Created VNF NFAPI start thread %s\n", __FUNCTION__);
 	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
 	int retval = 0;
-	for (int i =0; i< vnf.pnfs[0].num_phys; i++)
+	int num_phy = 0;
+	uint16_t sfn = 0;
+	uint16_t sf = 0;
+	sfn = dl_config_req->sfn_sf >> 4;
+	sf = dl_config_req->sfn_sf & 0xF;
+	/* Below if condition checking if dl_config_req is for MIB (sf == 0) or SIB1 ((sfn % 2 == 0) && (sf == 5)) */
+	if ((sf == 0) || ((sfn % 2 == 0) && (sf == 5)))
+		num_phy = vnf.pnfs[0].num_phys;
+	else
+		num_phy = 1;
+
+	for (int i =0; i< num_phy; i++)
 	{
+
 		dl_config_req->header.phy_id = i+1; // DJP HACK TODO FIXME - need to pass this around!!!!
 		dl_config_req->header.message_id = NFAPI_DL_CONFIG_REQUEST;
-		LOG_D(PHY, "[VNF] %s() DL_CONFIG_REQ sfn_sf:%d_%d number_of_pdus:%d\n", __FUNCTION__,
-				NFAPI_SFNSF2SFN(dl_config_req->sfn_sf),NFAPI_SFNSF2SF(dl_config_req->sfn_sf), dl_config_req->dl_config_request_body.number_pdu);
+		LOG_I(NFAPI_VNF, "MultiCell: fxn:%s num_phy:%d phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, dl_config_req->header.phy_id, num_phy, sfn, sf);
 		if (dl_config_req->dl_config_request_body.number_pdu > 0)
 		{
 			for (int i = 0; i < dl_config_req->dl_config_request_body.number_pdu; i++)
@@ -1982,13 +1963,24 @@ int oai_nfapi_tx_req(nfapi_tx_request_t *tx_req)
 {
 	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
 	int retval = 0;
-	fprintf(stdout, "swetank: fxn:%s num_phy:%d\n", __FUNCTION__, vnf.pnfs[0].num_phys);
-	for (int i =0; i< vnf.pnfs[0].num_phys; i++)
+	int num_phy = 0;
+	uint16_t sfn = 0;
+	uint16_t sf = 0;
+	sfn = tx_req->sfn_sf >> 4;
+	sf = tx_req->sfn_sf & 0xF;
+
+	/* Below if condition checking if tx_req is for MIB (sf == 0) or SIB1 ((sfn % 2 == 0) && (sf == 5)) */
+	if ((sf == 0) || ((sfn % 2 == 0) && (sf == 5)))
+		num_phy = vnf.pnfs[0].num_phys;
+	else
+		num_phy = 1;
+
+	for (int i =0; i< num_phy; i++)
 	{
 		tx_req->header.phy_id = i+1; // DJP HACK TODO FIXME - need to pass this around!!!!
 		tx_req->header.message_id = NFAPI_TX_REQUEST;
 		//LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
-		fprintf(stdout, "swetank: fxn:%s line:%d tx_req sent for phy_id:%d\n",  __FUNCTION__, __LINE__, tx_req->header.phy_id);
+		LOG_I(NFAPI_VNF, "MultiCell: fxn:%s num_phy:%d phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, num_phy, tx_req->header.phy_id, sfn, sf);
 		retval = nfapi_vnf_p7_tx_req(p7_config, tx_req);
 		if (retval!=0) {
 			LOG_E(PHY, "%s() Problem sending tx_req for phyId:%d :%d\n", __FUNCTION__, tx_req->header.phy_id ,retval);
