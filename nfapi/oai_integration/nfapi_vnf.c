@@ -203,6 +203,36 @@ extern int single_thread_flag;
 extern uint16_t sf_ahead;
 extern uint16_t slot_ahead;
 
+void oai_create_enb(void) {
+  int bodge_counter=0;
+  PHY_VARS_eNB *eNB = RC.eNB[0][0];
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] RC.eNB[0][0]. Mod_id:%d CC_id:%d nb_CC[0]:%d abstraction_flag:%d single_thread_flag:%d if_inst:%p\n", eNB->Mod_id, eNB->CC_id, RC.nb_CC[0], eNB->abstraction_flag,
+         eNB->single_thread_flag, eNB->if_inst);
+  eNB->Mod_id  = bodge_counter;
+  eNB->CC_id   = bodge_counter;
+  eNB->abstraction_flag   = 0;
+  eNB->single_thread_flag = 0;//single_thread_flag;
+  RC.nb_CC[bodge_counter] = 1;
+
+  if (eNB->if_inst==0) {
+    eNB->if_inst = IF_Module_init(bodge_counter);
+  }
+
+  // This will cause phy_config_request to be installed. That will result in RRC configuring the PHY
+  // that will result in eNB->configured being set to TRUE.
+  // See we need to wait for that to happen otherwise the NFAPI message exchanges won't contain the right parameter values
+  if (RC.eNB[0][0]->if_inst==0 || RC.eNB[0][0]->if_inst->PHY_config_req==0 || RC.eNB[0][0]->if_inst->schedule_response==0) {
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->if_inst->PHY_config_req is not installed - install it\n");
+    install_schedule_handlers(RC.eNB[0][0]->if_inst);
+  }
+
+  do {
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for eNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
+    usleep(50000);
+  } while(eNB->configured != 1);
+
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB is now configured\n", __FUNCTION__);
+}
 
 void oai_enb_init(void) {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() About to call init_eNB_afterRU()\n", __FUNCTION__);
