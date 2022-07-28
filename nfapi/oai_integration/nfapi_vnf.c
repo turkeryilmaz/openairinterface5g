@@ -1735,7 +1735,7 @@ int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t
 	for(int i=0; i < pnf->num_phys; i++ )
 	{
 		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
-		fprintf(stdout, "swetank: fxn:%s phy_id added:%d\n", __FUNCTION__,phy->id);
+  		LOG_D(NFAPI_VNF, "MultiCell: fxn:%s phy_id added:%d\n", p5_idx, resp->header.phy_id);
 		phy +=1;
 	}
 	free(remote_addr);
