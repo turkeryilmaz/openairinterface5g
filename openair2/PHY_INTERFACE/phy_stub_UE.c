@@ -1457,14 +1457,16 @@ void *ue_standalone_pnf_task(void *context)
       case P7_CELL_SEARCH_IND:
 	  {
 		  vendor_nfapi_cell_search_indication_t cell_ind;
-		  LOG_D(MAC, "CELL SEARCH IND Receievd\n");
-		  printf("CELL SEARCH IND Receievd\n");
 		  if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
 					  sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
 		  {
 			  LOG_E(MAC, "Message cell_ind failed to unpack\n");
 			  break;
 		  }
+		  LOG_D(MAC, "CELL SEARCH IND Received: numlteCells:%d cell[1]:%d cell[2]:%d\n",
+				cell_ind.lte_cell_search_indication.number_of_lte_cells_found,
+				cell_ind.lte_cell_search_indication.lte_found_cells[0].pci,
+				cell_ind.lte_cell_search_indication.lte_found_cells[1].pci);
 
 		  MessageDef *message_p;
 		  int  i;
