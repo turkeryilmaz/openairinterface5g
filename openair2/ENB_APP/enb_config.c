@@ -217,9 +217,11 @@ void RCconfig_ssparam(void) {
     RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VTPPORT_IDX].iptr);
     RC.ss.SysIndport          = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSINDPORT_IDX].iptr);
     RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_MODE_IDX].iptr);
+    RC.ss.Drbport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_DRBPORT_IDX].iptr);
+    RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_MODE_IDX].iptr);
   }
-  LOG_A(ENB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d SysIndport=%d\n",
-                  RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport,RC.ss.SysIndport);
+  LOG_A(ENB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d SysIndport=%d Drbport=%d\n",
+                  RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport,RC.ss.SysIndport,RC.ss.Drbport);
 }
 
 void RCconfig_macrlc(int macrlc_has_f1[MAX_MAC_INST]) {

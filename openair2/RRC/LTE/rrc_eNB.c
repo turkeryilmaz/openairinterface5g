@@ -3114,7 +3114,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   (void) dedicatedInfoNas;
   LTE_C_RNTI_t                           *cba_RNTI                         = NULL;
   int                                    measurements_enabled;
-  uint8_t xid = rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id);   //Transaction_id,
+  uint8_t                                xid;
+
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    xid = RC.rrc_Transaction_Identifier;   //Transaction_id,
+  } else {
+    xid = rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id);   //Transaction_id,
+  }
+
   uint8_t cc_id = ue_context_pP->ue_context.primaryCC_id;
   LTE_UE_EUTRA_Capability_t *UEcap = ue_context_pP->ue_context.UE_Capability;
   T(T_ENB_RRC_CONNECTION_RECONFIGURATION,
@@ -10367,6 +10374,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+            RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
             LOG_A(RRC, "[eNB %d] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
@@ -10492,6 +10500,17 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
       break;
 //#endif
+
+      case SS_DRB_PDU_REQ:
+        LOG_A(RRC, "[eNB %d] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                      instance,
+                                      ENB_FLAG_YES,
+                                      SS_DRB_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+        pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
+       break;
 
     case RRC_AS_SECURITY_CONFIG_REQ:
       LOG_A(RRC,"[eNB %d] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %d \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
