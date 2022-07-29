@@ -107,6 +107,7 @@ typedef struct {
 typedef struct {
 
   int release;
+  int num_phys;
   phy_info phys[2];
   rf_info rfs[2];
 
@@ -366,8 +367,10 @@ int pnf_param_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_pnf_param_re
       phy.rfs[0] = resp->pnf_phy.phy[i].rf_config[j].rf_config_index;
     }
 
-    pnf->phys[0] = phy;
+    pnf->phys[i] = phy;
+	pnf->num_phys = i+1;
   }
+
   for(int i = 0; i < resp->pnf_rf.number_of_rfs; ++i) {
     rf_info rf;
     memset(&rf,0,sizeof(rf));
@@ -1709,13 +1712,24 @@ int config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_config_response
 }
 
 int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t *resp) {
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-  vnf_info *vnf = (vnf_info *)(config->user_data);
-  pnf_info *pnf = vnf->pnfs;
-  phy_info *phy = pnf->phys;
-  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-  nfapi_vnf_p7_add_pnf((p7_vnf->config), phy->remote_addr, htons(phy->remote_port), phy->id);
-  return 0;
+	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+	vnf_info *vnf = (vnf_info *)(config->user_data);
+	pnf_info *pnf = vnf->pnfs;
+	phy_info *phy = pnf->phys;
+	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
+	uint16_t port =htons(phy->remote_port);
+	char *remote_addr = (char *) malloc(strlen(phy->remote_addr));
+	memset(remote_addr, 0, strlen(phy->remote_addr));
+	strncpy(remote_addr, phy->remote_addr, strlen(phy->remote_addr));
+	for(int i=0; i < pnf->num_phys; i++ )
+	{
+		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
+  		LOG_D(NFAPI_VNF, "MultiCell: fxn:%s phy_id added:%d\n", p5_idx, resp->header.phy_id);
+		phy +=1;
+	}
+	free(remote_addr);
+	remote_addr = NULL;
+	return 0;
 }
 
 int nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_start_response_scf_t *resp) {
@@ -1890,37 +1904,52 @@ void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
 }
 
 int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req) {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
-  dl_config_req->header.phy_id = 1; // DJP HACK TODO FIXME - need to pass this around!!!!
-  dl_config_req->header.message_id = NFAPI_DL_CONFIG_REQUEST;
-  LOG_D(PHY, "[VNF] %s() DL_CONFIG_REQ sfn_sf:%d_%d number_of_pdus:%d\n", __FUNCTION__,
-        NFAPI_SFNSF2SFN(dl_config_req->sfn_sf),NFAPI_SFNSF2SF(dl_config_req->sfn_sf), dl_config_req->dl_config_request_body.number_pdu);
-  if (dl_config_req->dl_config_request_body.number_pdu > 0)
-  {
-    for (int i = 0; i < dl_config_req->dl_config_request_body.number_pdu; i++)
-        {
-            uint8_t pdu_type = dl_config_req->dl_config_request_body.dl_config_pdu_list[i].pdu_type;
-            if(pdu_type ==  NFAPI_DL_CONFIG_DLSCH_PDU_TYPE)
-            {
-                uint16_t dl_rnti = dl_config_req->dl_config_request_body.dl_config_pdu_list[i].dlsch_pdu.dlsch_pdu_rel8.rnti;
-                uint16_t numPDUs = dl_config_req->dl_config_request_body.number_pdu;
-                LOG_D(MAC, "(OAI eNB) Sending dl_config_req at VNF during Frame: %d and Subframe: %d,"
-                           " with a RNTI value of: %x and with number of PDUs: %u\n",
-                      NFAPI_SFNSF2SFN(dl_config_req->sfn_sf),NFAPI_SFNSF2SF(dl_config_req->sfn_sf), dl_rnti, numPDUs);
-            }
-        }
-  }
-  int retval = nfapi_vnf_p7_dl_config_req(p7_config, dl_config_req);
-  dl_config_req->dl_config_request_body.number_pdcch_ofdm_symbols           = 1;
-  dl_config_req->dl_config_request_body.number_dci                          = 0;
-  dl_config_req->dl_config_request_body.number_pdu                          = 0;
-  dl_config_req->dl_config_request_body.number_pdsch_rnti                   = 0;
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Created VNF NFAPI start thread %s\n", __FUNCTION__);
+	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+	int retval = 0;
+	int num_phy = 0;
+	uint16_t sfn = 0;
+	uint16_t sf = 0;
+	sfn = dl_config_req->sfn_sf >> 4;
+	sf = dl_config_req->sfn_sf & 0xF;
+	/* Below if condition checking if dl_config_req is for MIB (sf == 0) or SIB1 ((sfn % 2 == 0) && (sf == 5)) */
+	if ((sf == 0) || ((sfn % 2 == 0) && (sf == 5)))
+		num_phy = vnf.pnfs[0].num_phys;
+	else
+		num_phy = 1;
 
-  if (retval!=0) {
-    LOG_E(PHY, "%s() Problem sending retval:%d\n", __FUNCTION__, retval);
-  }
+	for (int i =0; i< num_phy; i++)
+	{
 
-  return retval;
+		dl_config_req->header.phy_id = i+1; // DJP HACK TODO FIXME - need to pass this around!!!!
+		dl_config_req->header.message_id = NFAPI_DL_CONFIG_REQUEST;
+		LOG_I(NFAPI_VNF, "MultiCell: fxn:%s num_phy:%d phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, dl_config_req->header.phy_id, num_phy, sfn, sf);
+		if (dl_config_req->dl_config_request_body.number_pdu > 0)
+		{
+			for (int i = 0; i < dl_config_req->dl_config_request_body.number_pdu; i++)
+			{
+				uint8_t pdu_type = dl_config_req->dl_config_request_body.dl_config_pdu_list[i].pdu_type;
+				if(pdu_type ==  NFAPI_DL_CONFIG_DLSCH_PDU_TYPE)
+				{
+					uint16_t dl_rnti = dl_config_req->dl_config_request_body.dl_config_pdu_list[i].dlsch_pdu.dlsch_pdu_rel8.rnti;
+					uint16_t numPDUs = dl_config_req->dl_config_request_body.number_pdu;
+					LOG_D(MAC, "(OAI eNB) Sending dl_config_req at VNF during Frame: %d and Subframe: %d,"
+							" with a RNTI value of: %x and with number of PDUs: %u\n",
+							NFAPI_SFNSF2SFN(dl_config_req->sfn_sf),NFAPI_SFNSF2SF(dl_config_req->sfn_sf), dl_rnti, numPDUs);
+				}
+			}
+		}
+		retval = nfapi_vnf_p7_dl_config_req(p7_config, dl_config_req);
+		if (retval!=0) {
+			LOG_E(PHY, "%s() Problem sending dl_config_req for phy_id:%d retval:%d\n", __FUNCTION__, dl_config_req->header.phy_id, retval);
+		}
+	}
+	dl_config_req->dl_config_request_body.number_pdcch_ofdm_symbols           = 1;
+	dl_config_req->dl_config_request_body.number_dci                          = 0;
+	dl_config_req->dl_config_request_body.number_pdu                          = 0;
+	dl_config_req->dl_config_request_body.number_pdsch_rnti                   = 0;
+
+	return retval;
 }
 
 int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req)
@@ -1962,19 +1991,34 @@ int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req)
 
 int oai_nfapi_tx_req(nfapi_tx_request_t *tx_req)
 {
-  nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
-  tx_req->header.phy_id = 1; // DJP HACK TODO FIXME - need to pass this around!!!!
-  tx_req->header.message_id = NFAPI_TX_REQUEST;
-  //LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
-  int retval = nfapi_vnf_p7_tx_req(p7_config, tx_req);
+	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+	int retval = 0;
+	int num_phy = 0;
+	uint16_t sfn = 0;
+	uint16_t sf = 0;
+	sfn = tx_req->sfn_sf >> 4;
+	sf = tx_req->sfn_sf & 0xF;
 
-  if (retval!=0) {
-    LOG_E(PHY, "%s() Problem sending retval:%d\n", __FUNCTION__, retval);
-  } else {
-    tx_req->tx_request_body.number_of_pdus = 0;
-  }
+	/* Below if condition checking if tx_req is for MIB (sf == 0) or SIB1 ((sfn % 2 == 0) && (sf == 5)) */
+	if ((sf == 0) || ((sfn % 2 == 0) && (sf == 5)))
+		num_phy = vnf.pnfs[0].num_phys;
+	else
+		num_phy = 1;
 
-  return retval;
+	for (int i =0; i< num_phy; i++)
+	{
+		tx_req->header.phy_id = i+1; // DJP HACK TODO FIXME - need to pass this around!!!!
+		tx_req->header.message_id = NFAPI_TX_REQUEST;
+		//LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
+		LOG_I(NFAPI_VNF, "MultiCell: fxn:%s num_phy:%d phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, num_phy, tx_req->header.phy_id, sfn, sf);
+		retval = nfapi_vnf_p7_tx_req(p7_config, tx_req);
+		if (retval!=0) {
+			LOG_E(PHY, "%s() Problem sending tx_req for phyId:%d :%d\n", __FUNCTION__, tx_req->header.phy_id ,retval);
+		} 
+	}
+	tx_req->tx_request_body.number_of_pdus = 0;
+
+	return retval;
 }
 
 int oai_nfapi_ul_dci_req(nfapi_nr_ul_dci_request_t *ul_dci_req) {

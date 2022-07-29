@@ -1347,11 +1347,13 @@ void *ue_standalone_pnf_task(void *context)
       {
       case NFAPI_DL_CONFIG_REQUEST:
       {
-        if (dl_config_req_valid)
+		printf("Received NFAPI_DL_CONFIG_REQUEST from phy_id:%d frame: %u, subframe: %u\n", 
+			header.phy_id, dl_config_req.sfn_sf >> 4, dl_config_req.sfn_sf & 15);
+/*        if (dl_config_req_valid)
         {
           LOG_W(MAC, "Received consecutive dl_config_reqs. Previous dl_config_req frame: %u, subframe: %u\n",
                 dl_config_req.sfn_sf >> 4, dl_config_req.sfn_sf & 15);
-        }
+        }*/
         if (nfapi_p7_message_unpack((void *)buffer, len, &dl_config_req,
                                     sizeof(dl_config_req), NULL) < 0)
         {
@@ -1385,11 +1387,13 @@ void *ue_standalone_pnf_task(void *context)
       }
       case NFAPI_TX_REQUEST:
       {
-        if (tx_req_valid)
+		printf("Received NFAPI_TX_REQUEST from phy_id:%d frame: %u, subframe: %u\n", 
+			header.phy_id, dl_config_req.sfn_sf >> 4, dl_config_req.sfn_sf & 15);
+/*        if (tx_req_valid)
         {
           LOG_W(MAC, "Received consecutive tx_reqs. Previous tx_req frame: %u, subframe: %u\n",
                 tx_req.sfn_sf >> 4, tx_req.sfn_sf & 15);
-        }
+        }*/
         if (nfapi_p7_message_unpack((void *)buffer, len, &tx_req,
                                     sizeof(tx_req), NULL) < 0)
         {
@@ -1451,41 +1455,45 @@ void *ue_standalone_pnf_task(void *context)
         break;
       }
       case P7_CELL_SEARCH_IND:
-      {
-        vendor_nfapi_cell_search_indication_t cell_ind;
-        LOG_D(MAC, "CELL SEARCH IND Receievd\n");
-        if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
-                                    sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
-        {
-          LOG_E(MAC, "Message cell_ind failed to unpack\n");
-          break;
-        }
+	  {
+		  vendor_nfapi_cell_search_indication_t cell_ind;
+		  if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+					  sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+		  {
+			  LOG_E(MAC, "Message cell_ind failed to unpack\n");
+			  break;
+		  }
+		  LOG_D(MAC, "P7_CELL_SEARCH_IND Received: numlteCells:%d cell[1]:%d cell[2]:%d\n",
+				cell_ind.lte_cell_search_indication.number_of_lte_cells_found,
+				cell_ind.lte_cell_search_indication.lte_found_cells[0].pci,
+				cell_ind.lte_cell_search_indication.lte_found_cells[1].pci);
 
-        MessageDef *message_p;
-        int         i;
-        message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
-	for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
-		// TO DO
-		PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
-                /** FIXME: What we need is EARFCN not Freq Offset. */
-		PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
-		// TO DO
-		PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
-		PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
-		PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+		  MessageDef *message_p;
+		  int  i;
+		  message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+//		  for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+		  for (i = 0 ; i <  1; i++) {
+			  // TO DO
+			  PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+			  /** FIXME: What we need is EARFCN not Freq Offset. */
+			  PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+			  // TO DO
+			  PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+			  PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+			  PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
 
-                LOG_A(MAC, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
-                                                     PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
-                                                     PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
-                                                     PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
-                                                     PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
-                itti_send_msg_to_task(TASK_RRC_UE, INSTANCE_DEFAULT, message_p);
-	}
+			  LOG_A(MAC, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+					  PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+					  PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+					  PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
+					  PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
+			  itti_send_msg_to_task(TASK_RRC_UE, INSTANCE_DEFAULT, message_p);
+		  }
 
 
-        break;
+		  break;
 
-      }
+	  }
       default:
         LOG_E(MAC, "Case Statement has no corresponding nfapi message\n");
         break;
