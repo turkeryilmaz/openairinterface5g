@@ -216,7 +216,6 @@ void RCconfig_ssparam(void) {
     RC.ss.Vngport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VNGPORT_IDX].iptr);
     RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VTPPORT_IDX].iptr);
     RC.ss.SysIndport          = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSINDPORT_IDX].iptr);
-    RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_MODE_IDX].iptr);
     RC.ss.Drbport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_DRBPORT_IDX].iptr);
     RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_MODE_IDX].iptr);
   }
