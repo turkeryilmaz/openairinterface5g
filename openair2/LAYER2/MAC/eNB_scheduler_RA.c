@@ -1433,7 +1433,7 @@ initiate_ra_proc(module_id_t module_idP,
         MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
         SS_SYSTEM_IND(m).bitmask = false;
         SS_SYSTEM_IND(m).sfn = frameP;
-        SS_SYSTEM_IND(m).sf = subframeP;
+        SS_SYSTEM_IND(m).sf = subframeP -1;// Workaround for 1 Subframe Difference
         SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
         SS_SYSTEM_IND(m).prtPower_Type = true;
         SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
