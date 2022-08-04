@@ -29,10 +29,10 @@
 SIDL_BEGIN_C_INTERFACE
 
 /** Defines MAX ACP context quantity. */
-#define ACP_MAX_CTX_QTY 4
+#define ACP_MAX_CTX_QTY 10
 
 /** Defines MAX peers quantity. */
-#define ACP_MAX_PEER_QTY 5
+#define ACP_MAX_PEER_QTY 10
 
 /** Defines ACP Context. */
 typedef void* acpCtx_t;
