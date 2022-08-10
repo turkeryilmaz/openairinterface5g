@@ -1002,7 +1002,7 @@ uint8_t do_RRCSetupComplete(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 }
 
 // TODO: Improve this function that is all hardcoded
-uint16_t do_nrMeasurementReport_SA(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size) {
+uint16_t do_nrMeasurementReport_SA(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, uint8_t rsrp_s) {
 
   asn_enc_rval_t enc_rval;
   NR_UL_DCCH_Message_t  ul_dcch_msg;
@@ -1025,7 +1025,7 @@ uint16_t do_nrMeasurementReport_SA(uint8_t Mod_id, uint8_t *buffer, size_t buffe
   *measResultServMo->measResultServingCell.physCellId = 0;
   measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell = CALLOC(1,sizeof(struct NR_MeasQuantityResults));
   measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell->rsrp = CALLOC(1,sizeof(NR_RSRP_Range_t));
-  *measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell->rsrp = 10;
+  *measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell->rsrp = rsrp_s;
   ASN_SEQUENCE_ADD(&measurementReport_ie->measResults.measResultServingMOList.list, measResultServMo);
 
   xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);

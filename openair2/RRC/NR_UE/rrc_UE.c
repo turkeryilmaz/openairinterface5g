@@ -2017,14 +2017,16 @@ void *rrc_nrue_task(void *args_p)
          break;
        case NR_RRC_MAC_MEAS_DATA_IND:
 
-         LOG_I(NR_RRC, "[gNB %i, count %i] Received measurements: CQI = %i\n",
+         LOG_I(NR_RRC, "[gNB %i, count %i] Received measurements: RSRP_s = %i (dBm)\n",
                NR_RRC_MAC_MEAS_DATA_IND(msg_p).gnb_index,
                number_of_received_meas,
-               NR_RRC_MAC_MEAS_DATA_IND(msg_p).cqi);
+               NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp-157);
 
          // FIXME: Add a correct criterion
          if (number_of_received_meas == 50) {
-           rrc_ue_generate_measurementReport(&ctxt, NR_RRC_MAC_MEAS_DATA_IND(msg_p).gnb_index);
+           rrc_ue_generate_measurementReport(&ctxt,
+                                             NR_RRC_MAC_MEAS_DATA_IND(msg_p).gnb_index,
+                                             NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp);
            number_of_received_meas = 0;
          }
 

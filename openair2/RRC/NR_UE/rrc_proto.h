@@ -97,8 +97,8 @@ int8_t nr_rrc_ue_decode_NR_DL_DCCH_Message(const module_id_t module_id, const ui
 /**\brief Send measurements to RRC to perform the L3 measurements
    \param module_id  module id
    \param gNB_index  gNB index
-   \param cqi        channel quality indicator*/
-int8_t nr_mac_rrc_meas_ind_ue(module_id_t module_id, uint32_t gNB_index, uint8_t cqi);
+   \param rsrp_s     reference signal received power*/
+int8_t nr_mac_rrc_meas_ind_ue(module_id_t module_id, uint32_t gNB_index, uint8_t rsrp_s);
 
 /**\brief interface between MAC and RRC thru SRB0 (RLC TM/no PDCP)
    \param module_id  module id
