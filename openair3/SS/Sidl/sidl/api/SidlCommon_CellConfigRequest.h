@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -35,7 +41,7 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-typedef struct PhysicalConfigDedicated_ce_Mode_r13 CE_Mode_r13_Type;
+typedef struct SQN_PhysicalConfigDedicated_ce_Mode_r13 CE_Mode_r13_Type;
 
 enum CA_CellInitialConfig_Type {
 	CellInitialConfig_PCell = 0,
@@ -51,19 +57,19 @@ struct DciDlInfoCommon_Type_PcchConfig_Type_DciInfo_Optional {
 	struct DciDlInfoCommon_Type v;
 };
 
-struct PCCH_Config_v1310_PCCH_Config_v13_Optional {
+struct SQN_PCCH_Config_v1310_PCCH_Config_v13_Optional {
 	bool d;
-	struct PCCH_Config_v1310 v;
+	struct SQN_PCCH_Config_v1310 v;
 };
 
 struct PcchConfig_Type {
 	struct DciDlInfoCommon_Type_PcchConfig_Type_DciInfo_Optional DciInfo;
-	struct PCCH_Config_v1310_PCCH_Config_v13_Optional PCCH_Config_v13;
+	struct SQN_PCCH_Config_v1310_PCCH_Config_v13_Optional PCCH_Config_v13;
 };
 
 struct EIMTA_Config_Type {
-	struct EIMTA_MainConfig_r12 EIMTA_MainConfig_r12;
-	struct EIMTA_MainConfigServCell_r12 EIMTA_MainConfigServCell_r12;
+	struct SQN_EIMTA_MainConfig_r12 EIMTA_MainConfig_r12;
+	struct SQN_EIMTA_MainConfigServCell_r12 EIMTA_MainConfigServCell_r12;
 };
 
 struct CellConfigCapability_Type_ConfigCapability_Optional {
@@ -106,14 +112,14 @@ struct Bcch_BRConfig_Type_BRBcchConfig_Optional {
 	struct Bcch_BRConfig_Type v;
 };
 
-struct LAA_SCellConfiguration_r13_LAA_SCellConfiguration_Optional {
+struct SQN_LAA_SCellConfiguration_r13_LAA_SCellConfiguration_Optional {
 	bool d;
-	struct LAA_SCellConfiguration_r13 v;
+	struct SQN_LAA_SCellConfiguration_r13 v;
 };
 
-struct LAA_SCellConfiguration_v1430_LAA_SCellConfiguration_v1430_Optional {
+struct SQN_LAA_SCellConfiguration_v1430_LAA_SCellConfiguration_v1430_Optional {
 	bool d;
-	struct LAA_SCellConfiguration_v1430 v;
+	struct SQN_LAA_SCellConfiguration_v1430 v;
 };
 
 struct BasicCellConfig_Type {
@@ -125,13 +131,13 @@ struct BasicCellConfig_Type {
 	struct PcchConfig_Type_PcchConfig_Optional PcchConfig;
 	struct CA_CellInitialConfig_Type_CA_CellInitialConfig_Optional CA_CellInitialConfig;
 	struct Bcch_BRConfig_Type_BRBcchConfig_Optional BRBcchConfig;
-	struct LAA_SCellConfiguration_r13_LAA_SCellConfiguration_Optional LAA_SCellConfiguration;
-	struct LAA_SCellConfiguration_v1430_LAA_SCellConfiguration_v1430_Optional LAA_SCellConfiguration_v1430;
+	struct SQN_LAA_SCellConfiguration_r13_LAA_SCellConfiguration_Optional LAA_SCellConfiguration;
+	struct SQN_LAA_SCellConfiguration_v1430_LAA_SCellConfiguration_v1430_Optional LAA_SCellConfiguration_v1430;
 };
 
-struct C_RNTI_C_RNTI_Optional {
+struct SQN_C_RNTI_C_RNTI_Optional {
 	bool d;
-	C_RNTI v;
+	SQN_C_RNTI v;
 };
 
 struct PhysicalLayerConfigUL_Type_PhysicalLayerConfigUL_Optional {
@@ -170,7 +176,7 @@ struct CE_Mode_r13_Type_CE_Mode_Optional {
 };
 
 struct ActiveCellConfig_Type {
-	struct C_RNTI_C_RNTI_Optional C_RNTI;
+	struct SQN_C_RNTI_C_RNTI_Optional C_RNTI;
 	struct PhysicalLayerConfigUL_Type_PhysicalLayerConfigUL_Optional PhysicalLayerConfigUL;
 	struct RachProcedureConfig_Type_RachProcedureConfig_Optional RachProcedureConfig;
 	struct CcchDcchDtchConfig_Type_CcchDcchDtchConfig_Optional CcchDcchDtchConfig;

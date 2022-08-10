@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -27,14 +33,14 @@ SIDL_BEGIN_C_INTERFACE
 
 typedef Null_Type BcchToPbchConfig_Type;
 
-typedef SystemInformationBlockType1_si_WindowLength_e SiWindowLength_Type;
+typedef SQN_SystemInformationBlockType1_si_WindowLength_e SiWindowLength_Type;
 
-struct BCCH_DL_SCH_Message_SI_List_Type_Dynamic {
+struct SQN_BCCH_DL_SCH_Message_SI_List_Type_Dynamic {
 	size_t d;
-	struct BCCH_DL_SCH_Message* v;
+	struct SQN_BCCH_DL_SCH_Message* v;
 };
 
-typedef struct BCCH_DL_SCH_Message_SI_List_Type_Dynamic SI_List_Type;
+typedef struct SQN_BCCH_DL_SCH_Message_SI_List_Type_Dynamic SI_List_Type;
 
 struct SI_List_Type_SegmentedSI_List_Type_Dynamic {
 	size_t d;
@@ -67,9 +73,9 @@ struct SingleSiSchedul_Type {
 	struct int32_t_SubframeOffset_Optional SubframeOffset;
 };
 
-struct SI_Periodicity_r12_e_Periodicity_Optional {
+struct SQN_SI_Periodicity_r12_e_Periodicity_Optional {
 	bool d;
-	SI_Periodicity_r12_e v;
+	SQN_SI_Periodicity_r12_e v;
 };
 
 struct SingleSiSchedul_Type_Window_Dynamic {
@@ -83,7 +89,7 @@ struct SingleSiSchedul_Type_Window_DynamicOptional {
 };
 
 struct SiSchedul_Type {
-	struct SI_Periodicity_r12_e_Periodicity_Optional Periodicity;
+	struct SQN_SI_Periodicity_r12_e_Periodicity_Optional Periodicity;
 	struct SingleSiSchedul_Type_Window_DynamicOptional Window;
 };
 
@@ -130,14 +136,14 @@ struct BcchToPdschConfig_Type {
 	struct AllSiSchedul_Type_SiSchedul_Optional SiSchedul;
 };
 
-struct BCCH_BCH_Message_BcchInfo_Type_MIB_Optional {
+struct SQN_BCCH_BCH_Message_BcchInfo_Type_MIB_Optional {
 	bool d;
-	struct BCCH_BCH_Message v;
+	struct SQN_BCCH_BCH_Message v;
 };
 
-struct BCCH_DL_SCH_Message_BcchInfo_Type_SIB1_Optional {
+struct SQN_BCCH_DL_SCH_Message_BcchInfo_Type_SIB1_Optional {
 	bool d;
-	struct BCCH_DL_SCH_Message v;
+	struct SQN_BCCH_DL_SCH_Message v;
 };
 
 struct SI_List_Type_SIs_Optional {
@@ -151,8 +157,8 @@ struct SegmentedSI_List_Type_SegmentedSIs_Optional {
 };
 
 struct BcchInfo_Type {
-	struct BCCH_BCH_Message_BcchInfo_Type_MIB_Optional MIB;
-	struct BCCH_DL_SCH_Message_BcchInfo_Type_SIB1_Optional SIB1;
+	struct SQN_BCCH_BCH_Message_BcchInfo_Type_MIB_Optional MIB;
+	struct SQN_BCCH_DL_SCH_Message_BcchInfo_Type_SIB1_Optional SIB1;
 	struct SI_List_Type_SIs_Optional SIs;
 	struct SegmentedSI_List_Type_SegmentedSIs_Optional SegmentedSIs;
 };

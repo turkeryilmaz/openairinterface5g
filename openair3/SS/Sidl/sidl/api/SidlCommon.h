@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -84,7 +90,7 @@ typedef uint8_t DRB_Identity_Type;
 
 typedef uint8_t Pmch_InfoIndex_Type;
 
-typedef MBMS_SessionInfo_r9_logicalChannelIdentity_r9 LogicalChannelIdentity_r9_Type;
+typedef SQN_MBMS_SessionInfo_r9_logicalChannelIdentity_r9 LogicalChannelIdentity_r9_Type;
 
 typedef uint16_t RACH_TimingAdvance_Type;
 
@@ -98,18 +104,20 @@ typedef uint8_t DCISubframeRepetitionNumber_Type;
 
 typedef uint8_t TimingAdvanceIndex_Type;
 
+typedef B128_Type B128_Key_Type;
+
 struct PmchLogicalChannel_Type {
 	Pmch_InfoIndex_Type Pmch_InfoIndex;
 	LogicalChannelIdentity_r9_Type LogicalChannelIdentity;
 };
 
 struct MRB_Identity_Type {
-	MBSFN_AreaId_r12 Mbsfn_AreaId;
+	SQN_MBSFN_AreaId_r12 Mbsfn_AreaId;
 	struct PmchLogicalChannel_Type PmchLogicalChannel;
 };
 
 struct SC_MRB_Identity_Type {
-	struct MBMSSessionInfo_r13 MbmsSessionInfo;
+	struct SQN_MBMSSessionInfo_r13 MbmsSessionInfo;
 };
 
 struct QosFlow_Identification_Type {
@@ -390,25 +398,27 @@ struct PdcpCountInfo_Type {
 	struct PdcpCount_Type_DL_Optional DL;
 };
 
-enum Pdcp_CountCnf_Type_Sel {
-	Pdcp_CountCnf_Type_UNBOUND_VALUE = 0,
-	Pdcp_CountCnf_Type_Get = 1,
-	Pdcp_CountCnf_Type_Set = 2,
-};
-
-struct PdcpCountInfo_Type_Get_Dynamic {
+struct PdcpCountInfo_Type_PdcpCountInfoList_Type_Dynamic {
 	size_t d;
 	struct PdcpCountInfo_Type* v;
 };
 
-union Pdcp_CountCnf_Type_Value {
-	struct PdcpCountInfo_Type_Get_Dynamic Get;
+typedef struct PdcpCountInfo_Type_PdcpCountInfoList_Type_Dynamic PdcpCountInfoList_Type;
+
+enum PDCP_CountCnf_Type_Sel {
+	PDCP_CountCnf_Type_UNBOUND_VALUE = 0,
+	PDCP_CountCnf_Type_Get = 1,
+	PDCP_CountCnf_Type_Set = 2,
+};
+
+union PDCP_CountCnf_Type_Value {
+	PdcpCountInfoList_Type Get;
 	Null_Type Set;
 };
 
-struct Pdcp_CountCnf_Type {
-	enum Pdcp_CountCnf_Type_Sel d;
-	union Pdcp_CountCnf_Type_Value v;
+struct PDCP_CountCnf_Type {
+	enum PDCP_CountCnf_Type_Sel d;
+	union PDCP_CountCnf_Type_Value v;
 };
 
 enum CellConfigCapability_Type {
@@ -739,29 +749,29 @@ struct UplinkHoppingControl_Type {
 	union UplinkHoppingControl_Type_Value v;
 };
 
-typedef UE_EUTRA_Capability_ue_Category UE_Category_Type;
+typedef SQN_UE_EUTRA_Capability_ue_Category UE_Category_Type;
 
-typedef UE_EUTRA_Capability_v1020_IEs_ue_Category_v1020 UE_Category_v1020_Type;
+typedef SQN_UE_EUTRA_Capability_v1020_IEs_ue_Category_v1020 UE_Category_v1020_Type;
 
-typedef UE_EUTRA_Capability_v1170_IEs_ue_Category_v1170 UE_Category_v1170_Type;
+typedef SQN_UE_EUTRA_Capability_v1170_IEs_ue_Category_v1170 UE_Category_v1170_Type;
 
-typedef UE_EUTRA_Capability_v11a0_IEs_ue_Category_v11a0 UE_Category_v11a0_Type;
+typedef SQN_UE_EUTRA_Capability_v11a0_IEs_ue_Category_v11a0 UE_Category_v11a0_Type;
 
-typedef UE_RadioPagingInfo_r12_ue_Category_v1250 UE_Category_v1250_Type;
+typedef SQN_UE_RadioPagingInfo_r12_ue_Category_v1250 UE_Category_v1250_Type;
 
-typedef UE_EUTRA_Capability_v1250_IEs_ue_CategoryDL_r12 UE_CategoryDL_r12_Type;
+typedef SQN_UE_EUTRA_Capability_v1250_IEs_ue_CategoryDL_r12 UE_CategoryDL_r12_Type;
 
-typedef UE_EUTRA_Capability_v1260_IEs_ue_CategoryDL_v1260 UE_CategoryDL_v1260_Type;
+typedef SQN_UE_EUTRA_Capability_v1260_IEs_ue_CategoryDL_v1260 UE_CategoryDL_v1260_Type;
 
-typedef UE_EUTRA_Capability_v1310_IEs_ue_CategoryDL_v1310_e UE_CategoryDL_v1310_Type;
+typedef SQN_UE_EUTRA_Capability_v1310_IEs_ue_CategoryDL_v1310_e UE_CategoryDL_v1310_Type;
 
-typedef UE_EUTRA_Capability_v1330_IEs_ue_CategoryDL_v1330 UE_CategoryDL_v1330_Type;
+typedef SQN_UE_EUTRA_Capability_v1330_IEs_ue_CategoryDL_v1330 UE_CategoryDL_v1330_Type;
 
-typedef UE_EUTRA_Capability_v1350_IEs_ue_CategoryDL_v1350_e UE_CategoryDL_v1350_Type;
+typedef SQN_UE_EUTRA_Capability_v1350_IEs_ue_CategoryDL_v1350_e UE_CategoryDL_v1350_Type;
 
-typedef UE_EUTRA_Capability_v1450_IEs_ue_CategoryDL_v1450 UE_CategoryDL_v1450_Type;
+typedef SQN_UE_EUTRA_Capability_v1450_IEs_ue_CategoryDL_v1450 UE_CategoryDL_v1450_Type;
 
-typedef UE_EUTRA_Capability_v1460_IEs_ue_CategoryDL_v1460 UE_CategoryDL_v1460_Type;
+typedef SQN_UE_EUTRA_Capability_v1460_IEs_ue_CategoryDL_v1460 UE_CategoryDL_v1460_Type;
 
 struct ScellBitMap_Type {
 	B7_Type Value;
@@ -813,6 +823,91 @@ struct MAC_CTRL_ExtPowerHeadRoom_Type {
 struct MAC_CTRL_DC_PowerHeadRoom_Type {
 	struct ScellBitMap_Type DC_PH_Octet1;
 	DC_PH_RecordList_Type DC_PH_RecordList;
+};
+
+struct uint8_t_TcOffset_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct CellTimingInfo_Type {
+	struct uint8_t_TcOffset_Optional TcOffset;
+	uint32_t Tcell;
+	uint16_t SfnOffset;
+	uint16_t HsfnOffset;
+};
+
+enum RAR_RapIdCtrl_Type_Sel {
+	RAR_RapIdCtrl_Type_UNBOUND_VALUE = 0,
+	RAR_RapIdCtrl_Type_Automatic = 1,
+	RAR_RapIdCtrl_Type_Unmatched = 2,
+};
+
+union RAR_RapIdCtrl_Type_Value {
+	Null_Type Automatic;
+	Null_Type Unmatched;
+};
+
+struct RAR_RapIdCtrl_Type {
+	enum RAR_RapIdCtrl_Type_Sel d;
+	union RAR_RapIdCtrl_Type_Value v;
+};
+
+enum TransmissionRepetition_Type_Sel {
+	TransmissionRepetition_Type_UNBOUND_VALUE = 0,
+	TransmissionRepetition_Type_Continuous = 1,
+	TransmissionRepetition_Type_NumOfCycles = 2,
+};
+
+union TransmissionRepetition_Type_Value {
+	Null_Type Continuous;
+	int32_t NumOfCycles;
+};
+
+struct TransmissionRepetition_Type {
+	enum TransmissionRepetition_Type_Sel d;
+	union TransmissionRepetition_Type_Value v;
+};
+
+enum ULGrant_Period_Type_Sel {
+	ULGrant_Period_Type_UNBOUND_VALUE = 0,
+	ULGrant_Period_Type_OnlyOnce = 1,
+	ULGrant_Period_Type_Duration = 2,
+};
+
+union ULGrant_Period_Type_Value {
+	Null_Type OnlyOnce;
+	int32_t Duration;
+};
+
+struct ULGrant_Period_Type {
+	enum ULGrant_Period_Type_Sel d;
+	union ULGrant_Period_Type_Value v;
+};
+
+struct PeriodicGrant_Type {
+	struct ULGrant_Period_Type Period;
+	struct TransmissionRepetition_Type NoOfRepetitions;
+};
+
+enum UL_GrantConfig_Type_Sel {
+	UL_GrantConfig_Type_UNBOUND_VALUE = 0,
+	UL_GrantConfig_Type_OnSR_Reception = 1,
+	UL_GrantConfig_Type_Periodic = 2,
+	UL_GrantConfig_Type_PeriodicOnSR_Reception = 3,
+	UL_GrantConfig_Type_None = 4,
+};
+
+union UL_GrantConfig_Type_Value {
+	Null_Type OnSR_Reception;
+	struct PeriodicGrant_Type Periodic;
+	struct PeriodicGrant_Type PeriodicOnSR_Reception;
+	Null_Type None;
+};
+
+struct UL_GrantConfig_Type {
+	enum UL_GrantConfig_Type_Sel d;
+	union UL_GrantConfig_Type_Value v;
 };
 
 SIDL_END_C_INTERFACE

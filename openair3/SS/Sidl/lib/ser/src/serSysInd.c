@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #include <string.h>
@@ -39,7 +45,7 @@ static int _serSysIndEncMRB_Identity_Type(unsigned char* _buffer, size_t _size, 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndEncMCC_PLMN_Identity_mcc_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MCC_PLMN_Identity_mcc_Optional* p)
+static int _serSysIndEncSQN_MCC_SQN_PLMN_Identity_mcc_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MCC_SQN_PLMN_Identity_mcc_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -52,11 +58,11 @@ static int _serSysIndEncMCC_PLMN_Identity_mcc_Optional(unsigned char* _buffer, s
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndEncPLMN_Identity(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PLMN_Identity* p)
+static int _serSysIndEncSQN_PLMN_Identity(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_PLMN_Identity* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndEncMCC_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
+	_serSysIndEncSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	HTON_32(&_buffer[*_lidx], p->mnc.d, _lidx);
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		HTON_8(&_buffer[*_lidx], p->mnc.v[i1], _lidx);
@@ -65,21 +71,23 @@ static int _serSysIndEncPLMN_Identity(unsigned char* _buffer, size_t _size, size
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndEncTMGI_r9_plmn_Id_r9_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union TMGI_r9_plmn_Id_r9_Value* p, enum TMGI_r9_plmn_Id_r9_Sel d)
+static int _serSysIndEncSQN_TMGI_r9_plmn_Id_r9_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union SQN_TMGI_r9_plmn_Id_r9_Value* p, enum SQN_TMGI_r9_plmn_Id_r9_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	if (d == TMGI_r9_plmn_Id_r9_plmn_Index_r9) {
+	if (d == SQN_TMGI_r9_plmn_Id_r9_plmn_Index_r9) {
 		HTON_8(&_buffer[*_lidx], p->plmn_Index_r9, _lidx);
+		return SIDL_STATUS_OK;
 	}
-	if (d == TMGI_r9_plmn_Id_r9_explicitValue_r9) {
-		_serSysIndEncPLMN_Identity(_buffer, _size, _lidx, &p->explicitValue_r9);
+	if (d == SQN_TMGI_r9_plmn_Id_r9_explicitValue_r9) {
+		_serSysIndEncSQN_PLMN_Identity(_buffer, _size, _lidx, &p->explicitValue_r9);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
-static int _serSysIndEncTMGI_r9_plmn_Id_r9(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct TMGI_r9_plmn_Id_r9* p)
+static int _serSysIndEncSQN_TMGI_r9_plmn_Id_r9(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TMGI_r9_plmn_Id_r9* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -87,16 +95,16 @@ static int _serSysIndEncTMGI_r9_plmn_Id_r9(unsigned char* _buffer, size_t _size,
 		size_t _tmp = (size_t)p->d;
 		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
 	}
-	_serSysIndEncTMGI_r9_plmn_Id_r9_Value(_buffer, _size, _lidx, &p->v, p->d);
+	_serSysIndEncSQN_TMGI_r9_plmn_Id_r9_Value(_buffer, _size, _lidx, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndEncTMGI_r9(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct TMGI_r9* p)
+static int _serSysIndEncSQN_TMGI_r9(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_TMGI_r9* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndEncTMGI_r9_plmn_Id_r9(_buffer, _size, _lidx, &p->plmn_Id_r9);
+	_serSysIndEncSQN_TMGI_r9_plmn_Id_r9(_buffer, _size, _lidx, &p->plmn_Id_r9);
 	for (size_t i1 = 0; i1 < 3; i1++) {
 		HTON_8(&_buffer[*_lidx], p->serviceId_r9[i1], _lidx);
 	}
@@ -104,7 +112,7 @@ static int _serSysIndEncTMGI_r9(unsigned char* _buffer, size_t _size, size_t* _l
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndEncO1_MBMSSessionInfo_r13_sessionId_r13_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct O1_MBMSSessionInfo_r13_sessionId_r13_Optional* p)
+static int _serSysIndEncO1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct O1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -117,12 +125,12 @@ static int _serSysIndEncO1_MBMSSessionInfo_r13_sessionId_r13_Optional(unsigned c
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndEncMBMSSessionInfo_r13(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct MBMSSessionInfo_r13* p)
+static int _serSysIndEncSQN_MBMSSessionInfo_r13(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SQN_MBMSSessionInfo_r13* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndEncTMGI_r9(_buffer, _size, _lidx, &p->tmgi_r13);
-	_serSysIndEncO1_MBMSSessionInfo_r13_sessionId_r13_Optional(_buffer, _size, _lidx, &p->sessionId_r13);
+	_serSysIndEncSQN_TMGI_r9(_buffer, _size, _lidx, &p->tmgi_r13);
+	_serSysIndEncO1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional(_buffer, _size, _lidx, &p->sessionId_r13);
 
 	return SIDL_STATUS_OK;
 }
@@ -131,7 +139,7 @@ static int _serSysIndEncSC_MRB_Identity_Type(unsigned char* _buffer, size_t _siz
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndEncMBMSSessionInfo_r13(_buffer, _size, _lidx, &p->MbmsSessionInfo);
+	_serSysIndEncSQN_MBMSSessionInfo_r13(_buffer, _size, _lidx, &p->MbmsSessionInfo);
 
 	return SIDL_STATUS_OK;
 }
@@ -142,18 +150,22 @@ static int _serSysIndEncRadioBearerId_Type_Value(unsigned char* _buffer, size_t 
 
 	if (d == RadioBearerId_Type_Srb) {
 		HTON_8(&_buffer[*_lidx], p->Srb, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RadioBearerId_Type_Drb) {
 		HTON_8(&_buffer[*_lidx], p->Drb, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RadioBearerId_Type_Mrb) {
 		_serSysIndEncMRB_Identity_Type(_buffer, _size, _lidx, &p->Mrb);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RadioBearerId_Type_ScMrb) {
 		_serSysIndEncSC_MRB_Identity_Type(_buffer, _size, _lidx, &p->ScMrb);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncRadioBearerId_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RadioBearerId_Type* p)
@@ -185,15 +197,18 @@ static int _serSysIndEncRoutingInfo_Type_Value(unsigned char* _buffer, size_t _s
 
 	if (d == RoutingInfo_Type_None) {
 		HTON_8(&_buffer[*_lidx], p->None, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RoutingInfo_Type_RadioBearerId) {
 		_serSysIndEncRadioBearerId_Type(_buffer, _size, _lidx, &p->RadioBearerId);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RoutingInfo_Type_QosFlow) {
 		_serSysIndEncQosFlow_Identification_Type(_buffer, _size, _lidx, &p->QosFlow);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncRoutingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RoutingInfo_Type* p)
@@ -215,12 +230,14 @@ static int _serSysIndEncSystemFrameNumberInfo_Type_Value(unsigned char* _buffer,
 
 	if (d == SystemFrameNumberInfo_Type_Number) {
 		HTON_16(&_buffer[*_lidx], p->Number, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemFrameNumberInfo_Type_Any) {
 		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncSystemFrameNumberInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SystemFrameNumberInfo_Type* p)
@@ -242,12 +259,14 @@ static int _serSysIndEncSubFrameInfo_Type_Value(unsigned char* _buffer, size_t _
 
 	if (d == SubFrameInfo_Type_Number) {
 		HTON_8(&_buffer[*_lidx], p->Number, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SubFrameInfo_Type_Any) {
 		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncSubFrameInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameInfo_Type* p)
@@ -282,21 +301,26 @@ static int _serSysIndEncSlotOffset_Type_Value(unsigned char* _buffer, size_t _si
 
 	if (d == SlotOffset_Type_Numerology0) {
 		HTON_8(&_buffer[*_lidx], p->Numerology0, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology1) {
 		HTON_8(&_buffer[*_lidx], p->Numerology1, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology2) {
 		HTON_8(&_buffer[*_lidx], p->Numerology2, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology3) {
 		HTON_8(&_buffer[*_lidx], p->Numerology3, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology4) {
 		HTON_8(&_buffer[*_lidx], p->Numerology4, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncSlotOffset_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SlotOffset_Type* p)
@@ -318,15 +342,18 @@ static int _serSysIndEncSlotTimingInfo_Type_Value(unsigned char* _buffer, size_t
 
 	if (d == SlotTimingInfo_Type_SlotOffset) {
 		_serSysIndEncSlotOffset_Type(_buffer, _size, _lidx, &p->SlotOffset);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_FirstSlot) {
 		HTON_8(&_buffer[*_lidx], p->FirstSlot, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_Any) {
 		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SlotTimingInfo_Type* p)
@@ -360,15 +387,18 @@ static int _serSysIndEncTimingInfo_Type_Value(unsigned char* _buffer, size_t _si
 
 	if (d == TimingInfo_Type_SubFrame) {
 		_serSysIndEncSubFrameTiming_Type(_buffer, _size, _lidx, &p->SubFrame);
+		return SIDL_STATUS_OK;
 	}
 	if (d == TimingInfo_Type_Now) {
 		HTON_8(&_buffer[*_lidx], p->Now, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == TimingInfo_Type_None) {
 		HTON_8(&_buffer[*_lidx], p->None, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct TimingInfo_Type* p)
@@ -410,12 +440,14 @@ static int _serSysIndEncIndicationStatus_Type_Value(unsigned char* _buffer, size
 
 	if (d == IndicationStatus_Type_Ok) {
 		HTON_8(&_buffer[*_lidx], p->Ok, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == IndicationStatus_Type_Error) {
 		_serSysIndEncErrorIndication_Type(_buffer, _size, _lidx, &p->Error);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncIndicationStatus_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IndicationStatus_Type* p)
@@ -440,18 +472,21 @@ static int _serSysIndEncRlcBearerRouting_Type_Value(unsigned char* _buffer, size
 			size_t _tmp = (size_t)p->EUTRA;
 			HTON_32(&_buffer[*_lidx], _tmp, _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == RlcBearerRouting_Type_NR) {
 		{
 			size_t _tmp = (size_t)p->NR;
 			HTON_32(&_buffer[*_lidx], _tmp, _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == RlcBearerRouting_Type_None) {
 		HTON_8(&_buffer[*_lidx], p->None, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncRlcBearerRouting_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RlcBearerRouting_Type* p)
@@ -582,18 +617,22 @@ static int _serSysIndEncBSR_Type_Value(unsigned char* _buffer, size_t _size, siz
 
 	if (d == BSR_Type_Short) {
 		_serSysIndEncShort_BSR_Type(_buffer, _size, _lidx, &p->Short);
+		return SIDL_STATUS_OK;
 	}
 	if (d == BSR_Type_Truncated) {
 		_serSysIndEncShort_BSR_Type(_buffer, _size, _lidx, &p->Truncated);
+		return SIDL_STATUS_OK;
 	}
 	if (d == BSR_Type_Long) {
 		_serSysIndEncLong_BSR_Type(_buffer, _size, _lidx, &p->Long);
+		return SIDL_STATUS_OK;
 	}
 	if (d == BSR_Type_Sidelink) {
 		_serSysIndEncSL_BSR_MACHeader_Type(_buffer, _size, _lidx, &p->Sidelink);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncBSR_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct BSR_Type* p)
@@ -625,12 +664,14 @@ static int _serSysIndEncHarqError_Type_Value(unsigned char* _buffer, size_t _siz
 
 	if (d == HarqError_Type_UL) {
 		_serSysIndEncHarqProcessInfo_Type(_buffer, _size, _lidx, &p->UL);
+		return SIDL_STATUS_OK;
 	}
 	if (d == HarqError_Type_DL) {
 		_serSysIndEncHarqProcessInfo_Type(_buffer, _size, _lidx, &p->DL);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncHarqError_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct HarqError_Type* p)
@@ -749,56 +790,70 @@ static int _serSysIndEncSystemIndication_Type_Value(unsigned char* _buffer, size
 		for (size_t i1 = 0; i1 < p->Error.d; i1++) {
 			HTON_8(&_buffer[*_lidx], p->Error.v[i1], _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_RachPreamble) {
 		_serSysIndEncRachPreamble_Type(_buffer, _size, _lidx, &p->RachPreamble);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_SchedReq) {
 		HTON_8(&_buffer[*_lidx], p->SchedReq, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_BSR) {
 		_serSysIndEncBSR_Type(_buffer, _size, _lidx, &p->BSR);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_UL_HARQ) {
 		{
 			size_t _tmp = (size_t)p->UL_HARQ;
 			HTON_32(&_buffer[*_lidx], _tmp, _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_C_RNTI) {
 		for (size_t i1 = 0; i1 < 16; i1++) {
 			HTON_8(&_buffer[*_lidx], p->C_RNTI[i1], _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_PHR) {
 		HTON_8(&_buffer[*_lidx], p->PHR, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_HarqError) {
 		_serSysIndEncHarqError_Type(_buffer, _size, _lidx, &p->HarqError);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_RlcDiscardInd) {
 		_serSysIndEncRlcDiscardInd_Type(_buffer, _size, _lidx, &p->RlcDiscardInd);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_PeriodicRI) {
 		HTON_8(&_buffer[*_lidx], p->PeriodicRI, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_EPHR) {
 		_serSysIndEncMAC_CTRL_ExtPowerHeadRoom_Type(_buffer, _size, _lidx, &p->EPHR);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_CqiInd) {
 		HTON_8(&_buffer[*_lidx], p->CqiInd, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_SrsInd) {
 		{
 			size_t _tmp = (size_t)p->SrsInd;
 			HTON_32(&_buffer[*_lidx], _tmp, _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_DC_PHR) {
 		_serSysIndEncMAC_CTRL_DC_PowerHeadRoom_Type(_buffer, _size, _lidx, &p->DC_PHR);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndEncSystemIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SystemIndication_Type* p)
@@ -853,7 +908,7 @@ static int _serSysIndDecMRB_Identity_Type(const unsigned char* _buffer, size_t _
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndDecMCC_PLMN_Identity_mcc_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct MCC_PLMN_Identity_mcc_Optional* p)
+static int _serSysIndDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SQN_MCC_SQN_PLMN_Identity_mcc_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -866,13 +921,13 @@ static int _serSysIndDecMCC_PLMN_Identity_mcc_Optional(const unsigned char* _buf
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndDecPLMN_Identity(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct PLMN_Identity* p)
+static int _serSysIndDecSQN_PLMN_Identity(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_PLMN_Identity* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndDecMCC_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
+	_serSysIndDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	NTOH_32(p->mnc.d, &_buffer[*_lidx], _lidx);
-	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(MCC_MNC_Digit));
+	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		NTOH_8(p->mnc.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -880,39 +935,41 @@ static int _serSysIndDecPLMN_Identity(const unsigned char* _buffer, size_t _size
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndDecTMGI_r9_plmn_Id_r9_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union TMGI_r9_plmn_Id_r9_Value* p, enum TMGI_r9_plmn_Id_r9_Sel d)
+static int _serSysIndDecSQN_TMGI_r9_plmn_Id_r9_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, union SQN_TMGI_r9_plmn_Id_r9_Value* p, enum SQN_TMGI_r9_plmn_Id_r9_Sel d)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	if (d == TMGI_r9_plmn_Id_r9_plmn_Index_r9) {
+	if (d == SQN_TMGI_r9_plmn_Id_r9_plmn_Index_r9) {
 		NTOH_8(p->plmn_Index_r9, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
-	if (d == TMGI_r9_plmn_Id_r9_explicitValue_r9) {
-		_serSysIndDecPLMN_Identity(_buffer, _size, _lidx, _mem, &p->explicitValue_r9);
+	if (d == SQN_TMGI_r9_plmn_Id_r9_explicitValue_r9) {
+		_serSysIndDecSQN_PLMN_Identity(_buffer, _size, _lidx, _mem, &p->explicitValue_r9);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
-static int _serSysIndDecTMGI_r9_plmn_Id_r9(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct TMGI_r9_plmn_Id_r9* p)
+static int _serSysIndDecSQN_TMGI_r9_plmn_Id_r9(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_TMGI_r9_plmn_Id_r9* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
 	{
 		size_t _tmp;
 		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
-		p->d = (enum TMGI_r9_plmn_Id_r9_Sel)_tmp;
+		p->d = (enum SQN_TMGI_r9_plmn_Id_r9_Sel)_tmp;
 	}
-	_serSysIndDecTMGI_r9_plmn_Id_r9_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
+	_serSysIndDecSQN_TMGI_r9_plmn_Id_r9_Value(_buffer, _size, _lidx, _mem, &p->v, p->d);
 
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndDecTMGI_r9(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct TMGI_r9* p)
+static int _serSysIndDecSQN_TMGI_r9(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_TMGI_r9* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndDecTMGI_r9_plmn_Id_r9(_buffer, _size, _lidx, _mem, &p->plmn_Id_r9);
+	_serSysIndDecSQN_TMGI_r9_plmn_Id_r9(_buffer, _size, _lidx, _mem, &p->plmn_Id_r9);
 	for (size_t i1 = 0; i1 < 3; i1++) {
 		NTOH_8(p->serviceId_r9[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -920,7 +977,7 @@ static int _serSysIndDecTMGI_r9(const unsigned char* _buffer, size_t _size, size
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndDecO1_MBMSSessionInfo_r13_sessionId_r13_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct O1_MBMSSessionInfo_r13_sessionId_r13_Optional* p)
+static int _serSysIndDecO1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct O1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -933,12 +990,12 @@ static int _serSysIndDecO1_MBMSSessionInfo_r13_sessionId_r13_Optional(const unsi
 	return SIDL_STATUS_OK;
 }
 
-static int _serSysIndDecMBMSSessionInfo_r13(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct MBMSSessionInfo_r13* p)
+static int _serSysIndDecSQN_MBMSSessionInfo_r13(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SQN_MBMSSessionInfo_r13* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndDecTMGI_r9(_buffer, _size, _lidx, _mem, &p->tmgi_r13);
-	_serSysIndDecO1_MBMSSessionInfo_r13_sessionId_r13_Optional(_buffer, _size, _lidx, &p->sessionId_r13);
+	_serSysIndDecSQN_TMGI_r9(_buffer, _size, _lidx, _mem, &p->tmgi_r13);
+	_serSysIndDecO1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional(_buffer, _size, _lidx, &p->sessionId_r13);
 
 	return SIDL_STATUS_OK;
 }
@@ -947,7 +1004,7 @@ static int _serSysIndDecSC_MRB_Identity_Type(const unsigned char* _buffer, size_
 {
 	(void)_size; // TODO: generate boundaries checking
 
-	_serSysIndDecMBMSSessionInfo_r13(_buffer, _size, _lidx, _mem, &p->MbmsSessionInfo);
+	_serSysIndDecSQN_MBMSSessionInfo_r13(_buffer, _size, _lidx, _mem, &p->MbmsSessionInfo);
 
 	return SIDL_STATUS_OK;
 }
@@ -958,18 +1015,22 @@ static int _serSysIndDecRadioBearerId_Type_Value(const unsigned char* _buffer, s
 
 	if (d == RadioBearerId_Type_Srb) {
 		NTOH_8(p->Srb, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RadioBearerId_Type_Drb) {
 		NTOH_8(p->Drb, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RadioBearerId_Type_Mrb) {
 		_serSysIndDecMRB_Identity_Type(_buffer, _size, _lidx, &p->Mrb);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RadioBearerId_Type_ScMrb) {
 		_serSysIndDecSC_MRB_Identity_Type(_buffer, _size, _lidx, _mem, &p->ScMrb);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecRadioBearerId_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct RadioBearerId_Type* p)
@@ -1002,15 +1063,18 @@ static int _serSysIndDecRoutingInfo_Type_Value(const unsigned char* _buffer, siz
 
 	if (d == RoutingInfo_Type_None) {
 		NTOH_8(p->None, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RoutingInfo_Type_RadioBearerId) {
 		_serSysIndDecRadioBearerId_Type(_buffer, _size, _lidx, _mem, &p->RadioBearerId);
+		return SIDL_STATUS_OK;
 	}
 	if (d == RoutingInfo_Type_QosFlow) {
 		_serSysIndDecQosFlow_Identification_Type(_buffer, _size, _lidx, &p->QosFlow);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecRoutingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct RoutingInfo_Type* p)
@@ -1033,12 +1097,14 @@ static int _serSysIndDecSystemFrameNumberInfo_Type_Value(const unsigned char* _b
 
 	if (d == SystemFrameNumberInfo_Type_Number) {
 		NTOH_16(p->Number, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemFrameNumberInfo_Type_Any) {
 		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecSystemFrameNumberInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SystemFrameNumberInfo_Type* p)
@@ -1061,12 +1127,14 @@ static int _serSysIndDecSubFrameInfo_Type_Value(const unsigned char* _buffer, si
 
 	if (d == SubFrameInfo_Type_Number) {
 		NTOH_8(p->Number, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SubFrameInfo_Type_Any) {
 		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecSubFrameInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameInfo_Type* p)
@@ -1103,21 +1171,26 @@ static int _serSysIndDecSlotOffset_Type_Value(const unsigned char* _buffer, size
 
 	if (d == SlotOffset_Type_Numerology0) {
 		NTOH_8(p->Numerology0, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology1) {
 		NTOH_8(p->Numerology1, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology2) {
 		NTOH_8(p->Numerology2, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology3) {
 		NTOH_8(p->Numerology3, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology4) {
 		NTOH_8(p->Numerology4, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecSlotOffset_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SlotOffset_Type* p)
@@ -1140,15 +1213,18 @@ static int _serSysIndDecSlotTimingInfo_Type_Value(const unsigned char* _buffer, 
 
 	if (d == SlotTimingInfo_Type_SlotOffset) {
 		_serSysIndDecSlotOffset_Type(_buffer, _size, _lidx, &p->SlotOffset);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_FirstSlot) {
 		NTOH_8(p->FirstSlot, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_Any) {
 		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecSlotTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SlotTimingInfo_Type* p)
@@ -1183,15 +1259,18 @@ static int _serSysIndDecTimingInfo_Type_Value(const unsigned char* _buffer, size
 
 	if (d == TimingInfo_Type_SubFrame) {
 		_serSysIndDecSubFrameTiming_Type(_buffer, _size, _lidx, &p->SubFrame);
+		return SIDL_STATUS_OK;
 	}
 	if (d == TimingInfo_Type_Now) {
 		NTOH_8(p->Now, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == TimingInfo_Type_None) {
 		NTOH_8(p->None, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct TimingInfo_Type* p)
@@ -1234,12 +1313,14 @@ static int _serSysIndDecIndicationStatus_Type_Value(const unsigned char* _buffer
 
 	if (d == IndicationStatus_Type_Ok) {
 		NTOH_8(p->Ok, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == IndicationStatus_Type_Error) {
 		_serSysIndDecErrorIndication_Type(_buffer, _size, _lidx, &p->Error);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecIndicationStatus_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct IndicationStatus_Type* p)
@@ -1266,6 +1347,7 @@ static int _serSysIndDecRlcBearerRouting_Type_Value(const unsigned char* _buffer
 			NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
 			p->EUTRA = (EUTRA_CellId_Type)_tmp;
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == RlcBearerRouting_Type_NR) {
 		{
@@ -1273,12 +1355,14 @@ static int _serSysIndDecRlcBearerRouting_Type_Value(const unsigned char* _buffer
 			NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
 			p->NR = (NR_CellId_Type)_tmp;
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == RlcBearerRouting_Type_None) {
 		NTOH_8(p->None, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecRlcBearerRouting_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct RlcBearerRouting_Type* p)
@@ -1412,18 +1496,22 @@ static int _serSysIndDecBSR_Type_Value(const unsigned char* _buffer, size_t _siz
 
 	if (d == BSR_Type_Short) {
 		_serSysIndDecShort_BSR_Type(_buffer, _size, _lidx, &p->Short);
+		return SIDL_STATUS_OK;
 	}
 	if (d == BSR_Type_Truncated) {
 		_serSysIndDecShort_BSR_Type(_buffer, _size, _lidx, &p->Truncated);
+		return SIDL_STATUS_OK;
 	}
 	if (d == BSR_Type_Long) {
 		_serSysIndDecLong_BSR_Type(_buffer, _size, _lidx, &p->Long);
+		return SIDL_STATUS_OK;
 	}
 	if (d == BSR_Type_Sidelink) {
 		_serSysIndDecSL_BSR_MACHeader_Type(_buffer, _size, _lidx, _mem, &p->Sidelink);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecBSR_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct BSR_Type* p)
@@ -1456,12 +1544,14 @@ static int _serSysIndDecHarqError_Type_Value(const unsigned char* _buffer, size_
 
 	if (d == HarqError_Type_UL) {
 		_serSysIndDecHarqProcessInfo_Type(_buffer, _size, _lidx, &p->UL);
+		return SIDL_STATUS_OK;
 	}
 	if (d == HarqError_Type_DL) {
 		_serSysIndDecHarqProcessInfo_Type(_buffer, _size, _lidx, &p->DL);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecHarqError_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct HarqError_Type* p)
@@ -1584,15 +1674,19 @@ static int _serSysIndDecSystemIndication_Type_Value(const unsigned char* _buffer
 		for (size_t i1 = 0; i1 < p->Error.d; i1++) {
 			NTOH_8(p->Error.v[i1], &_buffer[*_lidx], _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_RachPreamble) {
 		_serSysIndDecRachPreamble_Type(_buffer, _size, _lidx, &p->RachPreamble);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_SchedReq) {
 		NTOH_8(p->SchedReq, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_BSR) {
 		_serSysIndDecBSR_Type(_buffer, _size, _lidx, _mem, &p->BSR);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_UL_HARQ) {
 		{
@@ -1600,29 +1694,37 @@ static int _serSysIndDecSystemIndication_Type_Value(const unsigned char* _buffer
 			NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
 			p->UL_HARQ = (HARQ_Type)_tmp;
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_C_RNTI) {
 		for (size_t i1 = 0; i1 < 16; i1++) {
 			NTOH_8(p->C_RNTI[i1], &_buffer[*_lidx], _lidx);
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_PHR) {
 		NTOH_8(p->PHR, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_HarqError) {
 		_serSysIndDecHarqError_Type(_buffer, _size, _lidx, &p->HarqError);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_RlcDiscardInd) {
 		_serSysIndDecRlcDiscardInd_Type(_buffer, _size, _lidx, &p->RlcDiscardInd);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_PeriodicRI) {
 		NTOH_8(p->PeriodicRI, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_EPHR) {
 		_serSysIndDecMAC_CTRL_ExtPowerHeadRoom_Type(_buffer, _size, _lidx, _mem, &p->EPHR);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_CqiInd) {
 		NTOH_8(p->CqiInd, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_SrsInd) {
 		{
@@ -1630,12 +1732,14 @@ static int _serSysIndDecSystemIndication_Type_Value(const unsigned char* _buffer
 			NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
 			p->SrsInd = (SRSInd_Type)_tmp;
 		}
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemIndication_Type_DC_PHR) {
 		_serSysIndDecMAC_CTRL_DC_PowerHeadRoom_Type(_buffer, _size, _lidx, _mem, &p->DC_PHR);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysIndDecSystemIndication_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, serMem_t _mem, struct SystemIndication_Type* p)
@@ -1677,44 +1781,46 @@ int serSysIndProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsig
 	return SIDL_STATUS_OK;
 }
 
-static void _serSysIndFreePLMN_Identity(struct PLMN_Identity* p)
+static void _serSysIndFreeSQN_PLMN_Identity(struct SQN_PLMN_Identity* p)
 {
 	if (p->mnc.v) {
 		serFree(p->mnc.v);
 	}
 }
 
-static void _serSysIndFreeTMGI_r9_plmn_Id_r9_Value(union TMGI_r9_plmn_Id_r9_Value* p, enum TMGI_r9_plmn_Id_r9_Sel d)
+static void _serSysIndFreeSQN_TMGI_r9_plmn_Id_r9_Value(union SQN_TMGI_r9_plmn_Id_r9_Value* p, enum SQN_TMGI_r9_plmn_Id_r9_Sel d)
 {
-	if (d == TMGI_r9_plmn_Id_r9_explicitValue_r9) {
-		_serSysIndFreePLMN_Identity(&p->explicitValue_r9);
+	if (d == SQN_TMGI_r9_plmn_Id_r9_explicitValue_r9) {
+		_serSysIndFreeSQN_PLMN_Identity(&p->explicitValue_r9);
+		return;
 	}
 }
 
-static void _serSysIndFreeTMGI_r9_plmn_Id_r9(struct TMGI_r9_plmn_Id_r9* p)
+static void _serSysIndFreeSQN_TMGI_r9_plmn_Id_r9(struct SQN_TMGI_r9_plmn_Id_r9* p)
 {
-	_serSysIndFreeTMGI_r9_plmn_Id_r9_Value(&p->v, p->d);
+	_serSysIndFreeSQN_TMGI_r9_plmn_Id_r9_Value(&p->v, p->d);
 }
 
-static void _serSysIndFreeTMGI_r9(struct TMGI_r9* p)
+static void _serSysIndFreeSQN_TMGI_r9(struct SQN_TMGI_r9* p)
 {
-	_serSysIndFreeTMGI_r9_plmn_Id_r9(&p->plmn_Id_r9);
+	_serSysIndFreeSQN_TMGI_r9_plmn_Id_r9(&p->plmn_Id_r9);
 }
 
-static void _serSysIndFreeMBMSSessionInfo_r13(struct MBMSSessionInfo_r13* p)
+static void _serSysIndFreeSQN_MBMSSessionInfo_r13(struct SQN_MBMSSessionInfo_r13* p)
 {
-	_serSysIndFreeTMGI_r9(&p->tmgi_r13);
+	_serSysIndFreeSQN_TMGI_r9(&p->tmgi_r13);
 }
 
 static void _serSysIndFreeSC_MRB_Identity_Type(struct SC_MRB_Identity_Type* p)
 {
-	_serSysIndFreeMBMSSessionInfo_r13(&p->MbmsSessionInfo);
+	_serSysIndFreeSQN_MBMSSessionInfo_r13(&p->MbmsSessionInfo);
 }
 
 static void _serSysIndFreeRadioBearerId_Type_Value(union RadioBearerId_Type_Value* p, enum RadioBearerId_Type_Sel d)
 {
 	if (d == RadioBearerId_Type_ScMrb) {
 		_serSysIndFreeSC_MRB_Identity_Type(&p->ScMrb);
+		return;
 	}
 }
 
@@ -1727,6 +1833,7 @@ static void _serSysIndFreeRoutingInfo_Type_Value(union RoutingInfo_Type_Value* p
 {
 	if (d == RoutingInfo_Type_RadioBearerId) {
 		_serSysIndFreeRadioBearerId_Type(&p->RadioBearerId);
+		return;
 	}
 }
 
@@ -1753,6 +1860,7 @@ static void _serSysIndFreeBSR_Type_Value(union BSR_Type_Value* p, enum BSR_Type_
 {
 	if (d == BSR_Type_Sidelink) {
 		_serSysIndFreeSL_BSR_MACHeader_Type(&p->Sidelink);
+		return;
 	}
 }
 
@@ -1785,15 +1893,19 @@ static void _serSysIndFreeSystemIndication_Type_Value(union SystemIndication_Typ
 		if (p->Error.v) {
 			serFree(p->Error.v);
 		}
+		return;
 	}
 	if (d == SystemIndication_Type_BSR) {
 		_serSysIndFreeBSR_Type(&p->BSR);
+		return;
 	}
 	if (d == SystemIndication_Type_EPHR) {
 		_serSysIndFreeMAC_CTRL_ExtPowerHeadRoom_Type(&p->EPHR);
+		return;
 	}
 	if (d == SystemIndication_Type_DC_PHR) {
 		_serSysIndFreeMAC_CTRL_DC_PowerHeadRoom_Type(&p->DC_PHR);
+		return;
 	}
 }
 

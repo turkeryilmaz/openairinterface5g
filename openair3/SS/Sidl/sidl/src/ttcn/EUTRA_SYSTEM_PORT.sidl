@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #include "msg.sidl"
@@ -26,7 +32,6 @@ METADATA_VAR(rats, "EUTRA");
 // TTCN namespaces
 METADATA_VAR(namespaces, "EUTRA_ASP_TypeDefs");
 
-typedef B128_Type B128_Key_Type;
 typedef ASN_ENUM(ASN_NAME(CipheringAlgorithm_r12)) CipheringAlgorithm_r12_Type;
 typedef SIDL_DYNAMIC_OF_STRUCT(SecurityActTime_Type, SecurityActTimeList_Type); /* 1..tsc_MaxRB */
 
@@ -48,16 +53,16 @@ SIDL_UNION_BEGIN(PdcpCountGetReq_Type) {
 		struct RadioBearerId_Type SingleRB;
 } SIDL_UNION_END;
 
-SIDL_UNION_ENUM(Pdcp_CountReq_Type) {
-	Pdcp_CountReq_Type_UNBOUND_VALUE,
-	Pdcp_CountReq_Type_Get,
-	Pdcp_CountReq_Type_Set
+SIDL_UNION_ENUM(PDCP_CountReq_Type) {
+	PDCP_CountReq_Type_UNBOUND_VALUE,
+	PDCP_CountReq_Type_Get,
+	PDCP_CountReq_Type_Set
 };
-SIDL_UNION_BEGIN(Pdcp_CountReq_Type) {
-	SIDL_UNION_CASE(Pdcp_CountReq_Type_Get)
+SIDL_UNION_BEGIN(PDCP_CountReq_Type) {
+	SIDL_UNION_CASE(PDCP_CountReq_Type_Get)
 		struct PdcpCountGetReq_Type Get;
-	SIDL_UNION_CASE(Pdcp_CountReq_Type_Set)
-		SIDL_DYNAMIC_OF_STRUCT(PdcpCountInfo_Type, Set);
+	SIDL_UNION_CASE(PDCP_CountReq_Type_Set)
+		PdcpCountInfoList_Type Set;
 } SIDL_UNION_END;
 
 typedef enum {
@@ -318,7 +323,7 @@ struct RadioBearerConfigInfo_Type {
 	SIDL_OPTIONAL_OF_STRUCT(RLC_Configuration_Type, Rlc);
 	SIDL_OPTIONAL(LogicalChannelId_Type, LogicalChannelId);
 	SIDL_OPTIONAL_OF_STRUCT(MAC_Configuration_Type, Mac);
-	SIDL_OPTIONAL(bool, DiscardULData);
+	SIDL_OPTIONAL_WITH_PFX(RadioBearerConfigInfo_Type, bool, DiscardULData);
 };
 
 SIDL_UNION_ENUM(RadioBearerConfig_Type) {
@@ -326,7 +331,7 @@ SIDL_UNION_ENUM(RadioBearerConfig_Type) {
 	RadioBearerConfig_Type_AddOrReconfigure,
 	RadioBearerConfig_Type_Release
 };
-SIDL_UNION_BEGIN (RadioBearerConfig_Type) {
+SIDL_UNION_BEGIN(RadioBearerConfig_Type) {
 	SIDL_UNION_CASE(RadioBearerConfig_Type_AddOrReconfigure)
 		struct RadioBearerConfigInfo_Type AddOrReconfigure;
 	SIDL_UNION_CASE(RadioBearerConfig_Type_Release)
@@ -412,12 +417,10 @@ struct PagingTrigger_Type {
 	SIDL_OPTIONAL(SubframeOffsetList_Type, SubframeOffsetList);
 };
 
-
 typedef enum {
 	IndicationAndControlMode_enable,
 	IndicationAndControlMode_disable
 } IndicationAndControlMode_Type;
-
 
 struct L1Mac_IndicationControl_Type {
 	SIDL_OPTIONAL(IndicationAndControlMode_Type, RachPreamble);
@@ -433,6 +436,9 @@ struct L1Mac_IndicationControl_Type {
 	SIDL_OPTIONAL(IndicationAndControlMode_Type, SRS);
 	SIDL_OPTIONAL(IndicationAndControlMode_Type, DC_PHR);
 };
+
+typedef SIDL_DYNAMIC_OF_STRUCT(CellAttenuationConfig_Type, CellAttenuationList_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(RadioBearer_Type, RadioBearerList_Type);
 
 SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_UNBOUND_VALUE,
@@ -465,9 +471,9 @@ SIDL_UNION_BEGIN(SystemRequest_Type) {
 	SIDL_UNION_CASE(SystemRequest_Type_Cell)
 		struct CellConfigRequest_Type Cell;
 	SIDL_UNION_CASE(SystemRequest_Type_CellAttenuationList)
-		SIDL_DYNAMIC_OF_STRUCT(CellAttenuationConfig_Type, CellAttenuationList);
+		CellAttenuationList_Type CellAttenuationList;
 	SIDL_UNION_CASE(SystemRequest_Type_RadioBearerList)
-		SIDL_DYNAMIC_OF_STRUCT(RadioBearer_Type, RadioBearerList);
+		RadioBearerList_Type RadioBearerList;
 	SIDL_UNION_CASE(SystemRequest_Type_EnquireTiming)
 		Null_Type EnquireTiming;
 	SIDL_UNION_CASE(SystemRequest_Type_AS_Security)
@@ -479,7 +485,7 @@ SIDL_UNION_BEGIN(SystemRequest_Type) {
 		struct L1Mac_IndicationControl_Type L1MacIndCtrl;
 	// SIDL_UNION_CASE(SystemRequest_Type_RlcIndCtrl)
 	SIDL_UNION_CASE(SystemRequest_Type_PdcpCount)
-		struct Pdcp_CountReq_Type PdcpCount;
+		struct PDCP_CountReq_Type PdcpCount;
 	// SIDL_UNION_CASE(SystemRequest_Type_PdcpHandoverControl)
 	// SIDL_UNION_CASE(SystemRequest_Type_L1__TestMode)
 	// SIDL_UNION_CASE(SystemRequest_Type_PdcchOrder)
@@ -539,7 +545,7 @@ SIDL_UNION_BEGIN(SystemConfirm_Type) {
 	SIDL_UNION_CASE(SystemConfirm_Type_RlcIndCtrl)
 		Null_Type RlcIndCtrl;
 	SIDL_UNION_CASE(SystemConfirm_Type_PdcpCount)
-		struct Pdcp_CountCnf_Type PdcpCount;
+		struct PDCP_CountCnf_Type PdcpCount;
 	SIDL_UNION_CASE(SystemConfirm_Type_PdcpHandoverControl)
 		Null_Type PdcpHandoverControl;
 	SIDL_UNION_CASE(SystemConfirm_Type_L1_TestMode)

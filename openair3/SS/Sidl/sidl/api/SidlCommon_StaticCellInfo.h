@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -25,9 +31,9 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-typedef CarrierBandwidthEUTRA_dl_Bandwidth_e Dl_Bandwidth_Type;
+typedef SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e Dl_Bandwidth_Type;
 
-typedef CarrierBandwidthEUTRA_ul_Bandwidth_e Ul_Bandwidth_Type;
+typedef SQN_CarrierBandwidthEUTRA_ul_Bandwidth_e Ul_Bandwidth_Type;
 
 typedef Null EUTRA_FDD_Info_Type;
 
@@ -45,14 +51,14 @@ enum EUTRA_CyclicPrefix_Type {
 
 typedef enum EUTRA_CyclicPrefix_Type EUTRA_CyclicPrefix_Type;
 
-struct TDD_Config_v1130_tdd_Config_v1130_Optional {
+struct SQN_TDD_Config_v1130_tdd_Config_v1130_Optional {
 	bool d;
-	struct TDD_Config_v1130 v;
+	struct SQN_TDD_Config_v1130 v;
 };
 
 struct TDD_Config_R8andLater_Type {
-	struct TDD_Config R8;
-	struct TDD_Config_v1130_tdd_Config_v1130_Optional tdd_Config_v1130;
+	struct SQN_TDD_Config R8;
+	struct SQN_TDD_Config_v1130_tdd_Config_v1130_Optional tdd_Config_v1130;
 };
 
 enum TDD_Config_Type_Sel {
@@ -94,27 +100,15 @@ struct EUTRA_RAT_Type {
 	union EUTRA_RAT_Type_Value v;
 };
 
-struct uint8_t_TcOffset_Optional {
+struct SQN_CellIdentity_eNB_CellId_Optional {
 	bool d;
-	uint8_t v;
-};
-
-struct CellTimingInfo_Type {
-	struct uint8_t_TcOffset_Optional TcOffset;
-	uint32_t Tcell;
-	uint16_t SfnOffset;
-	uint16_t HsfnOffset;
-};
-
-struct CellIdentity_eNB_CellId_Optional {
-	bool d;
-	CellIdentity v;
+	SQN_CellIdentity v;
 };
 
 struct CommonStaticCellInfo_Type {
 	struct EUTRA_RAT_Type RAT;
-	PhysCellId PhysicalCellId;
-	struct CellIdentity_eNB_CellId_Optional eNB_CellId;
+	SQN_PhysCellId PhysicalCellId;
+	struct SQN_CellIdentity_eNB_CellId_Optional eNB_CellId;
 	int32_t EutraBand;
 	struct CellTimingInfo_Type CellTimingInfo;
 };

@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -33,9 +39,9 @@ struct SL_Sci0Config_Type {
 	Itrp_Type Itrp;
 };
 
-struct C_RNTI_SL_RNTI_r12_Optional {
+struct SQN_C_RNTI_SL_RNTI_r12_Optional {
 	bool d;
-	C_RNTI v;
+	SQN_C_RNTI v;
 };
 
 struct N_PSCCH_Type_N_PSCCH_Optional {
@@ -49,7 +55,7 @@ struct SL_Sci0Config_Type_SL_Sheduling_Optional {
 };
 
 struct Sci0SchedulingConfig_Type {
-	struct C_RNTI_SL_RNTI_r12_Optional SL_RNTI_r12;
+	struct SQN_C_RNTI_SL_RNTI_r12_Optional SL_RNTI_r12;
 	struct N_PSCCH_Type_N_PSCCH_Optional N_PSCCH;
 	struct SL_Sci0Config_Type_SL_Sheduling_Optional SL_Sheduling;
 };
@@ -59,9 +65,9 @@ struct SL_Sci1Config_Type {
 	B4_Type TimeGap;
 };
 
-struct C_RNTI_SL_V_RNTI_r12_Optional {
+struct SQN_C_RNTI_SL_V_RNTI_r12_Optional {
 	bool d;
-	C_RNTI v;
+	SQN_C_RNTI v;
 };
 
 struct B3_Type_CarrierIndicator_Optional {
@@ -95,7 +101,7 @@ struct SL_Sci1Config_Type_SL_SCI1_Scheduling_Optional {
 };
 
 struct Sci1SchedulingConfig_Type {
-	struct C_RNTI_SL_V_RNTI_r12_Optional SL_V_RNTI_r12;
+	struct SQN_C_RNTI_SL_V_RNTI_r12_Optional SL_V_RNTI_r12;
 	struct B3_Type_CarrierIndicator_Optional CarrierIndicator;
 	struct BIT_STRING_LowestIndexOfChannelAllocation_Optional LowestIndexOfChannelAllocation;
 	struct B2_Type_SL_Index_Optional SL_Index;

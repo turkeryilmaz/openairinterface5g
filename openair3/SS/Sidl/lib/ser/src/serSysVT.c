@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #include <string.h>
@@ -25,12 +31,14 @@ static int _serSysVTEncSystemFrameNumberInfo_Type_Value(unsigned char* _buffer, 
 
 	if (d == SystemFrameNumberInfo_Type_Number) {
 		HTON_16(&_buffer[*_lidx], p->Number, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemFrameNumberInfo_Type_Any) {
 		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTEncSystemFrameNumberInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SystemFrameNumberInfo_Type* p)
@@ -52,12 +60,14 @@ static int _serSysVTEncSubFrameInfo_Type_Value(unsigned char* _buffer, size_t _s
 
 	if (d == SubFrameInfo_Type_Number) {
 		HTON_8(&_buffer[*_lidx], p->Number, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SubFrameInfo_Type_Any) {
 		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTEncSubFrameInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SubFrameInfo_Type* p)
@@ -92,21 +102,26 @@ static int _serSysVTEncSlotOffset_Type_Value(unsigned char* _buffer, size_t _siz
 
 	if (d == SlotOffset_Type_Numerology0) {
 		HTON_8(&_buffer[*_lidx], p->Numerology0, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology1) {
 		HTON_8(&_buffer[*_lidx], p->Numerology1, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology2) {
 		HTON_8(&_buffer[*_lidx], p->Numerology2, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology3) {
 		HTON_8(&_buffer[*_lidx], p->Numerology3, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology4) {
 		HTON_8(&_buffer[*_lidx], p->Numerology4, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTEncSlotOffset_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SlotOffset_Type* p)
@@ -128,15 +143,18 @@ static int _serSysVTEncSlotTimingInfo_Type_Value(unsigned char* _buffer, size_t 
 
 	if (d == SlotTimingInfo_Type_SlotOffset) {
 		_serSysVTEncSlotOffset_Type(_buffer, _size, _lidx, &p->SlotOffset);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_FirstSlot) {
 		HTON_8(&_buffer[*_lidx], p->FirstSlot, _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_Any) {
 		HTON_8(&_buffer[*_lidx], p->Any, _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTEncSlotTimingInfo_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SlotTimingInfo_Type* p)
@@ -189,12 +207,14 @@ static int _serSysVTDecSystemFrameNumberInfo_Type_Value(const unsigned char* _bu
 
 	if (d == SystemFrameNumberInfo_Type_Number) {
 		NTOH_16(p->Number, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SystemFrameNumberInfo_Type_Any) {
 		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTDecSystemFrameNumberInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SystemFrameNumberInfo_Type* p)
@@ -217,12 +237,14 @@ static int _serSysVTDecSubFrameInfo_Type_Value(const unsigned char* _buffer, siz
 
 	if (d == SubFrameInfo_Type_Number) {
 		NTOH_8(p->Number, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SubFrameInfo_Type_Any) {
 		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTDecSubFrameInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SubFrameInfo_Type* p)
@@ -259,21 +281,26 @@ static int _serSysVTDecSlotOffset_Type_Value(const unsigned char* _buffer, size_
 
 	if (d == SlotOffset_Type_Numerology0) {
 		NTOH_8(p->Numerology0, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology1) {
 		NTOH_8(p->Numerology1, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology2) {
 		NTOH_8(p->Numerology2, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology3) {
 		NTOH_8(p->Numerology3, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotOffset_Type_Numerology4) {
 		NTOH_8(p->Numerology4, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTDecSlotOffset_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SlotOffset_Type* p)
@@ -296,15 +323,18 @@ static int _serSysVTDecSlotTimingInfo_Type_Value(const unsigned char* _buffer, s
 
 	if (d == SlotTimingInfo_Type_SlotOffset) {
 		_serSysVTDecSlotOffset_Type(_buffer, _size, _lidx, &p->SlotOffset);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_FirstSlot) {
 		NTOH_8(p->FirstSlot, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 	if (d == SlotTimingInfo_Type_Any) {
 		NTOH_8(p->Any, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
 	}
 
-	return SIDL_STATUS_OK;
+	return SIDL_STATUS_ERROR;
 }
 
 static int _serSysVTDecSlotTimingInfo_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct SlotTimingInfo_Type* p)

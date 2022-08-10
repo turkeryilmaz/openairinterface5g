@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -96,10 +102,13 @@ typedef struct SidlNotImplemented SidlNotImplemented_t;
 #define _PP_CAT_N_4(_1, _2, _3, _4) _1##_##_2##_##_3##_##_4
 #define _PP_CAT_N_5(_1, _2, _3, _4, _5) _1##_##_2##_##_3##_##_4##_##_5
 #define _PP_CAT_N_6(_1, _2, _3, _4, _5, _6) _1##_##_2##_##_3##_##_4##_##_5##_##_6
+#define _PP_CAT_N_7(_1, _2, _3, _4, _5, _6, _7) _1##_##_2##_##_3##_##_4##_##_5##_##_6##_7
+#define _PP_CAT_N_8(_1, _2, _3, _4, _5, _6, _7, _8) _1##_##_2##_##_3##_##_4##_##_5##_##_6##_7##_8
+#define _PP_CAT_N_9(_1, _2, _3, _4, _5, _6, _7, _8, _9) _1##_##_2##_##_3##_##_4##_##_5##_##_6##_7##_8##_9
 
-#define _PP_CAT_DETAIL_ARG_N(_1, _2, _3, _4, _5, _6, N, ...) N
+#define _PP_CAT_DETAIL_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
 #define _PP_CAT_DETAIL_NARG(args) _PP_CAT_DETAIL_ARG_N args
-#define _PP_CAT_DETAIL_RSEQ_N() 6, 5, 4, 3, 2, 1, 0
+#define _PP_CAT_DETAIL_RSEQ_N() 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 #define _PP_CAT_NARGS(...) _PP_CAT_DETAIL_NARG((__VA_ARGS__, _PP_CAT_DETAIL_RSEQ_N()))
 #define _PP_CAT_CASE(cASE) _PP_CAT(_PP_CAT_N_, cASE)
 #define _PP_AUTO_CAT(...)                    \

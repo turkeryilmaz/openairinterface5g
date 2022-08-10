@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -25,22 +31,22 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-typedef UplinkPowerControlDedicatedSCell_r10_pathlossReferenceLinking_r10_e SCellPathlossReferenceLinking_Type;
+typedef SQN_UplinkPowerControlDedicatedSCell_r10_pathlossReferenceLinking_r10_e SCellPathlossReferenceLinking_Type;
 
-struct PRACH_Config_v1310_prach_Config_v1310_Optional {
+struct SQN_PRACH_Config_v1310_prach_Config_v1310_Optional {
 	bool d;
-	struct PRACH_Config_v1310 v;
+	struct SQN_PRACH_Config_v1310 v;
 };
 
-struct PRACH_Config_v1430_prach_Config_v1430_Optional {
+struct SQN_PRACH_Config_v1430_prach_Config_v1430_Optional {
 	bool d;
-	struct PRACH_Config_v1430 v;
+	struct SQN_PRACH_Config_v1430 v;
 };
 
 struct PRACH_Config_R8andLater_Type {
-	struct PRACH_Config prach_Config;
-	struct PRACH_Config_v1310_prach_Config_v1310_Optional prach_Config_v1310;
-	struct PRACH_Config_v1430_prach_Config_v1430_Optional prach_Config_v1430;
+	struct SQN_PRACH_Config prach_Config;
+	struct SQN_PRACH_Config_v1310_prach_Config_v1310_Optional prach_Config_v1310;
+	struct SQN_PRACH_Config_v1430_prach_Config_v1430_Optional prach_Config_v1430;
 };
 
 enum PRACH_Config_Type_Sel {
@@ -57,14 +63,14 @@ struct PRACH_Config_Type {
 	union PRACH_Config_Type_Value v;
 };
 
-struct PUCCH_ConfigCommon_v1310_pucch_ConfigCommon_v1310_Optional {
+struct SQN_PUCCH_ConfigCommon_v1310_pucch_ConfigCommon_v1310_Optional {
 	bool d;
-	struct PUCCH_ConfigCommon_v1310 v;
+	struct SQN_PUCCH_ConfigCommon_v1310 v;
 };
 
 struct PUCCH_ConfigCommon_R8andLater_Type {
-	struct PUCCH_ConfigCommon pucch_ConfigCommon;
-	struct PUCCH_ConfigCommon_v1310_pucch_ConfigCommon_v1310_Optional pucch_ConfigCommon_v1310;
+	struct SQN_PUCCH_ConfigCommon pucch_ConfigCommon;
+	struct SQN_PUCCH_ConfigCommon_v1310_pucch_ConfigCommon_v1310_Optional pucch_ConfigCommon_v1310;
 };
 
 enum PUCCH_ConfigCommon_Type_Sel {
@@ -81,30 +87,30 @@ struct PUCCH_ConfigCommon_Type {
 	union PUCCH_ConfigCommon_Type_Value v;
 };
 
-struct PUCCH_ConfigDedicated_v1020_pucch_ConfigDedicated_v1020_Optional {
+struct SQN_PUCCH_ConfigDedicated_v1020_pucch_ConfigDedicated_v1020_Optional {
 	bool d;
-	struct PUCCH_ConfigDedicated_v1020 v;
+	struct SQN_PUCCH_ConfigDedicated_v1020 v;
 };
 
-struct PUCCH_ConfigDedicated_v1130_pucch_ConfigDedicated_v1130_Optional {
+struct SQN_PUCCH_ConfigDedicated_v1130_pucch_ConfigDedicated_v1130_Optional {
 	bool d;
-	struct PUCCH_ConfigDedicated_v1130 v;
+	struct SQN_PUCCH_ConfigDedicated_v1130 v;
 };
 
-struct PUCCH_ConfigDedicated_v1250_pucch_ConfigDedicated_v1250_Optional {
+struct SQN_PUCCH_ConfigDedicated_v1250_pucch_ConfigDedicated_v1250_Optional {
 	bool d;
-	struct PUCCH_ConfigDedicated_v1250 v;
+	struct SQN_PUCCH_ConfigDedicated_v1250 v;
 };
 
 struct PUCCH_ConfigDedicated_R8andLater_Type {
-	struct PUCCH_ConfigDedicated pucch_ConfigDedicated;
-	struct PUCCH_ConfigDedicated_v1020_pucch_ConfigDedicated_v1020_Optional pucch_ConfigDedicated_v1020;
-	struct PUCCH_ConfigDedicated_v1130_pucch_ConfigDedicated_v1130_Optional pucch_ConfigDedicated_v1130;
-	struct PUCCH_ConfigDedicated_v1250_pucch_ConfigDedicated_v1250_Optional pucch_ConfigDedicated_v1250;
+	struct SQN_PUCCH_ConfigDedicated pucch_ConfigDedicated;
+	struct SQN_PUCCH_ConfigDedicated_v1020_pucch_ConfigDedicated_v1020_Optional pucch_ConfigDedicated_v1020;
+	struct SQN_PUCCH_ConfigDedicated_v1130_pucch_ConfigDedicated_v1130_Optional pucch_ConfigDedicated_v1130;
+	struct SQN_PUCCH_ConfigDedicated_v1250_pucch_ConfigDedicated_v1250_Optional pucch_ConfigDedicated_v1250;
 };
 
 struct PUCCH_ConfigDedicated_R13andLater_Type {
-	struct PUCCH_ConfigDedicated_r13 pucch_ConfigDedicated_r13;
+	struct SQN_PUCCH_ConfigDedicated_r13 pucch_ConfigDedicated_r13;
 };
 
 enum PUCCH_ConfigDedicated_Type_Sel {
@@ -138,20 +144,20 @@ struct PUCCH_Configuration_Type {
 	struct PUCCH_ConfigDedicated_Type_Dedicated_Optional Dedicated;
 };
 
-struct PUSCH_ConfigCommon_v1270_pusch_ConfigCommon_v1270_Optional {
+struct SQN_PUSCH_ConfigCommon_v1270_pusch_ConfigCommon_v1270_Optional {
 	bool d;
-	struct PUSCH_ConfigCommon_v1270 v;
+	struct SQN_PUSCH_ConfigCommon_v1270 v;
 };
 
-struct PUSCH_ConfigCommon_v1310_pusch_ConfigCommon_v1310_Optional {
+struct SQN_PUSCH_ConfigCommon_v1310_pusch_ConfigCommon_v1310_Optional {
 	bool d;
-	struct PUSCH_ConfigCommon_v1310 v;
+	struct SQN_PUSCH_ConfigCommon_v1310 v;
 };
 
 struct PUSCH_ConfigCommon_R8andLater_Type {
-	struct PUSCH_ConfigCommon pusch_ConfigCommon;
-	struct PUSCH_ConfigCommon_v1270_pusch_ConfigCommon_v1270_Optional pusch_ConfigCommon_v1270;
-	struct PUSCH_ConfigCommon_v1310_pusch_ConfigCommon_v1310_Optional pusch_ConfigCommon_v1310;
+	struct SQN_PUSCH_ConfigCommon pusch_ConfigCommon;
+	struct SQN_PUSCH_ConfigCommon_v1270_pusch_ConfigCommon_v1270_Optional pusch_ConfigCommon_v1270;
+	struct SQN_PUSCH_ConfigCommon_v1310_pusch_ConfigCommon_v1310_Optional pusch_ConfigCommon_v1310;
 };
 
 enum PUSCH_ConfigCommon_Type_Sel {
@@ -168,36 +174,36 @@ struct PUSCH_ConfigCommon_Type {
 	union PUSCH_ConfigCommon_Type_Value v;
 };
 
-struct PUSCH_ConfigDedicated_v1020_pusch_ConfigDedicated_v1020_Optional {
+struct SQN_PUSCH_ConfigDedicated_v1020_pusch_ConfigDedicated_v1020_Optional {
 	bool d;
-	struct PUSCH_ConfigDedicated_v1020 v;
+	struct SQN_PUSCH_ConfigDedicated_v1020 v;
 };
 
-struct PUSCH_ConfigDedicated_v1130_pusch_ConfigDedicated_v1130_Optional {
+struct SQN_PUSCH_ConfigDedicated_v1130_pusch_ConfigDedicated_v1130_Optional {
 	bool d;
-	struct PUSCH_ConfigDedicated_v1130 v;
+	struct SQN_PUSCH_ConfigDedicated_v1130 v;
 };
 
-struct PUSCH_ConfigDedicated_v1250_pusch_ConfigDedicated_v1250_Optional {
+struct SQN_PUSCH_ConfigDedicated_v1250_pusch_ConfigDedicated_v1250_Optional {
 	bool d;
-	struct PUSCH_ConfigDedicated_v1250 v;
+	struct SQN_PUSCH_ConfigDedicated_v1250 v;
 };
 
 struct PUSCH_ConfigDedicated_R8andLater_Type {
-	struct PUSCH_ConfigDedicated pusch_ConfigDedicated;
-	struct PUSCH_ConfigDedicated_v1020_pusch_ConfigDedicated_v1020_Optional pusch_ConfigDedicated_v1020;
-	struct PUSCH_ConfigDedicated_v1130_pusch_ConfigDedicated_v1130_Optional pusch_ConfigDedicated_v1130;
-	struct PUSCH_ConfigDedicated_v1250_pusch_ConfigDedicated_v1250_Optional pusch_ConfigDedicated_v1250;
+	struct SQN_PUSCH_ConfigDedicated pusch_ConfigDedicated;
+	struct SQN_PUSCH_ConfigDedicated_v1020_pusch_ConfigDedicated_v1020_Optional pusch_ConfigDedicated_v1020;
+	struct SQN_PUSCH_ConfigDedicated_v1130_pusch_ConfigDedicated_v1130_Optional pusch_ConfigDedicated_v1130;
+	struct SQN_PUSCH_ConfigDedicated_v1250_pusch_ConfigDedicated_v1250_Optional pusch_ConfigDedicated_v1250;
 };
 
-struct PUSCH_ConfigDedicated_v1430_pusch_ConfigDedicated_v1430_Optional {
+struct SQN_PUSCH_ConfigDedicated_v1430_pusch_ConfigDedicated_v1430_Optional {
 	bool d;
-	struct PUSCH_ConfigDedicated_v1430 v;
+	struct SQN_PUSCH_ConfigDedicated_v1430 v;
 };
 
 struct PUSCH_ConfigDedicated_R13andLater_Type {
-	struct PUSCH_ConfigDedicated_r13 pusch_ConfigDedicated_r13;
-	struct PUSCH_ConfigDedicated_v1430_pusch_ConfigDedicated_v1430_Optional pusch_ConfigDedicated_v1430;
+	struct SQN_PUSCH_ConfigDedicated_r13 pusch_ConfigDedicated_r13;
+	struct SQN_PUSCH_ConfigDedicated_v1430_pusch_ConfigDedicated_v1430_Optional pusch_ConfigDedicated_v1430;
 };
 
 enum PUSCH_ConfigDedicated_Type_Sel {
@@ -253,7 +259,7 @@ enum SoundingRS_UL_ConfigCommon_Type_Sel {
 };
 
 union SoundingRS_UL_ConfigCommon_Type_Value {
-	struct SoundingRS_UL_ConfigCommon R8;
+	struct SQN_SoundingRS_UL_ConfigCommon R8;
 };
 
 struct SoundingRS_UL_ConfigCommon_Type {
@@ -261,25 +267,25 @@ struct SoundingRS_UL_ConfigCommon_Type {
 	union SoundingRS_UL_ConfigCommon_Type_Value v;
 };
 
-struct SoundingRS_UL_ConfigDedicated_soundingRS_UL_ConfigDedicated_Optional {
+struct SQN_SoundingRS_UL_ConfigDedicated_soundingRS_UL_ConfigDedicated_Optional {
 	bool d;
-	struct SoundingRS_UL_ConfigDedicated v;
+	struct SQN_SoundingRS_UL_ConfigDedicated v;
 };
 
-struct SoundingRS_UL_ConfigDedicated_v1020_soundingRS_UL_ConfigDedicated_v1020_Optional {
+struct SQN_SoundingRS_UL_ConfigDedicated_v1020_soundingRS_UL_ConfigDedicated_v1020_Optional {
 	bool d;
-	struct SoundingRS_UL_ConfigDedicated_v1020 v;
+	struct SQN_SoundingRS_UL_ConfigDedicated_v1020 v;
 };
 
-struct SoundingRS_UL_ConfigDedicatedAperiodic_r10_soundingRS_UL_ConfigDedicatedAperiodic_r10_Optional {
+struct SQN_SoundingRS_UL_ConfigDedicatedAperiodic_r10_soundingRS_UL_ConfigDedicatedAperiodic_r10_Optional {
 	bool d;
-	struct SoundingRS_UL_ConfigDedicatedAperiodic_r10 v;
+	struct SQN_SoundingRS_UL_ConfigDedicatedAperiodic_r10 v;
 };
 
 struct SoundingRS_UL_ConfigDedicated_R8andLater_Type {
-	struct SoundingRS_UL_ConfigDedicated_soundingRS_UL_ConfigDedicated_Optional soundingRS_UL_ConfigDedicated;
-	struct SoundingRS_UL_ConfigDedicated_v1020_soundingRS_UL_ConfigDedicated_v1020_Optional soundingRS_UL_ConfigDedicated_v1020;
-	struct SoundingRS_UL_ConfigDedicatedAperiodic_r10_soundingRS_UL_ConfigDedicatedAperiodic_r10_Optional soundingRS_UL_ConfigDedicatedAperiodic_r10;
+	struct SQN_SoundingRS_UL_ConfigDedicated_soundingRS_UL_ConfigDedicated_Optional soundingRS_UL_ConfigDedicated;
+	struct SQN_SoundingRS_UL_ConfigDedicated_v1020_soundingRS_UL_ConfigDedicated_v1020_Optional soundingRS_UL_ConfigDedicated_v1020;
+	struct SQN_SoundingRS_UL_ConfigDedicatedAperiodic_r10_soundingRS_UL_ConfigDedicatedAperiodic_r10_Optional soundingRS_UL_ConfigDedicatedAperiodic_r10;
 };
 
 enum SoundingRS_UL_ConfigDedicated_Type_Sel {
@@ -301,14 +307,14 @@ struct SRS_UL_Config_Type {
 	struct SoundingRS_UL_ConfigDedicated_Type Dedicated;
 };
 
-struct SchedulingRequestConfig_v1020_schedulingRequestConfig_v1020_Optional {
+struct SQN_SchedulingRequestConfig_v1020_schedulingRequestConfig_v1020_Optional {
 	bool d;
-	struct SchedulingRequestConfig_v1020 v;
+	struct SQN_SchedulingRequestConfig_v1020 v;
 };
 
 struct SchedulingRequestConfig_R8andLater_Type {
-	struct SchedulingRequestConfig schedulingRequestConfig;
-	struct SchedulingRequestConfig_v1020_schedulingRequestConfig_v1020_Optional schedulingRequestConfig_v1020;
+	struct SQN_SchedulingRequestConfig schedulingRequestConfig;
+	struct SQN_SchedulingRequestConfig_v1020_schedulingRequestConfig_v1020_Optional schedulingRequestConfig_v1020;
 };
 
 enum SchedulingRequestConfig_Type_Sel {
@@ -325,30 +331,30 @@ struct SchedulingRequestConfig_Type {
 	union SchedulingRequestConfig_Type_Value v;
 };
 
-struct CQI_ReportConfig_v920_cqi_ReportConfig_v920_Optional {
+struct SQN_CQI_ReportConfig_v920_cqi_ReportConfig_v920_Optional {
 	bool d;
-	struct CQI_ReportConfig_v920 v;
+	struct SQN_CQI_ReportConfig_v920 v;
 };
 
 struct CQI_ReportConfig_R8andLater_Type {
-	struct CQI_ReportConfig cqi_ReportConfig;
-	struct CQI_ReportConfig_v920_cqi_ReportConfig_v920_Optional cqi_ReportConfig_v920;
+	struct SQN_CQI_ReportConfig cqi_ReportConfig;
+	struct SQN_CQI_ReportConfig_v920_cqi_ReportConfig_v920_Optional cqi_ReportConfig_v920;
 };
 
-struct CQI_ReportConfig_v1130_cqi_ReportConfig_v1130_Optional {
+struct SQN_CQI_ReportConfig_v1130_cqi_ReportConfig_v1130_Optional {
 	bool d;
-	struct CQI_ReportConfig_v1130 v;
+	struct SQN_CQI_ReportConfig_v1130 v;
 };
 
-struct CQI_ReportConfig_v1250_cqi_ReportConfig_v1250_Optional {
+struct SQN_CQI_ReportConfig_v1250_cqi_ReportConfig_v1250_Optional {
 	bool d;
-	struct CQI_ReportConfig_v1250 v;
+	struct SQN_CQI_ReportConfig_v1250 v;
 };
 
 struct CQI_ReportConfig_R10andLater_Type {
-	struct CQI_ReportConfig_r10 cqi_ReportConfig_r10;
-	struct CQI_ReportConfig_v1130_cqi_ReportConfig_v1130_Optional cqi_ReportConfig_v1130;
-	struct CQI_ReportConfig_v1250_cqi_ReportConfig_v1250_Optional cqi_ReportConfig_v1250;
+	struct SQN_CQI_ReportConfig_r10 cqi_ReportConfig_r10;
+	struct SQN_CQI_ReportConfig_v1130_cqi_ReportConfig_v1130_Optional cqi_ReportConfig_v1130;
+	struct SQN_CQI_ReportConfig_v1250_cqi_ReportConfig_v1250_Optional cqi_ReportConfig_v1250;
 };
 
 enum CQI_ReportConfig_Type_Sel {
@@ -367,26 +373,26 @@ struct CQI_ReportConfig_Type {
 	union CQI_ReportConfig_Type_Value v;
 };
 
-struct UplinkPowerControlCommon_v1020_uplinkPowerControlCommon_v1020_Optional {
+struct SQN_UplinkPowerControlCommon_v1020_uplinkPowerControlCommon_v1020_Optional {
 	bool d;
-	struct UplinkPowerControlCommon_v1020 v;
+	struct SQN_UplinkPowerControlCommon_v1020 v;
 };
 
-struct UplinkPowerControlCommonSCell_v1130_uplinkPowerControlCommonSCell_v1130_Optional {
+struct SQN_UplinkPowerControlCommonSCell_v1130_uplinkPowerControlCommonSCell_v1130_Optional {
 	bool d;
-	struct UplinkPowerControlCommonSCell_v1130 v;
+	struct SQN_UplinkPowerControlCommonSCell_v1130 v;
 };
 
-struct UplinkPowerControlCommonPSCell_r12_uplinkPowerControlCommonPSCell_r12_Optional {
+struct SQN_UplinkPowerControlCommonPSCell_r12_uplinkPowerControlCommonPSCell_r12_Optional {
 	bool d;
-	struct UplinkPowerControlCommonPSCell_r12 v;
+	struct SQN_UplinkPowerControlCommonPSCell_r12 v;
 };
 
 struct UplinkPowerControlCommon_R8andLater_Type {
-	struct UplinkPowerControlCommon uplinkPowerControlCommon;
-	struct UplinkPowerControlCommon_v1020_uplinkPowerControlCommon_v1020_Optional uplinkPowerControlCommon_v1020;
-	struct UplinkPowerControlCommonSCell_v1130_uplinkPowerControlCommonSCell_v1130_Optional uplinkPowerControlCommonSCell_v1130;
-	struct UplinkPowerControlCommonPSCell_r12_uplinkPowerControlCommonPSCell_r12_Optional uplinkPowerControlCommonPSCell_r12;
+	struct SQN_UplinkPowerControlCommon uplinkPowerControlCommon;
+	struct SQN_UplinkPowerControlCommon_v1020_uplinkPowerControlCommon_v1020_Optional uplinkPowerControlCommon_v1020;
+	struct SQN_UplinkPowerControlCommonSCell_v1130_uplinkPowerControlCommonSCell_v1130_Optional uplinkPowerControlCommonSCell_v1130;
+	struct SQN_UplinkPowerControlCommonPSCell_r12_uplinkPowerControlCommonPSCell_r12_Optional uplinkPowerControlCommonPSCell_r12;
 };
 
 enum UplinkPowerControlCommon_Type_Sel {
@@ -403,9 +409,9 @@ struct UplinkPowerControlCommon_Type {
 	union UplinkPowerControlCommon_Type_Value v;
 };
 
-struct UplinkPowerControlDedicated_v1020_uplinkPowerControlDedicated_v1020_Optional {
+struct SQN_UplinkPowerControlDedicated_v1020_uplinkPowerControlDedicated_v1020_Optional {
 	bool d;
-	struct UplinkPowerControlDedicated_v1020 v;
+	struct SQN_UplinkPowerControlDedicated_v1020 v;
 };
 
 struct SCellPathlossReferenceLinking_Type_pathlossReferenceLinking_Optional {
@@ -413,22 +419,22 @@ struct SCellPathlossReferenceLinking_Type_pathlossReferenceLinking_Optional {
 	SCellPathlossReferenceLinking_Type v;
 };
 
-struct UplinkPowerControlDedicated_v1130_uplinkPowerControlDedicated_v1130_Optional {
+struct SQN_UplinkPowerControlDedicated_v1130_uplinkPowerControlDedicated_v1130_Optional {
 	bool d;
-	struct UplinkPowerControlDedicated_v1130 v;
+	struct SQN_UplinkPowerControlDedicated_v1130 v;
 };
 
-struct UplinkPowerControlDedicated_v1250_uplinkPowerControlDedicated_v1250_Optional {
+struct SQN_UplinkPowerControlDedicated_v1250_uplinkPowerControlDedicated_v1250_Optional {
 	bool d;
-	struct UplinkPowerControlDedicated_v1250 v;
+	struct SQN_UplinkPowerControlDedicated_v1250 v;
 };
 
 struct UplinkPowerControlDedicated_R8andLater_Type {
-	struct UplinkPowerControlDedicated uplinkPowerControlDedicated;
-	struct UplinkPowerControlDedicated_v1020_uplinkPowerControlDedicated_v1020_Optional uplinkPowerControlDedicated_v1020;
+	struct SQN_UplinkPowerControlDedicated uplinkPowerControlDedicated;
+	struct SQN_UplinkPowerControlDedicated_v1020_uplinkPowerControlDedicated_v1020_Optional uplinkPowerControlDedicated_v1020;
 	struct SCellPathlossReferenceLinking_Type_pathlossReferenceLinking_Optional pathlossReferenceLinking;
-	struct UplinkPowerControlDedicated_v1130_uplinkPowerControlDedicated_v1130_Optional uplinkPowerControlDedicated_v1130;
-	struct UplinkPowerControlDedicated_v1250_uplinkPowerControlDedicated_v1250_Optional uplinkPowerControlDedicated_v1250;
+	struct SQN_UplinkPowerControlDedicated_v1130_uplinkPowerControlDedicated_v1130_Optional uplinkPowerControlDedicated_v1130;
+	struct SQN_UplinkPowerControlDedicated_v1250_uplinkPowerControlDedicated_v1250_Optional uplinkPowerControlDedicated_v1250;
 };
 
 enum UplinkPowerControlDedicated_Type_Sel {

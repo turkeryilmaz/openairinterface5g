@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -101,18 +107,6 @@ struct CcchDcchDtchConfigDL_Type {
 	SIDL_OPTIONAL_OF_STRUCT(HarqProcessConfigDL_Type, HarqProcessConfig);
 };
 
-SIDL_UNION_ENUM(TransmissionRepetition_Type) {
-	TransmissionRepetition_Type_UNBOUND_VALUE,
-	TransmissionRepetition_Type_Continuous,
-	TransmissionRepetition_Type_NumOfCycles
-};
-SIDL_UNION_BEGIN(TransmissionRepetition_Type) {
-	SIDL_UNION_CASE(TransmissionRepetition_Type_Continuous)
-		Null_Type Continuous;
-	SIDL_UNION_CASE(TransmissionRepetition_Type_NumOfCycles)
-		int32_t NumOfCycles;
-} SIDL_UNION_END;
-
 struct UplinkTimeAlignment_AutoSynch_Type {
 	TimingAdvanceIndex_Type TimingAdvance;
 	TimingAdvance_Period_Type TA_Period;
@@ -129,41 +123,6 @@ SIDL_UNION_BEGIN(UplinkTimeAlignment_Synch_Type) {
 		Null_Type None;
 	SIDL_UNION_CASE(UplinkTimeAlignment_Synch_Type_Auto)
 		struct UplinkTimeAlignment_AutoSynch_Type Auto;
-} SIDL_UNION_END;
-
-SIDL_UNION_ENUM(ULGrant_Period_Type) {
-	ULGrant_Period_Type_UNBOUND_VALUE,
-	ULGrant_Period_Type_OnlyOnce,
-	ULGrant_Period_Type_Duration
-};
-SIDL_UNION_BEGIN(ULGrant_Period_Type) {
-	SIDL_UNION_CASE(ULGrant_Period_Type_OnlyOnce)
-		Null_Type OnlyOnce;
-	SIDL_UNION_CASE(ULGrant_Period_Type_Duration)
-		int32_t Duration;
-} SIDL_UNION_END;
-
-struct PeriodicGrant_Type {
-	struct ULGrant_Period_Type Period;
-	struct TransmissionRepetition_Type NoOfRepetitions;
-};
-
-SIDL_UNION_ENUM(UL_GrantConfig_Type) {
-	UL_GrantConfig_Type_UNBOUND_VALUE,
-	UL_GrantConfig_Type_OnSR_Reception,
-	UL_GrantConfig_Type_Periodic,
-	UL_GrantConfig_Type_PeriodicOnSR_Reception,
-	UL_GrantConfig_Type_None
-};
-SIDL_UNION_BEGIN(UL_GrantConfig_Type) {
-	SIDL_UNION_CASE(UL_GrantConfig_Type_OnSR_Reception)
-		Null_Type OnSR_Reception;
-	SIDL_UNION_CASE(UL_GrantConfig_Type_Periodic)
-		struct PeriodicGrant_Type Periodic;
-	SIDL_UNION_CASE(UL_GrantConfig_Type_PeriodicOnSR_Reception)
-		struct PeriodicGrant_Type PeriodicOnSR_Reception;
-	SIDL_UNION_CASE(UL_GrantConfig_Type_None)
-		Null_Type None;
 } SIDL_UNION_END;
 
 struct CcchDcchDtchConfigUL_Type {
