@@ -10167,6 +10167,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         else
         {
           struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
+          LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
           ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
           LOG_A(RRC, "Genreating RRC-CS from TTCN message RRC_PDU_REQ\n");
           module_id_t Idx;
@@ -10174,9 +10175,16 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
           eNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
 
-          RRCConnSetup_PDU_Present = true;
-          RRCConnSetup_PDUSize = SS_RRC_PDU_REQ(msg_p).sdu_size;
-          memcpy(RRCConnSetup_PDU, SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+          uper_decode(NULL,
+                      &asn_DEF_LTE_DL_CCCH_Message,
+                      (void **)&dl_ccch_msg,
+                      (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
+                      SS_RRC_PDU_REQ(msg_p).sdu_size,0,0);
+
+          xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
+
+          RRCMsgOnSRB0_PDUSize = SS_RRC_PDU_REQ(msg_p).sdu_size;
+          memcpy(RRCMsgOnSRB0_PDU, SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
 
           Idx = DCCH;
           // SRB1
@@ -10198,7 +10206,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                  &DCCH_LCHAN_DESC,
                  LCHAN_DESC_SIZE);
 
-          rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, 0);
+          if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
+            RRCConnSetup_PDU_Present = true;
+            rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, 0);
+          } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
+            rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, 0);
+          }
 
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
