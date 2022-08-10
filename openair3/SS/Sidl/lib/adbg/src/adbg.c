@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #include <stddef.h>
@@ -168,18 +174,22 @@ void adbgPrintFormatLog(acpCtx_t ctx)
 		if (ch == '{') {
 			trim = true;
 			lead += 4;
+			SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > (sz + lead + 2));
 			*res++ = '{';
 			*res++ = '\n';
 			for (i = 0; i < lead; i++) *res++ = ' ';
 			sz += lead + 2;
 		} else if (ch == '}') {
+			SIDL_ASSERT((ssize_t)lead - 4 >= 0);
 			lead -= 4;
+			SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > (sz + lead + 2));
 			*res++ = '\n';
 			for (i = 0; i < lead; i++) *res++ = ' ';
 			*res++ = '}';
 			sz += lead + 2;
 		} else if (ch == ',') {
 			trim = true;
+			SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > (sz + lead + 2));
 			*res++ = ',';
 			*res++ = '\n';
 			for (i = 0; i < lead; i++) *res++ = ' ';
@@ -193,15 +203,16 @@ void adbgPrintFormatLog(acpCtx_t ctx)
 				}
 			}
 
+			SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > (sz + 1));
 			*res++ = ch;
 			sz++;
 		}
 	}
 
+	SIDL_ASSERT(lead == 0);
+	SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > (sz + 1));
 	*res = '\0';
 	sz++;
-
-	SIDL_ASSERT(ACP_CTX_CAST(ctx)->logFormatBufMaxSize > sz);
 
 	ACP_CTX_CAST(ctx)->logger((const char*)ACP_CTX_CAST(ctx)->logFormatBuf);
 	ACP_CTX_CAST(ctx)->logBufSize = 0;

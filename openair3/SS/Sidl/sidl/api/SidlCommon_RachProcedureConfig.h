@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -27,14 +33,14 @@ SIDL_BEGIN_C_INTERFACE
 
 typedef BIT_STRING ContentionResolutionId_Type;
 
-struct RACH_ConfigCommon_v1250_rach_ConfigCommon_v1250_Optional {
+struct SQN_RACH_ConfigCommon_v1250_rach_ConfigCommon_v1250_Optional {
 	bool d;
-	struct RACH_ConfigCommon_v1250 v;
+	struct SQN_RACH_ConfigCommon_v1250 v;
 };
 
 struct RACH_ConfigCommon_R8andLater_Type {
-	struct RACH_ConfigCommon rach_ConfigCommon;
-	struct RACH_ConfigCommon_v1250_rach_ConfigCommon_v1250_Optional rach_ConfigCommon_v1250;
+	struct SQN_RACH_ConfigCommon rach_ConfigCommon;
+	struct SQN_RACH_ConfigCommon_v1250_rach_ConfigCommon_v1250_Optional rach_ConfigCommon_v1250;
 };
 
 enum RACH_ConfigCommon_Type_Sel {
@@ -57,28 +63,12 @@ enum RACH_ConfigDedicated_Type_Sel {
 };
 
 union RACH_ConfigDedicated_Type_Value {
-	struct RACH_ConfigDedicated R8;
+	struct SQN_RACH_ConfigDedicated R8;
 };
 
 struct RACH_ConfigDedicated_Type {
 	enum RACH_ConfigDedicated_Type_Sel d;
 	union RACH_ConfigDedicated_Type_Value v;
-};
-
-enum RAR_RapIdCtrl_Type_Sel {
-	RAR_RapIdCtrl_Type_UNBOUND_VALUE = 0,
-	RAR_RapIdCtrl_Type_Automatic = 1,
-	RAR_RapIdCtrl_Type_Unmatched = 2,
-};
-
-union RAR_RapIdCtrl_Type_Value {
-	Null_Type Automatic;
-	Null_Type Unmatched;
-};
-
-struct RAR_RapIdCtrl_Type {
-	enum RAR_RapIdCtrl_Type_Sel d;
-	union RAR_RapIdCtrl_Type_Value v;
 };
 
 struct UplinkGrant_Type {
@@ -98,7 +88,7 @@ enum TempC_RNTI_Type_Sel {
 
 union TempC_RNTI_Type_Value {
 	Null_Type SameAsC_RNTI;
-	C_RNTI Explicit;
+	SQN_C_RNTI Explicit;
 };
 
 struct TempC_RNTI_Type {

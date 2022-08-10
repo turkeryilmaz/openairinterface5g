@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #include <stdio.h>
@@ -31,7 +37,6 @@
 #include "adbgMsg.h"
 #include "acpVer.h"
 #include "acpHandshake.h"
-
 
 // #define ACP_LOG_DEBUG(...) printf(__VA_ARGS__);
 #define ACP_LOG_DEBUG(...)
@@ -100,7 +105,6 @@ static void acpPeerSetHandshaked(struct acpCtx* ctx, int peer, int flag)
 		}
 	}
 }
-
 
 // ___________________________ / Interface // ___________________________
 
@@ -638,8 +642,8 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 			/* FIXME: How about duplicate Handshake? */
 			struct AcpHandshake_Type* hs;
 
-			if(acpHandshakeHandleFromSSDecSrv(ctx, buffer, length + ACP_HEADER_SIZE, &hs) == 0) {
-								ACP_DEBUG_CLOG(ctx, "ACP version: cli_version=[%s, cksm: %s] srv_version=[%s, chksm: %s].", hs->acpVersion, hs->acpVerCksm, ACP_VERSION, ACP_VERSION_CKSM);
+			if (acpHandshakeHandleFromSSDecSrv(ctx, buffer, length + ACP_HEADER_SIZE, &hs) == 0) {
+				ACP_DEBUG_CLOG(ctx, "ACP version: cli_version=[%s, cksm: %s] srv_version=[%s, chksm: %s].", hs->acpVersion, hs->acpVerCksm, ACP_VERSION, ACP_VERSION_CKSM);
 				userId = acpHandleHandshakeFromClient(ctx, sock, hs);
 				acpHandshakeHandleFromSSFreeSrv(hs);
 			} else {
@@ -671,7 +675,7 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 	int sock = ACP_CTX_CAST(ctx)->sock;
 	if (ACP_CTX_CAST(ctx)->isServer) {
 
-		if ( ACP_CTX_CAST(ctx)->lastPeer == -1) {
+		if (ACP_CTX_CAST(ctx)->lastPeer == -1) {
 			ACP_CTX_CAST(ctx)->lastPeer = acpSocketAccept(sock);
 		}
 
@@ -853,7 +857,7 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 	if (isOnlyNotify) {
 		int ret = -1;
 		ACP_DEBUG_CLOG(*ctx, "Wait for handshake\r\n");
-		while(!acpAnyPeerHandshaked(ACP_CTX_CAST(*ctx)) || ret > 0) {
+		while (!acpAnyPeerHandshaked(ACP_CTX_CAST(*ctx)) || ret > 0) {
 			uint8_t buffer[256] = {};
 			size_t sz = sizeof(buffer);
 			ret = acpRecvMsg(*ctx, &sz, buffer);

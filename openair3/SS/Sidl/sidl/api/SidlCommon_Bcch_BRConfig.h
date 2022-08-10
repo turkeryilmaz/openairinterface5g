@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -25,9 +31,9 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-typedef MasterInformationBlock_schedulingInfoSIB1_BR_r13 SchedulingInfoSIB1_BR_r13_Type;
+typedef SQN_MasterInformationBlock_schedulingInfoSIB1_BR_r13 SchedulingInfoSIB1_BR_r13_Type;
 
-typedef struct SystemInformationBlockType1_v1310_IEs_bandwidthReducedAccessRelatedInfo_r13 BandwidthReducedAccessRelatedInfo_Type;
+typedef struct SQN_SystemInformationBlockType1_v1310_IEs_bandwidthReducedAccessRelatedInfo_r13 BandwidthReducedAccessRelatedInfo_Type;
 
 struct int32_t_SI_SubframeOffsetList_Type_Dynamic {
 	size_t d;
@@ -65,12 +71,12 @@ struct Bcch_BRToPdschConfig_Type {
 	struct SI_SubframeOffsetList_Type_SubframeOffsetList_Optional SubframeOffsetList;
 };
 
-struct BCCH_DL_SCH_Message_BR_BR_SI_List_Type_Dynamic {
+struct SQN_BCCH_DL_SCH_Message_BR_BR_SI_List_Type_Dynamic {
 	size_t d;
-	struct BCCH_DL_SCH_Message_BR* v;
+	struct SQN_BCCH_DL_SCH_Message_BR* v;
 };
 
-typedef struct BCCH_DL_SCH_Message_BR_BR_SI_List_Type_Dynamic BR_SI_List_Type;
+typedef struct SQN_BCCH_DL_SCH_Message_BR_BR_SI_List_Type_Dynamic BR_SI_List_Type;
 
 struct BR_SI_List_Type_BR_SegmentedSI_List_Type_Dynamic {
 	size_t d;
@@ -79,14 +85,14 @@ struct BR_SI_List_Type_BR_SegmentedSI_List_Type_Dynamic {
 
 typedef struct BR_SI_List_Type_BR_SegmentedSI_List_Type_Dynamic BR_SegmentedSI_List_Type;
 
-struct BCCH_BCH_Message_Bcch_BRInfo_Type_MIB_Optional {
+struct SQN_BCCH_BCH_Message_Bcch_BRInfo_Type_MIB_Optional {
 	bool d;
-	struct BCCH_BCH_Message v;
+	struct SQN_BCCH_BCH_Message v;
 };
 
-struct BCCH_DL_SCH_Message_BR_Bcch_BRInfo_Type_SIB1_Optional {
+struct SQN_BCCH_DL_SCH_Message_BR_Bcch_BRInfo_Type_SIB1_Optional {
 	bool d;
-	struct BCCH_DL_SCH_Message_BR v;
+	struct SQN_BCCH_DL_SCH_Message_BR v;
 };
 
 struct BR_SI_List_Type_SIs_Optional {
@@ -100,8 +106,8 @@ struct BR_SegmentedSI_List_Type_SegmentedSIs_Optional {
 };
 
 struct Bcch_BRInfo_Type {
-	struct BCCH_BCH_Message_Bcch_BRInfo_Type_MIB_Optional MIB;
-	struct BCCH_DL_SCH_Message_BR_Bcch_BRInfo_Type_SIB1_Optional SIB1;
+	struct SQN_BCCH_BCH_Message_Bcch_BRInfo_Type_MIB_Optional MIB;
+	struct SQN_BCCH_DL_SCH_Message_BR_Bcch_BRInfo_Type_SIB1_Optional SIB1;
 	struct BR_SI_List_Type_SIs_Optional SIs;
 	struct BR_SegmentedSI_List_Type_SegmentedSIs_Optional SegmentedSIs;
 };

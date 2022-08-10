@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -22,6 +28,7 @@
 #include "SidlBase.h"
 #include "SidlCommon.h"
 #include "SidlCommonBase.h"
+#include "SidlNrASN1.h"
 #include "SidlNrCommon.h"
 #include "SidlParts.h"
 #include "SidlVals.h"
@@ -36,13 +43,20 @@
 #include "SidlCommon_SciSchedulingConfig.h"
 #include "SidlCommon_ServingCellConfig.h"
 #include "SidlCommon_StaticCellInfo.h"
+#include "SidlCommon_NR_BcchConfig_Type.h"
+#include "SidlCommon_NR_CellConfigCommon_Type.h"
+#include "SidlCommon_NR_CellConfigPhysicalLayer_Type.h"
+#include "SidlCommon_NR_DcchDtchConfig_Type.h"
+#include "SidlCommon_NR_PcchConfig_Type.h"
+#include "SidlCommon_NR_RachProcedureConfig_Type.h"
+#include "SidlCommon_NR_SS_StaticCellResourceConfig_Type.h"
+#include "SidlCommon_NR_ServingCellConfig_Type.h"
 #include "SidlCommon_CellConfigRequest.h"
+#include "SidlCommon_NR_CellConfigRequest.h"
 
 SIDL_BEGIN_C_INTERFACE
 
-typedef B128_Type B128_Key_Type;
-
-typedef CipheringAlgorithm_r12_e CipheringAlgorithm_r12_Type;
+typedef SQN_CipheringAlgorithm_r12_e CipheringAlgorithm_r12_Type;
 
 struct SecurityActTime_Type_SecurityActTimeList_Type_Dynamic {
 	size_t d;
@@ -78,25 +92,20 @@ struct PdcpCountGetReq_Type {
 	union PdcpCountGetReq_Type_Value v;
 };
 
-enum Pdcp_CountReq_Type_Sel {
-	Pdcp_CountReq_Type_UNBOUND_VALUE = 0,
-	Pdcp_CountReq_Type_Get = 1,
-	Pdcp_CountReq_Type_Set = 2,
+enum PDCP_CountReq_Type_Sel {
+	PDCP_CountReq_Type_UNBOUND_VALUE = 0,
+	PDCP_CountReq_Type_Get = 1,
+	PDCP_CountReq_Type_Set = 2,
 };
 
-struct PdcpCountInfo_Type_Set_Dynamic {
-	size_t d;
-	struct PdcpCountInfo_Type* v;
-};
-
-union Pdcp_CountReq_Type_Value {
+union PDCP_CountReq_Type_Value {
 	struct PdcpCountGetReq_Type Get;
-	struct PdcpCountInfo_Type_Set_Dynamic Set;
+	PdcpCountInfoList_Type Set;
 };
 
-struct Pdcp_CountReq_Type {
-	enum Pdcp_CountReq_Type_Sel d;
-	union Pdcp_CountReq_Type_Value v;
+struct PDCP_CountReq_Type {
+	enum PDCP_CountReq_Type_Sel d;
+	union PDCP_CountReq_Type_Value v;
 };
 
 enum PDCP_SNLength_Type {
@@ -154,7 +163,7 @@ enum PDCP_Config_Type_Sel {
 };
 
 union PDCP_Config_Type_Value {
-	struct PDCP_Config R8;
+	struct SQN_PDCP_Config R8;
 };
 
 struct PDCP_Config_Type {
@@ -217,7 +226,7 @@ enum UL_AM_RLC_Type_Sel {
 };
 
 union UL_AM_RLC_Type_Value {
-	struct UL_AM_RLC R8;
+	struct SQN_UL_AM_RLC R8;
 };
 
 struct UL_AM_RLC_Type {
@@ -231,7 +240,7 @@ enum DL_AM_RLC_Type_Sel {
 };
 
 union DL_AM_RLC_Type_Value {
-	struct DL_AM_RLC R8;
+	struct SQN_DL_AM_RLC R8;
 };
 
 struct DL_AM_RLC_Type {
@@ -245,7 +254,7 @@ enum UL_UM_RLC_Type_Sel {
 };
 
 union UL_UM_RLC_Type_Value {
-	struct UL_UM_RLC R8;
+	struct SQN_UL_UM_RLC R8;
 };
 
 struct UL_UM_RLC_Type {
@@ -259,7 +268,7 @@ enum DL_UM_RLC_Type_Sel {
 };
 
 union DL_UM_RLC_Type_Value {
-	struct DL_UM_RLC R8;
+	struct SQN_DL_UM_RLC R8;
 };
 
 struct DL_UM_RLC_Type {
@@ -277,15 +286,15 @@ struct DL_AM_RLC_Type_Rx_Optional {
 	struct DL_AM_RLC_Type v;
 };
 
-struct RLC_Config_v1250_ExtendedLI_Optional {
+struct SQN_RLC_Config_v1250_ExtendedLI_Optional {
 	bool d;
-	struct RLC_Config_v1250 v;
+	struct SQN_RLC_Config_v1250 v;
 };
 
 struct SS_RLC_AM_Type {
 	struct UL_AM_RLC_Type_Tx_Optional Tx;
 	struct DL_AM_RLC_Type_Rx_Optional Rx;
-	struct RLC_Config_v1250_ExtendedLI_Optional ExtendedLI;
+	struct SQN_RLC_Config_v1250_ExtendedLI_Optional ExtendedLI;
 };
 
 struct UL_UM_RLC_Type_SS_RLC_UM_Bi_Directional_Type_Tx_Optional {
@@ -449,7 +458,7 @@ struct MAC_TestModeConfig_Type {
 	union MAC_TestModeConfig_Type_Value v;
 };
 
-typedef LogicalChannelConfig_ul_SpecificParameters_prioritisedBitRate_e PrioritizedBitRate_Type;
+typedef SQN_LogicalChannelConfig_ul_SpecificParameters_prioritisedBitRate_e PrioritizedBitRate_Type;
 
 struct Null_Type_LAA_UL_Allowed_Optional {
 	bool d;
@@ -499,7 +508,7 @@ struct MAC_Configuration_Type_Mac_Optional {
 	struct MAC_Configuration_Type v;
 };
 
-struct bool_DiscardULData_Optional {
+struct bool_RadioBearerConfigInfo_Type_DiscardULData_Optional {
 	bool d;
 	bool v;
 };
@@ -509,7 +518,7 @@ struct RadioBearerConfigInfo_Type {
 	struct RLC_Configuration_Type_Rlc_Optional Rlc;
 	struct LogicalChannelId_Type_LogicalChannelId_Optional LogicalChannelId;
 	struct MAC_Configuration_Type_Mac_Optional Mac;
-	struct bool_DiscardULData_Optional DiscardULData;
+	struct bool_RadioBearerConfigInfo_Type_DiscardULData_Optional DiscardULData;
 };
 
 enum RadioBearerConfig_Type_Sel {
@@ -686,7 +695,7 @@ struct SubframeOffsetList_Type_SubframeOffsetList_Optional {
 };
 
 struct PagingTrigger_Type {
-	struct PCCH_Message Paging;
+	struct SQN_PCCH_Message Paging;
 	struct SubframeOffsetList_Type_SubframeOffsetList_Optional SubframeOffsetList;
 };
 
@@ -772,6 +781,20 @@ struct L1Mac_IndicationControl_Type {
 	struct IndicationAndControlMode_Type_DC_PHR_Optional DC_PHR;
 };
 
+struct CellAttenuationConfig_Type_CellAttenuationList_Type_Dynamic {
+	size_t d;
+	struct CellAttenuationConfig_Type* v;
+};
+
+typedef struct CellAttenuationConfig_Type_CellAttenuationList_Type_Dynamic CellAttenuationList_Type;
+
+struct RadioBearer_Type_RadioBearerList_Type_Dynamic {
+	size_t d;
+	struct RadioBearer_Type* v;
+};
+
+typedef struct RadioBearer_Type_RadioBearerList_Type_Dynamic RadioBearerList_Type;
+
 enum SystemRequest_Type_Sel {
 	SystemRequest_Type_UNBOUND_VALUE = 0,
 	SystemRequest_Type_Cell = 1,
@@ -785,25 +808,15 @@ enum SystemRequest_Type_Sel {
 	SystemRequest_Type_UE_Cat_Info = 18,
 };
 
-struct CellAttenuationConfig_Type_CellAttenuationList_Dynamic {
-	size_t d;
-	struct CellAttenuationConfig_Type* v;
-};
-
-struct RadioBearer_Type_RadioBearerList_Dynamic {
-	size_t d;
-	struct RadioBearer_Type* v;
-};
-
 union SystemRequest_Type_Value {
 	struct CellConfigRequest_Type Cell;
-	struct CellAttenuationConfig_Type_CellAttenuationList_Dynamic CellAttenuationList;
-	struct RadioBearer_Type_RadioBearerList_Dynamic RadioBearerList;
+	CellAttenuationList_Type CellAttenuationList;
+	RadioBearerList_Type RadioBearerList;
 	Null_Type EnquireTiming;
 	struct AS_Security_Type AS_Security;
 	struct PagingTrigger_Type Paging;
 	struct L1Mac_IndicationControl_Type L1MacIndCtrl;
-	struct Pdcp_CountReq_Type PdcpCount;
+	struct PDCP_CountReq_Type PdcpCount;
 	struct UE_CategoryInfo_Type UE_Cat_Info;
 };
 
@@ -846,7 +859,7 @@ union SystemConfirm_Type_Value {
 	Null_Type Paging;
 	Null_Type L1MacIndCtrl;
 	Null_Type RlcIndCtrl;
-	struct Pdcp_CountCnf_Type PdcpCount;
+	struct PDCP_CountCnf_Type PdcpCount;
 	Null_Type PdcpHandoverControl;
 	Null_Type L1_TestMode;
 	Null_Type PdcchOrder;

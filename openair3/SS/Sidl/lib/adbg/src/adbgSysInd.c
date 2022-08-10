@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #include "adbgSysInd.h"
@@ -67,7 +73,7 @@ static void _adbgSysInd__MRB_Identity_Type(acpCtx_t _ctx, const struct MRB_Ident
 	adbgPrintLog(_ctx, " }");
 }
 
-static void _adbgSysInd__MCC_PLMN_Identity_mcc_Optional(acpCtx_t _ctx, const struct MCC_PLMN_Identity_mcc_Optional* p)
+static void _adbgSysInd__SQN_MCC_SQN_PLMN_Identity_mcc_Optional(acpCtx_t _ctx, const struct SQN_MCC_SQN_PLMN_Identity_mcc_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -77,10 +83,10 @@ static void _adbgSysInd__MCC_PLMN_Identity_mcc_Optional(acpCtx_t _ctx, const str
 	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgSysInd__PLMN_Identity(acpCtx_t _ctx, const struct PLMN_Identity* p)
+static void _adbgSysInd__SQN_PLMN_Identity(acpCtx_t _ctx, const struct SQN_PLMN_Identity* p)
 {
 	adbgPrintLog(_ctx, "mcc := ");
-	_adbgSysInd__MCC_PLMN_Identity_mcc_Optional(_ctx, &p->mcc);
+	_adbgSysInd__SQN_MCC_SQN_PLMN_Identity_mcc_Optional(_ctx, &p->mcc);
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "mnc := '");
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
@@ -89,30 +95,30 @@ static void _adbgSysInd__PLMN_Identity(acpCtx_t _ctx, const struct PLMN_Identity
 	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgSysInd__TMGI_r9_plmn_Id_r9_Value(acpCtx_t _ctx, const union TMGI_r9_plmn_Id_r9_Value* p, enum TMGI_r9_plmn_Id_r9_Sel d)
+static void _adbgSysInd__SQN_TMGI_r9_plmn_Id_r9_Value(acpCtx_t _ctx, const union SQN_TMGI_r9_plmn_Id_r9_Value* p, enum SQN_TMGI_r9_plmn_Id_r9_Sel d)
 {
-	if (d == TMGI_r9_plmn_Id_r9_plmn_Index_r9) {
+	if (d == SQN_TMGI_r9_plmn_Id_r9_plmn_Index_r9) {
 		adbgPrintLog(_ctx, "plmn_Index_r9 := %u", (unsigned int)p->plmn_Index_r9);
 		return;
 	}
-	if (d == TMGI_r9_plmn_Id_r9_explicitValue_r9) {
+	if (d == SQN_TMGI_r9_plmn_Id_r9_explicitValue_r9) {
 		adbgPrintLog(_ctx, "explicitValue_r9 := { ");
-		_adbgSysInd__PLMN_Identity(_ctx, &p->explicitValue_r9);
+		_adbgSysInd__SQN_PLMN_Identity(_ctx, &p->explicitValue_r9);
 		adbgPrintLog(_ctx, " }");
 		return;
 	}
 	adbgPrintLog(_ctx, "INVALID");
 }
 
-static void _adbgSysInd__TMGI_r9_plmn_Id_r9(acpCtx_t _ctx, const struct TMGI_r9_plmn_Id_r9* p)
+static void _adbgSysInd__SQN_TMGI_r9_plmn_Id_r9(acpCtx_t _ctx, const struct SQN_TMGI_r9_plmn_Id_r9* p)
 {
-	_adbgSysInd__TMGI_r9_plmn_Id_r9_Value(_ctx, &p->v, p->d);
+	_adbgSysInd__SQN_TMGI_r9_plmn_Id_r9_Value(_ctx, &p->v, p->d);
 }
 
-static void _adbgSysInd__TMGI_r9(acpCtx_t _ctx, const struct TMGI_r9* p)
+static void _adbgSysInd__SQN_TMGI_r9(acpCtx_t _ctx, const struct SQN_TMGI_r9* p)
 {
 	adbgPrintLog(_ctx, "plmn_Id_r9 := { ");
-	_adbgSysInd__TMGI_r9_plmn_Id_r9(_ctx, &p->plmn_Id_r9);
+	_adbgSysInd__SQN_TMGI_r9_plmn_Id_r9(_ctx, &p->plmn_Id_r9);
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "serviceId_r9 := '");
@@ -122,7 +128,7 @@ static void _adbgSysInd__TMGI_r9(acpCtx_t _ctx, const struct TMGI_r9* p)
 	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgSysInd__O1_MBMSSessionInfo_r13_sessionId_r13_Optional(acpCtx_t _ctx, const struct O1_MBMSSessionInfo_r13_sessionId_r13_Optional* p)
+static void _adbgSysInd__O1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional(acpCtx_t _ctx, const struct O1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "'");
@@ -132,20 +138,20 @@ static void _adbgSysInd__O1_MBMSSessionInfo_r13_sessionId_r13_Optional(acpCtx_t 
 	adbgPrintLog(_ctx, "'O");
 }
 
-static void _adbgSysInd__MBMSSessionInfo_r13(acpCtx_t _ctx, const struct MBMSSessionInfo_r13* p)
+static void _adbgSysInd__SQN_MBMSSessionInfo_r13(acpCtx_t _ctx, const struct SQN_MBMSSessionInfo_r13* p)
 {
 	adbgPrintLog(_ctx, "tmgi_r13 := { ");
-	_adbgSysInd__TMGI_r9(_ctx, &p->tmgi_r13);
+	_adbgSysInd__SQN_TMGI_r9(_ctx, &p->tmgi_r13);
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "sessionId_r13 := ");
-	_adbgSysInd__O1_MBMSSessionInfo_r13_sessionId_r13_Optional(_ctx, &p->sessionId_r13);
+	_adbgSysInd__O1_SQN_MBMSSessionInfo_r13_sessionId_r13_Optional(_ctx, &p->sessionId_r13);
 }
 
 static void _adbgSysInd__SC_MRB_Identity_Type(acpCtx_t _ctx, const struct SC_MRB_Identity_Type* p)
 {
 	adbgPrintLog(_ctx, "MbmsSessionInfo := { ");
-	_adbgSysInd__MBMSSessionInfo_r13(_ctx, &p->MbmsSessionInfo);
+	_adbgSysInd__SQN_MBMSSessionInfo_r13(_ctx, &p->MbmsSessionInfo);
 	adbgPrintLog(_ctx, " }");
 }
 
@@ -758,10 +764,10 @@ static void _adbgSysInd__SystemIndication_Type_Value(acpCtx_t _ctx, const union 
 		adbgPrintLog(_ctx, "C_RNTI := '");
 		for (size_t i1 = 0; i1 < 16; i1++) {
 			adbgPrintLog(_ctx, "%02X", p->C_RNTI[i1]);
-			return;
 		}
+		adbgPrintLog(_ctx, "'O");
+		return;
 	}
-	adbgPrintLog(_ctx, "'O");
 	if (d == SystemIndication_Type_PHR) {
 		adbgPrintLog(_ctx, "PHR := %u", (unsigned int)p->PHR);
 		return;

@@ -55,7 +55,6 @@
 
 #include "udp_eNB_task.h"
 #include "ss_eNB_proxy_iface.h"
-#include "common/utils/LOG/ss-log.h"
 #include "msc.h"
 
 extern RAN_CONTEXT_t RC;
@@ -336,22 +335,22 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Bandwidth)
         {
-        case CarrierBandwidthEUTRA_dl_Bandwidth_e_n6:
+        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n6:
           RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 6;
           break;
-        case CarrierBandwidthEUTRA_dl_Bandwidth_e_n15:
+        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n15:
           RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 15;
           break;
-        case CarrierBandwidthEUTRA_dl_Bandwidth_e_n25:
+        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n25:
           RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 25;
           break;
-        case CarrierBandwidthEUTRA_dl_Bandwidth_e_n50:
+        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n50:
           RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 50;
           break;
-        case CarrierBandwidthEUTRA_dl_Bandwidth_e_n75:
+        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n75:
           RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 75;
           break;
-        case CarrierBandwidthEUTRA_dl_Bandwidth_e_n100:
+        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n100:
           RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 100;
           break;
         default:
@@ -373,10 +372,10 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
             LOG_A(ENB_SS, "[SYS] CellConfigRequest PHICH Duration: %d\n", BCCH_CONFIG.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Duration);
             switch (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Duration)
             {
-            case PHICH_Config_phich_Duration_e_normal:
+            case SQN_PHICH_Config_phich_Duration_e_normal:
               RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_duration = LTE_PHICH_Config__phich_Duration_normal;
               break;
-            case PHICH_Config_phich_Duration_e_extended:
+            case SQN_PHICH_Config_phich_Duration_e_extended:
               RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_duration = LTE_PHICH_Config__phich_Duration_extended;
               break;
             default:
@@ -387,16 +386,16 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
             LOG_A(ENB_SS, "[SYS] CellConfigRequest PHICH Resource: %d\n", BCCH_CONFIG.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Resource);
             switch (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Resource)
             {
-            case PHICH_Config_phich_Resource_e_oneSixth:
+            case SQN_PHICH_Config_phich_Resource_e_oneSixth:
               RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_oneSixth;
               break;
-            case PHICH_Config_phich_Resource_e_half:
+            case SQN_PHICH_Config_phich_Resource_e_half:
               RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_half;
               break;
-            case PHICH_Config_phich_Resource_e_one:
+            case SQN_PHICH_Config_phich_Resource_e_one:
               RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_one;
               break;
-            case PHICH_Config_phich_Resource_e_two:
+            case SQN_PHICH_Config_phich_Resource_e_two:
               RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_two;
               break;
             default:
@@ -441,15 +440,15 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
               LOG_A(ENB_SS, "[SYS] [SIs] size=%d", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
               for (int i=0; i< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d; ++i)
               {
-                if (BCCH_DL_SCH_MessageType_c1 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.d)
+                if (SQN_BCCH_DL_SCH_MessageType_c1 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.d)
                 {
-                   if (BCCH_DL_SCH_MessageType_c1_systemInformation == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.d)
+                   if (SQN_BCCH_DL_SCH_MessageType_c1_systemInformation == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.d)
                    {
-                     if(SystemInformation_criticalExtensions_systemInformation_r8 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.d)
+                     if(SQN_SystemInformation_criticalExtensions_systemInformation_r8 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.d)
                      {
                        for(int j=0; j< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.d; j++)
                        {
-                         if(SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
                          {
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
@@ -601,7 +600,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       break;
     case SystemConfirm_Type_PdcpCount:
       if (msg)
-      memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct Pdcp_CountCnf_Type));
+      memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct PDCP_CountCnf_Type));
       else
       SS_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
       break;
@@ -696,7 +695,7 @@ int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell)
  * newState: The next state for the SYS State machine
  *
  */
-static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_Dynamic *BearerList)
+static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_Type_Dynamic *BearerList)
 {
   int returnState = RC.ss.State;
   enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_RadioBearerList;
@@ -754,7 +753,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.rlc_UM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_UM));
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.rlc_UM->pdcp_SN_Size = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.rlc_UM.v.pdcp_SN_Size;
                   }
-                  if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.headerCompression.d == PDCP_Config_headerCompression_rohc)
+                  if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.headerCompression.d == SQN_PDCP_Config_headerCompression_rohc)
                   {
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.headerCompression.present = LTE_PDCP_Config__headerCompression_PR_rohc;
                     if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.headerCompression.v.rohc.maxCID.d)
@@ -806,7 +805,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
                     }
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4__ul_DataSplitThreshold_r13));
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13->present = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_DataSplitThreshold_r13.v.d;
-                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_DataSplitThreshold_r13.v.d == PDCP_Config_ul_DataSplitThreshold_r13_setup)
+                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_DataSplitThreshold_r13.v.d == SQN_PDCP_Config_ul_DataSplitThreshold_r13_setup)
                     {
                       RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13->choice.setup = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_DataSplitThreshold_r13.v.v.setup;
                     }
@@ -829,7 +828,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
                     }
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4__statusFeedback_r13));
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->present = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.statusFeedback_r13.v.d;
-                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.statusFeedback_r13.v.d == PDCP_Config_statusFeedback_r13_setup)
+                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.statusFeedback_r13.v.d == SQN_PDCP_Config_statusFeedback_r13_setup)
                     {
                       if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.statusFeedback_r13.v.v.setup.statusPDU_TypeForPolling_r13.d)
                       {
@@ -862,7 +861,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
                     }
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5__ul_LWA_Config_r14));
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->present = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_LWA_Config_r14.v.d;
-                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_LWA_Config_r14.v.d == PDCP_Config_ul_LWA_Config_r14_setup)
+                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_LWA_Config_r14.v.d == SQN_PDCP_Config_ul_LWA_Config_r14_setup)
                     {
                       RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DRB_ViaWLAN_r14 = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_LWA_Config_r14.v.v.setup.ul_LWA_DRB_ViaWLAN_r14;
                       if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.ul_LWA_Config_r14.v.v.setup.ul_LWA_DataSplitThreshold_r14.d)
@@ -881,7 +880,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
                     }
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5__uplinkOnlyHeaderCompression_r14));
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->present = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.uplinkOnlyHeaderCompression_r14.v.d;
-                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.uplinkOnlyHeaderCompression_r14.v.d == PDCP_Config_uplinkOnlyHeaderCompression_r14_rohc_r14)
+                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.uplinkOnlyHeaderCompression_r14.v.d == SQN_PDCP_Config_uplinkOnlyHeaderCompression_r14_rohc_r14)
                     {
                       if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.uplinkOnlyHeaderCompression_r14.v.v.rohc_r14.maxCID_r14.d)
                       {
@@ -914,7 +913,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
                     }
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6__pdcp_DuplicationConfig_r15));
                     RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15->present = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.pdcp_DuplicationConfig_r15.v.d;
-                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.pdcp_DuplicationConfig_r15.v.d == PDCP_Config_pdcp_DuplicationConfig_r15_setup)
+                    if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.pdcp_DuplicationConfig_r15.v.d == SQN_PDCP_Config_pdcp_DuplicationConfig_r15_setup)
                     {
                       RRC_RBLIST_CFG_REQ(msg_p).rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15->choice.setup.pdcp_Duplication_r15 = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Config.Rb.v.v.Drb.v.R8.pdcp_DuplicationConfig_r15.v.v.setup.pdcp_Duplication_r15;
                     }
@@ -1066,14 +1065,14 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_D
  * newState: No impact on state machine.
  *
  */
-int sys_handle_pdcp_count_req(struct Pdcp_CountReq_Type *PdcpCount)
+int sys_handle_pdcp_count_req(struct PDCP_CountReq_Type *PdcpCount)
 {
   int returnState = RC.ss.State;
   int send_res = -1;
 
   switch (PdcpCount->d)
   {
-  case Pdcp_CountReq_Type_Get:
+  case PDCP_CountReq_Type_Get:
     LOG_A(ENB_SS, "[SYS] Pdcp_CountReq_Type_Get receivied\n");
     MessageDef *get_p = itti_alloc_new_message(TASK_SYS, 0, SS_REQ_PDCP_CNT);
     SS_REQ_PDCP_CNT(get_p).rnti = ss_rnti_g;
@@ -1115,7 +1114,7 @@ int sys_handle_pdcp_count_req(struct Pdcp_CountReq_Type *PdcpCount)
     }
 
     break;
-  case Pdcp_CountReq_Type_Set:
+  case PDCP_CountReq_Type_Set:
     LOG_A(ENB_SS, "[SYS] Pdcp_CountReq_Type_Set receivied\n");
     MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_SET_PDCP_CNT);
     for (int i = 0; i < PdcpCount->v.Set.d; i++)
@@ -1152,7 +1151,7 @@ int sys_handle_pdcp_count_req(struct Pdcp_CountReq_Type *PdcpCount)
     }
 
     break;
-  case Pdcp_CountReq_Type_UNBOUND_VALUE:
+  case PDCP_CountReq_Type_UNBOUND_VALUE:
     LOG_A(ENB_SS, "[SYS] Pdcp_CountReq_Type UNBOUND receivied\n");
     break;
   default:
@@ -1214,7 +1213,7 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
  * Function : sys_handle_cell_attn_req
  * Description: Handles the attenuation updates received from TTCN
  */
-static void sys_handle_cell_attn_req(struct CellAttenuationConfig_Type_CellAttenuationList_Dynamic *CellAttenuationList)
+static void sys_handle_cell_attn_req(struct CellAttenuationConfig_Type_CellAttenuationList_Type_Dynamic *CellAttenuationList)
 {
   /** TODO: Considering only one cell for now */
   uint8_t cellId = (uint8_t)CellAttenuationList->v->CellId;
@@ -1271,7 +1270,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 
   switch (pagingRequest->Paging.message.d)
   {
-  case PCCH_MessageType_c1:
+  case SQN_PCCH_MessageType_c1:
     if (pagingRequest->Paging.message.v.c1.d)
     {
       if (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.d)
@@ -1282,18 +1281,18 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
         SS_PAGING_IND(message_p).sf = tinfo.sf;
         SS_PAGING_IND(message_p).paging_recordList = CALLOC(1, pgSize);
         /* id-CNDomain : convert cnDomain */
-        if (cn_domain == PagingRecord_cn_Domain_e_ps)
+        if (cn_domain == SQN_PagingRecord_cn_Domain_e_ps)
         {
           SS_PAGING_IND(message_p).paging_recordList->cn_domain = CN_DOMAIN_PS;
         }
-        else if (cn_domain == PagingRecord_cn_Domain_e_cs)
+        else if (cn_domain == SQN_PagingRecord_cn_Domain_e_cs)
         {
           SS_PAGING_IND(message_p).paging_recordList->cn_domain = CN_DOMAIN_CS;
         }
 
         switch (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.d)
         {
-        case PagingUE_Identity_s_TMSI:
+        case SQN_PagingUE_Identity_s_TMSI:
           SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_s_tmsi;
           int32_t stmsi_rx = bin_to_int(pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.v.s_TMSI.m_TMSI, 32);
 
@@ -1303,16 +1302,16 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
            SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
            paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
           break;
-        case PagingUE_Identity_imsi:
+        case SQN_PagingUE_Identity_imsi:
           SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
 
           memcpy(&(SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.choice.imsi),
                  &(pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.v.imsi),
                  sizeof(s1ap_imsi_t));
           break;
-        case PagingUE_Identity_ng_5G_S_TMSI_r15:
-        case PagingUE_Identity_fullI_RNTI_r15:
-        case PagingUE_Identity_UNBOUND_VALUE:
+        case SQN_PagingUE_Identity_ng_5G_S_TMSI_r15:
+        case SQN_PagingUE_Identity_fullI_RNTI_r15:
+        case SQN_PagingUE_Identity_UNBOUND_VALUE:
           LOG_A(ENB_SS, "[SYS] Error Unhandled Paging request \n");
           break;
         default :
@@ -1324,7 +1323,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
       if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d)
       {
          LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
-         if (Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
+         if (SQN_Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
          {
            SS_PAGING_IND(message_p).systemInfoModification = true;
          }
@@ -1350,11 +1349,11 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 
     LOG_A(ENB_SS, "[SYS] Paging_IND for Cell_id %d  sent to RRC\n", cellId);
     break;
-  case PCCH_MessageType_messageClassExtension:
+  case SQN_PCCH_MessageType_messageClassExtension:
     LOG_A(ENB_SS, "[SYS] PCCH_MessageType_messageClassExtension for Cell_id %d received\n",
           cellId);
     break;
-  case PCCH_MessageType_UNBOUND_VALUE:
+  case SQN_PCCH_MessageType_UNBOUND_VALUE:
     LOG_A(ENB_SS, "[SYS] Invalid Pging request received Type_UNBOUND_VALUE received\n");
     break;
   default:
@@ -1938,10 +1937,10 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
       enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpCount;
       enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
       bool resVal = TRUE;
-      struct Pdcp_CountCnf_Type PdcpCount;
+      struct PDCP_CountCnf_Type PdcpCount;
 
 
-      PdcpCount.d = Pdcp_CountCnf_Type_Get;
+      PdcpCount.d = PDCP_CountCnf_Type_Get;
       PdcpCount.v.Get.d = SS_GET_PDCP_CNT(received_msg).size;
       const size_t size = sizeof(struct PdcpCountInfo_Type) * PdcpCount.v.Get.d;
       PdcpCount.v.Get.v =(struct PdcpCountInfo_Type *)acpMalloc(size);

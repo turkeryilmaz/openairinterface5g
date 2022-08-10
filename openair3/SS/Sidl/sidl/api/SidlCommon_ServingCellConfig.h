@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -25,11 +31,11 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-typedef MAC_MainConfig_mac_MainConfig_v1020_sCellDeactivationTimer_r10_e MAC_MainConfig_ScellDeactivationTimer_Type;
+typedef SQN_MAC_MainConfig_mac_MainConfig_v1020_sCellDeactivationTimer_r10_e MAC_MainConfig_ScellDeactivationTimer_Type;
 
-typedef struct CrossCarrierSchedulingConfig_r10_schedulingCellInfo_r10_other_r10 CrossSchedulingCarrierInfo_Type;
+typedef struct SQN_CrossCarrierSchedulingConfig_r10_schedulingCellInfo_r10_other_r10 CrossSchedulingCarrierInfo_Type;
 
-typedef TDD_Config_subframeAssignment_e TDD_SubframeAssignment_Type;
+typedef SQN_TDD_Config_subframeAssignment_e TDD_SubframeAssignment_Type;
 
 enum Scell_Capability_Type {
 	Scell_Cap_DlOnly = 0,
@@ -38,24 +44,24 @@ enum Scell_Capability_Type {
 
 typedef enum Scell_Capability_Type Scell_Capability_Type;
 
-struct CrossCarrierSchedulingConfig_r10_crossCarrierSchedulingConfig_r10_Optional {
+struct SQN_CrossCarrierSchedulingConfig_r10_crossCarrierSchedulingConfig_r10_Optional {
 	bool d;
-	struct CrossCarrierSchedulingConfig_r10 v;
+	struct SQN_CrossCarrierSchedulingConfig_r10 v;
 };
 
-struct CrossCarrierSchedulingConfig_r13_crossCarrierSchedulingConfig_r13_Optional {
+struct SQN_CrossCarrierSchedulingConfig_r13_crossCarrierSchedulingConfig_r13_Optional {
 	bool d;
-	struct CrossCarrierSchedulingConfig_r13 v;
+	struct SQN_CrossCarrierSchedulingConfig_r13 v;
 };
 
 struct CrossCarrierScheduledCellsList_Type {
-	struct CrossCarrierSchedulingConfig_r10_crossCarrierSchedulingConfig_r10_Optional crossCarrierSchedulingConfig_r10;
-	struct CrossCarrierSchedulingConfig_r13_crossCarrierSchedulingConfig_r13_Optional crossCarrierSchedulingConfig_r13;
+	struct SQN_CrossCarrierSchedulingConfig_r10_crossCarrierSchedulingConfig_r10_Optional crossCarrierSchedulingConfig_r10;
+	struct SQN_CrossCarrierSchedulingConfig_r13_crossCarrierSchedulingConfig_r13_Optional crossCarrierSchedulingConfig_r13;
 };
 
-struct MeasSubframePatternPCell_r10_MeasSubframePatternPCell_Optional {
+struct SQN_MeasSubframePatternPCell_r10_MeasSubframePatternPCell_Optional {
 	bool d;
-	struct MeasSubframePatternPCell_r10 v;
+	struct SQN_MeasSubframePatternPCell_r10 v;
 };
 
 struct CrossCarrierScheduledCellsList_Type_CrossCarrierScheduledCellsList_Optional {
@@ -65,7 +71,7 @@ struct CrossCarrierScheduledCellsList_Type_CrossCarrierScheduledCellsList_Option
 
 struct PrimaryCellInfo_Type {
 	EUTRA_CellIdList_Type AssociatedScellList;
-	struct MeasSubframePatternPCell_r10_MeasSubframePatternPCell_Optional MeasSubframePatternPCell;
+	struct SQN_MeasSubframePatternPCell_r10_MeasSubframePatternPCell_Optional MeasSubframePatternPCell;
 	struct CrossCarrierScheduledCellsList_Type_CrossCarrierScheduledCellsList_Optional CrossCarrierScheduledCellsList;
 };
 
@@ -148,9 +154,9 @@ struct CrossCarrierSchedulingConfig_Type_SecondaryCellInfo_Type_CrossCarrierSche
 	struct CrossCarrierSchedulingConfig_Type v;
 };
 
-struct STAG_Id_r11_STAG_Id_Optional {
+struct SQN_STAG_Id_r11_STAG_Id_Optional {
 	bool d;
-	STAG_Id_r11 v;
+	SQN_STAG_Id_r11 v;
 };
 
 struct Pcell_Mode_Type_SecondaryCellInfo_Type_Pcell_Mode_Optional {
@@ -160,11 +166,11 @@ struct Pcell_Mode_Type_SecondaryCellInfo_Type_Pcell_Mode_Optional {
 
 struct SecondaryCellInfo_Type {
 	EUTRA_CellId_Type AssociatedPcellId;
-	SCellIndex_r10 SCellIndex;
+	SQN_SCellIndex_r10 SCellIndex;
 	struct Scell_Capability_Type_Scell_Capability_Optional Scell_Capability;
 	struct ScellDeactivationTimer_Type_ScellDeactivationTimer_Optional ScellDeactivationTimer;
 	struct CrossCarrierSchedulingConfig_Type_SecondaryCellInfo_Type_CrossCarrierSchedulingConfig_Optional CrossCarrierSchedulingConfig;
-	struct STAG_Id_r11_STAG_Id_Optional STAG_Id;
+	struct SQN_STAG_Id_r11_STAG_Id_Optional STAG_Id;
 	struct Pcell_Mode_Type_SecondaryCellInfo_Type_Pcell_Mode_Optional Pcell_Mode;
 };
 
@@ -180,7 +186,7 @@ struct Pcell_Mode_Type_PSCellInfo_Type_Pcell_Mode_Optional {
 
 struct PSCellInfo_Type {
 	EUTRA_CellId_Type AssociatedPcellId;
-	SCellIndex_r10 SCellIndex;
+	SQN_SCellIndex_r10 SCellIndex;
 	EUTRA_CellIdList_Type AssociatedScellList;
 	struct CrossCarrierSchedulingConfig_Type_PSCellInfo_Type_CrossCarrierSchedulingConfig_Optional CrossCarrierSchedulingConfig;
 	struct Pcell_Mode_Type_PSCellInfo_Type_Pcell_Mode_Optional Pcell_Mode;

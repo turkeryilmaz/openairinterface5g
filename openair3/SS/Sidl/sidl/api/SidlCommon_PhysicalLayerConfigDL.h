@@ -1,17 +1,23 @@
 /*
  * Copyright 2022 Sequans Communications.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.openairinterface.org/?page_id=698
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
  */
 
 #pragma once
@@ -31,9 +37,9 @@ typedef int8_t ToRS_EPRE_Ratio_Type;
 
 typedef uint8_t CfiValue_Type;
 
-typedef struct MeasDS_Config_r12_setup_dmtc_PeriodOffset_r12 DMTC_PeriodOffset_r12_Type;
+typedef struct SQN_MeasDS_Config_r12_setup_dmtc_PeriodOffset_r12 DMTC_PeriodOffset_r12_Type;
 
-typedef struct MeasDS_Config_r12_setup_ds_OccasionDuration_r12 DS_OccasionDuration_r12_Type;
+typedef struct SQN_MeasDS_Config_r12_setup_ds_OccasionDuration_r12 DS_OccasionDuration_r12_Type;
 
 enum AntennaInfoCommon_Type_Sel {
 	AntennaInfoCommon_Type_UNBOUND_VALUE = 0,
@@ -41,7 +47,7 @@ enum AntennaInfoCommon_Type_Sel {
 };
 
 union AntennaInfoCommon_Type_Value {
-	struct AntennaInfoCommon R8;
+	struct SQN_AntennaInfoCommon R8;
 };
 
 struct AntennaInfoCommon_Type {
@@ -130,7 +136,7 @@ enum PHICH_Config_Type_Sel {
 };
 
 union PHICH_Config_Type_Value {
-	struct PHICH_Config R8;
+	struct SQN_PHICH_Config R8;
 };
 
 struct PHICH_Config_Type {
@@ -166,7 +172,7 @@ struct CCE_StartIndex_DL_UL_Type_CCE_StartIndexList_Type_Dynamic {
 typedef struct CCE_StartIndex_DL_UL_Type_CCE_StartIndexList_Type_Dynamic CCE_StartIndexList_Type;
 
 struct PdcchCandidate_Type {
-	C_RNTI RNTI;
+	SQN_C_RNTI RNTI;
 	CCE_StartIndexList_Type CCE_StartIndexList;
 };
 
@@ -248,14 +254,14 @@ struct PdschRelativeTxPower_Type_RelativeTxPower_Optional {
 	struct PdschRelativeTxPower_Type v;
 };
 
-struct PDSCH_ConfigCommon_v1310_PDSCH_ConfigCommon_Optional {
+struct SQN_PDSCH_ConfigCommon_v1310_PDSCH_ConfigCommon_Optional {
 	bool d;
-	struct PDSCH_ConfigCommon_v1310 v;
+	struct SQN_PDSCH_ConfigCommon_v1310 v;
 };
 
 struct PdschConfig_Type {
 	struct PdschRelativeTxPower_Type_RelativeTxPower_Optional RelativeTxPower;
-	struct PDSCH_ConfigCommon_v1310_PDSCH_ConfigCommon_Optional PDSCH_ConfigCommon;
+	struct SQN_PDSCH_ConfigCommon_v1310_PDSCH_ConfigCommon_Optional PDSCH_ConfigCommon;
 };
 
 struct ToRS_EPRE_Ratios_Type_PrimarySyncSignal_Type_RelativeTxPower_Optional {
@@ -276,29 +282,29 @@ struct SecondarySyncSignal_Type {
 	struct ToRS_EPRE_Ratios_Type_SecondarySyncSignal_Type_RelativeTxPower_Optional RelativeTxPower;
 };
 
-struct CSI_RS_Config_r10_CSI_RS_Config_Optional {
+struct SQN_CSI_RS_Config_r10_CSI_RS_Config_Optional {
 	bool d;
-	struct CSI_RS_Config_r10 v;
+	struct SQN_CSI_RS_Config_r10 v;
 };
 
-struct CSI_RS_ConfigNZPToAddModList_r11_CSI_RS_ConfigNZPToAddModList_Optional {
+struct SQN_CSI_RS_ConfigNZPToAddModList_r11_CSI_RS_ConfigNZPToAddModList_Optional {
 	bool d;
-	CSI_RS_ConfigNZPToAddModList_r11 v;
+	SQN_CSI_RS_ConfigNZPToAddModList_r11 v;
 };
 
-struct CSI_RS_ConfigNZPToReleaseList_r11_CSI_RS_ConfigNZPToReleaseModList_Optional {
+struct SQN_CSI_RS_ConfigNZPToReleaseList_r11_CSI_RS_ConfigNZPToReleaseModList_Optional {
 	bool d;
-	CSI_RS_ConfigNZPToReleaseList_r11 v;
+	SQN_CSI_RS_ConfigNZPToReleaseList_r11 v;
 };
 
-struct CSI_RS_ConfigZPToAddModList_r11_CSI_RS_ConfigZPToAddModList_Optional {
+struct SQN_CSI_RS_ConfigZPToAddModList_r11_CSI_RS_ConfigZPToAddModList_Optional {
 	bool d;
-	CSI_RS_ConfigZPToAddModList_r11 v;
+	SQN_CSI_RS_ConfigZPToAddModList_r11 v;
 };
 
-struct CSI_RS_ConfigZPToReleaseList_r11_CSI_RS_ConfigZPToReleaseModList_Optional {
+struct SQN_CSI_RS_ConfigZPToReleaseList_r11_CSI_RS_ConfigZPToReleaseModList_Optional {
 	bool d;
-	CSI_RS_ConfigZPToReleaseList_r11 v;
+	SQN_CSI_RS_ConfigZPToReleaseList_r11 v;
 };
 
 struct ToRS_EPRE_Ratios_Type_CSI_RS_Config_Type_RelativeTxPower_Optional {
@@ -307,11 +313,11 @@ struct ToRS_EPRE_Ratios_Type_CSI_RS_Config_Type_RelativeTxPower_Optional {
 };
 
 struct CSI_RS_Config_Type {
-	struct CSI_RS_Config_r10_CSI_RS_Config_Optional CSI_RS_Config;
-	struct CSI_RS_ConfigNZPToAddModList_r11_CSI_RS_ConfigNZPToAddModList_Optional CSI_RS_ConfigNZPToAddModList;
-	struct CSI_RS_ConfigNZPToReleaseList_r11_CSI_RS_ConfigNZPToReleaseModList_Optional CSI_RS_ConfigNZPToReleaseModList;
-	struct CSI_RS_ConfigZPToAddModList_r11_CSI_RS_ConfigZPToAddModList_Optional CSI_RS_ConfigZPToAddModList;
-	struct CSI_RS_ConfigZPToReleaseList_r11_CSI_RS_ConfigZPToReleaseModList_Optional CSI_RS_ConfigZPToReleaseModList;
+	struct SQN_CSI_RS_Config_r10_CSI_RS_Config_Optional CSI_RS_Config;
+	struct SQN_CSI_RS_ConfigNZPToAddModList_r11_CSI_RS_ConfigNZPToAddModList_Optional CSI_RS_ConfigNZPToAddModList;
+	struct SQN_CSI_RS_ConfigNZPToReleaseList_r11_CSI_RS_ConfigNZPToReleaseModList_Optional CSI_RS_ConfigNZPToReleaseModList;
+	struct SQN_CSI_RS_ConfigZPToAddModList_r11_CSI_RS_ConfigZPToAddModList_Optional CSI_RS_ConfigZPToAddModList;
+	struct SQN_CSI_RS_ConfigZPToReleaseList_r11_CSI_RS_ConfigZPToReleaseModList_Optional CSI_RS_ConfigZPToReleaseModList;
 	struct ToRS_EPRE_Ratios_Type_CSI_RS_Config_Type_RelativeTxPower_Optional RelativeTxPower;
 };
 
@@ -334,21 +340,21 @@ struct PdcchCandidateList_Type_ePdcchCandidateList_Optional {
 	PdcchCandidateList_Type v;
 };
 
-struct EPDCCH_Config_r11_EPDCCH_Config_Optional {
+struct SQN_EPDCCH_Config_r11_EPDCCH_Config_Optional {
 	bool d;
-	struct EPDCCH_Config_r11 v;
+	struct SQN_EPDCCH_Config_r11 v;
 };
 
-struct FreqHoppingParameters_r13_mPDCCH_FreqHoppingParameters_r13_Optional {
+struct SQN_FreqHoppingParameters_r13_mPDCCH_FreqHoppingParameters_r13_Optional {
 	bool d;
-	struct FreqHoppingParameters_r13 v;
+	struct SQN_FreqHoppingParameters_r13 v;
 };
 
 struct EpdcchConfig_Type {
 	struct ToRS_EPRE_Ratios_Type_EpdcchConfig_Type_RelativeTxPower_Optional RelativeTxPower;
 	struct PdcchCandidateList_Type_ePdcchCandidateList_Optional ePdcchCandidateList;
-	struct EPDCCH_Config_r11_EPDCCH_Config_Optional EPDCCH_Config;
-	struct FreqHoppingParameters_r13_mPDCCH_FreqHoppingParameters_r13_Optional mPDCCH_FreqHoppingParameters_r13;
+	struct SQN_EPDCCH_Config_r11_EPDCCH_Config_Optional EPDCCH_Config;
+	struct SQN_FreqHoppingParameters_r13_mPDCCH_FreqHoppingParameters_r13_Optional mPDCCH_FreqHoppingParameters_r13;
 };
 
 struct DMTC_PeriodOffset_r12_Type_DMTC_PeriodOffset_Optional {
