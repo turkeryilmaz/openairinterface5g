@@ -1850,6 +1850,7 @@ set(L2_NR_SRC
   ${NR_RRC_DIR}/rrc_gNB_reconfig.c
   ${NR_RRC_DIR}/rrc_gNB_UE_context.c
   ${NR_RRC_DIR}/rrc_gNB_NGAP.c
+  ${PDCP_DIR}/pdcp_stub.c
   )
 
 set(L2_SRC_UE
