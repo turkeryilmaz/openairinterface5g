@@ -1163,7 +1163,7 @@ int8_t nr_ue_process_csirs_measurements(module_id_t module_id,
   LOG_D(NR_MAC,"(%d.%d) Received CSI-RS measurements\n", frame, slot);
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   memcpy(&mac->csirs_measurements, csirs_measurements, sizeof(*csirs_measurements));
-  nr_mac_rrc_meas_ind_ue(module_id, csirs_measurements->gNB_index, csirs_measurements->cqi);
+  nr_mac_rrc_meas_ind_ue(module_id, csirs_measurements->gNB_index, csirs_measurements->rsrp);
   return 0;
 }
 
@@ -2688,16 +2688,7 @@ uint8_t get_csirs_RSRP_payload(NR_UE_MAC_INST_t *mac,
           }
 
           // TODO: Improvements will be needed to cri_ssbri_bitlen>0
-          // TS 38.133 - Table 10.1.6.1-1
-          int rsrp_dBm = mac->csirs_measurements.rsrp_dBm;
-          if (rsrp_dBm < -140) {
-            temp_payload = 16;
-          } else if (rsrp_dBm > -44) {
-            temp_payload = 113;
-          } else {
-            temp_payload = mac->csirs_measurements.rsrp_dBm + 157;
-          }
-
+          temp_payload = mac->csirs_measurements.rsrp;
           reverse_n_bits((uint8_t *)&temp_payload, n_bits);
 
           LOG_D(NR_MAC, "cri_ssbri_bitlen = %d\n", cri_ssbri_bitlen);
