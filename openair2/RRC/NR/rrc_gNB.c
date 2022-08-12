@@ -2578,7 +2578,9 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
         /* configure ciphering */
         nr_rrc_pdcp_config_security(ctxt_pP, ue_context_p, 1);
 
-        rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+        if (RC.ss.mode == SS_GNB) {
+          rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+	      }
         break;
 
       case NR_UL_DCCH_MessageType__c1_PR_securityModeFailure:
@@ -3707,6 +3709,41 @@ void *rrc_gnb_task(void *args_p) {
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);
         break;
+
+      case SS_NRRRC_PDU_REQ:
+        LOG_A(NR_RRC,"NR RRC received SS_NRRRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_NRRRC_PDU_REQ (msg_p).srb_id, SS_NRRRC_PDU_REQ (msg_p).sdu_size);
+
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                      instance,
+                                      GNB_FLAG_YES,
+                                      SS_NRRRC_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+        if ((SS_NRRRC_PDU_REQ(msg_p).srb_id) != 0)
+        {
+          NR_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+          LOG_A(NR_RRC, "Sending NR RRC PDU by nr_rrc_data_req function \n");
+
+          uper_decode(NULL,
+                      &asn_DEF_NR_DL_DCCH_Message,
+                      (void **)&dl_dcch_msg,
+                      (uint8_t *)SS_NRRRC_PDU_REQ(msg_p).sdu,
+                      SS_NRRRC_PDU_REQ(msg_p).sdu_size, 0, 0);
+
+          if (LOG_DEBUGFLAG(DEBUG_ASN1))
+          {
+            xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
+          }
+
+	  nr_rrc_data_req(&ctxt,
+          DCCH,
+          rrc_gNB_mui++,
+          SDU_CONFIRM_NO,
+          SS_NRRRC_PDU_REQ (msg_p).sdu_size,
+          SS_NRRRC_PDU_REQ (msg_p).sdu,
+          PDCP_TRANSMISSION_MODE_CONTROL);
+	}
+	break;
 
       default:
         LOG_E(NR_RRC, "[gNB %ld] Received unexpected message %s\n", instance, msg_name_p);

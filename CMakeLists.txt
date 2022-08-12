@@ -1675,6 +1675,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_vtp_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_drb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
+  ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
@@ -2273,6 +2274,9 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 # nr-softmodem
 ###################################################
 
+add_boolean_option(NR_ENABLE   False  "Flag for NR compilation")
+Message("NR_ENABLE flag is ${NR_ENABLE}")
+
 add_executable(nr-softmodem
   ${rrc_h}
   ${nr_rrc_h}
@@ -2297,7 +2301,7 @@ add_executable(nr-softmodem
 
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
-  UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
+  UTIL HASHTABLE SCTP_CLIENT SS_SERVER UDP SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
   ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap

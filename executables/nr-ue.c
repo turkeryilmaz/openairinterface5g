@@ -268,6 +268,26 @@ static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint
 
 }
 
+static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint16_t sfn_slot)
+{
+    /** Send VT ACK for SLOT */
+    if ( NULL != vt_ue_slot_ind)
+    {
+        LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
+                                            NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
+        NR_UL_IND_t ul_info = {
+                .vt_ue_slot_ind = *vt_ue_slot_ind,
+        };
+        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
+        send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
+        ul_info.vt_ue_slot_ind.sfn = 0;
+        ul_info.vt_ue_slot_ind.slot = 0;
+    } else {
+        LOG_D(NR_MAC, "VT is NULL\n");
+    }
+
+}
+
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
 {
   LOG_I(MAC, "Clearing Queues\n");
@@ -297,6 +317,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       LOG_E(NR_MAC, "sem_wait() error\n");
       abort();
     }
+
     uint16_t *slot_ind = get_queue(&nr_sfn_slot_queue);
     nr_phy_channel_params_t *ch_info = get_queue(&nr_chan_param_queue);
     if (!slot_ind && !ch_info) {
@@ -316,7 +337,14 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       free_and_zero(ch_info);
     }
 
-    frame_t frame = NFAPI_SFNSLOT2SFN(sfn_slot);
+#if 1
+	struct timespec rqtp, rmtp;
+	rqtp.tv_sec = 2 / 1000;
+	rqtp.tv_nsec = 1e6 * (2 % 1000);
+	nanosleep(&rqtp, &rmtp);
+#endif
+
+	frame_t frame = NFAPI_SFNSLOT2SFN(sfn_slot);
     int slot = NFAPI_SFNSLOT2SLOT(sfn_slot);
     if (sfn_slot == last_sfn_slot) {
       LOG_D(NR_MAC, "repeated sfn_sf = %d.%d\n",
@@ -325,8 +353,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     }
     last_sfn_slot = sfn_slot;
 
-    LOG_D(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
-          frame, slot);
+
 
     if (get_softmodem_params()->sa && mac->mib == NULL) {
       LOG_D(NR_MAC, "We haven't gotten MIB. Lets see if we received it\n");

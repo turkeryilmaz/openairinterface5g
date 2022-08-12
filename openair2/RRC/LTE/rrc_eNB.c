@@ -89,7 +89,7 @@
 
 #include "pdcp.h"
 #include "pdcp_primitives.h"
-#include "openair3/ocp-gtpu/gtp_itf.h"
+#include "gtpv1u_eNB_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "intertask_interface.h"
@@ -7261,19 +7261,19 @@ char rrc_eNB_rblist_configuration(
       RC.RB_Config[rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
     }
 
-    LOG_A(RRC,"PDCP Config discardTimer: %d \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
+    LOG_A(RRC,"PDCP Config discardTimer: %li \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
     LOG_A(RRC,"Present RLC Config: %d \n",RC.RB_Config[rbIndex].RlcCfg.present);
-    LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %d , am.ul_AM_RLC.LTE_PollPDU_t:%d, am.ul_AM_RLC.LTE_PollByte_t:%d, am.ul_AM_RLC.maxRetxThreshold: %d ,am.dl_AM_RLC.t_Reordering: %d,am.dl_AM_RLC.t_StatusProhibit: %d \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
-    LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %d, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %d, um_Bi_Directional.dl_UM_RLC.t_Reordering: %d \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
-    LOG_A(RRC,"LogicalChannelId: %d \n",RC.RB_Config[rbIndex].LogicalChannelId);
-    LOG_A(RRC,"Mac.ul_SpecificParameters->priority: %d, Mac.ul_SpecificParameters->prioritisedBitRate: %d \n",RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->priority,RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate);
+    LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %ld , am.ul_AM_RLC.LTE_PollPDU_t:%ld, am.ul_AM_RLC.LTE_PollByte_t:%ld, am.ul_AM_RLC.maxRetxThreshold: %ld ,am.dl_AM_RLC.t_Reordering: %ld,am.dl_AM_RLC.t_StatusProhibit: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
+    LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.t_Reordering: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
+    LOG_A(RRC,"LogicalChannelId: %ld \n",RC.RB_Config[rbIndex].LogicalChannelId);
+    LOG_A(RRC,"Mac.ul_SpecificParameters->priority: %ld, Mac.ul_SpecificParameters->prioritisedBitRate: %ld \n",RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->priority,RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate);
     LOG_A(RRC,"DiscardULData: %d \n",RC.RB_Config[rbIndex].DiscardULData);
   }
   return 0;
 }
 
 //-----------------------------------------------------------------------------
-char rrc_eNB_as_security_configuration_req(
+void rrc_eNB_as_security_configuration_req(
   const protocol_ctxt_t   *const ctxt_pP,
   const module_id_t enb_mod_idP,
   RrcAsSecurityConfigReq *ASSecConfReq
@@ -7292,6 +7292,8 @@ char rrc_eNB_as_security_configuration_req(
   LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
   ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+
+#ifndef NR_ENABLE
   for (int i = 0; i < MAX_RBS; i++)
   {
     if (i < 3)
@@ -7335,6 +7337,7 @@ char rrc_eNB_as_security_configuration_req(
                   rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
     }
   }
+#endif
 }
 
 /*------------------------------------------------------------------------------*/
@@ -10030,6 +10033,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_RRC_PDU_REQ:
       if (RC.ss.mode >= SS_SOFTMODEM)
       {
+#ifndef NR_ENABLE
         pdcp_t  *pdcp_p   = NULL;
         hashtable_rc_t  h_rc;
         hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
@@ -10063,8 +10067,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               LOG_A(RRC, "%x.", SS_RRC_PDU_REQ(msg_p).sdu[i]);
             }
             LOG_A(RRC, "\n");
-          }
-          LOG_A(RRC, "DL DCCH:", (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+	  }
+          LOG_A(RRC, "DL DCCH size: %d \n", SS_RRC_PDU_REQ (msg_p).sdu_size);
 
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
           {
@@ -10098,10 +10102,10 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
             RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
-            LOG_A(RRC, "[eNB %d] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+            LOG_A(RRC, "[eNB %ld] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
-              LOG_A(RRC, "[eNB %d] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+              LOG_A(RRC, "[eNB %ld] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
               for (int i = 0; i < MAX_RBS; i++)
               {
                 if (i < 3)
@@ -10142,7 +10146,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
             {
               struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
-              int release_num;
 
               ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
               LOG_A(RRC, "RRC Connection Release message received \n");
@@ -10219,8 +10222,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                     (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
           }
         }
+#endif
       }
-
       break;
 //#endif
 
@@ -10236,7 +10239,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
        break;
 
     case RRC_AS_SECURITY_CONFIG_REQ:
-      LOG_A(RRC,"[eNB %d] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %d \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+      LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
       for(int i=16;i<32;i++)
       {
         LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
@@ -10259,12 +10262,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       break;
 
     case SS_SS_PAGING_IND:
-      LOG_A(RRC, "[eNB %d] Received Paging message from SS: %s\n", instance, msg_name_p);
+      LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
       rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
       break;
 
     case RRC_RBLIST_CFG_REQ:
-      LOG_A(RRC, "[eNB %d] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
+      LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
       rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
       break;
 
