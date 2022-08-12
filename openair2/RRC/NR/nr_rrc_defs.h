@@ -466,8 +466,6 @@ typedef struct {
 
 } rrc_gNB_carrier_data_t;
 //---------------------------------------------------
-
-
 typedef struct {
   /* nea0 = 0, nea1 = 1, ... */
   int ciphering_algorithms[4];

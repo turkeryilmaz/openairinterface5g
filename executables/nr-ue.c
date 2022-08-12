@@ -273,6 +273,8 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
   if (dl_tti_request)
   {
     int dl_tti_sfn_slot = NFAPI_SFNSLOT2HEX(dl_tti_request->SFN, dl_tti_request->Slot);
+    LOG_A(NR_MAC, "[%d %d] sfn/slot dl_tti_request received \n",
+    		 NFAPI_SFNSLOT2SFN(dl_tti_sfn_slot), NFAPI_SFNSLOT2SLOT(dl_tti_sfn_slot));
     nfapi_nr_tx_data_request_t *tx_data_request = unqueue_matching(&nr_tx_req_queue, MAX_QUEUE_SIZE, sfn_slot_matcher, &dl_tti_sfn_slot);
     if (!tx_data_request)
     {
@@ -338,6 +340,26 @@ static void check_nr_prach(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_inf
   }
 }
 
+static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint16_t sfn_slot)
+{
+    /** Send VT ACK for SLOT */
+    if ( NULL != vt_ue_slot_ind)
+    {
+        LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
+                                            NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
+        NR_UL_IND_t ul_info = {
+                .vt_ue_slot_ind = *vt_ue_slot_ind,
+        };
+        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
+        send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
+        ul_info.vt_ue_slot_ind.sfn = 0;
+        ul_info.vt_ue_slot_ind.slot = 0;
+    } else {
+        LOG_D(NR_MAC, "VT is NULL\n");
+    }
+
+}
+
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
 {
   LOG_I(MAC, "Clearing Queues\n");
@@ -373,6 +395,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       LOG_E(NR_MAC, "sem_wait() error\n");
       abort();
     }
+
     uint16_t *slot_ind = get_queue(&nr_sfn_slot_queue);
     nr_phy_channel_params_t *ch_info = get_queue(&nr_chan_param_queue);
     if (!slot_ind && !ch_info)
@@ -381,6 +404,10 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       continue;
     }
     if (slot_ind) {
+    	frame_t frame = NFAPI_SFNSLOT2SFN(sfn_slot);
+        int slot = NFAPI_SFNSLOT2SLOT(sfn_slot);
+        LOG_A(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
+              frame, slot);
       sfn_slot = *slot_ind;
       free_and_zero(slot_ind);
     }
@@ -389,18 +416,24 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       free_and_zero(ch_info);
     }
 
-    frame_t frame = NFAPI_SFNSLOT2SFN(sfn_slot);
+#if 1
+	struct timespec rqtp, rmtp;
+	rqtp.tv_sec = 2 / 1000;
+	rqtp.tv_nsec = 1e6 * (2 % 1000);
+	nanosleep(&rqtp, &rmtp);
+#endif
+
+	frame_t frame = NFAPI_SFNSLOT2SFN(sfn_slot);
     int slot = NFAPI_SFNSLOT2SLOT(sfn_slot);
     if (sfn_slot == last_sfn_slot)
     {
-      LOG_D(NR_MAC, "repeated sfn_sf = %d.%d\n",
+      LOG_A(NR_MAC, "repeated sfn_sf = %d.%d\n",
             frame, slot);
       continue;
     }
     last_sfn_slot = sfn_slot;
 
-    LOG_D(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
-          frame, slot);
+
 
     if (get_softmodem_params()->sa && mac->mib == NULL)
     {
@@ -411,6 +444,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     if (mac->scc == NULL && mac->scc_SIB == NULL)
     {
       LOG_D(MAC, "[NSA] mac->scc == NULL and [SA] mac->scc_SIB == NULL!\n");
+      if (1 /** MODE == VT */)
+        send_vt_slot_ack(vt_ue_slot_ind, sfn_slot);
       continue;
     }
 
@@ -446,6 +481,7 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
                       mac->scc_SIB->tdd_UL_DL_ConfigurationCommon,
                       ul_info.slot_rx))
     {
+      LOG_D(NR_MAC, "slot_ind frame %d Slot %d. calling nr_ue_dl_ind() and nr_ue_dl_indication() from %s\n", ul_info.frame_rx, ul_info.slot_rx, __FUNCTION__);
       nr_ue_dl_indication(&mac->dl_info, &ul_time_alignment);
     }
 
@@ -469,21 +505,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       pdcp_run(&ctxt);
     }
     process_queued_nr_nfapi_msgs(mac, sfn_slot);
- 
-    /** Send VT ACK for SLOT */
-    if ( 1 /** FIXME: UE is SS mode */ && vt_ue_slot_ind)
-    {
-        LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
-                                            NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
-        NR_UL_IND_t ul_info = {
-                .vt_ue_slot_ind = *vt_ue_slot_ind,
-        };
-        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
-        send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
-        ul_info.vt_ue_slot_ind.sfn = 0;
-        ul_info.vt_ue_slot_ind.slot = 0;
-    }
-
+    if (1 /** MODE == VT */)
+      send_vt_slot_ack(vt_ue_slot_ind, sfn_slot);
   }
   return NULL;
 }

@@ -377,7 +377,8 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
   mm_msg->registration_request.messagetype = REGISTRATION_REQUEST;
   size += 1;
   mm_msg->registration_request.fgsregistrationtype = INITIAL_REGISTRATION;
-  mm_msg->registration_request.naskeysetidentifier.naskeysetidentifier = 1;
+  /* Set naskeysetidentifier to 7 instead of 1 for the TTCN */
+  mm_msg->registration_request.naskeysetidentifier.naskeysetidentifier = 7;
   size += 1;
   if(0){
     mm_msg->registration_request.fgsmobileidentity.guti.typeofidentity = FGS_MOBILE_IDENTITY_5G_GUTI;
@@ -412,19 +413,24 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
     size += sizeof(Suci5GSMobileIdentity_t);
   }
 
-  mm_msg->registration_request.presencemask |= REGISTRATION_REQUEST_5GMM_CAPABILITY_PRESENT;
-  mm_msg->registration_request.fgmmcapability.iei = REGISTRATION_REQUEST_5GMM_CAPABILITY_IEI;
-  mm_msg->registration_request.fgmmcapability.length = 1;
-  mm_msg->registration_request.fgmmcapability.value = 0x7;
-  size += 3;
+  /* Workaround fix for the issue in TTCN till gmmCapability is supported by TTCN */
+  if(0)
+  {
+    mm_msg->registration_request.presencemask |= REGISTRATION_REQUEST_5GMM_CAPABILITY_PRESENT;
+    mm_msg->registration_request.fgmmcapability.iei = REGISTRATION_REQUEST_5GMM_CAPABILITY_IEI;
+    mm_msg->registration_request.fgmmcapability.length = 1;
+    mm_msg->registration_request.fgmmcapability.value = 0x7;
+    size += 3;
+  }
 
   mm_msg->registration_request.presencemask |= REGISTRATION_REQUEST_UE_SECURITY_CAPABILITY_PRESENT;
   mm_msg->registration_request.nruesecuritycapability.iei = REGISTRATION_REQUEST_UE_SECURITY_CAPABILITY_IEI;
   mm_msg->registration_request.nruesecuritycapability.length = 8;
   mm_msg->registration_request.nruesecuritycapability.fg_EA = 0x80;
-  mm_msg->registration_request.nruesecuritycapability.fg_IA = 0x20;
-  mm_msg->registration_request.nruesecuritycapability.EEA = 0;
-  mm_msg->registration_request.nruesecuritycapability.EIA = 0;
+  /* Workaround fix of bypassing security for the TTCN */
+  mm_msg->registration_request.nruesecuritycapability.fg_IA = 0x80;
+  mm_msg->registration_request.nruesecuritycapability.EEA = 0x80;
+  mm_msg->registration_request.nruesecuritycapability.EIA = 0x80;
   size += 10;
 
   // encode the message
@@ -484,7 +490,8 @@ static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, 
   OctetString res;
   res.length = 16;
   res.value = calloc(1,16);
-  memcpy(res.value,ue_security_key[Mod_id]->res,16);
+  /* Workaround fix of bypassing authentication for the TTCN */
+  //memcpy(res.value,ue_security_key[Mod_id]->res,16);
 
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg;
@@ -550,12 +557,16 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   mm_msg->fgs_security_mode_complete.messagetype           = FGS_SECURITY_MODE_COMPLETE;
   size += 1;
 
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit1  = 1;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitp1 = 1;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitp  = 1;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.oddeven = 0;
-  size += 5;
+  /* Workaround fix for the issue in TTCN till imeisv is supported by TTCN */
+  if(0)
+  {
+    mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
+    mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit1  = 1;
+    mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitp1 = 1;
+    mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitp  = 1;
+    mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.oddeven = 0;
+    size += 5;
+  }
 
   mm_msg->fgs_security_mode_complete.fgsnasmessagecontainer.nasmessagecontainercontents.value  = registration_request_buf;
   mm_msg->fgs_security_mode_complete.fgsnasmessagecontainer.nasmessagecontainercontents.length = registration_request_len;
@@ -577,14 +588,17 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   /* length in bits */
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
+  /* Workaround fix of bypassing security for the TTCN */
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  #if 0
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
+  #endif
 
   printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
-     initialNasMsg->data[2+i] = mac[i];
+     initialNasMsg->data[2+i] = 0;//mac[i]; /* Workaround fix of bypassing security for the TTCN */
   }
 }
 
@@ -623,30 +637,30 @@ static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMs
 
   /* Encode the first octet of the header (extended protocol discriminator) */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->header.protocol_discriminator, size);
-  
+
   /* Encode the security header type */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->header.security_header_type, size);
-  
+
   /* Encode the message authentication code */
   ENCODE_U32(initialNasMsg->data + size, sp_msg->header.message_authentication_code, size);
-  
+
   /* Encode the sequence number */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->header.sequence_number, size);
-  
-  
+
+
   /* Encode the extended protocol discriminator */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->plain.mm_msg.registration_complete.protocoldiscriminator, size);
-    
+
   /* Encode the security header type */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->plain.mm_msg.registration_complete.securityheadertype, size);
-    
+
   /* Encode the message type */
   ENCODE_U8(initialNasMsg->data + size, sp_msg->plain.mm_msg.registration_complete.messagetype, size);
 
   if(sortransparentcontainer) {
     encode_registration_complete(&sp_msg->plain.mm_msg.registration_complete, initialNasMsg->data + size, length - size);
   }
-  
+
   initialNasMsg->length = length;
   stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
   stream_cipher.key_length = 16;
@@ -657,14 +671,17 @@ static void generateRegistrationComplete(int Mod_id, as_nas_info_t *initialNasMs
   /* length in bits */
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
+#endif
 
   printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
-     initialNasMsg->data[2+i] = mac[i];
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
 }
 
@@ -705,7 +722,7 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   nas_stream_cipher_t stream_cipher;
   uint8_t             mac[4];
   nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
-  nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED_WITH_NEW_SECU_CTX;
+  nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
   size += 7;
 
   mm_msg = &nas_msg.security_protected.plain.mm_msg;
@@ -732,22 +749,30 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   mm_msg->uplink_nas_transport.pdusessionid = 10;
   mm_msg->uplink_nas_transport.requesttype = 1;
   size += 3;
+
+
+
+#if 0
   mm_msg->uplink_nas_transport.snssai.length = 4;
-  //Fixme: it seems there are a lot of memory errors in this: this value was on the stack, 
+  //Fixme: it seems there are a lot of memory errors in this: this value was on the stack,
   // but pushed  in a itti message to another thread
   // this kind of error seems in many places in 5G NAS
   mm_msg->uplink_nas_transport.snssai.value=calloc(1,4);
   mm_msg->uplink_nas_transport.snssai.value[0] = uicc->nssai_sst;
   mm_msg->uplink_nas_transport.snssai.value[1] = (uicc->nssai_sd>>16)&0xFF;
-  mm_msg->uplink_nas_transport.snssai.value[2] = (uicc->nssai_sd>>8)&0xFF; 
+  mm_msg->uplink_nas_transport.snssai.value[2] = (uicc->nssai_sd>>8)&0xFF;
   mm_msg->uplink_nas_transport.snssai.value[3] = (uicc->nssai_sd)&0xFF;
   size += (1+1+4);
+
+
   int dnnSize=strlen(uicc->dnnStr);
   mm_msg->uplink_nas_transport.dnn.value=calloc(1,dnnSize+1);
   mm_msg->uplink_nas_transport.dnn.length = dnnSize + 1;
   mm_msg->uplink_nas_transport.dnn.value[0] = dnnSize + 1;
+
   memcpy(mm_msg->uplink_nas_transport.dnn.value+1,uicc->dnnStr, dnnSize);
   size += (1+1+dnnSize+1);
+#endif
 
   // encode the message
   initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
@@ -764,14 +789,16 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   /* length in bits */
   stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
 
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
   // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
   nas_stream_encrypt_eia2(
     &stream_cipher,
     mac);
-
+#endif
   printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
   for(int i = 0; i < 4; i++){
-     initialNasMsg->data[2+i] = mac[i];
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
   }
 }
 
@@ -812,7 +839,7 @@ void *nas_nrue_task(void *args_p)
 
   ue_security_key=(ue_sa_security_key_t **)calloc(1,sizeof(ue_sa_security_key_t*)*NB_UE_INST);
   itti_mark_task_ready (TASK_NAS_NRUE);
-  
+
   while(1) {
     // Wait for a message or an event
     itti_receive_msg (TASK_NAS_NRUE, &msg_p);
@@ -987,9 +1014,9 @@ void *nas_nrue_task(void *args_p)
 	    if ((payload_container_length >= PAYLOAD_CONTAINER_LENGTH_MIN) &&
 		(payload_container_length <= PAYLOAD_CONTAINER_LENGTH_MAX))
 	      offset += (PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH + 3);
-	    if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length) 
+	    if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length)
 	      payload_container = pdu_buffer + offset;
-	    
+
 	    while(offset < payload_container_length) {
 	      if (*(payload_container + offset) == 0x29) { // PDU address IEI
 		if ((*(payload_container+offset+1) == 0x05) && (*(payload_container +offset+2) == 0x01)) { // IPV4

@@ -85,6 +85,7 @@
 #include "rrc_eNB_M2AP.h"
 
 #include "pdcp.h"
+#include "pdcp_primitives.h"
 #include "gtpv1u_eNB_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
@@ -524,7 +525,7 @@ init_SI(
   pthread_mutex_unlock(&rrc->cell_info_mutex);
 }
 
-static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance_t instance) {
+static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance_t instance) {
   const unsigned int Ttab[4] = {32,64,128,256};
   uint8_t Tc;  /* DRX cycle of UE */
   uint32_t pcch_nB;  /* 4T, 2T, T, T/2, T/4, T/8, T/16, T/32 */
@@ -558,7 +559,7 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   Tc = (uint8_t)RC.rrc[instance]->configuration.radioresourceconfig[CC_id].pcch_defaultPagingCycle;
   if (Tc < LTE_PCCH_Config__defaultPagingCycle_rf32 || Tc > LTE_PCCH_Config__defaultPagingCycle_rf256)
   {
-    return;
+    return -1;
   }
   /* set T = min(Tc,Tue) */
   T = Ttab[Tc];
@@ -598,9 +599,9 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
       break;
     default:
       /* pcch_nB error */
-      LOG_E(RRC, "[eNB %d] In SS_PAGING_IND:  pcch_nB error (pcch_nB %d) \n",
+      LOG_E(RRC, "[eNB %lu] In SS_PAGING_IND:  pcch_nB error (pcch_nB %d) \n",
             instance, pcch_nB);
-      return (-1);
+      break;
     }
   }
   else
@@ -641,14 +642,14 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
       if (UE_PF_PO[CC_id][i].enable_flag == TRUE)
       {
         // paging exist UE log
-        LOG_A(RRC, "[eNB %d] CC_id %d In SS_PAGING_IND: Update exist UE %d, T %d, PF %d, PO %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO);
+        LOG_A(RRC, "[eNB %lu] CC_id %d In SS_PAGING_IND: Update exist UE %d, T %d, PF %d, PO %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO);
       }
       else
       {
         /* set enable_flag */
         UE_PF_PO[CC_id][i].enable_flag = TRUE;
         // paging new UE log
-        LOG_A(RRC, "[eNB %d] CC_id %d In SSAP_PAGING_IND: Insert a new UE %d, T %d, PF %d, PO %d N %d Ns %d i_s %d\n",
+        LOG_A(RRC, "[eNB %lu] CC_id %d In SSAP_PAGING_IND: Insert a new UE %d, T %d, PF %d, PO %d N %d Ns %d i_s %d\n",
         instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO,N,Ns,i_s);
       }
       break;
@@ -681,9 +682,9 @@ static void rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_nam
   RRC_PCCH_DATA_REQ(message_p).rnti = P_RNTI;
   RRC_PCCH_DATA_REQ(message_p).ue_index = 0;
   RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
-  LOG_A(RRC, "[eNB %d] CC_id %d In SS_PAGING_IND: send encdoed buffer to PDCP buffer_size %d\n", instance, CC_id, length);
+  LOG_A(RRC, "[eNB %lu] CC_id %d In S1AP_PAGING_IND: send encdoed buffer to PDCP buffer_size %d\n", instance, CC_id, length);
   itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
-  LOG_A(RRC, "[eNB %d] Exiting ,rrc_eNB_process_SS_PAGING_IND\n");
+  LOG_A(RRC, "[eNB %lu] Exiting ,rrc_eNB_process_SS_PAGING_IND\n", instance);
   return (0);
 }
 
@@ -2570,7 +2571,6 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
       if (ue_context_pP->ue_context.e_rab[i].param.qos.qci < 9 )
         DRB_ul_SpecificParameters->priority = qci_to_priority[ue_context_pP->ue_context.e_rab[i].param.qos.qci-1] + 3;
       // ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
-      else
         DRB_ul_SpecificParameters->priority= 4;
 
         DRB_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8;
@@ -3161,7 +3161,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
     SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms10;
   }
-  LOG_A(RRC,"rlc config present: %d, ul_AM_RLC.t_PollRetransmit: %d, ul_AM_RLC.pollPDU: %d, ul_AM_RLC.pollByte: %d, ul_AM_RLC.maxRetxThreshold: %d,dl_AM_RLC.t_Reordering: %d,dl_AM_RLC.t_StatusProhibit: %d \n",SRB2_rlc_config->choice.explicitValue.present,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
+  LOG_A(RRC,"rlc config present: %d, ul_AM_RLC.t_PollRetransmit: %ld, ul_AM_RLC.pollPDU: %ld, ul_AM_RLC.pollByte: %ld, ul_AM_RLC.maxRetxThreshold: %ld,dl_AM_RLC.t_Reordering: %ld,dl_AM_RLC.t_StatusProhibit: %ld \n",SRB2_rlc_config->choice.explicitValue.present,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB2_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB2_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
   SRB2_lchan_config = CALLOC(1, sizeof(*SRB2_lchan_config));
   SRB2_config->logicalChannelConfig = SRB2_lchan_config;
   SRB2_lchan_config->present = LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue;
@@ -3174,7 +3174,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     SRB2_ul_SpecificParameters->priority = 3; // let some priority for SRB1 and dedicated DRBs
     SRB2_ul_SpecificParameters->prioritisedBitRate = LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
   }
-  LOG_A(RRC,"SRB2_ul_SpecificParameters->priority: %d, SRB2_ul_SpecificParameters->prioritisedBitRate: %d \n",SRB2_ul_SpecificParameters->priority,SRB2_ul_SpecificParameters->prioritisedBitRate);
+  LOG_A(RRC,"SRB2_ul_SpecificParameters->priority: %ld, SRB2_ul_SpecificParameters->prioritisedBitRate: %ld \n",SRB2_ul_SpecificParameters->priority,SRB2_ul_SpecificParameters->prioritisedBitRate);
   SRB2_ul_SpecificParameters->bucketSizeDuration = LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
   /* LCG for CCCH and DCCH is 0 as defined in 36331 */
   logicalchannelgroup = CALLOC(1, sizeof(long));
@@ -7591,19 +7591,19 @@ char rrc_eNB_rblist_configuration(
       RC.RB_Config[rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
     }
 
-    LOG_A(RRC,"PDCP Config discardTimer: %d \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
+    LOG_A(RRC,"PDCP Config discardTimer: %li \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
     LOG_A(RRC,"Present RLC Config: %d \n",RC.RB_Config[rbIndex].RlcCfg.present);
-    LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %d , am.ul_AM_RLC.LTE_PollPDU_t:%d, am.ul_AM_RLC.LTE_PollByte_t:%d, am.ul_AM_RLC.maxRetxThreshold: %d ,am.dl_AM_RLC.t_Reordering: %d,am.dl_AM_RLC.t_StatusProhibit: %d \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
-    LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %d, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %d, um_Bi_Directional.dl_UM_RLC.t_Reordering: %d \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
-    LOG_A(RRC,"LogicalChannelId: %d \n",RC.RB_Config[rbIndex].LogicalChannelId);
-    LOG_A(RRC,"Mac.ul_SpecificParameters->priority: %d, Mac.ul_SpecificParameters->prioritisedBitRate: %d \n",RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->priority,RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate);
+    LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %ld , am.ul_AM_RLC.LTE_PollPDU_t:%ld, am.ul_AM_RLC.LTE_PollByte_t:%ld, am.ul_AM_RLC.maxRetxThreshold: %ld ,am.dl_AM_RLC.t_Reordering: %ld,am.dl_AM_RLC.t_StatusProhibit: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
+    LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.t_Reordering: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
+    LOG_A(RRC,"LogicalChannelId: %ld \n",RC.RB_Config[rbIndex].LogicalChannelId);
+    LOG_A(RRC,"Mac.ul_SpecificParameters->priority: %ld, Mac.ul_SpecificParameters->prioritisedBitRate: %ld \n",RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->priority,RC.RB_Config[rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate);
     LOG_A(RRC,"DiscardULData: %d \n",RC.RB_Config[rbIndex].DiscardULData);
   }
   return 0;
 }
 
 //-----------------------------------------------------------------------------
-char rrc_eNB_as_security_configuration_req(
+void rrc_eNB_as_security_configuration_req(
   const protocol_ctxt_t   *const ctxt_pP,
   const module_id_t enb_mod_idP,
   RrcAsSecurityConfigReq *ASSecConfReq
@@ -7622,6 +7622,8 @@ char rrc_eNB_as_security_configuration_req(
   LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
   ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+
+#ifndef NR_ENABLE
   for (int i = 0; i < MAX_RBS; i++)
   {
     if (i < 3)
@@ -7665,6 +7667,7 @@ char rrc_eNB_as_security_configuration_req(
                   rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
     }
   }
+#endif
 }
 
 /*------------------------------------------------------------------------------*/
@@ -10307,6 +10310,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_RRC_PDU_REQ:
       if (RC.ss.mode >= SS_SOFTMODEM)
       {
+#ifndef NR_ENABLE
         pdcp_t  *pdcp_p   = NULL;
         hashtable_rc_t  h_rc;
         hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
@@ -10340,8 +10344,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               LOG_A(RRC, "%x.", SS_RRC_PDU_REQ(msg_p).sdu[i]);
             }
             LOG_A(RRC, "\n");
-          }
-          LOG_A(RRC, "DL DCCH:", (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+	  }
+          LOG_A(RRC, "DL DCCH size: %d \n", SS_RRC_PDU_REQ (msg_p).sdu_size);
 
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
           {
@@ -10375,10 +10379,10 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
             RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
-            LOG_A(RRC, "[eNB %d] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+            LOG_A(RRC, "[eNB %ld] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
-              LOG_A(RRC, "[eNB %d] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+              LOG_A(RRC, "[eNB %ld] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
               for (int i = 0; i < MAX_RBS; i++)
               {
                 if (i < 3)
@@ -10419,7 +10423,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
             {
               struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
-              int release_num;
 
               ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
               LOG_A(RRC, "RRC Connection Release message received \n");
@@ -10496,8 +10499,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                     (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
           }
         }
+#endif
       }
-
       break;
 //#endif
 
@@ -10513,7 +10516,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
        break;
 
     case RRC_AS_SECURITY_CONFIG_REQ:
-      LOG_A(RRC,"[eNB %d] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %d \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+      LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
       for(int i=16;i<32;i++)
       {
         LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
@@ -10536,12 +10539,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       break;
 
     case SS_SS_PAGING_IND:
-      LOG_A(RRC, "[eNB %d] Received Paging message from SS: %s\n", instance, msg_name_p);
+      LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
       rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
       break;
 
     case RRC_RBLIST_CFG_REQ:
-      LOG_A(RRC, "[eNB %d] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
+      LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
       rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
       break;
 

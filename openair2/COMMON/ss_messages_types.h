@@ -38,6 +38,8 @@
 
 #define SS_RRC_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_req
 #define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
+#define SS_NRRRC_PDU_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ss_nrrrc_pdu_req
+#define SS_NRRRC_PDU_IND(mSGpTR)              (mSGpTR)->ittiMsg.ss_nrrrc_pdu_ind
 #define SS_SYS_PROXY_MSG_CNF(mSGpTR)          (mSGpTR)->ittiMsg.udp_data_ind
 #define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind
 #define SS_L1MACIND_CTRL(mSGpTR)              (mSGpTR)->ittiMsg.ss_l1macind_ctrl
@@ -58,6 +60,10 @@
 
 /** SYS IND */
 #define SS_SYSTEM_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_system_ind
+
+/** NR SRB */
+#define SS_RRC_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_req
+#define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
 
 /** PORTMAN */
 typedef struct ss_sys_port_msg_ind {
@@ -130,7 +136,7 @@ typedef struct ss_l1macind_ctrl_s {
   bool rachpreamble_enable;
 } ss_l1macind_ctrl_t;
 
-/** SRB */
+/** LTE SRB */
 typedef struct ss_rrc_pdu_req_s {
   uint8_t   srb_id;
   uint32_t  sdu_size;
@@ -146,6 +152,23 @@ typedef struct ss_rrc_pdu_ind_s {
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
 } ss_rrc_pdu_ind_t;
+
+/** NR SRB */
+typedef struct ss_nrrrc_pdu_req_s {
+  uint8_t   srb_id;
+  uint32_t  sdu_size;
+  uint8_t   sdu[SDU_SIZE];
+  uint16_t  rnti;
+} ss_nrrrc_pdu_req_t;
+
+typedef struct ss_nrrrc_pdu_ind_s {
+  uint8_t   srb_id;
+  uint32_t  sdu_size;
+  uint8_t   sdu[SDU_SIZE];
+  uint16_t  rnti;
+  frame_t     frame;         /*!< \brief  NR frame number.*/
+  sub_frame_t subframe;      /*!< \brief  NR sub frame number.*/
+} ss_nrrrc_pdu_ind_t;
 
 /** VNG */
 

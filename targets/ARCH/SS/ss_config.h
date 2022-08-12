@@ -39,6 +39,7 @@ typedef enum ss_mode {
 } ss_mode_e;
 #else
 #define SS_ENB  		(0x00)
+#define SS_GNB                  (0x00)
 #define SS_SOFTMODEM    	(0x01)
 #define SS_SOFTMODEM_SRB        (0x02)
 #endif
@@ -69,6 +70,15 @@ typedef struct ss_config_s {
   ss_l1macind_ctrl_t l1macind;
 } ss_config_t;
 
+typedef enum {
+  SS_STATE_NOT_CONFIGURED = 0,
+  SS_STATE_CELL_CONFIGURED,
+  SS_STATE_CELL_ACTIVE,
+  SS_STATE_AS_SECURITY_ACTIVE,
+  SS_STATE_AS_RBS_ACTIVE,
+  SS_STATE_CELL_BROADCASTING,
+  SS_STATE_MAX_STATE
+} SS_STATE_t;
 
 #endif /** __SS_CONFIG_H__ */
 /** @} */

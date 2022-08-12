@@ -2080,6 +2080,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_vtp_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_drb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
+  ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
@@ -2761,6 +2762,9 @@ target_link_libraries (lte-uesoftmodem ${T_LIB})
 # nr-softmodem
 ###################################################
 
+add_boolean_option(NR_ENABLE   False  "Flag for NR compilation")
+Message("NR_ENABLE flag is ${NR_ENABLE}")
+
 add_executable(nr-softmodem
   ${rrc_h}
   ${nr_rrc_h}
@@ -2788,8 +2792,8 @@ add_executable(nr-softmodem
 
 target_link_libraries (nr-softmodem
   -Wl,--start-group
-  UTIL HASHTABLE SCTP_CLIENT UDP SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU LFDS GTPV1U SECU_CN SECU_OSA
-  ITTI ${FLPT_MSG_LIB} ${ASYNC_IF_LIB} ${FLEXRAN_AGENT_LIB} LFDS7 ${MSC_LIB} ${RAL_LIB} ${NAS_UE_LIB} RRC_LIB NR_RRC_LIB
+  UTIL HASHTABLE SCTP_CLIENT SS_SERVER SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU LFDS GTPV1U SECU_CN SECU_OSA
+  ITTI ${FLPT_MSG_LIB} ${ASYNC_IF_LIB} ${FLEXRAN_AGENT_LIB} LFDS7 ${RAL_LIB} ${NAS_UE_LIB} RRC_LIB NR_RRC_LIB
   NGAP_LIB NGAP_GNB S1AP_LIB S1AP_ENB L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB
   X2AP_LIB X2AP_ENB F1AP_LIB F1AP M2AP_LIB M2AP_ENB M3AP_LIB M3AP_ENB ${FSPT_MSG_LIB}
   -Wl,--end-group z dl)

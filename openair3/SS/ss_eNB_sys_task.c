@@ -437,7 +437,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.d == true)
           {
-              LOG_A(ENB_SS, "[SYS] [SIs] size=%d", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
+              LOG_A(ENB_SS, "[SYS] [SIs] size=%ld", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
               for (int i=0; i< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d; ++i)
               {
                 if (SQN_BCCH_DL_SCH_MessageType_c1 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.d)

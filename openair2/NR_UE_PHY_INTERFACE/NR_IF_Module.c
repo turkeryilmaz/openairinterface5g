@@ -228,6 +228,31 @@ void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
     }
     case NFAPI_NR_PHY_MSG_TYPE_SRS_INDICATION:
     break;
+    case NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION:
+    {
+        char buffer[NFAPI_MAX_PACKED_MESSAGE_SIZE];
+        LOG_T(NR_MAC, "SLOT IND header id :%d\n", UL_INFO->vt_ue_slot_ind.header.message_id);
+        int encoded_size = nfapi_nr_p7_message_pack(&UL_INFO->vt_ue_slot_ind, buffer, sizeof(buffer), NULL);
+        if (encoded_size <= 0)
+        {
+                LOG_E(NR_MAC, "nfapi_nr_p7_message_pack has failed. Encoded size = %d\n", encoded_size);
+                return;
+        }
+
+        LOG_D(NR_MAC, "SLOT_IND sent to Proxy, Size: %d Frame %d Slot %d\n", encoded_size,
+                UL_INFO->rach_ind.sfn, UL_INFO->rach_ind.slot);
+        if (send(ue_tx_sock_descriptor, buffer, encoded_size, 0) < 0)
+        {
+                LOG_E(NR_MAC, "Send Proxy NR_UE failed\n");
+                return;
+        }
+        else
+        {
+                LOG_D(NR_MAC, "Send Proxy SLOT_IND Success\n");
+        }
+        break;
+    }
+
     default:
     break;
   }
@@ -699,6 +724,9 @@ void check_and_process_slot_ind(nfapi_ue_slot_indication_vt_t *slot_ind, uint16_
 
     if (slot_ind)
     {
+        slot_ind->header.message_id = NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION;
+        slot_ind->header.message_length = sizeof(nfapi_ue_slot_indication_vt_t);
+        slot_ind->header.phy_id = 0;
         slot_ind->sfn = frame;
         slot_ind->slot = slot;
         LOG_D(NR_PHY, "[%d, %d] SLOT Indication\n", frame, slot);
@@ -948,41 +976,40 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
             break;
         }
         case P7_CELL_SEARCH_IND:
-        {
-          vendor_nfapi_cell_search_indication_t cell_ind;
-          LOG_D(NR_PHY, "CELL SEARCH IND Receievd\n");
-          if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
-                                    sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
-          {
-            LOG_E(NR_PHY, "Message cell_ind failed to unpack\n");
-            break;
-          }
+		{
+			vendor_nfapi_cell_search_indication_t cell_ind;
+			LOG_D(NR_PHY, "CELL SEARCH IND Receievd\n");
+			if (nfapi_p7_message_unpack((void *)buffer, len, &cell_ind,
+						sizeof(vendor_nfapi_cell_search_indication_t), NULL) < 0)
+			{
+				LOG_E(NR_PHY, "Message cell_ind failed to unpack\n");
+				break;
+			}
 
-          MessageDef *message_p;
-          int         i;
-          message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
-	  for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
-	  	// TO DO
-	  	PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
-                  /** FIXME: What we need is EARFCN not Freq Offset. */
-	  	PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
-	  	// TO DO
-	  	PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
-	  	PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
-	  	PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
+			MessageDef *message_p;
+			int         i;
+			message_p = itti_alloc_new_message(TASK_UNKNOWN, 0, PHY_FIND_CELL_IND);
+			for (i = 0 ; i <  cell_ind.lte_cell_search_indication.number_of_lte_cells_found; i++) {
+				// TO DO
+				PHY_FIND_CELL_IND (message_p).cell_nb = i+1;
+				/** FIXME: What we need is EARFCN not Freq Offset. */
+				PHY_FIND_CELL_IND (message_p).cells[i].earfcn = cell_ind.lte_cell_search_indication.lte_found_cells[i].frequency_offset;
+				// TO DO
+				PHY_FIND_CELL_IND (message_p).cells[i].cell_id = cell_ind.lte_cell_search_indication.lte_found_cells[i].pci;
+				PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
+				PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
 
-                LOG_A(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
-                                                       PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
-                                                       PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
-                                                       PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
-                                                       PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
-                itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
-	  }
+				LOG_A(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+						PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
+						PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
+						PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
+						PHY_FIND_CELL_IND (message_p).cells[i].rsrq);
+				itti_send_msg_to_task(TASK_RRC_NRUE, INSTANCE_DEFAULT, message_p);
+			}
 
+			break;
 
-          break;
-
-        }
+		}
         default:
             LOG_E(NR_PHY, "Invalid nFAPI message. Header ID %d\n",
                   header.message_id);
