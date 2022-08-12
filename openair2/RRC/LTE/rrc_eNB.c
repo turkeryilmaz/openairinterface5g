@@ -10489,30 +10489,29 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
             RRCConnSetup_PDU_Present = true;
             rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, 0);
+
+            LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
+                  PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
+                  Idx);
+            rrc_pdcp_config_asn1_req(&ctxt,
+                                     ue_context_pP->ue_context.SRB_configList,
+                                     (LTE_DRB_ToAddModList_t *)NULL,
+                                     (LTE_DRB_ToReleaseList_t *)NULL,
+                                     0xff,
+                                     NULL,
+                                     NULL,
+                                     NULL,
+                                     (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
+
+            if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
+              rrc_rlc_config_asn1_req(&ctxt,
+                                      ue_context_pP->ue_context.SRB_configList,
+                                      (LTE_DRB_ToAddModList_t *)NULL,
+                                      (LTE_DRB_ToReleaseList_t *)NULL,
+                                      (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
+            }
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, 0);
-          }
-
-          LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
-                PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
-                Idx);
-          rrc_pdcp_config_asn1_req(&ctxt,
-                                   ue_context_pP->ue_context.SRB_configList,
-                                   (LTE_DRB_ToAddModList_t *)NULL,
-                                   (LTE_DRB_ToReleaseList_t *)NULL,
-                                   0xff,
-                                   NULL,
-                                   NULL,
-                                   NULL,
-                                   (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
-
-          if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
-          {
-            rrc_rlc_config_asn1_req(&ctxt,
-                                    ue_context_pP->ue_context.SRB_configList,
-                                    (LTE_DRB_ToAddModList_t *)NULL,
-                                    (LTE_DRB_ToReleaseList_t *)NULL,
-                                    (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
           }
         }
       }
