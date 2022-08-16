@@ -112,7 +112,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	ind.U_Plane.SubframeData.NoOfTTIs = 1;
 	ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_PdcpSdu;
 	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
-	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %d\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
+	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
 	for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
         	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
                 DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
@@ -157,7 +157,7 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 				LOG_A(ENB_APP, "PDCP SDU Received in DRB_COMMON_REQ");
 				for(int j = 0; j < req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.d; j++){
 					SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d;
-					LOG_A(ENB_APP, "Length of PDCP SDU received in DRB_COMMON_REQ: %d",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
+					LOG_A(ENB_APP, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
 					memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].v, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
 				}
 			}
@@ -176,6 +176,7 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 
 }
 
+static void
 ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 
 	size_t msgSize = size; //2
