@@ -54,7 +54,7 @@ static int vtp_send_init_udp(const vtp_udpSockReq_t *req)
 {
   // Create and alloc new message
   MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, UDP_INIT);
+  message_p = itti_alloc_new_message(TASK_VTP, 0, UDP_INIT);
   if (message_p == NULL)
   {
     return -1;
@@ -68,7 +68,7 @@ static int vtp_send_init_udp(const vtp_udpSockReq_t *req)
       "0 UDP bind  %s:%u",
       UDP_INIT(message_p).address,
       UDP_INIT(message_p).port);
-  return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
+  return itti_send_msg_to_task(TASK_UDP, 0, message_p);
 }
 //------------------------------------------------------------------------------
 // Function to send response to the SIDL client
@@ -145,7 +145,7 @@ static int vtp_send_udp_msg(
   // Create and alloc new message
   MessageDef *message_p = NULL;
   udp_data_req_t *udp_data_req_p = NULL;
-  message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, UDP_DATA_REQ);
+  message_p = itti_alloc_new_message(TASK_VTP, 0, UDP_DATA_REQ);
 
   if (message_p)
   {
@@ -156,7 +156,7 @@ static int vtp_send_udp_msg(
     udp_data_req_p->buffer = buffer;
     udp_data_req_p->buffer_length = buffer_len;
     udp_data_req_p->buffer_offset = buffer_offset;
-    return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
+    return itti_send_msg_to_task(TASK_UDP, 0, message_p);
   }
   else
   {
@@ -213,7 +213,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
     SS_VTP_PROXY_ACK(message_p).tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     SS_VTP_PROXY_ACK(message_p).tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
 
-    int res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+    int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
         LOG_E(ENB_APP, "[SS-VTP] Error in itti_send_msg_to_task\n");
@@ -246,7 +246,7 @@ static inline void ss_enable_vtp()
     SS_VTP_PROXY_ACK(message_p).tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     SS_VTP_PROXY_ACK(message_p).tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
 
-    int res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+    int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
         LOG_E(ENB_APP, "[SS-VTP] Error in itti_send_msg_to_task\n");

@@ -360,7 +360,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
         if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
         {
             LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
-            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, INSTANCE_DEFAULT, SS_RRC_PDU_IND);
+            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
             if (message_p)
             {
                 /* Populate the message to SS */
@@ -370,7 +370,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
                 SS_RRC_PDU_IND(message_p).frame = -1;
                 SS_RRC_PDU_IND(message_p).subframe = -1;
 
-                int send_res = itti_send_msg_to_task(TASK_SS_SRB, INSTANCE_DEFAULT, message_p);
+                int send_res = itti_send_msg_to_task(TASK_SS_SRB, 0, message_p);
                 if (send_res < 0)
                 {
                     LOG_A(ENB_SS, "Error in itti_send_msg_to_task");
@@ -388,12 +388,12 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
 
         if (userId == MSG_SysProcess_userId)
         {
-            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, INSTANCE_DEFAULT,  SS_SYS_PORT_MSG_IND);
+            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0,  SS_SYS_PORT_MSG_IND);
             if (message_p)
             {
                 SS_SYS_PORT_MSG_IND(message_p).req = req;
                 SS_SYS_PORT_MSG_IND(message_p).userId = userId;
-                itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+                itti_send_msg_to_task(TASK_SYS, 0, message_p);
             }
         }
     }

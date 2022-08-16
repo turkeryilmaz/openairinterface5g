@@ -112,7 +112,7 @@ static inline void
 vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
         int32_t NocLevel, VngProxyCmd_e cmd)
 {
-    MessageDef *message_p = itti_alloc_new_message(TASK_VNG, INSTANCE_DEFAULT, SS_VNG_PROXY_REQ);
+    MessageDef *message_p = itti_alloc_new_message(TASK_VNG, 0, SS_VNG_PROXY_REQ);
     assert(message_p);
 
     SS_VNG_PROXY_REQ(message_p).cell_id = SS_context.cellId;
@@ -120,7 +120,7 @@ vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
     SS_VNG_PROXY_REQ(message_p).Noc_level = NocLevel;
     SS_VNG_PROXY_REQ(message_p).cmd = cmd;
 
-    int res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+    int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
         LOG_A(ENB_SS, "[SS-VNG] Error in itti_send_msg_to_task\n");
