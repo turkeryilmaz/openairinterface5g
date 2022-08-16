@@ -149,7 +149,7 @@ static int vtp_send_udp_msg(
 
   if (message_p)
   {
-    LOG_A(ENB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
+    LOG_A(ENB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;
@@ -204,7 +204,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
       
-      LOG_A(ENB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN %d SF %d",
+      LOG_A(ENB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN %d SF %d\n",
             req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf );
 
       vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
@@ -234,11 +234,14 @@ static inline void ss_enable_vtp()
       req->header.length = sizeof(proxy_ss_header_t);
       req->header.cell_id = SS_context.cellId;
 
+      /* Initialize with zero */
+      req->tinfo.sfn = 0;
+      req->tinfo.sf = 0;
 
-      LOG_A(ENB_APP, "VTP_ENABLE Command to proxy sent for cell_id: %d SFN %d SF %d",
-            req->header.cell_id);
+      LOG_A(ENB_APP, "VTP_ENABLE Command to proxy sent for cell_id: %d SFN %d SF %d\n",
+            req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf);
 
-      LOG_A(ENB_APP,"VTP_ENABLE Command to proxy sent for cell_id: %d",
+      LOG_A(ENB_APP,"VTP_ENABLE Command to proxy sent for cell_id: %d\n",
             req->header.cell_id );
       vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 
