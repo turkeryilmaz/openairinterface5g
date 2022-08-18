@@ -2023,7 +2023,7 @@ void *rrc_nrue_task(void *args_p)
                NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp-157);
 
          // FIXME: Add a correct criterion
-         if (number_of_received_meas == 50) {
+         if (number_of_received_meas == 100) {
            rrc_ue_generate_measurementReport(&ctxt,
                                              NR_RRC_MAC_MEAS_DATA_IND(msg_p).gnb_index,
                                              NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp);

@@ -1025,7 +1025,11 @@ uint16_t do_nrMeasurementReport_SA(uint8_t Mod_id, uint8_t *buffer, size_t buffe
   *measResultServMo->measResultServingCell.physCellId = 0;
   measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell = CALLOC(1,sizeof(struct NR_MeasQuantityResults));
   measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell->rsrp = CALLOC(1,sizeof(NR_RSRP_Range_t));
-  *measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell->rsrp = rsrp_s;
+  *measResultServMo->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell->rsrp = rsrp_s - 10; // FIXME: This -10 is just to trigger the HO
+  measResultServMo->measResultBestNeighCell = CALLOC(1,sizeof(struct NR_MeasResultNR));
+  measResultServMo->measResultBestNeighCell->measResult.cellResults.resultsCSI_RS_Cell = CALLOC(1,sizeof(struct NR_MeasQuantityResults));
+  measResultServMo->measResultBestNeighCell->measResult.cellResults.resultsCSI_RS_Cell->rsrp = CALLOC(1,sizeof(NR_RSRP_Range_t));
+  *measResultServMo->measResultBestNeighCell->measResult.cellResults.resultsCSI_RS_Cell->rsrp = rsrp_s; // FIXME
   ASN_SEQUENCE_ADD(&measurementReport_ie->measResults.measResultServingMOList.list, measResultServMo);
 
   xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);
