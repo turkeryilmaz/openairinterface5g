@@ -555,7 +555,8 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
     dedicatedNAS_MessageList = NULL;
   }
 
-  NR_MeasConfig_t *measconfig = get_defaultMeasConfig(&rrc->configuration);
+  NR_MeasConfig_t *measconfig = get_defaultMeasConfig(ctxt_pP->module_id);
+  ue_p->measConfig = measconfig;
 
   uint8_t buffer[RRC_BUF_SIZE] = {0};
   int size = do_RRCReconfiguration(ctxt_pP,
@@ -1487,23 +1488,122 @@ static inline uint64_t bitStr_to_uint64(BIT_STRING_t *asn) {
   return result;
 }
 
-static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, const NR_MeasurementReport_t *measurementReport)
+static void rrc_gNB_process_MeasurementReport(const protocol_ctxt_t *ctxt_p, rrc_gNB_ue_context_t *ue_context, const NR_MeasurementReport_t *measurementReport)
 {
+  LOG_I(NR_RRC, "Process measurementReport\n");
+
   if (LOG_DEBUGFLAG(DEBUG_ASN1))
     xer_fprint(stdout, &asn_DEF_NR_MeasurementReport, (void *)measurementReport);
 
   DevAssert(measurementReport->criticalExtensions.present == NR_MeasurementReport__criticalExtensions_PR_measurementReport
             && measurementReport->criticalExtensions.choice.measurementReport != NULL);
 
+  NR_MeasurementReport_IEs_t *measurementReport_IEs = measurementReport->criticalExtensions.choice.measurementReport;
+  const NR_MeasId_t id = measurementReport_IEs->measResults.measId;
   gNB_RRC_UE_t *ue_ctxt = &ue_context->ue_context;
-  if (ue_ctxt->measResults != NULL) {
-    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_MeasResults, ue_ctxt->measResults);
-    ue_ctxt->measResults = NULL;
+
+  AssertFatal(id, "unexpected MeasResult for MeasurementId %ld received\n", id);
+  asn1cCallocOne(ue_ctxt->measResults, measurementReport_IEs->measResults);
+
+  NR_MeasConfig_t *meas_config = ue_ctxt->measConfig;
+  if (meas_config == NULL) {
+    LOG_W(NR_RRC, "%s: %i - meas_config = %p\n", __FUNCTION__, __LINE__, meas_config);
+    return;
   }
 
-  const NR_MeasId_t id = measurementReport->criticalExtensions.choice.measurementReport->measResults.measId;
-  AssertFatal(id, "unexpected MeasResult for MeasurementId %ld received\n", id);
-  asn1cCallocOne(ue_ctxt->measResults, measurementReport->criticalExtensions.choice.measurementReport->measResults);
+  NR_MeasResults_t *meas_results = &measurementReport_IEs->measResults;
+  if (ue_ctxt->measResults != NULL) {
+    // ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_MeasResults, ue_ctxt->measResults);
+    free(ue_ctxt->measResults);
+  }
+  ue_ctxt->measResults = meas_results;
+
+  // Get the meas_id_s structure which contains the measId, measObjectId and reportConfigId
+  NR_MeasIdToAddMod_t *meas_id_s = NULL;
+  for (int meas_idx = 0; meas_idx < meas_config->measIdToAddModList->list.count; meas_idx++) {
+    if (id == meas_config->measIdToAddModList->list.array[meas_idx]->measId) {
+      meas_id_s = meas_config->measIdToAddModList->list.array[meas_idx];
+      break;
+    }
+  }
+
+  // Get the report_config
+  struct NR_ReportConfigToAddMod__reportConfig *report_config = NULL;
+  for (int rep_id = 0; rep_id < meas_config->reportConfigToAddModList->list.count; rep_id++) {
+    if (meas_id_s->reportConfigId == meas_config->reportConfigToAddModList->list.array[rep_id]->reportConfigId) {
+      report_config = &meas_config->reportConfigToAddModList->list.array[rep_id]->reportConfig;
+    }
+  }
+
+  NR_EventTriggerConfig_t *event_triggered = report_config->choice.reportConfigNR->reportType.choice.eventTriggered;
+  bool trigger_ho = false;
+
+  switch (event_triggered->eventId.present) {
+    case NR_EventTriggerConfig__eventId_PR_eventA1:
+      LOG_I(NR_RRC, "Event A1 (Serving becomes better than threshold)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA2:
+      LOG_I(NR_RRC, "Event A2 (Serving becomes worse than threshold)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA3:
+
+      LOG_I(NR_RRC, "Event A3 (Neighbour becomes offset better than SpCell)\n");
+
+      for (int res_mo_idx = 0; res_mo_idx < meas_results->measResultServingMOList.list.count; res_mo_idx++) {
+        NR_MeasResultServMO_t *meas_result_serv_MO = meas_results->measResultServingMOList.list.array[res_mo_idx];
+
+        struct NR_MeasQuantityResults *active_mq_res = NULL;
+        if (meas_result_serv_MO->measResultServingCell.measResult.cellResults.resultsSSB_Cell) {
+          active_mq_res = meas_result_serv_MO->measResultServingCell.measResult.cellResults.resultsSSB_Cell;
+        } else {
+          active_mq_res = meas_result_serv_MO->measResultServingCell.measResult.cellResults.resultsCSI_RS_Cell;
+        }
+        AssertFatal(active_mq_res, "No active cell measurement results!\n");
+
+        long rsrp_s = (*active_mq_res->rsrp) - 157;
+        LOG_I(NR_RRC, "[Active gNB %d] UE %04lx (Measurement Id %li): RSRP = %li dBm\n", ctxt_p->module_id, ctxt_p->rntiMaybeUEid, id, rsrp_s);
+
+        struct NR_MeasQuantityResults *neighboring_mq_res = NULL;
+        if (meas_result_serv_MO->measResultServingCell.measResult.cellResults.resultsSSB_Cell) {
+          neighboring_mq_res = meas_result_serv_MO->measResultBestNeighCell->measResult.cellResults.resultsSSB_Cell;
+        } else {
+          neighboring_mq_res = meas_result_serv_MO->measResultBestNeighCell->measResult.cellResults.resultsCSI_RS_Cell;
+        }
+        AssertFatal(neighboring_mq_res, "No neighboring cell measurement results!\n");
+
+        long rsrp_t = (*neighboring_mq_res->rsrp) - 157;
+        LOG_I(NR_RRC, "[BestNeighCell] UE %04lx (Measurement Id %li): RSRP = %li dBm\n", ctxt_p->rntiMaybeUEid, id, rsrp_t);
+
+        long rsrp_offset = event_triggered->eventId.choice.eventA3 ? (event_triggered->eventId.choice.eventA3->a3_Offset.choice.rsrp) >> 1 : 0;
+
+        if (rsrp_t > (rsrp_s + rsrp_offset)) {
+          trigger_ho = true;
+        }
+      }
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA4:
+      LOG_I(NR_RRC, "Event A4 (Neighbour becomes better than threshold)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA5:
+      LOG_I(NR_RRC, "Event A5 (SpCell becomes worse than threshold1 and neighbour becomes better than threshold2)\n");
+      break;
+
+    case NR_EventTriggerConfig__eventId_PR_eventA6:
+      LOG_I(NR_RRC, "Event A6 (Neighbour becomes offset better than SCell)\n");
+      break;
+
+    default:
+      LOG_I(NR_RRC, "NR_EventTriggerConfig__eventId_PR_NOTHING or Other event report\n");
+      break;
+  }
+
+  if (trigger_ho == true && ue_ctxt->StatusRrc != NR_RRC_HO_EXECUTION) {
+    LOG_D(NR_RRC, "Trigger handover procedures are not implemented yet!\n");
+  }
 }
 
 static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_pP,
@@ -1798,7 +1898,8 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
                   && ul_dcch_msg->message.present == NR_UL_DCCH_MessageType_PR_c1
                   && ul_dcch_msg->message.choice.c1
                   && ul_dcch_msg->message.choice.c1->present == NR_UL_DCCH_MessageType__c1_PR_measurementReport);
-        rrc_gNB_process_MeasurementReport(ue_context_p, ul_dcch_msg->message.choice.c1->choice.measurementReport);
+        LOG_A(NR_RRC, "Received measurementReport\n");
+        rrc_gNB_process_MeasurementReport(ctxt_pP, ue_context_p, ul_dcch_msg->message.choice.c1->choice.measurementReport);
         break;
 
       case NR_UL_DCCH_MessageType__c1_PR_ulInformationTransfer:

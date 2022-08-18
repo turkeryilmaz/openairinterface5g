@@ -53,6 +53,7 @@
 #include "NR_DL-DCCH-Message.h"
 #include "NR_SystemInformation.h"
 #include "NR_UE-NR-Capability.h"
+#include "NR_MeasurementReport.h"
 
 #include "RRC/NR/nr_rrc_common.h"
 #include "as_message.h"
