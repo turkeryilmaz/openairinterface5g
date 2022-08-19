@@ -169,6 +169,8 @@ typedef struct ss_drb_pdu_ind_s {
   uint8_t   drb_id;
   uint32_t  sdu_size;
   uint8_t   sdu[SDU_SIZE];
+  frame_t     frame;         /*!< \brief  LTE frame number.*/
+  sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
 } ss_drb_pdu_ind_t;
 
 typedef enum carrierBandwidthEUTRA_dl_Bandwidth_e {
