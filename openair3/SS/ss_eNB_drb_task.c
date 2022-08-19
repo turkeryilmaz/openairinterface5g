@@ -90,13 +90,13 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	//Populated the Timing Info
 	ind.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
 	ind.Common.TimingInfo.v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
-	ind.Common.TimingInfo.v.SubFrame.SFN.v.Number = 0; //Need to check what value needs to be sent
+	ind.Common.TimingInfo.v.SubFrame.SFN.v.Number = pdu_ind->frame;
 	
 	ind.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
-	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = 0; //Need to check what value needs to be sent
+	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
 	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0; //Need to check what value needs to be sent
+        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
         ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
@@ -114,8 +114,10 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
 	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %d\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
 	for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
-        	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
+                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d)*(sizeof(PDCP_SDU_Type)));
                 DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
+                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
+                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v = CALLOC(1,ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d);
 		memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size); 
 	}
 
