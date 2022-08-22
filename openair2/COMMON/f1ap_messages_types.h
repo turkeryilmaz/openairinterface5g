@@ -351,6 +351,21 @@ typedef struct f1ap_rb_failed_to_be_setup_s {
   long           rb_id;
 } f1ap_rb_failed_to_be_setup_t;
 
+typedef struct protocol_extension_container_s {
+  uint8_t *handover_oreparation_information;
+  uint32_t handover_oreparation_information_length;
+  uint8_t *cell_group_config;
+  uint32_t cell_group_config_length;
+  uint8_t *measurement_timing_configuration;
+  uint32_t measurement_timing_configuration_length;
+  uint8_t *ue_assistance_information;
+  uint32_t ue_assistance_information_length;
+  uint8_t *cg_config;
+  uint32_t cg_config_length;
+  uint8_t *ue_ssistance_information_EUTRA;
+  uint32_t ue_ssistance_information_EUTRA_length;
+} protocol_extension_container_t;
+
 typedef struct cu_to_du_rrc_information_s {
   uint8_t * cG_ConfigInfo;
   uint32_t   cG_ConfigInfo_length;
@@ -358,6 +373,8 @@ typedef struct cu_to_du_rrc_information_s {
   uint32_t   uE_CapabilityRAT_ContainerList_length;
   uint8_t * measConfig;
   uint32_t   measConfig_length;
+  protocol_extension_container_t *ie_extensions;
+  uint32_t ie_extensions_length;
 }cu_to_du_rrc_information_t;
 
 typedef struct du_to_cu_rrc_information_s {

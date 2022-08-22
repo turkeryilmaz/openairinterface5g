@@ -24,7 +24,7 @@
 #include "mac_rrc_dl.h"
 #include "nr_rrc_defs.h"
 
-static void ue_context_setup_request_f1ap(const f1ap_ue_context_setup_t *req)
+static void ue_context_setup_request_f1ap(instance_t instance, const f1ap_ue_context_setup_t *req)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
   f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_REQ(msg);

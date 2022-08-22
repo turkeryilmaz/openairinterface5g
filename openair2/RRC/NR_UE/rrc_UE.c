@@ -1063,7 +1063,7 @@ int8_t nr_rrc_ue_decode_ccch(const protocol_ctxt_t *const ctxt_pP, const NR_SRB_
          // Release T300 timer
          rrc->timers_and_constants.T300_active = 0;
 
-         nr_rrc_ue_process_masterCellGroup(ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup, NULL);
+         nr_rrc_ue_process_masterCellGroup((protocol_ctxt_t *)ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->masterCellGroup, NULL);
          nr_rrc_ue_process_RadioBearerConfig(ctxt_pP, gNB_index, &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig);
          rrc->nrRrcState = RRC_STATE_CONNECTED_NR;
          rrc->rnti = ctxt_pP->rntiMaybeUEid;

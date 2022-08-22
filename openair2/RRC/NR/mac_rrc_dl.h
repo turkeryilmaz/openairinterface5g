@@ -25,7 +25,7 @@
 #include "platform_types.h"
 #include "f1ap_messages_types.h"
 
-typedef void (*ue_context_setup_request_func_t)(const f1ap_ue_context_setup_t *req);
+typedef void (*ue_context_setup_request_func_t)(instance_t instance, const f1ap_ue_context_setup_t *req);
 typedef void (*ue_context_modification_request_func_t)(const f1ap_ue_context_modif_req_t *req);
 typedef void (*ue_context_modification_confirm_func_t)(const f1ap_ue_context_modif_confirm_t *confirm);
 typedef void (*ue_context_modification_refuse_func_t)(const f1ap_ue_context_modif_refuse_t *refuse);

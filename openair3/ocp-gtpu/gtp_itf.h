@@ -80,6 +80,9 @@ extern "C" {
 
   int gtpv1u_update_ue_id(const instance_t instanceP, ue_id_t old_ue_id, ue_id_t new_ue_id);
 
+  int gtpv1u_update_ngu_tunnel(const instance_t instanceP,
+                               const gtpv1u_gnb_create_tunnel_req_t *const create_tunnel_req_pP,
+                               const ue_id_t prior_rnti);
   // New API
   teid_t newGtpuCreateTunnel(instance_t instance,
                              ue_id_t ue_id,

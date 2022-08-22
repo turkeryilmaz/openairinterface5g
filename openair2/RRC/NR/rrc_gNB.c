@@ -1602,8 +1602,158 @@ static void rrc_gNB_process_MeasurementReport(const protocol_ctxt_t *ctxt_p, rrc
   }
 
   if (trigger_ho == true && ue_ctxt->StatusRrc != NR_RRC_HO_EXECUTION) {
-    LOG_D(NR_RRC, "Trigger handover procedures are not implemented yet!\n");
+    LOG_I(NR_RRC, "Handover triggered\n");
+
+    // The gNB-CU sends an UE CONTEXT SETUP REQUEST message to the target gNB-DU to create an UE context and setup
+    // SRBs and DRBs bearers
+
+    ue_ctxt->StatusRrc = NR_RRC_HO_EXECUTION;
+    NR_PhysCellId_t physCellId = *meas_results->measResultServingMOList.list.array[0]->measResultBestNeighCell->physCellId;
+
+    MessageDef *message_p;
+    message_p = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
+    f1ap_ue_context_setup_t *req = &F1AP_UE_CONTEXT_SETUP_REQ(message_p);
+
+    // UE_IDs will be extracted from F1AP layer
+    gNB_RRC_INST *rrc = RC.nrrrc[ctxt_p->module_id];
+    req->mcc = rrc->configuration.mcc[0];
+    req->mnc = rrc->configuration.mnc[0];
+    req->mnc_digit_length = rrc->configuration.mnc_digit_length[0];
+    req->nr_cellid = rrc->nr_cellid;
+
+    // Instruction towards the DU for SRBs configuration
+    req->srbs_to_be_setup_length = 2;
+    req->srbs_to_be_setup = calloc(req->srbs_to_be_setup_length, sizeof(f1ap_srb_to_be_setup_t));
+    f1ap_srb_to_be_setup_t *SRBs = req->srbs_to_be_setup;
+    SRBs[0].srb_id = 1;
+    SRBs[0].lcid = 1;
+    SRBs[1].srb_id = 2;
+    SRBs[1].lcid = 2;
+
+    // Instruction towards the DU for DRB configuration and tunnel creation
+    req->drbs_to_be_setup = malloc(1 * sizeof(f1ap_drb_to_be_setup_t));
+    req->drbs_to_be_setup_length = 1;
+    f1ap_drb_to_be_setup_t *DRBs = req->drbs_to_be_setup;
+    DRBs[0].drb_id = 1;
+    DRBs[0].rlc_mode = RLC_MODE_AM;
+    DRBs[0].up_ul_tnl[0].tl_address = inet_addr(rrc->eth_params_s.my_addr);
+    DRBs[0].up_ul_tnl[0].port = rrc->eth_params_s.my_portd;
+    DRBs[0].up_ul_tnl_length = 1;
+    DRBs[0].up_dl_tnl[0].tl_address = inet_addr(rrc->eth_params_s.remote_addr);
+    DRBs[0].up_dl_tnl[0].port = rrc->eth_params_s.remote_portd;
+    DRBs[0].up_dl_tnl_length = 1;
+
+    // CellGroupConfig
+    instance_t instance = get_instance_by_NR_physCellId(physCellId);
+    NR_ServingCellConfigCommon_t *scc = RC.nrrrc[instance]->carrier.servingcellconfigcommon;
+    if (ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync == NULL) {
+      ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync = calloc(1, sizeof(*ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync));
+      NR_ReconfigurationWithSync_t *reconfigurationWithSync = ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync;
+      reconfigurationWithSync->spCellConfigCommon = scc;
+      reconfigurationWithSync->spCellConfigCommon->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon =
+          rrc->carrier.sib1->servingCellConfigCommon->downlinkConfigCommon.initialDownlinkBWP.pdcch_ConfigCommon;
+      reconfigurationWithSync->newUE_Identity = get_new_rnti(rrc);
+      reconfigurationWithSync->t304 = NR_ReconfigurationWithSync__t304_ms2000;
+      reconfigurationWithSync->rach_ConfigDedicated = NULL;
+      reconfigurationWithSync->ext1 = NULL;
+    }
+    if (ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated == NULL) {
+      ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated = calloc(1, sizeof(struct NR_ReconfigurationWithSync__rach_ConfigDedicated));
+      struct NR_ReconfigurationWithSync__rach_ConfigDedicated *rach_ConfigDedicated = ue_ctxt->masterCellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated;
+      rach_ConfigDedicated->present = NR_ReconfigurationWithSync__rach_ConfigDedicated_PR_uplink;
+      rach_ConfigDedicated->choice.uplink = calloc(1, sizeof(struct NR_RACH_ConfigDedicated));
+      rach_ConfigDedicated->choice.uplink->ra_Prioritization = NULL;
+      rach_ConfigDedicated->choice.uplink->ext1 = NULL;
+      rach_ConfigDedicated->choice.uplink->cfra = calloc(1, sizeof(struct NR_CFRA));
+      struct NR_CFRA *cfra = rach_ConfigDedicated->choice.uplink->cfra;
+      cfra->occasions = calloc(1, sizeof(struct NR_CFRA__occasions));
+      memcpy(&cfra->occasions->rach_ConfigGeneric, &scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric, sizeof(NR_RACH_ConfigGeneric_t));
+      cfra->occasions->ssb_perRACH_Occasion = calloc(1, sizeof(long));
+      *cfra->occasions->ssb_perRACH_Occasion = NR_CFRA__occasions__ssb_perRACH_Occasion_one;
+      cfra->resources.present = NR_CFRA__resources_PR_ssb;
+      cfra->resources.choice.ssb = calloc(1, sizeof(struct NR_CFRA__resources__ssb));
+      cfra->resources.choice.ssb->ra_ssb_OccasionMaskIndex = 0;
+      int n_ssb = 0;
+      uint64_t bitmap = get_ssb_bitmap(scc);
+      struct NR_CFRA_SSB_Resource *ssbElem[64];
+      for (int i = 0; i < 64; i++) {
+        if ((bitmap >> (63 - i)) & 0x01) {
+          ssbElem[n_ssb] = calloc(1, sizeof(struct NR_CFRA_SSB_Resource));
+          ssbElem[n_ssb]->ssb = i;
+          ssbElem[n_ssb]->ra_PreambleIndex = 63 - (ue_ctxt->rrc_ue_id % 64);
+          ASN_SEQUENCE_ADD(&cfra->resources.choice.ssb->ssb_ResourceList.list, ssbElem[n_ssb]);
+          n_ssb++;
+        }
+      }
+    }
+    req->cu_to_du_rrc_information = calloc(1, sizeof(cu_to_du_rrc_information_t));
+    req->cu_to_du_rrc_information->ie_extensions = calloc(1, sizeof(protocol_extension_container_t));
+    req->cu_to_du_rrc_information->ie_extensions->cell_group_config = calloc(1, RRC_BUF_SIZE);
+    asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
+                                                    NULL,
+                                                    ue_ctxt->masterCellGroup,
+                                                    req->cu_to_du_rrc_information->ie_extensions->cell_group_config,
+                                                    RRC_BUF_SIZE);
+
+    AssertFatal(enc_rval.encoded > 0, "ASN1 NR_CellGroupConfig encoding failed (%s, %jd)!\n", enc_rval.failed_type->name, enc_rval.encoded);
+
+    req->cu_to_du_rrc_information->ie_extensions->cell_group_config_length = (enc_rval.encoded + 7) >> 3;
+
+    if (ue_ctxt->handover_info == NULL) {
+      ue_ctxt->handover_info = calloc(1, sizeof(NR_HANDOVER_INFO));
+    }
+    ue_ctxt->handover_info->modid_s = ctxt_p->module_id;
+    ue_ctxt->handover_info->modid_t = instance;
+
+    req->gNB_CU_ue_id = ue_ctxt->rrc_ue_id;
+    req->gNB_DU_ue_id = 0xFFFF;
+
+    for (int ho_idx = 0; ho_idx < NUMBER_OF_DU_PER_CU_MAX; ho_idx++) {
+      if (ho_rnti_map[ho_idx][0] == 0) {
+        ho_rnti_map[ho_idx][0] = ue_ctxt->rnti;
+        ho_rnti_map[ho_idx][1] = ue_ctxt->handover_info->modid_s;
+        ho_rnti_map[ho_idx][2] = 0;
+        ho_rnti_map[ho_idx][3] = ue_ctxt->handover_info->modid_t;
+      }
+    }
+
+    itti_send_msg_to_task(TASK_CU_F1, RC.nrrrc[instance]->f1_instance, message_p);
   }
+}
+
+void nr_update_ngu_tunnel_after_handover(gNB_RRC_INST *rrc_instance_source, const long rnti_s, struct rrc_gNB_ue_context_s *ue_context_target, const long rnti_t)
+{
+  struct rrc_gNB_ue_context_s *ue_context_source = rrc_gNB_get_ue_context_by_rnti(rrc_instance_source, rnti_s);
+
+  gtpv1u_gnb_create_tunnel_req_t create_tunnel_req = {0};
+
+  int j = 0;
+  for (int i = 0; i < NB_RB_MAX; i++) {
+    if (ue_context_source->ue_context.pduSession[i].status == PDU_SESSION_STATUS_ESTABLISHED || ue_context_source->ue_context.pduSession[i].status == PDU_SESSION_STATUS_DONE) {
+      create_tunnel_req.pdusession_id[j] = ue_context_source->ue_context.pduSession[i].param.pdusession_id;
+      create_tunnel_req.incoming_rb_id[j] = i + 1;
+      create_tunnel_req.outgoing_teid[j] = ue_context_source->ue_context.pduSession[i].param.gtp_teid;
+      create_tunnel_req.outgoing_qfi[j] = ue_context_source->ue_context.pduSession[i].param.qos[0].qfi;
+      memcpy(create_tunnel_req.dst_addr[j].buffer, ue_context_source->ue_context.pduSession[i].param.upf_addr.buffer, sizeof(uint8_t) * 20);
+      create_tunnel_req.dst_addr[j].length = ue_context_source->ue_context.pduSession[i].param.upf_addr.length;
+      j++;
+    }
+  }
+
+  create_tunnel_req.ue_id = rnti_t;
+  create_tunnel_req.num_tunnels = j;
+
+  gtpv1u_update_ngu_tunnel(0, &create_tunnel_req, rnti_s);
+}
+
+rnti_t find_ho_rnti_by_modid_s(const uint8_t modid_s)
+{
+  for (int ho_id = 0; ho_id < NUMBER_OF_DU_PER_CU_MAX; ho_id++) {
+    if (ho_rnti_map[ho_id][1] == modid_s) {
+      return ho_rnti_map[ho_id][0];
+    }
+  }
+  return -1;
 }
 
 static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_pP,
