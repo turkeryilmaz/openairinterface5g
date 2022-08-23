@@ -99,8 +99,8 @@
 #include "SIMULATION/TOOLS/sim.h" // for taus
 
 bool    RRCConnSetup_PDU_Present = false;
-uint8_t RRCConnSetup_PDUSize = 0;
-uint8_t RRCConnSetup_PDU[100];
+uint8_t RRCMsgOnSRB0_PDUSize = 0;
+uint8_t RRCMsgOnSRB0_PDU[100];
 
 #define ASN_MAX_ENCODE_SIZE 4096
 #define NUMBEROF_DRBS_TOBE_ADDED 1
@@ -1530,6 +1530,13 @@ rrc_eNB_generate_RRCConnectionReject(
   ue_p->Srb0.Tx_buffer.payload_size =
     do_RRCConnectionReject(ctxt_pP->module_id,
                            (uint8_t *) ue_p->Srb0.Tx_buffer.Payload);
+
+  if((RC.ss.mode != SS_ENB) && (RRCMsgOnSRB0_PDUSize > 0)) {
+    memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU,RRCMsgOnSRB0_PDUSize);
+    LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize);
+    ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize;
+  }
+
   LOG_DUMPMSG(RRC,DEBUG_RRC,
               (char *)(ue_p->Srb0.Tx_buffer.Payload),
               ue_p->Srb0.Tx_buffer.payload_size,
@@ -7055,13 +7062,12 @@ rrc_eNB_generate_RRCConnectionSetup(
                             0,//rrc_eNB_get_next_transaction_identifier(ctxt_pP->module_id),
                             SRB_configList,
                             &ue_context_pP->ue_context.physicalConfigDedicated);
-                             if((RRCConnSetup_PDU_Present == true) && (RRCConnSetup_PDUSize > 0))
      
-     if((RC.ss.mode != SS_ENB) && (RRCConnSetup_PDU_Present == true) && (RRCConnSetup_PDUSize > 0))
+     if((RC.ss.mode != SS_ENB) && (RRCConnSetup_PDU_Present == true) && (RRCMsgOnSRB0_PDUSize > 0))
      {
-       memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCConnSetup_PDU,RRCConnSetup_PDUSize);
-       LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCConnSetup_PDUSize);
-       ue_p->Srb0.Tx_buffer.payload_size=  RRCConnSetup_PDUSize;
+       memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU,RRCMsgOnSRB0_PDUSize);
+       LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize);
+       ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize;
      }
   }
 
@@ -7290,8 +7296,8 @@ char openair_rrc_eNB_configuration(
     LOG_D(RRC,"Update config from TTCN RRCConnSetup_PDU_Present %d \n",RRCConnSetup_PDU_Present);
     if(RRCConnSetup_PDU_Present == true)
     {
-      RRCConnSetup_PDUSize = configuration->RlcPduCCCH_Size;
-      memcpy(RRCConnSetup_PDU,configuration->RlcPduCCCH,RRCConnSetup_PDUSize);
+      RRCMsgOnSRB0_PDUSize = configuration->RlcPduCCCH_Size;
+      memcpy(RRCMsgOnSRB0_PDU,configuration->RlcPduCCCH,RRCMsgOnSRB0_PDUSize);
     }
   }
   /*
@@ -8144,9 +8150,9 @@ rrc_eNB_decode_ccch(
         if ((RC.ss.mode == SS_ENB) || (true == RRCConnSetup_PDU_Present))
         {
           rrc_eNB_generate_RRCConnectionSetup(ctxt_pP, ue_context_p, CC_id);
-          LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
+          LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d),RRCConnSetup_PDU_Present: %d \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
-                Idx);
+                Idx,RRCConnSetup_PDU_Present);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *)NULL,
@@ -10444,6 +10450,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         else
         {
           struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
+          LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
           ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
           LOG_A(RRC, "Genreating RRC-CS from TTCN message RRC_PDU_REQ\n");
           module_id_t Idx;
@@ -10451,9 +10458,16 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
           eNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
 
-          RRCConnSetup_PDU_Present = true;
-          RRCConnSetup_PDUSize = SS_RRC_PDU_REQ(msg_p).sdu_size;
-          memcpy(RRCConnSetup_PDU, SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+          uper_decode(NULL,
+                      &asn_DEF_LTE_DL_CCCH_Message,
+                      (void **)&dl_ccch_msg,
+                      (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
+                      SS_RRC_PDU_REQ(msg_p).sdu_size,0,0);
+
+          xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
+
+          RRCMsgOnSRB0_PDUSize = SS_RRC_PDU_REQ(msg_p).sdu_size;
+          memcpy(RRCMsgOnSRB0_PDU, SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
 
           Idx = DCCH;
           // SRB1
@@ -10475,28 +10489,32 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                  &DCCH_LCHAN_DESC,
                  LCHAN_DESC_SIZE);
 
-          rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, 0);
+          if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
+            RRCConnSetup_PDU_Present = true;
+            rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, 0);
 
-          LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
-                PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
-                Idx);
-          rrc_pdcp_config_asn1_req(&ctxt,
-                                   ue_context_pP->ue_context.SRB_configList,
-                                   (LTE_DRB_ToAddModList_t *)NULL,
-                                   (LTE_DRB_ToReleaseList_t *)NULL,
-                                   0xff,
-                                   NULL,
-                                   NULL,
-                                   NULL,
-                                   (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
+            LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
+                  PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
+                  Idx);
+            rrc_pdcp_config_asn1_req(&ctxt,
+                                     ue_context_pP->ue_context.SRB_configList,
+                                     (LTE_DRB_ToAddModList_t *)NULL,
+                                     (LTE_DRB_ToReleaseList_t *)NULL,
+                                     0xff,
+                                     NULL,
+                                     NULL,
+                                     NULL,
+                                     (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-          if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
-          {
-            rrc_rlc_config_asn1_req(&ctxt,
-                                    ue_context_pP->ue_context.SRB_configList,
-                                    (LTE_DRB_ToAddModList_t *)NULL,
-                                    (LTE_DRB_ToReleaseList_t *)NULL,
-                                    (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
+            if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
+              rrc_rlc_config_asn1_req(&ctxt,
+                                      ue_context_pP->ue_context.SRB_configList,
+                                      (LTE_DRB_ToAddModList_t *)NULL,
+                                      (LTE_DRB_ToReleaseList_t *)NULL,
+                                      (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
+            }
+          } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
+            rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, 0);
           }
         }
 #endif
