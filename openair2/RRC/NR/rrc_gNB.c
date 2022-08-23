@@ -3014,7 +3014,7 @@ static void rrc_deliver_ue_ctxt_setup_req(void *deliver_pdu_data, ue_id_t ue_id,
   deliver_ue_ctxt_setup_data_t *data = deliver_pdu_data;
   data->setup_req->rrc_container = (uint8_t*)buf;
   data->setup_req->rrc_container_length = size;
-  data->rrc->mac_rrc.ue_context_setup_request(data->setup_req);
+  data->rrc->mac_rrc.ue_context_setup_request(0, data->setup_req);
 }
 
 //-----------------------------------------------------------------------------
