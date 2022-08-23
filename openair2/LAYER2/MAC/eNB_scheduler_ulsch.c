@@ -1631,7 +1631,12 @@ schedule_ulsch_rnti(module_id_t   module_idP,
       }
 
       const uint8_t ndi = 1 - UE_template_ptr->oldNDI_UL[harq_pid]; // NDI: new data indicator
+            // Changed pre_assigned_mcs_ul for sending full SDU to UE on DRB in System Simulator Mode
+      if (RC.ss.mode == SS_SOFTMODEM){
+        UE_template_ptr->pre_assigned_mcs_ul = 16;
+      }
       const uint8_t mcs = UE_template_ptr->pre_assigned_mcs_ul;
+
       UE_template_ptr->oldNDI_UL[harq_pid] = ndi;
       UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_rounds[0]++;
       UE_info->eNB_UE_stats[CC_id][UE_id].snr = snr;
@@ -1651,7 +1656,7 @@ schedule_ulsch_rnti(module_id_t   module_idP,
         UE_sched_ctrl_ptr->dci0_ongoing_timer = 1;
       }
 
-      uint8_t rb_table_index = UE_template_ptr->pre_allocated_rb_table_index_ul;
+      uint8_t rb_table_index = 10;//UE_template_ptr->pre_allocated_rb_table_index_ul;
 
       UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_mcs2 = mcs;
 
@@ -1686,13 +1691,14 @@ schedule_ulsch_rnti(module_id_t   module_idP,
       /* Adjust scheduled UL bytes by TBS, wait for UL sdus to do final update */
       LOG_D(MAC,
             "[eNB %d] CC_id %d UE %d/%x : adjusting scheduled_ul_bytes, old "
-            "%d, TBS %d\n",
+            "%d, TBS %d rb_idx %d\n",
             module_idP,
             CC_id,
             UE_id,
             rnti,
             UE_template_ptr->scheduled_ul_bytes,
-            UE_template_ptr->TBS_UL[harq_pid]);
+            UE_template_ptr->TBS_UL[harq_pid],
+            rb_table_index);
       UE_template_ptr->scheduled_ul_bytes += UE_template_ptr->TBS_UL[harq_pid];
       LOG_D(MAC,
             "scheduled_ul_bytes, new %d\n",
