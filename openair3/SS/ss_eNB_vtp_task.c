@@ -54,7 +54,7 @@ static int vtp_send_init_udp(const vtp_udpSockReq_t *req)
 {
   // Create and alloc new message
   MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, UDP_INIT);
+  message_p = itti_alloc_new_message(TASK_VTP, 0, UDP_INIT);
   if (message_p == NULL)
   {
     return -1;
@@ -68,7 +68,7 @@ static int vtp_send_init_udp(const vtp_udpSockReq_t *req)
       "0 UDP bind  %s:%u",
       UDP_INIT(message_p).address,
       UDP_INIT(message_p).port);
-  return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
+  return itti_send_msg_to_task(TASK_UDP, 0, message_p);
 }
 //------------------------------------------------------------------------------
 // Function to send response to the SIDL client
@@ -145,18 +145,18 @@ static int vtp_send_udp_msg(
   // Create and alloc new message
   MessageDef *message_p = NULL;
   udp_data_req_t *udp_data_req_p = NULL;
-  message_p = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, UDP_DATA_REQ);
+  message_p = itti_alloc_new_message(TASK_VTP, 0, UDP_DATA_REQ);
 
   if (message_p)
   {
-    LOG_A(ENB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
+    LOG_A(ENB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;
     udp_data_req_p->buffer = buffer;
     udp_data_req_p->buffer_length = buffer_len;
     udp_data_req_p->buffer_offset = buffer_offset;
-    return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
+    return itti_send_msg_to_task(TASK_UDP, 0, message_p);
   }
   else
   {
@@ -204,7 +204,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
       
-      LOG_A(ENB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN %d SF %d",
+      LOG_A(ENB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN %d SF %d\n",
             req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf );
 
       vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
@@ -213,7 +213,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
     SS_VTP_PROXY_ACK(message_p).tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     SS_VTP_PROXY_ACK(message_p).tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
 
-    int res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+    int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
         LOG_E(ENB_APP, "[SS-VTP] Error in itti_send_msg_to_task\n");
@@ -234,11 +234,14 @@ static inline void ss_enable_vtp()
       req->header.length = sizeof(proxy_ss_header_t);
       req->header.cell_id = SS_context.cellId;
 
+      /* Initialize with zero */
+      req->tinfo.sfn = 0;
+      req->tinfo.sf = 0;
 
-      LOG_A(ENB_APP, "VTP_ENABLE Command to proxy sent for cell_id: %d SFN %d SF %d",
-            req->header.cell_id);
+      LOG_A(ENB_APP, "VTP_ENABLE Command to proxy sent for cell_id: %d SFN %d SF %d\n",
+            req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf);
 
-      LOG_A(ENB_APP,"VTP_ENABLE Command to proxy sent for cell_id: %d",
+      LOG_A(ENB_APP,"VTP_ENABLE Command to proxy sent for cell_id: %d\n",
             req->header.cell_id );
       vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 
@@ -246,7 +249,7 @@ static inline void ss_enable_vtp()
     SS_VTP_PROXY_ACK(message_p).tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     SS_VTP_PROXY_ACK(message_p).tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
 
-    int res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+    int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
         LOG_E(ENB_APP, "[SS-VTP] Error in itti_send_msg_to_task\n");
