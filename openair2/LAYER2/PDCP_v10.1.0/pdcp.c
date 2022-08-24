@@ -1420,7 +1420,7 @@ pdcp_run (
             break;
           }
 
-          message_p = itti_alloc_new_message (TASK_PDCP_ENB, ctxt_pP->module_id, SS_GET_PDCP_CNT);
+          message_p = itti_alloc_new_message (TASK_PDCP_ENB, 0, SS_GET_PDCP_CNT);
 
           SS_GET_PDCP_CNT(message_p).size = 0;
 

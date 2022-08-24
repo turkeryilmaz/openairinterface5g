@@ -343,7 +343,7 @@ mac_rrc_data_ind(
     if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
     {
       LOG_I(RRC,"RRC Sending CCCH PDU_IND to SS \n");
-      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, 0,  SS_RRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0,  SS_RRC_PDU_IND);
       if (message_p) {
         /* Populate the message to SS */
         SS_RRC_PDU_IND (message_p).sdu_size = sdu_lenP;
