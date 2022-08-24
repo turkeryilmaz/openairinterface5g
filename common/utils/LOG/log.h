@@ -53,6 +53,7 @@
 #include <pthread.h>
 #include "T.h"
 #include <common/utils/utils.h>
+#include "ss-log.h"
 /*----------------------------------------------------------------------------*/
 #include <assert.h>
 #ifdef NDEBUG

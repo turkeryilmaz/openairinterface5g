@@ -10345,7 +10345,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             }
             LOG_A(RRC, "\n");
 	  }
-          LOG_A(RRC, "DL DCCH size: %d \n", SS_RRC_PDU_REQ (msg_p).sdu_size);
+          LOG_P(RRC, "DL DCCH size: %d \n", (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
 
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
           {

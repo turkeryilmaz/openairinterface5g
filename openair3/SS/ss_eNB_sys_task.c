@@ -55,6 +55,7 @@
 
 #include "udp_eNB_task.h"
 #include "ss_eNB_proxy_iface.h"
+#include "common/utils/LOG/ss-log.h"
 #include "msc.h"
 
 extern RAN_CONTEXT_t RC;
