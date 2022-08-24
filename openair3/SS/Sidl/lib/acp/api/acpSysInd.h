@@ -27,10 +27,18 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void acpSysIndProcessToSSInitSrv(acpCtx_t _ctx, struct SYSTEM_IND** ToSS);
+
 int acpSysIndProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct SYSTEM_IND* ToSS);
 
 int acpSysIndProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct SYSTEM_IND** ToSS);
 
+void acpSysIndProcessToSSFree0Clt(struct SYSTEM_IND* ToSS);
+
 void acpSysIndProcessToSSFreeClt(struct SYSTEM_IND* ToSS);
+
+void acpSysIndProcessToSSFree0SrvClt(struct SYSTEM_IND* ToSS);
+
+void acpSysIndProcessToSSFreeSrvClt(struct SYSTEM_IND* ToSS);
 
 SIDL_END_C_INTERFACE

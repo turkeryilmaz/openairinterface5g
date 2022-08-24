@@ -25,11 +25,13 @@
 // SIDL common TTCN types and definitions.
 #include "TtcnCommon.sidl"
 
+// Interface name.
 METADATA_VAR(itf_name, "NrSys");
 
+// Restricted RATs.
 METADATA_VAR(rats, "NR");
 
-// TTCN namespaces
+// TTCN namespaces.
 METADATA_VAR(namespaces, "NR_ASP_TypeDefs");
 
 struct NR_CellAttenuationConfig_Type {

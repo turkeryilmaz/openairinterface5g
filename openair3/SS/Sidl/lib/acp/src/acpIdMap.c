@@ -29,10 +29,10 @@ const struct acpIdMapItf acpItfMap[] = {
 	{ "Srb", 4, 10, 2 },
 	{ "Vng", 5, 12, 1 },
 	{ "Drb", 6, 13, 2 },
-	{ "Handshake", 7, 15, 2 },
-	{ "SysInd", 8, 17, 1 },
-	{ "NrSysSrb", 9, 18, 2 },
-	{ "NrSys", 10, 20, 1 },
+	{ "Handshake", 7, 15, 1 },
+	{ "SysInd", 8, 16, 1 },
+	{ "NrSysSrb", 9, 17, 2 },
+	{ "NrSys", 10, 19, 1 },
 };
 
 const unsigned int acpItfMapSize = sizeof(acpItfMap) / sizeof(acpItfMap[0]);
@@ -43,45 +43,44 @@ const unsigned int acpItfMapSize = sizeof(acpItfMap) / sizeof(acpItfMap[0]);
 // and YY is the number of service (sequence of 00..NN) in the interface.
 struct acpIdMapService acpIdMap[] = {
 	// Test part
-	{ "TestHelloFromSS", 0x90040100, (unsigned int)-1, 1 },
-	{ "TestHelloToSS", 0x90040101, (unsigned int)-1, 0 },
-	{ "TestPing", 0x90040102, (unsigned int)-1, 2 },
-	{ "TestEcho", 0x90040103, (unsigned int)-1, 2 },
-	{ "TestTest1", 0x90040104, (unsigned int)-1, 2 },
-	{ "TestTest2", 0x90040105, (unsigned int)-1, 2 },
-	{ "TestOther", 0x90040106, (unsigned int)-1, 2 },
+	{ "TestHelloFromSS", 0x90040100, (unsigned int)-1, ACP_ONEWAY },
+	{ "TestHelloToSS", 0x90040101, (unsigned int)-1, ACP_NTF },
+	{ "TestPing", 0x90040102, (unsigned int)-1, ACP_CMD },
+	{ "TestEcho", 0x90040103, (unsigned int)-1, ACP_CMD },
+	{ "TestTest1", 0x90040104, (unsigned int)-1, ACP_CMD },
+	{ "TestTest2", 0x90040105, (unsigned int)-1, ACP_CMD },
+	{ "TestOther", 0x90040106, (unsigned int)-1, ACP_CMD },
 
 	// Sys part
-	{ "SysProcess", 0x90040200, (unsigned int)-1, 2 },
+	{ "SysProcess", 0x90040200, (unsigned int)-1, ACP_CMD },
 
 	// SysVT (internal) part
-	{ "SysVTEnquireTimingAck", 0x90040300, (unsigned int)-1, 1 },
-	{ "SysVTEnquireTimingUpd", 0x90040301, (unsigned int)-1, 0 },
+	{ "SysVTEnquireTimingAck", 0x90040300, (unsigned int)-1, ACP_ONEWAY },
+	{ "SysVTEnquireTimingUpd", 0x90040301, (unsigned int)-1, ACP_NTF },
 
 	// SysSrb part
-	{ "SysSrbProcessFromSS", 0x90040400, (unsigned int)-1, 1 },
-	{ "SysSrbProcessToSS", 0x90040401, (unsigned int)-1, 0 },
+	{ "SysSrbProcessFromSS", 0x90040400, (unsigned int)-1, ACP_ONEWAY },
+	{ "SysSrbProcessToSS", 0x90040401, (unsigned int)-1, ACP_NTF },
 
 	// Vng part
-	{ "VngProcess", 0x90040500, (unsigned int)-1, 2 },
+	{ "VngProcess", 0x90040500, (unsigned int)-1, ACP_CMD },
 
 	// Drb part
-	{ "DrbProcessFromSS", 0x90040600, (unsigned int)-1, 1 },
-	{ "DrbProcessToSS", 0x90040601, (unsigned int)-1, 0 },
+	{ "DrbProcessFromSS", 0x90040600, (unsigned int)-1, ACP_ONEWAY },
+	{ "DrbProcessToSS", 0x90040601, (unsigned int)-1, ACP_NTF },
 
-	// Handshake (internale) part
-	{ "HandshakeHandleFromSS", 0x90040700, (unsigned int)-1, 1 },
-	{ "HandshakeHandleToSS", 0x90040701, (unsigned int)-1, 0 },
+	// Handshake (internal) part
+	{ "HandshakeProcess", 0x90040700, (unsigned int)-1, ACP_ONEWAY },
 
 	// SysInd part
-	{ "SysIndProcessToSS", 0x90040800, (unsigned int)-1, 0 },
+	{ "SysIndProcessToSS", 0x90040800, (unsigned int)-1, ACP_NTF },
 
 	// NrSysSrb part
-	{ "NrSysSrbProcessFromSS", 0x90040900, (unsigned int)-1, 1 },
-	{ "NrSysSrbProcessToSS", 0x90040901, (unsigned int)-1, 0 },
+	{ "NrSysSrbProcessFromSS", 0x90040900, (unsigned int)-1, ACP_ONEWAY },
+	{ "NrSysSrbProcessToSS", 0x90040901, (unsigned int)-1, ACP_NTF },
 
 	// NrSys part
-	{ "NrSysProcess", 0x90040A00, (unsigned int)-1, 2 },
+	{ "NrSysProcess", 0x90040A00, (unsigned int)-1, ACP_CMD },
 };
 
 const unsigned int acpIdMapSize = sizeof(acpIdMap) / sizeof(acpIdMap[0]);

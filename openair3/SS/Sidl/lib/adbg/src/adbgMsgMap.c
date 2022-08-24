@@ -121,7 +121,7 @@ void adbgMsgLogInArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const un
 		return;
 	}
 #endif
-	if (id == ACP_LID_HandshakeHandleFromSS) {
+	if (id == ACP_LID_HandshakeProcess) {
 		return;
 	}
 #if defined(PROJECT_HAS_RAT_NR)
@@ -234,8 +234,7 @@ void adbgMsgLogOutArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const u
 		return;
 	}
 #endif
-	/* Handshake */
-	if (id == ACP_LID_HandshakeHandleToSS) {
+	if (id == ACP_LID_HandshakeProcess) {
 		return;
 	}
 #if defined(PROJECT_HAS_RAT_NR)

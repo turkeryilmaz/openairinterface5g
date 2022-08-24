@@ -25,6 +25,14 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serDrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct DRB_COMMON_REQ** FromSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*FromSS = (struct DRB_COMMON_REQ*)serMalloc(_mem, sizeof(struct DRB_COMMON_REQ));
+	memset(*FromSS, 0, sizeof(struct DRB_COMMON_REQ));
+}
+
 static int _serDrbEncPmchLogicalChannel_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PmchLogicalChannel_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -2435,7 +2443,7 @@ static int _serDrbDecSQN_PLMN_Identity(const unsigned char* _buffer, size_t _siz
 
 	_serDrbDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	NTOH_32(p->mnc.d, &_buffer[*_lidx], _lidx);
-	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
+	p->mnc.v = (SQN_MCC_MNC_Digit*)serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		NTOH_8(p->mnc.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -2924,7 +2932,7 @@ static int _serDrbDecMAC_PDU_Length_Type(const unsigned char* _buffer, size_t _s
 		NTOH_8(p->Format[i4], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->Value.d, &_buffer[*_lidx], _lidx);
-	p->Value.v = serMalloc(_mem, p->Value.d * sizeof(BIT_STRING_ELEMENT));
+	p->Value.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->Value.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i4 = 0; i4 < p->Value.d; i4++) {
 		NTOH_8(p->Value.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -3037,7 +3045,7 @@ static int _serDrbDecMAC_CTRL_ContentionResolutionId_Type_ContentionResolutionID
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
+	p->v.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -3173,7 +3181,7 @@ static int _serDrbDecMAC_CTRL_ExtPowerHeadRoom_Type(const unsigned char* _buffer
 
 	_serDrbDecScellBitMap_Type(_buffer, _size, _lidx, &p->EPH_Octet1);
 	NTOH_32(p->PH_RecordList.d, &_buffer[*_lidx], _lidx);
-	p->PH_RecordList.v = serMalloc(_mem, p->PH_RecordList.d * sizeof(struct PH_Record_Type));
+	p->PH_RecordList.v = (struct PH_Record_Type*)serMalloc(_mem, p->PH_RecordList.d * sizeof(struct PH_Record_Type));
 	for (size_t i3 = 0; i3 < p->PH_RecordList.d; i3++) {
 		_serDrbDecPH_Record_Type(_buffer, _size, _lidx, &p->PH_RecordList.v[i3]);
 	}
@@ -3198,7 +3206,7 @@ static int _serDrbDecMAC_CTRL_DC_PowerHeadRoom_Type(const unsigned char* _buffer
 
 	_serDrbDecScellBitMap_Type(_buffer, _size, _lidx, &p->DC_PH_Octet1);
 	NTOH_32(p->DC_PH_RecordList.d, &_buffer[*_lidx], _lidx);
-	p->DC_PH_RecordList.v = serMalloc(_mem, p->DC_PH_RecordList.d * sizeof(struct PH_Record_Type));
+	p->DC_PH_RecordList.v = (struct PH_Record_Type*)serMalloc(_mem, p->DC_PH_RecordList.d * sizeof(struct PH_Record_Type));
 	for (size_t i3 = 0; i3 < p->DC_PH_RecordList.d; i3++) {
 		_serDrbDecPH_Record_Type(_buffer, _size, _lidx, &p->DC_PH_RecordList.v[i3]);
 	}
@@ -3252,10 +3260,10 @@ static int _serDrbDecMAC_SDUList_Type_SduList_Optional(const unsigned char* _buf
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(MAC_SDU_Type));
+	p->v.v = (MAC_SDU_Type*)serMalloc(_mem, p->v.d * sizeof(MAC_SDU_Type));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_32(p->v.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i3].v = serMalloc(_mem, p->v.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
+		p->v.v[i3].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i4 = 0; i4 < p->v.v[i3].d; i4++) {
 			NTOH_8(p->v.v[i3].v[i4], &_buffer[*_lidx], _lidx);
 		}
@@ -3271,7 +3279,7 @@ static int _serDrbDecOCTET_STRING_Padding_Optional(const unsigned char* _buffer,
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -3284,7 +3292,7 @@ static int _serDrbDecMAC_PDU_Type(const unsigned char* _buffer, size_t _size, si
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->Header.d, &_buffer[*_lidx], _lidx);
-	p->Header.v = serMalloc(_mem, p->Header.d * sizeof(struct MAC_PDU_SubHeader_Type));
+	p->Header.v = (struct MAC_PDU_SubHeader_Type*)serMalloc(_mem, p->Header.d * sizeof(struct MAC_PDU_SubHeader_Type));
 	for (size_t i3 = 0; i3 < p->Header.d; i3++) {
 		_serDrbDecMAC_PDU_SubHeader_Type(_buffer, _size, _lidx, _mem, &p->Header.v[i3]);
 	}
@@ -3346,7 +3354,7 @@ static int _serDrbDecRLC_LI_List_Type_Value(const unsigned char* _buffer, size_t
 
 	if (d == RLC_LI_List_Type_LI11) {
 		NTOH_32(p->LI11.d, &_buffer[*_lidx], _lidx);
-		p->LI11.v = serMalloc(_mem, p->LI11.d * sizeof(struct RLC_LengthIndicator_LI11_Type));
+		p->LI11.v = (struct RLC_LengthIndicator_LI11_Type*)serMalloc(_mem, p->LI11.d * sizeof(struct RLC_LengthIndicator_LI11_Type));
 		for (size_t i3 = 0; i3 < p->LI11.d; i3++) {
 			_serDrbDecRLC_LengthIndicator_LI11_Type(_buffer, _size, _lidx, &p->LI11.v[i3]);
 		}
@@ -3354,7 +3362,7 @@ static int _serDrbDecRLC_LI_List_Type_Value(const unsigned char* _buffer, size_t
 	}
 	if (d == RLC_LI_List_Type_LI15) {
 		NTOH_32(p->LI15.d, &_buffer[*_lidx], _lidx);
-		p->LI15.v = serMalloc(_mem, p->LI15.d * sizeof(struct RLC_LengthIndicator_LI15_Type));
+		p->LI15.v = (struct RLC_LengthIndicator_LI15_Type*)serMalloc(_mem, p->LI15.d * sizeof(struct RLC_LengthIndicator_LI15_Type));
 		for (size_t i3 = 0; i3 < p->LI15.d; i3++) {
 			_serDrbDecRLC_LengthIndicator_LI15_Type(_buffer, _size, _lidx, &p->LI15.v[i3]);
 		}
@@ -3428,10 +3436,10 @@ static int _serDrbDecRLC_UMD_PDU_ShortSN_Type(const unsigned char* _buffer, size
 
 	_serDrbDecRLC_UMD_HeaderShortSN_Type(_buffer, _size, _lidx, _mem, &p->Header);
 	NTOH_32(p->Data.d, &_buffer[*_lidx], _lidx);
-	p->Data.v = serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
+	p->Data.v = (RLC_DataField_Type*)serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
 	for (size_t i3 = 0; i3 < p->Data.d; i3++) {
 		NTOH_32(p->Data.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->Data.v[i3].v = serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
+		p->Data.v[i3].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i4 = 0; i4 < p->Data.v[i3].d; i4++) {
 			NTOH_8(p->Data.v[i3].v[i4], &_buffer[*_lidx], _lidx);
 		}
@@ -3487,10 +3495,10 @@ static int _serDrbDecRLC_UMD_PDU_LongSN_Type(const unsigned char* _buffer, size_
 
 	_serDrbDecRLC_UMD_HeaderLongSN_Type(_buffer, _size, _lidx, _mem, &p->Header);
 	NTOH_32(p->Data.d, &_buffer[*_lidx], _lidx);
-	p->Data.v = serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
+	p->Data.v = (RLC_DataField_Type*)serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
 	for (size_t i3 = 0; i3 < p->Data.d; i3++) {
 		NTOH_32(p->Data.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->Data.v[i3].v = serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
+		p->Data.v[i3].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i4 = 0; i4 < p->Data.v[i3].d; i4++) {
 			NTOH_8(p->Data.v[i3].v[i4], &_buffer[*_lidx], _lidx);
 		}
@@ -3608,10 +3616,10 @@ static int _serDrbDecRLC_AMD_PDU_Type(const unsigned char* _buffer, size_t _size
 
 	_serDrbDecRLC_AMD_Header_Type(_buffer, _size, _lidx, _mem, &p->Header);
 	NTOH_32(p->Data.d, &_buffer[*_lidx], _lidx);
-	p->Data.v = serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
+	p->Data.v = (RLC_DataField_Type*)serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
 	for (size_t i3 = 0; i3 < p->Data.d; i3++) {
 		NTOH_32(p->Data.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->Data.v[i3].v = serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
+		p->Data.v[i3].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i4 = 0; i4 < p->Data.v[i3].d; i4++) {
 			NTOH_8(p->Data.v[i3].v[i4], &_buffer[*_lidx], _lidx);
 		}
@@ -3676,10 +3684,10 @@ static int _serDrbDecRLC_AMD_PDU_Ext_Type(const unsigned char* _buffer, size_t _
 
 	_serDrbDecRLC_AMD_HeaderExt_Type(_buffer, _size, _lidx, _mem, &p->HeaderExt);
 	NTOH_32(p->Data.d, &_buffer[*_lidx], _lidx);
-	p->Data.v = serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
+	p->Data.v = (RLC_DataField_Type*)serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
 	for (size_t i3 = 0; i3 < p->Data.d; i3++) {
 		NTOH_32(p->Data.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->Data.v[i3].v = serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
+		p->Data.v[i3].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i4 = 0; i4 < p->Data.v[i3].d; i4++) {
 			NTOH_8(p->Data.v[i3].v[i4], &_buffer[*_lidx], _lidx);
 		}
@@ -3770,10 +3778,10 @@ static int _serDrbDecRLC_AMD_PDU_SegExt_Type(const unsigned char* _buffer, size_
 
 	_serDrbDecRLC_AMD_HeaderSegExt_Type(_buffer, _size, _lidx, _mem, &p->HeaderSegExt);
 	NTOH_32(p->Data.d, &_buffer[*_lidx], _lidx);
-	p->Data.v = serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
+	p->Data.v = (RLC_DataField_Type*)serMalloc(_mem, p->Data.d * sizeof(RLC_DataField_Type));
 	for (size_t i3 = 0; i3 < p->Data.d; i3++) {
 		NTOH_32(p->Data.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->Data.v[i3].v = serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
+		p->Data.v[i3].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->Data.v[i3].d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i4 = 0; i4 < p->Data.v[i3].d; i4++) {
 			NTOH_8(p->Data.v[i3].v[i4], &_buffer[*_lidx], _lidx);
 		}
@@ -3846,7 +3854,7 @@ static int _serDrbDecRLC_Status_NACK_List_Type_NackList_Optional(const unsigned 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct RLC_Status_NACK_Type));
+	p->v.v = (struct RLC_Status_NACK_Type*)serMalloc(_mem, p->v.d * sizeof(struct RLC_Status_NACK_Type));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serDrbDecRLC_Status_NACK_Type(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -3861,7 +3869,7 @@ static int _serDrbDecRLC_Status_Padding_Type_RLC_AM_StatusPDU_Type_Padding_Optio
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
+	p->v.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -3950,7 +3958,7 @@ static int _serDrbDecRLC_Status_NACK_Ext_List_Type_Nack_Ext_List_Optional(const 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct RLC_Status_NACK_Ext_Type));
+	p->v.v = (struct RLC_Status_NACK_Ext_Type*)serMalloc(_mem, p->v.d * sizeof(struct RLC_Status_NACK_Ext_Type));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serDrbDecRLC_Status_NACK_Ext_Type(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -3965,7 +3973,7 @@ static int _serDrbDecRLC_Status_Padding_Type_RLC_AM_StatusPDU_Ext_Type_Padding_O
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
+	p->v.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -3996,7 +4004,7 @@ static int _serDrbDecRLC_PDU_Type_Value(const unsigned char* _buffer, size_t _si
 
 	if (d == RLC_PDU_Type_TMD) {
 		NTOH_32(p->TMD.d, &_buffer[*_lidx], _lidx);
-		p->TMD.v = serMalloc(_mem, p->TMD.d * sizeof(OCTET_STRING_ELEMENT));
+		p->TMD.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->TMD.d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i3 = 0; i3 < p->TMD.d; i3++) {
 			NTOH_8(p->TMD.v[i3], &_buffer[*_lidx], _lidx);
 		}
@@ -4058,7 +4066,7 @@ static int _serDrbDecPDCP_DataPdu_LongSN_Type(const unsigned char* _buffer, size
 		NTOH_8(p->SequenceNumber[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4077,7 +4085,7 @@ static int _serDrbDecPDCP_DataPdu_ShortSN_Type(const unsigned char* _buffer, siz
 		NTOH_8(p->SequenceNumber[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4096,7 +4104,7 @@ static int _serDrbDecPDCP_DataPdu_ExtSN_Type(const unsigned char* _buffer, size_
 		NTOH_8(p->SequenceNumber[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4121,7 +4129,7 @@ static int _serDrbDecPDCP_DataPdu_18bitSN_Type(const unsigned char* _buffer, siz
 		NTOH_8(p->SequenceNumber[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4143,7 +4151,7 @@ static int _serDrbDecPDCP_Ctrl_ROHC_FB_PDU_Type(const unsigned char* _buffer, si
 		NTOH_8(p->Reserved[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->ROHC_FB.d, &_buffer[*_lidx], _lidx);
-	p->ROHC_FB.v = serMalloc(_mem, p->ROHC_FB.d * sizeof(OCTET_STRING_ELEMENT));
+	p->ROHC_FB.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->ROHC_FB.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->ROHC_FB.d; i3++) {
 		NTOH_8(p->ROHC_FB.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4158,7 +4166,7 @@ static int _serDrbDecOCTET_STRING_PDCP_Ctrl_StatusReport_Type_Bitmap_Optional(co
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4191,7 +4199,7 @@ static int _serDrbDecOCTET_STRING_PDCP_Ctrl_StatusReportExt_Type_Bitmap_Optional
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4227,7 +4235,7 @@ static int _serDrbDecOCTET_STRING_PDCP_Ctrl_StatusReport_18bitSN_Type_Bitmap_Opt
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4357,7 +4365,7 @@ static int _serDrbDecPDCP_DataPdu_SLRB_Type(const unsigned char* _buffer, size_t
 		NTOH_8(p->SequenceNumber[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4382,7 +4390,7 @@ static int _serDrbDecPDCP_DataPdu_SLRB_1to1_Type(const unsigned char* _buffer, s
 		NTOH_8(p->SequenceNumber[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4476,7 +4484,7 @@ static int _serDrbDecPDCP_DataPdu_LongSN_UDC_Type(const unsigned char* _buffer, 
 		NTOH_8(p->Checksum[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4507,7 +4515,7 @@ static int _serDrbDecPDCP_DataPdu_ExtSN_UDC_Type(const unsigned char* _buffer, s
 		NTOH_8(p->Checksum[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4544,7 +4552,7 @@ static int _serDrbDecPDCP_DataPdu_18bitSN_UDC_Type(const unsigned char* _buffer,
 		NTOH_8(p->Checksum[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SDU.d, &_buffer[*_lidx], _lidx);
-	p->SDU.v = serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
+	p->SDU.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->SDU.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->SDU.d; i3++) {
 		NTOH_8(p->SDU.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -4704,7 +4712,7 @@ static int _serDrbDecL2DataList_Type_Value(const unsigned char* _buffer, size_t 
 
 	if (d == L2DataList_Type_MacPdu) {
 		NTOH_32(p->MacPdu.d, &_buffer[*_lidx], _lidx);
-		p->MacPdu.v = serMalloc(_mem, p->MacPdu.d * sizeof(struct MAC_PDU_Type));
+		p->MacPdu.v = (struct MAC_PDU_Type*)serMalloc(_mem, p->MacPdu.d * sizeof(struct MAC_PDU_Type));
 		for (size_t i2 = 0; i2 < p->MacPdu.d; i2++) {
 			_serDrbDecMAC_PDU_Type(_buffer, _size, _lidx, _mem, &p->MacPdu.v[i2]);
 		}
@@ -4712,7 +4720,7 @@ static int _serDrbDecL2DataList_Type_Value(const unsigned char* _buffer, size_t 
 	}
 	if (d == L2DataList_Type_RlcPdu) {
 		NTOH_32(p->RlcPdu.d, &_buffer[*_lidx], _lidx);
-		p->RlcPdu.v = serMalloc(_mem, p->RlcPdu.d * sizeof(struct RLC_PDU_Type));
+		p->RlcPdu.v = (struct RLC_PDU_Type*)serMalloc(_mem, p->RlcPdu.d * sizeof(struct RLC_PDU_Type));
 		for (size_t i2 = 0; i2 < p->RlcPdu.d; i2++) {
 			_serDrbDecRLC_PDU_Type(_buffer, _size, _lidx, _mem, &p->RlcPdu.v[i2]);
 		}
@@ -4720,7 +4728,7 @@ static int _serDrbDecL2DataList_Type_Value(const unsigned char* _buffer, size_t 
 	}
 	if (d == L2DataList_Type_PdcpPdu) {
 		NTOH_32(p->PdcpPdu.d, &_buffer[*_lidx], _lidx);
-		p->PdcpPdu.v = serMalloc(_mem, p->PdcpPdu.d * sizeof(struct PDCP_PDU_Type));
+		p->PdcpPdu.v = (struct PDCP_PDU_Type*)serMalloc(_mem, p->PdcpPdu.d * sizeof(struct PDCP_PDU_Type));
 		for (size_t i2 = 0; i2 < p->PdcpPdu.d; i2++) {
 			_serDrbDecPDCP_PDU_Type(_buffer, _size, _lidx, _mem, &p->PdcpPdu.v[i2]);
 		}
@@ -4728,10 +4736,10 @@ static int _serDrbDecL2DataList_Type_Value(const unsigned char* _buffer, size_t 
 	}
 	if (d == L2DataList_Type_PdcpSdu) {
 		NTOH_32(p->PdcpSdu.d, &_buffer[*_lidx], _lidx);
-		p->PdcpSdu.v = serMalloc(_mem, p->PdcpSdu.d * sizeof(PDCP_SDU_Type));
+		p->PdcpSdu.v = (PDCP_SDU_Type*)serMalloc(_mem, p->PdcpSdu.d * sizeof(PDCP_SDU_Type));
 		for (size_t i2 = 0; i2 < p->PdcpSdu.d; i2++) {
 			NTOH_32(p->PdcpSdu.v[i2].d, &_buffer[*_lidx], _lidx);
-			p->PdcpSdu.v[i2].v = serMalloc(_mem, p->PdcpSdu.v[i2].d * sizeof(OCTET_STRING_ELEMENT));
+			p->PdcpSdu.v[i2].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->PdcpSdu.v[i2].d * sizeof(OCTET_STRING_ELEMENT));
 			for (size_t i3 = 0; i3 < p->PdcpSdu.v[i2].d; i3++) {
 				NTOH_8(p->PdcpSdu.v[i2].v[i3], &_buffer[*_lidx], _lidx);
 			}
@@ -4740,10 +4748,10 @@ static int _serDrbDecL2DataList_Type_Value(const unsigned char* _buffer, size_t 
 	}
 	if (d == L2DataList_Type_NrPdcpSdu) {
 		NTOH_32(p->NrPdcpSdu.d, &_buffer[*_lidx], _lidx);
-		p->NrPdcpSdu.v = serMalloc(_mem, p->NrPdcpSdu.d * sizeof(PDCP_SDU_Type));
+		p->NrPdcpSdu.v = (PDCP_SDU_Type*)serMalloc(_mem, p->NrPdcpSdu.d * sizeof(PDCP_SDU_Type));
 		for (size_t i2 = 0; i2 < p->NrPdcpSdu.d; i2++) {
 			NTOH_32(p->NrPdcpSdu.v[i2].d, &_buffer[*_lidx], _lidx);
-			p->NrPdcpSdu.v[i2].v = serMalloc(_mem, p->NrPdcpSdu.v[i2].d * sizeof(OCTET_STRING_ELEMENT));
+			p->NrPdcpSdu.v[i2].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->NrPdcpSdu.v[i2].d * sizeof(OCTET_STRING_ELEMENT));
 			for (size_t i3 = 0; i3 < p->NrPdcpSdu.v[i2].d; i3++) {
 				NTOH_8(p->NrPdcpSdu.v[i2].v[i3], &_buffer[*_lidx], _lidx);
 			}
@@ -4752,10 +4760,10 @@ static int _serDrbDecL2DataList_Type_Value(const unsigned char* _buffer, size_t 
 	}
 	if (d == L2DataList_Type_RlcSdu) {
 		NTOH_32(p->RlcSdu.d, &_buffer[*_lidx], _lidx);
-		p->RlcSdu.v = serMalloc(_mem, p->RlcSdu.d * sizeof(RLC_SDU_Type));
+		p->RlcSdu.v = (RLC_SDU_Type*)serMalloc(_mem, p->RlcSdu.d * sizeof(RLC_SDU_Type));
 		for (size_t i2 = 0; i2 < p->RlcSdu.d; i2++) {
 			NTOH_32(p->RlcSdu.v[i2].d, &_buffer[*_lidx], _lidx);
-			p->RlcSdu.v[i2].v = serMalloc(_mem, p->RlcSdu.v[i2].d * sizeof(OCTET_STRING_ELEMENT));
+			p->RlcSdu.v[i2].v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->RlcSdu.v[i2].d * sizeof(OCTET_STRING_ELEMENT));
 			for (size_t i3 = 0; i3 < p->RlcSdu.v[i2].d; i3++) {
 				NTOH_8(p->RlcSdu.v[i2].v[i3], &_buffer[*_lidx], _lidx);
 			}
@@ -4796,7 +4804,7 @@ static int _serDrbDecL2Data_Request_Type(const unsigned char* _buffer, size_t _s
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->SubframeDataList.d, &_buffer[*_lidx], _lidx);
-	p->SubframeDataList.v = serMalloc(_mem, p->SubframeDataList.d * sizeof(struct DRB_DataPerSubframe_DL_Type));
+	p->SubframeDataList.v = (struct DRB_DataPerSubframe_DL_Type*)serMalloc(_mem, p->SubframeDataList.d * sizeof(struct DRB_DataPerSubframe_DL_Type));
 	for (size_t i1 = 0; i1 < p->SubframeDataList.d; i1++) {
 		_serDrbDecDRB_DataPerSubframe_DL_Type(_buffer, _size, _lidx, _mem, &p->SubframeDataList.v[i1]);
 	}
@@ -4835,7 +4843,7 @@ int serDrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsign
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*FromSS = serMalloc(_mem, sizeof(struct DRB_COMMON_REQ));
+	*FromSS = (struct DRB_COMMON_REQ*)serMalloc(_mem, sizeof(struct DRB_COMMON_REQ));
 	_serDrbDecDRB_COMMON_REQ(_buffer, _size, _lidx, _mem, *FromSS);
 
 	return SIDL_STATUS_OK;
@@ -5524,12 +5532,27 @@ static void _serDrbFreeDRB_COMMON_REQ(struct DRB_COMMON_REQ* p)
 	_serDrbFreeL2Data_Request_Type(&p->U_Plane);
 }
 
+void serDrbProcessFromSSFree0Srv(struct DRB_COMMON_REQ* FromSS)
+{
+	if (FromSS) {
+		_serDrbFreeDRB_COMMON_REQ(FromSS);
+	}
+}
+
 void serDrbProcessFromSSFreeSrv(struct DRB_COMMON_REQ* FromSS)
 {
 	if (FromSS) {
 		_serDrbFreeDRB_COMMON_REQ(FromSS);
 		serFree(FromSS);
 	}
+}
+
+void serDrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct DRB_COMMON_IND** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct DRB_COMMON_IND*)serMalloc(_mem, sizeof(struct DRB_COMMON_IND));
+	memset(*ToSS, 0, sizeof(struct DRB_COMMON_IND));
 }
 
 static int _serDrbEncIntegrityErrorIndication_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct IntegrityErrorIndication_Type* p)
@@ -5762,7 +5785,7 @@ int serDrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*ToSS = serMalloc(_mem, sizeof(struct DRB_COMMON_IND));
+	*ToSS = (struct DRB_COMMON_IND*)serMalloc(_mem, sizeof(struct DRB_COMMON_IND));
 	_serDrbDecDRB_COMMON_IND(_buffer, _size, _lidx, _mem, *ToSS);
 
 	return SIDL_STATUS_OK;
@@ -5787,6 +5810,13 @@ static void _serDrbFreeDRB_COMMON_IND(struct DRB_COMMON_IND* p)
 {
 	_serDrbFreeIndAspCommonPart_Type(&p->Common);
 	_serDrbFreeL2Data_Indication_Type(&p->U_Plane);
+}
+
+void serDrbProcessToSSFree0Clt(struct DRB_COMMON_IND* ToSS)
+{
+	if (ToSS) {
+		_serDrbFreeDRB_COMMON_IND(ToSS);
+	}
 }
 
 void serDrbProcessToSSFreeClt(struct DRB_COMMON_IND* ToSS)

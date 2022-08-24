@@ -22,18 +22,54 @@
 
 #include "msg.sidl"
 
-struct AcpHandshake_Type {
-	char acpVersion[32];
-	char acpVerCksm[64];
-	/* TODO: Other handshake parameters */
+struct AcpHandshakeVersion {
+	char release[32];
+	char checksum[64];
 };
 
-struct AcpHandshakeRsp_Type {
-	bool acpVersionChk;
-	char acpVersion[32];
-	char acpVerCksm[64];
-	/* TODO: Other handshake parameters */
+struct AcpHandshakeReqControlInfo {
+	bool productMode;
+	char* desc;
 };
 
-ONEWAY HandleFromSS(const struct AcpHandshake_Type* fromSS);
-NOTIFY HandleToSS(const struct AcpHandshakeRsp_Type* toSS);
+typedef enum {
+	ACP_HANDSHAKE_OK,
+	ACP_HANDSHAKE_GENERAL_ERROR,
+	ACP_HANDSHAKE_VERSION_ERROR,
+	ACP_HANDSHAKE_SERVICE_ERROR
+} AcpHandshakeCnfResult;
+
+struct AcpHandshakeReqCommon {
+	struct AcpHandshakeVersion version;
+	struct AcpHandshakeReqControlInfo control;
+};
+
+struct AcpHandshakeCnfCommon {
+	struct AcpHandshakeVersion version;
+	AcpHandshakeCnfResult result;
+};
+
+struct AcpHandshakeService {
+	uint32_t id;
+	char* name;
+};
+
+struct AcpHandshakeReqService {
+	SIDL_DYNAMIC_OF_STRUCT_WITH_PFX(AcpHandshakeReqService, AcpHandshakeService, services);
+};
+
+struct AcpHandshakeCnfService {
+	SIDL_DYNAMIC_OF_STRUCT_WITH_PFX(AcpHandshakeCnfService, AcpHandshakeService, services);
+};
+
+struct AcpHandshakeReq {
+	struct AcpHandshakeReqCommon common;
+	struct AcpHandshakeReqService request;
+};
+
+struct AcpHandshakeCnf {
+	struct AcpHandshakeCnfCommon common;
+	struct AcpHandshakeCnfService confirm;
+};
+
+COMMAND Process(const struct AcpHandshakeReq* FromSS, struct AcpHandshakeCnf* ToSS);

@@ -25,6 +25,14 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serSysIndProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct SYSTEM_IND** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct SYSTEM_IND*)serMalloc(_mem, sizeof(struct SYSTEM_IND));
+	memset(*ToSS, 0, sizeof(struct SYSTEM_IND));
+}
+
 static int _serSysIndEncPmchLogicalChannel_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PmchLogicalChannel_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -927,7 +935,7 @@ static int _serSysIndDecSQN_PLMN_Identity(const unsigned char* _buffer, size_t _
 
 	_serSysIndDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	NTOH_32(p->mnc.d, &_buffer[*_lidx], _lidx);
-	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
+	p->mnc.v = (SQN_MCC_MNC_Digit*)serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		NTOH_8(p->mnc.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -1482,7 +1490,7 @@ static int _serSysIndDecSL_BSR_MACHeader_Type(const unsigned char* _buffer, size
 		NTOH_8(p->HeaderFieldF[i1], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->SL_BSR_Value.d, &_buffer[*_lidx], _lidx);
-	p->SL_BSR_Value.v = serMalloc(_mem, p->SL_BSR_Value.d * sizeof(struct SL_BSR_Value_Type));
+	p->SL_BSR_Value.v = (struct SL_BSR_Value_Type*)serMalloc(_mem, p->SL_BSR_Value.d * sizeof(struct SL_BSR_Value_Type));
 	for (size_t i1 = 0; i1 < p->SL_BSR_Value.d; i1++) {
 		_serSysIndDecSL_BSR_Value_Type(_buffer, _size, _lidx, &p->SL_BSR_Value.v[i1]);
 	}
@@ -1642,7 +1650,7 @@ static int _serSysIndDecMAC_CTRL_ExtPowerHeadRoom_Type(const unsigned char* _buf
 
 	_serSysIndDecScellBitMap_Type(_buffer, _size, _lidx, &p->EPH_Octet1);
 	NTOH_32(p->PH_RecordList.d, &_buffer[*_lidx], _lidx);
-	p->PH_RecordList.v = serMalloc(_mem, p->PH_RecordList.d * sizeof(struct PH_Record_Type));
+	p->PH_RecordList.v = (struct PH_Record_Type*)serMalloc(_mem, p->PH_RecordList.d * sizeof(struct PH_Record_Type));
 	for (size_t i1 = 0; i1 < p->PH_RecordList.d; i1++) {
 		_serSysIndDecPH_Record_Type(_buffer, _size, _lidx, &p->PH_RecordList.v[i1]);
 	}
@@ -1656,7 +1664,7 @@ static int _serSysIndDecMAC_CTRL_DC_PowerHeadRoom_Type(const unsigned char* _buf
 
 	_serSysIndDecScellBitMap_Type(_buffer, _size, _lidx, &p->DC_PH_Octet1);
 	NTOH_32(p->DC_PH_RecordList.d, &_buffer[*_lidx], _lidx);
-	p->DC_PH_RecordList.v = serMalloc(_mem, p->DC_PH_RecordList.d * sizeof(struct PH_Record_Type));
+	p->DC_PH_RecordList.v = (struct PH_Record_Type*)serMalloc(_mem, p->DC_PH_RecordList.d * sizeof(struct PH_Record_Type));
 	for (size_t i1 = 0; i1 < p->DC_PH_RecordList.d; i1++) {
 		_serSysIndDecPH_Record_Type(_buffer, _size, _lidx, &p->DC_PH_RecordList.v[i1]);
 	}
@@ -1670,7 +1678,7 @@ static int _serSysIndDecSystemIndication_Type_Value(const unsigned char* _buffer
 
 	if (d == SystemIndication_Type_Error) {
 		NTOH_32(p->Error.d, &_buffer[*_lidx], _lidx);
-		p->Error.v = serMalloc(_mem, p->Error.d * sizeof(CHAR_STRING_ELEMENT));
+		p->Error.v = (CHAR_STRING_ELEMENT*)serMalloc(_mem, p->Error.d * sizeof(CHAR_STRING_ELEMENT));
 		for (size_t i1 = 0; i1 < p->Error.d; i1++) {
 			NTOH_8(p->Error.v[i1], &_buffer[*_lidx], _lidx);
 		}
@@ -1775,7 +1783,7 @@ int serSysIndProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsig
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*ToSS = serMalloc(_mem, sizeof(struct SYSTEM_IND));
+	*ToSS = (struct SYSTEM_IND*)serMalloc(_mem, sizeof(struct SYSTEM_IND));
 	_serSysIndDecSYSTEM_IND(_buffer, _size, _lidx, _mem, *ToSS);
 
 	return SIDL_STATUS_OK;
@@ -1918,6 +1926,13 @@ static void _serSysIndFreeSYSTEM_IND(struct SYSTEM_IND* p)
 {
 	_serSysIndFreeIndAspCommonPart_Type(&p->Common);
 	_serSysIndFreeSystemIndication_Type(&p->Indication);
+}
+
+void serSysIndProcessToSSFree0Clt(struct SYSTEM_IND* ToSS)
+{
+	if (ToSS) {
+		_serSysIndFreeSYSTEM_IND(ToSS);
+	}
 }
 
 void serSysIndProcessToSSFreeClt(struct SYSTEM_IND* ToSS)

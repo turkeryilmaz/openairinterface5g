@@ -96,12 +96,6 @@ static void _adbgNrSysSrb__NR_RoutingInfo_Type(acpCtx_t _ctx, const struct NR_Ro
 	_adbgNrSysSrb__NR_RoutingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
-static void _adbgNrSysSrb__NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(acpCtx_t _ctx, const struct NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional* p)
-{
-	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
-	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
-}
-
 static const char* adbgNrSysSrb__EUTRA_CellId_Type__ToString(EUTRA_CellId_Type v)
 {
 	switch(v) {
@@ -297,6 +291,89 @@ static void _adbgNrSysSrb__TimingInfo_Type(acpCtx_t _ctx, const struct TimingInf
 	_adbgNrSysSrb__TimingInfo_Type_Value(_ctx, &p->v, p->d);
 }
 
+static void _adbgNrSysSrb__ReqAspControlInfo_Type(acpCtx_t _ctx, const struct ReqAspControlInfo_Type* p)
+{
+	adbgPrintLog(_ctx, "CnfFlag := %s", (p->CnfFlag ? "true" : "false"));
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "FollowOnFlag := %s", (p->FollowOnFlag ? "true" : "false"));
+}
+
+static void _adbgNrSysSrb__NR_ReqAspCommonPart_Type(acpCtx_t _ctx, const struct NR_ReqAspCommonPart_Type* p)
+{
+	adbgPrintLog(_ctx, "CellId := %s (%d)", adbgNrSysSrb__NR_CellId_Type__ToString(p->CellId), (int)p->CellId);
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "RoutingInfo := { ");
+	_adbgNrSysSrb__NR_RoutingInfo_Type(_ctx, &p->RoutingInfo);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "RlcBearerRouting := { ");
+	_adbgNrSysSrb__RlcBearerRouting_Type(_ctx, &p->RlcBearerRouting);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "TimingInfo := { ");
+	_adbgNrSysSrb__TimingInfo_Type(_ctx, &p->TimingInfo);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "ControlInfo := { ");
+	_adbgNrSysSrb__ReqAspControlInfo_Type(_ctx, &p->ControlInfo);
+	adbgPrintLog(_ctx, " }");
+}
+
+static void _adbgNrSysSrb__NR_RRC_MSG_Request_Type_Value(acpCtx_t _ctx, const union NR_RRC_MSG_Request_Type_Value* p, enum NR_RRC_MSG_Request_Type_Sel d)
+{
+	if (d == NR_RRC_MSG_Request_Type_Ccch) {
+		adbgPrintLog(_ctx, "Ccch := '");
+		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->Ccch.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	if (d == NR_RRC_MSG_Request_Type_Dcch) {
+		adbgPrintLog(_ctx, "Dcch := '");
+		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
+			adbgPrintLog(_ctx, "%02X", p->Dcch.v[i1]);
+		}
+		adbgPrintLog(_ctx, "'O");
+		return;
+	}
+	adbgPrintLog(_ctx, "INVALID");
+}
+
+static void _adbgNrSysSrb__NR_RRC_MSG_Request_Type(acpCtx_t _ctx, const struct NR_RRC_MSG_Request_Type* p)
+{
+	_adbgNrSysSrb__NR_RRC_MSG_Request_Type_Value(_ctx, &p->v, p->d);
+}
+
+static void _adbgNrSysSrb__NR_RRC_PDU_REQ(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* p)
+{
+	adbgPrintLog(_ctx, "Common := { ");
+	_adbgNrSysSrb__NR_ReqAspCommonPart_Type(_ctx, &p->Common);
+	adbgPrintLog(_ctx, " }");
+	adbgPrintLog(_ctx, ", ");
+	adbgPrintLog(_ctx, "RrcPdu := { ");
+	_adbgNrSysSrb__NR_RRC_MSG_Request_Type(_ctx, &p->RrcPdu);
+	adbgPrintLog(_ctx, " }");
+}
+
+void adbgNrSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* FromSS)
+{
+	adbgPrintLog(_ctx, "@NrSysSrbProcessFromSS In Args : { ");
+
+	adbgPrintLog(_ctx, "FromSS := { ");
+	_adbgNrSysSrb__NR_RRC_PDU_REQ(_ctx, FromSS);
+	adbgPrintLog(_ctx, " }");
+
+	adbgPrintLog(_ctx, " }");
+	adbgPrintFormatLog(_ctx);
+}
+
+static void _adbgNrSysSrb__NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional(acpCtx_t _ctx, const struct NR_RoutingInfoSUL_Type_RoutingInfoSUL_Optional* p)
+{
+	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
+	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
+}
+
 static void _adbgNrSysSrb__IntegrityErrorIndication_Type(acpCtx_t _ctx, const struct IntegrityErrorIndication_Type* p)
 {
 	adbgPrintLog(_ctx, "Nas := %s", (p->Nas ? "true" : "false"));
@@ -408,83 +485,6 @@ void adbgNrSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_RRC_PDU_IND* T
 
 	adbgPrintLog(_ctx, "ToSS := { ");
 	_adbgNrSysSrb__NR_RRC_PDU_IND(_ctx, ToSS);
-	adbgPrintLog(_ctx, " }");
-
-	adbgPrintLog(_ctx, " }");
-	adbgPrintFormatLog(_ctx);
-}
-
-static void _adbgNrSysSrb__ReqAspControlInfo_Type(acpCtx_t _ctx, const struct ReqAspControlInfo_Type* p)
-{
-	adbgPrintLog(_ctx, "CnfFlag := %s", (p->CnfFlag ? "true" : "false"));
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "FollowOnFlag := %s", (p->FollowOnFlag ? "true" : "false"));
-}
-
-static void _adbgNrSysSrb__NR_ReqAspCommonPart_Type(acpCtx_t _ctx, const struct NR_ReqAspCommonPart_Type* p)
-{
-	adbgPrintLog(_ctx, "CellId := %s (%d)", adbgNrSysSrb__NR_CellId_Type__ToString(p->CellId), (int)p->CellId);
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "RoutingInfo := { ");
-	_adbgNrSysSrb__NR_RoutingInfo_Type(_ctx, &p->RoutingInfo);
-	adbgPrintLog(_ctx, " }");
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "RlcBearerRouting := { ");
-	_adbgNrSysSrb__RlcBearerRouting_Type(_ctx, &p->RlcBearerRouting);
-	adbgPrintLog(_ctx, " }");
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "TimingInfo := { ");
-	_adbgNrSysSrb__TimingInfo_Type(_ctx, &p->TimingInfo);
-	adbgPrintLog(_ctx, " }");
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "ControlInfo := { ");
-	_adbgNrSysSrb__ReqAspControlInfo_Type(_ctx, &p->ControlInfo);
-	adbgPrintLog(_ctx, " }");
-}
-
-static void _adbgNrSysSrb__NR_RRC_MSG_Request_Type_Value(acpCtx_t _ctx, const union NR_RRC_MSG_Request_Type_Value* p, enum NR_RRC_MSG_Request_Type_Sel d)
-{
-	if (d == NR_RRC_MSG_Request_Type_Ccch) {
-		adbgPrintLog(_ctx, "Ccch := '");
-		for (size_t i1 = 0; i1 < p->Ccch.d; i1++) {
-			adbgPrintLog(_ctx, "%02X", p->Ccch.v[i1]);
-		}
-		adbgPrintLog(_ctx, "'O");
-		return;
-	}
-	if (d == NR_RRC_MSG_Request_Type_Dcch) {
-		adbgPrintLog(_ctx, "Dcch := '");
-		for (size_t i1 = 0; i1 < p->Dcch.d; i1++) {
-			adbgPrintLog(_ctx, "%02X", p->Dcch.v[i1]);
-		}
-		adbgPrintLog(_ctx, "'O");
-		return;
-	}
-	adbgPrintLog(_ctx, "INVALID");
-}
-
-static void _adbgNrSysSrb__NR_RRC_MSG_Request_Type(acpCtx_t _ctx, const struct NR_RRC_MSG_Request_Type* p)
-{
-	_adbgNrSysSrb__NR_RRC_MSG_Request_Type_Value(_ctx, &p->v, p->d);
-}
-
-static void _adbgNrSysSrb__NR_RRC_PDU_REQ(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* p)
-{
-	adbgPrintLog(_ctx, "Common := { ");
-	_adbgNrSysSrb__NR_ReqAspCommonPart_Type(_ctx, &p->Common);
-	adbgPrintLog(_ctx, " }");
-	adbgPrintLog(_ctx, ", ");
-	adbgPrintLog(_ctx, "RrcPdu := { ");
-	_adbgNrSysSrb__NR_RRC_MSG_Request_Type(_ctx, &p->RrcPdu);
-	adbgPrintLog(_ctx, " }");
-}
-
-void adbgNrSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* FromSS)
-{
-	adbgPrintLog(_ctx, "@NrSysSrbProcessFromSS In Args : { ");
-
-	adbgPrintLog(_ctx, "FromSS := { ");
-	_adbgNrSysSrb__NR_RRC_PDU_REQ(_ctx, FromSS);
 	adbgPrintLog(_ctx, " }");
 
 	adbgPrintLog(_ctx, " }");

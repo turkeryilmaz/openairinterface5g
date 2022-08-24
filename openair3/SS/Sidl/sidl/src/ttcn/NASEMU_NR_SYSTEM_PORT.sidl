@@ -25,14 +25,16 @@
 // SIDL common TTCN types and definitions.
 #include "TtcnCommon.sidl"
 
+// Interface name.
 METADATA_VAR(itf_name, "NrSysSrb");
 
+// Restricted RATs.
 METADATA_VAR(rats, "NR");
 
-// TTCN namespaces
+// TTCN namespaces.
 METADATA_VAR(namespaces, "NasEmu5G_AspTypes_NR");
 
-// Internal non-TTCN types
+// Internal non-TTCN types.
 METADATA_VAR(internal, "NR_RRC_MSG_Request_Type NR_RRC_MSG_Indication_Type");
 
 SIDL_UNION_ENUM(NR_RRC_MSG_Request_Type) {
@@ -72,5 +74,5 @@ struct NR_RRC_PDU_IND {
 	struct NR_RRC_MSG_Indication_Type RrcPdu;
 };
 
-NOTIFY ProcessToSS(struct NR_RRC_PDU_IND* ToSS);
 ONEWAY ProcessFromSS(const struct NR_RRC_PDU_REQ* FromSS);
+NOTIFY ProcessToSS(struct NR_RRC_PDU_IND* ToSS);

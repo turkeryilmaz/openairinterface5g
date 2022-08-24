@@ -26,6 +26,14 @@
 #include "acpMsgIds.h"
 #include "serSys.h"
 
+void acpSysProcessInitClt(acpCtx_t _ctx, struct SYSTEM_CTRL_REQ** FromSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serSysProcessInitClt(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
+}
+
 int acpSysProcessEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct SYSTEM_CTRL_REQ* FromSS)
 {
 	if (!acpCtxIsValid(_ctx)) {
@@ -48,9 +56,32 @@ int acpSysProcessDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _siz
 	return serSysProcessDecSrv(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
 }
 
+void acpSysProcessFree0Srv(struct SYSTEM_CTRL_REQ* FromSS)
+{
+	serSysProcessFree0Srv(FromSS);
+}
+
 void acpSysProcessFreeSrv(struct SYSTEM_CTRL_REQ* FromSS)
 {
 	serSysProcessFreeSrv(FromSS);
+}
+
+void acpSysProcessFree0CltSrv(struct SYSTEM_CTRL_REQ* FromSS)
+{
+	serSysProcessFree0Srv(FromSS);
+}
+
+void acpSysProcessFreeCltSrv(struct SYSTEM_CTRL_REQ* FromSS)
+{
+	serSysProcessFreeSrv(FromSS);
+}
+
+void acpSysProcessInitSrv(acpCtx_t _ctx, struct SYSTEM_CTRL_CNF** ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serSysProcessInitSrv(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
 int acpSysProcessEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct SYSTEM_CTRL_CNF* ToSS)
@@ -75,7 +106,22 @@ int acpSysProcessDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _siz
 	return serSysProcessDecClt(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
+void acpSysProcessFree0Clt(struct SYSTEM_CTRL_CNF* ToSS)
+{
+	serSysProcessFree0Clt(ToSS);
+}
+
 void acpSysProcessFreeClt(struct SYSTEM_CTRL_CNF* ToSS)
+{
+	serSysProcessFreeClt(ToSS);
+}
+
+void acpSysProcessFree0SrvClt(struct SYSTEM_CTRL_CNF* ToSS)
+{
+	serSysProcessFree0Clt(ToSS);
+}
+
+void acpSysProcessFreeSrvClt(struct SYSTEM_CTRL_CNF* ToSS)
 {
 	serSysProcessFreeClt(ToSS);
 }
