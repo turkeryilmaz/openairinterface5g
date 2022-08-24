@@ -100,7 +100,7 @@
 
 bool    RRCConnSetup_PDU_Present = false;
 uint8_t RRCConnSetup_PDUSize = 0;
-uint8_t RRCConnSetup_PDU[100];
+uint8_t RRCConnSetup_PDU[512];
 
 #define ASN_MAX_ENCODE_SIZE 4096
 #define NUMBEROF_DRBS_TOBE_ADDED 1
