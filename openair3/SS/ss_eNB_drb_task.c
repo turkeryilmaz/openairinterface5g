@@ -146,7 +146,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 {
 	assert(req);
-	MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, instance_g, SS_DRB_PDU_REQ);
+	MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, SS_DRB_PDU_REQ);
         assert(message_p);
         if (message_p)
         {

@@ -208,7 +208,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 	assert(req);
         LTE_DL_DCCH_Message_t *dl_dcch_msg=NULL;
         LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-	MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, instance_g, SS_RRC_PDU_REQ);
+	MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, SS_RRC_PDU_REQ);
 	assert(message_p);
 	instance_g = 0;
 	if (message_p)
@@ -456,7 +456,8 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 
 			result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
 			AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-		};
+                        received_msg = NULL;
+		}
 		break;
 
 		case TERMINATE_MESSAGE:
