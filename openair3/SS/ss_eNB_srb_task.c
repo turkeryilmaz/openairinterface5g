@@ -67,8 +67,7 @@ uint16_t ss_rnti_g = 0;
 enum MsgUserId
 {
 	// user defined IDs should be an int number >= 1
-	MSG_TestHelloFromSS_userId = 1,
-	MSG_SysProcess_userId,
+	MSG_SysProcess_userId = 1,
 	MSG_SysSrbProcessFromSS_userId,
 	MSG_SysSrbProcessToSS_userId,
 };
@@ -361,11 +360,6 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 			LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] EUTRA_RRC_PDU_IND Received; ignoring \n");
 			break;
 		}
-		else if (userId == MSG_TestHelloFromSS_userId)
-		{
-			LOG_A(ENB_SS, "[SS_SRB] Hello From Client Received \n");
-			break;
-		}
 	}
 }
 
@@ -393,7 +387,6 @@ void ss_eNB_srb_init(void)
 	const struct acpMsgTable msgTable[] = {
 		{"SysSrbProcessFromSS", MSG_SysSrbProcessFromSS_userId},
 		{"SysSrbProcessToSS", MSG_SysSrbProcessToSS_userId},
-		{"TestHelloFromSS", MSG_TestHelloFromSS_userId},
 		{"SysProcess", MSG_SysProcess_userId},
 		// The last element should be NULL
 		{NULL, 0}};
@@ -485,31 +478,6 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 }
 
 /*
- * Function : ss_eNB_wait_hello
- * Description: Funtion Handles the Hellow message
- * received from TTCN
- * In :
- * req  - Hello message received from the TTCN
- * Out:
- * newState: No impact on state machine.
- *
- */
-static void ss_eNB_wait_hello(void)
-{
-
-	while (1)
-	{
-		size_t msg_sz = size;
-		int ret = acpRecvMsg(ctx_srb_g, &msg_sz, buffer);
-		if (ret == MSG_TestHelloFromSS_userId)
-		{
-			LOG_A(ENB_SS, "[SS_SRB] Hello From Client Received (on-start) \n");
-			break;
-		}
-	}
-}
-
-/*
  * Function : ss_eNB_srb_task
  * Description: Funtion Handles the SRB Task
  * In :
@@ -533,7 +501,6 @@ void *ss_eNB_srb_acp_task(void *arg)
 {
 	// printf("\n SRB ACP Task\n");
 	ss_eNB_srb_init();
-	ss_eNB_wait_hello();
 	while (1)
 	{
 		// printf("\nInside while srb acp task \n");
