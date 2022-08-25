@@ -4804,10 +4804,22 @@ int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   static LTE_PCCH_Message_t pcch_msg;
   LTE_PagingRecord_t *paging_record_p = NULL;
   int j;
+<<<<<<< HEAD
   static uint8_t oneTimeProcessingFlag = 0;
   static uint8_t count = 0;
   /* This block of code will be one time */
   if (oneTimeProcessingFlag == 0)
+=======
+  pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
+  pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
+  pcch_msg.message.choice.c1.choice.paging.pagingRecordList = NULL;
+  pcch_msg.message.choice.c1.choice.paging.systemInfoModification = NULL;
+  pcch_msg.message.choice.c1.choice.paging.etws_Indication = NULL;
+  pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
+  asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
+
+  if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
+>>>>>>> 2df072e8b0... Fixed warnings
   {
     LOG_A(RRC, "fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
