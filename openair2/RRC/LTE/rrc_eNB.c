@@ -3803,7 +3803,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
                                          (LTE_SL_DiscConfig_r12_t *) NULL,
                                          (LTE_SCellToAddMod_r10_t *) NULL
                                         );
+  if(size==65535) {
+    LOG_E(RRC,"RRC encode err!!! do_RRCConnectionReconfiguration\n");
+    size=0;
+  }
+  else
+  {
   LOG_DUMPMSG(RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Connection Reconfiguration\n");
+  }
 
   /* Free all NAS PDUs */
   for (i = 0; i < ue_context_pP->ue_context.nb_of_e_rabs; i++) {

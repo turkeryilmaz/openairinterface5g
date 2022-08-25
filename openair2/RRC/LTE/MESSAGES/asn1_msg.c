@@ -3802,7 +3802,7 @@ uint16_t do_RRCConnectionReconfiguration(const protocol_ctxt_t *const ctxt_pP,
                                    buffer_size);
 
   if(enc_rval.encoded == -1) {
-    LOG_I(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
+    LOG_W(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
           enc_rval.failed_type->name, enc_rval.encoded);
     return -1;
   }
