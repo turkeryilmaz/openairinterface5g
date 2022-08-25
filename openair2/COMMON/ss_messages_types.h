@@ -56,7 +56,7 @@
 #define SS_VTP_PROXY_UPD(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_upd
 #define SS_VTP_PROXY_ACK(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_ack
 #define SS_VT_TIME_OUT(mSGpTR)                (mSGpTR)->ittiMsg.ss_vt_time_out
-#define SDU_SIZE                           (512)
+#define SDU_SIZE                           (1024)
 
 /** SYS IND */
 #define SS_SYSTEM_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_system_ind
