@@ -529,7 +529,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   const unsigned int Ttab[4] = {32,64,128,256};
   uint8_t Tc;  /* DRX cycle of UE */
   uint32_t pcch_nB;  /* 4T, 2T, T, T/2, T/4, T/8, T/16, T/32 */
-  uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
+  uint32_t N = 0;  /* N: min(T,nB). total count of PF in one DRX cycle */
   uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
   uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
@@ -542,7 +542,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 
   if (SS_PAGING_IND(msg_p).paging_recordList)
   {
-    LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+    LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
@@ -3064,7 +3064,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 //-----------------------------------------------------------------------------
 {
   uint8_t   buffer[RRC_BUF_SIZE];
-  uint16_t  size;
+  uint16_t  size=0;
   int       i;
   MessageDef *message_p = NULL;
   /* Configure SRB1/SRB2, PhysicalConfigDedicated, LTE_MAC_MainConfig for UE */
@@ -3778,6 +3778,8 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   measurements_enabled = RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_x2 ||
                          RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_measurement_reports;
   memset(buffer, 0, sizeof(buffer));
+  if (RC.ss.mode == SS_ENB)
+  {
   size = do_RRCConnectionReconfiguration(ctxt_pP,
                                          buffer,
                                          sizeof(buffer),
@@ -3811,7 +3813,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   {
   LOG_DUMPMSG(RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Connection Reconfiguration\n");
   }
-
+  }
   /* Free all NAS PDUs */
   for (i = 0; i < ue_context_pP->ue_context.nb_of_e_rabs; i++) {
     if (ue_context_pP->ue_context.e_rab[i].param.nas_pdu.buffer != NULL) {
@@ -7598,7 +7600,7 @@ char rrc_eNB_rblist_configuration(
       RC.RB_Config[rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
     }
 
-    LOG_A(RRC,"PDCP Config discardTimer: %li \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
+    LOG_A(RRC,"PDCP Config discardTimer: address=%p \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
     LOG_A(RRC,"Present RLC Config: %d \n",RC.RB_Config[rbIndex].RlcCfg.present);
     LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %ld , am.ul_AM_RLC.LTE_PollPDU_t:%ld, am.ul_AM_RLC.LTE_PollByte_t:%ld, am.ul_AM_RLC.maxRetxThreshold: %ld ,am.dl_AM_RLC.t_Reordering: %ld,am.dl_AM_RLC.t_StatusProhibit: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
     LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.t_Reordering: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
@@ -10324,7 +10326,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         uint8_t  rb_idx = 0;
         uint8_t rbid_;
         ss_get_pdcp_cnt_t  pc;
-        LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d intance %u\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
+        LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d instance %ld\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
         SS_RRC_PDU_REQ(msg_p).rnti,instance);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
@@ -10456,7 +10458,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           module_id_t Idx;
           LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
-          eNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
 
           RRCConnSetup_PDU_Present = true;
           RRCConnSetup_PDUSize = SS_RRC_PDU_REQ(msg_p).sdu_size;

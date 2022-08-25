@@ -939,7 +939,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
 
   if (RC.ss.mode == SS_SOFTMODEM)
   {
-	  LOG_D(RRC,"Updating q_RxLevMin: %d\n", configuration->q_RxLevMin);
+	  LOG_D(RRC,"Updating q_RxLevMin: %ld\n", configuration->q_RxLevMin);
 	  (*sib1)->cellSelectionInfo.q_RxLevMin=configuration->q_RxLevMin;
   }
   else
@@ -1397,7 +1397,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
     = rrconfig->prach_root;
   (*sib2)->radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex
     = rrconfig->prach_config_index;
-  LOG_A(RRC, "SIB2 prach_config_index=%d \n", rrconfig->prach_config_index);
+  LOG_A(RRC, "SIB2 prach_config_index=%ld \n", rrconfig->prach_config_index);
   (*sib2)->radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag
     = rrconfig->prach_high_speed;
   (*sib2)->radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig
@@ -2533,7 +2533,7 @@ do_RRCConnectionSetup(
     SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering     = rrc->srb1_timer_reordering;
     SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit = rrc->srb1_timer_status_prohibit;
   }
-  LOG_A(RRC,"do_RRCConnectionSetup: rlc config present: %d, am.ul_AM_RLC.t_PollRetransmit: %d, am.ul_AM_RLC.pollPDU: %d, am.ul_AM_RLC.pollByte: %d, ul_AM_RLC.maxRetxThreshold: %d, am.dl_AM_RLC.t_Reordering: %d, am.dl_AM_RLC.t_StatusProhibit: %d \n",SRB1_rlc_config->choice.explicitValue.present,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
+  LOG_A(RRC,"do_RRCConnectionSetup: rlc config present: %d, am.ul_AM_RLC.t_PollRetransmit: %ld, am.ul_AM_RLC.pollPDU: %ld, am.ul_AM_RLC.pollByte: %ld, ul_AM_RLC.maxRetxThreshold: %ld, am.dl_AM_RLC.t_Reordering: %ld, am.dl_AM_RLC.t_StatusProhibit: %ld \n",SRB1_rlc_config->choice.explicitValue.present,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.t_PollRetransmit,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollPDU,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.pollByte,SRB1_rlc_config->choice.explicitValue.choice.am.ul_AM_RLC.maxRetxThreshold,SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_Reordering,SRB1_rlc_config->choice.explicitValue.choice.am.dl_AM_RLC.t_StatusProhibit);
 
   SRB1_lchan_config = CALLOC(1,sizeof(*SRB1_lchan_config));
   SRB1_config->logicalChannelConfig   = SRB1_lchan_config;
@@ -2549,7 +2549,7 @@ do_RRCConnectionSetup(
     //assign_enum(&SRB1_ul_SpecificParameters->prioritisedBitRate,LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity);
     SRB1_ul_SpecificParameters->prioritisedBitRate=LTE_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
   }
-  LOG_A(RRC,"do_RRCConnectionSetup: SRB1_ul_SpecificParameters->priority: %d, SRB1_ul_SpecificParameters->prioritisedBitRate: %d \n",SRB1_ul_SpecificParameters->priority,SRB1_ul_SpecificParameters->prioritisedBitRate);
+  LOG_A(RRC,"do_RRCConnectionSetup: SRB1_ul_SpecificParameters->priority: %ld, SRB1_ul_SpecificParameters->prioritisedBitRate: %ld \n",SRB1_ul_SpecificParameters->priority,SRB1_ul_SpecificParameters->prioritisedBitRate);
   //assign_enum(&SRB1_ul_SpecificParameters->bucketSizeDuration,LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50);
   SRB1_ul_SpecificParameters->bucketSizeDuration=LTE_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
   logicalchannelgroup = CALLOC(1,sizeof(long));
@@ -4392,7 +4392,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
   asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
 
-  if (ue_paging_identity.presenceMask != LTE_PagingUE_Identity_PR_NOTHING)
+  if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
   {
   pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
   pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
