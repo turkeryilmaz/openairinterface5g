@@ -286,11 +286,12 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
   uint8_t num_CC = 0; /** NOTE: Handling only one cell */
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
-    MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
-    RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
+    
 
     if (AddOrReconfigure->Basic.d == true)
     {
+      MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
+      RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
       if (AddOrReconfigure->Basic.v.StaticCellInfo.d == true)
       {
         /** Handle Static Cell Info */

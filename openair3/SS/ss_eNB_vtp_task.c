@@ -29,9 +29,10 @@
 #include "ss_eNB_proxy_iface.h"
 #include "SIDL_VIRTUAL_TIME_PORT.h"
 #include "acpSysVT.h"
+#define MSC_INTERFACE
 #include "msc.h"
 
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 
 static acpCtx_t ctx_vtp_g = NULL;
@@ -196,6 +197,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
     //assert(message_p);
 
       VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
+      LOG_A(ENB_APP,"itti_alloc %p\n", req);
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_RESP;
       req->header.length = sizeof(proxy_ss_header_t);
