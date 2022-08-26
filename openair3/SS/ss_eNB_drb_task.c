@@ -54,7 +54,7 @@
 extern RAN_CONTEXT_t RC;
 extern uint16_t ss_rnti_g;
 static acpCtx_t ctx_drb_g = NULL;
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 
 static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;

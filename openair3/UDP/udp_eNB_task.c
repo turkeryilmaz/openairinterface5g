@@ -44,6 +44,7 @@
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#define MSC_INTERFACE
 #include "msc.h"
 
 

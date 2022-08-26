@@ -33,7 +33,7 @@
 #include "ss_eNB_vt_timer_task.h"
 
 
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 
 

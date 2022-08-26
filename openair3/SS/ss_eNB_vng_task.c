@@ -30,7 +30,7 @@
 #include "SIDL_EUTRA_VNG_PORT.h"
 #include "acpVng.h"
 
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 
 static acpCtx_t ctx_vng_g = NULL;
@@ -241,7 +241,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
 void *ss_eNB_vng_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
-
+    int result;
     itti_poll_msg(TASK_VNG, &received_msg);
 
     /* Check if there is a packet to handle */
@@ -269,6 +269,9 @@ void *ss_eNB_vng_process_itti_msg(void *notUsed)
                 LOG_A(ENB_SS, "[VNG] Received unhandled message %d:%s\n",
                     ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 	}
+    result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+    AssertFatal(result == EXIT_SUCCESS, "[SYS] Failed to free memory (%d)!\n", result);
+    received_msg = NULL;
     }
 
     ss_eNB_read_from_vng_socket(ctx_vng_g);

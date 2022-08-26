@@ -48,7 +48,7 @@
 #include "ss_eNB_sysind_task.h"
 
 extern RAN_CONTEXT_t RC;
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 static acpCtx_t ctx_sysind_g = NULL;
 static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
