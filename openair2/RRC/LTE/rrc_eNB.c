@@ -100,7 +100,7 @@
 
 bool    RRCConnSetup_PDU_Present = false;
 uint8_t RRCMsgOnSRB0_PDUSize = 0;
-uint8_t RRCMsgOnSRB0_PDU[512];
+uint8_t RRCMsgOnSRB0_PDU[1024];
 
 #define ASN_MAX_ENCODE_SIZE 4096
 #define NUMBEROF_DRBS_TOBE_ADDED 1
@@ -3784,33 +3784,35 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 
   measurements_enabled = RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_x2 ||
                          RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_measurement_reports;
-  memset(buffer, 0, sizeof(buffer));
-  size = do_RRCConnectionReconfiguration(ctxt_pP,
-                                         buffer,
-                                         sizeof(buffer),
-                                         xid, // Transaction_id,
-                                         (LTE_SRB_ToAddModList_t *) *SRB_configList2, // SRB_configList
-                                         (LTE_DRB_ToAddModList_t *) *DRB_configList,
-                                         (LTE_DRB_ToReleaseList_t *) NULL, // DRB2_list,
-                                         (struct LTE_SPS_Config *) NULL,   // *sps_Config,
-                                         (struct LTE_PhysicalConfigDedicated *) *physicalConfigDedicated,
-                                         measurements_enabled ? (LTE_MeasObjectToAddModList_t *) MeasObj_list : NULL,
-                                         measurements_enabled ? (LTE_ReportConfigToAddModList_t *) ReportConfig_list : NULL,
-                                         measurements_enabled ? (LTE_QuantityConfig_t *) quantityConfig : NULL,
-                                         measurements_enabled ? (LTE_MeasIdToAddModList_t *) MeasId_list : NULL,
-                                         (LTE_MAC_MainConfig_t *) mac_MainConfig,
-                                         (LTE_MeasGapConfig_t *) NULL,
-                                         (LTE_MobilityControlInfo_t *) NULL,
-                                         (LTE_SecurityConfigHO_t *) NULL,
-                                         (struct LTE_MeasConfig__speedStatePars *) Sparams,
-                                         (LTE_RSRP_Range_t *) rsrp,
-                                         (LTE_C_RNTI_t *) cba_RNTI,
-                                         (struct LTE_RRCConnectionReconfiguration_r8_IEs__dedicatedInfoNASList *) dedicatedInfoNASList,
-                                         (LTE_SL_CommConfig_r12_t *) NULL,
-                                         (LTE_SL_DiscConfig_r12_t *) NULL,
-                                         (LTE_SCellToAddMod_r10_t *) NULL
-                                        );
-  LOG_DUMPMSG(RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Connection Reconfiguration\n");
+  if (RC.ss.mode == SS_ENB) {
+    memset(buffer, 0, sizeof(buffer));
+    size = do_RRCConnectionReconfiguration(ctxt_pP,
+                                           buffer,
+                                           sizeof(buffer),
+                                           xid, // Transaction_id,
+                                           (LTE_SRB_ToAddModList_t *) *SRB_configList2, // SRB_configList
+                                           (LTE_DRB_ToAddModList_t *) *DRB_configList,
+                                           (LTE_DRB_ToReleaseList_t *) NULL, // DRB2_list,
+                                           (struct LTE_SPS_Config *) NULL,   // *sps_Config,
+                                           (struct LTE_PhysicalConfigDedicated *) *physicalConfigDedicated,
+                                           measurements_enabled ? (LTE_MeasObjectToAddModList_t *) MeasObj_list : NULL,
+                                           measurements_enabled ? (LTE_ReportConfigToAddModList_t *) ReportConfig_list : NULL,
+                                           measurements_enabled ? (LTE_QuantityConfig_t *) quantityConfig : NULL,
+                                           measurements_enabled ? (LTE_MeasIdToAddModList_t *) MeasId_list : NULL,
+                                           (LTE_MAC_MainConfig_t *) mac_MainConfig,
+                                           (LTE_MeasGapConfig_t *) NULL,
+                                           (LTE_MobilityControlInfo_t *) NULL,
+                                           (LTE_SecurityConfigHO_t *) NULL,
+                                           (struct LTE_MeasConfig__speedStatePars *) Sparams,
+                                           (LTE_RSRP_Range_t *) rsrp,
+                                           (LTE_C_RNTI_t *) cba_RNTI,
+                                           (struct LTE_RRCConnectionReconfiguration_r8_IEs__dedicatedInfoNASList *) dedicatedInfoNASList,
+                                           (LTE_SL_CommConfig_r12_t *) NULL,
+                                           (LTE_SL_DiscConfig_r12_t *) NULL,
+                                           (LTE_SCellToAddMod_r10_t *) NULL
+                                          );
+    LOG_DUMPMSG(RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Connection Reconfiguration\n");
+  }
 
   /* Free all NAS PDUs */
   for (i = 0; i < ue_context_pP->ue_context.nb_of_e_rabs; i++) {
@@ -10036,14 +10038,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                           RRC_DCCH_DATA_IND(msg_p).dcch_index,
                           RRC_DCCH_DATA_IND(msg_p).sdu_p,
                           RRC_DCCH_DATA_IND(msg_p).sdu_size);
-      // Message buffer has been processed, free it now.
-      result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), RRC_DCCH_DATA_IND(msg_p).sdu_p);
-
-      if (result != EXIT_SUCCESS) {
-        LOG_I(RRC, "Failed to free memory (%d)!\n",result);
-        break;
-      }
-
       break;
 
     /* Messages from S1AP */
