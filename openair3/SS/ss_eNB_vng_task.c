@@ -194,8 +194,8 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
             	break;
             }
 
-            if (RC.ss.State < SS_STATE_CELL_ACTIVE) {
-                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", RC.ss.State);
+            if (RC.ss.ss_cell_list[0].State < SS_STATE_CELL_ACTIVE) {
+                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", RC.ss.ss_cell_list[0].State);
             	break;
             }
             /** TODO: Dump message here */

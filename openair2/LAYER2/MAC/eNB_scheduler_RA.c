@@ -915,7 +915,7 @@ generate_Msg4(module_id_t module_idP,
                                         UE_RNTI(module_idP,UE_id),1,  // 1 transport block
                                         &cc[CC_idP].CCCH_pdu.payload[0], 0);  // not used in this case
 
-      if ((rrc_sdu_length > 0) || (RC.ss.CBRA_flag && (RC.ss.mode >SS_ENB))) {
+      if ((rrc_sdu_length > 0) || (RC.ss.ss_cell_list[0].CBRA_flag && (RC.ss.mode >SS_ENB))) {
         LOG_D(MAC,
               "[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: UE_id %d, rrc_sdu_length %d\n",
               module_idP, CC_idP, frameP, subframeP, UE_id, rrc_sdu_length);
@@ -1427,7 +1427,7 @@ initiate_ra_proc(module_id_t module_idP,
             module_idP, CC_id, frameP, ra[i].Msg2_frame,
             ra[i].Msg2_subframe, i, ra[i].rnti, ra[i].state);
 
-      if(RC.ss.l1macind.rachpreamble_enable)
+      if(RC.ss.ss_cell_list[0].l1macind.rachpreamble_enable)
       {
         // Populate and send the SS_SYSTEM_IND to System Simulator
         MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);

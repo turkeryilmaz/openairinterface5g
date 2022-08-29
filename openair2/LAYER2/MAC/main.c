@@ -303,7 +303,7 @@ void *mac_enb_task(void *arg)
 
       case SS_L1MACIND_CTRL:
         LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL\n");
-        RC.ss.l1macind.rachpreamble_enable = received_msg->ittiMsg.ss_l1macind_ctrl.rachpreamble_enable;
+        RC.ss.ss_cell_list[0].l1macind.rachpreamble_enable = received_msg->ittiMsg.ss_l1macind_ctrl.rachpreamble_enable;
         break;
 
       case TERMINATE_MESSAGE:
