@@ -278,8 +278,8 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
       LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d sf %d",
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
-    MessageDef *message_p_vtp = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
-    if (message_p_vtp && RC.ss.vtp_ready)
+    MessageDef *message_p_vtp = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, SS_UPD_TIM_INFO);
+    if (message_p_vtp && RC.ss.ss_cell_list[0].vtp_ready)
     {
       SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
       SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;

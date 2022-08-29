@@ -231,14 +231,14 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
                                 LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] acpDrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
-                        if(RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                        if(RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
                         {
 				LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] DRB_COMMON_REQ Received in CELL_ACTIVE\n");
                                 ss_task_handle_drb_pdu_req(req);
                         }
                         else
                         {
-                                LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", RC.ss.State);
+                                LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
                         }
 
                         acpDrbProcessFromSSFreeSrv(req);
@@ -272,19 +272,19 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 	    			if (origin_task == TASK_SS_PORTMAN)
 				{       
 			 				
-                                	LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", RC.ss.State);
+                                	LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", RC.ss.ss_cell_list[0].State);
                                 }
 				else
 	                        {
                                 	LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
-					if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+					if (RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
 	                                {
         	                                instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                 	                        ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind);
                         	        }
 					else
 	                                {
-        	                                LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", RC.ss.State);
+        	                                LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
                 	                }
 				}
 
