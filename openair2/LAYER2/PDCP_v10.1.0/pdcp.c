@@ -1049,30 +1049,54 @@ pdcp_data_ind(
    * from its second byte (skipping 0th and 1st octets, i.e.
    * PDCP header)
    */
-
-  if (LINK_ENB_PDCP_TO_GTPV1U) {
+  if (RC.ss.mode >= SS_SOFTMODEM) {
     if ((TRUE == ctxt_pP->enb_flag) && (FALSE == srb_flagP)) {
-      LOG_D(PDCP, "Sending packet to GTP, Calling GTPV1U_ENB_TUNNEL_DATA_REQ  ue %x rab %ld len %u\n",
+      LOG_A(PDCP, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %ld len %u\n",
             ctxt_pP->rnti,
-            rb_id + 4,
+            rb_id,
             sdu_buffer_sizeP - payload_offset );
-      //LOG_T(PDCP,"Sending to GTPV1U %d bytes\n", sdu_buffer_sizeP - payload_offset);
-      gtpu_buffer_p = itti_malloc(TASK_PDCP_ENB, TASK_GTPV1_U,
-                                  sdu_buffer_sizeP - payload_offset + GTPU_HEADER_OVERHEAD_MAX);
-      AssertFatal(gtpu_buffer_p != NULL, "OUT OF MEMORY");
-      memcpy(&gtpu_buffer_p[GTPU_HEADER_OVERHEAD_MAX], &sdu_buffer_pP->data[payload_offset], sdu_buffer_sizeP - payload_offset);
-      message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, GTPV1U_ENB_TUNNEL_DATA_REQ);
-      AssertFatal(message_p != NULL, "OUT OF MEMORY");
-      GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).buffer       = gtpu_buffer_p;
-      GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).length       = sdu_buffer_sizeP - payload_offset;
-      GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).offset       = GTPU_HEADER_OVERHEAD_MAX;
-      GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).rnti         = ctxt_pP->rnti;
-      GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).rab_id       = rb_id + 4;
-      itti_send_msg_to_task(TASK_GTPV1_U, INSTANCE_DEFAULT, message_p);
-      packet_forwarded = TRUE;
+
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0,  SS_DRB_PDU_IND);
+      if (message_p) {
+        /* Populate the message to SS */
+        SS_DRB_PDU_IND (message_p).sdu_size = sdu_buffer_sizeP - payload_offset;
+        SS_DRB_PDU_IND (message_p).drb_id = rb_id;
+        memset(SS_DRB_PDU_IND (message_p).sdu, 0, SS_DRB_PDU_IND (message_p).sdu_size);
+        memcpy(&SS_DRB_PDU_IND (message_p).sdu, &sdu_buffer_pP->data[payload_offset], SS_DRB_PDU_IND (message_p).sdu_size);
+        SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;
+        SS_DRB_PDU_IND (message_p).subframe = ctxt_pP->subframe;
+
+        int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
+        if(send_res < 0) {
+          LOG_E(RRC,"Error in itti_send_msg_to_task");
+        }
+      }
     }
   } else {
-    packet_forwarded = FALSE;
+    if (LINK_ENB_PDCP_TO_GTPV1U) {
+      if ((TRUE == ctxt_pP->enb_flag) && (FALSE == srb_flagP)) {
+        LOG_D(PDCP, "Sending packet to GTP, Calling GTPV1U_ENB_TUNNEL_DATA_REQ  ue %x rab %ld len %u\n",
+              ctxt_pP->rnti,
+              rb_id + 4,
+              sdu_buffer_sizeP - payload_offset );
+        //LOG_T(PDCP,"Sending to GTPV1U %d bytes\n", sdu_buffer_sizeP - payload_offset);
+        gtpu_buffer_p = itti_malloc(TASK_PDCP_ENB, TASK_GTPV1_U,
+                                    sdu_buffer_sizeP - payload_offset + GTPU_HEADER_OVERHEAD_MAX);
+        AssertFatal(gtpu_buffer_p != NULL, "OUT OF MEMORY");
+        memcpy(&gtpu_buffer_p[GTPU_HEADER_OVERHEAD_MAX], &sdu_buffer_pP->data[payload_offset], sdu_buffer_sizeP - payload_offset);
+        message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, GTPV1U_ENB_TUNNEL_DATA_REQ);
+        AssertFatal(message_p != NULL, "OUT OF MEMORY");
+        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).buffer       = gtpu_buffer_p;
+        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).length       = sdu_buffer_sizeP - payload_offset;
+        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).offset       = GTPU_HEADER_OVERHEAD_MAX;
+        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).rnti         = ctxt_pP->rnti;
+        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).rab_id       = rb_id + 4;
+        itti_send_msg_to_task(TASK_GTPV1_U, INSTANCE_DEFAULT, message_p);
+        packet_forwarded = TRUE;
+      }
+    } else {
+      packet_forwarded = FALSE;
+    }
   }
 
 #ifdef MBMS_MULTICAST_OUT
@@ -1396,7 +1420,7 @@ pdcp_run (
             break;
           }
 
-          message_p = itti_alloc_new_message (TASK_PDCP_ENB, ctxt_pP->module_id, SS_GET_PDCP_CNT);
+          message_p = itti_alloc_new_message (TASK_PDCP_ENB, 0, SS_GET_PDCP_CNT);
 
           SS_GET_PDCP_CNT(message_p).size = 0;
 

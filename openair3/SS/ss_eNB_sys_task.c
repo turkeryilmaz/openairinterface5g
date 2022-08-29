@@ -190,7 +190,7 @@ static int sys_send_udp_msg(
   // Create and alloc new message
   MessageDef *message_p = NULL;
   udp_data_req_t *udp_data_req_p = NULL;
-  message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, UDP_DATA_REQ);
+  message_p = itti_alloc_new_message(TASK_SYS, 0, UDP_DATA_REQ);
 
   if (message_p)
   {
@@ -201,7 +201,7 @@ static int sys_send_udp_msg(
     udp_data_req_p->buffer = buffer;
     udp_data_req_p->buffer_length = buffer_len;
     udp_data_req_p->buffer_offset = buffer_offset;
-    return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
+    return itti_send_msg_to_task(TASK_UDP, 0, message_p);
   }
   else
   {
@@ -219,7 +219,7 @@ static int sys_send_init_udp(const udpSockReq_t *req)
 {
   // Create and alloc new message
   MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, UDP_INIT);
+  message_p = itti_alloc_new_message(TASK_SYS, 0, UDP_INIT);
   if (message_p == NULL)
   {
     return -1;
@@ -233,7 +233,7 @@ static int sys_send_init_udp(const udpSockReq_t *req)
       "0 UDP bind  %s:%u",
       UDP_INIT(message_p).address,
       UDP_INIT(message_p).port);
-  return itti_send_msg_to_task(TASK_UDP, INSTANCE_DEFAULT, message_p);
+  return itti_send_msg_to_task(TASK_UDP, 0, message_p);
 }
 
 /*
@@ -243,14 +243,14 @@ static int sys_send_init_udp(const udpSockReq_t *req)
  */
 static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
 {
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_SET_TIM_INFO);
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_SET_TIM_INFO);
   if (message_p)
   {
     LOG_A(ENB_SS, "[SYS] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->sf);
     SS_SET_TIM_INFO(message_p).sf = tinfo->sf;
     SS_SET_TIM_INFO(message_p).sfn = tinfo->sfn;
 
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, 0, message_p);
     if (send_res < 0)
     {
       LOG_A(ENB_SS, "[SYS] Error sending to [SS-PORTMAN] \n");
@@ -287,11 +287,10 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
   uint8_t num_CC = 0; /** NOTE: Handling only one cell */
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
-    MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
-    RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
-
     if (AddOrReconfigure->Basic.d == true)
     {
+      MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
+      RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
       if (AddOrReconfigure->Basic.v.StaticCellInfo.d == true)
       {
         /** Handle Static Cell Info */
@@ -561,7 +560,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
                          void *msg)
 {
   struct SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct SYSTEM_CTRL_CNF));
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_SYS_PORT_MSG_CNF);
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_SYS_PORT_MSG_CNF);
 
   /* The request has send confirm flag flase so do nothing in this funciton */
   if (reqCnfFlag_g == FALSE)
@@ -625,7 +624,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       LOG_A(ENB_SS, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] \n");
     }
     SS_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, 0, message_p);
     if (send_res < 0)
     {
       LOG_A(ENB_SS, "[SYS] Error sending to [SS-PORTMAN] \n");
@@ -1260,7 +1259,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
   if (message_p == NULL)
   {
-    return -1;
+    return;
   }
 
   SS_PAGING_IND(message_p).sfn = tinfo.sfn;
@@ -1369,14 +1368,14 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
  */
 static void sys_handle_enquire_timing(ss_set_timinfo_t *tinfo)
 {
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT,SS_SET_TIM_INFO);
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SET_TIM_INFO);
   if (message_p)
   {
     LOG_A(ENB_SS, "[SYS] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->sf);
     SS_SET_TIM_INFO(message_p).sf = tinfo->sf;
     SS_SET_TIM_INFO(message_p).sfn = tinfo->sfn;
 
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, 0, message_p);
     if (send_res < 0)
     {
       LOG_A(ENB_SS, "[SYS] Error sending to [SS-PORTMAN]");
@@ -1386,7 +1385,7 @@ static void sys_handle_enquire_timing(ss_set_timinfo_t *tinfo)
 
 static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacInd_Ctrl)
 {
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_L1MACIND_CTRL);
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_L1MACIND_CTRL);
   if (message_p)
   {
     LOG_A(ENB_SS,"[SYS] l1macind ctrl, prach preamble: %d\n",L1MacInd_Ctrl->RachPreamble.d);
@@ -1399,7 +1398,7 @@ static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacI
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
       }
     }
-    int send_res = itti_send_msg_to_task(TASK_MAC_ENB, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
     if (send_res < 0)
     {
       LOG_A(ENB_SS, "[SYS] Error sending to MAC");
@@ -1422,7 +1421,7 @@ static void sys_handle_ue_cat_info_req(struct UE_CategoryInfo_Type *UE_Cat_Info)
   enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_UE_Cat_Info;
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
   bool resVal = TRUE;
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, RRC_UE_CAT_INFO);
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, RRC_UE_CAT_INFO);
   if (message_p)
   {
     LOG_A(ENB_SS,"[SYS] UE Category Info received \n");
@@ -1477,7 +1476,7 @@ static void sys_handle_ue_cat_info_req(struct UE_CategoryInfo_Type *UE_Cat_Info)
       RRC_UE_CAT_INFO(message_p).is_ue_CategoryDL_v1460_present = true;
       RRC_UE_CAT_INFO(message_p).ue_CategoryDL_v1460 = UE_Cat_Info->ue_CategoryDL_v1460.v;
     }
-    int send_res = itti_send_msg_to_task(TASK_RRC_ENB, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, message_p);
     if (send_res < 0)
     {
       LOG_A(ENB_SS, "[SYS] Error sending RRC_UE_CAT_INFO to TASK_RRC_ENB");
@@ -1996,7 +1995,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
         case SS_VNG_CMD_RESP:
           memcpy(&VngResp, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(VngCmdResp_t));
 
-          MessageDef *vng_resp_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_VNG_PROXY_RESP);
+          MessageDef *vng_resp_p = itti_alloc_new_message(TASK_SYS, 0, SS_VNG_PROXY_RESP);
 	  assert(vng_resp_p);
 
           SS_VNG_PROXY_RESP(vng_resp_p).cell_id = VngResp.header.cell_id;
@@ -2005,7 +2004,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
 
 	  LOG_A(ENB_SS, "Sending CMD_RESP for CNF @ sfn: %d sf: %d\n", tinfo.sfn, tinfo.sf);
 
-          int res = itti_send_msg_to_task(TASK_VNG, INSTANCE_DEFAULT, vng_resp_p);
+          int res = itti_send_msg_to_task(TASK_VNG, 0, vng_resp_p);
           if (res < 0)
           {
             LOG_A(ENB_SS, "[SS-VNG] Error in itti_send_msg_to_task\n");

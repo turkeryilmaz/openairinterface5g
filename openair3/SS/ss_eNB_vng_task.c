@@ -30,7 +30,7 @@
 #include "SIDL_EUTRA_VNG_PORT.h"
 #include "acpVng.h"
 
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 
 static acpCtx_t ctx_vng_g = NULL;
@@ -112,7 +112,7 @@ static inline void
 vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
         int32_t NocLevel, VngProxyCmd_e cmd)
 {
-    MessageDef *message_p = itti_alloc_new_message(TASK_VNG, INSTANCE_DEFAULT, SS_VNG_PROXY_REQ);
+    MessageDef *message_p = itti_alloc_new_message(TASK_VNG, 0, SS_VNG_PROXY_REQ);
     assert(message_p);
 
     SS_VNG_PROXY_REQ(message_p).cell_id = SS_context.cellId;
@@ -120,7 +120,7 @@ vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
     SS_VNG_PROXY_REQ(message_p).Noc_level = NocLevel;
     SS_VNG_PROXY_REQ(message_p).cmd = cmd;
 
-    int res = itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+    int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
         LOG_A(ENB_SS, "[SS-VNG] Error in itti_send_msg_to_task\n");
@@ -241,7 +241,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
 void *ss_eNB_vng_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
-
+    int result;
     itti_poll_msg(TASK_VNG, &received_msg);
 
     /* Check if there is a packet to handle */
@@ -269,6 +269,9 @@ void *ss_eNB_vng_process_itti_msg(void *notUsed)
                 LOG_A(ENB_SS, "[VNG] Received unhandled message %d:%s\n",
                     ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 	}
+    result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+    AssertFatal(result == EXIT_SUCCESS, "[SYS] Failed to free memory (%d)!\n", result);
+    received_msg = NULL;
     }
 
     ss_eNB_read_from_vng_socket(ctx_vng_g);

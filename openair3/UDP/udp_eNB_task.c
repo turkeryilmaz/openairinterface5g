@@ -44,6 +44,7 @@
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#define MSC_INTERFACE
 #include "msc.h"
 
 
@@ -257,7 +258,7 @@ void udp_eNB_receiver(struct udp_socket_desc_s *udp_sock_pP)
       forwarded_buffer = itti_malloc(TASK_UDP, udp_sock_pP->task_id, n*sizeof(uint8_t));
       DevAssert(forwarded_buffer != NULL);
       memcpy(forwarded_buffer, l_buffer, n);
-      message_p = itti_alloc_new_message(TASK_UDP, INSTANCE_DEFAULT, UDP_DATA_IND);
+      message_p = itti_alloc_new_message(TASK_UDP, 0, UDP_DATA_IND);
       DevAssert(message_p != NULL);
       udp_data_ind_p = &message_p->ittiMsg.udp_data_ind;
       udp_data_ind_p->buffer        = forwarded_buffer;
@@ -276,7 +277,7 @@ void udp_eNB_receiver(struct udp_socket_desc_s *udp_sock_pP)
        * if the queue is full.
        */
       /* look for HACK_RLC_UM_LIMIT for others places related to the hack. Please do not remove this comment. */
-      if (itti_send_msg_to_task(udp_sock_pP->task_id, INSTANCE_DEFAULT, message_p) < 0) {
+      if (itti_send_msg_to_task(udp_sock_pP->task_id, 0, message_p) < 0) {
         LOG_E(UDP_, "Failed to send message %d to task %d\n",
               UDP_DATA_IND,
               udp_sock_pP->task_id);
