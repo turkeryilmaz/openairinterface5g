@@ -488,7 +488,8 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		RC.ss.vtp_ready = 1;
+		SS_context.vtp_enabled = 1;
+		RC.ss.ss_cell_list[0].vtp_ready = 1;
 		ss_enable_vtp();
 		sleep(1);
 		while (1) {

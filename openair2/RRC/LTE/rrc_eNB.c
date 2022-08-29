@@ -10490,7 +10490,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               }
               security_mode_command_send = TRUE;
               as_security_conf_ciphering = FALSE;
-              if (RC.ss.CBRA_flag)
+              if (RC.ss.ss_cell_list[0].CBRA_flag)
               {
                 RRCConnSetup_PDU_Present = FALSE;
               }

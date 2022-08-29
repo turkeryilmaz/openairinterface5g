@@ -300,13 +300,13 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                                 LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] acpNrSysSrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
-                        if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                        if (RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
                         {
                                 ss_task_handle_rrc_pdu_req(req);
                         }
                         else
                         {
-                                LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", RC.ss.State);
+                                LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
                         }
 
                         acpNrSysSrbProcessFromSSFreeSrv(req);
@@ -361,7 +361,7 @@ void ss_gNB_srb_init(void)
                 buffer = (unsigned char *)acpMalloc(size);
         assert(buffer);
 
-        RC.ss.State = SS_STATE_CELL_ACTIVE;
+        RC.ss.ss_cell_list[0].State = SS_STATE_CELL_ACTIVE;
         itti_subscribe_event_fd(TASK_SS_SRB, fd1);
 
         itti_mark_task_ready(TASK_SS_SRB);
@@ -393,14 +393,14 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
 #endif
                         {
                                 LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
-                                if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                                if (RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
                                 {
                                         instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                                         ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
                                 }
                                 else
                                 {
-                                        LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", RC.ss.State);
+                                        LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
                                 }
                          }
 

@@ -43,6 +43,15 @@ typedef enum ss_mode {
 #define SS_SOFTMODEM    	(0x01)
 #define SS_SOFTMODEM_SRB        (0x02)
 #endif
+typedef struct ss_cell_config_s{
+  /** State info */
+  int State;
+  int vtp_ready;
+  int CBRA_flag;
+  int mac_rlc_data_ind_frame;
+  int mac_rlc_data_ind_subframe;
+  ss_l1macind_ctrl_t l1macind;
+} ss_cell_config_t;
 
 typedef struct ss_config_s {
   /** SS mode of operation */
@@ -71,6 +80,8 @@ typedef struct ss_config_s {
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind;
+  /** Cell Config Array */
+  ss_cell_config_t ss_cell_list[8];
 } ss_config_t;
 
 typedef enum {

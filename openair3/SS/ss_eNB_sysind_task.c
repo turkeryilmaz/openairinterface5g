@@ -278,19 +278,19 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
 
                         if (origin_task == TASK_SS_PORTMAN)
                         {
-                                LOG_D(ENB_APP, "[SS_SYSIND] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", RC.ss.State);
+                                LOG_D(ENB_APP, "[SS_SYSIND] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", RC.ss.ss_cell_list[0].State);
                         }
                         else
                         {
                                 LOG_A(ENB_SS, "[SS_SYSIND] Received SS_SYSTEM_IND\n");
-                                if (RC.ss.State >= SS_STATE_CELL_CONFIGURED)
+                                if (RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_CONFIGURED)
                                 {
                                         instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                                         ss_send_sysind_data(&received_msg->ittiMsg.ss_system_ind);
                                 }
                                 else
                                 {
-                                        LOG_E(ENB_SS, "[SS_SYSIND][SS_SYSTEM_IND] received in SS state %d \n", RC.ss.State);
+                                        LOG_E(ENB_SS, "[SS_SYSIND][SS_SYSTEM_IND] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
                                 }
                         }
                         result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
