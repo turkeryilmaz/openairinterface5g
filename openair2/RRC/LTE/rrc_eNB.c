@@ -529,7 +529,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   const unsigned int Ttab[4] = {32,64,128,256};
   uint8_t Tc;  /* DRX cycle of UE */
   uint32_t pcch_nB;  /* 4T, 2T, T, T/2, T/4, T/8, T/16, T/32 */
-  uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
+  uint32_t N = 0;  /* N: min(T,nB). total count of PF in one DRX cycle */
   uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
   uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
@@ -542,7 +542,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 
   if (SS_PAGING_IND(msg_p).paging_recordList)
   {
-    LOG_A(RRC, "[eNB %d] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %ld SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+    LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
       SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
@@ -3071,7 +3071,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 //-----------------------------------------------------------------------------
 {
   uint8_t   buffer[RRC_BUF_SIZE];
-  uint16_t  size;
+  uint16_t  size=0;
   int       i;
   MessageDef *message_p = NULL;
   /* Configure SRB1/SRB2, PhysicalConfigDedicated, LTE_MAC_MainConfig for UE */
@@ -3784,34 +3784,43 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 
   measurements_enabled = RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_x2 ||
                          RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_measurement_reports;
-  if (RC.ss.mode == SS_ENB) {
-    memset(buffer, 0, sizeof(buffer));
-    size = do_RRCConnectionReconfiguration(ctxt_pP,
-                                           buffer,
-                                           sizeof(buffer),
-                                           xid, // Transaction_id,
-                                           (LTE_SRB_ToAddModList_t *) *SRB_configList2, // SRB_configList
-                                           (LTE_DRB_ToAddModList_t *) *DRB_configList,
-                                           (LTE_DRB_ToReleaseList_t *) NULL, // DRB2_list,
-                                           (struct LTE_SPS_Config *) NULL,   // *sps_Config,
-                                           (struct LTE_PhysicalConfigDedicated *) *physicalConfigDedicated,
-                                           measurements_enabled ? (LTE_MeasObjectToAddModList_t *) MeasObj_list : NULL,
-                                           measurements_enabled ? (LTE_ReportConfigToAddModList_t *) ReportConfig_list : NULL,
-                                           measurements_enabled ? (LTE_QuantityConfig_t *) quantityConfig : NULL,
-                                           measurements_enabled ? (LTE_MeasIdToAddModList_t *) MeasId_list : NULL,
-                                           (LTE_MAC_MainConfig_t *) mac_MainConfig,
-                                           (LTE_MeasGapConfig_t *) NULL,
-                                           (LTE_MobilityControlInfo_t *) NULL,
-                                           (LTE_SecurityConfigHO_t *) NULL,
-                                           (struct LTE_MeasConfig__speedStatePars *) Sparams,
-                                           (LTE_RSRP_Range_t *) rsrp,
-                                           (LTE_C_RNTI_t *) cba_RNTI,
-                                           (struct LTE_RRCConnectionReconfiguration_r8_IEs__dedicatedInfoNASList *) dedicatedInfoNASList,
-                                           (LTE_SL_CommConfig_r12_t *) NULL,
-                                           (LTE_SL_DiscConfig_r12_t *) NULL,
-                                           (LTE_SCellToAddMod_r10_t *) NULL
-                                          );
-    LOG_DUMPMSG(RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Connection Reconfiguration\n");
+
+  memset(buffer, 0, sizeof(buffer));
+  if (RC.ss.mode == SS_ENB)
+  {
+  size = do_RRCConnectionReconfiguration(ctxt_pP,
+                                         buffer,
+                                         sizeof(buffer),
+                                         xid, // Transaction_id,
+                                         (LTE_SRB_ToAddModList_t *) *SRB_configList2, // SRB_configList
+                                         (LTE_DRB_ToAddModList_t *) *DRB_configList,
+                                         (LTE_DRB_ToReleaseList_t *) NULL, // DRB2_list,
+                                         (struct LTE_SPS_Config *) NULL,   // *sps_Config,
+                                         (struct LTE_PhysicalConfigDedicated *) *physicalConfigDedicated,
+                                         measurements_enabled ? (LTE_MeasObjectToAddModList_t *) MeasObj_list : NULL,
+                                         measurements_enabled ? (LTE_ReportConfigToAddModList_t *) ReportConfig_list : NULL,
+                                         measurements_enabled ? (LTE_QuantityConfig_t *) quantityConfig : NULL,
+                                         measurements_enabled ? (LTE_MeasIdToAddModList_t *) MeasId_list : NULL,
+                                         (LTE_MAC_MainConfig_t *) mac_MainConfig,
+                                         (LTE_MeasGapConfig_t *) NULL,
+                                         (LTE_MobilityControlInfo_t *) NULL,
+                                         (LTE_SecurityConfigHO_t *) NULL,
+                                         (struct LTE_MeasConfig__speedStatePars *) Sparams,
+                                         (LTE_RSRP_Range_t *) rsrp,
+                                         (LTE_C_RNTI_t *) cba_RNTI,
+                                         (struct LTE_RRCConnectionReconfiguration_r8_IEs__dedicatedInfoNASList *) dedicatedInfoNASList,
+                                         (LTE_SL_CommConfig_r12_t *) NULL,
+                                         (LTE_SL_DiscConfig_r12_t *) NULL,
+                                         (LTE_SCellToAddMod_r10_t *) NULL
+                                        );
+  if(size==65535) {
+    LOG_E(RRC,"RRC encode err!!! do_RRCConnectionReconfiguration\n");
+    size=0;
+  }
+  else
+  {
+  LOG_DUMPMSG(RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Connection Reconfiguration\n");
+  }
   }
 
   /* Free all NAS PDUs */
@@ -7599,7 +7608,7 @@ char rrc_eNB_rblist_configuration(
       RC.RB_Config[rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
     }
 
-    LOG_A(RRC,"PDCP Config discardTimer: %li \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
+    LOG_A(RRC,"PDCP Config discardTimer: address=%p \n",RC.RB_Config[rbIndex].PdcpCfg.discardTimer);
     LOG_A(RRC,"Present RLC Config: %d \n",RC.RB_Config[rbIndex].RlcCfg.present);
     LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %ld , am.ul_AM_RLC.LTE_PollPDU_t:%ld, am.ul_AM_RLC.LTE_PollByte_t:%ld, am.ul_AM_RLC.maxRetxThreshold: %ld ,am.dl_AM_RLC.t_Reordering: %ld,am.dl_AM_RLC.t_StatusProhibit: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
     LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.t_Reordering: %ld \n",RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
@@ -10317,7 +10326,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         uint8_t  rb_idx = 0;
         uint8_t rbid_;
         ss_get_pdcp_cnt_t  pc;
-        LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d intance %u\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
+        LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d instance %ld\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
         SS_RRC_PDU_REQ(msg_p).rnti,instance);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
@@ -10379,7 +10388,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
             RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
-            LOG_A(RRC, "[eNB %ld] SRB2 Received SDU for CCCH on SRB %ld rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
+            LOG_A(RRC, "[eNB %ld] SRB2 Received SDU on SRB %d rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).srb_id, SS_RRC_PDU_REQ(msg_p).rnti);
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
               LOG_A(RRC, "[eNB %ld] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
@@ -10450,7 +10459,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           module_id_t Idx;
           LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
-          eNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
 
           uper_decode(NULL,
                       &asn_DEF_LTE_DL_CCCH_Message,
@@ -10517,7 +10525,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 //#endif
 
       case SS_DRB_PDU_REQ:
-        LOG_A(RRC, "[eNB %d] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
+        LOG_A(RRC, "[eNB %ld] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
                                       instance,
                                       ENB_FLAG_YES,
