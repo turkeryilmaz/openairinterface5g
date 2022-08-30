@@ -296,6 +296,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
  * newState: No impack on the State
  *
  */
+static bool isConnected = false;
 static inline void
 ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 {
@@ -321,6 +322,14 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 				SidlStatus sidlStatus = -1;
 				acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
 			}
+			else if (userId == -ACP_PEER_DISCONNECTED){
+    			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+				isConnected = false;
+            } 
+            else if (userId == -ACP_PEER_CONNECTED){
+	            LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+				isConnected = true;
+            } 
 			else
 			{
 				LOG_A(ENB_SS, "[SS_SRB] Invalid userId: %d \n", userId);
@@ -331,7 +340,9 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 		if (userId == 0)
 		{
 			// No message (timeout on socket)
-			break;
+			if (isConnected == true){
+				break;
+			}
 		}
 		else if (MSG_SysSrbProcessFromSS_userId == userId)
 		{
