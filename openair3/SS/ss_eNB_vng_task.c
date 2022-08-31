@@ -115,7 +115,7 @@ vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
     MessageDef *message_p = itti_alloc_new_message(TASK_VNG, 0, SS_VNG_PROXY_REQ);
     assert(message_p);
 
-    SS_VNG_PROXY_REQ(message_p).cell_id = SS_context.cellId;
+    SS_VNG_PROXY_REQ(message_p).cell_id = SS_context[0].cellId;
     SS_VNG_PROXY_REQ(message_p).bw = Bandwidth;
     SS_VNG_PROXY_REQ(message_p).Noc_level = NocLevel;
     SS_VNG_PROXY_REQ(message_p).cmd = cmd;
@@ -200,8 +200,8 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
             	break;
             }
 
-            if (RC.ss.ss_cell_list[0].State < SS_STATE_CELL_ACTIVE) {
-                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", RC.ss.ss_cell_list[0].State);
+            if (RC.ss.State < SS_STATE_CELL_ACTIVE) {
+                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", RC.ss.State);
             	break;
             }
             /** TODO: Dump message here */
