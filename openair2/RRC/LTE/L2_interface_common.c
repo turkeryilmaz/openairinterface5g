@@ -122,7 +122,7 @@ rrc_data_ind(
           ctxt_pP->rnti);
 
 //#ifdef ENB_SS
-    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
+    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
     {
       LOG_I(RRC,"L2 Interface Sending DCCH PDU_IND to SS \n");
       MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0, SS_RRC_PDU_IND);
