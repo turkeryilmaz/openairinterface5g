@@ -142,6 +142,67 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind)
 }
 
 /*
+ * Function : ss_eNB_read_from_sysind_socket
+ * Description: Function to received message from SYSIND Socket
+ * In :
+ * req  - Request received from the TTCN
+ * Out:
+ * newState: No impack on the State
+ *
+ */
+static bool isConnected = false;
+static inline void
+ss_eNB_read_from_sysind_socket(acpCtx_t ctx)
+{
+	size_t msgSize = size; //2
+
+	while (1)
+	{
+		int userId = acpRecvMsg(ctx, &msgSize, buffer);
+		LOG_A(ENB_SS, "[SS_SYSIND] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+
+		// Error handling
+		if (userId < 0)
+		{
+			if (userId == -ACP_ERR_SERVICE_NOT_MAPPED)
+			{
+				// Message not mapped to user id,
+				// this error should not appear on server side for the messages received from clients
+			}
+			else if (userId == -ACP_ERR_SIDL_FAILURE)
+			{
+				// Server returned service error,
+				// this error should not appear on server side for the messages received from clients
+				SidlStatus sidlStatus = -1;
+				acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
+			}
+			else if (userId == -ACP_PEER_DISCONNECTED){
+                                LOG_A(GNB_APP, "[SS_SYSIND] Peer ordered shutdown\n");
+                                isConnected = false;
+                        }
+                        else if (userId == -ACP_PEER_CONNECTED){
+                                LOG_A(GNB_APP, "[SS_SYSIND] Peer connection established\n");
+                                isConnected = true;
+
+                        }
+                        else
+                        {
+                                LOG_A(ENB_SS, "[SS_SYSIND] Invalid userId: %d \n", userId);
+                                break;
+                        }
+                }
+		if (userId == 0)
+		{
+			// No message (timeout on socket)
+                        if (isConnected == true)
+                        {
+                                break;
+                        }
+	        }
+        }
+}
+
+/*
  * Function : ss_eNB_sysind_init
  * Description: Function handles for initilization of SYSIND task
  * In :
@@ -262,14 +323,29 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
  */
 void *ss_eNB_sysind_task(void *arg)
 {
-        ss_eNB_sysind_init();
-
         while (1)
         {
                 (void)ss_eNB_sysind_process_itti_msg(NULL);
         }
-        acpFree(buffer);
 
         return NULL;
 }
 
+/*
+ * Function : ss_eNB_sysind_acp_task
+ * Description: Funtion Handles the SYSIND ACP Task
+ * In :
+ * req :
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
+void *ss_eNB_sysind_acp_task(void *arg)
+{
+        ss_eNB_sysind_init();
+	while (1)
+	{
+		ss_eNB_read_from_sysind_socket(ctx_sysind_g);
+	}
+	acpFree(buffer);
+}
