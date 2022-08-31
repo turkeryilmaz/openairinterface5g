@@ -68,6 +68,6 @@ typedef struct SSConfigContext_s {
   hash_table_t   *vt_timer_table   ; // key is SFN_SF
 
   /** TODO: To add more */
-} SSConfigContext_t;
+} SSConfigContext_t[8];
 
 #endif /* _SS_ENB_CONTEXT_ */

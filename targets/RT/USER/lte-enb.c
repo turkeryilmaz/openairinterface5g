@@ -279,7 +279,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
     MessageDef *message_p_vtp = itti_alloc_new_message(TASK_VTP, INSTANCE_DEFAULT, SS_UPD_TIM_INFO);
-    if (message_p_vtp && RC.ss.ss_cell_list[0].vtp_ready)
+    if (message_p_vtp && RC.ss.vtp_ready)
     {
       SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
       SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;

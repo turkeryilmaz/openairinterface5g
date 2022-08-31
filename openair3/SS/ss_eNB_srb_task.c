@@ -107,7 +107,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 	ss_rnti_g = rnti_g;
 	size_t msgSize = size;
 	memset(&ind, 0, sizeof(ind));
-	ind.Common.CellId = SS_context.eutra_cellId;
+	ind.Common.CellId = SS_context[0].eutra_cellId;
 
 	// Populated the Routing Info
 	ind.Common.RoutingInfo.d = RoutingInfo_Type_RadioBearerId;
@@ -133,7 +133,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 
 	ind.Common.RlcBearerRouting.d = true;
 	ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-	ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.eutra_cellId;
+	ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context[0].eutra_cellId;
 
 	/* Populate and Send the EUTRA RRC PDU IND to Client */
 	if (pdu_ind->srb_id == 0)
@@ -177,7 +177,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSysSrbProcessToSSEncSrv Failure\n");
 		return;
 	}
-	LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.eutra_cellId);
+	LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context[0].eutra_cellId);
 
 	/* Send message
    */
@@ -262,7 +262,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 				 msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
 			}
 			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
-					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+					tinfo.sfn,tinfo.sf, SS_context[0].sfn,SS_context[0].sf);
 
 		}
 		if (!msg_queued)
@@ -334,13 +334,13 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 				LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] acpSysSrbProcessFromSSDecSrv Failed\n");
 				break;
 			}
-			if (RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
+			if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
 			{
 				ss_task_handle_rrc_pdu_req(req);
 			}
 			else
 			{
-				LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
+				LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", RC.ss.State);
 			}
 
 			acpSysSrbProcessFromSSFreeSrv(req);
@@ -438,19 +438,19 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 
 			if (origin_task == TASK_SS_PORTMAN)
 			{
-				LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", RC.ss.ss_cell_list[0].State);
+				LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", RC.ss.State);
 			}
 			else
 			{
 				LOG_A(ENB_SS, "[SS_SRB] Received SS_RRC_PDU_IND from RRC\n");
-				if (RC.ss.ss_cell_list[0].State >= SS_STATE_CELL_ACTIVE)
+				if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
 				{
 					instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
 					ss_send_srb_data(&received_msg->ittiMsg.ss_rrc_pdu_ind);
 				}
 				else
 				{
-					LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", RC.ss.ss_cell_list[0].State);
+					LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", RC.ss.State);
 				}
 			}
 
