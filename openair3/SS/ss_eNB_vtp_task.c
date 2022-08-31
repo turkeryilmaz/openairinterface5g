@@ -122,14 +122,14 @@ void ss_vtp_send_tinfo(
         LOG_E(ENB_APP, "[SS-VTP] acpSendMsg failed. Error : %d on fd: %d the VTP at SS will be disabled\n",
               status, acpGetSocketFd(ctx_vtp_g));
         acpFree(buffer);
-        //SS_context.vtp_enabled = VTP_DISABLE;
+        //SS_context[0].vtp_enabled = VTP_DISABLE;
 
         return;
     }
     else
     {
         LOG_A(ENB_APP, "[SS-VTP] acpSendMsg VTP_Send Success SFN %d SF %d virtualTime.Enable %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable);
-        SS_context.vtinfo = *tinfo;
+        SS_context[0].vtinfo = *tinfo;
     }
     // Free allocated buffer
     acpFree(buffer);
