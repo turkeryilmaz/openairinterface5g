@@ -228,6 +228,7 @@ static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
     }
   }
 }
+#if 0
 /* 
  * =========================================================================================================== 
  * Function Name: sys_add_nr_reconfig_cell
@@ -412,6 +413,7 @@ int sys_add_nr_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 	}
 	return true;
 }
+#endif
 /*
  * Function : send_sys_cnf
  * Description: Funtion to build and send the SYS_CNF
@@ -466,10 +468,12 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       msgCnf->Confirm.v.UE_Cat_Info = true;
       break;
     case SystemConfirm_Type_PdcpCount:
+#if 0
       if (msg)
       memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct Pdcp_CountCnf_Type));
       else
       SS_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
+#endif
       break;
 
     case SystemConfirm_Type_Paging:
@@ -544,7 +548,7 @@ int sys_handle_nr_cell_config_req(struct CellConfigRequest_Type *Cell)
   //send_sys_cnf(resType, resVal, cnfType, NULL);
   return returnState;
 }
-
+#if 0
 /*
  * Function : sys_handle_radiobearer_list
  * Description: Funtion handler of SYS_PORT. Handles the Radio
@@ -1020,7 +1024,7 @@ int sys_handle_pdcp_count_req(struct Pdcp_CountReq_Type *PdcpCount)
   }
   return returnState;
 }
-
+#endif
 /*
  * Function : sys_send_proxy
  * Description: Sends the messages from SYS to proxy
@@ -1070,6 +1074,7 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
   LOG_A(RRC, "Out sys_cell_attn_update\n");
   return;
 }
+#if 0
 /*
  * Function : sys_handle_cell_attn_req
  * Description: Handles the attenuation updates received from TTCN
@@ -1192,6 +1197,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   send_sys_cnf(resType, resVal, cnfType, NULL);
   LOG_A(RRC, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
 }
+#endif
 /*
  * Function : sys_handle_nr_enquire_timing
  * Description: Sends the NR enquire timing update to PORTMAN
