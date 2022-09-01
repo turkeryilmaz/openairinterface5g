@@ -73,18 +73,21 @@ void adbgSetLogger(acpCtx_t ctx, adbgLogger_t logger, size_t size)
 	}
 
 	if (logger) {
+		if (ACP_CTX_CAST(ctx)->logger) {
+			SIDL_ASSERT(!ACP_CTX_CAST(ctx)->logger);
+		}
 		ACP_CTX_CAST(ctx)->logger = logger;
 	}
 
 	if (size) {
+		if (ACP_CTX_CAST(ctx)->logBuf) {
+			SIDL_ASSERT(!ACP_CTX_CAST(ctx)->logBuf);
+		}
 		ACP_CTX_CAST(ctx)->logBuf = (unsigned char*)acpMalloc(size);
 		SIDL_ASSERT(ACP_CTX_CAST(ctx)->logBuf);
+		ACP_CTX_CAST(ctx)->logBufMaxSize = size;
 		ACP_CTX_CAST(ctx)->logBufSize = 0;
-	} else {
-		ACP_CTX_CAST(ctx)->logBuf = NULL;
 	}
-
-	ACP_CTX_CAST(ctx)->logBufMaxSize = size;
 }
 
 static void adbgCheckAndSetLogger(acpCtx_t ctx)
@@ -117,10 +120,6 @@ void adbgPrintLog(acpCtx_t ctx, const char* fmt, ...)
 	if (!acpCtxIsValid(ctx)) {
 		ACP_DEBUG_LOG("Invalid context");
 		SIDL_ASSERT(ctx != ctx);
-		return;
-	}
-
-	if (ACP_CTX_CAST(ctx)->logBufMaxSize == 0 || ACP_CTX_CAST(ctx)->logBuf == NULL) {
 		return;
 	}
 

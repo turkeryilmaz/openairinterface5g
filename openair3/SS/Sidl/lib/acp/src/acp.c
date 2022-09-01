@@ -98,7 +98,7 @@ int acpCreateCtx(acpCtx_t* ctx)
 	}
 
 	if (acp_printPrettyMessages) {
-		adbgSetPrintLogFormat(ctx, true);
+		adbgSetPrintLogFormat(*ctx, true);
 	}
 
 	return 0;

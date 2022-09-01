@@ -407,7 +407,7 @@ int acpRecvMsgInternal(int sock, size_t* size, unsigned char* buffer)
 int acpSendMsgInternal(int sock, size_t size, const unsigned char* buffer)
 {
 	SIDL_ASSERT(buffer);
-#ifdef ACP_DEBUG_TRACE_FLOOD	
+#ifdef ACP_DEBUG_TRACE_FLOOD
 	ACP_DEBUG_ENTER_TRACE_LOG();
 #endif
 
@@ -415,6 +415,7 @@ int acpSendMsgInternal(int sock, size_t size, const unsigned char* buffer)
 		ACP_DEBUG_EXIT_TRACE_LOG("ACP_ERR_INTERNAL");
 		return -ACP_ERR_INTERNAL;
 	}
+
 #ifdef ACP_DEBUG_TRACE_FLOOD
 	ACP_DEBUG_EXIT_TRACE_LOG(NULL);
 #endif
