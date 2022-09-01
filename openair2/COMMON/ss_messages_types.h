@@ -27,7 +27,9 @@
 
 #define SS_GET_TIM_INFO(mSGpTR)                (mSGpTR)->ittiMsg.ss_get_timinfo
 #define SS_SET_TIM_INFO(mSGpTR)                (mSGpTR)->ittiMsg.ss_set_timinfo
+#define SS_NRSET_TIM_INFO(mSGpTR)              (mSGpTR)->ittiMsg.ss_nrset_timinfo
 #define SS_UPD_TIM_INFO(mSGpTR)                (mSGpTR)->ittiMsg.ss_upd_timinfo
+#define SS_NRUPD_TIM_INFO(mSGpTR)              (mSGpTR)->ittiMsg.ss_nrupd_timinfo
 #define SS_CELL_ATTN_LIST_IND(mSGpTR)          (mSGpTR)->ittiMsg.ss_cell_attn_list_ind
 #define SS_CELL_ATTN_LIST_CNF(mSGpTR)          (mSGpTR)->ittiMsg.ss_cell_attn_list_cnf
 
@@ -82,6 +84,13 @@ typedef struct ss_set_timinfo_s {
 } ss_set_timinfo_t;
 
 typedef ss_set_timinfo_t ss_upd_timinfo_t;
+
+typedef struct ss_nrset_timinfo_s {
+  uint16_t sfn;
+  uint32_t  slot;
+} ss_nrset_timinfo_t;
+
+typedef ss_nrset_timinfo_t ss_nrupd_timinfo_t;
 
 typedef struct ss_get_timinfo_s {
   uint8_t  EnquireTiming;
