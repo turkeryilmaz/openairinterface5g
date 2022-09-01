@@ -860,7 +860,7 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 add_boolean_option(DRIVER2013              True "only relevant for EXMIMO")
 add_boolean_option(EXMIMO_IOT              True "????")
 add_boolean_option(LOCALIZATION            False "???")
-add_integer_option(MAX_NUM_CCs             1     "????")
+add_integer_option(MAX_NUM_CCs             2     "????")
 add_boolean_option(SMBV                    False "Rohde&Schwarz SMBV100A vector signal generator")
 add_boolean_option(DEBUG_PHY               False "Enable PHY layer debugging options")
 add_boolean_option(DEBUG_PHY_PROC          False "Enable debugging of PHY layer procedures")
