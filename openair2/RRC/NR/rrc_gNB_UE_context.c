@@ -171,9 +171,9 @@ rrc_gNB_ue_context_t *rrc_gNB_create_ue_context(rnti_t rnti,
   ue->rnti = rnti;
   ue->random_ue_identity = ue_identityP;
   f1_ue_data_t ue_data = {.secondary_ue = du_ue_id};
-  AssertFatal(!cu_exists_f1_ue_data(ue->rrc_ue_id),
-              "UE F1 Context for ID %d already exists, logic bug\n",
-              ue->rrc_ue_id);
+  // AssertFatal(!cu_exists_f1_ue_data(ue->rrc_ue_id),
+  //             "UE F1 Context for ID %d already exists, logic bug\n",
+  //             ue->rrc_ue_id);
   cu_add_f1_ue_data(ue->rrc_ue_id, &ue_data);
 
   RB_INSERT(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_p);
