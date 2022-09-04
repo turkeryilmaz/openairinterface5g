@@ -44,7 +44,7 @@ static bool _initialized = false;
 
 // Behaviour specific variables to use outside this module
 bool acp_printPrettyMessages = false;
-bool acp_ProductMode = false; // TODO: set to 'true' on final release
+bool acp_ProductMode = true;
 
 // ___________________________ / Interface / ____________________________
 
@@ -247,7 +247,8 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 		return -ACP_ERR_SOCK_ERROR;
 	}
 
-	ACP_DEBUG_TRACE_CLOG(ctx, "Data on socket(s)");
+	// TODO commented this log until final fix
+	//ACP_DEBUG_TRACE_CLOG(ctx, "Data on socket(s)");
 
 	if (ACP_CTX_CAST(ctx)->isServer && ACP_CTX_CAST(ctx)->sock == sock) {
 		int peerSock = acpSocketAccept(sock);
