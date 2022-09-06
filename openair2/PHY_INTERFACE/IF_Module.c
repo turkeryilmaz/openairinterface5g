@@ -720,8 +720,14 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
     LOG_D(MAC,"current (%d,%d) frame count dl is %d\n",UL_info->frame,UL_info->subframe,frame_cnt);
   }
 
+  /* MultiCell: Condition Added for Multiple Cell */
+  if(ifi->CC_mask != 0) {
+    ifi->CC_mask = 0;
+  }
+
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
-    if ((ifi->CC_mask==0)||(ifi->CC_mask==1)) {
+    /* MultiCell: Condition modified for Multiple CC */
+    if ((ifi->CC_mask==0)||(ifi->CC_mask==1)||(ifi->CC_mask==2)) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_subframe = UL_info->subframe;
     } else {
@@ -750,7 +756,8 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
   handle_ulsch(UL_info);
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
-    if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-3)) {
+    /* MultiCell: Condition modified for Multiple CC */
+    if ((ifi->CC_mask == ((1<<MAX_NUM_CCs)-3)) || (ifi->CC_mask == ((1<<MAX_NUM_CCs)-2))) {
       eNB_dlsch_ulsch_scheduler(module_id,
                                 (UL_info->frame+((UL_info->subframe>(9-sf_ahead))?1:0)) % 1024,
                                 (UL_info->subframe+sf_ahead)%10);
