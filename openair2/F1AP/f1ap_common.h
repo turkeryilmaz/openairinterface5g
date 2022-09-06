@@ -393,16 +393,20 @@ typedef int (*f1ap_message_processing_t)(
   uint32_t               stream,
   F1AP_F1AP_PDU_t       *message_p
 );
-int f1ap_handle_message(instance_t instance, uint32_t assoc_id, int32_t stream,
-                        const uint8_t *const data, const uint32_t data_length);
+int f1ap_handle_message(instance_t instance, uint32_t assoc_id, int32_t stream, const uint8_t *const data, const uint32_t data_length);
 
 typedef struct f1ap_cudu_ue_inst_s {
   // used for NB stats generation
-  rnti_t      rnti;
+  rnti_t rnti;
   instance_t f1ap_uid;
   instance_t du_ue_f1ap_id;
   instance_t cu_ue_f1ap_id;
 } f1ap_cudu_ue_t;
+
+typedef struct rnti_update_s {
+  rnti_t prior_rnti;
+  rnti_t new_rnti;
+} rnti_update_t;
 
 typedef struct f1ap_cudu_inst_s {
   f1ap_setup_req_t setupReq;
@@ -413,6 +417,7 @@ typedef struct f1ap_cudu_inst_s {
   uint64_t gNB_DU_id;
   uint16_t num_ues;
   f1ap_cudu_ue_t f1ap_ue[MAX_MOBILES_PER_GNB];
+  rnti_update_t rnti_update;
 } f1ap_cudu_inst_t;
 
 typedef enum {

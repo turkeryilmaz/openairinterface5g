@@ -101,6 +101,7 @@ extern "C" {
                                               in_addr_t newOutgoingAddr,
                                               teid_t newOutgoingTeid);
 
+  void GtpuUpdateTunnelRNTI(instance_t instance, rnti_t prior_rnti, rnti_t new_rnti);
   int newGtpuDeleteAllTunnels(instance_t instance, ue_id_t ue_id);
   int newGtpuDeleteTunnels(instance_t instance, ue_id_t ue_id, int nbTunnels, pdusessionid_t *pdusession_id);
   instance_t gtpv1Init(openAddr_t context);

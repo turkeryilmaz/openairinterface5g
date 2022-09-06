@@ -571,6 +571,21 @@ void GtpuUpdateTunnelOutgoingAddressAndTeid(instance_t instance, ue_id_t ue_id, 
   return;
 }
 
+void GtpuUpdateTunnelRNTI(instance_t instance, rnti_t prior_rnti, rnti_t new_rnti)
+{
+  pthread_mutex_lock(&globGtp.gtp_lock);
+  auto inst = &globGtp.instances[compatInst(instance)];
+  auto it = inst->ue2te_mapping.find(prior_rnti);
+  if (it == inst->ue2te_mapping.end()) {
+    LOG_E(GTPU, "[%ld] Update tunnel for a not existing RNTI %04x\n", instance, prior_rnti);
+    pthread_mutex_unlock(&globGtp.gtp_lock);
+    return;
+  }
+  inst->ue2te_mapping[new_rnti] = it->second;
+  inst->ue2te_mapping.erase(it);
+  pthread_mutex_unlock(&globGtp.gtp_lock);
+}
+
 teid_t newGtpuCreateTunnel(instance_t instance,
                            ue_id_t ue_id,
                            int incoming_bearer_id,
