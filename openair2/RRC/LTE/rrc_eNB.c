@@ -673,6 +673,9 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
     LOG_I(RRC, "do_Paging error");
     return -1;
   }
+
+  LOG_P(RRC, "PCCH_Message", buffer, length);
+
   message_buffer = itti_malloc(TASK_RRC_ENB, TASK_PDCP_ENB, length);
   /* Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling). */
   memcpy(message_buffer, buffer, length);
@@ -7736,6 +7739,7 @@ rrc_eNB_decode_ccch(
           PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
     return -1;
   }
+  //LOG_P(RRC, "UL CCCH:", buffer, buffer_length);
 
   if (ul_ccch_msg->message.present == LTE_UL_CCCH_MessageType_PR_c1) {
     switch (ul_ccch_msg->message.choice.c1.present) {
@@ -8481,12 +8485,14 @@ rrc_eNB_decode_dcch(
                0,
                0);
   {
+    LOG_A (RRC, "UL-DCCH: ");
     for (i = 0; i < sdu_sizeP; i++) {
       LOG_T(RRC, "%x.", Rx_sdu[i]);
     }
 
     LOG_T(RRC, "\n");
   }
+  //LOG_P(RRC, "UL DCCH:", Rx_sdu, sdu_sizeP);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     LOG_E(RRC, PROTOCOL_RRC_CTXT_UE_FMT" Failed to decode UL-DCCH (%zu bytes)\n",
@@ -9048,6 +9054,7 @@ rrc_eNB_decode_dcch(
         if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
           xer_fprint(stdout, &asn_DEF_LTE_UE_EUTRA_Capability, ue_context_p->ue_context.UE_Capability);
         }
+        //LOG_P(RRC, "UE_EUTRA_Capability:", ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[eutra_index]->ueCapabilityRAT_Container.buf, ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[eutra_index]->ueCapabilityRAT_Container.size);
 
         if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
           LOG_E(RRC, PROTOCOL_RRC_CTXT_UE_FMT" Failed to decode UE capabilities (%zu bytes)\n",

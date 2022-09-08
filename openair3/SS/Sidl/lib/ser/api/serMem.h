@@ -53,8 +53,8 @@ serMem_t serMemInit(unsigned char* arena, unsigned int aSize);
 /** Allocates size bytes and returns a pointer to the allocated memory. */
 void* serMalloc(serMem_t mem, size_t size);
 
-/** frees the memory space pointed to by ptr, which must have been returned
- * by a previous call serMalloc.*/
+/** Frees the memory space pointed to by ptr, which must have been returned
+ * by a previous call serMalloc. */
 void serFree(void* ptr);
 
 /** Defines preinitialized memory context for dynamic memory allocation. */

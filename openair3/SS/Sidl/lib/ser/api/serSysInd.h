@@ -27,9 +27,13 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void serSysIndProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct SYSTEM_IND** ToSS);
+
 int serSysIndProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct SYSTEM_IND* ToSS);
 
 int serSysIndProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct SYSTEM_IND** ToSS);
+
+void serSysIndProcessToSSFree0Clt(struct SYSTEM_IND* ToSS);
 
 void serSysIndProcessToSSFreeClt(struct SYSTEM_IND* ToSS);
 

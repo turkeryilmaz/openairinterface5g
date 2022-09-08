@@ -27,15 +27,23 @@
 
 SIDL_BEGIN_C_INTERFACE
 
+void serDrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct DRB_COMMON_REQ** FromSS);
+
 int serDrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct DRB_COMMON_REQ* FromSS);
 
 int serDrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct DRB_COMMON_REQ** FromSS);
 
+void serDrbProcessFromSSFree0Srv(struct DRB_COMMON_REQ* FromSS);
+
 void serDrbProcessFromSSFreeSrv(struct DRB_COMMON_REQ* FromSS);
+
+void serDrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct DRB_COMMON_IND** ToSS);
 
 int serDrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct DRB_COMMON_IND* ToSS);
 
 int serDrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct DRB_COMMON_IND** ToSS);
+
+void serDrbProcessToSSFree0Clt(struct DRB_COMMON_IND* ToSS);
 
 void serDrbProcessToSSFreeClt(struct DRB_COMMON_IND* ToSS);
 

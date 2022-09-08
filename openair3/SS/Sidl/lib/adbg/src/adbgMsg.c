@@ -29,7 +29,7 @@ void adbgMsgLog(acpCtx_t ctx, enum adbgMsgLogDir dir, size_t size, const unsigne
 {
 	if (!acpCtxIsValid(ctx)) {
 		SIDL_ASSERT(ctx != ctx);
-		ACP_DEBUG_LOG("invalid context");
+		ACP_DEBUG_LOG("Invalid context");
 		return;
 	}
 
@@ -38,13 +38,7 @@ void adbgMsgLog(acpCtx_t ctx, enum adbgMsgLogDir dir, size_t size, const unsigne
 	enum acpMsgLocalId localId;
 
 	if (acpGetMsgLocalId(size, buffer, &localId) < -1) {
-		adbgPrintLog(ctx, "invalid buffer");
-		adbgPrintLog(ctx, NULL);
-		return;
-	}
-
-	if ((int)localId == (int)ACP_SERVICE_PUSH_TYPE) {
-		adbgPrintLog(ctx, "ACP_SERVICE_PUSH_TYPE");
+		adbgPrintLog(ctx, "Invalid buffer");
 		adbgPrintLog(ctx, NULL);
 		return;
 	}
@@ -53,7 +47,7 @@ void adbgMsgLog(acpCtx_t ctx, enum adbgMsgLogDir dir, size_t size, const unsigne
 	int kind = acpCtxGetMsgKindFromId(localId);
 	SIDL_ASSERT(kind != -1);
 	if (kind < -1) {
-		adbgPrintLog(ctx, "cannot find service");
+		adbgPrintLog(ctx, "Cannot find service");
 		adbgPrintLog(ctx, NULL);
 		return;
 	}

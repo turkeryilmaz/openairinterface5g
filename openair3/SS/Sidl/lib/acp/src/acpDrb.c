@@ -26,6 +26,14 @@
 #include "acpMsgIds.h"
 #include "serDrb.h"
 
+void acpDrbProcessFromSSInitClt(acpCtx_t _ctx, struct DRB_COMMON_REQ** FromSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serDrbProcessFromSSInitClt(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
+}
+
 int acpDrbProcessFromSSEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct DRB_COMMON_REQ* FromSS)
 {
 	if (!acpCtxIsValid(_ctx)) {
@@ -48,9 +56,32 @@ int acpDrbProcessFromSSDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_
 	return serDrbProcessFromSSDecSrv(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
 }
 
+void acpDrbProcessFromSSFree0Srv(struct DRB_COMMON_REQ* FromSS)
+{
+	serDrbProcessFromSSFree0Srv(FromSS);
+}
+
 void acpDrbProcessFromSSFreeSrv(struct DRB_COMMON_REQ* FromSS)
 {
 	serDrbProcessFromSSFreeSrv(FromSS);
+}
+
+void acpDrbProcessFromSSFree0CltSrv(struct DRB_COMMON_REQ* FromSS)
+{
+	serDrbProcessFromSSFree0Srv(FromSS);
+}
+
+void acpDrbProcessFromSSFreeCltSrv(struct DRB_COMMON_REQ* FromSS)
+{
+	serDrbProcessFromSSFreeSrv(FromSS);
+}
+
+void acpDrbProcessToSSInitSrv(acpCtx_t _ctx, struct DRB_COMMON_IND** ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serDrbProcessToSSInitSrv(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
 int acpDrbProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct DRB_COMMON_IND* ToSS)
@@ -75,7 +106,22 @@ int acpDrbProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t 
 	return serDrbProcessToSSDecClt(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
+void acpDrbProcessToSSFree0Clt(struct DRB_COMMON_IND* ToSS)
+{
+	serDrbProcessToSSFree0Clt(ToSS);
+}
+
 void acpDrbProcessToSSFreeClt(struct DRB_COMMON_IND* ToSS)
+{
+	serDrbProcessToSSFreeClt(ToSS);
+}
+
+void acpDrbProcessToSSFree0SrvClt(struct DRB_COMMON_IND* ToSS)
+{
+	serDrbProcessToSSFree0Clt(ToSS);
+}
+
+void acpDrbProcessToSSFreeSrvClt(struct DRB_COMMON_IND* ToSS)
 {
 	serDrbProcessToSSFreeClt(ToSS);
 }
