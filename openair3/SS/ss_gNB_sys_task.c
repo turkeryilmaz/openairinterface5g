@@ -29,6 +29,7 @@
 #include "common/ran_context.h"
 
 #include "acpSys.h"
+#include "acpNrSys.h"
 #include "ss_gNB_sys_task.h"
 #include "ss_gNB_context.h"
 
@@ -139,7 +140,7 @@ static void bitStrint_to_byteArray(unsigned char arr[], int bit_length, unsigned
  */
 int cell_config_5g_done_indication()
 {
-
+#if 0
   if (cell_config_5g_done < 0)
   {
     printf("[SYS] Signal to OAI main code about cell config\n");
@@ -148,7 +149,7 @@ int cell_config_5g_done_indication()
     pthread_cond_broadcast(&cell_config_5g_done_cond);
     pthread_mutex_unlock(&cell_config_5g_done_mutex);
   }
-
+#endif
   return 0;
 }
 
@@ -524,7 +525,7 @@ int sys_handle_nr_cell_config_req(struct CellConfigRequest_Type *Cell)
   switch (Cell->d)
   {
   case CellConfigRequest_Type_AddOrReconfigure:
-
+#if 0
     LOG_A(NR_RRC, "TASK_SYS_5G_NR: CellConfigRequest_Type_AddOrReconfigure received\n");
     status = sys_add_nr_reconfig_cell(&(Cell->v.AddOrReconfigure));
     if (status)
@@ -538,7 +539,7 @@ int sys_handle_nr_cell_config_req(struct CellConfigRequest_Type *Cell)
     {
     returnState = SS_STATE_CELL_CONFIGURED;
     }
-
+#endif
 
     break;
   default:
@@ -1204,7 +1205,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
  */
 static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
 {
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS_5G_NR, INSTANCE_DEFAULT, SS_NRSET_TIM_INFO);
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRSET_TIM_INFO);
   if (message_p)
   {
     LOG_A(RRC, "[SYS] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->slot);
@@ -1419,7 +1420,7 @@ static void sys_handle_as_security_req(struct AS_Security_Type *ASSecurity)
  * Returns      : Void
  * ==========================================================================================================
 */
-static void ss_task_sys_nr_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t *tinfo)
+static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
 	int enterState = RC.ss.State;
 	int exitState = RC.ss.State;
@@ -1489,6 +1490,9 @@ bool valid_nr_sys_msg(struct SYSTEM_CTRL_REQ *req)
 			  cnfType = SystemConfirm_Type_Cell;
 		  }
 		  break;
+          case NR_SystemRequest_Type_EnquireTiming:
+		  valid = TRUE;
+		  break;
 	  default:
 		  valid = FALSE;
 		  sendDummyCnf = FALSE;
@@ -1496,7 +1500,7 @@ bool valid_nr_sys_msg(struct SYSTEM_CTRL_REQ *req)
   if (sendDummyCnf)
   {
     send_sys_cnf(resType, resVal, cnfType, NULL);
-    LOG_A(NR_RRC, "TASK_SYS_5G_NR: Sending Dummy OK Req %d cnTfype %d ResType %d ResValue %d\n",
+    LOG_A(NR_RRC, "TASK_SYS_GNB: Sending Dummy OK Req %d cnTfype %d ResType %d ResValue %d\n",
           req->Request.d, cnfType, resType, resVal);
   }
   return valid;
@@ -1523,7 +1527,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
   //SS_context.sf  = tinfo.sf;
   /* 5G_cell_config end */
 
-  itti_receive_msg(TASK_SYS_5G_NR, &received_msg);
+  itti_receive_msg(TASK_SYS_GNB, &received_msg);
 
   /* Check if there is a packet to handle */
   if (received_msg != NULL)
@@ -1546,7 +1550,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
       }
       else
       {
-        LOG_A(NR_RRC, "TASK_SYS_5G_NR: Not handled SYS_PORT message received \n");
+        LOG_A(NR_RRC, "TASK_SYS_GNB: Not handled SYS_PORT message received \n");
       }
     }
     break;
@@ -1557,7 +1561,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
       break;
     }
     default:
-      LOG_A(NR_RRC, "TASK_SYS_5G_NR: Received unhandled message %d:%s\n",
+      LOG_A(NR_RRC, "TASK_SYS_GNB: Received unhandled message %d:%s\n",
             ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
       break;
     }
