@@ -32,6 +32,9 @@ MESSAGE_DEF(SS_NRUPD_TIM_INFO,                MESSAGE_PRIORITY_MED, ss_nrupd_tim
 MESSAGE_DEF(SS_SYS_PORT_MSG_IND,              MESSAGE_PRIORITY_MED, ss_sys_port_msg_ind_t                 , ss_sys_port_msg_ind)
 MESSAGE_DEF(SS_SYS_PORT_MSG_CNF,              MESSAGE_PRIORITY_MED, ss_sys_port_msg_cnf_t                 , ss_sys_port_msg_cnf)
 
+MESSAGE_DEF(SS_NR_SYS_PORT_MSG_IND,           MESSAGE_PRIORITY_MED, ss_nr_sys_port_msg_ind_t              , ss_nr_sys_port_msg_ind)
+MESSAGE_DEF(SS_NR_SYS_PORT_MSG_CNF,           MESSAGE_PRIORITY_MED, ss_nr_sys_port_msg_cnf_t              , ss_nr_sys_port_msg_cnf)
+
 MESSAGE_DEF(SS_GET_PDCP_CNT,                  MESSAGE_PRIORITY_MED, ss_get_pdcp_cnt_t                      , ss_get_pdcp_cnt)
 MESSAGE_DEF(SS_SET_PDCP_CNT,                  MESSAGE_PRIORITY_MED, ss_set_pdcp_cnt_t                      , ss_set_pdcp_cnt)
 MESSAGE_DEF(SS_REQ_PDCP_CNT,                  MESSAGE_PRIORITY_MED, ss_req_pdcp_cnt_t                      , ss_req_pdcp_cnt)
