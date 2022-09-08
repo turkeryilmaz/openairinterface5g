@@ -840,6 +840,10 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
         break;
 
       case NFAPI_DL_CONFIG_BCH_PDU_TYPE:
+        /* MultiCell: Below condition added for Multiple CC */
+        if(TX_req->tx_request_body.number_of_pdus == 0) {
+          TX_req->tx_request_body.number_of_pdus = 1;
+        }
         AssertFatal(dl_config_pdu->bch_pdu.bch_pdu_rel8.pdu_index<TX_req->tx_request_body.number_of_pdus,
                     "bch_pdu_rel8.pdu_index>=TX_req->number_of_pdus (%d>%d)\n",
                     dl_config_pdu->bch_pdu.bch_pdu_rel8.pdu_index,
