@@ -37,7 +37,7 @@ acpCtx_t nrctx_g = NULL;
 
 enum MsgUserId
 {
-    MSG_SysProcess_userId = 1,
+    MSG_NrSysProcess_userId = 1,
 };
 extern SSConfigContext_t SS_context;
 static void ss_dumpReqMsg(struct SYSTEM_CTRL_REQ *msg)
@@ -235,7 +235,7 @@ void ss_gNB_port_man_init(void)
 	/* TODO: Check for acpMsgTable 5G NR*/
 
     const struct acpMsgTable msgTable[] = {
-        {"SysProcess5GNR", MSG_SysProcess_userId},
+        {"NrSysProcess", MSG_NrSysProcess_userId},
 
         // The last element should be NULL
         {NULL, 0}};
@@ -255,7 +255,7 @@ void ss_gNB_port_man_init(void)
 
     //itti_subscribe_event_fd(TASK_SS_PORTMAN, fd1);
 
-    itti_mark_task_ready(TASK_SS_PORTMAN_5G_NR);
+    itti_mark_task_ready(TASK_SS_PORTMAN_GNB);
 }
 
 //------------------------------------------------------------------------------
@@ -326,7 +326,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 
         ss_dumpReqMsg(req);
 
-        if (userId == MSG_SysProcess_userId)
+        if (userId == MSG_NrSysProcess_userId)
         {
 #if 0
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_5G_NR, INSTANCE_DEFAULT,  SS_SYS_PORT_MSG_IND);
@@ -349,7 +349,7 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
     MessageDef *received_msg = NULL;
     int result;
 
-    itti_poll_msg(TASK_SS_PORTMAN_5G_NR, &received_msg);
+    itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
 
     /* Check if there is a packet to handle */
     if (received_msg != NULL)

@@ -247,13 +247,13 @@ void rx_func(void *param) {
 
   if (RC.ss.mode >= SS_SOFTMODEM)
   {
-    MessageDef *message_p = itti_alloc_new_message(TASK_SYS_5G_NR, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
+    MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
     if (message_p)
     {
       SS_NRUPD_TIM_INFO(message_p).slot = gNB->UL_INFO.slot;
       SS_NRUPD_TIM_INFO(message_p).sfn = gNB->UL_INFO.frame;
 
-      int send_res = itti_send_msg_to_task(TASK_SYS_5G_NR, INSTANCE_DEFAULT, message_p);
+      int send_res = itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
       if (send_res < 0)
       {
         printf("Error in itti_send_msg_to_task");
