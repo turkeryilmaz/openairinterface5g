@@ -429,8 +429,8 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
                          enum SystemConfirm_Type_Sel cnfType,
                          void *msg)
 {
-  struct SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct SYSTEM_CTRL_CNF));
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, INSTANCE_DEFAULT, SS_SYS_PORT_MSG_CNF);
+  struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
 
   /* The request has send confirm flag flase so do nothing in this funciton */
   if (reqCnfFlag_g == FALSE)
@@ -441,7 +441,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
 
   if (message_p)
   {
-    LOG_A(RRC, "[SYS] Send SS_SYS_PORT_MSG_CNF\n");
+    LOG_A(RRC, "[SYS] Send SS_NR_SYS_PORT_MSG_CNF\n");
     msgCnf->Common.CellId = SS_context.eutra_cellId;
     msgCnf->Common.Result.d = resType;
     msgCnf->Common.Result.v.Success = resVal;
@@ -466,7 +466,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       msgCnf->Confirm.v.AS_Security = true;
       break;
     case SystemConfirm_Type_UE_Cat_Info:
-      msgCnf->Confirm.v.UE_Cat_Info = true;
+      //msgCnf->Confirm.v.UE_Cat_Info = true;
       break;
     case SystemConfirm_Type_PdcpCount:
 #if 0
@@ -478,7 +478,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       break;
 
     case SystemConfirm_Type_Paging:
-      msgCnf->Confirm.v.Paging = true;
+      //msgCnf->Confirm.v.Paging = true;
       break;
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
@@ -495,7 +495,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     default:
       LOG_A(RRC, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN]");
     }
-    SS_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
+    SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
     int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, INSTANCE_DEFAULT, message_p);
     if (send_res < 0)
     {
@@ -1212,7 +1212,7 @@ static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
     SS_NRSET_TIM_INFO(message_p).slot = tinfo->slot;
     SS_NRSET_TIM_INFO(message_p).sfn = tinfo->sfn;
 
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
     if (send_res < 0)
     {
       LOG_A(RRC, "[SYS] Error sending to [SS-PORTMAN]");
@@ -1433,7 +1433,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 	switch (RC.ss.State)
 	{
 		case SS_STATE_NOT_CONFIGURED:
-			if (req->Request.d == SystemRequest_Type_Cell)
+			if (req->Request.d == NR_SystemRequest_Type_Cell)
 			{
 				LOG_A(NR_RRC, "TASK_SYS_5G_NR: SystemRequest_Type_Cell received\n");
 				exitState = sys_handle_nr_cell_config_req(&(req->Request.v.Cell));
@@ -1445,6 +1445,18 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 						RC.ss.State, req->Request.d);
 			}
 			break;
+                case SS_STATE_CELL_ACTIVE:
+                        if (req->Request.d == NR_SystemRequest_Type_EnquireTiming)
+                        {
+                                sys_handle_nr_enquire_timing(tinfo);
+                                LOG_A(NR_RRC, "TASK_SYS_5G_NR: NR_SystemRequest_Type_EnquireTiming received\n");
+                        }
+			else
+			{
+				LOG_E(NR_RRC, "TASK_SYS_5G_NR: Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+                                                RC.ss.State, req->Request.d);
+			}
+                        break;
 		default:
 			LOG_E(NR_RRC, "TASK_SYS_5G_NR: Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
 					RC.ss.State, req->Request.d);
@@ -1466,7 +1478,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
  * ============================================================================================================
 */
 
-bool valid_nr_sys_msg(struct SYSTEM_CTRL_REQ *req)
+bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
 {
   bool valid = FALSE;
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
@@ -1492,6 +1504,7 @@ bool valid_nr_sys_msg(struct SYSTEM_CTRL_REQ *req)
 		  break;
           case NR_SystemRequest_Type_EnquireTiming:
 		  valid = TRUE;
+		  sendDummyCnf = FALSE;
 		  break;
 	  default:
 		  valid = FALSE;
@@ -1541,12 +1554,12 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
     }
     break;
 
-    case SS_SYS_PORT_MSG_IND:
+    case SS_NR_SYS_PORT_MSG_IND:
     {
 
-      if (valid_nr_sys_msg(SS_SYS_PORT_MSG_IND(received_msg).req))
+      if (valid_nr_sys_msg(SS_NR_SYS_PORT_MSG_IND(received_msg).req))
       {
-        ss_task_sys_nr_handle_req(SS_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
+        ss_task_sys_nr_handle_req(SS_NR_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
       }
       else
       {

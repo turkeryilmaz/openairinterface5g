@@ -30,6 +30,7 @@
 #include "ss_gNB_port_man_task.h"
 #include "ss_gNB_context.h"
 #include "acpSys.h"
+#include "acpNrSys.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -40,9 +41,9 @@ enum MsgUserId
     MSG_NrSysProcess_userId = 1,
 };
 extern SSConfigContext_t SS_context;
-static void ss_dumpReqMsg(struct SYSTEM_CTRL_REQ *msg)
+static void ss_dumpReqMsg(struct NR_SYSTEM_CTRL_REQ *msg)
 {
-    LOG_A(NR_RRC, "SysProcess: received from the TTCN\n");
+    LOG_A(NR_RRC, "NrSysProcess: received from the TTCN\n");
     LOG_A(NR_RRC, "\tCommon:\n");
     LOG_A(NR_RRC, "\t\tCellId=%d\n", msg->Common.CellId);
     LOG_A(NR_RRC, "\t\tRoutingInfo=%d\n", msg->Common.RoutingInfo.d);
@@ -52,10 +53,9 @@ static void ss_dumpReqMsg(struct SYSTEM_CTRL_REQ *msg)
     LOG_A(NR_RRC, "\tRequest=%d\n", msg->Request.d);
 }
 
-#if 0
-void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
+void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
 {
-    struct SYSTEM_CTRL_CNF cnf;
+    struct NR_SYSTEM_CTRL_CNF cnf;
     const size_t size = 16 * 1024;
     uint32_t status;
 
@@ -97,10 +97,10 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
         cnf.Confirm.v.PdcpCount.v = recvCnf.Confirm.v.PdcpCount.v;
         break;
     case SystemConfirm_Type_UE_Cat_Info:
-        cnf.Confirm.v.UE_Cat_Info = true;
+        //cnf.Confirm.v.UE_Cat_Info = true;
         break;
     case SystemConfirm_Type_Paging:
-        cnf.Confirm.v.Paging = true;
+        //cnf.Confirm.v.Paging = true;
         break;
 
     case SystemConfirm_Type_Sps:
@@ -121,7 +121,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
 
     /* Encode message
      */
-    if (acpSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
+    if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
     {
         acpFree(buffer);
         return;
@@ -146,7 +146,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
 
 //------------------------------------------------------------------------------
 // Function to send response to the SIDL client
-void ss_port_man_send_data(
+void ss_nr_port_man_send_data(
     instance_t instance,
     task_id_t task_id,
     ss_set_timinfo_t *tinfo)
@@ -194,7 +194,7 @@ void ss_port_man_send_data(
 
     /* Encode message
      */
-    if (acpSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
+    if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
     {
         acpFree(buffer);
         return;
@@ -212,12 +212,11 @@ void ss_port_man_send_data(
     }
     else
     {
-        LOG_A(NR_RRC, "[SS-PORTMAN] acpSendMsg Success \n");
+        LOG_A(NR_RRC, "[SS-PORTMAN GNB] acpSendMsg Success \n");
     }
     // Free allocated buffer
     acpFree(buffer);
 }
-#endif
 //------------------------------------------------------------------------------
 void ss_gNB_port_man_init(void)
 {
@@ -261,7 +260,7 @@ void ss_gNB_port_man_init(void)
 //------------------------------------------------------------------------------
 static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 {
-    struct SYSTEM_CTRL_REQ *req = NULL;
+    struct NR_SYSTEM_CTRL_REQ *req = NULL;
     const size_t size = 16 * 1024;
     size_t msgSize = size; //2
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
@@ -321,25 +320,23 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     else
     {
         LOG_A(NR_RRC, "[SS-PORTMAN-5GNR] received msg %d from the client.\n", userId);
-        if (acpSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
+        if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
             return;
 
         ss_dumpReqMsg(req);
 
         if (userId == MSG_NrSysProcess_userId)
         {
-#if 0
-            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_5G_NR, INSTANCE_DEFAULT,  SS_SYS_PORT_MSG_IND);
+            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT,  SS_NR_SYS_PORT_MSG_IND);
             if (message_p)
             {
-                SS_SYS_PORT_MSG_IND(message_p).req = req;
-                SS_SYS_PORT_MSG_IND(message_p).userId = userId;
-                itti_send_msg_to_task(TASK_SYS, INSTANCE_DEFAULT, message_p);
+                SS_NR_SYS_PORT_MSG_IND(message_p).req = req;
+                SS_NR_SYS_PORT_MSG_IND(message_p).userId = userId;
+                itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
             }
-#endif
         }
     }
-    acpSysProcessFreeSrv(req);
+    acpNrSysProcessFreeSrv(req);
     return;
 }
 
@@ -362,19 +359,17 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 			case SS_NRSET_TIM_INFO:
 				{
 					LOG_A(RRC, "Received timing info \n");
-					ss_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
+					ss_nr_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
 					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
 				}
 				break;
-#if 0
-			case SS_SYS_PORT_MSG_CNF:
+			case SS_NR_SYS_PORT_MSG_CNF:
 				{
-					LOG_A(RRC, "Received SS_SYS_PORT_MSG_CNF \n");
-					ss_port_man_send_cnf(*(SS_SYS_PORT_MSG_CNF(received_msg).cnf));
+					LOG_A(RRC, "Received SS_NR_SYS_PORT_MSG_CNF \n");
+					ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
 					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
 				}
 				break;
-#endif
 			case TERMINATE_MESSAGE:
 				itti_exit_task();
 				break;
