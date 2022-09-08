@@ -75,46 +75,10 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
                      cnf.Common.CellId,cnf.Common.Result.d, recvCnf.Confirm.d);
     switch (recvCnf.Confirm.d)
     {
-    case SystemConfirm_Type_Cell:
+    case NR_SystemConfirm_Type_Cell:
         cnf.Confirm.v.Cell = true;
         break;
 
-    case SystemConfirm_Type_CellAttenuationList:
-        cnf.Confirm.v.CellAttenuationList = true;
-        cnf.Common.CellId = eutra_Cell_NonSpecific;
-        break;
-
-    case SystemConfirm_Type_RadioBearerList:
-        cnf.Confirm.v.RadioBearerList = true;
-        break;
-
-    case SystemConfirm_Type_AS_Security:
-        cnf.Confirm.v.AS_Security = true;
-        break;
-
-    case SystemConfirm_Type_PdcpCount:
-        cnf.Confirm.v.PdcpCount.d = recvCnf.Confirm.v.PdcpCount.d;
-        cnf.Confirm.v.PdcpCount.v = recvCnf.Confirm.v.PdcpCount.v;
-        break;
-    case SystemConfirm_Type_UE_Cat_Info:
-        //cnf.Confirm.v.UE_Cat_Info = true;
-        break;
-    case SystemConfirm_Type_Paging:
-        //cnf.Confirm.v.Paging = true;
-        break;
-
-    case SystemConfirm_Type_Sps:
-    case SystemConfirm_Type_L1MacIndCtrl:
-    case SystemConfirm_Type_RlcIndCtrl:
-    case SystemConfirm_Type_PdcpHandoverControl:
-    case SystemConfirm_Type_L1_TestMode:
-    case SystemConfirm_Type_PdcchOrder:
-    case SystemConfirm_Type_ActivateScell:
-    case SystemConfirm_Type_MbmsConfig:
-    case SystemConfirm_Type_PDCCH_MCCH_ChangeNotification:
-    case SystemConfirm_Type_MSI_Config:
-    case SystemConfirm_Type_OCNG_Config:
-    case SystemConfirm_Type_DirectIndicationInfo:
     default:
         LOG_A(NR_RRC, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
     }
@@ -149,9 +113,9 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
 void ss_nr_port_man_send_data(
     instance_t instance,
     task_id_t task_id,
-    ss_set_timinfo_t *tinfo)
+    ss_nrset_timinfo_t *tinfo)
 {
-    struct SYSTEM_CTRL_CNF cnf;
+    struct NR_SYSTEM_CTRL_CNF cnf;
     const size_t size = 16 * 1024;
     uint32_t status;
 
@@ -159,19 +123,19 @@ void ss_nr_port_man_send_data(
 
     DevAssert(tinfo != NULL);
     DevAssert(tinfo->sfn >= 0);
-    DevAssert(tinfo->sf >= 0);
+    DevAssert(tinfo->slot >= 0);
 
     size_t msgSize = size;
     memset(&cnf, 0, sizeof(cnf));
 	/*TODO: */
-//    cnf.Common.CellId = SS_context.eutra_cellId;
+    cnf.Common.CellId = SS_context.eutra_cellId;
     cnf.Common.RoutingInfo.d = RoutingInfo_Type_None;
     cnf.Common.RoutingInfo.v.None = true;
     cnf.Common.TimingInfo.d = TimingInfo_Type_Now;
     cnf.Common.TimingInfo.v.Now = true;
     cnf.Common.Result.d = ConfirmationResult_Type_Success;
     cnf.Common.Result.v.Success = true;
-    cnf.Confirm.d = SystemConfirm_Type_EnquireTiming;
+    cnf.Confirm.d = NR_SystemConfirm_Type_EnquireTiming;
     cnf.Confirm.v.EnquireTiming = true;
 
     /**
@@ -182,7 +146,7 @@ void ss_nr_port_man_send_data(
     cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number = tinfo->sfn;
 
     cnf.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
-    cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = tinfo->sf;
+    cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = tinfo->slot;
 
     /** TODO: Always filling HSFN as 0, need to change this */
     cnf.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
