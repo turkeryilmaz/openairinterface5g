@@ -378,13 +378,13 @@ typedef struct cu_to_du_rrc_information_s {
 }cu_to_du_rrc_information_t;
 
 typedef struct du_to_cu_rrc_information_s {
-  uint8_t * cellGroupConfig;
-  uint32_t  cellGroupConfig_length;
-  uint8_t * measGapConfig;
-  uint32_t  measGapConfig_length;
-  uint8_t * requestedP_MaxFR1;
-  uint32_t  requestedP_MaxFR1_length;
-}du_to_cu_rrc_information_t;
+  uint8_t *cellGroupConfig;
+  uint32_t cellGroupConfig_length;
+  uint8_t *measGapConfig;
+  uint32_t measGapConfig_length;
+  uint8_t *requestedP_MaxFR1;
+  uint32_t requestedP_MaxFR1_length;
+} du_to_cu_rrc_information_t;
 
 typedef enum QoS_information_e {
   NG_RAN_QoS    = 0,

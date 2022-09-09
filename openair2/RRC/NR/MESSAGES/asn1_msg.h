@@ -192,4 +192,6 @@ int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t r
 NR_MeasConfig_t *get_defaultMeasConfig(const module_id_t module_id);
 uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi);
 
+int16_t do_NR_HandoverCommand(uint8_t *ho_buf, int16_t ho_size, uint8_t *rrc_buffer, int16_t rrc_size);
+
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */
