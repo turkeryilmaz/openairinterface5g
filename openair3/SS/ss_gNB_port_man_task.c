@@ -185,7 +185,7 @@ void ss_nr_port_man_send_data(
 void ss_gNB_port_man_init(void)
 {
     IpAddress_t ipaddr;
-    LOG_A(NR_RRC, "[SS-PORTMAN-5GNR] Starting System Simulator Manager\n");
+    LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Starting GNB System Simulator Manager\n");
 
     const char *hostIp;
     hostIp = RC.ss.hostIp;
@@ -195,11 +195,9 @@ void ss_gNB_port_man_init(void)
     int port = RC.ss.SysportNR;
 
     acpInit(malloc, free, 1000);
-	/* TODO: Check for acpMsgTable 5G NR*/
 
     const struct acpMsgTable msgTable[] = {
         {"NrSysProcess", MSG_NrSysProcess_userId},
-
         // The last element should be NULL
         {NULL, 0}};
     // Arena size to decode received message
@@ -210,11 +208,11 @@ void ss_gNB_port_man_init(void)
     int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &nrctx_g);
     if (ret < 0)
     {
-        LOG_A(NR_RRC, "[SS-PORTMAN-5GNR] Connection failure err=%d\n", ret);
+        LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Connection failure err=%d\n", ret);
         return;
     }
     int fd1 = acpGetSocketFd(nrctx_g);
-    LOG_A(NR_RRC, "[SS-PORTMAN-5GNR] Connection performed : %d\n", fd1);
+    LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Connection performed : %d\n", fd1);
 
     //itti_subscribe_event_fd(TASK_SS_PORTMAN, fd1);
 
@@ -260,8 +258,8 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
         //Send Dummy Wake up ITTI message to SRB task.
         if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
         {
-            LOG_A(NR_RRC,"[SS-PORTMAN-5GNR] Sending Wake up signal to SRB task \n");
 #if 0
+            LOG_A(NR_RRC,"[SS-PORTMAN-5GNR] Sending Wake up signal to SRB task \n");
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, INSTANCE_DEFAULT, SS_RRC_PDU_IND);
             if (message_p)
             {
@@ -283,7 +281,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     }
     else
     {
-        LOG_A(NR_RRC, "[SS-PORTMAN-5GNR] received msg %d from the client.\n", userId);
+        LOG_A(NR_RRC, "[SS-PORTMAN-GNB] received msg %d from the client.\n", userId);
         if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
             return;
 
@@ -316,20 +314,20 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
     if (received_msg != NULL)
 	{
 
-		LOG_A(NR_RRC, "[SS-PORTMAN-5GNR] Received a message id : %d \n",
+		LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Received a message id : %d \n",
 				ITTI_MSG_ID(received_msg));
 		switch (ITTI_MSG_ID(received_msg))
 		{
 			case SS_NRSET_TIM_INFO:
 				{
-					LOG_A(RRC, "Received timing info \n");
+					LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Received NR timing info \n");
 					ss_nr_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
 					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
 				}
 				break;
 			case SS_NR_SYS_PORT_MSG_CNF:
 				{
-					LOG_A(RRC, "Received SS_NR_SYS_PORT_MSG_CNF \n");
+					LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
 					ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
 					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
 				}
@@ -339,7 +337,7 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 				break;
 
 			default:
-				LOG_A(NR_RRC, "Received unhandled message %d:%s\n",
+				LOG_A(NR_RRC, "[SS-PORTMAN-GNB] Received unhandled message %d:%s\n",
 						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 				break;
 		}
