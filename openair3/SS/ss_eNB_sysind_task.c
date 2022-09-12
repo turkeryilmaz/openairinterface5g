@@ -80,7 +80,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind)
         DevAssert(p_ind != NULL);
         size_t msgSize = size; 
         memset(&ind, 0, sizeof(ind));
-        ind.Common.CellId = SS_context[0].eutra_cellId;
+        ind.Common.CellId = SS_context.SSCell_list[0].eutra_cellId;
 
         // Populated the Routing Info
         ind.Common.RoutingInfo.d = RoutingInfo_Type_None;
@@ -105,7 +105,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind)
 
         ind.Common.RlcBearerRouting.d = true;
         ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context[0].eutra_cellId;
+        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[0].eutra_cellId;
 
         LOG_A(ENB_SS,"[SS_SYSIND][SYSTEM_IND] Frame: %d, Subframe: %d, RAPID: %d, PRTPower: %d, BitMask: %d \n",p_ind->sfn,p_ind->sf,p_ind->ra_PreambleIndex,p_ind->prtPower_Type,p_ind->bitmask);
 
@@ -125,7 +125,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind)
                 LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] acpSysIndProcessToSSEncSrv Failure\n");
                 return;
         }
-        LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] Buffer msgSize=%d (!!2) to EUTRACell %d\n", (int)msgSize,SS_context[0].eutra_cellId);
+        LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] Buffer msgSize=%d (!!2) to EUTRACell %d\n", (int)msgSize,SS_context.SSCell_list[0].eutra_cellId);
 
         /* Send message */
         status = acpSendMsg(ctx_sysind_g, msgSize, buffer);
@@ -217,19 +217,19 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
 
                         if (origin_task == TASK_SS_PORTMAN)
                         {
-                                LOG_D(ENB_APP, "[SS_SYSIND] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", RC.ss.State);
+                                LOG_D(ENB_APP, "[SS_SYSIND] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[0].State);
                         }
                         else
                         {
                                 LOG_A(ENB_SS, "[SS_SYSIND] Received SS_SYSTEM_IND\n");
-                                if (RC.ss.State >= SS_STATE_CELL_CONFIGURED)
+                                if (SS_context.SSCell_list[0].State >= SS_STATE_CELL_CONFIGURED)
                                 {
                                         instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                                         ss_send_sysind_data(&received_msg->ittiMsg.ss_system_ind);
                                 }
                                 else
                                 {
-                                        LOG_E(ENB_SS, "[SS_SYSIND][SS_SYSTEM_IND] received in SS state %d \n", RC.ss.State);
+                                        LOG_E(ENB_SS, "[SS_SYSIND][SS_SYSTEM_IND] received in SS state %d \n", SS_context.SSCell_list[0].State);
                                 }
                         }
                         result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);

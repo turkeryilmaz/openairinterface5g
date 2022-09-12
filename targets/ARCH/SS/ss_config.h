@@ -62,14 +62,13 @@ typedef struct ss_config_s {
   /** DRB port number */
   int Drbport;
   /** State info */
-  int State;
   int vtp_ready;
   int CBRA_flag;
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind;
 } ss_config_t;
-
+/**
 typedef enum {
   SS_STATE_NOT_CONFIGURED = 0,
   SS_STATE_CELL_CONFIGURED,
@@ -79,6 +78,7 @@ typedef enum {
   SS_STATE_CELL_BROADCASTING,
   SS_STATE_MAX_STATE
 } SS_STATE_t;
+*/
 
 #endif /** __SS_CONFIG_H__ */
 /** @} */

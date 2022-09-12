@@ -52,7 +52,7 @@
 #include "ss_eNB_context.h"
 
 extern RAN_CONTEXT_t RC;
-extern uint16_t ss_rnti_g;
+//extern uint16_t ss_rnti_g;
 static acpCtx_t ctx_drb_g = NULL;
 SSConfigContext_t SS_context;
 
@@ -80,7 +80,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
 
-	ind.Common.CellId = SS_context[0].eutra_cellId;
+	ind.Common.CellId = SS_context.SSCell_list[0].eutra_cellId;
 
 	//Populated the Routing Info
 	ind.Common.RoutingInfo.d = RoutingInfo_Type_RadioBearerId;
@@ -106,7 +106,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 
 	ind.Common.RlcBearerRouting.d = true;
         ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context[0].eutra_cellId;
+        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[0].eutra_cellId;
 
 	//Populating the PDU
 	ind.U_Plane.SubframeData.NoOfTTIs = 1;
@@ -125,7 +125,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
                 LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] acpDrbProcessToSSEncSrv Failure\n");
                 return;
         }
-	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context[0].eutra_cellId);
+	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[0].eutra_cellId);
 
 	//Send Message
 	status = acpSendMsg(ctx_drb_g, msgSize, buffer);
@@ -164,7 +164,7 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 		}
 
 	}
-        SS_DRB_PDU_REQ(message_p).rnti = ss_rnti_g;
+        SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[0].ss_rnti_g;
 
         int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
         if (send_res < 0)
@@ -222,14 +222,14 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
                                 LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] acpDrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
-                        if(RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                        if(SS_context.SSCell_list[0].State >= SS_STATE_CELL_ACTIVE)
                         {
 				LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] DRB_COMMON_REQ Received in CELL_ACTIVE\n");
                                 ss_task_handle_drb_pdu_req(req);
                         }
                         else
                         {
-                                LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", RC.ss.State);
+                                LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", SS_context.SSCell_list[0].State);
                         }
 
                         acpDrbProcessFromSSFreeSrv(req);
@@ -263,19 +263,19 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 	    			if (origin_task == TASK_SS_PORTMAN)
 				{       
 			 				
-                                	LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", RC.ss.State);
+                                	LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[0].State);
                                 }
 				else
 	                        {
                                 	LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
-					if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+					if (SS_context.SSCell_list[0].State >= SS_STATE_CELL_ACTIVE)
 	                                {
         	                                instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                 	                        ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind);
                         	        }
 					else
 	                                {
-        	                                LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", RC.ss.State);
+        	                                LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[0].State);
                 	                }
 				}
 

@@ -310,9 +310,9 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx)
             }
             LOG_A(ENB_APP,"[SS-VTP] Received VTEnquireTimingAck Request SFN %d Subframe %d Waiting for ACK of SFN %d SF %d\n ",
             	    virtualTime->TimingInfo.SFN.v.Number,virtualTime->TimingInfo.Subframe.v.Number,SS_context.vtinfo.sfn,SS_context.vtinfo.sf);
-            // if (RC.ss.State < SS_STATE_CELL_ACTIVE)
+            // if (SS_context.State < SS_STATE_CELL_ACTIVE)
             // {
-            //     LOG_E(ENB_APP, "[SS-VTP] Request received in an invalid state: %d \n", RC.ss.State);
+            //     LOG_E(ENB_APP, "[SS-VTP] Request received in an invalid state: %d \n", SS_context.State);
             //     break;
             // }
 

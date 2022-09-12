@@ -24,6 +24,7 @@
 #include "SidlCommon.h"
 
 typedef struct SSConfigContext_s {
+  int State;	
   uint16_t dl_earfcn;
   uint16_t ul_earfcn;
   uint32_t dl_freq;
@@ -35,9 +36,18 @@ typedef struct SSConfigContext_s {
   EUTRA_CellId_Type ttcn_cell_id;
   uint16_t eutra_cellId;
   uint16_t nr_cellId;
-
+  uint16_t ss_rnti_g;
   /** TODO: To add more */
 } SSConfigContext_t;
 
+typedef enum {
+  SS_STATE_NOT_CONFIGURED = 0,
+  SS_STATE_CELL_CONFIGURED,
+  SS_STATE_CELL_ACTIVE,
+  SS_STATE_AS_SECURITY_ACTIVE,
+  SS_STATE_AS_RBS_ACTIVE,
+  SS_STATE_CELL_BROADCASTING,
+  SS_STATE_MAX_STATE
+} SS_STATE_t;
 #endif /* _SS_GNB_CONTEXT_ */
 
