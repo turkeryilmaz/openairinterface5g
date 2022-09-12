@@ -761,11 +761,6 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
     LOG_D(MAC,"current (%d,%d) frame count dl is %d\n",UL_info->frame,UL_info->subframe,frame_cnt);
   }
 
-  /* MultiCell: Condition Added for Multiple Cell */
-  if(ifi->CC_mask != 0) {
-    ifi->CC_mask = 0;
-  }
-
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
     if (ifi->CC_mask < ((1<<RC.nb_CC[module_id])-1)) {
