@@ -1914,8 +1914,8 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
   MessageDef *received_msg = NULL;
   int result;
   static ss_set_timinfo_t tinfo = {.sfn = 0xFFFF, .sf = 0xFF};
-  SS_context[0].sfn = tinfo.sfn;
-  SS_context[0].sf  = tinfo.sf;
+  SS_context.sfn = tinfo.sfn;
+  SS_context.sf  = tinfo.sf;
 
   itti_receive_msg(TASK_SYS, &received_msg);
 
@@ -1929,8 +1929,8 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
       tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
       tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
 
-      SS_context[0].sfn = tinfo.sfn;
-      SS_context[0].sf  = tinfo.sf;
+      SS_context.sfn = tinfo.sfn;
+      SS_context.sf  = tinfo.sf;
 
       g_log->sfn = tinfo.sfn;
       g_log->sf = tinfo.sf;

@@ -64,7 +64,6 @@ typedef struct ss_config_s {
   int SysportNR;
   uint8_t configured;
   /** State info */
-  int State;
   int vtp_ready;
   int CBRA_flag;
   int mac_rlc_data_ind_frame;
