@@ -47,8 +47,10 @@ typedef enum SSEvents_E {
 	SS_VNG_INVALID_MSG
 } SSEventsE;
 
-typedef struct SSConfigContext_s {
-  uint16_t dl_earfcn; 
+/** Structure Containing Cell-specific values only */
+typedef struct SSCellConfigContext_s{
+  int State;	
+  uint16_t dl_earfcn;
   uint16_t ul_earfcn;
   uint32_t dl_freq;
   uint32_t ul_freq;
@@ -58,7 +60,12 @@ typedef struct SSConfigContext_s {
   //TO DO: Need to remove one of the following cellId
   EUTRA_CellId_Type ttcn_cell_id;
   uint16_t eutra_cellId;
+  uint16_t ss_rnti_g;
+} SSCellConfigContext_t;
 
+typedef struct SSConfigContext_s {
+  /** List of Cells */
+  SSCellConfigContext_t SSCell_list[8];	
   /** Timing info */
   uint16_t sfn;
   uint8_t  sf;
@@ -67,6 +74,17 @@ typedef struct SSConfigContext_s {
   hash_table_t   *vt_timer_table   ; // key is SFN_SF
 
   /** TODO: To add more */
-} SSConfigContext_t[8];
+
+} SSConfigContext_t;
+
+typedef enum {
+  SS_STATE_NOT_CONFIGURED = 0,
+  SS_STATE_CELL_CONFIGURED,
+  SS_STATE_CELL_ACTIVE,
+  SS_STATE_AS_SECURITY_ACTIVE,
+  SS_STATE_AS_RBS_ACTIVE,
+  SS_STATE_CELL_BROADCASTING,
+  SS_STATE_MAX_STATE
+} SS_STATE_t;
 
 #endif /* _SS_ENB_CONTEXT_ */

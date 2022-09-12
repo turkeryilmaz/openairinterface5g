@@ -120,14 +120,14 @@ void ss_vtp_send_tinfo(
         LOG_E(ENB_APP, "[SS-VTP] acpSendMsg failed. Error : %d on fd: %d the VTP at SS will be disabled\n",
               status, acpGetSocketFd(ctx_vtp_g));
         acpFree(buffer);
-        //SS_context[0].vtp_enabled = VTP_DISABLE;
+        //SS_context.vtp_enabled = VTP_DISABLE;
 
         return;
     }
     else
     {
         LOG_A(ENB_APP, "[SS-VTP] acpSendMsg VTP_Send Success SFN %d SF %d virtualTime.Enable %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable);
-        SS_context[0].vtinfo = *tinfo;
+        SS_context.vtinfo = *tinfo;
     }
     // Free allocated buffer
     acpFree(buffer);
@@ -201,7 +201,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_RESP;
       req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context[0].cellId;
+      req->header.cell_id = SS_context.SSCell_list[0].cellId;
 
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
@@ -234,7 +234,7 @@ static inline void ss_enable_vtp()
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_ENABLE;
       req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context[0].cellId;
+      req->header.cell_id = SS_context.SSCell_list[0].cellId;
 
       /* Initialize with zero */
       req->tinfo.sfn = 0;
@@ -320,16 +320,16 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
                 break;
             }
             LOG_A(ENB_APP,"[SS-VTP] Received VTEnquireTimingAck Request SFN %d Subframe %d Waiting for ACK of SFN %d SF %d\n ",
-            	    virtualTime->TimingInfo.SFN.v.Number,virtualTime->TimingInfo.Subframe.v.Number,SS_context[0].vtinfo.sfn,SS_context[0].vtinfo.sf);
-            // if (RC.ss.State < SS_STATE_CELL_ACTIVE)
+            	    virtualTime->TimingInfo.SFN.v.Number,virtualTime->TimingInfo.Subframe.v.Number,SS_context.vtinfo.sfn,SS_context.vtinfo.sf);
+            // if (SS_context.SSCell_list[0].State < SS_STATE_CELL_ACTIVE)
             // {
-            //     LOG_E(ENB_APP, "[SS-VTP] Request received in an invalid state: %d \n", RC.ss.State);
+            //     LOG_E(ENB_APP, "[SS-VTP] Request received in an invalid state: %d \n", SS_context.SSCell_list[0].State);
             //     break;
             // }
 
 
-//            if((SS_context[0].vtinfo.sfn == virtualTime->TimingInfo.SFN.v.Number) &&
-//            		(SS_context[0].vtinfo.sf == virtualTime->TimingInfo.Subframe.v.Number))
+//            if((SS_context.vtinfo.sfn == virtualTime->TimingInfo.SFN.v.Number) &&
+//            		(SS_context.SSCell_list[0].vtinfo.sf == virtualTime->TimingInfo.Subframe.v.Number))
             {
 				if (virtualTime->Enable) {
 					ss_send_vtp_resp(virtualTime);
@@ -381,7 +381,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
             LOG_A(ENB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(ENB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
-            if (SS_context[0].vtp_enabled == 1)
+            if (SS_context.vtp_enabled == 1)
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
         }
         break;
@@ -488,7 +488,7 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		SS_context[0].vtp_enabled = 1;
+		SS_context.vtp_enabled = 1;
 		RC.ss.vtp_ready = 1;
 		ss_enable_vtp();
 		sleep(1);

@@ -50,8 +50,9 @@
 #include "flexran_agent_extern.h"
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
+#include "openair3/SS/ss_eNB_context.h"
 extern RAN_CONTEXT_t RC;
-
+extern SSConfigContext_t SS_context;
 //------------------------------------------------------------------------------
 int8_t
 mac_rrc_data_req(
@@ -340,7 +341,7 @@ mac_rrc_data_ind(
     ctxt.brOption = brOption;
 
 //#ifdef ENB_SS
-    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[0].State >= SS_STATE_CELL_ACTIVE)
     {
       LOG_I(RRC,"RRC Sending CCCH PDU_IND to SS \n");
       MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0,  SS_RRC_PDU_IND);

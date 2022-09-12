@@ -67,8 +67,8 @@ static void vt_subtract_sf(uint16_t *frameP, uint8_t *subframeP, int offset)
 uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_tinfo)
 {
 	ss_set_timinfo_t curr_tinfo;
-	curr_tinfo.sfn = SS_context[0].sfn;
-	curr_tinfo.sf = SS_context[0].sf;
+	curr_tinfo.sfn = SS_context.sfn;
+	curr_tinfo.sf = SS_context.sf;
 
 	LOG_A(ENB_APP,"VT_TIMER Enter msg_can_be_queued for  SFN %d , SF %d\n",req_tinfo.sfn,req_tinfo.sf);
 
@@ -97,7 +97,7 @@ uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t inst
 	timer_ele_p->task_id = task_id;
 	timer_ele_p->msg = msg;
 
-	if (hashtable_insert(SS_context[0].vt_timer_table,
+	if (hashtable_insert(SS_context.vt_timer_table,
 	   (hash_key_t)sfnSfKey, (void *)timer_ele_p) == HASH_TABLE_OK)
 	{
 		LOG_A(ENB_APP,"VT_TIMER setup for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
@@ -117,14 +117,14 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 
 
 	  uint32_t sfnSfKey = (tinfo.sfn << 4) | tinfo.sf;
-	  hash_rc = hashtable_is_key_exists(SS_context[0].vt_timer_table, (hash_key_t)sfnSfKey);
+	  hash_rc = hashtable_is_key_exists(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
 	  //printf("VT_TIMER foudn queued SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 	  if (hash_rc == HASH_TABLE_OK)
 	  {
 		  LOG_D(ENB_APP,"VT_TIMER  Timeout sending  curr SFN %d SF %d\n",
-		  					SS_context[0].sfn,SS_context[0].sf);
+		  					SS_context.sfn,SS_context.sf);
 
-		  hash_rc = hashtable_get(SS_context[0].vt_timer_table, (hash_key_t)sfnSfKey, (void **)&timer_ele_p);
+		  hash_rc = hashtable_get(SS_context.vt_timer_table, (hash_key_t)sfnSfKey, (void **)&timer_ele_p);
 
 		  LOG_A(ENB_APP,"VT_TIMER Enter check SFN %d , SF %d taskID %d timer_ele.task_id instance %ld \n",
 						  tinfo.sfn,tinfo.sf, timer_ele_p->task_id,timer_ele_p->instance);
@@ -138,11 +138,11 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 		  {
 			  LOG_A(ENB_APP,"VT_TIMER Sent message to  taskID %d timer_ele.task_id instance %ld \n",
 			  						  timer_ele_p->task_id,timer_ele_p->instance);
-			  hash_rc = hashtable_remove(SS_context[0].vt_timer_table, (hash_key_t)sfnSfKey);
+			  hash_rc = hashtable_remove(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
 
 		  }
 		  LOG_D(ENB_APP,"VT_TIMER  Timeout sending done curr SFN %d SF %d\n",
-		 		  					SS_context[0].sfn,SS_context[0].sf);
+		 		  					SS_context.sfn,SS_context.sf);
 
 
 	  }
@@ -195,7 +195,7 @@ void *ss_eNB_vt_timer_process_itti_msg(void *notUsed)
  */
 int ss_eNB_vt_timer_init(void)
 {
-    SS_context[0].vt_timer_table = hashtable_create (32, NULL, NULL);
+    SS_context.vt_timer_table = hashtable_create (32, NULL, NULL);
 
     itti_mark_task_ready(TASK_VT_TIMER);
     return 0;
