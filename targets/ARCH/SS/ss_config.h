@@ -64,7 +64,6 @@ typedef struct ss_config_s {
   int SysportNR;
   uint8_t configured;
   /** State info */
-  int State;
   int vtp_ready;
   int CBRA_flag;
   int mac_rlc_data_ind_frame;
@@ -73,7 +72,7 @@ typedef struct ss_config_s {
   /** Cell Config Array */
   ss_cell_config_t ss_cell_list[8];
 } ss_config_t;
-
+/**
 typedef enum {
   SS_STATE_NOT_CONFIGURED = 0,
   SS_STATE_CELL_CONFIGURED,
@@ -83,6 +82,7 @@ typedef enum {
   SS_STATE_CELL_BROADCASTING,
   SS_STATE_MAX_STATE
 } SS_STATE_t;
+*/
 
 #endif /** __SS_CONFIG_H__ */
 /** @} */
