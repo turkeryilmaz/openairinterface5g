@@ -217,7 +217,7 @@ void oai_create_enb(void) {
     RC.nb_CC[CC_id] = 2;
 
     if (eNB->if_inst==0) {
-      eNB->if_inst = IF_Module_init(CC_id);
+      eNB->if_inst = IF_Module_init(bodge_counter);
     }
     // This will cause phy_config_request to be installed. That will result in RRC configuring the PHY
     // that will result in eNB->configured being set to TRUE.
@@ -643,22 +643,24 @@ int phy_slot_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id, uin
 int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id, uint16_t sfn_sf) {
   static uint8_t first_time = 1;
 
-  if (first_time) {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] subframe indication %d\n", NFAPI_SFNSF2DEC(sfn_sf));
-    first_time = 0;
+  /* MultiCell: Function modify for Multiple CC */
+  for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
+    if (first_time) {
+      NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] subframe indication %d\n", NFAPI_SFNSF2DEC(sfn_sf));
+      first_time = 0;
+    }
+
+    if (RC.eNB && RC.eNB[0][CC_id]->configured) {
+      uint16_t sfn = NFAPI_SFNSF2SFN(sfn_sf);
+      uint16_t sf = NFAPI_SFNSF2SF(sfn_sf);
+      //LOG_D(PHY,"[VNF] subframe indication sfn_sf:%d sfn:%d sf:%d\n", sfn_sf, sfn, sf);
+      wake_eNB_rxtx(RC.eNB[0][CC_id], sfn, sf);
+    } else {
+      NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
+
+      if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][CC_id]->configured:%d\n", RC.eNB[0][CC_id]->configured);
+    }
   }
-
-  if (RC.eNB && RC.eNB[0][0]->configured) {
-    uint16_t sfn = NFAPI_SFNSF2SFN(sfn_sf);
-    uint16_t sf = NFAPI_SFNSF2SF(sfn_sf);
-    //LOG_D(PHY,"[VNF] subframe indication sfn_sf:%d sfn:%d sf:%d\n", sfn_sf, sfn, sf);
-    wake_eNB_rxtx(RC.eNB[0][0], sfn, sf);
-  } else {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
-
-    if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->configured:%d\n", RC.eNB[0][0]->configured);
-  }
-
   return 0;
 }
 
