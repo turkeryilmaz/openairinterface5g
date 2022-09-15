@@ -276,6 +276,11 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
     /* works? */
     nr_mac_update_cellgroup(RC.nrmac[0], req->gNB_DU_ue_id, UE->CellGroup);
   }
+
+  if (req->transmission_action_indicator != NULL) {
+    nr_transmission_action_indicator_stop(0, req->gNB_DU_ue_id);
+  }
+
   NR_SCHED_UNLOCK(&mac->sched_lock);
 
   /* some sanity checks, since we use the same type for request and response */

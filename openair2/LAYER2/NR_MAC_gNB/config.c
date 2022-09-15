@@ -448,7 +448,7 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_S
 
   NR_UE_info_t *UE_info = find_nr_UE(&nrmac->UE_info,rnti);
   if (!UE_info) {
-    LOG_W(NR_MAC, "Could not find UE for RNTI 0x%04x\n", rnti);
+    LOG_W(NR_MAC, "Could not find UE for RNTI %04x\n", rnti);
     NR_SCHED_UNLOCK(&nrmac->sched_lock);
     return -1;
   }
@@ -464,6 +464,18 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_S
   sched_ctrl->ta_frame = (nrmac->frame - 1 + 1024) % 1024;
 
   NR_SCHED_UNLOCK(&nrmac->sched_lock);
+  return 0;
+}
+
+int nr_transmission_action_indicator_stop(module_id_t module_id, rnti_t rnti)
+{
+  NR_UE_info_t *UE_info = find_nr_UE(&RC.nrmac[module_id]->UE_info, rnti);
+  if (!UE_info) {
+    LOG_W(NR_MAC, "Could not find UE for RNTI %04x\n", rnti);
+    return -1;
+  }
+  UE_info->UE_sched_ctrl.transmission_stop = true;
+  LOG_I(NR_MAC, "gNB-DU received the TransmissionActionIndicator with Stop value for UE %04x\n", UE_info->rnti);
   return 0;
 }
 

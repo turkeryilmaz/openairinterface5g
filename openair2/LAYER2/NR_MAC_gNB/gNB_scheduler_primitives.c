@@ -2513,7 +2513,7 @@ void nr_csirs_scheduling(int Mod_idP, frame_t frame, sub_frame_t slot, int n_slo
     if (UE_info->sched_csirs & (1 << dl_bwp->bwp_id))
       continue;
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-    if (sched_ctrl->rrc_processing_timer > 0) {
+    if ((sched_ctrl->rrc_processing_timer > 0) || sched_ctrl->transmission_stop) {
       continue;
     }
 
