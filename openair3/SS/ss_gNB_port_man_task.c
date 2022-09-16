@@ -129,7 +129,7 @@ void ss_nr_port_man_send_data(
     memset(&cnf, 0, sizeof(cnf));
 	/*TODO: */
     cnf.Common.CellId = SS_context.eutra_cellId;
-    cnf.Common.RoutingInfo.d = RoutingInfo_Type_None;
+    cnf.Common.RoutingInfo.d = NR_RoutingInfo_Type_None;
     cnf.Common.RoutingInfo.v.None = true;
     cnf.Common.TimingInfo.d = TimingInfo_Type_Now;
     cnf.Common.TimingInfo.v.Now = true;
