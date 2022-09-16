@@ -103,7 +103,7 @@ get_distribution_release() {
 check_supported_distribution() {
     local distribution=$(get_distribution_release)
     case "$distribution" in
-        "ubuntu22.04") return 0 ;;
+        "ubuntu20.04") return 0 ;;
 	"ubuntu18.04") return 0 ;;
         "ubuntu17.10") return 0 ;;
         "ubuntu17.04") return 0 ;;
@@ -719,7 +719,7 @@ check_install_oai_software() {
             LAPACK_LIBNAME="liblapack.so-x86_64-linux-gnu"
             LAPACK_TARGET="/usr/lib/x86_64-linux-gnu/atlas/liblapack.so"
             ;;
-        "ubuntu22.04")
+        "ubuntu20.04")
             specific_packages="libtasn1-6-dev libgnutls28-dev iproute2 libconfig-dev python3-pip libidn2-dev guile-2.2-dev libgcrypt20-dev protobuf-compiler liblttng-ust-dev"
             LAPACK_LIBNAME="liblapack.so-x86_64-linux-gnu"
             LAPACK_TARGET="/usr/lib/x86_64-linux-gnu/atlas/liblapack.so"
