@@ -141,7 +141,7 @@ static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRSET_TIM_INFO);
   if (message_p)
   {
-    LOG_A(NR_RRC, "[SYS-GNB] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->slot);
+    LOG_A(NR_RRC, "[SYS-GNB] Reporting info sfn:%d\t slot:%d.\n", tinfo->sfn, tinfo->slot);
     SS_NRSET_TIM_INFO(message_p).slot = tinfo->slot;
     SS_NRSET_TIM_INFO(message_p).sfn = tinfo->sfn;
 
