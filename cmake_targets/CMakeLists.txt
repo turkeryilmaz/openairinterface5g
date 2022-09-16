@@ -2852,6 +2852,7 @@ target_link_libraries (nr-uesoftmodem ${LIBXML2_LIBRARIES})
 target_link_libraries (nr-uesoftmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES})
 target_link_libraries (nr-uesoftmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (nr-uesoftmodem ${T_LIB})
+target_link_libraries (nr-uesoftmodem lttng-ust)
 
 add_dependencies( nr-uesoftmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 if (CUDA_FOUND)
