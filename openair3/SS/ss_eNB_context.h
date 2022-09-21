@@ -63,7 +63,6 @@ typedef struct SSConfigContext_s {
   uint16_t sfn;
   uint8_t  sf;
 
-  bool vtp_enabled;
   ss_set_timinfo_t vtinfo;
   hash_table_t   *vt_timer_table   ; // key is SFN_SF
 
