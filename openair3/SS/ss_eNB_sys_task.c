@@ -52,6 +52,7 @@
 #include "acpSys.h"
 #include "ss_eNB_sys_task.h"
 #include "ss_eNB_context.h"
+#include "ss_eNB_multicell_helper.h"
 
 #include "udp_eNB_task.h"
 #include "ss_eNB_proxy_iface.h"
@@ -273,7 +274,7 @@ static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
  * corrected. Does not impact TC_6_1_2_2.
  *
  */
-int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
+int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure, int obtained_cell_index)
 {
   CellConfigReq_t *cellConfig;
 
@@ -314,7 +315,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
         int band = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.EutraBand;
         RRC_CONFIGURATION_REQ(msg_p).eutra_band[num_CC] = band;
         RRC_CONFIGURATION_REQ(msg_p).Nid_cell[num_CC] = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
-        SS_context.SSCell_list[0].cellId = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
+        SS_context.SSCell_list[obtained_cell_index].cellId = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
 
         /** TODO: Not filled now */
         /** eNB Cell ID: AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.eNB_CellId.v */
@@ -328,12 +329,12 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
           uint32_t ul_Freq = from_earfcn(band, AddOrReconfigure->Basic.v.StaticCellInfo.v.Uplink.v.Earfcn);
           int ul_Freq_off = ul_Freq - dl_Freq;
           RRC_CONFIGURATION_REQ(msg_p).uplink_frequency_offset[num_CC] = (unsigned int)ul_Freq_off;
-          SS_context.SSCell_list[0].ul_earfcn = AddOrReconfigure->Basic.v.StaticCellInfo.v.Uplink.v.Earfcn;
-          SS_context.SSCell_list[0].ul_freq = ul_Freq;
+          SS_context.SSCell_list[obtained_cell_index].ul_earfcn = AddOrReconfigure->Basic.v.StaticCellInfo.v.Uplink.v.Earfcn;
+          SS_context.SSCell_list[obtained_cell_index].ul_freq = ul_Freq;
         }
         // Updated the SS context for the frequency related configuration
-        SS_context.SSCell_list[0].dl_earfcn = AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Earfcn;
-        SS_context.SSCell_list[0].dl_freq = dl_Freq;
+        SS_context.SSCell_list[obtained_cell_index].dl_earfcn = AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Earfcn;
+        SS_context.SSCell_list[obtained_cell_index].dl_freq = dl_Freq;
 
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Bandwidth)
         {
@@ -495,7 +496,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                   else
                   {
                     RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present = false;
-                    if(SS_context.SSCell_list[0].State == SS_STATE_NOT_CONFIGURED)
+                    if(SS_context.SSCell_list[obtained_cell_index].State == SS_STATE_NOT_CONFIGURED)
                     RC.ss.CBRA_flag = TRUE;
                   }
                 }
@@ -516,7 +517,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
     /** Handle Initial Cell power, Sending to Proxy */
     if (AddOrReconfigure->Basic.v.InitialCellPower.d == true)
     {
-       SS_context.SSCell_list[0].maxRefPower = AddOrReconfigure->Basic.v.InitialCellPower.v.MaxReferencePower;
+       SS_context.SSCell_list[obtained_cell_index].maxRefPower = AddOrReconfigure->Basic.v.InitialCellPower.v.MaxReferencePower;
       switch (AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.d)
       {
       case Attenuation_Type_Value:
@@ -644,20 +645,19 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
  * newState: The next state for the SYS State machine
  *
  */
-int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell)
+int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell, int obtained_cell_index)
 {
   int status = false;
-  int returnState = SS_context.SSCell_list[0].State;
+  int returnState = SS_context.SSCell_list[obtained_cell_index].State;
   enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Cell;
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
   bool resVal = TRUE;
-
   switch (Cell->d)
   {
   case CellConfigRequest_Type_AddOrReconfigure:
 
     LOG_A(ENB_SS, "[SYS] CellConfigRequest_Type_AddOrReconfigure receivied\n");
-    status = sys_add_reconfig_cell(&(Cell->v.AddOrReconfigure));
+    status = sys_add_reconfig_cell(&(Cell->v.AddOrReconfigure), obtained_cell_index);
     if (status)
     {
       /** TODO Signal to main thread */
@@ -665,7 +665,7 @@ int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell)
       cell_config_done_indication();
     }
     //TODO Change it later to move to cell configuration
-    if ( SS_context.SSCell_list[0].State == SS_STATE_NOT_CONFIGURED)
+    if ( SS_context.SSCell_list[obtained_cell_index].State == SS_STATE_NOT_CONFIGURED)
     {
     returnState = SS_STATE_CELL_CONFIGURED;
     }
@@ -1619,25 +1619,28 @@ static void sys_handle_as_security_req(struct AS_Security_Type *ASSecurity)
  */
 static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t *tinfo)
 {
-  int enterState = SS_context.SSCell_list[0].State;
-  int exitState = SS_context.SSCell_list[0].State;
-  if(req->Common.CellId)
-  SS_context.SSCell_list[0].eutra_cellId = req->Common.CellId;
+  int obtained_cell_index;
+  if(req->Common.CellId){
+  	obtained_cell_index = set_cell_index(req->Common.CellId, SS_context.SSCell_list);
+	SS_context.SSCell_list[obtained_cell_index].eutra_cellId = req->Common.CellId;
+  }	
+  int enterState = SS_context.SSCell_list[obtained_cell_index].State;
+  int exitState = SS_context.SSCell_list[obtained_cell_index].State;
   LOG_A(ENB_SS, "[SYS] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
-        SS_context.SSCell_list[0].State, req->Request.d, SS_context.SSCell_list[0].eutra_cellId, req->Common.ControlInfo.CnfFlag);
-  switch (SS_context.SSCell_list[0].State)
+        SS_context.SSCell_list[obtained_cell_index].State, req->Request.d, SS_context.SSCell_list[obtained_cell_index].eutra_cellId, req->Common.ControlInfo.CnfFlag);
+  switch (SS_context.SSCell_list[obtained_cell_index].State)
   {
   case SS_STATE_NOT_CONFIGURED:
     if (req->Request.d == SystemRequest_Type_Cell)
     {
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
-      exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
-      SS_context.SSCell_list[0].State = exitState;
+      exitState = sys_handle_cell_config_req(&(req->Request.v.Cell), obtained_cell_index);
+      SS_context.SSCell_list[obtained_cell_index].State = exitState;
     }
     else
     {
       LOG_A(ENB_SS, "[SYS] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-            SS_context.SSCell_list[0].State, req->Request.d);
+            SS_context.SSCell_list[obtained_cell_index].State, req->Request.d);
     }
     break;
   case SS_STATE_CELL_CONFIGURED:
@@ -1645,12 +1648,12 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     {
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_RadioBearerList received\n");
       exitState = sys_handle_radiobearer_list(&(req->Request.v.RadioBearerList));
-      SS_context.SSCell_list[0].State = exitState;
+      SS_context.SSCell_list[obtained_cell_index].State = exitState;
     }
     else
     {
       LOG_A(ENB_SS, "[SYS] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-            SS_context.SSCell_list[0].State, req->Request.d);
+            SS_context.SSCell_list[obtained_cell_index].State, req->Request.d);
     }
     break;
   case SS_STATE_CELL_BROADCASTING:
@@ -1661,8 +1664,8 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     {
     case SystemRequest_Type_Cell:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
-      exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
-      SS_context.SSCell_list[0].State = exitState;
+      exitState = sys_handle_cell_config_req(&(req->Request.v.Cell), obtained_cell_index);
+      SS_context.SSCell_list[obtained_cell_index].State = exitState;
       break;
     case SystemRequest_Type_RadioBearerList:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_RadioBearerList received in SS_STATE_CELL_ACTIVE state\n");

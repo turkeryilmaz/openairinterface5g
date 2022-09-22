@@ -2081,6 +2081,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_drb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_multicell_helper.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)

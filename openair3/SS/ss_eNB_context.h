@@ -57,6 +57,7 @@ typedef struct SSCellConfigContext_s{
   uint16_t curr_attn;
   uint16_t cellId;
   int16_t maxRefPower;
+  bool cell_configured_flag;
   //TO DO: Need to remove one of the following cellId
   EUTRA_CellId_Type ttcn_cell_id;
   uint16_t eutra_cellId;
