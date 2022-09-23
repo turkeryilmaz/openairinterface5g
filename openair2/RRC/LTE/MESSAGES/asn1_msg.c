@@ -323,7 +323,7 @@ uint8_t do_MIB(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t phich
                                    (void *)mib,
                                    carrier->MIB,
                                    24);
-  LOG_P(RRC, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
+  LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
 
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
@@ -1217,7 +1217,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
                                    (void *)bcch_message,
                                    buffer,
                                    100);
-  LOG_P(RRC, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 100);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 100);
 
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
@@ -2146,7 +2146,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformation Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
-  LOG_P(RRC, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
 
   if (enc_rval.encoded==-1) {
     msg("[RRC] ASN1 : SI encoding failed for SIB23\n");
@@ -2854,7 +2854,7 @@ do_RRCConnectionSetup(
                                    (void *)&dl_ccch_msg,
                                    buffer,
                                    100);
-  LOG_P(RRC, "DL_CCCH_Message", buffer, 100);
+  LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", buffer, 100);
   if(enc_rval.encoded == -1) {
     LOG_I(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
           enc_rval.failed_type->name, enc_rval.encoded);
