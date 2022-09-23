@@ -245,24 +245,6 @@ void rx_func(void *param) {
   pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
 
-  if (RC.ss.mode >= SS_SOFTMODEM)
-  {
-    MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRUPD_TIM_INFO);
-    if (message_p)
-    {
-      SS_NRUPD_TIM_INFO(message_p).slot = gNB->UL_INFO.slot;
-      SS_NRUPD_TIM_INFO(message_p).sfn = gNB->UL_INFO.frame;
-
-      int send_res = itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
-      if (send_res < 0)
-      {
-        printf("Error in itti_send_msg_to_task");
-        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
-      }
-      LOG_D(PHY, "[SS] SS_NRUPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d slot %d",
-            gNB->UL_INFO.slot, gNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
-    }
-   }
   
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) {
     notifiedFIFO_elt_t *res;
