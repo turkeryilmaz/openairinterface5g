@@ -28,25 +28,17 @@
 #include "intertask_interface.h"
 #include "common/ran_context.h"
 
-#include "acpSys.h"
 #include "acpNrSys.h"
 #include "gnb_config.h"
 #include "ss_gNB_sys_task.h"
 #include "ss_gNB_context.h"
 
-#include "udp_eNB_task.h"
-#include "ss_eNB_proxy_iface.h"
 #include "common/utils/LOG/ss-log.h"
 #include "msc.h"
 
 extern RAN_CONTEXT_t RC;
-extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
-extern pthread_cond_t cell_config_5g_done_cond;
-extern pthread_mutex_t cell_config_5g_done_mutex;
-extern int cell_config_5g_done;
 
 extern uint16_t ss_rnti_nr_g;
-int cell_config_done_indication(void);
 extern SSConfigContext_t SS_context;
 typedef enum
 {
@@ -55,33 +47,9 @@ typedef enum
   CellConfig = 2
 } sidl_msg_id;
 
-char *local_address = "127.0.0.1";
-int proxy_send_port = 7776;
-int proxy_recv_port = 7770;
 bool reqCnfFlag_g = false;
 
 
-/*
- * Function : cell_config_done_indication
- * Description: Sends the cell_config_done_mutex signl to LTE_SOFTMODEM,
- * as in SS mode the eNB is waiting for the cell configration to be
- * received form TTCN. After receiving this signal only the eNB's init
- * is completed and its ready for processing.
- */
-int cell_config_5g_done_indication()
-{
-#if 0
-  if (cell_config_5g_done < 0)
-  {
-    printf("[SYS] Signal to OAI main code about cell config\n");
-    pthread_mutex_lock(&cell_config_5g_done_mutex);
-    cell_config_5g_done = 0;
-    pthread_cond_broadcast(&cell_config_5g_done_cond);
-    pthread_mutex_unlock(&cell_config_5g_done_mutex);
-  }
-#endif
-  return 0;
-}
 /*
  * Function : send_sys_cnf
  * Description: Funtion to build and send the SYS_CNF
@@ -93,7 +61,7 @@ int cell_config_5g_done_indication()
  */
 static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
                          bool resVal,
-                         enum SystemConfirm_Type_Sel cnfType,
+                         enum NR_SystemConfirm_Type_Sel cnfType,
                          void *msg)
 {
   struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
@@ -125,7 +93,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       LOG_A(NR_RRC, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]");
     }
     SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, INSTANCE_DEFAULT, message_p);
+    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
     if (send_res < 0)
     {
       LOG_A(NR_RRC, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
@@ -223,7 +191,7 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
   bool resVal = TRUE;
   bool sendDummyCnf = TRUE;
-  enum SystemConfirm_Type_Sel cnfType = 0;
+  enum NR_SystemConfirm_Type_Sel cnfType = 0;
 
   LOG_A(NR_RRC, "[SYS-GNB] received req : %d for cell %d RC.ss.state %d \n",
         req->Request.d, req->Common.CellId, RC.ss.State);
@@ -238,7 +206,7 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
 		  }
 		  else
 		  {
-			  cnfType = SystemConfirm_Type_Cell;
+			  cnfType = NR_SystemConfirm_Type_Cell;
 		  }
 		  break;
           case NR_SystemRequest_Type_EnquireTiming:
@@ -274,10 +242,6 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
   MessageDef *received_msg = NULL;
   int result;
   static ss_nrset_timinfo_t tinfo = {.sfn = 0xFFFF, .slot = 0xFF};
-  /* TODO: 5G_cell_config start */
-  //SS_context.sfn = tinfo.sfn;
-  //SS_context.sf  = tinfo.sf;
-  /* 5G_cell_config end */
 
   itti_receive_msg(TASK_SYS_GNB, &received_msg);
 
