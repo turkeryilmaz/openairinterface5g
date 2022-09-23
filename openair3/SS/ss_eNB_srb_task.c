@@ -147,7 +147,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
                       0,
                       0);
 		memcpy(lttng_sdu, pdu_ind->sdu, pdu_ind->sdu_size);
-		LOG_P(RRC, "UL_CCCH_Message", lttng_sdu, pdu_ind->sdu_size);
+		LOG_P(OAILOG_DEBUG, "UL_CCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 
 		xer_fprint(stdout, &asn_DEF_LTE_UL_CCCH_Message, (void *)ul_ccch_msg);
 		ind.RrcPdu.d = RRC_MSG_Indication_Type_Ccch;
@@ -167,7 +167,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 
 		xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
 		memcpy(lttng_sdu, pdu_ind->sdu, pdu_ind->sdu_size);
-		LOG_P(RRC, "UL_DCCH_Message", lttng_sdu, pdu_ind->sdu_size);
+		LOG_P(OAILOG_DEBUG, "UL_DCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 		ind.RrcPdu.d = RRC_MSG_Indication_Type_Dcch;
 		ind.RrcPdu.v.Dcch.d = pdu_ind->sdu_size;
 		ind.RrcPdu.v.Dcch.v = pdu_ind->sdu;
@@ -232,7 +232,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
 			memcpy(lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
-			LOG_P(RRC, "DL_CCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
+			LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 		}
 		else
 		{
@@ -247,7 +247,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			xer_fprint(stdout,&asn_DEF_LTE_DL_DCCH_Message,(void *)dl_dcch_msg);
 			memcpy(lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 
-			LOG_P(RRC, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
+			LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 		}
 
 		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",

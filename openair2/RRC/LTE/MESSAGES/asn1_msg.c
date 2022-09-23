@@ -1409,7 +1409,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
                                    (void *)bcch_message,
                                    buffer,
                                    100);
-  LOG_P(RRC, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 100);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 100);
 
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
