@@ -323,6 +323,7 @@ typedef struct RrcConfigurationReq_s {
   int                     eMBMS_M2_configured;
   int                     eMTC_configured;
   int                     SL_configured;
+  uint8_t                 systemInfoValueTag;
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];

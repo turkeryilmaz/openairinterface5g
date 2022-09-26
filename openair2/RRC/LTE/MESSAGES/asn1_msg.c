@@ -974,7 +974,12 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   }
 
   (*sib1)->si_WindowLength = LTE_SystemInformationBlockType1__si_WindowLength_ms20;
-  (*sib1)->systemInfoValueTag = 0;
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    (*sib1)->systemInfoValueTag = configuration->systemInfoValueTag;
+  } else {
+    (*sib1)->systemInfoValueTag = 0;
+  }
+  LOG_A(RRC,"Updating systemInfoValueTag Value: (*sib1)->systemInfoValueTag: %d \n",(*sib1)->systemInfoValueTag);
   (*sib1)->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v890_IEs_t));
   LTE_SystemInformationBlockType1_v890_IEs_t *sib1_890 = (*sib1)->nonCriticalExtension;
   sib1_890->lateNonCriticalExtension = NULL;
