@@ -70,13 +70,13 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
   /* The request has send confirm flag flase so do nothing in this funciton */
   if (reqCnfFlag_g == FALSE)
   {
-     LOG_A(NR_RRC, "[SYS-GNB] No confirm required\n");
+     LOG_A(GNB_APP, "[SYS-GNB] No confirm required\n");
      return ;
   }
 
   if (message_p)
   {
-    LOG_A(NR_RRC, "[SYS-GNB] Send SS_NR_SYS_PORT_MSG_CNF\n");
+    LOG_A(GNB_APP, "[SYS-GNB] Send SS_NR_SYS_PORT_MSG_CNF\n");
     msgCnf->Common.CellId = SS_context.eutra_cellId;
     msgCnf->Common.Result.d = resType;
     msgCnf->Common.Result.v.Success = resVal;
@@ -85,18 +85,18 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     {
     case NR_SystemConfirm_Type_Cell:
     {
-      LOG_A(NR_RRC, "[SYS-GNB] Send confirm for cell configuration\n");
+      LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration\n");
       msgCnf->Confirm.v.Cell = true;
       break;
     }
     default:
-      LOG_A(NR_RRC, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]");
+      LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]");
     }
     SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
     int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
     if (send_res < 0)
     {
-      LOG_A(NR_RRC, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
+      LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
     }
   }
 }
@@ -109,14 +109,14 @@ static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NRSET_TIM_INFO);
   if (message_p)
   {
-    LOG_A(NR_RRC, "[SYS-GNB] Reporting info sfn:%d\t slot:%d.\n", tinfo->sfn, tinfo->slot);
+    LOG_A(GNB_APP, "[SYS-GNB] Reporting info sfn:%d\t slot:%d.\n", tinfo->sfn, tinfo->slot);
     SS_NRSET_TIM_INFO(message_p).slot = tinfo->slot;
     SS_NRSET_TIM_INFO(message_p).sfn = tinfo->sfn;
 
     int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
     if (send_res < 0)
     {
-      LOG_A(NR_RRC, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
+      LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
     }
   }
 }
@@ -137,18 +137,18 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 	int enterState = RC.ss.State;
 	if(req->Common.CellId)				
 		SS_context.eutra_cellId = req->Common.CellId;
-	LOG_A(NR_RRC, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
+	LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
 			RC.ss.State, req->Request.d, SS_context.eutra_cellId, req->Common.ControlInfo.CnfFlag);
 	switch (RC.ss.State)
 	{
 		case SS_STATE_NOT_CONFIGURED:
 			if (req->Request.d == NR_SystemRequest_Type_Cell)
 			{
-				LOG_A(NR_RRC, "[SYS-GNB] NR_SystemRequest_Type_Cell received\n");
+				LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Cell received\n");
 			}
 			else
 			{
-				LOG_E(NR_RRC, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+				LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
 						RC.ss.State, req->Request.d);
 			}
 			break;
@@ -156,20 +156,20 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
                         if (req->Request.d == NR_SystemRequest_Type_EnquireTiming)
                         {
                                 sys_handle_nr_enquire_timing(tinfo);
-                                LOG_A(NR_RRC, "[SYS-GNB] NR_SystemRequest_Type_EnquireTiming received\n");
+                                LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_EnquireTiming received\n");
                         }
 			else
 			{
-				LOG_E(NR_RRC, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+				LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
                                                 RC.ss.State, req->Request.d);
 			}
                         break;
 		default:
-			LOG_E(NR_RRC, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+			LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
 					RC.ss.State, req->Request.d);
 			break;
 	}
-	LOG_A(NR_RRC, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
+	LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
 			enterState, RC.ss.State, req->Request.d);
 }
 
@@ -193,7 +193,7 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
   bool sendDummyCnf = TRUE;
   enum NR_SystemConfirm_Type_Sel cnfType = 0;
 
-  LOG_A(NR_RRC, "[SYS-GNB] received req : %d for cell %d RC.ss.state %d \n",
+  LOG_A(GNB_APP, "[SYS-GNB] received req : %d for cell %d RC.ss.state %d \n",
         req->Request.d, req->Common.CellId, RC.ss.State);
   switch (req->Request.d)
   {
@@ -220,7 +220,7 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
   if (sendDummyCnf)
   {
     send_sys_cnf(resType, resVal, cnfType, NULL);
-    LOG_A(NR_RRC, "[SYS-GNB] Sending Dummy OK Req %d cnTfype %d ResType %d ResValue %d\n",
+    LOG_A(GNB_APP, "[SYS-GNB] Sending Dummy OK Req %d cnTfype %d ResType %d ResValue %d\n",
           req->Request.d, cnfType, resType, resVal);
   }
   return valid;
@@ -252,7 +252,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
     {
     case SS_NRUPD_TIM_INFO:
     {
-      LOG_A(NR_RRC, "TASK_SYS_GNB received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
+      LOG_A(GNB_APP, "TASK_SYS_GNB received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
       tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot;
       tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
     }
@@ -267,7 +267,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
       }
       else
       {
-        LOG_A(NR_RRC, "TASK_SYS_GNB: Not handled SYS_PORT message received \n");
+        LOG_A(GNB_APP, "TASK_SYS_GNB: Not handled SYS_PORT message received \n");
       }
     }
     break;
@@ -278,7 +278,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
       break;
     }
     default:
-      LOG_A(NR_RRC, "TASK_SYS_GNB: Received unhandled message %d:%s\n",
+      LOG_A(GNB_APP, "TASK_SYS_GNB: Received unhandled message %d:%s\n",
             ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
       break;
     }
