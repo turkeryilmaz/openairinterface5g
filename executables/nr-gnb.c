@@ -244,6 +244,7 @@ void rx_func(void *param) {
   gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
   pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
+
   
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) {
     notifiedFIFO_elt_t *res;
