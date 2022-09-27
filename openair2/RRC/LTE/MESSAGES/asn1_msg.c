@@ -1397,7 +1397,6 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   }
 
   (*sib1)->si_WindowLength=LTE_SystemInformationBlockType1__si_WindowLength_ms20;
-  (*sib1)->systemInfoValueTag=0;
   //  (*sib1).nonCriticalExtension = calloc(1,sizeof(*(*sib1).nonCriticalExtension));
 
   if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
