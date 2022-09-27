@@ -30,7 +30,6 @@
 #include "acpMsgIds.h"
 #include "acpMem.h"
 #include "acpSocket.h"
-#include "acpInternal.h"
 
 SIDL_BEGIN_C_INTERFACE
 
@@ -54,24 +53,11 @@ struct acpMsgTable {
 /** Defines ACP Header size. */
 #define ACP_HEADER_SIZE 16
 
-/** This message is received upon TCP connection establishment with server.
- * It provides the list of services supported by server.
- */
-#define ACP_SERVICE_PUSH_TYPE 0xFFFFFFFF
-
 /** This message may be received when server sends KEEPALIVE. */
 #define ACP_KEEPALIVE_HANDLE 0xAAAAAAAA
 
-/** Update ACP context from ACP_SERVICE_PUSH_TYPE message content.
- * Note: ACP_SERVICE_PUSH_TYPE will be received twice. First time upon TCP connection establishment
- * and later when the client links to a given device using internal::ConnectToMs message.
- *
- * @param[in]  ctx	Context to updaten, if NULL new context will
- * @param[in]  size	Total message size (header + payload)
- * @param[in]  buffer   Total message buffer
- * @return   0 on success, or an error code on failure.
- */
-int acpUpdateCtx(acpCtx_t ctx, size_t size, const unsigned char* buffer);
+/** Default socket timeout (for acpInit), in milli-seconds. */
+#define ACP_DEFAULT_TIMEOUT 1000
 
 /** Creates an ACP context.
  *
@@ -103,6 +89,15 @@ bool acpIsConnected(acpCtx_t ctx);
  */
 int acpGetMsgSidlStatus(size_t size, const unsigned char* buffer, SidlStatus* sidlStatus);
 
+/** Sets SIDL status to the response message header.
+ *
+ * @param[in]  size	It should be equal to ACP_HEADER_SIZE
+ * @param[in/out]  buffer 	Input header message buffer
+ * @param[in] sidlStatus 	SIDL status
+ * @return   0 on success, or an error code on failure.
+ */
+int acpSetMsgSidlStatus(size_t size, unsigned char* buffer, SidlStatus sidlStatus);
+
 /** Returns message length from header buffer.
  * This is used after the read of ACP header to get the remaining bytes quantity to read for the
  * current message.
@@ -111,7 +106,7 @@ int acpGetMsgSidlStatus(size_t size, const unsigned char* buffer, SidlStatus* si
  * @param[in]  buffer 	Input header message buffer
  * @return   Message length or a negative error code
  */
-int acpGetMsgLength(size_t size, unsigned char* buffer);
+int acpGetMsgLength(size_t size, const unsigned char* buffer);
 
 /** Returns message ID.
  *
@@ -157,15 +152,23 @@ typedef void (*acpFree_t)(void* ptr);
 
 /** Module initialization.
  * Shall be called once.
- * Alloc/release callbacks shall be supplied to use in acpMalloc/acpFree.
+ * Alloc/release callbacks shall be both supplied to use in acpMalloc/acpFree, otherwise they default to stdlib malloc/free.
  * Internally acpMalloc/acpFree are used only in context creation and during connection to server.
- * The timeout argument specifies the block interval on socket operations.
+ * The timeout argument specifies the block interval on socket operations, or default timeout if zero supplied.
  *
  * @param[in]  alloc		         Memory allocation callback
  * @param[in]  release 	             Memory release callback
  * @param[in]  socketTimeout		Timeout on socket, with value in milli-seconds
  */
 void acpInit(acpMalloc_t alloc, acpFree_t release, MSec_t socketTimeout);
+
+/** Allocates the context with registering to requested notifications.
+ *
+ * @param[in]  msgTable		Requested service responses/notifications to register, last element should be with name==NULL
+ * @param[out]  ctx 	        ACP Context
+ * @return   0 on success, or an error code on failure.
+ */
+int acpInitCtx(const struct acpMsgTable* msgTable, acpCtx_t* ctx);
 
 /** Connects to server.
  * Context should be allocated with acpCreateCtx.
@@ -219,7 +222,7 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
  * @param[in] ctx 	        ACP Context
  * @return   0 on success, or an error code on failure.
  */
-int acpClose2(acpCtx_t ctx);
+int acpClose0(acpCtx_t ctx);
 
 /** Closes the socket from the context,
  * and deletes a given ACP context.
@@ -291,15 +294,42 @@ int acpSetMsgIdFromLocalId(acpCtx_t ctx, enum acpMsgLocalId localMsgId, int user
  */
 const char* acpGetMsgName(size_t size, const unsigned char* buffer);
 
-/** Defines helper to bind message to user id. */
-#define ASC_SET_MSG_ID(cTX, mSG, uID) acpSetMsgIdFromLocalId((cTX), ACP_LID_##mSG, (uID))
+/** Sets ACP description to identify client.
+ * Works only if using after acpInitCtx.
+ *
+ * @param[in] ctx 	        ACP Context
+ * @param[in] desc 	        Description
+ * @return   0 on success, or an error code on failure.
+ */
+int acpSetDescription(acpCtx_t ctx, const char* desc);
 
-// #define ASC_SET_MSG_ID(cTX, mSG, uID) acpSetMsgId((cTX), #mSG, (uID))
+/** Gets Product Mode value.
+ *
+ * @return    true if enabled, false if disabled
+ */
+bool acpGetProductMode(void);
+
+/** Defines getter for ACP message ID. */
+#define ACP_MSG_ID(mSG) (ACP_LID_##mSG)
+
+/** Defines helper to bind message to user id. */
+#define ACP_SET_MSG_ID(cTX, mSG, uID) acpSetMsgIdFromLocalId((cTX), ACP_MSG_ID(mSG), (uID))
+
+// #define ACP_SET_MSG_ID(cTX, mSG, uID) acpSetMsgId((cTX), #mSG, (uID))
+
+/** These IDs (negated, -ACP_PEER_CONNECTED, -ACP_PEER_DISCONNECTED) are returned by acpRecvMsg on peer connection establishment/ordered shutdown.
+ * They should not appear on client side.
+ */
+#define ACP_PEER_CONNECTED (1)
+#define ACP_PEER_DISCONNECTED (2)
 
 /** Defines error codes. */
 enum acpErrorCode {
+	/** All errors below this are reserved for other codes. */
+	ACP_ERR_RESERVED = 5,
+
 	/** API called with invalid context. */
-	ACP_ERR_INVALID_CTX = 2,
+	ACP_ERR_INVALID_CTX,
 	/** Invalid ACP header. */
 	ACP_ERR_INVALID_HEADER,
 	/** Socket connection failure. */
@@ -320,10 +350,10 @@ enum acpErrorCode {
 	ACP_ERR_INTERNAL,
 	/** SIDL service failure. */
 	ACP_ERR_SIDL_FAILURE,
-	/** No server handle received. */
-	ACP_ERR_SHANDLE_UNAVAILABLE,
 	/** ACP version not match */
 	ACP_ERR_INVALID_VERSION,
+	/** ACP service not found on server */
+	ACP_ERR_SERVICE_MISSING,
 
 	ACP_ERR_QTY
 };

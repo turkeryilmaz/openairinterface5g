@@ -22,32 +22,27 @@
 
 #pragma once
 
-// System includes
-#include <stdbool.h>
-
 // Internal includes
 #include "acp.h"
 
 SIDL_BEGIN_C_INTERFACE
 
-#pragma pack(push, 1)
-struct acpWklmService {
-	unsigned int id;	   // Service ID
-	/*const char name[];*/ // NULL terminated service name
-};
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-struct acpWklmServicePushMessage {
-	unsigned int serviceQty;			  // Number of pushed services
-	/*struct dcxWklmService services[];*/ // Array of services
-};
-#pragma pack(pop)
-
-/** Process push message and resolve ids. */
-void acpProcessPushMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer);
-
 /** Add ACP header in the begining of the buffer. */
-void acpBuildHeader(acpCtx_t ctx, unsigned int type, size_t size, unsigned char* buffer);
+void acpBuildHeader(acpCtx_t ctx, int type, size_t size, unsigned char* buffer);
+
+/** Get ACP header payload length of the service. */
+int acpGetServicePayloadLength(size_t size, const unsigned char* buffer);
+
+/** Get ACP header type of the service. */
+int acpGetServiceType(size_t size, const unsigned char* buffer);
+
+/** Get ACP header handle of the service. */
+int acpGetServiceHandle(size_t size, const unsigned char* buffer);
+
+/** Get ACP header SIDL status. */
+int acpGetServiceStatus(size_t size, const unsigned char* buffer);
+
+/** Update ACP header SIDL status .*/
+void acpSetServiceStatus(size_t size, unsigned char* buffer, int sidlStatus);
 
 SIDL_END_C_INTERFACE

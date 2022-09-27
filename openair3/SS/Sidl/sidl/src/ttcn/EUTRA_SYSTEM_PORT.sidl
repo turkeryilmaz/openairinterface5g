@@ -25,11 +25,13 @@
 // SIDL common TTCN types and definitions.
 #include "TtcnCommon.sidl"
 
+// Interface name.
 METADATA_VAR(itf_name, "Sys");
 
+// Restricted RATs.
 METADATA_VAR(rats, "EUTRA");
 
-// TTCN namespaces
+// TTCN namespaces.
 METADATA_VAR(namespaces, "EUTRA_ASP_TypeDefs");
 
 typedef ASN_ENUM(ASN_NAME(CipheringAlgorithm_r12)) CipheringAlgorithm_r12_Type;

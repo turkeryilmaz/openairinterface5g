@@ -38,7 +38,7 @@
 #define SIDL_END_C_INTERFACE
 #endif // __cplusplus
 
-// Different WA
+// Different WA.
 #include "SidlWA.h"
 
 #define SIDL_ASSERT(eXPR) assert(eXPR)

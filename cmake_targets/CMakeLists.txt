@@ -1850,6 +1850,7 @@ set(L2_NR_SRC
   ${NR_RRC_DIR}/rrc_gNB_reconfig.c
   ${NR_RRC_DIR}/rrc_gNB_UE_context.c
   ${NR_RRC_DIR}/rrc_gNB_NGAP.c
+  ${PDCP_DIR}/pdcp_stub.c
   )
 
 set(L2_SRC_UE
@@ -2761,11 +2762,16 @@ target_link_libraries (lte-uesoftmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LI
 target_link_libraries (lte-uesoftmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (lte-uesoftmodem lttng-ust)
 target_link_libraries (lte-uesoftmodem ${T_LIB})
+target_link_libraries (lte-uesoftmodem lttng-ust)
 
 # nr-softmodem
 ###################################################
+if ($ENV{NR_ENABLE})
+	add_boolean_option(NR_ENABLE   TRUE  "Flag for NR compilation")
+else()
+add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
+endif()
 
-add_boolean_option(NR_ENABLE   False  "Flag for NR compilation")
 Message("NR_ENABLE flag is ${NR_ENABLE}")
 
 add_executable(nr-softmodem
@@ -2801,6 +2807,7 @@ target_link_libraries (nr-softmodem
   X2AP_LIB X2AP_ENB F1AP_LIB F1AP M2AP_LIB M2AP_ENB M3AP_LIB M3AP_ENB ${FSPT_MSG_LIB}
   -Wl,--end-group z dl)
 
+target_link_libraries (nr-softmodem lttng-ust)
 target_link_libraries (nr-softmodem ${LIBXML2_LIBRARIES})
 target_link_libraries (nr-softmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${PROTOBUF_LIB}  ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES})
 target_link_libraries (nr-softmodem ${LIB_LMS_LIBRARIES})
@@ -2846,6 +2853,7 @@ target_link_libraries (nr-uesoftmodem ${LIBXML2_LIBRARIES})
 target_link_libraries (nr-uesoftmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES})
 target_link_libraries (nr-uesoftmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (nr-uesoftmodem ${T_LIB})
+target_link_libraries (nr-uesoftmodem lttng-ust)
 
 add_dependencies( nr-uesoftmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 if (CUDA_FOUND)

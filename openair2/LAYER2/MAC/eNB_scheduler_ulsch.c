@@ -1631,7 +1631,7 @@ schedule_ulsch_rnti(module_id_t   module_idP,
       }
 
       const uint8_t ndi = 1 - UE_template_ptr->oldNDI_UL[harq_pid]; // NDI: new data indicator
-      // Changed pre_assigned_mcs_ul for sending full SDU to UE on DRB in System Simulator Mode
+            // Changed pre_assigned_mcs_ul for sending full SDU to UE on DRB in System Simulator Mode
       if (RC.ss.mode == SS_SOFTMODEM){
         UE_template_ptr->pre_assigned_mcs_ul = 16;
       }

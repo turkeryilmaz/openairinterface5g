@@ -26,6 +26,14 @@
 #include "acpMsgIds.h"
 #include "serVng.h"
 
+void acpVngProcessInitClt(acpCtx_t _ctx, struct EUTRA_VNG_CTRL_REQ** FromSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serVngProcessInitClt(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
+}
+
 int acpVngProcessEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_VNG_CTRL_REQ* FromSS)
 {
 	if (!acpCtxIsValid(_ctx)) {
@@ -48,9 +56,32 @@ int acpVngProcessDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _siz
 	return serVngProcessDecSrv(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, FromSS);
 }
 
+void acpVngProcessFree0Srv(struct EUTRA_VNG_CTRL_REQ* FromSS)
+{
+	serVngProcessFree0Srv(FromSS);
+}
+
 void acpVngProcessFreeSrv(struct EUTRA_VNG_CTRL_REQ* FromSS)
 {
 	serVngProcessFreeSrv(FromSS);
+}
+
+void acpVngProcessFree0CltSrv(struct EUTRA_VNG_CTRL_REQ* FromSS)
+{
+	serVngProcessFree0Srv(FromSS);
+}
+
+void acpVngProcessFreeCltSrv(struct EUTRA_VNG_CTRL_REQ* FromSS)
+{
+	serVngProcessFreeSrv(FromSS);
+}
+
+void acpVngProcessInitSrv(acpCtx_t _ctx, struct EUTRA_VNG_CTRL_CNF** ToSS)
+{
+	if (!acpCtxIsValid(_ctx)) {
+		SIDL_ASSERT(_ctx != _ctx);
+	}
+	serVngProcessInitSrv(ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
 int acpVngProcessEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_VNG_CTRL_CNF* ToSS)
@@ -75,7 +106,22 @@ int acpVngProcessDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _siz
 	return serVngProcessDecClt(_buffer + ACP_HEADER_SIZE, _size - ACP_HEADER_SIZE, ACP_CTX_CAST(_ctx)->arena, ACP_CTX_CAST(_ctx)->aSize, ToSS);
 }
 
+void acpVngProcessFree0Clt(struct EUTRA_VNG_CTRL_CNF* ToSS)
+{
+	serVngProcessFree0Clt(ToSS);
+}
+
 void acpVngProcessFreeClt(struct EUTRA_VNG_CTRL_CNF* ToSS)
+{
+	serVngProcessFreeClt(ToSS);
+}
+
+void acpVngProcessFree0SrvClt(struct EUTRA_VNG_CTRL_CNF* ToSS)
+{
+	serVngProcessFree0Clt(ToSS);
+}
+
+void acpVngProcessFreeSrvClt(struct EUTRA_VNG_CTRL_CNF* ToSS)
 {
 	serVngProcessFreeClt(ToSS);
 }

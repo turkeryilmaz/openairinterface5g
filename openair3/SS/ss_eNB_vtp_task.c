@@ -262,7 +262,8 @@ static inline void ss_enable_vtp()
     }*/
 }
 //------------------------------------------------------------------------------
-static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx)
+static bool isConnected = false;
+static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
 {
     struct VirtualTimeInfo_Type *virtualTime = NULL;
     const size_t size = 16 * 1024;
@@ -292,19 +293,23 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx)
                 SidlStatus sidlStatus = -1;
                 acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
             }
-            // else
-            // {
-            //     LOG_A(ENB_APP, "[SS-VTP] Invalid userId: %d \n", userId);
-            //     break;
-            // }
+            else if (userId == -ACP_PEER_DISCONNECTED){
+                LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+                isConnected = false;
+            } 
+            else if (userId == -ACP_PEER_CONNECTED){
+	            LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+                isConnected = true;
+            } 
         }
 
-        if (userId == 0)
+        if (isConnected == false || vtInit == true)
         {
             // No message (timeout on socket)
             break;
         }
-        else if (userId == MSG_SysVTEnquireTimingAck_userId)
+
+        if (userId == MSG_SysVTEnquireTimingAck_userId)
         {
             LOG_A(ENB_APP, "[SS-VTP] Received VTEnquireTimingAck Request\n");
 
@@ -361,6 +366,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
     int result;
+
     itti_receive_msg(TASK_VTP, &received_msg);
 
     /* Check if there is a packet to handle */
@@ -375,7 +381,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
             LOG_A(ENB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(ENB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
-            if (SS_context.vtp_enabled == 1)
+            if (isConnected == true)
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
         }
         break;
@@ -403,8 +409,8 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
         AssertFatal(result == EXIT_SUCCESS, "[SYS] Failed to free memory (%d)!\n", result);
         received_msg = NULL;
     }
+    ss_eNB_read_from_vtp_socket(ctx_vtp_g, false);
 
-    ss_eNB_read_from_vtp_socket(ctx_vtp_g);
 
     return NULL;
 }
@@ -461,13 +467,12 @@ static void ss_eNB_wait_first_msg(void)
 	size_t msg_sz = size;
 	while (1)
 	{
-		int ret = acpRecvMsg(ctx_vtp_g, &msg_sz, buffer);
-		if (ret == MSG_SysVTEnquireTimingAck_userId)
-		{
-			LOG_A(ENB_APP, "[SS_VTP] First VT-ACK From Client Received (on-start) \n");
-			break;
-		}
-        LOG_A(ENB_APP, "[SS_VTP] Waiting for First VT-ACK From Client(on-start) \n");
+        ss_eNB_read_from_vtp_socket(ctx_vtp_g, true);
+        if (isConnected == true){
+            LOG_A(ENB_APP, "[SS_VTP] VT-HANDSHAKE with Client Completed (on-start) \n");
+            break;
+        }
+        LOG_A(ENB_APP, "[SS_VTP] Waiting for VT-HANDSHAKE with Client(on-start) \n");
 	}
 }
 //------------------------------------------------------------------------------
@@ -483,7 +488,6 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		SS_context.vtp_enabled = 1;
 		RC.ss.vtp_ready = 1;
 		ss_enable_vtp();
 		sleep(1);

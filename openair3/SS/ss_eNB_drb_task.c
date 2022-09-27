@@ -203,7 +203,13 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
                                 SidlStatus sidlStatus = -1;
                                 acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
                         }
-                        else
+                        else if (userId == -ACP_PEER_DISCONNECTED){
+             			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+                        } 
+                        else if (userId == -ACP_PEER_CONNECTED){
+                                LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+                        } 
+			else
                         {
                                 LOG_A(ENB_APP, "[SS_DRB] Invalid userId: %d \n", userId);
                                 break;

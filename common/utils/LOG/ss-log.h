@@ -52,7 +52,7 @@
 						__func__, __LINE__, buf); \
 				} } while (0)
 #define LOG_SS(component, log)			tracepoint(SSeNB, SS_LOG, \
-						#component, -1,  g_log->sfn, \
+						component, -1,  g_log->sfn, \
 						g_log->sf, __func__, __LINE__,\
 					       	log)
 #define LOG_P(component, _string, buf, len)     tracepoint(SSeNB, SS_PKT, \
