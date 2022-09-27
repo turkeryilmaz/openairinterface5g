@@ -10442,12 +10442,18 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
               ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
               LOG_A(RRC, "RRC Connection Release message received \n");
+              if (NULL == ue_context_pP)
+              {
+                LOG_W(RRC, "ue_context_pP is already NULL \n");
+              }
+              else {
               ue_context_pP->ue_context.ue_reestablishment_timer = 0;
               ue_context_pP->ue_context.ue_release_timer = 1;
               ue_context_pP->ue_context.ue_release_timer_thres = 10;
               ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+              }
               security_mode_command_send = TRUE;
               as_security_conf_ciphering = FALSE;
               if (RC.ss.CBRA_flag)
