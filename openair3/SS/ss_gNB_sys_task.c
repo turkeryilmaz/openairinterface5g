@@ -298,27 +298,26 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
  */
 void *ss_gNB_sys_task(void *arg)
 {
-	if (RC.ss.configured == 0)
-	{
-  		RCconfig_nr_ssparam();
-		RC.ss.configured = 1;
-	}
-	// Set the state to NOT_CONFIGURED for Cell Config processing mode
-	if (RC.ss.mode == SS_SOFTMODEM)
-	{
-		RC.ss.State = SS_STATE_NOT_CONFIGURED;
-	}
-	// Set the state to CELL_ACTIVE for SRB processing mode
-	else if (RC.ss.mode == SS_SOFTMODEM_SRB)
-	{
-		RC.ss.State = SS_STATE_CELL_ACTIVE;
-	}
+  if (RC.ss.configured == 0)
+  {
+    RCconfig_nr_ssparam();
+    RC.ss.configured = 1;
+  }
+  // Set the state to NOT_CONFIGURED for Cell Config processing mode
+  if (RC.ss.mode == SS_SOFTMODEM)
+  {
+    RC.ss.State = SS_STATE_NOT_CONFIGURED;
+  }
+  // Set the state to CELL_ACTIVE for SRB processing mode
+  else if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  {
+    RC.ss.State = SS_STATE_CELL_ACTIVE;
+  }
 
+  while (1)
+  {
+    (void) ss_gNB_sys_process_itti_msg(NULL);
+  }
 
-	while (1)
-	{
-		(void) ss_gNB_sys_process_itti_msg(NULL);
-	}
-
-	return NULL;
+  return NULL;
 }
