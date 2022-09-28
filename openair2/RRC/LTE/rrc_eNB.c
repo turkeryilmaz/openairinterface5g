@@ -10463,6 +10463,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
           ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
           LOG_A(RRC, "Genreating RRC-CS from TTCN message RRC_PDU_REQ\n");
+          uint8_t cc_id = ue_context_pP->ue_context.primaryCC_id;
           module_id_t Idx;
           LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
@@ -10500,7 +10501,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
           if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
             RRCConnSetup_PDU_Present = true;
-            rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, 0);
+            rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
 
             LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
                   PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
@@ -10523,7 +10524,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                       (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
             }
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
-            rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, 0);
+            rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
           }
         }
 #endif
