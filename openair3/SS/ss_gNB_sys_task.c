@@ -134,42 +134,42 @@ static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
 */
 static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
-	int enterState = RC.ss.State;
-	if(req->Common.CellId)				
-		SS_context.eutra_cellId = req->Common.CellId;
-	LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
+  int enterState = RC.ss.State;
+  if(req->Common.CellId)
+    SS_context.eutra_cellId = req->Common.CellId;
+  LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
 			RC.ss.State, req->Request.d, SS_context.eutra_cellId, req->Common.ControlInfo.CnfFlag);
-	switch (RC.ss.State)
-	{
-		case SS_STATE_NOT_CONFIGURED:
-			if (req->Request.d == NR_SystemRequest_Type_Cell)
-			{
-				LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Cell received\n");
-			}
-			else
-			{
-				LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+  switch (RC.ss.State)
+  {
+    case SS_STATE_NOT_CONFIGURED:
+      if (req->Request.d == NR_SystemRequest_Type_Cell)
+      {
+        LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Cell received\n");
+      }
+      else
+      {
+        LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
 						RC.ss.State, req->Request.d);
-			}
-			break;
-                case SS_STATE_CELL_ACTIVE:
-                        if (req->Request.d == NR_SystemRequest_Type_EnquireTiming)
-                        {
-                                sys_handle_nr_enquire_timing(tinfo);
-                                LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_EnquireTiming received\n");
-                        }
-			else
-			{
-				LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+      }
+      break;
+    case SS_STATE_CELL_ACTIVE:
+      if (req->Request.d == NR_SystemRequest_Type_EnquireTiming)
+      {
+        sys_handle_nr_enquire_timing(tinfo);
+        LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_EnquireTiming received\n");
+      }
+      else
+      {
+        LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
                                                 RC.ss.State, req->Request.d);
-			}
-                        break;
-		default:
-			LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+      }
+      break;
+    default:
+      LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
 					RC.ss.State, req->Request.d);
-			break;
-	}
-	LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
+      break;
+  }
+  LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
 			enterState, RC.ss.State, req->Request.d);
 }
 
@@ -197,25 +197,25 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
         req->Request.d, req->Common.CellId, RC.ss.State);
   switch (req->Request.d)
   {
-	  case NR_SystemRequest_Type_Cell:
-		  if (RC.ss.State >= SS_STATE_NOT_CONFIGURED)
-		  {
-			  valid = TRUE;
-			  sendDummyCnf = FALSE;
-			  reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-		  }
-		  else
-		  {
-			  cnfType = NR_SystemConfirm_Type_Cell;
-		  }
-		  break;
-          case NR_SystemRequest_Type_EnquireTiming:
-		  valid = TRUE;
-		  sendDummyCnf = FALSE;
-		  break;
-	  default:
-		  valid = FALSE;
-		  sendDummyCnf = FALSE;
+    case NR_SystemRequest_Type_Cell:
+      if (RC.ss.State >= SS_STATE_NOT_CONFIGURED)
+      {
+        valid = TRUE;
+        sendDummyCnf = FALSE;
+        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+      }
+      else
+      {
+        cnfType = NR_SystemConfirm_Type_Cell;
+      }
+      break;
+    case NR_SystemRequest_Type_EnquireTiming:
+      valid = TRUE;
+      sendDummyCnf = FALSE;
+      break;
+    default:
+      valid = FALSE;
+      sendDummyCnf = FALSE;
   }
   if (sendDummyCnf)
   {
@@ -252,7 +252,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
     {
     case SS_NRUPD_TIM_INFO:
     {
-      LOG_A(GNB_APP, "TASK_SYS_GNB received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
+      LOG_D(GNB_APP, "TASK_SYS_GNB received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
       tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot;
       tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
     }
