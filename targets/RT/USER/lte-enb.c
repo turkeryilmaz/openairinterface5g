@@ -258,7 +258,6 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
   eNB->UL_INFO.subframe  = proc->subframe_rx;
   eNB->UL_INFO.module_id = eNB->Mod_id;
   eNB->UL_INFO.CC_id     = eNB->CC_id;
-  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
 
 //#ifdef ENB_SS
   if (RC.ss.mode >= SS_SOFTMODEM)
@@ -308,6 +307,15 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
   }
+
+int tem_proc_ccid = proc->CC_id;
+/* MultiCell: Function modify for Multiple CC */
+  for (int CC_id=0; CC_id<2; CC_id++) {
+  eNB->UL_INFO.CC_id     = CC_id;
+  proc->CC_id = CC_id;//Temp solution need to be fixed later
+  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
+  }
+  proc->CC_id = tem_proc_ccid;
 //#endif /** ENB_SS */
 
 
