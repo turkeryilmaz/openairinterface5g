@@ -29,7 +29,6 @@
 
 #include "ss_gNB_port_man_task.h"
 #include "ss_gNB_context.h"
-#include "acpSys.h"
 #include "acpNrSys.h"
 
 extern RAN_CONTEXT_t RC;
@@ -146,15 +145,15 @@ void ss_nr_port_man_send_data(
     cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number = tinfo->sfn;
 
     cnf.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
-    cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = tinfo->slot;
+    cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = tinfo->slot / 2;
 
     /** TODO: Always filling HSFN as 0, need to change this */
     cnf.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
     cnf.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
 
-    /** TODO: Always marking as first slot, need to change this */
-    cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_FirstSlot;
-    cnf.Common.TimingInfo.v.SubFrame.Slot.v.FirstSlot = true;
+    cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_SlotOffset;
+    cnf.Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.d = SlotOffset_Type_Numerology1;
+    cnf.Common.TimingInfo.v.SubFrame.Slot.v.SlotOffset.v.Numerology1  = tinfo->slot % 2;
 
     /* Encode message
      */
