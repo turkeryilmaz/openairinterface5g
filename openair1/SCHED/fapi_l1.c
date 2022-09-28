@@ -790,8 +790,8 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
   eNB->pdcch_vars[subframe&1].num_dci           = 0;
   eNB->phich_vars[subframe&1].num_hi            = 0;
   eNB->mpdcch_vars[subframe&1].num_dci           = 0;
-  LOG_D(PHY,"NFAPI: Sched_INFO:SFN/SF:%04d%d DL_req:SFN/SF:%04d%d:dl_pdu:%d tx_req:SFN/SF:%04d%d:pdus:%d\n",
-        frame,subframe,
+  LOG_A(PHY,"NFAPI: Sched_INFO:SFN/SF:%04d%d CC_id:%d DL_req:SFN/SF:%04d%d:dl_pdu:%d tx_req:SFN/SF:%04d%d:pdus:%d\n",
+        frame,subframe,CC_id,
         NFAPI_SFNSF2SFN(DL_req->sfn_sf),NFAPI_SFNSF2SF(DL_req->sfn_sf),number_dl_pdu,
         NFAPI_SFNSF2SFN(TX_req->sfn_sf),NFAPI_SFNSF2SF(TX_req->sfn_sf),TX_req->tx_request_body.number_of_pdus
        );
@@ -965,6 +965,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
     }
 
     Sched_INFO->DL_req->sfn_sf = frame << 4 | subframe;
+    Sched_INFO->DL_req->header.phy_id = Sched_INFO->CC_id;
     oai_nfapi_dl_config_req(Sched_INFO->DL_req); // DJP - .dl_config_request_body.dl_config_pdu_list[0]); // DJP - FIXME TODO - yuk - only copes with 1 pdu
     Sched_INFO->UE_release_req->sfn_sf = frame << 4 | subframe;
     oai_nfapi_ue_release_req(Sched_INFO->UE_release_req);
