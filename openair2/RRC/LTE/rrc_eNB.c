@@ -9438,6 +9438,7 @@ void process_unsuccessful_rlc_sdu_indication(int instance, int rnti) {
   int release_num;
   int release_total;
   RRC_release_ctrl_t *release_ctrl;
+  LOG_I(RRC, "process_unsuccessful_rlc_sdu_indication: radio link failure detected by RLC layer, remove UE\n");
   /* radio link failure detected by RLC layer, remove UE properly */
   pthread_mutex_lock(&rrc_release_freelist);
 
