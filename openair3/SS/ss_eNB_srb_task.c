@@ -42,6 +42,7 @@
 
 #include "assertions.h"
 #include "common/utils/system.h"
+#include "common/utils/LOG/ss-log.h"
 #include "queue.h"
 #include "sctp_common.h"
 
@@ -66,8 +67,7 @@ static instance_t instance_g = 0;
 enum MsgUserId
 {
 	// user defined IDs should be an int number >= 1
-	MSG_TestHelloFromSS_userId = 1,
-	MSG_SysProcess_userId,
+	MSG_SysProcess_userId = 1,
 	MSG_SysSrbProcessFromSS_userId,
 	MSG_SysSrbProcessToSS_userId,
 };
@@ -80,7 +80,7 @@ typedef enum
 
 static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
-
+uint8_t lttng_sdu[SDU_SIZE];
 //------------------------------------------------------------------------------
 
 /*
@@ -146,6 +146,8 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
                       pdu_ind->sdu_size,
                       0,
                       0);
+		memcpy(lttng_sdu, pdu_ind->sdu, pdu_ind->sdu_size);
+		LOG_P(RRC, "UL_CCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 
 		xer_fprint(stdout, &asn_DEF_LTE_UL_CCCH_Message, (void *)ul_ccch_msg);
 		ind.RrcPdu.d = RRC_MSG_Indication_Type_Ccch;
@@ -164,6 +166,8 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
                       0);
 
 		xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
+		memcpy(lttng_sdu, pdu_ind->sdu, pdu_ind->sdu_size);
+		LOG_P(RRC, "UL_DCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 		ind.RrcPdu.d = RRC_MSG_Indication_Type_Dcch;
 		ind.RrcPdu.v.Dcch.d = pdu_ind->sdu_size;
 		ind.RrcPdu.v.Dcch.v = pdu_ind->sdu;
@@ -208,7 +212,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 	assert(req);
         LTE_DL_DCCH_Message_t *dl_dcch_msg=NULL;
         LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-	MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, instance_g, SS_RRC_PDU_REQ);
+	MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, SS_RRC_PDU_REQ);
 	assert(message_p);
 	instance_g = 0;
 	if (message_p)
@@ -227,6 +231,8 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
                                     SS_RRC_PDU_REQ(message_p).sdu_size,0,0);
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
+			memcpy(lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
+			LOG_P(RRC, "DL_CCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 		}
 		else
 		{
@@ -239,6 +245,9 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
                                     SS_RRC_PDU_REQ(message_p).sdu_size,0,0);
 
 			xer_fprint(stdout,&asn_DEF_LTE_DL_DCCH_Message,(void *)dl_dcch_msg);
+			memcpy(lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
+
+			LOG_P(RRC, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 		}
 
 		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
@@ -287,6 +296,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
  * newState: No impack on the State
  *
  */
+static bool isConnected = false;
 static inline void
 ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 {
@@ -312,6 +322,14 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 				SidlStatus sidlStatus = -1;
 				acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
 			}
+			else if (userId == -ACP_PEER_DISCONNECTED){
+    			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+				isConnected = false;
+            } 
+            else if (userId == -ACP_PEER_CONNECTED){
+	            LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+				isConnected = true;
+            } 
 			else
 			{
 				LOG_A(ENB_SS, "[SS_SRB] Invalid userId: %d \n", userId);
@@ -322,7 +340,9 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 		if (userId == 0)
 		{
 			// No message (timeout on socket)
-			break;
+			if (isConnected == true){
+				break;
+			}
 		}
 		else if (MSG_SysSrbProcessFromSS_userId == userId)
 		{
@@ -349,11 +369,6 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 		else if (MSG_SysSrbProcessToSS_userId == userId)
 		{
 			LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] EUTRA_RRC_PDU_IND Received; ignoring \n");
-			break;
-		}
-		else if (userId == MSG_TestHelloFromSS_userId)
-		{
-			LOG_A(ENB_SS, "[SS_SRB] Hello From Client Received \n");
 			break;
 		}
 	}
@@ -383,7 +398,6 @@ void ss_eNB_srb_init(void)
 	const struct acpMsgTable msgTable[] = {
 		{"SysSrbProcessFromSS", MSG_SysSrbProcessFromSS_userId},
 		{"SysSrbProcessToSS", MSG_SysSrbProcessToSS_userId},
-		{"TestHelloFromSS", MSG_TestHelloFromSS_userId},
 		{"SysProcess", MSG_SysProcess_userId},
 		// The last element should be NULL
 		{NULL, 0}};
@@ -456,7 +470,8 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 
 			result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
 			AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-		};
+                        received_msg = NULL;
+		}
 		break;
 
 		case TERMINATE_MESSAGE:
@@ -471,31 +486,6 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 		}
 	}
 	return NULL;
-}
-
-/*
- * Function : ss_eNB_wait_hello
- * Description: Funtion Handles the Hellow message
- * received from TTCN
- * In :
- * req  - Hello message received from the TTCN
- * Out:
- * newState: No impact on state machine.
- *
- */
-static void ss_eNB_wait_hello(void)
-{
-
-	while (1)
-	{
-		size_t msg_sz = size;
-		int ret = acpRecvMsg(ctx_srb_g, &msg_sz, buffer);
-		if (ret == MSG_TestHelloFromSS_userId)
-		{
-			LOG_A(ENB_SS, "[SS_SRB] Hello From Client Received (on-start) \n");
-			break;
-		}
-	}
 }
 
 /*
@@ -522,7 +512,6 @@ void *ss_eNB_srb_acp_task(void *arg)
 {
 	// printf("\n SRB ACP Task\n");
 	ss_eNB_srb_init();
-	ss_eNB_wait_hello();
 	while (1)
 	{
 		// printf("\nInside while srb acp task \n");

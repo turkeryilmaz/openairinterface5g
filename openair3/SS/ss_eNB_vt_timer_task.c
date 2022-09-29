@@ -33,7 +33,7 @@
 #include "ss_eNB_vt_timer_task.h"
 
 
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 
 
@@ -126,7 +126,7 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 
 		  hash_rc = hashtable_get(SS_context.vt_timer_table, (hash_key_t)sfnSfKey, (void **)&timer_ele_p);
 
-		  LOG_A(ENB_APP,"VT_TIMER Enter check SFN %d , SF %d taskID %d timer_ele.task_id instance %d \n",
+		  LOG_A(ENB_APP,"VT_TIMER Enter check SFN %d , SF %d taskID %d timer_ele.task_id instance %ld \n",
 						  tinfo.sfn,tinfo.sf, timer_ele_p->task_id,timer_ele_p->instance);
 
 		  int send_res = itti_send_msg_to_task(timer_ele_p->task_id,timer_ele_p->instance, (MessageDef *)timer_ele_p->msg);
@@ -136,7 +136,7 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 		  }
 		  else
 		  {
-			  LOG_A(ENB_APP,"VT_TIMER Sent message to  taskID %d timer_ele.task_id instance %d \n",
+			  LOG_A(ENB_APP,"VT_TIMER Sent message to  taskID %d timer_ele.task_id instance %ld \n",
 			  						  timer_ele_p->task_id,timer_ele_p->instance);
 			  hash_rc = hashtable_remove(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
 

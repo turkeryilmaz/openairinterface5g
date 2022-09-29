@@ -56,7 +56,7 @@
 #define SS_VTP_PROXY_UPD(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_upd
 #define SS_VTP_PROXY_ACK(mSGpTR)              (mSGpTR)->ittiMsg.ss_vtp_proxy_ack
 #define SS_VT_TIME_OUT(mSGpTR)                (mSGpTR)->ittiMsg.ss_vt_time_out
-#define SDU_SIZE                           (512)
+#define SDU_SIZE                           (1024)
 
 /** SYS IND */
 #define SS_SYSTEM_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_system_ind
@@ -192,6 +192,8 @@ typedef struct ss_drb_pdu_ind_s {
   uint8_t   drb_id;
   uint32_t  sdu_size;
   uint8_t   sdu[SDU_SIZE];
+  frame_t     frame;         /*!< \brief  LTE frame number.*/
+  sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
 } ss_drb_pdu_ind_t;
 
 typedef enum carrierBandwidthEUTRA_dl_Bandwidth_e {

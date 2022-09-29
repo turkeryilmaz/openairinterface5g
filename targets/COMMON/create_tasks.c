@@ -74,6 +74,9 @@ int create_tasks(uint32_t enb_nb) {
     rc = itti_create_task(TASK_SS_SYSIND, ss_eNB_sysind_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS SYSIND failed\n");
 
+    rc = itti_create_task(TASK_SS_SYSIND_ACP, ss_eNB_sysind_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SYSIND ACP failed\n");
+
     rc = itti_create_task(TASK_SS_SRB, ss_eNB_srb_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS SRB failed\n");
 

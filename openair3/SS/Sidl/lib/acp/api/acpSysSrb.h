@@ -27,16 +27,32 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-int acpSysSrbProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_RRC_PDU_IND* ToSS);
-
-int acpSysSrbProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct EUTRA_RRC_PDU_IND** ToSS);
-
-void acpSysSrbProcessToSSFreeClt(struct EUTRA_RRC_PDU_IND* ToSS);
+void acpSysSrbProcessFromSSInitClt(acpCtx_t _ctx, struct EUTRA_RRC_PDU_REQ** FromSS);
 
 int acpSysSrbProcessFromSSEncClt(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_RRC_PDU_REQ* FromSS);
 
 int acpSysSrbProcessFromSSDecSrv(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct EUTRA_RRC_PDU_REQ** FromSS);
 
+void acpSysSrbProcessFromSSFree0Srv(struct EUTRA_RRC_PDU_REQ* FromSS);
+
 void acpSysSrbProcessFromSSFreeSrv(struct EUTRA_RRC_PDU_REQ* FromSS);
+
+void acpSysSrbProcessFromSSFree0CltSrv(struct EUTRA_RRC_PDU_REQ* FromSS);
+
+void acpSysSrbProcessFromSSFreeCltSrv(struct EUTRA_RRC_PDU_REQ* FromSS);
+
+void acpSysSrbProcessToSSInitSrv(acpCtx_t _ctx, struct EUTRA_RRC_PDU_IND** ToSS);
+
+int acpSysSrbProcessToSSEncSrv(acpCtx_t _ctx, unsigned char* _buffer, size_t* _size, const struct EUTRA_RRC_PDU_IND* ToSS);
+
+int acpSysSrbProcessToSSDecClt(acpCtx_t _ctx, const unsigned char* _buffer, size_t _size, struct EUTRA_RRC_PDU_IND** ToSS);
+
+void acpSysSrbProcessToSSFree0Clt(struct EUTRA_RRC_PDU_IND* ToSS);
+
+void acpSysSrbProcessToSSFreeClt(struct EUTRA_RRC_PDU_IND* ToSS);
+
+void acpSysSrbProcessToSSFree0SrvClt(struct EUTRA_RRC_PDU_IND* ToSS);
+
+void acpSysSrbProcessToSSFreeSrvClt(struct EUTRA_RRC_PDU_IND* ToSS);
 
 SIDL_END_C_INTERFACE

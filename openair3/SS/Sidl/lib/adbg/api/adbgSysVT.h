@@ -27,8 +27,8 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-void adbgSysVTEnquireTimingUpdLogOut(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* TimingInfoToSS);
+void adbgSysVTEnquireTimingAckLogIn(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* FromSS);
 
-void adbgSysVTEnquireTimingAckLogIn(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* TimingInfoFromSS);
+void adbgSysVTEnquireTimingUpdLogOut(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* ToSS);
 
 SIDL_END_C_INTERFACE

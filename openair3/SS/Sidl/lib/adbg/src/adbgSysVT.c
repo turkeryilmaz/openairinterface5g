@@ -145,24 +145,24 @@ static void _adbgSysVT__VirtualTimeInfo_Type(acpCtx_t _ctx, const struct Virtual
 	adbgPrintLog(_ctx, " }");
 }
 
-void adbgSysVTEnquireTimingUpdLogOut(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* TimingInfoToSS)
+void adbgSysVTEnquireTimingAckLogIn(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* FromSS)
 {
-	adbgPrintLog(_ctx, "@SysVTEnquireTimingUpd Out Args : { ");
+	adbgPrintLog(_ctx, "@SysVTEnquireTimingAck In Args : { ");
 
-	adbgPrintLog(_ctx, "TimingInfoToSS := { ");
-	_adbgSysVT__VirtualTimeInfo_Type(_ctx, TimingInfoToSS);
+	adbgPrintLog(_ctx, "FromSS := { ");
+	_adbgSysVT__VirtualTimeInfo_Type(_ctx, FromSS);
 	adbgPrintLog(_ctx, " }");
 
 	adbgPrintLog(_ctx, " }");
 	adbgPrintFormatLog(_ctx);
 }
 
-void adbgSysVTEnquireTimingAckLogIn(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* TimingInfoFromSS)
+void adbgSysVTEnquireTimingUpdLogOut(acpCtx_t _ctx, const struct VirtualTimeInfo_Type* ToSS)
 {
-	adbgPrintLog(_ctx, "@SysVTEnquireTimingAck In Args : { ");
+	adbgPrintLog(_ctx, "@SysVTEnquireTimingUpd Out Args : { ");
 
-	adbgPrintLog(_ctx, "TimingInfoFromSS := { ");
-	_adbgSysVT__VirtualTimeInfo_Type(_ctx, TimingInfoFromSS);
+	adbgPrintLog(_ctx, "ToSS := { ");
+	_adbgSysVT__VirtualTimeInfo_Type(_ctx, ToSS);
 	adbgPrintLog(_ctx, " }");
 
 	adbgPrintLog(_ctx, " }");

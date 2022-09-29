@@ -562,6 +562,7 @@ void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   LOG_D(MAC,"precoderGranularity: %i\n", pdcch_pdu_rel15->precoderGranularity);
   LOG_D(MAC,"numDlDci: %i\n", pdcch_pdu_rel15->numDlDci);
 
+
 }
 
 void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) {
@@ -652,6 +653,10 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
       gNB_mac->TX_req[CC_id].Slot = slotP;
 
       type0_PDCCH_CSS_config->active = false;
+
+      T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(SI_RNTI),
+         T_INT(frameP), T_INT(slotP), T_INT(0), T_BUFFER(sib1_payload, sib1_sdu_length));
+
     }
   }
 }

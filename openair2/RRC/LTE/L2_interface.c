@@ -344,7 +344,7 @@ mac_rrc_data_ind(
     if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[0].State >= SS_STATE_CELL_ACTIVE)
     {
       LOG_I(RRC,"RRC Sending CCCH PDU_IND to SS \n");
-      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, INSTANCE_DEFAULT,  SS_RRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0,  SS_RRC_PDU_IND);
       if (message_p) {
         /* Populate the message to SS */
         SS_RRC_PDU_IND (message_p).sdu_size = sdu_lenP;
@@ -355,7 +355,7 @@ mac_rrc_data_ind(
         memset (SS_RRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
         memcpy (SS_RRC_PDU_IND (message_p).sdu, sduP, sdu_lenP);
 
-        int send_res = itti_send_msg_to_task (TASK_SS_SRB, INSTANCE_DEFAULT, message_p);
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB, 0, message_p);
         if(send_res < 0) {
           LOG_E(RRC,"Error in itti_send_msg_to_task");
         }

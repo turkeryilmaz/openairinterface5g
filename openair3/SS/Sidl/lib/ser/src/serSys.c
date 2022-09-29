@@ -25,6 +25,14 @@
 #include "serMem.h"
 #include "serUtils.h"
 
+void serSysProcessInitClt(unsigned char* _arena, size_t _aSize, struct SYSTEM_CTRL_REQ** FromSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*FromSS = (struct SYSTEM_CTRL_REQ*)serMalloc(_mem, sizeof(struct SYSTEM_CTRL_REQ));
+	memset(*FromSS, 0, sizeof(struct SYSTEM_CTRL_REQ));
+}
+
 static int _serSysEncPmchLogicalChannel_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PmchLogicalChannel_Type* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -30738,7 +30746,7 @@ static int _serSysDecSQN_PLMN_Identity(const unsigned char* _buffer, size_t _siz
 
 	_serSysDecSQN_MCC_SQN_PLMN_Identity_mcc_Optional(_buffer, _size, _lidx, &p->mcc);
 	NTOH_32(p->mnc.d, &_buffer[*_lidx], _lidx);
-	p->mnc.v = serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
+	p->mnc.v = (SQN_MCC_MNC_Digit*)serMalloc(_mem, p->mnc.d * sizeof(SQN_MCC_MNC_Digit));
 	for (size_t i1 = 0; i1 < p->mnc.d; i1++) {
 		NTOH_8(p->mnc.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -31546,7 +31554,7 @@ static int _serSysDecDownlinkAntennaGroupConfig_Type(const unsigned char* _buffe
 
 	_serSysDecAntennaInfoCommon_Type(_buffer, _size, _lidx, &p->AntennaInfoCommon);
 	NTOH_32(p->AntennaPort.d, &_buffer[*_lidx], _lidx);
-	p->AntennaPort.v = serMalloc(_mem, p->AntennaPort.d * sizeof(struct AntennaPort_Type));
+	p->AntennaPort.v = (struct AntennaPort_Type*)serMalloc(_mem, p->AntennaPort.d * sizeof(struct AntennaPort_Type));
 	for (size_t i1 = 0; i1 < p->AntennaPort.d; i1++) {
 		_serSysDecAntennaPort_Type(_buffer, _size, _lidx, &p->AntennaPort.v[i1]);
 	}
@@ -31798,7 +31806,7 @@ static int _serSysDecPdcchCandidate_Type(const unsigned char* _buffer, size_t _s
 		NTOH_8(p->RNTI[i2], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->CCE_StartIndexList.d, &_buffer[*_lidx], _lidx);
-	p->CCE_StartIndexList.v = serMalloc(_mem, p->CCE_StartIndexList.d * sizeof(struct CCE_StartIndex_DL_UL_Type));
+	p->CCE_StartIndexList.v = (struct CCE_StartIndex_DL_UL_Type*)serMalloc(_mem, p->CCE_StartIndexList.d * sizeof(struct CCE_StartIndex_DL_UL_Type));
 	for (size_t i2 = 0; i2 < p->CCE_StartIndexList.d; i2++) {
 		_serSysDecCCE_StartIndex_DL_UL_Type(_buffer, _size, _lidx, &p->CCE_StartIndexList.v[i2]);
 	}
@@ -31813,7 +31821,7 @@ static int _serSysDecPdcchCandidateList_Type_PdcchCandidateList_Optional(const u
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct PdcchCandidate_Type));
+	p->v.v = (struct PdcchCandidate_Type*)serMalloc(_mem, p->v.d * sizeof(struct PdcchCandidate_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecPdcchCandidate_Type(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -32265,7 +32273,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZP_r11_qcl_CRS_Info_r11_mbsfn_SubframeCon
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->subframeConfigList.d, &_buffer[*_lidx], _lidx);
-	p->subframeConfigList.v = serMalloc(_mem, p->subframeConfigList.d * sizeof(struct SQN_MBSFN_SubframeConfig));
+	p->subframeConfigList.v = (struct SQN_MBSFN_SubframeConfig*)serMalloc(_mem, p->subframeConfigList.d * sizeof(struct SQN_MBSFN_SubframeConfig));
 	for (size_t i2 = 0; i2 < p->subframeConfigList.d; i2++) {
 		_serSysDecSQN_MBSFN_SubframeConfig(_buffer, _size, _lidx, &p->subframeConfigList.v[i2]);
 	}
@@ -32425,7 +32433,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZP_r11_mbsfn_SubframeConfigList_v1430_set
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->subframeConfigList_v1430.d, &_buffer[*_lidx], _lidx);
-	p->subframeConfigList_v1430.v = serMalloc(_mem, p->subframeConfigList_v1430.d * sizeof(struct SQN_MBSFN_SubframeConfig_v1430));
+	p->subframeConfigList_v1430.v = (struct SQN_MBSFN_SubframeConfig_v1430*)serMalloc(_mem, p->subframeConfigList_v1430.d * sizeof(struct SQN_MBSFN_SubframeConfig_v1430));
 	for (size_t i2 = 0; i2 < p->subframeConfigList_v1430.d; i2++) {
 		_serSysDecSQN_MBSFN_SubframeConfig_v1430(_buffer, _size, _lidx, &p->subframeConfigList_v1430.v[i2]);
 	}
@@ -32503,7 +32511,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZPToAddModList_r11_CSI_RS_ConfigNZPToAddM
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigNZP_r11));
+	p->v.v = (struct SQN_CSI_RS_ConfigNZP_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigNZP_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_CSI_RS_ConfigNZP_r11(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -32518,7 +32526,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZPToReleaseList_r11_CSI_RS_ConfigNZPToRel
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigNZPId_r11));
+	p->v.v = (SQN_CSI_RS_ConfigNZPId_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigNZPId_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -32546,7 +32554,7 @@ static int _serSysDecSQN_CSI_RS_ConfigZPToAddModList_r11_CSI_RS_ConfigZPToAddMod
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigZP_r11));
+	p->v.v = (struct SQN_CSI_RS_ConfigZP_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigZP_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_CSI_RS_ConfigZP_r11(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -32561,7 +32569,7 @@ static int _serSysDecSQN_CSI_RS_ConfigZPToReleaseList_r11_CSI_RS_ConfigZPToRelea
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigZPId_r11));
+	p->v.v = (SQN_CSI_RS_ConfigZPId_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigZPId_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -32654,7 +32662,7 @@ static int _serSysDecPdcchCandidateList_Type_ePdcchCandidateList_Optional(const 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct PdcchCandidate_Type));
+	p->v.v = (struct PdcchCandidate_Type*)serMalloc(_mem, p->v.d * sizeof(struct PdcchCandidate_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecPdcchCandidate_Type(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -32802,7 +32810,7 @@ static int _serSysDecSQN_EPDCCH_SetConfigToReleaseList_r11_SQN_EPDCCH_Config_r11
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_EPDCCH_SetConfigId_r11));
+	p->v.v = (SQN_EPDCCH_SetConfigId_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_EPDCCH_SetConfigId_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -32820,7 +32828,7 @@ static int _serSysDecSQN_EPDCCH_SetConfig_r11_resourceBlockAssignment_r11(const 
 		p->numberPRB_Pairs_r11 = (SQN_EPDCCH_SetConfig_r11_resourceBlockAssignment_r11_numberPRB_Pairs_r11_e)_tmp;
 	}
 	NTOH_32(p->resourceBlockAssignment_r11.d, &_buffer[*_lidx], _lidx);
-	p->resourceBlockAssignment_r11.v = serMalloc(_mem, p->resourceBlockAssignment_r11.d * sizeof(BIT_STRING_ELEMENT));
+	p->resourceBlockAssignment_r11.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->resourceBlockAssignment_r11.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->resourceBlockAssignment_r11.d; i2++) {
 		NTOH_8(p->resourceBlockAssignment_r11.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -33057,7 +33065,7 @@ static int _serSysDecSQN_EPDCCH_SetConfigToAddModList_r11_SQN_EPDCCH_Config_r11_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_EPDCCH_SetConfig_r11));
+	p->v.v = (struct SQN_EPDCCH_SetConfig_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_EPDCCH_SetConfig_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_EPDCCH_SetConfig_r11(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -33655,7 +33663,7 @@ static int _serSysDecDciDlInfoCommon_Type(const unsigned char* _buffer, size_t _
 	}
 	_serSysDecFreqDomainSchedulCommon_Type(_buffer, _size, _lidx, &p->FreqDomainSchedul);
 	NTOH_32(p->RedundancyVersionList.d, &_buffer[*_lidx], _lidx);
-	p->RedundancyVersionList.v = serMalloc(_mem, p->RedundancyVersionList.d * sizeof(RedundancyVersion_Type));
+	p->RedundancyVersionList.v = (RedundancyVersion_Type*)serMalloc(_mem, p->RedundancyVersionList.d * sizeof(RedundancyVersion_Type));
 	for (size_t i1 = 0; i1 < p->RedundancyVersionList.d; i1++) {
 		NTOH_8(p->RedundancyVersionList.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -33765,7 +33773,7 @@ static int _serSysDecSingleSiSchedul_Type_Window_DynamicOptional(const unsigned 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SingleSiSchedul_Type));
+	p->v.v = (struct SingleSiSchedul_Type*)serMalloc(_mem, p->v.d * sizeof(struct SingleSiSchedul_Type));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSingleSiSchedul_Type(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -33790,7 +33798,7 @@ static int _serSysDecSiSchedulList_Type_SiList_Optional(const unsigned char* _bu
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SiSchedul_Type));
+	p->v.v = (struct SiSchedul_Type*)serMalloc(_mem, p->v.d * sizeof(struct SiSchedul_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSiSchedul_Type(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -33805,7 +33813,7 @@ static int _serSysDecSiSchedulList_Type_SegmentedSiList_Optional(const unsigned 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SiSchedul_Type));
+	p->v.v = (struct SiSchedul_Type*)serMalloc(_mem, p->v.d * sizeof(struct SiSchedul_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSiSchedul_Type(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -34151,7 +34159,7 @@ static int _serSysDecSQN_RACH_CE_LevelInfoList_r13_SQN_RACH_ConfigCommon_rach_CE
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_RACH_CE_LevelInfo_r13));
+	p->v.v = (struct SQN_RACH_CE_LevelInfo_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_RACH_CE_LevelInfo_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_RACH_CE_LevelInfo_r13(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -34778,7 +34786,7 @@ static int _serSysDecSQN_PRACH_ParametersCE_r13(const unsigned char* _buffer, si
 		p->numRepetitionPerPreambleAttempt_r13 = (SQN_PRACH_ParametersCE_r13_numRepetitionPerPreambleAttempt_r13_e)_tmp;
 	}
 	NTOH_32(p->mpdcch_NarrowbandsToMonitor_r13.d, &_buffer[*_lidx], _lidx);
-	p->mpdcch_NarrowbandsToMonitor_r13.v = serMalloc(_mem, p->mpdcch_NarrowbandsToMonitor_r13.d * sizeof(uint8_t));
+	p->mpdcch_NarrowbandsToMonitor_r13.v = (uint8_t*)serMalloc(_mem, p->mpdcch_NarrowbandsToMonitor_r13.d * sizeof(uint8_t));
 	for (size_t i3 = 0; i3 < p->mpdcch_NarrowbandsToMonitor_r13.d; i3++) {
 		NTOH_8(p->mpdcch_NarrowbandsToMonitor_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -34801,14 +34809,14 @@ static int _serSysDecSQN_PRACH_ConfigSIB_v1310(const unsigned char* _buffer, siz
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->rsrp_ThresholdsPrachInfoList_r13.d, &_buffer[*_lidx], _lidx);
-	p->rsrp_ThresholdsPrachInfoList_r13.v = serMalloc(_mem, p->rsrp_ThresholdsPrachInfoList_r13.d * sizeof(SQN_RSRP_Range));
+	p->rsrp_ThresholdsPrachInfoList_r13.v = (SQN_RSRP_Range*)serMalloc(_mem, p->rsrp_ThresholdsPrachInfoList_r13.d * sizeof(SQN_RSRP_Range));
 	for (size_t i2 = 0; i2 < p->rsrp_ThresholdsPrachInfoList_r13.d; i2++) {
 		NTOH_8(p->rsrp_ThresholdsPrachInfoList_r13.v[i2], &_buffer[*_lidx], _lidx);
 	}
 	_serSysDecSQN_PRACH_ConfigSIB_v1310_mpdcch_startSF_CSS_RA_r13_mpdcch_startSF_CSS_RA_r13_Optional(_buffer, _size, _lidx, &p->mpdcch_startSF_CSS_RA_r13);
 	_serSysDecUint8_t_SQN_PRACH_ConfigSIB_v1310_prach_HoppingOffset_r13_Optional(_buffer, _size, _lidx, &p->prach_HoppingOffset_r13);
 	NTOH_32(p->prach_ParametersListCE_r13.d, &_buffer[*_lidx], _lidx);
-	p->prach_ParametersListCE_r13.v = serMalloc(_mem, p->prach_ParametersListCE_r13.d * sizeof(struct SQN_PRACH_ParametersCE_r13));
+	p->prach_ParametersListCE_r13.v = (struct SQN_PRACH_ParametersCE_r13*)serMalloc(_mem, p->prach_ParametersListCE_r13.d * sizeof(struct SQN_PRACH_ParametersCE_r13));
 	for (size_t i2 = 0; i2 < p->prach_ParametersListCE_r13.d; i2++) {
 		_serSysDecSQN_PRACH_ParametersCE_r13(_buffer, _size, _lidx, _mem, &p->prach_ParametersListCE_r13.v[i2]);
 	}
@@ -34834,7 +34842,7 @@ static int _serSysDecSQN_N1PUCCH_AN_InfoList_r13_SQN_PUCCH_ConfigCommon_v1310_n1
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(uint16_t));
+	p->v.v = (uint16_t*)serMalloc(_mem, p->v.d * sizeof(uint16_t));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_16(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -35058,7 +35066,7 @@ static int _serSysDecSQN_EDT_PRACH_ParametersCE_r15_edt_PRACH_ParametersCE_r15(c
 	NTOH_8(p->prach_FreqOffset_r15, &_buffer[*_lidx], _lidx);
 	_serSysDecSQN_EDT_PRACH_ParametersCE_r15_edt_PRACH_ParametersCE_r15_prach_StartingSubframe_r15_e_prach_StartingSubframe_r15_Optional(_buffer, _size, _lidx, &p->prach_StartingSubframe_r15);
 	NTOH_32(p->mpdcch_NarrowbandsToMonitor_r15.d, &_buffer[*_lidx], _lidx);
-	p->mpdcch_NarrowbandsToMonitor_r15.v = serMalloc(_mem, p->mpdcch_NarrowbandsToMonitor_r15.d * sizeof(uint8_t));
+	p->mpdcch_NarrowbandsToMonitor_r15.v = (uint8_t*)serMalloc(_mem, p->mpdcch_NarrowbandsToMonitor_r15.d * sizeof(uint8_t));
 	for (size_t i3 = 0; i3 < p->mpdcch_NarrowbandsToMonitor_r15.d; i3++) {
 		NTOH_8(p->mpdcch_NarrowbandsToMonitor_r15.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -35091,7 +35099,7 @@ static int _serSysDecSQN_PRACH_ConfigSIB_v1530(const unsigned char* _buffer, siz
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->edt_PRACH_ParametersListCE_r15.d, &_buffer[*_lidx], _lidx);
-	p->edt_PRACH_ParametersListCE_r15.v = serMalloc(_mem, p->edt_PRACH_ParametersListCE_r15.d * sizeof(struct SQN_EDT_PRACH_ParametersCE_r15));
+	p->edt_PRACH_ParametersListCE_r15.v = (struct SQN_EDT_PRACH_ParametersCE_r15*)serMalloc(_mem, p->edt_PRACH_ParametersListCE_r15.d * sizeof(struct SQN_EDT_PRACH_ParametersCE_r15));
 	for (size_t i2 = 0; i2 < p->edt_PRACH_ParametersListCE_r15.d; i2++) {
 		_serSysDecSQN_EDT_PRACH_ParametersCE_r15(_buffer, _size, _lidx, _mem, &p->edt_PRACH_ParametersListCE_r15.v[i2]);
 	}
@@ -35755,7 +35763,7 @@ static int _serSysDecSQN_GWUS_NumGroupsList_r16_SQN_GWUS_ResourceConfig_r16_numG
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_GWUS_NumGroups_r16_e));
+	p->v.v = (SQN_GWUS_NumGroups_r16_e*)serMalloc(_mem, p->v.d * sizeof(SQN_GWUS_NumGroups_r16_e));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		{
 			size_t _tmp;
@@ -35774,7 +35782,7 @@ static int _serSysDecSQN_GWUS_GroupsForServiceList_r16_SQN_GWUS_ResourceConfig_r
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(uint8_t));
+	p->v.v = (uint8_t*)serMalloc(_mem, p->v.d * sizeof(uint8_t));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -35822,7 +35830,7 @@ static int _serSysDecSQN_GWUS_ProbThreshList_r16_SQN_GWUS_Config_r16_probThreshL
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_GWUS_PagingProbThresh_r16_e));
+	p->v.v = (SQN_GWUS_PagingProbThresh_r16_e*)serMalloc(_mem, p->v.d * sizeof(SQN_GWUS_PagingProbThresh_r16_e));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		{
 			size_t _tmp;
@@ -35841,7 +35849,7 @@ static int _serSysDecSQN_GWUS_GroupNarrowBandList_r16_SQN_GWUS_Config_r16_groupN
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(bool));
+	p->v.v = (bool*)serMalloc(_mem, p->v.d * sizeof(bool));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -36151,7 +36159,7 @@ static int _serSysDecSQN_MBSFN_SubframeConfigList_SQN_SystemInformationBlockType
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_SubframeConfig));
+	p->v.v = (struct SQN_MBSFN_SubframeConfig*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_SubframeConfig));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_MBSFN_SubframeConfig(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -36166,7 +36174,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType2_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -36397,7 +36405,7 @@ static int _serSysDecSQN_AC_BarringPerPLMN_List_r12_SQN_SystemInformationBlockTy
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_AC_BarringPerPLMN_r12));
+	p->v.v = (struct SQN_AC_BarringPerPLMN_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_AC_BarringPerPLMN_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_AC_BarringPerPLMN_r12(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -36465,7 +36473,7 @@ static int _serSysDecSQN_ACDC_BarringForCommon_r13(const unsigned char* _buffer,
 
 	NTOH_8(p->acdc_HPLMNonly_r13, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->barringPerACDC_CategoryList_r13.d, &_buffer[*_lidx], _lidx);
-	p->barringPerACDC_CategoryList_r13.v = serMalloc(_mem, p->barringPerACDC_CategoryList_r13.d * sizeof(struct SQN_BarringPerACDC_Category_r13));
+	p->barringPerACDC_CategoryList_r13.v = (struct SQN_BarringPerACDC_Category_r13*)serMalloc(_mem, p->barringPerACDC_CategoryList_r13.d * sizeof(struct SQN_BarringPerACDC_Category_r13));
 	for (size_t i2 = 0; i2 < p->barringPerACDC_CategoryList_r13.d; i2++) {
 		_serSysDecSQN_BarringPerACDC_Category_r13(_buffer, _size, _lidx, &p->barringPerACDC_CategoryList_r13.v[i2]);
 	}
@@ -36491,7 +36499,7 @@ static int _serSysDecSQN_ACDC_BarringPerPLMN_r13(const unsigned char* _buffer, s
 	NTOH_8(p->plmn_IdentityIndex_r13, &_buffer[*_lidx], _lidx);
 	NTOH_8(p->acdc_OnlyForHPLMN_r13, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->barringPerACDC_CategoryList_r13.d, &_buffer[*_lidx], _lidx);
-	p->barringPerACDC_CategoryList_r13.v = serMalloc(_mem, p->barringPerACDC_CategoryList_r13.d * sizeof(struct SQN_BarringPerACDC_Category_r13));
+	p->barringPerACDC_CategoryList_r13.v = (struct SQN_BarringPerACDC_Category_r13*)serMalloc(_mem, p->barringPerACDC_CategoryList_r13.d * sizeof(struct SQN_BarringPerACDC_Category_r13));
 	for (size_t i3 = 0; i3 < p->barringPerACDC_CategoryList_r13.d; i3++) {
 		_serSysDecSQN_BarringPerACDC_Category_r13(_buffer, _size, _lidx, &p->barringPerACDC_CategoryList_r13.v[i3]);
 	}
@@ -36506,7 +36514,7 @@ static int _serSysDecSQN_ACDC_BarringPerPLMN_List_r13_SQN_SystemInformationBlock
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_ACDC_BarringPerPLMN_r13));
+	p->v.v = (struct SQN_ACDC_BarringPerPLMN_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_ACDC_BarringPerPLMN_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_ACDC_BarringPerPLMN_r13(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -36593,7 +36601,7 @@ static int _serSysDecSQN_UDT_RestrictingPerPLMN_List_r13_SQN_SystemInformationBl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_UDT_RestrictingPerPLMN_r13));
+	p->v.v = (struct SQN_UDT_RestrictingPerPLMN_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_UDT_RestrictingPerPLMN_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_UDT_RestrictingPerPLMN_r13(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -36664,7 +36672,7 @@ static int _serSysDecSQN_CIOT_EPS_OptimisationInfo_r13_SQN_SystemInformationBloc
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CIOT_OptimisationPLMN_r13));
+	p->v.v = (struct SQN_CIOT_OptimisationPLMN_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CIOT_OptimisationPLMN_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CIOT_OptimisationPLMN_r13(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -36709,7 +36717,7 @@ static int _serSysDecSQN_MBSFN_SubframeConfigList_v1430_SQN_SystemInformationBlo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_SubframeConfig_v1430));
+	p->v.v = (struct SQN_MBSFN_SubframeConfig_v1430*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_SubframeConfig_v1430));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_MBSFN_SubframeConfig_v1430(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -36763,7 +36771,7 @@ static int _serSysDecSQN_PLMN_InfoList_r15_SQN_SystemInformationBlockType2_plmn_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_Info_r15));
+	p->v.v = (struct SQN_PLMN_Info_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_Info_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_PLMN_Info_r15(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -37250,7 +37258,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType3_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -37700,7 +37708,7 @@ static int _serSysDecSQN_IntraFreqNeighCellList_SQN_SystemInformationBlockType4_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_IntraFreqNeighCellInfo));
+	p->v.v = (struct SQN_IntraFreqNeighCellInfo*)serMalloc(_mem, p->v.d * sizeof(struct SQN_IntraFreqNeighCellInfo));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_IntraFreqNeighCellInfo(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -37740,7 +37748,7 @@ static int _serSysDecSQN_IntraFreqBlackCellList_SQN_SystemInformationBlockType4_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -37766,7 +37774,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType4_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -37781,7 +37789,7 @@ static int _serSysDecSQN_IntraFreqNeighHSDN_CellList_r15_SQN_SystemInformationBl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -37794,7 +37802,7 @@ static int _serSysDecSQN_RSS_ConfigCarrierInfo_r16(const unsigned char* _buffer,
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->narrowbandIndex_r16.d, &_buffer[*_lidx], _lidx);
-	p->narrowbandIndex_r16.v = serMalloc(_mem, p->narrowbandIndex_r16.d * sizeof(BIT_STRING_ELEMENT));
+	p->narrowbandIndex_r16.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->narrowbandIndex_r16.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->narrowbandIndex_r16.d; i2++) {
 		NTOH_8(p->narrowbandIndex_r16.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -37838,7 +37846,7 @@ static int _serSysDecSQN_IntraFreqNeighCellList_v1610_SQN_SystemInformationBlock
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_IntraFreqNeighCellInfo_v1610));
+	p->v.v = (struct SQN_IntraFreqNeighCellInfo_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_IntraFreqNeighCellInfo_v1610));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_IntraFreqNeighCellInfo_v1610(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -37930,7 +37938,7 @@ static int _serSysDecSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_int
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqNeighCellInfo));
+	p->v.v = (struct SQN_InterFreqNeighCellInfo*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqNeighCellInfo));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_InterFreqNeighCellInfo(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -37945,7 +37953,7 @@ static int _serSysDecSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_int
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38034,7 +38042,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType5_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -38085,7 +38093,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqList_v1250_SQN_SystemInformationBlo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1250));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1250*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1250));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1250(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -38148,7 +38156,7 @@ static int _serSysDecSQN_InterFreqNeighCellList_SQN_InterFreqCarrierFreqInfo_r12
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqNeighCellInfo));
+	p->v.v = (struct SQN_InterFreqNeighCellInfo*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqNeighCellInfo));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_InterFreqNeighCellInfo(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38163,7 +38171,7 @@ static int _serSysDecSQN_InterFreqBlackCellList_SQN_InterFreqCarrierFreqInfo_r12
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38221,7 +38229,7 @@ static int _serSysDecSQN_MultiBandInfoList_r11_SQN_InterFreqCarrierFreqInfo_r12_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicator_r11));
+	p->v.v = (SQN_FreqBandIndicator_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicator_r11));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -38296,7 +38304,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_r12_SQN_SystemInformationBl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_r12));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38332,7 +38340,7 @@ static int _serSysDecSQN_NS_PmaxList_r10_SQN_InterFreqCarrierFreqInfo_v10j0_freq
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_NS_PmaxValue_r10));
+	p->v.v = (struct SQN_NS_PmaxValue_r10*)serMalloc(_mem, p->v.d * sizeof(struct SQN_NS_PmaxValue_r10));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_NS_PmaxValue_r10(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38347,10 +38355,10 @@ static int _serSysDecSQN_MultiBandInfoList_v10j0_SQN_InterFreqCarrierFreqInfo_v1
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_NS_PmaxList_r10));
+	p->v.v = (SQN_NS_PmaxList_r10*)serMalloc(_mem, p->v.d * sizeof(SQN_NS_PmaxList_r10));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_32(p->v.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i3].v = serMalloc(_mem, p->v.v[i3].d * sizeof(struct SQN_NS_PmaxValue_r10));
+		p->v.v[i3].v = (struct SQN_NS_PmaxValue_r10*)serMalloc(_mem, p->v.v[i3].d * sizeof(struct SQN_NS_PmaxValue_r10));
 		for (size_t i4 = 0; i4 < p->v.v[i3].d; i4++) {
 			_serSysDecSQN_NS_PmaxValue_r10(_buffer, _size, _lidx, &p->v.v[i3].v[i4]);
 		}
@@ -38376,7 +38384,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_v1280_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v10j0));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v10j0*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v10j0));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v10j0(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38427,7 +38435,7 @@ static int _serSysDecSQN_RedistributionNeighCellList_r13_SQN_RedistributionInter
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_RedistributionNeighCell_r13));
+	p->v.v = (struct SQN_RedistributionNeighCell_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_RedistributionNeighCell_r13));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_RedistributionNeighCell_r13(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38497,7 +38505,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqList_v1310_SQN_SystemInformationBlo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1310));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1310*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1310));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1310(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38512,7 +38520,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_v1310_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1310));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1310*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1310));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1310(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38547,7 +38555,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqList_v1350_SQN_SystemInformationBlo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1350));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1350*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1350));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1350(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -38562,7 +38570,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_v1350_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1350));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1350*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1350));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1350(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -38597,7 +38605,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_v1360_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1360));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1360*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1360));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1360(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -38623,7 +38631,7 @@ static int _serSysDecSQN_InterFreqNeighHSDN_CellList_r15_SQN_InterFreqCarrierFre
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38660,7 +38668,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqList_v1530_SQN_SystemInformationBlo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1530));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1530*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1530));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1530(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38675,7 +38683,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_v1530_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1530));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1530*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1530));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1530(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38690,7 +38698,7 @@ static int _serSysDecSQN_CellList_r15_SQN_MeasIdleCarrierEUTRA_r15_validityArea_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38705,7 +38713,7 @@ static int _serSysDecSQN_CellList_r15_SQN_MeasIdleCarrierEUTRA_r15_measCellList_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
+	p->v.v = (struct SQN_PhysCellIdRange*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRange));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PhysCellIdRange(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38783,7 +38791,7 @@ static int _serSysDecSQN_MeasIdleConfigSIB_r15(const unsigned char* _buffer, siz
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->measIdleCarrierListEUTRA_r15.d, &_buffer[*_lidx], _lidx);
-	p->measIdleCarrierListEUTRA_r15.v = serMalloc(_mem, p->measIdleCarrierListEUTRA_r15.d * sizeof(struct SQN_MeasIdleCarrierEUTRA_r15));
+	p->measIdleCarrierListEUTRA_r15.v = (struct SQN_MeasIdleCarrierEUTRA_r15*)serMalloc(_mem, p->measIdleCarrierListEUTRA_r15.d * sizeof(struct SQN_MeasIdleCarrierEUTRA_r15));
 	for (size_t i2 = 0; i2 < p->measIdleCarrierListEUTRA_r15.d; i2++) {
 		_serSysDecSQN_MeasIdleCarrierEUTRA_r15(_buffer, _size, _lidx, _mem, &p->measIdleCarrierListEUTRA_r15.v[i2]);
 	}
@@ -38859,7 +38867,7 @@ static int _serSysDecSQN_InterFreqNeighCellList_v1610_SQN_InterFreqCarrierFreqIn
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqNeighCellInfo_v1610));
+	p->v.v = (struct SQN_InterFreqNeighCellInfo_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqNeighCellInfo_v1610));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_InterFreqNeighCellInfo_v1610(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -38886,7 +38894,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqList_v1610_SQN_SystemInformationBlo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1610));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1610));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1610(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38901,7 +38909,7 @@ static int _serSysDecSQN_InterFreqCarrierFreqListExt_v1610_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1610));
+	p->v.v = (struct SQN_InterFreqCarrierFreqInfo_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_InterFreqCarrierFreqInfo_v1610));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo_v1610(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -38916,7 +38924,7 @@ static int _serSysDecSQN_MultiFrequencyBandListNR_r15_SQN_MeasIdleCarrierNR_r16_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicatorNR_r15));
+	p->v.v = (SQN_FreqBandIndicatorNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicatorNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -38956,7 +38964,7 @@ static int _serSysDecSQN_CellListNR_r16_SQN_MeasIdleCarrierNR_r16_measCellListNR
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRangeNR_r16));
+	p->v.v = (struct SQN_PhysCellIdRangeNR_r16*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PhysCellIdRangeNR_r16));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PhysCellIdRangeNR_r16(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -39200,7 +39208,7 @@ static int _serSysDecSQN_SS_RSSI_Measurement_r15(const unsigned char* _buffer, s
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->measurementSlots_r15.d, &_buffer[*_lidx], _lidx);
-	p->measurementSlots_r15.v = serMalloc(_mem, p->measurementSlots_r15.d * sizeof(BIT_STRING_ELEMENT));
+	p->measurementSlots_r15.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->measurementSlots_r15.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->measurementSlots_r15.d; i3++) {
 		NTOH_8(p->measurementSlots_r15.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -39300,7 +39308,7 @@ static int _serSysDecSQN_MeasIdleConfigSIB_NR_r16(const unsigned char* _buffer, 
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->measIdleCarrierListNR_r16.d, &_buffer[*_lidx], _lidx);
-	p->measIdleCarrierListNR_r16.v = serMalloc(_mem, p->measIdleCarrierListNR_r16.d * sizeof(struct SQN_MeasIdleCarrierNR_r16));
+	p->measIdleCarrierListNR_r16.v = (struct SQN_MeasIdleCarrierNR_r16*)serMalloc(_mem, p->measIdleCarrierListNR_r16.d * sizeof(struct SQN_MeasIdleCarrierNR_r16));
 	for (size_t i2 = 0; i2 < p->measIdleCarrierListNR_r16.d; i2++) {
 		_serSysDecSQN_MeasIdleCarrierNR_r16(_buffer, _size, _lidx, _mem, &p->measIdleCarrierListNR_r16.v[i2]);
 	}
@@ -39324,7 +39332,7 @@ static int _serSysDecSQN_SystemInformationBlockType5(const unsigned char* _buffe
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->interFreqCarrierFreqList.d, &_buffer[*_lidx], _lidx);
-	p->interFreqCarrierFreqList.v = serMalloc(_mem, p->interFreqCarrierFreqList.d * sizeof(struct SQN_InterFreqCarrierFreqInfo));
+	p->interFreqCarrierFreqList.v = (struct SQN_InterFreqCarrierFreqInfo*)serMalloc(_mem, p->interFreqCarrierFreqList.d * sizeof(struct SQN_InterFreqCarrierFreqInfo));
 	for (size_t i2 = 0; i2 < p->interFreqCarrierFreqList.d; i2++) {
 		_serSysDecSQN_InterFreqCarrierFreqInfo(_buffer, _size, _lidx, _mem, &p->interFreqCarrierFreqList.v[i2]);
 	}
@@ -39403,7 +39411,7 @@ static int _serSysDecSQN_CarrierFreqListUTRA_FDD_SQN_SystemInformationBlockType6
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_FDD));
+	p->v.v = (struct SQN_CarrierFreqUTRA_FDD*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_FDD));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqUTRA_FDD(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -39443,7 +39451,7 @@ static int _serSysDecSQN_CarrierFreqListUTRA_TDD_SQN_SystemInformationBlockType6
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_TDD));
+	p->v.v = (struct SQN_CarrierFreqUTRA_TDD*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_TDD));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqUTRA_TDD(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -39469,7 +39477,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType6_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -39508,7 +39516,7 @@ static int _serSysDecSQN_CarrierFreqInfoUTRA_v1250_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqInfoUTRA_v1250));
+	p->v.v = (struct SQN_CarrierFreqInfoUTRA_v1250*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqInfoUTRA_v1250));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqInfoUTRA_v1250(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -39523,7 +39531,7 @@ static int _serSysDecSQN_CarrierFreqInfoUTRA_v1250_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqInfoUTRA_v1250));
+	p->v.v = (struct SQN_CarrierFreqInfoUTRA_v1250*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqInfoUTRA_v1250));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqInfoUTRA_v1250(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -39570,7 +39578,7 @@ static int _serSysDecSQN_FreqBandIndicator_UTRA_FDD_SQN_CarrierFreqUTRA_FDD_Ext_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicator_UTRA_FDD));
+	p->v.v = (SQN_FreqBandIndicator_UTRA_FDD*)serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicator_UTRA_FDD));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -39618,7 +39626,7 @@ static int _serSysDecSQN_CarrierFreqListUTRA_FDD_Ext_r12_SQN_SystemInformationBl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_FDD_Ext_r12));
+	p->v.v = (struct SQN_CarrierFreqUTRA_FDD_Ext_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_FDD_Ext_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqUTRA_FDD_Ext_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -39674,7 +39682,7 @@ static int _serSysDecSQN_CarrierFreqListUTRA_TDD_Ext_r12_SQN_SystemInformationBl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_TDD_r12));
+	p->v.v = (struct SQN_CarrierFreqUTRA_TDD_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqUTRA_TDD_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqUTRA_TDD_r12(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -39726,7 +39734,7 @@ static int _serSysDecSQN_CarrierFreqsGERAN_followingARFCNs_Value(const unsigned 
 
 	if (d == SQN_CarrierFreqsGERAN_followingARFCNs_explicitListOfARFCNs) {
 		NTOH_32(p->explicitListOfARFCNs.d, &_buffer[*_lidx], _lidx);
-		p->explicitListOfARFCNs.v = serMalloc(_mem, p->explicitListOfARFCNs.d * sizeof(SQN_ARFCN_ValueGERAN));
+		p->explicitListOfARFCNs.v = (SQN_ARFCN_ValueGERAN*)serMalloc(_mem, p->explicitListOfARFCNs.d * sizeof(SQN_ARFCN_ValueGERAN));
 		for (size_t i3 = 0; i3 < p->explicitListOfARFCNs.d; i3++) {
 			NTOH_16(p->explicitListOfARFCNs.v[i3], &_buffer[*_lidx], _lidx);
 		}
@@ -39738,7 +39746,7 @@ static int _serSysDecSQN_CarrierFreqsGERAN_followingARFCNs_Value(const unsigned 
 	}
 	if (d == SQN_CarrierFreqsGERAN_followingARFCNs_variableBitMapOfARFCNs) {
 		NTOH_32(p->variableBitMapOfARFCNs.d, &_buffer[*_lidx], _lidx);
-		p->variableBitMapOfARFCNs.v = serMalloc(_mem, p->variableBitMapOfARFCNs.d * sizeof(OCTET_STRING_ELEMENT));
+		p->variableBitMapOfARFCNs.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->variableBitMapOfARFCNs.d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i3 = 0; i3 < p->variableBitMapOfARFCNs.d; i3++) {
 			NTOH_8(p->variableBitMapOfARFCNs.v[i3], &_buffer[*_lidx], _lidx);
 		}
@@ -39832,7 +39840,7 @@ static int _serSysDecSQN_CarrierFreqsInfoListGERAN_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqsInfoGERAN));
+	p->v.v = (struct SQN_CarrierFreqsInfoGERAN*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqsInfoGERAN));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqsInfoGERAN(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -39847,7 +39855,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType7_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -39951,7 +39959,7 @@ static int _serSysDecSQN_SecondaryPreRegistrationZoneIdListHRPD_SQN_PreRegistrat
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_PreRegistrationZoneIdHRPD));
+	p->v.v = (SQN_PreRegistrationZoneIdHRPD*)serMalloc(_mem, p->v.d * sizeof(SQN_PreRegistrationZoneIdHRPD));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40003,7 +40011,7 @@ static int _serSysDecSQN_NeighCellsPerBandclassCDMA2000(const unsigned char* _bu
 
 	NTOH_16(p->arfcn, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->physCellIdList.d, &_buffer[*_lidx], _lidx);
-	p->physCellIdList.v = serMalloc(_mem, p->physCellIdList.d * sizeof(SQN_PhysCellIdCDMA2000));
+	p->physCellIdList.v = (SQN_PhysCellIdCDMA2000*)serMalloc(_mem, p->physCellIdList.d * sizeof(SQN_PhysCellIdCDMA2000));
 	for (size_t i4 = 0; i4 < p->physCellIdList.d; i4++) {
 		NTOH_16(p->physCellIdList.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -40021,7 +40029,7 @@ static int _serSysDecSQN_NeighCellCDMA2000(const unsigned char* _buffer, size_t 
 		p->bandClass = (SQN_BandclassCDMA2000_e)_tmp;
 	}
 	NTOH_32(p->neighCellsPerFreqList.d, &_buffer[*_lidx], _lidx);
-	p->neighCellsPerFreqList.v = serMalloc(_mem, p->neighCellsPerFreqList.d * sizeof(struct SQN_NeighCellsPerBandclassCDMA2000));
+	p->neighCellsPerFreqList.v = (struct SQN_NeighCellsPerBandclassCDMA2000*)serMalloc(_mem, p->neighCellsPerFreqList.d * sizeof(struct SQN_NeighCellsPerBandclassCDMA2000));
 	for (size_t i3 = 0; i3 < p->neighCellsPerFreqList.d; i3++) {
 		_serSysDecSQN_NeighCellsPerBandclassCDMA2000(_buffer, _size, _lidx, _mem, &p->neighCellsPerFreqList.v[i3]);
 	}
@@ -40045,12 +40053,12 @@ static int _serSysDecSQN_CellReselectionParametersCDMA2000(const unsigned char* 
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->bandClassList.d, &_buffer[*_lidx], _lidx);
-	p->bandClassList.v = serMalloc(_mem, p->bandClassList.d * sizeof(struct SQN_BandClassInfoCDMA2000));
+	p->bandClassList.v = (struct SQN_BandClassInfoCDMA2000*)serMalloc(_mem, p->bandClassList.d * sizeof(struct SQN_BandClassInfoCDMA2000));
 	for (size_t i2 = 0; i2 < p->bandClassList.d; i2++) {
 		_serSysDecSQN_BandClassInfoCDMA2000(_buffer, _size, _lidx, &p->bandClassList.v[i2]);
 	}
 	NTOH_32(p->neighCellList.d, &_buffer[*_lidx], _lidx);
-	p->neighCellList.v = serMalloc(_mem, p->neighCellList.d * sizeof(struct SQN_NeighCellCDMA2000));
+	p->neighCellList.v = (struct SQN_NeighCellCDMA2000*)serMalloc(_mem, p->neighCellList.d * sizeof(struct SQN_NeighCellCDMA2000));
 	for (size_t i2 = 0; i2 < p->neighCellList.d; i2++) {
 		_serSysDecSQN_NeighCellCDMA2000(_buffer, _size, _lidx, _mem, &p->neighCellList.v[i2]);
 	}
@@ -40189,7 +40197,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType8_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40213,7 +40221,7 @@ static int _serSysDecSQN_NeighCellsPerBandclassCDMA2000_v920(const unsigned char
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->physCellIdList_v920.d, &_buffer[*_lidx], _lidx);
-	p->physCellIdList_v920.v = serMalloc(_mem, p->physCellIdList_v920.d * sizeof(SQN_PhysCellIdCDMA2000));
+	p->physCellIdList_v920.v = (SQN_PhysCellIdCDMA2000*)serMalloc(_mem, p->physCellIdList_v920.d * sizeof(SQN_PhysCellIdCDMA2000));
 	for (size_t i4 = 0; i4 < p->physCellIdList_v920.d; i4++) {
 		NTOH_16(p->physCellIdList_v920.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -40226,7 +40234,7 @@ static int _serSysDecSQN_NeighCellCDMA2000_v920(const unsigned char* _buffer, si
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->neighCellsPerFreqList_v920.d, &_buffer[*_lidx], _lidx);
-	p->neighCellsPerFreqList_v920.v = serMalloc(_mem, p->neighCellsPerFreqList_v920.d * sizeof(struct SQN_NeighCellsPerBandclassCDMA2000_v920));
+	p->neighCellsPerFreqList_v920.v = (struct SQN_NeighCellsPerBandclassCDMA2000_v920*)serMalloc(_mem, p->neighCellsPerFreqList_v920.d * sizeof(struct SQN_NeighCellsPerBandclassCDMA2000_v920));
 	for (size_t i3 = 0; i3 < p->neighCellsPerFreqList_v920.d; i3++) {
 		_serSysDecSQN_NeighCellsPerBandclassCDMA2000_v920(_buffer, _size, _lidx, _mem, &p->neighCellsPerFreqList_v920.v[i3]);
 	}
@@ -40239,7 +40247,7 @@ static int _serSysDecSQN_CellReselectionParametersCDMA2000_v920(const unsigned c
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->neighCellList_v920.d, &_buffer[*_lidx], _lidx);
-	p->neighCellList_v920.v = serMalloc(_mem, p->neighCellList_v920.d * sizeof(struct SQN_NeighCellCDMA2000_v920));
+	p->neighCellList_v920.v = (struct SQN_NeighCellCDMA2000_v920*)serMalloc(_mem, p->neighCellList_v920.d * sizeof(struct SQN_NeighCellCDMA2000_v920));
 	for (size_t i2 = 0; i2 < p->neighCellList_v920.d; i2++) {
 		_serSysDecSQN_NeighCellCDMA2000_v920(_buffer, _size, _lidx, _mem, &p->neighCellList_v920.v[i2]);
 	}
@@ -40384,7 +40392,7 @@ static int _serSysDecSQN_NeighCellsPerBandclassCDMA2000_r11(const unsigned char*
 
 	NTOH_16(p->arfcn, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->physCellIdList_r11.d, &_buffer[*_lidx], _lidx);
-	p->physCellIdList_r11.v = serMalloc(_mem, p->physCellIdList_r11.d * sizeof(SQN_PhysCellIdCDMA2000));
+	p->physCellIdList_r11.v = (SQN_PhysCellIdCDMA2000*)serMalloc(_mem, p->physCellIdList_r11.d * sizeof(SQN_PhysCellIdCDMA2000));
 	for (size_t i5 = 0; i5 < p->physCellIdList_r11.d; i5++) {
 		NTOH_16(p->physCellIdList_r11.v[i5], &_buffer[*_lidx], _lidx);
 	}
@@ -40402,7 +40410,7 @@ static int _serSysDecSQN_NeighCellCDMA2000_r11(const unsigned char* _buffer, siz
 		p->bandClass = (SQN_BandclassCDMA2000_e)_tmp;
 	}
 	NTOH_32(p->neighFreqInfoList_r11.d, &_buffer[*_lidx], _lidx);
-	p->neighFreqInfoList_r11.v = serMalloc(_mem, p->neighFreqInfoList_r11.d * sizeof(struct SQN_NeighCellsPerBandclassCDMA2000_r11));
+	p->neighFreqInfoList_r11.v = (struct SQN_NeighCellsPerBandclassCDMA2000_r11*)serMalloc(_mem, p->neighFreqInfoList_r11.d * sizeof(struct SQN_NeighCellsPerBandclassCDMA2000_r11));
 	for (size_t i4 = 0; i4 < p->neighFreqInfoList_r11.d; i4++) {
 		_serSysDecSQN_NeighCellsPerBandclassCDMA2000_r11(_buffer, _size, _lidx, _mem, &p->neighFreqInfoList_r11.v[i4]);
 	}
@@ -40426,12 +40434,12 @@ static int _serSysDecSQN_CellReselectionParametersCDMA2000_r11(const unsigned ch
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->bandClassList.d, &_buffer[*_lidx], _lidx);
-	p->bandClassList.v = serMalloc(_mem, p->bandClassList.d * sizeof(struct SQN_BandClassInfoCDMA2000));
+	p->bandClassList.v = (struct SQN_BandClassInfoCDMA2000*)serMalloc(_mem, p->bandClassList.d * sizeof(struct SQN_BandClassInfoCDMA2000));
 	for (size_t i3 = 0; i3 < p->bandClassList.d; i3++) {
 		_serSysDecSQN_BandClassInfoCDMA2000(_buffer, _size, _lidx, &p->bandClassList.v[i3]);
 	}
 	NTOH_32(p->neighCellList_r11.d, &_buffer[*_lidx], _lidx);
-	p->neighCellList_r11.v = serMalloc(_mem, p->neighCellList_r11.d * sizeof(struct SQN_NeighCellCDMA2000_r11));
+	p->neighCellList_r11.v = (struct SQN_NeighCellCDMA2000_r11*)serMalloc(_mem, p->neighCellList_r11.d * sizeof(struct SQN_NeighCellCDMA2000_r11));
 	for (size_t i3 = 0; i3 < p->neighCellList_r11.d; i3++) {
 		_serSysDecSQN_NeighCellCDMA2000_r11(_buffer, _size, _lidx, _mem, &p->neighCellList_r11.v[i3]);
 	}
@@ -40641,7 +40649,7 @@ static int _serSysDecSQN_SIB8_PerPLMN_List_r11_SQN_SystemInformationBlockType8_s
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SIB8_PerPLMN_r11));
+	p->v.v = (struct SQN_SIB8_PerPLMN_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SIB8_PerPLMN_r11));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SIB8_PerPLMN_r11(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -40676,7 +40684,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType9_hnb_Name_Optio
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40691,7 +40699,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType9_lateNonCritica
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40729,7 +40737,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType10_lateNonCritic
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40776,7 +40784,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType11_lateNonCritic
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40801,7 +40809,7 @@ static int _serSysDecSQN_SystemInformationBlockType11(const unsigned char* _buff
 	}
 	NTOH_8(p->warningMessageSegmentNumber, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->warningMessageSegment.d, &_buffer[*_lidx], _lidx);
-	p->warningMessageSegment.v = serMalloc(_mem, p->warningMessageSegment.d * sizeof(OCTET_STRING_ELEMENT));
+	p->warningMessageSegment.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->warningMessageSegment.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->warningMessageSegment.d; i2++) {
 		NTOH_8(p->warningMessageSegment.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40831,7 +40839,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType12_r9_lateNonCri
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40846,7 +40854,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType12_r9_warningAre
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -40871,7 +40879,7 @@ static int _serSysDecSQN_SystemInformationBlockType12_r9(const unsigned char* _b
 	}
 	NTOH_8(p->warningMessageSegmentNumber_r9, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->warningMessageSegment_r9.d, &_buffer[*_lidx], _lidx);
-	p->warningMessageSegment_r9.v = serMalloc(_mem, p->warningMessageSegment_r9.d * sizeof(OCTET_STRING_ELEMENT));
+	p->warningMessageSegment_r9.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->warningMessageSegment_r9.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->warningMessageSegment_r9.d; i2++) {
 		NTOH_8(p->warningMessageSegment_r9.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -41015,7 +41023,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType13_r9_lateNonCri
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -41109,7 +41117,7 @@ static int _serSysDecSQN_MBSFN_AreaInfoList_r16_SQN_SystemInformationBlockType13
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_AreaInfo_r16));
+	p->v.v = (struct SQN_MBSFN_AreaInfo_r16*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBSFN_AreaInfo_r16));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_MBSFN_AreaInfo_r16(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -41122,7 +41130,7 @@ static int _serSysDecSQN_SystemInformationBlockType13_r9(const unsigned char* _b
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->mbsfn_AreaInfoList_r9.d, &_buffer[*_lidx], _lidx);
-	p->mbsfn_AreaInfoList_r9.v = serMalloc(_mem, p->mbsfn_AreaInfoList_r9.d * sizeof(struct SQN_MBSFN_AreaInfo_r9));
+	p->mbsfn_AreaInfoList_r9.v = (struct SQN_MBSFN_AreaInfo_r9*)serMalloc(_mem, p->mbsfn_AreaInfoList_r9.d * sizeof(struct SQN_MBSFN_AreaInfo_r9));
 	for (size_t i2 = 0; i2 < p->mbsfn_AreaInfoList_r9.d; i2++) {
 		_serSysDecSQN_MBSFN_AreaInfo_r9(_buffer, _size, _lidx, &p->mbsfn_AreaInfoList_r9.v[i2]);
 	}
@@ -41180,7 +41188,7 @@ static int _serSysDecSQN_SystemInformationBlockType14_r11_eab_Param_r11_Value(co
 	}
 	if (d == SQN_SystemInformationBlockType14_r11_eab_Param_r11_eab_PerPLMN_List_r11) {
 		NTOH_32(p->eab_PerPLMN_List_r11.d, &_buffer[*_lidx], _lidx);
-		p->eab_PerPLMN_List_r11.v = serMalloc(_mem, p->eab_PerPLMN_List_r11.d * sizeof(struct SQN_EAB_ConfigPLMN_r11));
+		p->eab_PerPLMN_List_r11.v = (struct SQN_EAB_ConfigPLMN_r11*)serMalloc(_mem, p->eab_PerPLMN_List_r11.d * sizeof(struct SQN_EAB_ConfigPLMN_r11));
 		for (size_t i2 = 0; i2 < p->eab_PerPLMN_List_r11.d; i2++) {
 			_serSysDecSQN_EAB_ConfigPLMN_r11(_buffer, _size, _lidx, &p->eab_PerPLMN_List_r11.v[i2]);
 		}
@@ -41222,7 +41230,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType14_r11_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -41263,7 +41271,7 @@ static int _serSysDecSQN_MBMS_SAI_List_r11_SQN_SystemInformationBlockType15_r11_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_MBMS_SAI_r11));
+	p->v.v = (SQN_MBMS_SAI_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_MBMS_SAI_r11));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_16(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -41277,7 +41285,7 @@ static int _serSysDecSQN_MBMS_SAI_InterFreq_r11(const unsigned char* _buffer, si
 
 	NTOH_32(p->dl_CarrierFreq_r11, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->mbms_SAI_List_r11.d, &_buffer[*_lidx], _lidx);
-	p->mbms_SAI_List_r11.v = serMalloc(_mem, p->mbms_SAI_List_r11.d * sizeof(SQN_MBMS_SAI_r11));
+	p->mbms_SAI_List_r11.v = (SQN_MBMS_SAI_r11*)serMalloc(_mem, p->mbms_SAI_List_r11.d * sizeof(SQN_MBMS_SAI_r11));
 	for (size_t i3 = 0; i3 < p->mbms_SAI_List_r11.d; i3++) {
 		NTOH_16(p->mbms_SAI_List_r11.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -41292,7 +41300,7 @@ static int _serSysDecSQN_MBMS_SAI_InterFreqList_r11_SQN_SystemInformationBlockTy
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MBMS_SAI_InterFreq_r11));
+	p->v.v = (struct SQN_MBMS_SAI_InterFreq_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBMS_SAI_InterFreq_r11));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_MBMS_SAI_InterFreq_r11(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -41307,7 +41315,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType15_r11_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -41322,7 +41330,7 @@ static int _serSysDecSQN_MultiBandInfoList_r11_SQN_MBMS_SAI_InterFreq_v1140_mult
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicator_r11));
+	p->v.v = (SQN_FreqBandIndicator_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicator_r11));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -41346,7 +41354,7 @@ static int _serSysDecSQN_MBMS_SAI_InterFreqList_v1140_SQN_SystemInformationBlock
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MBMS_SAI_InterFreq_v1140));
+	p->v.v = (struct SQN_MBMS_SAI_InterFreq_v1140*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBMS_SAI_InterFreq_v1140));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_MBMS_SAI_InterFreq_v1140(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -41397,7 +41405,7 @@ static int _serSysDecSQN_MBMS_InterFreqCarrierTypeList_r14_SQN_SystemInformation
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MBMS_CarrierType_r14));
+	p->v.v = (struct SQN_MBMS_CarrierType_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MBMS_CarrierType_r14));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_MBMS_CarrierType_r14(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -41484,7 +41492,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType16_r11_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -41821,7 +41829,7 @@ static int _serSysDecOCTET_STRING_SQN_WLAN_Identifiers_r12_ssid_r12_Optional(con
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		NTOH_8(p->v.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -41873,7 +41881,7 @@ static int _serSysDecSQN_WLAN_Id_List_r12_SQN_WLAN_OffloadInfoPerPLMN_r12_wlan_I
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_WLAN_Identifiers_r12));
+	p->v.v = (struct SQN_WLAN_Identifiers_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_WLAN_Identifiers_r12));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_WLAN_Identifiers_r12(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -41898,7 +41906,7 @@ static int _serSysDecSQN_WLAN_OffloadInfoPerPLMN_r12_SQN_SystemInformationBlockT
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_WLAN_OffloadInfoPerPLMN_r12));
+	p->v.v = (struct SQN_WLAN_OffloadInfoPerPLMN_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_WLAN_OffloadInfoPerPLMN_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_WLAN_OffloadInfoPerPLMN_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -41913,7 +41921,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType17_r12_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -42060,7 +42068,7 @@ static int _serSysDecSQN_SL_TRPT_Subset_r12_SQN_SL_CommResourcePool_r12_ue_Selec
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
+	p->v.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -42163,7 +42171,7 @@ static int _serSysDecSQN_SL_PriorityList_r13_SQN_SL_CommResourcePool_r12_priorit
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_SL_Priority_r13));
+	p->v.v = (SQN_SL_Priority_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_SL_Priority_r13));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_8(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -42207,7 +42215,7 @@ static int _serSysDecSQN_SL_CommTxPoolList_r12_SQN_SystemInformationBlockType18_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePool_r12));
+	p->v.v = (struct SQN_SL_CommResourcePool_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePool_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -42222,7 +42230,7 @@ static int _serSysDecSQN_SL_CommTxPoolList_r12_SQN_SystemInformationBlockType18_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePool_r12));
+	p->v.v = (struct SQN_SL_CommResourcePool_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePool_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -42398,7 +42406,7 @@ static int _serSysDecSQN_SL_SyncConfigList_r12_SQN_SystemInformationBlockType18_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfig_r12));
+	p->v.v = (struct SQN_SL_SyncConfig_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfig_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_SyncConfig_r12(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -42411,7 +42419,7 @@ static int _serSysDecSQN_SystemInformationBlockType18_r12_commConfig_r12(const u
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->commRxPool_r12.d, &_buffer[*_lidx], _lidx);
-	p->commRxPool_r12.v = serMalloc(_mem, p->commRxPool_r12.d * sizeof(struct SQN_SL_CommResourcePool_r12));
+	p->commRxPool_r12.v = (struct SQN_SL_CommResourcePool_r12*)serMalloc(_mem, p->commRxPool_r12.d * sizeof(struct SQN_SL_CommResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->commRxPool_r12.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePool_r12(_buffer, _size, _lidx, _mem, &p->commRxPool_r12.v[i2]);
 	}
@@ -42440,7 +42448,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType18_r12_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -42455,7 +42463,7 @@ static int _serSysDecSQN_SL_CommTxPoolListExt_r13_SQN_SystemInformationBlockType
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePool_r12));
+	p->v.v = (struct SQN_SL_CommResourcePool_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePool_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -42674,7 +42682,7 @@ static int _serSysDecSQN_SL_DiscResourcePool_r12_rxParamsAddNeighFreq_r13_setup(
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->physCellId_r13.d, &_buffer[*_lidx], _lidx);
-	p->physCellId_r13.v = serMalloc(_mem, p->physCellId_r13.d * sizeof(SQN_PhysCellId));
+	p->physCellId_r13.v = (SQN_PhysCellId*)serMalloc(_mem, p->physCellId_r13.d * sizeof(SQN_PhysCellId));
 	for (size_t i3 = 0; i3 < p->physCellId_r13.d; i3++) {
 		NTOH_16(p->physCellId_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -42809,7 +42817,7 @@ static int _serSysDecSQN_SL_DiscResourcePool_r12_txParamsAddNeighFreq_r13_setup(
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->physCellId_r13.d, &_buffer[*_lidx], _lidx);
-	p->physCellId_r13.v = serMalloc(_mem, p->physCellId_r13.d * sizeof(SQN_PhysCellId));
+	p->physCellId_r13.v = (SQN_PhysCellId*)serMalloc(_mem, p->physCellId_r13.d * sizeof(SQN_PhysCellId));
 	for (size_t i3 = 0; i3 < p->physCellId_r13.d; i3++) {
 		NTOH_16(p->physCellId_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -42957,7 +42965,7 @@ static int _serSysDecSQN_SL_DiscTxPoolList_r12_SQN_SystemInformationBlockType19_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
+	p->v.v = (struct SQN_SL_DiscResourcePool_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_DiscResourcePool_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -42994,7 +43002,7 @@ static int _serSysDecSQN_SL_SyncConfigList_r12_SQN_SystemInformationBlockType19_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfig_r12));
+	p->v.v = (struct SQN_SL_SyncConfig_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfig_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_SyncConfig_r12(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -43007,7 +43015,7 @@ static int _serSysDecSQN_SystemInformationBlockType19_r12_discConfig_r12(const u
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->discRxPool_r12.d, &_buffer[*_lidx], _lidx);
-	p->discRxPool_r12.v = serMalloc(_mem, p->discRxPool_r12.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
+	p->discRxPool_r12.v = (struct SQN_SL_DiscResourcePool_r12*)serMalloc(_mem, p->discRxPool_r12.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->discRxPool_r12.d; i2++) {
 		_serSysDecSQN_SL_DiscResourcePool_r12(_buffer, _size, _lidx, _mem, &p->discRxPool_r12.v[i2]);
 	}
@@ -43066,7 +43074,7 @@ static int _serSysDecSQN_PLMN_IdentityList4_r12_SQN_SL_CarrierFreqInfo_r12_plmn_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo2_r12));
+	p->v.v = (struct SQN_PLMN_IdentityInfo2_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo2_r12));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PLMN_IdentityInfo2_r12(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -43091,7 +43099,7 @@ static int _serSysDecSQN_SL_CarrierFreqInfoList_r12_SQN_SystemInformationBlockTy
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CarrierFreqInfo_r12));
+	p->v.v = (struct SQN_SL_CarrierFreqInfo_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CarrierFreqInfo_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CarrierFreqInfo_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -43106,7 +43114,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType19_r12_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -43121,7 +43129,7 @@ static int _serSysDecSQN_SL_DiscRxPoolList_r12_SQN_SL_ResourcesInterFreq_r13_dis
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
+	p->v.v = (struct SQN_SL_DiscResourcePool_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_DiscResourcePool_r12(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -43139,7 +43147,7 @@ static int _serSysDecSQN_SL_DiscTxResourcesInterFreq_r13_Value(const unsigned ch
 	}
 	if (d == SQN_SL_DiscTxResourcesInterFreq_r13_discTxPoolCommon_r13) {
 		NTOH_32(p->discTxPoolCommon_r13.d, &_buffer[*_lidx], _lidx);
-		p->discTxPoolCommon_r13.v = serMalloc(_mem, p->discTxPoolCommon_r13.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
+		p->discTxPoolCommon_r13.v = (struct SQN_SL_DiscResourcePool_r12*)serMalloc(_mem, p->discTxPoolCommon_r13.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
 		for (size_t i3 = 0; i3 < p->discTxPoolCommon_r13.d; i3++) {
 			_serSysDecSQN_SL_DiscResourcePool_r12(_buffer, _size, _lidx, _mem, &p->discTxPoolCommon_r13.v[i3]);
 		}
@@ -43429,7 +43437,7 @@ static int _serSysDecSQN_SL_SyncConfigListNFreq_r13_SQN_SL_DiscConfigOtherInterF
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfigNFreq_r13));
+	p->v.v = (struct SQN_SL_SyncConfigNFreq_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfigNFreq_r13));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_SyncConfigNFreq_r13(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -43517,7 +43525,7 @@ static int _serSysDecSQN_SL_CarrierFreqInfoList_v1310_SQN_SystemInformationBlock
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CarrierFreqInfo_v1310));
+	p->v.v = (struct SQN_SL_CarrierFreqInfo_v1310*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CarrierFreqInfo_v1310));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CarrierFreqInfo_v1310(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -43720,7 +43728,7 @@ static int _serSysDecSQN_SL_DiscTxPoolList_r12_SQN_SystemInformationBlockType19_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
+	p->v.v = (struct SQN_SL_DiscResourcePool_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_DiscResourcePool_r12(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -43733,7 +43741,7 @@ static int _serSysDecSQN_SystemInformationBlockType19_r12_discConfigPS_13(const 
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->discRxPoolPS_r13.d, &_buffer[*_lidx], _lidx);
-	p->discRxPoolPS_r13.v = serMalloc(_mem, p->discRxPoolPS_r13.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
+	p->discRxPoolPS_r13.v = (struct SQN_SL_DiscResourcePool_r12*)serMalloc(_mem, p->discRxPoolPS_r13.d * sizeof(struct SQN_SL_DiscResourcePool_r12));
 	for (size_t i2 = 0; i2 < p->discRxPoolPS_r13.d; i2++) {
 		_serSysDecSQN_SL_DiscResourcePool_r12(_buffer, _size, _lidx, _mem, &p->discRxPoolPS_r13.v[i2]);
 	}
@@ -43785,7 +43793,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType20_r13_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -44264,7 +44272,7 @@ static int _serSysDecSQN_SL_PPPP_TxConfigIndex_r14(const unsigned char* _buffer,
 	NTOH_8(p->defaultTxConfigIndex_r14, &_buffer[*_lidx], _lidx);
 	NTOH_8(p->cbr_ConfigIndex_r14, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->tx_ConfigIndexList_r14.d, &_buffer[*_lidx], _lidx);
-	p->tx_ConfigIndexList_r14.v = serMalloc(_mem, p->tx_ConfigIndexList_r14.d * sizeof(SQN_Tx_ConfigIndex_r14));
+	p->tx_ConfigIndexList_r14.v = (SQN_Tx_ConfigIndex_r14*)serMalloc(_mem, p->tx_ConfigIndexList_r14.d * sizeof(SQN_Tx_ConfigIndex_r14));
 	for (size_t i4 = 0; i4 < p->tx_ConfigIndexList_r14.d; i4++) {
 		NTOH_8(p->tx_ConfigIndexList_r14.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -44279,7 +44287,7 @@ static int _serSysDecSQN_SL_CBR_PPPP_TxConfigList_r14_SQN_SL_CommResourcePoolV2X
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPP_TxConfigIndex_r14));
+	p->v.v = (struct SQN_SL_PPPP_TxConfigIndex_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPP_TxConfigIndex_r14));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_PPPP_TxConfigIndex_r14(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -44412,7 +44420,7 @@ static int _serSysDecSQN_SL_RestrictResourceReservationPeriodList_r14_SQN_SL_Com
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_SL_RestrictResourceReservationPeriod_r14_e));
+	p->v.v = (SQN_SL_RestrictResourceReservationPeriod_r14_e*)serMalloc(_mem, p->v.d * sizeof(SQN_SL_RestrictResourceReservationPeriod_r14_e));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		{
 			size_t _tmp;
@@ -44429,7 +44437,7 @@ static int _serSysDecSQN_SL_MinT2Value_r15(const unsigned char* _buffer, size_t 
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->priorityList_r15.d, &_buffer[*_lidx], _lidx);
-	p->priorityList_r15.v = serMalloc(_mem, p->priorityList_r15.d * sizeof(SQN_SL_Priority_r13));
+	p->priorityList_r15.v = (SQN_SL_Priority_r13*)serMalloc(_mem, p->priorityList_r15.d * sizeof(SQN_SL_Priority_r13));
 	for (size_t i4 = 0; i4 < p->priorityList_r15.d; i4++) {
 		NTOH_8(p->priorityList_r15.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -44445,7 +44453,7 @@ static int _serSysDecSQN_SL_MinT2ValueList_r15_SQN_SL_CommResourcePoolV2X_r14_sl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_MinT2Value_r15));
+	p->v.v = (struct SQN_SL_MinT2Value_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_MinT2Value_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_MinT2Value_r15(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -44470,7 +44478,7 @@ static int _serSysDecSQN_MCS_PSSCH_Range_r15_SQN_SL_PPPP_TxConfigIndex_v1530_mcs
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_MCS_PSSCH_Range_r15));
+	p->v.v = (struct SQN_MCS_PSSCH_Range_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_MCS_PSSCH_Range_r15));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		_serSysDecSQN_MCS_PSSCH_Range_r15(_buffer, _size, _lidx, &p->v.v[i4]);
 	}
@@ -44494,7 +44502,7 @@ static int _serSysDecSQN_SL_CBR_PPPP_TxConfigList_v1530_SQN_SL_CommResourcePoolV
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPP_TxConfigIndex_v1530));
+	p->v.v = (struct SQN_SL_PPPP_TxConfigIndex_v1530*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPP_TxConfigIndex_v1530));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_PPPP_TxConfigIndex_v1530(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -44543,7 +44551,7 @@ static int _serSysDecSQN_SL_CommRxPoolListV2X_r14_SQN_SL_V2X_ConfigCommon_r14_v2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
+	p->v.v = (struct SQN_SL_CommResourcePoolV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePoolV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -44558,7 +44566,7 @@ static int _serSysDecSQN_SL_CommTxPoolListV2X_r14_SQN_SL_V2X_ConfigCommon_r14_v2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
+	p->v.v = (struct SQN_SL_CommResourcePoolV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePoolV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -44573,7 +44581,7 @@ static int _serSysDecSQN_SL_CommTxPoolListV2X_r14_SQN_SL_V2X_ConfigCommon_r14_p2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
+	p->v.v = (struct SQN_SL_CommResourcePoolV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_CommResourcePoolV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -44599,7 +44607,7 @@ static int _serSysDecSQN_SL_SyncConfigListV2X_r14_SQN_SL_V2X_ConfigCommon_r14_v2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfig_r12));
+	p->v.v = (struct SQN_SL_SyncConfig_r12*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfig_r12));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_SyncConfig_r12(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -44628,7 +44636,7 @@ static int _serSysDecSQN_PLMN_IdentityList_SQN_SL_InterFreqInfoV2X_r14_plmn_Iden
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo));
+	p->v.v = (struct SQN_PLMN_IdentityInfo*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_PLMN_IdentityInfo(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -44680,7 +44688,7 @@ static int _serSysDecSQN_PhysCellIdList_r13_SQN_SL_V2X_InterFreqUE_Config_r14_ph
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_PhysCellId));
+	p->v.v = (SQN_PhysCellId*)serMalloc(_mem, p->v.d * sizeof(SQN_PhysCellId));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		NTOH_16(p->v.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -44710,7 +44718,7 @@ static int _serSysDecSQN_SL_SyncConfigListNFreqV2X_r14_SQN_SL_V2X_InterFreqUE_Co
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfigNFreq_r13));
+	p->v.v = (struct SQN_SL_SyncConfigNFreq_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_SyncConfigNFreq_r13));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		_serSysDecSQN_SL_SyncConfigNFreq_r13(_buffer, _size, _lidx, &p->v.v[i4]);
 	}
@@ -44725,7 +44733,7 @@ static int _serSysDecSQN_SL_CommRxPoolListV2X_r14_SQN_SL_V2X_InterFreqUE_Config_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
+	p->v.v = (struct SQN_SL_CommResourcePoolV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		_serSysDecSQN_SL_CommResourcePoolV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i4]);
 	}
@@ -44740,7 +44748,7 @@ static int _serSysDecSQN_SL_CommTxPoolListV2X_r14_SQN_SL_V2X_InterFreqUE_Config_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
+	p->v.v = (struct SQN_SL_CommResourcePoolV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		_serSysDecSQN_SL_CommResourcePoolV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i4]);
 	}
@@ -44755,7 +44763,7 @@ static int _serSysDecSQN_SL_CommTxPoolListV2X_r14_SQN_SL_V2X_InterFreqUE_Config_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
+	p->v.v = (struct SQN_SL_CommResourcePoolV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_CommResourcePoolV2X_r14));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		_serSysDecSQN_SL_CommResourcePoolV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i4]);
 	}
@@ -44905,7 +44913,7 @@ static int _serSysDecSQN_SL_RestrictResourceReservationPeriodList_r14_SQN_SL_Com
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_SL_RestrictResourceReservationPeriod_r14_e));
+	p->v.v = (SQN_SL_RestrictResourceReservationPeriod_r14_e*)serMalloc(_mem, p->v.d * sizeof(SQN_SL_RestrictResourceReservationPeriod_r14_e));
 	for (size_t i4 = 0; i4 < p->v.d; i4++) {
 		{
 			size_t _tmp;
@@ -44960,7 +44968,7 @@ static int _serSysDecSQN_SL_CommTxPoolSensingConfig_r14(const unsigned char* _bu
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->pssch_TxConfigList_r14.d, &_buffer[*_lidx], _lidx);
-	p->pssch_TxConfigList_r14.v = serMalloc(_mem, p->pssch_TxConfigList_r14.d * sizeof(struct SQN_SL_PSSCH_TxConfig_r14));
+	p->pssch_TxConfigList_r14.v = (struct SQN_SL_PSSCH_TxConfig_r14*)serMalloc(_mem, p->pssch_TxConfigList_r14.d * sizeof(struct SQN_SL_PSSCH_TxConfig_r14));
 	for (size_t i4 = 0; i4 < p->pssch_TxConfigList_r14.d; i4++) {
 		_serSysDecSQN_SL_PSSCH_TxConfig_r14(_buffer, _size, _lidx, &p->pssch_TxConfigList_r14.v[i4]);
 	}
@@ -45057,7 +45065,7 @@ static int _serSysDecSQN_SL_V2X_UE_ConfigList_r14_SQN_SL_InterFreqInfoV2X_r14_v2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_V2X_InterFreqUE_Config_r14));
+	p->v.v = (struct SQN_SL_V2X_InterFreqUE_Config_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_V2X_InterFreqUE_Config_r14));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_V2X_InterFreqUE_Config_r14(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -45133,7 +45141,7 @@ static int _serSysDecSQN_SL_V2X_FreqSelectionConfig_r15(const unsigned char* _bu
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->priorityList_r15.d, &_buffer[*_lidx], _lidx);
-	p->priorityList_r15.v = serMalloc(_mem, p->priorityList_r15.d * sizeof(SQN_SL_Priority_r13));
+	p->priorityList_r15.v = (SQN_SL_Priority_r13*)serMalloc(_mem, p->priorityList_r15.d * sizeof(SQN_SL_Priority_r13));
 	for (size_t i4 = 0; i4 < p->priorityList_r15.d; i4++) {
 		NTOH_8(p->priorityList_r15.v[i4], &_buffer[*_lidx], _lidx);
 	}
@@ -45150,7 +45158,7 @@ static int _serSysDecSQN_SL_V2X_FreqSelectionConfigList_r15_SQN_SL_InterFreqInfo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_V2X_FreqSelectionConfig_r15));
+	p->v.v = (struct SQN_SL_V2X_FreqSelectionConfig_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_V2X_FreqSelectionConfig_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_SL_V2X_FreqSelectionConfig_r15(_buffer, _size, _lidx, _mem, &p->v.v[i3]);
 	}
@@ -45181,7 +45189,7 @@ static int _serSysDecSQN_SL_InterFreqInfoListV2X_r14_SQN_SL_V2X_ConfigCommon_r14
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_InterFreqInfoV2X_r14));
+	p->v.v = (struct SQN_SL_InterFreqInfoV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_InterFreqInfoV2X_r14));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_InterFreqInfoV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -45244,7 +45252,7 @@ static int _serSysDecSQN_SL_AnchorCarrierFreqList_V2X_r14_SQN_SL_V2X_ConfigCommo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
+	p->v.v = (SQN_ARFCN_ValueEUTRA_r9*)serMalloc(_mem, p->v.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_32(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -45278,16 +45286,16 @@ static int _serSysDecSQN_SL_CBR_CommonTxConfigList_r14(const unsigned char* _buf
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->cbr_RangeCommonConfigList_r14.d, &_buffer[*_lidx], _lidx);
-	p->cbr_RangeCommonConfigList_r14.v = serMalloc(_mem, p->cbr_RangeCommonConfigList_r14.d * sizeof(SQN_SL_CBR_Levels_Config_r14));
+	p->cbr_RangeCommonConfigList_r14.v = (SQN_SL_CBR_Levels_Config_r14*)serMalloc(_mem, p->cbr_RangeCommonConfigList_r14.d * sizeof(SQN_SL_CBR_Levels_Config_r14));
 	for (size_t i2 = 0; i2 < p->cbr_RangeCommonConfigList_r14.d; i2++) {
 		NTOH_32(p->cbr_RangeCommonConfigList_r14.v[i2].d, &_buffer[*_lidx], _lidx);
-		p->cbr_RangeCommonConfigList_r14.v[i2].v = serMalloc(_mem, p->cbr_RangeCommonConfigList_r14.v[i2].d * sizeof(SQN_SL_CBR_r14));
+		p->cbr_RangeCommonConfigList_r14.v[i2].v = (SQN_SL_CBR_r14*)serMalloc(_mem, p->cbr_RangeCommonConfigList_r14.v[i2].d * sizeof(SQN_SL_CBR_r14));
 		for (size_t i3 = 0; i3 < p->cbr_RangeCommonConfigList_r14.v[i2].d; i3++) {
 			NTOH_8(p->cbr_RangeCommonConfigList_r14.v[i2].v[i3], &_buffer[*_lidx], _lidx);
 		}
 	}
 	NTOH_32(p->sl_CBR_PSSCH_TxConfigList_r14.d, &_buffer[*_lidx], _lidx);
-	p->sl_CBR_PSSCH_TxConfigList_r14.v = serMalloc(_mem, p->sl_CBR_PSSCH_TxConfigList_r14.d * sizeof(struct SQN_SL_CBR_PSSCH_TxConfig_r14));
+	p->sl_CBR_PSSCH_TxConfigList_r14.v = (struct SQN_SL_CBR_PSSCH_TxConfig_r14*)serMalloc(_mem, p->sl_CBR_PSSCH_TxConfigList_r14.d * sizeof(struct SQN_SL_CBR_PSSCH_TxConfig_r14));
 	for (size_t i2 = 0; i2 < p->sl_CBR_PSSCH_TxConfigList_r14.d; i2++) {
 		_serSysDecSQN_SL_CBR_PSSCH_TxConfig_r14(_buffer, _size, _lidx, &p->sl_CBR_PSSCH_TxConfigList_r14.v[i2]);
 	}
@@ -45345,7 +45353,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType21_r14_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -45360,7 +45368,7 @@ static int _serSysDecSQN_SL_NR_AnchorCarrierFreqList_r16_SQN_SystemInformationBl
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_ARFCN_ValueNR_r15));
+	p->v.v = (SQN_ARFCN_ValueNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_ARFCN_ValueNR_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_32(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -45386,7 +45394,7 @@ static int _serSysDecSQN_MultiFrequencyBandListNR_r15_SQN_CarrierFreqNR_r15_mult
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicatorNR_r15));
+	p->v.v = (SQN_FreqBandIndicatorNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicatorNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -45401,7 +45409,7 @@ static int _serSysDecSQN_MultiFrequencyBandListNR_r15_SQN_CarrierFreqNR_r15_mult
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicatorNR_r15));
+	p->v.v = (SQN_FreqBandIndicatorNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_FreqBandIndicatorNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -45517,7 +45525,7 @@ static int _serSysDecSQN_NS_PmaxListNR_r15_SQN_CarrierFreqNR_r15_ns_PmaxListNR_r
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_NS_PmaxValueNR_r15));
+	p->v.v = (struct SQN_NS_PmaxValueNR_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_NS_PmaxValueNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		_serSysDecSQN_NS_PmaxValueNR_r15(_buffer, _size, _lidx, &p->v.v[i3]);
 	}
@@ -45565,10 +45573,10 @@ static int _serSysDecSQN_MultiBandNsPmaxListNR_1_v1550_SQN_CarrierFreqNR_r15_mul
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_NS_PmaxListNR_r15));
+	p->v.v = (SQN_NS_PmaxListNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_NS_PmaxListNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_32(p->v.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i3].v = serMalloc(_mem, p->v.v[i3].d * sizeof(struct SQN_NS_PmaxValueNR_r15));
+		p->v.v[i3].v = (struct SQN_NS_PmaxValueNR_r15*)serMalloc(_mem, p->v.v[i3].d * sizeof(struct SQN_NS_PmaxValueNR_r15));
 		for (size_t i4 = 0; i4 < p->v.v[i3].d; i4++) {
 			_serSysDecSQN_NS_PmaxValueNR_r15(_buffer, _size, _lidx, &p->v.v[i3].v[i4]);
 		}
@@ -45584,10 +45592,10 @@ static int _serSysDecSQN_MultiBandNsPmaxListNR_v1550_SQN_CarrierFreqNR_r15_multi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_NS_PmaxListNR_r15));
+	p->v.v = (SQN_NS_PmaxListNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_NS_PmaxListNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_32(p->v.v[i3].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i3].v = serMalloc(_mem, p->v.v[i3].d * sizeof(struct SQN_NS_PmaxValueNR_r15));
+		p->v.v[i3].v = (struct SQN_NS_PmaxValueNR_r15*)serMalloc(_mem, p->v.v[i3].d * sizeof(struct SQN_NS_PmaxValueNR_r15));
 		for (size_t i4 = 0; i4 < p->v.v[i3].d; i4++) {
 			_serSysDecSQN_NS_PmaxValueNR_r15(_buffer, _size, _lidx, &p->v.v[i3].v[i4]);
 		}
@@ -45648,7 +45656,7 @@ static int _serSysDecSQN_CarrierFreqListNR_r15_SQN_SystemInformationBlockType24_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNR_r15));
+	p->v.v = (struct SQN_CarrierFreqNR_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNR_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqNR_r15(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -45674,7 +45682,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType24_r15_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -45689,7 +45697,7 @@ static int _serSysDecSQN_PhysCellIdNR_r15_SQN_MTC_SSB2_LP_NR_r16_pci_List_r16_Dy
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_PhysCellIdNR_r15));
+	p->v.v = (SQN_PhysCellIdNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_PhysCellIdNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -45744,7 +45752,7 @@ static int _serSysDecSQN_WhiteCellListNR_r16_SQN_CarrierFreqNR_v1610_whiteCellLi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_PhysCellIdNR_r15));
+	p->v.v = (SQN_PhysCellIdNR_r15*)serMalloc(_mem, p->v.d * sizeof(SQN_PhysCellIdNR_r15));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		NTOH_16(p->v.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -45786,7 +45794,7 @@ static int _serSysDecSQN_CarrierFreqListNR_v1610_SQN_SystemInformationBlockType2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNR_v1610));
+	p->v.v = (struct SQN_CarrierFreqNR_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNR_v1610));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqNR_v1610(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -45824,7 +45832,7 @@ static int _serSysDecSQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_UAC_BarringPerCat_r15));
+	p->v.v = (struct SQN_UAC_BarringPerCat_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_UAC_BarringPerCat_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_UAC_BarringPerCat_r15(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -45844,7 +45852,7 @@ static int _serSysDecSQN_UAC_BarringPerPLMN_r15_uac_AC_BarringListType_r15_Value
 	}
 	if (d == SQN_UAC_BarringPerPLMN_r15_uac_AC_BarringListType_r15_uac_ExplicitAC_BarringList_r15) {
 		NTOH_32(p->uac_ExplicitAC_BarringList_r15.d, &_buffer[*_lidx], _lidx);
-		p->uac_ExplicitAC_BarringList_r15.v = serMalloc(_mem, p->uac_ExplicitAC_BarringList_r15.d * sizeof(struct SQN_UAC_BarringPerCat_r15));
+		p->uac_ExplicitAC_BarringList_r15.v = (struct SQN_UAC_BarringPerCat_r15*)serMalloc(_mem, p->uac_ExplicitAC_BarringList_r15.d * sizeof(struct SQN_UAC_BarringPerCat_r15));
 		for (size_t i3 = 0; i3 < p->uac_ExplicitAC_BarringList_r15.d; i3++) {
 			_serSysDecSQN_UAC_BarringPerCat_r15(_buffer, _size, _lidx, &p->uac_ExplicitAC_BarringList_r15.v[i3]);
 		}
@@ -45896,7 +45904,7 @@ static int _serSysDecSQN_UAC_BarringPerPLMN_List_r15_SQN_SystemInformationBlockT
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_UAC_BarringPerPLMN_r15));
+	p->v.v = (struct SQN_UAC_BarringPerPLMN_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_UAC_BarringPerPLMN_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_UAC_BarringPerPLMN_r15(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -45939,7 +45947,7 @@ static int _serSysDecSQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistIn
 	}
 	if (d == SQN_SystemInformationBlockType25_r15_uac_AC1_SelectAssistInfo_r15_individualPLMNList_r15) {
 		NTOH_32(p->individualPLMNList_r15.d, &_buffer[*_lidx], _lidx);
-		p->individualPLMNList_r15.v = serMalloc(_mem, p->individualPLMNList_r15.d * sizeof(SQN_UAC_AC1_SelectAssistInfo_r15_e));
+		p->individualPLMNList_r15.v = (SQN_UAC_AC1_SelectAssistInfo_r15_e*)serMalloc(_mem, p->individualPLMNList_r15.d * sizeof(SQN_UAC_AC1_SelectAssistInfo_r15_e));
 		for (size_t i2 = 0; i2 < p->individualPLMNList_r15.d; i2++) {
 			{
 				size_t _tmp;
@@ -45985,7 +45993,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType25_r15_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46015,7 +46023,7 @@ static int _serSysDecSQN_SystemInformationBlockType25_r15(const unsigned char* _
 	_serSysDecSQN_UAC_BarringPerCatList_r15_SQN_SystemInformationBlockType25_r15_uac_BarringForCommon_r15_Optional(_buffer, _size, _lidx, _mem, &p->uac_BarringForCommon_r15);
 	_serSysDecSQN_UAC_BarringPerPLMN_List_r15_SQN_SystemInformationBlockType25_r15_uac_BarringPerPLMN_List_r15_Optional(_buffer, _size, _lidx, _mem, &p->uac_BarringPerPLMN_List_r15);
 	NTOH_32(p->uac_BarringInfoSetList_r15.d, &_buffer[*_lidx], _lidx);
-	p->uac_BarringInfoSetList_r15.v = serMalloc(_mem, p->uac_BarringInfoSetList_r15.d * sizeof(struct SQN_UAC_BarringInfoSet_r15));
+	p->uac_BarringInfoSetList_r15.v = (struct SQN_UAC_BarringInfoSet_r15*)serMalloc(_mem, p->uac_BarringInfoSetList_r15.d * sizeof(struct SQN_UAC_BarringInfoSet_r15));
 	for (size_t i2 = 0; i2 < p->uac_BarringInfoSetList_r15.d; i2++) {
 		_serSysDecSQN_UAC_BarringInfoSet_r15(_buffer, _size, _lidx, &p->uac_BarringInfoSetList_r15.v[i2]);
 	}
@@ -46033,7 +46041,7 @@ static int _serSysDecSQN_SL_InterFreqInfoListV2X_r14_SQN_SystemInformationBlockT
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_InterFreqInfoV2X_r14));
+	p->v.v = (struct SQN_SL_InterFreqInfoV2X_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_InterFreqInfoV2X_r14));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_InterFreqInfoV2X_r14(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -46049,12 +46057,12 @@ static int _serSysDecSQN_SL_PPPP_TxConfigIndex_r15(const unsigned char* _buffer,
 	NTOH_8(p->defaultTxConfigIndex_r15, &_buffer[*_lidx], _lidx);
 	NTOH_8(p->cbr_ConfigIndex_r15, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->tx_ConfigIndexList_r15.d, &_buffer[*_lidx], _lidx);
-	p->tx_ConfigIndexList_r15.v = serMalloc(_mem, p->tx_ConfigIndexList_r15.d * sizeof(SQN_Tx_ConfigIndex_r14));
+	p->tx_ConfigIndexList_r15.v = (SQN_Tx_ConfigIndex_r14*)serMalloc(_mem, p->tx_ConfigIndexList_r15.d * sizeof(SQN_Tx_ConfigIndex_r14));
 	for (size_t i3 = 0; i3 < p->tx_ConfigIndexList_r15.d; i3++) {
 		NTOH_8(p->tx_ConfigIndexList_r15.v[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->mcs_PSSCH_RangeList_r15.d, &_buffer[*_lidx], _lidx);
-	p->mcs_PSSCH_RangeList_r15.v = serMalloc(_mem, p->mcs_PSSCH_RangeList_r15.d * sizeof(struct SQN_MCS_PSSCH_Range_r15));
+	p->mcs_PSSCH_RangeList_r15.v = (struct SQN_MCS_PSSCH_Range_r15*)serMalloc(_mem, p->mcs_PSSCH_RangeList_r15.d * sizeof(struct SQN_MCS_PSSCH_Range_r15));
 	for (size_t i3 = 0; i3 < p->mcs_PSSCH_RangeList_r15.d; i3++) {
 		_serSysDecSQN_MCS_PSSCH_Range_r15(_buffer, _size, _lidx, &p->mcs_PSSCH_RangeList_r15.v[i3]);
 	}
@@ -46069,7 +46077,7 @@ static int _serSysDecSQN_SL_CBR_PPPP_TxConfigList_r15_SQN_SystemInformationBlock
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPP_TxConfigIndex_r15));
+	p->v.v = (struct SQN_SL_PPPP_TxConfigIndex_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPP_TxConfigIndex_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_PPPP_TxConfigIndex_r15(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -46084,7 +46092,7 @@ static int _serSysDecSQN_SL_DestinationInfoList_r12_SQN_SL_PPPR_Dest_CarrierFreq
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_SL_DestinationIdentity_r12));
+	p->v.v = (SQN_SL_DestinationIdentity_r12*)serMalloc(_mem, p->v.d * sizeof(SQN_SL_DestinationIdentity_r12));
 	for (size_t i3 = 0; i3 < p->v.d; i3++) {
 		for (size_t i4 = 0; i4 < 24; i4++) {
 			NTOH_8(p->v.v[i3][i4], &_buffer[*_lidx], _lidx);
@@ -46099,12 +46107,12 @@ static int _serSysDecSQN_SL_AllowedCarrierFreqList_r15(const unsigned char* _buf
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->allowedCarrierFreqSet1.d, &_buffer[*_lidx], _lidx);
-	p->allowedCarrierFreqSet1.v = serMalloc(_mem, p->allowedCarrierFreqSet1.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
+	p->allowedCarrierFreqSet1.v = (SQN_ARFCN_ValueEUTRA_r9*)serMalloc(_mem, p->allowedCarrierFreqSet1.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
 	for (size_t i3 = 0; i3 < p->allowedCarrierFreqSet1.d; i3++) {
 		NTOH_32(p->allowedCarrierFreqSet1.v[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->allowedCarrierFreqSet2.d, &_buffer[*_lidx], _lidx);
-	p->allowedCarrierFreqSet2.v = serMalloc(_mem, p->allowedCarrierFreqSet2.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
+	p->allowedCarrierFreqSet2.v = (SQN_ARFCN_ValueEUTRA_r9*)serMalloc(_mem, p->allowedCarrierFreqSet2.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
 	for (size_t i3 = 0; i3 < p->allowedCarrierFreqSet2.d; i3++) {
 		NTOH_32(p->allowedCarrierFreqSet2.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -46140,7 +46148,7 @@ static int _serSysDecSQN_SL_PPPR_Dest_CarrierFreqList_r15_SQN_SL_V2X_PacketDupli
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPR_Dest_CarrierFreq));
+	p->v.v = (struct SQN_SL_PPPR_Dest_CarrierFreq*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_PPPR_Dest_CarrierFreq));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_PPPR_Dest_CarrierFreq(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -46176,7 +46184,7 @@ static int _serSysDecSQN_SL_V2X_SyncFreqList_r15_SQN_SystemInformationBlockType2
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
+	p->v.v = (SQN_ARFCN_ValueEUTRA_r9*)serMalloc(_mem, p->v.d * sizeof(SQN_ARFCN_ValueEUTRA_r9));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_32(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46206,7 +46214,7 @@ static int _serSysDecSQN_SL_V2X_FreqSelectionConfigList_r15_SQN_SystemInformatio
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_V2X_FreqSelectionConfig_r15));
+	p->v.v = (struct SQN_SL_V2X_FreqSelectionConfig_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SL_V2X_FreqSelectionConfig_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_SL_V2X_FreqSelectionConfig_r15(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -46232,7 +46240,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType26_r15_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46285,7 +46293,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType26a_r16_lateNonC
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46298,12 +46306,12 @@ static int _serSysDecSQN_SystemInformationBlockType26a_r16(const unsigned char* 
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->plmn_InfoList_r16.d, &_buffer[*_lidx], _lidx);
-	p->plmn_InfoList_r16.v = serMalloc(_mem, p->plmn_InfoList_r16.d * sizeof(struct SQN_PLMN_Info_r16));
+	p->plmn_InfoList_r16.v = (struct SQN_PLMN_Info_r16*)serMalloc(_mem, p->plmn_InfoList_r16.d * sizeof(struct SQN_PLMN_Info_r16));
 	for (size_t i2 = 0; i2 < p->plmn_InfoList_r16.d; i2++) {
 		_serSysDecSQN_PLMN_Info_r16(_buffer, _size, _lidx, &p->plmn_InfoList_r16.v[i2]);
 	}
 	NTOH_32(p->bandListENDC_r16.d, &_buffer[*_lidx], _lidx);
-	p->bandListENDC_r16.v = serMalloc(_mem, p->bandListENDC_r16.d * sizeof(SQN_FreqBandIndicatorNR_r15));
+	p->bandListENDC_r16.v = (SQN_FreqBandIndicatorNR_r15*)serMalloc(_mem, p->bandListENDC_r16.d * sizeof(SQN_FreqBandIndicatorNR_r15));
 	for (size_t i2 = 0; i2 < p->bandListENDC_r16.d; i2++) {
 		NTOH_16(p->bandListENDC_r16.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46333,7 +46341,7 @@ static int _serSysDecSQN_CarrierFreqListNBIOT_r16_SQN_SystemInformationBlockType
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNBIOT_r16));
+	p->v.v = (struct SQN_CarrierFreqNBIOT_r16*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CarrierFreqNBIOT_r16));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CarrierFreqNBIOT_r16(_buffer, _size, _lidx, &p->v.v[i2]);
 	}
@@ -46348,7 +46356,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType27_r16_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46373,7 +46381,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType28_r16_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46392,7 +46400,7 @@ static int _serSysDecSQN_SystemInformationBlockType28_r16(const unsigned char* _
 		p->segmentType_r16 = (SQN_SystemInformationBlockType28_r16_segmentType_r16_e)_tmp;
 	}
 	NTOH_32(p->segmentContainer_r16.d, &_buffer[*_lidx], _lidx);
-	p->segmentContainer_r16.v = serMalloc(_mem, p->segmentContainer_r16.d * sizeof(OCTET_STRING_ELEMENT));
+	p->segmentContainer_r16.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->segmentContainer_r16.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->segmentContainer_r16.d; i2++) {
 		NTOH_8(p->segmentContainer_r16.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46709,7 +46717,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType29_r16_lateNonCr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46865,7 +46873,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformation_v8a0_IEs_lateNonCritical
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -46922,7 +46930,7 @@ static int _serSysDecSQN_SystemInformation_r8_IEs(const unsigned char* _buffer, 
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->sib_TypeAndInfo.d, &_buffer[*_lidx], _lidx);
-	p->sib_TypeAndInfo.v = serMalloc(_mem, p->sib_TypeAndInfo.d * sizeof(struct SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s));
+	p->sib_TypeAndInfo.v = (struct SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s*)serMalloc(_mem, p->sib_TypeAndInfo.d * sizeof(struct SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s));
 	for (size_t i1 = 0; i1 < p->sib_TypeAndInfo.d; i1++) {
 		_serSysDecSQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s(_buffer, _size, _lidx, _mem, &p->sib_TypeAndInfo.v[i1]);
 	}
@@ -46938,7 +46946,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockPos_r15_lateNonCriti
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -46951,7 +46959,7 @@ static int _serSysDecSQN_SystemInformationBlockPos_r15(const unsigned char* _buf
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->assistanceDataSIB_Element_r15.d, &_buffer[*_lidx], _lidx);
-	p->assistanceDataSIB_Element_r15.v = serMalloc(_mem, p->assistanceDataSIB_Element_r15.d * sizeof(OCTET_STRING_ELEMENT));
+	p->assistanceDataSIB_Element_r15.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->assistanceDataSIB_Element_r15.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i2 = 0; i2 < p->assistanceDataSIB_Element_r15.d; i2++) {
 		NTOH_8(p->assistanceDataSIB_Element_r15.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -47097,7 +47105,7 @@ static int _serSysDecOCTET_STRING_SQN_PosSystemInformation_r15_IEs_lateNonCritic
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -47133,7 +47141,7 @@ static int _serSysDecSQN_PosSystemInformation_r15_IEs(const unsigned char* _buff
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->posSIB_TypeAndInfo_r15.d, &_buffer[*_lidx], _lidx);
-	p->posSIB_TypeAndInfo_r15.v = serMalloc(_mem, p->posSIB_TypeAndInfo_r15.d * sizeof(struct SQN_PosSystemInformation_r15_IEs_posSIB_TypeAndInfo_r15_s));
+	p->posSIB_TypeAndInfo_r15.v = (struct SQN_PosSystemInformation_r15_IEs_posSIB_TypeAndInfo_r15_s*)serMalloc(_mem, p->posSIB_TypeAndInfo_r15.d * sizeof(struct SQN_PosSystemInformation_r15_IEs_posSIB_TypeAndInfo_r15_s));
 	for (size_t i1 = 0; i1 < p->posSIB_TypeAndInfo_r15.d; i1++) {
 		_serSysDecSQN_PosSystemInformation_r15_IEs_posSIB_TypeAndInfo_r15_s(_buffer, _size, _lidx, _mem, &p->posSIB_TypeAndInfo_r15.v[i1]);
 	}
@@ -47242,7 +47250,7 @@ static int _serSysDecSQN_SystemInformationBlockType1_cellAccessRelatedInfo(const
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->plmn_IdentityList.d, &_buffer[*_lidx], _lidx);
-	p->plmn_IdentityList.v = serMalloc(_mem, p->plmn_IdentityList.d * sizeof(struct SQN_PLMN_IdentityInfo));
+	p->plmn_IdentityList.v = (struct SQN_PLMN_IdentityInfo*)serMalloc(_mem, p->plmn_IdentityList.d * sizeof(struct SQN_PLMN_IdentityInfo));
 	for (size_t i1 = 0; i1 < p->plmn_IdentityList.d; i1++) {
 		_serSysDecSQN_PLMN_IdentityInfo(_buffer, _size, _lidx, _mem, &p->plmn_IdentityList.v[i1]);
 	}
@@ -47310,7 +47318,7 @@ static int _serSysDecSQN_SchedulingInfo(const unsigned char* _buffer, size_t _si
 		p->si_Periodicity = (SQN_SI_Periodicity_r12_e)_tmp;
 	}
 	NTOH_32(p->sib_MappingInfo.d, &_buffer[*_lidx], _lidx);
-	p->sib_MappingInfo.v = serMalloc(_mem, p->sib_MappingInfo.d * sizeof(SQN_SIB_Type_e));
+	p->sib_MappingInfo.v = (SQN_SIB_Type_e*)serMalloc(_mem, p->sib_MappingInfo.d * sizeof(SQN_SIB_Type_e));
 	for (size_t i2 = 0; i2 < p->sib_MappingInfo.d; i2++) {
 		{
 			size_t _tmp;
@@ -47340,7 +47348,7 @@ static int _serSysDecOCTET_STRING_SQN_SystemInformationBlockType1_v890_IEs_lateN
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -47545,7 +47553,7 @@ static int _serSysDecSQN_SchedulingInfoList_BR_r13_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SchedulingInfo_BR_r13));
+	p->v.v = (struct SQN_SchedulingInfo_BR_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SchedulingInfo_BR_r13));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_SchedulingInfo_BR_r13(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -47633,7 +47641,7 @@ static int _serSysDecSQN_SystemInfoValueTagList_r13_SQN_SystemInformationBlockTy
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_SystemInfoValueTagSI_r13));
+	p->v.v = (SQN_SystemInfoValueTagSI_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_SystemInfoValueTagSI_r13));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -47894,7 +47902,7 @@ static int _serSysDecSQN_CellAccessRelatedInfo_r14(const unsigned char* _buffer,
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->plmn_IdentityList_r14.d, &_buffer[*_lidx], _lidx);
-	p->plmn_IdentityList_r14.v = serMalloc(_mem, p->plmn_IdentityList_r14.d * sizeof(struct SQN_PLMN_IdentityInfo));
+	p->plmn_IdentityList_r14.v = (struct SQN_PLMN_IdentityInfo*)serMalloc(_mem, p->plmn_IdentityList_r14.d * sizeof(struct SQN_PLMN_IdentityInfo));
 	for (size_t i2 = 0; i2 < p->plmn_IdentityList_r14.d; i2++) {
 		_serSysDecSQN_PLMN_IdentityInfo(_buffer, _size, _lidx, _mem, &p->plmn_IdentityList_r14.v[i2]);
 	}
@@ -47915,7 +47923,7 @@ static int _serSysDecSQN_CellAccessRelatedInfo_r14_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CellAccessRelatedInfo_r14));
+	p->v.v = (struct SQN_CellAccessRelatedInfo_r14*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CellAccessRelatedInfo_r14));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_CellAccessRelatedInfo_r14(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -48038,7 +48046,7 @@ static int _serSysDecSQN_PLMN_IdentityList_v1530_SQN_SystemInformationBlockType1
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo_v1530));
+	p->v.v = (struct SQN_PLMN_IdentityInfo_v1530*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo_v1530));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_PLMN_IdentityInfo_v1530(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -48135,7 +48143,7 @@ static int _serSysDecSQN_PosSchedulingInfo_r15(const unsigned char* _buffer, siz
 		p->posSI_Periodicity_r15 = (SQN_PosSchedulingInfo_r15_posSI_Periodicity_r15_e)_tmp;
 	}
 	NTOH_32(p->posSIB_MappingInfo_r15.d, &_buffer[*_lidx], _lidx);
-	p->posSIB_MappingInfo_r15.v = serMalloc(_mem, p->posSIB_MappingInfo_r15.d * sizeof(struct SQN_PosSIB_Type_r15));
+	p->posSIB_MappingInfo_r15.v = (struct SQN_PosSIB_Type_r15*)serMalloc(_mem, p->posSIB_MappingInfo_r15.d * sizeof(struct SQN_PosSIB_Type_r15));
 	for (size_t i2 = 0; i2 < p->posSIB_MappingInfo_r15.d; i2++) {
 		_serSysDecSQN_PosSIB_Type_r15(_buffer, _size, _lidx, &p->posSIB_MappingInfo_r15.v[i2]);
 	}
@@ -48150,7 +48158,7 @@ static int _serSysDecSQN_PosSchedulingInfoList_r15_SQN_SystemInformationBlockTyp
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PosSchedulingInfo_r15));
+	p->v.v = (struct SQN_PosSchedulingInfo_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PosSchedulingInfo_r15));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_PosSchedulingInfo_r15(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -48255,7 +48263,7 @@ static int _serSysDecSQN_CellAccessRelatedInfo_5GC_r15(const unsigned char* _buf
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->plmn_IdentityList_r15.d, &_buffer[*_lidx], _lidx);
-	p->plmn_IdentityList_r15.v = serMalloc(_mem, p->plmn_IdentityList_r15.d * sizeof(struct SQN_PLMN_IdentityInfo_r15));
+	p->plmn_IdentityList_r15.v = (struct SQN_PLMN_IdentityInfo_r15*)serMalloc(_mem, p->plmn_IdentityList_r15.d * sizeof(struct SQN_PLMN_IdentityInfo_r15));
 	for (size_t i2 = 0; i2 < p->plmn_IdentityList_r15.d; i2++) {
 		_serSysDecSQN_PLMN_IdentityInfo_r15(_buffer, _size, _lidx, _mem, &p->plmn_IdentityList_r15.v[i2]);
 	}
@@ -48283,7 +48291,7 @@ static int _serSysDecSQN_SystemInformationBlockType1_v1530_IEs_cellAccessRelated
 		p->cellBarred_5GC_CRS_r15 = (SQN_SystemInformationBlockType1_v1530_IEs_cellAccessRelatedInfo_5GC_r15_cellBarred_5GC_CRS_r15_e)_tmp;
 	}
 	NTOH_32(p->cellAccessRelatedInfoList_5GC_r15.d, &_buffer[*_lidx], _lidx);
-	p->cellAccessRelatedInfoList_5GC_r15.v = serMalloc(_mem, p->cellAccessRelatedInfoList_5GC_r15.d * sizeof(struct SQN_CellAccessRelatedInfo_5GC_r15));
+	p->cellAccessRelatedInfoList_5GC_r15.v = (struct SQN_CellAccessRelatedInfo_5GC_r15*)serMalloc(_mem, p->cellAccessRelatedInfoList_5GC_r15.d * sizeof(struct SQN_CellAccessRelatedInfo_5GC_r15));
 	for (size_t i1 = 0; i1 < p->cellAccessRelatedInfoList_5GC_r15.d; i1++) {
 		_serSysDecSQN_CellAccessRelatedInfo_5GC_r15(_buffer, _size, _lidx, _mem, &p->cellAccessRelatedInfoList_5GC_r15.v[i1]);
 	}
@@ -48455,7 +48463,7 @@ static int _serSysDecSQN_PLMN_IdentityList_v1610_SQN_SystemInformationBlockType1
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo_v1610));
+	p->v.v = (struct SQN_PLMN_IdentityInfo_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PLMN_IdentityInfo_v1610));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_PLMN_IdentityInfo_v1610(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -48792,7 +48800,7 @@ static int _serSysDecSQN_SystemInformationBlockType1(const unsigned char* _buffe
 	_serSysDecSQN_P_Max_SQN_SystemInformationBlockType1_p_Max_Optional(_buffer, _size, _lidx, &p->p_Max);
 	NTOH_8(p->freqBandIndicator, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->schedulingInfoList.d, &_buffer[*_lidx], _lidx);
-	p->schedulingInfoList.v = serMalloc(_mem, p->schedulingInfoList.d * sizeof(struct SQN_SchedulingInfo));
+	p->schedulingInfoList.v = (struct SQN_SchedulingInfo*)serMalloc(_mem, p->schedulingInfoList.d * sizeof(struct SQN_SchedulingInfo));
 	for (size_t i1 = 0; i1 < p->schedulingInfoList.d; i1++) {
 		_serSysDecSQN_SchedulingInfo(_buffer, _size, _lidx, _mem, &p->schedulingInfoList.v[i1]);
 	}
@@ -48907,7 +48915,7 @@ static int _serSysDecSI_List_Type_SIs_Optional(const unsigned char* _buffer, siz
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_BCCH_DL_SCH_Message));
+	p->v.v = (struct SQN_BCCH_DL_SCH_Message*)serMalloc(_mem, p->v.d * sizeof(struct SQN_BCCH_DL_SCH_Message));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_BCCH_DL_SCH_Message(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -48922,10 +48930,10 @@ static int _serSysDecSegmentedSI_List_Type_SegmentedSIs_Optional(const unsigned 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SI_List_Type));
+	p->v.v = (SI_List_Type*)serMalloc(_mem, p->v.d * sizeof(SI_List_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_32(p->v.v[i1].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i1].v = serMalloc(_mem, p->v.v[i1].d * sizeof(struct SQN_BCCH_DL_SCH_Message));
+		p->v.v[i1].v = (struct SQN_BCCH_DL_SCH_Message*)serMalloc(_mem, p->v.v[i1].d * sizeof(struct SQN_BCCH_DL_SCH_Message));
 		for (size_t i2 = 0; i2 < p->v.v[i1].d; i2++) {
 			_serSysDecSQN_BCCH_DL_SCH_Message(_buffer, _size, _lidx, _mem, &p->v.v[i1].v[i2]);
 		}
@@ -49136,7 +49144,7 @@ static int _serSysDecSI_SubframeOffsetList_Type_SubframeOffsetList_Optional(cons
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(int32_t));
+	p->v.v = (int32_t*)serMalloc(_mem, p->v.d * sizeof(int32_t));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_32(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -49276,7 +49284,7 @@ static int _serSysDecBR_SI_List_Type_SIs_Optional(const unsigned char* _buffer, 
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_BCCH_DL_SCH_Message_BR));
+	p->v.v = (struct SQN_BCCH_DL_SCH_Message_BR*)serMalloc(_mem, p->v.d * sizeof(struct SQN_BCCH_DL_SCH_Message_BR));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_BCCH_DL_SCH_Message_BR(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -49291,10 +49299,10 @@ static int _serSysDecBR_SegmentedSI_List_Type_SegmentedSIs_Optional(const unsign
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BR_SI_List_Type));
+	p->v.v = (BR_SI_List_Type*)serMalloc(_mem, p->v.d * sizeof(BR_SI_List_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_32(p->v.v[i1].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i1].v = serMalloc(_mem, p->v.v[i1].d * sizeof(struct SQN_BCCH_DL_SCH_Message_BR));
+		p->v.v[i1].v = (struct SQN_BCCH_DL_SCH_Message_BR*)serMalloc(_mem, p->v.v[i1].d * sizeof(struct SQN_BCCH_DL_SCH_Message_BR));
 		for (size_t i2 = 0; i2 < p->v.v[i1].d; i2++) {
 			_serSysDecSQN_BCCH_DL_SCH_Message_BR(_buffer, _size, _lidx, _mem, &p->v.v[i1].v[i2]);
 		}
@@ -49915,7 +49923,7 @@ static int _serSysDecSQN_RSRP_ThresholdsPrachInfoList_r13_SQN_PRACH_Config_v1310
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_RSRP_Range));
+	p->v.v = (SQN_RSRP_Range*)serMalloc(_mem, p->v.d * sizeof(SQN_RSRP_Range));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -49990,7 +49998,7 @@ static int _serSysDecSQN_PRACH_ParametersListCE_r13_SQN_PRACH_Config_v1310_prach
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PRACH_ParametersCE_r13));
+	p->v.v = (struct SQN_PRACH_ParametersCE_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PRACH_ParametersCE_r13));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_PRACH_ParametersCE_r13(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -50226,7 +50234,7 @@ static int _serSysDecUint16_t_SQN_PUCCH_Format3_Conf_r13_n3PUCCH_AN_List_r13_Dyn
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(uint16_t));
+	p->v.v = (uint16_t*)serMalloc(_mem, p->v.d * sizeof(uint16_t));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_16(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -50239,7 +50247,7 @@ static int _serSysDecSQN_PUCCH_Format3_Conf_r13_twoAntennaPortActivatedPUCCH_For
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->n3PUCCH_AN_ListP1_r13.d, &_buffer[*_lidx], _lidx);
-	p->n3PUCCH_AN_ListP1_r13.v = serMalloc(_mem, p->n3PUCCH_AN_ListP1_r13.d * sizeof(uint16_t));
+	p->n3PUCCH_AN_ListP1_r13.v = (uint16_t*)serMalloc(_mem, p->n3PUCCH_AN_ListP1_r13.d * sizeof(uint16_t));
 	for (size_t i1 = 0; i1 < p->n3PUCCH_AN_ListP1_r13.d; i1++) {
 		NTOH_16(p->n3PUCCH_AN_ListP1_r13.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -50303,10 +50311,10 @@ static int _serSysDecSQN_PUCCH_ConfigDedicated_v1020_pucch_Format_r10_channelSel
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->n1PUCCH_AN_CS_List_r10.d, &_buffer[*_lidx], _lidx);
-	p->n1PUCCH_AN_CS_List_r10.v = serMalloc(_mem, p->n1PUCCH_AN_CS_List_r10.d * sizeof(SQN_N1PUCCH_AN_CS_r10));
+	p->n1PUCCH_AN_CS_List_r10.v = (SQN_N1PUCCH_AN_CS_r10*)serMalloc(_mem, p->n1PUCCH_AN_CS_List_r10.d * sizeof(SQN_N1PUCCH_AN_CS_r10));
 	for (size_t i1 = 0; i1 < p->n1PUCCH_AN_CS_List_r10.d; i1++) {
 		NTOH_32(p->n1PUCCH_AN_CS_List_r10.v[i1].d, &_buffer[*_lidx], _lidx);
-		p->n1PUCCH_AN_CS_List_r10.v[i1].v = serMalloc(_mem, p->n1PUCCH_AN_CS_List_r10.v[i1].d * sizeof(uint16_t));
+		p->n1PUCCH_AN_CS_List_r10.v[i1].v = (uint16_t*)serMalloc(_mem, p->n1PUCCH_AN_CS_List_r10.v[i1].d * sizeof(uint16_t));
 		for (size_t i2 = 0; i2 < p->n1PUCCH_AN_CS_List_r10.v[i1].d; i2++) {
 			NTOH_16(p->n1PUCCH_AN_CS_List_r10.v[i1].v[i2], &_buffer[*_lidx], _lidx);
 		}
@@ -50475,7 +50483,7 @@ static int _serSysDecSQN_PUCCH_ConfigDedicated_v1130_n1PUCCH_AN_CS_v1130_setup(c
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->n1PUCCH_AN_CS_ListP1_r11.d, &_buffer[*_lidx], _lidx);
-	p->n1PUCCH_AN_CS_ListP1_r11.v = serMalloc(_mem, p->n1PUCCH_AN_CS_ListP1_r11.d * sizeof(uint16_t));
+	p->n1PUCCH_AN_CS_ListP1_r11.v = (uint16_t*)serMalloc(_mem, p->n1PUCCH_AN_CS_ListP1_r11.d * sizeof(uint16_t));
 	for (size_t i1 = 0; i1 < p->n1PUCCH_AN_CS_ListP1_r11.d; i1++) {
 		NTOH_16(p->n1PUCCH_AN_CS_ListP1_r11.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -50733,7 +50741,7 @@ static int _serSysDecUint16_t_SQN_PUCCH_ConfigDedicated_r13_pucch_Format_r13_for
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(uint16_t));
+	p->v.v = (uint16_t*)serMalloc(_mem, p->v.d * sizeof(uint16_t));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_16(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -50746,7 +50754,7 @@ static int _serSysDecSQN_PUCCH_ConfigDedicated_r13_pucch_Format_r13_format3_r13_
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->n3PUCCH_AN_ListP1_r13.d, &_buffer[*_lidx], _lidx);
-	p->n3PUCCH_AN_ListP1_r13.v = serMalloc(_mem, p->n3PUCCH_AN_ListP1_r13.d * sizeof(uint16_t));
+	p->n3PUCCH_AN_ListP1_r13.v = (uint16_t*)serMalloc(_mem, p->n3PUCCH_AN_ListP1_r13.d * sizeof(uint16_t));
 	for (size_t i1 = 0; i1 < p->n3PUCCH_AN_ListP1_r13.d; i1++) {
 		NTOH_16(p->n3PUCCH_AN_ListP1_r13.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -50810,16 +50818,16 @@ static int _serSysDecSQN_PUCCH_ConfigDedicated_r13_pucch_Format_r13_channelSelec
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->n1PUCCH_AN_CS_List_r13.d, &_buffer[*_lidx], _lidx);
-	p->n1PUCCH_AN_CS_List_r13.v = serMalloc(_mem, p->n1PUCCH_AN_CS_List_r13.d * sizeof(SQN_N1PUCCH_AN_CS_r10));
+	p->n1PUCCH_AN_CS_List_r13.v = (SQN_N1PUCCH_AN_CS_r10*)serMalloc(_mem, p->n1PUCCH_AN_CS_List_r13.d * sizeof(SQN_N1PUCCH_AN_CS_r10));
 	for (size_t i1 = 0; i1 < p->n1PUCCH_AN_CS_List_r13.d; i1++) {
 		NTOH_32(p->n1PUCCH_AN_CS_List_r13.v[i1].d, &_buffer[*_lidx], _lidx);
-		p->n1PUCCH_AN_CS_List_r13.v[i1].v = serMalloc(_mem, p->n1PUCCH_AN_CS_List_r13.v[i1].d * sizeof(uint16_t));
+		p->n1PUCCH_AN_CS_List_r13.v[i1].v = (uint16_t*)serMalloc(_mem, p->n1PUCCH_AN_CS_List_r13.v[i1].d * sizeof(uint16_t));
 		for (size_t i2 = 0; i2 < p->n1PUCCH_AN_CS_List_r13.v[i1].d; i2++) {
 			NTOH_16(p->n1PUCCH_AN_CS_List_r13.v[i1].v[i2], &_buffer[*_lidx], _lidx);
 		}
 	}
 	NTOH_32(p->dummy1.d, &_buffer[*_lidx], _lidx);
-	p->dummy1.v = serMalloc(_mem, p->dummy1.d * sizeof(uint16_t));
+	p->dummy1.v = (uint16_t*)serMalloc(_mem, p->dummy1.d * sizeof(uint16_t));
 	for (size_t i1 = 0; i1 < p->dummy1.d; i1++) {
 		NTOH_16(p->dummy1.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -50894,7 +50902,7 @@ static int _serSysDecSQN_Format4_resource_r13_SQN_PUCCH_ConfigDedicated_r13_pucc
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_Format4_resource_r13));
+	p->v.v = (struct SQN_Format4_resource_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_Format4_resource_r13));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_Format4_resource_r13(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -52424,7 +52432,7 @@ static int _serSysDecSQN_SRS_ConfigAp_r10_SQN_SoundingRS_UL_ConfigDedicatedAperi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_SRS_ConfigAp_r10));
+	p->v.v = (struct SQN_SRS_ConfigAp_r10*)serMalloc(_mem, p->v.d * sizeof(struct SQN_SRS_ConfigAp_r10));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_SRS_ConfigAp_r10(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -53312,7 +53320,7 @@ static int _serSysDecSQN_CQI_ReportPeriodicProcExtToReleaseList_r11_SQN_CQI_Repo
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CQI_ReportPeriodicProcExtId_r11));
+	p->v.v = (SQN_CQI_ReportPeriodicProcExtId_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_CQI_ReportPeriodicProcExtId_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -53560,7 +53568,7 @@ static int _serSysDecSQN_CQI_ReportPeriodicProcExtToAddModList_r11_SQN_CQI_Repor
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CQI_ReportPeriodicProcExt_r11));
+	p->v.v = (struct SQN_CQI_ReportPeriodicProcExt_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CQI_ReportPeriodicProcExt_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_CQI_ReportPeriodicProcExt_r11(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -53586,7 +53594,7 @@ static int _serSysDecSQN_CSI_IM_ConfigToReleaseList_r11_SQN_CQI_ReportBoth_r11_c
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r11));
+	p->v.v = (SQN_CSI_IM_ConfigId_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -53624,7 +53632,7 @@ static int _serSysDecSQN_CSI_IM_ConfigToAddModList_r11_SQN_CQI_ReportBoth_r11_cs
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_IM_Config_r11));
+	p->v.v = (struct SQN_CSI_IM_Config_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_IM_Config_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_CSI_IM_Config_r11(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -53639,7 +53647,7 @@ static int _serSysDecSQN_CSI_ProcessToReleaseList_r11_SQN_CQI_ReportBoth_r11_csi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_ProcessId_r11));
+	p->v.v = (SQN_CSI_ProcessId_r11*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_ProcessId_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -53653,7 +53661,7 @@ static int _serSysDecSQN_P_C_AndCBSR_r11(const unsigned char* _buffer, size_t _s
 
 	NTOH_8(p->p_C_r11, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->codebookSubsetRestriction_r11.d, &_buffer[*_lidx], _lidx);
-	p->codebookSubsetRestriction_r11.v = serMalloc(_mem, p->codebookSubsetRestriction_r11.d * sizeof(BIT_STRING_ELEMENT));
+	p->codebookSubsetRestriction_r11.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->codebookSubsetRestriction_r11.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->codebookSubsetRestriction_r11.d; i3++) {
 		NTOH_8(p->codebookSubsetRestriction_r11.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -53771,7 +53779,7 @@ static int _serSysDecSQN_CSI_Process_r11_csi_IM_ConfigIdList_r12_Value(const uns
 	}
 	if (d == SQN_CSI_Process_r11_csi_IM_ConfigIdList_r12_setup) {
 		NTOH_32(p->setup.d, &_buffer[*_lidx], _lidx);
-		p->setup.v = serMalloc(_mem, p->setup.d * sizeof(SQN_CSI_IM_ConfigId_r12));
+		p->setup.v = (SQN_CSI_IM_ConfigId_r12*)serMalloc(_mem, p->setup.d * sizeof(SQN_CSI_IM_ConfigId_r12));
 		for (size_t i2 = 0; i2 < p->setup.d; i2++) {
 			NTOH_8(p->setup.v[i2], &_buffer[*_lidx], _lidx);
 		}
@@ -53949,12 +53957,12 @@ static int _serSysDecSQN_P_C_AndCBSR_r13_cbsr_Selection_r13_nonPrecoded_r13(cons
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->codebookSubsetRestriction1_r13.d, &_buffer[*_lidx], _lidx);
-	p->codebookSubsetRestriction1_r13.v = serMalloc(_mem, p->codebookSubsetRestriction1_r13.d * sizeof(BIT_STRING_ELEMENT));
+	p->codebookSubsetRestriction1_r13.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->codebookSubsetRestriction1_r13.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->codebookSubsetRestriction1_r13.d; i3++) {
 		NTOH_8(p->codebookSubsetRestriction1_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->codebookSubsetRestriction2_r13.d, &_buffer[*_lidx], _lidx);
-	p->codebookSubsetRestriction2_r13.v = serMalloc(_mem, p->codebookSubsetRestriction2_r13.d * sizeof(BIT_STRING_ELEMENT));
+	p->codebookSubsetRestriction2_r13.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->codebookSubsetRestriction2_r13.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->codebookSubsetRestriction2_r13.d; i3++) {
 		NTOH_8(p->codebookSubsetRestriction2_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -53967,7 +53975,7 @@ static int _serSysDecSQN_P_C_AndCBSR_r13_cbsr_Selection_r13_beamformedK1a_r13(co
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->codebookSubsetRestriction3_r13.d, &_buffer[*_lidx], _lidx);
-	p->codebookSubsetRestriction3_r13.v = serMalloc(_mem, p->codebookSubsetRestriction3_r13.d * sizeof(BIT_STRING_ELEMENT));
+	p->codebookSubsetRestriction3_r13.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->codebookSubsetRestriction3_r13.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->codebookSubsetRestriction3_r13.d; i3++) {
 		NTOH_8(p->codebookSubsetRestriction3_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -53980,7 +53988,7 @@ static int _serSysDecSQN_P_C_AndCBSR_r13_cbsr_Selection_r13_beamformedKN_r13(con
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->codebookSubsetRestriction_r13.d, &_buffer[*_lidx], _lidx);
-	p->codebookSubsetRestriction_r13.v = serMalloc(_mem, p->codebookSubsetRestriction_r13.d * sizeof(BIT_STRING_ELEMENT));
+	p->codebookSubsetRestriction_r13.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->codebookSubsetRestriction_r13.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->codebookSubsetRestriction_r13.d; i3++) {
 		NTOH_8(p->codebookSubsetRestriction_r13.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -54039,7 +54047,7 @@ static int _serSysDecSQN_P_C_AndCBSR_Pair_r13_SQN_CSI_RS_ConfigNonPrecoded_r13_p
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_P_C_AndCBSR_r13));
+	p->v.v = (struct SQN_P_C_AndCBSR_r13*)serMalloc(_mem, p->v.d * sizeof(struct SQN_P_C_AndCBSR_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_P_C_AndCBSR_r13(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -54084,7 +54092,7 @@ static int _serSysDecSQN_CSI_IM_ConfigId_r13_SQN_CSI_RS_ConfigNonPrecoded_r13_cs
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r13));
+	p->v.v = (SQN_CSI_IM_ConfigId_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54149,7 +54157,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZP_EMIMO_r13_setup(const unsigned char* _
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->nzp_resourceConfigList_r13.d, &_buffer[*_lidx], _lidx);
-	p->nzp_resourceConfigList_r13.v = serMalloc(_mem, p->nzp_resourceConfigList_r13.d * sizeof(struct SQN_NZP_ResourceConfig_r13));
+	p->nzp_resourceConfigList_r13.v = (struct SQN_NZP_ResourceConfig_r13*)serMalloc(_mem, p->nzp_resourceConfigList_r13.d * sizeof(struct SQN_NZP_ResourceConfig_r13));
 	for (size_t i2 = 0; i2 < p->nzp_resourceConfigList_r13.d; i2++) {
 		_serSysDecSQN_NZP_ResourceConfig_r13(_buffer, _size, _lidx, &p->nzp_resourceConfigList_r13.v[i2]);
 	}
@@ -54230,7 +54238,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZPId_r13_SQN_CSI_RS_ConfigBeamformed_r13_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigNZPId_r13));
+	p->v.v = (SQN_CSI_RS_ConfigNZPId_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigNZPId_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54245,7 +54253,7 @@ static int _serSysDecSQN_CSI_IM_ConfigId_r13_SQN_CSI_RS_ConfigBeamformed_r13_csi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r13));
+	p->v.v = (SQN_CSI_IM_ConfigId_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54260,10 +54268,10 @@ static int _serSysDecSQN_P_C_AndCBSR_Pair_r13_SQN_CSI_RS_ConfigBeamformed_r13_p_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_P_C_AndCBSR_Pair_r13));
+	p->v.v = (SQN_P_C_AndCBSR_Pair_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_P_C_AndCBSR_Pair_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_32(p->v.v[i2].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i2].v = serMalloc(_mem, p->v.v[i2].d * sizeof(struct SQN_P_C_AndCBSR_r13));
+		p->v.v[i2].v = (struct SQN_P_C_AndCBSR_r13*)serMalloc(_mem, p->v.v[i2].d * sizeof(struct SQN_P_C_AndCBSR_r13));
 		for (size_t i3 = 0; i3 < p->v.v[i2].d; i3++) {
 			_serSysDecSQN_P_C_AndCBSR_r13(_buffer, _size, _lidx, _mem, &p->v.v[i2].v[i3]);
 		}
@@ -54279,7 +54287,7 @@ static int _serSysDecBool_SQN_CSI_RS_ConfigBeamformed_r13_ace_For4Tx_PerResource
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(bool));
+	p->v.v = (bool*)serMalloc(_mem, p->v.d * sizeof(bool));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54422,7 +54430,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZP_EMIMO_v1430(const unsigned char* _buff
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->nzp_resourceConfigListExt_r14.d, &_buffer[*_lidx], _lidx);
-	p->nzp_resourceConfigListExt_r14.v = serMalloc(_mem, p->nzp_resourceConfigListExt_r14.d * sizeof(struct SQN_NZP_ResourceConfig_r13));
+	p->nzp_resourceConfigListExt_r14.v = (struct SQN_NZP_ResourceConfig_r13*)serMalloc(_mem, p->nzp_resourceConfigListExt_r14.d * sizeof(struct SQN_NZP_ResourceConfig_r13));
 	for (size_t i2 = 0; i2 < p->nzp_resourceConfigListExt_r14.d; i2++) {
 		_serSysDecSQN_NZP_ResourceConfig_r13(_buffer, _size, _lidx, &p->nzp_resourceConfigListExt_r14.v[i2]);
 	}
@@ -54505,7 +54513,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZP_r11_SQN_CSI_RS_ConfigBeamformed_v1430_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigNZP_r11));
+	p->v.v = (struct SQN_CSI_RS_ConfigNZP_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigNZP_r11));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CSI_RS_ConfigNZP_r11(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -54649,7 +54657,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZPId_r13_SQN_CSI_RS_ConfigBeamformed_r14_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigNZPId_r13));
+	p->v.v = (SQN_CSI_RS_ConfigNZPId_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_RS_ConfigNZPId_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54664,7 +54672,7 @@ static int _serSysDecSQN_CSI_IM_ConfigId_r13_SQN_CSI_RS_ConfigBeamformed_r14_csi
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r13));
+	p->v.v = (SQN_CSI_IM_ConfigId_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_CSI_IM_ConfigId_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54679,10 +54687,10 @@ static int _serSysDecSQN_P_C_AndCBSR_Pair_r13_SQN_CSI_RS_ConfigBeamformed_r14_p_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(SQN_P_C_AndCBSR_Pair_r13));
+	p->v.v = (SQN_P_C_AndCBSR_Pair_r13*)serMalloc(_mem, p->v.d * sizeof(SQN_P_C_AndCBSR_Pair_r13));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_32(p->v.v[i2].d, &_buffer[*_lidx], _lidx);
-		p->v.v[i2].v = serMalloc(_mem, p->v.v[i2].d * sizeof(struct SQN_P_C_AndCBSR_r13));
+		p->v.v[i2].v = (struct SQN_P_C_AndCBSR_r13*)serMalloc(_mem, p->v.v[i2].d * sizeof(struct SQN_P_C_AndCBSR_r13));
 		for (size_t i3 = 0; i3 < p->v.v[i2].d; i3++) {
 			_serSysDecSQN_P_C_AndCBSR_r13(_buffer, _size, _lidx, _mem, &p->v.v[i2].v[i3]);
 		}
@@ -54698,7 +54706,7 @@ static int _serSysDecBool_SQN_CSI_RS_ConfigBeamformed_r14_ace_For4Tx_PerResource
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(bool));
+	p->v.v = (bool*)serMalloc(_mem, p->v.d * sizeof(bool));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		NTOH_8(p->v.v[i2], &_buffer[*_lidx], _lidx);
 	}
@@ -54743,7 +54751,7 @@ static int _serSysDecSQN_CSI_RS_ConfigNZP_r11_SQN_CSI_RS_ConfigBeamformed_r14_cs
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigNZP_r11));
+	p->v.v = (struct SQN_CSI_RS_ConfigNZP_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_RS_ConfigNZP_r11));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_CSI_RS_ConfigNZP_r11(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -55034,7 +55042,7 @@ static int _serSysDecSQN_P_C_AndCBSR_r15(const unsigned char* _buffer, size_t _s
 
 	NTOH_8(p->p_C_r15, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->codebookSubsetRestriction4_r15.d, &_buffer[*_lidx], _lidx);
-	p->codebookSubsetRestriction4_r15.v = serMalloc(_mem, p->codebookSubsetRestriction4_r15.d * sizeof(BIT_STRING_ELEMENT));
+	p->codebookSubsetRestriction4_r15.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->codebookSubsetRestriction4_r15.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i3 = 0; i3 < p->codebookSubsetRestriction4_r15.d; i3++) {
 		NTOH_8(p->codebookSubsetRestriction4_r15.v[i3], &_buffer[*_lidx], _lidx);
 	}
@@ -55049,7 +55057,7 @@ static int _serSysDecSQN_P_C_AndCBSR_Pair_r15_SQN_CSI_RS_ConfigNonPrecoded_v1530
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_P_C_AndCBSR_r15));
+	p->v.v = (struct SQN_P_C_AndCBSR_r15*)serMalloc(_mem, p->v.d * sizeof(struct SQN_P_C_AndCBSR_r15));
 	for (size_t i2 = 0; i2 < p->v.d; i2++) {
 		_serSysDecSQN_P_C_AndCBSR_r15(_buffer, _size, _lidx, _mem, &p->v.v[i2]);
 	}
@@ -55141,7 +55149,7 @@ static int _serSysDecSQN_CSI_Process_r11(const unsigned char* _buffer, size_t _s
 	NTOH_8(p->csi_RS_ConfigNZPId_r11, &_buffer[*_lidx], _lidx);
 	NTOH_8(p->csi_IM_ConfigId_r11, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->p_C_AndCBSRList_r11.d, &_buffer[*_lidx], _lidx);
-	p->p_C_AndCBSRList_r11.v = serMalloc(_mem, p->p_C_AndCBSRList_r11.d * sizeof(struct SQN_P_C_AndCBSR_r11));
+	p->p_C_AndCBSRList_r11.v = (struct SQN_P_C_AndCBSR_r11*)serMalloc(_mem, p->p_C_AndCBSRList_r11.d * sizeof(struct SQN_P_C_AndCBSR_r11));
 	for (size_t i2 = 0; i2 < p->p_C_AndCBSRList_r11.d; i2++) {
 		_serSysDecSQN_P_C_AndCBSR_r11(_buffer, _size, _lidx, _mem, &p->p_C_AndCBSRList_r11.v[i2]);
 	}
@@ -55171,7 +55179,7 @@ static int _serSysDecSQN_CSI_ProcessToAddModList_r11_SQN_CQI_ReportBoth_r11_csi_
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_Process_r11));
+	p->v.v = (struct SQN_CSI_Process_r11*)serMalloc(_mem, p->v.d * sizeof(struct SQN_CSI_Process_r11));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_CSI_Process_r11(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -56237,7 +56245,7 @@ static int _serSysDecRandomAccessResponse_Type_Value(const unsigned char* _buffe
 	}
 	if (d == RandomAccessResponse_Type_List) {
 		NTOH_32(p->List.d, &_buffer[*_lidx], _lidx);
-		p->List.v = serMalloc(_mem, p->List.d * sizeof(struct RandomAccessResponseParameters_Type));
+		p->List.v = (struct RandomAccessResponseParameters_Type*)serMalloc(_mem, p->List.d * sizeof(struct RandomAccessResponseParameters_Type));
 		for (size_t i2 = 0; i2 < p->List.d; i2++) {
 			_serSysDecRandomAccessResponseParameters_Type(_buffer, _size, _lidx, &p->List.v[i2]);
 		}
@@ -56342,7 +56350,7 @@ static int _serSysDecContentionResolution_ContainedId_Type_Value(const unsigned 
 
 	if (d == ContentionResolution_ContainedId_Type_XorMask) {
 		NTOH_32(p->XorMask.d, &_buffer[*_lidx], _lidx);
-		p->XorMask.v = serMalloc(_mem, p->XorMask.d * sizeof(BIT_STRING_ELEMENT));
+		p->XorMask.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->XorMask.d * sizeof(BIT_STRING_ELEMENT));
 		for (size_t i2 = 0; i2 < p->XorMask.d; i2++) {
 			NTOH_8(p->XorMask.v[i2], &_buffer[*_lidx], _lidx);
 		}
@@ -56376,7 +56384,7 @@ static int _serSysDecContentionResolution_ContainedDlschSdu_Type_Value(const uns
 
 	if (d == ContentionResolution_ContainedDlschSdu_Type_RlcPduCCCH) {
 		NTOH_32(p->RlcPduCCCH.d, &_buffer[*_lidx], _lidx);
-		p->RlcPduCCCH.v = serMalloc(_mem, p->RlcPduCCCH.d * sizeof(OCTET_STRING_ELEMENT));
+		p->RlcPduCCCH.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->RlcPduCCCH.d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i2 = 0; i2 < p->RlcPduCCCH.d; i2++) {
 			NTOH_8(p->RlcPduCCCH.v[i2], &_buffer[*_lidx], _lidx);
 		}
@@ -56384,7 +56392,7 @@ static int _serSysDecContentionResolution_ContainedDlschSdu_Type_Value(const uns
 	}
 	if (d == ContentionResolution_ContainedDlschSdu_Type_PdcpSduDCCH) {
 		NTOH_32(p->PdcpSduDCCH.d, &_buffer[*_lidx], _lidx);
-		p->PdcpSduDCCH.v = serMalloc(_mem, p->PdcpSduDCCH.d * sizeof(OCTET_STRING_ELEMENT));
+		p->PdcpSduDCCH.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->PdcpSduDCCH.d * sizeof(OCTET_STRING_ELEMENT));
 		for (size_t i2 = 0; i2 < p->PdcpSduDCCH.d; i2++) {
 			NTOH_8(p->PdcpSduDCCH.v[i2], &_buffer[*_lidx], _lidx);
 		}
@@ -56675,7 +56683,7 @@ static int _serSysDecDciUlInfo_Type(const unsigned char* _buffer, size_t _size, 
 
 	_serSysDecImcs_Type(_buffer, _size, _lidx, &p->Imcs);
 	NTOH_32(p->TransRetransmissionList.d, &_buffer[*_lidx], _lidx);
-	p->TransRetransmissionList.v = serMalloc(_mem, p->TransRetransmissionList.d * sizeof(struct UL_TransRetransmission_Type));
+	p->TransRetransmissionList.v = (struct UL_TransRetransmission_Type*)serMalloc(_mem, p->TransRetransmissionList.d * sizeof(struct UL_TransRetransmission_Type));
 	for (size_t i2 = 0; i2 < p->TransRetransmissionList.d; i2++) {
 		_serSysDecUL_TransRetransmission_Type(_buffer, _size, _lidx, &p->TransRetransmissionList.v[i2]);
 	}
@@ -56768,7 +56776,7 @@ static int _serSysDecRachProcedureList_Type_RachProcedureList_Optional(const uns
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct RachProcedure_Type));
+	p->v.v = (struct RachProcedure_Type*)serMalloc(_mem, p->v.d * sizeof(struct RachProcedure_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecRachProcedure_Type(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -57034,7 +57042,7 @@ static int _serSysDecRedundancyVersionListDL_Type_RedundancyVersionList_2ndCW_Op
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(RedundancyVersion_Type));
+	p->v.v = (RedundancyVersion_Type*)serMalloc(_mem, p->v.d * sizeof(RedundancyVersion_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -57150,7 +57158,7 @@ static int _serSysDecDciDlInfoExplicit_Type(const unsigned char* _buffer, size_t
 	}
 	_serSysDecFreqDomainSchedulExplicit_Type(_buffer, _size, _lidx, &p->FreqDomainSchedul);
 	NTOH_32(p->RedundancyVersionList.d, &_buffer[*_lidx], _lidx);
-	p->RedundancyVersionList.v = serMalloc(_mem, p->RedundancyVersionList.d * sizeof(RedundancyVersion_Type));
+	p->RedundancyVersionList.v = (RedundancyVersion_Type*)serMalloc(_mem, p->RedundancyVersionList.d * sizeof(RedundancyVersion_Type));
 	for (size_t i1 = 0; i1 < p->RedundancyVersionList.d; i1++) {
 		NTOH_8(p->RedundancyVersionList.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -57414,7 +57422,7 @@ static int _serSysDecBIT_STRING_SQN_AntennaInfoDedicated_r10_codebookSubsetRestr
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
+	p->v.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -57676,7 +57684,7 @@ static int _serSysDecHarqProcessConfigDL_Type_Value(const unsigned char* _buffer
 	}
 	if (d == HarqProcessConfigDL_Type_SpecificSubset) {
 		NTOH_32(p->SpecificSubset.d, &_buffer[*_lidx], _lidx);
-		p->SpecificSubset.v = serMalloc(_mem, p->SpecificSubset.d * sizeof(HarqProcessId_Type));
+		p->SpecificSubset.v = (HarqProcessId_Type*)serMalloc(_mem, p->SpecificSubset.d * sizeof(HarqProcessId_Type));
 		for (size_t i1 = 0; i1 < p->SpecificSubset.d; i1++) {
 			NTOH_8(p->SpecificSubset.v[i1], &_buffer[*_lidx], _lidx);
 		}
@@ -58749,7 +58757,7 @@ static int _serSysDecPrimaryCellInfo_Type(const unsigned char* _buffer, size_t _
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->AssociatedScellList.d, &_buffer[*_lidx], _lidx);
-	p->AssociatedScellList.v = serMalloc(_mem, p->AssociatedScellList.d * sizeof(EUTRA_CellId_Type));
+	p->AssociatedScellList.v = (EUTRA_CellId_Type*)serMalloc(_mem, p->AssociatedScellList.d * sizeof(EUTRA_CellId_Type));
 	for (size_t i1 = 0; i1 < p->AssociatedScellList.d; i1++) {
 		{
 			size_t _tmp;
@@ -59012,7 +59020,7 @@ static int _serSysDecPSCellInfo_Type(const unsigned char* _buffer, size_t _size,
 	}
 	NTOH_8(p->SCellIndex, &_buffer[*_lidx], _lidx);
 	NTOH_32(p->AssociatedScellList.d, &_buffer[*_lidx], _lidx);
-	p->AssociatedScellList.v = serMalloc(_mem, p->AssociatedScellList.d * sizeof(EUTRA_CellId_Type));
+	p->AssociatedScellList.v = (EUTRA_CellId_Type*)serMalloc(_mem, p->AssociatedScellList.d * sizeof(EUTRA_CellId_Type));
 	for (size_t i1 = 0; i1 < p->AssociatedScellList.d; i1++) {
 		{
 			size_t _tmp;
@@ -59167,7 +59175,7 @@ static int _serSysDecBIT_STRING_LowestIndexOfChannelAllocation_Optional(const un
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
+	p->v.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -59219,7 +59227,7 @@ static int _serSysDecSL_Sci1Config_Type(const unsigned char* _buffer, size_t _si
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->FreqResourceAllocation.d, &_buffer[*_lidx], _lidx);
-	p->FreqResourceAllocation.v = serMalloc(_mem, p->FreqResourceAllocation.d * sizeof(BIT_STRING_ELEMENT));
+	p->FreqResourceAllocation.v = (BIT_STRING_ELEMENT*)serMalloc(_mem, p->FreqResourceAllocation.d * sizeof(BIT_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->FreqResourceAllocation.d; i1++) {
 		NTOH_8(p->FreqResourceAllocation.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -59351,7 +59359,7 @@ static int _serSysDecSQN_EIMTA_MainConfigServCell_r12_setup_mbsfn_SubframeConfig
 	(void)_size; // TODO: generate boundaries checking
 
 	NTOH_32(p->subframeConfigList_r12.d, &_buffer[*_lidx], _lidx);
-	p->subframeConfigList_r12.v = serMalloc(_mem, p->subframeConfigList_r12.d * sizeof(struct SQN_MBSFN_SubframeConfig));
+	p->subframeConfigList_r12.v = (struct SQN_MBSFN_SubframeConfig*)serMalloc(_mem, p->subframeConfigList_r12.d * sizeof(struct SQN_MBSFN_SubframeConfig));
 	for (size_t i1 = 0; i1 < p->subframeConfigList_r12.d; i1++) {
 		_serSysDecSQN_MBSFN_SubframeConfig(_buffer, _size, _lidx, &p->subframeConfigList_r12.v[i1]);
 	}
@@ -61309,7 +61317,7 @@ static int _serSysDecSecurityActTimeList_Type_ActTimeList_Optional(const unsigne
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SecurityActTime_Type));
+	p->v.v = (struct SecurityActTime_Type*)serMalloc(_mem, p->v.d * sizeof(struct SecurityActTime_Type));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSecurityActTime_Type(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -61361,7 +61369,7 @@ static int _serSysDecAS_CipheringInfo_Type(const unsigned char* _buffer, size_t 
 		NTOH_8(p->KUPenc[i1], &_buffer[*_lidx], _lidx);
 	}
 	NTOH_32(p->ActTimeList.d, &_buffer[*_lidx], _lidx);
-	p->ActTimeList.v = serMalloc(_mem, p->ActTimeList.d * sizeof(struct SecurityActTime_Type));
+	p->ActTimeList.v = (struct SecurityActTime_Type*)serMalloc(_mem, p->ActTimeList.d * sizeof(struct SecurityActTime_Type));
 	for (size_t i1 = 0; i1 < p->ActTimeList.d; i1++) {
 		_serSysDecSecurityActTime_Type(_buffer, _size, _lidx, _mem, &p->ActTimeList.v[i1]);
 	}
@@ -61444,7 +61452,7 @@ static int _serSysDecSQN_PagingUE_Identity_Value(const unsigned char* _buffer, s
 	}
 	if (d == SQN_PagingUE_Identity_imsi) {
 		NTOH_32(p->imsi.d, &_buffer[*_lidx], _lidx);
-		p->imsi.v = serMalloc(_mem, p->imsi.d * sizeof(SQN_IMSI_Digit));
+		p->imsi.v = (SQN_IMSI_Digit*)serMalloc(_mem, p->imsi.d * sizeof(SQN_IMSI_Digit));
 		for (size_t i2 = 0; i2 < p->imsi.d; i2++) {
 			NTOH_8(p->imsi.v[i2], &_buffer[*_lidx], _lidx);
 		}
@@ -61501,7 +61509,7 @@ static int _serSysDecSQN_PagingRecordList_SQN_Paging_pagingRecordList_Optional(c
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PagingRecord));
+	p->v.v = (struct SQN_PagingRecord*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PagingRecord));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_PagingRecord(_buffer, _size, _lidx, _mem, &p->v.v[i1]);
 	}
@@ -61546,7 +61554,7 @@ static int _serSysDecOCTET_STRING_SQN_Paging_v890_IEs_lateNonCriticalExtension_O
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
+	p->v.v = (OCTET_STRING_ELEMENT*)serMalloc(_mem, p->v.d * sizeof(OCTET_STRING_ELEMENT));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_8(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -61676,7 +61684,7 @@ static int _serSysDecSQN_PagingRecordList_v1610_SQN_Paging_v1610_IEs_pagingRecor
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(struct SQN_PagingRecord_v1610));
+	p->v.v = (struct SQN_PagingRecord_v1610*)serMalloc(_mem, p->v.d * sizeof(struct SQN_PagingRecord_v1610));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		_serSysDecSQN_PagingRecord_v1610(_buffer, _size, _lidx, &p->v.v[i1]);
 	}
@@ -61946,7 +61954,7 @@ static int _serSysDecSubframeOffsetList_Type_SubframeOffsetList_Optional(const u
 	NTOH_8(p->d, &_buffer[*_lidx], _lidx);
 	if (!p->d) return SIDL_STATUS_OK;
 	NTOH_32(p->v.d, &_buffer[*_lidx], _lidx);
-	p->v.v = serMalloc(_mem, p->v.d * sizeof(int32_t));
+	p->v.v = (int32_t*)serMalloc(_mem, p->v.d * sizeof(int32_t));
 	for (size_t i1 = 0; i1 < p->v.d; i1++) {
 		NTOH_32(p->v.v[i1], &_buffer[*_lidx], _lidx);
 	}
@@ -62253,7 +62261,7 @@ static int _serSysDecPDCP_CountReq_Type_Value(const unsigned char* _buffer, size
 	}
 	if (d == PDCP_CountReq_Type_Set) {
 		NTOH_32(p->Set.d, &_buffer[*_lidx], _lidx);
-		p->Set.v = serMalloc(_mem, p->Set.d * sizeof(struct PdcpCountInfo_Type));
+		p->Set.v = (struct PdcpCountInfo_Type*)serMalloc(_mem, p->Set.d * sizeof(struct PdcpCountInfo_Type));
 		for (size_t i1 = 0; i1 < p->Set.d; i1++) {
 			_serSysDecPdcpCountInfo_Type(_buffer, _size, _lidx, _mem, &p->Set.v[i1]);
 		}
@@ -62424,7 +62432,7 @@ static int _serSysDecSystemRequest_Type_Value(const unsigned char* _buffer, size
 	}
 	if (d == SystemRequest_Type_CellAttenuationList) {
 		NTOH_32(p->CellAttenuationList.d, &_buffer[*_lidx], _lidx);
-		p->CellAttenuationList.v = serMalloc(_mem, p->CellAttenuationList.d * sizeof(struct CellAttenuationConfig_Type));
+		p->CellAttenuationList.v = (struct CellAttenuationConfig_Type*)serMalloc(_mem, p->CellAttenuationList.d * sizeof(struct CellAttenuationConfig_Type));
 		for (size_t i1 = 0; i1 < p->CellAttenuationList.d; i1++) {
 			_serSysDecCellAttenuationConfig_Type(_buffer, _size, _lidx, &p->CellAttenuationList.v[i1]);
 		}
@@ -62432,7 +62440,7 @@ static int _serSysDecSystemRequest_Type_Value(const unsigned char* _buffer, size
 	}
 	if (d == SystemRequest_Type_RadioBearerList) {
 		NTOH_32(p->RadioBearerList.d, &_buffer[*_lidx], _lidx);
-		p->RadioBearerList.v = serMalloc(_mem, p->RadioBearerList.d * sizeof(struct RadioBearer_Type));
+		p->RadioBearerList.v = (struct RadioBearer_Type*)serMalloc(_mem, p->RadioBearerList.d * sizeof(struct RadioBearer_Type));
 		for (size_t i1 = 0; i1 < p->RadioBearerList.d; i1++) {
 			_serSysDecRadioBearer_Type(_buffer, _size, _lidx, _mem, &p->RadioBearerList.v[i1]);
 		}
@@ -62499,7 +62507,7 @@ int serSysProcessDecSrv(const unsigned char* _buffer, size_t _size, unsigned cha
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*FromSS = serMalloc(_mem, sizeof(struct SYSTEM_CTRL_REQ));
+	*FromSS = (struct SYSTEM_CTRL_REQ*)serMalloc(_mem, sizeof(struct SYSTEM_CTRL_REQ));
 	_serSysDecSYSTEM_CTRL_REQ(_buffer, _size, _lidx, _mem, *FromSS);
 
 	return SIDL_STATUS_OK;
@@ -68439,12 +68447,27 @@ static void _serSysFreeSYSTEM_CTRL_REQ(struct SYSTEM_CTRL_REQ* p)
 	_serSysFreeSystemRequest_Type(&p->Request);
 }
 
+void serSysProcessFree0Srv(struct SYSTEM_CTRL_REQ* FromSS)
+{
+	if (FromSS) {
+		_serSysFreeSYSTEM_CTRL_REQ(FromSS);
+	}
+}
+
 void serSysProcessFreeSrv(struct SYSTEM_CTRL_REQ* FromSS)
 {
 	if (FromSS) {
 		_serSysFreeSYSTEM_CTRL_REQ(FromSS);
 		serFree(FromSS);
 	}
+}
+
+void serSysProcessInitSrv(unsigned char* _arena, size_t _aSize, struct SYSTEM_CTRL_CNF** ToSS)
+{
+	serMem_t _mem = serMemInit(_arena, _aSize);
+
+	*ToSS = (struct SYSTEM_CTRL_CNF*)serMalloc(_mem, sizeof(struct SYSTEM_CTRL_CNF));
+	memset(*ToSS, 0, sizeof(struct SYSTEM_CTRL_CNF));
 }
 
 static int _serSysEncConfirmationResult_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union ConfirmationResult_Type_Value* p, enum ConfirmationResult_Type_Sel d)
@@ -68695,7 +68718,7 @@ static int _serSysDecPDCP_CountCnf_Type_Value(const unsigned char* _buffer, size
 
 	if (d == PDCP_CountCnf_Type_Get) {
 		NTOH_32(p->Get.d, &_buffer[*_lidx], _lidx);
-		p->Get.v = serMalloc(_mem, p->Get.d * sizeof(struct PdcpCountInfo_Type));
+		p->Get.v = (struct PdcpCountInfo_Type*)serMalloc(_mem, p->Get.d * sizeof(struct PdcpCountInfo_Type));
 		for (size_t i1 = 0; i1 < p->Get.d; i1++) {
 			_serSysDecPdcpCountInfo_Type(_buffer, _size, _lidx, _mem, &p->Get.v[i1]);
 		}
@@ -68844,7 +68867,7 @@ int serSysProcessDecClt(const unsigned char* _buffer, size_t _size, unsigned cha
 	size_t __lidx = 0;
 	size_t* _lidx = &__lidx;
 
-	*ToSS = serMalloc(_mem, sizeof(struct SYSTEM_CTRL_CNF));
+	*ToSS = (struct SYSTEM_CTRL_CNF*)serMalloc(_mem, sizeof(struct SYSTEM_CTRL_CNF));
 	_serSysDecSYSTEM_CTRL_CNF(_buffer, _size, _lidx, _mem, *ToSS);
 
 	return SIDL_STATUS_OK;
@@ -68890,6 +68913,13 @@ static void _serSysFreeSYSTEM_CTRL_CNF(struct SYSTEM_CTRL_CNF* p)
 {
 	_serSysFreeCnfAspCommonPart_Type(&p->Common);
 	_serSysFreeSystemConfirm_Type(&p->Confirm);
+}
+
+void serSysProcessFree0Clt(struct SYSTEM_CTRL_CNF* ToSS)
+{
+	if (ToSS) {
+		_serSysFreeSYSTEM_CTRL_CNF(ToSS);
+	}
 }
 
 void serSysProcessFreeClt(struct SYSTEM_CTRL_CNF* ToSS)

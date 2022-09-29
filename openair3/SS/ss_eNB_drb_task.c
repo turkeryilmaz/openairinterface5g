@@ -54,7 +54,7 @@
 extern RAN_CONTEXT_t RC;
 //extern uint16_t ss_rnti_g;
 static acpCtx_t ctx_drb_g = NULL;
-SSConfigContext_t SS_context;
+extern SSConfigContext_t SS_context;
 
 static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
@@ -90,13 +90,13 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	//Populated the Timing Info
 	ind.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
 	ind.Common.TimingInfo.v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
-	ind.Common.TimingInfo.v.SubFrame.SFN.v.Number = 0; //Need to check what value needs to be sent
+	ind.Common.TimingInfo.v.SubFrame.SFN.v.Number = pdu_ind->frame;
 	
 	ind.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
-	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = 0; //Need to check what value needs to be sent
+	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
 	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0; //Need to check what value needs to be sent
+        ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
         ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
@@ -112,10 +112,12 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	ind.U_Plane.SubframeData.NoOfTTIs = 1;
 	ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_PdcpSdu;
 	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
-	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %d\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
+	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
 	for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
-        	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
+                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d)*(sizeof(PDCP_SDU_Type)));
                 DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
+                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
+                ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v = CALLOC(1,ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d);
 		memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size); 
 	}
 
@@ -144,7 +146,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 {
 	assert(req);
-	MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, instance_g, SS_DRB_PDU_REQ);
+	MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, SS_DRB_PDU_REQ);
         assert(message_p);
         if (message_p)
         {
@@ -157,7 +159,7 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 				LOG_A(ENB_APP, "PDCP SDU Received in DRB_COMMON_REQ");
 				for(int j = 0; j < req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.d; j++){
 					SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d;
-					LOG_A(ENB_APP, "Length of PDCP SDU received in DRB_COMMON_REQ: %d",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
+					LOG_A(ENB_APP, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
 					memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].v, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
 				}
 			}
@@ -176,6 +178,7 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 
 }
 
+static void
 ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 
 	size_t msgSize = size; //2
@@ -200,7 +203,13 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
                                 SidlStatus sidlStatus = -1;
                                 acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
                         }
-                        else
+                        else if (userId == -ACP_PEER_DISCONNECTED){
+             			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+                        } 
+                        else if (userId == -ACP_PEER_CONNECTED){
+                                LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+                        } 
+			else
                         {
                                 LOG_A(ENB_APP, "[SS_DRB] Invalid userId: %d \n", userId);
                                 break;

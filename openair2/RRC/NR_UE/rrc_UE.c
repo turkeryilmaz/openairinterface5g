@@ -151,6 +151,8 @@ bool passes_cell_selection_criteria_nr (NR_SIB1_t *sib1)
 
 
 static Rrc_State_NR_t nr_rrc_get_state (module_id_t ue_mod_idP) {
+  if (ue_mod_idP == 65534)
+    return RRC_STATE_FIRST_NR;
   return NR_UE_rrc_inst[ue_mod_idP].nrRrcState;
 }
 

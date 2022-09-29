@@ -39,7 +39,7 @@ SIDL_BEGIN_C_INTERFACE
 #define ACP_DEBUG_ENTER_CLOG(ctx) do { adbgPrintLog(ctx, ">>> ACP_DEBUG: Entering %s at [%s:%d]", __FUNCTION__, __FILE__, __LINE__); adbgPrintLog(ctx, NULL); } while (false)
 #define ACP_DEBUG_EXIT_CLOG(ctx, val) do { \
 		if (val != NULL) adbgPrintLog(ctx, "<<< ACP_DEBUG: Exiting %s at [%s:%d] with return code '%s'", __FUNCTION__, __FILE__, __LINE__, val); \
-		else adbgPrintLog(ctx, "<<< ACP_DEBUG: Exiting %s at %s:%d", __FUNCTION__, __FILE__, __LINE__); \
+		else adbgPrintLog(ctx, "<<< ACP_DEBUG: Exiting %s at [%s:%d]", __FUNCTION__, __FILE__, __LINE__); \
 		adbgPrintLog(ctx, NULL); \
 	} while (false)
 #define ACP_DEBUG_LOG(fmt, args...) do { adbgCheckAndSetGlobalLogger(); adbgGlobalLogger("=== ACP_DEBUG: [%s:%d] " fmt, __FILE__, __LINE__, ##args); } while (false)
@@ -51,11 +51,11 @@ SIDL_BEGIN_C_INTERFACE
 	} while (false)
 
 #ifdef ACP_DEBUG_TRACE
-#define ACP_DEBUG_PREFIX_TRACE_CLOG(ctx, fmt, args...) ACP_DEBUG_PREFIX_CLOG(ctx, fmt, args)
-#define ACP_DEBUG_TRACE_CLOG(ctx, fmt, args...) ACP_DEBUG_CLOG(ctx, fmt, args)
+#define ACP_DEBUG_PREFIX_TRACE_CLOG(ctx, fmt, args...) ACP_DEBUG_PREFIX_CLOG(ctx, fmt, ##args)
+#define ACP_DEBUG_TRACE_CLOG(ctx, fmt, args...) ACP_DEBUG_CLOG(ctx, fmt, ##args)
 #define ACP_DEBUG_ENTER_TRACE_CLOG(ctx) ACP_DEBUG_ENTER_CLOG(ctx)
 #define ACP_DEBUG_EXIT_TRACE_CLOG(ctx, val) ACP_DEBUG_EXIT_CLOG(ctx, val)
-#define ACP_DEBUG_TRACE_LOG(fmt, args...) ACP_DEBUG_LOG(fmt, args)
+#define ACP_DEBUG_TRACE_LOG(fmt, args...) ACP_DEBUG_LOG(fmt, ##args)
 #define ACP_DEBUG_ENTER_TRACE_LOG() ACP_DEBUG_ENTER_LOG()
 #define ACP_DEBUG_EXIT_TRACE_LOG(val) ACP_DEBUG_EXIT_LOG(val)
 #else //!ACP_DEBUG_TRACE

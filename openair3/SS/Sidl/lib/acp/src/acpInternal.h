@@ -22,7 +22,27 @@
 
 #pragma once
 
+// Internal includes
 #include "acp.h"
+#include "acpCtx.h"
+#include "acpHandshake.h"
 
 SIDL_BEGIN_C_INTERFACE
+
+/** Short type aliases for generated ones. */
+typedef struct AcpHandshakeService_AcpHandshakeReqService_services_Dynamic acpHandshakeReqServices;
+typedef struct AcpHandshakeService_AcpHandshakeCnfService_services_Dynamic acpHandshakeCnfServices;
+
+/** Handles handshake from client. */
+int acpHandleHandshakeFromClient(struct acpCtx* ctx, int sock);
+
+/** Handles handshake to server. */
+int acpHandleHandshakeToServer(struct acpCtx* ctx, int sock);
+
+/** Receives the message. */
+int acpRecvMsgInternal(int sock, size_t* size, unsigned char* buffer);
+
+/** Sends the message. */
+int acpSendMsgInternal(int sock, size_t size, const unsigned char* buffer);
+
 SIDL_END_C_INTERFACE

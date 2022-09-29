@@ -154,7 +154,7 @@ generate_dlsch_header(unsigned char *mac_header,
     AssertFatal(timing_advance_cmd < 64, "timing_advance_cmd %d > 63\n",
                 timing_advance_cmd);
     ((TIMING_ADVANCE_CMD *) ce_ptr)->TA = timing_advance_cmd;    //(timing_advance_cmd+31)&0x3f;
-    LOG_D(MAC, "timing advance =%d (%d)\n",
+    LOG_A(MAC, "timing advance =%d (%d)\n",
           timing_advance_cmd,
           ((TIMING_ADVANCE_CMD *) ce_ptr)->TA);
     ce_ptr += sizeof(TIMING_ADVANCE_CMD);
@@ -818,7 +818,7 @@ schedule_ue_spec(module_id_t module_idP,
         ta_update = ue_sched_ctrl->ta_update;
 
         /* if we send TA then set timer to not send it for a while */
-        if (ta_update != 31) {
+        if (ta_update != 31 && (RC.ss.mode == SS_ENB)) {
           ue_sched_ctrl->ta_timer = 20;
         }
 
@@ -827,6 +827,21 @@ schedule_ue_spec(module_id_t module_idP,
         ue_sched_ctrl->ta_update_f = 31.0;
       }
 
+     if(RC.ss.mode == SS_SOFTMODEM )
+        {
+          if(ue_sched_ctrl->ta_timer == 100)
+          {
+            ta_update = 2;
+            ue_sched_ctrl->ta_timer =0 ;
+            LOG_D(MAC,"TA scheduled SFN %d SF %d\n",frameP,subframeP);
+          }
+          else
+          {
+            ue_sched_ctrl->ta_timer++;
+            ta_update = 31;
+            ue_sched_ctrl->ta_update = 31;
+          }
+        }
       int ta_len = (ta_update != 31) ? 2 : 0;
 
 
@@ -1368,7 +1383,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           ta_update = ue_sched_ctl->ta_update;
 
           /* If we send TA then set timer to not send it for a while */
-          if (ta_update != 31)
+         if (ta_update != 31)
             ue_sched_ctl->ta_timer = 20;
 
           /* Reset ta_update */
@@ -1377,6 +1392,7 @@ schedule_ue_spec_br(module_id_t module_idP,
         } else {
           ta_update = 31;
         }
+   
 
         ta_len = (ta_update != 31) ? 2 : 0;
         header_len_dcch = 2; // 2 bytes DCCH SDU subheader

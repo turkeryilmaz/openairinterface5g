@@ -63,9 +63,7 @@ static instance_t instance_g = 0;
 
 typedef enum {
         // user defined IDs should be an int number >= 1
-        MSG_TestHelloFromSS_userId = 1,
-        /* MSG_SysProcess_userId, */
-        MSG_NrSysSrbProcessFromSS_userId,
+        MSG_NrSysSrbProcessFromSS_userId = 1,
         MSG_NrSysSrbProcessToSS_userId,
 } MSG_userId;
 
@@ -232,6 +230,8 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
 
 
 //------------------------------------------------------------------------------
+static bool isConnected = false; 
+
 static inline void
 ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 {
@@ -256,18 +256,27 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                                 // this error should not appear on server side for the messages received from clients
                                 SidlStatus sidlStatus = -1;
                                 acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
-                        }
+                        } else if (userId == -ACP_PEER_DISCONNECTED){
+             			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+                                isConnected = false;
+                        } 
+                        else if (userId == -ACP_PEER_CONNECTED){
+                                LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
+                                isConnected = true;
+                        } 
                         else
                         {
                                 LOG_A(GNB_APP, "[SS_SRB] Invalid userId: %d \n", userId);
                                 break;
                         }
                 }
-
                 if (userId == 0)
                 {
+                        LOG_A(GNB_APP, "[SS_SRB] No message (timeout on socket\n)");
                         // No message (timeout on socket)
-                        break;
+                        if (isConnected == true){
+                                break;
+                        } 
                 }
                 else if (MSG_NrSysSrbProcessFromSS_userId == userId)
                 {
@@ -296,11 +305,6 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                         LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_IND] NR_RRC_PDU_IND Received; ignoring \n");
                         break;
                 }
-                else if (userId == MSG_TestHelloFromSS_userId)
-                {
-                        LOG_A(GNB_APP, "[SS_SRB] Hello From Client Received \n");
-                        break;
-                }
         }
 }
 
@@ -323,7 +327,6 @@ void ss_gNB_srb_init(void)
         const struct acpMsgTable msgTable[] = {
                 { "NrSysSrbProcessFromSS", MSG_NrSysSrbProcessFromSS_userId },
                 { "NrSysSrbProcessToSS", MSG_NrSysSrbProcessToSS_userId },
-                { "TestHelloFromSS", MSG_TestHelloFromSS_userId },
                 /* { "SysProcess", MSG_SysProcess_userId }, */
                 // The last element should be NULL
                 { NULL, 0 }
@@ -410,25 +413,9 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
         return NULL;
 }
 
-static void ss_gNB_wait_hello(void)
-{
-
-        while (1)
-        {
-                size_t msg_sz = size;
-                int ret = acpRecvMsg(ctx_srb_g, &msg_sz, buffer);
-                if (ret == MSG_TestHelloFromSS_userId)
-                {
-                        LOG_A(GNB_APP, "[SS_SRB] Hello From Client Received (on-start) \n");
-                        break;
-                }
-        }
-}
-
 void *ss_gNB_srb_task(void *arg)
 {
         ss_gNB_srb_init();
-        ss_gNB_wait_hello();
 
 	while (1)
         {

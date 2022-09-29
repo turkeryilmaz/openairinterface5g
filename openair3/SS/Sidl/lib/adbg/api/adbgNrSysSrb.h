@@ -27,8 +27,8 @@
 
 SIDL_BEGIN_C_INTERFACE
 
-void adbgNrSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_RRC_PDU_IND* ToSS);
-
 void adbgNrSysSrbProcessFromSSLogIn(acpCtx_t _ctx, const struct NR_RRC_PDU_REQ* FromSS);
+
+void adbgNrSysSrbProcessToSSLogOut(acpCtx_t _ctx, const struct NR_RRC_PDU_IND* ToSS);
 
 SIDL_END_C_INTERFACE

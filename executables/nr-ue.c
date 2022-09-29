@@ -404,8 +404,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       continue;
     }
     if (slot_ind) {
-    	frame_t frame = NFAPI_SFNSLOT2SFN(sfn_slot);
-        int slot = NFAPI_SFNSLOT2SLOT(sfn_slot);
+    	frame_t frame = NFAPI_SFNSLOT2SFN(*slot_ind);
+        int slot = NFAPI_SFNSLOT2SLOT(*slot_ind);
         LOG_A(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
               frame, slot);
       sfn_slot = *slot_ind;
