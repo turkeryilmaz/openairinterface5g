@@ -531,7 +531,6 @@ static void max_retx_reached(void *_ue, rlc_entity_t *entity)
   int rb_id;
   MessageDef *msg;
   int is_enb;
-
   /* is it SRB? */
   for (i = 0; i < 2; i++) {
     if (entity == ue->srb[i]) {
