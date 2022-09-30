@@ -674,7 +674,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
     return -1;
   }
 
-  LOG_P(RRC, "PCCH_Message", buffer, length);
+  LOG_P(OAILOG_DEBUG, "PCCH_Message", buffer, length);
 
   message_buffer = itti_malloc(TASK_RRC_ENB, TASK_PDCP_ENB, length);
   /* Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling). */
@@ -7739,7 +7739,7 @@ rrc_eNB_decode_ccch(
           PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
     return -1;
   }
-  //LOG_P(RRC, "UL CCCH:", buffer, buffer_length);
+  //LOG_P(OAILOG_DEBUG, "UL CCCH:", buffer, buffer_length);
 
   if (ul_ccch_msg->message.present == LTE_UL_CCCH_MessageType_PR_c1) {
     switch (ul_ccch_msg->message.choice.c1.present) {
@@ -8492,7 +8492,7 @@ rrc_eNB_decode_dcch(
 
     LOG_T(RRC, "\n");
   }
-  //LOG_P(RRC, "UL DCCH:", Rx_sdu, sdu_sizeP);
+  //LOG_P(OAILOG_DEBUG, "UL DCCH:", Rx_sdu, sdu_sizeP);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     LOG_E(RRC, PROTOCOL_RRC_CTXT_UE_FMT" Failed to decode UL-DCCH (%zu bytes)\n",
@@ -9054,7 +9054,7 @@ rrc_eNB_decode_dcch(
         if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
           xer_fprint(stdout, &asn_DEF_LTE_UE_EUTRA_Capability, ue_context_p->ue_context.UE_Capability);
         }
-        //LOG_P(RRC, "UE_EUTRA_Capability:", ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[eutra_index]->ueCapabilityRAT_Container.buf, ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[eutra_index]->ueCapabilityRAT_Container.size);
+        //LOG_P(OAILOG_DEBUG, "UE_EUTRA_Capability:", ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[eutra_index]->ueCapabilityRAT_Container.buf, ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[eutra_index]->ueCapabilityRAT_Container.size);
 
         if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
           LOG_E(RRC, PROTOCOL_RRC_CTXT_UE_FMT" Failed to decode UE capabilities (%zu bytes)\n",
@@ -10361,7 +10361,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             }
             LOG_A(RRC, "\n");
 	  }
-          LOG_P(RRC, "DL DCCH size: %d \n", (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+          LOG_A(RRC, "DL DCCH size: %d \n", SS_RRC_PDU_REQ(msg_p).sdu_size);
 
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
           {

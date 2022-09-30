@@ -3709,6 +3709,8 @@ void *rrc_gnb_task(void *args_p) {
                       (uint8_t *)SS_NRRRC_PDU_REQ(msg_p).sdu,
                       SS_NRRRC_PDU_REQ(msg_p).sdu_size, 0, 0);
 
+          LOG_A(RRC, "DL DCCH size: %d \n", SS_NRRRC_PDU_REQ(msg_p).sdu_size);
+
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
           {
             xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
