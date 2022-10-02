@@ -91,6 +91,9 @@ SIDL_BEGIN_C_INTERFACE
 /** Default size for log buffer. */
 #define ADBG_DEFAULT_LOG_BUFFER_SIZE (1 * 1024 * 1024) // 1MB
 
+/** Set null logger to disable adbg logs */
+#define ADBG_NULL_LOGGER ((adbgLogger_t)-1)
+
 /** Default global logger (printf). */
 void adbgDefaultGlobalLogger(const char* fmt, ...);
 
