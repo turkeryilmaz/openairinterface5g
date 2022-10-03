@@ -423,6 +423,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 	  }
 
     RRC_CONFIGURATION_REQ(msg_p).num_plmn = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
+    RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
     for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn; ++i) {
       if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.d == TRUE)
