@@ -247,8 +247,7 @@ int acpRecvMsg(acpCtx_t ctx, size_t* size, unsigned char* buffer)
 		return -ACP_ERR_SOCK_ERROR;
 	}
 
-	// TODO commented this log until final fix
-	//ACP_DEBUG_TRACE_CLOG(ctx, "Data on socket(s)");
+	ACP_DEBUG_TRACE_CLOG(ctx, "Data on socket(s)");
 
 	if (ACP_CTX_CAST(ctx)->isServer && ACP_CTX_CAST(ctx)->sock == sock) {
 		int peerSock = acpSocketAccept(sock);

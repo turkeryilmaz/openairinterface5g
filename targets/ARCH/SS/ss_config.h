@@ -61,6 +61,9 @@ typedef struct ss_config_s {
   int SysIndport;
   /** DRB port number */
   int Drbport;
+  /** SYS Port NR number */
+  int SysportNR;
+  uint8_t configured;
   /** State info */
   int State;
   int vtp_ready;

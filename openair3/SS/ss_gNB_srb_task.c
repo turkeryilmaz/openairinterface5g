@@ -69,6 +69,7 @@ typedef enum {
 
 static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
+uint8_t lttng_sdu[SDU_SIZE];
 
 //------------------------------------------------------------------------------
 // Function to send response to the SIDL client
@@ -128,6 +129,8 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
                       pdu_ind->sdu_size,
                       0,
                       0);
+                memcpy(lttng_sdu, pdu_ind->sdu, pdu_ind->sdu_size);
+                LOG_P(OAILOG_DEBUG, "UL_CCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 
                 xer_fprint(stdout, &asn_DEF_NR_UL_CCCH_Message, (void *)ul_ccch_msg);
                 ind.RrcPdu.d = NR_RRC_MSG_Indication_Type_Ccch;
@@ -144,6 +147,9 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
                       pdu_ind->sdu_size,
                       0,
                       0);
+
+                memcpy(lttng_sdu, pdu_ind->sdu, pdu_ind->sdu_size);
+                LOG_P(OAILOG_DEBUG, "UL_DCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 
                 xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)ul_dcch_msg);
                 ind.RrcPdu.d = NR_RRC_MSG_Indication_Type_Dcch;
@@ -199,6 +205,9 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
                                     SS_NRRRC_PDU_REQ(message_p).sdu_size,0,0);
 
                         xer_fprint(stdout,&asn_DEF_NR_DL_CCCH_Message,(void *)dl_ccch_msg);
+                        memcpy(lttng_sdu, SS_NRRRC_PDU_REQ(message_p).sdu, SS_NRRRC_PDU_REQ(message_p).sdu_size);
+                        LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", lttng_sdu, SS_NRRRC_PDU_REQ(message_p).sdu_size);
+
                 }
                 else
                 {
@@ -211,6 +220,9 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
                                     SS_NRRRC_PDU_REQ(message_p).sdu_size,0,0);
 
                         xer_fprint(stdout,&asn_DEF_NR_DL_DCCH_Message,(void *)dl_dcch_msg);
+                        memcpy(lttng_sdu, SS_NRRRC_PDU_REQ(message_p).sdu, SS_NRRRC_PDU_REQ(message_p).sdu_size);
+                        LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_NRRRC_PDU_REQ(message_p).sdu_size);
+
                 }
 
                 LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] sending to TASK_RRC_GNB: {srb: %d, ch: %s, qty: %d }",

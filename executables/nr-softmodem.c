@@ -80,6 +80,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "gnb_paramdef.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "ss_gNB_sys_task.h"
+#include "ss_gNB_port_man_task.h"
 #include "ss_gNB_srb_task.h"
 
 pthread_cond_t nfapi_sync_cond;
@@ -352,12 +354,26 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
     }
+    if (RC.ss.mode >= SS_SOFTMODEM)
+    {
+      if(itti_create_task(TASK_SS_PORTMAN_GNB, ss_gNB_port_man_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS Port manager GNB failed\n");
+        return -1;
+      }
+      /* This sleep is for gNB_app_task to load the RRC configuration */
+      usleep(1000);
+      if(itti_create_task(TASK_SYS_GNB, ss_gNB_sys_task, NULL) < 0)
+      {
+        LOG_E(GNB_APP, "Create task for SS GNB failed\n");
+        return -1;
+      }
+    }
 
   if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
     LOG_E(SCTP, "Create task for SS SRB failed\n");
     return -1;
   }
-
     LOG_I(NR_RRC,"Creating NR RRC gNB Task\n");
 
     if (itti_create_task (TASK_RRC_GNB, rrc_gnb_task, NULL) < 0) {
