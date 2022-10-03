@@ -282,7 +282,7 @@ static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
  * corrected. Does not impact TC_6_1_2_2.
  *
  */
-int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure, int obtained_cell_index)
+int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 {
   CellConfigReq_t *cellConfig;
 
@@ -667,7 +667,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
  * newState: The next state for the SYS State machine
  *
  */
-int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell, int obtained_cell_index)
+int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell)
 {
   int status = false;
   int returnState = SS_context.SSCell_list[cell_index].State;
@@ -679,7 +679,7 @@ int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell, int obtained
   case CellConfigRequest_Type_AddOrReconfigure:
 
     LOG_A(ENB_SS, "[SYS] CellConfigRequest_Type_AddOrReconfigure receivied\n");
-    status = sys_add_reconfig_cell(&(Cell->v.AddOrReconfigure), obtained_cell_index);
+    status = sys_add_reconfig_cell(&(Cell->v.AddOrReconfigure));
     if (status)
     {
       /** TODO Signal to main thread */
