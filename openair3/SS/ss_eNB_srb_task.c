@@ -445,7 +445,7 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 {
 	MessageDef *received_msg = NULL;
 	int result = 0;
-        int cell_index;
+        int cell_index = 0;
 
 	itti_receive_msg(TASK_SS_SRB, &received_msg);
 
@@ -457,7 +457,7 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 		case SS_RRC_PDU_IND:
 		{
 			task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
-                        if(received_msg->ittiMsg.ss_rrc_pdu_ind.rnti){
+                        if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
                           cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId, SS_context.SSCell_list);
                         }
 

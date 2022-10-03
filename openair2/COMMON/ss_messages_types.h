@@ -93,6 +93,8 @@ typedef struct ss_nr_sys_port_msg_cnf {
 typedef struct ss_set_timinfo_s {
   uint16_t sfn;
   uint8_t  sf;
+  int      cell_index;
+  int      physCellId;
 } ss_set_timinfo_t;
 
 typedef ss_set_timinfo_t ss_upd_timinfo_t;
@@ -216,6 +218,7 @@ typedef struct ss_drb_pdu_ind_s {
   uint8_t   sdu[SDU_SIZE];
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
+  int       physCellId;
 } ss_drb_pdu_ind_t;
 
 typedef enum carrierBandwidthEUTRA_dl_Bandwidth_e {
@@ -310,6 +313,7 @@ typedef struct ss_system_ind_s
     bool           bitmask; //Flag for presence of optional parameter repetitionsPerPreambleAttempt
     frame_t        sfn;
     sub_frame_t    sf;
+    int            physCellId;
     uint8_t        ra_PreambleIndex;
     bool           prtPower_Type;
     uint32_t       repetitionsPerPreambleAttempt;

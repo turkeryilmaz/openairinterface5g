@@ -253,6 +253,7 @@ static void ss_task_sys_handle_timing_info(ss_set_timinfo_t *tinfo)
     LOG_A(ENB_SS, "[SYS] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->sf);
     SS_SET_TIM_INFO(message_p).sf = tinfo->sf;
     SS_SET_TIM_INFO(message_p).sfn = tinfo->sfn;
+    SS_SET_TIM_INFO(message_p).cell_index = cell_index;
 
     int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, 0, message_p);
     if (send_res < 0)

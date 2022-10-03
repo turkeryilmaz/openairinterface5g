@@ -283,6 +283,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
     {
       SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
       SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;
+      SS_UPD_TIM_INFO(message_p).physCellId = RC.rrc[eNB->UL_INFO.module_id]->carrier->physCellId;
       int send_res = itti_send_msg_to_task(TASK_VTP, 0, message_p_vtp);
       if (send_res < 0)
       {
