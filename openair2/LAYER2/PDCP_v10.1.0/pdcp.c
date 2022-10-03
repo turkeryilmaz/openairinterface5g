@@ -1061,6 +1061,7 @@ pdcp_data_ind(
         /* Populate the message to SS */
         SS_DRB_PDU_IND (message_p).sdu_size = sdu_buffer_sizeP - payload_offset;
         SS_DRB_PDU_IND (message_p).drb_id = rb_id;
+        SS_DRB_PDU_IND (message_p).physCellId = RC.rrc[ctxt_pP->module_id]->carrier->physCellId;
         memset(SS_DRB_PDU_IND (message_p).sdu, 0, SS_DRB_PDU_IND (message_p).sdu_size);
         memcpy(&SS_DRB_PDU_IND (message_p).sdu, &sdu_buffer_pP->data[payload_offset], SS_DRB_PDU_IND (message_p).sdu_size);
         SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;
