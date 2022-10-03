@@ -205,7 +205,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
             if(req->Common.CellId){
               cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
               SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
-              LOG_A(ENB_SS,"[SS-VNG] Vaibhav: cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+              LOG_A(ENB_SS,"[SS-VNG] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
             }
 
             if (SS_context.SSCell_list[cell_index].State < SS_STATE_CELL_ACTIVE) {
