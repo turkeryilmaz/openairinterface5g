@@ -52,17 +52,26 @@
 #include "ss_eNB_context.h"
 #include "ss_eNB_multicell_helper.h"
 
-int set_cell_index(uint16_t cell_id, SSCellConfigContext_t SSCell_list[]){
-        for(int i = 0; i < 8; i++){
-                if(SSCell_list[i].cell_configured_flag == false){
-                        SSCell_list[i].cellId = cell_id;
-                        SSCell_list[i].cell_configured_flag = true;
-                        return i;
-                }
-                else if(SSCell_list[i].cell_configured_flag == true){
-                        if(SSCell_list[i].cellId == cell_id) return i;
-                }
-        }
-        return -1;
+int get_cell_index(uint16_t cell_id, SS_Cell_Context_t SSCell_list[]){
+  for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
+    if((SSCell_list[Cell_idx].cell_configured_flag == true)&&(SSCell_list[Cell_idx].eutra_cellId == cell_id)){
+      return Cell_idx;
+    }
+  }
+  for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
+    if(SSCell_list[Cell_idx].cell_configured_flag == false){
+      SSCell_list[Cell_idx].cell_configured_flag = true;
+      return Cell_idx;
+    }
+  }
+  return -1;
 }
 
+int get_cell_index_pci(uint16_t physCellId, SS_Cell_Context_t SSCell_list[]){
+  for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
+    if(SSCell_list[Cell_idx].PhysicalCellId == physCellId){
+      return Cell_idx;
+    }
+  }
+  return -1;
+}

@@ -62,6 +62,7 @@ typedef struct ss_config_s {
   /** DRB port number */
   int Drbport;
   /** State info */
+  int State;
   int vtp_ready;
   int CBRA_flag;
   int mac_rlc_data_ind_frame;

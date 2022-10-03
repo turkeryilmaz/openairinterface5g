@@ -48,25 +48,23 @@ typedef enum SSEvents_E {
 } SSEventsE;
 
 /** Structure Containing Cell-specific values only */
-typedef struct SSCellConfigContext_s{
+typedef struct SS_Cell_Context_s{
   int State;	
   uint16_t dl_earfcn;
   uint16_t ul_earfcn;
   uint32_t dl_freq;
   uint32_t ul_freq;
   uint16_t curr_attn;
-  uint16_t cellId;
+  uint16_t PhysicalCellId;
   int16_t maxRefPower;
   bool cell_configured_flag;
-  //TO DO: Need to remove one of the following cellId
-  EUTRA_CellId_Type ttcn_cell_id;
-  uint16_t eutra_cellId;
+  EUTRA_CellId_Type eutra_cellId;
   uint16_t ss_rnti_g;
-} SSCellConfigContext_t;
+} SS_Cell_Context_t;
 
 typedef struct SSConfigContext_s {
   /** List of Cells */
-  SSCellConfigContext_t SSCell_list[8];	
+  SS_Cell_Context_t SSCell_list[8];
   /** Timing info */
   uint16_t sfn;
   uint8_t  sf;

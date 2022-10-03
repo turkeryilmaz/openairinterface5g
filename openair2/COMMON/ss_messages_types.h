@@ -149,6 +149,7 @@ typedef struct ss_rrc_pdu_ind_s {
   uint32_t  sdu_size;
   uint8_t   sdu[SDU_SIZE];
   uint16_t  rnti;
+  int       physCellId;
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
 } ss_rrc_pdu_ind_t;
