@@ -29,6 +29,7 @@
 #include "ss_eNB_proxy_iface.h"
 #include "SIDL_EUTRA_VNG_PORT.h"
 #include "acpVng.h"
+#include "ss_eNB_multicell_helper.h"
 
 extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
@@ -110,12 +111,12 @@ void ss_vng_send_cnf(uint8_t status, EUTRA_CellId_Type CellId)
  */
 static inline void
 vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
-        int32_t NocLevel, VngProxyCmd_e cmd)
+        int32_t NocLevel, VngProxyCmd_e cmd,int cell_index)
 {
     MessageDef *message_p = itti_alloc_new_message(TASK_VNG, 0, SS_VNG_PROXY_REQ);
     assert(message_p);
 
-    SS_VNG_PROXY_REQ(message_p).cell_id = SS_context.SSCell_list[0].cellId;
+    SS_VNG_PROXY_REQ(message_p).cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
     SS_VNG_PROXY_REQ(message_p).bw = Bandwidth;
     SS_VNG_PROXY_REQ(message_p).Noc_level = NocLevel;
     SS_VNG_PROXY_REQ(message_p).cmd = cmd;
@@ -192,6 +193,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     	}
     	else if (userId == MSG_VngProcess_userId)
     	{
+            int cell_index;
             LOG_A(ENB_SS, "[SS-VNG] Received VNG Control Request\n");
 
             if (acpVngProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
@@ -200,8 +202,14 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
             	break;
             }
 
-            if (SS_context.SSCell_list[0].State < SS_STATE_CELL_ACTIVE) {
-                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", SS_context.SSCell_list[0].State);
+            if(req->Common.CellId){
+              cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
+              SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
+              LOG_A(ENB_SS,"[SS-VNG] Vaibhav: cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+            }
+
+            if (SS_context.SSCell_list[cell_index].State < SS_STATE_CELL_ACTIVE) {
+                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", SS_context.SSCell_list[cell_index].State);
             	break;
             }
             /** TODO: Dump message here */
@@ -210,17 +218,17 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
             	case EUTRA_VngConfigRequest_Type_Configure:
                         LOG_A(ENB_SS, "[SS-VNG] Received Configure request\n");
                         vng_ss_configure_cell(req->Common.CellId, req->Request.v.Configure.Bandwidth,
-            			req->Request.v.Configure.NocLevel, (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Configure);
+                                req->Request.v.Configure.NocLevel, (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Configure, cell_index);
             		break;
             	case EUTRA_VngConfigRequest_Type_Activate:
                         LOG_A(ENB_SS, "[SS-VNG] Received Activate request\n");
                         vng_ss_configure_cell(req->Common.CellId, (0xFF),
-            			(0xFFFF), (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Activate);
+                                (0xFFFF), (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Activate, cell_index);
             		break;
             	case EUTRA_VngConfigRequest_Type_Deactivate:
                         LOG_A(ENB_SS, "[SS-VNG] Received Deactivate request\n");
                         vng_ss_configure_cell(req->Common.CellId, (0xFF),
-            			(0xFFFF), (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Deactivate);
+                                (0xFFFF), (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Deactivate, cell_index);
             		break;
             	case EUTRA_VngConfigRequest_Type_UNBOUND_VALUE:
             	default:

@@ -25,6 +25,8 @@
 
 #include "ss_eNB_context.h"
 
-int set_cell_index(uint16_t, SSCellConfigContext_t[]);
+int get_cell_index(uint16_t, SS_Cell_Context_t[]);
+
+int get_cell_index_pci(uint16_t physCellId, SS_Cell_Context_t SSCell_list[]);
 
 #endif
