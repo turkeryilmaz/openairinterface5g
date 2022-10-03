@@ -201,7 +201,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_RESP;
       req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context.SSCell_list[0].cellId;
+      req->header.cell_id = SS_context.SSCell_list[0].PhysicalCellId;
 
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
@@ -234,7 +234,7 @@ static inline void ss_enable_vtp()
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_ENABLE;
       req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context.SSCell_list[0].cellId;
+      req->header.cell_id = SS_context.SSCell_list[0].PhysicalCellId;
 
       /* Initialize with zero */
       req->tinfo.sfn = 0;

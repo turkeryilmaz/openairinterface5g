@@ -57,6 +57,7 @@
 #include "acpSys.h"
 #include "ss_eNB_context.h"
 #include "ss_eNB_vt_timer_task.h"
+#include "ss_eNB_multicell_helper.h"
 extern RAN_CONTEXT_t RC;
 SSConfigContext_t SS_context;
 static acpCtx_t ctx_srb_g = NULL;
@@ -92,7 +93,7 @@ uint8_t lttng_sdu[SDU_SIZE];
  * newState: No impack on the State
  *
  */
-static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
+static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind,int cell_index)
 {
 	struct EUTRA_RRC_PDU_IND ind = {};
 	uint32_t status = 0;
@@ -104,10 +105,10 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 	DevAssert(pdu_ind->sdu_size >= 0);
 	DevAssert(pdu_ind->srb_id >= 0);
 	rnti_g = pdu_ind->rnti;
-	SS_context.SSCell_list[0].ss_rnti_g = rnti_g;
+	SS_context.SSCell_list[cell_index].ss_rnti_g = rnti_g;
 	size_t msgSize = size;
 	memset(&ind, 0, sizeof(ind));
-	ind.Common.CellId = SS_context.SSCell_list[0].eutra_cellId;
+	ind.Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
 
 	// Populated the Routing Info
 	ind.Common.RoutingInfo.d = RoutingInfo_Type_RadioBearerId;
@@ -133,7 +134,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 
 	ind.Common.RlcBearerRouting.d = true;
 	ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-	ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[0].eutra_cellId;
+	ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
 
 	/* Populate and Send the EUTRA RRC PDU IND to Client */
 	if (pdu_ind->srb_id == 0)
@@ -181,7 +182,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind)
 		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSysSrbProcessToSSEncSrv Failure\n");
 		return;
 	}
-	LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[0].eutra_cellId);
+	LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
 
 	/* Send message
    */
@@ -301,6 +302,7 @@ static inline void
 ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 {
 	size_t msgSize = size; //2
+        int cell_index;
 
 	while (1)
 	{
@@ -354,13 +356,18 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 				LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] acpSysSrbProcessFromSSDecSrv Failed\n");
 				break;
 			}
-			if (SS_context.SSCell_list[0].State >= SS_STATE_CELL_ACTIVE)
+                        if(req->Common.CellId){
+                          cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
+                          SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
+                          LOG_A(ENB_SS,"[SS_SRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                        }
+			if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
 			{
 				ss_task_handle_rrc_pdu_req(req);
 			}
 			else
 			{
-				LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[0].State);
+				LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
 			}
 
 			acpSysSrbProcessFromSSFreeSrv(req);
@@ -438,6 +445,7 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 {
 	MessageDef *received_msg = NULL;
 	int result = 0;
+        int cell_index;
 
 	itti_receive_msg(TASK_SS_SRB, &received_msg);
 
@@ -449,22 +457,25 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 		case SS_RRC_PDU_IND:
 		{
 			task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+                        if(received_msg->ittiMsg.ss_rrc_pdu_ind.rnti){
+                          cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId, SS_context.SSCell_list);
+                        }
 
 			if (origin_task == TASK_SS_PORTMAN)
 			{
-				LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[0].State);
+				LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
 			}
 			else
 			{
 				LOG_A(ENB_SS, "[SS_SRB] Received SS_RRC_PDU_IND from RRC\n");
-				if (SS_context.SSCell_list[0].State >= SS_STATE_CELL_ACTIVE)
+				if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
 				{
 					instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-					ss_send_srb_data(&received_msg->ittiMsg.ss_rrc_pdu_ind);
+					ss_send_srb_data(&received_msg->ittiMsg.ss_rrc_pdu_ind,cell_index);
 				}
 				else
 				{
-					LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[0].State);
+					LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
 				}
 			}
 
