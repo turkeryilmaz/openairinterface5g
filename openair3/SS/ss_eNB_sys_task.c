@@ -1671,7 +1671,7 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_RadioBearerList received\n");
       exitState = sys_handle_radiobearer_list(&(req->Request.v.RadioBearerList));
       SS_context.SSCell_list[cell_index].State = exitState;
-      if(RC.ss.State < SS_STATE_CELL_CONFIGURED)
+      if(RC.ss.State <= SS_STATE_CELL_CONFIGURED)
         RC.ss.State = exitState;
     }
     else
@@ -1690,14 +1690,14 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
       exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
       SS_context.SSCell_list[cell_index].State = exitState;
-      if(RC.ss.State < SS_STATE_CELL_ACTIVE)
+      if(RC.ss.State <= SS_STATE_CELL_ACTIVE)
         RC.ss.State = exitState;
       break;
     case SystemRequest_Type_RadioBearerList:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_RadioBearerList received in SS_STATE_CELL_ACTIVE state\n");
       exitState = sys_handle_radiobearer_list(&(req->Request.v.RadioBearerList));
       SS_context.SSCell_list[cell_index].State = exitState;
-      if(RC.ss.State < SS_STATE_CELL_ACTIVE)
+      if(RC.ss.State <= SS_STATE_CELL_ACTIVE)
         RC.ss.State = exitState;
       break;
     case SystemRequest_Type_CellAttenuationList:
