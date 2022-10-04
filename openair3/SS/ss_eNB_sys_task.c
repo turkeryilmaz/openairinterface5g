@@ -1254,7 +1254,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   LOG_A(ENB_SS, "[SYS] Enter sys_handle_paging_req Paging_IND for processing\n");
 
   /** TODO: Considering only one cell for now */
-  uint8_t cellId = 0; //(uint8_t)pagingRequ ->CellId;
+  uint8_t cellId = SS_context.SSCell_list[cell_index].PhysicalCellId; //(uint8_t)pagingRequ ->CellId;
   uint8_t cn_domain = 0;
 
   enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Paging;
@@ -1624,8 +1624,7 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
   if(req->Common.CellId){
     cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
     SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
-    SS_context.SSCell_list[cell_index].PhysicalCellId = req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
-    LOG_A(ENB_SS,"[SYS] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+    LOG_A(ENB_SS,"[SYS] cell_index: %d eutra_cellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId);
   }	
   int enterState = SS_context.SSCell_list[cell_index].State;
   int exitState = SS_context.SSCell_list[cell_index].State;
@@ -1638,6 +1637,8 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     {
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
       exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
+      SS_context.SSCell_list[cell_index].PhysicalCellId = req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
+      LOG_A(ENB_SS,"[SYS] SS_STATE_NOT_CONFIGURED: PhysicalCellId is %d in SS_context \n",SS_context.SSCell_list[cell_index].PhysicalCellId);
       SS_context.SSCell_list[cell_index].State = exitState;
       if(RC.ss.State <= SS_STATE_CELL_CONFIGURED)
         RC.ss.State = exitState;
@@ -1672,6 +1673,10 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     case SystemRequest_Type_Cell:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
       exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
+      if(req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId) {
+        SS_context.SSCell_list[cell_index].PhysicalCellId = req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
+      }
+      LOG_A(ENB_SS,"[SYS] SS_STATE_CELL_ACTIVE: PhysicalCellId is %d in SS_context \n",SS_context.SSCell_list[cell_index].PhysicalCellId);
       SS_context.SSCell_list[cell_index].State = exitState;
       if(RC.ss.State <= SS_STATE_CELL_ACTIVE)
         RC.ss.State = exitState;
