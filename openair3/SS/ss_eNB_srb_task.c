@@ -459,6 +459,7 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
 			task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
                         if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
                           cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId, SS_context.SSCell_list);
+                          LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
                         }
 
 			if (origin_task == TASK_SS_PORTMAN)

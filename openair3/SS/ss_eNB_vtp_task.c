@@ -383,6 +383,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
             if(SS_UPD_TIM_INFO(received_msg).physCellId){
               cellIndex = get_cell_index_pci(SS_UPD_TIM_INFO(received_msg).physCellId, SS_context.SSCell_list);
+              LOG_A(ENB_SS,"[VTP] cellIndex in SS_UPD_TIM_INFO: %d PhysicalCellId: %d \n",cellIndex,SS_context.SSCell_list[cellIndex].PhysicalCellId);
             }
             LOG_A(ENB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(ENB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);

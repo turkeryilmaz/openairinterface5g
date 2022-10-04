@@ -277,6 +277,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
                                 int cell_index;
                                 if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
                                   cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
+                                  LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
                                 }
 				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
