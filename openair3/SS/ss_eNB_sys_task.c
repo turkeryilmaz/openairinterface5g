@@ -1279,7 +1279,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   LOG_A(ENB_SS, "[SYS] Enter sys_handle_paging_req Paging_IND for processing\n");
 
   /** TODO: Considering only one cell for now */
-  uint8_t cellId = 0; //(uint8_t)pagingRequ ->CellId;
+  uint8_t cellId = SS_context.SSCell_list[cell_index].PhysicalCellId; //(uint8_t)pagingRequ ->CellId;
   uint8_t cn_domain = 0;
 
   enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Paging;
