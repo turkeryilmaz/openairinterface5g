@@ -214,7 +214,7 @@ void oai_create_enb(void) {
     eNB->CC_id   = CC_id;
     eNB->abstraction_flag   = 0;
     eNB->single_thread_flag = 0;//single_thread_flag;
-    RC.nb_CC[CC_id] = 2;
+    RC.nb_CC[CC_id] = MAX_NUM_CCs;
 
     if (eNB->if_inst==0) {
       eNB->if_inst = IF_Module_init(bodge_counter);
