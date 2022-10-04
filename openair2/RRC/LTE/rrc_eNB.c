@@ -652,9 +652,10 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   ue_paging_identity.presenceMask = 0;
 	ss_paging_identity_t *p_paging_record = SS_PAGING_IND(msg_p).paging_recordList;
 	count = SS_PAGING_IND(msg_p).num_paging_record;	
+        LOG_A(RRC, " Number of paging records::%d\n",SS_PAGING_IND(msg_p).num_paging_record);
 	while (count > 0)
 	{
-		if (SS_PAGING_IND(msg_p).paging_recordList)
+		if (p_paging_record)
 		{
 			LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
 					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
@@ -664,22 +665,27 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 					SS_PAGING_IND(msg_p).sf,
 					SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
 					(uint16_t)SS_PAGING_IND(msg_p).ue_index_value);
-			//memcpy(&ue_paging_identity, &(SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity), sizeof(ue_paging_identity_t));
 			memcpy(&ue_paging_identity, &(p_paging_record->ue_paging_identity), sizeof(ue_paging_identity_t));
 			cn_domain = p_paging_record->cn_domain;
+
+
+			/* Create message for PDCP (DLInformationTransfer_t) */
+			if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
+			{
+				length = do_Paging(instance,
+						buffer,
+						RRC_BUF_SIZE,
+						ue_paging_identity,
+						cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
+						SS_PAGING_IND(msg_p).num_paging_record);
+				count--;
+			}
+			p_paging_record++;
 		}
-
-
-		/* Create message for PDCP (DLInformationTransfer_t) */
-		if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
+		else
 		{
-			length = do_Paging(instance,
-					buffer,
-					RRC_BUF_SIZE,
-					ue_paging_identity,
-					cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
-					SS_PAGING_IND(msg_p).num_paging_record);
-			count--;
+			LOG_E(RRC, "Received empty paging record");
+			return -1;
 		}
 	}
   if (length == -1)

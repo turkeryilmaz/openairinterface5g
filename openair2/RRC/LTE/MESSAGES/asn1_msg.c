@@ -4405,10 +4405,11 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 
 		pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
 		pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
-		if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
-			return (-1);
-		}
 		oneTimeProcessingFlag = 1;
+	}
+
+	if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
+					return (-1);
 	}
 
 	if (count <= pagingRecordCount)
