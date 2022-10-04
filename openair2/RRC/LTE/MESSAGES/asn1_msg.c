@@ -4386,7 +4386,6 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
                   ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain, bool systemInfoModification, uint8_t pagingRecordCount) {
   LOG_D(RRC, "[eNB %d] do_Paging start\n", Mod_id);
   asn_enc_rval_t enc_rval;
-  //LTE_PCCH_Message_t pcch_msg;
   static LTE_PCCH_Message_t pcch_msg;
   LTE_PagingRecord_t *paging_record_p;
   int j;
