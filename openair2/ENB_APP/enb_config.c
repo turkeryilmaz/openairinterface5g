@@ -184,7 +184,7 @@ void RCconfig_L1(void) {
     // DJP need to create some structures for VNF
     j = 0;
     RC.nb_L1_CC = malloc((1+RC.nb_L1_inst)*sizeof(int)); // DJP - 1 lot then???
-    RC.nb_L1_CC[j]=1; // DJP - hmmm
+    RC.nb_L1_CC[j]=MAX_NUM_CCs; // DJP - hmmm (MultiCell: Initialization of nb_L1_CC with maximum number of CC)
 
     if (RC.eNB[j] == NULL) {
       RC.eNB[j]                       = (PHY_VARS_eNB **)malloc((1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB **));
