@@ -756,37 +756,38 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
       eNB_dlsch_ulsch_scheduler(module_id,
                                 (UL_info->frame+((UL_info->subframe>(9-sf_ahead))?1:0)) % 1024,
                                 (UL_info->subframe+sf_ahead)%10);
-      ifi->CC_mask            = 0;
-      sched_info->module_id   = module_id;
-      sched_info->CC_id       = CC_id;
-      sched_info->frame       = (UL_info->frame + ((UL_info->subframe>(9-sf_ahead)) ? 1 : 0)) % 1024;
-      sched_info->subframe    = (UL_info->subframe+sf_ahead)%10;
-      sched_info->DL_req      = &mac->DL_req[CC_id];
-      sched_info->HI_DCI0_req = &mac->HI_DCI0_req[CC_id][sched_info->subframe];
+      for (int CC_Id=0; CC_Id<MAX_NUM_CCs; CC_Id++) {
+        ifi->CC_mask            = 0;
+        sched_info->module_id   = module_id;
+        sched_info->CC_id       = CC_Id;
+        sched_info->frame       = (UL_info->frame + ((UL_info->subframe>(9-sf_ahead)) ? 1 : 0)) % 1024;
+        sched_info->subframe    = (UL_info->subframe+sf_ahead)%10;
+        sched_info->DL_req      = &mac->DL_req[CC_Id];
+        sched_info->HI_DCI0_req = &mac->HI_DCI0_req[CC_Id][sched_info->subframe];
 
-      if ((mac->common_channels[CC_id].tdd_Config==NULL) ||
-          (is_UL_sf(&mac->common_channels[CC_id],sched_info->subframe)>0))
-        sched_info->UL_req      = &mac->UL_req[CC_id];
-      else
-        sched_info->UL_req      = NULL;
+        if ((mac->common_channels[CC_Id].tdd_Config==NULL) ||
+            (is_UL_sf(&mac->common_channels[CC_Id],sched_info->subframe)>0))
+          sched_info->UL_req      = &mac->UL_req[CC_Id];
+        else
+          sched_info->UL_req      = NULL;
 
-      sched_info->TX_req      = &mac->TX_req[CC_id];
-      pthread_mutex_lock(&lock_ue_freelist);
-      sched_info->UE_release_req = &mac->UE_release_req;
-      pthread_mutex_unlock(&lock_ue_freelist);
+        sched_info->TX_req      = &mac->TX_req[CC_Id];
+        pthread_mutex_lock(&lock_ue_freelist);
+        sched_info->UE_release_req = &mac->UE_release_req;
+        pthread_mutex_unlock(&lock_ue_freelist);
 #ifdef DUMP_FAPI
-      dump_dl(sched_info);
+        dump_dl(sched_info);
 #endif
 
-      if (ifi->schedule_response) {
-        AssertFatal(ifi->schedule_response!=NULL,
-                    "schedule_response is null (mod %d, cc %d)\n",
-                    module_id,
-                    CC_id);
-        ifi->schedule_response(sched_info, proc );
+        if (ifi->schedule_response) {
+          AssertFatal(ifi->schedule_response!=NULL,
+                      "schedule_response is null (mod %d, cc %d)\n",
+                      module_id,
+                      CC_Id);
+          ifi->schedule_response(sched_info, proc );
+        }
+        LOG_D(PHY,"Schedule_response: SFN_SF:%d%d dl_pdus:%d CC_id: %d \n",sched_info->frame,sched_info->subframe,sched_info->DL_req->dl_config_request_body.number_pdu,sched_info->CC_id);
       }
-
-      LOG_D(PHY,"Schedule_response: SFN_SF:%d%d dl_pdus:%d\n",sched_info->frame,sched_info->subframe,sched_info->DL_req->dl_config_request_body.number_pdu);
     }
   }
 }
