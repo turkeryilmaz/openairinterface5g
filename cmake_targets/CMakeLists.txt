@@ -2085,6 +2085,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
+  ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
