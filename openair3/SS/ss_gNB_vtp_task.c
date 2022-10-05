@@ -517,7 +517,7 @@ void* ss_gNB_vtp_task(void *arg) {
 
 		ss_gNB_wait_first_msg();
 
-		SS_context.vtp_enabled = 1;
+//		SS_context.vtp_enabled = 1;
 		RC.ss.vtp_ready = 1;
 
 		sleep(1);
