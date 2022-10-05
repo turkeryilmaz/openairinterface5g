@@ -4390,7 +4390,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   LTE_PagingRecord_t *paging_record_p;
   int j;
   static uint8_t oneTimeProcessingFlag = 0;
-  static uint8_t count = 1;
+  static uint8_t count = 0;
   /* This block of code will be one time */
   if (oneTimeProcessingFlag == 0)
   {
@@ -4467,7 +4467,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
       xer_fprint(stdout, &asn_DEF_LTE_PCCH_Message, (void *)&pcch_msg);
     }
-    count = 1;
+    count = 0;
     memset(&pcch_msg, 0, sizeof(LTE_PCCH_Message_t));
     oneTimeProcessingFlag = 0;
     return((enc_rval.encoded+7)/8);
