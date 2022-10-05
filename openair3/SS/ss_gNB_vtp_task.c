@@ -363,7 +363,7 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx)
     acpFree(buffer);
 }
 
-void *ss_eNB_vtp_process_itti_msg(void *notUsed)
+void *ss_gNB_vtp_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
     int result;
@@ -381,7 +381,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
             LOG_A(ENB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(ENB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
-            if (SS_context.vtp_enabled == 1)
+//            if (SS_context.vtp_enabled == 1)
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
         }
         break;
@@ -425,11 +425,8 @@ int ss_eNB_vtp_init(void)
     acpConvertIp(hostIp, &ipaddr);
 
     // Port number
-    int port = RC.ss.Vtpport;
-    if (port != 7780)
-    {
-        return -1;
-    }
+    int port = RC.ss.Vtpport ? RC.ss.Vtpport : 7780;
+
     LOG_A(ENB_APP, "[SS-VTP] Initializing VTP Port %s:%d\n", hostIp, port);
     // acpInit(malloc, free, 1000);
     const struct acpMsgTable msgTable[] = {
@@ -468,7 +465,7 @@ static void ss_eNB_wait_first_msg(void)
 	while (1)
 	{
 		int ret = acpRecvMsg(ctx_vtp_g, &msg_sz, buffer);
-		if (ret == MSG_SysVTEnquireTimingAck_userId)
+		if (ret == MSG_SysVTEnquireTimingAck_userId || ret == -ACP_PEER_CONNECTED)
 		{
 			LOG_A(ENB_APP, "[SS_VTP] First VT-ACK From Client Received (on-start) \n");
 			break;
@@ -477,7 +474,7 @@ static void ss_eNB_wait_first_msg(void)
 	}
 }
 //------------------------------------------------------------------------------
-void* ss_eNB_vtp_task(void *arg) {
+void* ss_gNB_vtp_task(void *arg) {
 	vtp_udpSockReq_t req;
 	req.address = vtp_local_address;
 	req.port = vtp_proxy_recv_port;
@@ -489,12 +486,12 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		SS_context.vtp_enabled = 1;
+//		SS_context.vtp_enabled = 1;
 		RC.ss.vtp_ready = 1;
 		ss_enable_vtp();
 		sleep(1);
 		while (1) {
-			(void) ss_eNB_vtp_process_itti_msg(NULL);
+			(void) ss_gNB_vtp_process_itti_msg(NULL);
 		}
 	} else {
 
