@@ -1681,6 +1681,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_gNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
+<<<<<<< HEAD:CMakeLists.txt
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
@@ -1698,6 +1699,8 @@ include_directories (SIDL_SRC_DIR ${SIDL_DIR}/adbg/api)
 include_directories (SIDL_SRC_DIR ${SIDL_DIR}/ser/api)
 set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
+=======
+>>>>>>> 7b617970bd... bugz 123365 adds vt int gNB:cmake_targets/CMakeLists.txt
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
