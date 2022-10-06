@@ -710,6 +710,7 @@ static int sys_handle_radiobearer_list(struct RadioBearer_Type_RadioBearerList_T
   {
     LOG_A(ENB_SS, "[SYS] BearerList size:%lu\n", BearerList->d);
     RRC_RBLIST_CFG_REQ(msg_p).rb_count = 0;
+    RRC_RBLIST_CFG_REQ(msg_p).cell_index = cell_index;
     for (int i = 0; i < BearerList->d; i++)
     {
       LOG_A(ENB_SS, "[SYS] RB Index i:%d\n", i);

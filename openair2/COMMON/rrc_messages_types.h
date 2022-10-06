@@ -211,6 +211,7 @@ typedef struct rb_info_s {
 
 typedef struct RrcRblistCfgReq_s {
   int rb_count;
+  int cell_index;
   rb_info rb_list[MAX_RBS];
 } RrcRblistCfgReq;
 
