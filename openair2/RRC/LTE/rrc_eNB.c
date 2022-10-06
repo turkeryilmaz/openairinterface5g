@@ -678,8 +678,9 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 						ue_paging_identity,
 						cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
 						SS_PAGING_IND(msg_p).num_paging_record);
-				count--;
+				
 			}
+      count--;
 			p_paging_record++;
 		}
 		else
