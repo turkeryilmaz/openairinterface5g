@@ -61,6 +61,7 @@ int get_cell_index(uint16_t cell_id, SS_Cell_Context_t SSCell_list[]){
   for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
     if(SSCell_list[Cell_idx].cell_configured_flag == false){
       SSCell_list[Cell_idx].cell_configured_flag = true;
+      SSCell_list[Cell_idx].eutra_cellId = cell_id;
       return Cell_idx;
     }
   }
