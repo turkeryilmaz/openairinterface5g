@@ -204,7 +204,7 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->header.msg_id = SS_VTP_RESP;
       req->header.length = sizeof(proxy_ss_header_t);
       req->header.cell_id = SS_context.SSCell_list[cellIndex].PhysicalCellId;
-
+      req->header.cell_index = cellIndex;
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
       

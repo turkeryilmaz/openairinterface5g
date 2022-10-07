@@ -540,12 +540,19 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
     cellConfig->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
     cellConfig->maxRefPower= SS_context.SSCell_list[cell_index].maxRefPower;
     cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
+    cellConfig->header.cell_index = cell_index;
     LOG_A(ENB_SS,"=======Cell configuration received for cell_id: %d Initial attenuation: %d \
-				  Max ref power: %d\n for DL_EARFCN: %d =================================== \n",
+				  Max ref power: %d\n for DL_EARFCN: %d cell_index %d =================================== \n",
                  cellConfig->header.cell_id,
                  cellConfig->initialAttenuation, cellConfig->maxRefPower,
-                 cellConfig->dl_earfcn);
+                 cellConfig->dl_earfcn,cell_index);
      //send_to_proxy();
+     printf("=======Cell configuration received for cell_id: %d Initial attenuation: %d \
+				  Max ref power: %d\n for DL_EARFCN: %d cell_index %d =================================== \n",
+                 cellConfig->header.cell_id,
+                 cellConfig->initialAttenuation, cellConfig->maxRefPower,
+                 cellConfig->dl_earfcn,cell_index);
+   
       sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t));
   }
   return true;
@@ -1206,6 +1213,8 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
   attnConf->header.preamble = 0xFEEDC0DE;
   attnConf->header.msg_id = SS_ATTN_LIST;
   attnConf->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
+  attnConf->header.cell_index = cell_index;
+  printf("Attn send to proxy cell_index %d\n",cell_index);
   attnConf->attnVal = attnVal;
   IPV4_STR_ADDR_TO_INT_NWBO(local_address, peerIpAddr, " BAD IP Address");
 
@@ -1626,6 +1635,8 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
     SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
     LOG_A(ENB_SS,"[SYS] cell_index: %d eutra_cellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId);
+   printf("[SYS] cell_index: %d eutra_cellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId);
+
   }	
   int enterState = SS_context.SSCell_list[cell_index].State;
   int exitState = SS_context.SSCell_list[cell_index].State;
@@ -1935,13 +1946,14 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
     case SS_VNG_PROXY_REQ: {
         LOG_A(ENB_SS, "[SYS] received %s from %s \n", ITTI_MSG_NAME(received_msg),
             ITTI_MSG_ORIGIN_NAME(received_msg));
-
+        
         VngCmdReq_t *req      = (VngCmdReq_t *)malloc(sizeof(VngCmdReq_t));
         req->header.preamble  = 0xFEEDC0DE;
         req->header.msg_id    = SS_VNG_CMD_REQ;
         req->header.length    = sizeof(proxy_ss_header_t);
         req->header.cell_id   = SS_VNG_PROXY_REQ(received_msg).cell_id;
-
+        req->header.cell_index = get_cell_index(req->header.cell_id , SS_context.SSCell_list);
+printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
         req->bw               = SS_VNG_PROXY_REQ(received_msg).bw;
         req->cmd              = SS_VNG_PROXY_REQ(received_msg).cmd;
         req->NocLevel         = SS_VNG_PROXY_REQ(received_msg).Noc_level;

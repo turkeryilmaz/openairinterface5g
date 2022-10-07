@@ -262,10 +262,10 @@ init_SI(
     carrier->N_RB_DL         = configuration->N_RB_DL[CC_id];
     carrier->pbch_repetition = configuration->pbch_repetition[CC_id];
     LOG_I(RRC, "configuration->schedulingInfoSIB1_BR_r13[CC_id] %d\n",(int)configuration->schedulingInfoSIB1_BR_r13[CC_id]);
-    LOG_A(RRC, "Configuring MIB (N_RB_DL %d,phich_Resource %d,phich_Duration %d)\n",
+    LOG_A(RRC, "Configuring MIB (N_RB_DL %d,phich_Resource %d,phich_Duration %d, CC_id: %d, MAX_NUM_CCs: %d)\n",
           (int)configuration->N_RB_DL[CC_id],
           (int)configuration->radioresourceconfig[CC_id].phich_resource,
-          (int)configuration->radioresourceconfig[CC_id].phich_duration);
+          (int)configuration->radioresourceconfig[CC_id].phich_duration,CC_id,MAX_NUM_CCs);
     carrier->sizeof_MIB = do_MIB(&rrc->carrier[CC_id],
                                  configuration->N_RB_DL[CC_id],
                                  configuration->radioresourceconfig[CC_id].phich_resource,
