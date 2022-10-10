@@ -667,15 +667,15 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
 int phy_rach_indication(struct nfapi_vnf_p7_config *config, nfapi_rach_indication_t *ind) {
   LOG_D(MAC, "%s() NFAPI SFN/SF:%d number_of_preambles:%u\n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->rach_indication_body.number_of_preambles);
   struct PHY_VARS_eNB_s *eNB = RC.eNB[0][0];
-  LOG_D(MAC, "[VNF] RACH_IND eNB:%p sfn_sf:%d number_of_preambles:%d\n", eNB, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->rach_indication_body.number_of_preambles);
+  LOG_D(MAC, "[VNF] RACH_IND eNB:%p sfn_sf:%d number_of_preambles:%d phy_id: %d \n", eNB, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->rach_indication_body.number_of_preambles,ind->header.phy_id);
   AssertFatal(pthread_mutex_lock(&eNB->UL_INFO_mutex)==0, "Mutex lock failed");
   if(NFAPI_MODE == NFAPI_MODE_VNF){
     int8_t index = NFAPI_SFNSF2SF(ind->sfn_sf);
 
-    UL_RCC_INFO[ind->header.phy_id].rach_ind[index] = *ind;
+    UL_RCC_INFO[ind->header.phy_id-1].rach_ind[index] = *ind;
 
     if (ind->rach_indication_body.number_of_preambles > 0)
-      UL_RCC_INFO[ind->header.phy_id].rach_ind[index].rach_indication_body.preamble_list = malloc(sizeof(nfapi_preamble_pdu_t)*ind->rach_indication_body.number_of_preambles );
+      UL_RCC_INFO[ind->header.phy_id-1].rach_ind[index].rach_indication_body.preamble_list = malloc(sizeof(nfapi_preamble_pdu_t)*ind->rach_indication_body.number_of_preambles );
 
     for (int i=0; i<ind->rach_indication_body.number_of_preambles; i++) {
       if (ind->rach_indication_body.preamble_list[i].preamble_rel8.tl.tag == NFAPI_PREAMBLE_REL8_TAG) {
@@ -691,7 +691,7 @@ int phy_rach_indication(struct nfapi_vnf_p7_config *config, nfapi_rach_indicatio
         LOG_D(MAC, "RACH PREAMBLE REL13 present\n");
       }
 
-      UL_RCC_INFO[ind->header.phy_id].rach_ind[index].rach_indication_body.preamble_list[i] = ind->rach_indication_body.preamble_list[i];
+      UL_RCC_INFO[ind->header.phy_id-1].rach_ind[index].rach_indication_body.preamble_list[i] = ind->rach_indication_body.preamble_list[i];
     }
   }else{
   eNB->UL_INFO.rach_ind = *ind;
@@ -872,19 +872,19 @@ int phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
 
 int phy_harq_indication(struct nfapi_vnf_p7_config *config, nfapi_harq_indication_t *ind) {
   struct PHY_VARS_eNB_s *eNB = RC.eNB[0][0];
-  LOG_D(MAC, "%s() NFAPI SFN/SF:%d number_of_harqs:%u\n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->harq_indication_body.number_of_harqs);
+  LOG_D(MAC, "%s() NFAPI SFN/SF:%d number_of_harqs:%u phy_id: %d \n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->harq_indication_body.number_of_harqs,ind->header.phy_id);
   AssertFatal(pthread_mutex_lock(&eNB->UL_INFO_mutex)==0, "Mutex lock failed");
   if(NFAPI_MODE == NFAPI_MODE_VNF){
     int8_t index = NFAPI_SFNSF2SF(ind->sfn_sf);
 
-    UL_RCC_INFO[ind->header.phy_id].harq_ind[index] = *ind;
+    UL_RCC_INFO[ind->header.phy_id-1].harq_ind[index] = *ind;
 
     assert(ind->harq_indication_body.number_of_harqs <= NFAPI_HARQ_IND_MAX_PDU);
     if (ind->harq_indication_body.number_of_harqs > 0) {
-      UL_RCC_INFO[ind->header.phy_id].harq_ind[index].harq_indication_body.harq_pdu_list = malloc(sizeof(nfapi_harq_indication_pdu_t) * NFAPI_HARQ_IND_MAX_PDU);
+      UL_RCC_INFO[ind->header.phy_id-1].harq_ind[index].harq_indication_body.harq_pdu_list = malloc(sizeof(nfapi_harq_indication_pdu_t) * NFAPI_HARQ_IND_MAX_PDU);
     }
     for (int i=0; i<ind->harq_indication_body.number_of_harqs; i++) {
-        memcpy(&UL_RCC_INFO[ind->header.phy_id].harq_ind[index].harq_indication_body.harq_pdu_list[i], &ind->harq_indication_body.harq_pdu_list[i], sizeof(nfapi_harq_indication_pdu_t));
+        memcpy(&UL_RCC_INFO[ind->header.phy_id-1].harq_ind[index].harq_indication_body.harq_pdu_list[i], &ind->harq_indication_body.harq_pdu_list[i], sizeof(nfapi_harq_indication_pdu_t));
     }
   }else{
     eNB->UL_INFO.harq_ind = *ind;
@@ -909,23 +909,23 @@ int phy_crc_indication(struct nfapi_vnf_p7_config *config, nfapi_crc_indication_
   if(NFAPI_MODE == NFAPI_MODE_VNF){
     int8_t index = NFAPI_SFNSF2SF(ind->sfn_sf);
 
-    UL_RCC_INFO[ind->header.phy_id].crc_ind[index] = *ind;
+    UL_RCC_INFO[ind->header.phy_id-1].crc_ind[index] = *ind;
 
     assert(ind->crc_indication_body.number_of_crcs <= NFAPI_CRC_IND_MAX_PDU);
     if (ind->crc_indication_body.number_of_crcs > 0) {
-      UL_RCC_INFO[ind->header.phy_id].crc_ind[index].crc_indication_body.crc_pdu_list = malloc(sizeof(nfapi_crc_indication_pdu_t) * NFAPI_CRC_IND_MAX_PDU);
+      UL_RCC_INFO[ind->header.phy_id-1].crc_ind[index].crc_indication_body.crc_pdu_list = malloc(sizeof(nfapi_crc_indication_pdu_t) * NFAPI_CRC_IND_MAX_PDU);
     }
 
     assert(ind->crc_indication_body.number_of_crcs <= NFAPI_CRC_IND_MAX_PDU);
     for (int i=0; i<ind->crc_indication_body.number_of_crcs; i++) {
-      memcpy(&UL_RCC_INFO[ind->header.phy_id].crc_ind[index].crc_indication_body.crc_pdu_list[i], &ind->crc_indication_body.crc_pdu_list[i], sizeof(ind->crc_indication_body.crc_pdu_list[0]));
+      memcpy(&UL_RCC_INFO[ind->header.phy_id-1].crc_ind[index].crc_indication_body.crc_pdu_list[i], &ind->crc_indication_body.crc_pdu_list[i], sizeof(ind->crc_indication_body.crc_pdu_list[0]));
 
       LOG_D(MAC, "%s() NFAPI SFN/SF:%d CRC_IND:number_of_crcs:%u UL_INFO:crcs:%d PDU[%d] rnti:%04x UL_INFO:rnti:%04x\n",
           __FUNCTION__,
-          NFAPI_SFNSF2DEC(ind->sfn_sf), ind->crc_indication_body.number_of_crcs, UL_RCC_INFO[ind->header.phy_id].crc_ind[index].crc_indication_body.number_of_crcs,
+          NFAPI_SFNSF2DEC(ind->sfn_sf), ind->crc_indication_body.number_of_crcs, UL_RCC_INFO[ind->header.phy_id-1].crc_ind[index].crc_indication_body.number_of_crcs,
           i,
           ind->crc_indication_body.crc_pdu_list[i].rx_ue_information.rnti,
-          UL_RCC_INFO[ind->header.phy_id].crc_ind[index].crc_indication_body.crc_pdu_list[i].rx_ue_information.rnti);
+          UL_RCC_INFO[ind->header.phy_id-1].crc_ind[index].crc_indication_body.crc_pdu_list[i].rx_ue_information.rnti);
     }
   }else{
   eNB->UL_INFO.crc_ind = *ind;
@@ -1008,18 +1008,18 @@ int phy_rx_indication(struct nfapi_vnf_p7_config *config, nfapi_rx_indication_t 
   if(NFAPI_MODE == NFAPI_MODE_VNF){
     int8_t index = NFAPI_SFNSF2SF(ind->sfn_sf);
 
-    UL_RCC_INFO[ind->header.phy_id].rx_ind[index] = *ind;
+    UL_RCC_INFO[ind->header.phy_id-1].rx_ind[index] = *ind;
 
     size_t number_of_pdus = ind->rx_indication_body.number_of_pdus;
     assert(number_of_pdus <= NFAPI_RX_IND_MAX_PDU);
 
     if (number_of_pdus > 0) {
-      UL_RCC_INFO[ind->header.phy_id].rx_ind[index].rx_indication_body.rx_pdu_list =
+      UL_RCC_INFO[ind->header.phy_id-1].rx_ind[index].rx_indication_body.rx_pdu_list =
           malloc(sizeof(nfapi_rx_indication_pdu_t) * NFAPI_RX_IND_MAX_PDU);
     }
 
     for (int i=0; i<number_of_pdus; i++) {
-      nfapi_rx_indication_pdu_t *dest_pdu = &UL_RCC_INFO[ind->header.phy_id].rx_ind[index].rx_indication_body.rx_pdu_list[i];
+      nfapi_rx_indication_pdu_t *dest_pdu = &UL_RCC_INFO[ind->header.phy_id-1].rx_ind[index].rx_indication_body.rx_pdu_list[i];
       nfapi_rx_indication_pdu_t *src_pdu = &ind->rx_indication_body.rx_pdu_list[i];
 
       memcpy(dest_pdu, src_pdu, sizeof(*src_pdu));
@@ -1123,21 +1123,21 @@ int phy_srs_indication(struct nfapi_vnf_p7_config *config, nfapi_srs_indication_
 
 int phy_sr_indication(struct nfapi_vnf_p7_config *config, nfapi_sr_indication_t *ind) {
   struct PHY_VARS_eNB_s *eNB = RC.eNB[0][0];
-  LOG_D(MAC, "%s() NFAPI SFN/SF:%d srs:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->sr_indication_body.number_of_srs);
+  LOG_D(MAC, "%s() NFAPI SFN/SF:%d srs:%d phy_id: %d \n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->sr_indication_body.number_of_srs,ind->header.phy_id);
   AssertFatal(pthread_mutex_lock(&eNB->UL_INFO_mutex)==0, "Mutex lock failed");
   if(NFAPI_MODE == NFAPI_MODE_VNF){
     int8_t index = NFAPI_SFNSF2SF(ind->sfn_sf);
 
-    UL_RCC_INFO[ind->header.phy_id].sr_ind[index] = *ind;
+    UL_RCC_INFO[ind->header.phy_id-1].sr_ind[index] = *ind;
     LOG_D(MAC,"%s() UL_INFO[%d].sr_ind.sr_indication_body.number_of_srs:%d\n", __FUNCTION__, index, eNB->UL_INFO.sr_ind.sr_indication_body.number_of_srs);
     if (ind->sr_indication_body.number_of_srs > 0) {
       assert(ind->sr_indication_body.number_of_srs <= NFAPI_SR_IND_MAX_PDU);
-      UL_RCC_INFO[ind->header.phy_id].sr_ind[index].sr_indication_body.sr_pdu_list = malloc(sizeof(nfapi_sr_indication_pdu_t) * NFAPI_SR_IND_MAX_PDU);
+      UL_RCC_INFO[ind->header.phy_id-1].sr_ind[index].sr_indication_body.sr_pdu_list = malloc(sizeof(nfapi_sr_indication_pdu_t) * NFAPI_SR_IND_MAX_PDU);
     }
 
     assert(ind->sr_indication_body.number_of_srs <= NFAPI_SR_IND_MAX_PDU);
     for (int i=0; i<ind->sr_indication_body.number_of_srs; i++) {
-        nfapi_sr_indication_pdu_t *dest_pdu = &UL_RCC_INFO[ind->header.phy_id].sr_ind[index].sr_indication_body.sr_pdu_list[i];
+        nfapi_sr_indication_pdu_t *dest_pdu = &UL_RCC_INFO[ind->header.phy_id-1].sr_ind[index].sr_indication_body.sr_pdu_list[i];
         nfapi_sr_indication_pdu_t *src_pdu = &ind->sr_indication_body.sr_pdu_list[i];
 
         LOG_D(MAC, "SR_IND[PDU:%d %d][rnti:%x cqi:%d channel:%d]\n", index, i, src_pdu->rx_ue_information.rnti, src_pdu->ul_cqi_information.ul_cqi, src_pdu->ul_cqi_information.channel);
@@ -1199,17 +1199,17 @@ int phy_cqi_indication(struct nfapi_vnf_p7_config *config, nfapi_cqi_indication_
   // vnf_p7_info* p7_vnf = (vnf_p7_info*)(config->user_data);
   //mac_cqi_ind(p7_vnf->mac, ind);
   struct PHY_VARS_eNB_s *eNB = RC.eNB[0][0];
-  LOG_D(MAC, "%s() NFAPI SFN/SF:%d number_of_cqis:%u\n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->cqi_indication_body.number_of_cqis);
+  LOG_D(MAC, "%s() NFAPI SFN/SF:%d number_of_cqis:%u phy_id: %d \n", __FUNCTION__, NFAPI_SFNSF2DEC(ind->sfn_sf), ind->cqi_indication_body.number_of_cqis,ind->header.phy_id);
   AssertFatal(pthread_mutex_lock(&eNB->UL_INFO_mutex)==0, "Mutex lock failed");
   if(NFAPI_MODE == NFAPI_MODE_VNF){
     int8_t index = NFAPI_SFNSF2SF(ind->sfn_sf);
 
-    UL_RCC_INFO[ind->header.phy_id].cqi_ind[index] = *ind;
+    UL_RCC_INFO[ind->header.phy_id-1].cqi_ind[index] = *ind;
     assert(ind->cqi_indication_body.number_of_cqis <= NFAPI_CQI_IND_MAX_PDU);
     if (ind->cqi_indication_body.number_of_cqis > 0){
-      UL_RCC_INFO[ind->header.phy_id].cqi_ind[index].cqi_indication_body.cqi_pdu_list =
+      UL_RCC_INFO[ind->header.phy_id-1].cqi_ind[index].cqi_indication_body.cqi_pdu_list =
         malloc(sizeof(nfapi_cqi_indication_pdu_t) * NFAPI_CQI_IND_MAX_PDU);
-      UL_RCC_INFO[ind->header.phy_id].cqi_ind[index].cqi_indication_body.cqi_raw_pdu_list =
+      UL_RCC_INFO[ind->header.phy_id-1].cqi_ind[index].cqi_indication_body.cqi_raw_pdu_list =
         malloc(sizeof(nfapi_cqi_indication_raw_pdu_t) * NFAPI_CQI_IND_MAX_PDU);
     }
 
@@ -1220,10 +1220,10 @@ int phy_cqi_indication(struct nfapi_vnf_p7_config *config, nfapi_cqi_indication_
         nfapi_cqi_indication_pdu_t *src_pdu = &ind->cqi_indication_body.cqi_pdu_list[i];
         LOG_D(MAC, "SR_IND[PDU:%d][rnti:%x cqi:%d channel:%d]\n", i, src_pdu->rx_ue_information.rnti,
                     src_pdu->ul_cqi_information.ul_cqi, src_pdu->ul_cqi_information.channel);
-        memcpy(&UL_RCC_INFO[ind->header.phy_id].cqi_ind[index].cqi_indication_body.cqi_pdu_list[i],
+        memcpy(&UL_RCC_INFO[ind->header.phy_id-1].cqi_ind[index].cqi_indication_body.cqi_pdu_list[i],
                src_pdu, sizeof(nfapi_cqi_indication_pdu_t));
 
-        memcpy(&UL_RCC_INFO[ind->header.phy_id].cqi_ind[index].cqi_indication_body.cqi_raw_pdu_list[i],
+        memcpy(&UL_RCC_INFO[ind->header.phy_id-1].cqi_ind[index].cqi_indication_body.cqi_raw_pdu_list[i],
                &ind->cqi_indication_body.cqi_raw_pdu_list[i], sizeof(nfapi_cqi_indication_raw_pdu_t));
     }
   }else{

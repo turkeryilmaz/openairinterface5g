@@ -965,7 +965,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
     }
 
     Sched_INFO->DL_req->sfn_sf = frame << 4 | subframe;
-    Sched_INFO->DL_req->header.phy_id = Sched_INFO->CC_id;
+    Sched_INFO->DL_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_dl_config_req(Sched_INFO->DL_req); // DJP - .dl_config_request_body.dl_config_pdu_list[0]); // DJP - FIXME TODO - yuk - only copes with 1 pdu
     Sched_INFO->UE_release_req->sfn_sf = frame << 4 | subframe;
     oai_nfapi_ue_release_req(Sched_INFO->UE_release_req);
