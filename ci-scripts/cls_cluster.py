@@ -178,30 +178,45 @@ class Cluster:
 	def _undeploy_pod(self, filename):
 		self.cmd.run(f'oc delete -f {filename}')
 
-	def BuildClusterImage(self, HTML):
+	def _cluster_login(self):
+		ret = self._exec_cluster(f'oc login -u {self.ocUserName} -p {self.ocPassword}')
+		if ret.returncode != 0:
+			logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
+			return False
+		ret = self._exec_cluster(f'oc project {self.ocProjectName}')
+		if ret.returncode != 0:
+			logging.error(f'\u001B[1mUnable to access OC project {self.ocProjectName}\u001B[0m')
+			self._exec_cluster('oc logout')
+			return False
+		return True
+
+	def _cluster_logout(self):
+		# logout will return eventually, but we don't care when -> start in background
+		self.cmd.run('oc logout &')
+
+	def _verify_parameters(self):
 		if self.ranRepository == '' or self.ranBranch == '' or self.ranCommitID == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit(f'Insufficient Parameter: ranRepository {self.ranRepository} ranBranch {ranBranch} ranCommitID {self.ranCommitID}')
 
-		lIpAddr = self.eNBIPAddress
-		lSourcePath = self.eNBSourceCodePath
-		if lIpAddr == '' or lSourcePath == '':
+		if self.eNBSourceCodePath == '':
 			sys.exit('Insufficient Parameter: eNBSourceCodePath missing')
-		ocUserName = self.OCUserName
-		ocPassword = self.OCPassword
-		ocProjectName = self.OCProjectName
-		if ocUserName == '' or ocPassword == '' or ocProjectName == '':
+		if self.ocUserName == '' or self.ocPassword == '' or self.ocProjectName == '':
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter: no OC Credentials')
 		if self.OCRegistry.startswith("http") and not self.OCRegistry.endswith("/"):
 			sys.exit(f'ocRegistry {self.OCRegistry} should not start with http:// or https:// and end on a slash /')
 
+	def BuildClusterImage(self, HTML):
+		self._verify_parameters()
+
 		logging.debug(f'Building on cluster triggered from server: {lIpAddr}')
-		self.cmd = cls_cmd.RemoteCmd(lIpAddr)
+		self.cmd = cls_cmd.RemoteCmd(self.eNBIPAddress)
 
 		self.testCase_id = HTML.testCase_id
 
 		# Workaround for some servers, we need to erase completely the workspace
+		lSourcePath = self.eNBSourceCodePath
 		if self.forcedWorkspaceCleanup:
 			self.cmd.run(f'rm -Rf {lSourcePath}')
 		cls_containerize.CreateWorkspace(self.cmd, lSourcePath, self.ranRepository, self.ranCommitID, self.ranTargetBranch, self.ranAllowMerge)
@@ -225,17 +240,8 @@ class Cluster:
 			forceBaseImageBuild = True
 
 		# logging to OC Cluster and then switch to corresponding project
-		ret = self.cmd.run(f'oc login -u {ocUserName} -p {ocPassword}')
-		if ret.returncode != 0:
-			logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
+		if not self._cluster_login():
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_LOGIN_FAIL)
-			return False
-
-		ret = self.cmd.run(f'oc project {ocProjectName}')
-		if ret.returncode != 0:
-			logging.error(f'\u001B[1mUnable to access OC project {ocProjectName}\u001B[0m')
-			self.cmd.run('oc logout')
-			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_PROJECT_FAIL)
 			return False
 
 		self._recreate_entitlements()
@@ -356,8 +362,7 @@ class Cluster:
 
 		self.cmd.run(f'for pod in $(oc get pods | tail -n +2 | awk \'{{print $1}}\'); do oc delete pod ${pod}; done')
 
-		# logout will return eventually, but we don't care when -> start in background
-		cmd.run(f'oc logout &')
+		self._cluster_logout()
 
 		# Analyze the logs
 		collectInfo = cls_containerize.AnalyzeBuildLogs(build_log_name, attemptedImages, status)
