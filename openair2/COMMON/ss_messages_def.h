@@ -21,14 +21,19 @@
 
 MESSAGE_DEF(SS_GET_TIM_INFO,                  MESSAGE_PRIORITY_MED, ss_get_timinfo_t                      , ss_get_timinfo)
 MESSAGE_DEF(SS_SET_TIM_INFO,                  MESSAGE_PRIORITY_MED, ss_set_timinfo_t                      , ss_set_timinfo)
+MESSAGE_DEF(SS_NRSET_TIM_INFO,                MESSAGE_PRIORITY_MED, ss_nrset_timinfo_t                    , ss_nrset_timinfo)
 
 MESSAGE_DEF(SS_RRC_PDU_REQ,                   MESSAGE_PRIORITY_MED, ss_rrc_pdu_req_t                      , ss_rrc_pdu_req)
 MESSAGE_DEF(SS_RRC_PDU_IND,                   MESSAGE_PRIORITY_MED, ss_rrc_pdu_ind_t                      , ss_rrc_pdu_ind)
 MESSAGE_DEF(SS_DRB_PDU_REQ,                   MESSAGE_PRIORITY_MED, ss_drb_pdu_req_t                      , ss_drb_pdu_req)
 MESSAGE_DEF(SS_DRB_PDU_IND,                   MESSAGE_PRIORITY_MED, ss_drb_pdu_ind_t                      , ss_drb_pdu_ind)
 MESSAGE_DEF(SS_UPD_TIM_INFO,                  MESSAGE_PRIORITY_MED, ss_upd_timinfo_t                      , ss_upd_timinfo)
+MESSAGE_DEF(SS_NRUPD_TIM_INFO,                MESSAGE_PRIORITY_MED, ss_nrupd_timinfo_t                    , ss_nrupd_timinfo)
 MESSAGE_DEF(SS_SYS_PORT_MSG_IND,              MESSAGE_PRIORITY_MED, ss_sys_port_msg_ind_t                 , ss_sys_port_msg_ind)
 MESSAGE_DEF(SS_SYS_PORT_MSG_CNF,              MESSAGE_PRIORITY_MED, ss_sys_port_msg_cnf_t                 , ss_sys_port_msg_cnf)
+
+MESSAGE_DEF(SS_NR_SYS_PORT_MSG_IND,           MESSAGE_PRIORITY_MED, ss_nr_sys_port_msg_ind_t              , ss_nr_sys_port_msg_ind)
+MESSAGE_DEF(SS_NR_SYS_PORT_MSG_CNF,           MESSAGE_PRIORITY_MED, ss_nr_sys_port_msg_cnf_t              , ss_nr_sys_port_msg_cnf)
 
 MESSAGE_DEF(SS_GET_PDCP_CNT,                  MESSAGE_PRIORITY_MED, ss_get_pdcp_cnt_t                      , ss_get_pdcp_cnt)
 MESSAGE_DEF(SS_SET_PDCP_CNT,                  MESSAGE_PRIORITY_MED, ss_set_pdcp_cnt_t                      , ss_set_pdcp_cnt)
