@@ -6582,6 +6582,7 @@ char openair_rrc_eNB_configuration(
         memcpy(RRCMsgOnSRB0_PDU[CC_id],configuration->RlcPduCCCH[CC_id],RRCMsgOnSRB0_PDUSize[CC_id]);
       }
     }
+    LOG_A(RRC,"Update config from TTCN RRCConnSetup_PDU_Present=%d RRCMsgOnSRB0_PDUSize=%d\n",RRCConnSetup_PDU_Present, RRCMsgOnSRB0_PDUSize);
   }
 
   if (need_init)
