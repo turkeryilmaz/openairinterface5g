@@ -7327,6 +7327,7 @@ char openair_rrc_eNB_configuration(
 
   if(configuration->ActiveParamPresent == true)
   {
+    LOG_A(RRC, "TTCN ActiveParam configuration RlcPduCCCH_Present=%d RlcPduCCCH_Size=%d\n", configuration->RlcPduCCCH_Present, configuration->RlcPduCCCH_Size);
     RRCConnSetup_PDU_Present = configuration->RlcPduCCCH_Present;
     LOG_D(RRC,"Update config from TTCN RRCConnSetup_PDU_Present %d \n",RRCConnSetup_PDU_Present);
     if(RRCConnSetup_PDU_Present == true)
@@ -7334,6 +7335,7 @@ char openair_rrc_eNB_configuration(
       RRCMsgOnSRB0_PDUSize = configuration->RlcPduCCCH_Size;
       memcpy(RRCMsgOnSRB0_PDU,configuration->RlcPduCCCH,RRCMsgOnSRB0_PDUSize);
     }
+    LOG_A(RRC,"Update config from TTCN RRCConnSetup_PDU_Present=%d RRCMsgOnSRB0_PDUSize=%d\n",RRCConnSetup_PDU_Present, RRCMsgOnSRB0_PDUSize);
   }
   /*
     RC.rrc[ctxt.module_id]->mcc= rrc_configuration_req->mcc;
