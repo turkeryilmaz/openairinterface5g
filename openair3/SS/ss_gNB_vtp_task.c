@@ -144,7 +144,6 @@ void ss_vtp_send_tinfo(
 
     virtualTime.TimingInfo.Slot.d = tinfo->mu > 0 ? SlotTimingInfo_Type_SlotOffset : SlotTimingInfo_Type_UNBOUND_VALUE;
     virtualTime.TimingInfo.Slot.v.SlotOffset.d = (enum SlotOffset_Type_Sel) (tinfo->mu + 1);
-
     switch(virtualTime.TimingInfo.Slot.v.SlotOffset.d) {
         case SlotOffset_Type_Numerology0: break;
         case SlotOffset_Type_Numerology1:
