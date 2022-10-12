@@ -961,6 +961,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
   if ((NFAPI_MODE!=NFAPI_MONOLITHIC) && do_oai && !dont_send) {
     if(Sched_INFO->TX_req->tx_request_body.number_of_pdus > 0) {
       Sched_INFO->TX_req->sfn_sf = frame << 4 | subframe;
+      Sched_INFO->TX_req->header.phy_id = Sched_INFO->CC_id+1;
       oai_nfapi_tx_req(Sched_INFO->TX_req);
     }
 
