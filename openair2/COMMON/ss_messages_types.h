@@ -95,6 +95,8 @@ typedef struct ss_set_timinfo_s {
   uint8_t  sf;
   int      cell_index;
   int      physCellId;
+  int8_t mu; /**< -1 == 'UNBOUND' */
+  uint8_t slot;
 } ss_set_timinfo_t;
 
 typedef ss_set_timinfo_t ss_upd_timinfo_t;

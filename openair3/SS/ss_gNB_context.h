@@ -37,6 +37,8 @@ typedef struct SSConfigContext_s {
   uint16_t eutra_cellId;
   uint16_t nr_cellId;
   uint16_t ss_rnti_g;
+  uint8_t vtp_enabled;
+  ss_set_timinfo_t vtinfo;
   /** TODO: To add more */
 } SSConfigContext_t;
 
