@@ -1416,6 +1416,7 @@ int nr_get_sf_retxBSRTimer(uint8_t sf_offset) {
 // Note: Msg3 tx in the uplink symbols of mixed slot
 int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t current_frame, int current_slot, frame_t *frame_tx, int *slot_tx, long k2)
 {
+  k2 = k2+NTN_UE_k2;
   AssertFatal(k2 > DURATION_RX_TO_TX,
               "Slot offset K2 (%ld) needs to be higher than DURATION_RX_TO_TX (%d). Please set min_rxtxtime at least to %d in gNB config file or gNBs.[0].min_rxtxtime=%d via command line.\n",
               k2,
@@ -1432,8 +1433,7 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
   // k2 as per 3GPP TS 38.214 version 15.9.0 Release 15 ch 6.1.2.1.1
   // PUSCH time domain resource allocation is higher layer configured from uschTimeDomainAllocationList in either pusch-ConfigCommon
 
-  k2 = k2+NTN_UE_k2;
-  
+
   if (is_Msg3) {
 
     switch (mu) {

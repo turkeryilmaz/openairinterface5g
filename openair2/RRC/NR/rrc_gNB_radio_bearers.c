@@ -21,6 +21,9 @@
 
 #include "rrc_gNB_radio_bearers.h"
 #include "oai_asn1.h"
+#include <softmodem-common.h>
+
+#include "executables/softmodem-common.h"
 
 rrc_pdu_session_param_t *find_pduSession(gNB_RRC_UE_t *ue, int id, bool create)
 {

@@ -669,7 +669,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     T_BUFFER(&rxdataF_comp[gNB_id][0], 2 * /* ulsch[UE_id]->harq_processes[harq_pid]->nb_rb */ frame_parms->N_RB_UL * 12 * 2));
 #endif
 
-  UEscopeCopy(ue, pdschRxdataF_comp, rxdataF_comp, sizeof(c16_t), nbRx, rx_size_symbol);
+  UEscopeCopy(ue, pdschRxdataF_comp, rxdataF_comp, sizeof(c16_t), nbRx, rx_size_symbol * NR_SYMBOLS_PER_SLOT);
 
   if (ue->phy_sim_pdsch_rxdataF_comp)
     for (int a = 0; a < nbRx; a++) {
