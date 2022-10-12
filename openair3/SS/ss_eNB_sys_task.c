@@ -60,9 +60,13 @@
 
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
+
+#ifndef NR_RRC_VERSION
 extern pthread_cond_t cell_config_done_cond;
 extern pthread_mutex_t cell_config_done_mutex;
 extern int cell_config_done;
+#endif
+
 extern uint16_t ss_rnti_g;
 static void sys_send_proxy(void *msg, int msgLen);
 int cell_config_done_indication(void);
@@ -163,7 +167,7 @@ static void bitStrint_to_byteArray(unsigned char arr[], int bit_length, unsigned
  */
 int cell_config_done_indication()
 {
-
+#ifndef NR_RRC_VERSION
   if (cell_config_done < 0)
   {
     printf("[SYS] Signal to OAI main code about cell config\n");
@@ -174,6 +178,7 @@ int cell_config_done_indication()
   }
 
   return 0;
+#endif
 }
 
 /*

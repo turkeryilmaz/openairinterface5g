@@ -421,14 +421,14 @@ int ss_eNB_vtp_init(void)
     IpAddress_t ipaddr;
 
     const char *hostIp;
-    hostIp = RC.ss.hostIp;
+    hostIp = RC.ss.hostIp ? RC.ss.hostIp : "127.0.0.1";
     acpConvertIp(hostIp, &ipaddr);
 
     // Port number
     int port = RC.ss.Vtpport;
-    if (port != 7780)
+    if (port == 0)
     {
-        return -1;
+        port = 7780;
     }
     LOG_A(ENB_APP, "[SS-VTP] Initializing VTP Port %s:%d\n", hostIp, port);
     // acpInit(malloc, free, 1000);
