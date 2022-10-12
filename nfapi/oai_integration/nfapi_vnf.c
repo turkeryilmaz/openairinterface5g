@@ -1987,28 +1987,17 @@ int oai_nfapi_tx_req(nfapi_tx_request_t *tx_req)
 {
 	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
 	int retval = 0;
-	int num_phy = 0;
 	uint16_t sfn = 0;
 	uint16_t sf = 0;
 	sfn = tx_req->sfn_sf >> 4;
 	sf = tx_req->sfn_sf & 0xF;
 
-	/* Below if condition checking if tx_req is for MIB (sf == 0) or SIB1 ((sfn % 2 == 0) && (sf == 5)) */
-	if ((sf == 0) || ((sfn % 2 == 0) && (sf == 5)))
-		num_phy = vnf.pnfs[0].num_phys;
-	else
-		num_phy = 1;
-
-	for (int i =0; i< num_phy; i++)
-	{
-		tx_req->header.phy_id = i+1; // DJP HACK TODO FIXME - need to pass this around!!!!
-		tx_req->header.message_id = NFAPI_TX_REQUEST;
-		//LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
-		LOG_I(NFAPI_VNF, "MultiCell: fxn:%s num_phy:%d phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, num_phy, tx_req->header.phy_id, sfn, sf);
-		retval = nfapi_vnf_p7_tx_req(p7_config, tx_req);
-		if (retval!=0) {
-			LOG_E(PHY, "%s() Problem sending tx_req for phyId:%d :%d\n", __FUNCTION__, tx_req->header.phy_id ,retval);
-		} 
+	tx_req->header.message_id = NFAPI_TX_REQUEST;
+	//LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
+	LOG_I(NFAPI_VNF, "MultiCell: fxn:%s phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, tx_req->header.phy_id, sfn, sf);
+	retval = nfapi_vnf_p7_tx_req(p7_config, tx_req);
+	if (retval!=0) {
+		LOG_E(PHY, "%s() Problem sending tx_req for phyId:%d :%d\n", __FUNCTION__, tx_req->header.phy_id ,retval);
 	}
 	tx_req->tx_request_body.number_of_pdus = 0;
 
