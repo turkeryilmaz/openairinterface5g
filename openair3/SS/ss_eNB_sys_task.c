@@ -1952,7 +1952,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
         req->header.msg_id    = SS_VNG_CMD_REQ;
         req->header.length    = sizeof(proxy_ss_header_t);
         req->header.cell_id   = SS_VNG_PROXY_REQ(received_msg).cell_id;
-        req->header.cell_index = get_cell_index(req->header.cell_id , SS_context.SSCell_list);
+        req->header.cell_index = get_cell_index_pci(req->header.cell_id , SS_context.SSCell_list);
 printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
         req->bw               = SS_VNG_PROXY_REQ(received_msg).bw;
         req->cmd              = SS_VNG_PROXY_REQ(received_msg).cmd;
