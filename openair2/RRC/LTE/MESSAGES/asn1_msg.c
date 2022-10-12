@@ -4873,6 +4873,7 @@ int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 
   if (count == pagingRecordCount)
   {
+		LOG_A(RRC, "swetank: fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
     if (systemInfoModification)
     {
       LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
