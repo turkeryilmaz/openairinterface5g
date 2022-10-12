@@ -148,7 +148,8 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
                              NR_UE_info_t *UE,
                              NR_SRS_ResourceSet_t *srs_resource_set,
                              NR_SRS_Resource_t *srs_resource,
-                             int buffer_index)
+                             int buffer_index,
+                             int frame)
 {
   NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 
@@ -201,7 +202,7 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
     srs_pdu->beamforming.prg_size = 1;
   }
 
-  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
+  uint16_t *vrb_map_UL = RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[frame % MAX_NUM_UL_SCHED_FRAME][buffer_index];
   uint64_t mask = SL_to_bitmap(13 - srs_pdu->time_start_position, srs_pdu->num_symbols);
   for (int i = 0; i < srs_pdu->bwp_size; ++i)
     vrb_map_UL[i + srs_pdu->bwp_start] |= mask;
@@ -227,7 +228,7 @@ static void nr_fill_nfapi_srs(int module_id,
   memset(srs_pdu, 0, sizeof(nfapi_nr_srs_pdu_t));
   future_ul_tti_req->n_pdus += 1;
   index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->vrb_map_UL_size);
-  nr_configure_srs(srs_pdu, slot, module_id, CC_id, UE, srs_resource_set, srs_resource, index);
+  nr_configure_srs(srs_pdu, slot, module_id, CC_id, UE, srs_resource_set, srs_resource, index, frame);
 }
 
 /*******************************************************************

@@ -48,15 +48,17 @@ static void nr_fill_nfapi_pucch(gNB_MAC_INST *nrmac,
 {
 
   const int index = ul_buffer_index(pucch->frame, pucch->ul_slot, UE->current_UL_BWP.scs, nrmac->UL_tti_req_ahead_size);
+  LOG_D(MAC, "index:%d, %d:%d,size:%d\n", index, pucch->frame, pucch->ul_slot,nrmac->UL_tti_req_ahead_size);
   nfapi_nr_ul_tti_request_t *future_ul_tti_req = &nrmac->UL_tti_req_ahead[0][pucch->frame%MAX_NUM_UL_SCHED_FRAME][index];
   if (future_ul_tti_req->SFN != pucch->frame || future_ul_tti_req->Slot != pucch->ul_slot)
     LOG_W(MAC,
-          "Current %d.%d : future UL_tti_req's frame.slot %4d.%2d does not match PUCCH %4d.%2d\n",
+          "Current %d.%d : future UL_tti_req's frame.slot %4d.%2d does not match PUCCH %4d.%2d, mod: %d, index: %d\n",
           frame,slot,
           future_ul_tti_req->SFN,
           future_ul_tti_req->Slot,
           pucch->frame,
-          pucch->ul_slot);
+          pucch->ul_slot,
+          pucch->frame%MAX_NUM_UL_SCHED_FRAME, index);
 
   // n_pdus is number of pdus, so, in the array, it is the index of the next free element
   if (future_ul_tti_req->n_pdus >= sizeofArray(future_ul_tti_req->pdus_list) ) {
