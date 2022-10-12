@@ -93,6 +93,8 @@ typedef struct ss_nr_sys_port_msg_cnf {
 typedef struct ss_set_timinfo_s {
   uint16_t sfn;
   uint8_t  sf;
+  int8_t mu; /**< -1 == 'UNBOUND' */
+  uint8_t slot;
 } ss_set_timinfo_t;
 
 typedef ss_set_timinfo_t ss_upd_timinfo_t;
