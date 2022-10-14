@@ -395,6 +395,19 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
             if (SS_context.vtp_enabled == 1) {
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
             }
+        }; break;
+        case SS_NRUPD_TIM_INFO:
+        {
+            LOG_W(GNB_APP, "[SS-VTP] VTP received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
+            ss_set_timinfo_t tinfo;
+            tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % 2;
+            tinfo.mu = 1;
+            tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot / 2;
+            tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
+            
+            if (SS_context.vtp_enabled == 1) {
+                ss_vtp_send_tinfo(TASK_VTP, &tinfo);
+            }
         }
         break;
 
