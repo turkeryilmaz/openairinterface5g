@@ -554,10 +554,6 @@ rb_found:
   if (is_srb == 0)
     return;
 
-  /* Do not trigger RLF in case of System Simulator */
-  if (RC.ss.mode > SS_ENB)
-    return;
-
   is_enb = rlc_manager_get_enb_flag(rlc_ue_manager);
   if (!is_enb)
     return;
