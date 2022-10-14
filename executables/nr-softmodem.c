@@ -377,8 +377,8 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       return -1;
     }
 
-    if(itti_create_task(TASK_SS_SRB, ss_gNB_vtp_task, NULL) < 0) {
-      LOG_E(SCTP, "Create task for SS SRB failed\n");
+    if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
+      LOG_E(SCTP, "Create task for TASK_VTP failed\n");
       return -1;
     }
 
