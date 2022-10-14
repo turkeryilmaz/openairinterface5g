@@ -146,11 +146,10 @@ void ss_vtp_send_tinfo(
 
         return;
     }
-    else
-    {
-        LOG_A(GNB_APP, "[SS-VTP] acpSendMsg VTP_Send Success SFN %d SF %d virtualTime.Enable %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable);
-        SS_context.vtinfo = *tinfo;
-    }
+
+    LOG_A(GNB_APP, "[SS-VTP] VTP_Send Success SFN %d SF %d virtualTime.Enable %d mu: %d slot: %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable, tinfo->mu, tinfo->slot);
+    SS_context.vtinfo = *tinfo;
+
     // Free allocated buffer
     acpFree(buffer);
 }
@@ -299,16 +298,12 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
         }
         else if (userId == MSG_SysVTEnquireTimingAck_userId)
         {
-            LOG_A(GNB_APP, "[SS-VTP] Received VTEnquireTimingAck Request\n");
-
 
             if (acpSysVTEnquireTimingAckDecSrv(ctx, buffer, msgSize, &virtualTime) != 0)
             {
                 LOG_E(GNB_APP, "[SS-VTP] acpVngProcessDecSrv failed \n");
                 break;
             }
-            LOG_A(GNB_APP,"[SS-VTP] Received VTEnquireTimingAck Request SFN %d Subframe %d Waiting for ACK of SFN %d SF %d\n ",
-            	    virtualTime->TimingInfo.SFN.v.Number,virtualTime->TimingInfo.Subframe.v.Number,SS_context.vtinfo.sfn,SS_context.vtinfo.sf);
 
             {
 				if (virtualTime->Enable) {
@@ -325,8 +320,31 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
 					}
 
 					if (virtualTime->TimingInfo.Subframe.d) {
-						LOG_A(GNB_APP, "[SS-VTP]SubFrame: %d\n ",
+						LOG_A(GNB_APP, "[SS-VTP] SubFrame: %d\n ",
 								virtualTime->TimingInfo.Subframe.v.Number);
+					}
+
+					if (virtualTime->TimingInfo.Slot.d == SlotTimingInfo_Type_SlotOffset) {
+						LOG_A(GNB_APP, "[SS-VTP] mu: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.d);
+
+						switch(virtualTime->TimingInfo.Slot.v.SlotOffset.d) {
+							case SlotOffset_Type_Numerology0:  break;
+							case SlotOffset_Type_Numerology1:
+								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology1);
+							break;
+							case SlotOffset_Type_Numerology2: 
+								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology2);
+							break;
+							case SlotOffset_Type_Numerology3:
+								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology3);
+							break;
+							case SlotOffset_Type_Numerology4:
+								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology4);
+							break;
+							default: 
+								LOG_E(GNB_APP, "Wrong MU\r\n");
+							break;
+						}
 					}
 
 				} else {
@@ -361,6 +379,19 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
             LOG_A(GNB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(GNB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+            if (SS_context.vtp_enabled == 1) {
+                ss_vtp_send_tinfo(TASK_VTP, &tinfo);
+            }
+        }; break;
+        case SS_NRUPD_TIM_INFO:
+        {
+            LOG_W(GNB_APP, "[SS-VTP] VTP received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
+            ss_set_timinfo_t tinfo;
+            tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % 2;
+            tinfo.mu = 1;
+            tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot / 2;
+            tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
+            
             if (SS_context.vtp_enabled == 1) {
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
             }

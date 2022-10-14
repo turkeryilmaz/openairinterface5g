@@ -325,14 +325,14 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 void ss_gNB_srb_init(void)
 {
         IpAddress_t ipaddr;
-        LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
+        LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread (%s) \n", RC.ss.hostIp);
 
         const char *hostIp;
-        hostIp = RC.ss.hostIp;
+        hostIp = RC.ss.hostIp ? RC.ss.hostIp : "127.0.0.1";
         acpConvertIp(hostIp, &ipaddr);
 
         // Port number
-        int port = RC.ss.Srbport;
+        int port = RC.ss.Srbport > 0 ? RC.ss.Srbport : 7778;
 	acpInit(malloc, free, 1000);
 
         // Register user services/notifications in message table
