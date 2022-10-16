@@ -1270,8 +1270,6 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 	SS_PAGING_IND(message_p).systemInfoModification = false;
 	SS_PAGING_IND(message_p).bSubframeOffsetListPresent = false;
 
-  LOG_A(ENB_SS, "swetank: pagingRequest->Paging.message.d:%d \n", pagingRequest->Paging.message.d);
-  fprintf(stdout, "swetank: pagingRequest->Paging.message.d:%d \n", pagingRequest->Paging.message.d);
 	switch (pagingRequest->Paging.message.d)
 	{
 		case SQN_PCCH_MessageType_c1:

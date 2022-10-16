@@ -4398,7 +4398,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   /* This block of code will be one time */
   if (oneTimeProcessingFlag == 0)
   {
-		LOG_A(RRC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+		LOG_A(RRC, "fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
     pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
     pcch_msg.message.choice.c1.choice.paging.pagingRecordList = NULL;
@@ -4416,7 +4416,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 
   if (ue_paging_identity.presenceMask)
 	{
-		LOG_A(RRC, "swetank: fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+		LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
 		if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
 			return (-1);
 		}
@@ -4424,7 +4424,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 
 		if (count < pagingRecordCount)
 		{
-			LOG_A(RRC, "swetank: fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
 
 			/* convert ue_paging_identity_t to PagingUE_Identity_t */
 			if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_s_tmsi) {
@@ -4452,7 +4452,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 				paging_record_p->cn_Domain = LTE_PagingRecord__cn_Domain_cs;
 			}
 
-			LOG_A(RRC, "swetank: fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
 			/* add to list */
 			ASN_SEQUENCE_ADD(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list, paging_record_p);
 			LOG_D(RRC, "[eNB %d] do_Paging paging_record: cn_Domain %ld, ue_paging_identity.presenceMask %d, PagingRecordList.count %d\n",
@@ -4463,10 +4463,9 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 
   if (count == pagingRecordCount)
   {
-		LOG_A(RRC, "swetank: fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
     if (systemInfoModification)
     {
-			LOG_A(RRC, "swetank: fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
       LOG_A(RRC, "Handling of paging for systemInfoModification\n");
       pcch_msg.message.choice.c1.choice.paging.systemInfoModification = calloc(1, sizeof(long));
       *(pcch_msg.message.choice.c1.choice.paging.systemInfoModification) = LTE_Paging__systemInfoModification_true;
@@ -4489,7 +4488,7 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
     oneTimeProcessingFlag = 0;
     return((enc_rval.encoded+7)/8);
   }
-	LOG_A(RRC, "swetank: oneTimeProcessingFlag:%d count:%d \n", oneTimeProcessingFlag, count);
+	LOG_A(RRC, "oneTimeProcessingFlag:%d count:%d \n", oneTimeProcessingFlag, count);
 }
 
 uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t *pdu_buffer) {

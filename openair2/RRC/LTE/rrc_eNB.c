@@ -653,7 +653,6 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 	ss_paging_identity_t *p_paging_record = SS_PAGING_IND(msg_p).paging_recordList;
 	count = SS_PAGING_IND(msg_p).num_paging_record;	
         LOG_A(RRC, " Number of paging records::%d\n",SS_PAGING_IND(msg_p).num_paging_record);
-        fprintf(stdout, " swetank: fxn:%s line:%d Number of paging records::%d\n",__FUNCTION__, __LINE__,SS_PAGING_IND(msg_p).num_paging_record);
 
   /* Paging without pagingRecord */
 	if (count == 0)
@@ -701,7 +700,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 			p_paging_record++;
 		}
 	}
-	LOG_A(RRC, "swetank: fxn:%s line:%d length:%d\n", __FUNCTION__, __LINE__, length);
+	LOG_A(RRC, "fxn:%s line:%d length:%d\n", __FUNCTION__, __LINE__, length);
   if (length == -1)
   {
     LOG_A(RRC, "do_Paging error");
