@@ -363,7 +363,6 @@ void ss_gNB_srb_init(void)
 
         SS_context.State = SS_STATE_CELL_ACTIVE;
         itti_subscribe_event_fd(TASK_SS_SRB, fd1);
-
         itti_mark_task_ready(TASK_SS_SRB);
 }
 

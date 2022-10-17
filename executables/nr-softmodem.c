@@ -165,7 +165,7 @@ uint64_t num_missed_slots=0; // counter for the number of missed slots
 extern void reset_opp_meas(void);
 extern void print_opp_meas(void);
 
-extern void *udp_eNB_task(void *args_p);
+//extern void *udp_eNB_task(void *args_p);
 
 int transmission_mode=1;
 int emulate_rf = 0;
@@ -471,6 +471,13 @@ static int create_gNB_tasks(void) {
         return -1;
       }
     }
+
+		if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
+		{
+        LOG_E(GTPU, "Create task for UDP failed\n");
+        return -1;
+		}
+
   }
 
   return 0;
