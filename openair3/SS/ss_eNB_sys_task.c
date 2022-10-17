@@ -194,7 +194,7 @@ static int sys_send_udp_msg(
 
   if (message_p)
   {
-    LOG_A(ENB_SS, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d \n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
+    LOG_A(ENB_SS, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d to address peerIpAddr:%s and peer port:peerPort\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2], peerIpAddr, peerPort);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;

@@ -77,7 +77,12 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
     case NR_SystemConfirm_Type_Cell:
         cnf.Confirm.v.Cell = true;
         break;
-
+    case NR_SystemConfirm_Type_RadioBearerList:
+        cnf.Confirm.v.RadioBearerList= true;
+        break;
+    case NR_SystemConfirm_Type_CellAttenuationList:
+        cnf.Confirm.v.CellAttenuationList= true;
+        break;
     default:
         LOG_A(GNB_APP, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
     }
@@ -232,14 +237,17 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     // Error handling
     if (userId < 0)
     {
+				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:%d\n", __FUNCTION__, userId);
         if (userId == -ACP_ERR_SERVICE_NOT_MAPPED)
         {
+					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SERVICE_NOT_MAPPED \n", __FUNCTION__);
             // Message not mapped to user id,
             // this error should not appear on server side for the messages
             // received from clients
         }
         else if (userId == -ACP_ERR_SIDL_FAILURE)
         {
+					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SIDL_FAILURE\n", __FUNCTION__);
             // Server returned service error,
             // this error should not appear on server side for the messages
             // received from clients
@@ -248,29 +256,36 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
         }
         else
         {
+					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
             return;
         }
     }
     else if (userId == 0)
     {
+					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:0\n", __FUNCTION__);
         // No message (timeout on socket)
     }
     else
     {
         LOG_A(GNB_APP, "[SS-PORTMAN-GNB] received msg %d from the client.\n", userId);
         if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
+				{
+					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
             return;
+				}
 
         ss_dumpReqMsg(req);
 
         if (userId == MSG_NrSysProcess_userId)
         {
+						LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId: MSG_NrSysProcess_userId\n", __FUNCTION__);
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT,  SS_NR_SYS_PORT_MSG_IND);
             if (message_p)
             {
                 SS_NR_SYS_PORT_MSG_IND(message_p).req = req;
                 SS_NR_SYS_PORT_MSG_IND(message_p).userId = userId;
                 itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
+								LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d Msg sent to \n", __FUNCTION__, __LINE__, TASK_SYS_GNB);
             }
         }
     }
@@ -281,13 +296,13 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 //------------------------------------------------------------------------------
 void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 {
-    MessageDef *received_msg = NULL;
-    int result;
+	MessageDef *received_msg = NULL;
+	int result;
 
-    itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
+	itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
 
-    /* Check if there is a packet to handle */
-    if (received_msg != NULL)
+	/* Check if there is a packet to handle */
+	if (received_msg != NULL)
 	{
 
 		LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received a message id : %d \n",
@@ -309,7 +324,10 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 				}
 				break;
 			case TERMINATE_MESSAGE:
-				itti_exit_task();
+				{
+					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received TERMINATE_MESSAGE\n");
+					itti_exit_task();
+				}
 				break;
 
 			default:
@@ -323,9 +341,9 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 		received_msg = NULL;
 	}
 
-    ss_gNB_read_from_socket(nrctx_g);
+	ss_gNB_read_from_socket(nrctx_g);
 
-    return NULL;
+	return NULL;
 }
 
 //------------------------------------------------------------------------------

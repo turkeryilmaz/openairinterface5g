@@ -83,6 +83,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "ss_gNB_sys_task.h"
 #include "ss_gNB_port_man_task.h"
 #include "ss_gNB_srb_task.h"
+#include "udp_eNB_task.h"
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -170,7 +171,7 @@ void sendFs6Ulharq(enum pckType type, int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *
 extern void reset_opp_meas(void);
 extern void print_opp_meas(void);
 
-extern void *udp_eNB_task(void *args_p);
+//extern void *udp_eNB_task(void *args_p);
 
 int transmission_mode=1;
 int emulate_rf = 0;
@@ -350,6 +351,7 @@ int create_gNB_tasks(uint32_t gnb_nb) {
   }
 
   if (gnb_nb > 0) {
+  	RCconfig_nr_ssparam();
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
@@ -370,11 +372,11 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       }
     }
 
-  if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
-    LOG_E(SCTP, "Create task for SS SRB failed\n");
-    return -1;
-  }
-    LOG_I(NR_RRC,"Creating NR RRC gNB Task\n");
+		if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
+			LOG_E(SCTP, "Create task for SS SRB failed\n");
+			return -1;
+		}
+		LOG_I(NR_RRC,"Creating NR RRC gNB Task\n");
 
     if (itti_create_task (TASK_RRC_GNB, rrc_gnb_task, NULL) < 0) {
       LOG_E(NR_RRC, "Create task for NR RRC gNB failed\n");
@@ -388,6 +390,13 @@ int create_gNB_tasks(uint32_t gnb_nb) {
         return -1;
       }
     }
+
+		if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
+		{
+        LOG_E(GTPU, "Create task for UDP failed\n");
+        return -1;
+		}
+
   }
 
   return 0;

@@ -244,6 +244,7 @@ typedef enum {
 #define GNB_CONFIG_SS_SRBPORT_IDX    2
 #define GNB_CONFIG_SS_VNGPORT_IDX    3
 #define GNB_CONFIG_SS_MODE_IDX       4
+//#define GNB_CONFIG_SS_NR_MODE_IDX    5
 
 #define GNB_SSPARAMS_DESC {                                                                  \
 {GNB_CONFIG_SS_HOSTIP          ,                     NULL,     0,          uptr:NULL,        defstrval:"0.0.0.0",      TYPE_STRING,   0},     \

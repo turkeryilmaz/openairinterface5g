@@ -308,8 +308,10 @@ void *udp_eNB_task(void *args_p)
 
   itti_mark_task_ready(TASK_UDP);
   MSC_START_USE();
+  LOG_I(UDP_, " Entry in %s\n", __FUNCTION__);
 
   while(1) {
+  	LOG_I(UDP_, " Fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     itti_receive_msg(TASK_UDP, &received_message_p);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UDP_ENB_TASK, VCD_FUNCTION_IN);
 #if defined(LOG_UDP) && LOG_UDP > 0
@@ -343,7 +345,7 @@ void *udp_eNB_task(void *args_p)
         struct udp_socket_desc_s *udp_sock_p = NULL;
         udp_data_req_t           *udp_data_req_p;
         struct sockaddr_in        peer_addr;
-
+				char buffer[INET_ADDRSTRLEN];
         udp_data_req_p = &received_message_p->ittiMsg.udp_data_req;
 
         memset(&peer_addr, 0, sizeof(struct sockaddr_in));
@@ -351,6 +353,7 @@ void *udp_eNB_task(void *args_p)
         peer_addr.sin_family       = AF_INET;
         peer_addr.sin_port         = htons(udp_data_req_p->peer_port);
         peer_addr.sin_addr.s_addr  = udp_data_req_p->peer_address;
+				inet_ntop( AF_INET, &peer_addr.sin_addr, buffer, sizeof( buffer ));
 
         pthread_mutex_lock(&udp_socket_list_mutex);
         udp_sock_p = udp_eNB_get_socket_desc(ITTI_MSG_ORIGIN_ID(received_message_p));

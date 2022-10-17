@@ -361,9 +361,11 @@ void ss_gNB_srb_init(void)
                 buffer = (unsigned char *)acpMalloc(size);
         assert(buffer);
 
-        RC.ss.State = SS_STATE_CELL_ACTIVE;
+				if (RC.ss.mode == SS_SOFTMODEM_SRB)
+				{
+        	RC.ss.State = SS_STATE_CELL_ACTIVE;
+				}
         itti_subscribe_event_fd(TASK_SS_SRB, fd1);
-
         itti_mark_task_ready(TASK_SS_SRB);
 }
 
