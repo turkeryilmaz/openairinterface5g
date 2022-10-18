@@ -534,26 +534,12 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
   uint8_t CC_id = 0;
+	uint8_t count = 0;
   ue_paging_identity_t ue_paging_identity;
   cn_domain_t cn_domain=0;
 
   LOG_A(RRC, "eNB received SS_PAGING_IND with paging_recordList=%p systemInfoModification=%d bSubframeOffsetListPresent=%d\n", SS_PAGING_IND(msg_p).paging_recordList, SS_PAGING_IND(msg_p).systemInfoModification, SS_PAGING_IND(msg_p).bSubframeOffsetListPresent);
-  ue_paging_identity.presenceMask = 0;
-
-  if (SS_PAGING_IND(msg_p).paging_recordList)
-  {
-    LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
-      SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
-      SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
-      SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
-      SS_PAGING_IND(msg_p).sfn,
-      SS_PAGING_IND(msg_p).sf,
-      SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
-      (uint16_t)SS_PAGING_IND(msg_p).ue_index_value);
-    memcpy(&ue_paging_identity, &(SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity), sizeof(ue_paging_identity_t));
-    cn_domain = SS_PAGING_IND(msg_p).paging_recordList->cn_domain;
-  }
-  lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
+    lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
   /* get nB from configuration */
   /* get default DRX cycle from configuration */
   Tc = (uint8_t)RC.rrc[instance]->configuration.radioresourceconfig[CC_id].pcch_defaultPagingCycle;
@@ -662,12 +648,47 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   /* Transfer data to PDCP */
   MessageDef *message_p;
   message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_PCCH_DATA_REQ);
-  /* Create message for PDCP (DLInformationTransfer_t) */
-  length = do_Paging(instance,
-                     buffer,
-		     RRC_BUF_SIZE,
-                     ue_paging_identity,
-                     cn_domain, SS_PAGING_IND(msg_p).systemInfoModification);
+
+  ue_paging_identity.presenceMask = 0;
+	ss_paging_identity_t *p_paging_record = SS_PAGING_IND(msg_p).paging_recordList;
+	count = SS_PAGING_IND(msg_p).num_paging_record;	
+        LOG_A(RRC, " Number of paging records::%d\n",SS_PAGING_IND(msg_p).num_paging_record);
+	while (count > 0)
+	{
+		if (p_paging_record)
+		{
+			LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
+					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
+					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
+					SS_PAGING_IND(msg_p).sfn,
+					SS_PAGING_IND(msg_p).sf,
+					SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
+					(uint16_t)SS_PAGING_IND(msg_p).ue_index_value);
+			memcpy(&ue_paging_identity, &(p_paging_record->ue_paging_identity), sizeof(ue_paging_identity_t));
+			cn_domain = p_paging_record->cn_domain;
+
+
+			/* Create message for PDCP (DLInformationTransfer_t) */
+			if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
+			{
+				length = do_Paging(instance,
+						buffer,
+						RRC_BUF_SIZE,
+						ue_paging_identity,
+						cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
+						SS_PAGING_IND(msg_p).num_paging_record);
+				
+			}
+      count--;
+			p_paging_record++;
+		}
+		else
+		{
+			LOG_E(RRC, "Received empty paging record");
+			return -1;
+		}
+	}
   if (length == -1)
   {
     LOG_I(RRC, "do_Paging error");
@@ -9439,6 +9460,7 @@ void process_unsuccessful_rlc_sdu_indication(int instance, int rnti) {
   int release_num;
   int release_total;
   RRC_release_ctrl_t *release_ctrl;
+  LOG_I(RRC, "process_unsuccessful_rlc_sdu_indication: radio link failure detected by RLC layer, remove UE\n");
   /* radio link failure detected by RLC layer, remove UE properly */
   pthread_mutex_lock(&rrc_release_freelist);
 
@@ -10368,7 +10390,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
-          if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry && as_security_conf_ciphering)
+          if ((dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry || dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_dlInformationTransfer)  && as_security_conf_ciphering)
           {
             for (int i = 0; i < MAX_RBS; i++)
             {
@@ -10443,12 +10465,18 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
               ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
               LOG_A(RRC, "RRC Connection Release message received \n");
+              if (NULL == ue_context_pP)
+              {
+                LOG_W(RRC, "ue_context_pP is already NULL \n");
+              }
+              else {
               ue_context_pP->ue_context.ue_reestablishment_timer = 0;
               ue_context_pP->ue_context.ue_release_timer = 1;
               ue_context_pP->ue_context.ue_release_timer_thres = 10;
               ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+              }
               security_mode_command_send = TRUE;
               as_security_conf_ciphering = FALSE;
               if (RC.ss.CBRA_flag)

@@ -280,7 +280,8 @@ typedef struct ss_paging_ind_s {
    * Specified in 3GPP TS 36.304
    */
   unsigned ue_index_value:10;
-
+  
+  uint8_t num_paging_record;
   ss_paging_identity_t *paging_recordList;
   bool systemInfoModification;
   bool bSubframeOffsetListPresent;

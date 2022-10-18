@@ -1870,7 +1870,7 @@ int rrc_eNB_process_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance
           length = do_Paging (instance,
                               buffer, sizeof(buffer),
                               S1AP_PAGING_IND(msg_p).ue_paging_identity,
-                              S1AP_PAGING_IND(msg_p).cn_domain, false);
+                              S1AP_PAGING_IND(msg_p).cn_domain, false, 1);
 
           if(length == -1) {
             LOG_I(RRC, "do_Paging error");
