@@ -55,7 +55,7 @@
 extern RAN_CONTEXT_t RC;
 
 acpCtx_t ctx_g = NULL;
-int cell_index = 0;
+int cell_index_pm = 0;
 
 enum MsgUserId
 {
@@ -221,7 +221,7 @@ void ss_port_man_send_data(
     cnf.Confirm.d = SystemConfirm_Type_EnquireTiming;
     cnf.Confirm.v.EnquireTiming = true;
 
-    cell_index = tinfo->cell_index;
+    cell_index_pm = tinfo->cell_index;
 
     /**
    * FIXME: Currently filling only SFN and subframe numbers.
@@ -366,7 +366,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
     {
         // No message (timeout on socket)
         //Send Dummy Wake up ITTI message to SRB task.
-        if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
+        if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[cell_index_pm].State >= SS_STATE_CELL_ACTIVE)
         {
             LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
