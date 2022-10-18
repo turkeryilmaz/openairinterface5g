@@ -1648,8 +1648,8 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     if (req->Request.d == SystemRequest_Type_Cell)
     {
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
-      exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
       SS_context.SSCell_list[cell_index].PhysicalCellId = req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
+      exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
       LOG_A(ENB_SS,"[SYS] SS_STATE_NOT_CONFIGURED: PhysicalCellId is %d in SS_context \n",SS_context.SSCell_list[cell_index].PhysicalCellId);
       SS_context.SSCell_list[cell_index].State = exitState;
       if(RC.ss.State <= SS_STATE_CELL_CONFIGURED)
