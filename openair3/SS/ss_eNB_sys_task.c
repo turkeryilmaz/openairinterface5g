@@ -1263,119 +1263,137 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 
   LOG_A(ENB_SS, "[SYS] Enter sys_handle_paging_req Paging_IND for processing\n");
 
-  /** TODO: Considering only one cell for now */
-  uint8_t cellId = SS_context.SSCell_list[cell_index].PhysicalCellId; //(uint8_t)pagingRequ ->CellId;
-  uint8_t cn_domain = 0;
+	/** TODO: Considering only one cell for now */
+	uint8_t cellId = 0; //(uint8_t)pagingRequ ->CellId;
+	uint8_t cn_domain = 0;
 
-  enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Paging;
-  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-  bool resVal = TRUE;
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
-  if (message_p == NULL)
-  {
-    return;
-  }
+	enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Paging;
+	enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+	bool resVal = TRUE;
+	static uint8_t oneTimeProcessingFlag = 0;
+	MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
+	if (message_p == NULL)
+	{
+		return;
+	}
 
-  SS_PAGING_IND(message_p).sfn = tinfo.sfn;
-  SS_PAGING_IND(message_p).sf = tinfo.sf;
-  SS_PAGING_IND(message_p).paging_recordList = NULL;
-  SS_PAGING_IND(message_p).systemInfoModification = false;
-  SS_PAGING_IND(message_p).bSubframeOffsetListPresent = false;
+	SS_PAGING_IND(message_p).sfn = tinfo.sfn;
+	SS_PAGING_IND(message_p).sf = tinfo.sf;
+	SS_PAGING_IND(message_p).paging_recordList = NULL;
+	SS_PAGING_IND(message_p).systemInfoModification = false;
+	SS_PAGING_IND(message_p).bSubframeOffsetListPresent = false;
 
-  switch (pagingRequest->Paging.message.d)
-  {
-  case SQN_PCCH_MessageType_c1:
-    if (pagingRequest->Paging.message.v.c1.d)
-    {
-      if (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.d)
-      {
-        cn_domain = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->cn_Domain;
-        size_t pgSize = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d * sizeof(ss_paging_identity_t);
-        SS_PAGING_IND(message_p).sfn =tinfo.sfn;
-        SS_PAGING_IND(message_p).sf = tinfo.sf;
-        SS_PAGING_IND(message_p).paging_recordList = CALLOC(1, pgSize);
-        /* id-CNDomain : convert cnDomain */
-        if (cn_domain == SQN_PagingRecord_cn_Domain_e_ps)
-        {
-          SS_PAGING_IND(message_p).paging_recordList->cn_domain = CN_DOMAIN_PS;
-        }
-        else if (cn_domain == SQN_PagingRecord_cn_Domain_e_cs)
-        {
-          SS_PAGING_IND(message_p).paging_recordList->cn_domain = CN_DOMAIN_CS;
-        }
+	switch (pagingRequest->Paging.message.d)
+	{
+		case SQN_PCCH_MessageType_c1:
+			if (pagingRequest->Paging.message.v.c1.d)
+			{
+				if (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.d)
+				{
+					struct SQN_PagingRecord *p_sdl_msg = NULL;
+					p_sdl_msg = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v;
+					/* id-CNDomain : convert cnDomain */
+					uint8_t numPagingRecord = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d;
+					size_t pgSize = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d * sizeof(ss_paging_identity_t);
+					SS_PAGING_IND(message_p).sfn =tinfo.sfn;
+					SS_PAGING_IND(message_p).sf = tinfo.sf;
+					SS_PAGING_IND(message_p).paging_recordList = CALLOC(1, pgSize);
+					ss_paging_identity_t *p_record_msg = SS_PAGING_IND(message_p).paging_recordList;
+					SS_PAGING_IND(message_p).num_paging_record = numPagingRecord;
+					for (int count = 0; count < numPagingRecord; count++)
+					{
+						cn_domain = p_sdl_msg->cn_Domain;
+						/* id-CNDomain : convert cnDomain */
+						if (cn_domain == SQN_PagingRecord_cn_Domain_e_ps)
+						{
+							p_record_msg->cn_domain = CN_DOMAIN_PS;
+						}
+						else if (cn_domain == SQN_PagingRecord_cn_Domain_e_cs)
+						{
+							p_record_msg->cn_domain = CN_DOMAIN_CS;
+						}
 
-        switch (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.d)
-        {
-        case SQN_PagingUE_Identity_s_TMSI:
-          SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_s_tmsi;
-          int32_t stmsi_rx = bin_to_int(pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.v.s_TMSI.m_TMSI, 32);
+						switch (p_sdl_msg->ue_Identity.d)
+						{
+							case SQN_PagingUE_Identity_s_TMSI:
+								p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_s_tmsi;
+								int32_t stmsi_rx = bin_to_int(p_sdl_msg->ue_Identity.v.s_TMSI.m_TMSI, 32);
 
-          SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi = stmsi_rx ;
-           SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code =
-                 bin_to_int(pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.v.s_TMSI.mmec,8);
-           SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
-           paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
-          break;
-        case SQN_PagingUE_Identity_imsi:
-          SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
+								p_record_msg->ue_paging_identity.choice.s_tmsi.m_tmsi = stmsi_rx ;
+								p_record_msg->ue_paging_identity.choice.s_tmsi.mme_code =
+									bin_to_int(p_sdl_msg->ue_Identity.v.s_TMSI.mmec,8);
+								if (oneTimeProcessingFlag == 0)
+								{
+									SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
+									paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
+									oneTimeProcessingFlag = 1;
+								} 
+								break;
+							case SQN_PagingUE_Identity_imsi:
+								p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
 
-          memcpy(&(SS_PAGING_IND(message_p).paging_recordList->ue_paging_identity.choice.imsi),
-                 &(pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v->ue_Identity.v.imsi),
-                 sizeof(s1ap_imsi_t));
-          break;
-        case SQN_PagingUE_Identity_ng_5G_S_TMSI_r15:
-        case SQN_PagingUE_Identity_fullI_RNTI_r15:
-        case SQN_PagingUE_Identity_UNBOUND_VALUE:
-          LOG_A(ENB_SS, "[SYS] Error Unhandled Paging request \n");
-          break;
-        default :
-          LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
+								memcpy(&(p_record_msg->ue_paging_identity.choice.imsi),
+										&(p_sdl_msg->ue_Identity.v.imsi),
+										sizeof(s1ap_imsi_t));
+								break;
+							case SQN_PagingUE_Identity_ng_5G_S_TMSI_r15:
+							case SQN_PagingUE_Identity_fullI_RNTI_r15:
+							case SQN_PagingUE_Identity_UNBOUND_VALUE:
+								LOG_A(ENB_SS, "[SYS] Error Unhandled Paging request \n");
+								break;
+							default :
+								LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
 
-        }
-      }
+						}
+						p_sdl_msg++;
+						p_record_msg++;
+					}
+				}
 
-      if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d)
-      {
-         LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
-         if (SQN_Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
-         {
-           SS_PAGING_IND(message_p).systemInfoModification = true;
-         }
-      }
-    }
-    if(pagingRequest->SubframeOffsetList.d)
-    {
-      LOG_A(ENB_SS, "[SYS] Subframe Offset List present in Paging request \n");
-      SS_PAGING_IND(message_p).bSubframeOffsetListPresent=true;
-      SS_PAGING_IND(message_p).subframeOffsetList.num = 0;
-      for (int i=0; i < pagingRequest->SubframeOffsetList.v.d; i++)
-      {
-        SS_PAGING_IND(message_p).subframeOffsetList.subframe_offset[i] = pagingRequest->SubframeOffsetList.v.v[i];
-        SS_PAGING_IND(message_p).subframeOffsetList.num++;
-      }
-    }
+				if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d)
+				{
+					LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
+					if (SQN_Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
+					{
+						SS_PAGING_IND(message_p).systemInfoModification = true;
+					}
+				}
+			}
+			if(pagingRequest->SubframeOffsetList.d)
+			{
+				LOG_A(ENB_SS, "[SYS] Subframe Offset List present in Paging request \n");
+				SS_PAGING_IND(message_p).bSubframeOffsetListPresent=true;
+				SS_PAGING_IND(message_p).subframeOffsetList.num = 0;
+				for (int i=0; i < pagingRequest->SubframeOffsetList.v.d; i++)
+				{
+					SS_PAGING_IND(message_p).subframeOffsetList.subframe_offset[i] = pagingRequest->SubframeOffsetList.v.v[i];
+					SS_PAGING_IND(message_p).subframeOffsetList.num++;
+				}
+			}
 
-    int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, message_p);
-    if (send_res < 0)
-    {
-      LOG_A(ENB_SS, "[SYS] Error sending Paging to RRC_ENB");
-    }
-
-    LOG_A(ENB_SS, "[SYS] Paging_IND for Cell_id %d  sent to RRC\n", cellId);
-    break;
-  case SQN_PCCH_MessageType_messageClassExtension:
-    LOG_A(ENB_SS, "[SYS] PCCH_MessageType_messageClassExtension for Cell_id %d received\n",
-          cellId);
-    break;
-  case SQN_PCCH_MessageType_UNBOUND_VALUE:
-    LOG_A(ENB_SS, "[SYS] Invalid Pging request received Type_UNBOUND_VALUE received\n");
-    break;
-  default:
-    LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
-  }
-  send_sys_cnf(resType, resVal, cnfType, NULL);
-  LOG_A(ENB_SS, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
+			int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, message_p);
+			if (send_res < 0)
+			{
+				LOG_A(ENB_SS, "[SYS] Error sending Paging to RRC_ENB");
+			}
+			oneTimeProcessingFlag = 0;
+			LOG_A(ENB_SS, "[SYS] Paging_IND for Cell_id %d  sent to RRC\n", cellId);
+			break;
+		case SQN_PCCH_MessageType_messageClassExtension:
+			LOG_A(ENB_SS, "[SYS] PCCH_MessageType_messageClassExtension for Cell_id %d received\n",
+					cellId);
+			break;
+		case SQN_PCCH_MessageType_UNBOUND_VALUE:
+			LOG_A(ENB_SS, "[SYS] Invalid Pging request received Type_UNBOUND_VALUE received\n");
+			break;
+		default:
+			LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
+	}
+	send_sys_cnf(resType, resVal, cnfType, NULL);
+	LOG_A(ENB_SS, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
 }
+
+
 /*
  * Function : sys_handle_enquire_timing
  * Description: Sends the enquire timing update to PORTMAN
