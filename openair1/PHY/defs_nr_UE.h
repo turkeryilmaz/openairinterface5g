@@ -669,13 +669,13 @@ typedef struct {
   /// \brief Indicator that UE is synchronized to a gNB
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
-  int is_synchronizedSL;
+  int is_synchronized_sl;
   /// \brief Indicator that UE lost frame synchronization
   int lost_sync;
   /// \brief Indicator that UE lost frame synchronization on Sidelink
-  int lost_syncSL;
+  int lost_sync_sl;
   /// \brief Indicator that UE is an SynchRef UE
-  int is_SynchRef;
+  int is_sync_ref;
   /// Data structure for UE process scheduling
   UE_nr_proc_t proc;
   /// Flag to indicate the UE shouldn't do timing correction at all
@@ -827,7 +827,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
-  int              rx_offsetSL;    /// Timing offset for Sidelink
+  int              rx_offset_sl;    /// Timing offset for Sidelink
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int              max_pos_fil;    /// Timing offset IIR filter
   int              time_sync_cell;
