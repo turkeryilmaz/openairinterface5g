@@ -495,7 +495,7 @@ static void UE_synch(void *arg) {
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
   UE->is_synchronized = 0;
-  UE->is_synchronized_sl= 0;
+  UE->is_synchronized_sl = 0;
 
   if (UE->UE_scan == 0) {
 
@@ -578,7 +578,7 @@ static void UE_synch(void *arg) {
           UE->UE_scan_carrier = 0;
         } else {
           // TODO:: Need to protect while changing status
-          UE->is_synchronized_sl= 1;
+          UE->is_synchronized_sl = 1;
         }
       } else {
         // TODO:: Adjust Rx Freq by adding freq_offset to the ul_CarrierFreq
@@ -820,8 +820,8 @@ void *UE_thread_SL(void *arg) {
   int start_rx_stream = 0;
   AssertFatal(0== openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]), "");
   UE->rfdevice.host_type = RAU_HOST;
-  UE->lost_sync_sl= 0;
-  UE->is_synchronized_sl= 0;
+  UE->lost_sync_sl = 0;
+  UE->is_synchronized_sl = 0;
   AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");
 
   notifiedFIFO_t nf;
@@ -835,7 +835,7 @@ void *UE_thread_SL(void *arg) {
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
   int timing_advance = UE->timing_advance;
 
-  bool sync_running_sl=false;
+  bool sync_running_sl = false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
   int absolute_slot=0, decoded_frame_rx=INT_MAX, trashed_frames=0;
 
@@ -855,8 +855,8 @@ void *UE_thread_SL(void *arg) {
       for (int i=0; i<nb; i++)
         pushNotifiedFIFO_nothreadSafe(&freeBlocks, newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID,&nf,processSlotRX));
       nbSlotProcessing = 0;
-      UE->is_synchronized_sl= 0;
-      UE->lost_sync_sl= 0;
+      UE->is_synchronized_sl = 0;
+      UE->lost_sync_sl = 0;
     }
 
     if (sync_running_sl) {
@@ -864,7 +864,7 @@ void *UE_thread_SL(void *arg) {
       notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
 
       if (res) {
-        sync_running_sl=false;
+        sync_running_sl = false;
         syncData_t *tmp=(syncData_t *)NotifiedFifoData(res);
         if (UE->is_synchronized_sl) {
           decoded_frame_rx=(((mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused)<<4) | tmp->proc.decoded_frame_rx);
@@ -882,8 +882,8 @@ void *UE_thread_SL(void *arg) {
 
     AssertFatal( !sync_running_sl, "At this point synchronization can't be running\n");
 
-    if (UE->is_synchronized_sl== 0 && UE->is_synch_ref == 0) {
-      LOG_I(NR_MAC, "we are UE->is_synchronized_sl== 0 && UE->is_synch_ref == 0) %s():%d.\n", __FUNCTION__, __LINE__);
+    if (UE->is_synchronized_sl == 0 && UE->is_synch_ref == 0) {
+      LOG_I(NR_MAC, "we are UE->is_synchronized_sl == 0 && UE->is_synch_ref == 0) %s():%d.\n", __FUNCTION__, __LINE__);
       readFrame(UE, &timestamp, false);
       notifiedFIFO_elt_t *Msg=newNotifiedFIFO_elt(sizeof(syncData_t),0,&nf,UE_synch);
       syncData_t *syncMsg=(syncData_t *)NotifiedFifoData(Msg);
@@ -891,15 +891,15 @@ void *UE_thread_SL(void *arg) {
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
       pushTpool(&(get_nrUE_params()->Tpool), Msg);
       trashed_frames=0;
-      sync_running_sl=true;
+      sync_running_sl =true;
       continue;
     }
 
     if (start_rx_stream == 0 && UE->is_synch_ref == 0) {
       start_rx_stream=1;
       syncInFrame(UE, &timestamp);
-      UE->rx_offset_sl= 0;
-      UE->time_sync_cell=0;
+      UE->rx_offset_sl = 0;
+      UE->time_sync_cell = 0;
       // read in first symbol
       AssertFatal (UE->frame_parms.ofdm_symbol_size+UE->frame_parms.nb_prefix_samples0 ==
                    UE->rfdevice.trx_read_func(&UE->rfdevice,
