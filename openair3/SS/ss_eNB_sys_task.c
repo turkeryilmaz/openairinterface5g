@@ -317,6 +317,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
         int band = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.EutraBand;
         RRC_CONFIGURATION_REQ(msg_p).eutra_band[num_CC] = band;
         RRC_CONFIGURATION_REQ(msg_p).Nid_cell[num_CC] = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
+        SS_context.SSCell_list[cell_index].PhysicalCellId = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
 
         /** TODO: Not filled now */
         /** eNB Cell ID: AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.eNB_CellId.v */
@@ -1703,9 +1704,6 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     case SystemRequest_Type_Cell:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_Cell received\n");
       exitState = sys_handle_cell_config_req(&(req->Request.v.Cell));
-      if(req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId) {
-        SS_context.SSCell_list[cell_index].PhysicalCellId = req->Request.v.Cell.v.AddOrReconfigure.Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
-      }
       LOG_A(ENB_SS,"[SYS] SS_STATE_CELL_ACTIVE: PhysicalCellId is %d in SS_context \n",SS_context.SSCell_list[cell_index].PhysicalCellId);
       SS_context.SSCell_list[cell_index].State = exitState;
       if(RC.ss.State <= SS_STATE_CELL_ACTIVE)
