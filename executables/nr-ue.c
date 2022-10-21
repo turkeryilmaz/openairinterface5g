@@ -822,6 +822,7 @@ void *UE_thread_SL(void *arg) {
   UE->rfdevice.host_type = RAU_HOST;
   UE->lost_sync_sl = 0;
   UE->is_synchronized_sl = 0;
+  UE->sync_ref = get_softmodem_params()->sync_ref;
   AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");
 
   notifiedFIFO_t nf;
@@ -882,8 +883,8 @@ void *UE_thread_SL(void *arg) {
 
     AssertFatal( !sync_running_sl, "At this point synchronization can't be running\n");
 
-    if (UE->is_synchronized_sl == 0 && UE->is_synch_ref == 0) {
-      LOG_I(NR_MAC, "we are UE->is_synchronized_sl == 0 && UE->is_synch_ref == 0) %s():%d.\n", __FUNCTION__, __LINE__);
+    if (UE->is_synchronized_sl == 0 && UE->sync_ref == 0) {
+      LOG_I(NR_MAC, "we are UE->is_synchronized_sl == 0 && UE->sync_ref == 0) %s():%d.\n", __FUNCTION__, __LINE__);
       readFrame(UE, &timestamp, false);
       notifiedFIFO_elt_t *Msg=newNotifiedFIFO_elt(sizeof(syncData_t),0,&nf,UE_synch);
       syncData_t *syncMsg=(syncData_t *)NotifiedFifoData(Msg);
@@ -895,7 +896,7 @@ void *UE_thread_SL(void *arg) {
       continue;
     }
 
-    if (start_rx_stream == 0 && UE->is_synch_ref == 0) {
+    if (start_rx_stream == 0 && UE->sync_ref == 0) {
       start_rx_stream=1;
       syncInFrame(UE, &timestamp);
       UE->rx_offset_sl = 0;
