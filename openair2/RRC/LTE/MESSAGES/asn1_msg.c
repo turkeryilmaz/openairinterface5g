@@ -4392,69 +4392,81 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   LOG_D(RRC, "[eNB %d] do_Paging start\n", Mod_id);
   asn_enc_rval_t enc_rval;
   static LTE_PCCH_Message_t pcch_msg;
-  LTE_PagingRecord_t *paging_record_p;
+  LTE_PagingRecord_t *paging_record_p = NULL;
   int j;
   static uint8_t oneTimeProcessingFlag = 0;
   static uint8_t count = 0;
   /* This block of code will be one time */
   if (oneTimeProcessingFlag == 0)
   {
+		LOG_A(RRC, "fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
     pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
     pcch_msg.message.choice.c1.choice.paging.pagingRecordList = NULL;
     pcch_msg.message.choice.c1.choice.paging.systemInfoModification = NULL;
     pcch_msg.message.choice.c1.choice.paging.etws_Indication = NULL;
     pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
-    asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
-    pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
-    pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
+		if (pagingRecordCount > 0)
+		{
+			asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
+			pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
+			pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
+		}
     oneTimeProcessingFlag = 1;
   }
 
-  if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
-    return (-1);
-  }
+  if (ue_paging_identity.presenceMask)
+	{
+		LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+		if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
+			return (-1);
+		}
+		memset(paging_record_p, 0, sizeof(LTE_PagingRecord_t));
 
-  if (count <= pagingRecordCount)
-  {
-    memset(paging_record_p, 0, sizeof(LTE_PagingRecord_t));
+		if (count < pagingRecordCount)
+		{
+			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
 
-    /* convert ue_paging_identity_t to PagingUE_Identity_t */
-    if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_s_tmsi) {
-      paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_s_TMSI;
-      MME_CODE_TO_OCTET_STRING(ue_paging_identity.choice.s_tmsi.mme_code,
-        &paging_record_p->ue_Identity.choice.s_TMSI.mmec);
-      paging_record_p->ue_Identity.choice.s_TMSI.mmec.bits_unused = 0;
-      M_TMSI_TO_OCTET_STRING(ue_paging_identity.choice.s_tmsi.m_tmsi,
-        &paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI);
-      paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI.bits_unused = 0;
-    } else if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_imsi) {
-      paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_imsi;
-      LTE_IMSI_Digit_t imsi_digit[21];
+			/* convert ue_paging_identity_t to PagingUE_Identity_t */
+			if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_s_tmsi) {
+				paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_s_TMSI;
+				MME_CODE_TO_OCTET_STRING(ue_paging_identity.choice.s_tmsi.mme_code,
+						&paging_record_p->ue_Identity.choice.s_TMSI.mmec);
+				paging_record_p->ue_Identity.choice.s_TMSI.mmec.bits_unused = 0;
+				M_TMSI_TO_OCTET_STRING(ue_paging_identity.choice.s_tmsi.m_tmsi,
+						&paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI);
+				paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI.bits_unused = 0;
+			} else if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_imsi) {
+				paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_imsi;
+				LTE_IMSI_Digit_t imsi_digit[21];
 
-      for (j = 0; j< ue_paging_identity.choice.imsi.length; j++) {  /* IMSI size */
-        imsi_digit[j] = (LTE_IMSI_Digit_t)ue_paging_identity.choice.imsi.buffer[j];
-        ASN_SEQUENCE_ADD(&paging_record_p->ue_Identity.choice.imsi.list, &imsi_digit[j]);
-      }
-    }
+				for (j = 0; j< ue_paging_identity.choice.imsi.length; j++) {  /* IMSI size */
+					imsi_digit[j] = (LTE_IMSI_Digit_t)ue_paging_identity.choice.imsi.buffer[j];
+					ASN_SEQUENCE_ADD(&paging_record_p->ue_Identity.choice.imsi.list, &imsi_digit[j]);
+				}
+			}
 
-    /* set cn_domain */
-    if (cn_domain == CN_DOMAIN_PS) {
-      paging_record_p->cn_Domain = LTE_PagingRecord__cn_Domain_ps;
-    } else {
-      paging_record_p->cn_Domain = LTE_PagingRecord__cn_Domain_cs;
-    }
+			/* set cn_domain */
+			if (cn_domain == CN_DOMAIN_PS) {
+				paging_record_p->cn_Domain = LTE_PagingRecord__cn_Domain_ps;
+			} else {
+				paging_record_p->cn_Domain = LTE_PagingRecord__cn_Domain_cs;
+			}
 
-    /* add to list */
-    ASN_SEQUENCE_ADD(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list, paging_record_p);
-    LOG_D(RRC, "[eNB %d] do_Paging paging_record: cn_Domain %ld, ue_paging_identity.presenceMask %d, PagingRecordList.count %d\n",
-      Mod_id, paging_record_p->cn_Domain, ue_paging_identity.presenceMask, pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count);
-    count++;
-  }
+			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+			/* add to list */
+			ASN_SEQUENCE_ADD(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list, paging_record_p);
+			LOG_D(RRC, "[eNB %d] do_Paging paging_record: cn_Domain %ld, ue_paging_identity.presenceMask %d, PagingRecordList.count %d\n",
+					Mod_id, paging_record_p->cn_Domain, ue_paging_identity.presenceMask, pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count);
+			count++;
+		}
+	}
+
   if (count == pagingRecordCount)
   {
     if (systemInfoModification)
     {
+			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
       LOG_A(RRC, "Handling of paging for systemInfoModification\n");
       pcch_msg.message.choice.c1.choice.paging.systemInfoModification = calloc(1, sizeof(long));
       *(pcch_msg.message.choice.c1.choice.paging.systemInfoModification) = LTE_Paging__systemInfoModification_true;
@@ -4469,14 +4481,15 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
       return -1;
     }
 
-    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+//    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
       xer_fprint(stdout, &asn_DEF_LTE_PCCH_Message, (void *)&pcch_msg);
-    }
+//    }
     count = 0;
     memset(&pcch_msg, 0, sizeof(LTE_PCCH_Message_t));
     oneTimeProcessingFlag = 0;
     return((enc_rval.encoded+7)/8);
   }
+	LOG_A(RRC, "oneTimeProcessingFlag:%d count:%d \n", oneTimeProcessingFlag, count);
 }
 
 uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t *pdu_buffer) {
