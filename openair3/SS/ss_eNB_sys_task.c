@@ -289,7 +289,6 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
   cellConfig->header.msg_id = SS_CELL_CONFIG;
   cellConfig->header.length = sizeof(proxy_ss_header_t);
 
-  uint8_t num_CC = 0; /** NOTE: Handling only one cell */
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
     if (AddOrReconfigure->Basic.d == true)
@@ -303,10 +302,10 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.RAT.d)
         {
         case EUTRA_RAT_Type_FDD:
-          RRC_CONFIGURATION_REQ(msg_p).frame_type[num_CC] = 0; /** FDD */
+          RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = 0; /** FDD */
           break;
         case EUTRA_RAT_Type_TDD:
-          RRC_CONFIGURATION_REQ(msg_p).frame_type[num_CC] = 1; /** TDD */
+          RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = 1; /** TDD */
           break;
         case EUTRA_RAT_Type_HalfDuplexFDD:
         case EUTRA_RAT_Type_UNBOUND_VALUE:
@@ -315,8 +314,8 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
         }
 
         int band = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.EutraBand;
-        RRC_CONFIGURATION_REQ(msg_p).eutra_band[num_CC] = band;
-        RRC_CONFIGURATION_REQ(msg_p).Nid_cell[num_CC] = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
+        RRC_CONFIGURATION_REQ(msg_p).eutra_band[cell_index] = band;
+        RRC_CONFIGURATION_REQ(msg_p).Nid_cell[cell_index] = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
         SS_context.SSCell_list[cell_index].PhysicalCellId = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.PhysicalCellId;
 
         /** TODO: Not filled now */
@@ -325,12 +324,12 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 
 
         uint32_t dl_Freq = from_earfcn(band, AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Earfcn);
-        RRC_CONFIGURATION_REQ(msg_p).downlink_frequency[num_CC] = dl_Freq;
+        RRC_CONFIGURATION_REQ(msg_p).downlink_frequency[cell_index] = dl_Freq;
         if (AddOrReconfigure->Basic.v.StaticCellInfo.v.Uplink.d == true)
         {
           uint32_t ul_Freq = from_earfcn(band, AddOrReconfigure->Basic.v.StaticCellInfo.v.Uplink.v.Earfcn);
           int ul_Freq_off = ul_Freq - dl_Freq;
-          RRC_CONFIGURATION_REQ(msg_p).uplink_frequency_offset[num_CC] = (unsigned int)ul_Freq_off;
+          RRC_CONFIGURATION_REQ(msg_p).uplink_frequency_offset[cell_index] = (unsigned int)ul_Freq_off;
           SS_context.SSCell_list[cell_index].ul_earfcn = AddOrReconfigure->Basic.v.StaticCellInfo.v.Uplink.v.Earfcn;
           SS_context.SSCell_list[cell_index].ul_freq = ul_Freq;
         }
@@ -341,22 +340,22 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Bandwidth)
         {
         case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n6:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 6;
+          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 6;
           break;
         case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n15:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 15;
+          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 15;
           break;
         case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n25:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 25;
+          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 25;
           break;
         case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n50:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 50;
+          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 50;
           break;
         case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n75:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 75;
+          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 75;
           break;
         case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n100:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[num_CC] = 100;
+          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 100;
           break;
         default:
           /** LOG */
@@ -378,10 +377,10 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
             switch (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Duration)
             {
             case SQN_PHICH_Config_phich_Duration_e_normal:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_duration = LTE_PHICH_Config__phich_Duration_normal;
+              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_duration = LTE_PHICH_Config__phich_Duration_normal;
               break;
             case SQN_PHICH_Config_phich_Duration_e_extended:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_duration = LTE_PHICH_Config__phich_Duration_extended;
+              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_duration = LTE_PHICH_Config__phich_Duration_extended;
               break;
             default:
               LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid PHICH Duration\n");
@@ -392,23 +391,23 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
             switch (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Resource)
             {
             case SQN_PHICH_Config_phich_Resource_e_oneSixth:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_oneSixth;
+              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_oneSixth;
               break;
             case SQN_PHICH_Config_phich_Resource_e_half:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_half;
+              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_half;
               break;
             case SQN_PHICH_Config_phich_Resource_e_one:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_one;
+              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_one;
               break;
             case SQN_PHICH_Config_phich_Resource_e_two:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].phich_resource = LTE_PHICH_Config__phich_Resource_two;
+              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_two;
               break;
             default:
               LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid PHICH Resource\n");
               return false;
             }
 
-            RRC_CONFIGURATION_REQ(msg_p).schedulingInfoSIB1_BR_r13[num_CC] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.schedulingInfoSIB1_BR_r13;
+            RRC_CONFIGURATION_REQ(msg_p).schedulingInfoSIB1_BR_r13[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.schedulingInfoSIB1_BR_r13;
           }
 /** TODO: FIXME: Possible bug if not checking boolean flag for presence */
 #define SIDL_SIB1_VAL AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.v.message.v
@@ -456,10 +455,10 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                        {
                          if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
                          {
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[num_CC].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
+                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
                          }
                        }
                      }
