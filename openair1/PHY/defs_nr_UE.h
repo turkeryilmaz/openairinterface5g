@@ -675,7 +675,7 @@ typedef struct {
   /// \brief Indicator that UE lost frame synchronization on Sidelink
   int lost_sync_sl;
   /// \brief Indicator that UE is an SynchRef UE
-  int is_sync_ref;
+  int sync_ref;
   /// Data structure for UE process scheduling
   UE_nr_proc_t proc;
   /// Flag to indicate the UE shouldn't do timing correction at all
