@@ -634,6 +634,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
 
   gNB->first_run_I0_measurements = 1;
 
+  printf("\n Size of Ptx = %d \n", Ptx);
   common_vars->txdataF = (int32_t **)malloc16(Ptx*sizeof(int32_t*));
   common_vars->rxdataF = (int32_t **)malloc16(Prx*sizeof(int32_t*));
   /* Do NOT allocate per-antenna txdataF/rxdataF: the gNB gets a pointer to the
@@ -647,6 +648,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
           fp->samples_per_frame_wCP*sizeof(int32_t));
     common_vars->beam_id[i] = (uint8_t*)malloc16_clear(fp->symbols_per_slot*fp->slots_per_frame*sizeof(uint8_t));
     memset(common_vars->beam_id[i],255,fp->symbols_per_slot*fp->slots_per_frame);
+    printf("\n fp->samples_per_frame_wCP = %d \n", fp->samples_per_frame_wCP);
   }
   common_vars->debugBuff = (int32_t*)malloc16_clear(fp->samples_per_frame*sizeof(int32_t)*100);	
   common_vars->debugBuff_sample_offset = 0; 

@@ -53,6 +53,25 @@ void nr_init_pbch_dmrs(PHY_VARS_gNB* gNB)
 
 }
 
+void nr_init_psbch_dmrs(PHY_VARS_gNB* gNB) //Change to PHY_VARS_NR_UE *ue as this is for Sidelink (UE to UE)
+{
+  unsigned int x1, x2;
+  uint16_t Nid;
+  unsigned char Lmax, l;
+  nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
+  NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
+  uint8_t reset;
+
+  Nid = cfg->cell_config.phy_cell_id.value;  // This should come from MAC layer. UE SLSS ID NidSL
+
+  reset = 1;
+  x2 = Nid; // cinit = NidSL
+  for (uint8_t n=0; n<NR_PSBCH_DMRS_LENGTH_DWORD; n++) {
+    gNB->nr_gold_psbch_dmrs[n] = lte_gold_generic(&x1, &x2, reset);
+    reset = 0;
+  }
+}
+
 void nr_init_pdcch_dmrs(PHY_VARS_gNB* gNB, uint32_t Nid)
 {
 

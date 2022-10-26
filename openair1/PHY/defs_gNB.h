@@ -768,6 +768,9 @@ typedef struct PHY_VARS_gNB_s {
   /// PBCH DMRS sequence
   uint32_t nr_gold_pbch_dmrs[2][64][NR_PBCH_DMRS_LENGTH_DWORD];
 
+  /// PSBCH DMRS sequence
+  uint32_t nr_gold_psbch_dmrs[NR_PSBCH_DMRS_LENGTH_DWORD];
+
   /// PBCH interleaver
   uint8_t nr_pbch_interleaver[NR_POLAR_PBCH_PAYLOAD_BITS];
 
