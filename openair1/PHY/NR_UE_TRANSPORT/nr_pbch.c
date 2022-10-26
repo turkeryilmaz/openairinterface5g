@@ -198,7 +198,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
   uint16_t rb;
   uint8_t i,j,aarx;
   int nushiftmod4 = frame_parms->nushift;
-  AssertFatal(symbol>=1 && symbol<5,
+  AssertFatal(symbol>=1 && symbol<14,
               "symbol %d illegal for PSBCH extraction\n",
               symbol);
 
@@ -781,12 +781,12 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   // symbol refers to symbol within SSB. symbol_offset is the offset of the SSB wrt start of slot
   double log2_maxh = 0;
 
-  for (symbol=1; symbol<4; symbol++) {
-    const uint16_t nb_re=symbol == 2 ? 72 : 180;
+  for (symbol=1; symbol<14; symbol++) {
+    const uint16_t nb_re = 99;
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
     memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
-    nr_pbch_extract(nr_ue_common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF,
+    nr_psbch_extract(nr_ue_common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF,
                     estimateSz,
                     dl_ch_estimates,
                     rxdataF_ext,
@@ -817,12 +817,15 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
                                  frame_parms,
 				 log2_maxh); // log2_maxh+I0_shift
 
-    int nb=symbol==2 ? 144 : 360;
+    int nb=198; // QPSK 2 bits 72*2, 180*2
     nr_pbch_quantize(psbch_e_rx+psbch_e_rx_idx,
 		     (short *)rxdataF_comp[0],
 		     nb);
     memcpy(psbch_unClipped+psbch_e_rx_idx, rxdataF_comp[0], nb*sizeof(int16_t));
     psbch_e_rx_idx+=nb;
+
+    if (symbol == 1)
+      symbol += 4;  // skip to accommodate PSS and SSS
   }
 
   // legacy code use int16, but it is complex16

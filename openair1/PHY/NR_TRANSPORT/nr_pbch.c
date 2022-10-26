@@ -699,8 +699,6 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   #endif
 
         int32_t temp = l*frame_parms->ofdm_symbol_size + k;
-        printf("l*frame_parms->ofdm_symbol_size + k %d, m = %d\n", temp, m);
-        
         AssertFatal(temp < 573440,"Array size %d exceeded 573440 \n", temp);
 
         AssertFatal((m << 1) + 1 < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])), "Indexing outside of mod_pbch_e bounds. %d > %lu",
@@ -716,8 +714,6 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
         k-=frame_parms->ofdm_symbol_size;
     }
     l++;
-    //m = m + 99;
-    printf("\n m=%d, l=%d", m, l);
   }
 
   return 0;
