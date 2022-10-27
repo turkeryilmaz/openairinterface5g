@@ -197,7 +197,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
                                 NR_DL_FRAME_PARMS *frame_parms) {
   uint16_t rb;
   uint8_t i,j,aarx;
-  int nushiftmod4 = frame_parms->nushift;
+  int nushiftmod4 = 0;//frame_parms->nushift;
   AssertFatal(symbol>=1 && symbol<14,
               "symbol %d illegal for PSBCH extraction\n",
               symbol);
@@ -222,7 +222,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
     for (rb=0; rb<11; rb++) {
       j=0;
 
-      if (symbol==1 || symbol==3) {
+      if (symbol==1 || ((symbol > 5) && (symbol <= 13))){
         for (i=0; i<12; i++) {
           if ((i!=nushiftmod4) &&
               (i!=(nushiftmod4+4)) &&
@@ -254,7 +254,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
     for (rb=0; rb<11; rb++) {
       j=0;
 
-      if (symbol==1 || symbol==3) {
+      if (symbol==1 || ((symbol > 5) && (symbol <= 13))){
         for (i=0; i<12; i++) {
           if ((i!=nushiftmod4) &&
               (i!=(nushiftmod4+4)) &&
@@ -662,7 +662,7 @@ int nr_rx_pbch( PHY_VARS_NR_UE *ue,
 		       0, 0,  pbch_a_prime, &pbch_a_interleaved);
   //polar decoding de-rate matching
   uint64_t tmp=0;
-  decoderState =  (pbch_e_rx,(uint64_t *)&tmp,0,
+  decoderState =  polar_decoder_int16(pbch_e_rx,(uint64_t *)&tmp,0,
                                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
   pbch_a_prime=tmp;
   if(decoderState)
@@ -782,7 +782,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   double log2_maxh = 0;
 
   for (symbol=1; symbol<14; symbol++) {
-    const uint16_t nb_re = 99;
+    const uint16_t nb_re = 99; 
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
     memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
@@ -824,10 +824,11 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     memcpy(psbch_unClipped+psbch_e_rx_idx, rxdataF_comp[0], nb*sizeof(int16_t));
     psbch_e_rx_idx+=nb;
 
+    printf("Symbol = %d \n", symbol);
     if (symbol == 1)
       symbol += 4;  // skip to accommodate PSS and SSS
   }
-
+  printf("Done symbol extraction \n");
   // legacy code use int16, but it is complex16
   UEscopeCopy(ue, pbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx/2);
   UEscopeCopy(ue, pbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx);
@@ -848,6 +849,8 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   decoderState = polar_decoder_int16(psbch_e_rx,(uint64_t *)&tmp,0,
                                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
   psbch_a_prime=tmp;
+
+  printf("decoderState = %d \n", decoderState);
   if(decoderState)
     return(decoderState);
 
