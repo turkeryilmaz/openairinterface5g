@@ -116,7 +116,7 @@ void schedule_SRS(module_id_t module_idP,
       if ((1 << tmp) & deltaTSFC) {
         /* This is an SRS subframe, loop over UEs */
         for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-          if (!UE_info->active[UE_id]) {
+          if (!UE_info->active[CC_id][UE_id]) {
             continue;
           }
 
@@ -126,8 +126,8 @@ void schedule_SRS(module_id_t module_idP,
           }
 
           if(UE_info->UE_template[CC_id][UE_id].physicalConfigDedicated == NULL) {
-            LOG_E(MAC,"physicalConfigDedicated is null for UE %d\n",UE_id);
-            printf("physicalConfigDedicated is null for UE %d\n",UE_id);
+            LOG_E(MAC,"physicalConfigDedicated is null for UE %d, CC_id: %d\n",UE_id,CC_id);
+            printf("physicalConfigDedicated is null for UE %d, CC_id: %d \n",UE_id,CC_id);
             return;
           }
 
@@ -204,7 +204,7 @@ void schedule_CSI(module_id_t module_idP,
     cc = &eNB->common_channels[CC_id];
 
     for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-      if (UE_info->active[UE_id] == FALSE) {
+      if (UE_info->active[CC_id][UE_id] == FALSE) {
         continue;
       }
 
@@ -214,8 +214,8 @@ void schedule_CSI(module_id_t module_idP,
       }
 
       AssertFatal(UE_info->UE_template[CC_id][UE_id].physicalConfigDedicated != NULL,
-                  "physicalConfigDedicated is null for UE %d\n",
-                  UE_id);
+                  "physicalConfigDedicated is null for UE %d, CC_id: %d\n",
+                  UE_id,CC_id);
       /*
       * CDRX condition on Active Time and CSI report on PUCCH (36.321 5.7).
       * Here we consider classic periodic reports on PUCCH without PUSCH simultaneous transmission condition.
@@ -319,7 +319,7 @@ schedule_SR (module_id_t module_idP,
     eNB->UL_req[CC_id].sfn_sf = (frameP << 4) + subframeP;
 
     for (int UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-      if (!UE_info->active[UE_id]) {
+      if (!UE_info->active[CC_id][UE_id]) {
         continue;
       }
 
@@ -626,7 +626,7 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
 
   /* Refresh UE list based on UEs dropped by PHY in previous subframe */
   for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-    if (UE_info->active[UE_id]) {
+    if (UE_info->active[CC_id][UE_id]) {
       rnti = UE_RNTI(module_idP, UE_id);
       CC_id = UE_PCCID(module_idP, UE_id);
       UE_scheduling_control = &(UE_info->UE_sched_ctrl[UE_id]);
