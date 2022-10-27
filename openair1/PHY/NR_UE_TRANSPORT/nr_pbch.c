@@ -188,7 +188,7 @@ static uint16_t nr_pbch_extract(int **rxdataF,
 }
 
 #define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (20*12)
+#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
 #define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
 #define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
 
@@ -785,7 +785,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   // symbol refers to symbol within SSB. symbol_offset is the offset of the SSB wrt start of slot
   double log2_maxh = 0;
 
-  for (symbol=1; symbol<10; symbol++) {
+  for (symbol=1; symbol<=11; symbol++) { // TODO: Change this to 13
     const uint16_t nb_re = 99; 
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
