@@ -342,10 +342,85 @@ int nr_pbch_channel_level(struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER
   return(avg2);
 }
 
+//compute average channel_level on each (TX,RX) antenna pair
+int nr_psbch_channel_level(struct complex16 dl_ch_estimates_ext[][PSBCH_MAX_RE_PER_SYMBOL],
+                          NR_DL_FRAME_PARMS *frame_parms,
+			  int nb_re) {
+  int16_t nb_rb=nb_re/12;
+#if defined(__x86_64__) || defined(__i386__)
+  __m128i avg128;
+  __m128i *dl_ch128;
+#elif defined(__arm__)
+  int32x4_t avg128;
+  int16x8_t *dl_ch128;
+#endif
+  int avg1=0,avg2=0;
+
+  for (int aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+    //clear average level
+#if defined(__x86_64__) || defined(__i386__)
+    avg128 = _mm_setzero_si128();
+    dl_ch128=(__m128i *)dl_ch_estimates_ext[aarx];
+#elif defined(__arm__)
+    avg128 = vdupq_n_s32(0);
+    dl_ch128=(int16x8_t *)dl_ch_estimates_ext[aarx];
+#endif
+
+    for (int rb=0; rb<nb_rb; rb++) {
+#if defined(__x86_64__) || defined(__i386__)
+      avg128 = _mm_add_epi32(avg128,_mm_madd_epi16(dl_ch128[0],dl_ch128[0]));
+      avg128 = _mm_add_epi32(avg128,_mm_madd_epi16(dl_ch128[1],dl_ch128[1]));
+      avg128 = _mm_add_epi32(avg128,_mm_madd_epi16(dl_ch128[2],dl_ch128[2]));
+#elif defined(__arm__)
+      abort();
+      // to be filled in
+#endif
+      dl_ch128+=3;
+      /*
+      if (rb==0) {
+      print_shorts("dl_ch128",&dl_ch128[0]);
+      print_shorts("dl_ch128",&dl_ch128[1]);
+      print_shorts("dl_ch128",&dl_ch128[2]);
+      }*/
+    }
+
+    avg1 = (((int *)&avg128)[0] +
+            ((int *)&avg128)[1] +
+            ((int *)&avg128)[2] +
+            ((int *)&avg128)[3])/(nb_rb*12);
+
+    if (avg1>avg2)
+      avg2 = avg1;
+
+    //LOG_I(PHY,"Channel level : %d, %d\n",avg1, avg2);
+  }
+
+  return(avg2);
+}
+
 static void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
 					 struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
 					 int nb_re,
 					 struct complex16 rxdataF_comp[][PBCH_MAX_RE_PER_SYMBOL],
+					 NR_DL_FRAME_PARMS *frame_parms,
+					 uint8_t output_shift) {
+  for (int aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+    vect128 *dl_ch128          = (vect128 *)dl_ch_estimates_ext[aarx];
+    vect128 *rxdataF128        = (vect128 *)rxdataF_ext[aarx];
+    vect128 *rxdataF_comp128   = (vect128 *)rxdataF_comp[aarx];
+
+    for (int re=0; re<nb_re; re+=12) {
+      *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
+      *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
+      *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
+    }
+  }
+}
+
+static void nr_psbch_channel_compensation(struct complex16 rxdataF_ext[][PSBCH_MAX_RE_PER_SYMBOL],
+					 struct complex16 dl_ch_estimates_ext[][PSBCH_MAX_RE_PER_SYMBOL],
+					 int nb_re,
+					 struct complex16 rxdataF_comp[][PSBCH_MAX_RE_PER_SYMBOL],
 					 NR_DL_FRAME_PARMS *frame_parms,
 					 uint8_t output_shift) {
   for (int aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
@@ -804,7 +879,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
 #endif
 
     if (symbol == 1) {
-      max_h = nr_pbch_channel_level(dl_ch_estimates_ext,
+      max_h = nr_psbch_channel_level(dl_ch_estimates_ext,
                                     frame_parms,
                                     nb_re);
       log2_maxh = 3+(log2_approx(max_h)/2);
@@ -813,8 +888,8 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_PBCH
     LOG_I(PHY,"[PHY] PBCH log2_maxh = %d (%d)\n",log2_maxh,max_h);
 #endif
-    __attribute__ ((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
-    nr_pbch_channel_compensation(rxdataF_ext,
+    __attribute__ ((aligned(32))) struct complex16 rxdataF_comp[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
+    nr_psbch_channel_compensation(rxdataF_ext,
                                  dl_ch_estimates_ext,
                                  nb_re,
                                  rxdataF_comp,
