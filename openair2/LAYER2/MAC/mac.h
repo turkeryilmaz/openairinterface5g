@@ -1185,7 +1185,7 @@ typedef struct {
   UE_sched_ctrl_t UE_sched_ctrl[MAX_MOBILES_PER_ENB];
   UE_list_t list;
   int num_UEs;
-  boolean_t active[MAX_MOBILES_PER_ENB];
+  boolean_t active[MAX_NUM_CCs][MAX_MOBILES_PER_ENB];
 } UE_info_t;
 
 /*! \brief deleting control information*/

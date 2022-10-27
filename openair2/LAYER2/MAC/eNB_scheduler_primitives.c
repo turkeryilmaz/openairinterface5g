@@ -1989,8 +1989,8 @@ find_UE_id(module_id_t mod_idP,
     return -1;
 
   for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-    if (UE_info->active[UE_id] == TRUE) {
-      int CC_id = UE_PCCID(mod_idP, UE_id);
+    int CC_id = UE_PCCID(mod_idP, UE_id);
+    if (UE_info->active[CC_id][UE_id] == TRUE) {
       if (CC_id>=0 && CC_id<NFAPI_CC_MAX && UE_info->UE_template[CC_id][UE_id].rnti == rntiP) {
         return UE_id;
       }
@@ -2187,7 +2187,7 @@ add_new_ue(module_id_t mod_idP,
         UE_info->num_UEs);
 
   for (i = 0; i < MAX_MOBILES_PER_ENB; i++) {
-    if (UE_info->active[i] == TRUE)
+    if (UE_info->active[cc_idP][i] == TRUE)
       continue;
 
     UE_id = i;
@@ -2200,7 +2200,7 @@ add_new_ue(module_id_t mod_idP,
     UE_info->ordered_CCids[0][UE_id] = cc_idP;
     UE_info->ordered_ULCCids[0][UE_id] = cc_idP;
     UE_info->num_UEs++;
-    UE_info->active[UE_id] = TRUE;
+    UE_info->active[cc_idP][UE_id] = TRUE;
     add_ue_list(&UE_info->list, UE_id);
     dump_ue_list(&UE_info->list);
     pp_impl_param_t* dl = &RC.mac[mod_idP]->pre_processor_dl;
@@ -2280,7 +2280,7 @@ rrc_mac_remove_ue(module_id_t mod_idP,
         UE_id,
         pCC_id,
         rntiP);
-  UE_info->active[UE_id] = FALSE;
+  UE_info->active[pCC_id][UE_id] = FALSE;
   UE_info->num_UEs--;
 
   remove_ue_list(&UE_info->list, UE_id);
