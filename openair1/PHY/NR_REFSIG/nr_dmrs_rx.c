@@ -235,6 +235,33 @@ int nr_pbch_dmrs_rx(int symbol,
   return(0);
 }
 
+int nr_psbch_dmrs_rx(int symbol,
+                    unsigned int *nr_gold_pbch,
+                    int32_t *output)
+{
+  int m,m0,m1;
+  uint8_t idx=0;
+  AssertFatal(symbol>=0 && symbol <14,"illegal symbol %d\n",symbol);
+
+  m0 = symbol*33;
+  m1 = (symbol+1)*33;
+  //printf("Generating pilots symbol %d, m0 %d, m1 %d\n",symbol,m0,m1);
+  /// QPSK modulation
+  for (m=m0; m<m1; m++) {
+    idx = ((((nr_gold_pbch[(m<<1)>>5])>>((m<<1)&0x1f))&1)<<1) ^ (((nr_gold_pbch[((m<<1)+1)>>5])>>(((m<<1)+1)&0x1f))&1);
+    ((int16_t*)output)[(m-m0)<<1] = nr_rx_mod_table[(NR_MOD_TABLE_QPSK_OFFSET + idx)<<1];
+    ((int16_t*)output)[((m-m0)<<1)+1] = nr_rx_mod_table[((NR_MOD_TABLE_QPSK_OFFSET + idx)<<1) + 1];
+
+#ifdef DEBUG_PBCH
+  if (m<16)
+    {printf("nr_gold_pbch[(m<<1)>>5] %x\n",nr_gold_pbch[(m<<1)>>5]);
+	  printf("m %d  output %d %d addr %p\n", m, ((int16_t*)output)[m<<1], ((int16_t*)output)[(m<<1)+1],&output[0]);
+    }
+#endif
+  }
+  return(0);
+}
+
 /*!
   \brief This function generate gold ptrs sequence for each OFDM symbol
   \param *in gold sequence for ptrs per OFDM symbol

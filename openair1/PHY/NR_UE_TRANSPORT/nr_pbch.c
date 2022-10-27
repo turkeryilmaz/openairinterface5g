@@ -187,11 +187,16 @@ static uint16_t nr_pbch_extract(int **rxdataF,
   return(0);
 }
 
+#define PSBCH_A 32
+#define PSBCH_MAX_RE_PER_SYMBOL (20*12)
+#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
+#define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
+
 static uint16_t nr_psbch_extract(int **rxdataF,
                                 const int estimateSz,
                                 struct complex16 dl_ch_estimates[][estimateSz],
-                                struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
-                                struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
+                                struct complex16 rxdataF_ext[][PSBCH_MAX_RE_PER_SYMBOL],
+                                struct complex16 dl_ch_estimates_ext[][PSBCH_MAX_RE_PER_SYMBOL],
                                 uint32_t symbol,
                                 uint32_t s_offset,
                                 NR_DL_FRAME_PARMS *frame_parms) {
@@ -229,11 +234,10 @@ static uint16_t nr_psbch_extract(int **rxdataF,
               (i!=(nushiftmod4+8))) {
             rxF_ext[j]=rxF[rx_offset];
 #ifdef DEBUG_PBCH
-            printf("rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",
-		   (9*rb) + j,
+            printf("rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",  (9*rb) + j,
                    rxF_ext[j].r, rxF_ext[j].i,
                    rx_offset,
-                   rxF[rx_offset].r,rxF[rx_offset].j;
+                   rxF[rx_offset].r,rxF[rx_offset].i);
 #endif
             j++;
           }
@@ -781,10 +785,10 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   // symbol refers to symbol within SSB. symbol_offset is the offset of the SSB wrt start of slot
   double log2_maxh = 0;
 
-  for (symbol=1; symbol<14; symbol++) {
+  for (symbol=1; symbol<10; symbol++) {
     const uint16_t nb_re = 99; 
-    __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
-    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
+    __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
+    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
     memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
     nr_psbch_extract(nr_ue_common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF,
                     estimateSz,
@@ -824,11 +828,9 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     memcpy(psbch_unClipped+psbch_e_rx_idx, rxdataF_comp[0], nb*sizeof(int16_t));
     psbch_e_rx_idx+=nb;
 
-    printf("Symbol = %d \n", symbol);
     if (symbol == 1)
       symbol += 4;  // skip to accommodate PSS and SSS
   }
-  printf("Done symbol extraction \n");
   // legacy code use int16, but it is complex16
   UEscopeCopy(ue, pbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx/2);
   UEscopeCopy(ue, pbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx);
@@ -850,7 +852,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
                                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
   psbch_a_prime=tmp;
 
-  printf("decoderState = %d \n", decoderState);
+  //printf("decoderState = %d \n", decoderState);
   if(decoderState)
     return(decoderState);
 
