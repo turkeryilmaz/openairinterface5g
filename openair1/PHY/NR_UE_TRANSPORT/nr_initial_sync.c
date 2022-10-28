@@ -205,8 +205,54 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
                        PHY_VARS_NR_UE *ue,
                        int n_frames)
 {
-  LOG_I(NR_PHY, "TODO: We will handle RX sync data when TX is complete\n");
-  return 0;
+  int index = 0;
+  int64_t psslevel = 0;
+  int64_t avglevel = 0;
+  int64_t slbch_errors = 0;
+  int frame = 0, slot = 0;
+
+  LOG_I(PHY, "TODO: We will handle further to debug RX sync data\n");
+  ue->rx_offset_sl = 0;//nr_sync_time_sl(ue, &index, &psslevel, &avglevel);
+
+  LOG_I(PHY,"index %d, psslevel %d dB avglevel %d dB => %d sample offset\n",
+        index, dB_fixed64((uint64_t)psslevel), dB_fixed64((uint64_t)avglevel), ue->rx_offset_sl);
+  if (ue->rx_offset_sl >= 0) {
+#if 0
+    int32_t sss_metric;
+    uint8_t phase_max;
+    rx_slsss(ue, &sss_metric, &phase_max, index);
+    generate_sl_grouphop(ue);
+#endif
+    // TODO: Activate this condition when rx_psbch was done.
+    if (0) {//(rx_psbch(ue, 0, 0) == -1) {
+      slbch_errors++;
+      LOG_I(PHY,"SLPBCH not decoded\n");
+      return(-1);
+    }
+    else {
+      // send payload to RRC
+      LOG_I(PHY,"Synchronization with SyncREF UE found, sending MIB-SL to RRC\n");
+      // TODO: Activate this condition when ue_decode_si was done.
+#if 0
+      ue_decode_si(ue->Mod_id,
+                   0, // CC_id
+                   0, // frame
+                   0, // gNB_index
+                   NULL, // pdu, NULL for MIB-SL
+                   0,    // len, 0 for MIB-SL
+                   &ue->slss_rx,
+                   &frame,
+                   &slot);
+      for (int i = 0; i < RX_NB_TH; i++) {
+        ue->proc.proc_rxtx[i].frame_rx = frame;
+        ue->proc.proc_rxtx[i].slot_rx = slot;
+      }
+#endif
+      LOG_I(PHY,"RRC returns MIB-SL for frame %d, slot %d\n", frame, slot);
+      return(0);
+    }
+  }
+  else return (-1);
 }
 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,

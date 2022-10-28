@@ -1413,6 +1413,9 @@ void nr_rf_card_config_freq(openair0_config_t *openair0_cfg,
                             uint64_t dl_Carrier,
                             int freq_offset);
 
+void nr_sl_rf_card_config_freq(PHY_VARS_NR_UE *ue,
+                            openair0_config_t *openair0_cfg,
+                            int freq_offset);
 
 void print_CQI(void *o,UCI_format_t uci_format,uint8_t eNB_id,int N_RB_DL);
 

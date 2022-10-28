@@ -568,21 +568,35 @@ static void UE_synch(void *arg) {
 
     case si:
       break;
+
     case psbch:
       LOG_I(PHY, "[UE thread Synch] Running Initial SL-Synch (mode %d)\n", UE->mode);
-      int initial_synch = nr_sl_initial_sync(&syncD->proc, UE, 2);
-      if (initial_synch >= 0) {
-        LOG_I(PHY,"Found SynchRef UE\n");
-        // TODO:: rerun with new cell parameters and frequency-offset
+      int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
+      LOG_I(PHY,"initial_synch_sl %d\n", initial_synch_sl);
+      if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
+        LOG_I(PHY,"Found SyncRef UE\n");
+
+        // rerun with new cell parameters and frequency-offset
+        freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
+        nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
+        UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0],0);
+
         if (UE->UE_scan_carrier == 1) {
           UE->UE_scan_carrier = 0;
         } else {
-          // TODO:: Need to protect while changing status
           UE->is_synchronized_sl = 1;
         }
       } else {
-        // TODO:: Adjust Rx Freq by adding freq_offset to the ul_CarrierFreq
         LOG_I(PHY,"No SynchRefUE found\n");
+        if (UE->UE_scan_carrier == 1) {
+          LOG_I(PHY, "Initial sync failed: trying carrier off %d Hz\n", freq_offset);
+
+          if (freq_offset >= 0)
+            freq_offset += 100;
+          freq_offset *= -1;
+          nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
+          UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0], 0);
+        }
       }
       break;
 
@@ -627,6 +641,27 @@ void processSlotTX(void *arg) {
     if (rxtxD->ue_sched_mode != NOT_PUSCH) {
       phy_procedures_nrUE_TX(UE,proc,0);
     }
+  }
+}
+
+void processSlotRX_SL(void *arg) {
+
+  nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
+  UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
+  PHY_VARS_NR_UE    *UE   = rxtxD->UE;
+  fapi_nr_config_request_t *cfg = &UE->nrUE_config;
+  int rx_slot_type = nr_ue_slot_select(cfg, proc->frame_rx, proc->nr_slot_rx);
+  uint8_t gNB_id = 0;
+  NR_UE_PDCCH_CONFIG phy_pdcch_config={0};
+
+  if (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
+      LOG_I(PHY, "TODO: phy_procedures_nrUE_RX will be called after updating\n");
+      //phy_procedures_nrUE_RX(UE, proc, gNB_id, &phy_pdcch_config, &rxtxD->txFifo);
+  } else {
+      LOG_I(PHY, "TODO: Need upate to call processSlotTX\n");
+      // TODO: Need update to call phy_procedures_nrUE_TX() in processSlotTX.
+      rxtxD->ue_sched_mode = NOT_PUSCH;
+      processSlotTX(rxtxD);
   }
 }
 
@@ -767,9 +802,10 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
     LOG_I(PHY,"Resynchronizing RX by %d samples (mode = %d)\n",UE->rx_offset,UE->mode);
+    int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl: UE->rx_offset;
 
     *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
-    for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
+    for (int size = rx_offset; size > 0; size -= UE->frame_parms.samples_per_subframe) {
       int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
       // we write before read because gNB waits for UE to write and both executions halt
       // this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
@@ -841,42 +877,45 @@ void *UE_thread_SL(void *arg) {
   int absolute_slot=0, decoded_frame_rx=INT_MAX, trashed_frames=0;
 
   for (int i=0; i<NR_RX_NB_TH+1; i++) {// NR_RX_NB_TH working + 1 we are making to be pushed
-    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID,&nf,processSlotRX);
+    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX_SL);
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(newElt);
     initNotifiedFIFO(&curMsg->txFifo);
     pushNotifiedFIFO_nothreadSafe(&freeBlocks, newElt);
   }
 
   while (!oai_exit) {
-    if (UE->lost_sync_sl) {
-      LOG_I(NR_MAC, "we are in lost_sync %s():%d.\n", __FUNCTION__, __LINE__);
+    if (UE->lost_sync_sl && UE->sync_ref == 0) {
+      LOG_I(NR_PHY, "Sync UE: lost_sync status\n");
       int nb = abortTpoolJob(&(get_nrUE_params()->Tpool),RX_JOB_ID);
       nb += abortNotifiedFIFOJob(&nf, RX_JOB_ID);
       LOG_I(PHY,"Number of aborted slots %d\n",nb);
       for (int i=0; i<nb; i++)
-        pushNotifiedFIFO_nothreadSafe(&freeBlocks, newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID,&nf,processSlotRX));
+        pushNotifiedFIFO_nothreadSafe(&freeBlocks, newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX_SL));
       nbSlotProcessing = 0;
       UE->is_synchronized_sl = 0;
       UE->lost_sync_sl = 0;
     }
 
-    if (sync_running_sl) {
-      LOG_I(NR_MAC, "we are syncRunning %s():%d.\n", __FUNCTION__, __LINE__);
+    if (sync_running_sl && UE->sync_ref == 0) {
+      LOG_I(NR_PHY, "Sync UE: sync_running status.\n");
       notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
 
       if (res) {
         sync_running_sl = false;
+        LOG_I(NR_PHY, "Sync UE: sync_running was set to false due to valid res.\n");
         syncData_t *tmp=(syncData_t *)NotifiedFifoData(res);
-        if (UE->is_synchronized_sl) {
+        LOG_I(NR_PHY, "Sync UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
+        if (UE->is_synchronized_sl && get_softmodem_params()->sl_mode < 2) {
           decoded_frame_rx=(((mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused)<<4) | tmp->proc.decoded_frame_rx);
           // shift the frame index with all the frames we trashed meanwhile we perform the synch search
           decoded_frame_rx=(decoded_frame_rx + UE->init_sync_frame + trashed_frames) % MAX_FRAME_NUMBER;
         }
         delNotifiedFIFO_elt(res);
-        start_rx_stream=0;
+        start_rx_stream = 0;
       } else {
+        LOG_I(PHY, "Sync UE: sync_running_sl still in readFrame due to INVALID res.\n");
         readFrame(UE, &timestamp, true);
-        trashed_frames+=2;
+        trashed_frames += 2;
         continue;
       }
     }
@@ -884,11 +923,11 @@ void *UE_thread_SL(void *arg) {
     AssertFatal( !sync_running_sl, "At this point synchronization can't be running\n");
 
     if (UE->is_synchronized_sl == 0 && UE->sync_ref == 0) {
-      LOG_I(NR_MAC, "we are UE->is_synchronized_sl == 0 && UE->sync_ref == 0) %s():%d.\n", __FUNCTION__, __LINE__);
+      LOG_I(NR_PHY, "Sync UE: UE->is_synchronized_sl == 0 && UE->sync_ref == 0)\n");
       readFrame(UE, &timestamp, false);
-      notifiedFIFO_elt_t *Msg=newNotifiedFIFO_elt(sizeof(syncData_t),0,&nf,UE_synch);
-      syncData_t *syncMsg=(syncData_t *)NotifiedFifoData(Msg);
-      syncMsg->UE=UE;
+      notifiedFIFO_elt_t *Msg=newNotifiedFIFO_elt(sizeof(syncData_t), 0, &nf, UE_synch);
+      syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(Msg);
+      syncMsg->UE = UE;
       memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
       pushTpool(&(get_nrUE_params()->Tpool), Msg);
       trashed_frames=0;
@@ -897,8 +936,9 @@ void *UE_thread_SL(void *arg) {
     }
 
     if (start_rx_stream == 0 && UE->sync_ref == 0) {
-      start_rx_stream=1;
+      start_rx_stream = 1;
       syncInFrame(UE, &timestamp);
+      LOG_I(NR_PHY, "Sync UE: rx_stream = 1 and timestamp %ld\n", timestamp);
       UE->rx_offset_sl = 0;
       UE->time_sync_cell = 0;
       // read in first symbol
@@ -993,7 +1033,7 @@ void *UE_thread_SL(void *arg) {
     }
 
     curMsg->proc.timestamp_tx = timestamp+
-      UE->frame_parms.get_samples_slot_timestamp(slot_nr,&UE->frame_parms,DURATION_RX_TO_TX) 
+      UE->frame_parms.get_samples_slot_timestamp(slot_nr,&UE->frame_parms,DURATION_RX_TO_TX)
       - firstSymSamp;
 
     notifiedFIFO_elt_t *res;
@@ -1013,8 +1053,8 @@ void *UE_thread_SL(void *arg) {
       pushNotifiedFIFO_nothreadSafe(&freeBlocks,res);
     }
 
-    if (decoded_frame_rx>0 && decoded_frame_rx != curMsg->proc.frame_rx)
-      LOG_E(PHY,"Decoded frame index (%d) is not compatible with current context (%d), UE should go back to synch mode\n",
+    if (UE->sync_ref == 0 && decoded_frame_rx > 0 && decoded_frame_rx != curMsg->proc.frame_rx)
+      LOG_E(NR_PHY,"Sync UE: Decoded frame index (%d) is not compatible with current context (%d), UE should go back to synch mode\n",
             decoded_frame_rx, curMsg->proc.frame_rx);
 
     // use previous timing_advance value to compute writeTimestamp
@@ -1031,8 +1071,7 @@ void *UE_thread_SL(void *arg) {
 
     int flags = 0;
 
-    if (openair0_cfg[0].duplex_mode == duplex_mode_TDD && !get_softmodem_params()->continuous_tx) {
-
+    if (get_softmodem_params()->sl_mode != 2 && openair0_cfg[0].duplex_mode == duplex_mode_TDD && !get_softmodem_params()->continuous_tx) {
       uint8_t tdd_period = mac->phy_config.config_req.tdd_table.tdd_period_in_slots;
       int nrofUplinkSlots, nrofUplinkSymbols;
       if (mac->scc) {
@@ -1066,7 +1105,7 @@ void *UE_thread_SL(void *arg) {
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
                                               flags),"");
-    
+
     for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
       memset(txp[i], 0, writeBlockSize);
 
