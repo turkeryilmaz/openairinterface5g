@@ -44,6 +44,7 @@
 
 #include "RRC/NR/nr_rrc_defs.h"
 #include "RRC/NR/nr_rrc_config.h"
+#include "RRC/NR_UE/rrc_defs.h"
 
 
 /*
@@ -58,6 +59,7 @@ int xer_sprint_NR(char *string, size_t string_size, struct asn_TYPE_descriptor_s
 
 uint8_t do_MIB_NR(gNB_RRC_INST *rrc,
                   uint32_t frame);
+uint8_t do_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP, int abs_SF, NR_UE_RRC_INST_t* UE);
 
 /**
 \brief Generate configuration for SIB1 (gNB).

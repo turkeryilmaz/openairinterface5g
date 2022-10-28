@@ -298,6 +298,28 @@ int get_rnti_type(NR_UE_MAC_INST_t *mac, uint16_t rnti){
     return rnti_type;
 }
 
+void nr_ue_decode_si(module_id_t module_idP, int CC_id, frame_t frameP,
+                     uint8_t gNB_index, void *pdu, uint16_t len,
+                     NR_SLSS_t *slss, int *frame, int *slot)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_idP);
+
+  if (slss == NULL) { // this is not MIB-SL
+    LOG_D(NR_MAC, "[UE %d] Frame %d Sending SI to RRC (LCID Id %d, len %d)\n",
+          module_idP, frameP, NR_BCCH_BCH, len);
+
+    nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0,
+                           SI_RNTI, NR_BCCH_BCH, (uint8_t *) pdu, len);
+  } else {
+    LOG_D(NR_MAC, "[UE %d] Frame %d Sending MIBSL to RRC (LCID Id %d, len %d) : %x.%x.%x.%x.%x\n",
+          module_idP, frameP, MIBSLCH, sizeof(slss->sl_mib), slss->sl_mib[0], slss->sl_mib[1], slss->sl_mib[2], slss->sl_mib[3], slss->sl_mib[4]);
+
+    nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0,
+                           SI_RNTI, MIBSLCH, (uint8_t *) slss->sl_mib, sizeof(slss->sl_mib));
+
+    LOG_D(NR_MAC, "SL: Resetting SFN.SLOT to %d.%d\n", mac->directFrameNumber_r16, mac->slotIndex_r16);
+  }
+}
 
 int8_t nr_ue_decode_mib(module_id_t module_id,
                         int cc_id,
@@ -4223,4 +4245,23 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t 
 
   return ret;
 
+}
+
+NR_SLSS_t *nr_ue_get_slss(module_id_t Mod_id, int CC_id, frame_t frame_tx, int slot_tx)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(Mod_id);
+  NR_SLSS_t *slss = &(mac->slss);
+  int slots = ((20 * frame_tx) + slot_tx);
+  if ((slots % 40) != slss->sl_timeoffsetssb_r16) {
+    slss->sl_mib_length = 0;
+  } else slss->sl_mib_length = nr_mac_rrc_data_req_ue(Mod_id, CC_id, 0,
+                                                      slots, MIBCH, slss->sl_mib); // call RRC get check for SL-MIB
+
+  if (slss->sl_mib_length > 0) {
+    LOG_D(NR_MAC, "frame_tx %d, slot %d, slss->sl_TimeOffsetSSB %lu, mib length %d, sl_mib %p\n",
+         frame_tx, slot_tx, slss->sl_timeoffsetssb_r16, slss->sl_mib_length, slss->sl_mib);
+
+    LOG_D(NR_MAC, "MIB-SL : %x.%x.%x.%x.%x\n", slss->sl_mib[0], slss->sl_mib[1], slss->sl_mib[2], slss->sl_mib[3], slss->sl_mib[4]);
+  }
+  return(slss);
 }
