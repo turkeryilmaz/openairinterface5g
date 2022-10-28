@@ -768,3 +768,88 @@ int nr_rrc_mac_config_req_ue(
     return 0;
 
 }
+void print_sl_preconf_params_mac(NR_SL_PreconfigurationNR_r16_t* sl_preconfigurations,
+                                 NR_SL_FreqConfigCommon_r16_t* freq_conf_cmn)
+{
+    LOG_D(NR_MAC, "sl_OffsetDFN: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16)); // Integer (1 ..1000)
+    LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16));
+    LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16));
+    LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16));
+    LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16));
+    LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16));
+    LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16));
+    LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16));
+    LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16));
+    LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16));
+    LOG_D(NR_MAC, "sl_SSID: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSID_r16));
+    LOG_D(NR_MAC, "syncTxThreshIC: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->txParameters_r16.syncTxThreshIC_r16));
+    LOG_D(NR_MAC, "syncTxThreshOoC_r16: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->txParameters_r16.syncTxThreshOoC_r16));
+    LOG_D(NR_MAC, "buf: %p\n", freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->txParameters_r16.syncInfoReserved_r16->buf);
+    LOG_D(NR_MAC, "size: %lu\n", freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->txParameters_r16.syncInfoReserved_r16->size);
+    LOG_D(NR_MAC, "bits_unused: %d\n", freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->txParameters_r16.syncInfoReserved_r16->bits_unused);
+
+    LOG_D(NR_MAC, "referenceSubcarrierSpacing: %lu\n", sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
+    ->sl_TDD_Configuration_r16->referenceSubcarrierSpacing);
+    LOG_D(NR_MAC, "dl_UL_TransmissionPeriodicity: %lu\n", sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
+    ->sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity);
+
+    LOG_D(NR_MAC, "sl_LengthSymbols: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]
+    ->sl_BWP_List_r16->list.array[0]->sl_BWP_Generic_r16->sl_LengthSymbols_r16));
+    LOG_D(NR_MAC, "sl_StartSymbol: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]
+    ->sl_BWP_List_r16->list.array[0]->sl_BWP_Generic_r16->sl_StartSymbol_r16));
+    LOG_D(NR_MAC, "sl_SubchannelSize: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]
+    ->sl_BWP_List_r16->list.array[0]->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16->list.array[0]->sl_SubchannelSize_r16));
+    LOG_D(NR_MAC, "sl_StartRB_Subchannel_r16: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]
+    ->sl_BWP_List_r16->list.array[0]->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16->list.array[0]->sl_StartRB_Subchannel_r16));
+    LOG_D(NR_MAC, "sl_NumSubchannel: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]
+    ->sl_BWP_List_r16->list.array[0]->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16->list.array[0]->sl_NumSubchannel_r16));
+}
+
+int nr_rrc_mac_config_req_ue_sl(module_id_t                     module_id,
+                                int                             cc_idP,
+                                const uint32_t *                const sourceL2Id,
+                                const uint32_t *                const destinationL2Id,
+                                const uint32_t *                const groupL2Id,
+                                NR_SL_PreconfigurationNR_r16_t  *SL_Preconfiguration_r16,
+                                uint32_t                        directFrameNumber_r16,
+                                long                            slotIndex_r16)
+{
+
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+
+  if (SL_Preconfiguration_r16) {
+
+    LOG_I(NR_MAC,"Getting SL parameters\n");
+
+    mac->SL_Preconfiguration = SL_Preconfiguration_r16;
+
+    struct NR_SidelinkPreconfigNR_r16__sl_PreconfigFreqInfoList_r16 *freq_info =
+          SL_Preconfiguration_r16->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16;
+
+    //Assumption: Both NR-SL-FreqInfoList and NR-SL-SyncConfigList should have only one element (Spec. 38331 Release 16)
+    AssertFatal(freq_info->list.count == 1, "Number of elements in NR-SL-FreqInfoList should be 1");
+    for (int i = 0; i < freq_info->list.count; i++) {
+      NR_SL_SyncConfigList_r16_t *sync_conf = freq_info->list.array[i]->sl_SyncConfigList_r16;
+      AssertFatal(sync_conf->list.count == 1, "Number of elements in NR-SL-SyncConfigList should be 1");
+      for (int j = 0; j < sync_conf->list.count; j++) {
+        mac->slss.sl_numssb_withinperiod_r16 =
+        *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16);
+        mac->slss.sl_timeoffsetssb_r16 =
+        *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16);
+        mac->slss.sl_timeinterval_r16 =
+        *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16);
+        mac->slss.slss_id =
+        *(sync_conf->list.array[j]->sl_SSID_r16);
+      }
+    }
+
+    NR_SL_FreqConfigCommon_r16_t *freq_conf_cmn = malloc16_clear(sizeof(NR_SL_FreqConfigCommon_r16_t));
+    freq_conf_cmn->sl_SyncConfigList_r16 =
+        mac->SL_Preconfiguration->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]->sl_SyncConfigList_r16;
+    print_sl_preconf_params_mac(mac->SL_Preconfiguration, freq_conf_cmn);
+    // TO-DO:: Add discovery mode
+  }
+  if (directFrameNumber_r16 < 1025) mac->directFrameNumber_r16 = directFrameNumber_r16;
+  return 0;
+}
+

@@ -73,6 +73,10 @@
 
 #include "nr_nas_msg_sim.h"
 #include <openair2/RRC/NR/nr_rrc_proto.h>
+#include "NR_SL-SyncConfig-r16.h"
+#include "NR_SL-ResourcePool-r16.h"
+#include "NR_SL-BWP-Config-r16.h"
+#include "NR_SL-SSB-TimeAllocation-r16.h"
 
 NR_UE_RRC_INST_t *NR_UE_rrc_inst;
 /* NAS Attach request with IMSI */
@@ -404,6 +408,157 @@ void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, 
 
 }
 
+void print_sl_preconf_params(NR_SL_PreconfigurationNR_r16_t* sl_preconfigurations,
+                             NR_SL_SyncConfig_r16_t* sl_sync_config,
+                             NR_SL_BWP_ConfigCommon_r16_t* sl_bwp_conf_cmn,
+                             struct NR_SL_ResourcePool_r16* nr_sl_rxpool)
+{
+  LOG_D(NR_RRC, "sl_OffsetDFN: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16));
+  LOG_D(NR_RRC, "sl_NumSSB_WithinPeriod: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16));
+  LOG_D(NR_RRC, "sl_TimeOffsetSSB: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16));
+  LOG_D(NR_RRC, "sl_TimeInterval: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16));
+  LOG_D(NR_RRC, "sl_NumSSB_WithinPeriod: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16));
+  LOG_D(NR_RRC, "sl_TimeOffsetSSB: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16));
+  LOG_D(NR_RRC, "sl_TimeInterval: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16));
+  LOG_D(NR_RRC, "sl_NumSSB_WithinPeriod: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16));
+  LOG_D(NR_RRC, "sl_TimeOffsetSSB: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16));
+  LOG_D(NR_RRC, "sl_TimeInterval: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16));
+  LOG_D(NR_RRC, "sl_SSID: %lu\n", *(sl_sync_config->sl_SSID_r16));
+  LOG_D(NR_RRC, "syncTxThreshIC: %lu\n", *(sl_sync_config->txParameters_r16.syncTxThreshIC_r16));
+  LOG_D(NR_RRC, "syncTxThreshOoC_r16: %lu\n", *(sl_sync_config->txParameters_r16.syncTxThreshOoC_r16));
+  LOG_D(NR_RRC, "buf: %p\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf);
+  LOG_D(NR_RRC, "size: %lu\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->size);
+  LOG_D(NR_RRC, "bits_unused: %d\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->bits_unused);
+  LOG_D(NR_RRC, "referenceSubcarrierSpacing: %lu\n", sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
+  ->sl_TDD_Configuration_r16->referenceSubcarrierSpacing);
+  LOG_D(NR_RRC, "dl_UL_TransmissionPeriodicity: %lu\n", sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
+  ->sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity);
+  LOG_D(NR_RRC, "sl_LengthSymbols: %lu\n", *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_LengthSymbols_r16));
+  LOG_D(NR_RRC, "sl_StartSymbol: %lu\n", *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_StartSymbol_r16));
+  LOG_D(NR_RRC, "sl_SubchannelSize: %lu\n", *(nr_sl_rxpool->sl_SubchannelSize_r16));
+  LOG_D(NR_RRC, "sl_StartRB_Subchannel_r16: %lu\n", *(nr_sl_rxpool->sl_StartRB_Subchannel_r16));
+  LOG_D(NR_RRC, "sl_NumSubchannel: %lu\n", *(nr_sl_rxpool->sl_NumSubchannel_r16));
+}
+
+void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
+{
+  LOG_I(NR_RRC, "Initializing Sidelink Sync configuration for UE\n");
+  UE->SL_Preconfiguration[gNB_index] = malloc16_clear(sizeof(NR_SL_PreconfigurationNR_r16_t));
+
+  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16 =
+      malloc16_clear(sizeof(struct NR_SidelinkPreconfigNR_r16__sl_PreconfigFreqInfoList_r16));
+  struct NR_SidelinkPreconfigNR_r16__sl_PreconfigFreqInfoList_r16 *freq_info =
+      UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16;
+
+  NR_SL_FreqConfigCommon_r16_t *freq_conf_cmn = malloc16_clear(sizeof(NR_SL_FreqConfigCommon_r16_t));
+  freq_conf_cmn->sl_SyncConfigList_r16 = malloc16_clear(sizeof(struct NR_SL_SyncConfigList_r16));
+  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16 = malloc16_clear(sizeof(long));
+  *(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16) = 1; // Integer (1 ..1000)
+
+  /*IE SL-SyncConfig */
+  NR_SL_SyncConfig_r16_t  *sl_sync_config = malloc16_clear(sizeof(NR_SL_SyncConfig_r16_t));
+  sl_sync_config->sl_SSB_TimeAllocation1_r16 = malloc16_clear(sizeof(NR_SL_SSB_TimeAllocation_r16_t));
+  sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16 = malloc16_clear(sizeof(long));
+  sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16 = malloc16_clear(sizeof(long));
+  sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16 = malloc16_clear(sizeof(long));
+
+  *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16) = 1;
+  *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16) = 1;
+  *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16) = 2;
+
+  sl_sync_config->sl_SSB_TimeAllocation2_r16 = malloc16_clear(sizeof(NR_SL_SSB_TimeAllocation_r16_t));
+  sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16 = malloc16_clear(sizeof(long));
+  sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16 = malloc16_clear(sizeof(long));
+  sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16 = malloc16_clear(sizeof(long));
+
+  *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16) = 1;
+  *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16) = 1;
+  *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16) = 2;
+
+  sl_sync_config->sl_SSB_TimeAllocation3_r16 = malloc16_clear(sizeof(NR_SL_SSB_TimeAllocation_r16_t));
+  sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16 = malloc16_clear(sizeof(long));
+  sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16 = malloc16_clear(sizeof(long));
+  sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16 = malloc16_clear(sizeof(long));
+
+  *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16) = 1;
+  *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16) = 1;
+  *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16) = 2;
+
+  sl_sync_config->sl_SSID_r16 = malloc16_clear(sizeof(long));
+  *(sl_sync_config->sl_SSID_r16) = 338 + get_softmodem_params()->node_number;
+
+  sl_sync_config->txParameters_r16.syncTxThreshIC_r16 = malloc16_clear(sizeof(long));
+  *(sl_sync_config->txParameters_r16.syncTxThreshIC_r16) = 0; // INTEGER (0..13)
+
+  sl_sync_config->txParameters_r16.syncTxThreshOoC_r16 = malloc16_clear(sizeof(long));
+  *(sl_sync_config->txParameters_r16.syncTxThreshOoC_r16) = 0; // INTEGER (0..13)
+
+  sl_sync_config->txParameters_r16.syncInfoReserved_r16 = malloc16_clear(sizeof(BIT_STRING_t));
+  sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf = malloc16_clear(sizeof(uint8_t));
+  sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf = NULL;
+  sl_sync_config->txParameters_r16.syncInfoReserved_r16->size = 0;
+  sl_sync_config->txParameters_r16.syncInfoReserved_r16->bits_unused = 1;
+
+  ASN_SEQUENCE_ADD(&freq_conf_cmn->sl_SyncConfigList_r16->list, sl_sync_config);
+  ASN_SEQUENCE_ADD(&freq_info->list, freq_conf_cmn);
+
+  freq_info->list.array[0]->sl_BWP_List_r16 =
+      malloc16_clear(sizeof(struct NR_SL_FreqConfigCommon_r16__sl_BWP_List_r16));
+  struct NR_SL_FreqConfigCommon_r16__sl_BWP_List_r16 *sl_bwp_list =
+      freq_info->list.array[0]->sl_BWP_List_r16;
+
+  /* TODO SL-PreconfigurationNR, Not all IEs needed for demo*/
+  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16 =
+      malloc16_clear(sizeof(struct NR_SL_PreconfigGeneral_r16));
+  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16->sl_TDD_Configuration_r16 =
+      malloc16_clear(sizeof(struct NR_TDD_UL_DL_ConfigCommon));
+  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
+  ->sl_TDD_Configuration_r16->referenceSubcarrierSpacing = 30;
+  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
+  ->sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity = 2;
+
+  NR_SL_BWP_ConfigCommon_r16_t *sl_bwp_conf_cmn =
+      malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
+  sl_bwp_conf_cmn->sl_BWP_Generic_r16 =
+      malloc16_clear(sizeof(struct NR_SL_BWP_Generic_r16));
+  sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_LengthSymbols_r16 =
+      malloc16_clear(sizeof(long));
+
+  *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_LengthSymbols_r16) = 0; //sym7=0
+  sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_StartSymbol_r16 =
+      malloc16_clear(sizeof(long));
+  *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_StartSymbol_r16) = 0;
+
+  sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16 =
+      malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16));
+  sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16 =
+      malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16__sl_RxPool_r16));
+  struct NR_SL_BWP_PoolConfigCommon_r16__sl_RxPool_r16 *sl_rxpool_list =
+      sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16;
+  struct NR_SL_ResourcePool_r16  *nr_sl_rxpool =
+      malloc16_clear(sizeof(struct NR_SL_ResourcePool_r16));
+
+  nr_sl_rxpool->sl_SubchannelSize_r16 =
+      malloc16_clear(sizeof(long));
+  nr_sl_rxpool->sl_StartRB_Subchannel_r16 =
+      malloc16_clear(sizeof(long));
+  nr_sl_rxpool->sl_NumSubchannel_r16 =
+      malloc16_clear(sizeof(long));
+
+  *(nr_sl_rxpool->sl_SubchannelSize_r16) = 10;
+  *(nr_sl_rxpool->sl_StartRB_Subchannel_r16) = 2;
+  *(nr_sl_rxpool->sl_NumSubchannel_r16) = 1;
+
+  ASN_SEQUENCE_ADD(&sl_rxpool_list->list, nr_sl_rxpool);
+  ASN_SEQUENCE_ADD(&sl_bwp_list->list, sl_bwp_conf_cmn);
+
+  LOG_I(NR_RRC, "Initialization of Sidelink Sync Pre-configuration for UE ... Done\n");
+  print_sl_preconf_params(UE->SL_Preconfiguration[gNB_index],
+                          sl_sync_config,
+                          sl_bwp_conf_cmn,
+                          nr_sl_rxpool);
+}
+
 NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* rrc_config_path){
   int nr_ue;
   if(NB_NR_UE_INST > 0){
@@ -476,6 +631,8 @@ NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* rrc_config_
       RRC_LIST_INIT(NR_UE_rrc_inst[nr_ue].CSI_SSB_ResourceSet_list, NR_maxNrofCSI_SSB_ResourceSets);
       RRC_LIST_INIT(NR_UE_rrc_inst[nr_ue].CSI_ResourceConfig_list, NR_maxNrofCSI_ResourceConfigurations);
       RRC_LIST_INIT(NR_UE_rrc_inst[nr_ue].CSI_ReportConfig_list, NR_maxNrofCSI_ReportConfigurations);
+
+      init_SL_preconfig_NR(&NR_UE_rrc_inst[nr_ue], 0);
     }
 
     NR_UE_rrc_inst->uecap_file = uecap_file;
@@ -2860,4 +3017,33 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
         default:
             LOG_E(NR_RRC, "No NSA Message Found\n");
     }
+}
+
+int decode_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP,
+                     uint8_t* const sdu,
+                     const uint8_t sdu_len)
+{
+  memcpy((void*)&NR_UE_rrc_inst[ctxt_pP->module_id].SL_MIB, (void*)sdu, sdu_len);
+
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
+                            &asn_DEF_NR_SBCCH_SL_BCH_Message,
+                            (void **)&NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0],
+                            (const void *)sdu,
+                            sdu_len);
+
+  if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+    LOG_E(NR_RRC, "[UE %d] Frame %d : Failed to decode SBCCH_SL_BCH_Message (%zu bytes)\n", ctxt_pP->module_id, ctxt_pP->frame, dec_rval.consumed);
+    return -1;
+  }
+
+  LOG_D(NR_RRC, "Decoded MIBSL SFN.SLOT %d.%d, InCoverage %d\n",
+                        *(NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink->directFrameNumber_r16.buf),
+                        *(NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink->slotIndex_r16.buf),
+                        (int)NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink->inCoverage_r16);
+
+  nr_rrc_mac_config_req_ue_sl(ctxt_pP->module_id, 0, 0, 0, 0,
+                              NULL,
+                              *(NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink->directFrameNumber_r16.buf),
+                              *(NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink->slotIndex_r16.buf));
+  return(0);
 }

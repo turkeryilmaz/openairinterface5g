@@ -206,6 +206,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
                        int n_frames)
 {
   LOG_I(NR_PHY, "TODO: We will handle RX sync data when TX is complete\n");
+  return 0;
 }
 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
