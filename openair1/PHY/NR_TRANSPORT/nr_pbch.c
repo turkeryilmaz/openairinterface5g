@@ -640,7 +640,13 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   /// QPSK modulation
   int16_t mod_psbch_e[NR_POLAR_PSBCH_E];
   for (int i = 0; i < NR_POLAR_PBCH_E >> 1; i++) {
+    AssertFatal(((i << 1) >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
+                ((i << 1) >> 5), NR_POLAR_PBCH_E_DWORD);
     uint8_t idx = ((pbch->pbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
+    AssertFatal(((idx << 1) + 1) < 8, "Invalid index into pbch->pbch_e. Index %d > 8\n",
+                (idx << 1) + 1);
+    AssertFatal(((i << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into pbch->pbch_e. Index %d > %lu\n",
+                (i << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
     mod_psbch_e[i << 1] = nr_qpsk_mod_table[idx << 1];
     mod_psbch_e[(i << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
 #ifdef DEBUG_PBCH
@@ -657,13 +663,15 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   int m = 0;
 
   for (int ssb_sc_idx = 0; ssb_sc_idx < 132; ssb_sc_idx++) {
-    if ((ssb_sc_idx&3) == nushift) {  //skip DMRS
+    if ((ssb_sc_idx & 3) == nushift) {  //skip DMRS
       k++;
       continue;
     } else {
 #ifdef DEBUG_PBCH
       printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
 #endif
+      AssertFatal(((m << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into pbch->pbch_e. Index %d > %lu\n",
+                (m << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
       ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
       ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
       k++;
@@ -678,7 +686,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
   l = ssb_start_symbol + 5;
   m = 99;
-  while (l < N_SSSB_Symb-1)
+  while (l < N_SSSB_Symb - 1)
   {
     k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
 
@@ -690,9 +698,6 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   #ifdef DEBUG_PBCH
         printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
   #endif
-
-        int32_t temp = l*frame_parms->ofdm_symbol_size + k;
-        AssertFatal(temp < 573440,"Array size %d exceeded 573440 \n", temp);
 
         AssertFatal((m << 1) + 1 < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])),
                     "Indexing outside of mod_pbch_e bounds. %d > %lu",
