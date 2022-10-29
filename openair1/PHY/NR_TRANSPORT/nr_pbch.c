@@ -275,7 +275,8 @@ static void nr_pbch_scrambling(NR_gNB_PBCH *pbch,
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-
+      AssertFatal((i >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
+                 (i >> 5), NR_POLAR_PBCH_E_DWORD);
       pbch_e[i>>5] ^= (((s>>((i+offset)&0x1f))&1)<<(i&0x1f));
     }
   }
@@ -288,54 +289,52 @@ static void nr_psbch_scrambling(NR_gNB_PBCH *pbch,
                         uint16_t length,
                         uint8_t encoded,
                         uint32_t unscrambling_mask) {
-  uint8_t reset, offset;
-  uint32_t x1, x2, s=0;
   uint32_t *pbch_e = pbch->pbch_e;
-  reset = 1;
-  // x1 is set in lte_gold_generic
-  x2 = Nid;
 
+  uint8_t reset = 1;
+  uint32_t x1, s = 0;
+  uint32_t x2 = Nid;
   // The Gold sequence is shifted by nushift* M, so we skip (nushift*M /32) double words
-  for (int i=0; i<(uint16_t)ceil(((float)M)/32); i++) {
+  for (int i = 0; i < (uint16_t)ceil(((float)M) / 32); i++) {
     s = lte_gold_generic(&x1, &x2, reset);
     reset = 0;
   }
 
   // Scrambling is now done with offset (nushift*M)%32
-  offset = 0; //(nushift*M)&0x1f;
+  uint8_t offset = 0; //(nushift*M)&0x1f;
 #ifdef DEBUG_PBCH_ENCODING
   printf("Scrambling params: nushift %d M %d length %d encoded %d offset %d\n", nushift, M, length, encoded, offset);
 #endif
 #ifdef DEBUG_PBCH_ENCODING
   printf("s: %04x\t", s);
 #endif
-  int k = 0;
 
+  int k = 0;
   if (!encoded) {
     /// 1st Scrambling
     for (int i = 0; i < length; ++i) {
       if ((unscrambling_mask>>i)&1)
-        pbch->pbch_a_prime ^= ((pbch->pbch_a_interleaved>>i)&1)<<i;
+        pbch->pbch_a_prime ^= ((pbch->pbch_a_interleaved >> i) & 1) << i;
       else {
-        if (((k+offset)&0x1f)==0) {
+        if (((k + offset) & 0x1f) == 0) {
           s = lte_gold_generic(&x1, &x2, reset);
           reset = 0;
         }
 
-        pbch->pbch_a_prime ^= (((pbch->pbch_a_interleaved>>i)&1) ^ ((s>>((k+offset)&0x1f))&1))<<i;
+        pbch->pbch_a_prime ^= (((pbch->pbch_a_interleaved >> i) & 1) ^ ((s >> ((k + offset) & 0x1f)) & 1)) << i;
         k++;                  /// k increase only when payload bit is not special bit
       }
     }
   } else {
     /// 2nd Scrambling
     for (int i = 0; i < length; ++i) {
-      if (((i+offset)&0x1f)==0) {
+      if (((i + offset) & 0x1f) == 0) {
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-      AssertFatal((i>>5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
-                 (i>>5), NR_POLAR_PBCH_E_DWORD);
-      pbch_e[i>>5] ^= (((s>>((i+offset)&0x1f))&1)<<(i&0x1f));
+      AssertFatal((i >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
+                 (i >> 5), NR_POLAR_PBCH_E_DWORD);
+      pbch_e[i >> 5] ^= (((s >> ((i + offset) & 0x1f)) & 1) << (i & 0x1f));
     }
   }
 }
