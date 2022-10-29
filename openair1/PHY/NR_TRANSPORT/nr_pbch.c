@@ -584,29 +584,22 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
                      int sfn,
                      nfapi_nr_config_request_scf_t *config,
                      NR_DL_FRAME_PARMS *frame_parms) {
-  int k,l,m;
-  int16_t mod_psbch_e[NR_POLAR_PSBCH_E];
-  uint8_t idx=0;
-  uint16_t M;
-  uint8_t nushift;
-  uint64_t a_reversed=0;
+
   LOG_D(PHY, "PBCH SL generation started\n");
-  NR_gNB_PBCH m_pbch;
-  NR_gNB_PBCH *pbch = &m_pbch;
-  PSBCH_payload psbch_payload;             // NR Side Link Payload for Rel 16
 
   /* payload is 56 bits */
+  PSBCH_payload psbch_payload;             // NR Side Link Payload for Rel 16
   psbch_payload.coverageIndicator = 1;     // 1 bit
   psbch_payload.tddConfig = 0xFFF;         // 12 bits for TDD configuration
   psbch_payload.DFN = 0x3FF;               // 10 bits for DFN
   psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
   psbch_payload.reserved = 0;              // 2 bits reserved
 
+  NR_gNB_PBCH m_pbch;
+  NR_gNB_PBCH *pbch = &m_pbch;
   memset((void *)pbch, 0, sizeof(NR_gNB_PBCH));
   pbch->pbch_a = *((uint32_t *)&psbch_payload);
   pbch->pbch_a_interleaved = pbch->pbch_a; // skip interlevaing for Sidelink
-  uint8_t ssb_index = ssb_pdu->ssb_pdu_rel15.SsbBlockIndex;
-  uint8_t Lmax = frame_parms->Lmax;
 
   pbch->pbch_a_prime = 0;
 
@@ -615,8 +608,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   #endif
 
   // Encoder reversal
-  for (int i=0; i<NR_POLAR_PBCH_PAYLOAD_BITS; i++)
-    a_reversed |= (((uint64_t)pbch->pbch_a_interleaved>>i)&1)<<(31-i);
+  uint64_t a_reversed = 0;
+  for (int i = 0; i < NR_POLAR_PBCH_PAYLOAD_BITS; i++)
+    a_reversed |= (((uint64_t)pbch->pbch_a_interleaved >> i) & 1) << (31 - i);
 
   /// CRC, coding and rate matching
   polar_encoder_fast (&a_reversed, (void*)pbch->pbch_e, 0, 0,
@@ -625,15 +619,14 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 #ifdef DEBUG_PBCH_ENCODING
   printf("PBCH SL generation started\n");
   printf("Channel coding:\n");
-
   for (int i=0; i<NR_POLAR_PBCH_E_DWORD; i++)
     printf("sl_pbch_e[%d]: 0x%08x\n", i, pbch->pbch_e[i]);
-
   printf("\n");
 #endif
+
   /// Scrambling
-  M =  NR_POLAR_PBCH_E;
-  nushift = 0;// (Lmax==4)? ssb_index&3 : ssb_index&7;
+  uint16_t M = NR_POLAR_PBCH_E;
+  uint8_t nushift = 0;
   nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PBCH_E, 1, 0);
 #ifdef DEBUG_PBCH_ENCODING
   printf("Scrambling:\n");
@@ -641,15 +634,15 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   for (int i=0; i<NR_POLAR_PBCH_E_DWORD; i++) {
     printf("sl_pbch_e[%d]: 0x%08x\n", i, pbch->pbch_e[i]);
 }
-
   printf("\n");
 #endif
 
   /// QPSK modulation
-  for (int i=0; i<NR_POLAR_PBCH_E>>1; i++) {
-    idx = ((pbch->pbch_e[(i<<1)>>5]>>((i<<1)&0x1f))&3);
-    mod_psbch_e[i<<1] = nr_qpsk_mod_table[idx<<1];
-    mod_psbch_e[(i<<1)+1] = nr_qpsk_mod_table[(idx<<1)+1];
+  int16_t mod_psbch_e[NR_POLAR_PSBCH_E];
+  for (int i = 0; i < NR_POLAR_PBCH_E >> 1; i++) {
+    uint8_t idx = ((pbch->pbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
+    mod_psbch_e[i << 1] = nr_qpsk_mod_table[idx << 1];
+    mod_psbch_e[(i << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
 #ifdef DEBUG_PBCH
     printf("i %d idx %d  mod_pbch %d %d\n", i, idx, mod_pbch_e[2*i], mod_pbch_e[2*i+1]);
 #endif
@@ -659,9 +652,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   nushift = 0; //config->cell_config.phy_cell_id.value &3;
   // PBCH modulated symbols are mapped  within the SSB block on symbols 1, 2, 3 excluding the subcarriers used for the PBCH DMRS
   ///symbol 1  [0:132] -- 99 mod symbols
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
-  l = ssb_start_symbol;
-  m = 0;
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
+  int l = ssb_start_symbol;
+  int m = 0;
 
   for (int ssb_sc_idx = 0; ssb_sc_idx < 132; ssb_sc_idx++) {
     if ((ssb_sc_idx&3) == nushift) {  //skip DMRS
@@ -671,8 +664,8 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 #ifdef DEBUG_PBCH
       printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
 #endif
-      ((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1]       = (amp * mod_psbch_e[m<<1]) >> 15;
-      ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = (amp * mod_psbch_e[(m<<1) + 1]) >> 15;
+      ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
+      ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
       k++;
       m++;
     }
@@ -683,14 +676,14 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 
   int N_SSSB_Symb = 14;
   ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
-  l = ssb_start_symbol + 5 ;
+  l = ssb_start_symbol + 5;
   m = 99;
   while (l < N_SSSB_Symb-1)
   {
     k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
 
     for (int ssb_sc_idx = 0; ssb_sc_idx < 132; ssb_sc_idx++) {
-      if ((ssb_sc_idx&3) == nushift) {  //skip DMRS
+      if ((ssb_sc_idx & 3) == nushift) {  //skip DMRS
         k++;
         continue;
       } else {
@@ -701,11 +694,12 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
         int32_t temp = l*frame_parms->ofdm_symbol_size + k;
         AssertFatal(temp < 573440,"Array size %d exceeded 573440 \n", temp);
 
-        AssertFatal((m << 1) + 1 < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])), "Indexing outside of mod_pbch_e bounds. %d > %lu",
+        AssertFatal((m << 1) + 1 < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])),
+                    "Indexing outside of mod_pbch_e bounds. %d > %lu",
                     (m << 1) + 1 , (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])));
-                
-        ((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1]       = (amp * mod_psbch_e[m<<1]) >> 15;
-        ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = (amp * mod_psbch_e[(m<<1) + 1]) >> 15;
+
+        ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
+        ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
         k++;
         m++;
       }
