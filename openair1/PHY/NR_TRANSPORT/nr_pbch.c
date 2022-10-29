@@ -333,7 +333,8 @@ static void nr_psbch_scrambling(NR_gNB_PBCH *pbch,
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-
+      AssertFatal((i>>5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
+                 (i>>5), NR_POLAR_PBCH_E_DWORD);
       pbch_e[i>>5] ^= (((s>>((i+offset)&0x1f))&1)<<(i&0x1f));
     }
   }
@@ -613,8 +614,8 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
     a_reversed |= (((uint64_t)pbch->pbch_a_interleaved >> i) & 1) << (31 - i);
 
   /// CRC, coding and rate matching
-  polar_encoder_fast (&a_reversed, (void*)pbch->pbch_e, 0, 0,
-                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
+  polar_encoder_fast(&a_reversed, (void*)pbch->pbch_e, 0, 0,
+                     NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
 
 #ifdef DEBUG_PBCH_ENCODING
   printf("PBCH SL generation started\n");
@@ -643,9 +644,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
     AssertFatal(((i << 1) >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
                 ((i << 1) >> 5), NR_POLAR_PBCH_E_DWORD);
     uint8_t idx = ((pbch->pbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
-    AssertFatal(((idx << 1) + 1) < 8, "Invalid index into pbch->pbch_e. Index %d > 8\n",
+    AssertFatal(((idx << 1) + 1) < 8, "Invalid index into nr_qpsk_mod_table. Index %d > 8\n",
                 (idx << 1) + 1);
-    AssertFatal(((i << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into pbch->pbch_e. Index %d > %lu\n",
+    AssertFatal(((i << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into mod_psbch_e. Index %d > %lu\n",
                 (i << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
     mod_psbch_e[i << 1] = nr_qpsk_mod_table[idx << 1];
     mod_psbch_e[(i << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
@@ -670,7 +671,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 #ifdef DEBUG_PBCH
       printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
 #endif
-      AssertFatal(((m << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into pbch->pbch_e. Index %d > %lu\n",
+      AssertFatal(((m << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into mod_psbch_e. Index %d > %lu\n",
                 (m << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
       ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
       ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
