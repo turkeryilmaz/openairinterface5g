@@ -632,9 +632,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   printf("\n");
 #endif
   /// Scrambling
-  M =  NR_POLAR_PBCH_E;
+  M =  NR_POLAR_PSBCH_E;
   nushift = 0;// (Lmax==4)? ssb_index&3 : ssb_index&7;
-  nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PBCH_E, 1, 0);
+  nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
 #ifdef DEBUG_PBCH_ENCODING
   printf("Scrambling:\n");
 
