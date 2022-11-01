@@ -311,7 +311,7 @@ void nr_ue_decode_si(module_id_t module_idP, int CC_id, frame_t frameP,
     nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0,
                            SI_RNTI, NR_BCCH_BCH, (uint8_t *) pdu, len);
   } else {
-    LOG_D(NR_MAC, "[UE %d] Frame %d Sending MIBSL to RRC (LCID Id %d, len %d) : %x.%x.%x.%x.%x\n",
+    LOG_D(NR_MAC, "[UE %d] Frame %d Sending MIBSL to RRC (LCID Id %d, len %zu) : %x.%x.%x.%x.%x\n",
           module_idP, frameP, MIBSLCH, sizeof(slss->sl_mib), slss->sl_mib[0], slss->sl_mib[1], slss->sl_mib[2], slss->sl_mib[3], slss->sl_mib[4]);
 
     nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0,

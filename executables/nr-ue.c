@@ -638,8 +638,10 @@ void processSlotTX(void *arg) {
       stop_meas(&UE->ue_ul_indication_stats);
     }
 
-    if (rxtxD->ue_sched_mode != NOT_PUSCH) {
-      phy_procedures_nrUE_TX(UE,proc,0);
+    if (get_softmodem_params()->sl_mode == 0 && rxtxD->ue_sched_mode != NOT_PUSCH) {
+      phy_procedures_nrUE_TX(UE, proc, 0);
+    } else if (get_softmodem_params()->sl_mode == 2) {
+      phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
   }
 }
@@ -651,8 +653,6 @@ void processSlotRX_SL(void *arg) {
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   fapi_nr_config_request_t *cfg = &UE->nrUE_config;
   int rx_slot_type = nr_ue_slot_select(cfg, proc->frame_rx, proc->nr_slot_rx);
-  uint8_t gNB_id = 0;
-  NR_UE_PDCCH_CONFIG phy_pdcch_config={0};
 
   if (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
       LOG_I(PHY, "TODO: phy_procedures_nrUE_RX will be called after updating\n");
