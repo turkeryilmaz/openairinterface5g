@@ -296,11 +296,11 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
       k-=frame_parms->ofdm_symbol_size;
   }
 
-  int N_SSSB_Symb = 14;
+  int currSymbolNum = 5;
   ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
   l = ssb_start_symbol + 5;
-  m = 99;
-  while (l < N_SSSB_Symb - 1)
+  m = 33;
+  while (currSymbolNum < 14)
   {
     k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
 

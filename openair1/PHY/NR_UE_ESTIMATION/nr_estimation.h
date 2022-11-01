@@ -58,6 +58,14 @@ int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
                              int dmrss,
                              NR_UE_SSB *current_ssb);
 
+int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
+                             UE_nr_rxtx_proc_t *proc,
+                             uint8_t gNB_id,
+                             unsigned char Ns,
+                             unsigned char symbol,
+                             int dmrss,
+                             NR_UE_SSB *current_ssb);                             
+
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                                int estimateSz,
 			       struct complex16 dl_ch_estimates [][estimateSz],

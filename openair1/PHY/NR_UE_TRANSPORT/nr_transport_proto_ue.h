@@ -1119,6 +1119,11 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t *proc,
                       int pbch_initial_symbol,
                       NR_UE_PDCCH_CONFIG *phy_pdcch_config);
 
+int nr_psbch_detection(UE_nr_rxtx_proc_t *proc,
+		              PHY_VARS_NR_UE *ue,
+                      int pbch_initial_symbol,
+                      NR_UE_PDCCH_CONFIG *phy_pdcch_config);
+
 uint16_t rx_pbch_emul(PHY_VARS_NR_UE *phy_vars_ue,
                       uint8_t eNB_id,
                       uint8_t pbch_phase);

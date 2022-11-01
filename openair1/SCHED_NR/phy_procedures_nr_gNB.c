@@ -72,6 +72,8 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   int ssb_start_symbol_abs = nr_get_ssb_start_symbol(fp,ssb_index); // computing the starting symbol for current ssb
   ssb_start_symbol = ssb_start_symbol_abs % fp->symbols_per_slot;  // start symbol wrt slot
 
+  printf("ssb_start_symbol_abs = %d\n", ssb_start_symbol_abs);
+
   // setting the first subcarrier
   const int scs = cfg->ssb_config.scs_common.value;
   const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>scs : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>(scs-2);
@@ -80,13 +82,10 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   LOG_D(PHY, "SSB first subcarrier %d (%d,%d)\n", fp->ssb_start_subcarrier, prb_offset, sc_offset);
 
   LOG_D(PHY,"SS TX: frame %d, slot %d, start_symbol %d\n",frame,slot, ssb_start_symbol);
-  nr_generate_pss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
-  nr_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+  nr_sl_generate_pss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+  nr_sl_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
 
-  if (fp->Lmax == 4)
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
-  else
-    nr_generate_psbch_dmrs(gNB->nr_gold_pbch_dmrs ,&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+  nr_generate_psbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
 
   if (T_ACTIVE(T_GNB_PHY_MIB)) {
     unsigned char bch[3];
