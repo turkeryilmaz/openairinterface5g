@@ -46,6 +46,57 @@ enum MsgUserId
 char *vtp_local_address = "127.0.0.1";
 int vtp_proxy_send_port = 7776;
 int vtp_proxy_recv_port = 7777;
+
+
+static void _ss_log_vt(struct VirtualTimeInfo_Type* virtualTime, const char* prefix) {
+
+    if (virtualTime->Enable) {
+        char _msg[512] = {};
+        char* _msg_end = _msg;
+
+        if (virtualTime->TimingInfo.SFN.d) {
+            _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "SFN: %d ",
+                    virtualTime->TimingInfo.SFN.v.Number);
+        }
+
+        if (virtualTime->TimingInfo.HSFN.d) {
+            _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "HSFN: %d ",
+                    virtualTime->TimingInfo.HSFN.v.Number);
+        }
+
+        if (virtualTime->TimingInfo.Subframe.d) {
+            _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "SubFrame: %d ",
+                    virtualTime->TimingInfo.Subframe.v.Number);
+        }
+
+        if (virtualTime->TimingInfo.Slot.d == SlotTimingInfo_Type_SlotOffset) {
+            _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "mu: %d ", virtualTime->TimingInfo.Slot.v.SlotOffset.d - 1);
+
+            switch(virtualTime->TimingInfo.Slot.v.SlotOffset.d) {
+                case SlotOffset_Type_Numerology0:  break;
+                case SlotOffset_Type_Numerology1:
+                    _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(1): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology1);
+                break;
+                case SlotOffset_Type_Numerology2: 
+                    _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(2): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology2);
+                break;
+                case SlotOffset_Type_Numerology3:
+                    _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(3): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology3);
+                break;
+                case SlotOffset_Type_Numerology4:
+                    _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(4): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology4);
+                break;
+                default: 
+                    LOG_E(GNB_APP, "Wrong MU\r\n");
+                break;
+            }
+        }
+        LOG_A(GNB_APP, "[SS-VTP] %s %s\n", prefix, _msg);
+    } else {
+        LOG_A(GNB_APP, "[SS-VTP] disabled \n");
+    }
+}
+
 /*
  * Function : sys_send_init_udp
  * Description: Sends the UDP_INIT message to UDP_TASK to create the receiving socket
@@ -93,6 +144,7 @@ void ss_vtp_send_tinfo(
 
     virtualTime.TimingInfo.Slot.d = tinfo->mu > 0 ? SlotTimingInfo_Type_SlotOffset : SlotTimingInfo_Type_UNBOUND_VALUE;
     virtualTime.TimingInfo.Slot.v.SlotOffset.d = (enum SlotOffset_Type_Sel) (tinfo->mu + 1);
+
     switch(virtualTime.TimingInfo.Slot.v.SlotOffset.d) {
         case SlotOffset_Type_Numerology0: break;
         case SlotOffset_Type_Numerology1:
@@ -122,9 +174,7 @@ void ss_vtp_send_tinfo(
     virtualTime.TimingInfo.HSFN.d = false;
     virtualTime.TimingInfo.HSFN.v.Number = 0;
 
-    /** TODO: Always marking as first slot, need to check this */
-    virtualTime.TimingInfo.Slot.d = SlotTimingInfo_Type_FirstSlot;
-    virtualTime.TimingInfo.Slot.v.FirstSlot = 0;
+    _ss_log_vt(&virtualTime, " <= ");
 
     /* Encode message
      */
@@ -147,7 +197,6 @@ void ss_vtp_send_tinfo(
         return;
     }
 
-    LOG_A(GNB_APP, "[SS-VTP] VTP_Send Success SFN %d SF %d virtualTime.Enable %d mu: %d slot: %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable, tinfo->mu, tinfo->slot);
     SS_context.vtinfo = *tinfo;
 
     // Free allocated buffer
@@ -193,20 +242,20 @@ static int vtp_send_udp_msg(
  */
 static void vtp_send_proxy(void *msg, int msgLen)
 {
-  LOG_A(GNB_APP, "In sys_send_proxy\n");
-  uint32_t peerIpAddr;
-  uint16_t peerPort = vtp_proxy_send_port;
+    LOG_A(GNB_APP, "In sys_send_proxy\n");
+    uint32_t peerIpAddr;
+    uint16_t peerPort = vtp_proxy_send_port;
 
-  IPV4_STR_ADDR_TO_INT_NWBO(vtp_local_address, peerIpAddr, " BAD IP Address");
+    IPV4_STR_ADDR_TO_INT_NWBO(vtp_local_address, peerIpAddr, " BAD IP Address");
 
-LOG_A(GNB_APP, "\nCell Config End of Buffer\n ");
+    LOG_A(GNB_APP, "\nCell Config End of Buffer\n ");
 
-  /** Send to proxy */
-  vtp_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);
-  return;
+    /** Send to proxy */
+    vtp_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);
+    return;
 }
 
-static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
+static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 {
     VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
     LOG_A(GNB_APP,"itti_alloc %p\n", req);
@@ -305,56 +354,12 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
                 break;
             }
 
-            {
-				if (virtualTime->Enable) {
-					ss_send_vtp_resp(virtualTime);
+            ss_send_vtp_resp(virtualTime);
+            _ss_log_vt(virtualTime, " => ");
 
-					if (virtualTime->TimingInfo.SFN.d) {
-						LOG_A(GNB_APP, "[SS-VTP] SFN: %d\n ",
-								virtualTime->TimingInfo.SFN.v.Number);
-					}
-
-					if (virtualTime->TimingInfo.HSFN.d) {
-						LOG_A(GNB_APP, "[SS-VTP] HSFN: %d\n ",
-								virtualTime->TimingInfo.HSFN.v.Number);
-					}
-
-					if (virtualTime->TimingInfo.Subframe.d) {
-						LOG_A(GNB_APP, "[SS-VTP] SubFrame: %d\n ",
-								virtualTime->TimingInfo.Subframe.v.Number);
-					}
-
-					if (virtualTime->TimingInfo.Slot.d == SlotTimingInfo_Type_SlotOffset) {
-						LOG_A(GNB_APP, "[SS-VTP] mu: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.d);
-
-						switch(virtualTime->TimingInfo.Slot.v.SlotOffset.d) {
-							case SlotOffset_Type_Numerology0:  break;
-							case SlotOffset_Type_Numerology1:
-								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology1);
-							break;
-							case SlotOffset_Type_Numerology2: 
-								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology2);
-							break;
-							case SlotOffset_Type_Numerology3:
-								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology3);
-							break;
-							case SlotOffset_Type_Numerology4:
-								LOG_A(GNB_APP, "[SS-VTP] slot: %d\n ", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology4);
-							break;
-							default: 
-								LOG_E(GNB_APP, "Wrong MU\r\n");
-							break;
-						}
-					}
-
-				} else {
-					ss_send_vtp_resp(virtualTime);
-					LOG_A(GNB_APP, "[SS-VTP] disabled \n");
-				}
-				acpSysVTEnquireTimingAckFreeSrv(virtualTime);
-				// TODo forward the message to sys_task ACK
-				break;
-            }
+            acpSysVTEnquireTimingAckFreeSrv(virtualTime);
+            // TODo forward the message to sys_task ACK
+            break;
         }
     }
     acpFree(buffer);
@@ -377,15 +382,12 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
             ss_set_timinfo_t tinfo;
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
-            LOG_A(GNB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
-            LOG_A(GNB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             if (SS_context.vtp_enabled == 1) {
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
             }
         }; break;
         case SS_NRUPD_TIM_INFO:
         {
-            LOG_W(GNB_APP, "[SS-VTP] VTP received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
             ss_set_timinfo_t tinfo;
             tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % 2;
             tinfo.mu = 1;
