@@ -71,7 +71,7 @@ typedef struct SSConfigContext_s {
 
   ss_set_timinfo_t vtinfo;
   hash_table_t   *vt_timer_table   ; // key is SFN_SF
-
+  bool send_atten_cnf;
   /** TODO: To add more */
 
 } SSConfigContext_t;

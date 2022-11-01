@@ -1202,9 +1202,9 @@ static void sys_send_proxy(void *msg, int msgLen)
  * Function : sys_cell_attn_update
  * Description: Sends the attenuation updates received from TTCN to proxy
  */
-static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
+static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal,int CellIndex)
 {
-  LOG_A(ENB_SS, "In sys_cell_attn_update\n");
+  LOG_A(ENB_SS, "In sys_cell_attn_update, cellIndex:%d \n",CellIndex);
   attenuationConfigReq_t *attnConf = NULL;
   uint32_t peerIpAddr;
   uint16_t peerPort = proxy_send_port;
@@ -1212,10 +1212,10 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
   attnConf = (attenuationConfigReq_t *) calloc(1, sizeof(attenuationConfigReq_t));
   attnConf->header.preamble = 0xFEEDC0DE;
   attnConf->header.msg_id = SS_ATTN_LIST;
-  attnConf->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
-  attnConf->header.cell_index = cell_index;
-  printf("Attn send to proxy cell_index %d\n",cell_index);
+  attnConf->header.cell_id = SS_context.SSCell_list[CellIndex].PhysicalCellId;
+  attnConf->header.cell_index = CellIndex;
   attnConf->attnVal = attnVal;
+  SS_context.send_atten_cnf = false;
   IPV4_STR_ADDR_TO_INT_NWBO(local_address, peerIpAddr, " BAD IP Address");
 
   /** Send to proxy */
@@ -1229,32 +1229,35 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal)
  */
 static void sys_handle_cell_attn_req(struct CellAttenuationConfig_Type_CellAttenuationList_Type_Dynamic *CellAttenuationList)
 {
-  /** TODO: Considering only one cell for now */
-  uint8_t cellId = (uint8_t)CellAttenuationList->v->CellId;
-  uint8_t attnVal = 0; // default set it Off
+  for(int i=0;i<CellAttenuationList->d;i++) {
+    uint8_t cellId = (uint8_t)CellAttenuationList->v[i].CellId;
+    uint8_t CellIndex = get_cell_index(cellId, SS_context.SSCell_list);
+    uint8_t attnVal = 0; // default set it Off
 
-  switch (CellAttenuationList->v->Attenuation.d)
-  {
-  case Attenuation_Type_Value:
-    attnVal = CellAttenuationList->v->Attenuation.v.Value;
-    LOG_A(ENB_SS, "[SYS] CellAttenuationList for Cell_id %d value %d dBm received\n",
-          cellId, attnVal);
-    sys_cell_attn_update(cellId, attnVal);
-    break;
-  case Attenuation_Type_Off:
-    LOG_A(ENB_SS, "[SYS] CellAttenuationList turn off for Cell_id %d received\n",
-          cellId);
-    sys_cell_attn_update(cellId, attnVal);
-    break;
-  case Attenuation_Type_UNBOUND_VALUE:
-    LOG_A(ENB_SS, "[SYS] CellAttenuationList Attenuation_Type_UNBOUND_VALUE received\n");
-    break;
-  default:
-    LOG_A(ENB_SS, "[SYS] Invalid CellAttenuationList received\n");
+    switch (CellAttenuationList->v[i].Attenuation.d)
+    {
+    case Attenuation_Type_Value:
+      attnVal = CellAttenuationList->v[i].Attenuation.v.Value;
+      LOG_A(ENB_SS, "[SYS] CellAttenuationList for Cell_id %d value %d dBm received\n",
+            cellId, attnVal);
+      sys_cell_attn_update(cellId, attnVal,CellIndex);
+      break;
+    case Attenuation_Type_Off:
+      attnVal = 80; /* TODO: attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
+      LOG_A(ENB_SS, "[SYS] CellAttenuationList turn off for Cell_id %d received with attnVal : %d\n",
+            cellId,attnVal);
+      sys_cell_attn_update(cellId, attnVal,CellIndex);
+      break;
+    case Attenuation_Type_UNBOUND_VALUE:
+      LOG_A(ENB_SS, "[SYS] CellAttenuationList Attenuation_Type_UNBOUND_VALUE received\n");
+      break;
+    default:
+      LOG_A(ENB_SS, "[SYS] Invalid CellAttenuationList received\n");
+    }
   }
 }
 /*
- * Function : sys_handle_cell_attn_req
+ * Function : sys_handle_paging_req
  * Description: Handles the attenuation updates received from TTCN
  */
 
@@ -2021,10 +2024,13 @@ printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
       switch (hdr.msg_id)
       {
         case SS_ATTN_LIST_CNF:
-	        cnfType = SystemConfirm_Type_CellAttenuationList;
+          cnfType = SystemConfirm_Type_CellAttenuationList;
           memcpy(&attnCnf, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(attenuationConfigCnf_t));
-          LOG_A(ENB_SS, "[SYS] received Cell_Attenuation_Cnf from Proxy for cell : %d \n", attnCnf.header.cell_id);
-	        send_sys_cnf(resType, resVal, cnfType, NULL);
+          if(false == SS_context.send_atten_cnf) {
+            LOG_A(ENB_SS, "[SYS] received Cell_Attenuation_Cnf from Proxy for cell : %d \n", attnCnf.header.cell_id);
+            SS_context.send_atten_cnf = true;
+	    send_sys_cnf(resType, resVal, cnfType, NULL);
+          }
           break;
 
         case SS_VNG_CMD_RESP:
