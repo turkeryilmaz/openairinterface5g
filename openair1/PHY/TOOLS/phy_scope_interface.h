@@ -47,7 +47,10 @@ enum UEdataType {
   pbchRxdataF_comp,
   pdcchLlr,
   pdcchRxdataF_comp,
-  UEdataTypeNumberOfItems
+  UEdataTypeNumberOfItems,
+  psbchDlChEstimateTime,
+  psbchLlr,
+  psbchRxdataF_comp,
 };
 
 typedef struct scopeData_s {

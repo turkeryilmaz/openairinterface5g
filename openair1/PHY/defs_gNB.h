@@ -36,6 +36,7 @@
 #include "defs_eNB.h"
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "PHY/impl_defs_top.h"
@@ -60,7 +61,7 @@ typedef struct {
   uint32_t pbch_a;
   uint32_t pbch_a_interleaved;
   uint32_t pbch_a_prime;
-  uint32_t pbch_e[NR_POLAR_PSBCH_E_DWORD];
+  uint32_t pbch_e[NR_POLAR_PBCH_E_DWORD];
 } NR_gNB_PBCH;
 
 typedef struct {
@@ -71,6 +72,20 @@ typedef struct {
   int32_t sfn;
 } NR_PBCH_parms_t;
 
+typedef struct {
+  uint8_t ssb_start_symbol;
+  uint8_t n_hf;
+  uint8_t Lmax;
+  uint8_t ssb_index;
+  int32_t sfn;
+} NR_PSBCH_parms_t;
+
+typedef struct {
+  uint32_t psbch_a;
+  uint32_t psbch_a_interleaved;
+  uint32_t psbch_a_prime;
+  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
+} NR_gNB_PSBCH;
 
 typedef enum {
   NR_SCH_IDLE,
@@ -735,6 +750,7 @@ typedef struct PHY_VARS_gNB_s {
   //  nfapi_nr_ul_dci_request_pdus_t  *ul_dci_pdu;
   uint16_t num_pdsch_rnti[80];
   NR_gNB_PBCH        pbch;
+  NR_gNB_PSBCH       psbch;
   NR_gNB_COMMON      common_vars;
   NR_gNB_PRACH       prach_vars;
   NR_gNB_PUSCH       *pusch_vars[NUMBER_OF_NR_ULSCH_MAX];

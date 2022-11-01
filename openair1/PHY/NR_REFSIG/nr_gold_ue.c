@@ -53,16 +53,13 @@ void nr_gold_pbch(PHY_VARS_NR_UE* ue)
 
 void nr_gold_psbch(PHY_VARS_NR_UE* ue)
 {
-  unsigned int n, x1, x2;
-  unsigned int Nid;
-  uint8_t reset;
+  uint8_t reset = 1;
+  unsigned int x1;
+  unsigned int x2 = ue->frame_parms.Nid_cell;
 
-  Nid = ue->frame_parms.Nid_cell;
-
-  reset = 1;
-  x2 = Nid;
-
-  for (n=0; n<NR_PSBCH_DMRS_LENGTH_DWORD; n++) {
+  for (int n = 0; n < NR_PSBCH_DMRS_LENGTH_DWORD; n++) {
+    AssertFatal(n < sizeof(ue->nr_gold_psbch) / sizeof(ue->nr_gold_psbch[0]),
+                "Invalid nr_gold_psbch index %d > %d\n", n, NR_PSBCH_DMRS_LENGTH_DWORD);
     ue->nr_gold_psbch[n] = lte_gold_generic(&x1, &x2, reset);
     reset = 0;
   }

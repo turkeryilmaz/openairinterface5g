@@ -481,7 +481,6 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
   unsigned int pilot_cnt;
   int16_t *pil,*rxF,*dl_ch,*fl,*fm,*fr;
   int ch_offset,symbol_offset;
-  //int slot_pbch;
 
   uint8_t nushift;
    int **rxdataF=ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
@@ -551,9 +550,9 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
   }
   
   // generate pilot
-  nr_psbch_dmrs_rx(dmrss,ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0]);
+  nr_psbch_dmrs_rx(dmrss, &ue->nr_gold_psbch[ssb_index], &pilot[0]);
 
-  for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
 
     int re_offset = ssb_offset;
     pil   = (int16_t *)&pilot[0];
@@ -563,7 +562,7 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
     memset(dl_ch,0,sizeof(struct complex16)*(ue->frame_parms.ofdm_symbol_size));
 
 #ifdef DEBUG_CH
-    printf("pbch ch est pilot addr %p RB_DL %d\n",&pilot[0], ue->frame_parms.N_RB_DL);
+    printf("psbch ch est pilot addr %p RB_DL %d\n",&pilot[0], ue->frame_parms.N_RB_DL);
     printf("k %d, first_carrier %d\n",k,ue->frame_parms.first_carrier_offset);
     printf("rxF addr %p\n", rxF);
     printf("dl_ch addr %p\n",dl_ch);
@@ -578,13 +577,10 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
     printf("ch 0 %d\n",((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1]));
     printf("pilot 0 : rxF - > (%d,%d) addr %p  ch -> (%d,%d), pil -> (%d,%d) \n",rxF[0],rxF[1],&rxF[0],ch[0],ch[1],pil[0],pil[1]);
 #endif
-    multadd_real_vector_complex_scalar(fl,
-				       ch,
-				       dl_ch,
-				       16);
+    multadd_real_vector_complex_scalar(fl, ch, dl_ch, 16);
     pil += 2;
     re_offset = (re_offset+4) % ue->frame_parms.ofdm_symbol_size;
-    rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
+    rxF = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
 
     //for (int i= 0; i<8; i++)
     //printf("dl_ch addr %p %d\n", dl_ch+i, *(dl_ch+i));
@@ -592,18 +588,13 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
     ch[0] = (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
     ch[1] = (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
 
-
 #ifdef DEBUG_CH
     printf("pilot 1 : rxF - > (%d,%d) ch -> (%d,%d), pil -> (%d,%d) \n",rxF[0],rxF[1],ch[0],ch[1],pil[0],pil[1]);
 #endif
-    multadd_real_vector_complex_scalar(fm,
-				       ch,
-				       dl_ch,
-				       16);
+    multadd_real_vector_complex_scalar(fm, ch, dl_ch, 16);
     pil += 2;
     re_offset = (re_offset+4) % ue->frame_parms.ofdm_symbol_size;
     rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
-
     ch[0] = (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
     ch[1] = (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
 
@@ -685,7 +676,7 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
   }
 
   if (dmrss == 12)
-    UEscopeCopy(ue, pbchDlChEstimateTime, (void*)dl_ch_estimates_time, sizeof(struct complex16), ue->frame_parms.nb_antennas_rx, idftsizeidx);
+    UEscopeCopy(ue, psbchDlChEstimateTime, (void*)dl_ch_estimates_time, sizeof(struct complex16), ue->frame_parms.nb_antennas_rx, idftsizeidx);
 
   return(0);
 }

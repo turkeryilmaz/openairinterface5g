@@ -75,7 +75,7 @@ void nr_chest_time_domain_avg(NR_DL_FRAME_PARMS *frame_parms,
 static inline uint8_t is_dmrs_symbol(uint8_t l, uint16_t dmrsSymbMask ) { return ((dmrsSymbMask >> l) & 0x1); }
 
 int nr_psbch_dmrs_rx(int symbol,
-                     unsigned int *nr_gold_pbch,
+                     unsigned int *nr_gold_psbch,
                      int32_t *output);
 
 #undef EXTERN

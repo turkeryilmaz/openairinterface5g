@@ -1614,6 +1614,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_pss.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_sss.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_psbch.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dlsch.c
@@ -1663,6 +1664,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
@@ -3083,7 +3085,7 @@ if (${T_TRACER})
         lte-softmodem lte-uesoftmodem nr-softmodem
         nr-uesoftmodem dlsim dlsim_tm4 dlsim_tm7
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
-        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
+        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_psbchsim nr_pucchsim
         nr_ulschsim ldpctest polartest smallblocktest cu_test du_test
         #all "add_library" definitions
         ITTI RRC_LIB NR_RRC_LIB S1AP_LIB S1AP_ENB X2AP_LIB X2AP_ENB M2AP_LIB M2AP_ENB M3AP_LIB M3AP_ENB F1AP_LIB F1AP
