@@ -672,8 +672,10 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 #endif
       AssertFatal(((m << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into mod_psbch_e. Index %d > %lu\n",
                 (m << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
-      ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
-      ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
+      int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
+      AssertFatal(idx + 1 < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
+      ((int16_t *)txdataF)[idx] = (amp * mod_psbch_e[m << 1]) >> 15;
+      ((int16_t *)txdataF)[(idx) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
       k++;
       m++;
     }
