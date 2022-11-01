@@ -44,26 +44,28 @@
 extern short nr_qpsk_mod_table[8];
 
 int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
-                          int32_t *txdataF,
-                          int16_t amp,
-                          uint8_t ssb_start_symbol,
-                          nfapi_nr_config_request_scf_t *config,
-                          NR_DL_FRAME_PARMS *frame_parms) {
+                           int32_t *txdataF,
+                           int16_t amp,
+                           uint8_t ssb_start_symbol,
+                           nfapi_nr_config_request_scf_t *config,
+                           NR_DL_FRAME_PARMS *frame_parms) {
   int k,l;
   //int16_t a;
   int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
-  uint8_t idx=0;
   uint8_t nushift = 0; //config->cell_config.phy_cell_id.value &3;
   LOG_D(PHY, "PSBCH DMRS mapping started at symbol %d shift %d\n", ssb_start_symbol+1, nushift);
 
   /// QPSK modulation
-  for (int m=0; m<NR_PSBCH_DMRS_LENGTH; m++) {
-    idx = (((gold_psbch_dmrs[(m<<1)>>5])>>((m<<1)&0x1f))&3);
-    mod_dmrs[m<<1] = nr_qpsk_mod_table[idx<<1];
-    mod_dmrs[(m<<1)+1] = nr_qpsk_mod_table[(idx<<1) + 1];
+  for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
+    AssertFatal(((m << 1) >> 5) < NR_PSBCH_DMRS_LENGTH_DWORD, "Invalid index size %d\n", (m << 1) >> 5);
+    int idx = (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 3);
+    AssertFatal(((idx << 1) + 1) < (sizeof(nr_qpsk_mod_table) / sizeof(nr_qpsk_mod_table[0])), "Invalid index size %d\n", (idx << 1) + 1);
+    AssertFatal((m << 1) + 1 < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index size %d\n", (idx << 1) + 1);
+    mod_dmrs[m << 1] = nr_qpsk_mod_table[idx << 1];
+    mod_dmrs[(m << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
 #ifdef DEBUG_PSBCH_DMRS
-    printf("m %d idx %d gold seq %d b0-b1 %d-%d mod_dmrs %d %d\n", m, idx, gold_psbch_dmrs[(m<<1)>>5], (((gold_psbch_dmrs[(m<<1)>>5])>>((m<<1)&0x1f))&1),
-           (((gold_psbch_dmrs[((m<<1)+1)>>5])>>(((m<<1)+1)&0x1f))&1), mod_dmrs[(m<<1)], mod_dmrs[(m<<1)+1]);
+    printf("m %d idx %d gold seq %d b0-b1 %d-%d mod_dmrs %d %d\n", m, idx, gold_psbch_dmrs[(m << 1) >> 5], (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 1),
+           (((gold_psbch_dmrs[((m << 1) + 1) >> 5]) >> (((m << 1)+1) & 0x1f)) & 1), mod_dmrs[(m << 1)], mod_dmrs[(m << 1)+1]);
 #endif
   }
 
@@ -77,12 +79,16 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
 #ifdef DEBUG_PSBCH_DMRS
     printf("m %d at k %d of l %d\n", m, k, l);
 #endif
-    ((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1]       = (amp * mod_dmrs[m<<1]) >> 15;
-    ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = (amp * mod_dmrs[(m<<1) + 1]) >> 15;
+    AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index into mod_dmrs. Index %d > %lu\n",
+              (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
+    int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
+    AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
+    ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
+    ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
     printf("(%d,%d)\n",
-           ((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1],
-           ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1)+1]);
+           ((int16_t *)txdataF)[(idx) << 1],
+           ((int16_t *)txdataF)[((idx) << 1)+1]);
 #endif
     k+=4;
 
@@ -104,12 +110,16 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
 #ifdef DEBUG_PSBCH_DMRS
       printf("m %d at k %d of l %d\n", m, k, l);
 #endif
-      ((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1]       = (amp * mod_dmrs[m<<1]) >> 15;
-      ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1) + 1] = (amp * mod_dmrs[(m<<1) + 1]) >> 15;
+      AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index into mod_dmrs. Index %d > %lu\n",
+                (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
+      int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
+      AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
+      ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
+      ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
       printf("(%d,%d)\n",
-             ((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1],
-             ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1)+1]);
+             ((int16_t *)txdataF)[idx],
+             ((int16_t *)txdataF)[(idx)+1]);
 #endif
       k+=4;
       if (k >= frame_parms->ofdm_symbol_size)
@@ -250,7 +260,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
     uint8_t idx = ((psbch->psbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
     AssertFatal(((idx << 1) + 1) < 8, "Invalid index into nr_qpsk_mod_table. Index %d > 8\n",
                 (idx << 1) + 1);
-    AssertFatal(((i << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into mod_psbch_e. Index %d > %lu\n",
+    AssertFatal(((i << 1) + 1) < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])), "Invalid index into mod_psbch_e. Index %d > %lu\n",
                 (i << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
     mod_psbch_e[i << 1] = nr_qpsk_mod_table[idx << 1];
     mod_psbch_e[(i << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
@@ -275,10 +285,10 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 #ifdef DEBUG_PSBCH
       printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
 #endif
-      AssertFatal(((m << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into mod_psbch_e. Index %d > %lu\n",
+      AssertFatal(((m << 1) + 1) < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])), "Invalid index into mod_psbch_e. Index %d > %lu\n",
                 (m << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
       int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
-      AssertFatal(idx + 1 < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
+      AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
       ((int16_t *)txdataF)[idx] = (amp * mod_psbch_e[m << 1]) >> 15;
       ((int16_t *)txdataF)[(idx) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
       k++;
