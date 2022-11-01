@@ -112,10 +112,10 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
 
   /* Test placeholder for PSBCH */
   nr_generate_sl_psbch(&ssb_pdu,
-                   &txdataF[0][txdataF_offset],
-                   AMP,
-                   ssb_start_symbol,
-                   n_hf, frame, cfg, fp);
+                       &txdataF[0][txdataF_offset],
+                       AMP,
+                       ssb_start_symbol,
+                       n_hf, frame, cfg, fp);
 }
 
 
