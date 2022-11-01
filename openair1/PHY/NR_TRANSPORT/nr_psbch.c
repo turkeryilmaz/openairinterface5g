@@ -49,11 +49,10 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                            uint8_t ssb_start_symbol,
                            nfapi_nr_config_request_scf_t *config,
                            NR_DL_FRAME_PARMS *frame_parms) {
-  int k,l;
-  //int16_t a;
+  int dmrs_modulations_per_slot = 32;
   int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
   uint8_t nushift = 0; //config->cell_config.phy_cell_id.value &3;
-  LOG_D(PHY, "PSBCH DMRS mapping started at symbol %d shift %d\n", ssb_start_symbol+1, nushift);
+  LOG_D(PHY, "PSBCH DMRS mapping started at symbol %d shift %d\n", ssb_start_symbol + 1, nushift);
 
   /// QPSK modulation
   for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
@@ -72,10 +71,10 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   /// Resource mapping
   // PSBCH DMRS are mapped  within the SSB block on every fourth subcarrier starting from nushift of symbols 1, 2, 3
   ///symbol 0  [0+nushift:4:236+nushift] -- 33 mod symbols
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + nushift;
-  l = ssb_start_symbol;
-
-  for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + nushift;
+  int l = ssb_start_symbol;
+  int m = 0;
+  for (; m < dmrs_modulations_per_slot; m++) {
 #ifdef DEBUG_PSBCH_DMRS
     printf("m %d at k %d of l %d\n", m, k, l);
 #endif
@@ -91,22 +90,16 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
            ((int16_t *)txdataF)[((idx) << 1)+1]);
 #endif
     k+=4;
-
     if (k >= frame_parms->ofdm_symbol_size)
       k-=frame_parms->ofdm_symbol_size;
   }
 
-  // Symbol 5 to 13
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + nushift;
-  l = ssb_start_symbol + 5 ;
-
   int N_SSSB_Symb = 13;
-  ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
-  l = ssb_start_symbol + 5 ;
-  int m = 33;
+  l = ssb_start_symbol + 5;
   while (l < N_SSSB_Symb)
   {
-    for (; m < NR_PSBCH_DMRS_LENGTH; m++) {
+    int mod_count = 0;
+    while (m < NR_PSBCH_DMRS_LENGTH) {
 #ifdef DEBUG_PSBCH_DMRS
       printf("m %d at k %d of l %d\n", m, k, l);
 #endif
@@ -124,8 +117,12 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
       k+=4;
       if (k >= frame_parms->ofdm_symbol_size)
         k-=frame_parms->ofdm_symbol_size;
+      mod_count++;
+      m++;
+      if (mod_count == dmrs_modulations_per_slot)
+        break;
     }
-    m += 33;
+    l++;
   }
 
 #ifdef DEBUG_PSBCH_DMRS
