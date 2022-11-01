@@ -50,6 +50,7 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "LAYER2/MAC/mac.h"
 #include "NR_MAC_COMMON/nr_mac_extern.h"
+#include "NR_SL-PreconfigurationNR-r16.h"
 
 /* RRC */
 #include "NR_DRX-Config.h"
@@ -442,6 +443,14 @@ typedef struct {
   nr_emulated_l1_t nr_ue_emul_l1;
 
   pthread_mutex_t mutex_dl_info;
+
+  NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration;
+  uint32_t sourceL2Id;
+  uint32_t groupL2Id;
+  uint32_t destinationL2Id;
+  uint32_t directFrameNumber_r16;
+  int slotIndex_r16;
+  NR_SLSS_t slss;
 
 } NR_UE_MAC_INST_t;
 

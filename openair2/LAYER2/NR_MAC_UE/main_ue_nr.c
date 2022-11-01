@@ -41,6 +41,7 @@
 #include "executables/softmodem-common.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp.h"
 #include <pthread.h>
+#include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 
@@ -83,9 +84,25 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
     }
     else {
       LOG_I(MAC,"Running without CellGroupConfig\n");
-      nr_rrc_mac_config_req_ue(0,0,0,NULL,NULL,NULL,NULL);
-      if(get_softmodem_params()->sa == 1) {
-        AssertFatal(rlc_module_init(0) == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
+      if (get_softmodem_params()->sl_mode == 0) {
+        nr_rrc_mac_config_req_ue(0, 0, 0, NULL, NULL, NULL, NULL);
+        if (get_softmodem_params()->sa == 1) {
+          AssertFatal(rlc_module_init(0) == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
+        }
+      } else if (get_softmodem_params()->sl_mode == 2) {
+        module_id_t module_id = 0;
+        int cc_idP = 0;
+        uint32_t sourceL2Id, groupL2Id, destinationL2Id;
+        sourceL2Id = get_softmodem_params()->node_number;
+        destinationL2Id = 2; //UPDATE it after implementing the ProSeApp connection
+        groupL2Id = 3; //UPDATE it after implementing the ProSeApp connection
+        uint32_t directFrameNumber_r16 = 1025; // Set greater than the valid directFrameNumber range (0-1023)
+        long slotIndex_r16 = 21; // Set greater than the valid slotIndex_r16 range
+        nr_rrc_mac_config_req_ue_sl(module_id, cc_idP, &sourceL2Id, &destinationL2Id, &groupL2Id,
+                                    rrc_inst->SL_Preconfiguration[0],
+                                    directFrameNumber_r16, slotIndex_r16);
+      } else {
+        LOG_E(NR_MAC, "Need implementation.\n");
       }
     }
 

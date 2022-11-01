@@ -113,3 +113,17 @@ void nr_rf_card_config_freq(openair0_config_t *openair0_cfg,
 
   }
 }
+
+void nr_sl_rf_card_config_freq(PHY_VARS_NR_UE *ue, openair0_config_t *openair0_cfg, int freq_offset) {
+
+  for (int i = 0; i < openair0_cfg->rx_num_channels; i++) {
+    openair0_cfg->rx_gain[ue->rf_map.chain + i] = ue->rx_total_gain_dB;
+    if (ue->UE_scan_carrier == 1) {
+      if (freq_offset >= 0)
+        openair0_cfg->rx_freq[ue->rf_map.chain + i] += abs(freq_offset);
+      else
+        openair0_cfg->rx_freq[ue->rf_map.chain + i] -= abs(freq_offset);
+      freq_offset=0;
+    }
+  }
+}

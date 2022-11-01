@@ -47,6 +47,7 @@
 #include "asn1_msg.h"
 #include "../nr_rrc_proto.h"
 #include "RRC/NR/nr_rrc_extern.h"
+#include "RRC/NR_UE/rrc_vars.h"
 #include "NR_DL-CCCH-Message.h"
 #include "NR_UL-CCCH-Message.h"
 #include "NR_DL-DCCH-Message.h"
@@ -191,6 +192,59 @@ int xer_nr_sprint (char *string, size_t string_size, asn_TYPE_descriptor_t *td, 
   }
 
   return er.encoded;
+}
+
+//------------------------------------------------------------------------------
+//TTN for D2D
+// NR : 3GPP 38.331 (Section 5.8.5.3)
+uint8_t do_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP, int abs_slot, NR_UE_RRC_INST_t* UE)
+{
+   asn_enc_rval_t enc_rval;
+   uint16_t frame = abs_slot / 20;
+   uint8_t slot = abs_slot % 20;
+
+   NR_SBCCH_SL_BCH_MessageType_t *sl_mib = &UE->SL_mib_tx;
+   sl_mib->present = NR_SBCCH_SL_BCH_MessageType_PR_c1;
+   sl_mib->choice.c1 = CALLOC(1, sizeof(struct NR_SBCCH_SL_BCH_MessageType__c1));
+   sl_mib->choice.c1->present = NR_SBCCH_SL_BCH_MessageType__c1_PR_masterInformationBlockSidelink;
+   sl_mib->choice.c1->choice.masterInformationBlockSidelink = CALLOC(1, sizeof(NR_MasterInformationBlockSidelink_t));
+   NR_MasterInformationBlockSidelink_t *nr_sl_mib = sl_mib->choice.c1->choice.masterInformationBlockSidelink;
+   if (get_softmodem_params()->sl_mode != 2) {
+      nr_sl_mib->inCoverage_r16 = 1;
+      AssertFatal(1 == 0, "Needs development for in %s %d.\n", __FUNCTION__, __LINE__);
+   } else {
+     nr_sl_mib->inCoverage_r16 = 0;
+     nr_sl_mib->sl_TDD_Config_r16.size = 2;
+     nr_sl_mib->sl_TDD_Config_r16.buf = CALLOC(1, nr_sl_mib->sl_TDD_Config_r16.size);
+     nr_sl_mib->sl_TDD_Config_r16.bits_unused = 4;
+     nr_sl_mib->reservedBits_r16.size = 1;
+     nr_sl_mib->reservedBits_r16.buf = CALLOC(1, nr_sl_mib->reservedBits_r16.size);
+     nr_sl_mib->reservedBits_r16.bits_unused = 6;
+   }
+
+   nr_sl_mib->directFrameNumber_r16.size = 2;
+   nr_sl_mib->directFrameNumber_r16.buf = CALLOC(1, nr_sl_mib->directFrameNumber_r16.size);
+   nr_sl_mib->directFrameNumber_r16.buf[0] = frame & 255;
+   nr_sl_mib->directFrameNumber_r16.buf[1] = (frame >> 8) & 3;
+   nr_sl_mib->directFrameNumber_r16.bits_unused = 6;
+   nr_sl_mib->slotIndex_r16.size = 1;
+   nr_sl_mib->slotIndex_r16.buf = CALLOC(1, nr_sl_mib->slotIndex_r16.size);
+   nr_sl_mib->slotIndex_r16.buf[0] = slot;
+   nr_sl_mib->slotIndex_r16.bits_unused = 1;
+
+   if ((frame & 255) == 0)
+     LOG_D(NR_RRC, "[MIB-SL] sfn %x, slot %x\n", frame, slot);
+
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_SBCCH_SL_BCH_Message,
+                                   NULL,
+                                   (void*)&UE->SL_mib_tx,
+                                   UE->SL_MIB,
+                                   sizeof(UE->SL_MIB));
+
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+
+  return ((enc_rval.encoded + 7) / 8);
 }
 
 //------------------------------------------------------------------------------

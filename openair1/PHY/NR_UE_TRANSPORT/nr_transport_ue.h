@@ -354,6 +354,14 @@ typedef struct {
 #endif
 } NR_DCI_ALLOC_t;
 
+typedef struct {
+  long  sl_numssb_withinperiod_r16;
+  long  sl_timeoffsetssb_r16;
+  long  sl_timeinterval_r16;
+  uint16_t slss_id;
+  uint8_t sl_mib_length;
+  uint8_t sl_mib[5];
+} NR_SLSS_t;
 
 /**@}*/
 #endif
