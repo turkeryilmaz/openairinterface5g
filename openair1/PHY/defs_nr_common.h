@@ -295,7 +295,13 @@ struct NR_DL_FRAME_PARMS {
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
   uint8_t tdd_config;
+#ifdef PHY_SIDE_LINK
+  /// Side Link ID
+  int     Nid_SL;
+#else
   /// Cell ID
+  int     Nid_cell;
+#endif
   uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
   uint32_t subcarrier_spacing;
