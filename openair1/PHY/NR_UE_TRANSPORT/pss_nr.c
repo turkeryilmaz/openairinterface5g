@@ -557,10 +557,10 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_IN);
   synchro_position = pss_search_time_nr(rxdata,
                                         frame_parms,
-					fo_flag,
+					                              fo_flag,
                                         is,
                                         (int *)&PHY_vars_UE->common_vars.eNb_id,
-					(int *)&PHY_vars_UE->common_vars.freq_offset);
+					                              (int *)&PHY_vars_UE->common_vars.freq_offset);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_OUT);
 
@@ -672,39 +672,33 @@ static inline double angle64(int64_t x)
 #define DOT_PRODUCT_SCALING_SHIFT    (17)
 int pss_search_time_nr(int **rxdata, ///rx data in time domain
                        NR_DL_FRAME_PARMS *frame_parms,
-		       int fo_flag,
+		                   int fo_flag,
                        int is,
                        int *eNB_id,
-		       int *f_off)
+		                   int *f_off)
 {
-  unsigned int n, ar, peak_position, pss_source;
-  int64_t peak_value;
   int64_t result;
-  int64_t avg[NUMBER_PSS_SEQUENCE]={0};
-  double ffo_est=0;
+  int64_t avg[NUMBER_PSS_SEQUENCE] = {0};
+  double ffo_est = 0;
 
   // performing the correlation on a frame length plus one symbol for the first of the two frame
   // to take into account the possibility of PSS in between the two frames 
-  unsigned int length;
-  if (is==0)
-    length = frame_parms->samples_per_frame + (2*frame_parms->ofdm_symbol_size);
-  else
-    length = frame_parms->samples_per_frame;
+  unsigned int length = is == 0 ? frame_parms->samples_per_frame + (2 * frame_parms->ofdm_symbol_size) : frame_parms->samples_per_frame;
 
+  AssertFatal(length > 0, "illegal length %d\n", length);
+  int64_t peak_value = 0;
+  unsigned int peak_position = 0;
+  unsigned int pss_source = 0;
 
-  AssertFatal(length>0,"illegal length %d\n",length);
-  peak_value = 0;
-  peak_position = 0;
-  pss_source = 0;
-
-  int maxval=0;
-  for (int i=0;i<2*(frame_parms->ofdm_symbol_size);i++) {
-    maxval = max(maxval,primary_synchro_time_nr[0][i]);
-    maxval = max(maxval,-primary_synchro_time_nr[0][i]);
-    maxval = max(maxval,primary_synchro_time_nr[1][i]);
-    maxval = max(maxval,-primary_synchro_time_nr[1][i]);
-    maxval = max(maxval,primary_synchro_time_nr[2][i]);
-    maxval = max(maxval,-primary_synchro_time_nr[2][i]);
+  int maxval = 0;
+  for (int i = 0; i < 2 * (frame_parms->ofdm_symbol_size); i++) {
+    AssertFatal(i < NUMBER_PSS_SEQUENCE, "Invalid primary_synchro_time_nr index %d > %d\n", i, NUMBER_PSS_SEQUENCE);
+    maxval = max(maxval, *primary_synchro_time_nr[i]);
+    maxval = max(maxval, -*primary_synchro_time_nr[i]);
+    maxval = max(maxval, *primary_synchro_time_nr[i]);
+    maxval = max(maxval, -*primary_synchro_time_nr[i]);
+    maxval = max(maxval, *primary_synchro_time_nr[i]);
+    maxval = max(maxval, -*primary_synchro_time_nr[i]);
   }
   int shift = log2_approx(maxval);//*(frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples)*2);
 
@@ -714,12 +708,12 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
 
   for (int pss_index = 0; pss_index < NUMBER_PSS_SEQUENCE; pss_index++) {
 
-    for (n=0; n < length; n+=4) { //
+    for (unsigned int n = 0; n < length; n += 4) { //
 
       int64_t pss_corr_ue=0;
       /* calculate dot product of primary_synchro_time_nr and rxdata[ar][n]
        * (ar=0..nb_ant_rx) and store the sum in temp[n]; */
-      for (ar=0; ar<frame_parms->nb_antennas_rx; ar++) {
+      for (unsigned int ar = 0; ar < frame_parms->nb_antennas_rx; ar++) {
 
         /* perform correlation of rx data and pss sequence ie it is a dot product */
         result  = dot_product64((short*)primary_synchro_time_nr[pss_index],

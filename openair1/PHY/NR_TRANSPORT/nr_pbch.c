@@ -290,7 +290,6 @@ static void nr_psbch_scrambling(NR_gNB_PBCH *pbch,
                         uint8_t encoded,
                         uint32_t unscrambling_mask) {
   uint32_t *pbch_e = pbch->pbch_e;
-
   uint8_t reset = 1;
   uint32_t x1, s = 0;
   uint32_t x2 = Nid;
@@ -332,8 +331,8 @@ static void nr_psbch_scrambling(NR_gNB_PBCH *pbch,
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-      AssertFatal((i >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
-                 (i >> 5), NR_POLAR_PBCH_E_DWORD);
+      AssertFatal((i >> 5) < NR_POLAR_PSBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
+                 (i >> 5), NR_POLAR_PSBCH_E_DWORD);
       pbch_e[i >> 5] ^= (((s >> ((i + offset) & 0x1f)) & 1) << (i & 0x1f));
     }
   }
@@ -625,15 +624,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 #endif
 
   /// Scrambling
-<<<<<<< HEAD
-  M =  NR_POLAR_PSBCH_E;
-  nushift = 0;// (Lmax==4)? ssb_index&3 : ssb_index&7;
-  nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
-=======
-  uint16_t M = NR_POLAR_PBCH_E;
+  uint16_t M = NR_POLAR_PSBCH_E;
   uint8_t nushift = 0;
-  nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PBCH_E, 1, 0);
->>>>>>> 6e11362b756db14fa9436651878caec2d672c154
+  nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
 #ifdef DEBUG_PBCH_ENCODING
   printf("Scrambling:\n");
 
