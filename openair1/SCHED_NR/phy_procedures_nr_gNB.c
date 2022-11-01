@@ -84,9 +84,9 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   nr_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
 
   if (fp->Lmax == 4)
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7],&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
   else
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[0][ssb_index&7],&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+    nr_generate_psbch_dmrs(gNB->nr_gold_pbch_dmrs ,&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
 
   if (T_ACTIVE(T_GNB_PHY_MIB)) {
     unsigned char bch[3];
@@ -102,20 +102,21 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
     for (int j=0;j<fp->symbols_per_slot;j++) 
       gNB->common_vars.beam_id[0][slot*fp->symbols_per_slot+j] = cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value;
   }
+  /* TODO: Temporarily using Lmax != 4 for NR Sidelink! */
+  if (fp->Lmax == 4)
+    nr_generate_pbch(&ssb_pdu,
+                    gNB->nr_pbch_interleaver,
+                    &txdataF[0][txdataF_offset],
+                    AMP,
+                    ssb_start_symbol,
+                    n_hf, frame, cfg, fp);
 
-  nr_generate_pbch(&ssb_pdu,
-                   gNB->nr_pbch_interleaver,
-                   &txdataF[0][txdataF_offset],
-                   AMP,
-                   ssb_start_symbol,
-                   n_hf, frame, cfg, fp);
-
-  /* Test placeholder for PSBCH */
-  nr_generate_sl_psbch(&ssb_pdu,
-                       &txdataF[0][txdataF_offset],
-                       AMP,
-                       ssb_start_symbol,
-                       n_hf, frame, cfg, fp);
+  else
+    nr_generate_sl_psbch(&ssb_pdu,
+                        &txdataF[0][txdataF_offset],
+                        AMP,
+                        ssb_start_symbol,
+                        n_hf, frame, cfg, fp);
 }
 
 
