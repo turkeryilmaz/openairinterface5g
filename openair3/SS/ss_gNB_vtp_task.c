@@ -144,6 +144,7 @@ void ss_vtp_send_tinfo(
 
     virtualTime.TimingInfo.Slot.d = tinfo->mu > 0 ? SlotTimingInfo_Type_SlotOffset : SlotTimingInfo_Type_UNBOUND_VALUE;
     virtualTime.TimingInfo.Slot.v.SlotOffset.d = (enum SlotOffset_Type_Sel) (tinfo->mu + 1);
+
     switch(virtualTime.TimingInfo.Slot.v.SlotOffset.d) {
         case SlotOffset_Type_Numerology0: break;
         case SlotOffset_Type_Numerology1:
@@ -398,7 +399,6 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
         }; break;
         case SS_NRUPD_TIM_INFO:
         {
-            LOG_W(GNB_APP, "[SS-VTP] VTP received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
             ss_set_timinfo_t tinfo;
             tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot % 2;
             tinfo.mu = 1;
