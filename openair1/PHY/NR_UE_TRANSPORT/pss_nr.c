@@ -693,12 +693,14 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
   int maxval = 0;
   for (int i = 0; i < 2 * (frame_parms->ofdm_symbol_size); i++) {
     AssertFatal(i < NUMBER_PSS_SEQUENCE, "Invalid primary_synchro_time_nr index %d > %d\n", i, NUMBER_PSS_SEQUENCE);
-    maxval = max(maxval, *primary_synchro_time_nr[i]);
-    maxval = max(maxval, -*primary_synchro_time_nr[i]);
-    maxval = max(maxval, *primary_synchro_time_nr[i]);
-    maxval = max(maxval, -*primary_synchro_time_nr[i]);
-    maxval = max(maxval, *primary_synchro_time_nr[i]);
-    maxval = max(maxval, -*primary_synchro_time_nr[i]);
+    maxval = max(maxval, primary_synchro_time_nr[0][i]);
+    maxval = max(maxval, -primary_synchro_time_nr[0][i]);
+    maxval = max(maxval, primary_synchro_time_nr[1][i]);
+    maxval = max(maxval, -primary_synchro_time_nr[1][i]);
+#ifndef PHY_SIDE_LINK
+    maxval = max(maxval, primary_synchro_time_nr[2][i]);
+    maxval = max(maxval, -primary_synchro_time_nr[2][i]);
+#endif
   }
   int shift = log2_approx(maxval);//*(frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples)*2);
 
