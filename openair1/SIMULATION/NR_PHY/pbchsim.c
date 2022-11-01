@@ -447,6 +447,10 @@ int main(int argc, char **argv)
     }
   }
 
+  #ifdef PHY_SIDE_LINK
+     printf("Side link is enabled \n");
+  #endif
+
   randominit(seed);
 
   logInit();

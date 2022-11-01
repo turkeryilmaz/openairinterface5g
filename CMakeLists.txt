@@ -98,6 +98,7 @@ endif()
 
 add_definitions("-DNETTLE_VERSION_MAJOR=${NETTLE_VERSION_MAJOR}")
 add_definitions("-DNETTLE_VERSION_MINOR=${NETTLE_VERSION_MINOR}")
+add_definitions("-DPHY_SIDE_LINK")
 
 pkg_search_module(XPM xpm)
 if(NOT ${XPM_FOUND})

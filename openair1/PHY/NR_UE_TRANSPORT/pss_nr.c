@@ -96,7 +96,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   }
 
   for (int n=0; n < LENGTH_PSS_NR; n++) {
-    int m = (n + 43*N_ID_2)%(LENGTH_PSS_NR);
+    int m = (n + PSS_SEQ_OFFSET + 43*N_ID_2)%(LENGTH_PSS_NR);
     d_pss[n] = 1 - 2*x[m];
   }
 
@@ -149,7 +149,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + 56; //and
+  unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START; //and
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
 
