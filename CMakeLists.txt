@@ -1658,6 +1658,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/MODULATION/slot_fep_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/slss_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/cic_filter_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
@@ -2941,6 +2942,17 @@ target_link_libraries(nr_pbchsim
   m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
   )
 
+add_executable(nr_psbchsim
+${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
+${OPENAIR_DIR}/common/utils/nr/nr_common.c
+${T_SOURCE}
+${SHLIB_LOADER_SOURCES}
+)
+target_link_libraries(nr_psbchsim
+  -Wl,--start-group UTIL SIMU_COMMON SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
+  m pthread ${ATLAS_LIBRARIES}  ${T_LIB} ITTI dl
+  )
+
 #PUCCH ---> Prashanth
 add_executable(nr_pucchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
@@ -3073,7 +3085,7 @@ if (${T_TRACER})
         lte-softmodem lte-uesoftmodem nr-softmodem
         nr-uesoftmodem dlsim dlsim_tm4 dlsim_tm7
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
-        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
+        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_psbchsim nr_pucchsim
         nr_ulschsim ldpctest polartest smallblocktest cu_test du_test
         #all "add_library" definitions
         ITTI RRC_LIB NR_RRC_LIB S1AP_LIB S1AP_ENB X2AP_LIB X2AP_ENB M2AP_LIB M2AP_ENB M3AP_LIB M3AP_ENB F1AP_LIB F1AP
