@@ -597,14 +597,11 @@ typedef struct {
   uint32_t pdu_errors_conseq;
   /// \brief FER (in percent) .
   //uint32_t pdu_fer;
-} NR_UE_PSBCH;
-
-typedef struct {
   uint32_t psbch_a;
   uint32_t psbch_a_interleaved;
   uint32_t psbch_a_prime;
   uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
-} NR_txUE_PSBCH;
+} NR_UE_PSBCH;
 
 typedef struct {
   int16_t amp;

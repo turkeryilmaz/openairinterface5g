@@ -130,7 +130,7 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   return 0;
 }
 
-static void nr_psbch_scrambling(NR_txUE_PSBCH *psbch,
+static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
                                 uint32_t Nid,
                                 uint8_t nushift,
                                 uint16_t M,
@@ -206,9 +206,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
   psbch_payload.reserved = 0;              // 2 bits reserved
 
-  NR_txUE_PSBCH m_psbch;
-  NR_txUE_PSBCH *psbch = &m_psbch;
-  memset((void *)psbch, 0, sizeof(NR_txUE_PSBCH));
+  NR_UE_PSBCH m_psbch;
+  NR_UE_PSBCH *psbch = &m_psbch;
+  memset((void *)psbch, 0, sizeof(NR_UE_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);
   psbch->psbch_a_interleaved = psbch->psbch_a; // skip interlevaing for Sidelink
 
