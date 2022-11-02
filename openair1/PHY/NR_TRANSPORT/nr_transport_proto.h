@@ -63,30 +63,6 @@ int nr_generate_sss(int32_t *txdataF,
                     NR_DL_FRAME_PARMS *frame_parms);
 
 /*!
-\fn int nr_generate_pss
-\brief Generation of the NR PSS
-@param
-@returns 0 on success
- */
-int nr_sl_generate_pss(int32_t *txdataF,
-                    int16_t amp,
-                    uint8_t ssb_start_symbol,
-                    nfapi_nr_config_request_scf_t *config,
-                    NR_DL_FRAME_PARMS *frame_parms);
-
-/*!
-\fn int nr_generate_sss
-\brief Generation of the NR SSS
-@param
-@returns 0 on success
- */
-int nr_sl_generate_sss(int32_t *txdataF,
-                    int16_t amp,
-                    uint8_t ssb_start_symbol,
-                    nfapi_nr_config_request_scf_t *config,
-                    NR_DL_FRAME_PARMS *frame_parms);
-
-/*!
 \fn int nr_generate_pbch_dmrs
 \brief Generation of the DMRS for the PBCH
 @param

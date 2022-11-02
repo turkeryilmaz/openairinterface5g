@@ -1084,6 +1084,28 @@ int sss_only_extract(PHY_VARS_NR_UE *phy_vars_ue,
 */
 int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_max);
 
+/*!
+\fn int nr_generate_pss
+\brief Generation of the NR PSS
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_pss(int32_t *txdataF,
+                    int16_t amp,
+                    uint8_t ssb_start_symbol,
+                    NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_sss
+\brief Generation of the NR SSS
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_sss(int32_t *txdataF,
+                    int16_t amp,
+                    uint8_t ssb_start_symbol,
+                    NR_DL_FRAME_PARMS *frame_parms);
+
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
