@@ -557,10 +557,10 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_IN);
   synchro_position = pss_search_time_nr(rxdata,
                                         frame_parms,
-					                              fo_flag,
+                                        fo_flag,
                                         is,
                                         (int *)&PHY_vars_UE->common_vars.eNb_id,
-					                              (int *)&PHY_vars_UE->common_vars.freq_offset);
+                                        (int *)&PHY_vars_UE->common_vars.freq_offset);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_OUT);
 
@@ -672,10 +672,10 @@ static inline double angle64(int64_t x)
 #define DOT_PRODUCT_SCALING_SHIFT    (17)
 int pss_search_time_nr(int **rxdata, ///rx data in time domain
                        NR_DL_FRAME_PARMS *frame_parms,
-		                   int fo_flag,
+                       int fo_flag,
                        int is,
                        int *eNB_id,
-		                   int *f_off)
+                       int *f_off)
 {
   int64_t result;
   int64_t avg[NUMBER_PSS_SEQUENCE] = {0};
