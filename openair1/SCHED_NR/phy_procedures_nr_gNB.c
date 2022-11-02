@@ -72,8 +72,6 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   int ssb_start_symbol_abs = nr_get_ssb_start_symbol(fp,ssb_index); // computing the starting symbol for current ssb
   ssb_start_symbol = ssb_start_symbol_abs % fp->symbols_per_slot;  // start symbol wrt slot
 
-  printf("ssb_start_symbol_abs = %d\n", ssb_start_symbol_abs);
-
   // setting the first subcarrier
   const int scs = cfg->ssb_config.scs_common.value;
   const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>scs : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA>>(scs-2);

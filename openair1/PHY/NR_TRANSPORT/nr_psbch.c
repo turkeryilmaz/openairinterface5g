@@ -210,7 +210,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 
   NR_txUE_PSBCH m_psbch;
   NR_txUE_PSBCH *psbch = &m_psbch;
-  memset((void *)psbch, 0, sizeof(NR_gNB_PSBCH));
+  memset((void *)psbch, 0, sizeof(NR_txUE_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);
   psbch->psbch_a_interleaved = psbch->psbch_a; // skip interlevaing for Sidelink
 
@@ -297,11 +297,11 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
       k-=frame_parms->ofdm_symbol_size;
   }
 
-  int currSymbolNum = 5;
+ int N_SSSB_Symb = 14;
   ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
   l = ssb_start_symbol + 5;
-  m = 33;
-  while (currSymbolNum < 14)
+  m = 99;
+  while (l < N_SSSB_Symb - 1)
   {
     k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
 
