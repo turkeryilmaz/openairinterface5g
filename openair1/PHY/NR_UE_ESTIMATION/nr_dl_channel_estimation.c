@@ -206,7 +206,7 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
                              int dmrss,
                              NR_UE_SSB *current_ssb)
 {
-  int pilot[200] __attribute__((aligned(16)));
+  int pilot[300] __attribute__((aligned(16)));
   unsigned short k;
   unsigned int pilot_cnt;
   int16_t ch[2],*pil,*rxF;
