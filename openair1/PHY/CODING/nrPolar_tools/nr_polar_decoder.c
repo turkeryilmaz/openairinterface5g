@@ -707,5 +707,6 @@ uint32_t polar_decoder_int16(int16_t *input,
          rxcrc,polarParams->payloadBits);
 #endif
   out[0]=Ar;
+
   polarReturn crc^rxcrc;
 }

@@ -751,6 +751,8 @@ typedef struct {
   NR_UE_DLSCH_t   *dlsch_ra[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_p[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_MCH[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_SLSS_t       *slss;
+  NR_SLSS_t       slss_rx;
 
   //Paging parameters
   uint32_t              IMSImod1024;
@@ -845,6 +847,13 @@ typedef struct {
   int dlsch_mtch_trials[MAX_MBSFN_AREA][NUMBER_OF_CONNECTED_gNB_MAX];
   int current_dlsch_cqi[NUMBER_OF_CONNECTED_gNB_MAX];
   unsigned char first_run_timing_advance[NUMBER_OF_CONNECTED_gNB_MAX];
+
+  uint8_t               sidelink_active;
+  uint8_t               destination_id;
+  uint32_t              gh[257][20];
+  uint8_t               SLghinitialized;
+  uint8_t               slss_generated;
+
   uint8_t               decode_SIB;
   uint8_t               decode_MIB;
   uint8_t               init_sync_frame;

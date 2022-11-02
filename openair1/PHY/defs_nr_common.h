@@ -295,13 +295,9 @@ struct NR_DL_FRAME_PARMS {
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
   uint8_t tdd_config;
-#ifdef PHY_SIDE_LINK
-  /// Side Link ID
-  uint16_t  Nid_SL;
-#else
-  /// Cell ID
-  uint16_t Nid_cell;
-#endif
+  /// Sidelink Cell ID
+  uint16_t Nid_SL;
+  /// Cell ID  
   uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
   uint32_t subcarrier_spacing;
@@ -400,6 +396,20 @@ typedef struct {
   uint32_t slotIndex : 7;
   uint32_t reserved : 2;
 } PSBCH_payload;
+
+/// Enumeration of SL_channel_config
+typedef enum {
+  NO_SL=0,
+  PSCCH_12_EVEN=1,
+  PSCCH_12_ODD=2,
+  PSCCH_34_EVEN=3,
+  PSCCH_34_ODD=4,
+  PSSCH_12=5,
+  PSSCH_34=6,
+  PSDCH=7,
+  PSBCH=8,
+  MAX_SLTYPES=9
+} NR_SL_chan_t;
 
 #define KHz (1000UL)
 #define MHz (1000*KHz)

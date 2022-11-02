@@ -1665,6 +1665,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 
 void dump_nrdlsch(PHY_VARS_NR_UE *ue,uint8_t gNB_id,uint8_t nr_slot_rx,unsigned int *coded_bits_per_codeword,int round,  unsigned char harq_pid);
+
+void check_and_generate_slss_nr(PHY_VARS_NR_UE *ue, int frame_tx, int slot_tx);
+
 /**@}*/
 #endif
 

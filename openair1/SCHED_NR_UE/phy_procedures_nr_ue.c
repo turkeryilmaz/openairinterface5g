@@ -278,6 +278,37 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx){
   }
 }
 
+void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
+                               UE_nr_rxtx_proc_t *proc,
+                               uint8_t gNB_id)
+{
+  int slot_tx = proc->nr_slot_tx;
+  int frame_tx = proc->frame_tx;
+  AssertFatal(frame_tx >= 0 && frame_tx < 1024, "frame_tx %d is not in 0...1023\n",frame_tx);
+  AssertFatal(slot_tx >= 0 && slot_tx < 20, "slot_tx %d is not in 0...19\n", slot_tx);
+
+  LOG_D(PHY,"****** start Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
+
+  if (get_softmodem_params()->sl_mode == 2) {
+    ue->tx_power_dBm[slot_tx] = -127;
+    int num_samples_per_slot;
+    for(int i = 0; i < ue->frame_parms.nb_antennas_tx; ++i) {
+      num_samples_per_slot = ue->frame_parms.ofdm_symbol_size * ue->frame_parms.symbols_per_slot;
+      AssertFatal(i < sizeof(ue->common_vars.txdataF), "Array index %d is over the Array size %lu\n", i, sizeof(ue->common_vars.txdataF));
+      memset(&ue->common_vars.txdataF[i], 0, sizeof(int)* num_samples_per_slot);
+    }
+  }
+
+  if (ue->sync_ref) {
+     if ((ue->slss = nr_ue_get_slss(ue->Mod_id, ue->CC_id, frame_tx, slot_tx)) != NULL)
+      check_and_generate_slss_nr(ue, frame_tx, slot_tx);
+  }
+
+  // TODO: Add SLDCH
+  // TODO: Add SLSCH
+  LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
+}
+
 void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue,
                             UE_nr_rxtx_proc_t *proc,
                             uint8_t gNB_id) {

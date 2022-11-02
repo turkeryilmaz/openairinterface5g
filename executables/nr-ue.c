@@ -638,8 +638,10 @@ void processSlotTX(void *arg) {
       stop_meas(&UE->ue_ul_indication_stats);
     }
 
-    if (rxtxD->ue_sched_mode != NOT_PUSCH) {
-      phy_procedures_nrUE_TX(UE,proc,0);
+    if (get_softmodem_params()->sl_mode == 0 && rxtxD->ue_sched_mode != NOT_PUSCH) {
+      phy_procedures_nrUE_TX(UE, proc, 0);
+    } else if (get_softmodem_params()->sl_mode == 2) {
+      phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
   }
 }

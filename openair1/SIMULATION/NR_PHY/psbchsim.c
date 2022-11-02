@@ -33,7 +33,6 @@
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_nr_UE.h"
-#include "PHY/defs_gNB.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
@@ -117,13 +116,13 @@ int run_initial_sync = 0;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
-
+PHY_VARS_gNB *gNB;
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_gNB *gNB,
-                                       int N_RB_DL,
-                                       int N_RB_UL,
-                                       int mu,
-                                       int Nid_cell,
-                                       uint64_t position_in_burst)
+                                        int N_RB_DL,
+                                        int N_RB_UL,
+                                        int mu,
+                                        int Nid_cell,
+                                        uint64_t position_in_burst)
 {
   uint64_t rev_burst = 0;
   for (int i = 0; i < 64; i++)
@@ -329,13 +328,13 @@ int main(int argc, char **argv)
   if (snr1set == 0)
     snr1 = snr0 + 10;
 
-  printf("Initializing gNodeB for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
-  RAN_CONTEXT_t RC;
-  RC.gNB = (PHY_VARS_gNB**) malloc(sizeof(PHY_VARS_gNB *));
-  RC.gNB[0] = malloc16_clear(sizeof(*(RC.gNB[0])));
-  PHY_VARS_gNB *gNB = RC.gNB[0];
-  gNB->ofdm_offset_divisor = UINT_MAX;
-  NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PSBCH)
+  printf("Initializing nrUE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
+
+  //configure UE
+  PHY_VARS_NR_UE *UE = malloc(sizeof(PHY_VARS_NR_UE));
+  memset((void*)UE, 0, sizeof(PHY_VARS_NR_UE));
+  UE->frame_parms.nb_antennas_rx = n_rx;
+  NR_DL_FRAME_PARMS *frame_parms = &(UE->frame_parms);
   frame_parms->nb_antennas_tx = n_tx;
   frame_parms->nb_antennas_rx = n_rx;
   frame_parms->nb_antenna_ports_gNB = n_tx;
@@ -344,8 +343,10 @@ int main(int argc, char **argv)
   frame_parms->nushift = Nid_cell % 4;
   frame_parms->ssb_type = nr_ssb_type_C;
   frame_parms->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
+
   nr_phy_config_request_sim_psbchsim(gNB, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
   phy_init_nr_gNB(gNB, 0, 1);
+
   frame_parms->ssb_start_subcarrier = 12 * gNB->gNB_config.ssb_table.ssb_offset_point_a.value + ssb_subcarrier_offset;
 
   double fs = 0;
@@ -403,14 +404,13 @@ int main(int argc, char **argv)
   }
 
   //configure UE
-  PHY_VARS_NR_UE *UE = malloc16_clear(sizeof(*UE));
   memcpy(&UE->frame_parms, frame_parms, sizeof(UE->frame_parms));
   if (run_initial_sync == 1) {
     UE->is_synchronized = 0;
   } else {
     UE->is_synchronized = 1;
   }
-	UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
+  UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
 
   if (init_nr_ue_signal(UE, 1) != 0) {
     printf("Error at UE NR initialisation\n");
@@ -527,7 +527,6 @@ int main(int argc, char **argv)
         }
       } else {
         UE_nr_rxtx_proc_t proc = {0};
-        NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         UE->rx_offset = 0;
         uint8_t ssb_index = 0;
         const int estimateSz = 7 * 2 * sizeof(int) * frame_parms->ofdm_symbol_size;
@@ -546,6 +545,8 @@ int main(int argc, char **argv)
         }
         fapiPbch_t result;
         /* Side link rx PSBCH */
+        ret = 0;
+#if 0
         ret = nr_rx_psbch(UE,
                           &proc,
                           estimateSz,
@@ -557,7 +558,7 @@ int main(int argc, char **argv)
                           SISO,
                           &phy_pdcch_config,
                           &result);
-
+#endif
         if (ret == 0) {
           int payload_ret = 0;
           uint8_t gNB_xtra_byte = 0;
@@ -583,8 +584,6 @@ int main(int argc, char **argv)
 
   free_channel_desc_scm(gNB2UE);
   phy_free_nr_gNB(gNB);
-  free(RC.gNB[0]);
-  free(RC.gNB);
   term_nr_ue_signal(UE, 1);
   free(UE);
 
