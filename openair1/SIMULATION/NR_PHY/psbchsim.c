@@ -33,7 +33,6 @@
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_nr_UE.h"
-#include "PHY/defs_gNB.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
@@ -130,7 +129,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_gNB *gNB,
     rev_burst |= (((position_in_burst>>(63-i))&0x01)<<i);
 
   NR_DL_FRAME_PARMS *fp                                 = &gNB->frame_parms;
-  nfapi_nr_config_request_scf_t *gNB_config             = &gNB->gNB_config;
+  //nfapi_nr_config_request_scf_t *gNB_config             = &gNB->gNB_config;
   gNB_config->cell_config.phy_cell_id.value             = Nid_cell;
   gNB_config->ssb_config.scs_common.value               = mu;
   gNB_config->ssb_table.ssb_subcarrier_offset.value     = 0;
@@ -329,13 +328,20 @@ int main(int argc, char **argv)
   if (snr1set == 0)
     snr1 = snr0 + 10;
 
-  printf("Initializing gNodeB for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
+
+
+  printf("Initializing nrUE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
   RAN_CONTEXT_t RC;
-  RC.gNB = (PHY_VARS_gNB**) malloc(sizeof(PHY_VARS_gNB *));
-  RC.gNB[0] = malloc16_clear(sizeof(*(RC.gNB[0])));
-  PHY_VARS_gNB *gNB = RC.gNB[0];
-  gNB->ofdm_offset_divisor = UINT_MAX;
-  NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms; //to be initialized I suppose (maybe not necessary for PSBCH)
+
+  //configure UE
+  UE = malloc(sizeof(PHY_VARS_NR_UE));
+  memset((void*)UE, 0, sizeof(PHY_VARS_NR_UE));
+  PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE**));
+  PHY_vars_UE_g[0] = malloc(sizeof(PHY_VARS_NR_UE*));
+  PHY_vars_UE_g[0][0] = UE;
+  UE->frame_parms.nb_antennas_rx = n_rx;
+
+  NR_DL_FRAME_PARMS *frame_parms = &(UE->frame_parms);
   frame_parms->nb_antennas_tx = n_tx;
   frame_parms->nb_antennas_rx = n_rx;
   frame_parms->nb_antenna_ports_gNB = n_tx;
@@ -344,8 +350,10 @@ int main(int argc, char **argv)
   frame_parms->nushift = Nid_cell % 4;
   frame_parms->ssb_type = nr_ssb_type_C;
   frame_parms->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
+
   nr_phy_config_request_sim_psbchsim(gNB, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
   phy_init_nr_gNB(gNB, 0, 1);
+
   frame_parms->ssb_start_subcarrier = 12 * gNB->gNB_config.ssb_table.ssb_offset_point_a.value + ssb_subcarrier_offset;
 
   double fs = 0;
@@ -546,6 +554,8 @@ int main(int argc, char **argv)
         }
         fapiPbch_t result;
         /* Side link rx PSBCH */
+        ret = 0;
+#if 0
         ret = nr_rx_psbch(UE,
                           &proc,
                           estimateSz,
@@ -557,7 +567,7 @@ int main(int argc, char **argv)
                           SISO,
                           &phy_pdcch_config,
                           &result);
-
+#endif
         if (ret == 0) {
           int payload_ret = 0;
           uint8_t gNB_xtra_byte = 0;
