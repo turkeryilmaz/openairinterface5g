@@ -428,6 +428,8 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 
     RRC_CONFIGURATION_REQ(msg_p).num_plmn = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
     RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
+    RRC_CONFIGURATION_REQ(msg_p).cellBarred = SIB1_CELL_ACCESS_REL_INFO.cellBarred;
+    RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection = SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
 
     for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn; ++i) {
       if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.d == TRUE)
@@ -459,6 +461,14 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
+                         }
+                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib3 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                         {
+                           RRC_CONFIGURATION_REQ(msg_p).q_Hyst = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionInfoCommon.q_Hyst;
+                           RRC_CONFIGURATION_REQ(msg_p).threshServingLow = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.threshServingLow;
+                           RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
+                           RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
+                           RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
                          }
                        }
                      }

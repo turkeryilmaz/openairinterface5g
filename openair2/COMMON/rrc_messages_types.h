@@ -325,6 +325,8 @@ typedef struct RrcConfigurationReq_s {
   int                     eMTC_configured;
   int                     SL_configured;
   uint8_t                 systemInfoValueTag;
+  long                    cellBarred;
+  long                    intraFreqReselection;
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];
@@ -405,6 +407,13 @@ typedef struct RrcConfigurationReq_s {
   long  *pusch_maxNumRepetitionCEmodeB_r13                 [MAX_NUM_CCs];
   long  *pusch_repetitionLevelCEmodeA_r13				   [MAX_NUM_CCs];
   long  *pusch_HoppingOffset_v1310                         [MAX_NUM_CCs];
+
+  //SIB3
+  long     q_Hyst;
+  long     threshServingLow;
+  long     cellReselectionPriority;
+  long     sib3_q_RxLevMin;
+  long     t_ReselectionEUTRA;
 
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];
