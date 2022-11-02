@@ -32,6 +32,7 @@
 */
 
 #include "PHY/defs_gNB.h"
+#include "PHY/defs_nr_UE.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/sse_intrin.h"
@@ -286,14 +287,14 @@ static void nr_pbch_scrambling(NR_gNB_PBCH *pbch,
   }
 }
 
-static void nr_psbch_scrambling(NR_gNB_PBCH *pbch,
+static void nr_psbch_scrambling(NR_txUE_PSBCH *psbch,
                         uint32_t Nid,
                         uint8_t nushift,
                         uint16_t M,
                         uint16_t length,
                         uint8_t encoded,
                         uint32_t unscrambling_mask) {
-  uint32_t *pbch_e = pbch->pbch_e;
+  uint32_t *pbch_e = psbch->psbch_e;
 
   uint8_t reset = 1;
   uint32_t x1, s = 0;
@@ -318,14 +319,14 @@ static void nr_psbch_scrambling(NR_gNB_PBCH *pbch,
     /// 1st Scrambling
     for (int i = 0; i < length; ++i) {
       if ((unscrambling_mask>>i)&1)
-        pbch->pbch_a_prime ^= ((pbch->pbch_a_interleaved >> i) & 1) << i;
+        psbch->psbch_a_prime ^= ((psbch->psbch_a_interleaved >> i) & 1) << i;
       else {
         if (((k + offset) & 0x1f) == 0) {
           s = lte_gold_generic(&x1, &x2, reset);
           reset = 0;
         }
 
-        pbch->pbch_a_prime ^= (((pbch->pbch_a_interleaved >> i) & 1) ^ ((s >> ((k + offset) & 0x1f)) & 1)) << i;
+        psbch->psbch_a_prime ^= (((psbch->psbch_a_interleaved >> i) & 1) ^ ((s >> ((k + offset) & 0x1f)) & 1)) << i;
         k++;                  /// k increase only when payload bit is not special bit
       }
     }
@@ -600,13 +601,13 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
   psbch_payload.reserved = 0;              // 2 bits reserved
 
-  NR_gNB_PBCH m_pbch;
-  NR_gNB_PBCH *pbch = &m_pbch;
-  memset((void *)pbch, 0, sizeof(NR_gNB_PBCH));
-  pbch->pbch_a = *((uint32_t *)&psbch_payload);
-  pbch->pbch_a_interleaved = pbch->pbch_a; // skip interlevaing for Sidelink
+  NR_txUE_PSBCH m_pbch;
+  NR_txUE_PSBCH *psbch = &m_pbch;
+  memset((void *)psbch, 0, sizeof(NR_gNB_PBCH));
+  psbch->psbch_a = *((uint32_t *)&psbch_payload);
+  psbch->psbch_a_interleaved = psbch->psbch_a; // skip interlevaing for Sidelink
 
-  pbch->pbch_a_prime = 0;
+  psbch->psbch_a_prime = 0;
 
   #ifdef DEBUG_PBCH_ENCODING
     printf("PSBCH payload = 0x%08x\n",pbch->pbch_a);
@@ -615,10 +616,10 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   // Encoder reversal
   uint64_t a_reversed = 0;
   for (int i = 0; i < NR_POLAR_PBCH_PAYLOAD_BITS; i++)
-    a_reversed |= (((uint64_t)pbch->pbch_a_interleaved >> i) & 1) << (31 - i);
+    a_reversed |= (((uint64_t)psbch->psbch_a_interleaved >> i) & 1) << (31 - i);
 
   /// CRC, coding and rate matching
-  polar_encoder_fast(&a_reversed, (void*)pbch->pbch_e, 0, 0,
+  polar_encoder_fast(&a_reversed, (void*)psbch->psbch_e, 0, 0,
                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
 
 #ifdef DEBUG_PBCH_ENCODING
@@ -632,7 +633,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   /// Scrambling
   uint16_t M = NR_POLAR_PSBCH_E;
   uint8_t nushift = 0;
-  nr_psbch_scrambling(pbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
+  nr_psbch_scrambling(psbch, (uint32_t)frame_parms->Nid_SL, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
 #ifdef DEBUG_PBCH_ENCODING
   printf("Scrambling:\n");
 
@@ -647,7 +648,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   for (int i = 0; i < NR_POLAR_PBCH_E >> 1; i++) {
     AssertFatal(((i << 1) >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
                 ((i << 1) >> 5), NR_POLAR_PBCH_E_DWORD);
-    uint8_t idx = ((pbch->pbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
+    uint8_t idx = ((psbch->psbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
     AssertFatal(((idx << 1) + 1) < 8, "Invalid index into nr_qpsk_mod_table. Index %d > 8\n",
                 (idx << 1) + 1);
     AssertFatal(((i << 1) + 1) < sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]), "Invalid index into mod_psbch_e. Index %d > %lu\n",

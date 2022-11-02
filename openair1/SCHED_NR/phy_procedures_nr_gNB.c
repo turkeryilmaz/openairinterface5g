@@ -101,17 +101,8 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
     for (int j=0;j<fp->symbols_per_slot;j++) 
       gNB->common_vars.beam_id[0][slot*fp->symbols_per_slot+j] = cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value;
   }
-  /* TODO: Temporarily using Lmax != 4 for NR Sidelink! */
-  if (fp->Lmax == 4)
-    nr_generate_pbch(&ssb_pdu,
-                    gNB->nr_pbch_interleaver,
-                    &txdataF[0][txdataF_offset],
-                    AMP,
-                    ssb_start_symbol,
-                    n_hf, frame, cfg, fp);
 
-  else
-    nr_generate_sl_psbch(&ssb_pdu,
+  nr_generate_sl_psbch(&ssb_pdu,
                         &txdataF[0][txdataF_offset],
                         AMP,
                         ssb_start_symbol,

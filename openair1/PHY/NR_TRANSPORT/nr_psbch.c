@@ -32,6 +32,7 @@
 */
 
 #include "PHY/defs_gNB.h"
+#include "PHY/defs_nr_UE.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/sse_intrin.h"
@@ -131,7 +132,7 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   return 0;
 }
 
-static void nr_psbch_scrambling(NR_gNB_PSBCH *psbch,
+static void nr_psbch_scrambling(NR_txUE_PSBCH *psbch,
                                 uint32_t Nid,
                                 uint8_t nushift,
                                 uint16_t M,
@@ -207,8 +208,8 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
   psbch_payload.reserved = 0;              // 2 bits reserved
 
-  NR_gNB_PSBCH m_psbch;
-  NR_gNB_PSBCH *psbch = &m_psbch;
+  NR_txUE_PSBCH m_psbch;
+  NR_txUE_PSBCH *psbch = &m_psbch;
   memset((void *)psbch, 0, sizeof(NR_gNB_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);
   psbch->psbch_a_interleaved = psbch->psbch_a; // skip interlevaing for Sidelink
@@ -239,7 +240,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   /// Scrambling
   uint16_t M = NR_POLAR_PSBCH_E;
   uint8_t nushift = 0;
-  nr_psbch_scrambling(psbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
+  nr_psbch_scrambling(psbch, (uint32_t)frame_parms->Nid_SL, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
 #ifdef DEBUG_PSBCH_ENCODING
   printf("Scrambling:\n");
 
