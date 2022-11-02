@@ -83,7 +83,7 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   nr_sl_generate_pss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
   nr_sl_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
 
-  nr_generate_psbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+  nr_generate_psbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
 
   if (T_ACTIVE(T_GNB_PHY_MIB)) {
     unsigned char bch[3];
