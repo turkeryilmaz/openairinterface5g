@@ -86,7 +86,7 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   if (fp->Lmax == 4)
     nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
   else
-    nr_generate_psbch_dmrs(gNB->nr_gold_pbch_dmrs ,&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
+    nr_generate_psbch_dmrs(gNB->nr_gold_psbch_dmrs ,&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, cfg, fp);
 
   if (T_ACTIVE(T_GNB_PHY_MIB)) {
     unsigned char bch[3];

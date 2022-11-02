@@ -296,15 +296,10 @@ struct NR_DL_FRAME_PARMS {
   frame_type_t frame_type;
   uint8_t tdd_config;
 #ifdef PHY_SIDE_LINK
-  /// Side Link ID
-  int     Nid_SL;
-#else
-  /// Cell ID
-  int     Nid_cell;
-#endif
-  uint16_t Nid_cell;
   /// Sidelink Cell ID
   uint16_t Nid_SL;
+#endif
+  uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
   uint32_t subcarrier_spacing;
   /// 3/4 sampling

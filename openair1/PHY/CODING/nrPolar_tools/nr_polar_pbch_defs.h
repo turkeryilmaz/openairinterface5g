@@ -53,9 +53,6 @@
 #define NR_POLAR_PBCH_E 864   //uint16_t
 #define NR_POLAR_PBCH_E_DWORD 27 // NR_POLAR_PBCH_E/32
 
-#define NR_POLAR_PSBCH_E 1782   //uint16_t
-#define NR_POLAR_PSBCH_E_DWORD 56 // NR_POLAR_PSBCH_E/32
-
 /*
  * TEST CODE
  */

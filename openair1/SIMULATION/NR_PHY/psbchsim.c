@@ -116,20 +116,20 @@ int run_initial_sync = 0;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
-
+PHY_VARS_gNB *gNB;
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_gNB *gNB,
-                                       int N_RB_DL,
-                                       int N_RB_UL,
-                                       int mu,
-                                       int Nid_cell,
-                                       uint64_t position_in_burst)
+                                        int N_RB_DL,
+                                        int N_RB_UL,
+                                        int mu,
+                                        int Nid_cell,
+                                        uint64_t position_in_burst)
 {
   uint64_t rev_burst = 0;
   for (int i = 0; i < 64; i++)
     rev_burst |= (((position_in_burst>>(63-i))&0x01)<<i);
 
   NR_DL_FRAME_PARMS *fp                                 = &gNB->frame_parms;
-  //nfapi_nr_config_request_scf_t *gNB_config             = &gNB->gNB_config;
+  nfapi_nr_config_request_scf_t *gNB_config             = &gNB->gNB_config;
   gNB_config->cell_config.phy_cell_id.value             = Nid_cell;
   gNB_config->ssb_config.scs_common.value               = mu;
   gNB_config->ssb_table.ssb_subcarrier_offset.value     = 0;
@@ -328,19 +328,12 @@ int main(int argc, char **argv)
   if (snr1set == 0)
     snr1 = snr0 + 10;
 
-
-
   printf("Initializing nrUE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
-  RAN_CONTEXT_t RC;
 
   //configure UE
-  UE = malloc(sizeof(PHY_VARS_NR_UE));
+  PHY_VARS_NR_UE *UE = malloc(sizeof(PHY_VARS_NR_UE));
   memset((void*)UE, 0, sizeof(PHY_VARS_NR_UE));
-  PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE**));
-  PHY_vars_UE_g[0] = malloc(sizeof(PHY_VARS_NR_UE*));
-  PHY_vars_UE_g[0][0] = UE;
   UE->frame_parms.nb_antennas_rx = n_rx;
-
   NR_DL_FRAME_PARMS *frame_parms = &(UE->frame_parms);
   frame_parms->nb_antennas_tx = n_tx;
   frame_parms->nb_antennas_rx = n_rx;
@@ -411,14 +404,13 @@ int main(int argc, char **argv)
   }
 
   //configure UE
-  PHY_VARS_NR_UE *UE = malloc16_clear(sizeof(*UE));
   memcpy(&UE->frame_parms, frame_parms, sizeof(UE->frame_parms));
   if (run_initial_sync == 1) {
     UE->is_synchronized = 0;
   } else {
     UE->is_synchronized = 1;
   }
-	UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
+  UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
 
   if (init_nr_ue_signal(UE, 1) != 0) {
     printf("Error at UE NR initialisation\n");
@@ -535,7 +527,6 @@ int main(int argc, char **argv)
         }
       } else {
         UE_nr_rxtx_proc_t proc = {0};
-        NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         UE->rx_offset = 0;
         uint8_t ssb_index = 0;
         const int estimateSz = 7 * 2 * sizeof(int) * frame_parms->ofdm_symbol_size;
@@ -593,8 +584,6 @@ int main(int argc, char **argv)
 
   free_channel_desc_scm(gNB2UE);
   phy_free_nr_gNB(gNB);
-  free(RC.gNB[0]);
-  free(RC.gNB);
   term_nr_ue_signal(UE, 1);
   free(UE);
 
