@@ -656,7 +656,7 @@ void processSlotRX_SL(void *arg) {
 
   if (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
       LOG_I(PHY, "TODO: phy_procedures_nrUE_RX will be called after updating\n");
-      //phy_procedures_nrUE_RX(UE, proc, gNB_id, &phy_pdcch_config, &rxtxD->txFifo);
+      // TODO: phy_procedures_nrUE_RX(UE, proc, &phy_pdcch_config, &rxtxD->txFifo);
   } else {
       LOG_I(PHY, "TODO: Need upate to call processSlotTX\n");
       // TODO: Need update to call phy_procedures_nrUE_TX() in processSlotTX.

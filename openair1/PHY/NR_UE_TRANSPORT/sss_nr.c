@@ -342,7 +342,7 @@ int do_pss_sss_extract_nr(PHY_VARS_NR_UE *ue,
     pss_rxF_ext = &pss_ext[aarx][0];
     sss_rxF_ext = &sss_ext[aarx][0];
 
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 56;
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START;
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
@@ -536,7 +536,11 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metric, 
       // if the current metric is better than the last save it
       if (metric > *tot_metric) {
         *tot_metric = metric;
-        ue->frame_parms.Nid_cell = Nid2+(3*Nid1);
+#ifdef PHY_SIDE_LINK
+        ue->frame_parms.Nid_SL = Nid1 + 336 * Nid2;
+#else
+        ue->frame_parms.Nid_cell = Nid2 +(3 * Nid1);
+#endif
         *phase_max = phase;
 
 #ifdef DEBUG_SSS_NR

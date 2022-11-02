@@ -70,6 +70,18 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                                uint8_t ssb_index,
                                uint8_t n_hf);
 
+int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
+                               int estimateSz,
+			       struct complex16 dl_ch_estimates [][estimateSz],
+			       struct complex16 dl_ch_estimates_time [][estimateSz],
+			       UE_nr_rxtx_proc_t *proc,
+                               uint8_t gNB_id,
+                               unsigned char Ns,
+                               unsigned char symbol,
+                               int dmrss,
+                               uint8_t ssb_index,
+                               uint8_t n_hf);
+
 int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                 UE_nr_rxtx_proc_t *proc,
                                 uint8_t gNB_id,

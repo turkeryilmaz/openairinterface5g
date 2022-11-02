@@ -1102,11 +1102,11 @@ int nr_rx_pbch( PHY_VARS_NR_UE *ue,
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
-int nr_rx_psbch( PHY_VARS_NR_UE *ue,
+int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 const int estimateSz,
                 struct complex16 dl_ch_estimates[][estimateSz],
-                NR_UE_PBCH *nr_ue_pbch_vars,
+                NR_UE_PSBCH *nr_ue_psbch_vars,
                 NR_DL_FRAME_PARMS *frame_parms,
                 uint8_t eNB_id,
                 uint8_t i_ssb,

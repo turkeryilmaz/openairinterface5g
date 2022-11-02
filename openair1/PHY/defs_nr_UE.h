@@ -35,6 +35,7 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 
 
 #define _GNU_SOURCE
@@ -585,6 +586,20 @@ typedef struct {
   //uint32_t pdu_fer;
 } NR_UE_PBCH;
 
+#define PSBCH_A 32
+
+typedef struct {
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  //uint32_t pdu_fer;
+} NR_UE_PSBCH;
+
+
 typedef struct {
   int16_t amp;
   int16_t *prachF;
@@ -717,6 +732,7 @@ typedef struct {
 
   NR_UE_PDSCH     *pdsch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX+1]; // two RxTx Threads
   NR_UE_PBCH      *pbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PDCCH     *pdcch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -757,7 +773,10 @@ typedef struct {
   /// PBCH DMRS sequence
   uint32_t nr_gold_pbch[2][64][NR_PBCH_DMRS_LENGTH_DWORD];
 
-  /// PDSCH DMRS
+  /// PSBCH DMRS sequence
+  uint32_t nr_gold_psbch[NR_PSBCH_DMRS_LENGTH_DWORD];
+  
+    /// PDSCH DMRS
   uint32_t ****nr_gold_pdsch[NUMBER_OF_CONNECTED_eNB_MAX];
 
   // Scrambling IDs used in PDSCH DMRS

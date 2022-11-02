@@ -98,6 +98,7 @@ endif()
 
 add_definitions("-DNETTLE_VERSION_MAJOR=${NETTLE_VERSION_MAJOR}")
 add_definitions("-DNETTLE_VERSION_MINOR=${NETTLE_VERSION_MINOR}")
+add_definitions("-DPHY_SIDE_LINK")
 
 pkg_search_module(XPM xpm)
 if(NOT ${XPM_FOUND})
@@ -1613,6 +1614,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_pss.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_sss.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_psbch.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dci_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_dlsch.c
@@ -1664,6 +1666,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
@@ -2942,18 +2945,17 @@ target_link_libraries(nr_pbchsim
   m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
   )
 
-add_executable(nr_psbchsim
-${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
-${OPENAIR_DIR}/common/utils/nr/nr_common.c
-${T_SOURCE}
-${SHLIB_LOADER_SOURCES}
-)
+  add_executable(nr_psbchsim
+  ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
 target_link_libraries(nr_psbchsim
   -Wl,--start-group UTIL SIMU_COMMON SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
-  m pthread ${ATLAS_LIBRARIES}  ${T_LIB} ITTI dl
+  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
   )
 
-#PUCCH ---> Prashanth
 add_executable(nr_pucchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
