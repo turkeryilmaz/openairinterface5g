@@ -51,7 +51,7 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                            NR_DL_FRAME_PARMS *frame_parms) {
   int dmrs_modulations_per_slot = 32;
   int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
-  LOG_D(NR_PHY, "PSBCH DMRS mapping started at symbol %d\n", ssb_start_symbol + 1);
+  LOG_D(NR_PHY, "PSBCH DMRS mapping started at symbol %d\n", ssb_start_symbol);
 
   /// QPSK modulation
   for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
