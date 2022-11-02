@@ -935,9 +935,14 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   (*sib1)->cellAccessRelatedInfo.cellIdentity.size=4;
   (*sib1)->cellAccessRelatedInfo.cellIdentity.bits_unused=4;
   //  assign_enum(&(*sib1)->cellAccessRelatedInfo.cellBarred,SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred);
-  (*sib1)->cellAccessRelatedInfo.cellBarred=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
-  //  assign_enum(&(*sib1)->cellAccessRelatedInfo.intraFreqReselection,SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed);
-  (*sib1)->cellAccessRelatedInfo.intraFreqReselection=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_notAllowed;
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    (*sib1)->cellAccessRelatedInfo.cellBarred=configuration->cellBarred;
+    (*sib1)->cellAccessRelatedInfo.intraFreqReselection=configuration->intraFreqReselection;
+  } else {
+    (*sib1)->cellAccessRelatedInfo.cellBarred=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
+    //  assign_enum(&(*sib1)->cellAccessRelatedInfo.intraFreqReselection,SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed);
+    (*sib1)->cellAccessRelatedInfo.intraFreqReselection=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_notAllowed;
+  }
   (*sib1)->cellAccessRelatedInfo.csg_Indication=0;
 
   if (RC.ss.mode == SS_SOFTMODEM)
@@ -1768,12 +1773,22 @@ uint8_t do_SIB23(uint8_t Mod_id,
   (*sib2)->timeAlignmentTimerCommon=LTE_TimeAlignmentTimer_infinity;//TimeAlignmentTimer_sf5120;
   /// (*SIB3)
   (*sib3)->ext1 = NULL;
-  (*sib3)->cellReselectionInfoCommon.q_Hyst=LTE_SystemInformationBlockType3__cellReselectionInfoCommon__q_Hyst_dB4;
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    (*sib3)->cellReselectionInfoCommon.q_Hyst=configuration->q_Hyst;
+  } else {
+    (*sib3)->cellReselectionInfoCommon.q_Hyst=LTE_SystemInformationBlockType3__cellReselectionInfoCommon__q_Hyst_dB4;
+  }
   (*sib3)->cellReselectionInfoCommon.speedStateReselectionPars=NULL;
   (*sib3)->cellReselectionServingFreqInfo.s_NonIntraSearch=NULL;
-  (*sib3)->cellReselectionServingFreqInfo.threshServingLow=31;
-  (*sib3)->cellReselectionServingFreqInfo.cellReselectionPriority=7;
-  (*sib3)->intraFreqCellReselectionInfo.q_RxLevMin = -70;
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    (*sib3)->cellReselectionServingFreqInfo.threshServingLow= configuration->threshServingLow;
+    (*sib3)->cellReselectionServingFreqInfo.cellReselectionPriority= configuration->cellReselectionPriority;
+    (*sib3)->intraFreqCellReselectionInfo.q_RxLevMin = configuration->sib3_q_RxLevMin;
+  } else {
+    (*sib3)->cellReselectionServingFreqInfo.threshServingLow=31;
+    (*sib3)->cellReselectionServingFreqInfo.cellReselectionPriority=7;
+    (*sib3)->intraFreqCellReselectionInfo.q_RxLevMin = -70;
+  }
   (*sib3)->intraFreqCellReselectionInfo.p_Max = NULL;
   (*sib3)->intraFreqCellReselectionInfo.s_IntraSearch = CALLOC(1,sizeof(*(*sib3)->intraFreqCellReselectionInfo.s_IntraSearch));
   *(*sib3)->intraFreqCellReselectionInfo.s_IntraSearch = 31;
@@ -1784,7 +1799,11 @@ uint8_t do_SIB23(uint8_t Mod_id,
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.size = 1;
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.buf[0] = 1 << 6;
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.bits_unused = 6;
-  (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = 1;
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = configuration->t_ReselectionEUTRA;
+  } else {
+    (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = 1;
+  }
   (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA_SF = (struct LTE_SpeedStateScaleFactors *)NULL;
   (*sib3)->ext1 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1));
   (*sib3)->ext1->s_IntraSearch_v920 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1__s_IntraSearch_v920));
