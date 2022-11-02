@@ -434,17 +434,15 @@ int main(int argc, char **argv)
       }
     }
   }
-  # if 0
-  int frame_length_complex_samples_no_prefix = UE->frame_parms.samples_per_subframe_wCP;
-  LOG_M("txsigF0.m", "txsF0", UE->common_vars.txdataF[0], frame_length_complex_samples_no_prefix, 1, 1);
-  if (UE->frame_parms.nb_antennas_tx > 1)
-    LOG_M("txsigF1.m", "txsF1", UE->common_vars.txdataF[1], frame_length_complex_samples_no_prefix, 1, 1);
 
-
-  LOG_M("txsig0.m","txs0", txdata[0],frame_length_complex_samples, 1, 1);
+  char buffer[1024];
+  printf("txdataF[0] = %s\n", hexdump(UE->common_vars.txdataF[0], sizeof(UE->common_vars.txdataF[0]), buffer, sizeof(buffer)));
   if (UE->frame_parms.nb_antennas_tx > 1)
-    LOG_M("txsig1.m","txs1", txdata[1],frame_length_complex_samples, 1, 1);
-  #endif
+    printf("txdataF[1] = %s\n", hexdump(UE->common_vars.txdataF[1], sizeof(UE->common_vars.txdataF[1]), buffer, sizeof(buffer)));
+
+  printf("txdata[0] = %s\n", hexdump(txdata[0], sizeof(txdata[0]), buffer, sizeof(buffer)));
+  if (UE->frame_parms.nb_antennas_tx > 1)
+    printf("txdata[0] = %s\n", hexdump(txdata[1], sizeof(txdata[1]), buffer, sizeof(buffer)));
 
   int n_errors = 0;
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
