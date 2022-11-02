@@ -41,9 +41,9 @@ int nr_sl_generate_sss(int32_t *txdataF,
   const int x1_initial[7] = { 1, 0, 0, 0, 0, 0, 0 };
 
   /// Sequence generation
-  int Nid = config->cell_config.phy_cell_id.value;
-  int Nid2 = Nid % 3;
-  int Nid1 = (Nid - Nid2) / 3;
+  int Nid = frame_parms->Nid_SL;
+  int Nid1 = Nid / 335;
+  int Nid2 = Nid % 335;
 
   for (int i=0; i < 7; i++) {
     x0[i] = x0_initial[i];
