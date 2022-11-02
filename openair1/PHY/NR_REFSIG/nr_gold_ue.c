@@ -55,7 +55,7 @@ void nr_gold_psbch(PHY_VARS_NR_UE* ue)
 {
   uint8_t reset = 1;
   unsigned int x1;
-  unsigned int x2 = ue->frame_parms.Nid_cell;
+  unsigned int x2 = ue->frame_parms.Nid_SL;
 
   for (int n = 0; n < NR_PSBCH_DMRS_LENGTH_DWORD; n++) {
     AssertFatal(n < sizeof(ue->nr_gold_psbch) / sizeof(ue->nr_gold_psbch[0]),

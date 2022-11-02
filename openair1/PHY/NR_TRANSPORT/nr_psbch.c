@@ -32,6 +32,7 @@
 */
 
 #include "PHY/defs_gNB.h"
+#include "PHY/defs_nr_UE.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/sse_intrin.h"
@@ -47,12 +48,10 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                            int32_t *txdataF,
                            int16_t amp,
                            uint8_t ssb_start_symbol,
-                           nfapi_nr_config_request_scf_t *config,
                            NR_DL_FRAME_PARMS *frame_parms) {
   int dmrs_modulations_per_slot = 32;
   int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
-  uint8_t nushift = 0; //config->cell_config.phy_cell_id.value &3;
-  LOG_D(PHY, "PSBCH DMRS mapping started at symbol %d shift %d\n", ssb_start_symbol + 1, nushift);
+  LOG_D(NR_PHY, "PSBCH DMRS mapping started at symbol %d\n", ssb_start_symbol);
 
   /// QPSK modulation
   for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
@@ -71,7 +70,7 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   /// Resource mapping
   // PSBCH DMRS are mapped  within the SSB block on every fourth subcarrier starting from nushift of symbols 1, 2, 3
   ///symbol 0  [0+nushift:4:236+nushift] -- 33 mod symbols
-  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + nushift;
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
   int l = ssb_start_symbol;
   int m = 0;
   for (; m < dmrs_modulations_per_slot; m++) {
@@ -131,7 +130,7 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   return 0;
 }
 
-static void nr_psbch_scrambling(NR_gNB_PSBCH *psbch,
+static void nr_psbch_scrambling(NR_txUE_PSBCH *psbch,
                                 uint32_t Nid,
                                 uint8_t nushift,
                                 uint16_t M,
@@ -207,9 +206,9 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
   psbch_payload.reserved = 0;              // 2 bits reserved
 
-  NR_gNB_PSBCH m_psbch;
-  NR_gNB_PSBCH *psbch = &m_psbch;
-  memset((void *)psbch, 0, sizeof(NR_gNB_PSBCH));
+  NR_txUE_PSBCH m_psbch;
+  NR_txUE_PSBCH *psbch = &m_psbch;
+  memset((void *)psbch, 0, sizeof(NR_txUE_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);
   psbch->psbch_a_interleaved = psbch->psbch_a; // skip interlevaing for Sidelink
 
@@ -239,7 +238,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   /// Scrambling
   uint16_t M = NR_POLAR_PSBCH_E;
   uint8_t nushift = 0;
-  nr_psbch_scrambling(psbch, (uint32_t)config->cell_config.phy_cell_id.value, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
+  nr_psbch_scrambling(psbch, (uint32_t)frame_parms->Nid_SL, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
 #ifdef DEBUG_PSBCH_ENCODING
   printf("Scrambling:\n");
 
@@ -296,7 +295,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
       k-=frame_parms->ofdm_symbol_size;
   }
 
-  int N_SSSB_Symb = 14;
+ int N_SSSB_Symb = 14;
   ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
   l = ssb_start_symbol + 5;
   m = 99;
