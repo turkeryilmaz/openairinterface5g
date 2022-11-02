@@ -666,6 +666,7 @@ typedef struct {
   uint8_t Mod_id;
   /// \brief Component carrier ID for this PHY instance
   uint8_t CC_id;
+  bool configured;
   /// \brief Mapping of CC_id antennas to cards
   openair0_rf_map      rf_map;
   //uint8_t local_flag;

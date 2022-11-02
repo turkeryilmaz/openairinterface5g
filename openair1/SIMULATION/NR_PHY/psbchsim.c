@@ -116,51 +116,56 @@ int run_initial_sync = 0;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
-PHY_VARS_gNB *gNB;
-void nr_phy_config_request_sim_psbchsim(PHY_VARS_gNB *gNB,
+
+void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
                                         int N_RB_DL,
                                         int N_RB_UL,
                                         int mu,
-                                        int Nid_cell,
+                                        int Nid_SL,
                                         uint64_t position_in_burst)
 {
   uint64_t rev_burst = 0;
   for (int i = 0; i < 64; i++)
-    rev_burst |= (((position_in_burst>>(63-i))&0x01)<<i);
+    rev_burst |= (((position_in_burst >> (63-i))&0x01) << i);
 
-  NR_DL_FRAME_PARMS *fp                                 = &gNB->frame_parms;
-  nfapi_nr_config_request_scf_t *gNB_config             = &gNB->gNB_config;
-  gNB_config->cell_config.phy_cell_id.value             = Nid_cell;
-  gNB_config->ssb_config.scs_common.value               = mu;
-  gNB_config->ssb_table.ssb_subcarrier_offset.value     = 0;
-  gNB_config->ssb_table.ssb_offset_point_a.value        = (N_RB_DL-20)>>1;
-  gNB_config->ssb_table.ssb_mask_list[1].ssb_mask.value = (rev_burst)&(0xFFFFFFFF);
-  gNB_config->ssb_table.ssb_mask_list[0].ssb_mask.value = (rev_burst>>32)&(0xFFFFFFFF);
-  gNB_config->cell_config.frame_duplex_type.value       = TDD;
-  gNB_config->ssb_table.ssb_period.value		            = 1; //10ms
-  gNB_config->carrier_config.dl_grid_size[mu].value     = N_RB_DL;
-  gNB_config->carrier_config.ul_grid_size[mu].value     = N_RB_UL;
-  gNB_config->carrier_config.num_tx_ant.value           = fp->nb_antennas_tx;
-  gNB_config->carrier_config.num_rx_ant.value           = fp->nb_antennas_rx;
-  gNB_config->tdd_table.tdd_period.value                = 0;
-  gNB->mac_enabled                                      = 1;
-  fp->dl_CarrierFreq                                    = 3600000000;
-  fp->ul_CarrierFreq                                    = 3600000000;
-  if (mu > 2) {
-    fp->nr_band = 257;
-  } else {
-    fp->nr_band = 78;
-  }
-  fp->threequarter_fs= 0;
+  NR_DL_FRAME_PARMS *fp                                  = &ue->frame_parms;
+  fapi_nr_config_request_t *nrUE_config                  = &ue->nrUE_config;
+  nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
+  nrUE_config->ssb_config.scs_common                     = mu;
+  nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
+  nrUE_config->ssb_table.ssb_offset_point_a              = (N_RB_DL-20)>>1;
+  nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
+  nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
+  nrUE_config->cell_config.frame_duplex_type             = TDD;
+  nrUE_config->ssb_table.ssb_period                      = 1; //10ms
+  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
+  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
+  nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
+  nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
+  nrUE_config->tdd_table.tdd_period                      = 0;
+  ue->mac_enabled                                        = 1;
+  fp->dl_CarrierFreq                                     = 3600000000;
+  fp->ul_CarrierFreq                                     = 3600000000;
+  fp->nb_antennas_tx = n_tx;
+  fp->nb_antennas_rx = n_rx;
+  fp->nb_antenna_ports_gNB = n_tx;
+  fp->N_RB_DL = N_RB_DL;
+  fp->Nid_cell = Nid_cell;
+  fp->nushift = Nid_cell % 4;
+  fp->ssb_type = nr_ssb_type_C;
+  fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
+  fp->nr_band = mu < 2 ? 78 : 257;
+  fp->threequarter_fs = 0;
   fp->ofdm_offset_divisor = UINT_MAX;
-  gNB_config->carrier_config.dl_bandwidth.value = config_bandwidth(mu, N_RB_DL, fp->nr_band);
+  fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
+  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
 
-  nr_init_frame_parms(gNB_config, fp);
+  nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   init_timeshift_rotation(fp);
   init_symbol_rotation(fp);
 
-  gNB->configured = 1;
-  LOG_I(PHY, "gNB configured\n");
+  ue->configured = true;
+  LOG_I(NR_PHY, "nrUE configured\n");
 }
 
 
@@ -328,27 +333,12 @@ int main(int argc, char **argv)
   if (snr1set == 0)
     snr1 = snr0 + 10;
 
-  printf("Initializing nrUE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
+  printf("Initializing gNodeB for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
 
-  //configure UE
-  PHY_VARS_NR_UE *UE = malloc(sizeof(PHY_VARS_NR_UE));
-  memset((void*)UE, 0, sizeof(PHY_VARS_NR_UE));
-  UE->frame_parms.nb_antennas_rx = n_rx;
-  NR_DL_FRAME_PARMS *frame_parms = &(UE->frame_parms);
-  frame_parms->nb_antennas_tx = n_tx;
-  frame_parms->nb_antennas_rx = n_rx;
-  frame_parms->nb_antenna_ports_gNB = n_tx;
-  frame_parms->N_RB_DL = N_RB_DL;
-  frame_parms->Nid_cell = Nid_cell;
-  frame_parms->nushift = Nid_cell % 4;
-  frame_parms->ssb_type = nr_ssb_type_C;
-  frame_parms->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
-
-  nr_phy_config_request_sim_psbchsim(gNB, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
-  phy_init_nr_gNB(gNB, 0, 1);
-
-  frame_parms->ssb_start_subcarrier = 12 * gNB->gNB_config.ssb_table.ssb_offset_point_a.value + ssb_subcarrier_offset;
-
+  PHY_VARS_NR_UE *UE = malloc16_clear(sizeof(*UE));
+  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
+  init_nr_ue_signal(UE, 1);
+#if 0
   double fs = 0;
   double scs = 30000;
   double bw = 100e6;
@@ -423,7 +413,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < frame_parms->Lmax; i++) {
       if((SSB_positions >> i) & 0x01) {
         const int sc_offset = frame_parms->freq_range == nr_FR1 ? ssb_subcarrier_offset<<mu : ssb_subcarrier_offset;
-        const int prb_offset = frame_parms->freq_range == nr_FR1 ? gNB->gNB_config.ssb_table.ssb_offset_point_a.value<<mu : gNB->gNB_config.ssb_table.ssb_offset_point_a.value << (mu - 2);
+        const int prb_offset = frame_parms->freq_range == nr_FR1 ? UE->nrUE_config.ssb_table.ssb_offset_point_a<<mu : UE->nrUE_config.ssb_table.ssb_offset_point_a << (mu - 2);
         msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.bchPayload = 0x55dd33;
         msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbBlockIndex = i;
         msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset = sc_offset;
@@ -605,5 +595,6 @@ int main(int argc, char **argv)
 
   loader_reset();
   logTerm();
+#endif
   return 0;
 }
