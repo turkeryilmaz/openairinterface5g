@@ -107,6 +107,7 @@ int n_trials = 1;
 uint8_t n_tx = 1;
 uint8_t n_rx = 1;
 uint16_t Nid_cell = 0;
+uint16_t Nid_SL = 338;
 uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 FILE *input_fd = NULL;
@@ -153,6 +154,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->nb_antenna_ports_gNB = n_tx;
   fp->N_RB_DL = N_RB_DL;
   fp->Nid_cell = Nid_cell;
+  fp->Nid_SL = Nid_SL;
   fp->nushift = Nid_cell % 4;
   fp->ssb_type = nr_ssb_type_C;
   fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
@@ -337,7 +339,7 @@ int main(int argc, char **argv)
 
   printf("Initializing UE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
+  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
 
   double fs = 0;
   double scs = 30000;
