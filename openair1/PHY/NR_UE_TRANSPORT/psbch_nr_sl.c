@@ -44,6 +44,92 @@
 
 extern short nr_qpsk_mod_table[8];
 
+int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
+                           int32_t *txdataF,
+                           int16_t amp,
+                           uint8_t ssb_start_symbol,
+                           NR_DL_FRAME_PARMS *frame_parms) {
+  int dmrs_modulations_per_slot = 32;
+  int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
+  LOG_D(NR_PHY, "PSBCH DMRS mapping started at symbol %d\n", ssb_start_symbol);
+
+  /// QPSK modulation
+  for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
+    AssertFatal(((m << 1) >> 5) < NR_PSBCH_DMRS_LENGTH_DWORD, "Invalid index size %d\n", (m << 1) >> 5);
+    int idx = (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 3);
+    AssertFatal(((idx << 1) + 1) < (sizeof(nr_qpsk_mod_table) / sizeof(nr_qpsk_mod_table[0])), "Invalid index size %d\n", (idx << 1) + 1);
+    AssertFatal((m << 1) + 1 < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index size %d\n", (idx << 1) + 1);
+    mod_dmrs[m << 1] = nr_qpsk_mod_table[idx << 1];
+    mod_dmrs[(m << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
+#ifdef DEBUG_PSBCH_DMRS
+    printf("m %d idx %d gold seq %d b0-b1 %d-%d mod_dmrs %d %d\n", m, idx, gold_psbch_dmrs[(m << 1) >> 5], (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 1),
+           (((gold_psbch_dmrs[((m << 1) + 1) >> 5]) >> (((m << 1)+1) & 0x1f)) & 1), mod_dmrs[(m << 1)], mod_dmrs[(m << 1)+1]);
+#endif
+  }
+
+  /// Resource mapping
+  // PSBCH DMRS are mapped  within the SSB block on every fourth subcarrier starting from nushift of symbols 1, 2, 3
+  ///symbol 0  [0+nushift:4:236+nushift] -- 33 mod symbols
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
+  int l = ssb_start_symbol;
+  int m = 0;
+  for (; m < dmrs_modulations_per_slot; m++) {
+#ifdef DEBUG_PSBCH_DMRS
+    printf("m %d at k %d of l %d\n", m, k, l);
+#endif
+    AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index into mod_dmrs. Index %d > %lu\n",
+              (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
+    int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
+    AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
+    ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
+    ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
+#ifdef DEBUG_PSBCH_DMRS
+    printf("(%d,%d)\n",
+           ((int16_t *)txdataF)[(idx) << 1],
+           ((int16_t *)txdataF)[((idx) << 1)+1]);
+#endif
+    k+=4;
+    if (k >= frame_parms->ofdm_symbol_size)
+      k-=frame_parms->ofdm_symbol_size;
+  }
+
+  int N_SSSB_Symb = 13;
+  l = ssb_start_symbol + 5;
+  while (l < N_SSSB_Symb)
+  {
+    int mod_count = 0;
+    while (m < NR_PSBCH_DMRS_LENGTH) {
+#ifdef DEBUG_PSBCH_DMRS
+      printf("m %d at k %d of l %d\n", m, k, l);
+#endif
+      AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index into mod_dmrs. Index %d > %lu\n",
+                (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
+      int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
+      AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
+      ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
+      ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
+#ifdef DEBUG_PSBCH_DMRS
+      printf("(%d,%d)\n",
+             ((int16_t *)txdataF)[idx],
+             ((int16_t *)txdataF)[(idx)+1]);
+#endif
+      k+=4;
+      if (k >= frame_parms->ofdm_symbol_size)
+        k-=frame_parms->ofdm_symbol_size;
+      mod_count++;
+      m++;
+      if (mod_count == dmrs_modulations_per_slot)
+        break;
+    }
+    l++;
+  }
+
+#ifdef DEBUG_PSBCH_DMRS
+  write_output("txdataF_psbch_dmrs.m", "txdataF_psbch_dmrs", txdataF[0], frame_parms->samples_per_frame_wCP>>1, 1, 1);
+#endif
+  return 0;
+}
+
 static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
                                 uint32_t Nid,
                                 uint8_t nushift,
@@ -100,17 +186,13 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
   }
 }
 
-
-int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
-                         int32_t *txdataF,
+int nr_generate_sl_psbch(int32_t *txdataF,
                          int16_t amp,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,
                          int sfn,
-                         nfapi_nr_config_request_scf_t *config,
                          NR_DL_FRAME_PARMS *frame_parms) {
-
-  LOG_D(PHY, "PSBCH SL generation started\n");
+  LOG_D(NR_PHY, "PSBCH SL generation started\n");
 
   /* payload is 56 bits */
   PSBCH_payload psbch_payload;             // NR Side Link Payload for Rel 16
@@ -187,7 +269,7 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   int l = ssb_start_symbol;
   int m = 0;
 
-  for (int ssb_sc_idx = 0; ssb_sc_idx < 132; ssb_sc_idx++) {
+  for (int ssb_sc_idx = 0; ssb_sc_idx < NR_PSBCH_MAX_NB_CARRIERS; ssb_sc_idx++) {
     if ((ssb_sc_idx & 3) == nushift) {  //skip DMRS
       k++;
       continue;
@@ -210,14 +292,15 @@ int nr_generate_sl_psbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   }
 
  int N_SSSB_Symb = 14;
-  ///symbol 5  to N_SSSB_Symb [0:132] -- 72 mod symbols
+  ///symbol 5  to N_SSSB_Symb [0:132] -- 99 mod symbols
   l = ssb_start_symbol + 5;
+  AssertFatal(m == 99, "m does not equal 99");
   m = 99;
   while (l < N_SSSB_Symb - 1)
   {
     k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
 
-    for (int ssb_sc_idx = 0; ssb_sc_idx < 132; ssb_sc_idx++) {
+    for (int ssb_sc_idx = 0; ssb_sc_idx < NR_PSBCH_MAX_NB_CARRIERS; ssb_sc_idx++) {
       if ((ssb_sc_idx & 3) == nushift) {  //skip DMRS
         k++;
         continue;
