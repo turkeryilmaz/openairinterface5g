@@ -40,6 +40,7 @@
 #define NR_PUSCH_x 2 // UCI placeholder bit TS 38.212 V15.4.0 subclause 5.3.3.1
 #define NR_PUSCH_y 3 // UCI placeholder bit
 
+extern short nr_qpsk_mod_table[8];
 // Functions below implement 36-211 and 36-212
 
 /** @addtogroup _PHY_TRANSPORT_
@@ -1085,6 +1086,18 @@ int sss_only_extract(PHY_VARS_NR_UE *phy_vars_ue,
 int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_max);
 
 /*!
+\fn int nr_sl_generate_psbch_dmrs
+\brief Generation of the DMRS for the PSBCH
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
+                              int32_t *txdataF,
+                              int16_t amp,
+                              uint8_t ssb_start_symbol,
+                              NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
 \fn int nr_generate_pss
 \brief Generation of the NR PSS
 @param
@@ -1124,6 +1137,9 @@ int nr_rx_pbch( PHY_VARS_NR_UE *ue,
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
+
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot);
+
 int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 const int estimateSz,
@@ -1687,8 +1703,6 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 
 void dump_nrdlsch(PHY_VARS_NR_UE *ue,uint8_t gNB_id,uint8_t nr_slot_rx,unsigned int *coded_bits_per_codeword,int round,  unsigned char harq_pid);
-
-void check_and_generate_slss_nr(PHY_VARS_NR_UE *ue, int frame_tx, int slot_tx);
 
 /**@}*/
 #endif

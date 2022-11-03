@@ -29,11 +29,10 @@
 #include "PHY/phy_extern.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 
-
-int nr_sl_generate_pss(  int32_t *txdataF,
-                      int16_t amp,
-                      uint8_t ssb_start_symbol,
-                      NR_DL_FRAME_PARMS *frame_parms)
+int nr_sl_generate_pss(int32_t *txdataF,
+                       int16_t amp,
+                       uint8_t ssb_start_symbol,
+                       NR_DL_FRAME_PARMS *frame_parms)
 {
   int16_t x[NR_PSS_LENGTH];
   const int x_initial[7] = {0, 1, 1 , 0, 1, 1, 1};
@@ -59,13 +58,14 @@ int nr_sl_generate_pss(  int32_t *txdataF,
 
   int l = ssb_start_symbol + 1;
 
-  uint8_t Nid2 = frame_parms->Nid_SL / 335;
-
+  uint8_t Nid2 = frame_parms->Nid_SL / 336;
+  uint8_t idx = 2 * (l * frame_parms->ofdm_symbol_size + frame_parms->ofdm_symbol_size);
+  AssertFatal(idx < frame_parms->samples_per_frame_wCP, "Invalid index into txdataF. Index %d >= %d\n",
+                idx, frame_parms->samples_per_frame_wCP);
   for (int i = 0; i < NR_PSS_LENGTH; i++) {
     int m = (i + 22 + 43 * Nid2) % (NR_PSS_LENGTH);
     int16_t d_pss = (1 - 2 * x[m]) * 23170;
-    //      printf("pss: writing position k %d / %d\n",k,frame_parms->ofdm_symbol_size);
-    ((int16_t*)txdataF)[2*(l*frame_parms->ofdm_symbol_size + k)] = (((int16_t)amp) * d_pss) >> 15;
+    ((int16_t*)txdataF)[2 * (l * frame_parms->ofdm_symbol_size + k)] = (((int16_t)amp) * d_pss) >> 15;
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
@@ -77,7 +77,9 @@ int nr_sl_generate_pss(  int32_t *txdataF,
   if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
   l = ssb_start_symbol + 2;
-
+  idx = 2 * (l * frame_parms->ofdm_symbol_size + frame_parms->ofdm_symbol_size);
+  AssertFatal(idx < frame_parms->samples_per_frame_wCP, "Invalid index into txdataF. Index %d >= %d\n",
+                idx, frame_parms->samples_per_frame_wCP);
   for (int i = 0; i < NR_PSS_LENGTH; i++) {
     int m = (i + 22 + 43 * Nid2)%(NR_PSS_LENGTH);
     int16_t d_pss = (1 - 2 * x[m]) * 23170;

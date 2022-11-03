@@ -1662,7 +1662,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr_sl.c
-  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/slss_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_generate_psbch_dmrs_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/cic_filter_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c

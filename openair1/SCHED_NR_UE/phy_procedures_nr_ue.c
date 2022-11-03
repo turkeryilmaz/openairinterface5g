@@ -301,7 +301,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   if (ue->sync_ref) {
      if ((ue->slss = nr_ue_get_slss(ue->Mod_id, ue->CC_id, frame_tx, slot_tx)) != NULL)
-      check_and_generate_slss_nr(ue, frame_tx, slot_tx);
+      nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
   }
 
   // TODO: Add SLDCH

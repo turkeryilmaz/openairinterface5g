@@ -597,14 +597,11 @@ typedef struct {
   uint32_t pdu_errors_conseq;
   /// \brief FER (in percent) .
   //uint32_t pdu_fer;
-} NR_UE_PSBCH;
-
-typedef struct {
   uint32_t psbch_a;
   uint32_t psbch_a_interleaved;
   uint32_t psbch_a_prime;
   uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
-} NR_txUE_PSBCH;
+} NR_UE_PSBCH;
 
 typedef struct {
   int16_t amp;
@@ -672,6 +669,7 @@ typedef struct {
   uint8_t Mod_id;
   /// \brief Component carrier ID for this PHY instance
   uint8_t CC_id;
+  bool configured;
   /// \brief Mapping of CC_id antennas to cards
   openair0_rf_map      rf_map;
   //uint8_t local_flag;
