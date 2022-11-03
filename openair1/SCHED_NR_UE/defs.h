@@ -140,7 +140,7 @@ int phy_procedures_slot_parallelization_nrUE_RX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_p
 
 void processSlotTX(void *arg);
 
-void nr_sl_common_signal_procedures (PHY_VARS_NR_UE *ue, int frame, int slot);
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot);
 
 #ifdef UE_SLOT_PARALLELISATION
   void *UE_thread_slot1_dl_processing(void *arg);
