@@ -50,6 +50,8 @@
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include <executables/softmodem-common.h>
 #include <executables/nr-uesoftmodem.h>
+#include "openair1/SCHED_NR_UE/defs.h"
+
 //#define DEBUG_NR_PSBCHSIM
 RAN_CONTEXT_t RC;
 double cpuf;
@@ -331,7 +333,6 @@ int main(int argc, char **argv)
   logInit();
   set_glog(loglvl);
 
-
   PHY_VARS_NR_UE *UE = malloc16_clear(sizeof(*UE));
 
   printf("Initializing UE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
@@ -388,8 +389,20 @@ int main(int argc, char **argv)
     r_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     r_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     printf("Allocating %d samples for txdata\n", frame_length_complex_samples);
-    txdata[i] = malloc16_clear(frame_length_complex_samples * sizeof(int));
+    txdata[i] = malloc16_clear(2 * frame_length_complex_samples * sizeof(int));
   }
+
+  UE->slss = calloc(1, sizeof(*UE->slss));
+  int len = sizeof(UE->slss->sl_mib) / sizeof(UE->slss->sl_mib[0]);
+  printf("This is len %d\n", len);
+  for (int i = 0; i < len; i++) {
+    UE->slss->sl_mib[i] = 0;
+  }
+  UE->slss->sl_mib_length = 32;
+  UE->slss->sl_numssb_withinperiod_r16 = 1;
+  UE->slss->sl_timeinterval_r16 = 0;
+  UE->slss->sl_timeoffsetssb_r16 = 0;
+  UE->slss->slss_id = 337;
 
   UE->is_synchronized = run_initial_sync ? 0 : 1;
   UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
@@ -401,6 +414,9 @@ int main(int argc, char **argv)
 
   nr_gold_psbch(UE);
   processingData_L1tx_t msgDataTx;
+  AssertFatal(UE->frame_parms.Lmax < sizeof(msgDataTx.ssb) / sizeof(msgDataTx.ssb[0]), "Invalid index %d\n",
+              UE->frame_parms.Lmax);
+  AssertFatal(UE->frame_parms.nb_antennas_tx < 2, "Invalid index %d\n", UE->frame_parms.nb_antennas_tx);
   for (int i = 0; i < UE->frame_parms.Lmax; i++) {
     if((SSB_positions >> i) & 0x01) {
       const int sc_offset = UE->frame_parms.freq_range == nr_FR1 ? ssb_subcarrier_offset << mu : ssb_subcarrier_offset;
@@ -412,25 +428,31 @@ int main(int argc, char **argv)
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++)
         memset(UE->common_vars.txdataF[aa], 0, sizeof(*UE->common_vars.txdataF[aa]));
 
-      int slot = nr_get_ssb_start_symbol(&UE->frame_parms, i) / 14;
-      //nr_common_signal_procedures(UE, 0, slot, msgDataTx.ssb[i].ssb_pdu);
+      //int frame = 0;
+      int ssb_start_symbol_abs = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * i) * UE->frame_parms.symbols_per_slot;
+      int slot = ssb_start_symbol_abs / 14;
+      //nr_sl_common_signal_procedures(UE, frame, slot);
+
+      int slot_timestamp = UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0);
+      int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
+      AssertFatal(max_symbol_size < frame_length_complex_samples, "Invalid index %d\n", max_symbol_size);
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
-        apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
-                          slot, 0, 14);
         PHY_ofdm_mod(UE->common_vars.txdataF[aa],
-                     (int*)&txdata[aa][UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0)],
+                     (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
                      1, UE->frame_parms.nb_prefix_samples0,
                      CYCLIC_PREFIX);
-        AssertFatal(UE->frame_parms.ofdm_symbol_size < UE->frame_parms.samples_per_slot_wCP, "Invalid index %d\n",
-                    UE->frame_parms.ofdm_symbol_size);
+        apply_nr_rotation(&UE->frame_parms,
+                          (int16_t*)UE->common_vars.txdataF[aa],
+                          slot, 0, 1);
         PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size],
-                     (int*)&txdata[aa][UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms,0) +
-                                       UE->frame_parms.nb_prefix_samples0+UE->frame_parms.ofdm_symbol_size],
+                     (int*)&txdata[aa][max_symbol_size],
                      UE->frame_parms.ofdm_symbol_size,
                      13, UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
+        apply_nr_rotation(&UE->frame_parms,
+                          (int16_t*)UE->common_vars.txdataF[aa],
+                          slot, 0, 13);
       }
     }
   }
@@ -444,16 +466,18 @@ int main(int argc, char **argv)
   if (UE->frame_parms.nb_antennas_tx > 1)
     printf("txdata[0] = %s\n", hexdump(txdata[1], sizeof(txdata[1]), buffer, sizeof(buffer)));
 
+  AssertFatal((((frame_length_complex_samples - 1) << 1) + 1) < 2 * frame_length_complex_samples,
+              "Invalid index %d >= %d\n", (((frame_length_complex_samples - 1)<< 1) + 1), 2 * frame_length_complex_samples);
   int n_errors = 0;
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
     n_errors = 0;
     int n_errors_payload = 0;
 
     for (int trial = 0; trial < n_trials; trial++) {
-      for (int i = 0; i<frame_length_complex_samples; i++) {
+      for (int i = 0; i < frame_length_complex_samples; i++) {
         for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
-          r_re[aa][i] = ((double)(((short *)txdata[aa]))[(i<<1)]);
-          r_im[aa][i] = ((double)(((short *)txdata[aa]))[(i<<1)+1]);
+          r_re[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1)]);
+          r_im[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1) + 1]);
         }
       }
 
@@ -484,8 +508,8 @@ int main(int argc, char **argv)
         double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
         double sigma2 = pow(10, sigma2_dB / 10);
         for (int aa = 0; aa < UE->frame_parms.nb_antennas_rx; aa++) {
-          ((short*) UE->common_vars.rxdata[aa])[2*i]   = (short) ((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
-          ((short*) UE->common_vars.rxdata[aa])[2*i+1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          ((short*) UE->common_vars.rxdata[aa])[2 * i]   = (short) ((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          ((short*) UE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
 
@@ -513,7 +537,7 @@ int main(int argc, char **argv)
         while (!((SSB_positions >> ssb_index) & 0x01)) {
           ssb_index++;  // to select the first transmitted ssb
         }
-        UE->symbol_offset = nr_get_ssb_start_symbol(&UE->frame_parms, ssb_index);
+        UE->symbol_offset = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * ssb_index) * UE->frame_parms.symbols_per_slot;
         uint8_t n_hf = 0;
         int ssb_slot = (UE->symbol_offset / 14) + (n_hf * (UE->frame_parms.slots_per_frame >> 1));
         for (int i = UE->symbol_offset + 1; i < UE->symbol_offset + 4; i++) {

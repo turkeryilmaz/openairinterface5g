@@ -278,7 +278,7 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx){
   }
 }
 
-void nr_sl_common_signal_procedures (PHY_VARS_NR_UE *ue, int frame, int slot)
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
 {
   NR_DL_FRAME_PARMS *fp=&ue->frame_parms;
   int **txdataF = ue->common_vars.txdataF;
