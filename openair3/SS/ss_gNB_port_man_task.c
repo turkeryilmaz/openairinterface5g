@@ -285,7 +285,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
                 SS_NR_SYS_PORT_MSG_IND(message_p).req = req;
                 SS_NR_SYS_PORT_MSG_IND(message_p).userId = userId;
                 itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
-								LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d Msg sent to \n", __FUNCTION__, __LINE__, TASK_SYS_GNB);
+								LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d Msg sent to TASK_SYS_GNB \n", __FUNCTION__, __LINE__);
             }
         }
     }
