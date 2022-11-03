@@ -394,7 +394,6 @@ int main(int argc, char **argv)
 
   UE->slss = calloc(1, sizeof(*UE->slss));
   int len = sizeof(UE->slss->sl_mib) / sizeof(UE->slss->sl_mib[0]);
-  printf("This is len %d\n", len);
   for (int i = 0; i < len; i++) {
     UE->slss->sl_mib[i] = 0;
   }
