@@ -294,6 +294,29 @@ static void nr_psbch_unscrambling(NR_UE_PSBCH *psbch,
   }
 }
 
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
+{
+  NR_DL_FRAME_PARMS *fp=&ue->frame_parms;
+  int **txdataF = ue->common_vars.txdataF;
+  uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
+  int txdataF_offset = slot * fp->samples_per_slot_wCP;
+
+  int ssb_start_symbol_abs = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * fp->symbols_per_slot;
+  uint16_t ssb_start_symbol = ssb_start_symbol_abs % fp->symbols_per_slot;
+  LOG_D(NR_PHY, "common_signal_procedures: frame %d, slot %d ssb index %d, ssb_start_symbol %d\n", frame, slot, ssb_index, ssb_start_symbol);
+
+  const int prb_offset = 5; //TODO: Need to properly get these values.
+  const int sc_offset = 6; //TODO: Need to properly get these values.
+  fp->ssb_start_subcarrier = prb_offset * 12 + sc_offset;
+  LOG_D(NR_PHY, "SSB first subcarrier %d (%d,%d)\n", fp->ssb_start_subcarrier, prb_offset, sc_offset);
+
+  nr_sl_generate_pss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
+  nr_sl_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
+  //uint8_t n_hf = 0; // for sidelink
+  //nr_generate_psbch_dmrs(ue->nr_gold_pbch_dmrs[ssb_index&7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
+  //nr_generate_sl_psbch(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, n_hf, frame, fp);
+}
+
 int nr_rx_psbch( PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 int estimateSz, struct complex16 dl_ch_estimates [][estimateSz],

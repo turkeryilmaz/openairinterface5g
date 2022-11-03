@@ -1124,6 +1124,9 @@ int nr_rx_pbch( PHY_VARS_NR_UE *ue,
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
+
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot);
+
 int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 const int estimateSz,
