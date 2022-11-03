@@ -75,17 +75,6 @@ int nr_generate_pbch_dmrs(uint32_t *gold_pbch_dmrs,
                           nfapi_nr_config_request_scf_t *config,
                           NR_DL_FRAME_PARMS *frame_parms);
 
-/*!
-\fn int nr_generate_psbch_dmrs
-\brief Generation of the DMRS for the PSBCH
-@param
-@returns 0 on success
- */
-int nr_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
-                          int32_t *txdataF,
-                          int16_t amp,
-                          uint8_t ssb_start_symbol,
-                          NR_DL_FRAME_PARMS *frame_parms);
 
 /*!
 \fn int nr_generate_pbch

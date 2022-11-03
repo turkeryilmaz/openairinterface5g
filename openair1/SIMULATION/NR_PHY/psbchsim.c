@@ -394,7 +394,6 @@ int main(int argc, char **argv)
 
   UE->slss = calloc(1, sizeof(*UE->slss));
   int len = sizeof(UE->slss->sl_mib) / sizeof(UE->slss->sl_mib[0]);
-  printf("This is len %d\n", len);
   for (int i = 0; i < len; i++) {
     UE->slss->sl_mib[i] = 0;
   }
@@ -428,10 +427,10 @@ int main(int argc, char **argv)
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++)
         memset(UE->common_vars.txdataF[aa], 0, sizeof(*UE->common_vars.txdataF[aa]));
 
-      //int frame = 0;
+      int frame = 0;
       int ssb_start_symbol_abs = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * i) * UE->frame_parms.symbols_per_slot;
       int slot = ssb_start_symbol_abs / 14;
-      //nr_sl_common_signal_procedures(UE, frame, slot);
+      nr_sl_common_signal_procedures(UE, frame, slot);
 
       int slot_timestamp = UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0);
       int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
