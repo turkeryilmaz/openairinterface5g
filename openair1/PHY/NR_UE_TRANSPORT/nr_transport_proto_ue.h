@@ -1119,6 +1119,19 @@ int nr_sl_generate_sss(int32_t *txdataF,
                     uint8_t ssb_start_symbol,
                     NR_DL_FRAME_PARMS *frame_parms);
 
+/*!
+\fn int nr_generate_sl_pbch
+\brief Generation of the PBCH
+@param
+@returns 0 on success
+ */
+int nr_generate_sl_psbch(int32_t *txdataF,
+                         int16_t amp,
+                         uint8_t ssb_start_symbol,
+                         uint8_t n_hf,
+                         int sfn,
+                         NR_DL_FRAME_PARMS *frame_parms);
+
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
