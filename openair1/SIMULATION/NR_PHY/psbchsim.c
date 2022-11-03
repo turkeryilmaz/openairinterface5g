@@ -586,6 +586,7 @@ int main(int argc, char **argv)
 
   free_channel_desc_scm(UE2UE);
   term_nr_ue_signal(UE, 1);
+  free(UE->slss);
   free(UE);
 
   for (int i = 0; i < 2; i++) {
