@@ -50,7 +50,7 @@
 
 //Sec. 7.1.5: Rate Matching
 #define NR_POLAR_PSBCH_I_BIL 0 //uint8_t
-#define NR_POLAR_PSBCH_E 1782   //uint16_t
+#define NR_POLAR_PSBCH_E 1792   //uint16_t
 #define NR_POLAR_PSBCH_E_DWORD 56 // NR_POLAR_PSBCH_E/32
 
 /*
