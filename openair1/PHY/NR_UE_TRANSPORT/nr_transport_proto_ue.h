@@ -1092,10 +1092,10 @@ int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uin
 @returns 0 on success
  */
 int nr_sl_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
-                          int32_t *txdataF,
-                          int16_t amp,
-                          uint8_t ssb_start_symbol,
-                          NR_DL_FRAME_PARMS *frame_parms);
+                              int32_t *txdataF,
+                              int16_t amp,
+                              uint8_t ssb_start_symbol,
+                              NR_DL_FRAME_PARMS *frame_parms);
 
 /*!
 \fn int nr_generate_pss
