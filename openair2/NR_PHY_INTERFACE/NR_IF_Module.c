@@ -373,6 +373,7 @@ static void match_crc_rx_pdu(nfapi_nr_rx_data_indication_t *rx_ind, nfapi_nr_crc
 }
 
 void NR_UL_indication(NR_UL_IND_t *UL_info) {
+  LOG_D(NR_MAC, "fxn:%s Entry\n", __FUNCTION__);
   AssertFatal(UL_info!=NULL,"UL_info is null\n");
 #ifdef DUMP_FAPI
   dump_ul(UL_info);
@@ -509,6 +510,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
 	    sched_info->DL_req->dl_tti_request_body.nPDUs);
     }
   }
+  LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);
 }
 
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {
