@@ -1236,6 +1236,9 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
 			LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
     }
 
+		if (RC.ss.mode == SS_SOFTMODEM)
+			BWPStart = 27;
+
     // Calculate number of symbols
     int startSymbolIndex, nrOfSymbols;
     const int startSymbolAndLength = pdsch_TimeDomainAllocationList->list.array[time_domain_assignment]->startSymbolAndLength;
@@ -1706,6 +1709,16 @@ void nr_generate_Msg4(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
                                      nr_get_code_rate_dl(mcsIndex, mcsTableIdx),
                                      rbSize, nrOfSymbols, N_PRB_DMRS * N_DMRS_SLOT, 0, tb_scaling,1) >> 3;
     } while (harq->tb_size < ra->mac_pdu_length && mcsIndex<=28);
+
+		LOG_D(NR_MAC, "swetank: rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
+				rbSize,
+				rbStart,
+				BWPSize,
+				BWPStart,
+				startSymbolIndex,
+				nrOfSymbols);
+		if (RC.ss.mode == SS_SOFTMODEM)
+			BWPStart = 27;
 
     int i = 0;
     while ((i < rbSize) && (rbStart + rbSize <= BWPSize)) {

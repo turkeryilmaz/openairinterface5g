@@ -83,6 +83,13 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
     case NR_SystemConfirm_Type_CellAttenuationList:
         cnf.Confirm.v.CellAttenuationList= true;
         break;
+    case NR_SystemConfirm_Type_PdcpCount:
+        cnf.Confirm.v.PdcpCount.d = recvCnf.Confirm.v.PdcpCount.d;
+        cnf.Confirm.v.PdcpCount.v = recvCnf.Confirm.v.PdcpCount.v;
+        break;
+    case NR_SystemConfirm_Type_AS_Security:
+        cnf.Confirm.v.AS_Security = true;
+        break;
     default:
         LOG_A(GNB_APP, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
     }

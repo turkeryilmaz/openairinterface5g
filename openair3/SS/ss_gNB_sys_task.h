@@ -29,7 +29,8 @@ typedef struct CellConfig5GReq_s
     proxy_ss_header_t header;
     int16_t maxRefPower;
     uint8_t initialAttenuation;
-    long absoluteFrequency;
+		uint16_t dl_earfcn;
+    long absoluteFrequencyPointA;
 } CellConfig5GReq_t;
 
 typedef enum _sys_Type

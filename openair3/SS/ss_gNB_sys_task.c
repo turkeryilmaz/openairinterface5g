@@ -64,6 +64,24 @@ static int sys_5G_send_init_udp(const udpSockReq_t *req);
 static void sys_5G_send_proxy(void *msg, int msgLen);
 int proxy_5G_send_port = 7776;
 int proxy_5G_recv_port = 7770;
+bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req);
+
+/*
+ * Utility function to convert integer to binary
+ *
+ */
+static void int_to_bin(uint32_t in, int count, uint8_t *out)
+{
+  /* assert: count <= sizeof(int)*CHAR_BIT */
+  uint32_t mask = 1U << (count - 1);
+  int i;
+  for (i = 0; i < count; i++)
+  {
+    out[i] = (in & mask) ? 1 : 0;
+    in <<= 1;
+  }
+}
+
 
 
 /*
@@ -80,7 +98,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
                          enum NR_SystemConfirm_Type_Sel cnfType,
                          void *msg)
 {
-	LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
+  LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
   struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
 
@@ -104,6 +122,20 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
 				{
 					LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration\n");
 					msgCnf->Confirm.v.Cell = true;
+					break;
+				}
+			case NR_SystemConfirm_Type_PdcpCount:
+				{
+					if (msg)
+						memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct NR_PDCP_CountCnf_Type));
+					else
+						SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
+					break;
+				}
+			case NR_SystemConfirm_Type_AS_Security:
+				{
+					LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration NR_SystemConfirm_Type_AS_Security\n");
+					msgCnf->Confirm.v.AS_Security = true;
 					break;
 				}
 			default:
@@ -195,12 +227,12 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 					cellConfig->initialAttenuation = 0;
 					cellConfig->header.cell_id = SS_context.eutra_cellId;
 					cellConfig->maxRefPower= p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
-					cellConfig->absoluteFrequency= RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
-					LOG_A(ENB_SS,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
+					cellConfig->absoluteFrequencyPointA = p_cellConfig->PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
+					LOG_A(ENB_SS,"5G Cell configuration rece6ived for cell_id: %d Initial attenuation: %d \
 							Max ref power: %d\n for absoluteFrequencyPointA : %d =================================== \n",
 							cellConfig->header.cell_id,
 							cellConfig->initialAttenuation, cellConfig->maxRefPower,
-							cellConfig->absoluteFrequency);
+							cellConfig->absoluteFrequencyPointA);
 					//send_to_proxy();
 					sys_5G_send_proxy((void *)cellConfig, sizeof(CellConfig5GReq_t));
 				}
@@ -222,6 +254,12 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 			{
 				switch (req->Request.d)
 				{
+					case NR_SystemRequest_Type_Cell:
+					{
+						LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_Cell \n");
+						send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
+					}
+					break;
 					case NR_SystemRequest_Type_EnquireTiming:
 						{
 							sys_handle_nr_enquire_timing(tinfo);
@@ -248,11 +286,26 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 						}
 				}
 				break;
-				default:
+    		case NR_SystemRequest_Type_PdcpCount:
+				{
+      		LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_PdcpCount received\n");
+					if (false == ss_task_sys_nr_handle_pdcpCount(&req))
 					{
-						LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-							RC.ss.State, req->Request.d);
+						LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_PdcpCount \n");
+						return;
 					}
+				}
+				break;
+				case NR_SystemRequest_Type_AS_Security:
+				{
+						LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_AS_Security \n");
+						send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
+				}
+				default:
+				{
+					LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+							RC.ss.State, req->Request.d);
+				}
 				}
 			}
       break;
@@ -288,46 +341,52 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
   LOG_A(GNB_APP, "[SYS-GNB] received req : %d for cell %d RC.ss.state %d \n",
         req->Request.d, req->Common.CellId, RC.ss.State);
   switch (req->Request.d)
-  {
-    case NR_SystemRequest_Type_Cell:
-      if (RC.ss.State >= SS_STATE_NOT_CONFIGURED)
-      {
-        valid = TRUE;
-        sendDummyCnf = FALSE;
-        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      }
-      else
-      {
-        cnfType = NR_SystemConfirm_Type_Cell;
-      }
-    break;
-    case NR_SystemRequest_Type_EnquireTiming:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
-      break;
+	{
+		case NR_SystemRequest_Type_Cell:
+			if (RC.ss.State >= SS_STATE_NOT_CONFIGURED)
+			{
+				valid = TRUE;
+				sendDummyCnf = FALSE;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+			}
+			else
+			{
+				cnfType = NR_SystemConfirm_Type_Cell;
+			}
+			break;
+		case NR_SystemRequest_Type_EnquireTiming:
+			valid = TRUE;
+			sendDummyCnf = FALSE;
+			break;
 		case NR_SystemRequest_Type_DeltaValues:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
-	break;
-	case NR_SystemRequest_Type_RadioBearerList:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
-	  cnfType = NR_SystemConfirm_Type_RadioBearerList;
-	break;
-	case NR_SystemRequest_Type_CellAttenuationList:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
-	  cnfType = NR_SystemConfirm_Type_CellAttenuationList;
-	break;
-	case NR_SystemRequest_Type_AS_Security:
-      valid = FALSE;
-      sendDummyCnf = TRUE;
+			valid = TRUE;
+			sendDummyCnf = FALSE;
+			break;
+		case NR_SystemRequest_Type_RadioBearerList:
+			valid = TRUE;
+			sendDummyCnf = FALSE;
+			cnfType = NR_SystemConfirm_Type_RadioBearerList;
+			break;
+		case NR_SystemRequest_Type_CellAttenuationList:
+			valid = TRUE;
+			sendDummyCnf = FALSE;
+			cnfType = NR_SystemConfirm_Type_CellAttenuationList;
+			break;
+		case NR_SystemRequest_Type_AS_Security:
+			valid = TRUE;
+			sendDummyCnf = TRUE;
 			cnfType = NR_SystemConfirm_Type_AS_Security;
-	break;
-    default:
-      valid = FALSE;
-      sendDummyCnf = FALSE;
-  }
+    	reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+			break;
+		case NR_SystemRequest_Type_PdcpCount:
+			valid = TRUE;
+			sendDummyCnf = FALSE;
+			cnfType = NR_SystemConfirm_Type_PdcpCount;
+			break;
+		default:
+			valid = FALSE;
+			sendDummyCnf = FALSE;
+	}
   if (sendDummyCnf)
   {
     send_sys_cnf(resType, resVal, cnfType, NULL);
@@ -399,7 +458,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 							LOG_E(GNB_APP, "[TASK_SYS_GNB] received unhandled message \n");
 					}
 				}
-
+				break;
 			case TERMINATE_MESSAGE:
 				{
 					itti_exit_task();
@@ -743,7 +802,7 @@ bool ss_task_sys_nr_handle_cellConfigAttenuation(struct NR_SYSTEM_CTRL_REQ *req)
 	if (message_p)
 	{
 		LOG_A(GNB_APP, "[SYS-GNB] Send SS_NR_SYS_PORT_MSG_CNF\n");
-		msgCnf->Common.CellId = SS_context.eutra_cellId;
+		msgCnf->Common.CellId = nr_Cell_NonSpecific;
 		msgCnf->Common.Result.d = ConfirmationResult_Type_Success;
 		msgCnf->Common.Result.v.Success = true;
 		msgCnf->Confirm.d = NR_SystemConfirm_Type_CellAttenuationList;
@@ -753,12 +812,12 @@ bool ss_task_sys_nr_handle_cellConfigAttenuation(struct NR_SYSTEM_CTRL_REQ *req)
 		int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
 		if (send_res < 0)
 		{
-			LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
+			LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]\n");
 			return false;
 		}
 		else
 		{
-			LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:CellAttenuationList to Port Manager", __FUNCTION__);
+			LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:CellAttenuationList to Port Manager\n", __FUNCTION__);
 		}
 	}
 	LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
@@ -847,3 +906,32 @@ static int sys_5G_send_init_udp(const udpSockReq_t *req)
 }
 
 
+bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
+{
+
+	LOG_A(ENB_SS, "Entry in fxn:%s\n", __FUNCTION__);
+	struct NR_PDCP_CountCnf_Type PdcpCount;
+
+	PdcpCount.d = NR_PDCP_CountCnf_Type_Get;
+	PdcpCount.v.Get.d = 2;
+	const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
+	PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(size);
+	for (int i = 0; i < PdcpCount.v.Get.d; i++)
+	{
+		PdcpCount.v.Get.v[i].RadioBearerId.d = NR_RadioBearerId_Type_Srb;
+		PdcpCount.v.Get.v[i].RadioBearerId.v.Srb = 1;
+		PdcpCount.v.Get.v[i].UL.d = true;
+		PdcpCount.v.Get.v[i].DL.d = true;
+
+		PdcpCount.v.Get.v[i].UL.v.Format = E_PdcpCount_Srb;
+		PdcpCount.v.Get.v[i].DL.v.Format = E_PdcpCount_Srb;
+
+		int_to_bin(1, 32, PdcpCount.v.Get.v[i].UL.v.Value);
+		int_to_bin(1, 32, PdcpCount.v.Get.v[i].DL.v.Value);
+	}
+
+	send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
+	LOG_A(ENB_SS, "Exit from fxn:%s\n", __FUNCTION__);
+	return true;
+
+}
