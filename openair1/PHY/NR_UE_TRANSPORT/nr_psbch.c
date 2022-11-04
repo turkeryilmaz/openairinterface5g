@@ -98,7 +98,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
     for (rb=0; rb<11; rb++) {
       j=0;
 
-      if (symbol==1 || ((symbol > 5) && (symbol <= 13))){
+      if (symbol == 0 || ((symbol > 4) && (symbol <= 13))) {
         for (i=0; i<12; i++) {
           if ((i!=nushiftmod4) &&
               (i!=(nushiftmod4+4)) &&
@@ -129,7 +129,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
     for (rb=0; rb<11; rb++) {
       j=0;
 
-      if (symbol==1 || ((symbol > 5) && (symbol <= 13))){
+      if (symbol == 0 || ((symbol > 4) && (symbol <= 13))) {
         for (i=0; i<12; i++) {
           if ((i!=nushiftmod4) &&
               (i!=(nushiftmod4+4)) &&
@@ -140,7 +140,7 @@ static uint16_t nr_psbch_extract(int **rxdataF,
               printf("dl ch0 ext[%d] = (%d,%d)  dl_ch0 [%d]= (%d,%d)\n",j,
                      dl_ch0_ext[j].r, dl_ch0_ext[j].i,
                      i,
-                     dl_ch0[j].r, dl_ch0[j].i,
+                     dl_ch0[j].r, dl_ch0[j].i);
 #endif
             j++;
           }
