@@ -139,17 +139,17 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
 					break;
 				}
 			default:
-				LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]");
+				LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]\n");
 		}
     SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
     int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
     if (send_res < 0)
     {
-      LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
+      LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]\n");
     }
 		else
 		{
-			LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:%d to Port Manager", __FUNCTION__, cnfType);
+			LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:%d to Port Manager\n", __FUNCTION__, cnfType);
 		}
   }
 	LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
@@ -255,63 +255,61 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 				switch (req->Request.d)
 				{
 					case NR_SystemRequest_Type_Cell:
-					{
-						LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_Cell \n");
-						send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
-					}
-					break;
+						{
+							LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_Cell \n");
+							send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
+						}
+						break;
 					case NR_SystemRequest_Type_EnquireTiming:
 						{
 							sys_handle_nr_enquire_timing(tinfo);
 							LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_EnquireTiming received\n");
 						}
-					break;
-				case NR_SystemRequest_Type_RadioBearerList:
-					{
-						LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_RadioBearerList received\n");
-						if (false == ss_task_sys_nr_handle_cellConfigRadioBearer(&req) )
+						break;
+					case NR_SystemRequest_Type_RadioBearerList:
 						{
-							LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
-							return;
+							LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_RadioBearerList received\n");
+							if (false == ss_task_sys_nr_handle_cellConfigRadioBearer(&req) )
+							{
+								LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+								return;
+							}
 						}
-					}
-					break;
-				case NR_SystemRequest_Type_CellAttenuationList:
-				{
-						LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_CellAttenuationList received\n");
-						if (false == ss_task_sys_nr_handle_cellConfigAttenuation(&req) )
+						break;
+					case NR_SystemRequest_Type_CellAttenuationList:
 						{
-							LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
-							return;
+							LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_CellAttenuationList received\n");
+							if (false == ss_task_sys_nr_handle_cellConfigAttenuation(&req) )
+							{
+								LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+								return;
+							}
 						}
-				}
-				break;
-    		case NR_SystemRequest_Type_PdcpCount:
-				{
-      		LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_PdcpCount received\n");
-					if (false == ss_task_sys_nr_handle_pdcpCount(&req))
-					{
-						LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_PdcpCount \n");
-						return;
-					}
-				}
-				break;
-				case NR_SystemRequest_Type_AS_Security:
-				{
-						LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_AS_Security \n");
-						send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
-				}
-				default:
-				{
-					LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-							RC.ss.State, req->Request.d);
-				}
+						break;
+					case NR_SystemRequest_Type_PdcpCount:
+						{
+							LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_PdcpCount received\n");
+							if (false == ss_task_sys_nr_handle_pdcpCount(&req))
+							{
+								LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_PdcpCount \n");
+								return;
+							}
+						}
+						break;
+					case NR_SystemRequest_Type_AS_Security:
+						{
+							LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_AS_Security \n");
+							send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_AS_Security, NULL);
+						}
+						break;
+					default:
+						{
+							LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+									RC.ss.State, req->Request.d);
+						}
+						break;
 				}
 			}
-      break;
-    default:
-      LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-					RC.ss.State, req->Request.d);
       break;
   }
   LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
@@ -352,29 +350,34 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
 			else
 			{
 				cnfType = NR_SystemConfirm_Type_Cell;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			}
 			break;
 		case NR_SystemRequest_Type_EnquireTiming:
 			valid = TRUE;
 			sendDummyCnf = FALSE;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			break;
 		case NR_SystemRequest_Type_DeltaValues:
 			valid = TRUE;
 			sendDummyCnf = FALSE;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			break;
 		case NR_SystemRequest_Type_RadioBearerList:
 			valid = TRUE;
 			sendDummyCnf = FALSE;
 			cnfType = NR_SystemConfirm_Type_RadioBearerList;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			break;
 		case NR_SystemRequest_Type_CellAttenuationList:
 			valid = TRUE;
 			sendDummyCnf = FALSE;
 			cnfType = NR_SystemConfirm_Type_CellAttenuationList;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			break;
 		case NR_SystemRequest_Type_AS_Security:
 			valid = TRUE;
-			sendDummyCnf = TRUE;
+			sendDummyCnf = FALSE;
 			cnfType = NR_SystemConfirm_Type_AS_Security;
     	reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			break;
@@ -382,6 +385,7 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
 			valid = TRUE;
 			sendDummyCnf = FALSE;
 			cnfType = NR_SystemConfirm_Type_PdcpCount;
+				reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
 			break;
 		default:
 			valid = FALSE;
@@ -913,7 +917,7 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
 	struct NR_PDCP_CountCnf_Type PdcpCount;
 
 	PdcpCount.d = NR_PDCP_CountCnf_Type_Get;
-	PdcpCount.v.Get.d = 2;
+	PdcpCount.v.Get.d = 1;
 	const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
 	PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(size);
 	for (int i = 0; i < PdcpCount.v.Get.d; i++)
