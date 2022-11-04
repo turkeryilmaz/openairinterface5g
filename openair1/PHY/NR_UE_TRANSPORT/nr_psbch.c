@@ -39,7 +39,7 @@
 #include <openair1/PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h>
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 
-#define DEBUG_PSBCH
+//#define DEBUG_PSBCH
 //#define DEBUG_PSBCH_ENCODING
 
 //#include "PHY_INTERFACE/defs.h"
