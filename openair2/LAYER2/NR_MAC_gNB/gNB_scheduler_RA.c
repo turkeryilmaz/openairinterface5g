@@ -1951,6 +1951,16 @@ static void nr_generate_Msg4(module_id_t module_idP,
     if (RC.ss.mode == SS_SOFTMODEM)
         BWPStart = 27;
 
+		LOG_D(NR_MAC, "swetank: rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
+				rbSize,
+				rbStart,
+				BWPSize,
+				BWPStart,
+				startSymbolIndex,
+				nrOfSymbols);
+		if (RC.ss.mode == SS_SOFTMODEM)
+			BWPStart = 27;
+
     int i = 0;
     uint16_t *vrb_map = cc[CC_id].vrb_map;
     while ((i < rbSize) && (rbStart + rbSize <= BWPSize)) {
