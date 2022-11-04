@@ -107,6 +107,7 @@ int n_trials = 1;
 uint8_t n_tx = 1;
 uint8_t n_rx = 1;
 uint16_t Nid_cell = 0;
+uint16_t Nid_SL = 338;
 uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 FILE *input_fd = NULL;
@@ -135,7 +136,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a              = (N_RB_DL-20)>>1;
+  nrUE_config->ssb_table.ssb_offset_point_a              = 0;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type             = TDD;
@@ -153,12 +154,14 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->nb_antenna_ports_gNB = n_tx;
   fp->N_RB_DL = N_RB_DL;
   fp->Nid_cell = Nid_cell;
+  fp->Nid_SL = Nid_SL;
   fp->nushift = Nid_cell % 4;
   fp->ssb_type = nr_ssb_type_C;
   fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
   fp->nr_band = mu < 2 ? 78 : 257;
   fp->threequarter_fs = 0;
   fp->ofdm_offset_divisor = UINT_MAX;
+  fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
   nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
 
@@ -337,7 +340,7 @@ int main(int argc, char **argv)
 
   printf("Initializing UE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_cell, SSB_positions);
+  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
 
   double fs = 0;
   double scs = 30000;
@@ -345,7 +348,7 @@ int main(int argc, char **argv)
   switch (mu) {
     case 1:
       scs = 30000;
-      UE->frame_parms.Lmax = 8;
+      UE->frame_parms.Lmax = 1;
       if (N_RB_DL == 217) {
         fs = 122.88e6;
         bw = 80e6;
@@ -401,7 +404,7 @@ int main(int argc, char **argv)
   UE->slss->sl_numssb_withinperiod_r16 = 1;
   UE->slss->sl_timeinterval_r16 = 0;
   UE->slss->sl_timeoffsetssb_r16 = 0;
-  UE->slss->slss_id = 337;
+  UE->slss->slss_id = Nid_SL;
 
   UE->is_synchronized = run_initial_sync ? 0 : 1;
   UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
