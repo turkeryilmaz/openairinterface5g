@@ -29,7 +29,6 @@
 #include "PHY/phy_extern.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 
-
 int nr_sl_generate_pss(int32_t *txdataF,
                        int16_t amp,
                        uint8_t ssb_start_symbol,
