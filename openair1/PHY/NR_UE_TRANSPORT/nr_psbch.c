@@ -393,11 +393,15 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   nr_psbch_unscrambling(nr_ue_psbch_vars, psbch_e_rx, frame_parms->Nid_SL, nushift, M, NR_POLAR_PSBCH_E,
                         0, 0,  psbch_a_prime, &psbch_a_interleaved);
   //polar decoding de-rate matching
-  uint64_t tmp = 0;
-  uint32_t decoderState = polar_decoder_int16(psbch_e_rx, (uint64_t *)&tmp, 0,
-                                     NR_POLAR_PSBCH_MESSAGE_TYPE,
-                                     NR_POLAR_PSBCH_PAYLOAD_BITS,
-                                     NR_POLAR_PSBCH_AGGREGATION_LEVEL);
+  uint32_t tmp = 0;
+  double input_buffer[NR_POLAR_PSBCH_E];
+  for (int i = 0; i < NR_POLAR_PSBCH_E; i++) {
+    input_buffer[i] = (double)psbch_e_rx[i];
+  }
+  int8_t decoderState = polar_decoder(input_buffer,
+                                      &tmp,
+                                      8,
+                                      NR_POLAR_PSBCH_MESSAGE_TYPE, NR_POLAR_PSBCH_PAYLOAD_BITS, NR_POLAR_PSBCH_AGGREGATION_LEVEL);
   psbch_a_prime = tmp;
   if(decoderState)
     return(decoderState);
