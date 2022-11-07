@@ -488,9 +488,15 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
     if(g_log->log_component[c].level >= OAILOG_TRACE) {  \
        logRecord_tp(__FILE__, __FUNCTION__, __LINE__, c, OAILOG_TRACE, x);   \
     } } while(0)
+
 # define LOG_P(lvl, _string, buf, len)  do {     \
     if(g_log->log_component[PKT].level >= lvl) { \
        LOG_SS_PKT(PKT, _string, buf, len);       \
+    } } while(0)
+
+# define LOG_MAC_P(lvl, _string, sfn, sf, mac_pack_info, buf, len)  do {  \
+    if(g_log->log_component[PKT].level >= lvl) {                          \
+       LOG_SS_MAC_PKT(PKT, _string, sfn, sf, mac_pack_info, buf, len);    \
     } } while(0)
 
 /* avoid warnings for variables only used in LOG macro's but set outside debug section */
