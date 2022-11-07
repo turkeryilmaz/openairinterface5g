@@ -40,7 +40,7 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                            int16_t amp,
                            uint8_t ssb_start_symbol,
                            NR_DL_FRAME_PARMS *frame_parms) {
-  int dmrs_modulations_per_slot = 32;
+  int dmrs_modulations_per_symbol = 33;
   int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
   LOG_D(NR_PHY, "PSBCH DMRS mapping started at symbol %d\n", ssb_start_symbol);
 
@@ -64,7 +64,7 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
   int l = ssb_start_symbol;
   int m = 0;
-  for (; m < dmrs_modulations_per_slot; m++) {
+  for (; m < dmrs_modulations_per_symbol; m++) {
 #ifdef DEBUG_PSBCH_DMRS
     printf("m %d at k %d of l %d\n", m, k, l);
 #endif
@@ -109,7 +109,7 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
         k-=frame_parms->ofdm_symbol_size;
      // mod_count++;
       m++;
-     // if (mod_count == dmrs_modulations_per_slot)
+     // if (mod_count == dmrs_modulations_per_symbol)
      //   break;
     }
     l++;
