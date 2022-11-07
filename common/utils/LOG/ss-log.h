@@ -51,13 +51,23 @@
 						evId, g_log->sfn, g_log->sf, \
 						__func__, __LINE__, buf); \
 				} } while (0)
-#define LOG_SS(component, log)			tracepoint(SSeNB, SS_LOG, \
-						component, -1,  g_log->sfn, \
-						g_log->sf, __func__, __LINE__,\
-					       	log)
+
+#define LOG_SS(component, func, line, log)  do {   \
+    tracepoint(SSeNB, SS_LOG,         \
+        component, -1,  g_log->sfn,   \
+        g_log->sf, func, line, log);  \
+    } while(0)
+
 #define LOG_SS_PKT(component, _string, buf, len) do {  \
     tracepoint(SSeNB, SS_PKT,                          \
         "SS-PDU", -1,  g_log->sfn,                     \
         g_log->sf, _string, buf, len);                 \
+    } while(0)
+
+#define LOG_SS_MAC_PKT(component, _string, sfn, sf, mac_pack_info, buf, len) do {  \
+    tracepoint(SSeNB, SS_MAC_PKT,           \
+        "SS-MAC-PDU", -1, sfn, sf,          \
+        __func__, __LINE__, mac_pack_info,  \
+        _string, buf, len);                 \
     } while(0)
 #endif /** __SS_LOG_H__ */

@@ -153,7 +153,48 @@ TRACEPOINT_EVENT(
     )
 )
 
+#if !defined(_SS_MAC_PKT_T)
+typedef struct mac_pkt_info_s {
+     int direction;
+     int rnti_type;
+     int rnti;
+     int harq_pid;
+     int preamble;
+} mac_pkt_info_t;
+#define _SS_MAC_PKT_T
+#endif
 
+TRACEPOINT_EVENT(
+    SSeNB,
+    SS_MAC_PKT,
+    TP_ARGS(
+		 const char*, component,
+		 int, event_id,
+		 int, sfn,
+		 int, slot,
+		 const char*, funcName,
+		 int, lineNo,
+		 mac_pkt_info_t, mac_pkt,
+		 const char*, log_string,
+		 uint8_t *, array_arg,
+		 unsigned int, length
+    ),
+    TP_FIELDS(
+		 ctf_string(MODNAME, component)
+		 ctf_integer(int32_t, EVENTID, event_id)
+		 ctf_integer(int32_t, SFN, sfn)
+		 ctf_integer(int32_t, SLOT, slot)
+		 ctf_string(FUNCTION, funcName)
+		 ctf_integer(int32_t, LINE, lineNo)
+		 ctf_integer(int32_t, DIRECTION, mac_pkt.direction)
+		 ctf_integer(int32_t, RNTI_TYPE, mac_pkt.rnti_type)
+		 ctf_integer(int32_t, RNTI, mac_pkt.rnti)
+		 ctf_integer(int32_t, HARQ_PID, mac_pkt.harq_pid)
+		 ctf_integer(int32_t, PREAMBLE, mac_pkt.preamble)
+		 ctf_string(Event, log_string)
+		 ctf_sequence_hex(uint8_t, Buffer, array_arg, unsigned int, length)
+    )
+)
 
 #endif /* _SS_TP_H */
 

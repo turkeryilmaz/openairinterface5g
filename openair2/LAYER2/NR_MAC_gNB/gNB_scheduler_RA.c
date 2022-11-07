@@ -2062,6 +2062,15 @@ static void nr_generate_Msg4(module_id_t module_idP,
     mac_pkt.preamble  = -1; /* TODO */
     LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->transportBlock, (int)harq->tb_size);
 
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_DOWNLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_C);
+    mac_pkt.rnti      = ra->rnti;
+    mac_pkt.harq_pid  = current_harq_pid;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->tb, (int)harq->tb_size);
+
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];
     memcpy(tx_req->TLVs[0].value.direct, harq->transportBlock, sizeof(uint8_t) * harq->tb_size);

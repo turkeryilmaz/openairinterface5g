@@ -137,6 +137,15 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
             frameP,
             CC_id,
             mib_sdu_length);
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIRECTION_DOWNLINK;
+      mac_pkt.rnti_type = WS_NO_RNTI;
+      mac_pkt.rnti      = 0xFFFF;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)&cc->MIB_pdu.payload[0], (int)mib_sdu_length);
     }
 
     // Trace MACPDU
