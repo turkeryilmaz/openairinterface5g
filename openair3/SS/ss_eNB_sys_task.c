@@ -362,6 +362,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
           LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid DL Bandwidth configuration \n");
           return false;
         }
+        LOG_A(ENB_SS, "[SYS] DL Bandwidth for cellIndex(%d):%d\n",cell_index,RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index]);
       }
 #define BCCH_CONFIG AddOrReconfigure->Basic.v.BcchConfig
       if (AddOrReconfigure->Basic.v.BcchConfig.d == true)
@@ -418,28 +419,26 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 	  if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.d == true)
 	  {
             LOG_A(ENB_SS, "[SYS] [SIB1] q-RxLevMin: %d \n", SIB1_CELL_SEL_INFO.q_RxLevMin);
-            RRC_CONFIGURATION_REQ(msg_p).q_RxLevMin = SIB1_CELL_SEL_INFO.q_RxLevMin;
+            RRC_CONFIGURATION_REQ(msg_p).q_RxLevMin[cell_index] = SIB1_CELL_SEL_INFO.q_RxLevMin;
 	    if (SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.d)
 	    {
               LOG_A(ENB_SS, "[SYS] [SIB1] q-QualMin: %d \n", SIB1_CELL_Q_QUALMIN);
-              RRC_CONFIGURATION_REQ(msg_p).q_QualMin = SIB1_CELL_Q_QUALMIN;
+              RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
 	    }
 	  }
 
-    RRC_CONFIGURATION_REQ(msg_p).num_plmn = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
-    RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
-    RRC_CONFIGURATION_REQ(msg_p).cellBarred = SIB1_CELL_ACCESS_REL_INFO.cellBarred;
-    RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection = SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
+    RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
+    RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
-    for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn; ++i) {
+    for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index]; ++i) {
       if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.d == TRUE)
       {
-            RRC_CONFIGURATION_REQ(msg_p).mcc[i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[2])<<0));
+            RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[2])<<0));
       }
       if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 2) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<0));
+        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<0));
        } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 3) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[2])<<0));
+        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[2])<<0));
       }
 
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.d == true)
@@ -464,11 +463,11 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                          }
                          if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib3 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
                          {
-                           RRC_CONFIGURATION_REQ(msg_p).q_Hyst = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionInfoCommon.q_Hyst;
-                           RRC_CONFIGURATION_REQ(msg_p).threshServingLow = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.threshServingLow;
-                           RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
-                           RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
-                           RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
+                           RRC_CONFIGURATION_REQ(msg_p).q_Hyst[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionInfoCommon.q_Hyst;
+                           RRC_CONFIGURATION_REQ(msg_p).threshServingLow[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.threshServingLow;
+                           RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
+                           RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
+                           RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
                          }
                        }
                      }
@@ -477,16 +476,20 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                }
              }
            }
-#if 0 /** FIXME: To be implemented later */
-    RRC_CONFIGURATION_REQ(msg_p).tac =
-    RRC_CONFIGURATION_REQ(msg_p).cell_identity =
-#endif
+    RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] = 0;
+    for(int i=0; i <16; i++)
+    {
+      RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] +=(SIB1_CELL_ACCESS_REL_INFO.trackingAreaCode[i]<<(15-i));
+    }
+    LOG_A(ENB_SS, "[SYS] [SIB1] tac: 0x%x\n", RRC_CONFIGURATION_REQ(msg_p).tac[cell_index]);
+    RRC_CONFIGURATION_REQ(msg_p).cellBarred[cell_index] = SIB1_CELL_ACCESS_REL_INFO.cellBarred;
+    RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection[cell_index]=SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
         }
       }
-      /* Active Parameters */
+      /* Active Parameters: only process ActiveParam when basic info availabe to avoid sending too many RRC_CONFIGURATION_REQ to RRC */
       if (AddOrReconfigure->Active.d == true)
       {
-        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent = true;
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
         if (AddOrReconfigure->Active.v.RachProcedureConfig.d == true)
         {
           if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.d == true)
@@ -499,15 +502,13 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                 {
                   if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.d == ContentionResolution_ContainedDlschSdu_Type_RlcPduCCCH)
                   {
-
-                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present = true;
-                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.d;
-                    memcpy(RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH,AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.v,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size);
-
+                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = true;
+                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index] = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.d;
+                    memcpy(RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH[cell_index],AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.v,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
                   }
                   else
                   {
-                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present = false;
+                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = false;
                     if(SS_context.SSCell_list[cell_index].State == SS_STATE_NOT_CONFIGURED)
                     RC.ss.CBRA_flag = TRUE;
                   }
@@ -519,51 +520,46 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
       }
       else
       {
-        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent = false;
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = false;
       }
-      LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n",RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size);
-      
+
+      LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n",RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index],RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index],RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
+      //store the modified cell config back
+      memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
       LOG_A(ENB_SS, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
       itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
-    }
-    /** Handle Initial Cell power, Sending to Proxy */
-    if (AddOrReconfigure->Basic.v.InitialCellPower.d == true)
-    {
-       SS_context.SSCell_list[cell_index].maxRefPower = AddOrReconfigure->Basic.v.InitialCellPower.v.MaxReferencePower;
-      switch (AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.d)
+
+      /** Handle Initial Cell power, Sending to Proxy */
+      if (AddOrReconfigure->Basic.v.InitialCellPower.d == true)
       {
-      case Attenuation_Type_Value:
-        LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned on value: %d dBm \n",
-              AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value);
-        cellConfig->initialAttenuation = AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value;
-        break;
-      case Attenuation_Type_Off:
-        /** TODO: need to validate this */
-        LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned off \n");
-        cellConfig->initialAttenuation = 0;
-        break;
-      case Attenuation_Type_UNBOUND_VALUE:
-      default:
-        LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Unbound or Invalid value received\n");
+        SS_context.SSCell_list[cell_index].maxRefPower = AddOrReconfigure->Basic.v.InitialCellPower.v.MaxReferencePower;
+        switch (AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.d)
+        {
+          case Attenuation_Type_Value:
+            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned on value: %d dBm \n",
+                  AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value);
+            cellConfig->initialAttenuation = AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value;
+            break;
+          case Attenuation_Type_Off:
+            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned off \n");
+            cellConfig->initialAttenuation = 80;  /* attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
+            break;
+          case Attenuation_Type_UNBOUND_VALUE:
+          default:
+            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Unbound or Invalid value received\n");
+        }
+
+        cellConfig->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
+        cellConfig->maxRefPower= SS_context.SSCell_list[cell_index].maxRefPower;
+        cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
+        cellConfig->header.cell_index = cell_index;
+        LOG_A(ENB_SS,"===Cell configuration received for cell_id: %d Initial attenuation: %d Max ref power: %d for DL_EARFCN: %d cell_index %d=== \n",
+            cellConfig->header.cell_id,
+            cellConfig->initialAttenuation, cellConfig->maxRefPower,
+            cellConfig->dl_earfcn,cell_index);
+        sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t));
       }
-    }
-    cellConfig->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
-    cellConfig->maxRefPower= SS_context.SSCell_list[cell_index].maxRefPower;
-    cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
-    cellConfig->header.cell_index = cell_index;
-    LOG_A(ENB_SS,"=======Cell configuration received for cell_id: %d Initial attenuation: %d \
-				  Max ref power: %d\n for DL_EARFCN: %d cell_index %d =================================== \n",
-                 cellConfig->header.cell_id,
-                 cellConfig->initialAttenuation, cellConfig->maxRefPower,
-                 cellConfig->dl_earfcn,cell_index);
-     //send_to_proxy();
-     printf("=======Cell configuration received for cell_id: %d Initial attenuation: %d \
-				  Max ref power: %d\n for DL_EARFCN: %d cell_index %d =================================== \n",
-                 cellConfig->header.cell_id,
-                 cellConfig->initialAttenuation, cellConfig->maxRefPower,
-                 cellConfig->dl_earfcn,cell_index);
-   
-      sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t));
+    }   
   }
   return true;
 }
@@ -1288,7 +1284,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
   {
     return;
   }
-
+  SS_PAGING_IND(message_p).cell_index = cell_index;
   SS_PAGING_IND(message_p).sfn = tinfo.sfn;
   SS_PAGING_IND(message_p).sf = tinfo.sf;
   SS_PAGING_IND(message_p).paging_recordList = NULL;
@@ -1405,6 +1401,7 @@ static void sys_handle_enquire_timing(ss_set_timinfo_t *tinfo)
     LOG_A(ENB_SS, "[SYS] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->sf);
     SS_SET_TIM_INFO(message_p).sf = tinfo->sf;
     SS_SET_TIM_INFO(message_p).sfn = tinfo->sfn;
+    SS_SET_TIM_INFO(message_p).cell_index = cell_index;
 
     int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, 0, message_p);
     if (send_res < 0)

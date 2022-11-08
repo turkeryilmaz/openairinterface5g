@@ -98,9 +98,9 @@
 
 #include "SIMULATION/TOOLS/sim.h" // for taus
 
-bool    RRCConnSetup_PDU_Present = false;
-uint8_t RRCMsgOnSRB0_PDUSize = 0;
-uint8_t RRCMsgOnSRB0_PDU[1024];
+bool    RRCConnSetup_PDU_Present[MAX_NUM_CCs] = {false};
+uint8_t RRCMsgOnSRB0_PDUSize[MAX_NUM_CCs] = {0};
+uint8_t RRCMsgOnSRB0_PDU[MAX_NUM_CCs][1024];
 
 #define ASN_MAX_ENCODE_SIZE 4096
 #define NUMBEROF_DRBS_TOBE_ADDED 1
@@ -533,7 +533,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
   uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
-  uint8_t CC_id = 0;
+  uint8_t CC_id = SS_PAGING_IND(msg_p).cell_index;
 	int count = 0;
   ue_paging_identity_t ue_paging_identity;
   cn_domain_t cn_domain=0;
@@ -1567,10 +1567,10 @@ rrc_eNB_generate_RRCConnectionReject(
     do_RRCConnectionReject(ctxt_pP->module_id,
                            (uint8_t *) ue_p->Srb0.Tx_buffer.Payload);
 
-  if((RC.ss.mode != SS_ENB) && (RRCMsgOnSRB0_PDUSize > 0)) {
-    memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU,RRCMsgOnSRB0_PDUSize);
-    LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize);
-    ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize;
+  if((RC.ss.mode != SS_ENB) && (RRCMsgOnSRB0_PDUSize[CC_id] > 0)) {
+    memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU[CC_id],RRCMsgOnSRB0_PDUSize[CC_id]);
+    LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize[CC_id]);
+    ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize[CC_id];
   }
 
   LOG_DUMPMSG(RRC,DEBUG_RRC,
@@ -7110,11 +7110,11 @@ rrc_eNB_generate_RRCConnectionSetup(
                             SRB_configList,
                             &ue_context_pP->ue_context.physicalConfigDedicated);
      
-     if((RC.ss.mode != SS_ENB) && (RRCConnSetup_PDU_Present == true) && (RRCMsgOnSRB0_PDUSize > 0))
+     if((RC.ss.mode != SS_ENB) && (RRCConnSetup_PDU_Present[CC_id] == true) && (RRCMsgOnSRB0_PDUSize[CC_id] > 0))
      {
-       memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU,RRCMsgOnSRB0_PDUSize);
-       LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize);
-       ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize;
+       memcpy(ue_p->Srb0.Tx_buffer.Payload,RRCMsgOnSRB0_PDU[CC_id],RRCMsgOnSRB0_PDUSize[CC_id]);
+       LOG_A(RRC,"RRC CCCH PDU overwritten , size: %d \n",RRCMsgOnSRB0_PDUSize[CC_id]);
+       ue_p->Srb0.Tx_buffer.payload_size=  RRCMsgOnSRB0_PDUSize[CC_id];
      }
   }
 
@@ -7337,24 +7337,19 @@ char openair_rrc_eNB_configuration(
 
   openair_rrc_on(&ctxt);
 
-  if(configuration->ActiveParamPresent == true)
-  {
-    RRCConnSetup_PDU_Present = configuration->RlcPduCCCH_Present;
-    LOG_D(RRC,"Update config from TTCN RRCConnSetup_PDU_Present %d \n",RRCConnSetup_PDU_Present);
-    if(RRCConnSetup_PDU_Present == true)
+  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++){
+    if(configuration->ActiveParamPresent[CC_id] == true)
     {
-      RRCMsgOnSRB0_PDUSize = configuration->RlcPduCCCH_Size;
-      memcpy(RRCMsgOnSRB0_PDU,configuration->RlcPduCCCH,RRCMsgOnSRB0_PDUSize);
+      RRCConnSetup_PDU_Present[CC_id] = configuration->RlcPduCCCH_Present[CC_id];
+      LOG_D(RRC,"Update config from TTCN RRCConnSetup_PDU_Present[%d] %d \n",CC_id,RRCConnSetup_PDU_Present[CC_id]);
+      if(RRCConnSetup_PDU_Present[CC_id] == true)
+      {
+        RRCMsgOnSRB0_PDUSize[CC_id] = configuration->RlcPduCCCH_Size[CC_id];
+        memcpy(RRCMsgOnSRB0_PDU[CC_id],configuration->RlcPduCCCH[CC_id],RRCMsgOnSRB0_PDUSize[CC_id]);
+      }
     }
   }
-  /*
-    RC.rrc[ctxt.module_id]->mcc= rrc_configuration_req->mcc;
-    RC.rrc[ctxt.module_id]->mnc= rrc_configuration_req->mnc;
-    RC.rrc[ctxt.module_id]->mnc_digit_length= rrc_configuration_req->mnc_digit_length;
-    RC.rrc[ctxt.module_id]->tac= rrc_configuration_req->tac;
 
-    LOG_W(RRC, "[inst %d] RRC->MCC/MSG->MCC %d/%d \n", ctxt.module_id, RC.rrc[ctxt.module_id]->mcc, rrc_configuration_req->mcc);
-    */
   if (NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
     // msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, F1AP_SCTP_REQ);
     // RCconfig_CU_F1(msg_p, enb_id);
@@ -8196,12 +8191,12 @@ rrc_eNB_decode_ccch(
                &DCCH_LCHAN_DESC,
                LCHAN_DESC_SIZE);
         printf("RRC connection Request for rnti %d\n", ue_context_p->ue_context.rnti);
-        if ((RC.ss.mode == SS_ENB) || (true == RRCConnSetup_PDU_Present))
+        if ((RC.ss.mode == SS_ENB) || (true == RRCConnSetup_PDU_Present[CC_id]))
         {
           rrc_eNB_generate_RRCConnectionSetup(ctxt_pP, ue_context_p, CC_id);
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d),RRCConnSetup_PDU_Present: %d \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
-                Idx,RRCConnSetup_PDU_Present);
+                Idx,RRCConnSetup_PDU_Present[CC_id]);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *)NULL,
@@ -9316,35 +9311,36 @@ void handle_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
     for (int j=0; j<RC.nb_inst; j++) {
       eNB_RRC_INST *rrc = RC.rrc[j];
 
-      if (rrc->configuration.mcc[0] == f1_setup_req->cell[i].mcc &&
-          rrc->configuration.mnc[0] == f1_setup_req->cell[i].mnc &&
+     for(int CC_id=0;CC_id < MAX_NUM_CCs; CC_id++){
+      if (rrc->configuration.mcc[CC_id][0] == f1_setup_req->cell[i].mcc &&
+          rrc->configuration.mnc[CC_id][0] == f1_setup_req->cell[i].mnc &&
           rrc->nr_cellid == f1_setup_req->cell[i].nr_cellid) {
         // check that CU rrc instance corresponds to mcc/mnc/cgi (normally cgi should be enough, but just in case)
-        rrc->carrier[0].MIB = malloc(f1_setup_req->mib_length[i]);
-        rrc->carrier[0].sizeof_MIB = f1_setup_req->mib_length[i];
+        rrc->carrier[CC_id].MIB = malloc(f1_setup_req->mib_length[i]);
+        rrc->carrier[CC_id].sizeof_MIB = f1_setup_req->mib_length[i];
         LOG_W(RRC, "instance %d mib length %d\n", i, f1_setup_req->mib_length[i]);
         LOG_W(RRC, "instance %d sib1 length %d\n", i, f1_setup_req->sib1_length[i]);
-        memcpy((void *)rrc->carrier[0].MIB,f1_setup_req->mib[i],f1_setup_req->mib_length[i]);
+        memcpy((void *)rrc->carrier[CC_id].MIB,f1_setup_req->mib[i],f1_setup_req->mib_length[i]);
         asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
                                   &asn_DEF_LTE_BCCH_BCH_Message,
-                                  (void **)&rrc->carrier[0].mib_DU,
+                                  (void **)&rrc->carrier[CC_id].mib_DU,
                                   f1_setup_req->mib[i],
                                   f1_setup_req->mib_length[i]);
         AssertFatal(dec_rval.code == RC_OK,
                     "[eNB_DU %"PRIu8"] Failed to decode LTE_BCCH_BCH_MESSAGE (%zu bits)\n",
                     j,
                     dec_rval.consumed );
-        LTE_BCCH_BCH_Message_t *mib = &rrc->carrier[0].mib;
-        LTE_BCCH_BCH_Message_t *mib_DU = rrc->carrier[0].mib_DU;
+        LTE_BCCH_BCH_Message_t *mib = &rrc->carrier[CC_id].mib;
+        LTE_BCCH_BCH_Message_t *mib_DU = rrc->carrier[CC_id].mib_DU;
         mib->message.dl_Bandwidth = mib_DU->message.dl_Bandwidth;
         mib->message.phich_Config.phich_Resource = mib_DU->message.phich_Config.phich_Resource;
         mib->message.phich_Config.phich_Duration = mib_DU->message.phich_Config.phich_Duration;
-        rrc->carrier[0].SIB1 = malloc(f1_setup_req->sib1_length[i]);
-        rrc->carrier[0].sizeof_SIB1 = f1_setup_req->sib1_length[i];
-        memcpy((void *)rrc->carrier[0].SIB1,f1_setup_req->sib1[i],f1_setup_req->sib1_length[i]);
+        rrc->carrier[CC_id].SIB1 = malloc(f1_setup_req->sib1_length[i]);
+        rrc->carrier[CC_id].sizeof_SIB1 = f1_setup_req->sib1_length[i];
+        memcpy((void *)rrc->carrier[CC_id].SIB1,f1_setup_req->sib1[i],f1_setup_req->sib1_length[i]);
         dec_rval = uper_decode_complete(NULL,
                                         &asn_DEF_LTE_BCCH_DL_SCH_Message,
-                                        (void **)&rrc->carrier[0].siblock1_DU,
+                                        (void **)&rrc->carrier[CC_id].siblock1_DU,
                                         f1_setup_req->sib1[i],
                                         f1_setup_req->sib1_length[i]);
         AssertFatal(dec_rval.code == RC_OK,
@@ -9352,13 +9348,13 @@ void handle_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
                     j,
                     dec_rval.consumed );
         // Parse message and extract SystemInformationBlockType1 field
-        LTE_BCCH_DL_SCH_Message_t *bcch_message = rrc->carrier[0].siblock1_DU;
+        LTE_BCCH_DL_SCH_Message_t *bcch_message = rrc->carrier[CC_id].siblock1_DU;
         AssertFatal(bcch_message->message.present == LTE_BCCH_DL_SCH_MessageType_PR_c1,
                     "bcch_message->message.present != LTE_BCCH_DL_SCH_MessageType_PR_c1\n");
         AssertFatal(bcch_message->message.choice.c1.present == LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1,
                     "bcch_message->message.choice.c1.present != LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1\n");
-        rrc->carrier[0].sib1 = &bcch_message->message.choice.c1.choice.systemInformationBlockType1;
-        rrc->carrier[0].physCellId = f1_setup_req->cell[i].nr_pci;
+        rrc->carrier[CC_id].sib1 = &bcch_message->message.choice.c1.choice.systemInformationBlockType1;
+        rrc->carrier[CC_id].physCellId = f1_setup_req->cell[i].nr_pci;
         // prepare F1_SETUP_RESPONSE
 
         if (msg_p == NULL) {
@@ -9366,15 +9362,15 @@ void handle_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
         }
 
         F1AP_SETUP_RESP (msg_p).gNB_CU_name                                = rrc->node_name;
-        F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].mcc                           = rrc->configuration.mcc[0];
-        F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].mnc                           = rrc->configuration.mnc[0];
-        F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].mnc_digit_length              = rrc->configuration.mnc_digit_length[0];
+        F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].mcc                           = rrc->configuration.mcc[CC_id][0];
+        F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].mnc                           = rrc->configuration.mnc[CC_id][0];
+        F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].mnc_digit_length              = rrc->configuration.mnc_digit_length[CC_id][0];
         F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].nr_cellid                     = rrc->nr_cellid;
         F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].nrpci                         = f1_setup_req->cell[i].nr_pci;
         int num_SI= 0;
         if (rrc->carrier[0].SIB23) {
-          F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container[2+num_SI]        = rrc->carrier[0].SIB23;
-          F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container_length[2+num_SI] = rrc->carrier[0].sizeof_SIB23;
+          F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container[2+num_SI]        = rrc->carrier[CC_id].SIB23;
+          F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container_length[2+num_SI] = rrc->carrier[CC_id].sizeof_SIB23;
           //printf("SI %d size %d: ", 0, F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container_length[2+num_SI]);
           //for (int n = 0; n < F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container_length[2+num_SI]; n++)
           //  printf("%02x ", F1AP_SETUP_RESP (msg_p).cells_to_activate[cu_cell_ind].SI_container[2+num_SI][n]);
@@ -9391,8 +9387,9 @@ void handle_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
         break;
       } else {// setup_req mcc/mnc match rrc internal list element
         LOG_W(RRC,"[Inst %d] No matching MCC/MNC: rrc->mcc/f1_setup_req->mcc %d/%d rrc->mnc/f1_setup_req->mnc %d/%d \n",
-              j, rrc->configuration.mcc[0], f1_setup_req->cell[i].mcc,rrc->configuration.mnc[0], f1_setup_req->cell[i].mnc);
+              j, rrc->configuration.mcc[CC_id][0], f1_setup_req->cell[i].mcc,rrc->configuration.mnc[CC_id][0], f1_setup_req->cell[i].mnc);
       }
+     }
     }// for (int j=0;j<RC.nb_inst;j++)
 
     if (found_cell==0) {
@@ -10476,6 +10473,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
 
               ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+              uint8_t cc_id = ue_context_pP->ue_context.primaryCC_id;
               LOG_A(RRC, "RRC Connection Release message received \n");
               if (NULL == ue_context_pP)
               {
@@ -10493,7 +10491,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               as_security_conf_ciphering = FALSE;
               if (RC.ss.CBRA_flag)
               {
-                RRCConnSetup_PDU_Present = FALSE;
+                RRCConnSetup_PDU_Present[cc_id] = FALSE;
               }
             }
           }
@@ -10517,8 +10515,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
           xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
 
-          RRCMsgOnSRB0_PDUSize = SS_RRC_PDU_REQ(msg_p).sdu_size;
-          memcpy(RRCMsgOnSRB0_PDU, SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+          RRCMsgOnSRB0_PDUSize[cc_id] = SS_RRC_PDU_REQ(msg_p).sdu_size;
+          memcpy(RRCMsgOnSRB0_PDU[cc_id], SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
 
           Idx = DCCH;
           // SRB1
@@ -10541,7 +10539,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                  LCHAN_DESC_SIZE);
 
           if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
-            RRCConnSetup_PDU_Present = true;
+            RRCConnSetup_PDU_Present[cc_id] = true;
             rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
 
             LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",

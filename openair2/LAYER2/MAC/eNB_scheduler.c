@@ -624,11 +624,12 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
     }
   }
 
+  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
   /* Refresh UE list based on UEs dropped by PHY in previous subframe */
   for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
     if (UE_info->active[CC_id][UE_id]) {
       rnti = UE_RNTI(module_idP, UE_id);
-      CC_id = UE_PCCID(module_idP, UE_id);
+      //CC_id = UE_PCCID(module_idP, UE_id);
       UE_scheduling_control = &(UE_info->UE_sched_ctrl[UE_id]);
 
 /* to be merged with MAC_stats.log generation. probably redundant
@@ -987,6 +988,7 @@ eNB_dlsch_ulsch_scheduler(module_id_t module_idP,
     rrc_rx_tx(&ctxt, CC_id);
   }
 #endif
+  }
 
   int do_fembms_si=0;
   for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
