@@ -969,11 +969,13 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
     Sched_INFO->DL_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_dl_config_req(Sched_INFO->DL_req); // DJP - .dl_config_request_body.dl_config_pdu_list[0]); // DJP - FIXME TODO - yuk - only copes with 1 pdu
     Sched_INFO->UE_release_req->sfn_sf = frame << 4 | subframe;
+    Sched_INFO->UE_release_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_ue_release_req(Sched_INFO->UE_release_req);
   }
 
   if ((NFAPI_MODE!=NFAPI_MONOLITHIC) && number_hi_dci0_pdu!=0) {
     HI_DCI0_req->sfn_sf = frame << 4 | subframe;
+    HI_DCI0_req->header.phy_id =  Sched_INFO->CC_id+1;
     oai_nfapi_hi_dci0_req(HI_DCI0_req);
     eNB->pdcch_vars[NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf)&1].num_dci=0;
     eNB->pdcch_vars[NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf)&1].num_pdcch_symbols=0;
@@ -1015,12 +1017,14 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
       if (RC.mac[Mod_id]->scheduler_mode == SCHED_MODE_DEFAULT) {
         //LOG_D(PHY, "UL_CONFIG to send to PNF\n");
         UL_req->sfn_sf = frame << 4 | subframe;
+        UL_req->header.phy_id = Sched_INFO->CC_id+1;
         oai_nfapi_ul_config_req(UL_req);
         UL_req->ul_config_request_body.number_of_pdus=0;
         number_ul_pdu=0;
       }else if (RC.mac[Mod_id]->scheduler_mode == SCHED_MODE_FAIR_RR) {
         if(ulsch_pdu_num <= RC.rrc[Mod_id]->configuration.radioresourceconfig[CC_id].ue_multiple_max){
           UL_req->sfn_sf = frame << 4 | subframe;
+          UL_req->header.phy_id = Sched_INFO->CC_id+1;
           oai_nfapi_ul_config_req(UL_req);
           UL_req->ul_config_request_body.number_of_pdus=0;
           number_ul_pdu=0;

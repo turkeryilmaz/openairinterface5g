@@ -882,18 +882,18 @@ void flexran_agent_fill_rrc_cell_config(mid_t mod_id, uint8_t cc_id,
   conf->ul_pusch_power = flexran_agent_get_operating_pusch_p0 (mod_id, cc_id);
   conf->has_ul_pusch_power = 1;
 
-  conf->n_plmn_id = flexran_get_rrc_num_plmn_ids(mod_id);
+  conf->n_plmn_id = flexran_get_rrc_num_plmn_ids(mod_id,cc_id);
   conf->plmn_id = calloc(conf->n_plmn_id, sizeof(Protocol__FlexPlmn *));
   if (conf->plmn_id) {
     for (int i = 0; i < conf->n_plmn_id; i++) {
       conf->plmn_id[i] = malloc(sizeof(Protocol__FlexPlmn));
       if (!conf->plmn_id[i]) continue;
       protocol__flex_plmn__init(conf->plmn_id[i]);
-      conf->plmn_id[i]->mcc = flexran_get_rrc_mcc(mod_id, i);
+      conf->plmn_id[i]->mcc = flexran_get_rrc_mcc(mod_id,cc_id, i);
       conf->plmn_id[i]->has_mcc = 1;
-      conf->plmn_id[i]->mnc = flexran_get_rrc_mnc(mod_id, i);
+      conf->plmn_id[i]->mnc = flexran_get_rrc_mnc(mod_id,cc_id, i);
       conf->plmn_id[i]->has_mnc = 1;
-      conf->plmn_id[i]->mnc_length = flexran_get_rrc_mnc_digit_length(mod_id, i);
+      conf->plmn_id[i]->mnc_length = flexran_get_rrc_mnc_digit_length(mod_id,cc_id, i);
       conf->plmn_id[i]->has_mnc_length = 1;
     }
   } else {

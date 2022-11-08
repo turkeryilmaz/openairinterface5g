@@ -2240,6 +2240,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
   }
 
   // UE round >0
+  for ( CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++ ) {
   for ( UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ ) {
     if (UE_info->active[CC_id][UE_id] == FALSE)
       continue;
@@ -2249,7 +2250,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
     if (rnti ==NOT_A_RNTI)
       continue;
 
-    CC_id = UE_PCCID(module_idP,UE_id);
+    //CC_id = UE_PCCID(module_idP,UE_id);
 
     if (UE_info->UE_template[CC_id][UE_id].configured == FALSE)
       continue;
@@ -2368,6 +2369,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
       }*/
     }
   }
+  }
 
   for ( CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++ ) {
     HI_DCI0_req   = &eNB->HI_DCI0_req[CC_id][subframeP].hi_dci0_request_body;
@@ -2400,6 +2402,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
     }
   }
 
+  for ( CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++ ) {
   for ( UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ ) {
     if (UE_info->active[CC_id][UE_id] == FALSE)
       continue;
@@ -2409,7 +2412,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
     if (rnti ==NOT_A_RNTI)
       continue;
 
-    CC_id = UE_PCCID(module_idP,UE_id);
+    //CC_id = UE_PCCID(module_idP,UE_id);
 
     if (UE_id > last_ulsch_ue_id[CC_id])
       continue;
@@ -2510,6 +2513,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
               continue;
             }
         }*/
+  }
   }
 
   for ( CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++ ) {

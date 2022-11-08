@@ -275,6 +275,7 @@ typedef struct subframe_offset_list_s {
 typedef struct ss_paging_ind_s {
   uint16_t sfn;
   uint8_t  sf;
+  int cell_index;
 
   /* UE identity index value.
    * Specified in 3GPP TS 36.304

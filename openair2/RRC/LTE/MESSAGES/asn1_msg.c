@@ -398,7 +398,7 @@ uint8_t do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
                      RrcConfigurationReq *configuration
                     ) {
   //  SystemInformation_t systemInformation;
-  int num_plmn = configuration->num_plmn;
+  int num_plmn = configuration->num_plmn[CC_id] ;
 
   //LTE_PLMN_IdentityInfo_t *PLMN_identity_info;
   LTE_PLMN_IdentityInfo_t * PLMN_identity_info = &carrier->PLMN_identity_info_MBMS[0];
@@ -454,9 +454,9 @@ uint8_t do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
 
     if (dummy_mcc_0 == NULL || dummy_mcc_1 == NULL || dummy_mcc_2 == NULL)
       exit(1);
-    *dummy_mcc_0 = (configuration->mcc[i] / 100) % 10;
-    *dummy_mcc_1 = (configuration->mcc[i] / 10) % 10;
-    *dummy_mcc_2 = (configuration->mcc[i] / 1) % 10;
+    *dummy_mcc_0 = (configuration->mcc[CC_id][i] / 100) % 10;
+    *dummy_mcc_1 = (configuration->mcc[CC_id][i] / 10) % 10;
+    *dummy_mcc_2 = (configuration->mcc[CC_id][i] / 1) % 10;
 
     ASN_SEQUENCE_ADD(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_0);
     ASN_SEQUENCE_ADD(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_1);
@@ -470,19 +470,19 @@ uint8_t do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
     if (dummy_mnc_0 == NULL || dummy_mnc_1 == NULL || dummy_mnc_2 == NULL)
       exit(1);
 
-    if (configuration->mnc[i] >= 100) {
-      *dummy_mnc_0 = (configuration->mnc[i] / 100) % 10;
-      *dummy_mnc_1 = (configuration->mnc[i] / 10) % 10;
-      *dummy_mnc_2 = (configuration->mnc[i] / 1) % 10;
+    if (configuration->mnc[CC_id][i] >= 100) {
+      *dummy_mnc_0 = (configuration->mnc[CC_id][i] / 100) % 10;
+      *dummy_mnc_1 = (configuration->mnc[CC_id][i] / 10) % 10;
+      *dummy_mnc_2 = (configuration->mnc[CC_id][i] / 1) % 10;
     } else {
-      if (configuration->mnc_digit_length[i] == 2) {
-        *dummy_mnc_0 = (configuration->mnc[i] / 10) % 10;
-        *dummy_mnc_1 = (configuration->mnc[i] / 1) % 10;
+      if (configuration->mnc_digit_length[CC_id][i] == 2) {
+        *dummy_mnc_0 = (configuration->mnc[CC_id][i] / 10) % 10;
+        *dummy_mnc_1 = (configuration->mnc[CC_id][i] / 1) % 10;
         *dummy_mnc_2 = 0xf;
       } else {
-        *dummy_mnc_0 = (configuration->mnc[i] / 100) % 100;
-        *dummy_mnc_1 = (configuration->mnc[i] / 10) % 10;
-        *dummy_mnc_2 = (configuration->mnc[i] / 1) % 10;
+        *dummy_mnc_0 = (configuration->mnc[CC_id][i] / 100) % 100;
+        *dummy_mnc_1 = (configuration->mnc[CC_id][i] / 10) % 10;
+        *dummy_mnc_2 = (configuration->mnc[CC_id][i] / 1) % 10;
       }
     }
 
@@ -502,16 +502,16 @@ uint8_t do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
 
   // 16 bits
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.buf = MALLOC(2);
-  (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.buf[0] = (configuration->tac >> 8) & 0xff;
-  (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.buf[1] = (configuration->tac >> 0) & 0xff;
+  (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.buf[0] = (configuration->tac[CC_id] >> 8) & 0xff;
+  (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.buf[1] = (configuration->tac[CC_id] >> 0) & 0xff;
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.size=2;
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.trackingAreaCode_r14.bits_unused=0;
   // 28 bits
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf = MALLOC(8);
-  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[0] = (configuration->cell_identity >> 20) & 0xff;
-  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[1] = (configuration->cell_identity >> 12) & 0xff;
-  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[2] = (configuration->cell_identity >>  4) & 0xff;
-  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[3] = (configuration->cell_identity <<  4) & 0xf0;
+  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[0] = (configuration->Nid_cell[CC_id] >> 20) & 0xff;
+  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[1] = (configuration->Nid_cell[CC_id] >> 12) & 0xff;
+  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[2] = (configuration->Nid_cell[CC_id] >>  4) & 0xff;
+  (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.buf[3] = (configuration->Nid_cell[CC_id] <<  4) & 0xf0;
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.size=4;
   (*sib1_MBMS)->cellAccessRelatedInfo_r14.cellIdentity_r14.bits_unused=4;
   (*sib1_MBMS)->freqBandIndicator_r14 = configuration->eutra_band[CC_id];
@@ -818,7 +818,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
                 RrcConfigurationReq *configuration
                ) {
   //  SystemInformation_t systemInformation;
-  int num_plmn = configuration->num_plmn;
+  int num_plmn = configuration->num_plmn[CC_id];
   LTE_PLMN_IdentityInfo_t *PLMN_identity_info;
   LTE_MCC_MNC_Digit_t *dummy_mcc_0;
   LTE_MCC_MNC_Digit_t *dummy_mcc_1;
@@ -874,9 +874,9 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
       exit(1);
 
 
-    *dummy_mcc_0 = (configuration->mcc[i] / 100) % 10;
-    *dummy_mcc_1 = (configuration->mcc[i] / 10) % 10;
-    *dummy_mcc_2 = (configuration->mcc[i] / 1) % 10;
+    *dummy_mcc_0 = (configuration->mcc[CC_id][i] / 100) % 10;
+    *dummy_mcc_1 = (configuration->mcc[CC_id][i] / 10) % 10;
+    *dummy_mcc_2 = (configuration->mcc[CC_id][i] / 1) % 10;
     ASN_SEQUENCE_ADD(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_0);
     ASN_SEQUENCE_ADD(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_1);
     ASN_SEQUENCE_ADD(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_2);
@@ -890,19 +890,19 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
       exit(1);
 
 
-    if (configuration->mnc[i] >= 100) {
-      *dummy_mnc_0 = (configuration->mnc[i] / 100) % 10;
-      *dummy_mnc_1 = (configuration->mnc[i] / 10) % 10;
-      *dummy_mnc_2 = (configuration->mnc[i] / 1) % 10;
+    if (configuration->mnc[CC_id][i] >= 100) {
+      *dummy_mnc_0 = (configuration->mnc[CC_id][i] / 100) % 10;
+      *dummy_mnc_1 = (configuration->mnc[CC_id][i] / 10) % 10;
+      *dummy_mnc_2 = (configuration->mnc[CC_id][i] / 1) % 10;
     } else {
-      if (configuration->mnc_digit_length[i] == 2) {
-        *dummy_mnc_0 = (configuration->mnc[i] / 10) % 10;
-        *dummy_mnc_1 = (configuration->mnc[i] / 1) % 10;
+      if (configuration->mnc_digit_length[CC_id][i] == 2) {
+        *dummy_mnc_0 = (configuration->mnc[CC_id][i] / 10) % 10;
+        *dummy_mnc_1 = (configuration->mnc[CC_id][i] / 1) % 10;
         *dummy_mnc_2 = 0xf;
       } else {
-        *dummy_mnc_0 = (configuration->mnc[i] / 100) % 100;
-        *dummy_mnc_1 = (configuration->mnc[i] / 10) % 10;
-        *dummy_mnc_2 = (configuration->mnc[i] / 1) % 10;
+        *dummy_mnc_0 = (configuration->mnc[CC_id][i] / 100) % 100;
+        *dummy_mnc_1 = (configuration->mnc[CC_id][i] / 10) % 10;
+        *dummy_mnc_2 = (configuration->mnc[CC_id][i] / 1) % 10;
       }
     }
     ASN_SEQUENCE_ADD(&PLMN_identity_info[i].plmn_Identity.mnc.list, dummy_mnc_0);
@@ -921,8 +921,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
 
   // 16 bits
   (*sib1)->cellAccessRelatedInfo.trackingAreaCode.buf = MALLOC(2);
-  (*sib1)->cellAccessRelatedInfo.trackingAreaCode.buf[0] = (configuration->tac >> 8) & 0xff;
-  (*sib1)->cellAccessRelatedInfo.trackingAreaCode.buf[1] = (configuration->tac >> 0) & 0xff;
+  (*sib1)->cellAccessRelatedInfo.trackingAreaCode.buf[0] = (configuration->tac[CC_id] >> 8) & 0xff;
+  (*sib1)->cellAccessRelatedInfo.trackingAreaCode.buf[1] = (configuration->tac[CC_id] >> 0) & 0xff;
   (*sib1)->cellAccessRelatedInfo.trackingAreaCode.size = 2;
   (*sib1)->cellAccessRelatedInfo.trackingAreaCode.bits_unused = 0;
   // 28 bits
@@ -934,21 +934,26 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[3] = (configuration->Nid_cell[CC_id] << 4) & 0xf0;
   (*sib1)->cellAccessRelatedInfo.cellIdentity.size=4;
   (*sib1)->cellAccessRelatedInfo.cellIdentity.bits_unused=4;
-  //  assign_enum(&(*sib1)->cellAccessRelatedInfo.cellBarred,SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred);
-  if (RC.ss.mode == SS_SOFTMODEM) {
-    (*sib1)->cellAccessRelatedInfo.cellBarred=configuration->cellBarred;
-    (*sib1)->cellAccessRelatedInfo.intraFreqReselection=configuration->intraFreqReselection;
-  } else {
-    (*sib1)->cellAccessRelatedInfo.cellBarred=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
-    //  assign_enum(&(*sib1)->cellAccessRelatedInfo.intraFreqReselection,SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed);
-    (*sib1)->cellAccessRelatedInfo.intraFreqReselection=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_notAllowed;
-  }
-  (*sib1)->cellAccessRelatedInfo.csg_Indication=0;
 
   if (RC.ss.mode == SS_SOFTMODEM)
   {
-	  LOG_D(RRC,"Updating q_RxLevMin: %ld\n", configuration->q_RxLevMin);
-	  (*sib1)->cellSelectionInfo.q_RxLevMin=configuration->q_RxLevMin;
+	  (*sib1)->cellAccessRelatedInfo.cellBarred=configuration->cellBarred[CC_id];
+	  (*sib1)->cellAccessRelatedInfo.intraFreqReselection=configuration->intraFreqReselection[CC_id];
+  }
+  else
+  {
+        //no SS, these info are not provided in eNb config, set as a default value
+        (*sib1)->cellAccessRelatedInfo.cellBarred=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
+	  (*sib1)->cellAccessRelatedInfo.intraFreqReselection=LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed;
+  }
+  (*sib1)->cellAccessRelatedInfo.csg_Indication=0;
+  LOG_D(RRC,"[eNB] SystemInformationBlockType1 for Cell(%d): tac:0x%x cellBarred:%d intraFreqReselection:%d\n",
+	                                                     CC_id, configuration->tac[CC_id], (int)(*sib1)->cellAccessRelatedInfo.cellBarred,(int)(*sib1)->cellAccessRelatedInfo.intraFreqReselection);
+
+  if (RC.ss.mode == SS_SOFTMODEM)
+  {
+	  LOG_D(RRC,"Updating q_RxLevMin: %ld\n", configuration->q_RxLevMin[CC_id]);
+	  (*sib1)->cellSelectionInfo.q_RxLevMin=configuration->q_RxLevMin[CC_id];
   }
   else
   { 
@@ -983,7 +988,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
 
   (*sib1)->si_WindowLength = LTE_SystemInformationBlockType1__si_WindowLength_ms20;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    (*sib1)->systemInfoValueTag = configuration->systemInfoValueTag;
+    (*sib1)->systemInfoValueTag = configuration->systemInfoValueTag[CC_id];
   } else {
     (*sib1)->systemInfoValueTag = 0;
   }
@@ -997,10 +1002,10 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   sib1_920->ims_EmergencySupport_r9 = NULL; // ptr
   /** TODO: Temporary hack */
   if (RC.ss.mode == SS_SOFTMODEM) {
-    if (configuration->q_QualMin != 0 /*&& RC.ss.State > SS_STATE_CELL_CONFIGURED*/) {
-    LOG_A(RRC, "Updating q_QualMin: %ld\n", configuration->q_QualMin);
+    if (configuration->q_QualMin[CC_id] != 0 /*&& RC.ss.State > SS_STATE_CELL_CONFIGURED*/) {
+    LOG_A(RRC, "Updating q_QualMin: %ld\n", configuration->q_QualMin[CC_id]);
     sib1_920->cellSelectionInfo_v920 = calloc (1, sizeof(struct LTE_CellSelectionInfo_v920));
-    sib1_920->cellSelectionInfo_v920->q_QualMin_r9 = configuration->q_QualMin;
+    sib1_920->cellSelectionInfo_v920->q_QualMin_r9 = configuration->q_QualMin[CC_id];
     } else {
         sib1_920->cellSelectionInfo_v920 = NULL;
     }
@@ -1774,16 +1779,16 @@ uint8_t do_SIB23(uint8_t Mod_id,
   /// (*SIB3)
   (*sib3)->ext1 = NULL;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    (*sib3)->cellReselectionInfoCommon.q_Hyst=configuration->q_Hyst;
+    (*sib3)->cellReselectionInfoCommon.q_Hyst=configuration->q_Hyst[CC_id];
   } else {
     (*sib3)->cellReselectionInfoCommon.q_Hyst=LTE_SystemInformationBlockType3__cellReselectionInfoCommon__q_Hyst_dB4;
   }
   (*sib3)->cellReselectionInfoCommon.speedStateReselectionPars=NULL;
   (*sib3)->cellReselectionServingFreqInfo.s_NonIntraSearch=NULL;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    (*sib3)->cellReselectionServingFreqInfo.threshServingLow= configuration->threshServingLow;
-    (*sib3)->cellReselectionServingFreqInfo.cellReselectionPriority= configuration->cellReselectionPriority;
-    (*sib3)->intraFreqCellReselectionInfo.q_RxLevMin = configuration->sib3_q_RxLevMin;
+    (*sib3)->cellReselectionServingFreqInfo.threshServingLow= configuration->threshServingLow[CC_id];
+    (*sib3)->cellReselectionServingFreqInfo.cellReselectionPriority= configuration->cellReselectionPriority[CC_id];
+    (*sib3)->intraFreqCellReselectionInfo.q_RxLevMin = configuration->sib3_q_RxLevMin[CC_id];
   } else {
     (*sib3)->cellReselectionServingFreqInfo.threshServingLow=31;
     (*sib3)->cellReselectionServingFreqInfo.cellReselectionPriority=7;
@@ -1800,7 +1805,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.buf[0] = 1 << 6;
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.bits_unused = 6;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = configuration->t_ReselectionEUTRA;
+    (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = configuration->t_ReselectionEUTRA[CC_id];
   } else {
     (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = 1;
   }
