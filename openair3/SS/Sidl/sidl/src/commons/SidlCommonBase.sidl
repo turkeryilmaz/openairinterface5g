@@ -55,3 +55,5 @@ typedef BIT_STRING_ELEMENT B128_Type[128];
 typedef SIDL_DYNAMIC(BIT_STRING_ELEMENT, B7_15_Type);
 typedef OCTET_STRING_ELEMENT O1_Type[1];
 typedef OCTET_STRING_ELEMENT O4_Type[4];
+
+typedef SIDL_DYNAMIC(B8_Type, B8_List_Type);

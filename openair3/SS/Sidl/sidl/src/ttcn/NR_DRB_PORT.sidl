@@ -1,0 +1,670 @@
+/*
+ * Copyright 2022 Sequans Communications.
+ *
+ * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The OpenAirInterface Software Alliance licenses this file to You under
+ * the OAI Public License, Version 1.0  (the "License"); you may not use this file
+ * except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.openairinterface.org/?page_id=698
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * For more information about the OpenAirInterface (OAI) Software Alliance:
+ *      contact@openairinterface.org
+ */
+
+#include "msg.sidl"
+
+// SIDL common TTCN types and definitions.
+#include "TtcnCommon.sidl"
+
+// Interface name.
+METADATA_VAR(itf_name, "NrDrb");
+
+// Restricted RATs.
+METADATA_VAR(rats, "NR");
+
+// TTCN namespaces.
+METADATA_VAR(namespaces, "NR_ASP_DrbDefs");
+
+SIDL_UNION_ENUM(NR_HarqProcessAssignment_Type) {
+	NR_HarqProcessAssignment_Type_UNBOUND_VALUE,
+	NR_HarqProcessAssignment_Type_Id,
+	NR_HarqProcessAssignment_Type_Automatic
+};
+SIDL_UNION_BEGIN(NR_HarqProcessAssignment_Type) {
+	SIDL_UNION_CASE(NR_HarqProcessAssignment_Type_Id)
+		NR_HarqProcessId_Type Id;
+	SIDL_UNION_CASE(NR_HarqProcessAssignment_Type_Automatic)
+		Null_Type Automatic;
+} SIDL_UNION_END;
+
+typedef B16_Type RNTI_B16_Type;
+typedef O1_Type NR_MAC_LongBSR_BufferSize_Type;
+
+typedef SIDL_DYNAMIC(NR_MAC_LongBSR_BufferSize_Type, NR_MAC_LongBSR_BufferSizeList_Type); // (0..8)
+
+typedef B8_Type NR_MAC_CE_DuplicationActDeact_Type;
+typedef B48_Type NR_MAC_CE_ContentionResolutionId_Type;
+
+struct NR_MAC_CE_TimingAdvance_Type {
+	B2_Type TAG_ID;
+	B6_Type TimingAdvanceCommand;
+};
+
+struct NR_MAC_CE_SCellFlags_Type {
+	B8_Type SCellIndex7_1;
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_CE_SCellFlags_Type, B8_Type, SCellIndex15_8);
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_CE_SCellFlags_Type, B8_Type, SCellIndex23_16);
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_CE_SCellFlags_Type, B8_Type, SCellIndex31_24);
+};
+
+typedef struct NR_MAC_CE_SCellFlags_Type NR_MAC_CE_SCellActDeact_Type;
+
+struct NR_MAC_CE_ServCellId_BwpId_Type {
+	B1_Type Field1;
+	B5_Type ServCellId;
+	B2_Type BwpId;
+};
+
+struct NR_MAC_CE_SP_ResourceSetActDeact_Octet2_Type {
+	B1_Type Reserved;
+	B1_Type IM;
+	B6_Type CSI_RS_ResourcesetId;
+};
+
+struct NR_MAC_CE_SP_ResourceSetActDeact_Octet3_Type {
+	B2_Type Reserved;
+	B6_Type CSI_IM_ResourcesetId;
+};
+
+struct NR_MAC_CE_SP_ResourceSetActDeact_TciStateId_Type {
+	B1_Type Reserved;
+	B7_Type Id;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_CE_SP_ResourceSetActDeact_TciStateId_Type, NR_MAC_CE_SP_ResourceSetActDeact_TciStateIdList_Type);
+
+struct NR_MAC_CE_SP_ResourceSetActDeact_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	struct NR_MAC_CE_SP_ResourceSetActDeact_Octet2_Type Octet2;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_MAC_CE_SP_ResourceSetActDeact_Type, NR_MAC_CE_SP_ResourceSetActDeact_Octet3_Type, Octet3);
+	NR_MAC_CE_SP_ResourceSetActDeact_TciStateIdList_Type IdList;
+};
+
+struct NR_MAC_CE_CSI_TriggerStateSubselection_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	B8_List_Type Selection;
+};
+
+struct NR_MAC_CE_TCI_StatesActDeact_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	B8_List_Type Status;
+};
+
+struct NR_MAC_CE_TCI_StateIndication_Type {
+	B5_Type ServCellId;
+	B4_Type CoresetId;
+	B7_Type TciStateId;
+};
+
+struct NR_MAC_CE_SP_CSI_ReportingActDeact_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	B4_Type Reserved;
+	B4_Type ConfigState;
+};
+
+struct NR_MAC_CE_SP_SRS_ActDeact_Octet2_Type {
+	B2_Type Reserved;
+	B1_Type C;
+	B1_Type SUL;
+	B4_Type SRS_ResourcesetId;
+};
+
+struct NR_MAC_CE_SP_SRS_ActDeact_ResourceId_Type {
+	B1_Type F;
+	B7_Type Id;
+};
+
+struct NR_MAC_CE_SP_SRS_ActDeact_ResourceInfo_Type {
+	B1_Type Reserved;
+	B5_Type ServingCellId;
+	B2_Type BwpId;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_CE_SP_SRS_ActDeact_ResourceId_Type, NR_MAC_CE_SP_SRS_ActDeact_ResourceIdList_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_CE_SP_SRS_ActDeact_ResourceInfo_Type, NR_MAC_CE_SP_SRS_ActDeact_ResourceInfoList_Type);
+
+struct NR_MAC_CE_SP_SRS_ActDeact_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	struct NR_MAC_CE_SP_SRS_ActDeact_Octet2_Type Octet2;
+	NR_MAC_CE_SP_SRS_ActDeact_ResourceIdList_Type ResourceIdList;
+	NR_MAC_CE_SP_SRS_ActDeact_ResourceInfoList_Type ResourceInfoList;
+};
+
+struct NR_MAC_CE_PUCCH_SpatialRelationActDeact_Octet2_Type {
+	B1_Type Reserved;
+	B7_Type ResourceId;
+};
+
+struct NR_MAC_CE_PUCCH_SpatialRelationActDeact_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	struct NR_MAC_CE_PUCCH_SpatialRelationActDeact_Octet2_Type Octet2;
+	B8_Type ActivationStatus;
+};
+
+struct NR_MAC_CE_SP_ZP_ResourceSetActDeact_Octet2_Type {
+	B4_Type Reserved;
+	B4_Type Id;
+};
+
+struct NR_MAC_CE_SP_ZP_ResourceSetActDeact_Type {
+	struct NR_MAC_CE_ServCellId_BwpId_Type Octet1;
+	struct NR_MAC_CE_SP_ZP_ResourceSetActDeact_Octet2_Type Octet2;
+};
+
+struct NR_MAC_CE_ShortBSR_Type {
+	B3_Type LCG;
+	B5_Type BufferSize;
+};
+
+struct NR_MAC_CE_LongBSR_Type {
+	B8_Type LCG_Presence;
+	NR_MAC_LongBSR_BufferSizeList_Type BufferSizeList;
+};
+
+struct NR_MAC_CE_PH_Record_Type {
+	B1_Type P_Bit;
+	B1_Type V_Bit;
+	B6_Type Value;
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_CE_PH_Record_Type, B2_Type, MPE_or_R);
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_CE_PH_Record_Type, B6_Type, PCMaxc);
+};
+
+typedef struct NR_MAC_CE_PH_Record_Type NR_MAC_CE_SingleEntryPHR_Type;
+
+struct NR_MAC_CE_MultiEntryPHR_Type {
+	struct NR_MAC_CE_SCellFlags_Type PHFieldPresentForSCell;
+	SIDL_DYNAMIC_OF_STRUCT(NR_MAC_CE_PH_Record_Type, PH_Record);
+};
+
+struct NR_MAC_CE_RecommendedBitrate_Type {
+	B6_Type LCID;
+	B1_Type UL_DL;
+	B6_Type Bitrate;
+	B1_Type X;
+	B2_Type Reserved;
+};
+
+SIDL_UNION_ENUM(NR_MAC_ControlElementDL_Type) {
+	NR_MAC_ControlElementDL_Type_UNBOUND_VALUE,
+	NR_MAC_ControlElementDL_Type_ContentionResolutionID,
+	NR_MAC_ControlElementDL_Type_TimingAdvance,
+	NR_MAC_ControlElementDL_Type_SCellActDeact,
+	NR_MAC_ControlElementDL_Type_DuplicationActDeact,
+	NR_MAC_ControlElementDL_Type_SP_ResourceSetActDeact,
+	NR_MAC_ControlElementDL_Type_CSI_TriggerStateSubselection,
+	NR_MAC_ControlElementDL_Type_TCI_StatesActDeact,
+	NR_MAC_ControlElementDL_Type_TCI_StateIndication,
+	NR_MAC_ControlElementDL_Type_SP_CSI_ReportingActDeact,
+	NR_MAC_ControlElementDL_Type_SP_SRS_ActDeact,
+	NR_MAC_ControlElementDL_Type_PUCCH_SpatialRelationActDeact,
+	NR_MAC_ControlElementDL_Type_SP_ZP_ResourceSetActDeact,
+	NR_MAC_ControlElementDL_Type_RecommendatdBitrate
+};
+SIDL_UNION_BEGIN(NR_MAC_ControlElementDL_Type) {
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_ContentionResolutionID)
+		NR_MAC_CE_ContentionResolutionId_Type ContentionResolutionID;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_TimingAdvance)
+		struct NR_MAC_CE_TimingAdvance_Type TimingAdvance;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_SCellActDeact)
+		NR_MAC_CE_SCellActDeact_Type SCellActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_DuplicationActDeact)
+		NR_MAC_CE_DuplicationActDeact_Type DuplicationActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_SP_ResourceSetActDeact)
+		struct NR_MAC_CE_SP_ResourceSetActDeact_Type SP_ResourceSetActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_CSI_TriggerStateSubselection)
+		struct NR_MAC_CE_CSI_TriggerStateSubselection_Type CSI_TriggerStateSubselection;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_TCI_StatesActDeact)
+		struct NR_MAC_CE_TCI_StatesActDeact_Type TCI_StatesActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_TCI_StateIndication)
+		struct NR_MAC_CE_TCI_StateIndication_Type TCI_StateIndication;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_SP_CSI_ReportingActDeact)
+		struct NR_MAC_CE_SP_CSI_ReportingActDeact_Type SP_CSI_ReportingActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_SP_SRS_ActDeact)
+		struct NR_MAC_CE_SP_SRS_ActDeact_Type SP_SRS_ActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_PUCCH_SpatialRelationActDeact)
+		struct NR_MAC_CE_PUCCH_SpatialRelationActDeact_Type PUCCH_SpatialRelationActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_SP_ZP_ResourceSetActDeact)
+		struct NR_MAC_CE_SP_ZP_ResourceSetActDeact_Type SP_ZP_ResourceSetActDeact;
+	SIDL_UNION_CASE(NR_MAC_ControlElementDL_Type_RecommendatdBitrate)
+		struct NR_MAC_CE_RecommendedBitrate_Type RecommendatdBitrate;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_MAC_ControlElementUL_Type) {
+	NR_MAC_ControlElementUL_Type_UNBOUND_VALUE,
+	NR_MAC_ControlElementUL_Type_ShortBSR,
+	NR_MAC_ControlElementUL_Type_LongBSR,
+	NR_MAC_ControlElementUL_Type_C_RNTI,
+	NR_MAC_ControlElementUL_Type_SingleEntryPHR,
+	NR_MAC_ControlElementUL_Type_MultiEntryPHR,
+	NR_MAC_ControlElementUL_Type_RecommendedBitrate
+};
+SIDL_UNION_BEGIN(NR_MAC_ControlElementUL_Type) {
+	SIDL_UNION_CASE(NR_MAC_ControlElementUL_Type_ShortBSR)
+		struct NR_MAC_CE_ShortBSR_Type ShortBSR;
+	SIDL_UNION_CASE(NR_MAC_ControlElementUL_Type_LongBSR)
+		struct NR_MAC_CE_LongBSR_Type LongBSR;
+	SIDL_UNION_CASE(NR_MAC_ControlElementUL_Type_C_RNTI)
+		RNTI_B16_Type C_RNTI;
+	SIDL_UNION_CASE(NR_MAC_ControlElementUL_Type_SingleEntryPHR)
+		NR_MAC_CE_SingleEntryPHR_Type SingleEntryPHR;
+	SIDL_UNION_CASE(NR_MAC_ControlElementUL_Type_MultiEntryPHR)
+		struct NR_MAC_CE_MultiEntryPHR_Type MultiEntryPHR;
+	SIDL_UNION_CASE(NR_MAC_ControlElementUL_Type_RecommendedBitrate)
+		struct NR_MAC_CE_RecommendedBitrate_Type RecommendedBitrate;
+} SIDL_UNION_END;
+
+struct NR_MAC_PDU_SubHeader_Type {
+	B1_Type Reserved;
+	B1_Type Format;
+	B6_Type LCID;
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_PDU_SubHeader_Type, BIT_STRING, ELCID); // 8..16 bits
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_PDU_SubHeader_Type, BIT_STRING, Length); // 8..16 bits
+};
+
+typedef OCTET_STRING NR_MAC_SDU_Type;
+
+struct NR_MAC_CE_SubPDU_DL_Type {
+	struct NR_MAC_PDU_SubHeader_Type SubHeader;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_MAC_CE_SubPDU_DL_Type, NR_MAC_ControlElementDL_Type, ControlElement);
+};
+
+struct NR_MAC_SDU_SubPDU_Type {
+	struct NR_MAC_PDU_SubHeader_Type SubHeader;
+	NR_MAC_SDU_Type SDU;
+};
+
+struct NR_MAC_CE_SubPDU_UL_Type {
+	struct NR_MAC_PDU_SubHeader_Type SubHeader;
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_MAC_CE_SubPDU_UL_Type, NR_MAC_ControlElementUL_Type, ControlElement);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_CE_SubPDU_DL_Type, NR_MAC_CE_SubPDU_DL_List_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_SDU_SubPDU_Type, NR_MAC_SDU_SubPDU_List_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_CE_SubPDU_UL_Type, NR_MAC_CE_SubPDU_UL_List_Type);
+
+struct NR_MAC_Padding_SubPDU_Type {
+	struct NR_MAC_PDU_SubHeader_Type SubHeader;
+	OCTET_STRING Padding;
+};
+
+struct NR_MAC_PDU_DL_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_PDU_DL_Type, NR_MAC_CE_SubPDU_DL_List_Type, CE_SubPDUList);
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_PDU_DL_Type, NR_MAC_SDU_SubPDU_List_Type, SDU_SubPDUList);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_MAC_PDU_DL_Type, NR_MAC_Padding_SubPDU_Type, Padding_SubPDU);
+};
+
+struct NR_MAC_PDU_UL_Type {
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_PDU_UL_Type, NR_MAC_SDU_SubPDU_List_Type, SDU_SubPDUList);
+	SIDL_OPTIONAL_WITH_PFX(NR_MAC_PDU_UL_Type, NR_MAC_CE_SubPDU_UL_List_Type, CE_SubPDUList);
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(NR_MAC_PDU_UL_Type, NR_MAC_Padding_SubPDU_Type, Padding_SubPDU);
+};
+
+SIDL_UNION_ENUM(NR_MAC_PDU_Type) {
+	NR_MAC_PDU_Type_UNBOUND_VALUE,
+	NR_MAC_PDU_Type_DL,
+	NR_MAC_PDU_Type_UL
+};
+SIDL_UNION_BEGIN(NR_MAC_PDU_Type) {
+	SIDL_UNION_CASE(NR_MAC_PDU_Type_DL)
+		struct NR_MAC_PDU_DL_Type DL;
+	SIDL_UNION_CASE(NR_MAC_PDU_Type_UL)
+		struct NR_MAC_PDU_UL_Type UL;
+} SIDL_UNION_END;
+
+typedef B2_Type NR_RLC_SegmentationInfo_Type;
+typedef B1_Type NR_RLC_Status_ExtensionBit1_Type;
+typedef B1_Type NR_RLC_Status_ExtensionBit2_Type;
+typedef B1_Type NR_RLC_Status_ExtensionBit3_Type;
+typedef B16_Type NR_RLC_SegmentOffset_Type;
+
+typedef OCTET_STRING NR_RLC_TMD_PDU_Type;
+
+struct NR_RLC_UMD_HeaderNoSN_Type {
+	NR_RLC_SegmentationInfo_Type SegmentationInfo;
+	B6_Type Reserved;
+};
+
+typedef OCTET_STRING NR_RLC_UMD_Data_Type;
+
+struct NR_RLC_UMD_PduNoSN_Type {
+	struct NR_RLC_UMD_HeaderNoSN_Type Header;
+	NR_RLC_UMD_Data_Type Data;
+};
+
+struct NR_RLC_UMD_HeaderSN6Bit_Type {
+	NR_RLC_SegmentationInfo_Type SegmentationInfo;
+	B6_Type SequenceNumber;
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_UMD_HeaderSN6Bit_Type, NR_RLC_SegmentOffset_Type, SegmentOffset);
+};
+
+typedef OCTET_STRING NR_RLC_UMD_Data_Type;
+
+struct NR_RLC_UMD_PduSN6Bit_Type {
+	struct NR_RLC_UMD_HeaderSN6Bit_Type Header;
+	NR_RLC_UMD_Data_Type Data;
+};
+
+struct NR_RLC_UMD_HeaderSN12Bit_Type {
+	NR_RLC_SegmentationInfo_Type SegmentationInfo;
+	B2_Type Reserved;
+	B12_Type SequenceNumber;
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_UMD_HeaderSN12Bit_Type, NR_RLC_SegmentOffset_Type, SegmentOffset);
+};
+
+typedef OCTET_STRING NR_RLC_UMD_Data_Type;
+
+struct NR_RLC_UMD_PduSN12Bit_Type {
+	struct NR_RLC_UMD_HeaderSN12Bit_Type Header;
+	NR_RLC_UMD_Data_Type Data;
+};
+
+SIDL_UNION_ENUM(NR_RLC_UMD_PDU_Type) {
+	NR_RLC_UMD_PDU_Type_UNBOUND_VALUE,
+	NR_RLC_UMD_PDU_Type_NoSN,
+	NR_RLC_UMD_PDU_Type_SN6Bit,
+	NR_RLC_UMD_PDU_Type_SN12Bit
+};
+SIDL_UNION_BEGIN(NR_RLC_UMD_PDU_Type) {
+	SIDL_UNION_CASE(NR_RLC_UMD_PDU_Type_NoSN)
+		struct NR_RLC_UMD_PduNoSN_Type NoSN;
+	SIDL_UNION_CASE(NR_RLC_UMD_PDU_Type_SN6Bit)
+		struct NR_RLC_UMD_PduSN6Bit_Type SN6Bit;
+	SIDL_UNION_CASE(NR_RLC_UMD_PDU_Type_SN12Bit)
+		struct NR_RLC_UMD_PduSN12Bit_Type SN12Bit;
+} SIDL_UNION_END;
+
+struct NR_RLC_AMD_HeaderSN12Bit_Type {
+	B1_Type D_C;
+	B1_Type Poll;
+	NR_RLC_SegmentationInfo_Type SegmentationInfo;
+	B12_Type SequenceNumber;
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_AMD_HeaderSN12Bit_Type, NR_RLC_SegmentOffset_Type, SegmentOffset);
+};
+
+typedef OCTET_STRING NR_RLC_AMD_Data_Type;
+
+struct NR_RLC_AMD_PduSN12Bit_Type {
+	struct NR_RLC_AMD_HeaderSN12Bit_Type Header;
+	NR_RLC_AMD_Data_Type Data;
+};
+
+struct NR_RLC_AMD_HeaderSN18Bit_Type {
+	B1_Type D_C;
+	B1_Type Poll;
+	NR_RLC_SegmentationInfo_Type SegmentationInfo;
+	B2_Type Reserved;
+	B18_Type SequenceNumber;
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_AMD_HeaderSN18Bit_Type, NR_RLC_SegmentOffset_Type, SegmentOffset);
+};
+
+typedef OCTET_STRING NR_RLC_AMD_Data_Type;
+
+struct NR_RLC_AMD_PduSN18Bit_Type {
+	struct NR_RLC_AMD_HeaderSN18Bit_Type Header;
+	NR_RLC_AMD_Data_Type Data;
+};
+
+SIDL_UNION_ENUM(NR_RLC_AMD_PDU_Type) {
+	NR_RLC_AMD_PDU_Type_UNBOUND_VALUE,
+	NR_RLC_AMD_PDU_Type_SN12Bit,
+	NR_RLC_AMD_PDU_Type_SN18Bit
+};
+SIDL_UNION_BEGIN(NR_RLC_AMD_PDU_Type) {
+	SIDL_UNION_CASE(NR_RLC_AMD_PDU_Type_SN12Bit)
+		struct NR_RLC_AMD_PduSN12Bit_Type SN12Bit;
+	SIDL_UNION_CASE(NR_RLC_AMD_PDU_Type_SN18Bit)
+		struct NR_RLC_AMD_PduSN18Bit_Type SN18Bit;
+} SIDL_UNION_END;
+
+struct NR_RLC_Status_NackSN12Bit_Type {
+	B12_Type SequenceNumberNACK;
+	NR_RLC_Status_ExtensionBit1_Type E1;
+	NR_RLC_Status_ExtensionBit2_Type E2;
+	NR_RLC_Status_ExtensionBit3_Type E3;
+	B1_Type Reserved;
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_Status_NackSN12Bit_Type, NR_RLC_SegmentOffset_Type, SOstart);
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_Status_NackSN12Bit_Type, NR_RLC_SegmentOffset_Type, SOstop);
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_Status_NackSN12Bit_Type, B8_Type, NACKrange);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_RLC_Status_NackSN12Bit_Type, NR_RLC_Status_NackListSN12Bit_Type);
+
+struct NR_RLC_StatusPduSN12Bit_Type {
+	B1_Type D_C;
+	B3_Type CPT;
+	B12_Type SequenceNumberACK;
+	NR_RLC_Status_ExtensionBit1_Type E1;
+	B7_Type Reserved;
+	SIDL_OPTIONAL(NR_RLC_Status_NackListSN12Bit_Type, NackList);
+};
+
+struct NR_RLC_Status_NackSN18Bit_Type {
+	B18_Type SequenceNumberNACK;
+	NR_RLC_Status_ExtensionBit1_Type E1;
+	NR_RLC_Status_ExtensionBit2_Type E2;
+	NR_RLC_Status_ExtensionBit3_Type E3;
+	B3_Type Reserved;
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_Status_NackSN18Bit_Type, NR_RLC_SegmentOffset_Type, SOstart);
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_Status_NackSN18Bit_Type, NR_RLC_SegmentOffset_Type, SOstop);
+	SIDL_OPTIONAL_WITH_PFX(NR_RLC_Status_NackSN18Bit_Type, B8_Type, NACKrange);
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_RLC_Status_NackSN18Bit_Type, NR_RLC_Status_NackListSN18Bit_Type);
+
+struct NR_RLC_StatusPduSN18Bit_Type {
+	B1_Type D_C;
+	B3_Type CPT;
+	B18_Type SequenceNumberACK;
+	NR_RLC_Status_ExtensionBit1_Type E1;
+	B1_Type Reserved;
+	SIDL_OPTIONAL(NR_RLC_Status_NackListSN18Bit_Type, NackList);
+};
+
+SIDL_UNION_ENUM(NR_RLC_AM_StatusPDU_Type) {
+	NR_RLC_AM_StatusPDU_Type_UNBOUND_VALUE,
+	NR_RLC_AM_StatusPDU_Type_SN12Bit,
+	NR_RLC_AM_StatusPDU_Type_SN18Bit
+};
+SIDL_UNION_BEGIN(NR_RLC_AM_StatusPDU_Type) {
+	SIDL_UNION_CASE(NR_RLC_AM_StatusPDU_Type_SN12Bit)
+		struct NR_RLC_StatusPduSN12Bit_Type SN12Bit;
+	SIDL_UNION_CASE(NR_RLC_AM_StatusPDU_Type_SN18Bit)
+		struct NR_RLC_StatusPduSN18Bit_Type SN18Bit;
+} SIDL_UNION_END;
+
+SIDL_UNION_ENUM(NR_RLC_PDU_Type) {
+	NR_RLC_PDU_Type_UNBOUND_VALUE,
+	NR_RLC_PDU_Type_TMD,
+	NR_RLC_PDU_Type_UMD,
+	NR_RLC_PDU_Type_AMD,
+	NR_RLC_PDU_Type_Status
+};
+SIDL_UNION_BEGIN(NR_RLC_PDU_Type) {
+	SIDL_UNION_CASE(NR_RLC_PDU_Type_TMD)
+		NR_RLC_TMD_PDU_Type TMD;
+	SIDL_UNION_CASE(NR_RLC_PDU_Type_UMD)
+		struct NR_RLC_UMD_PDU_Type UMD;
+	SIDL_UNION_CASE(NR_RLC_PDU_Type_AMD)
+		struct NR_RLC_AMD_PDU_Type AMD;
+	SIDL_UNION_CASE(NR_RLC_PDU_Type_Status)
+		struct NR_RLC_AM_StatusPDU_Type Status;
+} SIDL_UNION_END;
+
+typedef B3_Type NR_PDCP_CtrlPduType_Type;
+
+typedef OCTET_STRING SDAP_SDU_Type;
+typedef OCTET_STRING NR_RLC_SDU_Type;
+typedef OCTET_STRING NR_PDCP_SDU_Type;
+
+struct NR_PDCP_DataPduSN12Bits_Type {
+	B1_Type D_C;
+	B3_Type Reserved;
+	B12_Type SequenceNumber;
+	NR_PDCP_SDU_Type SDU;
+	SIDL_OPTIONAL_WITH_PFX(NR_PDCP_DataPduSN12Bits_Type, B32_Type, MAC_I);
+};
+
+struct NR_PDCP_DataPduSN18Bits_Type {
+	B1_Type D_C;
+	B5_Type Reserved;
+	B18_Type SequenceNumber;
+	NR_PDCP_SDU_Type SDU;
+	SIDL_OPTIONAL_WITH_PFX(NR_PDCP_DataPduSN18Bits_Type, B32_Type, MAC_I);
+};
+
+struct NR_PDCP_CtrlPduStatus_Type {
+	B1_Type D_C;
+	NR_PDCP_CtrlPduType_Type PDU_Type;
+	B4_Type Reserved;
+	B32_Type FirstMissingCount;
+	SIDL_OPTIONAL_WITH_PFX(NR_PDCP_CtrlPduStatus_Type, OCTET_STRING, Bitmap);
+};
+
+struct NR_PDCP_CtrlPduRohcFeedback_Type {
+	B1_Type D_C;
+	NR_PDCP_CtrlPduType_Type PDU_Type;
+	B4_Type Reserved;
+	OCTET_STRING RohcFeedback;
+};
+
+SIDL_UNION_ENUM(NR_PDCP_PDU_Type) {
+	NR_PDCP_PDU_Type_UNBOUND_VALUE,
+	NR_PDCP_PDU_Type_DataPduSN12Bits,
+	NR_PDCP_PDU_Type_DataPduSN18Bits,
+	NR_PDCP_PDU_Type_CtrlPduStatus,
+	NR_PDCP_PDU_Type_CtrlPduRohcFeedback
+};
+SIDL_UNION_BEGIN(NR_PDCP_PDU_Type) {
+	SIDL_UNION_CASE(NR_PDCP_PDU_Type_DataPduSN12Bits)
+		struct NR_PDCP_DataPduSN12Bits_Type DataPduSN12Bits;
+	SIDL_UNION_CASE(NR_PDCP_PDU_Type_DataPduSN18Bits)
+		struct NR_PDCP_DataPduSN18Bits_Type DataPduSN18Bits;
+	SIDL_UNION_CASE(NR_PDCP_PDU_Type_CtrlPduStatus)
+		struct NR_PDCP_CtrlPduStatus_Type CtrlPduStatus;
+	SIDL_UNION_CASE(NR_PDCP_PDU_Type_CtrlPduRohcFeedback)
+		struct NR_PDCP_CtrlPduRohcFeedback_Type CtrlPduRohcFeedback;
+} SIDL_UNION_END;
+
+struct SDAP_DL_PduHeader_Type {
+	B1_Type RDI;
+	B1_Type RQI;
+	B6_Type QFI;
+};
+
+struct SDAP_PDU_DL_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(SDAP_PDU_DL_Type, SDAP_DL_PduHeader_Type, Header);
+	SDAP_SDU_Type Data;
+};
+
+struct SDAP_UL_PduHeader_Type {
+	B1_Type DC;
+	B1_Type R;
+	B6_Type QFI;
+};
+
+struct SDAP_PDU_UL_Type {
+	SIDL_OPTIONAL_OF_STRUCT_WITH_PFX(SDAP_PDU_UL_Type, SDAP_UL_PduHeader_Type, Header);
+	SIDL_OPTIONAL_WITH_PFX(SDAP_PDU_UL_Type, SDAP_SDU_Type, Data);
+};
+
+SIDL_UNION_ENUM(SDAP_PDU_Type) {
+	SDAP_PDU_Type_UNBOUND_VALUE,
+	SDAP_PDU_Type_DL,
+	SDAP_PDU_Type_UL
+};
+SIDL_UNION_BEGIN(SDAP_PDU_Type) {
+	SIDL_UNION_CASE(SDAP_PDU_Type_DL)
+		struct SDAP_PDU_DL_Type DL;
+	SIDL_UNION_CASE(SDAP_PDU_Type_UL)
+		struct SDAP_PDU_UL_Type UL;
+} SIDL_UNION_END;
+
+typedef SIDL_DYNAMIC_OF_STRUCT(SDAP_PDU_Type, SDAP_PDUList_Type);
+
+typedef SIDL_DYNAMIC(SDAP_SDU_Type, SDAP_SDUList_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_MAC_PDU_Type, NR_MAC_PDUList_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_RLC_PDU_Type, NR_RLC_PDUList_Type);
+typedef SIDL_DYNAMIC(NR_RLC_SDU_Type, NR_RLC_SDUList_Type);
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_PDCP_PDU_Type, NR_PDCP_PDUList_Type);
+typedef SIDL_DYNAMIC(NR_PDCP_SDU_Type, NR_PDCP_SDUList_Type);
+
+SIDL_UNION_ENUM(NR_L2DataList_Type) {
+	NR_L2DataList_Type_UNBOUND_VALUE,
+	NR_L2DataList_Type_MacPdu,
+	NR_L2DataList_Type_RlcPdu,
+	NR_L2DataList_Type_RlcSdu,
+	NR_L2DataList_Type_PdcpPdu,
+	NR_L2DataList_Type_PdcpSdu,
+	NR_L2DataList_Type_SdapPdu,
+	NR_L2DataList_Type_SdapSdu
+};
+SIDL_UNION_BEGIN(NR_L2DataList_Type) {
+	SIDL_UNION_CASE(NR_L2DataList_Type_MacPdu)
+		NR_MAC_PDUList_Type MacPdu;
+	SIDL_UNION_CASE(NR_L2DataList_Type_RlcPdu)
+		NR_RLC_PDUList_Type RlcPdu;
+	SIDL_UNION_CASE(NR_L2DataList_Type_RlcSdu)
+		NR_RLC_SDUList_Type RlcSdu;
+	SIDL_UNION_CASE(NR_L2DataList_Type_PdcpPdu)
+		NR_PDCP_PDUList_Type PdcpPdu;
+	SIDL_UNION_CASE(NR_L2DataList_Type_PdcpSdu)
+		NR_PDCP_SDUList_Type PdcpSdu;
+	SIDL_UNION_CASE(NR_L2DataList_Type_SdapPdu)
+		SDAP_PDUList_Type SdapPdu;
+	SIDL_UNION_CASE(NR_L2DataList_Type_SdapSdu)
+		SDAP_SDUList_Type SdapSdu;
+} SIDL_UNION_END;
+
+struct NR_DRB_DataPerSlot_DL_Type {
+	int32_t SlotOffset;
+	SIDL_OPTIONAL_OF_STRUCT(NR_HarqProcessAssignment_Type, HarqProcess);
+	struct NR_L2DataList_Type PduSduList;
+};
+
+typedef SIDL_DYNAMIC_OF_STRUCT(NR_DRB_DataPerSlot_DL_Type, NR_DRB_DataPerSlotList_DL_Type);
+
+struct NR_L2Data_Request_Type {
+	NR_DRB_DataPerSlotList_DL_Type SlotDataList;
+};
+
+struct NR_DRB_DataPerSlot_UL_Type {
+	struct NR_L2DataList_Type PduSduList;
+	int32_t NoOfTTIs;
+};
+
+struct NR_L2Data_Indication_Type {
+	struct NR_DRB_DataPerSlot_UL_Type SlotData;
+};
+
+struct NR_DRB_COMMON_REQ {
+	struct NR_ReqAspCommonPart_Type Common;
+	struct NR_L2Data_Request_Type U_Plane;
+	SIDL_OPTIONAL_WITH_PFX(NR_DRB_COMMON_REQ, Null_Type, SuppressPdcchForC_RNTI);
+};
+
+struct NR_DRB_COMMON_IND {
+	struct NR_IndAspCommonPart_Type Common;
+	struct NR_L2Data_Indication_Type U_Plane;
+};
+
+ONEWAY ProcessFromSS(const struct NR_DRB_COMMON_REQ* FromSS);
+NOTIFY ProcessToSS(struct NR_DRB_COMMON_IND* ToSS);

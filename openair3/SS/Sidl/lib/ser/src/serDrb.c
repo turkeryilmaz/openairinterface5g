@@ -2373,7 +2373,7 @@ static int _serDrbEncL2Data_Request_Type(unsigned char* _buffer, size_t _size, s
 	return SIDL_STATUS_OK;
 }
 
-static int _serDrbEncNull_Type_SuppressPdcchForC_RNTI_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Null_Type_SuppressPdcchForC_RNTI_Optional* p)
+static int _serDrbEncNull_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -2390,7 +2390,7 @@ static int _serDrbEncDRB_COMMON_REQ(unsigned char* _buffer, size_t _size, size_t
 
 	_serDrbEncReqAspCommonPart_Type(_buffer, _size, _lidx, &p->Common);
 	_serDrbEncL2Data_Request_Type(_buffer, _size, _lidx, &p->U_Plane);
-	_serDrbEncNull_Type_SuppressPdcchForC_RNTI_Optional(_buffer, _size, _lidx, &p->SuppressPdcchForC_RNTI);
+	_serDrbEncNull_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional(_buffer, _size, _lidx, &p->SuppressPdcchForC_RNTI);
 
 	return SIDL_STATUS_OK;
 }
@@ -4812,7 +4812,7 @@ static int _serDrbDecL2Data_Request_Type(const unsigned char* _buffer, size_t _s
 	return SIDL_STATUS_OK;
 }
 
-static int _serDrbDecNull_Type_SuppressPdcchForC_RNTI_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct Null_Type_SuppressPdcchForC_RNTI_Optional* p)
+static int _serDrbDecNull_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
 
@@ -4829,7 +4829,7 @@ static int _serDrbDecDRB_COMMON_REQ(const unsigned char* _buffer, size_t _size, 
 
 	_serDrbDecReqAspCommonPart_Type(_buffer, _size, _lidx, _mem, &p->Common);
 	_serDrbDecL2Data_Request_Type(_buffer, _size, _lidx, _mem, &p->U_Plane);
-	_serDrbDecNull_Type_SuppressPdcchForC_RNTI_Optional(_buffer, _size, _lidx, &p->SuppressPdcchForC_RNTI);
+	_serDrbDecNull_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional(_buffer, _size, _lidx, &p->SuppressPdcchForC_RNTI);
 
 	return SIDL_STATUS_OK;
 }
