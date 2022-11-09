@@ -33,6 +33,7 @@ const struct acpIdMapItf acpItfMap[] = {
 	{ "SysInd", 8, 16, 1 },
 	{ "NrSysSrb", 9, 17, 2 },
 	{ "NrSys", 10, 19, 1 },
+	{ "NrDrb", 11, 20, 2 },
 };
 
 const unsigned int acpItfMapSize = sizeof(acpItfMap) / sizeof(acpItfMap[0]);
@@ -81,6 +82,10 @@ struct acpIdMapService acpIdMap[] = {
 
 	// NrSys part
 	{ "NrSysProcess", 0x90040A00, (unsigned int)-1, ACP_CMD },
+
+	// NrDrb part
+	{ "NrDrbProcessFromSS", 0x90040B00, (unsigned int)-1, ACP_ONEWAY },
+	{ "NrDrbProcessToSS", 0x90040B01, (unsigned int)-1, ACP_NTF },
 };
 
 const unsigned int acpIdMapSize = sizeof(acpIdMap) / sizeof(acpIdMap[0]);
