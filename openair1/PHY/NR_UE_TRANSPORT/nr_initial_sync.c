@@ -250,7 +250,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_in
                                  proc,0,0,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf);
 
     stop_meas(&ue->dlsch_channel_estimation_stats);
-    fapiPbch_t result;
+    fapiPsbch_t result;
     ret = nr_rx_psbch(ue,
                      proc,
                      estimateSz,

@@ -1125,7 +1125,8 @@ int nr_sl_generate_sss(int32_t *txdataF,
 @param
 @returns 0 on success
  */
-int nr_generate_sl_psbch(int32_t *txdataF,
+int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
+                         int32_t *txdataF,
                          int16_t amp,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,
@@ -1163,7 +1164,7 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 uint8_t i_ssb,
                 MIMO_mode_t mimo_mode,
                 NR_UE_PDCCH_CONFIG *phy_pdcch_config,
-                fapiPbch_t* result);
+                fapiPsbch_t* result);
 
 int nr_pbch_detection(UE_nr_rxtx_proc_t *proc,
 		              PHY_VARS_NR_UE *ue,

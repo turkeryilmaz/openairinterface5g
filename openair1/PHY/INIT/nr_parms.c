@@ -22,6 +22,7 @@
 #include "phy_init.h"
 #include "common/utils/nr/nr_common.h"
 #include "common/utils/LOG/log.h"
+#include "executables/softmodem-common.h"
 
 /// Subcarrier spacings in Hz indexed by numerology index
 uint32_t nr_subcarrier_spacing[MAX_NUM_SUBCARRIER_SPACING] = {15e3, 30e3, 60e3, 120e3, 240e3};
@@ -81,6 +82,11 @@ int nr_ssb_table[48][3] = {
 
 
 void set_Lmax(NR_DL_FRAME_PARMS *fp) {
+
+  if (get_softmodem_params()->sl_mode == 2) {
+    fp->Lmax = 1;
+    return;
+  }
   // definition of Lmax according to ts 38.213 section 4.1
   if (fp->dl_CarrierFreq < 6e9) {
     if(fp->frame_type && (fp->ssb_type==2))
@@ -190,7 +196,10 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
   while(fp->ofdm_symbol_size < N_RB_DL * 12)
     fp->ofdm_symbol_size <<= 1;
 
-  fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
+  if (get_softmodem_params()->sl_mode == 2)
+    fp->first_carrier_offset = 0;
+  else
+    fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
   fp->nb_prefix_samples    = fp->ofdm_symbol_size / 128 * 9;
   fp->nb_prefix_samples0   = fp->ofdm_symbol_size / 128 * (9 + (1 << mu));
   LOG_I(PHY,"Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d\n",
