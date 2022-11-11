@@ -87,6 +87,11 @@ typedef struct {
   uint8_t xtra_byte;
 } fapiPbch_t;
 
+typedef struct {
+  uint8_t decoded_output[NR_POLAR_PSBCH_PAYLOAD_BITS];
+  uint8_t xtra_byte;
+} fapiPsbch_t;
+
 /** @addtogroup _PHY_PROCEDURES_
  * @{
  */

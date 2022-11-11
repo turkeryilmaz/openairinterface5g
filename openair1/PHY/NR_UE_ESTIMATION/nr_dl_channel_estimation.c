@@ -215,7 +215,6 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
 
   uint8_t nushift;
   uint8_t ssb_index=current_ssb->i_ssb;
-  uint8_t n_hf=current_ssb->n_hf;
   int **rxdataF=ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
 
   nushift =  0; //ue->frame_parms.Nid_cell%4;
@@ -237,7 +236,7 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
 #endif
 
   // generate pilot
-  nr_psbch_dmrs_rx(dmrss,ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0]);
+  nr_psbch_dmrs_rx(dmrss, &ue->nr_gold_psbch[ssb_index], &pilot[0]);
 
   for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
 
