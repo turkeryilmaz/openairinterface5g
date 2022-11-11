@@ -10334,9 +10334,7 @@ openair_rrc_top_init_eNB(int CC_id,int eMBMS_active,uint8_t HO_active)
     LOG_I(RRC,"[eNB] eMBMS active state is %d \n", eMBMS_active);
 
     for (module_id=0; module_id<NB_eNB_INST; module_id++) {
-      for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         RC.rrc[module_id]->carrier[CC_id].MBMS_flag = (uint8_t)eMBMS_active;
-      }
     }
   }
 }

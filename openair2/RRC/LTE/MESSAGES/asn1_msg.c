@@ -258,7 +258,7 @@ uint8_t do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms=&carrier->mib_fembms;
   frame=198;
   uint8_t sfn = (uint8_t)((frame>>4)&0xff);
-  uint16_t *spare = calloc(1,sizeof(uint16_t));
+  uint16_t *spare = CALLOC(1,sizeof(uint16_t));
 
   if( spare == NULL  ) abort();
 
@@ -330,7 +330,7 @@ uint8_t do_MIB(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t phich
   asn_enc_rval_t enc_rval;
   LTE_BCCH_BCH_Message_t *mib=&carrier->mib ;
   uint8_t sfn = (uint8_t)((frame>>2)&0xff);
-  uint16_t *spare = calloc(1, sizeof(uint16_t));
+  uint16_t *spare = CALLOC(1, sizeof(uint16_t));
 
   if (spare == NULL) abort();
 
@@ -912,6 +912,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   bcch_message->message.choice.c1.present = LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1;
   //  memcpy(&bcch_message.message.choice.c1.choice.systemInformationBlockType1,sib1,sizeof(SystemInformationBlockType1_t));
   *sib1 = &bcch_message->message.choice.c1.choice.systemInformationBlockType1;
+  sib_type=CALLOC(1,sizeof(LTE_SIB_Type_t));
+  schedulingInfo=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
   PLMN_identity_info = CALLOC(1, sizeof(LTE_PLMN_IdentityInfo_t) * num_plmn);
 
   if (PLMN_identity_info == NULL)
