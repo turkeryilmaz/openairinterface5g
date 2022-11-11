@@ -220,7 +220,7 @@ static int vtp_send_udp_msg(
 
   if (message_p)
   {
-    LOG_A(GNB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
+    LOG_A(GNB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %x %x %x\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;
