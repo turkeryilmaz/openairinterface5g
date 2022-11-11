@@ -722,7 +722,7 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if ((ifi->CC_mask==0)||(ifi->CC_mask==1)||(ifi->CC_mask==2)||(ifi->CC_mask==3)) {
+    if (ifi->CC_mask < ((1<<MAX_NUM_CCs)-1)) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_subframe = UL_info->subframe;
     } else {

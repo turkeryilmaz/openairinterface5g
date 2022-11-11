@@ -205,8 +205,9 @@ extern uint16_t slot_ahead;
 
 void oai_create_enb(void) {
   int bodge_counter=0;
+
   /* MultiCell: Function modify for Multiple CC */
-  for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
+  for (int CC_id=0; CC_id<RC.nb_CC[0]; CC_id++) {
     PHY_VARS_eNB *eNB = RC.eNB[0][CC_id];
     NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] RC.eNB[0][0]. Mod_id:%d CC_id:%d nb_CC[0]:%d abstraction_flag:%d single_thread_flag:%d if_inst:%p\n", eNB->Mod_id, eNB->CC_id, RC.nb_CC[0], eNB->abstraction_flag,
            eNB->single_thread_flag, eNB->if_inst);
@@ -214,7 +215,6 @@ void oai_create_enb(void) {
     eNB->CC_id   = CC_id;
     eNB->abstraction_flag   = 0;
     eNB->single_thread_flag = 0;//single_thread_flag;
-    RC.nb_CC[CC_id] = MAX_NUM_CCs;
 
     if (eNB->if_inst==0) {
       eNB->if_inst = IF_Module_init(bodge_counter);
@@ -232,7 +232,7 @@ void oai_create_enb(void) {
       usleep(50000);
     } while(eNB->configured != 1);
 
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB is now configured\n", __FUNCTION__);
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB Cell %d is now configured\n", __FUNCTION__,CC_id);
   }
 }
 

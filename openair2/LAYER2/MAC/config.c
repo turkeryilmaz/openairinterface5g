@@ -821,7 +821,7 @@ int rrc_mac_config_req_eNB(module_id_t Mod_idP,
                ul_CarrierFreq,
                pbch_repetition
               );
-    mac_init_cell_params(Mod_idP,CC_idP);
+    //mac_init_cell_params(Mod_idP,CC_idP); //This would reset UE info but if UE is RRC_Connected, rnti shall not reset
 
     if (schedulingInfoList!=NULL)  {
       RC.mac[Mod_idP]->common_channels[CC_idP].tdd_Config         = tdd_Config;
@@ -976,7 +976,7 @@ int rrc_mac_config_req_eNB(module_id_t Mod_idP,
           Mod_idP, nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[0],nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[1],
           nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[0]<<1 | nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[1]>>7 );
     //RC.mac[Mod_idP]->common_channels[0].non_mbsfn_SubframeConfig = (int)(nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[0]<<1) | (int)(nonMBSFN_SubframeConfig->subframeAllocation_r14.buf[1]>>7);
-    RC.mac[Mod_idP]->common_channels[0].non_mbsfn_SubframeConfig = nonMBSFN_SubframeConfig;
+    RC.mac[Mod_idP]->common_channels[CC_idP].non_mbsfn_SubframeConfig = nonMBSFN_SubframeConfig;
     nfapi_config_request_t *cfg = &RC.mac[Mod_idP]->config[CC_idP];
     cfg->fembms_config.non_mbsfn_config_flag.value   = 1;
     cfg->fembms_config.non_mbsfn_config_flag.tl.tag = NFAPI_FEMBMS_CONFIG_NON_MBSFN_FLAG_TAG;
@@ -992,35 +992,35 @@ int rrc_mac_config_req_eNB(module_id_t Mod_idP,
     cfg->num_tlv++;
     //We need to reuse current MCH scheduler
     //TOCHECK whether we can simply reuse current mbsfn_SubframeConfig stuff
-    RC.mac[Mod_idP]->common_channels[0].FeMBMS_flag = FeMBMS_Flag;
+    RC.mac[Mod_idP]->common_channels[CC_idP].FeMBMS_flag = FeMBMS_Flag;
   }
 
   if (mbsfn_AreaInfoList != NULL) {
     // One eNB could be part of multiple mbsfn syc area, this could change over time so reset each time
     LOG_I(MAC,"[eNB %d][CONFIG] Received %d MBSFN Area Info\n", Mod_idP, mbsfn_AreaInfoList->list.count);
-    RC.mac[Mod_idP]->common_channels[0].num_active_mbsfn_area = mbsfn_AreaInfoList->list.count;
+    RC.mac[Mod_idP]->common_channels[CC_idP].num_active_mbsfn_area = mbsfn_AreaInfoList->list.count;
 
     for (i =0; i< mbsfn_AreaInfoList->list.count; i++) {
-      RC.mac[Mod_idP]->common_channels[0].mbsfn_AreaInfo[i] = mbsfn_AreaInfoList->list.array[i];
+      RC.mac[Mod_idP]->common_channels[CC_idP].mbsfn_AreaInfo[i] = mbsfn_AreaInfoList->list.array[i];
       LOG_I(MAC,"[eNB %d][CONFIG] MBSFN_AreaInfo[%d]: MCCH Repetition Period = %ld\n", Mod_idP,i,
-            RC.mac[Mod_idP]->common_channels[0].mbsfn_AreaInfo[i]->mcch_Config_r9.mcch_RepetitionPeriod_r9);
-      //      config_sib13(Mod_idP,0,i,RC.mac[Mod_idP]->common_channels[0].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
-	config_sib13(Mod_idP,0,i,RC.mac[Mod_idP]->common_channels[0].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
+            RC.mac[Mod_idP]->common_channels[CC_idP].mbsfn_AreaInfo[i]->mcch_Config_r9.mcch_RepetitionPeriod_r9);
+      //      config_sib13(Mod_idP,0,i,RC.mac[Mod_idP]->common_channels[CC_idP].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
+	config_sib13(Mod_idP,0,i,RC.mac[Mod_idP]->common_channels[CC_idP].mbsfn_AreaInfo[i]->mbsfn_AreaId_r9);
     }
   }
 
   if(mbms_AreaConfig != NULL) {
-    RC.mac[Mod_idP]->common_channels[0].commonSF_AllocPeriod_r9 = mbms_AreaConfig->commonSF_AllocPeriod_r9; 
+    RC.mac[Mod_idP]->common_channels[CC_idP].commonSF_AllocPeriod_r9 = mbms_AreaConfig->commonSF_AllocPeriod_r9;
     LOG_I(MAC, "[eNB %d][CONFIG]  LTE_MBSFNAreaConfiguration_r9_t(%p) commonSF_AllocPeriod_r9(%d)\n",Mod_idP,mbms_AreaConfig, RC.mac[Mod_idP]->common_channels[0].commonSF_AllocPeriod_r9);
     for(i=0; i < mbms_AreaConfig->commonSF_Alloc_r9.list.count; i++){
       RC.mac[Mod_idP]->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i] = mbms_AreaConfig->commonSF_Alloc_r9.list.array[i];
      LOG_I(RRC,"[eNB %d][CONFIG] MBSFNArea[%d] commonSF_Alloc_r9: radioframeAllocationPeriod(%ldn),radioframeAllocationOffset(%ld), subframeAllocation(%x,%x,%x)\n"
       ,Mod_idP,i
-      ,RC.mac[Mod_idP]->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationPeriod
-      ,RC.mac[Mod_idP]->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationOffset
-      ,RC.mac[Mod_idP]->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[0]
-      ,RC.mac[Mod_idP]->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[1]
-      ,RC.mac[Mod_idP]->common_channels[0].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[2]);
+      ,RC.mac[Mod_idP]->common_channels[CC_idP].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationPeriod
+      ,RC.mac[Mod_idP]->common_channels[CC_idP].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->radioframeAllocationOffset
+      ,RC.mac[Mod_idP]->common_channels[CC_idP].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[0]
+      ,RC.mac[Mod_idP]->common_channels[CC_idP].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[1]
+      ,RC.mac[Mod_idP]->common_channels[CC_idP].commonSF_Alloc_r9_mbsfn_SubframeConfig[i]->subframeAllocation.choice.oneFrame.buf[2]);
     }
   }
 
@@ -1030,29 +1030,29 @@ int rrc_mac_config_req_eNB(module_id_t Mod_idP,
           pmch_InfoList->list.count);
 
     for (i = 0; i < pmch_InfoList->list.count; i++) {
-      RC.mac[Mod_idP]->common_channels[0].pmch_Config[i] =
+      RC.mac[Mod_idP]->common_channels[CC_idP].pmch_Config[i] =
         &pmch_InfoList->list.array[i]->pmch_Config_r9;
       LOG_I(MAC,
             "[CONFIG] PMCH[%d]: This PMCH stop (sf_AllocEnd_r9) at subframe  %ldth\n",
             i,
-            RC.mac[Mod_idP]->common_channels[0].
+            RC.mac[Mod_idP]->common_channels[CC_idP].
             pmch_Config[i]->sf_AllocEnd_r9);
       LOG_I(MAC, "[CONFIG] PMCH[%d]: mch_Scheduling_Period = %ld\n",
             i,
-            RC.mac[Mod_idP]->common_channels[0].
+            RC.mac[Mod_idP]->common_channels[CC_idP].
             pmch_Config[i]->mch_SchedulingPeriod_r9);
       LOG_I(MAC, "[CONFIG] PMCH[%d]: dataMCS = %ld\n", i,
-            RC.mac[Mod_idP]->common_channels[0].
+            RC.mac[Mod_idP]->common_channels[CC_idP].
             pmch_Config[i]->dataMCS_r9);
       // MBMS session info list in each MCH
-      RC.mac[Mod_idP]->common_channels[0].mbms_SessionList[i] =
+      RC.mac[Mod_idP]->common_channels[CC_idP].mbms_SessionList[i] =
         &pmch_InfoList->list.array[i]->mbms_SessionInfoList_r9;
       LOG_I(MAC, "PMCH[%d] Number of session (MTCH) is: %d\n", i,
-            RC.mac[Mod_idP]->common_channels[0].
+            RC.mac[Mod_idP]->common_channels[CC_idP].
             mbms_SessionList[i]->list.count);
-       for(int ii=0; ii < RC.mac[Mod_idP]->common_channels[0].mbms_SessionList[i]->list.count;ii++){
+       for(int ii=0; ii < RC.mac[Mod_idP]->common_channels[CC_idP].mbms_SessionList[i]->list.count;ii++){
             LOG_I(MAC, "PMCH[%d] MBMS Session[%d] is: %lu\n", i,ii,
-               RC.mac[Mod_idP]->common_channels[0].mbms_SessionList[i]->list.array[ii]->logicalChannelIdentity_r9);
+               RC.mac[Mod_idP]->common_channels[CC_idP].mbms_SessionList[i]->list.array[ii]->logicalChannelIdentity_r9);
        }
     }
   }
