@@ -186,7 +186,8 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
   }
 }
 
-int nr_generate_sl_psbch(int32_t *txdataF,
+int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
+                         int32_t *txdataF,
                          int16_t amp,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,
@@ -196,14 +197,15 @@ int nr_generate_sl_psbch(int32_t *txdataF,
 
   /* payload is 56 bits */
   PSBCH_payload psbch_payload;             // NR Side Link Payload for Rel 16
-  psbch_payload.coverageIndicator = 1;     // 1 bit
+  psbch_payload.coverageIndicator = 0;     // 1 bit
   psbch_payload.tddConfig = 0xFFF;         // 12 bits for TDD configuration
   psbch_payload.DFN = 0x3FF;               // 10 bits for DFN
   psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
   psbch_payload.reserved = 0;              // 2 bits reserved
 
   NR_UE_PSBCH m_psbch;
-  NR_UE_PSBCH *psbch = &m_psbch;
+  ue->psbch_vars[0] = &m_psbch;
+  NR_UE_PSBCH *psbch = ue->psbch_vars[0];
   memset((void *)psbch, 0, sizeof(NR_UE_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);
   psbch->psbch_a_interleaved = psbch->psbch_a; // skip interlevaing for Sidelink
