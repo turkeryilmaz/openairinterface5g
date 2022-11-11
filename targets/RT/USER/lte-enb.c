@@ -488,9 +488,8 @@ static void *L1_thread( void *param ) {
     if (oai_exit) break;
 
     /* MultiCell: Condition modified for MultiCell case */
-    if ((eNB->CC_id==0) || (eNB->CC_id==1)) {
-      if (rxtx(eNB,proc,thread_name) < 0) break;
-    }
+    /* This thread can only be wakeup for one cell SUBFRAME Ind under VNF as proxy would only send one SUBFRAME Ind for all cells. */
+    if (rxtx(eNB,proc,thread_name) < 0) break;
 
     LOG_D(PHY,"L1 RX %d.%d done\n",proc->frame_rx,proc->subframe_rx);
 

@@ -486,6 +486,9 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
     RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection[cell_index]=SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
         }
       }
+      //store the modified cell config back
+      memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
+
       /* Active Parameters: only process ActiveParam when basic info availabe to avoid sending too many RRC_CONFIGURATION_REQ to RRC */
       if (AddOrReconfigure->Active.d == true)
       {
@@ -522,10 +525,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
       {
         RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = false;
       }
-
       LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n",RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index],RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index],RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
-      //store the modified cell config back
-      memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
       LOG_A(ENB_SS, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
       itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
 

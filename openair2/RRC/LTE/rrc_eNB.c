@@ -163,13 +163,13 @@ init_SI(
   if(configuration->radioresourceconfig[CC_id].mbms_dedicated_serving_cell == TRUE) {
     LOG_A(RRC, "Configuring MIB FeMBMS (N_RB_DL %d)\n",
           (int)configuration->N_RB_DL[CC_id]);
-    RC.rrc[ctxt_pP->module_id]->carrier[CC_id].MIB_FeMBMS = (uint8_t *) malloc16(4);
+    if(NULL==RC.rrc[ctxt_pP->module_id]->carrier[CC_id].MIB_FeMBMS){ RC.rrc[ctxt_pP->module_id]->carrier[CC_id].MIB_FeMBMS = (uint8_t *) malloc16(4); }
     do_MIB_FeMBMS(&RC.rrc[ctxt_pP->module_id]->carrier[CC_id],
                   configuration->N_RB_DL[CC_id],
                   0, //additionalNonMBSFN
                   0);
     RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_MBMS = 0;
-    RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_MBMS = (uint8_t *) malloc16(32);
+    if(NULL==RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_MBMS) {RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_MBMS = (uint8_t *) malloc16(32);}
     AssertFatal(RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_MBMS!=NULL,PROTOCOL_RRC_CTXT_FMT" init_SI: FATAL, no memory for SIB1_MBMS allocated\n",
                 PROTOCOL_RRC_CTXT_ARGS(ctxt_pP));
     RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_MBMS = do_SIB1_MBMS(&RC.rrc[ctxt_pP->module_id]->carrier[CC_id],ctxt_pP->module_id,CC_id,
@@ -243,10 +243,12 @@ init_SI(
 
   eNB_RRC_INST *rrc = RC.rrc[ctxt_pP->module_id];
   rrc_eNB_carrier_data_t *carrier=&rrc->carrier[CC_id];
-  carrier->MIB = (uint8_t *) malloc16(4);
+
+  if(NULL==carrier->MIB) {carrier->MIB = (uint8_t *) malloc16(4);}
   carrier->sizeof_SIB1 = 0;
   carrier->sizeof_SIB23 = 0;
-  carrier->SIB1 = (uint8_t *) malloc16(32);
+  if(NULL==carrier->SIB1) {carrier->SIB1 = (uint8_t *) malloc16(32);}
+
   AssertFatal(carrier->SIB1!=NULL,PROTOCOL_RRC_CTXT_FMT" init_SI: FATAL, no memory for SIB1 allocated\n",
               PROTOCOL_RRC_CTXT_ARGS(ctxt_pP));
   LOG_I(RRC,"[eNB %d] Node type %d \n ", ctxt_pP->module_id, rrc->node_type);
@@ -283,7 +285,7 @@ init_SI(
     RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_BR = 0;
 
     if (configuration->schedulingInfoSIB1_BR_r13[CC_id] > 0) {
-      RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR = (uint8_t *) malloc16(32);
+      if(!RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR) { RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR = (uint8_t *) malloc16(32);}
       RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_BR = do_SIB1(&RC.rrc[ctxt_pP->module_id]->carrier[CC_id],
           ctxt_pP->module_id,
           CC_id, TRUE, configuration);
@@ -291,7 +293,7 @@ init_SI(
   }
 
   if (!NODE_IS_DU(rrc->node_type)) {
-    carrier->SIB23 = (uint8_t *) malloc16(64);
+    if(NULL== carrier->SIB23){ carrier->SIB23 = (uint8_t *) malloc16(64);}
     AssertFatal(carrier->SIB23!=NULL,"cannot allocate memory for SIB");
     carrier->sizeof_SIB23 = do_SIB23(ctxt_pP->module_id,
                                      CC_id,
@@ -303,7 +305,7 @@ init_SI(
     carrier->sizeof_SIB23_BR = 0;
 
     if (configuration->schedulingInfoSIB1_BR_r13[CC_id]>0) {
-      carrier->SIB23_BR = (uint8_t *) malloc16(64);
+      if(!carrier->SIB23_BR){ carrier->SIB23_BR = (uint8_t *) malloc16(64);}
       AssertFatal(carrier->SIB23_BR!=NULL,"cannot allocate memory for SIB");
       carrier->sizeof_SIB23_BR = do_SIB23(ctxt_pP->module_id, CC_id, TRUE, configuration);
     }
@@ -7264,6 +7266,7 @@ char openair_rrc_eNB_configuration(
 {
   protocol_ctxt_t ctxt;
   int             CC_id;
+  int             need_init = 0;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, enb_mod_idP, ENB_FLAG_YES, NOT_A_RNTI, 0, 0,enb_mod_idP);
   LOG_I(RRC,
         PROTOCOL_RRC_CTXT_FMT" Init...\n",
@@ -7271,71 +7274,80 @@ char openair_rrc_eNB_configuration(
   AssertFatal(RC.rrc[enb_mod_idP] != NULL, "RC.rrc not initialized!");
   AssertFatal(MAX_MOBILES_PER_ENB < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
   AssertFatal(configuration!=NULL,"configuration input is null\n");
-  RC.rrc[ctxt.module_id]->Nb_ue = 0;
-  pthread_mutex_init(&RC.rrc[ctxt.module_id]->cell_info_mutex,NULL);
-  RC.rrc[ctxt.module_id]->cell_info_configured = 0;
-  uid_linear_allocator_init(&RC.rrc[ctxt.module_id]->uid_allocator);
-  RB_INIT(&RC.rrc[ctxt.module_id]->rrc_ue_head);
+  if(!RC.rrc[ctxt.module_id]->cell_info_configured){
+    need_init = 1;
+    RC.rrc[ctxt.module_id]->Nb_ue = 0;
+    pthread_mutex_init(&RC.rrc[ctxt.module_id]->cell_info_mutex,NULL);
+    RC.rrc[ctxt.module_id]->cell_info_configured = 0;
+    uid_linear_allocator_init(&RC.rrc[ctxt.module_id]->uid_allocator);
+    RB_INIT(&RC.rrc[ctxt.module_id]->rrc_ue_head);
   //    for (j = 0; j < (MAX_MOBILES_PER_ENB + 1); j++) {
   //        RC.rrc[enb_mod_idP]->Srb2[j].Active = 0;
   //    }
-  RC.rrc[ctxt.module_id]->initial_id2_s1ap_ids = hashtable_create (MAX_MOBILES_PER_ENB * 2, NULL, NULL);
-  RC.rrc[ctxt.module_id]->s1ap_id2_s1ap_ids    = hashtable_create (MAX_MOBILES_PER_ENB * 2, NULL, NULL);
-  /// System Information INIT
-  LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Checking release \n",
-        PROTOCOL_RRC_CTXT_ARGS(&ctxt));
-  // can clear it at runtime
-  RC.rrc[ctxt.module_id]->carrier[0].MBMS_flag = 0;
-  // This has to come from some top-level configuration
-  // only CC_id 0 is logged
-  LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Rel14 RRC detected, MBMS flag %d\n",
+    RC.rrc[ctxt.module_id]->initial_id2_s1ap_ids = hashtable_create (MAX_MOBILES_PER_ENB * 2, NULL, NULL);
+    RC.rrc[ctxt.module_id]->s1ap_id2_s1ap_ids    = hashtable_create (MAX_MOBILES_PER_ENB * 2, NULL, NULL);
+    /// System Information INIT
+    LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Checking release \n",
+         PROTOCOL_RRC_CTXT_ARGS(&ctxt));
+    // can clear it at runtime
+    RC.rrc[ctxt.module_id]->carrier[0].MBMS_flag = 0;
+    // This has to come from some top-level configuration
+    // only CC_id 0 is logged
+    LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Rel14 RRC detected, MBMS flag %d\n",
         PROTOCOL_RRC_CTXT_ARGS(&ctxt),
         RC.rrc[ctxt.module_id]->carrier[0].MBMS_flag);
+  }
 
   for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-    init_SI(&ctxt, CC_id, configuration);
-
-    for (int ue_id = 0; ue_id < MAX_MOBILES_PER_ENB; ue_id++) {
-      RC.rrc[ctxt.module_id]->carrier[CC_id].sizeof_paging[ue_id] = 0;
-      RC.rrc[ctxt.module_id]->carrier[CC_id].paging[ue_id] = (uint8_t *) malloc16(256);
+    if(need_init) {
+      for (int ue_id = 0; ue_id < MAX_MOBILES_PER_ENB; ue_id++) {
+        RC.rrc[ctxt.module_id]->carrier[CC_id].sizeof_paging[ue_id] = 0;
+        RC.rrc[ctxt.module_id]->carrier[CC_id].paging[ue_id] = (uint8_t *) malloc16(256);
+      }
     }
   }
 
-  rrc_init_global_param();
-
   for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-    switch (RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag) {
-      case 1:
-      case 2:
-      case 3:
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Configuring 1 MBSFN sync area\n", PROTOCOL_RRC_CTXT_ARGS(&ctxt));
-        RC.rrc[ctxt.module_id]->carrier[CC_id].num_mbsfn_sync_area = 1;
-        break;
+      init_SI(&ctxt, CC_id, configuration);
+  }
 
-      case 4:
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Configuring 2 MBSFN sync area\n", PROTOCOL_RRC_CTXT_ARGS(&ctxt));
-        RC.rrc[ctxt.module_id]->carrier[CC_id].num_mbsfn_sync_area = 2;
-        break;
+  if(need_init) {
+   rrc_init_global_param();
 
-      default:
-        RC.rrc[ctxt.module_id]->carrier[CC_id].num_mbsfn_sync_area = 0;
-        break;
-    }
+   for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+     switch (RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag) {
+       case 1:
+       case 2:
+       case 3:
+         LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Configuring 1 MBSFN sync area\n", PROTOCOL_RRC_CTXT_ARGS(&ctxt));
+         RC.rrc[ctxt.module_id]->carrier[CC_id].num_mbsfn_sync_area = 1;
+         break;
 
-    // if we are here the RC.rrc[enb_mod_idP]->MBMS_flag > 0,
-    /// MCCH INIT
-    if (RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag > 0) {
-      init_MCCH(ctxt.module_id, CC_id);
-      /// MTCH data bearer init
-      init_MBMS(ctxt.module_id, CC_id, 0);
-    }
+       case 4:
+         LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Configuring 2 MBSFN sync area\n", PROTOCOL_RRC_CTXT_ARGS(&ctxt));
+         RC.rrc[ctxt.module_id]->carrier[CC_id].num_mbsfn_sync_area = 2;
+         break;
 
-    openair_rrc_top_init_eNB(RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag,0);
+       default:
+         RC.rrc[ctxt.module_id]->carrier[CC_id].num_mbsfn_sync_area = 0;
+         break;
+     }
+
+     // if we are here the RC.rrc[enb_mod_idP]->MBMS_flag > 0,
+     /// MCCH INIT
+     if (RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag > 0) {
+       init_MCCH(ctxt.module_id, CC_id);
+       /// MTCH data bearer init
+       init_MBMS(ctxt.module_id, CC_id, 0);
+     }
+
+     openair_rrc_top_init_eNB(CC_id,RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag,0);
+   }
   }
 
   RC.rrc[ctxt.module_id]->nr_scg_ssb_freq = configuration->nr_scg_ssb_freq;
 
-  openair_rrc_on(&ctxt);
+  if(need_init) {openair_rrc_on(&ctxt);}
 
   for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++){
     if(configuration->ActiveParamPresent[CC_id] == true)
@@ -7350,7 +7362,7 @@ char openair_rrc_eNB_configuration(
     }
   }
 
-  if (NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
+  if (need_init && NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
     // msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, F1AP_SCTP_REQ);
     // RCconfig_CU_F1(msg_p, enb_id);
     setup_ngran_CU(RC.rrc[ctxt.module_id]);
@@ -10653,13 +10665,11 @@ rrc_enb_task(
 
 /*------------------------------------------------------------------------------*/
 void
-openair_rrc_top_init_eNB(int eMBMS_active,uint8_t HO_active)
+openair_rrc_top_init_eNB(int CC_id,int eMBMS_active,uint8_t HO_active)
 //-----------------------------------------------------------------------------
 {
   module_id_t         module_id;
-  int                 CC_id;
-  /* for no gcc warnings */
-  (void)CC_id;
+
   LOG_D(RRC, "[OPENAIR][INIT] Init function start: NB_eNB_INST=%d\n", RC.nb_inst);
 
   if (RC.nb_inst > 0) {
@@ -10672,9 +10682,7 @@ openair_rrc_top_init_eNB(int eMBMS_active,uint8_t HO_active)
     LOG_I(RRC,"[eNB] eMBMS active state is %d \n", eMBMS_active);
 
     for (module_id=0; module_id<NB_eNB_INST; module_id++) {
-      for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
         RC.rrc[module_id]->carrier[CC_id].MBMS_flag = (uint8_t)eMBMS_active;
-      }
     }
   }
 }
