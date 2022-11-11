@@ -372,6 +372,11 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       }
     }
 
+    if(itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0) {
+      LOG_E(SCTP, "Create task for SS SRB failed\n");
+      return -1;
+    }
+
     if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
       LOG_E(SCTP, "Create task for SS SRB failed\n");
       return -1;
