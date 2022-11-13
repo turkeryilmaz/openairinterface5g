@@ -1860,7 +1860,7 @@ int rrc_eNB_process_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance
           }
 
           pthread_mutex_unlock(&ue_pf_po_mutex);
-          uint32_t length;
+          int32_t length;
           uint8_t buffer[RRC_BUF_SIZE];
           uint8_t *message_buffer;
           /* Transfer data to PDCP */

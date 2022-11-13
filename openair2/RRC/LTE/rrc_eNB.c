@@ -644,7 +644,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
     }
   }
   pthread_mutex_unlock(&ue_pf_po_mutex);
-  uint32_t length;
+  int32_t length;
   uint8_t buffer[RRC_BUF_SIZE];
   uint8_t *message_buffer;
   /* Transfer data to PDCP */
@@ -702,7 +702,11 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 			p_paging_record++;
 		}
 	}
-	LOG_A(RRC, "fxn:%s line:%d length:%d\n", __FUNCTION__, __LINE__, length);
+  if(SS_PAGING_IND(msg_p).paging_recordList){
+    free(SS_PAGING_IND(msg_p).paging_recordList);
+    SS_PAGING_IND(msg_p).paging_recordList = NULL;
+  }
+  LOG_A(RRC, "fxn:%s line:%d length:%d\n", __FUNCTION__, __LINE__, length);
   if (length == -1)
   {
     LOG_A(RRC, "do_Paging error");

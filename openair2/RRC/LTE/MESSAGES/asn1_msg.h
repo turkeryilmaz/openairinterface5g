@@ -365,7 +365,7 @@ ssize_t do_nrMeasurementReport(uint8_t *buffer,
 
 uint8_t do_DLInformationTransfer(uint8_t Mod_id, uint8_t **buffer, uint8_t transaction_id, uint32_t pdu_length, uint8_t *pdu_buffer);
 
-uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
+int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
                   ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain, bool systemInfoModification, uint8_t pagingRecordCount);
 
 uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t *pdu_buffer);

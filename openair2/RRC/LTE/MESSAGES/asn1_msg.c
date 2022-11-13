@@ -221,6 +221,41 @@ void free_LTE_SchedulingInfo_t(LTE_SchedulingInfo_t * ptr)
   }
 }
 
+void free_BIT_STRING_t_buf(BIT_STRING_t * ptr)
+{
+  if(ptr && ptr->buf){
+    free(ptr->buf);
+    ptr->buf=NULL;
+  }
+}
+
+FN_FREE_t_DEFINE(LTE_IMSI_Digit_t)
+
+void free_LTE_PagingRecord_t(LTE_PagingRecord_t * ptr)
+{
+  if(ptr){
+    switch (ptr->ue_Identity.present) {
+      case LTE_PagingUE_Identity_PR_s_TMSI:
+        free_BIT_STRING_t_buf(&ptr->ue_Identity.choice.s_TMSI.mmec);
+        free_BIT_STRING_t_buf(&ptr->ue_Identity.choice.s_TMSI.m_TMSI);
+        break;
+      case LTE_PagingUE_Identity_PR_imsi:
+        ptr->ue_Identity.choice.imsi.list.free = free_LTE_IMSI_Digit_t;
+        asn_sequence_empty(&ptr->ue_Identity.choice.imsi.list);
+        break;
+      case LTE_PagingUE_Identity_PR_ng_5G_S_TMSI_r15:
+        free_BIT_STRING_t_buf(&ptr->ue_Identity.choice.ng_5G_S_TMSI_r15);
+        break;
+      case LTE_PagingUE_Identity_PR_fullI_RNTI_r15:
+        free_BIT_STRING_t_buf(&ptr->ue_Identity.choice.fullI_RNTI_r15);
+        break;
+      default:
+        break;
+    }
+    FREEMEM(ptr);
+  }
+}
+
 uint8_t do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t additionalNonMBSFN, uint32_t frame) {
   asn_enc_rval_t enc_rval;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms=&carrier->mib_fembms;
@@ -4504,7 +4539,7 @@ uint8_t do_DLInformationTransfer(uint8_t Mod_id, uint8_t **buffer, uint8_t trans
   return encoded;
 }
 
-uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
+int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
                   ue_paging_identity_t ue_paging_identity, cn_domain_t cn_domain, bool systemInfoModification, uint8_t pagingRecordCount) {
   LOG_D(RRC, "[eNB %d] do_Paging start\n", Mod_id);
   asn_enc_rval_t enc_rval;
@@ -4516,19 +4551,17 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   /* This block of code will be one time */
   if (oneTimeProcessingFlag == 0)
   {
-		LOG_A(RRC, "fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+    LOG_A(RRC, "fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
     pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
     pcch_msg.message.choice.c1.choice.paging.pagingRecordList = NULL;
     pcch_msg.message.choice.c1.choice.paging.systemInfoModification = NULL;
     pcch_msg.message.choice.c1.choice.paging.etws_Indication = NULL;
     pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
-		if (pagingRecordCount > 0)
-		{
-			asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
-			pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
-			pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
-		}
+    if (pagingRecordCount > 0)
+    {
+      pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(LTE_PagingRecordList_t));
+    }
     oneTimeProcessingFlag = 1;
   }
 
@@ -4555,11 +4588,11 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 				paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI.bits_unused = 0;
 			} else if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_imsi) {
 				paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_imsi;
-				LTE_IMSI_Digit_t imsi_digit[21];
 
 				for (j = 0; j< ue_paging_identity.choice.imsi.length; j++) {  /* IMSI size */
-					imsi_digit[j] = (LTE_IMSI_Digit_t)ue_paging_identity.choice.imsi.buffer[j];
-					ASN_SEQUENCE_ADD(&paging_record_p->ue_Identity.choice.imsi.list, &imsi_digit[j]);
+					LTE_IMSI_Digit_t *imsi_digit = calloc(1, sizeof(LTE_IMSI_Digit_t));
+					*imsi_digit = (LTE_IMSI_Digit_t)ue_paging_identity.choice.imsi.buffer[j];
+					ASN_SEQUENCE_ADD(&paging_record_p->ue_Identity.choice.imsi.list, imsi_digit);
 				}
 			}
 
@@ -4583,11 +4616,11 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   {
     if (systemInfoModification)
     {
-			LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
+      LOG_A(RRC, "fxn:%s line:%d count:%d \n", __FUNCTION__, __LINE__, count);
       LOG_A(RRC, "Handling of paging for systemInfoModification\n");
       pcch_msg.message.choice.c1.choice.paging.systemInfoModification = calloc(1, sizeof(long));
       *(pcch_msg.message.choice.c1.choice.paging.systemInfoModification) = LTE_Paging__systemInfoModification_true;
-		}
+    }
 
     enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_PCCH_Message, NULL, (void *)&pcch_msg,
       buffer, buffer_size);
@@ -4601,12 +4634,21 @@ uint8_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 //    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
       xer_fprint(stdout, &asn_DEF_LTE_PCCH_Message, (void *)&pcch_msg);
 //    }
-    count = 0;
+    if(pcch_msg.message.choice.c1.choice.paging.systemInfoModification){
+      free(pcch_msg.message.choice.c1.choice.paging.systemInfoModification);
+    }
+    if(count > 0 && pcch_msg.message.choice.c1.choice.paging.pagingRecordList){
+      pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.free = free_LTE_PagingRecord_t;
+      asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
+      free(pcch_msg.message.choice.c1.choice.paging.pagingRecordList);
+    }
     memset(&pcch_msg, 0, sizeof(LTE_PCCH_Message_t));
+    count=0;
     oneTimeProcessingFlag = 0;
     return((enc_rval.encoded+7)/8);
   }
-	LOG_A(RRC, "oneTimeProcessingFlag:%d count:%d \n", oneTimeProcessingFlag, count);
+  LOG_A(RRC, "oneTimeProcessingFlag:%d count:%d \n", oneTimeProcessingFlag, count);
+  return 0;
 }
 
 uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t *pdu_buffer) {
