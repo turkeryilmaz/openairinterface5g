@@ -1331,10 +1331,8 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
                 break;
               case SQN_PagingUE_Identity_imsi:
                 p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
-
-                memcpy(&(p_record_msg->ue_paging_identity.choice.imsi),
-                  &(p_sdl_msg->ue_Identity.v.imsi),
-                  sizeof(s1ap_imsi_t));
+                p_record_msg->ue_paging_identity.choice.imsi.length = p_sdl_msg->ue_Identity.v.imsi.d;
+                memcpy(&(p_record_msg->ue_paging_identity.choice.imsi.buffer[0]),p_sdl_msg->ue_Identity.v.imsi.v, p_sdl_msg->ue_Identity.v.imsi.d);
                 break;
               case SQN_PagingUE_Identity_ng_5G_S_TMSI_r15:
               case SQN_PagingUE_Identity_fullI_RNTI_r15:
