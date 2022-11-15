@@ -236,7 +236,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   uint8_t Nid2 = GET_NID2(ue->common_vars.eNb_id);
   uint16_t Nid1;
   uint8_t phase;
-  int16_t *sss;
+  int16_t *sss0, *sss1;
   NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
   int32_t metric, metric_re;
   int16_t *d;
@@ -272,7 +272,8 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   // now do the SSS detection based on the precomputed sequences in PHY/LTE_TRANSPORT/sss.h
   *tot_metric = INT_MIN;
 
-  sss = (int16_t*)&sss0_ext[0][0];
+  sss0 = (int16_t*)&sss0_ext[0][0];
+  sss1 = (int16_t*)&sss1_ext[0][0];
 
   /* for phase evaluation, one uses an array of possible phase shifts */
   /* then a correlation is done between received signal with a shift pĥase and the reference signal */
@@ -289,7 +290,8 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
 
       // This is the inner product using one particular value of each unknown parameter
       for (i=0; i < LENGTH_SSS_NR; i++) {
-        metric_re += d[i]*(((phase_re_nr[phase]*sss[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss[2*i+1])>>SCALING_METRIC_SSS_NR));
+        metric_re += d[i]*(((phase_re_nr[phase]*sss0[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss0[2*i+1])>>SCALING_METRIC_SSS_NR)) +
+                         d[i]*(((phase_re_nr[phase]*sss1[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss1[2*i+1])>>SCALING_METRIC_SSS_NR));
 
 #if 0
 	  printf("i %d, phase %d/%d: metric %d, phase (%d,%d) sss (%d,%d) d %d\n",i,phase,PHASE_HYPOTHESIS_NUMBER,metric_re,phase_re_nr[phase],phase_im_nr[phase],sss[2*i],sss[1+(2*i)],d[i]);
@@ -316,8 +318,8 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
 
 #define SSS_METRIC_FLOOR_NR   (30000)
   if (*tot_metric > SSS_METRIC_FLOOR_NR) {
-    Nid2 = GET_NID2(frame_parms->Nid_cell);
-    Nid1 = GET_NID1(frame_parms->Nid_cell);
+    Nid2 = GET_NID2(frame_parms->Nid_SL );
+    Nid1 = GET_NID1(frame_parms->Nid_SL);
     printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
   }
   //#endif
@@ -333,8 +335,10 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   }
   d = (int16_t *)&d_sss[Nid2][Nid1];
   for(i = 0; i<LENGTH_SSS_NR; i++) {
-    re += d[i]*sss[2*i];
-    im += d[i]*sss[2*i+1];
+    re += d[i]*sss0[2*i];
+    im += d[i]*sss0[2*i+1];
+    re += d[i]*sss1[2*i];
+    im += d[i]*sss1[2*i+1];
   }
   double ffo_sss = atan2(im,re)/M_PI/4.3;
   *freq_offset_sss = (int)(ffo_sss*frame_parms->subcarrier_spacing);
