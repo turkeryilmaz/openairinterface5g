@@ -42,13 +42,13 @@
 /* PSS parameters */
 #ifdef PHY_SIDE_LINK
 #define  NUMBER_PSS_SEQUENCE          (2)
-#define  PSS_SSS_SUB_CARRIER_START    (2)     // 56 for NR, 2 for SL
 #define  PSS_SEQ_OFFSET               (22)    // 0 for NR, 22 for SL
 #else
 #define  NUMBER_PSS_SEQUENCE          (3)
-#define  PSS_SSS_SUB_CARRIER_START    (56)      // 56 for NR, 2 for SL
 #define  PSS_SEQ_OFFSET               (0)
 #endif
+#define  SPSS_SSSS_SUB_CARRIER_START  (2)     // 56 for NR, 2 for SL
+#define  PSS_SSS_SUB_CARRIER_START    (56)      // 56 for NR, 2 for SL
 #define  INVALID_PSS_SEQUENCE         (NUMBER_PSS_SEQUENCE)
 #define  LENGTH_PSS_NR                (127)
 #define  N_SC_RB                      (12)     /* Resource block size in frequency domain expressed as a number if subcarriers */
@@ -70,10 +70,11 @@
 #define  SSS_SYMBOL_NB                ((2) + OFFSET_SS_PBCH)
 #define  PBCH_LAST_SYMBOL_NB          ((3) + OFFSET_SS_PBCH)
 
-#define  PSS0_SL_SYMBOL_NB            ((1) + OFFSET_SS_PBCH)
-#define  PSS1_SL_SYMBOL_NB            ((2) + OFFSET_SS_PBCH)
-#define  SSS0_SL_SYMBOL_NB            ((3) + OFFSET_SS_PBCH)
-#define  SSS1_SL_SYMBOL_NB            ((4) + OFFSET_SS_PBCH)
+#define  OFFSET_SS_PSBCH              0
+#define  PSS0_SL_SYMBOL_NB            ((1) + OFFSET_SS_PSBCH)
+#define  PSS1_SL_SYMBOL_NB            ((2) + OFFSET_SS_PSBCH)
+#define  SSS0_SL_SYMBOL_NB            ((3) + OFFSET_SS_PSBCH)
+#define  SSS1_SL_SYMBOL_NB            ((4) + OFFSET_SS_PSBCH)
 
 /* SS/PBCH parameters */
 #define  N_RB_SS_PBCH_BLOCK           (20)

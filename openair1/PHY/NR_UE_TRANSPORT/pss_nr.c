@@ -149,7 +149,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START; //and
+  unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
 

@@ -132,7 +132,7 @@ int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     pss0_rxF_ext = &pss0_ext[aarx][0];
     sss0_rxF_ext = &sss0_ext[aarx][0];
 
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START; // check the offset and start subcarrier
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START; // check the offset and start subcarrier
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
@@ -167,7 +167,7 @@ int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     pss1_rxF_ext = &pss1_ext[aarx][0];
     sss1_rxF_ext = &sss1_ext[aarx][0];
 
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START; // check the offset and start subcarrier
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START; // check the offset and start subcarrier
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
@@ -211,143 +211,6 @@ int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *phy_vars_ue,
                        uint8_t subframe)
 {
   return do_pss_sss_sl_extract_nr(phy_vars_ue, proc, pss0_ext, sss0_ext, pss1_ext, sss1_ext, 1 /* doPss */, 1 /* doSss */, subframe);
-}
-
-/*******************************************************************
-*
-* NAME :         rx_sss_nr
-*
-* PARAMETERS :   none
-*
-* RETURN :       Set Nid_cell in ue context
-*
-* DESCRIPTION :  Determine element Nid1 of cell identity
-*                so Nid_cell in ue context is set according to Nid1 & Nid2
-*
-*********************************************************************/
-
-int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metric, uint8_t *phase_max, int *freq_offset_sss)
-{
-  uint8_t i;
-  int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
-  int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
-  int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
-  int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
-  uint8_t Nid2 = GET_NID2(ue->common_vars.eNb_id);
-  uint16_t Nid1;
-  uint8_t phase;
-  int16_t *sss0, *sss1;
-  NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
-  int32_t metric, metric_re;
-  int16_t *d;
-
-
-  // pss sss extraction
-  pss_sss_sl_extract_nr(ue,
-                     proc,
-                     pss0_ext,
-                     sss0_ext,
-                     pss1_ext,
-                     sss1_ext,
-                     0);          /* subframe */
-
-#ifdef DEBUG_PLOT_SSS
-
-  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_subframe,1,1);
-  write_output("rxdataF0_pss.m","rxF0_pss",&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[0][0],frame_parms->ofdm_symbol_size,1,1);
-  write_output("rxdataF0_sss.m","rxF0_sss",&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[0][(SSS_SYMBOL_NB-PSS_SYMBOL_NB)*frame_parms->ofdm_symbol_size],frame_parms->ofdm_symbol_size,1,1);
-  write_output("pss_ext.m","pss_ext",pss_ext,LENGTH_PSS_NR,1,1);
-
-#endif
-
-  // get conjugated channel estimate from PSS, H* = R* \cdot PSS
-  // and do channel estimation and compensation based on PSS
-
-  pss_sl_ch_est_nr(ue,
-                pss0_ext,
-                sss0_ext,
-                pss1_ext,
-                sss1_ext);
-
-  // now do the SSS detection based on the precomputed sequences in PHY/LTE_TRANSPORT/sss.h
-  *tot_metric = INT_MIN;
-
-  sss0 = (int16_t*)&sss0_ext[0][0];
-  sss1 = (int16_t*)&sss1_ext[0][0];
-
-  /* for phase evaluation, one uses an array of possible phase shifts */
-  /* then a correlation is done between received signal with a shift pĥase and the reference signal */
-  /* Computation of signal with shift phase is based on below formula */
-  /* cosinus cos(x + y) = cos(x)cos(y) - sin(x)sin(y) */
-  /* sinus   sin(x + y) = sin(x)cos(y) + cos(x)sin(y) */
-
-   for (Nid1 = 0 ; Nid1 < N_ID_1_NUMBER; Nid1++) {          // all possible Nid1 values
-      for (phase=0; phase < PHASE_HYPOTHESIS_NUMBER; phase++) {  // phase offset between PSS and SSS
-      metric = 0;
-      metric_re = 0;
-
-      d = (int16_t *)&d_sss[Nid2][Nid1];
-
-      // This is the inner product using one particular value of each unknown parameter
-      for (i=0; i < LENGTH_SSS_NR; i++) {
-        metric_re += d[i]*(((phase_re_nr[phase]*sss0[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss0[2*i+1])>>SCALING_METRIC_SSS_NR)) +
-                         d[i]*(((phase_re_nr[phase]*sss1[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss1[2*i+1])>>SCALING_METRIC_SSS_NR));
-
-#if 0
-	  printf("i %d, phase %d/%d: metric %d, phase (%d,%d) sss (%d,%d) d %d\n",i,phase,PHASE_HYPOTHESIS_NUMBER,metric_re,phase_re_nr[phase],phase_im_nr[phase],sss[2*i],sss[1+(2*i)],d[i]);
-#endif
-      }
-
-      metric = metric_re;
-
-      // if the current metric is better than the last save it
-      if (metric > *tot_metric) {
-        *tot_metric = metric;
-        ue->frame_parms.Nid_SL = Nid1 + NUMBER_SSS_SEQUENCE * Nid2;
-        ue->frame_parms.Nid_cell = Nid2 +(3 * Nid1);
-        *phase_max = phase;
-
-#ifdef DEBUG_SSS_NR
-        printf("(phase,Nid1) (%d,%d), metric_phase %d tot_metric %d, phase_max %d \n",phase, Nid1, metric, *tot_metric, *phase_max);
-#endif
-      }
-    }
-  }
-
-//#ifdef DEBUG_SSS_NR
-
-#define SSS_METRIC_FLOOR_NR   (30000)
-  if (*tot_metric > SSS_METRIC_FLOOR_NR) {
-    Nid2 = GET_NID2(frame_parms->Nid_SL );
-    Nid1 = GET_NID1(frame_parms->Nid_SL);
-    printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
-  }
-  //#endif
-
-  if (Nid1==N_ID_1_NUMBER)
-    return -1;
-
-  int re = 0;
-  int im = 0;
-  if (Nid1 == N_ID_1_NUMBER) {
-    LOG_I(PHY,"Failled to detect SSS after PSS\n");
-    return -1;
-  }
-  d = (int16_t *)&d_sss[Nid2][Nid1];
-  for(i = 0; i<LENGTH_SSS_NR; i++) {
-    re += d[i]*sss0[2*i];
-    im += d[i]*sss0[2*i+1];
-    re += d[i]*sss1[2*i];
-    im += d[i]*sss1[2*i+1];
-  }
-  double ffo_sss = atan2(im,re)/M_PI/4.3;
-  *freq_offset_sss = (int)(ffo_sss*frame_parms->subcarrier_spacing);
-
-  double ffo_pss = ((double)ue->common_vars.freq_offset)/frame_parms->subcarrier_spacing;
-  LOG_I(NR_PHY, "ffo_pss %f (%i Hz), ffo_sss %f (%i Hz),  ffo_pss+ffo_sss %f (%i Hz)\n",
-         ffo_pss, (int)(ffo_pss*frame_parms->subcarrier_spacing), ffo_sss, *freq_offset_sss, ffo_pss+ffo_sss, (int)((ffo_pss+ffo_sss)*frame_parms->subcarrier_spacing));
-
-  return(0);
 }
 
 /*******************************************************************
@@ -442,3 +305,141 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
   // sss_ext now contains the compensated SSS
   return(0);
 }
+
+/*******************************************************************
+*
+* NAME :         rx_sss_nr
+*
+* PARAMETERS :   none
+*
+* RETURN :       Set Nid_cell in ue context
+*
+* DESCRIPTION :  Determine element Nid1 of cell identity
+*                so Nid_cell in ue context is set according to Nid1 & Nid2
+*
+*********************************************************************/
+
+int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metric, uint8_t *phase_max, int *freq_offset_sss)
+{
+  uint8_t i;
+  int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
+  int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
+  int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
+  int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
+  uint16_t Nid1;
+  uint8_t phase;
+  int16_t *sss0, *sss1;
+  NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
+  uint8_t Nid2 = GET_NID2_SL(frame_parms->Nid_SL);
+  int32_t metric, metric_re;
+  int16_t *d;
+
+
+  // pss sss extraction
+  pss_sss_sl_extract_nr(ue,
+                     proc,
+                     pss0_ext,
+                     sss0_ext,
+                     pss1_ext,
+                     sss1_ext,
+                     0);          /* subframe */
+
+#ifdef DEBUG_PLOT_SSS
+
+  write_output("rxsig0.m","rxs0",&ue->common_vars.rxdata[0][0],ue->frame_parms.samples_per_subframe,1,1);
+  write_output("rxdataF0_pss.m","rxF0_pss",&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[0][0],frame_parms->ofdm_symbol_size,1,1);
+  write_output("rxdataF0_sss.m","rxF0_sss",&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[0][(SSS_SYMBOL_NB-PSS_SYMBOL_NB)*frame_parms->ofdm_symbol_size],frame_parms->ofdm_symbol_size,1,1);
+  write_output("pss_ext.m","pss_ext",pss_ext,LENGTH_PSS_NR,1,1);
+
+#endif
+
+  // get conjugated channel estimate from PSS, H* = R* \cdot PSS
+  // and do channel estimation and compensation based on PSS
+
+  pss_sl_ch_est_nr(ue,
+                pss0_ext,
+                sss0_ext,
+                pss1_ext,
+                sss1_ext);
+
+  // now do the SSS detection based on the precomputed sequences in PHY/LTE_TRANSPORT/sss.h
+  *tot_metric = INT_MIN;
+
+  sss0 = (int16_t*)&sss0_ext[0][0];
+  sss1 = (int16_t*)&sss1_ext[0][0];
+
+  /* for phase evaluation, one uses an array of possible phase shifts */
+  /* then a correlation is done between received signal with a shift pĥase and the reference signal */
+  /* Computation of signal with shift phase is based on below formula */
+  /* cosinus cos(x + y) = cos(x)cos(y) - sin(x)sin(y) */
+  /* sinus   sin(x + y) = sin(x)cos(y) + cos(x)sin(y) */
+
+   for (Nid1 = 0 ; Nid1 < N_ID_1_NUMBER; Nid1++) {          // all possible Nid1 values
+      for (phase=0; phase < PHASE_HYPOTHESIS_NUMBER; phase++) {  // phase offset between PSS and SSS
+      metric = 0;
+      metric_re = 0;
+
+      d = (int16_t *)&d_sss[Nid2][Nid1];
+
+      // This is the inner product using one particular value of each unknown parameter
+      for (i=0; i < LENGTH_SSS_NR; i++) {
+        metric_re += d[i]*(((phase_re_nr[phase]*sss0[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss0[2*i+1])>>SCALING_METRIC_SSS_NR)) +
+                         d[i]*(((phase_re_nr[phase]*sss1[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss1[2*i+1])>>SCALING_METRIC_SSS_NR));
+
+#if 0
+	  printf("i %d, phase %d/%d: metric %d, phase (%d,%d) sss (%d,%d) d %d\n",i,phase,PHASE_HYPOTHESIS_NUMBER,metric_re,phase_re_nr[phase],phase_im_nr[phase],sss[2*i],sss[1+(2*i)],d[i]);
+#endif
+      }
+
+      metric = metric_re;
+
+      // if the current metric is better than the last save it
+      if (metric > *tot_metric) {
+        *tot_metric = metric;
+        ue->frame_parms.Nid_SL = Nid1 + NUMBER_SSS_SEQUENCE * Nid2;
+        ue->frame_parms.Nid_cell = Nid2 +(3 * Nid1);
+        *phase_max = phase;
+
+#ifdef DEBUG_SSS_NR
+        printf("(phase,Nid1) (%d,%d), metric_phase %d tot_metric %d, phase_max %d \n",phase, Nid1, metric, *tot_metric, *phase_max);
+#endif
+      }
+    }
+  }
+
+//#ifdef DEBUG_SSS_NR
+
+#define SSS_METRIC_FLOOR_NR   (30000)
+  if (*tot_metric > SSS_METRIC_FLOOR_NR) {
+    Nid2 = GET_NID2_SL(frame_parms->Nid_SL);
+    Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
+    printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
+  }
+  //#endif
+
+  if (Nid1==N_ID_1_NUMBER)
+    return -1;
+
+  int re = 0;
+  int im = 0;
+  if (Nid1 == N_ID_1_NUMBER) {
+    LOG_I(PHY,"Failled to detect SSS after PSS\n");
+    return -1;
+  }
+  d = (int16_t *)&d_sss[Nid2][Nid1];
+  for(i = 0; i<LENGTH_SSS_NR; i++) {
+    re += d[i]*sss0[2*i];
+    im += d[i]*sss0[2*i+1];
+    re += d[i]*sss1[2*i];
+    im += d[i]*sss1[2*i+1];
+  }
+  double ffo_sss = atan2(im,re)/M_PI/4.3;
+  *freq_offset_sss = (int)(ffo_sss*frame_parms->subcarrier_spacing);
+
+  double ffo_pss = ((double)ue->common_vars.freq_offset)/frame_parms->subcarrier_spacing;
+  LOG_I(NR_PHY, "ffo_pss %f (%i Hz), ffo_sss %f (%i Hz),  ffo_pss+ffo_sss %f (%i Hz)\n",
+         ffo_pss, (int)(ffo_pss*frame_parms->subcarrier_spacing), ffo_sss, *freq_offset_sss, ffo_pss+ffo_sss, (int)((ffo_pss+ffo_sss)*frame_parms->subcarrier_spacing));
+
+  return(0);
+}
+
