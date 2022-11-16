@@ -517,8 +517,10 @@ int main(int argc, char **argv)
       }
 
       int ret;
+      UE->is_synchronized = 0; // Force initial sync for testing. 
       if (UE->is_synchronized == 0) {
         UE_nr_rxtx_proc_t proc = {0};
+        printf("\n Entering nr_sl_initial_sync \n");
         ret = nr_sl_initial_sync(&proc, UE, 1);
         printf("nr_sl_initial_sync1 returns %d\n", ret);
         if (ret < 0) {
