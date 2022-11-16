@@ -1378,12 +1378,13 @@ initiate_ra_proc(module_id_t module_idP,
       ra[i].Msg2_subframe = (subframeP + offset) % 10;
 
       /* TODO: find better procedure to allocate RNTI */
+      set_taus_seed(0); //TODO: add workaround here (set_taus_seed already called at begining of main,but something goes wrong when built with 3 cells)
       do {
         if (IS_SOFTMODEM_IQPLAYER) {  /* iq player mode, use deterministic rnti */
           static int drnti[MAX_MOBILES_PER_ENB];
           static int drnti_def[]={ 0xbda7, 0x71da, 0x9c40, 0xc350, 0x2710, 0x4e20, 0x7530, 0x1388, 0x3a98, 0x61a8, 0x88b8, 0xafc8, 0xd6d8, 0x1b58, 0x4268, 0x6978 };
           for (int j=0; j<MAX_MOBILES_PER_ENB && j< (sizeof(drnti_def)/sizeof(int));j++)
-          	  drnti[i]=drnti_def[i];
+            drnti[j]=drnti_def[j];
           
           int nb_ue = 0;
 
@@ -1403,6 +1404,7 @@ initiate_ra_proc(module_id_t module_idP,
           ra[i].rnti = drnti[nb_ue];
         } else {
           ra[i].rnti = taus();
+          LOG_D(MAC, "[RAPROC] try rnti:0x%x\n",ra[i].rnti);
         }
         loop++;
       } while (loop != 100 &&
