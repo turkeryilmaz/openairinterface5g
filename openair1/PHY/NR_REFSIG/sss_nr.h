@@ -59,8 +59,8 @@
 #define  GET_NID2(Nid_cell)           (Nid_cell%3)
 #define  GET_NID1(Nid_cell)           (Nid_cell/3)
 
-#define  GET_NID2_SL(Nid_cell)        (Nid_cell/NUMBER_SSS_SEQUENCE)
-#define  GET_NID1_SL(Nid_cell)        (Nid_cell%NUMBER_SSS_SEQUENCE)
+#define  GET_NID2_SL(Nid_SL)          (Nid_SL/NUMBER_SSS_SEQUENCE)
+#define  GET_NID1_SL(Nid_SL)          (Nid_SL%NUMBER_SSS_SEQUENCE)
 
 #define  PSS_SC_START_NR              (52)     /* see from TS 38.211 table 7.4.3.1-1: Resources within an SS/PBCH block for PSS... */
 
