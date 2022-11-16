@@ -314,7 +314,7 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
   nr_sl_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
   nr_sl_generate_psbch_dmrs(&ue->nr_gold_psbch[ssb_index & 7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
   uint8_t n_hf = 0;
-  nr_generate_sl_psbch(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, n_hf, frame, fp);
+  nr_generate_sl_psbch(ue, &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, n_hf, frame, fp);
 }
 
 int nr_rx_psbch( PHY_VARS_NR_UE *ue,
@@ -326,7 +326,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
                 uint8_t i_ssb,
                 MIMO_mode_t mimo_mode,
                 NR_UE_PDCCH_CONFIG *phy_pdcch_config,
-                fapiPbch_t *result) {
+                fapiPsbch_t *result) {
 
   NR_UE_COMMON *nr_ue_common_vars = &ue->common_vars;
   uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
@@ -411,7 +411,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     payload |= (((uint64_t)psbch_a_prime >> i) & 1) << (31 - i);
   printf("PSBCH payload received 0x%x \n", payload);
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 4; i++)
     result->decoded_output[i] = (uint8_t)((payload >> ((3 - i) << 3)) & 0xff);
 
   frame_parms->half_frame_bit = (result->xtra_byte >> 4) & 0x01; // computing the half frame index from the extra byte
@@ -422,8 +422,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
       frame_parms->ssb_index += (((result->xtra_byte >> (7 - i)) & 0x01) << (3 + i));
   }
 
-  ue->symbol_offset = nr_get_ssb_start_symbol(frame_parms,frame_parms->ssb_index);
-
+  ue->symbol_offset = 0; 
   if (frame_parms->half_frame_bit)
   ue->symbol_offset += (frame_parms->slots_per_frame>>1)*frame_parms->symbols_per_slot;
 

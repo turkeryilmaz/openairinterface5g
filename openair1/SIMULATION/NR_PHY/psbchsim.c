@@ -421,12 +421,6 @@ int main(int argc, char **argv)
   AssertFatal(UE->frame_parms.nb_antennas_tx < 2, "Invalid index %d\n", UE->frame_parms.nb_antennas_tx);
   for (int i = 0; i < UE->frame_parms.Lmax; i++) {
     if((SSB_positions >> i) & 0x01) {
-      const int sc_offset = UE->frame_parms.freq_range == nr_FR1 ? ssb_subcarrier_offset << mu : ssb_subcarrier_offset;
-      const int prb_offset = UE->frame_parms.freq_range == nr_FR1 ? UE->nrUE_config.ssb_table.ssb_offset_point_a<<mu : UE->nrUE_config.ssb_table.ssb_offset_point_a << (mu - 2);
-      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.bchPayload = 0x55dd33;
-      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbBlockIndex = i;
-      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset = sc_offset;
-      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA = prb_offset;
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++)
         memset(UE->common_vars.txdataF[aa], 0, sizeof(*UE->common_vars.txdataF[aa]));
 
@@ -434,6 +428,13 @@ int main(int argc, char **argv)
       int ssb_start_symbol_abs = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * i) * UE->frame_parms.symbols_per_slot;
       int slot = ssb_start_symbol_abs / 14;
       nr_sl_common_signal_procedures(UE, frame, slot);
+
+      const int sc_offset = UE->frame_parms.freq_range == nr_FR1 ? ssb_subcarrier_offset << mu : ssb_subcarrier_offset;
+      const int prb_offset = UE->frame_parms.freq_range == nr_FR1 ? UE->nrUE_config.ssb_table.ssb_offset_point_a<<mu : UE->nrUE_config.ssb_table.ssb_offset_point_a << (mu - 2);
+      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.bchPayload = UE->psbch_vars[0]->psbch_a;
+      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbBlockIndex = i;
+      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset = sc_offset;
+      msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA = prb_offset;
 
       int slot_timestamp = UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0);
       int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
@@ -515,12 +516,6 @@ int main(int argc, char **argv)
         }
       }
 
-      if (n_trials == 1) {
-        LOG_M("rxsig0.m","rxs0", UE->common_vars.rxdata[0], UE->frame_parms.samples_per_frame, 1, 1);
-        if (UE->frame_parms.nb_antennas_tx > 1)
-          LOG_M("rxsig1.m","rxs1", UE->common_vars.rxdata[1], UE->frame_parms.samples_per_frame, 1, 1);
-      }
-
       int ret;
       if (UE->is_synchronized == 0) {
         UE_nr_rxtx_proc_t proc = {0};
@@ -542,14 +537,14 @@ int main(int argc, char **argv)
         UE->symbol_offset = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * ssb_index) * UE->frame_parms.symbols_per_slot;
         uint8_t n_hf = 0;
         int ssb_slot = (UE->symbol_offset / 14) + (n_hf * (UE->frame_parms.slots_per_frame >> 1));
-        for (int i = UE->symbol_offset + 1; i < UE->symbol_offset + 4; i++) {
+        for (int i = UE->symbol_offset; i < UE->symbol_offset + 5; i++) {
           nr_slot_fep(UE, &proc, i % UE->frame_parms.symbols_per_slot, ssb_slot);
           nr_psbch_channel_estimation(UE, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc,
                                       0, ssb_slot, i % UE->frame_parms.symbols_per_slot,
-                                      i - (UE->symbol_offset+1), ssb_index % 8, n_hf);
+                                      i - (UE->symbol_offset), ssb_index % 8, n_hf);
         }
-        fapiPbch_t result;
-         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
+        fapiPsbch_t result;
+        NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         /* Side link rx PSBCH */
         ret = 0;
         ret = nr_rx_psbch(UE,
@@ -566,13 +561,12 @@ int main(int argc, char **argv)
 
         if (ret == 0) {
           int payload_ret = 0;
-          uint8_t UE_xtra_byte = 0;
-          for (int i = 0; i < 8; i++)
-            UE_xtra_byte |= ((UE->psbch_vars[0]->psbch_a >> (31 - i)) & 1) << (7 - i);
-          payload_ret = (result.xtra_byte == UE_xtra_byte);
-          for (int i = 0; i < 3; i++)
-            payload_ret += (result.decoded_output[i] == ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * i)) & 0xff));
-          if (payload_ret != 4)
+          for (int i = 0; i < NR_POLAR_PSBCH_PAYLOAD_BITS >> 3; i++) {
+            printf("result.decoded_output[i] %d, msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload %d,\n",
+                  result.decoded_output[i], ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * (3-i))) & 0xff));
+            payload_ret += (result.decoded_output[i] == ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * (3-i))) & 0xff));
+          }
+          if (payload_ret != (NR_POLAR_PSBCH_PAYLOAD_BITS >> 3))
             n_errors_payload++;
         }
         if (ret != 0) {
