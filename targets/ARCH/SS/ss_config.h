@@ -71,8 +71,6 @@ typedef struct ss_config_s {
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind;
-  /** Cell Config Array */
-  ss_cell_config_t ss_cell_list[8];
 } ss_config_t;
 /**
 typedef enum {
