@@ -460,6 +460,7 @@ int ss_gNB_vtp_init(void)
 }
 
 static void ss_gNB_vt_ena(void) {
+    SS_context.vtp_enabled = 1;
     VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
     req->header.preamble = 0xFEEDC0DE;
     req->header.msg_id = SS_VTP_ENABLE;
@@ -518,7 +519,6 @@ void* ss_gNB_vtp_task(void *arg) {
 
 		ss_gNB_wait_first_msg();
 
-		SS_context.vtp_enabled = 1;
 		RC.ss.vtp_ready = 1;
 
 		sleep(1);
