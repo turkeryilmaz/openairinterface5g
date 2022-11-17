@@ -423,6 +423,12 @@ int main(int argc, char **argv)
     exit(-1);
   }
 
+  if (pss_sss_test) {
+    test_pss_sl(UE);
+    test_sss_sl(UE);
+    return 0;
+  }
+
   nr_gold_psbch(UE);
   processingData_L1tx_t msgDataTx;
   AssertFatal(UE->frame_parms.Lmax < sizeof(msgDataTx.ssb) / sizeof(msgDataTx.ssb[0]), "Invalid index %d\n",
@@ -533,10 +539,7 @@ int main(int argc, char **argv)
         if (ret < 0) {
           n_errors++;
         }
-      } else if (pss_sss_test) {
-        test_pss_sl(UE);
-        test_sss_sl(UE);
-      }else {
+      } else {
         UE_nr_rxtx_proc_t proc = {0};
         UE->rx_offset = 0;
         uint8_t ssb_index = 0;

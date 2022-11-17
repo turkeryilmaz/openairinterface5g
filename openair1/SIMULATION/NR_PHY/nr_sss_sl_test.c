@@ -122,6 +122,5 @@ int test_sss_sl(PHY_VARS_NR_UE *UE)
          test.test_current, test.number_of_tests, test.number_of_pass, test.number_of_pass_warning, test.number_of_fail);
   printf("%s Synchronisaton test is terminated.\n\n", test.test_current);
   test.number_of_tests = test.number_of_pass = test.number_of_pass_warning = test.number_of_fail = 0;
-  free_context_synchro_nr();
   return(0);
 }
