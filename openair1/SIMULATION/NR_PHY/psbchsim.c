@@ -52,6 +52,7 @@
 #include <executables/nr-uesoftmodem.h>
 #include "openair1/SCHED_NR_UE/defs.h"
 #include "openair1/SIMULATION/NR_PHY/nr_pss_sl_test.h"
+#include "openair1/SIMULATION/NR_PHY/nr_sss_sl_test.h"
 
 //#define DEBUG_NR_PSBCHSIM
 RAN_CONTEXT_t RC;
@@ -259,7 +260,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 'p':
-        printf("Setting pss_test");
+        printf("Setting PSS and SSS tests");
         pss_test = atoi(optarg);
         break;
 
@@ -317,7 +318,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         printf("-N Nid_cell\n");
         printf("-o Carrier frequency offset in Hz\n");
         printf("-O SSB subcarrier offset\n");
-        printf("-p Conducting PSS testing\n");
+        printf("-p Conducting PSS and SSS testing\n");
         printf("-P PSBCH phase, allowed values 0-3\n");
         printf("-r set the random number generator seed (default: 0 = current time)\n");
         printf("-R N_RB_DL\n");
@@ -534,6 +535,7 @@ int main(int argc, char **argv)
         }
       } else if (pss_test) {
         test_pss_sl(UE);
+        test_sss_sl(UE);
       }else {
         UE_nr_rxtx_proc_t proc = {0};
         UE->rx_offset = 0;
