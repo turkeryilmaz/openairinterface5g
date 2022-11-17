@@ -290,7 +290,6 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 
 
     req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
-    req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
     
     LOG_A(GNB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN: %d SF: %d mu: %d slot: %d\n",
@@ -399,16 +398,6 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
             }
         }
         break;
-       case SS_VTP_PROXY_UPD:
-       {
-           LOG_A(GNB_APP, "[SS-VTP] VTP_Update receieved from proxy %s cmd: %d SFN: %d SF: %d\n",
-                 ITTI_MSG_ORIGIN_NAME(received_msg), SS_VTP_PROXY_UPD(received_msg).cmd,
-                 SS_VTP_PROXY_UPD(received_msg).tinfo.sfn, SS_VTP_PROXY_UPD(received_msg).tinfo.sf);
-
-           /** Send response here */
-           ss_vtp_send_tinfo(TASK_VTP, &SS_VTP_PROXY_UPD(received_msg).tinfo);
-       }
-       break;
 
         case TERMINATE_MESSAGE:
         {
@@ -469,6 +458,21 @@ int ss_gNB_vtp_init(void)
     itti_mark_task_ready(TASK_VTP);
     return 0;
 }
+
+static void ss_gNB_vt_ena(void) {
+    VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
+    req->header.preamble = 0xFEEDC0DE;
+    req->header.msg_id = SS_VTP_ENABLE;
+    req->header.length = sizeof(proxy_ss_header_t);
+    req->header.cell_id = SS_context.cellId;
+    req->tinfo.mu = -1;
+    req->tinfo.sfn = 0;
+    req->tinfo.sf = 0;
+    req->tinfo.slot = 0;
+    LOG_A(GNB_APP, "[SS-VTP] VT enable sent \n");
+    vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
+}
+
 static void ss_gNB_wait_first_msg(void)
 {
     const size_t size = 16 * 1024;
@@ -481,7 +485,21 @@ static void ss_gNB_wait_first_msg(void)
 		if (ret == MSG_SysVTEnquireTimingAck_userId || ret == -ACP_PEER_CONNECTED)
 		{
 			LOG_A(GNB_APP, "[SS_VTP] First VT-ACK From Client Received (on-start) \n");
+            struct VirtualTimeInfo_Type *virtualTime = NULL;
+
+            if (acpSysVTEnquireTimingAckDecSrv(ctx_vtp_g, buffer, msg_sz, &virtualTime) != 0)
+            {
+                LOG_E(GNB_APP, "[SS-VTP] acpVngProcessDecSrv failed \n");
+                break;
+            }
+
+            if (virtualTime->Enable) {
+                ss_gNB_vt_ena();
+            }
 			break;
+
+            _ss_log_vt(virtualTime, " => (enable message) ");
+            acpSysVTEnquireTimingAckFreeSrv(virtualTime);
 		}
         LOG_A(GNB_APP, "[SS_VTP] Waiting for First VT-ACK From Client(on-start) \n");
 	}
