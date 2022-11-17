@@ -387,7 +387,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             }
             LOG_A(ENB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(ENB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
-            if (SS_context.vtp_enabled == 1)
+            if (isConnected == true)
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
         }
         break;
@@ -494,7 +494,6 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		SS_context.vtp_enabled = 1;
 		RC.ss.vtp_ready = 1;
 		ss_enable_vtp();
 		sleep(1);

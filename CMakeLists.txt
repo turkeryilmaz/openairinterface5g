@@ -1677,6 +1677,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_drb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_multicell_helper.c
   ${OPENAIR3_DIR}/SS/ss_gNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
