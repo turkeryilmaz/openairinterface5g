@@ -121,7 +121,7 @@ int run_initial_sync = 0;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
-bool pss_test = false;
+bool pss_sss_test = false;
 
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
                                         int N_RB_DL,
@@ -261,7 +261,7 @@ static void get_sim_cl_opts(int argc, char **argv)
 
       case 'p':
         printf("Setting PSS and SSS tests");
-        pss_test = atoi(optarg);
+        pss_sss_test = atoi(optarg);
         break;
 
       case 'P':
@@ -533,7 +533,7 @@ int main(int argc, char **argv)
         if (ret < 0) {
           n_errors++;
         }
-      } else if (pss_test) {
+      } else if (pss_sss_test) {
         test_pss_sl(UE);
         test_sss_sl(UE);
       }else {
