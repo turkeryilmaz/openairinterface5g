@@ -387,7 +387,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     /* time samples in buffer rxdata are used as input of FFT -> FFT results are stored in the frequency buffer rxdataF */
     /* rxdataF stores SS/PBCH from beginning of buffers in the same symbol order as in time domain */
 
-      for(int i=0; i<4;i++)
+      for(int i=0; i<13;i++)
         nr_slot_fep_init_sync(ue,
                               proc,
                               i,

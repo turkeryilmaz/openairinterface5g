@@ -692,7 +692,6 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
 
   int maxval = 0;
   for (int i = 0; i < 2 * (frame_parms->ofdm_symbol_size); i++) {
-    AssertFatal(i < NUMBER_PSS_SEQUENCE, "Invalid primary_synchro_time_nr index %d > %d\n", i, NUMBER_PSS_SEQUENCE);
     maxval = max(maxval, primary_synchro_time_nr[0][i]);
     maxval = max(maxval, -primary_synchro_time_nr[0][i]);
     maxval = max(maxval, primary_synchro_time_nr[1][i]);
