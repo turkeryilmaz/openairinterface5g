@@ -48,6 +48,7 @@
 #include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
 #include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
 #include "openair1/PHY/MODULATION/nr_modulation.h"
+#include "openair1/PHY/NR_REFSIG/pss_nr.h"
 #include <executables/softmodem-common.h>
 #include <executables/nr-uesoftmodem.h>
 #include "openair1/SCHED_NR_UE/defs.h"
@@ -566,11 +567,11 @@ int main(int argc, char **argv)
         }
       }
 
-      int ret;
+      int ret = 0;
+      int n_frames = 1;
       if (UE->is_synchronized == 0) {
         UE_nr_rxtx_proc_t proc = {0};
-        ret = nr_sl_initial_sync(&proc, UE, 1);
-        printf("nr_sl_initial_sync1 returns %d\n", ret);
+        ret = nr_initial_sync(&proc, UE, n_frames, 0);
         if (ret < 0) {
           n_errors++;
         }

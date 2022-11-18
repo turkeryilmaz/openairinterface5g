@@ -39,7 +39,6 @@
 #include <limits.h>
 
 #include "PHY/defs_nr_UE.h"
-#include "PHY/INIT/init_extern.h"
 #include "PHY/phy_extern_nr_ue.h"
 
 #include "PHY/NR_REFSIG/pss_nr.h"
