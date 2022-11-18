@@ -324,49 +324,49 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 //------------------------------------------------------------------------------
 void ss_gNB_srb_init(void)
 {
-        IpAddress_t ipaddr;
-        LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
+  IpAddress_t ipaddr;
+  LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
 
-        const char *hostIp;
-        hostIp = RC.ss.hostIp;
-        acpConvertIp(hostIp, &ipaddr);
+  const char *hostIp;
+  hostIp = RC.ss.hostIp;
+  acpConvertIp(hostIp, &ipaddr);
 
-        // Port number
-        int port = RC.ss.Srbport;
-	acpInit(malloc, free, 1000);
+  // Port number
+  int port = RC.ss.Srbport;
+  acpInit(malloc, free, 1000);
 
-        // Register user services/notifications in message table
-        const struct acpMsgTable msgTable[] = {
-                { "NrSysSrbProcessFromSS", MSG_NrSysSrbProcessFromSS_userId },
-                { "NrSysSrbProcessToSS", MSG_NrSysSrbProcessToSS_userId },
-                /* { "SysProcess", MSG_SysProcess_userId }, */
-                // The last element should be NULL
-                { NULL, 0 }
-        };
+  // Register user services/notifications in message table
+  const struct acpMsgTable msgTable[] = {
+    { "NrSysSrbProcessFromSS", MSG_NrSysSrbProcessFromSS_userId },
+    { "NrSysSrbProcessToSS", MSG_NrSysSrbProcessToSS_userId },
+    /* { "SysProcess", MSG_SysProcess_userId }, */
+    // The last element should be NULL
+    { NULL, 0 }
+  };
 
-        // Arena size to decode received message
-        const size_t aSize = 32 * 1024;
+  // Arena size to decode received message
+  const size_t aSize = 32 * 1024;
 
-        // Start listening server and get ACP context,
-        // after the connection is performed, we can use all services
-        int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
-        if (ret < 0)
-        {
-                LOG_A(GNB_APP, "[SS_SRB] Connection failure err=%d\n", ret);
-                return;
-        }
-        int fd1 = acpGetSocketFd(ctx_srb_g);
-        LOG_A(GNB_APP, "[SS_SRB] Connection performed : %d\n", fd1);
+  // Start listening server and get ACP context,
+  // after the connection is performed, we can use all services
+  int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
+  if (ret < 0)
+  {
+    LOG_A(GNB_APP, "[SS_SRB] Connection failure err=%d\n", ret);
+    return;
+  }
+  int fd1 = acpGetSocketFd(ctx_srb_g);
+  LOG_A(GNB_APP, "[SS_SRB] Connection performed : %d\n", fd1);
 
-                buffer = (unsigned char *)acpMalloc(size);
-        assert(buffer);
+  buffer = (unsigned char *)acpMalloc(size);
+  assert(buffer);
 
-				if (RC.ss.mode == SS_SOFTMODEM_SRB)
-				{
-        	RC.ss.State = SS_STATE_CELL_ACTIVE;
-				}
-        itti_subscribe_event_fd(TASK_SS_SRB, fd1);
-        itti_mark_task_ready(TASK_SS_SRB);
+  if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  {
+    RC.ss.State = SS_STATE_CELL_ACTIVE;
+  }
+  itti_subscribe_event_fd(TASK_SS_SRB, fd1);
+  itti_mark_task_ready(TASK_SS_SRB);
 }
 
 //------------------------------------------------------------------------------

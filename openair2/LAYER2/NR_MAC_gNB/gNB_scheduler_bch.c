@@ -157,7 +157,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
 
     // get MIB every 8 frames
     if(((slotP == 0) && (frameP & 7) == 0) ||
-       gNB->first_MIB) {
+        gNB->first_MIB) {
 
       mib_sdu_length = mac_rrc_nr_data_req(module_idP, CC_id, frameP, MIBCH, 0, 1, &cc->MIB_pdu.payload[0]);
 
@@ -165,21 +165,21 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
       gNB->first_MIB = false;
 
       LOG_D(MAC,
-            "[gNB %d] Frame %d : MIB->BCH  CC_id %d, Received %d bytes\n",
-            module_idP,
-            frameP,
-            CC_id,
-            mib_sdu_length);
+          "[gNB %d] Frame %d : MIB->BCH  CC_id %d, Received %d bytes\n",
+          module_idP,
+          frameP,
+          CC_id,
+          mib_sdu_length);
     }
 
     int8_t ssb_period = *scc->ssb_periodicityServingCell;
     uint8_t ssb_frame_periodicity = 1;  // every how many frames SSB are generated
 
     if (ssb_period > 1) // 0 is every half frame
-		{
-  				LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+    {
+      LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
       ssb_frame_periodicity = 1 << (ssb_period -1);
-		}
+    }
 
     if (!(frameP%ssb_frame_periodicity) &&
         ((slotP<(slots_per_frame>>1)) || (ssb_period == 0))) {
@@ -205,7 +205,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
       switch (scc->ssb_PositionsInBurst->present) {
         case 1:
           // short bitmap (<3GHz) max 4 SSBs
-  				LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+          LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
           for (int i_ssb=0; i_ssb<4; i_ssb++) {
             if ((shortBitmap->buf[0]>>(7-i_ssb))&0x01) {
               ssb_start_symbol = get_ssb_start_symbol(band,scs,i_ssb);
@@ -215,17 +215,17 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
                 fill_ssb_vrb_map(cc, offset_pointa, ssb_start_symbol, CC_id);
                 if (get_softmodem_params()->sa == 1) {
                   get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[i_ssb],
-                                                        frameP,
-                                                        mib,
-                                                        slots_per_frame,
-                                                        ssbSubcarrierOffset,
-                                                        ssb_start_symbol,
-                                                        scs,
-                                                        FR1,
-                                                        band,
-                                                        i_ssb,
-                                                        ssb_frame_periodicity,
-                                                        offset_pointa);
+                      frameP,
+                      mib,
+                      slots_per_frame,
+                      ssbSubcarrierOffset,
+                      ssb_start_symbol,
+                      scs,
+                      FR1,
+                      band,
+                      i_ssb,
+                      ssb_frame_periodicity,
+                      offset_pointa);
                   gNB->type0_PDCCH_CSS_config[i_ssb].active = true;
                 }
               }
@@ -234,7 +234,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
           break;
         case 2:
           // medium bitmap (<6GHz) max 8 SSBs
-  				LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+          LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
           for (int i_ssb=0; i_ssb<8; i_ssb++) {
             if ((mediumBitmap->buf[0]>>(7-i_ssb))&0x01) {
               ssb_start_symbol = get_ssb_start_symbol(band,scs,i_ssb);
@@ -244,17 +244,17 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
                 fill_ssb_vrb_map(cc, offset_pointa, ssb_start_symbol, CC_id);
                 if (get_softmodem_params()->sa == 1) {
                   get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[i_ssb],
-                                                        frameP,
-                                                        mib,
-                                                        slots_per_frame,
-                                                        ssbSubcarrierOffset,
-                                                        ssb_start_symbol,
-                                                        scs,
-                                                        FR1,
-                                                        band,
-                                                        i_ssb,
-                                                        ssb_frame_periodicity,
-                                                        offset_pointa);
+                      frameP,
+                      mib,
+                      slots_per_frame,
+                      ssbSubcarrierOffset,
+                      ssb_start_symbol,
+                      scs,
+                      FR1,
+                      band,
+                      i_ssb,
+                      ssb_frame_periodicity,
+                      offset_pointa);
                   gNB->type0_PDCCH_CSS_config[i_ssb].active = true;
                 }
               }
@@ -281,17 +281,17 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
                 AssertFatal(num_ssb<2,"beamforming currently not supported for more than one SSB per slot\n");
                 if (get_softmodem_params()->sa == 1) {
                   get_type0_PDCCH_CSS_config_parameters(&gNB->type0_PDCCH_CSS_config[i_ssb],
-                                                        frameP,
-                                                        mib,
-                                                        slots_per_frame,
-                                                        ssbSubcarrierOffset,
-                                                        ssb_start_symbol,
-                                                        scs,
-                                                        FR2,
-                                                        band,
-                                                        i_ssb,
-                                                        ssb_frame_periodicity,
-                                                        offset_pointa);
+                      frameP,
+                      mib,
+                      slots_per_frame,
+                      ssbSubcarrierOffset,
+                      ssb_start_symbol,
+                      scs,
+                      FR2,
+                      band,
+                      i_ssb,
+                      ssb_frame_periodicity,
+                      offset_pointa);
                   gNB->type0_PDCCH_CSS_config[i_ssb].active = true;
                 }
               }
@@ -300,7 +300,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
           break;
         default:
           AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
-                      scc->ssb_PositionsInBurst->present);
+              scc->ssb_PositionsInBurst->present);
       }
     }
   }
@@ -338,14 +338,14 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   uint16_t *vrb_map = cc->vrb_map;
-    LOG_D(NR_MAC," fxn:%s Entry \n", __FUNCTION__);
+  LOG_D(NR_MAC," fxn:%s Entry \n", __FUNCTION__);
 
   if (gNB_mac->sched_ctrlCommon == NULL){
     LOG_D(NR_MAC,"schedule_control_common: Filling nr_mac->sched_ctrlCommon\n");
     LOG_D(NR_MAC," fxn:%s gNB_mac->cset0_bwp_start=type0_PDCCH_CSS_config->cset_start_rb:%d gNB_mac->cset0_bwp_size=type0_PDCCH_CSS_config->num_rbs:%d \n", 
-			__FUNCTION__,
-			gNB_mac->cset0_bwp_start,
-			gNB_mac->cset0_bwp_size);
+        __FUNCTION__,
+        gNB_mac->cset0_bwp_start,
+        gNB_mac->cset0_bwp_size);
     gNB_mac->sched_ctrlCommon = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon));
     gNB_mac->sched_ctrlCommon->search_space = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->search_space));
     gNB_mac->sched_ctrlCommon->coreset = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->coreset));
@@ -354,11 +354,11 @@ uint32_t schedule_control_sib1(module_id_t module_id,
     gNB_mac->cset0_bwp_start = type0_PDCCH_CSS_config->cset_start_rb;
     gNB_mac->cset0_bwp_size = type0_PDCCH_CSS_config->num_rbs;
     gNB_mac->sched_ctrlCommon->sched_pdcch = set_pdcch_structure(NULL,
-                                                                 gNB_mac->sched_ctrlCommon->search_space,
-                                                                 gNB_mac->sched_ctrlCommon->coreset,
-                                                                 scc,
-                                                                 NULL,
-                                                                 type0_PDCCH_CSS_config);
+        gNB_mac->sched_ctrlCommon->search_space,
+        gNB_mac->sched_ctrlCommon->coreset,
+        scc,
+        NULL,
+        type0_PDCCH_CSS_config);
   }
 
   gNB_mac->sched_ctrlCommon->pdsch_semi_static.time_domain_allocation = time_domain_allocation;
@@ -374,22 +374,22 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   }
   AssertFatal(nr_of_candidates>0,"nr_of_candidates is 0\n");
   gNB_mac->sched_ctrlCommon->cce_index = find_pdcch_candidate(gNB_mac,
-                                                              CC_id,
-                                                              gNB_mac->sched_ctrlCommon->aggregation_level,
-                                                              nr_of_candidates,
-                                                              &gNB_mac->sched_ctrlCommon->sched_pdcch,
-                                                              gNB_mac->sched_ctrlCommon->coreset,
-                                                              0);
-//	if (RC.ss.mode >= SS_SOFTMODEM)
-//		gNB_mac->sched_ctrlCommon->cce_index = 0;
+      CC_id,
+      gNB_mac->sched_ctrlCommon->aggregation_level,
+      nr_of_candidates,
+      &gNB_mac->sched_ctrlCommon->sched_pdcch,
+      gNB_mac->sched_ctrlCommon->coreset,
+      0);
+  //	if (RC.ss.mode >= SS_SOFTMODEM)
+  //		gNB_mac->sched_ctrlCommon->cce_index = 0;
 
   LOG_D(MAC,"swetank: cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
   AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
   int rbStart = 0;
-	if(RC.ss.mode >= SS_SOFTMODEM)
-		rbStart = 27;
+  if(RC.ss.mode >= SS_SOFTMODEM)
+    rbStart = 27;
 
   // TODO: There are exceptions to this in table 5.1.2.1.1-4,5 (Default time domain allocation tables B, C)
   int mappingtype = (startSymbolIndex <= 3)? typeA: typeB;
@@ -417,55 +417,55 @@ uint32_t schedule_control_sib1(module_id_t module_id,
         break;
     }
     TBS = nr_compute_tbs(nr_get_Qm_dl(gNB_mac->sched_ctrlCommon->sched_pdsch.mcs, gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx),
-                         nr_get_code_rate_dl(gNB_mac->sched_ctrlCommon->sched_pdsch.mcs, gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx),
-                         rbSize, nrOfSymbols, N_PRB_DMRS * dmrs_length,0, 0,1) >> 3;
-  	LOG_D(MAC,"mcs = %i\n", gNB_mac->sched_ctrlCommon->sched_pdsch.mcs);
-		LOG_D(MAC,"nrOfSymbols = %i\n", nrOfSymbols);
-		LOG_D(MAC, "rbSize = %i\n", rbSize);
-		LOG_D(MAC, "rbStart = %i\n", rbStart);
-		LOG_D(MAC,"TBS = %i\n", TBS);
-  	LOG_D(MAC,"mcsTableIdx= %i\n", gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx);
-  	LOG_D(MAC,"dmrs_length %d\n",dmrs_length);
-		LOG_D(MAC,"time_domain_allocation= %i\n", time_domain_allocation);
-		LOG_D(MAC,"startSymbolIndex= %i\n", startSymbolIndex);
-		LOG_D(MAC,"nrOfSymbols= %i\n", nrOfSymbols);
-		LOG_D(MAC,"dlDmrsSymbPos= %i\n", dlDmrsSymbPos);
-		LOG_D(MAC,"candidate_idx= %i\n", candidate_idx);
-		LOG_D(MAC,"num_total_bytes= %i\n", num_total_bytes);
-		LOG_D(MAC,"num_total_bytes= %i\n", num_total_bytes);
+        nr_get_code_rate_dl(gNB_mac->sched_ctrlCommon->sched_pdsch.mcs, gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx),
+        rbSize, nrOfSymbols, N_PRB_DMRS * dmrs_length,0, 0,1) >> 3;
+    LOG_D(MAC,"mcs = %i\n", gNB_mac->sched_ctrlCommon->sched_pdsch.mcs);
+    LOG_D(MAC,"nrOfSymbols = %i\n", nrOfSymbols);
+    LOG_D(MAC, "rbSize = %i\n", rbSize);
+    LOG_D(MAC, "rbStart = %i\n", rbStart);
+    LOG_D(MAC,"TBS = %i\n", TBS);
+    LOG_D(MAC,"mcsTableIdx= %i\n", gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx);
+    LOG_D(MAC,"dmrs_length %d\n",dmrs_length);
+    LOG_D(MAC,"time_domain_allocation= %i\n", time_domain_allocation);
+    LOG_D(MAC,"startSymbolIndex= %i\n", startSymbolIndex);
+    LOG_D(MAC,"nrOfSymbols= %i\n", nrOfSymbols);
+    LOG_D(MAC,"dlDmrsSymbPos= %i\n", dlDmrsSymbPos);
+    LOG_D(MAC,"candidate_idx= %i\n", candidate_idx);
+    LOG_D(MAC,"num_total_bytes= %i\n", num_total_bytes);
+    LOG_D(MAC,"num_total_bytes= %i\n", num_total_bytes);
   } while (TBS < gNB_mac->sched_ctrlCommon->num_total_bytes);
 
 
   AssertFatal(TBS>=gNB_mac->sched_ctrlCommon->num_total_bytes,"Couldn't allocate enough resources for %d bytes in SIB1 PDSCH\n",
-              gNB_mac->sched_ctrlCommon->num_total_bytes);
+      gNB_mac->sched_ctrlCommon->num_total_bytes);
 
   gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize = rbSize;
   gNB_mac->sched_ctrlCommon->sched_pdsch.rbStart = 0;
 
-/*
-  LOG_D(MAC,"mcs = %i\n", gNB_mac->sched_ctrlCommon->sched_pdsch.mcs);
-  LOG_D(MAC,"startSymbolIndex = %i\n", startSymbolIndex);
-  LOG_D(MAC,"nrOfSymbols = %i\n", nrOfSymbols);
-  LOG_D(MAC, "rbSize = %i\n", gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize);
-  LOG_D(MAC,"TBS = %i\n", TBS);
-  LOG_D(MAC,"dmrs_length %d\n",dmrs_length);
-  LOG_D(MAC,"N_PRB_DMRS = %d\n",N_PRB_DMRS);
-  LOG_D(MAC,"mappingtype = %d\n", mappingtype);
+  /*
+     LOG_D(MAC,"mcs = %i\n", gNB_mac->sched_ctrlCommon->sched_pdsch.mcs);
+     LOG_D(MAC,"startSymbolIndex = %i\n", startSymbolIndex);
+     LOG_D(MAC,"nrOfSymbols = %i\n", nrOfSymbols);
+     LOG_D(MAC, "rbSize = %i\n", gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize);
+     LOG_D(MAC,"TBS = %i\n", TBS);
+     LOG_D(MAC,"dmrs_length %d\n",dmrs_length);
+     LOG_D(MAC,"N_PRB_DMRS = %d\n",N_PRB_DMRS);
+     LOG_D(MAC,"mappingtype = %d\n", mappingtype);
   // Mark the corresponding RBs as used */
-	LOG_D(NR_MAC, "swetank: CC_id:%d gNB_mac->sched_ctrlCommon->cce_index:%d aggregation_level:%d sched_pdsch.rbSize:%d \n",
-			CC_id,
-			gNB_mac->sched_ctrlCommon->cce_index,
-			gNB_mac->sched_ctrlCommon->aggregation_level,
-			gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize);
+  LOG_D(NR_MAC, "swetank: CC_id:%d gNB_mac->sched_ctrlCommon->cce_index:%d aggregation_level:%d sched_pdsch.rbSize:%d \n",
+      CC_id,
+      gNB_mac->sched_ctrlCommon->cce_index,
+      gNB_mac->sched_ctrlCommon->aggregation_level,
+      gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize);
   fill_pdcch_vrb_map(gNB_mac,
-                     CC_id,
-                     &gNB_mac->sched_ctrlCommon->sched_pdcch,
-                     gNB_mac->sched_ctrlCommon->cce_index,
-                     gNB_mac->sched_ctrlCommon->aggregation_level);
+      CC_id,
+      &gNB_mac->sched_ctrlCommon->sched_pdcch,
+      gNB_mac->sched_ctrlCommon->cce_index,
+      gNB_mac->sched_ctrlCommon->aggregation_level);
   for (int rb = 0; rb < gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize; rb++) {
     vrb_map[rb + rbStart] = SL_to_bitmap(startSymbolIndex, nrOfSymbols);
   }
-    LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
+  LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
   return TBS;
 }
 
@@ -614,7 +614,7 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
 
   int time_domain_allocation = gNB_mac->sib1_tda;
 
-	LOG_D(NR_MAC, "swetank: scc->ssb_PositionsInBurst->present:%d\n", scc->ssb_PositionsInBurst->present);
+  LOG_D(NR_MAC, "swetank: scc->ssb_PositionsInBurst->present:%d\n", scc->ssb_PositionsInBurst->present);
   int L_max;
   switch (scc->ssb_PositionsInBurst->present) {
     case 1:
@@ -628,7 +628,7 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
       break;
     default:
       AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
-                  scc->ssb_PositionsInBurst->present);
+          scc->ssb_PositionsInBurst->present);
   }
 
   for (int i=0; i<L_max; i++) {
@@ -636,9 +636,9 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &gNB_mac->type0_PDCCH_CSS_config[i];
 
     if((frameP%2 == type0_PDCCH_CSS_config->sfn_c) &&
-       (slotP == type0_PDCCH_CSS_config->n_0) &&
-       (type0_PDCCH_CSS_config->num_rbs > 0) &&
-       (type0_PDCCH_CSS_config->active == true)) {
+        (slotP == type0_PDCCH_CSS_config->n_0) &&
+        (type0_PDCCH_CSS_config->num_rbs > 0) &&
+        (type0_PDCCH_CSS_config->active == true)) {
 
       LOG_D(NR_MAC,"(%d.%d) SIB1 transmission: ssb_index %d\n", frameP, slotP, type0_PDCCH_CSS_config->ssb_index);
 
@@ -658,22 +658,22 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
       LOG_D(NR_MAC,"time_domain_allocation: %i\n", time_domain_allocation);
       LOG_D(NR_MAC,"dmrs_TypeA_Position: %i\n", gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position);
       get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
-                               time_domain_allocation,
-                               gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
-                               1, &is_typeA,
-                               &startSymbolIndex, &nrOfSymbols);
+          time_domain_allocation,
+          gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
+          1, &is_typeA,
+          &startSymbolIndex, &nrOfSymbols);
 
       int mappingtype = is_typeA? typeA: typeB;
       uint16_t dlDmrsSymbPos = fill_dmrs_mask(NULL, gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position, nrOfSymbols, startSymbolIndex, mappingtype, 1);
 
       // Configure sched_ctrlCommon for SIB1
       uint32_t TBS = schedule_control_sib1(module_idP, CC_id,
-                                           type0_PDCCH_CSS_config,
-                                           time_domain_allocation,
-                                           startSymbolIndex,
-                                           nrOfSymbols,
-                                           dlDmrsSymbPos,
-                                           candidate_idx, sib1_sdu_length);
+          type0_PDCCH_CSS_config,
+          time_domain_allocation,
+          startSymbolIndex,
+          nrOfSymbols,
+          dlDmrsSymbPos,
+          candidate_idx, sib1_sdu_length);
 
       nfapi_nr_dl_tti_request_body_t *dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
       int pdu_index = gNB_mac->pdu_index[0]++;
@@ -697,7 +697,7 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
       type0_PDCCH_CSS_config->active = false;
 
       T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(SI_RNTI),
-         T_INT(frameP), T_INT(slotP), T_INT(0), T_BUFFER(sib1_payload, sib1_sdu_length));
+          T_INT(frameP), T_INT(slotP), T_INT(0), T_BUFFER(sib1_payload, sib1_sdu_length));
 
     }
   }

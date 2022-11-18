@@ -297,7 +297,7 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
 
 uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier, 
 	               gNB_RrcConfigurationReq *configuration
-                  ) {
+    ) {
   asn_enc_rval_t enc_rval;
 
   NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
@@ -362,45 +362,45 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
 
   //si-SchedulingInfo
   /*sib1->si_SchedulingInfo = CALLOC(1,sizeof(struct NR_SI_SchedulingInfo));
-  asn_set_empty(&sib1->si_SchedulingInfo->schedulingInfoList.list);
-  sib1->si_SchedulingInfo->si_WindowLength = NR_SI_SchedulingInfo__si_WindowLength_s40;
-  struct NR_SchedulingInfo *schedulingInfo = CALLOC(1,sizeof(struct NR_SchedulingInfo));
-  schedulingInfo->si_BroadcastStatus = NR_SchedulingInfo__si_BroadcastStatus_broadcasting;
-  schedulingInfo->si_Periodicity = NR_SchedulingInfo__si_Periodicity_rf8;
-  asn_set_empty(&schedulingInfo->sib_MappingInfo.list);
+    asn_set_empty(&sib1->si_SchedulingInfo->schedulingInfoList.list);
+    sib1->si_SchedulingInfo->si_WindowLength = NR_SI_SchedulingInfo__si_WindowLength_s40;
+    struct NR_SchedulingInfo *schedulingInfo = CALLOC(1,sizeof(struct NR_SchedulingInfo));
+    schedulingInfo->si_BroadcastStatus = NR_SchedulingInfo__si_BroadcastStatus_broadcasting;
+    schedulingInfo->si_Periodicity = NR_SchedulingInfo__si_Periodicity_rf8;
+    asn_set_empty(&schedulingInfo->sib_MappingInfo.list);
 
-  NR_SIB_TypeInfo_t *sib_type3 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
-  sib_type3->type = NR_SIB_TypeInfo__type_sibType3;
-  sib_type3->valueTag = CALLOC(1,sizeof(sib_type3->valueTag));
-  ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type3);
+    NR_SIB_TypeInfo_t *sib_type3 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+    sib_type3->type = NR_SIB_TypeInfo__type_sibType3;
+    sib_type3->valueTag = CALLOC(1,sizeof(sib_type3->valueTag));
+    ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type3);
 
-  NR_SIB_TypeInfo_t *sib_type5 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
-  sib_type5->type = NR_SIB_TypeInfo__type_sibType5;
-  sib_type5->valueTag = CALLOC(1,sizeof(sib_type5->valueTag));
-  ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type5);
+    NR_SIB_TypeInfo_t *sib_type5 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+    sib_type5->type = NR_SIB_TypeInfo__type_sibType5;
+    sib_type5->valueTag = CALLOC(1,sizeof(sib_type5->valueTag));
+    ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type5);
 
-  NR_SIB_TypeInfo_t *sib_type4 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
-  sib_type4->type = NR_SIB_TypeInfo__type_sibType4;
-  sib_type4->valueTag = CALLOC(1,sizeof(sib_type4->valueTag));
-  ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type4);
+    NR_SIB_TypeInfo_t *sib_type4 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+    sib_type4->type = NR_SIB_TypeInfo__type_sibType4;
+    sib_type4->valueTag = CALLOC(1,sizeof(sib_type4->valueTag));
+    ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type4);
 
-  NR_SIB_TypeInfo_t *sib_type2 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
-  sib_type2->type = NR_SIB_TypeInfo__type_sibType2;
-  sib_type2->valueTag = CALLOC(1,sizeof(sib_type2->valueTag));
-  ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type2);
+    NR_SIB_TypeInfo_t *sib_type2 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+    sib_type2->type = NR_SIB_TypeInfo__type_sibType2;
+    sib_type2->valueTag = CALLOC(1,sizeof(sib_type2->valueTag));
+    ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type2);
 
-  ASN_SEQUENCE_ADD(&sib1->si_SchedulingInfo->schedulingInfoList.list,schedulingInfo);*/
+    ASN_SEQUENCE_ADD(&sib1->si_SchedulingInfo->schedulingInfoList.list,schedulingInfo);*/
 
   // servingCellConfigCommon
   asn1cCalloc(sib1->servingCellConfigCommon,  ServCellCom);
   NR_BWP_DownlinkCommon_t  *initialDownlinkBWP=&ServCellCom->downlinkConfigCommon.initialDownlinkBWP;
   initialDownlinkBWP->genericParameters=
     configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
-  
+
 
   for(int i = 0; i< configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.count; i++) {
     asn1cSequenceAdd(ServCellCom->downlinkConfigCommon.frequencyInfoDL.frequencyBandList.list,
-		     struct NR_NR_MultiBandInfo, nrMultiBandInfo);
+        struct NR_NR_MultiBandInfo, nrMultiBandInfo);
     nrMultiBandInfo->freqBandIndicatorNR = configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i];
   }
 
@@ -415,41 +415,41 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     scs_scaling = scs_scaling0>>2;
     scs_scaling2 = scs_scaling0>>2;
   }
-	NR_ARFCN_ValueNR_t absoluteFrequencySSB = 0;
-	uint32_t absolute_diff = 0;	
-	if (RC.ss.mode == SS_SOFTMODEM)
-	{
-  	LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%d ", __FUNCTION__, absoluteFrequencySSB);
-		absoluteFrequencySSB = *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
-		absolute_diff = absoluteFrequencySSB - configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
-	}
-	else
-	{
-  	absolute_diff = (*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB -
-                             configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
-	}
+  NR_ARFCN_ValueNR_t absoluteFrequencySSB = 0;
+  uint32_t absolute_diff = 0;	
+  if (RC.ss.mode == SS_SOFTMODEM)
+  {
+    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%d ", __FUNCTION__, absoluteFrequencySSB);
+    absoluteFrequencySSB = *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
+    absolute_diff = absoluteFrequencySSB - configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
+  }
+  else
+  {
+    absolute_diff = (*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB -
+        configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+  }
 
-	/*TODO: */
+  /*TODO: */
   sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = scs_scaling2 * (absolute_diff/(12*scs_scaling) - 10);
 
   LOG_I(NR_RRC,"SIB1 freq: absoluteFrequencySSB %ld, absoluteFrequencyPointA %ld\n",
-                                    *configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
-                                    configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+      *configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+      configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
   LOG_I(NR_RRC,"SIB1 freq: absolute_diff %d, %d*(absolute_diff/(12*%d) - 10) %d\n",
-        absolute_diff,scs_scaling2,scs_scaling,(int)sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA);
+      absolute_diff,scs_scaling2,scs_scaling,(int)sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA);
 
   for(int i = 0; i< configuration->scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.count; i++) {
     ASN_SEQUENCE_ADD(&ServCellCom->downlinkConfigCommon.frequencyInfoDL.scs_SpecificCarrierList.list,
-		     configuration->scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]);
+        configuration->scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]);
   }
 
   initialDownlinkBWP->pdcch_ConfigCommon = 
-      configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon;
+    configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon;
   initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList = 
-       CALLOC(1,sizeof(struct NR_PDCCH_ConfigCommon__commonSearchSpaceList));
+    CALLOC(1,sizeof(struct NR_PDCCH_ConfigCommon__commonSearchSpaceList));
 
   asn1cSequenceAdd(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list,
-		   NR_SearchSpace_t, ss1);
+      NR_SearchSpace_t, ss1);
   ss1->searchSpaceId = 1;
   asn1cCallocOne(ss1->controlResourceSetId, 0);
   ss1->monitoringSlotPeriodicityAndOffset = calloc(1,sizeof(*ss1->monitoringSlotPeriodicityAndOffset));
@@ -473,7 +473,7 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   ss1->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1,sizeof(*ss1->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
 
   asn1cSequenceAdd(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list,
-		   NR_SearchSpace_t, ss5);
+      NR_SearchSpace_t, ss5);
   ss5->searchSpaceId = 5;
   ss5->controlResourceSetId=calloc(1,sizeof(*ss5->controlResourceSetId));
   *ss5->controlResourceSetId=0;
@@ -501,7 +501,7 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   ss5->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1,sizeof(*ss5->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
 
   asn1cSequenceAdd(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list,
-		   NR_SearchSpace_t, ss7);
+      NR_SearchSpace_t, ss7);
   ss7->searchSpaceId = 7;
   ss7->controlResourceSetId=calloc(1,sizeof(*ss7->controlResourceSetId));
   *ss7->controlResourceSetId=0;
@@ -525,12 +525,12 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   ss7->searchSpaceType->choice.common=calloc(1,sizeof(*ss7->searchSpaceType->choice.common));
   ss7->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0 = calloc(1,sizeof(*ss7->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0));
 
-  
+
   asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceSIB1,  0);
   asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceOtherSystemInformation, 7);
   asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->pagingSearchSpace, 5);
   asn1cCallocOne( initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->ra_SearchSpace, 1);
-   
+
   initialDownlinkBWP->pdsch_ConfigCommon = configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon;
   ServCellCom->downlinkConfigCommon.bcch_Config.modificationPeriodCoeff = NR_BCCH_Config__modificationPeriodCoeff_n2;
   ServCellCom->downlinkConfigCommon.pcch_Config.defaultPagingCycle = NR_PagingCycle_rf256;
@@ -539,21 +539,21 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   ServCellCom->downlinkConfigCommon.pcch_Config.ns = NR_PCCH_Config__ns_one;
 
   asn1cCalloc(ServCellCom->downlinkConfigCommon.pcch_Config.firstPDCCH_MonitoringOccasionOfPO,
-	      P0);
+      P0);
   P0->present = NR_PCCH_Config__firstPDCCH_MonitoringOccasionOfPO_PR_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT;
 
   asn1cCalloc(P0->choice.sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT,
-	      Z8);
+      Z8);
   asn1cSequenceAdd(Z8->list,
-		   long,
-		   ZoneEight);
+      long,
+      ZoneEight);
   asn1cCallocOne(ZoneEight, 0);
 
   asn1cCalloc(ServCellCom->uplinkConfigCommon, UL)
-  asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
+    asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
   for(int i = 0; i< configuration->scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.count; i++) {
     ASN_SEQUENCE_ADD(&UL->frequencyInfoUL.scs_SpecificCarrierList.list,
-		     configuration->scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]);
+        configuration->scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]);
   }
 
   asn1cCallocOne(UL->frequencyInfoUL.p_Max, 23);
@@ -578,14 +578,14 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_mediumBitmap:
       ServCellCom->ssb_PositionsInBurst.inOneGroup = configuration->scc->ssb_PositionsInBurst->choice.mediumBitmap;
       break;
-    /*
-    groupPresence: This field is present when maximum number of SS/PBCH blocks per half frame equals to 64 as defined in TS 38.213 [13], clause 4.1.
-                   The first/leftmost bit corresponds to the SS/PBCH index 0-7, the second bit corresponds to SS/PBCH block 8-15, and so on.
-                   Value 0 in the bitmap indicates that the SSBs according to inOneGroup are absent. Value 1 indicates that the SS/PBCH blocks are transmitted in accordance with inOneGroup.
-    inOneGroup: When maximum number of SS/PBCH blocks per half frame equals to 64 as defined in TS 38.213 [13], clause 4.1, all 8 bit are valid;
-                The first/ leftmost bit corresponds to the first SS/PBCH block index in the group (i.e., to SSB index 0, 8, and so on); the second bit corresponds to the second SS/PBCH block index in the group
-                (i.e., to SSB index 1, 9, and so on), and so on. Value 0 in the bitmap indicates that the corresponding SS/PBCH block is not transmitted while value 1 indicates that the corresponding SS/PBCH block is transmitted.
-    */
+      /*
+groupPresence: This field is present when maximum number of SS/PBCH blocks per half frame equals to 64 as defined in TS 38.213 [13], clause 4.1.
+The first/leftmost bit corresponds to the SS/PBCH index 0-7, the second bit corresponds to SS/PBCH block 8-15, and so on.
+Value 0 in the bitmap indicates that the SSBs according to inOneGroup are absent. Value 1 indicates that the SS/PBCH blocks are transmitted in accordance with inOneGroup.
+inOneGroup: When maximum number of SS/PBCH blocks per half frame equals to 64 as defined in TS 38.213 [13], clause 4.1, all 8 bit are valid;
+The first/ leftmost bit corresponds to the first SS/PBCH block index in the group (i.e., to SSB index 0, 8, and so on); the second bit corresponds to the second SS/PBCH block index in the group
+(i.e., to SSB index 1, 9, and so on), and so on. Value 0 in the bitmap indicates that the corresponding SS/PBCH block is not transmitted while value 1 indicates that the corresponding SS/PBCH block is transmitted.
+       */
     case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_longBitmap:
       ServCellCom->ssb_PositionsInBurst.inOneGroup.size = 1;
       ServCellCom->ssb_PositionsInBurst.inOneGroup.bits_unused = 0;
@@ -639,14 +639,14 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
 
   // uac-BarringInfo
   /*sib1->uac_BarringInfo = CALLOC(1, sizeof(struct NR_SIB1__uac_BarringInfo));
-  NR_UAC_BarringInfoSet_t *nr_uac_BarringInfoSet = CALLOC(1, sizeof(NR_UAC_BarringInfoSet_t));
-  asn_set_empty(&sib1->uac_BarringInfo->uac_BarringInfoSetList);
-  nr_uac_BarringInfoSet->uac_BarringFactor = NR_UAC_BarringInfoSet__uac_BarringFactor_p95;
-  nr_uac_BarringInfoSet->uac_BarringTime = NR_UAC_BarringInfoSet__uac_BarringTime_s4;
-  nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.buf = CALLOC(1, 1);
-  nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.size = 1;
-  nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.bits_unused = 1;
-  ASN_SEQUENCE_ADD(&sib1->uac_BarringInfo->uac_BarringInfoSetList, nr_uac_BarringInfoSet);*/
+    NR_UAC_BarringInfoSet_t *nr_uac_BarringInfoSet = CALLOC(1, sizeof(NR_UAC_BarringInfoSet_t));
+    asn_set_empty(&sib1->uac_BarringInfo->uac_BarringInfoSetList);
+    nr_uac_BarringInfoSet->uac_BarringFactor = NR_UAC_BarringInfoSet__uac_BarringFactor_p95;
+    nr_uac_BarringInfoSet->uac_BarringTime = NR_UAC_BarringInfoSet__uac_BarringTime_s4;
+    nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.buf = CALLOC(1, 1);
+    nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.size = 1;
+    nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.bits_unused = 1;
+    ASN_SEQUENCE_ADD(&sib1->uac_BarringInfo->uac_BarringInfoSetList, nr_uac_BarringInfoSet);*/
 
   // useFullResumeID
   // TODO: add useFullResumeID
@@ -661,14 +661,14 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
 
   if(carrier->SIB1 == NULL) carrier->SIB1=(uint8_t *) malloc16(NR_MAX_SIB_LENGTH/8);
   enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_DL_SCH_Message,
-                                   NULL,
-                                   (void *)sib1_message,
-                                   carrier->SIB1,
-                                   NR_MAX_SIB_LENGTH/8);
+      NULL,
+      (void *)sib1_message,
+      carrier->SIB1,
+      NR_MAX_SIB_LENGTH/8);
   LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB1, NR_MAX_SIB_LENGTH/8);
 
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
-               enc_rval.failed_type->name, enc_rval.encoded);
+      enc_rval.failed_type->name, enc_rval.encoded);
 
   if (enc_rval.encoded==-1) {
     return(-1);

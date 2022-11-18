@@ -302,7 +302,7 @@ int create_gNB_tasks(uint32_t gnb_nb) {
     /*if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
-    }*/
+      }*/
     if(itti_create_task(TASK_SCTP, sctp_eNB_task, NULL) < 0) {
       LOG_E(SCTP, "Create task for SCTP failed\n");
       return -1;
@@ -319,21 +319,21 @@ int create_gNB_tasks(uint32_t gnb_nb) {
 
   if (AMF_MODE_ENABLED) {
 
-   char*             gnb_ipv4_address_for_NGU      = NULL;
-   uint32_t          gnb_port_for_NGU              = 0;
-   char*             gnb_ipv4_address_for_S1U      = NULL;
-   uint32_t          gnb_port_for_S1U              = 0;
+    char*             gnb_ipv4_address_for_NGU      = NULL;
+    uint32_t          gnb_port_for_NGU              = 0;
+    char*             gnb_ipv4_address_for_S1U      = NULL;
+    uint32_t          gnb_port_for_S1U              = 0;
     paramdef_t NETParams[]  =  GNBNETPARAMS_DESC;
     char aprefix[MAX_OPTNAME_SIZE*2 + 8];
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
     config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-    
+
     for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
       if( NETParams[i].strptr == NULL) {
-	LOG_E(NGAP, "No configuration in the file.\n");
-	NGAP_CONF_MODE = 0;
+        LOG_E(NGAP, "No configuration in the file.\n");
+        NGAP_CONF_MODE = 0;
       } else {
-	LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
+        LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
       }
     }
 
@@ -351,7 +351,7 @@ int create_gNB_tasks(uint32_t gnb_nb) {
   }
 
   if (gnb_nb > 0) {
-  	RCconfig_nr_ssparam();
+    RCconfig_nr_ssparam();
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
@@ -372,11 +372,11 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       }
     }
 
-		if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
-			LOG_E(SCTP, "Create task for SS SRB failed\n");
-			return -1;
-		}
-		LOG_I(NR_RRC,"Creating NR RRC gNB Task\n");
+    if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
+      LOG_E(SCTP, "Create task for SS SRB failed\n");
+      return -1;
+    }
+    LOG_I(NR_RRC,"Creating NR RRC gNB Task\n");
 
     if (itti_create_task (TASK_RRC_GNB, rrc_gnb_task, NULL) < 0) {
       LOG_E(NR_RRC, "Create task for NR RRC gNB failed\n");
@@ -391,11 +391,11 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       }
     }
 
-		if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
-		{
-        LOG_E(GTPU, "Create task for UDP failed\n");
-        return -1;
-		}
+    if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
+    {
+      LOG_E(GTPU, "Create task for UDP failed\n");
+      return -1;
+    }
 
   }
 

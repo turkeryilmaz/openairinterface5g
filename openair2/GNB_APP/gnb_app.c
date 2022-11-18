@@ -67,26 +67,26 @@ static  void wait_cell_config_5G(char *thread_name);
 /*------------------------------------------------------------------------------*/
 static void configure_nr_rrc(uint32_t gnb_id)
 {
-	MessageDef *msg_p = NULL;
-	//  int CC_id;
+  MessageDef *msg_p = NULL;
+  //  int CC_id;
 
-	msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
+  msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
 
-	RCconfig_NRRRC(msg_p,gnb_id, RC.nrrrc[gnb_id]);
-	if (RC.nrrrc[gnb_id]) {
-		if (RC.ss.mode == SS_SOFTMODEM) 
-		{
-			/** wait for signal */
-			wait_cell_config_5G("TASK_SYS_GNB");
-			LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
-		} 
+  RCconfig_NRRRC(msg_p,gnb_id, RC.nrrrc[gnb_id]);
+  if (RC.nrrrc[gnb_id]) {
+    if (RC.ss.mode == SS_SOFTMODEM) 
+    {
+      /** wait for signal */
+      wait_cell_config_5G("TASK_SYS_GNB");
+      LOG_I(GNB_APP, "fxn:%s: Received Cell Config 5G SA\n", __FUNCTION__);
+    } 
 
-		LOG_I(GNB_APP, "RRC starting with node type %d\n", RC.nrrrc[gnb_id]->node_type);
-		LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
+    LOG_I(GNB_APP, "RRC starting with node type %d\n", RC.nrrrc[gnb_id]->node_type);
+    LOG_I(GNB_APP,"Sending configuration message to NR_RRC task\n");
 
-		itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
-	}
-	else AssertFatal(0,"NRRRC context for gNB %d not allocated\n",gnb_id);
+    itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
+  }
+  else AssertFatal(0,"NRRRC context for gNB %d not allocated\n",gnb_id);
 }
 
 /*------------------------------------------------------------------------------*/
@@ -150,199 +150,199 @@ static uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end) 
 void *gNB_app_task(void *args_p)
 {
 
-	uint32_t                        gnb_nb = RC.nb_nr_inst; 
-	uint32_t                        gnb_id_start = 0;
-	uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
-	uint32_t                        gnb_id;
-	MessageDef                      *msg_p           = NULL;
-	const char                      *msg_name        = NULL;
-	instance_t                      instance;
-	int                             result;
-	/* for no gcc warnings */
-	(void)instance;
+  uint32_t                        gnb_nb = RC.nb_nr_inst; 
+  uint32_t                        gnb_id_start = 0;
+  uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
+  uint32_t                        gnb_id;
+  MessageDef                      *msg_p           = NULL;
+  const char                      *msg_name        = NULL;
+  instance_t                      instance;
+  int                             result;
+  /* for no gcc warnings */
+  (void)instance;
 
-	int cell_to_activate = 0;
-	itti_mark_task_ready (TASK_GNB_APP);
+  int cell_to_activate = 0;
+  itti_mark_task_ready (TASK_GNB_APP);
 
-	LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
+  LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
 
-	RCconfig_NR_L1();
+  RCconfig_NR_L1();
 
-	if (RC.nb_nr_macrlc_inst>0) RCconfig_nr_macrlc();
+  if (RC.nb_nr_macrlc_inst>0) RCconfig_nr_macrlc();
 
-	//  RCconfig_nr_ssparam();
+  //  RCconfig_nr_ssparam();
 
-	LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
+  LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
 
-	if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");
+  if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");
 
-	AssertFatal (gnb_nb <= RC.nb_nr_inst,
-			"Number of gNB is greater than gNB defined in configuration file (%d/%d)!",
-			gnb_nb, RC.nb_nr_inst);
+  AssertFatal (gnb_nb <= RC.nb_nr_inst,
+      "Number of gNB is greater than gNB defined in configuration file (%d/%d)!",
+      gnb_nb, RC.nb_nr_inst);
 
-	LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);
+  LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);
 
-	RC.nrrrc = (gNB_RRC_INST **)malloc(RC.nb_nr_inst*sizeof(gNB_RRC_INST *));
-	LOG_I(PHY, "%s() RC.nb_nr_inst:%d RC.nrrrc:%p\n", __FUNCTION__, RC.nb_nr_inst, RC.nrrrc);
+  RC.nrrrc = (gNB_RRC_INST **)malloc(RC.nb_nr_inst*sizeof(gNB_RRC_INST *));
+  LOG_I(PHY, "%s() RC.nb_nr_inst:%d RC.nrrrc:%p\n", __FUNCTION__, RC.nb_nr_inst, RC.nrrrc);
 
-	for (gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
-		RC.nrrrc[gnb_id] = (gNB_RRC_INST*)calloc(1,sizeof(gNB_RRC_INST));
-		LOG_I(PHY, "%s() Creating RRC instance RC.nrrrc[%d]:%p (%d of %d)\n", __FUNCTION__, gnb_id, RC.nrrrc[gnb_id], gnb_id+1, gnb_id_end);
-		configure_nr_rrc(gnb_id);
-	}
+  for (gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
+    RC.nrrrc[gnb_id] = (gNB_RRC_INST*)calloc(1,sizeof(gNB_RRC_INST));
+    LOG_I(PHY, "%s() Creating RRC instance RC.nrrrc[%d]:%p (%d of %d)\n", __FUNCTION__, gnb_id, RC.nrrrc[gnb_id], gnb_id+1, gnb_id_end);
+    configure_nr_rrc(gnb_id);
+  }
 
-	if (RC.nb_nr_inst > 0 && !get_softmodem_params()->nsa)  {
-		init_pdcp();
-	}
+  if (RC.nb_nr_inst > 0 && !get_softmodem_params()->nsa)  {
+    init_pdcp();
+  }
 
-	if (is_x2ap_enabled() ) { //&& !NODE_IS_DU(RC.rrc[0]->node_type)
-		LOG_I(X2AP, "X2AP enabled \n");
-		__attribute__((unused)) uint32_t x2_register_gnb_pending = gNB_app_register_x2 (gnb_id_start, gnb_id_end);
-	}
+  if (is_x2ap_enabled() ) { //&& !NODE_IS_DU(RC.rrc[0]->node_type)
+    LOG_I(X2AP, "X2AP enabled \n");
+    __attribute__((unused)) uint32_t x2_register_gnb_pending = gNB_app_register_x2 (gnb_id_start, gnb_id_end);
+  }
 
-	/* For the CU case the gNB registration with the AMF might have to take place after the F1 setup, as the PLMN info
-	 * can originate from the DU. Add check on whether x2ap is enabled to account for ENDC NSA scenario.*/
-	if ((AMF_MODE_ENABLED || is_x2ap_enabled()) && !NODE_IS_DU(RC.nrrrc[0]->node_type) ) { 
-		/* Try to register each gNB */
-		//registered_gnb = 0;
-		__attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
-	}
+  /* For the CU case the gNB registration with the AMF might have to take place after the F1 setup, as the PLMN info
+   * can originate from the DU. Add check on whether x2ap is enabled to account for ENDC NSA scenario.*/
+  if ((AMF_MODE_ENABLED || is_x2ap_enabled()) && !NODE_IS_DU(RC.nrrrc[0]->node_type) ) { 
+    /* Try to register each gNB */
+    //registered_gnb = 0;
+    __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
+  }
 
-	if (RC.nb_nr_inst > 0) {
-		if (NODE_IS_CU(RC.nrrrc[0]->node_type)) {
+  if (RC.nb_nr_inst > 0) {
+    if (NODE_IS_CU(RC.nrrrc[0]->node_type)) {
 
-			if (itti_create_task(TASK_CU_F1, F1AP_CU_task, NULL) < 0) {
-				LOG_E(F1AP, "Create task for F1AP CU failed\n");
-				AssertFatal(1==0,"exiting");
-			}
-		}
+      if (itti_create_task(TASK_CU_F1, F1AP_CU_task, NULL) < 0) {
+        LOG_E(F1AP, "Create task for F1AP CU failed\n");
+        AssertFatal(1==0,"exiting");
+      }
+    }
 
-		if (NODE_IS_DU(RC.nrrrc[0]->node_type)) {
+    if (NODE_IS_DU(RC.nrrrc[0]->node_type)) {
 
-			if (itti_create_task(TASK_DU_F1, F1AP_DU_task, NULL) < 0) {
-				LOG_E(F1AP, "Create task for F1AP DU failed\n");
-				AssertFatal(1==0,"exiting");
-			}
-			// configure F1AP here for F1C
-			LOG_I(GNB_APP,"ngran_gNB_DU: Allocating ITTI message for F1AP_SETUP_REQ\n");
-			msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, F1AP_SETUP_REQ);
-			RCconfig_NR_DU_F1(msg_p, 0);
+      if (itti_create_task(TASK_DU_F1, F1AP_DU_task, NULL) < 0) {
+        LOG_E(F1AP, "Create task for F1AP DU failed\n");
+        AssertFatal(1==0,"exiting");
+      }
+      // configure F1AP here for F1C
+      LOG_I(GNB_APP,"ngran_gNB_DU: Allocating ITTI message for F1AP_SETUP_REQ\n");
+      msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, F1AP_SETUP_REQ);
+      RCconfig_NR_DU_F1(msg_p, 0);
 
-			itti_send_msg_to_task (TASK_DU_F1, GNB_MODULE_ID_TO_INSTANCE(0), msg_p);
-		}
-	}
-	do {
-		// Wait for a message
-		itti_receive_msg (TASK_GNB_APP, &msg_p);
+      itti_send_msg_to_task (TASK_DU_F1, GNB_MODULE_ID_TO_INSTANCE(0), msg_p);
+    }
+  }
+  do {
+    // Wait for a message
+    itti_receive_msg (TASK_GNB_APP, &msg_p);
 
-		msg_name = ITTI_MSG_NAME (msg_p);
-		instance = ITTI_MSG_DESTINATION_INSTANCE (msg_p);
+    msg_name = ITTI_MSG_NAME (msg_p);
+    instance = ITTI_MSG_DESTINATION_INSTANCE (msg_p);
 
-		switch (ITTI_MSG_ID(msg_p)) {
-			case TERMINATE_MESSAGE:
-				LOG_W(GNB_APP, " *** Exiting GNB_APP thread\n");
-				itti_exit_task ();
-				break;
+    switch (ITTI_MSG_ID(msg_p)) {
+      case TERMINATE_MESSAGE:
+        LOG_W(GNB_APP, " *** Exiting GNB_APP thread\n");
+        itti_exit_task ();
+        break;
 
-			case MESSAGE_TEST:
-				LOG_I(GNB_APP, "Received %s\n", ITTI_MSG_NAME(msg_p));
-				break;
+      case MESSAGE_TEST:
+        LOG_I(GNB_APP, "Received %s\n", ITTI_MSG_NAME(msg_p));
+        break;
 
 
 
-			case NGAP_REGISTER_GNB_CNF:
-				LOG_I(GNB_APP, "[gNB %ld] Received %s: associated AMF %d\n", instance, msg_name,
-						NGAP_REGISTER_GNB_CNF(msg_p).nb_amf);
-				/*
-					 DevAssert(register_gnb_pending > 0);
-					 register_gnb_pending--;
+      case NGAP_REGISTER_GNB_CNF:
+        LOG_I(GNB_APP, "[gNB %ld] Received %s: associated AMF %d\n", instance, msg_name,
+            NGAP_REGISTER_GNB_CNF(msg_p).nb_amf);
+        /*
+           DevAssert(register_gnb_pending > 0);
+           register_gnb_pending--;
 
-				// Check if at least gNB is registered with one AMF 
-				if (NGAP_REGISTER_GNB_CNF(msg_p).nb_amf > 0) {
-				registered_gnb++;
-				}
+        // Check if at least gNB is registered with one AMF 
+        if (NGAP_REGISTER_GNB_CNF(msg_p).nb_amf > 0) {
+        registered_gnb++;
+        }
 
-				// Check if all register gNB requests have been processed 
-				if (register_gnb_pending == 0) {
-				if (registered_gnb == gnb_nb) {
-				// If all gNB are registered, start L2L1 task 
-				MessageDef *msg_init_p;
+        // Check if all register gNB requests have been processed 
+        if (register_gnb_pending == 0) {
+        if (registered_gnb == gnb_nb) {
+        // If all gNB are registered, start L2L1 task 
+        MessageDef *msg_init_p;
 
-				msg_init_p = itti_alloc_new_message (TASK_GNB_APP, 0, INITIALIZE_MESSAGE);
-				itti_send_msg_to_task (TASK_L2L1, INSTANCE_DEFAULT, msg_init_p);
+        msg_init_p = itti_alloc_new_message (TASK_GNB_APP, 0, INITIALIZE_MESSAGE);
+        itti_send_msg_to_task (TASK_L2L1, INSTANCE_DEFAULT, msg_init_p);
 
-				} else {
-				uint32_t not_associated = gnb_nb - registered_gnb;
+        } else {
+        uint32_t not_associated = gnb_nb - registered_gnb;
 
-				LOG_W(GNB_APP, " %d gNB %s not associated with a AMF, retrying registration in %d seconds ...\n",
-				not_associated, not_associated > 1 ? "are" : "is", GNB_REGISTER_RETRY_DELAY);
+        LOG_W(GNB_APP, " %d gNB %s not associated with a AMF, retrying registration in %d seconds ...\n",
+        not_associated, not_associated > 1 ? "are" : "is", GNB_REGISTER_RETRY_DELAY);
 
-				// Restart the gNB registration process in GNB_REGISTER_RETRY_DELAY seconds 
-				if (timer_setup (GNB_REGISTER_RETRY_DELAY, 0, TASK_GNB_APP, INSTANCE_DEFAULT, TIMER_ONE_SHOT,
-				NULL, &gnb_register_retry_timer_id) < 0) {
-				LOG_E(GNB_APP, " Can not start gNB register retry timer, use \"sleep\" instead!\n");
+        // Restart the gNB registration process in GNB_REGISTER_RETRY_DELAY seconds 
+        if (timer_setup (GNB_REGISTER_RETRY_DELAY, 0, TASK_GNB_APP, INSTANCE_DEFAULT, TIMER_ONE_SHOT,
+        NULL, &gnb_register_retry_timer_id) < 0) {
+        LOG_E(GNB_APP, " Can not start gNB register retry timer, use \"sleep\" instead!\n");
 
-				sleep(GNB_REGISTER_RETRY_DELAY);
-				// Restart the registration process 
-				registered_gnb = 0;
-				register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);//, gnb_properties_p);
-				}
-				}
-				}
-				 */
-				break;
+        sleep(GNB_REGISTER_RETRY_DELAY);
+        // Restart the registration process 
+        registered_gnb = 0;
+        register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);//, gnb_properties_p);
+        }
+        }
+        }
+         */
+        break;
 
-			case F1AP_SETUP_RESP:
-				AssertFatal(NODE_IS_DU(RC.nrrrc[0]->node_type), "Should not have received F1AP_SETUP_RESP in CU/gNB\n");
+      case F1AP_SETUP_RESP:
+        AssertFatal(NODE_IS_DU(RC.nrrrc[0]->node_type), "Should not have received F1AP_SETUP_RESP in CU/gNB\n");
 
-				LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
-						F1AP_SETUP_RESP(msg_p).gNB_CU_name,F1AP_SETUP_RESP(msg_p).num_cells_to_activate);
-				cell_to_activate = F1AP_SETUP_RESP(msg_p).num_cells_to_activate;
+        LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
+            F1AP_SETUP_RESP(msg_p).gNB_CU_name,F1AP_SETUP_RESP(msg_p).num_cells_to_activate);
+        cell_to_activate = F1AP_SETUP_RESP(msg_p).num_cells_to_activate;
 
-				gNB_app_handle_f1ap_setup_resp(&F1AP_SETUP_RESP(msg_p));
+        gNB_app_handle_f1ap_setup_resp(&F1AP_SETUP_RESP(msg_p));
 
-				break;
-			case F1AP_GNB_CU_CONFIGURATION_UPDATE:
-				AssertFatal(NODE_IS_DU(RC.nrrrc[0]->node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
+        break;
+      case F1AP_GNB_CU_CONFIGURATION_UPDATE:
+        AssertFatal(NODE_IS_DU(RC.nrrrc[0]->node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
 
-				LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
-						F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).gNB_CU_name,F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).num_cells_to_activate);
+        LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
+            F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).gNB_CU_name,F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).num_cells_to_activate);
 
-				cell_to_activate += F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).num_cells_to_activate;
-				gNB_app_handle_f1ap_gnb_cu_configuration_update(&F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p));
+        cell_to_activate += F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).num_cells_to_activate;
+        gNB_app_handle_f1ap_gnb_cu_configuration_update(&F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p));
 
-				/* Check if at least gNB is registered with one AMF */
-				AssertFatal(cell_to_activate == 1,"No cells to activate or cells > 1 %d\n",cell_to_activate);
+        /* Check if at least gNB is registered with one AMF */
+        AssertFatal(cell_to_activate == 1,"No cells to activate or cells > 1 %d\n",cell_to_activate);
 
-				break;
-			case NGAP_DEREGISTERED_GNB_IND:
-				LOG_W(GNB_APP, "[gNB %ld] Received %s: associated AMF %d\n", instance, msg_name,
-						NGAP_DEREGISTERED_GNB_IND(msg_p).nb_amf);
+        break;
+      case NGAP_DEREGISTERED_GNB_IND:
+        LOG_W(GNB_APP, "[gNB %ld] Received %s: associated AMF %d\n", instance, msg_name,
+            NGAP_DEREGISTERED_GNB_IND(msg_p).nb_amf);
 
-				/* TODO handle recovering of registration */
-				break;
+        /* TODO handle recovering of registration */
+        break;
 
-			case TIMER_HAS_EXPIRED:
-				LOG_I(GNB_APP, " Received %s: timer_id %ld\n", msg_name, TIMER_HAS_EXPIRED(msg_p).timer_id);
+      case TIMER_HAS_EXPIRED:
+        LOG_I(GNB_APP, " Received %s: timer_id %ld\n", msg_name, TIMER_HAS_EXPIRED(msg_p).timer_id);
 
-				//if (TIMER_HAS_EXPIRED (msg_p).timer_id == gnb_register_retry_timer_id) {
-				/* Restart the registration process */
-				//  registered_gnb = 0;
-				//  register_gnb_pending = gNB_app_register(gnb_id_start, gnb_id_end);//, gnb_properties_p);
-				//}
+        //if (TIMER_HAS_EXPIRED (msg_p).timer_id == gnb_register_retry_timer_id) {
+        /* Restart the registration process */
+        //  registered_gnb = 0;
+        //  register_gnb_pending = gNB_app_register(gnb_id_start, gnb_id_end);//, gnb_properties_p);
+        //}
 
-				break;
+        break;
 
-			default:
-				LOG_E(GNB_APP, "Received unexpected message %s\n", msg_name);
-				break;
-		}
+      default:
+        LOG_E(GNB_APP, "Received unexpected message %s\n", msg_name);
+        break;
+    }
 
-		result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), msg_p);
-		AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-	} while (1);
+    result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), msg_p);
+    AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+  } while (1);
 
-	return NULL;
+  return NULL;
 }
 
 

@@ -1210,34 +1210,34 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
       bwp = ra->CellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[ra->bwp_id-1];
       genericParameters = &bwp->bwp_Common->genericParameters;
       pdsch_TimeDomainAllocationList = bwp->bwp_Common->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
-			LOG_D(NR_MAC, "swetank: fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+      LOG_D(NR_MAC, "swetank: fxn:%s line:%d \n", __FUNCTION__, __LINE__);
     }
     else {
       genericParameters= &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
       pdsch_TimeDomainAllocationList = scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
-			LOG_D(NR_MAC, "swetank: fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+      LOG_D(NR_MAC, "swetank: fxn:%s line:%d \n", __FUNCTION__, __LINE__);
     }
 
     long BWPStart = 0;
     long BWPSize = 0;
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = NULL;
-		LOG_D(NR_MAC, "swetank: controlResourceSetId:%d locationAndBandwidth:%d genericParameters.locationAndBandwidth:%d \n",
-			*ss->controlResourceSetId,
-			genericParameters->locationAndBandwidth,
-			scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth);
+    LOG_D(NR_MAC, "swetank: controlResourceSetId:%d locationAndBandwidth:%d genericParameters.locationAndBandwidth:%d \n",
+        *ss->controlResourceSetId,
+        genericParameters->locationAndBandwidth,
+        scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth);
     if(*ss->controlResourceSetId!=0) {
       BWPStart = NRRIV2PRBOFFSET(genericParameters->locationAndBandwidth, MAX_BWP_SIZE);
       BWPSize  = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
-			LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d\n", BWPStart, BWPSize);
+      LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d\n", BWPStart, BWPSize);
     } else {
       type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[ra->beam_id];
       BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
       BWPSize = type0_PDCCH_CSS_config->num_rbs;
-			LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
+      LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
     }
 
-		if (RC.ss.mode == SS_SOFTMODEM)
-			BWPStart = 27;
+    if (RC.ss.mode == SS_SOFTMODEM)
+      BWPStart = 27;
 
     // Calculate number of symbols
     int startSymbolIndex, nrOfSymbols;
@@ -1280,12 +1280,12 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     AssertFatal(nr_of_candidates>0,"nr_of_candidates is 0\n");
 
     int CCEIndex = find_pdcch_candidate(nr_mac,
-                                        CC_id,
-                                        aggregation_level,
-                                        nr_of_candidates,
-                                        &ra->sched_pdcch,
-                                        coreset,
-                                        0);
+        CC_id,
+        aggregation_level,
+        nr_of_candidates,
+        &ra->sched_pdcch,
+        coreset,
+        0);
 
     if (CCEIndex < 0) {
       LOG_E(NR_MAC, "%s(): cannot find free CCE for RA RNTI 0x%04x!\n", __func__, ra->rnti);
@@ -1320,7 +1320,7 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *pdsch_pdu_rel15 = &dl_tti_pdsch_pdu->pdsch_pdu.pdsch_pdu_rel15;
 
     LOG_A(NR_MAC,"[gNB %d][RAPROC] CC_id %d Frame %d, slotP %d: Generating RA-Msg2 DCI, rnti 0x%x, state %d, CoreSetType %d\n",
-          module_idP, CC_id, frameP, slotP, ra->RA_rnti, ra->state,pdcch_pdu_rel15->CoreSetType);
+        module_idP, CC_id, frameP, slotP, ra->RA_rnti, ra->state,pdcch_pdu_rel15->CoreSetType);
 
     // SCF222: PDU index incremented for each PDSCH PDU sent in TX control message. This is used to associate control
     // information to data and is reset every slot.
@@ -1377,10 +1377,10 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     pdsch_pdu_rel15->StartSymbolIndex = startSymbolIndex;
     pdsch_pdu_rel15->NrOfSymbols = nrOfSymbols;
     pdsch_pdu_rel15->dlDmrsSymbPos = fill_dmrs_mask(pdsch_config,
-                                                    nr_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
-                                                    nrOfSymbols,
-                                                    startSymbolIndex,
-                                                    mappingtype, 1);
+        nr_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
+        nrOfSymbols,
+        startSymbolIndex,
+        mappingtype, 1);
 
     uint8_t tb_scaling = 0;
     int R, Qm;
@@ -1401,13 +1401,13 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
       R = nr_get_code_rate_dl(mcsIndex, mcsTableIdx);
       Qm = nr_get_Qm_dl(mcsIndex, mcsTableIdx);
       TBS = nr_compute_tbs(Qm,
-                           R,
-                           rbSize,
-                           nrOfSymbols,
-                           N_PRB_DMRS*dmrs_length,
-                           0, // overhead
-                           tb_scaling,  // tb scaling
-		           1)>>3;  // layers
+          R,
+          rbSize,
+          nrOfSymbols,
+          N_PRB_DMRS*dmrs_length,
+          0, // overhead
+          tb_scaling,  // tb scaling
+          1)>>3;  // layers
 
       pdsch_pdu_rel15->targetCodeRate[0] = R;
       pdsch_pdu_rel15->qamModOrder[0] = Qm;
@@ -1428,12 +1428,12 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
 
     dci_pdu_rel15_t dci_payload;
     dci_payload.frequency_domain_assignment.val = PRBalloc_to_locationandbandwidth0(pdsch_pdu_rel15->rbSize,
-                                                                                    pdsch_pdu_rel15->rbStart,
-                                                                                    BWPSize);
+        pdsch_pdu_rel15->rbStart,
+        BWPSize);
 
     LOG_D(NR_MAC,"Msg2 rbSize.rbStart.BWPsize %d.%d.%ld\n",pdsch_pdu_rel15->rbSize,
-          pdsch_pdu_rel15->rbStart,
-          BWPSize);
+        pdsch_pdu_rel15->rbStart,
+        BWPSize);
 
     dci_payload.time_domain_assignment.val = time_domain_assignment;
     dci_payload.vrb_to_prb_mapping.val = 0;
@@ -1441,33 +1441,33 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     dci_payload.tb_scaling = tb_scaling;
 
     LOG_D(NR_MAC,
-          "[RAPROC] DCI type 1 payload: freq_alloc %d (%d,%d,%ld), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d \n",
-          dci_payload.frequency_domain_assignment.val,
-          pdsch_pdu_rel15->rbStart,
-          pdsch_pdu_rel15->rbSize,
-          BWPSize,
-          dci_payload.time_domain_assignment.val,
-          dci_payload.vrb_to_prb_mapping.val,
-          dci_payload.mcs,
-          dci_payload.tb_scaling);
+        "[RAPROC] DCI type 1 payload: freq_alloc %d (%d,%d,%ld), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d \n",
+        dci_payload.frequency_domain_assignment.val,
+        pdsch_pdu_rel15->rbStart,
+        pdsch_pdu_rel15->rbSize,
+        BWPSize,
+        dci_payload.time_domain_assignment.val,
+        dci_payload.vrb_to_prb_mapping.val,
+        dci_payload.mcs,
+        dci_payload.tb_scaling);
 
     LOG_D(NR_MAC,
-          "[RAPROC] DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  n_symb %d\n",
-          pdcch_pdu_rel15->dci_pdu[0].RNTI,
-          NR_RNTI_RA,
-          NR_DL_DCI_FORMAT_1_0,
-          *(unsigned long long *)pdcch_pdu_rel15->FreqDomainResource,
-          pdcch_pdu_rel15->StartSymbolIndex,
-          pdcch_pdu_rel15->DurationSymbols);
+        "[RAPROC] DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  n_symb %d\n",
+        pdcch_pdu_rel15->dci_pdu[0].RNTI,
+        NR_RNTI_RA,
+        NR_DL_DCI_FORMAT_1_0,
+        *(unsigned long long *)pdcch_pdu_rel15->FreqDomainResource,
+        pdcch_pdu_rel15->StartSymbolIndex,
+        pdcch_pdu_rel15->DurationSymbols);
 
     fill_dci_pdu_rel15(scc,
-                       ra->CellGroup,
-                       &pdcch_pdu_rel15->dci_pdu[pdcch_pdu_rel15->numDlDci - 1],
-                       &dci_payload,
-                       NR_DL_DCI_FORMAT_1_0,
-                       NR_RNTI_RA,
-                       BWPSize,
-                       bwpid);
+        ra->CellGroup,
+        &pdcch_pdu_rel15->dci_pdu[pdcch_pdu_rel15->numDlDci - 1],
+        &dci_payload,
+        NR_DL_DCI_FORMAT_1_0,
+        NR_RNTI_RA,
+        BWPSize,
+        bwpid);
 
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &nr_mac->TX_req[CC_id].pdu_list[nr_mac->TX_req[CC_id].Number_of_PDUs];
@@ -1484,7 +1484,7 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     }
 
     T(T_GNB_MAC_DL_RAR_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(ra->RA_rnti), T_INT(frameP),
-      T_INT(slotP), T_INT(0), T_BUFFER(&tx_req->TLVs[0].value.direct[0], tx_req->TLVs[0].length));
+        T_INT(slotP), T_INT(0), T_BUFFER(&tx_req->TLVs[0].value.direct[0], tx_req->TLVs[0].length));
 
     tx_req->PDU_length = pdsch_pdu_rel15->TBSize[0];
     tx_req->PDU_index = pduindex;
@@ -1496,10 +1496,10 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
 
     // Mark the corresponding symbols RBs as used
     fill_pdcch_vrb_map(nr_mac,
-                       CC_id,
-                       &ra->sched_pdcch,
-                       CCEIndex,
-                       aggregation_level);
+        CC_id,
+        &ra->sched_pdcch,
+        CCEIndex,
+        aggregation_level);
     for (int rb = 0; rb < rbSize; rb++) {
       vrb_map[BWPStart + rb + rbStart] |= SL_to_bitmap(startSymbolIndex, nrOfSymbols);
     }

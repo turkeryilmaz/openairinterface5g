@@ -405,17 +405,17 @@ int find_pdcch_candidate(gNB_MAC_INST *mac,
   const int C = R>0 ? N_regs/(L*R) : 0;
   const int B_rb = L/N_symb; // nb of RBs occupied by each REG bundle
   LOG_D(NR_MAC,"swetank: cc_id:%d aggregation:%d nr_of_candidates:%d N_rb:%d N_symb:%d N_regs:%d N_cces%d R:%d L:%d C:%d B_rb:%d :\n",
-			cc_id,
-			aggregation,
-			nr_of_candidates,
-			N_rb,
-			N_symb,
-			N_regs,
-			N_cces,
-			R,
-			L,
-			C,
-			B_rb);
+      cc_id,
+      aggregation,
+      nr_of_candidates,
+      N_rb,
+      N_symb,
+      N_regs,
+      N_cces,
+      R,
+      L,
+      C,
+      B_rb);
 
   // loop over all the available candidates
   // this implements TS 38.211 Sec. 7.3.2.2
@@ -425,10 +425,10 @@ int find_pdcch_candidate(gNB_MAC_INST *mac,
     for (int j=first_cce; (j<first_cce+aggregation) && !taken; j++) { // loop over CCEs
       for (int k=6*j/L; (k<(6*j/L+6/L)) && !taken; k++) { // loop over REG bundles
         int f = cce_to_reg_interleaving(R, k, pdcch->ShiftIndex, C, L, N_regs);
-  			LOG_D(NR_MAC,"swetank: pdcch->ShiftIndex:%d\n", pdcch->ShiftIndex);
+        LOG_D(NR_MAC,"swetank: pdcch->ShiftIndex:%d\n", pdcch->ShiftIndex);
         for(int rb=0; rb<B_rb; rb++) { // loop over the RBs of the bundle
           if(vrb_map[pdcch->BWPStart + f*B_rb + rb]&SL_to_bitmap(pdcch->StartSymbolIndex,N_symb)) {
-  					LOG_D(NR_MAC,"swetank: pdcch->BWPStart:%d pdcch->StartSymbolIndex:%d \n", pdcch->BWPStart, pdcch->StartSymbolIndex);
+            LOG_D(NR_MAC,"swetank: pdcch->BWPStart:%d pdcch->StartSymbolIndex:%d \n", pdcch->BWPStart, pdcch->StartSymbolIndex);
             taken = true;
             break;
           }
@@ -436,16 +436,16 @@ int find_pdcch_candidate(gNB_MAC_INST *mac,
       }
     }
 
-	if (RC.ss.mode == SS_SOFTMODEM)
-	{
-		taken = 0;
-		m = 0;
-		first_cce = 0;
-	}
-  	LOG_D(NR_MAC,"swetank: taken:%d m:%d \n", taken, m);
+    if (RC.ss.mode == SS_SOFTMODEM)
+    {
+      taken = 0;
+      m = 0;
+      first_cce = 0;
+    }
+    LOG_D(NR_MAC,"swetank: taken:%d m:%d \n", taken, m);
     if(!taken){
       mac->pdcch_cand[coreset->controlResourceSetId] = m++; // using candidate m, next available is m+1
-  		LOG_D(NR_MAC,"swetank: coreset->controlResourceSetId:%d mac->pdcch_cand[coreset->controlResourceSetId]:%d\n", coreset->controlResourceSetId, mac->pdcch_cand[coreset->controlResourceSetId]);
+      LOG_D(NR_MAC,"swetank: coreset->controlResourceSetId:%d mac->pdcch_cand[coreset->controlResourceSetId]:%d\n", coreset->controlResourceSetId, mac->pdcch_cand[coreset->controlResourceSetId]);
       return first_cce;
     }
   }
