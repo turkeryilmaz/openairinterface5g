@@ -73,7 +73,7 @@ void set_random_sl_rx_buffer(PHY_VARS_NR_UE *UE, int amp) {
      int16_t *data_p = (int16_t *) &(UE->common_vars.rxdata[aa][0]);
     int frequency_switch = samples_for_frame / LTE_NUMBER_OF_SUBFRAMES_PER_FRAME;
     int frequency_step = 0;
-    double beat = (2 * PI  *FREQUENCY_15_MHZ) / (SAMPLING_RATE);
+    double beat = (2 * PI * FREQUENCY_15_MHZ) / (SAMPLING_RATE);
 
     for (int i = 0; i < samples_for_frame; i++) {
       switch(data_format) {
