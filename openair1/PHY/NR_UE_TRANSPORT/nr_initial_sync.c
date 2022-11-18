@@ -44,6 +44,7 @@
 #include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "executables/softmodem-common.h"
 
 extern openair0_config_t openair0_cfg[];
 //static  nfapi_nr_config_request_t config_t;
@@ -402,8 +403,9 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
 
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos,ue->common_vars.eNb_id);
-    LOG_I(PHY,"sync_pos %d ssb_offset %d \n",sync_pos,ue->ssb_offset);
+    LOG_I(NR_PHY, "[UE%d] Initial sync : Estimated PSS position %d, id2 %d\n",
+          ue->Mod_id, sync_pos, get_softmodem_params()->sl_mode == 2 ? ue->common_vars.N2_id : ue->common_vars.eNb_id);
+    LOG_I(NR_PHY, "sync_pos %d ssb_offset %d \n", sync_pos, ue->ssb_offset);
 #endif
 
     // digital compensation of FFO for SSB symbols
@@ -442,7 +444,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     /* time samples in buffer rxdata are used as input of FFT -> FFT results are stored in the frequency buffer rxdataF */
     /* rxdataF stores SS/PBCH from beginning of buffers in the same symbol order as in time domain */
 
-      for(int i=0; i<4;i++)
+      for (int i = 0; i < (fp->symbols_per_slot - 1); i++) // 13th - guard symbol - is not considered
         nr_slot_fep_init_sync(ue,
                               proc,
                               i,

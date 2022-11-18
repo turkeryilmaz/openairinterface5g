@@ -553,15 +553,20 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
   start_meas(&generic_time[TIME_PSS]);
 
 #endif
-
+  int32_t temp_id;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_IN);
   synchro_position = pss_search_time_nr(rxdata,
                                         frame_parms,
                                         fo_flag,
                                         is,
-                                        (int *)&PHY_vars_UE->common_vars.eNb_id,
+                                        (int *)&temp_id,
                                         (int *)&PHY_vars_UE->common_vars.freq_offset);
 
+  if (get_softmodem_params()->sl_mode == 2) {
+      PHY_vars_UE->common_vars.N2_id = temp_id;
+  } else {
+      PHY_vars_UE->common_vars.eNb_id = temp_id;
+  }
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_OUT);
 
 #if TEST_SYNCHRO_TIMING_PSS
@@ -689,7 +694,7 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
   int64_t peak_value = 0;
   unsigned int peak_position = 0;
   unsigned int pss_source = 0;
-
+  printf("ofdm symbol size: %d samples_per_frame: %d, length: %d\n", frame_parms->ofdm_symbol_size, frame_parms->samples_per_frame, length);
   int maxval = 0;
   for (int i = 0; i < 2 * (frame_parms->ofdm_symbol_size); i++) {
     maxval = max(maxval, primary_synchro_time_nr[0][i]);
@@ -737,7 +742,7 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
         pss_source = pss_index;
         
 #ifdef DEBUG_PSS_NR
-        printf("pss_index %d: n %6u peak_value %15llu\n", pss_index, n, (unsigned long long)pss_corr_ue[n]);
+        printf("pss_index %d: n %6u peak_value %15llu\n", pss_index, n, (unsigned long long)peak_value);
 #endif
       }
     }
