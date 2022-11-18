@@ -51,6 +51,8 @@
 #include <executables/softmodem-common.h>
 #include <executables/nr-uesoftmodem.h>
 #include "openair1/SCHED_NR_UE/defs.h"
+#include "openair1/SIMULATION/NR_PHY/nr_pss_sl_test.h"
+#include "openair1/SIMULATION/NR_PHY/nr_sss_sl_test.h"
 
 //#define DEBUG_NR_PSBCHSIM
 RAN_CONTEXT_t RC;
@@ -119,6 +121,41 @@ int run_initial_sync = 0;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
+bool pss_sss_test = false;
+
+void free_psbchsim_members(channel_desc_t *UE2UE,
+                            PHY_VARS_NR_UE *UE,
+                            double **s_re,
+                            double **s_im,
+                            double **r_re,
+                            double **r_im,
+                            int **txdata,
+                            FILE *input_fd)
+{
+  free_channel_desc_scm(UE2UE);
+  term_nr_ue_signal(UE, 1);
+  free(UE->slss);
+  free(UE);
+
+  for (int i = 0; i < 2; i++) {
+    free(s_re[i]);
+    free(s_im[i]);
+    free(r_re[i]);
+    free(r_im[i]);
+    free(txdata[i]);
+  }
+  free(s_re);
+  free(s_im);
+  free(r_re);
+  free(r_im);
+  free(txdata);
+
+  if (input_fd)
+    fclose(input_fd);
+
+  loader_reset();
+  logTerm();
+}
 
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
                                         int N_RB_DL,
@@ -177,7 +214,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
 static void get_sim_cl_opts(int argc, char **argv)
 {
     char c;
-    while ((c = getopt(argc, argv, "F:g:hIL:m:M:n:N:o:O:P:r:R:s:S:x:y:z:")) != -1) {
+    while ((c = getopt(argc, argv, "F:g:hIL:m:M:n:N:o:O:p:P:r:R:s:S:x:y:z:")) != -1) {
     switch (c) {
       case 'F':
         input_fd = fopen(optarg, "r");
@@ -256,6 +293,11 @@ static void get_sim_cl_opts(int argc, char **argv)
         cfo = atof(optarg);
         break;
 
+      case 'p':
+        printf("Setting PSS and SSS tests");
+        pss_sss_test = atoi(optarg);
+        break;
+
       case 'P':
         psbch_phase = atoi(optarg);
         if (psbch_phase > 3)
@@ -310,6 +352,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         printf("-N Nid_cell\n");
         printf("-o Carrier frequency offset in Hz\n");
         printf("-O SSB subcarrier offset\n");
+        printf("-p Conducting PSS and SSS testing\n");
         printf("-P PSBCH phase, allowed values 0-3\n");
         printf("-r set the random number generator seed (default: 0 = current time)\n");
         printf("-R N_RB_DL\n");
@@ -412,6 +455,13 @@ int main(int argc, char **argv)
   if (init_nr_ue_signal(UE, 1) != 0) {
     printf("Error at UE NR initialisation\n");
     exit(-1);
+  }
+
+  if (pss_sss_test) {
+    test_pss_sl(UE);
+    test_sss_sl(UE);
+    free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
+    return 0;
   }
 
   nr_gold_psbch(UE);
@@ -583,28 +633,7 @@ int main(int argc, char **argv)
     }
   } // NSR
 
-  free_channel_desc_scm(UE2UE);
-  term_nr_ue_signal(UE, 1);
-  free(UE->slss);
-  free(UE);
+  free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
 
-  for (int i = 0; i < 2; i++) {
-    free(s_re[i]);
-    free(s_im[i]);
-    free(r_re[i]);
-    free(r_im[i]);
-    free(txdata[i]);
-  }
-  free(s_re);
-  free(s_im);
-  free(r_re);
-  free(r_im);
-  free(txdata);
-
-  if (input_fd)
-    fclose(input_fd);
-
-  loader_reset();
-  logTerm();
   return 0;
 }
