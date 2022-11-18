@@ -233,124 +233,124 @@ void ss_gNB_port_man_init(void)
 //------------------------------------------------------------------------------
 static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 {
-    struct NR_SYSTEM_CTRL_REQ *req = NULL;
-    const size_t size = 16 * 1024;
-    size_t msgSize = size; //2
-    unsigned char *buffer = (unsigned char *)acpMalloc(size);
-    assert(buffer);
+  struct NR_SYSTEM_CTRL_REQ *req = NULL;
+  const size_t size = 16 * 1024;
+  size_t msgSize = size; //2
+  unsigned char *buffer = (unsigned char *)acpMalloc(size);
+  assert(buffer);
 
-    int userId = acpRecvMsg(ctx, &msgSize, buffer);
+  int userId = acpRecvMsg(ctx, &msgSize, buffer);
 
-    // Error handling
-    if (userId < 0)
+  // Error handling
+  if (userId < 0)
+  {
+    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:%d\n", __FUNCTION__, userId);
+    if (userId == -ACP_ERR_SERVICE_NOT_MAPPED)
     {
-				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:%d\n", __FUNCTION__, userId);
-        if (userId == -ACP_ERR_SERVICE_NOT_MAPPED)
-        {
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SERVICE_NOT_MAPPED \n", __FUNCTION__);
-            // Message not mapped to user id,
-            // this error should not appear on server side for the messages
-            // received from clients
-        }
-        else if (userId == -ACP_ERR_SIDL_FAILURE)
-        {
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SIDL_FAILURE\n", __FUNCTION__);
-            // Server returned service error,
-            // this error should not appear on server side for the messages
-            // received from clients
-            SidlStatus sidlStatus = -1;
-            acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
-        }
-        else
-        {
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
-            return;
-        }
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SERVICE_NOT_MAPPED \n", __FUNCTION__);
+      // Message not mapped to user id,
+      // this error should not appear on server side for the messages
+      // received from clients
     }
-    else if (userId == 0)
+    else if (userId == -ACP_ERR_SIDL_FAILURE)
     {
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:0\n", __FUNCTION__);
-        // No message (timeout on socket)
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:-ACP_ERR_SIDL_FAILURE\n", __FUNCTION__);
+      // Server returned service error,
+      // this error should not appear on server side for the messages
+      // received from clients
+      SidlStatus sidlStatus = -1;
+      acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
     }
     else
     {
-        LOG_A(GNB_APP, "[SS-PORTMAN-GNB] received msg %d from the client.\n", userId);
-        if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
-				{
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
-            return;
-				}
-
-        ss_dumpReqMsg(req);
-
-        if (userId == MSG_NrSysProcess_userId)
-        {
-						LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId: MSG_NrSysProcess_userId\n", __FUNCTION__);
-            MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT,  SS_NR_SYS_PORT_MSG_IND);
-            if (message_p)
-            {
-                SS_NR_SYS_PORT_MSG_IND(message_p).req = req;
-                SS_NR_SYS_PORT_MSG_IND(message_p).userId = userId;
-                itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
-								LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d Msg sent to TASK_SYS_GNB \n", __FUNCTION__, __LINE__);
-            }
-        }
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+      return;
     }
-    acpNrSysProcessFreeSrv(req);
-    return;
+  }
+  else if (userId == 0)
+  {
+    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:0\n", __FUNCTION__);
+    // No message (timeout on socket)
+  }
+  else
+  {
+    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] received msg %d from the client.\n", userId);
+    if (acpNrSysProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
+    {
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
+      return;
+    }
+
+    ss_dumpReqMsg(req);
+
+    if (userId == MSG_NrSysProcess_userId)
+    {
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId: MSG_NrSysProcess_userId\n", __FUNCTION__);
+      MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT,  SS_NR_SYS_PORT_MSG_IND);
+      if (message_p)
+      {
+        SS_NR_SYS_PORT_MSG_IND(message_p).req = req;
+        SS_NR_SYS_PORT_MSG_IND(message_p).userId = userId;
+        itti_send_msg_to_task(TASK_SYS_GNB, INSTANCE_DEFAULT, message_p);
+        LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d Msg sent to TASK_SYS_GNB \n", __FUNCTION__, __LINE__);
+      }
+    }
+  }
+  acpNrSysProcessFreeSrv(req);
+  return;
 }
 
 //------------------------------------------------------------------------------
 void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 {
-	MessageDef *received_msg = NULL;
-	int result;
+  MessageDef *received_msg = NULL;
+  int result;
 
-	itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
+  itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
 
-	/* Check if there is a packet to handle */
-	if (received_msg != NULL)
-	{
+  /* Check if there is a packet to handle */
+  if (received_msg != NULL)
+  {
 
-		LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received a message id : %d \n",
-				ITTI_MSG_ID(received_msg));
-		switch (ITTI_MSG_ID(received_msg))
-		{
-			case SS_NRSET_TIM_INFO:
-				{
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received NR timing info \n");
-					ss_nr_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
-					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-				}
-				break;
-			case SS_NR_SYS_PORT_MSG_CNF:
-				{
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
-					ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
-					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-				}
-				break;
-			case TERMINATE_MESSAGE:
-				{
-					LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received TERMINATE_MESSAGE\n");
-					itti_exit_task();
-				}
-				break;
+    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received a message id : %d \n",
+        ITTI_MSG_ID(received_msg));
+    switch (ITTI_MSG_ID(received_msg))
+    {
+      case SS_NRSET_TIM_INFO:
+        {
+          LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received NR timing info \n");
+          ss_nr_port_man_send_data(0, 0, &received_msg->ittiMsg.ss_nrset_timinfo);
+          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+        }
+        break;
+      case SS_NR_SYS_PORT_MSG_CNF:
+        {
+          LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
+          ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
+          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+        }
+        break;
+      case TERMINATE_MESSAGE:
+        {
+          LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received TERMINATE_MESSAGE\n");
+          itti_exit_task();
+        }
+        break;
 
-			default:
-				LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received unhandled message %d:%s\n",
-						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-				break;
-		}
+      default:
+        LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received unhandled message %d:%s\n",
+            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+        break;
+    }
 
-		AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n",
-				result);
-		received_msg = NULL;
-	}
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n",
+        result);
+    received_msg = NULL;
+  }
 
-	ss_gNB_read_from_socket(nrctx_g);
+  ss_gNB_read_from_socket(nrctx_g);
 
-	return NULL;
+  return NULL;
 }
 
 //------------------------------------------------------------------------------

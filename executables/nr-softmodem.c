@@ -381,7 +381,7 @@ static int create_gNB_tasks(void) {
     char aprefix[MAX_OPTNAME_SIZE*2 + 8];
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
     config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-    
+
     for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
       if( NETParams[i].strptr == NULL) {
         LOG_E(NGAP, "No AMF configuration in the file.\n");
@@ -472,11 +472,11 @@ static int create_gNB_tasks(void) {
       }
     }
 
-		if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
-		{
-        LOG_E(GTPU, "Create task for UDP failed\n");
-        return -1;
-		}
+    if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
+    {
+      LOG_E(GTPU, "Create task for UDP failed\n");
+      return -1;
+    }
 
   }
 

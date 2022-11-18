@@ -1180,7 +1180,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
       type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[ra->beam_id];
       BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
       BWPSize = type0_PDCCH_CSS_config->num_rbs;
-			LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
+      LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
     }
 
     if (RC.ss.mode == SS_SOFTMODEM)
@@ -1254,7 +1254,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *pdsch_pdu_rel15 = &dl_tti_pdsch_pdu->pdsch_pdu.pdsch_pdu_rel15;
 
     LOG_A(NR_MAC,"[gNB %d][RAPROC] CC_id %d Frame %d, slotP %d: Generating RA-Msg2 DCI, rnti 0x%x, state %d, CoreSetType %d\n",
-          module_idP, CC_id, frameP, slotP, ra->RA_rnti, ra->state,pdcch_pdu_rel15->CoreSetType);
+        module_idP, CC_id, frameP, slotP, ra->RA_rnti, ra->state,pdcch_pdu_rel15->CoreSetType);
 
     // SCF222: PDU index incremented for each PDSCH PDU sent in TX control message. This is used to associate control
     // information to data and is reset every slot.
@@ -1335,12 +1335,12 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
     dci_pdu_rel15_t dci_payload;
     dci_payload.frequency_domain_assignment.val = PRBalloc_to_locationandbandwidth0(pdsch_pdu_rel15->rbSize,
-                                                                                    pdsch_pdu_rel15->rbStart,
-                                                                                    BWPSize);
+        pdsch_pdu_rel15->rbStart,
+        BWPSize);
 
     LOG_D(NR_MAC,"Msg2 rbSize.rbStart.BWPsize %d.%d.%ld\n",pdsch_pdu_rel15->rbSize,
-          pdsch_pdu_rel15->rbStart,
-          BWPSize);
+        pdsch_pdu_rel15->rbStart,
+        BWPSize);
 
     dci_payload.time_domain_assignment.val = time_domain_assignment;
     dci_payload.vrb_to_prb_mapping.val = 0;
@@ -1348,24 +1348,24 @@ static void nr_generate_Msg2(module_id_t module_idP,
     dci_payload.tb_scaling = tb_scaling;
 
     LOG_D(NR_MAC,
-          "[RAPROC] DCI type 1 payload: freq_alloc %d (%d,%d,%ld), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d \n",
-          dci_payload.frequency_domain_assignment.val,
-          pdsch_pdu_rel15->rbStart,
-          pdsch_pdu_rel15->rbSize,
-          BWPSize,
-          dci_payload.time_domain_assignment.val,
-          dci_payload.vrb_to_prb_mapping.val,
-          dci_payload.mcs,
-          dci_payload.tb_scaling);
+        "[RAPROC] DCI type 1 payload: freq_alloc %d (%d,%d,%ld), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d \n",
+        dci_payload.frequency_domain_assignment.val,
+        pdsch_pdu_rel15->rbStart,
+        pdsch_pdu_rel15->rbSize,
+        BWPSize,
+        dci_payload.time_domain_assignment.val,
+        dci_payload.vrb_to_prb_mapping.val,
+        dci_payload.mcs,
+        dci_payload.tb_scaling);
 
     LOG_D(NR_MAC,
-          "[RAPROC] DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  n_symb %d\n",
-          pdcch_pdu_rel15->dci_pdu[0].RNTI,
-          NR_RNTI_RA,
-          NR_DL_DCI_FORMAT_1_0,
-          *(unsigned long long *)pdcch_pdu_rel15->FreqDomainResource,
-          pdcch_pdu_rel15->StartSymbolIndex,
-          pdcch_pdu_rel15->DurationSymbols);
+        "[RAPROC] DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  n_symb %d\n",
+        pdcch_pdu_rel15->dci_pdu[0].RNTI,
+        NR_RNTI_RA,
+        NR_DL_DCI_FORMAT_1_0,
+        *(unsigned long long *)pdcch_pdu_rel15->FreqDomainResource,
+        pdcch_pdu_rel15->StartSymbolIndex,
+        pdcch_pdu_rel15->DurationSymbols);
 
     fill_dci_pdu_rel15(scc,
                        ra->CellGroup,
@@ -1401,7 +1401,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
     }
 
     T(T_GNB_MAC_DL_RAR_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(ra->RA_rnti), T_INT(frameP),
-      T_INT(slotP), T_INT(0), T_BUFFER(&tx_req->TLVs[0].value.direct[0], tx_req->TLVs[0].length));
+        T_INT(slotP), T_INT(0), T_BUFFER(&tx_req->TLVs[0].value.direct[0], tx_req->TLVs[0].length));
 
     // Trace MACPDU
     mac_pkt_info_t mac_pkt;
@@ -1422,10 +1422,10 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
     // Mark the corresponding symbols RBs as used
     fill_pdcch_vrb_map(nr_mac,
-                       CC_id,
-                       &ra->sched_pdcch,
-                       CCEIndex,
-                       aggregation_level);
+        CC_id,
+        &ra->sched_pdcch,
+        CCEIndex,
+        aggregation_level);
     for (int rb = 0; rb < rbSize; rb++) {
       vrb_map[BWPStart + rb + rbStart] |= SL_to_bitmap(tda_info.startSymbolIndex, tda_info.nrOfSymbols);
     }

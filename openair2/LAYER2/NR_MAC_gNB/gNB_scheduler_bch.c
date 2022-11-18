@@ -124,7 +124,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
 
     // get MIB every 8 frames
     if(((slotP == 0) && (frameP & 7) == 0) ||
-       gNB->first_MIB) {
+        gNB->first_MIB) {
 
       mib_sdu_length = mac_rrc_nr_data_req(module_idP, CC_id, frameP, MIBCH, 0, 1, &cc->MIB_pdu.payload[0]);
 
@@ -161,10 +161,10 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
     uint8_t ssb_frame_periodicity = 1;  // every how many frames SSB are generated
 
     if (ssb_period > 1) // 0 is every half frame
-		{
-  				LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+    {
+      LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
       ssb_frame_periodicity = 1 << (ssb_period -1);
-		}
+    }
 
     if (!(frameP%ssb_frame_periodicity) &&
         ((slotP<(slots_per_frame>>1)) || (ssb_period == 0))) {
@@ -190,7 +190,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
       switch (scc->ssb_PositionsInBurst->present) {
         case 1:
           // short bitmap (<3GHz) max 4 SSBs
-  				LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+          LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
           for (int i_ssb=0; i_ssb<4; i_ssb++) {
             if ((shortBitmap->buf[0]>>(7-i_ssb))&0x01) {
               ssb_start_symbol = get_ssb_start_symbol(band,scs,i_ssb);
@@ -220,7 +220,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
           break;
         case 2:
           // medium bitmap (<6GHz) max 8 SSBs
-  				LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
+          LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
           for (int i_ssb=0; i_ssb<8; i_ssb++) {
             if ((mediumBitmap->buf[0]>>(7-i_ssb))&0x01) {
               ssb_start_symbol = get_ssb_start_symbol(band,scs,i_ssb);
@@ -288,7 +288,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
           break;
         default:
           AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
-                      scc->ssb_PositionsInBurst->present);
+              scc->ssb_PositionsInBurst->present);
       }
     }
   }
@@ -307,14 +307,14 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   uint16_t *vrb_map = cc->vrb_map;
-    LOG_D(NR_MAC," fxn:%s Entry \n", __FUNCTION__);
+  LOG_D(NR_MAC," fxn:%s Entry \n", __FUNCTION__);
 
   if (gNB_mac->sched_ctrlCommon == NULL){
     LOG_D(NR_MAC,"schedule_control_common: Filling nr_mac->sched_ctrlCommon\n");
     LOG_D(NR_MAC," fxn:%s gNB_mac->cset0_bwp_start=type0_PDCCH_CSS_config->cset_start_rb:%d gNB_mac->cset0_bwp_size=type0_PDCCH_CSS_config->num_rbs:%d \n", 
-			__FUNCTION__,
-			gNB_mac->cset0_bwp_start,
-			gNB_mac->cset0_bwp_size);
+        __FUNCTION__,
+        gNB_mac->cset0_bwp_start,
+        gNB_mac->cset0_bwp_size);
     gNB_mac->sched_ctrlCommon = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon));
     gNB_mac->sched_ctrlCommon->search_space = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->search_space));
     gNB_mac->sched_ctrlCommon->coreset = calloc(1,sizeof(*gNB_mac->sched_ctrlCommon->coreset));
@@ -323,11 +323,11 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
     gNB_mac->cset0_bwp_start = type0_PDCCH_CSS_config->cset_start_rb;
     gNB_mac->cset0_bwp_size = type0_PDCCH_CSS_config->num_rbs;
     gNB_mac->sched_ctrlCommon->sched_pdcch = set_pdcch_structure(NULL,
-                                                                 gNB_mac->sched_ctrlCommon->search_space,
-                                                                 gNB_mac->sched_ctrlCommon->coreset,
-                                                                 scc,
-                                                                 NULL,
-                                                                 type0_PDCCH_CSS_config);
+        gNB_mac->sched_ctrlCommon->search_space,
+        gNB_mac->sched_ctrlCommon->coreset,
+        scc,
+        NULL,
+        type0_PDCCH_CSS_config);
   }
 
   NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon->sched_pdsch;
@@ -345,14 +345,14 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   }
   AssertFatal(nr_of_candidates>0,"nr_of_candidates is 0\n");
   gNB_mac->sched_ctrlCommon->cce_index = find_pdcch_candidate(gNB_mac,
-                                                              CC_id,
-                                                              gNB_mac->sched_ctrlCommon->aggregation_level,
-                                                              nr_of_candidates,
-                                                              &gNB_mac->sched_ctrlCommon->sched_pdcch,
-                                                              gNB_mac->sched_ctrlCommon->coreset,
-                                                              0);
-//	if (RC.ss.mode >= SS_SOFTMODEM)
-//		gNB_mac->sched_ctrlCommon->cce_index = 0;
+      CC_id,
+      gNB_mac->sched_ctrlCommon->aggregation_level,
+      nr_of_candidates,
+      &gNB_mac->sched_ctrlCommon->sched_pdcch,
+      gNB_mac->sched_ctrlCommon->coreset,
+      0);
+  //	if (RC.ss.mode >= SS_SOFTMODEM)
+  //		gNB_mac->sched_ctrlCommon->cce_index = 0;
 
   LOG_D(MAC,"swetank: cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
   AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
@@ -386,7 +386,7 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
 
 
   AssertFatal(TBS>=gNB_mac->sched_ctrlCommon->num_total_bytes,"Couldn't allocate enough resources for %d bytes in SIB1 PDSCH\n",
-              gNB_mac->sched_ctrlCommon->num_total_bytes);
+      gNB_mac->sched_ctrlCommon->num_total_bytes);
 
   pdsch->rbSize = rbSize;
   pdsch->rbStart = 0;
@@ -408,7 +408,7 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   for (int rb = 0; rb < pdsch->rbSize; rb++) {
     vrb_map[rb + rbStart] |= SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols);
   }
-    LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
+  LOG_D(NR_MAC," fxn:%s Exit\n", __FUNCTION__);
   return TBS;
 }
 
@@ -568,7 +568,7 @@ void schedule_nr_sib1(module_id_t module_idP,
 
   int time_domain_allocation = gNB_mac->sib1_tda;
 
-	LOG_D(NR_MAC, "swetank: scc->ssb_PositionsInBurst->present:%d\n", scc->ssb_PositionsInBurst->present);
+  LOG_D(NR_MAC, "swetank: scc->ssb_PositionsInBurst->present:%d\n", scc->ssb_PositionsInBurst->present);
   int L_max;
   switch (scc->ssb_PositionsInBurst->present) {
     case 1:
@@ -582,7 +582,7 @@ void schedule_nr_sib1(module_id_t module_idP,
       break;
     default:
       AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
-                  scc->ssb_PositionsInBurst->present);
+          scc->ssb_PositionsInBurst->present);
   }
 
   for (int i=0; i<L_max; i++) {
@@ -590,9 +590,9 @@ void schedule_nr_sib1(module_id_t module_idP,
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &gNB_mac->type0_PDCCH_CSS_config[i];
 
     if((frameP%2 == type0_PDCCH_CSS_config->sfn_c) &&
-       (slotP == type0_PDCCH_CSS_config->n_0) &&
-       (type0_PDCCH_CSS_config->num_rbs > 0) &&
-       (type0_PDCCH_CSS_config->active == true)) {
+        (slotP == type0_PDCCH_CSS_config->n_0) &&
+        (type0_PDCCH_CSS_config->num_rbs > 0) &&
+        (type0_PDCCH_CSS_config->active == true)) {
 
       LOG_D(NR_MAC,"(%d.%d) SIB1 transmission: ssb_index %d\n", frameP, slotP, type0_PDCCH_CSS_config->ssb_index);
 
