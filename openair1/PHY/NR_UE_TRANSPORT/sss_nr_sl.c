@@ -388,11 +388,10 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
         metric_re += d[i]*(((phase_re_nr[phase]*sss0[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss0[2*i+1])>>SCALING_METRIC_SSS_NR)) +
                          d[i]*(((phase_re_nr[phase]*sss1[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss1[2*i+1])>>SCALING_METRIC_SSS_NR));
 
-#if 1
+#if 0
 	  printf("i %d, phase %d/%d: metric %d, phase (%d,%d) sss (%d,%d) d %d\n",i,phase,PHASE_HYPOTHESIS_NUMBER,metric_re,phase_re_nr[phase],phase_im_nr[phase],sss0[2*i],sss0[1+(2*i)],d[i]);
 #endif
       }
-
       metric = metric_re;
 
       // if the current metric is better than the last save it
@@ -402,7 +401,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
         ue->frame_parms.Nid_cell = Nid2 +(3 * Nid1);
         *phase_max = phase;
 
-#if 1//def DEBUG_SSS_NR
+#ifdef DEBUG_SSS_NR
         printf("(phase,Nid1) (%d,%d), metric_phase = %d, tot_metric = %d, phase_max = %d \n",phase, Nid1, metric, *tot_metric, *phase_max);
 #endif
       }
@@ -414,7 +413,6 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
     Nid2 = GET_NID2_SL(frame_parms->Nid_SL);
     Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
     printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
-    while(1);
   }
   printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
 
