@@ -78,7 +78,12 @@
   #define  SYNCHRO_RATE_CHANGE_FACTOR  (1)
 #endif
 
-#define SYNC_TMP_SIZE                  (NB_ANTENNAS_RX*SYNCHRO_FFT_SIZE_MAX*IQ_SIZE) /* to be aligned with existing lte synchro */
+#ifdef PHY_SIDELINK
+  #define SYNC_TMP_SIZE                  (SYNCHRO_FFT_SIZE_MAX * IQ_SIZE)
+#else
+  #define SYNC_TMP_SIZE                  (NB_ANTENNAS_RX * SYNCHRO_FFT_SIZE_MAX * IQ_SIZE)
+#endif
+
 #define SYNCF_TMP_SIZE                 (SYNCHRO_FFT_SIZE_MAX*IQ_SIZE)
 
 /************* STRUCTURES *****************************************/
