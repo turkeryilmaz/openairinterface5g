@@ -18,27 +18,26 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-#ifndef _SS_GNB_CONTEXT_
-#define _SS_GNB_CONTEXT_
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#ifndef SS_GNB_VTP_TASK_H_
+#define SS_GNB_VTP_TASK_H_
 
-#include "SidlCommon.h"
+uint8_t ss_gNB_vtp_process_itti_msg(void);
+void *ss_gNB_vtp_task(void *arg);
 
-typedef struct SSConfigContext_s {
-  uint16_t dl_earfcn;
-  uint16_t ul_earfcn;
-  uint32_t dl_freq;
-  uint32_t ul_freq;
-  uint16_t curr_attn;
-  uint16_t cellId;
-  int16_t maxRefPower;
-  //TO DO: Need to remove one of the following cellId
-  EUTRA_CellId_Type ttcn_cell_id;
-  uint16_t eutra_cellId;
-  uint16_t nr_cellId;
-  uint8_t vtp_enabled;
-  ss_set_timinfo_t vtinfo;
-  /** TODO: To add more */
-} SSConfigContext_t;
-
-#endif /* _SS_GNB_CONTEXT_ */
-
+typedef enum VtpProxyCmd
+{
+    Vtp_Invalid_Resp = 0,
+    VTP_ENABLE_proxy = 1,
+    VTP_UPDATE_proxy,
+    VTP_ACK_proxy
+} VtpProxyCmd_e;
+typedef struct vtp_udpSockReq_s
+{
+  uint32_t  port;
+  char     *address;
+} vtp_udpSockReq_t;
+#endif /* SS_GNB_VNG_TASK_H_ */
