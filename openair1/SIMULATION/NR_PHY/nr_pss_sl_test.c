@@ -170,9 +170,10 @@ void test_synchro_pss_sl_nr(PHY_VARS_NR_UE *UE, int position_symbol, int pss_seq
   if (pss_sequence_number < NUMBER_PSS_SEQUENCE) {
     test->number_of_tests++;
     int synchro_position = pss_synchro_nr(UE, 0, SYNCHRO_RATE_CHANGE_FACTOR);
+    printf("synchro position %d, position symbol %d, N2_id %d\n", synchro_position, position_symbol, UE->common_vars.N2_id);
     int delta_position = abs(position_symbol - (synchro_position * SYNCHRO_RATE_CHANGE_FACTOR));
     printf("%s ", test->test_current);
-    if (UE->common_vars.eNb_id == pss_sequence_number) {
+    if (UE->common_vars.N2_id == pss_sequence_number) {
       if (delta_position !=  0) {
         if (delta_position > PSS_DETECTION_MARGIN_MAX * SYNCHRO_RATE_CHANGE_FACTOR) {
         printf("Test is fail due to wrong position %d instead of %d \n", (synchro_position * SYNCHRO_RATE_CHANGE_FACTOR), position_symbol);
@@ -188,7 +189,7 @@ void test_synchro_pss_sl_nr(PHY_VARS_NR_UE *UE, int position_symbol, int pss_seq
         test->number_of_pass++;
       }
     } else {
-      printf("Test is fail due to wrong NID2 detection %d instead of %d \n", UE->common_vars.eNb_id, pss_sequence_number);
+      printf("Test is fail due to wrong NID2 detection %d instead of %d \n", UE->common_vars.N2_id, pss_sequence_number);
       test->number_of_fail++;
     }
   }

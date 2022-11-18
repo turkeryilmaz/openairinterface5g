@@ -39,8 +39,8 @@ void insert_sss_sl_nr(int16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
   bzero(synchroF_tmp, (ofdm_symbol_size * IQ_SIZE));
   bzero(synchro_tmp, (ofdm_symbol_size * IQ_SIZE));
 
-  int Nid1 = GET_NID1(frame_parms->Nid_cell);
-  int Nid2 = GET_NID2(frame_parms->Nid_cell);
+  int Nid1 = GET_NID1_SL(frame_parms->Nid_cell);
+  int Nid2 = GET_NID2_SL(frame_parms->Nid_cell);
   unsigned int k = ofdm_symbol_size - ((LENGTH_SSS_NR / 2) + 1);
   /* SSS is directly mapped to subcarrier */
   for (int i = 0; i < LENGTH_SSS_NR; i++) {
@@ -61,16 +61,16 @@ void insert_sss_sl_nr(int16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
 
 int test_synchro_pss_sss_sl_nr(PHY_VARS_NR_UE *UE, int position_symbol)
 {
-  printf("Test nr pss with Nid2 %i at position %i \n", GET_NID2(UE->frame_parms.Nid_cell), position_symbol);
-  set_sequence_pss_sl(UE, position_symbol, GET_NID2(UE->frame_parms.Nid_cell));
+  printf("Test nr pss with Nid2 %i at position %i \n", GET_NID2_SL(UE->frame_parms.Nid_cell), position_symbol);
+  set_sequence_pss_sl(UE, position_symbol, GET_NID2_SL(UE->frame_parms.Nid_cell));
   int synchro_position = pss_synchro_nr(UE, 0, SYNCHRO_RATE_CHANGE_FACTOR);
-  printf("Test nr sss with Nid1 %i \n", GET_NID1(UE->frame_parms.Nid_cell));
+  printf("Test nr sss with Nid1 %i \n", GET_NID1_SL(UE->frame_parms.Nid_cell));
   synchro_position = synchro_position * SYNCHRO_RATE_CHANGE_FACTOR;
   if (abs(synchro_position - position_symbol) > PSS_DETECTION_MARGIN_MAX) {
     printf("NR PSS has been detected at position %d instead of %d \n", synchro_position, position_symbol);
   }
 
-  int offset = (position_symbol + (SSS_SYMBOL_NB - PSS_SYMBOL_NB)*(UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples));
+  int offset = (position_symbol + (SSS0_SL_SYMBOL_NB - PSS_SYMBOL_NB)*(UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples));
   int16_t *tmp = (int16_t *)&UE->common_vars.rxdata[0][offset];
   insert_sss_sl_nr(tmp, &UE->frame_parms);
   UE->rx_offset = position_symbol;
@@ -78,7 +78,7 @@ int test_synchro_pss_sss_sl_nr(PHY_VARS_NR_UE *UE, int position_symbol)
   UE_nr_rxtx_proc_t proc = {0};
   int32_t metric_fdd_ncp = 0;
   uint8_t phase_fdd_ncp;
-  rx_sss_nr(UE, &proc, &metric_fdd_ncp, &phase_fdd_ncp, &offset);
+  rx_sss_sl_nr(UE, &proc, &metric_fdd_ncp, &phase_fdd_ncp, &offset);
   return phase_fdd_ncp;
 }
 
@@ -91,18 +91,18 @@ int test_sss_sl(PHY_VARS_NR_UE *UE)
   printf("***********************************\n");
 
   int phase, Nid1, Nid2;
-  int Nid_cell[] = {(3*0+0), (3*71+0), (3*21+2), (3*21+2), (3*55+1), (3*111+2)};
+  int Nid_cell[] = {(0+336*0), (71+336*0), (21+336*0), (21+336*1), (55+336*1), (111+336*1)};
   int test_position[] = {0, 492, 493, 56788, 111111, 222222};
   for (unsigned int index = 0; index < (sizeof(Nid_cell) / sizeof(int)); index++) {
     UE->frame_parms.Nid_cell = Nid_cell[index];
-    Nid2 = GET_NID2(Nid_cell[index]);
-    Nid1 = GET_NID1(Nid_cell[index]);
+    Nid2 = GET_NID2_SL(Nid_cell[index]);
+    Nid1 = GET_NID1_SL(Nid_cell[index]);
     for (int position = 0; position < sizeof(test_position) / sizeof(test_position[0]); position++) {
-      UE->frame_parms.Nid_cell = (3 * N_ID_1_NUMBER) + N_ID_2_NUMBER;
+      UE->frame_parms.Nid_cell = N_ID_1_NUMBER + 336 * N_ID_2_NUMBER;
       phase = test_synchro_pss_sss_sl_nr(UE, test_position[position]);
       test.number_of_tests++;
       printf("%s ", test.test_current);
-      if (UE->frame_parms.Nid_cell == (3 * Nid1) + Nid2) {
+      if (UE->frame_parms.Nid_cell == (Nid1 + 336 *Nid2)) {
         if (phase != INDEX_NO_PHASE_DIFFERENCE) {
           printf("Test is pass with warning due to phase difference %d (instead of %d) offset %d Nid1 %d Nid2 %d \n",
                  phase, INDEX_NO_PHASE_DIFFERENCE, test_position[position], Nid1, Nid2);

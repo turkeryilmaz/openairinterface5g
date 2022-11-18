@@ -253,6 +253,8 @@ typedef struct {
   int32_t *sync_corr;
   /// estimated frequency offset (in radians) for all subcarriers
   int32_t freq_offset;
+  // N2_id - assigned based on in coverage status received in pss
+  int32_t N2_id;
   /// eNb_id user is synched to
   int32_t eNb_id;
 } NR_UE_COMMON;
