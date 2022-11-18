@@ -534,7 +534,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
   uint32_t T;  /* DRX cycle */
   uint8_t CC_id = 0;
-	uint8_t count = 0;
+	int count = 0;
   ue_paging_identity_t ue_paging_identity;
   cn_domain_t cn_domain=0;
 
@@ -653,45 +653,57 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
 	ss_paging_identity_t *p_paging_record = SS_PAGING_IND(msg_p).paging_recordList;
 	count = SS_PAGING_IND(msg_p).num_paging_record;	
         LOG_A(RRC, " Number of paging records::%d\n",SS_PAGING_IND(msg_p).num_paging_record);
-	while (count > 0)
+
+  /* Paging without pagingRecord */
+	if (count == 0)
 	{
-		if (p_paging_record)
-		{
-			LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
-					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
-					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
-					SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
+			LOG_A(RRC, "[eNB %ld] In SFN %d subframe %d ue_index %d\n", instance,
 					SS_PAGING_IND(msg_p).sfn,
 					SS_PAGING_IND(msg_p).sf,
-					SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
 					(uint16_t)SS_PAGING_IND(msg_p).ue_index_value);
-			memcpy(&ue_paging_identity, &(p_paging_record->ue_paging_identity), sizeof(ue_paging_identity_t));
-			cn_domain = p_paging_record->cn_domain;
 
+			length = do_Paging(instance,
+					buffer,
+					RRC_BUF_SIZE,
+					ue_paging_identity,
+					cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
+					SS_PAGING_IND(msg_p).num_paging_record);
+	}
+	else
+	{
+		while (count > 0)
+		{
+			memset(&ue_paging_identity, 0, sizeof(ue_paging_identity_t));
+			if (count > 0)
+			{
+				LOG_A(RRC, "[eNB %ld] In SS_PAGING_IND: MASK %d, S_TMSI mme_code %d, m_tmsi %u SFN %d subframe %d cn_domain %d ue_index %d\n", instance,
+						SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.presenceMask,
+						SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.mme_code,
+						SS_PAGING_IND(msg_p).paging_recordList->ue_paging_identity.choice.s_tmsi.m_tmsi,
+						SS_PAGING_IND(msg_p).sfn,
+						SS_PAGING_IND(msg_p).sf,
+						SS_PAGING_IND(msg_p).paging_recordList->cn_domain,
+						(uint16_t)SS_PAGING_IND(msg_p).ue_index_value);
+				memcpy(&ue_paging_identity, &(p_paging_record->ue_paging_identity), sizeof(ue_paging_identity_t));
+				cn_domain = p_paging_record->cn_domain;
+			}
 
 			/* Create message for PDCP (DLInformationTransfer_t) */
-			if (ue_paging_identity.presenceMask != UE_PAGING_IDENTITY_NONE)
-			{
-				length = do_Paging(instance,
-						buffer,
-						RRC_BUF_SIZE,
-						ue_paging_identity,
-						cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
-						SS_PAGING_IND(msg_p).num_paging_record);
-				
-			}
-      count--;
+			length = do_Paging(instance,
+					buffer,
+					RRC_BUF_SIZE,
+					ue_paging_identity,
+					cn_domain, SS_PAGING_IND(msg_p).systemInfoModification,
+					SS_PAGING_IND(msg_p).num_paging_record);
+
+			count--;
 			p_paging_record++;
 		}
-		else
-		{
-			LOG_E(RRC, "Received empty paging record");
-			return -1;
-		}
 	}
+	LOG_A(RRC, "fxn:%s line:%d length:%d\n", __FUNCTION__, __LINE__, length);
   if (length == -1)
   {
-    LOG_I(RRC, "do_Paging error");
+    LOG_A(RRC, "do_Paging error");
     return -1;
   }
 
@@ -10389,7 +10401,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
-          if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry && as_security_conf_ciphering)
+          if ((dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry || dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_dlInformationTransfer)  && as_security_conf_ciphering)
           {
             for (int i = 0; i < MAX_RBS; i++)
             {

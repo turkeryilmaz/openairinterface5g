@@ -2602,7 +2602,7 @@ static void _adbgDrb__L2Data_Request_Type(acpCtx_t _ctx, const struct L2Data_Req
 	adbgPrintLog(_ctx, " }");
 }
 
-static void _adbgDrb__Null_Type_SuppressPdcchForC_RNTI_Optional(acpCtx_t _ctx, const struct Null_Type_SuppressPdcchForC_RNTI_Optional* p)
+static void _adbgDrb__Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional(acpCtx_t _ctx, const struct Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional* p)
 {
 	if (!p->d) { adbgPrintLog(_ctx, "omit"); return; }
 	adbgPrintLog(_ctx, "%s", (p->v ? "true" : "false"));
@@ -2619,7 +2619,7 @@ static void _adbgDrb__DRB_COMMON_REQ(acpCtx_t _ctx, const struct DRB_COMMON_REQ*
 	adbgPrintLog(_ctx, " }");
 	adbgPrintLog(_ctx, ", ");
 	adbgPrintLog(_ctx, "SuppressPdcchForC_RNTI := ");
-	_adbgDrb__Null_Type_SuppressPdcchForC_RNTI_Optional(_ctx, &p->SuppressPdcchForC_RNTI);
+	_adbgDrb__Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional(_ctx, &p->SuppressPdcchForC_RNTI);
 }
 
 void adbgDrbProcessFromSSLogIn(acpCtx_t _ctx, const struct DRB_COMMON_REQ* FromSS)

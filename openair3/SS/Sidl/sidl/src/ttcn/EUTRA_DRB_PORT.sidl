@@ -629,7 +629,7 @@ struct L2Data_Indication_Type {
 struct DRB_COMMON_REQ {
     struct ReqAspCommonPart_Type Common;
     struct L2Data_Request_Type U_Plane;
-    SIDL_OPTIONAL(Null_Type, SuppressPdcchForC_RNTI);
+    SIDL_OPTIONAL_WITH_PFX(DRB_COMMON_REQ, Null_Type, SuppressPdcchForC_RNTI);
 };
 
 struct DRB_COMMON_IND {

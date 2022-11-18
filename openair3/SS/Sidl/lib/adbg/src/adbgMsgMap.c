@@ -34,6 +34,7 @@
 #if defined(PROJECT_HAS_RAT_NR)
 #include "serNrSysSrb.h"
 #include "serNrSys.h"
+#include "serNrDrb.h"
 #endif
 
 #include "adbgTest.h"
@@ -48,6 +49,7 @@
 #if defined(PROJECT_HAS_RAT_NR)
 #include "adbgNrSysSrb.h"
 #include "adbgNrSys.h"
+#include "adbgNrDrb.h"
 #endif
 
 void adbgMsgLogInArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const unsigned char* buffer)
@@ -80,9 +82,6 @@ void adbgMsgLogInArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const un
 			adbgPrintLog(ctx, "cannot decode buffer");
 			adbgPrintLog(ctx, NULL);
 		}
-		return;
-	}
-	if (id == ACP_LID_SysVTEnquireTimingAck) {
 		return;
 	}
 	if (id == ACP_LID_SysSrbProcessFromSS) {
@@ -149,7 +148,22 @@ void adbgMsgLogInArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const un
 		}
 		return;
 	}
+	if (id == ACP_LID_NrDrbProcessFromSS) {
+		struct NR_DRB_COMMON_REQ* FromSS;
+		if (serNrDrbProcessFromSSDecSrv(buffer, size, NULL, 0, &FromSS) == 0) {
+			adbgNrDrbProcessFromSSLogIn(ctx, FromSS);
+
+			serNrDrbProcessFromSSFreeSrv(FromSS);
+		} else {
+			adbgPrintLog(ctx, "cannot decode buffer");
+			adbgPrintLog(ctx, NULL);
+		}
+		return;
+	}
 #endif
+	if (id == ACP_LID_SysVTEnquireTimingAck) {
+		return;
+	}
 	SIDL_ASSERT(0);
 }
 
@@ -183,9 +197,6 @@ void adbgMsgLogOutArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const u
 			adbgPrintLog(ctx, "cannot decode buffer");
 			adbgPrintLog(ctx, NULL);
 		}
-		return;
-	}
-	if (id == ACP_LID_SysVTEnquireTimingUpd) {
 		return;
 	}
 	if (id == ACP_LID_SysSrbProcessToSS) {
@@ -260,7 +271,21 @@ void adbgMsgLogOutArgs(acpCtx_t ctx, enum acpMsgLocalId id, size_t size, const u
 		}
 		return;
 	}
+	if (id == ACP_LID_NrDrbProcessToSS) {
+		struct NR_DRB_COMMON_IND* ToSS;
+		if (serNrDrbProcessToSSDecClt(buffer, size, NULL, 0, &ToSS) == 0) {
+			adbgNrDrbProcessToSSLogOut(ctx, ToSS);
+			serNrDrbProcessToSSFreeClt(ToSS);
+		} else {
+			adbgPrintLog(ctx, "cannot decode buffer");
+			adbgPrintLog(ctx, NULL);
+		}
+		return;
+	}
 #endif
+	if (id == ACP_LID_SysVTEnquireTimingUpd) {
+		return;
+	}
 
 	SIDL_ASSERT(0);
 }

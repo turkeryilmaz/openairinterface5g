@@ -882,7 +882,7 @@ struct L2Data_Indication_Type {
 	struct DRB_DataPerSubframe_UL_Type SubframeData;
 };
 
-struct Null_Type_SuppressPdcchForC_RNTI_Optional {
+struct Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional {
 	bool d;
 	Null_Type v;
 };
@@ -890,7 +890,7 @@ struct Null_Type_SuppressPdcchForC_RNTI_Optional {
 struct DRB_COMMON_REQ {
 	struct ReqAspCommonPart_Type Common;
 	struct L2Data_Request_Type U_Plane;
-	struct Null_Type_SuppressPdcchForC_RNTI_Optional SuppressPdcchForC_RNTI;
+	struct Null_Type_DRB_COMMON_REQ_SuppressPdcchForC_RNTI_Optional SuppressPdcchForC_RNTI;
 };
 
 struct DRB_COMMON_IND {

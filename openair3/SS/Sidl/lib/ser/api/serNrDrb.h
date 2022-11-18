@@ -22,35 +22,29 @@
 
 #pragma once
 
-// Internal includes
+#include "SIDL_NR_DRB_PORT.h"
 #include "SidlCompiler.h"
 
 SIDL_BEGIN_C_INTERFACE
 
-/** Defines message local IDs. */
-enum acpMsgLocalId {
-	ACP_LID_TestHelloFromSS = 0x90040100,
-	ACP_LID_TestHelloToSS = 0x90040101,
-	ACP_LID_TestPing = 0x90040102,
-	ACP_LID_TestEcho = 0x90040103,
-	ACP_LID_TestTest1 = 0x90040104,
-	ACP_LID_TestTest2 = 0x90040105,
-	ACP_LID_TestOther = 0x90040106,
-	ACP_LID_SysProcess = 0x90040200,
-	ACP_LID_SysVTEnquireTimingAck = 0x90040300,
-	ACP_LID_SysVTEnquireTimingUpd = 0x90040301,
-	ACP_LID_SysSrbProcessFromSS = 0x90040400,
-	ACP_LID_SysSrbProcessToSS = 0x90040401,
-	ACP_LID_VngProcess = 0x90040500,
-	ACP_LID_DrbProcessFromSS = 0x90040600,
-	ACP_LID_DrbProcessToSS = 0x90040601,
-	ACP_LID_HandshakeProcess = 0x90040700,
-	ACP_LID_SysIndProcessToSS = 0x90040800,
-	ACP_LID_NrSysSrbProcessFromSS = 0x90040900,
-	ACP_LID_NrSysSrbProcessToSS = 0x90040901,
-	ACP_LID_NrSysProcess = 0x90040A00,
-	ACP_LID_NrDrbProcessFromSS = 0x90040B00,
-	ACP_LID_NrDrbProcessToSS = 0x90040B01,
-};
+void serNrDrbProcessFromSSInitClt(unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_REQ** FromSS);
+
+int serNrDrbProcessFromSSEncClt(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DRB_COMMON_REQ* FromSS);
+
+int serNrDrbProcessFromSSDecSrv(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_REQ** FromSS);
+
+void serNrDrbProcessFromSSFree0Srv(struct NR_DRB_COMMON_REQ* FromSS);
+
+void serNrDrbProcessFromSSFreeSrv(struct NR_DRB_COMMON_REQ* FromSS);
+
+void serNrDrbProcessToSSInitSrv(unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_IND** ToSS);
+
+int serNrDrbProcessToSSEncSrv(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct NR_DRB_COMMON_IND* ToSS);
+
+int serNrDrbProcessToSSDecClt(const unsigned char* _buffer, size_t _size, unsigned char* _arena, size_t _aSize, struct NR_DRB_COMMON_IND** ToSS);
+
+void serNrDrbProcessToSSFree0Clt(struct NR_DRB_COMMON_IND* ToSS);
+
+void serNrDrbProcessToSSFreeClt(struct NR_DRB_COMMON_IND* ToSS);
 
 SIDL_END_C_INTERFACE
