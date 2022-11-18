@@ -123,6 +123,40 @@ float target_error_rate = 0.01;
 int seed = 0;
 bool pss_sss_test = false;
 
+void free_psbchsim_members(channel_desc_t *UE2UE,
+                            PHY_VARS_NR_UE *UE,
+                            double **s_re,
+                            double **s_im,
+                            double **r_re,
+                            double **r_im,
+                            int **txdata,
+                            FILE *input_fd)
+{
+  free_channel_desc_scm(UE2UE);
+  term_nr_ue_signal(UE, 1);
+  free(UE->slss);
+  free(UE);
+
+  for (int i = 0; i < 2; i++) {
+    free(s_re[i]);
+    free(s_im[i]);
+    free(r_re[i]);
+    free(r_im[i]);
+    free(txdata[i]);
+  }
+  free(s_re);
+  free(s_im);
+  free(r_re);
+  free(r_im);
+  free(txdata);
+
+  if (input_fd)
+    fclose(input_fd);
+
+  loader_reset();
+  logTerm();
+}
+
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
                                         int N_RB_DL,
                                         int N_RB_UL,
@@ -426,6 +460,7 @@ int main(int argc, char **argv)
   if (pss_sss_test) {
     test_pss_sl(UE);
     test_sss_sl(UE);
+    free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
     return 0;
   }
 
@@ -596,28 +631,7 @@ int main(int argc, char **argv)
     }
   } // NSR
 
-  free_channel_desc_scm(UE2UE);
-  term_nr_ue_signal(UE, 1);
-  free(UE->slss);
-  free(UE);
+  free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
 
-  for (int i = 0; i < 2; i++) {
-    free(s_re[i]);
-    free(s_im[i]);
-    free(r_re[i]);
-    free(r_im[i]);
-    free(txdata[i]);
-  }
-  free(s_re);
-  free(s_im);
-  free(r_re);
-  free(r_im);
-  free(txdata);
-
-  if (input_fd)
-    fclose(input_fd);
-
-  loader_reset();
-  logTerm();
   return 0;
 }
