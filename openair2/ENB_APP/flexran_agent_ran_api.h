@@ -620,16 +620,16 @@ int flexran_set_filter_coeff_rsrp(mid_t mod_id, rnti_t rnti, long filterCoeffici
 int flexran_set_filter_coeff_rsrq(mid_t mod_id, rnti_t rnti, long filterCoefficientRSRQ);
 
 /* Get number of PLMNs that is broadcasted in SIB1 */
-uint8_t flexran_get_rrc_num_plmn_ids(mid_t mod_id);
+uint8_t flexran_get_rrc_num_plmn_ids(mid_t mod_id,uint8_t cc_id);
 
 /* Get index'th MCC broadcasted in SIB1 */
-uint16_t flexran_get_rrc_mcc(mid_t mod_id, uint8_t index);
+uint16_t flexran_get_rrc_mcc(mid_t mod_id,uint8_t cc_id,uint8_t index);
 
 /* Get index'th MNC broadcasted in SIB1 */
-uint16_t flexran_get_rrc_mnc(mid_t mod_id, uint8_t index);
+uint16_t flexran_get_rrc_mnc(mid_t mod_id,uint8_t cc_id, uint8_t index);
 
 /* Get index'th MNC's digit length broadcasted in SIB1 */
-uint8_t flexran_get_rrc_mnc_digit_length(mid_t mod_id, uint8_t index);
+uint8_t flexran_get_rrc_mnc_digit_length(mid_t mod_id,uint8_t cc_id, uint8_t index);
 
 /* Get X2 handover controlled by network */
 int flexran_get_x2_ho_net_control(mid_t mod_id);

@@ -258,7 +258,6 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
   eNB->UL_INFO.subframe  = proc->subframe_rx;
   eNB->UL_INFO.module_id = eNB->Mod_id;
   eNB->UL_INFO.CC_id     = eNB->CC_id;
-  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
 
 //#ifdef ENB_SS
   if (RC.ss.mode >= SS_SOFTMODEM)
@@ -283,6 +282,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
     {
       SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
       SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;
+      SS_UPD_TIM_INFO(message_p).physCellId = RC.rrc[eNB->UL_INFO.module_id]->carrier[eNB->UL_INFO.CC_id].physCellId;
       int send_res = itti_send_msg_to_task(TASK_VTP, 0, message_p_vtp);
       if (send_res < 0)
       {
@@ -307,6 +307,15 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
   }
+
+int tem_proc_ccid = proc->CC_id;
+/* MultiCell: Function modify for Multiple CC */
+  for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
+  eNB->UL_INFO.CC_id     = CC_id;
+  proc->CC_id = CC_id;//Temp solution need to be fixed later
+  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
+  }
+  proc->CC_id = tem_proc_ccid;
 //#endif /** ENB_SS */
 
 
@@ -439,10 +448,11 @@ static void *L1_thread( void *param ) {
 
   PHY_VARS_eNB *eNB = RC.eNB[0][proc->CC_id];
 
-
   char thread_name[100];
+#if 0 /* MultiCell: Not Required for MultiCell case */
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
+#endif
   // set default return value
   eNB_thread_rxtx_status = 0;
   sprintf(thread_name,"RXn_TXnp4_%d\n",&eNB->proc.L1_proc == proc ? 0 : 1);
@@ -466,9 +476,7 @@ static void *L1_thread( void *param ) {
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_eNB_PROC_RXTX0, 0 );
     T(T_ENB_MASTER_TICK, T_INT(0), T_INT(proc->frame_rx), T_INT(proc->subframe_rx));
     LOG_D(PHY,"L1RX waiting for RU RX\n");
-
     if (wait_on_condition(&proc->mutex,&proc->cond,&proc->instance_cnt,thread_name)<0) break;
-
     LOG_D(PHY,"L1RX starting in %d.%d\n",proc->frame_rx,proc->subframe_rx);
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_CPUID_ENB_THREAD_RXTX,sched_getcpu());
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_eNB_PROC_RXTX0, 1 );
@@ -479,9 +487,9 @@ static void *L1_thread( void *param ) {
 
     if (oai_exit) break;
 
-    if (eNB->CC_id==0) {
-      if (rxtx(eNB,proc,thread_name) < 0) break;
-    }
+    /* MultiCell: Condition modified for MultiCell case */
+    /* This thread can only be wakeup for one cell SUBFRAME Ind under VNF as proxy would only send one SUBFRAME Ind for all cells. */
+    if (rxtx(eNB,proc,thread_name) < 0) break;
 
     LOG_D(PHY,"L1 RX %d.%d done\n",proc->frame_rx,proc->subframe_rx);
 
@@ -946,6 +954,8 @@ void init_eNB_proc(int inst) {
     proc->instance_cnt_asynch_rxtx = -1;
     proc->instance_cnt_synch       = -1;
     proc->CC_id                    = CC_id;
+    L1_proc->CC_id                    = CC_id; /* MultiCell: Added for Multiple CC */
+    L1_proc_tx->CC_id                    = CC_id; /* MultiCell: Added for Multiple CC */
     proc->first_rx                 =1;
     proc->first_tx                 =1;
     proc->RU_mask_tx               = (1<<eNB->num_RU)-1;

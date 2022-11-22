@@ -47,26 +47,43 @@ typedef enum SSEvents_E {
 	SS_VNG_INVALID_MSG
 } SSEventsE;
 
-typedef struct SSConfigContext_s {
-  uint16_t dl_earfcn; 
+/** Structure Containing Cell-specific values only */
+typedef struct SS_Cell_Context_s{
+  int State;	
+  uint16_t dl_earfcn;
   uint16_t ul_earfcn;
   uint32_t dl_freq;
   uint32_t ul_freq;
   uint16_t curr_attn;
-  uint16_t cellId;
+  uint16_t PhysicalCellId;
   int16_t maxRefPower;
-  //TO DO: Need to remove one of the following cellId
-  EUTRA_CellId_Type ttcn_cell_id;
-  uint16_t eutra_cellId;
+  bool cell_configured_flag;
+  EUTRA_CellId_Type eutra_cellId;
+  uint16_t ss_rnti_g;
+} SS_Cell_Context_t;
 
+typedef struct SSConfigContext_s {
+  /** List of Cells */
+  SS_Cell_Context_t SSCell_list[8];
   /** Timing info */
   uint16_t sfn;
   uint8_t  sf;
 
   ss_set_timinfo_t vtinfo;
   hash_table_t   *vt_timer_table   ; // key is SFN_SF
-
+  bool send_atten_cnf;
   /** TODO: To add more */
+
 } SSConfigContext_t;
+
+typedef enum {
+  SS_STATE_NOT_CONFIGURED = 0,
+  SS_STATE_CELL_CONFIGURED,
+  SS_STATE_CELL_ACTIVE,
+  SS_STATE_AS_SECURITY_ACTIVE,
+  SS_STATE_AS_RBS_ACTIVE,
+  SS_STATE_CELL_BROADCASTING,
+  SS_STATE_MAX_STATE
+} SS_STATE_t;
 
 #endif /* _SS_ENB_CONTEXT_ */

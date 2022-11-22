@@ -50,6 +50,7 @@ typedef struct proxy_ss_header_s {
   proxy_ss_msgs_e  msg_id;
   uint8_t  cell_id;
   uint16_t length; /** NOTE: Not needed */
+  uint8_t  cell_index;
 } proxy_ss_header_t,
  *proxy_ss_header_p;
 

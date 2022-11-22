@@ -47,12 +47,13 @@
 
 #include "intertask_interface.h"
 #include "common/ran_context.h"
+#include "ss_eNB_multicell_helper.h"
 
 #include "acpDrb.h"
 #include "ss_eNB_context.h"
 
 extern RAN_CONTEXT_t RC;
-extern uint16_t ss_rnti_g;
+//extern uint16_t ss_rnti_g;
 static acpCtx_t ctx_drb_g = NULL;
 extern SSConfigContext_t SS_context;
 
@@ -67,7 +68,7 @@ enum MsgUserId
         MSG_DrbProcessToSS_userId,
 };
 
-static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
+static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	struct DRB_COMMON_IND ind = {};
         uint32_t status = 0;
 
@@ -80,7 +81,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 	size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
 
-	ind.Common.CellId = SS_context.eutra_cellId;
+	ind.Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
 
 	//Populated the Routing Info
 	ind.Common.RoutingInfo.d = RoutingInfo_Type_RadioBearerId;
@@ -106,7 +107,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 
 	ind.Common.RlcBearerRouting.d = true;
         ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.eutra_cellId;
+        ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
 
 	//Populating the PDU
 	ind.U_Plane.SubframeData.NoOfTTIs = 1;
@@ -127,7 +128,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
                 LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] acpDrbProcessToSSEncSrv Failure\n");
                 return;
         }
-	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.eutra_cellId);
+	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
 
 	//Send Message
 	status = acpSendMsg(ctx_drb_g, msgSize, buffer);
@@ -143,7 +144,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind){
 
 }
 
-static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
+static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index)
 {
 	assert(req);
 	MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, SS_DRB_PDU_REQ);
@@ -166,7 +167,7 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req)
 		}
 
 	}
-        SS_DRB_PDU_REQ(message_p).rnti = ss_rnti_g;
+        SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
 
         int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
         if (send_res < 0)
@@ -182,6 +183,7 @@ static void
 ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 
 	size_t msgSize = size; //2
+        int cell_index;
 
         while (1)
         {
@@ -231,14 +233,19 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
                                 LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] acpDrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
-                        if(RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                        if(req->Common.CellId){
+                          cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
+                          SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
+                          LOG_A(ENB_SS,"[SS_DRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                        }
+                        if(SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
                         {
 				LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] DRB_COMMON_REQ Received in CELL_ACTIVE\n");
-                                ss_task_handle_drb_pdu_req(req);
+                                ss_task_handle_drb_pdu_req(req,cell_index);
                         }
                         else
                         {
-                                LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", RC.ss.State);
+                                LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
                         }
 
                         acpDrbProcessFromSSFreeSrv(req);
@@ -267,24 +274,28 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
                 {
 			case SS_DRB_PDU_IND:
 			{
+                                int cell_index;
+                                if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
+                                  cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
+                                  LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                                }
 				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
 	    			if (origin_task == TASK_SS_PORTMAN)
 				{       
-			 				
-                                	LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", RC.ss.State);
+					LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
                                 }
 				else
 	                        {
-                                	LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
-					if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+					LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
+					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
 	                                {
-        	                                instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-                	                        ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind);
-                        	        }
+						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+						ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind,cell_index);
+					}
 					else
 	                                {
-        	                                LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", RC.ss.State);
+						LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
                 	                }
 				}
 

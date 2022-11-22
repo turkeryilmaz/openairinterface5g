@@ -486,7 +486,6 @@ static void ss_gNB_wait_first_msg(void)
 		if (ret == MSG_SysVTEnquireTimingAck_userId || ret == -ACP_PEER_CONNECTED)
 		{
 			LOG_A(GNB_APP, "[SS_VTP] First VT-ACK From Client Received (on-start) \n");
-
             struct VirtualTimeInfo_Type *virtualTime = NULL;
 
             if (acpSysVTEnquireTimingAckDecSrv(ctx_vtp_g, buffer, msg_sz, &virtualTime) != 0)

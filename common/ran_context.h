@@ -125,7 +125,7 @@ typedef struct {
   struct ss_config_s ss;
   // Variable to store Transaction ID for SS in case of RRCReconfiguration
   long rrc_Transaction_Identifier;
-  RBConfig RB_Config[MAX_RBS];
+  RBConfig RB_Config[MAX_NUM_CCs][MAX_RBS];
 } RAN_CONTEXT_t;
 
 extern RAN_CONTEXT_t RC;

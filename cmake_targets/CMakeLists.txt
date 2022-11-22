@@ -860,7 +860,14 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 add_boolean_option(DRIVER2013              True "only relevant for EXMIMO")
 add_boolean_option(EXMIMO_IOT              True "????")
 add_boolean_option(LOCALIZATION            False "???")
+if ($ENV{NR_ENABLE})
 add_integer_option(MAX_NUM_CCs             1     "????")
+Message("Cell configuration for NR is 1. MULTI CELLS NOT IMPLEMENTED")
+else()
+	add_integer_option(MAX_NUM_CCs             2     "????")
+	Message("Cell configuration for LTE is ${MAX_NUM_CCs}: MULTI CELLS IS IMPLEMENTED")
+endif()
+
 add_boolean_option(SMBV                    False "Rohde&Schwarz SMBV100A vector signal generator")
 add_boolean_option(DEBUG_PHY               False "Enable PHY layer debugging options")
 add_boolean_option(DEBUG_PHY_PROC          False "Enable debugging of PHY layer procedures")
@@ -2083,6 +2090,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_drb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_multicell_helper.c
   ${OPENAIR3_DIR}/SS/ss_gNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
@@ -2772,7 +2780,7 @@ target_link_libraries (lte-uesoftmodem lttng-ust)
 if ($ENV{NR_ENABLE})
 	add_boolean_option(NR_ENABLE   TRUE  "Flag for NR compilation")
 else()
-add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
+	add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
 endif()
 
 Message("NR_ENABLE flag is ${NR_ENABLE}")
