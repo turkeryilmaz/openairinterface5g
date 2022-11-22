@@ -41,6 +41,8 @@
 #include <sys/epoll.h>
 #include <string.h>
 
+#include <simde/x86/avx2.h>
+
 #include <common/utils/assertions.h>
 #include <common/utils/LOG/log.h>
 #include <common/utils/load_module_shlib.h>
@@ -54,7 +56,7 @@
 #include "rfsimulator.h"
 
 #define PORT 4043 //default TCP port for this simulator
-#define CirSize 6144000 // 100ms is enough
+#define CirSize 6144000 // 100ms is enough, needs to be 32 byte-aligned for SIMD
 #define sampleToByte(a,b) ((a)*(b)*sizeof(sample_t))
 #define byteToSample(a,b) ((a)/(sizeof(sample_t)*(b)))
 
@@ -148,7 +150,8 @@ typedef struct {
 
 static void allocCirBuf(rfsimulator_state_t *bridge, int sock) {
   buffer_t *ptr=&bridge->buf[sock];
-  AssertFatal ( (ptr->circularBuf=(sample_t *) malloc(sampleToByte(CirSize,1))) != NULL, "");
+  int rc = posix_memalign((void**)&ptr->circularBuf, 32, sampleToByte(CirSize,1));
+  AssertFatal(rc == 0, "posix_memalign(): rc %d, errno %d, %s", rc, errno, strerror(errno));
   ptr->circularBufEnd=((char *)ptr->circularBuf)+sampleToByte(CirSize,1);
   ptr->conn_sock=sock;
   ptr->lastReceivedTS=0;
@@ -886,22 +889,49 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
                      CirSize);
         }
         else { // no channel modeling
-          
-          double H_awgn_mimo[4][4] ={{1.0, 0.2, 0.1, 0.05}, //rx 0
-                                      {0.2, 1.0, 0.2, 0.1}, //rx 1
-                                     {0.1, 0.2, 1.0, 0.2}, //rx 2
-                                     {0.05, 0.1, 0.2, 1.0}};//rx 3
+          // this matrice corresponds to weights as indicated
+          const unsigned H_awgn_mimo[4][4] = {
+            {32, 8, 4, 1}, //rx 0:  1.0000, 0.2500, 0.1250, 0.0625
+            {8, 32, 8, 4}, //rx 1:  0.2500, 1.0000, 0.2500, 0.1250
+            {4, 8, 32, 8}, //rx 2:  0.1250, 0.2500, 1.0000, 0.2500
+            {1, 4, 8, 32}  //rx 3:  0.0625, 0.1250, 0.2500, 1.0000
+          };
 
           sample_t *out=(sample_t *)samplesVoid[a];
-          int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
+          int nbAnt_tx = ptr->th.nbAnt > 0 ? ptr->th.nbAnt : 1;
 
-          //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
-          for (int i=0; i < nsamps; i++) {//loop over nsamps
+          const unsigned h0 = H_awgn_mimo[a][0], h1 = H_awgn_mimo[a][1], h2 = H_awgn_mimo[a][2], h3 = H_awgn_mimo[a][3];
+          const simde__m256i factor = nbAnt_tx == 1
+            ? simde_mm256_set_epi16(h0, h0, h0, h0, h0, h0, h0, h0, h0, h0, h0, h0, h0, h0, h0, h0)
+            : (nbAnt_tx == 2
+                 ? simde_mm256_set_epi16(h0, h1, h0, h1, h0, h1, h0, h1, h0, h1, h0, h1, h0, h1, h0, h1)
+                 : simde_mm256_set_epi16(h0, h1, h2, h3, h0, h1, h2, h3, h0, h1, h2, h3, h0, h1, h2, h3));
+          int i = 0;
+          for (; i < nsamps && ((t->nextRxTstamp + i) % 8) != 0; ++i) {
             for (int a_tx=0; a_tx<nbAnt_tx; a_tx++) { //sum up signals from nbAnt_tx antennas
-              out[i].r += (short)(ptr->circularBuf[((t->nextRxTstamp+i)*nbAnt_tx+a_tx)%CirSize].r*H_awgn_mimo[a][a_tx]);
-              out[i].i += (short)(ptr->circularBuf[((t->nextRxTstamp+i)*nbAnt_tx+a_tx)%CirSize].i*H_awgn_mimo[a][a_tx]);
-            } // end for a_tx
+              const sample_t sample = ptr->circularBuf[((t->nextRxTstamp + i) * nbAnt_tx + a_tx) % CirSize];
+              const unsigned factor = H_awgn_mimo[a][a_tx];
+              out[i].r += sample.r * factor >> 5;
+              out[i].i += sample.i * factor >> 5;
+            }
+          }
+          //LOG_I(HW, "nbAnt_tx %d nsamps %d (nextRxTstamp+i) %ld CirSize %d\n",nbAnt_tx, nsamps, t->nextRxTstamp + i, CirSize);
+          for (; i < nsamps - 7; i+=8) {//loop over nsamps
+            simde__m256i sample = simde_mm256_loadu_si256(&ptr->circularBuf[(t->nextRxTstamp + i) % CirSize]);
+            simde__m256i reslo = simde_mm256_srli_epi16(simde_mm256_mullo_epi16(sample, factor), 5);
+            simde__m256i reshi = simde_mm256_slli_epi16(simde_mm256_mulhi_epi16(sample, factor), 11);
+            simde__m256i res = simde_mm256_or_si256(reslo, reshi);
+            simde__m256i out256 = simde_mm256_loadu_si256(&out[i]);
+            simde_mm256_storeu_si256(&out[i], simde_mm256_adds_epi16(out256, res));
           } // end for i (number of samps)
+          for (; i < nsamps; ++i) {
+            for (int a_tx=0; a_tx<nbAnt_tx; a_tx++) { //sum up signals from nbAnt_tx antennas
+              const sample_t sample = ptr->circularBuf[((t->nextRxTstamp + i) * nbAnt_tx + a_tx) % CirSize];
+              const unsigned factor = H_awgn_mimo[a][a_tx];
+              out[i].r += sample.r * factor >> 5;
+              out[i].i += sample.i * factor >> 5;
+            }
+          }
         } // end of no channel modeling
       } // end for a (number of rx antennas)
     }
