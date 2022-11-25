@@ -616,7 +616,7 @@ void logRecord_tp(const char *file,
 	else
 		snprintf(header, sizeof(header)-1, "SS-%s", c->name);
 
-	LOG_SS(header, buf) ;
+	LOG_SS(header, func, line, buf) ;
 }
 
 void vlogRecord_mt(const char *file,

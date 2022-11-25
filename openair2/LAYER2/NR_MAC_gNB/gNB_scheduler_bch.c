@@ -170,6 +170,15 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
             frameP,
             CC_id,
             mib_sdu_length);
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIRECTION_DOWNLINK;
+      mac_pkt.rnti_type = WS_NO_RNTI;
+      mac_pkt.rnti      = 0xFFFF;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)&cc->MIB_pdu.payload[0], (int)mib_sdu_length);
     }
 
     int8_t ssb_period = *scc->ssb_periodicityServingCell;
@@ -657,6 +666,14 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
       T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(SI_RNTI),
          T_INT(frameP), T_INT(slotP), T_INT(0), T_BUFFER(sib1_payload, sib1_sdu_length));
 
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIR_DOWNLINK;
+      mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_SI);
+      mac_pkt.rnti      = SI_RNTI;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sib1_payload, (int)sib1_sdu_length);
     }
   }
 }
