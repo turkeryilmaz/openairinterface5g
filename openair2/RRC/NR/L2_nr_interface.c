@@ -39,6 +39,8 @@
 
 #include "intertask_interface.h"
 
+#include "uper_encoder.h"
+
 #include "NR_MIB.h"
 #include "NR_BCCH-BCH-Message.h"
 #include "rrc_gNB_UE_context.h"

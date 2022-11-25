@@ -59,6 +59,8 @@
 #include "f1ap_messages_types.h"
 #include "openair2/E1AP/e1ap_asnc.h"
 
+#include "uper_encoder.h"
+
 extern RAN_CONTEXT_t RC;
 
 /* Value to indicate an invalid UE initial id */
