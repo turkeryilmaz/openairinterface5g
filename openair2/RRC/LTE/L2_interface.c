@@ -50,8 +50,8 @@
 #include "flexran_agent_extern.h"
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
+#include "openair3/SS/ss_eNB_context.h"
 extern RAN_CONTEXT_t RC;
-
 //------------------------------------------------------------------------------
 int8_t
 mac_rrc_data_req(
@@ -83,7 +83,7 @@ mac_rrc_data_req(
   LTE_BCCH_BCH_Message_t *mib;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms;
   rrc     = RC.rrc[Mod_idP];
-  carrier = &rrc->carrier[0];
+  carrier = &rrc->carrier[CC_id];
   mib     = &carrier->mib;
   mib_fembms     = &carrier->mib_fembms;
 
@@ -349,6 +349,7 @@ mac_rrc_data_ind(
         SS_RRC_PDU_IND (message_p).sdu_size = sdu_lenP;
         SS_RRC_PDU_IND (message_p).srb_id = 0;
         SS_RRC_PDU_IND (message_p).rnti = rntiP;
+        SS_RRC_PDU_IND (message_p).physCellId = RC.rrc[module_idP]->carrier[CC_id].physCellId;
         SS_RRC_PDU_IND (message_p).frame = ctxt.frame;
         SS_RRC_PDU_IND (message_p).subframe = ctxt.subframe;
         memset (SS_RRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);

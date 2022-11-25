@@ -93,6 +93,10 @@ typedef struct ss_nr_sys_port_msg_cnf {
 typedef struct ss_set_timinfo_s {
   uint16_t sfn;
   uint8_t  sf;
+  int      cell_index;
+  int      physCellId;
+  int8_t mu; /**< -1 == 'UNBOUND' */
+  uint8_t slot;
 } ss_set_timinfo_t;
 
 typedef ss_set_timinfo_t ss_upd_timinfo_t;
@@ -170,6 +174,7 @@ typedef struct ss_rrc_pdu_ind_s {
   uint32_t  sdu_size;
   uint8_t   sdu[SDU_SIZE];
   uint16_t  rnti;
+  int       physCellId;
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
 } ss_rrc_pdu_ind_t;
@@ -215,6 +220,7 @@ typedef struct ss_drb_pdu_ind_s {
   uint8_t   sdu[SDU_SIZE];
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
+  int       physCellId;
 } ss_drb_pdu_ind_t;
 
 typedef enum carrierBandwidthEUTRA_dl_Bandwidth_e {
@@ -271,6 +277,7 @@ typedef struct subframe_offset_list_s {
 typedef struct ss_paging_ind_s {
   uint16_t sfn;
   uint8_t  sf;
+  int cell_index;
 
   /* UE identity index value.
    * Specified in 3GPP TS 36.304
@@ -309,6 +316,7 @@ typedef struct ss_system_ind_s
     bool           bitmask; //Flag for presence of optional parameter repetitionsPerPreambleAttempt
     frame_t        sfn;
     sub_frame_t    sf;
+    int            physCellId;
     uint8_t        ra_PreambleIndex;
     bool           prtPower_Type;
     uint32_t       repetitionsPerPreambleAttempt;

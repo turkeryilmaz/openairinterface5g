@@ -211,6 +211,7 @@ typedef struct rb_info_s {
 
 typedef struct RrcRblistCfgReq_s {
   int rb_count;
+  int cell_index;
   rb_info rb_list[MAX_RBS];
 } RrcRblistCfgReq;
 
@@ -297,12 +298,13 @@ typedef struct RadioResourceConfig_s {
 
 // eNB: ENB_APP -> RRC messages
 typedef struct RrcConfigurationReq_s {
-  uint32_t                cell_identity;
-  uint16_t                tac;
-  uint16_t                mcc[PLMN_LIST_MAX_SIZE];
-  uint16_t                mnc[PLMN_LIST_MAX_SIZE];
-  uint8_t                 mnc_digit_length[PLMN_LIST_MAX_SIZE];
-  uint8_t                 num_plmn;
+  uint16_t                tac[MAX_NUM_CCs];
+  long                      cellBarred[MAX_NUM_CCs];
+  long                      intraFreqReselection[MAX_NUM_CCs];
+  uint16_t                mcc[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint16_t                mnc[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint8_t                 mnc_digit_length[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint8_t                 num_plmn[MAX_NUM_CCs];
   int                     enable_measurement_reports;
   int                     enable_x2;
   uint32_t                rrc_inactivity_timer_thres; // for testing, maybe change later
@@ -323,7 +325,7 @@ typedef struct RrcConfigurationReq_s {
   int                     eMBMS_M2_configured;
   int                     eMTC_configured;
   int                     SL_configured;
-  uint8_t                 systemInfoValueTag;
+  uint8_t                 systemInfoValueTag[MAX_NUM_CCs];
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];
@@ -405,6 +407,13 @@ typedef struct RrcConfigurationReq_s {
   long  *pusch_repetitionLevelCEmodeA_r13				   [MAX_NUM_CCs];
   long  *pusch_HoppingOffset_v1310                         [MAX_NUM_CCs];
 
+  //SIB3
+  long     q_Hyst[MAX_NUM_CCs];
+  long     threshServingLow[MAX_NUM_CCs];
+  long     cellReselectionPriority[MAX_NUM_CCs];
+  long     sib3_q_RxLevMin[MAX_NUM_CCs];
+  long     t_ReselectionEUTRA[MAX_NUM_CCs];
+
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];
   e_LTE_SL_PeriodComm_r12        rxPool_sc_Period[MAX_NUM_CCs];
@@ -452,15 +461,14 @@ typedef struct RrcConfigurationReq_s {
   int                            nr_scg_ssb_freq;
 
   //SS: Cell Config
-  long     q_RxLevMin;
-  long     q_QualMin;
-  long     p_MaxEUTRA;
+  long     q_RxLevMin[MAX_NUM_CCs];
+  long     q_QualMin[MAX_NUM_CCs];
   
-  bool     ActiveParamPresent;
+  bool     ActiveParamPresent[MAX_NUM_CCs];
   //SS: Cell Config Active Params
-  bool     RlcPduCCCH_Present;
-  uint8_t  RlcPduCCCH_Size;
-  uint8_t  RlcPduCCCH[100];
+  bool     RlcPduCCCH_Present[MAX_NUM_CCs];
+  uint8_t  RlcPduCCCH_Size[MAX_NUM_CCs];
+  uint8_t  RlcPduCCCH[MAX_NUM_CCs][100];
 
 } RrcConfigurationReq;
 

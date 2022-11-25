@@ -666,7 +666,7 @@ schedule_SI_BR(module_id_t module_idP, frame_t frameP,
             dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_prb_per_subband                 = 1;
             dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_vector                          = 1;
             // Rel10 fields (for PDSCH starting symbol)
-            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel10.pdsch_start                           = cc[CC_id].sib1_v13ext->bandwidthReducedAccessRelatedInfo_r13->startSymbolBR_r13;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel10.pdsch_start                           = cc->sib1_v13ext->bandwidthReducedAccessRelatedInfo_r13->startSymbolBR_r13;
             // Rel13 fields
             dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.ue_type                               = 1; // CEModeA UE
             dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.pdsch_payload_type                    = 1; // SI-BR
@@ -962,7 +962,7 @@ schedule_fembms_mib(module_id_t module_idP, frame_t frameP, sub_frame_t subframe
       TX_req->pdu_index = eNB->pdu_index[CC_id]++;
       TX_req->num_segments = 1;
       TX_req->segments[0].segment_length = 3;
-      TX_req->segments[0].segment_data = cc[CC_id].MIB_pdu.payload;
+      TX_req->segments[0].segment_data = cc->MIB_pdu.payload;
       eNB->TX_req[CC_id].tx_request_body.number_of_pdus++;
       eNB->TX_req[CC_id].sfn_sf = sfn_sf;
       eNB->TX_req[CC_id].tx_request_body.tl.tag = NFAPI_TX_REQUEST_BODY_TAG;
@@ -1021,7 +1021,7 @@ schedule_mib(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
       TX_req->pdu_index = eNB->pdu_index[CC_id]++;
       TX_req->num_segments = 1;
       TX_req->segments[0].segment_length = 3;
-      TX_req->segments[0].segment_data = cc[CC_id].MIB_pdu.payload;
+      TX_req->segments[0].segment_data = cc->MIB_pdu.payload;
       eNB->TX_req[CC_id].tx_request_body.number_of_pdus++;
       eNB->TX_req[CC_id].sfn_sf = sfn_sf;
       eNB->TX_req[CC_id].tx_request_body.tl.tag = NFAPI_TX_REQUEST_BODY_TAG;

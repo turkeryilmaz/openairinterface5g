@@ -731,10 +731,11 @@ void RCconfig_nr_ssparam(void) {
     RC.ss.Sysport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSPORT_IDX].iptr);
     RC.ss.Srbport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SRBPORT_IDX].iptr);
     RC.ss.Vngport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VNGPORT_IDX].iptr);
+    RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_VTPPORT_IDX].iptr);
     RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_MODE_IDX].iptr);
     RC.ss.SysportNR           = *(SSConfig_ParamList.paramarray[0][GNB_CONFIG_SS_SYSPORT_IDX].iptr);
   }
-  LOG_A(GNB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d\n",
+  LOG_W(GNB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d\n",
                   RC.ss.mode, RC.ss.hostIp,RC.ss.Sysport,RC.ss.Srbport,RC.ss.Vngport);
 }
 

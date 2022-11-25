@@ -56,9 +56,9 @@ void *mac_stats_thread(void *param) {
     AssertFatal(fd!=NULL,"Cannot open MAC_stats.log\n");
 
     for (int UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-      if (UE_info->active[UE_id]) {
+      int CC_id = UE_PCCID(mac->Mod_id, UE_id);
+      if (UE_info->active[CC_id][UE_id]) {
         int rnti = UE_RNTI(mac->Mod_id, UE_id);
-        int CC_id = UE_PCCID(mac->Mod_id, UE_id);
         UE_sched_ctrl_t *UE_scheduling_control = &(UE_info->UE_sched_ctrl[UE_id]);
 
         double total_bler;

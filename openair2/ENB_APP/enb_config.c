@@ -184,7 +184,7 @@ void RCconfig_L1(void) {
     // DJP need to create some structures for VNF
     j = 0;
     RC.nb_L1_CC = malloc((1+RC.nb_L1_inst)*sizeof(int)); // DJP - 1 lot then???
-    RC.nb_L1_CC[j]=1; // DJP - hmmm
+    RC.nb_L1_CC[j]=MAX_NUM_CCs; // DJP - hmmm (MultiCell: Initialization of nb_L1_CC with maximum number of CC)
 
     if (RC.eNB[j] == NULL) {
       RC.eNB[j]                       = (PHY_VARS_eNB **)malloc((1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB **));
@@ -426,13 +426,22 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
         for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
         //Firecell
-        RRC_CONFIGURATION_REQ (msg_p).q_QualMin = 0;
-        RRC_CONFIGURATION_REQ (msg_p).q_RxLevMin = 0;
+        for(int M=0;M < MAX_NUM_CCs; M++) {
+          RRC_CONFIGURATION_REQ (msg_p).q_QualMin[M] = 0;
+          RRC_CONFIGURATION_REQ (msg_p).q_RxLevMin[M] = -65;
+          RRC_CONFIGURATION_REQ (msg_p).threshServingLow[M]=31;
+          RRC_CONFIGURATION_REQ (msg_p).cellReselectionPriority[M]=7;
+          RRC_CONFIGURATION_REQ (msg_p).sib3_q_RxLevMin[M]=-70;
+          RRC_CONFIGURATION_REQ (msg_p).t_ReselectionEUTRA[M]=1;
+        }
 
         // In the configuration file it is in seconds. For RRC it has to be in milliseconds
         RRC_CONFIGURATION_REQ (msg_p).rrc_inactivity_timer_thres = (*ENBParamList.paramarray[i][ENB_RRC_INACTIVITY_THRES_IDX].uptr) * 1000;
-        RRC_CONFIGURATION_REQ (msg_p).cell_identity = enb_id;
-        RRC_CONFIGURATION_REQ (msg_p).tac = *ENBParamList.paramarray[i][ENB_TRACKING_AREA_CODE_IDX].uptr;
+        for(int M=0; M < MAX_NUM_CCs; M++) {
+          RRC_CONFIGURATION_REQ (msg_p).tac[M] = *ENBParamList.paramarray[i][ENB_TRACKING_AREA_CODE_IDX].uptr;
+          RRC_CONFIGURATION_REQ (msg_p).cellBarred[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
+          RRC_CONFIGURATION_REQ (msg_p).intraFreqReselection[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed;
+        }
         AssertFatal(!ENBParamList.paramarray[i][ENB_MOBILE_COUNTRY_CODE_IDX_OLD].strptr
                     && !ENBParamList.paramarray[i][ENB_MOBILE_NETWORK_CODE_IDX_OLD].strptr,
                     "It seems that you use an old configuration file. Please change the existing\n"
@@ -447,17 +456,18 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
         if (PLMNParamList.numelt < 1 || PLMNParamList.numelt > 6)
           AssertFatal(0, "The number of PLMN IDs must be in [1,6], but is %d\n",
                       PLMNParamList.numelt);
+        for(int M=0;M < MAX_NUM_CCs; M++) {
+          RRC_CONFIGURATION_REQ(msg_p).num_plmn[M] = PLMNParamList.numelt;
 
-        RRC_CONFIGURATION_REQ(msg_p).num_plmn = PLMNParamList.numelt;
-
-        for (int l = 0; l < PLMNParamList.numelt; ++l) {
-          RRC_CONFIGURATION_REQ(msg_p).mcc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
-          RRC_CONFIGURATION_REQ(msg_p).mnc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
-          RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
-          AssertFatal(RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[l] == 3
-                      || RRC_CONFIGURATION_REQ(msg_p).mnc[l] < 100,
-                      "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
-                      RRC_CONFIGURATION_REQ(msg_p).mnc[l]);
+          for (int l = 0; l < PLMNParamList.numelt; ++l) {
+            RRC_CONFIGURATION_REQ(msg_p).mcc[M][l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
+            RRC_CONFIGURATION_REQ(msg_p).mnc[M][l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
+            RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[M][l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
+            AssertFatal(RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[M][l] == 3
+                        || RRC_CONFIGURATION_REQ(msg_p).mnc[M][l] < 100,
+                        "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
+                        RRC_CONFIGURATION_REQ(msg_p).mnc[M][l]);
+          }
         }
 
         /* measurement reports enabled? */
@@ -2014,9 +2024,9 @@ int RCconfig_DU_F1(MessageDef *msg_p, uint32_t i) {
           pthread_mutex_unlock(&rrc->cell_info_mutex);
         } while (cell_info_configured ==0);
 
-        rrc->configuration.mcc[0] = F1AP_SETUP_REQ (msg_p).cell[k].mcc;
-        rrc->configuration.mnc[0] = F1AP_SETUP_REQ (msg_p).cell[k].mnc;
-        rrc->configuration.tac    = F1AP_SETUP_REQ (msg_p).cell[k].tac;
+        rrc->configuration.mcc[0][0] = F1AP_SETUP_REQ (msg_p).cell[k].mcc;
+        rrc->configuration.mnc[0][0] = F1AP_SETUP_REQ (msg_p).cell[k].mnc;
+        rrc->configuration.tac[0]  = F1AP_SETUP_REQ (msg_p).cell[k].tac;
         rrc->nr_cellid = F1AP_SETUP_REQ (msg_p).cell[k].nr_cellid;
         F1AP_SETUP_REQ (msg_p).cell[k].nr_pci    = rrc->carrier[0].physCellId;
         F1AP_SETUP_REQ (msg_p).cell[k].num_ssi = 0;

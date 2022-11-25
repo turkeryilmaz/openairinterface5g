@@ -1059,8 +1059,12 @@ pdcp_data_ind(
       MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0,  SS_DRB_PDU_IND);
       if (message_p) {
         /* Populate the message to SS */
+        //Find the CC_id from module_id and rnti
+        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rnti);
+        int CC_id = UE_id>=0? UE_PCCID(ctxt_pP->module_id,UE_id):0;
         SS_DRB_PDU_IND (message_p).sdu_size = sdu_buffer_sizeP - payload_offset;
         SS_DRB_PDU_IND (message_p).drb_id = rb_id;
+        SS_DRB_PDU_IND (message_p).physCellId = RC.rrc[ctxt_pP->module_id]->carrier[CC_id].physCellId;
         memset(SS_DRB_PDU_IND (message_p).sdu, 0, SS_DRB_PDU_IND (message_p).sdu_size);
         memcpy(&SS_DRB_PDU_IND (message_p).sdu, &sdu_buffer_pP->data[payload_offset], SS_DRB_PDU_IND (message_p).sdu_size);
         SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;

@@ -860,7 +860,14 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 add_boolean_option(DRIVER2013              True "only relevant for EXMIMO")
 add_boolean_option(EXMIMO_IOT              True "????")
 add_boolean_option(LOCALIZATION            False "???")
+#if ($ENV{NR_ENABLE})
 add_integer_option(MAX_NUM_CCs             1     "????")
+Message("Cell configuration for NR is 1. MULTI CELLS NOT IMPLEMENTED")
+#else()
+#	add_integer_option(MAX_NUM_CCs             2     "????")
+#	Message("Cell configuration for LTE is ${MAX_NUM_CCs}: MULTI CELLS IS IMPLEMENTED")
+#endif()
+
 add_boolean_option(SMBV                    False "Rohde&Schwarz SMBV100A vector signal generator")
 add_boolean_option(DEBUG_PHY               False "Enable PHY layer debugging options")
 add_boolean_option(DEBUG_PHY_PROC          False "Enable debugging of PHY layer procedures")
@@ -2083,8 +2090,10 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_eNB_drb_task.c
   ${OPENAIR3_DIR}/SS/ss_eNB_vt_timer_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
+  ${OPENAIR3_DIR}/SS/ss_eNB_multicell_helper.c
   ${OPENAIR3_DIR}/SS/ss_gNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
+  ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
@@ -2768,11 +2777,11 @@ target_link_libraries (lte-uesoftmodem lttng-ust)
 
 # nr-softmodem
 ###################################################
-if ($ENV{NR_ENABLE})
+#if ($ENV{NR_ENABLE})
 	add_boolean_option(NR_ENABLE   TRUE  "Flag for NR compilation")
-else()
-add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
-endif()
+#else()
+#	add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
+#endif()
 
 Message("NR_ENABLE flag is ${NR_ENABLE}")
 
@@ -2804,7 +2813,7 @@ add_executable(nr-softmodem
 target_link_libraries (nr-softmodem
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SS_SERVER SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU LFDS GTPV1U SECU_CN SECU_OSA
-  ITTI ${FLPT_MSG_LIB} ${ASYNC_IF_LIB} ${FLEXRAN_AGENT_LIB} LFDS7 ${RAL_LIB} ${NAS_UE_LIB} RRC_LIB NR_RRC_LIB
+  ITTI ${FLPT_MSG_LIB} ${ASYNC_IF_LIB} ${FLEXRAN_AGENT_LIB} LFDS7 ${RAL_LIB} ${NAS_UE_LIB} RRC_LIB NR_RRC_LIB UDP
   NGAP_LIB NGAP_GNB S1AP_LIB S1AP_ENB L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB
   X2AP_LIB X2AP_ENB F1AP_LIB F1AP M2AP_LIB M2AP_ENB M3AP_LIB M3AP_ENB ${FSPT_MSG_LIB}
   -Wl,--end-group z dl)

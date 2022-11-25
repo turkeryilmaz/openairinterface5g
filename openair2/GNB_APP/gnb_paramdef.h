@@ -237,20 +237,22 @@ typedef enum {
 #define GNB_CONFIG_SS_SYSPORT                                  "Sys_port"
 #define GNB_CONFIG_SS_SRBPORT                                  "Srb_port"
 #define GNB_CONFIG_SS_VNGPORT                                  "Vng_port"
+#define GNB_CONFIG_SS_VTPPORT                                  "Vtp_port"
 #define GNB_CONFIG_SS_MODE                                     "SSMode"
 
 #define GNB_CONFIG_SS_HOSTIP_IDX     0
 #define GNB_CONFIG_SS_SYSPORT_IDX    1
 #define GNB_CONFIG_SS_SRBPORT_IDX    2
 #define GNB_CONFIG_SS_VNGPORT_IDX    3
-#define GNB_CONFIG_SS_MODE_IDX       4
-//#define GNB_CONFIG_SS_NR_MODE_IDX    5
+#define GNB_CONFIG_SS_VTPPORT_IDX    4
+#define GNB_CONFIG_SS_MODE_IDX       5
 
 #define GNB_SSPARAMS_DESC {                                                                  \
 {GNB_CONFIG_SS_HOSTIP          ,                     NULL,     0,          uptr:NULL,        defstrval:"0.0.0.0",      TYPE_STRING,   0},     \
 {GNB_CONFIG_SS_SYSPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
 {GNB_CONFIG_SS_SRBPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
 {GNB_CONFIG_SS_VNGPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
+{GNB_CONFIG_SS_VTPPORT         ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
 {GNB_CONFIG_SS_MODE            ,                     NULL,     0,          uptr:NULL,        defintval:0000,           TYPE_UINT,     0},   \
 }
 

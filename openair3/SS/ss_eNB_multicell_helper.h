@@ -18,38 +18,15 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
-#ifndef _SS_GNB_CONTEXT_
-#define _SS_GNB_CONTEXT_
 
-#include "SidlCommon.h"
+#ifndef MULTICELL_HELPER_H
 
-typedef struct SSConfigContext_s {
-  int State;	
-  uint16_t dl_earfcn;
-  uint16_t ul_earfcn;
-  uint32_t dl_freq;
-  uint32_t ul_freq;
-  uint16_t curr_attn;
-  uint16_t cellId;
-  int16_t maxRefPower;
-  //TO DO: Need to remove one of the following cellId
-  EUTRA_CellId_Type ttcn_cell_id;
-  uint16_t eutra_cellId;
-  uint16_t nr_cellId;
-  uint16_t ss_rnti_g;
-  uint8_t vtp_enabled;
-  ss_set_timinfo_t vtinfo;
-  /** TODO: To add more */
-} SSConfigContext_t;
+#define MULTICELL_HELPER_H
 
-typedef enum {
-  SS_STATE_NOT_CONFIGURED = 0,
-  SS_STATE_CELL_CONFIGURED,
-  SS_STATE_CELL_ACTIVE,
-  SS_STATE_AS_SECURITY_ACTIVE,
-  SS_STATE_AS_RBS_ACTIVE,
-  SS_STATE_CELL_BROADCASTING,
-  SS_STATE_MAX_STATE
-} SS_STATE_t;
-#endif /* _SS_GNB_CONTEXT_ */
+#include "ss_eNB_context.h"
 
+int get_cell_index(uint16_t, SS_Cell_Context_t[]);
+
+int get_cell_index_pci(uint16_t physCellId, SS_Cell_Context_t SSCell_list[]);
+
+#endif

@@ -3406,7 +3406,7 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
           for (int i = 0; i < mac_sdu_len; i++) {
             LOG_D(NR_MAC, "%d: 0x%x\n", i, pduP[mac_subheader_len + i]);
           }
-          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, 0, mac->crnti, CCCH, pduP+mac_subheader_len, mac_sdu_len);
+          nr_mac_rrc_data_ind_ue(module_idP, CC_id, gNB_index, frameP, slot >> 1, mac->crnti, CCCH, pduP+mac_subheader_len, mac_sdu_len);
         }
         break;
       case DL_SCH_LCID_TCI_STATE_ACT_UE_SPEC_PDSCH:

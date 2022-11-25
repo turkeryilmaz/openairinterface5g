@@ -2938,28 +2938,28 @@ int flexran_get_x2_ho_net_control(mid_t mod_id) {
   return RC.rrc[mod_id]->x2_ho_net_control;
 }
 
-uint8_t flexran_get_rrc_num_plmn_ids(mid_t mod_id) {
+uint8_t flexran_get_rrc_num_plmn_ids(mid_t mod_id,uint8_t cc_id) {
   if (!rrc_is_present(mod_id)) return 0;
 
-  return RC.rrc[mod_id]->configuration.num_plmn;
+  return RC.rrc[mod_id]->configuration.num_plmn[cc_id];
 }
 
-uint16_t flexran_get_rrc_mcc(mid_t mod_id, uint8_t index) {
+uint16_t flexran_get_rrc_mcc(mid_t mod_id,uint8_t cc_id, uint8_t index) {
   if (!rrc_is_present(mod_id)) return 0;
 
-  return RC.rrc[mod_id]->configuration.mcc[index];
+  return RC.rrc[mod_id]->configuration.mcc[cc_id][index];
 }
 
-uint16_t flexran_get_rrc_mnc(mid_t mod_id, uint8_t index) {
+uint16_t flexran_get_rrc_mnc(mid_t mod_id,uint8_t cc_id, uint8_t index) {
   if (!rrc_is_present(mod_id)) return 0;
 
-  return RC.rrc[mod_id]->configuration.mnc[index];
+  return RC.rrc[mod_id]->configuration.mnc[cc_id][index];
 }
 
-uint8_t flexran_get_rrc_mnc_digit_length(mid_t mod_id, uint8_t index) {
+uint8_t flexran_get_rrc_mnc_digit_length(mid_t mod_id,uint8_t cc_id, uint8_t index) {
   if (!rrc_is_present(mod_id)) return 0;
 
-  return RC.rrc[mod_id]->configuration.mnc_digit_length[index];
+  return RC.rrc[mod_id]->configuration.mnc_digit_length[cc_id][index];
 }
 
 int flexran_get_rrc_num_adj_cells(mid_t mod_id) {
@@ -3472,13 +3472,13 @@ int flexran_add_s1ap_mme(mid_t mod_id, size_t n_mme, char **mme_ipv4) {
   RCconfig_S1(m, mod_id);
 
   const int CC_id = 0;
-  eNB_RRC_INST *rrc = RC.rrc[CC_id];
+  eNB_RRC_INST *rrc = RC.rrc[0];
   RrcConfigurationReq *conf = &rrc->configuration;
   S1AP_REGISTER_ENB_REQ(m).num_plmn = conf->num_plmn;
   for (int i = 0; i < conf->num_plmn; ++i) {
-    S1AP_REGISTER_ENB_REQ(m).mcc[i] = conf->mcc[i];
-    S1AP_REGISTER_ENB_REQ(m).mnc[i] = conf->mnc[i];
-    S1AP_REGISTER_ENB_REQ(m).mnc_digit_length[i] = conf->mnc_digit_length[i];
+    S1AP_REGISTER_ENB_REQ(m).mcc[i] = conf->mcc[CC_id][i];
+    S1AP_REGISTER_ENB_REQ(m).mnc[i] = conf->mnc[CC_id][i];
+    S1AP_REGISTER_ENB_REQ(m).mnc_digit_length[i] = conf->mnc_digit_length[CC_id][i];
   }
 
   /* reconstruct MME list, it might have been updated since initial
@@ -3559,7 +3559,7 @@ int flexran_set_new_plmn_id(mid_t mod_id, int CC_id, size_t n_plmn, Protocol__Fl
   if (!s1ap)
     return -2;
 
-  eNB_RRC_INST *rrc = RC.rrc[CC_id];
+  eNB_RRC_INST *rrc = RC.rrc[0];
   RrcConfigurationReq *conf = &rrc->configuration;
 
   uint8_t num_plmn_old = conf->num_plmn;
@@ -3567,16 +3567,16 @@ int flexran_set_new_plmn_id(mid_t mod_id, int CC_id, size_t n_plmn, Protocol__Fl
   uint16_t mnc[PLMN_LIST_MAX_SIZE];
   uint8_t mnc_digit_length[PLMN_LIST_MAX_SIZE];
   for (int i = 0; i < num_plmn_old; ++i) {
-    mcc[i] = conf->mcc[i];
-    mnc[i] = conf->mnc[i];
-    mnc_digit_length[i] = conf->mnc_digit_length[i];
+    mcc[i] = conf->mcc[CC_id][i];
+    mnc[i] = conf->mnc[CC_id][i];
+    mnc_digit_length[i] = conf->mnc_digit_length[CC_id][i];
   }
 
-  conf->num_plmn = (uint8_t) n_plmn;
-  for (int i = 0; i < conf->num_plmn; ++i) {
-    conf->mcc[i] = plmn_id[i]->mcc;
-    conf->mnc[i] = plmn_id[i]->mnc;
-    conf->mnc_digit_length[i] = plmn_id[i]->mnc_length;
+  conf->num_plmn[CC_id] = (uint8_t) n_plmn;
+  for (int i = 0; i < conf->num_plmn[CC_id]; ++i) {
+    conf->mcc[CC_id][i] = plmn_id[i]->mcc;
+    conf->mnc[CC_id][i] = plmn_id[i]->mnc;
+    conf->mnc_digit_length[CC_id][i] = plmn_id[i]->mnc_length;
   }
 
   rrc_eNB_carrier_data_t *carrier = &rrc->carrier[CC_id];

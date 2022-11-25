@@ -2422,7 +2422,7 @@ schedule_PCH(module_id_t module_idP,
           TX_req->pdu_index                                                              = eNB->pdu_index[CC_id]++;
           TX_req->num_segments                                                           = 1;
           TX_req->segments[0].segment_length                                             = pcch_sdu_length;
-          TX_req->segments[0].segment_data                                               = cc[CC_id].PCCH_pdu.payload;
+          TX_req->segments[0].segment_data                                               = cc->PCCH_pdu.payload;
           eNB->TX_req[CC_id].tx_request_body.tl.tag                                      = NFAPI_TX_REQUEST_BODY_TAG;
           eNB->TX_req[CC_id].tx_request_body.number_of_pdus++;
         } else {

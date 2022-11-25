@@ -88,7 +88,7 @@ nfapi_vnf_p7_connection_info_t* vnf_p7_connection_info_list_find(vnf_p7_t* vnf_p
 	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;
 	while(curr != 0)
 	{
-		if(curr->phy_id == phy_id)
+		if(curr->phy_id == 1)//phy_id)
 		{
 			return curr;
 		}

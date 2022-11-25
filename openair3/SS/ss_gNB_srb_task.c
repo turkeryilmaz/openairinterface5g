@@ -59,7 +59,7 @@ SSConfigContext_t SS_context;
 static acpCtx_t ctx_srb_g = NULL;
 static uint16_t rnti_g = 0;
 static instance_t instance_g = 0;
-uint16_t ss_rnti_g = 0;
+//uint16_t ss_rnti_g = 0;
 
 typedef enum {
         // user defined IDs should be an int number >= 1
@@ -86,7 +86,7 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
         DevAssert(pdu_ind->sdu_size >= 0);
         DevAssert(pdu_ind->srb_id >= 0);
         rnti_g = pdu_ind->rnti;
-        ss_rnti_g = rnti_g;
+        SS_context.ss_rnti_g = rnti_g;
         size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
         //TODO: Work Around till Sys port is implemented for 5G
@@ -300,13 +300,13 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                                 LOG_A(GNB_APP, "[SS_SRB][NR_RRC_PDU_REQ] acpNrSysSrbProcessFromSSDecSrv Failed\n");
                                 break;
                         }
-                        if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                        if (SS_context.State >= SS_STATE_CELL_ACTIVE)
                         {
                                 ss_task_handle_rrc_pdu_req(req);
                         }
                         else
                         {
-                                LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", RC.ss.State);
+                                LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_REQ] received in SS state %d \n", SS_context.State);
                         }
 
                         acpNrSysSrbProcessFromSSFreeSrv(req);
@@ -389,20 +389,20 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
 
                         if (origin_task == TASK_SS_PORTMAN)
                         {
-                                LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", RC.ss.State);
+                                LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
                         }
                         else
 #endif
                         {
                                 LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
-                                if (RC.ss.State >= SS_STATE_CELL_ACTIVE)
+                                if (SS_context.State >= SS_STATE_CELL_ACTIVE)
                                 {
                                         instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
                                         ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
                                 }
                                 else
                                 {
-                                        LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", RC.ss.State);
+                                        LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.State);
                                 }
                          }
 

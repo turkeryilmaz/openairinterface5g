@@ -27,6 +27,7 @@
 #include "ss_eNB_context.h"
 
 #include "ss_eNB_proxy_iface.h"
+#include "ss_eNB_multicell_helper.h"
 #include "SIDL_VIRTUAL_TIME_PORT.h"
 #include "acpSysVT.h"
 #define MSC_INTERFACE
@@ -34,6 +35,7 @@
 
 extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
+int cellIndex = 0;
 
 static acpCtx_t ctx_vtp_g = NULL;
 extern SSConfigContext_t SS_context;
@@ -201,8 +203,8 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_RESP;
       req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context.cellId;
-
+      req->header.cell_id = SS_context.SSCell_list[cellIndex].PhysicalCellId;
+      req->header.cell_index = cellIndex;
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
       
@@ -234,7 +236,7 @@ static inline void ss_enable_vtp()
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_ENABLE;
       req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context.cellId;
+      req->header.cell_id = SS_context.SSCell_list[cellIndex].PhysicalCellId;
 
       /* Initialize with zero */
       req->tinfo.sfn = 0;
@@ -321,15 +323,15 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
             }
             LOG_A(ENB_APP,"[SS-VTP] Received VTEnquireTimingAck Request SFN %d Subframe %d Waiting for ACK of SFN %d SF %d\n ",
             	    virtualTime->TimingInfo.SFN.v.Number,virtualTime->TimingInfo.Subframe.v.Number,SS_context.vtinfo.sfn,SS_context.vtinfo.sf);
-            // if (RC.ss.State < SS_STATE_CELL_ACTIVE)
+            // if (SS_context.SSCell_list[cellIndex].State < SS_STATE_CELL_ACTIVE)
             // {
-            //     LOG_E(ENB_APP, "[SS-VTP] Request received in an invalid state: %d \n", RC.ss.State);
+            //     LOG_E(ENB_APP, "[SS-VTP] Request received in an invalid state: %d \n", SS_context.SSCell_list[cellIndex].State);
             //     break;
             // }
 
 
 //            if((SS_context.vtinfo.sfn == virtualTime->TimingInfo.SFN.v.Number) &&
-//            		(SS_context.vtinfo.sf == virtualTime->TimingInfo.Subframe.v.Number))
+//            		(SS_context.SSCell_list[cellIndex].vtinfo.sf == virtualTime->TimingInfo.Subframe.v.Number))
             {
 				if (virtualTime->Enable) {
 					ss_send_vtp_resp(virtualTime);
@@ -379,6 +381,10 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             ss_set_timinfo_t tinfo;
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
+            if(SS_UPD_TIM_INFO(received_msg).physCellId){
+              cellIndex = get_cell_index_pci(SS_UPD_TIM_INFO(received_msg).physCellId, SS_context.SSCell_list);
+              LOG_A(ENB_SS,"[VTP] cellIndex in SS_UPD_TIM_INFO: %d PhysicalCellId: %d \n",cellIndex,SS_context.SSCell_list[cellIndex].PhysicalCellId);
+            }
             LOG_A(ENB_APP, "[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             LOG_A(ENB_APP,"[VTP] received VTP_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
             if (isConnected == true)
@@ -421,14 +427,14 @@ int ss_eNB_vtp_init(void)
     IpAddress_t ipaddr;
 
     const char *hostIp;
-    hostIp = RC.ss.hostIp;
+    hostIp = RC.ss.hostIp ? RC.ss.hostIp : "127.0.0.1";
     acpConvertIp(hostIp, &ipaddr);
 
     // Port number
     int port = RC.ss.Vtpport;
-    if (port != 7780)
+    if (port == 0)
     {
-        return -1;
+        port = 7780;
     }
     LOG_A(ENB_APP, "[SS-VTP] Initializing VTP Port %s:%d\n", hostIp, port);
     // acpInit(malloc, free, 1000);

@@ -1437,6 +1437,7 @@ initiate_ra_proc(module_id_t module_idP,
         SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
         SS_SYSTEM_IND(m).prtPower_Type = true;
         SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;
+        SS_SYSTEM_IND(m).physCellId = cc->physCellId;
         itti_send_msg_to_task(TASK_SS_SYSIND, module_idP, m);
         LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with ra_PreambleIndex=%d prtPower_Type=%d bitmask=%d sfn=%d sf=%d to System Simulator\n", SS_SYSTEM_IND(m).ra_PreambleIndex, SS_SYSTEM_IND(m).prtPower_Type,
 		SS_SYSTEM_IND(m).bitmask, SS_SYSTEM_IND(m).sfn, SS_SYSTEM_IND(m).sf);
