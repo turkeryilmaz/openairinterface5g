@@ -37,6 +37,7 @@
 #include "msc.h"
 
 extern RAN_CONTEXT_t RC;
+extern SSConfigContext_t SS_context;
 
 extern uint16_t ss_rnti_nr_g;
 extern SSConfigContext_t SS_context;
@@ -209,6 +210,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
         if (RC.ss.State == SS_STATE_NOT_CONFIGURED)
         {
           RC.ss.State  = SS_STATE_CELL_ACTIVE;
+          SS_context.State = SS_STATE_CELL_ACTIVE;
           LOG_A(GNB_APP, "[SYS-GNB] RC.ss.State changed to ACTIVE \n");
         }
         send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
@@ -336,7 +338,7 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
   bool sendDummyCnf = TRUE;
   enum NR_SystemConfirm_Type_Sel cnfType = 0;
 
-  LOG_A(GNB_APP, "[SYS-GNB] received req : %d for cell %d RC.ss.state %d \n",
+  LOG_A(GNB_APP, "[SYS-GNB] received req : %d for cell %d RC.ss.State %d \n",
       req->Request.d, req->Common.CellId, RC.ss.State);
   switch (req->Request.d)
   {
@@ -509,6 +511,7 @@ void *ss_gNB_sys_task(void *arg)
   else if (RC.ss.mode == SS_SOFTMODEM_SRB)
   {
     RC.ss.State = SS_STATE_CELL_ACTIVE;
+    SS_context.State = SS_STATE_CELL_ACTIVE;
     LOG_A(GNB_APP, "TASK_SYS_GNB: fxn:%s line:%d RC.ss.mode:SS_STATE_CELL_ACTIVE \n", __FUNCTION__, __LINE__);
   }
 

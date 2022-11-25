@@ -472,12 +472,6 @@ static int create_gNB_tasks(void) {
       }
     }
 
-    if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
-    {
-      LOG_E(GTPU, "Create task for UDP failed\n");
-      return -1;
-    }
-
   }
 
   return 0;
