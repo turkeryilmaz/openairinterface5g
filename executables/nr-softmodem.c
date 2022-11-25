@@ -372,17 +372,20 @@ int create_gNB_tasks(uint32_t gnb_nb) {
         LOG_E(GNB_APP, "Create task for SS GNB failed\n");
         return -1;
       }
+
+      if(itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for UDP failed\n");
+        return -1;
+      }
+
+      if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
+        LOG_E(SCTP, "Create task for SS SRB failed\n");
+        return -1;
+      }
+
+
     }
 
-    if(itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0) {
-      LOG_E(SCTP, "Create task for SS SRB failed\n");
-      return -1;
-    }
-
-    if(itti_create_task(TASK_SS_SRB, ss_gNB_srb_task, NULL) < 0) {
-      LOG_E(SCTP, "Create task for SS SRB failed\n");
-      return -1;
-    }
 
     if(itti_create_task(TASK_VTP, ss_gNB_vtp_task, NULL) < 0) {
       LOG_E(SCTP, "Create task for TASK_VTP failed\n");
@@ -402,12 +405,6 @@ int create_gNB_tasks(uint32_t gnb_nb) {
         LOG_E(GTPU, "Create task for GTPV1U failed\n");
         return -1;
       }
-    }
-
-    if (itti_create_task(TASK_UDP, udp_eNB_task, NULL) < 0)
-    {
-      LOG_E(GTPU, "Create task for UDP failed\n");
-      return -1;
     }
 
   }

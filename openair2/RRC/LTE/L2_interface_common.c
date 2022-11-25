@@ -43,6 +43,7 @@
 //#define DEBUG_RRC 1
 
 extern RAN_CONTEXT_t RC;
+extern SSConfigContext_t SS_context;
 //------------------------------------------------------------------------------
 uint8_t
 rrc_data_req(

@@ -363,7 +363,7 @@ void ss_gNB_srb_init(void)
 
   if (RC.ss.mode == SS_SOFTMODEM_SRB)
   {
-    RC.ss.State = SS_STATE_CELL_ACTIVE;
+    SS_context.State = SS_STATE_CELL_ACTIVE;
   }
   itti_subscribe_event_fd(TASK_SS_SRB, fd1);
   itti_mark_task_ready(TASK_SS_SRB);
@@ -372,59 +372,59 @@ void ss_gNB_srb_init(void)
 //------------------------------------------------------------------------------
 void *ss_gNB_srb_process_itti_msg(void *notUsed)
 {
-        MessageDef *received_msg = NULL;
-        int result = 0;
+  MessageDef *received_msg = NULL;
+  int result = 0;
 
-        itti_receive_msg(TASK_SS_SRB, &received_msg);
+  itti_receive_msg(TASK_SS_SRB, &received_msg);
 
-        /* Check if there is a packet to handle */
-        if (received_msg != NULL)
+  /* Check if there is a packet to handle */
+  if (received_msg != NULL)
+  {
+    switch (ITTI_MSG_ID(received_msg))
+    {
+      case SS_NRRRC_PDU_IND:
         {
-                switch (ITTI_MSG_ID(received_msg))
-                {
-                case SS_NRRRC_PDU_IND:
-                {
 #if 0
-                        task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+          task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
-                        if (origin_task == TASK_SS_PORTMAN)
-                        {
-                                LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
-                        }
-                        else
+          if (origin_task == TASK_SS_PORTMAN)
+          {
+            LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
+          }
+          else
 #endif
-                        {
-                                LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
-                                if (SS_context.State >= SS_STATE_CELL_ACTIVE)
-                                {
-                                        instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-                                        ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
-                                }
-                                else
-                                {
-                                        LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.State);
-                                }
-                         }
+          {
+            LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
+            if (SS_context.State >= SS_STATE_CELL_ACTIVE)
+            {
+              instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+              ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
+            }
+            else
+            {
+              LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.State);
+            }
+          }
 
-                        result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-                        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-                };
-                break;
-                case TERMINATE_MESSAGE:
-                        LOG_A(GNB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
-                        itti_exit_task();
-                        break;
+          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+          AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+        };
+        break;
+      case TERMINATE_MESSAGE:
+        LOG_A(GNB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
+        itti_exit_task();
+        break;
 
-                default:
-                        LOG_A(GNB_APP, "[SS_SRB] Received unhandled message %d:%s\n",
-                                  ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-                        break;
-                }
-        }
+      default:
+        LOG_A(GNB_APP, "[SS_SRB] Received unhandled message %d:%s\n",
+            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+        break;
+    }
+  }
 
-        ss_gNB_read_from_srb_socket(ctx_srb_g);
+  ss_gNB_read_from_srb_socket(ctx_srb_g);
 
-        return NULL;
+  return NULL;
 }
 
 void *ss_gNB_srb_task(void *arg)
