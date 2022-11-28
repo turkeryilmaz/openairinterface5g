@@ -334,6 +334,7 @@ typedef struct RrcConfigurationReq_s {
   //MIB
   long        schedulingInfoSIB1_BR_r13[MAX_NUM_CCs];
   //SIB1 BR options
+  BOOLEAN_t stopSib1Transmission[MAX_NUM_CCs];
   uint16_t     *hyperSFN_r13                           [MAX_NUM_CCs];
   long       *eDRX_Allowed_r13                       [MAX_NUM_CCs];
   BOOLEAN_t     cellSelectionInfoCE_r13                [MAX_NUM_CCs];

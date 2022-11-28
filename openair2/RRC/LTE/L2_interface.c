@@ -117,6 +117,11 @@ mac_rrc_data_req(
                 "[eNB %d] MAC Request for SIB1 and SIB1 not initialized\n",Mod_idP);
 
     if ((frameP%2) == 0) {
+	if(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB1 == 0){
+         //stopSib1Transmission
+         LOG_D(RRC,"[eNB %d] CC_id:%d Frame %d : stopSib1Transmission\n",Mod_idP,CC_id,frameP);
+         return 0;
+      }
       memcpy(&buffer_pP[0],
              RC.rrc[Mod_idP]->carrier[CC_id].SIB1,
              RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB1);

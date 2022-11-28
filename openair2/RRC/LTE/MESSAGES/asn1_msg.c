@@ -1368,6 +1368,9 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   if (enc_rval.encoded==-1) {
     return(-1);
   }
+  if(configuration->stopSib1Transmission[CC_id]) {
+    return 0;
+  }
 
   return((enc_rval.encoded+7)/8);
 }

@@ -373,7 +373,9 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 #define BCCH_CONFIG AddOrReconfigure->Basic.v.BcchConfig
       if (AddOrReconfigure->Basic.v.BcchConfig.d == true)
       {
-	LOG_A(ENB_SS, "[SYS] BCCH Config update in Cell config \n");
+	  LOG_A(ENB_SS, "[SYS] BCCH Config update in Cell config \n");
+        RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index]= (AddOrReconfigure->Basic.v.BcchConfig.v.StopSib1Transmission.d)?1:0;
+        LOG_A(ENB_SS, "[SYS] stopSib1Transmission for cellIndex(%d) %s\n",cell_index,RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index]?"yes":"no");
         if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.d == true)
         {
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.d == true)
