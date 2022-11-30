@@ -46,6 +46,7 @@ void configure_nfapi_pnf(char *vnf_ip_addr,
                          int pnf_p7_port,
                          int vnf_p7_port);
 
+extern RAN_CONTEXT_t RC;
 UL_IND_t *UL_INFO = NULL;
 
 queue_t dl_config_req_tx_req_queue;
@@ -2214,4 +2215,35 @@ static bool should_drop_transport_block(int sf, uint16_t rnti)
     abort();
   }
   return false;
+}
+
+//------------------------------------------------------------------------------
+int
+find_UE_id(module_id_t mod_idP,
+           rnti_t rntiP)
+//------------------------------------------------------------------------------
+{
+  int UE_id;
+  UE_info_t *UE_info = &RC.mac[mod_idP]->UE_info;
+  if(!UE_info)
+    return -1;
+
+  for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
+    int CC_id = UE_PCCID(mod_idP, UE_id);
+    if (UE_info->active[CC_id][UE_id] == TRUE) {
+      if (CC_id>=0 && CC_id<NFAPI_CC_MAX && UE_info->UE_template[CC_id][UE_id].rnti == rntiP) {
+        return UE_id;
+      }
+    }
+  }
+  return -1;
+}
+
+//------------------------------------------------------------------------------
+int
+UE_PCCID(module_id_t mod_idP,
+         int ue_idP)
+//------------------------------------------------------------------------------
+{
+  return (RC.mac[mod_idP]->UE_info.pCC_id[ue_idP]);
 }
