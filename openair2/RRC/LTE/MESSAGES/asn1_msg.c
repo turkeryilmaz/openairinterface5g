@@ -986,7 +986,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     }
 
     //assign_enum(&PLMN_identity_info.cellReservedForOperatorUse,PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved);
-    PLMN_identity_info[i].cellReservedForOperatorUse=LTE_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
+    PLMN_identity_info[i].cellReservedForOperatorUse=configuration->cellReservedForOperatorUse[CC_id][i];
     ASN_SEQUENCE_ADD(&(*sib1)->cellAccessRelatedInfo.plmn_IdentityList.list,&PLMN_identity_info[i]);
   }
 

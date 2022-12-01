@@ -448,16 +448,19 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
     RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
     RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
+    RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
     for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index]; ++i) {
-      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.d == TRUE)
+      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.d == TRUE)
       {
-            RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[2])<<0));
+            RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[0] *100 +  SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[1] *10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[2];
       }
-      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 2) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<0));
-       } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 3) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[2])<<0));
+      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 2) {
+        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] *10 +  SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1];
+       } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 3) {
+        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] *100 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1] *10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[2];
       }
+      RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[cell_index][i]=SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d;
+      RRC_CONFIGURATION_REQ(msg_p).cellReservedForOperatorUse[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].cellReservedForOperatorUse;
     }
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.d == true)
           {

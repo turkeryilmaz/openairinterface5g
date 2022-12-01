@@ -364,6 +364,7 @@ typedef struct RrcConfigurationReq_s {
   uint16_t                mcc[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
   uint16_t                mnc[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
   uint8_t                 mnc_digit_length[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
+  uint32_t                cellReservedForOperatorUse[MAX_NUM_CCs][PLMN_LIST_MAX_SIZE];
   uint8_t                 num_plmn[MAX_NUM_CCs];
   int                     enable_measurement_reports;
   int                     enable_x2;

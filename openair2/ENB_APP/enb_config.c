@@ -469,6 +469,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
             RRC_CONFIGURATION_REQ(msg_p).mcc[M][l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
             RRC_CONFIGURATION_REQ(msg_p).mnc[M][l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
             RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[M][l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
+            RRC_CONFIGURATION_REQ(msg_p).cellReservedForOperatorUse[M][l] = LTE_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
             AssertFatal(RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[M][l] == 3
                         || RRC_CONFIGURATION_REQ(msg_p).mnc[M][l] < 100,
                         "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
