@@ -517,6 +517,16 @@ typedef struct RrcConfigurationReq_s {
   int                          InterFreqCarrierFreqInfoCount[MAX_NUM_CCs];
   InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
 
+  //SIB4
+  bool                       sib4_Present;
+  bool                       intraFreqNeighCellListPresent;
+  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList;
+
+  //SIB5
+  bool                         sib5_Present;
+  int                          InterFreqCarrierFreqInfoCount;
+  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo;
+
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];
   e_LTE_SL_PeriodComm_r12        rxPool_sc_Period[MAX_NUM_CCs];

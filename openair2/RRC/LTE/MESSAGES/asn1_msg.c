@@ -912,8 +912,6 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   bcch_message->message.choice.c1.present = LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1;
   //  memcpy(&bcch_message.message.choice.c1.choice.systemInformationBlockType1,sib1,sizeof(SystemInformationBlockType1_t));
   *sib1 = &bcch_message->message.choice.c1.choice.systemInformationBlockType1;
-  sib_type=CALLOC(1,sizeof(LTE_SIB_Type_t));
-  schedulingInfo=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
   PLMN_identity_info = CALLOC(1, sizeof(LTE_PLMN_IdentityInfo_t) * num_plmn);
 
   if (PLMN_identity_info == NULL)
@@ -1069,6 +1067,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
          asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,schedulingInfo2);
   }
   //  asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,NULL);
+
 
 
   if (configuration->frame_type[CC_id] == TDD)
