@@ -693,6 +693,10 @@ typedef struct {
   uint8_t                           sizeof_SIB1;
   uint8_t                           *SIB23;
   uint8_t                           sizeof_SIB23;
+  uint8_t                           *SIB4;
+  uint8_t                           sizeof_SIB4;
+  uint8_t                           *SIB5;
+  uint8_t                           sizeof_SIB5;
   uint8_t                           *SIB1_BR;
   uint8_t                           sizeof_SIB1_BR;
   uint8_t                           *SIB23_BR;
@@ -725,6 +729,8 @@ typedef struct {
   LTE_SystemInformationBlockType1_t     *sib1;
   LTE_SystemInformationBlockType2_t     *sib2;
   LTE_SystemInformationBlockType3_t     *sib3;
+  LTE_SystemInformationBlockType4_t     *sib4;
+  LTE_SystemInformationBlockType5_t     *sib5;
   LTE_SystemInformationBlockType1_t     *sib1_BR;
   LTE_SystemInformationBlockType2_t     *sib2_BR;
   LTE_SystemInformationBlockType1_MBMS_r14_t *sib1_MBMS;
@@ -743,6 +749,7 @@ typedef struct {
   LTE_MCCH_Message_t                mcch_counting;
   LTE_MBMSCountingRequest_r10_t    *mcch_message_counting;
   SRB_INFO                          MCCH_MESS_COUNTING[8];// MAX_MBSFN_AREA
+  bool                              sib5_Scheduled;
 
   //TTN - SIB 18,19,21 for D2D
   LTE_SystemInformationBlockType18_r12_t *sib18;

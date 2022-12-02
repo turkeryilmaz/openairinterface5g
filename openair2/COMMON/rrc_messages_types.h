@@ -46,6 +46,13 @@
 #include "LTE_LogicalChannelConfig.h"
 #include "LTE_SecurityAlgorithmConfig.h"
 #include "LTE_CipheringAlgorithm-r12.h"
+#include "LTE_SIB-Type.h"
+#include "LTE_Q-OffsetRange.h"
+#include "LTE_SchedulingInfo.h"
+#include "LTE_SpeedStateScaleFactors.h"
+#include "LTE_InterFreqNeighCellInfo.h"
+#include "LTE_PhysCellIdRange.h"
+#include "LTE_NeighCellConfig.h"
 
 #define MAX_RBS (LTE_maxDRB + 3)
 
@@ -296,6 +303,59 @@ typedef struct RadioResourceConfig_s {
   BOOLEAN_t     mbms_dedicated_serving_cell;
 } RadioResourceConfig;
 
+typedef struct lte_sib_MappingInfo_s {
+  e_LTE_SIB_Type  LTE_SIB_Type[5];
+}lte_sib_MappingInfo_t;
+
+typedef struct lte_SchedulingInfo_s {
+  e_LTE_SchedulingInfo__si_Periodicity     si_Periodicity;
+  lte_sib_MappingInfo_t    sib_MappingInfo;
+}lte_SchedulingInfo_t;
+
+typedef struct PhysCellIdRange_s {
+  long         start;
+  e_LTE_PhysCellIdRange__range range; 
+}PhysCellIdRange_t;
+
+typedef struct threshX_Q_r9_s {
+  long    threshX_HighQ_r9;
+  long     threshX_LowQ_r9;
+}threshX_Q_r9_t;
+
+typedef struct InterFreqCarrierFreqInfo_s {
+  long         dl_CarrierFreq[MAX_NUM_CCs];
+  long         q_RxLevMin[MAX_NUM_CCs];
+  bool         p_Max_Present[MAX_NUM_CCs];
+  long         p_Max[MAX_NUM_CCs]; /* OPTIONAL */
+  long         t_ReselectionEUTRA[MAX_NUM_CCs];
+  bool         t_ReselectionEUTRA_SF_Present[MAX_NUM_CCs];
+  LTE_SpeedStateScaleFactors_t         *t_ReselectionEUTRA_SF[MAX_NUM_CCs]; /* OPTIONAL */
+  long         threshX_High[MAX_NUM_CCs];
+  long         threshX_Low[MAX_NUM_CCs];
+  long         allowedMeasBandwidth[MAX_NUM_CCs];
+  bool         presenceAntennaPort1[MAX_NUM_CCs];
+  bool         cellReselectionPriority_Present[MAX_NUM_CCs];
+  long         *cellReselectionPriority[MAX_NUM_CCs];/* OPTIONAL */
+  LTE_NeighCellConfig_t neighCellConfig[MAX_NUM_CCs];
+  bool         q_OffsetFreqPresent[MAX_NUM_CCs];
+  e_LTE_Q_OffsetRange         *q_OffsetFreq[MAX_NUM_CCs];/* OPTIONAL */
+  bool                            interFreqNeighCellList_Present[MAX_NUM_CCs];
+  LTE_InterFreqNeighCellInfo_t    *interFreqNeighCellList[MAX_NUM_CCs];/* OPTIONAL */
+  bool                        interFreqBlackCellList_Present[MAX_NUM_CCs];
+  PhysCellIdRange_t           *interFreqBlackCellList[MAX_NUM_CCs];/* OPTIONAL */
+  bool          q_QualMin_r9_Present[MAX_NUM_CCs];
+  long          *q_QualMin_r9[MAX_NUM_CCs];/* OPTIONAL */
+  bool          threshX_Q_r9_Present[MAX_NUM_CCs];
+  threshX_Q_r9_t          threshX_Q_r9[MAX_NUM_CCs];/* OPTIONAL */
+  bool          q_QualMinWB_r11_Present[MAX_NUM_CCs];
+  long          *q_QualMinWB_r11[MAX_NUM_CCs];/* OPTIONAL */
+}InterFreqCarrierFreqInfo_t;
+
+typedef struct IntraFreqNeighCellInfo_s {
+  long                    physCellId;
+  e_LTE_Q_OffsetRange     q_OffsetCell;
+}IntraFreqNeighCellInfo_t;
+
 // eNB: ENB_APP -> RRC messages
 typedef struct RrcConfigurationReq_s {
   uint16_t                tac[MAX_NUM_CCs];
@@ -326,6 +386,8 @@ typedef struct RrcConfigurationReq_s {
   int                     eMTC_configured;
   int                     SL_configured;
   uint8_t                 systemInfoValueTag[MAX_NUM_CCs];
+  int                     schedulingInfo_count;
+  lte_SchedulingInfo_t    *schedulingInfo;
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];
@@ -414,6 +476,16 @@ typedef struct RrcConfigurationReq_s {
   long     cellReselectionPriority[MAX_NUM_CCs];
   long     sib3_q_RxLevMin[MAX_NUM_CCs];
   long     t_ReselectionEUTRA[MAX_NUM_CCs];
+
+  //SIB4
+  bool                       sib4_Present;
+  bool                       intraFreqNeighCellListPresent;
+  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList;
+
+  //SIB5
+  bool                         sib5_Present;
+  int                          InterFreqCarrierFreqInfoCount;
+  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo;
 
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];

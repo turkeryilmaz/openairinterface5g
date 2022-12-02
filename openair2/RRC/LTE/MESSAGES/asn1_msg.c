@@ -894,8 +894,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   LTE_MCC_MNC_Digit_t *dummy_mnc_1;
   LTE_MCC_MNC_Digit_t *dummy_mnc_2;
   asn_enc_rval_t enc_rval;
-  LTE_SchedulingInfo_t *schedulingInfo=NULL,*schedulingInfo2=NULL;
-  LTE_SIB_Type_t *sib_type=NULL,*sib_type2=NULL;
+  LTE_SchedulingInfo_t schedulingInfo[5],*schedulingInfo2;
+  LTE_SIB_Type_t sib_type[5],*sib_type2;
   uint8_t *buffer;
   LTE_BCCH_DL_SCH_Message_t *bcch_message;
   LTE_SystemInformationBlockType1_t **sib1;
@@ -915,15 +915,13 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   bcch_message->message.choice.c1.present = LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1;
   //  memcpy(&bcch_message.message.choice.c1.choice.systemInformationBlockType1,sib1,sizeof(SystemInformationBlockType1_t));
   *sib1 = &bcch_message->message.choice.c1.choice.systemInformationBlockType1;
-  sib_type=CALLOC(1,sizeof(LTE_SIB_Type_t));
-  schedulingInfo=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
   PLMN_identity_info = CALLOC(1, sizeof(LTE_PLMN_IdentityInfo_t) * num_plmn);
 
   if (PLMN_identity_info == NULL)
     exit(1);
 
   memset(PLMN_identity_info,0,num_plmn * sizeof(LTE_PLMN_IdentityInfo_t));
-  memset(schedulingInfo,0,sizeof(LTE_SchedulingInfo_t));
+  memset(schedulingInfo,0,5*sizeof(LTE_SchedulingInfo_t));
   memset(sib_type,0,sizeof(LTE_SIB_Type_t));
   if(configuration->eMBMS_M2_configured){
     sib_type2=CALLOC(1,sizeof(LTE_SIB_Type_t));
@@ -1037,22 +1035,35 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
   (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
-  schedulingInfo->si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
+  if (RC.ss.mode == SS_SOFTMODEM) {
+    for(int i=0; i < configuration->schedulingInfo_count; i++) {
+      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[i].si_Periodicity;
+      sib_type[i]=configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[i];
+      if(sib_type[i] == 2) {
+        RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
+      }
+      ASN_SEQUENCE_ADD(&schedulingInfo[i].sib_MappingInfo.list,&sib_type[i]);
+      ASN_SEQUENCE_ADD(&(*sib1)->schedulingInfoList.list,&schedulingInfo[i]);
+    }
+  } else {
+    // This is for SIB2/3
+    (*sib1)->schedulingInfoList.list.free=free_LTE_SchedulingInfo_t;
+    asn_sequence_empty(&(*sib1)->schedulingInfoList.list);
+    schedulingInfo[0].si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
+    sib_type[0]=LTE_SIB_Type_sibType3;
+    ASN_SEQUENCE_ADD(&schedulingInfo[0].sib_MappingInfo.list,&sib_type[0]);
+    ASN_SEQUENCE_ADD(&(*sib1)->schedulingInfoList.list,&schedulingInfo);
+  }
   if(configuration->eMBMS_M2_configured){
        schedulingInfo2->si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
   }
-  // This is for SIB2/3
-  (*sib1)->schedulingInfoList.list.free=free_LTE_SchedulingInfo_t;
-  asn_sequence_empty(&(*sib1)->schedulingInfoList.list);
-  *sib_type=LTE_SIB_Type_sibType3;
-  ASN_SEQUENCE_ADD(&schedulingInfo->sib_MappingInfo.list,sib_type);
-  ASN_SEQUENCE_ADD(&(*sib1)->schedulingInfoList.list,schedulingInfo);
   if(configuration->eMBMS_M2_configured){
          *sib_type2=LTE_SIB_Type_sibType13_v920;
          ASN_SEQUENCE_ADD(&schedulingInfo2->sib_MappingInfo.list,sib_type2);
          ASN_SEQUENCE_ADD(&(*sib1)->schedulingInfoList.list,schedulingInfo2);
   }
   //  ASN_SEQUENCE_ADD(&schedulingInfo.sib_MappingInfo.list,NULL);
+
 
   if (configuration->frame_type[CC_id] == TDD)
   {
@@ -2310,6 +2321,167 @@ uint8_t do_SIB23(uint8_t Mod_id,
 
   if (enc_rval.encoded==-1) {
     msg("[RRC] ASN1 : SI encoding failed for SIB23\n");
+    return(-1);
+  }
+
+  return((enc_rval.encoded+7)/8);
+}
+
+uint8_t do_SIB4(uint8_t Mod_id,
+                 int CC_id, BOOLEAN_t brOption,
+                 RrcConfigurationReq *configuration
+                ) {
+  struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member *sib4_part;
+  LTE_SystemInformationBlockType4_t       **sib4        = &RC.rrc[Mod_id]->carrier[CC_id].sib4;
+  LTE_BCCH_DL_SCH_Message_t         *bcch_message = &RC.rrc[Mod_id]->carrier[CC_id].systemInformation;
+  asn_enc_rval_t enc_rval;
+  uint8_t        *buffer;
+
+  buffer   = RC.rrc[Mod_id]->carrier[CC_id].SIB4;
+
+  LOG_I(RRC,"[eNB %d] Configuration SIB4, intraFreqNeighCellListPresent: %d \n", Mod_id, configuration->intraFreqNeighCellListPresent);
+  sib4_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
+  memset(sib4_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
+  sib4_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4;
+  *sib4 = &sib4_part->choice.sib4;
+
+  /* TODO: Need to optimize the below code same as do_SIB5 and verify the SIB4 */
+  if(true == configuration->intraFreqNeighCellListPresent) {
+    ASN_SEQUENCE_ADD(&(*sib4)->intraFreqNeighCellList->list,configuration->InterFreqCarrierFreqInfo);
+  }
+
+  bcch_message->message.present = LTE_BCCH_DL_SCH_MessageType_PR_c1;
+  bcch_message->message.choice.c1.present = LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformation;
+  bcch_message->message.choice.c1.choice.systemInformation.criticalExtensions.present = LTE_SystemInformation__criticalExtensions_PR_systemInformation_r8;
+  bcch_message->message.choice.c1.choice.systemInformation.criticalExtensions.choice.systemInformation_r8.sib_TypeAndInfo.list.count=0;
+  ASN_SEQUENCE_ADD(&bcch_message->message.choice.c1.choice.systemInformation.criticalExtensions.choice.systemInformation_r8.sib_TypeAndInfo.list,
+                   sib4_part);
+
+  xer_fprint(stdout, &asn_DEF_LTE_BCCH_DL_SCH_Message, (void *)bcch_message);
+
+  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_BCCH_DL_SCH_Message,
+                                   NULL,
+                                   (void *)bcch_message,
+                                   buffer,
+                                   900);
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+  LOG_D(RRC,"[eNB] SystemInformation4 Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
+
+  if (enc_rval.encoded==-1) {
+    msg("[RRC] ASN1 : SI encoding failed for SIB4\n");
+    return(-1);
+  }
+
+  return((enc_rval.encoded+7)/8);
+}
+
+uint8_t do_SIB5(uint8_t Mod_id,
+                 int CC_id, BOOLEAN_t brOption,
+                 RrcConfigurationReq *configuration
+                ) {
+  struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member *sib5_part;
+  LTE_SystemInformationBlockType5_t       **sib5        = &RC.rrc[Mod_id]->carrier[CC_id].sib5;
+  LTE_BCCH_DL_SCH_Message_t         *bcch_message = &RC.rrc[Mod_id]->carrier[CC_id].systemInformation;
+  asn_enc_rval_t enc_rval;
+  uint8_t                       *buffer;
+
+  buffer   = RC.rrc[Mod_id]->carrier[CC_id].SIB5;
+
+  if (!sib5) {
+    LOG_E(RRC,"[eNB %d] sib5 is null, exiting\n", Mod_id);
+    exit(-1);
+  }
+
+  if (bcch_message) {
+    memset(bcch_message,0,sizeof(LTE_BCCH_DL_SCH_Message_t));
+  } else {
+    LOG_E(RRC,"[eNB %d] BCCH_MESSAGE is null, exiting\n", Mod_id);
+    exit(-1);
+  }
+
+  LOG_I(RRC,"[eNB %d] Configuration SIB5 for CC_id: %d \n", Mod_id,CC_id);
+  sib5_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
+  memset(sib5_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
+  sib5_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib5;
+  *sib5 = &sib5_part->choice.sib5;
+  LTE_InterFreqCarrierFreqInfo_t *InterFreqCarrierInfo;
+  InterFreqCarrierInfo = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo));
+
+  for(int i=0;i<configuration->InterFreqCarrierFreqInfoCount;i++) {
+    InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[i].dl_CarrierFreq[CC_id];
+    InterFreqCarrierInfo->q_RxLevMin = configuration->InterFreqCarrierFreqInfo[i].q_RxLevMin[CC_id];
+    if(true == configuration->InterFreqCarrierFreqInfo[i].p_Max_Present[CC_id]) {
+      InterFreqCarrierInfo->p_Max = configuration->InterFreqCarrierFreqInfo[i].p_Max[CC_id];
+    }
+    InterFreqCarrierInfo->t_ReselectionEUTRA = configuration->InterFreqCarrierFreqInfo[i].t_ReselectionEUTRA[CC_id];
+    if(true == configuration->InterFreqCarrierFreqInfo[i].t_ReselectionEUTRA_SF_Present[CC_id]) {
+      InterFreqCarrierInfo->t_ReselectionEUTRA_SF = configuration->InterFreqCarrierFreqInfo[i].t_ReselectionEUTRA_SF[CC_id];
+    }
+    InterFreqCarrierInfo->threshX_High = configuration->InterFreqCarrierFreqInfo[i].threshX_High[CC_id];
+    InterFreqCarrierInfo->threshX_Low = configuration->InterFreqCarrierFreqInfo[i].threshX_Low[CC_id];
+    InterFreqCarrierInfo->allowedMeasBandwidth = configuration->InterFreqCarrierFreqInfo[i].allowedMeasBandwidth[CC_id];
+    InterFreqCarrierInfo->presenceAntennaPort1 = configuration->InterFreqCarrierFreqInfo[i].presenceAntennaPort1[CC_id];
+    if(true == configuration->InterFreqCarrierFreqInfo[i].cellReselectionPriority_Present[CC_id]) {
+      InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[i].cellReselectionPriority[CC_id];
+    }
+    InterFreqCarrierInfo->neighCellConfig.size =  0;//1;
+    //InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,1);
+    InterFreqCarrierInfo->neighCellConfig.bits_unused = 0;
+    InterFreqCarrierInfo->neighCellConfig.buf = NULL;//[0] = 0x01<<4;
+    if(true == configuration->InterFreqCarrierFreqInfo[i].q_OffsetFreqPresent[CC_id]) {
+      InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[i].q_OffsetFreq[CC_id];
+    }
+    if(true == configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList_Present[CC_id]) {
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList,configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList[CC_id]);
+    }
+    if(true == configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList_Present[CC_id]) {
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList,configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList[CC_id]);
+    }
+    if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9_Present[CC_id]) {
+      InterFreqCarrierInfo->ext1->q_QualMin_r9 = configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9[CC_id];
+    }
+    if(true == configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9_Present[CC_id]) {
+      InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_HighQ_r9;
+      InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_LowQ_r9;
+    }
+    if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMinWB_r11_Present[CC_id]) {
+      InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[i].q_QualMinWB_r11[CC_id];
+    }
+    ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList.list,InterFreqCarrierInfo);
+  }
+
+  (*sib5)->lateNonCriticalExtension = NULL;
+  (*sib5)->ext1 = NULL;
+  (*sib5)->ext2 = NULL;
+  (*sib5)->ext3 = NULL;
+  (*sib5)->ext4 = NULL;
+  (*sib5)->ext5 = NULL;
+  (*sib5)->ext6 = NULL;
+  (*sib5)->ext7 = NULL;
+
+  bcch_message->message.present = LTE_BCCH_DL_SCH_MessageType_PR_c1;
+  bcch_message->message.choice.c1.present = LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformation;
+  bcch_message->message.choice.c1.choice.systemInformation.criticalExtensions.present = LTE_SystemInformation__criticalExtensions_PR_systemInformation_r8;
+  bcch_message->message.choice.c1.choice.systemInformation.criticalExtensions.choice.systemInformation_r8.sib_TypeAndInfo.list.count=0;
+  ASN_SEQUENCE_ADD(&bcch_message->message.choice.c1.choice.systemInformation.criticalExtensions.choice.systemInformation_r8.sib_TypeAndInfo.list,
+                   sib5_part);
+
+  xer_fprint(stdout, &asn_DEF_LTE_BCCH_DL_SCH_Message, (void *)bcch_message);
+
+  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_BCCH_DL_SCH_Message,
+                                   NULL,
+                                   (void *)bcch_message,
+                                   buffer,
+                                   900);
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+  LOG_D(RRC,"[eNB] SystemInformation5 Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
+
+  if (enc_rval.encoded==-1) {
+    msg("[RRC] ASN1 : SI encoding failed for SIB5\n");
     return(-1);
   }
 
