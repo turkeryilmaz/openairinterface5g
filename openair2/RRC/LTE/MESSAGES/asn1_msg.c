@@ -2434,19 +2434,33 @@ uint8_t do_SIB5(uint8_t Mod_id,
       InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[i].q_OffsetFreq[CC_id];
     }
     if(true == configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList_Present[CC_id]) {
-      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList,configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList[CC_id]);
+      InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
+      InterFreqCarrierInfo->interFreqNeighCellList = configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList[CC_id];
     }
     if(true == configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList_Present[CC_id]) {
-      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList,configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList[CC_id]);
+      InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
+      InterFreqCarrierInfo->interFreqBlackCellList = configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList[CC_id];
+    }
+    if ((true == configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9_Present[CC_id]) || 
+    (true == configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9_Present[CC_id])) {
+      InterFreqCarrierInfo->ext1 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1));
+      printf("add ext1 for CC_ID %d\n ",CC_id);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9_Present[CC_id]) {
+      InterFreqCarrierInfo->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
       InterFreqCarrierInfo->ext1->q_QualMin_r9 = configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9[CC_id];
     }
     if(true == configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9_Present[CC_id]) {
+      InterFreqCarrierInfo->ext1->threshX_Q_r9 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1__threshX_Q_r9));
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_HighQ_r9;
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_LowQ_r9;
+      printf("add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
+              InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9,
+              InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMinWB_r11_Present[CC_id]) {
+       InterFreqCarrierInfo->ext2 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext2));
+       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[i].q_QualMinWB_r11[CC_id];
     }
     ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList.list,InterFreqCarrierInfo);
