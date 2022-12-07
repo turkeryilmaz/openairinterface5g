@@ -44,8 +44,8 @@ int nr_sl_generate_sss(int32_t *txdataF,
 
   /// Sequence generation
   int Nid = frame_parms->Nid_SL;
-  int Nid1 = Nid / NUMBER_SSS_SEQUENCE;
-  int Nid2 = Nid % NUMBER_SSS_SEQUENCE;
+  int Nid1 = Nid % NUMBER_SSS_SEQUENCE;
+  int Nid2 = Nid / NUMBER_SSS_SEQUENCE;
 
   for (int i=0; i < 7; i++) {
     x0[i] = x0_initial[i];
@@ -104,7 +104,8 @@ int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
                           int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
                           int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                           int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                          uint8_t doPss, uint8_t doSss,
+                          uint8_t doPss,
+                          uint8_t doSss,
                           uint8_t subframe) // add flag to indicate extracting only PSS, only SSS, or both
 {
   uint8_t aarx;
@@ -239,7 +240,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
   uint8_t aarx,i;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
-  pss = primary_synchro_nr2[ue->common_vars.eNb_id]; // Check SL id?
+  pss = primary_synchro_nr2[ue->common_vars.N2_id]; // Check SL id?
 
   sss0_ext3 = (int16_t*)&sss0_ext[0][0];
 
@@ -392,7 +393,8 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
                          d[i]*(((phase_re_nr[phase]*sss1[2*i])>>SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase]*sss1[2*i+1])>>SCALING_METRIC_SSS_NR));
 
 #if 0
-	  printf("i %d, phase %d/%d: metric %d, phase (%d,%d) sss (%d,%d) d %d\n",i,phase,PHASE_HYPOTHESIS_NUMBER,metric_re,phase_re_nr[phase],phase_im_nr[phase],sss0[2*i],sss0[1+(2*i)],d[i]);
+	  printf("i %d, phase %d/%d: metric %d, phase (%d,%d) sss0 (%d,%d) d %d",i,phase,PHASE_HYPOTHESIS_NUMBER,metric_re,phase_re_nr[phase],phase_im_nr[phase],sss0[2*i],sss0[1+(2*i)],d[i]);
+    printf("sss1 (%d,%d)\n",sss1[2*i],sss1[1+(2*i)]);
 #endif
       }
       metric = metric_re;
