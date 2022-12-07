@@ -297,7 +297,7 @@ int DU_send_UE_CONTEXT_SETUP_RESPONSE(instance_t instance, f1ap_ue_context_setup
     ie4->id                             = F1AP_ProtocolIE_ID_id_C_RNTI;
     ie4->criticality                    = F1AP_Criticality_ignore;
     ie4->value.present                  = F1AP_UEContextSetupResponseIEs__value_PR_C_RNTI;
-    ie4->value.choice.C_RNTI = *resp->crnti;
+    ie4->value.choice.C_RNTI            = *resp->crnti;
   }
 
   /* optional */
