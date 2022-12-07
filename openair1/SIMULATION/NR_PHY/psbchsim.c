@@ -187,18 +187,18 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.dl_frequency               = 450000;
   nrUE_config->carrier_config.uplink_frequency           = 450000;
   ue->mac_enabled                                        = 1;
-  fp->dl_CarrierFreq                                     = 3600000000;
-  fp->ul_CarrierFreq                                     = 3600000000;
+  fp->dl_CarrierFreq                                     = 2600000000;
+  fp->ul_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
   fp->N_RB_DL = N_RB_DL;
   fp->Nid_cell = Nid_cell;
   fp->Nid_SL = Nid_SL;
-  fp->nushift = Nid_cell % 4;
-  fp->ssb_type = nr_ssb_type_C;
+  fp->nushift = 0; //No nushift in SL
+  fp->ssb_type = nr_ssb_type_C; //Note: case c for NR SL???
   fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
-  fp->nr_band = mu < 2 ? 78 : 257;
+  fp->nr_band = 38; //Note: NR SL uses for n38 and n47
   fp->threequarter_fs = 0;
   fp->ofdm_offset_divisor = UINT_MAX;
   fp->first_carrier_offset = 0;
@@ -297,7 +297,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 'p':
-        printf("Setting PSS and SSS tests");
+        printf("Setting PSS and SSS tests\n");
         pss_sss_test = atoi(optarg);
         break;
 
