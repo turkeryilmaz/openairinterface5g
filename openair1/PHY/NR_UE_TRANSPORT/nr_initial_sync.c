@@ -223,17 +223,20 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_in
 
     start_meas(&ue->dlsch_channel_estimation_stats);
     // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-    for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
+    for(int i = pbch_initial_symbol; i < pbch_initial_symbol + 13; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
       nr_psbch_dmrs_correlation(ue,proc,0,0,i,i-pbch_initial_symbol,current_ssb);
-      stop_meas(&ue->dlsch_channel_estimation_stats);
-      
-      current_ssb->metric = current_ssb->c_re*current_ssb->c_re + current_ssb->c_im*current_ssb->c_im;
-      
-      // generate a list of SSB structures
-      if (best_ssb == NULL)
-        best_ssb = current_ssb;
-      else
-        best_ssb = insert_into_list(best_ssb,current_ssb);
+    }
+    stop_meas(&ue->dlsch_channel_estimation_stats);
+
+    current_ssb->metric = current_ssb->c_re*current_ssb->c_re + current_ssb->c_im*current_ssb->c_im;
+
+    // generate a list of SSB structures
+    if (best_ssb == NULL)
+      best_ssb = current_ssb;
+    else
+      best_ssb = insert_into_list(best_ssb,current_ssb);
 
   }
 
@@ -246,10 +249,12 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_in
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
+    for(int i = pbch_initial_symbol; i < pbch_initial_symbol + 13; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
       nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time, 
                                  proc,0,0,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf);
-
+    }
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPsbch_t result;
     ret = nr_rx_psbch(ue,
@@ -312,7 +317,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   int ret=-1;
   int rx_power=0; //aarx,
 
-  NR_UE_PDCCH_CONFIG phy_pdcch_config={0};
+  NR_UE_PDCCH_CONFIG phy_pdcch_config={0}; //TODO: Needs to be updated to PSBCH
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
 
@@ -431,7 +436,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 
       if (ret==0) { //we got sss channel
         nr_gold_pbch(ue);
-        ret = nr_pbch_detection(proc, ue, 1, &phy_pdcch_config);  // start pbch detection at first symbol after pss
+        ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);  // start pbch detection at first symbol after pss
       }
 
       if (ret == 0) {
