@@ -90,6 +90,18 @@ unsigned short config_frames[4] = {2,9,11,13};
 #  include "sys/gmon.h"
 #endif
 
+
+
+#ifdef OAI_E2_AGENT
+
+#include "openair2/E2AP/sm/agent_if/read/sm_ag_if_rd.h"
+#include "openair2/E2AP/sm/agent_if/write/sm_ag_if_wr.h"
+#include "openair2/E2AP/sm/sm_io.h"
+#include "openair2/E2AP/agent/e2_agent_api.h"
+#include <time.h>
+
+#endif // OAI_E2_AGENT
+
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
 int nfapi_sync_var=-1; //!< protected by mutex \ref nfapi_sync_mutex
@@ -440,6 +452,28 @@ static  void wait_nfapi_init(char *thread_name) {
   printf( "NFAPI: got sync (%s)\n", thread_name);
 }
 
+
+
+#ifdef OAI_E2_AGENT
+
+static
+void read_RAN(sm_ag_if_rd_t* data)
+{
+  assert(data != NULL);
+  assert(false && "not implemented");
+}
+
+static
+sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
+{
+  assert(data != NULL);
+  assert(false && "not implemented");
+  sm_ag_if_ans_t ans = {};
+  return ans;
+}
+
+#endif // OAI_E2_AGENT
+
 int main ( int argc, char **argv )
 {
   int CC_id = 0;
@@ -492,6 +526,47 @@ int main ( int argc, char **argv )
   }
 
   if (RC.nb_inst > 0) {
+
+#ifdef OAI_E2_AGENT
+
+//////////////////////////////////
+//////////////////////////////////
+//// Init the E2 Agent
+
+    sleep(2);
+    const eNB_RRC_INST* rrc = RC.rrc[0];
+    assert(rrc != NULL && "rrc cannot be NULL");
+
+    const int mcc = rrc->configuration.mcc[0]; // 208;
+    const int mnc = rrc->configuration.mnc[0]; // 94;
+    const int mnc_digit_len = rrc->configuration.mnc_digit_length[0]; // 2;
+    const int nb_id = rrc->configuration.cell_identity; //42;
+    // TODO: node_type = 0 // ngran_eNB
+    const int cu_du_id = 0;
+    sm_io_ag_t io = {.read = read_RAN, .write = write_RAN};
+    printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nd_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+
+    int const agent_argc = 1;
+    char** agent_argv = NULL;
+    fr_args_t ric_args = init_fr_args(agent_argc, agent_argv);
+    // TODO: integrate with oai config
+    char* conf_dir = getenv("FLEXRIC_CONF");
+    char* lib_dir = getenv("FLEXRIC_LIB_DIR");
+
+    if (conf_dir != NULL)
+      strcpy(ric_args.conf_file, conf_dir);
+    else
+      strcpy(ric_args.conf_file, "/usr/local/etc/flexric/flexric.conf");
+    if (lib_dir != NULL)
+      strcpy(ric_args.libs_dir, lib_dir);
+    else
+      strcpy(ric_args.libs_dir, "/usr/local/lib/flexric/");
+
+    init_agent_api( mcc, mnc, mnc_digit_len, nb_id, cu_du_id, 0, io, &ric_args);
+//////////////////////////////////
+//////////////////////////////////
+#endif //  OAI_E2_AGENT
+
     /* initializes PDCP and sets correct RLC Request/PDCP Indication callbacks */
    init_pdcp();
     
