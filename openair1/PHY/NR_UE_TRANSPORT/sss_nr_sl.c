@@ -204,21 +204,20 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
   int16_t *pss;
   int16_t *pss0_ext2,*sss0_ext2,*sss0_ext3,tmp_re,tmp_im,tmp_re2,tmp_im2;
   int16_t *pss1_ext2,*sss1_ext2,*sss1_ext3;
-  uint8_t aarx,i;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
   pss = primary_synchro_nr2[ue->common_vars.N2_id]; // Check SL id?
 
   sss0_ext3 = (int16_t*)&sss0_ext[0][0];
 
-  for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
     sss0_ext2 = (int16_t*)&sss0_ext[aarx][0];
     pss0_ext2 = (int16_t*)&pss0_ext[aarx][0];
 
     int32_t amp;
     int shift;
-    for (i = 0; i < LENGTH_PSS_NR; i++) {
+    for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
 
       // This is H*(PSS) = R* \cdot PSS
       tmp_re = pss0_ext2[i*2] * pss[i];
@@ -243,14 +242,14 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
 
   sss1_ext3 = (int16_t*)&sss1_ext[0][0];
 
-  for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
     sss1_ext2 = (int16_t*)&sss1_ext[aarx][0];
     pss1_ext2 = (int16_t*)&pss1_ext[aarx][0];
 
     int32_t amp;
     int shift;
-    for (i = 0; i < LENGTH_PSS_NR; i++) {
+    for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
 
       // This is H*(PSS) = R* \cdot PSS
       tmp_re = pss1_ext2[i*2] * pss[i];
