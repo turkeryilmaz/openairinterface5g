@@ -431,7 +431,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 
       if (ret==0) { //we got sss channel
         nr_gold_pbch(ue);
-        ret = nr_pbch_detection(proc, ue, 1, &phy_pdcch_config);  // start pbch detection at first symbol after pss
+        ret = nr_psbch_detection(proc, ue, 1, &phy_pdcch_config);  // start psbch detection at first symbol after pss
       }
 
       if (ret == 0) {
