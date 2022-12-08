@@ -176,6 +176,7 @@ typedef struct pdcp_s {
   uint8_t *kRRCenc;
 
   uint8_t security_activated;
+  uint8_t security_confirmed;
 
   rlc_mode_t rlc_mode;
   uint8_t status_report;

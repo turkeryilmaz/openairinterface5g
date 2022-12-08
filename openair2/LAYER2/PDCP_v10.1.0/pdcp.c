@@ -57,6 +57,7 @@
 #include "intertask_interface.h"
 #include "openair3/S1AP/s1ap_eNB.h"
 #include <pthread.h>
+#include "LTE_DL-DCCH-Message.h"
 
 #  include "gtpv1u_eNB_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -439,7 +440,22 @@ boolean_t pdcp_data_req(
       if ((pdcp_p->security_activated != 0) &&
           (((pdcp_p->cipheringAlgorithm) != 0) ||
            ((pdcp_p->integrityProtAlgorithm) != 0))) {
+          uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          if(srb_flagP && rb_idP==1){
+            LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+            uper_decode(NULL,   &asn_DEF_LTE_DL_DCCH_Message,
+                      (void **)&dl_dcch_msg,
+                      (const void *)sdu_buffer_pP,
+                      sdu_buffer_sizeP, 0, 0);
+            if(dl_dcch_msg){
+              if(dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_securityModeCommand){
+                pdcp_p->cipheringAlgorithm = 0;
+                pdcp_p->security_confirmed= 0;
+              }
+              ASN_STRUCT_FREE(asn_DEF_LTE_DL_DCCH_Message,dl_dcch_msg);
+            }
+          }
           start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
         } else {
           start_meas(&UE_pdcp_stats[ctxt_pP->module_id].apply_security);
@@ -454,7 +470,8 @@ boolean_t pdcp_data_req(
                             pdcp_pdu_p->data,
                             sdu_buffer_sizeP);
 
-        if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+        if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          pdcp_p->cipheringAlgorithm = ciphyeringAlgorithm;
           stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
         } else {
           stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].apply_security);
@@ -805,7 +822,13 @@ pdcp_data_ind(
       }
 
       if (pdcp_p->security_activated == 1) {
-        if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+        uint8_t cipheringAlgorithm = pdcp_p->cipheringAlgorithm;
+        if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          if(rb_idP == 1 && !pdcp_p->security_confirmed){
+            //When security_activated, the first UL control message on srb1 should be SecurityModeComplete which is not ciphered
+            pdcp_p->cipheringAlgorithm = 0;
+            pdcp_p->security_confirmed=1;
+          }
           start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
         } else {
           start_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -821,7 +844,8 @@ pdcp_data_ind(
                                              sdu_buffer_pP->data,
                                              sdu_buffer_sizeP - pdcp_tailer_len) == 0;
 
-        if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+        if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          pdcp_p->cipheringAlgorithm = cipheringAlgorithm;
           stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
         } else {
           stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -916,7 +940,7 @@ pdcp_data_ind(
         }
 
         if (pdcp_p->security_activated == 1) {
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             start_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -932,7 +956,7 @@ pdcp_data_ind(
                                                sdu_buffer_pP->data,
                                                sdu_buffer_sizeP - pdcp_tailer_len) == 0;
 
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -983,7 +1007,7 @@ pdcp_data_ind(
         }
 
         if (pdcp_p->security_activated == 1) {
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             start_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -999,7 +1023,7 @@ pdcp_data_ind(
                                                sdu_buffer_pP->data,
                                                sdu_buffer_sizeP - pdcp_tailer_len) == 0;
 
-          if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
+          if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
             stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].validate_security);
           } else {
             stop_meas(&UE_pdcp_stats[ctxt_pP->module_id].validate_security);
@@ -2475,6 +2499,7 @@ void rrc_pdcp_config_req (
         pdcp_p->seq_num_size = 0;
         pdcp_p->first_missing_pdu = -1;
         pdcp_p->security_activated = 0;
+        pdcp_p->security_confirmed = 0;
         h_rc = hashtable_remove(pdcp_coll_p, key);
         break;
 

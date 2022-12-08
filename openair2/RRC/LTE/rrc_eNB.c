@@ -126,9 +126,6 @@ pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 
-uint8_t security_mode_command_send = TRUE;
-uint8_t as_security_conf_ciphering;
-LTE_CipheringAlgorithm_r12_t  ciphering_algorithm;
 uint8_t ul_sqn,dl_sqn;
 
 void
@@ -7716,7 +7713,6 @@ void rrc_eNB_as_security_configuration_req(
   }
   LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
-  ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
 
 #ifndef NR_ENABLE
   for (int i = 0; i < MAX_RBS; i++)
@@ -7744,15 +7740,10 @@ void rrc_eNB_as_security_configuration_req(
           pdcp_p,
           DCCH,
           DCCH+2,
-          (security_mode_command_send == TRUE)  ?
-          0 | (ASSecConfReq->Integrity.integrity_algorithm << 4) :
-          (ASSecConfReq->Ciphering.ciphering_algorithm ) |
-          (ASSecConfReq->Integrity.integrity_algorithm << 4),
+          (ASSecConfReq->Ciphering.ciphering_algorithm ) |(ASSecConfReq->Integrity.integrity_algorithm << 4),
           ASSecConfReq->Ciphering.kRRCenc,
           ASSecConfReq->Integrity.kRRCint,
           ASSecConfReq->Ciphering.kUPenc);
-        security_mode_command_send = FALSE;
-        as_security_conf_ciphering = ASSecConfReq->Ciphering.ciphering_algorithm;
         rb_idx++;
       } else {
         LOG_A(RRC,"AS Security configuration received from TTCN didn't applied \n");
@@ -10466,30 +10457,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
-          if ((dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry || dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_dlInformationTransfer)  && as_security_conf_ciphering)
-          {
-            for (int i = 0; i < MAX_RBS; i++)
-            {
-              if (i < 3)
-              {
-                rbid_ = i;
-                key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 1);
-              }
-              else
-              {
-                rbid_ = i - 3;
-                key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 0);
-              }
-              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-              if (h_rc == HASH_TABLE_OK)
-              {
-                pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
-                pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
-              }
-            }
-          }
-
-          else if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
+          if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
           {
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
@@ -10498,24 +10466,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
               LOG_A(RRC, "[eNB %ld] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
-              for (int i = 0; i < MAX_RBS; i++)
-              {
-                if (i < 3)
-                {
-                  rbid_ = i;
-                  key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 1);
-                }
-                else
-                {
-                  rbid_ = i - 3;
-                  key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 0);
-                }
-                h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-                if (h_rc == HASH_TABLE_OK)
-                {
-                  pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
-                }
-              }
               rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
             }
           }
@@ -10555,8 +10505,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
               }
-              security_mode_command_send = TRUE;
-              as_security_conf_ciphering = FALSE;
               ciphering_algorithm = 0;
               if (RC.ss.CBRA_flag)
               {
