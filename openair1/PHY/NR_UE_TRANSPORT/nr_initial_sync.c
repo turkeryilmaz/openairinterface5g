@@ -331,13 +331,9 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   *          sync_pos            SL S-SSB/PSBCH block
   */
 
-  cnt++;
-  if (1){ // (cnt>100)
-   cnt =0;
-
-   // initial sync performed on two successive frames, if psbch passes on first frame, no need to process second frame 
-   // only one frame is used for symulation tools
-   for(is=0; is<n_frames;is++) {
+  // initial sync performed on two successive frames, if psbch passes on first frame, no need to process second frame 
+  // only one frame is used for symulation tools
+  for(is=0; is<n_frames;is++) {
 
     /* process pss search on received buffer */
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
@@ -378,16 +374,6 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 
     /* check that SSS/PBCH block is continuous inside the received buffer */
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME*fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
-
-    /* slop_fep function works for lte and takes into account begining of frame with prefix for subframe 0 */
-    /* for NR this is not the case but slot_fep is still used for computing FFT of samples */
-    /* in order to achieve correct processing for NR prefix samples is forced to 0 and then restored after function call */
-    /* symbol number are from beginning of SS/PBCH blocks as below:  */
-    /*    Signal            PSS  PBCH  SSS  PBCH                     */
-    /*    symbol number      0     1    2    3                       */
-    /* time samples in buffer rxdata are used as input of FFT -> FFT results are stored in the frequency buffer rxdataF */
-    /* rxdataF stores SS/PBCH from beginning of buffers in the same symbol order as in time domain */
-
       for(int i=0; i<13;i++)
         nr_slot_fep_init_sync(ue,
                               proc,
@@ -480,14 +466,10 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       }
       else {
 #ifdef DEBUG_INITIAL_SYNCH
-       LOG_I(PHY,"TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
+        LOG_I(PHY,"TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
 #endif
       }
       if (ret == 0) break;
-    }
-  }
-  else {
-    ret = -1;
   }
 
   if (ret==0) {  // PSBCH found so indicate sync to higher layers and configure frame parameters
