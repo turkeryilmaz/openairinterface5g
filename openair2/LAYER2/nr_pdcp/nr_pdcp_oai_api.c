@@ -252,6 +252,11 @@ static void do_pdcp_data_ind(
     exit(1);
   }
 
+  /** TRACE PDCP PDU */
+  nr_pdcp_pkt_info_t pdcp_pkt;
+  pdcp_pkt.direction = 0; //PDCP_NR_DIRECTION_UPLINK
+  pdcp_pkt.ueid      = rnti;
+
   if (ctxt_pP->enb_flag)
     T(T_ENB_PDCP_UL, T_INT(ctxt_pP->module_id), T_INT(rnti),
       T_INT(rb_id), T_INT(sdu_buffer_size));
@@ -262,17 +267,32 @@ static void do_pdcp_data_ind(
   if (srb_flagP == 1) {
     if (rb_id < 1 || rb_id > 2)
       rb = NULL;
-    else
+    else {
       rb = ue->srb[rb_id - 1];
+      (rb_id == 1)?(pdcp_pkt.bearerType = 4):(pdcp_pkt.bearerType = 1);
+      (rb_id == 1)?(pdcp_pkt.bearerId = 0):(pdcp_pkt.bearerId = 1);
+      pdcp_pkt.plane     = 1;
+    }
   } else {
     if (rb_id < 1 || rb_id > 5)
       rb = NULL;
-    else
+    else {
       rb = ue->drb[rb_id - 1];
+      pdcp_pkt.bearerType = 8;
+      pdcp_pkt.bearerId   = rb_id -1;
+      pdcp_pkt.plane      = 2;
+    }
   }
 
   if (rb != NULL) {
+    pdcp_pkt.seqnum_length = rb->sn_size;
+    pdcp_pkt.maci_present = (rb->has_integrity)?1:0;
+    pdcp_pkt.ciphering_disabled = (rb->has_ciphering)?1:0;
+    pdcp_pkt.sdap_header = (rb->has_sdapULheader)?1:0;
+    pdcp_pkt.is_retx = 0;
+    pdcp_pkt.pdu_length = sdu_buffer_size;
     rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size);
+    LOG_PDCP_P(OAILOG_INFO, "UL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer->data, sdu_buffer_size);
   } else {
     LOG_E(PDCP, "%s:%d:%s: fatal: no RB found (rb_id %ld, srb_flag %d)\n",
           __FILE__, __LINE__, __FUNCTION__, rb_id, srb_flagP);
@@ -1322,6 +1342,26 @@ static boolean_t pdcp_data_req_srb(
     exit(1);
   }
 
+  /** TRACE PDCP PDU */
+  if (NULL != ue && NULL != rb) {
+	nr_pdcp_pkt_info_t pdcp_pkt;
+	pdcp_pkt.direction 	= 1; //PDCP_NR_DIRECTION_DOWNLINK
+	pdcp_pkt.ueid      	= ue->rnti;
+	pdcp_pkt.bearerType 	= 8; //TODO
+	pdcp_pkt.bearerId 	= rb_id - 1;
+	pdcp_pkt.plane     	= (rb_id == 1)?4:1;
+
+	pdcp_pkt.seqnum_length 	= rb->sn_size;
+	pdcp_pkt.maci_present 	= (rb->has_integrity)?1:0;
+	pdcp_pkt.ciphering_disabled 	= (rb->has_ciphering)?1:0;
+	pdcp_pkt.sdap_header 		= (rb->has_sdapULheader)?1:0;
+	pdcp_pkt.is_retx 		= 0;
+	pdcp_pkt.pdu_length 		= sdu_buffer_size;
+
+	LOG_PDCP_P(OAILOG_INFO, "DL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer, sdu_buffer_size);
+  }
+
+
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
 
   ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, rnti);
@@ -1385,6 +1425,23 @@ static boolean_t pdcp_data_req_drb(
     return 0;
   }
 
+  /** TRACE PDCP PDU */
+  nr_pdcp_pkt_info_t pdcp_pkt;
+  pdcp_pkt.direction  = 1; //PDCP_NR_DIRECTION_DOWNLINK
+  pdcp_pkt.ueid       = ue->rnti;
+  pdcp_pkt.bearerType = 8; //TODO
+  pdcp_pkt.bearerId   = rb_id - 1;
+  pdcp_pkt.plane      = 2;
+
+  pdcp_pkt.seqnum_length      = rb->sn_size;
+  pdcp_pkt.maci_present       = (rb->has_integrity)?1:0;
+  pdcp_pkt.ciphering_disabled = (rb->has_ciphering)?1:0;
+  pdcp_pkt.sdap_header        = (rb->has_sdapULheader)?1:0;
+  pdcp_pkt.is_retx            = 0;
+  pdcp_pkt.pdu_length         = sdu_buffer_size;
+
+  LOG_PDCP_P(OAILOG_INFO, "DL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer, sdu_buffer_size);
+
   rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
@@ -1434,6 +1491,7 @@ boolean_t pdcp_data_req(
   ,const uint32_t *const destinationL2Id
   )
 {
+  // Trace NR PDCP PDU here.
   if (srb_flagP) {
    return pdcp_data_req_srb(ctxt_pP, rb_id, muiP, confirmP, sdu_buffer_size, sdu_buffer);
   }

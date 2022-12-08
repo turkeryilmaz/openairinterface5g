@@ -900,6 +900,15 @@ generate_Msg4(module_id_t module_idP,
                  ra->msg4_rrc_sdu_length,
                  UE_id, 3, UE_RNTI (module_idP, UE_id),
                  mac->frame, mac->subframe, 0, 0);
+
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIRECTION_DOWNLINK;
+      mac_pkt.rnti_type = 3;
+      mac_pkt.rnti      = UE_RNTI (module_idP, UE_id);
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+
+      LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", mac->frame, mac->subframe, mac_pkt, (uint8_t *)mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char) UE_id].payload[0], (int)ra->msg4_rrc_sdu_length);
     }                           // Msg4 frame/subframe
   }                             // rach_resource_type > 0
   else {
@@ -1096,6 +1105,14 @@ generate_Msg4(module_id_t module_idP,
                     UE_RNTI(module_idP, UE_id), mac->frame,
                     mac->subframe, 0, 0);
 
+	  mac_pkt_info_t mac_pkt;
+	  mac_pkt.direction = DIRECTION_DOWNLINK;
+	  mac_pkt.rnti_type = WS_C_RNTI;
+	  mac_pkt.rnti      = UE_RNTI (module_idP, UE_id);
+	  mac_pkt.harq_pid  = 0;
+	  mac_pkt.preamble  = -1; /* TODO */
+
+          LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", mac->frame, mac->subframe, mac_pkt, (uint8_t *)mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char) UE_id].payload[0], (int)rrc_sdu_length);
           if(RC.mac[module_idP]->scheduler_mode == SCHED_MODE_FAIR_RR) {
             set_dl_ue_select_msg4(CC_idP, 4, UE_id, ra->rnti);
           }
@@ -1709,7 +1726,14 @@ generate_macCeRrcConnectionSetup(module_id_t module_idP,
                    rrc_sdu_length, UE_id,  WS_C_RNTI,
                    UE_RNTI(module_idP, UE_id), mac->frame,
                    mac->subframe, 0, 0);
+	 mac_pkt_info_t mac_pkt;
+	 mac_pkt.direction = DIRECTION_DOWNLINK;
+	 mac_pkt.rnti_type = WS_C_RNTI;
+	 mac_pkt.rnti      = UE_RNTI (module_idP, UE_id);
+	 mac_pkt.harq_pid  = 0;
+	 mac_pkt.preamble  = -1; /* TODO */
 
+         LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", mac->frame, mac->subframe, mac_pkt, (uint8_t *)mac->UE_info.DLSCH_pdu[CC_idP][0][(unsigned char) UE_id].payload[0], (int)rrc_sdu_length);
        }
      }
      else

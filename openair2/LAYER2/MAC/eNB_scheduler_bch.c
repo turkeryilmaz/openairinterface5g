@@ -280,6 +280,14 @@ schedule_SIB1_MBMS(module_id_t module_idP,
               &cc->BCCH_BR_pdu[0].payload[0],
               bcch_sdu_length,
               0xffff, WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIRECTION_DOWNLINK;
+    mac_pkt.rnti_type = WS_SI_RNTI;
+    mac_pkt.rnti      = 0xffff;
+    mac_pkt.harq_pid  = 0;
+    mac_pkt.preamble  = -1; /* TODO */
+
+    LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[0].payload[0], (int)bcch_sdu_length);
 
     if (cc->tdd_Config != NULL) { //TDD
       LOG_D(MAC,
@@ -505,6 +513,14 @@ schedule_SIB1_BR(module_id_t module_idP,
               bcch_sdu_length,
               0xffff, WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
 
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIRECTION_DOWNLINK;
+    mac_pkt.rnti_type = WS_SI_RNTI;
+    mac_pkt.rnti      = 0xffff;
+    mac_pkt.harq_pid  = 0;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[0].payload[0], (int)bcch_sdu_length);
+
     if (cc->tdd_Config != NULL) { //TDD
       LOG_D(MAC,
             "[eNB] Frame %d : Scheduling BCCH-BR 0->DLSCH (TDD) for CC_id %d SIB1-BR %d bytes\n",
@@ -688,6 +704,14 @@ schedule_SI_BR(module_id_t module_idP, frame_t frameP,
                       WS_SI_RNTI,
                       0xffff, eNB->frame, eNB->subframe, 0,
                       0);
+
+            mac_pkt_info_t mac_pkt;
+            mac_pkt.direction = DIRECTION_DOWNLINK;
+            mac_pkt.rnti_type = WS_SI_RNTI;
+            mac_pkt.rnti      = 0xffff;
+            mac_pkt.harq_pid  = 0;
+            mac_pkt.preamble  = -1; /* TODO */
+            LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[i+1].payload[0], (int)bcch_sdu_length);
 
             if (cc->tdd_Config != NULL) { //TDD
               LOG_D(MAC, "[eNB] Frame %d : Scheduling BCCH-BR %d->DLSCH (TDD) for CC_id %d SI-BR %d bytes\n",
@@ -1214,6 +1238,14 @@ schedule_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP)
                   bcch_sdu_length,
                   0xffff,
                   WS_SI_RNTI, 0xffff, eNB->frame, eNB->subframe, 0, 0);
+
+        mac_pkt_info_t mac_pkt;
+        mac_pkt.direction = DIRECTION_DOWNLINK;
+        mac_pkt.rnti_type = WS_SI_RNTI;
+        mac_pkt.rnti      = 0xffff;
+        mac_pkt.harq_pid  = 0;
+        mac_pkt.preamble  = -1; /* TODO */
+        LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_pdu.payload[0], (int)bcch_sdu_length);
 
         if (cc->tdd_Config != NULL) { //TDD
           LOG_D(MAC,

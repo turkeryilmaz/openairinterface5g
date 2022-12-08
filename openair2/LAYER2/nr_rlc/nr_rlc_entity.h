@@ -23,6 +23,7 @@
 #define _NR_RLC_ENTITY_H_
 
 #include <stdint.h>
+#include "LOG/ss-log.h"
 
 #define NR_SDU_MAX 16000   /* max NR PDCP SDU size is 9000, let's take more */
 
@@ -34,10 +35,12 @@ typedef struct {
 
 typedef struct nr_rlc_entity_t {
   /* functions provided by the RLC module */
-  void (*recv_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size);
+  void (*recv_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size,
+		  nr_rlc_pkt_info_t *rlc_info);
   nr_rlc_entity_buffer_status_t (*buffer_status)(
       struct nr_rlc_entity_t *entity, int maxsize);
-  int (*generate_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size);
+  int (*generate_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size,
+		  nr_rlc_pkt_info_t *rlc_info);
 
   void (*recv_sdu)(struct nr_rlc_entity_t *entity, char *buffer, int size,
                    int sdu_id);

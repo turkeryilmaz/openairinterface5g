@@ -141,6 +141,15 @@ rx_sdu(const module_id_t enb_mod_idP,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_RX_SDU, 1);
   trace_pdu(DIRECTION_UPLINK, sduP, sdu_lenP, 0, WS_C_RNTI, current_rnti, frameP, subframeP, 0, 0);
 
+  mac_pkt_info_t mac_pkt;
+  mac_pkt.direction = DIRECTION_UPLINK;
+  mac_pkt.rnti_type = WS_C_RNTI;
+  mac_pkt.rnti      = current_rnti;
+  mac_pkt.harq_pid  = 0;
+  mac_pkt.preamble  = -1; /* TODO */
+
+  LOG_MAC_P(OAILOG_INFO, "LTE_MAC_UL_PDU", frameP, subframeP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+
   if (UE_id != -1) {
     UE_scheduling_control = &UE_info->UE_sched_ctrl[UE_id];
     UE_template_ptr = &UE_info->UE_template[CC_idP][UE_id];

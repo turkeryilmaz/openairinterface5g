@@ -82,7 +82,8 @@ hash_table_t  *pdcp_coll_p = NULL;
 
   static int mbms_socket = -1;
 #endif
-
+extern NRBearerTypeE lchannelType;
+extern BCCHTransportType_e  bcchTransportType;
 uint32_t Pdcp_stats_tx_window_ms[MAX_eNB][MAX_MOBILES_PER_ENB];
 uint32_t Pdcp_stats_tx_bytes[MAX_eNB][MAX_MOBILES_PER_ENB][NB_RB_MAX];
 uint32_t Pdcp_stats_tx_bytes_w[MAX_eNB][MAX_MOBILES_PER_ENB][NB_RB_MAX];
@@ -269,11 +270,34 @@ boolean_t pdcp_data_req(
   uint16_t           pdcp_uid=0;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_REQ,VCD_FUNCTION_IN);
   CHECK_CTXT_ARGS(ctxt_pP);
+  pdcp_info_t pdcp_pkt;
 #if T_TRACER
 
   if (ctxt_pP->enb_flag != ENB_FLAG_NO)
     T(T_ENB_PDCP_DL, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->rnti), T_INT(rb_idP), T_INT(sdu_buffer_sizeP));
 
+  // TRACE DL PDCP PDUs (Control/Data) here
+#if 0
+  nr_pdcp_pkt_info_t pdcp_pkt;
+  pdcp_pkt.direction = DOWNLINK_DIRECTION;
+  pdcp_pkt.ueid = 0;
+  pdcp_pkt.bearerType = rb_idP; //FIXME
+  pdcp_pkt.bearerId = rb_idP;
+
+  pdcp_pkt.plane = (srb_flagP) ? 1: 2;
+  pdcp_pkt.seqnum_length = ;
+  pdcp_pkt.maci_present;
+  pdcp_pkt.ciphering_disabled;
+  pdcp_pkt.sdap_header;
+
+  pdcp_pkt.rohc;
+
+  pdcp_pkt.is_retx;
+
+  pdcp_pkt.pdu_length;
+
+  LOG_PDCP_P();
+#endif
 #endif
 
   if (sdu_buffer_sizeP == 0) {
@@ -331,6 +355,23 @@ boolean_t pdcp_data_req(
         LOG_UI(PDCP, "Before rlc_data_req 1, srb_flagP: %d, rb_idP: %ld \n", srb_flagP, rb_idP);
       }
 
+      /*PDCP Tracepoint marker : DL TM Mode PDU */
+      pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+      pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+      pdcp_pkt.channelType = lchannelType;
+      pdcp_pkt.channelId = rb_idP - 1;
+      pdcp_pkt.BCCHTransport = bcchTransportType;
+      pdcp_pkt.no_header_pdu= false;
+      pdcp_pkt.plane= CONTROL_PLANE_E;
+      pdcp_pkt.seqnum_length =0 ;
+      pdcp_pkt.is_retx = 0;
+      pdcp_pkt.pdu_length =sdu_buffer_sizeP;
+      if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+        LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+
+      lchannelType = Bearer_UNDEFINED_e;
+      bcchTransportType = NR_PLANE_UNDEFINED_E;
+      memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
       rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, NODE_IS_CU(RC.rrc[ctxt_pP->module_id]->node_type)?MBMS_FLAG_NO:MBMS_FLAG_YES, rb_idP, muiP,
                    confirmP, sdu_buffer_sizeP, pdcp_pdu_p,NULL,NULL);
     } else {
@@ -518,10 +559,28 @@ boolean_t pdcp_data_req(
         LOG_E(PDCP, "Can't be DU, bad node type %d \n", RC.rrc[ctxt_pP->module_id]->node_type);
         ret=FALSE;
       } else {
+        /* PDCP Tracepoint marker: DL DRB PDU  */
+        pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+        pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+        pdcp_pkt.channelType = lchannelType;
+        pdcp_pkt.channelId = rb_idP - 1;
+        pdcp_pkt.BCCHTransport = bcchTransportType;
+        pdcp_pkt.no_header_pdu= true;
+        pdcp_pkt.plane= DATA_PLANE_E;
+        pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+        pdcp_pkt.is_retx = false;
+        pdcp_pkt.pdu_length = pdcp_pdu_size;
+        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+          LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+
+        lchannelType = Bearer_UNDEFINED_e;
+        bcchTransportType = NR_PLANE_UNDEFINED_E;
+
+        memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
         rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_NO, rb_idP, muiP,
-                     confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
-                     destinationL2Id);
-	ret=FALSE;
+            confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
+            destinationL2Id);
+        ret=FALSE;
         switch (rlc_status) {
           case RLC_OP_STATUS_OK:
             LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
@@ -565,6 +624,23 @@ boolean_t pdcp_data_req(
         LOG_I(PDCP, "Send F1AP_DL_RRC_MESSAGE with ITTI\n");
         ret=TRUE;
       } else {
+        /*PDCP Tracepoint marker: DL SRB PDU   */
+        pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+        pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+        pdcp_pkt.channelType = lchannelType;
+        pdcp_pkt.BCCHTransport = bcchTransportType;
+        pdcp_pkt.no_header_pdu= false;
+        pdcp_pkt.plane= CONTROL_PLANE_E;
+        pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+        pdcp_pkt.is_retx = false;
+        pdcp_pkt.pdu_length = pdcp_pdu_size;
+        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+          LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+
+
+        lchannelType = Bearer_UNDEFINED_e;
+        bcchTransportType = NR_PLANE_UNDEFINED_E;
+        memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
         rlc_status = rlc_data_req(ctxt_pP
                                   , srb_flagP
                                   , MBMS_FLAG_NO
@@ -671,6 +747,9 @@ pdcp_data_ind(
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_IN);
   LOG_DUMPMSG(PDCP,DEBUG_PDCP,(char *)sdu_buffer_pP->data,sdu_buffer_sizeP,
               "[MSG] PDCP UL %s PDU on rb_id %ld\n", (srb_flagP)? "CONTROL" : "DATA", rb_idP);
+  LOG_D(PDCP, "ctxt->rnti:%d\n", ctxt_pP->rnti);
+  pdcp_info_t pdcp_pkt;
+  memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
 
   if (MBMS_flagP) {
     AssertError (rb_idP < NB_RB_MBMS_MAX, return FALSE,
@@ -728,6 +807,31 @@ pdcp_data_ind(
     LOG_W(PDCP, "SDU buffer size is zero! Ignoring this chunk!\n");
     return FALSE;
   }
+
+  pdcp_pkt.direction = 2;
+  pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+  if (srb_flagP == 1) {
+    if (rb_id < 1 || rb_id > 2)
+      LOG_W(PDCP, "invalid rb_id \n");
+    else {
+      (rb_id == 1)?(pdcp_pkt.channelType = 4):(pdcp_pkt.channelType= 1);
+      (rb_id == 1)?(pdcp_pkt.channelId= 0):(pdcp_pkt.channelId = 1);
+      pdcp_pkt.plane     = CONTROL_PLANE_E;
+    }
+  } else {
+    if (rb_id < 1 || rb_id > 5);
+    else {
+      pdcp_pkt.channelType = Bearer_DCCH_e;
+      pdcp_pkt.channelType = 1;
+      pdcp_pkt.channelId = rb_id -1;
+      pdcp_pkt.plane     = DATA_PLANE_E;
+    }
+  }
+  pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+  pdcp_pkt.is_retx = false;
+  pdcp_pkt.pdu_length = sdu_buffer_sizeP;
+  LOG_LTE_PDCP_PDU(OAILOG_INFO, "UL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP->data, sdu_buffer_sizeP);
+
 
   if (ctxt_pP->enb_flag) {
     start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_ind);
@@ -811,6 +915,8 @@ pdcp_data_ind(
     }
 
 #endif
+
+    // Trace UL PDCP PDU here (Control/Data)
 
     // SRB1/2: control-plane data
     if (srb_flagP) {

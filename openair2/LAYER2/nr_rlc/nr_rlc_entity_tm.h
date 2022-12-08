@@ -42,11 +42,11 @@ void nr_rlc_entity_tm_recv_sdu(nr_rlc_entity_t *entity,
                                char *buffer, int size,
                                int sdu_id);
 void nr_rlc_entity_tm_recv_pdu(nr_rlc_entity_t *entity,
-                               char *buffer, int size);
+                               char *buffer, int size, nr_rlc_pkt_info_t *rlc_info);
 nr_rlc_entity_buffer_status_t nr_rlc_entity_tm_buffer_status(
     nr_rlc_entity_t *entity, int maxsize);
 int nr_rlc_entity_tm_generate_pdu(nr_rlc_entity_t *entity,
-                                  char *buffer, int size);
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info);
 void nr_rlc_entity_tm_set_time(nr_rlc_entity_t *entity, uint64_t now);
 void nr_rlc_entity_tm_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id);
 void nr_rlc_entity_tm_reestablishment(nr_rlc_entity_t *_entity);

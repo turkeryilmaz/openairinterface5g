@@ -102,6 +102,10 @@ int send_ue_information = 0;
 int8_t rsrp_cell = -128;
 int8_t rsrq_cell = -128;
 
+/** TODO TEMP FIX, Remove this and feed info structure */
+NRBearerTypeE lchannelType = Bearer_UNDEFINED_e;
+BCCHTransportType_e  bcchTransportType = NR_PLANE_UNDEFINED_E;
+
 // for malloc_clear
 #include "PHY/defs_UE.h"
 

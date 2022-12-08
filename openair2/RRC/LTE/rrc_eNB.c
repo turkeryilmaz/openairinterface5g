@@ -105,7 +105,9 @@ uint8_t RRCMsgOnSRB0_PDU[MAX_NUM_CCs][1024];
 #define ASN_MAX_ENCODE_SIZE 4096
 #define NUMBEROF_DRBS_TOBE_ADDED 1
 static int encode_CG_ConfigInfo(char *buffer,int buffer_size,rrc_eNB_ue_context_t *const ue_context_pP,int *enc_size);
-
+/** TODO TEMP FIX, Remove this and feed info structure */
+NRBearerTypeE lchannelType = Bearer_UNDEFINED_e;
+BCCHTransportType_e  bcchTransportType = NR_PLANE_UNDEFINED_E;
 extern RAN_CONTEXT_t RC;
 
 extern eNB_MAC_INST                *eNB_mac_inst;
@@ -503,6 +505,8 @@ init_SI(
 
   if (NODE_IS_MONOLITHIC(rrc->node_type)) {
     LOG_D(RRC, "About to call rrc_mac_config_req_eNB for ngran_eNB\n");
+    lchannelType = Bearer_BCCH_BCH_e;
+    bcchTransportType = bch_TRANSPORT;
     rrc_mac_config_req_eNB(ctxt_pP->module_id, CC_id,
                            carrier->physCellId,
                            carrier->p_eNB,
@@ -1492,6 +1496,8 @@ rrc_eNB_generate_SecurityModeCommand(
 
   if (!NODE_IS_DU(RC.rrc[ctxt_pP->module_id]->node_type)) {
     LOG_I(RRC,"calling rrc_data_req :securityModeCommand\n");
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(ctxt_pP,
                  DCCH,
                  rrc_eNB_mui++,
@@ -1533,6 +1539,8 @@ rrc_eNB_generate_UECapabilityEnquiry(
         size,
         rrc_eNB_mui,
         DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -2260,6 +2268,8 @@ rrc_eNB_process_RRCConnectionReestablishmentComplete(
     LOG_D(RRC,
           "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
           ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(
       ctxt_pP,
       DCCH,
@@ -2452,6 +2462,8 @@ rrc_eNB_generate_RRCConnectionRelease(
     F1AP_UE_CONTEXT_RELEASE_CMD(m).rrc_container_length = size;
     itti_send_msg_to_task(TASK_CU_F1, ctxt_pP->module_id, m);
   } else {
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(ctxt_pP,
                  DCCH,
                  rrc_eNB_mui++,
@@ -2737,6 +2749,8 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -3020,6 +3034,8 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -3921,6 +3937,8 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   int8_t security_modeP = 0xff;
   if (RC.ss.mode == SS_ENB)
   {
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(ctxt_pP,
                  DCCH,
                  rrc_eNB_mui++,
@@ -4676,6 +4694,8 @@ flexran_rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt
         rrc_eNB_mui,
         ctxt_pP->module_id,
         DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(ctxt_pP,
                DCCH,
                rrc_eNB_mui++,
@@ -4743,6 +4763,8 @@ rrc_eNB_generate_RRCConnectionReconfiguration_SCell(
                                         );
   LOG_I(RRC,"[eNB %d] Frame %d, Logical Channel DL-DCCH, Generate LTE_RRCConnectionReconfiguration (bytes %d, UE id %x)\n",
         ctxt_pP->module_id,ctxt_pP->frame, size, ue_context_pP->ue_context.rnti);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -10438,6 +10460,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           }
           if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
           {
+            lchannelType = Bearer_DCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
             RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
@@ -10534,6 +10558,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                  LCHAN_DESC_SIZE);
 
           if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
+            lchannelType = Bearer_CCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
             RRCConnSetup_PDU_Present[cc_id] = true;
             rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
 
@@ -10559,6 +10585,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             }
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
+            lchannelType = Bearer_CCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
           }
         }
 #endif
@@ -10574,6 +10602,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                       SS_DRB_PDU_REQ(msg_p).rnti,
                                       msg_p->ittiMsgHeader.lte_time.frame,
                                       msg_p->ittiMsgHeader.lte_time.slot);
+        lchannelType = Bearer_DCCH_e;
+        bcchTransportType = dlsch_TRANSPORT;
         pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
        break;
 
@@ -10603,6 +10633,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_SS_PAGING_IND:
       LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
       rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
+      lchannelType = Bearer_PCCH_e;
+      bcchTransportType = bch_TRANSPORT;
       break;
 
     case RRC_RBLIST_CFG_REQ:
