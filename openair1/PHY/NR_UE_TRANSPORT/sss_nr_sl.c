@@ -145,10 +145,8 @@ int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
     for (int i=0; i < LENGTH_PSS_NR; i++) {
-        pss0_rxF_ext[i] = pss0_rxF[k];
-        //printf("pss0_rxF_ext[%d] = %x \n", i, pss0_rxF_ext[i]);
-        sss0_rxF_ext[i] = sss0_rxF[k];
-        //printf("sss0_rxF_ext[%d] = %x \n", i, sss0_rxF_ext[i]);
+      pss0_rxF_ext[i] = pss0_rxF[k];
+      sss0_rxF_ext[i] = sss0_rxF[k];
       k++;
       if (k == ofdm_symbol_size) k=0;
     }
