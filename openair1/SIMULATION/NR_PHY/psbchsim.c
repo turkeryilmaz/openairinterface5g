@@ -574,7 +574,7 @@ int main(int argc, char **argv)
       if (UE->is_synchronized == 0) {
         UE_nr_rxtx_proc_t proc = {0};
         ret = nr_sl_initial_sync(&proc, UE, n_frames);
-        if (ret < 0) {
+        if (ret != 0) {
           n_errors++;
         }
       } else {
