@@ -54,7 +54,6 @@ void mac_rlc_data_ind     (
   rlc_entity_t *rb;
   int rnti;
   int channel_id;
-
   lte_rlc_pkt_info_t rlc_info;
   if (enb_flagP == 1 && module_idP != 0) {
     LOG_E(RLC, "%s:%d:%s: fatal, module_id must be 0 for eNB\n",
@@ -84,6 +83,12 @@ void mac_rlc_data_ind     (
     rnti = rntiP;
     channel_id = channel_idP;
   }
+  rlc_info.channelId = channel_id - 1;
+  rlc_info.ueid = rnti;
+  if (channel_id > 2)
+	  rlc_info.channelType = 5;
+  else
+	  rlc_info.channelType = 4;
 
   rlc_info.channelId = channel_id - 1;
   rlc_info.ueid = rnti;
@@ -131,6 +136,9 @@ tbs_size_t mac_rlc_data_req(
   rlc_ue_t *ue;
   rlc_entity_t *rb;
   int maxsize;
+  lte_rlc_pkt_info_t rlc_pkt;
+  rlc_pkt.direction                 = 1 /* Downlink */;
+  rlc_pkt.ueid                      = rntiP;
 
   lte_rlc_pkt_info_t rlc_pkt;
   rlc_pkt.direction                 = 1 /* Downlink */;
@@ -151,7 +159,6 @@ tbs_size_t mac_rlc_data_req(
       rb = NULL;
   }
 
-
   if (rb != NULL) {
     rb->set_time(rb, rlc_current_time);
     maxsize = tb_sizeP;
@@ -160,6 +167,33 @@ tbs_size_t mac_rlc_data_req(
     LOG_E(RLC, "%s:%d:%s: fatal: data req for unknown RB\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
     ret = 0;
+  }
+  switch ((channel_idP))
+  {
+    case 1 ... 3:
+      rlc_pkt.channelType = 4;  /*  CHANNEL_TYPE_SRB */
+      rlc_pkt.channelId = channel_idP - 1;
+      break;
+    case 4 ... 8:
+      rlc_pkt.channelType = 5; /* CHANNEL_TYPE_DRB */
+      rlc_pkt.channelId = channel_idP - 4;
+      break;
+  }
+  if (ret!=0) {
+    char *rlcstr;
+    switch (rlc_pkt.rlcMode)
+    {
+      case 1:
+        rlcstr = "DL_RLC_TM_PDU";
+        break;
+                  case 2:
+        rlcstr = "DL_RLC_UM_PDU";
+        break;
+      case 4:
+        rlcstr = "DL_RLC_AM_PDU";
+        break;
+    }
+    LOG_LTE_RLC_P(OAILOG_INFO, rlcstr, -1, -1, rlc_pkt, (unsigned char *)buffer_pP, ret);
   }
 
   switch ((channel_idP))

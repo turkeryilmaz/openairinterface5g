@@ -127,6 +127,10 @@ static const float RSRQ_meas_mapping[35] = {-19, -18.5, -18, -17.5, -17, -16.5, 
 int8_t rsrp_cell = -128;
 int8_t rsrq_cell = -128;
 
+/** TODO TEMP FIX, Remove this and feed info structure */
+NRBearerTypeE lchannelType = Bearer_UNDEFINED_e;
+BCCHTransportType_e  bcchTransportType = NR_PLANE_UNDEFINED_E;
+
 // for malloc_clear
 #include "PHY/defs_UE.h"
 

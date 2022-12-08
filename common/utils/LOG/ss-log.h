@@ -70,4 +70,34 @@
         __func__, __LINE__, mac_pack_info,  \
         _string, buf, len);                 \
     } while(0)
+
+#define LOG_SS_RLC_PKT(component, _string, sfn, sf, rlc_pack_info, buf, len) do {  \
+    tracepoint(SSeNB, SS_NR_RLC_PKT,           \
+        "SS-NR-RLC-PDU", -1, sfn, sf,          \
+        __func__, __LINE__, rlc_pack_info,  \
+        _string, buf, len);                 \
+    } while(0)
+
+#define LOG_SS_PDCP_PKT(component, _string, sfn, sf, pdcp_pack_info, buf, len) do {  \
+    tracepoint(SSeNB, SS_NR_PDCP_PKT,           \
+        "SS-NR-PDCP-PDU", -1, sfn, sf,          \
+        __func__, __LINE__, pdcp_pack_info,  \
+        _string, buf, len);                 \
+    } while(0)
+
+#define LOG_SS_LTE_PDCP_PKT(component, _string, sfn, sf, pdcp_pack_info, buf, len) do {  \
+    tracepoint(SSeNB, SS_LTE_PDCP_PKT,           \
+        "SS-LTE-PDCP-PDU", -1, sfn, sf,          \
+        __func__, __LINE__, pdcp_pack_info,  \
+        _string, buf, len);                 \
+    } while(0)
+
+#define LOG_SS_LTE_RLC_PKT(component, _string, sfn, sf, rlc_pack_info, buf, len) do {  \
+    tracepoint(SSeNB, SS_LTE_RLC_PKT,           \
+        "SS-LTE-RLC-PDU", -1, sfn, sf,          \
+        __func__, __LINE__, rlc_pack_info,  \
+        _string, buf, len);                 \
+    } while(0)
+
+
 #endif /** __SS_LOG_H__ */

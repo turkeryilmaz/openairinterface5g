@@ -1440,6 +1440,8 @@ rrc_eNB_generate_UECapabilityEnquiry(
         size,
         rrc_eNB_mui,
         DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -2129,6 +2131,8 @@ rrc_eNB_process_RRCConnectionReestablishmentComplete(
     LOG_D(RRC,
           "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
           ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(
       ctxt_pP,
       DCCH,
@@ -2543,6 +2547,8 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -2826,6 +2832,8 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -10068,6 +10076,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           }
           if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
           {
+            lchannelType = Bearer_DCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
             RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
@@ -10164,6 +10174,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                  LCHAN_DESC_SIZE);
 
           if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
+            lchannelType = Bearer_CCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
             RRCConnSetup_PDU_Present[cc_id] = true;
             rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
 
@@ -10189,6 +10201,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             }
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
+            lchannelType = Bearer_CCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
           }
         }
 #endif
@@ -10204,6 +10218,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                       SS_DRB_PDU_REQ(msg_p).rnti,
                                       msg_p->ittiMsgHeader.lte_time.frame,
                                       msg_p->ittiMsgHeader.lte_time.slot);
+        lchannelType = Bearer_DCCH_e;
+        bcchTransportType = dlsch_TRANSPORT;
         pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
        break;
 
@@ -10233,6 +10249,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_SS_PAGING_IND:
       LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
       rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
+      lchannelType = Bearer_PCCH_e;
+      bcchTransportType = bch_TRANSPORT;
       break;
 
     case RRC_RBLIST_CFG_REQ:

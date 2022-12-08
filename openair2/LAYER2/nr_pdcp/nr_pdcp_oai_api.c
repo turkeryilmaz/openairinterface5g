@@ -1260,6 +1260,26 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
 
+  /** TRACE PDCP PDU */
+  if (NULL != ue && NULL != rb) {
+	nr_pdcp_pkt_info_t pdcp_pkt;
+	pdcp_pkt.direction 	= 1; //PDCP_NR_DIRECTION_DOWNLINK
+	pdcp_pkt.ueid      	= ue->rnti;
+	pdcp_pkt.bearerType 	= 8; //TODO
+	pdcp_pkt.bearerId 	= rb_id - 1;
+	pdcp_pkt.plane     	= (rb_id == 1)?4:1;
+
+	pdcp_pkt.seqnum_length 	= rb->sn_size;
+	pdcp_pkt.maci_present 	= (rb->has_integrity)?1:0;
+	pdcp_pkt.ciphering_disabled 	= (rb->has_ciphering)?1:0;
+	pdcp_pkt.sdap_header 		= (rb->has_sdapULheader)?1:0;
+	pdcp_pkt.is_retx 		= 0;
+	pdcp_pkt.pdu_length 		= sdu_buffer_size;
+
+	LOG_PDCP_P(OAILOG_INFO, "DL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer, sdu_buffer_size);
+  }
+
+
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
 
   ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
