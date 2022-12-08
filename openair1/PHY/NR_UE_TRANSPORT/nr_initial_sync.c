@@ -400,7 +400,6 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 #endif
 
       int freq_offset_sss = 0;
-      printf("\n Entering rx_sss_sl_nr \n");
       ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
 
       // digital compensation of FFO for SSB symbols
@@ -491,22 +490,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     ret = -1;
   }
 
-  /* Consider this is a false detection if the offset is > 1000 Hz
-     Not to be used now that offest estimation is in place
-  if( (abs(ue->common_vars.freq_offset) > 150) && (ret == 0) )
-  {
-	  ret=-1;
-	  LOG_E(HW, "Ignore MIB with high freq offset [%d Hz] estimation \n",ue->common_vars.freq_offset);
-  }*/
-
-  if (ret==0) {  // PBCH found so indicate sync to higher layers and configure frame parameters
-
-    //#ifdef DEBUG_INITIAL_SYNCH
-
+  if (ret==0) {  // PSBCH found so indicate sync to higher layers and configure frame parameters
     LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n",ue->Mod_id, ue->rx_offset);
-
-    //#endif
-
     if (ue->UE_scan_carrier == 0) {
 
     #if UE_AUTOTEST_TRACE
@@ -516,10 +501,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
               ue->common_vars.freq_offset );
     #endif
 
-// send sync status to higher layers later when timing offset converge to target timing
-
+      // send sync status to higher layers later when timing offset converge to target timing
       ue->pbch_vars[0]->pdu_errors_conseq=0;
-
     }
 
 #if defined(OAI_USRP) || defined(EXMIMO) || defined(OAI_BLADERF) || defined(OAI_LMSSDR) || defined(OAI_ADRV9371_ZC706)
