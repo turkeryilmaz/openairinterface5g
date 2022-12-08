@@ -98,30 +98,37 @@ int nr_sl_generate_sss(int32_t *txdataF,
   return 0;
 }
 
-int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
+/*******************************************************************
+*
+* NAME :         pss_sss_sl_extract_nr
+*
+* PARAMETERS :   none
+*
+* RETURN :       none
+*
+* DESCRIPTION :
+*
+*********************************************************************/
+
+int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
                           UE_nr_rxtx_proc_t *proc,
                           int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                           int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
                           int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                           int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                          uint8_t doPss,
-                          uint8_t doSss,
                           uint8_t subframe) // add flag to indicate extracting only PSS, only SSS, or both
 {
-  uint8_t aarx;
   int32_t *pss0_rxF,*pss0_rxF_ext;
   int32_t *pss1_rxF,*pss1_rxF_ext;
   int32_t *sss0_rxF,*sss0_rxF_ext;
   int32_t *sss1_rxF,*sss1_rxF_ext;
-  uint8_t pss0_symbol, sss0_symbol;
-  uint8_t pss1_symbol, sss1_symbol;
   int32_t **rxdataF;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
-  for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
-    pss0_symbol = PSS0_SL_SYMBOL_NB;
-    sss0_symbol = SSS0_SL_SYMBOL_NB;
+    uint8_t pss0_symbol = PSS0_SL_SYMBOL_NB;
+    uint8_t sss0_symbol = SSS0_SL_SYMBOL_NB;
 
     rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
 
@@ -138,27 +145,19 @@ int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
     for (int i=0; i < LENGTH_PSS_NR; i++) {
-      if (doPss) {
         pss0_rxF_ext[i] = pss0_rxF[k];
         //printf("pss0_rxF_ext[%d] = %x \n", i, pss0_rxF_ext[i]);
-      }
-
-      if (doSss) {
         sss0_rxF_ext[i] = sss0_rxF[k];
         //printf("sss0_rxF_ext[%d] = %x \n", i, sss0_rxF_ext[i]);
-      }
-
       k++;
-
       if (k == ofdm_symbol_size) k=0;
-
     }
   }
 
-  for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
+  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
-    pss1_symbol = PSS1_SL_SYMBOL_NB;
-    sss1_symbol = SSS1_SL_SYMBOL_NB;
+    uint8_t pss1_symbol = PSS1_SL_SYMBOL_NB;
+    uint8_t sss1_symbol = SSS1_SL_SYMBOL_NB;
 
     rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
 
@@ -175,46 +174,16 @@ int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
     for (int i=0; i < LENGTH_PSS_NR; i++) {
-      if (doPss) {
-        pss1_rxF_ext[i] = pss1_rxF[k];
-      }
-
-      if (doSss) {
-        sss1_rxF_ext[i] = sss1_rxF[k];
-      }
-
+      pss1_rxF_ext[i] = pss1_rxF[k];
+      sss1_rxF_ext[i] = sss1_rxF[k];
       k++;
-
       if (k == ofdm_symbol_size) k=0;
-
     }
   }
 
   return(0);
 }
 
-/*******************************************************************
-*
-* NAME :         pss_sss_sl_extract_nr
-*
-* PARAMETERS :   none
-*
-* RETURN :       none
-*
-* DESCRIPTION :
-*
-*********************************************************************/
-
-int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *phy_vars_ue,
-                       UE_nr_rxtx_proc_t *proc,
-                       int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                       int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                       int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                       int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                       uint8_t subframe)
-{
-  return do_pss_sss_sl_extract_nr(phy_vars_ue, proc, pss0_ext, sss0_ext, pss1_ext, sss1_ext, 1 /* doPss */, 1 /* doSss */, subframe);
-}
 
 /*******************************************************************
 *
