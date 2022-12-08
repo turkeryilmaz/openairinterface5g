@@ -378,7 +378,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
     }
   }
 
-#define SSS_SL_METRIC_FLOOR_NR   (60000)
+#define SSS_SL_METRIC_FLOOR_NR   (30000)
   if (*tot_metric > SSS_SL_METRIC_FLOOR_NR) {
     Nid2 = GET_NID2_SL(frame_parms->Nid_SL);
     Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
