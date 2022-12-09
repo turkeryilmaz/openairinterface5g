@@ -26,6 +26,7 @@
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include <common/utils/LOG/log.h>
+#include "executables/softmodem-common.h"
 
 //#define DEBUG_FEP
 
@@ -160,7 +161,11 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  if (ue->is_synchronized) {
+  bool is_synced = ue->is_synchronized;
+  if(get_softmodem_params()->sl_mode == 2) {
+    is_synced = ue->is_synchronized_sl;
+  }
+  if (is_synced) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   }

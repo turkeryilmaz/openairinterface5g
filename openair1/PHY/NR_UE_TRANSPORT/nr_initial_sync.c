@@ -205,20 +205,27 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
   int ret = -1;
   NR_UE_SSB *best_ssb = NULL;
   NR_UE_SSB *current_ssb;
-  uint8_t  N_L = 5;
+  uint8_t  N_L = 8;
   uint8_t  N_hf = 0;
   for (int l = 0; l < N_L; l++) {
     current_ssb = create_ssb_node(l, N_hf);
     start_meas(&ue->dlsch_channel_estimation_stats);
-    for(int i = psbch_initial_symbol; i < 5; i++) {
-      nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i-psbch_initial_symbol, current_ssb);
+    // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
+    for(int i = psbch_initial_symbol; i < psbch_initial_symbol + 13; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
+      nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i - psbch_initial_symbol, current_ssb);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
-    current_ssb->metric = current_ssb->c_re * current_ssb->c_re + current_ssb->c_im * current_ssb->c_im;
+
+    current_ssb->metric = current_ssb->c_re*current_ssb->c_re + current_ssb->c_im*current_ssb->c_im;
+
+    // generate a list of SSB structures
     if (best_ssb == NULL)
       best_ssb = current_ssb;
     else
-      best_ssb = insert_into_list(best_ssb, current_ssb);
+      best_ssb = insert_into_list(best_ssb,current_ssb);
+
   }
 
   NR_UE_SSB *temp_ptr = best_ssb;
@@ -228,9 +235,11 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for (int i = psbch_initial_symbol; i < 5; i++) {
-      nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
-                                  proc, 0, 0, i, i-psbch_initial_symbol, 0, temp_ptr->n_hf);
+    for(int i = psbch_initial_symbol; i < psbch_initial_symbol + 13; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
+      nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                 proc,0 , 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPsbch_t result;
@@ -298,7 +307,6 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         }
         ue->common_vars.freq_offset += freq_offset_sss;
       }
-      NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
       if (ret == 0) {
         // sync at symbol ue->symbol_offset
         // computing the offset wrt the beginning of the frame
@@ -316,6 +324,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         } else {
           ue->rx_offset = ue->ssb_offset - sync_pos_frame;
         }
+        NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         nr_gold_psbch(ue);
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
       }
