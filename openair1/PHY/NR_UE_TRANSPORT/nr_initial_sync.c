@@ -289,6 +289,11 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       int32_t metric_tdd_ncp = 0;
       for (int i = 0; i < 13; i++)
         nr_slot_fep_init_sync(ue, proc, i, 0, is * fp->samples_per_frame + ue->ssb_offset);
+# if 0
+      NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
+      ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
+      exit(1);
+#endif
       LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
       int freq_offset_sss = 0;
       ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
@@ -324,9 +329,11 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         } else {
           ue->rx_offset = ue->ssb_offset - sync_pos_frame;
         }
+#if 0
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         nr_gold_psbch(ue);
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
+#endif
       }
       LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);

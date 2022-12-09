@@ -240,9 +240,9 @@ int nr_psbch_dmrs_rx(int symbol,
                     int32_t *output)
 {
   AssertFatal(symbol >= 0 && symbol < 14,"illegal symbol %d\n", symbol);
-
-  int m0 = symbol * 33;
-  int m1 = (symbol + 1) * 33;
+  int offset = (symbol == 0) ? 0 : 4;
+  int m0 = (symbol - offset) * 33;
+  int m1 = ((symbol - offset) + 1) * 33;
   /// QPSK modulation
   for (int m = m0; m < m1; m++) {
     AssertFatal(((m << 1) >> 5) < NR_PSBCH_DMRS_LENGTH_DWORD, "Index in output is invalid %d >= %d\n",
@@ -256,8 +256,8 @@ int nr_psbch_dmrs_rx(int symbol,
                 ((NR_MOD_TABLE_QPSK_OFFSET + idx) << 1) + 1);
     ((int16_t*)output)[(m - m0) << 1] = nr_rx_mod_table[(NR_MOD_TABLE_QPSK_OFFSET + idx) << 1];
     ((int16_t*)output)[((m - m0) << 1) + 1] = nr_rx_mod_table[((NR_MOD_TABLE_QPSK_OFFSET + idx) << 1) + 1];
-
 #ifdef DEBUG_PSBCH
+    printf("%d %d\n", (m - m0) << 1, nr_rx_mod_table[(NR_MOD_TABLE_QPSK_OFFSET + idx) << 1]);
     if (m < 16) {
       printf("nr_gold_psbch[(m << 1) >> 5] %x\n", nr_gold_psbch[(m << 1) >> 5]);
       printf("m %d  output %d %d addr %p\n", m, ((int16_t*)output)[m << 1], ((int16_t*)output)[(m << 1) + 1], &output[0]);
