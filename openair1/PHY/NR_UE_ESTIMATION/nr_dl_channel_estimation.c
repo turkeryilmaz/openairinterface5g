@@ -222,7 +222,7 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
   unsigned int  ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
   if (ssb_offset>= ue->frame_parms.ofdm_symbol_size) ssb_offset-=ue->frame_parms.ofdm_symbol_size;
 
-  AssertFatal(dmrss >= 0 && dmrss <= 13,
+  AssertFatal(dmrss >= 0 && dmrss <= 12,
 	      "symbol %d is illegal for PSBCH DM-RS \n",
 	      dmrss);
 
@@ -235,6 +235,7 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
          ue->frame_parms.Ncp,Ns,k, symbol);
 #endif
 
+  if (0 < dmrss && dmrss < 5) return 0;
   // generate pilot
   nr_psbch_dmrs_rx(dmrss, &ue->nr_gold_psbch[ssb_index], &pilot[0]);
 
@@ -713,7 +714,7 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
     rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
     dl_ch += 24;
 
-    for (pilot_cnt=3; pilot_cnt<(3*20); pilot_cnt += 3) {
+    for (pilot_cnt=3; pilot_cnt<(3*10); pilot_cnt += 3) {
       ch[0] = (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
       ch[1] = (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
 

@@ -205,7 +205,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
   int ret = -1;
   NR_UE_SSB *best_ssb = NULL;
   NR_UE_SSB *current_ssb;
-  uint8_t  N_L = 8;
+  uint8_t  N_L = 2;
   uint8_t  N_hf = 0;
   for (int l = 0; l < N_L; l++) {
     current_ssb = create_ssb_node(l, N_hf);
@@ -239,7 +239,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
       if (i >= 1 && i <= 4)
         continue;
       nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time,
-                                 proc,0 , 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
+                                 proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPsbch_t result;
@@ -371,6 +371,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     ue->measurements.rx_power_avg_dB[0] = dB_fixed(ue->measurements.rx_power_avg[0]);
     LOG_I(NR_PHY, "[UE%d] Gain Control - Initial sync : Estimated power: %d dB\n", ue->Mod_id, ue->measurements.rx_power_avg_dB[0]);
   }
+  return ret;
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
   return ret;
@@ -428,9 +429,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
 
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(NR_PHY, "[UE%d] Initial sync : Estimated PSS position %d, id2 %d\n",
-          ue->Mod_id, sync_pos, get_softmodem_params()->sl_mode == 2 ? ue->common_vars.N2_id : ue->common_vars.eNb_id);
-    LOG_I(NR_PHY, "sync_pos %d ssb_offset %d \n", sync_pos, ue->ssb_offset);
+    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos,ue->common_vars.eNb_id);
+    LOG_I(PHY,"sync_pos %d ssb_offset %d \n",sync_pos,ue->ssb_offset);
 #endif
 
     // digital compensation of FFO for SSB symbols
@@ -469,7 +469,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     /* time samples in buffer rxdata are used as input of FFT -> FFT results are stored in the frequency buffer rxdataF */
     /* rxdataF stores SS/PBCH from beginning of buffers in the same symbol order as in time domain */
 
-      for (int i = 0; i < (fp->symbols_per_slot - 1); i++) // 13th - guard symbol - is not considered
+      for(int i=0; i<4;i++)
         nr_slot_fep_init_sync(ue,
                               proc,
                               i,

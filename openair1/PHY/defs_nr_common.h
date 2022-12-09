@@ -68,7 +68,7 @@
 #define NR_PSBCH_MAX_NB_CARRIERS 132
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
-#define NR_PSBCH_DMRS_LENGTH_DWORD 19 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
 
 /*used for the resource mapping*/
 #define NR_MAX_PDCCH_DMRS_LENGTH 576 // 16(L)*2(QPSK)*3(3 DMRS symbs per REG)*6(REG per CCE)
