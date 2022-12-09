@@ -243,11 +243,6 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
     int re_offset = ssb_offset;
     pil   = (int16_t *)&pilot[0];
     rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
-    int i = 0;
-    while (i < 256) {
-       // printf("%d, (%d)\n", i, *(int16_t *)&rxdataF[aarx][i]);
-        i = i + 2;
-    }
     ch[0] = (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
     ch[1] = (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
     current_ssb->c_re += ch[0];

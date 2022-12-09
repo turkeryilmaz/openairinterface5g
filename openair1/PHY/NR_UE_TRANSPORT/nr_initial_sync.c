@@ -211,7 +211,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
     current_ssb = create_ssb_node(l, N_hf);
     start_meas(&ue->dlsch_channel_estimation_stats);
     // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-    for(int i = psbch_initial_symbol; i < psbch_initial_symbol + 13; i++) {
+    for(int i = psbch_initial_symbol; i < 7; i++) {
       if (i >= 1 && i <= 4)
         continue;
       nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i - psbch_initial_symbol, current_ssb);
@@ -227,19 +227,18 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
       best_ssb = insert_into_list(best_ssb,current_ssb);
 
   }
-
   NR_UE_SSB *temp_ptr = best_ssb;
   while (ret != 0 && temp_ptr != NULL) {
     start_meas(&ue->dlsch_channel_estimation_stats);
-    const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
+    const int estimateSz = frame_parms->symbols_per_slot * sizeof(int) * frame_parms->ofdm_symbol_size;
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for(int i = psbch_initial_symbol; i < psbch_initial_symbol + 13; i++) {
+    for(int i = psbch_initial_symbol; i < 7; i++) {
       if (i >= 1 && i <= 4)
         continue;
-      nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time,
-                                 proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
+      nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                  proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPsbch_t result;
@@ -288,12 +287,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
       for (int i = 0; i < 13; i++)
-        nr_slot_fep_init_sync(ue, proc, i, 0, is * fp->samples_per_frame + ue->ssb_offset);
-# if 0
-      NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
-      ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
-      exit(1);
-#endif
+        nr_slot_fep_init_sync(ue, proc, i, 0, 0 /*is * fp->samples_per_frame + ue->ssb_offset*/);
       LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
       int freq_offset_sss = 0;
       ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
@@ -313,37 +307,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         ue->common_vars.freq_offset += freq_offset_sss;
       }
       if (ret == 0) {
-        ue->rx_offset = 0;
-        uint8_t ssb_index = 0;
-        const int estimateSz = 7 * 2 * sizeof(int) * ue->frame_parms.ofdm_symbol_size;
-        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[ue->frame_parms.nb_antennas_rx][estimateSz];
-        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][estimateSz];
-        while (!((0x01 >> ssb_index) & 0x01)) {
-          ssb_index++;  // to select the first transmitted ssb
-        }
-        ue->symbol_offset = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * ue->frame_parms.symbols_per_slot;
-        uint8_t n_hf = 0;
-        int ssb_slot = (ue->symbol_offset / 14) + (n_hf * (ue->frame_parms.slots_per_frame >> 1));
-        for (int i = ue->symbol_offset; i < ue->symbol_offset + 5; i++) {
-          nr_slot_fep(ue, proc, i % ue->frame_parms.symbols_per_slot, ssb_slot);
-          nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time, proc,
-                                      0, ssb_slot, i % ue->frame_parms.symbols_per_slot,
-                                      i - (ue->symbol_offset), ssb_index % 8, n_hf);
-        }
-        fapiPsbch_t result;
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
-        /* Side link rx PSBCH */
-        ret = nr_rx_psbch(ue,
-                          proc,
-                          estimateSz,
-                          dl_ch_estimates,
-                          ue->psbch_vars[0],
-                          &ue->frame_parms,
-                          0,
-                          ssb_index % 8,
-                          SISO,
-                          &phy_pdcch_config,
-                          &result);
+        ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
       }
       LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);

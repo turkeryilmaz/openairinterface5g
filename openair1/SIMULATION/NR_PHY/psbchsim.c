@@ -496,7 +496,7 @@ int main(int argc, char **argv)
         PHY_ofdm_mod(UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
-                     1, UE->frame_parms.nb_prefix_samples0,
+                     1, UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
                           (int16_t*)UE->common_vars.txdata[aa],
