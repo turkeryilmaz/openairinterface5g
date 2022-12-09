@@ -177,39 +177,29 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
 *********************************************************************/
 
 int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
-                  int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                  int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                  int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                  int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
+                     int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                     int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
+                     int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                     int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int16_t *pss;
-  int16_t *pss0_ext2,*sss0_ext2,*sss0_ext3,tmp_re,tmp_im,tmp_re2,tmp_im2;
-  int16_t *pss1_ext2,*sss1_ext2,*sss1_ext3;
+  int16_t *pss0_ext2, *sss0_ext2, *pss1_ext2, *sss1_ext2;
+  int16_t tmp_re, tmp_im, tmp_re2, tmp_im2;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  int16_t *pss = primary_synchro_nr2[ue->common_vars.N2_id];
+  int16_t *sss0_ext3 = (int16_t*)&sss0_ext[0][0];
 
-  pss = primary_synchro_nr2[ue->common_vars.N2_id]; // Check SL id?
-
-  sss0_ext3 = (int16_t*)&sss0_ext[0][0];
-
-  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
-
+  for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     sss0_ext2 = (int16_t*)&sss0_ext[aarx][0];
     pss0_ext2 = (int16_t*)&pss0_ext[aarx][0];
-
-    int32_t amp;
-    int shift;
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
-
       // This is H*(PSS) = R* \cdot PSS
       tmp_re = pss0_ext2[i*2] * pss[i];
       tmp_im = -pss0_ext2[i*2+1] * pss[i];
-
-      amp = (((int32_t)tmp_re)*tmp_re) + ((int32_t)tmp_im)*tmp_im;
-      shift = log2_approx(amp)/2;
+      int32_t amp = (((int32_t)tmp_re)*tmp_re) + ((int32_t)tmp_im)*tmp_im;
+      int shift = log2_approx(amp)/2;
       // This is R(SSS) \cdot H*(PSS)
       tmp_re2 = (int16_t)(((tmp_re * (int32_t)sss0_ext2[i*2])>>shift)    - ((tmp_im * (int32_t)sss0_ext2[i*2+1]>>shift)));
       tmp_im2 = (int16_t)(((tmp_re * (int32_t)sss0_ext2[i*2+1])>>shift)  + ((tmp_im * (int32_t)sss0_ext2[i*2]>>shift)));
-
       // MRC on RX antennas
       if (aarx==0) {
         sss0_ext3[i<<1]      = tmp_re2;
@@ -221,29 +211,22 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     }
   }
 
-  sss1_ext3 = (int16_t*)&sss1_ext[0][0];
-
-  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
-
+  int16_t *sss1_ext3 = (int16_t*)&sss1_ext[0][0];
+  for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     sss1_ext2 = (int16_t*)&sss1_ext[aarx][0];
     pss1_ext2 = (int16_t*)&pss1_ext[aarx][0];
-
-    int32_t amp;
-    int shift;
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
-
       // This is H*(PSS) = R* \cdot PSS
       tmp_re = pss1_ext2[i*2] * pss[i];
       tmp_im = -pss1_ext2[i*2+1] * pss[i];
-
-      amp = (((int32_t)tmp_re)*tmp_re) + ((int32_t)tmp_im)*tmp_im;
-      shift = log2_approx(amp)/2;
+      int32_t amp = (((int32_t)tmp_re)*tmp_re) + ((int32_t)tmp_im)*tmp_im;
+      int shift = log2_approx(amp)/2;
       // This is R(SSS) \cdot H*(PSS)
       tmp_re2 = (int16_t)(((tmp_re * (int32_t)sss1_ext2[i*2])>>shift)    - ((tmp_im * (int32_t)sss1_ext2[i*2+1]>>shift)));
       tmp_im2 = (int16_t)(((tmp_re * (int32_t)sss1_ext2[i*2+1])>>shift)  + ((tmp_im * (int32_t)sss1_ext2[i*2]>>shift)));
 
       // MRC on RX antennas
-      if (aarx==0) {
+      if (aarx == 0) {
         sss1_ext3[i<<1]      = tmp_re2;
         sss1_ext3[1+(i<<1)]  = tmp_im2;
       } else {
@@ -252,7 +235,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
       }
     }
   }
-  // sss_ext now contains the compensated SSS
+
   return(0);
 }
 
