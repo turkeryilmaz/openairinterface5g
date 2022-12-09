@@ -241,8 +241,9 @@ int nr_psbch_dmrs_rx(int symbol,
 {
   AssertFatal(symbol >= 0 && symbol < 14,"illegal symbol %d\n", symbol);
 
-  int m0 = symbol * 33;
-  int m1 = (symbol + 1) * 33;
+  int offset = (symbol == 0) ? 0 : 4;
+  int m0 = (symbol - offset) * 33;
+  int m1 = ((symbol - offset) + 1) * 33;
   /// QPSK modulation
   for (int m = m0; m < m1; m++) {
     AssertFatal(((m << 1) >> 5) < NR_PSBCH_DMRS_LENGTH_DWORD, "Index in output is invalid %d >= %d\n",

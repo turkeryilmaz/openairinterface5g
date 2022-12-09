@@ -118,6 +118,8 @@ int do_pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
   int32_t **rxdataF;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
+  printf("PSS0_SL_SYMBOL_NB = %d\n", PSS0_SL_SYMBOL_NB);
+
   for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
     pss0_symbol = PSS0_SL_SYMBOL_NB;

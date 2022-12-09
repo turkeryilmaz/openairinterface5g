@@ -199,7 +199,7 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
 }
 
-int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_initial_symbol, NR_UE_PDCCH_CONFIG *phy_pdcch_config)
+int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_initial_symbol, NR_UE_PDCCH_CONFIG *phy_pdcch_config)
 {
   NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
   int ret =-1;
@@ -212,8 +212,8 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_in
         ue->rx_offset);
 #endif
 
-  uint8_t  N_L = 8;
-  uint8_t  N_hf = 1;
+  uint8_t  N_L = 2;
+  uint8_t  N_hf = 0;
 
   // loops over possible psbch dmrs cases to retrive best estimated i_ssb for multiple ssb detection
   for (int l = 0; l < N_L ; l++) {
@@ -223,10 +223,10 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_in
 
     start_meas(&ue->dlsch_channel_estimation_stats);
     // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-    for(int i = pbch_initial_symbol; i < pbch_initial_symbol + 13; i++) {
+    for(int i = psbch_initial_symbol; i < psbch_initial_symbol + 13; i++) {
       if (i >= 1 && i <= 4)
         continue;
-      nr_psbch_dmrs_correlation(ue,proc,0,0,i,i-pbch_initial_symbol,current_ssb);
+      nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i - psbch_initial_symbol,current_ssb);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
 
@@ -249,11 +249,11 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_in
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for(int i = pbch_initial_symbol; i < pbch_initial_symbol + 13; i++) {
+    for(int i = psbch_initial_symbol; i < psbch_initial_symbol + 13; i++) {
       if (i >= 1 && i <= 4)
         continue;
-      nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time, 
-                                 proc,0,0,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf);
+      nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                 proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPsbch_t result;
@@ -393,7 +393,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     /* time samples in buffer rxdata are used as input of FFT -> FFT results are stored in the frequency buffer rxdataF */
     /* rxdataF stores SS/PBCH from beginning of buffers in the same symbol order as in time domain */
 
-      for(int i=0; i<13;i++)
+      for(int i = 0; i < (fp->symbols_per_slot - 1); i++) // 13th - guard symbol - is not considered
         nr_slot_fep_init_sync(ue,
                               proc,
                               i,
@@ -561,6 +561,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 #endif
 
   }
+  return ret;
 
   // if stand alone and sync on ssb do sib1 detection as part of initial sync
   if (sa==1 && ret==0) {
@@ -690,9 +691,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
 
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(NR_PHY, "[UE%d] Initial sync : Estimated PSS position %d, id2 %d\n",
-          ue->Mod_id, sync_pos, get_softmodem_params()->sl_mode == 2 ? ue->common_vars.N2_id : ue->common_vars.eNb_id);
-    LOG_I(NR_PHY, "sync_pos %d ssb_offset %d \n", sync_pos, ue->ssb_offset);
+    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos,ue->common_vars.eNb_id);
+    LOG_I(PHY,"sync_pos %d ssb_offset %d \n",sync_pos,ue->ssb_offset);
 #endif
 
     // digital compensation of FFO for SSB symbols
@@ -731,7 +731,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     /* time samples in buffer rxdata are used as input of FFT -> FFT results are stored in the frequency buffer rxdataF */
     /* rxdataF stores SS/PBCH from beginning of buffers in the same symbol order as in time domain */
 
-      for (int i = 0; i < (fp->symbols_per_slot - 1); i++) // 13th - guard symbol - is not considered
+      for(int i=0; i<4;i++)
         nr_slot_fep_init_sync(ue,
                               proc,
                               i,
@@ -835,7 +835,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       LOG_I(PHY,"TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
             fp->Nid_cell,metric_tdd_ncp,phase_tdd_ncp,ret);
 #endif
- 
+
       }
       else {
 #ifdef DEBUG_INITIAL_SYNCH

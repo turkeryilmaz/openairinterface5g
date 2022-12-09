@@ -374,7 +374,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     memcpy(psbch_unClipped + psbch_e_rx_idx, rxdataF_comp[0], nb*sizeof(int16_t));
     psbch_e_rx_idx += nb;
 
-    if (symbol == 1)
+    if (symbol == 0)
       symbol += 4;  // skip to accommodate PSS and SSS
   }
   // legacy code use int16, but it is complex16
