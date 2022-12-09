@@ -110,41 +110,29 @@ int nr_sl_generate_sss(int32_t *txdataF,
 *
 *********************************************************************/
 
-int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
-                          UE_nr_rxtx_proc_t *proc,
-                          int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                          int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                          int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                          int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                          uint8_t subframe) // add flag to indicate extracting only PSS, only SSS, or both
+static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
+                                 UE_nr_rxtx_proc_t *proc,
+                                 int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                                 int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
+                                 int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                                 int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int32_t *pss0_rxF,*pss0_rxF_ext;
-  int32_t *pss1_rxF,*pss1_rxF_ext;
-  int32_t *sss0_rxF,*sss0_rxF_ext;
-  int32_t *sss1_rxF,*sss1_rxF_ext;
-  int32_t **rxdataF;
+  int32_t **rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
 
-  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
-
-    uint8_t pss0_symbol = PSS0_SL_SYMBOL_NB;
-    uint8_t sss0_symbol = SSS0_SL_SYMBOL_NB;
-
-    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
-
-    unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
-
-    pss0_rxF  =  &rxdataF[aarx][pss0_symbol*ofdm_symbol_size];
-    sss0_rxF  =  &rxdataF[aarx][sss0_symbol*ofdm_symbol_size];
-
+  int32_t *pss0_rxF, *pss0_rxF_ext;
+  int32_t *sss0_rxF, *sss0_rxF_ext;
+  for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
+    pss0_rxF  =  &rxdataF[aarx][PSS0_SL_SYMBOL_NB * ofdm_symbol_size];
+    sss0_rxF  =  &rxdataF[aarx][SSS0_SL_SYMBOL_NB * ofdm_symbol_size];
     pss0_rxF_ext = &pss0_ext[aarx][0];
     sss0_rxF_ext = &sss0_ext[aarx][0];
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
+    if (k >= frame_parms->ofdm_symbol_size)
+      k-=frame_parms->ofdm_symbol_size;
 
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START; // check the offset and start subcarrier
-
-    if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
-
-    for (int i=0; i < LENGTH_PSS_NR; i++) {
+    for (int i = 0; i < LENGTH_PSS_NR; i++) {
       pss0_rxF_ext[i] = pss0_rxF[k];
       sss0_rxF_ext[i] = sss0_rxF[k];
       k++;
@@ -152,24 +140,17 @@ int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     }
   }
 
-  for (uint8_t aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
-
-    uint8_t pss1_symbol = PSS1_SL_SYMBOL_NB;
-    uint8_t sss1_symbol = SSS1_SL_SYMBOL_NB;
-
+  int32_t *pss1_rxF, *pss1_rxF_ext;
+  int32_t *sss1_rxF, *sss1_rxF_ext;
+  for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
-
-    unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
-
-    pss1_rxF  =  &rxdataF[aarx][pss1_symbol*ofdm_symbol_size];
-    sss1_rxF  =  &rxdataF[aarx][sss1_symbol*ofdm_symbol_size];
-
+    pss1_rxF  =  &rxdataF[aarx][PSS1_SL_SYMBOL_NB * ofdm_symbol_size];
+    sss1_rxF  =  &rxdataF[aarx][SSS1_SL_SYMBOL_NB * ofdm_symbol_size];
     pss1_rxF_ext = &pss1_ext[aarx][0];
     sss1_rxF_ext = &sss1_ext[aarx][0];
-
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START; // check the offset and start subcarrier
-
-    if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
+    if (k >= frame_parms->ofdm_symbol_size)
+      k-=frame_parms->ofdm_symbol_size;
 
     for (int i=0; i < LENGTH_PSS_NR; i++) {
       pss1_rxF_ext[i] = pss1_rxF[k];
@@ -303,15 +284,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   int32_t metric, metric_re;
   int16_t *d;
 
-
-  // pss sss extraction
-  pss_sss_sl_extract_nr(ue,
-                     proc,
-                     pss0_ext,
-                     sss0_ext,
-                     pss1_ext,
-                     sss1_ext,
-                     0);          /* subframe */
+  pss_sss_sl_extract_nr(ue, proc, pss0_ext, sss0_ext, pss1_ext, sss1_ext);
 
 #ifdef DEBUG_PLOT_SSS
 
