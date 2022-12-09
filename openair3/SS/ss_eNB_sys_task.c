@@ -373,7 +373,9 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 #define BCCH_CONFIG AddOrReconfigure->Basic.v.BcchConfig
       if (AddOrReconfigure->Basic.v.BcchConfig.d == true)
       {
-	LOG_A(ENB_SS, "[SYS] BCCH Config update in Cell config \n");
+	  LOG_A(ENB_SS, "[SYS] BCCH Config update in Cell config \n");
+        RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index]= (AddOrReconfigure->Basic.v.BcchConfig.v.StopSib1Transmission.d)?1:0;
+        LOG_A(ENB_SS, "[SYS] stopSib1Transmission for cellIndex(%d) %s\n",cell_index,RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index]?"yes":"no");
         if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.d == true)
         {
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.d == true)
@@ -433,20 +435,33 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 	    }
 	  }
 
+    RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d;
+    RRC_CONFIGURATION_REQ(msg_p).schedulingInfo = CALLOC(RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count,sizeof(struct lte_SchedulingInfo_s));
+
+    for(int k=0;k < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d; k++) {
+      RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].si_Periodicity = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].si_Periodicity;
+      for(int j=0;j < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d; j++) {
+        RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].sib_MappingInfo.LTE_SIB_Type[k] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.v[j];
+      }
+    }
+
     RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
     RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
+    RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
     for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index]; ++i) {
-      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.d == TRUE)
+      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.d == TRUE)
       {
-            RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mcc.v[2])<<0));
+            RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[0] *100 +  SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[1] *10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[2];
       }
-      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 2) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<0));
-       } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.d == 3) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = (((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[0])<<16) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[1])<<8) | ((SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v->plmn_Identity.mnc.v[2])<<0));
+      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 2) {
+        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] *10 +  SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1];
+       } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 3) {
+        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] *100 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1] *10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[2];
       }
-
+      RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[cell_index][i]=SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d;
+      RRC_CONFIGURATION_REQ(msg_p).cellReservedForOperatorUse[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].cellReservedForOperatorUse;
+    }
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.d == true)
           {
               LOG_A(ENB_SS, "[SYS] [SIs] size=%ld", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
@@ -460,20 +475,95 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                      {
                        for(int j=0; j< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.d; j++)
                        {
-                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
-                         {
+                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
                            RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
                          }
-                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib3 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
-                         {
+                         /* SIB3 */
+                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib3 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
                            RRC_CONFIGURATION_REQ(msg_p).q_Hyst[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionInfoCommon.q_Hyst;
                            RRC_CONFIGURATION_REQ(msg_p).threshServingLow[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.threshServingLow;
                            RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
                            RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
                            RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
+                         }
+                         /* SIB4 */
+                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib4 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
+                           RRC_CONFIGURATION_REQ(msg_p).sib4_Present = true;
+                           if(true == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.d) {
+                             RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListPresent = true;
+                             for(int j=0;j < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d; j++) {
+                               RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[j].physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[j].physCellId;
+                               RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[j].q_OffsetCell = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[j].q_OffsetCell;
+                             }
+                           }
+                         }
+                        /* SIB5 */
+                        if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib5 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
+                           RRC_CONFIGURATION_REQ(msg_p).sib5_Present = true;
+                           RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfoCount = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d;
+                           for(int k=0;k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d; k++) {
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].dl_CarrierFreq[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].dl_CarrierFreq;
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_RxLevMin;
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].p_Max.d) {
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].p_Max_Present[cell_index] = true;
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].p_Max[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].p_Max.v;
+                             }
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA;
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.d) {
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].t_ReselectionEUTRA_SF_Present[cell_index] = true;
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].t_ReselectionEUTRA_SF[cell_index]->sf_Medium = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.v.sf_Medium;
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].t_ReselectionEUTRA_SF[cell_index]->sf_High = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.v.sf_High;
+                             }
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].threshX_High[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_High;
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].threshX_Low[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Low;
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].allowedMeasBandwidth[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].allowedMeasBandwidth;
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].presenceAntennaPort1[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].presenceAntennaPort1;
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.d) {
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].cellReselectionPriority[cell_index] = CALLOC(1,sizeof(long));
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].cellReselectionPriority_Present[cell_index] = true;
+                               *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].cellReselectionPriority[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.v;
+                             }
+                             //RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].neighCellConfig = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].neighCellConfig;
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.d) {
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_OffsetFreqPresent [cell_index]= true;
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_OffsetFreq[cell_index] = CALLOC(1,sizeof(enum LTE_Q_OffsetRange));
+                             *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_OffsetFreq[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.v;
+                             }
+                            if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.d) {
+                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].interFreqNeighCellList_Present[cell_index] = true;
+                              for(int l=0; l< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.d; l++) {
+                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].interFreqNeighCellList[cell_index]->physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.v[l].physCellId;
+                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].interFreqNeighCellList[cell_index]->q_OffsetCell = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.v[l].q_OffsetCell;
+                               }
+                             }
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.d) {
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].interFreqBlackCellList_Present[cell_index] = true;
+                               for(int m=0; m<AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.d; m++) {
+                                 RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].interFreqBlackCellList[cell_index]->start = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].start;
+                                 if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].range.d) {
+                                   RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].interFreqBlackCellList[cell_index]->range = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].range.v;
+                                 }
+                               }
+                             }
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMin_r9.d) {
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_QualMin_r9_Present[cell_index] = true;
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_QualMin_r9[cell_index] = CALLOC(1,sizeof(long));
+                               *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_QualMin_r9[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMin_r9.v;
+                             }
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.d) {
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].threshX_Q_r9_Present[cell_index] = true;
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].threshX_Q_r9[cell_index].threshX_HighQ_r9 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.v.threshX_HighQ_r9;
+                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].threshX_Q_r9[cell_index].threshX_LowQ_r9 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.v.threshX_LowQ_r9;
+                             }
+                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMinWB_r11.d) {
+                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_QualMinWB_r11_Present[cell_index] = true;
+                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_QualMinWB_r11[cell_index] = CALLOC(1,sizeof(long));
+                                *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].q_QualMinWB_r11[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMinWB_r11.v;
+                             }
+                           }
                          }
                        }
                      }
@@ -481,7 +571,6 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                  }
                }
              }
-           }
     RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] = 0;
     for(int i=0; i <16; i++)
     {

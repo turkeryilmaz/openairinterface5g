@@ -60,6 +60,7 @@ typedef uint32_t guint32;
 typedef guint8   gboolean;
 
 #include <openair2/UTIL/OPT/wireshark_headers.h>
+#include <openair2/LAYER2/NR_MAC_COMMON/nr_mac.h>
 
 #include "mac_pcap.h"
 
@@ -120,5 +121,34 @@ int init_opt(void);
 void terminate_opt(void);
 
 //double *timing_analyzer(int index, int direction );
+
+/* In Wireshark, only these RNTI Types are support today */
+static inline int map_nr_rnti_type(nr_rnti_type_t r_type)
+{
+	switch(r_type) {
+		case NR_RNTI_C:
+			return WS_C_RNTI;
+		case NR_RNTI_RA:
+			return WS_RA_RNTI;
+		case NR_RNTI_P:
+			return WS_P_RNTI;
+		case NR_RNTI_CS:
+			return WS_CS_RNTI;
+		case NR_RNTI_SI:
+			return WS_SI_RNTI;
+		case NR_RNTI_new:
+			return WS_NO_RNTI;
+
+		case NR_RNTI_TC:
+		case NR_RNTI_SP_CSI:
+		case NR_RNTI_SFI:
+		case NR_RNTI_INT:
+		case NR_RNTI_TPC_PUSCH:
+		case NR_RNTI_TPC_PUCCH:
+		case NR_RNTI_TPC_SRS:
+		case NR_RNTI_MCS_C:
+			return WS_NO_RNTI;
+	}
+}
 
 #endif /* OPT_H_ */

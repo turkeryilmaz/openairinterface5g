@@ -247,6 +247,8 @@ init_SI(
   if(NULL==carrier->MIB) {carrier->MIB = (uint8_t *) malloc16(4);}
   carrier->sizeof_SIB1 = 0;
   carrier->sizeof_SIB23 = 0;
+  carrier->sizeof_SIB4 = 0;
+  carrier->sizeof_SIB5 = 0;
   if(NULL==carrier->SIB1) {carrier->SIB1 = (uint8_t *) malloc16(32);}
 
   AssertFatal(carrier->SIB1!=NULL,PROTOCOL_RRC_CTXT_FMT" init_SI: FATAL, no memory for SIB1 allocated\n",
@@ -336,6 +338,34 @@ init_SI(
     LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.cyclicShift  = %ld\n",
           PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
           carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.cyclicShift);
+
+    if(true == configuration->sib4_Present) {
+      if(NULL == carrier->SIB4) {
+        carrier->SIB4 = (uint8_t *) malloc16(64);
+      }
+      AssertFatal(carrier->SIB4!=NULL,"cannot allocate memory for SIB4");
+      carrier->sizeof_SIB4 = do_SIB4(ctxt_pP->module_id,
+                                       CC_id,
+                                       FALSE,
+                                       configuration
+                                      );
+      LOG_I(RRC,"do_SIB4, size %d \n ", carrier->sizeof_SIB4);
+      AssertFatal(carrier->sizeof_SIB4 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB4 == 255");
+    }
+
+    if(true == configuration->sib5_Present) {
+      if(NULL == carrier->SIB5) {
+        carrier->SIB5 = (uint8_t *) malloc16(64);
+      }
+      AssertFatal(carrier->SIB5!=NULL,"cannot allocate memory for SIB5");
+      carrier->sizeof_SIB5 = do_SIB5(ctxt_pP->module_id,
+                                       CC_id,
+                                       FALSE,
+                                       configuration
+                                      );
+      LOG_I(RRC,"do_SIB5, size %d \n ", carrier->sizeof_SIB5);
+      AssertFatal(carrier->sizeof_SIB5 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB5 == 255");
+    }
 
     if (carrier->MBMS_flag > 0) {
       for (i = 0; i < carrier->sib2->mbsfn_SubframeConfigList->list.count; i++) {

@@ -30,6 +30,7 @@
  */
 
 #include "common/utils/nr/nr_common.h"
+#include "UTIL/OPT/opt.h"
 /*MAC*/
 #include "NR_MAC_COMMON/nr_mac.h"
 #include "NR_MAC_gNB/nr_mac_gNB.h"
@@ -1321,6 +1322,16 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
       T(T_GNB_MAC_RETRANSMISSION_DL_PDU_WITH_DATA, T_INT(module_id), T_INT(CC_id), T_INT(rnti),
         T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_INT(harq->round), T_BUFFER(harq->tb, TBS));
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIR_DOWNLINK;
+      mac_pkt.rnti_type = map_nr_rnti_type(rnti_type);
+      mac_pkt.rnti      = rnti;
+      mac_pkt.harq_pid  = current_harq_pid;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_INFO, "MAC_RETRANSMISSION_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->tb, (int)TBS);
+
     } else { /* initial transmission */
 
       LOG_D(NR_MAC, "[%s] Initial HARQ transmission in %d.%d\n", __FUNCTION__, frame, slot);
@@ -1456,6 +1467,15 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
       T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_id), T_INT(CC_id), T_INT(rnti),
         T_INT(frame), T_INT(slot), T_INT(current_harq_pid), T_BUFFER(harq->tb, TBS));
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIR_DOWNLINK;
+      mac_pkt.rnti_type = map_nr_rnti_type(rnti_type);
+      mac_pkt.rnti      = rnti;
+      mac_pkt.harq_pid  = current_harq_pid;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->tb, (int)TBS);
     }
 
     const int ntx_req = gNB_mac->TX_req[CC_id].Number_of_PDUs;

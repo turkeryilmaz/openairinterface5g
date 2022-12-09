@@ -1722,8 +1722,8 @@ int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t
 	phy_info *phy = pnf->phys;
 	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
 	uint16_t port =htons(phy->remote_port);
-	char *remote_addr = (char *) malloc(strlen(phy->remote_addr));
-	memset(remote_addr, 0, strlen(phy->remote_addr));
+	char *remote_addr = (char *) malloc(strlen(phy->remote_addr)+1);
+	memset(remote_addr, 0, strlen(phy->remote_addr)+1);
 	strncpy(remote_addr, phy->remote_addr, strlen(phy->remote_addr));
 	for(int i=0; i < pnf->num_phys; i++ )
 	{

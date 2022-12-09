@@ -1481,6 +1481,15 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     T(T_GNB_MAC_DL_RAR_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(ra->RA_rnti), T_INT(frameP),
         T_INT(slotP), T_INT(0), T_BUFFER(&tx_req->TLVs[0].value.direct[0], tx_req->TLVs[0].length));
 
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_DOWNLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_RA);
+    mac_pkt.rnti      = ra->RA_rnti;
+    mac_pkt.harq_pid  = 0;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_INFO, "MAC_DL_RAR_PDU", frameP, slotP, mac_pkt, (uint8_t *)&tx_req->TLVs[0].value.direct[0], (int)tx_req->TLVs[0].length);
+
     tx_req->PDU_length = pdsch_pdu_rel15->TBSize[0];
     tx_req->PDU_index = pduindex;
     tx_req->num_TLV = 1;
@@ -1879,6 +1888,15 @@ void nr_generate_Msg4(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
 
     T(T_GNB_MAC_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(ra->rnti),
       T_INT(frameP), T_INT(slotP), T_INT(current_harq_pid), T_BUFFER(harq->tb, harq->tb_size));
+
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_DOWNLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_C);
+    mac_pkt.rnti      = ra->rnti;
+    mac_pkt.harq_pid  = current_harq_pid;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->tb, (int)harq->tb_size);
 
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &nr_mac->TX_req[CC_id].pdu_list[nr_mac->TX_req[CC_id].Number_of_PDUs];

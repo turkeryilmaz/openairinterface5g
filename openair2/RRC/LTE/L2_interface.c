@@ -81,11 +81,16 @@ mac_rrc_data_req(
   eNB_RRC_INST *rrc;
   rrc_eNB_carrier_data_t *carrier;
   LTE_BCCH_BCH_Message_t *mib;
+  LTE_SystemInformationBlockType1_t *SIB1;
+  LTE_SchedulingInfo_t *SchedulingInfo;
+  LTE_SIB_Type_t *sib_type;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms;
   rrc     = RC.rrc[Mod_idP];
   carrier = &rrc->carrier[CC_id];
   mib     = &carrier->mib;
   mib_fembms     = &carrier->mib_fembms;
+  SIB1    = &carrier->SIB1;
+  SchedulingInfo = &SIB1->schedulingInfoList.list;
 
   if((Srb_id & RAB_OFFSET) == BCCH_SI_MBMS){
     if (frameP%8 == 0) {
@@ -117,6 +122,11 @@ mac_rrc_data_req(
                 "[eNB %d] MAC Request for SIB1 and SIB1 not initialized\n",Mod_idP);
 
     if ((frameP%2) == 0) {
+	if(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB1 == 0){
+         //stopSib1Transmission
+         LOG_D(RRC,"[eNB %d] CC_id:%d Frame %d : stopSib1Transmission\n",Mod_idP,CC_id,frameP);
+         return 0;
+      }
       memcpy(&buffer_pP[0],
              RC.rrc[Mod_idP]->carrier[CC_id].SIB1,
              RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB1);
@@ -149,7 +159,25 @@ mac_rrc_data_req(
       } /* LOG_DEBUGFLAG(DEBUG_RRC) */
 
       return(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB23);
-    } else {
+    }
+    else if ((true == RC.rrc[Mod_idP]->carrier[CC_id].sib5_Scheduled) && ((frameP%16) == 3)) {
+      memcpy(&buffer_pP[0],
+             RC.rrc[Mod_idP]->carrier[CC_id].SIB5,
+             RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB5);
+
+      if (LOG_DEBUGFLAG(DEBUG_RRC)) {
+        LOG_T(RRC,"[eNB %d] Frame %d : BCCH request => SIB 5\n",Mod_idP,frameP);
+
+        for (int i=0; i<RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB5; i++) {
+          LOG_T(RRC,"%x.",buffer_pP[i]);
+        }
+
+        LOG_T(RRC,"\n");
+      } /* LOG_DEBUGFLAG(DEBUG_RRC) */
+
+      return (RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB5);
+    }
+    else {
       return(0);
     }
   }
