@@ -313,27 +313,37 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         ue->common_vars.freq_offset += freq_offset_sss;
       }
       if (ret == 0) {
-        // sync at symbol ue->symbol_offset
-        // computing the offset wrt the beginning of the frame
-        int mu = fp->numerology_index;
-        // number of symbols with different prefix length
-        // every 7*(1<<mu) symbols there is a different prefix length (38.211 5.3.1)
-        int n_symb_prefix0 = (ue->symbol_offset / (7 * (1 << mu))) + 1;
-        int sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) + (ue->symbol_offset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-        // for a correct computation of frame number to sync with the one decoded at MIB we need to take into account in which of the n_frames we got sync
-        ue->init_sync_frame = n_frames - 1 - is;
-        // we also need to take into account the shift by samples_per_frame in case the if is true
-        if (ue->ssb_offset < sync_pos_frame){
-          ue->rx_offset = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
-          ue->init_sync_frame += 1;
-        } else {
-          ue->rx_offset = ue->ssb_offset - sync_pos_frame;
+        ue->rx_offset = 0;
+        uint8_t ssb_index = 0;
+        const int estimateSz = 7 * 2 * sizeof(int) * ue->frame_parms.ofdm_symbol_size;
+        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[ue->frame_parms.nb_antennas_rx][estimateSz];
+        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][estimateSz];
+        while (!((0x01 >> ssb_index) & 0x01)) {
+          ssb_index++;  // to select the first transmitted ssb
         }
-#if 0
+        ue->symbol_offset = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * ue->frame_parms.symbols_per_slot;
+        uint8_t n_hf = 0;
+        int ssb_slot = (ue->symbol_offset / 14) + (n_hf * (ue->frame_parms.slots_per_frame >> 1));
+        for (int i = ue->symbol_offset; i < ue->symbol_offset + 5; i++) {
+          nr_slot_fep(ue, proc, i % ue->frame_parms.symbols_per_slot, ssb_slot);
+          nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time, proc,
+                                      0, ssb_slot, i % ue->frame_parms.symbols_per_slot,
+                                      i - (ue->symbol_offset), ssb_index % 8, n_hf);
+        }
+        fapiPsbch_t result;
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
-        nr_gold_psbch(ue);
-        ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
-#endif
+        /* Side link rx PSBCH */
+        ret = nr_rx_psbch(ue,
+                          proc,
+                          estimateSz,
+                          dl_ch_estimates,
+                          ue->psbch_vars[0],
+                          &ue->frame_parms,
+                          0,
+                          ssb_index % 8,
+                          SISO,
+                          &phy_pdcch_config,
+                          &result);
       }
       LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
