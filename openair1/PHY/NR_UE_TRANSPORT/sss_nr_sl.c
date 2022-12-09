@@ -143,7 +143,6 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
   int32_t *pss1_rxF, *pss1_rxF_ext;
   int32_t *sss1_rxF, *sss1_rxF_ext;
   for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
-    rxdataF  =  ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
     pss1_rxF  =  &rxdataF[aarx][PSS1_SL_SYMBOL_NB * ofdm_symbol_size];
     sss1_rxF  =  &rxdataF[aarx][SSS1_SL_SYMBOL_NB * ofdm_symbol_size];
     pss1_rxF_ext = &pss1_ext[aarx][0];

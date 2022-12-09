@@ -599,7 +599,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
       LOG_I(PHY,"TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
             fp->Nid_cell,metric_tdd_ncp,phase_tdd_ncp,ret);
 #endif
- 
+
       }
       else {
 #ifdef DEBUG_INITIAL_SYNCH
