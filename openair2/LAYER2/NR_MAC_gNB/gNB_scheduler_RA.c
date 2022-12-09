@@ -1180,7 +1180,6 @@ static void nr_generate_Msg2(module_id_t module_idP,
       type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[ra->beam_id];
       BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
       BWPSize = type0_PDCCH_CSS_config->num_rbs;
-      LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
     }
 
     if (RC.ss.mode == SS_SOFTMODEM)
@@ -1195,7 +1194,6 @@ static void nr_generate_Msg2(module_id_t module_idP,
     NR_tda_info_t tda_info = get_dl_tda_info(dl_bwp, ss->searchSpaceType->present, time_domain_assignment,
                                              scc->dmrs_TypeA_Position, mux_pattern, NR_RNTI_RA, coresetid, false);
 
-    LOG_D(NR_MAC, "swetank: BWPStart:%d  rbStart:%d rbSize:%d BWPSize:%d startSymbolIndex:%d nrOfSymbols:%d \n", BWPStart, rbStart, rbSize, BWPSize, nrOfSymbols);
     uint16_t *vrb_map = cc[CC_id].vrb_map;
     for (int i = 0; (i < rbSize) && (rbStart <= (BWPSize - rbSize)); i++) {
       if (vrb_map[BWPStart + rbStart + i]&SL_to_bitmap(tda_info.startSymbolIndex, tda_info.nrOfSymbols)) {
@@ -1951,7 +1949,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     if (RC.ss.mode == SS_SOFTMODEM)
         BWPStart = 27;
 
-		LOG_D(NR_MAC, "swetank: rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
+		LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
 				rbSize,
 				rbStart,
 				BWPSize,

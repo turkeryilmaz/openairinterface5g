@@ -354,7 +354,7 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   //	if (RC.ss.mode >= SS_SOFTMODEM)
   //		gNB_mac->sched_ctrlCommon->cce_index = 0;
 
-  LOG_D(MAC,"swetank: cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
+  LOG_D(MAC,"cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
   AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
@@ -568,7 +568,6 @@ void schedule_nr_sib1(module_id_t module_idP,
 
   int time_domain_allocation = gNB_mac->sib1_tda;
 
-  LOG_D(NR_MAC, "swetank: scc->ssb_PositionsInBurst->present:%d\n", scc->ssb_PositionsInBurst->present);
   int L_max;
   switch (scc->ssb_PositionsInBurst->present) {
     case 1:

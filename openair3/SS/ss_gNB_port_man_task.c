@@ -261,6 +261,12 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
       SidlStatus sidlStatus = -1;
       acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
     }
+    else if (userId == -ACP_PEER_DISCONNECTED){
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Peer ordered shutdown\n");
+    } 
+    else if (userId == -ACP_PEER_CONNECTED){
+      LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Peer connection established\n");
+    } 
     else
     {
       LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);
@@ -271,6 +277,27 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   {
     LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:0\n", __FUNCTION__);
     // No message (timeout on socket)
+    if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
+    {
+      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_RRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB task \n", SS_NRRRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
+      if (message_p)
+      {
+        /* Populate the message to SS */
+        SS_NRRRC_PDU_IND(message_p).sdu_size = 1;
+        SS_NRRRC_PDU_IND(message_p).srb_id = -1;
+        SS_NRRRC_PDU_IND(message_p).rnti = -1;
+        SS_NRRRC_PDU_IND(message_p).frame = -1;
+        SS_NRRRC_PDU_IND(message_p).subframe = -1;
+
+        int send_res = itti_send_msg_to_task(TASK_SS_SRB, 0, message_p);
+        if (send_res < 0)
+        {
+          LOG_A(ENB_SS, "Error in sending Wake up signal /SS_NRRRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB\n", SS_NRRRC_PDU_IND);
+        }
+      }
+    }
+
   }
   else
   {
