@@ -1210,30 +1210,26 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
       bwp = ra->CellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[ra->bwp_id-1];
       genericParameters = &bwp->bwp_Common->genericParameters;
       pdsch_TimeDomainAllocationList = bwp->bwp_Common->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
-      LOG_D(NR_MAC, "swetank: fxn:%s line:%d \n", __FUNCTION__, __LINE__);
     }
     else {
       genericParameters= &scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
       pdsch_TimeDomainAllocationList = scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
-      LOG_D(NR_MAC, "swetank: fxn:%s line:%d \n", __FUNCTION__, __LINE__);
     }
 
     long BWPStart = 0;
     long BWPSize = 0;
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = NULL;
-    LOG_D(NR_MAC, "swetank: controlResourceSetId:%d locationAndBandwidth:%d genericParameters.locationAndBandwidth:%d \n",
+    LOG_D(NR_MAC, "controlResourceSetId:%d locationAndBandwidth:%d genericParameters.locationAndBandwidth:%d \n",
         *ss->controlResourceSetId,
         genericParameters->locationAndBandwidth,
         scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth);
     if(*ss->controlResourceSetId!=0) {
       BWPStart = NRRIV2PRBOFFSET(genericParameters->locationAndBandwidth, MAX_BWP_SIZE);
       BWPSize  = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
-      LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d\n", BWPStart, BWPSize);
     } else {
       type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[ra->beam_id];
       BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
       BWPSize = type0_PDCCH_CSS_config->num_rbs;
-      LOG_D(NR_MAC, "swetank: BWPStart:%d BWPSize:%d beam_id:%d \n", BWPStart, BWPSize, ra->beam_id);
     }
 
     if (RC.ss.mode == SS_SOFTMODEM)
@@ -1249,7 +1245,6 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
 
     AssertFatal(coreset!=NULL,"Coreset cannot be null for RA-Msg2\n");
 
-    LOG_D(NR_MAC, "swetank: BWPStart:%d  rbStart:%d rbSize:%d BWPSize:%d startSymbolIndex:%d nrOfSymbols:%d \n", BWPStart, rbStart, rbSize, BWPSize, nrOfSymbols);
     uint16_t *vrb_map = cc[CC_id].vrb_map;
     for (int i = 0; (i < rbSize) && (rbStart <= (BWPSize - rbSize)); i++) {
       if (vrb_map[BWPStart + rbStart + i]&SL_to_bitmap(startSymbolIndex, nrOfSymbols)) {
@@ -1710,7 +1705,7 @@ void nr_generate_Msg4(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
                                      rbSize, nrOfSymbols, N_PRB_DMRS * N_DMRS_SLOT, 0, tb_scaling,1) >> 3;
     } while (harq->tb_size < ra->mac_pdu_length && mcsIndex<=28);
 
-		LOG_D(NR_MAC, "swetank: rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
+		LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
 				rbSize,
 				rbStart,
 				BWPSize,

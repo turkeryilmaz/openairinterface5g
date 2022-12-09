@@ -2054,7 +2054,6 @@ uint64_t from_nrarfcn(int nr_bandP,
     }
   }
 
-  LOG_D(NR_MAC, "swetank: nrarfcn:%d nr_table_index:%d\n", nrarfcn, i);
   LOG_D(NR_MAC, "Frequency from NR-ARFCN for N_OFFs %lu, duplex spacing %d KHz, deltaFglobal %d KHz\n", N_OFFs, delta_duplex, deltaFglobal);
 
   AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
@@ -3510,17 +3509,6 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
   type0_PDCCH_CSS_config->num_rbs = -1;
   type0_PDCCH_CSS_config->num_symbols = -1;
   type0_PDCCH_CSS_config->rb_offset = -1;
-  LOG_D(NR_MAC,"swetank: NR_SubcarrierSpacing_kHz30 %d, scs_ssb %d, scs_pdcch %d, min_chan_bw %d\n",(int)NR_SubcarrierSpacing_kHz30,(int)scs_ssb,(int)scs_pdcch,min_channel_bw);
-  LOG_D(NR_MAC,"swetank: fxn:%s pdcch_ConfigSIB1.controlResourceSetZero:%d pdcch_ConfigSIB1.searchSpaceZero:%d\n", __FUNCTION__, mib->pdcch_ConfigSIB1.controlResourceSetZero, mib->pdcch_ConfigSIB1.searchSpaceZero);
-  LOG_D(NR_MAC,"swetank: fxn:%s  num_slot_per_frame:%d ssb_subcarrier_offset:%d ssb_start_symbol:%d frequency_range:%d ssb_index:%d ssb_period:%d \n",
-			__FUNCTION__,
-			num_slot_per_frame,
-			ssb_subcarrier_offset,
-			ssb_start_symbol,
-			frequency_range,
-			ssb_index,
-			ssb_period
-			);
 
   //  type0-pdcch coreset
   switch( ((int)scs_ssb << 3) | (int)scs_pdcch ){
@@ -3839,7 +3827,6 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
   type0_PDCCH_CSS_config->n_0 = ((uint32_t)(big_o*(1<<scs_pdcch)) + (uint32_t)(type0_PDCCH_CSS_config->ssb_index*big_m))%num_slot_per_frame;
   type0_PDCCH_CSS_config->cset_start_rb = ssb_offset_point_a - type0_PDCCH_CSS_config->rb_offset;
-      LOG_E(NR_MAC,"swetank: fxn:%s cset_start_rb:%d ssb_offset_point_a:%d rb_offset:%d \n", __FUNCTION__, type0_PDCCH_CSS_config->cset_start_rb, ssb_offset_point_a, type0_PDCCH_CSS_config->rb_offset);
 
 }
 

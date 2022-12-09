@@ -288,7 +288,10 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                         // No message (timeout on socket)
                         if (isConnected == true){
                                 break;
-                        } 
+                        }
+                        else
+                          LOG_A(GNB_APP, "[SS_SRB] Connection stopped isConnected:false\n)");
+                         
                 }
                 else if (MSG_NrSysSrbProcessFromSS_userId == userId)
                 {
@@ -382,9 +385,9 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
   {
     switch (ITTI_MSG_ID(received_msg))
     {
+      LOG_A(GNB_APP, "[SS_SRB] Received msg_Id:%d\n", ITTI_MSG_ID(received_msg));
       case SS_NRRRC_PDU_IND:
         {
-#if 0
           task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
           if (origin_task == TASK_SS_PORTMAN)
@@ -392,7 +395,6 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
             LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
           }
           else
-#endif
           {
             LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
             if (SS_context.State >= SS_STATE_CELL_ACTIVE)

@@ -383,7 +383,7 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   //	if (RC.ss.mode >= SS_SOFTMODEM)
   //		gNB_mac->sched_ctrlCommon->cce_index = 0;
 
-  LOG_D(MAC,"swetank: cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
+  LOG_D(MAC,"cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
   AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
 
   const uint16_t bwpSize = type0_PDCCH_CSS_config->num_rbs;
@@ -452,11 +452,6 @@ uint32_t schedule_control_sib1(module_id_t module_id,
      LOG_D(MAC,"N_PRB_DMRS = %d\n",N_PRB_DMRS);
      LOG_D(MAC,"mappingtype = %d\n", mappingtype);
   // Mark the corresponding RBs as used */
-  LOG_D(NR_MAC, "swetank: CC_id:%d gNB_mac->sched_ctrlCommon->cce_index:%d aggregation_level:%d sched_pdsch.rbSize:%d \n",
-      CC_id,
-      gNB_mac->sched_ctrlCommon->cce_index,
-      gNB_mac->sched_ctrlCommon->aggregation_level,
-      gNB_mac->sched_ctrlCommon->sched_pdsch.rbSize);
   fill_pdcch_vrb_map(gNB_mac,
       CC_id,
       &gNB_mac->sched_ctrlCommon->sched_pdcch,
@@ -614,7 +609,6 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
 
   int time_domain_allocation = gNB_mac->sib1_tda;
 
-  LOG_D(NR_MAC, "swetank: scc->ssb_PositionsInBurst->present:%d\n", scc->ssb_PositionsInBurst->present);
   int L_max;
   switch (scc->ssb_PositionsInBurst->present) {
     case 1:
