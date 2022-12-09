@@ -199,99 +199,47 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
 }
 
-int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_initial_symbol, NR_UE_PDCCH_CONFIG *phy_pdcch_config)
+int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_initial_symbol, NR_UE_PDCCH_CONFIG *phy_pdcch_config)
 {
-  NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
-  int ret =-1;
-
+  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  int ret = -1;
   NR_UE_SSB *best_ssb = NULL;
   NR_UE_SSB *current_ssb;
-
-#ifdef DEBUG_INITIAL_SYNCH
-  LOG_I(PHY,"[UE%d] Initial sync: starting PSBCH detection (rx_offset %d)\n",ue->Mod_id,
-        ue->rx_offset);
-#endif
-
-  uint8_t  N_L = 8;
-  uint8_t  N_hf = 1;
-
-  // loops over possible psbch dmrs cases to retrive best estimated i_ssb for multiple ssb detection
-  for (int l = 0; l < N_L ; l++) {
-
-    // initialization of structure
-    current_ssb = create_ssb_node(l,N_hf);
-
+  uint8_t  N_L = 5;
+  uint8_t  N_hf = 0;
+  for (int l = 0; l < N_L; l++) {
+    current_ssb = create_ssb_node(l, N_hf);
     start_meas(&ue->dlsch_channel_estimation_stats);
-    // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-    for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
-      nr_psbch_dmrs_correlation(ue,proc,0,0,i,i-pbch_initial_symbol,current_ssb);
-      stop_meas(&ue->dlsch_channel_estimation_stats);
-      
-      current_ssb->metric = current_ssb->c_re*current_ssb->c_re + current_ssb->c_im*current_ssb->c_im;
-      
-      // generate a list of SSB structures
-      if (best_ssb == NULL)
-        best_ssb = current_ssb;
-      else
-        best_ssb = insert_into_list(best_ssb,current_ssb);
-
+    for(int i = psbch_initial_symbol; i < 5; i++) {
+      nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i-psbch_initial_symbol, current_ssb);
+    }
+    stop_meas(&ue->dlsch_channel_estimation_stats);
+    current_ssb->metric = current_ssb->c_re * current_ssb->c_re + current_ssb->c_im * current_ssb->c_im;
+    if (best_ssb == NULL)
+      best_ssb = current_ssb;
+    else
+      best_ssb = insert_into_list(best_ssb, current_ssb);
   }
 
-  NR_UE_SSB *temp_ptr=best_ssb;
-  while (ret!=0 && temp_ptr != NULL) {
-
+  NR_UE_SSB *temp_ptr = best_ssb;
+  while (ret != 0 && temp_ptr != NULL) {
     start_meas(&ue->dlsch_channel_estimation_stats);
-  // computing channel estimation for selected best ssb
     const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
-      nr_psbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time, 
-                                 proc,0,0,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf);
-
+    for (int i = psbch_initial_symbol; i < 5; i++) {
+      nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                  proc, 0, 0, i, i-psbch_initial_symbol, 0, temp_ptr->n_hf);
+    }
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPsbch_t result;
-    ret = nr_rx_psbch(ue,
-                     proc,
-                     estimateSz,
-                     dl_ch_estimates,
-                     ue->psbch_vars[0],
-                     frame_parms,
-                     0,
-                     temp_ptr->i_ssb,
-                     SISO,
-                     phy_pdcch_config,
-                     &result);
-
-    temp_ptr=temp_ptr->next_ssb;
+    ret = nr_rx_psbch(ue, proc, estimateSz, dl_ch_estimates, ue->psbch_vars[0], frame_parms,
+                      0, temp_ptr->i_ssb, SISO, phy_pdcch_config, &result);
+    temp_ptr = temp_ptr->next_ssb;
   }
-
   free_list(best_ssb);
-
-  
-  if (ret==0) {
-    
-    frame_parms->nb_antenna_ports_gNB = 1; //pbch_tx_ant;
-    
-    // set initial transmission mode to 1 or 2 depending on number of detected TX antennas
-    //frame_parms->mode1_flag = (pbch_tx_ant==1);
-    // openair_daq_vars.dlsch_transmission_mode = (pbch_tx_ant>1) ? 2 : 1;
-
-
-    // flip byte endian on 24-bits for MIB
-    //    dummy = ue->pbch_vars[0]->decoded_output[0];
-    //    ue->pbch_vars[0]->decoded_output[0] = ue->pbch_vars[0]->decoded_output[2];
-    //    ue->pbch_vars[0]->decoded_output[2] = dummy;
-
-#ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(PHY,"[UE%d] Initial sync: psbch decoded sucessfully\n",ue->Mod_id);
-#endif
-    return(0);
-  } else {
-    return(-1);
-  }
-
+  return ret;
 }
 
 char duplex_string[2][4] = {"FDD","TDD"};
