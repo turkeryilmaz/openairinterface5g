@@ -118,7 +118,7 @@ SCM_t channel_model = AWGN;
 int N_RB_DL = 273;
 int mu = 1;
 unsigned char psbch_phase = 0;
-int run_initial_sync = 0;
+int run_initial_sync = 1;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
@@ -184,6 +184,8 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
+  nrUE_config->carrier_config.dl_frequency               = 450000;
+  nrUE_config->carrier_config.uplink_frequency           = 450000;
   ue->mac_enabled                                        = 1;
   fp->dl_CarrierFreq                                     = 2600000000;
   fp->ul_CarrierFreq                                     = 2600000000;
@@ -506,7 +508,7 @@ int main(int argc, char **argv)
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
                           (int16_t*)UE->common_vars.txdataF[aa],
-                          slot, 0, 13);
+                          slot, 1, 13);
       }
     }
   }
@@ -571,8 +573,8 @@ int main(int argc, char **argv)
       int n_frames = 1;
       if (UE->is_synchronized == 0) {
         UE_nr_rxtx_proc_t proc = {0};
-        ret = nr_initial_sync(&proc, UE, n_frames, 0);
-        if (ret < 0) {
+        ret = nr_sl_initial_sync(&proc, UE, n_frames);
+        if (ret != 0) {
           n_errors++;
         }
       } else {

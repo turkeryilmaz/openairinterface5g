@@ -301,54 +301,105 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
                        PHY_VARS_NR_UE *ue,
                        int n_frames)
 {
-  int index = 0;
-  int64_t psslevel = 0;
-  int64_t avglevel = 0;
-  int64_t slbch_errors = 0;
-  int frame = 0, slot = 0;
-
-  LOG_I(PHY, "TODO: We will handle further to debug RX sync data\n");
-  ue->rx_offset_sl = 0;//nr_sync_time_sl(ue, &index, &psslevel, &avglevel);
-
-  LOG_I(PHY,"index %d, psslevel %d dB avglevel %d dB => %d sample offset\n",
-        index, dB_fixed64((uint64_t)psslevel), dB_fixed64((uint64_t)avglevel), ue->rx_offset_sl);
-  if (ue->rx_offset_sl >= 0) {
-#if 0
-    int32_t sss_metric;
-    uint8_t phase_max;
-    rx_slsss(ue, &sss_metric, &phase_max, index);
-    generate_sl_grouphop(ue);
-#endif
-    // TODO: Activate this condition when rx_psbch was done.
-    if (0) {//(rx_psbch(ue, 0, 0) == -1) {
-      slbch_errors++;
-      LOG_I(PHY,"SLPBCH not decoded\n");
-      return(-1);
+  /*   Initial synchronisation
+   *
+  *                                 1 radio frame = 10 ms
+  *     <--------------------------------------------------------------------------->
+  *     -----------------------------------------------------------------------------
+  *     |                                 Received UE data buffer                    |
+  *     ----------------------------------------------------------------------------
+  *                     -------------------------------------------------
+  *     <-------------->| psbch | spss | spss | ssss | ssss | psbch |....
+  *                     -------------------------------------------------
+  *          sync_pos            SL S-SSB/PSBCH block
+  */
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  LOG_D(NR_PHY, "nr_initial SL sync ue RB_DL %d\n", fp->N_RB_DL);
+  int ret = -1;
+  int32_t sync_pos;
+  for (int is = 0; is < n_frames; is++) {
+    sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
+    if (sync_pos >= fp->nb_prefix_samples) {
+      ue->ssb_offset = sync_pos - fp->nb_prefix_samples;
+    } else {
+      ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    else {
-      // send payload to RRC
-      LOG_I(PHY,"Synchronization with SyncREF UE found, sending MIB-SL to RRC\n");
-      // TODO: Activate this condition when ue_decode_si was done.
-#if 0
-      ue_decode_si(ue->Mod_id,
-                   0, // CC_id
-                   0, // frame
-                   0, // gNB_index
-                   NULL, // pdu, NULL for MIB-SL
-                   0,    // len, 0 for MIB-SL
-                   &ue->slss_rx,
-                   &frame,
-                   &slot);
-      for (int i = 0; i < RX_NB_TH; i++) {
-        ue->proc.proc_rxtx[i].frame_rx = frame;
-        ue->proc.proc_rxtx[i].slot_rx = slot;
+    LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d sync_pos %d ssb_offset %d\n",
+          ue->Mod_id, n_frames, sync_pos,ue->common_vars.eNb_id, sync_pos, ue->ssb_offset);
+    if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
+      uint8_t phase_tdd_ncp;
+      int32_t metric_tdd_ncp = 0;
+      for (int i = 0; i < 13; i++)
+        nr_slot_fep_init_sync(ue, proc, i, 0, is * fp->samples_per_frame + ue->ssb_offset);
+      LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
+      int freq_offset_sss = 0;
+      ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
+      if (ue->UE_fo_compensation) {
+        double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
+        double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
+        int start = is*fp->samples_per_frame + ue->ssb_offset;
+        int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+        for (int n = start; n < end; n++) {
+          for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
+            double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
+            double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
+            ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
+            ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im *cos(n * off_angle)));
+          }
+        }
+        ue->common_vars.freq_offset += freq_offset_sss;
       }
-#endif
-      LOG_I(PHY,"RRC returns MIB-SL for frame %d, slot %d\n", frame, slot);
-      return(0);
+      NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
+      if (ret == 0) {
+        // sync at symbol ue->symbol_offset
+        // computing the offset wrt the beginning of the frame
+        int mu = fp->numerology_index;
+        // number of symbols with different prefix length
+        // every 7*(1<<mu) symbols there is a different prefix length (38.211 5.3.1)
+        int n_symb_prefix0 = (ue->symbol_offset / (7 * (1 << mu))) + 1;
+        int sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) + (ue->symbol_offset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+        // for a correct computation of frame number to sync with the one decoded at MIB we need to take into account in which of the n_frames we got sync
+        ue->init_sync_frame = n_frames - 1 - is;
+        // we also need to take into account the shift by samples_per_frame in case the if is true
+        if (ue->ssb_offset < sync_pos_frame){
+          ue->rx_offset = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
+          ue->init_sync_frame += 1;
+        } else {
+          ue->rx_offset = ue->ssb_offset - sync_pos_frame;
+        }
+        nr_gold_psbch(ue);
+        ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
+      }
+      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
+            fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
+    } else {
+      LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
     }
+    if (ret == 0) break;
   }
-  else return (-1);
+
+  if (ret == 0) {
+    LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
+          ue->Mod_id, ue->rx_offset, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
+    if (ue->UE_scan_carrier == 0) {
+      ue->psbch_vars[0]->pdu_errors_conseq = 0;
+    }
+  } else {
+    LOG_I(NR_PHY, "[UE%d] Initial sync :  PSBCH not ok. Estimated PSS position %d, Nid1 %d, Nid2 %d, Frame_type %d\n",
+          ue->Mod_id, sync_pos, GET_NID1_SL(fp->Nid_SL), GET_NID2_SL(fp->Nid_SL), fp->frame_type);
+    ue->UE_mode[0] = NOT_SYNCHED;
+    ue->psbch_vars[0]->pdu_errors_last = ue->psbch_vars[0]->pdu_errors;
+    ue->psbch_vars[0]->pdu_errors++;
+    ue->psbch_vars[0]->pdu_errors_conseq++;
+    int rx_power = 0;
+    ue->measurements.rx_power_avg[0] = rx_power / fp->nb_antennas_rx;
+    ue->measurements.rx_power_avg_dB[0] = dB_fixed(ue->measurements.rx_power_avg[0]);
+    LOG_I(NR_PHY, "[UE%d] Gain Control - Initial sync : Estimated power: %d dB\n", ue->Mod_id, ue->measurements.rx_power_avg_dB[0]);
+  }
+
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
+  return ret;
 }
 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
