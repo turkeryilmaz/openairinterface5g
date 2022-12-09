@@ -499,7 +499,7 @@ int main(int argc, char **argv)
                      1, UE->frame_parms.nb_prefix_samples0,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
+                          (int16_t*)UE->common_vars.txdata[aa],
                           slot, 0, 1);
         PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size],
                      (int*)&txdata[aa][max_symbol_size],
@@ -507,7 +507,7 @@ int main(int argc, char **argv)
                      13, UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
+                          (int16_t*)UE->common_vars.txdata[aa],
                           slot, 1, 13);
       }
     }
