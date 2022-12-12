@@ -8966,6 +8966,27 @@ rrc_eNB_decode_dcch(
           xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
         }
 
+       pdcp_t  *pdcp_p   = NULL;
+       hashtable_rc_t  h_rc;
+       uint8_t rbid_;
+       uint8_t  rb_idx = 0;
+       hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
+       ss_get_pdcp_cnt_t  pc;
+       for (int i = 0; i < MAX_RBS; i++){
+        if (i < 3){
+            rbid_ = i;
+            key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 1);
+        }
+        else{
+            rbid_ = i - 3;
+            key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 0);
+        }
+        h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+        if (h_rc == HASH_TABLE_OK){
+            pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
+            pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
+        }
+    }
 //#ifndef ENB_SS_SRB
       if (RC.ss.mode == SS_ENB)
       {
