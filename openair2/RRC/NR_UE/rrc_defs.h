@@ -185,6 +185,7 @@ typedef struct NR_UE_RRC_INST_s {
   NR_ServingCellConfigCommonSIB_t *servingCellConfigCommonSIB;
   NR_CellGroupConfig_t   *scell_group_config;
   NR_RadioBearerConfig_t *radio_bearer_config;
+  NR_MeasurementReport_t *measurementReport;
 
   NR_MeasObjectToAddMod_t        *MeasObj[NB_CNX_UE][MAX_MEAS_OBJ];
   NR_ReportConfigToAddMod_t      *ReportConfig[NB_CNX_UE][MAX_MEAS_CONFIG];
