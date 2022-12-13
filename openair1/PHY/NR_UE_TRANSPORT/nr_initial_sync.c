@@ -230,7 +230,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
   NR_UE_SSB *temp_ptr = best_ssb;
   while (ret != 0 && temp_ptr != NULL) {
     start_meas(&ue->dlsch_channel_estimation_stats);
-    const int estimateSz = frame_parms->symbols_per_slot * sizeof(int) * frame_parms->ofdm_symbol_size;
+    const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
