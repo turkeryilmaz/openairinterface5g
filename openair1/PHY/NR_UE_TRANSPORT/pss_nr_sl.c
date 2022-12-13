@@ -74,7 +74,7 @@ int nr_sl_generate_pss(int32_t *txdataF,
   }
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 2;
+  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
   if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
   l = ssb_start_symbol + 2;
