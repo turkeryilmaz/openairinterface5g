@@ -234,7 +234,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for (int i = psbch_initial_symbol; i < 5; i++) {
+    for (int i = psbch_initial_symbol; i < 13; i++) {
       if (i >= 1 && i <= 4)
         continue;
       nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
