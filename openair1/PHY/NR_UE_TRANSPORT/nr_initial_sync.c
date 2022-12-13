@@ -211,7 +211,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
     current_ssb = create_ssb_node(l, N_hf);
     start_meas(&ue->dlsch_channel_estimation_stats);
     // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-    for(int i = psbch_initial_symbol; i < 7; i++) {
+    for (int i = psbch_initial_symbol; i < 13; i++) {
       if (i >= 1 && i <= 4)
         continue;
       nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i - psbch_initial_symbol, current_ssb);
@@ -224,7 +224,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
     if (best_ssb == NULL)
       best_ssb = current_ssb;
     else
-      best_ssb = insert_into_list(best_ssb,current_ssb);
+      best_ssb = insert_into_list(best_ssb, current_ssb);
 
   }
   NR_UE_SSB *temp_ptr = best_ssb;
@@ -234,7 +234,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
-    for(int i = psbch_initial_symbol; i < 7; i++) {
+    for (int i = psbch_initial_symbol; i < 7; i++) {
       if (i >= 1 && i <= 4)
         continue;
       nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
