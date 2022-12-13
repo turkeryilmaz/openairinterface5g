@@ -3969,11 +3969,11 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       kRRCenc = MALLOC(16);
       kRRCint = MALLOC(32);
       kUPenc = MALLOC(16);
-      memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
-      memcpy(kRRCint, pdcp_p->kRRCint, 32);
-      memcpy(kUPenc, pdcp_p->kUPenc, 16);
+      if(pdcp_p->kRRCenc) memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
+      if(pdcp_p->kRRCint) memcpy(kRRCint, pdcp_p->kRRCint, 32);
+      if(pdcp_p->kUPenc) memcpy(kUPenc, pdcp_p->kUPenc, 16);
       security_modeP = (pdcp_p->cipheringAlgorithm |(pdcp_p->integrityProtAlgorithm << 4) );
-      LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti \n", ctxt_pP->rnti);
+      LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", ctxt_pP->rnti, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
       key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
       h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
@@ -10557,6 +10557,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               }
               security_mode_command_send = TRUE;
               as_security_conf_ciphering = FALSE;
+              ciphering_algorithm = 0;
               if (RC.ss.CBRA_flag)
               {
                 RRCConnSetup_PDU_Present[cc_id] = FALSE;
