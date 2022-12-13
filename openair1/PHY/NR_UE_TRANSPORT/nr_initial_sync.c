@@ -336,7 +336,6 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     ue->measurements.rx_power_avg_dB[0] = dB_fixed(ue->measurements.rx_power_avg[0]);
     LOG_I(NR_PHY, "[UE%d] Gain Control - Initial sync : Estimated power: %d dB\n", ue->Mod_id, ue->measurements.rx_power_avg_dB[0]);
   }
-  return ret;
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
   return ret;
