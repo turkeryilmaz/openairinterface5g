@@ -54,7 +54,7 @@ int nr_sl_generate_pss(int32_t *txdataF,
   /// Resource mapping
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
-  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START; //and
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
   if (k >= frame_parms->ofdm_symbol_size) k -= frame_parms->ofdm_symbol_size;
 
   int l = ssb_start_symbol + 1;
@@ -74,7 +74,7 @@ int nr_sl_generate_pss(int32_t *txdataF,
   }
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 2; //and
+  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 2;
   if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
   l = ssb_start_symbol + 2;

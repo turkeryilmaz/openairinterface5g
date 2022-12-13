@@ -61,7 +61,7 @@
 *
 * DESCRIPTION :  3GPP TS 38.211 7.4.2.2 Primary synchronisation signal
 *                Sequence generation
-*                Called by Nearby UE for psss decoding in Sidelink Rx.
+*                Called by Nearby UE for pss decoding in Sidelink Rx.
 *
 *********************************************************************/
 
@@ -152,7 +152,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   unsigned int subcarrier_start = PSS_SSS_SUB_CARRIER_START;
   if (get_softmodem_params()->sl_mode == 2)
     subcarrier_start = SPSS_SSSS_SUB_CARRIER_START;
-  AssertFatal(get_softmodem_params()->sl_mode != 1, "sl_mode 1 is not support yet.");
+  AssertFatal(get_softmodem_params()->sl_mode != 1, "Sidelink mode 1 is not supported yet.");
 
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
