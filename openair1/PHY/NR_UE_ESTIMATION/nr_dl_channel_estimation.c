@@ -293,10 +293,6 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
       pil += 2;
       re_offset = (re_offset+4) % ue->frame_parms.ofdm_symbol_size;
       rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
-      ch[0] = (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
-      ch[1] = (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
-      current_ssb->c_re += ch[0];
-      current_ssb->c_im += ch[1];
     }
   }
   return(0);

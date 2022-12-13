@@ -88,7 +88,7 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   l = ssb_start_symbol + 5;
   while (l < N_SSSB_Symb)
   {
-    //int mod_count = 0;
+    int mod_count = 0;
     while (m < NR_PSBCH_DMRS_LENGTH) {
 #ifdef DEBUG_PSBCH_DMRS
       printf("m %d at k %d of l %d\n", m, k, l);
@@ -107,10 +107,10 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
       k+=4;
       if (k >= frame_parms->ofdm_symbol_size)
         k-=frame_parms->ofdm_symbol_size;
-     // mod_count++;
+      mod_count++;
       m++;
-     // if (mod_count == dmrs_modulations_per_symbol)
-     //   break;
+      if (mod_count == dmrs_modulations_per_symbol)
+        break;
     }
     l++;
   }
