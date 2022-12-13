@@ -86,9 +86,9 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
 
   int N_SSSB_Symb = 13;
   l = ssb_start_symbol + 5;
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
   while (l < N_SSSB_Symb)
   {
+    k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
     int mod_count = 0;
     while (m < NR_PSBCH_DMRS_LENGTH) {
 #ifdef DEBUG_PSBCH_DMRS
