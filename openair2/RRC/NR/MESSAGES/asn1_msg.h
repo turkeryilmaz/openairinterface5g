@@ -146,7 +146,7 @@ uint8_t do_RRCSetupComplete(uint8_t Mod_id,
                             const int dedicatedInfoNASLength,
                             const char *dedicatedInfoNAS);
 
-uint16_t do_nrMeasurementReport_SA(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, uint8_t rsrp_s);
+uint16_t do_nrMeasurementReport_SA(NR_MeasurementReport_t *measurementReport, uint8_t *buffer, size_t buffer_size, uint8_t rsrp_s);
 
 uint8_t do_RRCSetupRequest(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, uint8_t *rv);
 
