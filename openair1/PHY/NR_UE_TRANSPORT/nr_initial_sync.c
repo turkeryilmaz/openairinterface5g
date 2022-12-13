@@ -307,6 +307,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         ue->common_vars.freq_offset += freq_offset_sss;
       }
       if (ret == 0) {
+        nr_gold_psbch(ue);
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
       }
