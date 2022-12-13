@@ -110,7 +110,7 @@ int n_trials = 1;
 uint8_t n_tx = 1;
 uint8_t n_rx = 1;
 uint16_t Nid_cell = 0;
-uint16_t Nid_SL = 338;
+uint16_t Nid_SL = 336 + 10;
 uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 FILE *input_fd = NULL;
@@ -496,10 +496,10 @@ int main(int argc, char **argv)
         PHY_ofdm_mod(UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
-                     1, UE->frame_parms.nb_prefix_samples0,
+                     1, UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
+                          (int16_t*)UE->common_vars.txdata[aa],
                           slot, 0, 1);
         PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size],
                      (int*)&txdata[aa][max_symbol_size],
@@ -507,7 +507,7 @@ int main(int argc, char **argv)
                      13, UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
-                          (int16_t*)UE->common_vars.txdataF[aa],
+                          (int16_t*)UE->common_vars.txdata[aa],
                           slot, 1, 13);
       }
     }

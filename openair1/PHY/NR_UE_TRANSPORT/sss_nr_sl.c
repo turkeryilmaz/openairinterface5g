@@ -67,7 +67,7 @@ int nr_sl_generate_sss(int32_t *txdataF,
   /// Resource mapping
 
   // SSS occupies a predefined position (subcarriers 2-129, symbol 3) within the SSB block starting from
-  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 2; //and
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
   int l = ssb_start_symbol + 3;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
@@ -80,7 +80,7 @@ int nr_sl_generate_sss(int32_t *txdataF,
   }
 
   // SSS occupies a predefined position (subcarriers 2 to 129, symbol 4) within the SSB block starting from
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 2; //and
+  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
   l = ssb_start_symbol + 4;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
