@@ -10114,7 +10114,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               ue_context_pP->ue_context.ue_release_timer_rrc = 0;
               ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
               }
-              ciphering_algorithm = 0;
               if (RC.ss.CBRA_flag)
               {
                 RRCConnSetup_PDU_Present[cc_id] = FALSE;
