@@ -421,6 +421,13 @@ int find_pdcch_candidate(gNB_MAC_INST *mac,
         }
       }
     }
+
+    if (RC.ss.mode == SS_SOFTMODEM)
+    {
+      taken = 0;
+      m = 0;
+      first_cce = 0;
+    }
     if(!taken){
       mac->pdcch_cand[coreset->controlResourceSetId] = m++; // using candidate m, next available is m+1
       return first_cce;

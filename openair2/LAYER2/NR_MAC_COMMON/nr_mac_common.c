@@ -311,7 +311,7 @@ const uint8_t table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[16][4]={
     {1,0,2,6}   // row index 16
 };
 
-void get_info_from_tda_tables(int default_abc,
+ void get_info_from_tda_tables(int default_abc,
                               int tda,
                               int dmrs_TypeA_Position,
                               int normal_CP,
@@ -1961,7 +1961,9 @@ void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs){
   uint32_t delta_arfcn = nrarfcn - N_OFFs;
 
   if(delta_arfcn%(nr_bandtable[i].step_size)!=0)
-    AssertFatal(1 == 0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
+//    AssertFatal(1 == 0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
+    LOG_E(NR_MAC, "fxn:%s nrarfcn %u is not on the channel raster for step size %lu", 
+      __FUNCTION__, nrarfcn, nr_bandtable[i].step_size);
 
 }
 
@@ -3507,7 +3509,6 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
   type0_PDCCH_CSS_config->num_rbs = -1;
   type0_PDCCH_CSS_config->num_symbols = -1;
   type0_PDCCH_CSS_config->rb_offset = -1;
-  LOG_D(NR_MAC,"NR_SubcarrierSpacing_kHz30 %d, scs_ssb %d, scs_pdcch %d, min_chan_bw %d\n",(int)NR_SubcarrierSpacing_kHz30,(int)scs_ssb,(int)scs_pdcch,min_channel_bw);
 
   //  type0-pdcch coreset
   switch( ((int)scs_ssb << 3) | (int)scs_pdcch ){

@@ -275,6 +275,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
                                frame_t frame,
                                sub_frame_t slot){
 
+  LOG_D(NR_MAC, "fxn:%s Entry\n", __FUNCTION__);
   protocol_ctxt_t   ctxt={0};
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_YES, NOT_A_RNTI, frame, slot,module_idP);
 
@@ -401,4 +402,5 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
   stop_meas(&RC.nrmac[module_idP]->eNB_scheduler);
   
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ULSCH_SCHEDULER,VCD_FUNCTION_OUT);
+  LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);
 }

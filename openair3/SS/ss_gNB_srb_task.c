@@ -288,7 +288,10 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                         // No message (timeout on socket)
                         if (isConnected == true){
                                 break;
-                        } 
+                        }
+                        else
+                          LOG_A(GNB_APP, "[SS_SRB] Connection stopped isConnected:false\n)");
+                         
                 }
                 else if (MSG_NrSysSrbProcessFromSS_userId == userId)
                 {
@@ -324,105 +327,106 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 //------------------------------------------------------------------------------
 void ss_gNB_srb_init(void)
 {
-        IpAddress_t ipaddr;
-        LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread (%s) \n", RC.ss.hostIp);
+  IpAddress_t ipaddr;
+  LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
 
-        const char *hostIp;
-        hostIp = RC.ss.hostIp ? RC.ss.hostIp : "127.0.0.1";
-        acpConvertIp(hostIp, &ipaddr);
+  const char *hostIp;
+  hostIp = RC.ss.hostIp;
+  acpConvertIp(hostIp, &ipaddr);
 
-        // Port number
-        int port = RC.ss.Srbport > 0 ? RC.ss.Srbport : 7778;
-	acpInit(malloc, free, 1000);
+  // Port number
+  int port = RC.ss.Srbport;
+  acpInit(malloc, free, 1000);
 
-        // Register user services/notifications in message table
-        const struct acpMsgTable msgTable[] = {
-                { "NrSysSrbProcessFromSS", MSG_NrSysSrbProcessFromSS_userId },
-                { "NrSysSrbProcessToSS", MSG_NrSysSrbProcessToSS_userId },
-                /* { "SysProcess", MSG_SysProcess_userId }, */
-                // The last element should be NULL
-                { NULL, 0 }
-        };
+  // Register user services/notifications in message table
+  const struct acpMsgTable msgTable[] = {
+    { "NrSysSrbProcessFromSS", MSG_NrSysSrbProcessFromSS_userId },
+    { "NrSysSrbProcessToSS", MSG_NrSysSrbProcessToSS_userId },
+    /* { "SysProcess", MSG_SysProcess_userId }, */
+    // The last element should be NULL
+    { NULL, 0 }
+  };
 
-        // Arena size to decode received message
-        const size_t aSize = 32 * 1024;
+  // Arena size to decode received message
+  const size_t aSize = 32 * 1024;
 
-        // Start listening server and get ACP context,
-        // after the connection is performed, we can use all services
-        int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
-        if (ret < 0)
-        {
-                LOG_A(GNB_APP, "[SS_SRB] Connection failure err=%d\n", ret);
-                return;
-        }
-        int fd1 = acpGetSocketFd(ctx_srb_g);
-        LOG_A(GNB_APP, "[SS_SRB] Connection performed : %d\n", fd1);
+  // Start listening server and get ACP context,
+  // after the connection is performed, we can use all services
+  int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
+  if (ret < 0)
+  {
+    LOG_A(GNB_APP, "[SS_SRB] Connection failure err=%d\n", ret);
+    return;
+  }
+  int fd1 = acpGetSocketFd(ctx_srb_g);
+  LOG_A(GNB_APP, "[SS_SRB] Connection performed : %d\n", fd1);
 
-                buffer = (unsigned char *)acpMalloc(size);
-        assert(buffer);
+  buffer = (unsigned char *)acpMalloc(size);
+  assert(buffer);
 
-        SS_context.State = SS_STATE_CELL_ACTIVE;
-        itti_subscribe_event_fd(TASK_SS_SRB, fd1);
-
-        itti_mark_task_ready(TASK_SS_SRB);
+  if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  {
+    SS_context.State = SS_STATE_CELL_ACTIVE;
+  }
+  itti_subscribe_event_fd(TASK_SS_SRB, fd1);
+  itti_mark_task_ready(TASK_SS_SRB);
 }
 
 //------------------------------------------------------------------------------
 void *ss_gNB_srb_process_itti_msg(void *notUsed)
 {
-        MessageDef *received_msg = NULL;
-        int result = 0;
+  MessageDef *received_msg = NULL;
+  int result = 0;
 
-        itti_receive_msg(TASK_SS_SRB, &received_msg);
+  itti_receive_msg(TASK_SS_SRB, &received_msg);
 
-        /* Check if there is a packet to handle */
-        if (received_msg != NULL)
+  /* Check if there is a packet to handle */
+  if (received_msg != NULL)
+  {
+    switch (ITTI_MSG_ID(received_msg))
+    {
+      LOG_A(GNB_APP, "[SS_SRB] Received msg_Id:%d\n", ITTI_MSG_ID(received_msg));
+      case SS_NRRRC_PDU_IND:
         {
-                switch (ITTI_MSG_ID(received_msg))
-                {
-                case SS_NRRRC_PDU_IND:
-                {
-#if 0
-                        task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+          task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
-                        if (origin_task == TASK_SS_PORTMAN)
-                        {
-                                LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
-                        }
-                        else
-#endif
-                        {
-                                LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
-                                if (SS_context.State >= SS_STATE_CELL_ACTIVE)
-                                {
-                                        instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-                                        ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
-                                }
-                                else
-                                {
-                                        LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.State);
-                                }
-                         }
+          if (origin_task == TASK_SS_PORTMAN)
+          {
+            LOG_D(GNB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.State);
+          }
+          else
+          {
+            LOG_A(GNB_APP, "[SS_SRB] Received SS_NRRRC_PDU_IND from RRC\n");
+            if (SS_context.State >= SS_STATE_CELL_ACTIVE)
+            {
+              instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+              ss_send_srb_data(&received_msg->ittiMsg.ss_nrrrc_pdu_ind);
+            }
+            else
+            {
+              LOG_A(GNB_APP, "ERROR [SS_SRB][NR_RRC_PDU_IND] received in SS state %d \n", SS_context.State);
+            }
+          }
 
-                        result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-                        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-                };
-                break;
-                case TERMINATE_MESSAGE:
-                        LOG_A(GNB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
-                        itti_exit_task();
-                        break;
+          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+          AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+        };
+        break;
+      case TERMINATE_MESSAGE:
+        LOG_A(GNB_APP, "[SS_SRB] Received TERMINATE_MESSAGE \n");
+        itti_exit_task();
+        break;
 
-                default:
-                        LOG_A(GNB_APP, "[SS_SRB] Received unhandled message %d:%s\n",
-                                  ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-                        break;
-                }
-        }
+      default:
+        LOG_A(GNB_APP, "[SS_SRB] Received unhandled message %d:%s\n",
+            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+        break;
+    }
+  }
 
-        ss_gNB_read_from_srb_socket(ctx_srb_g);
+  ss_gNB_read_from_srb_socket(ctx_srb_g);
 
-        return NULL;
+  return NULL;
 }
 
 void *ss_gNB_srb_task(void *arg)

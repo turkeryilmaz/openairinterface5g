@@ -860,7 +860,7 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 add_boolean_option(DRIVER2013              True "only relevant for EXMIMO")
 add_boolean_option(EXMIMO_IOT              True "????")
 add_boolean_option(LOCALIZATION            False "???")
-if ($ENV{NR_ENABLE})
+if ($ENV{NR_ENABLE}) 
 add_integer_option(MAX_NUM_CCs             1     "????")
 Message("Cell configuration for NR is 1. MULTI CELLS NOT IMPLEMENTED")
 else()
@@ -2822,6 +2822,7 @@ target_link_libraries (nr-softmodem ${LIBXML2_LIBRARIES})
 target_link_libraries (nr-softmodem pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${PROTOBUF_LIB}  ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES})
 target_link_libraries (nr-softmodem ${LIB_LMS_LIBRARIES})
 target_link_libraries (nr-softmodem ${T_LIB})
+target_link_libraries (nr-softmodem UDP)
 
 add_dependencies( nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 
