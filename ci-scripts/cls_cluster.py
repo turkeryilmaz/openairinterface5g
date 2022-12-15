@@ -58,9 +58,13 @@ class Cluster:
 		self.cmd = None
 
 
+	def _exec_cluster(self, line, timeout = 300, silent=False):
+		ret = self.cmd.run(f'{line} --server {self.OCUrl}', timeout, silent)
+		return ret
+
 	def _recreate_entitlements(self):
 		# recreating entitlements, don't care if deletion fails
-		self.cmd.run('oc delete secret etc-pki-entitlement')
+		self._exec_cluster('oc delete secret etc-pki-entitlement')
 		ret = self.cmd.run('ls /etc/pki/entitlement/???????????????????.pem | tail -1', silent=True)
 		regres1 = re.search(r"/etc/pki/entitlement/[0-9]+.pem", ret.stdout)
 		ret = self.cmd.run('ls /etc/pki/entitlement/???????????????????-key.pem | tail -1', silent=True)
@@ -70,7 +74,7 @@ class Cluster:
 			return False
 		file1 = regres1.group(0)
 		file2 = regres2.group(0)
-		ret = self.cmd.run(f'oc create secret generic etc-pki-entitlement --from-file {file1} --from-file {file2}')
+		ret = self._exec_cluster(f'oc create secret generic etc-pki-entitlement --from-file {file1} --from-file {file2}')
 		regres = re.search(r"secret/etc-pki-entitlement created", ret.stdout)
 		if ret.returncode != 0 or regres is None:
 			logging.error("could not create secret/etc-pki-entitlement")
@@ -79,25 +83,25 @@ class Cluster:
 
 	def _recreate_bc(self, name, newTag, filename):
 		self._retag_image_statement(name, name, newTag, filename)
-		self.cmd.run(f'oc delete -f {filename}')
-		ret = self.cmd.run(f'oc create -f {filename}')
+		self._exec_cluster(f'oc delete -f {filename}')
+		ret = self._exec_cluster(f'oc create -f {filename}')
 		if re.search('buildconfig.build.openshift.io/[a-zA-Z\-0-9]+ created', ret.stdout) is not None:
 			return True
 		logging.error('error while creating buildconfig: ' + ret.stdout)
 		return False
 
 	def _recreate_is_tag(self, name, newTag, filename):
-		ret = self.cmd.run(f'oc describe is {name}')
+		ret = self._exec_cluster(f'oc describe is {name}')
 		if ret.returncode != 0:
-			ret = self.cmd.run(f'oc create -f {filename}')
+			ret = self._exec_cluster(f'oc create -f {filename}')
 			if re.search(f'imagestream.image.openshift.io/{name} created', ret.stdout) is None:
 				logging.error(f'error while creating imagestream: {ret.stdout}')
 				return False
 		else:
 			logging.debug(f'-> imagestream {name} found')
 		image = f'{name}:{newTag}'
-		self.cmd.run(f'oc delete istag {image}', reportNonZero=False) # we don't care if this fails, e.g., if it is missing
-		ret = self.cmd.run(f'oc create istag {image}')
+		self._exec_cluster(f'oc delete istag {image}', reportNonZero=False) # we don't care if this fails, e.g., if it is missing
+		ret = self._exec_cluster(f'oc create istag {image}')
 		if ret.returncode == 0 and re.search(f'imagestreamtag.image.openshift.io/{image} created', ret.stdout) is not None:
 			return True
 		logging.error(f'error while creating imagestreamtag: {ret.stdout}')
@@ -106,7 +110,7 @@ class Cluster:
 	def _start_build(self, name):
 		# will return "immediately" but build runs in background
 		# if multiple builds are started at the same time, this can take some time, however
-		ret = self.cmd.run(f'oc start-build {name} --from-file={self.eNBSourceCodePath}')
+		ret = self._exec_cluster(f'oc start-build {name} --from-file={self.eNBSourceCodePath}')
 		regres = re.search(r'build.build.openshift.io/(?P<jobname>[a-zA-Z0-9\-]+) started', ret.stdout)
 		if ret.returncode != 0 or ret.stdout.count('Uploading finished') != 1 or regres is None:
 			logging.error(f"error during oc start-build: {ret.stdout}")
@@ -115,10 +119,10 @@ class Cluster:
 		return regres.group('jobname') + '-build'
 
 	def _delete_pod(self, shortName):
-		ret = self.cmd.run(f"oc get pods | grep {shortName}")
+		ret = self.cmd.run(f"oc get pods --server {self.OCUrl} | grep {shortName}")
 		regres = re.search(rf'{shortName}-[0-9]+-build', ret.stdout)
 		if regres is not None:
-			self.cmd.run(f"oc delete pod {regres.group(0)}")
+			self._exec_cluster(f"oc delete pod {regres.group(0)}")
 		else:
 			logging.warning(f"no pod found with name {shortName}")
 
@@ -127,7 +131,7 @@ class Cluster:
 		while timeout_sec > 0:
 			# check status
 			for j in jobs:
-				ret = self.cmd.run(f'oc get pods | grep {j}', silent = True)
+				ret = self.cmd.run(f'oc get pods --server {self.OCUrl} | grep {j}', silent = True)
 				if ret.stdout.count('Completed') > 0: jobs.remove(j)
 				if ret.stdout.count('Error') > 0:
 					logging.error(f'error for job {j}: {ret.stdout}')
@@ -145,21 +149,21 @@ class Cluster:
 
 	def _get_image_size(self, image, tag):
 		# get the SHA of the image we built using the image name and its tag
-		ret = self.cmd.run(f'oc describe is {image} | grep -A4 {tag}')
+		ret = self.cmd.run(f'oc describe is {image} --server {self.OCUrl} | grep -A4 {tag}')
 		result = re.search(f'image-registry.openshift-image-registry.svc:5000/oaicicd-ran/(?P<imageSha>{image}@sha256:[a-f0-9]+)', ret.stdout)
 		if result is None:
 			return -1
 		imageSha = result.group("imageSha")
 
 		# retrieve the size
-		ret = self.cmd.run(f'oc get -o json isimage {imageSha} | jq -Mc "{{dockerImageSize: .image.dockerImageMetadata.Size}}"')
+		ret = self.cmd.run(f'oc get -o json isimage {imageSha} --server {self.OCUrl} | jq -Mc "{{dockerImageSize: .image.dockerImageMetadata.Size}}"')
 		result = re.search('{"dockerImageSize":(?P<size>[0-9]+)}', ret.stdout)
 		if result is None:
 			return -1
 		return int(result.group("size"))
 
 	def _deploy_pod(self, filename, timeout = 30):
-		ret = self.cmd.run(f'oc create -f {filename}')
+		ret = self._exec_cluster(f'oc create -f {filename}')
 		result = re.search(f'pod/(?P<pod>[a-zA-Z0-9_\-]+) created', ret.stdout)
 		if result is None:
 			logging.error(f'could not deploy pod: {ret.stdout}')
@@ -167,7 +171,7 @@ class Cluster:
 		pod = result.group("pod")
 		logging.debug(f'checking if pod {pod} is in Running state')
 		while timeout > 0:
-			ret = self.cmd.run(f'oc get pod {pod} -o json | jq -Mc .status.phase', silent=True)
+			ret = self.cmd.run(f'oc get pod {pod} -o json --server {self.OCUrl} | jq -Mc .status.phase', silent=True)
 			if re.search('"Running"', ret.stdout) is not None: return pod
 			timeout -= 1
 			time.sleep(1)
@@ -176,7 +180,7 @@ class Cluster:
 		return None
 
 	def _undeploy_pod(self, filename):
-		self.cmd.run(f'oc delete -f {filename}')
+		self._exec_cluster(f'oc delete -f {filename}')
 
 	def _cluster_login(self):
 		ret = self._exec_cluster(f'oc login -u {self.ocUserName} -p {self.ocPassword}')
@@ -192,7 +196,7 @@ class Cluster:
 
 	def _cluster_logout(self):
 		# logout will return eventually, but we don't care when -> start in background
-		self.cmd.run('oc logout &')
+		self.cmd.run('oc logout --server {self.OCUrl} &')
 
 	def _verify_parameters(self):
 		if self.ranRepository == '' or self.ranBranch == '' or self.ranCommitID == '':
@@ -255,13 +259,13 @@ class Cluster:
 			attemptedImages += ['ran-base']
 			status = ranbase_job is not None and self._wait_build_end([ranbase_job], 600)
 			if not status: logging.error('failure during build of ran-base')
-			self.cmd.run(f'oc logs {ranbase_job} &> cmake_targets/log/ran-base.log') # cannot use cmd.run because of redirect
+			self.cmd.run(f'oc logs {ranbase_job} --server {self.OCUrl} &> cmake_targets/log/ran-base.log') # cannot use _exec_cluster because of redirect
 			# recover logs by mounting image
 			self._retag_image_statement('ran-base', 'ran-base', baseTag, 'openshift/ran-base-log-retrieval.yaml')
 			pod = self._deploy_pod('openshift/ran-base-log-retrieval.yaml')
 			if pod is not None:
 				self.cmd.run(f'mkdir -p cmake_targets/log/ran-base')
-				self.cmd.run(f'oc rsync {pod}:/oai-ran/cmake_targets/log/ cmake_targets/log/ran-base')
+				self._exec_cluster(f'oc rsync {pod}:/oai-ran/cmake_targets/log/ cmake_targets/log/ran-base')
 				self._undeploy_pod('openshift/ran-base-log-retrieval.yaml')
 			else:
 				status = False
@@ -282,9 +286,9 @@ class Cluster:
 			wait = ranbuild_job is not None and physim_job is not None and self._wait_build_end([ranbuild_job, physim_job], 1200)
 			if not wait: logging.error('error during build of ranbuild_job or physim_job')
 			status = status and wait
-			self.cmd.run(f'oc logs {ranbuild_job} &> cmake_targets/log/ran-build.log')
-			self.cmd.run(f'oc logs {physim_job} &> cmake_targets/log/oai-physim.log')
-			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+			self.cmd.run(f'oc logs {ranbuild_job} --server {self.OCUrl} &> cmake_targets/log/ran-build.log')
+			self.cmd.run(f'oc logs {physim_job} --server {self.OCUrl} &> cmake_targets/log/oai-physim.log')
+			self.cmd.run(f'oc get pods.metrics.k8s.io --server {self.OCUrl} &>> cmake_targets/log/build-metrics.log', '\$', 10)
 
 		if status:
 			self._recreate_is_tag('oai-enb', imageTag, 'openshift/oai-enb-is.yaml')
@@ -312,9 +316,9 @@ class Cluster:
 			if not wait: logging.error('error during build of eNB/gNB')
 			status = status and wait
 			# recover logs
-			self.cmd.run(f'oc logs {enb_job} &> cmake_targets/log/oai-enb.log')
-			self.cmd.run(f'oc logs {gnb_job} &> cmake_targets/log/oai-gnb.log')
-			self.cmd.run(f'oc logs {gnb_aw2s_job} &> cmake_targets/log/oai-gnb-aw2s.log')
+			self.cmd.run(f'oc logs {enb_job} --server {self.OCUrl} &> cmake_targets/log/oai-enb.log')
+			self.cmd.run(f'oc logs {gnb_job} --server {self.OCUrl} &> cmake_targets/log/oai-gnb.log')
+			self.cmd.run(f'oc logs {gnb_aw2s_job} --server {self.OCUrl} &> cmake_targets/log/oai-gnb-aw2s.log')
 
 			self._recreate_is_tag('oai-lte-ue', imageTag, 'openshift/oai-lte-ue-is.yaml')
 			self._recreate_bc('oai-lte-ue', imageTag, 'openshift/oai-lte-ue-bc.yaml')
@@ -334,9 +338,9 @@ class Cluster:
 			if not wait: logging.error('error during build of lteUE/nrUE')
 			status = status and wait
 			# recover logs
-			self.cmd.run(f'oc logs {lteue_job} &> cmake_targets/log/oai-lte-ue.log')
-			self.cmd.run(f'oc logs {nrue_job} &> cmake_targets/log/oai-nr-ue.log')
-			self.cmd.run(f'oc get pods.metrics.k8s.io &>> cmake_targets/log/build-metrics.log', '\$', 10)
+			self.cmd.run(f'oc logs {lteue_job} --server {self.OCUrl} &> cmake_targets/log/oai-lte-ue.log')
+			self.cmd.run(f'oc logs {nrue_job} --server {self.OCUrl} &> cmake_targets/log/oai-nr-ue.log')
+			self.cmd.run(f'oc get pods.metrics.k8s.io --server {self.OCUrl} &>> cmake_targets/log/build-metrics.log', '\$', 10)
 
 		# split and analyze logs
 		imageSize = {}
@@ -354,13 +358,13 @@ class Cluster:
 			logging.info(f'\u001B[1m{image} size is {imageSize[image]}\u001B[0m')
 
 		grep_exp = "\|".join(attemptedImages)
-		self.cmd.run(f'oc get images | grep -e \'{grep_exp}\' &> cmake_targets/log/image_registry.log');
-		self.cmd.run(f'for pod in $(oc get pods | tail -n +2 | awk \'{{print $1}}\'); do oc get pod $pod -o json &>> cmake_targets/log/build_pod_summary.log; done', '\$', 60)
+		self.cmd.run(f'oc get images --server {self.OCUrl} | grep -e \'{grep_exp}\' &> cmake_targets/log/image_registry.log');
+		self.cmd.run(f'for pod in $(oc get pods --server {self.OCUrl} | tail -n +2 | awk \'{{print $1}}\'); do oc get pod $pod -o json --server {self.OCUrl} &>> cmake_targets/log/build_pod_summary.log; done', '\$', 60)
 
 		build_log_name = f'build_log_{self.testCase_id}'
 		cls_containerize.CopyLogsToExecutor(self.cmd, lSourcePath, build_log_name, lIpAddr, 'oaicicd', CONST.CI_NO_PASSWORD)
 
-		self.cmd.run(f'for pod in $(oc get pods | tail -n +2 | awk \'{{print $1}}\'); do oc delete pod ${pod}; done')
+		self.cmd.run(f'for pod in $(oc get pods --server {self.OCUrl} | tail -n +2 | awk \'{{print $1}}\'); do oc delete pod ${pod} --server {self.OCUrl}; done')
 
 		self._cluster_logout()
 
