@@ -3501,6 +3501,10 @@ void *rrc_gnb_task(void *args_p) {
         LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
         rrc_gNB_rblist_configuration(instance, &NRRRC_RBLIST_CFG_REQ(msg_p));
         break;
+      case NRRRC_RBLIST_CFG_REQ:
+        LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
+        rrc_gNB_rblist_configuration(GNB_INSTANCE_TO_MODULE_ID(instance), &NRRRC_RBLIST_CFG_REQ(msg_p));
+        break;
 
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
@@ -3730,46 +3734,96 @@ void *rrc_gnb_task(void *args_p) {
                       (uint8_t *)SS_NRRRC_PDU_REQ(msg_p).sdu,
                       SS_NRRRC_PDU_REQ(msg_p).sdu_size, 0, 0);
 
-          LOG_A(RRC, "DL DCCH size: %d \n", SS_NRRRC_PDU_REQ(msg_p).sdu_size);
+          LOG_A(NR_RRC, "DL DCCH size: %d \n", SS_NRRRC_PDU_REQ(msg_p).sdu_size);
 
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
           {
             xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
 
-          nr_rrc_data_req(&ctxt,
-              DCCH,
-              rrc_gNB_mui++,
-              SDU_CONFIRM_NO,
-              SS_NRRRC_PDU_REQ (msg_p).sdu_size,
-              SS_NRRRC_PDU_REQ (msg_p).sdu,
-              PDCP_TRANSMISSION_MODE_CONTROL);
+          if(dl_dcch_msg->message.choice.c1) {
+            if (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration)
+            {
+              struct rrc_gNB_ue_context_s * ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt.module_id], ctxt.rnti);
+              LOG_A(NR_RRC, "[GNB %ld] SRB %d rnti %d rrcReconfiguration\n", instance, SS_NRRRC_PDU_REQ(msg_p).srb_id, SS_NRRRC_PDU_REQ(msg_p).rnti);
+              if(ue_context_p){
+                NR_RRCReconfiguration_t * rrcReconfiguration = dl_dcch_msg->message.choice.c1->choice.rrcReconfiguration;
 
-          /* remove UE Context */
-          if (dl_dcch_msg->message.present == NR_DL_DCCH_MessageType_PR_c1)
-          {
-            if (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)
+                /*---------------------------------------------------------------------------*/
+                /* The cellGroupConfig inside rrcReconfiguration from TTCN doesn't have rlc_config for some srb, upate it from bearList config */
+                if(rrcReconfiguration->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration && rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration){
+                  NR_RRCReconfiguration_IEs_t * ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
+                  if(ie->nonCriticalExtension && ie->nonCriticalExtension->masterCellGroup){
+                    NR_CellGroupConfig_t * cellGroupConfig = NULL;
+                    uper_decode(NULL,
+                                        &asn_DEF_NR_CellGroupConfig,
+                                        (void **)&cellGroupConfig,
+                                        (uint8_t *)ie->nonCriticalExtension->masterCellGroup->buf,
+                                        ie->nonCriticalExtension->masterCellGroup->size, 0, 0);
+
+                    if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+                      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)cellGroupConfig);
+                    }
+
+                    if(update_rrcReconfig_cellGroupConfig(&ctxt,ue_context_p,cellGroupConfig)){
+                      //we need to update the SDU as cellGroupConfig updated
+                      LOG_A(NR_RRC, "[GNB] update rrcReconfiguration DL_DCCH_Message message\n");
+                      uint8_t *buff = calloc(128,sizeof(uint8_t));
+                      asn_enc_rval_t  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
+                                                                                            NULL,
+                                                                                            (void *)cellGroupConfig,
+                                                                                            buff,
+                                                                                            128);
+                      ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,cellGroupConfig);
+                      if(enc_rval.encoded == -1) {
+                        LOG_E(NR_RRC, "ASN1 message CellGroupConfig encoding failed (%s)!\n",
+                        enc_rval.failed_type->name);
+                      }
+                      AssertFatal(enc_rval.encoded != -1, "[gNB AssertFatal]ASN1 message encoding CellGroupConfig failed (%s)!\n",enc_rval.failed_type->name);
+
+                      if (OCTET_STRING_fromBuf(ie->nonCriticalExtension->masterCellGroup, buff, (enc_rval.encoded+7)/8) == -1) {
+                        LOG_E(NR_RRC, "fatal: OCTET_STRING_fromBuf failed\n");
+                        AssertFatal(0, "OCTET_STRING_fromBuf failed\n");
+                      }
+                      free(buff);
+
+                      if (LOG_DEBUGFLAG(DEBUG_ASN1))
+                      {
+                        xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)dl_dcch_msg);
+                      }
+
+                      enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_DCCH_Message,
+                                      NULL,
+                                      (void *)dl_dcch_msg,
+                                      SS_NRRRC_PDU_REQ (msg_p).sdu,
+                                      SDU_SIZE);
+                      if(enc_rval.encoded == -1) {
+                        LOG_E(NR_RRC, "[gNB AssertFatal]ASN1 message DL_DCCH_Message encoding failed (%s)!\n",enc_rval.failed_type->name);
+                      }
+                      AssertFatal(enc_rval.encoded != -1, "[gNB AssertFatal]ASN1 message encoding DL_DCCH_Message failed (%s)!\n",enc_rval.failed_type->name);
+
+                      SS_NRRRC_PDU_REQ (msg_p).sdu_size = ((enc_rval.encoded+7)/8);
+                      LOG_A(NR_RRC, "DL DCCH updated size: %d \n", SS_NRRRC_PDU_REQ(msg_p).sdu_size);
+                    }
+                  }
+                }
+                /*---------------------------------------------------------------------------*/
+                rrc_gNB_store_RRCReconfiguration(&ctxt,ue_context_p,rrcReconfiguration);
+              }
+            } 
+            else if(dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)
             {
               rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt.module_id], ctxt.rnti);
               if (ue_context_p) {
-                /* uint8_t cc_id = ue_context_p->ue_context.primaryCC_id; */
+                LOG_I(NR_RRC, "rrcRelease UE rnti: %x \n", ctxt.rnti);
+                ue_context_p->ue_context.ue_reestablishment_timer = 0;
+                ue_context_p->ue_context.ue_release_timer = 0; /* TODO: ue_release_timer is not checked in nr_rrc_subframe_process */
+                ue_context_p->ue_context.ue_release_timer_thres = 0;
+                ue_context_p->ue_context.ue_rrc_inactivity_timer = 0;
+                ue_context_p->ue_context.ue_release_timer_rrc = 1; /* ue_release_timer_rrc is used to check UE context release */
+                ue_context_p->ue_context.ue_release_timer_thres_rrc = 10;
 
-                /* ue_context_p->ue_context.ue_reestablishment_timer = 0; */
-                /* ue_context_p->ue_context.ue_release_timer = 1; */
-                /* ue_context_p->ue_context.ue_release_timer_thres = 10; */
-                /* ue_context_p->ue_context.ue_rrc_inactivity_timer = 0; */
-                /* ue_context_p->ue_context.ue_release_timer_rrc = 0; */
-                /* ue_context_p->ue_context.ue_release_timer_thres_rrc = 0; */
-
-                /* ue_context_p->ue_context.ue_release_timer_ng = 1; */
-
-                /* security_mode_command_send = TRUE; */
-                /* as_security_conf_ciphering = FALSE; */
-                /* if (RC.ss.CBRA_flag) */
-                /* { */
-                /*     RRCConnSetup_PDU_Present[cc_id] = FALSE; */
-                /* } */
-
+              /*
                 LOG_W(NR_RRC, "todo, sleep before removing UE %x \n", ctxt.rnti);
                 sleep(1);
                 mac_remove_nr_ue(ctxt.module_id, ctxt.rnti);
@@ -3777,73 +3831,26 @@ void *rrc_gnb_task(void *args_p) {
                 pdcp_remove_UE(&ctxt);
 
                 LOG_I(NR_RRC, "removed UE %x \n", ctxt.rnti);
+                */
               }
               else
               {
                 LOG_W(NR_RRC, "ue_context_p is already NULL\n");
               }
             }
-            else if (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration)
-            {
-              int i;
-              uint8_t xid;
-
-              rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt.module_id], ctxt.rnti);
-              AssertFatal(ue_context_p != NULL, "ue_context_p is NULL\n");
-              LOG_I(NR_RRC, "reconfigure bearers for UE %x \n", ctxt.rnti);
-
-              NR_RRCReconfiguration_t *rrcReconfiguration = dl_dcch_msg->message.choice.c1->choice.rrcReconfiguration;
-              AssertFatal(rrcReconfiguration!=NULL, "rrcReconfiguration is null\n");
-              NR_RRCReconfiguration_IEs_t *rrcReconfiguration_ies = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
-              AssertFatal(rrcReconfiguration_ies!=NULL, "rrcReconfiguration_ies is null\n");
-              AssertFatal(rrcReconfiguration_ies->radioBearerConfig!=NULL, "rrcReconfiguration_ies->radioBearerConfig is null\n");
-
-              xid = rrcReconfiguration->rrc_TransactionIdentifier;
-              if (ue_context_p->ue_context.SRB_configList2[xid] == NULL) {
-                ue_context_p->ue_context.SRB_configList2[xid] = CALLOC(1, sizeof(*ue_context_p->ue_context.SRB_configList2[xid]));
-                memset(ue_context_p->ue_context.SRB_configList2[xid], 0, sizeof(*ue_context_p->ue_context.SRB_configList2[xid]));
-              }
-              if (ue_context_p->ue_context.DRB_configList2[xid] == NULL) {
-                ue_context_p->ue_context.DRB_configList2[xid] = CALLOC(1, sizeof(*ue_context_p->ue_context.DRB_configList2[xid]));
-                memset(ue_context_p->ue_context.DRB_configList2[xid], 0, sizeof(*ue_context_p->ue_context.DRB_configList2[xid]));
-              }
-              NR_SRB_ToAddModList_t *SRB_configList = ue_context_p->ue_context.SRB_configList2[xid];
-              NR_DRB_ToAddModList_t *DRB_configList = ue_context_p->ue_context.DRB_configList2[xid];
-              const NR_SRB_ToAddModList_t *srb2add_listP = rrcReconfiguration_ies->radioBearerConfig->srb_ToAddModList;
-              if (srb2add_listP != NULL) {
-                for (i = 0; i < srb2add_listP->list.count; i++) {
-                  ASN_SEQUENCE_ADD(&SRB_configList->list, srb2add_listP->list.array[i]);
-                }
-              }
-              const NR_DRB_ToAddModList_t *drb2add_listP = rrcReconfiguration_ies->radioBearerConfig->drb_ToAddModList;
-              if (drb2add_listP != NULL) {
-                for (i = 0; i < drb2add_listP->list.count; i++) {
-                  ASN_SEQUENCE_ADD(&DRB_configList->list, drb2add_listP->list.array[i]);
-                }
-              }
-
-              AssertFatal(rrcReconfiguration_ies->nonCriticalExtension!=NULL, "rrcReconfiguration_ies->nonCriticalExtension is null\n");
-              AssertFatal(rrcReconfiguration_ies->nonCriticalExtension->masterCellGroup!=NULL, "masterCellGroup is null\n");
-              AssertFatal(rrcReconfiguration_ies->nonCriticalExtension->masterCellGroup->buf!=NULL,"masterCellGroup is null\n");
-              asn_dec_rval_t dec_rval;
-              NR_CellGroupConfig_t *cellGroupConfig = NULL;
-              dec_rval = uper_decode(NULL,
-                  &asn_DEF_NR_CellGroupConfig,
-                  (void **)&cellGroupConfig,
-                  rrcReconfiguration_ies->nonCriticalExtension->masterCellGroup->buf,
-                  rrcReconfiguration_ies->nonCriticalExtension->masterCellGroup->size,0,0);
-              AssertFatal(dec_rval.code == RC_OK, "could not decode masterCellGroup\n");
-              if (cellGroupConfig->rlc_BearerToAddModList != NULL) {
-                for (i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++) {
-                  ASN_SEQUENCE_ADD(&ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList->list, cellGroupConfig->rlc_BearerToAddModList->list.array[i]);
-                }
-                asn_sequence_empty(&cellGroupConfig->rlc_BearerToAddModList->list);
-              }
-              SEQUENCE_free( &asn_DEF_NR_CellGroupConfig, cellGroupConfig, 0 );
-            }
           }
-	}
-	break;
+
+          ASN_STRUCT_FREE(asn_DEF_NR_DL_DCCH_Message,dl_dcch_msg);
+
+          nr_rrc_data_req(&ctxt,
+            DCCH,
+            rrc_gNB_mui++,
+            SDU_CONFIRM_NO,
+            SS_NRRRC_PDU_REQ (msg_p).sdu_size,
+            SS_NRRRC_PDU_REQ (msg_p).sdu,
+            PDCP_TRANSMISSION_MODE_CONTROL);
+        }
+        break;
 
       case SS_DRB_PDU_REQ:
         LOG_A(NR_RRC, "NR RRC received SS_DRB_PDU_REQ DRB_ID:%d SDU_SIZE:%d\n", SS_DRB_PDU_REQ(msg_p).drb_id, SS_DRB_PDU_REQ(msg_p).sdu_size);
