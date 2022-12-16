@@ -812,6 +812,7 @@ static void init_MBMS(
     PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, enb_mod_idP, ENB_FLAG_YES, NOT_A_RNTI, frameP, 0,enb_mod_idP);
     LOG_D(RRC, "[eNB %d] Frame %d : Radio Bearer config request for MBMS\n", enb_mod_idP, frameP);   //check the lcid
     // Configuring PDCP and RLC for MBMS Radio Bearer
+    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
     rrc_pdcp_config_asn1_req(&ctxt,
                              (LTE_SRB_ToAddModList_t *)NULL,   // LTE_SRB_ToAddModList
                              (LTE_DRB_ToAddModList_t *)NULL,   // LTE_DRB_ToAddModList
@@ -3897,6 +3898,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   }
 
   /* Refresh SRBs/DRBs */
+    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            *SRB_configList2, // NULL,
                            *DRB_configList,
@@ -7623,6 +7625,7 @@ rrc_eNB_decode_ccch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT"CALLING RLC CONFIG SRB1 (rbid %d)\n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
                 Idx);
+    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *) NULL,
@@ -7803,6 +7806,7 @@ rrc_eNB_decode_ccch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d),RRCConnSetup_PDU_Present: %d \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
                 Idx,RRCConnSetup_PDU_Present[CC_id]);
+    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *)NULL,
@@ -10060,14 +10064,14 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 #ifndef NR_ENABLE
 
         LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d instance %ld\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
-        SS_RRC_PDU_REQ(msg_p).rnti,instance);
+            SS_RRC_PDU_REQ(msg_p).rnti,instance);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                      instance,
-                                      ENB_FLAG_YES,
-                                      SS_RRC_PDU_REQ(msg_p).rnti,
-                                      msg_p->ittiMsgHeader.lte_time.frame,
-                                      msg_p->ittiMsgHeader.lte_time.slot);
+            instance,
+            ENB_FLAG_YES,
+            SS_RRC_PDU_REQ(msg_p).rnti,
+            msg_p->ittiMsgHeader.lte_time.frame,
+            msg_p->ittiMsgHeader.lte_time.slot);
 
         if ((SS_RRC_PDU_REQ(msg_p).srb_id) != 0)
         {
@@ -10075,10 +10079,10 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           LOG_A(RRC, "Sending RRC PDU by rrc_data_req function \n");
 
           uper_decode(NULL,
-                      &asn_DEF_LTE_DL_DCCH_Message,
-                      (void **)&dl_dcch_msg,
-                      (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
-                      SS_RRC_PDU_REQ(msg_p).sdu_size, 0, 0);
+              &asn_DEF_LTE_DL_DCCH_Message,
+              (void **)&dl_dcch_msg,
+              (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
+              SS_RRC_PDU_REQ(msg_p).sdu_size, 0, 0);
           {
             LOG_A(RRC, "DL-DCCH: ");
             for (int i = 0; i < SS_RRC_PDU_REQ(msg_p).sdu_size; i++)
@@ -10086,7 +10090,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               LOG_A(RRC, "%x.", SS_RRC_PDU_REQ(msg_p).sdu[i]);
             }
             LOG_A(RRC, "\n");
-	  }
+          }
           LOG_A(RRC, "DL DCCH size: %d \n", SS_RRC_PDU_REQ(msg_p).sdu_size);
 
           if (LOG_DEBUGFLAG(DEBUG_ASN1))
@@ -10107,23 +10111,23 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
             }
           }
-          rrc_data_req(&ctxt,
-                       DCCH,
-                       rrc_eNB_mui++,
-                       SDU_CONFIRM_NO,
-                       SS_RRC_PDU_REQ(msg_p).sdu_size,
-                       SS_RRC_PDU_REQ(msg_p).sdu,
-                       PDCP_TRANSMISSION_MODE_CONTROL);
-          /* TTCN triggered release, need to clean up the eNB's UE context
-           * the lower layer UE state , setting the UE release timer 10 SF
-           * rrc_subframe_process function will check each SF about the UE
-           * marked for release and do the clean up after 10 SF.
-           * 10 SF time is given to ensure the rrcConnectionRelease PDU
-           * is delivered to UE without any issue.
-           */
-          if (dl_dcch_msg->message.present == LTE_DL_DCCH_MessageType_PR_c1)
-          {
-            if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
+            LOG_A(RRC,"swetank SRB : before calling rrc_data_req SS_RRC_PDU_REQ(msg_p).srb_id:%d \n", SS_RRC_PDU_REQ(msg_p).srb_id);
+            rrc_data_req(&ctxt,
+                //DCCH,     swetank fix 
+                SS_RRC_PDU_REQ(msg_p).srb_id,
+                rrc_eNB_mui++,
+                SDU_CONFIRM_NO,
+                SS_RRC_PDU_REQ(msg_p).sdu_size,
+                SS_RRC_PDU_REQ(msg_p).sdu,
+                PDCP_TRANSMISSION_MODE_CONTROL);
+            /* TTCN triggered release, need to clean up the eNB's UE context
+             * the lower layer UE state , setting the UE release timer 10 SF
+             * rrc_subframe_process function will check each SF about the UE
+             * marked for release and do the clean up after 10 SF.
+             * 10 SF time is given to ensure the rrcConnectionRelease PDU
+             * is delivered to UE without any issue.
+             */
+            if (dl_dcch_msg->message.present == LTE_DL_DCCH_MessageType_PR_c1)
             {
               struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
 
@@ -10145,20 +10149,43 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               }
               if (RC.ss.CBRA_flag)
               {
-                RRCConnSetup_PDU_Present[cc_id] = FALSE;
+                struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
+
+                ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+                uint8_t cc_id = 0;
+                LOG_A(RRC, "RRC Connection Release message received \n");
+                if (NULL == ue_context_pP)
+                {
+                  LOG_W(RRC, "ue_context_pP is already NULL \n");
+                }
+                else {
+                  cc_id = ue_context_pP->ue_context.primaryCC_id;
+                  ue_context_pP->ue_context.ue_reestablishment_timer = 0;
+                  ue_context_pP->ue_context.ue_release_timer = 1;
+                  ue_context_pP->ue_context.ue_release_timer_thres = 10;
+                  ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
+                  ue_context_pP->ue_context.ue_release_timer_rrc = 0;
+                  ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+                }
+                security_mode_command_send = TRUE;
+                as_security_conf_ciphering = FALSE;
+                ciphering_algorithm = 0;
+                if (RC.ss.CBRA_flag)
+                {
+                  RRCConnSetup_PDU_Present[cc_id] = FALSE;
+                }
               }
             }
           }
-        }
-        else
-        {
-          struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
-          LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-          ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
-          LOG_A(RRC, "Genreating RRC-CS from TTCN message RRC_PDU_REQ\n");
-          uint8_t cc_id = ue_context_pP->ue_context.primaryCC_id;
-          module_id_t Idx;
-          LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
+          else
+          {
+            struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
+            LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
+            ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+            LOG_A(RRC, "Genreating RRC-CS from TTCN message RRC_PDU_REQ\n");
+            uint8_t cc_id = ue_context_pP->ue_context.primaryCC_id;
+            module_id_t Idx;
+            LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
 
           uper_decode(NULL,
@@ -10201,35 +10228,38 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
                   PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
                   Idx);
-            rrc_pdcp_config_asn1_req(&ctxt,
-                                     ue_context_pP->ue_context.SRB_configList,
-                                     (LTE_DRB_ToAddModList_t *)NULL,
-                                     (LTE_DRB_ToReleaseList_t *)NULL,
-                                     0xff,
-                                     NULL,
-                                     NULL,
-                                     NULL,
-                                     (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
+    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
+              rrc_pdcp_config_asn1_req(&ctxt,
+                  ue_context_pP->ue_context.SRB_configList,
+                  (LTE_DRB_ToAddModList_t *)NULL,
+                  (LTE_DRB_ToReleaseList_t *)NULL,
+                  0xff,
+                  NULL,
+                  NULL,
+                  NULL,
+                  (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-            if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
-              rrc_rlc_config_asn1_req(&ctxt,
-                                      ue_context_pP->ue_context.SRB_configList,
-                                      (LTE_DRB_ToAddModList_t *)NULL,
-                                      (LTE_DRB_ToReleaseList_t *)NULL,
-                                      (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
+              if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
+                rrc_rlc_config_asn1_req(&ctxt,
+                    ue_context_pP->ue_context.SRB_configList,
+                    (LTE_DRB_ToAddModList_t *)NULL,
+                    (LTE_DRB_ToReleaseList_t *)NULL,
+                    (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
+              }
+            } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
+              rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             }
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             lchannelType = Bearer_CCCH_e;
             bcchTransportType = dlsch_TRANSPORT;
           }
-        }
 #endif
-      }
-      break;
-//#endif
+        }
+        break;
+        //#endif
 
-      case SS_DRB_PDU_REQ:
+        case SS_DRB_PDU_REQ:
         LOG_A(RRC, "[eNB %ld] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
                                       instance,
@@ -10240,30 +10270,30 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         lchannelType = Bearer_DCCH_e;
         bcchTransportType = dlsch_TRANSPORT;
         pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
-       break;
+        break;
 
-    case RRC_AS_SECURITY_CONFIG_REQ:
-      LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
-      for(int i=16;i<32;i++)
-      {
-        LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
-      }
-      for(int j=0;j<16;j++)
-      {
-        LOG_D(RRC,"kRRCenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
-      }
-      for(int k=0;k<16;k++)
-      {
-        LOG_D(RRC,"kUPenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
-      }
-      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                    instance,
-                                    ENB_FLAG_YES,
-                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
-                                    msg_p->ittiMsgHeader.lte_time.frame,
-                                    msg_p->ittiMsgHeader.lte_time.slot);
-      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
-      break;
+        case RRC_AS_SECURITY_CONFIG_REQ:
+        LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+        for(int i=16;i<32;i++)
+        {
+          LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+        }
+        for(int j=0;j<16;j++)
+        {
+          LOG_D(RRC,"kRRCenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+        }
+        for(int k=0;k<16;k++)
+        {
+          LOG_D(RRC,"kUPenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+        }
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+            instance,
+            ENB_FLAG_YES,
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+            msg_p->ittiMsgHeader.lte_time.frame,
+            msg_p->ittiMsgHeader.lte_time.slot);
+        rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+        break;
 
     case SS_SS_PAGING_IND:
       LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
@@ -10272,10 +10302,10 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       bcchTransportType = bch_TRANSPORT;
       break;
 
-    case RRC_RBLIST_CFG_REQ:
-      LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
-      rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
-      break;
+        case RRC_RBLIST_CFG_REQ:
+        LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
+        rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
+        break;
 
     default:
       if (RC.ss.mode >= SS_SOFTMODEM)

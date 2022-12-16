@@ -213,7 +213,9 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 	assert(req);
         LTE_DL_DCCH_Message_t *dl_dcch_msg=NULL;
         LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-	MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, SS_RRC_PDU_REQ);
+  struct rrc_eNB_ue_context_s *ue_context_p = NULL;
+
+        MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, SS_RRC_PDU_REQ);
 	assert(message_p);
 	instance_g = 0;
 	if (message_p)
@@ -249,6 +251,9 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			memcpy(lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 
 			LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
+      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance_g], SS_RRC_PDU_REQ(msg_p).rnti);
+      memcpy(ue_context_p->sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
+      ue_context_p->sdu_size = SS_RRC_PDU_REQ(message_p).sdu_size;
 		}
 
 		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
@@ -443,61 +448,61 @@ void ss_eNB_srb_init(void)
  */
 void *ss_eNB_srb_process_itti_msg(void *notUsed)
 {
-	MessageDef *received_msg = NULL;
-	int result = 0;
-        int cell_index = 0;
+  MessageDef *received_msg = NULL;
+  int result = 0;
+  int cell_index = 0;
 
-	itti_receive_msg(TASK_SS_SRB, &received_msg);
+  itti_receive_msg(TASK_SS_SRB, &received_msg);
 
-	/* Check if there is a packet to handle */
-	if (received_msg != NULL)
-	{
-		switch (ITTI_MSG_ID(received_msg))
-		{
-		case SS_RRC_PDU_IND:
-		{
-			task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
-                        if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
-                          cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId, SS_context.SSCell_list);
-                          LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
-                        }
+  /* Check if there is a packet to handle */
+  if (received_msg != NULL)
+  {
+    switch (ITTI_MSG_ID(received_msg))
+    {
+      case SS_RRC_PDU_IND:
+        {
+          task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+          if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
+            cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId, SS_context.SSCell_list);
+            LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+          }
 
-			if (origin_task == TASK_SS_PORTMAN)
-			{
-				LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
-			}
-			else
-			{
-				LOG_A(ENB_SS, "[SS_SRB] Received SS_RRC_PDU_IND from RRC\n");
-				if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
-				{
-					instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-					ss_send_srb_data(&received_msg->ittiMsg.ss_rrc_pdu_ind,cell_index);
-				}
-				else
-				{
-					LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
-				}
-			}
+          if (origin_task == TASK_SS_PORTMAN)
+          {
+            LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+          }
+          else
+          {
+            LOG_A(ENB_SS, "[SS_SRB] Received SS_RRC_PDU_IND from RRC\n");
+            if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
+            {
+              instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+              ss_send_srb_data(&received_msg->ittiMsg.ss_rrc_pdu_ind,cell_index);
+            }
+            else
+            {
+              LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+            }
+          }
 
-			result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-			AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-                        received_msg = NULL;
-		}
-		break;
+          result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+          AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+          received_msg = NULL;
+        }
+        break;
 
-		case TERMINATE_MESSAGE:
-			LOG_A(ENB_SS, "[SS_SRB] Received TERMINATE_MESSAGE \n");
-			itti_exit_task();
-			break;
+      case TERMINATE_MESSAGE:
+        LOG_A(ENB_SS, "[SS_SRB] Received TERMINATE_MESSAGE \n");
+        itti_exit_task();
+        break;
 
-		default:
-			LOG_A(ENB_SS, "[SS_SRB] Received unhandled message %d:%s\n",
-				  ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-			break;
-		}
-	}
-	return NULL;
+      default:
+        LOG_A(ENB_SS, "[SS_SRB] Received unhandled message %d:%s\n",
+            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+        break;
+    }
+  }
+  return NULL;
 }
 
 /*
