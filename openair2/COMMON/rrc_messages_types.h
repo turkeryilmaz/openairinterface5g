@@ -53,8 +53,12 @@
 #include "LTE_InterFreqNeighCellInfo.h"
 #include "LTE_PhysCellIdRange.h"
 #include "LTE_NeighCellConfig.h"
+#include "NR_SDAP-Config.h"
+#include "NR_PDCP-Config.h"
+#include "NR_RLC-BearerConfig.h"
 
 #define MAX_RBS (LTE_maxDRB + 3)
+#define MAX_NR_RBS (NR_maxDRB+3)
 
 //-------------------------------------------------------------------------------------------//
 // Messages for RRC logging
@@ -89,6 +93,8 @@
 #define NBIOTRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nbiotrrc_configuration_req
 
 #define NRRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nrrrc_configuration_req
+
+#define NRRRC_RBLIST_CFG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.nrrrc_rblist_cfg_req
 
 #define NAS_KENB_REFRESH_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_kenb_refresh_req
 #define NAS_CELL_SELECTION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_req
@@ -646,6 +652,26 @@ typedef struct NRDuDlReq_s {
   mem_block_t * buf;
   uint64_t srb_id;
 }  NRDuDlReq_t; 
+
+typedef struct NRRadioBearerConfig_s {
+  NR_SDAP_Config_t *Sdap;
+  NR_PDCP_Config_t *Pdcp;
+  long *pdcpTransparentSN_Size;
+  NR_RLC_BearerConfig_t * RlcBearer;
+  bool *DiscardULData;
+}NRRadioBearerConfig;
+
+typedef struct nr_rb_info_s {
+  uint8_t  RbId;
+  NRRadioBearerConfig RbConfig;
+} nr_rb_info;
+
+typedef struct NRRrcRblistCfgReq_s {
+  int rb_count;
+  int cell_index;
+  nr_rb_info rb_list[MAX_NR_RBS];
+}NRRrcRblistCfgReq;
+
 
 // UE: NAS -> RRC messages
 typedef kenb_refresh_req_t      NasKenbRefreshReq;

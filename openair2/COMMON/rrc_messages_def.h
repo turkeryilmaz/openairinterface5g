@@ -58,7 +58,10 @@ MESSAGE_DEF(RRC_RBLIST_CFG_REQ,         MESSAGE_PRIORITY_MED,       RrcRblistCfg
 MESSAGE_DEF(RRC_UE_CAT_INFO,            MESSAGE_PRIORITY_MED,       rrcUECatInfo,               rrc_ue_cat_info)
 MESSAGE_DEF(RRC_AS_SECURITY_CONFIG_REQ, MESSAGE_PRIORITY_MED,       RrcAsSecurityConfigReq,     rrc_as_security_config_req)
 MESSAGE_DEF(NBIOTRRC_CONFIGURATION_REQ, MESSAGE_PRIORITY_MED,       NbIoTRrcConfigurationReq,   nbiotrrc_configuration_req)
+
+// gNB: gNB_APP -> RRC messages
 MESSAGE_DEF(NRRRC_CONFIGURATION_REQ,    MESSAGE_PRIORITY_MED,       gNB_RrcConfigurationReq,    nrrrc_configuration_req)
+MESSAGE_DEF(NRRRC_RBLIST_CFG_REQ,    MESSAGE_PRIORITY_MED,  NRRrcRblistCfgReq,    nrrrc_rblist_cfg_req)
 
 // UE: NAS -> RRC messages
 MESSAGE_DEF(NAS_KENB_REFRESH_REQ,       MESSAGE_PRIORITY_MED,       NasKenbRefreshReq,          nas_kenb_refresh_req)

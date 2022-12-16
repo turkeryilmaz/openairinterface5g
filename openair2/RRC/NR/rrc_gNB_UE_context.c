@@ -209,6 +209,8 @@ void rrc_gNB_remove_ue_context(
   RB_REMOVE(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_pP);
   rrc_gNB_free_mem_UE_context(ctxt_pP, ue_context_pP);
   nr_uid_linear_allocator_free(rrc_instance_pP, ue_context_pP->local_uid);
+  /*TODO: should use ASN_STRUCT_FREE to release each pointer field of ue_context */
+  /* free fields of ue_context_pP->ue_context */
   free(ue_context_pP);
   rrc_instance_pP->Nb_ue --;
   LOG_I(RRC,

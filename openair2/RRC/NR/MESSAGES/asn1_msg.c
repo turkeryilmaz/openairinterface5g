@@ -1089,6 +1089,136 @@ long rrc_get_max_nr_csrs(uint8_t max_rbs, long b_SRS) {
   return c_srs;
 }
 
+NR_RLC_Config_t * fill_rb_rlc_config(NR_RLC_Config_t * ss_rlc_config)
+{
+  NR_RLC_Config_t      *rlc_Config  = NULL;
+
+  rlc_Config = calloc(1, sizeof(NR_RLC_Config_t));
+  if(ss_rlc_config){
+    rlc_Config->present                                              = ss_rlc_config->present;
+    if(rlc_Config->present == NR_RLC_Config_PR_am){
+      rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength      = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+      if(ss_rlc_config->choice.am->dl_AM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength) =*(ss_rlc_config->choice.am->dl_AM_RLC.sn_FieldLength);
+      }else {
+        *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+      }
+      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                   = ss_rlc_config->choice.am->dl_AM_RLC.t_Reassembly;
+      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = ss_rlc_config->choice.am->dl_AM_RLC.t_StatusProhibit;
+      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+      if(ss_rlc_config->choice.am->ul_AM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               =*(ss_rlc_config->choice.am->ul_AM_RLC.sn_FieldLength);
+      }else{
+        *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+      }
+      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit             = ss_rlc_config->choice.am->ul_AM_RLC.t_PollRetransmit;
+      rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = ss_rlc_config->choice.am->ul_AM_RLC.pollPDU;
+      rlc_Config->choice.am->ul_AM_RLC.pollByte                        = ss_rlc_config->choice.am->ul_AM_RLC.pollByte;
+      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold           = ss_rlc_config->choice.am->ul_AM_RLC.maxRetxThreshold;
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Bi_Directional){
+      rlc_Config->choice.um_Bi_Directional                      = calloc(1,sizeof(*rlc_Config->choice.um_Bi_Directional));
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength); 
+      } else {
+        *(rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly;
+
+      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Uni_Directional_DL){
+      rlc_Config->choice.um_Uni_Directional_DL            = calloc(1,sizeof(*rlc_Config->choice.um_Uni_Directional_DL));
+      if(ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength); 
+      } else {
+        *(rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+      rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.t_Reassembly = ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.t_Reassembly;
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Uni_Directional_UL){
+      rlc_Config->choice.um_Uni_Directional_UL            = calloc(1,sizeof(*rlc_Config->choice.um_Uni_Directional_UL));
+      rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+
+    }
+  }else {
+    rlc_Config->present                                              = NR_RLC_Config_PR_am;
+    rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+    rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                    = NR_T_Reassembly_ms35;
+    rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = NR_T_StatusProhibit_ms0;
+    rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit                = NR_T_PollRetransmit_ms45;
+    rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = NR_PollPDU_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.pollByte                        = NR_PollByte_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold                = NR_UL_AM_RLC__maxRetxThreshold_t8;
+  }
+
+  return rlc_Config;
+}
+
+void fill_rb_RLC_BearerConfig(int rbIndex,NR_RLC_BearerConfig_t *rlc_BearerConfig,NR_RLC_BearerConfig_t  *ss_rlc_BearerConfig)
+{
+
+  NR_RLC_Config_t                                  *rlc_Config           = NULL;
+  NR_LogicalChannelConfig_t                      *logicalChannelConfig = NULL;
+  long *logicalChannelGroup = NULL;
+
+  bool isSrb = rbIndex < 3? true:false;
+
+  if(!rlc_BearerConfig){
+    return;
+  }
+
+  if(ss_rlc_BearerConfig && ss_rlc_BearerConfig->logicalChannelIdentity){
+    rlc_BearerConfig->logicalChannelIdentity = ss_rlc_BearerConfig->logicalChannelIdentity;
+  } else {
+    rlc_BearerConfig->logicalChannelIdentity                         = isSrb?rbIndex:(rbIndex-2);
+  }
+  rlc_BearerConfig->servedRadioBearer                              = calloc(1, sizeof(*rlc_BearerConfig->servedRadioBearer));
+  rlc_BearerConfig->servedRadioBearer->present                     = isSrb?(NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity):(NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity);
+  if(isSrb){
+    rlc_BearerConfig->servedRadioBearer->choice.srb_Identity         = rbIndex;
+  }else{
+    rlc_BearerConfig->servedRadioBearer->choice.drb_Identity = rbIndex-2;
+  }
+  rlc_BearerConfig->reestablishRLC                                 = NULL;
+
+  rlc_Config = fill_rb_rlc_config(ss_rlc_BearerConfig->rlc_Config);
+  rlc_BearerConfig->rlc_Config                                     = rlc_Config;
+
+  logicalChannelConfig                                             = calloc(1, sizeof(NR_LogicalChannelConfig_t));
+  logicalChannelConfig->ul_SpecificParameters                      = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters));
+  if(ss_rlc_BearerConfig && ss_rlc_BearerConfig->mac_LogicalChannelConfig && ss_rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters){
+    logicalChannelConfig->ul_SpecificParameters->priority = ss_rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->priority;
+    logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate = ss_rlc_BearerConfig->mac_LogicalChannelConfig->ul_SpecificParameters->prioritisedBitRate;
+  } else {
+    logicalChannelConfig->ul_SpecificParameters->priority            = (rbIndex == 1)? 1 :3;
+    logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate  = isSrb?(NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity):(NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_kBps8);
+  }
+  logicalChannelConfig->ul_SpecificParameters->bucketSizeDuration  = isSrb?(NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms5):(NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms100);
+
+  logicalChannelGroup                                              = CALLOC(1, sizeof(long));
+  *logicalChannelGroup                                             = isSrb?0:1;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelGroup = logicalChannelGroup;
+  logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = CALLOC(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
+  *logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = 0;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask = 0;
+  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = 0;
+  rlc_BearerConfig->mac_LogicalChannelConfig                       = logicalChannelConfig;
+}
+
 void fill_initial_SpCellConfig(int uid,
                                NR_SpCellConfig_t *SpCellConfig,
                                NR_ServingCellConfigCommon_t *scc,
@@ -1446,7 +1576,29 @@ void fill_initial_SpCellConfig(int uid,
 
 }
 
-void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGroupConfig_t *ue_context_mastercellGroup) {
+void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGroupConfig_t *ue_context_mastercellGroup,const int CC_id) {
+
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    /* code not used here. Just keep it here for future checking*/
+    NR_RLC_BearerConfig_t *rlc_BearerConfig       = NULL;
+    NR_RLC_BearerConfig_t * ss_rlc_BearerConfig = NULL;
+    cellGroupConfig->cellGroupId = 0;
+    cellGroupConfig->rlc_BearerToReleaseList = NULL;
+    cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+
+    for(int rbIndex =2; rbIndex < MAX_NR_RBS; rbIndex++){
+      /*SRB2 DRB1 ... SS RLC_BearerConfig */
+      if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid){
+        rlc_BearerConfig      = calloc(1, sizeof(NR_RLC_BearerConfig_t));
+        ss_rlc_BearerConfig = RC.NR_RB_Config[CC_id][rbIndex].RlcBearer;
+
+        fill_rb_RLC_BearerConfig(rbIndex, rlc_BearerConfig, ss_rlc_BearerConfig);
+        ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+        ASN_SEQUENCE_ADD(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
+      }
+    }
+    return;
+  }
 
   cellGroupConfig->cellGroupId = 0;
   cellGroupConfig->rlc_BearerToReleaseList = NULL;
@@ -1563,7 +1715,8 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
 void fill_initial_cellGroupConfig(int uid,
                                   NR_CellGroupConfig_t *cellGroupConfig,
                                   NR_ServingCellConfigCommon_t *scc,
-                                  rrc_gNB_carrier_data_t *carrier) {
+                                  rrc_gNB_carrier_data_t *carrier,
+                                  const int CC_id) {
 
   NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
   NR_RLC_Config_t                                  *rlc_Config           = NULL;
@@ -1571,46 +1724,58 @@ void fill_initial_cellGroupConfig(int uid,
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
   long *logicalChannelGroup = NULL;
-  
+
   cellGroupConfig->cellGroupId = 0;
-  
-  /* Rlc Bearer Config */
-  /* TS38.331 9.2.1	Default SRB configurations */
-  cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
-  rlc_BearerConfig                                                 = calloc(1, sizeof(NR_RLC_BearerConfig_t));
-  rlc_BearerConfig->logicalChannelIdentity                         = 1;
-  rlc_BearerConfig->servedRadioBearer                              = calloc(1, sizeof(*rlc_BearerConfig->servedRadioBearer));
-  rlc_BearerConfig->servedRadioBearer->present                     = NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity;
-  rlc_BearerConfig->servedRadioBearer->choice.srb_Identity         = 1;
-  rlc_BearerConfig->reestablishRLC                                 = NULL;
-  rlc_Config = calloc(1, sizeof(NR_RLC_Config_t));
-  rlc_Config->present                                              = NR_RLC_Config_PR_am;
-  rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
-  rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
-  *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
-  rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                    = NR_T_Reassembly_ms35;
-  rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = NR_T_StatusProhibit_ms0;
-  rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
-  *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
-  rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit                = NR_T_PollRetransmit_ms45;
-  rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = NR_PollPDU_infinity;
-  rlc_Config->choice.am->ul_AM_RLC.pollByte                        = NR_PollByte_infinity;
-  rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold                = NR_UL_AM_RLC__maxRetxThreshold_t8;
-  rlc_BearerConfig->rlc_Config                                     = rlc_Config;
-  logicalChannelConfig                                             = calloc(1, sizeof(NR_LogicalChannelConfig_t));
-  logicalChannelConfig->ul_SpecificParameters                      = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters));
-  logicalChannelConfig->ul_SpecificParameters->priority            = 1;
-  logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate  = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
-  logicalChannelGroup                                              = CALLOC(1, sizeof(long));
-  *logicalChannelGroup                                             = 0;
-  logicalChannelConfig->ul_SpecificParameters->logicalChannelGroup = logicalChannelGroup;
-  logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = CALLOC(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
-  *logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = 0;
-  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask = 0;
-  logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = 0;
-  rlc_BearerConfig->mac_LogicalChannelConfig                       = logicalChannelConfig;
-  ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
-  
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    NR_RLC_BearerConfig_t * ss_rlc_BearerConfig = NULL;
+    /*SRB1 SS RLC_BearerConfig */
+    int rbIndex = 1;
+    if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid){
+      cellGroupConfig->rlc_BearerToAddModList            = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+      rlc_BearerConfig                                                 = calloc(1, sizeof(NR_RLC_BearerConfig_t));
+      ss_rlc_BearerConfig = RC.NR_RB_Config[CC_id][rbIndex].RlcBearer;
+
+      fill_rb_RLC_BearerConfig(rbIndex, rlc_BearerConfig, ss_rlc_BearerConfig);
+      ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+    }
+  }else {
+    /* Rlc Bearer Config */
+    /* TS38.331 9.2.1	Default SRB configurations */
+    cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+    rlc_BearerConfig                                                 = calloc(1, sizeof(NR_RLC_BearerConfig_t));
+    rlc_BearerConfig->logicalChannelIdentity                         = 1;
+    rlc_BearerConfig->servedRadioBearer                              = calloc(1, sizeof(*rlc_BearerConfig->servedRadioBearer));
+    rlc_BearerConfig->servedRadioBearer->present                     = NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity;
+    rlc_BearerConfig->servedRadioBearer->choice.srb_Identity         = 1;
+    rlc_BearerConfig->reestablishRLC                                 = NULL;
+    rlc_Config = calloc(1, sizeof(NR_RLC_Config_t));
+    rlc_Config->present                                              = NR_RLC_Config_PR_am;
+    rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+    rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                    = NR_T_Reassembly_ms35;
+    rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = NR_T_StatusProhibit_ms0;
+    rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit                = NR_T_PollRetransmit_ms45;
+    rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = NR_PollPDU_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.pollByte                        = NR_PollByte_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold                = NR_UL_AM_RLC__maxRetxThreshold_t8;
+    rlc_BearerConfig->rlc_Config                                     = rlc_Config;
+    logicalChannelConfig                                             = calloc(1, sizeof(NR_LogicalChannelConfig_t));
+    logicalChannelConfig->ul_SpecificParameters                      = calloc(1, sizeof(*logicalChannelConfig->ul_SpecificParameters));
+    logicalChannelConfig->ul_SpecificParameters->priority            = 1;
+    logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate  = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+    logicalChannelGroup                                              = CALLOC(1, sizeof(long));
+    *logicalChannelGroup                                             = 0;
+    logicalChannelConfig->ul_SpecificParameters->logicalChannelGroup = logicalChannelGroup;
+    logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = CALLOC(1, sizeof(*logicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
+    *logicalChannelConfig->ul_SpecificParameters->schedulingRequestID = 0;
+    logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask = 0;
+    logicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = 0;
+    rlc_BearerConfig->mac_LogicalChannelConfig                       = logicalChannelConfig;
+    ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+  }
   cellGroupConfig->rlc_BearerToReleaseList = NULL;
   
   /* mac CellGroup Config */
@@ -1660,13 +1825,41 @@ void fill_initial_cellGroupConfig(int uid,
   cellGroupConfig->sCellToReleaseList                                       = NULL;
 }
 
+bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
+            rrc_gNB_ue_context_t      *ue_context_pP,
+            NR_CellGroupConfig_t *cellGroupConfig)
+{
+  int CC_id = ue_context_pP->ue_context.primaryCC_id;
+  bool update_flag = false;
+  if(RC.ss.mode < SS_SOFTMODEM){
+    return update_flag;
+  }
+
+  if(cellGroupConfig && cellGroupConfig->rlc_BearerToAddModList){
+    for(int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
+      NR_RLC_BearerConfig_t * rlc_BearerConfig = cellGroupConfig->rlc_BearerToAddModList->list.array[i];
+      /* only check rlc_config as it is missing from TTCN */
+      if(!rlc_BearerConfig->rlc_Config && rlc_BearerConfig->servedRadioBearer){
+        int rbIndex = (rlc_BearerConfig->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)? rlc_BearerConfig->servedRadioBearer->choice.srb_Identity : (rlc_BearerConfig->servedRadioBearer->choice.drb_Identity +2);
+        if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid && RC.NR_RB_Config[CC_id][rbIndex].RlcBearer){
+          rlc_BearerConfig->rlc_Config = fill_rb_rlc_config(RC.NR_RB_Config[CC_id][rbIndex].RlcBearer->rlc_Config);
+          update_flag = true;
+        }
+      }
+    }
+  }
+  return update_flag;
+}
+
+
 //------------------------------------------------------------------------------
 uint8_t do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                     uint8_t                      *const buffer,
                     const uint8_t                transaction_id,
                     OCTET_STRING_t               *masterCellGroup_from_DU,
                     NR_ServingCellConfigCommon_t *scc,
-                    rrc_gNB_carrier_data_t *carrier)
+                    rrc_gNB_carrier_data_t *carrier,
+                    const int                    CC_id)
 //------------------------------------------------------------------------------
 {
     asn_enc_rval_t                                   enc_rval;
@@ -1682,33 +1875,29 @@ uint8_t do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
     NR_SRB_ToAddModList_t        **SRB_configList = &ue_p->SRB_configList;
 
-
-
     memset((void *)&dl_ccch_msg, 0, sizeof(NR_DL_CCCH_Message_t));
     dl_ccch_msg.message.present            = NR_DL_CCCH_MessageType_PR_c1;
     dl_ccch_msg.message.choice.c1          = CALLOC(1, sizeof(struct NR_DL_CCCH_MessageType__c1));
     dl_ccch_msg.message.choice.c1->present = NR_DL_CCCH_MessageType__c1_PR_rrcSetup;
-    dl_ccch_msg.message.choice.c1->choice.rrcSetup = calloc(1, sizeof(NR_RRCSetup_t));
+    dl_ccch_msg.message.choice.c1->choice.rrcSetup = CALLOC(1, sizeof(NR_RRCSetup_t));
 
     rrcSetup = dl_ccch_msg.message.choice.c1->choice.rrcSetup;
     rrcSetup->criticalExtensions.present = NR_RRCSetup__criticalExtensions_PR_rrcSetup;
     rrcSetup->rrc_TransactionIdentifier  = transaction_id;
-    rrcSetup->criticalExtensions.choice.rrcSetup = calloc(1, sizeof(NR_RRCSetup_IEs_t));
+    rrcSetup->criticalExtensions.choice.rrcSetup = CALLOC(1, sizeof(NR_RRCSetup_IEs_t));
     ie = rrcSetup->criticalExtensions.choice.rrcSetup;
 
     /****************************** radioBearerConfig ******************************/
 
     /* Configure SRB1 */
-    if (*SRB_configList) {
-        free(*SRB_configList);
+    if (*SRB_configList){
+      ASN_STRUCT_FREE(asn_DEF_NR_SRB_ToAddModList,*SRB_configList);
+      *SRB_configList = NULL;
     }
 
-    *SRB_configList = calloc(1, sizeof(NR_SRB_ToAddModList_t));
-    // SRB1
-    /* TODO */
-    SRB1_config = calloc(1, sizeof(NR_SRB_ToAddMod_t));
+    *SRB_configList = CALLOC(1, sizeof(NR_SRB_ToAddModList_t));
+    SRB1_config = CALLOC(1, sizeof(NR_SRB_ToAddMod_t));
     SRB1_config->srb_Identity = 1;
-    // pdcp_Config->t_Reordering
     SRB1_config->pdcp_Config = pdcp_Config;
     ie->radioBearerConfig.srb_ToAddModList = *SRB_configList;
     ASN_SEQUENCE_ADD(&(*SRB_configList)->list, SRB1_config);
@@ -1732,9 +1921,12 @@ uint8_t do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
       xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
     }
     else {
-      cellGroupConfig = calloc(1, sizeof(NR_CellGroupConfig_t));
-      fill_initial_cellGroupConfig(ue_context_pP->local_uid,cellGroupConfig,scc,carrier);
+      cellGroupConfig = CALLOC(1, sizeof(NR_CellGroupConfig_t));
+      fill_initial_cellGroupConfig(ue_context_pP->local_uid,cellGroupConfig,scc,carrier,CC_id);
 
+      if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+        xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
+      }
       enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
 				       NULL,
 				       (void *)cellGroupConfig,
@@ -1753,6 +1945,10 @@ uint8_t do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
       }
     }
 
+    if(ue_p->masterCellGroup) {
+      ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,ue_p->masterCellGroup);
+      ue_p->masterCellGroup = NULL;
+    }
     ue_p->masterCellGroup = cellGroupConfig;
 
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
@@ -1764,6 +1960,11 @@ uint8_t do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
 				     buffer,
 				     1000);
     LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", buffer, 1000);
+
+    //free content of dl_ccch_msg
+    ie->radioBearerConfig.srb_ToAddModList = NULL; //ue_p->SRB_configList still keep allocated
+    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_CCCH_Message,&dl_ccch_msg);
+
     if(enc_rval.encoded == -1) {
       LOG_E(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
 	    enc_rval.failed_type->name, enc_rval.encoded);
@@ -2045,7 +2246,9 @@ int16_t do_RRCReconfiguration(
             enc_rval.failed_type->name, enc_rval.encoded);
         return -1;
       }
-      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
+      if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+        xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
+      }
       ie->nonCriticalExtension->masterCellGroup = calloc(1,sizeof(OCTET_STRING_t));
 
       ie->nonCriticalExtension->masterCellGroup->buf = masterCellGroup_buf;
@@ -2054,15 +2257,35 @@ int16_t do_RRCReconfiguration(
 
     dl_dcch_msg.message.choice.c1->choice.rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration = ie;
 
-    //if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
         xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
-    //}
+    }
 
     enc_rval = uper_encode_to_buffer(&asn_DEF_NR_DL_DCCH_Message,
                                     NULL,
                                     (void *)&dl_dcch_msg,
                                     buffer,
                                     buffer_size);
+
+    {
+      //Free content of dl_dcch_msg
+      if(ie->radioBearerConfig){
+        ie->radioBearerConfig->srb_ToAddModList  = NULL;
+        ie->radioBearerConfig->drb_ToAddModList  = NULL;
+        ie->radioBearerConfig->securityConfig    = NULL;
+        ie->radioBearerConfig->srb3_ToRelease    = NULL;
+        ie->radioBearerConfig->drb_ToReleaseList = NULL;
+      }
+      ie->measConfig = NULL;
+      if(ie->nonCriticalExtension){
+        ie->nonCriticalExtension->dedicatedNAS_MessageList = NULL;
+        if(ie->nonCriticalExtension->masterCellGroup){
+          ie->nonCriticalExtension->masterCellGroup->buf = NULL;
+          ie->nonCriticalExtension->masterCellGroup->size = 0;
+        }
+      }
+      ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message,&dl_dcch_msg);
+    }
 
     if(enc_rval.encoded == -1) {
         LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",

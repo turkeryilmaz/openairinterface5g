@@ -125,6 +125,12 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
           msgCnf->Confirm.v.Cell = true;
           break;
         }
+      case NR_SystemConfirm_Type_RadioBearerList:
+        {
+          LOG_A(GNB_APP, "[SYS-GNB] Send confirm for RadioBearerList\n");
+          msgCnf->Confirm.v.RadioBearerList = true;
+          break;
+        }
       case NR_SystemConfirm_Type_PdcpCount:
         {
           if (msg)
@@ -812,33 +818,298 @@ int cell_config_5G_done_indication()
 
 bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
 {
-	LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
-	struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
-	MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
+  struct NR_RadioBearer_Type_NR_RadioBearerList_Type_Dynamic *BearerList =  &(req->Request.v.RadioBearerList);
+  LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
+  MessageDef *msg_p = itti_alloc_new_message(TASK_SYS_GNB, 0, NRRRC_RBLIST_CFG_REQ);
+  if (msg_p)
+  {
+    LOG_A(GNB_APP, "[SYS-GNB] BearerList size:%lu\n", BearerList->d);
+    NRRRC_RBLIST_CFG_REQ(msg_p).rb_count = 0;
+    NRRRC_RBLIST_CFG_REQ(msg_p).cell_index = 0;  //TODO: change to multicell index later
+    for (int i = 0; i < BearerList->d; i++)
+    {
+      LOG_A(GNB_APP,"[SYS-GNB] RB Index i:%d\n", i);
+      nr_rb_info * rb_info = &(NRRRC_RBLIST_CFG_REQ(msg_p).rb_list[i]);
+      memset(rb_info, 0, sizeof(nr_rb_info));
+      if (BearerList->v[i].Id.d == NR_RadioBearerId_Type_Srb)
+      {
+        rb_info->RbId = BearerList->v[i].Id.v.Srb;
+      }
+      else if (BearerList->v[i].Id.d == NR_RadioBearerId_Type_Drb)
+      {
+        rb_info->RbId = BearerList->v[i].Id.v.Drb + 2; // Added 2 for MAXSRB because DRB1 starts from index-3
+      }
 
-	if (message_p)
-	{
-		LOG_A(GNB_APP, "[SYS-GNB] Send SS_NR_SYS_PORT_MSG_CNF\n");
-		msgCnf->Common.CellId = SS_context.eutra_cellId;
-		msgCnf->Common.Result.d = ConfirmationResult_Type_Success;
-		msgCnf->Common.Result.v.Success = true;
-		msgCnf->Confirm.d = NR_SystemConfirm_Type_RadioBearerList;
-		msgCnf->Confirm.v.RadioBearerList = true;
+      NRRadioBearerConfig * rbConfig = &rb_info->RbConfig;
+      if (BearerList->v[i].Config.d == NR_RadioBearerConfig_Type_AddOrReconfigure)
+      {
+        NRRRC_RBLIST_CFG_REQ(msg_p).rb_count++;
+        /* Populate the SDAP Configuration for the radio Bearer */
+        if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.d)
+        {
+          if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.d == SDAP_Configuration_Type_Config)
+          {
+            if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.d == SdapConfigInfo_Type_SdapConfig)
+            {
+              NR_SDAP_Config_t * sdap = CALLOC(1,sizeof(NR_SDAP_Config_t));
+              sdap->pdu_Session =  BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.Pdu_SessionId;
+              if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.Sdap_HeaderDL.d)
+              {
+                sdap->sdap_HeaderDL =  BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.Sdap_HeaderDL.v;
+              }
+              if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.MappedQoS_Flows.d)
+              {
+                sdap->mappedQoS_FlowsToAdd = CALLOC(1,sizeof(*sdap->mappedQoS_FlowsToAdd));
+                for(int j=0; j < BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.MappedQoS_Flows.v.d; j++)
+                {
+                  NR_QFI_t * qfi = CALLOC(1,sizeof(NR_QFI_t));
+                  *qfi = BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.v.SdapConfig.MappedQoS_Flows.v.v[j];
+                  ASN_SEQUENCE_ADD(&sdap->mappedQoS_FlowsToAdd->list,qfi);
+                }
+              }
+              rbConfig->Sdap = sdap;
+            }else if(BearerList->v[i].Config.v.AddOrReconfigure.Sdap.v.v.Config.d == SdapConfigInfo_Type_TransparentMode){
 
-		SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
-		int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
-		if (send_res < 0)
-		{
-			LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
-			return false;
-		}
-		else
-		{
-			LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:NR_SystemConfirm_Type_RadioBearerList to Port Manager", __FUNCTION__);
-		}
-	}
-	LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
-	return true;
+            }
+          }
+         }
+
+        /* Populate the PDCP Configuration for the radio Bearer */
+        if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.d)
+        {
+          if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.d == NR_PDCP_Configuration_Type_RBTerminating)
+          {
+            if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.d)
+            {
+              if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.d == NR_PDCP_RbConfig_Type_Params)
+              {
+                if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.Params.Rb.d == NR_PDCP_RB_Config_Parameters_Type_Srb)
+                {
+                  LOG_A(GNB_APP,"[SYS-GNB] PDCP Config for Bearer Id: %d is Null\n", rb_info->RbId);
+                }
+                else if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.Params.Rb.d == NR_PDCP_RB_Config_Parameters_Type_Drb)
+                {
+                  NR_PDCP_Config_t *pdcp = CALLOC(1,sizeof(NR_PDCP_Config_t));
+                  pdcp->drb = CALLOC(1, sizeof(*pdcp->drb));
+                  pdcp->drb->pdcp_SN_SizeUL=CALLOC(1,sizeof(long));
+                  *(pdcp->drb->pdcp_SN_SizeUL) = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.Params.Rb.v.Drb.SN_SizeUL;
+                  pdcp->drb->pdcp_SN_SizeDL=CALLOC(1,sizeof(long));
+                  *(pdcp->drb->pdcp_SN_SizeDL) = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.Params.Rb.v.Drb.SN_SizeDL;
+
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.Params.Rb.v.Drb.IntegrityProtectionEnabled)
+                  {
+                    pdcp->drb->integrityProtection = CALLOC(1,sizeof(long));
+                    *(pdcp->drb->integrityProtection) = 1;
+                  }
+                  //No rohc config for DRB from TTCN
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.Params.Rb.v.Drb.HeaderCompression.d == NR_PDCP_DRB_HeaderCompression_Type_None)
+                  {
+                  }
+                  rbConfig->Pdcp = pdcp;
+                }
+              }
+              else if (BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.d == NR_PDCP_RbConfig_Type_TransparentMode)
+              {
+                rbConfig->pdcpTransparentSN_Size = CALLOC(1,sizeof(long));
+                *(rbConfig->pdcpTransparentSN_Size) = BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.RbConfig.v.v.TransparentMode.SN_Size;
+              }
+            }
+
+            if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.LinkToOtherCellGroup.d)
+            {
+              if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.LinkToOtherCellGroup.v.d == RlcBearerRouting_Type_EUTRA)
+              {
+                //BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.LinkToOtherCellGroup.v.v.EUTRA
+              }
+              else if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.LinkToOtherCellGroup.v.d == RlcBearerRouting_Type_NR)
+              {
+                //BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.RBTerminating.LinkToOtherCellGroup.v.v.NR
+              }
+            }
+          }
+          else if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.d == NR_PDCP_Configuration_Type_Proxy)
+          {
+            if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Proxy.LinkToOtherNode.d == RlcBearerRouting_Type_EUTRA)
+            {
+              //BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Proxy.LinkToOtherNode.v.EUTRA
+            }
+            else if(BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Proxy.LinkToOtherNode.d == RlcBearerRouting_Type_NR)
+            {
+              //BearerList->v[i].Config.v.AddOrReconfigure.Pdcp.v.v.Proxy.LinkToOtherNode.v.NR
+            }
+          }
+        }
+
+        /* Populate the RlcBearerConfig for the radio Bearer */
+        if (BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.d)
+        {
+          NR_RLC_BearerConfig_t * rlcBearer = CALLOC(1,sizeof(NR_RLC_BearerConfig_t));
+          if (BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.d == NR_RlcBearerConfig_Type_Config)
+          {
+            /* Populate the Rlc Config of RlcBearerConfig for the radio Bearer */
+            if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.d)
+            {
+              if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.d)
+              {
+                NR_RLC_Config_t *rlc = CALLOC(1,sizeof(NR_RLC_Config_t));
+                if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.d == NR_RLC_RbConfig_Type_AM)
+                {
+                  rlc->present = NR_RLC_Config_PR_am;
+                  rlc->choice.am = CALLOC(1,sizeof(*rlc->choice.am));
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.d)
+                  {
+                    if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.d == NR_ASN1_UL_AM_RLC_Type_R15)
+                    {
+                      if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.v.R15.sn_FieldLength.d)
+                      {
+                        rlc->choice.am->ul_AM_RLC.sn_FieldLength = CALLOC(1,sizeof(long));
+                        *(rlc->choice.am->ul_AM_RLC.sn_FieldLength) =  BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.v.R15.sn_FieldLength.v;
+                      }
+                      rlc->choice.am->ul_AM_RLC.t_PollRetransmit = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.v.R15.t_PollRetransmit;
+                      rlc->choice.am->ul_AM_RLC.pollPDU = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.v.R15.pollPDU;
+                      rlc->choice.am->ul_AM_RLC.pollByte = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.v.R15.pollByte;
+                      rlc->choice.am->ul_AM_RLC.maxRetxThreshold = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Tx.v.v.R15.maxRetxThreshold;
+                    }
+                  }
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Rx.d)
+                  {
+                    if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Rx.v.d == NR_ASN1_DL_AM_RLC_Type_R15)
+                    {
+                      if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Rx.v.v.R15.sn_FieldLength.d)
+                      {
+                        rlc->choice.am->dl_AM_RLC.sn_FieldLength = CALLOC(1,sizeof(long));
+                        *(rlc->choice.am->dl_AM_RLC.sn_FieldLength) = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Rx.v.v.R15.sn_FieldLength.v;
+                      }
+                      rlc->choice.am->dl_AM_RLC.t_Reassembly = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Rx.v.v.R15.t_Reassembly;
+                      rlc->choice.am->dl_AM_RLC.t_StatusProhibit = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.AM.Rx.v.v.R15.t_StatusProhibit;
+                    }
+                  }
+                }
+                else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.d == NR_RLC_RbConfig_Type_UM)
+                {
+                  NR_UL_UM_RLC_t *ul_UM_RLC = NULL;
+                  NR_DL_UM_RLC_t *dl_UM_RLC = NULL;
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Tx.d && BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.d)
+                  {
+                    rlc->present = NR_RLC_Config_PR_um_Bi_Directional;
+                    rlc->choice.um_Bi_Directional = CALLOC(1,sizeof(*rlc->choice.um_Bi_Directional));
+                    ul_UM_RLC = &rlc->choice.um_Bi_Directional->ul_UM_RLC;
+                    dl_UM_RLC = &rlc->choice.um_Bi_Directional->dl_UM_RLC;
+                  }
+                  else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Tx.d)
+                  {
+                    rlc->present = NR_RLC_Config_PR_um_Uni_Directional_UL;
+                    rlc->choice.um_Uni_Directional_UL = CALLOC(1,sizeof(*rlc->choice.um_Uni_Directional_UL));
+                    ul_UM_RLC = &rlc->choice.um_Uni_Directional_UL->ul_UM_RLC;
+                  }
+                  else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.d)
+                  {
+                    rlc->present = NR_RLC_Config_PR_um_Uni_Directional_DL;
+                    rlc->choice.um_Uni_Directional_DL = CALLOC(1,sizeof(*rlc->choice.um_Uni_Directional_DL));
+                    dl_UM_RLC = &rlc->choice.um_Uni_Directional_DL->dl_UM_RLC;
+                  }
+
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Tx.d)
+                  {
+                    if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Tx.v.d == NR_ASN1_UL_UM_RLC_Type_R15)
+                    {
+                      if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Tx.v.v.R15.sn_FieldLength.d)
+                      {
+                        ul_UM_RLC->sn_FieldLength = CALLOC(1,sizeof(long));
+                        *(ul_UM_RLC->sn_FieldLength) = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Tx.v.v.R15.sn_FieldLength.v;
+                      }
+                    }
+                  }
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.d)
+                  {
+                     if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.v.d == NR_ASN1_DL_UM_RLC_Type_R15)
+                    {
+                      if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.v.v.R15.sn_FieldLength.d)
+                      {
+                        dl_UM_RLC->sn_FieldLength = CALLOC(1,sizeof(long));
+                        *(dl_UM_RLC->sn_FieldLength) = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.v.v.R15.sn_FieldLength.v;
+                      }
+                      dl_UM_RLC->t_Reassembly = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.v.UM.Rx.v.v.R15.t_Reassembly;
+                    }
+                  }
+                }
+                else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.Rb.v.d == NR_RLC_RbConfig_Type_TM)
+                {
+                  //TODO: TransparentMode
+                }
+                else
+                {
+                  rlc->present = NR_RLC_Config_PR_NOTHING;
+                }
+                rlcBearer->rlc_Config = rlc;
+              }
+              if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.d)
+              {
+                //TODO: RLC TestMode
+                if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.d == NR_RLC_TestModeConfig_Type_Info)
+                {
+                  if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.v.Info.d == NR_RLC_TestModeInfo_Type_AckProhibit)
+                  {
+                  }
+                  else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.v.Info.d == NR_RLC_TestModeInfo_Type_NotACK_NextRLC_PDU)
+                  {
+                  }
+                  else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.v.Info.d == NR_RLC_TestModeInfo_Type_TransparentMode)
+                  {
+                  }
+                }
+                else if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Rlc.v.TestMode.v.d == NR_RLC_TestModeConfig_Type_None)
+                {
+                }
+              }
+            }
+            /* Populate the LogicalChannelId of RlcBearerConfig for the radio Bearer */
+            if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.LogicalChannelId.d)
+            {
+              rlcBearer->logicalChannelIdentity = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.LogicalChannelId.v;
+            }
+
+            /* Populate the LogicalChannelConfig of RlcBearerConfig for the radio Bearer */
+            if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Mac.d)
+            {
+              if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Mac.v.LogicalChannel.d)
+              {
+                NR_LogicalChannelConfig_t * logicalChannelConfig = CALLOC(1,sizeof(NR_LogicalChannelConfig_t));
+                logicalChannelConfig->ul_SpecificParameters = CALLOC(1,sizeof(*logicalChannelConfig->ul_SpecificParameters));
+                logicalChannelConfig->ul_SpecificParameters->priority =  BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Mac.v.LogicalChannel.v.Priority;
+                logicalChannelConfig->ul_SpecificParameters->prioritisedBitRate = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Mac.v.LogicalChannel.v.PrioritizedBitRate;
+                rlcBearer->mac_LogicalChannelConfig = logicalChannelConfig;
+              }
+              if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.Mac.v.TestMode.d)
+              {
+                //TODO: MAC test mode
+              }
+            }
+
+            /* Populate the DiscardULData of RlcBearerConfig for the radio Bearer */
+            if(BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.DiscardULData.d)
+            {
+              //typically applicable for UM DRBs only: if true: SS shall discard any data in UL for this radio bearer
+              rbConfig->DiscardULData =CALLOC(1,sizeof(bool));
+              *(rbConfig->DiscardULData) = BearerList->v[i].Config.v.AddOrReconfigure.RlcBearer.v.v.Config.DiscardULData.v;
+            }
+          }
+          rbConfig->RlcBearer = rlcBearer;
+        }
+      }
+    }
+    LOG_A(GNB_APP, "[SYS-GNB] Send NRRRC_RBLIST_CFG_REQ to TASK_RRC_GNB, RB Count : %d, Message: %s  \n", NRRRC_RBLIST_CFG_REQ(msg_p).rb_count, ITTI_MSG_NAME(msg_p));
+    int send_res = itti_send_msg_to_task(TASK_RRC_GNB, 0, msg_p);
+    if (send_res < 0)
+    {
+      LOG_A(GNB_APP, "[SYS-GNB] Error sending NRRRC_RBLIST_CFG_REQ to RRC_GNB \n");
+    }
+
+  }
+
+  send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_RadioBearerList, NULL);
+  LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
+  return true;
 }
 
 /*
