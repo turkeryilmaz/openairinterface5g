@@ -666,6 +666,9 @@ typedef struct eNB_RRC_UE_s {
   int8_t                             reestablishment_xid;
   int                                does_nr;
   int                                nr_capabilities_requested;
+  uint32_t  sdu_size;    /* This is size of SDU received from TTCN */
+  uint8_t   sdu[SDU_SIZE];  /* This is sdu received from ttcn */
+
 } eNB_RRC_UE_t;
 
 typedef uid_t ue_uid_t;

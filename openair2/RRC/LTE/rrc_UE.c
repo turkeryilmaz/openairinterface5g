@@ -1246,6 +1246,7 @@ rrc_ue_process_radioResourceConfigDedicated(
     derive_key_rrc_int(UE_rrc_inst[ctxt_pP->module_id].integrity_algorithm,
                        UE_rrc_inst[ctxt_pP->module_id].kenb, &kRRCint);
     // Refresh SRBs
+    printf("swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
     rrc_pdcp_config_asn1_req(ctxt_pP,
                              radioResourceConfigDedicated->srb_ToAddModList,
                              (LTE_DRB_ToAddModList_t *)NULL,
@@ -1394,6 +1395,7 @@ rrc_ue_process_radioResourceConfigDedicated(
     derive_key_up_enc(UE_rrc_inst[ctxt_pP->module_id].integrity_algorithm,
                       UE_rrc_inst[ctxt_pP->module_id].kenb, &kUPenc);
     // Refresh DRBs
+    printf("swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
     rrc_pdcp_config_asn1_req(ctxt_pP,
                              (LTE_SRB_ToAddModList_t *)NULL,
                              radioResourceConfigDedicated->drb_ToAddModList,
@@ -4854,6 +4856,7 @@ void decode_MBSFNAreaConfiguration( module_id_t ue_mod_idP, uint8_t eNB_index, f
   	UE_rrc_inst[ue_mod_idP].Info[eNB_index].MCCHStatus[mbsfn_sync_area] = 1;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_idP, ENB_FLAG_NO, UE_rrc_inst[ue_mod_idP].Info[eNB_index].rnti, frameP, 0,eNB_index);
   // Config Radio Bearer for MBMS user data (similar way to configure for eNB side in init_MBMS function)
+    printf("swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(&ctxt,
                            NULL, // SRB_ToAddModList
                            NULL, // DRB_ToAddModList
@@ -5876,6 +5879,7 @@ void *rrc_control_socket_thread_fct(void *arg) {
         DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
         UE->DRB_configList = CALLOC(1,sizeof(LTE_DRB_ToAddModList_t));
         ASN_SEQUENCE_ADD(&UE->DRB_configList->list,UE->DRB_config[0][0]);
+    printf("swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
         rrc_pdcp_config_asn1_req(&ctxt,
                                  (LTE_SRB_ToAddModList_t *) NULL,
                                  UE->DRB_configList,
@@ -6081,6 +6085,7 @@ void *rrc_control_socket_thread_fct(void *arg) {
         DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
         UE->DRB_configList = CALLOC(1,sizeof(LTE_DRB_ToAddModList_t));
         ASN_SEQUENCE_ADD(&UE->DRB_configList->list,UE->DRB_config[0][0]);
+    printf("swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
         rrc_pdcp_config_asn1_req(&ctxt,
                                  (LTE_SRB_ToAddModList_t *) NULL,
                                  UE->DRB_configList,
@@ -6235,6 +6240,7 @@ void *rrc_control_socket_thread_fct(void *arg) {
         DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
         UE->DRB_configList = CALLOC(1,sizeof(LTE_DRB_ToAddModList_t));
         ASN_SEQUENCE_ADD(&UE->DRB_configList->list,UE->DRB_config[0][0]);
+    printf("swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
         rrc_pdcp_config_asn1_req(&ctxt,
                                  (LTE_SRB_ToAddModList_t *) NULL,
                                  UE->DRB_configList,

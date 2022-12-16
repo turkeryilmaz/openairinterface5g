@@ -296,6 +296,7 @@ boolean_t pdcp_data_req(
     }
   }
 
+  printf("swetank: fxn:%s line:%d module_id:%d rnti:%d enb_flag:%d rb_idP:%d srb_flagP:%d\n", __FUNCTION__, __LINE__,ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rb_idP, srb_flagP);
   key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rb_idP, srb_flagP);
   h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
@@ -1370,6 +1371,7 @@ pdcp_run (
                 RRC_DCCH_DATA_REQ (msg_p).confirmp,
                 RRC_DCCH_DATA_REQ (msg_p).mode);
           LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld \n", RRC_DCCH_DATA_REQ (msg_p).rb_id);
+          printf("swetank: fxn:%s  line:%d recvd RRC_DCCH_DATA_REQ before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
           result = pdcp_data_req (&ctxt,
                                   SRB_FLAG_YES,
                                   RRC_DCCH_DATA_REQ (msg_p).rb_id,
@@ -1821,6 +1823,7 @@ rrc_pdcp_config_asn1_req (
         drb2add_list_pP,
         drb2release_list_pP);
 
+  printf("swetank: Entry function:%s\n", __FUNCTION__);
   // srb2add_list does not define pdcp config, we use rlc info to setup the pdcp dcch0 and dcch1 channels
 
   if (srb2add_list_pP != NULL) {
@@ -1829,15 +1832,18 @@ rrc_pdcp_config_asn1_req (
       srb_toaddmod_p = srb2add_list_pP->list.array[cnt];
       rlc_type = RLC_MODE_AM;
       lc_id = srb_id;
+      printf("swetank SRB2: module_id,:%d rnti:%d enb_flag:%d srb_id:%d SRB_FLAG_YES\n", ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, srb_id, SRB_FLAG_YES);
       key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, srb_id, SRB_FLAG_YES);
       h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
       if (h_rc == HASH_TABLE_OK) {
+        printf("swetank SRB2: CONFIG_ACTION_MODIFY\n");
         action = CONFIG_ACTION_MODIFY;
         LOG_D(PDCP, PROTOCOL_PDCP_CTXT_FMT" CONFIG_ACTION_MODIFY key 0x%"PRIx64"\n",
               PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
               key);
       } else {
+        printf("swetank SRB2: CONFIG_ACTION_ADD \n");
         action = CONFIG_ACTION_ADD;
         pdcp_p = calloc(1, sizeof(pdcp_t));
         h_rc = hashtable_insert(pdcp_coll_p, key, pdcp_p);
@@ -1937,23 +1943,29 @@ rrc_pdcp_config_asn1_req (
 
       DevCheck4(drb_id < LTE_maxDRB, drb_id, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rnti);
       key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
+      printf("swetank DRB: module_id:%d rnti:%d enb_flag:%d drb_id:%d SRB_FLAG_NO\n", ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, drb_id);
       h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
       if (h_rc == HASH_TABLE_OK) {
+        printf("swetank DRB: config action MODIFY\n");
         action = CONFIG_ACTION_MODIFY;
         LOG_D(PDCP, PROTOCOL_PDCP_CTXT_FMT" CONFIG_ACTION_MODIFY key 0x%"PRIx64"\n",
               PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
               key);
       } else {
+          printf("swetank DRB: config action ADD\n");
         action = CONFIG_ACTION_ADD;
         pdcp_p = calloc(1, sizeof(pdcp_t));
         h_rc = hashtable_insert(pdcp_coll_p, key, pdcp_p);
 
         // save the first configured DRB-ID as the default DRB-ID
         if ((defaultDRB != NULL) && (*defaultDRB == drb_id)) {
+          printf("swetank DRB: <<defaultDRB != NULL or *defaultDRB == drb_id>> fxn:%s line:%d module_id:%d rnti:%d enb_flag:%d\n", __FUNCTION__, __LINE__, ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag);
+
           key_defaultDRB = PDCP_COLL_KEY_DEFAULT_DRB_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag);
           h_defaultDRB_rc = hashtable_insert(pdcp_coll_p, key_defaultDRB, pdcp_p);
         } else {
+          printf("swetank DRB: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           h_defaultDRB_rc = HASH_TABLE_OK; // do not trigger any error handling if this is not a default DRB
         }
 
@@ -2188,11 +2200,25 @@ pdcp_config_req_asn1 (
 //-----------------------------------------------------------------------------
 {
 
+  printf("swetank: fxn:%s line:%d srb_flagP:%d rlc_modeP:%d actionP:%d lc_idP:%d mch_idP:%d rb_idP:%d rb_snP:%d rb_reportP:%d header_compression_profileP:%d security_modeP:%d \n",
+        __FUNCTION__,
+        __LINE__,
+        srb_flagP,
+        rlc_modeP,
+        actionP,
+        lc_idP,
+        mch_idP,
+        rb_idP,
+        rb_snP,
+        rb_reportP,
+        header_compression_profileP,
+        security_modeP);
   switch (actionP) {
     case CONFIG_ACTION_ADD:
       DevAssert(pdcp_pP != NULL);
 
       if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
+          printf("swetank DRB: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
         pdcp_pP->is_ue = FALSE;
         pdcp_add_UE(ctxt_pP);
 
