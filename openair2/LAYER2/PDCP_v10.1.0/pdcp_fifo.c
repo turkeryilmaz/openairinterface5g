@@ -281,7 +281,6 @@ int pdcp_fifo_read_input_sdus_fromtun (const protocol_ctxt_t *const  ctxt_pP) {
       printf("\n");
 #endif
 
-      printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
       pdcp_data_req(&ctxt, SRB_FLAG_NO, rab_id, RLC_MUI_UNDEFINED,
                     RLC_SDU_CONFIRM_NO, len, (unsigned char *)nl_rx_buf,
                     PDCP_TRANSMISSION_MODE_DATA
@@ -341,7 +340,6 @@ int pdcp_fifo_read_input_mbms_sdus_fromtun (const protocol_ctxt_t *const  ctxt_p
       LOG_D(PDCP, "[FRAME %5u][UE][IP][INSTANCE %ld][RB %ld][--- PDCP_DATA_REQ / %d Bytes --->][PDCP][MOD %u][UE %04x][RB %ld]\n",
             ctxt.frame, ctxt.instance, rab_id, len, ctxt.module_id,
             ctxt.rnti, rab_id);
-      printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
       pdcp_data_req(
                 &ctxt,
                 SRB_FLAG_NO,
@@ -465,7 +463,6 @@ int pdcp_fifo_read_input_sdus_fromnetlinksock (const protocol_ctxt_t *const  ctx
                       ctxt.module_id,
                       ctxt.rnti,
                       rab_id);
-                printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
                 pdcp_data_req(&ctxt,
                               SRB_FLAG_NO,
                               rab_id,
@@ -539,7 +536,6 @@ int pdcp_fifo_read_input_sdus_fromnetlinksock (const protocol_ctxt_t *const  ctx
                       ctxt.module_id,
                       ctxt.rnti,
                       rab_id);
-                printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
                 pdcp_data_req(
                   &ctxt,
                   SRB_FLAG_NO,
@@ -574,7 +570,6 @@ int pdcp_fifo_read_input_sdus_fromnetlinksock (const protocol_ctxt_t *const  ctx
                     ctxt.module_id,
                     ctxt.rnti,
                     DEFAULT_RAB_ID);
-                printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
               pdcp_data_req (
                 &ctxt,
                 SRB_FLAG_NO,
@@ -722,7 +717,6 @@ void pdcp_fifo_read_input_sdus_frompc5s (const protocol_ctxt_t *const  ctxt_pP) 
              */
               uint32_t sourceL2Id = pc5s_header->sourceL2Id;
               uint32_t destinationL2Id = pc5s_header->destinationL2Id;
-                printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
               pdcp_data_req(
                 &ctxt,
                 SRB_FLAG_NO,
@@ -765,7 +759,6 @@ void pdcp_fifo_read_input_sdus_frompc5s (const protocol_ctxt_t *const  ctxt_pP) 
              */
             uint32_t sourceL2Id = pc5s_header->sourceL2Id;
             uint32_t destinationL2Id = pc5s_header->destinationL2Id;
-                printf("swetank: fxn:%s  line:%d before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
             pdcp_data_req (
               &ctxt,
               SRB_FLAG_NO,
