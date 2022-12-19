@@ -213,7 +213,6 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 	assert(req);
         LTE_DL_DCCH_Message_t *dl_dcch_msg=NULL;
         LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-
         MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, SS_RRC_PDU_REQ);
 	assert(message_p);
 	instance_g = 0;
