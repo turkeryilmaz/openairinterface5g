@@ -1951,7 +1951,6 @@ rrc_pdcp_config_asn1_req (
 
         // save the first configured DRB-ID as the default DRB-ID
         if ((defaultDRB != NULL) && (*defaultDRB == drb_id)) {
-
           key_defaultDRB = PDCP_COLL_KEY_DEFAULT_DRB_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag);
           h_defaultDRB_rc = hashtable_insert(pdcp_coll_p, key_defaultDRB, pdcp_p);
         } else {
