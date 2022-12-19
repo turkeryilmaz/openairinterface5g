@@ -87,16 +87,6 @@ rrc_data_req(
     ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
     ctxt_pP->instance,
     message_p);
-  printf("swetank fxn:%s line:%d frame:%d enb_flag:%d rb_id:%d mode:%d module_id:%d rnti:%d eNB_Index:%d\n", 
-    __FUNCTION__, 
-    __LINE__,
-    RRC_DCCH_DATA_REQ (message_p).frame, 
-    RRC_DCCH_DATA_REQ (message_p).enb_flag, 
-    RRC_DCCH_DATA_REQ (message_p).rb_id,
-    RRC_DCCH_DATA_REQ (message_p).mode,
-    RRC_DCCH_DATA_REQ (message_p).module_id,
-    RRC_DCCH_DATA_REQ (message_p).rnti,
-    RRC_DCCH_DATA_REQ (message_p).eNB_index);
   LOG_I(RRC,"sent RRC_DCCH_DATA_REQ to TASK_PDCP_ENB\n");
 
   return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
