@@ -490,24 +490,29 @@ int main(int argc, char **argv)
       msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA = prb_offset;
 
       int slot_timestamp = UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0);
+      UE->frame_parms.nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples;
       int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
       AssertFatal(max_symbol_size < frame_length_complex_samples, "Invalid index %d\n", max_symbol_size);
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
         apply_nr_rotation(&UE->frame_parms,
                           (int16_t*)UE->common_vars.txdataF[aa],
-                          slot, 0, 1);
+                          slot, 0, 1); // Conducts rotation on 0th symbol
         PHY_ofdm_mod(UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
-                     1, UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples,
+                     1, // Takes IDFT of 1st symbol (first PSBCH)
+                     UE->frame_parms.nb_prefix_samples0,
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
                           (int16_t*)UE->common_vars.txdataF[aa],
-                          slot, 1, 13);
-        PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size],
-                     (int*)&txdata[aa][max_symbol_size],
+                          slot, 1, 13); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
+        PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
+                     (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +
+                                       UE->frame_parms.nb_prefix_samples0 +
+                                       UE->frame_parms.nb_prefix_samples], // Starting output offset at CP0 + PSBCH0 + CP1
                      UE->frame_parms.ofdm_symbol_size,
-                     13, UE->frame_parms.nb_prefix_samples,
+                     13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
+                     UE->frame_parms.nb_prefix_samples,
                      CYCLIC_PREFIX);
       }
     }
