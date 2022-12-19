@@ -213,7 +213,6 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 	assert(req);
         LTE_DL_DCCH_Message_t *dl_dcch_msg=NULL;
         LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-  struct rrc_eNB_ue_context_s *ue_context_p = NULL;
 
         MessageDef *message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, SS_RRC_PDU_REQ);
 	assert(message_p);
@@ -251,9 +250,6 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			memcpy(lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 
 			LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
-      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance_g], SS_RRC_PDU_REQ(msg_p).rnti);
-      memcpy(ue_context_p->sdu, SS_RRC_PDU_REQ(message_p).sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
-      ue_context_p->sdu_size = SS_RRC_PDU_REQ(message_p).sdu_size;
 		}
 
 		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
