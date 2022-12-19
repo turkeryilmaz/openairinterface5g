@@ -3325,20 +3325,25 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
           DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
           if(1) {
-            PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
+//            PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
+          if (p_drb->list.array[ik]->pdcp_Config->rlc_AM != NULL)
+          {
+            PDCP_rlc_AM->statusReportRequired = p_drb->list.array[ik]->pdcp_Config->rlc_AM->statusReportRequired;
+          }
           } else {
             PDCP_rlc_AM->statusReportRequired = FALSE;
           }
 #else
           PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
           DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-          if(1) {
-            PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_UM->pdcp_SN_Size;
+          if(p_drb->list.array[ik]->pdcp_Config->rlc_UM != NULL) {
+//            PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_UM->pdcp_SN_Size;
+            PDCP_rlc_UM->pdcp_SN_Size = p_drb->list.array[ik]->pdcp_Config->rlc_UM->pdcp_SN_Size
           } else {
             PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
           }
 #endif
-          if(1) {
+          if(p_drb->list.array[ik]->pdcp_Config->headerCompression.present == LTE_PDCP_Config__headerCompression_PR_rohc) {
             DRB_pdcp_config->headerCompression.present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.headerCompression.present;
           } else {
             DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
