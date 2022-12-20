@@ -26,6 +26,7 @@ uint8_t nas_pduid;
 
 bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const ue_id_t ue_id,
+                   const int assoc_id,
                    const srb_flag_t srb_flag,
                    const rb_id_t rb_id,
                    const mui_t mui,
@@ -39,7 +40,8 @@ bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const bool rqi,
                    const int pdusession_id) {
   nr_sdap_entity_t *sdap_entity;
-  sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
+printf("sdap_data_req assoc_id %d\n", assoc_id); fflush(stdout);
+  sdap_entity = nr_sdap_get_entity(ue_id, assoc_id, pdusession_id);
 
   if(sdap_entity == NULL) {
     LOG_E(SDAP, "%s:%d:%s: Entity not found with ue: 0x%"PRIx64" and pdusession id: %d\n", __FILE__, __LINE__, __FUNCTION__, ue_id, pdusession_id);
@@ -48,6 +50,7 @@ bool sdap_data_req(protocol_ctxt_t *ctxt_p,
 
   bool ret = sdap_entity->tx_entity(sdap_entity,
                                     ctxt_p,
+                                    assoc_id,
                                     srb_flag,
                                     rb_id,
                                     mui,
@@ -67,10 +70,12 @@ void sdap_data_ind(rb_id_t pdcp_entity,
                    bool has_sdap_rx,
                    int pdusession_id,
                    ue_id_t ue_id,
+                   int assoc_id,
                    char *buf,
                    int size) {
   nr_sdap_entity_t *sdap_entity;
-  sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
+printf("assoc_id %d\n", assoc_id); fflush(stdout);
+  sdap_entity = nr_sdap_get_entity(ue_id, assoc_id, pdusession_id);
 
   if (sdap_entity == NULL) {
     LOG_E(SDAP, "%s:%d:%s: Entity not found for ue rnti/ue_id: %lx and pdusession id: %d\n", __FILE__, __LINE__, __FUNCTION__, ue_id, pdusession_id);
@@ -83,6 +88,7 @@ void sdap_data_ind(rb_id_t pdcp_entity,
                          has_sdap_rx,
                          pdusession_id,
                          ue_id,
+                         assoc_id,
                          buf,
                          size);
 }

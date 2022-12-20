@@ -37,6 +37,7 @@
 #include "f1ap_cu_paging.h"
 #include "f1ap_cu_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
+#include "assertions.h"
 
 //Fixme: Uniq dirty DU instance, by global var, datamodel need better management
 instance_t CUuniqInstance=0;
@@ -45,11 +46,16 @@ static instance_t cu_task_create_gtpu_instance(eth_params_t *IPaddrs) {
   openAddr_t tmp= {0};
   strncpy(tmp.originHost, IPaddrs->my_addr, sizeof(tmp.originHost)-1);
   sprintf(tmp.originService, "%d", IPaddrs->my_portd);
+printf("cu_task_create_gtpu_instance %s %d\n", IPaddrs->my_addr, IPaddrs->my_portd); fflush(stdout);
   return gtpv1Init(tmp);
 }
 
 static void cu_task_handle_sctp_association_ind(instance_t instance, sctp_new_association_ind_t *sctp_new_association_ind,
     eth_params_t *IPaddrs) {
+printf("cu_task_handle_sctp_association_ind instance %ld assoc_id %d\n", instance, sctp_new_association_ind->assoc_id);
+  f1ap_new_du(sctp_new_association_ind->assoc_id);
+  f1ap_cu_assoc_id_to_context(sctp_new_association_ind->assoc_id)->gtpInst = CUuniqInstance;
+#if 0
   createF1inst(true, instance, NULL);
   // save the assoc id
   f1ap_setup_req_t *f1ap_cu_data=f1ap_req(true, instance);
@@ -65,6 +71,7 @@ static void cu_task_handle_sctp_association_ind(instance_t instance, sctp_new_as
   // Fixme: fully inconsistent instances management
   // dirty global var is a bad fix
   CUuniqInstance=getCxt(CUtype, instance)->gtpInst;
+#endif
 }
 
 static void cu_task_handle_sctp_association_resp(instance_t instance, sctp_new_association_resp_t *sctp_new_association_resp) {
@@ -126,6 +133,11 @@ void *F1AP_CU_task(void *arg) {
   IPaddrs = &RC.nrrrc[0]->eth_params_s;
 
   cu_task_send_sctp_init_req(0, IPaddrs->my_addr);
+
+  createF1inst(true, 0, NULL);
+  instance_t gtpu_id = cu_task_create_gtpu_instance(IPaddrs);
+  CUuniqInstance = gtpu_id;
+  //getCxt(CUtype, 0/*instance*/)->gtpInst=CUuniqInstance;
 
   while (1) {
     itti_receive_msg(TASK_CU_F1, &received_msg);
@@ -210,3 +222,41 @@ void *F1AP_CU_task(void *arg) {
 
   return NULL;
 }
+
+typedef struct {
+  f1ap_du_t *du;
+  int du_size;
+} du_manager_t;
+
+static du_manager_t du;
+
+f1ap_du_t *f1ap_new_du(int assoc_id)
+{
+  int i;
+  /* must not be here already */
+  for (i = 0; i < du.du_size; i++)
+   if (du.du[i].assoc_id == assoc_id) {
+     LOG_E(F1AP, "fatal: assoc_id %d already there\n", assoc_id);
+     exit(1);
+   }
+
+  du.du_size++;
+  du.du = realloc(du.du, du.du_size * sizeof(f1ap_du_t));
+  AssertFatal(du.du != NULL, "out of memory\n");
+
+  du.du[du.du_size - 1].assoc_id = assoc_id;
+  memset(&du.du[du.du_size - 1].ctxt, 0, sizeof(f1ap_cudu_inst_t));
+
+  return &du.du[du.du_size - 1];
+}
+
+f1ap_cudu_inst_t *f1ap_cu_assoc_id_to_context(int assoc_id)
+{
+  int i;
+  for (i = 0; i < du.du_size; i++)
+   if (du.du[i].assoc_id == assoc_id)
+     return &du.du[i].ctxt;
+  LOG_E(F1AP, "fatal: assoc_id %d not found\n", assoc_id);
+  exit(1);
+}
+

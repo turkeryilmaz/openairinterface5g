@@ -629,6 +629,9 @@ void nr_initiate_ra_proc(module_id_t module_idP,
       do {
         // 3GPP TS 38.321 version 15.13.0 Section 7.1 Table 7.1-1: RNTI values
         ra->rnti = (taus() % 0xffef) + 1;
+static int next_id = 0x1000;
+        ra->rnti = next_id;
+next_id++;
         loop++;
       } while (loop != 100
                && !((find_nr_UE(&nr_mac->UE_info, ra->rnti) == NULL) && (find_nr_RA_id(module_idP, CC_id, ra->rnti) == -1)

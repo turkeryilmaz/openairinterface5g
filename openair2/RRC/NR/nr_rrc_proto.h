@@ -139,6 +139,7 @@ void rrc_config_dl_ptrs_params(NR_BWP_Downlink_t *bwp, int *ptrsNrb, int *ptrsMc
 uint8_t
 nr_rrc_data_req(
   const protocol_ctxt_t   *const ctxt_pP,
+  const int                      assoc_id,
   const rb_id_t                  rb_idP,
   const mui_t                    muiP,
   const confirm_t                confirmP,
@@ -164,6 +165,7 @@ int nr_rrc_reconfiguration_req(rrc_gNB_ue_context_t         *const ue_context_pP
                                const int                    ul_bwp_id);
 
 int nr_rrc_gNB_decode_ccch(protocol_ctxt_t    *const ctxt_pP,
+                           int                assoc_id,
                            const uint8_t      *buffer,
                            int                buffer_length,
                            const uint8_t      *du_to_cu_rrc_container,
@@ -206,10 +208,11 @@ void fill_DRB_configList(const protocol_ctxt_t *const ctxt_pP,
 
 void prepare_and_send_ue_context_modification_f1(rrc_gNB_ue_context_t *ue_context_p,
                                                  e1ap_bearer_setup_resp_t *e1ap_resp);
-void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddModList_t *const srb2add_list, const uint8_t security_modeP, uint8_t *const kRRCenc, uint8_t *const kUPint);
+void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, int assoc_id, NR_SRB_ToAddModList_t *const srb2add_list, const uint8_t security_modeP, uint8_t *const kRRCenc, uint8_t *const kUPint);
 
 void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
                       ue_id_t rntiMaybeUEid,
+                      int assoc_id,
                       ue_id_t reestablish_ue_id,
                       NR_DRB_ToAddModList_t *const drb2add_list,
                       const uint8_t security_modeP,

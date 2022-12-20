@@ -76,17 +76,18 @@ void nr_pdcp_manager_unlock(nr_pdcp_ue_manager_t *_m)
 }
 
 /* must be called with lock acquired */
-nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, ue_id_t rntiMaybeUEid)
+nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, ue_id_t rntiMaybeUEid, int f1ap_assoc_id)
 {
   /* TODO: optimze */
   nr_pdcp_ue_manager_internal_t *m = _m;
   int i;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rntiMaybeUEid == rntiMaybeUEid)
+    if (m->ue_list[i]->rntiMaybeUEid == rntiMaybeUEid
+        && m->ue_list[i]->f1ap_assoc_id == f1ap_assoc_id)
       return m->ue_list[i];
 
-  LOG_D(PDCP, "%s:%d:%s: new UE ID/RNTI 0x%" PRIx64 "\n", __FILE__, __LINE__, __FUNCTION__, rntiMaybeUEid);
+  LOG_D(PDCP, "new UE ID/RNTI 0x%" PRIx64 " assoc_id %d\n", rntiMaybeUEid, f1ap_assoc_id);
 
   m->ue_count++;
   m->ue_list = realloc(m->ue_list, sizeof(nr_pdcp_ue_t *) * m->ue_count);
@@ -101,12 +102,13 @@ nr_pdcp_ue_t *nr_pdcp_manager_get_ue(nr_pdcp_ue_manager_t *_m, ue_id_t rntiMaybe
   }
 
   m->ue_list[m->ue_count - 1]->rntiMaybeUEid = rntiMaybeUEid;
+  m->ue_list[m->ue_count-1]->f1ap_assoc_id = f1ap_assoc_id;
 
   return m->ue_list[m->ue_count-1];
 }
 
 /* must be called with lock acquired */
-void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, ue_id_t rntiMaybeUEid)
+void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, ue_id_t rntiMaybeUEid, int f1ap_assoc_id)
 {
   nr_pdcp_ue_manager_internal_t *m = _m;
   nr_pdcp_ue_t *ue;
@@ -114,7 +116,8 @@ void nr_pdcp_manager_remove_ue(nr_pdcp_ue_manager_t *_m, ue_id_t rntiMaybeUEid)
   int j;
 
   for (i = 0; i < m->ue_count; i++)
-    if (m->ue_list[i]->rntiMaybeUEid == rntiMaybeUEid)
+    if (m->ue_list[i]->rntiMaybeUEid == rntiMaybeUEid
+        && m->ue_list[i]->f1ap_assoc_id == f1ap_assoc_id)
       break;
 
   if (i == m->ue_count) {
@@ -209,4 +212,13 @@ bool nr_pdcp_get_first_ue_id(nr_pdcp_ue_manager_t *_m, ue_id_t *ret)
     return false;
   *ret = m->ue_list[0]->rntiMaybeUEid;
   return true;
+}
+
+int nr_pdcp_get_first_rnti_assoc_id(nr_pdcp_ue_manager_t *_m, int rnti)
+{
+  nr_pdcp_ue_manager_internal_t *m = _m;
+  if (m->ue_count == 0)
+    return -1;
+  AssertFatal(m->ue_list[0]->rntiMaybeUEid == rnti, "bad rnti\n");
+  return m->ue_list[0]->f1ap_assoc_id;
 }

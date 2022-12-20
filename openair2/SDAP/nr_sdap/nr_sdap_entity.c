@@ -39,12 +39,12 @@ instance_t *N3GTPUInst = NULL;
 
 nr_pdcp_ue_manager_t *nr_pdcp_sdap_get_ue_manager(void);
 
-void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu)
+void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, int assoc_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu)
 {
   nr_pdcp_ue_t *ue;
   nr_pdcp_ue_manager_t *nr_pdcp_ue_manager;
   nr_pdcp_ue_manager = nr_pdcp_sdap_get_ue_manager();
-  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id, assoc_id);
   ue->drb[sdap_ctrl_pdu_drb-1]->recv_sdu(ue->drb[sdap_ctrl_pdu_drb-1], (char*)&ctrl_pdu, SDAP_HDR_LENGTH, RLC_MUI_UNDEFINED);
   LOG_D(SDAP, "Control PDU - Submitting Control PDU to DRB ID:  %ld\n", sdap_ctrl_pdu_drb);
   LOG_D(SDAP, "QFI: %u\n R: %u\n D/C: %u\n", ctrl_pdu.QFI, ctrl_pdu.R, ctrl_pdu.DC);
@@ -53,6 +53,7 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
 
 static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                               protocol_ctxt_t *ctxt_p,
+                              const int assoc_id,
                               const srb_flag_t srb_flag,
                               const rb_id_t rb_id,
                               const mui_t mui,
@@ -87,16 +88,17 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   if(!pdcp_ent_has_sdap){
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
-    ret = pdcp_data_req(ctxt_p,
-                        srb_flag,
-                        sdap_drb_id,
-                        mui,
-                        confirm,
-                        sdu_buffer_size,
-                        sdu_buffer,
-                        pt_mode,
-                        sourceL2Id,
-                        destinationL2Id);
+    ret = nr_pdcp_data_req(ctxt_p,
+                           assoc_id,
+                           srb_flag,
+                           sdap_drb_id,
+                           mui,
+                           confirm,
+                           sdu_buffer_size,
+                           sdu_buffer,
+                           pt_mode,
+                           sourceL2Id,
+                           destinationL2Id);
 
     if(!ret)
       LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);
@@ -155,16 +157,17 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
    *
    * Downlink gNB side
    */
-  ret = pdcp_data_req(ctxt_p,
-                      srb_flag,
-                      sdap_drb_id,
-                      mui,
-                      confirm,
-                      sdu_buffer_size+offset,
-                      sdap_buf,
-                      pt_mode,
-                      sourceL2Id,
-                      destinationL2Id);
+  ret = nr_pdcp_data_req(ctxt_p,
+                         assoc_id,
+                         srb_flag,
+                         sdap_drb_id,
+                         mui,
+                         confirm,
+                         sdu_buffer_size+offset,
+                         sdap_buf,
+                         pt_mode,
+                         sourceL2Id,
+                         destinationL2Id);
 
   if(!ret)
     LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);
@@ -178,6 +181,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
                               bool has_sdap_rx,
                               int pdusession_id,
                               ue_id_t ue_id,
+                              int assoc_id,
                               char *buf,
                               int size) {
   /* The offset of the SDAP header, it might be 0 if has_sdap_rx is not true in the pdcp entity. */
@@ -216,8 +220,10 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
     req->length        = size - offset;
     req->offset        = GTPU_HEADER_OVERHEAD_MAX;
     req->ue_id         = ue_id;
+    req->assoc_id      = assoc_id;
     req->bearer_id     = pdusession_id;
     LOG_D(SDAP, "%s()  sending message to gtp size %d\n", __func__,  size-offset);
+printf("sdap sends GTPV1U_GNB_TUNNEL_DATA_REQ rnti %lx assoc_id %d\n", ue_id, assoc_id); fflush(stdout);
     // very very dirty hack gloabl var N3GTPUInst
     itti_send_msg_to_task(TASK_GTPV1_U, *N3GTPUInst, message_p);
   } else { //nrUE
@@ -253,7 +259,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
         if(!entity->qfi2drb_table[sdap_hdr->QFI].drb_id && entity->default_drb){
           nr_sdap_ul_hdr_t sdap_ctrl_pdu = entity->sdap_construct_ctrl_pdu(sdap_hdr->QFI);
           rb_id_t sdap_ctrl_pdu_drb = entity->sdap_map_ctrl_pdu(entity, pdcp_entity, SDAP_CTRL_PDU_MAP_DEF_DRB, sdap_hdr->QFI);
-          entity->sdap_submit_ctrl_pdu(ue_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
+          entity->sdap_submit_ctrl_pdu(ue_id, assoc_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
         }
 
         /*
@@ -268,7 +274,7 @@ static void nr_sdap_rx_entity(nr_sdap_entity_t *entity,
         if (pdcp_entity != entity->qfi2drb_table[sdap_hdr->QFI].drb_id) {
           nr_sdap_ul_hdr_t sdap_ctrl_pdu = entity->sdap_construct_ctrl_pdu(sdap_hdr->QFI);
           rb_id_t sdap_ctrl_pdu_drb = entity->sdap_map_ctrl_pdu(entity, pdcp_entity, SDAP_CTRL_PDU_MAP_RULE_DRB, sdap_hdr->QFI);
-          entity->sdap_submit_ctrl_pdu(ue_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
+          entity->sdap_submit_ctrl_pdu(ue_id, assoc_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
         }
 
         /*
@@ -369,15 +375,15 @@ rb_id_t nr_sdap_map_ctrl_pdu(nr_sdap_entity_t *entity, rb_id_t pdcp_entity, int 
   return drb_of_endmarker;
 }
 
-void nr_sdap_submit_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu)
+void nr_sdap_submit_ctrl_pdu(ue_id_t ue_id, int assoc_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu)
 {
   if(sdap_ctrl_pdu_drb){
-    nr_pdcp_submit_sdap_ctrl_pdu(ue_id, sdap_ctrl_pdu_drb, ctrl_pdu);
+    nr_pdcp_submit_sdap_ctrl_pdu(ue_id, assoc_id, sdap_ctrl_pdu_drb, ctrl_pdu);
     LOG_D(SDAP, "Sent Control PDU to PDCP Layer.\n");
   }
 }
 
-void nr_sdap_ue_qfi2drb_config(nr_sdap_entity_t *existing_sdap_entity, rb_id_t pdcp_entity, ue_id_t ue_id, NR_QFI_t *mapped_qfi_2_add, uint8_t mappedQFIs2AddCount, uint8_t drb_identity, bool has_sdap_rx, bool has_sdap_tx)
+void nr_sdap_ue_qfi2drb_config(nr_sdap_entity_t *existing_sdap_entity, rb_id_t pdcp_entity, ue_id_t ue_id, int assoc_id, NR_QFI_t *mapped_qfi_2_add, uint8_t mappedQFIs2AddCount, uint8_t drb_identity, bool has_sdap_rx, bool has_sdap_tx)
 {
   LOG_D(SDAP, "RRC Configuring SDAP Entity\n");
   uint8_t qfi = 0;
@@ -387,26 +393,26 @@ void nr_sdap_ue_qfi2drb_config(nr_sdap_entity_t *existing_sdap_entity, rb_id_t p
     if (existing_sdap_entity->default_drb && existing_sdap_entity->qfi2drb_table[qfi].drb_id == SDAP_NO_MAPPING_RULE) {
       nr_sdap_ul_hdr_t sdap_ctrl_pdu = existing_sdap_entity->sdap_construct_ctrl_pdu(qfi);
       rb_id_t sdap_ctrl_pdu_drb = existing_sdap_entity->sdap_map_ctrl_pdu(existing_sdap_entity, pdcp_entity, SDAP_CTRL_PDU_MAP_DEF_DRB, qfi);
-      existing_sdap_entity->sdap_submit_ctrl_pdu(ue_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
+      existing_sdap_entity->sdap_submit_ctrl_pdu(ue_id, assoc_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
     }
     if (existing_sdap_entity->qfi2drb_table[qfi].drb_id != drb_identity && existing_sdap_entity->qfi2drb_table[qfi].has_sdap_tx) {
       nr_sdap_ul_hdr_t sdap_ctrl_pdu = existing_sdap_entity->sdap_construct_ctrl_pdu(qfi);
       rb_id_t sdap_ctrl_pdu_drb = existing_sdap_entity->sdap_map_ctrl_pdu(existing_sdap_entity, pdcp_entity, SDAP_CTRL_PDU_MAP_RULE_DRB, qfi);
-      existing_sdap_entity->sdap_submit_ctrl_pdu(ue_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
+      existing_sdap_entity->sdap_submit_ctrl_pdu(ue_id, assoc_id, sdap_ctrl_pdu_drb, sdap_ctrl_pdu);
     }
     LOG_D(SDAP, "Storing the configured QoS flow to DRB mapping rule\n");
     existing_sdap_entity->qfi2drb_map_update(existing_sdap_entity, qfi, drb_identity, has_sdap_rx, has_sdap_tx);
   }
 }
 
-nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap_tx, ue_id_t ue_id, int pdusession_id, bool is_defaultDRB, uint8_t drb_identity, NR_QFI_t *mapped_qfi_2_add, uint8_t mappedQFIs2AddCount)
+nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap_tx, ue_id_t ue_id, int assoc_id, int pdusession_id, bool is_defaultDRB, uint8_t drb_identity, NR_QFI_t *mapped_qfi_2_add, uint8_t mappedQFIs2AddCount)
 {
-  if (nr_sdap_get_entity(ue_id, pdusession_id)) {
-    LOG_E(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
-    nr_sdap_entity_t *existing_sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
+  if (nr_sdap_get_entity(ue_id, assoc_id, pdusession_id)) {
+    LOG_E(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu assoc_id: %d and PDU SESSION ID: %d\n", ue_id, assoc_id, pdusession_id);
+    nr_sdap_entity_t *existing_sdap_entity = nr_sdap_get_entity(ue_id, assoc_id, pdusession_id);
     rb_id_t pdcp_entity = existing_sdap_entity->default_drb;
     if(!is_gnb)
-      nr_sdap_ue_qfi2drb_config(existing_sdap_entity, pdcp_entity, ue_id, mapped_qfi_2_add, mappedQFIs2AddCount, drb_identity, has_sdap_rx, has_sdap_tx);
+      nr_sdap_ue_qfi2drb_config(existing_sdap_entity, pdcp_entity, ue_id, assoc_id, mapped_qfi_2_add, mappedQFIs2AddCount, drb_identity, has_sdap_rx, has_sdap_tx);
     return existing_sdap_entity;
   }
 
@@ -419,6 +425,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap
   }
 
   sdap_entity->ue_id = ue_id;
+  sdap_entity->assoc_id = assoc_id;
   sdap_entity->pdusession_id = pdusession_id;
 
   sdap_entity->tx_entity = nr_sdap_tx_entity;
@@ -450,7 +457,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap
   return sdap_entity;
 }
 
-nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
+nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int assoc_id, int pdusession_id)
 {
   nr_sdap_entity_t *sdap_entity;
   sdap_entity = sdap_info.sdap_entity_llist;
@@ -458,31 +465,33 @@ nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id)
   if(sdap_entity == NULL)
     return NULL;
 
-  while ((sdap_entity->ue_id != ue_id || sdap_entity->pdusession_id != pdusession_id) && sdap_entity->next_entity != NULL) {
+  while ((sdap_entity->ue_id != ue_id || sdap_entity->assoc_id != assoc_id
+         || sdap_entity->pdusession_id != pdusession_id) && sdap_entity->next_entity != NULL) {
     sdap_entity = sdap_entity->next_entity;
   }
 
-  if (sdap_entity->ue_id == ue_id && sdap_entity->pdusession_id == pdusession_id)
+  if (sdap_entity->ue_id == ue_id && sdap_entity->assoc_id == assoc_id
+      && sdap_entity->pdusession_id == pdusession_id)
     return sdap_entity;
 
   return NULL;
 }
 
-void delete_nr_sdap_entity(ue_id_t ue_id)
+void delete_nr_sdap_entity(ue_id_t ue_id, int assoc_id)
 {
   nr_sdap_entity_t *entityPtr, *entityPrev = NULL;
   entityPtr = sdap_info.sdap_entity_llist;
 
-  if (entityPtr->ue_id == ue_id) {
+  if (entityPtr->ue_id == ue_id && entityPtr->assoc_id == assoc_id) {
     sdap_info.sdap_entity_llist = sdap_info.sdap_entity_llist->next_entity;
     free(entityPtr);
   } else {
-    while (entityPtr->ue_id != ue_id && entityPtr->next_entity != NULL) {
+    while ((entityPtr->ue_id != ue_id || entityPtr->assoc_id != assoc_id) && entityPtr->next_entity != NULL) {
       entityPrev = entityPtr;
       entityPtr = entityPtr->next_entity;
     }
 
-    if (entityPtr->ue_id != ue_id) {
+    if (entityPtr->ue_id == ue_id && entityPtr->assoc_id == assoc_id) {
       entityPrev->next_entity = entityPtr->next_entity;
       free(entityPtr);
     }

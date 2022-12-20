@@ -36,7 +36,7 @@
 #include "openair2/RRC/LTE/rrc_proto.h"
 
 int DU_handle_Paging(instance_t       instance,
-                     uint32_t         assoc_id,
+                     int         assoc_id,
                      uint32_t         stream,
                      F1AP_F1AP_PDU_t *pdu) {
   F1AP_Paging_t *paging;

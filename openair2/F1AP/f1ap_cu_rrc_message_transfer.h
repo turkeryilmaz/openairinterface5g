@@ -34,7 +34,7 @@
 #define F1AP_CU_RRC_MESSAGE_TRANSFER_H_
 
 int CU_handle_INITIAL_UL_RRC_MESSAGE_TRANSFER(instance_t       instance,
-    uint32_t         assoc_id,
+    int         assoc_id,
     uint32_t         stream,
     F1AP_F1AP_PDU_t *pdu);
 
@@ -42,7 +42,7 @@ int CU_send_DL_RRC_MESSAGE_TRANSFER(instance_t                instance,
                                     f1ap_dl_rrc_message_t    *f1ap_dl_rrc);
 
 int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t       instance,
-                                      uint32_t         assoc_id,
+                                      int         assoc_id,
                                       uint32_t         stream,
                                       F1AP_F1AP_PDU_t *pdu);
 

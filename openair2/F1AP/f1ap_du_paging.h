@@ -34,7 +34,7 @@
 #define F1AP_DU_PAGING_H_
 
 int DU_handle_Paging(instance_t       instance,
-                     uint32_t         assoc_id,
+                     int         assoc_id,
                      uint32_t         stream,
                      F1AP_F1AP_PDU_t *pdu);
 

@@ -387,6 +387,7 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc,struct rrc_gNB_ue_context_s *ue_context_
 
   nr_pdcp_add_drbs(ctxt.enb_flag,
                    ctxt.rntiMaybeUEid,
+                   0, /* assoc_id set to 0, NSA not functional in CU/DU split */
                    0,
                    ue_context_p->ue_context.rb_config->drb_ToAddModList,
                    (ue_context_p->ue_context.integrity_algorithm << 4) | ue_context_p->ue_context.ciphering_algorithm,
@@ -403,6 +404,8 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc,struct rrc_gNB_ue_context_s *ue_context_
   LOG_D(RRC, "%s:%d: done RRC PDCP/RLC ASN1 request for UE rnti %lx\n", __FUNCTION__, __LINE__, ctxt.rntiMaybeUEid);
 }
 
+bool nr_pdcp_remove_UE(const protocol_ctxt_t *const ctxt_pP, int assoc_id);
+
 void rrc_remove_nsa_user(gNB_RRC_INST *rrc, int rnti) {
   protocol_ctxt_t      ctxt;
   rrc_gNB_ue_context_t *ue_context;
@@ -411,13 +414,13 @@ void rrc_remove_nsa_user(gNB_RRC_INST *rrc, int rnti) {
   LOG_D(RRC, "calling rrc_remove_nsa_user rnti %d\n", rnti);
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, rrc->module_id, GNB_FLAG_YES, rnti, 0, 0, rrc->module_id);
 
-  ue_context = rrc_gNB_get_ue_context(rrc, rnti);
+  ue_context = rrc_gNB_get_ue_context(rrc, rnti, 0 /* assoc_id set to 0, NSA not functional in CU/DU split */);
   if (ue_context == NULL) {
     LOG_W(RRC, "rrc_remove_nsa_user: rnti %d not found\n", rnti);
     return;
   }
 
-  pdcp_remove_UE(&ctxt);
+  nr_pdcp_remove_UE(&ctxt, ue_context->ue_context.f1ap_assoc_id);
 
   rrc_rlc_remove_ue(&ctxt);
 

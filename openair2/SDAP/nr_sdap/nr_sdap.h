@@ -34,6 +34,7 @@
  */
 bool sdap_data_req(protocol_ctxt_t *ctxt_p,
                    const ue_id_t ue_id,
+                   const int assoc_id,
                    const srb_flag_t srb_flag,
                    const rb_id_t rb_id,
                    const mui_t mui,
@@ -58,6 +59,7 @@ void sdap_data_ind(rb_id_t pdcp_entity,
                    bool has_sdap_rx,
                    int pdusession_id,
                    ue_id_t ue_id,
+                   int assoc_id,
                    char *buf,
                    int size);
 

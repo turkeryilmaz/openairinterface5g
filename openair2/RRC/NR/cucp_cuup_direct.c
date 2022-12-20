@@ -38,6 +38,7 @@
 #include "common/ran_context.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/E1AP/e1ap_common.h"
+#include "openair2/F1AP/f1ap_cu_task.h"
 extern RAN_CONTEXT_t RC;
 
 void fill_e1ap_bearer_setup_resp(e1ap_bearer_setup_resp_t *resp,
@@ -60,6 +61,7 @@ void fill_e1ap_bearer_setup_resp(e1ap_bearer_setup_resp_t *resp,
       drbSetup->UpParamList[0].tlAddress = my_addr;
       drbSetup->UpParamList[0].teId = newGtpuCreateTunnel(gtpInst,
                                                           (ue_id & 0xFFFF),
+                                                          req->assoc_id,
                                                           drb2Setup->id,
                                                           drb2Setup->id,
                                                           0xFFFF, // We will set the right value from DU answer
@@ -91,6 +93,7 @@ void CU_update_UP_DL_tunnel(e1ap_bearer_setup_req_t *const req, instance_t insta
 
       GtpuUpdateTunnelOutgoingAddressAndTeid(instance,
                                              (ue_id & 0xFFFF),
+                                             req->assoc_id,
                                              (ebi_t)drb_p->id,
                                              *(in_addr_t*)&newRemoteAddr.buffer,
                                              drb_p->DlUpParamList[0].teId);
@@ -119,6 +122,7 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
 
   create_tunnel_req.num_tunnels = 1;
   create_tunnel_req.ue_id = ue_context_p->ue_context.rnti;
+  create_tunnel_req.assoc_id = req->assoc_id;
   int ret = gtpv1u_create_ngu_tunnel(getCxtE1(instance)->gtpInstN3, &create_tunnel_req, &create_tunnel_resp);
 
   if (ret != 0) {
@@ -153,14 +157,14 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
 
   LOG_D(NR_RRC,"Configuring PDCP DRBs/SRBs for UE %x\n",ue_context_p->ue_context.rnti);
 
-  nr_pdcp_add_srbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid,
+  nr_pdcp_add_srbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid, req->assoc_id,
                    SRB_configList,
                    (ue_context_p->ue_context.integrity_algorithm << 4)
                    | ue_context_p->ue_context.ciphering_algorithm,
                    kRRCenc,
                    kRRCint);
                    
-  nr_pdcp_add_drbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid, 0,
+  nr_pdcp_add_drbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid, req->assoc_id, 0,
                    DRB_configList,
                    (ue_context_p->ue_context.integrity_algorithm << 4)
                    | ue_context_p->ue_context.ciphering_algorithm,
@@ -187,7 +191,7 @@ static NR_SRB_ToAddModList_t **generateSRB2_confList(gNB_RRC_UE_t *ue, NR_SRB_To
   return SRB_configList2;
 }
 static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, instance_t instance) {
-  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[GNB_INSTANCE_TO_MODULE_ID(instance)], req->rnti);
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[GNB_INSTANCE_TO_MODULE_ID(instance)], req->rnti, req->assoc_id);
   protocol_ctxt_t ctxt = {0};
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, ue_context_p->ue_context.rnti, 0, 0, 0);
 
@@ -206,7 +210,7 @@ static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const
     e1ap_bearer_setup_resp_t resp; // Used to store teids
     int remote_port = RC.nrrrc[ctxt.module_id]->eth_params_s.remote_portd;
     in_addr_t my_addr = inet_addr(RC.nrrrc[ctxt.module_id]->eth_params_s.my_addr);
-    instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
+    instance_t gtpInst = f1ap_cu_assoc_id_to_context(req->assoc_id)->gtpInst;
     // GTP tunnel for DL
     fill_e1ap_bearer_setup_resp(&resp, req, gtpInst, ue_context_p->ue_context.rnti, remote_port, my_addr);
 
@@ -215,7 +219,7 @@ static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const
 }
 
 static void cucp_cuup_bearer_context_mod_direct(e1ap_bearer_setup_req_t *const req, instance_t instance) {
-  instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
+  instance_t gtpInst = f1ap_cu_assoc_id_to_context(req->assoc_id)->gtpInst;
   CU_update_UP_DL_tunnel(req, gtpInst, req->rnti);
 }
 

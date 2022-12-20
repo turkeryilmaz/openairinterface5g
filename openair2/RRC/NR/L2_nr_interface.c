@@ -59,6 +59,7 @@ nr_rrc_mac_remove_ue(module_id_t mod_idP,
 uint8_t
 nr_rrc_data_req(
   const protocol_ctxt_t   *const ctxt_pP,
+  const int                      assoc_id,
   const rb_id_t                  rb_idP,
   const mui_t                    muiP,
   const confirm_t                confirmP,
@@ -77,24 +78,25 @@ nr_rrc_data_req(
                      ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
                      sdu_sizeP);
   memcpy (message_buffer, buffer_pP, sdu_sizeP);
-  message_p = itti_alloc_new_message (ctxt_pP->enb_flag ? TASK_RRC_GNB : TASK_RRC_UE, 0, RRC_DCCH_DATA_REQ);
-  RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
-  RRC_DCCH_DATA_REQ (message_p).enb_flag  = ctxt_pP->enb_flag;
-  RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;
-  RRC_DCCH_DATA_REQ (message_p).muip      = muiP;
-  RRC_DCCH_DATA_REQ (message_p).confirmp  = confirmP;
-  RRC_DCCH_DATA_REQ (message_p).sdu_size  = sdu_sizeP;
-  RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
-  //memcpy (NR_RRC_DCCH_DATA_REQ (message_p).sdu_p, buffer_pP, sdu_sizeP);
-  RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
-  RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-  RRC_DCCH_DATA_REQ(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-  RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
+  message_p = itti_alloc_new_message (ctxt_pP->enb_flag ? TASK_RRC_GNB : TASK_RRC_UE, 0, NR_RRC_DCCH_DATA_REQ);
+  NR_RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
+  NR_RRC_DCCH_DATA_REQ (message_p).gnb_flag  = ctxt_pP->enb_flag;
+  NR_RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;
+  NR_RRC_DCCH_DATA_REQ (message_p).muip      = muiP;
+  NR_RRC_DCCH_DATA_REQ (message_p).confirmp  = confirmP;
+  NR_RRC_DCCH_DATA_REQ (message_p).sdu_size  = sdu_sizeP;
+  NR_RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
+  //memcpy (NR_NR_RRC_DCCH_DATA_REQ (message_p).sdu_p, buffer_pP, sdu_sizeP);
+  NR_RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
+  NR_RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
+  NR_RRC_DCCH_DATA_REQ (message_p).rnti      = ctxt_pP->rntiMaybeUEid;
+  NR_RRC_DCCH_DATA_REQ (message_p).assoc_id  = assoc_id;
+  NR_RRC_DCCH_DATA_REQ (message_p).gNB_index = ctxt_pP->eNB_index;
   itti_send_msg_to_task (
     ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
     ctxt_pP->instance,
     message_p);
-  LOG_I(NR_RRC,"send RRC_DCCH_DATA_REQ to PDCP\n");
+  LOG_I(NR_RRC,"send NR_RRC_DCCH_DATA_REQ to PDCP\n");
 
   /* Hack: only trigger PDCP if in CU, otherwise it is triggered by RU threads
    * Ideally, PDCP would not neet to be triggered like this but react to ITTI
@@ -163,7 +165,7 @@ int8_t nr_mac_rrc_bwp_switch_req(const module_id_t     module_idP,
                                  const int             dl_bwp_id,
                                  const int             ul_bwp_id) {
 
-  struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[module_idP], rntiP);
+  struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[module_idP], rntiP, 0 /* no assoc_id in mac, let's use 0 */);
 
   protocol_ctxt_t ctxt;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, GNB_FLAG_YES, rntiP, frameP, sub_frameP, 0);
@@ -180,7 +182,7 @@ void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
   struct rrc_gNB_ue_context_s *ue_context_p = NULL;
   ue_context_p = rrc_gNB_get_ue_context(
                    RC.nrrrc[Mod_instP],
-                   rntiP);
+                   rntiP, 0 /* no assoc_id in mac, let's use 0 */);
 
   if (ue_context_p != NULL) {
     LOG_D(RRC,"Frame %d, Subframe %d: UE %x UL failure, activating timer\n",frameP,subframeP,rntiP);
@@ -196,7 +198,7 @@ void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
                                      const sub_frame_t subframeP,
                                      const rnti_t rntiP) {
   struct rrc_gNB_ue_context_s *ue_context_p = NULL;
-  ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[Mod_instP], rntiP);
+  ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[Mod_instP], rntiP, 0 /* no assoc_id in mac, let's use 0 */);
   if (ue_context_p != NULL) {
     LOG_W(RRC,"Frame %d, Subframe %d: UE %x UL failure reset, deactivating timer\n",frameP,subframeP,rntiP);
     ue_context_p->ue_context.ul_failure_timer=0;

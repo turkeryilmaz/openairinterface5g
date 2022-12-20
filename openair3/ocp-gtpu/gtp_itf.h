@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
   typedef bool (*gtpCallback)(protocol_ctxt_t  *ctxt_pP,
+                              const int         assoc_id,
                               const srb_flag_t     srb_flagP,
                               const rb_id_t        rb_idP,
                               const mui_t          muiP,
@@ -21,6 +22,7 @@ extern "C" {
 
   typedef bool (*gtpCallbackSDAP)(protocol_ctxt_t  *ctxt_pP,
                                   const ue_id_t        ue_id,
+                                  const int            assoc_id,
                                   const srb_flag_t     srb_flagP,
                                   const rb_id_t        rb_idP,
                                   const mui_t          muiP,
@@ -77,12 +79,14 @@ extern "C" {
   
   int gtpv1u_update_ngu_tunnel( const instance_t                              instanceP,
                                 const gtpv1u_gnb_create_tunnel_req_t *const  create_tunnel_req_pP,
-                                const ue_id_t                                  prior_rnti
+                                const ue_id_t                                  prior_rnti,
+                                const int                                      assoc_id
                                 );
 
   // New API
   teid_t newGtpuCreateTunnel(instance_t instance,
                              ue_id_t ue_id,
+                             int assoc_id,
                              int incoming_bearer_id,
                              int outgoing_rb_id,
                              teid_t teid,
@@ -94,12 +98,13 @@ extern "C" {
 
   void GtpuUpdateTunnelOutgoingAddressAndTeid(instance_t instance,
                                     ue_id_t ue_id,
+                                    int assoc_id,
                                     ebi_t bearer_id,
                                               in_addr_t newOutgoingAddr,
                                               teid_t newOutgoingTeid);
 
-  int newGtpuDeleteAllTunnels(instance_t instance, ue_id_t ue_id);
-  int newGtpuDeleteTunnels(instance_t instance, ue_id_t ue_id, int nbTunnels, pdusessionid_t *pdusession_id);
+  int newGtpuDeleteAllTunnels(instance_t instance, ue_id_t ue_id, int assoc_id);
+  int newGtpuDeleteTunnels(instance_t instance, ue_id_t ue_id, int assoc_id, int nbTunnels, pdusessionid_t *pdusession_id);
   instance_t gtpv1Init(openAddr_t context);
   void *gtpv1uTask(void *args);
 

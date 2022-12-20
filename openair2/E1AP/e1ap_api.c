@@ -189,7 +189,7 @@ void CUUP_process_bearer_release_command(instance_t instance, e1ap_bearer_releas
 {
   e1ap_upcp_inst_t *inst = getCxtE1(instance);
   AssertFatal(inst, "");
-  newGtpuDeleteAllTunnels(inst->gtpInstN3, cmd->gNB_cu_up_ue_id);
-  newGtpuDeleteAllTunnels(inst->gtpInstF1U, cmd->gNB_cu_up_ue_id);
+  newGtpuDeleteAllTunnels(inst->gtpInstN3, cmd->gNB_cu_up_ue_id, 0 /* assoc_id, e1 not working */);
+  newGtpuDeleteAllTunnels(inst->gtpInstF1U, cmd->gNB_cu_up_ue_id, 0 /* assoc_id, e1 not working */);
   e1apCUUP_send_BEARER_CONTEXT_RELEASE_COMPLETE(inst, cmd);
 }

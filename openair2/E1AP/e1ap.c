@@ -1583,6 +1583,13 @@ static void e1_task_handle_sctp_association_resp(E1_t type, instance_t instance,
 
 void cuup_init_n3(instance_t instance)
 {
+#if 0
+usleep(100*1000);
+extern instance_t CUuniqInstance;
+extern instance_t legacyInstanceMapping;
+if (CUuniqInstance == 0) abort();
+legacyInstanceMapping = getCxtE1(instance)->gtpInstN3 = CUuniqInstance;
+#endif
   if (getCxtE1(instance)->gtpInstN3 < 0) {
     e1ap_setup_req_t *setup = &getCxtE1(instance)->setupReq;
     openAddr_t tmp = {0};

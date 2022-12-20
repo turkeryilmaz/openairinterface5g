@@ -156,6 +156,7 @@ typedef struct e1ap_bearer_setup_req_s {
   uint32_t gNB_cu_cp_ue_id;
   uint32_t gNB_cu_up_ue_id;
   rnti_t   rnti;
+  int      assoc_id;
   uint64_t cipheringAlgorithm;
   uint64_t integrityProtectionAlgorithm;
   char     encryptionKey[128];
