@@ -32,6 +32,14 @@
 #include "openair2/RRC/NR/nr_rrc_proto.h"
 #include <stdint.h>
 
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+
+
+
 /* from OAI */
 #include "oai_asn1.h"
 #include "nr_pdcp_oai_api.h"
