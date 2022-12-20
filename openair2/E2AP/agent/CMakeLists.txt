@@ -67,3 +67,5 @@ endif()
 
 target_compile_definitions(e2_agent PRIVATE ${E2AP_ENCODING})
 
+# list of SMs for which build should be triggered
+add_dependencies(e2_agent kpm_sm)
