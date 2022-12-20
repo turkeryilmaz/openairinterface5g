@@ -635,7 +635,6 @@ int main(int argc, char **argv)
     printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR, n_trials, n_errors, n_errors_payload);
     if (((float)n_errors / (float)n_trials <= target_error_rate) && (n_errors_payload == 0)) {
       printf("PSBCH test OK\n");
-      break;
     }
   } // NSR
 
