@@ -33,9 +33,18 @@
 /*************************************************************************/
 
 void nr_rlc_entity_tm_recv_pdu(nr_rlc_entity_t *_entity,
-                               char *buffer, int size)
+                               char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
   nr_rlc_entity_tm_t *entity = (nr_rlc_entity_tm_t *)_entity;
+
+  rlc_info->rlcMode              = 1; /** TODO AM Mode */
+  rlc_info->pduLength            = size;
+  rlc_info->sequenceNumberLength = 0;
+
+  LOG_RLC_P(OAILOG_INFO, "UL_RLC_AM_PDU", -1, -1, *(rlc_info), (unsigned char *)buffer, size);
+
+
+
   entity->common.deliver_sdu(entity->common.deliver_sdu_data,
                              (nr_rlc_entity_t *)entity,
                              buffer, size);
@@ -91,11 +100,16 @@ nr_rlc_entity_buffer_status_t nr_rlc_entity_tm_buffer_status(
 }
 
 int nr_rlc_entity_tm_generate_pdu(nr_rlc_entity_t *_entity,
-                                  char *buffer, int size)
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
   nr_rlc_entity_tm_t *entity = (nr_rlc_entity_tm_t *)_entity;
 
-  return generate_tx_pdu(entity, buffer, size);
+  rlc_info->rlcMode              = 1; /** UM Mode */
+  rlc_info->sequenceNumberLength = 0;
+
+  int ret = generate_tx_pdu(entity, buffer, size);
+  rlc_info->pduLength = ret;
+  return ret;
 }
 
 /*************************************************************************/
@@ -120,6 +134,7 @@ void nr_rlc_entity_tm_recv_sdu(nr_rlc_entity_t *_entity,
           __FILE__, __LINE__, __FUNCTION__);
     return;
   }
+
 
   entity->tx_size += size;
 

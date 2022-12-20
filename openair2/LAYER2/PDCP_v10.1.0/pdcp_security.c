@@ -127,7 +127,7 @@ pdcp_apply_security(
     /* SRBs */
     uint8_t *mac_i;
 
-    LOG_D(PDCP, "[OSA][RB %ld] %s Applying control-plane security %d \n",
+    LOG_D(PDCP, "[OSA][RB %ld] %s Applying control-plane integrity security %d \n",
           rb_id, (pdcp_pP->is_ue != 0) ? "UE -> eNB" : "eNB -> UE", pdcp_pP->integrityProtAlgorithm);
 
     encrypt_params.message    = pdcp_pdu_buffer;
@@ -149,6 +149,9 @@ pdcp_apply_security(
 
     encrypt_params.key = pdcp_pP->kUPenc;//  + 128;
   }
+  LOG_D(PDCP, "[OSA][RB %ld] %s Applying ciphering security %d \n",
+          rb_id, (pdcp_pP->is_ue != 0) ? "UE -> eNB" : "eNB -> UE", pdcp_pP->cipheringAlgorithm);
+
 
   encrypt_params.message    = &pdcp_pdu_buffer[pdcp_header_len];
   encrypt_params.blength    = (sdu_buffer_size + 4)<< 3;
@@ -199,8 +202,8 @@ pdcp_validate_security(
   decrypt_params.key_length = 16;
 
   if (srb_flagP) {
-    LOG_D(PDCP, "[OSA][RB %ld] %s Validating control-plane security\n",
-          rb_id, (pdcp_pP->is_ue != 0) ? "eNB -> UE" : "UE -> eNB");
+    LOG_D(PDCP, "[OSA][RB %ld] %s Validating control-plane security: ciphering:%d integrity:%d\n",
+          rb_id, (pdcp_pP->is_ue != 0) ? "eNB -> UE" : "UE -> eNB", pdcp_pP->cipheringAlgorithm,pdcp_pP->integrityProtAlgorithm);
     decrypt_params.key = pdcp_pP->kRRCenc;// + 128;
   } else {
     LOG_D(PDCP, "[OSA][RB %ld] %s Validating user-plane security\n",

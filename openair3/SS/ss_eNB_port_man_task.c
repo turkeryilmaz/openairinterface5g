@@ -368,7 +368,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
         //Send Dummy Wake up ITTI message to SRB task.
         if (RC.ss.mode >= SS_SOFTMODEM && SS_context.SSCell_list[cell_index_pm].State >= SS_STATE_CELL_ACTIVE)
         {
-            LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal to SRB task \n");
+            LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_RRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB task \n", SS_RRC_PDU_IND);
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
             if (message_p)
             {
@@ -382,7 +382,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
                 int send_res = itti_send_msg_to_task(TASK_SS_SRB, 0, message_p);
                 if (send_res < 0)
                 {
-                    LOG_A(ENB_SS, "Error in itti_send_msg_to_task");
+                    LOG_A(ENB_SS, "Error in sending Wake up signal /SS_RRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB\n", SS_RRC_PDU_IND);
                 }
             }
         }

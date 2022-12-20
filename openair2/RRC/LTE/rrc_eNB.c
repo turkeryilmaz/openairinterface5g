@@ -105,7 +105,9 @@ uint8_t RRCMsgOnSRB0_PDU[MAX_NUM_CCs][1024];
 #define ASN_MAX_ENCODE_SIZE 4096
 #define NUMBEROF_DRBS_TOBE_ADDED 1
 static int encode_CG_ConfigInfo(char *buffer,int buffer_size,rrc_eNB_ue_context_t *const ue_context_pP,int *enc_size);
-
+/** TODO TEMP FIX, Remove this and feed info structure */
+NRBearerTypeE lchannelType = Bearer_UNDEFINED_e;
+BCCHTransportType_e  bcchTransportType = NR_PLANE_UNDEFINED_E;
 extern RAN_CONTEXT_t RC;
 
 extern eNB_MAC_INST                *eNB_mac_inst;
@@ -126,9 +128,6 @@ pthread_mutex_t      rrc_release_freelist;
 RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 
-uint8_t security_mode_command_send = TRUE;
-uint8_t as_security_conf_ciphering;
-LTE_CipheringAlgorithm_r12_t  ciphering_algorithm;
 uint8_t ul_sqn,dl_sqn;
 
 void
@@ -506,6 +505,8 @@ init_SI(
 
   if (NODE_IS_MONOLITHIC(rrc->node_type)) {
     LOG_D(RRC, "About to call rrc_mac_config_req_eNB for ngran_eNB\n");
+    lchannelType = Bearer_BCCH_BCH_e;
+    bcchTransportType = bch_TRANSPORT;
     rrc_mac_config_req_eNB(ctxt_pP->module_id, CC_id,
                            carrier->physCellId,
                            carrier->p_eNB,
@@ -1496,6 +1497,8 @@ rrc_eNB_generate_SecurityModeCommand(
 
   if (!NODE_IS_DU(RC.rrc[ctxt_pP->module_id]->node_type)) {
     LOG_I(RRC,"calling rrc_data_req :securityModeCommand\n");
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(ctxt_pP,
                  DCCH,
                  rrc_eNB_mui++,
@@ -1537,6 +1540,8 @@ rrc_eNB_generate_UECapabilityEnquiry(
         size,
         rrc_eNB_mui,
         DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -2264,6 +2269,8 @@ rrc_eNB_process_RRCConnectionReestablishmentComplete(
     LOG_D(RRC,
           "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
           ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(
       ctxt_pP,
       DCCH,
@@ -2456,6 +2463,8 @@ rrc_eNB_generate_RRCConnectionRelease(
     F1AP_UE_CONTEXT_RELEASE_CMD(m).rrc_container_length = size;
     itti_send_msg_to_task(TASK_CU_F1, ctxt_pP->module_id, m);
   } else {
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(ctxt_pP,
                  DCCH,
                  rrc_eNB_mui++,
@@ -2738,6 +2747,8 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -3021,6 +3032,8 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -4073,6 +4086,8 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   int8_t security_modeP = 0xff;
   if (RC.ss.mode == SS_ENB)
   {
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(ctxt_pP,
                  DCCH,
                  rrc_eNB_mui++,
@@ -4829,6 +4844,8 @@ flexran_rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt
         rrc_eNB_mui,
         ctxt_pP->module_id,
         DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(ctxt_pP,
                DCCH,
                rrc_eNB_mui++,
@@ -4896,6 +4913,8 @@ rrc_eNB_generate_RRCConnectionReconfiguration_SCell(
                                         );
   LOG_I(RRC,"[eNB %d] Frame %d, Logical Channel DL-DCCH, Generate LTE_RRCConnectionReconfiguration (bytes %d, UE id %x)\n",
         ctxt_pP->module_id,ctxt_pP->frame, size, ue_context_pP->ue_context.rnti);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -7869,7 +7888,6 @@ void rrc_eNB_as_security_configuration_req(
   }
   LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
-  ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
 
 #ifndef NR_ENABLE
   for (int i = 0; i < MAX_RBS; i++)
@@ -7897,15 +7915,10 @@ void rrc_eNB_as_security_configuration_req(
           pdcp_p,
           DCCH,
           DCCH+2,
-          (security_mode_command_send == TRUE)  ?
-          0 | (ASSecConfReq->Integrity.integrity_algorithm << 4) :
-          (ASSecConfReq->Ciphering.ciphering_algorithm ) |
-          (ASSecConfReq->Integrity.integrity_algorithm << 4),
+          (ASSecConfReq->Ciphering.ciphering_algorithm ) |(ASSecConfReq->Integrity.integrity_algorithm << 4),
           ASSecConfReq->Ciphering.kRRCenc,
           ASSecConfReq->Integrity.kRRCint,
           ASSecConfReq->Ciphering.kUPenc);
-        security_mode_command_send = FALSE;
-        as_security_conf_ciphering = ASSecConfReq->Ciphering.ciphering_algorithm;
         rb_idx++;
       } else {
         LOG_A(RRC,"AS Security configuration received from TTCN didn't applied \n");
@@ -9121,27 +9134,6 @@ rrc_eNB_decode_dcch(
           xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
         }
 
-       pdcp_t  *pdcp_p   = NULL;
-       hashtable_rc_t  h_rc;
-       uint8_t rbid_;
-       uint8_t  rb_idx = 0;
-       hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
-       ss_get_pdcp_cnt_t  pc;
-       for (int i = 0; i < MAX_RBS; i++){
-        if (i < 3){
-            rbid_ = i;
-            key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 1);
-        }
-        else{
-            rbid_ = i - 3;
-            key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 0);
-        }
-        h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-        if (h_rc == HASH_TABLE_OK){
-            pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
-            pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
-        }
-    }
 //#ifndef ENB_SS_SRB
       if (RC.ss.mode == SS_ENB)
       {
@@ -10621,33 +10613,10 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           {
             xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
           }
-          if ((dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry || dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_dlInformationTransfer)  && as_security_conf_ciphering)
+          if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
           {
-            LOG_A(RRC,"swetank: SS_RRC_PDU_REQ receved is for LTE_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry or LTE_DL_DCCH_MessageType__c1_PR_dlInformationTransfer");
-            for (int i = 0; i < MAX_RBS; i++)
-            {
-              if (i < 3)
-              {
-                rbid_ = i;
-                key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 1);
-              }
-              else
-              {
-                rbid_ = i - 3;
-                key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 0);
-              }
-              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-              if (h_rc == HASH_TABLE_OK)
-              {
-                pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
-                pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
-              }
-            }
-          }
-
-          else if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
-          {
-            LOG_A(RRC,"swetank: SS_RRC_PDU_REQ receved is for LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration");
+            lchannelType = Bearer_DCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
             struct rrc_eNB_ue_context_s *ue_context_p = NULL;
             ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
             RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
@@ -10655,33 +10624,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
             {
               LOG_A(RRC, "[eNB %ld] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
-              for (int i = 0; i < MAX_RBS; i++)
-              {
-                if (i < 3)
-                {
-                  rbid_ = i;
-                  key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 1);
-                }
-                else
-                {
-                  rbid_ = i - 3;
-                  key = PDCP_COLL_KEY_VALUE(ctxt.module_id, SS_RRC_PDU_REQ(msg_p).rnti, ctxt.enb_flag, rbid_, 0);
-                }
-                h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-                if (h_rc == HASH_TABLE_OK)
-                {
-                  pdcp_config_set_security_cipher(pdcp_p, ciphering_algorithm);
-                }
-              }
               memcpy(ue_context_p->ue_context.sdu, SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
               ue_context_p->ue_context.sdu_size = SS_RRC_PDU_REQ(msg_p).sdu_size;
-
               rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
             }
           }
-            LOG_A(RRC,"swetank SRB : before calling rrc_data_req SS_RRC_PDU_REQ(msg_p).srb_id:%d \n", SS_RRC_PDU_REQ(msg_p).srb_id);
             rrc_data_req(&ctxt,
-                //DCCH,     swetank fix 
                 SS_RRC_PDU_REQ(msg_p).srb_id,
                 rrc_eNB_mui++,
                 SDU_CONFIRM_NO,
@@ -10697,36 +10645,33 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
              */
             if (dl_dcch_msg->message.present == LTE_DL_DCCH_MessageType_PR_c1)
             {
-              if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
-              {
-                struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
+            if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionRelease)
+            {
+              struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
 
-                ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
-                uint8_t cc_id = 0;
-                LOG_A(RRC, "RRC Connection Release message received \n");
-                if (NULL == ue_context_pP)
-                {
-                  LOG_W(RRC, "ue_context_pP is already NULL \n");
-                }
-                else {
-                  cc_id = ue_context_pP->ue_context.primaryCC_id;
-                  ue_context_pP->ue_context.ue_reestablishment_timer = 0;
-                  ue_context_pP->ue_context.ue_release_timer = 1;
-                  ue_context_pP->ue_context.ue_release_timer_thres = 10;
-                  ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
-                  ue_context_pP->ue_context.ue_release_timer_rrc = 0;
-                  ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
-                }
-                security_mode_command_send = TRUE;
-                as_security_conf_ciphering = FALSE;
-                ciphering_algorithm = 0;
-                if (RC.ss.CBRA_flag)
-                {
-                  RRCConnSetup_PDU_Present[cc_id] = FALSE;
-                }
+              ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
+              uint8_t cc_id = 0;
+              LOG_A(RRC, "RRC Connection Release message received \n");
+              if (NULL == ue_context_pP)
+              {
+                LOG_W(RRC, "ue_context_pP is already NULL \n");
+              }
+              else {
+              cc_id = ue_context_pP->ue_context.primaryCC_id;
+              ue_context_pP->ue_context.ue_reestablishment_timer = 0;
+              ue_context_pP->ue_context.ue_release_timer = 1;
+              ue_context_pP->ue_context.ue_release_timer_thres = 10;
+              ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
+              ue_context_pP->ue_context.ue_release_timer_rrc = 0;
+              ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
+              }
+              if (RC.ss.CBRA_flag)
+              {
+                RRCConnSetup_PDU_Present[cc_id] = FALSE;
               }
             }
           }
+        }
           else
           {
             struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
@@ -10738,45 +10683,46 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
                 ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
 
-            uper_decode(NULL,
-                &asn_DEF_LTE_DL_CCCH_Message,
-                (void **)&dl_ccch_msg,
-                (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
-                SS_RRC_PDU_REQ(msg_p).sdu_size,0,0);
+          uper_decode(NULL,
+                      &asn_DEF_LTE_DL_CCCH_Message,
+                      (void **)&dl_ccch_msg,
+                      (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
+                      SS_RRC_PDU_REQ(msg_p).sdu_size,0,0);
 
-            xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
+          xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
 
-            RRCMsgOnSRB0_PDUSize[cc_id] = SS_RRC_PDU_REQ(msg_p).sdu_size;
-            memcpy(RRCMsgOnSRB0_PDU[cc_id], SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
+          RRCMsgOnSRB0_PDUSize[cc_id] = SS_RRC_PDU_REQ(msg_p).sdu_size;
+          memcpy(RRCMsgOnSRB0_PDU[cc_id], SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
 
-            Idx = DCCH;
-            // SRB1
-            ue_context_pP->ue_context.Srb1.Active = 1;
-            ue_context_pP->ue_context.Srb1.Srb_info.Srb_id = Idx;
-            memcpy(&ue_context_pP->ue_context.Srb1.Srb_info.Lchan_desc[0],
-                &DCCH_LCHAN_DESC,
-                LCHAN_DESC_SIZE);
-            memcpy(&ue_context_pP->ue_context.Srb1.Srb_info.Lchan_desc[1],
-                &DCCH_LCHAN_DESC,
-                LCHAN_DESC_SIZE);
-            // SRB2: set  it to go through SRB1 with id 1 (DCCH)
-            ue_context_pP->ue_context.Srb2.Active = 1;
-            ue_context_pP->ue_context.Srb2.Srb_info.Srb_id = Idx;
-            memcpy(&ue_context_pP->ue_context.Srb2.Srb_info.Lchan_desc[0],
-                &DCCH_LCHAN_DESC,
-                LCHAN_DESC_SIZE);
-            memcpy(&ue_context_pP->ue_context.Srb2.Srb_info.Lchan_desc[1],
-                &DCCH_LCHAN_DESC,
-                LCHAN_DESC_SIZE);
+          Idx = DCCH;
+          // SRB1
+          ue_context_pP->ue_context.Srb1.Active = 1;
+          ue_context_pP->ue_context.Srb1.Srb_info.Srb_id = Idx;
+          memcpy(&ue_context_pP->ue_context.Srb1.Srb_info.Lchan_desc[0],
+                 &DCCH_LCHAN_DESC,
+                 LCHAN_DESC_SIZE);
+          memcpy(&ue_context_pP->ue_context.Srb1.Srb_info.Lchan_desc[1],
+                 &DCCH_LCHAN_DESC,
+                 LCHAN_DESC_SIZE);
+          // SRB2: set  it to go through SRB1 with id 1 (DCCH)
+          ue_context_pP->ue_context.Srb2.Active = 1;
+          ue_context_pP->ue_context.Srb2.Srb_info.Srb_id = Idx;
+          memcpy(&ue_context_pP->ue_context.Srb2.Srb_info.Lchan_desc[0],
+                 &DCCH_LCHAN_DESC,
+                 LCHAN_DESC_SIZE);
+          memcpy(&ue_context_pP->ue_context.Srb2.Srb_info.Lchan_desc[1],
+                 &DCCH_LCHAN_DESC,
+                 LCHAN_DESC_SIZE);
 
-            if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
-              RRCConnSetup_PDU_Present[cc_id] = true;
-              rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
+          if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
+            lchannelType = Bearer_CCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
+            RRCConnSetup_PDU_Present[cc_id] = true;
+            rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
 
-              LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
+            LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
                   PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
                   Idx);
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
               rrc_pdcp_config_asn1_req(&ctxt,
                   ue_context_pP->ue_context.SRB_configList,
                   (LTE_DRB_ToAddModList_t *)NULL,
@@ -10793,25 +10739,28 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                     (LTE_DRB_ToAddModList_t *)NULL,
                     (LTE_DRB_ToReleaseList_t *)NULL,
                     (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
-              }
-            } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
-              rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             }
+          } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
+            rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
+            lchannelType = Bearer_CCCH_e;
+            bcchTransportType = dlsch_TRANSPORT;
           }
-#endif
         }
+#endif
+      }
         break;
         //#endif
 
         case SS_DRB_PDU_REQ:
         LOG_A(RRC, "[eNB %ld] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-            instance,
-            ENB_FLAG_YES,
-            SS_DRB_PDU_REQ(msg_p).rnti,
-            msg_p->ittiMsgHeader.lte_time.frame,
-            msg_p->ittiMsgHeader.lte_time.slot);
-        LOG_A(RRC,"swetank: fxn:%s  line:%d recvd SS_DRB_PDU_REQ before calling pdcp_data_req\n", __FUNCTION__, __LINE__);
+                                      instance,
+                                      ENB_FLAG_YES,
+                                      SS_DRB_PDU_REQ(msg_p).rnti,
+                                      msg_p->ittiMsgHeader.lte_time.frame,
+                                      msg_p->ittiMsgHeader.lte_time.slot);
+        lchannelType = Bearer_DCCH_e;
+        bcchTransportType = dlsch_TRANSPORT;
         pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
         break;
 
@@ -10841,6 +10790,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         case SS_SS_PAGING_IND:
         LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
         rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
+        lchannelType = Bearer_PCCH_e;
+        bcchTransportType = bch_TRANSPORT;
         break;
 
         case RRC_RBLIST_CFG_REQ:

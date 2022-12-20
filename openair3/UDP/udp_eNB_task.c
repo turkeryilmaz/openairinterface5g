@@ -308,8 +308,10 @@ void *udp_eNB_task(void *args_p)
 
   itti_mark_task_ready(TASK_UDP);
   MSC_START_USE();
+  LOG_I(UDP_, " Entry in %s\n", __FUNCTION__);
 
   while(1) {
+    LOG_I(UDP_, " Fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     itti_receive_msg(TASK_UDP, &received_message_p);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UDP_ENB_TASK, VCD_FUNCTION_IN);
 #if defined(LOG_UDP) && LOG_UDP > 0
@@ -322,96 +324,97 @@ void *udp_eNB_task(void *args_p)
       //instance = ITTI_MSG_INSTANCE (received_message_p);
 
       switch (ITTI_MSG_ID(received_message_p)) {
-      case UDP_INIT: {
-        LOG_D(UDP_, "Received UDP_INIT\n");
-        udp_init_t *udp_init_p;
-        udp_init_p = &received_message_p->ittiMsg.udp_init;
-        udp_eNB_create_socket(
-          udp_init_p->port,
-          udp_init_p->address,
-          ITTI_MSG_ORIGIN_ID(received_message_p));
-      }
-      break;
+        case UDP_INIT: {
+                         LOG_D(UDP_, "Received UDP_INIT\n");
+                         udp_init_t *udp_init_p;
+                         udp_init_p = &received_message_p->ittiMsg.udp_init;
+                         udp_eNB_create_socket(
+                             udp_init_p->port,
+                             udp_init_p->address,
+                             ITTI_MSG_ORIGIN_ID(received_message_p));
+                       }
+                       break;
 
-      case UDP_DATA_REQ: {
+        case UDP_DATA_REQ: {
 #if defined(LOG_UDP) && LOG_UDP > 0
-        LOG_D(UDP_, "Received UDP_DATA_REQ\n");
+                             LOG_D(UDP_, "Received UDP_DATA_REQ\n");
 #endif
-        int     udp_sd = -1;
-        ssize_t bytes_written;
+                             int     udp_sd = -1;
+                             ssize_t bytes_written;
 
-        struct udp_socket_desc_s *udp_sock_p = NULL;
-        udp_data_req_t           *udp_data_req_p;
-        struct sockaddr_in        peer_addr;
+                             struct udp_socket_desc_s *udp_sock_p = NULL;
+                             udp_data_req_t           *udp_data_req_p;
+                             struct sockaddr_in        peer_addr;
+                             char buffer[INET_ADDRSTRLEN];
+                             udp_data_req_p = &received_message_p->ittiMsg.udp_data_req;
 
-        udp_data_req_p = &received_message_p->ittiMsg.udp_data_req;
+                             memset(&peer_addr, 0, sizeof(struct sockaddr_in));
 
-        memset(&peer_addr, 0, sizeof(struct sockaddr_in));
+                             peer_addr.sin_family       = AF_INET;
+                             peer_addr.sin_port         = htons(udp_data_req_p->peer_port);
+                             peer_addr.sin_addr.s_addr  = udp_data_req_p->peer_address;
+                             inet_ntop( AF_INET, &peer_addr.sin_addr, buffer, sizeof( buffer ));
 
-        peer_addr.sin_family       = AF_INET;
-        peer_addr.sin_port         = htons(udp_data_req_p->peer_port);
-        peer_addr.sin_addr.s_addr  = udp_data_req_p->peer_address;
+                             pthread_mutex_lock(&udp_socket_list_mutex);
+                             udp_sock_p = udp_eNB_get_socket_desc(ITTI_MSG_ORIGIN_ID(received_message_p));
 
-        pthread_mutex_lock(&udp_socket_list_mutex);
-        udp_sock_p = udp_eNB_get_socket_desc(ITTI_MSG_ORIGIN_ID(received_message_p));
+                             if (udp_sock_p == NULL) {
+                               LOG_E(UDP_,
+                                   "Failed to retrieve the udp socket descriptor "
+                                   "associated with task %d\n",
+                                   ITTI_MSG_ORIGIN_ID(received_message_p));
+                               pthread_mutex_unlock(&udp_socket_list_mutex);
 
-        if (udp_sock_p == NULL) {
-          LOG_E(UDP_,
-                "Failed to retrieve the udp socket descriptor "
-                "associated with task %d\n",
-                ITTI_MSG_ORIGIN_ID(received_message_p));
-          pthread_mutex_unlock(&udp_socket_list_mutex);
+                               if (udp_data_req_p->buffer) {
+                                 itti_free(ITTI_MSG_ORIGIN_ID(received_message_p), udp_data_req_p->buffer);
+                               }
 
-          if (udp_data_req_p->buffer) {
-            itti_free(ITTI_MSG_ORIGIN_ID(received_message_p), udp_data_req_p->buffer);
-          }
+                               goto on_error;
+                             }
 
-          goto on_error;
-        }
+                             udp_sd = udp_sock_p->sd;
+                             pthread_mutex_unlock(&udp_socket_list_mutex);
 
-        udp_sd = udp_sock_p->sd;
-        pthread_mutex_unlock(&udp_socket_list_mutex);
+                             //#if defined(LOG_UDP) && LOG_UDP > 0
+                             LOG_D(UDP_, "[%d] Sending message of size %u to "IPV4_ADDR" and port %u\n",
+                                 udp_sd,
+                                 udp_data_req_p->buffer_length,
+                                 IPV4_ADDR_FORMAT(udp_data_req_p->peer_address),
+                                 udp_data_req_p->peer_port);
+                             //#endif
+                             bytes_written = sendto(
+                                 udp_sd,
+                                 &udp_data_req_p->buffer[udp_data_req_p->buffer_offset],
+                                 udp_data_req_p->buffer_length,
+                                 0,
+                                 (struct sockaddr *)&peer_addr,
+                                 sizeof(struct sockaddr_in));
 
-//#if defined(LOG_UDP) && LOG_UDP > 0
-        LOG_D(UDP_, "[%d] Sending message of size %u to "IPV4_ADDR" and port %u\n",
-              udp_sd,
-              udp_data_req_p->buffer_length,
-              IPV4_ADDR_FORMAT(udp_data_req_p->peer_address),
-              udp_data_req_p->peer_port);
-//#endif
-        bytes_written = sendto(
-                          udp_sd,
-                          &udp_data_req_p->buffer[udp_data_req_p->buffer_offset],
-                          udp_data_req_p->buffer_length,
-                          0,
-                          (struct sockaddr *)&peer_addr,
-                          sizeof(struct sockaddr_in));
+                             if (bytes_written != udp_data_req_p->buffer_length) {
+                               LOG_E(UDP_, "There was an error while writing to socket %d rc %zd"
+                                   "(%d:%s) May be normal if GTPU kernel module loaded on same host (may NF_DROP IP packet)\n",
+                                   udp_sd, bytes_written, errno, strerror(errno));
+                             }
 
-        if (bytes_written != udp_data_req_p->buffer_length) {
-          LOG_E(UDP_, "There was an error while writing to socket %d rc %zd"
-                "(%d:%s) May be normal if GTPU kernel module loaded on same host (may NF_DROP IP packet)\n",
-                udp_sd, bytes_written, errno, strerror(errno));
-        }
+                             itti_free(ITTI_MSG_ORIGIN_ID(received_message_p), udp_data_req_p->buffer);
+                           }
+                           break;
 
-        itti_free(ITTI_MSG_ORIGIN_ID(received_message_p), udp_data_req_p->buffer);
-      }
-      break;
+        case TERMINATE_MESSAGE: {
+                                  LOG_W(UDP_, " *** Exiting UDP thread\n");
+                                  itti_exit_task();
+                                }
+                                break;
 
-      case TERMINATE_MESSAGE: {
-        LOG_W(UDP_, " *** Exiting UDP thread\n");
-        itti_exit_task();
-      }
-      break;
+        case MESSAGE_TEST: {
+                           } break;
 
-      case MESSAGE_TEST: {
-      } break;
-
-      default: {
-        LOG_W(UDP_, "Unkwnon message ID %d:%s\n",
-              ITTI_MSG_ID(received_message_p),
-              ITTI_MSG_NAME(received_message_p));
-      }
-      break;
+        default: {
+                   LOG_W(UDP_, "Unkwnon message ID %d:%s\n",
+                       ITTI_MSG_ID(received_message_p),
+                       ITTI_MSG_NAME(received_message_p));
+                 }
+                 break;
       }
 
 on_error:

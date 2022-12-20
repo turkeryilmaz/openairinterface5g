@@ -26,6 +26,8 @@
 #include "nr_rlc_sdu.h"
 #include "nr_rlc_pdu.h"
 
+#include "LOG/ss-log.h"
+
 typedef struct {
   nr_rlc_entity_t common;
 
@@ -92,12 +94,12 @@ typedef struct {
 void nr_rlc_entity_am_recv_sdu(nr_rlc_entity_t *entity,
                                char *buffer, int size,
                                int sdu_id);
-void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *entity,
-                               char *buffer, int size);
+void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *entity, char *buffer,
+		int size, nr_rlc_pkt_info_t *rlc_info);
 nr_rlc_entity_buffer_status_t nr_rlc_entity_am_buffer_status(
     nr_rlc_entity_t *entity, int maxsize);
 int nr_rlc_entity_am_generate_pdu(nr_rlc_entity_t *entity,
-                                  char *buffer, int size);
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info);
 void nr_rlc_entity_am_set_time(nr_rlc_entity_t *entity, uint64_t now);
 void nr_rlc_entity_am_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id);
 void nr_rlc_entity_am_reestablishment(nr_rlc_entity_t *_entity);

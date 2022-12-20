@@ -1022,6 +1022,14 @@ schedule_ue_spec(module_id_t module_idP,
           dlsch_pdu->payload[0][offset + sdu_length_total + j] = 0;
         }
 
+        mac_pkt_info_t mac_pkt;
+        mac_pkt.direction = DIRECTION_DOWNLINK;
+        mac_pkt.rnti_type = WS_C_RNTI;
+        mac_pkt.rnti      = UE_RNTI(module_idP,UE_id);
+        mac_pkt.harq_pid  = 0;
+        mac_pkt.preamble  = -1; /* TODO */
+
+        LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)dlsch_pdu->payload[0], (int)TBS);
         trace_pdu(DIRECTION_DOWNLINK,
                   (uint8_t *) dlsch_pdu->payload[0],
                   TBS,
@@ -1687,6 +1695,14 @@ schedule_ue_spec_br(module_id_t module_idP,
             UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0][offset + sdu_length_total + j] = (char)(taus()&0xff);
           }
 
+          mac_pkt_info_t mac_pkt;
+          mac_pkt.direction = DIRECTION_DOWNLINK;
+          mac_pkt.rnti_type = WS_C_RNTI;
+          mac_pkt.rnti      = UE_RNTI(module_idP,UE_id);
+          mac_pkt.harq_pid  = 0;
+          mac_pkt.preamble  = -1; /* TODO */
+
+          LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", mac->frame, mac->subframe, mac_pkt, (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0], (int)TBS);
           trace_pdu(DIRECTION_DOWNLINK,
                     (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0],
                     TBS,
@@ -1899,6 +1915,15 @@ schedule_ue_spec_br(module_id_t module_idP,
                 subframeP,
                 0,
                 0);
+
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIRECTION_DOWNLINK;
+      mac_pkt.rnti_type = 3;
+      mac_pkt.rnti      = rnti;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+
+      LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", frameP, subframeP, mac_pkt, (uint8_t *)mac->UE_info.DLSCH_pdu[CC_id][0][(unsigned char) UE_id].payload[0], (int)TX_req->pdu_length);
     } // end else if ((subframeP == 7) && (round_DL < 8))
   } // end loop on UE_id
 }
@@ -2434,6 +2459,14 @@ schedule_PCH(module_id_t module_idP,
           continue;
         }
 
+        mac_pkt_info_t mac_pkt;
+        mac_pkt.direction = DIRECTION_DOWNLINK;
+        mac_pkt.rnti_type = PCCH;
+        mac_pkt.rnti      = P_RNTI;
+        mac_pkt.harq_pid  = 0;
+        mac_pkt.preamble  = -1; /* TODO */
+
+        LOG_MAC_P(OAILOG_INFO, "LTE_MAC_PCCH_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&eNB->common_channels[CC_id].PCCH_pdu.payload[0], (int)pcch_sdu_length);
         trace_pdu(DIRECTION_DOWNLINK,
                   &eNB->common_channels[CC_id].PCCH_pdu.payload[0],
                   pcch_sdu_length,

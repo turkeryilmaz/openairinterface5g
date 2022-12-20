@@ -224,6 +224,7 @@ char openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_RrcConfigu
   rrc->carrier.sib1_tda = configuration->sib1_tda;
   rrc->carrier.do_CSIRS = configuration->do_CSIRS;
   rrc->carrier.do_SRS = configuration->do_SRS;
+  LOG_A(NR_RRC, "fxn:%s rrc->carrier:pci:%d rrc->configuration:pci:%d gnb_mod_idP:%d", __FUNCTION__, rrc->carrier.physCellId, *rrc->configuration.scc->physCellId, gnb_mod_idP);
   nr_rrc_config_ul_tda(configuration->scc,configuration->minRXTXTIME);
    /// System Information INIT
   pthread_mutex_init(&rrc->cell_info_mutex,NULL);

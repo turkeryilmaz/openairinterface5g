@@ -28,6 +28,7 @@
 #include "nr_rlc_entity_tm.h"
 
 #include "LOG/log.h"
+#include "LOG/ss-log.h"
 
 nr_rlc_entity_t *new_nr_rlc_entity_am(
     int rx_maxsize,

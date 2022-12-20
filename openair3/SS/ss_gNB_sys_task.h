@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include "ss_eNB_proxy_iface.h"
 #ifndef SS_GNB_TASK_H_
 #define SS_GNB_TASK_H_
 
@@ -22,5 +23,21 @@ typedef struct udpSockReq_s
   uint32_t  port;
   char     *address;
 } udpSockReq_t;
+
+typedef struct CellConfig5GReq_s
+{
+    proxy_ss_header_t header;
+    int16_t maxRefPower;
+    uint8_t initialAttenuation;
+		uint16_t dl_earfcn;
+    long absoluteFrequencyPointA;
+} CellConfig5GReq_t;
+
+typedef enum _sys_Type
+{
+	SYS_TYPE_LTE,
+	SYS_TYPE_NR,
+	SYS_TYPE_ENDC
+}sys_Type;
 
 #endif /* SS_ENB_TASK_H_ */

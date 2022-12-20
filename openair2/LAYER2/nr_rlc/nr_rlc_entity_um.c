@@ -259,7 +259,7 @@ static void reception_actions(nr_rlc_entity_um_t *entity, nr_rlc_pdu_t *pdu)
 }
 
 void nr_rlc_entity_um_recv_pdu(nr_rlc_entity_t *_entity,
-                               char *buffer, int size)
+                               char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
 #define R(d) do { if (nr_rlc_pdu_decoder_in_error(&d)) goto err; } while (0)
   nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)_entity;
@@ -275,6 +275,12 @@ void nr_rlc_entity_um_recv_pdu(nr_rlc_entity_t *_entity,
   nr_rlc_pdu_decoder_init(&decoder, buffer, size);
 
   si = nr_rlc_pdu_decoder_get_bits(&decoder, 2); R(decoder);
+  rlc_info->rlcMode              = 2; /** TODO UM Mode */
+  rlc_info->pduLength            = size;
+  rlc_info->sequenceNumberLength = entity->sn_field_length;
+
+  LOG_RLC_P(OAILOG_INFO, "UL_RLC_UM_PDU", -1, -1, *(rlc_info), (unsigned char *)buffer, size);
+
 
   is_first = (si & 0x2) == 0;
   is_last = (si & 0x1) == 0;
@@ -509,11 +515,15 @@ nr_rlc_entity_buffer_status_t nr_rlc_entity_um_buffer_status(
 }
 
 int nr_rlc_entity_um_generate_pdu(nr_rlc_entity_t *_entity,
-                                  char *buffer, int size)
+                                  char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
   nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)_entity;
 
-  return generate_tx_pdu(entity, buffer, size);
+  int ret = generate_tx_pdu(entity, buffer, size);
+  rlc_info->rlcMode              = 2; /** UM Mode */
+  rlc_info->sequenceNumberLength = entity->sn_field_length;
+  rlc_info->pduLength = ret;
+  return ret;
 }
 
 /*************************************************************************/

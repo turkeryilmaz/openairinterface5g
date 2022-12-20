@@ -258,6 +258,8 @@ void mac_rlc_data_ind     (
 #endif // DEBUG_MAC_INTERFACE
 #if T_TRACER
 
+  //Trace UL RLC PDU Here
+
   if (enb_flagP)
     T(T_ENB_RLC_MAC_UL, T_INT(module_idP), T_INT(rntiP), T_INT(channel_idP), T_INT(tb_sizeP));
 

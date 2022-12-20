@@ -499,6 +499,28 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
        LOG_SS_MAC_PKT(PKT, _string, sfn, sf, mac_pack_info, buf, len);    \
     } } while(0)
 
+# define LOG_RLC_P(lvl, _string, sfn, sf, rlc_pack_info, buf, len)  do {  \
+    if(g_log->log_component[PKT].level >= lvl) {                          \
+       LOG_SS_RLC_PKT(PKT, _string, sfn, sf, rlc_pack_info, buf, len);    \
+    } } while(0)
+
+# define LOG_PDCP_P(lvl, _string, sfn, sf, pdcp_pack_info, buf, len)  do {  \
+    if(g_log->log_component[PKT].level >= lvl) {                          \
+       LOG_SS_PDCP_PKT(PKT, _string, sfn, sf, pdcp_pack_info, buf, len);    \
+    } } while(0)
+
+# define LOG_LTE_PDCP_PDU(lvl, _string, sfn, sf, pdcp_pack_info, buf, len)  do {  \
+    if(g_log->log_component[PKT].level >= lvl) {                          \
+       LOG_SS_LTE_PDCP_PKT(PKT, _string, sfn, sf, pdcp_pack_info, buf, len);    \
+    } } while(0)
+
+# define LOG_LTE_RLC_P(lvl, _string, sfn, sf, rlc_pack_info, buf, len)  do {  \
+    if(g_log->log_component[PKT].level >= lvl) {                          \
+       LOG_SS_LTE_RLC_PKT(PKT, _string, sfn, sf, rlc_pack_info, buf, len);    \
+    } } while(0)
+
+
+
 /* avoid warnings for variables only used in LOG macro's but set outside debug section */
 #define GCC_NOTUSED   __attribute__((unused))
 #define LOG_USEDINLOG_VAR(A,B) GCC_NOTUSED A B
