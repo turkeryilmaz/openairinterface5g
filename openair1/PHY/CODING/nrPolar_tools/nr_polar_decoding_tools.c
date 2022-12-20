@@ -424,8 +424,16 @@ void applyGtoright(const t_nrPolar_params *pp,decoder_node_t *node) {
     else 
 #endif
       {// equivalent scalar code to above, activated only on non x86/ARM architectures or Nv=1,2
+        int temp_alpha_r;
 	for (int i=0;i<node->Nv/2;i++) {
-	  alpha_r[i] = alpha_v[i+(node->Nv/2)] - (betal[i]*alpha_v[i]);
+	  temp_alpha_r = alpha_v[i+(node->Nv/2)] - (betal[i]*alpha_v[i]);
+          if (temp_alpha_r > 32767) {
+            alpha_r[i] = 32767;
+          } else if (temp_alpha_r < -32767) {
+            alpha_r[i] = -32767;
+          } else {
+            alpha_r[i] = temp_alpha_r;
+          }
 	}
       }
     if (node->Nv == 2) { // apply hard decision on right node
