@@ -32,6 +32,14 @@
 #include "openair2/RRC/NR/nr_rrc_proto.h"
 #include <stdint.h>
 
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+
+
+
 /* from OAI */
 #include "oai_asn1.h"
 #include "nr_pdcp_oai_api.h"
@@ -1107,6 +1115,42 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;
   }
+
+  //printf("[mir]: PDCP pkt size %d \n",  sdu_buffer_size);
+  // struct iphdr* hdr = (struct iphdr*)sdu_buffer;
+  //if(hdr->protocol == IPPROTO_TCP) {
+  // struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+  //  struct in_addr paddr;
+  //  paddr.s_addr = hdr->saddr;
+  //  char *strAdd2 = inet_ntoa(paddr);
+//    printf("PDCP: IP source address %s \n", strAdd2  );
+  //  paddr.s_addr = hdr->daddr;
+  //  strAdd2 = inet_ntoa(paddr);
+//    printf("PDCP: IP dst address %s \n", strAdd2  );
+
+   // uint16_t const sport = ntohs(tcp->source);
+   // uint16_t const dport = ntohs(tcp->dest);
+   // printf("PDCP Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+  // }
+
+  //printf("[mir]: PDCP pkt size %d \n",  sdu_buffer_size);
+  // struct iphdr* hdr = (struct iphdr*)sdu_buffer;
+  //if(hdr->protocol == IPPROTO_TCP) {
+  // struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+
+  //  struct in_addr paddr;
+  //  paddr.s_addr = hdr->saddr;
+  //  char *strAdd2 = inet_ntoa(paddr);
+//    printf("PDCP: IP source address %s \n", strAdd2  );
+  //  paddr.s_addr = hdr->daddr;
+  //  strAdd2 = inet_ntoa(paddr);
+//    printf("PDCP: IP dst address %s \n", strAdd2  );
+
+   // uint16_t const sport = ntohs(tcp->source);
+   // uint16_t const dport = ntohs(tcp->dest);
+   // printf("PDCP Ingress TCP seq_number %u src %d dst %d \n", ntohl(tcp->seq), sport, dport);
+  // }
 
   int max_size = sdu_buffer_size + 3 + 4; // 3: max header, 4: max integrity
   char pdu_buf[max_size];
