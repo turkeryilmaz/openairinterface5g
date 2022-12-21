@@ -812,7 +812,6 @@ static void init_MBMS(
     PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, enb_mod_idP, ENB_FLAG_YES, NOT_A_RNTI, frameP, 0,enb_mod_idP);
     LOG_D(RRC, "[eNB %d] Frame %d : Radio Bearer config request for MBMS\n", enb_mod_idP, frameP);   //check the lcid
     // Configuring PDCP and RLC for MBMS Radio Bearer
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
     rrc_pdcp_config_asn1_req(&ctxt,
                              (LTE_SRB_ToAddModList_t *)NULL,   // LTE_SRB_ToAddModList
                              (LTE_DRB_ToAddModList_t *)NULL,   // LTE_DRB_ToAddModList
@@ -3898,7 +3897,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   }
 
   /* Refresh SRBs/DRBs */
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            *SRB_configList2, // NULL,
                            *DRB_configList,
@@ -7625,7 +7623,6 @@ rrc_eNB_decode_ccch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT"CALLING RLC CONFIG SRB1 (rbid %d)\n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
                 Idx);
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *) NULL,
@@ -7806,7 +7803,6 @@ rrc_eNB_decode_ccch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d),RRCConnSetup_PDU_Present: %d \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
                 Idx,RRCConnSetup_PDU_Present[CC_id]);
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *)NULL,
