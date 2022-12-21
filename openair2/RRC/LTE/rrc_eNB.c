@@ -859,7 +859,6 @@ static void init_MBMS(
     PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, enb_mod_idP, ENB_FLAG_YES, NOT_A_RNTI, frameP, 0,enb_mod_idP);
     LOG_D(RRC, "[eNB %d] Frame %d : Radio Bearer config request for MBMS\n", enb_mod_idP, frameP);   //check the lcid
     // Configuring PDCP and RLC for MBMS Radio Bearer
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
     rrc_pdcp_config_asn1_req(&ctxt,
                              (LTE_SRB_ToAddModList_t *)NULL,   // LTE_SRB_ToAddModList
                              (LTE_DRB_ToAddModList_t *)NULL,   // LTE_DRB_ToAddModList
@@ -3313,35 +3312,35 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       struct LTE_DRB_ToAddModList *p_drb = NULL;
       p_drb = ce->radioResourceConfigDedicated->drb_ToAddModList;
 
-      for (int ik=0; ik< num_drb; ik++)
+      for (int drb_idx=0; drb_idx< num_drb; drb_idx++)
       {
         DRB_config = CALLOC(1, sizeof(*DRB_config));
         if (p_drb != NULL)
         {
-          DRB_config->drb_Identity = p_drb->list.array[ik]->drb_Identity;
+          DRB_config->drb_Identity = p_drb->list.array[drb_idx]->drb_Identity;
         }
-        if (p_drb->list.array[ik]->eps_BearerIdentity != NULL)
+        if (p_drb->list.array[drb_idx]->eps_BearerIdentity != NULL)
         {
           DRB_config->eps_BearerIdentity = CALLOC(1, sizeof(long));
-          *(DRB_config->eps_BearerIdentity) = *p_drb->list.array[ik]->eps_BearerIdentity;
+          *(DRB_config->eps_BearerIdentity) = *p_drb->list.array[drb_idx]->eps_BearerIdentity;
         }
-        if (p_drb->list.array[ik]->pdcp_Config != NULL)
+        if (p_drb->list.array[drb_idx]->pdcp_Config != NULL)
         {
           DRB_pdcp_config = CALLOC(1, sizeof(*DRB_pdcp_config));
           DRB_config->pdcp_Config = DRB_pdcp_config;
           DRB_pdcp_config->discardTimer = CALLOC(1, sizeof(long));
-          if (p_drb->list.array[ik]->pdcp_Config->discardTimer != NULL)
+          if (p_drb->list.array[drb_idx]->pdcp_Config->discardTimer != NULL)
           {
-            *DRB_pdcp_config->discardTimer = *p_drb->list.array[ik]->pdcp_Config->discardTimer;
+            *DRB_pdcp_config->discardTimer = *p_drb->list.array[drb_idx]->pdcp_Config->discardTimer;
           }
 #ifdef RRC_DEFAULT_RAB_IS_AM // EXMIMO_IOT
           PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
           DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
           if(1) {
 //            PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
-          if (p_drb->list.array[ik]->pdcp_Config->rlc_AM != NULL)
+          if (p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM != NULL)
           {
-            PDCP_rlc_AM->statusReportRequired = p_drb->list.array[ik]->pdcp_Config->rlc_AM->statusReportRequired;
+            PDCP_rlc_AM->statusReportRequired = p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM->statusReportRequired;
           }
           } else {
             PDCP_rlc_AM->statusReportRequired = FALSE;
@@ -3349,14 +3348,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 #else
           PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
           DRB_pdcp_config->rlc_UM = PDCP_rlc_UM;
-          if(p_drb->list.array[ik]->pdcp_Config->rlc_UM != NULL) {
+          if(p_drb->list.array[drb_idx]->pdcp_Config->rlc_UM != NULL) {
 //            PDCP_rlc_UM->pdcp_SN_Size = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_UM->pdcp_SN_Size;
-            PDCP_rlc_UM->pdcp_SN_Size = p_drb->list.array[ik]->pdcp_Config->rlc_UM->pdcp_SN_Size
+            PDCP_rlc_UM->pdcp_SN_Size = p_drb->list.array[drb_idx]->pdcp_Config->rlc_UM->pdcp_SN_Size
           } else {
             PDCP_rlc_UM->pdcp_SN_Size = LTE_PDCP_Config__rlc_UM__pdcp_SN_Size_len12bits;
           }
 #endif
-          if(p_drb->list.array[ik]->pdcp_Config->headerCompression.present == LTE_PDCP_Config__headerCompression_PR_rohc) {
+          if(p_drb->list.array[drb_idx]->pdcp_Config->headerCompression.present == LTE_PDCP_Config__headerCompression_PR_rohc) {
             DRB_pdcp_config->headerCompression.present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.headerCompression.present;
           } else {
             DRB_pdcp_config->headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
@@ -4098,7 +4097,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   }
 
   /* Refresh SRBs/DRBs */
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            *SRB_configList2, // NULL,
                            *DRB_configList,
@@ -6843,7 +6841,6 @@ rrc_eNB_generate_HO_RRCConnectionReconfiguration(const protocol_ctxt_t *const ct
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration handover to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
   /* Refresh SRBs/DRBs */
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            *SRB_configList2, // NULL,
                            *DRB_configList,
@@ -6901,7 +6898,6 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
   LOG_I(RRC, "[eNB %d] CALLING RLC CONFIG SRB1 (rbid %d) for UE %x\n",
         ctxt_pP->module_id, Idx, ue_context_p->ue_context.rnti);
   // Configure PDCP/RLC for the target
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            ue_context_p->ue_context.SRB_configList,
                            (LTE_DRB_ToAddModList_t *) NULL,
@@ -7045,7 +7041,6 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
     }
 
   /* Refresh SRBs/DRBs */
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
   rrc_pdcp_config_asn1_req(ctxt_pP,
                            SRB_configList, // NULL,
                            DRB_configList,
@@ -8193,7 +8188,6 @@ rrc_eNB_decode_ccch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT"CALLING RLC CONFIG SRB1 (rbid %d)\n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
                 Idx);
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *) NULL,
@@ -8410,7 +8404,6 @@ rrc_eNB_decode_ccch(
           LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d),RRCConnSetup_PDU_Present: %d \n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
                 Idx,RRCConnSetup_PDU_Present[CC_id]);
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
           rrc_pdcp_config_asn1_req(ctxt_pP,
                                    ue_context_p->ue_context.SRB_configList,
                                    (LTE_DRB_ToAddModList_t *)NULL,
