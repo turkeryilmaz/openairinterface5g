@@ -1454,13 +1454,23 @@ pdcp_run (
 
           SS_GET_PDCP_CNT(message_p).size = 0;
 
+
           ue_rnti = SS_REQ_PDCP_CNT(msg_p).rnti;
-          uint8_t rb_idx = 0;
-          if (SS_REQ_PDCP_CNT(msg_p).rb_id == 0xFF)
+          int UE_id = find_UE_id(ctxt_pP->module_id,ue_rnti);
+          /*
+           * The PDCP_GET_CNT request can be received when the UE is being released
+           * check if UE is active : fill the RB details
+           * if UE not Active : Update one SRB with 0 a dummy response as TTCN expects
+           * proper PDCP_GET_response
+           */
+          if (UE_id != -1)
           {
-            LOG_D(PDCP, "PDCP Received request PDCP COUNT for all RB's\n");
-            for (int i = 0; i < MAX_RBS; i++)
+            uint8_t rb_idx = 0;
+            if (SS_REQ_PDCP_CNT(msg_p).rb_id == 0xFF)
             {
+              LOG_D(PDCP, "PDCP Received request PDCP COUNT for all RB's\n");
+              for (int i = 0; i < MAX_RBS; i++)
+              {
               if (i < 3)
               {
                 rbid_ = i;
@@ -1472,53 +1482,69 @@ pdcp_run (
                 key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 0);
               }
 
-              h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
+              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
               if (h_rc == HASH_TABLE_OK)
               {
                 /** Fill response */
-                LOG_D (PDCP, "Found entry on hastable for rbid_ : %d ctxt module_id %d rnti %d enb_flag %d\n",
-                  rbid_, ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag);
+                LOG_D(PDCP, "Found entry on hastable for rbid_ : %d ctxt module_id %d rnti %d enb_flag %d\n",
+                      rbid_, ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag);
                 pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &(SS_GET_PDCP_CNT(message_p)));
                 /** Increase the array index for next RB IDX */
-                rb_idx ++;
+                rb_idx++;
               }
               else
               {
-                LOG_D (PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
-                  rbid_, ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag);
+                LOG_E(PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
+                      rbid_, ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag);
               }
-            }
-          }
-          else
-          {
-            rb_idx =  SS_REQ_PDCP_CNT(msg_p).rb_id;
-            LOG_A(PDCP, "PDCP Received request PDCP COUNT for Single RB:%d\n",
-                  SS_REQ_PDCP_CNT(message_p).rb_id);
-            if (rb_idx < 3)
-            {
-              rbid_ = rb_idx;
-              key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 1);
+              }
             }
             else
             {
+              rb_idx = SS_REQ_PDCP_CNT(msg_p).rb_id;
+              LOG_A(PDCP, "PDCP Received request PDCP COUNT for Single RB:%d\n",
+                    SS_REQ_PDCP_CNT(message_p).rb_id);
+              if (rb_idx < 3)
+              {
+              rbid_ = rb_idx;
+              key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 1);
+              }
+              else
+              {
               rbid_ = rb_idx - 3;
               key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ue_rnti, ctxt_pP->enb_flag, rbid_, 0);
-            }
+              }
 
-            h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
-            if (h_rc == HASH_TABLE_OK)
-            {
+              h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+              if (h_rc == HASH_TABLE_OK)
+              {
               if (SS_REQ_PDCP_CNT(message_p).rb_id <= MAX_RBS)
               {
                 /** For single RB always updating at the 0th index only */
                 pdcp_fill_ss_pdcp_cnt(pdcp_p, 0, &(SS_GET_PDCP_CNT(message_p)));
               }
+              }
+              else
+              {
+              LOG_E(PDCP, "No entry for single RB on hastable for rbid_: %d\n", rbid_);
+              }
             }
-            else
-            {
-              LOG_D (PDCP, "No entry for single RB on hastable for rbid_: %d\n", rbid_);
-            }
+          }
+          else
+          {
+            //Filling the dummy PDCP_CNT response as UE is not ACTIVE
+            ss_get_pdcp_cnt_t *pc = &(SS_GET_PDCP_CNT(message_p));
+            pc->size += 1;
+            pc->rb_info[0].rb_id = 0;
+            pc->rb_info[0].is_srb = true;
+            pc->rb_info[0].ul_format = E_PdcpCount_Srb;
+            pc->rb_info[0].dl_format = E_PdcpCount_Srb;
+            pc->rb_info[0].ul_count = 0;
+            pc->rb_info[0].dl_count = 0;
+            LOG_D(PDCP, "SRB %d DL Count (dec): %d UL Count (dec): %d\n",  pc->rb_info[0].rb_id, 
+                  pc->rb_info[0].dl_count,
+                  pc->rb_info[0].ul_count);
           }
 
           itti_send_msg_to_task (TASK_SYS, ctxt_pP->module_id, message_p);
