@@ -185,8 +185,14 @@ if(${CPUARCH} STREQUAL "x86_64" AND DEFINED CPUFLAGS)
   if(CPUINFO MATCHES "ssse3")
     set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -DSIMDE_X86_SSSE3_NATIVE")
   endif()
-elseif(${CPUARCH} NOT STREQUAL "x86_64")
-  message(FATAL_ERROR "Cannot compile for CPU architecture ${CPUARCH}")
+else()
+  if (CMAKE_SYSTEM_PROCESSOR STREQUAL "armv7l")
+    set(C_FLAGS_PROCESSOR "-gdwarf-2 -mfloat-abi=hard -mfpu=neon -lgcc -lrt")
+  elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    set(C_FLAGS_PROCESSOR "-gdwarf-2 -lgcc -lrt")
+  else ()
+  message(STATUS "compile for CPU architecture ${CPUARCH}, CMAKE_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR}")
+  endif()
 endif()
 
 set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -fno-var-tracking-assignments -march=native")
@@ -1001,7 +1007,7 @@ target_link_libraries(ldpc PRIVATE ldpc_gen_HEADERS)
 
 add_library(coding MODULE ${PHY_TURBOSRC} )
 
-add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c )
+add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
 
 
 set(PHY_SRC_COMMON
