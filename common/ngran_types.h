@@ -57,4 +57,7 @@ typedef enum { CPtype = 0, UPtype } E1_t;
 
 typedef enum { non_dynamic, dynamic } fiveQI_type_t;
 #define maxSRBs 4
+
+char* get_ngran_name(ngran_node_t ran_type);
+
 #endif
