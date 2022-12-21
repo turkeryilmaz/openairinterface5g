@@ -289,7 +289,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
         printf("Error in itti_send_msg_to_task");
         // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
       }
-      LOG_A(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to VTP task itti_send_msg_to_task sfn %d sf %d",
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to VTP task itti_send_msg_to_task sfn %d sf %d",
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
     MessageDef *message_p_vt_timer = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
@@ -303,7 +303,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
         printf("Error in itti_send_msg_to_task");
         // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
       }
-      LOG_A(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to TASK_VT_TIMER task itti_send_msg_to_task sfn %d sf %d",
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to TASK_VT_TIMER task itti_send_msg_to_task sfn %d sf %d",
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
   }
