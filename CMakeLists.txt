@@ -1576,6 +1576,8 @@ add_library(L2
   )
 target_link_libraries(L2 PRIVATE x2ap s1ap lte_rrc m2ap)
 target_link_libraries(L2 PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+target_link_libraries(L2 PUBLIC ${E2_AGENT_LIB})
+target_compile_definitions(L2 PRIVATE ${E2_AGENT_ON})
 
 add_library(MAC_NR ${MAC_NR_SRC})
 target_link_libraries(MAC_NR PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
@@ -1606,6 +1608,8 @@ add_library(e1_pdcp_if
 target_link_libraries(e1_pdcp_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
+target_link_libraries(L2_NR PUBLIC ${E2_AGENT_LIB})
+target_compile_definitions(L2_NR PRIVATE ${E2_AGENT_ON})
 
 add_library(L2_LTE_NR
   ${L2_RRC_SRC}
@@ -2179,7 +2183,7 @@ target_link_libraries(lte-softmodem PRIVATE
   -Wl,--start-group
   lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT MME_APP SCHED_LIB SCHED_RU_LIB
   PHY_COMMON PHY PHY_RU  L2 L2_LTE NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
-  ${NAS_UE_LIB} ITTI SIMU SIMU_ETH ${E2_AGENT_LIB}
+  ${NAS_UE_LIB} ITTI SIMU SIMU_ETH
   -Wl,--end-group z dl)
 
 target_link_libraries(lte-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp)
@@ -2283,7 +2287,7 @@ target_link_libraries(nr-softmodem PRIVATE
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
   ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
-  x2ap f1ap m2ap m3ap e1ap ${E2_AGENT_LIB}
+  x2ap f1ap m2ap m3ap e1ap
   -Wl,--end-group z dl)
 
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})

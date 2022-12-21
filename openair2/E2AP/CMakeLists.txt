@@ -30,5 +30,3 @@ message(STATUS "Selected SM_ENCODING_KPM: ${SM_ENCODING_KPM}")
 add_subdirectory(agent)
 add_subdirectory(lib)
 add_subdirectory(sm)
-add_subdirectory(util)
-
