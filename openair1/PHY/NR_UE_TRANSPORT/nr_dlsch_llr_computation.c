@@ -106,9 +106,9 @@ void nr_dlsch_16qam_llr(NR_DL_FRAME_PARMS *frame_parms,
 {
 
 #if defined(__x86_64__) || defined(__i386__)
-  __m128i *rxF = (__m128i*)&rxdataF_comp[(symbol*nb_rb*12)];
-  __m128i *ch_mag;
-  __m128i llr128[2];
+  simde__m128i *rxF = (__m128i*)&rxdataF_comp[(symbol*nb_rb*12)];
+  simde__m128i *ch_mag;
+  simde__m128i llr128[2];
   uint32_t *llr32;
 #elif defined(__arm__) || defined(__aarch64__)
   int16x8_t *rxF = (int16x8_t*)&rxdataF_comp[(symbol*nb_rb*12)];
@@ -129,7 +129,7 @@ void nr_dlsch_16qam_llr(NR_DL_FRAME_PARMS *frame_parms,
 #endif
 
 #if defined(__x86_64__) || defined(__i386__)
-    ch_mag = (__m128i *)dl_ch_mag;
+    ch_mag = (simde__m128i *)dl_ch_mag;
 #elif defined(__arm__) || defined(__aarch64__)
     ch_mag = (int16x8_t *)dl_ch_mag;
 #endif
@@ -208,8 +208,8 @@ void nr_dlsch_64qam_llr(NR_DL_FRAME_PARMS *frame_parms,
 			uint16_t nb_rb)
 {
 #if defined(__x86_64__) || defined(__i386__)
-  __m128i *rxF = (__m128i*)&rxdataF_comp[(symbol*nb_rb*12)];
-  __m128i *ch_mag,*ch_magb;
+  simde__m128i *rxF = (__m128i*)&rxdataF_comp[(symbol*nb_rb*12)];
+  simde__m128i *ch_mag,*ch_magb;
 #elif defined(__arm__) || defined(__aarch64__)
   int16x8_t *rxF = (int16x8_t*)&rxdataF_comp[(symbol*nb_rb*12)];
   int16x8_t *ch_mag,*ch_magb,xmm1,xmm2;
@@ -221,8 +221,8 @@ void nr_dlsch_64qam_llr(NR_DL_FRAME_PARMS *frame_parms,
   llr2 = dlsch_llr;
 
 #if defined(__x86_64__) || defined(__i386__)
-  ch_mag = (__m128i *)dl_ch_mag;
-  ch_magb = (__m128i *)dl_ch_magb;
+  ch_mag = (simde__m128i *)dl_ch_mag;
+  ch_magb = (simde__m128i *)dl_ch_magb;
 #elif defined(__arm__) || defined(__aarch64__)
   ch_mag = (int16x8_t *)dl_ch_mag;
   ch_magb = (int16x8_t *)dl_ch_magb;
@@ -351,8 +351,8 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
                      uint8_t first_symbol_flag,
                      uint16_t nb_rb)
 {
-  __m128i *rxF = (__m128i*)&rxdataF_comp[(symbol*nb_rb*12)];
-  __m128i *ch_mag,*ch_magb,*ch_magr;
+  simde__m128i *rxF = (simde__m128i*)&rxdataF_comp[(symbol*nb_rb*12)];
+  simde__m128i *ch_mag,*ch_magb,*ch_magr;
 
   int i,len2;
   unsigned char len_mod4;
@@ -360,60 +360,60 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
 
   llr2 = dlsch_llr;
 
-  ch_mag = (__m128i *)dl_ch_mag;
-  ch_magb = (__m128i *)dl_ch_magb;
-  ch_magr = (__m128i *)dl_ch_magr;
+  ch_mag = (simde__m128i *)dl_ch_mag;
+  ch_magb = (simde__m128i *)dl_ch_magb;
+  ch_magr = (simde__m128i *)dl_ch_magr;
 
   len_mod4 =len&3;
   len2=len>>2;  // length in quad words (4 REs)
   len2+=((len_mod4==0)?0:1);
 
   for (i=0; i<len2; i++) {
-    __m128i xmm1 = _mm_abs_epi16(rxF[i]);
-    xmm1 = _mm_subs_epi16(ch_mag[i],xmm1);
-    __m128i xmm2 = _mm_abs_epi16(xmm1);
+    simde__m128i xmm1 = simde_mm_abs_epi16(rxF[i]);
+    xmm1 = simde_mm_subs_epi16(ch_mag[i],xmm1);
+    simde__m128i xmm2 = simde_mm_abs_epi16(xmm1);
     xmm2 = _mm_subs_epi16(ch_magb[i],xmm2);
-    __m128i xmm3 = _mm_abs_epi16(xmm2);
-    xmm3 = _mm_subs_epi16(ch_magr[i], xmm3);
+    simde__m128i xmm3 = simde_mm_abs_epi16(xmm2);
+    xmm3 = simde_mm_subs_epi16(ch_magr[i], xmm3);
 
     llr2[0] = ((short *)&rxF[i])[0];
     llr2[1] = ((short *)&rxF[i])[1];
-    llr2[2] = _mm_extract_epi16(xmm1,0);
-    llr2[3] = _mm_extract_epi16(xmm1,1);//((short *)&xmm1)[j+1];
-    llr2[4] = _mm_extract_epi16(xmm2,0);//((short *)&xmm2)[j];
-    llr2[5] = _mm_extract_epi16(xmm2,1);//((short *)&xmm2)[j+1];
-    llr2[6] = _mm_extract_epi16(xmm3,0);
-    llr2[7] = _mm_extract_epi16(xmm3,1);
+    llr2[2] = simde_mm_extract_epi16(xmm1,0);
+    llr2[3] = simde_mm_extract_epi16(xmm1,1);//((short *)&xmm1)[j+1];
+    llr2[4] = simde_mm_extract_epi16(xmm2,0);//((short *)&xmm2)[j];
+    llr2[5] = simde_mm_extract_epi16(xmm2,1);//((short *)&xmm2)[j+1];
+    llr2[6] = simde_mm_extract_epi16(xmm3,0);
+    llr2[7] = simde_mm_extract_epi16(xmm3,1);
 
     llr2+=8;
     llr2[0] = ((short *)&rxF[i])[2];
     llr2[1] = ((short *)&rxF[i])[3];
-    llr2[2] = _mm_extract_epi16(xmm1,2);
-    llr2[3] = _mm_extract_epi16(xmm1,3);//((short *)&xmm1)[j+1];
-    llr2[4] = _mm_extract_epi16(xmm2,2);//((short *)&xmm2)[j];
-    llr2[5] = _mm_extract_epi16(xmm2,3);//((short *)&xmm2)[j+1];
-    llr2[6] = _mm_extract_epi16(xmm3,2);
-    llr2[7] = _mm_extract_epi16(xmm3,3);
+    llr2[2] = simde_mm_extract_epi16(xmm1,2);
+    llr2[3] = simde_mm_extract_epi16(xmm1,3);//((short *)&xmm1)[j+1];
+    llr2[4] = simde_mm_extract_epi16(xmm2,2);//((short *)&xmm2)[j];
+    llr2[5] = simde_mm_extract_epi16(xmm2,3);//((short *)&xmm2)[j+1];
+    llr2[6] = simde_mm_extract_epi16(xmm3,2);
+    llr2[7] = simde_mm_extract_epi16(xmm3,3);
 
     llr2+=8;
     llr2[0] = ((short *)&rxF[i])[4];
     llr2[1] = ((short *)&rxF[i])[5];
-    llr2[2] = _mm_extract_epi16(xmm1,4);
-    llr2[3] = _mm_extract_epi16(xmm1,5);//((short *)&xmm1)[j+1];
-    llr2[4] = _mm_extract_epi16(xmm2,4);//((short *)&xmm2)[j];
-    llr2[5] = _mm_extract_epi16(xmm2,5);//((short *)&xmm2)[j+1];
-    llr2[6] = _mm_extract_epi16(xmm3,4);
-    llr2[7] = _mm_extract_epi16(xmm3,5);
+    llr2[2] = simde_mm_extract_epi16(xmm1,4);
+    llr2[3] = simde_mm_extract_epi16(xmm1,5);//((short *)&xmm1)[j+1];
+    llr2[4] = simde_mm_extract_epi16(xmm2,4);//((short *)&xmm2)[j];
+    llr2[5] = simde_mm_extract_epi16(xmm2,5);//((short *)&xmm2)[j+1];
+    llr2[6] = simde_mm_extract_epi16(xmm3,4);
+    llr2[7] = simde_mm_extract_epi16(xmm3,5);
 
     llr2+=8;
     llr2[0] = ((short *)&rxF[i])[6];
     llr2[1] = ((short *)&rxF[i])[7];
-    llr2[2] = _mm_extract_epi16(xmm1,6);
-    llr2[3] = _mm_extract_epi16(xmm1,7);//((short *)&xmm1)[j+1];
-    llr2[4] = _mm_extract_epi16(xmm2,6);//((short *)&xmm2)[j];
-    llr2[5] = _mm_extract_epi16(xmm2,7);//((short *)&xmm2)[j+1];
-    llr2[6] = _mm_extract_epi16(xmm3,6);
-    llr2[7] = _mm_extract_epi16(xmm3,7);
+    llr2[2] = simde_mm_extract_epi16(xmm1,6);
+    llr2[3] = simde_mm_extract_epi16(xmm1,7);//((short *)&xmm1)[j+1];
+    llr2[4] = simde_mm_extract_epi16(xmm2,6);//((short *)&xmm2)[j];
+    llr2[5] = simde_mm_extract_epi16(xmm2,7);//((short *)&xmm2)[j+1];
+    llr2[6] = simde_mm_extract_epi16(xmm3,6);
+    llr2[7] = simde_mm_extract_epi16(xmm3,7);
     llr2+=8;
 
   }
@@ -431,23 +431,22 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
 //----------------------------------------------------------------------------------------------
 
 #if defined(__x86_64__) || defined(__i386)
-__m128i  y0r_over2 __attribute__ ((aligned(16)));
-__m128i  y0i_over2 __attribute__ ((aligned(16)));
-__m128i  y1r_over2 __attribute__ ((aligned(16)));
-__m128i  y1i_over2 __attribute__ ((aligned(16)));
+simde__m128i  y0r_over2 __attribute__ ((aligned(16)));
+simde__m128i  y0i_over2 __attribute__ ((aligned(16)));
+simde__m128i  y1r_over2 __attribute__ ((aligned(16)));
+simde__m128i  y1i_over2 __attribute__ ((aligned(16)));
 
-__m128i  A __attribute__ ((aligned(16)));
-__m128i  B __attribute__ ((aligned(16)));
-__m128i  C __attribute__ ((aligned(16)));
-__m128i  D __attribute__ ((aligned(16)));
-__m128i  E __attribute__ ((aligned(16)));
-__m128i  F __attribute__ ((aligned(16)));
-__m128i  G __attribute__ ((aligned(16)));
-__m128i  H __attribute__ ((aligned(16)));
+simde__m128i  A __attribute__ ((aligned(16)));
+simde__m128i  B __attribute__ ((aligned(16)));
+simde__m128i  C __attribute__ ((aligned(16)));
+simde__m128i  D __attribute__ ((aligned(16)));
+simde__m128i  E __attribute__ ((aligned(16)));
+simde__m128i  F __attribute__ ((aligned(16)));
+simde__m128i  G __attribute__ ((aligned(16)));
+simde__m128i  H __attribute__ ((aligned(16)));
 
 #endif
 
-//__m128i ONE_OVER_SQRT_8 __attribute__((aligned(16)));
 
 void nr_qpsk_qpsk(short *stream0_in,
                short *stream1_in,
@@ -469,11 +468,11 @@ void nr_qpsk_qpsk(short *stream0_in,
   */
 
 #if defined(__x86_64__) || defined(__i386__)
-  __m128i *rho01_128i = (__m128i *)rho01;
-  __m128i *stream0_128i_in = (__m128i *)stream0_in;
-  __m128i *stream1_128i_in = (__m128i *)stream1_in;
-  __m128i *stream0_128i_out = (__m128i *)stream0_out;
-  __m128i ONE_OVER_SQRT_8 = _mm_set1_epi16(23170); //round(2^16/sqrt(8))
+  simde__m128i *rho01_128i = (__m128i *)rho01;
+  simde__m128i *stream0_128i_in = (__m128i *)stream0_in;
+  simde__m128i *stream1_128i_in = (__m128i *)stream1_in;
+  simde__m128i *stream0_128i_out = (__m128i *)stream0_out;
+  simde__m128i ONE_OVER_SQRT_8 = _mm_set1_epi16(23170); //round(2^16/sqrt(8))
 #elif defined(__arm__) || defined(__aarch64__)
   int16x8_t *rho01_128i = (int16x8_t *)rho01;
   int16x8_t *stream0_128i_in = (int16x8_t *)stream0_in;

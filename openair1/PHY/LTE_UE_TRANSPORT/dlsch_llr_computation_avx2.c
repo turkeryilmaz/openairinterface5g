@@ -52,7 +52,7 @@
                                                                   0xffff,
                                                                   0xffff};
 
- //==============================================================================================
+
  // Auxiliary Makros
 
  // calculate interference magnitude
@@ -148,49 +148,49 @@ void qam64_qam16_avx2(short *stream0_in,
 
 #if defined(__x86_64__) || defined(__i386__)
 
-  __m256i *rho01_256i      = (__m256i *)rho01;
-  __m256i *stream0_256i_in = (__m256i *)stream0_in;
-  __m256i *stream1_256i_in = (__m256i *)stream1_in;
-  __m256i *ch_mag_256i     = (__m256i *)ch_mag;
-  __m256i *ch_mag_256i_i   = (__m256i *)ch_mag_i;
+  simde__m256i *rho01_256i      = (simde__m256i *)rho01;
+  simde__m256i *stream0_256i_in = (simde__m256i *)stream0_in;
+  simde__m256i *stream1_256i_in = (simde__m256i *)stream1_in;
+  simde__m256i *ch_mag_256i     = (simde__m256i *)ch_mag;
+  simde__m256i *ch_mag_256i_i   = (simde__m256i *)ch_mag_i;
 
-  __m256i ONE_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(10112)); // round(1/sqrt(42)*2^16)
-  __m256i THREE_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(30337)); // round(3/sqrt(42)*2^16)
-  __m256i FIVE_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(25281)); // round(5/sqrt(42)*2^15)
-  __m256i SEVEN_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(17697)); // round(5/sqrt(42)*2^15)
-  __m256i FORTYNINE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(30969)); // round(49/(4*sqrt(42))*2^14), Q2.14
-  __m256i THIRTYSEVEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(23385)); // round(37/(4*sqrt(42))*2^14), Q2.14
-  __m256i TWENTYFIVE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(31601)); // round(25/(4*sqrt(42))*2^15)
-  __m256i TWENTYNINE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(18329)); // round(29/(4*sqrt(42))*2^15), Q2.14
-  __m256i SEVENTEEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(21489)); // round(17/(4*sqrt(42))*2^15)
-  __m256i NINE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(11376)); // round(9/(4*sqrt(42))*2^15)
-  __m256i THIRTEEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(16433)); // round(13/(4*sqrt(42))*2^15)
-  __m256i FIVE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(6320)); // round(5/(4*sqrt(42))*2^15)
-  __m256i ONE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(1264)); // round(1/(4*sqrt(42))*2^15)
-  __m256i ONE_OVER_SQRT_10_Q15 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(10362)); // round(1/sqrt(10)*2^15)
-  __m256i THREE_OVER_SQRT_10 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(31086)); // round(3/sqrt(10)*2^15)
-  __m256i SQRT_10_OVER_FOUR = simde_mm256_broadcastw_epi16(_mm_set1_epi16(25905)); // round(sqrt(10)/4*2^15)
+  simde__m256i ONE_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(10112)); // round(1/sqrt(42)*2^16)
+  simde__m256i THREE_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(30337)); // round(3/sqrt(42)*2^16)
+  simde__m256i FIVE_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(25281)); // round(5/sqrt(42)*2^15)
+  simde__m256i SEVEN_OVER_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(17697)); // round(5/sqrt(42)*2^15)
+  simde__m256i FORTYNINE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(30969)); // round(49/(4*sqrt(42))*2^14), Q2.14
+  simde__m256i THIRTYSEVEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(23385)); // round(37/(4*sqrt(42))*2^14), Q2.14
+  simde__m256i TWENTYFIVE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(31601)); // round(25/(4*sqrt(42))*2^15)
+  simde__m256i TWENTYNINE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(18329)); // round(29/(4*sqrt(42))*2^15), Q2.14
+  simde__m256i SEVENTEEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(21489)); // round(17/(4*sqrt(42))*2^15)
+  simde__m256i NINE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(11376)); // round(9/(4*sqrt(42))*2^15)
+  simde__m256i THIRTEEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(16433)); // round(13/(4*sqrt(42))*2^15)
+  simde__m256i FIVE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(6320)); // round(5/(4*sqrt(42))*2^15)
+  simde__m256i ONE_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(1264)); // round(1/(4*sqrt(42))*2^15)
+  simde__m256i ONE_OVER_SQRT_10_Q15 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(10362)); // round(1/sqrt(10)*2^15)
+  simde__m256i THREE_OVER_SQRT_10 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(31086)); // round(3/sqrt(10)*2^15)
+  simde__m256i SQRT_10_OVER_FOUR = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(25905)); // round(sqrt(10)/4*2^15)
 
 
-  __m256i ch_mag_int;
-  __m256i ch_mag_des;
-  __m256i ch_mag_98_over_42_with_sigma2;
-  __m256i ch_mag_74_over_42_with_sigma2;
-  __m256i ch_mag_58_over_42_with_sigma2;
-  __m256i ch_mag_50_over_42_with_sigma2;
-  __m256i ch_mag_34_over_42_with_sigma2;
-  __m256i ch_mag_18_over_42_with_sigma2;
-  __m256i ch_mag_26_over_42_with_sigma2;
-  __m256i ch_mag_10_over_42_with_sigma2;
-  __m256i ch_mag_2_over_42_with_sigma2;
-  __m256i  y0r_one_over_sqrt_21;
-  __m256i  y0r_three_over_sqrt_21;
-  __m256i  y0r_five_over_sqrt_21;
-  __m256i  y0r_seven_over_sqrt_21;
-  __m256i  y0i_one_over_sqrt_21;
-  __m256i  y0i_three_over_sqrt_21;
-  __m256i  y0i_five_over_sqrt_21;
-  __m256i  y0i_seven_over_sqrt_21;
+  simde__m256i ch_mag_int;
+  simde__m256i ch_mag_des;
+  simde__m256i ch_mag_98_over_42_with_sigma2;
+  simde__m256i ch_mag_74_over_42_with_sigma2;
+  simde__m256i ch_mag_58_over_42_with_sigma2;
+  simde__m256i ch_mag_50_over_42_with_sigma2;
+  simde__m256i ch_mag_34_over_42_with_sigma2;
+  simde__m256i ch_mag_18_over_42_with_sigma2;
+  simde__m256i ch_mag_26_over_42_with_sigma2;
+  simde__m256i ch_mag_10_over_42_with_sigma2;
+  simde__m256i ch_mag_2_over_42_with_sigma2;
+  simde__m256i  y0r_one_over_sqrt_21;
+  simde__m256i  y0r_three_over_sqrt_21;
+  simde__m256i  y0r_five_over_sqrt_21;
+  simde__m256i  y0r_seven_over_sqrt_21;
+  simde__m256i  y0i_one_over_sqrt_21;
+  simde__m256i  y0i_three_over_sqrt_21;
+  simde__m256i  y0i_five_over_sqrt_21;
+  simde__m256i  y0i_seven_over_sqrt_21;
 
 #elif defined(__arm__) || defined(__aarch64__)
 
@@ -298,7 +298,7 @@ void qam64_qam16_avx2(short *stream0_in,
     simde_mm256_separate_real_imag_parts(&y1r, &y1i, stream1_256i_in[i], stream1_256i_in[i+1]);
 
     // Psi_r calculation from rho_rpi or rho_rmi
-    xmm0 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(0));// ZERO for abs_pi16
+    xmm0 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(0));// ZERO for abs_pi16
     xmm2 = simde_mm256_subs_epi16(rho_rpi_7_7, y1r);
     simde__m256i psi_r_p7_p7 = simde_mm256_abs_epi16(xmm2);
     xmm2 = simde_mm256_subs_epi16(rho_rpi_7_5, y1r);
@@ -1706,59 +1706,55 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     stream0_out: output LLRs for 1st stream
   */
 
-#if defined(__x86_64__) || defined(__i386__)
 
-  __m256i *rho01_256i      = (__m256i *)rho01;
-  __m256i *stream0_256i_in = (__m256i *)stream0_in;
-  __m256i *stream1_256i_in = (__m256i *)stream1_in;
-  __m256i *ch_mag_256i     = (__m256i *)ch_mag;
-  __m256i *ch_mag_256i_i   = (__m256i *)ch_mag_i;
+  simde__m256i *rho01_256i      = (simde__m256i *)rho01;
+  simde__m256i *stream0_256i_in = (simde__m256i *)stream0_in;
+  simde__m256i *stream1_256i_in = (simde__m256i *)stream1_in;
+  simde__m256i *ch_mag_256i     = (simde__m256i *)ch_mag;
+  simde__m256i *ch_mag_256i_i   = (simde__m256i *)ch_mag_i;
 
-  __m256i ONE_OVER_SQRT_42              = simde_mm256_broadcastw_epi16(_mm_set1_epi16(10112)); // round(1/sqrt(42)*2^16)
-  __m256i THREE_OVER_SQRT_42            = simde_mm256_broadcastw_epi16(_mm_set1_epi16(30337)); // round(3/sqrt(42)*2^16)
-  __m256i FIVE_OVER_SQRT_42             = simde_mm256_broadcastw_epi16(_mm_set1_epi16(25281)); // round(5/sqrt(42)*2^15)
-  __m256i SEVEN_OVER_SQRT_42            = simde_mm256_broadcastw_epi16(_mm_set1_epi16(17697)); // round(7/sqrt(42)*2^14) Q2.14
-  __m256i ONE_OVER_SQRT_2               = simde_mm256_broadcastw_epi16(_mm_set1_epi16(23170)); // round(1/sqrt(2)*2^15)
-  __m256i ONE_OVER_SQRT_2_42            = simde_mm256_broadcastw_epi16(_mm_set1_epi16(3575));  // round(1/sqrt(2*42)*2^15)
-  __m256i THREE_OVER_SQRT_2_42          = simde_mm256_broadcastw_epi16(_mm_set1_epi16(10726)); // round(3/sqrt(2*42)*2^15)
-  __m256i FIVE_OVER_SQRT_2_42           = simde_mm256_broadcastw_epi16(_mm_set1_epi16(17876)); // round(5/sqrt(2*42)*2^15)
-  __m256i SEVEN_OVER_SQRT_2_42          = simde_mm256_broadcastw_epi16(_mm_set1_epi16(25027)); // round(7/sqrt(2*42)*2^15)
-  __m256i FORTYNINE_OVER_FOUR_SQRT_42   = simde_mm256_broadcastw_epi16(_mm_set1_epi16(30969)); // round(49/(4*sqrt(42))*2^14), Q2.14
-  __m256i THIRTYSEVEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(23385)); // round(37/(4*sqrt(42))*2^14), Q2.14
-  __m256i TWENTYFIVE_OVER_FOUR_SQRT_42  = simde_mm256_broadcastw_epi16(_mm_set1_epi16(31601)); // round(25/(4*sqrt(42))*2^15)
-  __m256i TWENTYNINE_OVER_FOUR_SQRT_42  = simde_mm256_broadcastw_epi16(_mm_set1_epi16(18329)); // round(29/(4*sqrt(42))*2^15), Q2.14
-  __m256i SEVENTEEN_OVER_FOUR_SQRT_42   = simde_mm256_broadcastw_epi16(_mm_set1_epi16(21489)); // round(17/(4*sqrt(42))*2^15)
-  __m256i NINE_OVER_FOUR_SQRT_42        = simde_mm256_broadcastw_epi16(_mm_set1_epi16(11376)); // round(9/(4*sqrt(42))*2^15)
-  __m256i THIRTEEN_OVER_FOUR_SQRT_42    = simde_mm256_broadcastw_epi16(_mm_set1_epi16(16433)); // round(13/(4*sqrt(42))*2^15)
-  __m256i FIVE_OVER_FOUR_SQRT_42        = simde_mm256_broadcastw_epi16(_mm_set1_epi16(6320));  // round(5/(4*sqrt(42))*2^15)
-  __m256i ONE_OVER_FOUR_SQRT_42         = simde_mm256_broadcastw_epi16(_mm_set1_epi16(1264));  // round(1/(4*sqrt(42))*2^15)
-  __m256i SQRT_42_OVER_FOUR             = simde_mm256_broadcastw_epi16(_mm_set1_epi16(13272)); // round(sqrt(42)/4*2^13), Q3.12
+  simde__m256i ONE_OVER_SQRT_42              = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(10112)); // round(1/sqrt(42)*2^16)
+  simde__m256i THREE_OVER_SQRT_42            = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(30337)); // round(3/sqrt(42)*2^16)
+  simde__m256i FIVE_OVER_SQRT_42             = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(25281)); // round(5/sqrt(42)*2^15)
+  simde__m256i SEVEN_OVER_SQRT_42            = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(17697)); // round(7/sqrt(42)*2^14) Q2.14
+  simde__m256i ONE_OVER_SQRT_2               = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(23170)); // round(1/sqrt(2)*2^15)
+  simde__m256i ONE_OVER_SQRT_2_42            = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(3575));  // round(1/sqrt(2*42)*2^15)
+  simde__m256i THREE_OVER_SQRT_2_42          = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(10726)); // round(3/sqrt(2*42)*2^15)
+  simde__m256i FIVE_OVER_SQRT_2_42           = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(17876)); // round(5/sqrt(2*42)*2^15)
+  simde__m256i SEVEN_OVER_SQRT_2_42          = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(25027)); // round(7/sqrt(2*42)*2^15)
+  simde__m256i FORTYNINE_OVER_FOUR_SQRT_42   = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(30969)); // round(49/(4*sqrt(42))*2^14), Q2.14
+  simde__m256i THIRTYSEVEN_OVER_FOUR_SQRT_42 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(23385)); // round(37/(4*sqrt(42))*2^14), Q2.14
+  simde__m256i TWENTYFIVE_OVER_FOUR_SQRT_42  = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(31601)); // round(25/(4*sqrt(42))*2^15)
+  simde__m256i TWENTYNINE_OVER_FOUR_SQRT_42  = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(18329)); // round(29/(4*sqrt(42))*2^15), Q2.14
+  simde__m256i SEVENTEEN_OVER_FOUR_SQRT_42   = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(21489)); // round(17/(4*sqrt(42))*2^15)
+  simde__m256i NINE_OVER_FOUR_SQRT_42        = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(11376)); // round(9/(4*sqrt(42))*2^15)
+  simde__m256i THIRTEEN_OVER_FOUR_SQRT_42    = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(16433)); // round(13/(4*sqrt(42))*2^15)
+  simde__m256i FIVE_OVER_FOUR_SQRT_42        = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(6320));  // round(5/(4*sqrt(42))*2^15)
+  simde__m256i ONE_OVER_FOUR_SQRT_42         = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(1264));  // round(1/(4*sqrt(42))*2^15)
+  simde__m256i SQRT_42_OVER_FOUR             = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(13272)); // round(sqrt(42)/4*2^13), Q3.12
 
-  __m256i ch_mag_des;
-  __m256i ch_mag_int;
-  __m256i ch_mag_98_over_42_with_sigma2;
-  __m256i ch_mag_74_over_42_with_sigma2;
-  __m256i ch_mag_58_over_42_with_sigma2;
-  __m256i ch_mag_50_over_42_with_sigma2;
-  __m256i ch_mag_34_over_42_with_sigma2;
-  __m256i ch_mag_18_over_42_with_sigma2;
-  __m256i ch_mag_26_over_42_with_sigma2;
-  __m256i ch_mag_10_over_42_with_sigma2;
-  __m256i ch_mag_2_over_42_with_sigma2;
-  __m256i y0r_one_over_sqrt_21;
-  __m256i y0r_three_over_sqrt_21;
-  __m256i y0r_five_over_sqrt_21;
-  __m256i y0r_seven_over_sqrt_21;
-  __m256i y0i_one_over_sqrt_21;
-  __m256i y0i_three_over_sqrt_21;
-  __m256i y0i_five_over_sqrt_21;
-  __m256i y0i_seven_over_sqrt_21;
-  __m256i ch_mag_int_with_sigma2;
-  __m256i two_ch_mag_int_with_sigma2;
-  __m256i three_ch_mag_int_with_sigma2;
-#elif defined(__arm__) || defined(__aarch64__)
-
-#endif
+  simde__m256i ch_mag_des;
+  simde__m256i ch_mag_int;
+  simde__m256i ch_mag_98_over_42_with_sigma2;
+  simde__m256i ch_mag_74_over_42_with_sigma2;
+  simde__m256i ch_mag_58_over_42_with_sigma2;
+  simde__m256i ch_mag_50_over_42_with_sigma2;
+  simde__m256i ch_mag_34_over_42_with_sigma2;
+  simde__m256i ch_mag_18_over_42_with_sigma2;
+  simde__m256i ch_mag_26_over_42_with_sigma2;
+  simde__m256i ch_mag_10_over_42_with_sigma2;
+  simde__m256i ch_mag_2_over_42_with_sigma2;
+  simde__m256i y0r_one_over_sqrt_21;
+  simde__m256i y0r_three_over_sqrt_21;
+  simde__m256i y0r_five_over_sqrt_21;
+  simde__m256i y0r_seven_over_sqrt_21;
+  simde__m256i y0i_one_over_sqrt_21;
+  simde__m256i y0i_three_over_sqrt_21;
+  simde__m256i y0i_five_over_sqrt_21;
+  simde__m256i y0i_seven_over_sqrt_21;
+  simde__m256i ch_mag_int_with_sigma2;
+  simde__m256i two_ch_mag_int_with_sigma2;
+  simde__m256i three_ch_mag_int_with_sigma2;
 
   int i,j;
   uint32_t len256 = (length)>>3;
@@ -1874,7 +1870,7 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     simde_mm256_separate_real_imag_parts(&y1r, &y1i, stream1_256i_in[i], stream1_256i_in[i+1]);
 
     // Psi_r calculation from rho_rpi or rho_rmi
-    xmm0 = simde_mm256_broadcastw_epi16(_mm_set1_epi16(0));// ZERO for abs_pi16
+    xmm0 = simde_mm256_broadcastw_epi16(simde_mm_set1_epi16(0));// ZERO for abs_pi16
     xmm2 = simde_mm256_subs_epi16(rho_rpi_7_7, y1r);
 
     simde__m256i psi_r_p7_p7 = simde_mm256_abs_epi16(xmm2);
