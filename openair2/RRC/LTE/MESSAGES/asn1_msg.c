@@ -2444,7 +2444,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
     if ((true == configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9_Present[CC_id]) || 
     (true == configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9_Present[CC_id])) {
       InterFreqCarrierInfo->ext1 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1));
-      printf("add ext1 for CC_ID %d\n ",CC_id);
+       LOG_A(RRC,"add ext1 for CC_ID %d\n ",CC_id);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9_Present[CC_id]) {
       InterFreqCarrierInfo->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
@@ -2454,7 +2454,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
       InterFreqCarrierInfo->ext1->threshX_Q_r9 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1__threshX_Q_r9));
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_HighQ_r9;
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_LowQ_r9;
-      printf("add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
+      LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
               InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9,
               InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
