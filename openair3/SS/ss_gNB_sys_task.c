@@ -227,10 +227,13 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           cellConfig->header.msg_id = SS_CELL_CONFIG;
           cellConfig->header.length = sizeof(proxy_ss_header_t);
           cellConfig->initialAttenuation = 0;
-          cellConfig->header.cell_id = SS_context.eutra_cellId;
+          if (req->Request.v.Cell.v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.d == true)
+          {
+            cellConfig->header.cell_id = req->Request.v.Cell.v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.v;
+          }
           cellConfig->maxRefPower= p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
           cellConfig->absoluteFrequencyPointA = p_cellConfig->PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
-          LOG_A(ENB_SS,"5G Cell configuration rece6ived for cell_id: %d Initial attenuation: %d \
+          LOG_A(ENB_SS,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
               Max ref power: %d\n for absoluteFrequencyPointA : %d =================================== \n",
               cellConfig->header.cell_id,
               cellConfig->initialAttenuation, cellConfig->maxRefPower,
