@@ -31,6 +31,7 @@ typedef struct CellConfig5GReq_s
     uint8_t initialAttenuation;
 		uint16_t dl_earfcn;
     long absoluteFrequencyPointA;
+    uint16_t pci;
 } CellConfig5GReq_t;
 
 typedef enum _sys_Type

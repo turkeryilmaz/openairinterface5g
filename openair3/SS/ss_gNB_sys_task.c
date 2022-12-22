@@ -236,6 +236,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           LOG_A(ENB_SS,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
               Max ref power: %d\n for absoluteFrequencyPointA : %d =================================== \n",
               cellConfig->header.cell_id,
+              cellConfig->pci,
               cellConfig->initialAttenuation, cellConfig->maxRefPower,
               cellConfig->absoluteFrequencyPointA);
           //send_to_proxy();
