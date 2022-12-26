@@ -3192,6 +3192,27 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
             DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
             DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
           }
+          if (p_drb->list.array[drb_idx]->pdcp_Config != NULL)
+          {
+            DRB_pdcp_config = CALLOC(1, sizeof(*DRB_pdcp_config));
+            DRB_config->pdcp_Config = DRB_pdcp_config;
+            DRB_pdcp_config->discardTimer = CALLOC(1, sizeof(long));
+            if (p_drb->list.array[drb_idx]->pdcp_Config->discardTimer != NULL)
+            {
+              *DRB_pdcp_config->discardTimer = *p_drb->list.array[drb_idx]->pdcp_Config->discardTimer;
+            }
+#ifdef RRC_DEFAULT_RAB_IS_AM // EXMIMO_IOT
+            PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
+            DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
+            if(1) {
+              //            PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
+              if (p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM != NULL)
+              {
+                PDCP_rlc_AM->statusReportRequired = p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM->statusReportRequired;
+              }
+            } else {
+              PDCP_rlc_AM->statusReportRequired = FALSE;
+            }
 #else
           if(1) {
             DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
