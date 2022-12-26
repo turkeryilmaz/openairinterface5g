@@ -3985,16 +3985,22 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     {
       security_modeP = (pdcp_p->cipheringAlgorithm | (pdcp_p->integrityProtAlgorithm << 4));
       if (security_modeP)
-      {
-        kRRCenc = MALLOC(16);
-        kRRCint = MALLOC(32);
-        kUPenc = MALLOC(16);
+      {       
         if (pdcp_p->kRRCenc)
+        {
+          kRRCenc = MALLOC(16);
           memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
+        }
         if (pdcp_p->kRRCint)
+        {
+          kRRCint = MALLOC(32);
           memcpy(kRRCint, pdcp_p->kRRCint, 32);
+        }
         if (pdcp_p->kUPenc)
+        {
+          kUPenc = MALLOC(16);
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
+        }
 
         LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", 
               ctxt_pP->rnti, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
@@ -4018,9 +4024,9 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
         else
         {
           LOG_E(RRC,
-                PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH %u\n",
+                PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH1 %u\n",
                 PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
-                DCCH);
+                DCCH1);
         }
       }
       else
