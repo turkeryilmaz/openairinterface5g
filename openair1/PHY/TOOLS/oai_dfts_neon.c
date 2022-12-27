@@ -7304,7 +7304,6 @@ int write_output(const char *fname,const char *vname,void *data,int length,int d
   return 0;
 }
 
-#ifdef MR_MAIN
 int main(int argc, char**argv)
 {
 
