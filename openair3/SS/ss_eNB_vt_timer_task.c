@@ -167,7 +167,7 @@ void *ss_eNB_vt_timer_process_itti_msg(void *notUsed)
             ss_set_timinfo_t tinfo;
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
-            LOG_A(ENB_APP, "[VT_TIMER] received_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+            LOG_D(ENB_APP, "[VT_TIMER] received_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
 
             ss_vt_timer_check(tinfo);
         }

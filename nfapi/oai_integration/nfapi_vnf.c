@@ -1918,7 +1918,7 @@ int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req) {
 	/* Below if condition checking if dl_config_req is for MIB (sf == 0) or SIB1 ((sfn % 2 == 0) && (sf == 5)) */
 
 	dl_config_req->header.message_id = NFAPI_DL_CONFIG_REQUEST;
-	LOG_I(NFAPI_VNF, "MultiCell: fxn:%s phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, dl_config_req->header.phy_id, sfn, sf);
+	LOG_D(NFAPI_VNF, "MultiCell: fxn:%s phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, dl_config_req->header.phy_id, sfn, sf);
 	if (dl_config_req->dl_config_request_body.number_pdu > 0)
 	{
 		for (int i = 0; i < dl_config_req->dl_config_request_body.number_pdu; i++)
@@ -1994,7 +1994,7 @@ int oai_nfapi_tx_req(nfapi_tx_request_t *tx_req)
 
 	tx_req->header.message_id = NFAPI_TX_REQUEST;
 	//LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
-	LOG_I(NFAPI_VNF, "MultiCell: fxn:%s phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, tx_req->header.phy_id, sfn, sf);
+	LOG_D(NFAPI_VNF, "MultiCell: fxn:%s phy_id:%d sfn:%d sf:%d \n", __FUNCTION__, tx_req->header.phy_id, sfn, sf);
 	retval = nfapi_vnf_p7_tx_req(p7_config, tx_req);
 	if (retval!=0) {
 		LOG_E(PHY, "%s() Problem sending tx_req for phyId:%d :%d\n", __FUNCTION__, tx_req->header.phy_id ,retval);
