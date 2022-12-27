@@ -323,35 +323,36 @@ typedef struct threshX_Q_r9_s {
 }threshX_Q_r9_t;
 
 typedef struct InterFreqCarrierFreqInfo_s {
-  long         dl_CarrierFreq[MAX_NUM_CCs];
-  long         q_RxLevMin[MAX_NUM_CCs];
-  bool         p_Max_Present[MAX_NUM_CCs];
-  long         p_Max[MAX_NUM_CCs]; /* OPTIONAL */
-  long         t_ReselectionEUTRA[MAX_NUM_CCs];
-  bool         t_ReselectionEUTRA_SF_Present[MAX_NUM_CCs];
-  LTE_SpeedStateScaleFactors_t         *t_ReselectionEUTRA_SF[MAX_NUM_CCs]; /* OPTIONAL */
-  long         threshX_High[MAX_NUM_CCs];
-  long         threshX_Low[MAX_NUM_CCs];
-  long         allowedMeasBandwidth[MAX_NUM_CCs];
-  bool         presenceAntennaPort1[MAX_NUM_CCs];
-  bool         cellReselectionPriority_Present[MAX_NUM_CCs];
-  long         *cellReselectionPriority[MAX_NUM_CCs];/* OPTIONAL */
-  LTE_NeighCellConfig_t neighCellConfig[MAX_NUM_CCs];
-  bool         q_OffsetFreqPresent[MAX_NUM_CCs];
-  e_LTE_Q_OffsetRange         *q_OffsetFreq[MAX_NUM_CCs];/* OPTIONAL */
-  bool                            interFreqNeighCellList_Present[MAX_NUM_CCs];
-  LTE_InterFreqNeighCellInfo_t    *interFreqNeighCellList[MAX_NUM_CCs];/* OPTIONAL */
-  bool                        interFreqBlackCellList_Present[MAX_NUM_CCs];
-  PhysCellIdRange_t           *interFreqBlackCellList[MAX_NUM_CCs];/* OPTIONAL */
-  bool          q_QualMin_r9_Present[MAX_NUM_CCs];
-  long          *q_QualMin_r9[MAX_NUM_CCs];/* OPTIONAL */
-  bool          threshX_Q_r9_Present[MAX_NUM_CCs];
-  threshX_Q_r9_t          threshX_Q_r9[MAX_NUM_CCs];/* OPTIONAL */
-  bool          q_QualMinWB_r11_Present[MAX_NUM_CCs];
-  long          *q_QualMinWB_r11[MAX_NUM_CCs];/* OPTIONAL */
+  long         dl_CarrierFreq;
+  long         q_RxLevMin;
+  bool         p_Max_Present;
+  long         p_Max; /* OPTIONAL */
+  long         t_ReselectionEUTRA;
+  bool         t_ReselectionEUTRA_SF_Present;
+  LTE_SpeedStateScaleFactors_t         *t_ReselectionEUTRA_SF; /* OPTIONAL */
+  long         threshX_High;
+  long         threshX_Low;
+  long         allowedMeasBandwidth;
+  bool         presenceAntennaPort1;
+  bool         cellReselectionPriority_Present;
+  long         *cellReselectionPriority;/* OPTIONAL */
+  LTE_NeighCellConfig_t neighCellConfig;
+  bool         q_OffsetFreqPresent;
+  e_LTE_Q_OffsetRange         *q_OffsetFreq;/* OPTIONAL */
+  bool                            interFreqNeighCellList_Present;
+  LTE_InterFreqNeighCellInfo_t    *interFreqNeighCellList;/* OPTIONAL */
+  bool                        interFreqBlackCellList_Present;
+  PhysCellIdRange_t           *interFreqBlackCellList;/* OPTIONAL */
+  bool          q_QualMin_r9_Present;
+  long          *q_QualMin_r9;/* OPTIONAL */
+  bool          threshX_Q_r9_Present;
+  threshX_Q_r9_t          threshX_Q_r9;/* OPTIONAL */
+  bool          q_QualMinWB_r11_Present;
+  long          *q_QualMinWB_r11;/* OPTIONAL */
 }InterFreqCarrierFreqInfo_t;
 
 typedef struct IntraFreqNeighCellInfo_s {
+  int                     intraFreqNeighCellListCount;
   long                    physCellId;
   e_LTE_Q_OffsetRange     q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
@@ -479,14 +480,14 @@ typedef struct RrcConfigurationReq_s {
   long     t_ReselectionEUTRA[MAX_NUM_CCs];
 
   //SIB4
-  bool                       sib4_Present;
+  bool                       sib4_Present[MAX_NUM_CCs];
   bool                       intraFreqNeighCellListPresent;
-  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList;
+  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
 
   //SIB5
-  bool                         sib5_Present;
+  bool                         sib5_Present[MAX_NUM_CCs];
   int                          InterFreqCarrierFreqInfoCount;
-  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo;
+  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
 
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];
