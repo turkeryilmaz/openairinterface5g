@@ -422,7 +422,6 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
         paramlist_def_t PLMNParamList = {ENB_CONFIG_STRING_PLMN_LIST, NULL, 0};
         /* map parameter checking array instances to parameter definition array instances */
         checkedparam_t config_check_PLMNParams [] = PLMNPARAMS_CHECK;
-        RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo = CALLOC(1,sizeof(struct InterFreqCarrierFreqInfo_s));
 
         for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
@@ -434,11 +433,6 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
           RRC_CONFIGURATION_REQ (msg_p).cellReselectionPriority[M]=7;
           RRC_CONFIGURATION_REQ (msg_p).sib3_q_RxLevMin[M]=-70;
           RRC_CONFIGURATION_REQ (msg_p).t_ReselectionEUTRA[M]=1;
-          RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo[k].dl_CarrierFreq[M]=300;
-          RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo[k].q_RxLevMin[M]=-53;
-          RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo[k].threshX_High[M]=10;
-          RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo[k].threshX_Low[M]=1;
-          RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo[k].allowedMeasBandwidth[M]=3;
         }
 
         // In the configuration file it is in seconds. For RRC it has to be in milliseconds
