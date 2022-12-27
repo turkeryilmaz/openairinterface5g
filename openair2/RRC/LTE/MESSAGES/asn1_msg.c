@@ -2553,8 +2553,8 @@ uint8_t do_SIB5(uint8_t Mod_id,
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_HighQ_r9;
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_LowQ_r9;
       LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
-              InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9,
-              InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
+              InterFreqCarrierInfo[i].ext1->threshX_Q_r9->threshX_HighQ_r9,
+              InterFreqCarrierInfo[i].ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11_Present) {
        InterFreqCarrierInfo->ext2 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext2));
@@ -2563,6 +2563,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
     }
   asn1cSeqAdd(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
   }
+  ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList.list,InterFreqCarrierInfo);
 
   // TODO: Need to handle all remaining ext and lateNonCriticalExtension IE properly
   (*sib5)->lateNonCriticalExtension = NULL;
