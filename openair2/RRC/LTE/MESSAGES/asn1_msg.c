@@ -1078,7 +1078,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   } else {
     (*sib1)->systemInfoValueTag = 0;
   }
-  LOG_A(RRC,"Updating systemInfoValueTag Value: %d \n",(*sib1)->systemInfoValueTag);
+  LOG_A(RRC,"Updating systemInfoValueTag Value: %ld \n",(*sib1)->systemInfoValueTag);
   (*sib1)->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v890_IEs_t));
   LTE_SystemInformationBlockType1_v890_IEs_t *sib1_890 = (*sib1)->nonCriticalExtension;
   sib1_890->lateNonCriticalExtension = NULL;

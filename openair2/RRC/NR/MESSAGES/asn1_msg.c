@@ -419,7 +419,7 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   uint32_t absolute_diff = 0;	
   if (RC.ss.mode == SS_SOFTMODEM)
   {
-    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%d ", __FUNCTION__, absoluteFrequencySSB);
+    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%ld ", __FUNCTION__, absoluteFrequencySSB);
     absoluteFrequencySSB = *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
     absolute_diff = absoluteFrequencySSB - configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
   }

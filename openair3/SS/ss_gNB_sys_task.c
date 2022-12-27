@@ -234,7 +234,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           cellConfig->maxRefPower= p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
           cellConfig->absoluteFrequencyPointA = p_cellConfig->PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
           LOG_A(ENB_SS,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
-              Max ref power: %d\n for absoluteFrequencyPointA : %d =================================== \n",
+              Max ref power: %d\n for absoluteFrequencyPointA : %ld =================================== \n",
               cellConfig->header.cell_id,
               cellConfig->initialAttenuation, cellConfig->maxRefPower,
               cellConfig->absoluteFrequencyPointA);
@@ -274,7 +274,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_RadioBearerList:
             {
               LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_RadioBearerList received\n");
-              if (false == ss_task_sys_nr_handle_cellConfigRadioBearer(&req) )
+              if (false == ss_task_sys_nr_handle_cellConfigRadioBearer(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
                 return;
@@ -284,7 +284,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_CellAttenuationList:
             {
               LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_CellAttenuationList received\n");
-              if (false == ss_task_sys_nr_handle_cellConfigAttenuation(&req) )
+              if (false == ss_task_sys_nr_handle_cellConfigAttenuation(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
                 return;
@@ -294,7 +294,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_PdcpCount:
             {
               LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_PdcpCount received\n");
-              if (false == ss_task_sys_nr_handle_pdcpCount(&req))
+              if (false == ss_task_sys_nr_handle_pdcpCount(req))
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_PdcpCount \n");
                 return;
@@ -601,7 +601,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
     {
       RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA =
         p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
-      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencyPointA :%d\n", __FUNCTION__, 
+      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencyPointA :%ld\n", __FUNCTION__, 
           RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
     }
 
@@ -610,7 +610,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
     {
       *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB =
         p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencySSB.v;
-      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%d\n", __FUNCTION__, 
+      LOG_A(GNB_APP, "fxn:%s DL absoluteFrequencySSB:%ld\n", __FUNCTION__, 
           *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
     }
 
@@ -628,7 +628,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
           p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.frequencyBandList.v[i];
 
       }
-      LOG_A(GNB_APP, "fxn:%s DL band[%d]:%d UL band[%d]:%d\n", __FUNCTION__, i, 
+      LOG_A(GNB_APP, "fxn:%s DL band[%d]:%ld UL band[%d]:%ld\n", __FUNCTION__, i, 
           *RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i],
           i,
           *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[i]);
@@ -651,7 +651,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
         RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing;
 
 
-      LOG_A(GNB_APP, "fxn:%s DL scs_SpecificCarrierList.offsetToCarrier :%d subcarrierSpacing:%d carrierBandwidth:%d \n",
+      LOG_A(GNB_APP, "fxn:%s DL scs_SpecificCarrierList.offsetToCarrier :%ld subcarrierSpacing:%ld carrierBandwidth:%ld \n",
           __FUNCTION__, 
           RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier,
           RC.nrrrc[gnbId]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing,
@@ -688,7 +688,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
     if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.d == NR_ASN1_FrequencyInfoUL_Type_R15)
     {
 
-      LOG_I(NR_MAC,"fxn:%s Populating FrequencyInfoUL from TTCN. number of scs:%d \n", 
+      LOG_I(NR_MAC,"fxn:%s Populating FrequencyInfoUL from TTCN. number of scs:%ld \n", 
       __FUNCTION__,
       p_req->v.AddOrReconfigure.PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.scs_SpecificCarrierList.d);
 
@@ -705,7 +705,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
         RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->subcarrierSpacing =
           p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.scs_SpecificCarrierList.v[i].subcarrierSpacing;
         LOG_A(GNB_APP, 
-            "fxn:%s UL scs_SpecificCarrierList.carrierBandwidth:%d\n scs_SpecificCarrierList.offsetToCarrier:%d\n scs_SpecificCarrierList.subcarrierSpacing:%d", 
+            "fxn:%s UL scs_SpecificCarrierList.carrierBandwidth:%ld\n scs_SpecificCarrierList.offsetToCarrier:%ld\n scs_SpecificCarrierList.subcarrierSpacing:%ld", 
             __FUNCTION__, 
             RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->carrierBandwidth,
             RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]->offsetToCarrier,
@@ -714,7 +714,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
       *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->p_Max =
         p_req->v.AddOrReconfigure.PhysicalLayer.v.Uplink.v.Uplink.v.v.Config.FrequencyInfoUL.v.v.R15.p_Max.v;
 
-      LOG_A(GNB_APP, "fxn:%s UL p_Max :%d\n", __FUNCTION__, 
+      LOG_A(GNB_APP, "fxn:%s UL p_Max :%ld\n", __FUNCTION__, 
           *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->p_Max);
 
     }
