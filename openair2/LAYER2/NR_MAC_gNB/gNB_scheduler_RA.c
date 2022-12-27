@@ -1949,7 +1949,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     if (RC.ss.mode == SS_SOFTMODEM)
         BWPStart = 27;
 
-		LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
+		LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%ld BWPStart:%ld startSymbolIndex:%d nrOfSymbols:%d\n",
 				rbSize,
 				rbStart,
 				BWPSize,
