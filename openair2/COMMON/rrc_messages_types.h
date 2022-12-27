@@ -362,6 +362,7 @@ typedef struct InterFreqCarrierFreqInfo_s {
 }InterFreqCarrierFreqInfo_t;
 
 typedef struct IntraFreqNeighCellInfo_s {
+  int                     intraFreqNeighCellListCount;
   long                    physCellId;
   long                    q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
@@ -518,14 +519,14 @@ typedef struct RrcConfigurationReq_s {
   InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
 
   //SIB4
-  bool                       sib4_Present;
+  bool                       sib4_Present[MAX_NUM_CCs];
   bool                       intraFreqNeighCellListPresent;
-  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList;
+  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
 
   //SIB5
-  bool                         sib5_Present;
+  bool                         sib5_Present[MAX_NUM_CCs];
   int                          InterFreqCarrierFreqInfoCount;
-  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo;
+  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
 
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];

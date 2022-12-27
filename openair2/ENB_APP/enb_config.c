@@ -341,7 +341,6 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
         paramlist_def_t PLMNParamList = {ENB_CONFIG_STRING_PLMN_LIST, NULL, 0};
         /* map parameter checking array instances to parameter definition array instances */
         checkedparam_t config_check_PLMNParams [] = PLMNPARAMS_CHECK;
-        RRC_CONFIGURATION_REQ (msg_p).InterFreqCarrierFreqInfo = CALLOC(1,sizeof(struct InterFreqCarrierFreqInfo_s));
 
         for (int I = 0; I < sizeof(PLMNParams) / sizeof(paramdef_t); ++I)
           PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
