@@ -593,6 +593,7 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
     if (UE->synch_request.received_synch_request == 1 && UE->target_Nid_cell == -1) {
       UE->is_synchronized = 0;
       UE->target_Nid_cell = UE->synch_request.synch_req.target_Nid_cell;
+      clean_UE_dlsch(UE, proc->gNB_id);
       clean_UE_ulsch(UE, proc->gNB_id);
     } else if (UE->synch_request.received_synch_request == 1 && UE->target_Nid_cell != -1) {
       UE->synch_request.received_synch_request = 0;
