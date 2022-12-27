@@ -223,6 +223,10 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           p_cellConfig = &req->Request.v.Cell.v.AddOrReconfigure;
           SS_context.maxRefPower = p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
           cellConfig = (CellConfig5GReq_t*)malloc(sizeof(CellConfig5GReq_t));
+          if (cellConfig = NULL)
+          {
+		        AssertFatal(cellConfig != NULL , "[SYS-GNB] Failed to allocate memory for proxy cell config\n");
+          }
           cellConfig->header.preamble = 0xFEEDC0DE;
           cellConfig->header.msg_id = SS_CELL_CONFIG;
           cellConfig->header.length = sizeof(proxy_ss_header_t);
@@ -240,6 +244,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               cellConfig->absoluteFrequencyPointA);
           //send_to_proxy();
           sys_5G_send_proxy((void *)cellConfig, sizeof(CellConfig5GReq_t));
+          free(cellConfig);
         }
 
       }
