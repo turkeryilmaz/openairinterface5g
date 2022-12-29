@@ -338,6 +338,7 @@ init_SI(
           PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
           carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.cyclicShift);
 
+    /* Check if SIB4 present for particular CC Then only proceed for creating SIB4 payload */
     if(true == configuration->sib4_Present[CC_id]) {
       if(NULL == carrier->SIB4) {
         carrier->SIB4 = (uint8_t *) malloc16(64);
@@ -352,6 +353,7 @@ init_SI(
       AssertFatal(carrier->sizeof_SIB4 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB4 == 255");
     }
 
+    /* Check if SIB5 present for particular CC Then only proceed for creating SIB5 payload */
     if(true == configuration->sib5_Present[CC_id]) {
       if(NULL == carrier->SIB5) {
         carrier->SIB5 = (uint8_t *) malloc16(64);

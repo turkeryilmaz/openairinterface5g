@@ -160,6 +160,8 @@ mac_rrc_data_req(
 
       return(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB23);
     }
+    /* Schedule SIB5 when sib5_Scheduled is TRUE and SI periodicity(T) is taking 16 by deafult
+       so SIB5 Scheduled in every (frameP%16) == 3) Radio frame */
     else if ((true == RC.rrc[Mod_idP]->carrier[CC_id].sib5_Scheduled) && ((frameP%16) == 3)) {
       memcpy(&buffer_pP[0],
              RC.rrc[Mod_idP]->carrier[CC_id].SIB5,
