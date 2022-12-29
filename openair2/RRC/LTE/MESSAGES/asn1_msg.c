@@ -2327,6 +2327,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
   return((enc_rval.encoded+7)/8);
 }
 
+/* do_SIB4 Function for Creating SIB4 Payload */
 uint8_t do_SIB4(uint8_t Mod_id,
                  int CC_id, BOOLEAN_t brOption,
                  RrcConfigurationReq *configuration
@@ -2377,6 +2378,7 @@ uint8_t do_SIB4(uint8_t Mod_id,
   return((enc_rval.encoded+7)/8);
 }
 
+/* do_SIB5 Function for Creating SIB5 Payload */
 uint8_t do_SIB5(uint8_t Mod_id,
                  int CC_id, BOOLEAN_t brOption,
                  RrcConfigurationReq *configuration
@@ -2409,6 +2411,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
 
   LTE_InterFreqCarrierFreqInfo_t *InterFreqCarrierInfo;
 
+  /* Handling multiple entities in InterFrequencyList for SIB5 message */
   for(int i=0;i<configuration->InterFreqCarrierFreqInfoCount;i++) {
     InterFreqCarrierInfo = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo));
     InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].dl_CarrierFreq;
@@ -2427,6 +2430,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority_Present) {
       InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority;
     }
+    // TODO: Need to handle neighCellConfig IE properly
     InterFreqCarrierInfo->neighCellConfig.size =  0;//1;
     //InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,1);
     InterFreqCarrierInfo->neighCellConfig.bits_unused = 0;
@@ -2467,6 +2471,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
   ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
   }
 
+  // TODO: Need to handle all remaining ext and lateNonCriticalExtension IE properly
   (*sib5)->lateNonCriticalExtension = NULL;
   (*sib5)->ext1 = NULL;
   (*sib5)->ext2 = NULL;
