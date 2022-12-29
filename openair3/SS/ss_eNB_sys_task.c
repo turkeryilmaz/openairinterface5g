@@ -489,7 +489,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                            RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
                            RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
                          }
-                         /* SIB4 */
+                         /* SIB4: Received SIB4 from TTCN */
                          if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib4 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
                            RRC_CONFIGURATION_REQ(msg_p).sib4_Present[cell_index] = true;
                            if(true == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.d) {
@@ -502,7 +502,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                              }
                            }
                          }
-                        /* SIB5 */
+                        /* SIB5: Received SIB5 from TTCN */
                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib5 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
                            RRC_CONFIGURATION_REQ(msg_p).sib5_Present[cell_index] = true;
                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfoCount = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d;
