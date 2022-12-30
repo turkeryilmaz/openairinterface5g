@@ -125,6 +125,18 @@ typedef enum {
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
+#define NUMBER_OF_NEIGHBORING_CELLs_MAX 1
+
+typedef struct {
+  int Nid_cell;
+  bool active;
+  bool perform_validation;
+  int pss_search_start;
+  int pss_search_length;
+  uint32_t ssb_rsrp;
+  int ssb_rsrp_dBm;
+} neighboring_cell_info_t;
+
 typedef struct {
 
   // RRC measurements
@@ -208,7 +220,8 @@ typedef struct {
   unsigned char  nb_antennas_rx;
   /// DLSCH error counter
   // short          dlsch_errors;
-
+  /// Info about neighboring cells to permorme the measurements
+  neighboring_cell_info_t neighboring_cell_info[NUMBER_OF_NEIGHBORING_CELLs_MAX];
 } PHY_NR_MEASUREMENTS;
 
 typedef struct {

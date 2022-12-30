@@ -37,6 +37,8 @@
 #include "PHY/phy_extern_nr_ue.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
+#include "PHY/NR_REFSIG/sss_nr.h"
+#include "PHY/MODULATION/modulation_UE.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
@@ -45,6 +47,7 @@
 //#define DEBUG_MEAS_RRC
 //#define DEBUG_MEAS_UE
 //#define DEBUG_RANK_EST
+//#define DEBUG_MEAS_NEIGHBORING_CELL
 
 uint32_t get_nr_rx_total_gain_dB (module_id_t Mod_id,uint8_t CC_id)
 {
@@ -229,6 +232,159 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
     ssb_index,
     ue->measurements.ssb_rsrp_dBm[ssb_index],
     rsrp);
+}
+
+void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
+{
+  ue->measurements.neighboring_cell_info[0].Nid_cell = 1;
+  ue->measurements.neighboring_cell_info[0].active = true;
+  ue->measurements.neighboring_cell_info[0].perform_validation = true;
+
+  for (int cell_idx = 0; cell_idx < NUMBER_OF_NEIGHBORING_CELLs_MAX; cell_idx++) {
+
+    neighboring_cell_info_t *neighboring_cell_info = &ue->measurements.neighboring_cell_info[cell_idx];
+    if (neighboring_cell_info->active == false) {
+      continue;
+    }
+
+    NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+    int **rxdata = ue->common_vars.rxdata;
+    const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
+    __attribute__((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
+
+    // performing the correlation on a frame length plus one symbol for the first of the two frame
+    // to take into account the possibility of PSS between the two frames
+    if (neighboring_cell_info->pss_search_length == 0) {
+      neighboring_cell_info->pss_search_length = frame_parms->samples_per_frame + (2 * frame_parms->ofdm_symbol_size);
+    }
+    int length = neighboring_cell_info->pss_search_length;
+    int start = neighboring_cell_info->pss_search_start;
+
+    // Search pss in the received buffer each 8 samples
+    int pss_index = GET_NID2(neighboring_cell_info->Nid_cell);
+    c16_t *pss_time = get_primary_synchro_time_nr(pss_index);
+    int maxval = 0;
+    for (int i = 0; i < IQ_SIZE * (frame_parms->ofdm_symbol_size); i++) {
+      maxval = max(maxval, abs(pss_time[i].r));
+      maxval = max(maxval, abs(pss_time[i].i));
+    }
+    int shift = log2_approx(maxval);
+    int peak_position = 0;
+    int64_t peak_value = 0;
+    int64_t avg = 0;
+    for (int n = start; n < start + length; n += 8) {
+      int64_t pss_corr_ue = 0;
+      for (int ar = 0; ar < frame_parms->nb_antennas_rx; ar++) {
+        const c32_t result = dot_product(pss_time, (c16_t *)&(rxdata[ar][n]), frame_parms->ofdm_symbol_size, shift);
+        const c64_t r64 = {.r = result.r, .i = result.i};
+        pss_corr_ue += squaredMod(r64);
+      }
+      avg += pss_corr_ue;
+      if (pss_corr_ue > peak_value) {
+        peak_value = pss_corr_ue;
+        peak_position = n;
+      }
+    }
+    avg /= (length / 4);
+    int ssb_offset = peak_position - frame_parms->nb_prefix_samples;
+
+#ifdef DEBUG_MEAS_NEIGHBORING_CELL
+    LOG_I(NR_PHY,
+          "PSS Peak found at pos %d (SSB offset %d), val = %llu (%d dB) avg %d dB\n",
+          peak_position,
+          ssb_offset,
+          (unsigned long long)peak_value,
+          dB_fixed64(peak_value),
+          dB_fixed64(avg));
+#endif
+
+    // Validation using the SSS correlation
+
+    unsigned int k = 0;
+    uint8_t sss_symbol = SSS_SYMBOL_NB - PSS_SYMBOL_NB;
+    nr_slot_fep_init_sync(ue, proc, sss_symbol, ssb_offset, false, rxdataF);
+    c16_t *sss_rx = &rxdataF[0][frame_parms->ofdm_symbol_size * sss_symbol];
+
+    if (neighboring_cell_info->perform_validation == true) {
+
+      int sss_index = GET_NID1(neighboring_cell_info->Nid_cell);
+      int16_t *sss_seq = get_d_sss(pss_index, sss_index);
+      k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 56;
+      if (k >= frame_parms->ofdm_symbol_size) {
+        k -= frame_parms->ofdm_symbol_size;
+      }
+      int32_t metric = 0;
+      const int16_t *phase_re_nr = get_phase_re_nr();
+      const int16_t *phase_im_nr = get_phase_im_nr();
+      for (uint8_t phase = 0; phase < PHASE_HYPOTHESIS_NUMBER; phase++) {
+        int32_t metric_re = 0;
+        for (int i = 0; i < LENGTH_SSS_NR; i++) {
+          metric_re += sss_seq[i] * (((phase_re_nr[phase] * sss_rx[k].r) >> SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase] * sss_rx[k].i) >> SCALING_METRIC_SSS_NR));
+          k++;
+          if (k == frame_parms->ofdm_symbol_size) {
+            k = 0;
+          }
+        }
+        if (metric_re > metric) {
+          metric = metric_re;
+        }
+      }
+
+#ifdef DEBUG_MEAS_NEIGHBORING_CELL
+      LOG_I(NR_PHY, "SSS metric = %i\n", metric);
+#endif
+
+      if (metric < 15000) {
+        return;
+      }
+    }
+
+    neighboring_cell_info->pss_search_start = peak_position - 16;
+    neighboring_cell_info->pss_search_length = 32;
+    neighboring_cell_info->perform_validation = false;
+
+#ifdef DEBUG_MEAS_NEIGHBORING_CELL
+    LOG_I(NR_PHY, "Received symbol with PBCH 0...0 SSS 0...0 PBCH:\n");
+    k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
+    if (k >= frame_parms->ofdm_symbol_size) {
+      k -= frame_parms->ofdm_symbol_size;
+    }
+    for (int i = 0; i < 20 * 12; i++) {
+      LOG_I(NR_PHY, "SSB[%i][%3i] = (%4i, %4i)\n", sss_symbol, i, sss_rx[k].r, sss_rx[k].i);
+      k++;
+      if (k == frame_parms->ofdm_symbol_size) {
+        k = 0;
+      }
+    }
+#endif
+
+    // RSRP measurements
+    uint32_t rsrp_sum = 0;
+    int nb_re = 0;
+    k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + 56;
+    if (k >= frame_parms->ofdm_symbol_size) {
+      k -= frame_parms->ofdm_symbol_size;
+    }
+    for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+      sss_rx = &rxdataF[aarx][frame_parms->ofdm_symbol_size * sss_symbol];
+      for (int i = 0; i < LENGTH_SSS_NR; i++) {
+        rsrp_sum += (((int32_t)sss_rx[k].r * sss_rx[k].r) + ((int32_t)sss_rx[k].i * sss_rx[k].i));
+        nb_re++;
+        k++;
+        if (k == frame_parms->ofdm_symbol_size) {
+          k = 0;
+        }
+      }
+    }
+    neighboring_cell_info->ssb_rsrp = rsrp_sum / nb_re;
+    neighboring_cell_info->ssb_rsrp_dBm = 10 * log10(neighboring_cell_info->ssb_rsrp) + 30
+                                          - 10 * log10(pow(2, 30))
+                                          - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])
+                                          - dB_fixed(ue->frame_parms.ofdm_symbol_size);
+#ifdef DEBUG_MEAS_NEIGHBORING_CELL
+    LOG_I(NR_PHY, "[Nid_cell %i] SSB RSRP = %u (%i dBm)\n", neighboring_cell_info->Nid_cell, neighboring_cell_info->ssb_rsrp, neighboring_cell_info->ssb_rsrp_dBm);
+#endif
+  }
 }
 
 // This function computes the received noise power
