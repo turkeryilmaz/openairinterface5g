@@ -687,9 +687,6 @@ The first/ leftmost bit corresponds to the first SS/PBCH block index in the grou
   if (ServCellCom->ssb_PositionsInBurst.groupPresence != NULL)
     RRM_FREE(ServCellCom->ssb_PositionsInBurst.groupPresence);
 
-  if (ServCellCom->ssb_PositionsInBurst.inOneGroup.buf != NULL)
-    RRM_FREE(ServCellCom->ssb_PositionsInBurst.inOneGroup.buf);
-
   if (ZoneEight != NULL)
     RRM_FREE(ZoneEight);
 
@@ -701,7 +698,6 @@ The first/ leftmost bit corresponds to the first SS/PBCH block index in the grou
 
   if (sib1->servingCellConfigCommon)
     RRM_FREE(sib1->servingCellConfigCommon);
-
   if (nr_plmn_info->trackingAreaCode->buf != NULL)
     RRM_FREE(nr_plmn_info->trackingAreaCode->buf);
 
