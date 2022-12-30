@@ -951,6 +951,10 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
     } // for rsc_id
   } // for gNB_id
 
+  if (nr_slot_rx == 0) {
+    nr_ue_meas_neighboring_cell(ue, proc);
+  }
+
   if ((frame_rx%64 == 0) && (nr_slot_rx==0)) {
     LOG_I(NR_PHY,"============================================\n");
     // fixed text + 8 HARQs rounds à 10 ("999999999/") + NULL

@@ -252,6 +252,36 @@ void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
 
 }
 
+void config_measConfig(NR_UE_MAC_INST_t *mac, const NR_MeasConfig_t *measConfig)
+{
+  int Nid_cell = -1;
+  if (measConfig->measObjectToAddModList) {
+    NR_MeasObjectToAddModList_t *measObjectToAddModList = measConfig->measObjectToAddModList;
+    for (int i = 0; i < measObjectToAddModList->list.count; i++) {
+      NR_MeasObjectToAddMod_t *meas_obj = measObjectToAddModList->list.array[i];
+      if (meas_obj->measObject.choice.measObjectNR) {
+        NR_MeasObjectNR_t *measObjectNR = meas_obj->measObject.choice.measObjectNR;
+        if (measObjectNR->cellsToAddModList) {
+          NR_CellsToAddModList_t *cellsToAddModList = measObjectNR->cellsToAddModList;
+          for (int j = 0; j < cellsToAddModList->list.count; j++) {
+            NR_CellsToAddMod_t *cell = cellsToAddModList->list.array[j];
+            Nid_cell = cell->physCellId;
+          }
+        }
+      }
+    }
+  }
+
+  if (Nid_cell == -1) {
+    return;
+  }
+
+  fapi_nr_neighboring_cell_t *neighboring_cell = &mac->phy_config.config_req.meas_config.nr_neighboring_cell[0];
+  neighboring_cell->Nid_cell = Nid_cell;
+  neighboring_cell->active = 1;
+  neighboring_cell->perform_validation = 1;
+}
+
 void config_common_ue(NR_UE_MAC_INST_t *mac,
                       NR_ServingCellConfigCommon_t *scc,
 		      module_id_t module_id,
