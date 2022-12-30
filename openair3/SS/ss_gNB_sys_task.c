@@ -175,6 +175,61 @@ static void sys_handle_nr_enquire_timing(ss_nrset_timinfo_t *tinfo)
     }
   }
 }
+
+/*
+ * Function : sys_nr_cell_attn_update
+ * Description: Sends the attenuation updates received from TTCN to proxy
+ */
+static void sys_nr_cell_attn_update(uint8_t cellId, uint8_t attnVal)
+{
+  LOG_A(GNB_APP, "In sys_nr_cell_attn_update\n");
+  attenuationConfigReq_t *attnConf = NULL;
+
+  attnConf = (attenuationConfigReq_t *) calloc(1, sizeof(attenuationConfigReq_t));
+  attnConf->header.preamble = 0xFEEDC0DE;
+  attnConf->header.msg_id = SS_ATTN_LIST;
+  attnConf->header.cell_id = cellId;
+  attnConf->attnVal = attnVal;
+
+  /** Send to proxy */
+  sys_5G_send_proxy((void *)attnConf, sizeof(attenuationConfigReq_t));
+  LOG_A(GNB_APP, "Out sys_nr_cell_attn_update\n");
+  return;
+}
+
+/*
+ * Function : sys_handle_nr_cell_attn_req
+ * Description: Handles the attenuation updates received from TTCN
+ */
+static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_CellAttenuationList_Type_Dynamic *CellAttenuationList)
+{
+  for(int i=0;i<CellAttenuationList->d;i++) {
+    uint8_t cellId = (uint8_t)CellAttenuationList->v[i].CellId;
+    uint8_t attnVal = 0; // default set it Off
+
+    switch (CellAttenuationList->v[i].Attenuation.d)
+    {
+    case Attenuation_Type_Value:
+      attnVal = CellAttenuationList->v[i].Attenuation.v.Value;
+      LOG_A(GNB_APP, "[SYS-GNB] CellAttenuationList for Cell_id %d value %d dBm received\n",
+            cellId, attnVal);
+      sys_nr_cell_attn_update(cellId, attnVal);
+      break;
+    case Attenuation_Type_Off:
+      attnVal = 80; /* TODO: attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
+      LOG_A(GNB_APP, "[SYS-GNB] CellAttenuationList turn off for Cell_id %d received with attnVal : %d\n",
+            cellId,attnVal);
+      sys_nr_cell_attn_update(cellId, attnVal);
+      break;
+    case Attenuation_Type_UNBOUND_VALUE:
+      LOG_A(GNB_APP, "[SYS-GNB] CellAttenuationList Attenuation_Type_UNBOUND_VALUE received\n");
+      break;
+    default:
+      LOG_A(GNB_APP, "[SYS-GNB] Invalid CellAttenuationList received\n");
+    }
+  }
+}
+
 /* 
  * =========================================================================================================== 
  * Function Name: ss_task_sys_nr_handle_req
@@ -289,6 +344,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_CellAttenuationList:
             {
               LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_CellAttenuationList received\n");
+              sys_handle_nr_cell_attn_req(&(req->Request.v.CellAttenuationList));
               if (false == ss_task_sys_nr_handle_cellConfigAttenuation(req) )
               {
                 LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
