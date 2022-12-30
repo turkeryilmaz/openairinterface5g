@@ -244,7 +244,6 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               cellConfig->absoluteFrequencyPointA);
           //send_to_proxy();
           sys_5G_send_proxy((void *)cellConfig, sizeof(CellConfig5GReq_t));
-          free(cellConfig);
         }
 
       }
