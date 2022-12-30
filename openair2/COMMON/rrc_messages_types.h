@@ -352,9 +352,8 @@ typedef struct InterFreqCarrierFreqInfo_s {
 }InterFreqCarrierFreqInfo_t;
 
 typedef struct IntraFreqNeighCellInfo_s {
-  int                     intraFreqNeighCellListCount;
   long                    physCellId;
-  e_LTE_Q_OffsetRange     q_OffsetCell;
+  LTE_Q_OffsetRange_t     q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
 
 // eNB: ENB_APP -> RRC messages
@@ -482,6 +481,7 @@ typedef struct RrcConfigurationReq_s {
   //SIB4
   bool                       sib4_Present[MAX_NUM_CCs];
   bool                       intraFreqNeighCellListPresent;
+  int                        intraFreqNeighCellListCount;
   IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
 
   //SIB5

@@ -1039,6 +1039,9 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     for(int i=0; i < configuration->schedulingInfo_count; i++) {
       schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[i].si_Periodicity;
       sib_type[i]=configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[i];
+      if(sib_type[i] == 1) {
+        RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+      }
       if(sib_type[i] == 2) {
         RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
       }
@@ -2331,7 +2334,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
 uint8_t do_SIB4(uint8_t Mod_id,
                  int CC_id, BOOLEAN_t brOption,
                  RrcConfigurationReq *configuration
-                ) {
+               ) {
   struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member *sib4_part;
   LTE_SystemInformationBlockType4_t       **sib4        = &RC.rrc[Mod_id]->carrier[CC_id].sib4;
   LTE_BCCH_DL_SCH_Message_t         *bcch_message = &RC.rrc[Mod_id]->carrier[CC_id].systemInformation;
@@ -2340,16 +2343,39 @@ uint8_t do_SIB4(uint8_t Mod_id,
 
   buffer   = RC.rrc[Mod_id]->carrier[CC_id].SIB4;
 
+  if (!sib4) {
+    LOG_E(RRC,"[eNB %d] sib4 is null, exiting\n", Mod_id);
+    exit(-1);
+  }
+
+  if (bcch_message) {
+    memset(bcch_message,0,sizeof(LTE_BCCH_DL_SCH_Message_t));
+  } else {
+    LOG_E(RRC,"[eNB %d] BCCH_MESSAGE is null, exiting\n", Mod_id);
+    exit(-1);
+  }
+
   LOG_I(RRC,"[eNB %d] Configuration SIB4, intraFreqNeighCellListPresent: %d \n", Mod_id, configuration->intraFreqNeighCellListPresent);
   sib4_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   memset(sib4_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib4_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4;
   *sib4 = &sib4_part->choice.sib4;
 
-  /* TODO: Need to optimize the below code same as do_SIB5 and verify the SIB4 */
+  LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
+
   if(true == configuration->intraFreqNeighCellListPresent) {
-    ASN_SEQUENCE_ADD(&(*sib4)->intraFreqNeighCellList->list,configuration->InterFreqCarrierFreqInfo);
+    for(int i = 0; i < configuration->intraFreqNeighCellListCount; i++){
+    	IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
+        IntraFreqNeighCellInfo->physCellId = configuration->intraFreqNeighCellList[CC_id][i].physCellId; 
+	IntraFreqNeighCellInfo->q_OffsetCell =	configuration->intraFreqNeighCellList[CC_id][i].q_OffsetCell;
+	ASN_SEQUENCE_ADD(&(*sib4)->intraFreqNeighCellList,IntraFreqNeighCellInfo);
+    }
   }
+
+  (*sib4)->intraFreqBlackCellList = NULL;
+  (*sib4)->csg_PhysCellIdRange = NULL;
+  (*sib4)->lateNonCriticalExtension = NULL;
+  (*sib4)->ext1 = NULL;
 
   bcch_message->message.present = LTE_BCCH_DL_SCH_MessageType_PR_c1;
   bcch_message->message.choice.c1.present = LTE_BCCH_DL_SCH_MessageType__c1_PR_systemInformation;

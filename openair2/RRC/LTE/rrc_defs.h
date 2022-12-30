@@ -749,6 +749,7 @@ typedef struct {
   LTE_MCCH_Message_t                mcch_counting;
   LTE_MBMSCountingRequest_r10_t    *mcch_message_counting;
   SRB_INFO                          MCCH_MESS_COUNTING[8];// MAX_MBSFN_AREA
+  bool                              sib4_Scheduled;
   bool                              sib5_Scheduled;
 
   //TTN - SIB 18,19,21 for D2D
