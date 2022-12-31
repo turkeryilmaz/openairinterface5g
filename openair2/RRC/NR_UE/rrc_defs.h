@@ -163,16 +163,26 @@ typedef struct NR_UE_Timers_Constants_s {
   // counters
   uint32_t N310_cnt;
   uint32_t N311_cnt;
-  // constants (limits configured by the network)
-  uint32_t N310_k;
-  uint32_t N311_k;
-  uint32_t T300_k;
-  uint32_t T301_k;
-  uint32_t T304_k;
-  uint32_t T310_k;
-  uint32_t T311_k;
-  uint32_t T319_k;
+  uint32_t slots_to_trigger_active;
+  uint32_t slots_to_trigger_cnt;
 } NR_UE_Timers_Constants_t;
+
+typedef struct meas_s {
+  uint16_t Nid_cell;
+  int ss_rsrp_dBm;
+  bool ss_rsrp_dBm_initialized;
+  int csi_rsrp_dBm;
+  bool csi_rsrp_dBm_initialized;
+} meas_t;
+
+typedef struct l3_measurements_s {
+  double filter_coeff_rsrp;
+  meas_t active_cell;
+  meas_t neighboring_cell[1];
+  long trigger_to_measid;
+  long trigger_quantity;
+  long rs_type;
+} l3_measurements_t;
 
 typedef enum {
   OUT_OF_SYNC = 0,
@@ -186,6 +196,7 @@ typedef struct NR_UE_RRC_INST_s {
   NR_CellGroupConfig_t   *scell_group_config;
   NR_RadioBearerConfig_t *radio_bearer_config;
   NR_MeasurementReport_t *measurementReport;
+  l3_measurements_t       l3_measurements;
 
   NR_MeasObjectToAddMod_t        *MeasObj[NB_CNX_UE][MAX_MEAS_OBJ];
   NR_ReportConfigToAddMod_t      *ReportConfig[NB_CNX_UE][MAX_MEAS_CONFIG];
