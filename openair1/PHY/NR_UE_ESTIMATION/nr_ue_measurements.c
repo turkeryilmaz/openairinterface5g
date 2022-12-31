@@ -39,6 +39,7 @@
 #include "PHY/sse_intrin.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 #include "PHY/MODULATION/modulation_UE.h"
+#include "SCHED_NR_UE/defs.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
@@ -384,6 +385,29 @@ void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
 #ifdef DEBUG_MEAS_NEIGHBORING_CELL
     LOG_I(NR_PHY, "[Nid_cell %i] SSB RSRP = %u (%i dBm)\n", neighboring_cell_info->Nid_cell, neighboring_cell_info->ssb_rsrp, neighboring_cell_info->ssb_rsrp_dBm);
 #endif
+
+    // Send SS measurements to MAC
+    fapi_nr_l1_measurements_t l1_measurements;
+    l1_measurements.gNB_index = proc->gNB_id;
+    l1_measurements.meas_type = 0;
+    l1_measurements.Nid_cell = neighboring_cell_info->Nid_cell;
+    l1_measurements.is_neighboring_cell = 1;
+    if (neighboring_cell_info->ssb_rsrp_dBm < -140) {
+      l1_measurements.rsrp_dBm = 16;
+    } else if (neighboring_cell_info->ssb_rsrp_dBm > -44) {
+      l1_measurements.rsrp_dBm = 113;
+    } else {
+      l1_measurements.rsrp_dBm = neighboring_cell_info->ssb_rsrp_dBm + 157; // TS 38.133 - Table 10.1.6.1-1
+    }
+    nr_downlink_indication_t dl_indication;
+    fapi_nr_rx_indication_t *rx_ind = calloc(sizeof(*rx_ind),1);
+    nr_fill_dl_indication(&dl_indication, NULL, rx_ind, proc, ue, NULL);
+    nr_fill_rx_indication(rx_ind, FAPI_NR_MEAS_IND, ue, NULL, NULL, 1, proc, (void *)&l1_measurements);
+    if (ue->if_inst && ue->if_inst->dl_indication) {
+      ue->if_inst->dl_indication(&dl_indication, NULL);
+    } else {
+      free(rx_ind);
+    }
   }
 }
 
