@@ -93,6 +93,8 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
                                 struct NR_SI_SchedulingInfo *si_SchedulingInfo,
                                 NR_ServingCellConfigCommonSIB_t *scc);
 
+void nr_rrc_mac_config_req_meas(module_id_t module_id, const NR_MeasConfig_t *measConfig);
+
 /**\brief initialization NR UE MAC instance(s), total number of MAC instance based on NB_NR_UE_MAC_INST*/
 NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst);
 

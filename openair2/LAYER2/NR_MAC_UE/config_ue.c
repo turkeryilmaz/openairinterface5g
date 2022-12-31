@@ -830,3 +830,10 @@ void nr_rrc_mac_config_req_scg(module_id_t module_id,
   // Setup the SSB to Rach Occasions mapping according to the config
   build_ssb_to_ro_map(mac);
 }
+
+void nr_rrc_mac_config_req_meas(module_id_t module_id, const NR_MeasConfig_t *measConfig)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+  config_measConfig(mac, measConfig);
+  mac->if_module->phy_config_request(&mac->phy_config);
+}
