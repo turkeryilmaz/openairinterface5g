@@ -118,7 +118,10 @@ typedef struct NRRrcMacBcchDataInd_s {
 
 typedef struct NRRrcMacMeasDataInd_s {
   uint8_t gnb_index;
-  uint8_t rsrp;
+  uint8_t rsrp_dBm;
+  uint16_t Nid_cell;
+  uint8_t meas_type;            // (0) SS, (1) CSI
+  uint8_t is_neighboring_cell;  // (0) false, (1) true
 } NRRrcMacMeasDataInd;
 
 typedef struct RrcMacBcchMbmsDataReq_s {

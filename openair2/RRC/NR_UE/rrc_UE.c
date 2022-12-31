@@ -2017,16 +2017,17 @@ void *rrc_nrue_task(void *args_p)
          break;
        case NR_RRC_MAC_MEAS_DATA_IND:
 
-         LOG_I(NR_RRC, "[gNB %i, count %i] Received measurements: RSRP_s = %i (dBm)\n",
-               NR_RRC_MAC_MEAS_DATA_IND(msg_p).gnb_index,
-               number_of_received_meas,
-               NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp-157);
+         LOG_D(NR_RRC, "[%s][Nid_cell %i] Received %s measurements: RSRP = %i (dBm)\n",
+               NR_RRC_MAC_MEAS_DATA_IND(msg_p).is_neighboring_cell == 0 ? "Active cell" : "Neighboring cell",
+               NR_RRC_MAC_MEAS_DATA_IND(msg_p).Nid_cell,
+               NR_RRC_MAC_MEAS_DATA_IND(msg_p).meas_type == 0 ? "SS" : "CSI",
+               NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp_dBm-157);
 
          // FIXME: Add a correct criterion
-         if (number_of_received_meas == 100) {
+         if (number_of_received_meas == 200) {
            rrc_ue_generate_measurementReport(&ctxt,
                                              NR_RRC_MAC_MEAS_DATA_IND(msg_p).gnb_index,
-                                             NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp);
+                                             NR_RRC_MAC_MEAS_DATA_IND(msg_p).rsrp_dBm);
            number_of_received_meas = 0;
          }
 

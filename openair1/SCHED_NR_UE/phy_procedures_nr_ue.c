@@ -175,10 +175,10 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
         }
       }
     break;
-    case FAPI_NR_CSIRS_IND:
-      memcpy(&rx_ind->rx_indication_body[n_pdus - 1].csirs_measurements,
-             (fapi_nr_csirs_measurements_t*)typeSpecific,
-             sizeof(*(fapi_nr_csirs_measurements_t*)typeSpecific));
+    case FAPI_NR_MEAS_IND:
+      memcpy(&rx_ind->rx_indication_body[n_pdus - 1].l1_measurements,
+             (fapi_nr_l1_measurements_t*)typeSpecific,
+             sizeof(*(fapi_nr_l1_measurements_t*)typeSpecific));
       break;
     default:
     break;
