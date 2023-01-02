@@ -353,7 +353,7 @@ typedef struct InterFreqCarrierFreqInfo_s {
 
 typedef struct IntraFreqNeighCellInfo_s {
   long                    physCellId;
-  LTE_Q_OffsetRange_t     q_OffsetCell;
+  long                    q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
 
 // eNB: ENB_APP -> RRC messages

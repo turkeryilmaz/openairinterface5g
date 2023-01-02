@@ -2360,20 +2360,19 @@ uint8_t do_SIB4(uint8_t Mod_id,
   memset(sib4_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib4_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4;
   *sib4 = &sib4_part->choice.sib4;
+  (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount,sizeof(struct LTE_IntraFreqNeighCellList));
 
   LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
 
   if(true == configuration->intraFreqNeighCellListPresent) {
     for(int i = 0; i < configuration->intraFreqNeighCellListCount; i++){
-    	IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
-        IntraFreqNeighCellInfo->physCellId = configuration->intraFreqNeighCellList[CC_id][i].physCellId; 
-	IntraFreqNeighCellInfo->q_OffsetCell =	configuration->intraFreqNeighCellList[CC_id][i].q_OffsetCell;
-	ASN_SEQUENCE_ADD(&(*sib4)->intraFreqNeighCellList,IntraFreqNeighCellInfo);
+      IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
+      IntraFreqNeighCellInfo->physCellId = configuration->intraFreqNeighCellList[CC_id][i].physCellId;
+      IntraFreqNeighCellInfo->q_OffsetCell = configuration->intraFreqNeighCellList[CC_id][i].q_OffsetCell;
+      ASN_SEQUENCE_ADD(&(*sib4)->intraFreqNeighCellList->list,IntraFreqNeighCellInfo);
     }
   }
 
-  (*sib4)->intraFreqBlackCellList = NULL;
-  (*sib4)->csg_PhysCellIdRange = NULL;
   (*sib4)->lateNonCriticalExtension = NULL;
   (*sib4)->ext1 = NULL;
 
