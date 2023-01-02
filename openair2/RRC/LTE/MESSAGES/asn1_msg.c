@@ -2440,7 +2440,6 @@ uint8_t do_SIB4(uint8_t Mod_id,
       asn1cSeqAdd(&(*sib4)->intraFreqBlackCellList->list, PhysCellIdRange);
     }
   }
-
   /* TODO : Need to handle all remaining ext and lateNonCriticalExtension IE properly */
   (*sib4)->lateNonCriticalExtension = NULL;
   (*sib4)->ext1 = NULL;
