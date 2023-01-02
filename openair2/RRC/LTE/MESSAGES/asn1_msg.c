@@ -2364,7 +2364,9 @@ uint8_t do_SIB4(uint8_t Mod_id,
 
   LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
 
+  /* Checking if intraFreqNeighCellList is present in SIB4 */
   if(true == configuration->intraFreqNeighCellListPresent) {
+    /* Handling multiple entities in intraFreqNeighCellList for SIB4 message */
     for(int i = 0; i < configuration->intraFreqNeighCellListCount; i++){
       IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
       IntraFreqNeighCellInfo->physCellId = configuration->intraFreqNeighCellList[CC_id][i].physCellId;
@@ -2372,7 +2374,7 @@ uint8_t do_SIB4(uint8_t Mod_id,
       ASN_SEQUENCE_ADD(&(*sib4)->intraFreqNeighCellList->list,IntraFreqNeighCellInfo);
     }
   }
-
+  /* TODO : Need to handle all remaining ext and lateNonCriticalExtension IE properly */
   (*sib4)->lateNonCriticalExtension = NULL;
   (*sib4)->ext1 = NULL;
 
