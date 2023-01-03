@@ -810,8 +810,13 @@ static int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(module_id_t module_id,
   return 0;
 }
 
+void reset_l3_measurements(const module_id_t module_id)
+{
+  l3_measurements_t *l3_measurements = &NR_UE_rrc_inst[module_id].l3_measurements;
+  memset((void *)l3_measurements, 0, sizeof(l3_measurements_t));
+}
 
-void nr_rrc_ue_process_masterCellGroup(const protocol_ctxt_t *const ctxt_pP,
+void nr_rrc_ue_process_masterCellGroup(protocol_ctxt_t *ctxt_pP,
                                        uint8_t gNB_index,
                                        OCTET_STRING_t *masterCellGroup,
                                        long *fullConfig)
@@ -876,6 +881,8 @@ void nr_rrc_ue_process_masterCellGroup(const protocol_ctxt_t *const ctxt_pP,
       NR_ReconfigurationWithSync_t *reconfigurationWithSync = cellGroupConfig->spCellConfig->reconfigurationWithSync;
       rrc->timers_and_constants.T304_active = true;
       nr_rrc_set_T304(&rrc->timers_and_constants, reconfigurationWithSync);
+      ctxt_pP->rntiMaybeUEid = cellGroupConfig->spCellConfig->reconfigurationWithSync->newUE_Identity;
+      reset_l3_measurements(ctxt_pP->module_id);
       // TODO: Implementation of the remaining procedures regarding the reception of the reconfigurationWithSync, TS 38.331 - Section 5.3.5.5.2
     }
 
