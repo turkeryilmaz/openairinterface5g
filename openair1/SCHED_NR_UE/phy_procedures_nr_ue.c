@@ -301,6 +301,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   if (ue->sync_ref) {
     nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
     const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
+    LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
     ue->frame_parms.nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
     int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(((slot_tx + DURATION_RX_TO_TX - NR_RX_NB_TH)%ue->frame_parms.slots_per_frame),&ue->frame_parms,0);
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
@@ -330,14 +331,14 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     char buffer1[ue->frame_parms.ofdm_symbol_size];
     for (int i = 0; i < 13; i++) {
       bzero(buffer1, sizeof(buffer1));
-      LOG_I(NR_PHY, "%s(): %d txdataF[%d] = %s\n",
+      LOG_I(NR_PHY, "%s(): %d After rotation txdataF[%d] = %s\n",
            __FUNCTION__, __LINE__,  txdataF_offset + (ue->frame_parms.ofdm_symbol_size * i),
            hexdump((void *)&ue->common_vars.txdataF[0][txdataF_offset + (ue->frame_parms.ofdm_symbol_size * i)], ue->frame_parms.ofdm_symbol_size, buffer1, sizeof(buffer1)));
     }
     char buffer0[ue->frame_parms.ofdm_symbol_size];
     for (int i = 0; i < 13; i++) {
       bzero(buffer0, sizeof(buffer0));
-      LOG_I(NR_PHY, "%s(): %d txdata[%d] = %s\n",
+      LOG_I(NR_PHY, "%s(): %d Time domain txdata[%d] = %s\n",
            __FUNCTION__, __LINE__,  slot_timestamp + ue->frame_parms.ofdm_symbol_size * i,
            hexdump((void *)&ue->common_vars.txdata[0][slot_timestamp + ue->frame_parms.ofdm_symbol_size * i], ue->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
     }

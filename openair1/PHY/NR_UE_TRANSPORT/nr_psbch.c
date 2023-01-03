@@ -303,7 +303,8 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
 
   int ssb_start_symbol_abs = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * fp->symbols_per_slot;
   uint16_t ssb_start_symbol = ssb_start_symbol_abs % fp->symbols_per_slot;
-  LOG_D(NR_PHY, "common_signal_procedures: frame %d, slot %d ssb index %d, ssb_start_symbol %d\n", frame, slot, ssb_index, ssb_start_symbol);
+  LOG_D(NR_PHY, "common_signal_procedures: frame %d, slot %d ssb index %d, ssb_start_symbol %d, txdataF_offset %d\n",
+        frame, slot, ssb_index, ssb_start_symbol, txdataF_offset);
 
   const int prb_offset = 0; //TODO: Need to properly get these values.
   const int sc_offset = 0; //TODO: Need to properly get these values.
