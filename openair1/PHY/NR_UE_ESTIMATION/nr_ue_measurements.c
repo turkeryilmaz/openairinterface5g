@@ -233,6 +233,29 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
     ssb_index,
     ue->measurements.ssb_rsrp_dBm[ssb_index],
     rsrp);
+
+  // Send SS measurements to MAC
+  fapi_nr_l1_measurements_t l1_measurements;
+  l1_measurements.gNB_index = proc->gNB_id;
+  l1_measurements.meas_type = 0;
+  l1_measurements.Nid_cell = ue->frame_parms.Nid_cell;
+  l1_measurements.is_neighboring_cell = 0;
+  if (ue->measurements.ssb_rsrp_dBm[ssb_index] < -140) {
+    l1_measurements.rsrp_dBm = 16;
+  } else if (ue->measurements.ssb_rsrp_dBm[ssb_index] > -44) {
+    l1_measurements.rsrp_dBm = 113;
+  } else {
+    l1_measurements.rsrp_dBm = ue->measurements.ssb_rsrp_dBm[ssb_index] + 157; // TS 38.133 - Table 10.1.6.1-1
+  }
+  nr_downlink_indication_t dl_indication;
+  fapi_nr_rx_indication_t *rx_ind = calloc(sizeof(*rx_ind),1);
+  nr_fill_dl_indication(&dl_indication, NULL, rx_ind, proc, ue, NULL);
+  nr_fill_rx_indication(rx_ind, FAPI_NR_MEAS_IND, ue, NULL, NULL, 1, proc, (void *)&l1_measurements, NULL);
+  if (ue->if_inst && ue->if_inst->dl_indication) {
+    ue->if_inst->dl_indication(&dl_indication);
+  } else {
+    free(rx_ind);
+  }
 }
 
 void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
@@ -402,9 +425,9 @@ void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
     nr_downlink_indication_t dl_indication;
     fapi_nr_rx_indication_t *rx_ind = calloc(sizeof(*rx_ind),1);
     nr_fill_dl_indication(&dl_indication, NULL, rx_ind, proc, ue, NULL);
-    nr_fill_rx_indication(rx_ind, FAPI_NR_MEAS_IND, ue, NULL, NULL, 1, proc, (void *)&l1_measurements);
+    nr_fill_rx_indication(rx_ind, FAPI_NR_MEAS_IND, ue, NULL, NULL, 1, proc, (void *)&l1_measurements, NULL);
     if (ue->if_inst && ue->if_inst->dl_indication) {
-      ue->if_inst->dl_indication(&dl_indication, NULL);
+      ue->if_inst->dl_indication(&dl_indication);
     } else {
       free(rx_ind);
     }
