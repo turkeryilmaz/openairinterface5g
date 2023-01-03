@@ -2738,6 +2738,8 @@ do_RRCConnectionSetup(
     physicalConfigDedicated2->schedulingRequestConfig->choice.setup.sr_PUCCH_ResourceIndex = 71 - ue_context_pP->local_uid/10;//ue_context_pP->local_uid;
   } else {
     switch (carrier->sib1->tdd_Config->subframeAssignment) {
+      case 0:
+      case 6:
       case 1:
         switch(frame_parms->N_RB_UL) {
           case 25:
@@ -2778,6 +2780,12 @@ do_RRCConnectionSetup(
       case 4:
         physicalConfigDedicated2->schedulingRequestConfig->choice.setup.sr_ConfigIndex = 7+
             (ue_context_pP->local_uid&1);  // Isr = 5 (every 10 subframes, offset=2 for UE0, 3 for UE1, 3 for UE2, 2 for UE3 , etc..)
+        break;
+      case 6: // To be checked : Multi UE
+        physicalConfigDedicated2->schedulingRequestConfig->choice.setup.sr_ConfigIndex =
+            18
+            + (ue_context_pP->local_uid & 3)
+                  * 5; // Isr = 18 (every 20 subframes, offset=3 for UE0, 7 for UE1, 2 for UE2, 7 for UE3 , 2 for UE4 etc..)
         break;
 
       default:

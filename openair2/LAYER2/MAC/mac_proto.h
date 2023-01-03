@@ -1051,14 +1051,6 @@ uint8_t ul_subframe2_k_phich(COMMON_channels_t *cc, sub_frame_t ul_subframe);
 
 unsigned char ul_ACK_subframe2M(LTE_TDD_Config_t *tdd_Config,unsigned char subframe);
 
-uint8_t get_Msg3harqpid(COMMON_channels_t *cc,
-                        frame_t frame, sub_frame_t current_subframe);
-
-uint32_t pdcchalloc2ulframe(COMMON_channels_t *ccP, uint32_t frame,
-                            uint8_t n);
-
-uint8_t pdcchalloc2ulsubframe(COMMON_channels_t *ccP, uint8_t n);
-
 int is_UL_sf(COMMON_channels_t *ccP, sub_frame_t subframeP);
 
 uint8_t getQm(uint8_t mcs);

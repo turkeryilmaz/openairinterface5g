@@ -723,6 +723,9 @@ void generate_phich_top(PHY_VARS_eNB *eNB,
   if (((frame_parms->phich_config_common.phich_resource*frame_parms->N_RB_DL)%48) > 0)
     Ngroup_PHICH++;
 
+  uint8_t mi = get_mi(frame_parms, subframe);
+  Ngroup_PHICH *= mi;
+
   if (frame_parms->Ncp == 1)
     NSF_PHICH = 2;
 
@@ -750,28 +753,42 @@ void generate_phich_top(PHY_VARS_eNB *eNB,
       LOG_E(PHY,"FATAL ERROR: illegal harq_pid, returning\n");
 	  return;
 	}
-    LOG_D(PHY,"[eNB %d][PUSCH %d] Frame %d subframe %d Generating PHICH, AMP %d  ngroup_PHICH %d/%d, nseq_PHICH %d : HI %d, first_rb %d)\n",
-	  eNB->Mod_id,harq_pid,proc->frame_tx,
-	  subframe,amp,ngroup_PHICH,Ngroup_PHICH,nseq_PHICH,
-	  phich->hi,
-	  phich->first_rb);
-    
-    T(T_ENB_PHY_PHICH, T_INT(eNB->Mod_id), T_INT(proc->frame_tx), T_INT(subframe),
-      T_INT(-1 /* TODO: rnti */), 
-      T_INT(harq_pid),
-      T_INT(Ngroup_PHICH), T_INT(NSF_PHICH),
-      T_INT(ngroup_PHICH), T_INT(nseq_PHICH),
-      T_INT(phich->hi),
-      T_INT(phich->first_rb),
-      T_INT(phich->n_DMRS));
-    
-    generate_phich(frame_parms,
-		   amp,//amp*2,
-		   nseq_PHICH,
-		   ngroup_PHICH,
-		   phich->hi,
-		   subframe,
-		   txdataF);
+  LOG_D(PHY,
+        "[eNB %d][PUSCH %d] Frame %d subframe %d Generating PHICH for PUSCH slot %d, AMP %d ngroup_PHICH %d/%d, nseq_PHICH %d : HI "
+        "%d, first_rb %d)\n",
+        eNB->Mod_id,
+        harq_pid,
+        proc->frame_tx,
+        subframe,
+        pusch_subframe,
+        amp,
+        ngroup_PHICH,
+        Ngroup_PHICH,
+        nseq_PHICH,
+        phich->hi,
+        phich->first_rb);
+
+  T(T_ENB_PHY_PHICH,
+    T_INT(eNB->Mod_id),
+    T_INT(proc->frame_tx),
+    T_INT(subframe),
+    T_INT(-1 /* TODO: rnti */),
+    T_INT(harq_pid),
+    T_INT(Ngroup_PHICH),
+    T_INT(NSF_PHICH),
+    T_INT(ngroup_PHICH),
+    T_INT(nseq_PHICH),
+    T_INT(phich->hi),
+    T_INT(phich->first_rb),
+    T_INT(phich->n_DMRS));
+
+  generate_phich(frame_parms,
+                 amp, // amp*2,
+                 nseq_PHICH,
+                 ngroup_PHICH,
+                 phich->hi,
+                 subframe,
+                 txdataF);
   }//  for (i=0; i<eNB->phich_vars[subframe&1].num_hi; i++) { 
   eNB->phich_vars[subframe&1].num_hi=0;
 }
