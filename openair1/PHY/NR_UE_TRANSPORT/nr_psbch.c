@@ -309,7 +309,7 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
   const int sc_offset = 0; //TODO: Need to properly get these values.
   fp->ssb_start_subcarrier = prb_offset * 12 + sc_offset;
   LOG_D(NR_PHY, "SSB first subcarrier %d (%d,%d)\n", fp->ssb_start_subcarrier, prb_offset, sc_offset);
-
+  nr_gold_psbch(ue);
   nr_sl_generate_pss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
   nr_sl_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
   nr_sl_generate_psbch_dmrs(&ue->nr_gold_psbch[ssb_index & 7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);

@@ -53,7 +53,7 @@
 #include "executables/nr-uesoftmodem.h"
 #include "LAYER2/NR_MAC_UE/mac_proto.h"
 #include "LAYER2/NR_MAC_UE/nr_l1_helpers.h"
-
+#include "openair1/PHY/MODULATION/nr_modulation.h"
 //#define DEBUG_PHY_PROC
 #define NR_PDCCH_SCHED
 //#define NR_PDCCH_SCHED_DEBUG
@@ -291,21 +291,58 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 
   if (get_softmodem_params()->sl_mode == 2) {
     ue->tx_power_dBm[slot_tx] = -127;
-    int num_samples_per_slot;
+    int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.samples_per_slot_wCP;
     for(int i = 0; i < ue->frame_parms.nb_antennas_tx; ++i) {
-      num_samples_per_slot = ue->frame_parms.ofdm_symbol_size * ue->frame_parms.symbols_per_slot;
       AssertFatal(i < sizeof(ue->common_vars.txdataF), "Array index %d is over the Array size %lu\n", i, sizeof(ue->common_vars.txdataF));
-      memset(&ue->common_vars.txdataF[i], 0, sizeof(int)* num_samples_per_slot);
+      memset(ue->common_vars.txdataF[i], 0, sizeof(int32_t) * num_samples_per_slot);
     }
   }
 
   if (ue->sync_ref) {
-     if ((ue->slss = nr_ue_get_slss(ue->Mod_id, ue->CC_id, frame_tx, slot_tx)) != NULL)
-      nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
+    nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
+    const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
+    ue->frame_parms.nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
+    int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(((slot_tx + DURATION_RX_TO_TX - NR_RX_NB_TH)%ue->frame_parms.slots_per_frame),&ue->frame_parms,0);
+    for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
+      apply_nr_rotation(&ue->frame_parms,
+                        (int16_t*)&ue->common_vars.txdataF[aa][txdataF_offset],
+                        slot_tx, 0, 1); // Conducts rotation on 0th symbol
+      PHY_ofdm_mod(&ue->common_vars.txdataF[aa][txdataF_offset],
+                    (int*)&ue->common_vars.txdata[aa][slot_timestamp],
+                    ue->frame_parms.ofdm_symbol_size,
+                    1, // Takes IDFT of 1st symbol (first PSBCH)
+                    ue->frame_parms.nb_prefix_samples0,
+                    CYCLIC_PREFIX);
+      apply_nr_rotation(&ue->frame_parms,
+                        (int16_t*)&ue->common_vars.txdataF[aa][txdataF_offset],
+                       slot_tx, 1, 13); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
+      PHY_ofdm_mod(&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
+                    (int*)&ue->common_vars.txdata[aa][ue->frame_parms.ofdm_symbol_size +
+                                      ue->frame_parms.nb_prefix_samples0 +
+                                      ue->frame_parms.nb_prefix_samples +
+                                      slot_timestamp], // Starting output offset at CP0 + PSBCH0 + CP1
+                    ue->frame_parms.ofdm_symbol_size,
+                    13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
+                    ue->frame_parms.nb_prefix_samples,
+                    CYCLIC_PREFIX);
+    }
+#ifdef DEBUG_PHY_PROC
+    char buffer1[ue->frame_parms.ofdm_symbol_size];
+    for (int i = 0; i < 13; i++) {
+      bzero(buffer1, sizeof(buffer1));
+      LOG_I(NR_PHY, "%s(): %d txdataF[%d] = %s\n",
+           __FUNCTION__, __LINE__,  txdataF_offset + (ue->frame_parms.ofdm_symbol_size * i),
+           hexdump((void *)&ue->common_vars.txdataF[0][txdataF_offset + (ue->frame_parms.ofdm_symbol_size * i)], ue->frame_parms.ofdm_symbol_size, buffer1, sizeof(buffer1)));
+    }
+    char buffer0[ue->frame_parms.ofdm_symbol_size];
+    for (int i = 0; i < 13; i++) {
+      bzero(buffer0, sizeof(buffer0));
+      LOG_I(NR_PHY, "%s(): %d txdata[%d] = %s\n",
+           __FUNCTION__, __LINE__,  slot_timestamp + ue->frame_parms.ofdm_symbol_size * i,
+           hexdump((void *)&ue->common_vars.txdata[0][slot_timestamp + ue->frame_parms.ofdm_symbol_size * i], ue->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
+    }
+#endif
   }
-
-  // TODO: Add SLDCH
-  // TODO: Add SLSCH
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
 }
 

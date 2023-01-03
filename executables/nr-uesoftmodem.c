@@ -151,6 +151,13 @@ int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
 uint32_t       N_RB_DL    = 106;
+uint16_t Nid_SL = 336 + 10;
+uint64_t SSB_positions = 0x01;
+int mu = 1;
+uint8_t n_tx = 1;
+uint8_t n_rx = 1;
+uint16_t Nid_cell = 0;
+int ssb_subcarrier_offset = 0;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution
@@ -245,6 +252,77 @@ uint64_t set_nrUE_optmask(uint64_t bitmask) {
 nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
+
+static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
+                                        int N_RB_DL,
+                                        int N_RB_UL,
+                                        int mu,
+                                        int Nid_SL,
+                                        uint64_t position_in_burst)
+{
+  uint64_t rev_burst = 0;
+  for (int i = 0; i < 64; i++)
+    rev_burst |= (((SSB_positions >> (63-i))&0x01) << i);
+
+  NR_DL_FRAME_PARMS *fp                                  = &ue->frame_parms;
+  fapi_nr_config_request_t *nrUE_config                  = &ue->nrUE_config;
+  nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
+  nrUE_config->ssb_config.scs_common                     = mu;
+  nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
+  nrUE_config->ssb_table.ssb_offset_point_a              = 0;
+  nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
+  nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
+  nrUE_config->cell_config.frame_duplex_type             = TDD;
+  nrUE_config->ssb_table.ssb_period                      = 1; //10ms
+  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
+  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
+  nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
+  nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
+  nrUE_config->tdd_table.tdd_period                      = 0;
+  nrUE_config->carrier_config.dl_frequency               = 450000;
+  nrUE_config->carrier_config.uplink_frequency           = 450000;
+  ue->mac_enabled                                        = 1;
+  fp->dl_CarrierFreq                                     = 2600000000;
+  fp->ul_CarrierFreq                                     = 2600000000;
+  fp->nb_antennas_tx = n_tx;
+  fp->nb_antennas_rx = n_rx;
+  fp->nb_antenna_ports_gNB = n_tx;
+  fp->N_RB_DL = N_RB_DL;
+  fp->Nid_cell = Nid_cell;
+  fp->Nid_SL = Nid_SL;
+  fp->nushift = 0; //No nushift in SL
+  fp->ssb_type = nr_ssb_type_C; //Note: case c for NR SL???
+  fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
+  fp->nr_band = 38; //Note: NR SL uses for n38 and n47
+  fp->threequarter_fs = 0;
+  fp->ofdm_offset_divisor = UINT_MAX;
+  fp->first_carrier_offset = 0;
+  fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
+  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
+
+  ue->slss = calloc(1, sizeof(*ue->slss));
+  int len = sizeof(ue->slss->sl_mib) / sizeof(ue->slss->sl_mib[0]);
+  for (int i = 0; i < len; i++) {
+    ue->slss->sl_mib[i] = 0;
+  }
+  #if 1
+  ue->slss->sl_mib_length = 32;
+  ue->slss->sl_numssb_withinperiod_r16 = 1;
+  ue->slss->sl_timeinterval_r16 = 0;
+  ue->slss->sl_timeoffsetssb_r16 = 0;
+  #endif
+  ue->slss->slss_id = Nid_SL;
+  ue->is_synchronized_sl = 0;
+  ue->UE_fo_compensation = 0;
+  ue->sync_ref = get_softmodem_params()->sync_ref;
+
+  nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
+  init_timeshift_rotation(fp);
+  init_symbol_rotation(fp);
+  ue->configured = true;
+  LOG_I(NR_PHY, "nrUE configured\n");
+}
+
 
 static void get_options(void) {
 
@@ -485,6 +563,8 @@ int main( int argc, char **argv ) {
       UE[CC_id] = PHY_vars_UE_g[0][CC_id];
       memset(UE[CC_id],0,sizeof(PHY_VARS_NR_UE));
 
+      downlink_frequency[CC_id][0] = 2680000000;
+
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
 
@@ -500,13 +580,15 @@ int main( int argc, char **argv ) {
       else{
         if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
           mac->if_module->phy_config_request(&mac->phy_config);
-
-        fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
-
-        nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config,
-            *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
+        LOG_I(NR_MAC, "This is get_softmodem_params()->sl_mode %d\n", get_softmodem_params()->sl_mode);
+        if (get_softmodem_params()->sl_mode == 2) {
+          nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
+        } else {
+          fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
+          nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config,
+              *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
+        }
       }
-
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
 

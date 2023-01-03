@@ -326,6 +326,15 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
     }
     l++;
   }
-
+#ifdef DEBUG_PSBCH
+  char buffer[frame_parms->ofdm_symbol_size];
+  for (int i = 0; i < 13; i++) {
+    if (i >= 1 && i <= 4)
+      continue;
+    bzero(buffer, sizeof(buffer));
+    LOG_I(NR_PHY, "PSBCH %d = %s\n", i, hexdump(&txdataF[frame_parms->ofdm_symbol_size*i],
+                                   frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
+  }
+#endif
   return 0;
 }

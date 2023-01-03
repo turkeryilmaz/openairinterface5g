@@ -93,8 +93,13 @@ int nr_sl_generate_sss(int32_t *txdataF,
   }
 #ifdef NR_SSS_DEBUG
   //  write_output("sss_0.m", "sss_0", (void*)txdataF[0][l*frame_parms->ofdm_symbol_size], frame_parms->ofdm_symbol_size, 1, 1);
+  char buffer[frame_parms->ofdm_symbol_size];
+  for (int i = 3; i < 5; i++) {
+    bzero(buffer, sizeof(buffer));
+    LOG_I(NR_PHY, "SSS %d = %s\n", i, hexdump(&txdataF[frame_parms->ofdm_symbol_size*i],
+                                       frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
+  }
 #endif
-
   return 0;
 }
 
