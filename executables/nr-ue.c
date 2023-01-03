@@ -35,6 +35,8 @@
 #include "SCHED_NR_UE/pucch_uci_ue_nr.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 
+//#define DEBUG_PHY_SL_PROC
+
 /*
  *  NR SLOT PROCESSING SEQUENCE
  *
@@ -1099,6 +1101,15 @@ void *UE_thread_SL(void *arg) {
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
                                               flags),"");
+#ifdef DEBUG_PHY_SL_PROC
+    char buffer[UE->frame_parms.ofdm_symbol_size];
+    for (int i = 0; i < 13; i++) {
+      bzero(buffer, sizeof(buffer));
+      LOG_I(NR_PHY, "Transmitted SSB %d = %s\n",
+            i, hexdump(&txp[0][UE->frame_parms.ofdm_symbol_size*i],
+            UE->frame_parms.ofdm_symbol_size, buffer, sizeof(buffer)));
+    }
+#endif
     for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
       memset(txp[i], 0, writeBlockSize);
 
