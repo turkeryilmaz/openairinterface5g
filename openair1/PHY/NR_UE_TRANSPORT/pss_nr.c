@@ -519,7 +519,6 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
   int synchro_position;
   int **rxdata = NULL;
   int fo_flag = PHY_vars_UE->UE_fo_compensation;  // flag to enable freq offset estimation and compensation
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SYNCHRO_NR, VCD_FUNCTION_IN);
 #ifdef DBG_PSS_NR
 
@@ -699,7 +698,7 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
   int64_t peak_value = 0;
   unsigned int peak_position = 0;
   unsigned int pss_source = 0;
-  printf("ofdm symbol size: %d samples_per_frame: %d, length: %d\n", frame_parms->ofdm_symbol_size, frame_parms->samples_per_frame, length);
+  LOG_I(NR_PHY, "ofdm symbol size: %d samples_per_frame: %d, length: %d\n", frame_parms->ofdm_symbol_size, frame_parms->samples_per_frame, length);
   int maxval = 0;
   for (int i = 0; i < 2 * (frame_parms->ofdm_symbol_size); i++) {
     maxval = max(maxval, primary_synchro_time_nr[0][i]);

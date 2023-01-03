@@ -159,24 +159,27 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
   int nb_connected_gNB = 1, gNB_id;
 
   ue->Mod_id      = UE_id;
-  ue->mac_enabled = 1;
+  ue->mac_enabled = get_softmodem_params()->sl_mode != 2 ? 1 : 0;
   ue->if_inst     = nr_ue_if_module_init(0);
   ue->dci_thres   = 0;
 
   // Setting UE mode to NOT_SYNCHED by default
-  for (gNB_id = 0; gNB_id < nb_connected_gNB; gNB_id++){
-    ue->UE_mode[gNB_id] = NOT_SYNCHED;
-    ue->prach_resources[gNB_id] = (NR_PRACH_RESOURCES_t *)malloc16_clear(sizeof(NR_PRACH_RESOURCES_t));
+  if (get_softmodem_params()->sl_mode != 2) {
+    for (gNB_id = 0; gNB_id < nb_connected_gNB; gNB_id++){
+      ue->UE_mode[gNB_id] = NOT_SYNCHED;
+      ue->prach_resources[gNB_id] = (NR_PRACH_RESOURCES_t *)malloc16_clear(sizeof(NR_PRACH_RESOURCES_t));
+    }
   }
 
   // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
+  if (get_softmodem_params()->sl_mode != 2) {
+    // intialize transport
+    init_nr_ue_transport(ue);
 
-  // intialize transport
-  init_nr_ue_transport(ue);
-
-  // init N_TA offset
-  init_N_TA_offset(ue);
+    // init N_TA offset
+    init_N_TA_offset(ue);
+  }
 }
 
 void init_nrUE_standalone_thread(int ue_idx)
@@ -491,16 +494,14 @@ static void UE_synch(void *arg) {
   syncData_t *syncD=(syncData_t *) arg;
   int i, hw_slot_offset;
   PHY_VARS_NR_UE *UE = syncD->UE;
-  sync_mode_t sync_mode = pbch;
+  sync_mode_t sync_mode = get_softmodem_params()->sl_mode == 2 ? psbch : pbch;
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
   UE->is_synchronized = 0;
   UE->is_synchronized_sl = 0;
 
   if (UE->UE_scan == 0) {
-
     for (i=0; i<openair0_cfg[UE->rf_map.card].rx_num_channels; i++) {
-
       LOG_I( PHY, "[SCHED][UE] Check absolute frequency DL %f, UL %f (RF card %d, oai_exit %d, channel %d, rx_num_channels %d)\n",
         openair0_cfg[UE->rf_map.card].rx_freq[UE->rf_map.chain+i],
         openair0_cfg[UE->rf_map.card].tx_freq[UE->rf_map.chain+i],
@@ -510,13 +511,11 @@ static void UE_synch(void *arg) {
         openair0_cfg[0].rx_num_channels);
 
     }
-
-    sync_mode = get_softmodem_params()->sl_mode == 2 ? psbch : pbch;
   } else {
     LOG_E(PHY,"Fixme!\n");
   }
 
-  LOG_W(PHY, "Starting sync detection\n");
+  LOG_W(PHY, "Starting sync detection and this is sync mode %d\n", sync_mode);
 
   switch (sync_mode) {
     case pbch:
@@ -572,9 +571,7 @@ static void UE_synch(void *arg) {
     case psbch:
       LOG_I(PHY, "[UE thread Synch] Running Initial SL-Synch (mode %d)\n", UE->mode);
       int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
-      LOG_I(PHY,"initial_synch_sl %d\n", initial_synch_sl);
       if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
-        LOG_I(PHY,"Found SyncRef UE\n");
 
         // rerun with new cell parameters and frequency-offset
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
@@ -615,27 +612,31 @@ void processSlotTX(void *arg) {
   uint8_t gNB_id = 0;
 
   LOG_D(PHY,"processSlotTX %d.%d => slot type %d\n",proc->frame_tx,proc->nr_slot_tx,tx_slot_type);
+  if (UE->sync_ref)
+    tx_slot_type = NR_UPLINK_SLOT;
   if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
 
     // trigger L2 to run ue_scheduler thru IF module
     // [TODO] mapping right after NR initial sync
-    if(UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
-      start_meas(&UE->ue_ul_indication_stats);
-      nr_uplink_indication_t ul_indication;
-      memset((void*)&ul_indication, 0, sizeof(ul_indication));
+    if (get_softmodem_params()->sl_mode != 2) {
+      if(UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
+        start_meas(&UE->ue_ul_indication_stats);
+        nr_uplink_indication_t ul_indication;
+        memset((void*)&ul_indication, 0, sizeof(ul_indication));
 
-      ul_indication.module_id = UE->Mod_id;
-      ul_indication.gNB_index = gNB_id;
-      ul_indication.cc_id     = UE->CC_id;
-      ul_indication.frame_rx  = proc->frame_rx;
-      ul_indication.slot_rx   = proc->nr_slot_rx;
-      ul_indication.frame_tx  = proc->frame_tx;
-      ul_indication.slot_tx   = proc->nr_slot_tx;
-      ul_indication.thread_id = proc->thread_id;
-      ul_indication.ue_sched_mode = rxtxD->ue_sched_mode;
+        ul_indication.module_id = UE->Mod_id;
+        ul_indication.gNB_index = gNB_id;
+        ul_indication.cc_id     = UE->CC_id;
+        ul_indication.frame_rx  = proc->frame_rx;
+        ul_indication.slot_rx   = proc->nr_slot_rx;
+        ul_indication.frame_tx  = proc->frame_tx;
+        ul_indication.slot_tx   = proc->nr_slot_tx;
+        ul_indication.thread_id = proc->thread_id;
+        ul_indication.ue_sched_mode = rxtxD->ue_sched_mode;
 
-      UE->if_inst->ul_indication(&ul_indication);
-      stop_meas(&UE->ue_ul_indication_stats);
+        UE->if_inst->ul_indication(&ul_indication);
+        stop_meas(&UE->ue_ul_indication_stats);
+      }
     }
 
     if (get_softmodem_params()->sl_mode == 0 && rxtxD->ue_sched_mode != NOT_PUSCH) {
@@ -653,16 +654,8 @@ void processSlotRX_SL(void *arg) {
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   fapi_nr_config_request_t *cfg = &UE->nrUE_config;
   int rx_slot_type = nr_ue_slot_select(cfg, proc->frame_rx, proc->nr_slot_rx);
-
-  if (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
-      LOG_I(PHY, "TODO: phy_procedures_nrUE_RX will be called after updating\n");
-      // TODO: phy_procedures_nrUE_RX(UE, proc, &phy_pdcch_config, &rxtxD->txFifo);
-  } else {
-      LOG_I(PHY, "TODO: Need upate to call processSlotTX\n");
-      // TODO: Need update to call phy_procedures_nrUE_TX() in processSlotTX.
-      rxtxD->ue_sched_mode = NOT_PUSCH;
-      processSlotTX(rxtxD);
-  }
+  rxtxD->ue_sched_mode = NOT_PUSCH;
+  processSlotTX(rxtxD);
 }
 
 void processSlotRX(void *arg) {
@@ -992,21 +985,22 @@ void *UE_thread_SL(void *arg) {
     for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][firstSymSamp+
                UE->frame_parms.get_samples_slot_timestamp(slot_nr,&UE->frame_parms,0)];
-
-    for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
-      txp[i] = (void *)&UE->common_vars.txdata[i][UE->frame_parms.get_samples_slot_timestamp(
-               ((slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH)%nb_slot_frame),&UE->frame_parms,0)];
+    // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
+    int time_stamp = UE->frame_parms.get_samples_slot_timestamp((((slot_nr + 3) + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame),
+                                                                  &UE->frame_parms,0);
+    for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
+      txp[i] = (void *)&UE->common_vars.txdata[i][time_stamp];
 
     int readBlockSize, writeBlockSize;
 
     if (slot_nr<(nb_slot_frame - 1)) {
       readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms);
-      writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame, &UE->frame_parms);
+      writeBlockSize=UE->frame_parms.get_samples_per_slot(((slot_nr + 3) + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame, &UE->frame_parms);
     } else {
       UE->rx_offset_diff = computeSamplesShift(UE);
       readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) -
                     UE->rx_offset_diff;
-      writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame, &UE->frame_parms)- UE->rx_offset_diff;
+      writeBlockSize=UE->frame_parms.get_samples_per_slot(((slot_nr + 3) + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame, &UE->frame_parms)- UE->rx_offset_diff;
     }
 
     AssertFatal(readBlockSize ==
@@ -1105,7 +1099,6 @@ void *UE_thread_SL(void *arg) {
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
                                               flags),"");
-
     for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
       memset(txp[i], 0, writeBlockSize);
 

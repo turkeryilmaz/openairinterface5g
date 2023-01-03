@@ -96,7 +96,12 @@ int nr_sl_generate_pss(int32_t *txdataF,
   LOG_M("pss_0.m", "pss_0",
     (void*)&txdataF[0][ssb_start_symbol*frame_parms->ofdm_symbol_size],
     frame_parms->ofdm_symbol_size, 1, 1);
+  char buffer[frame_parms->ofdm_symbol_size];
+  for (int i = 1; i < 3; i++) {
+    bzero(buffer, sizeof(buffer));
+    LOG_I(NR_PHY, "PSS %d = %s\n", i, hexdump(&txdataF[frame_parms->ofdm_symbol_size*i],
+                                       frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
+  }
 #endif
-
   return 0;
 }

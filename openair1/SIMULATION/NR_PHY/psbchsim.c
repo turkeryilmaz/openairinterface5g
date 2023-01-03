@@ -452,7 +452,7 @@ int main(int argc, char **argv)
   UE->slss->sl_timeoffsetssb_r16 = 0;
   UE->slss->slss_id = Nid_SL;
 
-  UE->is_synchronized = run_initial_sync ? 0 : 1;
+  UE->is_synchronized_sl = run_initial_sync ? 0 : 1;
   UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
 
   if (init_nr_ue_signal(UE, 1) != 0) {
