@@ -128,9 +128,6 @@ typedef enum {
 #define NUMBER_OF_NEIGHBORING_CELLs_MAX 1
 
 typedef struct {
-  int Nid_cell;
-  bool active;
-  bool perform_validation;
   int pss_search_start;
   int pss_search_length;
   uint32_t ssb_rsrp;
