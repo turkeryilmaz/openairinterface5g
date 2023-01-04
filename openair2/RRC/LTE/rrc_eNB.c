@@ -3278,7 +3278,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
   {
     uint8_t num_drb = 0;
     LTE_DL_DCCH_Message_t *dl_dcch_msg=NULL;
-    long logicalChannelIdentityT = 3;
     uper_decode(NULL,
         &asn_DEF_LTE_DL_DCCH_Message,
         (void **)&dl_dcch_msg,
@@ -3366,8 +3365,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           }
           // NN: this is the 1st DRB for this ue, so set it to 1
           DRB_config->logicalChannelIdentity = CALLOC(1, sizeof(long));
-          *(DRB_config->logicalChannelIdentity) = logicalChannelIdentityT; // value : x+2
-          logicalChannelIdentityT++;
+          *(DRB_config->logicalChannelIdentity) = *(p_drb->list.array[drb_idx]->logicalChannelIdentity); // value : x+2
           DRB_rlc_config = CALLOC(1, sizeof(*DRB_rlc_config));
           DRB_config->rlc_Config = DRB_rlc_config;
 #ifdef RRC_DEFAULT_RAB_IS_AM
