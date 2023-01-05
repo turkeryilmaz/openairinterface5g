@@ -2327,6 +2327,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
   return((enc_rval.encoded+7)/8);
 }
 
+/* do_SIB4 Function for Creating SIB4 Payload */
 uint8_t do_SIB4(uint8_t Mod_id,
                  int CC_id, BOOLEAN_t brOption,
                  RrcConfigurationReq *configuration
@@ -2377,6 +2378,7 @@ uint8_t do_SIB4(uint8_t Mod_id,
   return((enc_rval.encoded+7)/8);
 }
 
+/* do_SIB5 Function for Creating SIB5 Payload */
 uint8_t do_SIB5(uint8_t Mod_id,
                  int CC_id, BOOLEAN_t brOption,
                  RrcConfigurationReq *configuration
@@ -2406,52 +2408,70 @@ uint8_t do_SIB5(uint8_t Mod_id,
   memset(sib5_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib5_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib5;
   *sib5 = &sib5_part->choice.sib5;
-  LTE_InterFreqCarrierFreqInfo_t *InterFreqCarrierInfo;
-  InterFreqCarrierInfo = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo));
 
+  LTE_InterFreqCarrierFreqInfo_t *InterFreqCarrierInfo;
+
+  /* Handling multiple entities in InterFrequencyList for SIB5 message */
   for(int i=0;i<configuration->InterFreqCarrierFreqInfoCount;i++) {
-    InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[i].dl_CarrierFreq[CC_id];
-    InterFreqCarrierInfo->q_RxLevMin = configuration->InterFreqCarrierFreqInfo[i].q_RxLevMin[CC_id];
-    if(true == configuration->InterFreqCarrierFreqInfo[i].p_Max_Present[CC_id]) {
-      InterFreqCarrierInfo->p_Max = configuration->InterFreqCarrierFreqInfo[i].p_Max[CC_id];
+    InterFreqCarrierInfo = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo));
+    InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].dl_CarrierFreq;
+    InterFreqCarrierInfo->q_RxLevMin = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_RxLevMin;
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max_Present) {
+      InterFreqCarrierInfo->p_Max = configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max;
     }
-    InterFreqCarrierInfo->t_ReselectionEUTRA = configuration->InterFreqCarrierFreqInfo[i].t_ReselectionEUTRA[CC_id];
-    if(true == configuration->InterFreqCarrierFreqInfo[i].t_ReselectionEUTRA_SF_Present[CC_id]) {
-      InterFreqCarrierInfo->t_ReselectionEUTRA_SF = configuration->InterFreqCarrierFreqInfo[i].t_ReselectionEUTRA_SF[CC_id];
+    InterFreqCarrierInfo->t_ReselectionEUTRA = configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA;
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA_SF_Present) {
+      InterFreqCarrierInfo->t_ReselectionEUTRA_SF = configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA_SF;
     }
-    InterFreqCarrierInfo->threshX_High = configuration->InterFreqCarrierFreqInfo[i].threshX_High[CC_id];
-    InterFreqCarrierInfo->threshX_Low = configuration->InterFreqCarrierFreqInfo[i].threshX_Low[CC_id];
-    InterFreqCarrierInfo->allowedMeasBandwidth = configuration->InterFreqCarrierFreqInfo[i].allowedMeasBandwidth[CC_id];
-    InterFreqCarrierInfo->presenceAntennaPort1 = configuration->InterFreqCarrierFreqInfo[i].presenceAntennaPort1[CC_id];
-    if(true == configuration->InterFreqCarrierFreqInfo[i].cellReselectionPriority_Present[CC_id]) {
-      InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[i].cellReselectionPriority[CC_id];
+    InterFreqCarrierInfo->threshX_High = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_High;
+    InterFreqCarrierInfo->threshX_Low = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Low;
+    InterFreqCarrierInfo->allowedMeasBandwidth = configuration->InterFreqCarrierFreqInfo[CC_id][i].allowedMeasBandwidth;
+    InterFreqCarrierInfo->presenceAntennaPort1 = configuration->InterFreqCarrierFreqInfo[CC_id][i].presenceAntennaPort1;
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority_Present) {
+      InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority;
     }
+    // TODO: Need to handle neighCellConfig IE properly
     InterFreqCarrierInfo->neighCellConfig.size =  0;//1;
     //InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,1);
     InterFreqCarrierInfo->neighCellConfig.bits_unused = 0;
     InterFreqCarrierInfo->neighCellConfig.buf = NULL;//[0] = 0x01<<4;
-    if(true == configuration->InterFreqCarrierFreqInfo[i].q_OffsetFreqPresent[CC_id]) {
-      InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[i].q_OffsetFreq[CC_id];
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreqPresent) {
+      InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreq;
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList_Present[CC_id]) {
-      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList,configuration->InterFreqCarrierFreqInfo[i].interFreqNeighCellList[CC_id]);
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList_Present) {
+      InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
+      InterFreqCarrierInfo->interFreqNeighCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList;
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList_Present[CC_id]) {
-      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList,configuration->InterFreqCarrierFreqInfo[i].interFreqBlackCellList[CC_id]);
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList_Present) {
+      InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
+      InterFreqCarrierInfo->interFreqBlackCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList;
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9_Present[CC_id]) {
-      InterFreqCarrierInfo->ext1->q_QualMin_r9 = configuration->InterFreqCarrierFreqInfo[i].q_QualMin_r9[CC_id];
+    if ((true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) ||
+    (true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present)) {
+      InterFreqCarrierInfo->ext1 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1));
+       LOG_A(RRC,"add ext1 for CC_ID %d\n ",CC_id);
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9_Present[CC_id]) {
-      InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_HighQ_r9;
-      InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[i].threshX_Q_r9[CC_id].threshX_LowQ_r9;
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present) {
+      InterFreqCarrierInfo->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
+      InterFreqCarrierInfo->ext1->q_QualMin_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9;
     }
-    if(true == configuration->InterFreqCarrierFreqInfo[i].q_QualMinWB_r11_Present[CC_id]) {
-      InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[i].q_QualMinWB_r11[CC_id];
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) {
+      InterFreqCarrierInfo->ext1->threshX_Q_r9 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1__threshX_Q_r9));
+      InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_HighQ_r9;
+      InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_LowQ_r9;
+      LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
+              InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9,
+              InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
-    ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList.list,InterFreqCarrierInfo);
+    if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11_Present) {
+       InterFreqCarrierInfo->ext2 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext2));
+       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
+      InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11;
+    }
+  ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
   }
 
+  // TODO: Need to handle all remaining ext and lateNonCriticalExtension IE properly
   (*sib5)->lateNonCriticalExtension = NULL;
   (*sib5)->ext1 = NULL;
   (*sib5)->ext2 = NULL;

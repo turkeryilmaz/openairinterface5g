@@ -858,6 +858,7 @@ check_install_oai_software() {
   fi
 
     install_asn1c_from_source $1
+    install_simde_from_source $1
     $SUDO rm -fr /opt/ssh
     $SUDO git clone https://gist.github.com/2190472.git /opt/ssh
 }
@@ -954,6 +955,36 @@ do
 done
 }
 
+install_simde_from_source(){
+    echo_info "\nInstalling SIMDE from source without test cases (header files only)"
+    cd /tmp
+    $SUDO rm -rf /tmp/simde
+    git clone https://github.com/simd-everywhere/simde-no-tests.git /tmp/simde
+    cd /tmp/simde
+    # brute force copy into /usr/include
+    $SUDO \cp -rv ../simde /usr/include
+    $SUDO patch -p1 /usr/include/simde/x86/avx.h << FIN
+/usr/include/simde/x86/avx.h | 5 +++++
+1 file changed, 5 insertions(+)
+
+diff --git a/usr/icnlude/x86/avx.h b/usr/include/x86/avx.h
+index a10974c..a7fcf8c 100644
+--- a/usr/include/x86/avx.h
++++ b/usr/include/x86/avx.h
+@@ -3643,6 +3643,11 @@ simde__m256i simde_mm256_insertf128_si256(simde__m256i a, simde__m128i b, int im
+
+   return simde__m256i_from_private(a_);
+ }
++
++#if defined(SIMDE_X86_AVX_NATIVE)
++  #define simde_mm256_insertf128_si256(a, b, imm8) _mm256_insertf128_si256(a, b, imm8)
++#endif
++
+ #if defined(SIMDE_X86_AVX_ENABLE_NATIVE_ALIASES)
+   #undef _mm256_insertf128_si256
+   #define _mm256_insertf128_si256(a, b, imm8) simde_mm256_insertf128_si256(a, b, imm8)
+FIN
+}
 
 # get from http://www.linuxjournal.com/content/validating-ip-address-bash-script
 validate_ip() {

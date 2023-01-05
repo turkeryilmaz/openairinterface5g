@@ -338,7 +338,8 @@ init_SI(
           PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
           carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.cyclicShift);
 
-    if(true == configuration->sib4_Present) {
+    /* Check if SIB4 present for particular CC Then only proceed for creating SIB4 payload */
+    if(true == configuration->sib4_Present[CC_id]) {
       if(NULL == carrier->SIB4) {
         carrier->SIB4 = (uint8_t *) malloc16(64);
       }
@@ -352,7 +353,8 @@ init_SI(
       AssertFatal(carrier->sizeof_SIB4 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB4 == 255");
     }
 
-    if(true == configuration->sib5_Present) {
+    /* Check if SIB5 present for particular CC Then only proceed for creating SIB5 payload */
+    if(true == configuration->sib5_Present[CC_id]) {
       if(NULL == carrier->SIB5) {
         carrier->SIB5 = (uint8_t *) malloc16(64);
       }
@@ -4138,40 +4140,57 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     int8_t h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
     if (h_rc == HASH_TABLE_OK)
     {
-      kRRCenc = MALLOC(16);
-      kRRCint = MALLOC(32);
-      kUPenc = MALLOC(16);
-      if(pdcp_p->kRRCenc) memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
-      if(pdcp_p->kRRCint) memcpy(kRRCint, pdcp_p->kRRCint, 32);
-      if(pdcp_p->kUPenc) memcpy(kUPenc, pdcp_p->kUPenc, 16);
-      security_modeP = (pdcp_p->cipheringAlgorithm |(pdcp_p->integrityProtAlgorithm << 4) );
-      LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", ctxt_pP->rnti, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
+      security_modeP = (pdcp_p->cipheringAlgorithm | (pdcp_p->integrityProtAlgorithm << 4));
+      if (security_modeP)
+      {       
+        if (pdcp_p->kRRCenc)
+        {
+          kRRCenc = MALLOC(16);
+          memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
+        }
+        if (pdcp_p->kRRCint)
+        {
+          kRRCint = MALLOC(32);
+          memcpy(kRRCint, pdcp_p->kRRCint, 32);
+        }
+        if (pdcp_p->kUPenc)
+        {
+          kUPenc = MALLOC(16);
+          memcpy(kUPenc, pdcp_p->kUPenc, 16);
+        }
 
-      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
-      h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+        LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", 
+              ctxt_pP->rnti, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
-      if (h_rc == HASH_TABLE_OK)
-      {
-        LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rnti);
-        pdcp_config_set_security(
-            ctxt_pP,
-            pdcp_p,
-            DCCH1,
-            DCCH1 + 2,
-            security_modeP,
-            kRRCenc,
-            kRRCint,
-            kUPenc);
+        key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
+        h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
+
+        if (h_rc == HASH_TABLE_OK)
+        {
+          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rnti);
+          pdcp_config_set_security(
+              ctxt_pP,
+              pdcp_p,
+              DCCH1,
+              DCCH1 + 2,
+              security_modeP,
+              kRRCenc,
+              kRRCint,
+              kUPenc);
+        }
+        else
+        {
+          LOG_E(RRC,
+                PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH1 %u\n",
+                PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
+                DCCH1);
+        }
       }
       else
       {
-        LOG_E(RRC,
-              PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH %u\n",
-              PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
-              DCCH);
+        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rnti);
       }
     }
-
     else
     {
       LOG_A(RRC, "OSA Can't find Hash of UE rnti %x\n", rnti);
@@ -7912,18 +7931,25 @@ void rrc_eNB_as_security_configuration_req(
       pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
       ul_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn;
       dl_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn;
-      if(((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) || ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn))
+      /* Apply the security key for all the configured RBs SQN is check is applicable for SRB1.
+       * For SRB 2 the security is activated when the SRB is created already, as UE will apply the 
+       * ciphering and integrity for all RBs.
+       */
+      if(((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) || 
+         ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn) || 
+         (rbid_ == 2))
       {
         pdcp_config_set_security(
           ctxt_pP,
           pdcp_p,
-          DCCH,
-          DCCH+2,
+          rbid_,
+          rbid_+2,
           (ASSecConfReq->Ciphering.ciphering_algorithm ) |(ASSecConfReq->Integrity.integrity_algorithm << 4),
           ASSecConfReq->Ciphering.kRRCenc,
           ASSecConfReq->Integrity.kRRCint,
           ASSecConfReq->Ciphering.kUPenc);
         rb_idx++;
+          LOG_D(RRC,"AS Security configuration received rb_id %d \n",rb_idx);
       } else {
         LOG_A(RRC,"AS Security configuration received from TTCN didn't applied \n");
       }
@@ -10575,12 +10601,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       if (RC.ss.mode >= SS_SOFTMODEM)
       {
 #ifndef NR_ENABLE
-        pdcp_t  *pdcp_p   = NULL;
-        hashtable_rc_t  h_rc;
-        hash_key_t  key = HASHTABLE_NOT_A_KEY_VALUE;
-        uint8_t  rb_idx = 0;
-        uint8_t rbid_;
-        ss_get_pdcp_cnt_t  pc;
+
         LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d instance %ld\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
             SS_RRC_PDU_REQ(msg_p).rnti,instance);
 
