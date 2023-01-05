@@ -784,7 +784,7 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
                    UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms),
                    UE->frame_parms.nb_antennas_rx), "");
 
-      if (IS_SOFTMODEM_RFSIM)
+      if (IS_SOFTMODEM_RFSIM && !get_softmodem_params()->sync_ref)
         dummyWrite(UE,*timestamp, UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms));
       if (toTrash)
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
@@ -804,7 +804,7 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
       int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
       // we write before read because gNB waits for UE to write and both executions halt
       // this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
-      if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
+      if (IS_SOFTMODEM_RFSIM && !get_softmodem_params()->sync_ref) dummyWrite(UE,*timestamp, unitTransfer);
       AssertFatal(unitTransfer ==
                   UE->rfdevice.trx_read_func(&UE->rfdevice,
                                              timestamp,

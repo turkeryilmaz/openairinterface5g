@@ -311,7 +311,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
       }
-      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
+      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
     } else {
       LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);

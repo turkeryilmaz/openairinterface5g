@@ -436,8 +436,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     //     printf("unscrambling psbch_a[%d] = %x \n", i,psbch_a[i]);
     printf("[PSBCH] decoder payload[%d] = %x\n",i,result->decoded_output[i]);
   }
-
-#endif
+  // TODO: Handle MAC Layer on RX
   nr_downlink_indication_t dl_indication;
   fapi_nr_rx_indication_t *rx_ind = calloc(1, sizeof(*rx_ind));
   uint16_t number_pdus = 1;
@@ -449,6 +448,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     ue->if_inst->dl_indication(&dl_indication, NULL);
   else
     free(rx_ind); // dl_indication would free(), so free() here if not called
+#endif
 
   return 0;
 }
