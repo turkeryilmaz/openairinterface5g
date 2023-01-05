@@ -1219,7 +1219,7 @@ void nr_generate_Msg2(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
     long BWPStart = 0;
     long BWPSize = 0;
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = NULL;
-    LOG_D(NR_MAC, "controlResourceSetId:%d locationAndBandwidth:%d genericParameters.locationAndBandwidth:%d \n",
+    LOG_D(NR_MAC, "controlResourceSetId:%ld locationAndBandwidth:%ld genericParameters.locationAndBandwidth:%ld \n",
         *ss->controlResourceSetId,
         genericParameters->locationAndBandwidth,
         scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth);
@@ -1714,7 +1714,7 @@ void nr_generate_Msg4(module_id_t module_idP, int CC_id, frame_t frameP, sub_fra
                                      rbSize, nrOfSymbols, N_PRB_DMRS * N_DMRS_SLOT, 0, tb_scaling,1) >> 3;
     } while (harq->tb_size < ra->mac_pdu_length && mcsIndex<=28);
 
-		LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%d BWPStart:%d startSymbolIndex:%d nrOfSymbols:%d\n",
+		LOG_D(NR_MAC, "rbSize:%d rbStart:%d BWPSize:%ld BWPStart:%ld startSymbolIndex:%d nrOfSymbols:%d\n",
 				rbSize,
 				rbStart,
 				BWPSize,
