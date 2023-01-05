@@ -3365,7 +3365,10 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           }
           // NN: this is the 1st DRB for this ue, so set it to 1
           DRB_config->logicalChannelIdentity = CALLOC(1, sizeof(long));
-          *(DRB_config->logicalChannelIdentity) = *(p_drb->list.array[drb_idx]->logicalChannelIdentity); // value : x+2
+          if (p_drb->list.array[drb_idx]->logicalChannelIdentity != NULL)
+            *(DRB_config->logicalChannelIdentity) = *(p_drb->list.array[drb_idx]->logicalChannelIdentity);
+          else
+            *(DRB_config->logicalChannelIdentity) = p_drb->list.array[drb_idx]->drb_Identity + 2; // value : x+2
           DRB_rlc_config = CALLOC(1, sizeof(*DRB_rlc_config));
           DRB_config->rlc_Config = DRB_rlc_config;
 #ifdef RRC_DEFAULT_RAB_IS_AM
