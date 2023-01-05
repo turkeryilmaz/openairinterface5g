@@ -341,6 +341,10 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     *mnc1=(mnc/10)%10;
     asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc2);
     *mnc2=(mnc)%10;
+
+    if (nr_plmn->mcc != NULL)
+    RRM_FREE(nr_plmn->mcc);
+
   }//end plmn loop
 
   nr_plmn_info->cellIdentity.buf = CALLOC(1,5);
@@ -419,7 +423,7 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   uint32_t absolute_diff = 0;	
   if (RC.ss.mode == SS_SOFTMODEM)
   {
-    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%d ", __FUNCTION__, absoluteFrequencySSB);
+    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%ld ", __FUNCTION__, absoluteFrequencySSB);
     absoluteFrequencySSB = *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
     absolute_diff = absoluteFrequencySSB - configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
   }
@@ -547,7 +551,7 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   asn1cSequenceAdd(Z8->list,
       long,
       ZoneEight);
-  asn1cCallocOne(ZoneEight, 0);
+  //asn1cCallocOne(ZoneEight, 0);
 
   asn1cCalloc(ServCellCom->uplinkConfigCommon, UL)
     asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
@@ -674,6 +678,47 @@ The first/ leftmost bit corresponds to the first SS/PBCH block index in the grou
     return(-1);
   }
 
+  if (sib1->ue_TimersAndConstants != NULL)
+    RRM_FREE(sib1->ue_TimersAndConstants);
+
+  if (ServCellCom->tdd_UL_DL_ConfigurationCommon != NULL)
+    RRM_FREE(ServCellCom->tdd_UL_DL_ConfigurationCommon);
+
+  if (ServCellCom->ssb_PositionsInBurst.groupPresence != NULL)
+    RRM_FREE(ServCellCom->ssb_PositionsInBurst.groupPresence);
+
+  if (ZoneEight != NULL)
+    RRM_FREE(ZoneEight);
+
+  if (Z8 != NULL)
+    RRM_FREE(Z8);
+
+  if (P0 != NULL)
+    RRM_FREE(P0);
+
+  if (sib1->servingCellConfigCommon)
+    RRM_FREE(sib1->servingCellConfigCommon);
+  if (nr_plmn_info->trackingAreaCode->buf != NULL)
+    RRM_FREE(nr_plmn_info->trackingAreaCode->buf);
+
+  if (nr_plmn_info->trackingAreaCode != NULL)
+    RRM_FREE(nr_plmn_info->trackingAreaCode);
+
+  if (nr_plmn_info->cellIdentity.buf != NULL)
+    RRM_FREE(nr_plmn_info->cellIdentity.buf);
+
+  if (sib1->cellSelectionInfo != NULL)
+    RRM_FREE(sib1->cellSelectionInfo);
+
+  if (sib1_message->message.choice.c1->choice.systemInformationBlockType1 != NULL)
+    RRM_FREE(sib1_message->message.choice.c1->choice.systemInformationBlockType1);
+
+  if (sib1_message->message.choice.c1)
+    RRM_FREE(sib1_message->message.choice.c1);
+
+  if (sib1_message != NULL)
+    RRM_FREE(sib1_message);
+
   return((enc_rval.encoded+7)/8);
 }
 
@@ -722,6 +767,27 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformation Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
   LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB23, 100);
+
+  if (sib3->choice.sib3 != NULL)
+    RRM_FREE(sib3->choice.sib3);
+
+  if (sib3 != NULL)
+    RRM_FREE(sib3);
+
+  if (sib2->choice.sib2 != NULL)
+    RRM_FREE(sib2->choice.sib2);
+
+  if (sib2 != NULL)
+    RRM_FREE(sib2);
+
+  if (sib->criticalExtensions.choice.systemInformation != NULL)
+    RRM_FREE(sib->criticalExtensions.choice.systemInformation);
+
+  if (sib_message->message.choice.c1 != NULL)
+    RRM_FREE(sib_message->message.choice.c1);
+
+  if (sib_message != NULL)
+    RRM_FREE(sib_message);
 
   if (enc_rval.encoded==-1) {
     return(-1);
