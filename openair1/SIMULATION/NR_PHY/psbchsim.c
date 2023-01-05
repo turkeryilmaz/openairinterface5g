@@ -584,7 +584,7 @@ int main(int argc, char **argv)
         }
       } else {
         UE_nr_rxtx_proc_t proc = {0};
-        UE->rx_offset = 0;
+        UE->rx_offset_sl = 0;
         uint8_t ssb_index = 0;
         const int estimateSz = 7 * 2 * sizeof(int) * UE->frame_parms.ofdm_symbol_size;
         __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[UE->frame_parms.nb_antennas_rx][estimateSz];

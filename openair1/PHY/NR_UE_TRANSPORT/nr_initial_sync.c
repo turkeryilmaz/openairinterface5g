@@ -310,6 +310,16 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         nr_gold_psbch(ue);
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
+        int mu = fp->numerology_index;
+        int n_symb_prefix0 = (ue->symbol_offset / (7 * (1 << mu))) + 1;
+        int sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) +
+                             (ue->symbol_offset-n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+        if (ue->ssb_offset < sync_pos_frame) {
+          ue->rx_offset_sl = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
+          ue->init_sync_frame += 1;
+        } else {
+          ue->rx_offset_sl = ue->ssb_offset - sync_pos_frame;
+        }
       }
       LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
@@ -321,7 +331,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 
   if (ret == 0) {
     LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
-          ue->Mod_id, ue->rx_offset, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
+          ue->Mod_id, ue->rx_offset_sl, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
     if (ue->UE_scan_carrier == 0) {
       ue->psbch_vars[0]->pdu_errors_conseq = 0;
     }
