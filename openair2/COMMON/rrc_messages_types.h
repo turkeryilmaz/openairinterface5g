@@ -336,7 +336,7 @@ typedef struct InterFreqCarrierFreqInfo_s {
   bool         presenceAntennaPort1;
   bool         cellReselectionPriority_Present;
   long         *cellReselectionPriority;/* OPTIONAL */
-  LTE_NeighCellConfig_t neighCellConfig;
+  uint8_t     neighCellConfig;
   bool         q_OffsetFreqPresent;
   e_LTE_Q_OffsetRange         *q_OffsetFreq;/* OPTIONAL */
   bool                            interFreqNeighCellList_Present;
@@ -478,6 +478,9 @@ typedef struct RrcConfigurationReq_s {
   long     cellReselectionPriority[MAX_NUM_CCs];
   long     sib3_q_RxLevMin[MAX_NUM_CCs];
   long     t_ReselectionEUTRA[MAX_NUM_CCs];
+  uint8_t neighCellConfig[MAX_NUM_CCs];
+  long     *sib3_q_QualMin[MAX_NUM_CCs];
+  long     *sib3_threshServingLowQ[MAX_NUM_CCs];
 
   //SIB4
   bool                       sib4_Present[MAX_NUM_CCs];
