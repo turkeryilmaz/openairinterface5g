@@ -23,5 +23,6 @@
 #define F1AP_CU_TASK_H_
 
 void *F1AP_CU_task(void *arg);
+void create_gtpInst(instance_t instance, eth_params_t *IPaddrs);
 
 #endif /* F1AP_CU_TASK_H_ */
