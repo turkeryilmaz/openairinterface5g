@@ -2079,7 +2079,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     mac_pkt.rnti      = ra->rnti;
     mac_pkt.harq_pid  = current_harq_pid;
     mac_pkt.preamble  = -1; /* TODO */
-    LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->tb, (int)harq->tb_size);
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->tb, (int)harq->tb_size);
 
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];
