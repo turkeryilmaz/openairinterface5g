@@ -48,23 +48,16 @@ static instance_t cu_task_create_gtpu_instance(eth_params_t *IPaddrs) {
   return gtpv1Init(tmp);
 }
 
-static void cu_task_handle_sctp_association_ind(instance_t instance, sctp_new_association_ind_t *sctp_new_association_ind,
-    eth_params_t *IPaddrs) {
+static void cu_task_handle_sctp_association_ind(instance_t instance, sctp_new_association_ind_t *sctp_new_association_ind)
+{
   createF1inst(true, instance, NULL);
+
   // save the assoc id
-  f1ap_setup_req_t *f1ap_cu_data=f1ap_req(true, instance);
-  f1ap_cu_data->assoc_id         = sctp_new_association_ind->assoc_id;
-  f1ap_cu_data->sctp_in_streams  = sctp_new_association_ind->in_streams;
+  f1ap_setup_req_t *f1ap_cu_data = f1ap_req(true, instance);
+  f1ap_cu_data->assoc_id = sctp_new_association_ind->assoc_id;
+  f1ap_cu_data->sctp_in_streams = sctp_new_association_ind->in_streams;
   f1ap_cu_data->sctp_out_streams = sctp_new_association_ind->out_streams;
   f1ap_cu_data->default_sctp_stream_id = 0;
-  if (RC.nrrrc[instance]->node_type != ngran_gNB_CUCP) {
-    getCxt(CUtype, instance)->gtpInst = cu_task_create_gtpu_instance(IPaddrs);
-    AssertFatal(getCxt(CUtype, instance)->gtpInst > 0, "Failed to create CU F1-U UDP listener");
-  } else
-    LOG_I(F1AP, "In F1AP connection, don't start GTP-U, as we have also E1AP\n");
-  // Fixme: fully inconsistent instances management
-  // dirty global var is a bad fix
-  CUuniqInstance=getCxt(CUtype, instance)->gtpInst;
 }
 
 static void cu_task_handle_sctp_association_resp(instance_t instance, sctp_new_association_resp_t *sctp_new_association_resp) {
@@ -113,6 +106,13 @@ static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr) {
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
 }
 
+void create_gtpInst(instance_t instance, eth_params_t *IPaddrs)
+{
+  getCxt(CUtype, instance)->gtpInst = cu_task_create_gtpu_instance(IPaddrs);
+  AssertFatal(getCxt(CUtype, instance)->gtpInst > 0, "Failed to create CU F1-U UDP listener");
+  CUuniqInstance = getCxt(CUtype, instance)->gtpInst;
+}
+
 void *F1AP_CU_task(void *arg) {
   MessageDef *received_msg = NULL;
   int         result;
@@ -120,12 +120,12 @@ void *F1AP_CU_task(void *arg) {
   // no RLC in CU, initialize mem pool for PDCP
   pool_buffer_init();
   itti_mark_task_ready(TASK_CU_F1);
-  eth_params_t *IPaddrs;
 
-  // Hardcoded instance id!
-  IPaddrs = &RC.nrrrc[0]->eth_params_s;
-
-  cu_task_send_sctp_init_req(0, IPaddrs->my_addr);
+  eth_params_t *IPaddrs[RC.nb_nr_inst];
+  for (int mod_id = 0; mod_id < RC.nb_nr_inst; mod_id++) {
+    IPaddrs[mod_id] = &RC.nrrrc[mod_id]->eth_params_s;
+    cu_task_send_sctp_init_req(mod_id, IPaddrs[mod_id]->my_addr);
+  }
 
   while (1) {
     itti_receive_msg(TASK_CU_F1, &received_msg);
@@ -134,8 +134,7 @@ void *F1AP_CU_task(void *arg) {
     switch (ITTI_MSG_ID(received_msg)) {
       case SCTP_NEW_ASSOCIATION_IND:
         cu_task_handle_sctp_association_ind(ITTI_MSG_ORIGIN_INSTANCE(received_msg),
-                                            &received_msg->ittiMsg.sctp_new_association_ind,
-                                            IPaddrs);
+                                            &received_msg->ittiMsg.sctp_new_association_ind);
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:

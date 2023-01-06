@@ -34,6 +34,7 @@
 #include "f1ap_encoder.h"
 #include "f1ap_itti_messaging.h"
 #include "f1ap_cu_interface_management.h"
+#include "f1ap_cu_task.h"
 
 int CU_send_RESET(instance_t instance, F1AP_Reset_t *Reset) {
   AssertFatal(1==0,"Not implemented yet\n");
@@ -144,6 +145,16 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance,
     
     // LTS: FIXME cell_type is not a attribute of a cell in the data structure !!!!!!!!!!
     f1ap_req(true, instance)->cell_type = CELL_MACRO_GNB;
+
+    eth_params_t *IPaddrs = NULL;
+    for (int mod_id = 0; mod_id < RC.nb_nr_inst; mod_id++) {
+      if (req->cell[i].nr_pci == RC.nrrrc[mod_id]->carrier.physCellId) {
+        IPaddrs = &RC.nrrrc[mod_id]->eth_params_s;
+        break;
+      }
+    }
+    AssertFatal(IPaddrs != NULL, "IPaddrs is NULL!\n");
+    create_gtpInst(instance, IPaddrs);
 
     // FDD Cells
     if (servedCellInformation->nR_Mode_Info.present==F1AP_NR_Mode_Info_PR_fDD) {
