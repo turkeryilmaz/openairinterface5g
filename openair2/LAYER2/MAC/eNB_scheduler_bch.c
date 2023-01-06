@@ -287,7 +287,7 @@ schedule_SIB1_MBMS(module_id_t module_idP,
     mac_pkt.harq_pid  = 0;
     mac_pkt.preamble  = -1; /* TODO */
 
-    LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[0].payload[0], (int)bcch_sdu_length);
+    LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[0].payload[0], (int)bcch_sdu_length);
 
     if (cc->tdd_Config != NULL) { //TDD
       LOG_D(MAC,
@@ -519,7 +519,7 @@ schedule_SIB1_BR(module_id_t module_idP,
     mac_pkt.rnti      = 0xffff;
     mac_pkt.harq_pid  = 0;
     mac_pkt.preamble  = -1; /* TODO */
-    LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[0].payload[0], (int)bcch_sdu_length);
+    LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[0].payload[0], (int)bcch_sdu_length);
 
     if (cc->tdd_Config != NULL) { //TDD
       LOG_D(MAC,
@@ -711,7 +711,7 @@ schedule_SI_BR(module_id_t module_idP, frame_t frameP,
             mac_pkt.rnti      = 0xffff;
             mac_pkt.harq_pid  = 0;
             mac_pkt.preamble  = -1; /* TODO */
-            LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[i+1].payload[0], (int)bcch_sdu_length);
+            LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_BR_pdu[i+1].payload[0], (int)bcch_sdu_length);
 
             if (cc->tdd_Config != NULL) { //TDD
               LOG_D(MAC, "[eNB] Frame %d : Scheduling BCCH-BR %d->DLSCH (TDD) for CC_id %d SI-BR %d bytes\n",
@@ -1245,7 +1245,7 @@ schedule_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP)
         mac_pkt.rnti      = 0xffff;
         mac_pkt.harq_pid  = 0;
         mac_pkt.preamble  = -1; /* TODO */
-        LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_pdu.payload[0], (int)bcch_sdu_length);
+        LOG_MAC_P(OAILOG_TRACE, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&cc->BCCH_pdu.payload[0], (int)bcch_sdu_length);
 
         if (cc->tdd_Config != NULL) { //TDD
           LOG_D(MAC,

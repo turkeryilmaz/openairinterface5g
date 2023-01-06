@@ -148,7 +148,7 @@ rx_sdu(const module_id_t enb_mod_idP,
   mac_pkt.harq_pid  = 0;
   mac_pkt.preamble  = -1; /* TODO */
 
-  LOG_MAC_P(OAILOG_INFO, "LTE_MAC_UL_PDU", frameP, subframeP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+  LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_UL_PDU", frameP, subframeP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
 
   if (UE_id != -1) {
     UE_scheduling_control = &UE_info->UE_sched_ctrl[UE_id];
