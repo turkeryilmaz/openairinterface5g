@@ -175,7 +175,7 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
 
   // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
-  if (get_softmodem_params()->sl_mode != 2) {
+  if (1) {
     // intialize transport
     init_nr_ue_transport(ue);
 
@@ -904,6 +904,7 @@ void *UE_thread_SL(void *arg) {
         start_rx_stream = 0;
       } else {
         LOG_I(PHY, "Sync UE: sync_running_sl still in readFrame due to INVALID res.\n");
+        LOG_I(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
         readFrame(UE, &timestamp, true);
         trashed_frames += 2;
         continue;
@@ -970,8 +971,8 @@ void *UE_thread_SL(void *arg) {
     int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
     // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
     int slot_nr_tx = ((slot_nr + 3) + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
-    int write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, 0);
-    int read_time_stamp = firstSymSamp + UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
+    uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, 0);
+    uint64_t read_time_stamp = firstSymSamp + UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
@@ -986,19 +987,31 @@ void *UE_thread_SL(void *arg) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms) - UE->rx_offset_diff;
     }
-
-    AssertFatal(readBlockSize ==
+    LOG_I(NR_PHY, "firstSymSamp %d get_samp_slot_ts %d total %d before read\n", firstSymSamp,
+          UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0),
+          read_time_stamp);
+    LOG_I(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
+    AssertFatal(readBlockSize == //the function is taking place later (current time)
                 UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                           &timestamp,
+                                           &timestamp, //time of the sample in rxp
                                            rxp,
                                            readBlockSize,
                                            UE->frame_parms.nb_antennas_rx), "");
+    LOG_I(NR_PHY, "This is the timestamp after read %d\n", timestamp); //time of current sample selection of first sample of block
+    LOG_I(NR_PHY, "This is the timestamp+readBlockSize after read %d\n", timestamp + readBlockSize); //time of the last sample of the block
+    // timestamp + readBlockSize = is in the past from where we currently are (hardware tick number).
+    // The machine will be reiving these samples, some time in the future, and the ts associated with the sample
+    LOG_I(NR_PHY, "firstSymSamp %d get_samp_slot_ts %d total %d\n", firstSymSamp,
+          UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0),
+          read_time_stamp);
+    //timestamp = timestamp + readBlockSize;
 
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
       int first_symbols = UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0;
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
+        LOG_I(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
         AssertFatal(first_symbols ==
                     UE->rfdevice.trx_read_func(&UE->rfdevice,
                                                &ignore_timestamp,
@@ -1032,22 +1045,34 @@ void *UE_thread_SL(void *arg) {
     if (UE->sync_ref == 0 && decoded_frame_rx > 0 && decoded_frame_rx != curMsg->proc.frame_rx)
       LOG_E(NR_PHY, "Sync UE: Decoded frame index (%d) is not compatible with current context (%d), "
                     "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
-
+    // writeTimestamp = timestamp + samplerate (check from logs) + tx_sample_advance
     // use previous timing_advance value to compute writeTimestamp
-    writeTimestamp = timestamp +
-                     UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX - NR_RX_NB_TH) -
+    writeTimestamp = timestamp + 122880000 +
+                     UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, DURATION_RX_TO_TX - NR_RX_NB_TH) -
                      firstSymSamp - openair0_cfg[0].tx_sample_advance - UE->N_TA_offset - timing_advance;
+    // writeTimestamp *= 10000;
+    LOG_I(NR_PHY, "This is the writetimestamp %d and timestamp %d, calced %d\n", writeTimestamp, timestamp,
+          UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX - NR_RX_NB_TH) );
+    // This writeTimestamp is WHEN the USRP will send the samples. If this value is not far enough in advance, we will see the LLLLs.
+    // REASON #1 FOR LLLLL: The current time is ahead of the writetimestamp (impossible) or very very close to the writeTimestamp (tough to accomplish)
+    // LLLLs can happen when we are not emmitting - have to be positive we are actually sending data, even 0s is ok.
+    // We could also flag when SSB is acti
+    //REASON #2 FOR LLLLLL: USRP is told we have something to emit, but we do not have anything to emit (meaning, the writetimestamp does not correlate with a transmission)
+    // writeTimestamp (samples/symbol)
+    // If we are in continuous emmission, then the writeTimeStamp would be timestamp + writeBlockSize and it will
+    // continuously update. Each new writeTimeStamp += writeBlocksize (old block size). the amount of noise get amplified in continuous
 
+    // if not in continueout emmission (TDD mode! RX/TX on same freq so we can use freq filters)
     // but use current UE->timing_advance value to compute writeBlockSize
     if (UE->timing_advance != timing_advance) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
     }
+    LOG_I(NR_PHY, "This is the writetimestamp %d after ta adjust\n", writeTimestamp);
 
     int flags = 1;
-    if (get_softmodem_params()->sl_mode != 2 &&
-        openair0_cfg[0].duplex_mode == duplex_mode_TDD &&
-        !get_softmodem_params()->continuous_tx) {
+    if (//get_softmodem_params()->sl_mode != 2 &&
+        0) {
       uint8_t tdd_period = mac->phy_config.config_req.tdd_table.tdd_period_in_slots;
       int nrofUplinkSlots, nrofUplinkSymbols;
       if (mac->scc) {
@@ -1071,13 +1096,13 @@ void *UE_thread_SL(void *arg) {
     if (flags || IS_SOFTMODEM_RFSIM) {
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
-                                              writeTimestamp,
+                                              writeTimestamp, //writeTimestamp =+ blocksize we are sending each time if continuous
                                               txp,
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
-                                              flags), "");
+                                              3), "");
     }
-#ifdef DEBUG_PHY_SL_PROC
+#if 0
     char buffer[UE->frame_parms.ofdm_symbol_size];
     for (int i = 0; i < 13; i++) {
       bzero(buffer, sizeof(buffer));

@@ -807,6 +807,9 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
     
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, (timestamp+ru->ts_offset-ru->openair0_cfg.tx_sample_advance)&0xffffffff );
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 1 );
+    LOG_I(PHY, "timestamp %d,ru->ts_offset %d, tx_sample_advance %d, sf_extension %d\n",
+          timestamp, ru->ts_offset, ru->openair0_cfg.tx_sample_advance, sf_extension);
+
       // prepare tx buffer pointers
     txs = ru->rfdevice.trx_write_func(&ru->rfdevice,
                                       timestamp+ru->ts_offset-ru->openair0_cfg.tx_sample_advance-sf_extension,

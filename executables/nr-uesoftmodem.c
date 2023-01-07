@@ -408,6 +408,7 @@ void init_openair0(void) {
     uint64_t dl_carrier, ul_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
+    LOG_I(HW, "This is samples_p_sf %d\n", frame_parms->samples_per_subframe);
     openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
     openair0_cfg[card].samples_per_frame = frame_parms->samples_per_frame;
 
@@ -571,23 +572,31 @@ int main( int argc, char **argv ) {
       if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
         mac->nr_band = nr_band;
+        if (get_softmodem_params()->sl_mode == 2) {
+          UE[CC_id]->slss = calloc(1, sizeof(*UE[CC_id]->slss));
+          int len = sizeof(UE[CC_id]->slss->sl_mib) / sizeof(UE[CC_id]->slss->sl_mib[0]);
+          for (int i = 0; i < len; i++) {
+            UE[CC_id]->slss->sl_mib[i] = 0;
+          }
+          #if 1
+          UE[CC_id]->slss->sl_mib_length = 32;
+          UE[CC_id]->slss->sl_numssb_withinperiod_r16 = 1;
+          UE[CC_id]->slss->sl_timeinterval_r16 = 0;
+          UE[CC_id]->slss->sl_timeoffsetssb_r16 = 0;
+          #endif
+        }
         nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
                                   downlink_frequency[CC_id][0],
                                   uplink_frequency_offset[CC_id][0],
                                   get_softmodem_params()->numerology,
                                   nr_band);
       }
-      else{
+      else {
         if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
           mac->if_module->phy_config_request(&mac->phy_config);
-        LOG_I(NR_MAC, "This is get_softmodem_params()->sl_mode %d\n", get_softmodem_params()->sl_mode);
-        if (get_softmodem_params()->sl_mode == 2) {
-          nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
-        } else {
           fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
           nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config,
               *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
-        }
       }
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
