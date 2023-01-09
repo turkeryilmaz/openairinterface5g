@@ -986,22 +986,20 @@ void *UE_thread_SL(void *arg) {
       txp[i] = (void *)&UE->common_vars.txdata[i][write_time_stamp];
 
     int readBlockSize, writeBlockSize;
-    if (1) {
+    if (slot_nr < (nb_slot_frame - 1)) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms);
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms);
     } else {
       UE->rx_offset_diff = computeSamplesShift(UE);
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
-      writeBlockSize = (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0) +
-                        6 * (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples);
-      //writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms) - UE->rx_offset_diff;
+      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms) - UE->rx_offset_diff;
     }
-    AssertFatal(readBlockSize == //the function is taking place later (current time)
-                UE->rfdevice.trx_read_func(&UE->rfdevice,
+
+    readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
                                            &timestamp, //time of the sample in rxp
                                            rxp,
                                            readBlockSize,
-                                           UE->frame_parms.nb_antennas_rx), "");
+                                           UE->frame_parms.nb_antennas_rx);
     LOG_D(NR_PHY, "timestamp %d readblocksize %d slot %d get_samp_slot_ts %d writeBlockSize %d \n",
           timestamp, readBlockSize, slot_nr, UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0), writeBlockSize);
 
@@ -1010,13 +1008,13 @@ void *UE_thread_SL(void *arg) {
       int first_symbols = UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0;
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
-        LOG_I(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
-        AssertFatal(first_symbols ==
+        LOG_D(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
+        first_symbols ==
                     UE->rfdevice.trx_read_func(&UE->rfdevice,
                                                &ignore_timestamp,
                                                (void **)UE->common_vars.rxdata,
                                                first_symbols,
-                                               UE->frame_parms.nb_antennas_rx),"");
+                                               UE->frame_parms.nb_antennas_rx);
       } else {
         LOG_E(NR_PHY, "Can't compensate: diff =%d\n", first_symbols);
       }
@@ -1064,7 +1062,7 @@ void *UE_thread_SL(void *arg) {
     } else if (slot_nr_tx == 9 || slot_nr_tx == 19) {
       flags = 0;
     }
-    LOG_I(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d,\n"
+    LOG_D(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d,\n"
                "openair0_cfg[0].sample_rate %f, tx_sample_advance %d,\nslot %d, writeBlockSize %d, flags %d\n",
           writeTimestamp, timestamp,
           slot_nr_tx * readBlockSize,
