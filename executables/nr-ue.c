@@ -614,6 +614,11 @@ void processSlotTX(void *arg) {
   uint8_t gNB_id = 0;
 
   LOG_D(PHY,"processSlotTX %d.%d => slot type %d\n",proc->frame_tx,proc->nr_slot_tx,tx_slot_type);
+  if (proc->nr_slot_tx == 8 || proc->nr_slot_tx == 9 ||
+      proc->nr_slot_tx == 18 || proc->nr_slot_tx == 19 ||
+      proc->nr_slot_tx == 20) {
+      return;
+  }
   if (UE->sync_ref)
     tx_slot_type = NR_UPLINK_SLOT;
   if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
@@ -946,7 +951,6 @@ void *UE_thread_SL(void *arg) {
       continue;
     }
 
-
     absolute_slot++;
     // whatever means thread_idx
     // Fix me: will be wrong when slot 1 is slow, as slot 2 finishes
@@ -954,6 +958,10 @@ void *UE_thread_SL(void *arg) {
     // this is general failure in UE !!!
     thread_idx = absolute_slot % NR_RX_NB_TH;
     int slot_nr = absolute_slot % nb_slot_frame;
+    int slot_nr_tx = (slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
+    if (slot_nr_tx == 8 ||  slot_nr_tx == 18) {
+      continue;
+    }
     notifiedFIFO_elt_t *msgToPush;
     AssertFatal((msgToPush=pullNotifiedFIFO_nothreadSafe(&freeBlocks)) != NULL,"chained list failure");
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(msgToPush);
@@ -970,41 +978,32 @@ void *UE_thread_SL(void *arg) {
 
     int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
     // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
-    int slot_nr_tx = ((slot_nr + 3) + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
     uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, 0);
-    uint64_t read_time_stamp = firstSymSamp + UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
+    uint64_t read_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
       txp[i] = (void *)&UE->common_vars.txdata[i][write_time_stamp];
 
     int readBlockSize, writeBlockSize;
-    if (slot_nr < (nb_slot_frame - 1)) {
+    if (1) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms);
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms);
     } else {
       UE->rx_offset_diff = computeSamplesShift(UE);
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
-      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms) - UE->rx_offset_diff;
+      writeBlockSize = (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0) +
+                        6 * (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples);
+      //writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms) - UE->rx_offset_diff;
     }
-    LOG_I(NR_PHY, "firstSymSamp %d get_samp_slot_ts %d total %d before read\n", firstSymSamp,
-          UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0),
-          read_time_stamp);
-    LOG_I(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
     AssertFatal(readBlockSize == //the function is taking place later (current time)
                 UE->rfdevice.trx_read_func(&UE->rfdevice,
                                            &timestamp, //time of the sample in rxp
                                            rxp,
                                            readBlockSize,
                                            UE->frame_parms.nb_antennas_rx), "");
-    LOG_I(NR_PHY, "This is the timestamp after read %d\n", timestamp); //time of current sample selection of first sample of block
-    LOG_I(NR_PHY, "This is the timestamp+readBlockSize after read %d\n", timestamp + readBlockSize); //time of the last sample of the block
-    // timestamp + readBlockSize = is in the past from where we currently are (hardware tick number).
-    // The machine will be reiving these samples, some time in the future, and the ts associated with the sample
-    LOG_I(NR_PHY, "firstSymSamp %d get_samp_slot_ts %d total %d\n", firstSymSamp,
-          UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0),
-          read_time_stamp);
-    //timestamp = timestamp + readBlockSize;
+    LOG_D(NR_PHY, "timestamp %d readblocksize %d slot %d get_samp_slot_ts %d writeBlockSize %d \n",
+          timestamp, readBlockSize, slot_nr, UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0), writeBlockSize);
 
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
@@ -1023,9 +1022,6 @@ void *UE_thread_SL(void *arg) {
       }
     }
 
-    curMsg->proc.timestamp_tx = timestamp +
-                                UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX) -
-                                firstSymSamp;
 
     while (nbSlotProcessing >= NR_RX_NB_TH) {
       notifiedFIFO_elt_t *res = pullTpool(&nf, &(get_nrUE_params()->Tpool));
@@ -1047,60 +1043,42 @@ void *UE_thread_SL(void *arg) {
                     "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
     // writeTimestamp = timestamp + samplerate (check from logs) + tx_sample_advance
     // use previous timing_advance value to compute writeTimestamp
-    writeTimestamp = timestamp + 122880000 +
-                     UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, DURATION_RX_TO_TX - NR_RX_NB_TH) -
-                     firstSymSamp - openair0_cfg[0].tx_sample_advance - UE->N_TA_offset - timing_advance;
-    // writeTimestamp *= 10000;
-    LOG_I(NR_PHY, "This is the writetimestamp %d and timestamp %d, calced %d\n", writeTimestamp, timestamp,
-          UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX - NR_RX_NB_TH) );
-    // This writeTimestamp is WHEN the USRP will send the samples. If this value is not far enough in advance, we will see the LLLLs.
-    // REASON #1 FOR LLLLL: The current time is ahead of the writetimestamp (impossible) or very very close to the writeTimestamp (tough to accomplish)
-    // LLLLs can happen when we are not emmitting - have to be positive we are actually sending data, even 0s is ok.
-    // We could also flag when SSB is acti
-    //REASON #2 FOR LLLLLL: USRP is told we have something to emit, but we do not have anything to emit (meaning, the writetimestamp does not correlate with a transmission)
-    // writeTimestamp (samples/symbol)
-    // If we are in continuous emmission, then the writeTimeStamp would be timestamp + writeBlockSize and it will
-    // continuously update. Each new writeTimeStamp += writeBlocksize (old block size). the amount of noise get amplified in continuous
-
-    // if not in continueout emmission (TDD mode! RX/TX on same freq so we can use freq filters)
-    // but use current UE->timing_advance value to compute writeBlockSize
+    writeTimestamp = (slot_nr_tx * readBlockSize) + openair0_cfg[0].sample_rate - openair0_cfg[0].tx_sample_advance;
+    curMsg->proc.timestamp_tx = writeTimestamp;
     if (UE->timing_advance != timing_advance) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
     }
-    LOG_I(NR_PHY, "This is the writetimestamp %d after ta adjust\n", writeTimestamp);
-
     int flags = 1;
-    if (//get_softmodem_params()->sl_mode != 2 &&
-        0) {
-      uint8_t tdd_period = mac->phy_config.config_req.tdd_table.tdd_period_in_slots;
-      int nrofUplinkSlots, nrofUplinkSymbols;
-      if (mac->scc) {
-        nrofUplinkSlots = mac->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
-        nrofUplinkSymbols = mac->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
-      } else {
-        nrofUplinkSlots = mac->scc_SIB->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
-        nrofUplinkSymbols = mac->scc_SIB->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
-      }
-      int slot_tx_usrp = slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH;
-      uint8_t  num_UL_slots = nrofUplinkSlots + (nrofUplinkSymbols != 0);
-      uint8_t first_tx_slot = tdd_period - num_UL_slots;
-      if (slot_tx_usrp % tdd_period == first_tx_slot)
-        flags = 2;
-      else if (slot_tx_usrp % tdd_period == first_tx_slot + num_UL_slots - 1)
-        flags = 3;
-      else if (slot_tx_usrp % tdd_period > first_tx_slot)
+    if (slot_nr_tx == 1 || slot_nr_tx == 11 ||
+        slot_nr_tx == 2 || slot_nr_tx == 12 ||
+        slot_nr_tx == 3 || slot_nr_tx == 13 ||
+        slot_nr_tx == 4 || slot_nr_tx == 14 ||
+        slot_nr_tx == 5 || slot_nr_tx == 15 ||
+        slot_nr_tx == 6 || slot_nr_tx == 16) {
         flags = 1;
+    } else if (slot_nr_tx == 0 || slot_nr_tx == 10) {
+      flags = 2;
+    } else if (slot_nr_tx == 7 || slot_nr_tx == 17) {
+      flags = 3;
+    } else if (slot_nr_tx == 9 || slot_nr_tx == 19) {
+      flags = 0;
     }
-
+    LOG_I(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d, "
+               "openair0_cfg[0].sample_rate %f, tx_sample_advance %d,\nslot %d, writeBlockSize %d, flags %d\n",
+          writeTimestamp, timestamp,
+          slot_nr_tx * readBlockSize,
+          openair0_cfg[0].sample_rate,
+          openair0_cfg->tx_sample_advance,
+          slot_nr_tx, writeBlockSize, flags);
     if (flags || IS_SOFTMODEM_RFSIM) {
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
-                                              writeTimestamp, //writeTimestamp =+ blocksize we are sending each time if continuous
+                                              writeTimestamp,
                                               txp,
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
-                                              3), "");
+                                              flags), "");
     }
 #if 0
     char buffer[UE->frame_parms.ofdm_symbol_size];

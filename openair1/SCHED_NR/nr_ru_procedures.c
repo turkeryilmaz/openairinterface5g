@@ -74,7 +74,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
 
   slot_offset += fp->ofdm_symbol_size*first_symbol;
 
-  LOG_D(PHY,"SFN/SF:RU:TX:%d/%d aa %d Generating slot %d (first_symbol %d num_symbols %d) slot_offset %d, slot_offsetF %d\n",ru->proc.frame_tx, ru->proc.tti_tx,aa,slot,first_symbol,num_symbols,slot_offset,slot_offsetF);
+  LOG_I(PHY,"SFN/SF:RU:TX:%d/%d aa %d Generating slot %d (first_symbol %d num_symbols %d) slot_offset %d, slot_offsetF %d\n",ru->proc.frame_tx, ru->proc.tti_tx,aa,slot,first_symbol,num_symbols,slot_offset,slot_offsetF);
   
   if (fp->Ncp == 1) {
     PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],

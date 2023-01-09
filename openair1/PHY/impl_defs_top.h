@@ -277,7 +277,7 @@
 /* - between reception of un uplink grant and its related transmission   */
 /* - FIXME temprarily set to 5 to avoid timing issues at OAI UE in rfsimulator */
 /* - issues caused by no rendez-vous point between TX and RX in the OAI UE     */
-#define NR_UE_CAPABILITY_SLOT_RX_TO_TX           (5) 
+#define NR_UE_CAPABILITY_SLOT_RX_TO_TX           (6) 
 
 #ifndef NO_RAT_NR
   #define DURATION_RX_TO_TX           (NR_UE_CAPABILITY_SLOT_RX_TO_TX)  /* for NR this will certainly depends to such UE capability which is not yet defined */
