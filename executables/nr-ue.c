@@ -1043,8 +1043,8 @@ void *UE_thread_SL(void *arg) {
                     "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
     // writeTimestamp = timestamp + samplerate (check from logs) + tx_sample_advance
     // use previous timing_advance value to compute writeTimestamp
-    writeTimestamp = (slot_nr_tx * readBlockSize) + openair0_cfg[0].sample_rate - openair0_cfg[0].tx_sample_advance;
-    curMsg->proc.timestamp_tx = writeTimestamp;
+    writeTimestamp = ((absolute_slot + DURATION_RX_TO_TX - NR_RX_NB_TH) * readBlockSize) + openair0_cfg[0].sample_rate - openair0_cfg[0].tx_sample_advance;
+    curMsg->proc.timestamp_tx = writeTimestamp - openair0_cfg[0].sample_rate;
     if (UE->timing_advance != timing_advance) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
@@ -1064,7 +1064,7 @@ void *UE_thread_SL(void *arg) {
     } else if (slot_nr_tx == 9 || slot_nr_tx == 19) {
       flags = 0;
     }
-    LOG_I(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d, "
+    LOG_I(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d,\n"
                "openair0_cfg[0].sample_rate %f, tx_sample_advance %d,\nslot %d, writeBlockSize %d, flags %d\n",
           writeTimestamp, timestamp,
           slot_nr_tx * readBlockSize,
