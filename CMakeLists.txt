@@ -2695,6 +2695,9 @@ make_driver(ue_ip ${OPENAIR2_DIR}/NETWORK_DRIVER/UE_IP ${ue_ip_src})
 
 include(${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/CMakeLists.txt)
 
+
+enable_testing()
+
 add_subdirectory(common)
 add_subdirectory(doc)
 add_subdirectory(openair1)
