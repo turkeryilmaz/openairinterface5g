@@ -92,7 +92,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 
 
-#ifdef OAI_E2_AGENT
+#ifdef E2_AGENT
 
 #include "openair2/E2AP/sm/agent_if/read/sm_ag_if_rd.h"
 #include "openair2/E2AP/sm/agent_if/write/sm_ag_if_wr.h"
@@ -100,7 +100,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "openair2/E2AP/agent/e2_agent_api.h"
 #include <time.h>
 
-#endif // OAI_E2_AGENT
+#endif // E2_AGENT
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -454,7 +454,7 @@ static  void wait_nfapi_init(char *thread_name) {
 
 
 
-#ifdef OAI_E2_AGENT
+#ifdef E2_AGENT
 
 static
 void read_RAN(sm_ag_if_rd_t* data)
@@ -472,7 +472,7 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
   return ans;
 }
 
-#endif // OAI_E2_AGENT
+#endif // E2_AGENT
 
 int main ( int argc, char **argv )
 {
@@ -527,7 +527,7 @@ int main ( int argc, char **argv )
 
   if (RC.nb_inst > 0) {
 
-#ifdef OAI_E2_AGENT
+#ifdef E2_AGENT
 
 //////////////////////////////////
 //////////////////////////////////

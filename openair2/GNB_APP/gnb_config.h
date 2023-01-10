@@ -110,7 +110,7 @@ void nr_read_config_and_init(void);
 MessageDef *RCconfig_NR_CU_E1(bool separate_CUUP_process);
 ngran_node_t get_node_type(void);
 
-#ifdef OAI_E2_AGENT
+#ifdef E2_AGENT
 #include "openair2/E2AP/agent/e2_agent_api.h"
 e2_agent_args_t RCconfig_NR_E2agent(void);
 #endif

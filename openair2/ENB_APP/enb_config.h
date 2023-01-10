@@ -119,7 +119,7 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i);
 void fill_SL_configuration(RrcConfigurationReq *RRCcfg, ccparams_sidelink_t *SLconfig, int cell_idx, int cc_idx, char *config_fname);
 void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCconfig, int cell_idx, int cc_idx, char *config_fname, char *brparamspath);
 
-#ifdef OAI_E2_AGENT
+#ifdef E2_AGENT
 #include "openair2/E2AP/agent/e2_agent_api.h"
 e2_agent_args_t RCconfig_E2agent(void);
 #endif
