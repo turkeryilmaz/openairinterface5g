@@ -909,7 +909,6 @@ void *UE_thread_SL(void *arg) {
         start_rx_stream = 0;
       } else {
         LOG_I(PHY, "Sync UE: sync_running_sl still in readFrame due to INVALID res.\n");
-        LOG_I(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
         readFrame(UE, &timestamp, true);
         trashed_frames += 2;
         continue;
@@ -959,9 +958,6 @@ void *UE_thread_SL(void *arg) {
     thread_idx = absolute_slot % NR_RX_NB_TH;
     int slot_nr = absolute_slot % nb_slot_frame;
     int slot_nr_tx = (slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
-    if (slot_nr_tx == 8 ||  slot_nr_tx == 18) {
-      continue;
-    }
     notifiedFIFO_elt_t *msgToPush;
     AssertFatal((msgToPush=pullNotifiedFIFO_nothreadSafe(&freeBlocks)) != NULL,"chained list failure");
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(msgToPush);
@@ -1059,7 +1055,7 @@ void *UE_thread_SL(void *arg) {
       flags = 2;
     } else if (slot_nr_tx == 7 || slot_nr_tx == 17) {
       flags = 3;
-    } else if (slot_nr_tx == 9 || slot_nr_tx == 19) {
+    } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
       flags = 0;
     }
     LOG_D(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d,\n"

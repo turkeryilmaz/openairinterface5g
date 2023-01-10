@@ -282,7 +282,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
     LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d sync_pos %d ssb_offset %d\n",
-          ue->Mod_id, n_frames, sync_pos,ue->common_vars.eNb_id, sync_pos, ue->ssb_offset);
+          ue->Mod_id, n_frames, sync_pos,ue->common_vars.eNb_id, sync_pos, ue->ssb_offset, proc->nr_slot_rx);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
