@@ -2373,12 +2373,11 @@ uint8_t do_SIB4(uint8_t Mod_id,
   memset(sib4_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib4_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4;
   *sib4 = &sib4_part->choice.sib4;
-  (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount,sizeof(struct LTE_IntraFreqNeighCellList));
-
-  LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
 
   /* Checking if intraFreqNeighCellList is present in SIB4 */
   if(true == configuration->intraFreqNeighCellListPresent) {
+    (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount,sizeof(struct LTE_IntraFreqNeighCellList));
+    LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
     /* Handling multiple entities in intraFreqNeighCellList for SIB4 message */
     for(int i = 0; i < configuration->intraFreqNeighCellListCount; i++){
       IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
