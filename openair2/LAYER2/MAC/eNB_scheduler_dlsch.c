@@ -1029,7 +1029,7 @@ schedule_ue_spec(module_id_t module_idP,
         mac_pkt.harq_pid  = 0;
         mac_pkt.preamble  = -1; /* TODO */
 
-        LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)dlsch_pdu->payload[0], (int)TBS);
+        LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)dlsch_pdu->payload[0], (int)TBS);
         trace_pdu(DIRECTION_DOWNLINK,
                   (uint8_t *) dlsch_pdu->payload[0],
                   TBS,
@@ -1702,7 +1702,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           mac_pkt.harq_pid  = 0;
           mac_pkt.preamble  = -1; /* TODO */
 
-          LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", mac->frame, mac->subframe, mac_pkt, (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0], (int)TBS);
+          LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", mac->frame, mac->subframe, mac_pkt, (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0], (int)TBS);
           trace_pdu(DIRECTION_DOWNLINK,
                     (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0],
                     TBS,
@@ -1923,7 +1923,7 @@ schedule_ue_spec_br(module_id_t module_idP,
       mac_pkt.harq_pid  = 0;
       mac_pkt.preamble  = -1; /* TODO */
 
-      LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", frameP, subframeP, mac_pkt, (uint8_t *)mac->UE_info.DLSCH_pdu[CC_id][0][(unsigned char) UE_id].payload[0], (int)TX_req->pdu_length);
+      LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", frameP, subframeP, mac_pkt, (uint8_t *)mac->UE_info.DLSCH_pdu[CC_id][0][(unsigned char) UE_id].payload[0], (int)TX_req->pdu_length);
     } // end else if ((subframeP == 7) && (round_DL < 8))
   } // end loop on UE_id
 }
@@ -2466,7 +2466,7 @@ schedule_PCH(module_id_t module_idP,
         mac_pkt.harq_pid  = 0;
         mac_pkt.preamble  = -1; /* TODO */
 
-        LOG_MAC_P(OAILOG_INFO, "LTE_MAC_PCCH_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&eNB->common_channels[CC_id].PCCH_pdu.payload[0], (int)pcch_sdu_length);
+        LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_PCCH_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)&eNB->common_channels[CC_id].PCCH_pdu.payload[0], (int)pcch_sdu_length);
         trace_pdu(DIRECTION_DOWNLINK,
                   &eNB->common_channels[CC_id].PCCH_pdu.payload[0],
                   pcch_sdu_length,

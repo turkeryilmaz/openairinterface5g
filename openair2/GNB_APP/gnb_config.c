@@ -1518,6 +1518,9 @@ int RCconfig_nr_parallel(void) {
   if(parallel_config == NULL) set_parallel_conf(parallel_conf);
   if(worker_config == NULL)   set_worker_conf(worker_conf);
 
+  RRM_FREE(worker_conf);
+  RRM_FREE(parallel_conf);
+
   return 0;
 }
 

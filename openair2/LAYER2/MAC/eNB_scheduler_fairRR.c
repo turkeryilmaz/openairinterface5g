@@ -1943,7 +1943,7 @@ schedule_ue_spec_fairRR(module_id_t module_idP,
           mac_pkt.rnti      = UE_RNTI(module_idP,UE_id);
           mac_pkt.harq_pid  = 0;
           mac_pkt.preamble  = -1; /* TODO */
-          LOG_MAC_P(OAILOG_INFO, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0], (int)TBS);
+          LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_DL_PDU", eNB->frame, eNB->subframe, mac_pkt, (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0], (int)TBS);
           trace_pdu(DIRECTION_DOWNLINK, (uint8_t *)UE_info->DLSCH_pdu[CC_id][0][UE_id].payload[0],
                     TBS, module_idP, WS_C_RNTI, UE_RNTI(module_idP, UE_id),
                     eNB->frame, eNB->subframe,0,0);

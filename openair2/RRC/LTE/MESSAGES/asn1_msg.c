@@ -1081,7 +1081,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   } else {
     (*sib1)->systemInfoValueTag = 0;
   }
-  LOG_A(RRC,"Updating systemInfoValueTag Value: %d \n",(*sib1)->systemInfoValueTag);
+  LOG_A(RRC,"Updating systemInfoValueTag Value: %ld \n",(*sib1)->systemInfoValueTag);
   (*sib1)->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v890_IEs_t));
   LTE_SystemInformationBlockType1_v890_IEs_t *sib1_890 = (*sib1)->nonCriticalExtension;
   sib1_890->lateNonCriticalExtension = NULL;
@@ -1945,9 +1945,10 @@ uint8_t do_SIB23(uint8_t Mod_id,
   (*sib3)->intraFreqCellReselectionInfo.allowedMeasBandwidth=CALLOC(1,sizeof(*(*sib3)->intraFreqCellReselectionInfo.allowedMeasBandwidth));
   *(*sib3)->intraFreqCellReselectionInfo.allowedMeasBandwidth = LTE_AllowedMeasBandwidth_mbw6;
   (*sib3)->intraFreqCellReselectionInfo.presenceAntennaPort1 = 0;
-  (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.buf = CALLOC(8,1);
+  LOG_A(RRC,"[eNB][SIB3] neighCellConfig:0x%x\n",configuration->neighCellConfig[CC_id]);
+  (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.buf = CALLOC(1,sizeof(uint8_t));
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.size = 1;
-  (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.buf[0] = 1 << 6;
+  (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.buf[0] = configuration->neighCellConfig[CC_id] << 6;
   (*sib3)->intraFreqCellReselectionInfo.neighCellConfig.bits_unused = 6;
   if (RC.ss.mode == SS_SOFTMODEM) {
     (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = configuration->t_ReselectionEUTRA[CC_id];
@@ -1955,10 +1956,22 @@ uint8_t do_SIB23(uint8_t Mod_id,
     (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA = 1;
   }
   (*sib3)->intraFreqCellReselectionInfo.t_ReselectionEUTRA_SF = (struct LTE_SpeedStateScaleFactors *)NULL;
-  (*sib3)->ext1 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1));
+  if(configuration->sib3_q_QualMin[CC_id] || configuration->sib3_threshServingLowQ[CC_id]){
+    (*sib3)->ext1 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1));
+  }
+  /*
   (*sib3)->ext1->s_IntraSearch_v920 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext1__s_IntraSearch_v920));
   (*sib3)->ext1->s_IntraSearch_v920->s_IntraSearchP_r9 = 31; // FIXME
   (*sib3)->ext1->s_IntraSearch_v920->s_IntraSearchQ_r9 = 4;
+  */
+  if(configuration->sib3_q_QualMin[CC_id]){
+    (*sib3)->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
+    *((*sib3)->ext1->q_QualMin_r9) = *(configuration->sib3_q_QualMin[CC_id]);
+  }
+  if(configuration->sib3_threshServingLowQ[CC_id]){
+    (*sib3)->ext1->threshServingLowQ_r9 = CALLOC(1,sizeof(LTE_ReselectionThresholdQ_r9_t));
+    *((*sib3)->ext1->threshServingLowQ_r9) = *(configuration->sib3_threshServingLowQ[CC_id]);
+  }
   (*sib3)->ext4 = CALLOC(1, sizeof(struct LTE_SystemInformationBlockType3__ext4));
   (*sib3)->ext4->cellSelectionInfoCE_r13 = CALLOC(1, sizeof(LTE_CellSelectionInfoCE_r13_t));
   (*sib3)->ext4->cellSelectionInfoCE_r13->q_RxLevMinCE_r13 = -70;
@@ -2457,20 +2470,20 @@ uint8_t do_SIB5(uint8_t Mod_id,
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority_Present) {
       InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority;
     }
-    // TODO: Need to handle neighCellConfig IE properly
-    InterFreqCarrierInfo->neighCellConfig.size =  0;//1;
-    //InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,1);
-    InterFreqCarrierInfo->neighCellConfig.bits_unused = 0;
-    InterFreqCarrierInfo->neighCellConfig.buf = NULL;//[0] = 0x01<<4;
+    LOG_A(RRC,"[eNB][SIB5] CC_id:%d neighCellConfig:0x%x\n",CC_id,configuration->InterFreqCarrierFreqInfo[CC_id][i].neighCellConfig);
+    InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,sizeof(uint8_t));
+    InterFreqCarrierInfo->neighCellConfig.size = 1;
+    InterFreqCarrierInfo->neighCellConfig.buf[0] = configuration->InterFreqCarrierFreqInfo[CC_id][i].neighCellConfig<< 6;
+    InterFreqCarrierInfo->neighCellConfig.bits_unused = 6;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreqPresent) {
       InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreq;
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList_Present) {
-      InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
+      //InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
       InterFreqCarrierInfo->interFreqNeighCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList;
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList_Present) {
-      InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
+      //InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
       InterFreqCarrierInfo->interFreqBlackCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList;
     }
     if ((true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) ||
@@ -2479,7 +2492,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
        LOG_A(RRC,"add ext1 for CC_ID %d\n ",CC_id);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present) {
-      InterFreqCarrierInfo->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
+      //InterFreqCarrierInfo->ext1->q_QualMin_r9 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
       InterFreqCarrierInfo->ext1->q_QualMin_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9;
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) {
@@ -2492,7 +2505,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11_Present) {
        InterFreqCarrierInfo->ext2 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext2));
-       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
+       //InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11;
     }
   ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);

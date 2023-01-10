@@ -487,6 +487,23 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                            RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
                            RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
                            RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
+                           RRC_CONFIGURATION_REQ(msg_p).neighCellConfig[cell_index] = (uint8_t)bin_to_int(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.neighCellConfig,2);
+                           if(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]){
+                             free(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]);
+                             RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index] = NULL;
+                           }
+                           if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.q_QualMin_r9.d){
+                             RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index] = calloc(1,sizeof(long));
+                             *(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.q_QualMin_r9.v;
+                           }
+                           if(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]){
+                             free(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]);
+                             RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = NULL;
+                           }
+                           if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.d){
+                             RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = calloc(1,sizeof(long));
+                             *(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.v;
+                           }
                          }
                          /* SIB4: Received SIB4 from TTCN */
                          if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib4 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
@@ -528,7 +545,7 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority_Present = true;
                                *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.v;
                              }
-                             //RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[k].neighCellConfig = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].neighCellConfig;
+                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].neighCellConfig = (uint8_t)bin_to_int(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].neighCellConfig,2);
                              if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.d) {
                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreqPresent = true;
                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreq = CALLOC(1,sizeof(enum LTE_Q_OffsetRange));

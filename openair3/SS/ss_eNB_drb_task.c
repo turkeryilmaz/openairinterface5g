@@ -146,36 +146,36 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 
 static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index)
 {
-	assert(req);
-	MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, SS_DRB_PDU_REQ);
-        assert(message_p);
-        if (message_p)
-        {
-		 /* Populate the message and send to eNB */
-                SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
-                memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
+  assert(req);
+  MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, SS_DRB_PDU_REQ);
+  assert(message_p);
+  if (message_p)
+  {
+    /* Populate the message and send to eNB */
+    SS_DRB_PDU_REQ(message_p).drb_id = req->Common.RoutingInfo.v.RadioBearerId.v.Drb;
+    memset(SS_DRB_PDU_REQ(message_p).sdu, 0, SDU_SIZE);
 
-		for(int i = 0; i < req->U_Plane.SubframeDataList.d; i++){
-			if(req->U_Plane.SubframeDataList.v[i].PduSduList.d == L2DataList_Type_PdcpSdu){
-				LOG_A(ENB_APP, "PDCP SDU Received in DRB_COMMON_REQ");
-				for(int j = 0; j < req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.d; j++){
-					SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d;
-					LOG_A(ENB_APP, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
-					memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].v, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
-				}
-			}
-		}
-
-	}
-        SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
-
-        int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
-        if (send_res < 0)
-        {
-                LOG_A(ENB_APP, "[SS_DRB] Error in itti_send_msg_to_task");
+    for(int i = 0; i < req->U_Plane.SubframeDataList.d; i++){
+      if(req->U_Plane.SubframeDataList.v[i].PduSduList.d == L2DataList_Type_PdcpSdu){
+        LOG_A(ENB_SS, "PDCP SDU Received in DRB_COMMON_REQ");
+        for(int j = 0; j < req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.d; j++){
+          SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d;
+          LOG_A(ENB_SS, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
+          memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].v, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
         }
+      }
+    }
 
-        LOG_A(ENB_APP, "Send res: %d", send_res);
+  }
+  SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
+
+  int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
+  if (send_res < 0)
+  {
+    LOG_A(ENB_APP, "[SS_DRB] Error in itti_send_msg_to_task");
+  }
+
+  LOG_A(ENB_APP, "Send res: %d", send_res);
 
 }
 

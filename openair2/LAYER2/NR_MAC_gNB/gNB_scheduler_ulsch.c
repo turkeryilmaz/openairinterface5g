@@ -688,7 +688,7 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
        mac_pkt.rnti      = current_rnti;
        mac_pkt.harq_pid  = harq_pid;
        mac_pkt.preamble  = -1; /* TODO */
-       LOG_MAC_P(OAILOG_INFO, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+       LOG_MAC_P(OAILOG_DEBUG, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
     }
 
     UE_info->mac_stats[UE_id].ulsch_total_bytes_rx += sdu_lenP;
@@ -787,7 +787,7 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
     mac_pkt.rnti      = rntiP;
     mac_pkt.harq_pid  = -1;
     mac_pkt.preamble  = -1; /* TODO */
-    LOG_MAC_P(OAILOG_INFO, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
 
     /* we don't know this UE (yet). Check whether there is a ongoing RA (Msg 3)
      * and check the corresponding UE's RNTI match, in which case we activate
