@@ -121,7 +121,7 @@ void fill_eMTC_configuration(RrcConfigurationReq *RRCcfg, ccparams_eMTC_t *eMTCc
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/agent/e2_agent_api.h"
-e2_agent_args_t RCconfig_E2agent(void);
+bool RCconfig_E2agent(e2_agent_args_t *args);
 #endif
 
 #endif /* ENB_CONFIG_H_ */
