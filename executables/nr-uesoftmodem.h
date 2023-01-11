@@ -79,7 +79,8 @@
   {"TOP" ,                         CONFIG_HLP_TP_Scaling,      0,               .dblptr=&TO_PScaling,                        .defdblval=1.0,    TYPE_DOUBLE,   0}, \
   {"TOI" ,                         CONFIG_HLP_TI_Scaling,      0,               .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE,   0}, \
   {"TOII",                         CONFIG_HLP_TO_Iinit,        0,               .iptr=&TO_IScalingInit,                      .defintval=0,      TYPE_INT,      0},  \
-  {"agc",                          CONFIG_HLP_AGC,         PARAMFLAG_BOOL,      .iptr=&(nrUE_params.enable_agc),             .defintval=0,      TYPE_INT,      0}}
+  {"agc",                          CONFIG_HLP_AGC,         PARAMFLAG_BOOL,      .iptr=&(nrUE_params.enable_agc),             .defintval=0,      TYPE_INT,      0},\
+  {"ulpc",                         CONFIG_HLP_ULPC,        PARAMFLAG_BOOL,      .iptr=&(nrUE_params.enable_ulpc),            .defintval=0,      TYPE_INT,      0}}
 // clang-format on
 
 typedef struct {
@@ -101,6 +102,7 @@ typedef struct {
   int            N_RB_DL;
   int            ssb_start_subcarrier;
   int            enable_agc;
+  int            enable_ulpc;
 } nrUE_params_t;
 extern uint64_t get_nrUE_optmask(void);
 extern uint64_t set_nrUE_optmask(uint64_t bitmask);

@@ -386,6 +386,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   ue->DopplerEst = 0;
   ue->DopplerEstTot = (float)commonDoppler;
   
+  ue->f_pusch = 0;
   return 0;
 }
 

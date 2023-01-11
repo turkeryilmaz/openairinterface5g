@@ -530,6 +530,11 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->pusch_data.num_cb = 0;
     pusch_config_pdu->tbslbrm = 0;
 
+    pusch_config_pdu->absolute_delta_PUSCH = mac->ra.Msg3_TPC;
+
+    nr_get_pusch_tx_power_ue_parameters(mac,pusch_Config, NULL, pusch_config_pdu, PUSCH_GRANT_TYPE_RAR);
+
+
   } else if (dci) {
     pusch_config_pdu->bwp_start = current_UL_BWP->BWPStart;
     pusch_config_pdu->bwp_size = current_UL_BWP->BWPSize;
@@ -640,17 +645,32 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->pusch_data.harq_process_id = dci->harq_pid;
     /* TPC_PUSCH */
     // according to TS 38.213 Table Table 7.1.1-1
-    if (dci->tpc == 0) {
-      pusch_config_pdu->absolute_delta_PUSCH = -4;
-    }
-    if (dci->tpc == 1) {
-      pusch_config_pdu->absolute_delta_PUSCH = -1;
-    }
-    if (dci->tpc == 2) {
-      pusch_config_pdu->absolute_delta_PUSCH = 1;
-    }
-    if (dci->tpc == 3) {
-      pusch_config_pdu->absolute_delta_PUSCH = 4;
+    if (pusch_Config->pusch_PowerControl->tpc_Accumulation != NULL) { // TPC ACCUMULATION DISABLED if IE present
+      if (dci->tpc == 0) {
+        pusch_config_pdu->absolute_delta_PUSCH = -4;
+      }
+      if (dci->tpc == 1) {
+        pusch_config_pdu->absolute_delta_PUSCH = -1;
+      }
+      if (dci->tpc == 2) {
+        pusch_config_pdu->absolute_delta_PUSCH = 1;
+      }
+      if (dci->tpc == 3) {
+        pusch_config_pdu->absolute_delta_PUSCH = 4;
+      }
+    } else { // TPC ACCULUMULATION ENABLED
+      if (dci->tpc == 0) {
+        pusch_config_pdu->absolute_delta_PUSCH = -1;
+      }
+      if (dci->tpc == 1) {
+        pusch_config_pdu->absolute_delta_PUSCH = 0;
+      }
+      if (dci->tpc == 2) {
+        pusch_config_pdu->absolute_delta_PUSCH = 1;
+      }
+      if (dci->tpc == 3) {
+        pusch_config_pdu->absolute_delta_PUSCH = 3;
+      }
     }
 
     if (NR_DMRS_ulconfig != NULL)
@@ -701,6 +721,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
         LOG_D(NR_MAC, "UL PTRS values: PTRS time den: %d, PTRS freq den: %d\n", pusch_config_pdu->pusch_ptrs.ptrs_time_density, pusch_config_pdu->pusch_ptrs.ptrs_freq_density);
       }
     }
+
+    nr_get_pusch_tx_power_ue_parameters(mac,pusch_Config, NULL,  pusch_config_pdu, PUSCH_GRANT_TYPE_DCI);
   }
 
   LOG_D(NR_MAC, "In %s: received UL grant (rb_start %d, rb_size %d, start_symbol_index %d, nr_of_symbols %d) for RNTI type %s \n",

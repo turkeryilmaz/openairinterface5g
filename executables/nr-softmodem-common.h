@@ -136,6 +136,7 @@
 #define CONFIG_HLP_TI_Scaling "set scaling I for TO"
 #define CONFIG_HLP_TO_Iinit    "Init the I part of the PI controller for timing offset compensation"
 #define CONFIG_HLP_AGC           "Enable Receive Automatic Gain control"
+#define CONFIG_HLP_ULPC          "Enable NR Uplink power control for PUSCH and PUCCH"
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */

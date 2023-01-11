@@ -1086,6 +1086,9 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   if (!pusch_Config->pusch_PowerControl->msg3_Alpha)
     pusch_Config->pusch_PowerControl->msg3_Alpha = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->msg3_Alpha));
   *pusch_Config->pusch_PowerControl->msg3_Alpha = NR_Alpha_alpha1;
+  //Set tpc accumulation to disabled
+  pusch_Config->pusch_PowerControl->tpc_Accumulation = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->tpc_Accumulation));
+  *pusch_Config->pusch_PowerControl->tpc_Accumulation = 0;
   pusch_Config->pusch_PowerControl->p0_NominalWithoutGrant = NULL;
   pusch_Config->pusch_PowerControl->p0_AlphaSets = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->p0_AlphaSets));
   NR_P0_PUSCH_AlphaSet_t *aset = calloc(1, sizeof(*aset));

@@ -294,11 +294,14 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
   UE->no_timing_correction = nrUE_params.no_timing_correction;
   UE->timing_advance       = nrUE_params.timing_advance;
   UE->enable_agc           = nrUE_params.enable_agc;
+  UE->enable_ulpc          = nrUE_params.enable_ulpc;
 
   LOG_I(PHY,"Set UE_fo_compensation %d, UE_scan_carrier %d, UE_no_timing_correction %d \n, chest-freq %d, chest-time %d\n",
         UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq, UE->chest_time);
 
   LOG_I(PHY,"dl AGC setting %d\n", UE->enable_agc);
+  LOG_I(PHY,"ul powercontrol setting %d\n", UE->enable_ulpc);
+
   // Set FP variables
 
   if (tddflag){

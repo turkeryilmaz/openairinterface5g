@@ -104,6 +104,16 @@ typedef struct {
   uint8_t rnti_type;
   /// Cell ID
   int     Nid_cell;
+  /// f_PUSCH parameter for PUSCH power control
+  int16_t f_pusch;
+  /// Po_PUSCH - target output power for PUSCH
+  int16_t pusch_tx_power;
+  /// PHR - current power headroom (based on last PUSCH transmission)
+  int16_t PHR;
+  /// Po_SRS - target output power for SRS
+  int16_t Po_SRS;
+  /// num active cba group
+  uint8_t num_active_cba_groups;
   /// bit mask of PT-RS ofdm symbol indicies
   uint16_t ptrs_symbols;
 } NR_UE_ULSCH_t;

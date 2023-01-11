@@ -128,10 +128,9 @@ typedef enum {
   MAX_HOST_TYPE
 } host_type_t;
 
-
-/*! \brief RF Gain clibration */
+/*! \brief RF Gain calibration */
 typedef struct {
-  //! Frequency for which RX chain was calibrated
+  //! Frequency for which TX,RX chain was calibrated
   double freq;
   //! Offset to be applied to RX gain
   double offset;
@@ -177,6 +176,15 @@ typedef enum {
   RU_GPIO_CONTROL_GENERIC,
   RU_GPIO_CONTROL_INTERDIGITAL,
 } gpio_control_t;
+/*! \brief RF REFERENCE measurements against a calibrated device in Downlink and uplink*/
+typedef struct {
+  //! Band on which reference measurements were done
+  //uint16_t band;
+  //! Offset to be applied on received digital power in db to covert to dbm
+  int16_t rx_db_to_dbm_offset;
+  //!Offset to be applied on uplink power to convert to digital power in db
+  int16_t tx_dbm_to_db_offset;
+} reference_meas_t;
 
 /*! \brief RF frontend parameters set by application */
 typedef struct {
@@ -222,6 +230,8 @@ typedef struct {
   //! \brief memory
   //! \brief Pointer to Calibration table for RX gains
   rx_gain_calib_table_t *rx_gain_calib_table;
+  //! \brief Pointer to Calibration table for TX gains
+  rx_gain_calib_table_t *tx_gain_calib_table;
   //! mode for rxgain (ExpressMIMO2)
   rx_gain_t rxg_mode[4];
   //! \brief Gain for RX in dB.
@@ -232,6 +242,9 @@ typedef struct {
   double rx_gain_offset[4];
   //! gain for TX in dB
   double tx_gain[4];
+  //! \brief TX Gain offset (for calibration) in dB
+  //! index: [0..tx_num_channels]
+  double tx_gain_offset[4];
   //! RX bandwidth in Hz
   double rx_bw;
   //! TX bandwidth in Hz
@@ -281,6 +294,9 @@ typedef struct {
   int txfh_cores[4];
   //! select the GPIO control method
   gpio_control_t gpio_controller;
+  //!reference measurements done on this device
+  //reference_meas_t *reference_meas;
+
 } openair0_config_t;
 
 /*! \brief RF mapping */
@@ -394,10 +410,14 @@ struct openair0_device_t {
 
   /* !brief Store the value of max gain limit for the RX 4*4 MIMO */
   double max_rx_gain[4];
+/* !brief Store the value of max gain limit for the RX 4*4 MIMO */
+  double min_rx_gain[4];
   /* !brief Store the value of applied gain for the RX 4*4 MIMO */
   double app_rx_gain[4];
   /* !brief Store the value of max gain limit for the TX 4*4 MIMO */
   double max_tx_gain[4];
+  /* !brief Store the value of max gain limit for the TX 4*4 MIMO */
+  double min_tx_gain[4];
   /* !brief Store the value of applied gain for the TX 4*4 MIMO */
   double app_tx_gain[4];
 

@@ -291,6 +291,12 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
                            fapi_nr_ul_config_pucch_pdu *pucch_pdu);
 
 int nr_get_Pcmax(NR_UE_MAC_INST_t *mac, int Qm, bool powerBoostPi2BPSK, int scs, int N_RB_UL, bool is_transform_precoding, int n_prbs, int start_prb);
+void nr_get_pusch_tx_power_ue_parameters(NR_UE_MAC_INST_t *mac,
+                                         NR_PUSCH_Config_t *pusch_Config,
+                                         NR_PUSCH_ConfigCommon_t *pusch_ConfigCommon,
+                                         nfapi_nr_ue_pusch_pdu_t *pusch_pdu,
+                                         e_pusch_grant_type_t grant_type);
+
 
 /* Random Access */
 

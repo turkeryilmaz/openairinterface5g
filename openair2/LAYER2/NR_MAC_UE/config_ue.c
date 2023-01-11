@@ -582,6 +582,7 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
     if (mac->bwp_ulcommon->pusch_ConfigCommon) {
       UL_BWP->tdaList_Common = mac->bwp_ulcommon->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
       UL_BWP->msg3_DeltaPreamble = mac->bwp_ulcommon->pusch_ConfigCommon->choice.setup->msg3_DeltaPreamble;
+      UL_BWP->p0_NominalWithGrant = mac->bwp_ulcommon->pusch_ConfigCommon->choice.setup->p0_NominalWithGrant;
     }
     if (mac->bwp_ulcommon->pucch_ConfigCommon)
       UL_BWP->pucch_ConfigCommon = mac->bwp_ulcommon->pucch_ConfigCommon->choice.setup;
@@ -639,6 +640,7 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
       }
 
       UL_BWP->msg3_DeltaPreamble = mac->bwp_ulcommon->pusch_ConfigCommon->choice.setup->msg3_DeltaPreamble;
+      UL_BWP->p0_NominalWithGrant = mac->bwp_ulcommon->pusch_ConfigCommon->choice.setup->p0_NominalWithGrant;
 
       NR_BWP_Uplink_t *bwp_uplink = NULL;
       const struct NR_UplinkConfig__uplinkBWP_ToAddModList *ubwpList = spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList;
