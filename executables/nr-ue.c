@@ -574,7 +574,7 @@ static void UE_synch(void *arg) {
       LOG_I(PHY, "[UE thread Synch] Running Initial SL-Synch (mode %d)\n", UE->mode);
       int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
       if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
-
+        LOG_I(PHY,"This is return from nr_sl_initial_sync %d\n", initial_synch_sl);
         // rerun with new cell parameters and frequency-offset
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
         nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
@@ -583,7 +583,12 @@ static void UE_synch(void *arg) {
         if (UE->UE_scan_carrier == 1) {
           UE->UE_scan_carrier = 0;
         } else {
-          UE->is_synchronized_sl = 1;
+          if (initial_synch_sl == 0) {
+            UE->is_synchronized_sl = 1;
+            LOG_I(PHY,"Setting is_synchronized_sl to 1!\n");
+            LOG_I(PHY,"I think we got sync!!!!\n");
+            exit(1);
+        }
         }
       } else {
         LOG_I(PHY,"No SynchRefUE found\n");
@@ -893,13 +898,13 @@ void *UE_thread_SL(void *arg) {
     }
 
     if (sync_running_sl && UE->sync_ref == 0) {
-      LOG_I(NR_PHY, "Sync UE: sync_running status.\n");
+      LOG_I(NR_PHY, "Nearby UE: sync_running status.\n");
       notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
       if (res) {
         sync_running_sl = false;
-        LOG_I(NR_PHY, "Sync UE: sync_running was set to false due to valid res.\n");
+        LOG_I(NR_PHY, "Nearby UE: sync_running was set to false due to valid res.\n");
         syncData_t *tmp=(syncData_t *)NotifiedFifoData(res);
-        LOG_I(NR_PHY, "Sync UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
+        LOG_I(NR_PHY, "Nearby UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
         if (UE->is_synchronized_sl && get_softmodem_params()->sl_mode < 2) {
           decoded_frame_rx=(((mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused)<<4) | tmp->proc.decoded_frame_rx);
           // shift the frame index with all the frames we trashed meanwhile we perform the synch search
@@ -908,7 +913,7 @@ void *UE_thread_SL(void *arg) {
         delNotifiedFIFO_elt(res);
         start_rx_stream = 0;
       } else {
-        LOG_I(PHY, "Sync UE: sync_running_sl still in readFrame due to INVALID res.\n");
+        LOG_I(PHY, "Nearby UE: sync_running_sl still in readFrame due to INVALID res.\n");
         readFrame(UE, &timestamp, true);
         trashed_frames += 2;
         continue;
@@ -958,6 +963,7 @@ void *UE_thread_SL(void *arg) {
     thread_idx = absolute_slot % NR_RX_NB_TH;
     int slot_nr = absolute_slot % nb_slot_frame;
     int slot_nr_tx = (slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
+
     notifiedFIFO_elt_t *msgToPush;
     AssertFatal((msgToPush=pullNotifiedFIFO_nothreadSafe(&freeBlocks)) != NULL,"chained list failure");
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(msgToPush);
