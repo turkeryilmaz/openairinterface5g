@@ -583,7 +583,11 @@ static void UE_synch(void *arg) {
         if (UE->UE_scan_carrier == 1) {
           UE->UE_scan_carrier = 0;
         } else {
-          UE->is_synchronized_sl = 1;
+          if (initial_synch_sl == 0) {
+            UE->is_synchronized_sl = 1;
+            LOG_I(NR_PHY, "SynchRefUE found!!!!!!!!! :) \n");
+            exit(1);
+          }
         }
       } else {
         LOG_I(PHY,"No SynchRefUE found\n");
