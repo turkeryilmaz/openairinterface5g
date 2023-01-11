@@ -243,8 +243,8 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   common_vars->txdataF = (int32_t **)malloc16( fp->nb_antennas_tx*sizeof(int32_t *) );
 
   for (i=0; i<fp->nb_antennas_tx; i++) {
-    common_vars->txdata[i]  = (int32_t *)malloc16_clear(fp->slots_per_frame*fp->samples_per_subframe*sizeof(int32_t));
-    common_vars->txdataF[i] = (int32_t *)malloc16_clear(fp->slots_per_frame*fp->samples_per_subframe*sizeof(int32_t));
+    common_vars->txdata[i]  = (int32_t *)malloc16_clear((fp->samples_per_frame)*sizeof(int32_t));
+    common_vars->txdataF[i] = (int32_t *)malloc16_clear((fp->samples_per_frame)*sizeof(int32_t));
   }
   // init RX buffers
   common_vars->rxdata   = (int32_t **)malloc16( fp->nb_antennas_rx*sizeof(int32_t *) );
