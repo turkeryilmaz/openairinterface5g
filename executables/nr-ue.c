@@ -980,7 +980,7 @@ void *UE_thread_SL(void *arg) {
 
     int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
     // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
-    uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, 0);
+    uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     uint64_t read_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
