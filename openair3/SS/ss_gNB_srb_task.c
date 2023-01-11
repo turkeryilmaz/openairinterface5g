@@ -375,7 +375,7 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
   MessageDef *received_msg = NULL;
   int result = 0;
 
-  itti_receive_msg(TASK_SS_SRB, &received_msg);
+  itti_receive_msg(TASK_SS_SRB_GNB, &received_msg);
 
   /* Check if there is a packet to handle */
   if (received_msg != NULL)
