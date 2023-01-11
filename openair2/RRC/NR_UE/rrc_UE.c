@@ -1022,7 +1022,7 @@ int nr_decode_SI(const protocol_ctxt_t *const ctxt_pP, const uint8_t gNB_index)
   //  NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt++;
 
   //  if (NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt == sib1->schedulingInfoList.list.count)
-  //    rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
+  //    rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE_NR );
 
   //  LOG_I(NR_RRC, "SIStatus %x, SIcnt %d/%d\n",
   //        NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIStatus,
