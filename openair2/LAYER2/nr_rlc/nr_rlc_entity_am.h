@@ -82,6 +82,9 @@ typedef struct {
   int                  tx_size;
   int                  tx_maxsize;
 
+  /* TTCN DRB support: contains the RLC PDU list to be sent to MAC directly */
+  nr_rlc_pdu_t *tx_extra_list;
+
   nr_rlc_sdu_segment_t *wait_list;
   nr_rlc_sdu_segment_t *wait_end;
 
@@ -104,5 +107,7 @@ void nr_rlc_entity_am_set_time(nr_rlc_entity_t *entity, uint64_t now);
 void nr_rlc_entity_am_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id);
 void nr_rlc_entity_am_reestablishment(nr_rlc_entity_t *_entity);
 void nr_rlc_entity_am_delete(nr_rlc_entity_t *entity);
+
+void nr_rlc_entity_am_deliver_pdu(nr_rlc_entity_t *entity, char *buffer, int size);
 
 #endif /* _NR_RLC_ENTITY_AM_H_ */

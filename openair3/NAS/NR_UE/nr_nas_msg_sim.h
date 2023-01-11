@@ -39,6 +39,9 @@
 #include "RegistrationComplete.h"
 #include "as_message.h"
 #include "FGSUplinkNasTransport.h"
+#include "FGSServiceRequest.h"
+#include "ActivateTestModeComplete.h"
+#include "CloseUeTestLoopComplete.h"
 
 #define PLAIN_5GS_MSG                                      0b0000
 #define INTEGRITY_PROTECTED                                0b0001
@@ -49,6 +52,7 @@
 #define REGISTRATION_REQUEST                               0b01000001 /* 65 = 0x41 */
 #define REGISTRATION_ACCEPT                                0b01000010 /* 66 = 0x42 */
 #define REGISTRATION_COMPLETE                              0b01000011 /* 67 = 0x43 */
+#define FGS_SERVICE_REQUEST                                0b01001100 /* 76 = 0x4c */
 #define FGS_AUTHENTICATION_REQUEST                         0b01010110 /* 86 = 0x56 */
 #define FGS_AUTHENTICATION_RESPONSE                        0b01010111 /* 87 = 0x57 */
 #define FGS_IDENTITY_REQUEST                               0b01011011 /* 91 = 0x5b */
@@ -57,6 +61,12 @@
 #define FGS_SECURITY_MODE_COMPLETE                         0b01011110 /* 94 = 0x5e */
 #define FGS_UPLINK_NAS_TRANSPORT                           0b01100111 /* 103= 0x67 */
 #define FGS_DOWNLINK_NAS_TRANSPORT                         0b01101000 /* 104= 0x68 */
+
+#define TEST_PD                                             0b00001111 /* skipIndicator=0000, protocolDiscriminator=1111 */
+#define ACTIVATE_TEST_MODE                                  0b10000100 /* 132 = 0x84 */
+#define ACTIVATE_TEST_MODE_COMPLETE                         0b10000101 /* 133 = 0x85 */
+#define NR_CLOSE_UE_TEST_LOOP                               0b10000000 /* 128 = 0x80 */
+#define CLOSE_UE_TEST_LOOP_COMPLETE                         0b10000001 /* 129 = 0x81 */
 
 // message type for 5GS session management
 #define FGS_PDU_SESSION_ESTABLISHMENT_REQ                  0b11000001 /* 193= 0xc1 */
@@ -112,6 +122,9 @@ typedef union {
   fgs_security_mode_complete_msg         fgs_security_mode_complete;
   registration_complete_msg              registration_complete;
   fgs_uplink_nas_transport_msg           uplink_nas_transport;
+  activate_test_mode_complete_msg        activate_test_mode_complete;
+  close_ue_test_loop_complete_msg        close_ue_test_loop_complete;
+  fgs_service_request_msg                fgs_service_request;
 } MM_msg;
 
 
@@ -160,6 +173,7 @@ typedef struct {
 } dl_nas_transport_t;
 
 void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id);
+void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id);
 void *nas_nrue_task(void *args_p);
 
 #endif /* __NR_NAS_MSG_SIM_H__*/

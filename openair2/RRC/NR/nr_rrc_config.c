@@ -40,6 +40,8 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
   int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
   NR_BandNR_t *nr_bandnr = CALLOC(1,sizeof(NR_BandNR_t));
   nr_bandnr->bandNR = band;
+  nr_bandnr->multipleTCI = CALLOC(1, sizeof(long));
+  *nr_bandnr->multipleTCI = NR_BandNR__multipleTCI_supported;
   ASN_SEQUENCE_ADD(&cap->rf_Parameters.supportedBandListNR.list,
                    nr_bandnr);
   if (mcs_table == 1) {

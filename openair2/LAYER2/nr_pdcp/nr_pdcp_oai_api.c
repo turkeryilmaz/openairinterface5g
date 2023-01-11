@@ -1031,7 +1031,7 @@ static void add_drb_am(int is_gnb, int rnti, struct NR_DRB_ToAddMod *s,
     exit(1);
   }
 
-  if (drb_id != 1) {
+  if (drb_id != 1 && drb_id != 2) {
     LOG_E(PDCP, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
@@ -1065,6 +1065,10 @@ static void add_drb(int is_gnb, int rnti, struct NR_DRB_ToAddMod *s,
                     unsigned char *ciphering_key,
                     unsigned char *integrity_key)
 {
+  if (rlc_Config == NULL) {
+    LOG_E(PDCP, "%s:%d:%s: fatal: NULL RLC config\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
   switch (rlc_Config->present) {
   case NR_RLC_Config_PR_am:
     add_drb_am(is_gnb, rnti, s, ciphering_algorithm, integrity_algorithm,
@@ -1101,6 +1105,7 @@ boolean_t nr_rrc_pdcp_config_asn1_req(
 {
   int rnti = ctxt_pP->rnti;
   int i;
+  int j;
 
   if (//ctxt_pP->enb_flag != 1 ||
       ctxt_pP->module_id != 0 ||
@@ -1130,10 +1135,20 @@ boolean_t nr_rrc_pdcp_config_asn1_req(
 
   if (drb2add_list != NULL) {
     for (i = 0; i < drb2add_list->list.count; i++) {
-      add_drb(ctxt_pP->enb_flag, rnti, drb2add_list->list.array[i],
-              rlc_bearer2add_list->list.array[i]->rlc_Config,
-              security_modeP & 0x0f, (security_modeP >> 4) & 0x0f,
-              kUPenc, kUPint);
+      if (rlc_bearer2add_list != NULL) {
+        for (j = 0; j < rlc_bearer2add_list->list.count; j++){
+          if (rlc_bearer2add_list->list.array[j]->servedRadioBearer != NULL){
+            if (rlc_bearer2add_list->list.array[j]->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
+              if (drb2add_list->list.array[i]->drb_Identity == rlc_bearer2add_list->list.array[j]->servedRadioBearer->choice.drb_Identity){
+                add_drb(ctxt_pP->enb_flag, rnti, drb2add_list->list.array[i],
+                        rlc_bearer2add_list->list.array[j]->rlc_Config,
+                        security_modeP & 0x0f, (security_modeP >> 4) & 0x0f,
+                        kUPenc, kUPint);
+              }
+            }
+          }
+        }
+      }
     }
   }
 

@@ -53,6 +53,9 @@ typedef struct nr_rlc_entity_t {
 
   void (*delete)(struct nr_rlc_entity_t *entity);
 
+  /* put RLC PDU into the queue to be sent to MAC directly */
+  int (*deliver_pdu)(struct nr_rlc_entity_t *entity, char *buffer, int size);
+
   /* callbacks provided to the RLC module */
   void (*deliver_sdu)(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
                       char *buf, int size);

@@ -94,6 +94,8 @@ static const char  nr_nas_attach_req_imsi[] = {
   0x01, 0x27, 0x11,
 };
 
+static size_t nr_rrc_ue_RRCSetupRequest_count = 0;
+
 extern void pdcp_config_set_security(
   const protocol_ctxt_t *const  ctxt_pP,
   pdcp_t          *const pdcp_pP,
@@ -1023,7 +1025,7 @@ int nr_decode_SI( const protocol_ctxt_t *const ctxt_pP, const uint8_t gNB_index 
     if (new_sib == 1) {
       NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt++;
       if (NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt == sib1->si_SchedulingInfo->schedulingInfoList.list.count)
-        nr_rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
+        nr_rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE_NR );
   
       LOG_I(NR_RRC,"SIStatus %x, SIcnt %d/%d\n",
             NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIStatus,
@@ -1036,7 +1038,7 @@ int nr_decode_SI( const protocol_ctxt_t *const ctxt_pP, const uint8_t gNB_index 
   //  NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt++;
 
   //  if (NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt == sib1->schedulingInfoList.list.count)
-  //    rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
+  //    rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE_NR );
 
   //  LOG_I(NR_RRC, "SIStatus %x, SIcnt %d/%d\n",
   //        NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIStatus,
@@ -1258,7 +1260,7 @@ int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(module_id_t module_id,
   if (nr_rrc_get_sub_state(module_id) == RRC_SUB_STATE_IDLE_SIB_COMPLETE_NR) {
     //if ( (NR_UE_rrc_inst[ctxt_pP->module_id].initialNasMsg.data != NULL) || (!AMF_MODE_ENABLED)) {
       nr_rrc_ue_generate_RRCSetupRequest(module_id, 0);
-      nr_rrc_set_sub_state( module_id, RRC_SUB_STATE_IDLE_CONNECTING );
+      nr_rrc_set_sub_state( module_id, RRC_SUB_STATE_IDLE_CONNECTING_NR );
     //}
   }
 
@@ -1386,7 +1388,11 @@ static void rrc_ue_generate_RRCSetupComplete(
 #else
     if (get_softmodem_params()->sa) {
       as_nas_info_t initialNasMsg;
-      generateRegistrationRequest(&initialNasMsg, ctxt_pP->module_id);
+      if (nr_rrc_ue_RRCSetupRequest_count > 1) {
+        generateServiceRequest(&initialNasMsg, ctxt_pP->module_id);
+      } else {
+        generateRegistrationRequest(&initialNasMsg, ctxt_pP->module_id);
+      }
       nas_msg = (char*)initialNasMsg.data;
       nas_msg_length = initialNasMsg.length;
     } else {
@@ -1491,8 +1497,8 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
 	 nr_rrc_ue_process_RadioBearerConfig(ctxt_pP,
 					     gNB_index,
 					     &dl_ccch_msg->message.choice.c1->choice.rrcSetup->criticalExtensions.choice.rrcSetup->radioBearerConfig);
-	 nr_rrc_set_state (ctxt_pP->module_id, RRC_STATE_CONNECTED);
-	 nr_rrc_set_sub_state (ctxt_pP->module_id, RRC_SUB_STATE_CONNECTED);
+	 nr_rrc_set_state (ctxt_pP->module_id, RRC_STATE_CONNECTED_NR);
+	 nr_rrc_set_sub_state (ctxt_pP->module_id, RRC_SUB_STATE_CONNECTED_NR);
 	 NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].rnti = ctxt_pP->rnti;
 	 rrc_ue_generate_RRCSetupComplete(
 					  ctxt_pP,
@@ -1813,6 +1819,8 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
      //printf("\n");
      /*UE_rrc_inst[ue_mod_idP].Srb0[Idx].Tx_buffer.Payload[i] = taus()&0xff;
      UE_rrc_inst[ue_mod_idP].Srb0[Idx].Tx_buffer.payload_size =i; */
+
+     nr_rrc_ue_RRCSetupRequest_count++;
 
 #ifdef ITTI_SIM
     MessageDef *message_p;
@@ -2380,16 +2388,40 @@ nr_rrc_ue_establish_srb2(
 
 	       msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_RELEASE_IND);
 
-	       if((dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present == NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
-		    (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)){
-		     dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationTimer =
-		     NR_RRCRelease_IEs__deprioritisationReq__deprioritisationTimer_min5;
-		     dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationType =
-		     NR_RRCRelease_IEs__deprioritisationReq__deprioritisationType_frequency;
-		 }
+         if((dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present == NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
+             (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)){
+           if (dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq != NULL) {
+             dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationTimer =
+               NR_RRCRelease_IEs__deprioritisationReq__deprioritisationTimer_min5;
+             dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationType =
+               NR_RRCRelease_IEs__deprioritisationReq__deprioritisationType_frequency;
+           }
+         }
 
-		  itti_send_msg_to_task(TASK_NAS_UE, ctxt_pP->instance, msg_p);
-		  break;
+         itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
+
+         /* simulate power OFF, to be able to send RRCSetupRequest to TTCN again */
+         LOG_W(NR_RRC, "todo, sleep before removing UE\n");
+         sleep(3);
+
+         NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
+         mac->ra.ra_state = RA_UE_IDLE;
+
+         nr_rrc_set_state( ctxt_pP->module_id, RRC_STATE_IDLE_NR );
+         nr_rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_NR );
+         NR_UE_rrc_inst[ctxt_pP->module_id].Srb0[gNB_indexP].Tx_buffer.payload_size = 0;
+
+         rrc_rlc_remove_ue(ctxt_pP);
+         pdcp_remove_UE(ctxt_pP);
+
+         NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config = NULL;
+         NR_UE_rrc_inst[ctxt_pP->module_id].SRB1_config[gNB_indexP] = NULL;
+         NR_UE_rrc_inst[ctxt_pP->module_id].SRB2_config[gNB_indexP] = NULL;
+         NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][0] = NULL;
+         NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][1] = NULL;
+         NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_indexP][2] = NULL;
+
+         break;
 	     case NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry:
          LOG_I(NR_RRC, "[UE %d] Received Capability Enquiry (gNB %d)\n", ctxt_pP->module_id,gNB_indexP);
          nr_rrc_ue_process_ueCapabilityEnquiry(
@@ -2704,7 +2736,9 @@ nr_rrc_ue_process_ueCapabilityEnquiry(
     UE_Capability_nr = CALLOC(1,sizeof(NR_UE_NR_Capability_t));
     NR_BandNR_t *nr_bandnr;
     nr_bandnr  = CALLOC(1,sizeof(NR_BandNR_t));
-    nr_bandnr->bandNR = 1;
+    nr_bandnr->bandNR = 78;
+    nr_bandnr->multipleTCI = CALLOC(1, sizeof(long));
+    *nr_bandnr->multipleTCI = NR_BandNR__multipleTCI_supported;
     ASN_SEQUENCE_ADD(&UE_Capability_nr->rf_Parameters.supportedBandListNR.list,
                      nr_bandnr);
   }
@@ -2932,7 +2966,7 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
                 LOG_D(NR_RRC, "Received NR band information: %ld.\n",
                      nr_freq_band_list->list.array[i]->choice.bandInformationNR->bandNR);
             }
-            MessageDef *dummy_msg = itti_alloc_new_message(TASK_RRC_NSA_UE, 0, UE_CAPABILITY_DUMMY);
+            MessageDef *dummy_msg = itti_alloc_new_message(TASK_RRC_NSA_NRUE, 0, UE_CAPABILITY_DUMMY);
             LOG_D(NR_RRC, "We are calling nsa_sendmsg_to_lte_ue to send a UE_CAPABILITY_DUMMY\n");
             nsa_sendmsg_to_lte_ue(dummy_msg, sizeof(dummy_msg), UE_CAPABILITY_DUMMY);
             LOG_A(NR_RRC, "Sent initial NRUE Capability response to LTE UE\n");

@@ -84,7 +84,8 @@ static int _nas_mm_msg_encode_header(const mm_msg_header_t *header,
   }
 
   /* Check the protocol discriminator */
-  if (header->ex_protocol_discriminator != FGS_MOBILITY_MANAGEMENT_MESSAGE) {
+  if (header->ex_protocol_discriminator != FGS_MOBILITY_MANAGEMENT_MESSAGE &&
+          header->ex_protocol_discriminator != TEST_PD) {
     LOG_TRACE(ERROR, "ESM-MSG   - Unexpected extened protocol discriminator: 0x%x",
               header->ex_protocol_discriminator);
     return (TLV_ENCODE_PROTOCOL_NOT_SUPPORTED);
@@ -93,7 +94,9 @@ static int _nas_mm_msg_encode_header(const mm_msg_header_t *header,
   /* Encode the extendedprotocol discriminator */
   ENCODE_U8(buffer + size, header->ex_protocol_discriminator, size);
   /* Encode the security header type */
-  ENCODE_U8(buffer + size, (header->security_header_type & 0xf), size);
+  if (header->ex_protocol_discriminator != TEST_PD) {
+      ENCODE_U8(buffer + size, (header->security_header_type & 0xf), size);
+  }
   /* Encode the message type */
   ENCODE_U8(buffer + size, header->message_type, size);
   return (size);
@@ -134,6 +137,15 @@ int mm_msg_encode(MM_msg *mm_msg, uint8_t *buffer, uint32_t len) {
       break;
     case FGS_UPLINK_NAS_TRANSPORT:
       encode_result = encode_fgs_uplink_nas_transport(&mm_msg->uplink_nas_transport, buffer, len);
+      break;
+    case ACTIVATE_TEST_MODE_COMPLETE:
+      encode_result = encode_activate_test_mode_complete(&mm_msg->activate_test_mode_complete, buffer, len);
+      break;
+    case CLOSE_UE_TEST_LOOP_COMPLETE:
+      encode_result = encode_close_ue_test_loop_complete(&mm_msg->close_ue_test_loop_complete, buffer, len);
+      break;
+    case FGS_SERVICE_REQUEST:
+      encode_result = encode_fgs_service_request(&mm_msg->fgs_service_request, buffer, len);
       break;
     default:
       LOG_TRACE(ERROR, "EMM-MSG   - Unexpected message type: 0x%x",
@@ -802,8 +814,191 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   }
 }
 
+static void generateActivateTestModeComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+  int size = sizeof(mm_msg_header_t);
+  fgs_nas_message_t nas_msg={0};
+
+  MM_msg *mm_msg;
+  nas_stream_cipher_t stream_cipher;
+  uint8_t             mac[4];
+  nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
+  size += 7;
+
+  mm_msg = &nas_msg.security_protected.plain.mm_msg;
+
+  // set header
+  mm_msg->header.ex_protocol_discriminator = TEST_PD;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = ACTIVATE_TEST_MODE_COMPLETE;
+
+  // set activate test mode complete
+  mm_msg->activate_test_mode_complete.protocoldiscriminator = TEST_PD;
+  size += 1;
+  mm_msg->activate_test_mode_complete.messagetype = ACTIVATE_TEST_MODE_COMPLETE;
+  size += 1;
+
+  // encode the message
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+  int security_header_len = nas_protected_security_header_encode((char*)(initialNasMsg->data),&(nas_msg.header), size);
+
+  initialNasMsg->length = security_header_len + mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data+security_header_len), size-security_header_len);
+
+  stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
+  stream_cipher.key_length = 16;
+  stream_cipher.count      = 0;
+  stream_cipher.bearer     = 1;
+  stream_cipher.direction  = 0;
+  stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 6);
+  /* length in bits */
+  stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
+
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  nas_stream_encrypt_eia2(
+    &stream_cipher,
+    mac);
+#endif
+  printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
+  for(int i = 0; i < 4; i++){
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
+  }
+}
+
+static void generateCloseUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+  int size = sizeof(mm_msg_header_t);
+  fgs_nas_message_t nas_msg={0};
+
+  MM_msg *mm_msg;
+  nas_stream_cipher_t stream_cipher;
+  uint8_t             mac[4];
+  nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
+  size += 7;
+
+  mm_msg = &nas_msg.security_protected.plain.mm_msg;
+
+  // set header
+  mm_msg->header.ex_protocol_discriminator = TEST_PD;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = CLOSE_UE_TEST_LOOP_COMPLETE;
+
+  // set activate test mode complete
+  mm_msg->close_ue_test_loop_complete.protocoldiscriminator = TEST_PD;
+  size += 1;
+  mm_msg->close_ue_test_loop_complete.messagetype = CLOSE_UE_TEST_LOOP_COMPLETE;
+  size += 1;
+
+  // encode the message
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+  int security_header_len = nas_protected_security_header_encode((char*)(initialNasMsg->data),&(nas_msg.header), size);
+
+  initialNasMsg->length = security_header_len + mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data+security_header_len), size-security_header_len);
+
+  stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
+  stream_cipher.key_length = 16;
+  stream_cipher.count      = 0;
+  stream_cipher.bearer     = 1;
+  stream_cipher.direction  = 0;
+  stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 6);
+  /* length in bits */
+  stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
+
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  nas_stream_encrypt_eia2(
+    &stream_cipher,
+    mac);
+#endif
+  printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
+  for(int i = 0; i < 4; i++){
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
+  }
+}
+
+void generateServiceRequestInner(as_nas_info_t *initialNasMsg, int Mod_id) {
+  int size = sizeof(mm_msg_header_t);
+  fgs_nas_message_t nas_msg={0};
+  MM_msg *mm_msg;
+
+  mm_msg = &nas_msg.plain.mm_msg;
+  // set header
+  mm_msg->header.ex_protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = FGS_SERVICE_REQUEST;
+
+  // set service request
+  mm_msg->fgs_service_request.protocoldiscriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  size += 1;
+  mm_msg->fgs_service_request.securityheadertype = PLAIN_5GS_MSG;
+  size += 1;
+  mm_msg->fgs_service_request.messagetype = FGS_SERVICE_REQUEST;
+  size += 1;
+
+  mm_msg->fgs_service_request.servicetype = 0b0010;
+  mm_msg->fgs_service_request.naskeysetidentifier.naskeysetidentifier = 0;
+  size += 1;
+
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.digit1  = 1;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.digitp1 = 1;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.digitp  = 1;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.oddeven = 0;
+  size += 5;
+
+  // encode the message
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+
+  initialNasMsg->length = mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data), size);
+}
+
+void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
+  int size = sizeof(mm_msg_header_t);
+  fgs_nas_message_t nas_msg={0};
+  MM_msg *mm_msg;
+
+  mm_msg = &nas_msg.plain.mm_msg;
+  // set header
+  mm_msg->header.ex_protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = FGS_SERVICE_REQUEST;
+
+  // set service request
+  mm_msg->fgs_service_request.protocoldiscriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  size += 1;
+  mm_msg->fgs_service_request.securityheadertype = PLAIN_5GS_MSG;
+  size += 1;
+  mm_msg->fgs_service_request.messagetype = FGS_SERVICE_REQUEST;
+  size += 1;
+
+  mm_msg->fgs_service_request.servicetype = 0b0010;
+  mm_msg->fgs_service_request.naskeysetidentifier.naskeysetidentifier = 0;
+  size += 1;
+
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.digit1  = 1;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.digitp1 = 1;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.digitp  = 1;
+  mm_msg->fgs_service_request.fgsmobileidentity.imeisv.oddeven = 0;
+  size += 5;
+
+  as_nas_info_t serviceRequestInnerNasMsg;
+  generateServiceRequestInner(&serviceRequestInnerNasMsg, Mod_id);
+  mm_msg->fgs_service_request.presencemask |= FGS_SERVICE_REQUEST_NAS_MESSAGE_CONTAINER_PRESENT;
+  mm_msg->fgs_service_request.fgsnasmessagecontainer.nasmessagecontainercontents.value  = serviceRequestInnerNasMsg.data;
+  mm_msg->fgs_service_request.fgsnasmessagecontainer.nasmessagecontainercontents.length = serviceRequestInnerNasMsg.length;
+  size += (serviceRequestInnerNasMsg.length + 2);
+
+  // encode the message
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+
+  initialNasMsg->length = mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data), size);
+}
 
 uint8_t get_msg_type(uint8_t *pdu_buffer, uint32_t length) {
+  uint8_t          pd = 0;
   uint8_t          msg_type = 0;
   uint8_t          offset   = 0;
 
@@ -811,10 +1006,13 @@ uint8_t get_msg_type(uint8_t *pdu_buffer, uint32_t length) {
     if (((nas_msg_header_t *)(pdu_buffer))->choice.security_protected_nas_msg_header_t.security_header_type > 0) {
       offset += SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH;
       if (offset < length) {
+        pd = ((mm_msg_header_t *)(pdu_buffer + offset))->ex_protocol_discriminator;
         msg_type = ((mm_msg_header_t *)(pdu_buffer + offset))->message_type;
 
         if (msg_type == FGS_DOWNLINK_NAS_TRANSPORT) {
           msg_type = ((dl_nas_transport_t *)(pdu_buffer+ offset))->sm_nas_msg_header.message_type;
+        } else if (pd == TEST_PD) {
+            msg_type = *(pdu_buffer + offset + 1);
         }
       }
     } else { // plain 5GS NAS message
@@ -1035,6 +1233,12 @@ void *nas_nrue_task(void *args_p)
 	    }
 	  }
 	  break;
+    case ACTIVATE_TEST_MODE:
+      generateActivateTestModeComplete(Mod_id, &initialNasMsg);
+      break;
+    case NR_CLOSE_UE_TEST_LOOP:
+      generateCloseUeTestLoopComplete(Mod_id, &initialNasMsg);
+      break;
           default:
               LOG_W(NR_RRC,"unknow message type %d\n",msg_type);
               break;

@@ -437,6 +437,58 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
   return RLC_OP_STATUS_OK;
 }
 
+rlc_op_status_t enqueue_mac_rlc_data_req(
+  const protocol_ctxt_t *const ctxt_pP,
+  const srb_flag_t   srb_flagP,
+  const MBMS_flag_t  MBMS_flagP,
+  const rb_id_t      rb_idP,
+  const mui_t        muiP,
+  confirm_t    confirmP,
+  sdu_size_t   sdu_sizeP,
+  mem_block_t *sdu_pP,
+  const uint32_t *const sourceL2Id,
+  const uint32_t *const destinationL2Id
+   )
+{
+  int rnti = ctxt_pP->rnti;
+  nr_rlc_ue_t *ue;
+  nr_rlc_entity_t *rb;
+
+  LOG_D(RLC, "%s rnti %d srb_flag %d rb_id %ld mui %d confirm %d sdu_size %d MBMS_flag %d\n",
+        __FUNCTION__, rnti, srb_flagP, rb_idP, muiP, confirmP, sdu_sizeP,
+        MBMS_flagP);
+
+  if (ctxt_pP->enb_flag)
+    T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id),
+      T_INT(ctxt_pP->rnti), T_INT(rb_idP), T_INT(sdu_sizeP));
+
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
+
+  rb = NULL;
+
+  if (srb_flagP) {
+    if (rb_idP >= 1 && rb_idP <= 2)
+      rb = ue->srb[rb_idP - 1];
+  } else {
+    if (rb_idP >= 1 && rb_idP <= 5)
+      rb = ue->drb[rb_idP - 1];
+  }
+
+  if (rb != NULL) {
+    rb->deliver_pdu(rb, (char *)sdu_pP->data, sdu_sizeP);
+  } else {
+    LOG_E(RLC, "%s:%d:%s: fatal: SDU sent to unknown RB\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
+
+  free_mem_block(sdu_pP, __func__);
+
+  return RLC_OP_STATUS_OK;
+}
+
 int rlc_module_init(int enb_flag)
 {
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -732,26 +784,30 @@ static void add_rlc_srb(int rnti, struct NR_SRB_ToAddMod *s, NR_RLC_BearerConfig
     exit(1);
   }
 
-  switch (r->present) {
-  case NR_RLC_Config_PR_am: {
-    struct NR_RLC_Config__am *am;
-    am = r->choice.am;
-    t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
-    t_status_prohibit  = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
-    t_poll_retransmit  = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
-    poll_pdu           = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
-    poll_byte          = decode_poll_byte(am->ul_AM_RLC.pollByte);
-    max_retx_threshold = decode_max_retx_threshold(am->ul_AM_RLC.maxRetxThreshold);
-    if (*am->dl_AM_RLC.sn_FieldLength != *am->ul_AM_RLC.sn_FieldLength) {
-      LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+  if (r) {
+    switch (r->present) {
+    case NR_RLC_Config_PR_am: {
+      struct NR_RLC_Config__am *am;
+      am = r->choice.am;
+      t_reassembly       = decode_t_reassembly(am->dl_AM_RLC.t_Reassembly);
+      t_status_prohibit  = decode_t_status_prohibit(am->dl_AM_RLC.t_StatusProhibit);
+      t_poll_retransmit  = decode_t_poll_retransmit(am->ul_AM_RLC.t_PollRetransmit);
+      poll_pdu           = decode_poll_pdu(am->ul_AM_RLC.pollPDU);
+      poll_byte          = decode_poll_byte(am->ul_AM_RLC.pollByte);
+      max_retx_threshold = decode_max_retx_threshold(am->ul_AM_RLC.maxRetxThreshold);
+      if (*am->dl_AM_RLC.sn_FieldLength != *am->ul_AM_RLC.sn_FieldLength) {
+        LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
+        exit(1);
+      }
+      sn_field_length    = decode_sn_field_length_am(*am->dl_AM_RLC.sn_FieldLength);
+      break;
+    }
+    default:
+      LOG_E(RLC, "%s:%d:%s: fatal error\n", __FILE__, __LINE__, __FUNCTION__);
       exit(1);
     }
-    sn_field_length    = decode_sn_field_length_am(*am->dl_AM_RLC.sn_FieldLength);
-    break;
-  }
-  default:
-    LOG_E(RLC, "%s:%d:%s: fatal error\n", __FILE__, __LINE__, __FUNCTION__);
-    exit(1);
+  } else {
+    /* TODO: TTCN sends empty RLC config for SRB, need to use default values */
   }
 
   nr_rlc_manager_lock(nr_rlc_ue_manager);
@@ -803,7 +859,7 @@ static void add_drb_am(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
   int sn_field_length;
 
   if (!(drb_id >= 1 && drb_id <= 5)) {
-    LOG_E(RLC, "%s:%d:%s: fatal, bad srb id %d\n",
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
   }
@@ -880,7 +936,7 @@ static void add_drb_um(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
   int t_reassembly;
 
   if (!(drb_id >= 1 && drb_id <= 5)) {
-    LOG_E(RLC, "%s:%d:%s: fatal, bad srb id %d\n",
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
   }
@@ -928,7 +984,7 @@ static void add_drb_um(int rnti, struct NR_DRB_ToAddMod *s, NR_RLC_BearerConfig_
                                      sn_field_length);
     nr_rlc_ue_add_drb_rlc_entity(ue, drb_id, nr_rlc_um);
 
-    LOG_D(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
+    LOG_I(RLC, "%s:%d:%s: added drb %d to UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }

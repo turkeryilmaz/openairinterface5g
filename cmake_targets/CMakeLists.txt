@@ -124,7 +124,7 @@ if(EXISTS "/usr/include/atlas/cblas.h" OR EXISTS "/usr/include/cblas.h")
 
   if(EXISTS "/usr/lib/atlas/libtatlas.so" OR EXISTS "/usr/lib64/atlas/libtatlas.so") #Case for CentOS7
      list(APPEND ATLAS_LIBRARIES tatlas)
-  else()
+  elseif(EXISTS "/usr/lib/libatlas.so" OR EXISTS "/usr/lib64/libatlas.so" OR EXISTS "/usr/lib/atlas/libatlas.so" OR EXISTS "/usr/lib64/atlas/libatlas.so" OR EXISTS "/usr/lib/x86_64-linux-gnu/libatlas.so")
      list(APPEND ATLAS_LIBRARIES atlas) #Case for Ubuntu
   endif()
 
@@ -2093,6 +2093,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_gNB_port_man_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
+  ${OPENAIR3_DIR}/SS/ss_gNB_drb_task.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
@@ -2351,6 +2352,9 @@ set(libnrnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/FGSNASSecurityModeComplete.c
   ${NAS_SRC}COMMON/EMM/MSG/RegistrationComplete.c
   ${NAS_SRC}COMMON/EMM/MSG/FGSUplinkNasTransport.c
+  ${NAS_SRC}COMMON/EMM/MSG/FGSServiceRequest.c
+  ${NAS_SRC}COMMON/EMM/MSG/ActivateTestModeComplete.c
+  ${NAS_SRC}COMMON/EMM/MSG/CloseUeTestLoopComplete.c
   ${NAS_SRC}COMMON/ESM/MSG/PduSessionEstablishRequest.c
   )
 

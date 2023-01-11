@@ -27,6 +27,9 @@
 #include "nr_rlc_pdu.h"
 
 #include "LOG/log.h"
+#include "common/ran_context.h"
+
+extern RAN_CONTEXT_t RC;
 
 /* for a given SDU/SDU segment, computes the corresponding PDU header size */
 static int compute_pdu_header_size(nr_rlc_entity_um_t *entity,
@@ -58,6 +61,11 @@ static int sn_compare_rx(void *_entity, int a, int b)
 {
   nr_rlc_entity_um_t *entity = _entity;
   return modulus_rx(entity, a) - modulus_rx(entity, b);
+}
+
+static int sn_compare_full_tx(void *_entity, int a, int b)
+{
+  return 0;
 }
 
 /* checks that all the bytes of the SDU sn have been received (but SDU
@@ -514,16 +522,97 @@ nr_rlc_entity_buffer_status_t nr_rlc_entity_um_buffer_status(
   return ret;
 }
 
+static int generate_tx_full_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
+{
+  nr_rlc_pdu_t *pdu;
+  int ret;
+  int pdu_header_size;
+  int sdu_size;
+
+  pdu = entity->tx_extra_list;
+
+  /* UMD NoSN header length */
+  pdu_header_size = 1;
+
+  sdu_size = pdu->size - pdu_header_size;
+
+  if (pdu->size > size) {
+    LOG_E(RLC, "%s:%d:%s: buffer is small\n", __FILE__, __LINE__,  __FUNCTION__);
+    exit(1);
+  }
+
+  /* update buffer status */
+  entity->common.bstatus.tx_size -= pdu->size;
+
+  /* deliver */
+  memcpy(buffer, pdu->data, pdu->size);
+
+  entity->tx_size -= sdu_size;
+
+  entity->tx_extra_list = pdu->next;
+  ret = pdu->size;
+
+  nr_rlc_free_pdu(pdu);
+
+  return ret;
+}
+
 int nr_rlc_entity_um_generate_pdu(nr_rlc_entity_t *_entity,
                                   char *buffer, int size, nr_rlc_pkt_info_t *rlc_info)
 {
   nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)_entity;
+  int ret;
 
-  int ret = generate_tx_pdu(entity, buffer, size);
+  if (RC.ss.mode > SS_GNB) {
+    if (entity->tx_extra_list != NULL) {
+      ret = generate_tx_full_pdu(entity, buffer, size);
+      rlc_info->rlcMode              = 2; /** UM Mode */
+      rlc_info->sequenceNumberLength = entity->sn_field_length;
+      rlc_info->pduLength = ret;
+      return ret;
+    }
+  }
+
+  ret = generate_tx_pdu(entity, buffer, size);
   rlc_info->rlcMode              = 2; /** UM Mode */
   rlc_info->sequenceNumberLength = entity->sn_field_length;
   rlc_info->pduLength = ret;
   return ret;
+}
+
+void nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *_entity, char *buffer, int size)
+{
+  nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)_entity;
+  nr_rlc_pdu_t *pdu;
+  int pdu_header_size;
+  int sdu_size;
+
+  /* UMD NoSN header length */
+  pdu_header_size = 1;
+
+  sdu_size = size - pdu_header_size;
+
+  if (sdu_size > NR_SDU_MAX) {
+    LOG_E(RLC, "%s:%d:%s: fatal: SDU size too big (%d bytes)\n",
+          __FILE__, __LINE__, __FUNCTION__, sdu_size);
+    exit(1);
+  }
+
+  if (entity->tx_size + sdu_size > entity->tx_maxsize) {
+    LOG_W(RLC, "%s:%d:%s: warning: SDU rejected, SDU buffer full\n",
+          __FILE__, __LINE__, __FUNCTION__);
+    return;
+  }
+
+  entity->tx_size += sdu_size;
+
+  /* PDU contains full RLC PDU with header */
+  pdu = nr_rlc_new_pdu(0, 0, 1, 1, buffer, size);
+  entity->tx_extra_list = nr_rlc_pdu_list_add(sn_compare_full_tx, entity,
+                                        entity->tx_extra_list, pdu);
+
+  /* update buffer status */
+  entity->common.bstatus.tx_size += size;
 }
 
 /*************************************************************************/
@@ -663,6 +752,7 @@ void nr_rlc_entity_um_discard_sdu(nr_rlc_entity_t *_entity, int sdu_id)
 static void clear_entity(nr_rlc_entity_um_t *entity)
 {
   nr_rlc_pdu_t *cur_rx;
+  nr_rlc_pdu_t *cur_tx;
 
   entity->rx_next_highest    = 0;
   entity->rx_next_reassembly = 0;
@@ -691,6 +781,14 @@ static void clear_entity(nr_rlc_entity_um_t *entity)
   entity->tx_size         = 0;
 
   entity->common.bstatus.tx_size = 0;
+
+  cur_tx = entity->tx_extra_list;
+  while (cur_tx != NULL) {
+    nr_rlc_pdu_t *p = cur_tx;
+    cur_tx = cur_tx->next;
+    nr_rlc_free_pdu(p);
+  }
+  entity->tx_extra_list = NULL;
 }
 
 void nr_rlc_entity_um_reestablishment(nr_rlc_entity_t *_entity)

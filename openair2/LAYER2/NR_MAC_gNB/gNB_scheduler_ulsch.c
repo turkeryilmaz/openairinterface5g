@@ -409,6 +409,9 @@ int nr_process_mac_pdu(module_id_t module_idP,
             mac_subheader_len = 2;
           }
 
+          if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+            return 0;
+
           rnti_t crnti = UE_info->rnti[UE_id];
           int UE_idx = UE_id;
           for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
@@ -469,6 +472,9 @@ int nr_process_mac_pdu(module_id_t module_idP,
             // fixed length of 6 bytes
             mac_sdu_len = 6;
           }
+
+          if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+            return 0;
 
           nr_mac_rrc_data_ind(module_idP,
                               CC_id,

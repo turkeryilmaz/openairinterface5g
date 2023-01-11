@@ -162,10 +162,10 @@ rrc_data_req_nr_ue(
     MessageDef *message_p;
     // Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling).
     uint8_t *message_buffer;
-    message_buffer = itti_malloc (TASK_RRC_UE, TASK_PDCP_UE, sdu_sizeP);
+    message_buffer = itti_malloc (TASK_RRC_NRUE, TASK_PDCP_UE, sdu_sizeP);
     LOG_D(RRC,"Sending RRC message for SRB %ld, sdu_size %d\n",rb_idP, sdu_sizeP);
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    message_p = itti_alloc_new_message ( TASK_RRC_UE, 0, RRC_DCCH_DATA_REQ);
+    message_p = itti_alloc_new_message ( TASK_RRC_NRUE, 0, RRC_DCCH_DATA_REQ);
     RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
     RRC_DCCH_DATA_REQ (message_p).enb_flag  = ctxt_pP->enb_flag;
     RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;

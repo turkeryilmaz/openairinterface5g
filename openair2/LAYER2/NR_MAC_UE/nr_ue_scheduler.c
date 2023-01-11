@@ -577,7 +577,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     NR_BWP_UplinkDedicated_t *ibwp;
     int scs,abwp_start,abwp_size,startSymbolAndLength,mappingtype;
     NR_PUSCH_Config_t *pusch_Config=NULL;
-    if (mac->cg && ubwp &&
+
+    if (mac->cg &&
         mac->cg->spCellConfig &&
         mac->cg->spCellConfig->spCellConfigDedicated &&
         mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
@@ -585,6 +586,14 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
       ibwp = mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP;
       pusch_Config = ibwp->pusch_Config->choice.setup;
+    }
+
+    if (mac->cg && ubwp &&
+        mac->cg->spCellConfig &&
+        mac->cg->spCellConfig->spCellConfigDedicated &&
+        mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
+        mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP) {
+
       startSymbolAndLength = ubwp->bwp_Common->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list.array[rar_grant->Msg3_t_alloc]->startSymbolAndLength;
       mappingtype = ubwp->bwp_Common->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list.array[rar_grant->Msg3_t_alloc]->mappingType;
 
