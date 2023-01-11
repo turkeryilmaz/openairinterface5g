@@ -336,7 +336,10 @@ void ss_gNB_srb_init(void)
 
   // Port number
   int port = RC.ss.Srbport;
-  acpInit(malloc, free, 1000);
+  if (RC.ss.mode == SS_SOFTMODEM_SRB)
+  {
+    acpInit(malloc, free, 1000);
+  }
 
   // Register user services/notifications in message table
   const struct acpMsgTable msgTable[] = {
@@ -368,8 +371,8 @@ void ss_gNB_srb_init(void)
   {
     SS_context.State = SS_STATE_CELL_ACTIVE;
   }
-  itti_subscribe_event_fd(TASK_SS_SRB, fd1);
-  itti_mark_task_ready(TASK_SS_SRB);
+  itti_subscribe_event_fd(TASK_SS_SRB_GNB, fd1);
+  itti_mark_task_ready(TASK_SS_SRB_GNB);
 }
 
 //------------------------------------------------------------------------------
@@ -378,7 +381,7 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
   MessageDef *received_msg = NULL;
   int result = 0;
 
-  itti_receive_msg(TASK_SS_SRB, &received_msg);
+  itti_receive_msg(TASK_SS_SRB_GNB, &received_msg);
 
   /* Check if there is a packet to handle */
   if (received_msg != NULL)

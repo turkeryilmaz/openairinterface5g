@@ -279,7 +279,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     // No message (timeout on socket)
     if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
     {
-      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_RRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB task \n", SS_NRRRC_PDU_IND);
+      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_RRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB_GNB task \n", SS_NRRRC_PDU_IND);
       MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
       if (message_p)
       {
@@ -290,10 +290,10 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
         SS_NRRRC_PDU_IND(message_p).frame = -1;
         SS_NRRRC_PDU_IND(message_p).subframe = -1;
 
-        int send_res = itti_send_msg_to_task(TASK_SS_SRB, 0, message_p);
+        int send_res = itti_send_msg_to_task(TASK_SS_SRB_GNB, 0, message_p);
         if (send_res < 0)
         {
-          LOG_A(ENB_SS, "Error in sending Wake up signal /SS_NRRRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB\n", SS_NRRRC_PDU_IND);
+          LOG_A(ENB_SS, "Error in sending Wake up signal /SS_NRRRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
         }
       }
     }

@@ -353,9 +353,9 @@ int8_t nr_mac_rrc_data_ind(const module_id_t     module_idP,
     LOG_D(NR_RRC, "[gNB %d] Received SDU for CCCH on SRB %ld\n", module_idP, srb_idP);
     ctxt.brOption = brOption;
     if (sdu_lenP > 0) {
-      LOG_I(NR_RRC,"NRRRC Sending CCCH_PDU_IND/SS_NRRRC_PDU_IND to TASK_SS_SRB (msg_Id:%d) [SFN: %d, SF: %d] \n", 
+      LOG_I(NR_RRC,"NRRRC Sending CCCH_PDU_IND/SS_NRRRC_PDU_IND to TASK_SS_SRB_GNB (msg_Id:%d) [SFN: %d, SF: %d] \n", 
         SS_NRRRC_PDU_IND, ctxt.frame, ctxt.subframe);
-      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, INSTANCE_DEFAULT, SS_NRRRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB_GNB, INSTANCE_DEFAULT, SS_NRRRC_PDU_IND);
       if (message_p) {
         /* Populate the message to SS */
         SS_NRRRC_PDU_IND (message_p).sdu_size = sdu_lenP;
@@ -366,9 +366,9 @@ int8_t nr_mac_rrc_data_ind(const module_id_t     module_idP,
         memset (SS_NRRRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
         memcpy (SS_NRRRC_PDU_IND (message_p).sdu, sduP, sdu_lenP);
 
-        int send_res = itti_send_msg_to_task (TASK_SS_SRB, INSTANCE_DEFAULT, message_p);
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB_GNB, INSTANCE_DEFAULT, message_p);
         if(send_res < 0) {
-          LOG_E(RRC,"Error in sending CCCH_PDU_IND/SS_NRRRC_PDU_IND to TASK_SS_SRB (msg_Id:%d) to TASK_SS_SRB\n", SS_NRRRC_PDU_IND);
+          LOG_E(RRC,"Error in sending CCCH_PDU_IND/SS_NRRRC_PDU_IND to TASK_SS_SRB_GNB (msg_Id:%d) to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
         }
       }
       nr_rrc_gNB_decode_ccch(&ctxt, sduP, sdu_lenP, NULL, CC_id);

@@ -780,8 +780,8 @@ static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
 
  srb_found:
   {
-      LOG_I(PDCP,"PDCP Sending DCCH_PDU_IND/SS_NRRRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB \n", SS_NRRRC_PDU_IND);
-      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB, 0, SS_NRRRC_PDU_IND);
+      LOG_I(PDCP,"PDCP Sending DCCH_PDU_IND/SS_NRRRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB_GNB \n", SS_NRRRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_SRB_GNB, 0, SS_NRRRC_PDU_IND);
       if (message_p) {
         /* Populate the message and send to SS */
         SS_NRRRC_PDU_IND (message_p).sdu_size = size;
@@ -792,9 +792,9 @@ static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
         memset (SS_NRRRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
         memcpy (SS_NRRRC_PDU_IND (message_p).sdu, buf, size);
 
-        int send_res = itti_send_msg_to_task (TASK_SS_SRB, 0, message_p);
+        int send_res = itti_send_msg_to_task (TASK_SS_SRB_GNB, 0, message_p);
         if(send_res < 0) {
-          LOG_E(PDCP,"Error in sending DCCH_PDU_IND/SS_NRRRC_PDU_IND(msg_Id:%d) to TASK_SS_SRB\n", SS_NRRRC_PDU_IND);
+          LOG_E(PDCP,"Error in sending DCCH_PDU_IND/SS_NRRRC_PDU_IND(msg_Id:%d) to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
         }
       }
   }
