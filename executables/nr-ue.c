@@ -973,8 +973,7 @@ void *UE_thread_SL(void *arg) {
 
     int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
     // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
-    int slot_nr_tx = ((slot_nr + 3) + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
-    int write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr_tx, &UE->frame_parms, 0);
+    int write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     int read_time_stamp = firstSymSamp + UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
@@ -984,11 +983,11 @@ void *UE_thread_SL(void *arg) {
     int readBlockSize, writeBlockSize;
     if (slot_nr < (nb_slot_frame - 1)) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms);
-      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms);
+      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms);
     } else {
       UE->rx_offset_diff = computeSamplesShift(UE);
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
-      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr_tx, &UE->frame_parms) - UE->rx_offset_diff;
+      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
     }
 
     AssertFatal(readBlockSize ==
