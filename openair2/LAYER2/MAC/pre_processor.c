@@ -639,7 +639,7 @@ dlsch_scheduler_pre_processor(module_id_t Mod_id,
       continue;
     }
     if (UE_info->active[CC_id][UE_id] != TRUE) {
-      LOG_E(MAC, "UE %d RNTI %x is NOT active!\n", UE_id, rnti);
+      LOG_T(MAC, "UE %d RNTI %x is NOT active!\n", UE_id, rnti);
       continue;
     }
     if (ue_template->rach_resource_type > 0) {
