@@ -311,7 +311,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
       }
-      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
+      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
     } else {
       LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
@@ -321,7 +321,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
 
   if (ret == 0) {
     LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
-          ue->Mod_id, ue->rx_offset, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
+          ue->Mod_id, ue->rx_offset_sl, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
     if (ue->UE_scan_carrier == 0) {
       ue->psbch_vars[0]->pdu_errors_conseq = 0;
     }
