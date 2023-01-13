@@ -829,19 +829,20 @@ int computeSamplesShift(PHY_VARS_NR_UE *UE) {
   return samples_shift;
 }
 
-static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp) {
+static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sync) {
+  uint16_t nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
   if (fp->numerology_index == 0)
     return fp->nb_prefix_samples0 + fp->ofdm_symbol_size;
-  int num_samples = (slot%(fp->slots_per_subframe/2)) ? fp->nb_prefix_samples : fp->nb_prefix_samples0;
+  int num_samples = (slot%(fp->slots_per_subframe/2)) ? fp->nb_prefix_samples : nb_prefix_samples0;
   num_samples += fp->ofdm_symbol_size;
   return num_samples;
 }
 
-static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp) {
-  int rem_samples = fp->get_samples_per_slot(slot, fp) - get_firstSymSamp(slot, fp);
+static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sync) {
+  int rem_samples = fp->get_samples_per_slot(slot, fp) - get_firstSymSamp(slot, fp, sync);
   int next_slot_first_symbol = 0;
   if (slot < (fp->slots_per_frame-1))
-    next_slot_first_symbol = get_firstSymSamp(slot+1, fp);
+    next_slot_first_symbol = get_firstSymSamp(slot+1, fp, sync);
   return rem_samples + next_slot_first_symbol;
 }
 
@@ -878,7 +879,6 @@ void *UE_thread_SL(void *arg) {
   }
 
   while (!oai_exit) {
-    UE->frame_parms.nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples;
     if (UE->lost_sync_sl && UE->sync_ref == 0) {
       LOG_I(NR_PHY, "Sync UE: lost_sync status\n");
       int nb = abortTpoolJob(&(get_nrUE_params()->Tpool),RX_JOB_ID);
@@ -935,11 +935,13 @@ void *UE_thread_SL(void *arg) {
       LOG_I(NR_PHY, "Sync UE: rx_stream = 1 and timestamp %ld\n", timestamp);
       UE->rx_offset_sl = 0;
       UE->time_sync_cell = 0;
-      AssertFatal (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 ==
+      uint16_t nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 :
+                                                             UE->frame_parms.nb_prefix_samples;
+      AssertFatal (UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0 ==
                    UE->rfdevice.trx_read_func(&UE->rfdevice,
                                               &timestamp,
                                               (void **)UE->common_vars.rxdata,
-                                              UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0,
+                                              UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0,
                                               UE->frame_parms.nb_antennas_rx), "Could not read in first symbol");
       // we have the decoded frame index in the return of the synch process
       // and we shifted above to the first slot of next frame
@@ -971,7 +973,7 @@ void *UE_thread_SL(void *arg) {
     curMsg->proc.decoded_frame_rx=-1;
     LOG_D(NR_PHY, "Process slot %d thread Idx %d total gain %d\n", slot_nr, thread_idx, UE->rx_total_gain_dB);
 
-    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
+    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
     // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
     int write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     int read_time_stamp = firstSymSamp + UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
@@ -982,11 +984,11 @@ void *UE_thread_SL(void *arg) {
 
     int readBlockSize, writeBlockSize;
     if (slot_nr < (nb_slot_frame - 1)) {
-      readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms);
+      readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms);
     } else {
       UE->rx_offset_diff = computeSamplesShift(UE);
-      readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
+      readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl) - UE->rx_offset_diff;
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
     }
 
@@ -999,7 +1001,9 @@ void *UE_thread_SL(void *arg) {
 
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
-      int first_symbols = UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0;
+      uint16_t nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 :
+                                                             UE->frame_parms.nb_prefix_samples;
+      int first_symbols = UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0;
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
         AssertFatal(first_symbols ==
@@ -1233,7 +1237,7 @@ void *UE_thread(void *arg) {
     }*/
 #endif
 
-    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
+    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
     for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][firstSymSamp+
                UE->frame_parms.get_samples_slot_timestamp(slot_nr,&UE->frame_parms,0)];
@@ -1245,11 +1249,11 @@ void *UE_thread(void *arg) {
     int readBlockSize, writeBlockSize;
 
     if (slot_nr<(nb_slot_frame - 1)) {
-      readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms);
+      readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
       writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame, &UE->frame_parms);
     } else {
       UE->rx_offset_diff = computeSamplesShift(UE);
-      readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) -
+      readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl) -
                     UE->rx_offset_diff;
       writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame, &UE->frame_parms)- UE->rx_offset_diff;
     }
