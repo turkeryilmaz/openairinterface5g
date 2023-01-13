@@ -788,6 +788,21 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
       if (toTrash)
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
           free(rxp[i]);
+      if (!toTrash) {
+        char buffer[UE->frame_parms.ofdm_symbol_size];
+        for (int i = 0; i < 13; i++) {
+          bzero(buffer, sizeof(buffer));
+          LOG_I(NR_PHY, "RXP %d = %s\n",
+                i, hexdump(&rxp[0][UE->frame_parms.ofdm_symbol_size*i + 4],
+                UE->frame_parms.ofdm_symbol_size, buffer, sizeof(buffer)));
+          LOG_I(NR_PHY, "rxdata %d = %s\n",
+                i, hexdump(&UE->common_vars.rxdata[0]
+                            [((x*UE->frame_parms.samples_per_subframe)+
+                   UE->frame_parms.get_samples_slot_timestamp(slot,&UE->frame_parms,0)) +
+                            (i * UE->frame_parms.ofdm_symbol_size)],
+                UE->frame_parms.ofdm_symbol_size, buffer, sizeof(buffer)));
+        }
+      }
     }
   }
 
@@ -981,7 +996,24 @@ void *UE_thread_SL(void *arg) {
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
       txp[i] = (void *)&UE->common_vars.txdata[i][write_time_stamp];
-
+    char buf3[UE->frame_parms.ofdm_symbol_size];
+    LOG_I(NR_PHY, "%s(): %d Melissa, this is txdata[%d] = %s\n",
+      __FUNCTION__, __LINE__, 309248,
+        hexdump((void *)&UE->common_vars.txdata[0][309248],
+                UE->frame_parms.ofdm_symbol_size,
+                buf3,
+                sizeof(buf3)));
+    char buffer0[UE->frame_parms.ofdm_symbol_size];
+    for (int i = 0; i < 13; i++) {
+      bzero(buffer0, sizeof(buffer0));
+      LOG_I(NR_PHY, "TXP SSB %d [%d] = %s\n",
+            i, write_time_stamp+UE->frame_parms.ofdm_symbol_size*i, hexdump((void*)&txp[0][UE->frame_parms.ofdm_symbol_size*i],
+            UE->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
+      LOG_I(NR_PHY, "txdata %d [%d] = %s\n",
+            i, write_time_stamp+UE->frame_parms.ofdm_symbol_size*i,
+            hexdump((void *)&UE->common_vars.txdata[0][write_time_stamp + UE->frame_parms.ofdm_symbol_size*i],
+            UE->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
+    }
     int readBlockSize, writeBlockSize;
     if (slot_nr < (nb_slot_frame - 1)) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
@@ -1084,7 +1116,7 @@ void *UE_thread_SL(void *arg) {
                                               UE->frame_parms.nb_antennas_tx,
                                               flags), "");
     }
-#ifdef DEBUG_PHY_SL_PROC
+#if 1
     char buffer[UE->frame_parms.ofdm_symbol_size];
     for (int i = 0; i < 13; i++) {
       bzero(buffer, sizeof(buffer));
