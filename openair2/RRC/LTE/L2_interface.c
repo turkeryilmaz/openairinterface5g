@@ -160,8 +160,23 @@ mac_rrc_data_req(
 
       return(RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB23);
     }
-    /* Schedule SIB5 when sib5_Scheduled is TRUE and SI periodicity(T) is taking 16 by deafult
-       so SIB5 Scheduled in every (frameP%16) == 3) Radio frame */
+    else if ((true == RC.rrc[Mod_idP]->carrier[CC_id].sib4_Scheduled) && ((frameP%16) == 3)) {
+      memcpy(&buffer_pP[0],
+             RC.rrc[Mod_idP]->carrier[CC_id].SIB4,
+             RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB4);
+
+      if (LOG_DEBUGFLAG(DEBUG_RRC)) {
+        LOG_T(RRC,"[eNB %d] Frame %d : BCCH request => SIB 4\n",Mod_idP,frameP);
+
+        for (int i=0; i<RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB4; i++) {
+          LOG_T(RRC,"%x.",buffer_pP[i]);
+        }
+
+        LOG_T(RRC,"\n");
+      } /* LOG_DEBUGFLAG(DEBUG_RRC) */
+
+      return (RC.rrc[Mod_idP]->carrier[CC_id].sizeof_SIB4);
+    }
     else if ((true == RC.rrc[Mod_idP]->carrier[CC_id].sib5_Scheduled) && ((frameP%16) == 3)) {
       memcpy(&buffer_pP[0],
              RC.rrc[Mod_idP]->carrier[CC_id].SIB5,
