@@ -313,7 +313,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         int mu = fp->numerology_index;
         int n_symb_prefix0 = (ue->symbol_offset / (7 * (1 << mu))) + 1;
         int sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) +
-                             (ue->symbol_offset-n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+                             (ue->symbol_offset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
         if (ue->ssb_offset < sync_pos_frame) {
           ue->rx_offset_sl = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
           ue->init_sync_frame += 1;

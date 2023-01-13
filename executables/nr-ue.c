@@ -833,7 +833,7 @@ static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sy
   uint16_t nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
   if (fp->numerology_index == 0)
     return fp->nb_prefix_samples0 + fp->ofdm_symbol_size;
-  int num_samples = (slot%(fp->slots_per_subframe/2)) ? fp->nb_prefix_samples : nb_prefix_samples0;
+  int num_samples = (slot % (fp->slots_per_subframe / 2)) ? fp->nb_prefix_samples : nb_prefix_samples0;
   num_samples += fp->ofdm_symbol_size;
   return num_samples;
 }
