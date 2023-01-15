@@ -146,7 +146,6 @@ void qam64_qam16_avx2(short *stream0_in,
     stream0_out: output LLRs for 1st stream
   */
 
-#if defined(__x86_64__) || defined(__i386__)
 
   simde__m256i *rho01_256i      = (simde__m256i *)rho01;
   simde__m256i *stream0_256i_in = (simde__m256i *)stream0_in;
@@ -192,15 +191,11 @@ void qam64_qam16_avx2(short *stream0_in,
   simde__m256i  y0i_five_over_sqrt_21;
   simde__m256i  y0i_seven_over_sqrt_21;
 
-#elif defined(__arm__) || defined(__aarch64__)
-
-#endif
   int i,j;
   uint32_t len256 = (length)>>3;
 
   for (i=0; i<len256; i+=2) {
 
-#if defined(__x86_64__) || defined(__i386__)
     // Get rho
       /*
     xmm0 = rho01_128i[i];
@@ -1669,15 +1664,10 @@ void qam64_qam16_avx2(short *stream0_in,
     stream0_out[j + 94] = ((short *)&y1i)[15];
     stream0_out[j + 95] = ((short *)&y2i)[15];
 
-#elif defined(__arm__) || defined(__aarch64__)
-
-#endif
   }
 
-#if defined(__x86_64__) || defined(__i386__)
-  _mm_empty();
-  _m_empty();
-#endif
+  simde_mm_empty();
+  simde_m_empty();
 
 }
 
@@ -1761,7 +1751,6 @@ void qam64_qam64_avx2(int32_t *stream0_in,
 
   for (i=0; i<len256; i+=2) {
 
-#if defined(__x86_64__) || defined(__i386__)
 
     // Get rho
       /*
@@ -3505,14 +3494,9 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     stream0_out[j + 94] = ((short *)&y1i)[15];
     stream0_out[j + 95] = ((short *)&y2i)[15];
 
-#elif defined(__arm__) || defined(__aarch64__)
-
-#endif
 
   }
 
-#if defined(__x86_64__) || defined(__i386__)
-  _mm_empty();
-  _m_empty();
-#endif
+  simde_mm_empty();
+  simde_m_empty();
 }
