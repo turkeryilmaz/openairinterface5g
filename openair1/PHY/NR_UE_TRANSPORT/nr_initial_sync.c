@@ -280,12 +280,19 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       // In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
       // offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
       // PSS symbols. So in the case where we correlate on the second PSS,
-      // we need to adjust the SSB offset accordingly (subtracting first PSS).
+      // we need to adjust the SSB offset accordingly (subtracting first PSS prefix).
+      // However, if we correlated on the second PSS, we do not need to include
+      // the size of the first PSS0, becasue the correlation occurs on each individual PSS.
       // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
-      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
-      uint32_t first_pss_size = ue->common_vars.N2_id * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-      uint32_t pss_found_start_loc = sync_pos - (2 * fp->nb_prefix_samples);
-      ue->ssb_offset = pss_found_start_loc - first_pss_size - psbch_plus_prefix_size;
+      // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
+      //      144     |  2048   |      144     | 2048  |      144     | 2048  |
+      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Start = X - (144 + 144 + 2048 + 144)
+      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Start = X - (144 + 2048 + 144)
+      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples;
+      uint32_t num_pss_prefix_samples_size = (ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;
+      LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
+            num_pss_prefix_samples_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.N2_id);
+      ue->ssb_offset = sync_pos - num_pss_prefix_samples_size - psbch_plus_prefix_size;
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
