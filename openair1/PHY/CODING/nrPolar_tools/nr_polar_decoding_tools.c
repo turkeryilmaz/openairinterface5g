@@ -349,8 +349,28 @@ void applyFtoleft(const t_nrPolar_params *pp, decoder_node_t *node) {
     	  b=alpha_v[i+(node->Nv/2)];
     	  maska=a>>15;
     	  maskb=b>>15;
-    	  absa=(a+maska)^maska;
-    	  absb=(b+maskb)^maskb;
+        if (a+maska > 32767) {
+           absa = 32767;
+        } else if (a+maska < -32767) {
+          absa = -32767;
+        } if ((a+maska)^maska > 32767) {
+          absa = 32767;
+        } else if ((a+maska)^maska < -32767) {
+          absa = -32767;
+        } else {
+          absa=(a+maska)^maska;
+        }
+        if (b+maskb > 32767) {
+          absb = 32767;
+        } else if (b+maskb < -32767) {
+          absb = -32767;
+        } if ((b+maskb)^maskb > 32767) {
+          absb = 32767;
+        } else if ((b+maskb)^maskb < -32767) {
+          absb = -32767;
+        } else {
+    	    absb=(b+maskb)^maskb;
+        }
     	  minabs = absa<absb ? absa : absb;
     	  alpha_l[i] = (maska^maskb)==0 ? minabs : -minabs;
     	  //	printf("alphal[%d] %d (%d,%d)\n",i,alpha_l[i],a,b);

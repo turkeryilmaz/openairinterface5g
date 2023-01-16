@@ -281,45 +281,39 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d sync_pos %d ssb_offset %d\n",
-          ue->Mod_id, n_frames, sync_pos,ue->common_vars.eNb_id, sync_pos, ue->ssb_offset, proc->nr_slot_rx);
+    LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+          ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
-      for (int i = 0; i < 13; i++)
-        nr_slot_fep_init_sync(ue, proc, i, 0, 0 /*is * fp->samples_per_frame + ue->ssb_offset*/);
-      LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
-      int freq_offset_sss = 0;
-      ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
-      if (ue->UE_fo_compensation) {
-        double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
-        double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
-        int start = is*fp->samples_per_frame + ue->ssb_offset;
-        int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-        for (int n = start; n < end; n++) {
-          for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
-            double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
-            double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
-            ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
-            ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im *cos(n * off_angle)));
+      for (int j = 0; j < fp->slots_per_frame-1; j++) {
+        for (int i = 0; i < 13; i++)
+          nr_slot_fep_init_sync(ue, proc, i, j, is * fp->samples_per_frame + ue->ssb_offset);
+        LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
+        int freq_offset_sss = 0;
+        ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
+        if (ue->UE_fo_compensation) {
+          double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
+          double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
+          int start = is*fp->samples_per_frame + ue->ssb_offset;
+          int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+          for (int n = start; n < end; n++) {
+            for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
+              double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
+              double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
+              ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
+              ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im *cos(n * off_angle)));
+            }
           }
+          ue->common_vars.freq_offset += freq_offset_sss;
         }
-        ue->common_vars.freq_offset += freq_offset_sss;
+        if (ret == 0)
+          break;
       }
       if (ret == 0) {
         nr_gold_psbch(ue);
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
-        int mu = fp->numerology_index;
-        int n_symb_prefix0 = (ue->symbol_offset / (7 * (1 << mu))) + 1;
-        int sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) +
-                             (ue->symbol_offset-n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-        if (ue->ssb_offset < sync_pos_frame) {
-          ue->rx_offset_sl = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
-          ue->init_sync_frame += 1;
-        } else {
-          ue->rx_offset_sl = ue->ssb_offset - sync_pos_frame;
-        }
       }
       LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);

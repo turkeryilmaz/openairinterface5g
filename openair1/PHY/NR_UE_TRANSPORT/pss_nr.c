@@ -581,7 +581,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 
   #ifndef NR_UNIT_TEST
 
-    printf("PSS execution duration %4d microseconds \n", duration_ms);
+    LOG_D(NR_PHY, "PSS execution duration %4d microseconds \n", duration_ms);
 
   #endif
 
@@ -792,7 +792,8 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
 
   *eNB_id = pss_source;
 
-  LOG_I(PHY,"[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n", pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est);
+  LOG_I(PHY,"[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n",
+        pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est);
 
   if (peak_value < 5*avg[pss_source])
     return(-1);

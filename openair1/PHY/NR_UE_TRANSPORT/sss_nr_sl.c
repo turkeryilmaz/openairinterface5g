@@ -322,10 +322,10 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
     Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
   }
 #if 1
-  printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
+  LOG_I(NR_PHY, "Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
 #endif
 
-  if (Nid1 == N_ID_1_NUMBER) {
+  if (Nid1 != 10) {
     LOG_I(PHY,"Failled to detect SSS after PSS\n");
     return -1;
   }
