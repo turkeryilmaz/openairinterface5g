@@ -619,8 +619,7 @@ void processSlotTX(void *arg) {
 
   LOG_D(PHY,"processSlotTX %d.%d => slot type %d\n",proc->frame_tx,proc->nr_slot_tx,tx_slot_type);
   if (proc->nr_slot_tx == 8 || proc->nr_slot_tx == 9 ||
-      proc->nr_slot_tx == 18 || proc->nr_slot_tx == 19 ||
-      proc->nr_slot_tx == 20) {
+      proc->nr_slot_tx == 18 || proc->nr_slot_tx == 19) {
       return;
   }
   if (UE->sync_ref)
