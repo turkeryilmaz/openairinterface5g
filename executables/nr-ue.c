@@ -978,7 +978,7 @@ void *UE_thread_SL(void *arg) {
     curMsg->proc.frame_tx    = ((absolute_slot+DURATION_RX_TO_TX)/nb_slot_frame) % MAX_FRAME_NUMBER;
     curMsg->proc.decoded_frame_rx=-1;
     LOG_D(NR_PHY, "Process slot %d thread Idx %d total gain %d\n", slot_nr, thread_idx, UE->rx_total_gain_dB);
-
+    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
     uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     uint64_t read_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
@@ -1021,6 +1021,9 @@ void *UE_thread_SL(void *arg) {
       }
     }
 
+    curMsg->proc.timestamp_tx = timestamp +
+                                UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX) -
+                                firstSymSamp;
     while (nbSlotProcessing >= NR_RX_NB_TH) {
       notifiedFIFO_elt_t *res = pullTpool(&nf, &(get_nrUE_params()->Tpool));
       if (res == NULL)
@@ -1039,8 +1042,10 @@ void *UE_thread_SL(void *arg) {
     if (UE->sync_ref == 0 && decoded_frame_rx > 0 && decoded_frame_rx != curMsg->proc.frame_rx)
       LOG_E(NR_PHY, "Sync UE: Decoded frame index (%d) is not compatible with current context (%d), "
                     "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
-    writeTimestamp = ((absolute_slot + DURATION_RX_TO_TX - NR_RX_NB_TH) * readBlockSize) + openair0_cfg[0].sample_rate - openair0_cfg[0].tx_sample_advance;
-    curMsg->proc.timestamp_tx = writeTimestamp - openair0_cfg[0].sample_rate;
+    writeTimestamp = timestamp +
+                     UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX - NR_RX_NB_TH) -
+                     firstSymSamp - openair0_cfg[0].tx_sample_advance - UE->N_TA_offset - timing_advance;
+
     if (UE->timing_advance != timing_advance) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
