@@ -437,6 +437,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     printf("[PSBCH] decoder payload[%d] = %x\n",i,result->decoded_output[i]);
   }
   // TODO: Handle MAC Layer on RX
+
   nr_downlink_indication_t dl_indication;
   fapi_nr_rx_indication_t *rx_ind = calloc(1, sizeof(*rx_ind));
   uint16_t number_pdus = 1;
