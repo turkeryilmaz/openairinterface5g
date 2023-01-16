@@ -189,7 +189,6 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
   for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
     rx_offset += (abs_symbol%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
-  rx_offset = rx_offset - ((frame_parms->ofdm_symbol_size + (2 * nb_prefix_samples0)));
 
 #ifdef DEBUG_FEP
   LOG_I(NR_PHY, "slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, slot_offset %u, sample_offset %d,rx_offset %u, frame_length_samples %u\n",

@@ -277,7 +277,15 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   for (int is = 0; is < n_frames; is++) {
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
     if (sync_pos >= fp->nb_prefix_samples) {
-      ue->ssb_offset = sync_pos - fp->nb_prefix_samples;
+      // In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
+      // offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
+      // PSS symbols. So in the case where we correlate on the second PSS,
+      // we need to adjust the SSB offset accordingly (subtracting first PSS).
+      // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
+      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
+      uint32_t first_pss_size = ue->common_vars.N2_id * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+      uint32_t pss_found_start_loc = sync_pos - (2 * fp->nb_prefix_samples);
+      ue->ssb_offset = pss_found_start_loc - first_pss_size - psbch_plus_prefix_size;
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
