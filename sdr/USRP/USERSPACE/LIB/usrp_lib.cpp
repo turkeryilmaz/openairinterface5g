@@ -720,6 +720,13 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
       LOG_I(HW, "s->wait_for_first_pps: %d, Error code: %s\n", s->wait_for_first_pps, s->rx_md.to_pp_string(true).c_str());
     if  ((s->wait_for_first_pps == 0) && (s->rx_md.error_code!=uhd::rx_metadata_t::ERROR_CODE_NONE))
       break;
+<<<<<<< HEAD
+=======
+
+    if ((s->wait_for_first_pps == 1) && (samples_received != nsamps)) {
+      printf("sleep...\n"); //usleep(100);
+    }
+>>>>>>> episys/timestamp_sl
   }
   if (samples_received == nsamps) s->wait_for_first_pps=0;
 

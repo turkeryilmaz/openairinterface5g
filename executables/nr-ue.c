@@ -175,7 +175,7 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
 
   // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
-  if (1) {
+  if (get_softmodem_params()->sl_mode != 2) {
     // intialize transport
     init_nr_ue_transport(ue);
 
@@ -956,6 +956,7 @@ void *UE_thread_SL(void *arg) {
       continue;
     }
 
+
     absolute_slot++;
     // whatever means thread_idx
     // Fix me: will be wrong when slot 1 is slow, as slot 2 finishes
@@ -995,13 +996,12 @@ void *UE_thread_SL(void *arg) {
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
     }
 
-    readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                           &timestamp, //time of the sample in rxp
+    AssertFatal(readBlockSize ==
+                UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                           &timestamp,
                                            rxp,
                                            readBlockSize,
-                                           UE->frame_parms.nb_antennas_rx);
-    LOG_D(NR_PHY, "timestamp %ld readblocksize %d slot %d get_samp_slot_ts %d writeBlockSize %d \n",
-          timestamp, readBlockSize, slot_nr, UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0), writeBlockSize);
+                                           UE->frame_parms.nb_antennas_rx), "");
 
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
@@ -1010,18 +1010,16 @@ void *UE_thread_SL(void *arg) {
       int first_symbols = UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0;
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
-        LOG_D(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
-        first_symbols ==
+        AssertFatal(first_symbols ==
                     UE->rfdevice.trx_read_func(&UE->rfdevice,
                                                &ignore_timestamp,
                                                (void **)UE->common_vars.rxdata,
                                                first_symbols,
-                                               UE->frame_parms.nb_antennas_rx);
+                                               UE->frame_parms.nb_antennas_rx),"");
       } else {
         LOG_E(NR_PHY, "Can't compensate: diff =%d\n", first_symbols);
       }
     }
-
 
     while (nbSlotProcessing >= NR_RX_NB_TH) {
       notifiedFIFO_elt_t *res = pullTpool(&nf, &(get_nrUE_params()->Tpool));
@@ -1041,8 +1039,6 @@ void *UE_thread_SL(void *arg) {
     if (UE->sync_ref == 0 && decoded_frame_rx > 0 && decoded_frame_rx != curMsg->proc.frame_rx)
       LOG_E(NR_PHY, "Sync UE: Decoded frame index (%d) is not compatible with current context (%d), "
                     "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
-    // writeTimestamp = timestamp + samplerate (check from logs) + tx_sample_advance
-    // use previous timing_advance value to compute writeTimestamp
     writeTimestamp = ((absolute_slot + DURATION_RX_TO_TX - NR_RX_NB_TH) * readBlockSize) + openair0_cfg[0].sample_rate - openair0_cfg[0].tx_sample_advance;
     curMsg->proc.timestamp_tx = writeTimestamp - openair0_cfg[0].sample_rate;
     if (UE->timing_advance != timing_advance) {
@@ -1064,13 +1060,6 @@ void *UE_thread_SL(void *arg) {
     } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
       flags = 0;
     }
-    LOG_D(PHY, "writeTimeStamp %ld, timestamp %ld (slot_nr_tx * readBlockSize) %d,\n"
-               "openair0_cfg[0].sample_rate %f, tx_sample_advance %d,\nslot %d, writeBlockSize %d, flags %d\n",
-          writeTimestamp, timestamp,
-          slot_nr_tx * readBlockSize,
-          openair0_cfg[0].sample_rate,
-          openair0_cfg->tx_sample_advance,
-          slot_nr_tx, writeBlockSize, flags);
     if (flags || IS_SOFTMODEM_RFSIM) {
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
@@ -1080,7 +1069,7 @@ void *UE_thread_SL(void *arg) {
                                               UE->frame_parms.nb_antennas_tx,
                                               flags), "");
     }
-#if 0
+#ifdef DEBUG_PHY_SL_PROC
     char buffer[UE->frame_parms.ofdm_symbol_size];
     for (int i = 0; i < 13; i++) {
       bzero(buffer, sizeof(buffer));

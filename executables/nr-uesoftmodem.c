@@ -408,7 +408,6 @@ void init_openair0(void) {
     uint64_t dl_carrier, ul_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
-    LOG_I(HW, "This is samples_p_sf %d\n", frame_parms->samples_per_subframe);
     openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
     openair0_cfg[card].samples_per_frame = frame_parms->samples_per_frame;
 
@@ -578,7 +577,7 @@ int main( int argc, char **argv ) {
                                   get_softmodem_params()->numerology,
                                   nr_band);
       }
-      else {
+      else{
         if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
           mac->if_module->phy_config_request(&mac->phy_config);
         LOG_I(NR_MAC, "This is get_softmodem_params()->sl_mode %d\n", get_softmodem_params()->sl_mode);
