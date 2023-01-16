@@ -182,7 +182,6 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
     // init N_TA offset
     init_N_TA_offset(ue);
   }
-
 }
 
 void init_nrUE_standalone_thread(int ue_idx)
