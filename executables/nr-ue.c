@@ -954,6 +954,7 @@ void *UE_thread_SL(void *arg) {
       continue;
     }
 
+
     absolute_slot++;
     // whatever means thread_idx
     // Fix me: will be wrong when slot 1 is slow, as slot 2 finishes
@@ -993,7 +994,7 @@ void *UE_thread_SL(void *arg) {
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
     }
 
-    AssertFatal (readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
+    AssertFatal(readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
                                            &timestamp,
                                            rxp,
                                            readBlockSize,
@@ -1056,6 +1057,7 @@ void *UE_thread_SL(void *arg) {
     } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
       flags = 0;
     }
+
     if (flags || IS_SOFTMODEM_RFSIM) {
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,

@@ -718,6 +718,7 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
     }
     if  ((s->wait_for_first_pps == 0) && (s->rx_md.error_code!=uhd::rx_metadata_t::ERROR_CODE_NONE))
       break;
+
     if ((s->wait_for_first_pps == 1) && (samples_received != nsamps)) {
       printf("sleep...\n"); //usleep(100);
     }
