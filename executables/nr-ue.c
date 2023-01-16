@@ -996,7 +996,8 @@ void *UE_thread_SL(void *arg) {
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
     }
 
-    AssertFatal(readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
+    AssertFatal(readBlockSize ==
+                UE->rfdevice.trx_read_func(&UE->rfdevice,
                                            &timestamp,
                                            rxp,
                                            readBlockSize,

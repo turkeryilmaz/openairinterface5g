@@ -577,7 +577,7 @@ int main( int argc, char **argv ) {
                                   get_softmodem_params()->numerology,
                                   nr_band);
       }
-      else {
+      else{
         if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
           mac->if_module->phy_config_request(&mac->phy_config);
         LOG_I(NR_MAC, "This is get_softmodem_params()->sl_mode %d\n", get_softmodem_params()->sl_mode);
