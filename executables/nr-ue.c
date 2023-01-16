@@ -574,7 +574,7 @@ static void UE_synch(void *arg) {
       LOG_I(PHY, "[UE thread Synch] Running Initial SL-Synch (mode %d)\n", UE->mode);
       int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
       if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
-        LOG_I(PHY,"This is return from nr_sl_initial_sync %d\n", initial_synch_sl);
+
         // rerun with new cell parameters and frequency-offset
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
         nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
@@ -986,6 +986,7 @@ void *UE_thread_SL(void *arg) {
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
       txp[i] = (void *)&UE->common_vars.txdata[i][write_time_stamp];
+
     int readBlockSize, writeBlockSize;
     if (slot_nr < (nb_slot_frame - 1)) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
@@ -1060,6 +1061,7 @@ void *UE_thread_SL(void *arg) {
     } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
       flags = 0;
     }
+
     if (flags || IS_SOFTMODEM_RFSIM) {
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
