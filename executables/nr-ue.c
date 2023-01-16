@@ -1015,7 +1015,7 @@ void *UE_thread_SL(void *arg) {
                                                &ignore_timestamp,
                                                (void **)UE->common_vars.rxdata,
                                                first_symbols,
-                                               UE->frame_parms.nb_antennas_rx), "");
+                                               UE->frame_parms.nb_antennas_rx),"");
       } else {
         LOG_E(NR_PHY, "Can't compensate: diff =%d\n", first_symbols);
       }
