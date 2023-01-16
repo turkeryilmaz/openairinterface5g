@@ -190,7 +190,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
     rx_offset += (abs_symbol%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
-#if 1
+#ifdef DEBUG_FEP
   rx_offset = rx_offset - ((frame_parms->ofdm_symbol_size + (2* nb_prefix_samples0)));
   LOG_I(NR_PHY, "slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, slot_offset %u, sample_offset %d,rx_offset %u, frame_length_samples %u\n",
          Ns, symbol, nb_prefix_samples, nb_prefix_samples0, slot_offset, sample_offset, rx_offset, frame_length_samples);
@@ -242,7 +242,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
     c16_t rot2 = frame_parms->symbol_rotation[0][symbol + symb_offset];
     rot2.i=-rot2.i;
 
-#if 1
+#ifdef DEBUG_FEP
     //  if (ue->frame <100)
     LOG_I(NR_PHY, "slot_fep: slot %d, symbol %d rx_offset %u, rotation symbol %d %d.%d\n", Ns,symbol, rx_offset,
 	   symbol+symb_offset,rot2.r,rot2.i);
