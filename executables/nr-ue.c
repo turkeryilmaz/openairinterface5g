@@ -993,11 +993,11 @@ void *UE_thread_SL(void *arg) {
       writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
     }
 
-    readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                           &timestamp, //time of the sample in rxp
+    AssertFatal (readBlockSize = UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                           &timestamp,
                                            rxp,
                                            readBlockSize,
-                                           UE->frame_parms.nb_antennas_rx);
+                                           UE->frame_parms.nb_antennas_rx), "");
 
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
@@ -1006,17 +1006,16 @@ void *UE_thread_SL(void *arg) {
       int first_symbols = UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0;
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
-        first_symbols ==
+        AssertFatal(first_symbols ==
                     UE->rfdevice.trx_read_func(&UE->rfdevice,
                                                &ignore_timestamp,
                                                (void **)UE->common_vars.rxdata,
                                                first_symbols,
-                                               UE->frame_parms.nb_antennas_rx);
+                                               UE->frame_parms.nb_antennas_rx), "");
       } else {
         LOG_E(NR_PHY, "Can't compensate: diff =%d\n", first_symbols);
       }
     }
-
 
     while (nbSlotProcessing >= NR_RX_NB_TH) {
       notifiedFIFO_elt_t *res = pullTpool(&nf, &(get_nrUE_params()->Tpool));
@@ -1036,8 +1035,6 @@ void *UE_thread_SL(void *arg) {
     if (UE->sync_ref == 0 && decoded_frame_rx > 0 && decoded_frame_rx != curMsg->proc.frame_rx)
       LOG_E(NR_PHY, "Sync UE: Decoded frame index (%d) is not compatible with current context (%d), "
                     "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
-    // writeTimestamp = timestamp + samplerate (check from logs) + tx_sample_advance
-    // use previous timing_advance value to compute writeTimestamp
     writeTimestamp = ((absolute_slot + DURATION_RX_TO_TX - NR_RX_NB_TH) * readBlockSize) + openair0_cfg[0].sample_rate - openair0_cfg[0].tx_sample_advance;
     curMsg->proc.timestamp_tx = writeTimestamp - openair0_cfg[0].sample_rate;
     if (UE->timing_advance != timing_advance) {
