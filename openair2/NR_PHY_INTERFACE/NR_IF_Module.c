@@ -392,7 +392,6 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
   int              CC_id       = UL_info->CC_id;
   NR_Sched_Rsp_t   *sched_info = &NR_Sched_INFO[module_id][CC_id];
   NR_IF_Module_t   *ifi        = nr_if_inst[module_id];
-
   LOG_D(NR_PHY,"SFN/SLOT:%d.%d module_id:%d CC_id:%d UL_info[rach_pdus:%zu rx_ind:%zu crcs:%zu]\n",
         UL_info->frame, UL_info->slot,
         module_id, CC_id,

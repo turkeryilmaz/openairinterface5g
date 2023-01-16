@@ -33,9 +33,13 @@
 #include "PHY/defs_UE.h"
 #include "PHY/LTE_UE_TRANSPORT/transport_proto_ue.h"
 #include "PHY/phy_extern_ue.h"
+<<<<<<< HEAD
 #include "PHY/phy_extern.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "openair1/SCHED/sched_common_extern.h"
+=======
+#include "PHY/LTE_ESTIMATION/lte_estimation.h"
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 void srs_power_cntl(PHY_VARS_UE *ue,UE_rxtx_proc_t *proc,uint8_t eNB_id,uint8_t *pnb_rb_srs, uint8_t abstraction_flag)
 {

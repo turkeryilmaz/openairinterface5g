@@ -32,14 +32,13 @@
 
 #include "PHY/defs_eNB.h"
 #include "PHY/LTE_TRANSPORT/transport_proto.h"
-#include "PHY/LTE_TRANSPORT/transport_vars.h"
+#include "PHY/LTE_TRANSPORT/transport_extern.h"
 #include "SCHED/sched_eNB.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "nfapi_pnf_interface.h"
 #include "fapi_l1.h"
 
 #include "common/ran_context.h"
-#include "openair1/PHY/LTE_TRANSPORT/dlsch_tbs_full.h"
 extern RAN_CONTEXT_t RC;
 
 int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req);
@@ -429,7 +428,7 @@ void handle_nfapi_dlsch_pdu(PHY_VARS_eNB *eNB,int frame,int subframe,L1_rxtx_pro
   }
 }
 
-static const int16_t to_beta_offset_harqack[16] = {16, 20, 25, 32, 40, 50, 64, 80, 101, 127, 160, 248, 400, 640, 1008, 8};
+int16_t to_beta_offset_harqack[16]= {16,20,25,32,40,50,64,80,101,127,160,248,400,640,1008,8};
 
 void handle_ulsch_harq_pdu(
   PHY_VARS_eNB                           *eNB,
@@ -457,8 +456,8 @@ void handle_ulsch_harq_pdu(
   }
 }
 
-static const uint16_t to_beta_offset_ri[16] = {9, 13, 16, 20, 25, 32, 40, 50, 64, 80, 101, 127, 160, 0, 0, 0};
-static const uint16_t to_beta_offset_cqi[16] = {0, 0, 9, 10, 11, 13, 14, 16, 18, 20, 23, 25, 28, 32, 40, 50};
+uint16_t to_beta_offset_ri[16]= {9,13,16,20,25,32,40,50,64,80,101,127,160,0,0,0};
+uint16_t to_beta_offset_cqi[16]= {0,0,9,10,11,13,14,16,18,20,23,25,28,32,40,50};
 
 void handle_ulsch_cqi_ri_pdu(PHY_VARS_eNB *eNB,int UE_id,nfapi_ul_config_request_pdu_t *ul_config_pdu,uint16_t frame,uint8_t subframe) {
   nfapi_ul_config_cqi_ri_information_rel9_t *rel9 = &ul_config_pdu->ulsch_cqi_ri_pdu.cqi_ri_information.cqi_ri_information_rel9;
@@ -791,8 +790,8 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
   eNB->pdcch_vars[subframe&1].num_dci           = 0;
   eNB->phich_vars[subframe&1].num_hi            = 0;
   eNB->mpdcch_vars[subframe&1].num_dci           = 0;
-  LOG_D(PHY,"NFAPI: Sched_INFO:SFN/SF:%04d%d CC_id:%d DL_req:SFN/SF:%04d%d:dl_pdu:%d tx_req:SFN/SF:%04d%d:pdus:%d\n",
-        frame,subframe,CC_id,
+  LOG_D(PHY,"NFAPI: Sched_INFO:SFN/SF:%04d%d DL_req:SFN/SF:%04d%d:dl_pdu:%d tx_req:SFN/SF:%04d%d:pdus:%d\n",
+        frame,subframe,
         NFAPI_SFNSF2SFN(DL_req->sfn_sf),NFAPI_SFNSF2SF(DL_req->sfn_sf),number_dl_pdu,
         NFAPI_SFNSF2SFN(TX_req->sfn_sf),NFAPI_SFNSF2SF(TX_req->sfn_sf),TX_req->tx_request_body.number_of_pdus
        );
@@ -841,10 +840,6 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
         break;
 
       case NFAPI_DL_CONFIG_BCH_PDU_TYPE:
-        /* MultiCell: Below condition added for Multiple CC */
-        if(TX_req->tx_request_body.number_of_pdus == 0) {
-          TX_req->tx_request_body.number_of_pdus = 1;
-        }
         AssertFatal(dl_config_pdu->bch_pdu.bch_pdu_rel8.pdu_index<TX_req->tx_request_body.number_of_pdus,
                     "bch_pdu_rel8.pdu_index>=TX_req->number_of_pdus (%d>%d)\n",
                     dl_config_pdu->bch_pdu.bch_pdu_rel8.pdu_index,
@@ -864,7 +859,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
         //      handle_nfapi_mch_dl_pdu(eNB,dl_config_pdu);
 	//AssertFatal(1==0,"OK\n");
         nfapi_dl_config_mch_pdu_rel8_t *mch_pdu_rel8 = &dl_config_pdu->mch_pdu.mch_pdu_rel8;
-	int16_t pdu_index = mch_pdu_rel8->pdu_index;
+	uint16_t pdu_index = mch_pdu_rel8->pdu_index;
 	uint16_t tx_pdus = TX_req->tx_request_body.number_of_pdus;
 	uint16_t invalid_pdu = pdu_index == -1;
 	uint8_t *sdu = invalid_pdu ? NULL : pdu_index >= tx_pdus ? NULL : TX_req->tx_request_body.tx_pdu_list[pdu_index].segments[0].segment_data;
@@ -888,7 +883,7 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
 
       case NFAPI_DL_CONFIG_DLSCH_PDU_TYPE: {
         nfapi_dl_config_dlsch_pdu_rel8_t *dlsch_pdu_rel8 = &dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8;
-        int16_t pdu_index = dlsch_pdu_rel8->pdu_index;
+        uint16_t pdu_index = dlsch_pdu_rel8->pdu_index;
         uint16_t tx_pdus = TX_req->tx_request_body.number_of_pdus;
         uint16_t invalid_pdu = pdu_index == -1;
         uint8_t *sdu = invalid_pdu ? NULL : pdu_index >= tx_pdus ? NULL : TX_req->tx_request_body.tx_pdu_list[pdu_index].segments[0].segment_data;
@@ -962,21 +957,17 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
   if ((NFAPI_MODE!=NFAPI_MONOLITHIC) && do_oai && !dont_send) {
     if(Sched_INFO->TX_req->tx_request_body.number_of_pdus > 0) {
       Sched_INFO->TX_req->sfn_sf = frame << 4 | subframe;
-      Sched_INFO->TX_req->header.phy_id = Sched_INFO->CC_id+1;
       oai_nfapi_tx_req(Sched_INFO->TX_req);
     }
 
     Sched_INFO->DL_req->sfn_sf = frame << 4 | subframe;
-    Sched_INFO->DL_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_dl_config_req(Sched_INFO->DL_req); // DJP - .dl_config_request_body.dl_config_pdu_list[0]); // DJP - FIXME TODO - yuk - only copes with 1 pdu
     Sched_INFO->UE_release_req->sfn_sf = frame << 4 | subframe;
-    Sched_INFO->UE_release_req->header.phy_id = Sched_INFO->CC_id+1;
     oai_nfapi_ue_release_req(Sched_INFO->UE_release_req);
   }
 
   if ((NFAPI_MODE!=NFAPI_MONOLITHIC) && number_hi_dci0_pdu!=0) {
     HI_DCI0_req->sfn_sf = frame << 4 | subframe;
-    HI_DCI0_req->header.phy_id =  Sched_INFO->CC_id+1;
     oai_nfapi_hi_dci0_req(HI_DCI0_req);
     eNB->pdcch_vars[NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf)&1].num_dci=0;
     eNB->pdcch_vars[NFAPI_SFNSF2SF(HI_DCI0_req->sfn_sf)&1].num_pdcch_symbols=0;
@@ -1018,14 +1009,12 @@ void schedule_response(Sched_Rsp_t *Sched_INFO, void *arg) {
       if (RC.mac[Mod_id]->scheduler_mode == SCHED_MODE_DEFAULT) {
         //LOG_D(PHY, "UL_CONFIG to send to PNF\n");
         UL_req->sfn_sf = frame << 4 | subframe;
-        UL_req->header.phy_id = Sched_INFO->CC_id+1;
         oai_nfapi_ul_config_req(UL_req);
         UL_req->ul_config_request_body.number_of_pdus=0;
         number_ul_pdu=0;
       }else if (RC.mac[Mod_id]->scheduler_mode == SCHED_MODE_FAIR_RR) {
         if(ulsch_pdu_num <= RC.rrc[Mod_id]->configuration.radioresourceconfig[CC_id].ue_multiple_max){
           UL_req->sfn_sf = frame << 4 | subframe;
-          UL_req->header.phy_id = Sched_INFO->CC_id+1;
           oai_nfapi_ul_config_req(UL_req);
           UL_req->ul_config_request_body.number_of_pdus=0;
           number_ul_pdu=0;

@@ -53,10 +53,16 @@ int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
     CHECK_IEI_DECODER(iei, *buffer);
     decoded++;
   }
+<<<<<<< HEAD
   uint16_t tmp;
   memcpy(&tmp, buffer + decoded, sizeof(tmp));
   ielen = (uint8_t)tmp;
   decoded += 2;
+=======
+
+  ielen = *(buffer + decoded);
+  decoded++;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   CHECK_LENGTH_DECODER(len - decoded, ielen);
 
   uint8_t typeofidentity = *(buffer + decoded) & 0x7;
@@ -64,8 +70,11 @@ int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
   if (typeofidentity == FGS_MOBILE_IDENTITY_5G_GUTI) {
     decoded_rc = decode_guti_5gs_mobile_identity(&fgsmobileidentity->guti,
                  buffer + decoded);
+<<<<<<< HEAD
   } else {
     AssertFatal(false, "Mobile Identity encoding of type %d not implemented\n", typeofidentity);
+=======
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   }
 
   if (decoded_rc < 0) {
@@ -107,11 +116,17 @@ int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
   }
 
   if(iei > 0){
+<<<<<<< HEAD
     uint16_t tmp = htons(encoded + encoded_rc - 3);
     memcpy(buffer + 1, &tmp, sizeof(tmp));
   } else {
     uint16_t tmp = htons(encoded + encoded_rc - 2);
     memcpy(buffer, &tmp, sizeof(tmp));
+=======
+    *(uint16_t*) (buffer+1) = htons(encoded  + encoded_rc - 3);
+  } else {
+    *(uint16_t*) buffer = htons(encoded  + encoded_rc - 2);
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   }
 
   return (encoded + encoded_rc);
@@ -240,6 +255,7 @@ static int encode_suci_5gs_mobile_identity(Suci5GSMobileIdentity_t *suci, uint8_
 static int encode_imeisv_5gs_mobile_identity(Imeisv5GSMobileIdentity_t *imeisv, uint8_t *buffer)
 {
   uint32_t encoded = 0;
+<<<<<<< HEAD
   *(buffer + encoded) = 0x00 | (imeisv->digittac01 << 4) | (imeisv->oddeven << 3) | (imeisv->typeofidentity);
   encoded++;
   *(buffer + encoded) = 0x00 | (imeisv->digittac03 << 4) | (imeisv->digittac02);
@@ -257,6 +273,12 @@ static int encode_imeisv_5gs_mobile_identity(Imeisv5GSMobileIdentity_t *imeisv, 
   *(buffer + encoded) = 0x00 | (imeisv->digitsv1   << 4) | (imeisv->digit14);
   encoded++;
   *(buffer + encoded) = 0x00 | (imeisv->spare      << 4) | (imeisv->digitsv2);
+=======
+  *(buffer + encoded) = 0x00 | (imeisv->digit1 << 4) | (imeisv->oddeven << 3) | (imeisv->typeofidentity);
+  encoded++;
+
+  *(buffer + encoded) = 0x00 | (imeisv->digitp1 << 4) | (imeisv->digitp);
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   encoded++;
 
   return encoded;

@@ -1067,10 +1067,6 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
          asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,schedulingInfo2);
   }
   //  asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,NULL);
-<<<<<<< HEAD
-
-=======
->>>>>>> 2f9e334a45... openair2 rebased changes, 4G RLC/PDCP and GNB_APP Changes Remainig
 
 
   if (configuration->frame_type[CC_id] == TDD)

@@ -41,6 +41,7 @@
     vALUE = ntohl(*(uint32_t*)(bUFFER)) >> 8; \
     sIZE += sizeof(uint8_t) + sizeof(uint16_t)
 
+<<<<<<< HEAD
 #define DECODE_U32(bUFFER, vALUE, sIZE) \
   {                                     \
     uint32_t v;                         \
@@ -48,6 +49,11 @@
     vALUE = ntohl(v);                   \
   }                                     \
   sIZE += sizeof(uint32_t)
+=======
+#define DECODE_U32(bUFFER, vALUE, sIZE)   \
+    vALUE = ntohl(*(uint32_t*)(bUFFER));  \
+    sIZE += sizeof(uint32_t)
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 # define DECODE_LENGTH_U16(bUFFER, vALUE, sIZE)          \

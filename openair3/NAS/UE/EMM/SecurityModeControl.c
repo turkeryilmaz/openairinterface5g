@@ -63,7 +63,10 @@ Description Defines the security mode control EMM procedure executed by the
 
 # include "assertions.h"
 #include "secu_defs.h"
+<<<<<<< HEAD
 #include "kdf.h"
+=======
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 #include "SecurityModeControl.h"
 
 #if  defined(NAS_BUILT_IN_UE)
@@ -485,9 +488,13 @@ static int _security_kenb(const OctetString *kasme, OctetString *kenb,
   input[5] = 0;
   input[6] = 4;
 
+<<<<<<< HEAD
   byte_array_t data = {.len = 7, .buf = input};
   kdf(kasme->value, data, 32, kenb->value);
 
+=======
+  kdf(kasme->value, 32, input, 7, kenb->value, 32);
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   kenb->length = 32;
   return (RETURNok);
 }
@@ -539,12 +546,17 @@ static int _security_kdf(const OctetString *kasme, OctetString *key,
   input[5] = 0x00;
   input[6] = 0x01;
 
+<<<<<<< HEAD
   assert(kasme->length == 32);
   byte_array_t data = {.len = 7, .buf=input};
   /* Compute the derived key */
   kdf(kasme->value, data, 32, output);
 
 
+=======
+  /* Compute the derived key */
+  kdf(kasme->value, kasme->length, input, 7, output, 32);
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   memcpy(key->value, &output[31 - key->length + 1], key->length);
   return (RETURNok);
 }

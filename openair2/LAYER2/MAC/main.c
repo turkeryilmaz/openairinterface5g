@@ -355,4 +355,3 @@ void *mac_enb_task(void *arg)
 
   return NULL;
 }
-

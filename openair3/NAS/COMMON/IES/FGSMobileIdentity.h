@@ -92,6 +92,7 @@ typedef struct {
   uint8_t  digitp:4;
 } Imei5GSMobileIdentity_t;
 
+<<<<<<< HEAD
 typedef struct {
   uint8_t  digittac01:4;
   uint8_t  oddeven:1;
@@ -113,6 +114,9 @@ typedef struct {
   uint8_t  digitsv2:4;
   uint8_t  spare:4;
 } Imeisv5GSMobileIdentity_t;
+=======
+typedef Imei5GSMobileIdentity_t Imeisv5GSMobileIdentity_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 
 typedef struct {

@@ -38,7 +38,10 @@
 #include "SpareHalfOctet.h"
 #include "MessageType.h"
 #include "FGSRegistrationResult.h"
+<<<<<<< HEAD
 #include "FGSMobileIdentity.h"
+=======
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 #ifndef REGISTRATION_ACCEPT_H_
 #define REGISTRATION_ACCEPT_H_
@@ -57,9 +60,12 @@ typedef struct registration_accept_msg_tag {
   SpareHalfOctet                          sparehalfoctet:4;
   MessageType                             messagetype;
   FGSRegistrationResult                   fgsregistrationresult;
+<<<<<<< HEAD
 
   /* Optional fields */
   FGSMobileIdentity *guti;
+=======
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 } registration_accept_msg;
 
 int decode_registration_accept(registration_accept_msg *registrationaccept, uint8_t *buffer, uint32_t len);

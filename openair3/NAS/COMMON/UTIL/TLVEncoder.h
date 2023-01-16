@@ -36,12 +36,18 @@
     *(uint32_t*)(buffer) = htonl(value);  \
     size += sizeof(uint8_t) + sizeof(uint16_t)
 
+<<<<<<< HEAD
 #define ENCODE_U32(buffer, value, size) \
   {                                     \
     uint32_t tmp = htonl(value);        \
     memcpy(buffer, &tmp, sizeof(tmp));  \
   }                                     \
   size += sizeof(uint32_t)
+=======
+#define ENCODE_U32(buffer, value, size)   \
+    *(uint32_t*)(buffer) = htonl(value);  \
+    size += sizeof(uint32_t)
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 #define IES_ENCODE_U8(buffer, encoded, value)   \
     ENCODE_U8(buffer + encoded, value, encoded)

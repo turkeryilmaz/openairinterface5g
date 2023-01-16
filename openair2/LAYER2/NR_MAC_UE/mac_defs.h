@@ -62,7 +62,6 @@
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
 
-
 // ==========
 // NR UE defs
 // ==========

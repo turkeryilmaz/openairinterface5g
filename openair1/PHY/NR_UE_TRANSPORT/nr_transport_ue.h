@@ -37,13 +37,8 @@
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_interface.h"
 #include "../NR_TRANSPORT/nr_transport_common_proto.h"
-<<<<<<< HEAD
 
 
-=======
-
-
->>>>>>> b7db35a810... Rebasing openair1 directory
 typedef enum {
  NEW_TRANSMISSION_HARQ,
  RETRANSMISSION_HARQ

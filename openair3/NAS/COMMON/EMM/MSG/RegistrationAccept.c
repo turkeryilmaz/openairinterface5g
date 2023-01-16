@@ -50,6 +50,7 @@ int decode_registration_accept(registration_accept_msg *registration_accept, uin
 
   decoded += decoded_result;
 
+<<<<<<< HEAD
   if (decoded < len && buffer[decoded] == 0x77) {
     registration_accept->guti = calloc(1, sizeof(*registration_accept->guti));
     if (!registration_accept->guti)
@@ -60,6 +61,8 @@ int decode_registration_accept(registration_accept_msg *registration_accept, uin
     decoded += mi_dec;
   }
 
+=======
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   // todo ,Decoding optional fields
   return decoded;
 }
@@ -74,6 +77,7 @@ int encode_registration_accept(registration_accept_msg *registration_accept, uin
   *(buffer + encoded) = encode_fgs_registration_result(&registration_accept->fgsregistrationresult);
   encoded = encoded + 2;
 
+<<<<<<< HEAD
   if (registration_accept->guti) {
     int mi_enc = encode_5gs_mobile_identity(registration_accept->guti, 0x77, buffer + encoded, len - encoded);
     if (mi_enc < 0)
@@ -81,6 +85,8 @@ int encode_registration_accept(registration_accept_msg *registration_accept, uin
     encoded += mi_enc;
   }
 
+=======
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   // todo ,Encoding optional fields
   LOG_FUNC_RETURN(encoded);
 }

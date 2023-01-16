@@ -160,11 +160,15 @@ typedef enum {
 
 /* CGSN AT command type */
 #define AT_COMMAND_CGSN_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cgsn_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cgsn_t;
+=======
+typedef struct at_cgsn_s {} at_cgsn_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CGMI: Request manufacturer identification
  * -----------------------------------------
@@ -176,11 +180,15 @@ typedef struct at_cgsn_s {
 
 /* CGMI AT command type */
 #define AT_COMMAND_CGMI_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cgmi_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cgmi_t;
+=======
+typedef struct at_cgmi_s {} at_cgmi_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CGMM: Request model identification
  * ----------------------------------
@@ -192,11 +200,15 @@ typedef struct at_cgmi_s {
 
 /* CGMM AT command type */
 #define AT_COMMAND_CGMM_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cgmm_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cgmm_t;
+=======
+typedef struct at_cgmm_s {} at_cgmm_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CGMR: Request revision identification
  * -------------------------------------
@@ -209,11 +221,15 @@ typedef struct at_cgmm_s {
 
 /* CGMR AT command type */
 #define AT_COMMAND_CGMR_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cgmr_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cgmr_t;
+=======
+typedef struct at_cgmr_s {} at_cgmr_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CIMI: Request International Mobile Subscriber Identity
  * ------------------------------------------------------
@@ -226,11 +242,15 @@ typedef struct at_cgmr_s {
 
 /* CIMI AT command type */
 #define AT_COMMAND_CIMI_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cimi_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cimi_t;
+=======
+typedef struct at_cimi_s {} at_cimi_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /*
  * ==============================================
@@ -308,11 +328,15 @@ typedef struct {
 
 /* CSQ AT command type */
 #define AT_COMMAND_CSQ_MASK AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_csq_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_csq_t;
+=======
+typedef struct at_csq_s {} at_csq_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CESQ: Extented signal quality
  * -----------------------------
@@ -323,11 +347,15 @@ typedef struct at_csq_s {
 
 /* CESQ AT command type */
 #define AT_COMMAND_CESQ_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cesq_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cesq_t;
+=======
+typedef struct at_cesq_s {} at_cesq_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CLAC: List all available AT commands
  * ------------------------------------
@@ -338,11 +366,15 @@ typedef struct at_cesq_s {
 
 /* CLAC AT command type */
 #define AT_COMMAND_CLAC_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_clac_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_clac_t;
+=======
+typedef struct at_clac_s {} at_clac_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /*
  * =========================
@@ -395,11 +427,15 @@ typedef struct {
 
 /* CNUM AT command type */
 #define AT_COMMAND_CNUM_MASK  AT_COMMAND_NO_PARAM
+<<<<<<< HEAD
 typedef struct at_cnum_s {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } at_cnum_t;
+=======
+typedef struct at_cnum_s {} at_cnum_t;
+>>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 /* CLCK: Facility lock
  * -------------------

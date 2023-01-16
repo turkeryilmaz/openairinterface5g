@@ -4534,7 +4534,6 @@ void rrc_eNB_process_handoverPreparationInformation(int mod_id, x2ap_handover_re
   LTE_HandoverPreparationInformation_t *ho = NULL;
   LTE_HandoverPreparationInformation_r8_IEs_t *ho_info;
   asn_dec_rval_t                      dec_rval;
-
   ue_context_target_p = rrc_eNB_get_ue_context(RC.rrc[mod_id], rnti);
 
   if (ue_context_target_p != NULL) {
@@ -7792,18 +7791,31 @@ rrc_eNB_decode_ccch(
                                    NULL,
                                    (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-          rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
-        }
-=======
-        rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
 
->>>>>>> 4cb79994d4... openair2 rebased initial changes
-=======
           rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
         }
->>>>>>> 8831b74be2... Fix Some Compilation issue
+        rrc_eNB_generate_RRCConnectionSetup(ctxt_pP, ue_context_p, CC_id);
+        LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT"CALLING RLC CONFIG SRB1 (rbid %d)\n",
+              PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
+              Idx);
+        rrc_pdcp_config_asn1_req(ctxt_pP,
+                                 ue_context_p->ue_context.SRB_configList,
+                                 (LTE_DRB_ToAddModList_t *) NULL,
+                                 (LTE_DRB_ToReleaseList_t *) NULL,
+                                 0xff,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 (LTE_PMCH_InfoList_r9_t *) NULL,NULL);
+
+        if (!NODE_IS_CU(RC.rrc[ctxt_pP->module_id]->node_type)) {
+          rrc_rlc_config_asn1_req(ctxt_pP,
+                                  ue_context_p->ue_context.SRB_configList,
+                                  (LTE_DRB_ToAddModList_t *) NULL,
+                                  (LTE_DRB_ToReleaseList_t *) NULL,
+                                  (LTE_PMCH_InfoList_r9_t *) NULL, 0, 0
+                                 );
+        }
         break;
 
       default:
@@ -9585,7 +9597,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       if(RC.ss.mode == SS_ENB) {
         hash_rc = hashtable_get(RC.gtpv1u_data_g->ue_mapping, ue_context_p->ue_context.rnti, (void **)&gtpv1u_ue_data_p);
 
-<<<<<<< HEAD
         /* set target enb gtp teid */
         if (hash_rc == HASH_TABLE_KEY_NOT_EXISTS) {
           LOG_E(RRC, "X2AP_HANDOVER_REQ_ACK func(), hashtable_get failed: while getting ue rnti %x in hashtable ue_mapping\n", ue_context_p->ue_context.rnti);
@@ -9619,7 +9630,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                      &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset],
                      16);
             }
-=======
       /* set target enb gtp teid */
       if (hash_rc == HASH_TABLE_KEY_NOT_EXISTS) {
         LOG_E(RRC, "X2AP_HANDOVER_REQ_ACK func(), hashtable_get failed: while getting ue rnti %x in hashtable ue_mapping\n", ue_context_p->ue_context.rnti);
@@ -9646,12 +9656,18 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             ue_context_p->ue_context.enb_gtp_x2u_addrs[i] = x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr;
           }
 
+
             if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 16) || (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
               memcpy(gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip6_addr.s6_addr, &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset], 16);
->>>>>>> 4cb79994d4... openair2 rebased initial changes
+          if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 16) ||
+              (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
+            memcpy(gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip6_addr.s6_addr,
+                   &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset],
+                   16);
           }
         }
       }
+
       rrc_eNB_process_handoverCommand(instance, ue_context_p, &X2AP_HANDOVER_REQ_ACK(msg_p));
       ue_context_p->ue_context.handover_info->state = HO_PREPARE;
       break;
@@ -10255,7 +10271,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                   NULL,
                   (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-<<<<<<< HEAD
               if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
                 rrc_rlc_config_asn1_req(&ctxt,
                     ue_context_pP->ue_context.SRB_configList,
@@ -10266,13 +10281,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
               rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             }
-=======
-              rrc_rlc_config_asn1_req(&ctxt,
-                  ue_context_pP->ue_context.SRB_configList,
-                  (LTE_DRB_ToAddModList_t *)NULL,
-                  (LTE_DRB_ToReleaseList_t *)NULL,
-                  (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
->>>>>>> 8831b74be2... Fix Some Compilation issue
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             lchannelType = Bearer_CCCH_e;

@@ -263,36 +263,6 @@ typedef enum pdu_session_type_e {
   PDUSessionType_unstructured = 4
 }pdu_session_type_t;
 
-typedef struct ngap_transport_layer_addr_s {
-  /* Length of the transport layer address buffer in bits. NGAP layer received a
-   * bit string<1..160> containing one of the following addresses: ipv4,
-   * ipv6, or ipv4 and ipv6. The layer doesn't interpret the buffer but
-   * silently forward it to NG-U.
-   */
-  uint8_t pdu_session_type;
-  uint8_t length;
-  uint8_t buffer[20]; // in network byte order
-} ngap_transport_layer_addr_t;
-
-#define TRANSPORT_LAYER_ADDR_COPY(dEST,sOURCE)        \
-  do {                                                \
-      AssertFatal(sOURCE.len <= 20);                  \
-      memcpy(dEST.buffer, sOURCE.buffer, sOURCE.len); \
-      dEST.length = sOURCE.length;                    \
-  } while (0)
-
-typedef enum {
-  non_dynamic,
-  dynamic
-} fiveQI_type_t;
-
-typedef struct pdusession_level_qos_parameter_s {
-  uint8_t  qfi;
-  uint64_t fiveQI;
-  fiveQI_type_t fiveQI_type;
-  ngap_allocation_retention_priority_t allocation_retention_priority;
-} pdusession_level_qos_parameter_t;
-
 typedef struct pdusession_s {
   /* Unique pdusession_id for the UE. */
   int pdusession_id;
@@ -305,9 +275,13 @@ typedef struct pdusession_s {
   pdu_session_type_t pdu_session_type;
   transport_layer_addr_t upf_addr;
   /* S-GW Tunnel endpoint identifier */
-  uint32_t                         gtp_teid;
+  uint32_t gtp_teid;
   /* Stores the DRB ID of the DRBs used by this PDU Session */
-  uint8_t                          used_drbs[NGAP_MAX_DRBS_PER_UE];
+  uint8_t used_drbs[NGAP_MAX_DRBS_PER_UE];
+  uint32_t gNB_teid_N3;
+  transport_layer_addr_t gNB_addr_N3;
+  uint32_t UPF_teid_N3;
+  transport_layer_addr_t UPF_addr_N3;
 } pdusession_t;
 
 typedef enum pdusession_qosflow_mapping_ind_e{
@@ -688,9 +662,6 @@ typedef struct ngap_pdusession_setup_req_s {
 
   /* S-NSSAI */
   // Fixme: illogical, nssai is part of each pdu session
-  ngap_allowed_NSSAI_t allowed_nssai[8];
-
-  /* S-NSSAI */
   ngap_allowed_NSSAI_t allowed_nssai[8];
 
   /* Number of pdusession to be setup in the list */
