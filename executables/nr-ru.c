@@ -650,12 +650,7 @@ void rx_rf(RU_t *ru,int *frame,int *slot) {
                                      samples_per_slot,
                                      ru->nb_rx);
   }
-    LOG_I(NR_PHY, "%s() %d. This is the timestamp %d readBlockSize after read %d\n",
-          __FUNCTION__, __LINE__, ts,  rxs); //time of the last sample of the block
-    // timestamp + readBlockSize = is in the past from where we currently are (hardware tick number).
-    // The machine will be reiving these samples, some time in the future, and the ts associated with the sample
-    LOG_I(NR_PHY, "slot %d get_samp_slot_ts %d\n", *slot,
-          fp->get_samples_slot_timestamp(*slot,fp,0));
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_READ, 0 );
   proc->timestamp_rx = ts-ru->ts_offset;
 
@@ -746,22 +741,15 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
       AssertFatal(txsymb>0,"illegal txsymb %d\n",txsymb);
 
       if (fp->slots_per_subframe == 1) {
-        if (txsymb <= 7) {
+        if (txsymb <= 7)
           siglen = (fp->ofdm_symbol_size + fp->nb_prefix_samples0) + (txsymb - 1) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-          LOG_I(NR_PHY, "Setting siglen %d at %d\n", siglen, __LINE__);
-        } else {
+        else
           siglen = 2 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) + (txsymb - 2) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-          LOG_I(NR_PHY, "Setting siglen %d at %d\n", siglen, __LINE__);
-        }
       } else {
-        if(slot%(fp->slots_per_subframe/2)) {
+        if(slot%(fp->slots_per_subframe/2))
           siglen = txsymb * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-          LOG_I(NR_PHY, "Setting siglen %d at %d\n", siglen, __LINE__);
-        } else {
+        else
           siglen = (fp->ofdm_symbol_size + fp->nb_prefix_samples0) + (txsymb - 1) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-          LOG_I(NR_PHY, "Setting siglen %d at txsym %d, fp->ofdm_symbol_size %d fp->nb_prefix_samples0 %d\n",
-                siglen, txsymb, fp->ofdm_symbol_size, fp->nb_prefix_samples0);
-        }
       }
 
       //+ ru->end_of_burst_delay;
@@ -819,12 +807,6 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
     
     VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME( VCD_SIGNAL_DUMPER_VARIABLES_TRX_TST, (timestamp+ru->ts_offset-ru->openair0_cfg.tx_sample_advance)&0xffffffff );
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 1 );
-    LOG_I(PHY, "timestamp %d,ru->ts_offset %d, tx_sample_advance %d, sf_extension %d, slot %d, flags %d, siglen %d\n",
-          timestamp, ru->ts_offset, ru->openair0_cfg.tx_sample_advance, sf_extension, slot, flags, siglen);
-    // timestamp = slot_tx * readBlockSize
-    // ru->ts_offset = sample_rate
-    // ru->openair0_cfg.tx_sample_advance
-      // prepare tx buffer pointers
     txs = ru->rfdevice.trx_write_func(&ru->rfdevice,
                                       timestamp+ru->ts_offset-ru->openair0_cfg.tx_sample_advance-sf_extension,
                                       txp,

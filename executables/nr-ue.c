@@ -175,13 +175,11 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
 
   // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
-  if (1) {
-    // intialize transport
-    init_nr_ue_transport(ue);
+  // intialize transport
+  init_nr_ue_transport(ue);
+  // init N_TA offset
+  init_N_TA_offset(ue);
 
-    // init N_TA offset
-    init_N_TA_offset(ue);
-  }
 }
 
 void init_nrUE_standalone_thread(int ue_idx)
@@ -793,21 +791,6 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
       if (toTrash)
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
           free(rxp[i]);
-      if (!toTrash) {
-        char buffer[UE->frame_parms.ofdm_symbol_size];
-        for (int i = 0; i < 13; i++) {
-          bzero(buffer, sizeof(buffer));
-          LOG_I(NR_PHY, "RXP %d = %s\n",
-                i, hexdump(&rxp[0][UE->frame_parms.ofdm_symbol_size*i + 4],
-                UE->frame_parms.ofdm_symbol_size, buffer, sizeof(buffer)));
-          LOG_I(NR_PHY, "rxdata %d = %s\n",
-                i, hexdump(&UE->common_vars.rxdata[0]
-                            [((x*UE->frame_parms.samples_per_subframe)+
-                   UE->frame_parms.get_samples_slot_timestamp(slot,&UE->frame_parms,0)) +
-                            (i * UE->frame_parms.ofdm_symbol_size)],
-                UE->frame_parms.ofdm_symbol_size, buffer, sizeof(buffer)));
-        }
-      }
     }
   }
 
@@ -999,17 +982,7 @@ void *UE_thread_SL(void *arg) {
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
       txp[i] = (void *)&UE->common_vars.txdata[i][write_time_stamp];
-    char buffer0[UE->frame_parms.ofdm_symbol_size];
-    for (int i = 0; i < 0; i++) {
-      bzero(buffer0, sizeof(buffer0));
-      LOG_I(NR_PHY, "TXP SSB %d [%d] = %s\n",
-            i, write_time_stamp+UE->frame_parms.ofdm_symbol_size*i, hexdump((void*)&txp[0][UE->frame_parms.ofdm_symbol_size*i],
-            UE->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
-      LOG_I(NR_PHY, "txdata %d [%d] = %s\n",
-            i, write_time_stamp+UE->frame_parms.ofdm_symbol_size*i,
-            hexdump((void *)&UE->common_vars.txdata[0][write_time_stamp + UE->frame_parms.ofdm_symbol_size*i],
-            UE->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
-    }
+
     int readBlockSize, writeBlockSize;
     if (slot_nr < (nb_slot_frame - 1)) {
       readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
@@ -1025,8 +998,6 @@ void *UE_thread_SL(void *arg) {
                                            rxp,
                                            readBlockSize,
                                            UE->frame_parms.nb_antennas_rx);
-    LOG_D(NR_PHY, "timestamp %d readblocksize %d slot %d get_samp_slot_ts %d writeBlockSize %d \n",
-          timestamp, readBlockSize, slot_nr, UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0), writeBlockSize);
 
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
@@ -1035,7 +1006,6 @@ void *UE_thread_SL(void *arg) {
       int first_symbols = UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0;
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
-        LOG_D(NR_PHY, "%s, %d\n",__FUNCTION__, __LINE__);
         first_symbols ==
                     UE->rfdevice.trx_read_func(&UE->rfdevice,
                                                &ignore_timestamp,
@@ -1089,13 +1059,6 @@ void *UE_thread_SL(void *arg) {
     } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
       flags = 0;
     }
-    LOG_D(PHY, "writeTimeStamp %d, timestamp %d (slot_nr_tx * readBlockSize) %d,\n"
-               "openair0_cfg[0].sample_rate %f, tx_sample_advance %d,\nslot %d, writeBlockSize %d, flags %d\n",
-          writeTimestamp, timestamp,
-          slot_nr_tx * readBlockSize,
-          openair0_cfg[0].sample_rate,
-          openair0_cfg->tx_sample_advance,
-          slot_nr_tx, writeBlockSize, flags);
     if (flags || IS_SOFTMODEM_RFSIM) {
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
@@ -1105,7 +1068,7 @@ void *UE_thread_SL(void *arg) {
                                               UE->frame_parms.nb_antennas_tx,
                                               flags), "");
     }
-#if 0
+#ifdef DEBUG_PHY_SL_PROC
     char buffer[UE->frame_parms.ofdm_symbol_size];
     for (int i = 0; i < 13; i++) {
       bzero(buffer, sizeof(buffer));

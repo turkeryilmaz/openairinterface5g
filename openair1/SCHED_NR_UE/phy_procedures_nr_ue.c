@@ -344,10 +344,8 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
            hexdump((void *)&ue->common_vars.txdata[0][slot_timestamp + ue->frame_parms.ofdm_symbol_size * i], ue->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
     }
 #endif
-    LOG_I(PHY, "****** AbsSlot %d.%d Lcoation of PSS is %d and %d ******\n",
-          frame_tx, slot_tx, slot_timestamp + ue->frame_parms.ofdm_symbol_size * 1,
-          slot_timestamp + ue->frame_parms.ofdm_symbol_size * 2);
   }
+  LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
 }
 
 void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue,
