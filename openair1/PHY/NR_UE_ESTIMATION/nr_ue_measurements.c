@@ -258,11 +258,20 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   }
 }
 
-void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
+void *nr_ue_meas_neighboring_cell(void *param)
 {
 
+  PHY_VARS_NR_UE *ue = (PHY_VARS_NR_UE *)param;
+  UE_nr_rxtx_proc_t *proc = ue->measurements.meas_proc;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-  int **rxdata = ue->common_vars.rxdata;
+
+  // Copy rxdata, because this function is running in a separate thread, and rxdata will be changed in another thread, before this function finishes measuring.
+  uint32_t rxdata_size = (2 * (frame_parms->samples_per_frame) + frame_parms->ofdm_symbol_size);
+  int rxdata[frame_parms->nb_antennas_rx][rxdata_size];
+  for (int i = 0; i < frame_parms->nb_antennas_rx; i++) {
+    memcpy(rxdata[i], ue->common_vars.rxdata[i], rxdata_size * sizeof(int32_t));
+  }
+
   const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
 
   for (int cell_idx = 0; cell_idx < NUMBER_OF_NEIGHBORING_CELLs_MAX; cell_idx++) {
@@ -271,6 +280,7 @@ void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
     if (nr_neighboring_cell->active == 0) {
       continue;
     }
+    ue->measurements.meas_running = true;
 
     __attribute__((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
     neighboring_cell_info_t *neighboring_cell_info = &ue->measurements.neighboring_cell_info[cell_idx];
@@ -329,7 +339,7 @@ void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
 
     unsigned int k = 0;
     uint8_t sss_symbol = SSS_SYMBOL_NB - PSS_SYMBOL_NB;
-    nr_slot_fep_init_sync(ue, proc, sss_symbol, ssb_offset, false, rxdataF);
+    nr_slot_fep_meas(ue, 0, sss_symbol, ssb_offset, rxdata_size, rxdata, rxdataF);
     c16_t *sss_rx = &rxdataF[0][frame_parms->ofdm_symbol_size * sss_symbol];
 
     if (nr_neighboring_cell->perform_validation == 1) {
@@ -436,6 +446,9 @@ void nr_ue_meas_neighboring_cell(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc)
       free(rx_ind);
     }
   }
+  ue->measurements.meas_running = false;
+  pthread_detach(ue->measurements.meas_thread);
+  return NULL;
 }
 
 // This function computes the received noise power
