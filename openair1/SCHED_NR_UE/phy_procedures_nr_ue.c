@@ -832,6 +832,26 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   return dec;
 }
 
+bool check_meas_to_perform(PHY_VARS_NR_UE *ue, int nr_slot_rx)
+{
+  if (nr_slot_rx != 0) {
+    return false;
+  }
+
+  if (ue->measurements.meas_running == true) {
+    return false;
+  }
+
+  for (int cell_idx = 0; cell_idx < NUMBER_OF_NEIGHBORING_CELLs_MAX; cell_idx++) {
+    fapi_nr_neighboring_cell_t *nr_neighboring_cell = &PHY_vars_UE_g[ue->Mod_id][ue->CC_id]->nrUE_config.meas_config.nr_neighboring_cell[cell_idx];
+    if (nr_neighboring_cell->active == 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
                            nr_phy_data_t *phy_data) {
@@ -951,8 +971,11 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
     } // for rsc_id
   } // for gNB_id
 
-  if (nr_slot_rx == 0) {
-    nr_ue_meas_neighboring_cell(ue, proc);
+  PHY_NR_MEASUREMENTS *measurements = &ue->measurements;
+  if (check_meas_to_perform(ue, nr_slot_rx) == true) {
+    measurements->meas_proc = proc;
+    int ret = pthread_create(&measurements->meas_thread, NULL, nr_ue_meas_neighboring_cell, (void *)ue);
+    AssertFatal(ret == 0, "%s: Thread for neighboring measurements was not created, errno: %d\n", __FUNCTION__, errno);
   }
 
   if ((frame_rx%64 == 0) && (nr_slot_rx==0)) {
