@@ -257,6 +257,58 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
     rsrp);
 }
 
+// This function implements:
+// - Sidelink SS reference signal received power (SSS-RSRP)
+// Measurement units:
+// - RSRP:    W (dBW)
+// - RX Gain  dB
+void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                    int ssb_index,
+                                    UE_nr_rxtx_proc_t *proc) {
+  int k_start = 2;
+  int k_end   = 129;
+  unsigned int ssb_offset = 0;
+  int symbol_offset = ue->is_synchronized > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * ue->frame_parms.symbols_per_slot : 0;
+
+  uint8_t l_sss = (symbol_offset + 3) % ue->frame_parms.symbols_per_slot;
+
+  if (ssb_offset >= ue->frame_parms.ofdm_symbol_size)
+    ssb_offset -= ue->frame_parms.ofdm_symbol_size;
+
+  uint32_t rsrp = 0;
+
+  int nb_re = 0;
+
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+
+    int16_t *rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(l_sss*ue->frame_parms.ofdm_symbol_size) + ssb_offset];
+
+    for(int k = k_start; k < k_end; k++){
+
+#ifdef DEBUG_MEAS_UE
+      LOG_I(PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k*2], rxF_sss[k*2 + 1]);
+#endif
+
+      rsrp += (((int32_t)rxF_sss[k * 2] * rxF_sss[k * 2]) + ((int32_t)rxF_sss[k * 2 + 1] * rxF_sss[k * 2 + 1]));
+      nb_re++;
+
+    }
+  }
+
+  rsrp /= nb_re;
+  ue->measurements.ssb_rsrp_dBm[ssb_index] = 10 * log10(rsrp) +
+                                             30 - 10 * log10(pow(2, 30)) -
+                                             ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
+                                             dB_fixed(ue->frame_parms.ofdm_symbol_size);
+
+  LOG_I(NR_PHY, "In %s: [UE %d] ssb %d SS-RSRP: %d dBm/RE (%d)\n",
+       __FUNCTION__,
+       ue->Mod_id,
+       ssb_index,
+       ue->measurements.ssb_rsrp_dBm[ssb_index],
+       rsrp);
+}
+
 // This function computes the received noise power
 // Measurement units:
 // - psd_awgn (AWGN power spectral density):     dBm/Hz

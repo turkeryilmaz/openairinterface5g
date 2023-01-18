@@ -241,6 +241,8 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
                                   proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
+    int ssb_index = 0;
+    nr_ue_sl_ssb_rsrp_measurements(ue, ssb_index, proc);
     fapiPsbch_t result;
     ret = nr_rx_psbch(ue, proc, estimateSz, dl_ch_estimates, ue->psbch_vars[0], frame_parms,
                       0, temp_ptr->i_ssb, SISO, phy_pdcch_config, &result);
