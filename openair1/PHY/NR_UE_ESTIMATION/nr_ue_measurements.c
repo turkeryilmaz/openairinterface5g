@@ -268,7 +268,7 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   int k_start = 2;
   int k_end   = 129;
   unsigned int ssb_offset = 0;
-  int symbol_offset = ue->is_synchronized > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * ue->frame_parms.symbols_per_slot : 0;
+  int symbol_offset = ue->is_synchronized_sl > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * ue->frame_parms.symbols_per_slot : 0;
 
   uint8_t l_sss = (symbol_offset + 3) % ue->frame_parms.symbols_per_slot;
 
