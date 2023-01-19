@@ -41,7 +41,7 @@
 //#define k1 1000
 #define k1 ((long long int) 1000)
 #define k2 ((long long int) (1024-k1))
-
+#define NUM_SSS_SYMBOLS 2
 //#define DEBUG_MEAS_RRC
 //#define DEBUG_MEAS_UE
 //#define DEBUG_RANK_EST
@@ -268,9 +268,8 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   int k_start = 2;
   int k_end   = 129;
   unsigned int ssb_offset = 0;
+  int first_sss_index = 3;
   int symbol_offset = ue->is_synchronized_sl > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * ue->frame_parms.symbols_per_slot : 0;
-
-  uint8_t l_sss = (symbol_offset + 3) % ue->frame_parms.symbols_per_slot;
 
   if (ssb_offset >= ue->frame_parms.ofdm_symbol_size)
     ssb_offset -= ue->frame_parms.ofdm_symbol_size;
@@ -280,18 +279,18 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   int nb_re = 0;
 
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
-
-    int16_t *rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(l_sss*ue->frame_parms.ofdm_symbol_size) + ssb_offset];
-
-    for(int k = k_start; k < k_end; k++){
+    for (int i = 0; i < NUM_SSS_SYMBOLS; i++) {
+      uint8_t l_sss = (symbol_offset + (first_sss_index + i)) % ue->frame_parms.symbols_per_slot;
+      int16_t *rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(l_sss*ue->frame_parms.ofdm_symbol_size) + ssb_offset];
+      for(int k = k_start; k < k_end; k++) {
 
 #ifdef DEBUG_MEAS_UE
       LOG_I(PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k*2], rxF_sss[k*2 + 1]);
 #endif
 
-      rsrp += (((int32_t)rxF_sss[k * 2] * rxF_sss[k * 2]) + ((int32_t)rxF_sss[k * 2 + 1] * rxF_sss[k * 2 + 1]));
-      nb_re++;
-
+        rsrp += (((int32_t)rxF_sss[k * 2] * rxF_sss[k * 2]) + ((int32_t)rxF_sss[k * 2 + 1] * rxF_sss[k * 2 + 1]));
+        nb_re++;
+      }
     }
   }
 
