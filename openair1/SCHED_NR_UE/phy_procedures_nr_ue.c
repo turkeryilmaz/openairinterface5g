@@ -303,7 +303,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
     LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
     ue->frame_parms.nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
-    int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms,0);
+    int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms, 0);
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
       apply_nr_rotation(&ue->frame_parms,
                         (int16_t*)&ue->common_vars.txdataF[aa][txdataF_offset],
