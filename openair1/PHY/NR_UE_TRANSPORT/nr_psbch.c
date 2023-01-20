@@ -406,7 +406,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
   uint32_t payload = 0;
   for (int i = 0; i < NR_POLAR_PSBCH_PAYLOAD_BITS; i++)
     payload |= (((uint64_t)psbch_a_prime >> i) & 1) << (31 - i);
-  printf("PSBCH payload received 0x%x \n", payload);
+  LOG_I(NR_PHY, "PSBCH payload received 0x%x \n", payload);
 
   for (int i = 0; i < 4; i++)
     result->decoded_output[i] = (uint8_t)((payload >> ((3 - i) << 3)) & 0xff);

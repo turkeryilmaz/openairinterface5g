@@ -277,34 +277,53 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   for (int is = 0; is < n_frames; is++) {
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
     if (sync_pos >= fp->nb_prefix_samples) {
-      ue->ssb_offset = sync_pos - fp->nb_prefix_samples;
+      // In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
+      // offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
+      // PSS symbols. So in the case where we correlate on the second PSS,
+      // we need to adjust the SSB offset accordingly (subtracting first PSS prefix).
+      // However, if we correlated on the second PSS, we do not need to include
+      // the size of the first PSS0, becasue the correlation occurs on each individual PSS.
+      // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
+      // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
+      //      144     |  2048   |      144     | 2048  |      144     | 2048  |
+      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Start = X - (144 + 144 + 2048 + 144)
+      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Start = X - (144 + 2048 + 144)
+      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples;
+      uint32_t num_pss_prefix_samples_size = (ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;
+      LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
+            num_pss_prefix_samples_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.N2_id);
+      ue->ssb_offset = sync_pos - num_pss_prefix_samples_size - psbch_plus_prefix_size;
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d sync_pos %d ssb_offset %d\n",
-          ue->Mod_id, n_frames, sync_pos,ue->common_vars.eNb_id, sync_pos, ue->ssb_offset);
+    LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+          ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
-      for (int i = 0; i < 13; i++)
-        nr_slot_fep_init_sync(ue, proc, i, 0, 0 /*is * fp->samples_per_frame + ue->ssb_offset*/);
-      LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
-      int freq_offset_sss = 0;
-      ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
-      if (ue->UE_fo_compensation) {
-        double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
-        double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
-        int start = is*fp->samples_per_frame + ue->ssb_offset;
-        int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
-        for (int n = start; n < end; n++) {
-          for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
-            double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
-            double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
-            ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
-            ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im *cos(n * off_angle)));
+      for (int j = 0; j < fp->slots_per_frame - 1; j++) {
+        for (int i = 0; i < 13; i++)
+          nr_slot_fep_init_sync(ue, proc, i, j, is * fp->samples_per_frame + ue->ssb_offset);
+        LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
+        int freq_offset_sss = 0;
+        ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
+        if (ue->UE_fo_compensation) {
+          double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
+          double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
+          int start = is * fp->samples_per_frame + ue->ssb_offset;
+          int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+          for (int n = start; n < end; n++) {
+            for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
+              double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
+              double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
+              ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
+              ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im *cos(n * off_angle)));
+            }
           }
+          ue->common_vars.freq_offset += freq_offset_sss;
         }
-        ue->common_vars.freq_offset += freq_offset_sss;
+        if (ret == 0)
+          break;
       }
       if (ret == 0) {
         nr_gold_psbch(ue);

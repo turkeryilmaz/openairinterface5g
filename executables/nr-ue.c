@@ -618,6 +618,10 @@ void processSlotTX(void *arg) {
   uint8_t gNB_id = 0;
 
   LOG_D(PHY,"processSlotTX %d.%d => slot type %d\n",proc->frame_tx,proc->nr_slot_tx,tx_slot_type);
+  if (proc->nr_slot_tx == 8 || proc->nr_slot_tx == 9 ||
+      proc->nr_slot_tx == 18 || proc->nr_slot_tx == 19) {
+      return;
+  }
   if (UE->sync_ref)
     tx_slot_type = NR_UPLINK_SLOT;
   if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
@@ -892,13 +896,13 @@ void *UE_thread_SL(void *arg) {
     }
 
     if (sync_running_sl && UE->sync_ref == 0) {
-      LOG_I(NR_PHY, "Sync UE: sync_running status.\n");
+      LOG_I(NR_PHY, "Nearby UE: sync_running status.\n");
       notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
       if (res) {
         sync_running_sl = false;
-        LOG_I(NR_PHY, "Sync UE: sync_running was set to false due to valid res.\n");
+        LOG_I(NR_PHY, "Nearby UE: sync_running was set to false due to valid res.\n");
         syncData_t *tmp=(syncData_t *)NotifiedFifoData(res);
-        LOG_I(NR_PHY, "Sync UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
+        LOG_I(NR_PHY, "Nearby UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
         if (UE->is_synchronized_sl && get_softmodem_params()->sl_mode < 2) {
           decoded_frame_rx=(((mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused)<<4) | tmp->proc.decoded_frame_rx);
           // shift the frame index with all the frames we trashed meanwhile we perform the synch search
@@ -907,7 +911,7 @@ void *UE_thread_SL(void *arg) {
         delNotifiedFIFO_elt(res);
         start_rx_stream = 0;
       } else {
-        LOG_I(PHY, "Sync UE: sync_running_sl still in readFrame due to INVALID res.\n");
+        LOG_I(PHY, "Nearby UE: sync_running_sl still in readFrame due to INVALID res.\n");
         readFrame(UE, &timestamp, true);
         trashed_frames += 2;
         continue;
@@ -959,6 +963,8 @@ void *UE_thread_SL(void *arg) {
     // this is general failure in UE !!!
     thread_idx = absolute_slot % NR_RX_NB_TH;
     int slot_nr = absolute_slot % nb_slot_frame;
+    int slot_nr_tx = (slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
+
     notifiedFIFO_elt_t *msgToPush;
     AssertFatal((msgToPush=pullNotifiedFIFO_nothreadSafe(&freeBlocks)) != NULL,"chained list failure");
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(msgToPush);
@@ -974,9 +980,8 @@ void *UE_thread_SL(void *arg) {
     LOG_D(NR_PHY, "Process slot %d thread Idx %d total gain %d\n", slot_nr, thread_idx, UE->rx_total_gain_dB);
 
     int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
-    // (slot_nr + 3) is added to compensate for a mismatch between phy_procedures_nrUE_SL_TX() slot_tx and slot_nr
-    int write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
-    int read_time_stamp = firstSymSamp + UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
+    uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
+    uint64_t read_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
     for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
@@ -1052,27 +1057,19 @@ void *UE_thread_SL(void *arg) {
     }
 
     int flags = 1;
-    if (get_softmodem_params()->sl_mode != 2 &&
-        openair0_cfg[0].duplex_mode == duplex_mode_TDD &&
-        !get_softmodem_params()->continuous_tx) {
-      uint8_t tdd_period = mac->phy_config.config_req.tdd_table.tdd_period_in_slots;
-      int nrofUplinkSlots, nrofUplinkSymbols;
-      if (mac->scc) {
-        nrofUplinkSlots = mac->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
-        nrofUplinkSymbols = mac->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
-      } else {
-        nrofUplinkSlots = mac->scc_SIB->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
-        nrofUplinkSymbols = mac->scc_SIB->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols;
-      }
-      int slot_tx_usrp = slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH;
-      uint8_t  num_UL_slots = nrofUplinkSlots + (nrofUplinkSymbols != 0);
-      uint8_t first_tx_slot = tdd_period - num_UL_slots;
-      if (slot_tx_usrp % tdd_period == first_tx_slot)
-        flags = 2;
-      else if (slot_tx_usrp % tdd_period == first_tx_slot + num_UL_slots - 1)
-        flags = 3;
-      else if (slot_tx_usrp % tdd_period > first_tx_slot)
+    if (slot_nr_tx == 1 || slot_nr_tx == 11 ||
+        slot_nr_tx == 2 || slot_nr_tx == 12 ||
+        slot_nr_tx == 3 || slot_nr_tx == 13 ||
+        slot_nr_tx == 4 || slot_nr_tx == 14 ||
+        slot_nr_tx == 5 || slot_nr_tx == 15 ||
+        slot_nr_tx == 6 || slot_nr_tx == 16) {
         flags = 1;
+    } else if (slot_nr_tx == 0 || slot_nr_tx == 10) {
+      flags = 2;
+    } else if (slot_nr_tx == 7 || slot_nr_tx == 17) {
+      flags = 3;
+    } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
+      flags = 0;
     }
 
     if (flags || IS_SOFTMODEM_RFSIM) {

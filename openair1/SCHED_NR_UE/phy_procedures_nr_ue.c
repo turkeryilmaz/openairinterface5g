@@ -298,12 +298,12 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
   }
 
-  if (ue->sync_ref) {
+  if (ue->sync_ref && !(slot_tx == 8 || slot_tx == 9 || slot_tx == 18 || slot_tx == 19)) {
     nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
     const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
     LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
     ue->frame_parms.nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
-    int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(((slot_tx + DURATION_RX_TO_TX - NR_RX_NB_TH)%ue->frame_parms.slots_per_frame),&ue->frame_parms,0);
+    int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms, 0);
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
       apply_nr_rotation(&ue->frame_parms,
                         (int16_t*)&ue->common_vars.txdataF[aa][txdataF_offset],

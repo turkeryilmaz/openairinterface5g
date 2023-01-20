@@ -191,8 +191,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
 #ifdef DEBUG_FEP
-  //  if (ue->frame <100)
-  printf("slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, slot_offset %u, sample_offset %d,rx_offset %u, frame_length_samples %u\n",
+  LOG_I(NR_PHY, "slot_fep: slot %d, symbol %d, nb_prefix_samples %u, nb_prefix_samples0 %u, slot_offset %u, sample_offset %d,rx_offset %u, frame_length_samples %u\n",
          Ns, symbol, nb_prefix_samples, nb_prefix_samples0, slot_offset, sample_offset, rx_offset, frame_length_samples);
 #endif
 
@@ -244,7 +243,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
 #ifdef DEBUG_FEP
     //  if (ue->frame <100)
-    printf("slot_fep: slot %d, symbol %d rx_offset %u, rotation symbol %d %d.%d\n", Ns,symbol, rx_offset,
+    LOG_I(NR_PHY, "slot_fep: slot %d, symbol %d rx_offset %u, rotation symbol %d %d.%d\n", Ns,symbol, rx_offset,
 	   symbol+symb_offset,rot2.r,rot2.i);
 #endif
 

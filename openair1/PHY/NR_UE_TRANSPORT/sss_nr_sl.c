@@ -287,7 +287,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
      cosinus cos(x + y) = cos(x)cos(y) - sin(x)sin(y)
      sinus   sin(x + y) = sin(x)cos(y) + cos(x)sin(y) */
   uint16_t Nid1;
-  uint8_t Nid2 = GET_NID2_SL(frame_parms->Nid_SL);
+  uint8_t Nid2 = ue->common_vars.N2_id;
   *tot_metric = INT_MIN;
   int16_t *sss0 = (int16_t*)&sss0_ext[0][0];
   int16_t *sss1 = (int16_t*)&sss1_ext[0][0];
@@ -322,7 +322,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
     Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
   }
 #if 1
-  printf("Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
+  LOG_I(NR_PHY, "Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
 #endif
 
   if (Nid1 == N_ID_1_NUMBER) {
