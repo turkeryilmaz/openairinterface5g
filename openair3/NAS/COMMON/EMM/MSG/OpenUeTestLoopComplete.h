@@ -19,7 +19,6 @@
  *      contact@openairinterface.org
  */
 
-<<<<<<< HEAD:openair3/NAS/COMMON/EMM/MSG/OpenUeTestLoopComplete.h
 /*! \file OpenUeTestLoopComplete.h
 
 \brief test mode procedures for eNB/gNB
@@ -51,41 +50,5 @@ typedef struct open_ue_test_loop_complete_msg_tag {
 } open_ue_test_loop_complete_msg;
 
 int encode_open_ue_test_loop_complete(open_ue_test_loop_complete_msg *open_ue_test_loop_complete, uint8_t *buffer, uint32_t len);
-=======
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#define NB_R  3
-void nrLDPC_bnProc_BG1_generator_AVX512(const char *, int);
-void nrLDPC_bnProc_BG2_generator_AVX512(const char *, int);
-void nrLDPC_bnProcPc_BG1_generator_AVX512(const char *, int);
-void nrLDPC_bnProcPc_BG2_generator_AVX512(const char *, int);
-
-const char *__asan_default_options()
-{
-  /* don't do leak checking in nr_ulsim, creates problems in the CI */
-  return "detect_leaks=0";
-}
-
-int main(int argc, char *argv[])
-{
-  if (argc != 2) {
-    fprintf(stderr, "usage: %s <output-dir>\n", argv[0]);
-    return 1;
-  }
-  const char *dir = argv[1];
-
-  int R[NB_R]={0,1,2};
-  for(int i=0; i<NB_R;i++){
-    nrLDPC_bnProc_BG1_generator_AVX512(dir, R[i]);
-    nrLDPC_bnProc_BG2_generator_AVX512(dir, R[i]);
-
-    nrLDPC_bnProcPc_BG1_generator_AVX512(dir, R[i]);
-    nrLDPC_bnProcPc_BG2_generator_AVX512(dir, R[i]);
-  }
-
-  return(0);
-}
->>>>>>> 41ca5b1258... Rebasing openair1 folder:openair1/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/generator_bnProc_avx512/main.c
 
 #endif /* ! defined(OPEN_UE_TEST_LOOP_COMPLETE_H_) */

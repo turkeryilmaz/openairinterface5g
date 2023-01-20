@@ -104,8 +104,6 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->common.available_tx_space = nr_rlc_entity_am_available_tx_space;
   ret->common.get_stats       = nr_rlc_entity_get_stats;
 
-  ret->common.deliver_pdu     = nr_rlc_entity_am_deliver_pdu;
-
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;
   ret->common.sdu_successful_delivery      = sdu_successful_delivery;
@@ -206,8 +204,6 @@ nr_rlc_entity_t *new_nr_rlc_entity_tm(
   ret->common.delete             = nr_rlc_entity_tm_delete;
   ret->common.available_tx_space = nr_rlc_entity_tm_available_tx_space;
   ret->common.get_stats       = nr_rlc_entity_get_stats;
-
-  /* ret->common.deliver_pdu     = nr_rlc_entity_tm_deliver_pdu; */
 
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;

@@ -24,7 +24,6 @@
 
 #include "nr_rlc_entity.h"
 #include "nr_rlc_sdu.h"
-#include "nr_rlc_pdu.h"
 
 typedef struct {
   nr_rlc_entity_t common;
@@ -37,9 +36,6 @@ typedef struct {
   nr_rlc_sdu_segment_t *tx_end;
   int                  tx_size;
   int                  tx_maxsize;
-
-  /* TTCN DRB support: contains the RLC PDU list to be sent to MAC directly */
-  nr_rlc_pdu_t *tx_extra_list;
 } nr_rlc_entity_tm_t;
 
 void nr_rlc_entity_tm_recv_sdu(nr_rlc_entity_t *entity,

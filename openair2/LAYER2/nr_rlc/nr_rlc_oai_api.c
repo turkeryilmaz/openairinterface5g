@@ -41,6 +41,8 @@
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
+#include "LAYER2/MAC/mac_extern.h"
+
 extern RAN_CONTEXT_t RC;
 
 #include <stdint.h>

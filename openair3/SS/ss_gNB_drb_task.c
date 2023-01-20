@@ -52,9 +52,8 @@
 #include "ss_gNB_context.h"
 
 extern RAN_CONTEXT_t RC;
-//extern uint16_t ss_rnti_g;
-static acpCtx_t ctx_drb_g = NULL;
 extern SSConfigContext_t SS_context;
+static acpCtx_t ctx_drb_g = NULL;
 
 static unsigned char *buffer = NULL;
 static const size_t size = 16 * 1024;
@@ -67,11 +66,29 @@ enum MsgUserId
     MSG_NrDrbProcessToSS_userId,
 };
 
-#if 0
-static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index)
+static void bits_copy_from_array(char *dst, int off, const char* src, int len)
 {
-    struct DRB_COMMON_IND ind = {};
-    uint32_t status = 0;
+    while (len-- > 0)
+    {
+        int bit = *src++ ? 1 : 0;
+        dst[off / 8] |= bit << (7 - off % 8);
+        off++;
+    }
+}
+
+static void bits_copy_to_array(char *dst, int off, const char* src, int len)
+{
+    while (len-- > 0)
+    {
+        int bit = src[off / 8] & (1 << (7 - off % 8));
+        *dst++ = bit ? 0x01 : 0x00;
+        off++;
+    }
+}
+
+static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
+{
+    struct NR_DRB_COMMON_IND ind = {};
 
     LOG_A(GNB_APP, "[SS_DRB] Reported drb sdu_size:%d \t drb_id %d\n", pdu_ind->sdu_size, pdu_ind->drb_id);
 
@@ -79,17 +96,18 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index)
     DevAssert(pdu_ind->sdu_size >= 0);
     DevAssert(pdu_ind->drb_id >= 0);
 
-    size_t msgSize = size;
     memset(&ind, 0, sizeof(ind));
 
-    ind.Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
+    /* ind.Common.CellId = SS_context.nr_cellId; */
+    //TODO: Work Around till Sys port is implemented for 5G
+    ind.Common.CellId = nr_Cell1;
 
-    //Populated the Routing Info
-    ind.Common.RoutingInfo.d = RoutingInfo_Type_RadioBearerId;
-    ind.Common.RoutingInfo.v.RadioBearerId.d = RadioBearerId_Type_Drb;
+    // Populated the Routing Info
+    ind.Common.RoutingInfo.d = NR_RoutingInfo_Type_RadioBearerId;
+    ind.Common.RoutingInfo.v.RadioBearerId.d = NR_RadioBearerId_Type_Drb;
     ind.Common.RoutingInfo.v.RadioBearerId.v.Drb = pdu_ind->drb_id;
 
-    //Populated the Timing Info
+    // Populated the Timing Info
     ind.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
     ind.Common.TimingInfo.v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
     ind.Common.TimingInfo.v.SubFrame.SFN.v.Number = pdu_ind->frame;
@@ -106,49 +124,89 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index)
     ind.Common.Status.d = IndicationStatus_Type_Ok;
     ind.Common.Status.v.Ok = true;
 
-    ind.Common.RlcBearerRouting.d = true;
-    ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
-    ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
+    ind.Common.RlcBearerRouting.d = RlcBearerRouting_Type_NR;
+    /* ind.Common.RlcBearerRouting.v.NR = SS_context.nr_cellId; */
+    //TODO: Work Around till Sys port is implemented for 5G
+    ind.Common.RlcBearerRouting.v.NR = nr_Cell1;
 
-    //Populating the PDU
-    ind.U_Plane.SubframeData.NoOfTTIs = 1;
-    ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_PdcpSdu;
-    ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
-    LOG_A(GNB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
-    for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
-        ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d)*(sizeof(PDCP_SDU_Type)));
-        DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
-        ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
-        ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v = CALLOC(1,ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d);
-        memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size);
+    // Populating the PDU
+    ind.U_Plane.SlotData.NoOfTTIs = 1;
+    ind.U_Plane.SlotData.PduSduList.d = NR_L2DataList_Type_RlcPdu;
+    ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d = 1;
+    ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v = CALLOC(1, (ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d) * (sizeof(struct NR_RLC_PDU_Type)));
+    DevAssert(ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v != NULL);
+    for (int i = 0; i < ind.U_Plane.SlotData.PduSduList.v.RlcPdu.d; i++) {
+        struct NR_RLC_PDU_Type* rlcPdu = &ind.U_Plane.SlotData.PduSduList.v.RlcPdu.v[i];
+
+        // TODO: suppose, we have UMD NoSN/SN6Bit RLC PDU
+        rlcPdu->d = NR_RLC_PDU_Type_UMD;
+        rlcPdu->v.UMD.d = ((pdu_ind->sdu[0] & 0xC0) == 0) ? NR_RLC_UMD_PDU_Type_NoSN : NR_RLC_UMD_PDU_Type_SN6Bit;
+
+        if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
+        {
+            struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
+            NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
+            int pdu_header_size = 1;
+            bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
+            bits_copy_to_array((char *)header->Reserved, 2, (const char *)pdu_ind->sdu, 6);
+            data->d = pdu_ind->sdu_size - pdu_header_size;
+            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
+            data->v = CALLOC(1, data->d);
+            DevAssert(data->v != NULL);
+            memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
+        }
+        else if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_SN6Bit)
+        {
+            struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
+            NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
+            int pdu_header_size = 1;
+            bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
+            bits_copy_to_array((char *)header->SequenceNumber, 2, (const char *)pdu_ind->sdu, 6);
+            if (pdu_ind->sdu[0] & 0x80)
+            {
+                pdu_header_size += 2;
+                header->SegmentOffset.d = true;
+                bits_copy_to_array((char *)header->SegmentOffset.v, 8, (const char *)pdu_ind->sdu, 16);
+            }
+            data->d = pdu_ind->sdu_size - pdu_header_size;
+            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
+            data->v = CALLOC(1, data->d);
+            DevAssert(data->v != NULL);
+            memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
+        }
+        else
+        {
+            LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit are handled in RLC PDU in NR_DRB_COMMON_IND\n");
+        }
     }
 
-    //Encode Message
-    if (acpDrbProcessToSSEncSrv(ctx_drb_g, buffer, &msgSize, &ind) != 0)
+    // Encode Message
+    size_t msgSize = size;
+    if (acpNrDrbProcessToSSEncSrv(ctx_drb_g, buffer, &msgSize, &ind) != 0)
     {
-        LOG_A(GNB_APP, "[SS_DRB][DRB_COMMON_IND] acpDrbProcessToSSEncSrv Failure\n");
+        LOG_E(GNB_APP, "[SS_DRB] acpNrDrbProcessToSSEncSrv Failed\n");
         return;
     }
-    LOG_A(GNB_APP, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
+    LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND buffer msgSize=%d to NRCell %d\n", (int)msgSize, SS_context.nr_cellId);
 
-    //Send Message
-    status = acpSendMsg(ctx_drb_g, msgSize, buffer);
-    if (status != 0)
+    // Send Message
+    int send_res = acpSendMsg(ctx_drb_g, msgSize, buffer);
+    if (send_res != 0)
     {
-        LOG_A(GNB_APP, "[SS_DRB][DRB_COMMON_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_drb_g));
-        return;
+        LOG_E(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND acpSendMsg failed. Error : %d on fd: %d\n", send_res, acpGetSocketFd(ctx_drb_g));
     }
     else
     {
-        LOG_A(GNB_APP, "[SS_DRB][DRB_COMMON_IND] acpSendMsg Success \n");
+        LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND acpSendMsg Success\n");
     }
+
+    /* acpNrDrbProcessToSSFree0SrvClt(&ind); */
 }
-#endif
 
 static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
 {
     assert(req);
-    MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, SS_DRB_PDU_REQ);
+    MessageDef *message_p = itti_alloc_new_message(TASK_RLC_ENB, 0, SS_DRB_PDU_REQ);
     assert(message_p);
     if (message_p)
     {
@@ -163,23 +221,38 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
                 LOG_A(GNB_APP, "[SS_DRB] RLC PDU Received in NR_DRB_COMMON_REQ\n");
                 for (int j = 0; j < req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.d; j++)
                 {
-                    struct NR_RLC_PDU_Type* rlcPdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.v[j];
+                    struct NR_RLC_PDU_Type *rlcPdu = &req->U_Plane.SlotDataList.v[i].PduSduList.v.RlcPdu.v[j];
+
                     if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_NoSN)
                     {
+                        struct NR_RLC_UMD_HeaderNoSN_Type *header = &rlcPdu->v.UMD.v.NoSN.Header;
+                        NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.NoSN.Data;
                         int pdu_header_size = 1;
-                        NR_RLC_UMD_Data_Type* data = &rlcPdu->v.UMD.v.NoSN.Data;
+                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
+                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->Reserved, 6);
                         SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
                         LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
-
-                        /* TODO: expected header in RLC PDU: SegmentationInfo:00 + Reserved:000000000000,
-                         * which should be converted from octets in ACP (each octet has a bit meaning) to bits */
-                        SS_DRB_PDU_REQ(message_p).sdu[0] = 0;
-
+                        memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
+                    }
+                    else if (rlcPdu->d == NR_RLC_PDU_Type_UMD && rlcPdu->v.UMD.d == NR_RLC_UMD_PDU_Type_SN6Bit)
+                    {
+                        struct NR_RLC_UMD_HeaderSN6Bit_Type *header = &rlcPdu->v.UMD.v.SN6Bit.Header;
+                        NR_RLC_UMD_Data_Type *data = &rlcPdu->v.UMD.v.SN6Bit.Data;
+                        int pdu_header_size = 1;
+                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 0, (const char *)header->SegmentationInfo, 2);
+                        bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 2, (const char *)header->SequenceNumber, 6);
+                        if (header->SegmentOffset.d)
+                        {
+                            pdu_header_size += 2;
+                            bits_copy_from_array((char *)SS_DRB_PDU_REQ(message_p).sdu, 8, (const char *)header->SegmentOffset.v, 16);
+                        }
+                        SS_DRB_PDU_REQ(message_p).sdu_size = pdu_header_size + data->d;
+                        LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_REQ: %lu\n", pdu_header_size + data->d);
                         memcpy(SS_DRB_PDU_REQ(message_p).sdu + pdu_header_size, data->v, data->d);
                     }
                     else
                     {
-                        LOG_E(GNB_APP, "[SS_DRB] only UM NoSN are handled in RLC PDU in NR_DRB_COMMON_REQ\n");
+                        LOG_E(GNB_APP, "[SS_DRB] only UMD NoSN/SN6Bit are handled in RLC PDU in NR_DRB_COMMON_REQ\n");
                     }
                 }
             }
@@ -188,10 +261,10 @@ static void ss_task_handle_drb_pdu_req(struct NR_DRB_COMMON_REQ *req)
     }
     SS_DRB_PDU_REQ(message_p).rnti = SS_context.ss_rnti_g;
 
-    int send_res = itti_send_msg_to_task(TASK_RRC_GNB, instance_g, message_p);
+    int send_res = itti_send_msg_to_task(TASK_RLC_ENB, instance_g, message_p);
     if (send_res < 0)
     {
-        LOG_A(GNB_APP, "[SS_DRB] Error in itti_send_msg_to_task\n");
+        LOG_E(GNB_APP, "[SS_DRB] Error in itti_send_msg_to_task\n");
     }
 
     LOG_A(GNB_APP, "[SS_DRB] Send res: %d\n", send_res);
@@ -230,7 +303,7 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
             }
             else
             {
-                LOG_A(GNB_APP, "[SS_DRB] Invalid userId: %d \n", userId);
+                LOG_E(GNB_APP, "[SS_DRB] Invalid userId: %d\n", userId);
                 break;
             }
         }
@@ -238,34 +311,35 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
         if (userId == 0)
         {
             // No message (timeout on socket)
-            //break;
+            break;
         }
         else if (MSG_NrDrbProcessFromSS_userId == userId)
         {
             struct NR_DRB_COMMON_REQ *req = NULL;
-            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ Received \n");
+            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ Received\n");
 
             if (acpNrDrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
             {
-                LOG_A(GNB_APP, "[SS_DRB][NR_DRB_COMMON_REQ] acpNrDrbProcessFromSSDecSrv Failed\n");
+                LOG_E(GNB_APP, "[SS_DRB] acpNrDrbProcessFromSSDecSrv Failed\n");
                 break;
             }
             if (SS_context.State >= SS_STATE_CELL_ACTIVE)
             {
-                LOG_A(GNB_APP, "[SS_DRB][NR_DRB_COMMON_REQ] NR_DRB_COMMON_REQ Received in CELL_ACTIVE\n");
+                LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in CELL_ACTIVE\n");
                 ss_task_handle_drb_pdu_req(req);
             }
             else
             {
-                LOG_W(GNB_APP, "[SS_DRB][NR_DRB_COMMON_REQ] received in SS state %d \n", SS_context.State);
+                LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_REQ received in SS state %d \n", SS_context.State);
             }
 
             acpNrDrbProcessFromSSFreeSrv(req);
-            return;
+
+            break;
         }
         else if (MSG_NrDrbProcessToSS_userId == userId)
         {
-            LOG_A(GNB_APP, "[SS_DRB] DRB_COMMON_IND Received; ignoring \n");
+            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND Received; ignoring\n");
             break;
         }
     }
@@ -273,11 +347,10 @@ static void ss_gNB_read_from_drb_socket(acpCtx_t ctx)
 
 void *ss_gNB_drb_process_itti_msg(void *notUsed)
 {
-#if 0
     MessageDef *received_msg = NULL;
     int result = 0;
 
-    itti_receive_msg(TASK_SS_DRB, &received_msg);
+    itti_poll_msg(TASK_SS_DRB, &received_msg);
 
     /* Check if there is a packet to handle */
     if (received_msg != NULL)
@@ -286,48 +359,43 @@ void *ss_gNB_drb_process_itti_msg(void *notUsed)
         {
             case SS_DRB_PDU_IND:
                 {
-                    int cell_index;
-                    if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
-                        cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
-                        LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
-                    }
                     task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
                     if (origin_task == TASK_SS_PORTMAN)
                     {
-                        LOG_D(GNB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+                        LOG_D(GNB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d\n", SS_context.State);
                     }
                     else
                     {
-                        LOG_A(GNB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
-                        if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
+                        LOG_A(GNB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from PDCP\n");
+                        if (SS_context.State >= SS_STATE_CELL_ACTIVE)
                         {
+                            LOG_A(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in CELL_ACTIVE\n");
                             instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-                            ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind,cell_index);
+                            ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind);
                         }
                         else
                         {
-                            LOG_A(GNB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+                            LOG_W(GNB_APP, "[SS_DRB] NR_DRB_COMMON_IND received in SS state %d\n", SS_context.State);
                         }
                     }
-
-                    result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
-                    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
                 };
                 break;
 
             case TERMINATE_MESSAGE:
-                LOG_A(GNB_APP, "[SS_DRB] Received TERMINATE_MESSAGE \n");
+                LOG_A(GNB_APP, "[SS_DRB] Received TERMINATE_MESSAGE\n");
                 itti_exit_task();
                 break;
 
             default:
-                LOG_A(GNB_APP, "[SS_DRB] Received unhandled message %d:%s\n",
+                LOG_W(GNB_APP, "[SS_DRB] Received unhandled message %d:%s\n",
                         ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
                 break;
         }
+
+        result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+        AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
     }
-#endif
 
     ss_gNB_read_from_drb_socket(ctx_drb_g);
 

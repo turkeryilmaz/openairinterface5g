@@ -702,6 +702,26 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
   int rb_id;
   int i;
 
+  /* TODO: TTCN support.
+   * Also TTCN doesn't send correct IP packet, but random data for DATA loopback,
+   * need to choose correct flag in 'if' statement to identify that fact. */
+  if (IS_SOFTMODEM_NOS1 || (ENB_NAS_USE_TUN || UE_NAS_USE_TUN)) {
+    protocol_ctxt_t ctxt;
+    PROTOCOL_CTXT_SET_BY_MODULE_ID(
+        &ctxt,
+        0,
+        entity->is_gnb,
+        ue->rnti,
+        nr_pdcp_current_time_last_frame,
+        nr_pdcp_current_time_last_subframe,
+        0);
+    LOG_D(PDCP, "%s(): (drb %d) calling enqueue_pdcp_data_req size %d\n", __func__, entity->rb_id, size);
+    enqueue_pdcp_data_req(&ctxt, SRB_FLAG_NO, entity->rb_id,
+                          RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO,
+                          size, buf, PDCP_TRANSMISSION_MODE_DATA);
+    return;
+  }
+
   if (IS_SOFTMODEM_NOS1 || UE_NAS_USE_TUN) {
     LOG_D(PDCP, "IP packet received with size %d, to be sent to SDAP interface, UE ID/RNTI: %ld\n", size, ue->rntiMaybeUEid);
     sdap_data_ind(entity->rb_id, entity->is_gnb, entity->has_sdap, entity->has_sdapULheader, entity->pdusession_id, ue->rntiMaybeUEid, buf, size);
