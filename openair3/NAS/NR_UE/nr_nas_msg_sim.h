@@ -42,6 +42,8 @@
 #include "FGSServiceRequest.h"
 #include "ActivateTestModeComplete.h"
 #include "CloseUeTestLoopComplete.h"
+#include "OpenUeTestLoopComplete.h"
+#include "DeactivateTestModeComplete.h"
 
 #define PLAIN_5GS_MSG                                      0b0000
 #define INTEGRITY_PROTECTED                                0b0001
@@ -67,6 +69,10 @@
 #define ACTIVATE_TEST_MODE_COMPLETE                         0b10000101 /* 133 = 0x85 */
 #define NR_CLOSE_UE_TEST_LOOP                               0b10000000 /* 128 = 0x80 */
 #define CLOSE_UE_TEST_LOOP_COMPLETE                         0b10000001 /* 129 = 0x81 */
+#define OPEN_UE_TEST_LOOP                                   0b10000010 /* 130 = 0x82 */
+#define OPEN_UE_TEST_LOOP_COMPLETE                          0b10000011 /* 131 = 0x83 */
+#define DEACTIVATE_TEST_MODE                                0b10000110 /* 134 = 0x86 */
+#define DEACTIVATE_TEST_MODE_COMPLETE                       0b10000111 /* 135 = 0x87 */
 
 // message type for 5GS session management
 #define FGS_PDU_SESSION_ESTABLISHMENT_REQ                  0b11000001 /* 193= 0xc1 */
@@ -124,6 +130,8 @@ typedef union {
   fgs_uplink_nas_transport_msg           uplink_nas_transport;
   activate_test_mode_complete_msg        activate_test_mode_complete;
   close_ue_test_loop_complete_msg        close_ue_test_loop_complete;
+  open_ue_test_loop_complete_msg         open_ue_test_loop_complete;
+  deactivate_test_mode_complete_msg      deactivate_test_mode_complete;
   fgs_service_request_msg                fgs_service_request;
 } MM_msg;
 

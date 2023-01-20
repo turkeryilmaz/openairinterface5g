@@ -543,6 +543,47 @@ static void start_pdcp_tun_ue(void)
 /* hacks to be cleaned up at some point - end                               */
 /****************************************************************************/
 
+static void enqueue_pdcp_data_req(
+  protocol_ctxt_t *ctxt_pP,
+  const srb_flag_t srb_flagP,
+  const rb_id_t rb_idP,
+  const mui_t muiP,
+  const confirm_t confirmP,
+  const sdu_size_t sdu_buffer_size,
+  unsigned char *const sdu_buffer,
+  const pdcp_transmission_mode_t modeP)
+{
+  if (!srb_flagP) {
+    MessageDef *message_p;
+    uint8_t *message_buffer = itti_malloc(
+                      ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
+                      ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
+                      sdu_buffer_size);
+    memcpy(message_buffer, sdu_buffer, sdu_buffer_size);
+    message_p = itti_alloc_new_message(ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, 0, NR_DTCH_DATA_REQ);
+    NR_DTCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
+    NR_DTCH_DATA_REQ (message_p).gnb_flag  = ctxt_pP->enb_flag;
+    NR_DTCH_DATA_REQ (message_p).rb_id     = rb_idP;
+    NR_DTCH_DATA_REQ (message_p).muip      = muiP;
+    NR_DTCH_DATA_REQ (message_p).confirmp  = confirmP;
+    NR_DTCH_DATA_REQ (message_p).sdu_size  = sdu_buffer_size;
+    NR_DTCH_DATA_REQ (message_p).sdu_p     = message_buffer;
+    NR_DTCH_DATA_REQ (message_p).mode      = modeP;
+    NR_DTCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
+    NR_DTCH_DATA_REQ (message_p).rnti      = ctxt_pP->rnti;
+    NR_DTCH_DATA_REQ (message_p).gNB_index = ctxt_pP->eNB_index;
+    itti_send_msg_to_task(
+      ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
+      ctxt_pP->instance,
+      message_p);
+    LOG_I(PDCP, "send NR_DTCH_DATA_REQ to PDCP\n");
+  } else {
+    LOG_E(PDCP, "not implemented for srb flag\n");
+      LOG_E(PDCP, "%s:%d:%s: fatal, not implemented\n", __FILE__, __LINE__, __FUNCTION__);
+      exit(1);
+  }
+}
+
 int pdcp_fifo_flush_sdus(const protocol_ctxt_t *const ctxt_pP)
 {
   return 0;
@@ -606,6 +647,13 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
   if (PDCP_USE_NETLINK) {
     nas_getparams();
 
+    /* TODO: TTCN support, disable TUN device.
+     * TTCN doesn't send correct IP packet, but random data for DATA loopback,
+     * need to choose correct flag in 'if' statement to identify that fact. */
+    if (IS_SOFTMODEM_NOS1 || (ENB_NAS_USE_TUN || UE_NAS_USE_TUN)) {
+      return pdcp_optmask;
+    }
+
     if(UE_NAS_USE_TUN) {
       char *ifsuffix_ue = get_softmodem_params()->nsa ? "nrue" : "ue";
       int num_if = (NFAPI_MODE == NFAPI_UE_STUB_PNF || IS_SOFTMODEM_SIML1 || NFAPI_MODE == NFAPI_MODE_STANDALONE_PNF)? MAX_MOBILES_PER_ENB : 1;
@@ -640,6 +688,26 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
   uint8_t     *gtpu_buffer_p;
   int rb_id;
   int i;
+
+  /* TODO: TTCN support.
+   * Also TTCN doesn't send correct IP packet, but random data for DATA loopback,
+   * need to choose correct flag in 'if' statement to identify that fact. */
+  if (IS_SOFTMODEM_NOS1 || (ENB_NAS_USE_TUN || UE_NAS_USE_TUN)) {
+    protocol_ctxt_t ctxt;
+    PROTOCOL_CTXT_SET_BY_MODULE_ID(
+        &ctxt,
+        0,
+        entity->is_gnb,
+        ue->rnti,
+        nr_pdcp_current_time_last_frame,
+        nr_pdcp_current_time_last_subframe,
+        0);
+    LOG_D(PDCP, "%s(): (drb %d) calling enqueue_pdcp_data_req size %d\n", __func__, entity->rb_id, size);
+    enqueue_pdcp_data_req(&ctxt, SRB_FLAG_NO, entity->rb_id,
+                          RLC_MUI_UNDEFINED, RLC_SDU_CONFIRM_NO,
+                          size, buf, PDCP_TRANSMISSION_MODE_DATA);
+    return;
+  }
 
   if (IS_SOFTMODEM_NOS1 || UE_NAS_USE_TUN) {
     LOG_D(PDCP, "IP packet received, to be sent to TUN interface");
@@ -719,15 +787,14 @@ static void deliver_pdu_drb(void *_ue, nr_pdcp_entity_t *entity,
   exit(1);
 
 rb_found:
-  ctxt.module_id = 0;
-  ctxt.enb_flag = 1;
-  ctxt.instance = 0;
-  ctxt.frame = 0;
-  ctxt.subframe = 0;
-  ctxt.eNB_index = 0;
-  ctxt.brOption = 0;
+  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt,
+      0,
+      entity->is_gnb,
+      ue->rnti,
+      nr_pdcp_current_time_last_frame,
+      nr_pdcp_current_time_last_subframe,
+      0);
 
-  ctxt.rnti = ue->rnti;
   if (RC.nrrrc != NULL && NODE_IS_CU(RC.nrrrc[0]->node_type)) {
     MessageDef  *message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0,
 							  GTPV1U_GNB_TUNNEL_DATA_REQ,
@@ -925,10 +992,41 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
       result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), RRC_DCCH_DATA_REQ(msg_p).sdu_p);
       AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
       break;
+    case NR_DTCH_DATA_REQ:
+      LOG_D(PDCP, "Received NR_DTCH_DATA_REQ type at PDCP task \n");
+      PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt,
+                                     NR_DTCH_DATA_REQ(msg_p).module_id,
+                                     NR_DTCH_DATA_REQ(msg_p).gnb_flag,
+                                     NR_DTCH_DATA_REQ(msg_p).rnti,
+                                     NR_DTCH_DATA_REQ(msg_p).frame,
+                                     0,
+                                     NR_DTCH_DATA_REQ(msg_p).gNB_index);
+
+      LOG_A(PDCP, "Sending packet to PDCP, Calling pdcp_data_req ue %x drb id %ld len %u\n",
+            ctxt.rnti, NR_DTCH_DATA_REQ(msg_p).rb_id, NR_DTCH_DATA_REQ(msg_p).sdu_size);
+      result = pdcp_data_req(&ctxt,
+                            SRB_FLAG_NO,
+                            NR_DTCH_DATA_REQ(msg_p).rb_id,
+                            NR_DTCH_DATA_REQ(msg_p).muip,
+                            NR_DTCH_DATA_REQ(msg_p).confirmp,
+                            NR_DTCH_DATA_REQ(msg_p).sdu_size,
+                            NR_DTCH_DATA_REQ(msg_p).sdu_p,
+                            NR_DTCH_DATA_REQ(msg_p).mode,
+                            NULL, NULL);
+      if (result != TRUE)
+        LOG_E(PDCP, "PDCP data request failed!\n");
+
+      result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_DTCH_DATA_REQ(msg_p).sdu_p);
+      AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+      break;
     default:
       LOG_E(PDCP, "Received unexpected message %s\n", ITTI_MSG_NAME(msg_p));
       break;
     }
+
+    result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), msg_p);
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+    msg_p = NULL;
   }
 }
 

@@ -384,7 +384,10 @@ int create_gNB_tasks(uint32_t gnb_nb) {
         return -1;
       }
 
-
+      if(itti_create_task(TASK_RLC_ENB, rlc_enb_task, NULL) < 0) {
+        LOG_E(RLC, "Create task for RLC eNB failed\n");
+        return -1;
+      }
     }
 
     if(itti_create_task(TASK_SS_DRB, ss_gNB_drb_task, NULL) < 0) {

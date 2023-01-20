@@ -87,8 +87,6 @@ nr_rlc_entity_t *new_nr_rlc_entity_am(
   ret->common.reestablishment = nr_rlc_entity_am_reestablishment;
   ret->common.delete          = nr_rlc_entity_am_delete;
 
-  ret->common.deliver_pdu     = nr_rlc_entity_am_deliver_pdu;
-
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;
   ret->common.sdu_successful_delivery      = sdu_successful_delivery;
@@ -171,8 +169,6 @@ nr_rlc_entity_t *new_nr_rlc_entity_tm(
   ret->common.discard_sdu     = nr_rlc_entity_tm_discard_sdu;
   ret->common.reestablishment = nr_rlc_entity_tm_reestablishment;
   ret->common.delete          = nr_rlc_entity_tm_delete;
-
-  /* ret->common.deliver_pdu     = nr_rlc_entity_tm_deliver_pdu; */
 
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;

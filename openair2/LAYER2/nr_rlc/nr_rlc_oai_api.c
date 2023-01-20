@@ -41,6 +41,8 @@
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
+#include "LAYER2/MAC/mac_extern.h"
+
 extern RAN_CONTEXT_t RC;
 
 #include <stdint.h>
@@ -156,6 +158,32 @@ void mac_rlc_data_ind     (
   if (enb_flagP)
     T(T_ENB_RLC_MAC_UL, T_INT(module_idP), T_INT(rntiP),
       T_INT(channel_idP), T_INT(tb_sizeP));
+
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    if ((tb_sizeP != 0) && (TRUE == enb_flagP) && (channel_idP >= 4)) {
+      int drb_id = channel_idP - 3;
+      int result;
+      LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %ld size %u\n",
+          rntiP, drb_id, tb_sizeP);
+
+      MessageDef *message_p = itti_alloc_new_message (TASK_SS_DRB, 0, SS_DRB_PDU_IND);
+      if (message_p) {
+        SS_DRB_PDU_IND (message_p).drb_id = drb_id;
+        SS_DRB_PDU_IND (message_p).frame = frameP;
+        SS_DRB_PDU_IND (message_p).subframe = 0;
+        SS_DRB_PDU_IND (message_p).physCellId = RC.nrrrc[module_idP]->carrier.physCellId;
+        SS_DRB_PDU_IND (message_p).sdu_size = tb_sizeP;
+        memcpy(SS_DRB_PDU_IND (message_p).sdu, buffer_pP, tb_sizeP);
+
+        result = itti_send_msg_to_task (TASK_SS_DRB, ENB_MODULE_ID_TO_INSTANCE(module_idP), message_p);
+        if (result < 0) {
+          LOG_E(RLC, "Error in itti_send_msg_to_task!\n");
+        }
+      }
+
+      return;
+    }
+  }
 
   // Trace UL RLC PDU Here
   nr_rlc_pkt_info_t rlc_pkt;
@@ -476,6 +504,7 @@ rlc_op_status_t enqueue_mac_rlc_data_req(
   }
 
   if (rb != NULL) {
+    DevAssert(rb->deliver_pdu != NULL);
     rb->deliver_pdu(rb, (char *)sdu_pP->data, sdu_sizeP);
   } else {
     LOG_E(RLC, "%s:%d:%s: fatal: SDU sent to unknown RB\n", __FILE__, __LINE__, __FUNCTION__);
@@ -742,6 +771,70 @@ rb_found:
   /* TODO: accept more than 1 instance? here we send to instance id 0 */
   itti_send_msg_to_task(TASK_RRC_ENB, 0, msg);
 #endif
+}
+
+void *rlc_enb_task(void *arg)
+//-----------------------------------------------------------------------------
+{
+  MessageDef *received_msg = NULL;
+  int         result;
+
+  itti_mark_task_ready(TASK_RLC_ENB);
+  LOG_I(RLC, "Starting main loop of RLC message task\n");
+
+  while (1) {
+    itti_receive_msg(TASK_RLC_ENB, &received_msg);
+
+    switch (ITTI_MSG_ID(received_msg)) {
+      case SS_DRB_PDU_REQ:
+        if (RC.ss.mode >= SS_SOFTMODEM) {
+          protocol_ctxt_t ctxt;
+          instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+          LOG_D(RLC, "RLC received SS_DRB_PDU_REQ DRB_ID:%d SDU_SIZE:%d\n",
+              SS_DRB_PDU_REQ(received_msg).drb_id, SS_DRB_PDU_REQ(received_msg).sdu_size);
+          PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+              instance,
+              GNB_FLAG_YES,
+              SS_DRB_PDU_REQ(received_msg).rnti,
+              received_msg->ittiMsgHeader.lte_time.frame,
+              received_msg->ittiMsgHeader.lte_time.slot);
+
+          mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(received_msg).sdu_size, __func__);
+          memcpy(sdu->data, SS_DRB_PDU_REQ(received_msg).sdu, SS_DRB_PDU_REQ(received_msg).sdu_size);
+          enqueue_mac_rlc_data_req(&ctxt,
+              SRB_FLAG_NO,
+              MBMS_FLAG_NO,
+              SS_DRB_PDU_REQ(received_msg).drb_id,
+              0,
+              0,
+              SS_DRB_PDU_REQ(received_msg).sdu_size,
+              sdu,
+              NULL,
+              NULL);
+
+          /* rlc_data_req(&ctxt, SRB_FLAG_NO, MBMS_FLAG_NO, SS_DRB_PDU_REQ(received_msg).drb_id, 0, 0, SS_DRB_PDU_REQ(received_msg).sdu_size, sdu, NULL, NULL); */
+        } else {
+          LOG_E(RLC, "Received unexpected message %s\n", ITTI_MSG_NAME(received_msg));
+        }
+        break;
+
+      case TERMINATE_MESSAGE:
+        LOG_W(RLC, " *** Exiting RLC thread\n");
+        itti_exit_task();
+        break;
+
+      default:
+        LOG_E(RLC, "Received unexpected message %s\n", ITTI_MSG_NAME(received_msg));
+        break;
+    } // end switch
+
+    result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
+    AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+
+    received_msg = NULL;
+  } // end while
+
+  return NULL;
 }
 
 static void add_rlc_srb(int rnti, struct NR_SRB_ToAddMod *s, NR_RLC_BearerConfig_t *rlc_BearerConfig)

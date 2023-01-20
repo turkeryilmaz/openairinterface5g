@@ -3991,26 +3991,6 @@ void *rrc_gnb_task(void *args_p) {
         }
         break;
 
-      case SS_DRB_PDU_REQ:
-        LOG_A(NR_RRC, "NR RRC received SS_DRB_PDU_REQ DRB_ID:%d SDU_SIZE:%d\n", SS_DRB_PDU_REQ(msg_p).drb_id, SS_DRB_PDU_REQ(msg_p).sdu_size);
-        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                      instance,
-                                      GNB_FLAG_YES,
-                                      SS_DRB_PDU_REQ(msg_p).rnti,
-                                      msg_p->ittiMsgHeader.lte_time.frame,
-                                      msg_p->ittiMsgHeader.lte_time.slot);
-
-        /* skip RLC header from DRB port */
-        mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(msg_p).sdu_size - 1, __func__);
-        memcpy(sdu->data, SS_DRB_PDU_REQ(msg_p).sdu + 1, SS_DRB_PDU_REQ(msg_p).sdu_size - 1);
-        rlc_data_req(&ctxt, SRB_FLAG_NO, MBMS_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size - 1, sdu, NULL, NULL);
-
-        /* mem_block_t *sdu = get_free_mem_block(SS_DRB_PDU_REQ(msg_p).sdu_size, __func__); */
-        /* memcpy(sdu->data, SS_DRB_PDU_REQ(msg_p).sdu, SS_DRB_PDU_REQ(msg_p).sdu_size); */
-        /* enqueue_mac_rlc_data_req(&ctxt, SRB_FLAG_NO, MBMS_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, sdu, NULL, NULL); */
-
-        break;
-
       default:
         LOG_E(NR_RRC, "[gNB %ld] Received unexpected message %s\n", instance, msg_name_p);
         break;

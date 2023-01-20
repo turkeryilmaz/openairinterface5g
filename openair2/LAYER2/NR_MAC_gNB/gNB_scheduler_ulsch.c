@@ -457,6 +457,11 @@ int nr_process_mac_pdu(module_id_t module_idP,
             mac_sdu_len = 8;
 
             // Check if it is a valid CCCH1 message, we get all 00's messages very often
+            if (pdu_len < mac_subheader_len + mac_sdu_len) {
+              LOG_E(NR_MAC, "pdu_len %d is invalid (prior to cast of size %d)\n",
+                  pdu_len, mac_subheader_len + mac_sdu_len);
+              return 0;
+            }
             int i = 0;
             for(i=0; i<(mac_subheader_len+mac_sdu_len); i++) {
               if(pduP[i] != 0) {
@@ -488,7 +493,7 @@ int nr_process_mac_pdu(module_id_t module_idP,
                               0);
           break;
 
-        case UL_SCH_LCID_DTCH:
+        case UL_SCH_LCID_DTCH ... (UL_SCH_LCID_DTCH + 4):
           //  check if LCID is valid at current time.
           if (pdu_len < sizeof(NR_MAC_SUBHEADER_SHORT))
                 return 0;
@@ -515,6 +520,9 @@ int nr_process_mac_pdu(module_id_t module_idP,
                 module_idP,
                 mac_sdu_len);
           UE_info->mac_stats[UE_id].lc_bytes_rx[rx_lcid] += mac_sdu_len;
+
+          if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+            return 0;
 
           mac_rlc_data_ind(module_idP,
                            UE_info->rnti[UE_id],

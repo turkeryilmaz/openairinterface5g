@@ -144,6 +144,12 @@ int mm_msg_encode(MM_msg *mm_msg, uint8_t *buffer, uint32_t len) {
     case CLOSE_UE_TEST_LOOP_COMPLETE:
       encode_result = encode_close_ue_test_loop_complete(&mm_msg->close_ue_test_loop_complete, buffer, len);
       break;
+    case OPEN_UE_TEST_LOOP_COMPLETE:
+      encode_result = encode_open_ue_test_loop_complete(&mm_msg->open_ue_test_loop_complete, buffer, len);
+      break;
+    case DEACTIVATE_TEST_MODE_COMPLETE:
+      encode_result = encode_deactivate_test_mode_complete(&mm_msg->deactivate_test_mode_complete, buffer, len);
+      break;
     case FGS_SERVICE_REQUEST:
       encode_result = encode_fgs_service_request(&mm_msg->fgs_service_request, buffer, len);
       break;
@@ -918,6 +924,110 @@ static void generateCloseUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNa
   }
 }
 
+static void generateOpenUeTestLoopComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+  int size = sizeof(mm_msg_header_t);
+  fgs_nas_message_t nas_msg={0};
+
+  MM_msg *mm_msg;
+  nas_stream_cipher_t stream_cipher;
+  uint8_t             mac[4];
+  nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
+  size += 7;
+
+  mm_msg = &nas_msg.security_protected.plain.mm_msg;
+
+  // set header
+  mm_msg->header.ex_protocol_discriminator = TEST_PD;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = OPEN_UE_TEST_LOOP_COMPLETE;
+
+  // set activate test mode complete
+  mm_msg->open_ue_test_loop_complete.protocoldiscriminator = TEST_PD;
+  size += 1;
+  mm_msg->open_ue_test_loop_complete.messagetype = OPEN_UE_TEST_LOOP_COMPLETE;
+  size += 1;
+
+  // encode the message
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+  int security_header_len = nas_protected_security_header_encode((char*)(initialNasMsg->data),&(nas_msg.header), size);
+
+  initialNasMsg->length = security_header_len + mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data+security_header_len), size-security_header_len);
+
+  stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
+  stream_cipher.key_length = 16;
+  stream_cipher.count      = 0;
+  stream_cipher.bearer     = 1;
+  stream_cipher.direction  = 0;
+  stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 6);
+  /* length in bits */
+  stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
+
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  nas_stream_encrypt_eia2(
+    &stream_cipher,
+    mac);
+#endif
+  printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
+  for(int i = 0; i < 4; i++){
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
+  }
+}
+
+static void generateDeactivateTestModeComplete(int Mod_id, as_nas_info_t *initialNasMsg) {
+  int size = sizeof(mm_msg_header_t);
+  fgs_nas_message_t nas_msg={0};
+
+  MM_msg *mm_msg;
+  nas_stream_cipher_t stream_cipher;
+  uint8_t             mac[4];
+  nas_msg.header.protocol_discriminator = FGS_MOBILITY_MANAGEMENT_MESSAGE;
+  nas_msg.header.security_header_type = INTEGRITY_PROTECTED_AND_CIPHERED;
+  size += 7;
+
+  mm_msg = &nas_msg.security_protected.plain.mm_msg;
+
+  // set header
+  mm_msg->header.ex_protocol_discriminator = TEST_PD;
+  mm_msg->header.security_header_type = PLAIN_5GS_MSG;
+  mm_msg->header.message_type = DEACTIVATE_TEST_MODE_COMPLETE;
+
+  // set activate test mode complete
+  mm_msg->deactivate_test_mode_complete.protocoldiscriminator = TEST_PD;
+  size += 1;
+  mm_msg->deactivate_test_mode_complete.messagetype = DEACTIVATE_TEST_MODE_COMPLETE;
+  size += 1;
+
+  // encode the message
+  initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
+  int security_header_len = nas_protected_security_header_encode((char*)(initialNasMsg->data),&(nas_msg.header), size);
+
+  initialNasMsg->length = security_header_len + mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data+security_header_len), size-security_header_len);
+
+  stream_cipher.key        = ue_security_key[Mod_id]->knas_int;
+  stream_cipher.key_length = 16;
+  stream_cipher.count      = 0;
+  stream_cipher.bearer     = 1;
+  stream_cipher.direction  = 0;
+  stream_cipher.message    = (unsigned char *)(initialNasMsg->data + 6);
+  /* length in bits */
+  stream_cipher.blength    = (initialNasMsg->length - 6) << 3;
+
+/* Workaround fix of bypassing security for the TTCN */
+#if 0
+  // only for Type of integrity protection algorithm: 128-5G-IA2 (2)
+  nas_stream_encrypt_eia2(
+    &stream_cipher,
+    mac);
+#endif
+  printf("mac %x %x %x %x \n", mac[0], mac[1], mac[2], mac[3]);
+  for(int i = 0; i < 4; i++){
+     initialNasMsg->data[2+i] = 0;//mac[i];/* Workaround fix of bypassing security for the TTCN */
+  }
+}
+
 void generateServiceRequestInner(as_nas_info_t *initialNasMsg, int Mod_id) {
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg={0};
@@ -1239,9 +1349,15 @@ void *nas_nrue_task(void *args_p)
     case NR_CLOSE_UE_TEST_LOOP:
       generateCloseUeTestLoopComplete(Mod_id, &initialNasMsg);
       break;
-          default:
-              LOG_W(NR_RRC,"unknow message type %d\n",msg_type);
-              break;
+    case OPEN_UE_TEST_LOOP:
+      generateOpenUeTestLoopComplete(Mod_id, &initialNasMsg);
+      break;
+    case DEACTIVATE_TEST_MODE:
+      generateDeactivateTestModeComplete(Mod_id, &initialNasMsg);
+      break;
+    default:
+      LOG_W(NR_RRC,"unknow message type %d\n",msg_type);
+      break;
         }
 
         if(initialNasMsg.length > 0){

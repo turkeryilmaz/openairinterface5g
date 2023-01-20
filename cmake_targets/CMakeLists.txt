@@ -2355,6 +2355,8 @@ set(libnrnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/FGSServiceRequest.c
   ${NAS_SRC}COMMON/EMM/MSG/ActivateTestModeComplete.c
   ${NAS_SRC}COMMON/EMM/MSG/CloseUeTestLoopComplete.c
+  ${NAS_SRC}COMMON/EMM/MSG/OpenUeTestLoopComplete.c
+  ${NAS_SRC}COMMON/EMM/MSG/DeactivateTestModeComplete.c
   ${NAS_SRC}COMMON/ESM/MSG/PduSessionEstablishRequest.c
   )
 

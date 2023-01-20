@@ -490,7 +490,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 
 	itti_receive_msg(TASK_SYS_GNB, &received_msg);
 
-	LOG_A(GNB_APP, "Entry in fxn:%s \n", __FUNCTION__);
+	LOG_D(GNB_APP, "Entry in fxn:%s \n", __FUNCTION__);
 	/* Check if there is a packet to handle */
 	if (received_msg != NULL)
 	{
