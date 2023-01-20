@@ -37,10 +37,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
-#include "NR_SubcarrierSpacing.h"
-#include "NR_CSI-ReportConfig.h"
-#include "openair1/SCHED_NR_UE/harq_nr.h"
+#include "common/utils/nr/nr_common.h"
+#include "NR_CellGroupConfig.h"
 
 #define NR_SHORT_BSR_TABLE_SIZE 32
 #define NR_LONG_BSR_TABLE_SIZE 256
@@ -273,7 +271,7 @@ typedef struct {
 
 // DCI pdu structures. Used by both gNB and UE.
 typedef struct {
-  uint16_t val;
+  uint32_t val;
   uint8_t nbits;
 } dci_field_t;
 
@@ -542,6 +540,68 @@ typedef struct nr_csi_report {
   int N1;
   int N2;
 } nr_csi_report_t;
+
+typedef enum {
+  NR_SRS_SRI_0 = 0,
+  NR_SRS_SRI_1,
+  NR_SRS_SRI_2,
+  NR_SRS_SRI_3,
+  NR_SRS_SRI_0_1,
+  NR_SRS_SRI_0_2,
+  NR_SRS_SRI_0_3,
+  NR_SRS_SRI_1_2,
+  NR_SRS_SRI_1_3,
+  NR_SRS_SRI_2_3,
+  NR_SRS_SRI_0_1_2,
+  NR_SRS_SRI_0_1_3,
+  NR_SRS_SRI_0_2_3,
+  NR_SRS_SRI_1_2_3,
+  NR_SRS_SRI_0_1_2_3
+} nr_srs_sri_t;
+
+typedef struct nr_srs_feedback {
+  uint8_t sri;
+  uint8_t ul_ri;
+  uint8_t tpmi;
+} nr_srs_feedback_t;
+
+typedef struct NR_UE_DL_BWP {
+  NR_BWP_Id_t bwp_id;
+  int n_dl_bwp;
+  int scs;
+  long *cyclicprefix;
+  uint16_t BWPSize;
+  uint16_t BWPStart;
+  uint16_t initial_BWPSize;
+  uint16_t initial_BWPStart;
+  NR_PDSCH_TimeDomainResourceAllocationList_t *tdaList;
+  NR_PDSCH_Config_t *pdsch_Config;
+  NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig;
+  uint8_t mcsTableIdx;
+  nr_dci_format_t dci_format;
+} NR_UE_DL_BWP_t;
+
+typedef struct NR_UE_UL_BWP {
+  NR_BWP_Id_t bwp_id;
+  int n_ul_bwp;
+  int scs;
+  long *cyclicprefix;
+  uint16_t BWPSize;
+  uint16_t BWPStart;
+  uint16_t initial_BWPSize;
+  uint16_t initial_BWPStart;
+  NR_PUSCH_ServingCellConfig_t *pusch_servingcellconfig;
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList;
+  NR_PUSCH_Config_t *pusch_Config;
+  NR_PUCCH_Config_t *pucch_Config;
+  NR_PUCCH_ConfigCommon_t *pucch_ConfigCommon;
+  NR_CSI_MeasConfig_t *csi_MeasConfig;
+  NR_SRS_Config_t *srs_Config;
+  uint8_t transform_precoding;
+  uint8_t mcs_table;
+  nr_dci_format_t dci_format;
+  int max_fb_time;
+} NR_UE_UL_BWP_t;
 
 #endif /*__LAYER2_MAC_H__ */
 

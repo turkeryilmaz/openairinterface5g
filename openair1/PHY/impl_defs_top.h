@@ -107,6 +107,7 @@
  * @}
  */
 
+#include <common/utils/nr/nr_common.h>
 #include <common/utils/utils.h>
 #include "defs_eNB.h"
 #include "types.h"
@@ -175,15 +176,9 @@
 
 #define NB_ANTENNA_PORTS_ENB  6                                         // total number of eNB antenna ports
 
-#ifdef EXMIMO
-#define TARGET_RX_POWER 55    // Target digital power for the AGC
-#define TARGET_RX_POWER_MAX 55    // Maximum digital power, such that signal does not saturate (value found by simulation)
-#define TARGET_RX_POWER_MIN 50    // Minimum digital power, anything below will be discarded (value found by simulation)
-#else
 #define TARGET_RX_POWER 50    // Target digital power for the AGC
 #define TARGET_RX_POWER_MAX 65    // Maximum digital power, such that signal does not saturate (value found by simulation)
 #define TARGET_RX_POWER_MIN 35    // Minimum digital power, anything below will be discarded (value found by simulation)
-#endif
 
 //the min and max gains have to match the calibrated gain table
 //#define MAX_RF_GAIN 160
@@ -285,8 +280,6 @@
   #define DURATION_RX_TO_TX           (6)   /* For LTE, this duration is fixed to 4 and it is linked to LTE standard for both modes FDD/TDD */
 #endif
 
-
-#define NR_MAX_HARQ_PROCESSES                    (16)
 #define NR_MAX_ULSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 6.1 UE procedure for receiving the physical uplink shared channel */
 #define NR_MAX_DLSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 5.1 UE procedure for receiving the physical downlink shared channel */
 #endif
@@ -311,7 +304,7 @@ typedef struct {
 #define NUMBER_OF_HARQ_PID_MAX 8
 
 #define MAX_FRAME_NUMBER 0x400
-#include "openairinterface5g_limits.h"
+#include "common/openairinterface5g_limits.h"
 #include "assertions.h"
 
 #endif //__PHY_IMPLEMENTATION_DEFS_H__ 

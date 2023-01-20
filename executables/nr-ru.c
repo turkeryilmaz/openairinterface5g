@@ -37,8 +37,8 @@
 #include "common/ran_context.h"
 #include "rt_profiling.h"
 
-#include "sdr/COMMON/common_lib.h"
-#include "sdr/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
+#include "radio/COMMON/common_lib.h"
+#include "radio/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
 
 #include "PHY/LTE_TRANSPORT/if4_tools.h"
 
@@ -622,6 +622,7 @@ void *emulatedRF_thread(void *param) {
 void rx_rf(RU_t *ru,int *frame,int *slot) {
   RU_proc_t *proc = &ru->proc;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
+  openair0_config_t *cfg   = &ru->openair0_cfg;
   void *rxp[ru->nb_rx];
   unsigned int rxs;
   int i;
@@ -658,10 +659,7 @@ void rx_rf(RU_t *ru,int *frame,int *slot) {
   //"rx_rf: Asked for %d samples, got %d from USRP\n",fp->samples_per_subframe,rxs);
   if (rxs != samples_per_slot) LOG_E(PHY, "rx_rf: Asked for %d samples, got %d from USRP\n",samples_per_slot,rxs);
 
-  if (proc->first_rx == 1) {
-    ru->ts_offset = proc->timestamp_rx;
-    proc->timestamp_rx = 0;
-  } else {
+  if (proc->first_rx != 1) {
     samples_per_slot_prev = fp->get_samples_per_slot((*slot-1)%fp->slots_per_frame,fp);
 
     if (proc->timestamp_rx - old_ts != samples_per_slot_prev) {
@@ -671,13 +669,22 @@ void rx_rf(RU_t *ru,int *frame,int *slot) {
     }
   }
 
+  //compute system frame number (SFN) according to O-RAN-WG4-CUS.0-v02.00 (using alpha=beta=0)
+  // this assumes that the USRP has been synchronized to the GPS time
+  // OAI uses timestamps in sample time stored in int64_t, but it will fit in double precision for many years to come. 
+  double gps_sec = ((double) ts)/cfg->sample_rate; 
+  //proc->frame_rx = ((int64_t) (gps_sec/0.01)) & 1023;   
+
+  // in fact the following line is the same as long as the timestamp_rx is synchronized to GPS. 
   proc->frame_rx    = (proc->timestamp_rx / (fp->samples_per_subframe*10))&1023;
   proc->tti_rx = fp->get_slot_from_timestamp(proc->timestamp_rx,fp);
   // synchronize first reception to frame 0 subframe 0
-  LOG_D(PHY,"RU %d/%d TS %llu , frame %d, slot %d.%d / %d\n",
+  LOG_D(PHY,"RU %d/%d TS %ld, GPS %f, SR %f, frame %d, slot %d.%d / %d\n",
         ru->idx,
         0,
-        (unsigned long long int)(proc->timestamp_rx+ru->ts_offset),
+        ts, //(unsigned long long int)(proc->timestamp_rx+ru->ts_offset),
+	gps_sec,
+	cfg->sample_rate,
         proc->frame_rx,proc->tti_rx,proc->tti_tx,fp->slots_per_frame);
 
   // dump VCD output for first RU in list
@@ -865,12 +872,13 @@ void fill_rf_config(RU_t *ru, char *rf_config_file) {
     cfg->tx_gain[i] = ru->att_tx;
     cfg->rx_gain[i] = ru->max_rxgain-ru->att_rx;
     cfg->configFilename = rf_config_file;
-    LOG_I(PHY, "Channel %d: setting tx_gain offset %.0f, rx_gain offset %.0f, tx_freq %.0f Hz, rx_freq %.0f Hz, tune_offset %.0f Hz\n",
+    LOG_I(PHY, "Channel %d: setting tx_gain offset %.0f, rx_gain offset %.0f, tx_freq %.0f Hz, rx_freq %.0f Hz, tune_offset %.0f Hz, sample_rate %.0f Hz\n",
           i, cfg->tx_gain[i],
           cfg->rx_gain[i],
           cfg->tx_freq[i],
           cfg->rx_freq[i],
-          cfg->tune_offset);
+          cfg->tune_offset,
+          cfg->sample_rate);
   }
 }
 
@@ -1294,12 +1302,6 @@ void *ru_thread( void *param ) {
 
   printf( "Exiting ru_thread \n");
 
-  if (ru->stop_rf != NULL) {
-    if (ru->stop_rf(ru) != 0)
-      LOG_E(HW,"Could not stop the RF device\n");
-    else LOG_I(PHY,"RU %d rf device stopped\n",ru->idx);
-  }
-
   ru_thread_status = 0;
   return &ru_thread_status;
 }
@@ -1377,6 +1379,18 @@ void kill_NR_RU_proc(int inst) {
     LOG_D(PHY, "Joining ru_stats_thread\n");
     pthread_join(ru->ru_stats_thread, NULL);
   }
+
+  // everything should be stopped now, we can safely stop the RF device
+  if (ru->stop_rf == NULL) {
+    LOG_W(PHY, "No stop_rf() for RU %d defined, cannot stop RF!\n", ru->idx);
+    return;
+  }
+  int rc = ru->stop_rf(ru);
+  if (rc != 0) {
+    LOG_W(PHY, "stop_rf() returned %d, RU %d RF device did not stop properly!\n", rc, ru->idx);
+    return;
+  }
+  LOG_I(PHY, "RU %d RF device stopped\n",ru->idx);
 }
 
 int check_capabilities(RU_t *ru,RRU_capabilities_t *cap) {

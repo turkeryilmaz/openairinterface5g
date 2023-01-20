@@ -24,7 +24,7 @@
 #include "pdcp.h"
 
 /* from new rlc module */
-#include "asn1_utils.h"
+#include "rlc_asn1_utils.h"
 #include "rlc_ue_manager.h"
 #include "rlc_entity.h"
 
@@ -278,7 +278,7 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
                                   const uint32_t *const destinationL2Id
                                  )
 {
-  int rnti = ctxt_pP->rnti;
+  int rnti = ctxt_pP->rntiMaybeUEid;
   rlc_ue_t *ue;
   rlc_entity_t *rb;
 
@@ -290,8 +290,7 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
         MBMS_flagP);
 
   if (ctxt_pP->enb_flag)
-    T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id),
-      T_INT(ctxt_pP->rnti), T_INT(rb_idP), T_INT(sdu_sizeP));
+    T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->rntiMaybeUEid), T_INT(rb_idP), T_INT(sdu_sizeP));
 
   rlc_manager_lock(rlc_ue_manager);
   ue = rlc_manager_get_ue(rlc_ue_manager, rnti);
@@ -404,7 +403,7 @@ rb_found:
 
   /* used fields? */
   ctx.module_id = ue->module_id;
-  ctx.rnti = ue->rnti;
+  ctx.rntiMaybeUEid = ue->rnti;
 
   is_enb = rlc_manager_get_enb_flag(rlc_ue_manager);
   ctx.enb_flag = is_enb;
@@ -431,14 +430,14 @@ rb_found:
       }  else {
 	// Fixme: very dirty workaround of incomplete F1-U implementation
 	instance_t DUuniqInstance=0;
-	MessageDef *msg = itti_alloc_new_message(TASK_RLC_ENB, 0, GTPV1U_ENB_TUNNEL_DATA_REQ);
-	gtpv1u_enb_tunnel_data_req_t *req=&GTPV1U_ENB_TUNNEL_DATA_REQ(msg);
-	req->buffer=malloc(size);
+	MessageDef *msg = itti_alloc_new_message_sized(TASK_RLC_ENB, 0, GTPV1U_TUNNEL_DATA_REQ, sizeof(gtpv1u_tunnel_data_req_t) + size);
+	gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(msg);
+	req->buffer=(uint8_t*)(req+1);
 	memcpy(req->buffer,buf,size);
 	req->length=size;
 	req->offset=0;
-	req->rnti=ue->rnti;
-	req->rab_id=rb_id+4;
+	req->ue_id=ue->rnti;
+	req->bearer_id=rb_id+4;
 	LOG_D(RLC, "Received uplink user-plane traffic at RLC-DU to be sent to the CU, size %d \n", size);
 	itti_send_msg_to_task(TASK_GTPV1_U, DUuniqInstance, msg);      
 	return;
@@ -834,7 +833,7 @@ rlc_op_status_t rrc_rlc_config_asn1_req (const protocol_ctxt_t   * const ctxt_pP
     const uint32_t destinationL2Id
                                         )
 {
-  int rnti = ctxt_pP->rnti;
+  int rnti = ctxt_pP->rntiMaybeUEid;
   int module_id = ctxt_pP->module_id;
   int i;
   int j;
@@ -979,110 +978,31 @@ rlc_op_status_t rrc_rlc_config_req   (
     exit(1);
   }
   rlc_manager_lock(rlc_ue_manager);
-  ue = rlc_manager_get_ue(rlc_ue_manager, ctxt_pP->rnti);
-
-  switch (actionP) {
-    case CONFIG_ACTION_REMOVE:
-      LOG_D(RLC, "%s:%d:%s: remove rb %d (is_srb %d) for UE %d\n", __FILE__, __LINE__, __FUNCTION__, (int)rb_idP, srb_flagP, ctxt_pP->rnti);
-      if (srb_flagP) {
-        if ((ue->srb != NULL) && (ue->srb[rb_idP-1] != NULL)) {
-          ue->srb[rb_idP-1]->delete(ue->srb[rb_idP-1]);
-          ue->srb[rb_idP-1] = NULL;
-        } else
-          LOG_W(RLC, "removing non allocated SRB %d, do nothing\n", (int)rb_idP);
-      } else {
-        if ((ue->drb != NULL) && (ue->drb[rb_idP-1] != NULL)) {
-          ue->drb[rb_idP-1]->delete(ue->drb[rb_idP-1]);
-          ue->drb[rb_idP-1] = NULL;
-        } else
-          LOG_W(RLC, "removing non allocated DRB %d, do nothing\n", (int)rb_idP);
-      }
-      /* remove UE if it has no more RB configured */
-      for (i = 0; i < 2; i++)
-        if (ue->srb[i] != NULL)
-          break;
-      if (i == 2) {
-        for (i = 0; i < 5; i++)
-          if (ue->drb[i] != NULL)
-            break;
-        if (i == 5)
-          rlc_manager_remove_ue(rlc_ue_manager, ctxt_pP->rnti);
-      }
+  LOG_D(RLC, "%s:%d:%s: remove rb %d (is_srb %d) for UE %ld\n", __FILE__, __LINE__, __FUNCTION__, (int)rb_idP, srb_flagP, ctxt_pP->rntiMaybeUEid);
+  ue = rlc_manager_get_ue(rlc_ue_manager, ctxt_pP->rntiMaybeUEid);
+  if (srb_flagP) {
+    if (ue->srb[rb_idP-1] != NULL) {
+      ue->srb[rb_idP-1]->delete(ue->srb[rb_idP-1]);
+      ue->srb[rb_idP-1] = NULL;
+    } else
+      LOG_W(RLC, "removing non allocated SRB %d, do nothing\n", (int)rb_idP);
+  } else {
+    if (ue->drb[rb_idP-1] != NULL) {
+      ue->drb[rb_idP-1]->delete(ue->drb[rb_idP-1]);
+      ue->drb[rb_idP-1] = NULL;
+    } else
+      LOG_W(RLC, "removing non allocated DRB %d, do nothing\n", (int)rb_idP);
+  }
+  /* remove UE if it has no more RB configured */
+  for (i = 0; i < 2; i++)
+    if (ue->srb[i] != NULL)
       break;
-
-    case CONFIG_ACTION_RESET:
-      LOG_D(RLC, "%s:%d:%s: reset rb %d (is_srb %d) for UE %d\n", __FILE__, __LINE__, __FUNCTION__, (int)rb_idP, srb_flagP, ctxt_pP->rnti);
-      if (srb_flagP) {
-        if ((ue->srb != NULL) && (ue->srb[rb_idP-1] != NULL)) {
-          ue->srb[rb_idP-1]->reestablishment(ue->srb[rb_idP-1]);
-          LOG_D(RLC, "resetting the allocated SRB %d\n", (int)rb_idP);
-        } else
-          LOG_W(RLC, "resetting non allocated SRB %d, do nothing\n", (int)rb_idP);
-      } else {
-        if ((ue->drb != NULL) && (ue->drb[rb_idP-1] != NULL)) {
-          ue->drb[rb_idP-1]->reestablishment(ue->drb[rb_idP-1]);
-        } else
-          LOG_W(RLC, "resetting non allocated DRB %d, do nothing\n", (int)rb_idP);
-      }
-      break;
-
-    case CONFIG_ACTION_ADD:
-    {
-      if (ue != NULL)
-        LOG_D(RLC, "%s:%d:%s: adding rb %d (is_srb %d) for UE %d\n", __FILE__, __LINE__, __FUNCTION__, (int)rb_idP, srb_flagP, ctxt_pP->rnti);
-      else
-        LOG_W(RLC, "adding ue with rb %d failed\n", (int)rb_idP);
-
-        /* default values from 36.331 9.2.1 */
-        int t_reordering       = 35;
-        int t_status_prohibit  = 0;
-        int t_poll_retransmit  = 45;
-        int poll_pdu           = -1;
-        int poll_byte          = -1;
-        int max_retx_threshold = 4;
-        ue->module_id = ctxt_pP->module_id;
-
-      if (srb_flagP) {
-        if (ue->srb[rb_idP-1] != NULL) {
-          LOG_W(RLC, "warning rb %d already exist for ue %d, do nothing\n", (int)rb_idP, ctxt_pP->rnti);
-        } else {
-          rlc_entity_t            *rlc_am;
-          rlc_am = new_rlc_entity_am(100000,
-                                     100000,
-                                     deliver_sdu, ue,
-                                     successful_delivery, ue,
-                                     max_retx_reached, ue,
-                                     t_reordering, t_status_prohibit,
-                                     t_poll_retransmit,
-                                     poll_pdu, poll_byte, max_retx_threshold);
-          rlc_ue_add_srb_rlc_entity(ue, rb_idP, rlc_am);
-
-          LOG_D(RLC, "added rb %d to UE RNTI 0x%x\n", (int)rb_idP, ctxt_pP->rnti);
-        }
-      } else {
-        if (ue->drb[rb_idP-3] != NULL) {
-          LOG_W(RLC, "warning rb %d already exist for ue 0x%d, do nothing\n", (int)rb_idP, ctxt_pP->rnti);
-        } else {
-          rlc_entity_t            *rlc_am;
-          rlc_am = new_rlc_entity_am(100000,
-                                     100000,
-                                     deliver_sdu, ue,
-                                     successful_delivery, ue,
-                                     max_retx_reached, ue,
-                                     t_reordering, t_status_prohibit,
-                                     t_poll_retransmit,
-                                     poll_pdu, poll_byte, max_retx_threshold);
-          rlc_ue_add_drb_rlc_entity(ue, rb_idP - 2, rlc_am);
-
-          LOG_D(RLC, "added rb %d to UE RNTI %x\n", (int)rb_idP, ctxt_pP->rnti);
-        }
-      }
-      break;
-    }
-    default:
-      LOG_W(RLC, "This operation %d was not yet implemented, do nothing\n", actionP);
-      break;
-
+  if (i == 2) {
+    for (i = 0; i < 5; i++)
+      if (ue->drb[i] != NULL)
+        break;
+    if (i == 5)
+      rlc_manager_remove_ue(rlc_ue_manager, ctxt_pP->rntiMaybeUEid);
   }
   rlc_manager_unlock(rlc_ue_manager);
   return RLC_OP_STATUS_OK;
@@ -1095,9 +1015,9 @@ void rrc_rlc_register_rrc (rrc_data_ind_cb_t rrc_data_indP, rrc_data_conf_cb_t r
 
 rlc_op_status_t rrc_rlc_remove_ue (const protocol_ctxt_t* const x)
 {
-  LOG_D(RLC, "%s:%d:%s: remove UE %d\n", __FILE__, __LINE__, __FUNCTION__, x->rnti);
+  LOG_D(RLC, "%s:%d:%s: remove UE %ld\n", __FILE__, __LINE__, __FUNCTION__, x->rntiMaybeUEid);
   rlc_manager_lock(rlc_ue_manager);
-  rlc_manager_remove_ue(rlc_ue_manager, x->rnti);
+  rlc_manager_remove_ue(rlc_ue_manager, x->rntiMaybeUEid);
   rlc_manager_unlock(rlc_ue_manager);
 
   return RLC_OP_STATUS_OK;

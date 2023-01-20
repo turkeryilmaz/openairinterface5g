@@ -30,14 +30,16 @@
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
 #define CMDLINE_NRUEPARAMS_DESC {  \
     {"usrp-args",                CONFIG_HLP_USRP_ARGS,   0,               strptr:&usrp_args,         defstrval:"type=b200", TYPE_STRING,   0},    \
+    {"tx_subdev",                CONFIG_HLP_TX_SUBDEV,   0,               strptr:&tx_subdev,         defstrval:NULL, TYPE_STRING,   0},    \
+    {"rx_subdev",                CONFIG_HLP_RX_SUBDEV,   0,               strptr:&rx_subdev,         defstrval:NULL, TYPE_STRING,   0},    \
     {"single-thread-disable",    CONFIG_HLP_NOSNGLT,     PARAMFLAG_BOOL,  iptr:&single_thread_flag,           defintval:1,           TYPE_INT,    0}, \
     {"dlsch-parallel",           CONFIG_HLP_DLSCH_PARA,  0,               u8ptr:NULL,       defintval:0,           TYPE_UINT8,  0}, \
     {"offset-divisor",           CONFIG_HLP_OFFSET_DIV,  0,               uptr:&nrUE_params.ofdm_offset_divisor,    defuintval:8,           TYPE_UINT32,  0}, \
     {"max-ldpc-iterations",      CONFIG_HLP_MAX_LDPC_ITERATIONS, 0,       u8ptr:&nrUE_params.max_ldpc_iterations,    defuintval:5,       TYPE_UINT8, 0}, \
     {"nr-dlsch-demod-shift",     CONFIG_HLP_DLSHIFT,     0,               iptr:(int32_t *)&nr_dlsch_demod_shift,    defintval:0,     TYPE_INT,    0}, \
     {"V" ,                       CONFIG_HLP_VCD,         PARAMFLAG_BOOL,  iptr:&vcdflag,                      defintval:0,     TYPE_INT,    0}, \
-    {"uecap_file",               CONFIG_HLP_UECAP_FILE,  0,               strptr:&uecap_file,        defstrval:"./uecap.xml", TYPE_STRING, 0}, \
-    {"rrc_config_path",          CONFIG_HLP_RRC_CFG_PATH,0,               strptr:&rrc_config_path,   defstrval:"./",  TYPE_STRING, 0}, \
+    {"uecap_file",               CONFIG_HLP_UECAP_FILE,  0,               strptr:&uecap_file,                 defstrval:"./uecap_ports1.xml", TYPE_STRING, 0}, \
+    {"rrc_config_path",          CONFIG_HLP_RRC_CFG_PATH,0,               strptr:&rrc_config_path,            defstrval:"./",                 TYPE_STRING, 0}, \
     {"ue-idx-standalone",        NULL,                   0,               u16ptr:&ue_idx_standalone,          defuintval:0xFFFF,    TYPE_UINT16,   0} \
 }
 
@@ -98,5 +100,4 @@ void *UE_thread_SL(void *arg);
 void *UE_thread(void *arg);
 void init_nr_ue_vars(PHY_VARS_NR_UE *ue, uint8_t UE_id, uint8_t abstraction_flag);
 void init_nrUE_standalone_thread(int ue_idx);
-
 #endif

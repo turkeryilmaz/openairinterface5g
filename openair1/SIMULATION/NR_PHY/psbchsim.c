@@ -28,7 +28,6 @@
 #include "common/config/config_userapi.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/load_module_shlib.h"
-#include "common/ran_context.h"
 #include "common/utils/nr/nr_common.h"
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
@@ -56,7 +55,6 @@
 #include "openair1/SIMULATION/NR_PHY/nr_sss_sl_test.h"
 
 //#define DEBUG_NR_PSBCHSIM
-RAN_CONTEXT_t RC;
 double cpuf;
 uint16_t NB_UE_INST = 1;
 openair0_config_t openair0_cfg[MAX_CARDS];
@@ -75,33 +73,30 @@ nrUE_params_t *get_nrUE_params(void) {
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 
-int nr_ue_pdcch_procedures(uint8_t gNB_id,
-			   PHY_VARS_NR_UE *ue,
-			   UE_nr_rxtx_proc_t *proc,
-         int32_t pdcch_est_size,
-         int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
-         NR_UE_PDCCH_CONFIG *phy_pdcch_config,
-         int n_ss) {
-  return 0;
+bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
+                            UE_nr_rxtx_proc_t *proc,
+                            NR_UE_DLSCH_t dlsch[2],
+                            int16_t* llr[2]) {
+  return false;
 }
 
 int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
-                           int eNB_id, PDSCH_t pdsch,
-                           NR_UE_DLSCH_t *dlsch0, NR_UE_DLSCH_t *dlsch1) {
+                           NR_UE_DLSCH_t dlsch[2],
+                           int16_t *llr[2],
+                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
   return 0;
 }
 
-bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
-                            UE_nr_rxtx_proc_t *proc,
-                            int gNB_id,
-                            PDSCH_t pdsch,
-                            NR_UE_DLSCH_t *dlsch0,
-                            NR_UE_DLSCH_t *dlsch1,
-                            int *dlsch_errors) {
-  return false;
+int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           int32_t pdcch_est_size,
+                           int32_t pdcch_dl_ch_estimates[][pdcch_est_size],
+                           nr_phy_data_t *phy_data,
+                           int n_ss,
+                           c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
+  return 0;
 }
-
 double cfo = 0;
 double snr0 =- 2.0;
 double snr1 = 2.0;
@@ -124,16 +119,14 @@ float target_error_rate = 0.01;
 int seed = 0;
 bool pss_sss_test = false;
 
-void free_psbchsim_members(channel_desc_t *UE2UE,
-                            PHY_VARS_NR_UE *UE,
-                            double **s_re,
-                            double **s_im,
-                            double **r_re,
-                            double **r_im,
-                            int **txdata,
-                            FILE *input_fd)
+void free_psbchsim_members(PHY_VARS_NR_UE *UE,
+                           double **s_re,
+                           double **s_im,
+                           double **r_re,
+                           double **r_im,
+                           int **txdata,
+                           FILE *input_fd)
 {
-  free_channel_desc_scm(UE2UE);
   term_nr_ue_signal(UE, 1);
   free(UE->slss);
   free(UE);
@@ -423,8 +416,6 @@ int main(int argc, char **argv)
       else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
       break;
   }
-  channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model, fs, bw, 300e-9, 0, 0, 0, 0);
-  AssertFatal(UE2UE, "Problem generating channel model. Exiting.\n");
 
   int frame_length_complex_samples = UE->frame_parms.samples_per_subframe * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
   double **s_re = malloc(2 * sizeof(double*));
@@ -463,7 +454,7 @@ int main(int argc, char **argv)
   if (pss_sss_test) {
     test_pss_sl(UE);
     test_sss_sl(UE);
-    free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
+    free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata, input_fd);
     return 0;
   }
 
@@ -595,8 +586,10 @@ int main(int argc, char **argv)
         UE->symbol_offset = (UE->slss->sl_timeoffsetssb_r16 + UE->slss->sl_timeinterval_r16 * ssb_index) * UE->frame_parms.symbols_per_slot;
         uint8_t n_hf = 0;
         int ssb_slot = (UE->symbol_offset / 14) + (n_hf * (UE->frame_parms.slots_per_frame >> 1));
+        const uint32_t rxdataF_sz = UE->frame_parms.samples_per_slot_wCP;
+        __attribute__ ((aligned(32))) c16_t rxdataF[UE->frame_parms.nb_antennas_rx][rxdataF_sz];
         for (int i = UE->symbol_offset; i < UE->symbol_offset + 5; i++) {
-          nr_slot_fep(UE, &proc, i % UE->frame_parms.symbols_per_slot, ssb_slot);
+          nr_slot_fep(UE, &proc, i % UE->frame_parms.symbols_per_slot, rxdataF);
           nr_psbch_channel_estimation(UE, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc,
                                       0, ssb_slot, i % UE->frame_parms.symbols_per_slot,
                                       i - (UE->symbol_offset), ssb_index % 8, n_hf);
@@ -638,7 +631,7 @@ int main(int argc, char **argv)
     }
   } // NSR
 
-  free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
+  free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata, input_fd);
 
   return 0;
 }

@@ -135,7 +135,7 @@ uint16_t get_band(uint64_t downlink_frequency, int32_t delta_duplex)
   const uint64_t dl_freq_khz = downlink_frequency / 1000;
   const int32_t  delta_duplex_khz = delta_duplex / 1000;
 
-  uint64_t center_freq_diff_khz = 999999999999999999; // 2^64
+  uint64_t center_freq_diff_khz = UINT64_MAX; // 2^64
   uint16_t current_band = 0;
 
   for (int ind = 0; ind < sizeofArray(nr_bandtable); ind++) {
@@ -198,8 +198,8 @@ int cce_to_reg_interleaving(const int R, int k, int n_shift, const int C, int L,
     f = k;
   else {
     int c = k/R;
-     int r = k%R;
-     f = (r*C + c + n_shift)%(N_regs/L);
+    int r = k % R;
+    f = (r * C + c + n_shift) % (N_regs / L);
   }
   return f;
 }
@@ -227,7 +227,8 @@ void get_coreset_rballoc(uint8_t *FreqDomainResource,int *n_rb,int *rb_offset) {
   *n_rb = 6*count;
 }
 
-int get_nb_periods_per_frame(uint8_t tdd_period) {
+int get_nb_periods_per_frame(uint8_t tdd_period)
+{
 
   int nb_periods_per_frame;
   switch(tdd_period) {
@@ -270,7 +271,13 @@ int get_nb_periods_per_frame(uint8_t tdd_period) {
 }
 
 
-int get_dmrs_port(int nl, uint16_t dmrs_ports) {
+int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUplinkSymbols)
+{
+  return (nrofDownlinkSlots + (nrofDownlinkSymbols != 0 && nrofUplinkSymbols == 0));
+}
+
+int get_dmrs_port(int nl, uint16_t dmrs_ports)
+{
 
   if (dmrs_ports == 0) return 0; // dci 1_0
   int p = -1;
@@ -664,10 +671,26 @@ void get_samplerate_and_bw(int mu,
     }
   } else if (mu == 3) {
     switch(n_rb) {
-      case 66:
+      case 132:
+      case 128:
         if (threequarter_fs) {
           *sample_rate=184.32e6;
           *samples_per_frame = 1843200;
+          *tx_bw = 200e6;
+          *rx_bw = 200e6;
+        } else {
+          *sample_rate = 245.76e6;
+          *samples_per_frame = 2457600;
+          *tx_bw = 200e6;
+          *rx_bw = 200e6;
+        }
+        break;
+
+      case 66:
+      case 64:
+        if (threequarter_fs) {
+          *sample_rate=92.16e6;
+          *samples_per_frame = 921600;
           *tx_bw = 100e6;
           *rx_bw = 100e6;
         } else {
@@ -676,7 +699,6 @@ void get_samplerate_and_bw(int mu,
           *tx_bw = 100e6;
           *rx_bw = 100e6;
         }
-
         break;
 
       case 32:
@@ -691,7 +713,6 @@ void get_samplerate_and_bw(int mu,
           *tx_bw = 50e6;
           *rx_bw = 50e6;
         }
-
         break;
 
       default:

@@ -29,7 +29,8 @@
  * \note
  * \warning
 */
-
+#include "NR_ServingCellConfigCommon.h"
+#include "NR_ServingCellConfig.h"
 #ifndef __NR_UNITARY_DEFS__H__
 #define __NR_UNITARY_DEFS__H__
 

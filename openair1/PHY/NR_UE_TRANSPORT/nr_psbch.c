@@ -341,7 +341,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
     memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
-    nr_psbch_extract(nr_ue_common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF,
+    nr_psbch_extract(nr_ue_common_vars->rxdataF,
                     estimateSz,
                     dl_ch_estimates,
                     rxdataF_ext,
