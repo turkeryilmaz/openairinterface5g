@@ -40,4 +40,6 @@ static const uint16_t hundred_times_log10_NPRB[100] = {0,    301,  477,  602,  6
 
 void kill_fep_thread(RU_t *ru);
 
+void kill_fep_thread(RU_t *ru);
+
 #endif /*__SCHED_EXTERN_H__ */
