@@ -31,11 +31,11 @@
  * \warning
  */
 
-#include "targets/RT/USER/lte-softmodem.h"
+#include "executables/lte-softmodem.h"
 #include "UTIL/OPT/opt.h"
 #include "common/config/config_userapi.h"
 #include "PHY/TOOLS/lte_phy_scope.h"
-#include "targets/RT/USER/stats.h"
+#include "executables/stats.h"
 #include "PHY/phy_vars_ue.h"
 // current status is that every UE has a DL scope for a SINGLE eNB (eNB_id=0)
 // at eNB 0, an UL scope for every UE
@@ -51,9 +51,9 @@ void reset_stats(FL_OBJECT *button, long arg) {
   int i,j,k;
   PHY_VARS_eNB *phy_vars_eNB = RC.eNB[0][0];
 
-  for (i=0; i<NUMBER_OF_DLSCH_MAX; i++) {
-    for (k=0; k<8; k++) { //harq_processes
-      for (j=0; j<phy_vars_eNB->dlsch[i][0]->Mlimit; j++) {
+  for (i=0; i<NUMBER_OF_UE_MAX; i++) {
+    for (k=0; k<NUMBER_OF_DLSCH_MAX; k++) { //harq_processes
+      for (j=0; j<phy_vars_eNB->dlsch[k][0]->Mlimit; j++) {
         phy_vars_eNB->UE_stats[i].dlsch_NAK[k][j]=0;
         phy_vars_eNB->UE_stats[i].dlsch_ACK[k][j]=0;
         phy_vars_eNB->UE_stats[i].dlsch_trials[k][j]=0;
