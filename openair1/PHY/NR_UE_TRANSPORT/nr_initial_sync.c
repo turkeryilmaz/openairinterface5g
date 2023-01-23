@@ -276,8 +276,6 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   */
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
-  __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
   LOG_D(NR_PHY, "nr_initial SL sync ue RB_DL %d\n", fp->N_RB_DL);
   int ret = -1;
   int32_t sync_pos;
@@ -293,8 +291,9 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
       // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
       //      144     |  2048   |      144     | 2048  |      144     | 2048  |
-      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Start = X - (144 + 144 + 2048 + 144)
-      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Start = X - (144 + 2048 + 144)
+      // ----------------------------------------------------------------------
+      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Offset = X - (144 + 144 + 2048 + 144)
+      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Offset = X - (144 + 2048 + 144)
       uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples;
       uint32_t num_pss_prefix_samples_size = (ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;
       LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
@@ -303,13 +302,14 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    LOG_I(NR_PHY, "[UE%d] Initial sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+    LOG_I(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
           ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
       for (int i = 0; i < 13; i++)
-        nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset, false, rxdataF);
+        nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset,
+                              false, (c16_t *)ue->common_vars.rxdataF[0]);
       LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
       int freq_offset_sss = 0;
       ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);

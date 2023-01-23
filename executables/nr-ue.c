@@ -590,12 +590,12 @@ void processSlotTX(void *arg) {
 
     if (get_softmodem_params()->sl_mode == 0) {
       phy_procedures_nrUE_TX(UE, proc, 0);
+      RU_write(rxtxD);
     } else {
       phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
   }
 
-  RU_write(rxtxD);
 }
 
 void processSlotRX_SL(void *arg) {
