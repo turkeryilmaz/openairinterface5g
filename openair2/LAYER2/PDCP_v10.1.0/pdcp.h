@@ -569,5 +569,17 @@ extern notifiedFIFO_t         pdcp_sdu_list;
 
 extern hash_table_t  *pdcp_coll_p;
 
+// ----------------------------------------------------------------------------
+
+typedef   void (*ss_set_pdcp_cnt_cb)(pdcp_t *pdcp_p , uint32_t rb_id, ss_get_pdcp_cnt_t *pc);
+typedef   void (*ss_set_secu_cipher_cb)(pdcp_t *pdcp_p , uint8_t  security_modeP);
+
+typedef struct ss_rrc_pdcp_api_s {
+  ss_set_pdcp_cnt_cb    set_pdcp_cnt;
+  ss_set_secu_cipher_cb set_secu_cipher;
+} ss_rrc_pdcp_api_t;
+// ----------------------------------------------------------------------------
+
+
 #endif
 /*@}*/

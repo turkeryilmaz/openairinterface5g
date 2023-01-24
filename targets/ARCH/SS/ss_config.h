@@ -31,6 +31,8 @@
 #ifndef __SS_CONFIG_H__
 #define __SS_CONFIG_H__
 
+#include "openair2/LAYER2/PDCP_v10.1.0/pdcp.h"
+
 #if 0 /** TODO: FC */
 typedef enum ss_mode {
   SS_ENB = 0x00,
@@ -71,6 +73,7 @@ typedef struct ss_config_s {
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind;
+  ss_rrc_pdcp_api_t *ss_pdcp_api;
 } ss_config_t;
 /**
 typedef enum {
