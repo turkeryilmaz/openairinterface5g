@@ -2305,14 +2305,6 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 
 # nr-softmodem
 ###################################################
-if ($ENV{NR_ENABLE})
-	add_boolean_option(NR_ENABLE   TRUE  "Flag for NR compilation")
-else()
-	add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
-endif()
-
-Message("NR_ENABLE flag is ${NR_ENABLE}")
-
 add_executable(nr-softmodem
   ${rrc_h}
   ${nr_rrc_h}

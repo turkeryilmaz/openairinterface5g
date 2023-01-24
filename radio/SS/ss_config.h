@@ -31,11 +31,8 @@
 #ifndef __SS_CONFIG_H__
 #define __SS_CONFIG_H__
 
-<<<<<<< HEAD
 #include "openair2/LAYER2/PDCP_v10.1.0/pdcp.h"
 
-=======
->>>>>>> 86592e70a3... Rebased changes of RAN/targets directory
 #if 0 /** TODO: FC */
 typedef enum ss_mode {
   SS_ENB = 0x00,
@@ -48,7 +45,6 @@ typedef enum ss_mode {
 #define SS_SOFTMODEM    	(0x01)
 #define SS_SOFTMODEM_SRB        (0x02)
 #endif
-<<<<<<< HEAD
 typedef struct ss_crnti_config_s {
   bool b_C_RNTI_Present;
   uint16_t C_RNTI;
@@ -63,8 +59,6 @@ typedef struct RrcHOAsSecurityConfigReq_s {
         AS_CipheringInfo Ciphering;
         int rnti;
 }RrcHOAsSecurityConfig_t;
-=======
->>>>>>> 86592e70a3... Rebased changes of RAN/targets directory
 
 typedef struct ss_config_s {
   /** SS mode of operation */
@@ -79,10 +73,7 @@ typedef struct ss_config_s {
   int Vngport;
   /** VTP port number */
   int Vtpport;
-<<<<<<< HEAD
   /** SYSIND port number */
-=======
->>>>>>> 86592e70a3... Rebased changes of RAN/targets directory
   int SysIndport;
   /** DRB port number */
   int Drbport;
@@ -95,7 +86,6 @@ typedef struct ss_config_s {
   int CBRA_flag;
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
-<<<<<<< HEAD
   ss_l1macind_ctrl_t l1macind[MAX_NUM_CCs];
   ss_ulgrant_info_t ulgrant_info[MAX_NUM_CCs];
   uint8_t CC_conf_flag[MAX_NUM_CCs];
@@ -103,9 +93,6 @@ typedef struct ss_config_s {
   ss_crnti_config_t ss_crnti[MAX_NUM_CCs];
   RrcHOAsSecurityConfig_t HOASSecurityCOnfig;
   uint8_t CC_update_flag[MAX_NUM_CCs];
-=======
-  ss_l1macind_ctrl_t l1macind;
->>>>>>> 86592e70a3... Rebased changes of RAN/targets directory
 } ss_config_t;
 /**
 typedef enum {
