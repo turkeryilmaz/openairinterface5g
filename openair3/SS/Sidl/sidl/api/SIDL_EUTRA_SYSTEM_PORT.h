@@ -781,6 +781,15 @@ struct L1Mac_IndicationControl_Type {
 	struct IndicationAndControlMode_Type_DC_PHR_Optional DC_PHR;
 };
 
+typedef uint8_t PrachPreambleIndex_Type;
+
+typedef uint8_t PrachMaskIndex_Type;
+
+struct RA_PDCCH_Order_Type {
+	PrachPreambleIndex_Type PreambleIndex;
+	PrachMaskIndex_Type PrachMaskIndex;
+};
+
 struct CellAttenuationConfig_Type_CellAttenuationList_Type_Dynamic {
 	size_t d;
 	struct CellAttenuationConfig_Type* v;
@@ -795,6 +804,26 @@ struct RadioBearer_Type_RadioBearerList_Type_Dynamic {
 
 typedef struct RadioBearer_Type_RadioBearerList_Type_Dynamic RadioBearerList_Type;
 
+struct PDCP_HandoverInit_Type {
+	EUTRA_CellId_Type SourceCellId;
+};
+
+enum PDCP_HandoverControlReq_Type_Sel {
+	PDCP_HandoverControlReq_Type_UNBOUND_VALUE = 0,
+	PDCP_HandoverControlReq_Type_HandoverInit = 1,
+	PDCP_HandoverControlReq_Type_HandoverComplete = 2,
+};
+
+union PDCP_HandoverControlReq_Type_Value {
+	struct PDCP_HandoverInit_Type HandoverInit;
+	bool HandoverComplete;
+};
+
+struct PDCP_HandoverControlReq_Type {
+	enum PDCP_HandoverControlReq_Type_Sel d;
+	union PDCP_HandoverControlReq_Type_Value v;
+};
+
 enum SystemRequest_Type_Sel {
 	SystemRequest_Type_UNBOUND_VALUE = 0,
 	SystemRequest_Type_Cell = 1,
@@ -805,6 +834,8 @@ enum SystemRequest_Type_Sel {
 	SystemRequest_Type_Paging = 7,
 	SystemRequest_Type_L1MacIndCtrl = 8,
 	SystemRequest_Type_PdcpCount = 10,
+	SystemRequest_Type_PdcpHandoverControl = 11,
+	SystemRequest_Type_PdcchOrder = 13,
 	SystemRequest_Type_UE_Cat_Info = 18,
 };
 
@@ -817,6 +848,8 @@ union SystemRequest_Type_Value {
 	struct PagingTrigger_Type Paging;
 	struct L1Mac_IndicationControl_Type L1MacIndCtrl;
 	struct PDCP_CountReq_Type PdcpCount;
+	struct PDCP_HandoverControlReq_Type PdcpHandoverControl;
+	struct RA_PDCCH_Order_Type PdcchOrder;
 	struct UE_CategoryInfo_Type UE_Cat_Info;
 };
 

@@ -62,6 +62,8 @@ const char* adbgUtilsSysPDCP_ActTime_TypeToStr(int select);
 
 const char* adbgUtilsSysAS_Security_TypeToStr(int select);
 
+const char* adbgUtilsSysPDCP_HandoverControlReq_TypeToStr(int select);
+
 const char* adbgUtilsSysSystemRequest_TypeToStr(int select);
 
 const char* adbgUtilsSysSystemConfirm_TypeToStr(int select);

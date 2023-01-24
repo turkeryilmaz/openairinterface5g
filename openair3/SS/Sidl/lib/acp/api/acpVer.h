@@ -22,5 +22,5 @@
 
 #pragma once
 
-#define ACP_VERSION      "1.1.31"
-#define ACP_VERSION_CKSM "fc6be432378419cb932a2a16306ffbb4"
+#define ACP_VERSION      "1.1.32"
+#define ACP_VERSION_CKSM "b796a588cd00cda1a638c14c27650a2a"
