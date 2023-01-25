@@ -43,23 +43,6 @@
 #include "NR_RACH-ConfigCommon.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_ServingCellConfig.h"
-#include "LTE_LogicalChannelConfig.h"
-#include "LTE_SecurityAlgorithmConfig.h"
-#include "LTE_CipheringAlgorithm-r12.h"
-#include "LTE_SIB-Type.h"
-#include "LTE_Q-OffsetRange.h"
-#include "LTE_SchedulingInfo.h"
-#include "LTE_SpeedStateScaleFactors.h"
-#include "LTE_InterFreqNeighCellInfo.h"
-#include "LTE_PhysCellIdRange.h"
-#include "LTE_NeighCellConfig.h"
-#include "NR_SDAP-Config.h"
-#include "NR_PDCP-Config.h"
-#include "NR_RLC-BearerConfig.h"
-
-#define MAX_RBS (LTE_maxDRB + 3)
-#define MAX_NR_RBS (NR_maxDRB+3)
-
 //-------------------------------------------------------------------------------------------//
 // Messages for RRC logging
 #if defined(DISABLE_ITTI_XER_PRINT)
@@ -673,7 +656,6 @@ typedef struct NRRrcConfigurationReq_s {
   uint8_t                 num_plmn;
   NR_ServingCellConfigCommon_t *scc;
   NR_ServingCellConfig_t  *scd;
-  int                     ssb_SubcarrierOffset;
   int                     sib1_tda;
   rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts;
   int                     pusch_AntennaPorts;

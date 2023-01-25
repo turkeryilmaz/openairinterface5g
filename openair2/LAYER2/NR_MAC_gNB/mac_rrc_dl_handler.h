@@ -19,13 +19,23 @@
  *      contact@openairinterface.org
  */
 
+#ifndef SHA_256_HMAC_OAI_H
+#define SHA_256_HMAC_OAI_H 
+
+#include <stdint.h>
+#include <stdlib.h>
+
+#include "byte_array.h"
+
+void sha_256_hmac(const uint8_t key[32], byte_array_t data, size_t len, uint8_t out[len]);
+
+#endif
+
 #ifndef MAC_RRC_DL_HANDLER_H
 #define MAC_RRC_DL_HANDLER_H
 
 #include "platform_types.h"
 #include "f1ap_messages_types.h"
-
-void ue_context_setup_request(const f1ap_ue_context_setup_t *req);
 
 int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc);
 

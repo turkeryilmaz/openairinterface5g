@@ -167,8 +167,6 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
 
   ret->common.deliver_pdu     = nr_rlc_entity_um_deliver_pdu;
 
-  ret->common.deliver_pdu     = nr_rlc_entity_um_deliver_pdu;
-
   ret->common.deliver_sdu                  = deliver_sdu;
   ret->common.deliver_sdu_data             = deliver_sdu_data;
 

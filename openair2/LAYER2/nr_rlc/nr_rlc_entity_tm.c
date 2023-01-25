@@ -157,7 +157,6 @@ void nr_rlc_entity_tm_recv_sdu(nr_rlc_entity_t *_entity,
     return;
   }
 
-
   entity->tx_size += size;
 
   sdu = nr_rlc_new_sdu(buffer, size, sdu_id);

@@ -276,6 +276,7 @@ int8_t nr_rrc_ue_decode_secondary_cellgroup_config(const module_id_t module_id,
 // from LTE-RRC DL-DCCH RRCConnectionReconfiguration nr-secondary-cell-group-config (decoded)
 // RRCReconfiguration
 int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration){
+
   switch(rrcReconfiguration->criticalExtensions.present){
     case NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration:
       if(rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->radioBearerConfig != NULL){
@@ -2478,24 +2479,24 @@ nr_rrc_ue_establish_srb2(
         }
         break;
       }
-	  /* Cell_Search_5G s*/
-		case PHY_FIND_CELL_IND:
-		{
-        	nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
-        	LOG_D(RRC, "Received message %s with reports for %d cells.\n", 
-				ITTI_MSG_NAME (msg_p), nb_cells);
 
-    		for (int i = 0 ; i < nb_cells; i++) 
-			{
-        		rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
-	        	rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
-    	        LOG_A (RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", 
-					PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
-	    	}
-    	break;
+      /* Cell_Search_5G s*/
+      case PHY_FIND_CELL_IND:
+      {
+        nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
+        LOG_D(RRC, "Received message %s with reports for %d cells.\n", 
+              ITTI_MSG_NAME (msg_p), nb_cells);
 
-		}
-	  /* Cell_Search_5G e*/
+        for (int i = 0 ; i < nb_cells; i++) 
+        {
+          rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
+          rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
+          LOG_A (RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", 
+              PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
+        }
+        break;
+      }
+      /* Cell_Search_5G e*/
 
       default:
         LOG_E(NR_RRC, "[UE %d] Received unexpected message %s\n", ue_mod_id, ITTI_MSG_NAME (msg_p));

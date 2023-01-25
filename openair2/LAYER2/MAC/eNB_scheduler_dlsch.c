@@ -2116,14 +2116,14 @@ schedule_PCH(module_id_t module_idP,
                                            i); // used for ue index
 
         if (pcch_sdu_length == 0) {
-          LOG_A(MAC, "[eNB %d] Frame %d subframe %d: PCCH not active(size = 0 byte)\n",
+          LOG_D(MAC, "[eNB %d] Frame %d subframe %d: PCCH not active(size = 0 byte)\n",
                 module_idP,
                 frameP,
                 subframeP);
           continue;
         }
 
-        LOG_A(MAC, "[eNB %d] Frame %d subframe %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
+        LOG_D(MAC, "[eNB %d] Frame %d subframe %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
               module_idP,
               frameP,
               subframeP,

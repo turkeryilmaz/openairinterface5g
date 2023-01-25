@@ -248,11 +248,12 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
 
   entity->tx_next++;
 
+  entity->deliver_pdu(entity->deliver_pdu_data, entity, buf,
+                      header_size + size + integrity_size, sdu_id);
   entity->stats.txpdu_pkts++;
   entity->stats.txpdu_bytes += header_size + size + integrity_size;
   entity->stats.txpdu_sn = sn;
 
-  return header_size + size + integrity_size;
 }
 
 /* may be called several times, take care to clean previous settings */

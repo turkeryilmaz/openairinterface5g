@@ -1321,15 +1321,18 @@ schedule_ulsch(module_id_t module_idP,
       }
     }
 
-    if (sched_subframe < subframeP) {
-      sched_frame++;
-      sched_frame %= 1024;
-    }
+  if (sched_subframe < subframeP) {
+    sched_frame++;
+    sched_frame %= 1024;
+  }
 
-    int emtc_active[5];
-    memset(emtc_active, 0, 5 * sizeof(int));
-    schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
+  int emtc_active[5];
+  memset(emtc_active, 0, 5 * sizeof(int));
+  schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
 
+  /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
+  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
+    
     if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
                            cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex, 
                            sched_frame, sched_subframe)) {
@@ -1351,7 +1354,7 @@ schedule_ulsch(module_id_t module_idP,
      * - for 100:    3 RBs
      * This is totally arbitrary and might even be wrong.
      */
-    switch (to_prb(cc->ul_Bandwidth)) {
+    switch (to_prb(cc[CC_id].ul_Bandwidth)) {
       case 25:
         cc->vrb_map_UL[0] = 1;
         cc->vrb_map_UL[24] = 1;

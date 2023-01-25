@@ -209,7 +209,7 @@ void dlsch_scheduler_pre_ue_select_fairRR(
     DL_req          = &eNB->DL_req[CC_id].dl_config_request_body;
 
     for (UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++) {
-      if (UE_info->active[UE_id] == false) {
+      if (UE_info->active[CC_id][UE_id] == false) {
         continue;
       }
 
@@ -324,7 +324,7 @@ void dlsch_scheduler_pre_ue_select_fairRR(
         break;
       }
 
-      if (UE_info->active[UE_id] == false) {
+      if (UE_info->active[CC_id][UE_id] == false) {
         continue;
       }
 
@@ -446,7 +446,7 @@ void dlsch_scheduler_pre_ue_select_fairRR(
         break;
       }
 
-      if (UE_info->active[UE_id] == false) {
+      if (UE_info->active[CC_id][UE_id] == false) {
         continue;
       }
 
@@ -588,7 +588,7 @@ static void dlsch_scheduler_pre_processor_reset_fairRR(
       if (rnti == NOT_A_RNTI)
         continue;
 
-      if (UE_info->active[UE_id] != true)
+      if (UE_info->active[CC_id][UE_id] != true)
         continue;
 
       LOG_D(MAC, "Running preprocessor for UE %d (%x)\n", UE_id, rnti);
@@ -736,7 +736,7 @@ static void assign_rbs_required_fairRR(
 
   // clear rb allocations across all CC_id
   for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-    if (UE_info->active[UE_id] != true)
+    if (UE_info->active[CC_id][UE_id] != true)
       continue;
 
     pCCid = UE_PCCID(Mod_id, UE_id);
@@ -926,7 +926,7 @@ void dlsch_scheduler_pre_processor_fairRR (module_id_t   Mod_id,
     min_rb_unit[CC_id] = get_min_rb_unit(Mod_id, CC_id);
 
     for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
-      if (UE_info->active[i] != true)
+      if (UE_info->active[CC_id][i] != true)
         continue;
 
       UE_id = i;
@@ -2218,7 +2218,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
   // UE round >0
   for ( CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++ ) {
   for ( UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ ) {
-    if (UE_info->active[UE_id] == false)
+    if (UE_info->active[CC_id][UE_id] == false)
       continue;
 
     rnti = UE_RNTI(module_idP,UE_id);
@@ -2380,7 +2380,7 @@ void ulsch_scheduler_pre_ue_select_fairRR(
 
   for ( CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++ ) {
   for ( UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ ) {
-    if (UE_info->active[UE_id] == false)
+    if (UE_info->active[CC_id][UE_id] == false)
       continue;
 
     rnti = UE_RNTI(module_idP,UE_id);

@@ -103,22 +103,22 @@ int nr_rrc_mac_config_req_ue_logicalChannelBearer(module_id_t module_id,
                                                   long        logicalChannelIdentity,
                                                   bool        status);
 
-void nr_rrc_mac_config_req_scg(module_id_t module_id,
-                               int cc_idP,
-                               NR_CellGroupConfig_t *scell_group_config);
-
-void nr_rrc_mac_config_req_mcg(module_id_t module_id,
-                               int cc_idP,
-                               NR_CellGroupConfig_t *scell_group_config);
-
-void nr_rrc_mac_config_req_mib(module_id_t module_id,
-                               int cc_idP,
-                               NR_MIB_t *mibP,
-                               bool sched_sib1);
-
-void nr_rrc_mac_config_req_sib1(module_id_t module_id,
-                                int cc_idP,
-                                NR_ServingCellConfigCommonSIB_t *scc);
+/**\brief primitive from RRC layer to MAC layer for configuration L1/L2, now supported 4 rrc messages: MIB, cell_group_config for MAC/PHY, spcell_config(serving cell config)
+   \param module_id                 module id
+   \param cc_id                     component carrier id
+   \param gNB_index                 gNB index
+   \param mibP                      pointer to RRC message MIB
+   \param sccP                      pointer to ServingCellConfigCommon structure,
+   \param spcell_configP            pointer to RRC message serving cell config*/
+int nr_rrc_mac_config_req_ue(
+    module_id_t                     module_id,
+    int                             cc_idP,
+    uint8_t                         gNB_index,
+    NR_MIB_t                        *mibP,
+    NR_ServingCellConfigCommonSIB_t *sccP,
+    NR_CellGroupConfig_t            *cell_group_config,
+    NR_CellGroupConfig_t            *scell_group_config
+);
 
 /**\brief initialization NR UE MAC instance(s), total number of MAC instance based on NB_NR_UE_MAC_INST*/
 NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst);
@@ -261,7 +261,28 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_dci_dl_pdu_rel15_t 
 
 void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl_config, frame_t frame, int slot);
 
+void get_bwp_info(NR_UE_MAC_INST_t *mac,
+                  int dl_bwp_id,
+                  int ul_bwp_id,
+                  NR_BWP_DownlinkDedicated_t **bwpd,
+                  NR_BWP_DownlinkCommon_t **bwpc,
+                  NR_BWP_UplinkDedicated_t **ubwpd,
+                  NR_BWP_UplinkCommon_t **ubwpc);
+
 NR_BWP_DownlinkCommon_t *get_bwp_downlink_common(NR_UE_MAC_INST_t *mac, NR_BWP_Id_t dl_bwp_id);
+
+NR_PUSCH_TimeDomainResourceAllocationList_t *choose_ul_tda_list(const NR_PUSCH_Config_t *pusch_Config,NR_PUSCH_ConfigCommon_t *pusch_ConfigCommon);
+NR_PDSCH_TimeDomainResourceAllocationList_t *choose_dl_tda_list(NR_PDSCH_Config_t *pdsch_Config,NR_PDSCH_ConfigCommon_t *pdsch_ConfigCommon);
+
+int8_t nr_ue_process_dci_time_dom_resource_assignment(NR_UE_MAC_INST_t *mac,
+                                                      NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList,
+                                                      NR_PDSCH_TimeDomainResourceAllocationList_t *pdsch_TimeDomainAllocationList,
+                                                      nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
+                                                      fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config_pdu,
+                                                      int *mappingtype,
+                                                      uint8_t time_domain_ind,
+                                                      int default_abc,
+                                                      bool use_default);
 
 uint8_t nr_ue_get_sdu(module_id_t module_idP,
                       int cc_id,
@@ -367,13 +388,15 @@ random-access procedure
 @param selected_rar_buffer the output buffer for storing the selected RAR header and RAR payload
 @returns timing advance or 0xffff if preamble doesn't match
 */
-int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id);
+int nr_ue_process_rar(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id);
 
 void nr_ue_contention_resolution(module_id_t module_id, int cc_id, frame_t frame, int slot, NR_PRACH_RESOURCES_t *prach_resources);
 
 void nr_ra_failed(uint8_t mod_id, uint8_t CC_id, NR_PRACH_RESOURCES_t *prach_resources, frame_t frame, int slot);
 
 void nr_ra_succeeded(const module_id_t mod_id, const uint8_t gNB_index, const frame_t frame, const int slot);
+
+void nr_get_RA_window(NR_UE_MAC_INST_t *mac);
 
 void nr_get_RA_window(NR_UE_MAC_INST_t *mac);
 
@@ -433,11 +456,17 @@ void fill_dci_search_candidates(NR_SearchSpace_t *ss,fapi_nr_dl_config_dci_dl_pd
 
 void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac);
 
-void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs);
-
 void configure_ss_coreset(NR_UE_MAC_INST_t *mac,
                           NR_ServingCellConfig_t *scd,
                           NR_BWP_Id_t dl_bwp_id);
+
+static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
+                                   uint8_t dci_format,
+                                   uint8_t dci_size,
+                                   uint16_t rnti,
+                                   int ss_type,
+                                   uint64_t *dci_pdu,
+                                   dci_pdu_rel15_t *dci_pdu_rel15);
 
 static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                                    nr_dci_format_t dci_format,

@@ -74,7 +74,7 @@
 #include "PHY/defs_common.h" // for PRACH_RESOURCES_t
 #include "PHY/LTE_TRANSPORT/transport_common.h"
 
-#include "targets/ARCH/COMMON/common_lib.h"
+#include "radio/COMMON/common_lib.h"
 
 /** @defgroup _mac  MAC
  * @ingroup _oai2
@@ -1127,7 +1127,7 @@ typedef struct {
   UE_sched_ctrl_t UE_sched_ctrl[MAX_MOBILES_PER_ENB];
   UE_list_t list;
   int num_UEs;
-  bool active[MAX_MOBILES_PER_ENB];
+  bool active[MAX_NUM_CCs][MAX_MOBILES_PER_ENB];
 } UE_info_t;
 
 /*! \brief deleting control information*/

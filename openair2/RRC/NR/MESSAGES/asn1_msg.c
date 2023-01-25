@@ -194,6 +194,473 @@ int xer_nr_sprint (char *string, size_t string_size, asn_TYPE_descriptor_t *td, 
 
 //------------------------------------------------------------------------------
 
+uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) { 
+
+  asn_enc_rval_t enc_rval;
+  rrc_gNB_carrier_data_t *carrier = &rrc->carrier;
+
+  NR_BCCH_BCH_Message_t *mib = &carrier->mib;
+  NR_ServingCellConfigCommon_t *scc = carrier->servingcellconfigcommon;
+
+  memset(mib,0,sizeof(NR_BCCH_BCH_Message_t));
+  mib->message.present = NR_BCCH_BCH_MessageType_PR_mib;
+  mib->message.choice.mib = CALLOC(1,sizeof(struct NR_MIB));
+  memset(mib->message.choice.mib,0,sizeof(struct NR_MIB));
+  //36.331 SFN BIT STRING (SIZE (8)  , 38.331 SFN BIT STRING (SIZE (6))
+  uint8_t sfn_msb = (uint8_t)((frame>>4)&0x3f);
+  mib->message.choice.mib->systemFrameNumber.buf = CALLOC(1,sizeof(uint8_t));
+  mib->message.choice.mib->systemFrameNumber.buf[0] = sfn_msb << 2;
+  mib->message.choice.mib->systemFrameNumber.size = 1;
+  mib->message.choice.mib->systemFrameNumber.bits_unused=2;
+  //38.331 spare BIT STRING (SIZE (1))
+  uint16_t *spare= CALLOC(1, sizeof(uint16_t));
+
+  if (spare == NULL) abort();
+
+  mib->message.choice.mib->spare.buf = (uint8_t *)spare;
+  mib->message.choice.mib->spare.size = 1;
+  mib->message.choice.mib->spare.bits_unused = 7;  // This makes a spare of 1 bits
+
+  AssertFatal(scc->ssbSubcarrierSpacing != NULL, "scc->ssbSubcarrierSpacing is null\n");
+  int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
+  int ssb_subcarrier_offset = 31; // default value for NSA
+  if (get_softmodem_params()->sa) {
+    uint32_t absolute_diff = (*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB - scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+    int scs_scaling = scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA < 600000 ? 3 : 1;
+    ssb_subcarrier_offset = (absolute_diff/scs_scaling) % 24;
+    if(frequency_range == FR2)
+      ssb_subcarrier_offset >>= 1; // this assumes 120kHz SCS for SSB and subCarrierSpacingCommon (only option supported by OAI for now)
+  }
+  mib->message.choice.mib->ssb_SubcarrierOffset = (rrc->configuration.ssb_SubcarrierOffset)&15;
+  LOG_A(NR_RRC,"ssb_SubcarrierOffset: %d \n",mib->message.choice.mib->ssb_SubcarrierOffset);
+
+  /*
+  * The SIB1 will be sent in this allocation (Type0-PDCCH) : 38.213, 13-4 Table and 38.213 13-11 to 13-14 tables
+  * the reverse allocation is in nr_ue_decode_mib()
+  */
+  if(rrc->carrier.pdcch_ConfigSIB1) {
+    mib->message.choice.mib->pdcch_ConfigSIB1.controlResourceSetZero = rrc->carrier.pdcch_ConfigSIB1->controlResourceSetZero;
+    mib->message.choice.mib->pdcch_ConfigSIB1.searchSpaceZero = rrc->carrier.pdcch_ConfigSIB1->searchSpaceZero;
+  } else {
+    mib->message.choice.mib->pdcch_ConfigSIB1.controlResourceSetZero = *scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->controlResourceSetZero;
+    mib->message.choice.mib->pdcch_ConfigSIB1.searchSpaceZero = *scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceZero;
+  }
+
+  switch (*scc->ssbSubcarrierSpacing) {
+  case NR_SubcarrierSpacing_kHz15:
+    mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs15or60;
+    break;
+    
+  case NR_SubcarrierSpacing_kHz30:
+    mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs30or120;
+    break;
+    
+  case NR_SubcarrierSpacing_kHz60:
+    mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs15or60;
+    break;
+    
+  case NR_SubcarrierSpacing_kHz120:
+    mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs30or120;
+    break;
+    
+  case NR_SubcarrierSpacing_kHz240:
+    AssertFatal(1==0,"Unknown subCarrierSpacingCommon %d\n",(int)*scc->ssbSubcarrierSpacing);
+    break;
+    
+  default:
+      AssertFatal(1==0,"Unknown subCarrierSpacingCommon %d\n",(int)*scc->ssbSubcarrierSpacing);
+  }
+
+  switch (scc->dmrs_TypeA_Position) {
+  case 	NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos2:
+    mib->message.choice.mib->dmrs_TypeA_Position = NR_MIB__dmrs_TypeA_Position_pos2;
+    break;
+    
+  case 	NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos3:
+    mib->message.choice.mib->dmrs_TypeA_Position = NR_MIB__dmrs_TypeA_Position_pos3;
+    break;
+    
+  default:
+    AssertFatal(1==0,"Unknown dmrs_TypeA_Position %d\n",(int)scc->dmrs_TypeA_Position);
+  }
+
+  //  assign_enum
+  mib->message.choice.mib->cellBarred = NR_MIB__cellBarred_notBarred;
+  //  assign_enum
+  mib->message.choice.mib->intraFreqReselection = NR_MIB__intraFreqReselection_notAllowed;
+  //encode MIB to data
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_BCH_Message,
+                                   NULL,
+                                   (void *)mib,
+                                   carrier->MIB,
+                                   24);
+  LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
+
+  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+
+  if (enc_rval.encoded==-1) {
+    return(-1);
+  }
+
+  return((enc_rval.encoded+7)/8);
+}
+
+uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
+                    gNB_RrcConfigurationReq *configuration) {
+
+  asn_enc_rval_t enc_rval;
+  NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
+  carrier->siblock1 = sib1_message;
+  sib1_message->message.present = NR_BCCH_DL_SCH_MessageType_PR_c1;
+  sib1_message->message.choice.c1 = CALLOC(1,sizeof(struct NR_BCCH_DL_SCH_MessageType__c1));
+  sib1_message->message.choice.c1->present = NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformationBlockType1;
+  sib1_message->message.choice.c1->choice.systemInformationBlockType1 = CALLOC(1,sizeof(struct NR_SIB1));
+
+  struct NR_SIB1 *sib1 = sib1_message->message.choice.c1->choice.systemInformationBlockType1;
+
+  // cellSelectionInfo
+  sib1->cellSelectionInfo = CALLOC(1,sizeof(struct NR_SIB1__cellSelectionInfo));
+  // Fixme: should be in config file
+  //The IE Q-RxLevMin is used to indicate for cell selection/ re-selection the required minimum received RSRP level in the (NR) cell.
+  //Corresponds to parameter Qrxlevmin in TS38.304.
+  //Actual value Qrxlevmin = field value * 2 [dBm].
+  sib1->cellSelectionInfo->q_RxLevMin = -65;
+
+  // cellAccessRelatedInfo
+  // TODO : Add support for more than one PLMN
+  int num_plmn = 1; // int num_plmn = configuration->num_plmn;
+  asn1cSequenceAdd(sib1->cellAccessRelatedInfo.plmn_IdentityList.list, struct NR_PLMN_IdentityInfo, nr_plmn_info);
+  for (int i = 0; i < num_plmn; ++i) {
+    asn1cSequenceAdd(nr_plmn_info->plmn_IdentityList.list, struct NR_PLMN_Identity, nr_plmn);
+    asn1cCalloc(nr_plmn->mcc,  mcc);
+    int confMcc=configuration->mcc[i];
+    asn1cSequenceAdd(mcc->list, NR_MCC_MNC_Digit_t, mcc0);
+    *mcc0=(confMcc/100)%10;
+    asn1cSequenceAdd(mcc->list, NR_MCC_MNC_Digit_t, mcc1);
+    *mcc1=(confMcc/10)%10;
+    asn1cSequenceAdd(mcc->list, NR_MCC_MNC_Digit_t, mcc2);
+    *mcc2=confMcc%10;
+    int mnc=configuration->mnc[i];
+    if(configuration->mnc_digit_length[i] == 3) {
+      asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc0);
+      *mnc0=(configuration->mnc[i]/100)%10;
+    }
+    asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc1);
+    *mnc1=(mnc/10)%10;
+    asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc2);
+    *mnc2=(mnc)%10;
+
+    if (nr_plmn->mcc != NULL)
+    RRM_FREE(nr_plmn->mcc);
+
+  }//end plmn loop
+
+  nr_plmn_info->cellIdentity.buf = CALLOC(1,5);
+  nr_plmn_info->cellIdentity.size= 5;
+  nr_plmn_info->cellIdentity.bits_unused= 4;
+  uint64_t tmp=htobe64(configuration->cell_identity)<<4;
+  memcpy(nr_plmn_info->cellIdentity.buf, ((char*)&tmp)+3, 5);
+  nr_plmn_info->cellReservedForOperatorUse = NR_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
+
+  nr_plmn_info->trackingAreaCode = CALLOC(1,sizeof(NR_TrackingAreaCode_t));
+  uint32_t tmp2=htobe32(configuration->tac);
+  nr_plmn_info->trackingAreaCode->buf = CALLOC(1,3);
+  memcpy(nr_plmn_info->trackingAreaCode->buf, ((char*) &tmp2)+1, 3);
+  nr_plmn_info->trackingAreaCode->size = 3;
+  nr_plmn_info->trackingAreaCode->bits_unused = 0;
+
+  // connEstFailureControl
+  // TODO: add connEstFailureControl
+
+  //si-SchedulingInfo
+  /*sib1->si_SchedulingInfo = CALLOC(1,sizeof(struct NR_SI_SchedulingInfo));
+  asn_set_empty(&sib1->si_SchedulingInfo->schedulingInfoList.list);
+  sib1->si_SchedulingInfo->si_WindowLength = NR_SI_SchedulingInfo__si_WindowLength_s40;
+  struct NR_SchedulingInfo *schedulingInfo = CALLOC(1,sizeof(struct NR_SchedulingInfo));
+  schedulingInfo->si_BroadcastStatus = NR_SchedulingInfo__si_BroadcastStatus_broadcasting;
+  schedulingInfo->si_Periodicity = NR_SchedulingInfo__si_Periodicity_rf8;
+  asn_set_empty(&schedulingInfo->sib_MappingInfo.list);
+
+  NR_SIB_TypeInfo_t *sib_type3 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+  sib_type3->type = NR_SIB_TypeInfo__type_sibType3;
+  sib_type3->valueTag = CALLOC(1,sizeof(sib_type3->valueTag));
+  asn1cSeqAdd(&schedulingInfo->sib_MappingInfo.list,sib_type3);
+
+  NR_SIB_TypeInfo_t *sib_type5 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+  sib_type5->type = NR_SIB_TypeInfo__type_sibType5;
+  sib_type5->valueTag = CALLOC(1,sizeof(sib_type5->valueTag));
+  asn1cSeqAdd(&schedulingInfo->sib_MappingInfo.list,sib_type5);
+
+  NR_SIB_TypeInfo_t *sib_type4 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+  sib_type4->type = NR_SIB_TypeInfo__type_sibType4;
+  sib_type4->valueTag = CALLOC(1,sizeof(sib_type4->valueTag));
+  asn1cSeqAdd(&schedulingInfo->sib_MappingInfo.list,sib_type4);
+
+  NR_SIB_TypeInfo_t *sib_type2 = CALLOC(1,sizeof(e_NR_SIB_TypeInfo__type));
+  sib_type2->type = NR_SIB_TypeInfo__type_sibType2;
+  sib_type2->valueTag = CALLOC(1,sizeof(sib_type2->valueTag));
+  asn1cSeqAdd(&schedulingInfo->sib_MappingInfo.list,sib_type2);
+
+  asn1cSeqAdd(&sib1->si_SchedulingInfo->schedulingInfoList.list,schedulingInfo);*/
+
+  // servingCellConfigCommon
+  asn1cCalloc(sib1->servingCellConfigCommon,  ServCellCom);
+  NR_BWP_DownlinkCommon_t  *initialDownlinkBWP=&ServCellCom->downlinkConfigCommon.initialDownlinkBWP;
+  initialDownlinkBWP->genericParameters=
+    configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+
+  for(int i = 0; i< configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.count; i++) {
+    asn1cSequenceAdd(ServCellCom->downlinkConfigCommon.frequencyInfoDL.frequencyBandList.list,
+		     struct NR_NR_MultiBandInfo, nrMultiBandInfo);
+    nrMultiBandInfo->freqBandIndicatorNR = configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[i];
+  }
+
+  int scs_scaling0 = 1<<(configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing);
+  int scs_scaling  = scs_scaling0;
+  int scs_scaling2 = scs_scaling0;
+  if (configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA < 600000) {
+    scs_scaling = scs_scaling0*3;
+  }
+  if (configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA > 2016666) {
+    scs_scaling = scs_scaling0>>2;
+    scs_scaling2 = scs_scaling0>>2;
+  }
+  NR_ARFCN_ValueNR_t absoluteFrequencySSB = 0;
+  uint32_t absolute_diff = 0;	
+  if (RC.ss.mode == SS_SOFTMODEM)
+  {
+    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%ld ", __FUNCTION__, absoluteFrequencySSB);
+    absoluteFrequencySSB = *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
+    absolute_diff = absoluteFrequencySSB - configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
+  }
+  else
+  {
+    absolute_diff = (*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB -
+        configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+  }
+
+  /*TODO: */
+  sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = scs_scaling2 * (absolute_diff/(12*scs_scaling) - 10);
+
+  LOG_I(NR_RRC,"SIB1 freq: absoluteFrequencySSB %ld, absoluteFrequencyPointA %ld\n",
+                                    *configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+                                    configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+  LOG_I(NR_RRC,"SIB1 freq: absolute_diff %d, %d*(absolute_diff/(12*%d) - 10) %d\n",
+        absolute_diff,scs_scaling2,scs_scaling,(int)sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA);
+
+  for(int i = 0; i< configuration->scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.count; i++) {
+    asn1cSeqAdd(&ServCellCom->downlinkConfigCommon.frequencyInfoDL.scs_SpecificCarrierList.list,
+		     configuration->scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]);
+  }
+
+  initialDownlinkBWP->pdcch_ConfigCommon = 
+      configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon;
+  initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList = 
+       CALLOC(1,sizeof(struct NR_PDCCH_ConfigCommon__commonSearchSpaceList));
+
+  NR_SearchSpace_t *ss1 = rrc_searchspace_config(true, 1, 0);
+  asn1cSeqAdd(&initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list, ss1);
+
+  NR_SearchSpace_t *ss2 = rrc_searchspace_config(true, 2, 0);
+  asn1cSeqAdd(&initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list, ss2);
+
+  NR_SearchSpace_t *ss3 = rrc_searchspace_config(true, 3, 0);
+  asn1cSeqAdd(&initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList->list, ss3);
+
+  asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceSIB1,  0);
+  asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceOtherSystemInformation, 3);
+  asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->pagingSearchSpace, 2);
+  asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->ra_SearchSpace, 1);
+   
+  initialDownlinkBWP->pdsch_ConfigCommon = configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon;
+  ServCellCom->downlinkConfigCommon.bcch_Config.modificationPeriodCoeff = NR_BCCH_Config__modificationPeriodCoeff_n2;
+  ServCellCom->downlinkConfigCommon.pcch_Config.defaultPagingCycle = NR_PagingCycle_rf256;
+  ServCellCom->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present = NR_PCCH_Config__nAndPagingFrameOffset_PR_quarterT;
+  ServCellCom->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.choice.quarterT = 1;
+  ServCellCom->downlinkConfigCommon.pcch_Config.ns = NR_PCCH_Config__ns_one;
+
+  asn1cCalloc(ServCellCom->downlinkConfigCommon.pcch_Config.firstPDCCH_MonitoringOccasionOfPO,
+	      P0);
+  P0->present = NR_PCCH_Config__firstPDCCH_MonitoringOccasionOfPO_PR_sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT;
+
+  asn1cCalloc(P0->choice.sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT,
+	      Z8);
+  asn1cSequenceAdd(Z8->list,
+		   long,
+		   ZoneEight);
+  asn1cCallocOne(ZoneEight, 0);
+
+  asn1cCalloc(ServCellCom->uplinkConfigCommon, UL);
+  asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
+  for(int i = 0; i< configuration->scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.count; i++) {
+    asn1cSeqAdd(&UL->frequencyInfoUL.scs_SpecificCarrierList.list,
+		     configuration->scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[i]);
+  }
+
+  asn1cCallocOne(UL->frequencyInfoUL.p_Max, *configuration->scc->uplinkConfigCommon->frequencyInfoUL->p_Max);
+
+  UL->initialUplinkBWP.genericParameters = configuration->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+  UL->initialUplinkBWP.rach_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon;
+  UL->initialUplinkBWP.pusch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
+  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = null;
+
+  UL->initialUplinkBWP.pucch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon;
+
+  UL->timeAlignmentTimerCommon = NR_TimeAlignmentTimer_infinity;
+
+  ServCellCom->n_TimingAdvanceOffset = configuration->scc->n_TimingAdvanceOffset;
+
+  ServCellCom->ssb_PositionsInBurst.inOneGroup.buf = calloc(1, sizeof(uint8_t));
+  uint8_t bitmap8,temp_bitmap=0;
+  switch (configuration->scc->ssb_PositionsInBurst->present) {
+    case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_shortBitmap:
+      ServCellCom->ssb_PositionsInBurst.inOneGroup = configuration->scc->ssb_PositionsInBurst->choice.shortBitmap;
+      break;
+    case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_mediumBitmap:
+      ServCellCom->ssb_PositionsInBurst.inOneGroup = configuration->scc->ssb_PositionsInBurst->choice.mediumBitmap;
+      break;
+    /*
+    groupPresence: This field is present when maximum number of SS/PBCH blocks per half frame equals to 64 as defined in TS 38.213 [13], clause 4.1.
+                   The first/leftmost bit corresponds to the SS/PBCH index 0-7, the second bit corresponds to SS/PBCH block 8-15, and so on.
+                   Value 0 in the bitmap indicates that the SSBs according to inOneGroup are absent. Value 1 indicates that the SS/PBCH blocks are transmitted in accordance with inOneGroup.
+    inOneGroup: When maximum number of SS/PBCH blocks per half frame equals to 64 as defined in TS 38.213 [13], clause 4.1, all 8 bit are valid;
+                The first/ leftmost bit corresponds to the first SS/PBCH block index in the group (i.e., to SSB index 0, 8, and so on); the second bit corresponds to the second SS/PBCH block index in the group
+                (i.e., to SSB index 1, 9, and so on), and so on. Value 0 in the bitmap indicates that the corresponding SS/PBCH block is not transmitted while value 1 indicates that the corresponding SS/PBCH block is transmitted.
+    */
+    case NR_ServingCellConfigCommon__ssb_PositionsInBurst_PR_longBitmap:
+      ServCellCom->ssb_PositionsInBurst.inOneGroup.size = 1;
+      ServCellCom->ssb_PositionsInBurst.inOneGroup.bits_unused = 0;
+      ServCellCom->ssb_PositionsInBurst.groupPresence = calloc(1, sizeof(BIT_STRING_t));
+      ServCellCom->ssb_PositionsInBurst.groupPresence->size = 1;
+      ServCellCom->ssb_PositionsInBurst.groupPresence->bits_unused = 0;
+      ServCellCom->ssb_PositionsInBurst.groupPresence->buf = calloc(1, sizeof(uint8_t));
+      ServCellCom->ssb_PositionsInBurst.groupPresence->buf[0] = 0;
+      for (int i=0; i<8; i++){
+        bitmap8 = configuration->scc->ssb_PositionsInBurst->choice.longBitmap.buf[i];
+        if (bitmap8!=0){
+          if(temp_bitmap==0)
+            temp_bitmap = bitmap8;
+          else
+            AssertFatal(temp_bitmap==bitmap8,"For longBitmap the groups of 8 SSBs containing at least 1 transmitted SSB should be all the same\n");
+
+          ServCellCom->ssb_PositionsInBurst.inOneGroup.buf[0] = bitmap8;
+          ServCellCom->ssb_PositionsInBurst.groupPresence->buf[0] |= 1<<(7-i);
+        }
+      }
+      break;
+    default:
+      AssertFatal(false,"ssb_PositionsInBurst not present\n");
+      break;
+  }
+
+  ServCellCom->ssb_PeriodicityServingCell = *configuration->scc->ssb_periodicityServingCell;
+  if (configuration->scc->tdd_UL_DL_ConfigurationCommon) {
+    ServCellCom->tdd_UL_DL_ConfigurationCommon = CALLOC(1,sizeof(struct NR_TDD_UL_DL_ConfigCommon));
+    ServCellCom->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing = configuration->scc->tdd_UL_DL_ConfigurationCommon->referenceSubcarrierSpacing;
+    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern1 = configuration->scc->tdd_UL_DL_ConfigurationCommon->pattern1;
+    ServCellCom->tdd_UL_DL_ConfigurationCommon->pattern2 = configuration->scc->tdd_UL_DL_ConfigurationCommon->pattern2;
+  }
+  ServCellCom->ss_PBCH_BlockPower = configuration->scc->ss_PBCH_BlockPower;
+
+  // ims-EmergencySupport
+  // TODO: add ims-EmergencySupport
+
+  // eCallOverIMS-Support
+  // TODO: add eCallOverIMS-Support
+
+  // ue-TimersAndConstants
+  sib1->ue_TimersAndConstants = CALLOC(1,sizeof(struct NR_UE_TimersAndConstants));
+  sib1->ue_TimersAndConstants->t300 = NR_UE_TimersAndConstants__t300_ms400;
+  sib1->ue_TimersAndConstants->t301 = NR_UE_TimersAndConstants__t301_ms400;
+  sib1->ue_TimersAndConstants->t310 = NR_UE_TimersAndConstants__t310_ms2000;
+  sib1->ue_TimersAndConstants->n310 = NR_UE_TimersAndConstants__n310_n10;
+  sib1->ue_TimersAndConstants->t311 = NR_UE_TimersAndConstants__t311_ms3000;
+  sib1->ue_TimersAndConstants->n311 = NR_UE_TimersAndConstants__n311_n1;
+  sib1->ue_TimersAndConstants->t319 = NR_UE_TimersAndConstants__t319_ms400;
+
+  // uac-BarringInfo
+  /*sib1->uac_BarringInfo = CALLOC(1, sizeof(struct NR_SIB1__uac_BarringInfo));
+  NR_UAC_BarringInfoSet_t *nr_uac_BarringInfoSet = CALLOC(1, sizeof(NR_UAC_BarringInfoSet_t));
+  asn_set_empty(&sib1->uac_BarringInfo->uac_BarringInfoSetList);
+  nr_uac_BarringInfoSet->uac_BarringFactor = NR_UAC_BarringInfoSet__uac_BarringFactor_p95;
+  nr_uac_BarringInfoSet->uac_BarringTime = NR_UAC_BarringInfoSet__uac_BarringTime_s4;
+  nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.buf = CALLOC(1, 1);
+  nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.size = 1;
+  nr_uac_BarringInfoSet->uac_BarringForAccessIdentity.bits_unused = 1;
+  asn1cSeqAdd(&sib1->uac_BarringInfo->uac_BarringInfoSetList, nr_uac_BarringInfoSet);*/
+
+  // useFullResumeID
+  // TODO: add useFullResumeID
+
+  // lateNonCriticalExtension
+  // TODO: add lateNonCriticalExtension
+
+  // nonCriticalExtension
+  // TODO: add nonCriticalExtension
+
+  xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void*)sib1_message->message.choice.c1->choice.systemInformationBlockType1);
+
+  if(carrier->SIB1 == NULL) carrier->SIB1=(uint8_t *) malloc16(NR_MAX_SIB_LENGTH/8);
+  enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_DL_SCH_Message,
+                                   NULL,
+                                   (void *)sib1_message,
+                                   carrier->SIB1,
+                                   NR_MAX_SIB_LENGTH/8);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB1, NR_MAX_SIB_LENGTH/8);
+
+  AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+               enc_rval.failed_type->name, enc_rval.encoded);
+  AssertFatal(enc_rval.encoded <= NR_MAX_SIB_LENGTH, "ASN1 encoded length %zd bits. 3GPP TS 38.331 section 5.2.1 - The physical layer imposes a limit to the maximum size a SIB can take. The maximum SIB1 or SI message size is 2976 bits.\n", enc_rval.encoded);
+  if (enc_rval.encoded==-1) {
+    return(-1);
+  }
+
+  if (sib1->ue_TimersAndConstants != NULL)
+    RRM_FREE(sib1->ue_TimersAndConstants);
+
+  if (ServCellCom->tdd_UL_DL_ConfigurationCommon != NULL)
+    RRM_FREE(ServCellCom->tdd_UL_DL_ConfigurationCommon);
+
+  if (ServCellCom->ssb_PositionsInBurst.groupPresence != NULL)
+    RRM_FREE(ServCellCom->ssb_PositionsInBurst.groupPresence);
+
+  if (ZoneEight != NULL)
+    RRM_FREE(ZoneEight);
+
+  if (Z8 != NULL)
+    RRM_FREE(Z8);
+
+  if (P0 != NULL)
+    RRM_FREE(P0);
+
+  if (sib1->servingCellConfigCommon)
+    RRM_FREE(sib1->servingCellConfigCommon);
+  if (nr_plmn_info->trackingAreaCode->buf != NULL)
+    RRM_FREE(nr_plmn_info->trackingAreaCode->buf);
+
+  if (nr_plmn_info->trackingAreaCode != NULL)
+    RRM_FREE(nr_plmn_info->trackingAreaCode);
+
+  if (nr_plmn_info->cellIdentity.buf != NULL)
+    RRM_FREE(nr_plmn_info->cellIdentity.buf);
+
+  if (sib1->cellSelectionInfo != NULL)
+    RRM_FREE(sib1->cellSelectionInfo);
+
+  if (sib1_message->message.choice.c1->choice.systemInformationBlockType1 != NULL)
+    RRM_FREE(sib1_message->message.choice.c1->choice.systemInformationBlockType1);
+
+  if (sib1_message->message.choice.c1)
+    RRM_FREE(sib1_message->message.choice.c1);
+
+  if (sib1_message != NULL)
+    RRM_FREE(sib1_message);
+
+  return((enc_rval.encoded+7)/8);
+}
+
 uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                     gNB_RrcConfigurationReq *configuration) {
   asn_enc_rval_t enc_rval;
@@ -239,6 +706,8 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                enc_rval.failed_type->name, enc_rval.encoded);
   return((enc_rval.encoded+7)/8);
 }
+
+
 
 void do_SpCellConfig(gNB_RRC_INST *rrc,
                       struct NR_SpCellConfig  *spconfig){
@@ -837,42 +1306,6 @@ NR_RLC_BearerConfig_t *get_SRB_RLC_BearerConfig(long channelId,
   return rlc_BearerConfig;
 }
 
-static void nr_drb_config(struct NR_RLC_Config *rlc_Config, NR_RLC_Config_PR rlc_config_pr)
-{
-  switch (rlc_config_pr) {
-    case NR_RLC_Config_PR_um_Bi_Directional:
-      // RLC UM Bi-directional Bearer configuration
-      LOG_I(RLC, "RLC UM Bi-directional Bearer configuration selected \n");
-      rlc_Config->choice.um_Bi_Directional = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional));
-      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength =
-          calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength));
-      *rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
-      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength =
-          calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength));
-      *rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
-      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = NR_T_Reassembly_ms15;
-      break;
-    case NR_RLC_Config_PR_am:
-      // RLC AM Bearer configuration
-      rlc_Config->choice.am = calloc(1, sizeof(*rlc_Config->choice.am));
-      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength = calloc(1, sizeof(*rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength));
-      *rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength = NR_SN_FieldLengthAM_size18;
-      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit = NR_T_PollRetransmit_ms45;
-      rlc_Config->choice.am->ul_AM_RLC.pollPDU = NR_PollPDU_p64;
-      rlc_Config->choice.am->ul_AM_RLC.pollByte = NR_PollByte_kB500;
-      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold = NR_UL_AM_RLC__maxRetxThreshold_t32;
-      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength = calloc(1, sizeof(*rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength));
-      *rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength = NR_SN_FieldLengthAM_size18;
-      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly = NR_T_Reassembly_ms15;
-      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit = NR_T_StatusProhibit_ms15;
-      break;
-    default:
-      AssertFatal(false, "RLC config type %d not handled\n", rlc_config_pr);
-      break;
-  }
-  rlc_Config->present = rlc_config_pr;
-}
-
 NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR_RLC_Config_PR rlc_conf, long priority)
 {
   NR_RLC_BearerConfig_t *rlc_BearerConfig                  = calloc(1, sizeof(NR_RLC_BearerConfig_t));
@@ -904,82 +1337,8 @@ NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR
   return rlc_BearerConfig;
 }
 
-/* returns a default radio bearer config suitable for NSA etc */
-NR_RadioBearerConfig_t *get_default_rbconfig(int eps_bearer_id,
-                                             int rb_id,
-                                             e_NR_CipheringAlgorithm ciphering_algorithm,
-                                             e_NR_SecurityConfig__keyToUse key_to_use)
-{
-  NR_RadioBearerConfig_t *rbconfig = calloc(1, sizeof(*rbconfig));
-  rbconfig->srb_ToAddModList = NULL;
-  rbconfig->srb3_ToRelease = NULL;
-  rbconfig->drb_ToAddModList = calloc(1,sizeof(*rbconfig->drb_ToAddModList));
-  NR_DRB_ToAddMod_t *drb_ToAddMod = calloc(1,sizeof(*drb_ToAddMod));
-  drb_ToAddMod->cnAssociation = calloc(1,sizeof(*drb_ToAddMod->cnAssociation));
-  drb_ToAddMod->cnAssociation->present = NR_DRB_ToAddMod__cnAssociation_PR_eps_BearerIdentity;
-  drb_ToAddMod->cnAssociation->choice.eps_BearerIdentity= eps_bearer_id;
-  drb_ToAddMod->drb_Identity = rb_id;
-  drb_ToAddMod->reestablishPDCP = NULL;
-  drb_ToAddMod->recoverPDCP = NULL;
-  drb_ToAddMod->pdcp_Config = calloc(1,sizeof(*drb_ToAddMod->pdcp_Config));
-  asn1cCalloc(drb_ToAddMod->pdcp_Config->drb, drb);
-  asn1cCallocOne(drb->discardTimer, NR_PDCP_Config__drb__discardTimer_infinity);
-  asn1cCallocOne(drb->pdcp_SN_SizeUL, NR_PDCP_Config__drb__pdcp_SN_SizeUL_len18bits);
-  asn1cCallocOne(drb->pdcp_SN_SizeDL, NR_PDCP_Config__drb__pdcp_SN_SizeDL_len18bits);
-  drb->headerCompression.present = NR_PDCP_Config__drb__headerCompression_PR_notUsed;
-  drb->headerCompression.choice.notUsed = 0;
-  drb->integrityProtection = NULL;
-  drb->statusReportRequired = NULL;
-  drb->outOfOrderDelivery = NULL;
+void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGroupConfig_t *ue_context_mastercellGroup, int use_rlc_um_for_drb, uint8_t configure_srb, uint8_t bearer_id_start, uint8_t nb_bearers_to_setup, long *priority,const int CC_id) {
 
-  drb_ToAddMod->pdcp_Config->moreThanOneRLC = NULL;
-  asn1cCallocOne(drb_ToAddMod->pdcp_Config->t_Reordering, NR_PDCP_Config__t_Reordering_ms100);
-  drb_ToAddMod->pdcp_Config->ext1 = NULL;
-
-  asn1cSeqAdd(&rbconfig->drb_ToAddModList->list,drb_ToAddMod);
-
-  rbconfig->drb_ToReleaseList = NULL;
-
-  asn1cCalloc(rbconfig->securityConfig, secConf);
-  asn1cCalloc(secConf->securityAlgorithmConfig, secConfAlgo);
-  secConfAlgo->cipheringAlgorithm = ciphering_algorithm;
-  secConfAlgo->integrityProtAlgorithm = NULL;
-  asn1cCallocOne(secConf->keyToUse, key_to_use);
-  return rbconfig;
-}
-
-void fill_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
-                                NR_RLC_BearerConfig_t **rlc_rbconfig)
-{
-  /* the EPS bearer ID is arbitrary; the rb_id is 1/the first DRB, it needs to
-   * match the one in get_DRB_RLC_BearerConfig(). No ciphering is to be
-   * configured */
-  *rbconfig = get_default_rbconfig(10, 1, NR_CipheringAlgorithm_nea0, NR_SecurityConfig__keyToUse_master);
-  AssertFatal(*rbconfig != NULL, "get_default_rbconfig() failed\n");
-  /* LCID is 4 because the RLC layer requires it to be 3+rb_id; the rb_id 1 is
-   * common with get_default_rbconfig() (first RB). We pre-configure RLC UM
-   * Bi-directional, priority is 1 */
-  *rlc_rbconfig = get_DRB_RLC_BearerConfig(4, 1, NR_RLC_Config_PR_um_Bi_Directional, 1);
-  AssertFatal(*rlc_rbconfig != NULL, "get_DRB_RLC_BearerConfig() failed\n");
-}
-
-void free_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
-                                NR_RLC_BearerConfig_t **rlc_rbconfig)
-{
-  ASN_STRUCT_FREE(asn_DEF_NR_RadioBearerConfig, *rbconfig);
-  *rbconfig = NULL;
-  ASN_STRUCT_FREE(asn_DEF_NR_RLC_BearerConfig, *rlc_rbconfig);
-  *rlc_rbconfig = NULL;
-}
-
-void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
-                                NR_CellGroupConfig_t *ue_context_mastercellGroup,
-                                int use_rlc_um_for_drb,
-                                uint8_t configure_srb,
-                                NR_DRB_ToAddModList_t *drb_configList,
-                                long *priority,
-                                const int CC_id)
-{
   if (RC.ss.mode >= SS_SOFTMODEM) {
     /* code not used here. Just keep it here for future checking*/
     NR_RLC_BearerConfig_t *rlc_BearerConfig       = NULL;
@@ -1015,6 +1374,186 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
   }
 
   // DRB Configuration
+  for (int i = bearer_id_start; i < bearer_id_start + nb_bearers_to_setup; i++ ){
+    const NR_RLC_Config_PR rlc_conf = use_rlc_um_for_drb ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
+    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_DRB_RLC_BearerConfig(3 + i, i, rlc_conf, priority[i-1]);
+    asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+    asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
+  }
+}
+
+//TODO temp function (to remove once CSI meas config harmonization is done)
+void update_cqitables(struct NR_SetupRelease_PDSCH_Config *pdsch_Config,
+                     NR_CSI_MeasConfig_t *csi_MeasConfig) {
+  int nb_csi = csi_MeasConfig->csi_ReportConfigToAddModList->list.count;
+  for (int i = 0; i < nb_csi; i++) {
+    NR_CSI_ReportConfig_t *csirep = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[i];
+    if(csirep->cqi_Table) {
+      if(pdsch_Config->choice.setup->mcs_Table!=NULL)
+        *csirep->cqi_Table = NR_CSI_ReportConfig__cqi_Table_table2;
+      else
+        *csirep->cqi_Table = NR_CSI_ReportConfig__cqi_Table_table1;
+    }
+  }
+}
+
+void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
+                            const int uid,
+                            NR_UE_NR_Capability_t *uecap,
+                            const gNB_RrcConfigurationReq* configuration) {
+
+  NR_SpCellConfig_t *SpCellConfig = cellGroupConfig->spCellConfig;
+
+  if (SpCellConfig == NULL) return;
+
+  NR_ServingCellConfigCommon_t *scc = configuration ? configuration->scc : NULL;
+
+  if(scc) {
+
+    int curr_bwp = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
+    NR_UplinkConfig_t *uplinkConfig = SpCellConfig && SpCellConfig->spCellConfigDedicated ? SpCellConfig->spCellConfigDedicated->uplinkConfig : NULL;
+
+    uint8_t ul_max_layers = 1;
+    if (uecap &&
+        uecap->featureSets &&
+        uecap->featureSets->featureSetsUplinkPerCC &&
+        uecap->featureSets->featureSetsUplinkPerCC->list.count > 0) {
+      NR_FeatureSetUplinkPerCC_t *ul_feature_setup_per_cc = uecap->featureSets->featureSetsUplinkPerCC->list.array[0];
+      if (ul_feature_setup_per_cc->mimo_CB_PUSCH->maxNumberMIMO_LayersCB_PUSCH) {
+        switch (*ul_feature_setup_per_cc->mimo_CB_PUSCH->maxNumberMIMO_LayersCB_PUSCH) {
+          case NR_MIMO_LayersUL_twoLayers:
+            ul_max_layers = 2;
+            break;
+          case NR_MIMO_LayersUL_fourLayers:
+            ul_max_layers = 4;
+            break;
+          default:
+            ul_max_layers = 1;
+        }
+      }
+      ul_max_layers = min(ul_max_layers, configuration->pusch_AntennaPorts);
+      if (uplinkConfig->initialUplinkBWP->pusch_Config) {
+        NR_PUSCH_Config_t *pusch_Config = uplinkConfig->initialUplinkBWP->pusch_Config->choice.setup;
+        if (pusch_Config->maxRank == NULL) {
+          pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
+        }
+        *pusch_Config->maxRank = ul_max_layers;
+      }
+      if (uplinkConfig->pusch_ServingCellConfig == NULL) {
+        uplinkConfig->pusch_ServingCellConfig = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig));
+        uplinkConfig->pusch_ServingCellConfig->present = NR_SetupRelease_PUSCH_ServingCellConfig_PR_setup;
+        uplinkConfig->pusch_ServingCellConfig->choice.setup = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig->choice.setup));
+        uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1 = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1));
+        uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers));
+      }
+      *uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers = ul_max_layers;
+    }
+
+    long maxMIMO_Layers = uplinkConfig &&
+                                  uplinkConfig->pusch_ServingCellConfig &&
+                                  uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1 &&
+                                  uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers ?
+                              *uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers : 1;
+
+    // UL and SRS configuration
+    if (configuration->do_SRS && uplinkConfig && uplinkConfig->initialUplinkBWP) {
+      if (!uplinkConfig->initialUplinkBWP->srs_Config) {
+        uplinkConfig->initialUplinkBWP->srs_Config = calloc(1, sizeof(*uplinkConfig->initialUplinkBWP->srs_Config));
+      }
+      config_srs(scc,
+                 SpCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->srs_Config,
+                 uecap,
+                 curr_bwp,
+                 uid,
+                 0,
+                 maxMIMO_Layers,
+                 configuration->do_SRS);
+    }
+
+    // Set DL MCS table
+    NR_BWP_DownlinkDedicated_t *bwp_Dedicated = SpCellConfig->spCellConfigDedicated->initialDownlinkBWP;
+    set_dl_mcs_table(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,
+                     configuration->force_256qam_off ? NULL : uecap, bwp_Dedicated, scc);
+    struct NR_ServingCellConfig__downlinkBWP_ToAddModList *DL_BWP_list = SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList;
+    struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig->uplinkBWP_ToAddModList;
+    if (DL_BWP_list) {
+      for (int i=0; i<DL_BWP_list->list.count; i++){
+        NR_BWP_Downlink_t *bwp = DL_BWP_list->list.array[i];
+        int scs = bwp->bwp_Common->genericParameters.subcarrierSpacing;
+        set_dl_mcs_table(scs, configuration->force_256qam_off ? NULL : uecap, bwp->bwp_Dedicated, scc);
+      }
+    }
+    if (configuration->do_SRS && UL_BWP_list) {
+      for (int i=0; i<UL_BWP_list->list.count; i++) {
+        NR_BWP_Uplink_t *ul_bwp = UL_BWP_list->list.array[i];
+        int bwp_size = NRRIV2BW(ul_bwp->bwp_Common->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
+        if (ul_bwp->bwp_Dedicated->pusch_Config) {
+          NR_PUSCH_Config_t *pusch_Config = ul_bwp->bwp_Dedicated->pusch_Config->choice.setup;
+          if (pusch_Config->maxRank == NULL) {
+            pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
+          }
+          *pusch_Config->maxRank = ul_max_layers;
+        }
+        config_srs(scc,
+                   ul_bwp->bwp_Dedicated->srs_Config,
+                   uecap,
+                   bwp_size,
+                   uid,
+                   i+1,
+                   maxMIMO_Layers,
+                   configuration->do_SRS);
+      }
+    }
+    update_cqitables(bwp_Dedicated->pdsch_Config, SpCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup);
+  }
+}
+
+void fill_initial_cellGroupConfig(int uid,
+                                  NR_CellGroupConfig_t *cellGroupConfig,
+                                  const NR_ServingCellConfigCommon_t *scc,
+                                  const NR_ServingCellConfig_t *servingcellconfigdedicated,
+                                  const gNB_RrcConfigurationReq *configuration,
+                                  const int CC_id)
+{
+  NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
+  NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
+  
+  cellGroupConfig->cellGroupId = 0;
+
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    /* code not used here. Just keep it here for future checking*/
+    NR_RLC_BearerConfig_t *rlc_BearerConfig       = NULL;
+    NR_RLC_BearerConfig_t * ss_rlc_BearerConfig = NULL;
+    /*SRB1 SS RLC_BearerConfig */
+    int rbIndex = 1;
+    if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid){
+      cellGroupConfig->rlc_BearerToAddModList            = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+      rlc_BearerConfig                                                 = calloc(1, sizeof(NR_RLC_BearerConfig_t));
+      ss_rlc_BearerConfig = RC.NR_RB_Config[CC_id][rbIndex].RlcBearer;
+
+      fill_rb_RLC_BearerConfig(rbIndex, rlc_BearerConfig, ss_rlc_BearerConfig);
+      ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+    }
+  }else {  
+    /* Rlc Bearer Config */
+    /* TS38.331 9.2.1	Default SRB configurations */
+    cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_SRB_RLC_BearerConfig(1, 1, NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms1000);
+    asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+  }
+
+  cellGroupConfig->rlc_BearerToReleaseList = NULL;
+  cellGroupConfig->rlc_BearerToAddModList = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+
+  // RLC Bearer Config
+  // TS38.331 9.2.1 Default SRB configurations
+  if (configure_srb){
+    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_SRB_RLC_BearerConfig(2, 3, NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms5);
+    asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
+    asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
+  }
+
+  // DRB Configuration
   if (drb_configList != NULL) {
     for (int i = 0; i < drb_configList->list.count; ++i) {
       const NR_RLC_Config_PR rlc_conf = use_rlc_um_for_drb ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
@@ -1023,33 +1562,31 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
       asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
       asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
     }
+    mac_CellGroupConfig->bsr_Config                                         = calloc(1, sizeof(*mac_CellGroupConfig->bsr_Config));
+    mac_CellGroupConfig->bsr_Config->periodicBSR_Timer                      = NR_BSR_Config__periodicBSR_Timer_sf10;
+    mac_CellGroupConfig->bsr_Config->retxBSR_Timer                          = NR_BSR_Config__retxBSR_Timer_sf80;
+    mac_CellGroupConfig->tag_Config                                         = calloc(1, sizeof(*mac_CellGroupConfig->tag_Config));
+    mac_CellGroupConfig->tag_Config->tag_ToReleaseList = NULL;
+    mac_CellGroupConfig->tag_Config->tag_ToAddModList  = calloc(1,sizeof(*mac_CellGroupConfig->tag_Config->tag_ToAddModList));
+    struct NR_TAG *tag=calloc(1,sizeof(*tag));
+    tag->tag_Id             = 0;
+    tag->timeAlignmentTimer = NR_TimeAlignmentTimer_infinity;
+    asn1cSeqAdd(&mac_CellGroupConfig->tag_Config->tag_ToAddModList->list,tag);
+    set_phr_config(mac_CellGroupConfig);
   }
 }
 
-bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
-            rrc_gNB_ue_context_t      *ue_context_pP,
-            NR_CellGroupConfig_t *cellGroupConfig)
-{
-  int CC_id = ue_context_pP->ue_context.primaryCC_id;
-  bool update_flag = false;
-  if(RC.ss.mode < SS_SOFTMODEM){
-    return update_flag;
-  }
+  physicalCellGroupConfig                                                   = calloc(1,sizeof(*physicalCellGroupConfig));
+  physicalCellGroupConfig->p_NR_FR1                                         = NULL;
+  physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook                          = NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
+  cellGroupConfig->physicalCellGroupConfig                                  = physicalCellGroupConfig;
+  
+  cellGroupConfig->spCellConfig                                             = calloc(1,sizeof(*cellGroupConfig->spCellConfig));
 
-  if(cellGroupConfig && cellGroupConfig->rlc_BearerToAddModList){
-    for(int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
-      NR_RLC_BearerConfig_t * rlc_BearerConfig = cellGroupConfig->rlc_BearerToAddModList->list.array[i];
-      /* only check rlc_config as it is missing from TTCN */
-      if(!rlc_BearerConfig->rlc_Config && rlc_BearerConfig->servedRadioBearer){
-        int rbIndex = (rlc_BearerConfig->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)? rlc_BearerConfig->servedRadioBearer->choice.srb_Identity : (rlc_BearerConfig->servedRadioBearer->choice.drb_Identity +2);
-        if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid && RC.NR_RB_Config[CC_id][rbIndex].RlcBearer){
-          rlc_BearerConfig->rlc_Config = fill_rb_rlc_config(RC.NR_RB_Config[CC_id][rbIndex].RlcBearer->rlc_Config);
-          update_flag = true;
-        }
-      }
-    }
-  }
-  return update_flag;
+  fill_initial_SpCellConfig(uid,cellGroupConfig->spCellConfig,scc,servingcellconfigdedicated,configuration);
+  
+  cellGroupConfig->sCellToAddModList                                        = NULL;
+  cellGroupConfig->sCellToReleaseList                                       = NULL;
 }
 
 bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
@@ -1085,6 +1622,8 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 const uint8_t                transaction_id,
                 const uint8_t                *masterCellGroup,
                 int                          masterCellGroup_len,
+                const NR_ServingCellConfigCommon_t *scc,
+                const NR_ServingCellConfig_t        *servingcellconfigdedicated,
                 const gNB_RrcConfigurationReq *configuration,
                 const int                    CC_id)
 //------------------------------------------------------------------------------
@@ -1100,16 +1639,18 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
     NR_SRB_ToAddModList_t        **SRB_configList = &ue_p->SRB_configList;
 
+
+
     memset((void *)&dl_ccch_msg, 0, sizeof(NR_DL_CCCH_Message_t));
     dl_ccch_msg.message.present            = NR_DL_CCCH_MessageType_PR_c1;
     dl_ccch_msg.message.choice.c1          = CALLOC(1, sizeof(struct NR_DL_CCCH_MessageType__c1));
     dl_ccch_msg.message.choice.c1->present = NR_DL_CCCH_MessageType__c1_PR_rrcSetup;
-    dl_ccch_msg.message.choice.c1->choice.rrcSetup = CALLOC(1, sizeof(NR_RRCSetup_t));
+    dl_ccch_msg.message.choice.c1->choice.rrcSetup = calloc(1, sizeof(NR_RRCSetup_t));
 
     rrcSetup = dl_ccch_msg.message.choice.c1->choice.rrcSetup;
     rrcSetup->criticalExtensions.present = NR_RRCSetup__criticalExtensions_PR_rrcSetup;
     rrcSetup->rrc_TransactionIdentifier  = transaction_id;
-    rrcSetup->criticalExtensions.choice.rrcSetup = CALLOC(1, sizeof(NR_RRCSetup_IEs_t));
+    rrcSetup->criticalExtensions.choice.rrcSetup = calloc(1, sizeof(NR_RRCSetup_IEs_t));
     ie = rrcSetup->criticalExtensions.choice.rrcSetup;
 
     /****************************** radioBearerConfig ******************************/
@@ -1143,7 +1684,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     ue_p->masterCellGroup = decode_cellGroupConfig(masterCellGroup, masterCellGroup_len);
 
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
-      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, ue_p->masterCellGroup);
+      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
       xer_fprint(stdout, &asn_DEF_NR_DL_CCCH_Message, (void *)&dl_ccch_msg);
     }
 
@@ -1200,10 +1741,18 @@ uint8_t do_NR_SecurityModeCommand(
                                    buffer,
                                    100);
 
-  AssertFatal(enc_rval.encoded >0 , "ASN1 message encoding failed (%s, %lu)!\n",
-              enc_rval.failed_type->name, enc_rval.encoded);
-  ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_DCCH_Message,&dl_dcch_msg);
+  if(enc_rval.encoded == -1) {
+    LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
+          enc_rval.failed_type->name, enc_rval.encoded);
+    return -1;
+  }
+
   LOG_D(NR_RRC, "[gNB %d] securityModeCommand for UE %lx Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+
+  if (enc_rval.encoded==-1) {
+    LOG_E(NR_RRC, "[gNB %d] ASN1 : securityModeCommand encoding failed for UE %lx\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    return(-1);
+  }
 
   //  rrc_ue_process_ueCapabilityEnquiry(0,1000,&dl_dcch_msg.message.choice.c1.choice.ueCapabilityEnquiry,0);
   //  exit(-1);
@@ -1284,10 +1833,18 @@ uint8_t do_NR_SA_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
                                    buffer,
                                    100);
 
-  AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
-              enc_rval.failed_type->name, enc_rval.encoded);
+  if(enc_rval.encoded == -1) {
+    LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
+          enc_rval.failed_type->name, enc_rval.encoded);
+    return -1;
+  }
 
   LOG_D(NR_RRC, "[gNB %d] NR UECapabilityRequest for UE %lx Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+
+  if (enc_rval.encoded==-1) {
+    LOG_E(NR_RRC, "[gNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %lx\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    return(-1);
+  }
 
   return((enc_rval.encoded+7)/8);
 }
@@ -1391,7 +1948,10 @@ int16_t do_RRCReconfiguration(
     }
 
     if(cellGroupConfig!=NULL){
-      update_cellGroupConfig(cellGroupConfig, ue_context_pP->ue_context.gNB_ue_ngap_id, ue_context_pP ? ue_context_pP->ue_context.UE_Capability_nr : NULL, configuration);
+      update_cellGroupConfig(cellGroupConfig,
+                             ue_context_pP->local_uid,
+                             ue_context_pP ? ue_context_pP->ue_context.UE_Capability_nr : NULL,
+                             configuration);
 
       enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
                                        NULL,
@@ -1770,13 +2330,19 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
     }
   }
 
-  if (SRB1_config == NULL) {
-    // default SRB1 configuration
-    LOG_W(NR_RRC, "SRB1 configuration does not exist in SRB configuration list, use default\n");
-    /// SRB1
-    SRB1_config = CALLOC(1, sizeof(*SRB1_config));
-    SRB1_config->srb_Identity = 1;
-  }
+    if (SRB1_config == NULL) {
+      // default SRB1 configuration
+      LOG_W(NR_RRC,"SRB1 configuration does not exist in SRB configuration list, use default\n");
+      /// SRB1
+      SRB1_config = CALLOC(1, sizeof(*SRB1_config));
+      SRB1_config->srb_Identity = 1;
+    }
+
+    if (SRB2_config == NULL) {
+      LOG_W(NR_RRC,"SRB2 configuration does not exist in SRB configuration list\n");
+    } else {
+      asn1cSeqAdd(&(*SRB_configList2)->list, SRB2_config);
+    }
 
   if (SRB2_config == NULL) {
     LOG_W(NR_RRC, "SRB2 configuration does not exist in SRB configuration list\n");
@@ -1784,9 +2350,8 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
     asn1cSeqAdd(&(*SRB_configList2)->list, SRB2_config);
   }
 
-  if (*SRB_configList) {
-    free(*SRB_configList);
-  }
+    *SRB_configList = CALLOC(1, sizeof(LTE_SRB_ToAddModList_t));
+    asn1cSeqAdd(&(*SRB_configList)->list,SRB1_config);
 
   *SRB_configList = CALLOC(1, sizeof(NR_SRB_ToAddModList_t));
   asn1cSeqAdd(&(*SRB_configList)->list, SRB1_config);
@@ -1947,70 +2512,40 @@ NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
   return mc;
 }
 
-uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t *tmsi, size_t num_paging_record, ss_nr_paging_identity_t *paging_recordList) {
+uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t tmsi) {
   LOG_D(NR_RRC, "[gNB %d] do_NR_Paging start\n", Mod_id);
   NR_PCCH_Message_t pcch_msg;
-  memset((void *)&pcch_msg, 0, sizeof(NR_PCCH_Message_t));
-
-  pcch_msg.message.present = NR_PCCH_MessageType_PR_c1;
+  pcch_msg.message.present           = NR_PCCH_MessageType_PR_c1;
   asn1cCalloc(pcch_msg.message.choice.c1, c1);
   c1->present = NR_PCCH_MessageType__c1_PR_paging;
   c1->choice.paging = CALLOC(1, sizeof(NR_Paging_t));
-  c1->choice.paging->pagingRecordList = CALLOC(1, sizeof(*pcch_msg.message.choice.c1->choice.paging->pagingRecordList));
+  c1->choice.paging->pagingRecordList = CALLOC(
+      1, sizeof(*pcch_msg.message.choice.c1->choice.paging->pagingRecordList));
   c1->choice.paging->nonCriticalExtension = NULL;
   asn_set_empty(&c1->choice.paging->pagingRecordList->list);
   c1->choice.paging->pagingRecordList->list.count = 0;
 
-  if (num_paging_record) {
-    DevAssert(paging_recordList != NULL);
-
-    for (size_t i = 0; i < num_paging_record; i++) {
-      asn1cSequenceAdd(c1->choice.paging->pagingRecordList->list, NR_PagingRecord_t, paging_record_p);
-      if (paging_recordList[i].ue_paging_identity.presenceMask == NR_UE_PAGING_IDENTITY_NG_5G_S_TMSI) {
-        paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_ng_5G_S_TMSI;
-        paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.size = (paging_recordList[i].ue_paging_identity.choice.ng_5g_s_tmsi.length + 7) / 8;
-        paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.bits_unused = 0;
-        paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.buf = CALLOC(1, paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.size);
-        OCTET_STRING_TO_BIT_STRING((char *)paging_record_p->ue_Identity.choice.ng_5G_S_TMSI.buf, (char *)paging_recordList[i].ue_paging_identity.choice.ng_5g_s_tmsi.buffer, paging_recordList[i].ue_paging_identity.choice.ng_5g_s_tmsi.length);
-      } else if (paging_recordList[i].ue_paging_identity.presenceMask == NR_UE_PAGING_IDENTITY_FULL_I_RNTI) {
-        paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_fullI_RNTI;
-        paging_record_p->ue_Identity.choice.fullI_RNTI.size = (paging_recordList[i].ue_paging_identity.choice.full_i_rnti.length + 7) / 8;
-        paging_record_p->ue_Identity.choice.fullI_RNTI.bits_unused = 0;
-        paging_record_p->ue_Identity.choice.fullI_RNTI.buf = CALLOC(1, paging_record_p->ue_Identity.choice.fullI_RNTI.size);
-        OCTET_STRING_TO_BIT_STRING((char *)paging_record_p->ue_Identity.choice.fullI_RNTI.buf, (char *)paging_recordList[i].ue_paging_identity.choice.full_i_rnti.buffer, paging_recordList[i].ue_paging_identity.choice.full_i_rnti.length);
-      } else {
-        LOG_E(NR_RRC, "[gNB %d] in do_NR_Paging: invalid ue_paging_identity.presenceMask\n", Mod_id);
-        abort();
-      }
-      if (paging_recordList[i].bAccessTypePresent) {
-        paging_record_p->accessType = CALLOC(1, sizeof(*paging_record_p->accessType));
-        *paging_record_p->accessType = paging_recordList[i].access_type;
-      } else {
-        paging_record_p->accessType = NULL;
-      }
-    }
-  } else {
-    DevAssert(tmsi != NULL);
-    asn1cSequenceAdd(c1->choice.paging->pagingRecordList->list, NR_PagingRecord_t, paging_record_p);
-    /* convert ue_paging_identity_t to PagingUE_Identity_t */
-    paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_ng_5G_S_TMSI;
-    // set ng_5G_S_TMSI
-    INT32_TO_BIT_STRING(*tmsi, &paging_record_p->ue_Identity.choice.ng_5G_S_TMSI);
-  }
+  asn1cSequenceAdd(c1->choice.paging->pagingRecordList->list, NR_PagingRecord_t,
+                   paging_record_p);
+  /* convert ue_paging_identity_t to PagingUE_Identity_t */
+  paging_record_p->ue_Identity.present = NR_PagingUE_Identity_PR_ng_5G_S_TMSI;
+  // set ng_5G_S_TMSI
+  INT32_TO_BIT_STRING(tmsi, &paging_record_p->ue_Identity.choice.ng_5G_S_TMSI);
 
   /* add to list */
-  LOG_D(NR_RRC, "[gNB %d] do_NR_Paging paging_record: PagingRecordList.count %d\n", Mod_id, c1->choice.paging->pagingRecordList->list.count);
-  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_PCCH_Message, NULL, (void *)&pcch_msg, buffer, RRC_BUF_SIZE);
-  if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
-    if (enc_rval.encoded != -1) {
-      xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, (void *)&pcch_msg);
-    }
-  }
+  LOG_D(NR_RRC, "[gNB %d] do_Paging paging_record: PagingRecordList.count %d\n",
+        Mod_id, c1->choice.paging->pagingRecordList->list.count);
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(
+      &asn_DEF_NR_PCCH_Message, NULL, (void *)&pcch_msg, buffer, RRC_BUF_SIZE);
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_PCCH_Message, &pcch_msg);
-  if (enc_rval.encoded == -1) {
-    LOG_E(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
+  if(enc_rval.encoded == -1) {
+    LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
           enc_rval.failed_type->name, enc_rval.encoded);
     return -1;
+  }
+
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, (void *)&pcch_msg);
   }
 
   return((enc_rval.encoded+7)/8);

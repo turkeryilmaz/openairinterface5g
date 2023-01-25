@@ -36,9 +36,6 @@
 #include "nr_mac.h"
 #include "common/utils/nr/nr_common.h"
 
-#define NB_SRS_PERIOD         (18)
-static const uint16_t srs_period[NB_SRS_PERIOD] = { 0, 1, 2, 4, 5, 8, 10, 16, 20, 32, 40, 64, 80, 160, 320, 640, 1280, 2560};
-
 typedef enum {
   pusch_dmrs_pos0 = 0,
   pusch_dmrs_pos1 = 1,
@@ -51,6 +48,11 @@ typedef enum {
   pusch_len2 = 2
 } pusch_maxLength_t;
 
+typedef enum {
+  typeA = 0,
+  typeB = 1
+} mappingType_t;
+
 uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti);
 
 uint8_t get_BG(uint32_t A, uint16_t R);
@@ -59,13 +61,7 @@ uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t dl_nrarfcn);
 
 uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
 
-int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
-                       int dci_format,
-                       int dmrs_TypeA_Position,
-                       int NrOfSymbols,
-                       int startSymbol,
-                       mappingType_t mappingtype,
-                       int length);
+int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Position,int NrOfSymbols,int startSymbol,mappingType_t mappingtype,int length);
 
 int is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon,slot_t slotP);
 
@@ -84,22 +80,15 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       const uint8_t *nrOfLayers,
                                       uint32_t *val);
 
-NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type);
-
-NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type);
-
-NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type, int tda_index);
-
-NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda_index, int dmrs_typeA_pos,
-                              int mux_pattern, nr_rnti_type_t rnti_type, int coresetid, bool sib1);
-
-uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
+uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
+                     const NR_BWP_UplinkCommon_t *initialUplinkBWP,
+                     const NR_UE_DL_BWP_t *DL_BWP,
                      const NR_UE_UL_BWP_t *UL_BWP,
                      const NR_CellGroupConfig_t *cg,
                      dci_pdu_rel15_t *dci_pdu,
                      nr_dci_format_t format,
                      nr_rnti_type_t rnti_type,
-                     NR_ControlResourceSet_t *coreset,
+                     int controlResourceSetId,
                      int bwp_id,
                      int ss_type,
                      uint16_t cset0_bwp_size,
@@ -160,8 +149,6 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
                             uint8_t unpaired,
                             frequency_range_t);
 
-int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig, long transformPrecoder);
-
 uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
 
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
@@ -175,6 +162,23 @@ int32_t get_l_prime(uint8_t duration_in_symbols, uint8_t mapping_type, pusch_dmr
 
 uint8_t get_L_ptrs(uint8_t mcs1, uint8_t mcs2, uint8_t mcs3, uint8_t I_mcs, uint8_t mcs_table);
 uint8_t get_K_ptrs(uint32_t nrb0, uint32_t nrb1, uint32_t N_RB);
+
+uint32_t nr_compute_tbs(uint16_t Qm,
+                        uint16_t R,
+			uint16_t nb_rb,
+			uint16_t nb_symb_sch,
+			uint16_t nb_dmrs_prb,
+                        uint16_t nb_rb_oh,
+                        uint8_t tb_scaling,
+			uint8_t Nl);
+
+/** \brief Computes Q based on I_MCS PDSCH and table_idx for downlink. Implements MCS Tables from 38.214. */
+uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx);
+uint32_t nr_get_code_rate_dl(uint8_t Imcs, uint8_t table_idx);
+
+/** \brief Computes Q based on I_MCS PDSCH and table_idx for uplink. Implements MCS Tables from 38.214. */
+uint8_t nr_get_Qm_ul(uint8_t Imcs, uint8_t table_idx);
+uint32_t nr_get_code_rate_ul(uint8_t Imcs, uint8_t table_idx);
 
 uint32_t nr_compute_tbs(uint16_t Qm,
                         uint16_t R,

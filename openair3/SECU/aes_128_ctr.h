@@ -9,6 +9,8 @@
  *
  *      http://www.openairinterface.org/?page_id=698
  *
+ * Author and copyright: Laurent Thomas, open-cells.com
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,15 +21,14 @@
  *      contact@openairinterface.org
  */
 
-#ifndef AES_128_CTR_OAI_H
-#define AES_128_CTR_OAI_H
+#ifndef __E1AP_H_
+#define __E1AP_H_
 
-#include "aes_128.h"
-#include "common/utils/ds/byte_array.h"
-#include <endian.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <common/utils/LOG/log.h>
+#include "common/openairinterface5g_limits.h"
+#include <openair2/RRC/NR/MESSAGES/asn1_msg.h>
 
-void aes_128_ctr(const aes_128_t* k_iv, byte_array_t msg, size_t len_out, uint8_t out[len_out]);
-
+#include <E1AP_Cause.h>
+#include <E1AP_InitiatingMessage.h>
+#include <E1AP_E1AP-PDU.h>
 #endif

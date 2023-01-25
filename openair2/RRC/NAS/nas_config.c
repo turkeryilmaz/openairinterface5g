@@ -59,7 +59,6 @@ char *broadcastAddr ;
 void nas_getparams(void) {
   // this datamodel require this static because we partially keep data like baseNetAddress (malloc on a global)
   // but we loose the opther attributes in nasoptions between two calls if is is not static !
-  // clang-format off
   static paramdef_t nasoptions[] = {
     /*--------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
     /*                                            configuration parameters for netlink, includes network parameters when running in noS1 mode                             */

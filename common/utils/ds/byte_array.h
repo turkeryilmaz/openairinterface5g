@@ -16,27 +16,19 @@
  * limitations under the License.
  *-------------------------------------------------------------------------------
  * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      contact@openairinterface.org
+ *      conmnc_digit_lengtht@openairinterface.org
  */
 
-#ifndef BYTE_ARRAY_H_OAI
-#define BYTE_ARRAY_H_OAI
+#ifndef MAC_RRC_UL_H
+#define MAC_RRC_UL_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include "platform_types.h"
+#include "f1ap_messages_types.h"
 
-typedef struct {
-  size_t len;
-  uint8_t* buf;
-} byte_array_t;
+typedef void (*initial_ul_rrc_message_transfer_func_t)(module_id_t module_id, const f1ap_initial_ul_rrc_message_t *ul_rrc);
 
-typedef struct {
-  uint8_t buf[32];
-} byte_array_32_t;
+struct nr_mac_rrc_ul_if_s;
+void mac_rrc_ul_direct_init(struct nr_mac_rrc_ul_if_s *mac_rrc);
+void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc);
 
-byte_array_t copy_byte_array(byte_array_t src);
-void free_byte_array(byte_array_t ba);
-bool eq_byte_array(const byte_array_t* m0, const byte_array_t* m1);
-
-#endif
+#endif /* MAC_RRC_UL_H */

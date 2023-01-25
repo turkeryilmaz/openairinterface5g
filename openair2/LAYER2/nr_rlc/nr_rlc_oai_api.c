@@ -55,6 +55,84 @@ static int      nr_rlc_current_time_last_frame;
 static int      nr_rlc_current_time_last_subframe;
 
 
+void nr_rlc_bearer_init(NR_RLC_BearerConfig_t *RLC_BearerConfig, NR_RLC_BearerConfig__servedRadioBearer_PR rb_type){
+
+  RLC_BearerConfig->servedRadioBearer                      = calloc(1, sizeof(*RLC_BearerConfig->servedRadioBearer));
+  RLC_BearerConfig->reestablishRLC                         = calloc(1, sizeof(*RLC_BearerConfig->reestablishRLC));
+  RLC_BearerConfig->rlc_Config                             = calloc(1, sizeof(*RLC_BearerConfig->rlc_Config));
+  RLC_BearerConfig->mac_LogicalChannelConfig               = calloc(1, sizeof(*RLC_BearerConfig->mac_LogicalChannelConfig));
+
+  *RLC_BearerConfig->reestablishRLC                        = NR_RLC_BearerConfig__reestablishRLC_true;
+  if(rb_type == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
+    RLC_BearerConfig->logicalChannelIdentity                 = 4;
+    RLC_BearerConfig->servedRadioBearer->present             = NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity;
+    RLC_BearerConfig->servedRadioBearer->choice.drb_Identity = 1;
+  }
+  else{
+    RLC_BearerConfig->logicalChannelIdentity                 = 1;
+    RLC_BearerConfig->servedRadioBearer->present             = NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity;
+    RLC_BearerConfig->servedRadioBearer->choice.srb_Identity = 1;
+  }
+
+}
+
+void nr_rlc_bearer_init_ul_spec(struct NR_LogicalChannelConfig *mac_LogicalChannelConfig){
+
+  mac_LogicalChannelConfig->ul_SpecificParameters                              = calloc(1, sizeof(*mac_LogicalChannelConfig->ul_SpecificParameters));
+  mac_LogicalChannelConfig->ul_SpecificParameters->priority                    = 1;
+  mac_LogicalChannelConfig->ul_SpecificParameters->prioritisedBitRate          = NR_LogicalChannelConfig__ul_SpecificParameters__prioritisedBitRate_infinity;
+  mac_LogicalChannelConfig->ul_SpecificParameters->bucketSizeDuration          = NR_LogicalChannelConfig__ul_SpecificParameters__bucketSizeDuration_ms50;
+  mac_LogicalChannelConfig->ul_SpecificParameters->allowedServingCells         = NULL;
+  mac_LogicalChannelConfig->ul_SpecificParameters->allowedSCS_List             = NULL;
+  mac_LogicalChannelConfig->ul_SpecificParameters->maxPUSCH_Duration           = NULL;
+  mac_LogicalChannelConfig->ul_SpecificParameters->configuredGrantType1Allowed = NULL;
+
+  mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelGroup                = calloc(1,sizeof(*mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelGroup));
+  *mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelGroup               = 1;
+  mac_LogicalChannelConfig->ul_SpecificParameters->schedulingRequestID                = calloc(1,sizeof(*mac_LogicalChannelConfig->ul_SpecificParameters->schedulingRequestID));
+  *mac_LogicalChannelConfig->ul_SpecificParameters->schedulingRequestID               = 0;
+  mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelSR_Mask              = false;
+  mac_LogicalChannelConfig->ul_SpecificParameters->logicalChannelSR_DelayTimerApplied = false;
+  mac_LogicalChannelConfig->ul_SpecificParameters->bitRateQueryProhibitTimer          = NULL;
+
+}
+
+void nr_drb_config(struct NR_RLC_Config *rlc_Config, NR_RLC_Config_PR rlc_config_pr){
+
+  switch (rlc_config_pr){
+    case NR_RLC_Config_PR_um_Bi_Directional:
+      // RLC UM Bi-directional Bearer configuration
+      LOG_I(RLC, "RLC UM Bi-directional Bearer configuration selected \n");
+      rlc_Config->choice.um_Bi_Directional                            = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional));
+      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength  = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength));
+      *rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength  = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength));
+      *rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly    = NR_T_Reassembly_ms15;
+      break;
+    case NR_RLC_Config_PR_am:
+      // RLC AM Bearer configuration
+      rlc_Config->choice.am                             = calloc(1, sizeof(*rlc_Config->choice.am));
+      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength   = calloc(1, sizeof(*rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength));
+      *rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength  = NR_SN_FieldLengthAM_size18;
+      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit = NR_T_PollRetransmit_ms45;
+      rlc_Config->choice.am->ul_AM_RLC.pollPDU          = NR_PollPDU_p64;
+      rlc_Config->choice.am->ul_AM_RLC.pollByte         = NR_PollByte_kB500;
+      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold = NR_UL_AM_RLC__maxRetxThreshold_t32;
+      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength   = calloc(1, sizeof(*rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength));
+      *rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength  = NR_SN_FieldLengthAM_size18;
+      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly     = NR_T_Reassembly_ms15;
+      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit = NR_T_StatusProhibit_ms15;
+      break;
+    default:
+      AssertFatal(0, "RLC config type %d not handled\n", rlc_config_pr);
+      break;
+    }
+
+  rlc_Config->present = rlc_config_pr;
+
+}
+
 void mac_rlc_data_ind     (
   const module_id_t         module_idP,
   const rnti_t              rntiP,
@@ -904,7 +982,7 @@ static void add_drb_am(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
   int sn_field_length;
 
   if (!(drb_id >= 1 && drb_id <= MAX_DRBS_PER_UE)) {
-    LOG_E(RLC, "%s:%d:%s: fatal, bad srb id %d\n",
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
   }
@@ -980,7 +1058,7 @@ static void add_drb_um(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Be
   int t_reassembly;
 
   if (!(drb_id >= 1 && drb_id <= MAX_DRBS_PER_UE)) {
-    LOG_E(RLC, "%s:%d:%s: fatal, bad srb id %d\n",
+    LOG_E(RLC, "%s:%d:%s: fatal, bad drb id %d\n",
           __FILE__, __LINE__, __FUNCTION__, drb_id);
     exit(1);
   }
@@ -1076,10 +1154,18 @@ struct srb0_data {
 void deliver_sdu_srb0(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
                       char *buf, int size)
 {
-  struct srb0_data *s0 = (struct srb0_data *)deliver_sdu_data;
-  s0->send_initial_ul_rrc_message(s0->mac, s0->rnti, (unsigned char *)buf,
-                                  size, s0->rawUE);
-}
+  int rnti = ctxt_pP->rntiMaybeUEid;
+  int i;
+  int j;
+
+  if (/*ctxt_pP->enb_flag != 1 ||*/ ctxt_pP->module_id != 0 /*||
+      ctxt_pP->instance != 0 || ctxt_pP->eNB_index != 0 ||
+      ctxt_pP->brOption != 0 */) {
+    LOG_E(RLC, "%s: ctxt_pP not handled (%d %d %ld %d %d)\n", __FUNCTION__,
+          ctxt_pP->enb_flag , ctxt_pP->module_id, ctxt_pP->instance,
+          ctxt_pP->eNB_index,  ctxt_pP->brOption);
+    exit(1);
+  }
 
 void nr_rlc_activate_srb0(int rnti, struct gNB_MAC_INST_s *mac, void *rawUE,
                           void (*send_initial_ul_rrc_message)(
@@ -1099,6 +1185,66 @@ void nr_rlc_activate_srb0(int rnti, struct gNB_MAC_INST_s *mac, void *rawUE,
   srb0_data->mac       = mac;
   srb0_data->rnti      = rnti;
   srb0_data->rawUE     = rawUE;
+  srb0_data->send_initial_ul_rrc_message = send_initial_ul_rrc_message;
+
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
+  if (ue->srb0 != NULL) {
+    LOG_W(RLC, "SRB0 already exists for UE with RNTI 0x%x, do nothing\n", rnti);
+    free(srb0_data);
+    nr_rlc_manager_unlock(nr_rlc_ue_manager);
+    return;
+  }
+
+  nr_rlc_tm = new_nr_rlc_entity_tm(10000,
+                                   deliver_sdu_srb0, srb0_data);
+  nr_rlc_ue_add_srb_rlc_entity(ue, 0, nr_rlc_tm);
+
+  LOG_I(RLC, "activated srb0 for UE with RNTI 0x%x\n", rnti);
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
+}
+
+struct srb0_data {
+  int module_id;
+  int CC_id;
+  int rnti;
+  int uid;
+  void (*send_initial_ul_rrc_message)(module_id_t        module_id,
+                                      int                CC_id,
+                                      int                rnti,
+                                      int                uid,
+                                      const uint8_t      *sdu,
+                                      sdu_size_t         sdu_len);
+};
+
+void deliver_sdu_srb0(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
+                      char *buf, int size)
+{
+  struct srb0_data *s0 = (struct srb0_data *)deliver_sdu_data;
+  s0->send_initial_ul_rrc_message(s0->module_id, s0->CC_id, s0->rnti, s0->uid,
+                                  (unsigned char *)buf, size);
+}
+
+void nr_rlc_activate_srb0(int rnti, int module_id, int cc_id, int uid,
+                          void (*send_initial_ul_rrc_message)(
+                                    module_id_t        module_id,
+                                     int                CC_id,
+                                     int                rnti,
+                                     int                uid,
+                                     const uint8_t      *sdu,
+                                     sdu_size_t         sdu_len))
+{
+  nr_rlc_entity_t            *nr_rlc_tm;
+  nr_rlc_ue_t                *ue;
+  struct srb0_data           *srb0_data;
+
+  srb0_data = calloc(1, sizeof(struct srb0_data));
+  AssertFatal(srb0_data != NULL, "out of memory\n");
+
+  srb0_data->module_id = module_id;
+  srb0_data->CC_id     = cc_id;
+  srb0_data->rnti      = rnti;
+  srb0_data->uid       = uid;
   srb0_data->send_initial_ul_rrc_message = send_initial_ul_rrc_message;
 
   nr_rlc_manager_lock(nr_rlc_ue_manager);
@@ -1174,6 +1320,14 @@ rlc_op_status_t rrc_rlc_config_req   (
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
   return RLC_OP_STATUS_OK;
+}
+
+void nr_rlc_remove_ue(int rnti)
+{
+  LOG_W(RLC, "remove UE %x\n", rnti);
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  nr_rlc_manager_remove_ue(nr_rlc_ue_manager, rnti);
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
 
 void nr_rlc_remove_ue(int rnti)

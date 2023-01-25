@@ -350,11 +350,13 @@ static void rrc_M2AP_init_MCCH(
       RC.rrc[enb_mod_idP]->carrier[CC_id].MCCH_MESS_COUNTING[sync_area].Active = 1;
     }
 
-    rrc_mac_config_req_eNB_t tmp = {0};
-    tmp.CC_id = CC_id;
-    tmp.pmch_InfoList = &RC.rrc[enb_mod_idP]->carrier[CC_id].mcch_message->pmch_InfoList_r9;
-    tmp.mbms_AreaConfiguration = RC.rrc[enb_mod_idP]->carrier[CC_id].mcch_message;
-    rrc_mac_config_req_eNB(enb_mod_idP, &tmp);
+    if (NODE_IS_MONOLITHIC(rrc->node_type)) {
+      rrc_mac_config_req_eNB_t tmp = {0};
+      tmp.CC_id = CC_id;
+      tmp.pmch_InfoList = &RC.rrc[enb_mod_idP]->carrier[CC_id].mcch_message->pmch_InfoList_r9;
+      tmp.mbms_AreaConfiguration = RC.rrc[enb_mod_idP]->carrier[CC_id].mcch_message;
+      rrc_mac_config_req_eNB(enb_mod_idP, &tmp);
+    }
 
     return;
 }
@@ -594,16 +596,18 @@ static uint8_t rrc_M2AP_do_SIB1_MBMS_SIB13(
     return(-1);
   }
 
-  carrier->MBMS_flag = 1;
+ carrier->MBMS_flag =1;
 
-  rrc_mac_config_req_eNB_t tmp = {0};
-  tmp.CC_id = CC_id;
-  tmp.rnti = 0xfffd;
-  tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
-  tmp.MBMS_Flag = carrier->MBMS_flag;
-  tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
-  tmp.FeMBMS_Flag = carrier->FeMBMS_flag;
-  rrc_mac_config_req_eNB(Mod_id, &tmp);
+ if (NODE_IS_MONOLITHIC(rrc->node_type)) {
+   rrc_mac_config_req_eNB_t tmp = {0};
+   tmp.CC_id = CC_id;
+   tmp.rnti = 0xfffd;
+   tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
+   tmp.MBMS_Flag = carrier->MBMS_flag;
+   tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
+   tmp.FeMBMS_Flag = carrier->FeMBMS_flag;
+   rrc_mac_config_req_eNB(Mod_id, &tmp);
+ }
 
   RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB23 = ((enc_rval.encoded+7)/8);
  
@@ -849,13 +853,15 @@ static uint8_t rrc_M2AP_do_SIB23_SIB2(
     return(-1);
   }
 
-  carrier->MBMS_flag = 1;
+ carrier->MBMS_flag =1;
 
-  rrc_mac_config_req_eNB_t tmp = {0};
-  tmp.CC_id = CC_id;
-  tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
-  tmp.MBMS_Flag = carrier->MBMS_flag;
-  rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+ if (NODE_IS_MONOLITHIC(rrc->node_type)) {
+   rrc_mac_config_req_eNB_t tmp = {0};
+   tmp.CC_id = CC_id;
+   tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
+   tmp.MBMS_Flag = carrier->MBMS_flag;
+   rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+ }
 
   RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB23 = ((enc_rval.encoded+7)/8);
  
@@ -992,11 +998,13 @@ static uint8_t rrc_M2AP_do_SIB23_SIB13(
     return(-1);
   }
 
-  rrc_mac_config_req_eNB_t tmp = {0};
-  tmp.CC_id = CC_id;
-  tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
-  tmp.MBMS_Flag = carrier->MBMS_flag;
-  rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+ if (NODE_IS_MONOLITHIC(rrc->node_type)) {
+   rrc_mac_config_req_eNB_t tmp = {0};
+   tmp.CC_id = CC_id;
+   tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
+   tmp.MBMS_Flag = carrier->MBMS_flag;
+   rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+  }
 
   RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB23 = ((enc_rval.encoded+7)/8);
  
@@ -1239,14 +1247,16 @@ static uint8_t rrc_M2AP_do_SIB23_SIB2_SIB13(
     return(-1);
   }
 
-  carrier->MBMS_flag = 1;
+ carrier->MBMS_flag =1;
 
-  rrc_mac_config_req_eNB_t tmp = {0};
-  tmp.CC_id = CC_id;
-  tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
-  tmp.MBMS_Flag = carrier->MBMS_flag;
-  tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
-  rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+ if (NODE_IS_MONOLITHIC(rrc->node_type)) {
+   rrc_mac_config_req_eNB_t tmp = {0};
+   tmp.CC_id = CC_id;
+   tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
+   tmp.MBMS_Flag = carrier->MBMS_flag;
+   tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
+   rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+  }
 
   RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB23 = ((enc_rval.encoded+7)/8);
  

@@ -297,28 +297,53 @@ void config_common_ue(NR_UE_MAC_INST_t *mac,
       cfg->carrier_config.dl_grid_size[i] = 0;
       cfg->carrier_config.dl_k0[i] = 0;
     }
-  }
+    
+    uint32_t band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+    mac->frequency_range = band<100?FR1:FR2;
+    
+    frame_type_t frame_type = get_frame_type(*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0], *scc->ssbSubcarrierSpacing);
+    
+    // cell config
+    
+    cfg->cell_config.phy_cell_id = *scc->physCellId;
+    cfg->cell_config.frame_duplex_type = frame_type;
+    
+    // SSB config
+    cfg->ssb_config.ss_pbch_power = scc->ss_PBCH_BlockPower;
+    cfg->ssb_config.scs_common = *scc->ssbSubcarrierSpacing;
+    
+    // SSB Table config
+    int scs_scaling = 1<<(cfg->ssb_config.scs_common);
+    if (scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA < 600000)
+      scs_scaling = scs_scaling*3;
+    if (scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA > 2016666)
+      scs_scaling = scs_scaling>>2;
+    uint32_t absolute_diff = (*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB - scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
+    cfg->ssb_table.ssb_offset_point_a = absolute_diff/(12*scs_scaling) - 10;
+    cfg->ssb_table.ssb_period = *scc->ssb_periodicityServingCell;
 
-  struct NR_FrequencyInfoUL *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
-  bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                      *frequencyInfoUL->frequencyBandList->list.array[0],
-                                      frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-  cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(*frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1, bw_index);
-
-  int UL_pointA;
-  if (frequencyInfoUL->absoluteFrequencyPointA == NULL)
-    UL_pointA = frequencyInfoDL->absoluteFrequencyPointA;
-  else
-    UL_pointA = *frequencyInfoUL->absoluteFrequencyPointA;
-
-  cfg->carrier_config.uplink_frequency = from_nrarfcn(*frequencyInfoUL->frequencyBandList->list.array[0],
-                                                      *scc->ssbSubcarrierSpacing,
-                                                      UL_pointA) / 1000; // freq in kHz
-
-  for (int i = 0; i < 5; i++) {
-    if (i == frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing) {
-      cfg->carrier_config.ul_grid_size[i] = frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-      cfg->carrier_config.ul_k0[i] = frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->offsetToCarrier;
+    // NSA -> take ssb offset from SCS
+    cfg->ssb_table.ssb_subcarrier_offset = absolute_diff%(12*scs_scaling);
+    
+    switch (scc->ssb_PositionsInBurst->present) {
+    case 1 :
+      cfg->ssb_table.ssb_mask_list[0].ssb_mask = scc->ssb_PositionsInBurst->choice.shortBitmap.buf[0]<<24;
+      cfg->ssb_table.ssb_mask_list[1].ssb_mask = 0;
+      break;
+    case 2 :
+      cfg->ssb_table.ssb_mask_list[0].ssb_mask = ((uint32_t) scc->ssb_PositionsInBurst->choice.mediumBitmap.buf[0]) << 24;
+      cfg->ssb_table.ssb_mask_list[1].ssb_mask = 0;
+      break;
+    case 3 :
+      cfg->ssb_table.ssb_mask_list[0].ssb_mask = 0;
+      cfg->ssb_table.ssb_mask_list[1].ssb_mask = 0;
+      for (i=0; i<4; i++) {
+        cfg->ssb_table.ssb_mask_list[0].ssb_mask += (scc->ssb_PositionsInBurst->choice.longBitmap.buf[3-i]<<i*8);
+        cfg->ssb_table.ssb_mask_list[1].ssb_mask += (scc->ssb_PositionsInBurst->choice.longBitmap.buf[7-i]<<i*8);
+      }
+      break;
+    default:
+      AssertFatal(1==0,"SSB bitmap size value %d undefined (allowed values 1,2,3) \n", scc->ssb_PositionsInBurst->present);
     }
     else {
       cfg->carrier_config.ul_grid_size[i] = 0;
@@ -554,68 +579,27 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
   NR_UE_UL_BWP_t *UL_BWP = &mac->current_UL_BWP;
   NR_BWP_t dl_genericParameters = {0};
   NR_BWP_t ul_genericParameters = {0};
-  NR_BWP_DownlinkCommon_t *bwp_dlcommon = NULL;
-  NR_BWP_UplinkCommon_t *bwp_ulcommon = NULL;
-  DL_BWP->n_dl_bwp = 0;
-  UL_BWP->n_ul_bwp = 0;
 
   if(scc) {
     DL_BWP->bwp_id = 0;
     UL_BWP->bwp_id = 0;
-    bwp_dlcommon = &scc->downlinkConfigCommon.initialDownlinkBWP;
-    bwp_ulcommon = &scc->uplinkConfigCommon->initialUplinkBWP;
-    dl_genericParameters = bwp_dlcommon->genericParameters;
+    dl_genericParameters = scc->downlinkConfigCommon.initialDownlinkBWP.genericParameters;
     if(scc->uplinkConfigCommon)
       ul_genericParameters = scc->uplinkConfigCommon->initialUplinkBWP.genericParameters;
     else
-      ul_genericParameters = bwp_dlcommon->genericParameters;
-
-    DL_BWP->pdsch_Config = NULL;
-    if (bwp_dlcommon->pdsch_ConfigCommon)
-      DL_BWP->tdaList_Common = bwp_dlcommon->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
-    if (bwp_ulcommon->pusch_ConfigCommon) {
-      UL_BWP->tdaList_Common = bwp_ulcommon->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
-      UL_BWP->msg3_DeltaPreamble = bwp_ulcommon->pusch_ConfigCommon->choice.setup->msg3_DeltaPreamble;
-    }
-    if (bwp_ulcommon->pucch_ConfigCommon)
-      UL_BWP->pucch_ConfigCommon = bwp_ulcommon->pucch_ConfigCommon->choice.setup;
-    if (bwp_ulcommon->rach_ConfigCommon)
-      UL_BWP->rach_ConfigCommon = bwp_ulcommon->rach_ConfigCommon->choice.setup;
+      ul_genericParameters = scc->downlinkConfigCommon.initialDownlinkBWP.genericParameters;
   }
-
   if(cell_group_config) {
-    if (cell_group_config->physicalCellGroupConfig) {
-      DL_BWP->pdsch_HARQ_ACK_Codebook = &cell_group_config->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook;
-      UL_BWP->harq_ACK_SpatialBundlingPUCCH = cell_group_config->physicalCellGroupConfig->harq_ACK_SpatialBundlingPUCCH;
-    }
     if (cell_group_config->spCellConfig &&
         cell_group_config->spCellConfig->spCellConfigDedicated) {
       struct NR_ServingCellConfig *spCellConfigDedicated = cell_group_config->spCellConfig->spCellConfigDedicated;
-      UL_BWP->csi_MeasConfig = spCellConfigDedicated->csi_MeasConfig ? spCellConfigDedicated->csi_MeasConfig->choice.setup : NULL;
-      UL_BWP->pusch_servingcellconfig =
-          spCellConfigDedicated->uplinkConfig && spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig ? spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup : NULL;
-      DL_BWP->pdsch_servingcellconfig = spCellConfigDedicated->pdsch_ServingCellConfig ? spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup : NULL;
-
       if (spCellConfigDedicated->firstActiveDownlinkBWP_Id)
         DL_BWP->bwp_id = *spCellConfigDedicated->firstActiveDownlinkBWP_Id;
       if (spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id)
         UL_BWP->bwp_id = *spCellConfigDedicated->uplinkConfig->firstActiveUplinkBWP_Id;
 
-      if (mac->scc) {
-        bwp_dlcommon = mac->scc->downlinkConfigCommon->initialDownlinkBWP;
-        bwp_ulcommon = mac->scc->uplinkConfigCommon->initialUplinkBWP;
-      }
-      else if (mac->scc_SIB) {
-        bwp_dlcommon = &mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP;
-        bwp_ulcommon = &mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP;
-      }
-      else
-        AssertFatal(false, "Either SCC or SCC SIB should be non-NULL\n");
-
       NR_BWP_Downlink_t *bwp_downlink = NULL;
       const struct NR_ServingCellConfig__downlinkBWP_ToAddModList *bwpList = spCellConfigDedicated->downlinkBWP_ToAddModList;
-      if (bwpList)
-        DL_BWP->n_dl_bwp = bwpList->list.count;
       if (bwpList && DL_BWP->bwp_id > 0) {
         for (int i = 0; i < bwpList->list.count; i++) {
           bwp_downlink = bwpList->list.array[i];
@@ -624,21 +608,17 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
         }
         AssertFatal(bwp_downlink != NULL,"Couldn't find DLBWP corresponding to BWP ID %ld\n", DL_BWP->bwp_id);
         dl_genericParameters = bwp_downlink->bwp_Common->genericParameters;
-        DL_BWP->pdsch_Config = bwp_downlink->bwp_Dedicated->pdsch_Config->choice.setup;
-        DL_BWP->tdaList_Common = bwp_downlink->bwp_Common->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
       }
       else {
-        dl_genericParameters = bwp_dlcommon->genericParameters;
-        DL_BWP->pdsch_Config = spCellConfigDedicated->initialDownlinkBWP->pdsch_Config->choice.setup;
-        DL_BWP->tdaList_Common = bwp_dlcommon->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList;
+        if(mac->scc) {
+          dl_genericParameters = mac->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+        }
+        if(mac->scc_SIB) {
+          dl_genericParameters = mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP.genericParameters;
+        }
       }
-
-      UL_BWP->msg3_DeltaPreamble = bwp_ulcommon->pusch_ConfigCommon->choice.setup->msg3_DeltaPreamble;
-
       NR_BWP_Uplink_t *bwp_uplink = NULL;
       const struct NR_UplinkConfig__uplinkBWP_ToAddModList *ubwpList = spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList;
-      if (ubwpList)
-        UL_BWP->n_ul_bwp = ubwpList->list.count;
       if (ubwpList && UL_BWP->bwp_id > 0) {
         for (int i = 0; i < ubwpList->list.count; i++) {
           bwp_uplink = ubwpList->list.array[i];
@@ -647,26 +627,14 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
         }
         AssertFatal(bwp_uplink != NULL,"Couldn't find ULBWP corresponding to BWP ID %ld\n",UL_BWP->bwp_id);
         ul_genericParameters = bwp_uplink->bwp_Common->genericParameters;
-        UL_BWP->tdaList_Common = bwp_uplink->bwp_Common->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
-        UL_BWP->pusch_Config = bwp_uplink->bwp_Dedicated->pusch_Config->choice.setup;
-        UL_BWP->pucch_Config = bwp_uplink->bwp_Dedicated->pucch_Config->choice.setup;
-        UL_BWP->srs_Config = bwp_uplink->bwp_Dedicated->srs_Config->choice.setup;
-        UL_BWP->configuredGrantConfig = bwp_uplink->bwp_Dedicated->configuredGrantConfig ? bwp_uplink->bwp_Dedicated->configuredGrantConfig->choice.setup : NULL;
-        if (bwp_uplink->bwp_Common->pucch_ConfigCommon)
-          UL_BWP->pucch_ConfigCommon = bwp_uplink->bwp_Common->pucch_ConfigCommon->choice.setup;
-        if (bwp_uplink->bwp_Common->rach_ConfigCommon)
-          UL_BWP->rach_ConfigCommon = bwp_uplink->bwp_Common->rach_ConfigCommon->choice.setup;
       }
       else {
-        UL_BWP->tdaList_Common = bwp_ulcommon->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
-        UL_BWP->pusch_Config = spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pusch_Config->choice.setup;
-        UL_BWP->pucch_Config = spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup;
-        UL_BWP->srs_Config = spCellConfigDedicated->uplinkConfig->initialUplinkBWP->srs_Config->choice.setup;
-        UL_BWP->configuredGrantConfig =
-            spCellConfigDedicated->uplinkConfig->initialUplinkBWP->configuredGrantConfig ? spCellConfigDedicated->uplinkConfig->initialUplinkBWP->configuredGrantConfig->choice.setup : NULL;
-        ul_genericParameters = bwp_ulcommon->genericParameters;
-        if (bwp_ulcommon->rach_ConfigCommon)
-          UL_BWP->rach_ConfigCommon = bwp_ulcommon->rach_ConfigCommon->choice.setup;
+        if(mac->scc) {
+          ul_genericParameters = mac->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+        }
+        if(mac->scc_SIB) {
+          ul_genericParameters = mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.genericParameters;
+        }
       }
     }
     else
@@ -690,136 +658,111 @@ void configure_current_BWP(NR_UE_MAC_INST_t *mac,
                             NRRIV2PRBOFFSET(mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP.genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   UL_BWP->initial_BWPStart = mac->scc ? NRRIV2PRBOFFSET(mac->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE) :
                             NRRIV2PRBOFFSET(mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
-
 }
 
-void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs)
-{
-  int slots_per_frame = nr_slots_per_frame[scs];
-  LOG_I(NR_MAC, "Initializing dl and ul config_request. num_slots = %d\n", slots_per_frame);
-  mac->dl_config_request = calloc(slots_per_frame, sizeof(*mac->dl_config_request));
-  mac->ul_config_request = calloc(slots_per_frame, sizeof(*mac->ul_config_request));
-  for (int i = 0; i < slots_per_frame; i++)
-    pthread_mutex_init(&(mac->ul_config_request[i].mutex_ul_config), NULL);
-}
 
-void nr_rrc_mac_config_req_mib(module_id_t module_id,
-                               int cc_idP,
-                               NR_MIB_t *mib,
-                               bool sched_sib1)
+int nr_rrc_mac_config_req_ue(module_id_t module_id,
+                             int cc_idP,
+                             uint8_t gNB_index,
+                             NR_MIB_t *mibP,
+                             NR_ServingCellConfigCommonSIB_t *sccP,
+                             NR_CellGroupConfig_t *cell_group_config,
+                             NR_CellGroupConfig_t *scell_group_config)
 {
+
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  AssertFatal(mib, "MIB should not be NULL\n");
-  // initialize dl and ul config_request upon first reception of MIB
-  mac->mib = mib;    //  update by every reception
-  mac->phy_config.Mod_id = module_id;
-  mac->phy_config.CC_id = cc_idP;
-  mac->get_sib1 = sched_sib1;
-}
-
-void nr_rrc_mac_config_req_sib1(module_id_t module_id,
-                                int cc_idP,
-                                NR_ServingCellConfigCommonSIB_t *scc)
-{
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  AssertFatal(scc, "SIB1 SCC should not be NULL\n");
-  mac->scc_SIB = scc;
-  mac->nr_band = *scc->downlinkConfigCommon.frequencyInfoDL.frequencyBandList.list.array[0]->freqBandIndicatorNR;
-  config_common_ue_sa(mac, module_id, cc_idP);
-  configure_current_BWP(mac, scc, NULL);
-
-  // Setup the SSB to Rach Occasionsif (cell_group_config->spCellConfig) { mapping according to the config
-  build_ssb_to_ro_map(mac);
-  if (!get_softmodem_params()->emulate_l1)
-    mac->if_module->phy_config_request(&mac->phy_config);
-  mac->phy_config_request_sent = true;
-}
-
-void nr_rrc_mac_config_req_mcg(module_id_t module_id,
-                               int cc_idP,
-                               NR_CellGroupConfig_t *cell_group_config)
-{
-  LOG_I(MAC,"Applying CellGroupConfig from gNodeB\n");
-  AssertFatal(cell_group_config, "CellGroupConfig should not be NULL\n");
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  mac->cg = cell_group_config;
-  if (cell_group_config->spCellConfig)
-    mac->servCellIndex = cell_group_config->spCellConfig->servCellIndex ? *cell_group_config->spCellConfig->servCellIndex : 0;
-  else
-    mac->servCellIndex = 0;
-
-  mac->scheduling_info.periodicBSR_SF = MAC_UE_BSR_TIMER_NOT_RUNNING;
-  mac->scheduling_info.retxBSR_SF = MAC_UE_BSR_TIMER_NOT_RUNNING;
-  mac->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
-  LOG_D(MAC, "[UE %d]: periodic BSR %d (SF), retx BSR %d (SF)\n",
-        module_id,
-        mac->scheduling_info.periodicBSR_SF,
-        mac->scheduling_info.retxBSR_SF);
-
-  configure_current_BWP(mac, NULL, cell_group_config);
-  config_control_ue(mac);
-
   RA_config_t *ra = &mac->ra;
-  if (cell_group_config->spCellConfig && cell_group_config->spCellConfig->reconfigurationWithSync) {
-    LOG_A(NR_MAC, "Received the reconfigurationWithSync in %s\n", __FUNCTION__);
-    if (cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated) {
-      ra->rach_ConfigDedicated = cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink;
-    }
-    mac->scc = cell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon;
-    mac->nr_band = *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
-    if (mac->scc_SIB) {
-      ASN_STRUCT_FREE(asn_DEF_NR_ServingCellConfigCommonSIB, mac->scc_SIB);
-      mac->scc_SIB = NULL;
-    }
-    mac->state = UE_NOT_SYNC;
-    mac->ra.ra_state = RA_UE_IDLE;
-    mac->physCellId = *mac->scc->physCellId;
-    if (!get_softmodem_params()->emulate_l1) {
-      mac->synch_request.Mod_id = module_id;
-      mac->synch_request.CC_id = cc_idP;
-      mac->synch_request.synch_req.target_Nid_cell = mac->physCellId;
-      mac->if_module->synch_request(&mac->synch_request);
-    }
-    config_common_ue(mac, module_id, cc_idP);
-    mac->crnti = cell_group_config->spCellConfig->reconfigurationWithSync->newUE_Identity;
-    LOG_I(MAC, "Configuring CRNTI %x\n", mac->crnti);
+  fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
 
-    nr_ue_mac_default_configs(mac);
-    if (!get_softmodem_params()->emulate_l1) {
+  //  TODO do something FAPI-like P5 L1/L2 config interface in config_si, config_mib, etc.
+
+  if(mibP != NULL){
+    mac->mib = mibP;    //  update by every reception
+    mac->phy_config.Mod_id = module_id;
+    mac->phy_config.CC_id = cc_idP;
+  }
+  AssertFatal(scell_group_config == NULL || cell_group_config == NULL,
+              "both scell_group_config and cell_group_config cannot be non-NULL\n");
+
+  if (sccP != NULL) {
+
+    mac->scc_SIB = sccP;
+    LOG_D(NR_MAC, "In %s: Keeping ServingCellConfigCommonSIB\n", __FUNCTION__);
+    config_common_ue_sa(mac, module_id, cc_idP);
+    configure_current_BWP(mac, sccP, NULL);
+
+    int num_slots_ul = nr_slots_per_frame[mac->mib->subCarrierSpacingCommon];
+    if(cfg->cell_config.frame_duplex_type == TDD){
+      num_slots_ul = mac->scc_SIB->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
+      if (mac->scc_SIB->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols > 0) {
+        num_slots_ul++;
+      }
+    }
+    LOG_I(NR_MAC, "Initializing ul_config_request. num_slots_ul = %d\n", num_slots_ul);
+    mac->ul_config_request = (fapi_nr_ul_config_request_t *)calloc(num_slots_ul, sizeof(fapi_nr_ul_config_request_t));
+    for (int i=0; i<num_slots_ul; i++)
+      pthread_mutex_init(&(mac->ul_config_request[i].mutex_ul_config), NULL);
+    // Setup the SSB to Rach Occasionsif (cell_group_config->spCellConfig) { mapping according to the config
+    build_ssb_to_ro_map(mac);//->scc, mac->phy_config.config_req.cell_config.frame_duplex_type);
+    if (!get_softmodem_params()->emulate_l1)
       mac->if_module->phy_config_request(&mac->phy_config);
-      mac->phy_config_request_sent = true;
+  }
+  if(scell_group_config != NULL ){
+    mac->cg = scell_group_config;
+    mac->servCellIndex = *scell_group_config->spCellConfig->servCellIndex;
+    if (scell_group_config->spCellConfig->reconfigurationWithSync) {
+      if (scell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated) {
+        ra->rach_ConfigDedicated = scell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink;
+      }
+      mac->scc = scell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon;
+      mac->physCellId = *mac->scc->physCellId;
+      config_common_ue(mac,module_id,cc_idP);
+      mac->crnti = scell_group_config->spCellConfig->reconfigurationWithSync->newUE_Identity;
+      LOG_I(MAC,"Configuring CRNTI %x\n",mac->crnti);
     }
-
+    configure_current_BWP(mac, NULL, scell_group_config);
+    config_control_ue(mac);
     // Setup the SSB to Rach Occasions mapping according to the config
     build_ssb_to_ro_map(mac);
   }
-}
+  else if (cell_group_config != NULL ){
+    LOG_I(MAC,"Applying CellGroupConfig from gNodeB\n");
+    mac->cg = cell_group_config;
+    if (cell_group_config->spCellConfig)
+      mac->servCellIndex = cell_group_config->spCellConfig->servCellIndex ? *cell_group_config->spCellConfig->servCellIndex : 0;
+    else
+      mac->servCellIndex = 0;
 
-void nr_rrc_mac_config_req_scg(module_id_t module_id,
-                               int cc_idP,
-                               NR_CellGroupConfig_t *scell_group_config)
-{
+    mac->scheduling_info.periodicBSR_SF = MAC_UE_BSR_TIMER_NOT_RUNNING;
+    mac->scheduling_info.retxBSR_SF = MAC_UE_BSR_TIMER_NOT_RUNNING;
+    mac->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
+    LOG_D(MAC, "[UE %d]: periodic BSR %d (SF), retx BSR %d (SF)\n",
+          module_id,
+          mac->scheduling_info.periodicBSR_SF,
+          mac->scheduling_info.retxBSR_SF);
 
-  NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
-  RA_config_t *ra = &mac->ra;
+    configure_current_BWP(mac, NULL, cell_group_config);
+    config_control_ue(mac);
 
-  AssertFatal(scell_group_config, "scell_group_config cannot be NULL\n");
+    if (get_softmodem_params()->nsa) {
+      if (cell_group_config->spCellConfig && cell_group_config->spCellConfig->reconfigurationWithSync) {
+        if (cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated) {
+          ra->rach_ConfigDedicated = cell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink;
+        }
+        mac->scc = cell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon;
+        int num_slots = mac->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSlots;
+        if (mac->scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofUplinkSymbols > 0) {
+          num_slots++;
+        }
+        mac->ul_config_request = calloc(num_slots, sizeof(*mac->ul_config_request));
+        config_common_ue(mac,module_id,cc_idP);
+        mac->crnti = cell_group_config->spCellConfig->reconfigurationWithSync->newUE_Identity;
+        LOG_I(MAC,"Configuring CRNTI %x\n",mac->crnti);
+      }
 
-  mac->cg = scell_group_config;
-  mac->servCellIndex = *scell_group_config->spCellConfig->servCellIndex;
-  if (scell_group_config->spCellConfig->reconfigurationWithSync) {
-    if (scell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated) {
-      ra->rach_ConfigDedicated = scell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink;
+      // Setup the SSB to Rach Occasions mapping according to the config
+      build_ssb_to_ro_map(mac);
     }
-    mac->scc = scell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon;
-    mac->nr_band = *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
-    mac->physCellId = *mac->scc->physCellId;
-    config_common_ue(mac,module_id,cc_idP);
-    mac->crnti = scell_group_config->spCellConfig->reconfigurationWithSync->newUE_Identity;
-    LOG_I(MAC,"Configuring CRNTI %x\n",mac->crnti);
   }
-  configure_current_BWP(mac, NULL, scell_group_config);
-  config_control_ue(mac);
-  // Setup the SSB to Rach Occasions mapping according to the config
-  build_ssb_to_ro_map(mac);
+  return 0;
 }

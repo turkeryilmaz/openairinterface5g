@@ -40,13 +40,93 @@
 
 #include <executables/softmodem-common.h>
 
+// Implementation of 6.2.4 Configured ransmitted power
+// 3GPP TS 38.101-1 version 16.5.0 Release 16
+// -
+// The UE is allowed to set its configured maximum output power PCMAX,f,c for carrier f of serving cell c in each slot.
+// The configured maximum output power PCMAX,f,c is set within the following bounds: PCMAX_L,f,c <=  PCMAX,f,c <=  PCMAX_H,f,c
+// -
+// Measurement units:
+// - p_max:              dBm
+// - delta_TC_c:         dB
+// - P_powerclass:       dBm
+// - delta_P_powerclass: dB
+// - MPR_c:              dB
+// - delta_MPR_c:        dB
+// - delta_T_IB_c        dB
+// - delta_rx_SRS        dB
+// note:
+// - Assuming:
+// -- Powerclass 3 capable UE (which is default power class unless otherwise stated)
+// -- Maximum power reduction (MPR_c) for power class 3, QPSK, inner RB allocations
+// -- no additional MPR (A_MPR_c)
+// todo:
+// - in current implementation delta_P_powerclass is not handling power classes different from 3
+long nr_get_Pcmax(module_id_t mod_id){
+
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  uint32_t band = (mac->scc!=NULL) ? *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
+    *mac->scc_SIB->downlinkConfigCommon.frequencyInfoDL.frequencyBandList.list.array[0]->freqBandIndicatorNR;
+  NR_P_Max_t p_max           = 0;
+  uint8_t P_powerclass       = 23;
+  uint8_t delta_P_powerclass = 0;
+  uint8_t MPR_c              = 1.5;
+  uint8_t delta_MPR_c        = 0;
+  uint8_t A_MPR_c            = 0;
+  uint8_t delta_T_IB_c       = 0;
+  uint8_t delta_TC_c         = 0;
+  uint8_t delta_rx_SRS       = 0;
+  uint8_t P_MPR_c            = 0;
+  long P_cmax_l              = 0;
+  long P_cmax_h              = 0;
+  long P_cmax                = 0;
+
+  if (band == 28 && mac->phy_config.config_req.carrier_config.uplink_bandwidth == 30){
+    delta_MPR_c = 0.5;
+  }
+
+  if (mac->cg && mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->ext1){
+    if (*mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->ext1->powerBoostPi2BPSK == 1){
+      // TbD: assuming power class 3 capable UE operating in TDD bands n40, n41, n77, n78, and n79 with Pi/2 BPSK modulation
+      delta_P_powerclass = -3;
+      p_max += 3;
+    }
+  }
+
+  NR_P_Max_t *p_Max = (mac->scc!=NULL) ? mac->scc->uplinkConfigCommon->frequencyInfoUL->p_Max : mac->scc_SIB->uplinkConfigCommon->frequencyInfoUL.p_Max;
+  if (p_Max){
+
+    p_max += *p_Max;
+
+    LOG_D(MAC, "In %s maximum UL transmission power p_max is %ld dBm \n", __FUNCTION__, p_max);
+
+    P_cmax_l = min(p_max - delta_TC_c, (P_powerclass - delta_P_powerclass) - max(max(MPR_c + delta_MPR_c, A_MPR_c) + delta_T_IB_c + delta_TC_c + delta_rx_SRS, P_MPR_c));
+
+    P_cmax_h = min(p_max, P_powerclass - delta_P_powerclass);
+
+  } else {
+
+    P_cmax_l = (P_powerclass - delta_P_powerclass) - max(max(MPR_c + delta_MPR_c, A_MPR_c) + delta_T_IB_c + delta_TC_c + delta_rx_SRS, P_MPR_c);
+
+    P_cmax_h = P_powerclass - delta_P_powerclass;
+
+  }
+
+  P_cmax = (P_cmax_h + P_cmax_l) / 2;
+
+  LOG_D(MAC, "In %s configured maximum output power:  %ld dBm <= PCMAX %ld dBm <= %ld dBm \n", __FUNCTION__, P_cmax_l, P_cmax, P_cmax_h);
+
+  return P_cmax;
+
+}
+
 int16_t get_prach_tx_power(module_id_t mod_id) {
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   RA_config_t *ra = &mac->ra;
-  int16_t pathloss = compute_nr_SSB_PL(mac, mac->ssb_measurements.ssb_rsrp_dBm);
+  int16_t pathloss = compute_nr_SSB_PL(mac, mac->phy_measurements.ssb_rsrp_dBm);
   int16_t ra_preamble_rx_power = (int16_t)(ra->prach_resources.ra_PREAMBLE_RECEIVED_TARGET_POWER - pathloss + 30);
-  return min(ra->prach_resources.RA_PCMAX, ra_preamble_rx_power);
+  return min(nr_get_Pcmax(mod_id), ra_preamble_rx_power);
 
 }
 
@@ -102,13 +182,13 @@ void init_RA(module_id_t mod_id,
       commonSearchSpaceList = mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP.pdcch_ConfigCommon->choice.setup->commonSearchSpaceList;
       ss_id = *ra_ss;
     }
-  }
-  if (ss_id < 0) {
-    if (mac->current_DL_BWP.bwp_id>0) {
-      ra_ss = mac->DLbwp[mac->current_DL_BWP.bwp_id-1]->bwp_Common->pdcch_ConfigCommon->choice.setup->ra_SearchSpace;
-      if (ra_ss) {
-        commonSearchSpaceList = mac->DLbwp[mac->current_DL_BWP.bwp_id-1]->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList;
-        ss_id = *ra_ss;
+    if (ss_id < 0) {
+      if (mac->current_DL_BWP.bwp_id>0) {
+        ra_ss = mac->DLbwp[mac->current_DL_BWP.bwp_id-1]->bwp_Common->pdcch_ConfigCommon->choice.setup->ra_SearchSpace;
+        if (ra_ss) {
+          commonSearchSpaceList = mac->DLbwp[mac->current_DL_BWP.bwp_id-1]->bwp_Common->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList;
+          ss_id = *mac->DLbwp[mac->current_DL_BWP.bwp_id-1]->bwp_Common->pdcch_ConfigCommon->choice.setup->ra_SearchSpace;
+        }
       }
     }
   }
@@ -325,8 +405,8 @@ int nr_get_Po_NOMINAL_PUSCH(NR_PRACH_RESOURCES_t *prach_resources, module_id_t m
   return receivedTargerPower;
 }
 
-void ssb_rach_config(RA_config_t *ra, NR_PRACH_RESOURCES_t *prach_resources, NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon)
-{
+void ssb_rach_config(RA_config_t *ra, NR_PRACH_RESOURCES_t *prach_resources, NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon){
+
   // Determine the SSB to RACH mapping ratio
   // =======================================
 
@@ -513,28 +593,28 @@ void ra_preambles_config(NR_PRACH_RESOURCES_t *prach_resources, NR_UE_MAC_INST_t
     if(ra->ra_PreambleIndex < 0 || ra->ra_PreambleIndex > 63) {
       if (noGroupB) {
         // use Group A preamble
-        ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r(&seed) % ra->cb_preambles_per_ssb);
+        ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r((unsigned int *)seed) % ra->cb_preambles_per_ssb);
         ra->RA_usedGroupA = 1;
       } else if ((ra->Msg3_size < messageSizeGroupA) && (dl_pathloss > PLThreshold)) {
         // Group B is configured and RA preamble Group A is used
         // - todo add condition on CCCH_sdu_size for initiation by CCCH
-        ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r(&seed) % sizeOfRA_PreamblesGroupA);
+        ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r((unsigned int *)seed) % sizeOfRA_PreamblesGroupA);
         ra->RA_usedGroupA = 1;
       } else {
         // Group B preamble is configured and used
         // the first sizeOfRA_PreamblesGroupA RA preambles belong to RA Preambles Group A
         // the remaining belong to RA Preambles Group B
-        ra->ra_PreambleIndex = ra->starting_preamble_nb + sizeOfRA_PreamblesGroupA + (rand_r(&seed) % (ra->cb_preambles_per_ssb - sizeOfRA_PreamblesGroupA));
+        ra->ra_PreambleIndex = ra->starting_preamble_nb + sizeOfRA_PreamblesGroupA + (rand_r((unsigned int *)seed) % (ra->cb_preambles_per_ssb - sizeOfRA_PreamblesGroupA));
         ra->RA_usedGroupA = 0;
       }
     }
   } else { // Msg3 is being retransmitted
     if (ra->RA_usedGroupA && noGroupB) {
-      ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r(&seed) % ra->cb_preambles_per_ssb);
+      ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r((unsigned int *)seed) % ra->cb_preambles_per_ssb);
     } else if (ra->RA_usedGroupA && !noGroupB){
-      ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r(&seed) % sizeOfRA_PreamblesGroupA);
+      ra->ra_PreambleIndex = ra->starting_preamble_nb + (rand_r((unsigned int *)seed) % sizeOfRA_PreamblesGroupA);
     } else {
-      ra->ra_PreambleIndex = ra->starting_preamble_nb + sizeOfRA_PreamblesGroupA + (rand_r(&seed) % (ra->cb_preambles_per_ssb - sizeOfRA_PreamblesGroupA));
+      ra->ra_PreambleIndex = ra->starting_preamble_nb + sizeOfRA_PreamblesGroupA + (rand_r((unsigned int *)seed) % (ra->cb_preambles_per_ssb - sizeOfRA_PreamblesGroupA));
     }
   }
 }
@@ -601,7 +681,7 @@ void nr_get_prach_resources(module_id_t mod_id,
   } else {
     /* TODO: This controls the tx_power of UE and the ramping procedure of RA of UE. Later we
              can abstract this, perhaps in the proxy. But for the time being lets leave it as below. */
-    int16_t dl_pathloss = !get_softmodem_params()->emulate_l1 ? compute_nr_SSB_PL(mac, mac->ssb_measurements.ssb_rsrp_dBm) : 0;
+    int16_t dl_pathloss = !get_softmodem_params()->emulate_l1 ? compute_nr_SSB_PL(mac, mac->phy_measurements.ssb_rsrp_dBm) : 0;
     ssb_rach_config(ra, prach_resources, nr_rach_ConfigCommon);
     ra_preambles_config(prach_resources, mac, dl_pathloss);
     LOG_D(MAC, "[RAPROC] - Selected RA preamble index %d for contention-based random access procedure... \n", ra->ra_PreambleIndex);
@@ -811,7 +891,7 @@ uint8_t nr_ue_get_rach(module_id_t mod_id,
 
         if(ra->cfra) {
           // Reset RA_active flag: it disables Msg3 retransmission (8.3 of TS 38.213)
-          nr_ra_succeeded(mod_id, gNB_id, frame, nr_slot_tx);
+          nr_ra_succeeded(mod_id, frame, nr_slot_tx);
         }
 
       } else if (ra->RA_window_cnt == 0 && !ra->RA_RAPID_found) {
@@ -980,7 +1060,7 @@ void nr_ra_failed(uint8_t mod_id, uint8_t CC_id, NR_PRACH_RESOURCES_t *prach_res
     LOG_D(MAC, "In %s: [UE %d][%d.%d] Maximum number of RACH attempts (%d) reached, selecting backoff time...\n",
           __FUNCTION__, mod_id, frame, slot, ra->preambleTransMax);
 
-    ra->RA_backoff_cnt = rand_r(&seed) % (prach_resources->RA_PREAMBLE_BACKOFF + 1);
+    ra->RA_backoff_cnt = rand_r((unsigned int *)seed) % (prach_resources->RA_PREAMBLE_BACKOFF + 1);
     prach_resources->RA_PREAMBLE_TRANSMISSION_COUNTER = 1;
     prach_resources->RA_PREAMBLE_POWER_RAMPING_STEP += 2; // 2 dB increment
     prach_resources->ra_PREAMBLE_RECEIVED_TARGET_POWER = nr_get_Po_NOMINAL_PUSCH(prach_resources, mod_id, CC_id);

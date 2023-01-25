@@ -73,8 +73,8 @@ typedef struct nr_pdcp_entity_t {
 
   /* functions provided by the PDCP module */
   void (*recv_pdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size);
-  int (*process_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
-                     int sdu_id, char *pdu_buffer, int pdu_max_size);
+  void (*recv_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
+                   int sdu_id);
   void (*delete_entity)(struct nr_pdcp_entity_t *entity);
   void (*get_stats)(struct nr_pdcp_entity_t *entity, nr_pdcp_statistics_t *out);
 
@@ -186,5 +186,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     int integrity_algorithm,
     unsigned char *ciphering_key,
     unsigned char *integrity_key);
+
+void nr_DRB_preconfiguration(ue_id_t crntiMaybeUEid);
 
 #endif /* _NR_PDCP_ENTITY_H_ */

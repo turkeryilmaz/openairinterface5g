@@ -42,8 +42,7 @@ const uint16_t m_SRS[64] = { 4, 8, 12, 16, 16, 20, 24, 24, 28, 32, 36, 40, 48, 4
                              160, 160, 168, 176, 184, 192, 192, 192, 192, 208, 216, 224, 240, 240, 240, 240, 256, 256,
                              256, 264, 272, 272, 272 };
 
-static uint32_t max4(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
-{
+uint32_t max4(uint32_t a, uint32_t b,uint32_t c,uint32_t d) {
   int x = max(a, b);
   x = max(x, c);
   x = max(x, d);
@@ -54,9 +53,6 @@ void nr_srs_ri_computation(const nfapi_nr_srs_normalized_channel_iq_matrix_t *nr
                            const NR_UE_UL_BWP_t *current_BWP,
                            uint8_t *ul_ri)
 {
-  /* already mutex protected: held in handle_nr_srs_measurements() */
-  NR_SCHED_ENSURE_LOCKED(&RC.nrmac[0]->sched_lock);
-
   // If the gNB or UE has 1 antenna, the rank is always 1, i.e., *ul_ri = 0.
   // For 2x2 scenario, we compute the rank of channel.
   // The computation for 2x4, 4x2, 4x4, ... scenarios are not implemented yet. In these cases, the function sets *ul_ri = 0, which is always a valid value.
@@ -141,14 +137,7 @@ void nr_srs_ri_computation(const nfapi_nr_srs_normalized_channel_iq_matrix_t *nr
 
 }
 
-static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
-                             int slot,
-                             int module_id,
-                             int CC_id,
-                             NR_UE_info_t *UE,
-                             NR_SRS_ResourceSet_t *srs_resource_set,
-                             NR_SRS_Resource_t *srs_resource,
-                             int buffer_index)
+void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu, int slot, int module_id, int CC_id, NR_UE_info_t *UE, NR_SRS_ResourceSet_t *srs_resource_set, NR_SRS_Resource_t *srs_resource)
 {
   NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 
@@ -201,20 +190,13 @@ static void nr_configure_srs(nfapi_nr_srs_pdu_t *srs_pdu,
     srs_pdu->beamforming.prg_size = 1;
   }
 
-  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
+  uint16_t *vrb_map_UL = &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[slot * MAX_BWP_SIZE];
   uint64_t mask = SL_to_bitmap(13 - srs_pdu->time_start_position, srs_pdu->num_symbols);
   for (int i = 0; i < srs_pdu->bwp_size; ++i)
     vrb_map_UL[i + srs_pdu->bwp_start] |= mask;
 }
 
-static void nr_fill_nfapi_srs(int module_id,
-                              int CC_id,
-                              NR_UE_info_t *UE,
-                              int frame,
-                              int slot,
-                              NR_SRS_ResourceSet_t *srs_resource_set,
-                              NR_SRS_Resource_t *srs_resource)
-{
+void nr_fill_nfapi_srs(int module_id, int CC_id, NR_UE_info_t* UE, sub_frame_t slot, NR_SRS_ResourceSet_t *srs_resource_set, NR_SRS_Resource_t *srs_resource) {
 
   int index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->UL_tti_req_ahead_size);
   nfapi_nr_ul_tti_request_t *future_ul_tti_req = &RC.nrmac[module_id]->UL_tti_req_ahead[0][index];
@@ -226,8 +208,8 @@ static void nr_fill_nfapi_srs(int module_id,
   nfapi_nr_srs_pdu_t *srs_pdu = &future_ul_tti_req->pdus_list[future_ul_tti_req->n_pdus].srs_pdu;
   memset(srs_pdu, 0, sizeof(nfapi_nr_srs_pdu_t));
   future_ul_tti_req->n_pdus += 1;
-  index = ul_buffer_index(frame, slot, UE->current_UL_BWP.scs, RC.nrmac[module_id]->vrb_map_UL_size);
-  nr_configure_srs(srs_pdu, slot, module_id, CC_id, UE, srs_resource_set, srs_resource, index);
+
+  nr_configure_srs(srs_pdu, slot, module_id, CC_id, UE, srs_resource_set, srs_resource);
 }
 
 /*******************************************************************
@@ -245,8 +227,6 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
  {
   /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
-  NR_SCHED_ENSURE_LOCKED(&nrmac->sched_lock);
-
   NR_UEs_t *UE_info = &nrmac->UE_info;
 
   UE_iterator(UE_info->list, UE) {
@@ -295,29 +275,16 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
         continue;
       }
 
-      NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
-      const int num_tda = tdaList->list.count;
-      int max_k2 = 0;
-      // avoid last one in the list (for msg3)
-      for (int i = 0; i < num_tda - 1; i++) {
-        int k2 = get_K2(tdaList, i, current_BWP->scs);
-        max_k2 = k2 > max_k2 ? k2 : max_k2;
-      }
-
-      // we are sheduling SRS max_k2 slot in advance for the presence of SRS to be taken into account when scheduling PUSCH
-      const int n_slots_frame = nr_slots_per_frame[current_BWP->scs];
-      const int sched_slot = (slot + max_k2) % n_slots_frame;
-      const int sched_frame = (frame + ((slot + max_k2) / n_slots_frame)) % 1024;
-
-      const uint16_t period = srs_period[srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.present];
-      const uint16_t offset = get_nr_srs_offset(srs_resource->resourceType.choice.periodic->periodicityAndOffset_p);
+      uint16_t period = srs_period[srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.present];
+      uint16_t offset = get_nr_srs_offset(srs_resource->resourceType.choice.periodic->periodicityAndOffset_p);
+      int n_slots_frame = nr_slots_per_frame[current_BWP->scs];
 
       // Check if UE will transmit the SRS in this frame
-      if ((sched_frame * n_slots_frame + sched_slot - offset) % period == 0) {
-        LOG_D(NR_MAC," %d.%d Scheduling SRS reception for %d.%d\n", frame, slot, sched_frame, sched_slot);
-        nr_fill_nfapi_srs(module_id, CC_id, UE, sched_frame, sched_slot, srs_resource_set, srs_resource);
-        sched_ctrl->sched_srs.frame = sched_frame;
-        sched_ctrl->sched_srs.slot = sched_slot;
+      if (((frame - offset / n_slots_frame) * n_slots_frame) % period == 0) {
+        LOG_D(NR_MAC,"Scheduling SRS reception for %d.%d\n", frame, offset%n_slots_frame);
+        nr_fill_nfapi_srs(module_id, CC_id, UE, offset%n_slots_frame, srs_resource_set, srs_resource);
+        sched_ctrl->sched_srs.frame = frame;
+        sched_ctrl->sched_srs.slot = offset%n_slots_frame;
         sched_ctrl->sched_srs.srs_scheduled = true;
       }
     }

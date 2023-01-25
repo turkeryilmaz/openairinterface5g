@@ -258,7 +258,7 @@ uint8_t do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms=&carrier->mib_fembms;
   frame=198;
   uint8_t sfn = (uint8_t)((frame>>4)&0xff);
-  uint16_t *spare = CALLOC(1,sizeof(uint16_t));
+  uint16_t *spare = calloc(1,sizeof(uint16_t));
 
   if( spare == NULL  ) abort();
 
@@ -330,7 +330,7 @@ uint8_t do_MIB(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t phich
   asn_enc_rval_t enc_rval;
   LTE_BCCH_BCH_Message_t *mib=&carrier->mib ;
   uint8_t sfn = (uint8_t)((frame>>2)&0xff);
-  uint16_t *spare = CALLOC(1, sizeof(uint16_t));
+  uint16_t *spare = calloc(1, sizeof(uint16_t));
 
   if (spare == NULL) abort();
 
@@ -1067,7 +1067,10 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
          asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,schedulingInfo2);
   }
   //  asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,NULL);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2f9e334a45... openair2 rebased changes, 4G RLC/PDCP and GNB_APP Changes Remainig
 
 
   if (configuration->frame_type[CC_id] == TDD)
@@ -4234,7 +4237,7 @@ uint16_t do_RRCConnectionReconfiguration(const protocol_ctxt_t *const ctxt_pP,
                                    buffer_size);
 
   if(enc_rval.encoded == -1) {
-    LOG_W(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
+    LOG_I(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
           enc_rval.failed_type->name, enc_rval.encoded);
     return -1;
   }

@@ -19,6 +19,7 @@
  *      contact@openairinterface.org
  */
 
+<<<<<<< HEAD:openair3/SECU/sha_256_hmac.h
 #ifndef SHA_256_HMAC_OAI_H
 #define SHA_256_HMAC_OAI_H 
 
@@ -31,3 +32,14 @@ void sha_256_hmac(const uint8_t key[32], byte_array_t data, size_t len, uint8_t 
 
 #endif
 
+=======
+#ifndef MAC_RRC_DL_HANDLER_H
+#define MAC_RRC_DL_HANDLER_H
+
+#include "platform_types.h"
+#include "f1ap_messages_types.h"
+
+int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc);
+
+#endif /* MAC_RRC_DL_HANDLER_H */
+>>>>>>> 2f9e334a45... openair2 rebased changes, 4G RLC/PDCP and GNB_APP Changes Remainig:openair2/LAYER2/NR_MAC_gNB/mac_rrc_dl_handler.h

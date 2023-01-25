@@ -199,7 +199,7 @@ void schedule_CSI(module_id_t module_idP,
     cc = &eNB->common_channels[CC_id];
 
     for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
-      if (UE_info->active[UE_id] == false) {
+      if (UE_info->active[CC_id][UE_id] == false) {
         continue;
       }
 

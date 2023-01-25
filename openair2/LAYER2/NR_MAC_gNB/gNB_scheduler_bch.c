@@ -51,15 +51,11 @@
 
 extern RAN_CONTEXT_t RC;
 
-static void schedule_ssb(frame_t frame,
-                         sub_frame_t slot,
-                         NR_ServingCellConfigCommon_t *scc,
-                         nfapi_nr_dl_tti_request_body_t *dl_req,
-                         int i_ssb,
-                         uint8_t scoffset,
-                         uint16_t offset_pointa,
-                         uint32_t payload)
-{
+void schedule_ssb(frame_t frame, sub_frame_t slot,
+                  NR_ServingCellConfigCommon_t *scc,
+                  nfapi_nr_dl_tti_request_body_t *dl_req,
+                  int i_ssb, uint8_t scoffset, uint16_t offset_pointa, uint32_t payload) {
+
   uint8_t beam_index = 0;
   nfapi_nr_dl_tti_request_pdu_t  *dl_config_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
   memset((void *) dl_config_pdu, 0,sizeof(nfapi_nr_dl_tti_request_pdu_t));
@@ -124,7 +120,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
 
     // get MIB every 8 frames
     if(((slotP == 0) && (frameP & 7) == 0) ||
-        gNB->first_MIB) {
+       gNB->first_MIB) {
 
       mib_sdu_length = mac_rrc_nr_data_req(module_idP, CC_id, frameP, MIBCH, 0, 1, &cc->MIB_pdu.payload[0]);
 
@@ -137,15 +133,6 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
             frameP,
             CC_id,
             mib_sdu_length);
-
-      // Trace MACPDU
-      mac_pkt_info_t mac_pkt;
-      mac_pkt.direction = DIRECTION_DOWNLINK;
-      mac_pkt.rnti_type = WS_NO_RNTI;
-      mac_pkt.rnti      = 0xFFFF;
-      mac_pkt.harq_pid  = 0;
-      mac_pkt.preamble  = -1; /* TODO */
-      LOG_MAC_P(OAILOG_INFO, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)&cc->MIB_pdu.payload[0], (int)mib_sdu_length);
     }
 
     // Trace MACPDU
@@ -258,7 +245,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
               if ((ssb_start_symbol/14) == rel_slot){
                 const int prb_offset = offset_pointa >> (scs-2); // reference 60kHz
                 schedule_ssb(frameP, slotP, scc, dl_req, i_ssb, ssbSubcarrierOffset, offset_pointa, (*(uint32_t*)cc->MIB_pdu.payload) & ((1<<24)-1));
-                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset >> (scs - 2), ssb_start_symbol, CC_id);
+                fill_ssb_vrb_map(cc, prb_offset, ssbSubcarrierOffset, ssb_start_symbol, CC_id);
                 const NR_TDD_UL_DL_Pattern_t *tdd = &scc->tdd_UL_DL_ConfigurationCommon->pattern1;
                 const int n_slots_frame = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
                 // FR2 is only TDD, to be fixed for flexible TDD
@@ -288,21 +275,40 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, 
           break;
         default:
           AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
-              scc->ssb_PositionsInBurst->present);
+                      scc->ssb_PositionsInBurst->present);
       }
     }
   }
 }
 
-static uint32_t schedule_control_sib1(module_id_t module_id,
-                                      int CC_id,
-                                      NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
-                                      int time_domain_allocation,
-                                      NR_pdsch_dmrs_t *dmrs_parms,
-                                      NR_tda_info_t *tda_info,
-                                      uint8_t candidate_idx,
-                                      uint16_t num_total_bytes)
-{
+
+void schedule_nr_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
+//----------------------------------------  
+}
+
+void fill_ssb_vrb_map (NR_COMMON_channels_t *cc, int rbStart, int ssb_subcarrier_offset, uint16_t symStart, int CC_id) {
+
+  AssertFatal(*cc->ServingCellConfigCommon->ssbSubcarrierSpacing !=
+              NR_SubcarrierSpacing_kHz240,
+              "240kHZ subcarrier won't work with current VRB map because a single SSB might be across 2 slots\n");
+
+  uint16_t *vrb_map = cc[CC_id].vrb_map;
+
+  const int extra_prb = ssb_subcarrier_offset > 0;
+  for (int rb = 0; rb < 20+extra_prb; rb++)
+    vrb_map[rbStart + rb] = SL_to_bitmap(symStart, 4);
+
+}
+
+uint32_t schedule_control_sib1(module_id_t module_id,
+                               int CC_id,
+                               NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
+                               int time_domain_allocation,
+                               NR_pdsch_dmrs_t *dmrs_parms,
+                               NR_tda_info_t *tda_info,
+                               uint8_t candidate_idx,
+                               uint16_t num_total_bytes) {
+
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_id];
   NR_COMMON_channels_t *cc = &gNB_mac->common_channels[CC_id];
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
@@ -323,11 +329,11 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
     gNB_mac->cset0_bwp_start = type0_PDCCH_CSS_config->cset_start_rb;
     gNB_mac->cset0_bwp_size = type0_PDCCH_CSS_config->num_rbs;
     gNB_mac->sched_ctrlCommon->sched_pdcch = set_pdcch_structure(NULL,
-        gNB_mac->sched_ctrlCommon->search_space,
-        gNB_mac->sched_ctrlCommon->coreset,
-        scc,
-        NULL,
-        type0_PDCCH_CSS_config);
+                                                                 gNB_mac->sched_ctrlCommon->search_space,
+                                                                 gNB_mac->sched_ctrlCommon->coreset,
+                                                                 scc,
+                                                                 NULL,
+                                                                 type0_PDCCH_CSS_config);
   }
 
   NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon->sched_pdsch;
@@ -345,14 +351,12 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   }
   AssertFatal(nr_of_candidates>0,"nr_of_candidates is 0\n");
   gNB_mac->sched_ctrlCommon->cce_index = find_pdcch_candidate(gNB_mac,
-      CC_id,
-      gNB_mac->sched_ctrlCommon->aggregation_level,
-      nr_of_candidates,
-      &gNB_mac->sched_ctrlCommon->sched_pdcch,
-      gNB_mac->sched_ctrlCommon->coreset,
-      0);
-  //	if (RC.ss.mode >= SS_SOFTMODEM)
-  //		gNB_mac->sched_ctrlCommon->cce_index = 0;
+                                                              CC_id,
+                                                              gNB_mac->sched_ctrlCommon->aggregation_level,
+                                                              nr_of_candidates,
+                                                              &gNB_mac->sched_ctrlCommon->sched_pdcch,
+                                                              gNB_mac->sched_ctrlCommon->coreset,
+                                                              0);
 
   LOG_D(MAC,"cce_index: %d\n", gNB_mac->sched_ctrlCommon->cce_index);
   AssertFatal(gNB_mac->sched_ctrlCommon->cce_index >= 0, "Could not find CCE for coreset0\n");
@@ -386,7 +390,7 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
 
 
   AssertFatal(TBS>=gNB_mac->sched_ctrlCommon->num_total_bytes,"Couldn't allocate enough resources for %d bytes in SIB1 PDSCH\n",
-      gNB_mac->sched_ctrlCommon->num_total_bytes);
+              gNB_mac->sched_ctrlCommon->num_total_bytes);
 
   pdsch->rbSize = rbSize;
   pdsch->rbStart = 0;
@@ -412,14 +416,14 @@ static uint32_t schedule_control_sib1(module_id_t module_id,
   return TBS;
 }
 
-static void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
-                                      nfapi_nr_dl_tti_request_body_t *dl_req,
-                                      int pdu_index,
-                                      NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
-                                      uint32_t TBS,
-                                      int StartSymbolIndex,
-                                      int NrOfSymbols)
-{
+void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
+                               nfapi_nr_dl_tti_request_body_t *dl_req,
+                               int pdu_index,
+                               NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
+                               uint32_t TBS,
+                               int StartSymbolIndex,
+                               int NrOfSymbols) {
+
   gNB_MAC_INST *gNB_mac = RC.nrmac[Mod_idP];
   NR_COMMON_channels_t *cc = gNB_mac->common_channels;
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
@@ -581,7 +585,7 @@ void schedule_nr_sib1(module_id_t module_idP,
       break;
     default:
       AssertFatal(0,"SSB bitmap size value %d undefined (allowed values 1,2,3)\n",
-          scc->ssb_PositionsInBurst->present);
+                  scc->ssb_PositionsInBurst->present);
   }
 
   for (int i=0; i<L_max; i++) {
@@ -589,9 +593,9 @@ void schedule_nr_sib1(module_id_t module_idP,
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = &gNB_mac->type0_PDCCH_CSS_config[i];
 
     if((frameP%2 == type0_PDCCH_CSS_config->sfn_c) &&
-        (slotP == type0_PDCCH_CSS_config->n_0) &&
-        (type0_PDCCH_CSS_config->num_rbs > 0) &&
-        (type0_PDCCH_CSS_config->active == true)) {
+       (slotP == type0_PDCCH_CSS_config->n_0) &&
+       (type0_PDCCH_CSS_config->num_rbs > 0) &&
+       (type0_PDCCH_CSS_config->active == true)) {
 
       LOG_D(NR_MAC,"(%d.%d) SIB1 transmission: ssb_index %d\n", frameP, slotP, type0_PDCCH_CSS_config->ssb_index);
 
@@ -607,7 +611,22 @@ void schedule_nr_sib1(module_id_t module_idP,
       // assuming normal CP
       NR_tda_info_t tda_info = get_info_from_tda_tables(table_type, time_domain_allocation, gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position, true);
 
-      AssertFatal((tda_info.startSymbolIndex + tda_info.nrOfSymbols) < 14, "SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n", time_domain_allocation);
+      LOG_D(NR_MAC,"type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
+      LOG_D(NR_MAC,"time_domain_allocation: %i\n", time_domain_allocation);
+      LOG_D(NR_MAC,"dmrs_TypeA_Position: %i\n", gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position);
+      get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
+                               time_domain_allocation,
+                               gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
+                               1, &is_typeA,
+                               &startSymbolIndex, &nrOfSymbols);
+
+      AssertFatal((startSymbolIndex+nrOfSymbols)<14,"SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n",time_domain_allocation);
+
+      NR_tda_info_t tda_info = {
+        .mapping_type = is_typeA ? typeA : typeB,
+        .startSymbolIndex = startSymbolIndex,
+        .nrOfSymbols = nrOfSymbols
+      };
 
       NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc,
                                                       NULL,
@@ -623,9 +642,9 @@ void schedule_nr_sib1(module_id_t module_idP,
                                            candidate_idx,
                                            sib1_sdu_length);
 
-      nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
+      nfapi_nr_dl_tti_request_body_t *dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
       int pdu_index = gNB_mac->pdu_index[0]++;
-      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, tda_info.startSymbolIndex, tda_info.nrOfSymbols);
+      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, startSymbolIndex, nrOfSymbols);
 
       const int ntx_req = TX_req->Number_of_PDUs;
       nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];

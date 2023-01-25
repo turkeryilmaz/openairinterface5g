@@ -81,6 +81,4 @@ void nr_rlc_entity_um_delete(nr_rlc_entity_t *entity);
 int nr_rlc_entity_um_available_tx_space(nr_rlc_entity_t *entity);
 void nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *entity, char *buffer, int size);
 
-void nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *entity, char *buffer, int size);
-
 #endif /* _NR_RLC_ENTITY_UM_H_ */

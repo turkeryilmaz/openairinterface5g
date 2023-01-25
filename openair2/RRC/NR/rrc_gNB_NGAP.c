@@ -47,7 +47,8 @@
 
 #include "S1AP_NAS-PDU.h"
 #include "executables/softmodem-common.h"
-#include "UTIL/OSA/osa_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include "ngap_gNB_defs.h"
 #include "ngap_gNB_ue_context.h"
 #include "ngap_gNB_management_procedures.h"
@@ -126,20 +127,21 @@ nr_rrc_pdcp_config_security(
 {
   NR_SRB_ToAddModList_t              *SRB_configList = ue_context_pP->ue_context.SRB_configList;
   (void)SRB_configList;
-  uint8_t                            *kRRCenc = NULL;
-  uint8_t                            *kRRCint = NULL;
-  uint8_t                            *kUPenc = NULL;
+  uint8_t kRRCenc[16] = {0};
+  uint8_t kRRCint[16] = {0};
+  uint8_t kUPenc[16] = {0};
   //uint8_t                            *k_kdf  = NULL;
   static int                          print_keys= 1;
   gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
 
   /* Derive the keys from kgnb */
   if (UE->Srb[1].Active || UE->Srb[2].Active) {
-    nr_derive_key_up_enc(UE->ciphering_algorithm, UE->kgnb, &kUPenc);
+    nr_derive_key(UP_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kUPenc);
   }
 
-  nr_derive_key_rrc_enc(UE->ciphering_algorithm, UE->kgnb, &kRRCenc);
-  nr_derive_key_rrc_int(UE->integrity_algorithm, UE->kgnb, &kRRCint);
+  nr_derive_key(RRC_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kRRCenc);
+  nr_derive_key(RRC_INT_ALG, UE->integrity_algorithm, UE->kgnb, kRRCint);
+
   if (!IS_SOFTMODEM_IQPLAYER) {
     SET_LOG_DUMP(DEBUG_SECURITY) ;
   }
@@ -188,11 +190,6 @@ rrc_gNB_send_NGAP_NAS_FIRST_REQ(
   /* Forward NAS message */
   req->nas_pdu.buffer = rrcSetupComplete->dedicatedNAS_Message.buf;
   req->nas_pdu.length = rrcSetupComplete->dedicatedNAS_Message.size;
-
-  if(RC.ss.mode == SS_GNB)
-  {
-    LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", rrcSetupComplete->dedicatedNAS_Message.buf, rrcSetupComplete->dedicatedNAS_Message.size);
-  }
   // extract_imsi(NGAP_NAS_FIRST_REQ (message_p).nas_pdu.buffer,
   //              NGAP_NAS_FIRST_REQ (message_p).nas_pdu.length,
   //              ue_context_pP);
@@ -401,12 +398,7 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
     int ret = gtpv1u_create_ngu_tunnel(instance, &create_tunnel_req, &create_tunnel_resp, nr_pdcp_data_req_drb, sdap_data_req);
     if (ret != 0) {
       LOG_E(NR_RRC, "rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ : gtpv1u_create_ngu_tunnel failed,start to release UE %x\n", UE->rnti);
-      UE->ue_release_timer_ng = 1;
-      UE->ue_release_timer_thres_ng = 100;
-      UE->ue_release_timer = 0;
-      UE->ue_reestablishment_timer = 0;
-      UE->ul_failure_timer = 20000;
-      UE->ul_failure_timer = 0;
+      AssertFatal(false, "release timer not implemented\n");
       return (0);
     }
 
@@ -416,11 +408,6 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
   /* NAS PDU */
   // this is malloced pointers, we pass it for later free()
   UE->nas_pdu = req->nas_pdu;
-
-  if(RC.ss.mode == SS_GNB)
-  {
-    LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UE->nas_pdu.buffer, UE->nas_pdu.length);
-  }
 
   /* security */
   rrc_gNB_process_security(&ctxt, ue_context_p, &req->security_capabilities);
@@ -616,12 +603,6 @@ int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mu
     msg->gNB_ue_ngap_id = req->gNB_ue_ngap_id;
     msg->nas_pdu.length = req->nas_pdu.length;
     msg->nas_pdu.buffer = req->nas_pdu.buffer;
-
-    if(RC.ss.mode == SS_GNB)
-    {
-      LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", msg->nas_pdu.buffer, msg->nas_pdu.length);
-    }
-
     // TODO add failure cause when defined!
     itti_send_msg_to_task(TASK_NGAP, instance, msg_fail_p);
     return (-1);
@@ -629,11 +610,6 @@ int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mu
 
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
   PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, UE->rnti, 0, 0);
-
-  if(RC.ss.mode == SS_GNB)
-  {
-    LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", req->nas_pdu.buffer, req->nas_pdu.length);
-  }
 
   /* Create message for PDCP (DLInformationTransfer_t) */
   length = do_NR_DLInformationTransfer(instance, &buffer, rrc_gNB_get_next_transaction_identifier(instance), req->nas_pdu.length, req->nas_pdu.buffer);
@@ -670,15 +646,11 @@ rrc_gNB_send_NGAP_UPLINK_NAS(
         NGAP_UPLINK_NAS(msg_p).gNB_ue_ngap_id = UE->gNB_ue_ngap_id;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.length = pdu_length;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer = pdu_buffer;
-        if(RC.ss.mode == SS_GNB)
-        {
-          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", pdu_buffer, pdu_length);
-        }
         // extract_imsi(NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer,
         //               NGAP_UPLINK_NAS (msg_p).nas_pdu.length,
         //               ue_context_pP);
         itti_send_msg_to_task (TASK_NGAP, ctxt_pP->instance, msg_p);
-        LOG_I(NR_RRC,"Send RRC GNB UL Information Transfer \n");
+        LOG_D(NR_RRC,"Send RRC GNB UL Information Transfer \n");
     }
 }
 
@@ -982,11 +954,6 @@ int rrc_gNB_process_NGAP_PDUSESSION_MODIFY_REQ(MessageDef *msg_p, instance_t ins
       sess->cause = NGAP_CAUSE_NOTHING;
       if (sessMod->nas_pdu.buffer != NULL) {
         UE->pduSession[i].param.nas_pdu = sessMod->nas_pdu;
-
-      if(RC.ss.mode == SS_GNB)
-      {
-        LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", sessMod->nas_pdu.buffer, sessMod->nas_pdu.length);
-      }
       }
       // Save new pdu session parameters, qos, upf addr, teid
       decodePDUSessionResourceModify(&sess->param, UE->pduSession[i].param.pdusessionTransfer);
@@ -1187,8 +1154,6 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
   }
 
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  UE->ue_release_timer_ng = 0;
-  UE->ue_release_timer_thres_rrc = 1000;
   PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, UE->rnti, 0, 0);
   ctxt.eNB_index = 0;
   rrc_gNB_generate_RRCRelease(&ctxt, ue_context_p);
@@ -1333,10 +1298,6 @@ int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_
   if (found) {
     // TODO RRCReconfiguration To UE
     LOG_I(NR_RRC, "Send RRCReconfiguration To UE \n");
-    if(RC.ss.mode == SS_GNB)
-    {
-      LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", cmd->nas_pdu.buffer, cmd->nas_pdu.length);
-    }
     rrc_gNB_generate_dedicatedRRCReconfiguration_release(&ctxt, ue_context_p, xid, cmd->nas_pdu.length, cmd->nas_pdu.buffer);
   } else {
     // gtp tunnel delete

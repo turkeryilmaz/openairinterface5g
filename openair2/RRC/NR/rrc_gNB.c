@@ -790,6 +790,32 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
 
     nr_mac_enable_ue_rrc_processing_timer(ctxt_pP->module_id, ue_p->rnti, *rrc->carrier.servingcellconfigcommon->ssbSubcarrierSpacing, delay_ms);
   }
+
+  if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
+    gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+    rrc_mac_config_req_gNB(rrc->module_id,
+                           rrc->configuration.pdsch_AntennaPorts,
+                           rrc->configuration.pusch_AntennaPorts,
+                           rrc->configuration.sib1_tda,
+                           rrc->configuration.minRXTXTIME,
+                           NULL,
+                           NULL,
+                           NULL,
+                           0,
+                           ue_p->rnti,
+                           ue_p->masterCellGroup);
+
+    uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList ?
+                        NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
+
+    nr_mac_enable_ue_rrc_processing_timer(ctxt_pP->module_id,
+                                          ue_context_pP->ue_context.rnti,
+                                          *rrc->carrier.servingcellconfigcommon->ssbSubcarrierSpacing,
+                                          delay_ms);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -2779,6 +2805,95 @@ static void rrc_DU_process_ue_context_modification_request(MessageDef *msg_p, in
   uint32_t incoming_teid = 0;
   NR_CellGroupConfig_t *cellGroupConfig = NULL;
 
+  if(req->cu_to_du_rrc_information!=NULL){
+    if(req->cu_to_du_rrc_information->uE_CapabilityRAT_ContainerList!=NULL){
+      LOG_I(NR_RRC, "Length of ue_CapabilityRAT_ContainerList is: %d \n", (int) req->cu_to_du_rrc_information->uE_CapabilityRAT_ContainerList_length);
+      struct NR_UE_CapabilityRAT_ContainerList  *ue_CapabilityRAT_ContainerList = NULL;
+      asn_dec_rval_t dec_rval = uper_decode_complete( NULL,
+          &asn_DEF_NR_UE_CapabilityRAT_ContainerList,
+          (void **)&ue_CapabilityRAT_ContainerList,
+          (uint8_t *)req->cu_to_du_rrc_information->uE_CapabilityRAT_ContainerList,
+          (int) req->cu_to_du_rrc_information->uE_CapabilityRAT_ContainerList_length);
+
+      if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+        AssertFatal(1==0,"UE Capability RAT ContainerList decode error\n");
+        // free the memory
+        SEQUENCE_free( &asn_DEF_NR_UE_CapabilityRAT_ContainerList, ue_CapabilityRAT_ContainerList, 1 );
+        return;
+      }
+      //To fill ue_context.UE_Capability_MRDC, ue_context.UE_Capability_nr ...
+      int NR_index = -1;
+      for(int i = 0;i < ue_CapabilityRAT_ContainerList->list.count; i++){
+        if(ue_CapabilityRAT_ContainerList->list.array[i]->rat_Type ==
+          NR_RAT_Type_nr){
+          LOG_I(NR_RRC, "DU received NR_RAT_Type_nr UE capabilities Info through the UE Context Setup Request from the CU \n");
+          if(ue_context_p->ue_context.UE_Capability_nr){
+            ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability,ue_context_p->ue_context.UE_Capability_nr);
+            ue_context_p->ue_context.UE_Capability_nr = 0;
+          }
+
+          dec_rval = uper_decode(NULL,
+                                  &asn_DEF_NR_UE_NR_Capability,
+                                  (void**)&ue_context_p->ue_context.UE_Capability_nr,
+                                  ue_CapabilityRAT_ContainerList->list.array[i]->ue_CapabilityRAT_Container.buf,
+                                  ue_CapabilityRAT_ContainerList->list.array[i]->ue_CapabilityRAT_Container.size,
+                                  0,0);
+          if(LOG_DEBUGFLAG(DEBUG_ASN1)){
+            xer_fprint(stdout,&asn_DEF_NR_UE_NR_Capability,ue_context_p->ue_context.UE_Capability_nr);
+          }
+
+          if((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)){
+            LOG_E(NR_RRC, PROTOCOL_NR_RRC_CTXT_UE_FMT" Failed to decode nr UE capabilities (%zu bytes)\n",
+            PROTOCOL_NR_RRC_CTXT_UE_ARGS(&ctxt),dec_rval.consumed);
+            ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability,ue_context_p->ue_context.UE_Capability_nr);
+            ue_context_p->ue_context.UE_Capability_nr = 0;
+          }
+
+          ue_context_p->ue_context.UE_Capability_size =
+          ue_CapabilityRAT_ContainerList->list.array[i]->ue_CapabilityRAT_Container.size;
+          if(NR_index != -1){
+            LOG_E(NR_RRC,"fatal: more than 1 eutra capability\n");
+            exit(1);
+          }
+          NR_index = i;
+        }
+
+        if(ue_CapabilityRAT_ContainerList->list.array[i]->rat_Type ==
+        NR_RAT_Type_eutra_nr){
+          LOG_I(NR_RRC, "DU received NR_RAT_Type_eutra_nr UE capabilities Info through the UE Context Setup Request from the CU \n");
+          if(ue_context_p->ue_context.UE_Capability_MRDC){
+            ASN_STRUCT_FREE(asn_DEF_NR_UE_MRDC_Capability,ue_context_p->ue_context.UE_Capability_MRDC);
+            ue_context_p->ue_context.UE_Capability_MRDC = 0;
+          }
+          dec_rval = uper_decode(NULL,
+              &asn_DEF_NR_UE_MRDC_Capability,
+              (void**)&ue_context_p->ue_context.UE_Capability_MRDC,
+              ue_CapabilityRAT_ContainerList->list.array[i]->ue_CapabilityRAT_Container.buf,
+              ue_CapabilityRAT_ContainerList->list.array[i]->ue_CapabilityRAT_Container.size,
+              0,0);
+          if(LOG_DEBUGFLAG(DEBUG_ASN1)){
+            xer_fprint(stdout,&asn_DEF_NR_UE_MRDC_Capability,ue_context_p->ue_context.UE_Capability_MRDC);
+          }
+
+          if((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)){
+            LOG_E(NR_RRC,PROTOCOL_NR_RRC_CTXT_FMT" Failed to decode nr UE capabilities (%zu bytes)\n",
+              PROTOCOL_NR_RRC_CTXT_UE_ARGS(&ctxt),dec_rval.consumed);
+            ASN_STRUCT_FREE(asn_DEF_NR_UE_MRDC_Capability,ue_context_p->ue_context.UE_Capability_MRDC);
+            ue_context_p->ue_context.UE_Capability_MRDC = 0;
+          }
+          ue_context_p->ue_context.UE_MRDC_Capability_size =
+          ue_CapabilityRAT_ContainerList->list.array[i]->ue_CapabilityRAT_Container.size;
+        }
+
+        if(ue_CapabilityRAT_ContainerList->list.array[i]->rat_Type ==
+        NR_RAT_Type_eutra){
+          //TODO
+        }
+      }
+    }
+  }
+
+
   /* Configure SRB2 */
   NR_SRB_ToAddMod_t            *SRB2_config          = NULL;
   NR_SRB_ToAddModList_t        *SRB_configList       = NULL;
@@ -3007,6 +3122,60 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
     LOG_I(NR_RRC, "Updated master cell group configuration stored at the UE context of the CU:\n");
     if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
       xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, UE->masterCellGroup);
+    }
+
+    rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p, cellGroupConfig);
+
+    free(cellGroupConfig->rlc_BearerToAddModList);
+    free(cellGroupConfig);
+  }
+}
+
+static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, const char *msg_name, instance_t instance){
+
+  f1ap_ue_context_setup_t * resp=&F1AP_UE_CONTEXT_SETUP_RESP(msg_p);
+  protocol_ctxt_t ctxt = {.rntiMaybeUEid = resp->rnti, .module_id = instance, .instance = instance, .enb_flag = 1, .eNB_index = instance};
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
+  struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context(rrc, ctxt.rntiMaybeUEid);
+  NR_CellGroupConfig_t *cellGroupConfig = NULL;
+
+  if(resp->du_to_cu_rrc_information->cellGroupConfig!=NULL){
+    asn_dec_rval_t dec_rval = uper_decode_complete( NULL,
+      &asn_DEF_NR_CellGroupConfig,
+      (void **)&cellGroupConfig,
+      (uint8_t *)resp->du_to_cu_rrc_information->cellGroupConfig,
+      (int) resp->du_to_cu_rrc_information->cellGroupConfig_length);
+
+    if((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
+      AssertFatal(1==0,"Cell group config decode error\n");
+      // free the memory
+      SEQUENCE_free( &asn_DEF_NR_CellGroupConfig, cellGroupConfig, 1 );
+      return;
+    }
+    //xer_fprint(stdout,&asn_DEF_NR_CellGroupConfig, cellGroupConfig);
+
+    if(ue_context_p->ue_context.masterCellGroup == NULL){
+      ue_context_p->ue_context.masterCellGroup = calloc(1, sizeof(NR_CellGroupConfig_t));
+    }
+
+    if(cellGroupConfig->rlc_BearerToAddModList!=NULL){
+      if(ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList != NULL){
+        int ue_ctxt_rlc_Bearers = ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList->list.count;
+        for(int i=ue_ctxt_rlc_Bearers; i<ue_ctxt_rlc_Bearers + cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
+          asn1cSeqAdd(&ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList->list,
+              cellGroupConfig->rlc_BearerToAddModList->list.array[i-ue_ctxt_rlc_Bearers]);
+        }
+      }
+      else{
+        LOG_W(NR_RRC, "Empty rlc_BearerToAddModList at ue_context of the CU before filling the updates from UE context setup response \n");
+        ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+        memcpy(ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList, cellGroupConfig->rlc_BearerToAddModList,
+          sizeof(*cellGroupConfig->rlc_BearerToAddModList));
+      }
+    }
+    LOG_I(NR_RRC, "Updated master cell group configuration stored at the UE context of the CU:\n");
+    if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, ue_context_p->ue_context.masterCellGroup);
     }
 
     rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p, cellGroupConfig);
@@ -3712,6 +3881,10 @@ void *rrc_gnb_task(void *args_p) {
 
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);
+        break;
+
+      case NGAP_PAGING_IND:
+        rrc_gNB_process_PAGING_IND(msg_p, msg_name_p, instance);
         break;
 
       case SS_NRRRC_PDU_REQ:
