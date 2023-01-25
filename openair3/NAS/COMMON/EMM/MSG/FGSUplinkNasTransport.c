@@ -138,6 +138,7 @@ int encode_fgs_uplink_nas_transport(fgs_uplink_nas_transport_msg *fgs_up_nas_tra
     } else {
       encoded += encode_result;
     }
+
     if ((encode_result = encode_dnn(&fgs_up_nas_transport->dnn, 0x25, buffer +encoded)) < 0) {
       return encode_result;
     } else {

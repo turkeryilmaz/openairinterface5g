@@ -70,8 +70,8 @@
 /* Convert an integer on 16 bits to the given bUFFER */
 #define INT16_TO_BUFFER(x, buf) \
 do {                            \
-    (buf)[0] = (x) >> 8;        \
-    (buf)[1] = (x);             \
+    (buf)[0] = ((x) >> 8) & 0xff; \
+    (buf)[1] = (x)      & 0xff; \
 } while(0)
 
 /* Convert an array of char containing vALUE to x */
@@ -84,9 +84,9 @@ do {                            \
 /* Convert an integer on 24 bits to the given bUFFER */
 #define INT24_TO_BUFFER(x, buf) \
 do {                            \
-    (buf)[0] = (x) >> 16;       \
-    (buf)[1] = (x) >> 8;        \
-    (buf)[2] = (x);             \
+    (buf)[0] = ((x) >> 16) & 0xff;\
+    (buf)[1] = ((x) >> 8) & 0xff; \
+    (buf)[2] = (x)      & 0xff; \
 } while(0)
 
 /* Convert an array of char containing vALUE to x */
@@ -101,10 +101,10 @@ do {                            \
 /* Convert an integer on 32 bits to the given bUFFER */
 #define INT32_TO_BUFFER(x, buf) \
 do {                            \
-    (buf)[0] = (x) >> 24;       \
-    (buf)[1] = (x) >> 16;       \
-    (buf)[2] = (x) >> 8;        \
-    (buf)[3] = (x);             \
+    (buf)[0] = ((x) >> 24) & 0xff;\
+    (buf)[1] = ((x) >> 16) & 0xff;\
+    (buf)[2] = ((x) >> 8) & 0xff; \
+    (buf)[3] = (x)      & 0xff; \
 } while(0)
 
 /* Convert an array of char containing vALUE to x */
@@ -544,6 +544,27 @@ do {                                                    \
     (bITsTRING)->bits_unused = 4;                       \
 } while(0)
 
+#define UEIDENTITYINDEX_TO_BIT_STRING(mACRO, bITsTRING)          \
+do {                                                    \
+    (bITsTRING)->buf = calloc(2, sizeof(uint8_t));      \
+    (bITsTRING)->buf[0] = (mACRO) >> 2;                 \
+    (bITsTRING)->buf[1] = ((mACRO) & 0x03)<<6;            \
+    (bITsTRING)->size = 2;                              \
+    (bITsTRING)->bits_unused = 6;                       \
+} while(0)
+
+#define FIVEG_S_TMSI_TO_BIT_STRING(mACRO, bITsTRING)      \
+do {                                                    \
+    (bITsTRING)->buf = calloc(6, sizeof(uint8_t));      \
+    (bITsTRING)->buf[0] = ((mACRO) >> 40) & 0xff;       \
+    (bITsTRING)->buf[1] = ((mACRO) >> 32) & 0xff;       \
+    (bITsTRING)->buf[2] = ((mACRO) >> 24) & 0xff;       \
+    (bITsTRING)->buf[3] = ((mACRO) >> 16) & 0xff;       \
+    (bITsTRING)->buf[4] = ((mACRO) >> 8 ) & 0xff;       \
+    (bITsTRING)->buf[5] = ((mACRO) & 0xff);             \
+    (bITsTRING)->size = 6;                              \
+    (bITsTRING)->bits_unused = 0;                       \
+} while(0)
 
 /* Used to format an uint32_t containing an ipv4 address */
 #define IPV4_ADDR    "%u.%u.%u.%u"
@@ -559,9 +580,5 @@ do {                                                    \
 #define TAC_TO_ASN1 INT16_TO_OCTET_STRING
 #define GTP_TEID_TO_ASN1 INT32_TO_OCTET_STRING
 #define OCTET_STRING_TO_TAC OCTET_STRING_TO_INT16
-
-void hexa_to_ascii(uint8_t *from, char *to, size_t length);
-
-int ascii_to_hex(uint8_t *dst, const char *h);
 
 #endif /* CONVERSIONS_H_ */

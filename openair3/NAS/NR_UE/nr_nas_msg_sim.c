@@ -38,12 +38,14 @@
 #include "aka_functions.h"
 #include "secu_defs.h"
 #include "PduSessionEstablishRequest.h"
+#include "PduSessionEstablishmentAccept.h"
 #include "intertask_interface.h"
 #include "openair2/RRC/NAS/nas_config.h"
 #include <openair3/UICC/usim_interface.h>
 #include <openair3/NAS/COMMON/NR_NAS_defs.h>
 #include <openair1/PHY/phy_extern_nr_ue.h>
 #include <openair1/SIMULATION/ETH_TRANSPORT/proto.h>
+#include "openair2/SDAP/nr_sdap/nr_sdap.h"
 
 uint8_t  *registration_request_buf;
 uint32_t  registration_request_len;

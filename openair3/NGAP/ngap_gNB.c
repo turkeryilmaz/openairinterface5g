@@ -64,8 +64,6 @@
   #include "oaisim_amf_test_s1c.h"
 #endif
 
-ngap_gNB_config_t ngap_config;
-
 static int ngap_gNB_generate_ng_setup_request(
   ngap_gNB_instance_t *instance_p, ngap_gNB_amf_data_t *ngap_amf_data_p);
 
@@ -461,7 +459,7 @@ static int ngap_gNB_generate_ng_setup_request(
             ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[1],
             ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[2],
             ie->value.choice.GlobalRANNodeID.choice.globalGNB_ID->gNB_ID.choice.gNB_ID.buf[3]);
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
   /* optional */
   if (instance_p->gNB_name) {
@@ -471,7 +469,7 @@ static int ngap_gNB_generate_ng_setup_request(
     ie->value.present = NGAP_NGSetupRequestIEs__value_PR_RANNodeName;
     OCTET_STRING_fromBuf(&ie->value.choice.RANNodeName, instance_p->gNB_name,
                          strlen(instance_p->gNB_name));
-    ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+    asn1cSeqAdd(&out->protocolIEs.list, ie);
   }
 
   /* mandatory */
@@ -494,7 +492,7 @@ static int ngap_gNB_generate_ng_setup_request(
           ssi = (NGAP_SliceSupportItem_t *)calloc(1, sizeof(NGAP_SliceSupportItem_t));
           INT8_TO_OCTET_STRING(instance_p->s_nssai[i][si].sST, &ssi->s_NSSAI.sST);
 
-          if(instance_p->s_nssai[i]->sD_flag) {
+          if (instance_p->s_nssai[i][si].sD_flag) {
             ssi->s_NSSAI.sD = calloc(1, sizeof(NGAP_SD_t));
             ssi->s_NSSAI.sD->buf = calloc(3, sizeof(uint8_t));
             ssi->s_NSSAI.sD->size = 3;
@@ -504,15 +502,15 @@ static int ngap_gNB_generate_ng_setup_request(
           }
           
 
-          ASN_SEQUENCE_ADD(&plmn->tAISliceSupportList.list, ssi);
+          asn1cSeqAdd(&plmn->tAISliceSupportList.list, ssi);
         }
         
-        ASN_SEQUENCE_ADD(&ta->broadcastPLMNList.list, plmn);
+        asn1cSeqAdd(&ta->broadcastPLMNList.list, plmn);
       }
     }
-    ASN_SEQUENCE_ADD(&ie->value.choice.SupportedTAList.list, ta);
+    asn1cSeqAdd(&ie->value.choice.SupportedTAList.list, ta);
   }
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
   
   /* mandatory */
   ie = (NGAP_NGSetupRequestIEs_t *)calloc(1, sizeof(NGAP_NGSetupRequestIEs_t));
@@ -520,7 +518,7 @@ static int ngap_gNB_generate_ng_setup_request(
   ie->criticality = NGAP_Criticality_ignore;
   ie->value.present = NGAP_NGSetupRequestIEs__value_PR_PagingDRX;
   ie->value.choice.PagingDRX = instance_p->default_drx;
-  ASN_SEQUENCE_ADD(&out->protocolIEs.list, ie);
+  asn1cSeqAdd(&out->protocolIEs.list, ie);
 
 
   if (ngap_gNB_encode_pdu(&pdu, &buffer, &len) < 0) {
