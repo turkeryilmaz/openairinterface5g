@@ -32,9 +32,11 @@
 #define RRC_UE_C
 #define _GNU_SOURCE
 
+#include <arpa/inet.h>
+
 #include "assertions.h"
 #include "hashtable.h"
-#include "asn1_conversions.h"
+#include "oai_asn1.h"
 #include "rrc_defs.h"
 #include "rrc_extern.h"
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
@@ -74,7 +76,7 @@
 #include <common/utils/system.h>
 
 #include "intertask_interface.h"
-#include "targets/RT/USER/lte-softmodem.h"
+#include "executables/lte-softmodem.h"
 
 #include "SIMULATION/TOOLS/sim.h" // for taus
 
@@ -379,7 +381,7 @@ void init_SL_preconfig(UE_RRC_INST *UE, const uint8_t eNB_index ) {
   preconfigpool->dataHoppingConfig_r12.numSubbands_r12                              = LTE_SL_HoppingConfigComm_r12__numSubbands_r12_ns1;
   preconfigpool->dataHoppingConfig_r12.rb_Offset_r12                                = 0;
   preconfigpool->dataTxParameters_r12                                               = 0;
-  ASN_SEQUENCE_ADD(&UE->SL_Preconfiguration[eNB_index]->preconfigComm_r12.list,preconfigpool);
+  asn1cSeqAdd(&UE->SL_Preconfiguration[eNB_index]->preconfigComm_r12.list,preconfigpool);
   // Rel13 extensions
   UE->SL_Preconfiguration[eNB_index]->ext1 = NULL;
 }
@@ -554,7 +556,7 @@ static void rrc_ue_generate_RRCConnectionSetupComplete(
   LOG_D(RLC,
         "[FRAME %05d][RRC_UE][MOD %02d][][--- PDCP_DATA_REQ/%d Bytes (RRCConnectionSetupComplete to eNB %d MUI %d) --->][PDCP][MOD %02d][RB %02d]\n",
         ctxt_pP->frame, ctxt_pP->module_id+NB_eNB_INST, size, eNB_index, rrc_mui, ctxt_pP->module_id+NB_eNB_INST, DCCH);
-  ctxt_pP_local.rnti = ctxt_pP->rnti;
+  ctxt_pP_local.rntiMaybeUEid = ctxt_pP->rntiMaybeUEid;
   rrc_data_req_ue (
     ctxt_pP,
     DCCH,
@@ -654,11 +656,7 @@ int rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const SRB_INFO *co
           break;
 
         case LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup:
-          LOG_A(RRC,
-                "[UE%d][RAPROC] Frame %d : Logical Channel DL-CCCH (SRB0), Received RRCConnectionSetup RNTI %x\n",
-                ctxt_pP->module_id,
-                ctxt_pP->frame,
-                ctxt_pP->rnti);
+          LOG_A(RRC, "[UE%d][RAPROC] Frame %d : Logical Channel DL-CCCH (SRB0), Received RRCConnectionSetup RNTI %lx\n", ctxt_pP->module_id, ctxt_pP->frame, ctxt_pP->rntiMaybeUEid);
           // Get configuration
           // Release T300 timer
           UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].T300_active = 0;
@@ -668,7 +666,7 @@ int rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const SRB_INFO *co
             &dl_ccch_msg->message.choice.c1.choice.rrcConnectionSetup.criticalExtensions.choice.c1.choice.rrcConnectionSetup_r8.radioResourceConfigDedicated);
           rrc_set_state (ctxt_pP->module_id, RRC_STATE_CONNECTED);
           rrc_set_sub_state (ctxt_pP->module_id, RRC_SUB_STATE_CONNECTED);
-          UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].rnti = ctxt_pP->rnti;
+          UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].rnti = ctxt_pP->rntiMaybeUEid;
           rrc_ue_generate_RRCConnectionSetupComplete(
             ctxt_pP,
             eNB_index,
@@ -1552,8 +1550,7 @@ rrc_ue_process_securityModeCommand(
   pdcp_t *pdcp_p = NULL;
   hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
   hashtable_rc_t h_rc;
-  key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti,
-                            ctxt_pP->enb_flag, DCCH, SRB_FLAG_YES);
+  key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH, SRB_FLAG_YES);
   h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
 
   if (h_rc == HASH_TABLE_OK) {
@@ -1667,7 +1664,7 @@ rrc_ue_process_MBMSCountingRequest(
   MBMSCountingResponse_r10_IEs->mbsfn_AreaIndex_r10 = calloc(1,sizeof(long));
  // MBMSCountingResponse_r10_IEs->countingResponseList_r10 = calloc(1,sizeof(struct LTE_CountingResponseList_r10));
 //
-//  ASN_SEQUENCE_ADD(
+//  asn1cSeqAdd(
 //        &MBMSCountingResponse->criticalExtensions.choice.c1.choice.countingResponse_r10.countingResponseList_r10.list,
 //        &CountingResponse);
 //
@@ -1754,7 +1751,7 @@ rrc_ue_process_nrueCapabilityEnquiry(
   for (int i = 0; i < count; i++) {
     enc_rval.encoded = 0;
     if (*cap_req->list.array[i] == LTE_RAT_Type_nr) {
-        ASN_SEQUENCE_ADD(&ue_cap->criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list,
+        asn1cSeqAdd(&ue_cap->criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list,
                          &ue_CapabilityRAT_Container);
         ue_cap->criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[i]->rat_Type = LTE_RAT_Type_nr;
         asn_enc_rval_t enc_rval_nr = uper_encode_to_buffer(&asn_DEF_LTE_UL_DCCH_Message, NULL, (void *) &ul_dcch_msg, buffer, sizeof(buffer));
@@ -1766,7 +1763,7 @@ rrc_ue_process_nrueCapabilityEnquiry(
               __FUNCTION__, enc_rval.encoded, (enc_rval.encoded+7)/8);
     }
     else if (*cap_req->list.array[i] == LTE_RAT_Type_eutra_nr) {
-        ASN_SEQUENCE_ADD(&ue_cap->criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list,
+        asn1cSeqAdd(&ue_cap->criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list,
                          &ue_CapabilityRAT_Container_mrdc);
         ue_cap->criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[i]->rat_Type = LTE_RAT_Type_eutra_nr;
         asn_enc_rval_t enc_rval_eutra_nr = uper_encode_to_buffer(&asn_DEF_LTE_UL_DCCH_Message, NULL, (void *) &ul_dcch_msg, buffer, sizeof(buffer));
@@ -1836,7 +1833,7 @@ rrc_ue_process_ueCapabilityEnquiry(
   for (i=0; i<UECapabilityEnquiry->criticalExtensions.choice.c1.choice.ueCapabilityEnquiry_r8.ue_CapabilityRequest.list.count; i++) {
     if (*UECapabilityEnquiry->criticalExtensions.choice.c1.choice.ueCapabilityEnquiry_r8.ue_CapabilityRequest.list.array[i]
         == LTE_RAT_Type_eutra) {
-      ASN_SEQUENCE_ADD(
+      asn1cSeqAdd(
         &ul_dcch_msg.message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list,
         &ue_CapabilityRAT_Container);
       enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UL_DCCH_Message, NULL, (void *) &ul_dcch_msg, buffer, 100);
@@ -1860,7 +1857,7 @@ rrc_ue_process_ueCapabilityEnquiry(
     }
     else if (*UECapabilityEnquiry->criticalExtensions.choice.c1.choice.ueCapabilityEnquiry_r8.ue_CapabilityRequest.list.array[i]
             == LTE_RAT_Type_nr) {
-        ASN_SEQUENCE_ADD(
+        asn1cSeqAdd(
           &ul_dcch_msg.message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list,
           &ue_CapabilityRAT_Container);
         enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UL_DCCH_Message, NULL, (void *) &ul_dcch_msg, buffer, 100);
@@ -2053,7 +2050,7 @@ rrc_ue_process_rrcConnectionReconfiguration(
         message_ral_p = itti_alloc_new_message (TASK_RRC_UE, 0, RRC_RAL_CONNECTION_REESTABLISHMENT_IND);
         memset(&connection_reestablishment_ind, 0, sizeof(rrc_ral_connection_reestablishment_ind_t));
         // TO DO ral_si_ind.plmn_id        = 0;
-        connection_reestablishment_ind.ue_id            = ctxt_pP->rnti;
+        connection_reestablishment_ind.ue_id = ctxt_pP->rntiMaybeUEid;
 
         if (rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->drb_ToAddModList != NULL) {
           connection_reestablishment_ind.num_drb      =
@@ -2119,7 +2116,7 @@ rrc_ue_process_mobilityControlInfo(
   lcid= CALLOC (1, sizeof (DRB_Identity_t)); // long
   for (*lcid=0;*lcid<NB_RB_MAX;*lcid++)
   {
-    ASN_SEQUENCE_ADD (&(drb2release_list)->list,lcid);
+    asn1cSeqAdd (&(drb2release_list)->list,lcid);
   }
    */
   //Removing SRB1 and SRB2 and DRB0
@@ -2430,7 +2427,7 @@ rrc_ue_decode_dcch(
             sl_destination_identity->buf[1] = 0x00;
             sl_destination_identity->buf[2] = 0x01;
             sl_destination_identity->bits_unused = 0;
-            ASN_SEQUENCE_ADD(&destinationInfoList->list,sl_destination_identity);
+            asn1cSeqAdd(&destinationInfoList->list,sl_destination_identity);
             rrc_ue_generate_SidelinkUEInformation(ctxt_pP, eNB_indexP, destinationInfoList, NULL, SL_TRANSMIT_NON_RELAY_ONE_TO_ONE);
             send_ue_information ++;
           }
@@ -3201,7 +3198,8 @@ int decode_SIB1( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index, 
     const size_t num_plmn_data = sizeof(plmn_data) / sizeof(plmn_data[0]);
     for (size_t plmn_ind = 0;; ++plmn_ind) {
       if (plmn_ind == num_plmn_data) {
-        LOG_E( RRC, "Did not find name from internal table for %u %u\n", mcc, mnc);
+        LOG_W( RRC, "Did not find operator name from internal table for MCC %0*d, MNC %0*d\n",
+               mccdigits, mcc, mncdigits, mnc);
         break;
       }
       if ((plmn_data[plmn_ind].mcc == mcc) && (plmn_data[plmn_ind].mnc == mnc)) {
@@ -4393,8 +4391,8 @@ void rrc_ue_generate_nrMeasurementReport(protocol_ctxt_t *const ctxt_pP, uint8_t
         AssertFatal(size >= 0, "do_nrMeasurementReport failed \n");
         LOG_I(RRC, "[UE %d] Frame %d : Generating Measurement Report for eNB %d\n",
               ctxt_pP->module_id, ctxt_pP->frame, eNB_index);
-        int result = pdcp_data_req(ctxt_pP,  SRB_FLAG_YES, DCCH, rrc_mui++, 0, size, buffer, PDCP_TRANSMISSION_MODE_DATA,NULL, NULL);
-        AssertFatal (result == TRUE, "PDCP data request failed!\n");
+        const bool result = pdcp_data_req(ctxt_pP,  SRB_FLAG_YES, DCCH, rrc_mui++, 0, size, buffer, PDCP_TRANSMISSION_MODE_DATA,NULL, NULL);
+        AssertFatal (result == true, "PDCP data request failed!\n");
       }
     }
   }
@@ -4412,7 +4410,6 @@ void rrc_ue_generate_MeasurementReport(protocol_ctxt_t *const ctxt_pP, uint8_t e
   long             nElem, nElem1;
   float            rsrp_filtered, rsrq_filtered;
   static frame_t   pframe=0;
-  int              result;
   nElem = 98;
   nElem1 = 35;
   target_eNB_offset = UE_rrc_inst[ctxt_pP->module_id].Info[0].handoverTarget; // eNB_offset of target eNB: used to obtain the mod_id of target eNB
@@ -4462,8 +4459,8 @@ void rrc_ue_generate_MeasurementReport(protocol_ctxt_t *const ctxt_pP, uint8_t e
         AssertFatal(size >= 0, "do_MeasurementReport failed \n");
         LOG_I(RRC, "[UE %d] Frame %d : Generating Measurement Report for eNB %d. Size is %zu\n",
               ctxt_pP->module_id, ctxt_pP->frame, eNB_index, size);
-        result = pdcp_data_req(ctxt_pP,  SRB_FLAG_YES, DCCH, rrc_mui++, 0, size, buffer, PDCP_TRANSMISSION_MODE_DATA,NULL, NULL);
-        AssertFatal (result == TRUE, "PDCP data request failed!\n");
+        const bool result = pdcp_data_req(ctxt_pP,  SRB_FLAG_YES, DCCH, rrc_mui++, 0, size, buffer, PDCP_TRANSMISSION_MODE_DATA,NULL, NULL);
+        AssertFatal (result == true, "PDCP data request failed!\n");
         //LOG_D(RRC, "[UE %d] Frame %d Sending MeasReport (%d bytes) through DCCH%d to PDCP \n",ue_mod_idP,frameP, size, DCCH);
       }
 
@@ -4811,13 +4808,11 @@ void decode_MBSFNAreaConfiguration( module_id_t ue_mod_idP, uint8_t eNB_index, f
 
   // Configure commonSF_Alloc
   for(i=0; i< UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.count; i++) {
-    LOG_W(RRC,"[UE %d] Frame %d, commonSF_Alloc_r9: radioframeAllocationPeriod(%ldn),radioframeAllocationOffset(%ld), subframeAllocation(%x,%x,%x)\n",
+    LOG_W(RRC,"[UE %d] Frame %d, commonSF_Alloc_r9: radioframeAllocationPeriod(%ldn),radioframeAllocationOffset(%ld), subframeAllocation(%x)\n",
           ue_mod_idP, frameP,
           UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i]->radioframeAllocationPeriod<<1,
           UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i]->radioframeAllocationOffset,
-          UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i]->subframeAllocation.choice.oneFrame.buf[0],
-          UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i]->subframeAllocation.choice.oneFrame.buf[1],
-          UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i]->subframeAllocation.choice.oneFrame.buf[2]);
+          UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i]->subframeAllocation.choice.oneFrame.buf[0]);
     UE_mac_inst[ue_mod_idP].commonSF_Alloc_r9_mbsfn_SubframeConfig[i] = UE_rrc_inst[ue_mod_idP].mcch_message[eNB_index]->commonSF_Alloc_r9.list.array[i];
   }
 
@@ -4892,7 +4887,6 @@ void *rrc_ue_task( void *args_p ) {
   instance_t    instance;
   unsigned int  ue_mod_id;
   int           result;
-  uint16_t      nb_cells;
   SRB_INFO     *srb_info_p;
   protocol_ctxt_t  ctxt;
   itti_mark_task_ready (TASK_RRC_UE);
@@ -5879,7 +5873,7 @@ void *rrc_control_socket_thread_fct(void *arg) {
         *logicalchannelgroup_drb = 1;
         DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
         UE->DRB_configList = CALLOC(1,sizeof(LTE_DRB_ToAddModList_t));
-        ASN_SEQUENCE_ADD(&UE->DRB_configList->list,UE->DRB_config[0][0]);
+        asn1cSeqAdd(&UE->DRB_configList->list,UE->DRB_config[0][0]);
         rrc_pdcp_config_asn1_req(&ctxt,
                                  (LTE_SRB_ToAddModList_t *) NULL,
                                  UE->DRB_configList,
@@ -6084,7 +6078,7 @@ void *rrc_control_socket_thread_fct(void *arg) {
         *logicalchannelgroup_drb = 1;
         DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
         UE->DRB_configList = CALLOC(1,sizeof(LTE_DRB_ToAddModList_t));
-        ASN_SEQUENCE_ADD(&UE->DRB_configList->list,UE->DRB_config[0][0]);
+        asn1cSeqAdd(&UE->DRB_configList->list,UE->DRB_config[0][0]);
         rrc_pdcp_config_asn1_req(&ctxt,
                                  (LTE_SRB_ToAddModList_t *) NULL,
                                  UE->DRB_configList,
@@ -6238,7 +6232,7 @@ void *rrc_control_socket_thread_fct(void *arg) {
         *logicalchannelgroup_drb = 1;
         DRB_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup_drb;
         UE->DRB_configList = CALLOC(1,sizeof(LTE_DRB_ToAddModList_t));
-        ASN_SEQUENCE_ADD(&UE->DRB_configList->list,UE->DRB_config[0][0]);
+        asn1cSeqAdd(&UE->DRB_configList->list,UE->DRB_config[0][0]);
         rrc_pdcp_config_asn1_req(&ctxt,
                                  (LTE_SRB_ToAddModList_t *) NULL,
                                  UE->DRB_configList,

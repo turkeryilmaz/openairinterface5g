@@ -32,34 +32,11 @@
 
 #if !defined(NAS_NETLINK)
 #include <stdint.h>
+#include <stdbool.h>
 #else
 #include <linux/types.h>
 typedef void * intptr_t;
 #endif
-
-//-----------------------------------------------------------------------------
-// GENERIC TYPES
-//-----------------------------------------------------------------------------
-
-/* boolean_t is also defined in openair2/COMMON/commonDef.h,
- * let's protect potential redefinition
- */
-#ifndef _BOOLEAN_T_DEFINED_
-  #define _BOOLEAN_T_DEFINED_
-
-  typedef signed char        boolean_t;
-
-  #if !defined(TRUE)
-    #define TRUE               (boolean_t)0x01
-  #endif
-
-  #if !defined(FALSE)
-    #define FALSE              (boolean_t)0x00
-  #endif
-
-  #define BOOL_NOT(b) (b^TRUE)
-
-#endif /* _BOOLEAN_T_DEFINED_ */
 
 //-----------------------------------------------------------------------------
 // GENERIC ACCESS STRATUM TYPES
@@ -72,30 +49,30 @@ typedef uint32_t              slot_t;
 typedef uint16_t              module_id_t;
 typedef uint8_t               slice_id_t;
 typedef uint8_t               eNB_index_t;
-typedef uint16_t              ue_id_t;
+typedef uint64_t              ue_id_t;
 typedef int16_t               smodule_id_t;
 typedef long              rb_id_t;
 typedef long              srb_id_t;
 
-typedef boolean_t             MBMS_flag_t;
-#define  MBMS_FLAG_NO         FALSE
-#define  MBMS_FLAG_YES        TRUE
+typedef bool MBMS_flag_t;
+#define MBMS_FLAG_NO  false
+#define MBMS_FLAG_YES true
 
-typedef boolean_t             eNB_flag_t;
-#define  ENB_FLAG_NO          FALSE
-#define  ENB_FLAG_YES         TRUE
+typedef bool eNB_flag_t;
+#define ENB_FLAG_NO  false
+#define ENB_FLAG_YES true
 
-typedef boolean_t             gNB_flag_t;
-#define  GNB_FLAG_NO          FALSE
-#define  GNB_FLAG_YES         TRUE
+typedef bool gNB_flag_t;
+#define GNB_FLAG_NO  false
+#define GNB_FLAG_YES true
 
-typedef boolean_t             srb_flag_t;
-#define  SRB_FLAG_NO          FALSE
-#define  SRB_FLAG_YES         TRUE
+typedef bool srb_flag_t;
+#define SRB_FLAG_NO  false
+#define SRB_FLAG_YES true
 
-typedef boolean_t             sl_discovery_flag_t;
-#define  SL_DISCOVERY_FLAG_NO          FALSE
-#define  SL_DISCOVERY_FLAG_YES         TRUE
+typedef bool sl_discovery_flag_t;
+#define SL_DISCOVERY_FLAG_NO  false
+#define SL_DISCOVERY_FLAG_YES true
 
 typedef enum link_direction_e {
   UNKNOWN_DIR          = 0,
@@ -152,8 +129,8 @@ typedef uint16_t           rlc_usn_t;
 typedef int32_t            rlc_buffer_occupancy_t;
 typedef signed int         rlc_op_status_t;
 
-#define  SDU_CONFIRM_NO          FALSE
-#define  SDU_CONFIRM_YES         TRUE
+#define  SDU_CONFIRM_NO          false
+#define  SDU_CONFIRM_YES         true
 //-----------------------------------------------------------------------------
 // PDCP TYPES
 //-----------------------------------------------------------------------------
@@ -233,15 +210,16 @@ typedef uint8_t            pdusessionid_t;
 //-----------------------------------------------------------------------------
 // may be ITTI not enabled, but type instance is useful also for OTG,
 typedef intptr_t instance_t;
+
 typedef struct protocol_ctxt_s {
   module_id_t module_id;     /*!< \brief  Virtualized module identifier      */
   eNB_flag_t  enb_flag;      /*!< \brief  Flag to indicate eNB (1) or UE (0) */
   instance_t  instance;      /*!< \brief  ITTI or OTG module identifier      */
-  rnti_t      rnti;
+  ue_id_t rntiMaybeUEid;
   frame_t     frame;         /*!< \brief  LTE frame number.*/
   sub_frame_t subframe;      /*!< \brief  LTE sub frame number.*/
   eNB_index_t eNB_index;     /*!< \brief  valid for UE indicating the index of connected eNB(s)      */
-  boolean_t		brOption;
+  bool        brOption;
 } protocol_ctxt_t;
 // warning time hardcoded
 #define PROTOCOL_CTXT_TIME_MILLI_SECONDS(CtXt_h) ((CtXt_h)->frame*10+(CtXt_h)->subframe)
@@ -274,36 +252,27 @@ typedef struct protocol_ctxt_s {
 #define PROTOCOL_CTXT_COMPUTE_INSTANCE(CtXt_h) \
   MODULE_ID_TO_INSTANCE( (CtXt_h)->module_id , (CtXt_h)->instance , (CtXt_h)->enb_flag )
 
-
 #define PROTOCOL_CTXT_SET_BY_MODULE_ID(Ctxt_Pp, mODULE_iD, eNB_fLAG, rNTI, fRAME, sUBfRAME, eNB_iNDEX) \
-  (Ctxt_Pp)->module_id = mODULE_iD; \
-  (Ctxt_Pp)->enb_flag  = eNB_fLAG; \
-  (Ctxt_Pp)->rnti      = rNTI; \
-  (Ctxt_Pp)->frame     = fRAME; \
-  (Ctxt_Pp)->subframe  = sUBfRAME; \
-  (Ctxt_Pp)->eNB_index  = eNB_iNDEX; \
+  (Ctxt_Pp)->module_id = mODULE_iD;                                                                    \
+  (Ctxt_Pp)->enb_flag = eNB_fLAG;                                                                      \
+  (Ctxt_Pp)->rntiMaybeUEid = rNTI;                                                                     \
+  (Ctxt_Pp)->frame = fRAME;                                                                            \
+  (Ctxt_Pp)->subframe = sUBfRAME;                                                                      \
+  (Ctxt_Pp)->eNB_index = eNB_iNDEX;                                                                    \
   PROTOCOL_CTXT_COMPUTE_INSTANCE(Ctxt_Pp)
 
 #define PROTOCOL_CTXT_SET_BY_INSTANCE(Ctxt_Pp, iNSTANCE, eNB_fLAG, rNTI, fRAME, sUBfRAME) \
-  (Ctxt_Pp)->instance  = iNSTANCE; \
-  (Ctxt_Pp)->enb_flag  = eNB_fLAG; \
-  (Ctxt_Pp)->rnti      = rNTI; \
-  (Ctxt_Pp)->frame     = fRAME; \
-  (Ctxt_Pp)->subframe  = sUBfRAME; \
+  (Ctxt_Pp)->instance = iNSTANCE;                                                         \
+  (Ctxt_Pp)->enb_flag = eNB_fLAG;                                                         \
+  (Ctxt_Pp)->rntiMaybeUEid = rNTI;                                                        \
+  (Ctxt_Pp)->frame = fRAME;                                                               \
+  (Ctxt_Pp)->subframe = sUBfRAME;                                                         \
   PROTOCOL_CTXT_COMPUTE_MODULE_ID(Ctxt_Pp)
 
-#define PROTOCOL_CTXT_FMT "[FRAME %05u][%s][MOD %02d][RNTI %" PRIx16 "]"
-#define PROTOCOL_CTXT_ARGS(CTXT_Pp) \
-  (CTXT_Pp)->frame, \
-  ((CTXT_Pp)->enb_flag == ENB_FLAG_YES) ? "eNB":" UE", \
-  (CTXT_Pp)->module_id, \
-  (CTXT_Pp)->rnti
+#define PROTOCOL_CTXT_FMT "[FRAME %05u][%s][MOD %02d][RNTI %" PRIx64 "]"
+#define PROTOCOL_CTXT_ARGS(CTXT_Pp) (CTXT_Pp)->frame, ((CTXT_Pp)->enb_flag == ENB_FLAG_YES) ? "eNB" : " UE", (CTXT_Pp)->module_id, (CTXT_Pp)->rntiMaybeUEid
 
-#define PROTOCOL_NR_CTXT_ARGS(CTXT_Pp) \
-  (CTXT_Pp)->frame, \
-  ((CTXT_Pp)->enb_flag == GNB_FLAG_YES) ? "gNB":" UE", \
-  (CTXT_Pp)->module_id, \
-  (CTXT_Pp)->rnti
+#define PROTOCOL_NR_CTXT_ARGS(CTXT_Pp) (CTXT_Pp)->frame, ((CTXT_Pp)->enb_flag == GNB_FLAG_YES) ? "gNB" : " UE", (CTXT_Pp)->module_id, (CTXT_Pp)->rntiMaybeUEid
 
 #define CHECK_CTXT_ARGS(CTXT_Pp)
 

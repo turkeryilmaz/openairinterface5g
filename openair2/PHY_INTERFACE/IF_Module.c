@@ -16,7 +16,7 @@ extern int oai_nfapi_cqi_indication(nfapi_cqi_indication_t *cqi_ind);
 extern int oai_nfapi_sr_indication(nfapi_sr_indication_t *ind);
 extern int oai_nfapi_rx_ind(nfapi_rx_indication_t *ind);
 
-extern uint16_t sf_ahead;
+int sf_ahead=4;
 extern UL_RCC_IND_t  UL_RCC_INFO[MAX_NUM_CCs];
 
 extern RAN_CONTEXT_t RC;
@@ -788,6 +788,8 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
         }
         LOG_D(PHY,"Schedule_response: SFN_SF:%d%d dl_pdus:%d CC_id: %d \n",sched_info->frame,sched_info->subframe,sched_info->DL_req->dl_config_request_body.number_pdu,sched_info->CC_id);
       }
+
+      LOG_D(PHY,"Schedule_response: SFN_SF:%d%d dl_pdus:%d\n",sched_info->frame,sched_info->subframe,sched_info->DL_req->dl_config_request_body.number_pdu);
     }
   }
 }

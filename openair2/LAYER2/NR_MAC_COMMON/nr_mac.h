@@ -37,9 +37,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
-#include "NR_SubcarrierSpacing.h"
-#include "openair1/SCHED_NR_UE/harq_nr.h"
+#include "common/utils/nr/nr_common.h"
+#include "NR_CellGroupConfig.h"
 
 #define NR_SHORT_BSR_TABLE_SIZE 32
 #define NR_LONG_BSR_TABLE_SIZE 256
@@ -62,12 +61,7 @@
 #define NR_BCCH_BCH 5    // MIB
 #define CCCH_PAYLOAD_SIZE_MAX 512 
 #define RAR_PAYLOAD_SIZE_MAX  128
-#define MAX_BWP_SIZE          275
-
-typedef enum frequency_range_e {
-  FR1 = 0,
-  FR2
-} frequency_range_t;
+#define MAX_CSI_REPORTCONFIG  48
 
 #define NR_BSR_TRIGGER_NONE      (0) /* No BSR Trigger */
 #define NR_BSR_TRIGGER_REGULAR   (1) /* For Regular and ReTxBSR Expiry Triggers */
@@ -107,11 +101,10 @@ typedef struct {
 } __attribute__ ((__packed__)) NR_MAC_SUBHEADER_SHORT;
 
 typedef struct {
-  uint8_t LCID: 6;    // octet 1 [5:0]
-  uint8_t F: 1;       // octet 1 [6]
-  uint8_t R: 1;       // octet 1 [7]
-  uint8_t L1: 8;      // octet 2 [7:0]
-  uint8_t L2: 8;      // octet 3 [7:0]
+  uint8_t LCID: 6;
+  uint8_t F: 1;
+  uint8_t R: 1;
+  uint16_t L: 16;
 } __attribute__ ((__packed__)) NR_MAC_SUBHEADER_LONG;
 
 typedef struct {
@@ -119,6 +112,23 @@ typedef struct {
   uint8_t R: 2;       // octet 1 [7:6]
 } __attribute__ ((__packed__)) NR_MAC_SUBHEADER_FIXED;
 
+static inline int get_mac_len(uint8_t* pdu, int pdu_len, uint16_t *mac_ce_len, uint16_t *mac_subheader_len) {
+  if ( pdu_len < sizeof(NR_MAC_SUBHEADER_SHORT))
+    return false;
+  NR_MAC_SUBHEADER_SHORT *s = (NR_MAC_SUBHEADER_SHORT*) pdu;
+  NR_MAC_SUBHEADER_LONG *l = (NR_MAC_SUBHEADER_LONG*) pdu;
+  if (s->F && pdu_len < sizeof(NR_MAC_SUBHEADER_LONG))
+    return false;
+  if (s->F) {
+    *mac_subheader_len = sizeof(*l);
+    *mac_ce_len = ntohs(l->L);
+  } else {
+    *mac_subheader_len = sizeof(*s);
+    *mac_ce_len = s->L;
+  }
+  return true;
+}
+    
 // BSR MAC CEs
 // TS 38.321 ch. 6.1.3.1
 // Short BSR for a specific logical channel group ID
@@ -261,7 +271,7 @@ typedef struct {
 
 // DCI pdu structures. Used by both gNB and UE.
 typedef struct {
-  uint16_t val;
+  uint32_t val;
   uint8_t nbits;
 } dci_field_t;
 
@@ -288,6 +298,9 @@ typedef struct {
   int num_srs;
   int num_harqs;
   int num_csi_reports;
+  uint8_t pmi;
+  uint8_t ri;
+  uint8_t cqi;
 } nr_emulated_l1_t;
 
 typedef struct {
@@ -495,6 +508,100 @@ typedef struct Type0_PDCCH_CSS_config_s {
   NR_SubcarrierSpacing_t scs_pdcch;
   bool active;
 } NR_Type0_PDCCH_CSS_config_t;
+
+typedef struct {
+  uint8_t nb_ssbri_cri;
+  uint8_t cri_ssbri_bitlen;
+  uint8_t rsrp_bitlen;
+  uint8_t diff_rsrp_bitlen;
+} L1_RSRP_bitlen_t;
+
+typedef struct{
+  uint8_t ri_restriction;
+  uint8_t cri_bitlen;
+  uint8_t ri_bitlen;
+  uint8_t li_bitlen[8];
+  uint8_t pmi_x1_bitlen[8];
+  uint8_t pmi_x2_bitlen[8];
+  uint8_t cqi_bitlen[8];
+} CSI_Meas_bitlen_t;
+
+typedef struct nr_csi_report {
+  NR_CSI_ReportConfig__reportQuantity_PR reportQuantity_type;
+  long periodicity;
+  uint16_t offset;
+  long ** SSB_Index_list;
+  long ** CSI_Index_list;
+//  uint8_t nb_of_nzp_csi_report;
+  uint8_t nb_of_csi_ssb_report;
+  L1_RSRP_bitlen_t CSI_report_bitlen;
+  CSI_Meas_bitlen_t csi_meas_bitlen;
+  int codebook_mode;
+  int N1;
+  int N2;
+} nr_csi_report_t;
+
+typedef enum {
+  NR_SRS_SRI_0 = 0,
+  NR_SRS_SRI_1,
+  NR_SRS_SRI_2,
+  NR_SRS_SRI_3,
+  NR_SRS_SRI_0_1,
+  NR_SRS_SRI_0_2,
+  NR_SRS_SRI_0_3,
+  NR_SRS_SRI_1_2,
+  NR_SRS_SRI_1_3,
+  NR_SRS_SRI_2_3,
+  NR_SRS_SRI_0_1_2,
+  NR_SRS_SRI_0_1_3,
+  NR_SRS_SRI_0_2_3,
+  NR_SRS_SRI_1_2_3,
+  NR_SRS_SRI_0_1_2_3
+} nr_srs_sri_t;
+
+typedef struct nr_srs_feedback {
+  uint8_t sri;
+  uint8_t ul_ri;
+  uint8_t tpmi;
+} nr_srs_feedback_t;
+
+typedef struct NR_UE_DL_BWP {
+  NR_BWP_Id_t bwp_id;
+  int n_dl_bwp;
+  int scs;
+  long *cyclicprefix;
+  uint16_t BWPSize;
+  uint16_t BWPStart;
+  uint16_t initial_BWPSize;
+  uint16_t initial_BWPStart;
+  NR_PDSCH_TimeDomainResourceAllocationList_t *tdaList;
+  NR_PDSCH_Config_t *pdsch_Config;
+  NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig;
+  uint8_t mcsTableIdx;
+  nr_dci_format_t dci_format;
+} NR_UE_DL_BWP_t;
+
+typedef struct NR_UE_UL_BWP {
+  NR_BWP_Id_t bwp_id;
+  int n_ul_bwp;
+  int scs;
+  long *cyclicprefix;
+  uint16_t BWPSize;
+  uint16_t BWPStart;
+  uint16_t initial_BWPSize;
+  uint16_t initial_BWPStart;
+  NR_PUSCH_ServingCellConfig_t *pusch_servingcellconfig;
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList;
+  NR_PUSCH_Config_t *pusch_Config;
+  NR_PUCCH_Config_t *pucch_Config;
+  NR_PUCCH_ConfigCommon_t *pucch_ConfigCommon;
+  NR_CSI_MeasConfig_t *csi_MeasConfig;
+  NR_SRS_Config_t *srs_Config;
+  uint8_t transform_precoding;
+  uint8_t mcs_table;
+  nr_dci_format_t dci_format;
+  int max_fb_time;
+} NR_UE_UL_BWP_t;
 
 #endif /*__LAYER2_MAC_H__ */
 

@@ -38,6 +38,7 @@
 #include "f1ap_du_rrc_message_transfer.h"
 #include "f1ap_cu_ue_context_management.h"
 #include "f1ap_du_ue_context_management.h"
+#include "f1ap_du_paging.h"
 
 /* Handlers matrix. Only f1 related procedure present here */
 f1ap_message_processing_t f1ap_messages_processing[][3] = {
@@ -50,7 +51,7 @@ f1ap_message_processing_t f1ap_messages_processing[][3] = {
   { DU_handle_gNB_CU_CONFIGURATION_UPDATE, CU_handle_gNB_CU_CONFIGURATION_UPDATE_ACKNOWLEDGE, CU_handle_gNB_CU_CONFIGURATION_UPDATE_FAILURE }, /* gNBCUConfigurationUpdate */
   { DU_handle_UE_CONTEXT_SETUP_REQUEST, CU_handle_UE_CONTEXT_SETUP_RESPONSE, 0 }, /* UEContextSetup */
   { DU_handle_UE_CONTEXT_RELEASE_COMMAND, CU_handle_UE_CONTEXT_RELEASE_COMPLETE, 0 }, /* UEContextRelease */
-  { 0, 0, 0 }, /* UEContextModification */
+  { DU_handle_UE_CONTEXT_MODIFICATION_REQUEST, CU_handle_UE_CONTEXT_MODIFICATION_RESPONSE, 0 }, /* UEContextModification */
   { 0, 0, 0 }, /* UEContextModificationRequired */
   { 0, 0, 0 }, /* UEMobilityCommand */
   { CU_handle_UE_CONTEXT_RELEASE_REQUEST, 0, 0 }, /* UEContextReleaseRequest */
@@ -61,7 +62,7 @@ f1ap_message_processing_t f1ap_messages_processing[][3] = {
   { 0, 0, 0 }, /* UEInactivityNotification */
   { 0, 0, 0 }, /* GNBDUResourceCoordination */
   { 0, 0, 0 }, /* SystemInformationDeliveryCommand */
-  { 0, 0, 0 }, /* Paging */
+  { DU_handle_Paging, 0, 0 }, /* Paging */
   { 0, 0, 0 }, /* Notify */
   { 0, 0, 0 }, /* WriteReplaceWarning */
   { 0, 0, 0 }, /* PWSCancel */
