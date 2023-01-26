@@ -1723,24 +1723,13 @@ int config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_config_response
 }
 
 int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t *resp) {
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-	vnf_info *vnf = (vnf_info *)(config->user_data);
-	pnf_info *pnf = vnf->pnfs;
-	phy_info *phy = pnf->phys;
-	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-	uint16_t port =htons(phy->remote_port);
-	char *remote_addr = (char *) malloc(strlen(phy->remote_addr)+1);
-	memset(remote_addr, 0, strlen(phy->remote_addr)+1);
-	strncpy(remote_addr, phy->remote_addr, strlen(phy->remote_addr));
-	for(int i=0; i < pnf->num_phys; i++ )
-	{
-		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
-		LOG_D(NFAPI_VNF, "MultiCell: fxn:%d phy_id added:%d\n", p5_idx, resp->header.phy_id);
-		phy +=1;
-	}
-	free(remote_addr);
-	remote_addr = NULL;
-	return 0;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+  vnf_info *vnf = (vnf_info *)(config->user_data);
+  pnf_info *pnf = vnf->pnfs;
+  phy_info *phy = pnf->phys;
+  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
+  nfapi_vnf_p7_add_pnf((p7_vnf->config), phy->remote_addr, htons(phy->remote_port), phy->id);
+  return 0;
 }
 
 int nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_start_response_scf_t *resp) {
