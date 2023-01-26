@@ -113,6 +113,11 @@
 #define CONFIG_HLP_UEK2          "Set the additional k2 for NTN at UE\n"
 #define CONFIG_HLP_GNBK2         "Set the additional k2 for NTN at gNB\n"
 #define CONFIG_HLP_ULSCHEDF      "Set the maximum number of buffered UL scheduled frames at gNB\n"
+#define CONFIG_HLP_FDoppler      "Set the maximum Doppler frequency shift\n"
+#define CONFIG_HLP_FDopplerComp  "Execute continous frequency offset compensation\n"
+#define CONFIG_HLP_TDRIFT        "Set the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)\n"
+#define CONFIG_HLP_FDopplerRate  "Set the Doppler rate in Hz/s\n"
+#define CONFIG_HLP_FDopplerVar   "Set Doppler variance, [fdoppler +/- fdopplerVar]\n"
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
@@ -162,5 +167,10 @@ extern uint16_t NTN_UE_slot_Rx_to_Tx; //the additional Rx to Tx slot number at U
 extern uint16_t NTN_UE_k2; //the additional k2 value at UE
 extern uint16_t NTN_gNB_k2; //the additional k2 value at gNB
 extern uint16_t max_ul_sched_frame; //Set the maximum number of buffered UL scheduled frames at gNB, for UL_tti_req_ahead and vrb_map_UL
+extern int fdoppler;             //maximum Doppler frequency shift in Hz
+extern int fdopplerComp;         // flag to activate/deactivate continous frequency offset compensation
+extern int RFsim_DriftPerFrame; //the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)
+extern int32_t fdopplerRate; //Doppler rate in Hz/s
+extern uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
 
 #endif

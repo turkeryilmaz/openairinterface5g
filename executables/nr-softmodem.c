@@ -571,6 +571,11 @@ void init_pdcp(void) {
 uint64_t RFsim_PropDelay = 0;
 uint16_t NTN_gNB_k2 = 0;
 uint16_t max_ul_sched_frame = 1;
+int fdoppler = 0;
+int fdopplerComp = 1;
+int RFsim_DriftPerFrame = 0;
+int32_t fdopplerRate;
+uint32_t fdopplerVar;
 
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
