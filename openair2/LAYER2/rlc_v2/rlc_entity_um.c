@@ -228,7 +228,7 @@ static void rlc_um_reception_actions(rlc_entity_um_t *entity,
   }
 }
 
-void rlc_entity_um_recv_pdu(rlc_entity_t *_entity, char *buffer, int size,lte_rlc_pkt_info_t *rlc_info)
+void rlc_entity_um_recv_pdu(rlc_entity_t *_entity, char *buffer, int size, lte_rlc_pkt_info_t *rlc_info)
 {
 #define R(d) do { if (rlc_pdu_decoder_in_error(&d)) goto err; } while (0)
   rlc_entity_um_t *entity = (rlc_entity_um_t *)_entity;
@@ -547,6 +547,7 @@ int rlc_entity_um_generate_pdu(rlc_entity_t *_entity, char *buffer, int size,lte
 
   /* update VT(US) */
   entity->vt_us = (entity->vt_us + 1) % entity->sn_modulus;
+
   rlc_info->pduLength = pdu_size.header_size + pdu_size.data_size;
 
   return pdu_size.header_size + pdu_size.data_size;
