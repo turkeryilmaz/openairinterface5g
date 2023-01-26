@@ -613,7 +613,6 @@ void rlc_entity_am_recv_pdu(rlc_entity_t *_entity, char *buffer, int size, lte_r
   rlc_info->pduLength = size;
   rlc_info->sequenceNumberLength = 10; /*TODO */
   LOG_LTE_RLC_P(OAILOG_INFO, "UL_RLC_AM_PDU", -1, -1, *(rlc_info), (unsigned char *)buffer, size);
-
   if (dc == 0) goto control;
 
   /* data PDU */
@@ -1522,6 +1521,7 @@ int rlc_entity_am_generate_pdu(rlc_entity_t *_entity, char *buffer, int size, lt
     if (ret != 0)
       return ret;
   }
+
   rlc_info->pduLength = ret;
   if (entity->retransmit_list != NULL) {
     ret = generate_retx_pdu(entity, buffer, size);

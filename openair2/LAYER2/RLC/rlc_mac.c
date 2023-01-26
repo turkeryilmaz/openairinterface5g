@@ -258,7 +258,8 @@ void mac_rlc_data_ind     (
 #endif // DEBUG_MAC_INTERFACE
 #if T_TRACER
 
-  //Trace UL RLC PDU Here
++  //Trace UL RLC PDU Here
++
 
   if (enb_flagP)
     T(T_ENB_RLC_MAC_UL, T_INT(module_idP), T_INT(rntiP), T_INT(channel_idP), T_INT(tb_sizeP));
@@ -427,8 +428,8 @@ rlc_buffer_occupancy_t mac_rlc_get_buffer_occupancy_ind(
   /* Assumptions : for UE only */
   /* At each TTI, Buffer Occupancy is first computed in mac_rlc_status_ind called by MAC ue_scheduler() function */
   /* Then this function is called during MAC multiplexing ue_get_sdu(), and it may be call several times for the same bearer if it is in AM mode and there are several PDU types to transmit */
-  //AssertFatal(enb_flagP == FALSE,"RLC Tx mac_rlc_get_buffer_occupancy_ind function is not implemented for eNB LcId=%d\n", channel_idP);
-  if(enb_flagP != FALSE) {
+  //AssertFatal(enb_flagP == false,"RLC Tx mac_rlc_get_buffer_occupancy_ind function is not implemented for eNB LcId=%d\n", channel_idP);
+  if(enb_flagP != false) {
     LOG_E(RLC, "Tx mac_rlc_get_buffer_occupancy_ind function is not implemented for eNB LcId=%u\n", channel_idP);
     return 0;
   }

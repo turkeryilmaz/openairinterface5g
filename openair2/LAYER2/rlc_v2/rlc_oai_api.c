@@ -54,6 +54,7 @@ void mac_rlc_data_ind     (
   rlc_entity_t *rb;
   int rnti;
   int channel_id;
+
   lte_rlc_pkt_info_t rlc_info;
   if (enb_flagP == 1 && module_idP != 0) {
     LOG_E(RLC, "%s:%d:%s: fatal, module_id must be 0 for eNB\n",
@@ -83,6 +84,7 @@ void mac_rlc_data_ind     (
     rnti = rntiP;
     channel_id = channel_idP;
   }
+
   rlc_info.channelId = channel_id - 1;
   rlc_info.ueid = rnti;
   if (channel_id > 2)
@@ -136,6 +138,7 @@ tbs_size_t mac_rlc_data_req(
   rlc_ue_t *ue;
   rlc_entity_t *rb;
   int maxsize;
+
   lte_rlc_pkt_info_t rlc_pkt;
   rlc_pkt.direction                 = 1 /* Downlink */;
   rlc_pkt.ueid                      = rntiP;
@@ -159,6 +162,7 @@ tbs_size_t mac_rlc_data_req(
       rb = NULL;
   }
 
+
   if (rb != NULL) {
     rb->set_time(rb, rlc_current_time);
     maxsize = tb_sizeP;
@@ -168,6 +172,7 @@ tbs_size_t mac_rlc_data_req(
     exit(1);
     ret = 0;
   }
+
   switch ((channel_idP))
   {
     case 1 ... 3:
@@ -565,6 +570,7 @@ static void max_retx_reached(void *_ue, rlc_entity_t *entity)
   int rb_id;
   MessageDef *msg;
   int is_enb;
+
   /* is it SRB? */
   for (i = 0; i < 2; i++) {
     if (entity == ue->srb[i]) {

@@ -127,7 +127,7 @@ pdcp_apply_security(
     /* SRBs */
     uint8_t *mac_i;
 
-    LOG_D(PDCP, "[OSA][RB %ld] %s Applying control-plane integrity security %d \n",
+    LOG_D(PDCP, "[OSA][RB %ld] %s Applying control-plane security %d \n",
           rb_id, (pdcp_pP->is_ue != 0) ? "UE -> eNB" : "eNB -> UE", pdcp_pP->integrityProtAlgorithm);
 
     encrypt_params.message    = pdcp_pdu_buffer;
