@@ -427,6 +427,12 @@ int NB_UE_INST = 1;
 uint64_t RFsim_PropDelay = 0;
 uint16_t NTN_UE_k2 = 0;
 uint16_t NTN_UE_slot_Rx_to_Tx = 0;
+int RFsim_DriftPerFrame = 0;
+int32_t fdoppler = 0; //center Doppler frequency shift
+int32_t fdopplerRate; //Doppler rate in Hz/s
+uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
+int fdopplerComp = 1; // flag to activate continous frequency offset compensation (=0 deacticated, =1 activated (default case))
+
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;
