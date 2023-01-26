@@ -201,8 +201,6 @@ static uint8_t pack_tpm_value(nfapi_dl_config_dci_dl_tpm_t *value, uint8_t **ppW
 static uint8_t pack_dl_tti_csi_rs_pdu_rel15_value(void *tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
   nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *value = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)tlv;
   return(
-          push16(value->bwp_size, ppWritePackedMsg, end) &&
-          push16(value->bwp_start, ppWritePackedMsg, end) &&
           push8(value->subcarrier_spacing, ppWritePackedMsg, end) &&
           push8(value->cyclic_prefix, ppWritePackedMsg, end) &&
           push16(value->start_rb, ppWritePackedMsg, end) &&
@@ -1049,7 +1047,7 @@ static uint8_t pack_ul_tti_request_srs_pdu(nfapi_nr_srs_pdu_t *srs_pdu, uint8_t 
           push8(srs_pdu->comb_offset, ppWritePackedMsg, end) &&
           push8(srs_pdu->cyclic_shift, ppWritePackedMsg, end) &&
           push8(srs_pdu->frequency_position, ppWritePackedMsg, end) &&
-          push8(srs_pdu->frequency_shift, ppWritePackedMsg, end) &&
+          push16(srs_pdu->frequency_shift, ppWritePackedMsg, end) &&
           push8(srs_pdu->frequency_hopping, ppWritePackedMsg, end) &&
           push8(srs_pdu->group_or_sequence_hopping, ppWritePackedMsg, end) &&
           push8(srs_pdu->resource_type, ppWritePackedMsg, end) &&
@@ -1598,7 +1596,6 @@ static uint8_t pack_ul_tti_request(void *msg, uint8_t **ppWritePackedMsg, uint8_
     return 0;
   if (!push8(pNfapiMsg->n_ulcch, ppWritePackedMsg, end))
     return 0;
-
 
   for(int i=0; i<pNfapiMsg->n_pdus; i++) {
     if(!pack_ul_tti_pdu_list_value(&pNfapiMsg->pdus_list[i], ppWritePackedMsg, end))
@@ -3024,10 +3021,8 @@ return 1;
 
 //RX DATA INDICATION
 
-static uint8_t pack_nr_rx_data_indication_body(void* tlv, uint8_t **ppWritePackedMsg, uint8_t *end)
+static uint8_t pack_nr_rx_data_indication_body(nfapi_nr_rx_data_pdu_t *value, uint8_t **ppWritePackedMsg, uint8_t *end)
 {
-	nfapi_nr_rx_data_pdu_t* value = (nfapi_nr_rx_data_pdu_t*)tlv;
-
 	if(!(push32(value->handle, ppWritePackedMsg, end) &&
 	 	 push16(value->rnti, ppWritePackedMsg, end) &&
 		 push8(value->harq_id, ppWritePackedMsg, end) &&
@@ -3057,7 +3052,7 @@ static uint8_t pack_nr_rx_data_indication(void *msg, uint8_t **ppWritePackedMsg,
 
 	for (int i = 0; i < pNfapiMsg->number_of_pdus; i++)
 	{
-		if(!pack_nr_rx_data_indication_body(&(pNfapiMsg->pdu_list[i]), ppWritePackedMsg, end))
+		if(!pack_nr_rx_data_indication_body(&(pNfapiMsg->pdu_list[i]), ppWritePackedMsg, end))	
 		        return 0;
 	}
 
@@ -3105,45 +3100,131 @@ return 1;
 
 //SRS INDICATION
 
-static uint8_t pack_nr_srs_indication_body(void* tlv, uint8_t **ppWritePackedMsg, uint8_t *end)
-{
-	nfapi_nr_srs_indication_pdu_t* value = (nfapi_nr_srs_indication_pdu_t*)tlv;
+int pack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf, void *pPackedBuf, uint32_t packedBufLen) {
 
-	if(!(push32(value->handle, ppWritePackedMsg, end) &&
-	 	 push16(value->rnti, ppWritePackedMsg, end) &&
-		 push16(value->timing_advance, ppWritePackedMsg, end) &&
-		 push8(value->num_symbols, ppWritePackedMsg, end) &&
-		 push8(value->wide_band_snr, ppWritePackedMsg, end) &&
-		 push8(value->num_reported_symbols, ppWritePackedMsg, end) &&
-		 push8(value->reported_symbol_list->num_rbs, ppWritePackedMsg, end)
-		 ))
-		  return 0;
-	for(int i = 0; i < value->reported_symbol_list->num_rbs; i++)
-	{
-		if(!(push8(value->reported_symbol_list->rb_list->rb_snr, ppWritePackedMsg, end)
-			))
-			return 0;
-	}
-	return 1;
+  nfapi_nr_srs_normalized_channel_iq_matrix_t *nr_srs_normalized_channel_iq_matrix = (nfapi_nr_srs_normalized_channel_iq_matrix_t*)pMessageBuf;
+
+  uint8_t *pWritePackedMessage = pPackedBuf;
+  uint8_t *end = pPackedBuf + packedBufLen;
+
+  if(!(push8(nr_srs_normalized_channel_iq_matrix->normalized_iq_representation, &pWritePackedMessage, end) &&
+       push16(nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements, &pWritePackedMessage, end) &&
+       push16(nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports, &pWritePackedMessage, end) &&
+       push16(nr_srs_normalized_channel_iq_matrix->prg_size, &pWritePackedMessage, end) &&
+       push16(nr_srs_normalized_channel_iq_matrix->num_prgs, &pWritePackedMessage, end))) {
+    return 0;
+  }
+
+  uint16_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs*nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports*nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
+  if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
+    channel_matrix_size <<= 1;
+  } else {
+    channel_matrix_size <<= 2;
+  }
+
+  for(int i = 0; i < channel_matrix_size; i++) {
+    if (!push8(nr_srs_normalized_channel_iq_matrix->channel_matrix[i], &pWritePackedMessage, end)) {
+      return 0;
+    }
+  }
+
+  // Message length
+  uintptr_t msgHead = (uintptr_t)pPackedBuf;
+  uintptr_t msgEnd = (uintptr_t)pWritePackedMessage;
+  return (msgEnd-msgHead);
 }
 
-static uint8_t pack_nr_srs_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config)
-{
-	nfapi_nr_srs_indication_t *pNfapiMsg = (nfapi_nr_srs_indication_t*)msg;
+static uint8_t pack_nr_srs_reported_symbol(nfapi_nr_srs_reported_symbol_t *prgs, uint8_t **ppWritePackedMsg, uint8_t *end) {
 
-	if (!(push16(pNfapiMsg->sfn , ppWritePackedMsg, end) &&
-		push16(pNfapiMsg->slot , ppWritePackedMsg, end) &&
-		push16(pNfapiMsg->number_of_pdus, ppWritePackedMsg, end)
-		))
-			return 0;
+  if(!push16(prgs->num_prgs, ppWritePackedMsg, end)) {
+    return 0;
+  }
 
-	for(int i=0; i<pNfapiMsg->number_of_pdus;i++)
-	{
-		if(!pack_nr_srs_indication_body(&(pNfapiMsg->pdu_list[i]),ppWritePackedMsg,end))
-		return 0;
-	}
+  for(int i = 0; i < prgs->num_prgs; i++) {
+    if (!push8(prgs->prg_list[i].rb_snr, ppWritePackedMsg, end)) {
+      return 0;
+    }
+  }
 
-return 1;
+  return 1;
+}
+
+int pack_nr_srs_beamforming_report(void *pMessageBuf, void *pPackedBuf, uint32_t packedBufLen) {
+
+  nfapi_nr_srs_beamforming_report_t *nr_srs_beamforming_report = (nfapi_nr_srs_beamforming_report_t*)pMessageBuf;
+
+  uint8_t *pWritePackedMessage = pPackedBuf;
+  uint8_t *end = pPackedBuf + packedBufLen;
+
+  if(!(push16(nr_srs_beamforming_report->prg_size, &pWritePackedMessage, end) &&
+       push8(nr_srs_beamforming_report->num_symbols, &pWritePackedMessage, end) &&
+       push8(nr_srs_beamforming_report->wide_band_snr, &pWritePackedMessage, end) &&
+       push8(nr_srs_beamforming_report->num_reported_symbols, &pWritePackedMessage, end))) {
+    return 0;
+  }
+
+  if (!pack_nr_srs_reported_symbol(&nr_srs_beamforming_report->prgs, &pWritePackedMessage, end)) {
+    return 0;
+  }
+
+  // Message length
+  uintptr_t msgHead = (uintptr_t)pPackedBuf;
+  uintptr_t msgEnd = (uintptr_t)pWritePackedMessage;
+  return (msgEnd-msgHead);
+}
+
+static uint8_t pack_nr_srs_report_tlv(nfapi_srs_report_tlv_t *report_tlv, uint8_t **ppWritePackedMsg, uint8_t *end) {
+
+  if(!(push16(report_tlv->tag, ppWritePackedMsg, end) &&
+       push32(report_tlv->length, ppWritePackedMsg, end))) {
+    return 0;
+  }
+
+  for(int i = 0; i < report_tlv->length; i++) {
+    if (!push32(report_tlv->value[i], ppWritePackedMsg, end)) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static uint8_t pack_nr_srs_indication_body(nfapi_nr_srs_indication_pdu_t *value, uint8_t **ppWritePackedMsg, uint8_t *end) {
+
+  if(!(push32(value->handle, ppWritePackedMsg, end) &&
+       push16(value->rnti, ppWritePackedMsg, end) &&
+       push16(value->timing_advance_offset, ppWritePackedMsg, end) &&
+       pushs16(value->timing_advance_offset_nsec, ppWritePackedMsg, end) &&
+       push8(value->srs_usage, ppWritePackedMsg, end) &&
+       push8(value->report_type, ppWritePackedMsg, end))) {
+    return 0;
+  }
+
+  if (!pack_nr_srs_report_tlv(&value->report_tlv, ppWritePackedMsg, end)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static uint8_t pack_nr_srs_indication(void *msg, uint8_t **ppWritePackedMsg, uint8_t *end, nfapi_p7_codec_config_t* config) {
+
+  nfapi_nr_srs_indication_t *pNfapiMsg = (nfapi_nr_srs_indication_t*)msg;
+
+  if (!(push16(pNfapiMsg->sfn , ppWritePackedMsg, end) &&
+        push16(pNfapiMsg->slot , ppWritePackedMsg, end) &&
+        push16(pNfapiMsg->control_length , ppWritePackedMsg, end) &&
+        push8(pNfapiMsg->number_of_pdus, ppWritePackedMsg, end))) {
+    return 0;
+  }
+
+  for(int i=0; i<pNfapiMsg->number_of_pdus;i++) {
+    if(!pack_nr_srs_indication_body(&(pNfapiMsg->pdu_list[i]),ppWritePackedMsg, end)) {
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 //RACH INDICATION
@@ -3682,8 +3763,6 @@ int nfapi_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packedBu
 static uint8_t unpack_dl_tti_csi_rs_pdu_rel15_value(void *tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
   nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *value = (nfapi_nr_dl_tti_csi_rs_pdu_rel15_t *)tlv;
   return(
-          pull16(ppReadPackedMsg, &value->bwp_size, end) &&
-          pull16(ppReadPackedMsg, &value->bwp_start, end) &&
           pull8(ppReadPackedMsg, &value->subcarrier_spacing, end) &&
           pull8(ppReadPackedMsg, &value->cyclic_prefix, end) &&
           pull16(ppReadPackedMsg, &value->start_rb, end) &&
@@ -5745,7 +5824,7 @@ static uint8_t unpack_nr_rx_data_indication_body(nfapi_nr_rx_data_pdu_t* value,
 		return 0;
 
         uint16_t length = value->pdu_length;
-        value->pdu = nfapi_p7_allocate(length, config);
+        value->pdu = nfapi_p7_allocate(sizeof(*value->pdu) * length, config);
 
         if (pullarray8(ppReadPackedMsg, value->pdu, length, length, end) == 0)
         {
@@ -5826,45 +5905,125 @@ return 1;
 
 //SRS INDICATION
 
-static uint8_t unpack_nr_srs_indication_body(void* tlv, uint8_t **ppReadPackedMsg, uint8_t *end)
-{
-	nfapi_nr_srs_indication_pdu_t* value = (nfapi_nr_srs_indication_pdu_t*)tlv;
+int unpack_nr_srs_normalized_channel_iq_matrix(void *pMessageBuf, uint32_t messageBufLen, void *pUnpackedBuf, uint32_t unpackedBufLen) {
 
-	if(!(pull32(ppReadPackedMsg, &value->handle, end) &&
-	 	 pull16(ppReadPackedMsg, &value->rnti, end) &&
-		 pull16(ppReadPackedMsg, &value->timing_advance, end) &&
-		 pull8(ppReadPackedMsg, &value->num_symbols, end) &&
-		 pull8(ppReadPackedMsg, &value->wide_band_snr, end) &&
-		 pull8(ppReadPackedMsg, &value->num_reported_symbols, end) &&
-		 pull16(ppReadPackedMsg, &value->reported_symbol_list->num_rbs, end)
-		 ))
-		  return 0;
-	for(int i = 0; i < value->reported_symbol_list->num_rbs; i++)
-	{
-		if(!(pull8(ppReadPackedMsg, &value->reported_symbol_list->rb_list->rb_snr, end)
-			))
-			return 0;
-	}
-	return 1;
+  nfapi_nr_srs_normalized_channel_iq_matrix_t *nr_srs_normalized_channel_iq_matrix = (nfapi_nr_srs_normalized_channel_iq_matrix_t*)pUnpackedBuf;
+  uint8_t *pReadPackedMessage = pMessageBuf;
+  uint8_t *end = pMessageBuf + messageBufLen;
+
+  memset(pUnpackedBuf, 0, unpackedBufLen);
+
+  if(!(pull8(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->normalized_iq_representation, end) &&
+       pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements, end) &&
+       pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports, end) &&
+       pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->prg_size, end) &&
+       pull16(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->num_prgs, end))) {
+    return -1;
+  }
+
+  uint16_t channel_matrix_size = nr_srs_normalized_channel_iq_matrix->num_prgs*nr_srs_normalized_channel_iq_matrix->num_ue_srs_ports*nr_srs_normalized_channel_iq_matrix->num_gnb_antenna_elements;
+  if (nr_srs_normalized_channel_iq_matrix->normalized_iq_representation == 0) {
+    channel_matrix_size <<= 1;
+  } else {
+    channel_matrix_size <<= 2;
+  }
+
+  for(int i = 0; i < channel_matrix_size; i++) {
+    if (!pull8(&pReadPackedMessage, &nr_srs_normalized_channel_iq_matrix->channel_matrix[i], end)) {
+      return 0;
+    }
+  }
+
+  return 0;
 }
 
-static uint8_t unpack_nr_srs_indication(uint8_t **ppReadPackedMsg, uint8_t *end, void *msg, nfapi_p7_codec_config_t* config)
-{
-	nfapi_nr_srs_indication_t *pNfapiMsg = (nfapi_nr_srs_indication_t*)msg;
+static uint8_t unpack_nr_srs_reported_symbol(nfapi_nr_srs_reported_symbol_t *prgs, uint8_t **ppReadPackedMsg, uint8_t *end) {
 
-	if (!(pull16(ppReadPackedMsg,&pNfapiMsg->sfn , end) &&
-		pull16(ppReadPackedMsg,&pNfapiMsg->slot , end) &&
-		pull8(ppReadPackedMsg,&pNfapiMsg->number_of_pdus, end)
-		))
-			return 0;
+  if(!pull16(ppReadPackedMsg, &prgs->num_prgs, end)) {
+    return 0;
+  }
 
-	for(int i=0; i<pNfapiMsg->number_of_pdus;i++)
-	{
-		if(!unpack_nr_srs_indication_body(&pNfapiMsg->pdu_list,ppReadPackedMsg,end))
-		return 0;
-	}
+  for(int i = 0; i < prgs->num_prgs; i++) {
+    if (!pull8(ppReadPackedMsg, &prgs->prg_list[i].rb_snr, end)) {
+      return 0;
+    }
+  }
 
-return 1;
+  return 1;
+}
+
+int unpack_nr_srs_beamforming_report(void *pMessageBuf, uint32_t messageBufLen, void *pUnpackedBuf, uint32_t unpackedBufLen) {
+
+  nfapi_nr_srs_beamforming_report_t *nr_srs_beamforming_report = (nfapi_nr_srs_beamforming_report_t*)pUnpackedBuf;
+  uint8_t *pReadPackedMessage = pMessageBuf;
+  uint8_t *end = pMessageBuf + messageBufLen;
+
+  memset(pUnpackedBuf, 0, unpackedBufLen);
+
+  if(!(pull16(&pReadPackedMessage, &nr_srs_beamforming_report->prg_size, end) &&
+       pull8(&pReadPackedMessage, &nr_srs_beamforming_report->num_symbols, end) &&
+       pull8(&pReadPackedMessage, &nr_srs_beamforming_report->wide_band_snr, end) &&
+       pull8(&pReadPackedMessage, &nr_srs_beamforming_report->num_reported_symbols, end))) {
+    return -1;
+  }
+
+  if (!unpack_nr_srs_reported_symbol(&nr_srs_beamforming_report->prgs, &pReadPackedMessage, end)) {
+    return -1;
+  }
+
+  return 0;
+}
+
+static uint8_t unpack_nr_srs_report_tlv(nfapi_srs_report_tlv_t *report_tlv, uint8_t **ppReadPackedMsg, uint8_t *end) {
+
+  if(!(pull16(ppReadPackedMsg, &report_tlv->tag, end) &&
+       pull32(ppReadPackedMsg, &report_tlv->length, end))) {
+    return 0;
+  }
+
+  for(int i = 0; i < report_tlv->length; i++) {
+    if (!pull32(ppReadPackedMsg, &report_tlv->value[i], end)) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static uint8_t unpack_nr_srs_indication_body(nfapi_nr_srs_indication_pdu_t *value, uint8_t **ppReadPackedMsg, uint8_t *end) {
+
+  if(!(pull32(ppReadPackedMsg, &value->handle, end) &&
+       pull16(ppReadPackedMsg, &value->rnti, end) &&
+       pull16(ppReadPackedMsg, &value->timing_advance_offset, end) &&
+       pulls16(ppReadPackedMsg, &value->timing_advance_offset_nsec, end) &&
+       pull8(ppReadPackedMsg, &value->srs_usage, end) &&
+       pull8(ppReadPackedMsg, &value->report_type, end))) {
+    return 0;
+  }
+
+  if (!unpack_nr_srs_report_tlv(&value->report_tlv, ppReadPackedMsg, end)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static uint8_t unpack_nr_srs_indication(uint8_t **ppReadPackedMsg, uint8_t *end, nfapi_nr_srs_indication_t *pNfapiMsg, nfapi_p7_codec_config_t* config) {
+
+  if (!(pull16(ppReadPackedMsg,&pNfapiMsg->sfn, end) &&
+        pull16(ppReadPackedMsg,&pNfapiMsg->slot, end) &&
+        pull16(ppReadPackedMsg,&pNfapiMsg->control_length, end) &&
+        pull8(ppReadPackedMsg,&pNfapiMsg->number_of_pdus, end))) {
+    return 0;
+  }
+
+  for(int i=0; i<pNfapiMsg->number_of_pdus; i++) {
+    if (!unpack_nr_srs_indication_body(&pNfapiMsg->pdu_list[i], ppReadPackedMsg, end)) {
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 //NR RACH
