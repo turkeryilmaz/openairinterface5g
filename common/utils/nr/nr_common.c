@@ -449,7 +449,6 @@ void get_samplerate_and_bw(int mu,
         *tx_bw = 50e6;
         *rx_bw = 50e6;
       }
-      break;
     case 216:
       if (threequarter_fs) {
         *sample_rate=46.08e6;
@@ -475,7 +474,6 @@ void get_samplerate_and_bw(int mu,
         *tx_bw = 20e6;
         *rx_bw = 20e6;
       }
-      break;
     case 106:
       if (threequarter_fs) {
         *sample_rate=23.04e6;
@@ -503,7 +501,6 @@ void get_samplerate_and_bw(int mu,
         *tx_bw = 10e6;
         *rx_bw = 10e6;
       }
-      break;
     case 25:
       if (threequarter_fs) {
         *sample_rate=5.76e6;
@@ -674,18 +671,6 @@ void get_samplerate_and_bw(int mu,
   }
 }
 
-void get_K1_K2(int N1, int N2, int *K1, int *K2)
-{
-  // num of allowed k1 and k2 according to 5.2.2.2.1-3 and -4 in 38.214
-  if(N2 == N1 || N1 == 2)
-    *K1 = 2;
-  else if (N2 == 1)
-    *K1 = 5;
-  else
-    *K1 = 3;
-  *K2 = N2 > 1 ? 2 : 1;
-}
-
 // from start symbol index and nb or symbols to symbol occupation bitmap in a slot
 uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols) {
  return ((1<<nrOfSymbols)-1)<<startSymbolIndex;
@@ -733,3 +718,4 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
   AssertFatal(sco % scs_scaling == 0, "ssb offset %d can create frequency offset\n", sco);
   return ssb_offset_point_a;
 }
+

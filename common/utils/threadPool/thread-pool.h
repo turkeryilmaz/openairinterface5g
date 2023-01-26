@@ -288,7 +288,7 @@ static inline notifiedFIFO_elt_t *pullTpool(notifiedFIFO_t *responseFifo, tpool_
   notifiedFIFO_elt_t *msg= pullNotifiedFIFO(responseFifo);
   if (msg == NULL)
     return NULL;
-  AssertFatal(t->traceFd != 0, "Thread pool used while not initialized");
+  AssertFatal(t->traceFd, "Thread pool used while not initialized");
   if (t->measurePerf)
     msg->returnTime=rdtsc_oai();
 
@@ -348,6 +348,49 @@ static inline int abortTpoolJob(tpool_t *t, uint64_t key) {
   }
 
   mutexunlock(nf->lockF);
+  return nbRemoved;
+}
+static inline int abortTpool(tpool_t *t) {
+  int nbRemoved=0;
+  /* disables threading: if a message comes in now, we cannot have a race below
+   * as each thread will simply execute the message itself */
+  t->activated = false;
+  notifiedFIFO_t *nf=&t->incomingFifo;
+  mutexlock(nf->lockF);
+  nf->abortFIFO = true;
+  notifiedFIFO_elt_t **start=&nf->outF;
+
+  /* mark threads to abort them */
+  struct one_thread *thread = t->allthreads;
+  while (thread != NULL) {
+    thread->dropJob = true;
+    thread->terminate = true;
+    nbRemoved++;
+    thread = thread->next;
+  }
+
+  /* clear FIFOs */
+  while(*start!=NULL) {
+    notifiedFIFO_elt_t **request=start;
+    *start=(*start)->next;
+    delNotifiedFIFO_elt(*request);
+    *request = NULL;
+    nbRemoved++;
+  }
+
+  if (t->incomingFifo.outF==NULL)
+    t->incomingFifo.inF=NULL;
+
+  condbroadcast(t->incomingFifo.notifF);
+  mutexunlock(nf->lockF);
+
+  /* join threads that are still runing */
+  thread = t->allthreads;
+  while (thread != NULL) {
+    pthread_cancel(thread->threadID);
+    thread = thread->next;
+  }
+
   return nbRemoved;
 }
 static inline int abortTpool(tpool_t *t) {

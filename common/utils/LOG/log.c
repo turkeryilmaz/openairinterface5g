@@ -67,23 +67,28 @@ char __log_mem_filename[1024]={0};
 char * log_mem_filename = &__log_mem_filename[0];
 char logmem_filename[1024] = {0};
 
-const mapping log_level_names[] = {{"error", OAILOG_ERR},
-                                   {"warn", OAILOG_WARNING},
-                                   {"analysis", OAILOG_ANALYSIS},
-                                   {"info", OAILOG_INFO},
-                                   {"debug", OAILOG_DEBUG},
-                                   {"trace", OAILOG_TRACE},
-                                   {NULL, -1}};
+mapping log_level_names[] = {
+  {"error",  OAILOG_ERR},
+  {"warn",   OAILOG_WARNING},
+  {"analysis", OAILOG_ANALYSIS},
+  {"info",   OAILOG_INFO},
+  {"debug",  OAILOG_DEBUG},
+  {"trace",  OAILOG_TRACE},
+  {NULL, -1}
+};
 
-const mapping log_options[] = {{"nocolor", FLAG_NOCOLOR},
-                               {"level", FLAG_LEVEL},
-                               {"thread", FLAG_THREAD},
-                               {"line_num", FLAG_FILE_LINE},
-                               {"function", FLAG_FUNCT},
-                               {"time", FLAG_TIME},
-                               {"thread_id", FLAG_THREAD_ID},
-                               {"wall_clock", FLAG_REAL_TIME},
-                               {NULL, -1}};
+mapping log_options[] = {
+  {"nocolor", FLAG_NOCOLOR  },
+  {"level",   FLAG_LEVEL  },
+  {"thread",  FLAG_THREAD },
+  {"line_num",    FLAG_FILE_LINE },
+  {"function", FLAG_FUNCT},
+  {"time",     FLAG_TIME},
+  {"thread_id", FLAG_THREAD_ID},
+  {"wall_clock", FLAG_REAL_TIME},
+  {NULL,-1}
+};
+
 
 mapping log_maskmap[] = LOG_MASKMAP_INIT;
 

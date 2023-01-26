@@ -98,8 +98,6 @@ void *one_thread(void *arg) {
       myThread->runningOnKey=-1;
       mutexunlock(tp->incomingFifo.lockF);
     }
-    else
-      delNotifiedFIFO_elt(elt);
   } while (!myThread->terminate);
   return NULL;
 }
