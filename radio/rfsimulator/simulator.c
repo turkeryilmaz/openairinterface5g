@@ -800,10 +800,27 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
   return nfds>0;
 }
 
+//Paramters for Doppler shift. Assume the Doppler frequency changes every frame
+extern int32_t fdoppler; //center Doppler frequency shift
+extern int32_t fdopplerRate; //Doppler rate in Hz/s
+extern uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
+const uint32_t fsamp = 61440000; //sampling frequency
+
 static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimestamp, void **samplesVoid, int nsamps, int nbAnt) {
   if (nbAnt > 4) {
     LOG_W(HW, "rfsimulator: only 4 antenna tested\n");
   }
+
+  static uint64_t SampIdxDoppler = 0; //sample index in the calculation of the Doppler shift
+  //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
+  uint32_t NrSampFrame = fsamp/100; //Number of samples per frame (10ms)
+  static int32_t fdopplerStep = 1<<20;
+  static uint32_t CntDoppRate = 1; //counter for the Doppler rate
+  static int32_t fdopplerCurr = 1<<20; //current Doppler
+  if ( fdopplerStep == 1<<20 )
+    fdopplerStep = fdopplerRate/100;
+  if ( fdopplerCurr == 1<<20 )
+    fdopplerCurr = fdoppler;
 
   rfsimulator_state_t *t = device->priv;
   LOG_D(HW, "Enter rfsimulator_read, expect %d samples, will release at TS: %ld, nbAnt %d\n", nsamps, t->nextRxTstamp+nsamps, nbAnt);
@@ -896,12 +913,57 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
           sample_t *out=(sample_t *)samplesVoid[a];
           int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
 
+          char filename[40];
+          sprintf(filename,"gNB_data.m");
+          char filename1[40];
+          sprintf(filename1,"gNB_Time.m");
+
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
             for (int a_tx=0; a_tx<nbAnt_tx; a_tx++) { //sum up signals from nbAnt_tx antennas
               out[i].r += (short)(ptr->circularBuf[((t->nextRxTstamp-RFsim_PropDelay+i)*nbAnt_tx+a_tx)%CirSize].r*H_awgn_mimo[a][a_tx]);
               out[i].i += (short)(ptr->circularBuf[((t->nextRxTstamp-RFsim_PropDelay+i)*nbAnt_tx+a_tx)%CirSize].i*H_awgn_mimo[a][a_tx]);
             } // end for a_tx
+
+
+            int16_t outRealTmp = out[i].r;
+            int16_t outImagTmp = out[i].i;
+
+            out[i].r = (short)(outRealTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp) - outImagTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp));
+            out[i].i = (short)(outImagTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp) + outRealTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp));
+
+            
+            if(t-> typeStamp == ENB_MAGICDL)
+            {
+              FILE *fptr;
+              FILE *fptr1;
+              double tTmp = SampIdxDoppler/fsamp;
+              
+              if ((i%1000==0) && (tTmp <= 10))
+              {
+                printf("*************** gNB Recording!, i: %d, fdopplerCurr: %d, tTmp: %f\n", i, fdopplerCurr, tTmp);
+                fptr = fopen(filename,"a");
+                fptr1 = fopen(filename1,"a");
+                fprintf(fptr,"%i\n",fdopplerCurr);
+                fprintf(fptr1,"%f\n",tTmp);
+                fclose(fptr);
+                fclose(fptr1);
+              }
+              
+            }
+            
+
+            SampIdxDoppler++;
+            CntDoppRate++;
+            if ( CntDoppRate > NrSampFrame ) {
+              CntDoppRate = 1;
+              fdopplerCurr += fdopplerStep;
+              if ( (fdopplerCurr > (int32_t)(fdoppler+fdopplerVar)) || (fdopplerCurr < (int32_t)(fdoppler-fdopplerVar)) ) {
+                fdopplerStep = -fdopplerStep;
+                fdopplerCurr += 2*fdopplerStep;
+              }
+            }
+
           } // end for i (number of samps)
         } // end of no channel modeling
       } // end for a (number of rx antennas)
