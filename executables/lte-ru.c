@@ -51,7 +51,6 @@
 #include "PHY/defs_common.h"
 #include "PHY/types.h"
 #include "PHY/INIT/phy_init.h"
-#include "PHY/phy_extern.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/LTE_TRANSPORT/if4_tools.h"
@@ -105,6 +104,13 @@ int connect_rau(RU_t *ru);
 void wait_eNBs(void);
 
 const char ru_states[6][9] = {"RU_IDLE","RU_CONFIG","RU_READY","RU_RUN","RU_ERROR","RU_SYNC"};
+
+extern const char NB_functions[7][20];
+extern const char NB_timing[2][20];
+
+
+extern const char ru_if_types[MAX_RU_IF_TYPES][20];
+
 
 #if defined(PRE_SCD_THREAD)
 #include "common/ran_context.h"
@@ -736,8 +742,7 @@ void tx_rf(RU_t *ru,
 
   if ((SF_type == SF_DL) ||
       (SF_type == SF_S) ) {
-    int siglen=fp->samples_per_tti;
-    radio_tx_burst_flag_t flags = TX_BURST_MIDDLE;
+    int siglen=fp->samples_per_tti,flags=1;
 
     if (SF_type == SF_S) {
       int txsymb = fp->dl_symbols_in_S_subframe+(ru->is_slave==0 ? 1 : 0);
@@ -752,13 +757,13 @@ void tx_rf(RU_t *ru,
       siglen = (fp->ofdm_symbol_size + fp->nb_prefix_samples0)
                + (txsymb - 1) * (fp->ofdm_symbol_size + fp->nb_prefix_samples)
                + ru->end_of_burst_delay;
-      flags = TX_BURST_END;
+      flags=3; // end of burst
     }
 
     if (fp->frame_type == TDD &&
         SF_type == SF_DL &&
         prevSF_type == SF_UL) {
-      flags = TX_BURST_START;
+      flags = 2; // start of burst
       sf_extension = ru->sf_extension;
     }
 
@@ -776,24 +781,24 @@ void tx_rf(RU_t *ru,
       LOG_E(PHY,"%d.%d late_control : %d\n",frame,subframe,late_control);
       switch (late_control) {
         case STATE_BURST_TERMINATE:
-          flags = TX_BURST_END_NO_TIME_SPEC;
+          flags=10; // end of burst and no time spec
           late_control=STATE_BURST_STOP_1;
           break;
 
         case STATE_BURST_STOP_1:
-          flags = TX_BURST_INVALID;
+          flags=0; // no send
           late_control=STATE_BURST_STOP_2;
           return;//no send
           break;
 
         case STATE_BURST_STOP_2:
-          flags = TX_BURST_INVALID;
+          flags=0; // no send
           late_control=STATE_BURST_RESTART;
           return;//no send
           break;
 
         case STATE_BURST_RESTART:
-          flags = TX_BURST_START;
+          flags=2; // start burst
           late_control=STATE_BURST_NORMAL;
           break;
 
@@ -1126,7 +1131,7 @@ static void do_ru_synch(RU_t *ru) {
 
 
 int check_sync(RU_t *ru, RU_t *ru_master, int subframe) {
-  if (labs(ru_master->proc.t[subframe].tv_nsec - ru->proc.t[subframe].tv_nsec) > 500000)
+  if (fabs(ru_master->proc.t[subframe].tv_nsec - ru->proc.t[subframe].tv_nsec) > 500000)
     return 0;
 
   return 1;
@@ -1178,12 +1183,12 @@ void wakeup_L1s(RU_t *ru) {
 
     if (ru->is_slave == 0 && ( (proc->RU_mask[ru->proc.tti_rx]&(1<<i)) == 1 ) && eNB->RU_list[i]->state == RU_RUN) { //This is master & the RRU has already been received
       if (check_sync(eNB->RU_list[i],eNB->RU_list[0],ru->proc.tti_rx) == 0)
-        LOG_E(PHY,"RU %d is not SYNC, subframe %d, time  %ld this is master\n",
-              eNB->RU_list[i]->idx, ru->proc.tti_rx, labs(eNB->RU_list[i]->proc.t[ru->proc.tti_rx].tv_nsec - eNB->RU_list[0]->proc.t[ru->proc.tti_rx].tv_nsec));
+        LOG_E(PHY,"RU %d is not SYNC, subframe %d, time  %f this is master\n",
+              eNB->RU_list[i]->idx, ru->proc.tti_rx, fabs(eNB->RU_list[i]->proc.t[ru->proc.tti_rx].tv_nsec - eNB->RU_list[0]->proc.t[ru->proc.tti_rx].tv_nsec));
     } else if (ru->is_slave == 1 && ru->state == RU_RUN && ( (proc->RU_mask[ru->proc.tti_rx]&(1<<0)) == 1)) { // master already received. TODO: we assume that RU0 is master.
       if (check_sync(ru,eNB->RU_list[0],ru->proc.tti_rx) == 0)
-        LOG_E(PHY,"RU %d is not SYNC time, subframe %d, time  %ld\n",
-              ru->idx, ru->proc.tti_rx, labs(ru->proc.t[ru->proc.tti_rx].tv_nsec - eNB->RU_list[0]->proc.t[ru->proc.tti_rx].tv_nsec));
+        LOG_E(PHY,"RU %d is not SYNC time, subframe %d, time  %f\n",
+              ru->idx, ru->proc.tti_rx, fabs(ru->proc.t[ru->proc.tti_rx].tv_nsec - eNB->RU_list[0]->proc.t[ru->proc.tti_rx].tv_nsec));
     }
   }
 
@@ -1466,11 +1471,11 @@ static void *ru_stats_thread(void *param) {
     sleep(1);
 
     if (opp_enabled) {
-      if (ru->feprx) print_meas(&ru->ofdm_demod_stats,"feprx_ru",NULL,NULL);
+      if (ru->feprx) print_meas(&ru->ofdm_demod_stats,"feprx",NULL,NULL);
 
-      if (ru->feptx_ofdm) print_meas(&ru->ofdm_mod_stats,"feptx_ofdm_ru",NULL,NULL);
+      if (ru->feptx_ofdm) print_meas(&ru->ofdm_mod_stats,"feptx_ofdm",NULL,NULL);
 
-      if (ru->fh_north_asynch_in) print_meas(&ru->rx_fhaul,"rx_fhaul_ru",NULL,NULL);
+      if (ru->fh_north_asynch_in) print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
 
       if (ru->fh_north_out) {
         print_meas(&ru->tx_fhaul,"tx_fhaul",NULL,NULL);
@@ -2329,8 +2334,17 @@ void init_RU_proc(RU_t *ru) {
     init_feptx_thread(ru, NULL);
   }
 
-  if (opp_enabled == 1)
-    pthread_create(&ru->ru_stats_thread, NULL, ru_stats_thread, (void *)ru);
+  if (opp_enabled == 1) pthread_create(&ru->ru_stats_thread,NULL,ru_stats_thread,(void *)ru);
+/*
+  if (ru->function == eNodeB_3GPP) {
+    usleep(10000);
+    LOG_I(PHY, "Signaling main thread that RU %d (is_slave %d,send_dmrs %d) is ready in state %s\n",ru->idx,ru->is_slave,ru->generate_dmrs_sync,ru_states[ru->state]);
+    AssertFatal((ret=pthread_mutex_lock(ru->ru_mutex))==0,"mutex_lock returns %d\n",ret);
+    *ru->ru_mask &= ~(1<<ru->idx);
+    pthread_cond_signal(ru->ru_cond);
+    AssertFatal((ret=pthread_mutex_unlock(ru->ru_mutex))==0,"mutex_unlock returns %d\n",ret);
+  }
+  */
 }
 
 

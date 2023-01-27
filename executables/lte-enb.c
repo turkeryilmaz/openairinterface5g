@@ -206,7 +206,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
   T(T_ENB_PHY_DL_TICK, T_INT(eNB->Mod_id), T_INT(proc->frame_tx), T_INT(proc->subframe_tx));
 
   // if this is IF5 or 3GPP_eNB
-  if (eNB->RU_list[0] && eNB->RU_list[0]->function < NGFI_RAU_IF4p5) {
+  if (eNB->RU_list && eNB->RU_list[0] && eNB->RU_list[0]->function < NGFI_RAU_IF4p5) {
     wakeup_prach_eNB(eNB,NULL,proc->frame_rx,proc->subframe_rx);
     wakeup_prach_eNB_br(eNB,NULL,proc->frame_rx,proc->subframe_rx);
   }
@@ -810,19 +810,35 @@ static void *eNB_thread_prach_br( void *param ) {
   return &eNB_thread_prach_status;
 }
 
-static void print_opp_meas(PHY_VARS_eNB *eNB);
-static void reset_opp_meas(PHY_VARS_eNB *eNB);
+
+extern void init_td_thread(PHY_VARS_eNB *);
+extern void init_te_thread(PHY_VARS_eNB *);
+extern void kill_td_thread(PHY_VARS_eNB *);
+extern void kill_te_thread(PHY_VARS_eNB *);
+
+
 static void *process_stats_thread(void *param) {
   PHY_VARS_eNB     *eNB      = (PHY_VARS_eNB *)param;
   wait_sync("process_stats_thread");
-  reset_opp_meas(eNB);
+
   while (!oai_exit) {
     sleep(1);
-    print_opp_meas(eNB);
-    if (RC.mac)
-      lte_dump_mac_stats(RC.mac[0], stdout);
-    if (time(NULL) % 10)
-      reset_opp_meas(eNB);
+
+    if (opp_enabled == 1) {
+      if ( eNB->ulsch_decoding_stats.trials>0)
+        print_meas(&eNB->ulsch_decoding_stats,"ulsch_decoding",NULL,NULL);
+
+      if (eNB->dlsch_encoding_stats.trials >0) {
+        print_meas(&eNB->dlsch_turbo_encoding_preperation_stats,"dlsch_coding_crc",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_segmentation_stats,"dlsch_segmentation",NULL,NULL);
+        print_meas(&eNB->dlsch_encoding_stats,"dlsch_encoding",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_stats,"turbo_encoding",NULL,NULL);
+        print_meas(&eNB->dlsch_interleaving_stats,"turbo_interleaving",NULL,NULL);
+        print_meas(&eNB->dlsch_rate_matching_stats,"turbo_rate_matching",NULL,NULL);
+      }
+
+      print_meas(&eNB->dlsch_modulation_stats,"dlsch_modulation",NULL,NULL);
+    }
   }
 
   return(NULL);
@@ -901,6 +917,11 @@ void init_eNB_proc(int inst) {
     pthread_cond_init( &proc->cond_prach_br, NULL);
     pthread_attr_init( &proc->attr_prach_br);
 
+    if(get_thread_worker_conf() == WORKER_ENABLE) {
+      init_te_thread(eNB);
+      init_td_thread(eNB);
+    }
+
     LOG_I(PHY,"eNB->single_thread_flag:%d\n", eNB->single_thread_flag);
 
     if ((get_thread_parallel_conf() == PARALLEL_RU_L1_SPLIT) && NFAPI_MODE!=NFAPI_MODE_VNF) {
@@ -932,10 +953,8 @@ void init_eNB_proc(int inst) {
 
     AssertFatal(proc->instance_cnt_prach == -1,"instance_cnt_prach = %d\n",proc->instance_cnt_prach);
 
-    if (opp_enabled == 1)
-      threadCreate(&proc->process_stats_thread, process_stats_thread, (void *)eNB, "opp stats", -1, sched_get_priority_min(SCHED_OAI));
-    if (!IS_SOFTMODEM_NOSTATS_BIT)
-      threadCreate(&proc->L1_stats_thread, L1_stats_thread, (void *)eNB, "L1 stats", -1, sched_get_priority_min(SCHED_OAI));
+    if (opp_enabled == 1) pthread_create(&proc->process_stats_thread,NULL,process_stats_thread,(void *)eNB);
+    pthread_create(&proc->L1_stats_thread,NULL,L1_stats_thread,(void*)eNB);
   }
 
   //for multiple CCs: setup master and slaves
@@ -976,6 +995,11 @@ void kill_eNB_proc(int inst) {
     proc        = &eNB->proc;
     L1_proc     = &proc->L1_proc;
     L1_proc_tx  = &proc->L1_proc_tx;
+
+    if(get_thread_worker_conf() == WORKER_ENABLE) {
+      kill_td_thread(eNB);
+      kill_te_thread(eNB);
+    }
 
     LOG_I(PHY, "Killing TX CC_id %d inst %d\n", CC_id, inst );
 
@@ -1035,43 +1059,30 @@ void kill_eNB_proc(int inst) {
   }
 }
 
-static void reset_opp_meas(PHY_VARS_eNB *eNB)
-{
+
+void reset_opp_meas(void) {
+  int sfn;
   reset_meas(&softmodem_stats_mt);
   reset_meas(&softmodem_stats_hw);
-  reset_meas(&softmodem_stats_rxtx_sf);
-  reset_meas(&softmodem_stats_rx_sf);
-  reset_meas(&eNB->ulsch_decoding_stats);
-  reset_meas(&eNB->dlsch_turbo_encoding_preperation_stats);
-  reset_meas(&eNB->dlsch_turbo_encoding_segmentation_stats);
-  reset_meas(&eNB->dlsch_encoding_stats);
-  reset_meas(&eNB->dlsch_turbo_encoding_stats);
-  reset_meas(&eNB->dlsch_interleaving_stats);
-  reset_meas(&eNB->dlsch_rate_matching_stats);
-  reset_meas(&eNB->dlsch_modulation_stats);
+
+  for (sfn=0; sfn < 10; sfn++) {
+    reset_meas(&softmodem_stats_rxtx_sf);
+    reset_meas(&softmodem_stats_rx_sf);
+  }
 }
 
-static void print_opp_meas(PHY_VARS_eNB *eNB)
-{
+
+void print_opp_meas(void) {
+  int sfn=0;
   print_meas(&softmodem_stats_mt, "Main ENB Thread", NULL, NULL);
   print_meas(&softmodem_stats_hw, "HW Acquisation", NULL, NULL);
 
+  for (sfn=0; sfn < 10; sfn++) {
     print_meas(&softmodem_stats_rxtx_sf,"[eNB][total_phy_proc_rxtx]",NULL, NULL);
     print_meas(&softmodem_stats_rx_sf,"[eNB][total_phy_proc_rx]",NULL,NULL);
-    if (eNB->ulsch_decoding_stats.trials > 0)
-      print_meas(&eNB->ulsch_decoding_stats, "ulsch_decoding", NULL, NULL);
-
-    if (eNB->dlsch_encoding_stats.trials > 0) {
-      print_meas(&eNB->dlsch_turbo_encoding_preperation_stats, "dlsch_coding_crc", NULL, NULL);
-      print_meas(&eNB->dlsch_turbo_encoding_segmentation_stats, "dlsch_segmentation", NULL, NULL);
-      print_meas(&eNB->dlsch_encoding_stats, "dlsch_encoding", NULL, NULL);
-      print_meas(&eNB->dlsch_turbo_encoding_stats, "turbo_encoding", NULL, NULL);
-      print_meas(&eNB->dlsch_interleaving_stats, "turbo_interleaving", NULL, NULL);
-      print_meas(&eNB->dlsch_rate_matching_stats, "turbo_rate_matching", NULL, NULL);
-    }
-
-    print_meas(&eNB->dlsch_modulation_stats, "dlsch_modulation", NULL, NULL);
+  }
 }
+
 
 void free_transport(PHY_VARS_eNB *eNB) {
   for (int i=0; i<NUMBER_OF_DLSCH_MAX; i++) {

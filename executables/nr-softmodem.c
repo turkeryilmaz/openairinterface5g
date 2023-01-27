@@ -370,8 +370,7 @@ static int create_gNB_tasks(void) {
     }
   }
 
-  if (get_softmodem_params()->sa &&
-      !NODE_IS_DU(node_type)) {
+  if (get_softmodem_params()->sa) {
 
     char*             gnb_ipv4_address_for_NGU      = NULL;
     uint32_t          gnb_port_for_NGU              = 0;
@@ -787,7 +786,7 @@ int main( int argc, char **argv ) {
   // wait for end of program
   printf("Entering ITTI signals handler\n");
   printf("TYPE <CTRL-C> TO TERMINATE\n");
-  itti_wait_tasks_end(NULL);
+  itti_wait_tasks_end();
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);

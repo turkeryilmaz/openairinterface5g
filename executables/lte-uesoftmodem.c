@@ -39,7 +39,6 @@
 #include "assertions.h"
 
 #include "PHY/types.h"
-#include "pdcp.h"
 
 #include "PHY/defs_UE.h"
 #include "common/ran_context.h"
@@ -55,8 +54,11 @@
 
 #include "PHY/phy_vars_ue.h"
 #include "PHY/LTE_TRANSPORT/transport_vars.h"
+#include "SCHED/sched_common_vars.h"
+#include "PHY/MODULATION/modulation_vars.h"
 
 #include "LAYER2/MAC/mac.h"
+#include "LAYER2/MAC/mac_vars.h"
 #include "LAYER2/MAC/mac_proto.h"
 #include "RRC/LTE/rrc_vars.h"
 #include "PHY_INTERFACE/phy_interface_vars.h"
@@ -100,7 +102,6 @@ uint16_t runtime_phy_tx[29][6]; // SISO [MCS 0-28][RBs 0-5 : 6, 15, 25, 50, 75, 
 int oai_exit = 0;
 
 unsigned int                    mmapped_dma=0;
-UE_MAC_INST *UE_mac_inst = NULL;
 
 uint64_t                 downlink_frequency[MAX_NUM_CCs][4];
 int32_t                  uplink_frequency_offset[MAX_NUM_CCs][4];
@@ -245,7 +246,7 @@ unsigned int build_rfdc(int dcoff_i_rxfe, int dcoff_q_rxfe) {
 }
 
 
-void exit_function(const char *file, const char *function, const int line, const char *s, const int assert) {
+void exit_function(const char *file, const char *function, const int line, const char *s) {
   int CC_id;
   logClean();
   printf("%s:%d %s() Exiting OAI softmodem: %s\n",file,line, function, ((s==NULL)?"":s));
@@ -259,15 +260,12 @@ void exit_function(const char *file, const char *function, const int line, const
             PHY_vars_UE_g[0][CC_id]->rfdevice.trx_end_func(&PHY_vars_UE_g[0][CC_id]->rfdevice);
   }
 
+  sleep(1); //allow lte-softmodem threads to exit first
+
   if(PHY_vars_UE_g != NULL )
     itti_terminate_tasks (TASK_UNKNOWN);
 
-  if (assert) {
-    abort();
-  } else {
-    sleep(1); // allow lte-softmodem threads to exit first
-    exit(EXIT_SUCCESS);
-  }
+  exit(1);
 }
 
 extern int16_t dlsch_demod_shift;
@@ -482,7 +480,7 @@ void init_openair0(LTE_DL_FRAME_PARMS *frame_parms,int rxgain) {
 void terminate_task(task_id_t task_id, module_id_t mod_id) {
   LOG_I(ENB_APP, "sending TERMINATE_MESSAGE to task %s (%d)\n", itti_get_task_name(task_id), task_id);
   MessageDef *msg;
-  msg = itti_alloc_new_message (TASK_ENB_APP, 0, TERMINATE_MESSAGE);
+  msg = itti_alloc_new_message (ENB_APP, 0, TERMINATE_MESSAGE);
   itti_send_msg_to_task (task_id, ENB_MODULE_ID_TO_INSTANCE(mod_id), msg);
 }
 
@@ -519,14 +517,14 @@ AssertFatal(false,"");
 	return NULL;
 }
 
-int NB_UE_INST = 1;
-
 int main( int argc, char **argv ) {
 
   int CC_id;
   uint8_t  abstraction_flag=0;
   // Default value for the number of UEs. It will hold,
   // if not changed from the command line option --num-ues
+  NB_UE_INST=1;
+  NB_THREAD_INST=1;
   configmodule_interface_t *config_mod;
   start_background_system();
   config_mod = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY);
@@ -552,6 +550,18 @@ int main( int argc, char **argv ) {
 
   EPC_MODE_ENABLED = !IS_SOFTMODEM_NOS1;
   printf("Running with %d UE instances\n",NB_UE_INST);
+
+  // Checking option of nums_ue_thread.
+  if(NB_THREAD_INST < 1) {
+    printf("Running with 0 UE rxtx thread, exiting.\n");
+    abort();
+  }
+
+  // Checking option's relation between nums_ue_thread and num-ues
+  if(NB_UE_INST <NB_THREAD_INST ) {
+    printf("Number of UEs < number of UE rxtx threads, exiting.\n");
+    abort();
+  }
 
 #if T_TRACER
   T_Config_Init();
@@ -594,6 +604,8 @@ int main( int argc, char **argv ) {
     frame_parms[CC_id]->nb_antennas_rx     = nb_antenna_rx;
     frame_parms[CC_id]->nb_antenna_ports_eNB = 1; //initial value overwritten by initial sync later
   }
+
+  NB_INST=1;
 
   if(NFAPI_MODE==NFAPI_UE_STUB_PNF || NFAPI_MODE==NFAPI_MODE_STANDALONE_PNF) {
     PHY_vars_UE_g = malloc(sizeof(PHY_VARS_UE **)*NB_UE_INST);
@@ -699,7 +711,7 @@ int main( int argc, char **argv ) {
   printf("TYPE <CTRL-C> TO TERMINATE\n");
   //getchar();
   printf("Entering ITTI signals handler\n");
-  itti_wait_tasks_end(NULL);
+  itti_wait_tasks_end();
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);

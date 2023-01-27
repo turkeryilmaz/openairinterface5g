@@ -60,7 +60,6 @@ unsigned short config_frames[4] = {2,9,11,13};
 #endif
 
 
-
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h and GNB_APP/gnb_paramdef.h */
 static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
@@ -83,8 +82,6 @@ static int DEFRUTPCORES[] = {-1,-1,-1,-1};
 #include <nfapi/oai_integration/vendor_ext.h>
 
 extern int oai_exit;
-
-uint16_t sl_ahead;
 
 extern struct timespec timespec_sub(struct timespec lhs, struct timespec rhs);
 extern struct timespec timespec_add(struct timespec lhs, struct timespec rhs);
@@ -738,8 +735,7 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
     T_INT(0), T_BUFFER(&ru->common.txdata[0][fp->get_samples_slot_timestamp(slot,fp,0)], fp->samples_per_subframe * 4));
   int sf_extension = 0;
   int siglen=fp->get_samples_per_slot(slot,fp);
-  radio_tx_burst_flag_t flags_burst = TX_BURST_INVALID;
-  radio_tx_gpio_flag_t flags_gpio = 0;
+  int flags = 0;
 
   if (cfg->cell_config.frame_duplex_type.value == TDD && !get_softmodem_params()->continuous_tx) {
     int slot_type = nr_slot_select(cfg,frame,slot%fp->slots_per_frame);
@@ -766,23 +762,28 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
       }
 
       //+ ru->end_of_burst_delay;
-      flags_burst = TX_BURST_END;
+      flags = 3; // end of burst
     } else if (slot_type == NR_DOWNLINK_SLOT) {
       int prevslot_type = nr_slot_select(cfg,frame,(slot+(fp->slots_per_frame-1))%fp->slots_per_frame);
       int nextslot_type = nr_slot_select(cfg,frame,(slot+1)%fp->slots_per_frame);
       if (prevslot_type == NR_UPLINK_SLOT) {
-        flags_burst = TX_BURST_START;
+        flags = 2; // start of burst
         sf_extension = ru->sf_extension;
       } else if (nextslot_type == NR_UPLINK_SLOT) {
-        flags_burst = TX_BURST_END;
+        flags = 3; // end of burst
       } else {
-        flags_burst = TX_BURST_MIDDLE;
+        flags = 1; // middle of burst
       }
     }
   } else { // FDD
-    flags_burst = proc->first_tx == 1 ? TX_BURST_START : TX_BURST_MIDDLE;
+    if (proc->first_tx == 1) {
+      flags = 2; // start of burst
+    } else {
+      flags = 1; // middle of burst
+    }
   }
 
+  if (flags) {
     if (fp->freq_range==nr_FR2) {
       // currently we switch beams at the beginning of a slot and we take the beam index of the first symbol of this slot
       // we only send the beam to the gpio if the beam is different from the previous slot
@@ -1284,13 +1285,9 @@ void *ru_thread( void *param ) {
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
     // At this point, all information for subframe has been received on FH interface
-    if (!get_softmodem_params()->reorder_thread_disable) {
-      res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
-      if (res == NULL)
-        break; // Tpool has been stopped
-    } else  {
-      res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
-    }
+    res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
+    if (res == NULL)
+      break; // Tpool has been stopped
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->frame_rx = proc->frame_rx;
@@ -1299,10 +1296,7 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
-    if (!get_softmodem_params()->reorder_thread_disable) 
-      pushTpool(&gNB->threadPool, res);
-    else 
-      pushNotifiedFIFO(&gNB->resp_L1, res);
+    pushTpool(&gNB->threadPool, res);
   }
 
   printf( "Exiting ru_thread \n");
@@ -1317,8 +1311,7 @@ int start_streaming(RU_t *ru) {
 }
 
 int nr_start_if(struct RU_t_s *ru, struct PHY_VARS_gNB_s *gNB) {
-  if (ru->if_south <= REMOTE_IF5)
-    for (int i=0;i<ru->nb_rx;i++) ru->openair0_cfg.rxbase[i] = ru->common.rxdata[i];
+  for (int i=0;i<ru->nb_rx;i++) ru->openair0_cfg.rxbase[i] = ru->common.rxdata[i];
   ru->openair0_cfg.rxsize = ru->nr_frame_parms->samples_per_subframe*10;
   reset_meas(&ru->ifdevice.tx_fhaul);
   return(ru->ifdevice.trx_start_func(&ru->ifdevice));
@@ -1355,7 +1348,7 @@ void init_RU_proc(RU_t *ru) {
 
   pthread_mutex_init( &proc->mutex_emulateRF,NULL);
   pthread_cond_init( &proc->cond_emulateRF, NULL);
-  threadCreate( &proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX );
+  threadCreate( &proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->tpcores[0], OAI_PRIORITY_RT_MAX );
 
   if(emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
@@ -1681,7 +1674,7 @@ void set_function_spec_param(RU_t *ru) {
     case REMOTE_IF4p5:
       ru->do_prach               = 0;
       ru->feprx                  = NULL;                // DFTs
-      ru->feptx_prec             = nr_feptx_prec;       // Precoding operation
+      ru->feptx_prec             = NULL;          // Precoding operation
       ru->feptx_ofdm             = NULL;                // no OFDM mod
       ru->fh_south_in            = fh_if4p5_south_in;   // synchronous IF4p5 reception
       ru->fh_south_out           = fh_if4p5_south_out;  // synchronous IF4p5 transmission
@@ -1793,25 +1786,23 @@ void init_NR_RU(char *rf_config_file) {
     set_function_spec_param(ru);
     LOG_I(PHY,"Starting ru_thread %d\n",ru_id);
     init_RU_proc(ru);
-    if (ru->if_south != REMOTE_IF4p5) {
-      int threadCnt = ru->num_tpcores;
-      if (threadCnt < 2) LOG_E(PHY,"Number of threads for gNB should be more than 1. Allocated only %d\n",threadCnt);
-      else LOG_I(PHY,"RU Thread pool size %d\n",threadCnt);
-      char pool[80];
-      int s_offset = sprintf(pool,"%d",ru->tpcores[0]);
-      for (int icpu=1; icpu<threadCnt; icpu++) {
-         s_offset+=sprintf(pool+s_offset,",%d",ru->tpcores[icpu]);
-      }
-      LOG_I(PHY,"RU thread-pool core string %s\n",pool);
-      ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
-      initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
-      // FEP RX result FIFO
-      ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-      initNotifiedFIFO(ru->respfeprx);
-      // FEP TX result FIFO
-      ru->respfeptx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-      initNotifiedFIFO(ru->respfeptx);
+    int threadCnt = ru->num_tpcores;
+    if (threadCnt < 2) LOG_E(PHY,"Number of threads for gNB should be more than 1. Allocated only %d\n",threadCnt);
+    else LOG_I(PHY,"RU Thread pool size %d\n",threadCnt);
+    char pool[80];
+    int s_offset = sprintf(pool,"%d",ru->tpcores[0]);
+    for (int icpu=1; icpu<threadCnt; icpu++) {
+       s_offset+=sprintf(pool+s_offset,",%d",ru->tpcores[icpu]);
     }
+    LOG_I(PHY,"RU thread-pool core string %s\n",pool);
+    ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
+    initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
+    // FEP RX result FIFO
+    ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+    initNotifiedFIFO(ru->respfeprx);
+    // FEP TX result FIFO
+    ru->respfeptx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+    initNotifiedFIFO(ru->respfeptx);
   } // for ru_id
 
   //  sleep(1);
@@ -2000,7 +1991,6 @@ static void NRRCconfig_RU(void) {
       RC.ru[j]->openair0_cfg.txfh_cores[0]        = *(RUParamList.paramarray[j][RU_TXFH_CORE_ID].iptr);
       RC.ru[j]->num_tpcores                       = *(RUParamList.paramarray[j][RU_NUM_TP_CORES].iptr);
       RC.ru[j]->half_slot_parallelization         = *(RUParamList.paramarray[j][RU_HALF_SLOT_PARALLELIZATION].iptr);
-      RC.ru[j]->ru_thread_core                    = *(RUParamList.paramarray[j][RU_RU_THREAD_CORE].iptr);
       printf("[RU %d] Setting half-slot parallelization to %d\n",j,RC.ru[j]->half_slot_parallelization); 
       AssertFatal(RC.ru[j]->num_tpcores <= RUParamList.paramarray[j][RU_TP_CORES].numelt, "Number of TP cores should be <=16\n");
       for (i=0; i<RC.ru[j]->num_tpcores; i++) RC.ru[j]->tpcores[i] = RUParamList.paramarray[j][RU_TP_CORES].iptr[i];
