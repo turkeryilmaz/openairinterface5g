@@ -28,6 +28,8 @@
   #include "sctp_eNB_task.h"
   #include "x2ap_eNB.h"
   #include "s1ap_eNB.h"
+  #include "udp_eNB_task.h"
+  #include "gtpv1u_eNB_task.h"
   #include "openair3/ocp-gtpu/gtp_itf.h"
   #if ENABLE_RAL
     #include "lteRALue.h"
@@ -40,6 +42,15 @@
 # include "openair2/LAYER2/MAC/mac_proto.h"
 #include <executables/split_headers.h> 
 #include <openair3/ocp-gtpu/gtp_itf.h>
+# include "ss_eNB_sys_task.h"
+# include "ss_eNB_port_man_task.h"
+# include "ss_eNB_srb_task.h"
+# include "ss_eNB_vng_task.h"
+# include "ss_eNB_vtp_task.h"
+# include "ss_eNB_drb_task.h"
+# include "ss_eNB_vt_timer_task.h"
+# include "ss_eNB_sysind_task.h"
+
 
 extern RAN_CONTEXT_t RC;
 
@@ -49,6 +60,41 @@ int create_tasks(uint32_t enb_nb) {
   int rc;
 
   if (enb_nb == 0) return 0;
+
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS manager failed\n");
+
+    rc = itti_create_task(TASK_SYS, ss_eNB_sys_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS failed\n");
+
+    rc = itti_create_task(TASK_SS_SRB_ACP, ss_eNB_srb_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SRB ACP failed\n");
+
+    rc = itti_create_task(TASK_SS_SYSIND, ss_eNB_sysind_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SYSIND failed\n");
+
+    rc = itti_create_task(TASK_SS_SYSIND_ACP, ss_eNB_sysind_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SYSIND ACP failed\n");
+
+    rc = itti_create_task(TASK_SS_SRB, ss_eNB_srb_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS SRB failed\n");
+
+    rc = itti_create_task(TASK_VNG, ss_eNB_vng_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS VNG failed\n");
+
+    rc = itti_create_task(TASK_SS_DRB, ss_eNB_drb_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS DRB failed\n");
+
+    /* Task for support Virtual Time for TTCN  engine */
+    rc = itti_create_task(TASK_VTP, ss_eNB_vtp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS VTP failed\n");
+
+    /* Task for support Virtual Time timer management */
+    rc = itti_create_task(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS_VT_TIMER failed\n");
+  }
 
   LOG_I(ENB_APP, "Creating ENB_APP eNB Task\n");
   rc = itti_create_task (TASK_ENB_APP, eNB_app_task, NULL);
@@ -66,6 +112,10 @@ int create_tasks(uint32_t enb_nb) {
   if (EPC_MODE_ENABLED && !NODE_IS_DU(type) && ! ( split73==SPLIT73_DU ) ) {
     rc = itti_create_task(TASK_S1AP, s1ap_eNB_task, NULL);
     AssertFatal(rc >= 0, "Create task for S1AP failed\n");
+    if (!(get_softmodem_params()->emulate_rf)){
+      rc = itti_create_task(TASK_UDP, udp_eNB_task, NULL);
+      AssertFatal(rc >= 0, "Create task for UDP failed\n");
+    }
     rc = itti_create_task(TASK_GTPV1_U, gtpv1uTask, NULL);
     AssertFatal(rc >= 0, "Create task for GTPV1U failed\n");
   }
@@ -85,6 +135,7 @@ int create_tasks(uint32_t enb_nb) {
   if (NODE_IS_DU(type)) {
     rc = itti_create_task(TASK_DU_F1, F1AP_DU_task, NULL);
     AssertFatal(rc >= 0, "Create task for DU F1AP failed\n");
+    // DU is now GTP-U instead of protobuf
     rc = itti_create_task(TASK_GTPV1_U, gtpv1uTask, NULL);
     AssertFatal(rc >= 0, "Create task for GTPV1U failed\n");
   }
