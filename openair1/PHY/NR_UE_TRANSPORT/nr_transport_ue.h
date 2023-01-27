@@ -358,6 +358,9 @@ typedef struct {
   long  sl_numssb_withinperiod_r16;
   long  sl_timeoffsetssb_r16;
   long  sl_timeinterval_r16;
+  long  sl_numssb_withinperiod_r16_copy;
+  long  sl_timeinterval_r16_copy;
+  long  sl_timeoffsetssb_r16_copy;
   uint16_t slss_id;
   uint8_t sl_mib_length;
   uint8_t sl_mib[5];

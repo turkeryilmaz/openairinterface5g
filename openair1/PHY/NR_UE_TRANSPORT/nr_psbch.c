@@ -301,8 +301,26 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
   uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
   int txdataF_offset = slot * fp->samples_per_slot_wCP;
 
-  int ssb_start_symbol_abs = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * fp->symbols_per_slot;
-  uint16_t ssb_start_symbol = ssb_start_symbol_abs % fp->symbols_per_slot;
+  // the modification should be added here !!!!
+  if (frame % 16 == 0){
+    ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16_copy;
+    ue->slss->sl_timeoffsetssb_r16 = frame*fp->slots_per_frame + ue->slss->sl_timeoffsetssb_r16_copy;
+  }
+
+  if (ue->slss->sl_numssb_withinperiod_r16 > 0){
+    
+    if (frame*fp->slots_per_frame + slot == ue->slss->sl_timeoffsetssb_r16){
+      ue->slss->sl_timeoffsetssb_r16 = ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16;
+      ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16 -1;
+    }else{
+      return;
+    }
+  }else{
+    return;
+  }
+
+  //int ssb_start_symbol_abs = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * fp->symbols_per_slot;
+  uint16_t ssb_start_symbol = 0;//ssb_start_symbol_abs % fp->symbols_per_slot;
   LOG_D(NR_PHY, "common_signal_procedures: frame %d, slot %d ssb index %d, ssb_start_symbol %d, txdataF_offset %d\n",
         frame, slot, ssb_index, ssb_start_symbol, txdataF_offset);
 

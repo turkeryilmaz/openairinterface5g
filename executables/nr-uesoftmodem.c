@@ -307,9 +307,13 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   }
   #if 1
   ue->slss->sl_mib_length = 32;
-  ue->slss->sl_numssb_withinperiod_r16 = 1;
-  ue->slss->sl_timeinterval_r16 = 0;
-  ue->slss->sl_timeoffsetssb_r16 = 0;
+  ue->slss->sl_numssb_withinperiod_r16 = 2;
+  ue->slss->sl_timeinterval_r16 = 20;
+  ue->slss->sl_timeoffsetssb_r16 = 2;
+
+  ue->slss->sl_numssb_withinperiod_r16_copy = 2;
+  ue->slss->sl_timeinterval_r16_copy = 20;
+  ue->slss->sl_timeoffsetssb_r16_copy = 2;
   #endif
   ue->slss->slss_id = Nid_SL;
   ue->is_synchronized_sl = 0;
@@ -582,6 +586,7 @@ int main( int argc, char **argv ) {
           mac->if_module->phy_config_request(&mac->phy_config);
         LOG_I(NR_MAC, "This is get_softmodem_params()->sl_mode %d\n", get_softmodem_params()->sl_mode);
         if (get_softmodem_params()->sl_mode == 2) {
+          printf("check if it is going to this if/else\n");
           nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
         } else {
           fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
