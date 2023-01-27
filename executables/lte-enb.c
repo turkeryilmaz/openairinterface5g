@@ -111,6 +111,8 @@ extern int transmission_mode;
 
 extern int oaisim_flag;
 
+//uint16_t sf_ahead=4;
+extern uint16_t sf_ahead;
 #include "executables/thread-common.h"
 //extern PARALLEL_CONF_t get_thread_parallel_conf(void);
 //extern WORKER_CONF_t   get_thread_worker_conf(void);
@@ -255,7 +257,67 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
   eNB->UL_INFO.subframe  = proc->subframe_rx;
   eNB->UL_INFO.module_id = eNB->Mod_id;
   eNB->UL_INFO.CC_id     = eNB->CC_id;
-  eNB->if_inst->UL_indication(&eNB->UL_INFO, (void*)proc);
+
+//#ifdef ENB_SS
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    MessageDef *message_p = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
+    if (message_p)
+    {
+      SS_UPD_TIM_INFO(message_p).sf = eNB->UL_INFO.subframe;
+      SS_UPD_TIM_INFO(message_p).sfn = eNB->UL_INFO.frame;
+
+      int send_res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
+      if (send_res < 0)
+      {
+        printf("Error in itti_send_msg_to_task");
+        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
+      }
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d sf %d",
+            eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+    }
+    MessageDef *message_p_vtp = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
+    if (message_p_vtp && RC.ss.vtp_ready)
+    {
+      SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
+      SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;
+      SS_UPD_TIM_INFO(message_p).physCellId = RC.rrc[eNB->UL_INFO.module_id]->carrier[eNB->UL_INFO.CC_id].physCellId;
+      int send_res = itti_send_msg_to_task(TASK_VTP, 0, message_p_vtp);
+      if (send_res < 0)
+      {
+        printf("Error in itti_send_msg_to_task");
+        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
+      }
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to VTP task itti_send_msg_to_task sfn %d sf %d",
+            eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+    }
+    MessageDef *message_p_vt_timer = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
+    if (message_p_vt_timer)
+    {
+      SS_UPD_TIM_INFO(message_p_vt_timer).sf = eNB->UL_INFO.subframe;
+      SS_UPD_TIM_INFO(message_p_vt_timer).sfn = eNB->UL_INFO.frame;
+      int send_res = itti_send_msg_to_task(TASK_VT_TIMER, 0, message_p_vt_timer);
+      if (send_res < 0)
+      {
+        printf("Error in itti_send_msg_to_task");
+        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
+      }
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to TASK_VT_TIMER task itti_send_msg_to_task sfn %d sf %d",
+            eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+    }
+  }
+
+int tem_proc_ccid = proc->CC_id;
+/* MultiCell: Function modify for Multiple CC */
+  for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
+  eNB->UL_INFO.CC_id     = CC_id;
+  proc->CC_id = CC_id;//Temp solution need to be fixed later
+  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
+  }
+  proc->CC_id = tem_proc_ccid;
+//#endif /** ENB_SS */
+
+
   AssertFatal((ret= pthread_mutex_unlock(&eNB->UL_INFO_mutex))==0,"error unlocking UL_INFO_mutex, return %d\n",ret);
   /* this conflict resolution may be totally wrong, to be tested */
   /* CONFLICT RESOLUTION: BEGIN */
@@ -325,6 +387,7 @@ static void *L1_thread_tx(void *param) {
 
   //wait_sync("tx_thread");
 
+  proc->respEncode = eNB->proc.L1_proc.respEncode;
   while (!oai_exit) {
     LOG_D(PHY,"Waiting for TX (IC %d)\n",proc->instance_cnt);
 
@@ -386,8 +449,10 @@ static void *L1_thread( void *param ) {
 
 
   char thread_name[100];
+#if 0 /* MultiCell: Not Required for MultiCell case */
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
+#endif
   // set default return value
   eNB_thread_rxtx_status = 0;
   sprintf(thread_name,"RXn_TXnp4_%d\n",&eNB->proc.L1_proc == proc ? 0 : 1);
@@ -424,9 +489,9 @@ static void *L1_thread( void *param ) {
 
     if (oai_exit) break;
 
-    if (eNB->CC_id==0) {
-      if (rxtx(eNB,proc,thread_name) < 0) break;
-    }
+    /* MultiCell: Condition modified for MultiCell case */
+    /* This thread can only be wakeup for one cell SUBFRAME Ind under VNF as proxy would only send one SUBFRAME Ind for all cells. */
+    if (rxtx(eNB,proc,thread_name) < 0) break;
 
     LOG_D(PHY,"L1 RX %d.%d done\n",proc->frame_rx,proc->subframe_rx);
 
@@ -462,11 +527,11 @@ void eNB_top(PHY_VARS_eNB *eNB,
 
   if (!oai_exit) {
     T(T_ENB_MASTER_TICK, T_INT(0), T_INT(ru_proc->frame_rx), T_INT(ru_proc->tti_rx));
-    L1_proc->timestamp_tx = ru_proc->timestamp_rx + (ru->sf_ahead*fp->samples_per_tti);
+    L1_proc->timestamp_tx = ru_proc->timestamp_rx + (sf_ahead*fp->samples_per_tti);
     L1_proc->frame_rx     = ru_proc->frame_rx;
     L1_proc->subframe_rx  = ru_proc->tti_rx;
-    L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-ru->sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
-    L1_proc->subframe_tx  = (L1_proc->subframe_rx + ru->sf_ahead)%10;
+    L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
+    L1_proc->subframe_tx  = (L1_proc->subframe_rx + sf_ahead)%10;
     
     if (rxtx(eNB,L1_proc,string) < 0)
       LOG_E(PHY,"eNB %d CC_id %d failed during execution\n",eNB->Mod_id,eNB->CC_id);  
@@ -610,11 +675,11 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,
   // The last (TS_rx mod samples_per_frame) was n*samples_per_tti,
   // we want to generate subframe (n+sf_ahead), so TS_tx = TX_rx+sf_ahead*samples_per_tti,
   // and proc->subframe_tx = proc->subframe_rx+sf_ahead
-  L1_proc->timestamp_tx = ru_proc->timestamp_rx + (ru->sf_ahead*fp->samples_per_tti);
+  L1_proc->timestamp_tx = ru_proc->timestamp_rx + (sf_ahead*fp->samples_per_tti);
   L1_proc->frame_rx     = ru_proc->frame_rx;
   L1_proc->subframe_rx  = ru_proc->tti_rx;
-  L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-ru->sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
-  L1_proc->subframe_tx  = (L1_proc->subframe_rx + ru->sf_ahead)%10;
+  L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
+  L1_proc->subframe_tx  = (L1_proc->subframe_rx + sf_ahead)%10;
   LOG_D(PHY,"wakeup_rxtx: L1_proc->subframe_rx %d, L1_proc->subframe_tx %d, RU %d\n",L1_proc->subframe_rx,L1_proc->subframe_tx,ru->idx);
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_WAKEUP_RXTX_RX_RU+ru->idx, L1_proc->frame_rx);
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_WAKEUP_RXTX_RX_RU+ru->idx, L1_proc->subframe_rx);
@@ -833,9 +898,14 @@ static void *process_stats_thread(void *param) {
         print_meas(&eNB->dlsch_turbo_encoding_preperation_stats,"dlsch_coding_crc",NULL,NULL);
         print_meas(&eNB->dlsch_turbo_encoding_segmentation_stats,"dlsch_segmentation",NULL,NULL);
         print_meas(&eNB->dlsch_encoding_stats,"dlsch_encoding",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_signal_stats,"coding_signal",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_main_stats,"coding_main",NULL,NULL);
         print_meas(&eNB->dlsch_turbo_encoding_stats,"turbo_encoding",NULL,NULL);
         print_meas(&eNB->dlsch_interleaving_stats,"turbo_interleaving",NULL,NULL);
         print_meas(&eNB->dlsch_rate_matching_stats,"turbo_rate_matching",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_waiting_stats,"coding_wait",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_wakeup_stats0,"coding_worker_0",NULL,NULL);
+        print_meas(&eNB->dlsch_turbo_encoding_wakeup_stats1,"coding_worker_1",NULL,NULL);
       }
 
       print_meas(&eNB->dlsch_modulation_stats,"dlsch_modulation",NULL,NULL);
@@ -886,6 +956,8 @@ void init_eNB_proc(int inst) {
     proc->instance_cnt_asynch_rxtx = -1;
     proc->instance_cnt_synch       = -1;
     proc->CC_id                    = CC_id;
+    L1_proc->CC_id                    = CC_id; /* MultiCell: Added for Multiple CC */
+    L1_proc_tx->CC_id                    = CC_id; /* MultiCell: Added for Multiple CC */
     proc->first_rx                 =1;
     proc->first_tx                 =1;
     proc->RU_mask_tx               = (1<<eNB->num_RU)-1;
@@ -917,6 +989,14 @@ void init_eNB_proc(int inst) {
     pthread_mutex_init( &proc->mutex_RU_PRACH_br,NULL);
     pthread_cond_init( &proc->cond_prach_br, NULL);
     pthread_attr_init( &proc->attr_prach_br);
+#ifndef DEADLINE_SCHEDULER
+    attr0       = &L1_proc->attr;
+    attr1       = &L1_proc_tx->attr;
+    attr_prach  = &proc->attr_prach;
+    attr_prach_br  = &proc->attr_prach_br;
+    //    attr_td     = &proc->attr_td;
+    //    attr_te     = &proc->attr_te;
+#endif
 
     if(get_thread_worker_conf() == WORKER_ENABLE) {
       init_te_thread(eNB);
@@ -1120,7 +1200,7 @@ void init_transport(PHY_VARS_eNB *eNB) {
     }
     for (int i=0;i<NUMBER_OF_ULSCH_MAX; i++) {
 
-      LOG_I(PHY,"Allocating Transport Channel Buffers for ULSCH %d/%d\n",i,NUMBER_OF_ULSCH_MAX);
+      LOG_I(PHY,"Allocating Transport Channel Buffer for ULSCH %d/%d\n",i,NUMBER_OF_ULSCH_MAX);
       eNB->ulsch[i] = new_eNB_ulsch(MAX_TURBO_ITERATIONS,fp->N_RB_UL, 0);
 
       if (!eNB->ulsch[i]) {
