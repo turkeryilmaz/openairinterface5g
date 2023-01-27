@@ -36,6 +36,10 @@
 #include "rrc_extern.h"
 #include "assertions.h"
 #include "common/ran_context.h"
+<<<<<<< HEAD
+=======
+#include "asn_internal.h"
+>>>>>>> 4e05ccc8f3... Changes of eNB & UE Compilation issue
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
 #include "LAYER2/RLC/rlc.h"
 #include "LAYER2/MAC/mac_proto.h"
@@ -89,7 +93,6 @@
 
 #include "pdcp.h"
 #include "pdcp_primitives.h"
-#include "gtpv1u_eNB_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "intertask_interface.h"
@@ -378,6 +381,7 @@ init_SI(
     AssertFatal(carrier->sizeof_SIB5 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB5 == 255");
   }
 
+<<<<<<< HEAD
   if (carrier->MBMS_flag > 0) {
     for (i = 0; i < carrier->sib2->mbsfn_SubframeConfigList->list.count; i++) {
       // SIB 2
@@ -396,6 +400,83 @@ init_SI(
             PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
             carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationOffset);
     }
+=======
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" SIB2/3 Contents (partial)\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP));
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.n_SB = %ld\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.n_SB);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.hoppingMode = %ld\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.hoppingMode);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.pusch_HoppingOffset = %ld\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.pusch_HoppingOffset);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.enable64QAM = %d\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.enable64QAM);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.groupHoppingEnabled = %d\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.groupHoppingEnabled);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.groupAssignmentPUSCH = %ld\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.groupAssignmentPUSCH);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.sequenceHoppingEnabled = %d\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.sequenceHoppingEnabled);
+    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.cyclicShift  = %ld\n",
+          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.cyclicShift);
+
+    /* Check if SIB4 present for particular CC Then only proceed for creating SIB4 payload */
+    if(true == configuration->sib4_Present[CC_id]) {
+      if(NULL == carrier->SIB4) {
+        carrier->SIB4 = (uint8_t *) malloc16(64);
+      }
+      AssertFatal(carrier->SIB4!=NULL,"cannot allocate memory for SIB4");
+      carrier->sizeof_SIB4 = do_SIB4(ctxt_pP->module_id,
+                                       CC_id,
+                                       false,
+                                       configuration
+                                      );
+      LOG_I(RRC,"do_SIB4, size %d \n ", carrier->sizeof_SIB4);
+      AssertFatal(carrier->sizeof_SIB4 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB4 == 255");
+    }
+
+    /* Check if SIB5 present for particular CC Then only proceed for creating SIB5 payload */
+    if(true == configuration->sib5_Present[CC_id]) {
+      if(NULL == carrier->SIB5) {
+        carrier->SIB5 = (uint8_t *) malloc16(64);
+      }
+      AssertFatal(carrier->SIB5!=NULL,"cannot allocate memory for SIB5");
+      carrier->sizeof_SIB5 = do_SIB5(ctxt_pP->module_id,
+                                       CC_id,
+                                       false,
+                                       configuration
+                                      );
+      LOG_I(RRC,"do_SIB5, size %d \n ", carrier->sizeof_SIB5);
+      AssertFatal(carrier->sizeof_SIB5 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB5 == 255");
+    }
+
+    if (carrier->MBMS_flag > 0) {
+      for (i = 0; i < carrier->sib2->mbsfn_SubframeConfigList->list.count; i++) {
+        // SIB 2
+        //   LOG_D(RRC, "[eNB %ld] mbsfn_SubframeConfigList.list.count = %ld\n", enb_mod_idP, RC.rrc[enb_mod_idP].sib2->mbsfn_SubframeConfigList->list.count);
+        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" SIB13 contents for MBSFN subframe allocation %d/%d(partial)\n",
+              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+              i,
+              carrier->sib2->mbsfn_SubframeConfigList->list.count);
+        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" mbsfn_Subframe_pattern is  = %x\n",
+              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+              carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->subframeAllocation.choice.oneFrame.buf[0] >> 0);
+        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" radioframe_allocation_period  = %ld (just index number, not the real value)\n",
+              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+              carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationPeriod);   // need to display the real value, using array of char (like in dumping SIB2)
+        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" radioframe_allocation_offset  = %ld\n",
+              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+              carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationOffset);
+      }
+>>>>>>> 4e05ccc8f3... Changes of eNB & UE Compilation issue
 
     //   SIB13
     for (i = 0; i < carrier->sib13->mbsfn_AreaInfoList_r9.list.count; i++) {
@@ -4062,7 +4143,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     pdcp_t *pdcp_p = NULL;
     rb_id_t rbid_ = 1;
     hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
-    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 1);
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, rbid_, 1);
     int8_t h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
     if (h_rc == HASH_TABLE_OK)
     {
@@ -4086,14 +4167,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
         }
 
         LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", 
-              ctxt_pP->rnti, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
+              ctxt_pP->rntiMaybeUEid, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
-        key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
+        key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
         h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
         if (h_rc == HASH_TABLE_OK)
         {
-          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rnti);
+          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rntiMaybeUEid);
           pdcp_config_set_security(
               ctxt_pP,
               pdcp_p,
@@ -4114,7 +4195,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       }
       else
       {
-        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rnti);
+        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
       }
     }
     else
@@ -10279,6 +10360,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               }
               if (RC.ss.CBRA_flag)
               {
+<<<<<<< HEAD
                 struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
 
                 ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
@@ -10304,6 +10386,9 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                 {
                   RRCConnSetup_PDU_Present[cc_id] = FALSE;
                 }
+=======
+                RRCConnSetup_PDU_Present[cc_id] = false;
+>>>>>>> 4e05ccc8f3... Changes of eNB & UE Compilation issue
               }
             }
           }

@@ -107,7 +107,7 @@ typedef struct gtpv1u_enb_delete_tunnel_resp_s {
 } gtpv1u_enb_delete_tunnel_resp_t;
 
 
-typedef struct gtpv1u_tunnel_data_req_s {
+typedef struct gtpv1u_tunnel_data_req_s{
   uint8_t               *buffer;
   uint32_t               length;
   uint32_t               offset;               ///< start of message offset in buffer

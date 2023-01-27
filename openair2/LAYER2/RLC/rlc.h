@@ -204,30 +204,30 @@ tbs_size_t            mac_rlc_data_req     (const module_id_t, const rnti_t, con
     ,const uint32_t destinationL2Id
                                            );
 
-+/*! \fn rlc_op_status_t enqueue_mac_rlc_data_req     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP,  const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, mui_t muiP, confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sduP)
-+* \brief    Interface with higher layers, map request to the RLC corresponding to the radio bearer.
-+* \param[in]  ctxtP            Running context.
-+* \param[in]  srb_flagP        Flag to indicate SRB (1) or DRB (0)
-+* \param[in]  MBMS_flagP       Flag to indicate whether this is the MBMS service (1) or not (0)
-+* \param[in]  rb_idP           Radio bearer identifier.
-+* \param[in]  muiP             Message Unit identifier.
-+* \param[in]  confirmP         Boolean, is confirmation requested.
-+* \param[in]  sdu_sizeP        Size of SDU in bytes.
-+* \param[in]  sduP             SDU.
-+* \return     A status about the processing, OK or error code.
-+*/
-+rlc_op_status_t enqueue_mac_rlc_data_req     (
-+  const protocol_ctxt_t *const,
-+  const  srb_flag_t,
-+  const  MBMS_flag_t,
-+  const  rb_id_t,
-+  const  mui_t,
-+  const confirm_t,
-+  const sdu_size_t,
-+  mem_block_t *const,
-+  const uint32_t *const,
-+  const uint32_t *const
-+);
+/*! \fn rlc_op_status_t enqueue_mac_rlc_data_req     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP,  const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, mui_t muiP, confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sduP)
+* \brief    Interface with higher layers, map request to the RLC corresponding to the radio bearer.
+* \param[in]  ctxtP            Running context.
+* \param[in]  srb_flagP        Flag to indicate SRB (1) or DRB (0)
+* \param[in]  MBMS_flagP       Flag to indicate whether this is the MBMS service (1) or not (0)
+* \param[in]  rb_idP           Radio bearer identifier.
+* \param[in]  muiP             Message Unit identifier.
+* \param[in]  confirmP         Boolean, is confirmation requested.
+* \param[in]  sdu_sizeP        Size of SDU in bytes.
+* \param[in]  sduP             SDU.
+* \return     A status about the processing, OK or error code.
+*/
+rlc_op_status_t enqueue_mac_rlc_data_req     (
+  const protocol_ctxt_t *const,
+  const  srb_flag_t,
+  const  MBMS_flag_t,
+  const  rb_id_t,
+  const  mui_t,
+  const confirm_t,
+  const sdu_size_t,
+  mem_block_t *const,
+  const uint32_t *const,
+  const uint32_t *const
+);
 
 /*! \fn rlc_op_status_t enqueue_mac_rlc_data_req     (const protocol_ctxt_t* const ctxtP, const  srb_flag_t srb_flagP,  const  MBMS_flag_t MBMS_flagP, const  rb_id_t rb_idP, mui_t muiP, confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sduP)
 * \brief    Interface with higher layers, map request to the RLC corresponding to the radio bearer.

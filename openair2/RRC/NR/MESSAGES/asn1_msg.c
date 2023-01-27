@@ -1515,9 +1515,13 @@ void fill_initial_cellGroupConfig(int uid,
                                   const gNB_RrcConfigurationReq *configuration,
                                   const int CC_id)
 {
+  NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
+  NR_RLC_Config_t                                  *rlc_Config           = NULL;
+  NR_LogicalChannelConfig_t                        *logicalChannelConfig = NULL;
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
-  
+  long *logicalChannelGroup = NULL;
+
   cellGroupConfig->cellGroupId = 0;
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
