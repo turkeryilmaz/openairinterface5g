@@ -39,8 +39,8 @@
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
-#include "../../ARCH/COMMON/common_lib.h"
-#include "../../ARCH/ETHERNET/USERSPACE/LIB/if_defs.h"
+#include "radio/COMMON/common_lib.h"
+#include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -51,7 +51,7 @@
 #include "PHY_INTERFACE/phy_interface_vars.h"
 #include "gnb_config.h"
 #include "SIMULATION/TOOLS/sim.h"
-#include <targets/RT/USER/lte-softmodem.h>
+#include "executables/lte-softmodem.h"
 
 #ifdef SMBV
 #include "PHY/TOOLS/smbv.h"
@@ -320,7 +320,7 @@ int create_gNB_tasks(uint32_t gnb_nb) {
     }
   }
 
-  if (AMF_MODE_ENABLED) {
+  if (get_softmodem_params()->sa) {
 
     char*             gnb_ipv4_address_for_NGU      = NULL;
     uint32_t          gnb_port_for_NGU              = 0;
@@ -778,7 +778,7 @@ int main( int argc, char **argv ) {
   printf("wait_gNBs()\n");
   wait_gNBs();
   printf("About to Init RU threads RC.nb_RU:%d\n", RC.nb_RU);
-
+  int sl_ahead=6;
   if (RC.nb_RU >0) {
     printf("Initializing RU threads\n");
     init_NR_RU(get_softmodem_params()->rf_config_file);
@@ -786,7 +786,10 @@ int main( int argc, char **argv ) {
     for (ru_id=0; ru_id<RC.nb_RU; ru_id++) {
       RC.ru[ru_id]->rf_map.card=0;
       RC.ru[ru_id]->rf_map.chain=CC_id+chain_offset;
+      if (ru_id==0) sl_ahead = RC.ru[ru_id]->sl_ahead;	
+      else AssertFatal(RC.ru[ru_id]->sl_ahead != RC.ru[0]->sl_ahead,"RU %d has different sl_ahead %d than RU 0 %d\n",ru_id,RC.ru[ru_id]->sl_ahead,RC.ru[0]->sl_ahead);
     }
+    
   }
 
   config_sync_var=0;
@@ -803,6 +806,7 @@ int main( int argc, char **argv ) {
     // once all RUs are ready initialize the rest of the gNBs ((dependence on final RU parameters after configuration)
     printf("ALL RUs ready - init gNBs\n");
 
+    for (int idx=0;idx<RC.nb_nr_L1_inst;idx++) RC.gNB[idx]->if_inst->sl_ahead = sl_ahead;
     if(IS_SOFTMODEM_DOSCOPE) {
       sleep(1);
       scopeParms_t p;
@@ -839,6 +843,7 @@ int main( int argc, char **argv ) {
   printf("TYPE <CTRL-C> TO TERMINATE\n");
   //getchar();
   printf("Entering ITTI signals handler\n");
+  printf("TYPE <CTRL-C> TO TERMINATE\n");
   itti_wait_tasks_end();
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
@@ -867,21 +872,20 @@ int main( int argc, char **argv ) {
   #endif*/
   printf("stopping MODEM threads\n");
   // cleanup
-  stop_gNB(NB_gNB_INST);
+  if (RC.nb_nr_L1_inst > 0)
+    stop_gNB(RC.nb_nr_L1_inst);
 
-  if (RC.nb_nr_L1_inst > 0) {
-    stop_RU(NB_RU);
-  }
+  if (RC.nb_RU > 0)
+    stop_RU(RC.nb_RU);
 
   /* release memory used by the RU/gNB threads (incomplete), after all
    * threads have been stopped (they partially use the same memory) */
-  for (int inst = 0; inst < NB_gNB_INST; inst++) {
-    //free_transport(RC.gNB[inst]);
-    phy_free_nr_gNB(RC.gNB[inst]);
+  for (int inst = 0; inst < RC.nb_RU; inst++) {
+    nr_phy_free_RU(RC.ru[inst]);
   }
 
-  for (int inst = 0; inst < NB_RU; inst++) {
-    nr_phy_free_RU(RC.ru[inst]);
+  for (int inst = 0; inst < RC.nb_nr_L1_inst; inst++) {
+    phy_free_nr_gNB(RC.gNB[inst]);
   }
 
   free_lte_top();
