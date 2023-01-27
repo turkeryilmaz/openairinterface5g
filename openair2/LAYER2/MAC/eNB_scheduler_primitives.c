@@ -1990,7 +1990,7 @@ find_UE_id(module_id_t mod_idP,
 
   for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
     int CC_id = UE_PCCID(mod_idP, UE_id);
-    if (UE_info->active[CC_id][UE_id] == TRUE) {
+    if (UE_info->active[CC_id][UE_id] == true) {
       if (CC_id>=0 && CC_id<NFAPI_CC_MAX && UE_info->UE_template[CC_id][UE_id].rnti == rntiP) {
         return UE_id;
       }

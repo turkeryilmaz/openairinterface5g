@@ -104,7 +104,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
 
   /* The request has send confirm flag flase so do nothing in this funciton */
-  if (reqCnfFlag_g == FALSE)
+  if (reqCnfFlag_g == false)
   {
     LOG_A(GNB_APP, "[SYS-GNB] No confirm required\n");
     return ;
@@ -274,7 +274,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           SS_context.State = SS_STATE_CELL_ACTIVE;
           LOG_A(GNB_APP, "[SYS-GNB] RC.ss.State changed to ACTIVE \n");
         }
-        send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
+        send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
 
 
         if (req->Request.v.Cell.d == NR_CellConfigRequest_Type_AddOrReconfigure)
@@ -327,7 +327,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_Cell:
             {
               LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_Cell \n");
-              send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_Cell, NULL);
+              send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
             }
             break;
           case NR_SystemRequest_Type_EnquireTiming:
@@ -370,7 +370,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_AS_Security:
             {
               LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_AS_Security \n");
-              send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_AS_Security, NULL);
+              send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_AS_Security, NULL);
             }
             break;
           default:
@@ -401,10 +401,10 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 
 bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
 {
-  bool valid = FALSE;
+  bool valid = false;
   enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-  bool resVal = TRUE;
-  bool sendDummyCnf = TRUE;
+  bool resVal = true;
+  bool sendDummyCnf = true;
   enum NR_SystemConfirm_Type_Sel cnfType = 0;
 
   LOG_A(GNB_APP, "[SYS-GNB] received req : %d for cell %d RC.ss.State %d \n",
@@ -414,8 +414,8 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
     case NR_SystemRequest_Type_Cell:
       if (RC.ss.State >= SS_STATE_NOT_CONFIGURED)
       {
-        valid = TRUE;
-        sendDummyCnf = FALSE;
+        valid = true;
+        sendDummyCnf = false;
         reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       }
       else
@@ -425,42 +425,42 @@ bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
       }
       break;
     case NR_SystemRequest_Type_EnquireTiming:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
+      valid = true;
+      sendDummyCnf = false;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case NR_SystemRequest_Type_DeltaValues:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
+      valid = true;
+      sendDummyCnf = false;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case NR_SystemRequest_Type_RadioBearerList:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
+      valid = true;
+      sendDummyCnf = false;
       cnfType = NR_SystemConfirm_Type_RadioBearerList;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case NR_SystemRequest_Type_CellAttenuationList:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
+      valid = true;
+      sendDummyCnf = false;
       cnfType = NR_SystemConfirm_Type_CellAttenuationList;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case NR_SystemRequest_Type_AS_Security:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
+      valid = true;
+      sendDummyCnf = false;
       cnfType = NR_SystemConfirm_Type_AS_Security;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     case NR_SystemRequest_Type_PdcpCount:
-      valid = TRUE;
-      sendDummyCnf = FALSE;
+      valid = true;
+      sendDummyCnf = false;
       cnfType = NR_SystemConfirm_Type_PdcpCount;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
       break;
     default:
-      valid = FALSE;
-      sendDummyCnf = FALSE;
+      valid = false;
+      sendDummyCnf = false;
   }
   if (sendDummyCnf)
   {
@@ -1255,7 +1255,7 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
     int_to_bin(1, 32, PdcpCount.v.Get.v[i].DL.v.Value);
   }
 
-  send_sys_cnf(ConfirmationResult_Type_Success, TRUE, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
+  send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
   LOG_A(ENB_SS, "Exit from fxn:%s\n", __FUNCTION__);
   return true;
 

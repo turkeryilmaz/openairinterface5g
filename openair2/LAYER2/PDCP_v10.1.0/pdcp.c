@@ -735,13 +735,14 @@ pdcp_data_ind(
   uint16_t     pdcp_uid=0;
 
   MessageDef  *message_p        = NULL;
+  uint8_t     *gtpu_buffer_p    = NULL;
   uint32_t    rx_hfn_for_count;
   int         pdcp_sn_for_count;
   int         security_ok;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_IN);
   LOG_DUMPMSG(PDCP,DEBUG_PDCP,(char *)sdu_buffer_pP->data,sdu_buffer_sizeP,
               "[MSG] PDCP UL %s PDU on rb_id %ld\n", (srb_flagP)? "CONTROL" : "DATA", rb_idP);
-  LOG_D(PDCP, "ctxt->rnti:%d\n", ctxt_pP->rnti);
+  LOG_D(PDCP, "ctxt->rntiMaybeUEid:%d\n", ctxt_pP->rntiMaybeUEid);
   pdcp_info_t pdcp_pkt;
   memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
 
@@ -1165,9 +1166,9 @@ pdcp_data_ind(
    * PDCP header)
    */
   if (RC.ss.mode >= SS_SOFTMODEM) {
-    if ((TRUE == ctxt_pP->enb_flag) && (FALSE == srb_flagP)) {
+    if ((true == ctxt_pP->enb_flag) && (false == srb_flagP)) {
       LOG_A(PDCP, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %ld len %u\n",
-            ctxt_pP->rnti,
+            ctxt_pP->rntiMaybeUEid,
             rb_id,
             sdu_buffer_sizeP - payload_offset );
 
@@ -1175,7 +1176,7 @@ pdcp_data_ind(
       if (message_p) {
         /* Populate the message to SS */
         //Find the CC_id from module_id and rnti
-        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rnti);
+        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rntiMaybeUEid);
         int CC_id = UE_id>=0? UE_PCCID(ctxt_pP->module_id,UE_id):0;
         SS_DRB_PDU_IND (message_p).sdu_size = sdu_buffer_sizeP - payload_offset;
         SS_DRB_PDU_IND (message_p).drb_id = rb_id;
@@ -1193,28 +1194,24 @@ pdcp_data_ind(
     }
   } else {
     if (LINK_ENB_PDCP_TO_GTPV1U) {
-      if ((TRUE == ctxt_pP->enb_flag) && (FALSE == srb_flagP)) {
-        LOG_D(PDCP, "Sending packet to GTP, Calling GTPV1U_ENB_TUNNEL_DATA_REQ  ue %x rab %ld len %u\n",
-              ctxt_pP->rnti,
-              rb_id + 4,
-              sdu_buffer_sizeP - payload_offset );
-        //LOG_T(PDCP,"Sending to GTPV1U %d bytes\n", sdu_buffer_sizeP - payload_offset);
-        gtpu_buffer_p = itti_malloc(TASK_PDCP_ENB, TASK_GTPV1_U,
-                                    sdu_buffer_sizeP - payload_offset + GTPU_HEADER_OVERHEAD_MAX);
-        AssertFatal(gtpu_buffer_p != NULL, "OUT OF MEMORY");
-        memcpy(&gtpu_buffer_p[GTPU_HEADER_OVERHEAD_MAX], &sdu_buffer_pP->data[payload_offset], sdu_buffer_sizeP - payload_offset);
-        message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, GTPV1U_ENB_TUNNEL_DATA_REQ);
+      if ((true == ctxt_pP->enb_flag) && (false == srb_flagP)) {
+        LOG_D(PDCP, "Sending packet to GTP, Calling GTPV1U_TUNNEL_DATA_REQ  ue %lx rab %ld len %u\n", ctxt_pP->rntiMaybeUEid, rb_id + 4, sdu_buffer_sizeP - payload_offset);
+        message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0, GTPV1U_TUNNEL_DATA_REQ,
+                                                sizeof(gtpv1u_tunnel_data_req_t) +
+                                                sdu_buffer_sizeP - payload_offset + GTPU_HEADER_OVERHEAD_MAX );
         AssertFatal(message_p != NULL, "OUT OF MEMORY");
-        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).buffer       = gtpu_buffer_p;
-        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).length       = sdu_buffer_sizeP - payload_offset;
-        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).offset       = GTPU_HEADER_OVERHEAD_MAX;
-        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).rnti         = ctxt_pP->rnti;
-        GTPV1U_ENB_TUNNEL_DATA_REQ(message_p).rab_id       = rb_id + 4;
+        gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(message_p);
+        req->buffer       = (uint8_t*)(req+1);
+        memcpy(req->buffer + GTPU_HEADER_OVERHEAD_MAX, sdu_buffer_pP->data + payload_offset, sdu_buffer_sizeP - payload_offset);
+        req->length       = sdu_buffer_sizeP - payload_offset;
+        req->offset       = GTPU_HEADER_OVERHEAD_MAX;
+        req->ue_id = ctxt_pP->rntiMaybeUEid;
+        req->bearer_id    = rb_id + 4;
         itti_send_msg_to_task(TASK_GTPV1_U, INSTANCE_DEFAULT, message_p);
-        packet_forwarded = TRUE;
+        packet_forwarded = true;
       }
     } else {
-      packet_forwarded = FALSE;
+      packet_forwarded = false;
     }
   }
 

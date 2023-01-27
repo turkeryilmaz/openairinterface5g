@@ -1121,7 +1121,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   sib1_1250->nonCriticalExtension = NULL;
   ////Rel1310
   if ((configuration->schedulingInfoSIB1_BR_r13[CC_id] != 0) &&
-      (brOption==TRUE)) {
+      (brOption==true)) {
     if(NULL== sib1_1250->nonCriticalExtension){sib1_1250->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v1310_IEs_t));}
     memset(sib1_1250->nonCriticalExtension, 0, sizeof(LTE_SystemInformationBlockType1_v1310_IEs_t));
     LTE_SystemInformationBlockType1_v1310_IEs_t *sib1_1310 = sib1_1250->nonCriticalExtension;

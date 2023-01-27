@@ -1223,7 +1223,475 @@ set_msg3_subframe(module_id_t mod_id,
 
   return;
 }
+#if 1
+//-----------------------------------------------------------------------------
+/*
+ * default ULSCH scheduler for LTE-M
+ */
+void schedule_ulsch_rnti_emtc(module_id_t   module_idP,
+                              frame_t       frameP,
+                              sub_frame_t   subframeP,
+                              unsigned char sched_subframeP,
+                              int          *emtc_active)
+//-----------------------------------------------------------------------------
+{
+  int               UE_id          = -1;
+  rnti_t            rnti           = -1;
+  uint8_t           round_UL       = 0;
+  uint8_t           harq_pid       = 0;
+  uint8_t           status         = 0;
+  uint32_t          cshift         = 0;
+  uint32_t          ndi            = 0;
+  int32_t           snr = 0;
+  int32_t           target_snr = 0;
+  int               n       = 0;
+  int               CC_id = 0;
+  int               N_RB_UL = 0;
+  int               sched_frame = frameP;
+  int               rvidx_tab[4] = {0,2,3,1};
+  int               tpc = 0;
+  int               cqi_req = 0;
+  eNB_MAC_INST      *eNB = RC.mac[module_idP];
+  eNB_RRC_INST      *rrc = RC.rrc[module_idP];
+  COMMON_channels_t *cc  = eNB->common_channels;
+  UE_info_t         *UE_info = &eNB->UE_info;
+  UE_TEMPLATE       *UE_template = NULL;
+  UE_sched_ctrl_t     *UE_sched_ctrl = NULL;
+  uint8_t     Total_Num_Rep_ULSCH,pusch_maxNumRepetitionCEmodeA_r13;
+  uint8_t     UL_Scheduling_DCI_SF,UL_Scheduling_DCI_Frame_Even_Odd_Flag;             //TODO: To be removed after scheduler relaxation Task
 
+  if (sched_subframeP < subframeP) {
+    sched_frame++;
+  }
+
+  nfapi_hi_dci0_request_body_t   *hi_dci0_req = &(eNB->HI_DCI0_req[CC_id][subframeP].hi_dci0_request_body);
+  nfapi_hi_dci0_request_pdu_t    *hi_dci0_pdu = NULL;
+  nfapi_ul_config_request_body_t *ul_req_tmp = &(eNB->UL_req_tmp[CC_id][sched_subframeP].ul_config_request_body);
+  nfapi_ul_config_request_body_t *ul_req_body_Rep;
+  nfapi_ul_config_request_pdu_t  *ul_config_pdu;
+  nfapi_ul_config_request_pdu_t  *ul_config_pdu_Rep;
+
+  /* Loop over all active UEs */
+  for (UE_id = UE_info->list.head; UE_id >= 0; UE_id = UE_info->list.next[UE_id]) {
+    UE_template = &UE_info->UE_template[UE_PCCID(module_idP, UE_id)][UE_id];
+
+    /* LTE-M device */
+    if (UE_template->rach_resource_type == 0) {
+      continue;
+    }
+
+    /* Don't schedule if Msg4 is not received yet */
+    if (UE_template->configured == false) {
+      LOG_D(MAC,"[eNB %d] frame %d subframe %d, UE %d: not configured, skipping UE scheduling \n",
+            module_idP,
+            frameP,
+            subframeP,
+            UE_id);
+      continue;
+    }
+
+    rnti = UE_RNTI(module_idP, UE_id);
+
+    if (rnti == NOT_A_RNTI) {
+      LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d: no RNTI \n",
+            module_idP,
+            frameP,
+            subframeP,
+            UE_id);
+      continue;
+    }
+
+    /* Loop over all active UL CC_ids for this UE */
+    for (n = 0; n < UE_info->numactiveULCCs[UE_id]; n++) {
+      /* This is the actual CC_id in the list */
+      CC_id        = UE_info->ordered_ULCCids[n][UE_id];
+      N_RB_UL      = to_prb(cc[CC_id].ul_Bandwidth);
+      UE_template   = &UE_info->UE_template[CC_id][UE_id];
+      UE_sched_ctrl = &UE_info->UE_sched_ctrl[UE_id];
+      harq_pid      = 0;
+      round_UL      = UE_sched_ctrl->round_UL[CC_id][harq_pid];
+      AssertFatal(round_UL < 8,"round_UL %d > 7 for UE %d/%x\n",
+                  round_UL,
+                  UE_id,
+                  rnti);
+      LOG_D(MAC,"[eNB %d] frame %d subframe %d,Checking PUSCH %d for BL/CE UE %d/%x CC %d : aggregation level %d, N_RB_UL %d\n",
+            module_idP,
+            frameP,
+            subframeP,
+            harq_pid,
+            UE_id,
+            rnti,
+            CC_id,
+            24, // agregation level
+            N_RB_UL);
+      RC.eNB[module_idP][CC_id]->pusch_stats_BO[UE_id][(frameP*10)+subframeP] = UE_template->estimated_ul_buffer;
+      VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_BO, UE_template->estimated_ul_buffer);
+      pusch_maxNumRepetitionCEmodeA_r13= *(rrc->configuration.pusch_maxNumRepetitionCEmodeA_r13[CC_id]);
+      Total_Num_Rep_ULSCH = pusch_repetition_Table8_2_36213[pusch_maxNumRepetitionCEmodeA_r13][UE_template->pusch_repetition_levels];
+      UL_Scheduling_DCI_SF = (40-4 - Total_Num_Rep_ULSCH)%10;                   //TODO: [eMTC Scheduler] To be removed after scheduler relaxation task
+      UL_Scheduling_DCI_Frame_Even_Odd_Flag= ! (((40-4 - Total_Num_Rep_ULSCH)/10 )%2);              //TODO: [eMTC Scheduler] To be removed after scheduler relaxation task
+
+      /* If frameP odd don't schedule */
+      if ((frameP&1) == UL_Scheduling_DCI_Frame_Even_Odd_Flag) {                  //TODO: [eMTC Scheduler] To be removed after scheduler relaxation task
+        //if ((UE_is_to_be_scheduled(module_idP, CC_id, UE_id) > 0) && (subframeP == 5)) {
+        if ((UE_template->ul_SR > 0 || round_UL > 0 || status < RRC_CONNECTED) && (subframeP == UL_Scheduling_DCI_SF)) {
+          /*
+           * if there is information on bsr of DCCH, DTCH,
+           * or if there is UL_SR,
+           * or if there is a packet to retransmit,
+           * or we want to schedule a periodic feedback every frame
+           */
+          LOG_D(MAC,"[eNB %d][PUSCH %d] Frame %d subframe %d Scheduling UE %d/%x in round_UL %d(SR %d,UL_inactivity timer %d,UL_failure timer %d,cqi_req_timer %d)\n",
+                module_idP,
+                harq_pid,
+                frameP,
+                subframeP,
+                UE_id,
+                rnti,
+                round_UL,
+                UE_template->ul_SR,
+                UE_sched_ctrl->ul_inactivity_timer,
+                UE_sched_ctrl->ul_failure_timer,
+                UE_sched_ctrl->cqi_req_timer);
+          /* Reset the scheduling request */
+          emtc_active[CC_id] = 1;
+          cc[CC_id].vrb_map_UL[1] = 1;
+          cc[CC_id].vrb_map_UL[2] = 1;
+          cc[CC_id].vrb_map_UL[3] = 1;
+          cc[CC_id].vrb_map_UL[4] = 1;
+          cc[CC_id].vrb_map_UL[5] = 1;
+          cc[CC_id].vrb_map_UL[6] = 1;
+          UE_template->ul_SR = 0;
+          status = mac_eNB_get_rrc_status(module_idP,rnti);
+          cqi_req = 0;
+          /* Power control: compute the expected ULSCH RX snr (for the stats) */
+          /* This is the normalized snr and this should be constant (regardless of mcs) */
+          snr = UE_sched_ctrl->pusch_snr[CC_id];
+          target_snr = eNB->puSch10xSnr / 10; /* TODO: target_rx_power was 178, what to put? */
+          /* This assumes accumulated tpc */
+          /* Make sure that we are only sending a tpc update once a frame, otherwise the control loop will freak out */
+          int32_t framex10psubframe = UE_template->pusch_tpc_tx_frame * 10 + UE_template->pusch_tpc_tx_subframe;
+
+          if (((framex10psubframe + 10) <= (frameP * 10 + subframeP)) || // normal case
+              ((framex10psubframe > (frameP * 10 + subframeP)) && (((10240 - framex10psubframe + frameP * 10 + subframeP) >= 10)))) { // frame wrap-around
+            UE_template->pusch_tpc_tx_frame = frameP;
+            UE_template->pusch_tpc_tx_subframe = subframeP;
+
+            if (snr > target_snr + 4) {
+              tpc = 0; //-1
+              UE_sched_ctrl->pusch_tpc_accumulated[CC_id]--;
+            } else if (snr < target_snr - 4) {
+              tpc = 2; //+1
+              UE_sched_ctrl->pusch_tpc_accumulated[CC_id]++;
+            } else {
+              tpc = 1; //0
+            }
+          } else {
+            tpc = 1; //0
+          }
+
+          if (tpc != 1) {
+            LOG_D(MAC,"[eNB %d] ULSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d, accumulated %d, snr/target snr %d/%d\n",
+                  module_idP,
+                  frameP,
+                  subframeP,
+                  harq_pid,
+                  tpc,
+                  UE_sched_ctrl->pusch_tpc_accumulated[CC_id],
+                  snr,
+                  target_snr);
+          }
+
+          /* New transmission */
+          if (round_UL == 0) {
+            ndi = 1 - UE_template->oldNDI_UL[harq_pid];
+            UE_template->oldNDI_UL[harq_pid] = ndi;
+            UE_template->mcs_UL[harq_pid] = 4;
+            UE_template->TBS_UL[harq_pid] = get_TBS_UL(UE_template->mcs_UL[harq_pid], 6);
+            UE_info->eNB_UE_stats[CC_id][UE_id].snr = snr;
+            UE_info->eNB_UE_stats[CC_id][UE_id].target_snr = target_snr;
+            UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_mcs1 = 4;
+            UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_mcs2 = UE_template->mcs_UL[harq_pid];
+            UE_info->eNB_UE_stats[CC_id][UE_id].total_rbs_used_rx += 6;
+            UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_TBS = UE_template->TBS_UL[harq_pid];
+            T(T_ENB_MAC_UE_UL_SCHEDULE,
+              T_INT(module_idP),
+              T_INT(CC_id),
+              T_INT(rnti),
+              T_INT(frameP),
+              T_INT(subframeP),
+              T_INT(harq_pid),
+              T_INT(UE_template->mcs_UL[harq_pid]),
+              T_INT(0),
+              T_INT(6),
+              T_INT(UE_template->TBS_UL[harq_pid]),
+              T_INT(ndi));
+            /* Store for possible retransmission */
+            UE_template->nb_rb_ul[harq_pid]    = 6;
+            UE_sched_ctrl->ul_scheduled |= (1 << harq_pid);
+
+            if (UE_id == UE_info->list.head) {
+              VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_SCHEDULED, UE_sched_ctrl->ul_scheduled);
+            }
+
+            /* Adjust total UL buffer status by TBS, wait for UL sdus to do final update */
+            UE_template->scheduled_ul_bytes += UE_template->TBS_UL[harq_pid];
+            LOG_D(MAC, "scheduled_ul_bytes, new %d\n", UE_template->scheduled_ul_bytes);
+            /* Cyclic shift for DMRS */
+            cshift = 0; // values from 0 to 7 can be used for mapping the cyclic shift (36.211 , Table 5.5.2.1.1-1)
+            /* save it for a potential retransmission */
+            UE_template->cshift[harq_pid] = cshift;
+            AssertFatal (UE_template->physicalConfigDedicated != NULL, "UE_template->physicalConfigDedicated is null\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4 != NULL, "UE_template->physicalConfigDedicated->ext4 is null\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 != NULL, "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 is null\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present == LTE_EPDCCH_Config_r11__config_r11_PR_setup,
+                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present != setup\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 != NULL,
+                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 = NULL\n");
+            LTE_EPDCCH_SetConfig_r11_t *epdcch_setconfig_r11 = UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11->list.array[0];
+            AssertFatal(epdcch_setconfig_r11 != NULL, "epdcch_setconfig_r11 is null\n");
+            AssertFatal(epdcch_setconfig_r11->ext2 != NULL, "epdcch_setconfig_r11->ext2 is null\n");
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13 != NULL, "epdcch_setconfig_r11->ext2->mpdcch_config_r13 is null");
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->present == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13_PR_setup,
+                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->present is not setup\n");
+            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 != NULL, "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 is null");
+            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present == LTE_EPDCCH_SetConfig_r11__ext2__numberPRB_Pairs_v1310_PR_setup,
+                        "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present is not setup\n");
+            LOG_D(MAC,"[PUSCH %d] Frame %d, Subframe %d: Adding UL 6-0A MPDCCH for BL/CE UE %d/%x, ulsch_frame %d, ulsch_subframe %d, UESS MPDCCH Narrowband %d\n",
+                  harq_pid,
+                  frameP,
+                  subframeP,
+                  UE_id,
+                  rnti,
+                  sched_frame,
+                  sched_subframeP,
+                  (int)epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
+            UE_template->first_rb_ul[harq_pid] = narrowband_to_first_rb (cc, epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
+            hi_dci0_pdu = &(hi_dci0_req->hi_dci0_pdu_list[hi_dci0_req->number_of_dci + hi_dci0_req->number_of_hi]);
+            memset((void *) hi_dci0_pdu, 0, sizeof(nfapi_hi_dci0_request_pdu_t));
+            hi_dci0_pdu->pdu_type = NFAPI_HI_DCI0_MPDCCH_DCI_PDU_TYPE;
+            hi_dci0_pdu->pdu_size = (uint8_t) (2 + sizeof (nfapi_dl_config_mpdcch_pdu));
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_format = (UE_template->rach_resource_type > 1) ? 5 : 4;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type > 1) ? 2 : 1;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_narrowband = epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_prb_pairs = 6;       // checked above that it has to be this
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_assignment = 0; // Note: this can be dynamic
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_transmission_type = epdcch_setconfig_r11->transmissionType_r11;  // distibuted
+            AssertFatal(UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 != NULL,
+                        "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 is null\n");
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.start_symbol = *UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ecce_index = 0;        // Note: this should be dynamic
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.aggreagation_level = 24;        // OK for CEModeA r1-3 (9.1.5-1b) or CEModeB r1-4
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti_type = 4; // other
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti = rnti;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type < 3) ? 1 : 2; // already set above...
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.drms_scrambling_init = epdcch_setconfig_r11->dmrs_ScramblingSequenceInt_r11;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.initial_transmission_sf_io = (frameP * 10) + subframeP;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.transmission_power = 6000;     // 0dB
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_start = UE_template->first_rb_ul[harq_pid];
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_resource_blocks = 6;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mcs = 4;       // adjust according to size of RAR, 208 bits with N1A_PRB = 3
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.pusch_repetition_levels = UE_template->pusch_repetition_levels;
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13 == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13__setup__mpdcch_pdsch_HoppingConfig_r13_off,
+                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->mpdcch_pdsch_HoppingConfig_r13 is not off\n");
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.frequency_hopping_flag = 1 - epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.redudency_version = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.new_data_indication = UE_template->oldNDI_UL[harq_pid];
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.harq_process = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tpc = tpc;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.csi_request = cqi_req;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ul_inex = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dai_presence_flag = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dl_assignment_index = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.srs_request = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_subframe_repetition_number = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tcp_bitmap = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.total_dci_length_include_padding = 29; // hard-coded for 10 MHz
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_tx_antenna_ports = 1;
+            hi_dci0_req->number_of_dci++;
+            LOG_D(MAC,"[PUSCH %d] Frame %d, Subframe %d: Adding UL CONFIG. Request for BL/CE UE %d/%x, ulsch_frame %d, ulsch_subframe %d, UESS mpdcch narrowband %d\n",
+                  harq_pid,
+                  frameP,
+                  subframeP,
+                  UE_id,
+                  rnti,
+                  sched_frame,
+                  sched_subframeP,
+                  (int)epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
+            fill_nfapi_ulsch_config_request_rel8(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
+                                                 cqi_req,
+                                                 cc,
+                                                 UE_template->physicalConfigDedicated,
+                                                 get_tmode(module_idP,CC_id,UE_id),
+                                                 eNB->ul_handle,
+                                                 rnti,
+                                                 UE_template->first_rb_ul[harq_pid], // resource_block_start
+                                                 UE_template->nb_rb_ul[harq_pid], // number_of_resource_blocks
+                                                 UE_template->mcs_UL[harq_pid],
+                                                 cshift, // cyclic_shift_2_for_drms
+                                                 0, // frequency_hopping_enabled_flag
+                                                 0, // frequency_hopping_bits
+                                                 UE_template->oldNDI_UL[harq_pid], // new_data_indication
+                                                 rvidx_tab[round_UL&3], // redundancy_version
+                                                 harq_pid, // harq_process_number
+                                                 0, // ul_tx_mode
+                                                 0, // current_tx_nb
+                                                 0, // n_srs
+                                                 UE_template->TBS_UL[harq_pid]
+                                                );
+            fill_nfapi_ulsch_config_request_emtc(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
+                                                 UE_template->rach_resource_type > 2 ? 2 : 1,
+                                                 Total_Num_Rep_ULSCH, // total_number_of_repetitions
+                                                 1, // repetition_number
+                                                 (frameP * 10) + subframeP);
+            ul_req_tmp->number_of_pdus++;
+            eNB->ul_handle++;
+            add_ue_ulsch_info(module_idP,
+                              CC_id,
+                              UE_id,
+                              subframeP,
+                              S_UL_SCHEDULED);
+            LOG_D(MAC,"[eNB %d] CC_id %d Frame %d, subframeP %d: Generated ULSCH DCI for next UE_id %d, format 0\n",
+                  module_idP,
+                  CC_id,
+                  frameP,
+                  subframeP,
+                  UE_id);
+          } else { // round_UL > 0 => retransmission
+            /* In LTE-M the UL HARQ process is asynchronous */
+            T(T_ENB_MAC_UE_UL_SCHEDULE_RETRANSMISSION,
+              T_INT(module_idP),
+              T_INT(CC_id),
+              T_INT(rnti),
+              T_INT(frameP),
+              T_INT(subframeP),
+              T_INT(harq_pid),
+              T_INT(UE_template->mcs_UL[harq_pid]),
+              T_INT(0),
+              T_INT(6),
+              T_INT(round_UL));
+            AssertFatal (UE_template->physicalConfigDedicated != NULL, "UE_template->physicalConfigDedicated is null\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4 != NULL, "UE_template->physicalConfigDedicated->ext4 is null\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 != NULL, "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 is null\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present == LTE_EPDCCH_Config_r11__config_r11_PR_setup,
+                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present != setup\n");
+            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 != NULL,
+                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 = NULL\n");
+            LTE_EPDCCH_SetConfig_r11_t *epdcch_setconfig_r11 = UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11->list.array[0];
+            AssertFatal(epdcch_setconfig_r11 != NULL, "epdcch_setconfig_r11 is null\n");
+            AssertFatal(epdcch_setconfig_r11->ext2 != NULL, "epdcch_setconfig_r11->ext2 is null\n");
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13 != NULL, "epdcch_setconfig_r11->ext2->mpdcch_config_r13 is null");
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13 != NULL, "epdcch_setconfig_r11->ext2->mpdcch_config_r13 is null");
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->present == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13_PR_setup,
+                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->present is not setup\n");
+            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 != NULL, "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 is null");
+            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present == LTE_EPDCCH_SetConfig_r11__ext2__numberPRB_Pairs_v1310_PR_setup,
+                        "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present is not setup\n");
+            LOG_D(MAC,"[PUSCH %d] Frame %d, Subframe %d: Adding UL 6-0A MPDCCH for BL/CE UE %d/%x, ulsch_frame %d, ulsch_subframe %d,UESS MPDCCH Narrowband %d\n",
+                  harq_pid,
+                  frameP,
+                  subframeP,
+                  UE_id,
+                  rnti,
+                  sched_frame,
+                  sched_subframeP,
+                  (int)epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
+            UE_template->first_rb_ul[harq_pid] = narrowband_to_first_rb(cc, epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13-1);
+            hi_dci0_pdu = &(hi_dci0_req->hi_dci0_pdu_list[hi_dci0_req->number_of_dci+hi_dci0_req->number_of_hi]);
+            memset((void *) hi_dci0_pdu, 0, sizeof(nfapi_hi_dci0_request_pdu_t));
+            hi_dci0_pdu->pdu_type = NFAPI_HI_DCI0_MPDCCH_DCI_PDU_TYPE;
+            hi_dci0_pdu->pdu_size = (uint8_t) (2 + sizeof (nfapi_dl_config_mpdcch_pdu));
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_format = (UE_template->rach_resource_type > 1) ? 5 : 4;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type > 1) ? 2 : 1;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_narrowband = epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_prb_pairs = 6;       // checked above that it has to be this
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_assignment = 0; // Note: this can be dynamic
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_transmission_type = epdcch_setconfig_r11->transmissionType_r11;  // distibuted
+            AssertFatal(UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 != NULL,
+                        "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 is null\n");
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.start_symbol = *UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ecce_index = 0;        // Note: this should be dynamic
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.aggreagation_level = 24;        // OK for CEModeA r1-3 (9.1.5-1b) or CEModeB r1-4
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti_type = 4; // other
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti = rnti;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type < 3) ? 1 : 2;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.drms_scrambling_init = epdcch_setconfig_r11->dmrs_ScramblingSequenceInt_r11;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.initial_transmission_sf_io = (frameP * 10) + subframeP;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.transmission_power = 6000;     // 0dB
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_start = UE_template->first_rb_ul[harq_pid];
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_resource_blocks = 6;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mcs = 4;       // adjust according to size of RAR, 208 bits with N1A_PRB=3
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.pusch_repetition_levels = 0;
+            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13 == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13__setup__mpdcch_pdsch_HoppingConfig_r13_off,
+                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->mpdcch_pdsch_HoppingConfig_r13 is not off\n");
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.frequency_hopping_flag  = 1 - epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.redudency_version = rvidx_tab[round_UL&3];
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.new_data_indication = UE_template->oldNDI_UL[harq_pid];
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.harq_process = harq_pid;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tpc = tpc;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.csi_request = cqi_req;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ul_inex = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dai_presence_flag = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dl_assignment_index = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.srs_request = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_subframe_repetition_number = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tcp_bitmap = 0;
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.total_dci_length_include_padding = 29; // hard-coded for 10 MHz
+            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_tx_antenna_ports = 1;
+            hi_dci0_req->number_of_dci++;
+            fill_nfapi_ulsch_config_request_rel8(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
+                                                 cqi_req,
+                                                 cc,
+                                                 UE_template->physicalConfigDedicated,
+                                                 get_tmode(module_idP,CC_id,UE_id),
+                                                 eNB->ul_handle,
+                                                 rnti,
+                                                 UE_template->first_rb_ul[harq_pid], // resource_block_start
+                                                 UE_template->nb_rb_ul[harq_pid], // number_of_resource_blocks
+                                                 UE_template->mcs_UL[harq_pid],
+                                                 cshift, // cyclic_shift_2_for_drms
+                                                 0, // frequency_hopping_enabled_flag
+                                                 0, // frequency_hopping_bits
+                                                 UE_template->oldNDI_UL[harq_pid], // new_data_indication
+                                                 rvidx_tab[round_UL&3], // redundancy_version
+                                                 harq_pid, // harq_process_number
+                                                 0, // ul_tx_mode
+                                                 0, // current_tx_nb
+                                                 0, // n_srs
+                                                 UE_template->TBS_UL[harq_pid]
+                                                );
+            fill_nfapi_ulsch_config_request_emtc(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
+                                                 UE_template->rach_resource_type>2 ? 2 : 1,
+                                                 1, //total_number_of_repetitions
+                                                 1, //repetition_number
+                                                 (frameP * 10) + subframeP);
+            ul_req_tmp->number_of_pdus++;
+            eNB->ul_handle++;
+          }
+        } // UE_is_to_be_scheduled
+      } // ULCCs
+    } // loop over UE_id
+  } // Schedule new ULSCH
+
+  // This section is to repeat ULSCH PDU for a number of MTC repetitions
+  for(int i=0; i<ul_req_tmp->number_of_pdus; i++) {
+    ul_config_pdu = &ul_req_tmp->ul_config_pdu_list[i];
+
+    if (ul_config_pdu->pdu_type!=NFAPI_UL_CONFIG_ULSCH_PDU_TYPE) // Repeat ULSCH PDUs only
+      continue ;
+
+    if(ul_config_pdu->ulsch_pdu.ulsch_pdu_rel13.repetition_number < ul_config_pdu->ulsch_pdu.ulsch_pdu_rel13.total_number_of_repetitions) {
+      ul_req_body_Rep = &eNB->UL_req_tmp[CC_id][(sched_subframeP+1)%10].ul_config_request_body;
+      ul_config_pdu_Rep = &ul_req_body_Rep->ul_config_pdu_list[ul_req_body_Rep->number_of_pdus];
+      memcpy ((void *) ul_config_pdu_Rep, ul_config_pdu, sizeof (nfapi_ul_config_request_pdu_t));
+      ul_config_pdu_Rep->ulsch_pdu.ulsch_pdu_rel8.handle = eNB->ul_handle++;
+      ul_config_pdu_Rep->ulsch_pdu.ulsch_pdu_rel13.repetition_number = ul_config_pdu->ulsch_pdu.ulsch_pdu_rel13.repetition_number +1;
+      ul_req_body_Rep->number_of_pdus++;
+    } //repetition_number < total_number_of_repetitions
+  }   // For loop on PDUs
+}
+
+#endif
 //-----------------------------------------------------------------------------
 /*
  * Main function called for uplink scheduling (DCI0).
@@ -1373,7 +1841,7 @@ schedule_ulsch(module_id_t module_idP,
      * - for 100:    3 RBs
      * This is totally arbitrary and might even be wrong.
      */
-    switch (to_prb(cc[CC_id].ul_Bandwidth)) {
+    switch (to_prb(cc->ul_Bandwidth)) {
       case 25:
         cc->vrb_map_UL[0] = 1;
         cc->vrb_map_UL[24] = 1;
@@ -1404,6 +1872,7 @@ schedule_ulsch(module_id_t module_idP,
   }
 
   stop_meas(&mac->schedule_ulsch);
+}
 }
 
 //-----------------------------------------------------------------------------
@@ -1988,472 +2457,4 @@ schedule_ulsch_rnti(module_id_t   module_idP,
             cqi_req);
     } // end of round > 0
   } // loop over UE_ids
-}
-
-
-//-----------------------------------------------------------------------------
-/*
- * default ULSCH scheduler for LTE-M
- */
-void schedule_ulsch_rnti_emtc(module_id_t   module_idP,
-                              frame_t       frameP,
-                              sub_frame_t   subframeP,
-                              unsigned char sched_subframeP,
-                              int          *emtc_active)
-//-----------------------------------------------------------------------------
-{
-  int               UE_id          = -1;
-  rnti_t            rnti           = -1;
-  uint8_t           round_UL       = 0;
-  uint8_t           harq_pid       = 0;
-  uint8_t           status         = 0;
-  uint32_t          cshift         = 0;
-  uint32_t          ndi            = 0;
-  int32_t           snr = 0;
-  int32_t           target_snr = 0;
-  int               n       = 0;
-  int               CC_id = 0;
-  int               N_RB_UL = 0;
-  int               sched_frame = frameP;
-  int               rvidx_tab[4] = {0,2,3,1};
-  int               tpc = 0;
-  int               cqi_req = 0;
-  eNB_MAC_INST      *eNB = RC.mac[module_idP];
-  eNB_RRC_INST      *rrc = RC.rrc[module_idP];
-  COMMON_channels_t *cc  = eNB->common_channels;
-  UE_info_t         *UE_info = &eNB->UE_info;
-  UE_TEMPLATE       *UE_template = NULL;
-  UE_sched_ctrl_t     *UE_sched_ctrl = NULL;
-  uint8_t     Total_Num_Rep_ULSCH,pusch_maxNumRepetitionCEmodeA_r13;
-  uint8_t     UL_Scheduling_DCI_SF,UL_Scheduling_DCI_Frame_Even_Odd_Flag;             //TODO: To be removed after scheduler relaxation Task
-
-  if (sched_subframeP < subframeP) {
-    sched_frame++;
-  }
-
-  nfapi_hi_dci0_request_body_t   *hi_dci0_req = &(eNB->HI_DCI0_req[CC_id][subframeP].hi_dci0_request_body);
-  nfapi_hi_dci0_request_pdu_t    *hi_dci0_pdu = NULL;
-  nfapi_ul_config_request_body_t *ul_req_tmp = &(eNB->UL_req_tmp[CC_id][sched_subframeP].ul_config_request_body);
-  nfapi_ul_config_request_body_t *ul_req_body_Rep;
-  nfapi_ul_config_request_pdu_t  *ul_config_pdu;
-  nfapi_ul_config_request_pdu_t  *ul_config_pdu_Rep;
-
-  /* Loop over all active UEs */
-  for (UE_id = UE_info->list.head; UE_id >= 0; UE_id = UE_info->list.next[UE_id]) {
-    UE_template = &UE_info->UE_template[UE_PCCID(module_idP, UE_id)][UE_id];
-
-    /* LTE-M device */
-    if (UE_template->rach_resource_type == 0) {
-      continue;
-    }
-
-    /* Don't schedule if Msg4 is not received yet */
-    if (UE_template->configured == false) {
-      LOG_D(MAC,"[eNB %d] frame %d subframe %d, UE %d: not configured, skipping UE scheduling \n",
-            module_idP,
-            frameP,
-            subframeP,
-            UE_id);
-      continue;
-    }
-
-    rnti = UE_RNTI(module_idP, UE_id);
-
-    if (rnti == NOT_A_RNTI) {
-      LOG_W(MAC,"[eNB %d] frame %d subframe %d, UE %d: no RNTI \n",
-            module_idP,
-            frameP,
-            subframeP,
-            UE_id);
-      continue;
-    }
-
-    /* Loop over all active UL CC_ids for this UE */
-    for (n = 0; n < UE_info->numactiveULCCs[UE_id]; n++) {
-      /* This is the actual CC_id in the list */
-      CC_id        = UE_info->ordered_ULCCids[n][UE_id];
-      N_RB_UL      = to_prb(cc[CC_id].ul_Bandwidth);
-      UE_template   = &UE_info->UE_template[CC_id][UE_id];
-      UE_sched_ctrl = &UE_info->UE_sched_ctrl[UE_id];
-      harq_pid      = 0;
-      round_UL      = UE_sched_ctrl->round_UL[CC_id][harq_pid];
-      AssertFatal(round_UL < 8,"round_UL %d > 7 for UE %d/%x\n",
-                  round_UL,
-                  UE_id,
-                  rnti);
-      LOG_D(MAC,"[eNB %d] frame %d subframe %d,Checking PUSCH %d for BL/CE UE %d/%x CC %d : aggregation level %d, N_RB_UL %d\n",
-            module_idP,
-            frameP,
-            subframeP,
-            harq_pid,
-            UE_id,
-            rnti,
-            CC_id,
-            24, // agregation level
-            N_RB_UL);
-      RC.eNB[module_idP][CC_id]->pusch_stats_BO[UE_id][(frameP*10)+subframeP] = UE_template->estimated_ul_buffer;
-      VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_BO, UE_template->estimated_ul_buffer);
-      pusch_maxNumRepetitionCEmodeA_r13= *(rrc->configuration.pusch_maxNumRepetitionCEmodeA_r13[CC_id]);
-      Total_Num_Rep_ULSCH = pusch_repetition_Table8_2_36213[pusch_maxNumRepetitionCEmodeA_r13][UE_template->pusch_repetition_levels];
-      UL_Scheduling_DCI_SF = (40-4 - Total_Num_Rep_ULSCH)%10;                   //TODO: [eMTC Scheduler] To be removed after scheduler relaxation task
-      UL_Scheduling_DCI_Frame_Even_Odd_Flag= ! (((40-4 - Total_Num_Rep_ULSCH)/10 )%2);              //TODO: [eMTC Scheduler] To be removed after scheduler relaxation task
-
-      /* If frameP odd don't schedule */
-      if ((frameP&1) == UL_Scheduling_DCI_Frame_Even_Odd_Flag) {                  //TODO: [eMTC Scheduler] To be removed after scheduler relaxation task
-        //if ((UE_is_to_be_scheduled(module_idP, CC_id, UE_id) > 0) && (subframeP == 5)) {
-        if ((UE_template->ul_SR > 0 || round_UL > 0 || status < RRC_CONNECTED) && (subframeP == UL_Scheduling_DCI_SF)) {
-          /*
-           * if there is information on bsr of DCCH, DTCH,
-           * or if there is UL_SR,
-           * or if there is a packet to retransmit,
-           * or we want to schedule a periodic feedback every frame
-           */
-          LOG_D(MAC,"[eNB %d][PUSCH %d] Frame %d subframe %d Scheduling UE %d/%x in round_UL %d(SR %d,UL_inactivity timer %d,UL_failure timer %d,cqi_req_timer %d)\n",
-                module_idP,
-                harq_pid,
-                frameP,
-                subframeP,
-                UE_id,
-                rnti,
-                round_UL,
-                UE_template->ul_SR,
-                UE_sched_ctrl->ul_inactivity_timer,
-                UE_sched_ctrl->ul_failure_timer,
-                UE_sched_ctrl->cqi_req_timer);
-          /* Reset the scheduling request */
-          emtc_active[CC_id] = 1;
-          cc[CC_id].vrb_map_UL[1] = 1;
-          cc[CC_id].vrb_map_UL[2] = 1;
-          cc[CC_id].vrb_map_UL[3] = 1;
-          cc[CC_id].vrb_map_UL[4] = 1;
-          cc[CC_id].vrb_map_UL[5] = 1;
-          cc[CC_id].vrb_map_UL[6] = 1;
-          UE_template->ul_SR = 0;
-          status = mac_eNB_get_rrc_status(module_idP,rnti);
-          cqi_req = 0;
-          /* Power control: compute the expected ULSCH RX snr (for the stats) */
-          /* This is the normalized snr and this should be constant (regardless of mcs) */
-          snr = UE_sched_ctrl->pusch_snr[CC_id];
-          target_snr = eNB->puSch10xSnr / 10; /* TODO: target_rx_power was 178, what to put? */
-          /* This assumes accumulated tpc */
-          /* Make sure that we are only sending a tpc update once a frame, otherwise the control loop will freak out */
-          int32_t framex10psubframe = UE_template->pusch_tpc_tx_frame * 10 + UE_template->pusch_tpc_tx_subframe;
-
-          if (((framex10psubframe + 10) <= (frameP * 10 + subframeP)) || // normal case
-              ((framex10psubframe > (frameP * 10 + subframeP)) && (((10240 - framex10psubframe + frameP * 10 + subframeP) >= 10)))) { // frame wrap-around
-            UE_template->pusch_tpc_tx_frame = frameP;
-            UE_template->pusch_tpc_tx_subframe = subframeP;
-
-            if (snr > target_snr + 4) {
-              tpc = 0; //-1
-              UE_sched_ctrl->pusch_tpc_accumulated[CC_id]--;
-            } else if (snr < target_snr - 4) {
-              tpc = 2; //+1
-              UE_sched_ctrl->pusch_tpc_accumulated[CC_id]++;
-            } else {
-              tpc = 1; //0
-            }
-          } else {
-            tpc = 1; //0
-          }
-
-          if (tpc != 1) {
-            LOG_D(MAC,"[eNB %d] ULSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d, accumulated %d, snr/target snr %d/%d\n",
-                  module_idP,
-                  frameP,
-                  subframeP,
-                  harq_pid,
-                  tpc,
-                  UE_sched_ctrl->pusch_tpc_accumulated[CC_id],
-                  snr,
-                  target_snr);
-          }
-
-          /* New transmission */
-          if (round_UL == 0) {
-            ndi = 1 - UE_template->oldNDI_UL[harq_pid];
-            UE_template->oldNDI_UL[harq_pid] = ndi;
-            UE_template->mcs_UL[harq_pid] = 4;
-            UE_template->TBS_UL[harq_pid] = get_TBS_UL(UE_template->mcs_UL[harq_pid], 6);
-            UE_info->eNB_UE_stats[CC_id][UE_id].snr = snr;
-            UE_info->eNB_UE_stats[CC_id][UE_id].target_snr = target_snr;
-            UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_mcs1 = 4;
-            UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_mcs2 = UE_template->mcs_UL[harq_pid];
-            UE_info->eNB_UE_stats[CC_id][UE_id].total_rbs_used_rx += 6;
-            UE_info->eNB_UE_stats[CC_id][UE_id].ulsch_TBS = UE_template->TBS_UL[harq_pid];
-            T(T_ENB_MAC_UE_UL_SCHEDULE,
-              T_INT(module_idP),
-              T_INT(CC_id),
-              T_INT(rnti),
-              T_INT(frameP),
-              T_INT(subframeP),
-              T_INT(harq_pid),
-              T_INT(UE_template->mcs_UL[harq_pid]),
-              T_INT(0),
-              T_INT(6),
-              T_INT(UE_template->TBS_UL[harq_pid]),
-              T_INT(ndi));
-            /* Store for possible retransmission */
-            UE_template->nb_rb_ul[harq_pid]    = 6;
-            UE_sched_ctrl->ul_scheduled |= (1 << harq_pid);
-
-            if (UE_id == UE_info->list.head) {
-              VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_UE0_SCHEDULED, UE_sched_ctrl->ul_scheduled);
-            }
-
-            /* Adjust total UL buffer status by TBS, wait for UL sdus to do final update */
-            UE_template->scheduled_ul_bytes += UE_template->TBS_UL[harq_pid];
-            LOG_D(MAC, "scheduled_ul_bytes, new %d\n", UE_template->scheduled_ul_bytes);
-            /* Cyclic shift for DMRS */
-            cshift = 0; // values from 0 to 7 can be used for mapping the cyclic shift (36.211 , Table 5.5.2.1.1-1)
-            /* save it for a potential retransmission */
-            UE_template->cshift[harq_pid] = cshift;
-            AssertFatal (UE_template->physicalConfigDedicated != NULL, "UE_template->physicalConfigDedicated is null\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4 != NULL, "UE_template->physicalConfigDedicated->ext4 is null\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 != NULL, "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 is null\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present == LTE_EPDCCH_Config_r11__config_r11_PR_setup,
-                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present != setup\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 != NULL,
-                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 = NULL\n");
-            LTE_EPDCCH_SetConfig_r11_t *epdcch_setconfig_r11 = UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11->list.array[0];
-            AssertFatal(epdcch_setconfig_r11 != NULL, "epdcch_setconfig_r11 is null\n");
-            AssertFatal(epdcch_setconfig_r11->ext2 != NULL, "epdcch_setconfig_r11->ext2 is null\n");
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13 != NULL, "epdcch_setconfig_r11->ext2->mpdcch_config_r13 is null");
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->present == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13_PR_setup,
-                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->present is not setup\n");
-            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 != NULL, "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 is null");
-            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present == LTE_EPDCCH_SetConfig_r11__ext2__numberPRB_Pairs_v1310_PR_setup,
-                        "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present is not setup\n");
-            LOG_D(MAC,"[PUSCH %d] Frame %d, Subframe %d: Adding UL 6-0A MPDCCH for BL/CE UE %d/%x, ulsch_frame %d, ulsch_subframe %d, UESS MPDCCH Narrowband %d\n",
-                  harq_pid,
-                  frameP,
-                  subframeP,
-                  UE_id,
-                  rnti,
-                  sched_frame,
-                  sched_subframeP,
-                  (int)epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
-            UE_template->first_rb_ul[harq_pid] = narrowband_to_first_rb (cc, epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
-            hi_dci0_pdu = &(hi_dci0_req->hi_dci0_pdu_list[hi_dci0_req->number_of_dci + hi_dci0_req->number_of_hi]);
-            memset((void *) hi_dci0_pdu, 0, sizeof(nfapi_hi_dci0_request_pdu_t));
-            hi_dci0_pdu->pdu_type = NFAPI_HI_DCI0_MPDCCH_DCI_PDU_TYPE;
-            hi_dci0_pdu->pdu_size = (uint8_t) (2 + sizeof (nfapi_dl_config_mpdcch_pdu));
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_format = (UE_template->rach_resource_type > 1) ? 5 : 4;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type > 1) ? 2 : 1;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_narrowband = epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_prb_pairs = 6;       // checked above that it has to be this
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_assignment = 0; // Note: this can be dynamic
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_transmission_type = epdcch_setconfig_r11->transmissionType_r11;  // distibuted
-            AssertFatal(UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 != NULL,
-                        "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 is null\n");
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.start_symbol = *UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ecce_index = 0;        // Note: this should be dynamic
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.aggreagation_level = 24;        // OK for CEModeA r1-3 (9.1.5-1b) or CEModeB r1-4
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti_type = 4; // other
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti = rnti;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type < 3) ? 1 : 2; // already set above...
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.drms_scrambling_init = epdcch_setconfig_r11->dmrs_ScramblingSequenceInt_r11;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.initial_transmission_sf_io = (frameP * 10) + subframeP;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.transmission_power = 6000;     // 0dB
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_start = UE_template->first_rb_ul[harq_pid];
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_resource_blocks = 6;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mcs = 4;       // adjust according to size of RAR, 208 bits with N1A_PRB = 3
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.pusch_repetition_levels = UE_template->pusch_repetition_levels;
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13 == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13__setup__mpdcch_pdsch_HoppingConfig_r13_off,
-                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->mpdcch_pdsch_HoppingConfig_r13 is not off\n");
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.frequency_hopping_flag = 1 - epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.redudency_version = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.new_data_indication = UE_template->oldNDI_UL[harq_pid];
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.harq_process = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tpc = tpc;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.csi_request = cqi_req;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ul_inex = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dai_presence_flag = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dl_assignment_index = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.srs_request = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_subframe_repetition_number = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tcp_bitmap = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.total_dci_length_include_padding = 29; // hard-coded for 10 MHz
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_tx_antenna_ports = 1;
-            hi_dci0_req->number_of_dci++;
-            LOG_D(MAC,"[PUSCH %d] Frame %d, Subframe %d: Adding UL CONFIG. Request for BL/CE UE %d/%x, ulsch_frame %d, ulsch_subframe %d, UESS mpdcch narrowband %d\n",
-                  harq_pid,
-                  frameP,
-                  subframeP,
-                  UE_id,
-                  rnti,
-                  sched_frame,
-                  sched_subframeP,
-                  (int)epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
-            fill_nfapi_ulsch_config_request_rel8(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
-                                                 cqi_req,
-                                                 cc,
-                                                 UE_template->physicalConfigDedicated,
-                                                 get_tmode(module_idP,CC_id,UE_id),
-                                                 eNB->ul_handle,
-                                                 rnti,
-                                                 UE_template->first_rb_ul[harq_pid], // resource_block_start
-                                                 UE_template->nb_rb_ul[harq_pid], // number_of_resource_blocks
-                                                 UE_template->mcs_UL[harq_pid],
-                                                 cshift, // cyclic_shift_2_for_drms
-                                                 0, // frequency_hopping_enabled_flag
-                                                 0, // frequency_hopping_bits
-                                                 UE_template->oldNDI_UL[harq_pid], // new_data_indication
-                                                 rvidx_tab[round_UL&3], // redundancy_version
-                                                 harq_pid, // harq_process_number
-                                                 0, // ul_tx_mode
-                                                 0, // current_tx_nb
-                                                 0, // n_srs
-                                                 UE_template->TBS_UL[harq_pid]
-                                                );
-            fill_nfapi_ulsch_config_request_emtc(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
-                                                 UE_template->rach_resource_type > 2 ? 2 : 1,
-                                                 Total_Num_Rep_ULSCH, // total_number_of_repetitions
-                                                 1, // repetition_number
-                                                 (frameP * 10) + subframeP);
-            ul_req_tmp->number_of_pdus++;
-            eNB->ul_handle++;
-            add_ue_ulsch_info(module_idP,
-                              CC_id,
-                              UE_id,
-                              subframeP,
-                              S_UL_SCHEDULED);
-            LOG_D(MAC,"[eNB %d] CC_id %d Frame %d, subframeP %d: Generated ULSCH DCI for next UE_id %d, format 0\n",
-                  module_idP,
-                  CC_id,
-                  frameP,
-                  subframeP,
-                  UE_id);
-          } else { // round_UL > 0 => retransmission
-            /* In LTE-M the UL HARQ process is asynchronous */
-            T(T_ENB_MAC_UE_UL_SCHEDULE_RETRANSMISSION,
-              T_INT(module_idP),
-              T_INT(CC_id),
-              T_INT(rnti),
-              T_INT(frameP),
-              T_INT(subframeP),
-              T_INT(harq_pid),
-              T_INT(UE_template->mcs_UL[harq_pid]),
-              T_INT(0),
-              T_INT(6),
-              T_INT(round_UL));
-            AssertFatal (UE_template->physicalConfigDedicated != NULL, "UE_template->physicalConfigDedicated is null\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4 != NULL, "UE_template->physicalConfigDedicated->ext4 is null\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 != NULL, "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11 is null\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present == LTE_EPDCCH_Config_r11__config_r11_PR_setup,
-                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.present != setup\n");
-            AssertFatal (UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 != NULL,
-                         "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11 = NULL\n");
-            LTE_EPDCCH_SetConfig_r11_t *epdcch_setconfig_r11 = UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.setConfigToAddModList_r11->list.array[0];
-            AssertFatal(epdcch_setconfig_r11 != NULL, "epdcch_setconfig_r11 is null\n");
-            AssertFatal(epdcch_setconfig_r11->ext2 != NULL, "epdcch_setconfig_r11->ext2 is null\n");
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13 != NULL, "epdcch_setconfig_r11->ext2->mpdcch_config_r13 is null");
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13 != NULL, "epdcch_setconfig_r11->ext2->mpdcch_config_r13 is null");
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->present == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13_PR_setup,
-                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->present is not setup\n");
-            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 != NULL, "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310 is null");
-            AssertFatal(epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present == LTE_EPDCCH_SetConfig_r11__ext2__numberPRB_Pairs_v1310_PR_setup,
-                        "epdcch_setconfig_r11->ext2->numberPRB_Pairs_v1310->present is not setup\n");
-            LOG_D(MAC,"[PUSCH %d] Frame %d, Subframe %d: Adding UL 6-0A MPDCCH for BL/CE UE %d/%x, ulsch_frame %d, ulsch_subframe %d,UESS MPDCCH Narrowband %d\n",
-                  harq_pid,
-                  frameP,
-                  subframeP,
-                  UE_id,
-                  rnti,
-                  sched_frame,
-                  sched_subframeP,
-                  (int)epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1);
-            UE_template->first_rb_ul[harq_pid] = narrowband_to_first_rb(cc, epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13-1);
-            hi_dci0_pdu = &(hi_dci0_req->hi_dci0_pdu_list[hi_dci0_req->number_of_dci+hi_dci0_req->number_of_hi]);
-            memset((void *) hi_dci0_pdu, 0, sizeof(nfapi_hi_dci0_request_pdu_t));
-            hi_dci0_pdu->pdu_type = NFAPI_HI_DCI0_MPDCCH_DCI_PDU_TYPE;
-            hi_dci0_pdu->pdu_size = (uint8_t) (2 + sizeof (nfapi_dl_config_mpdcch_pdu));
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_format = (UE_template->rach_resource_type > 1) ? 5 : 4;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type > 1) ? 2 : 1;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_narrowband = epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_Narrowband_r13 - 1;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_prb_pairs = 6;       // checked above that it has to be this
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_assignment = 0; // Note: this can be dynamic
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mpdcch_transmission_type = epdcch_setconfig_r11->transmissionType_r11;  // distibuted
-            AssertFatal(UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 != NULL,
-                        "UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11 is null\n");
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.start_symbol = *UE_template->physicalConfigDedicated->ext4->epdcch_Config_r11->config_r11.choice.setup.startSymbol_r11;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ecce_index = 0;        // Note: this should be dynamic
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.aggreagation_level = 24;        // OK for CEModeA r1-3 (9.1.5-1b) or CEModeB r1-4
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti_type = 4; // other
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.rnti = rnti;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ce_mode = (UE_template->rach_resource_type < 3) ? 1 : 2;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.drms_scrambling_init = epdcch_setconfig_r11->dmrs_ScramblingSequenceInt_r11;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.initial_transmission_sf_io = (frameP * 10) + subframeP;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.transmission_power = 6000;     // 0dB
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.resource_block_start = UE_template->first_rb_ul[harq_pid];
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_resource_blocks = 6;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.mcs = 4;       // adjust according to size of RAR, 208 bits with N1A_PRB=3
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.pusch_repetition_levels = 0;
-            AssertFatal(epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13 == LTE_EPDCCH_SetConfig_r11__ext2__mpdcch_config_r13__setup__mpdcch_pdsch_HoppingConfig_r13_off,
-                        "epdcch_setconfig_r11->ext2->mpdcch_config_r13->mpdcch_pdsch_HoppingConfig_r13 is not off\n");
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.frequency_hopping_flag  = 1 - epdcch_setconfig_r11->ext2->mpdcch_config_r13->choice.setup.mpdcch_pdsch_HoppingConfig_r13;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.redudency_version = rvidx_tab[round_UL&3];
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.new_data_indication = UE_template->oldNDI_UL[harq_pid];
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.harq_process = harq_pid;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tpc = tpc;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.csi_request = cqi_req;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.ul_inex = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dai_presence_flag = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dl_assignment_index = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.srs_request = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.dci_subframe_repetition_number = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.tcp_bitmap = 0;
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.total_dci_length_include_padding = 29; // hard-coded for 10 MHz
-            hi_dci0_pdu->mpdcch_dci_pdu.mpdcch_dci_pdu_rel13.number_of_tx_antenna_ports = 1;
-            hi_dci0_req->number_of_dci++;
-            fill_nfapi_ulsch_config_request_rel8(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
-                                                 cqi_req,
-                                                 cc,
-                                                 UE_template->physicalConfigDedicated,
-                                                 get_tmode(module_idP,CC_id,UE_id),
-                                                 eNB->ul_handle,
-                                                 rnti,
-                                                 UE_template->first_rb_ul[harq_pid], // resource_block_start
-                                                 UE_template->nb_rb_ul[harq_pid], // number_of_resource_blocks
-                                                 UE_template->mcs_UL[harq_pid],
-                                                 cshift, // cyclic_shift_2_for_drms
-                                                 0, // frequency_hopping_enabled_flag
-                                                 0, // frequency_hopping_bits
-                                                 UE_template->oldNDI_UL[harq_pid], // new_data_indication
-                                                 rvidx_tab[round_UL&3], // redundancy_version
-                                                 harq_pid, // harq_process_number
-                                                 0, // ul_tx_mode
-                                                 0, // current_tx_nb
-                                                 0, // n_srs
-                                                 UE_template->TBS_UL[harq_pid]
-                                                );
-            fill_nfapi_ulsch_config_request_emtc(&ul_req_tmp->ul_config_pdu_list[ul_req_tmp->number_of_pdus],
-                                                 UE_template->rach_resource_type>2 ? 2 : 1,
-                                                 1, //total_number_of_repetitions
-                                                 1, //repetition_number
-                                                 (frameP * 10) + subframeP);
-            ul_req_tmp->number_of_pdus++;
-            eNB->ul_handle++;
-          }
-        } // UE_is_to_be_scheduled
-      } // ULCCs
-    } // loop over UE_id
-  } // Schedule new ULSCH
-
-  // This section is to repeat ULSCH PDU for a number of MTC repetitions
-  for(int i=0; i<ul_req_tmp->number_of_pdus; i++) {
-    ul_config_pdu = &ul_req_tmp->ul_config_pdu_list[i];
-
-    if (ul_config_pdu->pdu_type!=NFAPI_UL_CONFIG_ULSCH_PDU_TYPE) // Repeat ULSCH PDUs only
-      continue ;
-
-    if(ul_config_pdu->ulsch_pdu.ulsch_pdu_rel13.repetition_number < ul_config_pdu->ulsch_pdu.ulsch_pdu_rel13.total_number_of_repetitions) {
-      ul_req_body_Rep = &eNB->UL_req_tmp[CC_id][(sched_subframeP+1)%10].ul_config_request_body;
-      ul_config_pdu_Rep = &ul_req_body_Rep->ul_config_pdu_list[ul_req_body_Rep->number_of_pdus];
-      memcpy ((void *) ul_config_pdu_Rep, ul_config_pdu, sizeof (nfapi_ul_config_request_pdu_t));
-      ul_config_pdu_Rep->ulsch_pdu.ulsch_pdu_rel8.handle = eNB->ul_handle++;
-      ul_config_pdu_Rep->ulsch_pdu.ulsch_pdu_rel13.repetition_number = ul_config_pdu->ulsch_pdu.ulsch_pdu_rel13.repetition_number +1;
-      ul_req_body_Rep->number_of_pdus++;
-    } //repetition_number < total_number_of_repetitions
-  }   // For loop on PDUs
 }

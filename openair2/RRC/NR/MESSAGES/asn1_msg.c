@@ -1416,9 +1416,13 @@ void fill_initial_cellGroupConfig(int uid,
                                   const gNB_RrcConfigurationReq *configuration,
                                   const int CC_id)
 {
+  NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
+  NR_RLC_Config_t                                  *rlc_Config           = NULL;
+  NR_LogicalChannelConfig_t                        *logicalChannelConfig = NULL;
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
-  
+  long *logicalChannelGroup = NULL;
+
   cellGroupConfig->cellGroupId = 0;
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
@@ -1571,42 +1575,17 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     ie->radioBearerConfig.securityConfig    = NULL;
     
     /****************************** masterCellGroup ******************************/
-    /* TODO */
-    if (masterCellGroup_from_DU) {
-      memcpy(&ie->masterCellGroup,masterCellGroup_from_DU,sizeof(*masterCellGroup_from_DU));
-      // decode masterCellGroup OCTET_STRING received from DU and place in ue context
-      uper_decode(NULL,
-		  &asn_DEF_NR_CellGroupConfig,   //might be added prefix later
-		  (void **)&cellGroupConfig,
-		  (uint8_t *)masterCellGroup_from_DU->buf,
-		  masterCellGroup_from_DU->size, 0, 0); 
-      
-      xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
-    }
-    else {
-      cellGroupConfig = CALLOC(1, sizeof(NR_CellGroupConfig_t));
-      fill_initial_cellGroupConfig(ue_context_pP->local_uid,cellGroupConfig,scc,carrier,CC_id);
+    DevAssert(masterCellGroup && masterCellGroup_len > 0);
+    ie->masterCellGroup.buf = malloc(masterCellGroup_len);
+    AssertFatal(ie->masterCellGroup.buf != NULL, "could not allocate memory for masterCellGroup\n");
+    memcpy(ie->masterCellGroup.buf, masterCellGroup, masterCellGroup_len);
+    ie->masterCellGroup.size = masterCellGroup_len;
 
       if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
         xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void*)cellGroupConfig);
       }
-      enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,
-				       NULL,
-				       (void *)cellGroupConfig,
-				       masterCellGroup_buf,
-				       1000);
-      
-      if(enc_rval.encoded == -1) {
-        LOG_E(NR_RRC, "ASN1 message CellGroupConfig encoding failed (%s, %lu)!\n",
-	      enc_rval.failed_type->name, enc_rval.encoded);
-        return -1;
-      }
-      
-      if (OCTET_STRING_fromBuf(&ie->masterCellGroup, masterCellGroup_buf, (enc_rval.encoded+7)/8) == -1) {
-        LOG_E(NR_RRC, "fatal: OCTET_STRING_fromBuf failed\n");
-        return -1;
-      }
-    }
+    // decode masterCellGroup OCTET_STRING received from DU and place in ue context
+    uper_decode(NULL, &asn_DEF_NR_CellGroupConfig, (void **)&cellGroupConfig, masterCellGroup, masterCellGroup_len, 0, 0);
 
     if(ue_p->masterCellGroup) {
       ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,ue_p->masterCellGroup);
@@ -1951,14 +1930,14 @@ int16_t do_RRCReconfiguration(
 
     LOG_D(NR_RRC,"[gNB %d] RRCReconfiguration for UE %x Encoded %zd bits (%zd bytes)\n",
             ctxt_pP->module_id,
-            ctxt_pP->rnti,
+            ctxt_pP->rntiMaybeUEid,
             enc_rval.encoded,
             (enc_rval.encoded+7)/8);
 
     if (enc_rval.encoded == -1) {
         LOG_E(NR_RRC,"[gNB %d] ASN1 : RRCReconfiguration encoding failed for UE %x\n",
             ctxt_pP->module_id,
-            ctxt_pP->rnti);
+            ctxt_pP->rntiMaybeUEid);
         return(-1);
     }
 

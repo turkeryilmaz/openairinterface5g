@@ -124,13 +124,13 @@ rrc_data_ind(
       if (message_p) {
         /* Populate the message and send to SS */
         //Find the CC_id from module_id and rnti
-        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rnti);
+        int UE_id = find_UE_id(ctxt_pP->module_id,ctxt_pP->rntiMaybeUEid);
         int CC_id = UE_id>=0? UE_PCCID(ctxt_pP->module_id,UE_id):0;
         SS_RRC_PDU_IND (message_p).physCellId = RC.rrc[ctxt_pP->module_id]->carrier[CC_id].physCellId;
         SS_RRC_PDU_IND (message_p).sdu_size = sdu_sizeP;
         SS_RRC_PDU_IND (message_p).srb_id = DCCH_index;
         SS_RRC_PDU_IND (message_p).frame = ctxt_pP->frame;
-        SS_RRC_PDU_IND (message_p).rnti = ctxt_pP->rnti;
+        SS_RRC_PDU_IND (message_p).rnti = ctxt_pP->rntiMaybeUEid;
         SS_RRC_PDU_IND (message_p).subframe = ctxt_pP->subframe;
         memset (SS_RRC_PDU_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
         memcpy (SS_RRC_PDU_IND (message_p).sdu, buffer_pP, sdu_sizeP);

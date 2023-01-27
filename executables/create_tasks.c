@@ -29,7 +29,6 @@
   #include "x2ap_eNB.h"
   #include "s1ap_eNB.h"
   #include "udp_eNB_task.h"
-  #include "gtpv1u_eNB_task.h"
   #include "openair3/ocp-gtpu/gtp_itf.h"
   #if ENABLE_RAL
     #include "lteRALue.h"

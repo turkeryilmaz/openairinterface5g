@@ -300,7 +300,7 @@ void udp_eNB_receiver(struct udp_socket_desc_s *udp_sock_pP)
 void *udp_eNB_task(void *args_p)
 {
   int                 nb_events;
-  struct epoll_event *events;
+  struct epoll_event events[20];
   MessageDef         *received_message_p    = NULL;
   //const char         *msg_name = NULL;
   //instance_t          instance  = 0;
@@ -422,7 +422,7 @@ on_error:
       received_message_p = NULL;
     }
 
-    nb_events = itti_get_events(TASK_UDP, &events);
+    nb_events = itti_get_events(TASK_UDP, events, 20);
 
     /* Now handle notifications for other sockets */
     if (nb_events > 0) {

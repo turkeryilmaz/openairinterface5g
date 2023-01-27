@@ -78,10 +78,10 @@ uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_ti
 	{
 		LOG_A(ENB_APP,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SF %d\n",timer_tinfo->sfn,timer_tinfo->sf);
 		vt_subtract_sf(&timer_tinfo->sfn,&timer_tinfo->sf, 7);
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 /*
  * Function : vt_timer_setup

@@ -37,7 +37,6 @@
 #include "rrc_extern.h"
 #include "assertions.h"
 #include "common/ran_context.h"
-#include "asn1_conversions.h"
 #include "asn_internal.h"
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
 #include "LAYER2/RLC/rlc.h"
@@ -87,7 +86,6 @@
 
 #include "pdcp.h"
 #include "pdcp_primitives.h"
-#include "gtpv1u_eNB_task.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "intertask_interface.h"
@@ -347,7 +345,7 @@ init_SI(
       AssertFatal(carrier->SIB4!=NULL,"cannot allocate memory for SIB4");
       carrier->sizeof_SIB4 = do_SIB4(ctxt_pP->module_id,
                                        CC_id,
-                                       FALSE,
+                                       false,
                                        configuration
                                       );
       LOG_I(RRC,"do_SIB4, size %d \n ", carrier->sizeof_SIB4);
@@ -362,7 +360,7 @@ init_SI(
       AssertFatal(carrier->SIB5!=NULL,"cannot allocate memory for SIB5");
       carrier->sizeof_SIB5 = do_SIB5(ctxt_pP->module_id,
                                        CC_id,
-                                       FALSE,
+                                       false,
                                        configuration
                                       );
       LOG_I(RRC,"do_SIB5, size %d \n ", carrier->sizeof_SIB5);
@@ -565,7 +563,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   cn_domain_t cn_domain=0;
 
   LOG_A(RRC, "eNB received SS_PAGING_IND with paging_recordList=%p systemInfoModification=%d bSubframeOffsetListPresent=%d\n", SS_PAGING_IND(msg_p).paging_recordList, SS_PAGING_IND(msg_p).systemInfoModification, SS_PAGING_IND(msg_p).bSubframeOffsetListPresent);
-    lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
+    frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
   /* get nB from configuration */
   /* get default DRX cycle from configuration */
   Tc = (uint8_t)RC.rrc[instance]->configuration.radioresourceconfig[CC_id].pcch_defaultPagingCycle;
@@ -625,7 +623,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
   uint8_t i = 0;
   for (i = 0; i < MAX_MOBILES_PER_ENB; i++)
   {
-    if ((UE_PF_PO[CC_id][i].enable_flag == TRUE && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(SS_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != TRUE))
+    if ((UE_PF_PO[CC_id][i].enable_flag == true && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(SS_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != true))
     {
       /* set T = min(Tc,Tue) */
       UE_PF_PO[CC_id][i].T = T;
@@ -651,7 +649,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
         UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 * (i_s & 1) + (5 * (i_s >> 1))) : ((i_s & 1) + (5 * (i_s >> 1)));
       }
       //UE_PF_PO[CC_id][i].PO =  SS_PAGING_IND(msg_p).sf;
-      if (UE_PF_PO[CC_id][i].enable_flag == TRUE)
+      if (UE_PF_PO[CC_id][i].enable_flag == true)
       {
         // paging exist UE log
         LOG_A(RRC, "[eNB %lu] CC_id %d In SS_PAGING_IND: Update exist UE %d, T %d, PF %d, PO %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO);
@@ -659,7 +657,7 @@ static int rrc_eNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name
       else
       {
         /* set enable_flag */
-        UE_PF_PO[CC_id][i].enable_flag = TRUE;
+        UE_PF_PO[CC_id][i].enable_flag = true;
         // paging new UE log
         LOG_A(RRC, "[eNB %lu] CC_id %d In SSAP_PAGING_IND: Insert a new UE %d, T %d, PF %d, PO %d N %d Ns %d i_s %d\n",
         instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO,N,Ns,i_s);
@@ -2778,7 +2776,7 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
         if(1) {
           PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
         } else {
-          PDCP_rlc_AM->statusReportRequired = FALSE;
+          PDCP_rlc_AM->statusReportRequired = false;
         }
         break;
 
@@ -3196,7 +3194,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
                 PDCP_rlc_AM->statusReportRequired = p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM->statusReportRequired;
               }
             } else {
-              PDCP_rlc_AM->statusReportRequired = FALSE;
+              PDCP_rlc_AM->statusReportRequired = false;
             }
 #else
             PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
@@ -3366,7 +3364,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     if(1) {
       PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
     } else {
-      PDCP_rlc_AM->statusReportRequired = FALSE;
+      PDCP_rlc_AM->statusReportRequired = false;
     }
 #else
     PDCP_rlc_UM = CALLOC(1, sizeof(*PDCP_rlc_UM));
@@ -3985,7 +3983,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
     pdcp_t *pdcp_p = NULL;
     rb_id_t rbid_ = 1;
     hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
-    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rbid_, 1);
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, rbid_, 1);
     int8_t h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
     if (h_rc == HASH_TABLE_OK)
     {
@@ -4009,14 +4007,14 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
         }
 
         LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", 
-              ctxt_pP->rnti, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
+              ctxt_pP->rntiMaybeUEid, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
-        key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
+        key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
         h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
         if (h_rc == HASH_TABLE_OK)
         {
-          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rnti);
+          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rntiMaybeUEid);
           pdcp_config_set_security(
               ctxt_pP,
               pdcp_p,
@@ -4037,7 +4035,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       }
       else
       {
-        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rnti);
+        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
       }
     }
     else
@@ -6568,8 +6566,8 @@ char rrc_eNB_rblist_configuration(
     LOG_A(RRC,"i: %d ,RB Id:%d \n",i,RblistConfig->rb_list[i].RbId);
     int rbIndex = RblistConfig->rb_list[i].RbId; /*RB ID is used as a unique index in RB Array inside RC*/
     AssertFatal(rbIndex <= MAX_RBS, "RB Index exceed the Max RBs Supported");
-    RC.RB_Config[CC_id][rbIndex].isRBConfigValid = TRUE;
-    if(RblistConfig->rb_list[i].RbConfig.isPDCPConfigValid == TRUE) {
+    RC.RB_Config[CC_id][rbIndex].isRBConfigValid = true;
+    if(RblistConfig->rb_list[i].RbConfig.isPDCPConfigValid == true) {
       if(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM != NULL) {
         if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_AM == NULL) {
           RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_AM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_AM));
@@ -6786,13 +6784,13 @@ char rrc_eNB_rblist_configuration(
      }
     }
 
-    if(RblistConfig->rb_list[i].RbConfig.isRLCConfigValid == TRUE) {
+    if(RblistConfig->rb_list[i].RbConfig.isRLCConfigValid == true) {
       memcpy(&(RC.RB_Config[CC_id][rbIndex].RlcCfg),&(RblistConfig->rb_list[i].RbConfig.Rlc),sizeof(struct LTE_RLC_Config));
     }
-    if(RblistConfig->rb_list[i].RbConfig.isLogicalChannelIdValid == TRUE) {
+    if(RblistConfig->rb_list[i].RbConfig.isLogicalChannelIdValid == true) {
       RC.RB_Config[CC_id][rbIndex].LogicalChannelId = RblistConfig->rb_list[i].RbConfig.LogicalChannelId;
     }
-    if(RblistConfig->rb_list[i].RbConfig.isMacConfigValid == TRUE) {
+    if(RblistConfig->rb_list[i].RbConfig.isMacConfigValid == true) {
       if(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters != NULL) {
         if(RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters == NULL) {
           RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
@@ -6816,7 +6814,7 @@ char rrc_eNB_rblist_configuration(
        free(RblistConfig->rb_list[i].RbConfig.Mac.ext3);
       }
     }
-    if(RblistConfig->rb_list[i].RbConfig.isDiscardULDataValid == TRUE) {
+    if(RblistConfig->rb_list[i].RbConfig.isDiscardULDataValid == true) {
       RC.RB_Config[CC_id][rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
     }
 
@@ -8093,7 +8091,7 @@ rrc_eNB_decode_dcch(
         break;
 
       case LTE_UL_DCCH_MessageType__c1_PR_ueCapabilityInformation:
-        LOG_A(RRC, "Processing ueCapabilityInformation UE %x, ue_context_p is NULL\n", ctxt_pP->rnti);
+        LOG_A(RRC, "Processing ueCapabilityInformation UE %x, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
 
         T(T_ENB_RRC_UE_CAPABILITY_INFORMATION, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
 
@@ -9583,7 +9581,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
               }
               if (RC.ss.CBRA_flag)
               {
-                RRCConnSetup_PDU_Present[cc_id] = FALSE;
+                RRCConnSetup_PDU_Present[cc_id] = false;
               }
             }
           }

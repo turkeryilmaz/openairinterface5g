@@ -198,3 +198,4 @@ do_RRCReestablishmentComplete(
     uint8_t *buffer, size_t buffer_size,
     int64_t rrc_TransactionIdentifier);
 
+#endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */

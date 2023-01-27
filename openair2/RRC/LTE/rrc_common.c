@@ -82,7 +82,7 @@ rrc_init_global_param(
   {
     for(int i=0;i<MAX_RBS;i++)
     {
-      RC.RB_Config[CC_id][i].isRBConfigValid = FALSE;
+      RC.RB_Config[CC_id][i].isRBConfigValid = false;
       memset(&RC.RB_Config[CC_id][i],0,sizeof(RBConfig));
     }
 
@@ -119,7 +119,7 @@ rrc_init_global_param(
     RC.RB_Config[CC_id][3].RlcCfg.choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
     RC.RB_Config[CC_id][3].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
     RC.RB_Config[CC_id][3].PdcpCfg.rlc_AM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_AM));
-    RC.RB_Config[CC_id][3].PdcpCfg.rlc_AM->statusReportRequired = FALSE;
+    RC.RB_Config[CC_id][3].PdcpCfg.rlc_AM->statusReportRequired = false;
     RC.RB_Config[CC_id][3].PdcpCfg.headerCompression.present = LTE_PDCP_Config__headerCompression_PR_notUsed;
     RC.RB_Config[CC_id][3].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
     RC.RB_Config[CC_id][3].Mac.ul_SpecificParameters->priority = 12;

@@ -290,6 +290,10 @@ typedef struct {
   char                   *filelog_name;
   uint64_t                debug_mask;
   uint64_t                dump_mask;
+#if 1
+  uint16_t                sfn;
+  uint8_t                 sf;
+#endif
 } log_t;
 
 

@@ -111,8 +111,6 @@ extern int transmission_mode;
 
 extern int oaisim_flag;
 
-//uint16_t sf_ahead=4;
-extern uint16_t sf_ahead;
 #include "executables/thread-common.h"
 //extern PARALLEL_CONF_t get_thread_parallel_conf(void);
 //extern WORKER_CONF_t   get_thread_worker_conf(void);
@@ -312,7 +310,7 @@ int tem_proc_ccid = proc->CC_id;
   for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
   eNB->UL_INFO.CC_id     = CC_id;
   proc->CC_id = CC_id;//Temp solution need to be fixed later
-  eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);
+  eNB->if_inst->UL_indication(&eNB->UL_INFO, (void*)proc);
   }
   proc->CC_id = tem_proc_ccid;
 //#endif /** ENB_SS */
@@ -387,7 +385,6 @@ static void *L1_thread_tx(void *param) {
 
   //wait_sync("tx_thread");
 
-  proc->respEncode = eNB->proc.L1_proc.respEncode;
   while (!oai_exit) {
     LOG_D(PHY,"Waiting for TX (IC %d)\n",proc->instance_cnt);
 
@@ -527,11 +524,11 @@ void eNB_top(PHY_VARS_eNB *eNB,
 
   if (!oai_exit) {
     T(T_ENB_MASTER_TICK, T_INT(0), T_INT(ru_proc->frame_rx), T_INT(ru_proc->tti_rx));
-    L1_proc->timestamp_tx = ru_proc->timestamp_rx + (sf_ahead*fp->samples_per_tti);
+    L1_proc->timestamp_tx = ru_proc->timestamp_rx + (ru->sf_ahead*fp->samples_per_tti);
     L1_proc->frame_rx     = ru_proc->frame_rx;
     L1_proc->subframe_rx  = ru_proc->tti_rx;
-    L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
-    L1_proc->subframe_tx  = (L1_proc->subframe_rx + sf_ahead)%10;
+    L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-ru->sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
+    L1_proc->subframe_tx  = (L1_proc->subframe_rx + ru->sf_ahead)%10;
     
     if (rxtx(eNB,L1_proc,string) < 0)
       LOG_E(PHY,"eNB %d CC_id %d failed during execution\n",eNB->Mod_id,eNB->CC_id);  
@@ -675,11 +672,11 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,
   // The last (TS_rx mod samples_per_frame) was n*samples_per_tti,
   // we want to generate subframe (n+sf_ahead), so TS_tx = TX_rx+sf_ahead*samples_per_tti,
   // and proc->subframe_tx = proc->subframe_rx+sf_ahead
-  L1_proc->timestamp_tx = ru_proc->timestamp_rx + (sf_ahead*fp->samples_per_tti);
+  L1_proc->timestamp_tx = ru_proc->timestamp_rx + (ru->sf_ahead*fp->samples_per_tti);
   L1_proc->frame_rx     = ru_proc->frame_rx;
   L1_proc->subframe_rx  = ru_proc->tti_rx;
-  L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
-  L1_proc->subframe_tx  = (L1_proc->subframe_rx + sf_ahead)%10;
+  L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-ru->sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
+  L1_proc->subframe_tx  = (L1_proc->subframe_rx + ru->sf_ahead)%10;
   LOG_D(PHY,"wakeup_rxtx: L1_proc->subframe_rx %d, L1_proc->subframe_tx %d, RU %d\n",L1_proc->subframe_rx,L1_proc->subframe_tx,ru->idx);
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_FRAME_NUMBER_WAKEUP_RXTX_RX_RU+ru->idx, L1_proc->frame_rx);
   VCD_SIGNAL_DUMPER_DUMP_VARIABLE_BY_NAME(VCD_SIGNAL_DUMPER_VARIABLES_SUBFRAME_NUMBER_WAKEUP_RXTX_RX_RU+ru->idx, L1_proc->subframe_rx);
@@ -898,14 +895,9 @@ static void *process_stats_thread(void *param) {
         print_meas(&eNB->dlsch_turbo_encoding_preperation_stats,"dlsch_coding_crc",NULL,NULL);
         print_meas(&eNB->dlsch_turbo_encoding_segmentation_stats,"dlsch_segmentation",NULL,NULL);
         print_meas(&eNB->dlsch_encoding_stats,"dlsch_encoding",NULL,NULL);
-        print_meas(&eNB->dlsch_turbo_encoding_signal_stats,"coding_signal",NULL,NULL);
-        print_meas(&eNB->dlsch_turbo_encoding_main_stats,"coding_main",NULL,NULL);
         print_meas(&eNB->dlsch_turbo_encoding_stats,"turbo_encoding",NULL,NULL);
         print_meas(&eNB->dlsch_interleaving_stats,"turbo_interleaving",NULL,NULL);
         print_meas(&eNB->dlsch_rate_matching_stats,"turbo_rate_matching",NULL,NULL);
-        print_meas(&eNB->dlsch_turbo_encoding_waiting_stats,"coding_wait",NULL,NULL);
-        print_meas(&eNB->dlsch_turbo_encoding_wakeup_stats0,"coding_worker_0",NULL,NULL);
-        print_meas(&eNB->dlsch_turbo_encoding_wakeup_stats1,"coding_worker_1",NULL,NULL);
       }
 
       print_meas(&eNB->dlsch_modulation_stats,"dlsch_modulation",NULL,NULL);
@@ -989,14 +981,6 @@ void init_eNB_proc(int inst) {
     pthread_mutex_init( &proc->mutex_RU_PRACH_br,NULL);
     pthread_cond_init( &proc->cond_prach_br, NULL);
     pthread_attr_init( &proc->attr_prach_br);
-#ifndef DEADLINE_SCHEDULER
-    attr0       = &L1_proc->attr;
-    attr1       = &L1_proc_tx->attr;
-    attr_prach  = &proc->attr_prach;
-    attr_prach_br  = &proc->attr_prach_br;
-    //    attr_td     = &proc->attr_td;
-    //    attr_te     = &proc->attr_te;
-#endif
 
     if(get_thread_worker_conf() == WORKER_ENABLE) {
       init_te_thread(eNB);
@@ -1200,7 +1184,7 @@ void init_transport(PHY_VARS_eNB *eNB) {
     }
     for (int i=0;i<NUMBER_OF_ULSCH_MAX; i++) {
 
-      LOG_I(PHY,"Allocating Transport Channel Buffer for ULSCH %d/%d\n",i,NUMBER_OF_ULSCH_MAX);
+      LOG_I(PHY,"Allocating Transport Channel Buffers for ULSCH %d/%d\n",i,NUMBER_OF_ULSCH_MAX);
       eNB->ulsch[i] = new_eNB_ulsch(MAX_TURBO_ITERATIONS,fp->N_RB_UL, 0);
 
       if (!eNB->ulsch[i]) {

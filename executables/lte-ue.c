@@ -93,9 +93,6 @@ extern uint16_t sf_ahead;
 
 void ue_stub_rx_handler(unsigned int, char *);
 
-int32_t **rxdata;
-int32_t **txdata;
-
 int timer_subframe = 0;
 int timer_frame = 0;
 SF_ticking *phy_stub_ticking = NULL;
@@ -111,7 +108,7 @@ typedef struct eutra_band_s {
   uint32_t ul_max;
   uint32_t dl_min;
   uint32_t dl_max;
-  lte_frame_type_t frame_type;
+  frame_type_t frame_type;
 } eutra_band_t;
 
 typedef struct band_info_s {
@@ -154,18 +151,9 @@ static const eutra_band_t eutra_bands[] = {
 };
 
 
-threads_t threads= {-1,-1,-1,-1,-1,-1,-1,-1};
-
 pthread_t                       main_ue_thread;
 pthread_attr_t                  attr_UE_thread;
 struct sched_param              sched_param_UE_thread;
-
-
-void get_uethreads_params(void) {
-  paramdef_t cmdline_threadsparams[] =CMDLINE_UETHREADSPARAMS_DESC;
-  config_process_cmdline( cmdline_threadsparams,sizeof(cmdline_threadsparams)/sizeof(paramdef_t),NULL);
-}
-
 
 void phy_init_lte_ue_transport(PHY_VARS_UE *ue,int absraction_flag);
 
@@ -205,24 +193,7 @@ void init_thread(int sched_runtime,
                  int sched_deadline,
                  int sched_fifo,
                  cpu_set_t *cpuset,
-                 char *name)
-{
-#ifdef DEADLINE_SCHEDULER
-
-  if (sched_runtime!=0) {
-    struct sched_attr attr= {0};
-    attr.size = sizeof(attr);
-    attr.sched_policy = SCHED_DEADLINE;
-    attr.sched_runtime  = sched_runtime;
-    attr.sched_deadline = sched_deadline;
-    attr.sched_period   = 0;
-    AssertFatal(sched_setattr(0, &attr, 0) == 0,
-                "[SCHED] %s thread: sched_setattr failed %s \n", name, strerror(errno));
-    LOG_I(HW,"[SCHED][eNB] %s deadline thread %lu started on CPU %d\n",
-          name, (unsigned long)gettid(), sched_getcpu());
-  }
-
-#else
+                 char *name) {
   int settingPriority = 1;
 
   if (checkIfFedoraDistribution())
@@ -254,7 +225,6 @@ void init_thread(int sched_runtime,
   }
 
   CPU_FREE(cset);
-#endif
 }
 
 void init_UE(int nb_inst,
@@ -267,8 +237,7 @@ void init_UE(int nb_inst,
              runmode_t mode,
              int rxgain,
              int txpowermax,
-             LTE_DL_FRAME_PARMS *fp0)
-{
+             LTE_DL_FRAME_PARMS *fp0) {
   PHY_VARS_UE *UE;
   int         inst;
   int         ret;
@@ -284,9 +253,7 @@ void init_UE(int nb_inst,
     if (PHY_vars_UE_g[inst]==NULL) PHY_vars_UE_g[inst] = (PHY_VARS_UE **)calloc(1+MAX_NUM_CCs,sizeof(PHY_VARS_UE *));
 
     LOG_I(PHY,"Allocating UE context %d\n",inst);
-
     PHY_vars_UE_g[inst][0] = init_ue_vars(fp0,inst,0);
-
     // turn off timing control loop in UE
     PHY_vars_UE_g[inst][0]->no_timing_correction = timing_correction;
     UE = PHY_vars_UE_g[inst][0];
@@ -361,15 +328,8 @@ void init_UE(int nb_inst,
       }
     } else UE->N_TA_offset = 0;
 
-    if( IS_SOFTMODEM_BASICSIM)
-      /* this is required for the basic simulator in TDD mode
-       * TODO: find a proper cleaner solution
-       */
-      UE->N_TA_offset = 0;
-
     LOG_I(PHY,"Intializing UE Threads for instance %d (%p,%p)...\n",inst,PHY_vars_UE_g[inst],PHY_vars_UE_g[inst][0]);
     init_UE_threads(inst);
-
     ret = openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]);
 
     if (ret !=0) {
@@ -392,8 +352,7 @@ void init_UE(int nb_inst,
 void init_UE_stub_single_thread(int nb_inst,
                                 int eMBMS_active,
                                 int uecap_xer_in,
-                                char *emul_iface)
-{
+                                char *emul_iface) {
   int         inst;
   LOG_I(PHY,"UE : Calling Layer 2 for initialization, nb_inst: %d \n", nb_inst);
   l2_init_ue(eMBMS_active,(uecap_xer_in==1)?uecap_xer:NULL,
@@ -418,12 +377,10 @@ void init_UE_stub_single_thread(int nb_inst,
   }
 }
 
-void init_UE_standalone_thread(int ue_idx)
-{
+void init_UE_standalone_thread(int ue_idx) {
   int standalone_tx_port = 3211 + ue_idx * 2;
   int standalone_rx_port = 3212 + ue_idx * 2;
   ue_init_standalone_socket(standalone_tx_port, standalone_rx_port);
-
   pthread_t thread;
 
   if (pthread_create(&thread, NULL, ue_standalone_pnf_task, NULL) != 0) {
@@ -436,8 +393,7 @@ void init_UE_standalone_thread(int ue_idx)
 void init_UE_stub(int nb_inst,
                   int eMBMS_active,
                   int uecap_xer_in,
-                  char *emul_iface)
-{
+                  char *emul_iface) {
   int         inst;
   LOG_I(PHY,"UE : Calling Layer 2 for initialization\n");
   l2_init_ue(eMBMS_active,(uecap_xer_in==1)?uecap_xer:NULL,
@@ -471,8 +427,7 @@ void init_UE_stub(int nb_inst,
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
 
-static void *UE_thread_synch(void *arg)
-{
+static void *UE_thread_synch(void *arg) {
   static int UE_thread_synch_retval;
   int i ;
   PHY_VARS_UE *UE = (PHY_VARS_UE *) arg;
@@ -487,8 +442,6 @@ static void *UE_thread_synch(void *arg)
   printf("UE_thread_sync in with PHY_vars_UE %p\n",arg);
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
-  if ( threads.sync != -1 )
-    CPU_SET(threads.sync, &cpuset);
 
   // this thread priority must be lower that the main acquisition thread
   sprintf(threadname, "sync UE %d\n", UE->Mod_id);
@@ -655,7 +608,7 @@ static void *UE_thread_synch(void *arg)
               break;
           }
 
-          UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0],0);
+          UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
           //UE->rfdevice.trx_set_gains_func(&openair0,&openair0_cfg[0]);
           //UE->rfdevice.trx_stop_func(&UE->rfdevice);
           sleep(1);
@@ -739,7 +692,7 @@ static void *UE_thread_synch(void *arg)
               openair0_cfg[UE->rf_map.card].autocal[UE->rf_map.chain+i] = 1;
           }
 
-          UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0],0);
+          UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
         }// initial_sync=0
 
         break;
@@ -766,8 +719,7 @@ static void *UE_thread_synch(void *arg)
  * \param arg is a pointer to a \ref PHY_VARS_UE structure.
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
-const char *get_connectionloss_errstr(int errcode)
-{
+const char *get_connectionloss_errstr(int errcode) {
   switch (errcode) {
     case CONNECTION_LOST:
       return "RRC Connection lost, returning to PRACH";
@@ -782,8 +734,7 @@ const char *get_connectionloss_errstr(int errcode)
   return "UNKNOWN RETURN CODE";
 }
 
-static void *UE_thread_rxn_txnp4(void *arg)
-{
+static void *UE_thread_rxn_txnp4(void *arg) {
   static __thread int UE_thread_rxtx_retval;
   struct rx_tx_thread_data *rtd = arg;
   UE_rxtx_proc_t *proc = rtd->proc;
@@ -793,15 +744,6 @@ static void *UE_thread_rxn_txnp4(void *arg)
   sprintf(threadname,"UE_%d_proc_%d", UE->Mod_id, proc->sub_frame_start);
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
-
-  if ( (proc->sub_frame_start+1)%RX_NB_TH == 0 && threads.one != -1 )
-    CPU_SET(threads.one, &cpuset);
-
-  if ( RX_NB_TH > 1 && (proc->sub_frame_start+1)%RX_NB_TH == 1 && threads.two != -1 )
-    CPU_SET(threads.two, &cpuset);
-
-  if ( RX_NB_TH > 2 && (proc->sub_frame_start+1)%RX_NB_TH == 2 && threads.three != -1 )
-    CPU_SET(threads.three, &cpuset);
 
   //CPU_SET(threads.three, &cpuset);
   init_thread(900000,1000000, FIFO_PRIORITY-1, &cpuset,
@@ -876,17 +818,11 @@ static void *UE_thread_rxn_txnp4(void *arg)
 
     if ((subframe_select( &UE->frame_parms, proc->subframe_tx) == SF_UL) ||
         (UE->frame_parms.frame_type == FDD) )
-      if (UE->mode != loop_through_memory)
-        phy_procedures_UE_TX(UE,proc,0,0,UE->mode);
-
-    if ((subframe_select( &UE->frame_parms, proc->subframe_tx) == SF_S) &&
-        (UE->frame_parms.frame_type == TDD))
-      if (UE->mode != loop_through_memory)
-        phy_procedures_UE_S_TX(UE,0,0);
+      phy_procedures_UE_TX(UE,proc,0,0,UE->mode);
 
     proc->instance_cnt_rxtx--;
 
-    if ( IS_SOFTMODEM_BASICSIM || IS_SOFTMODEM_RFSIM ) {
+    if (IS_SOFTMODEM_RFSIM) {
       if (pthread_cond_signal(&proc->cond_rxtx) != 0) abort();
     }
 
@@ -904,8 +840,7 @@ static void *UE_thread_rxn_txnp4(void *arg)
 unsigned int emulator_absSF;
 
 void ue_stub_rx_handler(unsigned int num_bytes,
-                        char *rx_buffer)
-{
+                        char *rx_buffer) {
   PHY_VARS_UE *UE;
   UE = PHY_vars_UE_g[0][0];
   UE_tport_t *pdu = (UE_tport_t *)rx_buffer;
@@ -960,14 +895,14 @@ void ue_stub_rx_handler(unsigned int num_bytes,
   }
 }
 
-uint64_t clock_usec(void)
-{
-    struct timespec t;
-    if (clock_gettime(CLOCK_MONOTONIC, &t) == -1)
-    {
-        abort();
-    }
-    return (uint64_t)t.tv_sec * 1000000 + (t.tv_nsec / 1000);
+uint64_t clock_usec(void) {
+  struct timespec t;
+
+  if (clock_gettime(CLOCK_MONOTONIC, &t) == -1) {
+    abort();
+  }
+
+  return (uint64_t)t.tv_sec * 1000000 + (t.tv_nsec / 1000);
 }
 /*!
  * \brief This is the UE thread for RX subframe n and TX subframe n+4.
@@ -977,23 +912,21 @@ uint64_t clock_usec(void)
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
 
-static void *UE_phy_stub_standalone_pnf_task(void *arg)
-{
+static void *UE_phy_stub_standalone_pnf_task(void *arg) {
 #if 1
   {
     struct sched_param sparam =
     {
       .sched_priority = 79,
     };
-    if (pthread_setschedparam(pthread_self(), SCHED_RR, &sparam) != 0)
-    {
+
+    if (pthread_setschedparam(pthread_self(), SCHED_RR, &sparam) != 0) {
       LOG_E(PHY,"pthread_setschedparam: %s\n", strerror(errno));
     }
   }
 #else
   thread_top_init("UE_phy_stub_thread_rxn_txnp4", 1, 870000L, 1000000L, 1000000L);
 #endif
-
   // for multipule UE's L2-emulator
   //module_id_t Mod_id = 0;
   //int init_ra_UE = -1; // This counter is used to initiate the RA of each UE in different SFrames
@@ -1013,9 +946,7 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
   PHY_VARS_UE *UE = NULL;
   int ret;
   proc = &PHY_vars_UE_g[0][0]->proc.proc_rxtx[0];
-
   UE = rtd->UE;
-
   UL_INFO = (UL_IND_t *)calloc(1, sizeof(UL_IND_t));
   UL_INFO->rx_ind.rx_indication_body.rx_pdu_list = calloc(NFAPI_RX_IND_MAX_PDU, sizeof(nfapi_rx_indication_pdu_t));
   UL_INFO->rx_ind.rx_indication_body.number_of_pdus = 0;
@@ -1028,19 +959,15 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
   UL_INFO->cqi_ind.cqi_indication_body.cqi_pdu_list = calloc(NFAPI_CQI_IND_MAX_PDU, sizeof(nfapi_cqi_indication_pdu_t));
   UL_INFO->cqi_ind.cqi_indication_body.cqi_raw_pdu_list = calloc(NFAPI_CQI_IND_MAX_PDU, sizeof(nfapi_cqi_indication_raw_pdu_t));
   UL_INFO->cqi_ind.cqi_indication_body.number_of_cqis = 0;
-
   proc->subframe_rx = proc->sub_frame_start;
   proc->subframe_tx = -1;
   proc->frame_rx = -1;
   proc->frame_tx = -1;
   // Initializations for nfapi-L2-emulator mode
   sync_var = 0;
-
   //PANOS: CAREFUL HERE!
   wait_sync("UE_phy_stub_standalone_pnf_task");
-
   int last_sfn_sf = -1;
-
   LOG_I(MAC, "Clearing Queues\n");
   reset_queue(&dl_config_req_tx_req_queue);
   reset_queue(&ul_config_req_queue);
@@ -1055,19 +982,17 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
     }
 
     int sfn_sf = current_sfn_sf;
-    if (sfn_sf == last_sfn_sf)
-    {
+
+    if (sfn_sf == last_sfn_sf) {
       LOG_W(MAC, "repeated sfn_sf = %d.%d\n",
             sfn_sf >> 4, sfn_sf & 15);
       continue;
     }
-    last_sfn_sf = sfn_sf;
 
     last_sfn_sf = sfn_sf;
     nfapi_dl_config_req_tx_req_t *dl_config_req_tx_req = get_queue(&dl_config_req_tx_req_queue);
     nfapi_ul_config_request_t *ul_config_req = get_queue(&ul_config_req_queue);
     nfapi_hi_dci0_request_t *hi_dci0_req = get_queue(&hi_dci0_req_queue);
-
     LOG_I(MAC, "received from proxy frame %d subframe %d\n",
           NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf));
 
@@ -1092,15 +1017,13 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
 
     if (hi_dci0_req != NULL) {
       LOG_D(MAC, "hi_dci0_req pdus: %u Frame: %d Subframe: %d\n",
-      hi_dci0_req->hi_dci0_request_body.number_of_dci,
-      NFAPI_SFNSF2SFN(hi_dci0_req->sfn_sf), NFAPI_SFNSF2SF(hi_dci0_req->sfn_sf));
+            hi_dci0_req->hi_dci0_request_body.number_of_dci,
+            NFAPI_SFNSF2SFN(hi_dci0_req->sfn_sf), NFAPI_SFNSF2SF(hi_dci0_req->sfn_sf));
     }
 
     if (dl_config_req_tx_req != NULL) {
-
       nfapi_tx_req_pdu_list_t *tx_req_pdu_list = dl_config_req_tx_req->tx_req_pdu_list;
       nfapi_dl_config_request_t *dl_config_req = dl_config_req_tx_req->dl_config_req;
-
       uint16_t dl_num_pdus = dl_config_req->dl_config_request_body.number_pdu;
       LOG_I(MAC, "(OAI UE) Received dl_config_req from proxy at Frame: %d, Subframe: %d,"
             " with number of PDUs: %u\n",
@@ -1112,7 +1035,6 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
         LOG_I(MAC, "dl_config_req: %s\n", dl_str);
         free(dl_str);
       }
-      LOG_D(MAC, "tx_req pdus: %d\n", tx_req_pdu_list->num_pdus);
 
       LOG_D(MAC, "tx_req pdus: %d\n", tx_req_pdu_list->num_pdus);
       // Handling dl_config_req and tx_req:
@@ -1169,7 +1091,6 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
     for (ue_index = 0; ue_index < ue_num; ue_index++) {
       ue_Mod_id = ue_thread_id + NB_THREAD_INST * ue_index; // Always 0 in standalone pnf mode
       UE = PHY_vars_UE_g[ue_Mod_id][0];
-
 #if UE_TIMING_TRACE
       start_meas(&UE->generic_stat);
 #endif
@@ -1199,67 +1120,60 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
 
       // Prepare the future Tx data
       if ((subframe_select(&UE->frame_parms, NFAPI_SFNSF2SF(sfn_sf)) == SF_UL) ||
-          (UE->frame_parms.frame_type == FDD))
-      {
-        if (UE->mode != loop_through_memory)
-        {
-          // We make the start of RA between consecutive UEs differ by 20 frames
-          //if ((UE_mac_inst[Mod_id].UE_mode[0] == PRACH  && Mod_id == 0) || (UE_mac_inst[Mod_id].UE_mode[0] == PRACH && Mod_id>0 && rx_frame >= UE_mac_inst[Mod_id-1].ra_frame + 20) ) {
-          if (UE_mac_inst[ue_Mod_id].UE_mode[0] == RA_RESPONSE &&
-              is_prach_subframe(&UE->frame_parms, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf)))
-          {
-            UE_mac_inst[ue_Mod_id].UE_mode[0] = PRACH;
-          }
-          LOG_D(MAC, "UE_mode: %d\n", UE_mac_inst[ue_Mod_id].UE_mode[0]);
-          if (UE_mac_inst[ue_Mod_id].UE_mode[0] == PRACH)
-          { //&& ue_Mod_id == next_Mod_id) {
-            next_ra_frame++;
-            if (next_ra_frame > 500)
-            {
-              // check if we have PRACH opportunity
-              if (is_prach_subframe(&UE->frame_parms, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf)) && UE_mac_inst[ue_Mod_id].SI_Decoded == 1)
-              {
-                // The one working strangely...
-                //if (is_prach_subframe(&UE->frame_parms,NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf) && Mod_id == (module_id_t) init_ra_UE) ) {
-                PRACH_RESOURCES_t *prach_resources = ue_get_rach(ue_Mod_id, 0, NFAPI_SFNSF2SFN(sfn_sf), 0, NFAPI_SFNSF2SF(sfn_sf));
-                if (prach_resources != NULL)
-                {
-                  LOG_I(MAC, "preamble_received_tar_power: %d\n",
-                        prach_resources->ra_PREAMBLE_RECEIVED_TARGET_POWER);
-                  UE_mac_inst[ue_Mod_id].ra_frame = NFAPI_SFNSF2SFN(sfn_sf);
-                  LOG_D(MAC, "UE_phy_stub_thread_rxn_txnp4 before RACH, Mod_id: %d frame %d subframe %d\n", ue_Mod_id, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf));
-                  fill_rach_indication_UE_MAC(ue_Mod_id, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf), UL_INFO, prach_resources->ra_PreambleIndex, prach_resources->ra_RNTI);
-                  sent_any = true;
-                  Msg1_transmitted(ue_Mod_id, 0, NFAPI_SFNSF2SFN(sfn_sf), 0);
-                  UE_mac_inst[ue_Mod_id].UE_mode[0] = RA_RESPONSE;
-                  next_Mod_id = ue_Mod_id + 1;
-                  //next_ra_frame = (rx_frame + 20)%1000;
-                  next_ra_frame = 0;
-                }
-                //ue_prach_procedures(ue,proc,eNB_id,abstraction_flag,mode);
-              }
-            }
-          } // mode is PRACH
-
-          // Substitute call to phy_procedures Tx with call to phy_stub functions in order to trigger
-          // UE Tx procedures directly at the MAC layer, based on the received ul_config requests from the vnf (eNB).
-          // Generate UL_indications which correspond to UL traffic.
-          if (ul_config_req != NULL)
-          { //&& UE_mac_inst[Mod_id].ul_config_req->ul_config_request_body.ul_config_pdu_list != NULL){
-            ul_config_req_UE_MAC(ul_config_req, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf), ue_Mod_id);
-          }
+          (UE->frame_parms.frame_type == FDD)) {
+        // We make the start of RA between consecutive UEs differ by 20 frames
+        //if ((UE_mac_inst[Mod_id].UE_mode[0] == PRACH  && Mod_id == 0) || (UE_mac_inst[Mod_id].UE_mode[0] == PRACH && Mod_id>0 && rx_frame >= UE_mac_inst[Mod_id-1].ra_frame + 20) ) {
+        if (UE_mac_inst[ue_Mod_id].UE_mode[0] == RA_RESPONSE &&
+            is_prach_subframe(&UE->frame_parms, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf))) {
+          UE_mac_inst[ue_Mod_id].UE_mode[0] = PRACH;
         }
 
-        phy_procedures_UE_SL_RX(UE, proc);
-      }
-      else
-      {
+        LOG_D(MAC, "UE_mode: %d\n", UE_mac_inst[ue_Mod_id].UE_mode[0]);
+
+        if (UE_mac_inst[ue_Mod_id].UE_mode[0] == PRACH) {
+          //&& ue_Mod_id == next_Mod_id) {
+          next_ra_frame++;
+
+          if (next_ra_frame > 500) {
+            // check if we have PRACH opportunity
+            if (is_prach_subframe(&UE->frame_parms, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf)) && UE_mac_inst[ue_Mod_id].SI_Decoded == 1) {
+              // The one working strangely...
+              //if (is_prach_subframe(&UE->frame_parms,NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf) && Mod_id == (module_id_t) init_ra_UE) ) {
+              PRACH_RESOURCES_t *prach_resources = ue_get_rach(ue_Mod_id, 0, NFAPI_SFNSF2SFN(sfn_sf), 0, NFAPI_SFNSF2SF(sfn_sf));
+
+              if (prach_resources != NULL) {
+                LOG_I(MAC, "preamble_received_tar_power: %d\n",
+                      prach_resources->ra_PREAMBLE_RECEIVED_TARGET_POWER);
+                UE_mac_inst[ue_Mod_id].ra_frame = NFAPI_SFNSF2SFN(sfn_sf);
+                LOG_D(MAC, "UE_phy_stub_thread_rxn_txnp4 before RACH, Mod_id: %d frame %d subframe %d\n", ue_Mod_id, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf));
+                fill_rach_indication_UE_MAC(ue_Mod_id, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf), UL_INFO, prach_resources->ra_PreambleIndex, prach_resources->ra_RNTI);
+                sent_any = true;
+                Msg1_transmitted(ue_Mod_id, 0, NFAPI_SFNSF2SFN(sfn_sf), 0);
+                UE_mac_inst[ue_Mod_id].UE_mode[0] = RA_RESPONSE;
+                next_Mod_id = ue_Mod_id + 1;
+                //next_ra_frame = (rx_frame + 20)%1000;
+                next_ra_frame = 0;
+              }
+
+              //ue_prach_procedures(ue,proc,eNB_id,abstraction_flag,mode);
+            }
+          }
+        } // mode is PRACH
+
+        // Substitute call to phy_procedures Tx with call to phy_stub functions in order to trigger
+        // UE Tx procedures directly at the MAC layer, based on the received ul_config requests from the vnf (eNB).
+        // Generate UL_indications which correspond to UL traffic.
+        if (ul_config_req != NULL) {
+          //&& UE_mac_inst[Mod_id].ul_config_req->ul_config_request_body.ul_config_pdu_list != NULL){
+          ul_config_req_UE_MAC(ul_config_req, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf), ue_Mod_id);
+        }
+      } else {
         LOG_I(MAC, "Skipping subframe select statement proxy SFN.SF: %d.%d\n",
-        NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf));
-        if (ul_config_req != NULL)
-        {
+              NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf));
+
+        if (ul_config_req != NULL) {
           LOG_I(MAC, "Skipping subframe select statement ul_config_req SFN.SF: %d.%d\n",
-          NFAPI_SFNSF2SFN(ul_config_req->sfn_sf), NFAPI_SFNSF2SF(ul_config_req->sfn_sf));
+                NFAPI_SFNSF2SFN(ul_config_req->sfn_sf), NFAPI_SFNSF2SF(ul_config_req->sfn_sf));
         }
       }
 
@@ -1279,12 +1193,10 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
     }
 
     if (UL_INFO->rx_ind.rx_indication_body.number_of_pdus > 0) {
-
       //LOG_D(PHY,"UL_info->rx_ind.number_of_pdus:%d RX_IND:SFN/SF:%d\n", UL_info->rx_ind.rx_indication_body.number_of_pdus, NFAPI_SFNSF2DEC(UL_info->rx_ind.sfn_sf));
       //LOG_I(MAC, "ul_config_req_UE_MAC 2.3, SFN/SF of PNF counter:%d.%d, number_of_pdus: %d \n", timer_frame, timer_subframe, UL_INFO->rx_ind.rx_indication_body.number_of_pdus);
       send_standalone_msg(UL_INFO, UL_INFO->rx_ind.header.message_id);
       sent_any = true;
-
       //LOG_I(MAC, "ul_config_req_UE_MAC 2.31 \n");
       UL_INFO->rx_ind.rx_indication_body.number_of_pdus = 0;
     }
@@ -1297,16 +1209,16 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
 
     if (UL_INFO->harq_ind.harq_indication_body.number_of_harqs > 0) {
       //LOG_D(MAC, "ul_config_req_UE_MAC 2.4, SFN/SF of PNF counter:%d.%d, number_of_harqs: %d \n", timer_frame, timer_subframe, UL_INFO->harq_ind.harq_indication_body.number_of_harqs);
-        send_standalone_msg(UL_INFO, UL_INFO->harq_ind.header.message_id);
-        sent_any = true;
+      send_standalone_msg(UL_INFO, UL_INFO->harq_ind.header.message_id);
+      sent_any = true;
       //LOG_I(MAC, "ul_config_req_UE_MAC 2.41 \n");
       UL_INFO->harq_ind.harq_indication_body.number_of_harqs = 0;
     }
 
     if (UL_INFO->sr_ind.sr_indication_body.number_of_srs > 0) {
       //LOG_I(MAC, "ul_config_req_UE_MAC 2.5, SFN/SF of PNF counter:%d.%d, number_of_srs: %d \n", timer_frame, timer_subframe, UL_INFO->sr_ind.sr_indication_body.number_of_srs);
-        send_standalone_msg(UL_INFO, UL_INFO->sr_ind.header.message_id);
-        sent_any = true;
+      send_standalone_msg(UL_INFO, UL_INFO->sr_ind.header.message_id);
+      sent_any = true;
       //LOG_I(MAC, "ul_config_req_UE_MAC 2.51 \n");
       UL_INFO->sr_ind.sr_indication_body.number_of_srs = 0;
     }
@@ -1337,10 +1249,8 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
 
       nfapi_free_tx_req_pdu_list(dl_config_req_tx_req->tx_req_pdu_list);
       dl_config_req_tx_req->tx_req_pdu_list = NULL;
-
       free(dl_config_req_tx_req->dl_config_req);
       dl_config_req_tx_req->dl_config_req = NULL;
-
       free(dl_config_req_tx_req);
       dl_config_req_tx_req = NULL;
     }
@@ -1364,9 +1274,9 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
       free(hi_dci0_req);
       hi_dci0_req = NULL;
     }
-    if (!sent_any)
-    {
-     send_standalone_dummy();
+
+    if (!sent_any) {
+      send_standalone_dummy();
     }
   }
 
@@ -1385,7 +1295,6 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
   UL_INFO->rx_ind.rx_indication_body.rx_pdu_list = NULL;
   free(UL_INFO);
   UL_INFO = NULL;
-
   // thread finished
   free(arg);
   return NULL;
@@ -1399,8 +1308,7 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg)
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
 
-static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg)
-{
+static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg) {
 #if 0 // TODO: doesn't currently compile, obviated by multi-ue proxy
   thread_top_init("UE_phy_stub_thread_rxn_txnp4",1,870000L,1000000L,1000000L);
   // for multipule UE's L2-emulator
@@ -1426,7 +1334,6 @@ static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg)
   proc = &PHY_vars_UE_g[0][0]->proc.proc_rxtx[0];
   phy_stub_ticking->num_single_thread[ue_thread_id] = -1;
   UE = rtd->UE;
-
   UL_INFO = (UL_IND_t *)malloc(sizeof(UL_IND_t));
   UL_INFO->rx_ind.rx_indication_body.rx_pdu_list = calloc(NB_UE_INST, sizeof(nfapi_rx_indication_pdu_t));
   UL_INFO->rx_ind.rx_indication_body.number_of_pdus = 0;
@@ -1646,11 +1553,6 @@ static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg)
 
       if ((subframe_select( &UE->frame_parms, proc->subframe_tx) == SF_UL) ||
           (UE->frame_parms.frame_type == FDD) )
-        if (UE->mode != loop_through_memory) {
-          // We make the start of RA between consecutive UEs differ by 20 frames
-          //if ((UE_mac_inst[Mod_id].UE_mode[0] == PRACH  && Mod_id == 0) || (UE_mac_inst[Mod_id].UE_mode[0] == PRACH && Mod_id>0 && proc->frame_rx >= UE_mac_inst[Mod_id-1].ra_frame + 20) ) {
-          if (UE_mac_inst[ue_Mod_id].UE_mode[0] == PRACH  && ue_Mod_id == next_Mod_id) {
-            next_ra_frame++;
 
         // We make the start of RA between consecutive UEs differ by 20 frames
         //if ((UE_mac_inst[Mod_id].UE_mode[0] == PRACH  && Mod_id == 0) || (UE_mac_inst[Mod_id].UE_mode[0] == PRACH && Mod_id>0 && proc->frame_rx >= UE_mac_inst[Mod_id-1].ra_frame + 20) ) {
@@ -2017,9 +1919,6 @@ void *UE_thread(void *arg) {
   int ret;
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
-  if ( threads.main != -1 )
-    CPU_SET(threads.main, &cpuset);
-  init_thread(100000, 500000, FIFO_PRIORITY, &cpuset, "UHD Threads");
 
   init_thread(100000, 500000, FIFO_PRIORITY, &cpuset, "UHD Threads");
   /*
@@ -2044,12 +1943,6 @@ void *UE_thread(void *arg) {
   log_scheduler(__func__);
 
   while (!oai_exit) {
-    if (IS_SOFTMODEM_BASICSIM)
-      while (!(UE->proc.instance_cnt_synch < 0)) {
-        printf("ue sync not ready\n");
-        usleep(500*1000);
-      }
-
     AssertFatal ( 0== pthread_mutex_lock(&UE->proc.mutex_synch), "");
     int instance_cnt_synch = UE->proc.instance_cnt_synch;
     int is_synchronized    = UE->is_synchronized;
@@ -2106,10 +1999,6 @@ void *UE_thread(void *arg) {
 
         AssertFatal ( 0== pthread_mutex_unlock(&UE->proc.mutex_synch), "");
       } else {
-#if OAISIM
-        (void)dummy_rx; /* avoid gcc warnings */
-        usleep(500);
-#else
         // grab 10 ms of signal into dummy buffer
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
           rxp[i] = (void *)&dummy_rx[i][0];

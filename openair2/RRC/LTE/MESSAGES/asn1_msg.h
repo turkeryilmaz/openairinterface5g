@@ -424,3 +424,5 @@ uint8_t do_SecurityModeCommand(
   const uint8_t Transaction_id,
   const uint8_t cipheringAlgorithm,
   const uint8_t integrityProtAlgorithm);
+
+#endif  /* __RRC_LTE_MESSAGES_ASN1_MSG__H__ */

@@ -4887,6 +4887,7 @@ void *rrc_ue_task( void *args_p ) {
   instance_t    instance;
   unsigned int  ue_mod_id;
   int           result;
+  uint16_t      nb_cells;
   SRB_INFO     *srb_info_p;
   protocol_ctxt_t  ctxt;
   itti_mark_task_ready (TASK_RRC_UE);

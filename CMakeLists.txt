@@ -2369,8 +2369,8 @@ target_link_libraries(lte-softmodem PRIVATE ${LIBXML2_LIBRARIES})
 target_link_libraries(lte-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${CMAKE_DL_LIBS})
 target_link_libraries(lte-softmodem PRIVATE ${LIB_LMS_LIBRARIES})
 target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
+target_link_libraries(lte-softmodem PRIVATE lttng-ust)
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc asn1_lte_rrc)
-
 
 add_executable(ocp-enb
   ${OPENAIR_DIR}/executables/main-ocp.c
@@ -2468,7 +2468,9 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 target_link_libraries(lte-uesoftmodem PRIVATE ${LIBXML2_LIBRARIES})
 target_link_libraries(lte-uesoftmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${CMAKE_DL_LIBS} ${ATLAS_LIBRARIES})
 target_link_libraries(lte-uesoftmodem PRIVATE ${LIB_LMS_LIBRARIES})
+target_link_libraries(lte-uesoftmodem PRIVATE lttng-ust)
 target_link_libraries(lte-uesoftmodem PRIVATE ${T_LIB})
+target_link_libraries(lte-uesoftmodem PRIVATE lttng-ust)
 target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 # force the generation of ASN.1 so that we don't need to wait during the build
@@ -2516,6 +2518,7 @@ target_link_libraries(nr-softmodem PRIVATE
   x2ap f1ap m2ap m3ap
   -Wl,--end-group z dl)
 
+target_link_libraries(nr-softmodem PRIVATE lttng-ust)
 target_link_libraries(nr-softmodem PRIVATE ${LIBXML2_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${XFORMS_LIBRARIES} ${CMAKE_DL_LIBS} ${ATLAS_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE ${LIB_LMS_LIBRARIES})
@@ -2568,6 +2571,7 @@ target_link_libraries(nr-uesoftmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRY
 target_link_libraries(nr-uesoftmodem PRIVATE ${LIB_LMS_LIBRARIES})
 target_link_libraries(nr-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-uesoftmodem PRIVATE asn1_nr_rrc asn1_lte_rrc)
+target_link_libraries(nr-uesoftmodem PRIVATE lttng-ust)
 
 add_dependencies( nr-uesoftmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 if (CUDA_FOUND)
