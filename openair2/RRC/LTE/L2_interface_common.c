@@ -59,7 +59,7 @@ rrc_data_req(
 {
   if(sdu_sizeP == 255) {
     LOG_I(RRC,"sdu_sizeP == 255");
-    return FALSE;
+    return false;
   }
 
   MessageDef *message_p;
@@ -81,7 +81,7 @@ rrc_data_req(
   //memcpy (RRC_DCCH_DATA_REQ (message_p).sdu_p, buffer_pP, sdu_sizeP);
   RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
   RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-  RRC_DCCH_DATA_REQ (message_p).rnti      = ctxt_pP->rnti;
+  RRC_DCCH_DATA_REQ(message_p).rnti = ctxt_pP->rntiMaybeUEid;
   RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
   itti_send_msg_to_task (
     ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
@@ -95,7 +95,7 @@ rrc_data_req(
   if (ctxt_pP->enb_flag && NODE_IS_CU(RC.rrc[ctxt_pP->module_id]->node_type))
     pdcp_run(ctxt_pP);
 
-  return TRUE; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
+  return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
 }
 
 //------------------------------------------------------------------------------
@@ -114,13 +114,7 @@ rrc_data_ind(
     LOG_I(RRC, "[UE %x] Frame %d: received a DCCH %ld message on SRB %ld with Size %d from eNB %d\n",
           ctxt_pP->module_id, ctxt_pP->frame, DCCH_index,Srb_id,sdu_sizeP,  ctxt_pP->eNB_index);
   } else {
-    LOG_D(RRC, "[eNB %d] Frame %d: received a DCCH %ld message on SRB %ld with Size %d from UE %x\n",
-          ctxt_pP->module_id,
-          ctxt_pP->frame,
-          DCCH_index,
-          Srb_id,
-          sdu_sizeP,
-          ctxt_pP->rnti);
+    LOG_D(RRC, "[eNB %d] Frame %d: received a DCCH %ld message on SRB %ld with Size %d from UE %lx\n", ctxt_pP->module_id, ctxt_pP->frame, DCCH_index, Srb_id, sdu_sizeP, ctxt_pP->rntiMaybeUEid);
 
 //#ifdef ENB_SS
     if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
@@ -162,7 +156,7 @@ rrc_data_ind(
     RRC_DCCH_DATA_IND (message_p).dcch_index = DCCH_index;
     RRC_DCCH_DATA_IND (message_p).sdu_size   = sdu_sizeP;
     RRC_DCCH_DATA_IND (message_p).sdu_p      = message_buffer;
-    RRC_DCCH_DATA_IND (message_p).rnti       = ctxt_pP->rnti;
+    RRC_DCCH_DATA_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     RRC_DCCH_DATA_IND (message_p).module_id  = ctxt_pP->module_id;
     RRC_DCCH_DATA_IND (message_p).eNB_index  = ctxt_pP->eNB_index;
     itti_send_msg_to_task (ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, ctxt_pP->instance, message_p);

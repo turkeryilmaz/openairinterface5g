@@ -40,50 +40,11 @@
 #include "openair2/PHY_INTERFACE/queue_t.h"
 #include "nfapi_nr_interface_scf.h"
 #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
+#include "NR_Packet_Drop.h"
 
-#define NR_NUM_MCS 29
-#define NUM_SINR 100
-#define NUM_BLER_COL 13
-#define NUM_NFAPI_SLOT 20
-#define NR_NUM_LAYER 1
+extern slot_rnti_mcs_s slot_rnti_mcs[NUM_NFAPI_SLOT];
 
 typedef struct NR_UL_TIME_ALIGNMENT NR_UL_TIME_ALIGNMENT_t;
-
-typedef struct nr_phy_channel_params_t
-{
-    uint16_t sfn_slot;
-    uint16_t message_id;
-    uint16_t nb_of_sinrs;
-    float sinr[NR_NUM_LAYER];
-    // Incomplete, need all channel parameters
-} nr_phy_channel_params_t;
-
-typedef struct
-{
-    uint8_t slot;
-    uint16_t rnti[256];
-    uint8_t mcs[256];
-    uint8_t rvIndex[256];
-    float sinr;
-    uint16_t num_pdus;
-    bool drop_flag[256];
-    bool latest;
-
-} slot_rnti_mcs_s;
-
-typedef struct
-{
-    uint16_t length;
-    float bler_table[NUM_SINR][NUM_BLER_COL];
-} nr_bler_struct;
-
-extern nr_bler_struct nr_bler_data[NR_NUM_MCS];
-
-typedef enum {
-  ONLY_PUSCH,
-  NOT_PUSCH,
-  SCHED_ALL,
-} NR_UE_SCHED_MODE_t;
 
 typedef struct {
     /// module id
@@ -112,8 +73,6 @@ typedef struct {
     frame_t frame;
     /// slot
     int slot;
-    /// index of the current UE RX/TX thread
-    int thread_id;
 
     /// NR UE FAPI-like P7 message, direction: L1 to L2
     /// data reception indication structure
@@ -123,6 +82,9 @@ typedef struct {
     /// dci reception indication structure
     fapi_nr_dci_indication_t *dci_ind;
 
+    /// PHY specific data structure that can be passed on to L2 via nr_downlink_indication_t and
+    /// back to L1 via the nr_scheduled_response_t 
+    void *phy_data;
 } nr_downlink_indication_t;
 
 
@@ -141,13 +103,11 @@ typedef struct {
     frame_t frame_tx;
     /// slot tx
     uint32_t slot_tx;
-    /// index of the current UE RX/TX thread
-    int thread_id;
 
     /// dci reception indication structure
     fapi_nr_dci_indication_t *dci_ind;
 
-    NR_UE_SCHED_MODE_t ue_sched_mode;
+    void *phy_data;
 
 } nr_uplink_indication_t;
 
@@ -163,8 +123,6 @@ typedef struct {
     frame_t frame;
     /// slot
     int slot;
-    /// index of the current UE RX/TX thread
-    int thread_id;
 
     /// NR UE FAPI-like P7 message, direction: L2 to L1
     /// downlink transmission configuration request structure
@@ -176,6 +134,9 @@ typedef struct {
     /// data transmission request structure
     fapi_nr_tx_request_t *tx_request;
 
+    /// PHY data structure initially passed on to L2 via the nr_downlink_indication_t and
+    /// returned to L1 via nr_scheduled_response_t
+    void *phy_data;
 } nr_scheduled_response_t;
 
 typedef struct {
@@ -286,6 +247,7 @@ int nr_ue_dcireq(nr_dcireq_t *dcireq);
 
 //  TODO check
 /**\brief handle BCCH-BCH message from dl_indication
+   \param phy_data        PHY structure to be filled in by the callee in the FAPI call (L1 caller -> indication to L2 -> FAPI call to L1 callee)
    \param pduP            pointer to bch pdu
    \param additional_bits corresponding to 38.212 ch.7
    \param ssb_index       SSB index within 0 - (L_ssb-1) corresponding to 38.331 ch.13 parameter i
@@ -294,6 +256,7 @@ int nr_ue_dcireq(nr_dcireq_t *dcireq);
 int handle_bcch_bch(module_id_t module_id,
                     int cc_id,
                     unsigned int gNB_index,
+                    void *phy_data,
                     uint8_t *pduP,
                     unsigned int additional_bits,
                     uint32_t ssb_index,
@@ -308,6 +271,7 @@ int handle_bcch_bch(module_id_t module_id,
 int handle_bcch_dlsch(module_id_t module_id, int cc_id, unsigned int gNB_index, uint8_t ack_nack, uint8_t *pduP, uint32_t pdu_len);
 
 int handle_dci(module_id_t module_id, int cc_id, unsigned int gNB_index, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci);
+
 
 #endif
 

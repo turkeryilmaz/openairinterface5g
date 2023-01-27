@@ -34,6 +34,7 @@
 #include "rrc_proto.h"
 #include "assertions.h"
 #include "rrc_vars.h"
+#include "MAC/mac.h"
 
 typedef uint32_t channel_t;
 
@@ -162,10 +163,10 @@ rrc_data_req_nr_ue(
     MessageDef *message_p;
     // Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling).
     uint8_t *message_buffer;
-    message_buffer = itti_malloc (TASK_RRC_NRUE, TASK_PDCP_UE, sdu_sizeP);
+    message_buffer = itti_malloc (TASK_RRC_UE, TASK_PDCP_UE, sdu_sizeP);
     LOG_D(RRC,"Sending RRC message for SRB %ld, sdu_size %d\n",rb_idP, sdu_sizeP);
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    message_p = itti_alloc_new_message ( TASK_RRC_NRUE, 0, RRC_DCCH_DATA_REQ);
+    message_p = itti_alloc_new_message ( TASK_RRC_UE, 0, RRC_DCCH_DATA_REQ);
     RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
     RRC_DCCH_DATA_REQ (message_p).enb_flag  = ctxt_pP->enb_flag;
     RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;
@@ -175,12 +176,12 @@ rrc_data_req_nr_ue(
     RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
     RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
     RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-    RRC_DCCH_DATA_REQ (message_p).rnti      = ctxt_pP->rnti;
+    RRC_DCCH_DATA_REQ(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
     itti_send_msg_to_task (
       TASK_PDCP_UE,
       ctxt_pP->instance,
       message_p);
-    return TRUE; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
+    return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
 
 }

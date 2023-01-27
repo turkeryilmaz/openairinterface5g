@@ -49,8 +49,8 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/ngran_types.h"
-#include "targets/COMMON/openairinterface5g_limits.h"
-#include "targets/RT/USER/lte-softmodem.h"
+#include "common/openairinterface5g_limits.h"
+#include "executables/lte-softmodem.h"
 #include "SIMULATION/ETH_TRANSPORT/proto.h"
 #include "UTIL/OSA/osa_defs.h"
 #include "openair2/RRC/NAS/nas_config.h"
@@ -59,7 +59,7 @@
 #include <pthread.h>
 #include "LTE_DL-DCCH-Message.h"
 
-#  include "gtpv1u_eNB_task.h"
+#  include "openair3/ocp-gtpu/gtp_itf.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "ENB_APP/enb_config.h"
@@ -136,12 +136,11 @@ notifiedFIFO_t         pdcp_sdu_list;
 pdcp_enb_t pdcp_enb[MAX_NUM_CCs];
 
 
-extern volatile int oai_exit;
+extern int oai_exit;
 
 pthread_t pdcp_stats_thread_desc;
 
-// will be called when 4G F1 implementation will use GTP-U instead of protobuf
-boolean_t cu_f1u_data_req(
+bool cu_f1u_data_req(
   protocol_ctxt_t  *ctxt_pP,
   const srb_flag_t srb_flagP,
   const rb_id_t rb_id,
@@ -212,25 +211,24 @@ rlc_op_status_t cu_send_to_du(const protocol_ctxt_t *const ctxt,
 			       const rb_id_t rb_id, const mui_t mui,
 			       confirm_t confirm, sdu_size_t size, mem_block_t *sdu,
                                const uint32_t *const sourceID, const uint32_t *const destID) {
-  uint8_t *gtpu_buffer_p = itti_malloc(TASK_PDCP_ENB, TASK_GTPV1_U,
-				       size  + GTPU_HEADER_OVERHEAD_MAX);
-  AssertFatal(gtpu_buffer_p != NULL, "OUT OF MEMORY");
-  memcpy(gtpu_buffer_p+GTPU_HEADER_OVERHEAD_MAX,
+  MessageDef  *message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0, GTPV1U_TUNNEL_DATA_REQ,
+                                                        sizeof(gtpv1u_tunnel_data_req_t) +
+                                                        size + GTPU_HEADER_OVERHEAD_MAX );
+  AssertFatal(message_p != NULL, "OUT OF MEMORY");
+  gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(message_p);
+  req->buffer        = (uint8_t*)(req+1);
+  memcpy(req->buffer + GTPU_HEADER_OVERHEAD_MAX,
 	 sdu->data,
 	 size );
-  MessageDef  *message_p = itti_alloc_new_message(TASK_PDCP_ENB, 0, GTPV1U_ENB_TUNNEL_DATA_REQ);
-  AssertFatal(message_p != NULL, "OUT OF MEMORY");
-  gtpv1u_enb_tunnel_data_req_t *req=&GTPV1U_ENB_TUNNEL_DATA_REQ(message_p);
-  req->buffer        = gtpu_buffer_p;
   req->length        = size;
   req->offset        = GTPU_HEADER_OVERHEAD_MAX;
-  req->rnti          = ctxt->rnti;
-  req->rab_id = rb_id+4;
+  req->ue_id = ctxt->rntiMaybeUEid;
+  req->bearer_id = rb_id+4;
   LOG_D(PDCP, "%s() (drb %ld) sending message to gtp size %d\n",
 	__func__, rb_id, size);
   extern instance_t CUuniqInstance;
   itti_send_msg_to_task(TASK_GTPV1_U, CUuniqInstance, message_p);
-  return TRUE;
+  return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -241,18 +239,16 @@ rlc_op_status_t cu_send_to_du(const protocol_ctxt_t *const ctxt,
  * this mem_block_t to be dissected for testing purposes. For further details see test
  * code at targets/TEST/PDCP/test_pdcp.c:test_pdcp_data_req()
  */
-boolean_t pdcp_data_req(
-  protocol_ctxt_t  *ctxt_pP,
-  const srb_flag_t     srb_flagP,
-  const rb_id_t        rb_idP,
-  const mui_t          muiP,
-  const confirm_t      confirmP,
-  const sdu_size_t     sdu_buffer_sizeP,
-  unsigned char *const sdu_buffer_pP,
-  const pdcp_transmission_mode_t modeP,
-  const uint32_t *const sourceL2Id,
-  const uint32_t *const destinationL2Id
-)
+bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
+                   const srb_flag_t     srb_flagP,
+                   const rb_id_t        rb_idP,
+                   const mui_t          muiP,
+                   const confirm_t      confirmP,
+                   const sdu_size_t     sdu_buffer_sizeP,
+                   unsigned char *const sdu_buffer_pP,
+                   const pdcp_transmission_mode_t modeP,
+                   const uint32_t *const sourceL2Id,
+                   const uint32_t *const destinationL2Id)
 //-----------------------------------------------------------------------------
 {
   pdcp_t            *pdcp_p          = NULL;
@@ -263,7 +259,7 @@ boolean_t pdcp_data_req(
   uint16_t           current_sn      = 0;
   mem_block_t       *pdcp_pdu_p      = NULL;
   rlc_op_status_t    rlc_status;
-  boolean_t          ret             = TRUE;
+  bool               ret             = true;
   hash_key_t         key             = HASHTABLE_NOT_A_KEY_VALUE;
   hashtable_rc_t     h_rc;
   uint8_t            rb_offset= (srb_flagP == 0) ? DTCH -1 : 0;
@@ -274,7 +270,7 @@ boolean_t pdcp_data_req(
 #if T_TRACER
 
   if (ctxt_pP->enb_flag != ENB_FLAG_NO)
-    T(T_ENB_PDCP_DL, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->rnti), T_INT(rb_idP), T_INT(sdu_buffer_sizeP));
+    T(T_ENB_PDCP_DL, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->rntiMaybeUEid), T_INT(rb_idP), T_INT(sdu_buffer_sizeP));
 
   // TRACE DL PDCP PDUs (Control/Data) here
 #if 0
@@ -302,7 +298,7 @@ boolean_t pdcp_data_req(
 
   if (sdu_buffer_sizeP == 0) {
     LOG_W(PDCP, "Handed SDU is of size 0! Ignoring...\n");
-    return FALSE;
+    return false;
   }
 
   /*
@@ -312,16 +308,16 @@ boolean_t pdcp_data_req(
               sdu_buffer_sizeP, MAX_IP_PACKET_SIZE);
 
   if (modeP == PDCP_TRANSMISSION_MODE_TRANSPARENT) {
-    AssertError (rb_idP < NB_RB_MBMS_MAX, return FALSE, "RB id is too high (%ld/%d) %u %u!\n", rb_idP, NB_RB_MBMS_MAX, ctxt_pP->module_id, ctxt_pP->rnti);
+    AssertError(rb_idP < NB_RB_MBMS_MAX, return false, "RB id is too high (%ld/%d) %u %lu!\n", rb_idP, NB_RB_MBMS_MAX, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
   } else {
     if (srb_flagP) {
-      AssertError (rb_idP < 3, return FALSE, "RB id is too high (%ld/%d) %u %u!\n", rb_idP, 3, ctxt_pP->module_id, ctxt_pP->rnti);
+      AssertError(rb_idP < 3, return false, "RB id is too high (%ld/%d) %u %lu!\n", rb_idP, 3, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     } else {
-      AssertError (rb_idP < LTE_maxDRB, return FALSE, "RB id is too high (%ld/%d) %u %u!\n", rb_idP, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rnti);
+      AssertError(rb_idP < LTE_maxDRB, return false, "RB id is too high (%ld/%d) %u %lu!\n", rb_idP, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     }
   }
 
-  key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rb_idP, srb_flagP);
+  key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, rb_idP, srb_flagP);
   h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
   if (h_rc != HASH_TABLE_OK) {
@@ -329,7 +325,7 @@ boolean_t pdcp_data_req(
       LOG_W(PDCP, PROTOCOL_CTXT_FMT" Instance is not configured for rb_id %ld Ignoring SDU...\n",
             PROTOCOL_CTXT_ARGS(ctxt_pP),
             rb_idP);
-      return FALSE;
+      return false;
     }
   }
 
@@ -413,7 +409,7 @@ boolean_t pdcp_data_req(
         memset(&pdu_header.mac_i[0],0,PDCP_CONTROL_PLANE_DATA_PDU_MAC_I_SIZE);
         memset(&pdcp_pdu_p->data[sdu_buffer_sizeP + pdcp_header_len],0,PDCP_CONTROL_PLANE_DATA_PDU_MAC_I_SIZE);
 
-        if (pdcp_serialize_control_plane_data_pdu_with_SRB_sn_buffer((unsigned char *)pdcp_pdu_p->data, &pdu_header) == FALSE) {
+        if (pdcp_serialize_control_plane_data_pdu_with_SRB_sn_buffer((unsigned char *)pdcp_pdu_p->data, &pdu_header) == false) {
           LOG_E(PDCP, PROTOCOL_PDCP_CTXT_FMT" Cannot fill PDU buffer with relevant header fields!\n",
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP,pdcp_p));
 
@@ -424,7 +420,7 @@ boolean_t pdcp_data_req(
           }
 
           VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_REQ,VCD_FUNCTION_OUT);
-          return FALSE;
+          return false;
         }
       } else {
         pdcp_user_plane_data_pdu_header_with_long_sn pdu_header;
@@ -432,7 +428,7 @@ boolean_t pdcp_data_req(
         pdu_header.sn = pdcp_get_next_tx_seq_number(pdcp_p);
         current_sn = pdu_header.sn ;
 
-        if (pdcp_serialize_user_plane_data_pdu_with_long_sn_buffer((unsigned char *)pdcp_pdu_p->data, &pdu_header) == FALSE) {
+        if (pdcp_serialize_user_plane_data_pdu_with_long_sn_buffer((unsigned char *)pdcp_pdu_p->data, &pdu_header) == false) {
           LOG_E(PDCP, PROTOCOL_PDCP_CTXT_FMT" Cannot fill PDU buffer with relevant header fields!\n",
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP,pdcp_p));
 
@@ -443,7 +439,7 @@ boolean_t pdcp_data_req(
           }
 
           VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_REQ,VCD_FUNCTION_OUT);
-          return FALSE;
+          return false;
         }
       }
 
@@ -464,7 +460,7 @@ boolean_t pdcp_data_req(
         }
 
         VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_REQ,VCD_FUNCTION_OUT);
-        return FALSE;
+        return false;
       }
 
       LOG_D(PDCP, "Sequence number %d is assigned to current PDU\n", current_sn);
@@ -541,7 +537,7 @@ boolean_t pdcp_data_req(
             ctxt_pP->module_id,
             rb_idP);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_REQ,VCD_FUNCTION_OUT);
-      return FALSE;
+      return false;
     }
 
     /*
@@ -552,12 +548,11 @@ boolean_t pdcp_data_req(
                 "[MSG] PDCP DL %s PDU on rb_id %ld\n",(srb_flagP)? "CONTROL" : "DATA", rb_idP);
 
     if ((pdcp_pdu_p!=NULL) && (srb_flagP == 0) && (ctxt_pP->enb_flag == 1)) {
-      LOG_D(PDCP, "pdcp data req on drb %ld, size %d, rnti %x, node_type %d \n",
-            rb_idP, pdcp_pdu_size, ctxt_pP->rnti, RC.rrc ? RC.rrc[ctxt_pP->module_id]->node_type: -1);
+      LOG_D(PDCP, "pdcp data req on drb %ld, size %d, rnti %lx, node_type %d \n", rb_idP, pdcp_pdu_size, ctxt_pP->rntiMaybeUEid, RC.rrc ? RC.rrc[ctxt_pP->module_id]->node_type : -1);
 
       if (ctxt_pP->enb_flag == ENB_FLAG_YES && NODE_IS_DU(RC.rrc[ctxt_pP->module_id]->node_type)) {
         LOG_E(PDCP, "Can't be DU, bad node type %d \n", RC.rrc[ctxt_pP->module_id]->node_type);
-        ret=FALSE;
+        ret = false;
       } else {
         /* PDCP Tracepoint marker: DL DRB PDU  */
         pdcp_pkt.direction = 1; /* Assuming DL is 1 */
@@ -578,13 +573,13 @@ boolean_t pdcp_data_req(
 
         memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
         rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_NO, rb_idP, muiP,
-            confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
-            destinationL2Id);
-        ret=FALSE;
+                     confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
+                     destinationL2Id);
+        ret = false;
         switch (rlc_status) {
           case RLC_OP_STATUS_OK:
             LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
-            ret=TRUE;
+            ret=true;
             break;
 
           case RLC_OP_STATUS_BAD_PARAMETER:
@@ -615,14 +610,14 @@ boolean_t pdcp_data_req(
         F1AP_DL_RRC_MESSAGE (message_p).gNB_CU_ue_id  = 0;
         F1AP_DL_RRC_MESSAGE (message_p).gNB_DU_ue_id  = 0;
         F1AP_DL_RRC_MESSAGE (message_p).old_gNB_DU_ue_id  = 0xFFFFFFFF; // unknown
-        F1AP_DL_RRC_MESSAGE (message_p).rnti = ctxt_pP->rnti;
+        F1AP_DL_RRC_MESSAGE(message_p).rnti = ctxt_pP->rntiMaybeUEid;
         F1AP_DL_RRC_MESSAGE (message_p).srb_id = rb_idP;
         F1AP_DL_RRC_MESSAGE (message_p).execute_duplication      = 1;
         F1AP_DL_RRC_MESSAGE (message_p).RAT_frequency_priority_information.en_dc      = 0;
         itti_send_msg_to_task (TASK_CU_F1, ctxt_pP->module_id, message_p);
         //CU_send_DL_RRC_MESSAGE_TRANSFER(ctxt_pP->module_id, message_p);
         LOG_I(PDCP, "Send F1AP_DL_RRC_MESSAGE with ITTI\n");
-        ret=TRUE;
+        ret=true;
       } else {
         /*PDCP Tracepoint marker: DL SRB PDU   */
         pdcp_pkt.direction = 1; /* Assuming DL is 1 */
@@ -656,27 +651,27 @@ boolean_t pdcp_data_req(
         switch (rlc_status) {
           case RLC_OP_STATUS_OK:
             LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
-            ret=TRUE;
+            ret=true;
             break;
 
           case RLC_OP_STATUS_BAD_PARAMETER:
             LOG_W(PDCP, "Data sending request over RLC failed with 'Bad Parameter' reason!\n");
-            ret= FALSE;
+            ret= false;
             break;
 
           case RLC_OP_STATUS_INTERNAL_ERROR:
             LOG_W(PDCP, "Data sending request over RLC failed with 'Internal Error' reason!\n");
-            ret= FALSE;
+            ret= false;
             break;
 
           case RLC_OP_STATUS_OUT_OF_RESSOURCES:
             LOG_W(PDCP, "Data sending request over RLC failed with 'Out of Resources' reason!\n");
-            ret= FALSE;
+            ret= false;
             break;
 
           default:
             LOG_W(PDCP, "RLC returned an unknown status code after PDCP placed the order to send some data (Status Code:%d)\n", rlc_status);
-            ret= FALSE;
+            ret= false;
             break;
         } // switch case
       }
@@ -691,11 +686,11 @@ boolean_t pdcp_data_req(
 
   /*
    * Control arrives here only if rlc_data_req() returns RLC_OP_STATUS_OK
-   * so we return TRUE afterwards
+   * so we return true afterwards
    */
 
-  for (pdcp_uid=0; pdcp_uid< MAX_MOBILES_PER_ENB; pdcp_uid++) {
-    if (pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid] == ctxt_pP->rnti )
+  for (pdcp_uid = 0; pdcp_uid < MAX_MOBILES_PER_ENB; pdcp_uid++) {
+    if (pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid] == ctxt_pP->rntiMaybeUEid)
       break;
   }
 
@@ -714,7 +709,7 @@ boolean_t pdcp_data_req(
 
 
 //-----------------------------------------------------------------------------
-boolean_t
+bool
 pdcp_data_ind(
   const protocol_ctxt_t *const ctxt_pP,
   const srb_flag_t   srb_flagP,
@@ -733,14 +728,13 @@ pdcp_data_ind(
   pdcp_sn_t    sequence_number = 0;
   volatile sdu_size_t   payload_offset  = 0;
   rb_id_t      rb_id            = rb_idP;
-  boolean_t    packet_forwarded = FALSE;
+  bool         packet_forwarded = false;
   hash_key_t      key             = HASHTABLE_NOT_A_KEY_VALUE;
   hashtable_rc_t  h_rc;
   uint8_t      rb_offset= (srb_flagP == 0) ? DTCH -1 :0;
   uint16_t     pdcp_uid=0;
 
   MessageDef  *message_p        = NULL;
-  uint8_t     *gtpu_buffer_p    = NULL;
   uint32_t    rx_hfn_for_count;
   int         pdcp_sn_for_count;
   int         security_ok;
@@ -752,25 +746,22 @@ pdcp_data_ind(
   memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
 
   if (MBMS_flagP) {
-    AssertError (rb_idP < NB_RB_MBMS_MAX, return FALSE,
-                 "RB id is too high (%ld/%d) %u rnti %x!\n",
-                 rb_idP,
-                 NB_RB_MBMS_MAX,
-                 ctxt_pP->module_id,
-                 ctxt_pP->rnti);
+    AssertError(rb_idP < NB_RB_MBMS_MAX, return false, "RB id is too high (%ld/%d) %u rnti %lx!\n", rb_idP, NB_RB_MBMS_MAX, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
 
     if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
-      LOG_D(PDCP, "e-MBMS Data indication notification for PDCP entity from eNB %u to UE %x "
+      LOG_D(PDCP,
+            "e-MBMS Data indication notification for PDCP entity from eNB %u to UE %lx "
             "and radio bearer ID %ld rlc sdu size %d ctxt_pP->enb_flag %d\n",
             ctxt_pP->module_id,
-            ctxt_pP->rnti,
+            ctxt_pP->rntiMaybeUEid,
             rb_idP,
             sdu_buffer_sizeP,
             ctxt_pP->enb_flag);
     } else {
-      LOG_D(PDCP, "Data indication notification for PDCP entity from UE %x to eNB %u "
+      LOG_D(PDCP,
+            "Data indication notification for PDCP entity from UE %lx to eNB %u "
             "and radio bearer ID %ld rlc sdu size %d ctxt_pP->enb_flag %d\n",
-            ctxt_pP->rnti,
+            ctxt_pP->rntiMaybeUEid,
             ctxt_pP->module_id,
             rb_idP,
             sdu_buffer_sizeP,
@@ -778,17 +769,9 @@ pdcp_data_ind(
     }
   } else {
     rb_id = rb_idP % LTE_maxDRB;
-    AssertError (rb_id < LTE_maxDRB, return FALSE, "RB id is too high (%ld/%d) %u UE %x!\n",
-                 rb_id,
-                 LTE_maxDRB,
-                 ctxt_pP->module_id,
-                 ctxt_pP->rnti);
-    AssertError (rb_id > 0, return FALSE, "RB id is too low (%ld/%d) %u UE %x!\n",
-                 rb_id,
-                 LTE_maxDRB,
-                 ctxt_pP->module_id,
-                 ctxt_pP->rnti);
-    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rb_id, srb_flagP);
+    AssertError(rb_id < LTE_maxDRB, return false, "RB id is too high (%ld/%d) %u UE %lx!\n", rb_id, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    AssertError(rb_id > 0, return false, "RB id is too low (%ld/%d) %u UE %lx!\n", rb_id, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, rb_id, srb_flagP);
     h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
     if (h_rc != HASH_TABLE_OK) {
@@ -798,14 +781,14 @@ pdcp_data_ind(
             key);
       free_mem_block(sdu_buffer_pP, __func__);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_OUT);
-      return FALSE;
+      return false;
     }
   }
 
 
   if (sdu_buffer_sizeP == 0) {
     LOG_W(PDCP, "SDU buffer size is zero! Ignoring this chunk!\n");
-    return FALSE;
+    return false;
   }
 
   pdcp_pkt.direction = 2;
@@ -887,13 +870,13 @@ pdcp_data_ind(
       }
 
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_OUT);
-      return FALSE;
+      return false;
     }
 
 #if 0
 
     /* Removed by Cedric */
-    if (pdcp_is_rx_seq_number_valid(sequence_number, pdcp_p, srb_flagP) == TRUE) {
+    if (pdcp_is_rx_seq_number_valid(sequence_number, pdcp_p, srb_flagP) == true) {
       LOG_T(PDCP, "Incoming PDU has a sequence number (%d) in accordance with RX window\n", sequence_number);
       /* if (dc == PDCP_DATA_PDU )
       LOG_D(PDCP, "Passing piggybacked SDU to NAS driver...\n");
@@ -911,7 +894,7 @@ pdcp_data_ind(
        */
       LOG_W(PDCP, "Ignoring PDU...\n");
       free_mem_block(sdu_buffer_pP, __func__);
-      return FALSE;
+      return false;
     }
 
 #endif
@@ -969,7 +952,7 @@ pdcp_data_ind(
         LOG_W(PDCP, "Ignoring PDU...\n");
         free_mem_block(sdu_buffer_pP, __func__);
         /* TODO: indicate integrity verification failure to upper layer */
-        return FALSE;
+        return false;
       }
 
       if (sequence_number < pdcp_p->next_pdcp_rx_sn)
@@ -996,7 +979,7 @@ pdcp_data_ind(
       }
 
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_OUT);
-      return TRUE;
+      return true;
     } /* if (srb_flagP) */
 
     /*
@@ -1024,7 +1007,7 @@ pdcp_data_ind(
           LOG_W(PDCP, "Ignoring PDU...\n");
           free_mem_block(sdu_buffer_pP, __func__);
           /* TODO: indicate integrity verification failure to upper layer */
-          return FALSE;
+          return false;
         } else if (pdcp_p->next_pdcp_rx_sn - sequence_number > reordering_window) {
           pdcp_p->rx_hfn++;
           rx_hfn_for_count  = pdcp_p->rx_hfn;
@@ -1080,7 +1063,7 @@ pdcp_data_ind(
           LOG_W(PDCP, "Ignoring PDU...\n");
           free_mem_block(sdu_buffer_pP, __func__);
           /* TODO: indicate integrity verification failure to upper layer */
-          return FALSE;
+          return false;
         }
 
         /* TODO: specs say we have to store this PDU in a list and then deliver
@@ -1147,7 +1130,7 @@ pdcp_data_ind(
           LOG_W(PDCP, "Ignoring PDU...\n");
           free_mem_block(sdu_buffer_pP, __func__);
           /* TODO: indicate integrity verification failure to upper layer */
-          return FALSE;
+          return false;
         }
 
         break;
@@ -1171,7 +1154,7 @@ pdcp_data_ind(
     }
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_OUT);
-    return TRUE;
+    return true;
   }
 
   // XXX Decompression would be done at this point
@@ -1246,13 +1229,13 @@ pdcp_data_ind(
    // dest_addr.sin_addr.s_addr = ip_header->daddr;
 
    // sendto(mbms_socket, &sdu_buffer_pP->data[payload_offset], sdu_buffer_sizeP - payload_offset, MSG_DONTWAIT, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
-   // //packet_forwarded = TRUE;
+   // //packet_forwarded = true;
 
   }
 
 #endif
 
-  if (FALSE == packet_forwarded) {
+  if (false == packet_forwarded) {
     notifiedFIFO_elt_t * new_sdu_p = newNotifiedFIFO_elt(sdu_buffer_sizeP - payload_offset + sizeof (pdcp_data_ind_header_t), 0, NULL, NULL);
 
       if ((MBMS_flagP == 0) && (pdcp_p->rlc_mode == RLC_MODE_AM)) {
@@ -1321,8 +1304,8 @@ pdcp_data_ind(
   }
 
   /* Update PDCP statistics */
-  for (pdcp_uid=0; pdcp_uid< MAX_MOBILES_PER_ENB; pdcp_uid++) {
-    if (pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid] == ctxt_pP->rnti ) {
+  for (pdcp_uid = 0; pdcp_uid < MAX_MOBILES_PER_ENB; pdcp_uid++) {
+    if (pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid] == ctxt_pP->rntiMaybeUEid) {
       break;
     }
   }
@@ -1345,7 +1328,7 @@ pdcp_data_ind(
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_OUT);
-  return TRUE;
+  return true;
 }
 
 void pdcp_update_stats(const protocol_ctxt_t *const  ctxt_pP) {
@@ -1513,7 +1496,7 @@ pdcp_run (
                                   NULL, NULL
                                  );
 
-          if (result != TRUE)
+          if (result != true)
             LOG_E(PDCP, "PDCP data request failed!\n");
 
           // Message buffer has been processed, free it now.
@@ -1756,7 +1739,7 @@ pdcp_mbms_run (
 //                                  NULL, NULL
 //                                 );
 //
-//          if (result != TRUE)
+//          if (result != true)
 //            LOG_E(PDCP, "PDCP data request failed!\n");
 //
 //          // Message buffer has been processed, free it now.
@@ -1861,7 +1844,7 @@ void pdcp_add_UE(const protocol_ctxt_t *const  ctxt_pP) {
   int i, ue_flag=1; //, ret=-1; to be decied later
 
   for (i=0; i < MAX_MOBILES_PER_ENB; i++) {
-    if (pdcp_enb[ctxt_pP->module_id].rnti[i] == ctxt_pP->rnti) {
+    if (pdcp_enb[ctxt_pP->module_id].rnti[i] == ctxt_pP->rntiMaybeUEid) {
       ue_flag=-1;
       break;
     }
@@ -1870,10 +1853,10 @@ void pdcp_add_UE(const protocol_ctxt_t *const  ctxt_pP) {
   if (ue_flag == 1 ) {
     for (i=0; i < MAX_MOBILES_PER_ENB ; i++) {
       if (pdcp_enb[ctxt_pP->module_id].rnti[i] == 0 ) {
-        pdcp_enb[ctxt_pP->module_id].rnti[i]=ctxt_pP->rnti;
+        pdcp_enb[ctxt_pP->module_id].rnti[i] = ctxt_pP->rntiMaybeUEid;
         pdcp_enb[ctxt_pP->module_id].uid[i]=i;
         pdcp_enb[ctxt_pP->module_id].num_ues++;
-        LOG_I(PDCP,"add new uid is %d %x\n", i, ctxt_pP->rnti);
+        LOG_I(PDCP, "add new uid is %d %lx\n", i, ctxt_pP->rntiMaybeUEid);
         pdcp_init_stats_UE(ctxt_pP->module_id, i);
         // ret=1;
         break;
@@ -1885,10 +1868,7 @@ void pdcp_add_UE(const protocol_ctxt_t *const  ctxt_pP) {
 }
 
 //-----------------------------------------------------------------------------
-boolean_t
-pdcp_remove_UE(
-  const protocol_ctxt_t *const  ctxt_pP
-)
+bool pdcp_remove_UE(const protocol_ctxt_t *const  ctxt_pP)
 //-----------------------------------------------------------------------------
 {
   LTE_DRB_Identity_t  srb_id         = 0;
@@ -1899,19 +1879,19 @@ pdcp_remove_UE(
   // check and remove SRBs first
 
   for(int i = 0; i<MAX_MOBILES_PER_ENB; i++) {
-    if(pdcp_eNB_UE_instance_to_rnti[i] == ctxt_pP->rnti) {
+    if (pdcp_eNB_UE_instance_to_rnti[i] == ctxt_pP->rntiMaybeUEid) {
       pdcp_eNB_UE_instance_to_rnti[i] = NOT_A_RNTI;
       break;
     }
   }
 
   for (srb_id=1; srb_id<3; srb_id++) {
-    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, srb_id, SRB_FLAG_YES);
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, srb_id, SRB_FLAG_YES);
     h_rc = hashtable_remove(pdcp_coll_p, key);
   }
 
   for (drb_id=0; drb_id<LTE_maxDRB; drb_id++) {
-    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
+    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
     h_rc = hashtable_remove(pdcp_coll_p, key);
   }
 
@@ -1919,7 +1899,7 @@ pdcp_remove_UE(
 
   // remove ue for pdcp enb inst
   for (i=0; i < MAX_MOBILES_PER_ENB; i++) {
-    if (pdcp_enb[ctxt_pP->module_id].rnti[i] == ctxt_pP->rnti ) {
+    if (pdcp_enb[ctxt_pP->module_id].rnti[i] == ctxt_pP->rntiMaybeUEid) {
       LOG_I(PDCP, "remove uid is %d/%d %x\n", i,
             pdcp_enb[ctxt_pP->module_id].uid[i],
             pdcp_enb[ctxt_pP->module_id].rnti[i]);
@@ -1935,19 +1915,17 @@ pdcp_remove_UE(
 
 
 //-----------------------------------------------------------------------------
-boolean_t
-rrc_pdcp_config_asn1_req (
-  const protocol_ctxt_t *const  ctxt_pP,
-  LTE_SRB_ToAddModList_t  *const srb2add_list_pP,
-  LTE_DRB_ToAddModList_t  *const drb2add_list_pP,
-  LTE_DRB_ToReleaseList_t *const drb2release_list_pP,
-  const uint8_t                   security_modeP,
-  uint8_t                  *const kRRCenc_pP,
-  uint8_t                  *const kRRCint_pP,
-  uint8_t                  *const kUPenc_pP,
-  LTE_PMCH_InfoList_r9_t  *const pmch_InfoList_r9_pP,
-  rb_id_t                 *const defaultDRB
-)
+bool
+rrc_pdcp_config_asn1_req(const protocol_ctxt_t *const  ctxt_pP,
+                         LTE_SRB_ToAddModList_t  *const srb2add_list_pP,
+                         LTE_DRB_ToAddModList_t  *const drb2add_list_pP,
+                         LTE_DRB_ToReleaseList_t *const drb2release_list_pP,
+                         const uint8_t                   security_modeP,
+                         uint8_t                  *const kRRCenc_pP,
+                         uint8_t                  *const kRRCint_pP,
+                         uint8_t                  *const kUPenc_pP,
+                         LTE_PMCH_InfoList_r9_t  *const pmch_InfoList_r9_pP,
+                         rb_id_t                 *const defaultDRB)
 //-----------------------------------------------------------------------------
 {
   long int        lc_id          = 0;
@@ -1987,7 +1965,7 @@ rrc_pdcp_config_asn1_req (
       srb_toaddmod_p = srb2add_list_pP->list.array[cnt];
       rlc_type = RLC_MODE_AM;
       lc_id = srb_id;
-      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, srb_id, SRB_FLAG_YES);
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, srb_id, SRB_FLAG_YES);
       h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
       if (h_rc == HASH_TABLE_OK) {
@@ -2005,7 +1983,7 @@ rrc_pdcp_config_asn1_req (
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
                 key);
           free(pdcp_p);
-          return TRUE;
+          return true;
         } else {
           LOG_D(PDCP, PROTOCOL_PDCP_CTXT_FMT" CONFIG_ACTION_ADD key 0x%"PRIx64"\n",
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
@@ -2066,7 +2044,7 @@ rrc_pdcp_config_asn1_req (
             break;
 
           default:
-            DevParam(srb_toaddmod_p->rlc_Config->present, ctxt_pP->module_id, ctxt_pP->rnti);
+            DevParam(srb_toaddmod_p->rlc_Config->present, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
             break;
         }
       }
@@ -2093,8 +2071,8 @@ rrc_pdcp_config_asn1_req (
         continue;
       }
 
-      DevCheck4(drb_id < LTE_maxDRB, drb_id, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rnti);
-      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
+      DevCheck4(drb_id < LTE_maxDRB, drb_id, LTE_maxDRB, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
       h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
       if (h_rc == HASH_TABLE_OK) {
@@ -2109,7 +2087,7 @@ rrc_pdcp_config_asn1_req (
 
         // save the first configured DRB-ID as the default DRB-ID
         if ((defaultDRB != NULL) && (*defaultDRB == drb_id)) {
-          key_defaultDRB = PDCP_COLL_KEY_DEFAULT_DRB_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag);
+          key_defaultDRB = PDCP_COLL_KEY_DEFAULT_DRB_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag);
           h_defaultDRB_rc = hashtable_insert(pdcp_coll_p, key_defaultDRB, pdcp_p);
         } else {
           h_defaultDRB_rc = HASH_TABLE_OK; // do not trigger any error handling if this is not a default DRB
@@ -2120,13 +2098,13 @@ rrc_pdcp_config_asn1_req (
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
                 key_defaultDRB);
           free(pdcp_p);
-          return TRUE;
+          return true;
         } else if (h_rc != HASH_TABLE_OK) {
           LOG_E(PDCP, PROTOCOL_PDCP_CTXT_FMT" CONFIG_ACTION_ADD ADD key 0x%"PRIx64" FAILED\n",
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
                 key);
           free(pdcp_p);
-          return TRUE;
+          return true;
         } else {
           LOG_D(PDCP, PROTOCOL_PDCP_CTXT_FMT" CONFIG_ACTION_ADD ADD key 0x%"PRIx64"\n",
                 PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP, pdcp_p),
@@ -2215,7 +2193,7 @@ rrc_pdcp_config_asn1_req (
     for (cnt=0; cnt<drb2release_list_pP->list.count; cnt++) {
       pdrb_id_p = drb2release_list_pP->list.array[cnt];
       drb_id =  *pdrb_id_p;
-      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
+      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, drb_id, SRB_FLAG_NO);
       h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
       if (h_rc != HASH_TABLE_OK) {
@@ -2247,7 +2225,7 @@ rrc_pdcp_config_asn1_req (
 
       if ((defaultDRB != NULL) && (*defaultDRB == drb_id)) {
         // default DRB being removed. nevertheless this shouldn't happen as removing default DRB is not allowed in standard
-        key_defaultDRB = PDCP_COLL_KEY_DEFAULT_DRB_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag);
+        key_defaultDRB = PDCP_COLL_KEY_DEFAULT_DRB_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag);
         h_defaultDRB_rc = hashtable_get(pdcp_coll_p, key_defaultDRB, (void **)&pdcp_p);
 
         if (h_defaultDRB_rc == HASH_TABLE_OK) {
@@ -2280,7 +2258,7 @@ rrc_pdcp_config_asn1_req (
         if (ctxt_pP->enb_flag) {
           drb_id =  (mch_id * LTE_maxSessionPerPMCH ) + lc_id ;//+ (LTE_maxDRB + 3)*MAX_MOBILES_PER_ENB; // 1
 
-          if (pdcp_mbms_array_eNB[ctxt_pP->module_id][mch_id][lc_id].instanciated_instance == TRUE) {
+          if (pdcp_mbms_array_eNB[ctxt_pP->module_id][mch_id][lc_id].instanciated_instance == true) {
             action = CONFIG_ACTION_MBMS_MODIFY;
           } else {
             action = CONFIG_ACTION_MBMS_ADD;
@@ -2288,7 +2266,7 @@ rrc_pdcp_config_asn1_req (
         } else {
           drb_id =  (mch_id * LTE_maxSessionPerPMCH ) + lc_id; // + (LTE_maxDRB + 3); // 15
 
-          if (pdcp_mbms_array_ue[ctxt_pP->module_id][mch_id][lc_id].instanciated_instance == TRUE) {
+          if (pdcp_mbms_array_ue[ctxt_pP->module_id][mch_id][lc_id].instanciated_instance == true) {
             action = CONFIG_ACTION_MBMS_MODIFY;
           } else {
             action = CONFIG_ACTION_MBMS_ADD;
@@ -2326,23 +2304,22 @@ rrc_pdcp_config_asn1_req (
 }
 
 //-----------------------------------------------------------------------------
-boolean_t
-pdcp_config_req_asn1 (
-  const protocol_ctxt_t *const  ctxt_pP,
-  pdcp_t          *const        pdcp_pP,
-  const srb_flag_t              srb_flagP,
-  const rlc_mode_t              rlc_modeP,
-  const config_action_t         actionP,
-  const uint16_t                lc_idP,
-  const uint16_t                mch_idP,
-  const rb_id_t                 rb_idP,
-  const uint8_t                 rb_snP,
-  const uint8_t                 rb_reportP,
-  const uint16_t                header_compression_profileP,
-  const uint8_t                 security_modeP,
-  uint8_t         *const        kRRCenc_pP,
-  uint8_t         *const        kRRCint_pP,
-  uint8_t         *const        kUPenc_pP)
+bool
+pdcp_config_req_asn1(const protocol_ctxt_t *const  ctxt_pP,
+                     pdcp_t          *const        pdcp_pP,
+                     const srb_flag_t              srb_flagP,
+                     const rlc_mode_t              rlc_modeP,
+                     const config_action_t         actionP,
+                     const uint16_t                lc_idP,
+                     const uint16_t                mch_idP,
+                     const rb_id_t                 rb_idP,
+                     const uint8_t                 rb_snP,
+                     const uint8_t                 rb_reportP,
+                     const uint16_t                header_compression_profileP,
+                     const uint8_t                 security_modeP,
+                     uint8_t         *const        kRRCenc_pP,
+                     uint8_t         *const        kRRCint_pP,
+                     uint8_t         *const        kUPenc_pP)
 //-----------------------------------------------------------------------------
 {
 
@@ -2351,11 +2328,11 @@ pdcp_config_req_asn1 (
       DevAssert(pdcp_pP != NULL);
 
       if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
-        pdcp_pP->is_ue = FALSE;
+        pdcp_pP->is_ue = false;
         pdcp_add_UE(ctxt_pP);
 
-        //pdcp_eNB_UE_instance_to_rnti[ctxtP->module_id] = ctxt_pP->rnti;
-        //      pdcp_eNB_UE_instance_to_rnti[pdcp_eNB_UE_instance_to_rnti_index] = ctxt_pP->rnti;
+        // pdcp_eNB_UE_instance_to_rnti[ctxtP->module_id] = ctxt_pP->rntiMaybeUEid;
+        //       pdcp_eNB_UE_instance_to_rnti[pdcp_eNB_UE_instance_to_rnti_index] = ctxt_pP->rntiMaybeUEid;
         if( srb_flagP == SRB_FLAG_NO ) {
           for(int i = 0; i<MAX_MOBILES_PER_ENB; i++) {
             if(pdcp_eNB_UE_instance_to_rnti[pdcp_eNB_UE_instance_to_rnti_index] == NOT_A_RNTI) {
@@ -2365,17 +2342,17 @@ pdcp_config_req_asn1 (
             pdcp_eNB_UE_instance_to_rnti_index = (pdcp_eNB_UE_instance_to_rnti_index + 1) % MAX_MOBILES_PER_ENB;
           }
 
-          pdcp_eNB_UE_instance_to_rnti[pdcp_eNB_UE_instance_to_rnti_index] = ctxt_pP->rnti;
+          pdcp_eNB_UE_instance_to_rnti[pdcp_eNB_UE_instance_to_rnti_index] = ctxt_pP->rntiMaybeUEid;
           pdcp_eNB_UE_instance_to_rnti_index = (pdcp_eNB_UE_instance_to_rnti_index + 1) % MAX_MOBILES_PER_ENB;
         }
 
         //pdcp_eNB_UE_instance_to_rnti_index = (pdcp_eNB_UE_instance_to_rnti_index + 1) % MAX_MOBILES_PER_ENB;
       } else {
-        pdcp_pP->is_ue = TRUE;
-        pdcp_UE_UE_module_id_to_rnti[ctxt_pP->module_id] = ctxt_pP->rnti;
+        pdcp_pP->is_ue = true;
+        pdcp_UE_UE_module_id_to_rnti[ctxt_pP->module_id] = ctxt_pP->rntiMaybeUEid;
       }
 
-      pdcp_pP->is_srb                     = (srb_flagP == SRB_FLAG_YES) ? TRUE : FALSE;
+      pdcp_pP->is_srb                     = srb_flagP == SRB_FLAG_YES;
       pdcp_pP->lcid                       = lc_idP;
       pdcp_pP->rb_id                      = rb_idP;
       pdcp_pP->header_compression_profile = header_compression_profileP;
@@ -2498,10 +2475,10 @@ pdcp_config_req_asn1 (
             rb_idP);
 
       if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
-        pdcp_mbms_array_eNB[ctxt_pP->module_id][mch_idP][lc_idP].instanciated_instance = TRUE ;
+        pdcp_mbms_array_eNB[ctxt_pP->module_id][mch_idP][lc_idP].instanciated_instance = true ;
         pdcp_mbms_array_eNB[ctxt_pP->module_id][mch_idP][lc_idP].rb_id = rb_idP;
       } else {
-        pdcp_mbms_array_ue[ctxt_pP->module_id][mch_idP][lc_idP].instanciated_instance = TRUE ;
+        pdcp_mbms_array_ue[ctxt_pP->module_id][mch_idP][lc_idP].instanciated_instance = true ;
         pdcp_mbms_array_ue[ctxt_pP->module_id][mch_idP][lc_idP].rb_id = rb_idP;
       }
 
@@ -2520,7 +2497,7 @@ pdcp_config_req_asn1 (
       break;
 
     default:
-      DevParam(actionP, ctxt_pP->module_id, ctxt_pP->rnti);
+      DevParam(actionP, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
       break;
   }
 
@@ -2579,7 +2556,7 @@ void rrc_pdcp_config_req (
 //-----------------------------------------------------------------------------
 {
   pdcp_t *pdcp_p = NULL;
-  hash_key_t       key           = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, rb_idP, srb_flagP);
+  hash_key_t key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, rb_idP, srb_flagP);
   hashtable_rc_t   h_rc;
   h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
@@ -2593,10 +2570,10 @@ void rrc_pdcp_config_req (
         pdcp_p->rb_id  = rb_idP;
 
         if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
-          pdcp_p->is_ue = TRUE;
-          pdcp_UE_UE_module_id_to_rnti[ctxt_pP->module_id] = ctxt_pP->rnti;
+          pdcp_p->is_ue = true;
+          pdcp_UE_UE_module_id_to_rnti[ctxt_pP->module_id] = ctxt_pP->rntiMaybeUEid;
         } else {
-          pdcp_p->is_ue = FALSE;
+          pdcp_p->is_ue = false;
         }
 
         pdcp_p->next_pdcp_tx_sn = 0;
@@ -2652,7 +2629,7 @@ void rrc_pdcp_config_req (
         break;
 
       default:
-        DevParam(actionP, ctxt_pP->module_id, ctxt_pP->rnti);
+        DevParam(actionP, ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
         break;
     }
   } else {
@@ -2670,10 +2647,10 @@ void rrc_pdcp_config_req (
           pdcp_p->rb_id  = rb_idP;
 
           if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
-            pdcp_p->is_ue = TRUE;
-            pdcp_UE_UE_module_id_to_rnti[ctxt_pP->module_id] = ctxt_pP->rnti;
+            pdcp_p->is_ue = true;
+            pdcp_UE_UE_module_id_to_rnti[ctxt_pP->module_id] = ctxt_pP->rntiMaybeUEid;
           } else {
-            pdcp_p->is_ue = FALSE;
+            pdcp_p->is_ue = false;
           }
 
           pdcp_p->next_pdcp_tx_sn = 0;

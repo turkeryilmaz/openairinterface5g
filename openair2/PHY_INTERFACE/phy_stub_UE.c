@@ -27,7 +27,7 @@
 #include "openair2/PHY_INTERFACE/phy_stub_UE.h"
 #include "openair2/ENB_APP/L1_paramdef.h"
 #include "openair2/ENB_APP/enb_paramdef.h"
-#include "targets/ARCH/ETHERNET/USERSPACE/LIB/if_defs.h"
+#include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
 #include "common/config/config_load_configmodule.h"
 #include "common/config/config_userapi.h"
 #include <arpa/inet.h>
@@ -2024,7 +2024,7 @@ static int get_mcs_from_sinr(float sinr)
 
 static int get_cqi_from_mcs(void)
 {
-  static const int mcs_to_cqi[] = {0, 1, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15};
+  static const int mcs_to_cqi[] = {0, 1, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15};
   assert(NUM_ELEMENTS(mcs_to_cqi) == NUM_MCS);
   int sf = 0;
   while(sf < NUM_NFAPI_SUBFRAME)

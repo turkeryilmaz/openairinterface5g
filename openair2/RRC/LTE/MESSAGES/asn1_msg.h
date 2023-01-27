@@ -28,6 +28,9 @@
 * \email: raymond.knopp@eurecom.fr and  navid.nikaein@eurecom.fr
 */
 
+#ifndef __RRC_LTE_MESSAGES_ASN1_MSG__H__
+#define __RRC_LTE_MESSAGES_ASN1_MSG__H__
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h> /* for atoi(3) */
@@ -52,14 +55,6 @@
  * WARNING: No sensible errno value is returned.
  */
 int xer_sprint(char *string, size_t string_size, struct asn_TYPE_descriptor_s *td, void *sptr);
-
-#define asn1cCallocOne(VaR, VaLue) \
-  VaR = calloc(1,sizeof(*VaR)); *VaR=VaLue;
-#define asn1cCalloc(VaR, lOcPtr) \
-  typeof(VaR) lOcPtr = VaR = calloc(1,sizeof(*VaR));
-#define asn1cSequenceAdd(VaR, TyPe, lOcPtr) \
-  TyPe *lOcPtr= calloc(1,sizeof(TyPe)); \
-  ASN_SEQUENCE_ADD(&VaR,lOcPtr);
 
 uint16_t get_adjacent_cell_id(uint8_t Mod_id,uint8_t index);
 

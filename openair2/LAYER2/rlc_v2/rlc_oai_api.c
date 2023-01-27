@@ -24,7 +24,7 @@
 #include "pdcp.h"
 
 /* from new rlc module */
-#include "asn1_utils.h"
+#include "rlc_asn1_utils.h"
 #include "rlc_ue_manager.h"
 #include "rlc_entity.h"
 
@@ -54,6 +54,7 @@ void mac_rlc_data_ind     (
   rlc_entity_t *rb;
   int rnti;
   int channel_id;
+
   lte_rlc_pkt_info_t rlc_info;
   if (enb_flagP == 1 && module_idP != 0) {
     LOG_E(RLC, "%s:%d:%s: fatal, module_id must be 0 for eNB\n",
@@ -83,6 +84,7 @@ void mac_rlc_data_ind     (
     rnti = rntiP;
     channel_id = channel_idP;
   }
+
   rlc_info.channelId = channel_id - 1;
   rlc_info.ueid = rnti;
   if (channel_id > 2)
@@ -129,10 +131,10 @@ tbs_size_t mac_rlc_data_req(
   rlc_ue_t *ue;
   rlc_entity_t *rb;
   int maxsize;
+
   lte_rlc_pkt_info_t rlc_pkt;
   rlc_pkt.direction                 = 1 /* Downlink */;
   rlc_pkt.ueid                      = rntiP;
-
   rlc_manager_lock(rlc_ue_manager);
   ue = rlc_manager_get_ue(rlc_ue_manager, rntiP);
 
@@ -149,6 +151,7 @@ tbs_size_t mac_rlc_data_req(
       rb = NULL;
   }
 
+
   if (rb != NULL) {
     rb->set_time(rb, rlc_current_time);
     maxsize = tb_sizeP;
@@ -158,6 +161,7 @@ tbs_size_t mac_rlc_data_req(
     exit(1);
     ret = 0;
   }
+
   switch ((channel_idP))
   {
     case 1 ... 3:
@@ -313,7 +317,7 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
                                   const uint32_t *const destinationL2Id
                                  )
 {
-  int rnti = ctxt_pP->rnti;
+  int rnti = ctxt_pP->rntiMaybeUEid;
   rlc_ue_t *ue;
   rlc_entity_t *rb;
 
@@ -325,8 +329,7 @@ rlc_op_status_t rlc_data_req     (const protocol_ctxt_t *const ctxt_pP,
         MBMS_flagP);
 
   if (ctxt_pP->enb_flag)
-    T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id),
-      T_INT(ctxt_pP->rnti), T_INT(rb_idP), T_INT(sdu_sizeP));
+    T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->rntiMaybeUEid), T_INT(rb_idP), T_INT(sdu_sizeP));
 
   rlc_manager_lock(rlc_ue_manager);
   ue = rlc_manager_get_ue(rlc_ue_manager, rnti);
@@ -439,9 +442,10 @@ rb_found:
 
   /* used fields? */
   ctx.module_id = ue->module_id;
-  ctx.rnti = ue->rnti;
+  ctx.rntiMaybeUEid = ue->rnti;
+
   ctx.frame = RC.ss.mac_rlc_data_ind_frame; /* Populating the frame received from Lower layer */
-   ctx.subframe = RC.ss.mac_rlc_data_ind_subframe; /* Populating the subframe received from Lower layer */
+  ctx.subframe = RC.ss.mac_rlc_data_ind_subframe; /* Populating the subframe received from Lower layer */
   is_enb = rlc_manager_get_enb_flag(rlc_ue_manager);
   ctx.enb_flag = is_enb;
 
@@ -451,7 +455,7 @@ rb_found:
       T_INT(ue->rnti), T_INT(rb_id), T_INT(size));
 
     const ngran_node_t type = RC.rrc[0 /*ctxt_pP->module_id*/]->node_type;
-    AssertFatal(type != ngran_eNB_CU && type != ngran_ng_eNB_CU && type != ngran_gNB_CU,
+    AssertFatal(!NODE_IS_CU(type),
                 "Can't be CU, bad node type %d\n", type);
 
     if (NODE_IS_DU(type)) {
@@ -467,14 +471,14 @@ rb_found:
       }  else {
 	// Fixme: very dirty workaround of incomplete F1-U implementation
 	instance_t DUuniqInstance=0;
-	MessageDef *msg = itti_alloc_new_message(TASK_RLC_ENB, 0, GTPV1U_ENB_TUNNEL_DATA_REQ);
-	gtpv1u_enb_tunnel_data_req_t *req=&GTPV1U_ENB_TUNNEL_DATA_REQ(msg);
-	req->buffer=malloc(size);
+	MessageDef *msg = itti_alloc_new_message_sized(TASK_RLC_ENB, 0, GTPV1U_TUNNEL_DATA_REQ, sizeof(gtpv1u_tunnel_data_req_t) + size);
+	gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(msg);
+	req->buffer=(uint8_t*)(req+1);
 	memcpy(req->buffer,buf,size);
 	req->length=size;
 	req->offset=0;
-	req->rnti=ue->rnti;
-	req->rab_id=rb_id+4;
+	req->ue_id=ue->rnti;
+	req->bearer_id=rb_id+4;
 	LOG_D(RLC, "Received uplink user-plane traffic at RLC-DU to be sent to the CU, size %d \n", size);
 	itti_send_msg_to_task(TASK_GTPV1_U, DUuniqInstance, msg);      
 	return;
@@ -558,6 +562,7 @@ static void max_retx_reached(void *_ue, rlc_entity_t *entity)
   int rb_id;
   MessageDef *msg;
   int is_enb;
+
   /* is it SRB? */
   for (i = 0; i < 2; i++) {
     if (entity == ue->srb[i]) {
@@ -869,7 +874,7 @@ rlc_op_status_t rrc_rlc_config_asn1_req (const protocol_ctxt_t   * const ctxt_pP
     const uint32_t destinationL2Id
                                         )
 {
-  int rnti = ctxt_pP->rnti;
+  int rnti = ctxt_pP->rntiMaybeUEid;
   int module_id = ctxt_pP->module_id;
   int i;
   int j;
@@ -1014,8 +1019,8 @@ rlc_op_status_t rrc_rlc_config_req   (
     exit(1);
   }
   rlc_manager_lock(rlc_ue_manager);
-  LOG_D(RLC, "%s:%d:%s: remove rb %d (is_srb %d) for UE %d\n", __FILE__, __LINE__, __FUNCTION__, (int)rb_idP, srb_flagP, ctxt_pP->rnti);
-  ue = rlc_manager_get_ue(rlc_ue_manager, ctxt_pP->rnti);
+  LOG_D(RLC, "%s:%d:%s: remove rb %d (is_srb %d) for UE %ld\n", __FILE__, __LINE__, __FUNCTION__, (int)rb_idP, srb_flagP, ctxt_pP->rntiMaybeUEid);
+  ue = rlc_manager_get_ue(rlc_ue_manager, ctxt_pP->rntiMaybeUEid);
   if (srb_flagP) {
     if (ue->srb[rb_idP-1] != NULL) {
       ue->srb[rb_idP-1]->delete(ue->srb[rb_idP-1]);
@@ -1038,7 +1043,7 @@ rlc_op_status_t rrc_rlc_config_req   (
       if (ue->drb[i] != NULL)
         break;
     if (i == 5)
-      rlc_manager_remove_ue(rlc_ue_manager, ctxt_pP->rnti);
+      rlc_manager_remove_ue(rlc_ue_manager, ctxt_pP->rntiMaybeUEid);
   }
   rlc_manager_unlock(rlc_ue_manager);
   return RLC_OP_STATUS_OK;
@@ -1051,9 +1056,9 @@ void rrc_rlc_register_rrc (rrc_data_ind_cb_t rrc_data_indP, rrc_data_conf_cb_t r
 
 rlc_op_status_t rrc_rlc_remove_ue (const protocol_ctxt_t* const x)
 {
-  LOG_D(RLC, "%s:%d:%s: remove UE %d\n", __FILE__, __LINE__, __FUNCTION__, x->rnti);
+  LOG_D(RLC, "%s:%d:%s: remove UE %ld\n", __FILE__, __LINE__, __FUNCTION__, x->rntiMaybeUEid);
   rlc_manager_lock(rlc_ue_manager);
-  rlc_manager_remove_ue(rlc_ue_manager, x->rnti);
+  rlc_manager_remove_ue(rlc_ue_manager, x->rntiMaybeUEid);
   rlc_manager_unlock(rlc_ue_manager);
 
   return RLC_OP_STATUS_OK;
@@ -1099,4 +1104,16 @@ void du_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
 		confirmP,
 		sdu_sizeP,
 		sdu_pP, NULL, NULL);
+}
+
+/* HACK to be removed: nr_rlc_get_available_tx_space is needed by
+ * openair3/ocp-gtpu/gtp_itf.cpp which is compiled in lte-softmodem
+ * so let's put a dummy nr_rlc_get_available_tx_space here
+ */
+int nr_rlc_get_available_tx_space(
+  const rnti_t            rntiP,
+  const logical_chan_id_t channel_idP)
+{
+  abort();
+  return 0;
 }

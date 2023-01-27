@@ -46,10 +46,10 @@
 #include "LAYER2/MAC/mac_proto.h"
 #include "PHY/phy_extern.h"
 #include "PHY/INIT/phy_init.h"
-#include "targets/ARCH/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
+#include "radio/ETHERNET/USERSPACE/LIB/ethernet_lib.h"
 #include "nfapi_vnf.h"
 #include "nfapi_pnf.h"
-#include "targets/RT/USER/lte-softmodem.h"
+#include "executables/lte-softmodem.h"
 #include "L1_paramdef.h"
 #include "MACRLC_paramdef.h"
 #include "common/config/config_userapi.h"
@@ -64,45 +64,6 @@ extern char *parallel_config;
 extern char *worker_config;
 
 RAN_CONTEXT_t RC;
-
-void RCconfig_flexran() {
-  /* get number of eNBs */
-  paramdef_t ENBSParams[] = ENBSPARAMS_DESC;
-  config_get(ENBSParams, sizeof(ENBSParams)/sizeof(paramdef_t), NULL);
-  uint16_t num_enbs = ENBSParams[ENB_ACTIVE_ENBS_IDX].numelt;
-  paramdef_t flexranParams[] = FLEXRANPARAMS_DESC;
-  config_get(flexranParams, sizeof(flexranParams)/sizeof(paramdef_t), CONFIG_STRING_NETWORK_CONTROLLER_CONFIG);
-
-  if (!RC.flexran) {
-    RC.flexran = calloc(num_enbs, sizeof(flexran_agent_info_t *));
-    AssertFatal(RC.flexran,
-                "can't ALLOCATE %zu Bytes for %d flexran agent info with size %zu\n",
-                num_enbs * sizeof(flexran_agent_info_t *),
-                num_enbs, sizeof(flexran_agent_info_t *));
-  }
-
-  for (uint16_t i = 0; i < num_enbs; i++) {
-    RC.flexran[i] = calloc(1, sizeof(flexran_agent_info_t));
-    AssertFatal(RC.flexran[i],
-                "can't ALLOCATE %zu Bytes for flexran agent info (iteration %d/%d)\n",
-                sizeof(flexran_agent_info_t), i + 1, num_enbs);
-    /* if config says "yes", enable Agent, in all other cases it's like "no" */
-    RC.flexran[i]->enabled          = strcasecmp(*(flexranParams[FLEXRAN_ENABLED].strptr), "yes") == 0;
-
-    /* if not enabled, simply skip the rest, it is not needed anyway */
-    if (!RC.flexran[i]->enabled)
-      continue;
-
-    RC.flexran[i]->interface_name   = strdup(*(flexranParams[FLEXRAN_INTERFACE_NAME_IDX].strptr));
-    //inet_ntop(AF_INET, &(enb_properties->properties[mod_id]->flexran_agent_ipv4_address), in_ip, INET_ADDRSTRLEN);
-    RC.flexran[i]->remote_ipv4_addr = strdup(*(flexranParams[FLEXRAN_IPV4_ADDRESS_IDX].strptr));
-    RC.flexran[i]->remote_port      = *(flexranParams[FLEXRAN_PORT_IDX].uptr);
-    RC.flexran[i]->cache_name       = strdup(*(flexranParams[FLEXRAN_CACHE_IDX].strptr));
-    RC.flexran[i]->node_ctrl_state  = strcasecmp(*(flexranParams[FLEXRAN_AWAIT_RECONF_IDX].strptr), "yes") == 0 ? ENB_WAIT : ENB_NORMAL_OPERATION;
-    RC.flexran[i]->mod_id  = i;
-  }
-}
-
 
 void RCconfig_L1(void) {
   int               i,j;
@@ -342,7 +303,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
   srb1_params_t srb1_params;
   memset((void *)&srb1_params,0,sizeof(srb1_params_t));
   paramdef_t SRB1Params[] = SRB1PARAMS_DESC(srb1_params);
-  paramdef_t SLParams[]              = CCPARAMS_SIDELINK_DESC(SLconfig);
+  paramdef_t SLParams[]   = CCPARAMS_SIDELINK_DESC(SLconfig);
 
   /* map parameter checking array instances to parameter definition array instances */
   for (int I=0; I< ( sizeof(CCsParams)/ sizeof(paramdef_t)  ) ; I++) {
@@ -437,6 +398,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
 
         // In the configuration file it is in seconds. For RRC it has to be in milliseconds
         RRC_CONFIGURATION_REQ (msg_p).rrc_inactivity_timer_thres = (*ENBParamList.paramarray[i][ENB_RRC_INACTIVITY_THRES_IDX].uptr) * 1000;
+        RRC_CONFIGURATION_REQ (msg_p).cell_identity = enb_id;
         for(int M=0; M < MAX_NUM_CCs; M++) {
           RRC_CONFIGURATION_REQ (msg_p).tac[M] = *ENBParamList.paramarray[i][ENB_TRACKING_AREA_CODE_IDX].uptr;
           RRC_CONFIGURATION_REQ (msg_p).cellBarred[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
@@ -616,9 +578,9 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                              "Failed to parse eNB configuration file %s, enb %u define %s: ENABLE,DISABLE!\n",
                              RC.config_file_name, i, ENB_CONFIG_STRING_PRACH_HIGH_SPEED);
               else if (strcmp(ccparams_lte.prach_high_speed, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].prach_high_speed = TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].prach_high_speed = true;
               } else if (strcmp(ccparams_lte.prach_high_speed, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].prach_high_speed = FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].prach_high_speed = false;
               } else
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for prach_config choice: ENABLE,DISABLE !\n",
@@ -722,9 +684,9 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                              "Failed to parse eNB configuration file %s, enb %u define %s: ENABLE,DISABLE!\n",
                              RC.config_file_name, i, ENB_CONFIG_STRING_PUSCH_ENABLE64QAM);
               else if (strcmp(ccparams_lte.pusch_enable64QAM, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_enable64QAM = TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_enable64QAM = true;
               } else if (strcmp(ccparams_lte.pusch_enable64QAM, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_enable64QAM = FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_enable64QAM = false;
               } else
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for pusch_enable64QAM choice: ENABLE,DISABLE!\n",
@@ -735,9 +697,9 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                              "Failed to parse eNB configuration file %s, enb %u define %s: ENABLE,DISABLE!\n",
                              RC.config_file_name, i, ENB_CONFIG_STRING_PUSCH_GROUP_HOPPING_EN);
               else if (strcmp(ccparams_lte.pusch_groupHoppingEnabled, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_groupHoppingEnabled = TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_groupHoppingEnabled = true;
               } else if (strcmp(ccparams_lte.pusch_groupHoppingEnabled, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_groupHoppingEnabled= FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_groupHoppingEnabled= false;
               } else
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for pusch_groupHoppingEnabled choice: ENABLE,DISABLE!\n",
@@ -756,9 +718,9 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                              "Failed to parse eNB configuration file %s, enb %u define %s: ENABLE,DISABLE!\n",
                              RC.config_file_name, i, ENB_CONFIG_STRING_PUSCH_SEQUENCE_HOPPING_EN);
               else if (strcmp(ccparams_lte.pusch_sequenceHoppingEnabled, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_sequenceHoppingEnabled = TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_sequenceHoppingEnabled = true;
               } else if (strcmp(ccparams_lte.pusch_sequenceHoppingEnabled, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_sequenceHoppingEnabled = FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].pusch_sequenceHoppingEnabled = false;
               } else
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for pusch_sequenceHoppingEnabled choice: ENABLE,DISABLE!\n",
@@ -799,15 +761,15 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                      RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].phich_duration,ccparams_lte.phich_duration);
 
               if (strcmp(ccparams_lte.srs_enable, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_enable= TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_enable= true;
               } else if (strcmp(ccparams_lte.srs_enable, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_enable= FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_enable= false;
               } else
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for srs_BandwidthConfig choice: ENABLE,DISABLE !\n",
                              RC.config_file_name, i, ccparams_lte.srs_enable);
 
-              if (RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_enable== TRUE) {
+              if (RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_enable== true) {
                 RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_BandwidthConfig= ccparams_lte.srs_BandwidthConfig;
 
                 if ((ccparams_lte.srs_BandwidthConfig < 0) ||
@@ -824,18 +786,18 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                                RC.config_file_name, i, ccparams_lte.srs_SubframeConfig);
 
                 if (strcmp(ccparams_lte.srs_ackNackST, "ENABLE") == 0) {
-                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_ackNackST= TRUE;
+                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_ackNackST= true;
                 } else if (strcmp(ccparams_lte.srs_ackNackST, "DISABLE") == 0) {
-                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_ackNackST= FALSE;
+                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_ackNackST= false;
                 } else
                   AssertFatal (0,
                                "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for srs_BandwidthConfig choice: ENABLE,DISABLE !\n",
                                RC.config_file_name, i, ccparams_lte.srs_ackNackST);
 
                 if (strcmp(ccparams_lte.srs_MaxUpPts, "ENABLE") == 0) {
-                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_MaxUpPts= TRUE;
+                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_MaxUpPts= true;
                 } else if (strcmp(ccparams_lte.srs_MaxUpPts, "DISABLE") == 0) {
-                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_MaxUpPts= FALSE;
+                  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].srs_MaxUpPts= false;
                 } else
                   AssertFatal (0,
                                "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for srs_MaxUpPts choice: ENABLE,DISABLE !\n",
@@ -954,7 +916,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                              RC.config_file_name, i, ccparams_lte.rach_numberOfRA_Preambles);
 
               if (strcmp(ccparams_lte.rach_preamblesGroupAConfig, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].rach_preamblesGroupAConfig= TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].rach_preamblesGroupAConfig= true;
                 RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].rach_sizeOfRA_PreamblesGroupA= (ccparams_lte.rach_sizeOfRA_PreamblesGroupA/4)-1;
 
                 if ((ccparams_lte.rach_numberOfRA_Preambles <4) ||
@@ -1009,7 +971,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                                "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for rach_messagePowerOffsetGroupB choice: minusinfinity,dB0,dB5,dB8,dB10,dB12,dB15,dB18!\n",
                                RC.config_file_name, i, ccparams_lte.rach_messagePowerOffsetGroupB);
               } else if (strcmp(ccparams_lte.rach_preamblesGroupAConfig, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].rach_preamblesGroupAConfig= FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].rach_preamblesGroupAConfig= false;
               } else
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for rach_preamblesGroupAConfig choice: ENABLE,DISABLE !\n",
@@ -1287,9 +1249,9 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
                              "Failed to parse eNB configuration file %s, enb %u define %s: TRUE,FALSE!\n",
                              RC.config_file_name, i, ENB_CONFIG_STRING_MBMS_DEDICATED_SERVING_CELL);
               else if (strcmp(ccparams_lte.mbms_dedicated_serving_cell, "ENABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].mbms_dedicated_serving_cell = TRUE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].mbms_dedicated_serving_cell = true;
               } else  if (strcmp(ccparams_lte.mbms_dedicated_serving_cell, "DISABLE") == 0) {
-                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].mbms_dedicated_serving_cell  = FALSE;
+                RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig[j].mbms_dedicated_serving_cell  = false;
               } else {
                 AssertFatal (0,
                              "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for mbms_dedicated_serving_cell choice: TRUE or FALSE !\n",
@@ -2893,9 +2855,9 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
             X2AP_REGISTER_ENB_REQ (msg_p).enb_port_for_X2C = (uint32_t)*(NETParams[ENB_PORT_FOR_X2C_IDX].uptr);
 
             if ((NETParams[ENB_IPV4_ADDR_FOR_X2C_IDX].strptr == NULL) || (X2AP_REGISTER_ENB_REQ (msg_p).enb_port_for_X2C == 0)) {
-              LOG_E(RRC,"Add eNB IPv4 address and/or port for X2C in the CONF file!\n");
-              exit(1);
-            }
+             LOG_E(RRC,"Add eNB IPv4 address and/or port for X2C in the CONF file!\n");
+             exit(1);
+           }
 
             cidr = *(NETParams[ENB_IPV4_ADDR_FOR_X2C_IDX].strptr);
             address = strtok(cidr, "/");
@@ -3148,43 +3110,25 @@ void configure_du_mac(int inst) {
   eNB_RRC_INST *rrc = RC.rrc[inst];
   rrc_eNB_carrier_data_t *carrier = &rrc->carrier[0];
   LOG_I(ENB_APP,"Configuring MAC/L1 %d, carrier->sib2 %p\n",inst,&carrier->sib2->radioResourceConfigCommon);
-  rrc_mac_config_req_eNB(inst, 0,
-                         carrier->physCellId,
-                         carrier->p_eNB,
-                         carrier->Ncp,
-                         carrier->sib1->freqBandIndicator,
-                         carrier->dl_CarrierFreq,
-                         carrier->pbch_repetition,
-                         0, // rnti
-                         (LTE_BCCH_BCH_Message_t *) &carrier->mib,
-                         (LTE_RadioResourceConfigCommonSIB_t *) &carrier->sib2->radioResourceConfigCommon,
-                         (LTE_RadioResourceConfigCommonSIB_t *) &carrier->sib2_BR->radioResourceConfigCommon,
-                         (struct LTE_PhysicalConfigDedicated *)NULL,
-                         (LTE_SCellToAddMod_r10_t *)NULL,
-                         //(struct PhysicalConfigDedicatedSCell_r10 *)NULL,
-                         (LTE_MeasObjectToAddMod_t **) NULL,
-                         (LTE_MAC_MainConfig_t *) NULL, 0,
-                         (struct LTE_LogicalChannelConfig *)NULL,
-                         (LTE_MeasGapConfig_t *) NULL,
-                         carrier->sib1->tdd_Config,
-                         NULL,
-                         &carrier->sib1->schedulingInfoList,
-                         carrier->ul_CarrierFreq,
-                         carrier->sib2->freqInfo.ul_Bandwidth,
-                         &carrier->sib2->freqInfo.additionalSpectrumEmission,
-                         (LTE_MBSFN_SubframeConfigList_t *) carrier->sib2->mbsfn_SubframeConfigList,
-                         carrier->MBMS_flag,
-                         (LTE_MBSFN_AreaInfoList_r9_t *) & carrier->sib13->mbsfn_AreaInfoList_r9,
-                         (LTE_PMCH_InfoList_r9_t *) NULL,
-                         NULL,
-                         0,
-                         (LTE_BCCH_DL_SCH_Message_MBMS_t *) NULL,
-                         (LTE_SchedulingInfo_MBMS_r14_t *) NULL,
-                         (struct LTE_NonMBSFN_SubframeConfig_r14 *) NULL,
-                         (LTE_SystemInformationBlockType1_MBMS_r14_t *) NULL,
-                         (LTE_MBSFN_AreaInfoList_r9_t *) NULL,
-			 (LTE_MBSFNAreaConfiguration_r9_t*) NULL
-                        );
+  rrc_mac_config_req_eNB_t tmp = {0};
+  tmp.physCellId = carrier->physCellId;
+  tmp.p_eNB = carrier->p_eNB;
+  tmp.Ncp = carrier->Ncp;
+  tmp.eutra_band = carrier->sib1->freqBandIndicator;
+  tmp.dl_CarrierFreq = carrier->dl_CarrierFreq;
+  tmp.pbch_repetition = carrier->pbch_repetition;
+  tmp.mib = &carrier->mib;
+  tmp.radioResourceConfigCommon = &carrier->sib2->radioResourceConfigCommon;
+  tmp.LTE_radioResourceConfigCommon_BR = &carrier->sib2_BR->radioResourceConfigCommon;
+  tmp.tdd_Config = carrier->sib1->tdd_Config;
+  tmp.schedulingInfoList = &carrier->sib1->schedulingInfoList;
+  tmp.ul_CarrierFreq = carrier->ul_CarrierFreq;
+  tmp.ul_Bandwidth = carrier->sib2->freqInfo.ul_Bandwidth;
+  tmp.additionalSpectrumEmission = &carrier->sib2->freqInfo.additionalSpectrumEmission;
+  tmp.mbsfn_SubframeConfigList = carrier->sib2->mbsfn_SubframeConfigList;
+  tmp.MBMS_Flag = carrier->MBMS_flag;
+  tmp.mbsfn_AreaInfoList = &carrier->sib13->mbsfn_AreaInfoList_r9;
+  rrc_mac_config_req_eNB(inst, &tmp);
 }
 
 void handle_f1ap_setup_resp(f1ap_setup_resp_t *resp) {
@@ -3254,6 +3198,4 @@ void read_config_and_init(void) {
     memset((void *)RC.rrc[enb_id], 0, sizeof(eNB_RRC_INST));
     RCconfig_RRC(enb_id, RC.rrc[enb_id],macrlc_has_f1[enb_id]);
   }
-
-  RCconfig_flexran();
 }

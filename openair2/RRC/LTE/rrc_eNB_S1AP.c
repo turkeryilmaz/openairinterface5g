@@ -41,7 +41,7 @@
 #include "s1ap_eNB_defs.h"
 #include "s1ap_eNB_management_procedures.h"
 #include "s1ap_eNB_ue_context.h"
-#include "asn1_conversions.h"
+#include "oai_asn1.h"
 #include "intertask_interface.h"
 #include "pdcp.h"
 #include "pdcp_primitives.h"
@@ -50,13 +50,12 @@
 
 #include "LTE_UERadioAccessCapabilityInformation.h"
 
-#include "gtpv1u_eNB_task.h"
+#include "openair3/ocp-gtpu/gtp_itf.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "RRC/LTE/rrc_eNB_GTPV1U.h"
 
 #include "TLVDecoder.h"
 #include "S1AP_NAS-PDU.h"
-#include "flexran_agent_common_internal.h"
 #include "executables/softmodem-common.h"
 extern RAN_CONTEXT_t RC;
 
@@ -402,15 +401,13 @@ static e_LTE_SecurityAlgorithmConfig__integrityProtAlgorithm rrc_eNB_select_inte
  *\param mod_id Instance ID of eNB.
  *\param ue_index Instance ID of UE in the eNB.
  *\param security_capabilities The security capabilities received from S1AP.
- *\return TRUE if at least one algorithm has been changed else FALSE.
+ *\return true if at least one algorithm has been changed else false.
  */
 int
-rrc_eNB_process_security(
-  const protocol_ctxt_t *const ctxt_pP,
-  rrc_eNB_ue_context_t *const ue_context_pP,
-  security_capabilities_t *security_capabilities_pP
-) {
-  boolean_t                                             changed = FALSE;
+rrc_eNB_process_security(const protocol_ctxt_t *const ctxt_pP,
+                         rrc_eNB_ue_context_t *const ue_context_pP,
+                         security_capabilities_t *security_capabilities_pP) {
+  bool                                                  changed = false;
   LTE_CipheringAlgorithm_r12_t                          cipheringAlgorithm;
   e_LTE_SecurityAlgorithmConfig__integrityProtAlgorithm integrityProtAlgorithm;
   /* Save security parameters */
@@ -428,14 +425,14 @@ rrc_eNB_process_security(
 
   if (ue_context_pP->ue_context.ciphering_algorithm != cipheringAlgorithm) {
     ue_context_pP->ue_context.ciphering_algorithm = cipheringAlgorithm;
-    changed = TRUE;
+    changed = true;
   }
 
   integrityProtAlgorithm = rrc_eNB_select_integrity (ue_context_pP->ue_context.security_capabilities.integrity_algorithms);
 
   if (ue_context_pP->ue_context.integrity_algorithm != integrityProtAlgorithm) {
     ue_context_pP->ue_context.integrity_algorithm = integrityProtAlgorithm;
-    changed = TRUE;
+    changed = true;
   }
 
   LOG_I (RRC, "[eNB %d][UE %x] Selected security algorithms (%p): %lx, %x, %s\n",
@@ -523,7 +520,7 @@ rrc_pdcp_config_security(
     }
   }
 
-  key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rnti, ctxt_pP->enb_flag, DCCH, SRB_FLAG_YES);
+  key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH, SRB_FLAG_YES);
   h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
 
   if (h_rc == HASH_TABLE_OK) {
@@ -532,7 +529,7 @@ rrc_pdcp_config_security(
       pdcp_p,
       DCCH,
       DCCH+2,
-      (send_security_mode_command == TRUE)  ?
+      (send_security_mode_command == true)  ?
       0 | (ue_context_pP->ue_context.integrity_algorithm << 4) :
       (ue_context_pP->ue_context.ciphering_algorithm )         |
       (ue_context_pP->ue_context.integrity_algorithm << 4),
@@ -694,7 +691,7 @@ rrc_eNB_send_S1AP_NAS_FIRST_REQ(
     rrc_ue_s1ap_ids_p = malloc(sizeof(*rrc_ue_s1ap_ids_p));
     rrc_ue_s1ap_ids_p->ue_initial_id  = ue_context_pP->ue_context.ue_initial_id;
     rrc_ue_s1ap_ids_p->eNB_ue_s1ap_id = UE_INITIAL_ID_INVALID;
-    rrc_ue_s1ap_ids_p->ue_rnti        = ctxt_pP->rnti;
+    rrc_ue_s1ap_ids_p->ue_rnti = ctxt_pP->rntiMaybeUEid;
     h_rc = hashtable_insert(RC.rrc[ctxt_pP->module_id]->initial_id2_s1ap_ids,
                             (hash_key_t)ue_context_pP->ue_context.ue_initial_id,
                             rrc_ue_s1ap_ids_p);
@@ -960,15 +957,7 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
       ue_context_p,
       S1AP_INITIAL_CONTEXT_SETUP_REQ(msg_p).security_key);
     {
-      uint8_t send_security_mode_command = TRUE;
-#ifndef EXMIMO_IOT
-
-      if ((ue_context_p->ue_context.ciphering_algorithm == SecurityAlgorithmConfig__cipheringAlgorithm_eea0)
-          && (ue_context_p->ue_context.integrity_algorithm == INTEGRITY_ALGORITHM_NONE)) {
-        send_security_mode_command = FALSE;
-      }
-
-#endif
+      uint8_t send_security_mode_command = true;
       rrc_pdcp_config_security(
         &ctxt,
         ue_context_p,
@@ -978,7 +967,7 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
         rrc_eNB_generate_SecurityModeCommand (
           &ctxt,
           ue_context_p);
-        send_security_mode_command = FALSE;
+        send_security_mode_command = false;
         // apply ciphering after RRC security command mode
         rrc_pdcp_config_security(
           &ctxt,
@@ -1006,9 +995,7 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
     }
 
     
-    if ((RC.rrc[ctxt.module_id]->node_type == ngran_eNB_CU) ||
-	(RC.rrc[ctxt.module_id]->node_type == ngran_ng_eNB_CU) ||
-	(RC.rrc[ctxt.module_id]->node_type == ngran_gNB_CU) ){
+    if (NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
       struct eNB_RRC_INST_s *rrc= RC.rrc[0];
       MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
       f1ap_ue_context_setup_t *req=&F1AP_UE_CONTEXT_SETUP_REQ (message_p);
@@ -1414,19 +1401,19 @@ int rrc_eNB_process_S1AP_E_RAB_MODIFY_REQ(MessageDef *msg_p, const char *msg_nam
     /* Save e RAB information for later */
     {
       int j;
-      boolean_t is_treated[S1AP_MAX_E_RAB] = {FALSE};
+      bool is_treated[S1AP_MAX_E_RAB] = {false};
       uint8_t nb_of_failed_e_rabs = 0;
 
       // keep the previous bearer
       // the index for the rec
       for (i = 0; i < S1AP_E_RAB_MODIFY_REQ (msg_p).nb_e_rabs_tomodify; i++) {
-        if (is_treated[i] == TRUE) {
+        if (is_treated[i] == true) {
           // already treated
           continue;
         }
 
         for (j = i+1; j < S1AP_E_RAB_MODIFY_REQ (msg_p).nb_e_rabs_tomodify; j++) {
-          if (is_treated[j] == FALSE &&
+          if (is_treated[j] == false &&
               S1AP_E_RAB_MODIFY_REQ(msg_p).e_rab_modify_params[j].e_rab_id == S1AP_E_RAB_MODIFY_REQ(msg_p).e_rab_modify_params[i].e_rab_id) {
             // handle multiple E-RAB ID
             ue_context_p->ue_context.modify_e_rab[j].status = E_RAB_STATUS_NEW;
@@ -1434,12 +1421,12 @@ int rrc_eNB_process_S1AP_E_RAB_MODIFY_REQ(MessageDef *msg_p, const char *msg_nam
             ue_context_p->ue_context.modify_e_rab[j].cause = S1AP_CAUSE_RADIO_NETWORK;
             ue_context_p->ue_context.modify_e_rab[j].cause_value = 31;//S1ap_CauseRadioNetwork_multiple_E_RAB_ID_instances;
             nb_of_failed_e_rabs++;
-            is_treated[i] = TRUE;
-            is_treated[j] = TRUE;
+            is_treated[i] = true;
+            is_treated[j] = true;
           }
         }
 
-        if (is_treated[i] == TRUE) {
+        if (is_treated[i] == true) {
           // handle multiple E-RAB ID
           ue_context_p->ue_context.modify_e_rab[i].status = E_RAB_STATUS_NEW;
           ue_context_p->ue_context.modify_e_rab[i].param.e_rab_id = S1AP_E_RAB_MODIFY_REQ(msg_p).e_rab_modify_params[i].e_rab_id;
@@ -1456,7 +1443,7 @@ int rrc_eNB_process_S1AP_E_RAB_MODIFY_REQ(MessageDef *msg_p, const char *msg_nam
           ue_context_p->ue_context.modify_e_rab[i].cause = S1AP_CAUSE_NAS;
           ue_context_p->ue_context.modify_e_rab[i].cause_value = 3;//S1ap_CauseNas_unspecified;
           nb_of_failed_e_rabs++;
-          is_treated[i] = TRUE;
+          is_treated[i] = true;
           continue;
         }
 
@@ -1474,19 +1461,19 @@ int rrc_eNB_process_S1AP_E_RAB_MODIFY_REQ(MessageDef *msg_p, const char *msg_nam
             ue_context_p->ue_context.modify_e_rab[i].param.nas_pdu.buffer = S1AP_E_RAB_MODIFY_REQ(msg_p).e_rab_modify_params[i].nas_pdu.buffer;
             ue_context_p->ue_context.modify_e_rab[i].param.sgw_addr = ue_context_p->ue_context.e_rab[j].param.sgw_addr;
             ue_context_p->ue_context.modify_e_rab[i].param.gtp_teid = ue_context_p->ue_context.e_rab[j].param.gtp_teid;
-            is_treated[i] = TRUE;
+            is_treated[i] = true;
             break;
           }
         }
 
-        if (is_treated[i] == FALSE) {
+        if (is_treated[i] == false) {
           // handle Unknown E-RAB ID
           ue_context_p->ue_context.modify_e_rab[i].status = E_RAB_STATUS_NEW;
           ue_context_p->ue_context.modify_e_rab[i].param.e_rab_id = S1AP_E_RAB_MODIFY_REQ(msg_p).e_rab_modify_params[i].e_rab_id;
           ue_context_p->ue_context.modify_e_rab[i].cause = S1AP_CAUSE_RADIO_NETWORK;
           ue_context_p->ue_context.modify_e_rab[i].cause_value = 30;//S1ap_CauseRadioNetwork_unknown_E_RAB_ID;
           nb_of_failed_e_rabs++;
-          is_treated[i] = TRUE;
+          is_treated[i] = true;
         }
       }
 
@@ -1757,7 +1744,7 @@ int rrc_eNB_process_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance
           && RC.rrc[instance]->configuration.mnc[j] == S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc
           && RC.rrc[instance]->configuration.tac == S1AP_PAGING_IND(msg_p).tac[tai_size]) {
         for (uint8_t CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
-          lte_frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
+          frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
           /* get nB from configuration */
           /* get default DRX cycle from configuration */
           Tc = (uint8_t)RC.rrc[instance]->configuration.radioresourceconfig[CC_id].pcch_defaultPagingCycle;
@@ -1824,8 +1811,8 @@ int rrc_eNB_process_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance
           uint8_t i = 0;
 
           for (i = 0; i < MAX_MOBILES_PER_ENB; i++) {
-            if ((UE_PF_PO[CC_id][i].enable_flag == TRUE && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(S1AP_PAGING_IND(msg_p).ue_index_value))
-                || (UE_PF_PO[CC_id][i].enable_flag != TRUE)) {
+            if ((UE_PF_PO[CC_id][i].enable_flag == true && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(S1AP_PAGING_IND(msg_p).ue_index_value))
+                || (UE_PF_PO[CC_id][i].enable_flag != true)) {
               /* set T = min(Tc,Tue) */
               UE_PF_PO[CC_id][i].T = T;
               /* set UE_ID */
@@ -1845,12 +1832,12 @@ int rrc_eNB_process_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance
                 UE_PF_PO[CC_id][i].PO = (frame_type==FDD) ? (4*(i_s&1)+(5*(i_s>>1))) : ((i_s&1)+(5*(i_s>>1)));
               }
 
-              if (UE_PF_PO[CC_id][i].enable_flag == TRUE) {
+              if (UE_PF_PO[CC_id][i].enable_flag == true) {
                 //paging exist UE log
                 LOG_D(RRC,"[eNB %ld] CC_id %d In S1AP_PAGING_IND: Update exist UE %d, T %d, PF %d, PO %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO);
               } else {
                 /* set enable_flag */
-                UE_PF_PO[CC_id][i].enable_flag = TRUE;
+                UE_PF_PO[CC_id][i].enable_flag = true;
                 //paging new UE log
                 LOG_D(RRC,"[eNB %ld] CC_id %d In S1AP_PAGING_IND: Insert a new UE %d, T %d, PF %d, PO %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value, T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PO);
               }
@@ -1914,7 +1901,7 @@ int rrc_eNB_send_PATH_SWITCH_REQ(const protocol_ctxt_t *const ctxt_pP,
   rrc_ue_s1ap_ids_p = malloc(sizeof(*rrc_ue_s1ap_ids_p));
   rrc_ue_s1ap_ids_p->ue_initial_id  = ue_context_pP->ue_context.ue_initial_id;
   rrc_ue_s1ap_ids_p->eNB_ue_s1ap_id = UE_INITIAL_ID_INVALID;
-  rrc_ue_s1ap_ids_p->ue_rnti        = ctxt_pP->rnti;
+  rrc_ue_s1ap_ids_p->ue_rnti = ctxt_pP->rntiMaybeUEid;
   h_rc = hashtable_insert(RC.rrc[ctxt_pP->module_id]->initial_id2_s1ap_ids,
                           (hash_key_t)ue_context_pP->ue_context.ue_initial_id,
                           rrc_ue_s1ap_ids_p);

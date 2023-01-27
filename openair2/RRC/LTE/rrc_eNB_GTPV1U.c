@@ -33,7 +33,8 @@
 # include "rrc_eNB_GTPV1U.h"
 # include "rrc_eNB_UE_context.h"
 
-#include "asn1_conversions.h"
+
+#include "oai_asn1.h"
 #include "intertask_interface.h"
 
 
@@ -57,9 +58,7 @@ rrc_eNB_process_GTPV1U_CREATE_TUNNEL_RESP(
           PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
           create_tunnel_resp_pP->num_tunnels);
     rnti = create_tunnel_resp_pP->rnti;
-    ue_context_p = rrc_eNB_get_ue_context(
-                     RC.rrc[ctxt_pP->module_id],
-                     ctxt_pP->rnti);
+    ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt_pP->module_id], ctxt_pP->rntiMaybeUEid);
 
     for (i = 0; i < create_tunnel_resp_pP->num_tunnels; i++) {
       ue_context_p->ue_context.enb_gtp_teid[inde_list[i]]  = create_tunnel_resp_pP->enb_S1u_teid[i];
@@ -83,25 +82,22 @@ rrc_eNB_process_GTPV1U_CREATE_TUNNEL_RESP(
 }
 
 //------------------------------------------------------------------------------
-boolean_t
-gtpv_data_req(
-  const protocol_ctxt_t*   const ctxt_pP,
-  const rb_id_t                  rb_idP,
-  const mui_t                    muiP,
-  const confirm_t                confirmP,
-  const sdu_size_t               sdu_sizeP,
-  uint8_t*                 const buffer_pP,
-  const pdcp_transmission_mode_t modeP,
-  uint32_t task_id
-)
+bool gtpv_data_req(const protocol_ctxt_t*   const ctxt_pP,
+                   const rb_id_t                  rb_idP,
+                   const mui_t                    muiP,
+                   const confirm_t                confirmP,
+                   const sdu_size_t               sdu_sizeP,
+                   uint8_t*                 const buffer_pP,
+                   const pdcp_transmission_mode_t modeP,
+                   uint32_t task_id)
 //------------------------------------------------------------------------------
 {
   if(sdu_sizeP == 0)
   {
     LOG_I(GTPU,"gtpv_data_req sdu_sizeP == 0");
-    return FALSE;
+    return false;
   }
-  LOG_D(GTPU,"gtpv_data_req ue rnti %x sdu_sizeP %d rb id %ld", ctxt_pP->rnti, sdu_sizeP, rb_idP);
+  LOG_D(GTPU, "gtpv_data_req ue rnti %lx sdu_sizeP %d rb id %ld", ctxt_pP->rntiMaybeUEid, sdu_sizeP, rb_idP);
   MessageDef *message_p;
   // Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling).
   uint8_t *message_buffer;
@@ -124,11 +120,11 @@ gtpv_data_req(
     GTPV1U_ENB_DATA_FORWARDING_IND (message_p).sdu_p 	= message_buffer;
     GTPV1U_ENB_DATA_FORWARDING_IND (message_p).mode		= modeP;
     GTPV1U_ENB_DATA_FORWARDING_IND (message_p).module_id = ctxt_pP->module_id;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).rnti		 = ctxt_pP->rnti;
+    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     GTPV1U_ENB_DATA_FORWARDING_IND (message_p).eNB_index = ctxt_pP->eNB_index;
     
     itti_send_msg_to_task (TASK_DATA_FORWARDING, ctxt_pP->instance, message_p);
-    return TRUE; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
+    return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
   } else if (task_id == TASK_END_MARKER){
     
     LOG_I(GTPU,"gtpv_data_req task_id = TASK_END_MARKER\n");
@@ -147,35 +143,34 @@ gtpv_data_req(
     GTPV1U_ENB_END_MARKER_IND (message_p).sdu_p 	= message_buffer;
     GTPV1U_ENB_END_MARKER_IND (message_p).mode	= modeP;
     GTPV1U_ENB_END_MARKER_IND (message_p).module_id = ctxt_pP->module_id;
-    GTPV1U_ENB_END_MARKER_IND (message_p).rnti      = ctxt_pP->rnti;
+    GTPV1U_ENB_END_MARKER_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
     GTPV1U_ENB_END_MARKER_IND (message_p).eNB_index = ctxt_pP->eNB_index;
     
     itti_send_msg_to_task (TASK_END_MARKER, ctxt_pP->instance, message_p);
-    return TRUE; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
+    return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
   }
   LOG_E(RRC, "Impossible state\n");
-  return FALSE;
+  return false;
 }
 
-boolean_t gtpv_data_req_new (
-  protocol_ctxt_t  *ctxt,
-  const srb_flag_t     srb_flagP,
-  const rb_id_t        rb_idP,
-  const mui_t          muiP,
-  const confirm_t      confirmP,
-  const sdu_size_t     sdu_buffer_sizeP,
-  unsigned char *const sdu_buffer_pP,
-  const pdcp_transmission_mode_t modeP,
-  const uint32_t *sourceL2Id,
-  const uint32_t *destinationL2Id) {
+bool gtpv_data_req_new(protocol_ctxt_t  *ctxt,
+                       const srb_flag_t     srb_flagP,
+                       const rb_id_t        rb_idP,
+                       const mui_t          muiP,
+                       const confirm_t      confirmP,
+                       const sdu_size_t     sdu_buffer_sizeP,
+                       unsigned char *const sdu_buffer_pP,
+                       const pdcp_transmission_mode_t modeP,
+                       const uint32_t *sourceL2Id,
+                       const uint32_t *destinationL2Id) {
   int task;
 
   if (sdu_buffer_sizeP==0)
     task=TASK_END_MARKER;
   else
     task=TASK_DATA_FORWARDING;
-  
-  struct rrc_eNB_ue_context_s *ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt->module_id], ctxt->rnti);
+
+  struct rrc_eNB_ue_context_s *ue_context_p = rrc_eNB_get_ue_context(RC.rrc[ctxt->module_id], ctxt->rntiMaybeUEid);
   if(ue_context_p == NULL || ue_context_p->ue_context.handover_info == NULL ||
      ue_context_p->ue_context.StatusRrc != RRC_HO_EXECUTION) {
     LOG_E(RRC,"incoming GTP-U for X2 in non HO context\n");
@@ -194,7 +189,7 @@ boolean_t gtpv_data_req_new (
       GTPV1U_ENB_END_MARKER_REQ(msg).buffer = itti_malloc(TASK_GTPV1_U, TASK_GTPV1_U, GTPU_HEADER_OVERHEAD_MAX + sdu_buffer_sizeP);
       memcpy(&GTPV1U_ENB_END_MARKER_REQ(msg).buffer[GTPU_HEADER_OVERHEAD_MAX],  sdu_buffer_pP, sdu_buffer_sizeP);
       GTPV1U_ENB_END_MARKER_REQ(msg).length = sdu_buffer_sizeP;
-      GTPV1U_ENB_END_MARKER_REQ(msg).rnti   = ctxt->rnti;
+      GTPV1U_ENB_END_MARKER_REQ(msg).rnti = ctxt->rntiMaybeUEid;
       GTPV1U_ENB_END_MARKER_REQ(msg).rab_id = rb_idP;
       GTPV1U_ENB_END_MARKER_REQ(msg).offset = GTPU_HEADER_OVERHEAD_MAX;
       LOG_I(GTPU, "Send End Marker to GTPV1-U at frame %d and subframe %d \n", ctxt->frame,ctxt->subframe);
@@ -213,7 +208,7 @@ boolean_t gtpv_data_req_new (
       ue_context_p->ue_context.handover_info->state = HO_END_MARKER;
       gtpv1u_enb_delete_tunnel_req_t delete_tunnel_req;
       memset(&delete_tunnel_req, 0, sizeof(delete_tunnel_req));
-      delete_tunnel_req.rnti = ctxt->rnti;
+      delete_tunnel_req.rnti = ctxt->rntiMaybeUEid;
       gtpv1u_delete_x2u_tunnel(ctxt->module_id, &delete_tunnel_req);
       return true;
     } else {

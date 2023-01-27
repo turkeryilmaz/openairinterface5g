@@ -40,7 +40,7 @@
 #include "PHY/defs_eNB.h"
 #include "PHY/LTE_TRANSPORT/transport_proto.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
-#include <targets/RT/USER/lte-softmodem.h>
+#include "executables/lte-softmodem.h"
 
 #include "common/ran_context.h"
 #include "openair2/PHY_INTERFACE/queue_t.h"
@@ -271,7 +271,7 @@ void oai_create_gnb(void) {
 
 
   // This will cause phy_config_request to be installed. That will result in RRC configuring the PHY
-  // that will result in gNB->configured being set to TRUE.
+  // that will result in gNB->configured being set to true.
   // See we need to wait for that to happen otherwise the NFAPI message exchanges won't contain the right parameter values
   if (RC.gNB[0]->if_inst==0 || RC.gNB[0]->if_inst->NR_PHY_config_req==0 || RC.gNB[0]->if_inst->NR_Schedule_response==0) {
     NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.gNB[0][0]->if_inst->NR_PHY_config_req is not installed - install it\n");
@@ -464,6 +464,7 @@ int wake_gNB_rxtx(PHY_VARS_gNB *gNB, uint16_t sfn, uint16_t slot) {
   //wait.tv_nsec = 0;
   // wake up TX for subframe n+sf_ahead
   // lock the TX mutex and make sure the thread is ready
+  AssertFatal(gNB->if_inst->sl_ahead==6,"gNB->if_inst->sl_ahead %d : This is hard-coded to 6 in nfapi P7!!!\n",gNB->if_inst->sl_ahead);
   if (pthread_mutex_timedlock(&L1_proc->mutex,&wait) != 0) {
     LOG_E( PHY, "[gNB] ERROR pthread_mutex_lock for gNB RXTX thread %d (IC %d)\n", L1_proc->slot_rx&1,L1_proc->instance_cnt );
     exit_fun( "error locking mutex_rxtx" );
@@ -490,11 +491,11 @@ int wake_gNB_rxtx(PHY_VARS_gNB *gNB, uint16_t sfn, uint16_t slot) {
   // The last (TS_rx mod samples_per_frame) was n*samples_per_tti,
   // we want to generate subframe (n+N), so TS_tx = TX_rx+N*samples_per_tti,
   // and proc->subframe_tx = proc->subframe_rx+sf_ahead
-  L1_proc->timestamp_tx = proc->timestamp_rx + (slot_ahead *fp->samples_per_subframe);
+  L1_proc->timestamp_tx = proc->timestamp_rx + (gNB->if_inst->sl_ahead *fp->samples_per_subframe);
   L1_proc->frame_rx     = proc->frame_rx;
   L1_proc->slot_rx      = proc->slot_rx;
-  L1_proc->frame_tx     = (L1_proc->slot_rx > (19-slot_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
-  L1_proc->slot_tx      = (L1_proc->slot_rx + slot_ahead)%20;
+  L1_proc->frame_tx     = (L1_proc->slot_rx > (19-gNB->if_inst->sl_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
+  L1_proc->slot_tx      = (L1_proc->slot_rx + gNB->if_inst->sl_ahead)%20;
 
   //LOG_D(PHY, "sfn/sf:%d%d proc[rx:%d%d] rx:%d%d] About to wake rxtx thread\n\n", sfn, slot, proc->frame_rx, proc->slot_rx, L1_proc->frame_rx, L1_proc->slot_rx);
   //NFAPI_TRACE(NFAPI_TRACE_INFO, "\nEntering wake_gNB_rxtx sfn %d slot %d\n",L1_proc->frame_rx,L1_proc->slot_rx);
@@ -1694,7 +1695,6 @@ int nr_config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_config_re
   nfapi_nr_start_request_scf_t req;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_CONFIG_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Calling oai_enb_init()\n");
-  oai_enb_init(); // TODO: change to gnb
   memset(&req, 0, sizeof(req));
   req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_START_REQUEST;
   req.header.phy_id = resp->header.phy_id;
@@ -1716,24 +1716,13 @@ int config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_config_response
 }
 
 int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t *resp) {
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-	vnf_info *vnf = (vnf_info *)(config->user_data);
-	pnf_info *pnf = vnf->pnfs;
-	phy_info *phy = pnf->phys;
-	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-	uint16_t port =htons(phy->remote_port);
-	char *remote_addr = (char *) malloc(strlen(phy->remote_addr)+1);
-	memset(remote_addr, 0, strlen(phy->remote_addr)+1);
-	strncpy(remote_addr, phy->remote_addr, strlen(phy->remote_addr));
-	for(int i=0; i < pnf->num_phys; i++ )
-	{
-		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
-		LOG_D(NFAPI_VNF, "MultiCell: fxn:%d phy_id added:%d\n", p5_idx, resp->header.phy_id);
-		phy +=1;
-	}
-	free(remote_addr);
-	remote_addr = NULL;
-	return 0;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+  vnf_info *vnf = (vnf_info *)(config->user_data);
+  pnf_info *pnf = vnf->pnfs;
+  phy_info *phy = pnf->phys;
+  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
+  nfapi_vnf_p7_add_pnf((p7_vnf->config), phy->remote_addr, htons(phy->remote_port), phy->id);
+  return 0;
 }
 
 int nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_start_response_scf_t *resp) {
