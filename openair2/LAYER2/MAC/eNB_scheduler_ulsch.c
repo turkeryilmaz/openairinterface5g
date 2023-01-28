@@ -1817,62 +1817,58 @@ schedule_ulsch(module_id_t module_idP,
   memset(emtc_active, 0, 5 * sizeof(int));
   schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
 
-  /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
-  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
-    
-    if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
-                           cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex, 
-                           sched_frame, sched_subframe)) {
-      int start_rb = get_prach_prb_offset(cc->tdd_Config!=NULL ? 1 : 0,
-                                          cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,
-                                          to_prb(cc->ul_Bandwidth),
-                                          cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
-                                          cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_FreqOffset,
-                                          0, // tdd_mapindex
-                                          sched_frame); // Nf
-      for (int i = 0; i < 6; i++)
-        cc->vrb_map_UL[start_rb + i] = 1;
-    }
+  if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
+                         cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
+                         sched_frame, sched_subframe)) {
+    int start_rb = get_prach_prb_offset(cc->tdd_Config!=NULL ? 1 : 0,
+                                        cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,
+                                        to_prb(cc->ul_Bandwidth),
+                                        cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
+                                        cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_FreqOffset,
+                                        0, // tdd_mapindex
+                                        sched_frame); // Nf
+    for (int i = 0; i < 6; i++)
+      cc->vrb_map_UL[start_rb + i] = 1;
+  }
 
-    /* HACK: let's remove the PUCCH from available RBs
-     * we suppose PUCCH size is:
-     * - for 25 RBs: 1 RB (top and bottom of ressource grid)
-     * - for 50:     2 RBs
-     * - for 100:    3 RBs
-     * This is totally arbitrary and might even be wrong.
-     */
-    switch (to_prb(cc->ul_Bandwidth)) {
-      case 25:
-        cc->vrb_map_UL[0] = 1;
-        cc->vrb_map_UL[24] = 1;
-        break;
+  /* HACK: let's remove the PUCCH from available RBs
+   * we suppose PUCCH size is:
+   * - for 25 RBs: 1 RB (top and bottom of ressource grid)
+   * - for 50:     2 RBs
+   * - for 100:    3 RBs
+   * This is totally arbitrary and might even be wrong.
+   */
+  switch (to_prb(cc->ul_Bandwidth)) {
+    case 25:
+      cc->vrb_map_UL[0] = 1;
+      cc->vrb_map_UL[24] = 1;
+      break;
 
-      case 50:
-        cc->vrb_map_UL[0] = 1;
-        cc->vrb_map_UL[1] = 1;
-        cc->vrb_map_UL[48] = 1;
-        cc->vrb_map_UL[49] = 1;
-        break;
+    case 50:
+      cc->vrb_map_UL[0] = 1;
+      cc->vrb_map_UL[1] = 1;
+      cc->vrb_map_UL[48] = 1;
+      cc->vrb_map_UL[49] = 1;
+      break;
 
-      case 100:
-        cc->vrb_map_UL[0] = 1;
-        cc->vrb_map_UL[1] = 1;
-        cc->vrb_map_UL[2] = 1;
-        cc->vrb_map_UL[97] = 1;
-        cc->vrb_map_UL[98] = 1;
-        cc->vrb_map_UL[99] = 1;
-        break;
+    case 100:
+      cc->vrb_map_UL[0] = 1;
+      cc->vrb_map_UL[1] = 1;
+      cc->vrb_map_UL[2] = 1;
+      cc->vrb_map_UL[97] = 1;
+      cc->vrb_map_UL[98] = 1;
+      cc->vrb_map_UL[99] = 1;
+      break;
 
-      default:
-        LOG_E(MAC, "RBs setting not handled. Todo.\n");
-        exit(1);
+    default:
+      LOG_E(MAC, "RBs setting not handled. Todo.\n");
+      exit(1);
     }
 
     schedule_ulsch_rnti(module_idP, CC_id, frameP, subframeP, sched_subframe);
   }
 
   stop_meas(&mac->schedule_ulsch);
-}
 }
 
 //-----------------------------------------------------------------------------
