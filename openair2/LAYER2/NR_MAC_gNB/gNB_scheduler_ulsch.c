@@ -286,15 +286,27 @@ int nr_process_mac_pdu(instance_t module_idP,
         /* Extract MULTI ENTRY PHR elements from single octet bitmap for PHR calculation */
         break;
 
-      case UL_SCH_LCID_MULTI_ENTRY_PHR_4_OCT:
-        LOG_E(NR_MAC, "Multi entry PHR not supported\n");
-        done = 1;
-        //38.321 section 6.1.3.9
-        //  variable length
-        if (!get_mac_len(pduP, pdu_len, &mac_len, &mac_subheader_len))
-          return 0;
-        /* Extract MULTI ENTRY PHR elements from four octets bitmap for PHR calculation */
-        break;
+            // Check if it is a valid CCCH1 message, we get all 00's messages very often
+            if (pdu_len < mac_subheader_len + mac_sdu_len) {
+              LOG_E(NR_MAC, "pdu_len %d is invalid (prior to cast of size %d)\n",
+                  pdu_len, mac_subheader_len + mac_sdu_len);
+              return 0;
+            }
+            int i = 0;
+            for(i=0; i<(mac_subheader_len+mac_sdu_len); i++) {
+              if(pduP[i] != 0) {
+                break;
+              }
+            }
+            if (i == (mac_subheader_len+mac_sdu_len)) {
+              LOG_D(NR_MAC, "%s() Invalid CCCH1 message!, pdu_len: %d\n", __func__, pdu_len);
+              done = 1;
+              break;
+            }
+          } else {
+            // fixed length of 6 bytes
+            mac_sdu_len = 6;
+          }
 
       case UL_SCH_LCID_PADDING:
         done = 1;
@@ -308,8 +320,17 @@ int nr_process_mac_pdu(instance_t module_idP,
           return 0;
         }
 
-        if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
-          return 0;
+        case UL_SCH_LCID_DTCH ... (UL_SCH_LCID_DTCH + 4):
+          //  check if LCID is valid at current time.
+          if (pdu_len < sizeof(NR_MAC_SUBHEADER_SHORT))
+                return 0;
+          if (((NR_MAC_SUBHEADER_SHORT *)pduP)->F) {
+            // mac_sdu_len |= (uint16_t)(((NR_MAC_SUBHEADER_LONG *)pduP)->L2)<<8;
+            if (pdu_len < sizeof(NR_MAC_SUBHEADER_LONG))
+                  return 0;
+            mac_subheader_len = 3;
+            mac_sdu_len = ((uint16_t)(((NR_MAC_SUBHEADER_LONG *)pduP)->L1 & 0x7f) << 8)
+                          | ((uint16_t)((NR_MAC_SUBHEADER_LONG *)pduP)->L2 & 0xff);
 
         rnti_t crnti = UE->rnti;
         NR_UE_info_t* UE_idx = UE;
@@ -326,8 +347,20 @@ int nr_process_mac_pdu(instance_t module_idP,
           }
         }
 
-        if (UE_idx->CellGroup) {
-          LOG_D(NR_MAC, "Frame %d : ULSCH -> UL-DCCH %d (gNB %ld, %d bytes), rnti: 0x%04x \n", frameP, rx_lcid, module_idP, mac_len, crnti);
+          LOG_D(NR_MAC, "In %s: [UE %d] %d.%d : ULSCH -> UL-%s %d (gNB %d, %d bytes)\n",
+                __func__,
+                module_idP,
+                frameP,
+                slot,
+                rx_lcid<4?"DCCH":"DTCH",
+                rx_lcid,
+                module_idP,
+                mac_sdu_len);
+          UE_info->mac_stats[UE_id].lc_bytes_rx[rx_lcid] += mac_sdu_len;
+
+          if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+            return 0;
+
           mac_rlc_data_ind(module_idP,
                            crnti,
                            module_idP,

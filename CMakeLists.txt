@@ -702,13 +702,7 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 # PHY options
 ##########################
 add_boolean_option(LOCALIZATION            False "???")
-if ($ENV{NR_ENABLE}) 
 add_integer_option(MAX_NUM_CCs             1     "????")
-Message("Cell configuration for NR is 1. MULTI CELLS NOT IMPLEMENTED")
-else()
-	add_integer_option(MAX_NUM_CCs             3     "????")
-	Message("Cell configuration for LTE is ${MAX_NUM_CCs}: MULTI CELLS IS IMPLEMENTED")
-endif()
 add_boolean_option(SMBV                    False "Rohde&Schwarz SMBV100A vector signal generator")
 add_boolean_option(DEBUG_PHY               False "Enable PHY layer debugging options")
 add_boolean_option(DEBUG_PHY_PROC          False "Enable debugging of PHY layer procedures")
@@ -1579,7 +1573,6 @@ set(L2_NR_SRC
   ${NR_RRC_DIR}/rrc_gNB_reconfig.c
   ${NR_RRC_DIR}/rrc_gNB_UE_context.c
   ${NR_RRC_DIR}/rrc_gNB_NGAP.c
-  ${NR_RRC_DIR}/rrc_gNB_radio_bearers.c
   )
 
 set(L2_SRC_UE
@@ -2084,6 +2077,8 @@ set(libnrnas_emm_msg_OBJS
   ${NAS_SRC}COMMON/EMM/MSG/FGSServiceRequest.c
   ${NAS_SRC}COMMON/EMM/MSG/ActivateTestModeComplete.c
   ${NAS_SRC}COMMON/EMM/MSG/CloseUeTestLoopComplete.c
+  ${NAS_SRC}COMMON/EMM/MSG/OpenUeTestLoopComplete.c
+  ${NAS_SRC}COMMON/EMM/MSG/DeactivateTestModeComplete.c
   ${NAS_SRC}COMMON/ESM/MSG/PduSessionEstablishRequest.c
   ${NAS_SRC}COMMON/ESM/MSG/PduSessionEstablishmentAccept.c
   )
@@ -2479,14 +2474,6 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 
 # nr-softmodem
 ###################################################
-if ($ENV{NR_ENABLE})
-	add_boolean_option(NR_ENABLE   TRUE  "Flag for NR compilation")
-else()
-	add_boolean_option(NR_ENABLE   FALSE  "Flag for NR compilation")
-endif()
-
-Message("NR_ENABLE flag is ${NR_ENABLE}")
-
 add_executable(nr-softmodem
   ${rrc_h}
   ${nr_rrc_h}

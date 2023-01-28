@@ -439,8 +439,34 @@ struct L1Mac_IndicationControl_Type {
 	SIDL_OPTIONAL(IndicationAndControlMode_Type, DC_PHR);
 };
 
+typedef uint8_t PrachPreambleIndex_Type;
+typedef uint8_t PrachMaskIndex_Type;
+
+struct RA_PDCCH_Order_Type {
+	PrachPreambleIndex_Type PreambleIndex;
+	PrachMaskIndex_Type PrachMaskIndex;
+};
+
+
 typedef SIDL_DYNAMIC_OF_STRUCT(CellAttenuationConfig_Type, CellAttenuationList_Type);
 typedef SIDL_DYNAMIC_OF_STRUCT(RadioBearer_Type, RadioBearerList_Type);
+
+struct PDCP_HandoverInit_Type
+{
+	EUTRA_CellId_Type SourceCellId;
+};
+
+SIDL_UNION_ENUM(PDCP_HandoverControlReq_Type) {
+	PDCP_HandoverControlReq_Type_UNBOUND_VALUE,
+	PDCP_HandoverControlReq_Type_HandoverInit,
+	PDCP_HandoverControlReq_Type_HandoverComplete
+};
+SIDL_UNION_BEGIN(PDCP_HandoverControlReq_Type) {
+	SIDL_UNION_CASE(PDCP_HandoverControlReq_Type_HandoverInit)
+		struct PDCP_HandoverInit_Type HandoverInit;
+	SIDL_UNION_CASE(PDCP_HandoverControlReq_Type_HandoverComplete)
+		bool HandoverComplete;
+} SIDL_UNION_END;
 
 SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_UNBOUND_VALUE,
@@ -454,9 +480,9 @@ SIDL_UNION_ENUM(SystemRequest_Type) {
 	SystemRequest_Type_L1MacIndCtrl,
 	// SystemRequest_Type_RlcIndCtrl,
 	SystemRequest_Type_PdcpCount = 10,
-	// SystemRequest_Type_PdcpHandoverControl,
+	SystemRequest_Type_PdcpHandoverControl = 11,
 	// SystemRequest_Type_L1__TestMode,
-	// SystemRequest_Type_PdcchOrder,
+	SystemRequest_Type_PdcchOrder = 13,
 	// SystemRequest_Type_ActivateScell,
 	// SystemRequest_Type_MbmsConfig,
 	// SystemRequest_Type_PDCCH__MCCH__ChangeNotification,
@@ -488,9 +514,11 @@ SIDL_UNION_BEGIN(SystemRequest_Type) {
 	// SIDL_UNION_CASE(SystemRequest_Type_RlcIndCtrl)
 	SIDL_UNION_CASE(SystemRequest_Type_PdcpCount)
 		struct PDCP_CountReq_Type PdcpCount;
-	// SIDL_UNION_CASE(SystemRequest_Type_PdcpHandoverControl)
+	SIDL_UNION_CASE(SystemRequest_Type_PdcpHandoverControl)
+		struct PDCP_HandoverControlReq_Type PdcpHandoverControl;
 	// SIDL_UNION_CASE(SystemRequest_Type_L1__TestMode)
-	// SIDL_UNION_CASE(SystemRequest_Type_PdcchOrder)
+	SIDL_UNION_CASE(SystemRequest_Type_PdcchOrder)
+		struct RA_PDCCH_Order_Type PdcchOrder;
 	// SIDL_UNION_CASE(SystemRequest_Type_ActivateScell)
 	// SIDL_UNION_CASE(SystemRequest_Type_MbmsConfig)
 	// SIDL_UNION_CASE(SystemRequest_Type_PDCCH__MCCH__ChangeNotification)

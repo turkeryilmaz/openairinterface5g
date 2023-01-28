@@ -30490,6 +30490,57 @@ static int _serSysEncPDCP_CountReq_Type(unsigned char* _buffer, size_t _size, si
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysEncPDCP_HandoverInit_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PDCP_HandoverInit_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->SourceCellId;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncPDCP_HandoverControlReq_Type_Value(unsigned char* _buffer, size_t _size, size_t* _lidx, const union PDCP_HandoverControlReq_Type_Value* p, enum PDCP_HandoverControlReq_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == PDCP_HandoverControlReq_Type_HandoverInit) {
+		_serSysEncPDCP_HandoverInit_Type(_buffer, _size, _lidx, &p->HandoverInit);
+		return SIDL_STATUS_OK;
+	}
+	if (d == PDCP_HandoverControlReq_Type_HandoverComplete) {
+		HTON_8(&_buffer[*_lidx], p->HandoverComplete, _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysEncPDCP_HandoverControlReq_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct PDCP_HandoverControlReq_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp = (size_t)p->d;
+		HTON_32(&_buffer[*_lidx], _tmp, _lidx);
+	}
+	_serSysEncPDCP_HandoverControlReq_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysEncRA_PDCCH_Order_Type(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct RA_PDCCH_Order_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	HTON_8(&_buffer[*_lidx], p->PreambleIndex, _lidx);
+	HTON_8(&_buffer[*_lidx], p->PrachMaskIndex, _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysEncUE_Category_v1020_Type_ue_Category_V1020_Optional(unsigned char* _buffer, size_t _size, size_t* _lidx, const struct UE_Category_v1020_Type_ue_Category_V1020_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -30665,6 +30716,14 @@ static int _serSysEncSystemRequest_Type_Value(unsigned char* _buffer, size_t _si
 	}
 	if (d == SystemRequest_Type_PdcpCount) {
 		_serSysEncPDCP_CountReq_Type(_buffer, _size, _lidx, &p->PdcpCount);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SystemRequest_Type_PdcpHandoverControl) {
+		_serSysEncPDCP_HandoverControlReq_Type(_buffer, _size, _lidx, &p->PdcpHandoverControl);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SystemRequest_Type_PdcchOrder) {
+		_serSysEncRA_PDCCH_Order_Type(_buffer, _size, _lidx, &p->PdcchOrder);
 		return SIDL_STATUS_OK;
 	}
 	if (d == SystemRequest_Type_UE_Cat_Info) {
@@ -62285,6 +62344,59 @@ static int _serSysDecPDCP_CountReq_Type(const unsigned char* _buffer, size_t _si
 	return SIDL_STATUS_OK;
 }
 
+static int _serSysDecPDCP_HandoverInit_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct PDCP_HandoverInit_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->SourceCellId = (EUTRA_CellId_Type)_tmp;
+	}
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecPDCP_HandoverControlReq_Type_Value(const unsigned char* _buffer, size_t _size, size_t* _lidx, union PDCP_HandoverControlReq_Type_Value* p, enum PDCP_HandoverControlReq_Type_Sel d)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	if (d == PDCP_HandoverControlReq_Type_HandoverInit) {
+		_serSysDecPDCP_HandoverInit_Type(_buffer, _size, _lidx, &p->HandoverInit);
+		return SIDL_STATUS_OK;
+	}
+	if (d == PDCP_HandoverControlReq_Type_HandoverComplete) {
+		NTOH_8(p->HandoverComplete, &_buffer[*_lidx], _lidx);
+		return SIDL_STATUS_OK;
+	}
+
+	return SIDL_STATUS_ERROR;
+}
+
+static int _serSysDecPDCP_HandoverControlReq_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct PDCP_HandoverControlReq_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	{
+		size_t _tmp;
+		NTOH_32(_tmp, &_buffer[*_lidx], _lidx);
+		p->d = (enum PDCP_HandoverControlReq_Type_Sel)_tmp;
+	}
+	_serSysDecPDCP_HandoverControlReq_Type_Value(_buffer, _size, _lidx, &p->v, p->d);
+
+	return SIDL_STATUS_OK;
+}
+
+static int _serSysDecRA_PDCCH_Order_Type(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct RA_PDCCH_Order_Type* p)
+{
+	(void)_size; // TODO: generate boundaries checking
+
+	NTOH_8(p->PreambleIndex, &_buffer[*_lidx], _lidx);
+	NTOH_8(p->PrachMaskIndex, &_buffer[*_lidx], _lidx);
+
+	return SIDL_STATUS_OK;
+}
+
 static int _serSysDecUE_Category_v1020_Type_ue_Category_V1020_Optional(const unsigned char* _buffer, size_t _size, size_t* _lidx, struct UE_Category_v1020_Type_ue_Category_V1020_Optional* p)
 {
 	(void)_size; // TODO: generate boundaries checking
@@ -62464,6 +62576,14 @@ static int _serSysDecSystemRequest_Type_Value(const unsigned char* _buffer, size
 	}
 	if (d == SystemRequest_Type_PdcpCount) {
 		_serSysDecPDCP_CountReq_Type(_buffer, _size, _lidx, _mem, &p->PdcpCount);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SystemRequest_Type_PdcpHandoverControl) {
+		_serSysDecPDCP_HandoverControlReq_Type(_buffer, _size, _lidx, &p->PdcpHandoverControl);
+		return SIDL_STATUS_OK;
+	}
+	if (d == SystemRequest_Type_PdcchOrder) {
+		_serSysDecRA_PDCCH_Order_Type(_buffer, _size, _lidx, &p->PdcchOrder);
 		return SIDL_STATUS_OK;
 	}
 	if (d == SystemRequest_Type_UE_Cat_Info) {

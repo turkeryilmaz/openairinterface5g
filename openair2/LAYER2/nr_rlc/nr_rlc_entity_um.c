@@ -46,6 +46,19 @@ static int compute_pdu_header_size(nr_rlc_entity_um_t *entity,
   return header_size;
 }
 
+static int compute_extra_pdu_header_size(nr_rlc_entity_um_t *entity,
+                                   nr_rlc_pdu_t *pdu)
+{
+  int header_size = 1;
+
+  /* if SN to be included then one more byte if SN field length is 12 */
+  if (!(pdu->is_first && pdu->is_last) && entity->sn_field_length == 12)
+    header_size++;
+  /* two more bytes for SO if SDU segment is not the first */
+  if (!pdu->is_first) header_size += 2;
+  return header_size;
+}
+
 /*************************************************************************/
 /* PDU RX functions                                                      */
 /*************************************************************************/
@@ -64,7 +77,7 @@ static int sn_compare_rx(void *_entity, int a, int b)
   return modulus_rx(entity, a) - modulus_rx(entity, b);
 }
 
-static int sn_compare_full_tx(void *_entity, int a, int b)
+static int sn_compare_extra_tx(void *_entity, int a, int b)
 {
   return 0;
 }
@@ -426,6 +439,36 @@ static int serialize_sdu(nr_rlc_entity_um_t *entity,
   return encoder.byte + sdu->size;
 }
 
+static int serialize_pdu(nr_rlc_entity_um_t *entity,
+                         nr_rlc_pdu_t *pdu, char *buffer, int bufsize)
+{
+  nr_rlc_pdu_encoder_t encoder;
+
+  /* generate header */
+  nr_rlc_pdu_encoder_init(&encoder, buffer, bufsize);
+
+  nr_rlc_pdu_encoder_put_bits(&encoder, 1-pdu->is_first,1);/* 1st bit of SI */
+  nr_rlc_pdu_encoder_put_bits(&encoder, 1-pdu->is_last,1); /* 2nd bit of SI */
+
+  /* SN, if required */
+  if (pdu->is_first == 1 && pdu->is_last == 1) {
+    nr_rlc_pdu_encoder_put_bits(&encoder, 0, 6);                       /* R */
+  } else {
+    if (entity->sn_field_length == 12)
+      nr_rlc_pdu_encoder_put_bits(&encoder, 0, 2);                     /* R */
+    nr_rlc_pdu_encoder_put_bits(&encoder, pdu->sn,
+                                entity->sn_field_length);             /* SN */
+  }
+
+  if (!pdu->is_first)
+    nr_rlc_pdu_encoder_put_bits(&encoder, pdu->so, 16);               /* SO */
+
+  /* data */
+  memcpy(buffer + encoder.byte, pdu->data, pdu->size);
+
+  return encoder.byte + pdu->size;
+}
+
 /* resize SDU/SDU segment for the corresponding PDU to fit into 'pdu_size'
  * bytes
  * - modifies SDU/SDU segment to become an SDU segment
@@ -561,36 +604,34 @@ nr_rlc_entity_buffer_status_t nr_rlc_entity_um_buffer_status(
   return ret;
 }
 
-static int generate_tx_full_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
+static int generate_tx_extra_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
 {
   nr_rlc_pdu_t *pdu;
-  int ret;
   int pdu_header_size;
-  int sdu_size;
+  int pdu_size;
+  int ret;
+
+  if (entity->tx_extra_list == NULL)
+    return 0;
 
   pdu = entity->tx_extra_list;
 
-  /* UMD NoSN header length */
-  pdu_header_size = 1;
+  pdu_header_size = compute_extra_pdu_header_size(entity, pdu);
 
-  sdu_size = pdu->size - pdu_header_size;
-
-  if (pdu->size > size) {
-    LOG_E(RLC, "%s:%d:%s: buffer is small\n", __FILE__, __LINE__,  __FUNCTION__);
-    exit(1);
-  }
-
-  /* update buffer status */
-  entity->common.bstatus.tx_size -= pdu->size;
-
-  /* deliver */
-  memcpy(buffer, pdu->data, pdu->size);
-
-  entity->tx_size -= sdu_size;
+  /* not enough room for at least one byte of data? do nothing */
+  if (pdu_header_size + 1 > size)
+    return 0;
 
   entity->tx_extra_list = pdu->next;
-  ret = pdu->size;
 
+  pdu_size = pdu_header_size + pdu->size;
+
+  /* update buffer status */
+  entity->common.bstatus.tx_size -= pdu_size;
+
+  ret = serialize_pdu(entity, pdu, buffer, size);
+
+  entity->tx_size -= pdu->size;
   nr_rlc_free_pdu(pdu);
 
   return ret;
@@ -604,7 +645,7 @@ int nr_rlc_entity_um_generate_pdu(nr_rlc_entity_t *_entity,
 
   if (RC.ss.mode > SS_GNB) {
     if (entity->tx_extra_list != NULL) {
-      ret = generate_tx_full_pdu(entity, buffer, size);
+      ret = generate_tx_extra_pdu(entity, buffer, size);
       rlc_info->rlcMode              = 2; /** UM Mode */
       rlc_info->sequenceNumberLength = entity->sn_field_length;
       rlc_info->pduLength = ret;
@@ -619,39 +660,82 @@ int nr_rlc_entity_um_generate_pdu(nr_rlc_entity_t *_entity,
   return ret;
 }
 
-void nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *_entity, char *buffer, int size)
+static void deliver_extra_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
 {
-  nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)_entity;
+#define R(d) do { if (nr_rlc_pdu_decoder_in_error(&d)) goto err; } while (0)
+  nr_rlc_pdu_decoder_t decoder;
   nr_rlc_pdu_t *pdu;
-  int pdu_header_size;
-  int sdu_size;
+  int si;
+  int sn;
+  int so = 0;
+  int data_size;
+  int is_first;
+  int is_last;
 
-  /* UMD NoSN header length */
-  pdu_header_size = 1;
+  nr_rlc_pdu_decoder_init(&decoder, buffer, size);
 
-  sdu_size = size - pdu_header_size;
+  si = nr_rlc_pdu_decoder_get_bits(&decoder, 2); R(decoder);
 
-  if (sdu_size > NR_SDU_MAX) {
-    LOG_E(RLC, "%s:%d:%s: fatal: SDU size too big (%d bytes)\n",
-          __FILE__, __LINE__, __FUNCTION__, sdu_size);
-    exit(1);
+  is_first = (si & 0x2) == 0;
+  is_last = (si & 0x1) == 0;
+
+  if (entity->sn_field_length == 12) {
+    nr_rlc_pdu_decoder_get_bits(&decoder, 2); R(decoder);
   }
 
-  if (entity->tx_size + sdu_size > entity->tx_maxsize) {
-    LOG_W(RLC, "%s:%d:%s: warning: SDU rejected, SDU buffer full\n",
+  sn = nr_rlc_pdu_decoder_get_bits(&decoder, entity->sn_field_length);
+  R(decoder);
+
+  if (!is_first) {
+    so = nr_rlc_pdu_decoder_get_bits(&decoder, 16); R(decoder);
+    if (so == 0) {
+      LOG_E(RLC, "%s:%d:%s: warning: discard PDU, bad so\n",
+            __FILE__, __LINE__, __FUNCTION__);
+      goto discard;
+    }
+  }
+
+  data_size = size - decoder.byte;
+
+  /* dicard PDU if no data */
+  if (data_size <= 0) {
+    LOG_W(RLC, "%s:%d:%s: warning: discard PDU, no data\n",
           __FILE__, __LINE__, __FUNCTION__);
-    return;
+    goto discard;
   }
 
-  entity->tx_size += sdu_size;
+  /* dicard PDU if tx buffer is full */
+  if (entity->tx_size + data_size > entity->tx_maxsize) {
+    LOG_W(RLC, "%s:%d:%s: warning: discard PDU, TX buffer full\n",
+          __FILE__, __LINE__, __FUNCTION__);
+    goto discard;
+  }
 
-  /* PDU contains full RLC PDU with header */
-  pdu = nr_rlc_new_pdu(0, 0, 1, 1, buffer, size);
-  entity->tx_extra_list = nr_rlc_pdu_list_add(sn_compare_full_tx, entity,
+  entity->tx_size += data_size;
+
+  pdu = nr_rlc_new_pdu(sn, so, is_first, is_last,
+                       buffer + size - data_size, data_size);
+  entity->tx_extra_list = nr_rlc_pdu_list_add(sn_compare_extra_tx, entity,
                                         entity->tx_extra_list, pdu);
 
   /* update buffer status */
   entity->common.bstatus.tx_size += size;
+
+  return;
+
+err:
+  LOG_W(RLC, "%s:%d:%s: error decoding PDU, discarding\n", __FILE__, __LINE__, __FUNCTION__);
+  goto discard;
+
+discard:
+  return;
+
+#undef R
+}
+
+void nr_rlc_entity_um_deliver_pdu(nr_rlc_entity_t *_entity, char *buffer, int size)
+{
+  deliver_extra_pdu((nr_rlc_entity_um_t *)_entity, buffer, size);
 }
 
 /*************************************************************************/

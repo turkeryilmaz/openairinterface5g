@@ -2861,6 +2861,13 @@ void pdcp_layer_init(void)
   memset(Pdcp_stats_rx_aiat, 0, sizeof(Pdcp_stats_rx_aiat));
   memset(Pdcp_stats_rx_iat, 0, sizeof(Pdcp_stats_rx_iat));
   memset(Pdcp_stats_rx_outoforder, 0, sizeof(Pdcp_stats_rx_outoforder));
+
+  RC.ss.ss_pdcp_api = calloc (1, sizeof(ss_rrc_pdcp_api_t));
+  ss_rrc_pdcp_api_t *ss_pdcp_api = RC.ss.ss_pdcp_api;
+  
+  if (RC.ss.mode == 1) {
+    ss_pdcp_api->set_pdcp_cnt    = pdcp_fill_ss_pdcp_cnt;
+  }
 }
 
 //-----------------------------------------------------------------------------

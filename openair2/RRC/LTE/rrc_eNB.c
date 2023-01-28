@@ -6849,7 +6849,6 @@ void rrc_eNB_as_security_configuration_req(
   LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
 
-#ifndef NR_ENABLE
   for (int i = 0; i < MAX_RBS; i++)
   {
     if (i < 3)
@@ -6865,7 +6864,8 @@ void rrc_eNB_as_security_configuration_req(
     h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
     if (h_rc == HASH_TABLE_OK)
     {
-      pdcp_fill_ss_pdcp_cnt(pdcp_p, rb_idx, &pc);
+      AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
+      RC.ss.ss_pdcp_api->set_pdcp_cnt(pdcp_p, rb_idx, &pc);
       ul_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn;
       dl_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn;
       /* Apply the security key for all the configured RBs SQN is check is applicable for SRB1.
@@ -6895,7 +6895,6 @@ void rrc_eNB_as_security_configuration_req(
                   rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
     }
   }
-#endif
 }
 
 /*------------------------------------------------------------------------------*/
@@ -9491,8 +9490,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case SS_RRC_PDU_REQ:
       if (RC.ss.mode >= SS_SOFTMODEM)
       {
-#ifndef NR_ENABLE
-
         LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d instance %ld\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
             SS_RRC_PDU_REQ(msg_p).rnti,instance);
 
@@ -9660,7 +9657,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             bcchTransportType = dlsch_TRANSPORT;
           }
         }
-#endif
       }
         break;
         //#endif

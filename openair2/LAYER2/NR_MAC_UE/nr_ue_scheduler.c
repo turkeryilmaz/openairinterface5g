@@ -3175,7 +3175,6 @@ uint8_t nr_ue_get_sdu(module_id_t module_idP,
           buflen_remain);
 
     while (buflen_remain > 0){
-
       // Pointer used to build the MAC sub-PDU headers in the ULSCH buffer for each SDU
       NR_MAC_SUBHEADER_LONG *header = (NR_MAC_SUBHEADER_LONG *) pdu;
 

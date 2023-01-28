@@ -16991,6 +16991,1257 @@ typedef uint8_t SQN_UE_EUTRA_Capability_v1450_IEs_ue_CategoryDL_v1450;
 
 typedef uint8_t SQN_UE_EUTRA_Capability_v1460_IEs_ue_CategoryDL_v1460;
 
+struct SQN_PhyLayerParameters {
+	bool ue_TxAntennaSelectionSupported;
+	bool ue_SpecificRefSigsSupported;
+};
+
+enum SQN_SupportedBandGERAN_e {
+	SQN_SupportedBandGERAN_e_gsm450 = 0,
+	SQN_SupportedBandGERAN_e_gsm480 = 1,
+	SQN_SupportedBandGERAN_e_gsm710 = 2,
+	SQN_SupportedBandGERAN_e_gsm750 = 3,
+	SQN_SupportedBandGERAN_e_gsm810 = 4,
+	SQN_SupportedBandGERAN_e_gsm850 = 5,
+	SQN_SupportedBandGERAN_e_gsm900P = 6,
+	SQN_SupportedBandGERAN_e_gsm900E = 7,
+	SQN_SupportedBandGERAN_e_gsm900R = 8,
+	SQN_SupportedBandGERAN_e_gsm1800 = 9,
+	SQN_SupportedBandGERAN_e_gsm1900 = 10,
+	SQN_SupportedBandGERAN_e_spare5 = 11,
+	SQN_SupportedBandGERAN_e_spare4 = 12,
+	SQN_SupportedBandGERAN_e_spare3 = 13,
+	SQN_SupportedBandGERAN_e_spare2 = 14,
+	SQN_SupportedBandGERAN_e_spare1 = 15,
+};
+
+typedef enum SQN_SupportedBandGERAN_e SQN_SupportedBandGERAN_e;
+
+struct SQN_SupportedBandGERAN_e_SQN_SupportedBandListGERAN_Dynamic {
+	size_t d;
+	SQN_SupportedBandGERAN_e* v;
+};
+
+typedef struct SQN_SupportedBandGERAN_e_SQN_SupportedBandListGERAN_Dynamic SQN_SupportedBandListGERAN;
+
+struct SQN_IRAT_ParametersGERAN {
+	SQN_SupportedBandListGERAN supportedBandListGERAN;
+	bool interRAT_PS_HO_ToGERAN;
+};
+
+enum SQN_IRAT_ParametersUTRA_v920_e_RedirectionUTRA_r9_e {
+	SQN_IRAT_ParametersUTRA_v920_e_RedirectionUTRA_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v920_e_RedirectionUTRA_r9_e SQN_IRAT_ParametersUTRA_v920_e_RedirectionUTRA_r9_e;
+
+struct SQN_IRAT_ParametersUTRA_v920 {
+	SQN_IRAT_ParametersUTRA_v920_e_RedirectionUTRA_r9_e e_RedirectionUTRA_r9;
+};
+
+enum SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_1XRTT_r9_e {
+	SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_1XRTT_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_1XRTT_r9_e SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_1XRTT_r9_e;
+
+enum SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e {
+	SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e;
+
+struct SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e_e_CSFB_ConcPS_Mob1XRTT_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e v;
+};
+
+struct SQN_IRAT_ParametersCDMA2000_1XRTT_v920 {
+	SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_1XRTT_r9_e e_CSFB_1XRTT_r9;
+	struct SQN_IRAT_ParametersCDMA2000_1XRTT_v920_e_CSFB_ConcPS_Mob1XRTT_r9_e_e_CSFB_ConcPS_Mob1XRTT_r9_Optional e_CSFB_ConcPS_Mob1XRTT_r9;
+};
+
+enum SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e {
+	SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e_supported = 0,
+};
+
+typedef enum SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e;
+
+enum SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e {
+	SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e_supported = 0,
+};
+
+typedef enum SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e;
+
+enum SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e {
+	SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e_supported = 0,
+};
+
+typedef enum SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e;
+
+struct SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e_intraFreqSI_AcquisitionForHO_r9_Optional {
+	bool d;
+	SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e v;
+};
+
+struct SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e_interFreqSI_AcquisitionForHO_r9_Optional {
+	bool d;
+	SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e v;
+};
+
+struct SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e_utran_SI_AcquisitionForHO_r9_Optional {
+	bool d;
+	SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e v;
+};
+
+struct SQN_NeighCellSI_AcquisitionParameters_r9 {
+	struct SQN_NeighCellSI_AcquisitionParameters_r9_intraFreqSI_AcquisitionForHO_r9_e_intraFreqSI_AcquisitionForHO_r9_Optional intraFreqSI_AcquisitionForHO_r9;
+	struct SQN_NeighCellSI_AcquisitionParameters_r9_interFreqSI_AcquisitionForHO_r9_e_interFreqSI_AcquisitionForHO_r9_Optional interFreqSI_AcquisitionForHO_r9;
+	struct SQN_NeighCellSI_AcquisitionParameters_r9_utran_SI_AcquisitionForHO_r9_e_utran_SI_AcquisitionForHO_r9_Optional utran_SI_AcquisitionForHO_r9;
+};
+
+struct SQN_PhyLayerParameters_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_phyLayerParameters_r9_Optional {
+	bool d;
+	struct SQN_PhyLayerParameters v;
+};
+
+struct B32_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_featureGroupIndicators_r9_Optional {
+	bool d;
+	B32 v;
+};
+
+struct B32_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_featureGroupIndRel9Add_r9_Optional {
+	bool d;
+	B32 v;
+};
+
+struct SQN_IRAT_ParametersGERAN_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_interRAT_ParametersGERAN_r9_Optional {
+	bool d;
+	struct SQN_IRAT_ParametersGERAN v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v920_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_interRAT_ParametersUTRA_r9_Optional {
+	bool d;
+	struct SQN_IRAT_ParametersUTRA_v920 v;
+};
+
+struct SQN_IRAT_ParametersCDMA2000_1XRTT_v920_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_interRAT_ParametersCDMA2000_r9_Optional {
+	bool d;
+	struct SQN_IRAT_ParametersCDMA2000_1XRTT_v920 v;
+};
+
+struct SQN_NeighCellSI_AcquisitionParameters_r9_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_neighCellSI_AcquisitionParameters_r9_Optional {
+	bool d;
+	struct SQN_NeighCellSI_AcquisitionParameters_r9 v;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9 {
+	struct SQN_PhyLayerParameters_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_phyLayerParameters_r9_Optional phyLayerParameters_r9;
+	struct B32_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_featureGroupIndicators_r9_Optional featureGroupIndicators_r9;
+	struct B32_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_featureGroupIndRel9Add_r9_Optional featureGroupIndRel9Add_r9;
+	struct SQN_IRAT_ParametersGERAN_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_interRAT_ParametersGERAN_r9_Optional interRAT_ParametersGERAN_r9;
+	struct SQN_IRAT_ParametersUTRA_v920_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_interRAT_ParametersUTRA_r9_Optional interRAT_ParametersUTRA_r9;
+	struct SQN_IRAT_ParametersCDMA2000_1XRTT_v920_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_interRAT_ParametersCDMA2000_r9_Optional interRAT_ParametersCDMA2000_r9;
+	struct SQN_NeighCellSI_AcquisitionParameters_r9_SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_neighCellSI_AcquisitionParameters_r9_Optional neighCellSI_AcquisitionParameters_r9;
+};
+
+enum SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e {
+	SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e;
+
+enum SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e {
+	SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e;
+
+enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e {
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e;
+
+enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e {
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e;
+
+enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e {
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e;
+
+enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e {
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e;
+
+struct SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e_voiceOverPS_HS_UTRA_FDD_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e_voiceOverPS_HS_UTRA_TDD128_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e_srvcc_FromUTRA_FDD_ToGERAN_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e_srvcc_FromUTRA_TDD128_ToGERAN_r9_Optional {
+	bool d;
+	SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e v;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0 {
+	struct SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_FDD_r9_e_voiceOverPS_HS_UTRA_FDD_r9_Optional voiceOverPS_HS_UTRA_FDD_r9;
+	struct SQN_IRAT_ParametersUTRA_v9c0_voiceOverPS_HS_UTRA_TDD128_r9_e_voiceOverPS_HS_UTRA_TDD128_r9_Optional voiceOverPS_HS_UTRA_TDD128_r9;
+	struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_e_srvcc_FromUTRA_FDD_ToUTRA_FDD_r9_Optional srvcc_FromUTRA_FDD_ToUTRA_FDD_r9;
+	struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_FDD_ToGERAN_r9_e_srvcc_FromUTRA_FDD_ToGERAN_r9_Optional srvcc_FromUTRA_FDD_ToGERAN_r9;
+	struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_e_srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9_Optional srvcc_FromUTRA_TDD128_ToUTRA_TDD128_r9;
+	struct SQN_IRAT_ParametersUTRA_v9c0_srvcc_FromUTRA_TDD128_ToGERAN_r9_e_srvcc_FromUTRA_TDD128_ToGERAN_r9_Optional srvcc_FromUTRA_TDD128_ToGERAN_r9;
+};
+
+enum SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e {
+	SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e_supported = 0,
+};
+
+typedef enum SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e;
+
+enum SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e {
+	SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e_supported = 0,
+};
+
+typedef enum SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e;
+
+struct SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e_tm5_FDD_r9_Optional {
+	bool d;
+	SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e v;
+};
+
+struct SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e_tm5_TDD_r9_Optional {
+	bool d;
+	SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e v;
+};
+
+struct SQN_PhyLayerParameters_v9d0 {
+	struct SQN_PhyLayerParameters_v9d0_tm5_FDD_r9_e_tm5_FDD_r9_Optional tm5_FDD_r9;
+	struct SQN_PhyLayerParameters_v9d0_tm5_TDD_r9_e_tm5_TDD_r9_Optional tm5_TDD_r9;
+};
+
+typedef uint16_t SQN_FreqBandIndicator_v9e0;
+
+struct SQN_FreqBandIndicator_v9e0_SQN_SupportedBandEUTRA_v9e0_bandEUTRA_v9e0_Optional {
+	bool d;
+	SQN_FreqBandIndicator_v9e0 v;
+};
+
+struct SQN_SupportedBandEUTRA_v9e0 {
+	struct SQN_FreqBandIndicator_v9e0_SQN_SupportedBandEUTRA_v9e0_bandEUTRA_v9e0_Optional bandEUTRA_v9e0;
+};
+
+struct SQN_SupportedBandEUTRA_v9e0_SQN_SupportedBandListEUTRA_v9e0_Dynamic {
+	size_t d;
+	struct SQN_SupportedBandEUTRA_v9e0* v;
+};
+
+typedef struct SQN_SupportedBandEUTRA_v9e0_SQN_SupportedBandListEUTRA_v9e0_Dynamic SQN_SupportedBandListEUTRA_v9e0;
+
+struct SQN_SupportedBandListEUTRA_v9e0_SQN_RF_Parameters_v9e0_supportedBandListEUTRA_v9e0_Optional {
+	bool d;
+	SQN_SupportedBandListEUTRA_v9e0 v;
+};
+
+struct SQN_RF_Parameters_v9e0 {
+	struct SQN_SupportedBandListEUTRA_v9e0_SQN_RF_Parameters_v9e0_supportedBandListEUTRA_v9e0_Optional supportedBandListEUTRA_v9e0;
+};
+
+enum SQN_IRAT_ParametersUTRA_v9h0_mfbi_UTRA_r9_e {
+	SQN_IRAT_ParametersUTRA_v9h0_mfbi_UTRA_r9_e_supported = 0,
+};
+
+typedef enum SQN_IRAT_ParametersUTRA_v9h0_mfbi_UTRA_r9_e SQN_IRAT_ParametersUTRA_v9h0_mfbi_UTRA_r9_e;
+
+struct SQN_IRAT_ParametersUTRA_v9h0 {
+	SQN_IRAT_ParametersUTRA_v9h0_mfbi_UTRA_r9_e mfbi_UTRA_r9;
+};
+
+enum SQN_OTDOA_PositioningCapabilities_r10_otdoa_UE_Assisted_r10_e {
+	SQN_OTDOA_PositioningCapabilities_r10_otdoa_UE_Assisted_r10_e_supported = 0,
+};
+
+typedef enum SQN_OTDOA_PositioningCapabilities_r10_otdoa_UE_Assisted_r10_e SQN_OTDOA_PositioningCapabilities_r10_otdoa_UE_Assisted_r10_e;
+
+enum SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e {
+	SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e_supported = 0,
+};
+
+typedef enum SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e;
+
+struct SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e_interFreqRSTD_Measurement_r10_Optional {
+	bool d;
+	SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e v;
+};
+
+struct SQN_OTDOA_PositioningCapabilities_r10 {
+	SQN_OTDOA_PositioningCapabilities_r10_otdoa_UE_Assisted_r10_e otdoa_UE_Assisted_r10;
+	struct SQN_OTDOA_PositioningCapabilities_r10_interFreqRSTD_Measurement_r10_e_interFreqRSTD_Measurement_r10_Optional interFreqRSTD_Measurement_r10;
+};
+
+struct B32_SQN_RF_Parameters_v10f0_modifiedMPR_Behavior_r10_Optional {
+	bool d;
+	B32 v;
+};
+
+struct SQN_RF_Parameters_v10f0 {
+	struct B32_SQN_RF_Parameters_v10f0_modifiedMPR_Behavior_r10_Optional modifiedMPR_Behavior_r10;
+};
+
+enum SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e {
+	SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e_supported = 0,
+};
+
+typedef enum SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e;
+
+struct SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e_fourLayerTM3_TM4_r10_Optional {
+	bool d;
+	SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e v;
+};
+
+struct SQN_CA_MIMO_ParametersDL_v10i0 {
+	struct SQN_CA_MIMO_ParametersDL_v10i0_fourLayerTM3_TM4_r10_e_fourLayerTM3_TM4_r10_Optional fourLayerTM3_TM4_r10;
+};
+
+struct SQN_CA_MIMO_ParametersDL_v10i0_SQN_BandParameters_v10i0_bandParametersDL_v10i0_Dynamic {
+	size_t d;
+	struct SQN_CA_MIMO_ParametersDL_v10i0* v;
+};
+
+struct SQN_BandParameters_v10i0 {
+	struct SQN_CA_MIMO_ParametersDL_v10i0_SQN_BandParameters_v10i0_bandParametersDL_v10i0_Dynamic bandParametersDL_v10i0;
+};
+
+struct SQN_BandCombinationParameters_v10i0_SQN_BandParameters_v10i0_bandParameterList_v10i0_Dynamic {
+	size_t d;
+	struct SQN_BandParameters_v10i0* v;
+};
+
+struct SQN_BandParameters_v10i0_SQN_BandCombinationParameters_v10i0_bandParameterList_v10i0_DynamicOptional {
+	bool d;
+	struct SQN_BandCombinationParameters_v10i0_SQN_BandParameters_v10i0_bandParameterList_v10i0_Dynamic v;
+};
+
+struct SQN_BandCombinationParameters_v10i0 {
+	struct SQN_BandParameters_v10i0_SQN_BandCombinationParameters_v10i0_bandParameterList_v10i0_DynamicOptional bandParameterList_v10i0;
+};
+
+struct SQN_BandCombinationParameters_v10i0_SQN_SupportedBandCombination_v10i0_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v10i0* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v10i0_SQN_SupportedBandCombination_v10i0_Dynamic SQN_SupportedBandCombination_v10i0;
+
+struct SQN_SupportedBandCombination_v10i0_SQN_RF_Parameters_v10i0_supportedBandCombination_v10i0_Optional {
+	bool d;
+	SQN_SupportedBandCombination_v10i0 v;
+};
+
+struct SQN_RF_Parameters_v10i0 {
+	struct SQN_SupportedBandCombination_v10i0_SQN_RF_Parameters_v10i0_supportedBandCombination_v10i0_Optional supportedBandCombination_v10i0;
+};
+
+struct SQN_BandCombinationParameters_v10i0_SQN_SupportedBandCombinationAdd_v11d0_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v10i0* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v10i0_SQN_SupportedBandCombinationAdd_v11d0_Dynamic SQN_SupportedBandCombinationAdd_v11d0;
+
+struct SQN_SupportedBandCombinationAdd_v11d0_SQN_RF_Parameters_v11d0_supportedBandCombinationAdd_v11d0_Optional {
+	bool d;
+	SQN_SupportedBandCombinationAdd_v11d0 v;
+};
+
+struct SQN_RF_Parameters_v11d0 {
+	struct SQN_SupportedBandCombinationAdd_v11d0_SQN_RF_Parameters_v11d0_supportedBandCombinationAdd_v11d0_Optional supportedBandCombinationAdd_v11d0;
+};
+
+enum SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e {
+	SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e_supported = 0,
+};
+
+typedef enum SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e;
+
+struct SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e_inDeviceCoexInd_UL_CA_r11_Optional {
+	bool d;
+	SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e v;
+};
+
+struct SQN_Other_Parameters_v11d0 {
+	struct SQN_Other_Parameters_v11d0_inDeviceCoexInd_UL_CA_r11_e_inDeviceCoexInd_UL_CA_r11_Optional inDeviceCoexInd_UL_CA_r11;
+};
+
+enum SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e {
+	SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e_supported = 0,
+};
+
+typedef enum SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e;
+
+struct SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e_maxLayersMIMO_Indication_r12_Optional {
+	bool d;
+	SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e v;
+};
+
+struct SQN_RF_Parameters_v12b0 {
+	struct SQN_RF_Parameters_v12b0_maxLayersMIMO_Indication_r12_e_maxLayersMIMO_Indication_r12_Optional maxLayersMIMO_Indication_r12;
+};
+
+enum SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e {
+	SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e_supported = 0,
+};
+
+typedef enum SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e;
+
+enum SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e {
+	SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e_supported = 0,
+};
+
+typedef enum SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e;
+
+struct SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e_tm9_CE_ModeA_r13_Optional {
+	bool d;
+	SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e v;
+};
+
+struct SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e_tm9_CE_ModeB_r13_Optional {
+	bool d;
+	SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e v;
+};
+
+struct SQN_CE_Parameters_v1370 {
+	struct SQN_CE_Parameters_v1370_tm9_CE_ModeA_r13_e_tm9_CE_ModeA_r13_Optional tm9_CE_ModeA_r13;
+	struct SQN_CE_Parameters_v1370_tm9_CE_ModeB_r13_e_tm9_CE_ModeB_r13_Optional tm9_CE_ModeB_r13;
+};
+
+struct SQN_CE_Parameters_v1370_SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370_ce_Parameters_v1370_Optional {
+	bool d;
+	struct SQN_CE_Parameters_v1370 v;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370 {
+	struct SQN_CE_Parameters_v1370_SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370_ce_Parameters_v1370_Optional ce_Parameters_v1370;
+};
+
+struct uint8_t_SQN_BandParameters_v1380_txAntennaSwitchDL_r13_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct uint8_t_SQN_BandParameters_v1380_txAntennaSwitchUL_r13_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_BandParameters_v1380 {
+	struct uint8_t_SQN_BandParameters_v1380_txAntennaSwitchDL_r13_Optional txAntennaSwitchDL_r13;
+	struct uint8_t_SQN_BandParameters_v1380_txAntennaSwitchUL_r13_Optional txAntennaSwitchUL_r13;
+};
+
+struct SQN_BandCombinationParameters_v1380_SQN_BandParameters_v1380_bandParameterList_v1380_Dynamic {
+	size_t d;
+	struct SQN_BandParameters_v1380* v;
+};
+
+struct SQN_BandParameters_v1380_SQN_BandCombinationParameters_v1380_bandParameterList_v1380_DynamicOptional {
+	bool d;
+	struct SQN_BandCombinationParameters_v1380_SQN_BandParameters_v1380_bandParameterList_v1380_Dynamic v;
+};
+
+struct SQN_BandCombinationParameters_v1380 {
+	struct SQN_BandParameters_v1380_SQN_BandCombinationParameters_v1380_bandParameterList_v1380_DynamicOptional bandParameterList_v1380;
+};
+
+struct SQN_BandCombinationParameters_v1380_SQN_SupportedBandCombination_v1380_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1380* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1380_SQN_SupportedBandCombination_v1380_Dynamic SQN_SupportedBandCombination_v1380;
+
+struct SQN_BandCombinationParameters_v1380_SQN_SupportedBandCombinationAdd_v1380_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1380* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1380_SQN_SupportedBandCombinationAdd_v1380_Dynamic SQN_SupportedBandCombinationAdd_v1380;
+
+struct SQN_BandCombinationParameters_v1380_SQN_SupportedBandCombinationReduced_v1380_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1380* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1380_SQN_SupportedBandCombinationReduced_v1380_Dynamic SQN_SupportedBandCombinationReduced_v1380;
+
+struct SQN_SupportedBandCombination_v1380_SQN_RF_Parameters_v1380_supportedBandCombination_v1380_Optional {
+	bool d;
+	SQN_SupportedBandCombination_v1380 v;
+};
+
+struct SQN_SupportedBandCombinationAdd_v1380_SQN_RF_Parameters_v1380_supportedBandCombinationAdd_v1380_Optional {
+	bool d;
+	SQN_SupportedBandCombinationAdd_v1380 v;
+};
+
+struct SQN_SupportedBandCombinationReduced_v1380_SQN_RF_Parameters_v1380_supportedBandCombinationReduced_v1380_Optional {
+	bool d;
+	SQN_SupportedBandCombinationReduced_v1380 v;
+};
+
+struct SQN_RF_Parameters_v1380 {
+	struct SQN_SupportedBandCombination_v1380_SQN_RF_Parameters_v1380_supportedBandCombination_v1380_Optional supportedBandCombination_v1380;
+	struct SQN_SupportedBandCombinationAdd_v1380_SQN_RF_Parameters_v1380_supportedBandCombinationAdd_v1380_Optional supportedBandCombinationAdd_v1380;
+	struct SQN_SupportedBandCombinationReduced_v1380_SQN_RF_Parameters_v1380_supportedBandCombinationReduced_v1380_Optional supportedBandCombinationReduced_v1380;
+};
+
+enum SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e {
+	SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e_supported = 0,
+};
+
+typedef enum SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e;
+
+struct SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e_tm6_CE_ModeA_r13_Optional {
+	bool d;
+	SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e v;
+};
+
+struct SQN_CE_Parameters_v1380 {
+	struct SQN_CE_Parameters_v1380_tm6_CE_ModeA_r13_e_tm6_CE_ModeA_r13_Optional tm6_CE_ModeA_r13;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1380 {
+	struct SQN_CE_Parameters_v1380 ce_Parameters_v1380;
+};
+
+enum SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e {
+	SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e_class2 = 0,
+};
+
+typedef enum SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e;
+
+struct SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e_ue_CA_PowerClass_N_r13_Optional {
+	bool d;
+	SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e v;
+};
+
+struct SQN_BandCombinationParameters_v1390 {
+	struct SQN_BandCombinationParameters_v1390_ue_CA_PowerClass_N_r13_e_ue_CA_PowerClass_N_r13_Optional ue_CA_PowerClass_N_r13;
+};
+
+struct SQN_BandCombinationParameters_v1390_SQN_SupportedBandCombination_v1390_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1390* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1390_SQN_SupportedBandCombination_v1390_Dynamic SQN_SupportedBandCombination_v1390;
+
+struct SQN_BandCombinationParameters_v1390_SQN_SupportedBandCombinationAdd_v1390_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1390* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1390_SQN_SupportedBandCombinationAdd_v1390_Dynamic SQN_SupportedBandCombinationAdd_v1390;
+
+struct SQN_BandCombinationParameters_v1390_SQN_SupportedBandCombinationReduced_v1390_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1390* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1390_SQN_SupportedBandCombinationReduced_v1390_Dynamic SQN_SupportedBandCombinationReduced_v1390;
+
+struct SQN_SupportedBandCombination_v1390_SQN_RF_Parameters_v1390_supportedBandCombination_v1390_Optional {
+	bool d;
+	SQN_SupportedBandCombination_v1390 v;
+};
+
+struct SQN_SupportedBandCombinationAdd_v1390_SQN_RF_Parameters_v1390_supportedBandCombinationAdd_v1390_Optional {
+	bool d;
+	SQN_SupportedBandCombinationAdd_v1390 v;
+};
+
+struct SQN_SupportedBandCombinationReduced_v1390_SQN_RF_Parameters_v1390_supportedBandCombinationReduced_v1390_Optional {
+	bool d;
+	SQN_SupportedBandCombinationReduced_v1390 v;
+};
+
+struct SQN_RF_Parameters_v1390 {
+	struct SQN_SupportedBandCombination_v1390_SQN_RF_Parameters_v1390_supportedBandCombination_v1390_Optional supportedBandCombination_v1390;
+	struct SQN_SupportedBandCombinationAdd_v1390_SQN_RF_Parameters_v1390_supportedBandCombinationAdd_v1390_Optional supportedBandCombinationAdd_v1390;
+	struct SQN_SupportedBandCombinationReduced_v1390_SQN_RF_Parameters_v1390_supportedBandCombinationReduced_v1390_Optional supportedBandCombinationReduced_v1390;
+};
+
+enum SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_Sel {
+	SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_UNBOUND_VALUE = 0,
+	SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_implicitValue = 1,
+	SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_explicitValue = 2,
+};
+
+union SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_Value {
+	Null implicitValue;
+	uint8_t explicitValue;
+};
+
+struct SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14 {
+	enum SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_Sel d;
+	union SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14_Value v;
+};
+
+enum SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e {
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e_n3 = 0,
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e_n6 = 1,
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e_n9 = 2,
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e_n12 = 3,
+};
+
+typedef enum SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e;
+
+enum SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e {
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e_n1 = 0,
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e_n2 = 1,
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e_n3 = 2,
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e_n4 = 3,
+};
+
+typedef enum SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e;
+
+struct SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e_mbms_ScalingFactor1dot25_r14_Optional {
+	bool d;
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e v;
+};
+
+struct SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e_mbms_ScalingFactor7dot5_r14_Optional {
+	bool d;
+	SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e v;
+};
+
+struct SQN_MBMS_Parameters_v1470 {
+	struct SQN_MBMS_Parameters_v1470_mbms_MaxBW_r14 mbms_MaxBW_r14;
+	struct SQN_MBMS_Parameters_v1470_mbms_ScalingFactor1dot25_r14_e_mbms_ScalingFactor1dot25_r14_Optional mbms_ScalingFactor1dot25_r14;
+	struct SQN_MBMS_Parameters_v1470_mbms_ScalingFactor7dot5_r14_e_mbms_ScalingFactor7dot5_r14_Optional mbms_ScalingFactor7dot5_r14;
+};
+
+enum SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e {
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n8 = 0,
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n12 = 1,
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n16 = 2,
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n20 = 3,
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n24 = 4,
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n28 = 5,
+};
+
+typedef enum SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e;
+
+struct SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_csi_ReportingAdvancedMaxPorts_r14_Optional {
+	bool d;
+	SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e v;
+};
+
+struct SQN_MIMO_UE_ParametersPerTM_v1470 {
+	struct SQN_MIMO_UE_ParametersPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_csi_ReportingAdvancedMaxPorts_r14_Optional csi_ReportingAdvancedMaxPorts_r14;
+};
+
+struct SQN_MIMO_UE_Parameters_v1470 {
+	struct SQN_MIMO_UE_ParametersPerTM_v1470 parametersTM9_v1470;
+	struct SQN_MIMO_UE_ParametersPerTM_v1470 parametersTM10_v1470;
+};
+
+enum SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e {
+	SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e_supported = 0,
+};
+
+typedef enum SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e;
+
+struct SQN_MIMO_UE_Parameters_v1470_SQN_PhyLayerParameters_v1470_mimo_UE_Parameters_v1470_Optional {
+	bool d;
+	struct SQN_MIMO_UE_Parameters_v1470 v;
+};
+
+struct SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e_srs_UpPTS_6sym_r14_Optional {
+	bool d;
+	SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e v;
+};
+
+struct SQN_PhyLayerParameters_v1470 {
+	struct SQN_MIMO_UE_Parameters_v1470_SQN_PhyLayerParameters_v1470_mimo_UE_Parameters_v1470_Optional mimo_UE_Parameters_v1470;
+	struct SQN_PhyLayerParameters_v1470_srs_UpPTS_6sym_r14_e_srs_UpPTS_6sym_r14_Optional srs_UpPTS_6sym_r14;
+};
+
+enum SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e {
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n8 = 0,
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n12 = 1,
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n16 = 2,
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n20 = 3,
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n24 = 4,
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_n28 = 5,
+};
+
+typedef enum SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e;
+
+struct SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_csi_ReportingAdvancedMaxPorts_r14_Optional {
+	bool d;
+	SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e v;
+};
+
+struct SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470 {
+	struct SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470_csi_ReportingAdvancedMaxPorts_r14_e_csi_ReportingAdvancedMaxPorts_r14_Optional csi_ReportingAdvancedMaxPorts_r14;
+};
+
+struct SQN_MIMO_CA_ParametersPerBoBC_v1470 {
+	struct SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470 parametersTM9_v1470;
+	struct SQN_MIMO_CA_ParametersPerBoBCPerTM_v1470 parametersTM10_v1470;
+};
+
+struct SQN_MIMO_CA_ParametersPerBoBC_v1470_SQN_BandParameters_v1470_bandParametersDL_v1470_Optional {
+	bool d;
+	struct SQN_MIMO_CA_ParametersPerBoBC_v1470 v;
+};
+
+struct SQN_BandParameters_v1470 {
+	struct SQN_MIMO_CA_ParametersPerBoBC_v1470_SQN_BandParameters_v1470_bandParametersDL_v1470_Optional bandParametersDL_v1470;
+};
+
+struct SQN_BandCombinationParameters_v1470_SQN_BandParameters_v1470_bandParameterList_v1470_Dynamic {
+	size_t d;
+	struct SQN_BandParameters_v1470* v;
+};
+
+struct SQN_BandParameters_v1470_SQN_BandCombinationParameters_v1470_bandParameterList_v1470_DynamicOptional {
+	bool d;
+	struct SQN_BandCombinationParameters_v1470_SQN_BandParameters_v1470_bandParameterList_v1470_Dynamic v;
+};
+
+struct uint8_t_SQN_BandCombinationParameters_v1470_srs_MaxSimultaneousCCs_r14_Optional {
+	bool d;
+	uint8_t v;
+};
+
+struct SQN_BandCombinationParameters_v1470 {
+	struct SQN_BandParameters_v1470_SQN_BandCombinationParameters_v1470_bandParameterList_v1470_DynamicOptional bandParameterList_v1470;
+	struct uint8_t_SQN_BandCombinationParameters_v1470_srs_MaxSimultaneousCCs_r14_Optional srs_MaxSimultaneousCCs_r14;
+};
+
+struct SQN_BandCombinationParameters_v1470_SQN_SupportedBandCombination_v1470_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1470* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1470_SQN_SupportedBandCombination_v1470_Dynamic SQN_SupportedBandCombination_v1470;
+
+struct SQN_BandCombinationParameters_v1470_SQN_SupportedBandCombinationAdd_v1470_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1470* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1470_SQN_SupportedBandCombinationAdd_v1470_Dynamic SQN_SupportedBandCombinationAdd_v1470;
+
+struct SQN_BandCombinationParameters_v1470_SQN_SupportedBandCombinationReduced_v1470_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v1470* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v1470_SQN_SupportedBandCombinationReduced_v1470_Dynamic SQN_SupportedBandCombinationReduced_v1470;
+
+struct SQN_SupportedBandCombination_v1470_SQN_RF_Parameters_v1470_supportedBandCombination_v1470_Optional {
+	bool d;
+	SQN_SupportedBandCombination_v1470 v;
+};
+
+struct SQN_SupportedBandCombinationAdd_v1470_SQN_RF_Parameters_v1470_supportedBandCombinationAdd_v1470_Optional {
+	bool d;
+	SQN_SupportedBandCombinationAdd_v1470 v;
+};
+
+struct SQN_SupportedBandCombinationReduced_v1470_SQN_RF_Parameters_v1470_supportedBandCombinationReduced_v1470_Optional {
+	bool d;
+	SQN_SupportedBandCombinationReduced_v1470 v;
+};
+
+struct SQN_RF_Parameters_v1470 {
+	struct SQN_SupportedBandCombination_v1470_SQN_RF_Parameters_v1470_supportedBandCombination_v1470_Optional supportedBandCombination_v1470;
+	struct SQN_SupportedBandCombinationAdd_v1470_SQN_RF_Parameters_v1470_supportedBandCombinationAdd_v1470_Optional supportedBandCombinationAdd_v1470;
+	struct SQN_SupportedBandCombinationReduced_v1470_SQN_RF_Parameters_v1470_supportedBandCombinationReduced_v1470_Optional supportedBandCombinationReduced_v1470;
+};
+
+enum SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e {
+	SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e_supported = 0,
+};
+
+typedef enum SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e;
+
+struct SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e_ssp10_TDD_Only_r14_Optional {
+	bool d;
+	SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e v;
+};
+
+struct SQN_PhyLayerParameters_v14a0 {
+	struct SQN_PhyLayerParameters_v14a0_ssp10_TDD_Only_r14_e_ssp10_TDD_Only_r14_Optional ssp10_TDD_Only_r14;
+};
+
+enum SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e {
+	SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e_supported = 0,
+};
+
+typedef enum SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e;
+
+enum SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e {
+	SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e_supported = 0,
+};
+
+typedef enum SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e;
+
+struct SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e_srs_FlexibleTiming_r14_Optional {
+	bool d;
+	SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e v;
+};
+
+struct SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e_srs_HARQ_ReferenceConfig_r14_Optional {
+	bool d;
+	SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e v;
+};
+
+struct SQN_SRS_CapabilityPerBandPair_v14b0 {
+	struct SQN_SRS_CapabilityPerBandPair_v14b0_srs_FlexibleTiming_r14_e_srs_FlexibleTiming_r14_Optional srs_FlexibleTiming_r14;
+	struct SQN_SRS_CapabilityPerBandPair_v14b0_srs_HARQ_ReferenceConfig_r14_e_srs_HARQ_ReferenceConfig_r14_Optional srs_HARQ_ReferenceConfig_r14;
+};
+
+struct SQN_BandParameters_v14b0_SQN_SRS_CapabilityPerBandPair_v14b0_srs_CapabilityPerBandPairList_v14b0_Dynamic {
+	size_t d;
+	struct SQN_SRS_CapabilityPerBandPair_v14b0* v;
+};
+
+struct SQN_SRS_CapabilityPerBandPair_v14b0_SQN_BandParameters_v14b0_srs_CapabilityPerBandPairList_v14b0_DynamicOptional {
+	bool d;
+	struct SQN_BandParameters_v14b0_SQN_SRS_CapabilityPerBandPair_v14b0_srs_CapabilityPerBandPairList_v14b0_Dynamic v;
+};
+
+struct SQN_BandParameters_v14b0 {
+	struct SQN_SRS_CapabilityPerBandPair_v14b0_SQN_BandParameters_v14b0_srs_CapabilityPerBandPairList_v14b0_DynamicOptional srs_CapabilityPerBandPairList_v14b0;
+};
+
+struct SQN_BandCombinationParameters_v14b0_SQN_BandParameters_v14b0_bandParameterList_v14b0_Dynamic {
+	size_t d;
+	struct SQN_BandParameters_v14b0* v;
+};
+
+struct SQN_BandParameters_v14b0_SQN_BandCombinationParameters_v14b0_bandParameterList_v14b0_DynamicOptional {
+	bool d;
+	struct SQN_BandCombinationParameters_v14b0_SQN_BandParameters_v14b0_bandParameterList_v14b0_Dynamic v;
+};
+
+struct SQN_BandCombinationParameters_v14b0 {
+	struct SQN_BandParameters_v14b0_SQN_BandCombinationParameters_v14b0_bandParameterList_v14b0_DynamicOptional bandParameterList_v14b0;
+};
+
+struct SQN_BandCombinationParameters_v14b0_SQN_SupportedBandCombination_v14b0_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v14b0* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v14b0_SQN_SupportedBandCombination_v14b0_Dynamic SQN_SupportedBandCombination_v14b0;
+
+struct SQN_BandCombinationParameters_v14b0_SQN_SupportedBandCombinationAdd_v14b0_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v14b0* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v14b0_SQN_SupportedBandCombinationAdd_v14b0_Dynamic SQN_SupportedBandCombinationAdd_v14b0;
+
+struct SQN_BandCombinationParameters_v14b0_SQN_SupportedBandCombinationReduced_v14b0_Dynamic {
+	size_t d;
+	struct SQN_BandCombinationParameters_v14b0* v;
+};
+
+typedef struct SQN_BandCombinationParameters_v14b0_SQN_SupportedBandCombinationReduced_v14b0_Dynamic SQN_SupportedBandCombinationReduced_v14b0;
+
+struct SQN_SupportedBandCombination_v14b0_SQN_RF_Parameters_v14b0_supportedBandCombination_v14b0_Optional {
+	bool d;
+	SQN_SupportedBandCombination_v14b0 v;
+};
+
+struct SQN_SupportedBandCombinationAdd_v14b0_SQN_RF_Parameters_v14b0_supportedBandCombinationAdd_v14b0_Optional {
+	bool d;
+	SQN_SupportedBandCombinationAdd_v14b0 v;
+};
+
+struct SQN_SupportedBandCombinationReduced_v14b0_SQN_RF_Parameters_v14b0_supportedBandCombinationReduced_v14b0_Optional {
+	bool d;
+	SQN_SupportedBandCombinationReduced_v14b0 v;
+};
+
+struct SQN_RF_Parameters_v14b0 {
+	struct SQN_SupportedBandCombination_v14b0_SQN_RF_Parameters_v14b0_supportedBandCombination_v14b0_Optional supportedBandCombination_v14b0;
+	struct SQN_SupportedBandCombinationAdd_v14b0_SQN_RF_Parameters_v14b0_supportedBandCombinationAdd_v14b0_Optional supportedBandCombinationAdd_v14b0;
+	struct SQN_SupportedBandCombinationReduced_v14b0_SQN_RF_Parameters_v14b0_supportedBandCombinationReduced_v14b0_Optional supportedBandCombinationReduced_v14b0;
+};
+
+struct SQN_UE_EUTRA_Capability_v14b0_IEs_nonCriticalExtension {
+};
+
+struct SQN_RF_Parameters_v14b0_SQN_UE_EUTRA_Capability_v14b0_IEs_rf_Parameters_v14b0_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v14b0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v14b0_IEs_nonCriticalExtension_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v14b0_IEs_nonCriticalExtension v;
+};
+
+struct SQN_UE_EUTRA_Capability_v14b0_IEs {
+	struct SQN_RF_Parameters_v14b0_SQN_UE_EUTRA_Capability_v14b0_IEs_rf_Parameters_v14b0_Optional rf_Parameters_v14b0;
+	struct SQN_UE_EUTRA_Capability_v14b0_IEs_nonCriticalExtension_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_UE_EUTRA_Capability_v14b0_IEs_SQN_UE_EUTRA_Capability_v14a0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v14b0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v14a0_IEs {
+	struct SQN_PhyLayerParameters_v14a0 phyLayerParameters_v14a0;
+	struct SQN_UE_EUTRA_Capability_v14b0_IEs_SQN_UE_EUTRA_Capability_v14a0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_MBMS_Parameters_v1470_SQN_UE_EUTRA_Capability_v1470_IEs_mbms_Parameters_v1470_Optional {
+	bool d;
+	struct SQN_MBMS_Parameters_v1470 v;
+};
+
+struct SQN_PhyLayerParameters_v1470_SQN_UE_EUTRA_Capability_v1470_IEs_phyLayerParameters_v1470_Optional {
+	bool d;
+	struct SQN_PhyLayerParameters_v1470 v;
+};
+
+struct SQN_RF_Parameters_v1470_SQN_UE_EUTRA_Capability_v1470_IEs_rf_Parameters_v1470_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v1470 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v14a0_IEs_SQN_UE_EUTRA_Capability_v1470_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v14a0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1470_IEs {
+	struct SQN_MBMS_Parameters_v1470_SQN_UE_EUTRA_Capability_v1470_IEs_mbms_Parameters_v1470_Optional mbms_Parameters_v1470;
+	struct SQN_PhyLayerParameters_v1470_SQN_UE_EUTRA_Capability_v1470_IEs_phyLayerParameters_v1470_Optional phyLayerParameters_v1470;
+	struct SQN_RF_Parameters_v1470_SQN_UE_EUTRA_Capability_v1470_IEs_rf_Parameters_v1470_Optional rf_Parameters_v1470;
+	struct SQN_UE_EUTRA_Capability_v14a0_IEs_SQN_UE_EUTRA_Capability_v1470_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct OCTET_STRING_SQN_UE_EUTRA_Capability_v13e0a_IEs_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1470_IEs_SQN_UE_EUTRA_Capability_v13e0a_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v1470_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v13e0a_IEs {
+	struct OCTET_STRING_SQN_UE_EUTRA_Capability_v13e0a_IEs_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+	struct SQN_UE_EUTRA_Capability_v1470_IEs_SQN_UE_EUTRA_Capability_v13e0a_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v1390_SQN_UE_EUTRA_Capability_v1390_IEs_rf_Parameters_v1390_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v1390 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v13e0a_IEs_SQN_UE_EUTRA_Capability_v1390_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v13e0a_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1390_IEs {
+	struct SQN_RF_Parameters_v1390_SQN_UE_EUTRA_Capability_v1390_IEs_rf_Parameters_v1390_Optional rf_Parameters_v1390;
+	struct SQN_UE_EUTRA_Capability_v13e0a_IEs_SQN_UE_EUTRA_Capability_v1390_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v1380_SQN_UE_EUTRA_Capability_v1380_IEs_rf_Parameters_v1380_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v1380 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1390_IEs_SQN_UE_EUTRA_Capability_v1380_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v1390_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1380_IEs {
+	struct SQN_RF_Parameters_v1380_SQN_UE_EUTRA_Capability_v1380_IEs_rf_Parameters_v1380_Optional rf_Parameters_v1380;
+	struct SQN_CE_Parameters_v1380 ce_Parameters_v1380;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1380 fdd_Add_UE_EUTRA_Capabilities_v1380;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1380 tdd_Add_UE_EUTRA_Capabilities_v1380;
+	struct SQN_UE_EUTRA_Capability_v1390_IEs_SQN_UE_EUTRA_Capability_v1380_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_CE_Parameters_v1370_SQN_UE_EUTRA_Capability_v1370_IEs_ce_Parameters_v1370_Optional {
+	bool d;
+	struct SQN_CE_Parameters_v1370 v;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370_SQN_UE_EUTRA_Capability_v1370_IEs_fdd_Add_UE_EUTRA_Capabilities_v1370_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370 v;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370_SQN_UE_EUTRA_Capability_v1370_IEs_tdd_Add_UE_EUTRA_Capabilities_v1370_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1380_IEs_SQN_UE_EUTRA_Capability_v1370_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v1380_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1370_IEs {
+	struct SQN_CE_Parameters_v1370_SQN_UE_EUTRA_Capability_v1370_IEs_ce_Parameters_v1370_Optional ce_Parameters_v1370;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370_SQN_UE_EUTRA_Capability_v1370_IEs_fdd_Add_UE_EUTRA_Capabilities_v1370_Optional fdd_Add_UE_EUTRA_Capabilities_v1370;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_v1370_SQN_UE_EUTRA_Capability_v1370_IEs_tdd_Add_UE_EUTRA_Capabilities_v1370_Optional tdd_Add_UE_EUTRA_Capabilities_v1370;
+	struct SQN_UE_EUTRA_Capability_v1380_IEs_SQN_UE_EUTRA_Capability_v1370_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct OCTET_STRING_SQN_UE_EUTRA_Capability_v12x0_IEs_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_UE_EUTRA_Capability_v1370_IEs_SQN_UE_EUTRA_Capability_v12x0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v1370_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v12x0_IEs {
+	struct OCTET_STRING_SQN_UE_EUTRA_Capability_v12x0_IEs_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+	struct SQN_UE_EUTRA_Capability_v1370_IEs_SQN_UE_EUTRA_Capability_v12x0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v12b0_SQN_UE_EUTRA_Capability_v12b0_IEs_rf_Parameters_v12b0_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v12b0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v12x0_IEs_SQN_UE_EUTRA_Capability_v12b0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v12x0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v12b0_IEs {
+	struct SQN_RF_Parameters_v12b0_SQN_UE_EUTRA_Capability_v12b0_IEs_rf_Parameters_v12b0_Optional rf_Parameters_v12b0;
+	struct SQN_UE_EUTRA_Capability_v12x0_IEs_SQN_UE_EUTRA_Capability_v12b0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct OCTET_STRING_SQN_UE_EUTRA_Capability_v11x0_IEs_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_UE_EUTRA_Capability_v12b0_IEs_SQN_UE_EUTRA_Capability_v11x0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v12b0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v11x0_IEs {
+	struct OCTET_STRING_SQN_UE_EUTRA_Capability_v11x0_IEs_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+	struct SQN_UE_EUTRA_Capability_v12b0_IEs_SQN_UE_EUTRA_Capability_v11x0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v11d0_SQN_UE_EUTRA_Capability_v11d0_IEs_rf_Parameters_v11d0_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v11d0 v;
+};
+
+struct SQN_Other_Parameters_v11d0_SQN_UE_EUTRA_Capability_v11d0_IEs_otherParameters_v11d0_Optional {
+	bool d;
+	struct SQN_Other_Parameters_v11d0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v11x0_IEs_SQN_UE_EUTRA_Capability_v11d0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v11x0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v11d0_IEs {
+	struct SQN_RF_Parameters_v11d0_SQN_UE_EUTRA_Capability_v11d0_IEs_rf_Parameters_v11d0_Optional rf_Parameters_v11d0;
+	struct SQN_Other_Parameters_v11d0_SQN_UE_EUTRA_Capability_v11d0_IEs_otherParameters_v11d0_Optional otherParameters_v11d0;
+	struct SQN_UE_EUTRA_Capability_v11x0_IEs_SQN_UE_EUTRA_Capability_v11d0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v10i0_SQN_UE_EUTRA_Capability_v10i0_IEs_rf_Parameters_v10i0_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v10i0 v;
+};
+
+struct OCTET_STRING_SQN_UE_EUTRA_Capability_v10i0_IEs_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_UE_EUTRA_Capability_v11d0_IEs_SQN_UE_EUTRA_Capability_v10i0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v11d0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v10i0_IEs {
+	struct SQN_RF_Parameters_v10i0_SQN_UE_EUTRA_Capability_v10i0_IEs_rf_Parameters_v10i0_Optional rf_Parameters_v10i0;
+	struct OCTET_STRING_SQN_UE_EUTRA_Capability_v10i0_IEs_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+	struct SQN_UE_EUTRA_Capability_v11d0_IEs_SQN_UE_EUTRA_Capability_v10i0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v10f0_SQN_UE_EUTRA_Capability_v10f0_IEs_rf_Parameters_v10f0_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v10f0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v10i0_IEs_SQN_UE_EUTRA_Capability_v10f0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v10i0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v10f0_IEs {
+	struct SQN_RF_Parameters_v10f0_SQN_UE_EUTRA_Capability_v10f0_IEs_rf_Parameters_v10f0_Optional rf_Parameters_v10f0;
+	struct SQN_UE_EUTRA_Capability_v10i0_IEs_SQN_UE_EUTRA_Capability_v10f0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_OTDOA_PositioningCapabilities_r10_SQN_UE_EUTRA_Capability_v10c0_IEs_otdoa_PositioningCapabilities_r10_Optional {
+	bool d;
+	struct SQN_OTDOA_PositioningCapabilities_r10 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v10f0_IEs_SQN_UE_EUTRA_Capability_v10c0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v10f0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v10c0_IEs {
+	struct SQN_OTDOA_PositioningCapabilities_r10_SQN_UE_EUTRA_Capability_v10c0_IEs_otdoa_PositioningCapabilities_r10_Optional otdoa_PositioningCapabilities_r10;
+	struct SQN_UE_EUTRA_Capability_v10f0_IEs_SQN_UE_EUTRA_Capability_v10c0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9h0_SQN_UE_EUTRA_Capability_v9h0_IEs_interRAT_ParametersUTRA_v9h0_Optional {
+	bool d;
+	struct SQN_IRAT_ParametersUTRA_v9h0 v;
+};
+
+struct OCTET_STRING_SQN_UE_EUTRA_Capability_v9h0_IEs_lateNonCriticalExtension_Optional {
+	bool d;
+	OCTET_STRING v;
+};
+
+struct SQN_UE_EUTRA_Capability_v10c0_IEs_SQN_UE_EUTRA_Capability_v9h0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v10c0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9h0_IEs {
+	struct SQN_IRAT_ParametersUTRA_v9h0_SQN_UE_EUTRA_Capability_v9h0_IEs_interRAT_ParametersUTRA_v9h0_Optional interRAT_ParametersUTRA_v9h0;
+	struct OCTET_STRING_SQN_UE_EUTRA_Capability_v9h0_IEs_lateNonCriticalExtension_Optional lateNonCriticalExtension;
+	struct SQN_UE_EUTRA_Capability_v10c0_IEs_SQN_UE_EUTRA_Capability_v9h0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_RF_Parameters_v9e0_SQN_UE_EUTRA_Capability_v9e0_IEs_rf_Parameters_v9e0_Optional {
+	bool d;
+	struct SQN_RF_Parameters_v9e0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9h0_IEs_SQN_UE_EUTRA_Capability_v9e0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v9h0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9e0_IEs {
+	struct SQN_RF_Parameters_v9e0_SQN_UE_EUTRA_Capability_v9e0_IEs_rf_Parameters_v9e0_Optional rf_Parameters_v9e0;
+	struct SQN_UE_EUTRA_Capability_v9h0_IEs_SQN_UE_EUTRA_Capability_v9e0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_PhyLayerParameters_v9d0_SQN_UE_EUTRA_Capability_v9d0_IEs_phyLayerParameters_v9d0_Optional {
+	bool d;
+	struct SQN_PhyLayerParameters_v9d0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9e0_IEs_SQN_UE_EUTRA_Capability_v9d0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v9e0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9d0_IEs {
+	struct SQN_PhyLayerParameters_v9d0_SQN_UE_EUTRA_Capability_v9d0_IEs_phyLayerParameters_v9d0_Optional phyLayerParameters_v9d0;
+	struct SQN_UE_EUTRA_Capability_v9e0_IEs_SQN_UE_EUTRA_Capability_v9d0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct SQN_IRAT_ParametersUTRA_v9c0_SQN_UE_EUTRA_Capability_v9c0_IEs_interRAT_ParametersUTRA_v9c0_Optional {
+	bool d;
+	struct SQN_IRAT_ParametersUTRA_v9c0 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9d0_IEs_SQN_UE_EUTRA_Capability_v9c0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v9d0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9c0_IEs {
+	struct SQN_IRAT_ParametersUTRA_v9c0_SQN_UE_EUTRA_Capability_v9c0_IEs_interRAT_ParametersUTRA_v9c0_Optional interRAT_ParametersUTRA_v9c0;
+	struct SQN_UE_EUTRA_Capability_v9d0_IEs_SQN_UE_EUTRA_Capability_v9c0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
+struct B32_SQN_UE_EUTRA_Capability_v9a0_IEs_featureGroupIndRel9Add_r9_Optional {
+	bool d;
+	B32 v;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_SQN_UE_EUTRA_Capability_v9a0_IEs_fdd_Add_UE_EUTRA_Capabilities_r9_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9 v;
+};
+
+struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_SQN_UE_EUTRA_Capability_v9a0_IEs_tdd_Add_UE_EUTRA_Capabilities_r9_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9 v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9c0_IEs_SQN_UE_EUTRA_Capability_v9a0_IEs_nonCriticalExtension_Optional {
+	bool d;
+	struct SQN_UE_EUTRA_Capability_v9c0_IEs v;
+};
+
+struct SQN_UE_EUTRA_Capability_v9a0_IEs {
+	struct B32_SQN_UE_EUTRA_Capability_v9a0_IEs_featureGroupIndRel9Add_r9_Optional featureGroupIndRel9Add_r9;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_SQN_UE_EUTRA_Capability_v9a0_IEs_fdd_Add_UE_EUTRA_Capabilities_r9_Optional fdd_Add_UE_EUTRA_Capabilities_r9;
+	struct SQN_UE_EUTRA_CapabilityAddXDD_Mode_r9_SQN_UE_EUTRA_Capability_v9a0_IEs_tdd_Add_UE_EUTRA_Capabilities_r9_Optional tdd_Add_UE_EUTRA_Capabilities_r9;
+	struct SQN_UE_EUTRA_Capability_v9c0_IEs_SQN_UE_EUTRA_Capability_v9a0_IEs_nonCriticalExtension_Optional nonCriticalExtension;
+};
+
 typedef uint8_t SQN_UE_EUTRA_Capability_ue_Category;
 
 typedef uint8_t SQN_UE_RadioPagingInfo_r12_ue_Category_v1250;

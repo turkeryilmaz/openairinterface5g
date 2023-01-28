@@ -644,6 +644,10 @@ rlc_op_status_t rlc_stat_req     (
   unsigned int *const stat_timer_poll_retransmit_timed_out,
   unsigned int *const stat_timer_status_prohibit_timed_out);
 
+/* RLC ITTI messaging related functions */
+/* Main loop of RLC itti message handling */
+void *rlc_enb_task(void *arg);
+
 /*! \fn int rlc_module_init(int enb_flag)
 * \brief    RAZ the memory of the RLC layer, initialize the memory pool manager (mem_block_t structures mainly used in RLC module).
 */
