@@ -68,7 +68,7 @@
   {"ue_k2" ,                       CONFIG_HLP_UEK2,            0,               .u16ptr=&NTN_UE_k2,                          .defintval=0,      TYPE_UINT16,   0}, \
   {"FD" ,                          CONFIG_HLP_FDoppler,    0,                   .iptr=&fdoppler,                             .defintval=0,      TYPE_INT,      0}, \
   {"FC" ,                          CONFIG_HLP_FDopplerComp,    0,               .iptr=&fdopplerComp,                         .defintval=1,      TYPE_INT,      0}, \
-  {"D" ,                           CONFIG_HLP_TDRIFT,      0,                   .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
+  {"TD" ,                           CONFIG_HLP_TDRIFT,      0,                   .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
   {"DSR" ,                         CONFIG_HLP_FDopplerRate,0,                   .iptr=&fdopplerRate,                         .defintval=0,      TYPE_INT32,    0}, \
   {"DSV" ,                         CONFIG_HLP_FDopplerVar, 0,                   .uptr=&fdopplerVar,                          .defintval=0,      TYPE_UINT32,   0}, \
 }
