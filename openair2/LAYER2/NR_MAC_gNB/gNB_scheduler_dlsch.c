@@ -1186,7 +1186,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       mac_pkt.rnti      = rnti;
       mac_pkt.harq_pid  = current_harq_pid;
       mac_pkt.preamble  = -1; /* TODO */
-      LOG_MAC_P(OAILOG_DEBUG, "MAC_RETRANSMISSION_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->tb, (int)TBS);
+      LOG_MAC_P(OAILOG_DEBUG, "MAC_RETRANSMISSION_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->transportBlock, (int)TBS);
 
     } else { /* initial transmission */
       LOG_D(NR_MAC, "[%s] Initial HARQ transmission in %d.%d\n", __FUNCTION__, frame, slot);
@@ -1332,7 +1332,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       mac_pkt.rnti      = rnti;
       mac_pkt.harq_pid  = current_harq_pid;
       mac_pkt.preamble  = -1; /* TODO */
-      LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->tb, (int)TBS);
+      LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frame, slot, mac_pkt, (uint8_t *)harq->transportBlock, (int)TBS);
     }
 
     const int ntx_req = gNB_mac->TX_req[CC_id].Number_of_PDUs;

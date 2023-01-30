@@ -320,17 +320,8 @@ int nr_process_mac_pdu(instance_t module_idP,
           return 0;
         }
 
-        case UL_SCH_LCID_DTCH ... (UL_SCH_LCID_DTCH + 4):
-          //  check if LCID is valid at current time.
-          if (pdu_len < sizeof(NR_MAC_SUBHEADER_SHORT))
-                return 0;
-          if (((NR_MAC_SUBHEADER_SHORT *)pduP)->F) {
-            // mac_sdu_len |= (uint16_t)(((NR_MAC_SUBHEADER_LONG *)pduP)->L2)<<8;
-            if (pdu_len < sizeof(NR_MAC_SUBHEADER_LONG))
-                  return 0;
-            mac_subheader_len = 3;
-            mac_sdu_len = ((uint16_t)(((NR_MAC_SUBHEADER_LONG *)pduP)->L1 & 0x7f) << 8)
-                          | ((uint16_t)((NR_MAC_SUBHEADER_LONG *)pduP)->L2 & 0xff);
+        if (pdu_len < mac_subheader_len + mac_len)
+          return 0;
 
         rnti_t crnti = UE->rnti;
         NR_UE_info_t* UE_idx = UE;
@@ -410,7 +401,7 @@ int nr_process_mac_pdu(instance_t module_idP,
 
         nr_rlc_activate_srb0(UE->rnti, module_idP, CC_id, UE->uid, send_initial_ul_rrc_message);
 
-        if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+        if (pdu_len < mac_subheader_len + mac_len)
           return 0;
 
         mac_rlc_data_ind(module_idP,

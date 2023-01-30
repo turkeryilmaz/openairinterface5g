@@ -3173,7 +3173,7 @@ void send_initial_ul_rrc_message(module_id_t        module_id,
   const NR_ServingCellConfigCommon_t *scc = RC.nrrrc[module_id]->carrier.servingcellconfigcommon;
   const NR_ServingCellConfig_t *sccd = RC.nrrrc[module_id]->configuration.scd;
   NR_CellGroupConfig_t cellGroupConfig = {0};
-  fill_initial_cellGroupConfig(uid, &cellGroupConfig, scc, sccd, &RC.nrrrc[module_id]->configuration);
+  fill_initial_cellGroupConfig(uid, &cellGroupConfig, scc, sccd, &RC.nrrrc[module_id]->configuration,CC_id);
 
   uint8_t du2cu_rrc_container[1024];
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_CellGroupConfig,

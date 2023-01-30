@@ -135,7 +135,6 @@ void rx_func(void *param) {
   int slot_rx = info->slot_rx;
   int frame_tx = info->frame_tx;
   int slot_tx = info->slot_tx;
-  sl_ahead = sf_ahead*gNB->frame_parms.slots_per_subframe;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
 
   int absslot_tx = info->timestamp_tx/gNB->frame_parms.get_samples_per_slot(slot_rx,&gNB->frame_parms);
@@ -188,15 +187,14 @@ void rx_func(void *param) {
     void clean_gNB_dlsch(NR_gNB_DLSCH_t *dlsch);
     int j;
     for (j = 0; j < NUMBER_OF_NR_ULSCH_MAX; j++)
-      if (gNB->ulsch[j][0]->rnti == rnti_to_remove[i]) {
-        gNB->ulsch[j][0]->rnti = 0;
-        gNB->ulsch[j][0]->harq_mask = 0;
-        //clean_gNB_ulsch(gNB->ulsch[j][0]);
+      if (gNB->ulsch[j]->rnti == rnti_to_remove[i]) {
+        gNB->ulsch[j]->rnti = 0;
+        gNB->ulsch[j]->harq_mask = 0;
         int h;
         for (h = 0; h < NR_MAX_ULSCH_HARQ_PROCESSES; h++) {
-          gNB->ulsch[j][0]->harq_processes[h]->status = SCH_IDLE;
-          gNB->ulsch[j][0]->harq_processes[h]->round  = 0;
-          gNB->ulsch[j][0]->harq_processes[h]->handled = 0;
+          gNB->ulsch[j]->harq_processes[h]->status = SCH_IDLE;
+          gNB->ulsch[j]->harq_processes[h]->round  = 0;
+          gNB->ulsch[j]->harq_processes[h]->handled = 0;
         }
         up_removed++;
       }
@@ -221,7 +219,6 @@ void rx_func(void *param) {
   if (pthread_mutex_unlock(&rnti_to_remove_mutex)) exit(1);
 
   // RX processing
-  int tx_slot_type         = nr_slot_select(cfg,frame_tx,slot_tx);
   int rx_slot_type         = nr_slot_select(cfg,frame_rx,slot_rx);
   if (rx_slot_type == NR_UPLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
     // UE-specific RX processing for subframe n
@@ -236,8 +233,7 @@ void rx_func(void *param) {
                            gNB->common_vars.rxdataF[aa],
                            slot_rx,
                            0,
-                           gNB->frame_parms.Ncp==EXTENDED?12:14,
-                           gNB->frame_parms.ofdm_symbol_size);
+                           gNB->frame_parms.Ncp==EXTENDED?12:14);
     }
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
   }
@@ -256,7 +252,8 @@ void rx_func(void *param) {
   gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
   pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
-  
+
+  int tx_slot_type = nr_slot_select(cfg,frame_rx,slot_tx);
   if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) {
     notifiedFIFO_elt_t *res;
     processingData_L1tx_t *syncMsg;
@@ -449,37 +446,19 @@ void init_gNB_Tpool(int inst) {
   gNB_L1_proc_t *proc = &gNB->proc;
 
   // ULSCH decoding threadpool
-  gNB->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
-  int numCPU = sysconf(_SC_NPROCESSORS_ONLN);
-  LOG_I(PHY,"Number of threads requested in config file: %d, Number of threads available on this machine: %d\n",gNB->thread_pool_size,numCPU);
-  int threadCnt = min(numCPU, gNB->thread_pool_size);
-  if (threadCnt < 2) LOG_E(PHY,"Number of threads for gNB should be more than 1. Allocated only %d\n",threadCnt);
-  char pool[80];
-  sprintf(pool,"-1");
-  int s_offset = 0;
-  for (int icpu=1; icpu<threadCnt; icpu++) {
-    sprintf(pool+2+s_offset,",-1");
-    s_offset += 3;
-  }
-  if (getenv("noThreads")) strcpy(pool, "n");
-  initTpool(pool, gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
+  initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
   // ULSCH decoder result FIFO
-  gNB->respDecode = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  initNotifiedFIFO(gNB->respDecode);
+  initNotifiedFIFO(&gNB->respDecode);
 
   // L1 RX result FIFO 
-  gNB->resp_L1 = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  initNotifiedFIFO(gNB->resp_L1);
-  notifiedFIFO_elt_t *msg = newNotifiedFIFO_elt(sizeof(processingData_L1_t),0,gNB->resp_L1,rx_func);
-  pushNotifiedFIFO(gNB->resp_L1,msg); // to unblock the process in the beginning
+  initNotifiedFIFO(&gNB->resp_L1);
+  notifiedFIFO_elt_t *msg = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, rx_func);
+  pushNotifiedFIFO(&gNB->resp_L1, msg); // to unblock the process in the beginning
 
   // L1 TX result FIFO 
-  gNB->L1_tx_free = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  gNB->L1_tx_filled = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  gNB->L1_tx_out = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-  initNotifiedFIFO(gNB->L1_tx_free);
-  initNotifiedFIFO(gNB->L1_tx_filled);
-  initNotifiedFIFO(gNB->L1_tx_out);
+  initNotifiedFIFO(&gNB->L1_tx_free);
+  initNotifiedFIFO(&gNB->L1_tx_filled);
+  initNotifiedFIFO(&gNB->L1_tx_out);
   
   // we create 2 threads for L1 tx processing
   for (int i=0; i < 2; i++) {
@@ -584,15 +563,9 @@ void init_eNB_afterRU(void) {
 		  gNB->RU_list[ru_id]->idx);
       
       for (i=0; i<gNB->RU_list[ru_id]->nb_rx; aa++,i++) {
-	LOG_I(PHY,"Attaching RU %d antenna %d to gNB antenna %d\n",gNB->RU_list[ru_id]->idx,i,aa);
-	gNB->prach_vars.rxsigF[aa]    =  gNB->RU_list[ru_id]->prach_rxsigF[0][i];
-#if 0
-printf("before %p\n", gNB->common_vars.rxdataF[aa]);
-#endif
-	gNB->common_vars.rxdataF[aa]     =  gNB->RU_list[ru_id]->common.rxdataF[i];
-#if 0
-printf("after %p\n", gNB->common_vars.rxdataF[aa]);
-#endif
+        LOG_I(PHY,"Attaching RU %d antenna %d to gNB antenna %d\n",gNB->RU_list[ru_id]->idx,i,aa);
+        gNB->prach_vars.rxsigF[aa]    =  gNB->RU_list[ru_id]->prach_rxsigF[0][i];
+        gNB->common_vars.rxdataF[aa]     =  gNB->RU_list[ru_id]->common.rxdataF[i];
       }
     }
 
