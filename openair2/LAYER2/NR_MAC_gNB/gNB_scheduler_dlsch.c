@@ -321,23 +321,19 @@ void nr_store_dlsch_buffer(module_id_t module_id,
   UE_iterator(RC.nrmac[module_id]->UE_info.list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     sched_ctrl->num_total_bytes = 0;
+    sched_ctrl->dl_pdus_total = 0;
 
-    int lcid; 
-    const uint16_t rnti = UE_info->rnti[UE_id];
-    LOG_D(NR_MAC,"UE %d/%x : lcid_mask %x\n",UE_id,rnti,sched_ctrl->lcid_mask);
-    if ((sched_ctrl->lcid_mask&(1<<DL_SCH_LCID_DCCH1)) > 0)
-      sched_ctrl->rlc_status[DL_SCH_LCID_DCCH1] = mac_rlc_status_ind(module_id,
-                                                        rnti,
-                                                        module_id,
-                                                          frame,
-                                                        slot,
-                                                        ENB_FLAG_YES,
-                                                        MBMS_FLAG_NO,
-                                                        DL_SCH_LCID_DCCH1,
-                                                        0,
-                                                        0);
-    if ((sched_ctrl->lcid_mask&(1<<DL_SCH_LCID_DCCH)) > 0)
-       sched_ctrl->rlc_status[DL_SCH_LCID_DCCH] = mac_rlc_status_ind(module_id,
+    /* loop over all activated logical channels */
+    // Note: DL_SCH_LCID_DCCH, DL_SCH_LCID_DCCH1, DL_SCH_LCID_DTCH
+    for (int i = 0; i < sched_ctrl->dl_lc_num; ++i) {
+      const int lcid = sched_ctrl->dl_lc_ids[i];
+      const uint16_t rnti = UE->rnti;
+      LOG_D(NR_MAC, "In %s: UE %x: LCID %d\n", __FUNCTION__, rnti, lcid);
+      if (lcid == DL_SCH_LCID_DTCH && sched_ctrl->rrc_processing_timer > 0) {
+        continue;
+      }
+      start_meas(&RC.nrmac[module_id]->rlc_status_ind);
+      sched_ctrl->rlc_status[lcid] = mac_rlc_status_ind(module_id,
                                                         rnti,
                                                         module_id,
                                                         frame,
@@ -347,36 +343,7 @@ void nr_store_dlsch_buffer(module_id_t module_id,
                                                         lcid,
                                                         0,
                                                         0);
-    int dtch_id = -1;
-    for (int dtch_lcid = DL_SCH_LCID_DTCH; dtch_lcid <= DL_SCH_LCID_DTCH + 4; dtch_lcid++) {
-      if ((sched_ctrl->lcid_mask&(1<<dtch_lcid)) > 0) {
-        start_meas(&RC.nrmac[module_id]->rlc_status_ind);
-        sched_ctrl->rlc_status[dtch_lcid] = mac_rlc_status_ind(module_id,
-                                                                      rnti,
-                                                                      module_id,
-                                                                      frame,
-                                                                      slot,
-                                                                      ENB_FLAG_YES,
-                                                                      MBMS_FLAG_NO,
-                                                                      dtch_lcid,
-                                                                      0,
-          dtch_id = dtch_lcid;
-        }
-      }
-    }
-    if (sched_ctrl->rlc_status[DL_SCH_LCID_DCCH].bytes_in_buffer > 0) {
-      lcid = DL_SCH_LCID_DCCH;
-    } else if (sched_ctrl->rlc_status[DL_SCH_LCID_DCCH1].bytes_in_buffer > 0) {
-      lcid = DL_SCH_LCID_DCCH1;
-    } else if (dtch_id != -1) {
-      lcid = dtch_id;
-    } else {
-      lcid = DL_SCH_LCID_DTCH;
-    }
-
-    sched_ctrl->num_total_bytes += sched_ctrl->rlc_status[lcid].bytes_in_buffer;
-    //later multiplex here. Just select DCCH/SRB before DTCH/DRB
-    sched_ctrl->lcid_to_schedule = lcid;
+      stop_meas(&RC.nrmac[module_id]->rlc_status_ind);
 
       if (sched_ctrl->rlc_status[lcid].bytes_in_buffer == 0)
         continue;
@@ -392,6 +359,7 @@ void nr_store_dlsch_buffer(module_id_t module_id,
             lcid,
             UE->rnti,
             sched_ctrl->rlc_status[lcid].bytes_in_buffer,
+            sched_ctrl->num_total_bytes,
             sched_ctrl->dl_pdus_total,
             sched_ctrl->ta_apply ? "send":"do not send");
     }

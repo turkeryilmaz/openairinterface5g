@@ -572,7 +572,7 @@ static void enqueue_pdcp_data_req(
     NR_DTCH_DATA_REQ (message_p).sdu_p     = message_buffer;
     NR_DTCH_DATA_REQ (message_p).mode      = modeP;
     NR_DTCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-    NR_DTCH_DATA_REQ (message_p).rnti      = ctxt_pP->rnti;
+    NR_DTCH_DATA_REQ (message_p).rnti      = ctxt_pP->rntiMaybeUEid;
     NR_DTCH_DATA_REQ (message_p).gNB_index = ctxt_pP->eNB_index;
     itti_send_msg_to_task(
       ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
@@ -698,7 +698,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
         &ctxt,
         0,
         entity->is_gnb,
-        ue->rnti,
+        ue->rntiMaybeUEid,
         nr_pdcp_current_time_last_frame,
         nr_pdcp_current_time_last_subframe,
         0);
@@ -755,7 +755,7 @@ rb_found:
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt,
       0,
       entity->is_gnb,
-      ue->rnti,
+      ue->rntiMaybeUEid,
       nr_pdcp_current_time_last_frame,
       nr_pdcp_current_time_last_subframe,
       0);
@@ -956,7 +956,7 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
                                      NR_DTCH_DATA_REQ(msg_p).gNB_index);
 
       LOG_A(PDCP, "Sending packet to PDCP, Calling pdcp_data_req ue %x drb id %ld len %u\n",
-            ctxt.rnti, NR_DTCH_DATA_REQ(msg_p).rb_id, NR_DTCH_DATA_REQ(msg_p).sdu_size);
+            ctxt.rntiMaybeUEid, NR_DTCH_DATA_REQ(msg_p).rb_id, NR_DTCH_DATA_REQ(msg_p).sdu_size);
       result = pdcp_data_req(&ctxt,
                             SRB_FLAG_NO,
                             NR_DTCH_DATA_REQ(msg_p).rb_id,
@@ -966,7 +966,7 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
                             NR_DTCH_DATA_REQ(msg_p).sdu_p,
                             NR_DTCH_DATA_REQ(msg_p).mode,
                             NULL, NULL);
-      if (result != TRUE)
+      if (result != true)
         LOG_E(PDCP, "PDCP data request failed!\n");
 
       result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_DTCH_DATA_REQ(msg_p).sdu_p);

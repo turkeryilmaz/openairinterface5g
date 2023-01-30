@@ -161,7 +161,7 @@ void mac_rlc_data_ind     (
       T_INT(channel_idP), T_INT(tb_sizeP));
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
-    if ((tb_sizeP != 0) && (TRUE == enb_flagP) && (channel_idP >= 4)) {
+    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4)) {
       int drb_id = channel_idP - 3;
       int result;
       LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %ld size %u\n",

@@ -1711,10 +1711,7 @@ schedule_ulsch(module_id_t module_idP,
   start_meas(&(mac->schedule_ulsch));
   sched_subframe = (subframeP + 4) % 10;
   sched_frame = frameP;
-
-
-  /* MultiCell: Common channels modify for multiple CC */
-  cc = &RC.mac[module_idP]->common_channels[CC_id];
+  cc = mac->common_channels;
 
   /* For TDD: check subframes where we have to act and return if nothing should be done now */
   if (cc->tdd_Config) {  // Done only for CC_id = 0, assume tdd_Config for all CC_id
@@ -1817,6 +1814,9 @@ schedule_ulsch(module_id_t module_idP,
 
   /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
   for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
+
+  /* MultiCell: Common channels modify for multiple CC */
+  cc = &RC.mac[module_idP]->common_channels[CC_id];
 
   if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
                          cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
