@@ -114,11 +114,6 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
     ue->rx_offset_comp = 0;
   }
 
-
-  const int sample_shift = -(ue->rx_offset>>1);
-  // reset IIR filter for next offset calculation
-  ue->max_pos_fil += sample_shift * 32768;
-
   if(abs(diff)<5)
     count_max_pos_ok ++;
   else
