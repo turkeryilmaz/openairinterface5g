@@ -711,7 +711,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
         &ctxt,
         0,
         entity->is_gnb,
-        ue->rnti,
+        ue->rntiMaybeUEid,
         nr_pdcp_current_time_last_frame,
         nr_pdcp_current_time_last_subframe,
         0);
