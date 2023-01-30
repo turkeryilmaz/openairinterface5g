@@ -145,6 +145,9 @@ typedef struct {
   int wait_timeout;
 } rfsimulator_state_t;
 
+static int TO_gNB_flag = 0;
+static int TO_UE_flag = 0;
+static int TO_wait_flag = 1;
 
 static void allocCirBuf(rfsimulator_state_t *bridge, int sock) {
   buffer_t *ptr=&bridge->buf[sock];
@@ -596,6 +599,7 @@ static int startClient(openair0_device *device) {
     if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
       LOG_I(HW,"rfsimulator: connection established\n");
       connected=true;
+      TO_UE_flag = 1;
     }
 
     perror("rfsimulator");
@@ -608,11 +612,43 @@ static int startClient(openair0_device *device) {
 }
 
 extern uint64_t RFsim_PropDelay;
+extern int RFsim_DriftPerFrame;
+int samples_per_slot = 30720; //number of samples per slot, HARD CODED!
+int nb_slot_per_fram = 20; //number of slots per frame, HARD CODED!
 static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp timestamp, void **samplesVoid, int nsamps, int nbAnt, int flags, bool alreadyLocked) {
   if (!alreadyLocked)
     pthread_mutex_lock(&Sockmutex);
 
   LOG_D(HW,"sending %d samples at time: %ld, nbAnt %d\n", nsamps, timestamp, nbAnt);
+
+  static int64_t TO_sim_shift = 0;
+  static uint64_t TO_TS = 0;
+  if (RFsim_DriftPerFrame!=0) {
+    if ( TO_gNB_flag) { //a UE is active
+      if ( TO_wait_flag ) { //for the first write when a UE is connected
+        TO_wait_flag=0;
+        TO_TS = timestamp+samples_per_slot*nb_slot_per_fram*300+samples_per_slot*5; //start drifting 300 frames after a UE is active, trying to skip all the "trash" frames (5 trash frames currently)
+        //"samples_per_slot*5" is from the comparison of loging of gNB and UE, for gNB to start drifting the same as UE
+      }
+      while (timestamp > (TO_TS+samples_per_slot/2)) { //update the TO shift according to the timestamp
+        TO_sim_shift+=((0<RFsim_DriftPerFrame)-(RFsim_DriftPerFrame<0));
+        TO_TS += samples_per_slot*nb_slot_per_fram/abs(RFsim_DriftPerFrame);
+      }
+    }
+    if ( TO_UE_flag) { //a UE is active
+      if ( TO_wait_flag ) { //for the first write when a UE is connected
+        TO_wait_flag=0;
+        TO_TS = timestamp+samples_per_slot*nb_slot_per_fram*300; //start drifting 300 frames after a UE is active, trying to skip all the "trash" frames (5 trash frames currently)
+      }
+      while (timestamp > (TO_TS+samples_per_slot/2)) { //update the TO shift according to the timestamp
+        TO_sim_shift+=((0<RFsim_DriftPerFrame)-(RFsim_DriftPerFrame<0));
+        TO_TS += samples_per_slot*nb_slot_per_fram/abs(RFsim_DriftPerFrame);
+      }
+    }
+  }
+  
+  timestamp = timestamp + TO_sim_shift;
+  //printf("TO_sim_shift=%lld, RFsim_PropDelay=%llu,RFsim_DriftPerFrame=%d\n", TO_sim_shift,RFsim_PropDelay,RFsim_DriftPerFrame);
 
   for (int i=0; i<FD_SETSIZE; i++) {
     buffer_t *b=&t->buf[i];
@@ -678,6 +714,7 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
       setblocking(conn_sock, notBlocking);
       allocCirBuf(t, conn_sock);
       LOG_I(HW,"A client connected, sending the current time\n");
+      TO_gNB_flag = 1;
       c16_t v= {0};
       void *samplesVoid[t->tx_num_channels];
 
@@ -755,13 +792,15 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
             memset(b->circularBuf, 0, sampleToByte(CirSize,1));
           }
 
-          if (b->lastReceivedTS != 0 && b->th.timestamp-b->lastReceivedTS < 1000)
+          if (b->lastReceivedTS != 0 && b->th.timestamp-b->lastReceivedTS > 50)
             LOG_W(HW,"UEsock: %d gap of: %ld in reception\n", fd, b->th.timestamp-b->lastReceivedTS );
 
           b->lastReceivedTS=b->th.timestamp;
         } else if ( b->lastReceivedTS > b->th.timestamp && b->th.size == 1 ) {
           LOG_W(HW,"Received Rx/Tx synchro out of order\n");
           b->trashingPacket=true;
+        } else if ( b->lastReceivedTS > b->th.timestamp && b->th.size != 1 ) {
+          //timing drift case!!
         } else if ( b->lastReceivedTS == b->th.timestamp ) {
           // normal case
         } else {
