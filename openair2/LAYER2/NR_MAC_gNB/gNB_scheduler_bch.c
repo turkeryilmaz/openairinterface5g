@@ -373,7 +373,6 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   int mcsTableIdx = 0;
   int rbSize = 0;
   uint32_t TBS = 0;
-  LOG_D(MAC,"bwpSize:%d rbStart:%d rbSize:%d startSymbolIndex,:%d nrOfSymbols:%d\n",bwpSize, rbStart, rbSize, startSymbolIndex, nrOfSymbols);
   do {
     if(rbSize < bwpSize && !(vrb_map[rbStart + rbSize]&SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols)))
       rbSize++;

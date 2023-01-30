@@ -31,9 +31,6 @@
 #include "SCHED_NR_UE/defs.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "executables/softmodem-common.h"
-#include "LAYER2/nr_pdcp/nr_pdcp_entity.h"
-#include "SCHED_NR_UE/pucch_uci_ue_nr.h"
-#include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "radio/COMMON/common_lib.h"
 
@@ -403,7 +400,6 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     mac->dl_info.module_id = mod_id;
     mac->dl_info.frame = frame;
     mac->dl_info.slot = slot;
-    mac->dl_info.thread_id = 0;
     mac->dl_info.dci_ind = NULL;
     mac->dl_info.rx_ind = NULL;
     if (ch_info) {
@@ -436,9 +432,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
                       ul_info.slot_tx, mac->frame_type)) {
       LOG_D(NR_MAC, "Slot %d. calling nr_ue_ul_ind() and nr_ue_pucch_scheduler() from %s\n", ul_info.slot_tx, __FUNCTION__);
       nr_ue_scheduler(NULL, &ul_info);
-      nr_ue_prach_scheduler(mod_id, ul_info.frame_tx, ul_info.slot_tx, ul_info.thread_id);
-      nr_ue_pucch_scheduler(mod_id, ul_info.frame_tx, ul_info.slot_tx, ul_info.thread_id);
-      check_nr_prach(mac, &ul_info, &prach_resources);
+      nr_ue_prach_scheduler(mod_id, ul_info.frame_tx, ul_info.slot_tx);
+      nr_ue_pucch_scheduler(mod_id, ul_info.frame_tx, ul_info.slot_tx, NULL);
     }
     if (!IS_SOFTMODEM_NOS1 && get_softmodem_params()->sa) {
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
@@ -650,9 +645,6 @@ void processSlotTX(void *arg) {
   nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
-  fapi_nr_config_request_t *cfg = &UE->nrUE_config;
-  int tx_slot_type = nr_ue_slot_select(cfg, proc->frame_tx, proc->nr_slot_tx);
-  uint8_t gNB_id = 0;
   nr_phy_data_tx_t phy_data = {0};
 
   LOG_D(PHY,"%d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
@@ -672,8 +664,6 @@ void processSlotTX(void *arg) {
       ul_indication.slot_rx   = proc->nr_slot_rx;
       ul_indication.frame_tx  = proc->frame_tx;
       ul_indication.slot_tx   = proc->nr_slot_tx;
-      ul_indication.thread_id = proc->thread_id;
-      ul_indication.ue_sched_mode = rxtxD->ue_sched_mode;
       ul_indication.phy_data      = &phy_data;
 
       UE->if_inst->ul_indication(&ul_indication);
@@ -688,13 +678,8 @@ void processSlotTX(void *arg) {
 
 void UE_processing(nr_rxtx_thread_data_t *rxtxD) {
 
-  nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
-  fapi_nr_config_request_t *cfg = &UE->nrUE_config;
-  int rx_slot_type = nr_ue_slot_select(cfg, proc->frame_rx, proc->nr_slot_rx);
-  int tx_slot_type = nr_ue_slot_select(cfg, proc->frame_tx, proc->nr_slot_tx);
-  uint8_t gNB_id = 0;
   nr_phy_data_t phy_data = {0};
 
   if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {

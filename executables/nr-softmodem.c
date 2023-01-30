@@ -165,7 +165,7 @@ uint64_t num_missed_slots=0; // counter for the number of missed slots
 extern void reset_opp_meas(void);
 extern void print_opp_meas(void);
 
-//extern void *udp_eNB_task(void *args_p);
+extern void *udp_eNB_task(void *args_p);
 
 int transmission_mode=1;
 int emulate_rf = 0;
@@ -380,13 +380,13 @@ static int create_gNB_tasks(void) {
     char aprefix[MAX_OPTNAME_SIZE*2 + 8];
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
     config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-
+    
     for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
       if( NETParams[i].strptr == NULL) {
         LOG_E(NGAP, "No AMF configuration in the file.\n");
         exit(1);
       } else {
-        LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
+	LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
       }
     }
     
@@ -470,7 +470,6 @@ static int create_gNB_tasks(void) {
         return -1;
       }
     }
-
   }
 
   return 0;

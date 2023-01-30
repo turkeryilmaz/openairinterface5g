@@ -837,8 +837,8 @@ srb_found:
           LOG_E(PDCP,"Error in sending DCCH_PDU_IND/SS_NRRRC_PDU_IND(msg_Id:%d) to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
         }
       }
-    }
-    {
+  }
+  {
   if (entity->is_gnb) {
     MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_GNB, 0, F1AP_UL_RRC_MESSAGE);
     AssertFatal(message_p != NULL, "OUT OF MEMORY\n");
@@ -861,6 +861,7 @@ srb_found:
     NR_RRC_DCCH_DATA_IND(message_p).sdu_size = size;
     NR_RRC_DCCH_DATA_IND(message_p).rnti = ue->rntiMaybeUEid;
     itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
+    }
   }
 }
 
@@ -1395,7 +1396,7 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
     nr_pdcp_pkt_info_t pdcp_pkt;
     memset(&pdcp_pkt, 0, sizeof(pdcp_pkt));
     pdcp_pkt.direction 	= 1; //PDCP_NR_DIRECTION_DOWNLINK
-    pdcp_pkt.ueid      	= ue->rnti;
+    pdcp_pkt.ueid      	= ue->rntiMaybeUEid;
     pdcp_pkt.bearerType 	= 8; //TODO
     pdcp_pkt.bearerId 	= rb_id - 1;
     pdcp_pkt.plane     	= (rb_id == 1)?4:1;

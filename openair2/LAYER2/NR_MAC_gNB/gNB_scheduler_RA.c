@@ -1818,8 +1818,8 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
                     rbStart,
                     BWPSize,
                     BWPStart,
-                    startSymbolIndex,
-                    nrOfSymbols);
+                    msg4_tda.startSymbolIndex,
+                    msg4_tda.nrOfSymbols);
     if (RC.ss.mode == SS_SOFTMODEM)
         BWPStart = 27;
 
@@ -2106,7 +2106,7 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
     mac_pkt.rnti      = ra->rnti;
     mac_pkt.harq_pid  = current_harq_pid;
     mac_pkt.preamble  = -1; /* TODO */
-    LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->tb, (int)harq->tb_size);
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)harq->transportBlock, (int)harq->tb_size);
 
     // DL TX request
     nfapi_nr_pdu_t *tx_req = &nr_mac->TX_req[CC_id].pdu_list[nr_mac->TX_req[CC_id].Number_of_PDUs];
