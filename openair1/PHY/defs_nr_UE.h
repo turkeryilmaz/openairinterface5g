@@ -525,6 +525,9 @@ typedef struct {
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame
   int              time_sync_cell;
+  int              rx_offset_TO; /// Timing offset used for compensating the time drift due to high speed
+  int              rx_offset_slot; /// Indicating time (in slots) after rx_offset calculation
+  int              rx_offset_comp; /// Already compensated rx_offset
 
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB

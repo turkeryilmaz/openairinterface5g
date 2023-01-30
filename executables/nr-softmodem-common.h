@@ -120,6 +120,7 @@
 #define CONFIG_HLP_TDRIFT        "Set the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)\n"
 #define CONFIG_HLP_FDopplerRate  "Set the Doppler rate in Hz/s\n"
 #define CONFIG_HLP_FDopplerVar   "Set Doppler variance, [fdoppler +/- fdopplerVar]\n"
+#define CONFIG_HLP_TDriftComp    "Execute continous timing drift compensation\n"
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
@@ -174,5 +175,6 @@ extern int fdopplerComp;         // flag to activate/deactivate continous freque
 extern int RFsim_DriftPerFrame; //the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)
 extern int32_t fdopplerRate; //Doppler rate in Hz/s
 extern uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
+extern int tdriftComp;         // flag to activate/deactivate continous timing drift compensation
 
 #endif
