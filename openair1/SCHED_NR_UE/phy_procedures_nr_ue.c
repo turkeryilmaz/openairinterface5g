@@ -278,6 +278,32 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx){
   }
 }
 
+bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot){
+
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+
+  if ((frame*fp->slots_per_frame + slot) % (16*fp->slots_per_frame) == 0){
+    ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16_copy;
+    ue->slss->sl_timeoffsetssb_r16 = frame*fp->slots_per_frame + ue->slss->sl_timeoffsetssb_r16_copy;
+  }
+
+  if (ue->slss->sl_numssb_withinperiod_r16 > 0){
+    if (frame*fp->slots_per_frame + slot == ue->slss->sl_timeoffsetssb_r16){
+      ue->slss->sl_timeoffsetssb_r16 = ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16;
+      ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16 -1;
+      LOG_I(PHY,"*** SL-SSB slot allocation  %d.%d ***\n", frame, slot);
+      
+    }else{
+      return false;
+    }
+  }else{
+    return false;
+  }
+
+  return true;
+
+}
+
 void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                                UE_nr_rxtx_proc_t *proc,
                                uint8_t gNB_id)
@@ -298,7 +324,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
   }
 
-  if (ue->sync_ref && !(slot_tx == 8 || slot_tx == 9 || slot_tx == 18 || slot_tx == 19)) {
+  if (ue->sync_ref && phy_ssb_slot_allocation_sl(ue, frame_tx, slot_tx) && !(slot_tx == 8 || slot_tx == 9 || slot_tx == 18 || slot_tx == 19)) {
     nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
     const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
     LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
