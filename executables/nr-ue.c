@@ -773,6 +773,8 @@ void *UE_thread(void *arg) {
 
   int timing_advance = UE->timing_advance;
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+  int rx_offset_slot = 0; //samples to be shifted for the current slot
+  int UL_TO_Tx_ofs = 0;
 
   bool syncRunning=false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
@@ -893,14 +895,21 @@ void *UE_thread(void *arg) {
 
     int readBlockSize, writeBlockSize;
 
-    readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms);
+    rx_offset_slot = UE->rx_offset_TO * UE->rx_offset_slot / nb_slot_frame - UE->rx_offset_comp;
+    UE->rx_offset_comp += rx_offset_slot;
+    UE->rx_offset_slot++;
+    UL_TO_Tx_ofs += 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+
+    readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;
     writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
+    /*
     if (UE->apply_timing_offset && (slot_nr == nb_slot_frame-1)) {
       const int sampShift = -(UE->rx_offset>>1);
       readBlockSize  -= sampShift;
       writeBlockSize -= sampShift;
       UE->apply_timing_offset = false;
     }
+    */
 
     AssertFatal(readBlockSize ==
                 UE->rfdevice.trx_read_func(&UE->rfdevice,
@@ -910,7 +919,7 @@ void *UE_thread(void *arg) {
                                            UE->frame_parms.nb_antennas_rx),"");
 
     if( slot_nr==(nb_slot_frame-1)) {
-      // read in first symbol of next frame and adjust for timing drift
+      // read in first symbol of next frame
       int first_symbols=UE->frame_parms.ofdm_symbol_size+UE->frame_parms.nb_prefix_samples0; // first symbol of every frames
 
       if ( first_symbols > 0 ) {
