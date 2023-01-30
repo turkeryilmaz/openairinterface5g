@@ -454,7 +454,7 @@ rlc_op_status_t enqueue_mac_rlc_data_req(
   const uint32_t *const destinationL2Id
    )
 {
-  int rnti = ctxt_pP->rnti;
+  int rnti = ctxt_pP->rntiMaybeUEid;
   nr_rlc_ue_t *ue;
   nr_rlc_entity_t *rb;
 
@@ -464,7 +464,7 @@ rlc_op_status_t enqueue_mac_rlc_data_req(
 
   if (ctxt_pP->enb_flag)
     T(T_ENB_RLC_DL, T_INT(ctxt_pP->module_id),
-      T_INT(ctxt_pP->rnti), T_INT(rb_idP), T_INT(sdu_sizeP));
+      T_INT(ctxt_pP->rntiMaybeUEid), T_INT(rb_idP), T_INT(sdu_sizeP));
 
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);

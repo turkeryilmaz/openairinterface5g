@@ -257,7 +257,7 @@ static void do_pdcp_data_ind(
   /** TRACE PDCP PDU */
   nr_pdcp_pkt_info_t pdcp_pkt;
   pdcp_pkt.direction = 0; //PDCP_NR_DIRECTION_UPLINK
-  pdcp_pkt.ueid      = rnti;
+  pdcp_pkt.ueid      = rntiMaybeUEid;
 
   if (ctxt_pP->enb_flag)
     T(T_ENB_PDCP_UL, T_INT(ctxt_pP->module_id), T_INT(rntiMaybeUEid), T_INT(rb_id), T_INT(sdu_buffer_size));
@@ -750,7 +750,7 @@ srb_found:
         SS_NRRRC_PDU_IND (message_p).sdu_size = size;
         SS_NRRRC_PDU_IND (message_p).srb_id = srb_id;
         SS_NRRRC_PDU_IND (message_p).frame = nr_pdcp_current_time_last_frame;
-        SS_NRRRC_PDU_IND (message_p).rnti = ue->rnti;
+        SS_NRRRC_PDU_IND (message_p).rnti = ue->rntiMaybeUEid;
         SS_NRRRC_PDU_IND (message_p).subframe = nr_pdcp_current_time_last_subframe;
         memset (SS_NRRRC_PDU_IND (message_p).sdu, 0, SDU_SIZE);
         memcpy (SS_NRRRC_PDU_IND (message_p).sdu, buf, size);
@@ -760,8 +760,8 @@ srb_found:
           LOG_E(PDCP,"Error in sending DCCH_PDU_IND/SS_NRRRC_PDU_IND(msg_Id:%d) to TASK_SS_SRB_GNB\n", SS_NRRRC_PDU_IND);
         }
       }
-    }
-    {
+  }
+  {
   if (entity->is_gnb) {
     MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_GNB, 0, F1AP_UL_RRC_MESSAGE);
     AssertFatal(message_p != NULL, "OUT OF MEMORY\n");
@@ -784,6 +784,7 @@ srb_found:
     NR_RRC_DCCH_DATA_IND(message_p).sdu_size = size;
     NR_RRC_DCCH_DATA_IND(message_p).rnti = ue->rntiMaybeUEid;
     itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
+    }
   }
 }
 
@@ -1064,7 +1065,7 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
   if (drb2add_list != NULL) {
     for (int i = 0; i < drb2add_list->list.count; i++) {
       if (rlc_bearer2add_list != NULL) {
-        for (j = 0; j < rlc_bearer2add_list->list.count; j++){
+        for (int j = 0; j < rlc_bearer2add_list->list.count; j++){
           if (rlc_bearer2add_list->list.array[j]->servedRadioBearer != NULL){
             if (rlc_bearer2add_list->list.array[j]->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
               if (drb2add_list->list.array[i]->drb_Identity == rlc_bearer2add_list->list.array[j]->servedRadioBearer->choice.drb_Identity){
@@ -1267,7 +1268,7 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
     nr_pdcp_pkt_info_t pdcp_pkt;
     memset(&pdcp_pkt, 0, sizeof(pdcp_pkt));
     pdcp_pkt.direction 	= 1; //PDCP_NR_DIRECTION_DOWNLINK
-    pdcp_pkt.ueid      	= ue->rnti;
+    pdcp_pkt.ueid      	= ue->rntiMaybeUEid;
     pdcp_pkt.bearerType 	= 8; //TODO
     pdcp_pkt.bearerId 	= rb_id - 1;
     pdcp_pkt.plane     	= (rb_id == 1)?4:1;
@@ -1347,7 +1348,7 @@ static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
   pdcp_pkt.direction  = 1; //PDCP_NR_DIRECTION_DOWNLINK
   if (ue != NULL)
   {
-    pdcp_pkt.ueid       = ue->rnti;
+    pdcp_pkt.ueid       = ue->rntiMaybeUEid;
   }
   pdcp_pkt.bearerType = 8; //TODO
   pdcp_pkt.bearerId   = rb_id - 1;

@@ -100,7 +100,7 @@ int sync_var=-1; //!< protected by mutex \ref sync_mutex.
 int config_sync_var=-1;
 
 volatile int             start_gNB = 0;
-volatile int             oai_exit = 0;
+int oai_exit = 0;
 
 static int wait_for_sync = 0;
 
@@ -174,7 +174,7 @@ void sendFs6Ulharq(enum pckType type, int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *
 extern void reset_opp_meas(void);
 extern void print_opp_meas(void);
 
-//extern void *udp_eNB_task(void *args_p);
+extern void *udp_eNB_task(void *args_p);
 
 int transmission_mode=1;
 int emulate_rf = 0;
@@ -305,7 +305,7 @@ int create_gNB_tasks(uint32_t gnb_nb) {
     /*if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
-      }*/
+    }*/
     if(itti_create_task(TASK_SCTP, sctp_eNB_task, NULL) < 0) {
       LOG_E(SCTP, "Create task for SCTP failed\n");
       return -1;
@@ -330,26 +330,20 @@ int create_gNB_tasks(uint32_t gnb_nb) {
     char aprefix[MAX_OPTNAME_SIZE*2 + 8];
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
     config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-
+    
     for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
       if( NETParams[i].strptr == NULL) {
-        LOG_E(NGAP, "No configuration in the file.\n");
-        NGAP_CONF_MODE = 0;
+	LOG_E(NGAP, "No AMF configuration in the file.\n");
       } else {
-        LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
+	LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
       }
     }
-
+    
     if (gnb_nb > 0) {
-      if(NGAP_CONF_MODE) {
-        if (itti_create_task (TASK_NGAP, ngap_gNB_task, NULL) < 0) {
-          LOG_E(NGAP, "Create task for NGAP failed\n");
-          return -1;
-        }
-      } else {
-        LOG_I(NGAP, "Ngap task not created\n");
+      if (itti_create_task (TASK_NGAP, ngap_gNB_task, NULL) < 0) {
+        LOG_E(NGAP, "Create task for NGAP failed\n");
+        return -1;
       }
-
     }
   }
 
@@ -404,14 +398,13 @@ int create_gNB_tasks(uint32_t gnb_nb) {
       return -1;
     }
 
-    //Use check on x2ap to consider the NSA scenario and check on AMF_MODE_ENABLED for the SA scenario
-    if(is_x2ap_enabled() || AMF_MODE_ENABLED) {
+    //Use check on x2ap to consider the NSA scenario and check for SA scenario
+    if(is_x2ap_enabled() || get_softmodem_params()->sa) {
       if (itti_create_task (TASK_GTPV1_U, &gtpv1uTask, NULL) < 0) {
         LOG_E(GTPU, "Create task for GTPV1U failed\n");
         return -1;
       }
     }
-
   }
 
   return 0;
@@ -539,86 +532,6 @@ void terminate_task(task_id_t task_id, module_id_t mod_id) {
 //extern void  free_transport(PHY_VARS_gNB *);
 extern void  nr_phy_free_RU(RU_t *);
 
-int stop_L1L2(module_id_t gnb_id) {
-  LOG_W(GNB_APP, "stopping nr-softmodem\n");
-  oai_exit = 1;
-
-  if (!RC.ru) {
-    LOG_F(GNB_APP, "no RU configured\n");
-    return -1;
-  }
-
-  /* stop trx devices, multiple carrier currently not supported by RU */
-  if (RC.ru[gnb_id]) {
-    if (RC.ru[gnb_id]->rfdevice.trx_stop_func) {
-      RC.ru[gnb_id]->rfdevice.trx_stop_func(&RC.ru[gnb_id]->rfdevice);
-      LOG_I(GNB_APP, "turned off RU rfdevice\n");
-    } else {
-      LOG_W(GNB_APP, "can not turn off rfdevice due to missing trx_stop_func callback, proceeding anyway!\n");
-    }
-
-    if (RC.ru[gnb_id]->ifdevice.trx_stop_func) {
-      RC.ru[gnb_id]->ifdevice.trx_stop_func(&RC.ru[gnb_id]->ifdevice);
-      LOG_I(GNB_APP, "turned off RU ifdevice\n");
-    } else {
-      LOG_W(GNB_APP, "can not turn off ifdevice due to missing trx_stop_func callback, proceeding anyway!\n");
-    }
-  } else {
-    LOG_W(GNB_APP, "no RU found for index %d\n", gnb_id);
-    return -1;
-  }
-
-  /* these tasks need to pick up new configuration */
-  terminate_task(TASK_RRC_ENB, gnb_id);
-  LOG_I(GNB_APP, "calling kill_gNB_proc() for instance %d\n", gnb_id);
-  kill_gNB_proc(gnb_id);
-  LOG_I(GNB_APP, "calling kill_NR_RU_proc() for instance %d\n", gnb_id);
-  kill_NR_RU_proc(gnb_id);
-  oai_exit = 0;
-  //free_transport(RC.gNB[gnb_id]);
-  phy_free_nr_gNB(RC.gNB[gnb_id]);
-  nr_phy_free_RU(RC.ru[gnb_id]);
-  free_lte_top();
-  return 0;
-}
-
-/*
- * Restart the nr-softmodem after it has been soft-stopped with stop_L1L2()
- */
-int restart_L1L2(module_id_t gnb_id) {
-  RU_t *ru = RC.ru[gnb_id];
-  MessageDef *msg_p = NULL;
-  LOG_W(GNB_APP, "restarting nr-softmodem\n");
-  /* block threads */
-  sync_var = -1;
-  RC.gNB[gnb_id]->configured = 0;
-  RC.ru_mask |= (1 << ru->idx);
-  set_function_spec_param(RC.ru[gnb_id]);
-  LOG_I(GNB_APP, "attempting to create ITTI tasks\n");
-  // No more rrc thread, as many race conditions are hidden behind
-  rrc_enb_init();
-  itti_mark_task_ready(TASK_RRC_ENB);
-  /* pass a reconfiguration request which will configure everything down to
-   * RC.eNB[i][j]->frame_parms, too */
-  msg_p = itti_alloc_new_message(TASK_ENB_APP, 0, RRC_CONFIGURATION_REQ);
-  RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[gnb_id]->configuration;
-  itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
-  /* TODO XForms might need to be restarted, but it is currently (09/02/18)
-   * broken, so we cannot test it */
-  wait_gNBs();
-  init_RU_proc(ru);
-  ru->rf_map.card = 0;
-  ru->rf_map.chain = 0; /* CC_id + chain_offset;*/
-  wait_RUs();
-  init_eNB_afterRU();
-  printf("Sending sync to all threads\n");
-  pthread_mutex_lock(&sync_mutex);
-  sync_var=0;
-  pthread_cond_broadcast(&sync_cond);
-  pthread_mutex_unlock(&sync_mutex);
-  return 0;
-}
-
 static  void wait_nfapi_init(char *thread_name) {
   printf( "waiting for NFAPI PNF connection and population of global structure (%s)\n",thread_name);
   pthread_mutex_lock( &nfapi_sync_mutex );
@@ -676,8 +589,6 @@ int main( int argc, char **argv ) {
   }
 
   openair0_cfg[0].threequarter_fs = threequarter_fs;
-  AMF_MODE_ENABLED = get_softmodem_params()->sa;
-  NGAP_CONF_MODE   = get_softmodem_params()->sa;
 
   if (get_softmodem_params()->do_ra)
     AssertFatal(get_softmodem_params()->phy_test == 0,"RA and phy_test are mutually exclusive\n");
@@ -718,14 +629,6 @@ int main( int argc, char **argv ) {
   int ret=create_gNB_tasks(1);
   AssertFatal(ret==0,"cannot create ITTI tasks\n");
 
-  /* Start the agent. If it is turned off in the configuration, it won't start */
-  /*
-  RCconfig_nr_flexran();
-
-  for (i = 0; i < RC.nb_nr_L1_inst; i++) {
-    flexran_agent_start(i);
-  }
-  */
   // init UE_PF_PO and mutex lock
   pthread_mutex_init(&ue_pf_po_mutex, NULL);
   memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
@@ -761,9 +664,6 @@ int main( int argc, char **argv ) {
   }
 
   printf("NFAPI MODE:%s\n", nfapi_mode_str);
-
-  if (NFAPI_MODE==NFAPI_MODE_VNF)
-    wait_nfapi_init("main?");
 
   printf("START MAIN THREADS\n");
   // start the main threads
@@ -833,44 +733,14 @@ int main( int argc, char **argv ) {
     pthread_mutex_unlock(&sync_mutex);
   }
 
-  printf("About to call end_configmodule() from %s() %s:%d\n", __FUNCTION__, __FILE__, __LINE__);
-
-  // We have to set PARAMFLAG_NOFREE on right paramters before re-enabling end_configmodule()
-
-  //end_configmodule();
-  printf("Called end_configmodule() from %s() %s:%d\n", __FUNCTION__, __FILE__, __LINE__);
   // wait for end of program
-  printf("TYPE <CTRL-C> TO TERMINATE\n");
-  //getchar();
   printf("Entering ITTI signals handler\n");
   printf("TYPE <CTRL-C> TO TERMINATE\n");
   itti_wait_tasks_end();
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);
-  // stop threads
-  /*#ifdef XFORMS
 
-      printf("waiting for XFORMS thread\n");
-
-      if (do_forms==1) {
-        pthread_join(forms_thread,&status);
-        fl_hide_form(form_stats->stats_form);
-        fl_free_form(form_stats->stats_form);
-
-          fl_hide_form(form_stats_l2->stats_form);
-          fl_free_form(form_stats_l2->stats_form);
-
-          for(UE_id=0; UE_id<scope_enb_num_ue; UE_id++) {
-      for(CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
-        fl_hide_form(form_enb[CC_id][UE_id]->phy_scope_gNB);
-        fl_free_form(form_enb[CC_id][UE_id]->phy_scope_gNB);
-      }
-          }
-      }
-
-  #endif*/
-  printf("stopping MODEM threads\n");
   // cleanup
   if (RC.nb_nr_L1_inst > 0)
     stop_gNB(RC.nb_nr_L1_inst);
@@ -888,7 +758,6 @@ int main( int argc, char **argv ) {
     phy_free_nr_gNB(RC.gNB[inst]);
   }
 
-  free_lte_top();
   pthread_cond_destroy(&sync_cond);
   pthread_mutex_destroy(&sync_mutex);
   pthread_cond_destroy(&nfapi_sync_cond);
@@ -897,10 +766,7 @@ int main( int argc, char **argv ) {
 
   // *** Handle per CC_id openair0
 
-  for(ru_id=0; ru_id<NB_RU; ru_id++) {
-    if (RC.ru[ru_id]->rfdevice.trx_end_func)
-      RC.ru[ru_id]->rfdevice.trx_end_func(&RC.ru[ru_id]->rfdevice);
-
+  for(ru_id = 0; ru_id < RC.nb_RU; ru_id++) {
     if (RC.ru[ru_id]->ifdevice.trx_end_func)
       RC.ru[ru_id]->ifdevice.trx_end_func(&RC.ru[ru_id]->ifdevice);
   }

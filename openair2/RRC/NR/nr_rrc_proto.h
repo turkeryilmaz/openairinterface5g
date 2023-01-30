@@ -114,7 +114,8 @@ rrc_gNB_generate_RRCSetup(
     rrc_gNB_ue_context_t         *const ue_context_pP,
     const uint8_t                *masterCellGroup,
     int                           masterCellGroup_len,
-    NR_ServingCellConfigCommon_t *scc);
+    NR_ServingCellConfigCommon_t *scc,
+    const int                    CC_id);
 
 int parse_CG_ConfigInfo(gNB_RRC_INST *rrc, NR_CG_ConfigInfo_t *CG_ConfigInfo, x2ap_ENDC_sgnb_addition_req_t *m);
 
@@ -186,8 +187,9 @@ int nr_rrc_reconfiguration_req(rrc_gNB_ue_context_t         *const ue_context_pP
 int nr_rrc_gNB_decode_ccch(protocol_ctxt_t    *const ctxt_pP,
                            const uint8_t      *buffer,
                            int                buffer_length,
-                           const uint8_t      *du_to_cu_rrc_container,
-                           int                du_to_cu_rrc_container_length);
+                           OCTET_STRING_t     *du_to_cu_rrc_container,
+                           int                du_to_cu_rrc_container_len,
+                           const int          CC_id);
 
 void
 rrc_gNB_generate_dedicatedRRCReconfiguration_release(

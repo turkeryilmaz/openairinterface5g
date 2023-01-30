@@ -1713,100 +1713,98 @@ schedule_ulsch(module_id_t module_idP,
   sched_frame = frameP;
 
 
-  /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
-  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
-    /* MultiCell: Common channels modify for multiple CC */
-    cc = &RC.mac[module_idP]->common_channels[CC_id];
+  /* MultiCell: Common channels modify for multiple CC */
+  cc = &RC.mac[module_idP]->common_channels[CC_id];
 
-    /* For TDD: check subframes where we have to act and return if nothing should be done now */
-    if (cc->tdd_Config) {  // Done only for CC_id = 0, assume tdd_Config for all CC_id
-      int tdd_sfa = cc->tdd_Config->subframeAssignment;
+  /* For TDD: check subframes where we have to act and return if nothing should be done now */
+  if (cc->tdd_Config) {  // Done only for CC_id = 0, assume tdd_Config for all CC_id
+    int tdd_sfa = cc->tdd_Config->subframeAssignment;
 
-      switch (subframeP) {
-        case 0:
-          if ((tdd_sfa == 0) || (tdd_sfa == 3))
-            sched_subframe = 4;
-          else if (tdd_sfa == 6)
-            sched_subframe = 7;
-          else
-            return;
-
-          break;
-
-        case 1:
-          if ((tdd_sfa == 0) || (tdd_sfa == 1))
-            sched_subframe = 7;
-          else if (tdd_sfa == 6)
-            sched_subframe = 8;
-          else
-            return;
-
-          break;
-
-        case 2:  // Don't schedule UL in subframe 2 for TDD
+    switch (subframeP) {
+      case 0:
+        if ((tdd_sfa == 0) || (tdd_sfa == 3))
+          sched_subframe = 4;
+        else if (tdd_sfa == 6)
+          sched_subframe = 7;
+        else
           return;
 
-        case 3:
-          if (tdd_sfa == 2)
-            sched_subframe = 7;
-          else
-            return;
+        break;
 
-          break;
-
-        case 4:
-          if (tdd_sfa == 1)
-            sched_subframe = 8;
-          else
-            return;
-
-          break;
-
-        case 5:
-          if (tdd_sfa == 0)
-            sched_subframe = 9;
-          else if (tdd_sfa == 6)
-            sched_subframe = 2;
-          else
-            return;
-
-          break;
-
-        case 6:
-          if (tdd_sfa == 0 || tdd_sfa == 1)
-            sched_subframe = 2;
-          else if (tdd_sfa == 6)
-            sched_subframe = 3;
-          else
-            return;
-
-          break;
-
-        case 7:
+      case 1:
+        if ((tdd_sfa == 0) || (tdd_sfa == 1))
+          sched_subframe = 7;
+        else if (tdd_sfa == 6)
+          sched_subframe = 8;
+        else
           return;
 
-        case 8:
-          if ((tdd_sfa >= 2) && (tdd_sfa <= 5))
-            sched_subframe = 2;
-          else
-            return;
+        break;
 
-          break;
+      case 2:  // Don't schedule UL in subframe 2 for TDD
+        return;
 
-        case 9:
-          if ((tdd_sfa == 1) || (tdd_sfa == 3) || (tdd_sfa == 4))
-            sched_subframe = 3;
-          else if (tdd_sfa == 6)
-            sched_subframe = 4;
-          else
-            return;
-
-          break;
-
-        default:
+      case 3:
+        if (tdd_sfa == 2)
+          sched_subframe = 7;
+        else
           return;
-      }
+
+        break;
+
+      case 4:
+        if (tdd_sfa == 1)
+          sched_subframe = 8;
+        else
+          return;
+
+        break;
+
+      case 5:
+        if (tdd_sfa == 0)
+          sched_subframe = 9;
+        else if (tdd_sfa == 6)
+          sched_subframe = 2;
+        else
+          return;
+
+        break;
+
+      case 6:
+        if (tdd_sfa == 0 || tdd_sfa == 1)
+          sched_subframe = 2;
+        else if (tdd_sfa == 6)
+          sched_subframe = 3;
+        else
+          return;
+
+        break;
+
+      case 7:
+        return;
+
+      case 8:
+        if ((tdd_sfa >= 2) && (tdd_sfa <= 5))
+          sched_subframe = 2;
+        else
+          return;
+
+        break;
+
+      case 9:
+        if ((tdd_sfa == 1) || (tdd_sfa == 3) || (tdd_sfa == 4))
+          sched_subframe = 3;
+        else if (tdd_sfa == 6)
+          sched_subframe = 4;
+        else
+          return;
+
+        break;
+
+      default:
+        return;
     }
+  }
 
   if (sched_subframe < subframeP) {
     sched_frame++;
@@ -1816,6 +1814,9 @@ schedule_ulsch(module_id_t module_idP,
   int emtc_active[5];
   memset(emtc_active, 0, 5 * sizeof(int));
   schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
+
+  /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
+  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
 
   if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
                          cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,

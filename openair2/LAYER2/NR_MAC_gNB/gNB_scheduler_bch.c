@@ -355,7 +355,6 @@ uint32_t schedule_control_sib1(module_id_t module_id,
   int mcsTableIdx = 0;
   int rbSize = 0;
   uint32_t TBS = 0;
-  LOG_D(MAC,"bwpSize:%d rbStart:%d rbSize:%d startSymbolIndex,:%d nrOfSymbols:%d\n",bwpSize, rbStart, rbSize, startSymbolIndex, nrOfSymbols);
   do {
     if(rbSize < bwpSize && !(vrb_map[rbStart + rbSize]&SL_to_bitmap(tda_info->startSymbolIndex, tda_info->nrOfSymbols)))
       rbSize++;
@@ -460,10 +459,9 @@ void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   pdsch_pdu_rel15->rbStart = pdsch->rbStart;
   pdsch_pdu_rel15->rbSize = pdsch->rbSize;
   pdsch_pdu_rel15->VRBtoPRBMapping = 0;
-  pdsch_pdu_rel15->qamModOrder[0] = nr_get_Qm_dl(gNB_mac->sched_ctrlCommon->sched_pdsch.mcs,
-                                                 gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx);
+  pdsch_pdu_rel15->qamModOrder[0] = nr_get_Qm_dl(pdsch->mcs, mcsTableIdx);
   pdsch_pdu_rel15->TBSize[0] = TBS;
-  pdsch_pdu_rel15->mcsTable[0] = gNB_mac->sched_ctrlCommon->pdsch_semi_static.mcsTableIdx;
+  pdsch_pdu_rel15->mcsTable[0] = mcsTableIdx;
   pdsch_pdu_rel15->StartSymbolIndex = StartSymbolIndex;
   pdsch_pdu_rel15->NrOfSymbols = NrOfSymbols;
   pdsch_pdu_rel15->dlDmrsSymbPos = pdsch->dmrs_parms.dl_dmrs_symb_pos;

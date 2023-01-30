@@ -308,7 +308,7 @@ int nr_process_mac_pdu(instance_t module_idP,
           return 0;
         }
 
-        if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+        if (pdu_len < mac_subheader_len + mac_len)
           return 0;
 
         rnti_t crnti = UE->rnti;
@@ -377,7 +377,7 @@ int nr_process_mac_pdu(instance_t module_idP,
 
         nr_rlc_activate_srb0(UE->rnti, module_idP, CC_id, UE->uid, send_initial_ul_rrc_message);
 
-        if (pdu_len < mac_subheader_len + mac_ce_len + mac_sdu_len)
+        if (pdu_len < mac_subheader_len + mac_len)
           return 0;
 
         mac_rlc_data_ind(module_idP,
