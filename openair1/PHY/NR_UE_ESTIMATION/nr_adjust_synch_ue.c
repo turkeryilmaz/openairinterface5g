@@ -50,6 +50,11 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   const int sync_pos = 0;
   uint8_t sync_offset = 0;
 
+  static int64_t TO_I_Ctrl = 0; //Integral controller for TO
+  int I_ScalingF = 10; //Scaling factor for the I controller, can be adjusted
+  static int frameLast = 0; //frame number of last call of nr_adjust_synch_ue()
+  static int FirstFlag = 1; //indicate the first call of nr_adjust_synch_ue()
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_ADJUST_SYNCH, VCD_FUNCTION_IN);
 
   short ncoef = 32767 - coef;
@@ -83,16 +88,33 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   //ue->max_pos_fil = max_pos << 15;
 
   int diff = (ue->max_pos_fil >> 15) - sync_pos;
+  int FrameDiff = (frame-frameLast+1024)%1024;
 
-  if (frame_parms->freq_range==nr_FR2) 
-    sync_offset = 2;
+  if (FirstFlag)
+    FirstFlag = 0;
   else
-    sync_offset = 0;
+    diff /= FrameDiff; //scaled by the frame number
 
-  if ( abs(diff) < (SYNCH_HYST+sync_offset) )
+  frameLast = frame; //save the last frame number
+
+  TO_I_Ctrl += diff; //integral of all offsets
+  ue->rx_offset = diff;
+  ue->rx_offset_TO = diff+TO_I_Ctrl/I_ScalingF; //PI controller
+  ue->rx_offset_slot = 1;
+  ue->rx_offset_comp = 0;
+
+  printf("** Frame: %u, ue->rx_offset: %d, ue->rx_offset_TO: %d\n", frame, ue->rx_offset, ue->rx_offset_TO);
+
+  extern tdriftComp;
+  {
+    TO_I_Ctrl += diff; //integral of all offsets
     ue->rx_offset = 0;
-  else
-    ue->rx_offset = diff;
+    ue->rx_offset_TO = 0; //PI controller
+    ue->rx_offset_slot = 1;
+    ue->rx_offset_comp = 0;
+  }
+
+  if (tdriftComp == 0)
 
   const int sample_shift = -(ue->rx_offset>>1);
   // reset IIR filter for next offset calculation

@@ -945,7 +945,7 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                                  dl_ch_estimates_time,
                                  frame_rx,
                                  nr_slot_rx,
-                                 0,
+                                 1,
                                  16384);
             }
             ue->apply_timing_offset = true;

@@ -576,6 +576,7 @@ int fdopplerComp = 1;
 int RFsim_DriftPerFrame = 0;
 int32_t fdopplerRate;
 uint32_t fdopplerVar;
+int tdriftComp = 1;
 
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;

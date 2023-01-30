@@ -952,11 +952,6 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
           sample_t *out=(sample_t *)samplesVoid[a];
           int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
 
-          char filename[40];
-          sprintf(filename,"gNB_data.m");
-          char filename1[40];
-          sprintf(filename1,"gNB_Time.m");
-
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
             for (int a_tx=0; a_tx<nbAnt_tx; a_tx++) { //sum up signals from nbAnt_tx antennas
@@ -970,27 +965,6 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
             out[i].r = (short)(outRealTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp) - outImagTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp));
             out[i].i = (short)(outImagTmp * cos(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp) + outRealTmp * sin(2*M_PI*(double)SampIdxDoppler*fdopplerCurr/fsamp));
-
-            
-            if(t-> typeStamp == ENB_MAGICDL)
-            {
-              FILE *fptr;
-              FILE *fptr1;
-              double tTmp = SampIdxDoppler/fsamp;
-              
-              if ((i%1000==0) && (tTmp <= 10))
-              {
-                printf("*************** gNB Recording!, i: %d, fdopplerCurr: %d, tTmp: %f\n", i, fdopplerCurr, tTmp);
-                fptr = fopen(filename,"a");
-                fptr1 = fopen(filename1,"a");
-                fprintf(fptr,"%i\n",fdopplerCurr);
-                fprintf(fptr1,"%f\n",tTmp);
-                fclose(fptr);
-                fclose(fptr1);
-              }
-              
-            }
-            
 
             SampIdxDoppler++;
             CntDoppRate++;
