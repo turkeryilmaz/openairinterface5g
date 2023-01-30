@@ -278,30 +278,27 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx){
   }
 }
 
-bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot){
-
+bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot)
+{
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
 
-  if ((frame*fp->slots_per_frame + slot) % (16*fp->slots_per_frame) == 0){
+  if ((frame * fp->slots_per_frame + slot) % (16 * fp->slots_per_frame) == 0) {
     ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16_copy;
-    ue->slss->sl_timeoffsetssb_r16 = frame*fp->slots_per_frame + ue->slss->sl_timeoffsetssb_r16_copy;
+    ue->slss->sl_timeoffsetssb_r16 = frame * fp->slots_per_frame + ue->slss->sl_timeoffsetssb_r16_copy;
   }
 
-  if (ue->slss->sl_numssb_withinperiod_r16 > 0){
-    if (frame*fp->slots_per_frame + slot == ue->slss->sl_timeoffsetssb_r16){
+  if (ue->slss->sl_numssb_withinperiod_r16 > 0) {
+    if (frame * fp->slots_per_frame + slot == ue->slss->sl_timeoffsetssb_r16) {
       ue->slss->sl_timeoffsetssb_r16 = ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16;
-      ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16 -1;
-      LOG_I(PHY,"*** SL-SSB slot allocation  %d.%d ***\n", frame, slot);
-      
-    }else{
+      ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16 - 1;
+      LOG_I(PHY,"*** SL-SSB slot allocation  %d.%d ***\n", frame, slot); 
+    } else {
       return false;
     }
-  }else{
+  } else {
     return false;
   }
-
   return true;
-
 }
 
 void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
