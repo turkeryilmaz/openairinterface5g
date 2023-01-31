@@ -738,3 +738,10 @@ uint32_t get_ssb_offset_to_pointA(uint32_t absoluteFrequencySSB,
   AssertFatal(sco % scs_scaling == 0, "ssb offset %d can create frequency offset\n", sco);
   return ssb_offset_point_a;
 }
+
+uint16_t LUTSin[ResolSinCos+1];
+void InitSinLUT( void ) {
+  for ( int i=0; i<(ResolSinCos+1); i++ ) {
+    LUTSin[i] = sin((double)M_PI/2/ResolSinCos*i) * (1<<14); //Format: Q14
+  }
+}
