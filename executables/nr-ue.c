@@ -34,6 +34,7 @@
 #include "LAYER2/nr_pdcp/nr_pdcp_entity.h"
 #include "SCHED_NR_UE/pucch_uci_ue_nr.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
 
 //#define DEBUG_PHY_SL_PROC
 
@@ -585,12 +586,13 @@ static void UE_synch(void *arg) {
         } else {
           if (initial_synch_sl == 0) {
             UE->is_synchronized_sl = 1;
-            LOG_I(NR_PHY, "SynchRefUE found!!!!!!!!! :) \n");
+            LOG_I(NR_PHY, "SyncRefUE found with Nid1 %d and Nid2 %d\n",
+                  GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL));
             exit(1);
           }
         }
       } else {
-        LOG_I(PHY,"No SynchRefUE found\n");
+        LOG_I(NR_PHY, "No SyncRefUE found\n");
         if (UE->UE_scan_carrier == 1) {
           LOG_I(PHY, "Initial sync failed: trying carrier off %d Hz\n", freq_offset);
 

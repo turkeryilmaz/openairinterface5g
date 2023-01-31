@@ -139,7 +139,6 @@ double rx_gain[MAX_NUM_CCs][4] = {{110,0,0,0},{20,0,0,0}};
 // UE and OAI config variables
 
 openair0_config_t openair0_cfg[MAX_CARDS];
-int16_t           node_synch_ref[MAX_NUM_CCs];
 int               otg_enabled;
 double            cpuf;
 
