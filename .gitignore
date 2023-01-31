@@ -22,3 +22,6 @@ tags
 nfapi_nr_interface_scf
 *.log
 *.out
+
+**/*_3gpp*.yang
+**/specification/available-yangs

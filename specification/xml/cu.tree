@@ -1,0 +1,1086 @@
+module: _3gpp-common-managed-element
+  +--rw ManagedElement* [id]
+     +--rw id                              string
+     +--rw attributes
+     |  +--rw dnPrefix?                   types3gpp:DistinguishedName
+     |  +--rw userLabel?                  string
+     |  +--ro locationName?               string
+     |  +--ro managedBy*                  types3gpp:DistinguishedName
+     |  +--ro managedElementTypeList*     string
+     |  +--ro SupportedPerfMetricGroup* []
+     |  |  +--ro performanceMetrics*          string
+     |  |  +--ro granularityPeriods*          uint32
+     |  |  +--ro reportingMethods*            enumeration
+     |  |  +--ro monitorGranularityPeriods*   uint32
+     |  +--ro vendorName?                 string
+     |  +--rw userDefinedState?           string
+     |  +--ro swVersion?                  string
+     |  +--rw priorityLabel               uint32
+     +--rw PerfMetricJob* [id] {MeasurementsUnderManagedElement}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |  |  +--rw administrativeState?                        types3gpp:AdministrativeState
+     |  |  +--ro operationalState                            types3gpp:OperationalState
+     |  |  +--rw jobId?                                      string
+     |  |  +--rw performanceMetrics*                         string
+     |  |  +--rw granularityPeriod                           uint32
+     |  |  +--rw objectInstances*                            types3gpp:DistinguishedName
+     |  |  +--rw rootObjectInstances*                        types3gpp:DistinguishedName
+     |  |  +--rw (reportingCtrl)
+     |  |  |  +--:(file-based-reporting)
+     |  |  |  |  +--rw fileReportingPeriod                   uint32
+     |  |  |  |  +--rw (reporting-target)?
+     |  |  |  |     +--:(file-target)
+     |  |  |  |     |  +--rw fileLocation?                   string
+     |  |  |  |     +--:(notification-target)
+     |  |  |  |        +--rw notificationRecipientAddress?   string
+     |  |  |  +--:(stream-based-reporting)
+     |  |  |     +--rw streamTarget                          string
+     |  |  +--ro _linkToFiles                                string
+     |  +--ro Files* [id]
+     |     +--ro id            string
+     |     +--ro attributes
+     |     |  +--ro numberOfFiles?   uint64
+     |     |  +--ro jobRef*          types3gpp:DistinguishedName
+     |     |  +--ro jobId?           string
+     |     +--ro File* [id]
+     |        +--ro id            string
+     |        +--ro attributes
+     |           +--ro fileLocation          inet:uri
+     |           +--ro fileCompression       string
+     |           +--ro fileSize              uint64
+     |           +--ro fileDataType          enumeration
+     |           +--ro fileFormat            string
+     |           +--ro fileReadyTime         yang:date-and-time
+     |           +--ro fileExpirationTime    yang:date-and-time
+     |           +--ro fileContent           string
+     |           +--ro jobRef*               types3gpp:DistinguishedName
+     |           +--ro jobId?                string
+     +--rw ThresholdMonitor* [id] {MeasurementsUnderManagedElement}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |     +--rw administrativeState?        types3gpp:AdministrativeState
+     |     +--ro operationalState            types3gpp:OperationalState
+     |     +--rw thresholdInfoList* [idx]
+     |     |  +--rw idx                   uint32
+     |     |  +--rw measurementTypes*     string
+     |     |  +--rw thresholdLevel        uint64
+     |     |  +--rw thresholdDirection    enumeration
+     |     |  +--rw thresholdValue        union
+     |     |  +--rw hysteresis?           union
+     |     +--rw monitorGranularityPeriod    uint32
+     |     +--rw objectInstances*            types3gpp:DistinguishedName
+     |     +--rw rootObjectInstances*        types3gpp:DistinguishedName
+     +--rw NtfSubscriptionControl* [id] {SubscriptionControlUnderManagedElement}?
+     |  +--rw id                  string
+     |  +--rw attributes
+     |  |  +--rw notificationRecipientAddress    string
+     |  |  +--rw notificationTypes*              string
+     |  |  +--rw scope* [scopeType]
+     |  |  |  +--rw scopeType     enumeration
+     |  |  |  +--rw scopeLevel    uint16
+     |  |  +--rw notificationFilter?             string
+     |  +--rw HeartbeatControl* [id]
+     |     +--rw id            string
+     |     +--rw attributes
+     |        +--rw heartbeatNtfPeriod     uint32
+     |        +--rw triggerHeartbeatNtf?   boolean
+     +--rw AlarmList* [id] {FmUnderManagedElement}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |     +--rw administrativeState?   types3gpp:AdministrativeState
+     |     +--ro operationalState?      types3gpp:OperationalState
+     |     +--ro numOfAlarmRecords      uint32
+     |     +--ro lastModification?      yang:date-and-time
+     |     +--rw alarmRecords* [alarmId]
+     |        +--rw alarmId                  string
+     |        +--ro objectInstance           string
+     |        +--ro notificationId           int32
+     |        +--ro alarmRaisedTime?         yang:date-and-time
+     |        +--ro alarmChangedTime?        yang:date-and-time
+     |        +--ro alarmClearedTime?        yang:date-and-time
+     |        +--ro alarmType?               eventType
+     |        +--ro probableCause?           string
+     |        +--ro specificProblem?         string
+     |        +--rw perceivedSeverity?       severity-level
+     |        +--ro backedUpStatus?          string
+     |        +--ro backUpObject?            string
+     |        +--ro trendIndication?         string
+     |        +--ro thresholdInfo* []
+     |        |  +--ro measurementType    string
+     |        |  +--ro direction          enumeration
+     |        |  +--ro thresholdLevel?    string
+     |        |  +--ro thresholdValue?    string
+     |        |  +--ro hysteresis?        string
+     |        +--ro stateChangeDefinition?   string
+     |        +--ro monitoredAttributes?     string
+     |        +--ro proposedRepairActions?   string
+     |        +--ro additionalText?          string
+     |        +--ro additionalInformation?   <anydata>
+     |        +--ro rootCauseIndicator?      enumeration
+     |        +--ro ackTime?                 yang:date-and-time
+     |        +--rw ackUserId?               string
+     |        +--rw ackSystemId?             string
+     |        +--rw ackState?                enumeration
+     |        +--rw clearUserId?             string
+     |        +--rw clearSystemId?           string
+     |        +--ro serviceUser?             string
+     |        +--ro serviceProvider?         string
+     |        +--ro securityAlarmDetector?   string
+     +--rw TraceJob* [id] {TraceUnderManagedElement}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |  |  +--rw tjJobType?                               enumeration
+     |  |  +--rw tjListOfInterfaces* [idx]
+     |  |  |  +--rw idx                    uint32
+     |  |  |  +--rw MSCServerInterfaces*   enumeration
+     |  |  |  +--rw MGWInterfaces*         enumeration
+     |  |  |  +--rw RNCInterfaces*         enumeration
+     |  |  |  +--rw SGSNInterfaces*        enumeration
+     |  |  |  +--rw GGSNInterfaces*        enumeration
+     |  |  |  +--rw S-CSCFInterfaces*      enumeration
+     |  |  |  +--rw P-CSCFInterfaces*      enumeration
+     |  |  |  +--rw I-CSCFInterfaces*      enumeration
+     |  |  |  +--rw MRFCInterfaces*        enumeration
+     |  |  |  +--rw MGCFInterfaces*        enumeration
+     |  |  |  +--rw IBCFInterfaces*        enumeration
+     |  |  |  +--rw E-CSCFInterfaces*      enumeration
+     |  |  |  +--rw BGCFInterfaces*        enumeration
+     |  |  |  +--rw ASInterfaces*          enumeration
+     |  |  |  +--rw HSSInterfaces*         enumeration
+     |  |  |  +--rw EIRInterfaces*         enumeration
+     |  |  |  +--rw BM-SCInterfaces*       enumeration
+     |  |  |  +--rw MMEInterfaces*         enumeration
+     |  |  |  +--rw SGWInterfaces*         enumeration
+     |  |  |  +--rw PDN_GWInterfaces*      enumeration
+     |  |  |  +--rw eNBInterfaces*         enumeration
+     |  |  |  +--rw en-gNBInterfaces*      enumeration
+     |  |  |  +--rw AMFInterfaces*         enumeration
+     |  |  |  +--rw AUSFInterfaces*        enumeration
+     |  |  |  +--rw NEFInterfaces*         enumeration
+     |  |  |  +--rw NRFInterfaces*         enumeration
+     |  |  |  +--rw NSSFInterfaces*        enumeration
+     |  |  |  +--rw PCFInterfaces*         enumeration
+     |  |  |  +--rw SMFInterfaces*         enumeration
+     |  |  |  +--rw SMSFInterfaces*        enumeration
+     |  |  |  +--rw UDMInterfaces*         enumeration
+     |  |  |  +--rw UPFInterfaces*         enumeration
+     |  |  |  +--rw ng-eNBInterfaces*      enumeration
+     |  |  |  +--rw gNB-CU-CPInterfaces*   enumeration
+     |  |  |  +--rw gNB-CU-UPInterfaces*   enumeration
+     |  |  |  +--rw gNB-DUInterfaces*      enumeration
+     |  |  +--rw tjListOfNeTypes*                         enumeration
+     |  |  +--rw tjPLMNTarget                             string
+     |  |  +--rw tjStreamingTraceConsumerURI              inet:uri
+     |  |  +--rw tjTraceCollectionEntityAddress           union
+     |  |  +--rw tjTraceDepth?                            enumeration
+     |  |  +--rw tjTraceReference                         uint64
+     |  |  +--rw tjTraceRecordSessionReference            string
+     |  |  +--rw tjTraceReportingFormat?                  enumeration
+     |  |  +--rw tjTraceTarget* [targetIdType targetIdValue]
+     |  |  |  +--rw targetIdType     enumeration
+     |  |  |  +--rw targetIdValue    string
+     |  |  +--rw tjTriggeringEvent                        string
+     |  |  +--rw tjMDTAnonymizationOfData?                enumeration
+     |  |  +--rw tjMDTAreaConfigurationForNeighCell* [idx]
+     |  |  |  +--rw idx          uint32
+     |  |  |  +--rw frequency?   string
+     |  |  |  +--rw cell?        string
+     |  |  +--rw tjMDTAreaScope*                          string
+     |  |  +--rw tjMDTCollectionPeriodRrmLte?             uint32
+     |  |  +--rw tjMDTCollectionPeriodM6Lte?              uint32
+     |  |  +--rw tjMDTCollectionPeriodM7Lte?              uint16
+     |  |  +--rw tjMDTCollectionPeriodRrmUmts?            uint32
+     |  |  +--rw tjMDTCollectionPeriodRrmNR?              uint32
+     |  |  +--rw tjMDTCollectionPeriodM6NR?               enumeration
+     |  |  +--rw tjMDTCollectionPeriodM7NR?               uint32
+     |  |  +--rw tjMDTEventListForTriggeredMeasurement    enumeration
+     |  |  +--rw tjMDTEventThreshold?                     int64
+     |  |  +--rw tjMDTListOfMeasurements                  int64
+     |  |  +--rw tjMDTLoggingDuration                     uint32
+     |  |  +--rw tjMDTLoggingInterval                     uint32
+     |  |  +--rw tjMDTLoggingEventThreshold?              uint32
+     |  |  +--rw tjMDTLoggedHysteresis?                   uint32
+     |  |  +--rw tjMDTLoggedTimeToTrigger?                int32
+     |  |  +--rw tjMDTMBSFNAreaList*                      string
+     |  |  +--rw tjMDTMeasurementPeriodLTE                uint32
+     |  |  +--rw tjMDTMeasurementPeriodUMTS               uint32
+     |  |  +--rw tjMDTMeasurementQuantity                 uint64
+     |  |  +--rw tjMDTM4ThresholdUmts?                    uint16
+     |  |  +--rw tjMDTPLMList* [mcc mnc]
+     |  |  |  +--rw mcc    Mcc
+     |  |  |  +--rw mnc    Mnc
+     |  |  +--rw tjMDTPositioningMethod                   enumeration
+     |  |  +--rw tjMDTReportAmount                        union
+     |  |  +--rw tjMDTReportingTrigger?                   enumeration
+     |  |  +--rw tjMDTReportInterval                      uint32
+     |  |  +--rw tjMDTReportType                          enumeration
+     |  |  +--rw tjMDTSensorInformation?                  bits
+     |  |  +--rw tjMDTTraceCollectionEntityID             uint8
+     |  +--ro Files* [id]
+     |     +--ro id            string
+     |     +--ro attributes
+     |     |  +--ro numberOfFiles?   uint64
+     |     |  +--ro jobRef*          types3gpp:DistinguishedName
+     |     |  +--ro jobId?           string
+     |     +--ro File* [id]
+     |        +--ro id            string
+     |        +--ro attributes
+     |           +--ro fileLocation          inet:uri
+     |           +--ro fileCompression       string
+     |           +--ro fileSize              uint64
+     |           +--ro fileDataType          enumeration
+     |           +--ro fileFormat            string
+     |           +--ro fileReadyTime         yang:date-and-time
+     |           +--ro fileExpirationTime    yang:date-and-time
+     |           +--ro fileContent           string
+     |           +--ro jobRef*               types3gpp:DistinguishedName
+     |           +--ro jobId?                string
+     +--ro Files* [id]
+     |  +--ro id            string
+     |  +--ro attributes
+     |  |  +--ro numberOfFiles?   uint64
+     |  |  +--ro jobRef*          types3gpp:DistinguishedName
+     |  |  +--ro jobId?           string
+     |  +--ro File* [id]
+     |     +--ro id            string
+     |     +--ro attributes
+     |        +--ro fileLocation          inet:uri
+     |        +--ro fileCompression       string
+     |        +--ro fileSize              uint64
+     |        +--ro fileDataType          enumeration
+     |        +--ro fileFormat            string
+     |        +--ro fileReadyTime         yang:date-and-time
+     |        +--ro fileExpirationTime    yang:date-and-time
+     |        +--ro fileContent           string
+     |        +--ro jobRef*               types3gpp:DistinguishedName
+     |        +--ro jobId?                string
+     +--rw filemgmt3gpp:FileDownloadJob* [id]
+     |  +--rw filemgmt3gpp:id            string
+     |  +--rw filemgmt3gpp:attributes
+     |     +--rw filemgmt3gpp:id?                             string
+     |     +--rw filemgmt3gpp:fileLocation                    string
+     |     +--rw filemgmt3gpp:notificationRecipientAddress?   string
+     |     +--rw filemgmt3gpp:cancelJob                       boolean
+     |     +--rw filemgmt3gpp:jobMonitor* [id]
+     |        +--rw filemgmt3gpp:id                    string
+     |        +--ro filemgmt3gpp:status?               enumeration
+     |        +--ro filemgmt3gpp:progressPercentage?   uint8
+     |        +--ro filemgmt3gpp:progressStateInfo*    string
+     |        +--ro filemgmt3gpp:resultStateInfo?      string
+     |        +--ro filemgmt3gpp:startTime?            yang:date-and-time
+     |        +--ro filemgmt3gpp:endTime?              yang:date-and-time
+     |        +--rw filemgmt3gpp:timer?                uint32
+     +--rw qmc3gpp:QMCJob* [id]
+     |  +--rw qmc3gpp:id            string
+     |  +--rw qmc3gpp:attributes
+     |     +--rw qmc3gpp:serviceType                   enumeration
+     |     +--rw qmc3gpp:areaScope?                    string
+     |     +--rw qmc3gpp:qoECollectionEntityAddress    inet:ip-address
+     |     +--rw qmc3gpp:pLMNTarget* [mcc mnc]
+     |     |  +--rw qmc3gpp:mcc    Mcc
+     |     |  +--rw qmc3gpp:mnc    Mnc
+     |     +--rw qmc3gpp:qoETarget                     string
+     |     +--rw qmc3gpp:qoEReference                  string
+     |     +--rw qmc3gpp:sliceScope* [sd sst]
+     |     |  +--rw qmc3gpp:sd     string
+     |     |  +--rw qmc3gpp:sst    uint8
+     |     +--rw qmc3gpp:qMCConfigFile                 string
+     |     +--rw qmc3gpp:mDTAlignmentInformation?      uint64
+     |     +--rw qmc3gpp:availableRANqoEMetrics?       enumeration
+     +--rw gnbcucp3gpp:GNBCUCPFunction* [id]
+     |  +--rw gnbcucp3gpp:id                  string
+     |  +--rw gnbcucp3gpp:attributes
+     |  |  +--rw gnbcucp3gpp:userLabel?                  string
+     |  |  +--rw gnbcucp3gpp:vnfParametersList* [vnfInstanceId]
+     |  |  |  +--rw gnbcucp3gpp:vnfInstanceId    string
+     |  |  |  +--rw gnbcucp3gpp:vnfdId?          string
+     |  |  |  +--rw gnbcucp3gpp:flavourId?       string
+     |  |  |  +--rw gnbcucp3gpp:autoScalable     boolean
+     |  |  +--rw gnbcucp3gpp:peeParametersList* [idx]
+     |  |  |  +--rw gnbcucp3gpp:idx                   uint32
+     |  |  |  +--rw gnbcucp3gpp:siteIdentification    string
+     |  |  |  +--rw gnbcucp3gpp:siteLatitude?         decimal64
+     |  |  |  +--rw gnbcucp3gpp:siteLongitude?        decimal64
+     |  |  |  +--rw gnbcucp3gpp:siteAltitude?         decimal64
+     |  |  |  +--rw gnbcucp3gpp:siteDescription       string
+     |  |  |  +--rw gnbcucp3gpp:equipmentType         string
+     |  |  |  +--rw gnbcucp3gpp:environmentType       string
+     |  |  |  +--rw gnbcucp3gpp:powerInterface        string
+     |  |  +--rw gnbcucp3gpp:priorityLabel               uint32
+     |  |  +--ro gnbcucp3gpp:SupportedPerfMetricGroup* []
+     |  |  |  +--ro gnbcucp3gpp:performanceMetrics*          string
+     |  |  |  +--ro gnbcucp3gpp:granularityPeriods*          uint32
+     |  |  |  +--ro gnbcucp3gpp:reportingMethods*            enumeration
+     |  |  |  +--ro gnbcucp3gpp:monitorGranularityPeriods*   uint32
+     |  |  +--rw gnbcucp3gpp:gNBId                       int64
+     |  |  +--rw gnbcucp3gpp:gNBIdLength                 int32
+     |  |  +--rw gnbcucp3gpp:gNBCUName                   string
+     |  |  +--rw gnbcucp3gpp:pLMNId* [mcc mnc]
+     |  |  |  +--rw gnbcucp3gpp:mcc    Mcc
+     |  |  |  +--rw gnbcucp3gpp:mnc    Mnc
+     |  |  +--rw gnbcucp3gpp:x2BlackList*                string
+     |  |  +--rw gnbcucp3gpp:x2WhiteList*                string
+     |  |  +--rw gnbcucp3gpp:xnBlackList*                string
+     |  |  +--rw gnbcucp3gpp:xnWhiteList*                string
+     |  |  +--rw gnbcucp3gpp:xnHOBlackList*              string
+     |  |  +--rw gnbcucp3gpp:configurable5QISetRef?      types3gpp:DistinguishedName
+     |  |  +--rw gnbcucp3gpp:x2HOBlackList*              string
+     |  |  +--rw gnbcucp3gpp:dynamic5QISetRef?           types3gpp:DistinguishedName
+     |  |  +--rw gnbcucp3gpp:dCHOControl?                boolean
+     |  |  +--rw gnbcucp3gpp:dDAPSHOControl?             boolean
+     |  +--rw gnbcucp3gpp:ManagedNFService* [id]
+     |  |  +--rw gnbcucp3gpp:id            string
+     |  |  +--rw gnbcucp3gpp:attributes
+     |  |     +--rw gnbcucp3gpp:userLabel?             string
+     |  |     +--ro gnbcucp3gpp:nFServiceType          string
+     |  |     +--rw gnbcucp3gpp:sAP* [host port]
+     |  |     |  +--rw gnbcucp3gpp:host    inet:host
+     |  |     |  +--rw gnbcucp3gpp:port    inet:port-number
+     |  |     +--rw gnbcucp3gpp:operations* [name]
+     |  |     |  +--rw gnbcucp3gpp:name                  string
+     |  |     |  +--rw gnbcucp3gpp:allowedNFTypes*       string
+     |  |     |  +--ro gnbcucp3gpp:operationSemantics    enumeration
+     |  |     +--rw gnbcucp3gpp:administrativeState    types3gpp:AdministrativeState
+     |  |     +--ro gnbcucp3gpp:operationalState       types3gpp:OperationalState
+     |  |     +--ro gnbcucp3gpp:usageState             types3gpp:usageState
+     |  |     +--ro gnbcucp3gpp:registrationState?     enumeration
+     |  +--rw gnbcucp3gpp:PerfMetricJob* [id] {MeasurementsUnderManagedFunction}?
+     |  |  +--rw gnbcucp3gpp:id            string
+     |  |  +--rw gnbcucp3gpp:attributes
+     |  |  |  +--rw gnbcucp3gpp:administrativeState?                        types3gpp:AdministrativeState
+     |  |  |  +--ro gnbcucp3gpp:operationalState                            types3gpp:OperationalState
+     |  |  |  +--rw gnbcucp3gpp:jobId?                                      string
+     |  |  |  +--rw gnbcucp3gpp:performanceMetrics*                         string
+     |  |  |  +--rw gnbcucp3gpp:granularityPeriod                           uint32
+     |  |  |  +--rw gnbcucp3gpp:objectInstances*                            types3gpp:DistinguishedName
+     |  |  |  +--rw gnbcucp3gpp:rootObjectInstances*                        types3gpp:DistinguishedName
+     |  |  |  +--rw (gnbcucp3gpp:reportingCtrl)
+     |  |  |  |  +--:(gnbcucp3gpp:file-based-reporting)
+     |  |  |  |  |  +--rw gnbcucp3gpp:fileReportingPeriod                   uint32
+     |  |  |  |  |  +--rw (gnbcucp3gpp:reporting-target)?
+     |  |  |  |  |     +--:(gnbcucp3gpp:file-target)
+     |  |  |  |  |     |  +--rw gnbcucp3gpp:fileLocation?                   string
+     |  |  |  |  |     +--:(gnbcucp3gpp:notification-target)
+     |  |  |  |  |        +--rw gnbcucp3gpp:notificationRecipientAddress?   string
+     |  |  |  |  +--:(gnbcucp3gpp:stream-based-reporting)
+     |  |  |  |     +--rw gnbcucp3gpp:streamTarget                          string
+     |  |  |  +--ro gnbcucp3gpp:_linkToFiles                                string
+     |  |  +--ro gnbcucp3gpp:Files* [id]
+     |  |     +--ro gnbcucp3gpp:id            string
+     |  |     +--ro gnbcucp3gpp:attributes
+     |  |     |  +--ro gnbcucp3gpp:numberOfFiles?   uint64
+     |  |     |  +--ro gnbcucp3gpp:jobRef*          types3gpp:DistinguishedName
+     |  |     |  +--ro gnbcucp3gpp:jobId?           string
+     |  |     +--ro gnbcucp3gpp:File* [id]
+     |  |        +--ro gnbcucp3gpp:id            string
+     |  |        +--ro gnbcucp3gpp:attributes
+     |  |           +--ro gnbcucp3gpp:fileLocation          inet:uri
+     |  |           +--ro gnbcucp3gpp:fileCompression       string
+     |  |           +--ro gnbcucp3gpp:fileSize              uint64
+     |  |           +--ro gnbcucp3gpp:fileDataType          enumeration
+     |  |           +--ro gnbcucp3gpp:fileFormat            string
+     |  |           +--ro gnbcucp3gpp:fileReadyTime         yang:date-and-time
+     |  |           +--ro gnbcucp3gpp:fileExpirationTime    yang:date-and-time
+     |  |           +--ro gnbcucp3gpp:fileContent           string
+     |  |           +--ro gnbcucp3gpp:jobRef*               types3gpp:DistinguishedName
+     |  |           +--ro gnbcucp3gpp:jobId?                string
+     |  +--rw gnbcucp3gpp:ThresholdMonitor* [id] {MeasurementsUnderManagedFunction}?
+     |  |  +--rw gnbcucp3gpp:id            string
+     |  |  +--rw gnbcucp3gpp:attributes
+     |  |     +--rw gnbcucp3gpp:administrativeState?        types3gpp:AdministrativeState
+     |  |     +--ro gnbcucp3gpp:operationalState            types3gpp:OperationalState
+     |  |     +--rw gnbcucp3gpp:thresholdInfoList* [idx]
+     |  |     |  +--rw gnbcucp3gpp:idx                   uint32
+     |  |     |  +--rw gnbcucp3gpp:measurementTypes*     string
+     |  |     |  +--rw gnbcucp3gpp:thresholdLevel        uint64
+     |  |     |  +--rw gnbcucp3gpp:thresholdDirection    enumeration
+     |  |     |  +--rw gnbcucp3gpp:thresholdValue        union
+     |  |     |  +--rw gnbcucp3gpp:hysteresis?           union
+     |  |     +--rw gnbcucp3gpp:monitorGranularityPeriod    uint32
+     |  |     +--rw gnbcucp3gpp:objectInstances*            types3gpp:DistinguishedName
+     |  |     +--rw gnbcucp3gpp:rootObjectInstances*        types3gpp:DistinguishedName
+     |  +--rw gnbcucp3gpp:TraceJob* [id] {TraceUnderManagedFunction}?
+     |     +--rw gnbcucp3gpp:id            string
+     |     +--rw gnbcucp3gpp:attributes
+     |     |  +--rw gnbcucp3gpp:tjJobType?                               enumeration
+     |     |  +--rw gnbcucp3gpp:tjListOfInterfaces* [idx]
+     |     |  |  +--rw gnbcucp3gpp:idx                    uint32
+     |     |  |  +--rw gnbcucp3gpp:MSCServerInterfaces*   enumeration
+     |     |  |  +--rw gnbcucp3gpp:MGWInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:RNCInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:SGSNInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:GGSNInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:S-CSCFInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:P-CSCFInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:I-CSCFInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:MRFCInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:MGCFInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:IBCFInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:E-CSCFInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:BGCFInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:ASInterfaces*          enumeration
+     |     |  |  +--rw gnbcucp3gpp:HSSInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:EIRInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:BM-SCInterfaces*       enumeration
+     |     |  |  +--rw gnbcucp3gpp:MMEInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:SGWInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:PDN_GWInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:eNBInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:en-gNBInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:AMFInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:AUSFInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:NEFInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:NRFInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:NSSFInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:PCFInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:SMFInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:SMSFInterfaces*        enumeration
+     |     |  |  +--rw gnbcucp3gpp:UDMInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:UPFInterfaces*         enumeration
+     |     |  |  +--rw gnbcucp3gpp:ng-eNBInterfaces*      enumeration
+     |     |  |  +--rw gnbcucp3gpp:gNB-CU-CPInterfaces*   enumeration
+     |     |  |  +--rw gnbcucp3gpp:gNB-CU-UPInterfaces*   enumeration
+     |     |  |  +--rw gnbcucp3gpp:gNB-DUInterfaces*      enumeration
+     |     |  +--rw gnbcucp3gpp:tjListOfNeTypes*                         enumeration
+     |     |  +--rw gnbcucp3gpp:tjPLMNTarget                             string
+     |     |  +--rw gnbcucp3gpp:tjStreamingTraceConsumerURI              inet:uri
+     |     |  +--rw gnbcucp3gpp:tjTraceCollectionEntityAddress           union
+     |     |  +--rw gnbcucp3gpp:tjTraceDepth?                            enumeration
+     |     |  +--rw gnbcucp3gpp:tjTraceReference                         uint64
+     |     |  +--rw gnbcucp3gpp:tjTraceRecordSessionReference            string
+     |     |  +--rw gnbcucp3gpp:tjTraceReportingFormat?                  enumeration
+     |     |  +--rw gnbcucp3gpp:tjTraceTarget* [targetIdType targetIdValue]
+     |     |  |  +--rw gnbcucp3gpp:targetIdType     enumeration
+     |     |  |  +--rw gnbcucp3gpp:targetIdValue    string
+     |     |  +--rw gnbcucp3gpp:tjTriggeringEvent                        string
+     |     |  +--rw gnbcucp3gpp:tjMDTAnonymizationOfData?                enumeration
+     |     |  +--rw gnbcucp3gpp:tjMDTAreaConfigurationForNeighCell* [idx]
+     |     |  |  +--rw gnbcucp3gpp:idx          uint32
+     |     |  |  +--rw gnbcucp3gpp:frequency?   string
+     |     |  |  +--rw gnbcucp3gpp:cell?        string
+     |     |  +--rw gnbcucp3gpp:tjMDTAreaScope*                          string
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodRrmLte?             uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodM6Lte?              uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodM7Lte?              uint16
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodRrmUmts?            uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodRrmNR?              uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodM6NR?               enumeration
+     |     |  +--rw gnbcucp3gpp:tjMDTCollectionPeriodM7NR?               uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTEventListForTriggeredMeasurement    enumeration
+     |     |  +--rw gnbcucp3gpp:tjMDTEventThreshold?                     int64
+     |     |  +--rw gnbcucp3gpp:tjMDTListOfMeasurements                  int64
+     |     |  +--rw gnbcucp3gpp:tjMDTLoggingDuration                     uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTLoggingInterval                     uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTLoggingEventThreshold?              uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTLoggedHysteresis?                   uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTLoggedTimeToTrigger?                int32
+     |     |  +--rw gnbcucp3gpp:tjMDTMBSFNAreaList*                      string
+     |     |  +--rw gnbcucp3gpp:tjMDTMeasurementPeriodLTE                uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTMeasurementPeriodUMTS               uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTMeasurementQuantity                 uint64
+     |     |  +--rw gnbcucp3gpp:tjMDTM4ThresholdUmts?                    uint16
+     |     |  +--rw gnbcucp3gpp:tjMDTPLMList* [mcc mnc]
+     |     |  |  +--rw gnbcucp3gpp:mcc    Mcc
+     |     |  |  +--rw gnbcucp3gpp:mnc    Mnc
+     |     |  +--rw gnbcucp3gpp:tjMDTPositioningMethod                   enumeration
+     |     |  +--rw gnbcucp3gpp:tjMDTReportAmount                        union
+     |     |  +--rw gnbcucp3gpp:tjMDTReportingTrigger?                   enumeration
+     |     |  +--rw gnbcucp3gpp:tjMDTReportInterval                      uint32
+     |     |  +--rw gnbcucp3gpp:tjMDTReportType                          enumeration
+     |     |  +--rw gnbcucp3gpp:tjMDTSensorInformation?                  bits
+     |     |  +--rw gnbcucp3gpp:tjMDTTraceCollectionEntityID             uint8
+     |     +--ro gnbcucp3gpp:Files* [id]
+     |        +--ro gnbcucp3gpp:id            string
+     |        +--ro gnbcucp3gpp:attributes
+     |        |  +--ro gnbcucp3gpp:numberOfFiles?   uint64
+     |        |  +--ro gnbcucp3gpp:jobRef*          types3gpp:DistinguishedName
+     |        |  +--ro gnbcucp3gpp:jobId?           string
+     |        +--ro gnbcucp3gpp:File* [id]
+     |           +--ro gnbcucp3gpp:id            string
+     |           +--ro gnbcucp3gpp:attributes
+     |              +--ro gnbcucp3gpp:fileLocation          inet:uri
+     |              +--ro gnbcucp3gpp:fileCompression       string
+     |              +--ro gnbcucp3gpp:fileSize              uint64
+     |              +--ro gnbcucp3gpp:fileDataType          enumeration
+     |              +--ro gnbcucp3gpp:fileFormat            string
+     |              +--ro gnbcucp3gpp:fileReadyTime         yang:date-and-time
+     |              +--ro gnbcucp3gpp:fileExpirationTime    yang:date-and-time
+     |              +--ro gnbcucp3gpp:fileContent           string
+     |              +--ro gnbcucp3gpp:jobRef*               types3gpp:DistinguishedName
+     |              +--ro gnbcucp3gpp:jobId?                string
+     +--rw gnbcuup3gpp:GNBCUUPFunction* [id]
+        +--rw gnbcuup3gpp:id                  string
+        +--rw gnbcuup3gpp:attributes
+        |  +--rw gnbcuup3gpp:userLabel?                         string
+        |  +--rw gnbcuup3gpp:vnfParametersList* [vnfInstanceId]
+        |  |  +--rw gnbcuup3gpp:vnfInstanceId    string
+        |  |  +--rw gnbcuup3gpp:vnfdId?          string
+        |  |  +--rw gnbcuup3gpp:flavourId?       string
+        |  |  +--rw gnbcuup3gpp:autoScalable     boolean
+        |  +--rw gnbcuup3gpp:peeParametersList* [idx]
+        |  |  +--rw gnbcuup3gpp:idx                   uint32
+        |  |  +--rw gnbcuup3gpp:siteIdentification    string
+        |  |  +--rw gnbcuup3gpp:siteLatitude?         decimal64
+        |  |  +--rw gnbcuup3gpp:siteLongitude?        decimal64
+        |  |  +--rw gnbcuup3gpp:siteAltitude?         decimal64
+        |  |  +--rw gnbcuup3gpp:siteDescription       string
+        |  |  +--rw gnbcuup3gpp:equipmentType         string
+        |  |  +--rw gnbcuup3gpp:environmentType       string
+        |  |  +--rw gnbcuup3gpp:powerInterface        string
+        |  +--rw gnbcuup3gpp:priorityLabel                      uint32
+        |  +--ro gnbcuup3gpp:SupportedPerfMetricGroup* []
+        |  |  +--ro gnbcuup3gpp:performanceMetrics*          string
+        |  |  +--ro gnbcuup3gpp:granularityPeriods*          uint32
+        |  |  +--ro gnbcuup3gpp:reportingMethods*            enumeration
+        |  |  +--ro gnbcuup3gpp:monitorGranularityPeriods*   uint32
+        |  +--ro gnbcuup3gpp:gNBCUUPId                          uint64
+        |  +--rw gnbcuup3gpp:gNBId                              uint32
+        |  +--rw gnbcuup3gpp:gNBIdLength                        int32
+        |  +--rw gnbcuup3gpp:pLMNInfoList* [mcc mnc sd sst]
+        |  |  +--rw gnbcuup3gpp:mcc    Mcc
+        |  |  +--rw gnbcuup3gpp:mnc    Mnc
+        |  |  +--rw gnbcuup3gpp:sd     string
+        |  |  +--rw gnbcuup3gpp:sst    uint8
+        |  +--rw gnbcuup3gpp:mappingSetIDBackhaulAddressList* [idx]
+        |  |  +--rw gnbcuup3gpp:idx                uint32
+        |  |  +--rw gnbcuup3gpp:setID              uint32
+        |  |  +--rw gnbcuup3gpp:backhaulAddress* [gNBId]
+        |  |     +--rw gnbcuup3gpp:gNBId    uint32
+        |  |     +--rw gnbcuup3gpp:tAI* [nRTAC]
+        |  |        +--rw gnbcuup3gpp:pLMNId* [mcc mnc]
+        |  |        |  +--rw gnbcuup3gpp:mcc    Mcc
+        |  |        |  +--rw gnbcuup3gpp:mnc    Mnc
+        |  |        +--rw gnbcuup3gpp:nRTAC     int64
+        |  +--rw gnbcuup3gpp:configurable5QISetRef?             types3gpp:DistinguishedName
+        |  +--rw gnbcuup3gpp:dynamic5QISetRef?                  types3gpp:DistinguishedName
+        +--rw gnbcuup3gpp:ManagedNFService* [id]
+        |  +--rw gnbcuup3gpp:id            string
+        |  +--rw gnbcuup3gpp:attributes
+        |     +--rw gnbcuup3gpp:userLabel?             string
+        |     +--ro gnbcuup3gpp:nFServiceType          string
+        |     +--rw gnbcuup3gpp:sAP* [host port]
+        |     |  +--rw gnbcuup3gpp:host    inet:host
+        |     |  +--rw gnbcuup3gpp:port    inet:port-number
+        |     +--rw gnbcuup3gpp:operations* [name]
+        |     |  +--rw gnbcuup3gpp:name                  string
+        |     |  +--rw gnbcuup3gpp:allowedNFTypes*       string
+        |     |  +--ro gnbcuup3gpp:operationSemantics    enumeration
+        |     +--rw gnbcuup3gpp:administrativeState    types3gpp:AdministrativeState
+        |     +--ro gnbcuup3gpp:operationalState       types3gpp:OperationalState
+        |     +--ro gnbcuup3gpp:usageState             types3gpp:usageState
+        |     +--ro gnbcuup3gpp:registrationState?     enumeration
+        +--rw gnbcuup3gpp:PerfMetricJob* [id] {MeasurementsUnderManagedFunction}?
+        |  +--rw gnbcuup3gpp:id            string
+        |  +--rw gnbcuup3gpp:attributes
+        |  |  +--rw gnbcuup3gpp:administrativeState?                        types3gpp:AdministrativeState
+        |  |  +--ro gnbcuup3gpp:operationalState                            types3gpp:OperationalState
+        |  |  +--rw gnbcuup3gpp:jobId?                                      string
+        |  |  +--rw gnbcuup3gpp:performanceMetrics*                         string
+        |  |  +--rw gnbcuup3gpp:granularityPeriod                           uint32
+        |  |  +--rw gnbcuup3gpp:objectInstances*                            types3gpp:DistinguishedName
+        |  |  +--rw gnbcuup3gpp:rootObjectInstances*                        types3gpp:DistinguishedName
+        |  |  +--rw (gnbcuup3gpp:reportingCtrl)
+        |  |  |  +--:(gnbcuup3gpp:file-based-reporting)
+        |  |  |  |  +--rw gnbcuup3gpp:fileReportingPeriod                   uint32
+        |  |  |  |  +--rw (gnbcuup3gpp:reporting-target)?
+        |  |  |  |     +--:(gnbcuup3gpp:file-target)
+        |  |  |  |     |  +--rw gnbcuup3gpp:fileLocation?                   string
+        |  |  |  |     +--:(gnbcuup3gpp:notification-target)
+        |  |  |  |        +--rw gnbcuup3gpp:notificationRecipientAddress?   string
+        |  |  |  +--:(gnbcuup3gpp:stream-based-reporting)
+        |  |  |     +--rw gnbcuup3gpp:streamTarget                          string
+        |  |  +--ro gnbcuup3gpp:_linkToFiles                                string
+        |  +--ro gnbcuup3gpp:Files* [id]
+        |     +--ro gnbcuup3gpp:id            string
+        |     +--ro gnbcuup3gpp:attributes
+        |     |  +--ro gnbcuup3gpp:numberOfFiles?   uint64
+        |     |  +--ro gnbcuup3gpp:jobRef*          types3gpp:DistinguishedName
+        |     |  +--ro gnbcuup3gpp:jobId?           string
+        |     +--ro gnbcuup3gpp:File* [id]
+        |        +--ro gnbcuup3gpp:id            string
+        |        +--ro gnbcuup3gpp:attributes
+        |           +--ro gnbcuup3gpp:fileLocation          inet:uri
+        |           +--ro gnbcuup3gpp:fileCompression       string
+        |           +--ro gnbcuup3gpp:fileSize              uint64
+        |           +--ro gnbcuup3gpp:fileDataType          enumeration
+        |           +--ro gnbcuup3gpp:fileFormat            string
+        |           +--ro gnbcuup3gpp:fileReadyTime         yang:date-and-time
+        |           +--ro gnbcuup3gpp:fileExpirationTime    yang:date-and-time
+        |           +--ro gnbcuup3gpp:fileContent           string
+        |           +--ro gnbcuup3gpp:jobRef*               types3gpp:DistinguishedName
+        |           +--ro gnbcuup3gpp:jobId?                string
+        +--rw gnbcuup3gpp:ThresholdMonitor* [id] {MeasurementsUnderManagedFunction}?
+        |  +--rw gnbcuup3gpp:id            string
+        |  +--rw gnbcuup3gpp:attributes
+        |     +--rw gnbcuup3gpp:administrativeState?        types3gpp:AdministrativeState
+        |     +--ro gnbcuup3gpp:operationalState            types3gpp:OperationalState
+        |     +--rw gnbcuup3gpp:thresholdInfoList* [idx]
+        |     |  +--rw gnbcuup3gpp:idx                   uint32
+        |     |  +--rw gnbcuup3gpp:measurementTypes*     string
+        |     |  +--rw gnbcuup3gpp:thresholdLevel        uint64
+        |     |  +--rw gnbcuup3gpp:thresholdDirection    enumeration
+        |     |  +--rw gnbcuup3gpp:thresholdValue        union
+        |     |  +--rw gnbcuup3gpp:hysteresis?           union
+        |     +--rw gnbcuup3gpp:monitorGranularityPeriod    uint32
+        |     +--rw gnbcuup3gpp:objectInstances*            types3gpp:DistinguishedName
+        |     +--rw gnbcuup3gpp:rootObjectInstances*        types3gpp:DistinguishedName
+        +--rw gnbcuup3gpp:TraceJob* [id] {TraceUnderManagedFunction}?
+           +--rw gnbcuup3gpp:id            string
+           +--rw gnbcuup3gpp:attributes
+           |  +--rw gnbcuup3gpp:tjJobType?                               enumeration
+           |  +--rw gnbcuup3gpp:tjListOfInterfaces* [idx]
+           |  |  +--rw gnbcuup3gpp:idx                    uint32
+           |  |  +--rw gnbcuup3gpp:MSCServerInterfaces*   enumeration
+           |  |  +--rw gnbcuup3gpp:MGWInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:RNCInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:SGSNInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:GGSNInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:S-CSCFInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:P-CSCFInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:I-CSCFInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:MRFCInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:MGCFInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:IBCFInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:E-CSCFInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:BGCFInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:ASInterfaces*          enumeration
+           |  |  +--rw gnbcuup3gpp:HSSInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:EIRInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:BM-SCInterfaces*       enumeration
+           |  |  +--rw gnbcuup3gpp:MMEInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:SGWInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:PDN_GWInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:eNBInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:en-gNBInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:AMFInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:AUSFInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:NEFInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:NRFInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:NSSFInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:PCFInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:SMFInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:SMSFInterfaces*        enumeration
+           |  |  +--rw gnbcuup3gpp:UDMInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:UPFInterfaces*         enumeration
+           |  |  +--rw gnbcuup3gpp:ng-eNBInterfaces*      enumeration
+           |  |  +--rw gnbcuup3gpp:gNB-CU-CPInterfaces*   enumeration
+           |  |  +--rw gnbcuup3gpp:gNB-CU-UPInterfaces*   enumeration
+           |  |  +--rw gnbcuup3gpp:gNB-DUInterfaces*      enumeration
+           |  +--rw gnbcuup3gpp:tjListOfNeTypes*                         enumeration
+           |  +--rw gnbcuup3gpp:tjPLMNTarget                             string
+           |  +--rw gnbcuup3gpp:tjStreamingTraceConsumerURI              inet:uri
+           |  +--rw gnbcuup3gpp:tjTraceCollectionEntityAddress           union
+           |  +--rw gnbcuup3gpp:tjTraceDepth?                            enumeration
+           |  +--rw gnbcuup3gpp:tjTraceReference                         uint64
+           |  +--rw gnbcuup3gpp:tjTraceRecordSessionReference            string
+           |  +--rw gnbcuup3gpp:tjTraceReportingFormat?                  enumeration
+           |  +--rw gnbcuup3gpp:tjTraceTarget* [targetIdType targetIdValue]
+           |  |  +--rw gnbcuup3gpp:targetIdType     enumeration
+           |  |  +--rw gnbcuup3gpp:targetIdValue    string
+           |  +--rw gnbcuup3gpp:tjTriggeringEvent                        string
+           |  +--rw gnbcuup3gpp:tjMDTAnonymizationOfData?                enumeration
+           |  +--rw gnbcuup3gpp:tjMDTAreaConfigurationForNeighCell* [idx]
+           |  |  +--rw gnbcuup3gpp:idx          uint32
+           |  |  +--rw gnbcuup3gpp:frequency?   string
+           |  |  +--rw gnbcuup3gpp:cell?        string
+           |  +--rw gnbcuup3gpp:tjMDTAreaScope*                          string
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodRrmLte?             uint32
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodM6Lte?              uint32
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodM7Lte?              uint16
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodRrmUmts?            uint32
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodRrmNR?              uint32
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodM6NR?               enumeration
+           |  +--rw gnbcuup3gpp:tjMDTCollectionPeriodM7NR?               uint32
+           |  +--rw gnbcuup3gpp:tjMDTEventListForTriggeredMeasurement    enumeration
+           |  +--rw gnbcuup3gpp:tjMDTEventThreshold?                     int64
+           |  +--rw gnbcuup3gpp:tjMDTListOfMeasurements                  int64
+           |  +--rw gnbcuup3gpp:tjMDTLoggingDuration                     uint32
+           |  +--rw gnbcuup3gpp:tjMDTLoggingInterval                     uint32
+           |  +--rw gnbcuup3gpp:tjMDTLoggingEventThreshold?              uint32
+           |  +--rw gnbcuup3gpp:tjMDTLoggedHysteresis?                   uint32
+           |  +--rw gnbcuup3gpp:tjMDTLoggedTimeToTrigger?                int32
+           |  +--rw gnbcuup3gpp:tjMDTMBSFNAreaList*                      string
+           |  +--rw gnbcuup3gpp:tjMDTMeasurementPeriodLTE                uint32
+           |  +--rw gnbcuup3gpp:tjMDTMeasurementPeriodUMTS               uint32
+           |  +--rw gnbcuup3gpp:tjMDTMeasurementQuantity                 uint64
+           |  +--rw gnbcuup3gpp:tjMDTM4ThresholdUmts?                    uint16
+           |  +--rw gnbcuup3gpp:tjMDTPLMList* [mcc mnc]
+           |  |  +--rw gnbcuup3gpp:mcc    Mcc
+           |  |  +--rw gnbcuup3gpp:mnc    Mnc
+           |  +--rw gnbcuup3gpp:tjMDTPositioningMethod                   enumeration
+           |  +--rw gnbcuup3gpp:tjMDTReportAmount                        union
+           |  +--rw gnbcuup3gpp:tjMDTReportingTrigger?                   enumeration
+           |  +--rw gnbcuup3gpp:tjMDTReportInterval                      uint32
+           |  +--rw gnbcuup3gpp:tjMDTReportType                          enumeration
+           |  +--rw gnbcuup3gpp:tjMDTSensorInformation?                  bits
+           |  +--rw gnbcuup3gpp:tjMDTTraceCollectionEntityID             uint8
+           +--ro gnbcuup3gpp:Files* [id]
+              +--ro gnbcuup3gpp:id            string
+              +--ro gnbcuup3gpp:attributes
+              |  +--ro gnbcuup3gpp:numberOfFiles?   uint64
+              |  +--ro gnbcuup3gpp:jobRef*          types3gpp:DistinguishedName
+              |  +--ro gnbcuup3gpp:jobId?           string
+              +--ro gnbcuup3gpp:File* [id]
+                 +--ro gnbcuup3gpp:id            string
+                 +--ro gnbcuup3gpp:attributes
+                    +--ro gnbcuup3gpp:fileLocation          inet:uri
+                    +--ro gnbcuup3gpp:fileCompression       string
+                    +--ro gnbcuup3gpp:fileSize              uint64
+                    +--ro gnbcuup3gpp:fileDataType          enumeration
+                    +--ro gnbcuup3gpp:fileFormat            string
+                    +--ro gnbcuup3gpp:fileReadyTime         yang:date-and-time
+                    +--ro gnbcuup3gpp:fileExpirationTime    yang:date-and-time
+                    +--ro gnbcuup3gpp:fileContent           string
+                    +--ro gnbcuup3gpp:jobRef*               types3gpp:DistinguishedName
+                    +--ro gnbcuup3gpp:jobId?                string
+
+module: _3gpp-common-subnetwork
+  +--rw SubNetwork* [id]
+     +--rw id                                        string
+     +--rw attributes
+     |  +--rw dnPrefix?                   types3gpp:DistinguishedName
+     |  +--rw userLabel?                  string
+     |  +--rw userDefinedNetworkType?     string
+     |  +--ro SupportedPerfMetricGroup* []
+     |  |  +--ro performanceMetrics*          string
+     |  |  +--ro granularityPeriods*          uint32
+     |  |  +--ro reportingMethods*            enumeration
+     |  |  +--ro monitorGranularityPeriods*   uint32
+     |  +--rw setOfMcc*                   types3gpp:Mcc
+     |  +--rw priorityLabel               uint32
+     |  +--rw parents*                    -> ../../../SubNetwork/id
+     |  +--rw containedChildren*          -> ../../../SubNetwork/id
+     +--rw PerfMetricJob* [id] {MeasurementsUnderSubNetwork}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |  |  +--rw administrativeState?                        types3gpp:AdministrativeState
+     |  |  +--ro operationalState                            types3gpp:OperationalState
+     |  |  +--rw jobId?                                      string
+     |  |  +--rw performanceMetrics*                         string
+     |  |  +--rw granularityPeriod                           uint32
+     |  |  +--rw objectInstances*                            types3gpp:DistinguishedName
+     |  |  +--rw rootObjectInstances*                        types3gpp:DistinguishedName
+     |  |  +--rw (reportingCtrl)
+     |  |  |  +--:(file-based-reporting)
+     |  |  |  |  +--rw fileReportingPeriod                   uint32
+     |  |  |  |  +--rw (reporting-target)?
+     |  |  |  |     +--:(file-target)
+     |  |  |  |     |  +--rw fileLocation?                   string
+     |  |  |  |     +--:(notification-target)
+     |  |  |  |        +--rw notificationRecipientAddress?   string
+     |  |  |  +--:(stream-based-reporting)
+     |  |  |     +--rw streamTarget                          string
+     |  |  +--ro _linkToFiles                                string
+     |  +--ro Files* [id]
+     |     +--ro id            string
+     |     +--ro attributes
+     |     |  +--ro numberOfFiles?   uint64
+     |     |  +--ro jobRef*          types3gpp:DistinguishedName
+     |     |  +--ro jobId?           string
+     |     +--ro File* [id]
+     |        +--ro id            string
+     |        +--ro attributes
+     |           +--ro fileLocation          inet:uri
+     |           +--ro fileCompression       string
+     |           +--ro fileSize              uint64
+     |           +--ro fileDataType          enumeration
+     |           +--ro fileFormat            string
+     |           +--ro fileReadyTime         yang:date-and-time
+     |           +--ro fileExpirationTime    yang:date-and-time
+     |           +--ro fileContent           string
+     |           +--ro jobRef*               types3gpp:DistinguishedName
+     |           +--ro jobId?                string
+     +--rw ThresholdMonitor* [id] {MeasurementsUnderSubNetwork}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |     +--rw administrativeState?        types3gpp:AdministrativeState
+     |     +--ro operationalState            types3gpp:OperationalState
+     |     +--rw thresholdInfoList* [idx]
+     |     |  +--rw idx                   uint32
+     |     |  +--rw measurementTypes*     string
+     |     |  +--rw thresholdLevel        uint64
+     |     |  +--rw thresholdDirection    enumeration
+     |     |  +--rw thresholdValue        union
+     |     |  +--rw hysteresis?           union
+     |     +--rw monitorGranularityPeriod    uint32
+     |     +--rw objectInstances*            types3gpp:DistinguishedName
+     |     +--rw rootObjectInstances*        types3gpp:DistinguishedName
+     +--rw NtfSubscriptionControl* [id] {SubscriptionControlUnderSubNetwork}?
+     |  +--rw id                  string
+     |  +--rw attributes
+     |  |  +--rw notificationRecipientAddress    string
+     |  |  +--rw notificationTypes*              string
+     |  |  +--rw scope* [scopeType]
+     |  |  |  +--rw scopeType     enumeration
+     |  |  |  +--rw scopeLevel    uint16
+     |  |  +--rw notificationFilter?             string
+     |  +--rw HeartbeatControl* [id]
+     |     +--rw id            string
+     |     +--rw attributes
+     |        +--rw heartbeatNtfPeriod     uint32
+     |        +--rw triggerHeartbeatNtf?   boolean
+     +--rw AlarmList* [id] {FmUnderSubNetwork}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |     +--rw administrativeState?   types3gpp:AdministrativeState
+     |     +--ro operationalState?      types3gpp:OperationalState
+     |     +--ro numOfAlarmRecords      uint32
+     |     +--ro lastModification?      yang:date-and-time
+     |     +--rw alarmRecords* [alarmId]
+     |        +--rw alarmId                  string
+     |        +--ro objectInstance           string
+     |        +--ro notificationId           int32
+     |        +--ro alarmRaisedTime?         yang:date-and-time
+     |        +--ro alarmChangedTime?        yang:date-and-time
+     |        +--ro alarmClearedTime?        yang:date-and-time
+     |        +--ro alarmType?               eventType
+     |        +--ro probableCause?           string
+     |        +--ro specificProblem?         string
+     |        +--rw perceivedSeverity?       severity-level
+     |        +--ro backedUpStatus?          string
+     |        +--ro backUpObject?            string
+     |        +--ro trendIndication?         string
+     |        +--ro thresholdInfo* []
+     |        |  +--ro measurementType    string
+     |        |  +--ro direction          enumeration
+     |        |  +--ro thresholdLevel?    string
+     |        |  +--ro thresholdValue?    string
+     |        |  +--ro hysteresis?        string
+     |        +--ro stateChangeDefinition?   string
+     |        +--ro monitoredAttributes?     string
+     |        +--ro proposedRepairActions?   string
+     |        +--ro additionalText?          string
+     |        +--ro additionalInformation?   <anydata>
+     |        +--ro rootCauseIndicator?      enumeration
+     |        +--ro ackTime?                 yang:date-and-time
+     |        +--rw ackUserId?               string
+     |        +--rw ackSystemId?             string
+     |        +--rw ackState?                enumeration
+     |        +--rw clearUserId?             string
+     |        +--rw clearSystemId?           string
+     |        +--ro serviceUser?             string
+     |        +--ro serviceProvider?         string
+     |        +--ro securityAlarmDetector?   string
+     +--rw TraceJob* [id] {TraceUnderSubNetwork}?
+     |  +--rw id            string
+     |  +--rw attributes
+     |  |  +--rw tjJobType?                               enumeration
+     |  |  +--rw tjListOfInterfaces* [idx]
+     |  |  |  +--rw idx                    uint32
+     |  |  |  +--rw MSCServerInterfaces*   enumeration
+     |  |  |  +--rw MGWInterfaces*         enumeration
+     |  |  |  +--rw RNCInterfaces*         enumeration
+     |  |  |  +--rw SGSNInterfaces*        enumeration
+     |  |  |  +--rw GGSNInterfaces*        enumeration
+     |  |  |  +--rw S-CSCFInterfaces*      enumeration
+     |  |  |  +--rw P-CSCFInterfaces*      enumeration
+     |  |  |  +--rw I-CSCFInterfaces*      enumeration
+     |  |  |  +--rw MRFCInterfaces*        enumeration
+     |  |  |  +--rw MGCFInterfaces*        enumeration
+     |  |  |  +--rw IBCFInterfaces*        enumeration
+     |  |  |  +--rw E-CSCFInterfaces*      enumeration
+     |  |  |  +--rw BGCFInterfaces*        enumeration
+     |  |  |  +--rw ASInterfaces*          enumeration
+     |  |  |  +--rw HSSInterfaces*         enumeration
+     |  |  |  +--rw EIRInterfaces*         enumeration
+     |  |  |  +--rw BM-SCInterfaces*       enumeration
+     |  |  |  +--rw MMEInterfaces*         enumeration
+     |  |  |  +--rw SGWInterfaces*         enumeration
+     |  |  |  +--rw PDN_GWInterfaces*      enumeration
+     |  |  |  +--rw eNBInterfaces*         enumeration
+     |  |  |  +--rw en-gNBInterfaces*      enumeration
+     |  |  |  +--rw AMFInterfaces*         enumeration
+     |  |  |  +--rw AUSFInterfaces*        enumeration
+     |  |  |  +--rw NEFInterfaces*         enumeration
+     |  |  |  +--rw NRFInterfaces*         enumeration
+     |  |  |  +--rw NSSFInterfaces*        enumeration
+     |  |  |  +--rw PCFInterfaces*         enumeration
+     |  |  |  +--rw SMFInterfaces*         enumeration
+     |  |  |  +--rw SMSFInterfaces*        enumeration
+     |  |  |  +--rw UDMInterfaces*         enumeration
+     |  |  |  +--rw UPFInterfaces*         enumeration
+     |  |  |  +--rw ng-eNBInterfaces*      enumeration
+     |  |  |  +--rw gNB-CU-CPInterfaces*   enumeration
+     |  |  |  +--rw gNB-CU-UPInterfaces*   enumeration
+     |  |  |  +--rw gNB-DUInterfaces*      enumeration
+     |  |  +--rw tjListOfNeTypes*                         enumeration
+     |  |  +--rw tjPLMNTarget                             string
+     |  |  +--rw tjStreamingTraceConsumerURI              inet:uri
+     |  |  +--rw tjTraceCollectionEntityAddress           union
+     |  |  +--rw tjTraceDepth?                            enumeration
+     |  |  +--rw tjTraceReference                         uint64
+     |  |  +--rw tjTraceRecordSessionReference            string
+     |  |  +--rw tjTraceReportingFormat?                  enumeration
+     |  |  +--rw tjTraceTarget* [targetIdType targetIdValue]
+     |  |  |  +--rw targetIdType     enumeration
+     |  |  |  +--rw targetIdValue    string
+     |  |  +--rw tjTriggeringEvent                        string
+     |  |  +--rw tjMDTAnonymizationOfData?                enumeration
+     |  |  +--rw tjMDTAreaConfigurationForNeighCell* [idx]
+     |  |  |  +--rw idx          uint32
+     |  |  |  +--rw frequency?   string
+     |  |  |  +--rw cell?        string
+     |  |  +--rw tjMDTAreaScope*                          string
+     |  |  +--rw tjMDTCollectionPeriodRrmLte?             uint32
+     |  |  +--rw tjMDTCollectionPeriodM6Lte?              uint32
+     |  |  +--rw tjMDTCollectionPeriodM7Lte?              uint16
+     |  |  +--rw tjMDTCollectionPeriodRrmUmts?            uint32
+     |  |  +--rw tjMDTCollectionPeriodRrmNR?              uint32
+     |  |  +--rw tjMDTCollectionPeriodM6NR?               enumeration
+     |  |  +--rw tjMDTCollectionPeriodM7NR?               uint32
+     |  |  +--rw tjMDTEventListForTriggeredMeasurement    enumeration
+     |  |  +--rw tjMDTEventThreshold?                     int64
+     |  |  +--rw tjMDTListOfMeasurements                  int64
+     |  |  +--rw tjMDTLoggingDuration                     uint32
+     |  |  +--rw tjMDTLoggingInterval                     uint32
+     |  |  +--rw tjMDTLoggingEventThreshold?              uint32
+     |  |  +--rw tjMDTLoggedHysteresis?                   uint32
+     |  |  +--rw tjMDTLoggedTimeToTrigger?                int32
+     |  |  +--rw tjMDTMBSFNAreaList*                      string
+     |  |  +--rw tjMDTMeasurementPeriodLTE                uint32
+     |  |  +--rw tjMDTMeasurementPeriodUMTS               uint32
+     |  |  +--rw tjMDTMeasurementQuantity                 uint64
+     |  |  +--rw tjMDTM4ThresholdUmts?                    uint16
+     |  |  +--rw tjMDTPLMList* [mcc mnc]
+     |  |  |  +--rw mcc    Mcc
+     |  |  |  +--rw mnc    Mnc
+     |  |  +--rw tjMDTPositioningMethod                   enumeration
+     |  |  +--rw tjMDTReportAmount                        union
+     |  |  +--rw tjMDTReportingTrigger?                   enumeration
+     |  |  +--rw tjMDTReportInterval                      uint32
+     |  |  +--rw tjMDTReportType                          enumeration
+     |  |  +--rw tjMDTSensorInformation?                  bits
+     |  |  +--rw tjMDTTraceCollectionEntityID             uint8
+     |  +--ro Files* [id]
+     |     +--ro id            string
+     |     +--ro attributes
+     |     |  +--ro numberOfFiles?   uint64
+     |     |  +--ro jobRef*          types3gpp:DistinguishedName
+     |     |  +--ro jobId?           string
+     |     +--ro File* [id]
+     |        +--ro id            string
+     |        +--ro attributes
+     |           +--ro fileLocation          inet:uri
+     |           +--ro fileCompression       string
+     |           +--ro fileSize              uint64
+     |           +--ro fileDataType          enumeration
+     |           +--ro fileFormat            string
+     |           +--ro fileReadyTime         yang:date-and-time
+     |           +--ro fileExpirationTime    yang:date-and-time
+     |           +--ro fileContent           string
+     |           +--ro jobRef*               types3gpp:DistinguishedName
+     |           +--ro jobId?                string
+     +--ro Files* [id]
+     |  +--ro id            string
+     |  +--ro attributes
+     |  |  +--ro numberOfFiles?   uint64
+     |  |  +--ro jobRef*          types3gpp:DistinguishedName
+     |  |  +--ro jobId?           string
+     |  +--ro File* [id]
+     |     +--ro id            string
+     |     +--ro attributes
+     |        +--ro fileLocation          inet:uri
+     |        +--ro fileCompression       string
+     |        +--ro fileSize              uint64
+     |        +--ro fileDataType          enumeration
+     |        +--ro fileFormat            string
+     |        +--ro fileReadyTime         yang:date-and-time
+     |        +--ro fileExpirationTime    yang:date-and-time
+     |        +--ro fileContent           string
+     |        +--ro jobRef*               types3gpp:DistinguishedName
+     |        +--ro jobId?                string
+     +--rw filemgmt3gpp:FileDownloadJob* [id]
+     |  +--rw filemgmt3gpp:id            string
+     |  +--rw filemgmt3gpp:attributes
+     |     +--rw filemgmt3gpp:id?                             string
+     |     +--rw filemgmt3gpp:fileLocation                    string
+     |     +--rw filemgmt3gpp:notificationRecipientAddress?   string
+     |     +--rw filemgmt3gpp:cancelJob                       boolean
+     |     +--rw filemgmt3gpp:jobMonitor* [id]
+     |        +--rw filemgmt3gpp:id                    string
+     |        +--ro filemgmt3gpp:status?               enumeration
+     |        +--ro filemgmt3gpp:progressPercentage?   uint8
+     |        +--ro filemgmt3gpp:progressStateInfo*    string
+     |        +--ro filemgmt3gpp:resultStateInfo?      string
+     |        +--ro filemgmt3gpp:startTime?            yang:date-and-time
+     |        +--ro filemgmt3gpp:endTime?              yang:date-and-time
+     |        +--rw filemgmt3gpp:timer?                uint32
+     +--rw mgtdatcol3gpp:ManagementDataCollection* [id]
+     |  +--rw mgtdatcol3gpp:id            string
+     |  +--rw mgtdatcol3gpp:attributes
+     |     +--rw (mgtdatcol3gpp:managementData)
+     |     |  +--:(mgtdatcol3gpp:mgtDataCategory)
+     |     |  |  +--rw mgtdatcol3gpp:category*         mgtDataCategoryType
+     |     |  +--:(mgtdatcol3gpp:mgtDataName)
+     |     |     +--rw mgtdatcol3gpp:name*             string
+     |     +--rw mgtdatcol3gpp:targetNodeFilter* [idx]
+     |     |  +--rw mgtdatcol3gpp:idx               string
+     |     |  +--rw mgtdatcol3gpp:areaOfInterest* [idx]
+     |     |  |  +--rw mgtdatcol3gpp:idx       string
+     |     |  |  +--rw mgtdatcol3gpp:plmnId* [mcc mnc]
+     |     |  |  |  +--rw mgtdatcol3gpp:mcc    Mcc
+     |     |  |  |  +--rw mgtdatcol3gpp:mnc    Mnc
+     |     |  |  +--rw mgtdatcol3gpp:tac?      types3gpp:Tac
+     |     |  +--rw mgtdatcol3gpp:networkDomain?    enumeration
+     |     |  +--rw mgtdatcol3gpp:cpUpType?         enumeration
+     |     |  +--rw mgtdatcol3gpp:sst?              uint8
+     |     +--rw mgtdatcol3gpp:collectionTimeWindow* [startTime endTime]
+     |     |  +--rw mgtdatcol3gpp:startTime    yang:date-and-time
+     |     |  +--rw mgtdatcol3gpp:endTime      yang:date-and-time
+     |     +--rw mgtdatcol3gpp:reportingCtrl* [idx]
+     |     |  +--rw mgtdatcol3gpp:idx                                         string
+     |     |  +--rw (mgtdatcol3gpp:reportingCtrl)
+     |     |     +--:(mgtdatcol3gpp:file-based-reporting)
+     |     |     |  +--rw mgtdatcol3gpp:fileReportingPeriod                   uint32
+     |     |     |  +--rw (mgtdatcol3gpp:reporting-target)?
+     |     |     |     +--:(mgtdatcol3gpp:file-target)
+     |     |     |     |  +--rw mgtdatcol3gpp:fileLocation?                   string
+     |     |     |     +--:(mgtdatcol3gpp:notification-target)
+     |     |     |        +--rw mgtdatcol3gpp:notificationRecipientAddress?   string
+     |     |     +--:(mgtdatcol3gpp:stream-based-reporting)
+     |     |        +--rw mgtdatcol3gpp:streamTarget                          string
+     |     +--rw mgtdatcol3gpp:dataScope?              enumeration
+     +--rw mnsregist3gpp:MNSRegistry* [id]
+     |  +--rw mnsregist3gpp:id         string
+     |  +--rw mnsregist3gpp:MNSInfo* [mnsType mnsVersion mnsAddress]
+     |     +--rw mnsregist3gpp:id?           string
+     |     +--rw mnsregist3gpp:mnsLabel      string
+     |     +--rw mnsregist3gpp:mnsType       enumeration
+     |     +--rw mnsregist3gpp:mnsVersion    string
+     |     +--rw mnsregist3gpp:mnsAddress    string
+     |     +--rw mnsregist3gpp:mnsScope*     types3gpp:DistinguishedName
+     +--rw qmc3gpp:QMCJob* [id]
+        +--rw qmc3gpp:id            string
+        +--rw qmc3gpp:attributes
+           +--rw qmc3gpp:serviceType                   enumeration
+           +--rw qmc3gpp:areaScope?                    string
+           +--rw qmc3gpp:qoECollectionEntityAddress    inet:ip-address
+           +--rw qmc3gpp:pLMNTarget* [mcc mnc]
+           |  +--rw qmc3gpp:mcc    Mcc
+           |  +--rw qmc3gpp:mnc    Mnc
+           +--rw qmc3gpp:qoETarget                     string
+           +--rw qmc3gpp:qoEReference                  string
+           +--rw qmc3gpp:sliceScope* [sd sst]
+           |  +--rw qmc3gpp:sd     string
+           |  +--rw qmc3gpp:sst    uint8
+           +--rw qmc3gpp:qMCConfigFile                 string
+           +--rw qmc3gpp:mDTAlignmentInformation?      uint64
+           +--rw qmc3gpp:availableRANqoEMetrics?       enumeration
+
+module: ietf-yang-schema-mount
+  +--ro schema-mounts
+     +--ro namespace* [prefix]
+     |  +--ro prefix    yang:yang-identifier
+     |  +--ro uri?      inet:uri
+     +--ro mount-point* [module label]
+        +--ro module                 yang:yang-identifier
+        +--ro label                  yang:yang-identifier
+        +--ro config?                boolean
+        +--ro (schema-ref)
+           +--:(inline)
+           |  +--ro inline!
+           +--:(shared-schema)
+              +--ro shared-schema!
+                 +--ro parent-reference*   yang:xpath1.0
+
