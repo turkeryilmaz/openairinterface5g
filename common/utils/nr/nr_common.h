@@ -131,4 +131,10 @@ int get_ssb_subcarrier_offset(uint32_t absoluteFrequencySSB, uint32_t absoluteFr
 #define min(a,b) cmin(a,b)
 #endif
 
+//look-up table for the sine (cosine) function
+#define ResolSinCos 100
+extern uint16_t LUTSin[ResolSinCos+1];
+void InitSinLUT( void );
+
+
 #endif

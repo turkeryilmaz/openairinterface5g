@@ -26,6 +26,7 @@
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include <common/utils/LOG/log.h>
+#include "nr/nr_common.h"
 
 //#define DEBUG_FEP
 
@@ -358,4 +359,46 @@ void apply_nr_rotation_ul(NR_DL_FRAME_PARMS *frame_parms,
                          1, frame_parms->N_RB_UL * 6, 15);
     }
   }
+}
+
+typedef struct complex16 sample_t; // 2*16 bits complex number
+//Apply the givin Doppler shift to the input signal with a fixed number of samples
+void nr_apply_Doppler( void *in, uint32_t len, int32_t fDoppler, uint32_t *SampIdxDoppler, NR_DL_FRAME_PARMS *fp ) {
+
+  int16_t SinDopper, CosDopper; // sine/cosine value from the LUT
+  sample_t *sigComp = (sample_t *)in;
+  for ( int k=0; k < len; k++ ) {
+    int64_t IdxInt = (int64_t)*SampIdxDoppler * fDoppler * ResolSinCos*4;
+    IdxInt = IdxInt>0 ? IdxInt+fp->samples_per_frame*100/2 : IdxInt-fp->samples_per_frame*100/2; //rounding
+    IdxInt = IdxInt / (fp->samples_per_frame*100);
+    int16_t IdxModulo = IdxInt % (ResolSinCos*4);
+    IdxModulo = IdxModulo<0 ? IdxModulo+ResolSinCos*4 : IdxModulo;
+
+    if ( IdxModulo < 2*ResolSinCos  ) {
+      if ( IdxModulo < ResolSinCos ) {
+        SinDopper = LUTSin[IdxModulo];
+        CosDopper = LUTSin[ResolSinCos-IdxModulo];
+      }
+      else {
+        SinDopper = LUTSin[2*ResolSinCos-IdxModulo];
+        CosDopper = -LUTSin[IdxModulo-ResolSinCos];
+      }
+    }
+    else {
+      if ( IdxModulo < 3*ResolSinCos ) {
+        SinDopper = -LUTSin[IdxModulo-2*ResolSinCos];
+        CosDopper = -LUTSin[3*ResolSinCos-IdxModulo];
+      }
+      else {
+        SinDopper = -LUTSin[4*ResolSinCos-IdxModulo];
+        CosDopper = LUTSin[IdxModulo-3*ResolSinCos];
+      }
+    }
+
+    sample_t sigTmp = sigComp[k];
+    sigComp[k].r= ( (int32_t)sigTmp.r*CosDopper - (int32_t)sigTmp.i*SinDopper )>>14;
+    sigComp[k].i= ( (int32_t)sigTmp.i*CosDopper + (int32_t)sigTmp.r*SinDopper )>>14;
+    (*SampIdxDoppler)++;
+  }
+
 }

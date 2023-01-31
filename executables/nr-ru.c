@@ -1171,7 +1171,7 @@ void *ru_thread( void *param ) {
 	//slot_duration.tv_nsec = 0.5e6;
 	slot_duration.tv_nsec = 0.5e6;
 
-  
+  InitSinLUT();
 
   while (!oai_exit) {
     
