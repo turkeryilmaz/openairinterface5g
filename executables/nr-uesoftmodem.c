@@ -85,6 +85,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "nr_nas_msg_sim.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
+#include <openair1/PHY/NR_REFSIG/sss_nr.h>
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -151,7 +152,7 @@ int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
 uint32_t       N_RB_DL    = 106;
-uint16_t Nid_SL = 336 + 10;
+uint16_t           Nid_SL = 0;
 uint64_t SSB_positions = 0x01;
 int mu = 1;
 uint8_t n_tx = 1;
@@ -557,6 +558,7 @@ int main( int argc, char **argv ) {
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
+  Nid_SL = get_softmodem_params()->nid2 / NUMBER_SSS_SEQUENCE + get_softmodem_params()->nid1 % NUMBER_SSS_SEQUENCE;
   if (!get_softmodem_params()->emulate_l1) {
     for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
       PHY_vars_UE_g[0][CC_id] = (PHY_VARS_NR_UE *)malloc(sizeof(PHY_VARS_NR_UE));
