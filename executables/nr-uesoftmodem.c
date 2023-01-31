@@ -308,9 +308,13 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   }
   #if 1
   ue->slss->sl_mib_length = 32;
-  ue->slss->sl_numssb_withinperiod_r16 = 1;
-  ue->slss->sl_timeinterval_r16 = 0;
-  ue->slss->sl_timeoffsetssb_r16 = 0;
+  ue->slss->sl_numssb_withinperiod_r16 = 2;
+  ue->slss->sl_timeinterval_r16 = 20;
+  ue->slss->sl_timeoffsetssb_r16 = 2;
+
+  ue->slss->sl_numssb_withinperiod_r16_copy = 2;
+  ue->slss->sl_timeinterval_r16_copy = 20;
+  ue->slss->sl_timeoffsetssb_r16_copy = 2;
   #endif
   ue->slss->slss_id = Nid_SL;
   ue->is_synchronized_sl = 0;
