@@ -568,26 +568,7 @@ int main( int argc, char **argv ) {
       memset(UE[CC_id],0,sizeof(PHY_VARS_NR_UE));
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-<<<<<<< HEAD
-
-      if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
-        uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
-        mac->nr_band = nr_band;
-        nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
-                                  downlink_frequency[CC_id][0],
-                                  uplink_frequency_offset[CC_id][0],
-                                  get_softmodem_params()->numerology,
-                                  nr_band);
-      }
-      else{
-        if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
-          mac->if_module->phy_config_request(&mac->phy_config);
-        LOG_I(NR_MAC, "This is get_softmodem_params()->sl_mode %d\n", get_softmodem_params()->sl_mode);
-        if (get_softmodem_params()->sl_mode == 2) {
-          printf("check if it is going to this if/else\n");
-=======
       if (get_softmodem_params()->sl_mode == 2) {
->>>>>>> episys/fixing-cl-dl-freq
           nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
       }
       uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
