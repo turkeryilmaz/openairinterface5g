@@ -38,6 +38,8 @@
 #include "openair1/SCHED_NR_UE/defs.h"
 #include <openair1/PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h>
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
+#include <complex.h>
+#include "executables/nr-uesoftmodem.h"
 
 //#define DEBUG_PBCH
 //#define DEBUG_PBCH_ENCODING
@@ -46,6 +48,7 @@
 
 #define PBCH_A 24
 #define PBCH_MAX_RE_PER_SYMBOL (20*12)
+#define PBCH_DMRS_PER_SYMBOL (20*3)           // 20 PRBs, and 3 DMRS in each of them --> in total 60 channel estimates per symbol (symbol 1 and 3)
 #define PBCH_MAX_RE (PBCH_MAX_RE_PER_SYMBOL*4)
 #define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
 
@@ -55,11 +58,26 @@ static uint16_t nr_pbch_extract(uint32_t rxdataF_sz,
                                 struct complex16 dl_ch_estimates[][estimateSz],
                                 struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
                                 struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
+                                struct complex16 dl_ch_estimates_dmrs[][PBCH_DMRS_PER_SYMBOL],
                                 uint32_t symbol,
                                 uint32_t s_offset,
                                 NR_DL_FRAME_PARMS *frame_parms) {
+  // check if PBCH crosses the DC, and find the affected RE
+  int reCrossingZero = (int)((12*frame_parms->N_RB_DL)/2) + frame_parms->first_carrier_offset;
+  uint16_t start_subcarrier = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
+  uint16_t idxInPBCH = 0;   // index of the RE in the PBCH crossing the DC
+
+  if ((start_subcarrier < reCrossingZero) && (start_subcarrier+20*12 >= reCrossingZero)) {
+    idxInPBCH = (uint16_t)reCrossingZero - start_subcarrier;
+  }
+
+#ifdef DEBUG_PBCH
+  LOG_I(PHY, "*** start_subcarrier: %u, ofdm_symbol_size: %u, first_carrier_offset: %u, ssb_start_subcarrier: %u, idxInPBCH: %u, reCrossingZero: %i\n",
+              start_subcarrier, frame_parms->ofdm_symbol_size, frame_parms->first_carrier_offset, frame_parms->ssb_start_subcarrier, idxInPBCH, reCrossingZero);
+#endif
+
   uint16_t rb;
-  uint8_t i,j,aarx;
+  uint8_t i,j,aarx,k;
   int nushiftmod4 = frame_parms->nushift;
   AssertFatal(symbol>=1 && symbol<5,
               "symbol %d illegal for PBCH extraction\n",
@@ -137,9 +155,12 @@ static uint16_t nr_pbch_extract(uint32_t rxdataF_sz,
 
     //printf("dl_ch0 addr %p\n",dl_ch0);
     struct complex16 *dl_ch0_ext = dl_ch_estimates_ext[aarx];
+    struct complex16 *dl_ch0_dmrs = dl_ch_estimates_dmrs[aarx];
+    int reCounter = 0;
 
     for (rb=0; rb<20; rb++) {
       j=0;
+      k=0;
 
       if (symbol==1 || symbol==3) {
         for (i=0; i<12; i++) {
@@ -156,10 +177,21 @@ static uint16_t nr_pbch_extract(uint32_t rxdataF_sz,
 #endif
             j++;
           }
+          else
+          {
+            if (reCounter != idxInPBCH)
+            {
+              dl_ch0_dmrs[k]=dl_ch0[i];
+              k++;
+            }
+          }
+          reCounter++;
         }
 
         dl_ch0+=12;
         dl_ch0_ext+=9;
+        if (reCounter != idxInPBCH)
+          dl_ch0_dmrs+=3;
       } else {
         if ((rb < 4) || (rb >15)) {
           for (i=0; i<12; i++) {
@@ -427,17 +459,28 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   // symbol refers to symbol within SSB. symbol_offset is the offset of the SSB wrt start of slot
   double log2_maxh = 0;
 
+  /* ***************************************************
+  here implement the doppler estimation based on PBCH DMRS
+  ***************************************************** */
+  int16_t DMRS_idx_current = 3;
+  int16_t DMRS_idx_last = 1;
+
+  __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_dmrs_symb1[frame_parms->nb_antennas_rx][PBCH_DMRS_PER_SYMBOL];
+
   for (symbol=1; symbol<4; symbol++) {
     const uint16_t nb_re=symbol == 2 ? 72 : 180;
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PBCH_MAX_RE_PER_SYMBOL];
     memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
+    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_dmrs[frame_parms->nb_antennas_rx][PBCH_DMRS_PER_SYMBOL];
+    memset(dl_ch_estimates_dmrs,0, sizeof  dl_ch_estimates_dmrs);
     nr_pbch_extract(ue->frame_parms.samples_per_slot_wCP,
                     rxdataF,
                     estimateSz,
                     dl_ch_estimates,
                     rxdataF_ext,
                     dl_ch_estimates_ext,
+                    dl_ch_estimates_dmrs,
                     symbol,
                     symbol_offset,
                     frame_parms);
@@ -451,6 +494,50 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                                     frame_parms,
                                     nb_re);
       log2_maxh = 3+(log2_approx(max_h)/2);
+      memcpy(&dl_ch_estimates_dmrs_symb1[0], &dl_ch_estimates_dmrs[0], sizeof dl_ch_estimates_dmrs[0]);
+    }
+
+    if (symbol == 3){
+      //For the PI controller
+      static int64_t Doppler_I_Ctrl = 0; //Integral controller for Doppler
+      static int64_t DopplerErrLast = (int64_t)1<<60; //Doppler from last estimation
+      int64_t DopplerErr = 0;
+
+      int16_t *dlChEstSymb1 = (int16_t*)&dl_ch_estimates_dmrs_symb1[0];
+      int16_t *dlChEstSymb3 = (int16_t*)&dl_ch_estimates_dmrs[0];
+
+      int nbRE = PBCH_DMRS_PER_SYMBOL;
+      int channelLevel = nr_pbch_channel_level(dl_ch_estimates_ext, frame_parms, nbRE);
+      uint8_t channelLevelLog = log2_approx(channelLevel);
+      // the normalization factor has been derived based on multiple observations for different channel level values.
+      uint8_t outputShift = (uint8_t)((float)channelLevelLog*0.8 - 2.75);
+      nbRE = 56;   // multiple of 8, as implemnted at the dot product function
+      const c32_t Dot_Prod_Res = dot_product( dlChEstSymb1, dlChEstSymb3, nbRE, outputShift);
+      //int32_t Dot_Prod_Res = dot_product( dlChEstSymb1, dlChEstSymb3, nbRE, outputShift);
+      //struct complex16 Res_cpx;
+      //Res_cpx.r = ((struct complex16*) &Dot_Prod_Res)->r;
+      //Res_cpx.i = ((struct complex16*) &Dot_Prod_Res)->i;
+      //double Res_phase = atan2( (double)Res_cpx.i, (double)Res_cpx.r);
+      double Res_phase = atan2( (double)Dot_Prod_Res.i, (double)Dot_Prod_Res.r);
+      double slotDuration = 0.01/((double)ue->frame_parms.slots_per_frame);       // slot duration in sec
+      double TOfdm = slotDuration / ((double)ue->frame_parms.symbols_per_slot);   // symbol duration in sec
+      double DopplerEst = Res_phase/ (2*M_PI*(DMRS_idx_current-DMRS_idx_last)*TOfdm);
+
+      // PI Controller
+      DopplerErr = (int64_t)DopplerEst;
+      if ( DopplerErrLast == (int64_t)1<<60 ) //Initialization of DopplerErrLast
+        DopplerErrLast = DopplerErr;
+      Doppler_I_Ctrl += DopplerErr;
+      ue->DopplerEst = (int32_t)(DopplerErr*P_ScalingFN/P_ScalingFD + Doppler_I_Ctrl*I_ScalingFN/I_ScalingFD +
+        (DopplerErr-DopplerErrLast)*D_ScalingFN/D_ScalingFD); //PID controller
+      DopplerErrLast = DopplerErr;
+
+#ifdef DEBUG_PBCH
+      double rx_gain = openair0_cfg[0].rx_gain[0];
+      double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
+      LOG_I(PHY, "**** DopplerEst: %f, ue->DopplerEst: %d, chLevel: %i, chLevelLog: %u, outShift: %u, re: %i, im: %i, phase: %f, rxG: %f, rxGOff: %f\n",
+            DopplerEst, ue->DopplerEst, channelLevel, channelLevelLog, outputShift, Res_cpx.r, Res_cpx.i, Res_phase, rx_gain, rx_gain_offset);
+#endif
     }
 
 #ifdef DEBUG_PBCH

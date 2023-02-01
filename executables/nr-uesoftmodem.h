@@ -71,7 +71,13 @@
   {"TD" ,                          CONFIG_HLP_TDRIFT,      0,                   .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
   {"DSR" ,                         CONFIG_HLP_FDopplerRate,0,                   .iptr=&fdopplerRate,                         .defintval=0,      TYPE_INT32,    0}, \
   {"DSV" ,                         CONFIG_HLP_FDopplerVar, 0,                   .uptr=&fdopplerVar,                          .defintval=0,      TYPE_UINT32,   0}, \
-  {"TC" ,                          CONFIG_HLP_TDriftComp,    0,                 .iptr=&tdriftComp,                           .defintval=1,      TYPE_INT,    0}, \
+  {"TC" ,                          CONFIG_HLP_TDriftComp,    0,                 .iptr=&tdriftComp,                           .defintval=1,      TYPE_INT,      0}, \
+  {"DCPN" ,                        CONFIG_HLP_FP_ScalingFN,0,                   .u16ptr=&P_ScalingFN,                        .defintval=1,      TYPE_UINT16,   0}, \
+  {"DCPD" ,                        CONFIG_HLP_FP_ScalingFD,0,                   .u16ptr=&P_ScalingFD,                        .defintval=3,      TYPE_UINT16,   0}, \
+  {"DCIN" ,                        CONFIG_HLP_FI_ScalingFN,0,                   .u16ptr=&I_ScalingFN,                        .defintval=1,      TYPE_UINT16,   0}, \
+  {"DCID" ,                        CONFIG_HLP_FI_ScalingFD,0,                   .u16ptr=&I_ScalingFD,                        .defintval=2,      TYPE_UINT16,   0}, \
+  {"DCDN" ,                        CONFIG_HLP_FD_ScalingFN,0,                   .u16ptr=&D_ScalingFN,                        .defintval=0,      TYPE_UINT16,   0}, \
+  {"DCDD" ,                        CONFIG_HLP_FD_ScalingFD,0,                   .u16ptr=&D_ScalingFD,                        .defintval=1,      TYPE_UINT16,   0}  \
 }
 // clang-format on
 

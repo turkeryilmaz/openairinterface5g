@@ -381,6 +381,9 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   init_symbol_rotation(fp);
   init_timeshift_rotation(fp);
 
+  // set the initial frequency offset to 0
+  ue->DopplerEst = 0;
+  
   return 0;
 }
 

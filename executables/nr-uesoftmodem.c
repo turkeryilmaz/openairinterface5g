@@ -434,6 +434,12 @@ uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
 int fdopplerComp = 1; // flag to activate continous frequency offset compensation (=0 deacticated, =1 activated (default case))
 int tdriftComp = 1;
 int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side. Dummy definition at UE to avoid linking error.
+uint16_t P_ScalingFN = 1; //P scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
+uint16_t P_ScalingFD = 3; //P scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
+uint16_t I_ScalingFN = 1; //I scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
+uint16_t I_ScalingFD = 2; //I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
+uint16_t D_ScalingFN = 0; //D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
+uint16_t D_ScalingFD = 1; //D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
 
 
 int main( int argc, char **argv ) {

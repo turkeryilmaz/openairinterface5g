@@ -595,6 +595,7 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
                                       c16_t **txdataF)
 {
   const int tx_offset = frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0);
+  uint32_t SampIdxDopplerUETx; //sample index for applying the Doppler shift at UE side for UL
 
   c16_t **txdata = UE->common_vars.txData;
   for(int ap = 0; ap < n_antenna_ports; ap++) {
@@ -622,6 +623,18 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
                            frame_parms,
                            slot);
     }
+  }
+
+  SampIdxDopplerUETx = frame_parms->get_samples_slot_timestamp(slot,frame_parms,0);
+  int writeBlockSize = frame_parms->get_samples_per_slot(slot,frame_parms);
+  extern int fdopplerComp;
+  if (fdopplerComp == 1){
+    // First scale the offset computed on DL before being applied to UL
+    uint64_t dl_carrier, ul_carrier;
+    nr_get_carrier_frequencies(UE, &dl_carrier, &ul_carrier);
+    double freq_scale  = (double)ul_carrier / dl_carrier;
+    int DopplerToComp = -(UE->DopplerEst * freq_scale);
+    nr_apply_Doppler( &txdata[0][tx_offset], writeBlockSize, DopplerToComp, &SampIdxDopplerUETx, frame_parms);
   }
 
   ///////////

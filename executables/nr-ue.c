@@ -770,6 +770,7 @@ void *UE_thread(void *arg)
   int absolute_slot=0, decoded_frame_rx=INT_MAX, trashed_frames=0;
   initNotifiedFIFO(&UE->phy_config_ind);
 
+  InitSinLUT();
   int num_ind_fifo = nb_slot_frame;
   for(int i=0; i < num_ind_fifo; i++) {
     UE->tx_wait_for_dlsch[num_ind_fifo] = 0;
