@@ -619,51 +619,6 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   AssertFatal(enc_rval.encoded <= NR_MAX_SIB_LENGTH, "ASN1 encoded length %zd bits. 3GPP TS 38.331 section 5.2.1 - The physical layer imposes a limit to the maximum size a SIB can take. The maximum SIB1 or SI message size is 2976 bits.\n", enc_rval.encoded);
-  if (enc_rval.encoded==-1) {
-    return(-1);
-  }
-
-  if (sib1->ue_TimersAndConstants != NULL)
-    RRM_FREE(sib1->ue_TimersAndConstants);
-
-  if (ServCellCom->tdd_UL_DL_ConfigurationCommon != NULL)
-    RRM_FREE(ServCellCom->tdd_UL_DL_ConfigurationCommon);
-
-  if (ServCellCom->ssb_PositionsInBurst.groupPresence != NULL)
-    RRM_FREE(ServCellCom->ssb_PositionsInBurst.groupPresence);
-
-  if (ZoneEight != NULL)
-    RRM_FREE(ZoneEight);
-
-  if (Z8 != NULL)
-    RRM_FREE(Z8);
-
-  if (P0 != NULL)
-    RRM_FREE(P0);
-
-  if (sib1->servingCellConfigCommon)
-    RRM_FREE(sib1->servingCellConfigCommon);
-  if (nr_plmn_info->trackingAreaCode->buf != NULL)
-    RRM_FREE(nr_plmn_info->trackingAreaCode->buf);
-
-  if (nr_plmn_info->trackingAreaCode != NULL)
-    RRM_FREE(nr_plmn_info->trackingAreaCode);
-
-  if (nr_plmn_info->cellIdentity.buf != NULL)
-    RRM_FREE(nr_plmn_info->cellIdentity.buf);
-
-  if (sib1->cellSelectionInfo != NULL)
-    RRM_FREE(sib1->cellSelectionInfo);
-
-  if (sib1_message->message.choice.c1->choice.systemInformationBlockType1 != NULL)
-    RRM_FREE(sib1_message->message.choice.c1->choice.systemInformationBlockType1);
-
-  if (sib1_message->message.choice.c1)
-    RRM_FREE(sib1_message->message.choice.c1);
-
-  if (sib1_message != NULL)
-    RRM_FREE(sib1_message);
-
   return((enc_rval.encoded+7)/8);
 }
 
