@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 #
-# Automated tests for running 5G NR Sidelink simulations.
-# The following is an example to run remote machine (nearby) two times.
-#
-# python3 run_sl_usrp.py -l nearby --user account --host 10.1.1.68 -r 2
-#
-# The following is an example to run both local and remote machines three times.
+# Automated tests for running 5G NR Sidelink SyncRef UE and/or Nearby UE.
+# The following is an example to run remote machine (nearby) three times.
+# The syncref UE is launched on the current machine, and a single
+# nearby UE is launched on the machine specified by the --host and
+# --user flags. The -r will enable this simulation to be repeated
+# three times.
 #
 # python3 run_sl_usrp.py --user account --host 10.1.1.68 -r 3
+#
+# The following is an example to run just a Sidelink Nearby UE.
+# By specifying -l nearby, only the nearby UE will be launched
+# on the machine specified by the --host and --user flags.
+# The -r will enable this simulation to be repeated two times.
+#
+# python3 run_sl_usrp.py -l nearby --user account --host 10.1.1.68 -r 2
 #
 # See `--help` for more information.
 #
@@ -38,20 +45,20 @@ parser.add_argument('--launch', '-l', default='both', choices='syncref nearby bo
 Sidelink UE type to launch test scenario (default: %(default)s)
 """)
 
-parser.add_argument('--host', default="10.1.1.80", type=str, help="""
+parser.add_argument('--host', default='10.1.1.80', type=str, help="""
 Nearby Host IP (default: %(default)s)
 """)
 
-parser.add_argument('--user', default="zaid", type=str, help="""
+parser.add_argument('--user', '-u',  default='', type=str, help="""
 User id in Nearby Host (default: %(default)s)
 """)
 
 parser.add_argument('--repeat', '-r', default=1, type=int, help="""
-The number of repeated test iterations (default: %(default))
+The number of repeated test iterations (default: %(default)s)
 """)
 
 parser.add_argument('--basic', '-b', action='store_true', help="""
-Basic test with basic shell commands (default: %(default)s)
+Basic test with basic shell commands
 """)
 
 parser.add_argument('--commands', '-c', default='sl_usrp_cmds.txt', help="""
@@ -94,10 +101,15 @@ class Command:
     """
     Parsing USRP commands file
     """
-
     def __init__(self, filename) -> None:
+        self.check_user()
         self.filename = self.check_file(filename)
         self.parse_commands()
+
+    def check_user(self) -> None:
+        if OPTS.launch != 'syncref' and OPTS.user == '':
+            LOGGER.error(f'--user followed by user id is mandatory to connect to remote machine')
+            sys.exit(1)
 
     def check_file(self, filename) -> str:
         data_file = glob.glob(filename)
@@ -146,7 +158,7 @@ class Command:
                 else:
                     LOGGER.debug('Unmatched line %r', line)
                     continue
-        if self.usrp_cmds == {} :
+        if self.usrp_cmds == {}:
             LOGGER.error(f'usrp commands are not found in file: {OPTS.commands} ')
             exit()
 
@@ -192,8 +204,8 @@ class TestThread(threading.Thread):
 
     def launch_nearby(self, job, host=OPTS.host, user=OPTS.user) -> Popen:
         LOGGER.info('#' * 42)
-        LOGGER.info('Launching nearby UE')
-        if OPTS.basic: cmd = redirect_output('ls', log_file_path)
+        LOGGER.info('Launching Nearby UE')
+        if OPTS.basic: cmd = redirect_output('uname -a', log_file_path)
         else: cmd = self.commands.usrp_cmds[job][:-1] + f' -d {OPTS.duration}\n'
         proc = Popen(["ssh", f"{user}@{host}", cmd],
                     shell=False,
@@ -216,7 +228,7 @@ class TestThread(threading.Thread):
         return proc
 
     def launch_syncref(self, job) -> Popen:
-        LOGGER.info('Launching syncref UE')
+        LOGGER.info('Launching SyncRef UE')
         if OPTS.basic: cmd = redirect_output('uname -a', log_file_path)
         else: cmd = self.commands.usrp_cmds[job]
         proc = Popen(cmd, shell=True)
