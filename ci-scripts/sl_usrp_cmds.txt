@@ -1,7 +1,6 @@
 # The lines containing 'usrp' and starts with 'syncref' or 'nearby' will be valid until it does not contain backspace.
 
-### RX NearBy UE ###
-
+### RX Nearby UE ###
 nearby_usrp_cmd = cd $HOME/openairinterface5g/ci-scripts; \
 python3 sl_rx_agent.py --cmd \
 'sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
@@ -20,21 +19,3 @@ $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
 --sl-mode 2 --sync-ref -r 106 --numerology 1 --band 38 -C 2600000000 --ue-txgain 8 \
 --usrp-args "type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6" \
 > ~/tx.log 2>&1
-
-//////////////////////////////////////////////////////////////
-    with Tee, without USRP, ignore the following
-//////////////////////////////////////////////////////////////
-
-''' RX Nearby with Tee without USRP
-sudo -E LD_LIBRARY_PATH=$PWD/ran_build/build:$LD_LIBRARY_PATH \
-$PWD/ran_build/build/nr-uesoftmodem \
---sl-mode 2 -r 106 --numerology 1 --band 38 -C 2600000000 \
---nokrnmod 1 2>&1 | tee ~/rx.log
-'''
-
-''' TX SyncRef with Tee without USRP
-sudo -E LD_LIBRARY_PATH=$PWD/ran_build/build:$LD_LIBRARY_PATH --ue-rxgain 90 \
-$PWD/ran_build/build/nr-uesoftmodem \
---sl-mode 2 --sync-ref -r 106 --numerology 1 --band 38 -C 2600000000 --ue-txgain 8 \
---nokrnmod 1 2>&1 | tee ~/tx.log
-'''

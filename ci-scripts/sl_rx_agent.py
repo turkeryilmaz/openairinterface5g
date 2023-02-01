@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Automated tests for running 5G NR Sidelink Rx simulations.
+# Automated tests for running 5G NR Sidelink Nearby UE.
 # The following is an example to run this script.
 #
 # python3 sl_rx_agent.py \
@@ -161,7 +161,7 @@ class TestNearby():
         return passed
 
     def launch_nearby(self, job) -> Popen:
-        LOGGER.info('Launching nearby UE: %s', log_file_path)
+        LOGGER.info('Launching Nearby UE: %s', log_file_path)
         cmd = self.cmd
         proc = Popen(cmd, shell=True)
         time.sleep(1)
@@ -198,7 +198,7 @@ class TestNearby():
 
 def get_lines(filename: str) -> Generator[str, None, None]:
     """
-    Yield each line of the given .bz2 compressed log file
+    Yield each line of the given log file (.bz2 compressed log file if -c flag is used.)
     """
     fh = bz2.open(filename, 'rb') if OPTS.compress else open(filename, 'rb')
     for line_bytes in fh:
@@ -208,18 +208,17 @@ def get_lines(filename: str) -> Generator[str, None, None]:
 
 def get_analysis_messages(filename: str) -> Generator[str, None, None]:
     """
-    Find all the 4 fields or the 6 fields log messages in the given log file `filename`
-    and yield them one by one.  The file is a .bz2 compressed log.
+    After checking the number of fields in the log message for Nid1 asnd Nid2 verification,
+    it yields line of the log.
     """
     LOGGER.info('Scanning %s', filename)
     for line in get_lines(filename):
-            #'[NR_PHY] SyncRefUE found with Nid1 10 and Nid2 1'
-            fields = line.split(maxsplit=8)
-            if len(fields) == 9:
+            #'[NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1'
+            fields = line.split(maxsplit=9)
+            if len(fields) == 10:
                 yield line
 
-def analyze_logs(test_agent: TestNearby, encNid1: int, encNid2: int) -> bool:
-    num_failed = 0
+def analyze_logs(test_agent: TestNearby, expNid1: int, expNid2: int) -> bool:
     found = set()
     estNid1, estNid2 = -1, -1
     log_file = log_file_path
@@ -227,21 +226,24 @@ def analyze_logs(test_agent: TestNearby, encNid1: int, encNid2: int) -> bool:
     if OPTS.compress:
         log_file = f'{log_file_path}.bz2'
     for line in get_analysis_messages(log_file):
-        #'[NR_PHY] SyncRefUE found with Nid1 10 and Nid2 1'
-        if 'SyncRefUE found' in line and 'No' not in line:
+        #'[NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1'
+        if 'SyncRef UE found' in line and 'No' not in line:
             if 'Nid1' in line and 'Nid2' in line:
-                fields = line.split(maxsplit=8)
-                estNid1 = int(fields[5])
-                estNid2 = int(fields[8])
+                fields = line.split(maxsplit=9)
+                estNid1 = int(fields[6])
+                estNid2 = int(fields[9])
                 found.add('found')
             continue
 
     LOGGER.debug('found: %r', found)
-    if len(found) != 1 or encNid1 != estNid1 or encNid2 != estNid2:
-        LOGGER.error(f'Failed -- found SyncRefUE Nid1 {estNid1}, Ni2 {estNid2}, expecting Nid1 {encNid1}, Nid2 {encNid2}')
+    if len(found) != 1:
+        LOGGER.error(f'Failed -- No SyncRef UE found.')
+        return False
+    elif expNid1 != estNid1 or expNid2 != estNid2:
+        LOGGER.error(f'Failed -- found SyncRef UE Nid1 {estNid1}, Ni2 {estNid2}, expecting Nid1 {expNid1}, Nid2 {expNid2}')
         return False
 
-    LOGGER.info('SyncRefUE found')
+    LOGGER.info('SyncRef UE found')
     return True
 
 def main(argv) -> int:
@@ -252,7 +254,7 @@ def main(argv) -> int:
         passed = test_agent.run(OPTS.cmd)
 
     # Examine the logs to determine if the test passed
-    if not analyze_logs(test_agent, encNid1=OPTS.nid1, encNid2=OPTS.nid2):
+    if not analyze_logs(test_agent, expNid1=OPTS.nid1, expNid2=OPTS.nid2):
         passed = False
 
     if not passed:
