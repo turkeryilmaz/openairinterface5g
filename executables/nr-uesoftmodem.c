@@ -561,7 +561,7 @@ int main( int argc, char **argv ) {
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
-  Nid_SL = get_softmodem_params()->nid2 / NUMBER_SSS_SEQUENCE + get_softmodem_params()->nid1 % NUMBER_SSS_SEQUENCE;
+  Nid_SL = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;
   if (!get_softmodem_params()->emulate_l1) {
     for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
       PHY_vars_UE_g[0][CC_id] = (PHY_VARS_NR_UE *)malloc(sizeof(PHY_VARS_NR_UE));
