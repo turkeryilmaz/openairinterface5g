@@ -54,7 +54,7 @@ typedef enum
   CellConfig = 2
 } sidl_msg_id;
 
-bool reqCnfFlag_g = false;
+static bool reqCnfFlag_g = false;
 void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req);
 int cell_config_5G_done=-1;
 int cell_config_5G_done_indication();

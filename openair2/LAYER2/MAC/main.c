@@ -315,7 +315,21 @@ void *mac_enb_task(void *arg)
 
       case SS_L1MACIND_CTRL:
         LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL\n");
-        RC.ss.l1macind.rachpreamble_enable = received_msg->ittiMsg.ss_l1macind_ctrl.rachpreamble_enable;
+        if (received_msg->ittiMsg.ss_l1macind_ctrl.bitmask & PDCCH_ORDER_PRESENT)
+        {
+          RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex = received_msg->ittiMsg.ss_l1macind_ctrl.pdcchOrder.preambleIndex;
+            RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_maskIndex = received_msg->ittiMsg.ss_l1macind_ctrl.pdcchOrder.prachMaskIndex;
+          LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL for PdcchOrder for cell:%d. prach_preambleIndex:%d prach_maskIndex:%d\n",
+              cell_index,
+              RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex,
+              RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_maskIndex);
+          pdcchOrder_rcvd = 1;
+        }
+        if (received_msg->ittiMsg.ss_l1macind_ctrl.bitmask & RACH_PREAMBLE_PRESENT)
+        {
+          LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL for RachPreamble. rachpreamble_enable:%d\n", RC.ss.l1macind.rachpreamble_enable);
+          RC.ss.l1macind.rachpreamble_enable = received_msg->ittiMsg.ss_l1macind_ctrl.rachpreamble_enable;
+        }
         break;
 
       case TERMINATE_MESSAGE:

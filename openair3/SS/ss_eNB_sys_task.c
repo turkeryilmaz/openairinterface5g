@@ -87,6 +87,7 @@ int proxy_send_port = 7776;
 int proxy_recv_port = 7770;
 bool reqCnfFlag_g = false;
 
+void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder);
 /*
  * Utility function to convert integer to binary
  *
@@ -743,12 +744,17 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     case SystemConfirm_Type_Paging:
       msgCnf->Confirm.v.Paging = true;
       break;
+    case SystemConfirm_Type_PdcchOrder:
+    {
+      LOG_A(ENB_SS, "[SYS] Send confirm for PDCCHOrder to Port Sys \n");
+      msgCnf->Confirm.v.PdcchOrder = true;
+      break;
+    }
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:
-    case SystemConfirm_Type_PdcchOrder:
     case SystemConfirm_Type_ActivateScell:
     case SystemConfirm_Type_MbmsConfig:
     case SystemConfirm_Type_PDCCH_MCCH_ChangeNotification:
@@ -1552,6 +1558,7 @@ static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacI
       if(IndicationAndControlMode_enable == L1MacInd_Ctrl->RachPreamble.v)
       {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = true;
+        SS_L1MACIND_CTRL(message_p).bitmask |= RACH_PREAMBLE_PRESENT;
       } else {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
       }
@@ -1878,6 +1885,10 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       sys_handle_l1macind_ctrl(&(req->Request.v.L1MacIndCtrl));
       break;
 
+    case SystemRequest_Type_PdcchOrder:
+      LOG_A(ENB_SS, "[SYS] SystemRequest_Type_PdcchOrder received\n");
+      sys_handle_pdcch_order(&req->Request.v.PdcchOrder);
+      break;
     case SystemRequest_Type_UNBOUND_VALUE:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_UNBOUND_VALUE received\n");
       break;
@@ -2009,6 +2020,12 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     valid = true;
     sendDummyCnf = false;
     cnfType = SystemConfirm_Type_L1MacIndCtrl;
+    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+    break;
+   case SystemRequest_Type_PdcchOrder:
+    valid = TRUE;
+    sendDummyCnf = FALSE;
+    cnfType = SystemConfirm_Type_PdcchOrder;
     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
   default:
@@ -2245,4 +2262,30 @@ void *ss_eNB_sys_task(void *arg)
   }
 
   return NULL;
+}
+
+
+void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder)
+{
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_L1MACIND_CTRL);
+  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+  bool resVal = TRUE;
+  if (message_p)
+  {
+    LOG_A(ENB_SS,"[SYS] pdcchOrder: preambleIndex%d prachMaskIndex:%d\n",pdcchOrder->PreambleIndex, pdcchOrder->PrachMaskIndex);
+    SS_L1MACIND_CTRL(message_p).pdcchOrder.preambleIndex = pdcchOrder->PreambleIndex;
+    SS_L1MACIND_CTRL(message_p).pdcchOrder.prachMaskIndex = pdcchOrder->PrachMaskIndex;
+    SS_L1MACIND_CTRL(message_p).bitmask |= PDCCH_ORDER_PRESENT;
+  }
+  int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
+  if (send_res < 0)
+  {
+    LOG_A(ENB_SS, "[SYS] Error sending SS_L1MACIND_CTRL with PdcchOrder to MAC");
+  }
+  else
+  {
+    send_sys_cnf(resType, resVal, SystemConfirm_Type_PdcchOrder, NULL);
+
+
+  }
 }
