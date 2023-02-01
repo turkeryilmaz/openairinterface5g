@@ -252,7 +252,8 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
   return 0;
 }
 
-
+extern int fdopplerPrePost; //Doppler frequency shift
+extern int fdopplerComp; 
 int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
                    int32_t *rxdata,
                    int32_t *rxdataF,
@@ -273,6 +274,14 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
   for (int idx_symb = Ns*frame_parms->symbols_per_slot; idx_symb <= abs_symbol; idx_symb++)
     rxdata_offset += (idx_symb%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rxdata_offset += frame_parms->ofdm_symbol_size * symbol;
+
+  if ((fdopplerComp == 1) && (fdopplerPrePost != 0)){
+    unsigned int curr_nb_prefix = (abs_symbol%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
+    unsigned int nsamps = frame_parms->ofdm_symbol_size + curr_nb_prefix;
+    int16_t *rxdataDopp_ptr = (int16_t *)&rxdata[rxdata_offset - sample_offset - curr_nb_prefix];
+    uint32_t IdxDopp_Rx = rxdata_offset - curr_nb_prefix; //sample index in the calculation of the Doppler shift compensation for a slot
+    nr_apply_Doppler( rxdataDopp_ptr, nsamps, fdopplerPrePost, &IdxDopp_Rx, frame_parms);
+  }
 
   // use OFDM symbol from within 1/8th of the CP to avoid ISI
   rxdata_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
