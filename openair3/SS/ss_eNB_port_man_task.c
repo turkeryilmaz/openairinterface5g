@@ -143,13 +143,15 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     case SystemConfirm_Type_Paging:
         cnf.Confirm.v.Paging = true;
         break;
+    case SystemConfirm_Type_PdcchOrder:
+        cnf.Confirm.v.PdcchOrder = true;
+        break;
 
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:
-    case SystemConfirm_Type_PdcchOrder:
     case SystemConfirm_Type_ActivateScell:
     case SystemConfirm_Type_MbmsConfig:
     case SystemConfirm_Type_PDCCH_MCCH_ChangeNotification:

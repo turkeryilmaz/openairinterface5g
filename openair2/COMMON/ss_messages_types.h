@@ -157,8 +157,19 @@ typedef struct ss_req_pdcp_cnt_s {
   uint8_t rb_id;
 } ss_req_pdcp_cnt_t;
 
+typedef struct _pdcchOrder_t
+{
+  uint8_t preambleIndex;
+  uint8_t prachMaskIndex;
+}pdcchOrder_t;
+
+
+#define RACH_PREAMBLE_PRESENT 0x01
+#define PDCCH_ORDER_PRESENT 0x02
 typedef struct ss_l1macind_ctrl_s {
+  uint8_t bitmask;
   bool rachpreamble_enable;
+  pdcchOrder_t pdcchOrder;
 } ss_l1macind_ctrl_t;
 
 /** LTE SRB */
@@ -270,8 +281,8 @@ typedef struct ss_paging_identity_s {
 }ss_paging_identity_t;
 
 typedef struct subframe_offset_list_s {
-  uint8_t num;
-  sub_frame_t subframe_offset[10];
+  uint16_t num;
+  sub_frame_t subframe_offset[1000];
 }subframe_offset_list_t;
 
 typedef struct ss_paging_ind_s {

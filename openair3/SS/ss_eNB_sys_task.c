@@ -88,6 +88,7 @@ int proxy_send_port = 7776;
 int proxy_recv_port = 7770;
 bool reqCnfFlag_g = false;
 
+void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder);
 /*
  * Utility function to convert integer to binary
  *
@@ -743,12 +744,17 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     case SystemConfirm_Type_Paging:
       msgCnf->Confirm.v.Paging = true;
       break;
+    case SystemConfirm_Type_PdcchOrder:
+    {
+      LOG_A(ENB_SS, "[SYS] Send confirm for PDCCHOrder to Port Sys \n");
+      msgCnf->Confirm.v.PdcchOrder = true;
+      break;
+    }
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:
-    case SystemConfirm_Type_PdcchOrder:
     case SystemConfirm_Type_ActivateScell:
     case SystemConfirm_Type_MbmsConfig:
     case SystemConfirm_Type_PDCCH_MCCH_ChangeNotification:
@@ -1403,119 +1409,134 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 {
   LOG_A(ENB_SS, "[SYS] Enter sys_handle_paging_req Paging_IND for processing\n");
 
-  /** TODO: Considering only one cell for now */
-  uint8_t cellId = 0; //(uint8_t)pagingRequ ->CellId;
-  uint8_t cn_domain = 0;
+	/** TODO: Considering only one cell for now */
+	uint8_t cellId = 0; //(uint8_t)pagingRequ ->CellId;
+	uint8_t cn_domain = 0;
 
-  enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Paging;
-  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-  bool resVal = TRUE;
-  static uint8_t oneTimeProcessingFlag = 0;
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
-  if (message_p == NULL)
-  {
-    return;
-  }
-  SS_PAGING_IND(message_p).cell_index = cell_index;
-  SS_PAGING_IND(message_p).sfn = tinfo.sfn;
-  SS_PAGING_IND(message_p).sf = tinfo.sf;
-  SS_PAGING_IND(message_p).paging_recordList = NULL;
-  SS_PAGING_IND(message_p).systemInfoModification = false;
-  SS_PAGING_IND(message_p).bSubframeOffsetListPresent = false;
+	enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_Paging;
+	enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+	bool resVal = TRUE;
+	static uint8_t oneTimeProcessingFlag = 0;
+	MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SS_PAGING_IND);
+	if (message_p == NULL)
+	{
+		return;
+	}
 
-  switch (pagingRequest->Paging.message.d) {
-    case SQN_PCCH_MessageType_c1:
-      if (pagingRequest->Paging.message.v.c1.d) {
-        if (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.d) {
-          struct SQN_PagingRecord *p_sdl_msg = NULL;
-          p_sdl_msg = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v;
-          /* id-CNDomain : convert cnDomain */
-          uint8_t numPagingRecord = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d;
-          size_t pgSize = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d * sizeof(ss_paging_identity_t);
-          SS_PAGING_IND(message_p).sfn =tinfo.sfn;
-          SS_PAGING_IND(message_p).sf = tinfo.sf;
-          SS_PAGING_IND(message_p).paging_recordList = CALLOC(1, pgSize);
-          ss_paging_identity_t *p_record_msg = SS_PAGING_IND(message_p).paging_recordList;
-          SS_PAGING_IND(message_p).num_paging_record = numPagingRecord;
-          for (int count = 0; count < numPagingRecord; count++) {
-            cn_domain = p_sdl_msg->cn_Domain;
-            /* id-CNDomain : convert cnDomain */
-            if (cn_domain == SQN_PagingRecord_cn_Domain_e_ps) {
-              p_record_msg->cn_domain = CN_DOMAIN_PS;
-            }
-            else if (cn_domain == SQN_PagingRecord_cn_Domain_e_cs) {
-              p_record_msg->cn_domain = CN_DOMAIN_CS;
-            }
+	SS_PAGING_IND(message_p).sfn = tinfo.sfn;
+	SS_PAGING_IND(message_p).sf = tinfo.sf;
+	SS_PAGING_IND(message_p).paging_recordList = NULL;
+	SS_PAGING_IND(message_p).systemInfoModification = false;
+	SS_PAGING_IND(message_p).bSubframeOffsetListPresent = false;
 
-            switch (p_sdl_msg->ue_Identity.d) {
-              case SQN_PagingUE_Identity_s_TMSI:
-                p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_s_tmsi;
-                int32_t stmsi_rx = bin_to_int(p_sdl_msg->ue_Identity.v.s_TMSI.m_TMSI, 32);
+	switch (pagingRequest->Paging.message.d)
+	{
+		case SQN_PCCH_MessageType_c1:
+			if (pagingRequest->Paging.message.v.c1.d)
+			{
+				if (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.d)
+				{
+					struct SQN_PagingRecord *p_sdl_msg = NULL;
+					p_sdl_msg = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v;
+					/* id-CNDomain : convert cnDomain */
+					uint8_t numPagingRecord = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d;
+					size_t pgSize = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d * sizeof(ss_paging_identity_t);
+					SS_PAGING_IND(message_p).sfn =tinfo.sfn;
+					SS_PAGING_IND(message_p).sf = tinfo.sf;
+					SS_PAGING_IND(message_p).paging_recordList = CALLOC(1, pgSize);
+					ss_paging_identity_t *p_record_msg = SS_PAGING_IND(message_p).paging_recordList;
+					SS_PAGING_IND(message_p).num_paging_record = numPagingRecord;
+					for (int count = 0; count < numPagingRecord; count++)
+					{
+						cn_domain = p_sdl_msg->cn_Domain;
+						/* id-CNDomain : convert cnDomain */
+						if (cn_domain == SQN_PagingRecord_cn_Domain_e_ps)
+						{
+							p_record_msg->cn_domain = CN_DOMAIN_PS;
+						}
+						else if (cn_domain == SQN_PagingRecord_cn_Domain_e_cs)
+						{
+							p_record_msg->cn_domain = CN_DOMAIN_CS;
+						}
 
-                p_record_msg->ue_paging_identity.choice.s_tmsi.m_tmsi = stmsi_rx ;
-                p_record_msg->ue_paging_identity.choice.s_tmsi.mme_code =
-                  bin_to_int(p_sdl_msg->ue_Identity.v.s_TMSI.mmec,8);
-                if (oneTimeProcessingFlag == 0) {
-                  SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
-                  paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
-                  oneTimeProcessingFlag = 1;
-                }
-                break;
-              case SQN_PagingUE_Identity_imsi:
-                p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
-                p_record_msg->ue_paging_identity.choice.imsi.length = p_sdl_msg->ue_Identity.v.imsi.d;
-                memcpy(&(p_record_msg->ue_paging_identity.choice.imsi.buffer[0]),p_sdl_msg->ue_Identity.v.imsi.v, p_sdl_msg->ue_Identity.v.imsi.d);
-                break;
-              case SQN_PagingUE_Identity_ng_5G_S_TMSI_r15:
-              case SQN_PagingUE_Identity_fullI_RNTI_r15:
-              case SQN_PagingUE_Identity_UNBOUND_VALUE:
-                LOG_A(ENB_SS, "[SYS] Error Unhandled Paging request \n");
-                break;
-              default :
-                LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
+						switch (p_sdl_msg->ue_Identity.d)
+						{
+							case SQN_PagingUE_Identity_s_TMSI:
+								p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_s_tmsi;
+								int32_t stmsi_rx = bin_to_int(p_sdl_msg->ue_Identity.v.s_TMSI.m_TMSI, 32);
 
-            }
-            p_sdl_msg++;
-            p_record_msg++;
-          }
-        }
+								p_record_msg->ue_paging_identity.choice.s_tmsi.m_tmsi = stmsi_rx ;
+								p_record_msg->ue_paging_identity.choice.s_tmsi.mme_code =
+									bin_to_int(p_sdl_msg->ue_Identity.v.s_TMSI.mmec,8);
+								if (oneTimeProcessingFlag == 0)
+								{
+									SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
+									paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
+									oneTimeProcessingFlag = 1;
+								} 
+								break;
+							case SQN_PagingUE_Identity_imsi:
+								p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
 
-        if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d) {
-          LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
-          if (SQN_Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v) {
-            SS_PAGING_IND(message_p).systemInfoModification = true;
-          }
-        }
-      }
-      if(pagingRequest->SubframeOffsetList.d) {
-        LOG_A(ENB_SS, "[SYS] Subframe Offset List present in Paging request \n");
-        SS_PAGING_IND(message_p).bSubframeOffsetListPresent=true;
-        SS_PAGING_IND(message_p).subframeOffsetList.num = 0;
-        for (int i=0; i < pagingRequest->SubframeOffsetList.v.d; i++) {
-          SS_PAGING_IND(message_p).subframeOffsetList.subframe_offset[i] = pagingRequest->SubframeOffsetList.v.v[i];
-          SS_PAGING_IND(message_p).subframeOffsetList.num++;
-        }
-      }
+								memcpy(&(p_record_msg->ue_paging_identity.choice.imsi),
+										&(p_sdl_msg->ue_Identity.v.imsi),
+										sizeof(s1ap_imsi_t));
+								break;
+							case SQN_PagingUE_Identity_ng_5G_S_TMSI_r15:
+							case SQN_PagingUE_Identity_fullI_RNTI_r15:
+							case SQN_PagingUE_Identity_UNBOUND_VALUE:
+								LOG_A(ENB_SS, "[SYS] Error Unhandled Paging request \n");
+								break;
+							default :
+								LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
 
-      int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, message_p);
-      if (send_res < 0) {
-        LOG_A(ENB_SS, "[SYS] Error sending Paging to RRC_ENB");
-      }
-    oneTimeProcessingFlag = 0;
-    LOG_A(ENB_SS, "[SYS] Paging_IND for Cell_id %d  sent to RRC\n", cellId);
-    break;
-    case SQN_PCCH_MessageType_messageClassExtension:
-      LOG_A(ENB_SS, "[SYS] PCCH_MessageType_messageClassExtension for Cell_id %d received\n",
-      cellId);
-      break;
-    case SQN_PCCH_MessageType_UNBOUND_VALUE:
-      LOG_A(ENB_SS, "[SYS] Invalid Pging request received Type_UNBOUND_VALUE received\n");
-      break;
-    default:
-      LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
-    }
-  send_sys_cnf(resType, resVal, cnfType, NULL);
-  LOG_A(ENB_SS, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
+						}
+						p_sdl_msg++;
+						p_record_msg++;
+					}
+				}
+
+				if (pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.d)
+				{
+					LOG_A(ENB_SS, "[SYS] System Info Modification received in Paging request \n");
+					if (SQN_Paging_systemInfoModification_e_true == pagingRequest->Paging.message.v.c1.v.paging.systemInfoModification.v)
+					{
+						SS_PAGING_IND(message_p).systemInfoModification = true;
+					}
+				}
+			}
+			if(pagingRequest->SubframeOffsetList.d)
+			{
+				LOG_A(ENB_SS, "[SYS] Subframe Offset List present in Paging request \n");
+				SS_PAGING_IND(message_p).bSubframeOffsetListPresent=true;
+				SS_PAGING_IND(message_p).subframeOffsetList.num = 0;
+				for (int i=0; i < pagingRequest->SubframeOffsetList.v.d; i++)
+				{
+					SS_PAGING_IND(message_p).subframeOffsetList.subframe_offset[i] = pagingRequest->SubframeOffsetList.v.v[i];
+					SS_PAGING_IND(message_p).subframeOffsetList.num++;
+				}
+			}
+
+			int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, message_p);
+			if (send_res < 0)
+			{
+				LOG_A(ENB_SS, "[SYS] Error sending Paging to RRC_ENB");
+			}
+			oneTimeProcessingFlag = 0;
+			LOG_A(ENB_SS, "[SYS] Paging_IND for Cell_id %d  sent to RRC\n", cellId);
+			break;
+		case SQN_PCCH_MessageType_messageClassExtension:
+			LOG_A(ENB_SS, "[SYS] PCCH_MessageType_messageClassExtension for Cell_id %d received\n",
+					cellId);
+			break;
+		case SQN_PCCH_MessageType_UNBOUND_VALUE:
+			LOG_A(ENB_SS, "[SYS] Invalid Pging request received Type_UNBOUND_VALUE received\n");
+			break;
+		default:
+			LOG_A(ENB_SS, "[SYS] Invalid Pging request received\n");
+	}
+	send_sys_cnf(resType, resVal, cnfType, NULL);
+	LOG_A(ENB_SS, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
 }
 
 
@@ -1552,6 +1573,7 @@ static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacI
       if(IndicationAndControlMode_enable == L1MacInd_Ctrl->RachPreamble.v)
       {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = true;
+        SS_L1MACIND_CTRL(message_p).bitmask |= RACH_PREAMBLE_PRESENT;
       } else {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
       }
@@ -1878,6 +1900,10 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       sys_handle_l1macind_ctrl(&(req->Request.v.L1MacIndCtrl));
       break;
 
+    case SystemRequest_Type_PdcchOrder:
+      LOG_A(ENB_SS, "[SYS] SystemRequest_Type_PdcchOrder received\n");
+      sys_handle_pdcch_order(&req->Request.v.PdcchOrder);
+      break;
     case SystemRequest_Type_UNBOUND_VALUE:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_UNBOUND_VALUE received\n");
       break;
@@ -2009,6 +2035,12 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     valid = TRUE;
     sendDummyCnf = FALSE;
     cnfType = SystemConfirm_Type_L1MacIndCtrl;
+    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+    break;
+   case SystemRequest_Type_PdcchOrder:
+    valid = TRUE;
+    sendDummyCnf = FALSE;
+    cnfType = SystemConfirm_Type_PdcchOrder;
     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
   default:
@@ -2245,4 +2277,30 @@ void *ss_eNB_sys_task(void *arg)
   }
 
   return NULL;
+}
+
+
+void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder)
+{
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_L1MACIND_CTRL);
+  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+  bool resVal = TRUE;
+  if (message_p)
+  {
+    LOG_A(ENB_SS,"[SYS] pdcchOrder: preambleIndex%d prachMaskIndex:%d\n",pdcchOrder->PreambleIndex, pdcchOrder->PrachMaskIndex);
+    SS_L1MACIND_CTRL(message_p).pdcchOrder.preambleIndex = pdcchOrder->PreambleIndex;
+    SS_L1MACIND_CTRL(message_p).pdcchOrder.prachMaskIndex = pdcchOrder->PrachMaskIndex;
+    SS_L1MACIND_CTRL(message_p).bitmask |= PDCCH_ORDER_PRESENT;
+  }
+  int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
+  if (send_res < 0)
+  {
+    LOG_A(ENB_SS, "[SYS] Error sending SS_L1MACIND_CTRL with PdcchOrder to MAC");
+  }
+  else
+  {
+    send_sys_cnf(resType, resVal, SystemConfirm_Type_PdcchOrder, NULL);
+
+
+  }
 }
