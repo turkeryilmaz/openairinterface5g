@@ -239,7 +239,7 @@ class TestThread(threading.Thread):
 
 def main() -> int:
     commands = Command(OPTS.commands)
-    LOGGER.debug(f'Number of iternations {OPTS.repeat}')
+    LOGGER.debug(f'Number of iterations {OPTS.repeat}')
     if commands.usrp_cmds:
         for role, cmd in commands.usrp_cmds.items():
             LOGGER.debug(f'{role} UE: {cmd}')
