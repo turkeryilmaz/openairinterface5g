@@ -303,7 +303,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
-      for (int j = 0; j < fp->slots_per_frame-1; j++) {
+      for (int j = 0; j < fp->slots_per_frame - 1; j++) {
         for (int i = 0; i < 13; i++)
           nr_slot_fep_init_sync(ue, proc, i, j, is * fp->samples_per_frame + ue->ssb_offset);
         LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
@@ -312,7 +312,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         if (ue->UE_fo_compensation) {
           double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
           double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
-          int start = is*fp->samples_per_frame + ue->ssb_offset;
+          int start = is * fp->samples_per_frame + ue->ssb_offset;
           int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
           for (int n = start; n < end; n++) {
             for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
