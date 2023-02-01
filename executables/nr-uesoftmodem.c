@@ -433,6 +433,7 @@ int32_t fdopplerRate; //Doppler rate in Hz/s
 uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
 int fdopplerComp = 1; // flag to activate continous frequency offset compensation (=0 deacticated, =1 activated (default case))
 int tdriftComp = 1;
+int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side. Dummy definition at UE to avoid linking error.
 
 
 int main( int argc, char **argv ) {

@@ -39,6 +39,8 @@
   {"TD" ,                   CONFIG_HLP_TDRIFT,         0,                .iptr=&RFsim_DriftPerFrame,          .defintval=0,                     TYPE_INT,    0},        \
   {"DSR" ,                  CONFIG_HLP_FDopplerRate,   0,                .iptr=&fdopplerRate,                 .defintval=0,                     TYPE_INT32,  0},        \
   {"DSV" ,                  CONFIG_HLP_FDopplerVar,    0,                .uptr=&fdopplerVar,                  .defintval=0,                     TYPE_UINT32, 0},        \
+  {"FDC" ,                  CONFIG_HLP_FDopplerPrePost,    0,            .iptr=&fdopplerPrePost,              .defintval=0,                     TYPE_INT32,  0},        \
+  {"FC" ,                   CONFIG_HLP_FDopplerComp,    0,               .iptr=&fdopplerComp,                 .defintval=0,                     TYPE_INT32,  0}        \
 }
 // clang-format on
 

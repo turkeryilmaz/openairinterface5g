@@ -50,7 +50,8 @@
 
 
 extern int oai_exit;
-
+extern int fdopplerPrePost; //Doppler frequency shift
+extern int fdopplerComp; 
 // OFDM modulation core routine, generates a first_symbol to first_symbol+num_symbols on a particular slot and TX antenna port
 void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
 
@@ -58,6 +59,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
 
   unsigned int slot_offset,slot_offsetF;
   int slot = tti_tx;
+  uint32_t IdxDopp_Tx; //sample index in the calculation of the Doppler shift compensation for a slot on gNB side
 
 
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_RU_FEPTX_OFDM+(first_symbol!=0?1:0) , 1 );
@@ -75,6 +77,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
 
   LOG_D(PHY,"SFN/SF:RU:TX:%d/%d aa %d Generating slot %d (first_symbol %d num_symbols %d) slot_offset %d, slot_offsetF %d\n",ru->proc.frame_tx, ru->proc.tti_tx,aa,slot,first_symbol,num_symbols,slot_offset,slot_offsetF);
   
+  IdxDopp_Tx = slot_offset;
   if (fp->Ncp == 1) {
     PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
                  (int*)&ru->common.txdata[aa][slot_offset],
@@ -99,6 +102,11 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
                      num_symbols-1,
                      fp->nb_prefix_samples,
                      CYCLIC_PREFIX);
+       
+        if ((fdopplerComp == 1) && (fdopplerPrePost != 0)){
+          nr_apply_Doppler( &ru->common.txdata[aa][slot_offset], (num_symbols-1)*(fp->nb_prefix_samples+fp->ofdm_symbol_size)
+              +fp->ofdm_symbol_size+fp->nb_prefix_samples0, fdopplerPrePost, &(IdxDopp_Tx), fp); //Doppler pre-compensation at gNB Tx
+        }
       }
       else { // all symbols in slot have shorter prefix
         PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
@@ -107,6 +115,10 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
                      num_symbols,
                      fp->nb_prefix_samples,
                      CYCLIC_PREFIX);
+        if ((fdopplerComp == 1) && (fdopplerPrePost != 0)){
+          nr_apply_Doppler( &ru->common.txdata[aa][slot_offset], num_symbols*(fp->nb_prefix_samples+fp->ofdm_symbol_size),
+            fdopplerPrePost, &(IdxDopp_Tx), fp); //Doppler pre-compensation at gNB Tx
+        }
       }
     } // numerology_index!=0
     else { //numerology_index == 0
