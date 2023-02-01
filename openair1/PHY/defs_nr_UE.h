@@ -522,6 +522,9 @@ typedef struct {
   int              rx_offset_slot; /// Indicating time (in slots) after rx_offset calculation
   int              rx_offset_comp; /// Already compensated rx_offset
 
+  // Estimated Doppler frequency shift from the DMRS
+  int32_t DopplerEst;
+
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB
   int timing_advance;

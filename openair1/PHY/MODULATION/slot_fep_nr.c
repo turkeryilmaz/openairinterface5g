@@ -35,6 +35,8 @@
 #define LOG_I(A,B...) printf(A)
 #endif*/
 
+extern int fdopplerComp; 
+
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 unsigned char symbol,
@@ -67,6 +69,15 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
     rx_offset += (idx_symb%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
   rx_offset += frame_parms->ofdm_symbol_size * symbol;
 
+  unsigned int curr_nb_prefix = 0;
+  uint32_t SampIdxDopplerUERx = 0;
+
+  if (fdopplerComp == 1)
+  {
+    curr_nb_prefix = (abs_symbol%(0x7<<frame_parms->numerology_index)) ? nb_prefix_samples : nb_prefix_samples0;
+    SampIdxDopplerUERx = rx_offset - curr_nb_prefix; //sample index in the calculation of the Doppler shift compensation for a slot
+  }
+
   // use OFDM symbol from within 1/8th of the CP to avoid ISI
   rx_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
 
@@ -77,6 +88,15 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   //#endif
 
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
+
+    if (fdopplerComp == 1)
+    {
+      unsigned int nsamps = frame_parms->ofdm_symbol_size + curr_nb_prefix; 
+      int16_t *rxdataDopp_ptr = (int16_t *)&common_vars->rxdata[aa][SampIdxDopplerUERx];
+      int DopplerToComp = -(ue->DopplerEst);
+      nr_apply_Doppler( rxdataDopp_ptr, nsamps, DopplerToComp , &SampIdxDopplerUERx, frame_parms);
+    }
+    
     int16_t *rxdata_ptr = (int16_t *)&common_vars->rxdata[aa][rx_offset];
 
     // if input to dft is not 256-bit aligned
@@ -253,7 +273,6 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 }
 
 extern int fdopplerPrePost; //Doppler frequency shift
-extern int fdopplerComp; 
 int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
                    int32_t *rxdata,
                    int32_t *rxdataF,

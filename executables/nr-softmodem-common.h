@@ -120,6 +120,13 @@
 #define CONFIG_HLP_FDopplerVar   "Set Doppler variance, [fdoppler +/- fdopplerVar]\n"
 #define CONFIG_HLP_TDriftComp    "Execute continous timing drift compensation\n"
 #define CONFIG_HLP_FDopplerPrePost      "Set the pre/post compensation value for the Doppler shift at the gNB side\n"
+#define CONFIG_HLP_FP_ScalingFN  "Set the P scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
+#define CONFIG_HLP_FP_ScalingFD  "Set the P scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
+#define CONFIG_HLP_FI_ScalingFN  "Set the I scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
+#define CONFIG_HLP_FI_ScalingFD  "Set the I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
+#define CONFIG_HLP_FD_ScalingFN  "Set the D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
+#define CONFIG_HLP_FD_ScalingFD  "Set the D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
+
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
@@ -176,5 +183,11 @@ extern int32_t fdopplerRate; //Doppler rate in Hz/s
 extern uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
 extern int tdriftComp;         // flag to activate/deactivate continous timing drift compensation
 extern int32_t fdopplerPrePost; //pre/post compensation of the Doppler shift at the gNB side
+extern uint16_t P_ScalingFN; //P scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
+extern uint16_t P_ScalingFD; //P scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
+extern uint16_t I_ScalingFN; //I scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
+extern uint16_t I_ScalingFD; //I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
+extern uint16_t D_ScalingFN; //D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
+extern uint16_t D_ScalingFD; //D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
 
 #endif
