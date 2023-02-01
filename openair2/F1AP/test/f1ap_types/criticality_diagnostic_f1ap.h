@@ -8,6 +8,7 @@
 #include "triggering_message_f1ap.h"
 #include "criticallity_diagnostic_ie_f1ap.h"
 
+// 9.3.1.3
 typedef struct {
 
   //optional

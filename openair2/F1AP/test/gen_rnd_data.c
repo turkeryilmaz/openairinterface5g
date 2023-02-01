@@ -1683,6 +1683,154 @@ gnb_cu_conf_update_t gen_rnd_gnb_cu_conf_update(void)
   return dst;
 }
 
+static
+cause_f1ap_t gen_rnd_cause(void)
+{
+  cause_f1ap_t dst = {0};
 
+  dst.type = rand() % END_CAUSE_F1AP;
 
+  if(dst.type == RADIO_NETWORK_CAUSE_F1AP){
+    dst.radio = rand() % END_RADIO_NETWORK_CAUSE_F1AP;
+  } else if(dst.type == TRANSPORT_CAUSE_F1AP){
+    dst.trans = rand() % END_TRANSPORT_CAUSE_F1AP;
+  } else if(dst.type == PROTOCOL_CAUSE_F1AP){
+    dst.proto = rand() % END_PROTOCOL_CAUSE_F1AP;
+  } else if(dst.type == MISC_CAUSE_F1AP){
+    dst.misc = rand() % END_MISC_CAUSE_F1AP;
+  } else {
+    assert("Unknown type");
+  }
+
+  return dst;
+}
+
+static
+cells_failed_to_activate_t gen_rnd_cells_failed_to_activate()
+{
+  cells_failed_to_activate_t dst = {0}; 
+
+  // Mandatory
+  // NR CGI 9.3.1.12
+  dst.nr_cgi = gen_rnd_nr_cgi();
+
+  // Mandatory
+  // Cause 9.3.1.2
+  dst.cause = gen_rnd_cause();
+
+  return dst;
+}
+
+static
+gnb_cu_tnl_assoc_stp_t gen_rnd_gnb_cu_tnl_assoc_stp(void)
+{
+  gnb_cu_tnl_assoc_stp_t dst = {0}; 
+
+  // Mandatory 
+  // 9.3.2.4
+  // TNL Association Transport Layer Address
+  dst.tnl_assoc_trans_layer_addr = gen_rnd_cp_trans_layer_info();
+
+  return dst;
+}
+
+static
+gnb_cu_tnl_assoc_failed_stp_t gen_rnd_cu_tnl_assoc_failed_stp()
+{
+  gnb_cu_tnl_assoc_failed_stp_t dst = {0}; 
+
+  // Mandatory
+  // 9.3.2.4
+  // TNL Association Transport Layer Address
+  dst.tnl_assoc_trans_layer_addr = gen_rnd_cp_trans_layer_info();
+
+  // Mandatory
+  // 9.3.1.2
+  // Cause   
+  dst.cause = gen_rnd_cause();
+
+  return dst;
+}
+
+static
+ded_si_del_need_t gen_rnd_ded_si_del_need()
+{
+  ded_si_del_need_t dst = {0}; 
+
+  // Mnadatory
+  // 9.3.1.4
+  // gNB-CU UE F1AP ID
+  dst.gnb_cu_ue_id = rand(); // [0, 2^32 -1]
+
+  // Mandatory
+  // 9.3.1.12
+  // NR CGI
+  dst.nr_cgi = gen_rnd_nr_cgi();
+
+  return dst;
+}
+
+gnb_cu_conf_update_ack_t gen_rnd_gnb_cu_conf_update_ack(void)
+{
+  gnb_cu_conf_update_ack_t dst = {0};
+
+  // Mandatory
+  // Transaction ID 9.3.1.23
+  dst.trans_id = rand(); 
+
+  // [0-512]
+  // Cells Failed to be Activated List
+  dst.sz_cells_failed_to_activate = rand()%513;
+  if(dst.sz_cells_failed_to_activate > 0){
+    dst.cells_failed_to_activate = calloc(dst.sz_cells_failed_to_activate, sizeof(cells_failed_to_activate_t));
+    assert(dst.cells_failed_to_activate != NULL && "Memory exhausted");
+  }
+  for(size_t i = 0; i < dst.sz_cells_failed_to_activate; ++i){
+    dst.cells_failed_to_activate[i] = gen_rnd_cells_failed_to_activate();
+  }
+
+  // Optional
+  // Criticality Diagnostics 9.3.1.3 
+  dst.crit_diagn = NULL;
+
+  // [0-32]
+  // gNB-CU TNL Association Setup List
+  dst.sz_gnb_cu_tnl_assoc_stp = rand()%33;
+  if(dst.sz_gnb_cu_tnl_assoc_stp > 0){
+    dst.gnb_cu_tnl_assoc_stp = calloc( dst.sz_gnb_cu_tnl_assoc_stp, sizeof(gnb_cu_tnl_assoc_stp_t)); 
+    assert(dst.gnb_cu_tnl_assoc_stp != NULL && "Memory exhausted");
+  }
+  for(size_t i = 0; i < dst.sz_gnb_cu_tnl_assoc_stp; ++i){
+    dst.gnb_cu_tnl_assoc_stp[i] = gen_rnd_gnb_cu_tnl_assoc_stp();
+  }
+
+  // [0-32] 
+  // gNB-CU TNL Association Failed toSetup List
+  dst.sz_gnb_cu_tnl_assoc_failed_stp = rand()%33;
+  if(dst.sz_gnb_cu_tnl_assoc_failed_stp > 0){
+    dst.gnb_cu_tnl_assoc_failed_stp = calloc(dst.sz_gnb_cu_tnl_assoc_failed_stp, sizeof(gnb_cu_tnl_assoc_failed_stp_t) );
+    assert(dst.gnb_cu_tnl_assoc_failed_stp != NULL && "Memory exhausted");
+  }
+  for(size_t i =0; i < dst.sz_gnb_cu_tnl_assoc_failed_stp; ++i){
+    dst.gnb_cu_tnl_assoc_failed_stp[i] = gen_rnd_cu_tnl_assoc_failed_stp();
+  }
+
+  // [0 - 65536]
+  // Dedicated SI Delivery Needed UE List
+  dst.sz_ded_si_del_need = 0; // rand() %  (65536 + 1);
+  if(dst.sz_ded_si_del_need > 0){
+    dst.ded_si_del_need = calloc(dst.sz_ded_si_del_need, sizeof(ded_si_del_need_t));
+    assert(dst.ded_si_del_need != NULL && "Memory exhausted");
+  }
+  for(size_t i = 0; i < dst.sz_ded_si_del_need; ++i){
+    dst.ded_si_del_need[i] = gen_rnd_ded_si_del_need();
+  }
+
+  // Optional
+  // 9.3.2.5
+  // Transport Layer Address Info
+  dst.trans_layer_addr = NULL; 
+
+  return dst;
+}
 

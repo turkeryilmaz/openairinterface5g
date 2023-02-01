@@ -3171,3 +3171,419 @@ gnb_cu_conf_update_t cp_gnb_cu_conf_update_ir(F1AP_F1AP_PDU_t const* src_pdu)
   return dst;
 }
 
+
+static
+uint8_t cp_trans_id_cu_conf_up_ack_ir(F1AP_GNBCUConfigurationUpdateAcknowledgeIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_TransactionID); 
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_TransactionID);
+
+  assert(src->value.choice.TransactionID < 256 );
+  return src->value.choice.TransactionID;
+}
+
+static
+radio_network_cause_f1ap_e cp_cause_radio(F1AP_CauseRadioNetwork_t src)
+{
+  radio_network_cause_f1ap_e dst = {0}; 
+
+  if(src == F1AP_CauseRadioNetwork_unspecified){
+    dst = UNSPECIFIED_RADIO_NETWORK_CAUSE_F1AP; 
+  } else if(src == F1AP_CauseRadioNetwork_rl_failure_rlc){
+    dst = RL_FAILURE_RLC__RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_unknown_or_already_allocated_gnb_cu_ue_f1ap_id	){
+    dst = UNKNOWN_OR_ALREADY_ALLOCATED_GNB_CU_UE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_unknown_or_already_allocated_gnb_du_ue_f1ap_id	){
+    dst = UNKNOWN_OR_ALREADY_ALLOCATED_GNB_DU_UE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_unknown_or_inconsistent_pair_of_ue_f1ap_id	){
+    dst = UNKNOWN_OR_INCONSISTENT_PAIR_OF_UE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_interaction_with_other_procedure	){
+    dst = INTERACTION_WITH_OTHER_PROCEDURE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src == F1AP_CauseRadioNetwork_not_supported_qci_Value	){
+    dst = NOT_SUPPORTED_QCI_VALUE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src == F1AP_CauseRadioNetwork_action_desirable_for_radio_reasons	){
+    dst =ACTION_DESIDERABLE_FOR_RADIO_REASONS_RADIO_NETWORK_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseRadioNetwork_no_radio_resources_available	){
+    dst =NO_RADIO_RESOURCES_AVAILABLE_RADIO_NETWORK_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseRadioNetwork_procedure_cancelled	){
+    dst =PROCEDURE_CANCELLED_RADIO_NETWORK_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseRadioNetwork_normal_release){
+    dst = NORMAL_RELEASE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_cell_not_available	){
+    dst = CELL_NOT_AVAILABLE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_rl_failure_others	){
+    dst = RL_FAILURE_OTHERS_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_ue_rejection	){
+    dst = UE_REJECTION_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_resources_not_available_for_the_slice	){
+    dst = RESOURCES_NOT_AVAILABLE_FOR_SLICE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_amf_initiated_abnormal_release	){
+    dst = AMF_INITIATED_ABNORMAL_RELEASE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_release_due_to_pre_emption	){
+    dst = RELEASE_DUE_TO_PRE_EMPTION_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_plmn_not_served_by_the_gNB_CU	){
+    dst = _PLMN_NOT_SERVED_BY_THE_GNB_CU_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_multiple_drb_id_instances	){
+    dst = MULTIPLE_DRB_ID_INSTANCES_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_unknown_drb_id	){
+    dst = UNKNOWN_DRB_ID_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_multiple_bh_rlc_ch_id_instances	){
+    dst =MULTIPLE_BH_RLC_CH_ID_INSTANCES_RADIO_NETWORK_CAUSE_F1AP  ;
+  }else if(src ==F1AP_CauseRadioNetwork_unknown_bh_rlc_ch_id	){
+    dst = UNKNOWN_BH_RLC_CH_ID_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==F1AP_CauseRadioNetwork_cho_cpc_resources_tobechanged){
+    dst = CHO_CPC_RESOURCES_TOBECHANGED_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src == F1AP_CauseRadioNetwork_nPN_not_supported){
+    dst = NPN_NOT_SUPPORTED_RADIO_NETWORK_CAUSE_F1AP ;
+  } else if(src ==  F1AP_CauseRadioNetwork_nPN_access_denied	){
+    dst = NPN_ACCESS_DENIED__RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src == F1AP_CauseRadioNetwork_gNB_CU_Cell_Capacity_Exceeded	 ){
+    dst = GNB_CU_CELL_CAPACITY_EXCEEDED_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src == F1AP_CauseRadioNetwork_report_characteristics_empty	 ){
+    dst = REPORT_CHARACTERISTICS_EMPTY_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==  F1AP_CauseRadioNetwork_existing_measurement_ID	){
+    dst = EXISTING_MEASUREMENT_ID_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==  F1AP_CauseRadioNetwork_measurement_temporarily_not_available	){
+    dst = MEASUREMENT_TEMPORARILY_NOT_AVAILABLE_RADIO_NETWORK_CAUSE_F1AP ;
+  }else if(src ==  F1AP_CauseRadioNetwork_measurement_not_supported_for_the_object	){
+    dst = MEASUREMENT_NOT_SUPPORTED_FOR_THE_OBJECT_RADIO_NETWORK_CAUSE_F1AP ;
+  } else {
+    assert(0 != 0 && "Unknown type" );
+  }
+
+  return dst;
+}
+
+
+static
+transport_cause_f1ap_e cp_cause_trans(F1AP_CauseTransport_t src)
+{
+  transport_cause_f1ap_e dst = {0};
+
+  if(src == F1AP_CauseTransport_unspecified){
+    dst = UNSPECIFIED_TRANSPORT_CAUSE_F1AP;
+  } else if(src == F1AP_CauseTransport_transport_resource_unavailable){
+    dst = RESOURCE_UNAVAILABLE_TRANSPORT_CAUSE_F1AP ;
+  } else if(src == F1AP_CauseTransport_unknown_TNL_address_for_IAB){
+    dst = UNKNOWN_TNL_ADDRESS_FOR_IAB_TRANSPORT_CAUSE_F1AP ;
+  } else if(src == F1AP_CauseTransport_unknown_UP_TNL_information_for_IAB){
+    dst = UNKNOWN_UP_TNL_INFORMATION_FOR_IAB_TRANSPORT_CAUSE_F1AP ;
+  } else {
+    assert(0!=0 && "Unknown type" );
+  }
+
+  return dst;
+}
+
+static
+protocol_cause_f1ap_e cp_cause_proto(F1AP_CauseProtocol_t	src)
+{
+   protocol_cause_f1ap_e dst = {0};
+
+   if(src == TRANSFER_SYNTAX_ERROR_PROTOCOL_CAUSE_F1AP ){
+    dst = TRANSFER_SYNTAX_ERROR_PROTOCOL_CAUSE_F1AP ; 
+   }else if(src == ABSTRACT_SYNTAX_ERROR_REJECT_PROTOCOL_CAUSE_F1AP ){
+    dst = ABSTRACT_SYNTAX_ERROR_REJECT_PROTOCOL_CAUSE_F1AP ; 
+   }else if(src == ABSTRACT_SYNTAX_ERROR_IGNORE_AND_NOTIFY_PROTOCOL_CAUSE_F1AP ){
+    dst = ABSTRACT_SYNTAX_ERROR_IGNORE_AND_NOTIFY_PROTOCOL_CAUSE_F1AP ; 
+   }else if(src == MESSAGE_NOT_COMPATIBLE_WITH_RECEIVER_STATE_PROTOCOL_CAUSE_F1AP ){
+    dst = MESSAGE_NOT_COMPATIBLE_WITH_RECEIVER_STATE_PROTOCOL_CAUSE_F1AP ; 
+   }else if(src == SEMANTIC_ERROR_PROTOCOL_CAUSE_F1AP ){
+    dst = SEMANTIC_ERROR_PROTOCOL_CAUSE_F1AP ; 
+   }else if(src == ABSTRACT_SYNTAX_ERROR_FALSELY_CONSTRUCTED_MESSAGE_PROTOCOL_CAUSE_F1AP ){
+    dst =ABSTRACT_SYNTAX_ERROR_FALSELY_CONSTRUCTED_MESSAGE_PROTOCOL_CAUSE_F1AP  ; 
+   }else if(src == UNSPECIFIED_PROTOCOL_CAUSE_F1AP ){
+    dst = UNSPECIFIED_PROTOCOL_CAUSE_F1AP ; 
+   }else{
+    assert(0 !=0 && "Unknwon type" );
+   }
+
+   return dst;
+}
+
+static
+misc_cause_f1ap_e cp_cause_misc(F1AP_CauseMisc_t src)
+{
+  misc_cause_f1ap_e dst = {0}; 
+
+  if(src == F1AP_CauseMisc_control_processing_overload	 ){
+    dst =CONTROL_PROCESSING_OVERLOAD_MISC_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseMisc_not_enough_user_plane_processing_resources	){
+    dst =NOT_ENOUGH_USER_PLANE_PROCESSING_RESOURCES_MISC_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseMisc_hardware_failure	){
+    dst =HARDWARE_FAILURE_MISC_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseMisc_om_intervention	){
+    dst =OM_INTERVENTION_MISC_CAUSE_F1AP  ;
+  }else if(src == F1AP_CauseMisc_unspecified	){
+    dst =UNSPECIFIED_MISC_CAUSE_F1AP;
+  } else {
+    assert(0 != 0 && "Unknown type");
+  }
+
+  return dst;
+}
+
+typedef struct{
+  cells_failed_to_activate_t* arr;
+  size_t sz;
+} cells_failed_to_activate_span_t;
+
+static
+cause_f1ap_t cp_cause_ir(F1AP_Cause_t	const* src)
+{
+  assert(src != NULL);
+
+  cause_f1ap_t dst = {0}; 
+
+  if(src->present == F1AP_Cause_PR_radioNetwork){
+    dst.type = RADIO_NETWORK_CAUSE_F1AP ;
+    dst.radio = cp_cause_radio(src->choice.radioNetwork);
+  } else if(src->present == F1AP_Cause_PR_transport){
+    dst.type = TRANSPORT_CAUSE_F1AP ;
+    dst.trans = cp_cause_trans(src->choice.transport);
+  }else if(src->present == F1AP_Cause_PR_protocol){
+    dst.type = PROTOCOL_CAUSE_F1AP ;
+    dst.proto = cp_cause_proto(src->choice.protocol);
+  }else if(src->present == F1AP_Cause_PR_misc){
+    dst.type = MISC_CAUSE_F1AP ;
+    dst.misc = cp_cause_misc(src->choice.misc);
+  } else {
+    assert(0!=0 && "Unknown type");
+
+  }
+
+  return dst;
+}
+
+static
+cells_failed_to_activate_t cp_cells_failed_to_activate_it_ir(F1AP_Cells_Failed_to_be_Activated_List_ItemIEs_t const* src)
+{
+  assert(src != NULL);
+
+  cells_failed_to_activate_t dst = {0}; 
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_Cells_Failed_to_be_Activated_List_Item); 
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_Cells_Failed_to_be_Activated_List_ItemIEs__value_PR_Cells_Failed_to_be_Activated_List_Item);
+
+  F1AP_Cells_Failed_to_be_Activated_List_Item_t const* src_it = &src->value.choice.Cells_Failed_to_be_Activated_List_Item;
+  // Mandatory
+  // NR CGI 9.3.1.12
+  TBCD_TO_MCC_MNC(&src_it->nRCGI.pLMN_Identity, dst.nr_cgi.plmn_id.mcc, dst.nr_cgi.plmn_id.mnc, dst.nr_cgi.plmn_id.mnc_digit_len);
+  BIT_STRING_TO_NR_CELL_IDENTITY(&src_it->nRCGI.nRCellIdentity, dst.nr_cgi.nr_cell_id);
+  assert(dst.nr_cgi.nr_cell_id < (1ul << 36) );
+
+  // Mandatory
+  // Cause 9.3.1.2
+  dst.cause = cp_cause_ir(&src_it->cause);
+
+  return dst;
+}
+
+
+static
+cells_failed_to_activate_span_t cp_cells_failed_to_activate_ir(F1AP_GNBCUConfigurationUpdateAcknowledgeIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_Cells_Failed_to_be_Activated_List); 
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_Cells_Failed_to_be_Activated_List);
+
+  cells_failed_to_activate_span_t dst = {0}; 
+
+  dst.sz = src->value.choice.Cells_Failed_to_be_Activated_List.list.count;
+  assert(dst.sz < 513);
+  dst.arr = calloc(dst.sz,  sizeof(cells_failed_to_activate_t));
+  assert(dst.arr != NULL && "Memory exhausted");
+
+  for(size_t i = 0; i < dst.sz; ++i){
+    dst.arr[i] = cp_cells_failed_to_activate_it_ir((F1AP_Cells_Failed_to_be_Activated_List_ItemIEs_t*)src->value.choice.Cells_Failed_to_be_Activated_List.list.array[i]);
+  }
+
+  return dst;
+}
+
+static
+criticallity_diagnostic_f1ap_t cp_crit_diagnose_conf_up_ack(F1AP_GNBCUConfigurationUpdateAcknowledgeIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(0!=0 && "Not implemented");  
+
+  criticallity_diagnostic_f1ap_t dst = {0}; 
+
+  //optional
+  //Procedure Code
+  //uint8_t* proc_code;
+
+  //optional
+  //Triggering Message
+  //trig_msg_e* trig_msg;
+
+  //optional
+  //Procedure Criticality
+  //proc_crit_e* proc_crit;
+
+  //optional
+  //Transaction ID
+  //uint8_t* trans_id;
+
+  //size_t sz_crit_diagn_ie; // max. 256
+  //crit_diagn_ie_t* crit_diagn_ie;
+
+  return dst;
+}
+
+static
+gnb_cu_tnl_assoc_stp_t cp_gnb_cu_tnl_assoc_stp_it_cu_conf_up_ack(F1AP_GNB_CU_TNL_Association_Setup_ItemIEs_t const* src)
+{
+  assert(src != NULL);
+
+  gnb_cu_tnl_assoc_stp_t dst = {0}; 
+
+  // Mandatory 
+  // 9.3.2.4
+  // TNL Association Transport Layer Address
+  dst.tnl_assoc_trans_layer_addr = cp_tnl_assoc_tran_layer_addr_ir(&src->value.choice.GNB_CU_TNL_Association_Setup_Item.tNLAssociationTransportLayerAddress);
+
+  return dst;
+}
+
+typedef struct{
+ gnb_cu_tnl_assoc_stp_t* arr; 
+  size_t sz;
+} gnb_cu_tnl_assoc_stp_span_t; 
+
+static
+gnb_cu_tnl_assoc_stp_span_t cp_gnb_cu_tnl_assoc_stp_cu_conf_up_ack(F1AP_GNBCUConfigurationUpdateAcknowledgeIEs_t const* src)
+{
+  assert(src != NULL);
+
+  gnb_cu_tnl_assoc_stp_span_t dst = {0}; 
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_GNB_CU_TNL_Association_Setup_List); 
+  assert(src->criticality == F1AP_Criticality_ignore);
+  assert(src->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_GNB_CU_TNL_Association_Setup_List);
+
+  assert(src->value.choice.GNB_CU_TNL_Association_Setup_List.list.count < 33);
+
+  dst.sz = src->value.choice.GNB_CU_TNL_Association_Setup_List.list.count;
+  dst.arr = calloc( dst.sz , sizeof( gnb_cu_tnl_assoc_stp_t ));
+  assert(dst.arr != NULL && "Memory exhausted");
+
+  F1AP_GNB_CU_TNL_Association_Setup_List_t const* src_it = &src->value.choice.GNB_CU_TNL_Association_Setup_List;
+
+  for(size_t i =0; i < dst.sz; ++i){
+    dst.arr[i] =  cp_gnb_cu_tnl_assoc_stp_it_cu_conf_up_ack((F1AP_GNB_CU_TNL_Association_Setup_ItemIEs_t*)src_it->list.array[i]);
+  }
+
+  return dst;
+}
+  
+static
+gnb_cu_tnl_assoc_failed_stp_t cp_gnb_cu_tnl_assoc_failed_stp_it_cu_conf_up_ack(F1AP_GNB_CU_TNL_Association_Failed_To_Setup_ItemIEs_t const* src)
+{
+  assert(src != NULL);
+
+  gnb_cu_tnl_assoc_failed_stp_t dst = {0}; 
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_GNB_CU_TNL_Association_Failed_To_Setup_Item); 
+  assert(src->criticality == F1AP_Criticality_ignore);
+  assert(src->value.present == F1AP_GNB_CU_TNL_Association_Failed_To_Setup_ItemIEs__value_PR_GNB_CU_TNL_Association_Failed_To_Setup_Item);
+
+  // Mandatory
+  // 9.3.2.4
+  // TNL Association Transport Layer Address
+  dst.tnl_assoc_trans_layer_addr = cp_tnl_assoc_tran_layer_addr_ir(&src->value.choice.GNB_CU_TNL_Association_Failed_To_Setup_Item.tNLAssociationTransportLayerAddress);
+
+  // Mandatory
+  // 9.3.1.2
+  // Cause   
+  dst.cause = cp_cause_ir(&src->value.choice.GNB_CU_TNL_Association_Failed_To_Setup_Item.cause);
+
+  return dst;
+}
+
+typedef struct{
+  size_t sz;
+  gnb_cu_tnl_assoc_failed_stp_t* arr;
+} gnb_cu_tnl_assoc_failed_stp_span_t; 
+
+static
+gnb_cu_tnl_assoc_failed_stp_span_t cp_gnb_cu_tnl_assoc_failed_stp_cu_conf_up_ack(F1AP_GNBCUConfigurationUpdateAcknowledgeIEs_t const* src)
+{
+  assert(src != NULL);
+
+  gnb_cu_tnl_assoc_failed_stp_span_t dst = {0};
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_GNB_CU_TNL_Association_Failed_To_Setup_List); 
+  assert(src->criticality == F1AP_Criticality_ignore);
+  assert(src->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_GNB_CU_TNL_Association_Failed_To_Setup_List);
+
+  F1AP_GNB_CU_TNL_Association_Failed_To_Setup_List_t const* src_it = &src->value.choice.GNB_CU_TNL_Association_Failed_To_Setup_List;
+  
+  assert( src_it->list.count < 33);
+  dst.sz = src_it->list.count;
+  dst.arr = calloc(dst.sz, sizeof( gnb_cu_tnl_assoc_failed_stp_t ) );
+
+  for(size_t i = 0; i < dst.sz; ++i){
+    dst.arr[i] =  cp_gnb_cu_tnl_assoc_failed_stp_it_cu_conf_up_ack((F1AP_GNB_CU_TNL_Association_Failed_To_Setup_ItemIEs_t*)src_it->list.array[i]); 
+  }
+
+  return dst;
+}
+
+
+gnb_cu_conf_update_ack_t cp_gnb_cu_conf_update_ack_ir(F1AP_F1AP_PDU_t const* src_pdu)
+{
+  gnb_cu_conf_update_ack_t dst = {0};
+
+  /* Create */
+  /* 0. pdu Type */
+  assert(src_pdu->present == F1AP_F1AP_PDU_PR_successfulOutcome);
+
+  F1AP_SuccessfulOutcome_t const* src_out = src_pdu->choice.successfulOutcome;
+
+  assert(src_out->procedureCode == F1AP_ProcedureCode_id_gNBCUConfigurationUpdate);
+  assert(src_out->criticality == F1AP_Criticality_reject);
+  assert(src_out->value.present == F1AP_SuccessfulOutcome__value_PR_GNBCUConfigurationUpdateAcknowledge);
+
+  F1AP_GNBCUConfigurationUpdateAcknowledge_t const* src = & src_out->value.choice.GNBCUConfigurationUpdateAcknowledge;
+
+  assert(src->protocolIEs.list.count > 0 && "At least 1 (Transaction ID) is needed");
+
+  for(size_t i = 0; i < src->protocolIEs.list.count; ++i){
+    F1AP_GNBCUConfigurationUpdateAcknowledgeIEs_t  const* ie = src->protocolIEs.list.array[i]; 
+
+    if(ie->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_TransactionID){
+      dst.trans_id = cp_trans_id_cu_conf_up_ack_ir(ie);
+    } else if(ie->value.present ==  F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_Cells_Failed_to_be_Activated_List ){
+       cells_failed_to_activate_span_t tmp = cp_cells_failed_to_activate_ir(ie);
+       dst.sz_cells_failed_to_activate= tmp.sz;
+       dst.cells_failed_to_activate= tmp.arr;
+    }else if(ie->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_CriticalityDiagnostics){
+      assert(0!=0 && "Not implemented");
+      //dst.crit_diagn = cp_crit_diagnose_conf_up_ack(ie);
+    }else if(ie->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_GNB_CU_TNL_Association_Setup_List){
+      gnb_cu_tnl_assoc_stp_span_t tmp = cp_gnb_cu_tnl_assoc_stp_cu_conf_up_ack(ie); 
+      dst.sz_gnb_cu_tnl_assoc_stp = tmp.sz; 
+      dst.gnb_cu_tnl_assoc_stp = tmp.arr; 
+    }else if(ie->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_GNB_CU_TNL_Association_Failed_To_Setup_List){
+      gnb_cu_tnl_assoc_failed_stp_span_t tmp = cp_gnb_cu_tnl_assoc_failed_stp_cu_conf_up_ack(ie); 
+      dst.sz_gnb_cu_tnl_assoc_failed_stp = tmp.sz;
+      dst.gnb_cu_tnl_assoc_failed_stp = tmp.arr;
+    }else if(ie->value.present == F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_Dedicated_SIDelivery_NeededUE_List){
+      assert(0 !=0 && "Not implemented and could not find the bug");
+    }else if(ie->value.present ==  F1AP_GNBCUConfigurationUpdateAcknowledgeIEs__value_PR_Transport_Layer_Address_Info){
+      assert(0 !=0 && "Not implemented");
+    }else {
+      assert(0 != 0 && "Unknown type");
+    }
+  }
+  return dst;
+}
+

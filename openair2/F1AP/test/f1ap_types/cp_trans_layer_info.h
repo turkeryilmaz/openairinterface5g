@@ -6,6 +6,8 @@
 
 #include <stdbool.h>
 
+
+// 9.3.2.4
 typedef enum{
   IP_ADDRESS_CP_TRANS_LAYER_INFO,
   IP_ADDRESS_PORT_CP_TRANS_LAYER_INFO,

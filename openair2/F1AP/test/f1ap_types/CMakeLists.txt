@@ -6,6 +6,7 @@ set(f1ap_src_types
   brdcst_PLMN_id_info.c
   cause_f1ap.c
 
+  cells_failed_to_activate.c
   cells_to_be_deact.c
   cells_to_be_barred.c
 
@@ -14,6 +15,7 @@ set(f1ap_src_types
   cp_trans_layer_info.c
   cu_to_du_rrc_info.c
 
+  ded_si_del_need.c
   dl_up_tnl_info_tbs.c
   drx_cycle.c
 
@@ -44,8 +46,12 @@ set(f1ap_src_types
   gnb_du_sys_info.c
   gnb_cu_sys_info.c
   gnb_cu_conf_update.c
+  gnb_cu_conf_update_ack.c
   gnb_cu_tnl_assoc_to_add.c
   gnb_cu_tnl_assoc_to_rem.c
+  gnb_cu_tnl_assoc_stp.c
+  gnb_cu_tnl_assoc_failed_stp.c
+
   gnb_cu_tnl_assoc_to_upd.c
   gbr_qos_flow_info.c
   iab_info_iab_du.c
