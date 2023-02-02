@@ -49,7 +49,7 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   static int first_time = 1;
   int max_val = 0, max_pos = 0;
   const int sync_pos = 0;
-  uint8_t sync_offset = 0;
+  //uint8_t sync_offset = 0;
 
   static int64_t TO_I_Ctrl = 0; //Integral controller for TO
   int I_ScalingF = 10; //Scaling factor for the I controller, can be adjusted
@@ -104,7 +104,7 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   ue->rx_offset_slot = 1;
   ue->rx_offset_comp = 0;
 
-  printf("** Frame: %u, ue->rx_offset: %d, ue->rx_offset_TO: %d\n", frame, ue->rx_offset, ue->rx_offset_TO);
+  LOG_D(PHY, "Frame: %u, ue->rx_offset: %d, ue->rx_offset_TO: %d\n", frame, ue->rx_offset, ue->rx_offset_TO);
 
   if (tdriftComp == 0)
   {
