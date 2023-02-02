@@ -55,6 +55,7 @@ set(f1ap_src_types
   gnb_cu_tnl_assoc_to_upd.c
   gbr_qos_flow_info.c
   iab_info_iab_du.c
+  init_ul_rrc_msg.c
   intented_tdd_dl_ul_conf.c
 
   neighbour_cell_info.c

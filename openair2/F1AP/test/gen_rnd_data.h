@@ -8,6 +8,7 @@
 #include "f1ap_types/ue_ctx_setup_response.h"
 #include "f1ap_types/gnb_cu_conf_update.h"
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
+#include "f1ap_types/init_ul_rrc_msg.h"
 
 f1_setup_t gen_rnd_f1_setup(void);
 
@@ -22,6 +23,8 @@ ue_ctx_setup_response_t gen_rnd_ue_ctx_setup_response(void);
 gnb_cu_conf_update_t gen_rnd_gnb_cu_conf_update(void);
 
 gnb_cu_conf_update_ack_t gen_rnd_gnb_cu_conf_update_ack(void);
+
+init_ul_rrc_msg_t gen_rnd_init_ul_rrc_msg(void);
 
 #endif
 

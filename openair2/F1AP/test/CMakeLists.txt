@@ -3,7 +3,6 @@ project (f1ap C)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-unknown-pragmas  -g -std=gnu11 -fsanitize=address -fno-omit-frame-pointer")
 
-
 #include_directories(${SOURCE_DIR})
 include_directories("/home/mir/workspace/openairinterface5g_nettle/cmake_targets/ran_build/build/CMakeFiles/F1AP_R16.3.1/" )
 include_directories("/usr/local/share/asn1c/")

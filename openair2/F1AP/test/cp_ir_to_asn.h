@@ -8,6 +8,7 @@
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
 #include "f1ap_types/ue_ctx_setup_request.h"
 #include "f1ap_types/ue_ctx_setup_response.h"
+#include "f1ap_types/init_ul_rrc_msg.h"
 
 #include "../../../cmake_targets/ran_build/build/CMakeFiles/F1AP_R16.3.1/F1AP_F1AP-PDU.h"
 
@@ -25,6 +26,8 @@ F1AP_F1AP_PDU_t cp_ue_ctx_setup_response_asn(ue_ctx_setup_response_t const* src)
 F1AP_F1AP_PDU_t cp_gnb_cu_conf_update_asn(gnb_cu_conf_update_t const* src);
 
 F1AP_F1AP_PDU_t cp_gnb_cu_conf_update_ack_asn( gnb_cu_conf_update_ack_t const* src);
+
+F1AP_F1AP_PDU_t cp_init_ul_rrc_msg_asn(init_ul_rrc_msg_t const* src);
 
 #endif
 

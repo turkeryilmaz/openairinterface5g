@@ -1834,3 +1834,74 @@ gnb_cu_conf_update_ack_t gen_rnd_gnb_cu_conf_update_ack(void)
   return dst;
 }
 
+static
+byte_array_t gen_rnd_rrc_contnr(void)
+{
+  byte_array_t dst = {0}; 
+
+  char const* str = "RRC Dummy Container";
+  size_t const sz = strlen(str);
+  dst.len = sz; 
+  dst.buf = malloc(sz);
+  assert(dst.buf != NULL && "Memory exhausted");
+
+  memcpy(dst.buf, str, sz);
+
+  return dst;
+}
+
+
+init_ul_rrc_msg_t gen_rnd_init_ul_rrc_msg(void)
+{
+  init_ul_rrc_msg_t dst = {0}; 
+
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+
+  //  gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  dst.gnb_du_ue_id = rand(); // (0 .. 2^32 -1)
+
+  // NR CGI
+  // Mandatory
+  // 9.3.1.12
+  dst.nr_cgi = gen_rnd_nr_cgi();
+
+  // C-RNTI
+  // Mandatory
+  // 9.3.1.32
+  dst.c_rnti = rand()%65536; // (0..65535)
+
+  //RRC-Container
+  //Mandatory
+  //9.3.1.6
+  dst.rrc_contnr = gen_rnd_rrc_contnr();
+
+  //DU to CU RRC Container
+  // Optional
+  // CellGroupConfig IE as defined in subclause 6.3.2 in TS 38.331 [8].
+  dst.du_to_cu_rrc = NULL;
+
+  //SUL Access Indication
+  // Optional
+  dst.sul_access_ind = NULL;
+
+  //Transaction ID
+  // Mandatory
+  // 9.3.1.23
+  dst.trans_id = rand()%256;
+
+  // RAN UE ID
+  // Optional
+  dst.ran_ue_id = NULL; 
+
+  //  RRC-Container-RRCSetupComplete
+  // Optional
+  // 9.3.1.6
+  dst.rrc_cntnr_rrc_setup = NULL;
+
+  return dst;
+}
+

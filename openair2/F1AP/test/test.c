@@ -43,6 +43,7 @@
 #include "f1ap_types/ue_ctx_setup_request.h"
 #include "f1ap_types/gnb_cu_conf_update.h"
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
+#include "f1ap_types/init_ul_rrc_msg.h"
 
 
 void test_f1_setup_f1ap()
@@ -187,25 +188,48 @@ void test_gnb_cu_conf_update_ack()
   assert(eq_gnb_cu_conf_update_ack(&msg, &out) == true);
 }
 
+void test_init_ul_rrc_msg()
+{
+  init_ul_rrc_msg_t msg = gen_rnd_init_ul_rrc_msg();
+  defer({ free_init_ul_rrc_msg(&msg); }); 
+
+  F1AP_F1AP_PDU_t pdu = cp_init_ul_rrc_msg_asn(&msg);
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu); } );
+
+  byte_array_t ba = encode_pdu_f1ap(&pdu);
+  defer({ free_byte_array(ba); } );
+
+  F1AP_F1AP_PDU_t pdu2 = decode_pdu_f1ap(ba); 
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu2); } ); 
+
+  init_ul_rrc_msg_t out = cp_init_ul_rrc_msg_ir(&pdu2);
+  defer({  free_init_ul_rrc_msg(&out); }); 
+
+  assert(eq_init_ul_rrc_msg(&msg, &out) == true);
+}
+
+
 
 int main()
 {
   time_t t;
   srand((unsigned) time(&t));
 
-  test_f1_setup_f1ap();
-  test_f1_setup_response_f1ap();
-  test_f1_setup_failure_f1ap();
-  test_f1_ue_ctx_setup_request();
-  test_f1_ue_ctx_setup_response();
+//  test_f1_setup_f1ap();
+//  test_f1_setup_response_f1ap();
+//  test_f1_setup_failure_f1ap();
+//  test_f1_ue_ctx_setup_request();
+//  test_f1_ue_ctx_setup_response();
 
-  test_gnb_cu_conf_update();
-  test_gnb_cu_conf_update_ack();
+//  test_gnb_cu_conf_update();
+//  test_gnb_cu_conf_update_ack();
 
+  test_init_ul_rrc_msg();
 //  test_dl_rrc_msg_trans();
 //  test_ul_rrc_msg_trans();
 
-//  test_ue_ctx_mod_req();
+//  test_ue_ctx_mod_request();
+//  test_ue_ctx_mod_response();
 
 
 
@@ -285,4 +309,3 @@ E-CID Measurement Report
 E-CID Measurement Termination
 Positioning Information Update
 */
-

@@ -3599,8 +3599,8 @@ F1AP_F1AP_PDU_t cp_gnb_cu_conf_update_ack_asn(gnb_cu_conf_update_ack_t const* sr
   /* Create */
   /* 0. pdu Type */
   pdu.present = F1AP_F1AP_PDU_PR_successfulOutcome;
-  pdu.choice.initiatingMessage= calloc(1, sizeof(F1AP_SuccessfulOutcome_t));
-  assert(pdu.choice.initiatingMessage != NULL && "Memory exahusted");
+  pdu.choice.successfulOutcome = calloc(1, sizeof(F1AP_SuccessfulOutcome_t));
+  assert(pdu.choice.successfulOutcome != NULL && "Memory exahusted");
 
   F1AP_SuccessfulOutcome_t* dst_out = pdu.choice.successfulOutcome;
 
@@ -3657,6 +3657,181 @@ F1AP_F1AP_PDU_t cp_gnb_cu_conf_update_ack_asn(gnb_cu_conf_update_ack_t const* sr
   // 9.3.2.5
   // Transport Layer Address Info
   assert(src->trans_layer_addr == NULL && "Not implemented" );
+
+  return pdu;
+}
+
+static
+F1AP_InitialULRRCMessageTransferIEs_t* cp_gnb_du_ue_init_ul_rrc(uint32_t src)
+{
+  F1AP_InitialULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_InitialULRRCMessageTransferIEs_t));
+;
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID;
+  dst->criticality =  F1AP_Criticality_reject;
+  dst->value.present = F1AP_InitialULRRCMessageTransferIEs__value_PR_GNB_DU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_DU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_InitialULRRCMessageTransferIEs_t* cp_nr_cgi_init_ul_rrc(nr_cgi_t const* src)
+{
+  assert(src != NULL);
+
+  F1AP_InitialULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_InitialULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_NRCGI;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_InitialULRRCMessageTransferIEs__value_PR_NRCGI;
+  
+  dst->value.choice.NRCGI = cp_nr_cgi(src);
+
+  return dst;
+}
+
+static
+F1AP_InitialULRRCMessageTransferIEs_t* cp_c_rnti_init_ul_rrc(uint16_t src)
+{
+  F1AP_InitialULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_InitialULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_C_RNTI;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_InitialULRRCMessageTransferIEs__value_PR_C_RNTI;
+
+  dst->value.choice.C_RNTI = src;
+
+  return dst;
+}
+
+static
+F1AP_InitialULRRCMessageTransferIEs_t* cp_rrc_cntnr_init_ul_rrc(byte_array_t src)
+{
+  F1AP_InitialULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_InitialULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_RRCContainer;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_InitialULRRCMessageTransferIEs__value_PR_RRCContainer;
+
+  dst->value.choice.RRCContainer = copy_ba_to_ostring(src);
+
+  return dst;
+}
+
+static
+F1AP_InitialULRRCMessageTransferIEs_t* cp_trans_id_init_ul_rrc(uint8_t src)
+{
+  F1AP_InitialULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_InitialULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_TransactionID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_InitialULRRCMessageTransferIEs__value_PR_TransactionID;
+
+  dst->value.choice.TransactionID = src;
+
+  return dst;
+}
+
+static
+F1AP_InitialULRRCMessageTransferIEs_t* cp_du_to_cu_rrc_cntnr_init_ul_rrc(byte_array_t src)
+{
+  F1AP_InitialULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_InitialULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_DUtoCURRCContainer;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_InitialULRRCMessageTransferIEs__value_PR_DUtoCURRCContainer;
+
+  dst->value.choice.DUtoCURRCContainer = copy_ba_to_ostring(src);
+
+  return dst;
+}
+
+F1AP_F1AP_PDU_t cp_init_ul_rrc_msg_asn(init_ul_rrc_msg_t const* src)
+{
+  assert(src != NULL);
+
+  F1AP_F1AP_PDU_t pdu = {0}; 
+
+  /* Create */
+  /* 0. pdu Type */
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+  pdu.present = F1AP_F1AP_PDU_PR_initiatingMessage;
+  pdu.choice.initiatingMessage= calloc(1, sizeof(F1AP_InitiatingMessage_t));
+  assert(pdu.choice.initiatingMessage != NULL && "Memory exahusted");
+
+  F1AP_InitiatingMessage_t* dst_out = pdu.choice.initiatingMessage;
+
+  dst_out->procedureCode = F1AP_ProcedureCode_id_InitialULRRCMessageTransfer;
+  dst_out->criticality = F1AP_Criticality_ignore;
+  dst_out->value.present = F1AP_InitiatingMessage__value_PR_InitialULRRCMessageTransfer;
+
+  F1AP_InitialULRRCMessageTransfer_t* dst = &dst_out->value.choice.InitialULRRCMessageTransfer;
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  F1AP_InitialULRRCMessageTransferIEs_t* ie = cp_gnb_du_ue_init_ul_rrc(src->gnb_du_ue_id) ; // // (0 .. 2^32 -1)
+  int  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // NR CGI
+  // Mandatory
+  // 9.3.1.12
+  ie = cp_nr_cgi_init_ul_rrc(&src->nr_cgi);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  
+  // C-RNTI
+  // Mandatory
+  // 9.3.1.32
+  ie = cp_c_rnti_init_ul_rrc(src->c_rnti);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  //RRC-Container
+  //Mandatory
+  //9.3.1.6
+  ie = cp_rrc_cntnr_init_ul_rrc(src->rrc_contnr);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  //DU to CU RRC Container
+  // Optional
+  // CellGroupConfig IE as defined in subclause 6.3.2 in TS 38.331 [8].
+  if(src->du_to_cu_rrc != NULL){
+    ie = cp_du_to_cu_rrc_cntnr_init_ul_rrc(*src->du_to_cu_rrc);
+    rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+    assert(rc == 0);
+  }
+
+  //SUL Access Indication
+  // Optional
+  assert(src->sul_access_ind == NULL && "Not implemented" );
+
+  //Transaction ID
+  // Mandatory
+  // 9.3.1.23
+  ie = cp_trans_id_init_ul_rrc(src->trans_id);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // RAN UE ID
+  // Optional
+  assert(src->ran_ue_id == NULL && "Not implemented");
+
+  //  RRC-Container-RRCSetupComplete
+  // Optional
+  // 9.3.1.6
+  assert(src->rrc_cntnr_rrc_setup == NULL && "Not implemented" );
 
   return pdu;
 }
