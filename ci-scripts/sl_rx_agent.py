@@ -218,7 +218,7 @@ def get_analysis_messages(filename: str) -> Generator[str, None, None]:
             if len(fields) == 11 or len(fields) == 4:
                 yield line
 
-def analyze_logs(test_agent: TestNearby, expNid1: int, expNid2: int) -> bool:
+def analyze_logs(expNid1: int, expNid2: int) -> bool:
     found = set()
     estNid1, estNid2, time_start_s, time_end_s = -1, -1, -1, -1
     log_file = log_file_path
@@ -264,7 +264,7 @@ def main(argv) -> int:
         passed = test_agent.run(OPTS.cmd)
 
     # Examine the logs to determine if the test passed
-    if not analyze_logs(test_agent, expNid1=OPTS.nid1, expNid2=OPTS.nid2):
+    if not analyze_logs(expNid1=OPTS.nid1, expNid2=OPTS.nid2):
         passed = False
 
     if not passed:

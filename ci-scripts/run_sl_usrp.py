@@ -29,7 +29,7 @@ import glob
 import subprocess
 from subprocess import Popen
 import threading
-from typing import Dict
+from typing import Dict, Generator
 from queue import *
 
 HOME_DIR = os.path.expanduser( '~' )
@@ -61,7 +61,7 @@ parser.add_argument('--basic', '-b', action='store_true', help="""
 Basic test with basic shell commands
 """)
 
-parser.add_argument('--commands', '-c', default='sl_usrp_cmds.txt', help="""
+parser.add_argument('--commands', default='sl_usrp_cmds.txt', help="""
 The USRP Commands .txt file (default: %(default)s)
 """)
 
@@ -71,6 +71,10 @@ How long to run the test before stopping to examine the logs
 
 parser.add_argument('--log-dir', default=HOME_DIR, help="""
 Where to store log files
+""")
+
+parser.add_argument('--compress', action='store_true', help="""
+Compress the log files in the --log-dir
 """)
 
 parser.add_argument('--debug', action='store_true', help="""
@@ -172,6 +176,7 @@ class TestThread(threading.Thread):
         self.queue = queue
         self.commands = commands
         self.passed = passed
+        self.delay = 3
 
     def run(self):
         if self.queue.empty() == True:
@@ -187,7 +192,7 @@ class TestThread(threading.Thread):
                     nearby_proc = self.launch_nearby(job)
                     LOGGER.info(f"nearby_proc = {nearby_proc}")
                 if "syncref" == job:
-                    thread_delay(job, delay = 3)
+                    thread_delay(job, self.delay)
                     syncref_proc = self.launch_syncref(job)
                     LOGGER.info(f"syncref_proc = {syncref_proc}")
             if not OPTS.basic:
@@ -217,14 +222,19 @@ class TestThread(threading.Thread):
             for raw_line in error:
                 line = raw_line.decode()
                 LOGGER.info(line.strip())
+                if 'It took' in line and 'seconds':
+                    fields = line.split(maxsplit=9)
+                    sync_duration = float(fields[-2])
+                    start_delta = self.delay
+                    counting_delta = sync_duration - start_delta
                 if 'PASSED' in line:
-                    self.passed += ['passed']
+                    self.passed += [sync_duration]
         else:
             for raw_line in remote_output:
                 line = raw_line.decode()
                 LOGGER.info(line.strip())
                 if 'PASSED' in line:
-                    self.passed += ['passed']
+                    self.passed += [self.sync_duration]
         return proc
 
     def launch_syncref(self, job) -> Popen:
@@ -249,6 +259,67 @@ class TestThread(threading.Thread):
             proc.wait()
         LOGGER.info(f'kill main simulation processes...done for {job}')
 
+# ----------------------------------------------------------------------------
+
+def get_lines(filename: str) -> Generator[str, None, None]:
+    """
+    Yield each line of the given log file (.bz2 compressed log file if -c flag is used.)
+    """
+    fh = bz2.open(filename, 'rb') if OPTS.compress else open(filename, 'rb')
+    for line_bytes in fh:
+        line = line_bytes.decode('utf-8', 'backslashreplace')
+        line = line.rstrip('\r\n')
+        yield line
+
+def get_analysis_messages(filename: str) -> Generator[str, None, None]:
+    """
+    Finding all logs in the log file with X fields for log parsing optimization
+    """
+    LOGGER.info('Scanning %s', filename)
+    for line in get_lines(filename):
+            #796811.532881 [NR_PHY]   nrUE configured
+            #796821.854505 [NR_PHY] PSBCH SL generation started
+            fields = line.split(maxsplit=5)
+            if len(fields) == 4 or len(fields) == 6 :
+                yield line
+
+def analyze_logs(counting_delta: float) -> int:
+    time_start_s, time_end_s = -1, -1
+    log_file = log_file_path
+    sum_sssb = 0
+
+    if OPTS.compress:
+        log_file = f'{log_file_path}.bz2'
+    for line in get_analysis_messages(log_file):
+        #796811.532881 [NR_PHY]   nrUE configured
+        #796821.854505 [NR_PHY] PSBCH SL generation started
+        if time_start_s == -1 and 'nrUE configured' in line:
+            fields = line.split(maxsplit=2)
+            time_start_s = float(fields[0])
+            time_end_s = time_start_s + counting_delta
+        if 'PSBCH SL generation started' in line:
+            fields = line.split(maxsplit=2)
+            time_st = float(''.join([ch for ch in fields[0] if ch.isnumeric() or ch =='.']))
+            if time_st < time_end_s:
+                sum_sssb += 1
+    return sum_sssb
+
+    LOGGER.debug('found: %r', found)
+    if len(found) != 1:
+        LOGGER.error(f'Failed -- No SyncRef UE found.')
+        return False
+    elif expNid1 != estNid1 or expNid2 != estNid2:
+        LOGGER.error(f'Failed -- found SyncRef UE Nid1 {estNid1}, Ni2 {estNid2}, expecting Nid1 {expNid1}, Nid2 {expNid2}')
+        return False
+    if time_start_s == -1:
+        LOGGER.error(f'Failed -- No start time found! Fix log and re-run!')
+        return False
+
+    delta_time_s = time_end_s - time_start_s
+    LOGGER.info(f'SyncRef UE found. It took {delta_time_s} seconds')
+    return True
+
+
 def main() -> int:
     commands = Command(OPTS.commands)
     LOGGER.debug(f'Number of iterations {OPTS.repeat}')
@@ -256,26 +327,34 @@ def main() -> int:
         for role, cmd in commands.usrp_cmds.items():
             LOGGER.debug(f'{role} UE: {cmd}')
     jobs = ['nearby', 'syncref'] if OPTS.launch == 'both' else [OPTS.launch]
-    passed = []
+    passed_time = []
+    num_tx_sssb = []
     num_passed = 0
     for i in range(OPTS.repeat):
         threads = []
         queue = Queue()
         for job in jobs:
             queue.put(job)
-            th = TestThread(job, queue, commands, passed)
+            th = TestThread(job, queue, commands, passed_time)
             th.setDaemon(True)
             th.start()
             threads.append(th)
         for th in threads:
             th.join()
-        if num_passed != len(passed):
+        if num_passed != len(passed_time):
+            # Examine the logs to determine if the test passed
+            num_sssb = analyze_logs(passed_time[-1])
+            num_tx_sssb += [num_sssb]
+            LOGGER.info(f'number of SSSB = {num_sssb}')
             LOGGER.info(f"Passed at the trial {i+1}/{OPTS.repeat}")
         else:
             LOGGER.info(f"Failed at the trial {i+1}/{OPTS.repeat}")
-        num_passed = len(passed)
+        num_passed = len(passed_time)
+
     LOGGER.info('#' * 42)
-    LOGGER.info(f"Number of passed = {len(passed)}/{OPTS.repeat}")
+    LOGGER.info(f"Number of passed = {len(passed_time)}/{OPTS.repeat}")
+    LOGGER.info(f"Avg number of SSSB = {sum(num_tx_sssb) / len(num_tx_sssb)} ({num_tx_sssb})")
+    LOGGER.info(f"Avg Sync duration (seconds) = {sum(passed_time) / len(passed_time)}")
     return 0
 
 sys.exit(main())
