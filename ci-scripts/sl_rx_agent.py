@@ -208,32 +208,38 @@ def get_lines(filename: str) -> Generator[str, None, None]:
 
 def get_analysis_messages(filename: str) -> Generator[str, None, None]:
     """
-    After checking the number of fields in the log message for Nid1 asnd Nid2 verification,
-    it yields line of the log.
+    Finding all logs in the log file with X fields for log parsing optimization
     """
     LOGGER.info('Scanning %s', filename)
     for line in get_lines(filename):
-            #'[NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1'
-            fields = line.split(maxsplit=9)
-            if len(fields) == 10:
+            #796821.854505 [NR_PHY]   SyncRef UE found with Nid1 10 and Nid2 1
+            #796811.532881 [NR_PHY]   nrUE configured
+            fields = line.split(maxsplit=10)
+            if len(fields) == 11 or len(fields) == 4:
                 yield line
 
 def analyze_logs(test_agent: TestNearby, expNid1: int, expNid2: int) -> bool:
     found = set()
-    estNid1, estNid2 = -1, -1
+    estNid1, estNid2, time_start_s, time_end_s = -1, -1, -1, -1
     log_file = log_file_path
 
     if OPTS.compress:
         log_file = f'{log_file_path}.bz2'
     for line in get_analysis_messages(log_file):
-        #'[NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1'
+        #796821.854505 [NR_PHY]   SyncRef UE found with Nid1 10 and Nid2 1
+        #796811.532881 [NR_PHY]   nrUE configured
         if 'SyncRef UE found' in line and 'No' not in line:
             if 'Nid1' in line and 'Nid2' in line:
-                fields = line.split(maxsplit=9)
-                estNid1 = int(fields[6])
-                estNid2 = int(fields[9])
+                fields = line.split(maxsplit=10)
+                estNid1 = int(fields[7])
+                estNid2 = int(fields[10])
                 found.add('found')
-            continue
+                time_end_s = float(fields[0])
+                break
+        if time_start_s == -1 and 'nrUE configured' in line:
+            fields = line.split(maxsplit=3)
+            time_start_s = float(fields[0])
+
 
     LOGGER.debug('found: %r', found)
     if len(found) != 1:
@@ -242,8 +248,12 @@ def analyze_logs(test_agent: TestNearby, expNid1: int, expNid2: int) -> bool:
     elif expNid1 != estNid1 or expNid2 != estNid2:
         LOGGER.error(f'Failed -- found SyncRef UE Nid1 {estNid1}, Ni2 {estNid2}, expecting Nid1 {expNid1}, Nid2 {expNid2}')
         return False
+    if time_start_s == -1:
+        LOGGER.error(f'Failed -- No start time found! Fix log and re-run!')
+        return False
 
-    LOGGER.info('SyncRef UE found')
+    delta_time_s = time_end_s - time_start_s
+    LOGGER.info(f'SyncRef UE found. It took {delta_time_s} seconds')
     return True
 
 def main(argv) -> int:
