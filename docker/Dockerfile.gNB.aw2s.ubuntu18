@@ -29,6 +29,7 @@ FROM ran-base:latest AS gnb-base
 
 FROM ran-build:latest AS gnb-build
 
+COPY ./libori.so /usr/local/lib/
 
 # build AW2S fronthaul lib
 WORKDIR /oai-ran
@@ -65,8 +66,6 @@ RUN apt-get update && \
         python3-requests \
         libusb-1.0-0 && \
     rm -rf /var/lib/apt/lists/*
-
-COPY ./libori.so /usr/local/lib/
 
 WORKDIR /opt/oai-gnb-aw2s/bin
 COPY --from=gnb-build \
