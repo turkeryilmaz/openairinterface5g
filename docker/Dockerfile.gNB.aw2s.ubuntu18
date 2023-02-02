@@ -67,6 +67,8 @@ RUN apt-get update && \
         libusb-1.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
+COPY ./libori.so /usr/local/lib/
+
 WORKDIR /opt/oai-gnb-aw2s/bin
 COPY --from=gnb-build \
     /oai-ran/cmake_targets/ran_build/build/nr-softmodem \
