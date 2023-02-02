@@ -25,9 +25,9 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base-aw2s:latest as gnb-base
+FROM ran-base:latest AS gnb-base
 
-FROM ran-build-aw2s:latest AS gnb-build
+FROM ran-build:latest AS gnb-build
 
 
 # build AW2S fronthaul lib
