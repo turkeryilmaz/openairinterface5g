@@ -49,7 +49,7 @@ parser.add_argument('--host', default='10.1.1.80', type=str, help="""
 Nearby Host IP (default: %(default)s)
 """)
 
-parser.add_argument('--user', '-u',  default='', type=str, help="""
+parser.add_argument('--user', '-u',  default='zaid', type=str, help="""
 User id in Nearby Host (default: %(default)s)
 """)
 
@@ -65,7 +65,7 @@ parser.add_argument('--commands', default='sl_usrp_cmds.txt', help="""
 The USRP Commands .txt file (default: %(default)s)
 """)
 
-parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=25, help="""
+parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=30, help="""
 How long to run the test before stopping to examine the logs
 """)
 
@@ -170,9 +170,8 @@ class TestThread(threading.Thread):
     """
     Represents TestThread
     """
-    def __init__(self, job, queue, commands, passed):
+    def __init__(self, queue, commands, passed):
         threading.Thread.__init__(self)
-        self.name = job
         self.queue = queue
         self.commands = commands
         self.passed = passed
@@ -192,7 +191,7 @@ class TestThread(threading.Thread):
                     nearby_proc = self.launch_nearby(job)
                     LOGGER.info(f"nearby_proc = {nearby_proc}")
                 if "syncref" == job:
-                    thread_delay(job, self.delay)
+                    thread_delay(job, delay = self.delay)
                     syncref_proc = self.launch_syncref(job)
                     LOGGER.info(f"syncref_proc = {syncref_proc}")
             if not OPTS.basic:
@@ -201,7 +200,6 @@ class TestThread(threading.Thread):
                 if nearby_proc:
                     self.kill_process("nearby", nearby_proc)
                 if syncref_proc:
-                    #time.sleep(OPTS.duration)
                     self.kill_process("syncref", syncref_proc)
             self.queue.task_done()
         except Exception as inst:
@@ -218,23 +216,23 @@ class TestThread(threading.Thread):
                     stderr=subprocess.PIPE)
         remote_output = proc.stdout.readlines()
         if remote_output == []:
-            error = proc.stderr.readlines()
-            for raw_line in error:
-                line = raw_line.decode()
-                LOGGER.info(line.strip())
-                if 'It took' in line and 'seconds':
-                    fields = line.split(maxsplit=9)
-                    sync_duration = float(fields[-2])
-                    start_delta = self.delay
-                    counting_delta = sync_duration - start_delta
-                if 'PASSED' in line:
-                    self.passed += [sync_duration]
+            remote_log = proc.stderr.readlines()
         else:
-            for raw_line in remote_output:
-                line = raw_line.decode()
-                LOGGER.info(line.strip())
-                if 'PASSED' in line:
-                    self.passed += [self.sync_duration]
+            remote_log = remote_output
+        result_metric = None
+        for raw_line in remote_log:
+            line = raw_line.decode()
+            LOGGER.info(line.strip())
+            # 'SyncRef UE found. RSRP: -100 dBm/RE. It took {delta_time_s} seconds'
+            if 'It took' in line and 'seconds' in line:
+                fields = line.split(maxsplit=12)
+                if len(fields) > 6:
+                    ssb_rsrp = float(fields[-6])
+                    sync_duration = float(fields[-2])
+                    counting_duration = sync_duration - self.delay
+                    result_metric = (ssb_rsrp, sync_duration, counting_duration)
+            if 'PASSED' in line:
+                self.passed += [result_metric]
         return proc
 
     def launch_syncref(self, job) -> Popen:
@@ -277,7 +275,7 @@ def get_analysis_messages(filename: str) -> Generator[str, None, None]:
     """
     LOGGER.info('Scanning %s', filename)
     for line in get_lines(filename):
-            #796811.532881 [NR_PHY]   nrUE configured
+            #796811.532881 [NR_PHY] nrUE configured
             #796821.854505 [NR_PHY] PSBCH SL generation started
             fields = line.split(maxsplit=5)
             if len(fields) == 4 or len(fields) == 6 :
@@ -286,12 +284,12 @@ def get_analysis_messages(filename: str) -> Generator[str, None, None]:
 def analyze_logs(counting_delta: float) -> int:
     time_start_s, time_end_s = -1, -1
     log_file = log_file_path
-    sum_sssb = 0
+    sum_ssb = 0
 
     if OPTS.compress:
         log_file = f'{log_file_path}.bz2'
     for line in get_analysis_messages(log_file):
-        #796811.532881 [NR_PHY]   nrUE configured
+        #796811.532881 [NR_PHY] nrUE configured
         #796821.854505 [NR_PHY] PSBCH SL generation started
         if time_start_s == -1 and 'nrUE configured' in line:
             fields = line.split(maxsplit=2)
@@ -301,24 +299,8 @@ def analyze_logs(counting_delta: float) -> int:
             fields = line.split(maxsplit=2)
             time_st = float(''.join([ch for ch in fields[0] if ch.isnumeric() or ch =='.']))
             if time_st < time_end_s:
-                sum_sssb += 1
-    return sum_sssb
-
-    LOGGER.debug('found: %r', found)
-    if len(found) != 1:
-        LOGGER.error(f'Failed -- No SyncRef UE found.')
-        return False
-    elif expNid1 != estNid1 or expNid2 != estNid2:
-        LOGGER.error(f'Failed -- found SyncRef UE Nid1 {estNid1}, Ni2 {estNid2}, expecting Nid1 {expNid1}, Nid2 {expNid2}')
-        return False
-    if time_start_s == -1:
-        LOGGER.error(f'Failed -- No start time found! Fix log and re-run!')
-        return False
-
-    delta_time_s = time_end_s - time_start_s
-    LOGGER.info(f'SyncRef UE found. It took {delta_time_s} seconds')
-    return True
-
+                sum_ssb += 1
+    return sum_ssb
 
 def main() -> int:
     commands = Command(OPTS.commands)
@@ -327,34 +309,40 @@ def main() -> int:
         for role, cmd in commands.usrp_cmds.items():
             LOGGER.debug(f'{role} UE: {cmd}')
     jobs = ['nearby', 'syncref'] if OPTS.launch == 'both' else [OPTS.launch]
-    passed_time = []
-    num_tx_sssb = []
+    delay = 3
+    passed_metric = []
+    num_tx_ssb = []
     num_passed = 0
     for i in range(OPTS.repeat):
         threads = []
         queue = Queue()
         for job in jobs:
             queue.put(job)
-            th = TestThread(job, queue, commands, passed_time)
+            th = TestThread(queue, commands, passed_metric)
             th.setDaemon(True)
             th.start()
             threads.append(th)
         for th in threads:
             th.join()
-        if num_passed != len(passed_time):
+        if num_passed != len(passed_metric):
             # Examine the logs to determine if the test passed
-            num_sssb = analyze_logs(passed_time[-1])
-            num_tx_sssb += [num_sssb]
-            LOGGER.info(f'number of SSSB = {num_sssb}')
+            (ssb_rsrp, sync_duration, counting_duration) = passed_metric[-1]
+            num_ssb = analyze_logs(counting_duration)
+            num_tx_ssb += [num_ssb]
+            LOGGER.info(f'number of SSB = {num_ssb}')
+            LOGGER.info(f'SSB RSRP = {ssb_rsrp} dBm/RE')
             LOGGER.info(f"Passed at the trial {i+1}/{OPTS.repeat}")
         else:
             LOGGER.info(f"Failed at the trial {i+1}/{OPTS.repeat}")
-        num_passed = len(passed_time)
+        num_passed = len(passed_metric)
 
     LOGGER.info('#' * 42)
-    LOGGER.info(f"Number of passed = {len(passed_time)}/{OPTS.repeat}")
-    LOGGER.info(f"Avg number of SSSB = {sum(num_tx_sssb) / len(num_tx_sssb)} ({num_tx_sssb})")
-    LOGGER.info(f"Avg Sync duration (seconds) = {sum(passed_time) / len(passed_time)}")
+    LOGGER.info(f"Number of passed = {len(passed_metric)}/{OPTS.repeat}")
+    if len(num_tx_ssb) > 0:
+        LOGGER.info(f"Avg number of SSB = {sum(num_tx_ssb) / len(num_tx_ssb)} ({num_tx_ssb})")
+    if len(passed_metric) > 0:
+        LOGGER.info(f"Avg SSB RSRP = {sum([result[0] for result in passed_metric]) / len(passed_metric)}")
+        LOGGER.info(f"Avg Sync duration (seconds) = {sum([result[1] for result in passed_metric]) / len(passed_metric)}")
     return 0
 
 sys.exit(main())

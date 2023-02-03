@@ -293,7 +293,7 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                              ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
                                              dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
-  LOG_I(NR_PHY, "In %s: [UE %d] ssb %d SS-RSRP: %d dBm/RE (%d)\n",
+  LOG_I(NR_PHY, "In %s: [UE %d] ssb %d SSS-RSRP: %d dBm/RE (%d)\n",
         __FUNCTION__, ue->Mod_id, ssb_index, ue->measurements.ssb_rsrp_dBm[ssb_index], rsrp);
 }
 

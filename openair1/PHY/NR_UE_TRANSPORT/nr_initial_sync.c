@@ -274,7 +274,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   LOG_D(NR_PHY, "nr_initial SL sync ue RB_DL %d\n", fp->N_RB_DL);
   int ret = -1;
-  int32_t sync_pos;
+  int32_t sync_pos = 0;
   for (int is = 0; is < n_frames; is++) {
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
     if (sync_pos >= fp->nb_prefix_samples) {
