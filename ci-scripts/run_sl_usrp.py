@@ -77,6 +77,11 @@ parser.add_argument('--compress', action='store_true', help="""
 Compress the log files in the --log-dir
 """)
 
+parser.add_argument('--no-run', '-n', action='store_true', help="""
+Don't run the test, only examine the logs in the --log-dir
+directory from a previous run of the test
+""")
+
 parser.add_argument('--debug', action='store_true', help="""
 Enable debug logging (for this script only)
 """)
@@ -190,11 +195,11 @@ class TestThread(threading.Thread):
                     thread_delay(job, delay = 0)
                     nearby_proc = self.launch_nearby(job)
                     LOGGER.info(f"nearby_proc = {nearby_proc}")
-                if "syncref" == job:
+                if "syncref" == job and not OPTS.no_run:
                     thread_delay(job, delay = self.delay)
                     syncref_proc = self.launch_syncref(job)
                     LOGGER.info(f"syncref_proc = {syncref_proc}")
-            if not OPTS.basic:
+            if not OPTS.basic and not OPTS.no_run:
                 LOGGER.info(f"Process running... {job}")
                 time.sleep(OPTS.duration)
                 if nearby_proc:
@@ -327,6 +332,7 @@ def main() -> int:
         if num_passed != len(passed_metric):
             # Examine the logs to determine if the test passed
             (ssb_rsrp, sync_duration, counting_duration) = passed_metric[-1]
+            print("after return = ", counting_duration)
             num_ssb = analyze_logs(counting_duration)
             num_tx_ssb += [num_ssb]
             LOGGER.info(f'number of SSB = {num_ssb}')
