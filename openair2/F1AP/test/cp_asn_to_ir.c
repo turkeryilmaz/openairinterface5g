@@ -3750,3 +3750,115 @@ init_ul_rrc_msg_t cp_init_ul_rrc_msg_ir(F1AP_F1AP_PDU_t const* src_pdu)
   return dst;
 }
 
+static
+uint32_t cp_gnb_cu_ue_ul_rrc(F1AP_ULRRCMessageTransferIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID);
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_ULRRCMessageTransferIEs__value_PR_GNB_CU_UE_F1AP_ID);
+
+
+  assert(src->value.choice.GNB_CU_UE_F1AP_ID < (1UL << 32));
+  return src->value.choice.GNB_CU_UE_F1AP_ID; 
+}
+
+static
+uint32_t cp_gnb_du_ue_ul_rrc(F1AP_ULRRCMessageTransferIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID);
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present ==F1AP_ULRRCMessageTransferIEs__value_PR_GNB_DU_UE_F1AP_ID);
+
+  assert( src->value.choice.GNB_DU_UE_F1AP_ID < (1UL << 32));
+
+  return src->value.choice.GNB_DU_UE_F1AP_ID;
+}
+
+static
+uint8_t cp_srb_id_ul_rrc(F1AP_ULRRCMessageTransferIEs_t const* src) 
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_SRBID);
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_ULRRCMessageTransferIEs__value_PR_SRBID);
+
+  assert(src->value.choice.SRBID < 4);
+
+  return src->value.choice.SRBID;
+}
+
+static
+byte_array_t cp_rrc_cntnr_ul_rrc(F1AP_ULRRCMessageTransferIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_RRCContainer);
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_ULRRCMessageTransferIEs__value_PR_RRCContainer);
+
+ byte_array_t dst = copy_ostring_to_ba(src->value.choice.RRCContainer);
+
+ return dst;
+}
+
+ul_rrc_msg_t cp_ul_rrc_msg_ir(F1AP_F1AP_PDU_t const* src_pdu)  
+{
+  assert(src_pdu != NULL);
+
+  ul_rrc_msg_t dst = {0}; 
+
+  /* Create */
+  /* 0. pdu Type */
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+  assert(src_pdu->present == F1AP_F1AP_PDU_PR_initiatingMessage);
+
+  F1AP_InitiatingMessage_t const* src_out = src_pdu->choice.initiatingMessage;
+
+  assert(src_out->procedureCode == F1AP_ProcedureCode_id_ULRRCMessageTransfer);
+  assert(src_out->criticality == F1AP_Criticality_ignore);
+  assert(src_out->value.present == F1AP_InitiatingMessage__value_PR_ULRRCMessageTransfer);
+
+  F1AP_ULRRCMessageTransfer_t const* src = &src_out->value.choice.ULRRCMessageTransfer;
+  assert(src->protocolIEs.list.count > 3 && "4 Mandatory items");
+
+  for(size_t i = 0; i < src->protocolIEs.list.count; ++i){
+    F1AP_ULRRCMessageTransferIEs_t const* ie =  src->protocolIEs.list.array[i];
+
+    // gNB-CU UE F1AP ID
+    // 9.3.1.4
+    // Mandatory
+    if(ie->id == F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID ){
+      dst.gnb_cu_ue = cp_gnb_cu_ue_ul_rrc(ie);
+
+    // gNB-DU UE F1AP ID
+    // Mandatory
+    // 9.3.1.5
+    } else if(ie->id == F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID){
+      dst.gnb_du_ue = cp_gnb_du_ue_ul_rrc(ie);
+
+    //SRB ID
+    //Mandatory
+    //9.3.1.7
+    }else if(ie->id == F1AP_ProtocolIE_ID_id_SRBID){
+      dst.srb_id = cp_srb_id_ul_rrc(ie);
+
+    //RRC-Container
+    //Mandatory
+    //9.3.1.6
+    }else if(ie->id ==  F1AP_ProtocolIE_ID_id_RRCContainer ){
+       dst.rrc_cntnr = cp_rrc_cntnr_ul_rrc(ie);
+
+    }else{
+        assert(0!= 0 && "Not impplemented");
+    }
+  }
+    return dst;
+}
+

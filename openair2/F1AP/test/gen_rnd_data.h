@@ -9,6 +9,8 @@
 #include "f1ap_types/gnb_cu_conf_update.h"
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
 #include "f1ap_types/init_ul_rrc_msg.h"
+#include "f1ap_types/dl_rrc_msg.h"
+#include "f1ap_types/ul_rrc_msg.h"
 
 f1_setup_t gen_rnd_f1_setup(void);
 
@@ -25,6 +27,10 @@ gnb_cu_conf_update_t gen_rnd_gnb_cu_conf_update(void);
 gnb_cu_conf_update_ack_t gen_rnd_gnb_cu_conf_update_ack(void);
 
 init_ul_rrc_msg_t gen_rnd_init_ul_rrc_msg(void);
+
+ul_rrc_msg_t gen_rnd_ul_rrc_msg(void);
+
+dl_rrc_msg_t gen_rnd_dl_rrc_msg(void);
 
 #endif
 

@@ -1905,3 +1905,124 @@ init_ul_rrc_msg_t gen_rnd_init_ul_rrc_msg(void)
   return dst;
 }
 
+
+ul_rrc_msg_t gen_rnd_ul_rrc_msg(void)
+{
+
+  ul_rrc_msg_t dst = {0}; 
+  //  Message Type
+  // 9.3.1.1
+  // Mandatory
+
+  // gNB-CU UE F1AP ID
+  // 9.3.1.4
+  // Mandatory
+  dst.gnb_cu_ue = rand(); // [0-2^32-1] 
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  dst.gnb_du_ue = rand(); // [0-2^32-1] 
+
+  //SRB ID
+  //Mandatory
+  //9.3.1.7
+  dst.srb_id = rand()%4; // [0-3]
+
+  //RRC-Container
+  //Mandatory
+  //9.3.1.6
+  dst.rrc_cntnr = gen_rnd_rrc_contnr();
+
+  //Selected PLMN ID
+  //Optional
+  // PLMN Identity 9.3.1.14
+  dst.plmn_id = NULL; // (size(3) i.e., plmn_id[3])
+
+  // New gNB-DU UE F1AP ID
+  // Optional
+  // gNB-DU UE F1AP ID 9.3.1.5
+  dst.new_gnb_du_ue = NULL; 
+
+  return dst;
+}
+
+
+
+dl_rrc_msg_t gen_rnd_dl_rrc_msg(void)
+{
+  dl_rrc_msg_t dst = {0}; 
+
+  // Message Type
+  // Mandatory 
+  // 9.3.1.1
+
+  // gNB-CU UE F1AP ID
+  // Mandatory
+  // 9.3.1.4 [0-2^32-1]
+  dst.gnb_cu_ue = rand(); 
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5 [0-2^32-1]
+  dst.gnb_du_ue = rand(); 
+
+  // old gNB-DU UE F1AP ID
+  // Optional
+  // 9.3.1.5 [0-2^32-1]
+  dst.old_gnb_du_ue = NULL; 
+
+  // SRB ID
+  // Mandatory
+  // 9.3.1.7
+  dst.srb_id = rand()%4; // [0-3]
+
+  // Execute Duplication
+  // Optional
+  dst.exe_dup = NULL;
+
+  // RRC-Container
+  // Mandatory
+  // 9.3.1.6
+  // Includes the DL-DCCH-
+  // Message IE as defined
+  // in subclause 6.2 of TS
+  // 38.331 [8]
+  dst.rrc_cntnr = gen_rnd_rrc_contnr();
+
+  // RAT-Frequency Priority Information
+  // Optional
+  // 9.3.1.34
+  dst.rat_freq= NULL;
+
+  // RRC Delivery Status Request
+  // Optional
+  dst.rrc_delivery_status_req= NULL;
+
+  // UE Context not retrievable
+  // Optional
+  dst.ue_ctx_not_retriable= NULL;
+
+  // Redirected RRC message
+  // Optional
+  //  9.3.1.6
+  dst.redirected_rrc_msg= NULL;
+
+  //PLMN Assistance Info for Network Sharing
+  // Optional
+  // 9.3.1.14
+  dst.plmn_assis_info_netwrk_shr= NULL; // [size(3)]
+
+  // New gNB-CU UE F1AP ID
+  // Optional
+  // 9.3.1.4
+  dst.new_gnb_cu_ue= NULL; 
+
+  // Additional RRM Policy Index
+  // Optional
+  // 9.3.1.90
+  dst.add_rrm_pol_idx= NULL; // bit string of 4
+
+  return dst;
+}
+

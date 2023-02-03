@@ -3836,3 +3836,291 @@ F1AP_F1AP_PDU_t cp_init_ul_rrc_msg_asn(init_ul_rrc_msg_t const* src)
   return pdu;
 }
 
+static
+F1AP_ULRRCMessageTransferIEs_t* cp_gnb_cu_ue_ul_rrc(uint32_t src)
+{
+  F1AP_ULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_ULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present =F1AP_ULRRCMessageTransferIEs__value_PR_GNB_CU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_CU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_ULRRCMessageTransferIEs_t* cp_gnb_du_ue_ul_rrc(uint32_t src)
+{
+  F1AP_ULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_ULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present =F1AP_ULRRCMessageTransferIEs__value_PR_GNB_DU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_DU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_ULRRCMessageTransferIEs_t* cp_srb_id_ul_rrc(uint8_t src)
+{
+  F1AP_ULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_ULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_SRBID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_ULRRCMessageTransferIEs__value_PR_SRBID;
+  
+  assert(src < 4);
+
+  dst->value.choice.SRBID = src;
+
+  return dst;
+}
+
+static
+F1AP_ULRRCMessageTransferIEs_t* cp_rrc_cntnr_ul_rrc(byte_array_t src)
+{
+  F1AP_ULRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_ULRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_RRCContainer;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_ULRRCMessageTransferIEs__value_PR_RRCContainer;
+ 
+  dst->value.choice.RRCContainer = copy_ba_to_ostring(src);
+
+  return dst;
+}
+
+F1AP_F1AP_PDU_t cp_ul_rrc_msg_asn(ul_rrc_msg_t const* src)
+{
+  assert(src != NULL);
+
+  F1AP_F1AP_PDU_t pdu = {0}; 
+
+  /* Create */
+  /* 0. pdu Type */
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+  pdu.present = F1AP_F1AP_PDU_PR_initiatingMessage;
+  pdu.choice.initiatingMessage= calloc(1, sizeof(F1AP_InitiatingMessage_t));
+  assert(pdu.choice.initiatingMessage != NULL && "Memory exahusted");
+
+  F1AP_InitiatingMessage_t* dst_out = pdu.choice.initiatingMessage;
+
+  dst_out->procedureCode = F1AP_ProcedureCode_id_ULRRCMessageTransfer;
+  dst_out->criticality = F1AP_Criticality_ignore;
+  dst_out->value.present = F1AP_InitiatingMessage__value_PR_ULRRCMessageTransfer;
+
+  F1AP_ULRRCMessageTransfer_t* dst = &dst_out->value.choice.ULRRCMessageTransfer;
+
+  // gNB-CU UE F1AP ID
+  // 9.3.1.4
+  // Mandatory
+  F1AP_ULRRCMessageTransferIEs_t* ie = cp_gnb_cu_ue_ul_rrc(src->gnb_cu_ue);
+  int rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  ie = cp_gnb_du_ue_ul_rrc(src->gnb_du_ue);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  //SRB ID
+  //Mandatory
+  //9.3.1.7
+  ie = cp_srb_id_ul_rrc(src->srb_id);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  //RRC-Container
+  //Mandatory
+  //9.3.1.6
+  ie = cp_rrc_cntnr_ul_rrc(src->rrc_cntnr);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  //Selected PLMN ID
+  //Optional
+  // PLMN Identity 9.3.1.14 (size(3) i.e., plmn_id[3])
+  assert(src->plmn_id == NULL && "Not implemented");
+
+  // New gNB-DU UE F1AP ID
+  // Optional
+  // gNB-DU UE F1AP ID 9.3.1.5
+  assert(src->new_gnb_du_ue == NULL && "Not implemented");
+
+  return pdu;
+}
+
+static
+F1AP_DLRRCMessageTransferIEs_t* cp_gnb_cu_ue_dl_rrc(uint32_t src)
+{
+  F1AP_DLRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_DLRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present =F1AP_DLRRCMessageTransferIEs__value_PR_GNB_CU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_CU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_DLRRCMessageTransferIEs_t* cp_gnb_du_ue_dl_rrc(uint32_t src)
+{
+  F1AP_DLRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_DLRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present =F1AP_DLRRCMessageTransferIEs__value_PR_GNB_DU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_DU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_DLRRCMessageTransferIEs_t* cp_srb_id_dl_rrc(uint8_t src)
+{
+  F1AP_DLRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_DLRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_SRBID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present =F1AP_DLRRCMessageTransferIEs__value_PR_SRBID;
+
+  assert(src < 4);
+  dst->value.choice.SRBID= src;
+
+  return dst;
+}
+
+static
+F1AP_DLRRCMessageTransferIEs_t* cp_rrc_cntnr_dl_rrc(byte_array_t src)
+{
+  F1AP_DLRRCMessageTransferIEs_t* dst = calloc(1, sizeof(F1AP_DLRRCMessageTransferIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_RRCContainer;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_DLRRCMessageTransferIEs__value_PR_RRCContainer;
+
+  dst->value.choice.RRCContainer = copy_ba_to_ostring(src);
+
+  return dst;
+}
+
+
+F1AP_F1AP_PDU_t cp_dl_rrc_msg_asn(dl_rrc_msg_t const* src) 
+{
+  assert(src != NULL);
+
+  F1AP_F1AP_PDU_t pdu = {0}; 
+
+  /* Create */
+  /* 0. pdu Type */
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+  pdu.present = F1AP_F1AP_PDU_PR_initiatingMessage;
+  pdu.choice.initiatingMessage= calloc(1, sizeof(F1AP_InitiatingMessage_t));
+  assert(pdu.choice.initiatingMessage != NULL && "Memory exahusted");
+
+  F1AP_InitiatingMessage_t* dst_out = pdu.choice.initiatingMessage;
+
+  dst_out->procedureCode = F1AP_ProcedureCode_id_DLRRCMessageTransfer;
+  dst_out->criticality = F1AP_Criticality_ignore;
+  dst_out->value.present = F1AP_InitiatingMessage__value_PR_DLRRCMessageTransfer;
+
+  F1AP_DLRRCMessageTransfer_t* dst = &dst_out->value.choice.DLRRCMessageTransfer;
+
+  // gNB-CU UE F1AP ID
+  // 9.3.1.4
+  // Mandatory
+  F1AP_DLRRCMessageTransferIEs_t* ie = cp_gnb_cu_ue_dl_rrc(src->gnb_cu_ue);
+  int rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  ie = cp_gnb_du_ue_dl_rrc(src->gnb_du_ue);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // old gNB-DU UE F1AP ID
+  // Optional
+  // 9.3.1.5 [0-2^32-1]
+  assert(src->old_gnb_du_ue == NULL && "Not implemented" );
+
+  //SRB ID
+  //Mandatory
+  //9.3.1.7
+  ie = cp_srb_id_dl_rrc(src->srb_id);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // Execute Duplication
+  // Optional
+  assert(src->exe_dup == NULL && "Not implemented" );
+
+  // RRC-Container
+  // Mandatory
+  // 9.3.1.6
+  // Includes the DL-DCCH-
+  // Message IE as defined
+  // in subclause 6.2 of TS
+  // 38.331 [8]
+  ie = cp_rrc_cntnr_dl_rrc(src->rrc_cntnr);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // RAT-Frequency Priority Information
+  // Optional
+  // 9.3.1.34
+  assert(src->rat_freq == NULL && "Not implemented");
+
+  // RRC Delivery Status Request
+  // Optional
+  assert(src->rrc_delivery_status_req == NULL && "Not implemented");
+
+  // UE Context not retrievable
+  // Optional
+  assert(src->ue_ctx_not_retriable == NULL && "Not implemented");
+
+  // Redirected RRC message
+  // Optional
+  //  9.3.1.6
+  assert(src->redirected_rrc_msg == NULL && "not implemented");
+
+  //PLMN Assistance Info for Network Sharing
+  // Optional
+  // 9.3.1.14
+  assert(src->plmn_assis_info_netwrk_shr == NULL && "not implemented"); // [size(3)]
+
+  // New gNB-CU UE F1AP ID
+  // Optional
+  // 9.3.1.4
+  assert(src->new_gnb_cu_ue == NULL && "not implemented"); 
+
+  // Additional RRM Policy Index
+  // Optional
+  // 9.3.1.90
+  assert(src->add_rrm_pol_idx == NULL && "not implemented"); // bit string of 4
+
+  return pdu;
+}
+

@@ -44,6 +44,8 @@
 #include "f1ap_types/gnb_cu_conf_update.h"
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
 #include "f1ap_types/init_ul_rrc_msg.h"
+#include "f1ap_types/ul_rrc_msg.h"
+#include "f1ap_types/dl_rrc_msg.h"
 
 
 void test_f1_setup_f1ap()
@@ -208,6 +210,44 @@ void test_init_ul_rrc_msg()
   assert(eq_init_ul_rrc_msg(&msg, &out) == true);
 }
 
+void test_ul_rrc_msg_trans()
+{
+  ul_rrc_msg_t msg = gen_rnd_ul_rrc_msg();
+  defer({ free_ul_rrc_msg(&msg); }); 
+
+  F1AP_F1AP_PDU_t pdu = cp_ul_rrc_msg_asn(&msg);
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu); } );
+
+  byte_array_t ba = encode_pdu_f1ap(&pdu);
+  defer({ free_byte_array(ba); } );
+
+  F1AP_F1AP_PDU_t pdu2 = decode_pdu_f1ap(ba); 
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu2); } ); 
+
+  ul_rrc_msg_t out = cp_ul_rrc_msg_ir(&pdu2);
+  defer({  free_ul_rrc_msg(&out); }); 
+
+  assert(eq_ul_rrc_msg(&msg, &out) == true);
+}
+
+void test_dl_rrc_msg_trans(void)
+{
+  dl_rrc_msg_t msg = gen_rnd_dl_rrc_msg();
+  defer({ free_dl_rrc_msg(&msg); }); 
+
+  F1AP_F1AP_PDU_t pdu = cp_dl_rrc_msg_asn(&msg);
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu); } );
+
+  byte_array_t ba = encode_pdu_f1ap(&pdu);
+  defer({ free_byte_array(ba); } );
+
+  F1AP_F1AP_PDU_t pdu2 = decode_pdu_f1ap(ba); 
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu2); } ); 
+
+  assert("Continue from here!");
+
+}
+
 
 
 int main()
@@ -224,9 +264,9 @@ int main()
 //  test_gnb_cu_conf_update();
 //  test_gnb_cu_conf_update_ack();
 
-  test_init_ul_rrc_msg();
-//  test_dl_rrc_msg_trans();
-//  test_ul_rrc_msg_trans();
+//  test_init_ul_rrc_msg();
+  test_ul_rrc_msg_trans();
+  test_dl_rrc_msg_trans();
 
 //  test_ue_ctx_mod_request();
 //  test_ue_ctx_mod_response();

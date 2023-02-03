@@ -17,6 +17,7 @@ set(f1ap_src_types
 
   ded_si_del_need.c
   dl_up_tnl_info_tbs.c
+  dl_rrc_msg.c
   drx_cycle.c
 
   drb_info.c
@@ -93,6 +94,7 @@ set(f1ap_src_types
 
   ue_ctx_setup_response.c
 
+  ul_rrc_msg.c
   ul_up_tnl_info.c
   ul_up_tnl_info_lst.c
 
