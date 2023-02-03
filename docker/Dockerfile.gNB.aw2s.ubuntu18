@@ -106,5 +106,5 @@ WORKDIR /opt/oai-gnb-aw2s
 #EXPOSE 50000/udp # IF5 / ORI (control)
 #EXPOSE 50001/udp # IF5 / ECPRI (data)
 
-#ENTRYPOINT ["/opt/oai-gnb-aw2s/bin/entrypoint.sh"]
-#CMD ["/opt/oai-gnb-aw2s/bin/nr-softmodem", "-O", "/opt/oai-gnb-aw2s/etc/gnb.conf"]
+ENTRYPOINT ["/opt/oai-gnb-aw2s/bin/entrypoint.sh"]
+CMD ["/opt/oai-gnb-aw2s/bin/nr-softmodem", "-O", "/opt/oai-gnb-aw2s/etc/gnb.conf"]
