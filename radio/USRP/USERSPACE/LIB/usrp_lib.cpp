@@ -1146,7 +1146,21 @@ extern "C" {
       exit(EXIT_FAILURE);
     }
   } else {
-    s->usrp->set_time_next_pps(uhd::time_spec_t(0.0));
+
+    const uhd::time_spec_t last_pps_time = s->usrp->get_time_last_pps();
+    while (last_pps_time == s->usrp->get_time_last_pps()){
+      //sleep 1 milliseconds
+      boost::this_thread::sleep(boost::posix_time::milliseconds(1));
+    }
+    
+    struct timespec tp;
+    if (clock_gettime(CLOCK_REALTIME, &tp)!=0)
+      LOG_W(PHY,"error getting system time\n");
+    double host_time_sec = (double) tp.tv_sec; // + (double) tp.tv_nsec * 1e-9; // we round down to a full second
+    
+    s->usrp->set_time_next_pps(uhd::time_spec_t(host_time_sec+1));
+
+    LOG_I(HW, "setting next pps to %f\n",host_time_sec);
  
     if (s->usrp->get_clock_source(0) == "external") {
       if (check_ref_locked(s,0)) {
