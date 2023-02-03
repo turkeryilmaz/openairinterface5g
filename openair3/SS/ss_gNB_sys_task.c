@@ -34,6 +34,7 @@
 #include "ss_gNB_context.h"
 
 #include "common/utils/LOG/ss-log.h"
+#define MSC_INTERFACE
 #include "msc.h"
 
 extern RAN_CONTEXT_t RC;
