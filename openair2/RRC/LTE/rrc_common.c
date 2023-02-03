@@ -144,7 +144,6 @@ void rrc_init_global_cc_context(int CC_id, module_id_t module_id)
     RC.RB_Config[CC_id][4].PdcpCfg.discardTimer = CALLOC(1, sizeof(long));
     *(RC.RB_Config[CC_id][4].PdcpCfg.discardTimer) = LTE_PDCP_Config__discardTimer_infinity;
   }
-
   
 }
 //-----------------------------------------------------------------------------

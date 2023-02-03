@@ -1272,7 +1272,7 @@ void release_UE_in_freeList(module_id_t mod_id) {
       protocol_ctxt_t  ctxt;
       PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, mod_id, ENB_FLAG_YES, rnti, 0, 0,mod_id);
 
-      for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
         eNB_PHY = RC.eNB[mod_id][CC_id];
         int id;
         // clean ULSCH entries for rnti

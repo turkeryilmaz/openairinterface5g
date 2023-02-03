@@ -22,11 +22,14 @@
 #ifndef MULTICELL_HELPER_H
 
 #define MULTICELL_HELPER_H
-
+#include "common/ran_context.h"
 #include "ss_eNB_context.h"
 
 int get_cell_index(uint16_t, SS_Cell_Context_t[]);
 
 int get_cell_index_pci(uint16_t physCellId, SS_Cell_Context_t SSCell_list[]);
+void init_ss_context(SS_Cell_Context_t SSCell_list[]);
+void init_cell_context(int cell_index, int enb_id,MessageDef *msg_p) ;
+
 
 #endif
