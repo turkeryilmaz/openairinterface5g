@@ -192,7 +192,7 @@ void RCconfig_L1(void) {
       memset(RC.eNB[j],0,(1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB***));
     }
 
-    for (i=0; i<RC.nb_L1_CC[j]; i++) {
+    for (i=0; i<MAX_NUM_CCs/*RC.nb_L1_CC[j]*/; i++) {
       if (RC.eNB[j][i] == NULL) {
         RC.eNB[j][i] = (PHY_VARS_eNB *)malloc(sizeof(PHY_VARS_eNB));
         memset((void *)RC.eNB[j][i],0,sizeof(PHY_VARS_eNB));

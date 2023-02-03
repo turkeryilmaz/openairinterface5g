@@ -310,7 +310,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
 
 int tem_proc_ccid = proc->CC_id;
 /* MultiCell: Function modify for Multiple CC */
-  for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
+  for (int CC_id=0; CC_id<RC.nb_CC[eNB->Mod_id]; CC_id++) {
   eNB->UL_INFO.CC_id     = CC_id;
   proc->CC_id = CC_id;//Temp solution need to be fixed later
   eNB->if_inst->UL_indication(&eNB->UL_INFO, proc);

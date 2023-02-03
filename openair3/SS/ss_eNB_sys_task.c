@@ -296,12 +296,15 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
+    printf("eNB_Inst %d Number of CC configured %d\n", enb_id,RC.nb_CC[enb_id]);
     if (AddOrReconfigure->Basic.d == true)
     {
       MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
       RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
       if (AddOrReconfigure->Basic.v.StaticCellInfo.d == true)
       {
+        init_cell_context(cell_index, enb_id,msg_p);
+
         /** Handle Static Cell Info */
         /** TDD: 1 FDD: 0 in OAI */
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.RAT.d)
@@ -793,10 +796,25 @@ int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell)
       LOG_A(ENB_SS, "[SYS] Signalling main thread for cell config done indication\n");
       cell_config_done_indication();
     }
-    //TODO Change it later to move to cell configuration
+    //cell configuration
     if ( SS_context.SSCell_list[cell_index].State == SS_STATE_NOT_CONFIGURED)
     {
-    returnState = SS_STATE_CELL_CONFIGURED;
+       //The flag is used to initilize the cell in the RRC layer during init_SI funciton
+        RC.ss.CC_conf_flag[cell_index] = 1;
+        
+      //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
+      if (cell_index)
+      {
+        //Increment the nb_CC supported as new cell is confiured
+        RC.nb_CC[0] ++;
+        
+        //Set the number of MAC_CC to current configured CC value
+        *RC.nb_mac_CC= RC.nb_CC[0];
+              
+        LOG_A (ENB_SS,"CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
+               RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
+      }
+      returnState = SS_STATE_CELL_CONFIGURED;
     }
 
 
@@ -2213,7 +2231,8 @@ void *ss_eNB_sys_task(void *arg)
   // Set the state to NOT_CONFIGURED for Cell Config processing mode
   if (RC.ss.mode == SS_SOFTMODEM)
   {
-    SS_context.SSCell_list[cell_index].State = SS_STATE_NOT_CONFIGURED;
+    init_ss_context(SS_context.SSCell_list);
+    //SS_context.SSCell_list[cell_index].State = SS_STATE_NOT_CONFIGURED;
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
   else if (RC.ss.mode == SS_SOFTMODEM_SRB)

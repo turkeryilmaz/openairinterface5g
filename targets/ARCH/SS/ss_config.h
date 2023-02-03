@@ -73,6 +73,7 @@ typedef struct ss_config_s {
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind;
+  uint8_t CC_conf_flag[MAX_NUM_CCs];
   ss_rrc_pdcp_api_t *ss_pdcp_api;
 } ss_config_t;
 /**

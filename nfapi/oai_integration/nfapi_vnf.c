@@ -205,10 +205,15 @@ extern uint16_t slot_ahead;
 
 void oai_create_enb(void) {
   int bodge_counter=0;
-
+  int FAPI_configured_for_a_CC = 0;
   /* MultiCell: Function modify for Multiple CC */
   for (int CC_id=0; CC_id<RC.nb_CC[0]; CC_id++) {
     PHY_VARS_eNB *eNB = RC.eNB[0][CC_id];
+    if (eNB == NULL)
+    {
+      printf("CC_id %d is NUll eNB ptr\n",CC_id);
+      continue ;
+    }
     NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] RC.eNB[0][0]. Mod_id:%d CC_id:%d nb_CC[0]:%d abstraction_flag:%d single_thread_flag:%d if_inst:%p\n", eNB->Mod_id, eNB->CC_id, RC.nb_CC[0], eNB->abstraction_flag,
            eNB->single_thread_flag, eNB->if_inst);
     eNB->Mod_id  = bodge_counter;
@@ -230,8 +235,9 @@ void oai_create_enb(void) {
     do {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for eNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
       usleep(50000);
-    } while(eNB->configured != 1);
-
+    } while(eNB->configured != 1 && !FAPI_configured_for_a_CC);
+    //Set if the 1 CC is configured 
+    FAPI_configured_for_a_CC = 1;
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB Cell %d is now configured\n", __FUNCTION__,CC_id);
   }
 }
@@ -1851,7 +1857,7 @@ void configure_nr_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
   config->deallocate_p4_p5_vendor_ext = &vnf_deallocate_p4_p5_vendor_ext;
   config->codec_config.allocate = &vnf_allocate;
   config->codec_config.deallocate = &vnf_deallocate;
-  memset(&UL_RCC_INFO,0,sizeof(UL_RCC_IND_t));
+  memset(&UL_RCC_INFO,0,sizeof(UL_RCC_INFO));
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Creating VNF NFAPI start thread %s\n", __FUNCTION__);
   pthread_create(&vnf_start_pthread, NULL, (void *)&vnf_nr_start_thread, config);
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Created VNF NFAPI start thread %s\n", __FUNCTION__);
@@ -1901,7 +1907,7 @@ void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
   config->deallocate_p4_p5_vendor_ext = &vnf_deallocate_p4_p5_vendor_ext;
   config->codec_config.allocate = &vnf_allocate;
   config->codec_config.deallocate = &vnf_deallocate;
-  memset(&UL_RCC_INFO,0,sizeof(UL_RCC_IND_t));
+  memset(&UL_RCC_INFO,0,sizeof(UL_RCC_INFO));
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Creating VNF NFAPI start thread %s\n", __FUNCTION__);
   pthread_create(&vnf_start_pthread, NULL, (void *)&vnf_start_thread, config);
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Created VNF NFAPI start thread %s\n", __FUNCTION__);

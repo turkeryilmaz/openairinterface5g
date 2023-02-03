@@ -722,7 +722,7 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if (ifi->CC_mask < ((1<<MAX_NUM_CCs)-1)) {
+    if (ifi->CC_mask < ((1<<RC.nb_CC[module_id])-1)) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_subframe = UL_info->subframe;
     } else {
@@ -752,11 +752,11 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
+    if (ifi->CC_mask == ((1<<RC.nb_CC[module_id])-1)) {
       eNB_dlsch_ulsch_scheduler(module_id,
                                 (UL_info->frame+((UL_info->subframe>(9-sf_ahead))?1:0)) % 1024,
                                 (UL_info->subframe+sf_ahead)%10);
-      for (int CC_Id=0; CC_Id<MAX_NUM_CCs; CC_Id++) {
+      for (int CC_Id=0; CC_Id<RC.nb_CC[module_id]; CC_Id++) {
         ifi->CC_mask            = 0;
         sched_info->module_id   = module_id;
         sched_info->CC_id       = CC_Id;

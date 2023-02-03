@@ -42,7 +42,7 @@ char* namepointer_log2;
 
 
 PHY_VARS_UE ***PHY_vars_UE_g;
-UL_RCC_IND_t UL_RCC_INFO;
+UL_RCC_IND_t UL_RCC_INFO[MAX_NUM_CCs];
 NR_UL_IND_t UL_INFO;
 
 unsigned short rev[2048],rev_times4[8192],rev_half[1024];

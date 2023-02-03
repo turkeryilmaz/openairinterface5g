@@ -1283,7 +1283,7 @@ schedule_RA(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
   uint8_t i;
   start_meas(&mac->schedule_ra);
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
     // skip UL component carriers if TDD
     if (is_UL_sf(&cc[CC_id], subframeP) == 1)
       continue;

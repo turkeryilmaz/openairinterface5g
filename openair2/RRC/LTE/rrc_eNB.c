@@ -884,7 +884,59 @@ static void init_MBMS(
     //rrc_mac_config_req();
   }
 }
+/*
+ * Function : rrc_init_cell_context
+ * Description: Helper funtion to initilize the rrc for each 
+ * CC in the SS_SOFTMODEM mode to enable the dynmaic activation
+ * of the CC. It is similar to the legacy rrc_init_context 
+ * function to initilize each CC.ge to accept the configuration.
+ * In :
+ * CC_id      - Componer Carrier indext to be initilized
+ * module_id  - The eNB index for which the rrc context 
+ *              to be initilized
+ */
+void rrc_init_cell_context(int CC_id, module_id_t module_id)
+{
+  rrc_init_global_cc_context(CC_id,  module_id);
 
+  switch (RC.rrc[module_id]->carrier[CC_id].MBMS_flag)
+  {
+  case 1:
+  case 2:
+  case 3:
+    //LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT " Configuring 1 MBSFN sync area\n", PROTOCOL_RRC_CTXT_ARGS(&ctxt));
+    RC.rrc[module_id]->carrier[CC_id].num_mbsfn_sync_area = 1;
+    break;
+
+  case 4:
+   // LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT " Configuring 2 MBSFN sync area\n", PROTOCOL_RRC_CTXT_ARGS(&ctxt));
+    RC.rrc[module_id]->carrier[CC_id].num_mbsfn_sync_area = 2;
+    break;
+
+  default:
+    RC.rrc[module_id]->carrier[CC_id].num_mbsfn_sync_area = 0;
+    break;
+  }
+
+  // if we are here the RC.rrc[enb_mod_idP]->MBMS_flag > 0,
+  /// MCCH INIT
+  if (RC.rrc[module_id]->carrier[CC_id].MBMS_flag > 0)
+  {
+    init_MCCH(module_id, CC_id);
+    /// MTCH data bearer init
+    init_MBMS(module_id, CC_id, 0);
+  }
+
+  openair_rrc_top_init_eNB(CC_id, RC.rrc[module_id]->carrier[CC_id].MBMS_flag, 0);
+  rrc_config_buffer (&RC.rrc[module_id]->carrier[CC_id].SI, BCCH, 1);
+  RC.rrc[module_id]->carrier[CC_id].SI.Active = 1;
+
+  for (int ue_id = 0; ue_id < MAX_MOBILES_PER_ENB; ue_id++)
+  {
+    RC.rrc[module_id]->carrier[CC_id].sizeof_paging[ue_id] = 0;
+    RC.rrc[module_id]->carrier[CC_id].paging[ue_id] = (uint8_t *)malloc16(256);
+  }
+}
 //-----------------------------------------------------------------------------
 uint8_t
 rrc_eNB_get_next_transaction_identifier(
@@ -1288,7 +1340,7 @@ void release_UE_in_freeList(module_id_t mod_id) {
       remove_UEContext = eNB_MAC->UE_free_list.UE_free_ctrl[ue_num].removeContextFlg;
       PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, mod_id, ENB_FLAG_YES, rnti, 0, 0,mod_id);
 
-      for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
         eNB_PHY = RC.eNB[mod_id][CC_id];
         int id;
         // clean ULSCH entries for rnti
@@ -5353,7 +5405,7 @@ void rrc_eNB_process_x2_setup_request(int mod_id, x2ap_setup_req_t *m) {
     return;
   }
 
-  if (m->num_cc > MAX_NUM_CCs) {
+  if (m->num_cc > RC.nb_CC[0]) {
     LOG_E(RRC, "Error: number of neighbouring cells carriers is exceeded \n");
     return;
   }
@@ -5372,7 +5424,7 @@ void rrc_eNB_process_x2_setup_response(int mod_id, x2ap_setup_resp_t *m) {
     return;
   }
 
-  if (m->num_cc > MAX_NUM_CCs) {
+  if (m->num_cc > RC.nb_CC[0]) {
     LOG_E(RRC, "Error: number of neighbouring cells carriers is exceeded \n");
     return;
   }
@@ -7527,7 +7579,7 @@ char openair_rrc_eNB_configuration(
         RC.rrc[ctxt.module_id]->carrier[0].MBMS_flag);
   }
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
     if(need_init) {
       for (int ue_id = 0; ue_id < MAX_MOBILES_PER_ENB; ue_id++) {
         RC.rrc[ctxt.module_id]->carrier[CC_id].sizeof_paging[ue_id] = 0;
@@ -7536,14 +7588,14 @@ char openair_rrc_eNB_configuration(
     }
   }
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
       init_SI(&ctxt, CC_id, configuration);
   }
 
   if(need_init) {
    rrc_init_global_param();
 
-   for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+   for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
      switch (RC.rrc[ctxt.module_id]->carrier[CC_id].MBMS_flag) {
        case 1:
        case 2:
@@ -7576,9 +7628,22 @@ char openair_rrc_eNB_configuration(
 
   RC.rrc[ctxt.module_id]->nr_scg_ssb_freq = configuration->nr_scg_ssb_freq;
 
-  if(need_init) {openair_rrc_on(&ctxt);}
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
+      //The CC are getting conifigured dynamically 
+      if(RC.ss.CC_conf_flag[CC_id])
+      {
+      rrc_init_cell_context(CC_id,ctxt.module_id);
+      RC.ss.CC_conf_flag[CC_id] = 0;
+      }
+    }
+  }
+  else {
+    openair_rrc_on(&ctxt);
+  }
 
-  for (CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++){
+  for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++){
     if(configuration->ActiveParamPresent[CC_id] == true)
     {
       RRCConnSetup_PDU_Present[CC_id] = configuration->RlcPduCCCH_Present[CC_id];
@@ -9552,7 +9617,7 @@ void handle_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
     for (int j=0; j<RC.nb_inst; j++) {
       eNB_RRC_INST *rrc = RC.rrc[j];
 
-     for(int CC_id=0;CC_id < MAX_NUM_CCs; CC_id++){
+     for(int CC_id=0;CC_id < RC.nb_CC[0]; CC_id++){
       if (rrc->configuration.mcc[CC_id][0] == f1_setup_req->cell[i].mcc &&
           rrc->configuration.mnc[CC_id][0] == f1_setup_req->cell[i].mnc &&
           rrc->nr_cellid == f1_setup_req->cell[i].nr_cellid) {
@@ -10080,7 +10145,7 @@ void rrc_eNB_process_ENDC_x2_setup_request(int mod_id, x2ap_ENDC_setup_req_t *m)
     return;
   }
 
-  if (m->num_cc > MAX_NUM_CCs) {
+  if (m->num_cc > RC.nb_CC[0]) {
     LOG_E(RRC, "Error: number of gNB cells carriers is exceeded \n");
     return;
   }
