@@ -144,8 +144,7 @@ class TestNearby():
     """
     def __init__(self):
         self.cmd = None
-        self.delay = 3 # seconds
-
+        self.delay = 0 # seconds
 
     def run(self, cmd: str) -> bool:
         self.cmd = cmd

@@ -180,7 +180,7 @@ class TestThread(threading.Thread):
         self.queue = queue
         self.commands = commands
         self.passed = passed
-        self.delay = 3
+        self.delay = 0
 
     def run(self):
         if self.queue.empty() == True:
@@ -314,7 +314,6 @@ def main() -> int:
         for role, cmd in commands.usrp_cmds.items():
             LOGGER.debug(f'{role} UE: {cmd}')
     jobs = ['nearby', 'syncref'] if OPTS.launch == 'both' else [OPTS.launch]
-    delay = 3
     passed_metric = []
     num_tx_ssb = []
     num_passed = 0
