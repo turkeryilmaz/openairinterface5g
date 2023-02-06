@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser(description="""
 Automated tests for 5G NR Sidelink Rx simulations
 """)
 
-parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=25, help="""
+parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=30, help="""
 How long to run the test before stopping to examine the logs
 """)
 
@@ -144,8 +144,7 @@ class TestNearby():
     """
     def __init__(self):
         self.cmd = None
-        self.delay = 3 # seconds
-
+        self.delay = 0 # seconds
 
     def run(self, cmd: str) -> bool:
         self.cmd = cmd
@@ -208,42 +207,55 @@ def get_lines(filename: str) -> Generator[str, None, None]:
 
 def get_analysis_messages(filename: str) -> Generator[str, None, None]:
     """
-    After checking the number of fields in the log message for Nid1 asnd Nid2 verification,
-    it yields line of the log.
+    Finding all logs in the log file with X fields for log parsing optimization
     """
     LOGGER.info('Scanning %s', filename)
     for line in get_lines(filename):
-            #'[NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1'
-            fields = line.split(maxsplit=9)
-            if len(fields) == 10:
+            #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SS-RSRP 100 dBm/RE
+            #796811.532881 [NR_PHY] nrUE configured
+            fields = line.split(maxsplit=10)
+            if len(fields) == 11 or len(fields) == 4:
                 yield line
 
-def analyze_logs(test_agent: TestNearby, expNid1: int, expNid2: int) -> bool:
+def analyze_logs(exp_nid1: int, exp_nid2: int) -> bool:
     found = set()
-    estNid1, estNid2 = -1, -1
+    est_nid1, est_nid2, time_start_s, time_end_s = -1, -1, -1, -1
+    ssb_rsrp = 0
     log_file = log_file_path
 
     if OPTS.compress:
         log_file = f'{log_file_path}.bz2'
     for line in get_analysis_messages(log_file):
-        #'[NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1'
-        if 'SyncRef UE found' in line and 'No' not in line:
-            if 'Nid1' in line and 'Nid2' in line:
-                fields = line.split(maxsplit=9)
-                estNid1 = int(fields[6])
-                estNid2 = int(fields[9])
-                found.add('found')
-            continue
+        #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SS-RSRP -100 dBm/RE
+        #796811.532881 [NR_PHY] nrUE configured
+        if 'SyncRef UE found' in line and 'Nid1' in line and 'Nid2' in line:
+            num_split = 13 if 'RSRP' in line else 10
+            fields = line.split(maxsplit=num_split)
+            est_nid1 = int(fields[7])
+            est_nid2 = int(fields[10])
+            if 'RSRP' in line:
+                ssb_rsrp = int(fields[12])
+            found.add('found')
+            time_end_s = float(fields[0])
+            break
+        if time_start_s == -1 and 'nrUE configured' in line:
+            fields = line.split(maxsplit=3)
+            time_start_s = float(fields[0])
+
 
     LOGGER.debug('found: %r', found)
     if len(found) != 1:
         LOGGER.error(f'Failed -- No SyncRef UE found.')
         return False
-    elif expNid1 != estNid1 or expNid2 != estNid2:
-        LOGGER.error(f'Failed -- found SyncRef UE Nid1 {estNid1}, Ni2 {estNid2}, expecting Nid1 {expNid1}, Nid2 {expNid2}')
+    elif exp_nid1 != est_nid1 or exp_nid2 != est_nid2:
+        LOGGER.error(f'Failed -- found SyncRef UE Nid1 {est_nid1}, Ni2 {est_nid2}, expecting Nid1 {exp_nid1}, Nid2 {exp_nid2}')
+        return False
+    if time_start_s == -1:
+        LOGGER.error(f'Failed -- No start time found! Fix log and re-run!')
         return False
 
-    LOGGER.info('SyncRef UE found')
+    delta_time_s = time_end_s - time_start_s
+    LOGGER.info(f'SyncRef UE found. RSRP: {ssb_rsrp} dBm/RE. It took {delta_time_s} seconds')
     return True
 
 def main(argv) -> int:
@@ -254,7 +266,7 @@ def main(argv) -> int:
         passed = test_agent.run(OPTS.cmd)
 
     # Examine the logs to determine if the test passed
-    if not analyze_logs(test_agent, expNid1=OPTS.nid1, expNid2=OPTS.nid2):
+    if not analyze_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2):
         passed = False
 
     if not passed:

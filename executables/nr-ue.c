@@ -586,8 +586,9 @@ static void UE_synch(void *arg) {
         } else {
           if (initial_synch_sl == 0) {
             UE->is_synchronized_sl = 1;
-            LOG_I(NR_PHY, "SyncRef UE found with Nid1 %d and Nid2 %d\n",
-                  GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL));
+            LOG_I(NR_PHY, "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
+                  GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL),
+                  UE->measurements.ssb_rsrp_dBm[0]);
             exit(1);
           }
         }
