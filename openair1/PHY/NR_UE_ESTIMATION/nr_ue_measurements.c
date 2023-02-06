@@ -267,7 +267,6 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                     UE_nr_rxtx_proc_t *proc) {
   int k_start = 2;
   int k_end = 129;
-  unsigned int ssb_offset = 0;
   int first_sss_index = 3;
   int symbol_offset = 0;
   uint32_t rsrp = 0;
@@ -276,7 +275,7 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     for (int i = 0; i < NUM_SSS_SYMBOLS; i++) {
       uint8_t l_sss = (symbol_offset + (first_sss_index + i)) % ue->frame_parms.symbols_per_slot;
-      int16_t *rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(l_sss * ue->frame_parms.ofdm_symbol_size) + ssb_offset];
+      int16_t *rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(l_sss * ue->frame_parms.ofdm_symbol_size)];
       for(int k = k_start; k < k_end; k++) {
 #ifdef DEBUG_MEAS_UE
       LOG_I(NR_PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k * 2], rxF_sss[k * 2 + 1]);

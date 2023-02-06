@@ -332,12 +332,9 @@ def main() -> int:
         if num_passed != len(passed_metric):
             # Examine the logs to determine if the test passed
             (ssb_rsrp, sync_duration, counting_duration) = passed_metric[-1]
-            print("after return = ", counting_duration)
             num_ssb = analyze_logs(counting_duration)
             num_tx_ssb += [num_ssb]
-            LOGGER.info(f'number of SSB = {num_ssb}')
-            LOGGER.info(f'SSB RSRP = {ssb_rsrp} dBm/RE')
-            LOGGER.info(f"Passed at the trial {i+1}/{OPTS.repeat}")
+            LOGGER.info(f"Trial {i+1}/{OPTS.repeat} PASSED. {num_ssb} SSB(s) were generated. Measured {ssb_rsrp} RSRP (dbm/RE)")
         else:
             LOGGER.info(f"Failed at the trial {i+1}/{OPTS.repeat}")
         num_passed = len(passed_metric)
