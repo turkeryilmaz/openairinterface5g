@@ -343,8 +343,8 @@ uint8_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc2);
     *mnc2=(mnc)%10;
 
-    if (nr_plmn->mcc != NULL)
-    RRM_FREE(nr_plmn->mcc);
+    //if (nr_plmn->mcc != NULL)
+    //RRM_FREE(nr_plmn->mcc);
 
   }//end plmn loop
 
