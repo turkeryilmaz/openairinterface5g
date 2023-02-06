@@ -37,6 +37,8 @@
 #include "PHY/phy_extern_nr_ue.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
+#include "openair1/PHY/NR_REFSIG/ss_pbch_nr.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
@@ -265,18 +267,13 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
 void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                     int ssb_index,
                                     UE_nr_rxtx_proc_t *proc) {
-  int k_start = 2;
-  int k_end = 129;
-  int first_sss_index = 3;
-  int symbol_offset = 0;
   uint32_t rsrp = 0;
   int nb_re = 0;
-
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     for (int i = 0; i < NUM_SSS_SYMBOLS; i++) {
-      uint8_t l_sss = (symbol_offset + (first_sss_index + i)) % ue->frame_parms.symbols_per_slot;
+      uint8_t l_sss = (SSS_START_IDX + i) % ue->frame_parms.symbols_per_slot;
       int16_t *rxF_sss = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(l_sss * ue->frame_parms.ofdm_symbol_size)];
-      for(int k = k_start; k < k_end; k++) {
+      for (int k = SPSS_SSSS_SUB_CARRIER_START; k < (SPSS_SSSS_SUB_CARRIER_START + LENGTH_SSS_NR); k++) {
 #ifdef DEBUG_MEAS_UE
       LOG_I(NR_PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k * 2], rxF_sss[k * 2 + 1]);
 #endif
@@ -292,7 +289,7 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                              ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
                                              dB_fixed(ue->frame_parms.ofdm_symbol_size);
 
-  LOG_I(NR_PHY, "In %s: [UE %d] ssb %d SSS-RSRP: %d dBm/RE (%d)\n",
+  LOG_I(NR_PHY, "In %s: [UE %d] ssb %d SS-RSRP: %d dBm/RE (%d)\n",
         __FUNCTION__, ue->Mod_id, ssb_index, ue->measurements.ssb_rsrp_dBm[ssb_index], rsrp);
 }
 

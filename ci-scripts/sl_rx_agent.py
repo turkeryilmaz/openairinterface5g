@@ -212,7 +212,7 @@ def get_analysis_messages(filename: str) -> Generator[str, None, None]:
     """
     LOGGER.info('Scanning %s', filename)
     for line in get_lines(filename):
-            #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SSS-RSRP 100 dBm/RE
+            #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SS-RSRP 100 dBm/RE
             #796811.532881 [NR_PHY] nrUE configured
             fields = line.split(maxsplit=10)
             if len(fields) == 11 or len(fields) == 4:
@@ -227,7 +227,7 @@ def analyze_logs(exp_nid1: int, exp_nid2: int) -> bool:
     if OPTS.compress:
         log_file = f'{log_file_path}.bz2'
     for line in get_analysis_messages(log_file):
-        #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SSS-RSRP -100 dBm/RE
+        #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SS-RSRP -100 dBm/RE
         #796811.532881 [NR_PHY] nrUE configured
         if 'SyncRef UE found' in line and 'Nid1' in line and 'Nid2' in line:
             num_split = 13 if 'RSRP' in line else 10
