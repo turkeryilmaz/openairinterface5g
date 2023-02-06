@@ -582,28 +582,6 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
         nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_CN_PROC_RES, procBufRes);
 #endif
 
-   // Parity Check
-#ifdef NR_LDPC_ENABLE_PARITY_CHECK
-#ifdef NR_LDPC_PROFILER_DETAIL
-       start_meas(&p_profiler->cnProcPc);
-#endif
-       if (BG == 1) 
-       {
-            pcRes = nrLDPC_cnProcPc_BG1(p_lut, procBuf, procBufRes, Z);
-       }
-       else
-       {    
-            pcRes = nrLDPC_cnProcPc_BG2(p_lut, procBuf, procBufRes, Z);
-       }
-#ifdef NR_LDPC_PROFILER_DETAIL
-       stop_meas(&p_profiler->cnProcPc);
-#endif
-// Exit Loop if parity check passes
-if (pcRes == 0)
-{
-    break;
-}
-#endif
 
         // Send CN results back to BNs
 #ifdef NR_LDPC_PROFILER_DETAIL
@@ -758,6 +736,31 @@ if (pcRes == 0)
         nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_BN_PROC_RES, procBufRes);
 #endif
 
+   // Parity Check
+#ifdef NR_LDPC_ENABLE_PARITY_CHECK
+#ifdef NR_LDPC_PROFILER_DETAIL
+       start_meas(&p_profiler->cnProcPc);
+#endif
+       if (BG == 1) 
+       {
+            nrLDPC_llr2CnProcBuf_BG1(p_lut, llrRes, procBuf, Z);
+            pcRes = nrLDPC_cnProcPc_BG1(p_lut, procBuf, Z);
+       }
+       else
+       {
+            nrLDPC_llr2CnProcBuf_BG2(p_lut, llrRes, procBuf, Z);
+            pcRes = nrLDPC_cnProcPc_BG2(p_lut, procBuf, Z);
+       }
+#ifdef NR_LDPC_PROFILER_DETAIL
+       stop_meas(&p_profiler->cnProcPc);
+#endif
+// Exit Loop if parity check passes
+if (pcRes == 0)
+{
+    break;
+}
+#endif
+        
         // BN results to CN processing buffer
 #ifdef NR_LDPC_PROFILER_DETAIL
         start_meas(&p_profiler->bn2cnProcBuf);
