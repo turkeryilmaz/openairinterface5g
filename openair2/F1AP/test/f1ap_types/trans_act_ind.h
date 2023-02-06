@@ -1,0 +1,15 @@
+#ifndef TRANSMISSION_ACTION_INDICATION_F1AP_H
+#define TRANSMISSION_ACTION_INDICATION_F1AP_H 
+
+// 9.3.1.11
+typedef enum{
+
+  STOP_TRANS_ACT_IND_F1AP, 
+  RESTART_TRANS_ACT_IND_F1AP,
+
+  END_TRANS_ACT_IND_F1AP
+
+} trans_act_ind_f1ap_e ;
+
+#endif
+

@@ -7,6 +7,7 @@
 #include "long_drx_cycle_len.h"
 #include "short_drx_cycle_len.h"
 
+// 9.3.1.24
 typedef struct{
   // Mandatory 
   // Long DRX Cycle Length

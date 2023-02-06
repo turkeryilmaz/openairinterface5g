@@ -4124,3 +4124,188 @@ F1AP_F1AP_PDU_t cp_dl_rrc_msg_asn(dl_rrc_msg_t const* src)
   return pdu;
 }
 
+static
+F1AP_UEContextModificationRequestIEs_t* cp_gnb_cu_ue_ctx_mod_req(uint32_t src)
+{
+  F1AP_UEContextModificationRequestIEs_t* dst = calloc(1, sizeof(F1AP_UEContextModificationRequestIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_UEContextModificationRequestIEs__value_PR_GNB_CU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_CU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_UEContextModificationRequestIEs_t* cp_gnb_du_ue_ctx_mod_req(uint32_t src)
+{
+  F1AP_UEContextModificationRequestIEs_t* dst = calloc(1, sizeof(F1AP_UEContextModificationRequestIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_UEContextModificationRequestIEs__value_PR_GNB_DU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_DU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+
+
+F1AP_F1AP_PDU_t cp_ue_ctx_mod_req_asn(ue_ctx_mod_req_t const* src)
+{
+  assert(src != NULL);
+
+  F1AP_F1AP_PDU_t pdu = {0}; 
+
+  /* Create */
+  /* 0. pdu Type */
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+  pdu.present = F1AP_F1AP_PDU_PR_initiatingMessage;
+  pdu.choice.initiatingMessage= calloc(1, sizeof(F1AP_InitiatingMessage_t));
+  assert(pdu.choice.initiatingMessage != NULL && "Memory exahusted");
+
+  F1AP_InitiatingMessage_t* dst_out = pdu.choice.initiatingMessage;
+
+  dst_out->procedureCode = F1AP_ProcedureCode_id_UEContextModification;
+  dst_out->criticality = F1AP_Criticality_reject;
+  dst_out->value.present = F1AP_InitiatingMessage__value_PR_UEContextModificationRequest;
+
+  F1AP_UEContextModificationRequest_t* dst = &dst_out->value.choice.UEContextModificationRequest;
+
+  // gNB-CU UE F1AP ID
+  // Mandatory
+  // 9.3.1.4
+  F1AP_UEContextModificationRequestIEs_t* ie = cp_gnb_cu_ue_ctx_mod_req(src->gnb_cu_ue);
+  int rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  ie = cp_gnb_du_ue_ctx_mod_req(src->gnb_du_ue);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // SpCell ID
+  // Optional
+  // NR CGI 9.3.1.12
+  assert(src->sp_cell_id == NULL && "Not implemented");
+
+  // ServCellIndex
+  // Optional
+  // [0-31]
+  assert(src->serv_cell_idx== NULL && "Not implemented");
+
+  // SpCell UL Configured
+  // Optional
+  // Cell UL Configured 9.3.1.33
+  assert(src->cell_ul_conf== NULL && "Not implemented");
+
+  // DRX Cycle
+  // Optional
+  // DRX Cycle 9.3.1.24
+  assert(src->drx_cycle== NULL && "Not implemented");
+
+  // CU to DU RRC Information
+  // Optional
+  // 9.3.1.25
+  assert(src->cu_to_du_rrc_info== NULL && "Not implemented");
+
+  // Transmission Action Indicator
+  // Optional
+  // 9.3.1.11
+  assert(src->trans_act_ind== NULL && "Not implemented");
+
+  // Resource Coordination Transfer Container
+  // Optional
+  assert(src->res_coord_trans_cntnr== NULL && "Not implemented");
+
+  // RRC Reconfiguration Complete Indicator
+  // Optional
+  // 9.3.1.30
+  assert(src->rrc_reconf_compl_ind== NULL && "Not implemented");
+
+  // RRC-Container 
+  // Optional
+  // 9.3.1.6
+  assert(src->rrc_cntnr== NULL && "Not implemented");
+
+  // SCell To Be Setup List
+  // [0 - 32]
+  assert(src->sz_scell_to_be_setup == 0 && "Not implemented");
+  assert(src->scell_to_be_setup== NULL && "Not implemented");
+
+  // SCell To Be Removed List
+  // [0 - 32]
+  assert(src->sz_scell_to_be_rm == 0 && "Not implemented");
+  assert(src->scell_to_be_rm== NULL && "Not implemented");
+
+  // SRB to Be Setup List
+  // [0-8]
+  assert(src->sz_srb_to_be_setup == 0 && "Not implemented");
+  assert(src->srb_to_be_setup== NULL && "Not implemented");
+
+  // DRB to Be Setup List
+  // [0- 64]
+  assert(src->sz_drb_to_be_setup == 0 && "Not implemented"); 
+  assert(src->drb_to_be_setup== NULL && "Not implemented");
+
+  // DRB to Be Modified List
+  // [0- 64]
+  assert(src->sz_drb_to_be_mod == 0 && "Not implemented"); 
+  assert(src->drb_to_be_mod== NULL && "Not implemented");
+
+  // SRB To Be Released List
+  // [0 - 8]
+  assert(src->sz_srb_to_be_rel == 0 && "Not implemented");
+  assert(src->srb_to_be_rel== NULL && "Not implemented");
+
+  // DRB to Be Released List
+  // [0- 64]
+  assert(src->sz_drb_to_be_rel == 0 && "Not implemented");
+  assert(src->drb_to_be_rel== NULL && "Not implemented");
+
+  // BH RLC Channel to be Modified List
+  // [0 - 65536]
+  assert(src->sz_bh_rlc_chn_to_be_mod == 0 && "Not implemented");
+  assert(src->bh_rlc_chn_to_be_mod== NULL && "Not implemented");
+
+  // BH RLC Channel to be Released List
+  // [0 - 65536]
+  assert(src->sz_bh_rlc_chn_to_be_rel == 0 && "Not implemented");
+  assert(src->bh_rlc_chn_to_be_rel== NULL && "Not implemented");
+
+  // SL DRB to Be Setup List
+  // [0 - 512]
+  assert(src->sz_sl_drb_to_be_setup == 0 && "Not implemented");
+  assert(src->sl_drb_to_be_setup== NULL && "Not implemented");
+
+  // SL DRB to Be Modified List
+  // [0 - 512]
+  assert(src->sz_sl_drb_to_be_mod == 0 && "Not implemented");
+  assert(src->sl_drb_to_be_mod== NULL && "Not implemented");
+
+  // SL DRB to Be Released List
+  // [0 - 512]
+  assert(src->sz_sl_drb_to_be_rel == 0 && "Not implemented");
+  assert(src->sl_drb_to_be_rel== NULL && "Not implemented");
+
+  // Conditional Intra-DU Mobility Information
+  // Optional
+  assert(src->intra_du_mob_info== NULL && "Not implemented");
+
+  // F1-C Transfer Path
+  // Optional
+  // 9.3.1.207
+  assert(src->f1_c_path_nsa== NULL && "Not implemented");
+
+  return pdu;
+}
+

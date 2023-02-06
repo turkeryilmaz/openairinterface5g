@@ -1,11 +1,12 @@
 set(f1ap_src_types
+
   activate_cell.c
   add_pdcp_dup_tnl.c
   alloc_retention_prio.c
 
   brdcst_PLMN_id_info.c
-  cause_f1ap.c
 
+  cause_f1ap.c
   cells_failed_to_activate.c
   cells_to_be_deact.c
   cells_to_be_barred.c
@@ -18,12 +19,10 @@ set(f1ap_src_types
   ded_si_del_need.c
   dl_up_tnl_info_tbs.c
   dl_rrc_msg.c
-  drx_cycle.c
-
   drb_info.c
   drb_setup_item.c
   drb_to_be_setup.c
-
+  drx_cycle.c
   dyn_5qi_descriptor.c
   du_to_cu_rrc_information_f1ap.c
 
@@ -38,7 +37,6 @@ set(f1ap_src_types
   fdd_info.c
   freq_band.c
   freq_shift.c
-
   flows_mapped_to_drb.c
 
   gbr_qos_info.c
@@ -52,9 +50,9 @@ set(f1ap_src_types
   gnb_cu_tnl_assoc_to_rem.c
   gnb_cu_tnl_assoc_stp.c
   gnb_cu_tnl_assoc_failed_stp.c
-
   gnb_cu_tnl_assoc_to_upd.c
   gbr_qos_flow_info.c
+
   iab_info_iab_du.c
   init_ul_rrc_msg.c
   intented_tdd_dl_ul_conf.c
@@ -73,7 +71,6 @@ set(f1ap_src_types
 
   s_nssai.c
   scell_to_be_setup.c
-
   serv_eutra_cell_info.c
   srv_cell_info.c
   sib.c
@@ -83,15 +80,15 @@ set(f1ap_src_types
   ssb_pos_burst.c
   sul_info.c
 
+  tdd_info.c
   tnl_assoc_usage.c
-
   tsc_traffic_char.c
   tsc_assistance_info.c
   time_to_wait_f1ap.c
-  tdd_info.c
   trans_bw.c
-  ue_ctx_setup_request.c
 
+  ue_ctx_mod_request.c
+  ue_ctx_setup_request.c
   ue_ctx_setup_response.c
 
   ul_rrc_msg.c

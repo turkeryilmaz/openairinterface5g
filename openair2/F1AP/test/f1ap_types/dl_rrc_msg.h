@@ -1,6 +1,7 @@
 #ifndef DL_RRC_MSG_F1AP_H
 #define DL_RRC_MSG_F1AP_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "../byte_array.h"
@@ -108,6 +109,8 @@ typedef struct{
 } dl_rrc_msg_t;
 
 void free_dl_rrc_msg(dl_rrc_msg_t* src);
+
+bool eq_dl_rrc_msg(dl_rrc_msg_t const* m0, dl_rrc_msg_t const* m1);
 
 #endif
 

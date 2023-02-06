@@ -6,6 +6,7 @@
 #include "f1ap_types/f1_setup_failure.h"
 #include "f1ap_types/ue_ctx_setup_request.h"
 #include "f1ap_types/ue_ctx_setup_response.h"
+#include "f1ap_types/ue_ctx_mod_request.h"
 #include "f1ap_types/gnb_cu_conf_update.h"
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
 #include "f1ap_types/init_ul_rrc_msg.h"
@@ -31,6 +32,8 @@ init_ul_rrc_msg_t gen_rnd_init_ul_rrc_msg(void);
 ul_rrc_msg_t gen_rnd_ul_rrc_msg(void);
 
 dl_rrc_msg_t gen_rnd_dl_rrc_msg(void);
+
+ue_ctx_mod_req_t gen_rnd_ue_ctx_mod_req(void);
 
 #endif
 

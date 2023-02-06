@@ -3,6 +3,7 @@
 
 // Further details are defined
 // in TS 38.331 [8]
+// Cell UL Configured 9.3.1.33
 
 typedef enum{
 

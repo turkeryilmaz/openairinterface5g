@@ -2026,3 +2026,144 @@ dl_rrc_msg_t gen_rnd_dl_rrc_msg(void)
   return dst;
 }
 
+ue_ctx_mod_req_t gen_rnd_ue_ctx_mod_req(void)
+{
+  ue_ctx_mod_req_t dst = {0}; 
+
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+
+  // gNB-CU UE F1AP ID
+  // Mandatory
+  // 9.3.1.4
+  dst.gnb_cu_ue = rand(); 
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  dst.gnb_du_ue = rand();
+
+  // SpCell ID
+  // Optional
+  // NR CGI 9.3.1.12
+  dst.sp_cell_id = NULL;
+
+  // ServCellIndex
+  // Optional
+  // [0-31]
+  dst.serv_cell_idx = 0;
+
+  // SpCell UL Configured
+  // Optional
+  // Cell UL Configured 9.3.1.33
+  dst.cell_ul_conf = NULL;
+
+  // DRX Cycle
+  // Optional
+  // DRX Cycle 9.3.1.24
+  dst.drx_cycle = NULL;
+
+  // CU to DU RRC Information
+  // Optional
+  // 9.3.1.25
+  dst.cu_to_du_rrc_info = NULL;
+
+  // Transmission Action Indicator
+  // Optional
+  // 9.3.1.11
+  dst.trans_act_ind = NULL;
+
+  // Resource Coordination Transfer Container
+  // Optional
+  dst.res_coord_trans_cntnr = NULL;
+
+  // RRC Reconfiguration Complete Indicator
+  // Optional
+  // 9.3.1.30
+  dst.rrc_reconf_compl_ind = NULL;
+
+  // RRC-Container 
+  // Optional
+  // 9.3.1.6
+  dst.rrc_cntnr = NULL;
+
+  // SCell To Be Setup List
+  // [0 - 32]
+  dst.sz_scell_to_be_setup = 0;
+  dst.scell_to_be_setup = NULL;
+
+  // SCell To Be Removed List
+  // [0 - 32]
+  dst.sz_scell_to_be_rm = 0;
+  dst.scell_to_be_rm = NULL;
+
+  // SRB to Be Setup List
+  // [0-8]
+  dst.sz_srb_to_be_setup = 0;
+  dst.srb_to_be_setup = NULL;
+
+  // DRB to Be Setup List
+  // [0- 64]
+  dst.sz_drb_to_be_setup = 0; 
+  dst.drb_to_be_setup = NULL;
+
+  // DRB to Be Modified List
+  // [0- 64]
+  dst.sz_drb_to_be_mod = 0; 
+  dst.drb_to_be_mod = NULL;
+
+  // SRB To Be Released List
+  // [0 - 8]
+  dst.sz_srb_to_be_rel = 0;
+  dst.srb_to_be_rel = NULL;
+
+  // DRB to Be Released List
+  // [0- 64]
+  dst.sz_drb_to_be_rel = 0;
+  dst.drb_to_be_rel = NULL;
+
+  // BH RLC Channel to be Modified List
+  // [0 - 65536]
+  dst.sz_bh_rlc_chn_to_be_mod = 0;
+  dst.bh_rlc_chn_to_be_mod = NULL;
+
+  // BH RLC Channel to be Released List
+  // [0 - 65536]
+  dst.sz_bh_rlc_chn_to_be_rel = 0;
+  dst.bh_rlc_chn_to_be_rel = NULL;
+
+  // SL DRB to Be Setup List
+  // [0 - 512]
+  dst.sz_sl_drb_to_be_setup = 0;
+  dst.sl_drb_to_be_setup = NULL;
+
+  // SL DRB to Be Modified List
+  // [0 - 512]
+  dst.sz_sl_drb_to_be_mod = 0;
+  dst.sl_drb_to_be_mod = NULL;
+
+  // SL DRB to Be Released List
+  // [0 - 512]
+  dst.sz_sl_drb_to_be_rel = 0;
+  dst.sl_drb_to_be_rel = NULL;
+
+  // Conditional Intra-DU Mobility Information
+  // Optional
+  dst.intra_du_mob_info = NULL;
+
+  // F1-C Transfer Path
+  // Optional
+  // 9.3.1.207
+  dst.f1_c_path_nsa = NULL;
+
+  return dst;
+}
+
+
+
+
+
+
+
+

@@ -46,6 +46,7 @@
 #include "f1ap_types/init_ul_rrc_msg.h"
 #include "f1ap_types/ul_rrc_msg.h"
 #include "f1ap_types/dl_rrc_msg.h"
+#include "f1ap_types/ue_ctx_mod_request.h"
 
 
 void test_f1_setup_f1ap()
@@ -244,10 +245,31 @@ void test_dl_rrc_msg_trans(void)
   F1AP_F1AP_PDU_t pdu2 = decode_pdu_f1ap(ba); 
   defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu2); } ); 
 
-  assert("Continue from here!");
+  dl_rrc_msg_t out = cp_dl_rrc_msg_ir(&pdu2);
+  defer({ free_dl_rrc_msg(&out); }); 
 
+  assert(eq_dl_rrc_msg(&msg, &out) == true);
 }
 
+void test_ue_ctx_mod_request()
+{
+  ue_ctx_mod_req_t msg = gen_rnd_ue_ctx_mod_req();
+  defer({ free_ue_ctx_mod_req(&msg); }); 
+
+  F1AP_F1AP_PDU_t pdu = cp_ue_ctx_mod_req_asn(&msg);
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu); } );
+
+  byte_array_t ba = encode_pdu_f1ap(&pdu);
+  defer({ free_byte_array(ba); } );
+
+  F1AP_F1AP_PDU_t pdu2 = decode_pdu_f1ap(ba); 
+  defer({ ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu2); } ); 
+
+  ue_ctx_mod_req_t out = cp_ue_ctx_mod_req_ir(&pdu2);
+  defer({ free_ue_ctx_mod_req(&out); }); 
+
+  assert(eq_ue_ctx_mod_req(&msg, &out) == true);
+}
 
 
 int main()
@@ -265,10 +287,14 @@ int main()
 //  test_gnb_cu_conf_update_ack();
 
 //  test_init_ul_rrc_msg();
-  test_ul_rrc_msg_trans();
-  test_dl_rrc_msg_trans();
+//  test_ul_rrc_msg_trans();
+//  test_dl_rrc_msg_trans();
 
-//  test_ue_ctx_mod_request();
+  test_ue_ctx_mod_request();
+
+  assert(0!=0 && "Continue from here");
+
+
 //  test_ue_ctx_mod_response();
 
 

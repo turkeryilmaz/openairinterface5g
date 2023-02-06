@@ -512,8 +512,7 @@ int CU_send_gNB_CU_CONFIGURATION_UPDATE(instance_t instance, f1ap_gnb_cu_configu
       cells_to_be_activated_ies->criticality = F1AP_Criticality_reject;
       cells_to_be_activated_ies->value.present = F1AP_Cells_to_be_Activated_List_ItemIEs__value_PR_Cells_to_be_Activated_List_Item;
       // 2.1 cells to be Activated list item
-      F1AP_Cells_to_be_Activated_List_Item_t *cells_to_be_activated_list_item=
-        &cells_to_be_activated_ies->value.choice.Cells_to_be_Activated_List_Item;
+      F1AP_Cells_to_be_Activated_List_Item_t *cells_to_be_activated_list_item = &cells_to_be_activated_ies->value.choice.Cells_to_be_Activated_List_Item;
       // - nRCGI
       addnRCGI(cells_to_be_activated_list_item->nRCGI, f1ap_gnb_cu_configuration_update->cells_to_activate+i);
       // optional
