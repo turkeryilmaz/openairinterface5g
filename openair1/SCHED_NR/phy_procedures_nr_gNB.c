@@ -39,11 +39,16 @@
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 
+#include "common/utils/thread_pool/task_manager.h"
+
 #include "assertions.h"
 
 #include <time.h>
 
 #include "intertask_interface.h"
+
+#include "common/utils/thread_pool/task_manager.h"
+
 
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
@@ -208,8 +213,15 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX+offset,0);
 }
 
+#ifdef TASK_MANAGER
+void nr_postDecode(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata){
+#else
 void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
+#endif
+
+#ifndef TASK_MANAGER
   ldpcDecode_t *rdata = (ldpcDecode_t*) NotifiedFifoData(req);
+#endif
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   NR_gNB_ULSCH_t *ulsch = rdata->ulsch;
   int r = rdata->segment_r;
@@ -227,6 +239,9 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
 
   } else {
     if ( rdata->nbSegments != ulsch_harq->processedSegments ) {
+#ifdef TASK_MANAGER
+  *rdata->cancel_dec = 1;
+#else
       int nb = abortTpoolJob(&gNB->threadPool, req->key);
       nb += abortNotifiedFIFOJob(&gNB->respDecode, req->key);
       gNB->nbDecode-=nb;
@@ -234,6 +249,7 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
       LOG_D(PHY, "ULSCH %d in error\n",rdata->ulsch_id);
       AssertFatal(ulsch_harq->processedSegments+nb == rdata->nbSegments,"processed: %d, aborted: %d, total %d\n",
 		  ulsch_harq->processedSegments, nb, rdata->nbSegments);
+#endif
       ulsch_harq->processedSegments=rdata->nbSegments;
     }
   }
@@ -378,6 +394,7 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
                     slot_rx,
                     harq_pid,
                     G);
+#ifndef TASK_MANAGER
   if (enable_ldpc_offload ==0) {
     while (gNB->nbDecode > 0) {
       notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
@@ -387,6 +404,7 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
       delNotifiedFIFO_elt(req);
     }
   } 
+#endif
   stop_meas(&gNB->ulsch_decoding_stats);
 }
 

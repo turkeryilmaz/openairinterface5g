@@ -704,6 +704,10 @@ int main(int argc, char **argv)
   gNB->ofdm_offset_divisor = UINT_MAX;
   initNotifiedFIFO(&gNB->respDecode);
 
+#ifdef TASK_MANAGER
+  init_task_manager(&gNB->man, threadCnt);
+#endif
+
   initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
   initNotifiedFIFO(&gNB->respDecode);
   initNotifiedFIFO(&gNB->L1_tx_free);
@@ -1392,6 +1396,10 @@ int main(int argc, char **argv)
                            slot,
                            0);
         }
+
+#ifdef TASK_MANAGER
+  wake_and_spin_task_manager(&gNB->man);
+#endif
 
         for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++)  {
           apply_nr_rotation_ul(&gNB->frame_parms,

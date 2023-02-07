@@ -289,7 +289,7 @@ set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2 -Wl,-rpath -Wl,${C
 # these changes are related to hardcoded path to include .h files
 set(debugOpt "-ggdb2 -DMALLOC_CHECK_=3 -fno-delete-null-pointer-checks")
 set(CMAKE_C_FLAGS_DEBUG "${debugOpt} -O0")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${debugOpt} -O2")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${debugOpt} -O3")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 # Enable assert() for RelWithDebInfo builds
@@ -2350,6 +2350,11 @@ add_executable(nr-softmodem
   ${nr_rrc_h}
   ${s1ap_h}
 #  ${OPENAIR_BIN_DIR}/messages_xml.h
+
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
   ${OPENAIR_DIR}/executables/nr-gnb.c
   ${OPENAIR_DIR}/executables/nr-ru.c
   ${OPENAIR_DIR}/executables/nr-softmodem.c
@@ -2514,6 +2519,13 @@ target_link_libraries(ldpctest PRIVATE asn1_nr_rrc asn1_lte_rrc)
 add_executable(nr_dlschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlschsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
+
+
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${T_SOURCE}
   ${SHLIB_LOADER_SOURCES}
@@ -2527,6 +2539,11 @@ target_link_libraries(nr_dlschsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 add_executable(nr_pbchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pbchsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
   ${T_SOURCE}
   ${SHLIB_LOADER_SOURCES}
   )
@@ -2539,6 +2556,11 @@ target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 #PUCCH ---> Prashanth
 add_executable(nr_pucchsim
+
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
@@ -2552,6 +2574,12 @@ target_link_libraries(nr_pucchsim PRIVATE
 target_link_libraries(nr_pucchsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 add_executable(nr_dlsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
+
+
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
@@ -2571,6 +2599,10 @@ target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 target_compile_definitions(nr_dlsim PUBLIC -DPHYSICAL_SIMULATOR)
 
 add_executable(nr_prachsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/prachsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR1_DIR}/SCHED_NR/phy_procedures_nr_common.c
@@ -2589,6 +2621,11 @@ target_link_libraries(nr_prachsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 add_executable(nr_ulschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulschsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
   ${OPENAIR_DIR}/executables/softmodem-common.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   ${T_SOURCE}
@@ -2604,6 +2641,13 @@ add_executable(nr_ulsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/executables/softmodem-common.c
+
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/notification_queue.c
+  ${OPENAIR_DIR}/common/utils/thread_pool/seq_ring_task.c
+
+
+
   ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
   ${OPENAIR1_DIR}/SIMULATION/ETH_TRANSPORT/netlink_init.c
   ${NR_UE_RRC_DIR}/rrc_nsa.c

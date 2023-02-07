@@ -46,6 +46,8 @@
 #include "defs.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/LOG/log.h"
+#include "common/utils/thread_pool/task_manager.h"
+
 #include <syscall.h>
 //#define DEBUG_ULSCH_DECODING
 //#define gNB_DEBUG_TRACE
@@ -162,7 +164,9 @@ void clean_gNB_ulsch(NR_gNB_ULSCH_t *ulsch)
 #endif
 
 void nr_processULSegment(void* arg) {
+
   ldpcDecode_t *rdata = (ldpcDecode_t*) arg;
+
   PHY_VARS_gNB *phy_vars_gNB = rdata->gNB;
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
@@ -252,6 +256,15 @@ void nr_processULSegment(void* arg) {
     stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
   }
 
+  // don't run LDPC decoding if some other thread had a failure 
+  // nr_rate_matching_ldpc_rx() must be called to feed d[r] in all cases
+  // so this test has to come after the call to nr_rate_matching_ldpc_rx()
+
+#ifdef TASK_MANAGER
+  if(*rdata->cancel_dec == 1)
+    return;
+#endif
+
   memset(ulsch_harq->c[r],0,Kr_bytes);
 
   if (ulsch_harq->C == 1) {
@@ -307,11 +320,20 @@ void nr_processULSegment(void* arg) {
       LOG_I(PHY,"CRC NOK\n");
 #endif
     rdata->decodeIterations = max_ldpc_iterations + 1;
+     /* set skip_ldpc_decoding to 1 to indicate to remaining threads that they shall not run LDPC decoding */
+#ifdef TASK_MANAGER
+    *rdata->cancel_dec = 1; 
+#endif
   }
 
   for (int m=0; m < Kr>>3; m ++) {
     ulsch_harq->c[r][m]= (uint8_t) llrProcBuf[m];
   }
+
+#ifdef TASK_MANAGER
+  if(phy_vars_gNB->ldpc_offload_flag == 0)
+    nr_postDecode(rdata->gNB, rdata);
+#endif
 
   //stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
 }
@@ -623,11 +645,25 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   else {
     dtx_det = 0;
 
+#ifdef TASK_MANAGER
+    ldpcDecode_t* arr = calloc(harq_process->C, sizeof(ldpcDecode_t));
+    assert(arr != NULL && "Memory exhausted");
+    int idx_arr = 0;
+   _Atomic int cancel_dec = 0;
+#endif
+
     for (int r = 0; r < harq_process->C; r++) {
       int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
+      
+#ifdef TASK_MANAGER
+    ldpcDecode_t* rdata = &arr[idx_arr];
+    ++idx_arr;
+    rdata->cancel_dec = &cancel_dec;
+#else
       union ldpcReqUnion id = {.s = {ulsch->rnti, frame, nr_tti_rx, 0, 0}};
       notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_t), id.p, &phy_vars_gNB->respDecode, &nr_processULSegment);
       ldpcDecode_t *rdata = (ldpcDecode_t *)NotifiedFifoData(req);
+#endif
       decParams.R = nr_get_R_ldpc_decoder(pusch_pdu->pusch_data.rv_index, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->round);
       rdata->gNB = phy_vars_gNB;
       rdata->ulsch_harq = harq_process;
@@ -647,13 +683,25 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       rdata->ulsch = ulsch;
       rdata->ulsch_id = ULSCH_id;
       rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
+#ifdef TASK_MANAGER
+      task_t t = { .args = rdata, .func =  &nr_processULSegment };
+      async_task_manager(&phy_vars_gNB->man, t);
+#else
       pushTpool(&phy_vars_gNB->threadPool, req);
+#endif
       phy_vars_gNB->nbDecode++;
       LOG_D(PHY, "Added a block to decode, in pipe: %d\n", phy_vars_gNB->nbDecode);
       r_offset += E;
       offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
       //////////////////////////////////////////////////////////////////////////////////////////
     }
+
+#ifdef TASK_MANAGER
+     stop_spin_task_manager(&phy_vars_gNB->man);
+     wait_all_spin_task_manager(&phy_vars_gNB->man);
+     free(arr);
+#endif
+
   }
   return 1;
 }
