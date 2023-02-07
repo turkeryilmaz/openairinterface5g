@@ -37,11 +37,12 @@
 #include "PHY/phy_extern_nr_ue.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
+#include "openair1/PHY/NR_REFSIG/ss_pbch_nr.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
 #define k2 ((long long int) (1024-k1))
-
 //#define DEBUG_MEAS_RRC
 //#define DEBUG_MEAS_UE
 //#define DEBUG_RANK_EST
@@ -221,6 +222,40 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
     ssb_index,
     ue->measurements.ssb_rsrp_dBm[ssb_index],
     rsrp);
+}
+
+// This function implements:
+// - Sidelink SS reference signal received power (SSS-RSRP)
+// Measurement units:
+// - RSRP:    W (dBW)
+// - RX Gain  dB
+void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                    int ssb_index,
+                                    UE_nr_rxtx_proc_t *proc) {
+  uint32_t rsrp = 0;
+  int nb_re = 0;
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+    for (int i = 0; i < NUM_SSS_SYMBOLS; i++) {
+      uint8_t l_sss = (SSS_START_IDX + i) % ue->frame_parms.symbols_per_slot;
+      int16_t *rxF_sss = (int16_t *)&ue->common_vars.rxdataF[aarx][(l_sss * ue->frame_parms.ofdm_symbol_size)];
+      for (int k = SPSS_SSSS_SUB_CARRIER_START; k < (SPSS_SSSS_SUB_CARRIER_START + LENGTH_SSS_NR); k++) {
+#ifdef DEBUG_MEAS_UE
+      LOG_I(NR_PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k * 2], rxF_sss[k * 2 + 1]);
+#endif
+        rsrp += (((int32_t)rxF_sss[k * 2] * rxF_sss[k * 2]) + ((int32_t)rxF_sss[k * 2 + 1] * rxF_sss[k * 2 + 1]));
+        nb_re++;
+      }
+    }
+  }
+
+  rsrp /= nb_re;
+  ue->measurements.ssb_rsrp_dBm[ssb_index] = 10 * log10(rsrp) +
+                                             30 - 10 * log10(pow(2, 30)) -
+                                             ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
+                                             dB_fixed(ue->frame_parms.ofdm_symbol_size);
+
+  LOG_I(NR_PHY, "In %s: [UE %d] ssb %d SS-RSRP: %d dBm/RE (%d)\n",
+        __FUNCTION__, ue->Mod_id, ssb_index, ue->measurements.ssb_rsrp_dBm[ssb_index], rsrp);
 }
 
 // This function computes the received noise power

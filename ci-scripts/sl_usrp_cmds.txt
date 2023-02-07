@@ -1,0 +1,23 @@
+# The lines containing 'usrp' and starts with 'syncref' or 'nearby' will be valid until it does not contain backspace.
+
+### RX Nearby UE ###
+nearby_usrp_cmd = cd $HOME/openairinterface5g/ci-scripts; \
+python3 sl_rx_agent.py --cmd \
+'sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
+$HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
+--sl-mode 2 -r 106 --numerology 1 --band 38 -C 3600000000 --ue-rxgain 90 \
+--usrp-args "type=n3xx,addr=192.168.20.2,subdev=A:0,master_clock_rate=122.88e6" \
+--log_config.global_log_options time,nocolor \
+> ~/rx.log 2>&1' \
+--nid1 10 --nid2 1
+
+
+### TX SyncRef UE ###
+
+syncref_usrp_cmd = \
+sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
+$HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
+--sl-mode 2 --sync-ref -r 106 --numerology 1 --band 38 -C 3600000000 --ue-txgain 8 \
+--usrp-args "type=n3xx,addr=192.168.10.2,subdev=A:0,master_clock_rate=122.88e6" \
+--log_config.global_log_options time,nocolor\
+> ~/tx.log 2>&1

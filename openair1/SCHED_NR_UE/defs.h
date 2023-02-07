@@ -110,6 +110,13 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, nr_phy_
 */
 void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint8_t gNB_id);
 
+/*! \brief check weather if current slot in current frame is suitable for SL SSB time slot allocation.
+  @param ue Pointer to UE variables on which to act
+  @param frame frame number 
+  @param slot slot number
+*/
+bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot);
+
 /*! \brief Scheduling for UE RX procedures in normal subframes.
   @param ue                     Pointer to UE variables on which to act
   @param proc                   Pointer to proc information

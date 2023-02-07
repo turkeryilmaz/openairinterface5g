@@ -103,7 +103,9 @@ extern "C"
 #define CONFIG_L1_EMULATOR       "Run in L1 emulated mode (disable PHY layer)\n"
 #define CONFIG_HLP_CONTINUOUS_TX "perform continuous transmission, even in TDD mode (to work around USRP issues)\n"
 #define CONFIG_HLP_STATS_DISABLE "disable globally the stats generation and persistence"
-#define CONFIG_HLP_SYNCH_REF     "Synch Reference in Sidelink\n"
+#define CONFIG_HLP_SYNC_REF      "Sync Reference in Sidelink\n"
+#define CONFIG_HLP_NID1          "Set NID1 value in Sidelink\n"
+#define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters common to eNodeB and UE                                                          */
@@ -136,7 +138,9 @@ extern "C"
 #define NON_STOP            softmodem_params.non_stop
 #define EMULATE_L1          softmodem_params.emulate_l1
 #define CONTINUOUS_TX       softmodem_params.continuous_tx
-#define SYNCH_REF           softmodem_params.sync_ref
+#define SYNC_REF            softmodem_params.sync_ref
+#define NID1                softmodem_params.nid1
+#define NID2                softmodem_params.nid2
 
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
 
@@ -180,7 +184,9 @@ extern int usrp_tx_thread;
     {"emulate-l1",           CONFIG_L1_EMULATOR,      PARAMFLAG_BOOL, iptr:&EMULATE_L1,                   defintval:0,           TYPE_INT,    0},                     \
     {"continuous-tx",        CONFIG_HLP_CONTINUOUS_TX,PARAMFLAG_BOOL, iptr:&CONTINUOUS_TX,                defintval:0,           TYPE_INT,    0},                     \
     {"disable-stats",        CONFIG_HLP_STATS_DISABLE, PARAMFLAG_BOOL, iptr:&stats_disabled,              defintval:0,           TYPE_INT,    0},                     \
-    {"sync-ref",             CONFIG_HLP_SYNCH_REF,    PARAMFLAG_BOOL, iptr:&SYNCH_REF,                    defintval:0,           TYPE_INT,    0},                     \
+    {"sync-ref",             CONFIG_HLP_SYNC_REF,     PARAMFLAG_BOOL, iptr:&SYNC_REF,                     defintval:0,           TYPE_INT,    0},                     \
+    {"nid1",                 CONFIG_HLP_NID1,         0,              iptr:&NID1,                         defintval:10,          TYPE_INT,    0},                     \
+    {"nid2",                 CONFIG_HLP_NID2,         0,              iptr:&NID2,                         defintval:1,           TYPE_INT,    0},                     \
   }
 
 #define CONFIG_HLP_NSA           "Enable NSA mode \n"
@@ -280,6 +286,8 @@ typedef struct {
   int            emulate_l1;
   int            continuous_tx;
   int            sync_ref;
+  int            nid1;
+  int            nid2;
 } softmodem_params_t;
 
 extern uint64_t get_softmodem_optmask(void);

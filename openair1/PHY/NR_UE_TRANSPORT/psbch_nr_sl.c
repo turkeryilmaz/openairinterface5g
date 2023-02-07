@@ -193,7 +193,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
                          uint8_t n_hf,
                          int sfn,
                          NR_DL_FRAME_PARMS *frame_parms) {
-  LOG_D(NR_PHY, "PSBCH SL generation started\n");
+  LOG_I(NR_PHY, "PSBCH SL generation started\n");
 
   /* payload is 56 bits */
   PSBCH_payload psbch_payload;             // NR Side Link Payload for Rel 16

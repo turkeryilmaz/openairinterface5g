@@ -246,6 +246,7 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_i
                                   proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
     }
     stop_meas(&ue->dlsch_channel_estimation_stats);
+    nr_ue_sl_ssb_rsrp_measurements(ue, temp_ptr->i_ssb, proc);
     fapiPsbch_t result;
     ret = nr_rx_psbch(ue, proc, estimateSz, dl_ch_estimates, ue->psbch_vars[0], frame_parms,
                       0, temp_ptr->i_ssb, SISO, phy_pdcch_config, &result);
@@ -278,7 +279,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   LOG_D(NR_PHY, "nr_initial SL sync ue RB_DL %d\n", fp->N_RB_DL);
   int ret = -1;
-  int32_t sync_pos;
+  int32_t sync_pos = 0;
   for (int is = 0; is < n_frames; is++) {
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
     if (sync_pos >= fp->nb_prefix_samples) {
