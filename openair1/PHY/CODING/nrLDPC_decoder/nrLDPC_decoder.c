@@ -743,13 +743,15 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
        if (BG == 1) 
        {
-            nrLDPC_llr2CnProcBuf_BG1(p_lut, llrRes, procBuf, Z);
-            pcRes = nrLDPC_cnProcPc_BG1(p_lut, procBuf, Z);
+           nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
+           nrLDPC_llr2CnProcBuf_BG1(p_lut, llrOut, procBuf, Z);
+           pcRes = nrLDPC_cnProcPc_BG1(p_lut, procBuf, Z);
        }
        else
        {
-            nrLDPC_llr2CnProcBuf_BG2(p_lut, llrRes, procBuf, Z);
-            pcRes = nrLDPC_cnProcPc_BG2(p_lut, procBuf, Z);
+           nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
+           nrLDPC_llr2CnProcBuf_BG2(p_lut, llrOut, procBuf, Z);
+           pcRes = nrLDPC_cnProcPc_BG2(p_lut, procBuf, Z);
        }
 #ifdef NR_LDPC_PROFILER_DETAIL
        stop_meas(&p_profiler->cnProcPc);
