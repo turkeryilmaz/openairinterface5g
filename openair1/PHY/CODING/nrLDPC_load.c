@@ -43,7 +43,8 @@
 
 /* function description array, to be used when loading the encoding/decoding shared lib */
 static loader_shlibfunc_t shlib_fdesc[3];
-
+/* function description array, to be used when loading LDPC decoding offload shared lib for T1/T2 card */
+static loader_shlibfunc_t shlib_decoffload_fdesc[1];
 /* arguments used when called from phy simulators exec's which do not use the config module */
 /* arg is used to initialize the config module so that the loader works as expected */
 char *arg[64]={"ldpctest",NULL};
@@ -71,33 +72,58 @@ int load_nrLDPClib(char *version) {
 return 0;
 }
 
-int load_nrLDPClib_offload(void) {
-     loader_shlibfunc_t shlib_decoffload_fdesc; 
-     
-     shlib_decoffload_fdesc.fname = "nrLDPC_decod_offload";
-     int ret=load_module_shlib("ldpc_t1",&shlib_decoffload_fdesc,1,NULL);
-     AssertFatal( (ret >= 0),"Error loading ldpc decoder offload");
-     nrLDPC_decoder_offload = (nrLDPC_decoffloadfunc_t)shlib_decoffload_fdesc.fptr;
+int load_nrLDPClib_offload(char *version) {
+  char *ptr = (char*)config_get_if();
+  char libname[64]="ldpc";
+  char *shlibversion=NULL;
 
+  if (ptr == NULL) {
+    load_configmodule(1,arg,CONFIG_ENABLECMDLINEONLY);
+    logInit();
+  }
+
+  shlib_decoffload_fdesc[0].fname = "nrLDPC_decod_offload";
+  int ret;
+  if (version) {
+    ret = load_module_version_shlib(libname,version,shlib_decoffload_fdesc,sizeof(shlib_decoffload_fdesc)/sizeof(loader_shlibfunc_t),NULL);
+  } else if (version == NULL) {
+    ret=load_module_shlib(libname,shlib_decoffload_fdesc,sizeof(shlib_decoffload_fdesc)/sizeof(loader_shlibfunc_t),NULL);
+    paramdef_t LoaderParams[] ={{"shlibversion", NULL, 0, strptr:&shlibversion, defstrval:"", TYPE_STRING, 0, NULL}};
+    ret = config_get(LoaderParams,sizeof(LoaderParams)/sizeof(paramdef_t), "loader.ldpc");
+    version = shlibversion;
+  }
+
+  AssertFatal( (ret >= 0),"Error loading ldpc offload decoder");
+  nrLDPC_decoder_offload = (nrLDPC_decoffloadfunc_t)shlib_decoffload_fdesc[0].fptr;
   t_nrLDPC_dec_params decParams;
   t_nrLDPC_dec_params* p_decParams    = &decParams;
+
   int8_t   l[68*384];
   int8_t llrProcBuf[22*384];
 
   p_decParams->Z = 384;
   p_decParams->BG = 1;
 
+  //paramdef_t LoaderParams[] ={{"shlibversion", NULL, 0, strptr:&shlibversion, defstrval:"", TYPE_STRING, 0, NULL}};
+  //ret = config_get(LoaderParams,sizeof(LoaderParams)/sizeof(paramdef_t), "loader.ldpc_offload");
+  if (!strcmp(version,"_T1")) {
+    p_decParams->lib_version = 1;
+  } else if (!strcmp(version,"_T2")) {
+    p_decParams->lib_version = 2;
+  } else {
+    ret = 0;
+    AssertFatal( (ret = 0),"Incorrect library version");
+  }
+
   AssertFatal(nrLDPC_decoder_offload(p_decParams,0, 0,
-				     1,
-				     0,
-				     0,
-				     25344,
-				     8,
-				     l, 
-				     llrProcBuf, 0)>=0,
-	      "error loading LDPC decoder offload library\n");
-
-
+                                     1,
+                                     0,
+                                     0,
+                                     25344,
+                                     8,
+                                     l,
+                                     llrProcBuf, 0)>=0,
+              "error loading LDPC decoder offload library\n");
   return 0;
 }
 

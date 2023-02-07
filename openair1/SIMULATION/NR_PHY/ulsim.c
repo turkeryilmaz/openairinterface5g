@@ -203,6 +203,8 @@ int main(int argc, char **argv)
   int ldpc_offload_flag = 0;
   uint8_t max_rounds = 4;
   int chest_type[2] = {0};
+  char *ldpc_offload_version=NULL;
+  ldpc_offload_version = "";
   int enable_ptrs = 0;
   int modify_dmrs = 0;
   /* L_PTRS = ptrs_arg[0], K_PTRS = ptrs_arg[1] */
@@ -237,7 +239,7 @@ int main(int argc, char **argv)
   /* initialize the sin-cos table */
    InitSinLUT();
 
-  while ((c = getopt(argc, argv, "a:b:c:d:ef:g:h:i:kl:m:n:op:q:r:s:t:u:v:w:y:z:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:")) != -1) {
+  while ((c = getopt(argc, argv, "a:b:c:d:ef:g:h:i:kl:m:n:o:p:q:r:s:t:u:v:w:y:z:C:F:G:H:I:M:N:PR:S:T:U:L:ZW:E:")) != -1) {
     printf("handling optarg %c\n",c);
     switch (c) {
 
@@ -354,6 +356,7 @@ int main(int argc, char **argv)
 
     case 'o':
       ldpc_offload_flag = 1;
+      ldpc_offload_version = strdup(optarg);
       break;
       
     case 'p':
@@ -557,7 +560,6 @@ int main(int argc, char **argv)
       printf("-E {SRS: [0] Disabled, [1] Enabled} e.g. -E 1\n");
       exit(-1);
       break;
-
     }
   }
   
@@ -670,6 +672,20 @@ int main(int argc, char **argv)
   gNB->ldpc_offload_flag = ldpc_offload_flag;
   gNB->chest_freq = chest_type[0];
   gNB->chest_time = chest_type[1];
+
+  //phy_init_nr_gNB(gNB);
+
+  if (gNB->ldpc_offload_flag == 1) {
+    char version [] = "_";
+    strcat(version,ldpc_offload_version);
+    if (!strcmp(ldpc_offload_version,"T1") || !strcmp(ldpc_offload_version,"T2")){
+       strcpy(gNB->ldpc_offload_version,version);
+    } else {
+      AssertFatal(strcmp(ldpc_offload_version,"") != 0, "Select offload library version: -o T1 / -o T2\n");
+      AssertFatal(strcmp(ldpc_offload_version,"T1") == 0 || !strcmp(ldpc_offload_version,"T2") == 0,
+                         "Unsupported offload library version\n");
+    }
+  }
 
   phy_init_nr_gNB(gNB);
   /* RU handles rxdataF, and gNB just has a pointer. Here, we don't have an RU,

@@ -88,6 +88,7 @@ typedef struct nrLDPC_dec_params {
     uint8_t numMaxIter; /**< Maximum number of iterations */
     int block_length;
     e_nrLDPC_outMode outMode; /**< Output format */
+    int lib_version; /** Indication of T1 or T2 loaded lib, 1 -> libldpc_offload_T1.so, T1 card used, analogically for T2 card **/
 } t_nrLDPC_dec_params;
 
 /**

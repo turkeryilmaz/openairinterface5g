@@ -55,32 +55,6 @@
 #define MAX_QUEUES RTE_MAX_LCORE
 #define TEST_REPETITIONS 1 
 
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
-#include <fpga_lte_fec.h>
-#define FPGA_LTE_PF_DRIVER_NAME ("intel_fpga_lte_fec_pf")
-#define FPGA_LTE_VF_DRIVER_NAME ("intel_fpga_lte_fec_vf")
-#define VF_UL_4G_QUEUE_VALUE 4
-#define VF_DL_4G_QUEUE_VALUE 4
-#define UL_4G_BANDWIDTH 3
-#define DL_4G_BANDWIDTH 3
-#define UL_4G_LOAD_BALANCE 128
-#define DL_4G_LOAD_BALANCE 128
-#define FLR_4G_TIMEOUT 610
-#endif
-
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC
-#include <rte_pmd_fpga_5gnr_fec.h>
-#define FPGA_5GNR_PF_DRIVER_NAME ("intel_fpga_5gnr_fec_pf")
-#define FPGA_5GNR_VF_DRIVER_NAME ("intel_fpga_5gnr_fec_vf")
-#define VF_UL_5G_QUEUE_VALUE 4
-#define VF_DL_5G_QUEUE_VALUE 4
-#define UL_5G_BANDWIDTH 3
-#define DL_5G_BANDWIDTH 3
-#define UL_5G_LOAD_BALANCE 128
-#define DL_5G_LOAD_BALANCE 128
-#define FLR_5G_TIMEOUT 610
-#endif
-
 #define OPS_CACHE_SIZE 256U
 #define OPS_POOL_SIZE_MIN 511U /* 0.5K per queue */
 
@@ -362,97 +336,6 @@ add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
 	unsigned int nb_queues;
 	enum rte_bbdev_op_type op_type = RTE_BBDEV_OP_LDPC_DEC; 
 
-/* Configure fpga lte fec with PF & VF values
- * if '-i' flag is set and using fpga device
- */
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
-	if ((get_init_device() == true) &&
-		(!strcmp(info->drv.driver_name, FPGA_LTE_PF_DRIVER_NAME))) {
-		struct fpga_lte_fec_conf conf;
-		unsigned int i;
-
-		printf("Configure FPGA LTE FEC Driver %s with default values\n",
-				info->drv.driver_name);
-
-		/* clear default configuration before initialization */
-		memset(&conf, 0, sizeof(struct fpga_lte_fec_conf));
-
-		/* Set PF mode :
-		 * true if PF is used for data plane
-		 * false for VFs
-		 */
-		conf.pf_mode_en = true;
-
-		for (i = 0; i < FPGA_LTE_FEC_NUM_VFS; ++i) {
-			/* Number of UL queues per VF (fpga supports 8 VFs) */
-			conf.vf_ul_queues_number[i] = VF_UL_4G_QUEUE_VALUE;
-			/* Number of DL queues per VF (fpga supports 8 VFs) */
-			conf.vf_dl_queues_number[i] = VF_DL_4G_QUEUE_VALUE;
-		}
-
-		/* UL bandwidth. Needed for schedule algorithm */
-		conf.ul_bandwidth = UL_4G_BANDWIDTH;
-		/* DL bandwidth */
-		conf.dl_bandwidth = DL_4G_BANDWIDTH;
-
-		/* UL & DL load Balance Factor to 64 */
-		conf.ul_load_balance = UL_4G_LOAD_BALANCE;
-		conf.dl_load_balance = DL_4G_LOAD_BALANCE;
-
-		/**< FLR timeout value */
-		conf.flr_time_out = FLR_4G_TIMEOUT;
-
-		/* setup FPGA PF with configuration information */
-		ret = fpga_lte_fec_configure(info->dev_name, &conf);
-		TEST_ASSERT_SUCCESS(ret,
-				"Failed to configure 4G FPGA PF for bbdev %s",
-				info->dev_name);
-	}
-#endif
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC
-	if ((get_init_device() == true) &&
-		(!strcmp(info->drv.driver_name, FPGA_5GNR_PF_DRIVER_NAME))) {
-		struct fpga_5gnr_fec_conf conf;
-		unsigned int i;
-
-		printf("Configure FPGA 5GNR FEC Driver %s with default values\n",
-				info->drv.driver_name);
-
-		/* clear default configuration before initialization */
-		memset(&conf, 0, sizeof(struct fpga_5gnr_fec_conf));
-
-		/* Set PF mode :
-		 * true if PF is used for data plane
-		 * false for VFs
-		 */
-		conf.pf_mode_en = true;
-
-		for (i = 0; i < FPGA_5GNR_FEC_NUM_VFS; ++i) {
-			/* Number of UL queues per VF (fpga supports 8 VFs) */
-			conf.vf_ul_queues_number[i] = VF_UL_5G_QUEUE_VALUE;
-			/* Number of DL queues per VF (fpga supports 8 VFs) */
-			conf.vf_dl_queues_number[i] = VF_DL_5G_QUEUE_VALUE;
-		}
-
-		/* UL bandwidth. Needed for schedule algorithm */
-		conf.ul_bandwidth = UL_5G_BANDWIDTH;
-		/* DL bandwidth */
-		conf.dl_bandwidth = DL_5G_BANDWIDTH;
-
-		/* UL & DL load Balance Factor to 64 */
-		conf.ul_load_balance = UL_5G_LOAD_BALANCE;
-		conf.dl_load_balance = DL_5G_LOAD_BALANCE;
-
-		/**< FLR timeout value */
-		conf.flr_time_out = FLR_5G_TIMEOUT;
-
-		/* setup FPGA PF with configuration information */
-		ret = fpga_5gnr_fec_configure(info->dev_name, &conf);
-		TEST_ASSERT_SUCCESS(ret,
-				"Failed to configure 5G FPGA PF for bbdev %s",
-				info->dev_name);
-	}
-#endif
 	nb_queues = RTE_MIN(rte_lcore_count(), info->drv.max_num_queues);
 	nb_queues = RTE_MIN(nb_queues, (unsigned int) MAX_QUEUES);
 
@@ -825,7 +708,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		ops[i]->ldpc_dec.q_m = p_offloadParams->Qm; 
 		ops[i]->ldpc_dec.n_filler = p_offloadParams->F; 
 		ops[i]->ldpc_dec.n_cb = p_offloadParams->n_cb;
-		ops[i]->ldpc_dec.iter_max = 20; 
+		ops[i]->ldpc_dec.iter_max = 10;
 		ops[i]->ldpc_dec.rv_index = p_offloadParams->rv; 
 		ops[i]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE; //|RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP; 
 		ops[i]->ldpc_dec.code_block_mode = 1; //ldpc_dec->code_block_mode;
@@ -1148,7 +1031,7 @@ pmd_lcore_ldpc_dec(void *arg)
 		tp->iter_count = RTE_MAX(ops_enq[i]->ldpc_dec.iter_count,
 				tp->iter_count);
 	}
-
+	//printf("ITER %d \n", tp->iter_count);
 	ret = retrieve_ldpc_dec_op(ops_deq, num_ops, ref_op,
 				tp->op_params->vector_mask, p_out);
 		TEST_ASSERT_SUCCESS(ret, "Validation failed!");
@@ -1300,7 +1183,7 @@ start_pmd_dec(struct active_device *ad,
 
 	/* Print throughput if interrupts are disabled and test passed */
 	if (!intr_enabled) {
-	  ///print_dec_throughput(t_params, num_lcores);
+	  //print_dec_throughput(t_params, num_lcores);
 	  //rte_free(t_params);
 	  //	total_time1 = rte_rdtsc_precise() - start_time1;
 
@@ -1407,80 +1290,82 @@ struct rte_mbuf *m_head[DATA_NUM_TYPES];
 struct thread_params *t_params;
 
 
-int32_t nrLDPC_decod_offload(t_nrLDPC_dec_params* p_decParams, uint8_t harq_pid, uint8_t ulsch_id, uint8_t C, uint8_t rv, uint16_t F, 
-			uint32_t E, uint8_t Qm, int8_t* p_llr, int8_t* p_out, uint8_t mode) 
+int32_t nrLDPC_decod_offload(t_nrLDPC_dec_params* p_decParams, uint8_t harq_pid,
+			     uint8_t ulsch_id, uint8_t C, uint8_t rv, uint16_t F,
+			     uint32_t E, uint8_t Qm, int8_t* p_llr, int8_t* p_out,
+			     uint8_t mode)
 {
-    	t_nrLDPCoffload_params offloadParams;
-    	t_nrLDPCoffload_params* p_offloadParams    = &offloadParams;
-    	uint64_t start=rte_rdtsc_precise();
-	/*uint64_t start_time;//=rte_rdtsc_precise();
-	uint64_t start_time1; //=rte_rdtsc_precise();
-	uint64_t total_time=0, total_time1=0;*/
-	uint32_t numIter = 0;
-	int ret;
-	/*uint64_t start_time_init;
-	  uint64_t total_time_init=0;*/
+  t_nrLDPCoffload_params offloadParams;
+  t_nrLDPCoffload_params* p_offloadParams    = &offloadParams;
+  uint32_t numIter = 0;
+  int ret;
+  int argc_re;
+  char *argv_re[10];
+  if (p_decParams->lib_version == 2) {
+    argc_re=8;
+    argv_re[0] = "/opt/accelercomm/ACL_BBDEV_latest/dpdk/build/app/testbbdev";
+    argv_re[1] = "--vdev";
+    argv_re[2] = "baseband_accl_ldpc_sw";
+    argv_re[3] = "-l";
+    argv_re[4] = "1-4";
+    argv_re[5] = "-a";
+    argv_re[6] = "21:00.0";
+    argv_re[7] = "--";
+  } else if (p_decParams->lib_version == 1 ) {
+    argc_re=7;
+    argv_re[0] = "/home/eurecom/hongzhi/dpdk-20.05orig/build/app/testbbdev";
+    argv_re[1] = "-l";
+    argv_re[2] = "31";
+    argv_re[3] = "-w";
+    argv_re[4] = "b0:00.0";
+    argv_re[5] = "--file-prefix=b6";
+    argv_re[6] = "--";
+  } else {
+    argc_re=1;
+    argv_re[0] = "/home/eurecom/hongzhi/dpdk-20.05orig/build/app/testbbdev";
+  }
 
-	/*
-	int argc_re=2;
-	char *argv_re[2];
-	argv_re[0] = "/home/eurecom/hongzhi/dpdk-20.05orig/build/app/testbbdev";
-	argv_re[1] = "--";
-	*/
+  test_params.num_ops=1;
+  test_params.burst_sz=1;
+  test_params.num_lcores=1;
+  test_params.num_tests = 1;
+  struct active_device *ad;
+  ad = &active_devs[0];
+
+  int socket_id=0;
+  int i,f_ret;
+  struct rte_bbdev_info info;
+  enum rte_bbdev_op_type op_type = RTE_BBDEV_OP_LDPC_DEC;
 	
-	int argc_re=7;
-        char *argv_re[7];
-        argv_re[0] = "/home/eurecom/hongzhi/dpdk-20.05orig/build/app/testbbdev";
-        argv_re[1] = "-l";
-        argv_re[2] = "31";
-        argv_re[3] = "-w";
-        argv_re[4] = "b0:00.0";
-        argv_re[5] = "--file-prefix=b6";
-        argv_re[6] = "--";
-	
-	test_params.num_ops=1; 
-	test_params.burst_sz=1;
-	test_params.num_lcores=1;		
-	test_params.num_tests = 1;
-	struct active_device *ad;
-        ad = &active_devs[0];
+  switch (mode) {
+    case 0:
+      ret = rte_eal_init(argc_re, argv_re);
+      if (ret<0) {
+        printf("Could not init EAL, ret %d\n",ret);
+        return(-1);
+      }
+      ret = device_setup();
+      if (ret != TEST_SUCCESS) {
+        printf("Couldn't setup device");
+        return(-1);
+      }
+      ret=ut_setup();
+      if (ret != TEST_SUCCESS) {
+        printf("Couldn't setup ut");
+        return(-1);
+      }
 
-	int socket_id=0;
-        int i,f_ret;
-        struct rte_bbdev_info info;
-        enum rte_bbdev_op_type op_type = RTE_BBDEV_OP_LDPC_DEC;
-	
-	switch (mode) {
-	case 0:	
-          ret = rte_eal_init(argc_re, argv_re);
-          if (ret<0) {
-            printf("Could not init EAL, ret %d\n",ret);
-            return(-1);
-          }
-          ret = device_setup();
-          if (ret != TEST_SUCCESS) {
-            printf("Couldn't setup device");
-            return(-1);
-          }
-          ret=ut_setup();
-          if (ret != TEST_SUCCESS) {
-            printf("Couldn't setup ut");
-            return(-1);
-          }
+      p_offloadParams->E = E;
+      p_offloadParams->n_cb = (p_decParams->BG==1)?(66*p_decParams->Z):(50*p_decParams->Z);
+      p_offloadParams->BG = p_decParams->BG;
+      p_offloadParams->Z = p_decParams->Z;
+      p_offloadParams->rv = rv;
+      p_offloadParams->F = F;
+      p_offloadParams->Qm = Qm;
 
-	  p_offloadParams->E = E;
-          p_offloadParams->n_cb = (p_decParams->BG==1)?(66*p_decParams->Z):(50*p_decParams->Z);
-          p_offloadParams->BG = p_decParams->BG;
-          p_offloadParams->Z = p_decParams->Z;
-          p_offloadParams->rv = rv;
-          p_offloadParams->F = F;
-          p_offloadParams->Qm = Qm;
-
-          op_params = rte_zmalloc(NULL,
-                        sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE);
-          TEST_ASSERT_NOT_NULL(op_params, "Failed to alloc %zuB for op_params",
-                               RTE_ALIGN(sizeof(struct test_op_params),
-                                         RTE_CACHE_LINE_SIZE));
+      op_params = rte_zmalloc(NULL, sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE);
+      TEST_ASSERT_NOT_NULL(op_params, "Failed to alloc %zuB for op_params",
+                           RTE_ALIGN(sizeof(struct test_op_params), RTE_CACHE_LINE_SIZE));
 	  
 	  rte_bbdev_info_get(ad->dev_id, &info);
 	  socket_id = GET_SOCKET(info.socket_id);

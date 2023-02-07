@@ -538,11 +538,19 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
 
   load_nrLDPClib(NULL);
 
-  if (gNB->ldpc_offload_flag)
-    load_nrLDPClib_offload();
-
   gNB->max_nb_pdsch = MAX_MOBILES_PER_GNB;
-
+  if (gNB->ldpc_offload_flag){
+    //char *shlibversion=NULL;
+    //int ret = 0;
+    //paramdef_t LoaderParams[] ={{"shlibversion", NULL, 0, strptr:&shlibversion, defstrval:"", TYPE_STRING, 0, NULL}};
+    //ret = config_get(LoaderParams,sizeof(LoaderParams)/sizeof(paramdef_t), "loader.ldpc_offload");
+    if (!strcmp(gNB->ldpc_offload_version,"")) {
+      load_nrLDPClib_offload(NULL);
+    } else {
+      printf("VERSION: %s \n",gNB->ldpc_offload_version);
+      load_nrLDPClib_offload(gNB->ldpc_offload_version);
+    }
+  }
   init_codebook_gNB(gNB);
   init_ul_delay_table(fp);
 
