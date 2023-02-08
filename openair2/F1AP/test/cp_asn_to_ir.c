@@ -4051,3 +4051,75 @@ ue_ctx_mod_req_t cp_ue_ctx_mod_req_ir(F1AP_F1AP_PDU_t const* src_pdu)
   return dst;
 }
 
+static
+uint32_t cp_gnb_cu_ue_ctx_mod_resp(F1AP_UEContextModificationResponseIEs_t const*src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID);
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_UEContextModificationResponseIEs__value_PR_GNB_CU_UE_F1AP_ID);
+
+  assert(src->value.choice.GNB_CU_UE_F1AP_ID  < (1UL << 32) );
+  return src->value.choice.GNB_CU_UE_F1AP_ID; 
+}
+
+static
+uint32_t cp_gnb_du_ue_ctx_mod_resp(F1AP_UEContextModificationResponseIEs_t const* src)
+{
+  assert(src != NULL);
+
+  assert(src->id == F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID);
+  assert(src->criticality == F1AP_Criticality_reject);
+  assert(src->value.present == F1AP_UEContextModificationResponseIEs__value_PR_GNB_DU_UE_F1AP_ID);
+
+  assert(src->value.choice.GNB_DU_UE_F1AP_ID < (1UL << 32));
+  return src->value.choice.GNB_DU_UE_F1AP_ID; 
+}
+
+ue_ctx_mod_resp_t cp_ue_ctx_mod_resp_ir(F1AP_F1AP_PDU_t const* src_pdu)
+{
+  assert(src_pdu != NULL);
+
+  ue_ctx_mod_resp_t dst = {0}; 
+
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+
+  assert(src_pdu->present == F1AP_F1AP_PDU_PR_successfulOutcome);
+
+  F1AP_SuccessfulOutcome_t* src_out = src_pdu->choice.successfulOutcome;
+
+  assert(src_out->procedureCode == F1AP_ProcedureCode_id_UEContextModification);
+  assert(src_out->criticality == F1AP_Criticality_reject);
+  assert(src_out->value.present == F1AP_SuccessfulOutcome__value_PR_UEContextModificationResponse);
+
+  F1AP_UEContextModificationResponse_t const* src = &src_out->value.choice.UEContextModificationResponse;
+
+  assert(src->protocolIEs.list.count > 1 && "2 Mandatory items");
+
+  for(size_t i = 0; i < src->protocolIEs.list.count; ++i){
+    F1AP_UEContextModificationResponseIEs_t* ie =  src->protocolIEs.list.array[i];
+   
+     // gNB-CU UE F1AP ID
+     // Mandatory
+     // 9.3.1.4
+    if(ie->id == F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID){
+      dst.gnb_cu_ue = cp_gnb_cu_ue_ctx_mod_resp(ie); 
+
+      // gNB-DU UE F1AP ID
+      // Mandatory
+      // 9.3.1.5
+    } else if(ie->id ==  F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID){
+      dst.gnb_du_ue = cp_gnb_du_ue_ctx_mod_resp(ie); 
+
+    } else {
+      assert(0!=0 && "Unknown or not implemented");
+    }
+
+  }
+
+  return dst;
+}
+

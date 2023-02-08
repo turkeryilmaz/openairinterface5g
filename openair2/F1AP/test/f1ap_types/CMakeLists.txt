@@ -88,8 +88,10 @@ set(f1ap_src_types
   trans_bw.c
 
   ue_ctx_mod_request.c
+  ue_ctx_mod_resp.c
   ue_ctx_setup_request.c
   ue_ctx_setup_response.c
+
 
   ul_rrc_msg.c
   ul_up_tnl_info.c

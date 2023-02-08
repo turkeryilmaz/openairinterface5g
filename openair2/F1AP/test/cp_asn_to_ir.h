@@ -7,6 +7,7 @@
 #include "f1ap_types/ue_ctx_setup_request.h"
 #include "f1ap_types/ue_ctx_setup_response.h"
 #include "f1ap_types/ue_ctx_mod_request.h"
+#include "f1ap_types/ue_ctx_mod_resp.h"
 #include "f1ap_types/gnb_cu_conf_update.h"
 #include "f1ap_types/gnb_cu_conf_update_ack.h"
 #include "f1ap_types/init_ul_rrc_msg.h"
@@ -41,6 +42,8 @@ ul_rrc_msg_t cp_ul_rrc_msg_ir(F1AP_F1AP_PDU_t const* src_pdu);
 dl_rrc_msg_t cp_dl_rrc_msg_ir(F1AP_F1AP_PDU_t const* src_pdu);
 
 ue_ctx_mod_req_t cp_ue_ctx_mod_req_ir(F1AP_F1AP_PDU_t const* src_pdu);
+
+ue_ctx_mod_resp_t cp_ue_ctx_mod_resp_ir(F1AP_F1AP_PDU_t const* src_pdu);
 
 ////////////////
 ////////////////

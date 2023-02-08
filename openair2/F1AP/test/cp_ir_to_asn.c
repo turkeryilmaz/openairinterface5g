@@ -4309,3 +4309,167 @@ F1AP_F1AP_PDU_t cp_ue_ctx_mod_req_asn(ue_ctx_mod_req_t const* src)
   return pdu;
 }
 
+static
+F1AP_UEContextModificationResponseIEs_t* cp_gnb_cu_ue_ctx_mod_resp(uint32_t src)
+{
+  F1AP_UEContextModificationResponseIEs_t* dst = calloc(1, sizeof(F1AP_UEContextModificationResponseIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_CU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_UEContextModificationResponseIEs__value_PR_GNB_CU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_CU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+static
+F1AP_UEContextModificationResponseIEs_t* cp_gnb_du_ue_ctx_mod_resp(uint32_t src)
+{
+  F1AP_UEContextModificationResponseIEs_t* dst = calloc(1, sizeof(F1AP_UEContextModificationResponseIEs_t));
+  assert(dst != NULL && "Memory exhausted");
+
+  dst->id = F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID;
+  dst->criticality = F1AP_Criticality_reject;
+  dst->value.present = F1AP_UEContextModificationResponseIEs__value_PR_GNB_DU_UE_F1AP_ID;
+
+  dst->value.choice.GNB_DU_UE_F1AP_ID = src;
+
+  return dst;
+}
+
+F1AP_F1AP_PDU_t cp_ue_ctx_mod_resp_asn(ue_ctx_mod_resp_t const* src)
+{
+  assert(src != NULL);
+
+  F1AP_F1AP_PDU_t pdu = {0}; 
+
+  /* Create */
+  /* 0. pdu Type */
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
+  pdu.present = F1AP_F1AP_PDU_PR_successfulOutcome;
+  pdu.choice.successfulOutcome = calloc(1, sizeof(F1AP_SuccessfulOutcome_t));
+  assert(pdu.choice.successfulOutcome != NULL && "Memory exahusted");
+
+  F1AP_SuccessfulOutcome_t* dst_out = pdu.choice.successfulOutcome;
+
+  dst_out->procedureCode = F1AP_ProcedureCode_id_UEContextModification;
+  dst_out->criticality = F1AP_Criticality_reject;
+  dst_out->value.present =F1AP_SuccessfulOutcome__value_PR_UEContextModificationResponse;
+
+  F1AP_UEContextModificationResponse_t* dst = &dst_out->value.choice.UEContextModificationResponse;
+
+  
+  // gNB-CU UE F1AP ID
+  // Mandatory
+  // 9.3.1.4
+  F1AP_UEContextModificationResponseIEs_t* ie = cp_gnb_cu_ue_ctx_mod_resp(src->gnb_cu_ue);
+  int rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  ie = cp_gnb_du_ue_ctx_mod_resp(src->gnb_du_ue);
+  rc = ASN_SEQUENCE_ADD(&dst->protocolIEs.list, ie);
+  assert(rc == 0);
+
+  // Resource Coordination Transfer Container
+  // Optional
+  assert(src->res_coord_trans == NULL && "Not implemented"); 
+
+  // DU To CU RRC Information
+  // Optional
+  // 9.3.1.26
+  assert(src->du_to_cu_rrc == NULL && "Not implemented");
+
+  // DRB Setup List
+  // [0 - 64]
+  assert(src->sz_drb_setup == 0 && "Not implemented");
+  assert(src->drb_setup == NULL && "Not implemented"); 
+
+  // DRB Modified List
+  // [0 - 64]
+  assert(src->sz_drb_mod == 0 && "Not implemented");
+  assert(src->drb_mod == NULL && "Not implemented");
+
+  // SRB Failed to be Setup List
+  // [0 - 8] 
+  assert(src->sz_srb_failed == 0 && "Not implemented");
+  assert(src->srb_failed_setup == NULL && "Not implemented");
+
+  // SCell Failed To Setup List
+  // [0 - 32]
+  assert(src->sz_scell_failed_setup == 0 && "Not implemented");
+  assert(src-> scell_failed_setup == NULL && "Not implemented");
+
+  // DRB Failed to be Modified List
+  // [0 - 64]
+  assert(src->sz_drb_fail == 0 && "Not implemented");
+  assert(src->drb_failed_setup == NULL && "Not implemented");
+
+  // SRB Modified List
+  // [0 - 8]
+  assert(src->sz_srb_mod == 0 && "Not implemented");
+  assert(src-> srb_mod == NULL && "Not implemented");
+
+  // Full Configuration
+  // Optional
+  assert(src->full_conf == NULL && "Not implemented");
+
+  // BH RLC Channel Setup List
+  // [0 - 65536]
+  // 9.3.1.113
+  // BIT STRING (SIZE(16))
+  assert(src->sz_bh_rlc_chn_stp == 0 && "Not implemented");
+  assert(src->bh_rlc_chn_stp == NULL && "Not implemented"); 
+
+  // BH RLC Channel Failed to be Setup List
+  // [0 - 65536]
+  assert(src->sz_bh_rlc_chn_failed_tbs == 0 && "Not implemented");
+  assert(src->bh_rlc_chn_failed_tbs == NULL && "Not implemented");
+
+  // BH RLC Channel Modified List
+  // [0 - 65536]
+  // 9.3.1.113
+  // BIT STRING (SIZE(16))
+  assert(src->sz_bh_rlc_chn_mod == 0 && "Not implemented");
+  assert(src->bh_rlc_chn_mod == NULL && "Not implemented"); 
+
+  // BH RLC Channel Failed to be Modified List
+  // [0 - 65536]
+  assert(src->sz_bh_rlc_chn_failed_mod == 0 && "Not implemented");
+  assert(src->bh_rlc_chn_failed_mod == NULL && "Not implemented");
+
+  // SL DRB Setup List
+  // [0 - 512]
+  // 9.3.1.120 
+  assert(src->sz_sl_drb_stp == 0 && "Not implemented");  
+  assert(src->sl_drb_stp == NULL && "Not implemented"); // [1-512]
+
+  // SL DRB Modified List
+  // [0 - 512]
+  // 9.3.1.120 
+  assert(src->sz_sl_drb_mod == 0 && "Not implemented");  
+  assert(src->sl_drb_mod == NULL && "Not implemented"); // [1-512]
+
+  // SL DRB Failed To Setup List
+  // [0 - 512]
+  assert(src->sz_sl_drb_failed_stp == 0 && "Not implemented"); 
+  assert(src-> sl_drb_failed_stp == NULL && "Not implemented");
+
+  //SL DRB Failed To be Modified List
+  // [0 - 512]
+  assert(src->sz_sl_drb_fail_mod == 0 && "Not implemented"); 
+  assert(src->sl_drb_fail_mod == NULL && "Not implemented");
+
+  // Requested Target Cell ID
+  // Mandatory
+  assert(src->req_target_cell_id == NULL && "Not implemented");
+
+  return pdu;
+}
+

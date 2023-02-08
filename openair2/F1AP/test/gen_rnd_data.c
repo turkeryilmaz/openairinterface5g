@@ -2162,8 +2162,118 @@ ue_ctx_mod_req_t gen_rnd_ue_ctx_mod_req(void)
 
 
 
+ue_ctx_mod_resp_t gen_rnd_ue_ctx_mod_resp(void)
+{
+  ue_ctx_mod_resp_t dst = {0}; 
 
+  // Message Type
+  // Mandatory
+  // 9.3.1.1
 
+  // gNB-CU UE F1AP ID
+  // Mandatory
+  // 9.3.1.4
+  dst.gnb_cu_ue = rand(); 
 
+  // gNB-DU UE F1AP ID
+  // Mandatory
+  // 9.3.1.5
+  dst.gnb_du_ue = rand(); 
+
+  // Resource Coordination Transfer Container
+  // Optional
+  dst.res_coord_trans = NULL; 
+
+  // DU To CU RRC Information
+  // Optional
+  // 9.3.1.26
+  dst.du_to_cu_rrc = NULL;
+
+  // DRB Setup List
+  // [0 - 64]
+  dst.sz_drb_setup = 0;
+  dst.drb_setup= NULL; 
+ 
+  // DRB Modified List
+  // [0 - 64]
+  dst.sz_drb_mod = 0;
+  dst.drb_mod= NULL;
+
+  // SRB Failed to be Setup List
+  // [0 - 8] 
+  dst.sz_srb_failed = 0;
+  dst.srb_failed_setup= NULL;
+
+  // SCell Failed To Setup List
+  // [0 - 32]
+  dst.sz_scell_failed_setup = 0;
+  dst.scell_failed_setup= NULL;
+
+  // DRB Failed to be Modified List
+  // [0 - 64]
+  dst.sz_drb_fail = 0;
+  dst.drb_failed_setup= NULL;
+
+  // SRB Modified List
+  // [0 - 8]
+  dst.sz_srb_mod = 0;
+  dst.srb_mod= NULL;
+
+  // Full Configuration
+  // Optional
+  dst.full_conf= NULL;
+
+  // BH RLC Channel Setup List
+  // [0 - 65536]
+  // 9.3.1.113
+  // BIT STRING (SIZE(16))
+  dst.sz_bh_rlc_chn_stp = 0;
+  dst.bh_rlc_chn_stp= NULL; 
+
+  // BH RLC Channel Failed to be Setup List
+  // [0 - 65536]
+  dst.sz_bh_rlc_chn_failed_tbs = 0;
+  dst.bh_rlc_chn_failed_tbs= NULL;
+
+  // BH RLC Channel Modified List
+  // [0 - 65536]
+  // 9.3.1.113
+  // BIT STRING (SIZE(16))
+  dst.sz_bh_rlc_chn_mod = 0;
+  dst.bh_rlc_chn_mod= NULL; 
+  
+  // BH RLC Channel Failed to be Modified List
+  // [0 - 65536]
+  dst.sz_bh_rlc_chn_failed_mod = 0;
+  dst.bh_rlc_chn_failed_mod= NULL;
+
+  // SL DRB Setup List
+  // [0 - 512]
+  // 9.3.1.120 
+  dst.sz_sl_drb_stp = 0;  
+  dst.sl_drb_stp = NULL; // [1-512]
+
+  // SL DRB Modified List
+  // [0 - 512]
+  // 9.3.1.120 
+  dst.sz_sl_drb_mod = 0;  
+  dst.sl_drb_mod= NULL; // [1-512]
+
+  // SL DRB Failed To Setup List
+  // [0 - 512]
+  dst.sz_sl_drb_failed_stp = 0; 
+  dst.sl_drb_failed_stp= NULL;
+
+  //SL DRB Failed To be Modified List
+  // [0 - 512]
+  dst.sz_sl_drb_fail_mod = 0; 
+  dst.sl_drb_fail_mod= NULL;
+
+  // Requested Target Cell ID
+  // Mandatory
+  dst.req_target_cell_id= NULL;
+
+  return dst;
+}
 
 
