@@ -560,10 +560,12 @@ function main() {
 
   # for historical reasons we build in a subdirectory cmake_targets/XYZ/build,
   # e.g., cmake_targets/ran_build/build, hence the ../../..
-  CMAKE_CMD="$CMAKE_CMD ../../.."
-  echo_info "running $CMAKE_CMD"
-  eval $CMAKE_CMD
-  
+  if  [[  $execlist ]]; then
+	CMAKE_CMD="$CMAKE_CMD ../../.."
+	echo_info "running $CMAKE_CMD"
+	eval $CMAKE_CMD
+  fi
+
   for f in $execlist ; do
       echo_info "Compiling $f..."
       compilations $BUILD_DIR $f
