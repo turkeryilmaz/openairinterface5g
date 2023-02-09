@@ -150,7 +150,6 @@ extern int usrp_tx_thread;
     {"split73",              CONFIG_HLP_SPLIT73,      0,              strptr:&SPLIT73,                    defstrval:NULL,        TYPE_STRING, 0},                     \
     {"thread-pool",          CONFIG_HLP_TPOOL,        0,              strptr:&TP_CONFIG,                  defstrval:"-1,-1,-1,-1,-1,-1,-1,-1", TYPE_STRING, 0},       \
     {"phy-test",             CONFIG_HLP_PHYTST,       PARAMFLAG_BOOL, iptr:&PHY_TEST,                     defintval:0,           TYPE_INT,    0},                     \
-    {"sl-phy-test",          CONFIG_HLP_SL_PHYTST,    PARAMFLAG_BOOL, iptr:&SL_PHY_TEST,                  defintval:0,           TYPE_INT,    0},                     \
     {"do-ra",                CONFIG_HLP_DORA,         PARAMFLAG_BOOL, iptr:&DO_RA,                        defintval:0,           TYPE_INT,    0},                     \
     {"sa",                   CONFIG_HLP_SA,           PARAMFLAG_BOOL, iptr:&SA,                           defintval:0,           TYPE_INT,    0},                     \
     {"sl-mode",              CONFIG_HLP_SL_MODE,      0,              u8ptr:&SL_MODE,                     defintval:0,           TYPE_UINT8,  0},                     \
@@ -184,6 +183,7 @@ extern int usrp_tx_thread;
     {"emulate-l1",           CONFIG_L1_EMULATOR,      PARAMFLAG_BOOL, iptr:&EMULATE_L1,                   defintval:0,           TYPE_INT,    0},                     \
     {"continuous-tx",        CONFIG_HLP_CONTINUOUS_TX,PARAMFLAG_BOOL, iptr:&CONTINUOUS_TX,                defintval:0,           TYPE_INT,    0},                     \
     {"disable-stats",        CONFIG_HLP_STATS_DISABLE, PARAMFLAG_BOOL, iptr:&stats_disabled,              defintval:0,           TYPE_INT,    0},                     \
+    {"sl-phy-test",          CONFIG_HLP_SL_PHYTST,    PARAMFLAG_BOOL, iptr:&SL_PHY_TEST,                  defintval:0,           TYPE_INT,    0},                     \
     {"sync-ref",             CONFIG_HLP_SYNC_REF,     PARAMFLAG_BOOL, iptr:&SYNC_REF,                     defintval:0,           TYPE_INT,    0},                     \
     {"nid1",                 CONFIG_HLP_NID1,         0,              iptr:&NID1,                         defintval:10,          TYPE_INT,    0},                     \
     {"nid2",                 CONFIG_HLP_NID2,         0,              iptr:&NID2,                         defintval:1,           TYPE_INT,    0},                     \
@@ -223,10 +223,15 @@ extern int usrp_tx_thread;
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s3a = { config_checkstr_assign_integer, \
                {"MONOLITHIC", "PNF", "VNF","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
                {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
                6 } }, \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
