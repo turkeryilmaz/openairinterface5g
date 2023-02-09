@@ -309,7 +309,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
   }
 
-  if (ue->sync_ref && phy_ssb_slot_allocation_sl(ue, frame_tx, slot_tx) && !(slot_tx == 8 || slot_tx == 9 || slot_tx == 18 || slot_tx == 19)) {
+  if (ue->sync_ref && phy_ssb_slot_allocation_sl(ue, frame_tx, slot_tx)) {
     nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
     const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
     LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);

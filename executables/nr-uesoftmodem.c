@@ -281,6 +281,8 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.dl_frequency               = 450000;
   nrUE_config->carrier_config.uplink_frequency           = 450000;
   ue->mac_enabled                                        = 1;
+  fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
+  fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
   fp->dl_CarrierFreq                                     = 2600000000;
   fp->ul_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;

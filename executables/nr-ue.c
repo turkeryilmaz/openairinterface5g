@@ -37,7 +37,7 @@
 #include "SCHED_NR_UE/pucch_uci_ue_nr.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 #include "openair1/PHY/NR_REFSIG/sss_nr.h"
-
+#include "common/utils/nr/nr_common.h"
 //#define DEBUG_PHY_SL_PROC
 
 /*
@@ -563,11 +563,7 @@ void processSlotTX(void *arg) {
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
 
-  LOG_D(PHY,"processSlotTX %d.%d => slot type %d\n",proc->frame_tx,proc->nr_slot_tx,proc->tx_slot_type);
-  if (proc->nr_slot_tx == 8 || proc->nr_slot_tx == 9 ||
-      proc->nr_slot_tx == 18 || proc->nr_slot_tx == 19) {
-      return;
-  }
+  LOG_D(NR_PHY, "processSlotTX %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
   if (UE->sync_ref)
     proc->tx_slot_type = NR_UPLINK_SLOT;
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT){
@@ -758,6 +754,40 @@ static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool s
   return rem_samples + next_slot_first_symbol;
 }
 
+int slot_to_flag_sl(uint8_t tdd_period, int slot, uint16_t slot_config, uint16_t num_slot_frame) {
+  int flag, isUL, isULnext, isULbefore;
+  int num_period_slot = get_nb_periods_per_frame(tdd_period);
+  slot = slot % (num_slot_frame / num_period_slot);
+  isUL = (slot_config >> slot) & 0x1;// indicator to show if the slot is UL or DL
+
+  if (slot > 0) {
+    //checking if previous slot is UL
+    isULbefore = (slot_config >> (slot - 1)) & 0x1;
+  } else {
+    isULbefore = 0;
+  }
+  if (slot < (num_slot_frame / num_period_slot) - 1) {
+    // checking if next slot is UL
+    isULnext = (slot_config >> (slot+1)) & 0x1;
+  } else {
+    isULnext = 0;
+  }
+
+  if (isUL) {
+    if (slot == 0 || !isULbefore) {
+      flag = 2; // first slot should start transmission
+    } else if (slot == (num_slot_frame / num_period_slot) - 1 || !isULnext) {
+      flag = 3; // last slot that should stop transmission
+    } else {
+      flag = 1; // it is niether first nor last slot.
+    }
+  } else {
+    flag = 0; // don't transmit at all
+  }
+  LOG_D(NR_PHY, "### slot(%d), UL(%d), flag(%d)\n", slot, isUL, flag);
+  return flag;
+}
+
 void *UE_thread_SL(void *arg) {
   PHY_VARS_NR_UE *UE = (PHY_VARS_NR_UE *) arg;
   openair0_timestamp timestamp, writeTimestamp;
@@ -869,7 +899,6 @@ void *UE_thread_SL(void *arg) {
     // Slot 3 will overlap if NR_RX_NB_TH is 2
     // this is general failure in UE !!!
     int slot_nr = absolute_slot % nb_slot_frame;
-    int slot_nr_tx = (slot_nr + DURATION_RX_TO_TX - NR_RX_NB_TH) % nb_slot_frame;
 
     notifiedFIFO_elt_t *msgToPush;
     AssertFatal((msgToPush=pullNotifiedFIFO_nothreadSafe(&freeBlocks)) != NULL,"chained list failure");
@@ -962,22 +991,11 @@ void *UE_thread_SL(void *arg) {
     }
 
     int flags = 1;
-    if (slot_nr_tx == 1 || slot_nr_tx == 11 ||
-        slot_nr_tx == 2 || slot_nr_tx == 12 ||
-        slot_nr_tx == 3 || slot_nr_tx == 13 ||
-        slot_nr_tx == 4 || slot_nr_tx == 14 ||
-        slot_nr_tx == 5 || slot_nr_tx == 15 ||
-        slot_nr_tx == 6 || slot_nr_tx == 16) {
-        flags = 1;
-    } else if (slot_nr_tx == 0 || slot_nr_tx == 10) {
-      flags = 2;
-    } else if (slot_nr_tx == 7 || slot_nr_tx == 17) {
-      flags = 3;
-    } else if (slot_nr_tx == 8 || slot_nr_tx == 9 || slot_nr_tx == 18 || slot_nr_tx == 19) {
-      flags = 0;
-    }
+    NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
+    flags = slot_to_flag_sl(fp->tdd_period, slot_nr, fp->tdd_slot_config, fp->slots_per_frame);
 
     if (flags || IS_SOFTMODEM_RFSIM) {
+      LOG_D(NR_PHY, "current slot goring to write USRP: %d\n", slot_nr);
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
                                               writeTimestamp,

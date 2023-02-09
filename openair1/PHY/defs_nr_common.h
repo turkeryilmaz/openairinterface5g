@@ -250,6 +250,9 @@ struct NR_DL_FRAME_PARMS {
   ///  total Number of Resource Block Groups: this is ceil(N_PRB/P)
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
+
+  uint16_t tdd_slot_config;
+  uint8_t tdd_period;
   uint8_t tdd_config;
   /// Sidelink Cell ID
   uint16_t Nid_SL;
