@@ -1352,7 +1352,7 @@ void init_RU_proc(RU_t *ru) {
 
   pthread_mutex_init( &proc->mutex_emulateRF,NULL);
   pthread_cond_init( &proc->cond_emulateRF, NULL);
-  threadCreate( &proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->tpcores[0], OAI_PRIORITY_RT_MAX );
+  threadCreate( &proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX );
 
   if(emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
@@ -1790,23 +1790,25 @@ void init_NR_RU(char *rf_config_file) {
     set_function_spec_param(ru);
     LOG_I(PHY,"Starting ru_thread %d\n",ru_id);
     init_RU_proc(ru);
-    int threadCnt = ru->num_tpcores;
-    if (threadCnt < 2) LOG_E(PHY,"Number of threads for gNB should be more than 1. Allocated only %d\n",threadCnt);
-    else LOG_I(PHY,"RU Thread pool size %d\n",threadCnt);
-    char pool[80];
-    int s_offset = sprintf(pool,"%d",ru->tpcores[1]);
-    for (int icpu=2; icpu<threadCnt; icpu++) {
-       s_offset+=sprintf(pool+s_offset,",%d",ru->tpcores[icpu]);
+    if (ru->if_south != REMOTE_IF4p5) {
+      int threadCnt = ru->num_tpcores;
+      if (threadCnt < 2) LOG_E(PHY,"Number of threads for gNB should be more than 1. Allocated only %d\n",threadCnt);
+      else LOG_I(PHY,"RU Thread pool size %d\n",threadCnt);
+      char pool[80];
+      int s_offset = sprintf(pool,"%d",ru->tpcores[1]);
+      for (int icpu=2; icpu<threadCnt; icpu++) {
+         s_offset+=sprintf(pool+s_offset,",%d",ru->tpcores[icpu]);
+      }
+      LOG_I(PHY,"RU thread-pool core string %s\n",pool);
+      ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
+      initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
+      // FEP RX result FIFO
+      ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+      initNotifiedFIFO(ru->respfeprx);
+      // FEP TX result FIFO
+      ru->respfeptx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+      initNotifiedFIFO(ru->respfeptx);
     }
-    LOG_I(PHY,"RU thread-pool core string %s\n",pool);
-    ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
-    initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
-    // FEP RX result FIFO
-    ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-    initNotifiedFIFO(ru->respfeprx);
-    // FEP TX result FIFO
-    ru->respfeptx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
-    initNotifiedFIFO(ru->respfeptx);
   } // for ru_id
 
   //  sleep(1);
