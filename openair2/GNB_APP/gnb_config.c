@@ -120,7 +120,8 @@ void prepare_scc(NR_ServingCellConfigCommon_t *scc) {
   scc->ssbSubcarrierSpacing                      = CALLOC(1,sizeof(NR_SubcarrierSpacing_t));
   scc->tdd_UL_DL_ConfigurationCommon             = CALLOC(1,sizeof(struct NR_TDD_UL_DL_ConfigCommon));
   scc->tdd_UL_DL_ConfigurationCommon->pattern2   = CALLOC(1,sizeof(struct NR_TDD_UL_DL_Pattern));
-  
+ 
+  scc->n_TimingAdvanceOffset=CALLOC(1,sizeof(*scc->n_TimingAdvanceOffset)); 
   scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB     = CALLOC(1,sizeof(NR_ARFCN_ValueNR_t));
   
   dl_frequencyBandList              = CALLOC(1,sizeof(NR_FreqBandIndicatorNR_t));

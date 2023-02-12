@@ -132,7 +132,7 @@ void tx_func(void *param) {
     syncMsgRU.frame_tx = frame_tx;
     syncMsgRU.slot_tx = slot_tx;
     syncMsgRU.ru = gNB->RU_list[0];
-
+    syncMsgRU.timestamp_tx = info->timestamp_tx;
     LOG_D(PHY,"gNB: %d.%d : calling RU TX function\n",syncMsgRU.frame_tx,syncMsgRU.slot_tx);
     ru_tx_func((void*)&syncMsgRU);
   }

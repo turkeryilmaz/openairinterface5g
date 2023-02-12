@@ -946,10 +946,10 @@ extern "C"
 {
 #endif
 void check_xran_ptp_sync(){
-
-   if (xran_is_synchronized() != 0)
-        printf("Machine is not synchronized using PTP!\n");
-    else
+   int res;
+   if ((res=xran_is_synchronized()) != 0)
+        printf("Machine is not synchronized using PTP (%x)!\n",res);
+   else
         printf("Machine is synchronized using PTP!\n");
 
 }

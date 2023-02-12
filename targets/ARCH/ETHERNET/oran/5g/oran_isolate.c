@@ -237,14 +237,15 @@ void oran_fh_if4p5_south_in(RU_t *ru,
   proc->frame_rx     = f;
   proc->tti_tx       = (sl+sl_ahead)%20;
   proc->frame_tx     = (sl>(19-sl_ahead)) ? (f+1)&1023 : f;
-
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
       LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->tti_rx %d, slot %d)\n",proc->tti_rx,*slot);
+      *slot = proc->tti_rx;
     }
 
     if (proc->frame_rx != *frame) {
       LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->frame_rx %d frame %d proc->tti_rx %d tti %d)\n",proc->frame_rx,*frame,proc->tti_rx,*slot);
+      *frame=proc->frame_rx;
     }
   } else {
     proc->first_rx = 0;

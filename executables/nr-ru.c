@@ -1092,7 +1092,7 @@ void *ru_thread( void *param ) {
   ru_thread_status = 0;
   // set default return value
   sprintf(threadname,"ru_thread %u",ru->idx);
-  LOG_I(PHY,"Starting RU %d (%s,%s),\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing]);
+  LOG_I(PHY,"Starting RU %d (%s,%s) on cpu %d\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing],sched_getcpu());
   memcpy((void *)&ru->config,(void *)&RC.gNB[0]->gNB_config,sizeof(ru->config));
 
   if(emulate_rf) {
