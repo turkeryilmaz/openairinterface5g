@@ -174,7 +174,7 @@ set (OPENAIR_TARGETS ${OPENAIR_DIR}/targets)
 set (OPENAIR3_DIR    ${OPENAIR_DIR}/openair3)
 set (OPENAIR_CMAKE   ${OPENAIR_DIR}/cmake_targets)
 set (OPENAIR_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
-set (XRAN_DIR        ${OPENAIR_DIR}/targets/ARCH/ORAN_FHI/lib)
+set (XRAN_DIR        ${OPENAIR_DIR}/radio/ETHERNET/ORAN_FHI/lib)
 #set (XRAN_LIB_DIR /home/vvdn/oai/git_push/phy/fhi_lib/lib/build)
 set (INTEL_LIB /usr/local/intel64)
 set (DPDK_DIR $ENV{RTE_SDK}/$ENV{RTE_TARGET}/include)
@@ -670,9 +670,9 @@ target_link_libraries(benetel_5g PRIVATE asn1_nr_rrc asn1_lte_rrc)
 ######################################################################
 
 set(ORAN_FHLIB_5G_SOURCE
-    ${OPENAIR_TARGETS}/ARCH/ETHERNET/oran/5g/oran.cpp
-    ${OPENAIR_TARGETS}/ARCH/ETHERNET/oran/5g/xran_lib_wrap.cpp
-    ${OPENAIR_TARGETS}/ARCH/ETHERNET/oran/5g/oran_isolate.c
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran.cpp
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/xran_lib_wrap.cpp
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
     )
 add_library(oran_fhlib_5g MODULE ${ORAN_FHLIB_5G_SOURCE})
 
