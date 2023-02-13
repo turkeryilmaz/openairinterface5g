@@ -449,8 +449,7 @@ typedef struct {
 /*!\brief LCID of Carrier component activation/deactivation */
 #define CC_ACT_DEACT 27
 //TTN (for D2D)
-#define MIBSLCH 8
-#define SL_DISCOVERY 9 //LCID (fake)
+#define SL_DISCOVERY 8 //LCID (fake)
 #define MAX_NUM_DEST 10
 
 // ULSCH LCHAN IDs
@@ -1497,8 +1496,6 @@ typedef struct {
   uint16_t crnti;
   /// C-RNTI of UE before HO
   rnti_t crnti_before_ho; ///user id (rnti) of connected UEs
-  rnti_t crnti_for_ho;
-  bool ho_active;
   /// uplink active flag
   uint8_t ul_active;
   /// pointer to RRC PHY configuration
@@ -1664,7 +1661,6 @@ typedef struct {
   // to make sure that different UEs RA starts within a number of frames difference.
 
   eth_params_t         eth_params_n;
-  LTE_PhysCellId_t     targetPhysCellId;
 
 } UE_MAC_INST;
 

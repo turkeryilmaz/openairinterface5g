@@ -25,8 +25,6 @@
 #define NUM_SINR 100
 #define NUM_BLER_COL 13
 #define LTE_NUM_LAYER 1
-#define MAX_MEAS_CELLS 7
-#define MAX_CHAN_PARAMS 256
 
 // this mutex is used to set multiple UE's UL value in L2 FAPI simulator.
 extern FILL_UL_INFO_MUTEX_t fill_ul_mutex;
@@ -43,13 +41,11 @@ extern UL_IND_t *UL_INFO;
 typedef struct
 {
     uint8_t sf;
-    uint16_t rnti[MAX_CHAN_PARAMS];
-    uint8_t mcs[MAX_CHAN_PARAMS];
+    uint16_t rnti[256];
+    uint8_t mcs[256];
     float sinr;
-    float neigh_cell_sinr[MAX_MEAS_CELLS];
-    float rsrp[MAX_MEAS_CELLS];
     uint16_t pdu_size;
-    bool drop_flag[MAX_CHAN_PARAMS];
+    bool drop_flag[256];
     bool latest;
 
 } sf_rnti_mcs_s;
@@ -128,31 +124,13 @@ void handle_nfapi_ul_pdu_UE_MAC(module_id_t Mod_id,
                          uint16_t frame,uint8_t subframe,uint8_t srs_present, int index,
                          nfapi_ul_config_request_t *ul_config_req);
 
-typedef struct sfn_sf_info_s
-{
-    uint16_t phy_id;
-    uint16_t sfn_sf;
-} sfn_sf_info_t;
-
-typedef struct
-{
-    float sinr;
-    float rsrp;
-    float rsrq;
-    uint8_t source;
-    uint8_t pmi;
-    uint8_t ri;
-    uint8_t cqi;
-    uint8_t area_code;
-} channel_status;
-
 typedef struct phy_channel_params_t
 {
     uint16_t sfn_sf;
     uint16_t message_id;
-    uint16_t phy_id;
-    uint16_t nb_of_csi;
-    channel_status csi[LTE_NUM_LAYER];
+    uint16_t nb_of_sinrs;
+    float sinr[LTE_NUM_LAYER];
+    // Incomplete, need all channel parameters
 } phy_channel_params_t;
 
 typedef struct nfapi_tx_req_pdu_list_t
@@ -225,8 +203,6 @@ char *nfapi_ul_config_req_to_string(nfapi_ul_config_request_t *req);
 const char *dl_pdu_type_to_string(uint8_t pdu_type);
 const char *ul_pdu_type_to_string(uint8_t pdu_type);
 
-float update_measurements(uint16_t sfn_sf, int eNB_index);
-
 extern queue_t dl_config_req_tx_req_queue;
 extern queue_t ul_config_req_queue;
 extern queue_t hi_dci0_req_queue;
@@ -237,6 +213,5 @@ extern nfapi_hi_dci0_request_t* hi_dci0_req;
 extern int current_sfn_sf;
 
 extern sem_t sfn_semaphore;
-extern int num_enbs;
 
 #endif /* PHY_STUB_UE_H_ */

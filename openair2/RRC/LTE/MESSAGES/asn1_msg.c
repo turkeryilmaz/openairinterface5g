@@ -4151,7 +4151,6 @@ uint8_t do_MeasurementReport(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size
                              long rsrp_t, long rsrq_t) {
   asn_enc_rval_t enc_rval;
   LTE_UL_DCCH_Message_t ul_dcch_msg;
-  memset((void *)&ul_dcch_msg, 0, sizeof(ul_dcch_msg));
   LTE_MeasurementReport_t  *measurementReport;
   ul_dcch_msg.message.present                     = LTE_UL_DCCH_MessageType_PR_c1;
   ul_dcch_msg.message.choice.c1.present           = LTE_UL_DCCH_MessageType__c1_PR_measurementReport;
@@ -4191,15 +4190,15 @@ uint8_t do_MeasurementReport(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size
   dummy=0;
   asn1cSeqAdd(&measresult_cgi2->cellGlobalId.plmn_Identity.mnc.list,&dummy);
   measresult_cgi2->cellGlobalId.cellIdentity.buf=MALLOC(8);
-  measresult_cgi2->cellGlobalId.cellIdentity.buf[0]=0x00;
-  measresult_cgi2->cellGlobalId.cellIdentity.buf[1]=0x00;
-  measresult_cgi2->cellGlobalId.cellIdentity.buf[2]=0x00;
-  measresult_cgi2->cellGlobalId.cellIdentity.buf[3]=0x00;
+  measresult_cgi2->cellGlobalId.cellIdentity.buf[0]=0x01;
+  measresult_cgi2->cellGlobalId.cellIdentity.buf[1]=0x48;
+  measresult_cgi2->cellGlobalId.cellIdentity.buf[2]=0x0f;
+  measresult_cgi2->cellGlobalId.cellIdentity.buf[3]=0x03;
   measresult_cgi2->cellGlobalId.cellIdentity.size=4;
   measresult_cgi2->cellGlobalId.cellIdentity.bits_unused=4;
   measresult_cgi2->trackingAreaCode.buf = MALLOC(2);
   measresult_cgi2->trackingAreaCode.buf[0]=0x00;
-  measresult_cgi2->trackingAreaCode.buf[1]=0x05;
+  measresult_cgi2->trackingAreaCode.buf[1]=0x10;
   measresult_cgi2->trackingAreaCode.size=2;
   measresult_cgi2->trackingAreaCode.bits_unused=0;
   measresulteutra2->cgi_Info=measresult_cgi2;

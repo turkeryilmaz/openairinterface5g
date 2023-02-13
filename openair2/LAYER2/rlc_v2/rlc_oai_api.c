@@ -390,7 +390,7 @@ static void deliver_sdu(void *_ue, rlc_entity_t *entity, char *buf, int size)
   exit(1);
 
 rb_found:
-  LOG_D(RLC, "%s:%d:%s: delivering SDU (rnti %d is_srb %d rb_id %d) size %d\n",
+  LOG_D(RLC, "%s:%d:%s: delivering SDU (rnti %d is_srb %d rb_id %d) size %d",
         __FILE__, __LINE__, __FUNCTION__, ue->rnti, is_srb, rb_id, size);
 
 
@@ -963,8 +963,8 @@ rlc_op_status_t rrc_rlc_config_req   (
     LOG_E(RLC, "%s:%d:%s: todo (mbms not supported)\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
-  if ((actionP != CONFIG_ACTION_REMOVE) && (actionP != CONFIG_ACTION_RESET) && (actionP != CONFIG_ACTION_ADD)) {
-    LOG_E(RLC, "%s:%d:%s: todo (CONFIG_ACTION_REMOVE or CONFIG_ACTION_RESET or CONFIG_ACTION_ADD supported)\n", __FILE__, __LINE__, __FUNCTION__);
+  if (actionP != CONFIG_ACTION_REMOVE) {
+    LOG_E(RLC, "%s:%d:%s: todo (only CONFIG_ACTION_REMOVE supported)\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
   if (ctxt_pP->module_id) {

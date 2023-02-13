@@ -42,7 +42,6 @@ pthread_mutex_t ue_pf_po_mutex;
 UE_RRC_INST *UE_rrc_inst = NULL;
 #include "LAYER2/MAC/mac_extern.h"
 extern uint16_t ue_id_g;
-extern uint16_t enb_id_g;
 
 uint8_t DRB2LCHAN[8];
 
