@@ -403,6 +403,13 @@ void nr_get_carrier_frequencies(PHY_VARS_NR_UE *ue,
                                 uint64_t *ul_Carrier);
 
 /*!
+  \brief This function gets the carrier frequencies either from FP or command-line-set global variables, depending on the availability of the latter
+  @param fp         Pointer to frame params
+  @param sl_Carrier Pointer to SL carrier to be set
+*/
+void nr_get_carrier_frequencies_sl(PHY_VARS_NR_UE *ue,
+                                uint64_t *sl_Carrier);
+/*!
   \brief This function sets the OAI RF card rx/tx params
   @param openair0_cfg   Pointer OAI config for a specific card
   @param tx_gain_off    Tx gain offset

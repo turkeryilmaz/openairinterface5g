@@ -329,8 +329,12 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   uint64_t dl_bw_khz = (12*config->carrier_config.dl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->dl_CarrierFreq = ((dl_bw_khz>>1) + config->carrier_config.dl_frequency)*1000 ;
 
-  LOG_D(PHY,"dl_bw_kHz %lu\n",dl_bw_khz);
-  LOG_D(PHY,"dl_CarrierFreq %lu\n",fp->dl_CarrierFreq);
+  if (get_softmodem_params()->sl_mode != 0) {
+    fp->sl_CarrierFreq = ((dl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
+  }
+  LOG_D(PHY, "dl_bw_kHz %lu\n", dl_bw_khz);
+  LOG_D(PHY, "dl_frequency %u\n", config->carrier_config.dl_frequency);
+  LOG_D(PHY, "dl_CarrierFreq %lu\n", fp->dl_CarrierFreq);
 
   uint64_t ul_bw_khz = (12*config->carrier_config.ul_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->ul_CarrierFreq = ((ul_bw_khz>>1) + config->carrier_config.uplink_frequency)*1000 ;
@@ -381,6 +385,9 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   }
 
   fp->ssb_start_subcarrier = (12 * config->ssb_table.ssb_offset_point_a + sco);
+  if (get_softmodem_params()->sl_mode == 2) {
+      fp->ssb_start_subcarrier = 0;
+  }
   set_Lmax(fp);
 
   fp->L_ssb = (((uint64_t) config->ssb_table.ssb_mask_list[0].ssb_mask)<<32) | config->ssb_table.ssb_mask_list[1].ssb_mask;
@@ -430,6 +437,11 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
 
 }
 
+void nr_init_frame_parms_ue_sl(NR_DL_FRAME_PARMS *frame_parms, uint64_t sidelink_frequency, uint16_t nr_band) {
+  LOG_D(NR_PHY,"SL init parameters. SL freq %lu\n", sidelink_frequency);
+  frame_parms->sl_CarrierFreq = sidelink_frequency;
+  frame_parms->nr_band = nr_band;
+}
 
 void nr_dump_frame_parms(NR_DL_FRAME_PARMS *fp)
 {

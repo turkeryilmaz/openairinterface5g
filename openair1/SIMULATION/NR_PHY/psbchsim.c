@@ -176,6 +176,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->tdd_table.tdd_period                      = 0;
   nrUE_config->carrier_config.dl_frequency               = 450000;
   nrUE_config->carrier_config.uplink_frequency           = 450000;
+  nrUE_config->carrier_config.sl_frequency               = 450000;
   ue->mac_enabled                                        = 1;
   fp->dl_CarrierFreq                                     = 2600000000;
   fp->ul_CarrierFreq                                     = 2600000000;
@@ -466,7 +467,7 @@ int main(int argc, char **argv)
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
         apply_nr_rotation(&UE->frame_parms,
                           UE->common_vars.txdataF[aa],
-                          slot, 0, 1); // Conducts rotation on 0th symbol
+                          slot, 0, 1, NR_LINK_TYPE_SL); // Conducts rotation on 0th symbol
         PHY_ofdm_mod((int*)UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
@@ -475,7 +476,7 @@ int main(int argc, char **argv)
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
                           UE->common_vars.txdataF[aa],
-                          slot, 1, 13); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
+                          slot, 1, 13, NR_LINK_TYPE_SL); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
         PHY_ofdm_mod((int*)&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
                      (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +
                                        UE->frame_parms.nb_prefix_samples0 +

@@ -607,7 +607,8 @@ void init_symbol_rotation(NR_DL_FRAME_PARMS *fp) {
 
   uint64_t dl_CarrierFreq = fp->dl_CarrierFreq;
   uint64_t ul_CarrierFreq = fp->ul_CarrierFreq;
-  double f[2] = {(double)dl_CarrierFreq, (double)ul_CarrierFreq};
+  uint64_t sl_CarrierFreq = fp->sl_CarrierFreq;
+  double f[3] = {(double)dl_CarrierFreq, (double)ul_CarrierFreq, (double)sl_CarrierFreq};
 
   const int nsymb = fp->symbols_per_slot * fp->slots_per_frame/10;
   const double Tc=(1/480e3/4096);
@@ -615,7 +616,7 @@ void init_symbol_rotation(NR_DL_FRAME_PARMS *fp) {
   const double Ncp0=16*64 + (144*64*(1/(float)(1<<fp->numerology_index)));
   const double Ncp1=(144*64*(1/(float)(1<<fp->numerology_index)));
 
-  for (uint8_t ll = 0; ll < 2; ll++){
+  for (uint8_t ll = 0; ll < sizeof(f)/sizeof(f[0]); ll++){
 
     double f0 = f[ll];
     LOG_I(PHY, "Doing symbol rotation calculation for gNB TX/RX, f0 %f Hz, Nsymb %d\n", f0, nsymb);

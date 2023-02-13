@@ -195,14 +195,9 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
   }
 
 //  if ((frame&127) == 0) dump_pdsch_stats(gNB);
-
   //apply the OFDM symbol rotation here
   for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
-    apply_nr_rotation(fp,(c16_t*) &gNB->common_vars.txdataF[aa][txdataF_offset],slot,0,fp->Ncp==EXTENDED?12:14);
-
-    T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
-      T_INT(frame), T_INT(slot),
-      T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
+    apply_nr_rotation(fp,(c16_t*) &gNB->common_vars.txdataF[aa][txdataF_offset],slot,0,fp->Ncp==EXTENDED?12:14, NR_LINK_TYPE_DL);
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX+offset,0);

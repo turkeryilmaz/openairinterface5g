@@ -126,6 +126,7 @@ int               dumpframe = 0;
 
 uint64_t        downlink_frequency[MAX_NUM_CCs][4];
 int32_t         uplink_frequency_offset[MAX_NUM_CCs][4];
+uint64_t        sidelink_frequency[MAX_NUM_CCs][4];
 int             rx_input_level_dBm;
 
 #if MAX_NUM_CCs == 1
@@ -283,6 +284,8 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->tdd_table.tdd_period                      = 0;
   nrUE_config->carrier_config.dl_frequency               = downlink_frequency[CC_id][0] / 1000;
   nrUE_config->carrier_config.uplink_frequency           = downlink_frequency[CC_id][0] / 1000;
+  nrUE_config->carrier_config.sl_frequency               = sidelink_frequency[CC_id][0] / 1000;
+  LOG_D(NR_PHY, "SL Frequency %u\n", nrUE_config->carrier_config.sl_frequency);
   ue->mac_enabled                                        = 1;
   fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
   fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
@@ -406,7 +409,7 @@ void init_openair0(void) {
   NR_DL_FRAME_PARMS *frame_parms = &PHY_vars_UE_g[0][0]->frame_parms;
 
   for (card=0; card<MAX_CARDS; card++) {
-    uint64_t dl_carrier, ul_carrier;
+    uint64_t dl_carrier, ul_carrier, sl_carrier;
     openair0_cfg[card].configFilename    = NULL;
     openair0_cfg[card].threequarter_fs   = frame_parms->threequarter_fs;
     openair0_cfg[card].sample_rate       = frame_parms->samples_per_subframe * 1e3;
@@ -435,6 +438,12 @@ void init_openair0(void) {
     nr_get_carrier_frequencies(PHY_vars_UE_g[0][0], &dl_carrier, &ul_carrier);
 
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
+
+    if (get_softmodem_params()->sl_mode != 0) {
+      nr_get_carrier_frequencies_sl(PHY_vars_UE_g[0][0], &sl_carrier);
+      nr_rf_card_config_freq(&openair0_cfg[card], sl_carrier, sl_carrier, freq_off);
+    }
+
     nr_rf_card_config_gain(&openair0_cfg[card], rx_gain_off);
 
     openair0_cfg[card].configFilename = get_softmodem_params()->rf_config_file;
