@@ -445,7 +445,6 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
             fill_mib_in_rx_ind(pdu_list, rx_ind, 0, FAPI_NR_RX_PDU_TYPE_SSB);
             NR_UL_TIME_ALIGNMENT_t ul_time_alignment;
             memset(&ul_time_alignment, 0, sizeof(ul_time_alignment));
-            nr_ue_scheduler(&mac->dl_info, NULL);
             nr_ue_dl_indication(&mac->dl_info, &ul_time_alignment);
         }
     }

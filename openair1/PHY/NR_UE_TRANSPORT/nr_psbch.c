@@ -45,11 +45,6 @@
 //#include "PHY_INTERFACE/defs.h"
 
 
-#define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
-#define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
-
 static void nr_psbch_quantize(int16_t *psbch_llr8,
                              int16_t *psbch_llr,
                              uint16_t len) {

@@ -361,6 +361,7 @@ typedef enum {
 
 extern uint16_t ue_idx_standalone;
 extern uint16_t node_number;
+
 typedef task_id_t thread_id_t;
 
 typedef enum message_priorities_e {

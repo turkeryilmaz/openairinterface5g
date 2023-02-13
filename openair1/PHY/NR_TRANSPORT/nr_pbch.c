@@ -32,7 +32,6 @@
 */
 
 #include "PHY/defs_gNB.h"
-#include "PHY/defs_nr_UE.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/sse_intrin.h"
@@ -195,12 +194,12 @@ static void nr_pbch_scrambling(NR_gNB_PBCH *pbch,
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-      AssertFatal((i >> 5) < NR_POLAR_PBCH_E_DWORD, "Invalid index into pbch->pbch_e. Index %d > %d\n",
-                 (i >> 5), NR_POLAR_PBCH_E_DWORD);
+
       pbch_e[i>>5] ^= (((s>>((i+offset)&0x1f))&1)<<(i&0x1f));
     }
   }
 }
+
 
 void nr_init_pbch_interleaver(uint8_t *interleaver) {
   uint8_t j_sfn=0, j_hrf=10, j_ssb=11, j_other=14;

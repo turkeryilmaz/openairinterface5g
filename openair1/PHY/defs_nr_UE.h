@@ -332,6 +332,8 @@ typedef struct {
 } NR_UE_PBCH;
 
 #define PSBCH_A 32
+#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
+#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
 
 typedef struct {
   /// \brief Total number of PDU errors.

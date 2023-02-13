@@ -76,4 +76,3 @@ int nr_generate_sss(  int32_t *txdataF,
 
   return 0;
 }
-

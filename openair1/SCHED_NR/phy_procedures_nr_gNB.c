@@ -113,7 +113,6 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
 }
 
 
-
 void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
                            int frame,
                            int slot,

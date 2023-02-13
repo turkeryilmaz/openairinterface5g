@@ -188,11 +188,6 @@ static uint16_t nr_pbch_extract(uint32_t rxdataF_sz,
   return(0);
 }
 
-#define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
-#define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
-
 //__m128i avg128;
 
 //compute average channel_level on each (TX,RX) antenna pair
@@ -513,7 +508,7 @@ int nr_rx_pbch( PHY_VARS_NR_UE *ue,
 		       0, 0,  pbch_a_prime, &pbch_a_interleaved);
   //polar decoding de-rate matching
   uint64_t tmp=0;
-  decoderState =  polar_decoder_int16(pbch_e_rx,(uint64_t *)&tmp,0,
+  decoderState = polar_decoder_int16(pbch_e_rx,(uint64_t *)&tmp,0,
                                      NR_POLAR_PBCH_MESSAGE_TYPE, NR_POLAR_PBCH_PAYLOAD_BITS, NR_POLAR_PBCH_AGGREGATION_LEVEL);
   pbch_a_prime=tmp;
   if(decoderState)
@@ -574,7 +569,7 @@ int nr_rx_pbch( PHY_VARS_NR_UE *ue,
   
   proc->decoded_frame_rx = frame_number_4lsb;
 #ifdef DEBUG_PBCH
-  printf("xtra_byte %x payload %x\n", result->xtra_byte, payload);
+  printf("xtra_byte %x payload %x\n", xtra_byte, payload);
 
   for (int i=0; i<(NR_POLAR_PBCH_PAYLOAD_BITS>>3); i++) {
     //     printf("unscrambling pbch_a[%d] = %x \n", i,pbch_a[i]);
