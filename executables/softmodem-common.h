@@ -67,6 +67,7 @@ extern "C"
 #define CONFIG_HLP_NOSNGLT       "Disables single-thread mode in lte-softmodem\n"
 #define CONFIG_HLP_DLF           "Set the downlink frequency for all component carriers\n"
 #define CONFIG_HLP_ULF           "Set the uplink frequency offset for all component carriers\n"
+#define CONFIG_HLP_SLF           "Set the sidelink frequency for all component carriers\n"
 #define CONFIG_HLP_CHOFF         "Channel id offset\n"
 #define CONFIG_HLP_SOFTS         "Enable soft scope and L1 and L2 stats (Xforms)\n"
 #define CONFIG_HLP_EXMCAL        "Calibrate the EXMIMO borad, available files: exmimo2_2arxg.lime exmimo2_2brxg.lime \n"
@@ -163,6 +164,7 @@ extern int usrp_tx_thread;
     {"single-thread-enable", CONFIG_HLP_NOSNGLT,      PARAMFLAG_BOOL, iptr:&SINGLE_THREAD_FLAG,           defintval:0,           TYPE_INT,    0},                     \
     {"C" ,                   CONFIG_HLP_DLF,          0,              u64ptr:&(downlink_frequency[0][0]), defuintval:2680000000, TYPE_UINT64, 0},                     \
     {"CO" ,                  CONFIG_HLP_ULF,          0,              iptr:&(uplink_frequency_offset[0][0]), defintval:0,        TYPE_INT,    0},                     \
+    {"SLC" ,                 CONFIG_HLP_SLF,          0,              u64ptr:&(sidelink_frequency[0][0]), defuintval:2680000000, TYPE_UINT64, 0},                     \
     {"a" ,                   CONFIG_HLP_CHOFF,        0,              iptr:&CHAIN_OFFSET,                 defintval:0,           TYPE_INT,    0},                     \
     {"d" ,                   CONFIG_HLP_SOFTS,        PARAMFLAG_BOOL, uptr:(uint32_t *)&do_forms,         defintval:0,           TYPE_INT8,   0},                     \
     {"q" ,                   CONFIG_HLP_STMON,        PARAMFLAG_BOOL, iptr:&opp_enabled,                  defintval:0,           TYPE_INT,    0},                     \
@@ -300,6 +302,7 @@ extern char *get_softmodem_function(uint64_t *sofmodemfunc_mask_ptr);
 extern void set_softmodem_sighandler(void);
 extern uint64_t downlink_frequency[MAX_NUM_CCs][4];
 extern int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
+extern uint64_t sidelink_frequency[MAX_NUM_CCs][4];
 extern int usrp_tx_thread;
 extern uint16_t sl_ahead;
 extern uint16_t sf_ahead;
