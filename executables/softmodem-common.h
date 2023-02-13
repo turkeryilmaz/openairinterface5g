@@ -98,7 +98,7 @@ extern "C"
 #define CONFIG_HLP_NOKRNMOD      "(noS1 only): Use tun instead of namesh module \n"
 #define CONFIG_HLP_DISABLNBIOT   "disable nb-iot, even if defined in config\n"
 #define CONFIG_HLP_USRP_THREAD   "having extra thead for usrp tx\n"
-#define CONFIG_HLP_NFAPI         "Change the nFAPI mode for NR\n"
+#define CONFIG_HLP_NFAPI         "Change the nFAPI mode for NR 'MONOLITHIC', 'PNF', 'VNF','UE_STUB_PNF','UE_STUB_OFFNET','STANDALONE_PNF'\n"
 #define CONFIG_L1_EMULATOR       "Run in L1 emulated mode (disable PHY layer)\n"
 #define CONFIG_HLP_CONTINUOUS_TX "perform continuous transmission, even in TDD mode (to work around USRP issues)\n"
 #define CONFIG_HLP_STATS_DISABLE "disable globally the stats generation and persistence"
@@ -137,11 +137,13 @@ extern "C"
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
 
 extern int usrp_tx_thread;
+extern char *nfapi_str;
+
 #define CMDLINE_PARAMS_DESC {  \
     {"rf-config-file",       CONFIG_HLP_RFCFGF,       0,              strptr:&RF_CONFIG_FILE,    defstrval:NULL,        TYPE_STRING, 0},\
     {"split73",              CONFIG_HLP_SPLIT73,      0,              strptr:&SPLIT73,           defstrval:NULL,        TYPE_STRING, 0},       \
     {"thread-pool",          CONFIG_HLP_TPOOL,        0,              strptr:&TP_CONFIG,         defstrval:"-1,-1,-1,-1,-1,-1,-1,-1",         TYPE_STRING, 0},     \
-    {"reorder-thread-disable",CONFIG_HLP_REORDER,     0,              iptr:&REORDER_THREAD_DISABLE,       defstrval:0,           TYPE_INT,    0},                     \
+    {"reorder-thread-disable",CONFIG_HLP_REORDER,     0,              iptr:&REORDER_THREAD_DISABLE,       defintval:0,           TYPE_INT,    0},                     \
     {"phy-test",             CONFIG_HLP_PHYTST,       PARAMFLAG_BOOL, iptr:&PHY_TEST,                     defintval:0,           TYPE_INT,    0},                     \
     {"do-ra",                CONFIG_HLP_DORA,         PARAMFLAG_BOOL, iptr:&DO_RA,                        defintval:0,           TYPE_INT,    0},                     \
     {"sa",                   CONFIG_HLP_SA,           PARAMFLAG_BOOL, iptr:&SA,                           defintval:0,           TYPE_INT,    0},                     \
@@ -169,13 +171,59 @@ extern int usrp_tx_thread;
     {"chest-time",           CONFIG_HLP_CHESTTIME,    0,              iptr:&CHEST_TIME,                   defintval:0,           TYPE_INT,    0},                     \
     {"nsa",                  CONFIG_HLP_NSA,          PARAMFLAG_BOOL, iptr:&NSA,                          defintval:0,           TYPE_INT,    0},                     \
     {"node-number",          NULL,                    0,              u16ptr:&NODE_NUMBER,                defuintval:0,          TYPE_UINT16, 0},                     \
-    {"usrp-tx-thread-config", CONFIG_HLP_USRP_THREAD, 0,              iptr:&usrp_tx_thread,               defstrval:0,           TYPE_INT,    0},                     \
-    {"nfapi",                CONFIG_HLP_NFAPI,        0,              u8ptr:&nfapi_mode,                  defintval:0,           TYPE_UINT8,  0},                     \
+    {"usrp-tx-thread-config", CONFIG_HLP_USRP_THREAD, 0,              iptr:&usrp_tx_thread,               defintval:0,           TYPE_INT,    0},                     \
+    {"nfapi",                CONFIG_HLP_NFAPI,        0,              strptr:&nfapi_str,                  defstrval:"MONOLITHIC",           TYPE_STRING, 0},                     \
     {"non-stop",             CONFIG_HLP_NONSTOP,      PARAMFLAG_BOOL, iptr:&NON_STOP,                     defintval:0,           TYPE_INT,    0},                     \
     {"emulate-l1",           CONFIG_L1_EMULATOR,      PARAMFLAG_BOOL, iptr:&EMULATE_L1,                   defintval:0,           TYPE_INT,    0},                     \
     {"continuous-tx",        CONFIG_HLP_CONTINUOUS_TX,PARAMFLAG_BOOL, iptr:&CONTINUOUS_TX,                defintval:0,           TYPE_INT,    0},                     \
     {"disable-stats",        CONFIG_HLP_STATS_DISABLE, PARAMFLAG_BOOL, iptr:&stats_disabled,               defintval:0,           TYPE_INT,    0},                     \
   }
+
+
+
+#define CMDLINE_PARAMS_CHECK_DESC {         \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s3a = { config_checkstr_assign_integer, \
+               {"MONOLITHIC", "PNF", "VNF","UE_STUB_PNF","UE_STUB_OFFNET","STANDALONE_PNF"}, \
+               {NFAPI_MONOLITHIC, NFAPI_MODE_PNF, NFAPI_MODE_VNF,NFAPI_UE_STUB_PNF,NFAPI_UE_STUB_OFFNET,NFAPI_MODE_STANDALONE_PNF}, \
+               6 } }, \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+    { .s5 = { NULL } },                     \
+}
 
 #define CONFIG_HLP_NSA           "Enable NSA mode \n"
 #define CONFIG_HLP_FLOG          "Enable online log \n"

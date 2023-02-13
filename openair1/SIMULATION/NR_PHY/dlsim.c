@@ -28,6 +28,7 @@
 #include "common/ran_context.h"
 #include "common/config/config_userapi.h"
 #include "common/utils/nr/nr_common.h"
+#include "common/utils/var_array.h"
 #include "common/utils/LOG/log.h"
 #include "LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "LAYER2/NR_MAC_UE/mac_defs.h"
@@ -68,7 +69,6 @@
 #include "SIMULATION/LTE_PHY/common_sim.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 
-#include <openair2/LAYER2/MAC/mac_vars.h>
 #include <openair2/RRC/LTE/rrc_vars.h>
 
 #include <executables/softmodem-common.h>
@@ -82,7 +82,6 @@ const char *__asan_default_options()
 }
 
 LCHAN_DESC DCCH_LCHAN_DESC,DTCH_DL_LCHAN_DESC,DTCH_UL_LCHAN_DESC;
-rlc_info_t Rlc_info_um,Rlc_info_am_config;
 
 PHY_VARS_gNB *gNB;
 PHY_VARS_NR_UE *UE;
@@ -372,6 +371,7 @@ nrUE_params_t *get_nrUE_params(void) {
 
 void do_nothing(void *args) {
 }
+int NB_UE_INST = 1;
 
 int main(int argc, char **argv)
 {
@@ -414,7 +414,6 @@ int main(int argc, char **argv)
 
   SCM_t channel_model = AWGN; // AWGN Rayleigh1 Rayleigh1_anticorr;
 
-  NB_UE_INST = 1;
   //double pbch_sinr;
   //int pbch_tx_ant;
   int N_RB_DL=106,mu=1;
@@ -1043,12 +1042,13 @@ int main(int argc, char **argv)
   memset(msgDataTx->ssb, 0, 64*sizeof(NR_gNB_SSB_t));
 
   // Buffers to store internal memory of slot process
-  UE->phy_sim_rxdataF = calloc(frame_parms->samples_per_slot_wCP*sizeof(int32_t), frame_parms->nb_antennas_rx);
-  UE->phy_sim_pdsch_llr = calloc((8*(3*8*8448))*sizeof(int16_t), 1); //Max length
-  UE->phy_sim_pdsch_rxdataF_ext = calloc(14*frame_parms->N_RB_DL*12*sizeof(int32_t), frame_parms->nb_antennas_rx);
-  UE->phy_sim_pdsch_rxdataF_comp = calloc(14*frame_parms->N_RB_DL*12*sizeof(int32_t), frame_parms->nb_antennas_rx);
-  UE->phy_sim_pdsch_dl_ch_estimates = calloc(14*frame_parms->ofdm_symbol_size*sizeof(int32_t), frame_parms->nb_antennas_rx);
-  UE->phy_sim_pdsch_dl_ch_estimates_ext = calloc(14*frame_parms->N_RB_DL*12*sizeof(int32_t), frame_parms->nb_antennas_rx);
+  int rx_size = (((14 * frame_parms->N_RB_DL * 12 * sizeof(int32_t)) + 15) >> 4) << 4;
+  UE->phy_sim_rxdataF = calloc(sizeof(int32_t *) * frame_parms->nb_antennas_rx * g_nrOfLayers, frame_parms->samples_per_slot_wCP * sizeof(int32_t));
+  UE->phy_sim_pdsch_llr = calloc(1, (8 * (3 * 8 * 8448)) * sizeof(int16_t)); // Max length
+  UE->phy_sim_pdsch_rxdataF_ext = calloc(sizeof(int32_t *) * frame_parms->nb_antennas_rx * g_nrOfLayers, rx_size);
+  UE->phy_sim_pdsch_rxdataF_comp = calloc(sizeof(int32_t *) * frame_parms->nb_antennas_rx * g_nrOfLayers, rx_size);
+  UE->phy_sim_pdsch_dl_ch_estimates = calloc(sizeof(int32_t *) * frame_parms->nb_antennas_rx * g_nrOfLayers, rx_size);
+  UE->phy_sim_pdsch_dl_ch_estimates_ext = calloc(sizeof(int32_t *) * frame_parms->nb_antennas_rx * g_nrOfLayers, rx_size);
 
   for (SNR = snr0; SNR < snr1; SNR += .2) {
 
