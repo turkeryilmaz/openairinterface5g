@@ -185,7 +185,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_GENERATE_DLSCH,0);
   }
 
-  for (int i=0;i<NUMBER_OF_NR_CSIRS_MAX;i++){
+  for (int i = 0; i < NR_SYMBOLS_PER_SLOT; i++){
     NR_gNB_CSIRS_t *csirs = &msgTx->csirs_pdu[i];
     if (csirs->active == 1) {
       LOG_D(PHY, "CSI-RS generation started in frame %d.%d\n",frame,slot);
@@ -530,7 +530,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int i=0;i<NUMBER_OF_NR_PUCCH_MAX;i++){
+  for (int i = 0; i < gNB->max_nb_pucch; i++){
     NR_gNB_PUCCH_t *pucch = gNB->pucch[i];
     if (pucch) {
       if ((pucch->active == 1) &&
@@ -553,7 +553,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int ULSCH_id=0;ULSCH_id<gNB->number_of_nr_ulsch_max;ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < NUMBER_OF_NR_ULSCH_MAX; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = gNB->ulsch[ULSCH_id];
     int harq_pid;
     NR_UL_gNB_HARQ_t *ulsch_harq;
@@ -583,7 +583,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int i=0;i<NUMBER_OF_NR_SRS_MAX;i++) {
+  for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = gNB->srs[i];
     if (srs) {
       if ((srs->active == 1) && (srs->frame == frame_rx) && (srs->slot == slot_rx)) {
@@ -714,7 +714,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
 
   start_meas(&gNB->phy_proc_rx);
 
-  for (int i=0;i<NUMBER_OF_NR_PUCCH_MAX;i++){
+  for (int i = 0; i < gNB->max_nb_pucch; i++){
     NR_gNB_PUCCH_t *pucch = gNB->pucch[i];
     if (pucch) {
       if (NFAPI_MODE == NFAPI_MODE_PNF)
@@ -776,7 +776,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int ULSCH_id=0;ULSCH_id<gNB->number_of_nr_ulsch_max;ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < NUMBER_OF_NR_ULSCH_MAX; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = gNB->ulsch[ULSCH_id];
     NR_UL_gNB_HARQ_t *ulsch_harq;
 
@@ -871,7 +871,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int i = 0; i < NUMBER_OF_NR_SRS_MAX; i++) {
+  for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = gNB->srs[i];
     if (srs) {
       if ((srs->active == 1) && (srs->frame == frame_rx) && (srs->slot == slot_rx)) {
