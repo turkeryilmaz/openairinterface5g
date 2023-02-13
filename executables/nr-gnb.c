@@ -233,7 +233,8 @@ void rx_func(void *param) {
                            gNB->common_vars.rxdataF[aa],
                            slot_rx,
                            0,
-                           gNB->frame_parms.Ncp==EXTENDED?12:14);
+                           gNB->frame_parms.Ncp==EXTENDED?12:14,
+                           NR_LINK_TYPE_UL)
     }
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
   }

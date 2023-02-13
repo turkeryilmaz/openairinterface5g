@@ -37,6 +37,7 @@ This section deals with basic functions for OFDM Modulation.
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "modulation_common.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
+#include "../executables/softmodem-common.h"
 //#define DEBUG_OFDM_MOD
 
 
@@ -344,11 +345,12 @@ void apply_nr_rotation(NR_DL_FRAME_PARMS *fp,
                        int16_t* txdataF,
                        int slot,
                        int first_symbol,
-                       int nsymb)
+                       int nsymb,
+                       int link_type)
 {
   int symb_offset = (slot%fp->slots_per_subframe)*fp->symbols_per_slot;
 
-  c16_t *symbol_rotation = fp->symbol_rotation[0] + symb_offset;
+  c16_t *symbol_rotation = fp->symbol_rotation[link_type] + symb_offset;
 
   for (int sidx = first_symbol; sidx < first_symbol + nsymb; sidx++) {
     c16_t *this_rotation = symbol_rotation + sidx;
@@ -378,4 +380,4 @@ void apply_nr_rotation(NR_DL_FRAME_PARMS *fp,
     }
   }
 }
-                       
+

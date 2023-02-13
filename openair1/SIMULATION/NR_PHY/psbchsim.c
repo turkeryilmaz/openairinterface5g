@@ -496,7 +496,7 @@ int main(int argc, char **argv)
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
         apply_nr_rotation(&UE->frame_parms,
                           (int16_t*)UE->common_vars.txdataF[aa],
-                          slot, 0, 1); // Conducts rotation on 0th symbol
+                          slot, 0, 1, NR_LINK_TYPE_SL); // Conducts rotation on 0th symbol
         PHY_ofdm_mod(UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
@@ -505,7 +505,7 @@ int main(int argc, char **argv)
                      CYCLIC_PREFIX);
         apply_nr_rotation(&UE->frame_parms,
                           (int16_t*)UE->common_vars.txdataF[aa],
-                          slot, 1, 13); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
+                          slot, 1, 13, NR_LINK_TYPE_SL); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
         PHY_ofdm_mod(&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
                      (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +
                                        UE->frame_parms.nb_prefix_samples0 +
