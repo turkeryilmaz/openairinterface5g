@@ -1980,6 +1980,7 @@ static void NRRCconfig_RU(void) {
       RC.ru[j]->openair0_cfg.txfh_cores[0]        = *(RUParamList.paramarray[j][RU_TXFH_CORE_ID].iptr);
       RC.ru[j]->num_tpcores                       = *(RUParamList.paramarray[j][RU_NUM_TP_CORES].iptr);
       RC.ru[j]->half_slot_parallelization         = *(RUParamList.paramarray[j][RU_HALF_SLOT_PARALLELIZATION].iptr);
+      RC.ru[j]->ru_thread_core                    = *(RUParamList.paramarray[j][RU_RU_THREAD_CORE].iptr);
       printf("[RU %d] Setting half-slot parallelization to %d\n",j,RC.ru[j]->half_slot_parallelization); 
       AssertFatal(RC.ru[j]->num_tpcores <= RUParamList.paramarray[j][RU_TP_CORES].numelt, "Number of TP cores should be <=16\n");
       for (i=0; i<RC.ru[j]->num_tpcores; i++) RC.ru[j]->tpcores[i] = RUParamList.paramarray[j][RU_TP_CORES].iptr[i];
