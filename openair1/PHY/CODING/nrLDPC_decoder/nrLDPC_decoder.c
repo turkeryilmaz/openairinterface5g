@@ -113,7 +113,7 @@
 
 
 
-#define NR_LDPC_ENABLE_PARITY_CHECK
+//#define NR_LDPC_ENABLE_PARITY_CHECK
 //#define NR_LDPC_PROFILER_DETAIL
 
 #ifdef NR_LDPC_DEBUG_MODE
@@ -333,7 +333,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
 
 #ifndef UNROLL_BN_PROC_PC
-    nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
+    //nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
+    nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
 #else        
     if (BG==1) {
         switch (R) {
@@ -609,7 +610,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
 
 #ifndef UNROLL_BN_PROC_PC
-        nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
+        //nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
+        nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
 #else
         if (BG==1) {
           switch (R) {

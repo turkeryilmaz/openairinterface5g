@@ -52,6 +52,8 @@ typedef struct nrLDPC_lut {
     const uint16_t* llr2llrProcBufAddr; /**< LUT for transferring input LLRs to LLR processing buffer */
     const uint8_t*  llr2llrProcBufBnPos; /**< LUT BN position in BG */
     const uint8_t** posBnInCnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT for llr2cnProcBuf */
+    const uint32_t* addrEdgeInCnBuffer;
+    const uint16_t* cShift;
 } t_nrLDPC_lut;
 
 /**

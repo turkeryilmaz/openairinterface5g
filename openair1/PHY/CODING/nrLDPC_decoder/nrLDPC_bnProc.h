@@ -38,13 +38,172 @@
    \param p_lut Pointer to decoder LUTs
    \param Z Lifting size
 */
-static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, int8_t* llrProcBuf, int8_t* llrRes, uint16_t Z)
+static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, int8_t* llr, int8_t* llrRes, uint16_t Z)
 {
-    const uint8_t*  lut_numBnInBnGroups = p_lut->numBnInBnGroups;
-    const uint32_t* lut_startAddrBnGroups = p_lut->startAddrBnGroups;
-    const uint16_t* lut_startAddrBnGroupsLlr = p_lut->startAddrBnGroupsLlr;
+    const uint32_t* p_addrEdgeInCnBuffer = p_lut->addrEdgeInCnBuffer;
+    const uint16_t* p_cshift = p_lut->cShift;
+
+    int8_t* p_cnProcBuf;
+    __m256i* p_llrRes = (__m256i*) llrRes;
+    int8_t* p_llr;
+    int16_t* p_llrResTmp;
+    __m256i* p_llrResTmp256;
+
+    uint32_t c;
+    uint32_t r;
+    uint32_t i,j;
+    uint16_t M;
+    int8_t* p_startLlrResBn;
+    uint16_t relAddr;
+    int16_t llrResTmp[384] __attribute__ ((aligned(64))) = {0};
+    __m256i ymm0, ymm1, ymmRes0, ymmRes1;
+
+    // Number of groups of 32 values in edge of length Z
+    M = (Z + 31)>>5;
+
+    // Init sum with input LLR
+    //memcpy(llrRes,llr,NR_LDPC_NCOL_BG2*Z*sizeof(int8_t));
+
+
+    // Loop over BNs excluding parity BNs which can be processed way easier since they have no shift
+    for (c = 0; c < NR_LDPC_START_COL_PARITY_BG2; c++)
+    {
+        // Init with input LLR
+        p_llr = &llr[c*Z];
+        for (i = 0; i < Z; i++)
+	    {  
+            llrResTmp[i] = (int16_t)(p_llr[i]);
+        }
+
+        // Loop over all connected CNs for that BN
+        for (r = 0; r < lut_numEdgesPerBn_BG2_R15[c]; r++)
+	    {
+            // Relative address in edge
+            relAddr = *p_cshift;
+            // Set pointer to start of edge
+            p_cnProcBuf = &cnProcBuf[*p_addrEdgeInCnBuffer];
+            p_llrResTmp = &llrResTmp[relAddr];
+
+            // Loop over first half of shifted buffer
+	        for (i = 0; i < (Z-relAddr); i++)
+	        {
+                // Add
+                p_llrResTmp += *p_cnProcBuf;
+
+                p_cnProcBuf++;
+                p_llrResTmp++;
+            }
+            // Second half
+            p_llrResTmp = &llrResTmp[0];
+            for (i = 0; i < relAddr; i++)
+	        {
+                // Add
+                p_llrResTmp += *p_cnProcBuf;
+
+                p_cnProcBuf++;
+                p_llrResTmp++;
+            }
+
+            // Next edge
+            p_addrEdgeInCnBuffer++;
+            p_cshift++;
+        }
+        // Sum is complete
+        // saturate and move to LLR results
+        p_llrResTmp256 = (__m256i*) &llrResTmp[0];
+        for (i = 0,j=0; i < M; i++,j+=2)
+	    {
+            ymmRes0 = p_llrResTmp256[j];
+            ymmRes1 = p_llrResTmp256[j+1];
+            // Pack results back to epi8
+            ymm0 = simde_mm256_packs_epi16(ymmRes0, ymmRes1);
+            // ymm0     = [ymmRes1[255:128] ymmRes0[255:128] ymmRes1[127:0] ymmRes0[127:0]]
+            // p_llrRes = [ymmRes1[255:128] ymmRes1[127:0] ymmRes0[255:128] ymmRes0[127:0]]
+            *p_llrRes = simde_mm256_permute4x64_epi64(ymm0, 0xD8);
+            p_llrRes++;
+        }
+    }
+
+    // Now the parity bits
+
 }
 
+/*
+static inline void nrLDPC_bnProcPcOptError(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, int8_t* llr, int8_t* llrRes, uint16_t Z)
+{
+    const uint32_t* p_addrEdgeInCnBuffer = p_lut->addrEdgeInCnBuffer;
+    const uint16_t* p_cshift = p_lut->cShift;
+
+    __m128i* p_cnProcBuf;
+    __m256i* p_llrRes;
+    __m128i* p_llrRes128;
+
+    uint32_t c;
+    uint32_t r;
+    uint32_t i,j;
+    uint16_t M;
+    int8_t* p_startLlrResBn;
+    uint16_t relAddr;
+
+    __m256i ymm0, ymm1, ymmRes0, ymmRes1;
+
+    // Number of groups of 32 values in edge of length Z
+    M = (Z + 31)>>5;
+
+    // Init sum with input LLR
+    memcpy(llrRes,llr,NR_LDPC_NCOL_BG2*Z*sizeof(int8_t));
+
+    // Loop over BNs excluding parity BNs which can be processed way easier since they have no shift
+    for (c = 0; c < NR_LDPC_START_COL_PARITY_BG2; c++)
+    {
+        // Start address of BN in the LLR results
+        p_startLlrResBn = &llrRes[c*Z];
+
+        // Loop over all connected CNs for that BN
+        for (r = 0; r < lut_numEdgesPerBn_BG2_R15[c]; r++)
+	    {
+            // Relative address in edge
+            relAddr = *p_cshift;
+
+            // Loop over the Z+32 values in edge
+	        for (i = 0; i < M; i++)
+	        {
+                // Set pointer to start of edge
+                p_cnProcBuf = (__m128i*) &cnProcBuf[*p_addrEdgeInCnBuffer + relAddr];
+                p_llrRes    = (__m256i*) &p_startLlrResBn[relAddr];
+                p_llrRes128 = (__m128i*) p_llrRes;
+
+                // First 16 LLRs of first CN
+                ymm0 = simde_mm256_cvtepi8_epi16(p_cnProcBuf[0]);
+                ymm1 = simde_mm256_cvtepi8_epi16(p_llrRes128[0]);
+
+                ymmRes0 = simde_mm256_adds_epi16(ymm0, ymm1);
+
+                // Second 16 LLRs of first CN
+                ymm0 = simde_mm256_cvtepi8_epi16(p_cnProcBuf[1]);
+                ymm1 = simde_mm256_cvtepi8_epi16(p_llrRes128[1]);
+
+                ymmRes1 = simde_mm256_adds_epi16(ymm0, ymm1);
+
+                // Pack results back to epi8
+                ymm0 = simde_mm256_packs_epi16(ymmRes0, ymmRes1);
+                // ymm0     = [ymmRes1[255:128] ymmRes0[255:128] ymmRes1[127:0] ymmRes0[127:0]]
+                // p_llrRes = [ymmRes1[255:128] ymmRes1[127:0] ymmRes0[255:128] ymmRes0[127:0]]
+                *p_llrRes = simde_mm256_permute4x64_epi64(ymm0, 0xD8);
+
+                // Calculate new relative address
+                relAddr = ((relAddr+32)%Z);
+            }
+
+            // Next edge
+            p_addrEdgeInCnBuffer++;
+            p_cshift++;
+
+        }
+    }
+
+}
+*/
 /**
    \brief Performs first part of BN processing on the BN processing buffer and stores the results in the LLR results buffer.
           At every BN, the sum of the returned LLRs from the connected CNs and the LLR of the receiver input is computed.
