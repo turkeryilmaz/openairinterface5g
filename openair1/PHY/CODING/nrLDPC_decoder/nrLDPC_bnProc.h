@@ -48,15 +48,15 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
     int8_t* p_llr;
     int16_t* p_llrResTmp;
     __m256i* p_llrResTmp256;
+    __m256i* p_cnProcBuf256;
 
     uint32_t c;
     uint32_t r;
     uint32_t i,j;
     uint16_t M;
-    int8_t* p_startLlrResBn;
     uint16_t relAddr;
     int16_t llrResTmp[384] __attribute__ ((aligned(64))) = {0};
-    __m256i ymm0, ymm1, ymmRes0, ymmRes1;
+    __m256i ymm0, ymmRes0, ymmRes1;
 
     // Number of groups of 32 values in edge of length Z
     M = (Z + 31)>>5;
@@ -68,7 +68,7 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
     // Loop over BNs excluding parity BNs which can be processed way easier since they have no shift
     for (c = 0; c < NR_LDPC_START_COL_PARITY_BG2; c++)
     {
-        // Init with input LLR
+        // Init with input LLR, cannot do memcpy since we need 16bit for the summation
         p_llr = &llr[c*Z];
         for (i = 0; i < Z; i++)
 	    {  
@@ -125,7 +125,23 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
     }
 
     // Now the parity bits
+    // Init with input LLR, memcpy is ok since we are only summing 2 values
+    memcpy(&llrRes[NR_LDPC_START_COL_PARITY_BG2*Z],&llr[NR_LDPC_START_COL_PARITY_BG2*Z],(NR_LDPC_NCOL_BG2_R15 - NR_LDPC_START_COL_PARITY_BG2)*Z*sizeof(int8_t));
 
+    for (c = NR_LDPC_START_COL_PARITY_BG2; c < NR_LDPC_NCOL_BG2_R15; c++)
+    {
+        // Set pointer to start of edge
+        p_cnProcBuf256 = (__m256i*) &cnProcBuf[*p_addrEdgeInCnBuffer];
+        for (i = 0; i < M; i++)
+	    {
+            *p_llrRes = simde_mm256_adds_epi8(*p_llrRes,*p_cnProcBuf256);
+
+            p_cnProcBuf256++;
+            p_llrRes++;
+        }
+        // Next edge
+        p_addrEdgeInCnBuffer++;
+    }
 }
 
 /*

@@ -555,7 +555,7 @@ static inline void nrLDPC_cn2bnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG3[j][i] + lut_bnPosBnProcBuf_CNG3[j][i]*Z;
             nrLDPC_inv_circ_memcpy(&bnProcBuf[idxBn],p_cnProcBufRes,Z,lut_circShift_CNG3[j][i]);
-            p_cnProcBufRes += (Z+32);
+            p_cnProcBufRes += Z;
         }
     }
 
@@ -572,7 +572,7 @@ static inline void nrLDPC_cn2bnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG4[j][i] + lut_bnPosBnProcBuf_CNG4[j][i]*Z;
             nrLDPC_inv_circ_memcpy(&bnProcBuf[idxBn],p_cnProcBufRes,Z,lut_circShift_CNG4[j][i]);
-            p_cnProcBufRes += (Z+32);
+            p_cnProcBufRes += Z;
         }
     }
 
@@ -589,7 +589,7 @@ static inline void nrLDPC_cn2bnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG5[j][i] + lut_bnPosBnProcBuf_CNG5[j][i]*Z;
             nrLDPC_inv_circ_memcpy(&bnProcBuf[idxBn],p_cnProcBufRes,Z,lut_circShift_CNG5[j][i]);
-            p_cnProcBufRes += (Z+32);
+            p_cnProcBufRes += Z;
         }
     }
 
@@ -606,7 +606,7 @@ static inline void nrLDPC_cn2bnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG6[j][i] + lut_bnPosBnProcBuf_CNG6[j][i]*Z;
             nrLDPC_inv_circ_memcpy(&bnProcBuf[idxBn],p_cnProcBufRes,Z,lut_circShift_CNG6[j][i]);
-            p_cnProcBufRes += (Z+32);
+            p_cnProcBufRes += Z;
         }
     }
 
@@ -623,7 +623,7 @@ static inline void nrLDPC_cn2bnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG8[j][i] + lut_bnPosBnProcBuf_CNG8[j][i]*Z;
             nrLDPC_inv_circ_memcpy(&bnProcBuf[idxBn],p_cnProcBufRes,Z,lut_circShift_CNG8[j][i]);
-            p_cnProcBufRes += (Z+32);
+            p_cnProcBufRes += Z;
         }
     }
 
@@ -640,7 +640,7 @@ static inline void nrLDPC_cn2bnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG10[j][i] + lut_bnPosBnProcBuf_CNG10[j][i]*Z;
             nrLDPC_inv_circ_memcpy(&bnProcBuf[idxBn],p_cnProcBufRes,Z,lut_circShift_CNG10[j][i]);
-            p_cnProcBufRes += (Z+32);
+            p_cnProcBufRes += Z;
         }
     }
 }
@@ -895,7 +895,7 @@ static inline void nrLDPC_bn2cnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* bnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG3[j][i] + lut_bnPosBnProcBuf_CNG3[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &bnProcBufRes[idxBn], Z, lut_circShift_CNG3[j][i]);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -911,7 +911,7 @@ static inline void nrLDPC_bn2cnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* bnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG4[j][i] + lut_bnPosBnProcBuf_CNG4[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &bnProcBufRes[idxBn], Z, lut_circShift_CNG4[j][i]);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -927,7 +927,7 @@ static inline void nrLDPC_bn2cnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* bnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG5[j][i] + lut_bnPosBnProcBuf_CNG5[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &bnProcBufRes[idxBn], Z, lut_circShift_CNG5[j][i]);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -943,7 +943,7 @@ static inline void nrLDPC_bn2cnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* bnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG6[j][i] + lut_bnPosBnProcBuf_CNG6[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &bnProcBufRes[idxBn], Z, lut_circShift_CNG6[j][i]);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -959,7 +959,7 @@ static inline void nrLDPC_bn2cnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* bnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG8[j][i] + lut_bnPosBnProcBuf_CNG8[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &bnProcBufRes[idxBn], Z, lut_circShift_CNG8[j][i]);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -975,7 +975,7 @@ static inline void nrLDPC_bn2cnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* bnProcBu
         {
             idxBn = lut_startAddrBnProcBuf_CNG10[j][i] + lut_bnPosBnProcBuf_CNG10[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &bnProcBufRes[idxBn], Z, lut_circShift_CNG10[j][i]);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 }
