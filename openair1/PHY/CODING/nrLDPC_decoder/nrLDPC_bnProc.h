@@ -43,12 +43,15 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
     const uint32_t* p_addrEdgeInCnBuffer = p_lut->addrEdgeInCnBuffer;
     const uint16_t* p_cshift = p_lut->cShift;
 
-    int8_t* p_cnProcBuf;
+    int8_t* p_cnProcBufRes;
     __m256i* p_llrRes = (__m256i*) llrRes;
+
     int8_t* p_llr;
     int16_t* p_llrResTmp;
     __m256i* p_llrResTmp256;
-    __m256i* p_cnProcBuf256;
+    __m256i* p_cnProcBufRes256;
+    __m128i* p_cnProcBufRes128;
+    __m128i* p_llrRes128;
 
     uint32_t c;
     uint32_t r;
@@ -56,14 +59,10 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
     uint16_t M;
     uint16_t relAddr;
     int16_t llrResTmp[384] __attribute__ ((aligned(64))) = {0};
-    __m256i ymm0, ymmRes0, ymmRes1;
+    __m256i ymm0,ymm1, ymmRes0, ymmRes1;
 
     // Number of groups of 32 values in edge of length Z
     M = (Z + 31)>>5;
-
-    // Init sum with input LLR
-    //memcpy(llrRes,llr,NR_LDPC_NCOL_BG2*Z*sizeof(int8_t));
-
 
     // Loop over BNs excluding parity BNs which can be processed way easier since they have no shift
     for (c = 0; c < NR_LDPC_START_COL_PARITY_BG2; c++)
@@ -81,16 +80,16 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
             // Relative address in edge
             relAddr = *p_cshift;
             // Set pointer to start of edge
-            p_cnProcBuf = &cnProcBuf[*p_addrEdgeInCnBuffer];
+            p_cnProcBufRes = &cnProcBufRes[*p_addrEdgeInCnBuffer];
             p_llrResTmp = &llrResTmp[relAddr];
 
             // Loop over first half of shifted buffer
 	        for (i = 0; i < (Z-relAddr); i++)
 	        {
                 // Add
-                p_llrResTmp += *p_cnProcBuf;
+                *p_llrResTmp += *p_cnProcBufRes;
 
-                p_cnProcBuf++;
+                p_cnProcBufRes++;
                 p_llrResTmp++;
             }
             // Second half
@@ -98,9 +97,9 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
             for (i = 0; i < relAddr; i++)
 	        {
                 // Add
-                p_llrResTmp += *p_cnProcBuf;
+                *p_llrResTmp += *p_cnProcBufRes;
 
-                p_cnProcBuf++;
+                p_cnProcBufRes++;
                 p_llrResTmp++;
             }
 
@@ -126,100 +125,155 @@ static inline void nrLDPC_bnProcPcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, in
 
     // Now the parity bits
     // Init with input LLR, memcpy is ok since we are only summing 2 values
-    memcpy(&llrRes[NR_LDPC_START_COL_PARITY_BG2*Z],&llr[NR_LDPC_START_COL_PARITY_BG2*Z],(NR_LDPC_NCOL_BG2_R15 - NR_LDPC_START_COL_PARITY_BG2)*Z*sizeof(int8_t));
+    
+    const uint8_t numBn2CnG1 = p_lut->numBnInBnGroups[0];
+    uint32_t startColParity = NR_LDPC_START_COL_PARITY_BG2; //(BG ==1 ) ? (NR_LDPC_START_COL_PARITY_BG1) : (NR_LDPC_START_COL_PARITY_BG2);
 
-    for (c = NR_LDPC_START_COL_PARITY_BG2; c < NR_LDPC_NCOL_BG2_R15; c++)
+    uint32_t colG1 = startColParity*Z;
+    memcpy(&llrRes[colG1], &llr[colG1], numBn2CnG1*Z);
+
+    for (c = startColParity; c < NR_LDPC_NCOL_BG2_R15; c++)
     {
         // Set pointer to start of edge
-        p_cnProcBuf256 = (__m256i*) &cnProcBuf[*p_addrEdgeInCnBuffer];
+        p_cnProcBufRes256 = (__m256i*) &cnProcBufRes[*p_addrEdgeInCnBuffer];
+
         for (i = 0; i < M; i++)
 	    {
-            *p_llrRes = simde_mm256_adds_epi8(*p_llrRes,*p_cnProcBuf256);
+            *p_llrRes = simde_mm256_adds_epi8(*p_llrRes,*p_cnProcBufRes256);
 
-            p_cnProcBuf256++;
+            p_cnProcBufRes256++;
             p_llrRes++;
         }
         // Next edge
         p_addrEdgeInCnBuffer++;
     }
+    
 }
 
-/*
-static inline void nrLDPC_bnProcPcOptError(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, int8_t* llr, int8_t* llrRes, uint16_t Z)
+/**
+   \brief Performs first part of BN processing on the CN results buffer and stores the results in the LLR results buffer.
+          At every BN, the sum of the returned LLRs from the connected CNs and the LLR of the receiver input is computed.
+   \param p_lut Pointer to decoder LUTs
+   \param Z Lifting size
+*/
+static inline void nrLDPC_bnProcOpt(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, int8_t* llr, int8_t* llrRes, uint16_t Z)
 {
     const uint32_t* p_addrEdgeInCnBuffer = p_lut->addrEdgeInCnBuffer;
     const uint16_t* p_cshift = p_lut->cShift;
 
-    __m128i* p_cnProcBuf;
-    __m256i* p_llrRes;
-    __m128i* p_llrRes128;
+    int8_t* p_cnProcBufRes;
+    int8_t* p_cnProcBuf;
+    int8_t* p_llrRes;
+    int16_t* p_resTmp;
+    __m256i* p_resTmp256;
+    __m256i* p_cnProcBuf256;
 
     uint32_t c;
     uint32_t r;
     uint32_t i,j;
     uint16_t M;
-    int8_t* p_startLlrResBn;
     uint16_t relAddr;
-
-    __m256i ymm0, ymm1, ymmRes0, ymmRes1;
+    int16_t resTmp[384] __attribute__ ((aligned(64))) = {0};
+    __m256i ymm0, ymm1, ymmRes0,ymmRes1;
 
     // Number of groups of 32 values in edge of length Z
     M = (Z + 31)>>5;
 
-    // Init sum with input LLR
-    memcpy(llrRes,llr,NR_LDPC_NCOL_BG2*Z*sizeof(int8_t));
-
     // Loop over BNs excluding parity BNs which can be processed way easier since they have no shift
     for (c = 0; c < NR_LDPC_START_COL_PARITY_BG2; c++)
     {
-        // Start address of BN in the LLR results
-        p_startLlrResBn = &llrRes[c*Z];
+        // Init with input LLR, cannot do memcpy since we need 16bit for the summation
+        // p_llrRes = &llrRes[c*Z];
+        // for (i = 0; i < Z; i++)
+	    // {  
+        //     resTmp[i] = (int16_t)(p_llrRes[i]);
+        // }
 
         // Loop over all connected CNs for that BN
         for (r = 0; r < lut_numEdgesPerBn_BG2_R15[c]; r++)
 	    {
+            memset(&resTmp[0],0,384*sizeof(int16_t));
             // Relative address in edge
             relAddr = *p_cshift;
+            // Set pointer to start of edge
+            p_cnProcBufRes = &cnProcBufRes[*p_addrEdgeInCnBuffer];
+            p_resTmp       = &resTmp      [0];
+            p_llrRes       = &llrRes      [c*Z + relAddr];
 
-            // Loop over the Z+32 values in edge
-	        for (i = 0; i < M; i++)
+            // Loop over first half of shifted buffer
+	        for (i = 0; i < (Z-relAddr); i++)
 	        {
-                // Set pointer to start of edge
-                p_cnProcBuf = (__m128i*) &cnProcBuf[*p_addrEdgeInCnBuffer + relAddr];
-                p_llrRes    = (__m256i*) &p_startLlrResBn[relAddr];
-                p_llrRes128 = (__m128i*) p_llrRes;
+                // Subtract
+                *p_resTmp = (int16_t) (*p_llrRes - *p_cnProcBufRes);
+                // *p_cnProcBuf = *p_llrRes - *p_cnProcBufRes;
 
-                // First 16 LLRs of first CN
-                ymm0 = simde_mm256_cvtepi8_epi16(p_cnProcBuf[0]);
-                ymm1 = simde_mm256_cvtepi8_epi16(p_llrRes128[0]);
+                // ((int8_t*)&ymm0)[0] = *p_llrRes;
+                // ((int8_t*)&ymm1)[0] = *p_cnProcBufRes;
+                // ymmRes = simde_mm256_subs_epi8(ymm0, ymm1);
+                // *p_cnProcBuf = ((int8_t*)&ymmRes)[0];
 
-                ymmRes0 = simde_mm256_adds_epi16(ymm0, ymm1);
+                p_cnProcBufRes++;
+                // p_cnProcBuf++;
+                p_resTmp++;
+                p_llrRes++;
+            }
+            // Second half
+            // p_resTmp = &resTmp[0];
+            p_llrRes = &llrRes[c*Z];
+            for (i = 0; i < relAddr; i++)
+	        {
+                // Subtract
+                *p_resTmp = (int16_t) (*p_llrRes - *p_cnProcBufRes);
+                // *p_cnProcBuf = *p_llrRes - *p_cnProcBufRes;
+                // *p_resTmp -= *p_cnProcBufRes;
 
-                // Second 16 LLRs of first CN
-                ymm0 = simde_mm256_cvtepi8_epi16(p_cnProcBuf[1]);
-                ymm1 = simde_mm256_cvtepi8_epi16(p_llrRes128[1]);
+                // ((int8_t*)&ymm0)[0] = *p_llrRes;
+                // ((int8_t*)&ymm1)[0] = *p_cnProcBufRes;
+                // ymmRes = simde_mm256_subs_epi8(ymm0, ymm1);
+                // *p_cnProcBuf = ((int8_t*)&ymmRes)[0];
 
-                ymmRes1 = simde_mm256_adds_epi16(ymm0, ymm1);
+                p_cnProcBufRes++;
+                // p_cnProcBuf++;
+                p_resTmp++;
+                p_llrRes++;
+            }
 
+            // Sum is complete
+            // saturate and move to LLR results
+            p_resTmp256    = (__m256i*) &resTmp[0];
+            p_cnProcBuf256 = (__m256i*) &cnProcBuf[*p_addrEdgeInCnBuffer];
+            for (i = 0,j=0; i < M; i++,j+=2)
+	        {
+                ymmRes0 = p_resTmp256[j];
+                ymmRes1 = p_resTmp256[j+1];
                 // Pack results back to epi8
                 ymm0 = simde_mm256_packs_epi16(ymmRes0, ymmRes1);
                 // ymm0     = [ymmRes1[255:128] ymmRes0[255:128] ymmRes1[127:0] ymmRes0[127:0]]
                 // p_llrRes = [ymmRes1[255:128] ymmRes1[127:0] ymmRes0[255:128] ymmRes0[127:0]]
-                *p_llrRes = simde_mm256_permute4x64_epi64(ymm0, 0xD8);
-
-                // Calculate new relative address
-                relAddr = ((relAddr+32)%Z);
+                *p_cnProcBuf256 = simde_mm256_permute4x64_epi64(ymm0, 0xD8);
+                p_cnProcBuf256++;
             }
 
             // Next edge
             p_addrEdgeInCnBuffer++;
             p_cshift++;
-
         }
     }
 
+    // Now the parity bits
+    // The results are just the input LLRs
+    uint32_t startColParity = NR_LDPC_START_COL_PARITY_BG2; //(BG ==1 ) ? (NR_LDPC_START_COL_PARITY_BG1) : (NR_LDPC_START_COL_PARITY_BG2);
+    for (c = startColParity; c < NR_LDPC_NCOL_BG2_R15; c++)
+    {
+        p_cnProcBuf = &cnProcBuf[*p_addrEdgeInCnBuffer];
+        memcpy(p_cnProcBuf,&llr[c*Z],Z);
+        // memset(p_cnProcBuf,1,Z);
+        // Next edge
+        p_addrEdgeInCnBuffer++;
+    }
+    
 }
-*/
+
 /**
    \brief Performs first part of BN processing on the BN processing buffer and stores the results in the LLR results buffer.
           At every BN, the sum of the returned LLRs from the connected CNs and the LLR of the receiver input is computed.

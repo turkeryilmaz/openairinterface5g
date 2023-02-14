@@ -161,7 +161,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
     int8_t procBuf[NR_LDPC_SIZE_CN_PROC_BUF]      __attribute__ ((aligned(64))) = {0};
     int8_t procBufRes[NR_LDPC_SIZE_CN_PROC_BUF]   __attribute__ ((aligned(64))) = {0};
     int8_t llrRes[NR_LDPC_MAX_NUM_LLR]            __attribute__ ((aligned(64))) = {0};
-    int8_t llrProcBuf[NR_LDPC_MAX_NUM_LLR]        __attribute__ ((aligned(64))) = {0};
+    // int8_t llrProcBuf[NR_LDPC_MAX_NUM_LLR]        __attribute__ ((aligned(64))) = {0};
     int8_t llrOut[NR_LDPC_MAX_NUM_LLR]            __attribute__ ((aligned(64))) = {0};
     // Minimum number of iterations is 1
     // 0 iterations means hard-decision on input LLRs
@@ -185,15 +185,15 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifdef NR_LDPC_PROFILER_DETAIL
     start_meas(&p_profiler->llr2llrProcBuf);
 #endif
-    nrLDPC_llr2llrProcBuf(p_lut, p_llr, llrProcBuf, Z, BG);
+    // nrLDPC_llr2llrProcBuf(p_lut, p_llr, llrProcBuf, Z, BG);
 #ifdef NR_LDPC_PROFILER_DETAIL
     stop_meas(&p_profiler->llr2llrProcBuf);
 #endif
 
-#ifdef NR_LDPC_DEBUG_MODE
-    nrLDPC_debug_initBuffer2File(nrLDPC_buffers_LLR_PROC);
-    nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_LLR_PROC, llrProcBuf);
-#endif
+// #ifdef NR_LDPC_DEBUG_MODE
+//     nrLDPC_debug_initBuffer2File(nrLDPC_buffers_LLR_PROC);
+//     nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_LLR_PROC, llrProcBuf);
+// #endif
 
 #ifdef NR_LDPC_PROFILER_DETAIL
     start_meas(&p_profiler->llr2CnProcBuf);
@@ -316,7 +316,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
     }
     else
     {   
-        nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+        // nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
     }
 #ifdef NR_LDPC_PROFILER_DETAIL
     stop_meas(&p_profiler->cn2bnProcBuf);
@@ -333,8 +333,11 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
 
 #ifndef UNROLL_BN_PROC_PC
-    //nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
+    // nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
+    //nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
     nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
+    // nrLDPC_llr2llrProcBuf(p_lut, llrRes, p_llrOut, Z, BG);
+    // memcpy(llrRes,p_llrOut,NR_LDPC_MAX_NUM_LLR*sizeof(int8_t));
 #else        
     if (BG==1) {
         switch (R) {
@@ -383,6 +386,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifdef NR_LDPC_DEBUG_MODE
     nrLDPC_debug_initBuffer2File(nrLDPC_buffers_LLR_RES);
     nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_LLR_RES, llrRes);
+    // nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_LLR_RES, p_llrOut);
 #endif
 
 #ifdef NR_LDPC_PROFILER_DETAIL
@@ -390,7 +394,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
 
 #ifndef UNROLL_BN_PROC
-        nrLDPC_bnProc(p_lut, procBuf, procBufRes, llrRes, Z);
+        // nrLDPC_bnProc(p_lut, procBuf, procBufRes, llrRes, Z);
+        nrLDPC_bnProcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
 #else
     if (BG==1) 
     {
@@ -478,7 +483,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
     }
     else
     {
-        nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+        // memset(procBuf,0,NR_LDPC_SIZE_CN_PROC_BUF);
+        // nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
     }
 #ifdef NR_LDPC_PROFILER_DETAIL
     stop_meas(&p_profiler->bn2cnProcBuf);
@@ -594,7 +600,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
         }
         else
         {   
-            nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+            // nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
         }
 #ifdef NR_LDPC_PROFILER_DETAIL
         stop_meas(&p_profiler->cn2bnProcBuf);
@@ -612,6 +618,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifndef UNROLL_BN_PROC_PC
         //nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
         nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
+        // nrLDPC_llr2llrProcBuf(p_lut, llrRes, p_llrOut, Z, BG);
+        // memcpy(llrRes,p_llrOut,NR_LDPC_MAX_NUM_LLR*sizeof(int8_t));
 #else
         if (BG==1) {
           switch (R) {
@@ -664,7 +672,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
         start_meas(&p_profiler->bnProc);
 #endif
 #ifndef UNROLL_BN_PROC
-        nrLDPC_bnProc(p_lut, procBuf, procBufRes, llrRes, Z);
+        //nrLDPC_bnProc(p_lut, procBuf, procBufRes, llrRes, Z);
+        nrLDPC_bnProcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
 #else     
         if (BG==1) {
           switch (R) {
@@ -775,7 +784,7 @@ if (pcRes == 0)
         }
         else
         {   
-            nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+            // nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
         }
 #ifdef NR_LDPC_PROFILER_DETAIL
         stop_meas(&p_profiler->bn2cnProcBuf);
@@ -800,7 +809,8 @@ if (pcRes == 0)
 #ifdef NR_LDPC_PROFILER_DETAIL
    start_meas(&p_profiler->llrRes2llrOut);
 #endif
-   nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
+//    nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
+   p_llrOut = llrRes;
 #ifdef NR_LDPC_PROFILER_DETAIL
    stop_meas(&p_profiler->llrRes2llrOut);
 #endif
