@@ -6,9 +6,10 @@ services:
     privileged: true
     container_name: sa-b200-gnb
     environment:
-        USE_VOLUMED_CONF: 'yes'
-        USE_B2XX: 'yes'
-        USE_ADDITIONAL_OPTIONS: --sa -E --continuous-tx
+      - USE_VOLUMED_CONF="yes"
+      - USE_B2XX="yes"
+      - USE_ADDITIONAL_OPTIONS="--sa -E --continuous-tx"
+      - ENABLE_NETCONF=true
     volumes:
         - /dev:/dev
         - ./gNodeB/gnb.conf:/opt/oai-gnb/etc/mounted.conf
@@ -18,6 +19,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - oam
 
 networks:
   oam:
