@@ -170,7 +170,7 @@ int trx_oran_ctlrecv(openair0_device *device, void *msg, ssize_t msg_len)
   printf("ORAN: %s\n", __FUNCTION__);
 
   if (s->last_msg == RAU_tick && s->capabilities_sent == 0) {
-    printf("CCCCC ORAN ctrlrcv RRU_tick received and send capabilities hard coded\n");
+    printf("ORAN ctrlrcv RRU_tick received and send capabilities hard coded\n");
     RRU_capabilities_t *cap;
     rru_config_msg->type = RRU_capabilities;
     rru_config_msg->len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_capabilities_t);
