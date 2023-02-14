@@ -33,7 +33,7 @@
 #define __NR_TRANSPORT_UE__H__
 #include <limits.h>
 #include "PHY/impl_defs_top.h"
-
+#include "nfapi_nr_interface_scf.h"
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 
 //#include "PHY/defs_nr_UE.h"
@@ -259,6 +259,8 @@ typedef struct {
   uint16_t dlDmrsScramblingId;
   /// PDU BITMAP 
   uint16_t pduBitmap;
+
+  nfapi_nr_pusch_pdu_t ssch_pdu;
 } NR_DL_UE_HARQ_t;
 
 typedef struct {

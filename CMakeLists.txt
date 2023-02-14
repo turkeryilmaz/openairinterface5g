@@ -2958,6 +2958,17 @@ target_link_libraries(nr_psbchsim
   m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
   )
 
+  add_executable(nr_psschsim
+  ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psschsim.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
+target_link_libraries(nr_psschsim
+  -Wl,--start-group UTIL SIMU_COMMON SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
+  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
+  )
+
 add_executable(nr_pucchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
