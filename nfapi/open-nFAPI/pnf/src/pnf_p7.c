@@ -1621,7 +1621,6 @@ void pnf_handle_dl_tti_request(void* pRecvMsg, int recvMsgLen, pnf_p7_t* pnf_p7)
 
       struct timespec t;
       clock_gettime(CLOCK_MONOTONIC, &t);
-      NFAPI_TRACE(NFAPI_TRACE_INFO, "swetank: fxn:%s sfn:%d slot:%d\n", __FUNCTION__, req->SFN, req->Slot);
     
       NFAPI_TRACE(NFAPI_TRACE_INFO,"%s() %ld.%09ld POPULATE DL_TTI_REQ current tx sfn/slot:%d.%d p7 msg sfn/slot: %d.%d buffer_index:%d\n", __FUNCTION__, t.tv_sec, t.tv_nsec, pnf_p7->sfn,pnf_p7->slot, req->SFN, req->Slot, buffer_index);
 
@@ -1783,7 +1782,6 @@ void pnf_handle_ul_tti_request(void* pRecvMsg, int recvMsgLen, pnf_p7_t* pnf_p7)
 
 		if(is_nr_p7_request_in_window(req->SFN,req->Slot, "ul_tti_request", pnf_p7))
     {
-      NFAPI_TRACE(NFAPI_TRACE_INFO, "swetank: fxn:%s sfn:%d slot:%d\n", __FUNCTION__, req->SFN, req->Slot);
       uint32_t sfn_slot_dec = NFAPI_SFNSLOT2DEC(req->SFN,req->Slot);
       uint8_t buffer_index = (sfn_slot_dec % 20);
 
@@ -1932,7 +1930,6 @@ void pnf_handle_ul_dci_request(void* pRecvMsg, int recvMsgLen, pnf_p7_t* pnf_p7)
 
 		if(is_nr_p7_request_in_window(req->SFN,req->Slot,"ul_dci_request", pnf_p7))
 		{
-      NFAPI_TRACE(NFAPI_TRACE_INFO, "swetank: fxn:%s sfn:%d slot:%d\n", __FUNCTION__, req->SFN, req->Slot);
 			uint32_t sfn_slot_dec = NFAPI_SFNSLOT2DEC(req->SFN,req->Slot);
 			uint8_t buffer_index = sfn_slot_dec % 20;
 
@@ -2072,7 +2069,6 @@ void pnf_handle_tx_data_request(void* pRecvMsg, int recvMsgLen, pnf_p7_t* pnf_p7
 
 		if(is_nr_p7_request_in_window(req->SFN, req->Slot,"tx_request", pnf_p7))
 		{
-      NFAPI_TRACE(NFAPI_TRACE_INFO, "swetank: fxn:%s sfn:%d slot:%d\n", __FUNCTION__, req->SFN, req->Slot);
 			uint32_t sfn_slot_dec = NFAPI_SFNSLOT2DEC(req->SFN,req->Slot);
 			uint8_t buffer_index = sfn_slot_dec % 20;
 
