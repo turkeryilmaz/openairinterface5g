@@ -174,9 +174,6 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         idxBn = lut_posBnInCnProcBuf_CNG3[j][0]*Z;
 
         nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG3[j][0]);
-
-        // Cyclic extension of CN processing buffer
-        memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
     }
 
     // =====================================================================
@@ -194,10 +191,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
 
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG4[j][i]);
 
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -216,9 +210,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG5[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG5[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -235,9 +227,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG6[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG6[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -256,9 +246,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG7[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG7[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -276,9 +264,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG8[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG8[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -295,9 +281,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG9[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG9[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -314,9 +298,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG10[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG10[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -334,9 +316,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG1(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG19[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG19[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -403,9 +383,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG3[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG3[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -422,9 +400,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG4[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG4[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -441,9 +417,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG5[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG5[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -460,9 +434,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG6[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG6[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -479,9 +451,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG8[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG8[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 
@@ -498,9 +468,7 @@ static inline void nrLDPC_llr2CnProcBuf_BG2(t_nrLDPC_lut* p_lut, int8_t* llr, in
         {
             idxBn = lut_posBnInCnProcBuf_CNG10[j][i]*Z;
             nrLDPC_circ_memcpy(p_cnProcBuf, &llr[idxBn], Z, lut_circShift_CNG10[j][i]);
-            // Cyclic extension of CN processing buffer
-            memcpy(p_cnProcBuf+Z,p_cnProcBuf,32);
-            p_cnProcBuf += (Z+32);
+            p_cnProcBuf += Z;
         }
     }
 }
