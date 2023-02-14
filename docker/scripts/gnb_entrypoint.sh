@@ -21,6 +21,7 @@ if [[ -v USE_VOLUMED_CONF ]]; then cp $PREFIX/etc/mounted.conf $PREFIX/etc/gnb.c
 # Defualt Parameters
 GNB_ID=${GNB_ID:-e00}
 NSSAI_SD=${NSSAI_SD:-ffffff}
+ENABLE_NETCONF=${ENABLE_NETCONF:-"false"}
 # AMF_IP_ADDRESS can be amf ip address of amf fqdn
 if [[ -v AMF_IP_ADDRESS ]] && [[ "${AMF_IP_ADDRESS}" =~ [a-zA-Z] ]] && [[ -z `getent hosts $AMF_IP_ADDRESS | awk '{print $1}'` ]]; then echo "not able to resolve AMF FQDN" && exit 1 ; fi
 [[ -v AMF_IP_ADDRESS ]] && [[ "${AMF_IP_ADDRESS}" =~ [a-zA-Z] ]] && AMF_IP_ADDRESS=$(getent hosts $AMF_IP_ADDRESS | awk '{print $1}')
@@ -73,6 +74,12 @@ fi
 
 # enable printing of stack traces on assert
 export gdbStacks=1
+
+if $ENABLE_NETCONF; then
+    echo "=================================="
+    echo "== starting netconf server in background"
+    netopeer2-server -d -v2 &
+fi
 
 echo "=================================="
 echo "== Starting gNB soft modem"

@@ -10,6 +10,8 @@ BUILD_MODE="Release"
 # supress warnings from git
 git config --global advice.detachedHead false
 
+mkdir -p $INSTALL_PATH
+
 # build and install libssh-dev
 cd $INSTALL_PATH
 git clone --single-branch --branch libssh-0.9.2 https://git.libssh.org/projects/libssh.git

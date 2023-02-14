@@ -33,9 +33,13 @@ cp "$DIR_AVAILABLE_YANGS/"ietf-*.yang "$DIR_YANGS/"
 declare special_files=(
     "_3gpp-5g-common-yang-types.yang"
     "_3gpp-5gc-nrm-configurable5qiset.yang"
+    "_3gpp-nr-nrm-bwp.yang"
+    "_3gpp-nr-nrm-ep.yang"
     "_3gpp-nr-nrm-gnbcucpfunction.yang"
     "_3gpp-nr-nrm-gnbcuupfunction.yang"
     "_3gpp-nr-nrm-gnbdufunction.yang"
+    "_3gpp-nr-nrm-nrsectorcarrier.yang"
+    "_3gpp-nr-nrm-nrcelldu.yang"
 )
 
 for file in "${special_files[@]}"
