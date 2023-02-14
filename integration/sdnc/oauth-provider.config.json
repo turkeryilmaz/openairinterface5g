@@ -1,0 +1,8 @@
+{
+	"tokenSecret": "my-secret",
+	"tokenIssuer": "ONAP-SDNC",
+	"publicUrl": "${SDNC_WEB_URL}",
+	"redirectUri": "/odlux/index.html#/oauth?token=",
+	"supportOdlUsers": "true",
+	"providers": []
+}
