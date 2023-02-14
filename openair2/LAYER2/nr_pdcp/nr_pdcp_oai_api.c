@@ -1366,7 +1366,7 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
     nr_pdcp_pkt_info_t pdcp_pkt;
     memset(&pdcp_pkt, 0, sizeof(pdcp_pkt));
     pdcp_pkt.direction 	= 1; //PDCP_NR_DIRECTION_DOWNLINK
-    pdcp_pkt.ueid      	= ue->rntiMaybeUEid;
+//    pdcp_pkt.ueid      	= ue->rntiMaybeUEid;
     pdcp_pkt.bearerType 	= 8; //TODO
     pdcp_pkt.bearerId 	= rb_id - 1;
     pdcp_pkt.plane     	= (rb_id == 1)?4:1;
