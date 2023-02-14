@@ -51,8 +51,6 @@
 #include <executables/softmodem-common.h>
 #include <executables/nr-uesoftmodem.h>
 #include "openair1/SCHED_NR_UE/defs.h"
-#include "openair1/SIMULATION/NR_PHY/nr_pss_sl_test.h"
-#include "openair1/SIMULATION/NR_PHY/nr_sss_sl_test.h"
 
 //#define DEBUG_NR_PSBCHSIM
 double cpuf;
