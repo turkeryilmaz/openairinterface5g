@@ -391,4 +391,6 @@ int init_frame_parms(LTE_DL_FRAME_PARMS *frame_parms,uint8_t osf);
 void dump_frame_parms(LTE_DL_FRAME_PARMS *frame_parms);
 void fill_subframe_mask(PHY_VARS_eNB *eNB);
 
+void init_phy_fapi_pdus(uint32_t *pdu_list[NFAPI_CC_MAX][NFAPI_NR_MAX_TX_REQUEST_PDUS][NFAPI_NR_MAX_TX_REQUEST_TLV]);
+void free_phy_fapi_pdus(uint32_t *pdu_list[NFAPI_CC_MAX][NFAPI_NR_MAX_TX_REQUEST_PDUS][NFAPI_NR_MAX_TX_REQUEST_TLV]);
 #endif
