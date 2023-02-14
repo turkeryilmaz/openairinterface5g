@@ -835,6 +835,2766 @@
         </availableRANqoEMetrics>
       </attributes>
     </QMCJob>
+    <GNBDUFunction xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-gnbdufunction">
+      <!-- # keys: id-->
+      <!-- # entries: 0.. -->
+      <id>
+        <!-- type: string -->
+      </id>
+      <attributes>
+        <userLabel>
+          <!-- type: string -->
+        </userLabel>
+        <vnfParametersList>
+          <!-- # keys: vnfInstanceId-->
+          <!-- # entries: 0.. -->
+          <vnfInstanceId>
+            <!-- type: string -->
+          </vnfInstanceId>
+          <vnfdId>
+            <!-- type: string -->
+          </vnfdId>
+          <flavourId>
+            <!-- type: string -->
+          </flavourId>
+          <autoScalable>
+            <!-- type: boolean -->
+          </autoScalable>
+        </vnfParametersList>
+        <peeParametersList>
+          <!-- # keys: idx-->
+          <!-- # entries: 0.. -->
+          <idx>
+            <!-- type: uint32 -->
+          </idx>
+          <siteIdentification>
+            <!-- type: string -->
+          </siteIdentification>
+          <siteLatitude>
+            <!-- type: decimal64 -->
+          </siteLatitude>
+          <siteLongitude>
+            <!-- type: decimal64 -->
+          </siteLongitude>
+          <siteAltitude>
+            <!-- type: decimal64 -->
+          </siteAltitude>
+          <siteDescription>
+            <!-- type: string -->
+          </siteDescription>
+          <equipmentType>
+            <!-- type: string -->
+          </equipmentType>
+          <environmentType>
+            <!-- type: string -->
+          </environmentType>
+          <powerInterface>
+            <!-- type: string -->
+          </powerInterface>
+        </peeParametersList>
+        <priorityLabel>
+          <!-- type: uint32 -->
+        </priorityLabel>
+        <SupportedPerfMetricGroup>
+          <!-- # keys: -->
+          <!-- # entries: 0.. -->
+          <performanceMetrics>
+            <!-- # entries: 1.. -->
+          </performanceMetrics>
+          <granularityPeriods>
+            <!-- # entries: 0.. -->
+          </granularityPeriods>
+          <reportingMethods>
+            <!-- # entries: 1.. -->
+          </reportingMethods>
+          <monitorGranularityPeriods>
+            <!-- # entries: 0.. -->
+          </monitorGranularityPeriods>
+        </SupportedPerfMetricGroup>
+        <gNBId>
+          <!-- type: int64 -->
+        </gNBId>
+        <gNBIdLength>
+          <!-- type: int32 -->
+        </gNBIdLength>
+        <gNBDUId>
+          <!-- type: int64 -->
+        </gNBDUId>
+        <gNBDUName>
+          <!-- type: string -->
+        </gNBDUName>
+        <rimRSReportConf>
+          <!-- # keys: reportInterval-->
+          <!-- # entries: 1..1 -->
+          <reportInterval>
+            <!-- type: uint32 -->
+          </reportInterval>
+          <reportIndicator>DISABLED</reportIndicator>
+          <nrofRIMRSReportInfo>
+            <!-- type: uint32 -->
+          </nrofRIMRSReportInfo>
+          <maxPropagationDelay>
+            <!-- type: uint32 -->
+          </maxPropagationDelay>
+          <RimRSReportInfoList>
+            <!-- # keys: detectedSetID-->
+            <!-- # entries: 0.. -->
+            <detectedSetID>
+              <!-- type: uint32 -->
+            </detectedSetID>
+            <propagationDelay>
+              <!-- type: uint32 -->
+            </propagationDelay>
+            <functionalityOfRIMRS>
+              <!-- type: enumeration -->
+            </functionalityOfRIMRS>
+          </RimRSReportInfoList>
+        </rimRSReportConf>
+      </attributes>
+      <ManagedNFService>
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <userLabel>
+            <!-- type: string -->
+          </userLabel>
+          <nFServiceType>
+            <!-- type: string -->
+          </nFServiceType>
+          <sAP>
+            <!-- # keys: host,port-->
+            <!-- # entries: 1..1 -->
+            <host>
+              <!-- type: inet:host -->
+            </host>
+            <port>
+              <!-- type: inet:port-number -->
+            </port>
+          </sAP>
+          <operations>
+            <!-- # keys: name-->
+            <!-- # entries: 1.. -->
+            <name>
+              <!-- type: string -->
+            </name>
+            <allowedNFTypes>
+              <!-- # entries: 1.. -->
+            </allowedNFTypes>
+            <operationSemantics>
+              <!-- type: enumeration -->
+            </operationSemantics>
+          </operations>
+          <administrativeState>
+            <!-- type: types3gpp:AdministrativeState -->
+          </administrativeState>
+          <operationalState>
+            <!-- type: types3gpp:OperationalState -->
+          </operationalState>
+          <usageState>
+            <!-- type: types3gpp:usageState -->
+          </usageState>
+          <registrationState>
+            <!-- type: enumeration -->
+          </registrationState>
+        </attributes>
+      </ManagedNFService>
+      <PerfMetricJob>
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <administrativeState>UNLOCKED</administrativeState>
+          <operationalState>
+            <!-- type: types3gpp:OperationalState -->
+          </operationalState>
+          <jobId>
+            <!-- type: string -->
+          </jobId>
+          <performanceMetrics>
+            <!-- # entries: 1.. -->
+          </performanceMetrics>
+          <granularityPeriod>
+            <!-- type: uint32 -->
+          </granularityPeriod>
+          <objectInstances>
+            <!-- # entries: 0.. -->
+          </objectInstances>
+          <rootObjectInstances>
+            <!-- # entries: 0.. -->
+          </rootObjectInstances>
+          <fileReportingPeriod>
+            <!-- type: uint32 -->
+          </fileReportingPeriod>
+          <fileLocation>
+            <!-- type: string -->
+          </fileLocation>
+          <notificationRecipientAddress>
+            <!-- type: string -->
+          </notificationRecipientAddress>
+          <streamTarget>
+            <!-- type: string -->
+          </streamTarget>
+          <_linkToFiles>
+            <!-- type: string -->
+          </_linkToFiles>
+        </attributes>
+        <Files>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <numberOfFiles>
+              <!-- type: uint64 -->
+            </numberOfFiles>
+            <jobRef>
+              <!-- # entries: 0.. -->
+            </jobRef>
+            <jobId>
+              <!-- type: string -->
+            </jobId>
+          </attributes>
+          <File>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <fileLocation>
+                <!-- type: inet:uri -->
+              </fileLocation>
+              <fileCompression>
+                <!-- type: string -->
+              </fileCompression>
+              <fileSize>
+                <!-- type: uint64 -->
+              </fileSize>
+              <fileDataType>
+                <!-- type: enumeration -->
+              </fileDataType>
+              <fileFormat>
+                <!-- type: string -->
+              </fileFormat>
+              <fileReadyTime>
+                <!-- type: yang:date-and-time -->
+              </fileReadyTime>
+              <fileExpirationTime>
+                <!-- type: yang:date-and-time -->
+              </fileExpirationTime>
+              <fileContent>
+                <!-- type: string -->
+              </fileContent>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+          </File>
+        </Files>
+      </PerfMetricJob>
+      <ThresholdMonitor>
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <administrativeState>UNLOCKED</administrativeState>
+          <operationalState>
+            <!-- type: types3gpp:OperationalState -->
+          </operationalState>
+          <thresholdInfoList>
+            <!-- # keys: idx-->
+            <!-- # entries: 1.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <measurementTypes>
+              <!-- # entries: 0.. -->
+            </measurementTypes>
+            <thresholdLevel>
+              <!-- type: uint64 -->
+            </thresholdLevel>
+            <thresholdDirection>
+              <!-- type: enumeration -->
+            </thresholdDirection>
+            <thresholdValue>
+              <!-- type: union -->
+            </thresholdValue>
+            <hysteresis>
+              <!-- type: union -->
+            </hysteresis>
+          </thresholdInfoList>
+          <monitorGranularityPeriod>
+            <!-- type: uint32 -->
+          </monitorGranularityPeriod>
+          <objectInstances>
+            <!-- # entries: 0.. -->
+          </objectInstances>
+          <rootObjectInstances>
+            <!-- # entries: 0.. -->
+          </rootObjectInstances>
+        </attributes>
+      </ThresholdMonitor>
+      <TraceJob>
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <tjJobType>TRACE_ONLY</tjJobType>
+          <tjListOfInterfaces>
+            <!-- # keys: idx-->
+            <!-- # entries: 0.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <MSCServerInterfaces>
+              <!-- # entries: 0.. -->
+            </MSCServerInterfaces>
+            <MGWInterfaces>
+              <!-- # entries: 0.. -->
+            </MGWInterfaces>
+            <RNCInterfaces>
+              <!-- # entries: 0.. -->
+            </RNCInterfaces>
+            <SGSNInterfaces>
+              <!-- # entries: 0.. -->
+            </SGSNInterfaces>
+            <GGSNInterfaces>
+              <!-- # entries: 0.. -->
+            </GGSNInterfaces>
+            <S-CSCFInterfaces>
+              <!-- # entries: 0.. -->
+            </S-CSCFInterfaces>
+            <P-CSCFInterfaces>
+              <!-- # entries: 0.. -->
+            </P-CSCFInterfaces>
+            <I-CSCFInterfaces>
+              <!-- # entries: 0.. -->
+            </I-CSCFInterfaces>
+            <MRFCInterfaces>
+              <!-- # entries: 0.. -->
+            </MRFCInterfaces>
+            <MGCFInterfaces>
+              <!-- # entries: 0.. -->
+            </MGCFInterfaces>
+            <IBCFInterfaces>
+              <!-- # entries: 0.. -->
+            </IBCFInterfaces>
+            <E-CSCFInterfaces>
+              <!-- # entries: 0.. -->
+            </E-CSCFInterfaces>
+            <BGCFInterfaces>
+              <!-- # entries: 0.. -->
+            </BGCFInterfaces>
+            <ASInterfaces>
+              <!-- # entries: 0.. -->
+            </ASInterfaces>
+            <HSSInterfaces>
+              <!-- # entries: 0.. -->
+            </HSSInterfaces>
+            <EIRInterfaces>
+              <!-- # entries: 0.. -->
+            </EIRInterfaces>
+            <BM-SCInterfaces>
+              <!-- # entries: 0.. -->
+            </BM-SCInterfaces>
+            <MMEInterfaces>
+              <!-- # entries: 0.. -->
+            </MMEInterfaces>
+            <SGWInterfaces>
+              <!-- # entries: 0.. -->
+            </SGWInterfaces>
+            <PDN_GWInterfaces>
+              <!-- # entries: 0.. -->
+            </PDN_GWInterfaces>
+            <eNBInterfaces>
+              <!-- # entries: 0.. -->
+            </eNBInterfaces>
+            <en-gNBInterfaces>
+              <!-- # entries: 0.. -->
+            </en-gNBInterfaces>
+            <AMFInterfaces>
+              <!-- # entries: 0.. -->
+            </AMFInterfaces>
+            <AUSFInterfaces>
+              <!-- # entries: 0.. -->
+            </AUSFInterfaces>
+            <NEFInterfaces>
+              <!-- # entries: 0.. -->
+            </NEFInterfaces>
+            <NRFInterfaces>
+              <!-- # entries: 0.. -->
+            </NRFInterfaces>
+            <NSSFInterfaces>
+              <!-- # entries: 0.. -->
+            </NSSFInterfaces>
+            <PCFInterfaces>
+              <!-- # entries: 0.. -->
+            </PCFInterfaces>
+            <SMFInterfaces>
+              <!-- # entries: 0.. -->
+            </SMFInterfaces>
+            <SMSFInterfaces>
+              <!-- # entries: 0.. -->
+            </SMSFInterfaces>
+            <UDMInterfaces>
+              <!-- # entries: 0.. -->
+            </UDMInterfaces>
+            <UPFInterfaces>
+              <!-- # entries: 0.. -->
+            </UPFInterfaces>
+            <ng-eNBInterfaces>
+              <!-- # entries: 0.. -->
+            </ng-eNBInterfaces>
+            <gNB-CU-CPInterfaces>
+              <!-- # entries: 0.. -->
+            </gNB-CU-CPInterfaces>
+            <gNB-CU-UPInterfaces>
+              <!-- # entries: 0.. -->
+            </gNB-CU-UPInterfaces>
+            <gNB-DUInterfaces>
+              <!-- # entries: 0.. -->
+            </gNB-DUInterfaces>
+          </tjListOfInterfaces>
+          <tjListOfNeTypes>
+            <!-- # entries: 0.. -->
+          </tjListOfNeTypes>
+          <tjPLMNTarget>
+            <!-- type: string -->
+          </tjPLMNTarget>
+          <tjStreamingTraceConsumerURI>
+            <!-- type: inet:uri -->
+          </tjStreamingTraceConsumerURI>
+          <tjTraceCollectionEntityAddress>
+            <!-- type: union -->
+          </tjTraceCollectionEntityAddress>
+          <tjTraceDepth>MAXIMUM</tjTraceDepth>
+          <tjTraceReference>
+            <!-- type: uint64 -->
+          </tjTraceReference>
+          <tjTraceRecordSessionReference>
+            <!-- type: string -->
+          </tjTraceRecordSessionReference>
+          <tjTraceReportingFormat>FILE_BASED</tjTraceReportingFormat>
+          <tjTraceTarget>
+            <!-- # keys: targetIdType,targetIdValue-->
+            <!-- # entries: 0..1 -->
+            <targetIdType>
+              <!-- type: enumeration -->
+            </targetIdType>
+            <targetIdValue>
+              <!-- type: string -->
+            </targetIdValue>
+          </tjTraceTarget>
+          <tjTriggeringEvent>
+            <!-- type: string -->
+          </tjTriggeringEvent>
+          <tjMDTAnonymizationOfData>NO_IDENTITY</tjMDTAnonymizationOfData>
+          <tjMDTAreaConfigurationForNeighCell>
+            <!-- # keys: idx-->
+            <!-- # entries: 1.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <frequency>
+              <!-- type: string -->
+            </frequency>
+            <cell>
+              <!-- type: string -->
+            </cell>
+          </tjMDTAreaConfigurationForNeighCell>
+          <tjMDTAreaScope>
+            <!-- # entries: 0.. -->
+          </tjMDTAreaScope>
+          <tjMDTCollectionPeriodRrmLte>
+            <!-- type: uint32 -->
+          </tjMDTCollectionPeriodRrmLte>
+          <tjMDTCollectionPeriodM6Lte>
+            <!-- type: uint32 -->
+          </tjMDTCollectionPeriodM6Lte>
+          <tjMDTCollectionPeriodM7Lte>
+            <!-- type: uint16 -->
+          </tjMDTCollectionPeriodM7Lte>
+          <tjMDTCollectionPeriodRrmUmts>
+            <!-- type: uint32 -->
+          </tjMDTCollectionPeriodRrmUmts>
+          <tjMDTCollectionPeriodRrmNR>
+            <!-- type: uint32 -->
+          </tjMDTCollectionPeriodRrmNR>
+          <tjMDTCollectionPeriodM6NR>
+            <!-- type: enumeration -->
+          </tjMDTCollectionPeriodM6NR>
+          <tjMDTCollectionPeriodM7NR>
+            <!-- type: uint32 -->
+          </tjMDTCollectionPeriodM7NR>
+          <tjMDTEventListForTriggeredMeasurement>
+            <!-- type: enumeration -->
+          </tjMDTEventListForTriggeredMeasurement>
+          <tjMDTEventThreshold>
+            <!-- type: int64 -->
+          </tjMDTEventThreshold>
+          <tjMDTListOfMeasurements>
+            <!-- type: int64 -->
+          </tjMDTListOfMeasurements>
+          <tjMDTLoggingDuration>
+            <!-- type: uint32 -->
+          </tjMDTLoggingDuration>
+          <tjMDTLoggingInterval>
+            <!-- type: uint32 -->
+          </tjMDTLoggingInterval>
+          <tjMDTLoggingEventThreshold>
+            <!-- type: uint32 -->
+          </tjMDTLoggingEventThreshold>
+          <tjMDTLoggedHysteresis>
+            <!-- type: uint32 -->
+          </tjMDTLoggedHysteresis>
+          <tjMDTLoggedTimeToTrigger>
+            <!-- type: int32 -->
+          </tjMDTLoggedTimeToTrigger>
+          <tjMDTMBSFNAreaList>
+            <!-- # entries: 1..8 -->
+          </tjMDTMBSFNAreaList>
+          <tjMDTMeasurementPeriodLTE>
+            <!-- type: uint32 -->
+          </tjMDTMeasurementPeriodLTE>
+          <tjMDTMeasurementPeriodUMTS>
+            <!-- type: uint32 -->
+          </tjMDTMeasurementPeriodUMTS>
+          <tjMDTMeasurementQuantity>
+            <!-- type: uint64 -->
+          </tjMDTMeasurementQuantity>
+          <tjMDTM4ThresholdUmts>
+            <!-- type: uint16 -->
+          </tjMDTM4ThresholdUmts>
+          <tjMDTPLMList>
+            <!-- # keys: mcc,mnc-->
+            <!-- # entries: 1..16 -->
+            <mcc>
+              <!-- type: Mcc -->
+            </mcc>
+            <mnc>
+              <!-- type: Mnc -->
+            </mnc>
+          </tjMDTPLMList>
+          <tjMDTPositioningMethod>
+            <!-- type: enumeration -->
+          </tjMDTPositioningMethod>
+          <tjMDTReportAmount>
+            <!-- type: union -->
+          </tjMDTReportAmount>
+          <tjMDTReportingTrigger>
+            <!-- type: enumeration -->
+          </tjMDTReportingTrigger>
+          <tjMDTReportInterval>
+            <!-- type: uint32 -->
+          </tjMDTReportInterval>
+          <tjMDTReportType>
+            <!-- type: enumeration -->
+          </tjMDTReportType>
+          <tjMDTSensorInformation></tjMDTSensorInformation>
+          <tjMDTTraceCollectionEntityID>
+            <!-- type: uint8 -->
+          </tjMDTTraceCollectionEntityID>
+        </attributes>
+        <Files>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <numberOfFiles>
+              <!-- type: uint64 -->
+            </numberOfFiles>
+            <jobRef>
+              <!-- # entries: 0.. -->
+            </jobRef>
+            <jobId>
+              <!-- type: string -->
+            </jobId>
+          </attributes>
+          <File>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <fileLocation>
+                <!-- type: inet:uri -->
+              </fileLocation>
+              <fileCompression>
+                <!-- type: string -->
+              </fileCompression>
+              <fileSize>
+                <!-- type: uint64 -->
+              </fileSize>
+              <fileDataType>
+                <!-- type: enumeration -->
+              </fileDataType>
+              <fileFormat>
+                <!-- type: string -->
+              </fileFormat>
+              <fileReadyTime>
+                <!-- type: yang:date-and-time -->
+              </fileReadyTime>
+              <fileExpirationTime>
+                <!-- type: yang:date-and-time -->
+              </fileExpirationTime>
+              <fileContent>
+                <!-- type: string -->
+              </fileContent>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+          </File>
+        </Files>
+      </TraceJob>
+      <Configurable5QISet>
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes/>
+        <FiveQICharacteristics>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <fiveQIValue>
+              <!-- type: uint32 -->
+            </fiveQIValue>
+            <resourceType>
+              <!-- type: enumeration -->
+            </resourceType>
+            <priorityLevel>
+              <!-- type: uint32 -->
+            </priorityLevel>
+            <packetDelayBudget>
+              <!-- type: uint32 -->
+            </packetDelayBudget>
+            <packetErrorRate>
+              <!-- # keys: scalar,exponent-->
+              <!-- # entries: 1..1 -->
+              <scalar>
+                <!-- type: uint32 -->
+              </scalar>
+              <exponent>
+                <!-- type: uint32 -->
+              </exponent>
+            </packetErrorRate>
+            <averagingWindow>
+              <!-- type: uint32 -->
+            </averagingWindow>
+            <maximumDataBurstVolume>
+              <!-- type: uint32 -->
+            </maximumDataBurstVolume>
+          </attributes>
+        </FiveQICharacteristics>
+      </Configurable5QISet>
+      <BWP xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-bwp">
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <userLabel>
+            <!-- type: string -->
+          </userLabel>
+          <vnfParametersList>
+            <!-- # keys: vnfInstanceId-->
+            <!-- # entries: 0.. -->
+            <vnfInstanceId>
+              <!-- type: string -->
+            </vnfInstanceId>
+            <vnfdId>
+              <!-- type: string -->
+            </vnfdId>
+            <flavourId>
+              <!-- type: string -->
+            </flavourId>
+            <autoScalable>
+              <!-- type: boolean -->
+            </autoScalable>
+          </vnfParametersList>
+          <peeParametersList>
+            <!-- # keys: idx-->
+            <!-- # entries: 0.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <siteIdentification>
+              <!-- type: string -->
+            </siteIdentification>
+            <siteLatitude>
+              <!-- type: decimal64 -->
+            </siteLatitude>
+            <siteLongitude>
+              <!-- type: decimal64 -->
+            </siteLongitude>
+            <siteAltitude>
+              <!-- type: decimal64 -->
+            </siteAltitude>
+            <siteDescription>
+              <!-- type: string -->
+            </siteDescription>
+            <equipmentType>
+              <!-- type: string -->
+            </equipmentType>
+            <environmentType>
+              <!-- type: string -->
+            </environmentType>
+            <powerInterface>
+              <!-- type: string -->
+            </powerInterface>
+          </peeParametersList>
+          <priorityLabel>
+            <!-- type: uint32 -->
+          </priorityLabel>
+          <SupportedPerfMetricGroup>
+            <!-- # keys: -->
+            <!-- # entries: 0.. -->
+            <performanceMetrics>
+              <!-- # entries: 1.. -->
+            </performanceMetrics>
+            <granularityPeriods>
+              <!-- # entries: 0.. -->
+            </granularityPeriods>
+            <reportingMethods>
+              <!-- # entries: 1.. -->
+            </reportingMethods>
+            <monitorGranularityPeriods>
+              <!-- # entries: 0.. -->
+            </monitorGranularityPeriods>
+          </SupportedPerfMetricGroup>
+          <bwpContext>
+            <!-- type: BwpContext -->
+          </bwpContext>
+          <isInitialBwp>
+            <!-- type: IsInitialBwp -->
+          </isInitialBwp>
+          <subCarrierSpacing>
+            <!-- type: uint32 -->
+          </subCarrierSpacing>
+          <cyclicPrefix>
+            <!-- type: CyclicPrefix -->
+          </cyclicPrefix>
+          <startRB>
+            <!-- type: uint32 -->
+          </startRB>
+          <numberOfRBs>
+            <!-- type: uint32 -->
+          </numberOfRBs>
+        </attributes>
+        <ManagedNFService>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <userLabel>
+              <!-- type: string -->
+            </userLabel>
+            <nFServiceType>
+              <!-- type: string -->
+            </nFServiceType>
+            <sAP>
+              <!-- # keys: host,port-->
+              <!-- # entries: 1..1 -->
+              <host>
+                <!-- type: inet:host -->
+              </host>
+              <port>
+                <!-- type: inet:port-number -->
+              </port>
+            </sAP>
+            <operations>
+              <!-- # keys: name-->
+              <!-- # entries: 1.. -->
+              <name>
+                <!-- type: string -->
+              </name>
+              <allowedNFTypes>
+                <!-- # entries: 1.. -->
+              </allowedNFTypes>
+              <operationSemantics>
+                <!-- type: enumeration -->
+              </operationSemantics>
+            </operations>
+            <administrativeState>
+              <!-- type: types3gpp:AdministrativeState -->
+            </administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <usageState>
+              <!-- type: types3gpp:usageState -->
+            </usageState>
+            <registrationState>
+              <!-- type: enumeration -->
+            </registrationState>
+          </attributes>
+        </ManagedNFService>
+        <PerfMetricJob>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <administrativeState>UNLOCKED</administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <jobId>
+              <!-- type: string -->
+            </jobId>
+            <performanceMetrics>
+              <!-- # entries: 1.. -->
+            </performanceMetrics>
+            <granularityPeriod>
+              <!-- type: uint32 -->
+            </granularityPeriod>
+            <objectInstances>
+              <!-- # entries: 0.. -->
+            </objectInstances>
+            <rootObjectInstances>
+              <!-- # entries: 0.. -->
+            </rootObjectInstances>
+            <fileReportingPeriod>
+              <!-- type: uint32 -->
+            </fileReportingPeriod>
+            <fileLocation>
+              <!-- type: string -->
+            </fileLocation>
+            <notificationRecipientAddress>
+              <!-- type: string -->
+            </notificationRecipientAddress>
+            <streamTarget>
+              <!-- type: string -->
+            </streamTarget>
+            <_linkToFiles>
+              <!-- type: string -->
+            </_linkToFiles>
+          </attributes>
+          <Files>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <numberOfFiles>
+                <!-- type: uint64 -->
+              </numberOfFiles>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+            <File>
+              <!-- # keys: id-->
+              <!-- # entries: 0.. -->
+              <id>
+                <!-- type: string -->
+              </id>
+              <attributes>
+                <fileLocation>
+                  <!-- type: inet:uri -->
+                </fileLocation>
+                <fileCompression>
+                  <!-- type: string -->
+                </fileCompression>
+                <fileSize>
+                  <!-- type: uint64 -->
+                </fileSize>
+                <fileDataType>
+                  <!-- type: enumeration -->
+                </fileDataType>
+                <fileFormat>
+                  <!-- type: string -->
+                </fileFormat>
+                <fileReadyTime>
+                  <!-- type: yang:date-and-time -->
+                </fileReadyTime>
+                <fileExpirationTime>
+                  <!-- type: yang:date-and-time -->
+                </fileExpirationTime>
+                <fileContent>
+                  <!-- type: string -->
+                </fileContent>
+                <jobRef>
+                  <!-- # entries: 0.. -->
+                </jobRef>
+                <jobId>
+                  <!-- type: string -->
+                </jobId>
+              </attributes>
+            </File>
+          </Files>
+        </PerfMetricJob>
+        <ThresholdMonitor>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <administrativeState>UNLOCKED</administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <thresholdInfoList>
+              <!-- # keys: idx-->
+              <!-- # entries: 1.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <measurementTypes>
+                <!-- # entries: 0.. -->
+              </measurementTypes>
+              <thresholdLevel>
+                <!-- type: uint64 -->
+              </thresholdLevel>
+              <thresholdDirection>
+                <!-- type: enumeration -->
+              </thresholdDirection>
+              <thresholdValue>
+                <!-- type: union -->
+              </thresholdValue>
+              <hysteresis>
+                <!-- type: union -->
+              </hysteresis>
+            </thresholdInfoList>
+            <monitorGranularityPeriod>
+              <!-- type: uint32 -->
+            </monitorGranularityPeriod>
+            <objectInstances>
+              <!-- # entries: 0.. -->
+            </objectInstances>
+            <rootObjectInstances>
+              <!-- # entries: 0.. -->
+            </rootObjectInstances>
+          </attributes>
+        </ThresholdMonitor>
+        <TraceJob>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <tjJobType>TRACE_ONLY</tjJobType>
+            <tjListOfInterfaces>
+              <!-- # keys: idx-->
+              <!-- # entries: 0.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <MSCServerInterfaces>
+                <!-- # entries: 0.. -->
+              </MSCServerInterfaces>
+              <MGWInterfaces>
+                <!-- # entries: 0.. -->
+              </MGWInterfaces>
+              <RNCInterfaces>
+                <!-- # entries: 0.. -->
+              </RNCInterfaces>
+              <SGSNInterfaces>
+                <!-- # entries: 0.. -->
+              </SGSNInterfaces>
+              <GGSNInterfaces>
+                <!-- # entries: 0.. -->
+              </GGSNInterfaces>
+              <S-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </S-CSCFInterfaces>
+              <P-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </P-CSCFInterfaces>
+              <I-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </I-CSCFInterfaces>
+              <MRFCInterfaces>
+                <!-- # entries: 0.. -->
+              </MRFCInterfaces>
+              <MGCFInterfaces>
+                <!-- # entries: 0.. -->
+              </MGCFInterfaces>
+              <IBCFInterfaces>
+                <!-- # entries: 0.. -->
+              </IBCFInterfaces>
+              <E-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </E-CSCFInterfaces>
+              <BGCFInterfaces>
+                <!-- # entries: 0.. -->
+              </BGCFInterfaces>
+              <ASInterfaces>
+                <!-- # entries: 0.. -->
+              </ASInterfaces>
+              <HSSInterfaces>
+                <!-- # entries: 0.. -->
+              </HSSInterfaces>
+              <EIRInterfaces>
+                <!-- # entries: 0.. -->
+              </EIRInterfaces>
+              <BM-SCInterfaces>
+                <!-- # entries: 0.. -->
+              </BM-SCInterfaces>
+              <MMEInterfaces>
+                <!-- # entries: 0.. -->
+              </MMEInterfaces>
+              <SGWInterfaces>
+                <!-- # entries: 0.. -->
+              </SGWInterfaces>
+              <PDN_GWInterfaces>
+                <!-- # entries: 0.. -->
+              </PDN_GWInterfaces>
+              <eNBInterfaces>
+                <!-- # entries: 0.. -->
+              </eNBInterfaces>
+              <en-gNBInterfaces>
+                <!-- # entries: 0.. -->
+              </en-gNBInterfaces>
+              <AMFInterfaces>
+                <!-- # entries: 0.. -->
+              </AMFInterfaces>
+              <AUSFInterfaces>
+                <!-- # entries: 0.. -->
+              </AUSFInterfaces>
+              <NEFInterfaces>
+                <!-- # entries: 0.. -->
+              </NEFInterfaces>
+              <NRFInterfaces>
+                <!-- # entries: 0.. -->
+              </NRFInterfaces>
+              <NSSFInterfaces>
+                <!-- # entries: 0.. -->
+              </NSSFInterfaces>
+              <PCFInterfaces>
+                <!-- # entries: 0.. -->
+              </PCFInterfaces>
+              <SMFInterfaces>
+                <!-- # entries: 0.. -->
+              </SMFInterfaces>
+              <SMSFInterfaces>
+                <!-- # entries: 0.. -->
+              </SMSFInterfaces>
+              <UDMInterfaces>
+                <!-- # entries: 0.. -->
+              </UDMInterfaces>
+              <UPFInterfaces>
+                <!-- # entries: 0.. -->
+              </UPFInterfaces>
+              <ng-eNBInterfaces>
+                <!-- # entries: 0.. -->
+              </ng-eNBInterfaces>
+              <gNB-CU-CPInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-CU-CPInterfaces>
+              <gNB-CU-UPInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-CU-UPInterfaces>
+              <gNB-DUInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-DUInterfaces>
+            </tjListOfInterfaces>
+            <tjListOfNeTypes>
+              <!-- # entries: 0.. -->
+            </tjListOfNeTypes>
+            <tjPLMNTarget>
+              <!-- type: string -->
+            </tjPLMNTarget>
+            <tjStreamingTraceConsumerURI>
+              <!-- type: inet:uri -->
+            </tjStreamingTraceConsumerURI>
+            <tjTraceCollectionEntityAddress>
+              <!-- type: union -->
+            </tjTraceCollectionEntityAddress>
+            <tjTraceDepth>MAXIMUM</tjTraceDepth>
+            <tjTraceReference>
+              <!-- type: uint64 -->
+            </tjTraceReference>
+            <tjTraceRecordSessionReference>
+              <!-- type: string -->
+            </tjTraceRecordSessionReference>
+            <tjTraceReportingFormat>FILE_BASED</tjTraceReportingFormat>
+            <tjTraceTarget>
+              <!-- # keys: targetIdType,targetIdValue-->
+              <!-- # entries: 0..1 -->
+              <targetIdType>
+                <!-- type: enumeration -->
+              </targetIdType>
+              <targetIdValue>
+                <!-- type: string -->
+              </targetIdValue>
+            </tjTraceTarget>
+            <tjTriggeringEvent>
+              <!-- type: string -->
+            </tjTriggeringEvent>
+            <tjMDTAnonymizationOfData>NO_IDENTITY</tjMDTAnonymizationOfData>
+            <tjMDTAreaConfigurationForNeighCell>
+              <!-- # keys: idx-->
+              <!-- # entries: 1.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <frequency>
+                <!-- type: string -->
+              </frequency>
+              <cell>
+                <!-- type: string -->
+              </cell>
+            </tjMDTAreaConfigurationForNeighCell>
+            <tjMDTAreaScope>
+              <!-- # entries: 0.. -->
+            </tjMDTAreaScope>
+            <tjMDTCollectionPeriodRrmLte>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmLte>
+            <tjMDTCollectionPeriodM6Lte>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodM6Lte>
+            <tjMDTCollectionPeriodM7Lte>
+              <!-- type: uint16 -->
+            </tjMDTCollectionPeriodM7Lte>
+            <tjMDTCollectionPeriodRrmUmts>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmUmts>
+            <tjMDTCollectionPeriodRrmNR>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmNR>
+            <tjMDTCollectionPeriodM6NR>
+              <!-- type: enumeration -->
+            </tjMDTCollectionPeriodM6NR>
+            <tjMDTCollectionPeriodM7NR>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodM7NR>
+            <tjMDTEventListForTriggeredMeasurement>
+              <!-- type: enumeration -->
+            </tjMDTEventListForTriggeredMeasurement>
+            <tjMDTEventThreshold>
+              <!-- type: int64 -->
+            </tjMDTEventThreshold>
+            <tjMDTListOfMeasurements>
+              <!-- type: int64 -->
+            </tjMDTListOfMeasurements>
+            <tjMDTLoggingDuration>
+              <!-- type: uint32 -->
+            </tjMDTLoggingDuration>
+            <tjMDTLoggingInterval>
+              <!-- type: uint32 -->
+            </tjMDTLoggingInterval>
+            <tjMDTLoggingEventThreshold>
+              <!-- type: uint32 -->
+            </tjMDTLoggingEventThreshold>
+            <tjMDTLoggedHysteresis>
+              <!-- type: uint32 -->
+            </tjMDTLoggedHysteresis>
+            <tjMDTLoggedTimeToTrigger>
+              <!-- type: int32 -->
+            </tjMDTLoggedTimeToTrigger>
+            <tjMDTMBSFNAreaList>
+              <!-- # entries: 1..8 -->
+            </tjMDTMBSFNAreaList>
+            <tjMDTMeasurementPeriodLTE>
+              <!-- type: uint32 -->
+            </tjMDTMeasurementPeriodLTE>
+            <tjMDTMeasurementPeriodUMTS>
+              <!-- type: uint32 -->
+            </tjMDTMeasurementPeriodUMTS>
+            <tjMDTMeasurementQuantity>
+              <!-- type: uint64 -->
+            </tjMDTMeasurementQuantity>
+            <tjMDTM4ThresholdUmts>
+              <!-- type: uint16 -->
+            </tjMDTM4ThresholdUmts>
+            <tjMDTPLMList>
+              <!-- # keys: mcc,mnc-->
+              <!-- # entries: 1..16 -->
+              <mcc>
+                <!-- type: Mcc -->
+              </mcc>
+              <mnc>
+                <!-- type: Mnc -->
+              </mnc>
+            </tjMDTPLMList>
+            <tjMDTPositioningMethod>
+              <!-- type: enumeration -->
+            </tjMDTPositioningMethod>
+            <tjMDTReportAmount>
+              <!-- type: union -->
+            </tjMDTReportAmount>
+            <tjMDTReportingTrigger>
+              <!-- type: enumeration -->
+            </tjMDTReportingTrigger>
+            <tjMDTReportInterval>
+              <!-- type: uint32 -->
+            </tjMDTReportInterval>
+            <tjMDTReportType>
+              <!-- type: enumeration -->
+            </tjMDTReportType>
+            <tjMDTSensorInformation></tjMDTSensorInformation>
+            <tjMDTTraceCollectionEntityID>
+              <!-- type: uint8 -->
+            </tjMDTTraceCollectionEntityID>
+          </attributes>
+          <Files>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <numberOfFiles>
+                <!-- type: uint64 -->
+              </numberOfFiles>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+            <File>
+              <!-- # keys: id-->
+              <!-- # entries: 0.. -->
+              <id>
+                <!-- type: string -->
+              </id>
+              <attributes>
+                <fileLocation>
+                  <!-- type: inet:uri -->
+                </fileLocation>
+                <fileCompression>
+                  <!-- type: string -->
+                </fileCompression>
+                <fileSize>
+                  <!-- type: uint64 -->
+                </fileSize>
+                <fileDataType>
+                  <!-- type: enumeration -->
+                </fileDataType>
+                <fileFormat>
+                  <!-- type: string -->
+                </fileFormat>
+                <fileReadyTime>
+                  <!-- type: yang:date-and-time -->
+                </fileReadyTime>
+                <fileExpirationTime>
+                  <!-- type: yang:date-and-time -->
+                </fileExpirationTime>
+                <fileContent>
+                  <!-- type: string -->
+                </fileContent>
+                <jobRef>
+                  <!-- # entries: 0.. -->
+                </jobRef>
+                <jobId>
+                  <!-- type: string -->
+                </jobId>
+              </attributes>
+            </File>
+          </Files>
+        </TraceJob>
+        <Configurable5QISet>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes/>
+          <FiveQICharacteristics>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <fiveQIValue>
+                <!-- type: uint32 -->
+              </fiveQIValue>
+              <resourceType>
+                <!-- type: enumeration -->
+              </resourceType>
+              <priorityLevel>
+                <!-- type: uint32 -->
+              </priorityLevel>
+              <packetDelayBudget>
+                <!-- type: uint32 -->
+              </packetDelayBudget>
+              <packetErrorRate>
+                <!-- # keys: scalar,exponent-->
+                <!-- # entries: 1..1 -->
+                <scalar>
+                  <!-- type: uint32 -->
+                </scalar>
+                <exponent>
+                  <!-- type: uint32 -->
+                </exponent>
+              </packetErrorRate>
+              <averagingWindow>
+                <!-- type: uint32 -->
+              </averagingWindow>
+              <maximumDataBurstVolume>
+                <!-- type: uint32 -->
+              </maximumDataBurstVolume>
+            </attributes>
+          </FiveQICharacteristics>
+        </Configurable5QISet>
+      </BWP>
+      <NRCellDU xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-nrcelldu">
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <userLabel>
+            <!-- type: string -->
+          </userLabel>
+          <vnfParametersList>
+            <!-- # keys: vnfInstanceId-->
+            <!-- # entries: 0.. -->
+            <vnfInstanceId>
+              <!-- type: string -->
+            </vnfInstanceId>
+            <vnfdId>
+              <!-- type: string -->
+            </vnfdId>
+            <flavourId>
+              <!-- type: string -->
+            </flavourId>
+            <autoScalable>
+              <!-- type: boolean -->
+            </autoScalable>
+          </vnfParametersList>
+          <peeParametersList>
+            <!-- # keys: idx-->
+            <!-- # entries: 0.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <siteIdentification>
+              <!-- type: string -->
+            </siteIdentification>
+            <siteLatitude>
+              <!-- type: decimal64 -->
+            </siteLatitude>
+            <siteLongitude>
+              <!-- type: decimal64 -->
+            </siteLongitude>
+            <siteAltitude>
+              <!-- type: decimal64 -->
+            </siteAltitude>
+            <siteDescription>
+              <!-- type: string -->
+            </siteDescription>
+            <equipmentType>
+              <!-- type: string -->
+            </equipmentType>
+            <environmentType>
+              <!-- type: string -->
+            </environmentType>
+            <powerInterface>
+              <!-- type: string -->
+            </powerInterface>
+          </peeParametersList>
+          <priorityLabel>
+            <!-- type: uint32 -->
+          </priorityLabel>
+          <SupportedPerfMetricGroup>
+            <!-- # keys: -->
+            <!-- # entries: 0.. -->
+            <performanceMetrics>
+              <!-- # entries: 1.. -->
+            </performanceMetrics>
+            <granularityPeriods>
+              <!-- # entries: 0.. -->
+            </granularityPeriods>
+            <reportingMethods>
+              <!-- # entries: 1.. -->
+            </reportingMethods>
+            <monitorGranularityPeriods>
+              <!-- # entries: 0.. -->
+            </monitorGranularityPeriods>
+          </SupportedPerfMetricGroup>
+          <cellLocalId>
+            <!-- type: int32 -->
+          </cellLocalId>
+          <operationalState>
+            <!-- type: types3gpp:OperationalState -->
+          </operationalState>
+          <administrativeState>LOCKED</administrativeState>
+          <cellState>
+            <!-- type: types3gpp:CellState -->
+          </cellState>
+          <pLMNInfoList>
+            <!-- # keys: mcc,mnc,sd,sst-->
+            <!-- # entries: 1.. -->
+            <mcc>
+              <!-- type: Mcc -->
+            </mcc>
+            <mnc>
+              <!-- type: Mnc -->
+            </mnc>
+            <sd>
+              <!-- type: string -->
+            </sd>
+            <sst>
+              <!-- type: uint8 -->
+            </sst>
+          </pLMNInfoList>
+          <nPNIdentityList>
+            <!-- # keys: idx-->
+            <!-- # entries: 1.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <plmnid>
+              <!-- # keys: mcc,mnc-->
+              <!-- # entries: 1.. -->
+              <mcc>
+                <!-- type: Mcc -->
+              </mcc>
+              <mnc>
+                <!-- type: Mnc -->
+              </mnc>
+            </plmnid>
+            <cAGIdList>
+              <!-- type: string -->
+            </cAGIdList>
+            <nIDList>
+              <!-- type: string -->
+            </nIDList>
+          </nPNIdentityList>
+          <nRPCI>
+            <!-- type: int32 -->
+          </nRPCI>
+          <nRTAC>
+            <!-- type: types3gpp:Tac -->
+          </nRTAC>
+          <arfcnDL>
+            <!-- type: int32 -->
+          </arfcnDL>
+          <arfcnUL>
+            <!-- type: int32 -->
+          </arfcnUL>
+          <arfcnSUL>
+            <!-- type: int32 -->
+          </arfcnSUL>
+          <bSChannelBwDL>
+            <!-- type: int32 -->
+          </bSChannelBwDL>
+          <rimRSMonitoringStartTime>
+            <!-- type: yang:date-and-time -->
+          </rimRSMonitoringStartTime>
+          <rimRSMonitoringStopTime>
+            <!-- type: yang:date-and-time -->
+          </rimRSMonitoringStopTime>
+          <rimRSMonitoringWindowDuration>
+            <!-- type: uint32 -->
+          </rimRSMonitoringWindowDuration>
+          <rimRSMonitoringWindowStartingOffset>
+            <!-- type: uint8 -->
+          </rimRSMonitoringWindowStartingOffset>
+          <rimRSMonitoringWindowPeriodicity>
+            <!-- type: uint8 -->
+          </rimRSMonitoringWindowPeriodicity>
+          <rimRSMonitoringOccasionInterval>
+            <!-- type: uint32 -->
+          </rimRSMonitoringOccasionInterval>
+          <rimRSMonitoringOccasionStartingOffset>
+            <!-- type: uint32 -->
+          </rimRSMonitoringOccasionStartingOffset>
+          <ssbFrequency>
+            <!-- type: int32 -->
+          </ssbFrequency>
+          <ssbPeriodicity>
+            <!-- type: int32 -->
+          </ssbPeriodicity>
+          <ssbSubCarrierSpacing>
+            <!-- type: int32 -->
+          </ssbSubCarrierSpacing>
+          <ssbOffset>
+            <!-- type: int32 -->
+          </ssbOffset>
+          <ssbDuration>
+            <!-- type: int32 -->
+          </ssbDuration>
+          <bSChannelBwUL>
+            <!-- type: int32 -->
+          </bSChannelBwUL>
+          <bSChannelBwSUL>
+            <!-- type: int32 -->
+          </bSChannelBwSUL>
+          <nRSectorCarrierRef>
+            <!-- # entries: 1.. -->
+          </nRSectorCarrierRef>
+          <bWPRef>
+            <!-- # entries: 0.. -->
+          </bWPRef>
+          <bWPSetRef>
+            <!-- # entries: 0.. -->
+          </bWPSetRef>
+          <nRFrequencyRef>
+            <!-- # entries: 0.. -->
+          </nRFrequencyRef>
+          <victimSetRef>
+            <!-- type: types3gpp:DistinguishedName -->
+          </victimSetRef>
+          <aggressorSetRef>
+            <!-- type: types3gpp:DistinguishedName -->
+          </aggressorSetRef>
+        </attributes>
+        <ManagedNFService>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <userLabel>
+              <!-- type: string -->
+            </userLabel>
+            <nFServiceType>
+              <!-- type: string -->
+            </nFServiceType>
+            <sAP>
+              <!-- # keys: host,port-->
+              <!-- # entries: 1..1 -->
+              <host>
+                <!-- type: inet:host -->
+              </host>
+              <port>
+                <!-- type: inet:port-number -->
+              </port>
+            </sAP>
+            <operations>
+              <!-- # keys: name-->
+              <!-- # entries: 1.. -->
+              <name>
+                <!-- type: string -->
+              </name>
+              <allowedNFTypes>
+                <!-- # entries: 1.. -->
+              </allowedNFTypes>
+              <operationSemantics>
+                <!-- type: enumeration -->
+              </operationSemantics>
+            </operations>
+            <administrativeState>
+              <!-- type: types3gpp:AdministrativeState -->
+            </administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <usageState>
+              <!-- type: types3gpp:usageState -->
+            </usageState>
+            <registrationState>
+              <!-- type: enumeration -->
+            </registrationState>
+          </attributes>
+        </ManagedNFService>
+        <PerfMetricJob>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <administrativeState>UNLOCKED</administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <jobId>
+              <!-- type: string -->
+            </jobId>
+            <performanceMetrics>
+              <!-- # entries: 1.. -->
+            </performanceMetrics>
+            <granularityPeriod>
+              <!-- type: uint32 -->
+            </granularityPeriod>
+            <objectInstances>
+              <!-- # entries: 0.. -->
+            </objectInstances>
+            <rootObjectInstances>
+              <!-- # entries: 0.. -->
+            </rootObjectInstances>
+            <fileReportingPeriod>
+              <!-- type: uint32 -->
+            </fileReportingPeriod>
+            <fileLocation>
+              <!-- type: string -->
+            </fileLocation>
+            <notificationRecipientAddress>
+              <!-- type: string -->
+            </notificationRecipientAddress>
+            <streamTarget>
+              <!-- type: string -->
+            </streamTarget>
+            <_linkToFiles>
+              <!-- type: string -->
+            </_linkToFiles>
+          </attributes>
+          <Files>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <numberOfFiles>
+                <!-- type: uint64 -->
+              </numberOfFiles>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+            <File>
+              <!-- # keys: id-->
+              <!-- # entries: 0.. -->
+              <id>
+                <!-- type: string -->
+              </id>
+              <attributes>
+                <fileLocation>
+                  <!-- type: inet:uri -->
+                </fileLocation>
+                <fileCompression>
+                  <!-- type: string -->
+                </fileCompression>
+                <fileSize>
+                  <!-- type: uint64 -->
+                </fileSize>
+                <fileDataType>
+                  <!-- type: enumeration -->
+                </fileDataType>
+                <fileFormat>
+                  <!-- type: string -->
+                </fileFormat>
+                <fileReadyTime>
+                  <!-- type: yang:date-and-time -->
+                </fileReadyTime>
+                <fileExpirationTime>
+                  <!-- type: yang:date-and-time -->
+                </fileExpirationTime>
+                <fileContent>
+                  <!-- type: string -->
+                </fileContent>
+                <jobRef>
+                  <!-- # entries: 0.. -->
+                </jobRef>
+                <jobId>
+                  <!-- type: string -->
+                </jobId>
+              </attributes>
+            </File>
+          </Files>
+        </PerfMetricJob>
+        <ThresholdMonitor>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <administrativeState>UNLOCKED</administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <thresholdInfoList>
+              <!-- # keys: idx-->
+              <!-- # entries: 1.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <measurementTypes>
+                <!-- # entries: 0.. -->
+              </measurementTypes>
+              <thresholdLevel>
+                <!-- type: uint64 -->
+              </thresholdLevel>
+              <thresholdDirection>
+                <!-- type: enumeration -->
+              </thresholdDirection>
+              <thresholdValue>
+                <!-- type: union -->
+              </thresholdValue>
+              <hysteresis>
+                <!-- type: union -->
+              </hysteresis>
+            </thresholdInfoList>
+            <monitorGranularityPeriod>
+              <!-- type: uint32 -->
+            </monitorGranularityPeriod>
+            <objectInstances>
+              <!-- # entries: 0.. -->
+            </objectInstances>
+            <rootObjectInstances>
+              <!-- # entries: 0.. -->
+            </rootObjectInstances>
+          </attributes>
+        </ThresholdMonitor>
+        <TraceJob>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <tjJobType>TRACE_ONLY</tjJobType>
+            <tjListOfInterfaces>
+              <!-- # keys: idx-->
+              <!-- # entries: 0.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <MSCServerInterfaces>
+                <!-- # entries: 0.. -->
+              </MSCServerInterfaces>
+              <MGWInterfaces>
+                <!-- # entries: 0.. -->
+              </MGWInterfaces>
+              <RNCInterfaces>
+                <!-- # entries: 0.. -->
+              </RNCInterfaces>
+              <SGSNInterfaces>
+                <!-- # entries: 0.. -->
+              </SGSNInterfaces>
+              <GGSNInterfaces>
+                <!-- # entries: 0.. -->
+              </GGSNInterfaces>
+              <S-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </S-CSCFInterfaces>
+              <P-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </P-CSCFInterfaces>
+              <I-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </I-CSCFInterfaces>
+              <MRFCInterfaces>
+                <!-- # entries: 0.. -->
+              </MRFCInterfaces>
+              <MGCFInterfaces>
+                <!-- # entries: 0.. -->
+              </MGCFInterfaces>
+              <IBCFInterfaces>
+                <!-- # entries: 0.. -->
+              </IBCFInterfaces>
+              <E-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </E-CSCFInterfaces>
+              <BGCFInterfaces>
+                <!-- # entries: 0.. -->
+              </BGCFInterfaces>
+              <ASInterfaces>
+                <!-- # entries: 0.. -->
+              </ASInterfaces>
+              <HSSInterfaces>
+                <!-- # entries: 0.. -->
+              </HSSInterfaces>
+              <EIRInterfaces>
+                <!-- # entries: 0.. -->
+              </EIRInterfaces>
+              <BM-SCInterfaces>
+                <!-- # entries: 0.. -->
+              </BM-SCInterfaces>
+              <MMEInterfaces>
+                <!-- # entries: 0.. -->
+              </MMEInterfaces>
+              <SGWInterfaces>
+                <!-- # entries: 0.. -->
+              </SGWInterfaces>
+              <PDN_GWInterfaces>
+                <!-- # entries: 0.. -->
+              </PDN_GWInterfaces>
+              <eNBInterfaces>
+                <!-- # entries: 0.. -->
+              </eNBInterfaces>
+              <en-gNBInterfaces>
+                <!-- # entries: 0.. -->
+              </en-gNBInterfaces>
+              <AMFInterfaces>
+                <!-- # entries: 0.. -->
+              </AMFInterfaces>
+              <AUSFInterfaces>
+                <!-- # entries: 0.. -->
+              </AUSFInterfaces>
+              <NEFInterfaces>
+                <!-- # entries: 0.. -->
+              </NEFInterfaces>
+              <NRFInterfaces>
+                <!-- # entries: 0.. -->
+              </NRFInterfaces>
+              <NSSFInterfaces>
+                <!-- # entries: 0.. -->
+              </NSSFInterfaces>
+              <PCFInterfaces>
+                <!-- # entries: 0.. -->
+              </PCFInterfaces>
+              <SMFInterfaces>
+                <!-- # entries: 0.. -->
+              </SMFInterfaces>
+              <SMSFInterfaces>
+                <!-- # entries: 0.. -->
+              </SMSFInterfaces>
+              <UDMInterfaces>
+                <!-- # entries: 0.. -->
+              </UDMInterfaces>
+              <UPFInterfaces>
+                <!-- # entries: 0.. -->
+              </UPFInterfaces>
+              <ng-eNBInterfaces>
+                <!-- # entries: 0.. -->
+              </ng-eNBInterfaces>
+              <gNB-CU-CPInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-CU-CPInterfaces>
+              <gNB-CU-UPInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-CU-UPInterfaces>
+              <gNB-DUInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-DUInterfaces>
+            </tjListOfInterfaces>
+            <tjListOfNeTypes>
+              <!-- # entries: 0.. -->
+            </tjListOfNeTypes>
+            <tjPLMNTarget>
+              <!-- type: string -->
+            </tjPLMNTarget>
+            <tjStreamingTraceConsumerURI>
+              <!-- type: inet:uri -->
+            </tjStreamingTraceConsumerURI>
+            <tjTraceCollectionEntityAddress>
+              <!-- type: union -->
+            </tjTraceCollectionEntityAddress>
+            <tjTraceDepth>MAXIMUM</tjTraceDepth>
+            <tjTraceReference>
+              <!-- type: uint64 -->
+            </tjTraceReference>
+            <tjTraceRecordSessionReference>
+              <!-- type: string -->
+            </tjTraceRecordSessionReference>
+            <tjTraceReportingFormat>FILE_BASED</tjTraceReportingFormat>
+            <tjTraceTarget>
+              <!-- # keys: targetIdType,targetIdValue-->
+              <!-- # entries: 0..1 -->
+              <targetIdType>
+                <!-- type: enumeration -->
+              </targetIdType>
+              <targetIdValue>
+                <!-- type: string -->
+              </targetIdValue>
+            </tjTraceTarget>
+            <tjTriggeringEvent>
+              <!-- type: string -->
+            </tjTriggeringEvent>
+            <tjMDTAnonymizationOfData>NO_IDENTITY</tjMDTAnonymizationOfData>
+            <tjMDTAreaConfigurationForNeighCell>
+              <!-- # keys: idx-->
+              <!-- # entries: 1.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <frequency>
+                <!-- type: string -->
+              </frequency>
+              <cell>
+                <!-- type: string -->
+              </cell>
+            </tjMDTAreaConfigurationForNeighCell>
+            <tjMDTAreaScope>
+              <!-- # entries: 0.. -->
+            </tjMDTAreaScope>
+            <tjMDTCollectionPeriodRrmLte>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmLte>
+            <tjMDTCollectionPeriodM6Lte>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodM6Lte>
+            <tjMDTCollectionPeriodM7Lte>
+              <!-- type: uint16 -->
+            </tjMDTCollectionPeriodM7Lte>
+            <tjMDTCollectionPeriodRrmUmts>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmUmts>
+            <tjMDTCollectionPeriodRrmNR>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmNR>
+            <tjMDTCollectionPeriodM6NR>
+              <!-- type: enumeration -->
+            </tjMDTCollectionPeriodM6NR>
+            <tjMDTCollectionPeriodM7NR>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodM7NR>
+            <tjMDTEventListForTriggeredMeasurement>
+              <!-- type: enumeration -->
+            </tjMDTEventListForTriggeredMeasurement>
+            <tjMDTEventThreshold>
+              <!-- type: int64 -->
+            </tjMDTEventThreshold>
+            <tjMDTListOfMeasurements>
+              <!-- type: int64 -->
+            </tjMDTListOfMeasurements>
+            <tjMDTLoggingDuration>
+              <!-- type: uint32 -->
+            </tjMDTLoggingDuration>
+            <tjMDTLoggingInterval>
+              <!-- type: uint32 -->
+            </tjMDTLoggingInterval>
+            <tjMDTLoggingEventThreshold>
+              <!-- type: uint32 -->
+            </tjMDTLoggingEventThreshold>
+            <tjMDTLoggedHysteresis>
+              <!-- type: uint32 -->
+            </tjMDTLoggedHysteresis>
+            <tjMDTLoggedTimeToTrigger>
+              <!-- type: int32 -->
+            </tjMDTLoggedTimeToTrigger>
+            <tjMDTMBSFNAreaList>
+              <!-- # entries: 1..8 -->
+            </tjMDTMBSFNAreaList>
+            <tjMDTMeasurementPeriodLTE>
+              <!-- type: uint32 -->
+            </tjMDTMeasurementPeriodLTE>
+            <tjMDTMeasurementPeriodUMTS>
+              <!-- type: uint32 -->
+            </tjMDTMeasurementPeriodUMTS>
+            <tjMDTMeasurementQuantity>
+              <!-- type: uint64 -->
+            </tjMDTMeasurementQuantity>
+            <tjMDTM4ThresholdUmts>
+              <!-- type: uint16 -->
+            </tjMDTM4ThresholdUmts>
+            <tjMDTPLMList>
+              <!-- # keys: mcc,mnc-->
+              <!-- # entries: 1..16 -->
+              <mcc>
+                <!-- type: Mcc -->
+              </mcc>
+              <mnc>
+                <!-- type: Mnc -->
+              </mnc>
+            </tjMDTPLMList>
+            <tjMDTPositioningMethod>
+              <!-- type: enumeration -->
+            </tjMDTPositioningMethod>
+            <tjMDTReportAmount>
+              <!-- type: union -->
+            </tjMDTReportAmount>
+            <tjMDTReportingTrigger>
+              <!-- type: enumeration -->
+            </tjMDTReportingTrigger>
+            <tjMDTReportInterval>
+              <!-- type: uint32 -->
+            </tjMDTReportInterval>
+            <tjMDTReportType>
+              <!-- type: enumeration -->
+            </tjMDTReportType>
+            <tjMDTSensorInformation></tjMDTSensorInformation>
+            <tjMDTTraceCollectionEntityID>
+              <!-- type: uint8 -->
+            </tjMDTTraceCollectionEntityID>
+          </attributes>
+          <Files>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <numberOfFiles>
+                <!-- type: uint64 -->
+              </numberOfFiles>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+            <File>
+              <!-- # keys: id-->
+              <!-- # entries: 0.. -->
+              <id>
+                <!-- type: string -->
+              </id>
+              <attributes>
+                <fileLocation>
+                  <!-- type: inet:uri -->
+                </fileLocation>
+                <fileCompression>
+                  <!-- type: string -->
+                </fileCompression>
+                <fileSize>
+                  <!-- type: uint64 -->
+                </fileSize>
+                <fileDataType>
+                  <!-- type: enumeration -->
+                </fileDataType>
+                <fileFormat>
+                  <!-- type: string -->
+                </fileFormat>
+                <fileReadyTime>
+                  <!-- type: yang:date-and-time -->
+                </fileReadyTime>
+                <fileExpirationTime>
+                  <!-- type: yang:date-and-time -->
+                </fileExpirationTime>
+                <fileContent>
+                  <!-- type: string -->
+                </fileContent>
+                <jobRef>
+                  <!-- # entries: 0.. -->
+                </jobRef>
+                <jobId>
+                  <!-- type: string -->
+                </jobId>
+              </attributes>
+            </File>
+          </Files>
+        </TraceJob>
+        <Configurable5QISet>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes/>
+          <FiveQICharacteristics>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <fiveQIValue>
+                <!-- type: uint32 -->
+              </fiveQIValue>
+              <resourceType>
+                <!-- type: enumeration -->
+              </resourceType>
+              <priorityLevel>
+                <!-- type: uint32 -->
+              </priorityLevel>
+              <packetDelayBudget>
+                <!-- type: uint32 -->
+              </packetDelayBudget>
+              <packetErrorRate>
+                <!-- # keys: scalar,exponent-->
+                <!-- # entries: 1..1 -->
+                <scalar>
+                  <!-- type: uint32 -->
+                </scalar>
+                <exponent>
+                  <!-- type: uint32 -->
+                </exponent>
+              </packetErrorRate>
+              <averagingWindow>
+                <!-- type: uint32 -->
+              </averagingWindow>
+              <maximumDataBurstVolume>
+                <!-- type: uint32 -->
+              </maximumDataBurstVolume>
+            </attributes>
+          </FiveQICharacteristics>
+        </Configurable5QISet>
+      </NRCellDU>
+      <NRSectorCarrier xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-nrnetwork-nrsectorcarrier">
+        <!-- # keys: id-->
+        <!-- # entries: 0.. -->
+        <id>
+          <!-- type: string -->
+        </id>
+        <attributes>
+          <userLabel>
+            <!-- type: string -->
+          </userLabel>
+          <vnfParametersList>
+            <!-- # keys: vnfInstanceId-->
+            <!-- # entries: 0.. -->
+            <vnfInstanceId>
+              <!-- type: string -->
+            </vnfInstanceId>
+            <vnfdId>
+              <!-- type: string -->
+            </vnfdId>
+            <flavourId>
+              <!-- type: string -->
+            </flavourId>
+            <autoScalable>
+              <!-- type: boolean -->
+            </autoScalable>
+          </vnfParametersList>
+          <peeParametersList>
+            <!-- # keys: idx-->
+            <!-- # entries: 0.. -->
+            <idx>
+              <!-- type: uint32 -->
+            </idx>
+            <siteIdentification>
+              <!-- type: string -->
+            </siteIdentification>
+            <siteLatitude>
+              <!-- type: decimal64 -->
+            </siteLatitude>
+            <siteLongitude>
+              <!-- type: decimal64 -->
+            </siteLongitude>
+            <siteAltitude>
+              <!-- type: decimal64 -->
+            </siteAltitude>
+            <siteDescription>
+              <!-- type: string -->
+            </siteDescription>
+            <equipmentType>
+              <!-- type: string -->
+            </equipmentType>
+            <environmentType>
+              <!-- type: string -->
+            </environmentType>
+            <powerInterface>
+              <!-- type: string -->
+            </powerInterface>
+          </peeParametersList>
+          <priorityLabel>
+            <!-- type: uint32 -->
+          </priorityLabel>
+          <SupportedPerfMetricGroup>
+            <!-- # keys: -->
+            <!-- # entries: 0.. -->
+            <performanceMetrics>
+              <!-- # entries: 1.. -->
+            </performanceMetrics>
+            <granularityPeriods>
+              <!-- # entries: 0.. -->
+            </granularityPeriods>
+            <reportingMethods>
+              <!-- # entries: 1.. -->
+            </reportingMethods>
+            <monitorGranularityPeriods>
+              <!-- # entries: 0.. -->
+            </monitorGranularityPeriods>
+          </SupportedPerfMetricGroup>
+          <txDirection>
+            <!-- type: types3gpp:TxDirection -->
+          </txDirection>
+          <configuredMaxTxPower>
+            <!-- type: int32 -->
+          </configuredMaxTxPower>
+          <configuredMaxTxEIRP>
+            <!-- type: int64 -->
+          </configuredMaxTxEIRP>
+          <arfcnDL>
+            <!-- type: int32 -->
+          </arfcnDL>
+          <arfcnUL>
+            <!-- type: int32 -->
+          </arfcnUL>
+          <bSChannelBwDL>
+            <!-- type: int32 -->
+          </bSChannelBwDL>
+          <bSChannelBwUL>
+            <!-- type: int32 -->
+          </bSChannelBwUL>
+          <sectorEquipmentFunctionRef>
+            <!-- type: types3gpp:DistinguishedName -->
+          </sectorEquipmentFunctionRef>
+        </attributes>
+        <ManagedNFService>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <userLabel>
+              <!-- type: string -->
+            </userLabel>
+            <nFServiceType>
+              <!-- type: string -->
+            </nFServiceType>
+            <sAP>
+              <!-- # keys: host,port-->
+              <!-- # entries: 1..1 -->
+              <host>
+                <!-- type: inet:host -->
+              </host>
+              <port>
+                <!-- type: inet:port-number -->
+              </port>
+            </sAP>
+            <operations>
+              <!-- # keys: name-->
+              <!-- # entries: 1.. -->
+              <name>
+                <!-- type: string -->
+              </name>
+              <allowedNFTypes>
+                <!-- # entries: 1.. -->
+              </allowedNFTypes>
+              <operationSemantics>
+                <!-- type: enumeration -->
+              </operationSemantics>
+            </operations>
+            <administrativeState>
+              <!-- type: types3gpp:AdministrativeState -->
+            </administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <usageState>
+              <!-- type: types3gpp:usageState -->
+            </usageState>
+            <registrationState>
+              <!-- type: enumeration -->
+            </registrationState>
+          </attributes>
+        </ManagedNFService>
+        <PerfMetricJob>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <administrativeState>UNLOCKED</administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <jobId>
+              <!-- type: string -->
+            </jobId>
+            <performanceMetrics>
+              <!-- # entries: 1.. -->
+            </performanceMetrics>
+            <granularityPeriod>
+              <!-- type: uint32 -->
+            </granularityPeriod>
+            <objectInstances>
+              <!-- # entries: 0.. -->
+            </objectInstances>
+            <rootObjectInstances>
+              <!-- # entries: 0.. -->
+            </rootObjectInstances>
+            <fileReportingPeriod>
+              <!-- type: uint32 -->
+            </fileReportingPeriod>
+            <fileLocation>
+              <!-- type: string -->
+            </fileLocation>
+            <notificationRecipientAddress>
+              <!-- type: string -->
+            </notificationRecipientAddress>
+            <streamTarget>
+              <!-- type: string -->
+            </streamTarget>
+            <_linkToFiles>
+              <!-- type: string -->
+            </_linkToFiles>
+          </attributes>
+          <Files>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <numberOfFiles>
+                <!-- type: uint64 -->
+              </numberOfFiles>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+            <File>
+              <!-- # keys: id-->
+              <!-- # entries: 0.. -->
+              <id>
+                <!-- type: string -->
+              </id>
+              <attributes>
+                <fileLocation>
+                  <!-- type: inet:uri -->
+                </fileLocation>
+                <fileCompression>
+                  <!-- type: string -->
+                </fileCompression>
+                <fileSize>
+                  <!-- type: uint64 -->
+                </fileSize>
+                <fileDataType>
+                  <!-- type: enumeration -->
+                </fileDataType>
+                <fileFormat>
+                  <!-- type: string -->
+                </fileFormat>
+                <fileReadyTime>
+                  <!-- type: yang:date-and-time -->
+                </fileReadyTime>
+                <fileExpirationTime>
+                  <!-- type: yang:date-and-time -->
+                </fileExpirationTime>
+                <fileContent>
+                  <!-- type: string -->
+                </fileContent>
+                <jobRef>
+                  <!-- # entries: 0.. -->
+                </jobRef>
+                <jobId>
+                  <!-- type: string -->
+                </jobId>
+              </attributes>
+            </File>
+          </Files>
+        </PerfMetricJob>
+        <ThresholdMonitor>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <administrativeState>UNLOCKED</administrativeState>
+            <operationalState>
+              <!-- type: types3gpp:OperationalState -->
+            </operationalState>
+            <thresholdInfoList>
+              <!-- # keys: idx-->
+              <!-- # entries: 1.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <measurementTypes>
+                <!-- # entries: 0.. -->
+              </measurementTypes>
+              <thresholdLevel>
+                <!-- type: uint64 -->
+              </thresholdLevel>
+              <thresholdDirection>
+                <!-- type: enumeration -->
+              </thresholdDirection>
+              <thresholdValue>
+                <!-- type: union -->
+              </thresholdValue>
+              <hysteresis>
+                <!-- type: union -->
+              </hysteresis>
+            </thresholdInfoList>
+            <monitorGranularityPeriod>
+              <!-- type: uint32 -->
+            </monitorGranularityPeriod>
+            <objectInstances>
+              <!-- # entries: 0.. -->
+            </objectInstances>
+            <rootObjectInstances>
+              <!-- # entries: 0.. -->
+            </rootObjectInstances>
+          </attributes>
+        </ThresholdMonitor>
+        <TraceJob>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes>
+            <tjJobType>TRACE_ONLY</tjJobType>
+            <tjListOfInterfaces>
+              <!-- # keys: idx-->
+              <!-- # entries: 0.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <MSCServerInterfaces>
+                <!-- # entries: 0.. -->
+              </MSCServerInterfaces>
+              <MGWInterfaces>
+                <!-- # entries: 0.. -->
+              </MGWInterfaces>
+              <RNCInterfaces>
+                <!-- # entries: 0.. -->
+              </RNCInterfaces>
+              <SGSNInterfaces>
+                <!-- # entries: 0.. -->
+              </SGSNInterfaces>
+              <GGSNInterfaces>
+                <!-- # entries: 0.. -->
+              </GGSNInterfaces>
+              <S-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </S-CSCFInterfaces>
+              <P-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </P-CSCFInterfaces>
+              <I-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </I-CSCFInterfaces>
+              <MRFCInterfaces>
+                <!-- # entries: 0.. -->
+              </MRFCInterfaces>
+              <MGCFInterfaces>
+                <!-- # entries: 0.. -->
+              </MGCFInterfaces>
+              <IBCFInterfaces>
+                <!-- # entries: 0.. -->
+              </IBCFInterfaces>
+              <E-CSCFInterfaces>
+                <!-- # entries: 0.. -->
+              </E-CSCFInterfaces>
+              <BGCFInterfaces>
+                <!-- # entries: 0.. -->
+              </BGCFInterfaces>
+              <ASInterfaces>
+                <!-- # entries: 0.. -->
+              </ASInterfaces>
+              <HSSInterfaces>
+                <!-- # entries: 0.. -->
+              </HSSInterfaces>
+              <EIRInterfaces>
+                <!-- # entries: 0.. -->
+              </EIRInterfaces>
+              <BM-SCInterfaces>
+                <!-- # entries: 0.. -->
+              </BM-SCInterfaces>
+              <MMEInterfaces>
+                <!-- # entries: 0.. -->
+              </MMEInterfaces>
+              <SGWInterfaces>
+                <!-- # entries: 0.. -->
+              </SGWInterfaces>
+              <PDN_GWInterfaces>
+                <!-- # entries: 0.. -->
+              </PDN_GWInterfaces>
+              <eNBInterfaces>
+                <!-- # entries: 0.. -->
+              </eNBInterfaces>
+              <en-gNBInterfaces>
+                <!-- # entries: 0.. -->
+              </en-gNBInterfaces>
+              <AMFInterfaces>
+                <!-- # entries: 0.. -->
+              </AMFInterfaces>
+              <AUSFInterfaces>
+                <!-- # entries: 0.. -->
+              </AUSFInterfaces>
+              <NEFInterfaces>
+                <!-- # entries: 0.. -->
+              </NEFInterfaces>
+              <NRFInterfaces>
+                <!-- # entries: 0.. -->
+              </NRFInterfaces>
+              <NSSFInterfaces>
+                <!-- # entries: 0.. -->
+              </NSSFInterfaces>
+              <PCFInterfaces>
+                <!-- # entries: 0.. -->
+              </PCFInterfaces>
+              <SMFInterfaces>
+                <!-- # entries: 0.. -->
+              </SMFInterfaces>
+              <SMSFInterfaces>
+                <!-- # entries: 0.. -->
+              </SMSFInterfaces>
+              <UDMInterfaces>
+                <!-- # entries: 0.. -->
+              </UDMInterfaces>
+              <UPFInterfaces>
+                <!-- # entries: 0.. -->
+              </UPFInterfaces>
+              <ng-eNBInterfaces>
+                <!-- # entries: 0.. -->
+              </ng-eNBInterfaces>
+              <gNB-CU-CPInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-CU-CPInterfaces>
+              <gNB-CU-UPInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-CU-UPInterfaces>
+              <gNB-DUInterfaces>
+                <!-- # entries: 0.. -->
+              </gNB-DUInterfaces>
+            </tjListOfInterfaces>
+            <tjListOfNeTypes>
+              <!-- # entries: 0.. -->
+            </tjListOfNeTypes>
+            <tjPLMNTarget>
+              <!-- type: string -->
+            </tjPLMNTarget>
+            <tjStreamingTraceConsumerURI>
+              <!-- type: inet:uri -->
+            </tjStreamingTraceConsumerURI>
+            <tjTraceCollectionEntityAddress>
+              <!-- type: union -->
+            </tjTraceCollectionEntityAddress>
+            <tjTraceDepth>MAXIMUM</tjTraceDepth>
+            <tjTraceReference>
+              <!-- type: uint64 -->
+            </tjTraceReference>
+            <tjTraceRecordSessionReference>
+              <!-- type: string -->
+            </tjTraceRecordSessionReference>
+            <tjTraceReportingFormat>FILE_BASED</tjTraceReportingFormat>
+            <tjTraceTarget>
+              <!-- # keys: targetIdType,targetIdValue-->
+              <!-- # entries: 0..1 -->
+              <targetIdType>
+                <!-- type: enumeration -->
+              </targetIdType>
+              <targetIdValue>
+                <!-- type: string -->
+              </targetIdValue>
+            </tjTraceTarget>
+            <tjTriggeringEvent>
+              <!-- type: string -->
+            </tjTriggeringEvent>
+            <tjMDTAnonymizationOfData>NO_IDENTITY</tjMDTAnonymizationOfData>
+            <tjMDTAreaConfigurationForNeighCell>
+              <!-- # keys: idx-->
+              <!-- # entries: 1.. -->
+              <idx>
+                <!-- type: uint32 -->
+              </idx>
+              <frequency>
+                <!-- type: string -->
+              </frequency>
+              <cell>
+                <!-- type: string -->
+              </cell>
+            </tjMDTAreaConfigurationForNeighCell>
+            <tjMDTAreaScope>
+              <!-- # entries: 0.. -->
+            </tjMDTAreaScope>
+            <tjMDTCollectionPeriodRrmLte>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmLte>
+            <tjMDTCollectionPeriodM6Lte>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodM6Lte>
+            <tjMDTCollectionPeriodM7Lte>
+              <!-- type: uint16 -->
+            </tjMDTCollectionPeriodM7Lte>
+            <tjMDTCollectionPeriodRrmUmts>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmUmts>
+            <tjMDTCollectionPeriodRrmNR>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodRrmNR>
+            <tjMDTCollectionPeriodM6NR>
+              <!-- type: enumeration -->
+            </tjMDTCollectionPeriodM6NR>
+            <tjMDTCollectionPeriodM7NR>
+              <!-- type: uint32 -->
+            </tjMDTCollectionPeriodM7NR>
+            <tjMDTEventListForTriggeredMeasurement>
+              <!-- type: enumeration -->
+            </tjMDTEventListForTriggeredMeasurement>
+            <tjMDTEventThreshold>
+              <!-- type: int64 -->
+            </tjMDTEventThreshold>
+            <tjMDTListOfMeasurements>
+              <!-- type: int64 -->
+            </tjMDTListOfMeasurements>
+            <tjMDTLoggingDuration>
+              <!-- type: uint32 -->
+            </tjMDTLoggingDuration>
+            <tjMDTLoggingInterval>
+              <!-- type: uint32 -->
+            </tjMDTLoggingInterval>
+            <tjMDTLoggingEventThreshold>
+              <!-- type: uint32 -->
+            </tjMDTLoggingEventThreshold>
+            <tjMDTLoggedHysteresis>
+              <!-- type: uint32 -->
+            </tjMDTLoggedHysteresis>
+            <tjMDTLoggedTimeToTrigger>
+              <!-- type: int32 -->
+            </tjMDTLoggedTimeToTrigger>
+            <tjMDTMBSFNAreaList>
+              <!-- # entries: 1..8 -->
+            </tjMDTMBSFNAreaList>
+            <tjMDTMeasurementPeriodLTE>
+              <!-- type: uint32 -->
+            </tjMDTMeasurementPeriodLTE>
+            <tjMDTMeasurementPeriodUMTS>
+              <!-- type: uint32 -->
+            </tjMDTMeasurementPeriodUMTS>
+            <tjMDTMeasurementQuantity>
+              <!-- type: uint64 -->
+            </tjMDTMeasurementQuantity>
+            <tjMDTM4ThresholdUmts>
+              <!-- type: uint16 -->
+            </tjMDTM4ThresholdUmts>
+            <tjMDTPLMList>
+              <!-- # keys: mcc,mnc-->
+              <!-- # entries: 1..16 -->
+              <mcc>
+                <!-- type: Mcc -->
+              </mcc>
+              <mnc>
+                <!-- type: Mnc -->
+              </mnc>
+            </tjMDTPLMList>
+            <tjMDTPositioningMethod>
+              <!-- type: enumeration -->
+            </tjMDTPositioningMethod>
+            <tjMDTReportAmount>
+              <!-- type: union -->
+            </tjMDTReportAmount>
+            <tjMDTReportingTrigger>
+              <!-- type: enumeration -->
+            </tjMDTReportingTrigger>
+            <tjMDTReportInterval>
+              <!-- type: uint32 -->
+            </tjMDTReportInterval>
+            <tjMDTReportType>
+              <!-- type: enumeration -->
+            </tjMDTReportType>
+            <tjMDTSensorInformation></tjMDTSensorInformation>
+            <tjMDTTraceCollectionEntityID>
+              <!-- type: uint8 -->
+            </tjMDTTraceCollectionEntityID>
+          </attributes>
+          <Files>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <numberOfFiles>
+                <!-- type: uint64 -->
+              </numberOfFiles>
+              <jobRef>
+                <!-- # entries: 0.. -->
+              </jobRef>
+              <jobId>
+                <!-- type: string -->
+              </jobId>
+            </attributes>
+            <File>
+              <!-- # keys: id-->
+              <!-- # entries: 0.. -->
+              <id>
+                <!-- type: string -->
+              </id>
+              <attributes>
+                <fileLocation>
+                  <!-- type: inet:uri -->
+                </fileLocation>
+                <fileCompression>
+                  <!-- type: string -->
+                </fileCompression>
+                <fileSize>
+                  <!-- type: uint64 -->
+                </fileSize>
+                <fileDataType>
+                  <!-- type: enumeration -->
+                </fileDataType>
+                <fileFormat>
+                  <!-- type: string -->
+                </fileFormat>
+                <fileReadyTime>
+                  <!-- type: yang:date-and-time -->
+                </fileReadyTime>
+                <fileExpirationTime>
+                  <!-- type: yang:date-and-time -->
+                </fileExpirationTime>
+                <fileContent>
+                  <!-- type: string -->
+                </fileContent>
+                <jobRef>
+                  <!-- # entries: 0.. -->
+                </jobRef>
+                <jobId>
+                  <!-- type: string -->
+                </jobId>
+              </attributes>
+            </File>
+          </Files>
+        </TraceJob>
+        <Configurable5QISet>
+          <!-- # keys: id-->
+          <!-- # entries: 0.. -->
+          <id>
+            <!-- type: string -->
+          </id>
+          <attributes/>
+          <FiveQICharacteristics>
+            <!-- # keys: id-->
+            <!-- # entries: 0.. -->
+            <id>
+              <!-- type: string -->
+            </id>
+            <attributes>
+              <fiveQIValue>
+                <!-- type: uint32 -->
+              </fiveQIValue>
+              <resourceType>
+                <!-- type: enumeration -->
+              </resourceType>
+              <priorityLevel>
+                <!-- type: uint32 -->
+              </priorityLevel>
+              <packetDelayBudget>
+                <!-- type: uint32 -->
+              </packetDelayBudget>
+              <packetErrorRate>
+                <!-- # keys: scalar,exponent-->
+                <!-- # entries: 1..1 -->
+                <scalar>
+                  <!-- type: uint32 -->
+                </scalar>
+                <exponent>
+                  <!-- type: uint32 -->
+                </exponent>
+              </packetErrorRate>
+              <averagingWindow>
+                <!-- type: uint32 -->
+              </averagingWindow>
+              <maximumDataBurstVolume>
+                <!-- type: uint32 -->
+              </maximumDataBurstVolume>
+            </attributes>
+          </FiveQICharacteristics>
+        </Configurable5QISet>
+      </NRSectorCarrier>
+    </GNBDUFunction>
     <GNBCUCPFunction xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-gnbcucpfunction">
       <!-- # keys: id-->
       <!-- # entries: 0.. -->
@@ -2225,683 +4985,6 @@
         </FiveQICharacteristics>
       </Configurable5QISet>
     </GNBCUUPFunction>
-    <GNBDUFunction xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-gnbdufunction">
-      <!-- # keys: id-->
-      <!-- # entries: 0.. -->
-      <id>
-        <!-- type: string -->
-      </id>
-      <attributes>
-        <userLabel>
-          <!-- type: string -->
-        </userLabel>
-        <vnfParametersList>
-          <!-- # keys: vnfInstanceId-->
-          <!-- # entries: 0.. -->
-          <vnfInstanceId>
-            <!-- type: string -->
-          </vnfInstanceId>
-          <vnfdId>
-            <!-- type: string -->
-          </vnfdId>
-          <flavourId>
-            <!-- type: string -->
-          </flavourId>
-          <autoScalable>
-            <!-- type: boolean -->
-          </autoScalable>
-        </vnfParametersList>
-        <peeParametersList>
-          <!-- # keys: idx-->
-          <!-- # entries: 0.. -->
-          <idx>
-            <!-- type: uint32 -->
-          </idx>
-          <siteIdentification>
-            <!-- type: string -->
-          </siteIdentification>
-          <siteLatitude>
-            <!-- type: decimal64 -->
-          </siteLatitude>
-          <siteLongitude>
-            <!-- type: decimal64 -->
-          </siteLongitude>
-          <siteAltitude>
-            <!-- type: decimal64 -->
-          </siteAltitude>
-          <siteDescription>
-            <!-- type: string -->
-          </siteDescription>
-          <equipmentType>
-            <!-- type: string -->
-          </equipmentType>
-          <environmentType>
-            <!-- type: string -->
-          </environmentType>
-          <powerInterface>
-            <!-- type: string -->
-          </powerInterface>
-        </peeParametersList>
-        <priorityLabel>
-          <!-- type: uint32 -->
-        </priorityLabel>
-        <SupportedPerfMetricGroup>
-          <!-- # keys: -->
-          <!-- # entries: 0.. -->
-          <performanceMetrics>
-            <!-- # entries: 1.. -->
-          </performanceMetrics>
-          <granularityPeriods>
-            <!-- # entries: 0.. -->
-          </granularityPeriods>
-          <reportingMethods>
-            <!-- # entries: 1.. -->
-          </reportingMethods>
-          <monitorGranularityPeriods>
-            <!-- # entries: 0.. -->
-          </monitorGranularityPeriods>
-        </SupportedPerfMetricGroup>
-        <gNBId>
-          <!-- type: int64 -->
-        </gNBId>
-        <gNBIdLength>
-          <!-- type: int32 -->
-        </gNBIdLength>
-        <gNBDUId>
-          <!-- type: int64 -->
-        </gNBDUId>
-        <gNBDUName>
-          <!-- type: string -->
-        </gNBDUName>
-        <rimRSReportConf>
-          <!-- # keys: reportInterval-->
-          <!-- # entries: 1..1 -->
-          <reportInterval>
-            <!-- type: uint32 -->
-          </reportInterval>
-          <reportIndicator>DISABLED</reportIndicator>
-          <nrofRIMRSReportInfo>
-            <!-- type: uint32 -->
-          </nrofRIMRSReportInfo>
-          <maxPropagationDelay>
-            <!-- type: uint32 -->
-          </maxPropagationDelay>
-          <RimRSReportInfoList>
-            <!-- # keys: detectedSetID-->
-            <!-- # entries: 0.. -->
-            <detectedSetID>
-              <!-- type: uint32 -->
-            </detectedSetID>
-            <propagationDelay>
-              <!-- type: uint32 -->
-            </propagationDelay>
-            <functionalityOfRIMRS>
-              <!-- type: enumeration -->
-            </functionalityOfRIMRS>
-          </RimRSReportInfoList>
-        </rimRSReportConf>
-      </attributes>
-      <ManagedNFService>
-        <!-- # keys: id-->
-        <!-- # entries: 0.. -->
-        <id>
-          <!-- type: string -->
-        </id>
-        <attributes>
-          <userLabel>
-            <!-- type: string -->
-          </userLabel>
-          <nFServiceType>
-            <!-- type: string -->
-          </nFServiceType>
-          <sAP>
-            <!-- # keys: host,port-->
-            <!-- # entries: 1..1 -->
-            <host>
-              <!-- type: inet:host -->
-            </host>
-            <port>
-              <!-- type: inet:port-number -->
-            </port>
-          </sAP>
-          <operations>
-            <!-- # keys: name-->
-            <!-- # entries: 1.. -->
-            <name>
-              <!-- type: string -->
-            </name>
-            <allowedNFTypes>
-              <!-- # entries: 1.. -->
-            </allowedNFTypes>
-            <operationSemantics>
-              <!-- type: enumeration -->
-            </operationSemantics>
-          </operations>
-          <administrativeState>
-            <!-- type: types3gpp:AdministrativeState -->
-          </administrativeState>
-          <operationalState>
-            <!-- type: types3gpp:OperationalState -->
-          </operationalState>
-          <usageState>
-            <!-- type: types3gpp:usageState -->
-          </usageState>
-          <registrationState>
-            <!-- type: enumeration -->
-          </registrationState>
-        </attributes>
-      </ManagedNFService>
-      <PerfMetricJob>
-        <!-- # keys: id-->
-        <!-- # entries: 0.. -->
-        <id>
-          <!-- type: string -->
-        </id>
-        <attributes>
-          <administrativeState>UNLOCKED</administrativeState>
-          <operationalState>
-            <!-- type: types3gpp:OperationalState -->
-          </operationalState>
-          <jobId>
-            <!-- type: string -->
-          </jobId>
-          <performanceMetrics>
-            <!-- # entries: 1.. -->
-          </performanceMetrics>
-          <granularityPeriod>
-            <!-- type: uint32 -->
-          </granularityPeriod>
-          <objectInstances>
-            <!-- # entries: 0.. -->
-          </objectInstances>
-          <rootObjectInstances>
-            <!-- # entries: 0.. -->
-          </rootObjectInstances>
-          <fileReportingPeriod>
-            <!-- type: uint32 -->
-          </fileReportingPeriod>
-          <fileLocation>
-            <!-- type: string -->
-          </fileLocation>
-          <notificationRecipientAddress>
-            <!-- type: string -->
-          </notificationRecipientAddress>
-          <streamTarget>
-            <!-- type: string -->
-          </streamTarget>
-          <_linkToFiles>
-            <!-- type: string -->
-          </_linkToFiles>
-        </attributes>
-        <Files>
-          <!-- # keys: id-->
-          <!-- # entries: 0.. -->
-          <id>
-            <!-- type: string -->
-          </id>
-          <attributes>
-            <numberOfFiles>
-              <!-- type: uint64 -->
-            </numberOfFiles>
-            <jobRef>
-              <!-- # entries: 0.. -->
-            </jobRef>
-            <jobId>
-              <!-- type: string -->
-            </jobId>
-          </attributes>
-          <File>
-            <!-- # keys: id-->
-            <!-- # entries: 0.. -->
-            <id>
-              <!-- type: string -->
-            </id>
-            <attributes>
-              <fileLocation>
-                <!-- type: inet:uri -->
-              </fileLocation>
-              <fileCompression>
-                <!-- type: string -->
-              </fileCompression>
-              <fileSize>
-                <!-- type: uint64 -->
-              </fileSize>
-              <fileDataType>
-                <!-- type: enumeration -->
-              </fileDataType>
-              <fileFormat>
-                <!-- type: string -->
-              </fileFormat>
-              <fileReadyTime>
-                <!-- type: yang:date-and-time -->
-              </fileReadyTime>
-              <fileExpirationTime>
-                <!-- type: yang:date-and-time -->
-              </fileExpirationTime>
-              <fileContent>
-                <!-- type: string -->
-              </fileContent>
-              <jobRef>
-                <!-- # entries: 0.. -->
-              </jobRef>
-              <jobId>
-                <!-- type: string -->
-              </jobId>
-            </attributes>
-          </File>
-        </Files>
-      </PerfMetricJob>
-      <ThresholdMonitor>
-        <!-- # keys: id-->
-        <!-- # entries: 0.. -->
-        <id>
-          <!-- type: string -->
-        </id>
-        <attributes>
-          <administrativeState>UNLOCKED</administrativeState>
-          <operationalState>
-            <!-- type: types3gpp:OperationalState -->
-          </operationalState>
-          <thresholdInfoList>
-            <!-- # keys: idx-->
-            <!-- # entries: 1.. -->
-            <idx>
-              <!-- type: uint32 -->
-            </idx>
-            <measurementTypes>
-              <!-- # entries: 0.. -->
-            </measurementTypes>
-            <thresholdLevel>
-              <!-- type: uint64 -->
-            </thresholdLevel>
-            <thresholdDirection>
-              <!-- type: enumeration -->
-            </thresholdDirection>
-            <thresholdValue>
-              <!-- type: union -->
-            </thresholdValue>
-            <hysteresis>
-              <!-- type: union -->
-            </hysteresis>
-          </thresholdInfoList>
-          <monitorGranularityPeriod>
-            <!-- type: uint32 -->
-          </monitorGranularityPeriod>
-          <objectInstances>
-            <!-- # entries: 0.. -->
-          </objectInstances>
-          <rootObjectInstances>
-            <!-- # entries: 0.. -->
-          </rootObjectInstances>
-        </attributes>
-      </ThresholdMonitor>
-      <TraceJob>
-        <!-- # keys: id-->
-        <!-- # entries: 0.. -->
-        <id>
-          <!-- type: string -->
-        </id>
-        <attributes>
-          <tjJobType>TRACE_ONLY</tjJobType>
-          <tjListOfInterfaces>
-            <!-- # keys: idx-->
-            <!-- # entries: 0.. -->
-            <idx>
-              <!-- type: uint32 -->
-            </idx>
-            <MSCServerInterfaces>
-              <!-- # entries: 0.. -->
-            </MSCServerInterfaces>
-            <MGWInterfaces>
-              <!-- # entries: 0.. -->
-            </MGWInterfaces>
-            <RNCInterfaces>
-              <!-- # entries: 0.. -->
-            </RNCInterfaces>
-            <SGSNInterfaces>
-              <!-- # entries: 0.. -->
-            </SGSNInterfaces>
-            <GGSNInterfaces>
-              <!-- # entries: 0.. -->
-            </GGSNInterfaces>
-            <S-CSCFInterfaces>
-              <!-- # entries: 0.. -->
-            </S-CSCFInterfaces>
-            <P-CSCFInterfaces>
-              <!-- # entries: 0.. -->
-            </P-CSCFInterfaces>
-            <I-CSCFInterfaces>
-              <!-- # entries: 0.. -->
-            </I-CSCFInterfaces>
-            <MRFCInterfaces>
-              <!-- # entries: 0.. -->
-            </MRFCInterfaces>
-            <MGCFInterfaces>
-              <!-- # entries: 0.. -->
-            </MGCFInterfaces>
-            <IBCFInterfaces>
-              <!-- # entries: 0.. -->
-            </IBCFInterfaces>
-            <E-CSCFInterfaces>
-              <!-- # entries: 0.. -->
-            </E-CSCFInterfaces>
-            <BGCFInterfaces>
-              <!-- # entries: 0.. -->
-            </BGCFInterfaces>
-            <ASInterfaces>
-              <!-- # entries: 0.. -->
-            </ASInterfaces>
-            <HSSInterfaces>
-              <!-- # entries: 0.. -->
-            </HSSInterfaces>
-            <EIRInterfaces>
-              <!-- # entries: 0.. -->
-            </EIRInterfaces>
-            <BM-SCInterfaces>
-              <!-- # entries: 0.. -->
-            </BM-SCInterfaces>
-            <MMEInterfaces>
-              <!-- # entries: 0.. -->
-            </MMEInterfaces>
-            <SGWInterfaces>
-              <!-- # entries: 0.. -->
-            </SGWInterfaces>
-            <PDN_GWInterfaces>
-              <!-- # entries: 0.. -->
-            </PDN_GWInterfaces>
-            <eNBInterfaces>
-              <!-- # entries: 0.. -->
-            </eNBInterfaces>
-            <en-gNBInterfaces>
-              <!-- # entries: 0.. -->
-            </en-gNBInterfaces>
-            <AMFInterfaces>
-              <!-- # entries: 0.. -->
-            </AMFInterfaces>
-            <AUSFInterfaces>
-              <!-- # entries: 0.. -->
-            </AUSFInterfaces>
-            <NEFInterfaces>
-              <!-- # entries: 0.. -->
-            </NEFInterfaces>
-            <NRFInterfaces>
-              <!-- # entries: 0.. -->
-            </NRFInterfaces>
-            <NSSFInterfaces>
-              <!-- # entries: 0.. -->
-            </NSSFInterfaces>
-            <PCFInterfaces>
-              <!-- # entries: 0.. -->
-            </PCFInterfaces>
-            <SMFInterfaces>
-              <!-- # entries: 0.. -->
-            </SMFInterfaces>
-            <SMSFInterfaces>
-              <!-- # entries: 0.. -->
-            </SMSFInterfaces>
-            <UDMInterfaces>
-              <!-- # entries: 0.. -->
-            </UDMInterfaces>
-            <UPFInterfaces>
-              <!-- # entries: 0.. -->
-            </UPFInterfaces>
-            <ng-eNBInterfaces>
-              <!-- # entries: 0.. -->
-            </ng-eNBInterfaces>
-            <gNB-CU-CPInterfaces>
-              <!-- # entries: 0.. -->
-            </gNB-CU-CPInterfaces>
-            <gNB-CU-UPInterfaces>
-              <!-- # entries: 0.. -->
-            </gNB-CU-UPInterfaces>
-            <gNB-DUInterfaces>
-              <!-- # entries: 0.. -->
-            </gNB-DUInterfaces>
-          </tjListOfInterfaces>
-          <tjListOfNeTypes>
-            <!-- # entries: 0.. -->
-          </tjListOfNeTypes>
-          <tjPLMNTarget>
-            <!-- type: string -->
-          </tjPLMNTarget>
-          <tjStreamingTraceConsumerURI>
-            <!-- type: inet:uri -->
-          </tjStreamingTraceConsumerURI>
-          <tjTraceCollectionEntityAddress>
-            <!-- type: union -->
-          </tjTraceCollectionEntityAddress>
-          <tjTraceDepth>MAXIMUM</tjTraceDepth>
-          <tjTraceReference>
-            <!-- type: uint64 -->
-          </tjTraceReference>
-          <tjTraceRecordSessionReference>
-            <!-- type: string -->
-          </tjTraceRecordSessionReference>
-          <tjTraceReportingFormat>FILE_BASED</tjTraceReportingFormat>
-          <tjTraceTarget>
-            <!-- # keys: targetIdType,targetIdValue-->
-            <!-- # entries: 0..1 -->
-            <targetIdType>
-              <!-- type: enumeration -->
-            </targetIdType>
-            <targetIdValue>
-              <!-- type: string -->
-            </targetIdValue>
-          </tjTraceTarget>
-          <tjTriggeringEvent>
-            <!-- type: string -->
-          </tjTriggeringEvent>
-          <tjMDTAnonymizationOfData>NO_IDENTITY</tjMDTAnonymizationOfData>
-          <tjMDTAreaConfigurationForNeighCell>
-            <!-- # keys: idx-->
-            <!-- # entries: 1.. -->
-            <idx>
-              <!-- type: uint32 -->
-            </idx>
-            <frequency>
-              <!-- type: string -->
-            </frequency>
-            <cell>
-              <!-- type: string -->
-            </cell>
-          </tjMDTAreaConfigurationForNeighCell>
-          <tjMDTAreaScope>
-            <!-- # entries: 0.. -->
-          </tjMDTAreaScope>
-          <tjMDTCollectionPeriodRrmLte>
-            <!-- type: uint32 -->
-          </tjMDTCollectionPeriodRrmLte>
-          <tjMDTCollectionPeriodM6Lte>
-            <!-- type: uint32 -->
-          </tjMDTCollectionPeriodM6Lte>
-          <tjMDTCollectionPeriodM7Lte>
-            <!-- type: uint16 -->
-          </tjMDTCollectionPeriodM7Lte>
-          <tjMDTCollectionPeriodRrmUmts>
-            <!-- type: uint32 -->
-          </tjMDTCollectionPeriodRrmUmts>
-          <tjMDTCollectionPeriodRrmNR>
-            <!-- type: uint32 -->
-          </tjMDTCollectionPeriodRrmNR>
-          <tjMDTCollectionPeriodM6NR>
-            <!-- type: enumeration -->
-          </tjMDTCollectionPeriodM6NR>
-          <tjMDTCollectionPeriodM7NR>
-            <!-- type: uint32 -->
-          </tjMDTCollectionPeriodM7NR>
-          <tjMDTEventListForTriggeredMeasurement>
-            <!-- type: enumeration -->
-          </tjMDTEventListForTriggeredMeasurement>
-          <tjMDTEventThreshold>
-            <!-- type: int64 -->
-          </tjMDTEventThreshold>
-          <tjMDTListOfMeasurements>
-            <!-- type: int64 -->
-          </tjMDTListOfMeasurements>
-          <tjMDTLoggingDuration>
-            <!-- type: uint32 -->
-          </tjMDTLoggingDuration>
-          <tjMDTLoggingInterval>
-            <!-- type: uint32 -->
-          </tjMDTLoggingInterval>
-          <tjMDTLoggingEventThreshold>
-            <!-- type: uint32 -->
-          </tjMDTLoggingEventThreshold>
-          <tjMDTLoggedHysteresis>
-            <!-- type: uint32 -->
-          </tjMDTLoggedHysteresis>
-          <tjMDTLoggedTimeToTrigger>
-            <!-- type: int32 -->
-          </tjMDTLoggedTimeToTrigger>
-          <tjMDTMBSFNAreaList>
-            <!-- # entries: 1..8 -->
-          </tjMDTMBSFNAreaList>
-          <tjMDTMeasurementPeriodLTE>
-            <!-- type: uint32 -->
-          </tjMDTMeasurementPeriodLTE>
-          <tjMDTMeasurementPeriodUMTS>
-            <!-- type: uint32 -->
-          </tjMDTMeasurementPeriodUMTS>
-          <tjMDTMeasurementQuantity>
-            <!-- type: uint64 -->
-          </tjMDTMeasurementQuantity>
-          <tjMDTM4ThresholdUmts>
-            <!-- type: uint16 -->
-          </tjMDTM4ThresholdUmts>
-          <tjMDTPLMList>
-            <!-- # keys: mcc,mnc-->
-            <!-- # entries: 1..16 -->
-            <mcc>
-              <!-- type: Mcc -->
-            </mcc>
-            <mnc>
-              <!-- type: Mnc -->
-            </mnc>
-          </tjMDTPLMList>
-          <tjMDTPositioningMethod>
-            <!-- type: enumeration -->
-          </tjMDTPositioningMethod>
-          <tjMDTReportAmount>
-            <!-- type: union -->
-          </tjMDTReportAmount>
-          <tjMDTReportingTrigger>
-            <!-- type: enumeration -->
-          </tjMDTReportingTrigger>
-          <tjMDTReportInterval>
-            <!-- type: uint32 -->
-          </tjMDTReportInterval>
-          <tjMDTReportType>
-            <!-- type: enumeration -->
-          </tjMDTReportType>
-          <tjMDTSensorInformation></tjMDTSensorInformation>
-          <tjMDTTraceCollectionEntityID>
-            <!-- type: uint8 -->
-          </tjMDTTraceCollectionEntityID>
-        </attributes>
-        <Files>
-          <!-- # keys: id-->
-          <!-- # entries: 0.. -->
-          <id>
-            <!-- type: string -->
-          </id>
-          <attributes>
-            <numberOfFiles>
-              <!-- type: uint64 -->
-            </numberOfFiles>
-            <jobRef>
-              <!-- # entries: 0.. -->
-            </jobRef>
-            <jobId>
-              <!-- type: string -->
-            </jobId>
-          </attributes>
-          <File>
-            <!-- # keys: id-->
-            <!-- # entries: 0.. -->
-            <id>
-              <!-- type: string -->
-            </id>
-            <attributes>
-              <fileLocation>
-                <!-- type: inet:uri -->
-              </fileLocation>
-              <fileCompression>
-                <!-- type: string -->
-              </fileCompression>
-              <fileSize>
-                <!-- type: uint64 -->
-              </fileSize>
-              <fileDataType>
-                <!-- type: enumeration -->
-              </fileDataType>
-              <fileFormat>
-                <!-- type: string -->
-              </fileFormat>
-              <fileReadyTime>
-                <!-- type: yang:date-and-time -->
-              </fileReadyTime>
-              <fileExpirationTime>
-                <!-- type: yang:date-and-time -->
-              </fileExpirationTime>
-              <fileContent>
-                <!-- type: string -->
-              </fileContent>
-              <jobRef>
-                <!-- # entries: 0.. -->
-              </jobRef>
-              <jobId>
-                <!-- type: string -->
-              </jobId>
-            </attributes>
-          </File>
-        </Files>
-      </TraceJob>
-      <Configurable5QISet>
-        <!-- # keys: id-->
-        <!-- # entries: 0.. -->
-        <id>
-          <!-- type: string -->
-        </id>
-        <attributes/>
-        <FiveQICharacteristics>
-          <!-- # keys: id-->
-          <!-- # entries: 0.. -->
-          <id>
-            <!-- type: string -->
-          </id>
-          <attributes>
-            <fiveQIValue>
-              <!-- type: uint32 -->
-            </fiveQIValue>
-            <resourceType>
-              <!-- type: enumeration -->
-            </resourceType>
-            <priorityLevel>
-              <!-- type: uint32 -->
-            </priorityLevel>
-            <packetDelayBudget>
-              <!-- type: uint32 -->
-            </packetDelayBudget>
-            <packetErrorRate>
-              <!-- # keys: scalar,exponent-->
-              <!-- # entries: 1..1 -->
-              <scalar>
-                <!-- type: uint32 -->
-              </scalar>
-              <exponent>
-                <!-- type: uint32 -->
-              </exponent>
-            </packetErrorRate>
-            <averagingWindow>
-              <!-- type: uint32 -->
-            </averagingWindow>
-            <maximumDataBurstVolume>
-              <!-- type: uint32 -->
-            </maximumDataBurstVolume>
-          </attributes>
-        </FiveQICharacteristics>
-      </Configurable5QISet>
-    </GNBDUFunction>
   </ManagedElement>
   <SubNetwork xmlns="urn:3gpp:sa5:_3gpp-common-subnetwork">
     <!-- # keys: id-->
