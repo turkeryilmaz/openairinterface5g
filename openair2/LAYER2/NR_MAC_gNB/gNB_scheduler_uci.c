@@ -169,7 +169,7 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
     if (!curr_pucch->active)
       continue;
 
-    LOG_A(NR_MAC,"swetank: fxn:%s frameP:%d curr_pucch->frame:%d slotP:%d curr_pucch->ul_slot:%d \n",
+    LOG_A(NR_MAC,"fxn:%s frameP:%d curr_pucch->frame:%d slotP:%d curr_pucch->ul_slot:%d \n",
       __FUNCTION__,
       frameP,
       curr_pucch->frame,
@@ -1253,7 +1253,7 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
       else if (curr_pucch->active) {
         AssertFatal(1==0, "This shouldn't happen! curr_pucch frame.slot %d.%d not matching with SR function frame.slot %d.%d\n",
                     curr_pucch->frame, curr_pucch->ul_slot, SFN, slot);
-        LOG_A(NR_MAC,"swetank: fxn:%d frameP:%d curr_pucch->frame:%d slotP:%d curr_pucch->ul_slot:%d \n",
+        LOG_A(NR_MAC,"fxn:%d frameP:%d curr_pucch->frame:%d slotP:%d curr_pucch->ul_slot:%d \n",
             __FUNCTION__,
             SFN,
             curr_pucch->frame,
