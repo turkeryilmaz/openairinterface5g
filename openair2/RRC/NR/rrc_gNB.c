@@ -4362,7 +4362,7 @@ void *rrc_gnb_task(void *args_p) {
           ASN_STRUCT_FREE(asn_DEF_NR_DL_DCCH_Message,dl_dcch_msg);
 
           nr_rrc_data_req(&ctxt,
-            DCCH,
+            SS_NRRRC_PDU_REQ (msg_p).srb_id,
             rrc_gNB_mui++,
             SDU_CONFIRM_NO,
             SS_NRRRC_PDU_REQ (msg_p).sdu_size,

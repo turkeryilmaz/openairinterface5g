@@ -88,6 +88,7 @@ int proxy_send_port = 7776;
 int proxy_recv_port = 7770;
 bool reqCnfFlag_g = false;
 
+void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder);
 /*
  * Utility function to convert integer to binary
  *
@@ -296,12 +297,15 @@ int sys_add_reconfig_cell(struct CellConfigInfo_Type *AddOrReconfigure)
 
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
+    printf("eNB_Inst %d Number of CC configured %d\n", enb_id,RC.nb_CC[enb_id]);
     if (AddOrReconfigure->Basic.d == true)
     {
       MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
       RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
       if (AddOrReconfigure->Basic.v.StaticCellInfo.d == true)
       {
+        init_cell_context(cell_index, enb_id,msg_p);
+
         /** Handle Static Cell Info */
         /** TDD: 1 FDD: 0 in OAI */
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.RAT.d)
@@ -740,12 +744,17 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     case SystemConfirm_Type_Paging:
       msgCnf->Confirm.v.Paging = true;
       break;
+    case SystemConfirm_Type_PdcchOrder:
+    {
+      LOG_A(ENB_SS, "[SYS] Send confirm for PDCCHOrder to Port Sys \n");
+      msgCnf->Confirm.v.PdcchOrder = true;
+      break;
+    }
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:
-    case SystemConfirm_Type_PdcchOrder:
     case SystemConfirm_Type_ActivateScell:
     case SystemConfirm_Type_MbmsConfig:
     case SystemConfirm_Type_PDCCH_MCCH_ChangeNotification:
@@ -793,10 +802,25 @@ int sys_handle_cell_config_req(struct CellConfigRequest_Type *Cell)
       LOG_A(ENB_SS, "[SYS] Signalling main thread for cell config done indication\n");
       cell_config_done_indication();
     }
-    //TODO Change it later to move to cell configuration
+    //cell configuration
     if ( SS_context.SSCell_list[cell_index].State == SS_STATE_NOT_CONFIGURED)
     {
-    returnState = SS_STATE_CELL_CONFIGURED;
+       //The flag is used to initilize the cell in the RRC layer during init_SI funciton
+        RC.ss.CC_conf_flag[cell_index] = 1;
+        
+      //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
+      if (cell_index)
+      {
+        //Increment the nb_CC supported as new cell is confiured
+        RC.nb_CC[0] ++;
+        
+        //Set the number of MAC_CC to current configured CC value
+        *RC.nb_mac_CC= RC.nb_CC[0];
+              
+        LOG_A (ENB_SS,"CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
+               RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
+      }
+      returnState = SS_STATE_CELL_CONFIGURED;
     }
 
 
@@ -1534,6 +1558,7 @@ static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacI
       if(IndicationAndControlMode_enable == L1MacInd_Ctrl->RachPreamble.v)
       {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = true;
+        SS_L1MACIND_CTRL(message_p).bitmask |= RACH_PREAMBLE_PRESENT;
       } else {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
       }
@@ -1860,6 +1885,10 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       sys_handle_l1macind_ctrl(&(req->Request.v.L1MacIndCtrl));
       break;
 
+    case SystemRequest_Type_PdcchOrder:
+      LOG_A(ENB_SS, "[SYS] SystemRequest_Type_PdcchOrder received\n");
+      sys_handle_pdcch_order(&req->Request.v.PdcchOrder);
+      break;
     case SystemRequest_Type_UNBOUND_VALUE:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_UNBOUND_VALUE received\n");
       break;
@@ -1991,6 +2020,12 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     valid = true;
     sendDummyCnf = false;
     cnfType = SystemConfirm_Type_L1MacIndCtrl;
+    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+    break;
+   case SystemRequest_Type_PdcchOrder:
+    valid = true;
+    sendDummyCnf = true;
+    cnfType = SystemConfirm_Type_PdcchOrder;
     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
   default:
@@ -2213,7 +2248,8 @@ void *ss_eNB_sys_task(void *arg)
   // Set the state to NOT_CONFIGURED for Cell Config processing mode
   if (RC.ss.mode == SS_SOFTMODEM)
   {
-    SS_context.SSCell_list[cell_index].State = SS_STATE_NOT_CONFIGURED;
+    init_ss_context(SS_context.SSCell_list);
+    //SS_context.SSCell_list[cell_index].State = SS_STATE_NOT_CONFIGURED;
   }
   // Set the state to CELL_ACTIVE for SRB processing mode
   else if (RC.ss.mode == SS_SOFTMODEM_SRB)
@@ -2226,4 +2262,30 @@ void *ss_eNB_sys_task(void *arg)
   }
 
   return NULL;
+}
+
+
+void sys_handle_pdcch_order(struct RA_PDCCH_Order_Type *pdcchOrder)
+{
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_L1MACIND_CTRL);
+  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+  bool resVal = true;
+  if (message_p)
+  {
+    LOG_A(ENB_SS,"[SYS] pdcchOrder: preambleIndex%d prachMaskIndex:%d\n",pdcchOrder->PreambleIndex, pdcchOrder->PrachMaskIndex);
+    SS_L1MACIND_CTRL(message_p).pdcchOrder.preambleIndex = pdcchOrder->PreambleIndex;
+    SS_L1MACIND_CTRL(message_p).pdcchOrder.prachMaskIndex = pdcchOrder->PrachMaskIndex;
+    SS_L1MACIND_CTRL(message_p).bitmask |= PDCCH_ORDER_PRESENT;
+  }
+  int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
+  if (send_res < 0)
+  {
+    LOG_A(ENB_SS, "[SYS] Error sending SS_L1MACIND_CTRL with PdcchOrder to MAC");
+  }
+  else
+  {
+    send_sys_cnf(resType, resVal, SystemConfirm_Type_PdcchOrder, NULL);
+
+
+  }
 }

@@ -10,6 +10,9 @@
 static IF_Module_t *if_inst[MAX_IF_MODULES];
 static Sched_Rsp_t Sched_INFO[MAX_IF_MODULES][MAX_NUM_CCs];
 
+extern uint16_t pdcch_order_table[16];
+extern int cell_index;
+extern uint8_t pdcchOrder_rcvd;
 extern int oai_nfapi_harq_indication(nfapi_harq_indication_t *harq_ind);
 extern int oai_nfapi_crc_indication(nfapi_crc_indication_t *crc_ind);
 extern int oai_nfapi_cqi_indication(nfapi_cqi_indication_t *cqi_ind);
@@ -22,6 +25,7 @@ extern UL_RCC_IND_t  UL_RCC_INFO[MAX_NUM_CCs];
 extern RAN_CONTEXT_t RC;
 
 uint16_t frame_cnt=0;
+bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels_t *cc, rnti_t rnti);
 void handle_rach(UL_IND_t *UL_info) {
   int i;
   int j = UL_info->subframe;
@@ -49,6 +53,43 @@ void handle_rach(UL_IND_t *UL_info) {
       free(UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.preamble_list);
       UL_RCC_INFO[UL_info->CC_id].rach_ind[j].rach_indication_body.number_of_preambles = 0;
       UL_RCC_INFO[UL_info->CC_id].rach_ind[j].header.message_id = 0;
+    }
+    /* PDCCHOrder */
+    else if (RC.ss.mode == SS_SOFTMODEM && pdcchOrder_rcvd ==1 )
+    {
+      LOG_I(MAC, "Scheduling PDCCHOrder \n");
+      eNB_MAC_INST *eNB = RC.mac[UL_info->module_id];
+      COMMON_channels_t *cc = eNB->common_channels;
+      rnti_t rnti = 0;
+      bool retVal = false;
+      for ( int UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ ) 
+      {
+        if (eNB->UE_info.active[UL_info->CC_id][UE_id] == false)
+          continue;
+
+        rnti = UE_RNTI(UL_info->module_id,UE_id);
+
+        if (rnti == NOT_A_RNTI)
+          continue;
+        if (UL_info->subframe == 4)
+        {
+          retVal = generate_mac_pdcch_order(UL_info,
+                                            eNB->UE_info.UE_sched_ctrl[UE_id].dl_cqi[UL_info->CC_id],
+                                            cc,
+                                            rnti);
+
+          if (retVal == false)
+          {
+            LOG_E(MAC, "Error sending MAC PDCCHOrder to UE \n");
+          }
+          else
+          {
+            LOG_I(MAC, "MAC PDCCHOrder Successfully sent to UE \n");
+          }
+          pdcchOrder_rcvd = 0;
+        }
+      }
+
     }
   } else {
     if (UL_info->rach_ind.rach_indication_body.number_of_preambles>0) {
@@ -722,7 +763,7 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if (ifi->CC_mask < ((1<<MAX_NUM_CCs)-1)) {
+    if (ifi->CC_mask < ((1<<RC.nb_CC[module_id])-1)) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_subframe = UL_info->subframe;
     } else {
@@ -752,11 +793,11 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
+    if (ifi->CC_mask == ((1<<RC.nb_CC[module_id])-1)) {
       eNB_dlsch_ulsch_scheduler(module_id,
                                 (UL_info->frame+((UL_info->subframe>(9-sf_ahead))?1:0)) % 1024,
                                 (UL_info->subframe+sf_ahead)%10);
-      for (int CC_Id=0; CC_Id<MAX_NUM_CCs; CC_Id++) {
+      for (int CC_Id=0; CC_Id<RC.nb_CC[module_id]; CC_Id++) {
         ifi->CC_mask            = 0;
         sched_info->module_id   = module_id;
         sched_info->CC_id       = CC_Id;
@@ -816,3 +857,88 @@ void IF_Module_kill(int Mod_id) {
 
   if (if_inst[Mod_id]!=NULL) free(if_inst[Mod_id]);
 }
+
+bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels_t *cc, rnti_t rnti)
+{
+  nfapi_dl_config_request_t *dl_config_request = NULL;
+  nfapi_dl_config_request_pdu_t *dl_config_pdu = NULL;
+  nfapi_dl_config_request_body_t *dl_req_body = NULL;
+  uint8_t *vrb_map = NULL;
+  int N_RB_DL = to_prb(cc[UL_info->CC_id].mib->message.dl_Bandwidth);
+  int first_rb = 0;
+  eNB_MAC_INST *mac = RC.mac[UL_info->module_id];
+  dl_config_request = &mac->DL_req[UL_info->CC_id];
+  dl_req_body   = &dl_config_request->dl_config_request_body;
+  dl_config_pdu = &dl_req_body->dl_config_pdu_list[dl_req_body->number_pdu];
+  memset ((void *) dl_config_pdu, 0, sizeof (nfapi_dl_config_request_pdu_t));
+  printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+
+  vrb_map = cc[UL_info->CC_id].vrb_map;
+  vrb_map[first_rb] = 1;
+  vrb_map[first_rb + 1] = 1;
+  vrb_map[first_rb + 2] = 1;
+  vrb_map[first_rb + 3] = 1;
+
+  fill_nfapi_dl_dci_1A(
+      dl_config_pdu,
+      4,
+      0,//rnti,
+      1,
+      0,
+      1, // tpc, none
+      getRIV(N_RB_DL, 0, 4),  // resource_block_coding
+      1,  // mcs
+      1,
+      0, // rv
+      0);  // vrb_flag
+
+  dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.allocate_prach_flag = 1;
+  dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.preamble_index = RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_preambleIndex;
+  dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.prach_mask_index = RC.rrc[0]->configuration.radioresourceconfig[cell_index].prach_maskIndex;
+  printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+  LOG_I(MAC, "PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+  // This checks if the above DCI allocation is feasible in current subframe
+  if (!CCE_allocation_infeasible(UL_info->module_id, UL_info->CC_id, 0, UL_info->subframe,
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level, rnti))
+  {
+    
+    printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+    LOG_D(MAC, "PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
+    dl_req_body->number_dci++;
+    dl_req_body->number_pdu++;
+    mac->DL_req[UL_info->CC_id].sfn_sf = UL_info->frame<<4 | UL_info->subframe;
+  }
+  else
+  {
+    printf("PDCCHOrder: CCE Allocation not feasible Frame %d: Subframe %d \n", UL_info->frame, UL_info->subframe);
+    LOG_D(MAC, "PDCCHOrder: CCE Allocation not feasible Frame %d: Subframe %d \n", UL_info->frame, UL_info->subframe);
+  }
+#if 0 
+  dl_config_request.sfn_sf =  UL_info->frame<<4 | UL_info->subframe;
+  dl_config_request.dl_config_request_body.number_pdcch_ofdm_symbols = 1;
+  dl_config_request.dl_config_request_body.number_dci = 1;
+  dl_config_request.dl_config_request_body.number_pdu = 1;
+  dl_config_request.dl_config_request_body.number_pdsch_rnti = 0;
+  dl_config_request.dl_config_request_body.transmission_power_pcfich = 6000;
+  dl_config_request.dl_config_request_body.dl_config_pdu_list = &dl_config_pdu;
+  LOG_I(PHY,"Entry In function:%s\ module_id:%d CC_id:%d dl_cqi:%d dl_bw:%d rnti:%d\n", 
+    __FUNCTION__,
+    UL_info->module_id,
+    UL_info->CC_id,
+    dl_cqi,
+    cc[UL_info->CC_id].mib->message.dl_Bandwidth,
+    rnti);
+#endif
+  
+
+#if 0
+  if (oai_nfapi_dl_config_req(&dl_config_request) != 0)
+  {
+    LOG_E(PHY,"Error Sending DL_CONFIG_REQ to UE [rnti:%d] [CC_id:%d]\n", rnti, UL_info->CC_id);
+    return false;
+  }
+  LOG_D(PHY,"Successfully sent DL_CONFIG_REQ to UE [rnti:%d] [CC_id:%d]\n", rnti, UL_info->CC_id);
+#endif
+  return true;
+}
+

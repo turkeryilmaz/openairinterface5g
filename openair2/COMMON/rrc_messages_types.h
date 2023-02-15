@@ -234,6 +234,8 @@ typedef struct RrcStateInd_s {
 } RrcStateInd;
 
 typedef struct RadioResourceConfig_s {
+  uint8_t                 prach_preambleIndex;
+  uint8_t                 prach_maskIndex;
   long                    prach_root;
   long                    prach_config_index;
   BOOLEAN_t               prach_high_speed;
