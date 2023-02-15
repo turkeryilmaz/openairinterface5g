@@ -54,6 +54,7 @@ git apply oran-fhi-1-compile-libxran-using-gcc-and-disable-avx512.patch
 git apply oran-fhi-2-return-correct-slot_id.patch
 git apply oran-fhi-3-disable-pkt-validate-at-process_mbuf.patch
 git apply oran-fhi-4-process_all_rx_ring.patch
+git apply oran-fhi-5-remove-not-used-dependencies.patch
 ```
 
  * Set up the environment (change the path if you use different folders)
