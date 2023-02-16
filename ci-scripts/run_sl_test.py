@@ -204,22 +204,6 @@ class TestThread(threading.Thread):
         self.log_file = log_agent.txlog_file_path
         self.log_agent = log_agent
 
-    def find_nearby_result_metric(self, remote_log):
-        result_metric = None
-        for raw_line in remote_log:
-            line = raw_line.decode()
-            LOGGER.info(line.strip())
-            # 'SyncRef UE found. RSRP: -100 dBm/RE. It took {delta_time_s} seconds'
-            if 'SyncRef UE found' in line:
-                fields = line.split(maxsplit=12)
-                if len(fields) > 6:
-                    ssb_rsrp = float(fields[-6])
-                    sync_duration = float(fields[-2])
-                    counting_duration = sync_duration - self.delay
-                    result_metric = (ssb_rsrp, sync_duration, counting_duration)
-                    self.passed += [result_metric]
-                    return
-
     def run(self):
         if self.queue.empty() == True:
             LOGGER.error("Queue is empty!")
@@ -248,6 +232,16 @@ class TestThread(threading.Thread):
         except Exception as inst:
             LOGGER.info(f"Failed to operate on job with type {type(inst)} and args {inst.args}")
 
+    def launch_syncref(self, job) -> Popen:
+        LOGGER.info('Launching SyncRef UE')
+        if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
+        else: cmd = self.commands.launch_cmds[job]
+        proc = Popen(cmd, shell=True)
+        if not OPTS.basic and not OPTS.no_run:
+            LOGGER.info(f"Process running... {job}")
+            time.sleep(OPTS.duration)
+            self.kill_process("syncref", proc)
+
     def launch_nearby(self, job, host=OPTS.host, user=OPTS.user) -> Popen:
         LOGGER.info('#' * 42)
         LOGGER.info('Launching Nearby UE')
@@ -264,22 +258,35 @@ class TestThread(threading.Thread):
                 nearby_result = proc.stderr.readlines()
             else:
                 nearby_result = remote_output
+            self.kill_process("nearby", proc)
             if nearby_result:
                 self.find_nearby_result_metric(nearby_result)
         else:
             proc = Popen(cmd, shell=True)
+            if not OPTS.basic and not OPTS.no_run:
+                LOGGER.info(f"Process running... {job}")
+                time.sleep(OPTS.duration)
+                self.kill_process("nearby", proc)
             nearby_result = self.log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2)
             if nearby_result:
                 self.find_nearby_result_metric(nearby_result)
-        return proc
 
-    def launch_syncref(self, job) -> Popen:
-        LOGGER.info('Launching SyncRef UE')
-        if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
-        else: cmd = self.commands.launch_cmds[job]
-        proc = Popen(cmd, shell=True)
-        time.sleep(1)
-        return proc
+    def find_nearby_result_metric(self, remote_log):
+        result_metric = None
+        for line in remote_log:
+            if type(line) is not str:
+                line = line.decode()
+            LOGGER.debug(line.strip())
+            # 'SyncRef UE found. RSRP: -100 dBm/RE. It took {delta_time_s} seconds'
+            if 'SyncRef UE found' in line:
+                fields = line.split(maxsplit=12)
+                if len(fields) > 6:
+                    ssb_rsrp = float(fields[-6])
+                    sync_duration = float(fields[-2])
+                    counting_duration = sync_duration - self.delay
+                    result_metric = (ssb_rsrp, sync_duration, counting_duration)
+                    self.passed += [result_metric]
+                    return
 
     def kill_process(self, job: str, proc: Popen) -> None:
         # Wait for the processes to end
