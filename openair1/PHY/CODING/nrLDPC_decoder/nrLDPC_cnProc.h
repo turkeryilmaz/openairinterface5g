@@ -79,7 +79,6 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
         M = (lut_numCnInCnGroups[0]*Z + 31)>>5;
-
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG2_R15[0]*NR_LDPC_ZMAX)>>5;
 
@@ -131,7 +130,6 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
         M = (lut_numCnInCnGroups[1]*Z + 31)>>5;
-
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG2_R15[1]*NR_LDPC_ZMAX)>>5;
 
@@ -181,7 +179,6 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
         M = (lut_numCnInCnGroups[2]*Z + 31)>>5;
-
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG2_R15[2]*NR_LDPC_ZMAX)>>5;
 
@@ -232,7 +229,6 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
         M = (lut_numCnInCnGroups[3]*Z + 31)>>5;
-
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG2_R15[3]*NR_LDPC_ZMAX)>>5;
 
@@ -284,7 +280,6 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
         M = (lut_numCnInCnGroups[4]*Z + 31)>>5;
-
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG2_R15[4]*NR_LDPC_ZMAX)>>5;
 
@@ -337,7 +332,6 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
         M = (lut_numCnInCnGroups[5]*Z + 31)>>5;
-
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG2_R15[5]*NR_LDPC_ZMAX)>>5;
 
@@ -881,12 +875,13 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
    \param Z Lifting size
    \return 32-bit parity check indicator
 */
-static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, uint16_t Z)
+static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z)
 {
     const uint8_t*  lut_numCnInCnGroups   = p_lut->numCnInCnGroups;
     const uint32_t* lut_startAddrCnGroups = p_lut->startAddrCnGroups;
 
     __m256i* p_cnProcBuf;
+    __m256i* p_cnProcBufRes;
 
     // Number of CNs in Groups
     uint32_t M;
@@ -897,7 +892,7 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
     uint32_t Mrem;
     uint32_t M32;
 
-    __m256i ymm0;
+    __m256i ymm0, ymm1;
 
     // =====================================================================
     // Process group with 3 BNs
@@ -916,7 +911,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 3
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[0]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[0]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[0]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -927,11 +923,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<3; j++)
             {
                 // BN offset is units of (1*384/32) = 12
-                ymm0 = p_cnProcBuf[j*12 + i];
+                ymm0 = p_cnProcBuf   [j*12 + i];
+                ymm1 = p_cnProcBufRes[j*12 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -945,11 +942,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<3; j++)
         {
             // BN offset is units of (1*384/32) = 12
-            ymm0 = p_cnProcBuf[j*12 + i];
+            ymm0 = p_cnProcBuf   [j*12 + i];
+            ymm1 = p_cnProcBufRes[j*12 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -981,7 +979,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 4
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[1]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[1]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[1]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -992,11 +991,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<4; j++)
             {
                 // BN offset is units of 5*384/32 = 60
-                ymm0 = p_cnProcBuf[j*60 + i];
+                ymm0 = p_cnProcBuf   [j*60 + i];
+                ymm1 = p_cnProcBufRes[j*60 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1010,11 +1010,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<4; j++)
         {
             // BN offset is units of 5*384/32 = 60
-            ymm0 = p_cnProcBuf[j*60 + i];
+            ymm0 = p_cnProcBuf   [j*60 + i];
+            ymm1 = p_cnProcBufRes[j*60 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1046,7 +1047,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 5
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[2]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[2]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[2]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1057,11 +1059,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<5; j++)
             {
                 // BN offset is units of 18*384/32 = 216
-                ymm0 = p_cnProcBuf[j*216 + i];
+                ymm0 = p_cnProcBuf   [j*216 + i];
+                ymm1 = p_cnProcBufRes[j*216 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1076,11 +1079,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<5; j++)
         {
             // BN offset is units of 18*384/32 = 216
-            ymm0 = p_cnProcBuf[j*216 + i];
+            ymm0 = p_cnProcBuf   [j*216 + i];
+            ymm1 = p_cnProcBufRes[j*216 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1112,7 +1116,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 6
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[3]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[3]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[3]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1123,11 +1128,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<6; j++)
             {
                 // BN offset is units of 8*384/32 = 96
-                ymm0 = p_cnProcBuf[j*96 + i];
+                ymm0 = p_cnProcBuf   [j*96 + i];
+                ymm1 = p_cnProcBufRes[j*96 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1141,11 +1147,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<6; j++)
         {
             // BN offset is units of 8*384/32 = 96
-            ymm0 = p_cnProcBuf[j*96 + i];
+            ymm0 = p_cnProcBuf   [j*96 + i];
+            ymm1 = p_cnProcBufRes[j*96 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1177,7 +1184,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 7
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[4]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[4]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[4]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1188,11 +1196,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<7; j++)
             {
                 // BN offset is units of 5*384/32 = 60
-                ymm0 = p_cnProcBuf[j*60 + i];
+                ymm0 = p_cnProcBuf   [j*60 + i];
+                ymm1 = p_cnProcBufRes[j*60 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1206,11 +1215,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<7; j++)
         {
             // BN offset is units of 5*384/32 = 60
-            ymm0 = p_cnProcBuf[j*60 + i];
+            ymm0 = p_cnProcBuf   [j*60 + i];
+            ymm1 = p_cnProcBufRes[j*60 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1242,7 +1252,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 8
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[5]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[5]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[5]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1253,11 +1264,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<8; j++)
             {
                 // BN offset is units of 2*384/32 = 24
-                ymm0 = p_cnProcBuf[j*24 + i];
+                ymm0 = p_cnProcBuf   [j*24 + i];
+                ymm1 = p_cnProcBufRes[j*24 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1271,11 +1283,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<8; j++)
         {
             // BN offset is units of 2*384/32 = 24
-            ymm0 = p_cnProcBuf[j*24 + i];
+            ymm0 = p_cnProcBuf   [j*24 + i];
+            ymm1 = p_cnProcBufRes[j*24 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1307,7 +1320,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 9
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[6]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[6]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[6]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1318,11 +1332,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<9; j++)
             {
                 // BN offset is units of 2*384/32 = 24
-                ymm0 = p_cnProcBuf[j*24 + i];
+                ymm0 = p_cnProcBuf   [j*24 + i];
+                ymm1 = p_cnProcBufRes[j*24 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1336,11 +1351,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<9; j++)
         {
             // BN offset is units of 2*384/32 = 24
-            ymm0 = p_cnProcBuf[j*24 + i];
+            ymm0 = p_cnProcBuf   [j*24 + i];
+            ymm1 = p_cnProcBufRes[j*24 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1372,7 +1388,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 10
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[7]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[7]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[7]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1383,11 +1400,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<10; j++)
             {
                 // BN offset is units of 1*384/32 = 12
-                ymm0 = p_cnProcBuf[j*12 + i];
+                ymm0 = p_cnProcBuf   [j*12 + i];
+                ymm1 = p_cnProcBufRes[j*12 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1401,11 +1419,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<10; j++)
         {
             // BN offset is units of 1*384/32 = 12
-            ymm0 = p_cnProcBuf[j*12 + i];
+            ymm0 = p_cnProcBuf   [j*12 + i];
+            ymm1 = p_cnProcBufRes[j*12 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1437,7 +1456,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 19
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[8]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[8]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[8]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1448,11 +1468,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<19; j++)
             {
                 // BN offset is units of 4*384/32 = 48
-                ymm0 = p_cnProcBuf[j*48 + i];
+                ymm0 = p_cnProcBuf   [j*48 + i];
+                ymm1 = p_cnProcBufRes[j*48 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1466,11 +1487,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<19; j++)
         {
             // BN offset is units of 4*384/32 = 48
-            ymm0 = p_cnProcBuf[j*48 + i];
+            ymm0 = p_cnProcBuf   [j*48 + i];
+            ymm1 = p_cnProcBufRes[j*48 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1494,12 +1516,13 @@ static inline uint32_t nrLDPC_cnProcPc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
    \param Z Lifting size
    \return 32-bit parity check indicator
 */
-static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, uint16_t Z)
+static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z)
 {
     const uint8_t*  lut_numCnInCnGroups   = p_lut->numCnInCnGroups;
     const uint32_t* lut_startAddrCnGroups = p_lut->startAddrCnGroups;
 
     __m256i* p_cnProcBuf;
+    __m256i* p_cnProcBufRes;
 
     // Number of CNs in Groups
     uint32_t M;
@@ -1510,7 +1533,7 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
     uint32_t Mrem;
     uint32_t M32;
 
-    __m256i ymm0;
+    __m256i ymm0, ymm1;
 
     // =====================================================================
     // Process group with 3 BNs
@@ -1529,7 +1552,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 3
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[0]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[0]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[0]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1540,11 +1564,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<3; j++)
             {
                 // BN offset is units of (6*384/32) = 72
-                ymm0 = p_cnProcBuf[j*72 + i];
+                ymm0 = p_cnProcBuf   [j*72 + i];
+                ymm1 = p_cnProcBufRes[j*72 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1558,11 +1583,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<3; j++)
         {
             // BN offset is units of (6*384/32) = 72
-            ymm0 = p_cnProcBuf[j*72 + i];
+            ymm0 = p_cnProcBuf   [j*72 + i];
+            ymm1 = p_cnProcBufRes[j*72 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1594,7 +1620,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 4
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[1]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[1]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[1]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1605,11 +1632,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<4; j++)
             {
                 // BN offset is units of 20*384/32 = 240
-                ymm0 = p_cnProcBuf[j*240 + i];
+                ymm0 = p_cnProcBuf   [j*240 + i];
+                ymm1 = p_cnProcBufRes[j*240 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1623,11 +1651,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<4; j++)
         {
             // BN offset is units of 20*384/32 = 240
-            ymm0 = p_cnProcBuf[j*240 + i];
+            ymm0 = p_cnProcBuf   [j*240 + i];
+            ymm1 = p_cnProcBufRes[j*240 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1659,7 +1688,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 5
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[2]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[2]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[2]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1670,11 +1700,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<5; j++)
             {
                 // BN offset is units of 9*384/32 = 108
-                ymm0 = p_cnProcBuf[j*108 + i];
+                ymm0 = p_cnProcBuf   [j*108 + i];
+                ymm1 = p_cnProcBufRes[j*108 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1688,11 +1719,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<5; j++)
         {
             // BN offset is units of 9*384/32 = 108
-            ymm0 = p_cnProcBuf[j*108 + i];
+            ymm0 = p_cnProcBuf   [j*108 + i];
+            ymm1 = p_cnProcBufRes[j*108 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1724,7 +1756,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 6
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[3]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[3]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[3]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1735,11 +1768,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<6; j++)
             {
                 // BN offset is units of 3*384/32 = 36
-                ymm0 = p_cnProcBuf[j*36 + i];
+                ymm0 = p_cnProcBuf   [j*36 + i];
+                ymm1 = p_cnProcBufRes[j*36 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1753,11 +1787,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<6; j++)
         {
             // BN offset is units of 3*384/32 = 36
-            ymm0 = p_cnProcBuf[j*36 + i];
+            ymm0 = p_cnProcBuf   [j*36 + i];
+            ymm1 = p_cnProcBufRes[j*36 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1789,7 +1824,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 8
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[4]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[4]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[4]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1800,11 +1836,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<8; j++)
             {
                 // BN offset is units of 2*384/32 = 24
-                ymm0 = p_cnProcBuf[j*24 + i];
+                ymm0 = p_cnProcBuf   [j*24 + i];
+                ymm1 = p_cnProcBufRes[j*24 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1818,11 +1855,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<8; j++)
         {
             // BN offset is units of 2*384/32 = 24
-            ymm0 = p_cnProcBuf[j*24 + i];
+            ymm0 = p_cnProcBuf   [j*24 + i];
+            ymm1 = p_cnProcBufRes[j*24 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1854,7 +1892,8 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         M32 = (M + 31)>>5;
 
         // Set pointers to start of group 10
-        p_cnProcBuf = (__m256i*) &cnProcBuf[lut_startAddrCnGroups[5]];
+        p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[5]];
+        p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[5]];
 
         // Loop over CNs
         for (i=0; i<(M32-1); i++)
@@ -1865,11 +1904,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
             for (j=0; j<10; j++)
             {
                 // BN offset is units of 2*384/32 = 24
-                ymm0 = p_cnProcBuf[j*24 + i];
+                ymm0 = p_cnProcBuf   [j*24 + i];
+                ymm1 = p_cnProcBufRes[j*24 + i];
 
                 // Add BN and input LLR, extract the sign bit
                 // and add in GF(2) (xor)
-                pcRes ^= simde_mm256_movemask_epi8(ymm0);
+                pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
             }
 
             // If no error pcRes should be 0
@@ -1883,11 +1923,12 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
         for (j=0; j<10; j++)
         {
             // BN offset is units of 2*384/32 = 24
-            ymm0 = p_cnProcBuf[j*24 + i];
+            ymm0 = p_cnProcBuf   [j*24 + i];
+            ymm1 = p_cnProcBufRes[j*24 + i];
 
             // Add BN and input LLR, extract the sign bit
             // and add in GF(2) (xor)
-            pcRes ^= simde_mm256_movemask_epi8(ymm0);
+            pcRes ^= simde_mm256_movemask_epi8(simde_mm256_adds_epi8(ymm0,ymm1));
         }
 
         // If no error pcRes should be 0
@@ -1906,3 +1947,6 @@ static inline uint32_t nrLDPC_cnProcPc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBu
 }
 
 #endif
+
+
+

@@ -858,6 +858,9 @@ static inline uint32_t nrLDPC_init(t_nrLDPC_dec_params* p_decParams, t_nrLDPC_lu
         p_lut->posBnInCnProcBuf[7] = (const uint8_t**) posBnInCnProcBuf_BG1_CNG10;
         p_lut->posBnInCnProcBuf[8] = (const uint8_t**) posBnInCnProcBuf_BG1_CNG19;
 
+        p_lut->addrEdgeInCnBuffer = (const uint32_t*) addrEdgeInCnBuffer_BG1_Z384;
+        p_lut->cShift = (const uint16_t*) cShift_BG1_Z384;
+
         // LUT that only depend on R
         if (R == 13)
         {

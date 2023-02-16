@@ -113,7 +113,7 @@
 
 
 
-//#define NR_LDPC_ENABLE_PARITY_CHECK
+#define NR_LDPC_ENABLE_PARITY_CHECK
 //#define NR_LDPC_PROFILER_DETAIL
 
 #ifdef NR_LDPC_DEBUG_MODE
@@ -310,14 +310,14 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifdef NR_LDPC_PROFILER_DETAIL
     start_meas(&p_profiler->cn2bnProcBuf);
 #endif
-    if (BG == 1) 
-    {
-        nrLDPC_cn2bnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
-    }
-    else
-    {   
-        // nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
-    }
+    // if (BG == 1) 
+    // {
+    //     nrLDPC_cn2bnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
+    // }
+    // else
+    // {   
+    //     nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+    // }
 #ifdef NR_LDPC_PROFILER_DETAIL
     stop_meas(&p_profiler->cn2bnProcBuf);
 #endif
@@ -335,7 +335,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifndef UNROLL_BN_PROC_PC
     // nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
     //nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
-    nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
+    // nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z,BG);
+    nrLDPC_bnProcPcOpt2(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
     // nrLDPC_llr2llrProcBuf(p_lut, llrRes, p_llrOut, Z, BG);
     // memcpy(llrRes,p_llrOut,NR_LDPC_MAX_NUM_LLR*sizeof(int8_t));
 #else        
@@ -386,7 +387,6 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifdef NR_LDPC_DEBUG_MODE
     nrLDPC_debug_initBuffer2File(nrLDPC_buffers_LLR_RES);
     nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_LLR_RES, llrRes);
-    // nrLDPC_debug_writeBuffer2File(nrLDPC_buffers_LLR_RES, p_llrOut);
 #endif
 
 #ifdef NR_LDPC_PROFILER_DETAIL
@@ -395,7 +395,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 
 #ifndef UNROLL_BN_PROC
         // nrLDPC_bnProc(p_lut, procBuf, procBufRes, llrRes, Z);
-        nrLDPC_bnProcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
+        // nrLDPC_bnProcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
 #else
     if (BG==1) 
     {
@@ -477,15 +477,14 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifdef NR_LDPC_PROFILER_DETAIL
     start_meas(&p_profiler->bn2cnProcBuf);
 #endif
-    if (BG == 1) 
-    {
-        nrLDPC_bn2cnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
-    }
-    else
-    {
-        // memset(procBuf,0,NR_LDPC_SIZE_CN_PROC_BUF);
-        // nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
-    }
+    // if (BG == 1) 
+    // {
+    //     nrLDPC_bn2cnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
+    // }
+    // else
+    // {
+    //     nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+    // }
 #ifdef NR_LDPC_PROFILER_DETAIL
     stop_meas(&p_profiler->bn2cnProcBuf);
 #endif
@@ -594,14 +593,14 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifdef NR_LDPC_PROFILER_DETAIL
         start_meas(&p_profiler->cn2bnProcBuf);
 #endif
-        if (BG == 1)
-        {
-            nrLDPC_cn2bnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
-        }
-        else
-        {   
-            // nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
-        }
+        // if (BG == 1)
+        // {
+        //     nrLDPC_cn2bnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
+        // }
+        // else
+        // {   
+        //     nrLDPC_cn2bnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+        // }
 #ifdef NR_LDPC_PROFILER_DETAIL
         stop_meas(&p_profiler->cn2bnProcBuf);
 #endif
@@ -617,7 +616,8 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 
 #ifndef UNROLL_BN_PROC_PC
         //nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
-        nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
+        // nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
+        nrLDPC_bnProcPcOpt2(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
         // nrLDPC_llr2llrProcBuf(p_lut, llrRes, p_llrOut, Z, BG);
         // memcpy(llrRes,p_llrOut,NR_LDPC_MAX_NUM_LLR*sizeof(int8_t));
 #else
@@ -673,7 +673,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
 #ifndef UNROLL_BN_PROC
         //nrLDPC_bnProc(p_lut, procBuf, procBufRes, llrRes, Z);
-        nrLDPC_bnProcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z);
+        // nrLDPC_bnProcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
 #else     
         if (BG==1) {
           switch (R) {
@@ -754,15 +754,11 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #endif
        if (BG == 1) 
        {
-           nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
-           nrLDPC_llr2CnProcBuf_BG1(p_lut, llrOut, procBuf, Z);
-           pcRes = nrLDPC_cnProcPc_BG1(p_lut, procBuf, Z);
+           pcRes = nrLDPC_cnProcPc_BG1(p_lut, procBuf, procBufRes, Z);
        }
        else
        {
-           nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
-           nrLDPC_llr2CnProcBuf_BG2(p_lut, llrOut, procBuf, Z);
-           pcRes = nrLDPC_cnProcPc_BG2(p_lut, procBuf, Z);
+           pcRes = nrLDPC_cnProcPc_BG2(p_lut, procBuf, procBufRes, Z);
        }
 #ifdef NR_LDPC_PROFILER_DETAIL
        stop_meas(&p_profiler->cnProcPc);
@@ -778,14 +774,14 @@ if (pcRes == 0)
 #ifdef NR_LDPC_PROFILER_DETAIL
         start_meas(&p_profiler->bn2cnProcBuf);
 #endif
-        if (BG == 1) 
-        {   
-            nrLDPC_bn2cnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
-        }
-        else
-        {   
-            // nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
-        }
+        // if (BG == 1) 
+        // {   
+        //     nrLDPC_bn2cnProcBuf_BG1(p_lut, procBufRes, procBuf, Z);
+        // }
+        // else
+        // {   
+        //     nrLDPC_bn2cnProcBuf_BG2(p_lut, procBufRes, procBuf, Z);
+        // }
 #ifdef NR_LDPC_PROFILER_DETAIL
         stop_meas(&p_profiler->bn2cnProcBuf);
 #endif
