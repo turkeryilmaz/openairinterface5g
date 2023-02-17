@@ -387,6 +387,7 @@ int main(int argc, char **argv)
   }
 
   txUE = malloc(sizeof(PHY_VARS_NR_UE));
+  rxUE = malloc(sizeof(PHY_VARS_NR_UE));
   frame_parms = &txUE->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
   frame_parms->N_RB_DL = N_RB;
   frame_parms->N_RB_UL = N_RB;
@@ -401,8 +402,6 @@ int main(int argc, char **argv)
   txUE->frame_parms.nb_antennas_rx = n_rx;
 
   nr_phy_config_request_psschsim(txUE, N_RB, mu, burst_position);
-
-  rxUE = malloc(sizeof(PHY_VARS_NR_UE));
   memcpy(&rxUE->frame_parms, frame_parms, sizeof(NR_DL_FRAME_PARMS));
 
   rxUE->frame_parms.nb_antennas_tx = n_tx;
@@ -421,6 +420,11 @@ int main(int argc, char **argv)
     }
   }
 
+  s_re = malloc(n_tx*sizeof(double*));
+  s_im = malloc(n_tx*sizeof(double*));
+  r_re = malloc(n_rx*sizeof(double*));
+  r_im = malloc(n_rx*sizeof(double*));
+
   unsigned char harq_pid = 0;
   unsigned int TBS = 8424;
   unsigned int available_bits;
@@ -434,7 +438,7 @@ int main(int argc, char **argv)
 
   NR_UE_DLSCH_t *dlsch_rxUE = rxUE->ulsch[UE_id];
   NR_DL_UE_HARQ_t *harq_process_rxUE = dlsch_rxUE->harq_processes[harq_pid];
-  nfapi_nr_pusch_pdu_t *rel16_ul = &harq_process_rxUE->ssch_pdu;
+  nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
   NR_UE_DLSCH_t *dlsch0_ue = rxUE->dlsch[0][0][0];
 
   NR_UE_ULSCH_t *ulsch_ue = txUE->ulsch[0][0];
@@ -468,21 +472,21 @@ int main(int argc, char **argv)
 
   /////////////////////////[adk] preparing UL harq_process parameters/////////////////////////
   ///////////
-  NR_UL_UE_HARQ_t *harq_process_ul_ue = ulsch_ue->harq_processes[harq_pid];
-  DevAssert(harq_process_ul_ue);
+  NR_UL_UE_HARQ_t *harq_process_txUE = ulsch_ue->harq_processes[harq_pid];
+  DevAssert(harq_process_txUE);
 
   N_PRB_oh   = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
   N_RE_prime = NR_NB_SC_PER_RB*nb_symb_sch - nb_re_dmrs - N_PRB_oh;
-  harq_process_ul_ue->pusch_pdu.mcs_index = Imcs;
-  harq_process_ul_ue->pusch_pdu.nrOfLayers = Nl;
-  harq_process_ul_ue->pusch_pdu.rb_size = N_RB;
-  harq_process_ul_ue->pusch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*N_RB*nb_codewords;
-  harq_process_ul_ue->pusch_pdu.pusch_data.rv_index = rvidx;
-  harq_process_ul_ue->pusch_pdu.pusch_data.tb_size  = TBS>>3;
-  harq_process_ul_ue->pusch_pdu.target_code_rate = code_rate;
-  harq_process_ul_ue->pusch_pdu.qam_mod_order = mod_order;
-  unsigned char *test_input = harq_process_ul_ue->a;
+  harq_process_txUE->pusch_pdu.mcs_index = Imcs;
+  harq_process_txUE->pusch_pdu.nrOfLayers = Nl;
+  harq_process_txUE->pusch_pdu.rb_size = N_RB;
+  harq_process_txUE->pusch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_txUE->num_of_mod_symbols = N_RE_prime*N_RB*nb_codewords;
+  harq_process_txUE->pusch_pdu.pusch_data.rv_index = rvidx;
+  harq_process_txUE->pusch_pdu.pusch_data.tb_size  = TBS>>3;
+  harq_process_txUE->pusch_pdu.target_code_rate = code_rate;
+  harq_process_txUE->pusch_pdu.qam_mod_order = mod_order;
+  unsigned char *test_input = harq_process_txUE->a;
 
   ///////////
   ////////////////////////////////////////////////////////////////////////////////////////////

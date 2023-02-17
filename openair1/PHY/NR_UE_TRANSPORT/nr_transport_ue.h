@@ -260,7 +260,7 @@ typedef struct {
   /// PDU BITMAP 
   uint16_t pduBitmap;
 
-  nfapi_nr_pusch_pdu_t ssch_pdu;
+  nfapi_nr_pssch_pdu_t pssch_pdu;
 } NR_DL_UE_HARQ_t;
 
 typedef struct {
