@@ -23,7 +23,8 @@ import glob
 import bz2
 import subprocess
 from subprocess import Popen
-from typing import Optional, List, Generator
+from typing import Optional, List
+from sl_check_log import LogChecker
 
 HOME_DIR = os.path.expanduser( '~' )
 # ----------------------------------------------------------------------------
@@ -195,78 +196,16 @@ class TestNearby():
 
 # ----------------------------------------------------------------------------
 
-def get_lines(filename: str) -> Generator[str, None, None]:
-    """
-    Yield each line of the given log file (.bz2 compressed log file if -c flag is used.)
-    """
-    fh = bz2.open(filename, 'rb') if OPTS.compress else open(filename, 'rb')
-    for line_bytes in fh:
-        line = line_bytes.decode('utf-8', 'backslashreplace')
-        line = line.rstrip('\r\n')
-        yield line
-
-def get_analysis_messages(filename: str) -> Generator[str, None, None]:
-    """
-    Finding all logs in the log file with X fields for log parsing optimization
-    """
-    LOGGER.info('Scanning %s', filename)
-    for line in get_lines(filename):
-            #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SS-RSRP 100 dBm/RE
-            #796811.532881 [NR_PHY] nrUE configured
-            fields = line.split(maxsplit=10)
-            if len(fields) == 11 or len(fields) == 4:
-                yield line
-
-def analyze_logs(exp_nid1: int, exp_nid2: int) -> bool:
-    found = set()
-    est_nid1, est_nid2, time_start_s, time_end_s = -1, -1, -1, -1
-    ssb_rsrp = 0
-    log_file = log_file_path
-
-    if OPTS.compress:
-        log_file = f'{log_file_path}.bz2'
-    for line in get_analysis_messages(log_file):
-        #796821.854505 [NR_PHY] SyncRef UE found with Nid1 10 and Nid2 1 SS-RSRP -100 dBm/RE
-        #796811.532881 [NR_PHY] nrUE configured
-        if 'SyncRef UE found' in line and 'Nid1' in line and 'Nid2' in line:
-            num_split = 13 if 'RSRP' in line else 10
-            fields = line.split(maxsplit=num_split)
-            est_nid1 = int(fields[7])
-            est_nid2 = int(fields[10])
-            if 'RSRP' in line:
-                ssb_rsrp = int(fields[12])
-            found.add('found')
-            time_end_s = float(fields[0])
-            break
-        if time_start_s == -1 and 'nrUE configured' in line:
-            fields = line.split(maxsplit=3)
-            time_start_s = float(fields[0])
-
-
-    LOGGER.debug('found: %r', found)
-    if len(found) != 1:
-        LOGGER.error(f'Failed -- No SyncRef UE found.')
-        return False
-    elif exp_nid1 != est_nid1 or exp_nid2 != est_nid2:
-        LOGGER.error(f'Failed -- found SyncRef UE Nid1 {est_nid1}, Ni2 {est_nid2}, expecting Nid1 {exp_nid1}, Nid2 {exp_nid2}')
-        return False
-    if time_start_s == -1:
-        LOGGER.error(f'Failed -- No start time found! Fix log and re-run!')
-        return False
-
-    delta_time_s = time_end_s - time_start_s
-    LOGGER.info(f'SyncRef UE found. RSRP: {ssb_rsrp} dBm/RE. It took {delta_time_s} seconds')
-    return True
-
 def main(argv) -> int:
     test_agent = TestNearby()
+    log_agent = LogChecker(OPTS, LOGGER)
 
     passed = True
     if not OPTS.no_run:
         passed = test_agent.run(OPTS.cmd)
 
     # Examine the logs to determine if the test passed
-    if not analyze_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2):
+    if not log_agent.analyze_nearby_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2):
         passed = False
 
     if not passed:
