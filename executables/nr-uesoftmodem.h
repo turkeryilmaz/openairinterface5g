@@ -38,7 +38,8 @@
     {"V" ,                       CONFIG_HLP_VCD,         PARAMFLAG_BOOL,  iptr:&vcdflag,                      defintval:0,     TYPE_INT,    0}, \
     {"uecap_file",               CONFIG_HLP_UECAP_FILE,  0,               strptr:&uecap_file,        defstrval:"./uecap.xml", TYPE_STRING, 0}, \
     {"rrc_config_path",          CONFIG_HLP_RRC_CFG_PATH,0,               strptr:&rrc_config_path,   defstrval:"./",  TYPE_STRING, 0}, \
-    {"ue-idx-standalone",        NULL,                   0,               u16ptr:&ue_idx_standalone,          defuintval:0xFFFF,    TYPE_UINT16,   0} \
+    {"ue-idx-standalone",        NULL,                   0,               u16ptr:&ue_idx_standalone,          defuintval:0xFFFF,    TYPE_UINT16,   0}, \
+    {"SLC",                      CONFIG_HLP_SLF,         0,               u64ptr:&(sidelink_frequency[0][0]), defuintval:2600000000, TYPE_UINT64,  0}, \
 }
 
 
