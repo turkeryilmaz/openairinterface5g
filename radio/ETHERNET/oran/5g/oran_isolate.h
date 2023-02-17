@@ -41,7 +41,7 @@ typedef struct ru_info_s{
 	int32_t **txdataF_BF;
 
         // Needed for Prach
-        int *prach_buf;
+        int **prach_buf;
 
         // Previous Slot Number
         int slot_prev;

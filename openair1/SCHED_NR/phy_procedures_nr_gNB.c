@@ -438,8 +438,8 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   else if (SNRtimes10 >  635) cqi=255;
   else                        cqi=(640+SNRtimes10)/5;
 
-
-  if (0/*pusch_pdu->mcs_index == 9*/) {
+/*
+  if (pusch_pdu->mcs_index == 9) {
       __attribute__((unused))
       int off = ((pusch_pdu->rb_size&1) == 1)? 4:0;
 
@@ -470,7 +470,8 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
       exit(-1);
 
     }
-
+    */
+ 
   // crc indication
   uint16_t num_crc = gNB->UL_INFO.crc_ind.number_crcs;
   gNB->UL_INFO.crc_ind.crc_list = &gNB->crc_pdu_list[0];

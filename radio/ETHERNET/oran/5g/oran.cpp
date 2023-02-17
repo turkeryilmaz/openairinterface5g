@@ -520,45 +520,46 @@ return(0);
 extern "C"
 {
 #endif
-	int read_prach_data(ru_info_t *ru, int frame, int slot)
-	{
-		p_xran_dev_ctx_2 = xran_dev_get_ctx();
-		struct rte_mbuf *mb;
+int read_prach_data(ru_info_t *ru, int frame, int slot)
+{
+	p_xran_dev_ctx_2 = xran_dev_get_ctx();
+	struct rte_mbuf *mb;
 
-		/* calculate tti and subframe_id from frame, slot num */
-		int tti = 20 * (frame) + (slot);
-		uint32_t subframe = XranGetSubFrameNum(tti, 2, 10);
-		uint32_t is_prach_slot = xran_is_prach_slot(subframe, (slot % 2));
-		int sym_idx = 0;
+	/* calculate tti and subframe_id from frame, slot num */
+	int tti = 20 * (frame) + (slot);
+	uint32_t subframe = XranGetSubFrameNum(tti, 2, 10);
+	uint32_t is_prach_slot = xran_is_prach_slot(subframe, (slot % 2));
+	int sym_idx = 0;
 
-		struct xran_prach_cp_config *pPrachCPConfig = &(p_xran_dev_ctx_2->PrachCPConfig);
+	struct xran_prach_cp_config *pPrachCPConfig = &(p_xran_dev_ctx_2->PrachCPConfig);
 
-		/* If it is PRACH slot, copy prach IQ from XRAN PRACH buffer to OAI PRACH buffer */
-		if(is_prach_slot) {
+	/* If it is PRACH slot, copy prach IQ from XRAN PRACH buffer to OAI PRACH buffer */
+	if(is_prach_slot) {
 
-			for(sym_idx = 0; sym_idx < pPrachCPConfig->numSymbol; sym_idx++) {
-				mb = (struct rte_mbuf *) p_xran_dev_ctx_2->sFHPrachRxBbuIoBufCtrl[tti % 40][0][0].sBufferList.pBuffers[sym_idx].pCtrl;
-				if(mb) {
-					uint16_t *dst, *src;
-					int idx = 0;
-					dst = (uint16_t * )((uint8_t *)ru->prach_buf + (sym_idx*576));
-					src = (uint16_t *) ((uint8_t *) p_xran_dev_ctx_2->sFHPrachRxBbuIoBufCtrl[tti % 40][0][0].sBufferList.pBuffers[sym_idx].pData);
+	  for(sym_idx = 0; sym_idx < pPrachCPConfig->numSymbol; sym_idx++) {
+		for (int aa=0;aa<ru->nb_rx;aa++) {
+	  	  mb = (struct rte_mbuf *) p_xran_dev_ctx_2->sFHPrachRxBbuIoBufCtrl[tti % 40][0][aa].sBufferList.pBuffers[sym_idx].pCtrl;
+		  if(mb) {
+			uint16_t *dst, *src;
+			int idx = 0;
+			  dst = (uint16_t * )((uint8_t *)ru->prach_buf[aa] + (sym_idx*576));
+			  src = (uint16_t *) ((uint8_t *) p_xran_dev_ctx_2->sFHPrachRxBbuIoBufCtrl[tti % 40][0][aa].sBufferList.pBuffers[sym_idx].pData);
 
-					/* convert Network order to host order */
-					for (idx = 0; idx < 576/2; idx++)
-					{
-						dst[idx] = ntohs(src[idx]);
-					}
+			/* convert Network order to host order */
+			  for (idx = 0; idx < 576/2; idx++)
+			  {
+			  	dst[idx] = ntohs(src[idx]);
+			  }
 
-				} else {
-					/* TODO: Unlikely this code never gets executed */
-					printf("%s():%d, There is no prach ctrl data for symb %d\n", __func__, __LINE__, sym_idx);
-				}
-			}
+	          } else {
+			  /* TODO: Unlikely this code never gets executed */
+			    printf("%s():%d, There is no prach ctrl data for symb %d ant %d\n", __func__, __LINE__, sym_idx,aa);
+	          }
 		}
-
-		return(0);
-	}
+	  }
+        }
+	return(0);
+}
 #ifdef __cplusplus
 }
 #endif
@@ -616,9 +617,10 @@ int xran_fh_rx_read_slot(void *xranlib_, ru_info_t *ru, int *frame, int *slot, i
        uint32_t slot_size = 4*14*4096;
        uint8_t *rx_data = (uint8_t *)ru->rxdataF[0];
        uint8_t *start_ptr = NULL;
-       start_ptr = rx_data + (slot_size*slot_offset_rxdata);
        for(uint16_t cc_id=0; cc_id<1/*nSectorNum*/; cc_id++){ // OAI does not support multiple CC yet.
            for(uint8_t ant_id = 0; ant_id < xran_max_antenna_nr && ant_id<ru->nb_rx; ant_id++){
+              rx_data = (uint8_t *)ru->rxdataF[ant_id];
+              start_ptr = rx_data + (slot_size*slot_offset_rxdata);
               // This loop would better be more inner to avoid confusion and maybe also errors.
               for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
 

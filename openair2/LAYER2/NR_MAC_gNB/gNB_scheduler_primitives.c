@@ -1176,6 +1176,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                         NR_SearchSpace_t *ss,
                         NR_ControlResourceSet_t *coreset,
                         uint16_t cset0_bwp_size) {
+  uint8_t fsize = 0, pos = 0;	
   gNB_MAC_INST *gNB_mac = RC.nrmac[0];
 
   uint64_t *dci_pdu = (uint64_t *)pdcch_dci_pdu->Payload;

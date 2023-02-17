@@ -205,7 +205,6 @@ void oran_fh_if4p5_south_in(RU_t *ru,
                                int *slot)
 {
   oran_eth_state_t *s = ru->ifdevice.priv;
-  NR_DL_FRAME_PARMS *fp;
   int symbol;
   int32_t *rxdata;
   int antenna;
@@ -214,7 +213,7 @@ void oran_fh_if4p5_south_in(RU_t *ru,
   ru_info_t ru_info;
   ru_info.nb_rx = ru->nb_rx;
   ru_info.rxdataF = ru->common.rxdataF;
-  ru_info.prach_buf = (int *)ru->prach_rxsigF[0][0];//index: [prach_oca][ant_id]
+  ru_info.prach_buf = (int *)ru->prach_rxsigF[0];//index: [prach_oca][ant_id]
 
   RU_proc_t *proc = &ru->proc;
   extern uint16_t sl_ahead;
@@ -224,13 +223,6 @@ void oran_fh_if4p5_south_in(RU_t *ru,
 
   if (ret != 0){
      printf("ORAN: ORAN_fh_if4p5_south_in ERROR in RX function \n");
-  }
-
-  fp = ru->nr_frame_parms;
-  for (antenna = 0; antenna < ru->nb_rx; antenna++) {
-    for (symbol = 0; symbol < 14; symbol++) {
-      rxdata = &ru->common.rxdataF[antenna][symbol * fp->ofdm_symbol_size]; 
-    }
   }
 
   proc->tti_rx       = sl;
