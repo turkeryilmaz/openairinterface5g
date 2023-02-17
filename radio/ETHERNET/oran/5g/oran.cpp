@@ -184,7 +184,7 @@ void dump_oran_config(void *xranlib_){
    int nulrbs      = xranlib->get_num_ulrbs();
 
    printf("**--**--**--**--**--**--**--**--**--**--**--**\n");
-   printf("Dump ORAN Configuration\n");
+   printf("ORAN Configuration\n");
    printf("* Numerology     = %d\n", numerology);
    printf("* Duplex Type    = %d\n", duplex_type);
    printf("* Number CC      = %d\n", num_cc);

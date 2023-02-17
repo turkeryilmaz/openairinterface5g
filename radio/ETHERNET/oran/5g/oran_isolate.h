@@ -42,9 +42,6 @@ typedef struct ru_info_s{
 
         // Needed for Prach
         int **prach_buf;
-
-        // Previous Slot Number
-        int slot_prev;
 } ru_info_t;
 
 #ifdef __cplusplus

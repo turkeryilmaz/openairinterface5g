@@ -405,7 +405,7 @@ xranLibWraper::xranLibWraper()
         const char* filePrefix_        = "wls"; 
 
         // Independent
-        m_nSlots  = 20;          // If mu=0 is 10, if mu=1 is 20
+        m_nSlots = 0;
         m_du_mac[0]=0x00; m_du_mac[1]=0x11; m_du_mac[2]=0x22; m_du_mac[3]=0x33; m_du_mac[4]=0x44; m_du_mac[5]=0x55;
 
         int i, temp, j;
@@ -430,7 +430,8 @@ xranLibWraper::xranLibWraper()
 
         m_xranInit.io_cfg.core              = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_IO, "core");
         m_xranInit.io_cfg.system_core       = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_IO, "system_core");
-        m_xranInit.io_cfg.pkt_proc_core     = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_IO, "pkt_proc_core");
+        uint8_t tmp_pkt_proc_core = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_IO, "pkt_proc_core");
+        m_xranInit.io_cfg.pkt_proc_core     = (uint64_t) 1 << tmp_pkt_proc_core;
         m_xranInit.io_cfg.pkt_aux_core      = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_IO, "pkt_aux_core");
         m_xranInit.io_cfg.timing_core       = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_IO, "timing_core");
 
@@ -552,15 +553,32 @@ xranLibWraper::xranLibWraper()
         m_xranConf.frame_conf.nNumerology = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "mu");
         if(m_xranConf.frame_conf.nNumerology > 3) {
             std::cout << "*** Invalid Numerology [" << m_xranConf.frame_conf.nNumerology << "] !!!" << std::endl;
-            m_xranConf.frame_conf.nNumerology   = 0;
-            std::cout << "****** Set it to " << m_xranConf.frame_conf.nNumerology << "..." << std::endl;
+            m_xranConf.frame_conf.nNumerology = 1;
+            std::cout << "****** Setting it to " << m_xranConf.frame_conf.nNumerology << "..." << std::endl;
             }
 
-        m_xranConf.nCC = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "num_cc");
-        if(m_xranConf.nCC > XRAN_MAX_SECTOR_NR) {
-            std::cout << "*** Exceeds maximum number of carriers supported [" << m_xranConf.nCC << "] !!!" << std::endl;
-            m_xranConf.nCC = XRAN_MAX_SECTOR_NR;
-            std::cout << "****** Adjusted to " << m_xranConf.nCC << "..." << std::endl;
+            switch (m_xranConf.frame_conf.nNumerology) {
+              case 0: /* Numerology - 0 */
+                m_nSlots = 10;
+                break;
+              case 1: /* Numerology - 1 */
+                m_nSlots = 20;
+                break;
+              case 2: /* Numerology - 2 */
+                m_nSlots = 40;
+                break;
+              case 3: /* Numerology - 3 */
+                m_nSlots = 80;
+                break;
+            }
+            std::cout << "*** Numerology [" << m_xranConf.frame_conf.nNumerology << "] " << std::endl;
+            std::cout << "*** Number of Slot [" << m_nSlots << "] " << std::endl;
+
+            m_xranConf.nCC = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "num_cc");
+            if (m_xranConf.nCC > XRAN_MAX_SECTOR_NR) {
+              std::cout << "*** Exceeds maximum number of carriers supported [" << m_xranConf.nCC << "] !!!" << std::endl;
+              m_xranConf.nCC = XRAN_MAX_SECTOR_NR;
+              std::cout << "****** Adjusted to " << m_xranConf.nCC << "..." << std::endl;
             }
         m_xranConf.neAxc = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "num_eaxc");
         if(m_xranConf.neAxc > XRAN_MAX_ANTENNA_NR) {
@@ -600,7 +618,9 @@ xranLibWraper::xranLibWraper()
             }
 
         m_xranConf.ru_conf.iqWidth  = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "iq_width");
+        std::cout << "*** IQ Width [" << m_xranConf.ru_conf.iqWidth << "]" << std::endl;
         m_xranConf.ru_conf.compMeth = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "comp_meth");
+        std::cout << "*** Compression Method [" << m_xranConf.ru_conf.compMeth << "]" << std::endl;
 
         temp = get_globalcfg<int>(XRAN_UT_KEY_GLOBALCFG_RU, "fft_size");
         m_xranConf.ru_conf.fftSize  = 0;
@@ -825,8 +845,10 @@ int xranLibWraper::Init(struct xran_fh_config *pCfg)
             pRbMap->prbMap[0].numSymb       = 14;
           }
                         pRbMap->prbMap[0].nBeamIndex    = 0;
-                        pRbMap->prbMap[0].compMethod    = XRAN_COMPMETHOD_NONE;//BLKFLOAT; // Modify according to the target compression.
-                        pRbMap->prbMap[0].iqWidth       = 16;                              // Modify according to the target compression. 
+                        /* Update according to the target compression in conf.json */
+                        pRbMap->prbMap[0].compMethod = m_xranConf.ru_conf.compMeth; /* xran_compression_method */
+                        /* Update according to the target compression in conf.json */
+                        pRbMap->prbMap[0].iqWidth = m_xranConf.ru_conf.iqWidth;
 
                         if(get_rucategory() == XRAN_CATEGORY_A) {
                             pRbMap->prbMap[0].BeamFormingType   = XRAN_BEAM_ID_BASED;
@@ -865,8 +887,11 @@ int xranLibWraper::Init(struct xran_fh_config *pCfg)
             pRbMap->prbMap[0].numSymb       = 14;
           }
                         pRbMap->prbMap[0].nBeamIndex    = 0;
-                        pRbMap->prbMap[0].compMethod    = XRAN_COMPMETHOD_NONE;
-                        pRbMap->prbMap[0].iqWidth       = 16;                              // Modify according to the target compression.
+                        /* xran_compression_method */
+                        /* Modify according to the target compression from conf.json */
+                        pRbMap->prbMap[0].compMethod = m_xranConf.ru_conf.compMeth;
+                        /* Update IQ-Width based on conf.json */
+                        pRbMap->prbMap[0].iqWidth = m_xranConf.ru_conf.iqWidth;
 
                         if(get_rucategory() == XRAN_CATEGORY_A) {
                             pRbMap->prbMap[0].BeamFormingType   = XRAN_BEAM_ID_BASED;
