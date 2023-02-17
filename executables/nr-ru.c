@@ -624,7 +624,7 @@ void *emulatedRF_thread(void *param) {
 void rx_rf(RU_t *ru,int *frame,int *slot) {
   RU_proc_t *proc = &ru->proc;
   NR_DL_FRAME_PARMS *fp = ru->nr_frame_parms;
-  openair0_config_t *cfg   = &ru->openair0_cfg;
+  openair0_config_t *cfg = &ru->openair0_cfg;
   void *rxp[ru->nb_rx];
   unsigned int rxs;
   int i;
@@ -671,23 +671,27 @@ void rx_rf(RU_t *ru,int *frame,int *slot) {
     }
   }
 
-  //compute system frame number (SFN) according to O-RAN-WG4-CUS.0-v02.00 (using alpha=beta=0)
+  // compute system frame number (SFN) according to O-RAN-WG4-CUS.0-v02.00 (using alpha=beta=0)
   // this assumes that the USRP has been synchronized to the GPS time
-  // OAI uses timestamps in sample time stored in int64_t, but it will fit in double precision for many years to come. 
-  double gps_sec = ((double) ts)/cfg->sample_rate; 
-  //proc->frame_rx = ((int64_t) (gps_sec/0.01)) & 1023;   
+  // OAI uses timestamps in sample time stored in int64_t, but it will fit in double precision for many years to come.
+  double gps_sec = ((double)ts) / cfg->sample_rate;
+  // proc->frame_rx = ((int64_t) (gps_sec/0.01)) & 1023;
 
-  // in fact the following line is the same as long as the timestamp_rx is synchronized to GPS. 
+  // in fact the following line is the same as long as the timestamp_rx is synchronized to GPS.
   proc->frame_rx    = (proc->timestamp_rx / (fp->samples_per_subframe*10))&1023;
   proc->tti_rx = fp->get_slot_from_timestamp(proc->timestamp_rx,fp);
   // synchronize first reception to frame 0 subframe 0
-  LOG_D(PHY,"RU %d/%d TS %ld, GPS %f, SR %f, frame %d, slot %d.%d / %d\n",
+  LOG_D(PHY,
+        "RU %d/%d TS %ld, GPS %f, SR %f, frame %d, slot %d.%d / %d\n",
         ru->idx,
         0,
         ts, //(unsigned long long int)(proc->timestamp_rx+ru->ts_offset),
-	gps_sec,
-	cfg->sample_rate,
-        proc->frame_rx,proc->tti_rx,proc->tti_tx,fp->slots_per_frame);
+        gps_sec,
+        cfg->sample_rate,
+        proc->frame_rx,
+        proc->tti_rx,
+        proc->tti_tx,
+        fp->slots_per_frame);
 
   // dump VCD output for first RU in list
   if (ru == RC.ru[0]) {
@@ -784,7 +788,7 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
       // currently we switch beams at the beginning of a slot and we take the beam index of the first symbol of this slot
       // we only send the beam to the gpio if the beam is different from the previous slot
 
-      if ( ru->common.beam_id) {
+      if (ru->common.beam_id) {
         int prev_slot = (slot - 1 + fp->slots_per_frame) % fp->slots_per_frame;
         const uint8_t *beam_ids = ru->common.beam_id[0];
         int prev_beam = beam_ids[prev_slot * fp->symbols_per_slot];
@@ -820,7 +824,6 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
 	  (long long unsigned int)(timestamp+ru->ts_offset-ru->openair0_cfg.tx_sample_advance-sf_extension),frame,slot,proc->frame_tx_unwrap,slot, flags, siglen+sf_extension, txs,10*log10((double)signal_energy(txp[0],siglen+sf_extension)));
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME( VCD_SIGNAL_DUMPER_FUNCTIONS_TRX_WRITE, 0 );
       //AssertFatal(txs == 0,"trx write function error %d\n", txs);
-  
 }
 
 // this is for RU with local RF unit
@@ -1085,7 +1088,7 @@ void *ru_thread( void *param ) {
   ru_thread_status = 0;
   // set default return value
   sprintf(threadname,"ru_thread %u",ru->idx);
-  LOG_I(PHY,"Starting RU %d (%s,%s) on cpu %d\n",ru->idx,NB_functions[ru->function],NB_timing[ru->if_timing],sched_getcpu());
+  LOG_I(PHY, "Starting RU %d (%s,%s) on cpu %d\n", ru->idx, NB_functions[ru->function], NB_timing[ru->if_timing], sched_getcpu());
   memcpy((void *)&ru->config,(void *)&RC.gNB[0]->gNB_config,sizeof(ru->config));
 
   if(emulate_rf) {
@@ -1308,7 +1311,8 @@ int start_streaming(RU_t *ru) {
 
 int nr_start_if(struct RU_t_s *ru, struct PHY_VARS_gNB_s *gNB) {
   if (ru->if_south <= REMOTE_IF5)
-    for (int i=0;i<ru->nb_rx;i++) ru->openair0_cfg.rxbase[i] = ru->common.rxdata[i];
+    for (int i = 0; i < ru->nb_rx; i++)
+      ru->openair0_cfg.rxbase[i] = ru->common.rxdata[i];
   ru->openair0_cfg.rxsize = ru->nr_frame_parms->samples_per_subframe*10;
   reset_meas(&ru->ifdevice.tx_fhaul);
   return(ru->ifdevice.trx_start_func(&ru->ifdevice));
@@ -1345,7 +1349,7 @@ void init_RU_proc(RU_t *ru) {
 
   pthread_mutex_init( &proc->mutex_emulateRF,NULL);
   pthread_cond_init( &proc->cond_emulateRF, NULL);
-  threadCreate( &proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX );
+  threadCreate(&proc->pthread_FH, ru_thread, (void *)ru, "ru_thread", ru->ru_thread_core, OAI_PRIORITY_RT_MAX);
 
   if(emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
@@ -1671,7 +1675,7 @@ void set_function_spec_param(RU_t *ru) {
     case REMOTE_IF4p5:
       ru->do_prach               = 0;
       ru->feprx                  = NULL;                // DFTs
-      ru->feptx_prec             = nr_feptx_prec;       // Precoding operation
+      ru->feptx_prec = nr_feptx_prec; // Precoding operation
       ru->feptx_ofdm             = NULL;                // no OFDM mod
       ru->fh_south_in            = fh_if4p5_south_in;   // synchronous IF4p5 reception
       ru->fh_south_out           = fh_if4p5_south_out;  // synchronous IF4p5 transmission
@@ -1785,21 +1789,23 @@ void init_NR_RU(char *rf_config_file) {
     init_RU_proc(ru);
     if (ru->if_south != REMOTE_IF4p5) {
       int threadCnt = ru->num_tpcores;
-      if (threadCnt < 2) LOG_E(PHY,"Number of threads for gNB should be more than 1. Allocated only %d\n",threadCnt);
-      else LOG_I(PHY,"RU Thread pool size %d\n",threadCnt);
+      if (threadCnt < 2)
+        LOG_E(PHY, "Number of threads for gNB should be more than 1. Allocated only %d\n", threadCnt);
+      else
+        LOG_I(PHY, "RU Thread pool size %d\n", threadCnt);
       char pool[80];
-      int s_offset = sprintf(pool,"%d",ru->tpcores[1]);
-      for (int icpu=2; icpu<threadCnt; icpu++) {
-         s_offset+=sprintf(pool+s_offset,",%d",ru->tpcores[icpu]);
+      int s_offset = sprintf(pool, "%d", ru->tpcores[1]);
+      for (int icpu = 2; icpu < threadCnt; icpu++) {
+        s_offset += sprintf(pool + s_offset, ",%d", ru->tpcores[icpu]);
       }
-      LOG_I(PHY,"RU thread-pool core string %s\n",pool);
-      ru->threadPool = (tpool_t*)malloc(sizeof(tpool_t));
+      LOG_I(PHY, "RU thread-pool core string %s\n", pool);
+      ru->threadPool = (tpool_t *)malloc(sizeof(tpool_t));
       initTpool(pool, ru->threadPool, cpumeas(CPUMEAS_GETSTATE));
       // FEP RX result FIFO
-      ru->respfeprx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+      ru->respfeprx = (notifiedFIFO_t *)malloc(sizeof(notifiedFIFO_t));
       initNotifiedFIFO(ru->respfeprx);
       // FEP TX result FIFO
-      ru->respfeptx = (notifiedFIFO_t*) malloc(sizeof(notifiedFIFO_t));
+      ru->respfeptx = (notifiedFIFO_t *)malloc(sizeof(notifiedFIFO_t));
       initNotifiedFIFO(ru->respfeptx);
     }
   } // for ru_id
@@ -1980,7 +1986,7 @@ static void NRRCconfig_RU(void) {
       RC.ru[j]->openair0_cfg.txfh_cores[0]        = *(RUParamList.paramarray[j][RU_TXFH_CORE_ID].iptr);
       RC.ru[j]->num_tpcores                       = *(RUParamList.paramarray[j][RU_NUM_TP_CORES].iptr);
       RC.ru[j]->half_slot_parallelization         = *(RUParamList.paramarray[j][RU_HALF_SLOT_PARALLELIZATION].iptr);
-      RC.ru[j]->ru_thread_core                    = *(RUParamList.paramarray[j][RU_RU_THREAD_CORE].iptr);
+      RC.ru[j]->ru_thread_core = *(RUParamList.paramarray[j][RU_RU_THREAD_CORE].iptr);
       printf("[RU %d] Setting half-slot parallelization to %d\n",j,RC.ru[j]->half_slot_parallelization); 
       AssertFatal(RC.ru[j]->num_tpcores <= RUParamList.paramarray[j][RU_TP_CORES].numelt, "Number of TP cores should be <=16\n");
       for (i=0; i<RC.ru[j]->num_tpcores; i++) RC.ru[j]->tpcores[i] = RUParamList.paramarray[j][RU_TP_CORES].iptr[i];

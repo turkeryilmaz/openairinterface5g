@@ -85,9 +85,9 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
   nr_generate_sss(&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
 
   if (fp->Lmax == 4)
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index&7],&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
+    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[n_hf][ssb_index & 7], &txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
   else
-    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[0][ssb_index&7],&txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
+    nr_generate_pbch_dmrs(gNB->nr_gold_pbch_dmrs[0][ssb_index & 7], &txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, cfg, fp);
 
   if (T_ACTIVE(T_GNB_PHY_MIB)) {
     unsigned char bch[3];
@@ -104,12 +104,7 @@ void nr_common_signal_procedures (PHY_VARS_gNB *gNB,int frame,int slot,nfapi_nr_
       gNB->common_vars.beam_id[0][slot*fp->symbols_per_slot+j] = cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value;
   }
 
-  nr_generate_pbch(&ssb_pdu,
-                   gNB->nr_pbch_interleaver,
-                   &txdataF[0][txdataF_offset],
-                   gNB->TX_AMP,
-                   ssb_start_symbol,
-                   n_hf, frame, cfg, fp);
+  nr_generate_pbch(&ssb_pdu, gNB->nr_pbch_interleaver, &txdataF[0][txdataF_offset], gNB->TX_AMP, ssb_start_symbol, n_hf, frame, cfg, fp);
 }
 
 
@@ -170,9 +165,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
   
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_PDCCH_TX,1);
 
-    nr_generate_dci_top(msgTx, slot,
-			&gNB->common_vars.txdataF[0][txdataF_offset],
-			gNB->TX_AMP, fp);
+    nr_generate_dci_top(msgTx, slot, &gNB->common_vars.txdataF[0][txdataF_offset], gNB->TX_AMP, fp);
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_PDCCH_TX,0);
   }
@@ -196,15 +189,13 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 
 //  if ((frame&127) == 0) dump_pdsch_stats(gNB);
 
-//apply the OFDM symbol rotation here
-// WA: Comment rotation in tx/rx
-  if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
-    for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
-      apply_nr_rotation(fp,(int16_t*) &gNB->common_vars.txdataF[aa][txdataF_offset],slot,0,fp->Ncp==EXTENDED?12:14);
+  // apply the OFDM symbol rotation here
+  // WA: Comment rotation in tx/rx
+  if ((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
+    for (aa = 0; aa < cfg->carrier_config.num_tx_ant.value; aa++) {
+      apply_nr_rotation(fp, (int16_t *)&gNB->common_vars.txdataF[aa][txdataF_offset], slot, 0, fp->Ncp == EXTENDED ? 12 : 14);
 
-      T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
-          T_INT(frame), T_INT(slot),
-          T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
+      T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0), T_INT(frame), T_INT(slot), T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP * sizeof(int32_t)));
     }
   }
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX+offset,0);
@@ -438,40 +429,40 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   else if (SNRtimes10 >  635) cqi=255;
   else                        cqi=(640+SNRtimes10)/5;
 
-/*
-  if (pusch_pdu->mcs_index == 9) {
-      __attribute__((unused))
-      int off = ((pusch_pdu->rb_size&1) == 1)? 4:0;
+  /*
+    if (pusch_pdu->mcs_index == 9) {
+        __attribute__((unused))
+        int off = ((pusch_pdu->rb_size&1) == 1)? 4:0;
 
-      LOG_M("rxsigF0.m","rxsF0",&gNB->common_vars.rxdataF[0][(slot_rx&3)*gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot],gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot,1,1);
-      LOG_M("rxsigF0_ext.m","rxsF0_ext",
-             &gNB->pusch_vars[0]->rxdataF_ext[0][pusch_pdu->start_symbol_index*NR_NB_SC_PER_RB * pusch_pdu->rb_size],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
-      LOG_M("chestF0.m","chF0",
-            &gNB->pusch_vars[0]->ul_ch_estimates[0][pusch_pdu->start_symbol_index*gNB->frame_parms.ofdm_symbol_size],gNB->frame_parms.ofdm_symbol_size,1,1);
-      LOG_M("chestF0_ext.m","chF0_ext",
-            &gNB->pusch_vars[0]->ul_ch_estimates_ext[0][(pusch_pdu->start_symbol_index+1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],
-            (pusch_pdu->nr_of_symbols-1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
-      LOG_M("rxsigF0_comp.m","rxsF0_comp",
-            &gNB->pusch_vars[0]->rxdataF_comp[0][pusch_pdu->start_symbol_index*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
-      LOG_M("rxsigF0_llr.m","rxsF0_llr",
-            &gNB->pusch_vars[0]->llr[0],(pusch_pdu->nr_of_symbols-1)*NR_NB_SC_PER_RB *pusch_pdu->rb_size * pusch_pdu->qam_mod_order,1,0);
-      if (gNB->frame_parms.nb_antennas_rx > 1) {
-        LOG_M("rxsigF1.m","rxsF1",&gNB->common_vars.rxdataF[1][(slot_rx&3)*gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot],gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot,1,1);
-        LOG_M("rxsigF1_ext.m","rxsF1_ext",
-               &gNB->pusch_vars[0]->rxdataF_ext[1][pusch_pdu->start_symbol_index*NR_NB_SC_PER_RB * pusch_pdu->rb_size],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
-        LOG_M("chestF1.m","chF1",
-              &gNB->pusch_vars[0]->ul_ch_estimates[1][pusch_pdu->start_symbol_index*gNB->frame_parms.ofdm_symbol_size],gNB->frame_parms.ofdm_symbol_size,1,1);
-        LOG_M("chestF1_ext.m","chF1_ext",
-              &gNB->pusch_vars[0]->ul_ch_estimates_ext[1][(pusch_pdu->start_symbol_index+1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],
+        LOG_M("rxsigF0.m","rxsF0",&gNB->common_vars.rxdataF[0][(slot_rx&3)*gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot],gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot,1,1);
+        LOG_M("rxsigF0_ext.m","rxsF0_ext",
+               &gNB->pusch_vars[0]->rxdataF_ext[0][pusch_pdu->start_symbol_index*NR_NB_SC_PER_RB * pusch_pdu->rb_size],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
+        LOG_M("chestF0.m","chF0",
+              &gNB->pusch_vars[0]->ul_ch_estimates[0][pusch_pdu->start_symbol_index*gNB->frame_parms.ofdm_symbol_size],gNB->frame_parms.ofdm_symbol_size,1,1);
+        LOG_M("chestF0_ext.m","chF0_ext",
+              &gNB->pusch_vars[0]->ul_ch_estimates_ext[0][(pusch_pdu->start_symbol_index+1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],
               (pusch_pdu->nr_of_symbols-1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
-        LOG_M("rxsigF1_comp.m","rxsF1_comp",
-              &gNB->pusch_vars[0]->rxdataF_comp[1][pusch_pdu->start_symbol_index*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
-      }
-      exit(-1);
+        LOG_M("rxsigF0_comp.m","rxsF0_comp",
+              &gNB->pusch_vars[0]->rxdataF_comp[0][pusch_pdu->start_symbol_index*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB *
+    pusch_pdu->rb_size)),1,1); LOG_M("rxsigF0_llr.m","rxsF0_llr", &gNB->pusch_vars[0]->llr[0],(pusch_pdu->nr_of_symbols-1)*NR_NB_SC_PER_RB *pusch_pdu->rb_size * pusch_pdu->qam_mod_order,1,0); if
+    (gNB->frame_parms.nb_antennas_rx > 1) {
+          LOG_M("rxsigF1.m","rxsF1",&gNB->common_vars.rxdataF[1][(slot_rx&3)*gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot],gNB->frame_parms.ofdm_symbol_size*gNB->frame_parms.symbols_per_slot,1,1);
+          LOG_M("rxsigF1_ext.m","rxsF1_ext",
+                 &gNB->pusch_vars[0]->rxdataF_ext[1][pusch_pdu->start_symbol_index*NR_NB_SC_PER_RB * pusch_pdu->rb_size],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
+          LOG_M("chestF1.m","chF1",
+                &gNB->pusch_vars[0]->ul_ch_estimates[1][pusch_pdu->start_symbol_index*gNB->frame_parms.ofdm_symbol_size],gNB->frame_parms.ofdm_symbol_size,1,1);
+          LOG_M("chestF1_ext.m","chF1_ext",
+                &gNB->pusch_vars[0]->ul_ch_estimates_ext[1][(pusch_pdu->start_symbol_index+1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],
+                (pusch_pdu->nr_of_symbols-1)*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size)),1,1);
+          LOG_M("rxsigF1_comp.m","rxsF1_comp",
+                &gNB->pusch_vars[0]->rxdataF_comp[1][pusch_pdu->start_symbol_index*(off+(NR_NB_SC_PER_RB * pusch_pdu->rb_size))],pusch_pdu->nr_of_symbols*(off+(NR_NB_SC_PER_RB *
+    pusch_pdu->rb_size)),1,1);
+        }
+        exit(-1);
 
-    }
-    */
- 
+      }
+      */
+
   // crc indication
   uint16_t num_crc = gNB->UL_INFO.crc_ind.number_crcs;
   gNB->UL_INFO.crc_ind.crc_list = &gNB->crc_pdu_list[0];
@@ -675,12 +666,8 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
 
 int check_srs_pdu(const nfapi_nr_srs_pdu_t *srs_pdu, nfapi_nr_srs_pdu_t *saved_srs_pdu)
 {
-  if (saved_srs_pdu->bwp_start == srs_pdu->bwp_start &&
-      saved_srs_pdu->bwp_size == srs_pdu->bwp_size &&
-      saved_srs_pdu->num_ant_ports == srs_pdu->num_ant_ports &&
-      saved_srs_pdu->time_start_position == srs_pdu->time_start_position &&
-      saved_srs_pdu->num_symbols == srs_pdu->num_symbols &&
-      saved_srs_pdu->config_index == srs_pdu->config_index) {
+  if (saved_srs_pdu->bwp_start == srs_pdu->bwp_start && saved_srs_pdu->bwp_size == srs_pdu->bwp_size && saved_srs_pdu->num_ant_ports == srs_pdu->num_ant_ports
+      && saved_srs_pdu->time_start_position == srs_pdu->time_start_position && saved_srs_pdu->num_symbols == srs_pdu->num_symbols && saved_srs_pdu->config_index == srs_pdu->config_index) {
     return 1;
   }
   *saved_srs_pdu = *srs_pdu;
@@ -1005,7 +992,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
               LOG_I(NR_PHY,
                     "nr_srs_beamforming_report.prgs[0].prg_list[%3i].rb_snr = %i (%i dB)\n",
                     prg_idx,
-                     nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr,
+                    nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr,
                     (nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr >> 1) - 64);
             }
 #endif
@@ -1045,8 +1032,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
             for (int uI = 0; uI < nr_srs_channel_iq_matrix.num_ue_srs_ports; uI++) {
               for (int gI = 0; gI < nr_srs_channel_iq_matrix.num_gnb_antenna_elements; gI++) {
                 for (int pI = 0; pI < nr_srs_channel_iq_matrix.num_prgs; pI++) {
-                  uint16_t index =
-                      uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
+                  uint16_t index = uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
                   LOG_I(NR_PHY,
                         "(uI %i, gI %i, pI %i) channel_matrix --> real %i, imag %i\n",
                         uI,

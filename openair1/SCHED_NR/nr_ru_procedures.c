@@ -190,17 +190,12 @@ void nr_feptx_prec(RU_t *ru,int frame_tx,int tti_tx) {
     if (nr_slot_select(cfg,frame_tx,slot_tx) == NR_UPLINK_SLOT) return;
 
     if (ru->do_precoding == 0 || (ru->nb_tx == 1 && ru->nb_log_antennas == 1)) {
-       for (i=0;i<ru->nb_log_antennas; ++i) 
-	  ru->common.txdataF_BF[i] = &gNB->common_vars.txdataF[i][txdataF_offset];
-    }
-    else {
-      for(i=0; i<ru->nb_log_antennas; ++i) {
-        memcpy((void*)ru->common.txdataF[i],
-               (void*)&gNB->common_vars.txdataF[i][txdataF_offset],
-               fp->samples_per_slot_wCP*sizeof(int32_t));
-	memcpy((void*)&ru->common.beam_id[i][slot_tx*fp->symbols_per_slot],
-	       (void*)&gNB->common_vars.beam_id[i][slot_tx*fp->symbols_per_slot],
-	       fp->symbols_per_slot*sizeof(uint8_t));
+      for (i = 0; i < ru->nb_log_antennas; ++i)
+        ru->common.txdataF_BF[i] = &gNB->common_vars.txdataF[i][txdataF_offset];
+    } else {
+      for (i = 0; i < ru->nb_log_antennas; ++i) {
+        memcpy((void *)ru->common.txdataF[i], (void *)&gNB->common_vars.txdataF[i][txdataF_offset], fp->samples_per_slot_wCP * sizeof(int32_t));
+        memcpy((void *)&ru->common.beam_id[i][slot_tx * fp->symbols_per_slot], (void *)&gNB->common_vars.beam_id[i][slot_tx * fp->symbols_per_slot], fp->symbols_per_slot * sizeof(uint8_t));
       }
       bw  = ru->beam_weights[0];
       for (l=0;l<fp->symbols_per_slot;l++) {
@@ -216,7 +211,7 @@ void nr_feptx_prec(RU_t *ru,int frame_tx,int tti_tx) {
                             0);
         }// for (aa=0;aa<ru->nb_tx;aa++)
       }// for (l=0;l<fp->symbols_per_slot;l++)
-    }// ru->do_precoding
+    } // ru->do_precoding
   }// if (ru->num_gNB == 1)
   stop_meas(&ru->precoding_stats);
 }
