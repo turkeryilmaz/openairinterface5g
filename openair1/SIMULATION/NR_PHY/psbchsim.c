@@ -186,6 +186,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->tdd_table.tdd_period                      = 0;
   nrUE_config->carrier_config.dl_frequency               = 450000;
   nrUE_config->carrier_config.uplink_frequency           = 450000;
+  nrUE_config->carrier_config.sl_frequency               = 450000;
   ue->mac_enabled                                        = 1;
   fp->dl_CarrierFreq                                     = 2600000000;
   fp->ul_CarrierFreq                                     = 2600000000;
