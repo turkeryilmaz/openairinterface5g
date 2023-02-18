@@ -68,8 +68,13 @@ void free_nr_ue_ulsch(NR_UE_ULSCH_t **ulschptr,
                       uint16_t N_RB_UL,
                       NR_DL_FRAME_PARMS* frame_parms);
 
+void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
+                      uint16_t N_RB_UL,
+                      NR_DL_FRAME_PARMS* frame_parms);
 
 NR_UE_ULSCH_t *new_nr_ue_ulsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms);
+
+NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms);
 
 /** \brief This function computes the LLRs for ML (max-logsum approximation) dual-stream QPSK/QPSK reception.
     @param stream0_in Input from channel compensated (MR combined) stream 0
@@ -983,6 +988,16 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                      NR_DL_FRAME_PARMS* frame_parms,
                      uint8_t harq_pid,
                      unsigned int G);
+
+int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
+                     NR_UE_ULSCH_t *slsch,
+                     NR_DL_FRAME_PARMS* frame_parms,
+                     uint8_t harq_pid,
+                     unsigned int G);
+
+void nr_attach_crc_to_payload(NR_UL_UE_HARQ_t *harq_process,
+                     int max_payload_bytes,
+                     uint32_t A);
 
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in, Pointer to input bits

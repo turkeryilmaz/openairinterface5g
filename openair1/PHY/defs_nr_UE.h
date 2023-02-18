@@ -747,6 +747,7 @@ typedef struct {
   NR_UE_PUCCH     *pucch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX][NR_MAX_NB_LAYERS>4 ? 2:1]; // two RxTx Threads
   NR_UE_ULSCH_t   *ulsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_ULSCH_t   *slsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_SI[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_ra[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_p[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -966,6 +967,14 @@ typedef struct {
   time_stats_t ulsch_rate_matching_stats;
   time_stats_t ulsch_interleaving_stats;
   time_stats_t ulsch_multiplexing_stats;
+
+  time_stats_t slsch_encoding_stats;
+  time_stats_t slsch_ldpc_encoding_stats;
+  time_stats_t slsch_modulation_stats;
+  time_stats_t slsch_segmentation_stats;
+  time_stats_t slsch_rate_matching_stats;
+  time_stats_t slsch_interleaving_stats;
+  time_stats_t slsch_multiplexing_stats;
 
   time_stats_t generic_stat;
   time_stats_t generic_stat_bis[RX_NB_TH][LTE_SLOTS_PER_SUBFRAME];

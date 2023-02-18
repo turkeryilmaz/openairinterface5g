@@ -27,6 +27,7 @@
 #include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_UE.h"
 #include "PHY/CODING/coding_defs.h"
+#include "executables/softmodem-common.h"
 
 //#define RM_DEBUG 1
 
@@ -408,7 +409,7 @@ int nr_rate_matching_ldpc(uint32_t Tbslbrm,
   //Bit selection
   N = (BG==1)?(66*Z):(50*Z);
 
-  if (Tbslbrm == 0)
+  if ((Tbslbrm == 0) || (get_softmodem_params()->sl_mode == 2))
       Ncb = N;
   else {
       Nref = 3*Tbslbrm/(2*C); //R_LBRM = 2/3
