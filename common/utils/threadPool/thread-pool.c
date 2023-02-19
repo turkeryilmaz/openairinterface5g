@@ -149,7 +149,7 @@ void initNamedTpool(char *params,tpool_t *pool, bool performanceMeas, char *name
         // set the thread name for debugging
         sprintf(pool->allthreads->name,"%s%d_%d",tname,pool->nbThreads,pool->allthreads->coreID);
         threadCreate(&pool->allthreads->threadID, one_thread, (void *)pool->allthreads,
-                     pool->allthreads->name, pool->allthreads->coreID, OAI_PRIORITY_RT);
+                     pool->allthreads->name, pool->allthreads->coreID, OAI_PRIORITY_RT_MAX);
         pool->nbThreads++;
     }
 
