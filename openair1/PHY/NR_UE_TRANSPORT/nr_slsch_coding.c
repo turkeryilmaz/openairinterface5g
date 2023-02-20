@@ -118,7 +118,7 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
   DevAssert(slsch);
   memset(slsch, 0, sizeof(*slsch));
 
-  slsch->number_harq_processes_for_pusch = NR_MAX_ULSCH_HARQ_PROCESSES;
+  slsch->number_harq_processes_for_pusch = NR_MAX_SLSCH_HARQ_PROCESSES;
 
   for (int i = 0; i < number_of_harq_pids; i++) {
 

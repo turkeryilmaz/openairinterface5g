@@ -343,7 +343,7 @@ int main(int argc, char **argv)
   set_sci(&first_sci);
   channel_desc_t *UE2UE;
   uint8_t extended_prefix_flag = 0;
-  int frame = 0;
+  int frame = 0, subframe = 0;
   NR_DL_FRAME_PARMS *frame_parms;
   double sigma;
   unsigned char qbits = 8;
@@ -414,17 +414,17 @@ int main(int argc, char **argv)
     free(rxUE);
     exit(-1);
   }
-  /*
+
   for (sf = 0; sf < 2; sf++) {
     txUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
+    rxUE->slsch_rx[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
     if (!txUE->slsch[sf][0]) {
       printf("Can't get ue ulsch structures.\n");
       exit(-1);
     }
   }
-  */
-  init_nr_ue_transport(&txUE);
-  init_nr_ue_transport(&rxUE);
+  //init_nr_ue_transport(&rxUE);
+
 
   s_re = malloc(n_tx*sizeof(double*));
   s_im = malloc(n_tx*sizeof(double*));
@@ -442,10 +442,10 @@ int main(int argc, char **argv)
   uint8_t rvidx = 0;
   uint8_t UE_id = 0;
 
-  NR_UE_DLSCH_t *dlsch_rxUE = rxUE->ulsch[UE_id];
-  NR_DL_UE_HARQ_t *harq_process_rxUE = dlsch_rxUE->harq_processes[harq_pid];
+  NR_UE_ULSCH_t *slsch_rxUE = rxUE->slsch[UE_id];
+  NR_UL_UE_HARQ_t *harq_process_rxUE = slsch_rxUE->harq_processes[harq_pid];
   nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
-  NR_UE_DLSCH_t *dlsch0_ue = rxUE->dlsch[0][0][0];
+  NR_UE_ULSCH_t *slsch_rx_ue = rxUE->slsch_rx[0][0];
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
 
   if ((Nl == 4)||(Nl == 3))
@@ -553,9 +553,8 @@ int main(int argc, char **argv)
                            mod_order,
                            Nl);
 
-      ret = nr_dlsch_decoding(rxUE, &proc, 0, channel_output_fixed, &rxUE->frame_parms,
-					dlsch0_ue, dlsch0_ue->harq_processes[0], frame, nb_symb_sch,
-					slot,harq_pid, 0);
+      ret = nr_slsch_decoding(rxUE, UE_id, channel_output_fixed, frame_parms, rel16_ul,
+                              frame, subframe, harq_pid, G);
 
       if (ret)
         n_errors++;
@@ -579,7 +578,7 @@ int main(int argc, char **argv)
     printf("\n");
 
     if (n_errors == 0) {
-      printf("PUSCH test OK\n");
+      printf("PSSCH test OK\n");
       printf("\n");
       break;
     }

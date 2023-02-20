@@ -499,6 +499,7 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
           free_nr_ue_ulsch(&ue->ulsch[k][i], N_RB_DL, &ue->frame_parms);
           if (get_softmodem_params()->sl_mode !=0) {
             free_nr_ue_slsch(&ue->slsch[k][i], N_RB_DL, &ue->frame_parms);
+            free_nr_ue_slsch_rx(&ue->slsch_rx[k][i], N_RB_DL, &ue->frame_parms);
           }
         }
       }
@@ -516,30 +517,31 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
   int num_codeword = NR_MAX_NB_LAYERS > 4? 2:1;
 
   for (int i = 0; i < NUMBER_OF_CONNECTED_gNB_MAX; i++) {
-    for (int j=0; j<num_codeword; j++) {
-      for (int k=0; k<RX_NB_TH_MAX; k++) {
-        AssertFatal((ue->dlsch[k][i][j]  = new_nr_ue_dlsch(1,NR_MAX_DLSCH_HARQ_PROCESSES,NSOFT,ue->max_ldpc_iterations,ue->frame_parms.N_RB_DL))!=NULL,"Can't get ue dlsch structures\n");
-        LOG_D(PHY,"dlsch[%d][%d][%d] => %p\n",k,i,j,ue->dlsch[k][i][j]);
-        if (j==0) {
-          AssertFatal((ue->ulsch[k][i] = new_nr_ue_ulsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES,&ue->frame_parms))!=NULL,"Can't get ue ulsch structures\n");
-          LOG_D(PHY,"ulsch[%d][%d] => %p\n",k,i,ue->ulsch[k][i]);
-          if (get_softmodem_params()->sl_mode !=0) {
-            AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES,&ue->frame_parms))!=NULL, "Can't get ue slsch structures\n");
-            LOG_D(PHY,"slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
+    for (int j = 0; j < num_codeword; j++) {
+      for (int k = 0; k < RX_NB_TH_MAX; k++) {
+        AssertFatal((ue->dlsch[k][i][j] = new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES,NSOFT,ue->max_ldpc_iterations,ue->frame_parms.N_RB_DL)) != NULL, "Can't get ue dlsch structures\n");
+        LOG_D(NR_PHY, "dlsch[%d][%d][%d] => %p\n", k, i, j, ue->dlsch[k][i][j]);
+        if (j == 0) {
+          AssertFatal((ue->ulsch[k][i] = new_nr_ue_ulsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL,"Can't get ue ulsch structures\n");
+          LOG_D(NR_PHY, "ulsch[%d][%d] => %p\n", k, i, ue->ulsch[k][i]);
+          if (get_softmodem_params()->sl_mode != 0) {
+            AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_SLSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL, "Can't get ue slsch structures\n");
+            AssertFatal((ue->slsch_rx[k][i] = new_nr_ue_slsch_rx(ue->frame_parms.N_RB_UL, NR_MAX_SLSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL, "Can't get ue slsch structures\n");
+            LOG_D(NR_PHY, "slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
           }
         }
       }
     }
 
-    ue->dlsch_SI[i]  = new_nr_ue_dlsch(1,1,NSOFT,ue->max_ldpc_iterations,ue->frame_parms.N_RB_DL);
-    ue->dlsch_ra[i]  = new_nr_ue_dlsch(1,1,NSOFT,ue->max_ldpc_iterations,ue->frame_parms.N_RB_DL);
-    ue->transmission_mode[i] = ue->frame_parms.nb_antenna_ports_gNB==1 ? 1 : 2;
+    ue->dlsch_SI[i]  = new_nr_ue_dlsch(1, 1, NSOFT, ue->max_ldpc_iterations,ue->frame_parms.N_RB_DL);
+    ue->dlsch_ra[i]  = new_nr_ue_dlsch(1, 1, NSOFT, ue->max_ldpc_iterations,ue->frame_parms.N_RB_DL);
+    ue->transmission_mode[i] = ue->frame_parms.nb_antenna_ports_gNB == 1 ? 1 : 2;
   }
 
   //ue->frame_parms.pucch_config_common.deltaPUCCH_Shift = 1;
-  ue->dlsch_MCH[0]  = new_nr_ue_dlsch(1,NR_MAX_DLSCH_HARQ_PROCESSES,NSOFT,MAX_LDPC_ITERATIONS_MBSFN,ue->frame_parms.N_RB_DL);
+  ue->dlsch_MCH[0]  = new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, MAX_LDPC_ITERATIONS_MBSFN, ue->frame_parms.N_RB_DL);
 
-  for(int i=0; i<5; i++)
+  for(int i = 0; i < 5; i++)
     ue->dl_stats[i] = 0;
 }
 

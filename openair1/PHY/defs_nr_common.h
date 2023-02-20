@@ -111,6 +111,8 @@
 
 #define NR_NB_NSCID 2
 
+#define MAX_LDPC_ITERATIONS 5
+
 extern const uint8_t nr_rv_round_map[4]; 
 
 static inline

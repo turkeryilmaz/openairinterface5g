@@ -259,6 +259,93 @@ typedef struct {
   int32_t eNb_id;
 } NR_UE_COMMON;
 
+typedef struct {//from gNB code for PSSCH Rx
+  /// \brief Holds the received data in the frequency domain for the allocated RBs in repeated format.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..2*ofdm_symbol_size[
+  int32_t **rxdataF_ext;
+  /// \brief Hold the channel estimates in time domain based on DRS.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..4*ofdm_symbol_size[
+  int32_t **sl_ch_estimates_time;
+  /// \brief Hold the channel estimates in frequency domain based on DRS.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_estimates;
+  /// \brief Uplink channel estimates extracted in PRBS.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_estimates_ext;
+  /// \brief Holds the compensated signal.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **rxdataF_comp;
+  /// \brief Magnitude of the UL channel estimates. Used for 2nd-bit level thresholds in LLR computation
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_mag;
+  /// \brief Magnitude of the UL channel estimates scaled for 3rd bit level thresholds in LLR computation
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_magb;
+  /// \brief Cross-correlation of two UE signals.
+  /// - first index: rx antenna [0..nb_antennas_rx[
+  /// - second index: symbol [0..]
+  int32_t ***rho;
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh;
+  /// \brief Magnitude of Uplink Channel first layer (16QAM level/First 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_mag0;
+  /// \brief Magnitude of Uplink Channel second layer (16QAM level/First 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_mag1[8][8];
+  /// \brief Magnitude of Uplink Channel, first layer (2nd 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_magb0;
+  /// \brief Magnitude of Uplink Channel second layer (2nd 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_magb1[8][8];
+  /// measured RX power based on DRS
+  int slsch_power[8];
+  /// total signal over antennas
+  int slsch_power_tot;
+  /// measured RX noise power
+  int slsch_noise_power[8];
+  /// total noise over antennas
+  int slsch_noise_power_tot;
+  /// \brief llr values.
+  /// - first index: ? [0..1179743] (hard coded)
+  int16_t *llr;
+  /// \brief llr values per layer.
+  /// - first index: ? [0..3] (hard coded)
+  /// - first index: ? [0..1179743] (hard coded)
+  int16_t **llr_layers;
+  /// DMRS symbol index, to be updated every DMRS symbol within a slot.
+  uint8_t dmrs_symbol;
+  // PTRS symbol index, to be updated every PTRS symbol within a slot.
+  uint8_t ptrs_symbol_index;
+  /// bit mask of PT-RS ofdm symbol indicies
+  uint16_t ptrs_symbols;
+  // PTRS subcarriers per OFDM symbol
+  int32_t ptrs_re_per_slot;
+  /// \brief Estimated phase error based upon PTRS on each symbol .
+  /// - first index: ? [0..7] Number of Antenna
+  /// - second index: ? [0...14] smybol per slot
+  int32_t **ptrs_phase_per_slot;
+  /// \brief Total RE count after DMRS/PTRS RE's are extracted from respective symbol.
+  /// - first index: ? [0...14] smybol per slot
+  int16_t *sl_valid_re_per_slot;
+  /// flag to verify if channel level computation is done
+  uint8_t cl_done;
+  /// flag to indicate DTX on reception
+  int DTX;
+} NR_UE_PSSCH;
+
 typedef struct {
   /// \brief Received frequency-domain signal after extraction.
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
@@ -748,6 +835,7 @@ typedef struct {
   NR_UE_DLSCH_t   *dlsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX][NR_MAX_NB_LAYERS>4 ? 2:1]; // two RxTx Threads
   NR_UE_ULSCH_t   *ulsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_ULSCH_t   *slsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_SyncRefUE_MAX];
+  NR_UE_ULSCH_t   *slsch_rx[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_SyncRefUE_MAX];
   NR_UE_DLSCH_t   *dlsch_SI[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_ra[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_p[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -1042,10 +1130,14 @@ typedef struct nr_rxtx_thread_data_s {
 typedef struct LDPCDecode_ue_s {
   PHY_VARS_NR_UE *phy_vars_ue;
   NR_DL_UE_HARQ_t *harq_process;
+  NR_UL_UE_HARQ_t *slsch_harq;
   t_nrLDPC_dec_params decoderParms;
   NR_UE_DLSCH_t *dlsch;
+  NR_UE_ULSCH_t *slsch;
   short* dlsch_llr;
+  short* slsch_llr;
   int dlsch_id;
+  int slsch_id;
   int harq_pid;
   int rv_index;
   int A;

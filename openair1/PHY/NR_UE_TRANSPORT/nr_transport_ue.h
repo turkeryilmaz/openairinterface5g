@@ -118,6 +118,18 @@ typedef struct {
   uint8_t BG;
   // LDPC lifting size
   uint32_t Z;
+
+  /////////////////////// slsch decoding ///////////////////////
+  /// Transport block size (This is A from 38.212 V16.10.0 section 5.1)
+  uint32_t TBS;
+  /// The payload + CRC (24 bits) in bits (38.212 V16.10.0 section 5.1)
+  uint32_t B;
+  /// Number of bits in each code block after rate matching for LDPC code (38.212 V16.10.0 section 5.4.2.1)
+  uint32_t E;
+  /// Number of segments processed so far
+  uint32_t processedSegments;
+  bool new_rx;
+  //////////////////////////////////////////////////////////////
 } NR_UL_UE_HARQ_t;
 
 typedef struct {
