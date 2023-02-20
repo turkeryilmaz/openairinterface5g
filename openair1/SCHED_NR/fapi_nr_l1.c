@@ -36,6 +36,8 @@
 #include "PHY/NR_TRANSPORT/nr_dci.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 
+#define USE_MSGQ 1
+
 extern int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req);
 extern int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req);
 extern int oai_nfapi_ul_dci_req(nfapi_nr_ul_dci_request_t *ul_dci_req);
@@ -163,6 +165,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO){
 
     if (slot_type == NR_DOWNLINK_SLOT || slot_type == NR_MIXED_SLOT) {
       notifiedFIFO_elt_t *res;
+#ifndef USE_MSGQ     
       if (gNB->reorder_thread_disable) 
         res = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
       else
@@ -170,6 +173,9 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO){
       if (res == NULL)
         return; // Tpool has been stopped, nothing to process
       processingData_L1tx_t *msgTx = (processingData_L1tx_t *)NotifiedFifoData(res);
+#else
+      processingData_L1tx_t *msgTx = gNB->msgDataTx; //newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
+#endif
  /*     const time_stats_t ts = exec_time_stats_NotifiedFIFO(res);
       merge_meas(&gNB->phy_proc_tx, &ts);
 */
@@ -215,12 +221,15 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO){
       for (int i=0; i<number_ul_dci_pdu; i++)
         msgTx->ul_pdcch_pdu[i] = UL_dci_req->ul_dci_pdu_list[i];
 
+#ifndef USE_MSGQ      
       if (gNB->reorder_thread_disable)
         pushNotifiedFIFO(&gNB->L1_tx_out,res);
       else
 	pushNotifiedFIFO(&gNB->L1_tx_filled,res);
+#else
+      //pushNotifiedFIFO(&gNB->L1_tx_out, res);
+#endif
     }
-
     for (int i = 0; i < number_ul_tti_pdu; i++) {
       switch (UL_tti_req->pdus_list[i].pdu_type) {
         case NFAPI_NR_UL_CONFIG_PUSCH_PDU_TYPE:

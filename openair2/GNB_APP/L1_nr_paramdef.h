@@ -98,9 +98,9 @@
 #define L1_PUSCH_DTX_THRESHOLD                             13
 #define L1_SRS_DTX_THRESHOLD                               14
 #define L1_MAX_LDPC_ITERATIONS                             15
-#define L1_TX_AMP_BACKOFF_dB                               15
-#define L1_RX_THREAD_CORE                                  16
-#define L1_TX_THREAD_CORE                                  17
+#define L1_TX_AMP_BACKOFF_dB                               16
+#define L1_RX_THREAD_CORE                                  17
+#define L1_TX_THREAD_CORE                                  18
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 #endif

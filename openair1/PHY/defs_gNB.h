@@ -768,8 +768,9 @@ typedef struct PHY_VARS_gNB_s {
   tpool_t threadPool;
   pthread_t L1_rx_thread;
   int L1_rx_thread_core;
-  pthread_t thread_L1_tx;
+  pthread_t L1_tx_thread;
   int L1_tx_thread_core;
+  struct processingData_L1tx *msgDataTx;
   int nbDecode;
   int number_of_nr_dlsch_max;
   int number_of_nr_ulsch_max;

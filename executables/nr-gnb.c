@@ -87,6 +87,7 @@
 #include <openair1/PHY/NR_TRANSPORT/nr_dlsch.h>
 #include <PHY/NR_ESTIMATION/nr_ul_estimation.h>
 
+#define USE_MSGQ 1
 //#define USRP_DEBUG 1
 // Fix per CC openair rf/if device update
 // extern openair0_device openair0;
@@ -150,8 +151,20 @@ void *L1_rx_thread(void *arg) {
      rx_func(info);
      delNotifiedFIFO_elt(res);
   }
+  return NULL;
 }
 
+void *L1_tx_thread(void *arg) {
+  PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
+
+  while (oai_exit == 0) {
+     notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->L1_tx_out);
+     processingData_L1tx_t *info = (processingData_L1tx_t *)NotifiedFifoData(res);
+     tx_func(info);
+     delNotifiedFIFO_elt(res);
+  }
+  return NULL;
+}
 void rx_func(void *param) {
   processingData_L1_t *info = (processingData_L1_t *) param;
   PHY_VARS_gNB *gNB = info->gNB;
@@ -280,12 +293,13 @@ void rx_func(void *param) {
   pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
 
-  int tx_slot_type = nr_slot_select(cfg,frame_rx,slot_tx);
+  int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
   if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
     notifiedFIFO_elt_t *res;
     processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
     // so no need for checking for right slot
+ #ifndef USE_MSGQ
     if (get_softmodem_params()->reorder_thread_disable)
       res = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
     else
@@ -297,6 +311,12 @@ void rx_func(void *param) {
     syncMsg->timestamp_tx = info->timestamp_tx;
     res->key = slot_tx;
     pushTpool(&gNB->threadPool, res);
+#else
+    syncMsg = gNB->msgDataTx;
+    syncMsg->gNB = gNB; 
+    syncMsg->timestamp_tx = info->timestamp_tx;
+    tx_func(syncMsg);
+#endif
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
     if (res == NULL)
@@ -503,6 +523,8 @@ void init_gNB_Tpool(int inst) {
 #ifdef USE_MSGQ
   threadCreate(&gNB->L1_rx_thread, L1_rx_thread, (void *)gNB, "L1_rx_thread",
                gNB->L1_rx_thread_core, OAI_PRIORITY_RT_MAX);
+//  threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread",
+//               gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
 #endif 
   if (get_softmodem_params()->reorder_thread_disable) {
     notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
@@ -510,7 +532,11 @@ void init_gNB_Tpool(int inst) {
     memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
     init_DLSCH_struct(gNB, msgDataTx);
     memset(msgDataTx->ssb, 0, 64*sizeof(NR_gNB_SSB_t));
+#ifndef USE_MSGQ
     pushNotifiedFIFO(&gNB->L1_tx_out, msgL1Tx); // to unblock the process in the beginning
+#else
+    gNB->msgDataTx = msgDataTx;
+#endif    
   } else {
     // we create 2 threads for L1 tx processing
     for (int i=0; i < 2; i++) {
