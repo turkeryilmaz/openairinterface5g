@@ -269,6 +269,10 @@ install_xran_from_sources(){
     echo_info "\nInstalling XRAN from sources ==> oran_release_bronze_v1.1. The log file for XRAN installation is here: $xran_install_log "
     (
     cd ~/
+    if [[ -d phy ]];
+        then 
+            rm -rf phy/
+    fi
     echo_info "\Clone XRAN repository and checkout oran_release_bronze_v1.1"
     git clone https://gerrit.o-ran-sc.org/r/o-du/phy.git
     cd phy
