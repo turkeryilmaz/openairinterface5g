@@ -350,7 +350,8 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                               F,
                               Kr-F-2*(*pz),
                               harq_process->pssch_pdu.pssch_data.rv_index,
-                              E) == -1)
+                              E,
+                              true) == -1)
       return -1;
 
     stop_meas(&ue->slsch_rate_matching_stats);

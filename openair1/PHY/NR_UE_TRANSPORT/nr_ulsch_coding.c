@@ -362,7 +362,8 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                               F,
                               Kr-F-2*(*pz),
                               harq_process->pusch_pdu.pusch_data.rv_index,
-                              E) == -1)
+                              E,
+                              false) == -1)
       return -1;
 
     stop_meas(&ue->ulsch_rate_matching_stats);
