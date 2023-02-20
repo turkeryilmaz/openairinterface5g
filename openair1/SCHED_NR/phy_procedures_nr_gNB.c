@@ -426,10 +426,10 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   if (crc_flag == 0) LOG_D(PHY, "%d.%d : Received PUSCH : Estimated timing advance PUSCH is  = %d, timing_advance_update is %d \n", frame,slot_rx,sync_pos,timing_advance_update);
 
   // estimate UL_CQI for MAC
-  int SNRtimes10 = dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot) -
-                   dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot);
+  int SNRtimes10 = dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot) - gNB->measurements.n0_subband_power_avg_dB * 10;
 
-  LOG_D(PHY, "%d.%d: Estimated SNR for PUSCH is = %f dB (ulsch_power %f, noise %f) delay %d\n", frame, slot_rx, SNRtimes10/10.0,dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot)/10.0,dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot)/10.0,sync_pos);
+  LOG_D(PHY, "%d.%d: Estimated SNR for PUSCH is = %f dB (ulsch_power %f, noise %f) delay %d\n",
+        frame, slot_rx, SNRtimes10/10.0, dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot)/10.0, (float) gNB->measurements.n0_subband_power_avg_dB, sync_pos);
 
   int cqi;
   if      (SNRtimes10 < -640) cqi=0;
@@ -825,37 +825,33 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
           VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RX_PUSCH,1);
 	        start_meas(&gNB->rx_pusch_stats);
           nr_rx_pusch(gNB, ULSCH_id, frame_rx, slot_rx, harq_pid);
-          gNB->pusch_vars[ULSCH_id]->ulsch_power_tot=0;
-          gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot=0;
-          for (int aarx=0;aarx<gNB->frame_parms.nb_antennas_rx;aarx++) {
-             gNB->pusch_vars[ULSCH_id]->ulsch_power[aarx]/=num_dmrs;
+          gNB->pusch_vars[ULSCH_id]->ulsch_power_tot = 0;
+          for (int aarx = 0; aarx < gNB->frame_parms.nb_antennas_rx; aarx++) {
+             gNB->pusch_vars[ULSCH_id]->ulsch_power[aarx] /= num_dmrs;
              gNB->pusch_vars[ULSCH_id]->ulsch_power_tot += gNB->pusch_vars[ULSCH_id]->ulsch_power[aarx];
-             gNB->pusch_vars[ULSCH_id]->ulsch_noise_power[aarx]/=num_dmrs;
-             gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot += gNB->pusch_vars[ULSCH_id]->ulsch_noise_power[aarx];
           }
+          gNB->pusch_vars[ULSCH_id]->ulsch_power_tot /= gNB->frame_parms.nb_antennas_rx;
+          uint32_t noise_power_x10 = gNB->measurements.n0_subband_power_avg_dB * 10;
           if (dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot) <
-              dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot) + gNB->pusch_thres) {
+              noise_power_x10 + gNB->pusch_thres) {
              NR_gNB_SCH_STATS_t *stats=get_ulsch_stats(gNB,ulsch);
-
-             LOG_D(PHY, "PUSCH not detected in %d.%d (%d,%d,%d)\n",frame_rx,slot_rx,
+             LOG_D(PHY, "PUSCH not detected in %d.%d (%d,%d,%d)\n", frame_rx, slot_rx,
                    dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot),
-                   dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot),gNB->pusch_thres);
-             gNB->pusch_vars[ULSCH_id]->ulsch_power_tot = gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot;
-             gNB->pusch_vars[ULSCH_id]->DTX=1;
+                   noise_power_x10, gNB->pusch_thres);
+             gNB->pusch_vars[ULSCH_id]->DTX = 1;
              if (stats) stats->DTX++;
              if (!get_softmodem_params()->phy_test) {
                /* in case of phy_test mode, we still want to decode to measure execution time. 
                   Therefore, we don't yet call nr_fill_indication, it will be called later */
-               nr_fill_indication(gNB,frame_rx, slot_rx, ULSCH_id, harq_pid, 1,1);
+               nr_fill_indication(gNB,frame_rx, slot_rx, ULSCH_id, harq_pid, 1, 1);
                pusch_DTX++;
                continue;
              }
           } else {
-            LOG_D(PHY, "PUSCH detected in %d.%d (%d,%d,%d)\n",frame_rx,slot_rx,
+            LOG_D(PHY, "PUSCH detected in %d.%d (%d,%d,%d)\n", frame_rx, slot_rx,
                   dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_power_tot),
-                  dB_fixed_x10(gNB->pusch_vars[ULSCH_id]->ulsch_noise_power_tot),gNB->pusch_thres);
-
-            gNB->pusch_vars[ULSCH_id]->DTX=0;
+                  gNB->measurements.n0_subband_power_avg_dB * 10, gNB->pusch_thres);
+            gNB->pusch_vars[ULSCH_id]->DTX = 0;
           }
           stop_meas(&gNB->rx_pusch_stats);
           VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RX_PUSCH,0);

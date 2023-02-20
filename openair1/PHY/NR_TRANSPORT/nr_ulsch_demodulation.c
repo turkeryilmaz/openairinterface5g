@@ -1926,22 +1926,14 @@ void nr_rx_pusch(PHY_VARS_gNB *gNB,
       for (aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
         if (symbol == rel15_ul->start_symbol_index) {
           gNB->pusch_vars[ulsch_id]->ulsch_power[aarx] = 0;
-          gNB->pusch_vars[ulsch_id]->ulsch_noise_power[aarx] = 0;
         }
         for (aatx = 0; aatx < rel15_ul->nrOfLayers; aatx++) {
-          gNB->pusch_vars[ulsch_id]->ulsch_power[aarx] += signal_energy_nodc(
-            &gNB->pusch_vars[ulsch_id]->ul_ch_estimates[aatx*gNB->frame_parms.nb_antennas_rx+aarx][symbol * frame_parms->ofdm_symbol_size],
-            rel15_ul->rb_size * 12);
+          gNB->pusch_vars[ulsch_id]->ulsch_power[aarx] += signal_energy_nodc(&gNB->pusch_vars[ulsch_id]->ul_ch_estimates[aatx*gNB->frame_parms.nb_antennas_rx+aarx][symbol * frame_parms->ofdm_symbol_size],
+                                                                             rel15_ul->rb_size * 12);
         }
-        for (int rb = 0; rb < rel15_ul->rb_size; rb++) {
-          gNB->pusch_vars[ulsch_id]->ulsch_noise_power[aarx] +=
-              gNB->measurements.n0_subband_power[aarx][rel15_ul->bwp_start + rel15_ul->rb_start + rb] /
-              rel15_ul->rb_size;
-        }
-        LOG_D(PHY,"aa %d, bwp_start%d, rb_start %d, rb_size %d: ulsch_power %d, ulsch_noise_power %d\n",aarx,
-	      rel15_ul->bwp_start,rel15_ul->rb_start,rel15_ul->rb_size,
-              gNB->pusch_vars[ulsch_id]->ulsch_power[aarx],
-              gNB->pusch_vars[ulsch_id]->ulsch_noise_power[aarx]);
+        LOG_D(PHY,"aa %d, bwp_start%d, rb_start %d, rb_size %d: ulsch_power %d\n",
+              aarx, rel15_ul->bwp_start, rel15_ul->rb_start, rel15_ul->rb_size,
+              gNB->pusch_vars[ulsch_id]->ulsch_power[aarx]);
       }
     }
   }

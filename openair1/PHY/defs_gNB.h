@@ -358,10 +358,6 @@ typedef struct {
   int ulsch_power[8];
   /// total signal over antennas
   int ulsch_power_tot;
-  /// measured RX noise power
-  int ulsch_noise_power[8];
-  /// total noise over antennas
-  int ulsch_noise_power_tot;
   /// \brief llr values.
   /// - first index: ? [0..1179743] (hard coded)
   int16_t *llr;

@@ -398,7 +398,7 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     stats->round_trials[harq_process->round]++;
     for (int aarx=0;aarx<frame_parms->nb_antennas_rx;aarx++) {
       stats->power[aarx] = dB_fixed_x10(pusch->ulsch_power[aarx]);
-      stats->noise_power[aarx] = dB_fixed_x10(pusch->ulsch_noise_power[aarx]);
+      stats->noise_power[aarx] = phy_vars_gNB->measurements.n0_subband_power_avg_perANT_dB[aarx] * 10;
     }
     if (harq_process->new_rx == 0) {
       stats->current_Qm = Qm;

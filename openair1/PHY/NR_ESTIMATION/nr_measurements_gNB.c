@@ -180,20 +180,20 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
       }
     } //rb
   } // symb
-  int nb_rb=0;
-  int32_t n0_subband_tot=0;
+  int nb_rb = 0;
+  int32_t n0_subband_tot = 0;
   int32_t n0_subband_tot_perANT[frame_parms->nb_antennas_rx];
 
   memset(n0_subband_tot_perANT, 0, sizeof(n0_subband_tot_perANT));
 
   for (int rb = 0 ; rb<frame_parms->N_RB_UL;rb++) {
-    int32_t n0_subband_tot_perPRB=0;
+    int32_t n0_subband_tot_perPRB = 0;
     if (nb_symb[rb] > 0) {
-      for (int aarx=0;aarx<frame_parms->nb_antennas_rx;aarx++) {
-        measurements->n0_subband_power[aarx][rb]/=nb_symb[rb];
+      for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
+        measurements->n0_subband_power[aarx][rb] /= nb_symb[rb];
         measurements->n0_subband_power_dB[aarx][rb] = dB_fixed(measurements->n0_subband_power[aarx][rb]);
-        n0_subband_tot_perPRB+=measurements->n0_subband_power[aarx][rb];
-        n0_subband_tot_perANT[aarx]+=measurements->n0_subband_power[aarx][rb];
+        n0_subband_tot_perPRB += measurements->n0_subband_power[aarx][rb];
+        n0_subband_tot_perANT[aarx] += measurements->n0_subband_power[aarx][rb];
       }
       n0_subband_tot_perPRB/=frame_parms->nb_antennas_rx;
       measurements->n0_subband_power_tot_dB[rb] = dB_fixed(n0_subband_tot_perPRB);
