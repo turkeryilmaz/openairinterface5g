@@ -140,6 +140,18 @@ void tx_func(void *param) {
   stop_meas(&info->gNB->phy_proc_tx);
 }
 
+
+void *L1_rx_thread(void *arg) {
+  PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
+
+  while (oai_exit == 0) {
+     notifiedFIFO_elt_t *res = pullNotifiedFIFO(&gNB->resp_L1);
+     processingData_L1_t *info = (processingData_L1_t *)NotifiedFifoData(res);
+     rx_func(info);
+     delNotifiedFIFO_elt(res);
+  }
+}
+
 void rx_func(void *param) {
   processingData_L1_t *info = (processingData_L1_t *) param;
   PHY_VARS_gNB *gNB = info->gNB;
@@ -479,14 +491,19 @@ void init_gNB_Tpool(int inst) {
 
   // L1 RX result FIFO 
   initNotifiedFIFO(&gNB->resp_L1);
+#ifndef USE_MSGQ
   notifiedFIFO_elt_t *msg = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, rx_func);
   pushNotifiedFIFO(&gNB->resp_L1, msg); // to unblock the process in the beginning
-
+#endif
   // L1 TX result FIFO 
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
   initNotifiedFIFO(&gNB->L1_tx_out);
-  
+ 
+#ifdef USE_MSGQ
+  threadCreate(&gNB->L1_rx_thread, L1_rx_thread, (void *)gNB, "L1_rx_thread",
+               gNB->L1_rx_thread_core, OAI_PRIORITY_RT_MAX);
+#endif 
   if (get_softmodem_params()->reorder_thread_disable) {
     notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
     processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);

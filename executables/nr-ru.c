@@ -60,6 +60,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #endif
 
 
+#define USE_MSGQ 1
+
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h and GNB_APP/gnb_paramdef.h */
 static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
@@ -1281,9 +1283,13 @@ void *ru_thread( void *param ) {
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
     // At this point, all information for subframe has been received on FH interface
+ #ifndef USE_MSGQ
     res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
     if (res == NULL)
       break; // Tpool has been stopped
+#else
+    res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
+#endif
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->frame_rx = proc->frame_rx;
@@ -1292,7 +1298,11 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
+#ifndef USE_MSGQ    
     pushTpool(&gNB->threadPool, res);
+#else
+    pushNotifiedFIFO(&gNB->resp_L1, res);
+#endif
   }
 
   printf( "Exiting ru_thread \n");
