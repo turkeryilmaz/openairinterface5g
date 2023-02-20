@@ -29,6 +29,9 @@ project (OpenAirInterface LANGUAGES C CXX)
 #########################################################
 set (OPENAIR_DIR     ${CMAKE_SOURCE_DIR})
 
+
+
+
 include("cmake_targets/macros.cmake")
 
 # System packages that are required
@@ -163,6 +166,11 @@ set (OPENAIR_CMAKE   ${OPENAIR_DIR}/cmake_targets)
 set (OPENAIR_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
 
 project (OpenAirInterface)
+
+
+set(CMAKE_C_COMPILER "/usr/bin/gcc")
+set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+
 
 ##############################################
 # Base CUDA setting
