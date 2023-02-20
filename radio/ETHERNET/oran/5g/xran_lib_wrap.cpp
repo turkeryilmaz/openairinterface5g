@@ -953,7 +953,7 @@ void xranLibWraper::Open(xran_ethdi_mbuf_send_fn send_cp, xran_ethdi_mbuf_send_f
         struct xran_buffer_list *pFthRxBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANTENNA_NR][XRAN_N_FE_BUF_LEN];
         struct xran_buffer_list *pFthRxPrbMapBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANTENNA_NR][XRAN_N_FE_BUF_LEN];
         struct xran_buffer_list *pFthRxRachBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANTENNA_NR][XRAN_N_FE_BUF_LEN];
-        struct xran_buffer_list *pFthRxSrsBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANT_ARRAY_ELM_NR][XRAN_N_FE_BUF_LEN];
+        /*struct xran_buffer_list *pFthRxSrsBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANT_ARRAY_ELM_NR][XRAN_N_FE_BUF_LEN];*/
 
         nSectorNum = get_num_cc();
 
@@ -969,7 +969,7 @@ void xranLibWraper::Open(xran_ethdi_mbuf_send_fn send_cp, xran_ethdi_mbuf_send_f
                     pFthRxRachBuffer[i][z][j]   = NULL;
                 }
                 for(z = 0; z < xran_max_ant_array_elm_nr; z++){
-                    pFthRxSrsBuffer[i][z][j] = NULL;
+                    /*pFthRxSrsBuffer[i][z][j] = NULL;*/
                 }
             }
         }
@@ -984,7 +984,7 @@ void xranLibWraper::Open(xran_ethdi_mbuf_send_fn send_cp, xran_ethdi_mbuf_send_f
                     pFthRxRachBuffer[i][z][j]   = &(m_sFHPrachRxBbuIoBufCtrl[j][i][z].sBufferList);
                     }
                     for(z = 0; z < xran_max_ant_array_elm_nr && xran_max_ant_array_elm_nr; z++){
-                        pFthRxSrsBuffer[i][z][j] = &(m_sFHSrsRxBbuIoBufCtrl[j][i][z].sBufferList);
+                        /*pFthRxSrsBuffer[i][z][j] = &(m_sFHSrsRxBbuIoBufCtrl[j][i][z].sBufferList);*/
             }
                 }
             }
