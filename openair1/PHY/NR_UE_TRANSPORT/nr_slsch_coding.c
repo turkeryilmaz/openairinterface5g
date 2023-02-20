@@ -193,23 +193,22 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
   LOG_D(NR_PHY, "slsch coding nb_rb %d, Nl = %d\n", nb_rb, harq_process->pssch_pdu.nrOfLayers);
   LOG_D(NR_PHY, "slsch coding A %d G %d mod_order %d Coderate %f\n", A, G, mod_order, Coderate);
   LOG_D(NR_PHY, "harq_pid %d harq_process->ndi %d, pssch_data.new_data_indicator %d\n",
-        harq_pid,harq_process->ndi,harq_process->pssch_pdu.pssch_data.new_data_indicator);
+        harq_pid, harq_process->ndi, harq_process->pssch_pdu.pssch_data.new_data_indicator);
 
   if (harq_process->first_tx == 1 ||
       harq_process->ndi != harq_process->pssch_pdu.pssch_data.new_data_indicator) {  // this is a new packet
-#ifdef DEBUG_SLSCH_CODING
-  printf("encoding thinks this is a new packet \n");
-#endif
+
     harq_process->first_tx = 0;
 ///////////////////////// a---->| add CRC |---->b /////////////////////////
 ///////////
-   /*
+#ifdef DEBUG_SLSCH_CODING
     int i;
     printf("slsch (tx): \n");
     for (i = 0; i < (A >> 3); i++)
       printf("%02x.", harq_process->a[i]);
     printf("\n");
-   */
+    printf("encoding thinks this is a new packet \n");
+#endif
 
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
 
@@ -221,8 +220,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 
     if ((A <= 292) || ((A <= 3824) && (Coderate <= 0.6667)) || Coderate <= 0.25){
       harq_process->BG = 2;
-    }
-    else{
+    } else {
       harq_process->BG = 1;
     }
 
@@ -251,15 +249,14 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     Kr_bytes = Kr >> 3;
 #endif
 
-///////////////////////// c---->| LDCP coding |---->d /////////////////////////
+///////////////////////// c---->| LDPC coding |---->d /////////////////////////
 ///////////
-
+#ifdef DEBUG_SLSCH_CODING
     //printf("segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
 
     //start_meas(te_stats);
     for (int r = 0; r < harq_process->C; r++) {
       //channel_input[r] = &harq_process->d[r][0];
-#ifdef DEBUG_SLSCH_CODING
       printf("Encoder: B %d F %d \n", harq_process->B, harq_process->F);
       printf("start ldpc encoder segment %d/%d\n", r, harq_process->C);
       printf("input %d %d %d %d %d \n", harq_process->c[r][0], harq_process->c[r][1],
@@ -268,20 +265,11 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
         printf("%d ", harq_process->c[r][cnt]);
       }
       printf("\n");
-
-#endif
       //ldpc_encoder_orig((unsigned char*)harq_process->c[r], harq_process->d[r], Kr, BG, 0);
       //ldpc_encoder_optim((unsigned char*)harq_process->c[r], (unsigned char*)&harq_process->d[r][0], Kr, BG, NULL, NULL, NULL, NULL);
     }
+#endif
 
-    //for(int i = 0; i < 68 * 384; i++)
-    //    printf("channel_input[%d] = %d\n", i, channel_input[i]);
-
-    /*printf("output %d %d %d %d %d \n", harq_process->d[0][0], harq_process->d[0][1], harq_process->d[r][2], harq_process->d[0][3], harq_process->d[0][4]);
-      for (int cnt = 0 ; cnt < 66 * (*pz); cnt ++){
-      printf("%d \n",  harq_process->d[0][cnt]);
-      }
-      printf("\n");*/
     encoder_implemparams_t impp = {
       .n_segments = harq_process->C,
       .macro_num = 0,
@@ -310,7 +298,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 
 ///////////
 ///////////////////////////////////////////////////////////////////////////////
-    LOG_D(NR_PHY,"setting ndi to %d from pssch_data\n", harq_process->pssch_pdu.pssch_data.new_data_indicator);
+    LOG_D(NR_PHY, "setting ndi to %d from pssch_data\n", harq_process->pssch_pdu.pssch_data.new_data_indicator);
     harq_process->ndi = harq_process->pssch_pdu.pssch_data.new_data_indicator;
   }
 
@@ -326,12 +314,8 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
       }
     }
 
-    LOG_D(NR_PHY,"Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb %d, rvidx %d)...\n",
-          r,
-          G,
-          Kr*3,
-          mod_order,nb_rb,
-          harq_process->pssch_pdu.pssch_data.rv_index);
+    LOG_D(NR_PHY, "Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb %d, rvidx %d)...\n",
+          r, G, Kr*3, mod_order, nb_rb, harq_process->pssch_pdu.pssch_data.rv_index);
 
     //start_meas(rm_stats);
 ///////////////////////// d---->| Rate matching bit selection |---->e /////////////////////////

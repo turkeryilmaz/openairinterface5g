@@ -386,7 +386,6 @@ typedef struct
   uint32_t tbslbrm;
   //Optional Data only included if indicated in pduBitmap
   nfapi_nr_ue_pusch_data_t pssch_data;
-  nfapi_nr_ue_pusch_uci_t  pssch_uci;
   nfapi_nr_ue_pusch_ptrs_t pssch_ptrs;
   nfapi_nr_ue_dfts_ofdm_t dfts_ofdm;
   //beamforming

@@ -33,32 +33,27 @@
 void nr_attach_crc_to_payload(NR_UL_UE_HARQ_t *harq_process, int max_payload_bytes, uint32_t A) {
 
     unsigned int crc = 1;
-    if (A > 3824) {
+    if (A > NR_MAX_PSSCH_TBS) {
       // Add 24-bit crc (polynomial A) to payload
       crc = crc24a(harq_process->a, A) >> 8;
       harq_process->a[A >> 3] = ((uint8_t*)&crc)[2];
       harq_process->a[1 + (A >> 3)] = ((uint8_t*)&crc)[1];
       harq_process->a[2 + (A >> 3)] = ((uint8_t*)&crc)[0];
-      //printf("CRC %x (A %d)\n", crc, A);
-      //printf("a0 %d a1 %d a2 %d\n", a[A>>3], a[1+(A>>3)], a[2+(A>>3)]);
-
       harq_process->B = A + 24;
 
-      AssertFatal((A / 8) + 4 <= max_payload_bytes,"A %d is too big (A / 8 + 4 = %d > %d)\n", A, (A / 8) + 4, max_payload_bytes);
+      AssertFatal((A / 8) + 4 <= max_payload_bytes,
+                  "A %d is too big (A / 8 + 4 = %d > %d)\n", A, (A / 8) + 4, max_payload_bytes);
 
       memcpy(harq_process->b, harq_process->a, (A / 8) + 4);
-    }
-    else {
+    } else {
       // Add 16-bit crc (polynomial A) to payload
       crc = crc16(harq_process->a, A) >> 16;
       harq_process->a[A >> 3] = ((uint8_t*)&crc)[1];
       harq_process->a[1 + (A >> 3)] = ((uint8_t*)&crc)[0];
-      //printf("CRC %x (A %d)\n", crc, A);
-      //printf("a0 %d a1 %d \n", a[A >> 3], a[1 + (A >> 3)]);
-
       harq_process->B = A + 16;
 
-      AssertFatal((A / 8) + 3 <= max_payload_bytes,"A %d is too big (A / 8 + 3 = %d > %d)\n", A, (A / 8) + 3, max_payload_bytes);
+      AssertFatal((A / 8) + 3 <= max_payload_bytes,
+                  "A %d is too big (A / 8 + 3 = %d > %d)\n", A, (A / 8) + 3, max_payload_bytes);
 
       memcpy(harq_process->b, harq_process->a, (A / 8) + 3);  // using 3 bytes to mimic the case of 24 bit crc
     }
