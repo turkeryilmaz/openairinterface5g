@@ -9,6 +9,14 @@ export OPENAIR2_DIR=$OPENAIR_HOME/openair2
 export OPENAIR3_DIR=$OPENAIR_HOME/openair3
 export OPENAIR_TARGETS=$OPENAIR_HOME/targets
 
+# ORAN 7.2 FrontHaul
+export DPDK_ARCHIVE_VERSION=dpdk-19.11.13
+export RTE_SDK=~/dpdk-stable-19.11.13
+export RTE_TARGET=x86_64-native-linuxapp-gcc
+export RTE_INCLUDE=${RTE_SDK}/${RTE_TARGET}/include
+export XRAN_LIB_DIR=~/phy/fhi_lib/lib/build
+export XRAN_DIR=~/phy/fhi_lib
+
 export PATH=$PATH:$OPENAIR_TARGETS/bin
 
 alias  oai='cd $OPENAIR_HOME'

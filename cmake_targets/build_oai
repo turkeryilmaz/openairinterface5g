@@ -497,6 +497,7 @@ function main() {
   if [ "$INSTALL_EXTERNAL" = "1" ] ; then
     echo_info "Installing packages"
     check_install_oai_software
+
     if [ "$HW" == "OAI_USRP" ] ; then
       echo_info "installing packages for USRP support"
       check_install_usrp_uhd_driver
@@ -518,6 +519,14 @@ function main() {
       #  flash_firmware_iris
       #fi
     fi
+    echo_info "Installing DPDK 19.11.13"
+    install_dpdk_from_archive
+    echo_success "DPDK installation successful"
+
+    echo_info "Installing XRAN oran_release_bronze_v1.1"
+    install_xran_from_sources
+    echo_success "XRAN installation successful"
+
   fi
 
   if [ "$INSTALL_OPTIONAL" = "1" ] ; then
