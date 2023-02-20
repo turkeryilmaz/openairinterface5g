@@ -676,7 +676,7 @@ int xran_fh_rx_read_slot(void *xranlib_, ru_info_t *ru, int *frame, int *slot, i
                        if(p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
                           payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
                           src1 = src2 + payload_len/2;
-                          for (idx = 0; idx < payload_len/(2*sizeof(int16_t)); idx++) {
+                          for (idx = 0; idx < (int)(payload_len/(2*sizeof(int16_t))); idx++) {
                             ((uint16_t *)dst1)[idx] = ntohs(((uint16_t *)src1)[idx]);
                             ((uint16_t *)dst2)[idx] = ntohs(((uint16_t *)src2)[idx]);
                           }
@@ -820,7 +820,7 @@ int xran_fh_tx_send_slot(void *xranlib_, ru_info_t *ru, int frame, int slot, uin
                        src2 = (uint8_t *)(pos + (p_prbMapElm->nRBStart*N_SC_PER_PRB + 3276/2) + 4096 - 3276);
                        if(p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
                          /* convert to Network order */
-                         for (idx = 0; idx < payload_len/(2*sizeof(uint16_t)); idx++)
+                         for (idx = 0; idx < (int)(payload_len/(2*sizeof(uint16_t))); idx++)
                          {
                            ((uint16_t *)dst1)[idx] = htons(((uint16_t *)src1)[idx]);
                            ((uint16_t *)dst2)[idx] = htons(((uint16_t *)src2)[idx]);
