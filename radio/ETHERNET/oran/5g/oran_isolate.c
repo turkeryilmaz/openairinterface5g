@@ -75,8 +75,7 @@ int trx_oran_stop(openair0_device *device)
 }
 
 int trx_oran_set_freq(openair0_device* device,
-                         openair0_config_t *openair0_cfg,
-                         int exmimo_dump_config)
+                         openair0_config_t *openair0_cfg)
 {
   printf("ORAN: %s\n", __FUNCTION__);
   return(0);
@@ -205,15 +204,16 @@ void oran_fh_if4p5_south_in(RU_t *ru,
                                int *slot)
 {
   oran_eth_state_t *s = ru->ifdevice.priv;
-  int symbol;
+  
+  /*int symbol;
   int32_t *rxdata;
-  int antenna;
+  int antenna;*/
   static uint8_t sync = 0;
 
   ru_info_t ru_info;
   ru_info.nb_rx = ru->nb_rx;
   ru_info.rxdataF = ru->common.rxdataF;
-  ru_info.prach_buf = (int *)ru->prach_rxsigF[0];//index: [prach_oca][ant_id]
+  ru_info.prach_buf = (int **)ru->prach_rxsigF[0];//index: [prach_oca][ant_id]
 
   RU_proc_t *proc = &ru->proc;
   extern uint16_t sl_ahead;
