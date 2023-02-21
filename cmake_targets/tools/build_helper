@@ -250,7 +250,7 @@ compilations() {
 
 install_dpdk_from_archive(){
     dpdk_install_log=$OPENAIR_DIR/cmake_targets/log/dpdk_install_log.txt
-    echo_info "\nInstalling DPDK $DPDK_ARCHIVE_VERSION from archive (19.11.13). The log file for DPDK installation is here: $dpdk_install_log "
+    echo_info "\nInstalling DPDK $DPDK_ARCHIVE_VERSION from archive. The log file for DPDK installation is here: $dpdk_install_log "
     (
     cd ~/
     rm -rf dpdk-*
@@ -267,7 +267,7 @@ install_dpdk_from_archive(){
 
 install_xran_from_sources(){
     xran_install_log=$OPENAIR_DIR/cmake_targets/log/xran_install_log.txt
-    echo_info "\nInstalling XRAN from sources ==> oran_release_bronze_v1.1. The log file for XRAN installation is here: $xran_install_log "
+    echo_info "\nInstalling XRAN from sources. The log file for XRAN installation is here: $xran_install_log "
     (
     cd ~/
     if [[ -d phy ]];
