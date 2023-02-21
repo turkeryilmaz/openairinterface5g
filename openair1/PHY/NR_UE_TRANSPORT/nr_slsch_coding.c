@@ -55,29 +55,29 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
       if (slsch->harq_processes[i]) {
 
         if (slsch->harq_processes[i]->a) {
-          free16(slsch->harq_processes[i]->a, a_segments*1056);
+          free16(slsch->harq_processes[i]->a, a_segments * 1056);
           slsch->harq_processes[i]->a = NULL;
         }
         if (slsch->harq_processes[i]->b) {
-          free16(slsch->harq_processes[i]->b, a_segments*1056);
+          free16(slsch->harq_processes[i]->b, a_segments * 1056);
           slsch->harq_processes[i]->b = NULL;
         }
         if (slsch->harq_processes[i]->e) {
-          free16(slsch->harq_processes[i]->e, 14*N_RB_UL*12*8);
+          free16(slsch->harq_processes[i]->e, 14 * N_RB_UL * 12 * 8);
           slsch->harq_processes[i]->e = NULL;
         }
         if (slsch->harq_processes[i]->f) {
-          free16(slsch->harq_processes[i]->f, 14*N_RB_UL*12*8);
+          free16(slsch->harq_processes[i]->f, 14 * N_RB_UL * 12 * 8);
           slsch->harq_processes[i]->f = NULL;
         }
         for (int r=0; r<a_segments; r++) {
           if (slsch->harq_processes[i]->c[r]) {
-            free16(slsch->harq_processes[i]->c[r], ((r == 0)?8:0)+3+768);
+            free16(slsch->harq_processes[i]->c[r], ((r == 0) ? 8 : 0) + 3 + 768);
             slsch->harq_processes[i]->c[r] = NULL;
           }
 
           if (slsch->harq_processes[i]->d[r]) {
-            free16(slsch->harq_processes[i]->d[r], 68*384);
+            free16(slsch->harq_processes[i]->d[r], 68 * 384);
             slsch->harq_processes[i]->d[r] = NULL;
           }
 
@@ -142,18 +142,18 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
       DevAssert(slsch->harq_processes[i]->c[r]);
       bzero(slsch->harq_processes[i]->c[r], 8448);
 
-      slsch->harq_processes[i]->d[r] = malloc16(68*384); //max size for coded output
+      slsch->harq_processes[i]->d[r] = malloc16(68 * 384); //max size for coded output
       DevAssert(slsch->harq_processes[i]->d[r]);
-      bzero(slsch->harq_processes[i]->d[r], (68*384));
+      bzero(slsch->harq_processes[i]->d[r], (68 * 384));
     }
 
-    slsch->harq_processes[i]->e = malloc16(14*N_RB_UL*12*8);
+    slsch->harq_processes[i]->e = malloc16(14 * N_RB_UL * 12 * 8);
     DevAssert(slsch->harq_processes[i]->e);
-    bzero(slsch->harq_processes[i]->e, 14*N_RB_UL*12*8);
+    bzero(slsch->harq_processes[i]->e, 14 * N_RB_UL * 12 * 8);
 
-    slsch->harq_processes[i]->f = malloc16(14*N_RB_UL*12*8);
+    slsch->harq_processes[i]->f = malloc16(14 * N_RB_UL * 12 * 8);
     DevAssert(slsch->harq_processes[i]->f);
-    bzero(slsch->harq_processes[i]->f, 14*N_RB_UL*12*8);
+    bzero(slsch->harq_processes[i]->f, 14 * N_RB_UL * 12 * 8);
 
     slsch->harq_processes[i]->subframe_scheduling_flag = 0;
     slsch->harq_processes[i]->first_tx = 1;
@@ -218,7 +218,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 ///////////////////////// b---->| block segmentation |---->c /////////////////////////
 ///////////
 
-    if ((A <= 292) || ((A <= 3824) && (Coderate <= 0.6667)) || Coderate <= 0.25){
+    if ((A <= 292) || ((A <= 3824) && (Coderate <= 0.6667)) || Coderate <= 0.25) {
       harq_process->BG = 2;
     } else {
       harq_process->BG = 1;
@@ -281,7 +281,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_IN);
 
     start_meas(&ue->slsch_ldpc_encoding_stats);
-    for(int j = 0; j < (harq_process->C / 8 + 1); j++) {
+    for (int j = 0; j < (harq_process->C / 8 + 1); j++) {
       impp.macro_num = j;
       nrLDPC_encoder(harq_process->c, harq_process->d, *pz, Kb, Kr, harq_process->BG, &impp);
     }
