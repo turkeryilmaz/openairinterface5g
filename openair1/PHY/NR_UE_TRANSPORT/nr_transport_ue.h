@@ -59,6 +59,7 @@ typedef enum {
 typedef struct {
   /// NDAPI struct for UE
   nfapi_nr_ue_pusch_pdu_t pusch_pdu;
+  nfapi_nr_ue_pssch_pdu_t pssch_pdu;
   /// Indicator of first transmission
   uint8_t first_tx;
   /// HARQ tx status
