@@ -528,6 +528,8 @@ typedef struct {
   unsigned int n0_subband_power_dB[NB_ANTENNAS_RX][275];
   //! estimated avg subband noise power (dB)
   unsigned int n0_subband_power_avg_dB;
+  //! estimated avg subband noise power (dB)
+  unsigned int n0_subband_power_avg_dB_slot[10];
   //! estimated avg subband noise power per antenna (dB)
   unsigned int n0_subband_power_avg_perANT_dB[NB_ANTENNAS_RX];
   //! estimated avg noise power per RB (dB)

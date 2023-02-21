@@ -147,18 +147,19 @@ void dump_nr_I0_stats(FILE *fd,PHY_VARS_gNB *gNB) {
 
 
 
-void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb) {
+void gNB_I0_measurements(PHY_VARS_gNB *gNB, int slot, int first_symb,int num_symb)
+{
 
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   NR_gNB_COMMON *common_vars = &gNB->common_vars;
   PHY_MEASUREMENTS_gNB *measurements = &gNB->measurements;
-  int rb, nb_symb[275]={0};
+  int rb, nb_symb[275] = {0};
 
   memset(measurements->n0_subband_power, 0, sizeof(measurements->n0_subband_power));
 
-  for (int s=first_symb;s<(first_symb+num_symb);s++) {
+  for (int s = first_symb; s < (first_symb+num_symb); s++) {
     int offset0 = ((slot&3)*frame_parms->symbols_per_slot + s) * frame_parms->ofdm_symbol_size;
-    for (rb=0; rb<frame_parms->N_RB_UL; rb++) {
+    for (rb = 0; rb < frame_parms->N_RB_UL; rb++) {
       if ((gNB->rb_mask_ul[s][rb >> 5] & (1U << (rb & 31))) == 0 && // check that rb was not used in this subframe
           !(I0_SKIP_DC && rb == frame_parms->N_RB_UL>>1)) {         // skip middle PRB because of artificial noise possibly created by FFT
         int offset = offset0 + (frame_parms->first_carrier_offset + (rb*12))%frame_parms->ofdm_symbol_size;
@@ -166,8 +167,8 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
         for (int aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
           int32_t *ul_ch = &common_vars->rxdataF[aarx][offset];
           int32_t signal_energy;
-          if (((frame_parms->N_RB_UL&1) == 1) &&
-              (rb==(frame_parms->N_RB_UL>>1))) {
+          if (((frame_parms->N_RB_UL & 1) == 1) &&
+              (rb == (frame_parms->N_RB_UL >> 1))) {
             signal_energy = signal_energy_nodc(ul_ch, 6);
             ul_ch = &common_vars->rxdataF[aarx][offset0];
             signal_energy += signal_energy_nodc(ul_ch, 6);
@@ -204,11 +205,22 @@ void gNB_I0_measurements(PHY_VARS_gNB *gNB,int slot, int first_symb,int num_symb
     }
   }
   if (nb_rb>0) {
-     measurements->n0_subband_power_avg_dB = dB_fixed(n0_subband_tot/nb_rb);
-     for (int aarx=0;aarx<frame_parms->nb_antennas_rx;aarx++) {
-       measurements->n0_subband_power_avg_perANT_dB[aarx] = dB_fixed(n0_subband_tot_perANT[aarx]/nb_rb);
-     }
+    // buffer of 10 slots to average
+    measurements->n0_subband_power_avg_dB_slot[slot % 10] = dB_fixed(n0_subband_tot/nb_rb);
+    for (int aarx=0;aarx<frame_parms->nb_antennas_rx;aarx++) {
+      measurements->n0_subband_power_avg_perANT_dB[aarx] = dB_fixed(n0_subband_tot_perANT[aarx]/nb_rb);
+    }
   }
+  int n_slot = 0;
+  uint32_t temp_meas = 0;
+  for (int i = 0; i < 10; i++) {
+    if (measurements->n0_subband_power_avg_dB_slot[i] > 0) {
+      n_slot++;
+      temp_meas += measurements->n0_subband_power_avg_dB_slot[i];
+    }
+  }
+  if (n_slot > 0)
+    measurements->n0_subband_power_avg_dB = temp_meas / n_slot;
 }
 
 
