@@ -126,11 +126,9 @@ NR_UE_ULSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_UL, int number_of_harq_pids, NR_
   static uint32_t prnt_crc_cnt = 0;
 #endif
 
-void nr_processULSegment(void* arg) {
+void nr_processSLSegment(void* arg) {
   ldpcDecode_ue_t *rdata = (ldpcDecode_ue_t*) arg;
-  ldpcDecode_t *rdata = (ldpcDecode_ue_t*) arg;
   PHY_VARS_NR_UE *ue = rdata->phy_vars_ue;
-  NR_UL_UE_HARQ_t *slsch_harq = rdata->slsch_harq;
   t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
   int length_dec;
   int no_iteration_ldpc;
@@ -157,9 +155,9 @@ void nr_processULSegment(void* arg) {
   __m128i *pv = (__m128i*)&z;
   __m128i *pl = (__m128i*)&l;
 
-  Kr = ulsch_harq->K;
+  Kr = rdata->slsch_harq->K;
   Kr_bytes = Kr>>3;
-  K_bits_F = Kr-ulsch_harq->F;
+  K_bits_F = Kr-rdata->slsch_harq->F;
 
   t_nrLDPC_time_stats procTime = {0};
   t_nrLDPC_time_stats* p_procTime = &procTime ;
@@ -183,7 +181,7 @@ void nr_processULSegment(void* arg) {
   //for (int i = 0; i < 16; i++)
   //          printf("rx output deinterleaving w[%d]= %d r_offset %d\n", i,ulsch_harq->w[r][i], r_offset);
 
-  stop_meas(&ue->ulsch_deinterleaving_stats);
+  //stop_meas(&ue->ulsch_deinterleaving_stats);
 
 
  //////////////////////////////////////////////////////////////////////////////////////////
@@ -300,16 +298,16 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *ue,
   int ret = 0;
   int i,j;
   int8_t enable_ldpc_offload = ue->ldpc_offload_flag;
-  int16_t  z_ol [68*384];
-  int8_t   l_ol [68*384];
+  int16_t  z_ol [68 * 384];
+  int8_t   l_ol [68 * 384];
   __m128i *pv_ol128 = (__m128i*)&z_ol;
   __m128i *pl_ol128 = (__m128i*)&l_ol;
   int no_iteration_ldpc = 2;
   int length_dec;
   uint8_t crc_type;
   int K_bits_F;
-  int16_t  z [68*384 + 16] __attribute__ ((aligned(16)));
-  int8_t   l [68*384 + 16] __attribute__ ((aligned(16)));
+  int16_t  z [68 * 384 + 16] __attribute__ ((aligned(16)));
+  int8_t   l [68 * 384 + 16] __attribute__ ((aligned(16)));
 
   __m128i *pv = (__m128i*)&z;
   __m128i *pl = (__m128i*)&l;
@@ -345,7 +343,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *ue,
   // ------------------------------------------------------------------
 
   if (!slsch_llr) {
-    LOG_E(NR_PHY,"slsch_decoding.c: NULL slsch_llr pointer\n");
+    LOG_E(NR_PHY, "slsch_decoding.c: NULL slsch_llr pointer\n");
     return 1;
   }
 
@@ -401,15 +399,15 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *ue,
     }
   }
 
-  NR_gNB_SCH_STATS_t *stats = NULL;
+  NR_UE_SLSCH_STATS_t *stats = NULL;
   int first_free = -1;
-  for (int i = 0; i < NUMBER_OF_NR_SCH_STATS_MAX; i++) {
-    if (ue->ulsch_stats[i].rnti == 0 && first_free == -1) {
+  for (int i = 0; i < NUMBER_OF_NR_SLSCH_STATS_MAX; i++) {
+    if (ue->slsch_stats[i].rnti == 0 && first_free == -1) {
       first_free = i;
-      stats = &ue->ulsch_stats[i];
+      stats = &ue->slsch_stats[i];
     }
-    if (ue->ulsch_stats[i].rnti == slsch->rnti) {
-      stats = &ue->ulsch_stats[i];
+    if (ue->slsch_stats[i].rnti == slsch->rnti) {
+      stats = &ue->slsch_stats[i];
       break;
     }
   }
@@ -418,8 +416,8 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *ue,
     stats->rnti = slsch->rnti;
     stats->round_trials[harq_process->round]++;
     for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
-       stats->power[aarx] = dB_fixed_x10(pusch->ulsch_power[aarx]);
-       stats->noise_power[aarx] = dB_fixed_x10(pusch->ulsch_noise_power[aarx]);
+       stats->power[aarx] = dB_fixed_x10(pssch->slsch_power[aarx]);
+       stats->noise_power[aarx] = dB_fixed_x10(pssch->slsch_noise_power[aarx]);
     }
     if (harq_process->new_rx == 0) {
       stats->current_Qm = Qm;
@@ -639,13 +637,13 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *ue,
 
   else {
     dtx_det = 0;
-    void (*nr_processULSegment_ptr)(void*) = &nr_processULSegment;
+    void (*nr_processSLSegment_ptr)(void*) = &nr_processSLSegment;
 
     for (r = 0; r < harq_process->C; r++) {
 
       E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
       union ldpcReqUnion id = {.s = {slsch->rnti, frame, nr_tti_rx, 0, 0}};
-      notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_t), id.p, &ue->respDecode, nr_processULSegment_ptr);
+      notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_ue_t), id.p, &ue->respDecode, nr_processSLSegment_ptr);
       ldpcDecode_t *rdata = (ldpcDecode_t *) NotifiedFifoData(req);
 
       rdata->gNB = ue;

@@ -347,6 +347,21 @@ typedef struct {//from gNB code for PSSCH Rx
 } NR_UE_PSSCH;
 
 typedef struct {
+  int frame;
+  int dump_frame;
+  uint16_t rnti;
+  int round_trials[8];
+  int total_bytes_tx;
+  int total_bytes_rx;
+  int current_Qm;
+  int current_RI;
+  int power[NB_ANTENNAS_RX];
+  int noise_power[NB_ANTENNAS_RX];
+  int DTX;
+  int sync_pos;
+} NR_UE_SLSCH_STATS_t;
+
+typedef struct {
   /// \brief Received frequency-domain signal after extraction.
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - second index: ? [0..168*N_RB_DL[
@@ -826,6 +841,7 @@ typedef struct {
   NR_UE_PDSCH     *pdsch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX+1]; // two RxTx Threads
   NR_UE_PBCH      *pbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSSCH     *pssch_vars[NUMBER_OF_CONNECTED_SyncRefUE_MAX];
   NR_UE_PDCCH     *pdcch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -842,6 +858,9 @@ typedef struct {
   NR_UE_DLSCH_t   *dlsch_MCH[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_SLSS_t       *slss;
   NR_SLSS_t       slss_rx;
+
+  /// statistics for SLSCH measurement collection
+  NR_UE_SLSCH_STATS_t slsch_stats[NUMBER_OF_NR_SLSCH_STATS_MAX];
 
   //Paging parameters
   uint32_t              IMSImod1024;
@@ -991,6 +1010,8 @@ typedef struct {
   double N0;
 
   uint8_t max_ldpc_iterations;
+
+  int ldpc_offload_flag;
 
   /// PDSCH Varaibles
   PDSCH_CONFIG_DEDICATED pdsch_config_dedicated[NUMBER_OF_CONNECTED_gNB_MAX];
