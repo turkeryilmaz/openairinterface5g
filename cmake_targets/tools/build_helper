@@ -253,14 +253,15 @@ install_dpdk_from_archive(){
     echo_info "\nInstalling DPDK $DPDK_ARCHIVE_VERSION from archive (19.11.13). The log file for DPDK installation is here: $dpdk_install_log "
     (
     cd ~/
+    rm -rf dpdk-*
     echo "Downloading DPDK $DPDK_ARCHIVE_VERSION"
     wget static.dpdk.org/rel/$DPDK_ARCHIVE_VERSION.tar.gz
     tar -xf $DPDK_ARCHIVE_VERSION.tar.gz
-    cd $RTE_SDK
-    meson -Dexamples=all build
-    ninja -C build
-    cd build
-    ninja install
+    cd $RTE_SDK/config
+    sed -i 's/CONFIG_RTE_EAL_IGB_UIO=y/CONFIG_RTE_EAL_IGB_UIO=n/' common_linux
+    sed -i 's/CONFIG_RTE_KNI_KMOD=y/CONFIG_RTE_KNI_KMOD=n/' common_linux
+    cd $RTE_SDK/
+    make -j8 install T=$RTE_TARGET EXTRA_CFLAGS="-fPIC"
     ) >& $dpdk_install_log
 }
 
