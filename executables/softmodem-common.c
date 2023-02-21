@@ -46,7 +46,7 @@ static softmodem_params_t softmodem_params;
 char *parallel_config=NULL;
 char *worker_config=NULL;
 int usrp_tx_thread = 0;
-char *nfapi_str=NULL;
+char *nfapi_str = NULL;
 int ldpc_offload_flag=0;
 uint8_t nfapi_mode=0;
 
@@ -108,8 +108,8 @@ void get_common_options(uint32_t execmask) {
   int numparams = sizeof(cmdline_params) / sizeof(paramdef_t);
   config_set_checkfunctions(cmdline_params, cmdline_CheckParams, numparams);
   config_get(cmdline_params, sizeof(cmdline_params) / sizeof(paramdef_t), NULL);
-  nfapi_index = config_paramidx_fromname(cmdline_params, sizeof(cmdline_params) / sizeof(paramdef_t),"nfapi");
-  AssertFatal(nfapi_index != -1,"Index for nfapi config option not found!");
+  nfapi_index = config_paramidx_fromname(cmdline_params, sizeof(cmdline_params) / sizeof(paramdef_t), "nfapi");
+  AssertFatal(nfapi_index != -1, "Index for nfapi config option not found!");
   nfapi_mode = config_get_processedint(&cmdline_params[nfapi_index]);
 
   paramdef_t cmdline_logparams[] =CMDLINE_LOGPARAMS_DESC ;

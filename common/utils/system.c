@@ -258,8 +258,8 @@ void threadCreate(pthread_t* t, void * (*func)(void*), void * param, char* name,
     ret=pthread_attr_setschedparam(&attr, &sparam);
     AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
   }
- 
-  LOG_I(UTIL,"threadCreate for %s, affinity %x, priority %d\n",name,affinity,priority); 
+
+  LOG_I(UTIL, "threadCreate for %s, affinity %x, priority %d\n", name, affinity, priority);
   ret=pthread_create(t, &attr, func, param);
   AssertFatal(ret==0,"ret: %d, errno: %d\n",ret, errno);
   

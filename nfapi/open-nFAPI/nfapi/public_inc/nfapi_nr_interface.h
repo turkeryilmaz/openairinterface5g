@@ -291,10 +291,7 @@ typedef enum {
   NFAPI_NR_SSB_AND_CSET_MUX_PATTERN_TYPE3
 } nfapi_nr_ssb_and_cset_mux_pattern_type_e;
 
-typedef enum {
-  NFAPI_NR_CCE_REG_MAPPING_INTERLEAVED=0,
-  NFAPI_NR_CCE_REG_MAPPING_NON_INTERLEAVED=1
-} nfapi_nr_cce_reg_mapping_type_e;
+typedef enum { NFAPI_NR_CCE_REG_MAPPING_INTERLEAVED = 0, NFAPI_NR_CCE_REG_MAPPING_NON_INTERLEAVED = 1 } nfapi_nr_cce_reg_mapping_type_e;
 
 typedef enum {
   NFAPI_NR_CSET_CONFIG_MIB_SIB1=0,

@@ -183,8 +183,8 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 	gNB->prach_pdu_indication_list[pdu_index].num_preamble                        = 1;
 	gNB->prach_pdu_indication_list[pdu_index].preamble_list                       = gNB->preamble_list;
 	gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].preamble_index     = max_preamble[0];
-	gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].timing_advance     = 0; /*max_preamble_delay[0];*/
-	gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].preamble_pwr       = 0xffffffff;
+  gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].timing_advance = 0; /*max_preamble_delay[0];*/
+  gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].preamble_pwr       = 0xffffffff;
 	pdu_index++;
       }
       gNB->measurements.prach_I0 = ((gNB->measurements.prach_I0*900)>>10) + ((max_preamble_energy[0]*124)>>10); 

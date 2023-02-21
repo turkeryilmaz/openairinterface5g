@@ -133,8 +133,8 @@ void tx_func(void *param) {
     syncMsgRU.slot_tx = slot_tx;
     syncMsgRU.ru = gNB->RU_list[0];
     syncMsgRU.timestamp_tx = info->timestamp_tx;
-    LOG_D(PHY,"gNB: %d.%d : calling RU TX function\n",syncMsgRU.frame_tx,syncMsgRU.slot_tx);
-    ru_tx_func((void*)&syncMsgRU);
+    LOG_D(PHY, "gNB: %d.%d : calling RU TX function\n", syncMsgRU.frame_tx, syncMsgRU.slot_tx);
+    ru_tx_func((void *)&syncMsgRU);
   }
 }
 
@@ -237,15 +237,11 @@ void rx_func(void *param) {
     // Do PRACH RU processing
     L1_nr_prach_procedures(gNB,frame_rx,slot_rx);
 
-    //WA: comment rotation in tx/rx
-    if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
-      //apply the rx signal rotation here
+    // WA: comment rotation in tx/rx
+    if ((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
+      // apply the rx signal rotation here
       for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
-        apply_nr_rotation_ul(&gNB->frame_parms,
-            gNB->common_vars.rxdataF[aa],
-            slot_rx,
-            0,
-            gNB->frame_parms.Ncp==EXTENDED?12:14);
+        apply_nr_rotation_ul(&gNB->frame_parms, gNB->common_vars.rxdataF[aa], slot_rx, 0, gNB->frame_parms.Ncp == EXTENDED ? 12 : 14);
       }
     }
     phy_procedures_gNB_uespec_RX(gNB, frame_rx, slot_rx);
@@ -475,7 +471,7 @@ void init_gNB_Tpool(int inst) {
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
   initNotifiedFIFO(&gNB->L1_tx_out);
-  
+
   if (get_softmodem_params()->reorder_thread_disable) {
     notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
     processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
@@ -485,22 +481,21 @@ void init_gNB_Tpool(int inst) {
     pushNotifiedFIFO(&gNB->L1_tx_out, msgL1Tx); // to unblock the process in the beginning
   } else {
     // we create 2 threads for L1 tx processing
-    for (int i=0; i < 2; i++) {
+    for (int i = 0; i < 2; i++) {
       notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
       processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
       memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
       init_DLSCH_struct(gNB, msgDataTx);
-      memset(msgDataTx->ssb, 0, 64*sizeof(NR_gNB_SSB_t));
+      memset(msgDataTx->ssb, 0, 64 * sizeof(NR_gNB_SSB_t));
       pushNotifiedFIFO(&gNB->L1_tx_free, msgL1Tx); // to unblock the process in the beginning
     }
-  
-    LOG_I(PHY,"Creating thread for TX reordering and dispatching to RU\n");
-    threadCreate(&proc->pthread_tx_reorder, tx_reorder_thread, (void *)gNB, "thread_tx_reorder",
-                  gNB->RU_list[0] ? gNB->RU_list[0]->tpcores[1] : -1, OAI_PRIORITY_RT_MAX);
+
+    LOG_I(PHY, "Creating thread for TX reordering and dispatching to RU\n");
+    threadCreate(&proc->pthread_tx_reorder, tx_reorder_thread, (void *)gNB, "thread_tx_reorder", gNB->RU_list[0] ? gNB->RU_list[0]->tpcores[1] : -1, OAI_PRIORITY_RT_MAX);
   }
 
-  if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE!=NFAPI_MODE_VNF))
-     threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
+  if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE != NFAPI_MODE_VNF))
+    threadCreate(&proc->L1_stats_thread, nrL1_stats_thread, (void *)gNB, "L1_stats", -1, OAI_PRIORITY_RT_LOW);
 
 }
 
@@ -649,7 +644,6 @@ void init_gNB(int single_thread_flag,int wait_for_sync) {
     gNB->prach_energy_counter = 0;
     gNB->chest_time = get_softmodem_params()->chest_time;
     gNB->chest_freq = get_softmodem_params()->chest_freq;
-
   }
   
 

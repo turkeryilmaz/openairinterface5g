@@ -111,7 +111,7 @@ typedef enum {
 #define CONFIG_STRING_RU_NUM_TP_CORES             "num_tp_cores"
 #define CONFIG_STRING_RU_NUM_INTERFACES           "num_interfaces"
 #define CONFIG_STRING_RU_HALF_SLOT_PARALLELIZATION "half_slot_parallelization"
-#define CONFIG_STRING_RU_RU_THREAD_CORE            "ru_thread_core"
+#define CONFIG_STRING_RU_RU_THREAD_CORE "ru_thread_core"
 
 #define HLP_RU_SF_AHEAD "LTE TX processing advance"
 #define HLP_RU_SL_AHEAD "NR TX processing advance"
@@ -166,54 +166,40 @@ typedef enum {
 #define RU_NUM_TP_CORES               38
 #define RU_NUM_INTERFACES             39
 #define RU_HALF_SLOT_PARALLELIZATION  40
-#define RU_RU_THREAD_CORE             41
+#define RU_RU_THREAD_CORE 41
 /*-----------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            RU configuration parameters                                                                  */
 /*   optname                                   helpstr   paramflags    XXXptr          defXXXval                   type      numelt        */
 /*-----------------------------------------------------------------------------------------------------------------------------------------*/
-#define RUPARAMS_DESC { \
-    {CONFIG_STRING_RU_LOCAL_IF_NAME,               NULL,       0,       strptr:NULL,     defstrval:"lo",          TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_LOCAL_ADDRESS,               NULL,       0,       strptr:NULL,     defstrval:"127.0.0.2",   TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_REMOTE_ADDRESS,              NULL,       0,       strptr:NULL,     defstrval:"127.0.0.1",   TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_LOCAL_PORTC,                 NULL,       0,       uptr:NULL,       defuintval:50000,        TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_REMOTE_PORTC,                NULL,       0,       uptr:NULL,       defuintval:50000,        TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_LOCAL_PORTD,                 NULL,       0,       uptr:NULL,       defuintval:50001,        TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_REMOTE_PORTD,                NULL,       0,       uptr:NULL,       defuintval:50001,        TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_TRANSPORT_PREFERENCE,        NULL,       0,       strptr:NULL,     defstrval:"udp_if5",     TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_LOCAL_RF,                    NULL,       0,       strptr:NULL,     defstrval:"yes",         TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_NB_TX,                       NULL,       0,       uptr:NULL,       defuintval:1,            TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_NB_RX,                       NULL,       0,       uptr:NULL,       defuintval:1,            TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_MAX_RS_EPRE,                 NULL,       0,       iptr:NULL,       defintval:-29,           TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_MAX_RXGAIN,                  NULL,       0,       iptr:NULL,       defintval:120,           TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_BAND_LIST,                   NULL,       0,       uptr:NULL,       defintarrayval:DEFBANDS, TYPE_INTARRAY,    1}, \
-    {CONFIG_STRING_RU_ENB_LIST,                    NULL,       0,       uptr:NULL,       defintarrayval:DEFENBS,  TYPE_INTARRAY,    1}, \
-    {CONFIG_STRING_RU_ATT_TX,                      NULL,       0,       uptr:NULL,       defintval:0,             TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_ATT_RX,                      NULL,       0,       uptr:NULL,       defintval:0,             TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_IS_SLAVE,                    NULL,       0,       strptr:NULL,     defstrval:"no",          TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_NBIOTRRC_LIST,               NULL,       0,       uptr:NULL,       defintarrayval:DEFENBS,  TYPE_INTARRAY,    1}, \
-    {CONFIG_STRING_RU_SDR_ADDRS,                   NULL,       0,       strptr:NULL,     defstrval:"type=b200",   TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_SDR_CLK_SRC,                 NULL,       0,       strptr:NULL,     defstrval:"internal",    TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_SDR_TME_SRC,                 NULL,       0,       strptr:NULL,     defstrval:"internal",    TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_SF_EXTENSION,                NULL,       0,       uptr:NULL,       defuintval:320,          TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_END_OF_BURST_DELAY,          NULL,       0,       uptr:NULL,       defuintval:400,          TYPE_UINT,        0}, \
-    {CONFIG_STRING_RU_OTA_SYNC_ENABLE,             NULL,       0,       strptr:NULL,     defstrval:"no",          TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_BF_WEIGHTS_LIST,             NULL,       0,       iptr:NULL,       defintarrayval:DEFBFW,   TYPE_INTARRAY,    0}, \
-    {CONFIG_STRING_RU_IF_FREQUENCY,                NULL,       0,       u64ptr:NULL,     defuintval:0,            TYPE_UINT64,      0}, \
-    {CONFIG_STRING_RU_IF_FREQ_OFFSET,              NULL,       0,       iptr:NULL,       defintval:0,             TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_DO_PRECODING,                NULL,       0,       iptr:NULL,       defintval:0,             TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_SF_AHEAD,          HLP_RU_SF_AHEAD,      0,       iptr:NULL,       defintval:4,             TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_SL_AHEAD,          HLP_RU_SL_AHEAD,      0,       iptr:NULL,       defintval:6,             TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_NR_FLAG,           HLP_RU_NR_FLAG,       0,       iptr:NULL,       defintval:0,             TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_NR_SCS_FOR_RASTER, HLP_RU_NR_SCS_FOR_RASTER, 0,   iptr:NULL,       defintval:1,             TYPE_INT,         0}, \
-    {CONFIG_STRING_RU_TX_SUBDEV,                   NULL,       0,       strptr:NULL,     defstrval:"",            TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_RX_SUBDEV,                   NULL,       0,       strptr:NULL,     defstrval:"",            TYPE_STRING,      0}, \
-    {CONFIG_STRING_RU_RXFH_CORE_ID, HLP_RU_RXFH_CORE_ID,       0,       uptr:NULL,       defintval:0,             TYPE_UINT,         0}, \
-    {CONFIG_STRING_RU_TXFH_CORE_ID, HLP_RU_TXFH_CORE_ID,       0,       uptr:NULL,       defintval:0,             TYPE_UINT,         0}, \
-    {CONFIG_STRING_RU_TP_CORES, HLP_RU_TP_CORES,               0,       uptr:NULL,       defintarrayval:DEFRUTPCORES,  TYPE_INTARRAY,    8}, \
-    {CONFIG_STRING_RU_NUM_TP_CORES, HLP_RU_NUM_TP_CORES,       0,       uptr:NULL,       defintval:2,             TYPE_UINT,         0}, \
-    {CONFIG_STRING_RU_NUM_INTERFACES, HLP_RU_NUM_INTERFACES,    0,       uptr:NULL,       defintval:1,             TYPE_UINT,         0}, \
-    {CONFIG_STRING_RU_HALF_SLOT_PARALLELIZATION, HLP_RU_HALF_SLOT_PARALLELIZATION,    0,       uptr:NULL,       defintval:1,             TYPE_UINT,         0}, \
-    {CONFIG_STRING_RU_RU_THREAD_CORE, HLP_RU_RU_THREAD_CORE,    0,       uptr:NULL,       defintval:-1,             TYPE_INT,         0}, \
+#define RUPARAMS_DESC                                                                                                                                                                                  \
+  {                                                                                                                                                                                                    \
+    {CONFIG_STRING_RU_LOCAL_IF_NAME, NULL, 0, strptr : NULL, defstrval : "lo", TYPE_STRING, 0}, {CONFIG_STRING_RU_LOCAL_ADDRESS, NULL, 0, strptr : NULL, defstrval : "127.0.0.2", TYPE_STRING, 0},     \
+        {CONFIG_STRING_RU_REMOTE_ADDRESS, NULL, 0, strptr : NULL, defstrval : "127.0.0.1", TYPE_STRING, 0}, {CONFIG_STRING_RU_LOCAL_PORTC, NULL, 0, uptr : NULL, defuintval : 50000, TYPE_UINT, 0},    \
+        {CONFIG_STRING_RU_REMOTE_PORTC, NULL, 0, uptr : NULL, defuintval : 50000, TYPE_UINT, 0}, {CONFIG_STRING_RU_LOCAL_PORTD, NULL, 0, uptr : NULL, defuintval : 50001, TYPE_UINT, 0},               \
+        {CONFIG_STRING_RU_REMOTE_PORTD, NULL, 0, uptr : NULL, defuintval : 50001, TYPE_UINT, 0},                                                                                                       \
+        {CONFIG_STRING_RU_TRANSPORT_PREFERENCE, NULL, 0, strptr : NULL, defstrval : "udp_if5", TYPE_STRING, 0},                                                                                        \
+        {CONFIG_STRING_RU_LOCAL_RF, NULL, 0, strptr : NULL, defstrval : "yes", TYPE_STRING, 0}, {CONFIG_STRING_RU_NB_TX, NULL, 0, uptr : NULL, defuintval : 1, TYPE_UINT, 0},                          \
+        {CONFIG_STRING_RU_NB_RX, NULL, 0, uptr : NULL, defuintval : 1, TYPE_UINT, 0}, {CONFIG_STRING_RU_MAX_RS_EPRE, NULL, 0, iptr : NULL, defintval : -29, TYPE_INT, 0},                              \
+        {CONFIG_STRING_RU_MAX_RXGAIN, NULL, 0, iptr : NULL, defintval : 120, TYPE_INT, 0}, {CONFIG_STRING_RU_BAND_LIST, NULL, 0, uptr : NULL, defintarrayval : DEFBANDS, TYPE_INTARRAY, 1},            \
+        {CONFIG_STRING_RU_ENB_LIST, NULL, 0, uptr : NULL, defintarrayval : DEFENBS, TYPE_INTARRAY, 1}, {CONFIG_STRING_RU_ATT_TX, NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                   \
+        {CONFIG_STRING_RU_ATT_RX, NULL, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0}, {CONFIG_STRING_RU_IS_SLAVE, NULL, 0, strptr : NULL, defstrval : "no", TYPE_STRING, 0},                           \
+        {CONFIG_STRING_RU_NBIOTRRC_LIST, NULL, 0, uptr : NULL, defintarrayval : DEFENBS, TYPE_INTARRAY, 1},                                                                                            \
+        {CONFIG_STRING_RU_SDR_ADDRS, NULL, 0, strptr : NULL, defstrval : "type=b200", TYPE_STRING, 0}, {CONFIG_STRING_RU_SDR_CLK_SRC, NULL, 0, strptr : NULL, defstrval : "internal", TYPE_STRING, 0}, \
+        {CONFIG_STRING_RU_SDR_TME_SRC, NULL, 0, strptr : NULL, defstrval : "internal", TYPE_STRING, 0}, {CONFIG_STRING_RU_SF_EXTENSION, NULL, 0, uptr : NULL, defuintval : 320, TYPE_UINT, 0},         \
+        {CONFIG_STRING_RU_END_OF_BURST_DELAY, NULL, 0, uptr : NULL, defuintval : 400, TYPE_UINT, 0}, {CONFIG_STRING_RU_OTA_SYNC_ENABLE, NULL, 0, strptr : NULL, defstrval : "no", TYPE_STRING, 0},     \
+        {CONFIG_STRING_RU_BF_WEIGHTS_LIST, NULL, 0, iptr : NULL, defintarrayval : DEFBFW, TYPE_INTARRAY, 0}, {CONFIG_STRING_RU_IF_FREQUENCY, NULL, 0, u64ptr : NULL, defuintval : 0, TYPE_UINT64, 0},  \
+        {CONFIG_STRING_RU_IF_FREQ_OFFSET, NULL, 0, iptr : NULL, defintval : 0, TYPE_INT, 0}, {CONFIG_STRING_RU_DO_PRECODING, NULL, 0, iptr : NULL, defintval : 0, TYPE_INT, 0},                        \
+        {CONFIG_STRING_RU_SF_AHEAD, HLP_RU_SF_AHEAD, 0, iptr : NULL, defintval : 4, TYPE_INT, 0}, {CONFIG_STRING_RU_SL_AHEAD, HLP_RU_SL_AHEAD, 0, iptr : NULL, defintval : 6, TYPE_INT, 0},            \
+        {CONFIG_STRING_RU_NR_FLAG, HLP_RU_NR_FLAG, 0, iptr : NULL, defintval : 0, TYPE_INT, 0},                                                                                                        \
+        {CONFIG_STRING_RU_NR_SCS_FOR_RASTER, HLP_RU_NR_SCS_FOR_RASTER, 0, iptr : NULL, defintval : 1, TYPE_INT, 0},                                                                                    \
+        {CONFIG_STRING_RU_TX_SUBDEV, NULL, 0, strptr : NULL, defstrval : "", TYPE_STRING, 0}, {CONFIG_STRING_RU_RX_SUBDEV, NULL, 0, strptr : NULL, defstrval : "", TYPE_STRING, 0},                    \
+        {CONFIG_STRING_RU_RXFH_CORE_ID, HLP_RU_RXFH_CORE_ID, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                                                                                             \
+        {CONFIG_STRING_RU_TXFH_CORE_ID, HLP_RU_TXFH_CORE_ID, 0, uptr : NULL, defintval : 0, TYPE_UINT, 0},                                                                                             \
+        {CONFIG_STRING_RU_TP_CORES, HLP_RU_TP_CORES, 0, uptr : NULL, defintarrayval : DEFRUTPCORES, TYPE_INTARRAY, 8},                                                                                 \
+        {CONFIG_STRING_RU_NUM_TP_CORES, HLP_RU_NUM_TP_CORES, 0, uptr : NULL, defintval : 2, TYPE_UINT, 0},                                                                                             \
+        {CONFIG_STRING_RU_NUM_INTERFACES, HLP_RU_NUM_INTERFACES, 0, uptr : NULL, defintval : 1, TYPE_UINT, 0},                                                                                         \
+        {CONFIG_STRING_RU_HALF_SLOT_PARALLELIZATION, HLP_RU_HALF_SLOT_PARALLELIZATION, 0, uptr : NULL, defintval : 1, TYPE_UINT, 0},                                                                   \
+        {CONFIG_STRING_RU_RU_THREAD_CORE, HLP_RU_RU_THREAD_CORE, 0, uptr : NULL, defintval : -1, TYPE_INT, 0},                                                                                         \
   }
 
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
