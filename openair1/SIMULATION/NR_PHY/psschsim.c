@@ -338,24 +338,24 @@ int main(int argc, char **argv)
   set_glog(loglvl);
   load_nrLDPClib(NULL);
 
-  PHY_VARS_NR_UE *txUE = malloc(sizeof(PHY_VARS_NR_UE));
-  txUE->frame_parms.N_RB_DL = N_RB_DL;
-  txUE->frame_parms.N_RB_UL = N_RB_UL;
-  txUE->frame_parms.Ncp = NORMAL;
-  txUE->frame_parms.nb_antennas_tx = 1;
-  txUE->frame_parms.nb_antennas_rx = n_rx;
-  txUE->max_ldpc_iterations = 5;
+  PHY_VARS_NR_UE *nearbyUE = malloc(sizeof(PHY_VARS_NR_UE));
+  nearbyUE->frame_parms.N_RB_DL = N_RB_DL;
+  nearbyUE->frame_parms.N_RB_UL = N_RB_UL;
+  nearbyUE->frame_parms.Ncp = NORMAL;
+  nearbyUE->frame_parms.nb_antennas_tx = 1;
+  nearbyUE->frame_parms.nb_antennas_rx = n_rx;
+  nearbyUE->max_ldpc_iterations = 5;
 
-  PHY_VARS_NR_UE *rxUE = malloc(sizeof(PHY_VARS_NR_UE));
-  rxUE->frame_parms.nb_antennas_tx = n_tx;
-  rxUE->frame_parms.nb_antennas_rx = 1;
+  PHY_VARS_NR_UE *syncRefUE = malloc(sizeof(PHY_VARS_NR_UE));
+  syncRefUE->frame_parms.nb_antennas_tx = n_tx;
+  syncRefUE->frame_parms.nb_antennas_rx = 1;
 
   uint64_t burst_position = 0x01;
-  nr_phy_config_request_psschsim(txUE, N_RB_UL, N_RB_DL, mu, burst_position);
-  nr_phy_config_request_psschsim(rxUE, N_RB_UL, N_RB_DL, mu, burst_position);
+  nr_phy_config_request_psschsim(nearbyUE, N_RB_UL, N_RB_DL, mu, burst_position);
+  nr_phy_config_request_psschsim(syncRefUE, N_RB_UL, N_RB_DL, mu, burst_position);
 
   BW *bw_setting = malloc(sizeof(BW));
-  set_fs_bw(txUE, mu, N_RB_UL, bw_setting);
+  set_fs_bw(nearbyUE, mu, N_RB_UL, bw_setting);
 
   double DS_TDL = 300e-9; //.03;
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model,
@@ -370,26 +370,26 @@ int main(int argc, char **argv)
     exit(-1);
   }
 
-  if (init_nr_ue_signal(txUE, 1) != 0 || init_nr_ue_signal(rxUE, 1) != 0) {
+  if (init_nr_ue_signal(nearbyUE, 1) != 0 || init_nr_ue_signal(syncRefUE, 1) != 0) {
     printf("Error at UE NR initialisation.\n");
     free(bw_setting);
-    free(txUE);
-    free(rxUE);
+    free(nearbyUE);
+    free(syncRefUE);
     exit(-1);
   }
 #ifdef DEBUG_NR_SLSCHSIM
   for (int sf = 0; sf < 2; sf++) {
-    txUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
-    if (!txUE->slsch[sf][0]) {
+    nearbyUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
+    if (!nearbyUE->slsch[sf][0]) {
       printf("Can't get ue ulsch structures.\n");
       exit(-1);
     }
   }
 #endif
-  get_softmodem_params()->sync_ref = true;
-  init_nr_ue_transport(txUE);
   get_softmodem_params()->sync_ref = false;
-  init_nr_ue_transport(rxUE);
+  init_nr_ue_transport(nearbyUE);
+  get_softmodem_params()->sync_ref = true;
+  init_nr_ue_transport(syncRefUE);
 
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
@@ -405,7 +405,7 @@ int main(int argc, char **argv)
   printf("\nAvailable bits %u TBS %u mod_order %d\n", available_bits, TBS, mod_order);
 
   unsigned char harq_pid = 0;
-  NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0][0];
+  NR_UE_DLSCH_t *slsch_ue_rx = syncRefUE->slsch_rx[0][0][0];
   slsch_ue_rx->harq_processes[harq_pid]->Nl = Nl;
   slsch_ue_rx->harq_processes[harq_pid]->Qm = mod_order;
   nfapi_nr_pssch_pdu_t *rel16_sl_rx = &slsch_ue_rx->harq_processes[harq_pid]->pssch_pdu;
@@ -415,21 +415,21 @@ int main(int argc, char **argv)
   rel16_sl_rx->pssch_data.tb_size   = TBS >> 3;
   rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
 
-  NR_UL_UE_HARQ_t *harq_process_txUE = txUE->slsch[0][0]->harq_processes[harq_pid];
-  DevAssert(harq_process_txUE);
+  NR_UL_UE_HARQ_t *harq_process_nearbyUE = nearbyUE->slsch[0][0]->harq_processes[harq_pid];
+  DevAssert(harq_process_nearbyUE);
   uint8_t N_PRB_oh = 0;
   uint16_t N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
   uint8_t nb_codewords = 1;
-  harq_process_txUE->pssch_pdu.mcs_index = Imcs;
-  harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
-  harq_process_txUE->pssch_pdu.rb_size = nb_rb;
-  harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_txUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
-  harq_process_txUE->pssch_pdu.pssch_data.rv_index = 0;
-  harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
-  harq_process_txUE->pssch_pdu.target_code_rate = code_rate;
-  harq_process_txUE->pssch_pdu.qam_mod_order = mod_order;
-  unsigned char *test_input = harq_process_txUE->a;
+  harq_process_nearbyUE->pssch_pdu.mcs_index = Imcs;
+  harq_process_nearbyUE->pssch_pdu.nrOfLayers = Nl;
+  harq_process_nearbyUE->pssch_pdu.rb_size = nb_rb;
+  harq_process_nearbyUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_nearbyUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.rv_index = 0;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
+  harq_process_nearbyUE->pssch_pdu.target_code_rate = code_rate;
+  harq_process_nearbyUE->pssch_pdu.qam_mod_order = mod_order;
+  unsigned char *test_input = harq_process_nearbyUE->a;
 
   crcTableInit();
   for (int i = 0; i < TBS / 8; i++)
@@ -440,8 +440,8 @@ int main(int argc, char **argv)
 #endif
 
   unsigned int G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
-  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
-  nr_slsch_encoding(txUE, slsch_ue, &txUE->frame_parms, harq_pid, G);
+  NR_UE_ULSCH_t *slsch_ue = nearbyUE->slsch[0][0];
+  nr_slsch_encoding(nearbyUE, slsch_ue, &nearbyUE->frame_parms, harq_pid, G);
 
   #if 0
   unsigned int errors_bit_uncoded = 0;
@@ -482,7 +482,7 @@ int main(int argc, char **argv)
       int frame = 0;
       int slot = 0;
       UE_nr_rxtx_proc_t proc;
-      int ret = nr_dlsch_decoding(rxUE, &proc, 0, channel_output_fixed, &rxUE->frame_parms,
+      int ret = nr_dlsch_decoding(syncRefUE, &proc, 0, channel_output_fixed, &syncRefUE->frame_parms,
                                   slsch_ue_rx, slsch_ue_rx->harq_processes[0], frame, nb_symb_sch,
                                   slot, harq_pid, 0);
 
@@ -514,15 +514,15 @@ int main(int argc, char **argv)
   }
   #endif
   for (int sf = 0; sf < 2; sf++) {
-    free_nr_ue_slsch(&txUE->slsch[sf][0], N_RB_UL, &txUE->frame_parms);
-    free_nr_ue_dlsch(&rxUE->slsch_rx[sf][0][0], N_RB_DL);
+    free_nr_ue_slsch(&nearbyUE->slsch[sf][0], N_RB_UL, &nearbyUE->frame_parms);
+    free_nr_ue_dlsch(&syncRefUE->slsch_rx[sf][0][0], N_RB_DL);
   }
-  term_nr_ue_transport(txUE);
-  term_nr_ue_transport(rxUE);
-  term_nr_ue_signal(rxUE, 1);
-  term_nr_ue_signal(txUE, 1);
-  free(txUE);
-  free(rxUE);
+  term_nr_ue_transport(nearbyUE);
+  term_nr_ue_transport(syncRefUE);
+  term_nr_ue_signal(syncRefUE, 1);
+  term_nr_ue_signal(nearbyUE, 1);
+  free(nearbyUE);
+  free(syncRefUE);
 
   free_channel_desc_scm(UE2UE);
   free(bw_setting);
