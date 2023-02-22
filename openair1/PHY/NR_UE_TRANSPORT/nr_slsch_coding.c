@@ -29,8 +29,7 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include <openair2/UTIL/OPT/opt.h>
-#include "openair1/PHY/CODING/nrLDPC_defs.h"
-#include "openair1/PHY/CODING/nrLDPC_encoder/ldpc_encoder.c"
+
 //#define DEBUG_SLSCH_CODING
 
 void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
@@ -223,7 +222,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     ///////////////////////// c---->| LDPC coding |---->d /////////////////////////
 
 #ifdef DEBUG_SLSCH_CODING
-    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, harq_process->BG);
+    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
     for (int r = 0; r < harq_process->C; r++) {
       //channel_input[r] = &harq_process->d[r][0];
       LOG_D(NR_PHY, "Encoder: B %d F %d \n", harq_process->B, harq_process->F);
@@ -234,8 +233,8 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
         LOG_D(NR_PHY, "%d ", harq_process->c[r][cnt]);
       }
       LOG_D(NR_PHY, "\n");
-      //ldpc_encoder_orig((unsigned char*)harq_process->c[r], harq_process->d[r], Kr, harq_process->BG, 0);
-      //ldpc_encoder_optim((unsigned char*)harq_process->c[r], (unsigned char*)&harq_process->d[r][0], Kr, harq_process->BG, NULL, NULL, NULL, NULL);
+      //ldpc_encoder_orig((unsigned char*)harq_process->c[r], harq_process->d[r], Kr, BG, 0);
+      //ldpc_encoder_optim((unsigned char*)harq_process->c[r], (unsigned char*)&harq_process->d[r][0], Kr, BG, NULL, NULL, NULL, NULL);
     }
 #endif
 
