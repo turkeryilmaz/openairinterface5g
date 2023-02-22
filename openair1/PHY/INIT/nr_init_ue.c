@@ -495,9 +495,9 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < RX_NB_TH_MAX; k++) {
         free_nr_ue_dlsch(&ue->dlsch[k][i][j], N_RB_DL);
-        if (j==0) {
+        if (j == 0) {
           free_nr_ue_ulsch(&ue->ulsch[k][i], N_RB_DL, &ue->frame_parms);
-          if (get_softmodem_params()->sl_mode !=0) {
+          if (get_softmodem_params()->sl_mode != 0) {
             free_nr_ue_slsch(&ue->slsch[k][i], N_RB_DL, &ue->frame_parms);
             free_nr_ue_slsch_rx(&ue->slsch_rx[k][i], N_RB_DL, &ue->frame_parms);
           }
@@ -514,7 +514,7 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
 
 void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
 
-  int num_codeword = NR_MAX_NB_LAYERS > 4? 2:1;
+  int num_codeword = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
 
   for (int i = 0; i < NUMBER_OF_CONNECTED_gNB_MAX; i++) {
     for (int j = 0; j < num_codeword; j++) {

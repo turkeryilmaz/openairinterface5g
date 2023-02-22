@@ -38,90 +38,76 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
 
   NR_UE_ULSCH_t *slsch = *slschptr;
 
-  if (slsch) {
-#ifdef DEBUG_SLSCH_FREE
-    printf("Freeing slsch %p\n",slsch);
-#endif
-
-    int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
-    uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
-
-    if (N_RB_UL != 273) {
-      a_segments = a_segments * N_RB_UL;
-      a_segments = a_segments / 273 + 1;
-    }
-
-    for (int i = 0; i < NR_MAX_ULSCH_HARQ_PROCESSES; i++) {
-      if (slsch->harq_processes[i]) {
-
-        if (slsch->harq_processes[i]->a) {
-          free16(slsch->harq_processes[i]->a, a_segments*1056);
-          slsch->harq_processes[i]->a = NULL;
-        }
-        if (slsch->harq_processes[i]->b) {
-          free16(slsch->harq_processes[i]->b, a_segments*1056);
-          slsch->harq_processes[i]->b = NULL;
-        }
-        if (slsch->harq_processes[i]->e) {
-          free16(slsch->harq_processes[i]->e, 14*N_RB_UL*12*8);
-          slsch->harq_processes[i]->e = NULL;
-        }
-        if (slsch->harq_processes[i]->f) {
-          free16(slsch->harq_processes[i]->f, 14*N_RB_UL*12*8);
-          slsch->harq_processes[i]->f = NULL;
-        }
-        for (int r=0; r<a_segments; r++) {
-          if (slsch->harq_processes[i]->c[r]) {
-            free16(slsch->harq_processes[i]->c[r], ((r == 0)?8:0)+3+768);
-            slsch->harq_processes[i]->c[r] = NULL;
-          }
-
-          if (slsch->harq_processes[i]->d[r]) {
-            free16(slsch->harq_processes[i]->d[r], 68*384);
-            slsch->harq_processes[i]->d[r] = NULL;
-          }
-
-        }
-
-        if (slsch->harq_processes[i]->c) {
-          free16(slsch->harq_processes[i]->c, a_segments);
-          slsch->harq_processes[i]->c = NULL;
-        }
-        if (slsch->harq_processes[i]->d) {
-          free16(slsch->harq_processes[i]->d, a_segments);
-          slsch->harq_processes[i]->d = NULL;
-        }
-
-        free16(slsch->harq_processes[i], sizeof(NR_UL_UE_HARQ_t));
-        slsch->harq_processes[i] = NULL;
-      }
-    }
-    free16(slsch, sizeof(NR_UE_ULSCH_t));
-    *slschptr = NULL;
+  int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
+  uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
+  if (N_RB_UL != MAX_NUM_NR_RB) {
+    a_segments = a_segments * N_RB_UL;
+    a_segments = a_segments / MAX_NUM_NR_RB + 1;
   }
+  uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
+
+  for (int i = 0; i < NR_MAX_SLSCH_HARQ_PROCESSES; i++) {
+    if (slsch->harq_processes[i]) {
+      if (slsch->harq_processes[i]->a) {
+        free16(slsch->harq_processes[i]->a, a_segments * 1056);
+        slsch->harq_processes[i]->a = NULL;
+      }
+      if (slsch->harq_processes[i]->b) {
+        free16(slsch->harq_processes[i]->b, a_segments * 1056);
+        slsch->harq_processes[i]->b = NULL;
+      }
+      for (int r=0; r < a_segments; r++) {
+        if (slsch->harq_processes[i]->c[r]) {
+          free16(slsch->harq_processes[i]->c[r], 8448);
+          slsch->harq_processes[i]->c[r] = NULL;
+        }
+        if (slsch->harq_processes[i]->d[r]) {
+          free16(slsch->harq_processes[i]->d[r], 68 * 384);
+          slsch->harq_processes[i]->d[r] = NULL;
+        }
+      }
+      if (slsch->harq_processes[i]->c) {
+        free16(slsch->harq_processes[i]->c, a_segments * sizeof(uint8_t *));
+        slsch->harq_processes[i]->c = NULL;
+      }
+      if (slsch->harq_processes[i]->d) {
+        free16(slsch->harq_processes[i]->d, a_segments * sizeof(uint8_t *));
+        slsch->harq_processes[i]->d = NULL;
+      }
+      if (slsch->harq_processes[i]->e) {
+        free16(slsch->harq_processes[i]->e, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+        slsch->harq_processes[i]->e = NULL;
+      }
+      if (slsch->harq_processes[i]->f) {
+        free16(slsch->harq_processes[i]->f, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+        slsch->harq_processes[i]->f = NULL;
+      }
+      free16(slsch->harq_processes[i], sizeof(NR_UL_UE_HARQ_t));
+      slsch->harq_processes[i] = NULL;
+    }
+  }
+  free16(slsch, sizeof(NR_UE_ULSCH_t));
+  *slschptr = NULL;
 }
+
 
 
 NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms) {
 
-  int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
-  uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
-
-  if (N_RB_UL != 273) {
-    a_segments = a_segments * N_RB_UL;
-    a_segments = a_segments / 273 + 1;
-  }
-
-  uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
-
   NR_UE_ULSCH_t *slsch = malloc16(sizeof(NR_UE_ULSCH_t));
   DevAssert(slsch);
   memset(slsch, 0, sizeof(*slsch));
-
   slsch->number_harq_processes_for_pusch = NR_MAX_SLSCH_HARQ_PROCESSES;
 
-  for (int i = 0; i < number_of_harq_pids; i++) {
+  int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
+  uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
+  if (N_RB_UL != MAX_NUM_NR_RB) {
+    a_segments = a_segments * N_RB_UL;
+    a_segments = a_segments / MAX_NUM_NR_RB + 1;
+  }
+  uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
 
+  for (int i = 0; i < number_of_harq_pids; i++) {
     slsch->harq_processes[i] = malloc16(sizeof(NR_UL_UE_HARQ_t));
     DevAssert(slsch->harq_processes[i]);
     memset(slsch->harq_processes[i], 0, sizeof(NR_UL_UE_HARQ_t));
@@ -142,18 +128,18 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
       DevAssert(slsch->harq_processes[i]->c[r]);
       bzero(slsch->harq_processes[i]->c[r], 8448);
 
-      slsch->harq_processes[i]->d[r] = malloc16(68*384); //max size for coded output
+      slsch->harq_processes[i]->d[r] = malloc16(68 * 384); //max size for coded output
       DevAssert(slsch->harq_processes[i]->d[r]);
-      bzero(slsch->harq_processes[i]->d[r], (68*384));
+      bzero(slsch->harq_processes[i]->d[r], (68 * 384));
     }
 
-    slsch->harq_processes[i]->e = malloc16(14*N_RB_UL*12*8);
+    slsch->harq_processes[i]->e = malloc16(NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
     DevAssert(slsch->harq_processes[i]->e);
-    bzero(slsch->harq_processes[i]->e, 14*N_RB_UL*12*8);
+    bzero(slsch->harq_processes[i]->e, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
 
-    slsch->harq_processes[i]->f = malloc16(14*N_RB_UL*12*8);
+    slsch->harq_processes[i]->f = malloc16(NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
     DevAssert(slsch->harq_processes[i]->f);
-    bzero(slsch->harq_processes[i]->f, 14*N_RB_UL*12*8);
+    bzero(slsch->harq_processes[i]->f, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
 
     slsch->harq_processes[i]->subframe_scheduling_flag = 0;
     slsch->harq_processes[i]->first_tx = 1;
@@ -170,10 +156,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                       unsigned int G) {
 
   start_meas(&ue->slsch_encoding_stats);
-
-/////////////////////////parameters and variables initialization/////////////////////////
-///////////
-
   NR_UL_UE_HARQ_t *harq_process = slsch->harq_processes[harq_pid];
   uint16_t nb_rb = harq_process->pssch_pdu.rb_size;
   uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3;
@@ -185,44 +167,31 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
   // target_code_rate is in 0.1 units
   float Coderate = (float) harq_process->pssch_pdu.target_code_rate / 10240.0f;
 
-///////////
-/////////////////////////////////////////////////////////////////////////////////////////
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_IN);
-
   LOG_D(NR_PHY, "slsch coding nb_rb %d, Nl = %d\n", nb_rb, harq_process->pssch_pdu.nrOfLayers);
   LOG_D(NR_PHY, "slsch coding A %d G %d mod_order %d Coderate %f\n", A, G, mod_order, Coderate);
   LOG_D(NR_PHY, "harq_pid %d harq_process->ndi %d, pssch_data.new_data_indicator %d\n",
-        harq_pid,harq_process->ndi,harq_process->pssch_pdu.pssch_data.new_data_indicator);
+        harq_pid, harq_process->ndi, harq_process->pssch_pdu.pssch_data.new_data_indicator);
 
-  if (harq_process->first_tx == 1 ||
-      harq_process->ndi != harq_process->pssch_pdu.pssch_data.new_data_indicator) {  // this is a new packet
-#ifdef DEBUG_SLSCH_CODING
-  printf("encoding thinks this is a new packet \n");
-#endif
+  if (harq_process->first_tx == 1 || harq_process->ndi != harq_process->pssch_pdu.pssch_data.new_data_indicator) {  // this is a new packet
     harq_process->first_tx = 0;
-///////////////////////// a---->| add CRC |---->b /////////////////////////
-///////////
-   /*
-    int i;
-    printf("slsch (tx): \n");
-    for (i = 0; i < (A >> 3); i++)
-      printf("%02x.", harq_process->a[i]);
-    printf("\n");
-   */
+    ///////////////////////// a---->| add CRC |---->b /////////////////////////
 
+#ifdef DEBUG_SLSCH_CODING
+    LOG_D(NR_PHY, "slsch (tx): \n");
+    for (int i = 0; i < (A >> 3); i++)
+      LOG_D(NR_PHY, "%02x.", harq_process->a[i]);
+    LOG_D(NR_PHY, "\n");
+    LOG_D(NR_PHY, "encoding thinks this is a new packet \n");
+#endif
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
-
     nr_attach_crc_to_payload(harq_process, max_payload_bytes, A);
 
+    ///////////////////////// b---->| block segmentation |---->c /////////////////////////
 
-///////////////////////// b---->| block segmentation |---->c /////////////////////////
-///////////
-
-    if ((A <= 292) || ((A <= 3824) && (Coderate <= 0.6667)) || Coderate <= 0.25){
+    if ((A <= 292) || ((A <= 3824) && (Coderate <= 0.6667)) || Coderate <= 0.25) {
       harq_process->BG = 2;
-    }
-    else{
+    } else {
       harq_process->BG = 1;
     }
 
@@ -243,7 +212,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     }
     stop_meas(&ue->slsch_segmentation_stats);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_SEGMENTATION, VCD_FUNCTION_OUT);
-
     F = harq_process->F;
     Kr = harq_process->K;
 #ifdef DEBUG_SLSCH_CODING
@@ -251,37 +219,25 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     Kr_bytes = Kr >> 3;
 #endif
 
-///////////////////////// c---->| LDCP coding |---->d /////////////////////////
-///////////
+    ///////////////////////// c---->| LDPC coding |---->d /////////////////////////
 
-    //printf("segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
-
-    //start_meas(te_stats);
+#ifdef DEBUG_SLSCH_CODING
+    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
     for (int r = 0; r < harq_process->C; r++) {
       //channel_input[r] = &harq_process->d[r][0];
-#ifdef DEBUG_SLSCH_CODING
-      printf("Encoder: B %d F %d \n", harq_process->B, harq_process->F);
-      printf("start ldpc encoder segment %d/%d\n", r, harq_process->C);
-      printf("input %d %d %d %d %d \n", harq_process->c[r][0], harq_process->c[r][1],
+      LOG_D(NR_PHY, "Encoder: B %d F %d \n", harq_process->B, harq_process->F);
+      LOG_D(NR_PHY, "start ldpc encoder segment %d/%d\n", r, harq_process->C);
+      LOG_D(NR_PHY, "input %d %d %d %d %d \n", harq_process->c[r][0], harq_process->c[r][1],
               harq_process->c[r][2], harq_process->c[r][3], harq_process->c[r][4]);
       for (int cnt = 0 ; cnt < 22 * (*pz) / 8; cnt++){
-        printf("%d ", harq_process->c[r][cnt]);
+        LOG_D(NR_PHY, "%d ", harq_process->c[r][cnt]);
       }
-      printf("\n");
-
-#endif
+      LOG_D(NR_PHY, "\n");
       //ldpc_encoder_orig((unsigned char*)harq_process->c[r], harq_process->d[r], Kr, BG, 0);
       //ldpc_encoder_optim((unsigned char*)harq_process->c[r], (unsigned char*)&harq_process->d[r][0], Kr, BG, NULL, NULL, NULL, NULL);
     }
+#endif
 
-    //for(int i = 0; i < 68 * 384; i++)
-    //    printf("channel_input[%d] = %d\n", i, channel_input[i]);
-
-    /*printf("output %d %d %d %d %d \n", harq_process->d[0][0], harq_process->d[0][1], harq_process->d[r][2], harq_process->d[0][3], harq_process->d[0][4]);
-      for (int cnt = 0 ; cnt < 66 * (*pz); cnt ++){
-      printf("%d \n",  harq_process->d[0][cnt]);
-      }
-      printf("\n");*/
     encoder_implemparams_t impp = {
       .n_segments = harq_process->C,
       .macro_num = 0,
@@ -291,54 +247,39 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
       .toutput = NULL};
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_IN);
-
     start_meas(&ue->slsch_ldpc_encoding_stats);
-    for(int j = 0; j < (harq_process->C / 8 + 1); j++) {
+    for (int j = 0; j < (harq_process->C / 8 + 1); j++) {
       impp.macro_num = j;
       nrLDPC_encoder(harq_process->c, harq_process->d, *pz, Kb, Kr, harq_process->BG, &impp);
     }
     stop_meas(&ue->slsch_ldpc_encoding_stats);
-
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_OUT);
 
-    //stop_meas(te_stats);
-    //printf("end ldpc encoder -- output\n");
 #ifdef DEBUG_SLSCH_CODING
+    LOG_D(NR_PHY, "end ldpc encoder -- output\n");
     write_output("slsch_enc_input0.m", "enc_in0", &harq_process->c[0][0], Kr_bytes, 1, 4);
     write_output("slsch_enc_output0.m", "enc0", &harq_process->d[0][0], (3 * 8 * Kr_bytes) + 12, 1, 4);
 #endif
 
-///////////
-///////////////////////////////////////////////////////////////////////////////
-    LOG_D(NR_PHY,"setting ndi to %d from pssch_data\n", harq_process->pssch_pdu.pssch_data.new_data_indicator);
+    LOG_D(NR_PHY, "setting ndi to %d from pssch_data\n", harq_process->pssch_pdu.pssch_data.new_data_indicator);
     harq_process->ndi = harq_process->pssch_pdu.pssch_data.new_data_indicator;
   }
 
   F = harq_process->F;
   Kr = harq_process->K;
-
   for (int r = 0; r < harq_process->C; r++) { // looping over C segments
     if (harq_process->F > 0) {
       for (int k = (Kr - F - 2 * (*pz)); k < Kr - 2 * (*pz); k++) {
         harq_process->d[r][k] = NR_NULL;
-        //if (k < (Kr - F + 8))
-        //printf("r %d filler bits [%d] = %d \n", r, k, harq_process->d[r][k]);
       }
     }
 
-    LOG_D(NR_PHY,"Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb %d, rvidx %d)...\n",
-          r,
-          G,
-          Kr*3,
-          mod_order,nb_rb,
-          harq_process->pssch_pdu.pssch_data.rv_index);
+    LOG_D(NR_PHY, "Rate Matching, Code segment %d (coded bits (G) %u, unpunctured/repeated bits per code segment %d, mod_order %d, nb_rb %d, rvidx %d)...\n",
+          r, G, Kr*3, mod_order, nb_rb, harq_process->pssch_pdu.pssch_data.rv_index);
 
-    //start_meas(rm_stats);
 ///////////////////////// d---->| Rate matching bit selection |---->e /////////////////////////
-///////////
 
     uint32_t E = nr_get_E(G, harq_process->C, mod_order, harq_process->pssch_pdu.nrOfLayers, r);
-
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RATE_MATCHING_LDPC, VCD_FUNCTION_IN);
     start_meas(&ue->slsch_rate_matching_stats);
     if (nr_rate_matching_ldpc(harq_process->pssch_pdu.tbslbrm,
@@ -353,52 +294,35 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                               E,
                               true) == -1)
       return -1;
-
     stop_meas(&ue->slsch_rate_matching_stats);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_RATE_MATCHING_LDPC, VCD_FUNCTION_OUT);
 
 #ifdef DEBUG_SLSCH_CODING
     for (int i = 0; i < 16; i++)
-      printf("output ratematching e[%d] = %d r_offset %d\n", i, harq_process->e[i+r_offset], r_offset);
+      LOG_D(NR_PHY, "output ratematching e[%d] = %d r_offset %d\n", i, harq_process->e[i+r_offset], r_offset);
 #endif
 
-
 ///////////////////////// e---->| Rate matching bit interleaving |---->f /////////////////////////
-///////////
 
-    //stop_meas(rm_stats);
-
-    //start_meas(i_stats);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INTERLEAVING_LDPC, VCD_FUNCTION_IN);
-
     start_meas(&ue->slsch_interleaving_stats);
     nr_interleaving_ldpc(E,
                          mod_order,
                          harq_process->e+r_offset,
                          harq_process->f+r_offset);
     stop_meas(&ue->slsch_interleaving_stats);
-
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INTERLEAVING_LDPC, VCD_FUNCTION_OUT);
-    //stop_meas(i_stats);
-
+    r_offset += E;
 
 #ifdef DEBUG_SLSCH_CODING
     for (int i = 0; i < 16; i++)
-      printf("output interleaving f[%d] = %d r_offset %d\n", i, harq_process->f[i+r_offset], r_offset);
-
+      LOG_D(NR_PHY, "output interleaving f[%d] = %d r_offset %d\n", i, harq_process->f[i+r_offset], r_offset);
     if (r == harq_process->C - 1)
       write_output("enc_output.m","enc", harq_process->f, G, 1, 4);
 #endif
-
-    r_offset += E;
-
-///////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
-
   stop_meas(&ue->slsch_encoding_stats);
   return(0);
 }

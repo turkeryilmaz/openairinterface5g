@@ -291,7 +291,8 @@ void nr_processULSegment(void* arg) {
                                ulsch_harq->new_rx,
                                E,
                                ulsch_harq->F,
-                               Kr-ulsch_harq->F-2*(p_decoderParms->Z))==-1) {
+                               Kr-ulsch_harq->F-2*(p_decoderParms->Z),
+                               false) == -1) {
 
     stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
 
@@ -634,7 +635,8 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
 				 harq_process->new_rx,
 				 E,
 				 harq_process->F,
-				 Kr-harq_process->F-2*(p_decParams->Z))==-1) {
+				 Kr - harq_process->F - 2 * (p_decParams->Z),
+				 false) == -1) {
 
       LOG_E(PHY,"ulsch_decoding.c: Problem in rate_matching\n");
       no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;

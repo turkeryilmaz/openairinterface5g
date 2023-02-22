@@ -400,35 +400,35 @@ int nr_rate_matching_ldpc(uint32_t Tbslbrm,
                           uint32_t E,
                           bool is_sl)
 {
-  uint32_t Ncb,ind,k=0,Nref,N;
+  uint32_t Ncb, ind, k = 0, Nref, N;
 
-  if (C==0) {
-    LOG_E(PHY,"nr_rate_matching: invalid parameters (C %d\n",C);
+  if (C == 0) {
+    LOG_E(NR_PHY, "nr_rate_matching: invalid parameters (C %d\n", C);
     return -1;
   }
 
   //Bit selection
-  N = (BG==1)?(66*Z):(50*Z);
+  N = (BG == 1) ? (66 * Z) : (50 * Z);
 
   if ((Tbslbrm == 0) || is_sl)
       Ncb = N;
   else {
-      Nref = 3*Tbslbrm/(2*C); //R_LBRM = 2/3
+      Nref = 3 * Tbslbrm / (2 * C); //R_LBRM = 2 / 3
       Ncb = min(N, Nref);
   }
 
-  ind = (index_k0[BG-1][rvidx]*Ncb/N)*Z;
+  ind = (index_k0[BG - 1][rvidx] * Ncb / N) * Z;
 
 #ifdef RM_DEBUG
   printf("nr_rate_matching_ldpc: E %d, F %d, Foffset %d, k0 %d, Ncb %d, rvidx %d, Tbslbrm %d\n", E, F, Foffset,ind, Ncb, rvidx, Tbslbrm);
 #endif
 
   if (Foffset > E) {
-    LOG_E(PHY,"nr_rate_matching: invalid parameters (Foffset %d > E %d) F %d, k0 %d, Ncb %d, rvidx %d, Tbslbrm %d\n",Foffset,E,F, ind, Ncb, rvidx, Tbslbrm);
+    LOG_E(NR_PHY, "nr_rate_matching: invalid parameters (Foffset %d > E %d) F %d, k0 %d, Ncb %d, rvidx %d, Tbslbrm %d\n",Foffset,E,F, ind, Ncb, rvidx, Tbslbrm);
     return -1;
   }
   if (Foffset > Ncb) {
-    LOG_E(PHY,"nr_rate_matching: invalid parameters (Foffset %d > Ncb %d)\n",Foffset,Ncb);
+    LOG_E(NR_PHY, "nr_rate_matching: invalid parameters (Foffset %d > Ncb %d)\n",Foffset,Ncb);
     return -1;
   }
 
@@ -481,37 +481,38 @@ int nr_rate_matching_ldpc_rx(uint32_t Tbslbrm,
                              uint8_t rvidx,
                              uint8_t clear,
                              uint32_t E,
-			     uint32_t F,
-			     uint32_t Foffset)
+                             uint32_t F,
+                             uint32_t Foffset,
+                             bool is_sl)
 {
-  uint32_t Ncb,ind,k,Nref,N;
+  uint32_t Ncb, ind, k, Nref, N;
 
 #ifdef RM_DEBUG
-  int nulled=0;
+  int nulled = 0;
 #endif
 
-  if (C==0) {
-    LOG_E(PHY,"nr_rate_matching: invalid parameters (C %d\n",C);
+  if (C == 0) {
+    LOG_E(NR_PHY, "nr_rate_matching: invalid parameters (C %d\n", C);
     return -1;
   }
 
   //Bit selection
-  N = (BG==1)?(66*Z):(50*Z);
+  N = (BG == 1)? (66 * Z): (50 * Z);
 
-  if (Tbslbrm == 0)
-    Ncb = N;
+  if ((Tbslbrm == 0) || is_sl)
+      Ncb = N;
   else {
-    Nref = (3*Tbslbrm/(2*C)); //R_LBRM = 2/3
-    Ncb = min(N, Nref);
+      Nref = 3 * Tbslbrm / (2 * C); //R_LBRM = 2 / 3
+      Ncb = min(N, Nref);
   }
 
   ind = (index_k0[BG-1][rvidx]*Ncb/N)*Z;
   if (Foffset > E) {
-    LOG_E(PHY,"nr_rate_matching: invalid parameters (Foffset %d > E %d)\n",Foffset,E);
+    LOG_E(NR_PHY, "nr_rate_matching: invalid parameters (Foffset %d > E %d)\n",Foffset,E);
     return -1;
   }
   if (Foffset > Ncb) {
-    LOG_E(PHY,"nr_rate_matching: invalid parameters (Foffset %d > Ncb %d)\n",Foffset,Ncb);
+    LOG_E(NR_PHY, "nr_rate_matching: invalid parameters (Foffset %d > Ncb %d)\n",Foffset,Ncb);
     return -1;
   }
 

@@ -1085,6 +1085,21 @@ typedef struct {
   time_stats_t slsch_interleaving_stats;
   time_stats_t slsch_multiplexing_stats;
 
+  time_stats_t rx_pssch_stats;
+  time_stats_t sl_indication_stats;
+  time_stats_t schedule_response_stats;
+  time_stats_t slsch_decoding_stats;
+  time_stats_t slsch_rate_unmatching_stats;
+  time_stats_t slsch_ldpc_decoding_stats;
+  time_stats_t slsch_deinterleaving_stats;
+  time_stats_t slsch_unscrambling_stats;
+  time_stats_t slsch_channel_estimation_stats;
+  time_stats_t slsch_ptrs_processing_stats;
+  time_stats_t slsch_channel_compensation_stats;
+  time_stats_t slsch_rbs_extraction_stats;
+  time_stats_t slsch_mrc_stats;
+  time_stats_t slsch_llr_stats;
+
   time_stats_t generic_stat;
   time_stats_t generic_stat_bis[RX_NB_TH][LTE_SLOTS_PER_SUBFRAME];
   time_stats_t ue_front_end_stat[RX_NB_TH];
@@ -1127,6 +1142,15 @@ typedef struct {
   time_stats_t dlsch_modulation_SIC_stats;
   time_stats_t dlsch_llr_stripping_unit_SIC_stats;
   time_stats_t dlsch_unscrambling_SIC_stats;
+
+  notifiedFIFO_t respDecode;
+  // notifiedFIFO_t resp_L1;
+  // notifiedFIFO_t L1_tx_free;
+  // notifiedFIFO_t L1_tx_filled;
+  // notifiedFIFO_t L1_tx_out;
+  // notifiedFIFO_t resp_RU_tx;
+  tpool_t threadPool;
+  int nbDecode;
 
 #if ENABLE_RAL
   hash_table_t    *ral_thresholds_timed;
@@ -1176,6 +1200,19 @@ typedef struct LDPCDecode_ue_s {
   time_stats_t ts_rate_unmatch;
   time_stats_t ts_ldpc_decode;
 } ldpcDecode_ue_t;
+
+struct ldpcReqId_ue {
+  uint16_t rnti;
+  uint16_t frame;
+  uint8_t  subframe;
+  uint8_t  codeblock;
+  uint16_t spare;
+} __attribute__((packed));
+
+union ldpcReqUnion_ue {
+  struct ldpcReqId_ue s;
+  uint64_t p;
+};
 
 #include "SIMULATION/ETH_TRANSPORT/defs.h"
 #endif

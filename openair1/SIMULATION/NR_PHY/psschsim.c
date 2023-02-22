@@ -317,7 +317,10 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
         fs = 122.88e6;
         bw = 100e6;
       }
-      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
+      break;
+    default:
+      AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
       break;
   }
   bw_setting->scs = scs;
@@ -343,7 +346,7 @@ int main(int argc, char **argv)
   set_sci(&first_sci);
   channel_desc_t *UE2UE;
   uint8_t extended_prefix_flag = 0;
-  int frame = 0, subframe = 0;
+  int frame = 0, slot = 0;
   NR_DL_FRAME_PARMS *frame_parms;
   double sigma;
   unsigned char qbits = 8;
@@ -353,16 +356,14 @@ int main(int argc, char **argv)
   uint8_t max_ldpc_iterations = 5;
 
   double DS_TDL = 300e-9;//.03;
-
   cpuf = get_cpu_freq_GHz();
 
   if (load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY) == 0) {
     exit_fun("[NR_SSCHSIM] Error, configuration module init failed\n");
   }
 
-  //logInit();
+  get_sim_cl_opts(argc, argv);
   randominit(0);
-
   // logging initialization
   logInit();
   set_glog(loglvl);
@@ -414,7 +415,7 @@ int main(int argc, char **argv)
     free(rxUE);
     exit(-1);
   }
-
+  /*
   for (sf = 0; sf < 2; sf++) {
     txUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
     rxUE->slsch_rx[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
@@ -423,8 +424,9 @@ int main(int argc, char **argv)
       exit(-1);
     }
   }
-  //init_nr_ue_transport(&rxUE);
-
+  */
+  init_nr_ue_transport(&txUE);
+  init_nr_ue_transport(&rxUE);
 
   s_re = malloc(n_tx*sizeof(double*));
   s_im = malloc(n_tx*sizeof(double*));
@@ -445,7 +447,6 @@ int main(int argc, char **argv)
   NR_UE_ULSCH_t *slsch_rxUE = rxUE->slsch[UE_id];
   NR_UL_UE_HARQ_t *harq_process_rxUE = slsch_rxUE->harq_processes[harq_pid];
   nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
-  NR_UE_ULSCH_t *slsch_rx_ue = rxUE->slsch_rx[0][0];
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
 
   if ((Nl == 4)||(Nl == 3))
@@ -554,7 +555,7 @@ int main(int argc, char **argv)
                            Nl);
 
       ret = nr_slsch_decoding(rxUE, UE_id, channel_output_fixed, frame_parms, rel16_ul,
-                              frame, subframe, harq_pid, G);
+                              frame, slot, harq_pid, G);
 
       if (ret)
         n_errors++;
