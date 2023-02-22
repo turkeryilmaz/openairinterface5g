@@ -516,11 +516,12 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
   for (int i = 0; i < NUMBER_OF_CONNECTED_gNB_MAX; i++) {
     for (int j=0; j<num_codeword; j++) {
       for (int k=0; k<RX_NB_TH_MAX; k++) {
-        if (get_softmodem_params()->sl_mode != 0) {
+        if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
           AssertFatal((ue->slsch_rx[k][i][j] =
                        new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, ue->max_ldpc_iterations, ue->frame_parms.N_RB_DL)) != NULL,
                        "Can't get ue slsch_rx structures\n");
-        } else if (get_softmodem_params()->sl_mode != 2) {
+        }
+        if (get_softmodem_params()->sl_mode == 0 || get_softmodem_params()->sl_mode == 1) {
           AssertFatal((ue->dlsch[k][i][j] =
                        new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, ue->max_ldpc_iterations, ue->frame_parms.N_RB_DL)) != NULL,
                        "Can't get ue dlsch structures\n");
