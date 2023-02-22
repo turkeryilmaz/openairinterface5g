@@ -49,11 +49,11 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
   for (int i = 0; i < NR_MAX_ULSCH_HARQ_PROCESSES; i++) {
     if (slsch->harq_processes[i]) {
       if (slsch->harq_processes[i]->a) {
-        free16(slsch->harq_processes[i]->a, a_segments * 1056);
+        free16(slsch->harq_processes[i]->a, slsch_bytes);
         slsch->harq_processes[i]->a = NULL;
       }
       if (slsch->harq_processes[i]->b) {
-        free16(slsch->harq_processes[i]->b, a_segments * 1056);
+        free16(slsch->harq_processes[i]->b, slsch_bytes);
         slsch->harq_processes[i]->b = NULL;
       }
       for (int r=0; r < a_segments; r++) {
@@ -222,7 +222,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     ///////////////////////// c---->| LDPC coding |---->d /////////////////////////
 
 #ifdef DEBUG_SLSCH_CODING
-    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
+    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, harq_process->BG);
     for (int r = 0; r < harq_process->C; r++) {
       //channel_input[r] = &harq_process->d[r][0];
       LOG_D(NR_PHY, "Encoder: B %d F %d \n", harq_process->B, harq_process->F);
@@ -233,8 +233,8 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
         LOG_D(NR_PHY, "%d ", harq_process->c[r][cnt]);
       }
       LOG_D(NR_PHY, "\n");
-      //ldpc_encoder_orig((unsigned char*)harq_process->c[r], harq_process->d[r], Kr, BG, 0);
-      //ldpc_encoder_optim((unsigned char*)harq_process->c[r], (unsigned char*)&harq_process->d[r][0], Kr, BG, NULL, NULL, NULL, NULL);
+      //ldpc_encoder_orig((unsigned char*)harq_process->c[r], harq_process->d[r], Kr, harq_process->BG, 0);
+      //ldpc_encoder_optim((unsigned char*)harq_process->c[r], (unsigned char*)&harq_process->d[r][0], Kr, harq_process->BG, NULL, NULL, NULL, NULL);
     }
 #endif
 

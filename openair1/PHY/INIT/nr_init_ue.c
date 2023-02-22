@@ -525,7 +525,8 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
           LOG_D(PHY,"ulsch[%d][%d] => %p\n",k,i,ue->ulsch[k][i]);
           if (get_softmodem_params()->sl_mode != 0) {
             AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES,&ue->frame_parms))!=NULL, "Can't get ue slsch structures\n");
-            LOG_D(PHY,"slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
+            AssertFatal((ue->slsch_rx[k][i][j] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES,&ue->frame_parms))!=NULL, "Can't get ue slsch structures\n");
+            LOG_I(NR_PHY, "slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
           }
         }
       }

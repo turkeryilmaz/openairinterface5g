@@ -81,9 +81,9 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   #define INITIAL_PSS_NR    (7)
   const int x_initial[INITIAL_PSS_NR] = {0, 1, 1 , 0, 1, 1, 1};
 
-  assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
-  assert(size <= SYNCF_TMP_SIZE);
-  assert(size <= SYNC_TMP_SIZE);
+  AssertFatal(N_ID_2 < NUMBER_PSS_SEQUENCE, "Invalid size %d > NUMBER_PSS_SEQUENCE %d\n", N_ID_2, NUMBER_PSS_SEQUENCE);
+  AssertFatal(size <= SYNCF_TMP_SIZE, "Invalid size %d > SYNCF_TMP_SIZE %lu\n", size, SYNCF_TMP_SIZE);
+  AssertFatal(size <= SYNC_TMP_SIZE, "Invalid size %d > NUMBER_PSS_SEQUENCE %u\n", N_ID_2, NUMBER_PSS_SEQUENCE);
 
   bzero(synchroF_tmp, size);
   bzero(synchro_tmp, size);
