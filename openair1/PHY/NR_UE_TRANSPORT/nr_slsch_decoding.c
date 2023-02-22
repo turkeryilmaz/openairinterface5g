@@ -110,7 +110,7 @@ NR_UE_ULSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_UL, int number_of_harq_pids, NR_
 
   for (int i = 0; i < number_of_harq_pids; i++) {
 
-    slsch->harq_processes[i] = (NR_UE_ULSCH_t *)malloc16_clear(sizeof(NR_UE_ULSCH_t));
+    slsch->harq_processes[i] = (NR_UL_UE_HARQ_t *)malloc16_clear(sizeof(NR_UL_UE_HARQ_t));
     slsch->harq_processes[i]->b = (uint8_t*)malloc16_clear(slsch_bytes);
     slsch->harq_processes[i]->c = (uint8_t**)malloc16_clear(a_segments * sizeof(uint8_t *));
     slsch->harq_processes[i]->d = (int16_t**)malloc16_clear(a_segments * sizeof(int16_t *));
