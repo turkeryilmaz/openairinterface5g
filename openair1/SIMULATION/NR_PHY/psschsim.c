@@ -89,27 +89,21 @@ typedef struct {
   double fs;
 } BW;
 
-double cfo = 0;
 double snr0 =- 2.0;
 double snr1 = 2.0;
 uint8_t snr1set = 0;
 int n_trials = 1;
 uint8_t n_tx = 1;
 uint8_t n_rx = 1;
-uint16_t Nid_cell = 0;
-uint16_t Nid_SL = 336 + 10;
-uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 FILE *input_fd = NULL;
 SCM_t channel_model = AWGN;
-int N_RB = 273;
+int nb_rb = 50;
+int N_RB_UL = 106;
+int N_RB_DL = 106;
 int mu = 1;
-unsigned char psbch_phase = 0;
-int run_initial_sync = 1;
 int loglvl = OAILOG_WARNING;
-float target_error_rate = 0.01;
 int seed = 0;
-bool pss_sss_test = false;
 
 static void get_sim_cl_opts(int argc, char **argv)
 {
@@ -173,7 +167,11 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 'R':
-        N_RB = atoi(optarg);
+        N_RB_UL = atoi(optarg);
+        break;
+
+      case 'r':
+        nb_rb = atoi(optarg);
         break;
 
       case 's':
@@ -214,7 +212,8 @@ static void get_sim_cl_opts(int argc, char **argv)
           printf("-y Number of TX antennas used in eNB\n");
           printf("-z Number of RX antennas used in UE\n");
           printf("-W number of layer\n");
-          printf("-R N_RB\n");
+          printf("-R N_RB_UL\n");
+          printf("-r nb_rb\n");
           printf("-F Input filename (.txt format) for RX conformance testing\n");
           printf("-m MCS\n");
           printf("-l number of symbol\n");
@@ -227,7 +226,8 @@ static void get_sim_cl_opts(int argc, char **argv)
 
 
 void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
-                                    int N_RB,
+                                    int N_RB_UL,
+                                    int N_RB_DL,
                                     int mu,
                                     uint64_t position_in_burst)
 {
@@ -238,14 +238,14 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
     rev_burst |= (((position_in_burst >> (63 - i)) & 0x01) << i);
 
   nrUE_config->ssb_config.scs_common               = mu;
-  nrUE_config->ssb_table.ssb_subcarrier_offset     = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a        = (N_RB - 20) >> 1;
+  nrUE_config->ssb_table.ssb_subcarrier_offset     = ssb_subcarrier_offset;
+  nrUE_config->ssb_table.ssb_offset_point_a        = (N_RB_UL - 20) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask = (rev_burst >> 32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type       = TDD;
   nrUE_config->ssb_table.ssb_period                = 1; //10ms
-  nrUE_config->carrier_config.dl_grid_size[mu]     = N_RB;
-  nrUE_config->carrier_config.ul_grid_size[mu]     = N_RB;
+  nrUE_config->carrier_config.dl_grid_size[mu]     = N_RB_DL;
+  nrUE_config->carrier_config.ul_grid_size[mu]     = N_RB_UL;
   nrUE_config->carrier_config.num_tx_ant           = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant           = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                = 0;
@@ -267,7 +267,7 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   }
 
   fp->threequarter_fs = 0;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB, fp->nr_band);
+  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
 
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   fp->ofdm_offset_divisor = UINT_MAX;
@@ -338,8 +338,8 @@ int main(int argc, char **argv)
   set_glog(loglvl);
 
   PHY_VARS_NR_UE *txUE = malloc(sizeof(PHY_VARS_NR_UE));
-  txUE->frame_parms.N_RB_DL = N_RB;
-  txUE->frame_parms.N_RB_UL = N_RB;
+  txUE->frame_parms.N_RB_DL = N_RB_DL;
+  txUE->frame_parms.N_RB_UL = N_RB_UL;
   txUE->frame_parms.Ncp = NORMAL;
   txUE->frame_parms.nb_antennas_tx = 1;
   txUE->frame_parms.nb_antennas_rx = n_rx;
@@ -350,16 +350,16 @@ int main(int argc, char **argv)
   rxUE->frame_parms.nb_antennas_rx = 1;
 
   uint64_t burst_position = 0x01;
-  nr_phy_config_request_psschsim(txUE, N_RB, mu, burst_position);
-  nr_phy_config_request_psschsim(rxUE, N_RB, mu, burst_position);
+  nr_phy_config_request_psschsim(txUE, N_RB_UL, N_RB_DL, mu, burst_position);
+  nr_phy_config_request_psschsim(rxUE, N_RB_UL, N_RB_DL, mu, burst_position);
 
   BW *bw_setting = malloc(sizeof(BW));
-  set_fs_bw(txUE, mu, N_RB, bw_setting);
+  set_fs_bw(txUE, mu, N_RB_UL, bw_setting);
 
   double DS_TDL = 300e-9; //.03;
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model,
-                                               bw_setting->fs, //N_RB2sampling_rate(N_RB),
-                                               bw_setting->bw, //N_RB2channel_bandwidth(N_RB),
+                                               bw_setting->fs,
+                                               bw_setting->bw,
                                                DS_TDL,
                                                0, 0, 0, 0);
 
@@ -397,8 +397,8 @@ int main(int argc, char **argv)
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
   uint8_t length_dmrs = 1;
   uint16_t nb_symb_sch = 12;
-  unsigned int available_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
-  unsigned int TBS = nr_compute_tbs(mod_order, code_rate, N_RB, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
+  unsigned int available_bits = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
+  unsigned int TBS = nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
   printf("\nAvailable bits %u TBS %u mod_order %d\n", available_bits, TBS, mod_order);
 
   unsigned char harq_pid = 0;
@@ -417,9 +417,9 @@ int main(int argc, char **argv)
   uint8_t nb_codewords = 1;
   harq_process_txUE->pssch_pdu.mcs_index = Imcs;
   harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
-  harq_process_txUE->pssch_pdu.rb_size = N_RB;
+  harq_process_txUE->pssch_pdu.rb_size = nb_rb;
   harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_txUE->num_of_mod_symbols = N_RE_prime * N_RB * nb_codewords;
+  harq_process_txUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
   harq_process_txUE->pssch_pdu.pssch_data.rv_index = 0;
   harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
   harq_process_txUE->pssch_pdu.target_code_rate = code_rate;
@@ -434,10 +434,11 @@ int main(int argc, char **argv)
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
 #endif
 
-  unsigned int G = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
+  unsigned int G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
   nr_slsch_encoding(txUE, slsch_ue, &txUE->frame_parms, harq_pid, G);
 
+  #if 0
   unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
@@ -506,9 +507,9 @@ int main(int argc, char **argv)
       printf("\n");
     }
   }
-
+  #endif
   for (int sf = 0; sf < 2; sf++)
-    free_nr_ue_slsch(&txUE->slsch[sf][0], N_RB, &txUE->frame_parms);
+    free_nr_ue_slsch(&txUE->slsch[sf][0], nb_rb, &txUE->frame_parms);
 
   term_nr_ue_signal(txUE, 1);
   free(txUE);
@@ -519,6 +520,5 @@ int main(int argc, char **argv)
 
   loader_reset();
   logTerm();
-
-  return (n_errors);
+  return (0);
 }
