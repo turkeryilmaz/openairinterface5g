@@ -403,6 +403,8 @@ int main(int argc, char **argv)
 
   unsigned char harq_pid = 0;
   NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0][0];
+  slsch_ue_rx->harq_processes[harq_pid]->Nl = Nl;
+  slsch_ue_rx->harq_processes[harq_pid]->Qm = mod_order;
   nfapi_nr_pssch_pdu_t *rel16_sl_rx = &slsch_ue_rx->harq_processes[harq_pid]->pssch_pdu;
   rel16_sl_rx->mcs_index            = Imcs;
   rel16_sl_rx->pssch_data.rv_index  = 0;
@@ -508,9 +510,13 @@ int main(int argc, char **argv)
     }
   }
   #endif
-  for (int sf = 0; sf < 2; sf++)
-    free_nr_ue_slsch(&txUE->slsch[sf][0], nb_rb, &txUE->frame_parms);
-
+  for (int sf = 0; sf < 2; sf++) {
+    free_nr_ue_slsch(&txUE->slsch[sf][0], N_RB_UL, &txUE->frame_parms);
+    free_nr_ue_dlsch(&rxUE->slsch_rx[sf][0][0], N_RB_DL);
+  }
+  term_nr_ue_transport(txUE);
+  term_nr_ue_transport(rxUE);
+  term_nr_ue_signal(rxUE, 1);
   term_nr_ue_signal(txUE, 1);
   free(txUE);
   free(rxUE);
