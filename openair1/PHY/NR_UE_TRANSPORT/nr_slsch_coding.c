@@ -251,7 +251,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     start_meas(&ue->slsch_ldpc_encoding_stats);
     for (int j = 0; j < (harq_process->C / 8 + 1); j++) {
       impp.macro_num = j;
-      ldpc_encoder_orig((unsigned char*)harq_process->c[j], harq_process->d[j], harq_process->Z, Kb, Kr, harq_process->BG, 0);
+      nrLDPC_encoder(harq_process->c, harq_process->d, *pz, Kb, Kr, harq_process->BG, &impp);
     }
     stop_meas(&ue->slsch_ldpc_encoding_stats);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_LDPC_ENCODER_OPTIM, VCD_FUNCTION_OUT);

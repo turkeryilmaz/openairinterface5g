@@ -336,6 +336,7 @@ int main(int argc, char **argv)
   randominit(seed);
   logInit();
   set_glog(loglvl);
+  load_nrLDPClib(NULL);
 
   PHY_VARS_NR_UE *txUE = malloc(sizeof(PHY_VARS_NR_UE));
   txUE->frame_parms.N_RB_DL = N_RB_DL;
