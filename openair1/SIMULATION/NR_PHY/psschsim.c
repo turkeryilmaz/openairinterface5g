@@ -386,7 +386,9 @@ int main(int argc, char **argv)
     }
   }
 #endif
+  get_softmodem_params()->sync_ref = true;
   init_nr_ue_transport(txUE);
+  get_softmodem_params()->sync_ref = false;
   init_nr_ue_transport(rxUE);
 
   uint8_t nb_re_dmrs = 6;
