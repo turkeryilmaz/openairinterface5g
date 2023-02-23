@@ -206,6 +206,26 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
   rrc_gNB_carrier_data_t *carrier = &rrc->carrier;
 
   NR_BCCH_BCH_Message_t *mib = &carrier->mib;
+  /*TODO: for SS mode, mib is coming from TTCN */
+  /*
+  if(RC.ss.mode == SS_SOFTMODEM) {
+    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_BCH_Message,
+                                     NULL,
+                                     (void *)mib,
+                                     carrier->MIB,
+                                     24);
+    LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
+
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+                 enc_rval.failed_type->name, enc_rval.encoded);
+
+    if (enc_rval.encoded==-1) {
+      return(-1);
+    }
+    return((enc_rval.encoded+7)/8);
+  }
+  */
+
   NR_ServingCellConfigCommon_t *scc = carrier->servingcellconfigcommon;
 
   memset(mib,0,sizeof(NR_BCCH_BCH_Message_t));
@@ -315,8 +335,37 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
 
 uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
                     gNB_RrcConfigurationReq *configuration) {
-
   asn_enc_rval_t enc_rval;
+  /*TODO: for SS mode, sib1 is coming from TTCN */
+  /*
+  if(RC.ss.mode == SS_SOFTMODEM) {
+    if(NULL == carrier->siblock1) {
+      return 0;
+    }
+    NR_BCCH_DL_SCH_Message_t *sib1_message = carrier->siblock1;
+
+    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+      xer_fprint(stdout, &asn_DEF_NR_BCCH_DL_SCH_Message, (const void*)sib1_message);
+    }
+
+    if(carrier->SIB1 == NULL) carrier->SIB1=(uint8_t *) malloc16(NR_MAX_SIB_LENGTH/8);
+    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_DL_SCH_Message,
+        NULL,
+        (void *)sib1_message,
+        carrier->SIB1,
+        NR_MAX_SIB_LENGTH/8);
+    LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB1, NR_MAX_SIB_LENGTH/8);
+
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+        enc_rval.failed_type->name, enc_rval.encoded);
+
+    if (enc_rval.encoded==-1) {
+      return(-1);
+    }
+    return((enc_rval.encoded+7)/8);
+  }
+  */
+
   NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
   carrier->siblock1 = sib1_message;
   sib1_message->message.present = NR_BCCH_DL_SCH_MessageType_PR_c1;
@@ -900,7 +949,13 @@ void fill_initial_SpCellConfig(int uid,
   SpCellConfig->reconfigurationWithSync = NULL;
   SpCellConfig->rlmInSyncOutOfSyncThreshold = NULL;
   SpCellConfig->rlf_TimersAndConstants = NULL;
-
+  if (RC.ss.mode >= SS_SOFTMODEM) {
+    /* TODO: fill  SpCellConfig->spCellConfigDedicated with configuration from SS*/
+    /*
+    SpCellConfig->cellConfigDedicated = carrier->cellConfigDedicated;
+    return;
+    */
+  }
   SpCellConfig->spCellConfigDedicated = calloc(1,sizeof(*SpCellConfig->spCellConfigDedicated));
   SpCellConfig->spCellConfigDedicated->uplinkConfig = calloc(1,sizeof(*SpCellConfig->spCellConfigDedicated->uplinkConfig));
   NR_UplinkConfig_t *uplinkConfig = SpCellConfig->spCellConfigDedicated->uplinkConfig;
@@ -1392,7 +1447,18 @@ void fill_initial_cellGroupConfig(int uid,
       fill_rb_RLC_BearerConfig(rbIndex, rlc_BearerConfig, ss_rlc_BearerConfig);
       ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
     }
-  }else {  
+
+    /* TODO: ServingCellConfig from SS
+    cellGroupConfig->cellGroupId = carrier->cell_GroupId;
+    cellGroupConfig->mac_CellGroupConfig = carrier->mac_cellGroupConfig;
+    cellGroupConfig->physicalCellGroupConfig = carrier->physicalCellGroupConfig;
+    cellGroupConfig->spCellConfig  = calloc(1,sizeof(*cellGroupConfig->spCellConfig));
+    fill_initial_SpCellConfig(uid,cellGroupConfig->spCellConfig,scc,carrier);
+    cellGroupConfig->sCellToAddModList                                        = NULL;
+    cellGroupConfig->sCellToReleaseList                                       = NULL;
+    return;
+    */
+  }else {
     /* Rlc Bearer Config */
     /* TS38.331 9.2.1	Default SRB configurations */
     cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));

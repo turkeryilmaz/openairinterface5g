@@ -59,7 +59,7 @@ static bool reqCnfFlag_g = false;
 void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req);
 int cell_config_5G_done=-1;
 int cell_config_5G_done_indication();
-bool ss_task_sys_nr_handle_cellConfig5G (struct NR_CellConfigRequest_Type *p_req);
+bool ss_task_sys_nr_handle_cellConfig5G (struct NR_CellConfigRequest_Type *p_req,int cell_State);
 bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req);
 bool ss_task_sys_nr_handle_cellConfigAttenuation(struct NR_SYSTEM_CTRL_REQ *req);
 static int sys_5G_send_init_udp(const udpSockReq_t *req);
@@ -262,7 +262,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
       if (req->Request.d == NR_SystemRequest_Type_Cell)
       {
         LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Cell received\n");
-        if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell) )
+        if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell,RC.ss.State) )
         {
           LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
           return;
@@ -327,7 +327,10 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
         {
           case NR_SystemRequest_Type_Cell:
             {
-              LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_Cell \n");
+              if (false == ss_task_sys_nr_handle_cellConfig5G(&req->Request.v.Cell,RC.ss.State) )
+              {
+                LOG_E(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
+              }
               send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
             }
             break;
@@ -651,11 +654,136 @@ void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
  * Returns    : None
  */
 
-bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
+bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,int cell_State)
 {
   uint32_t gnbId = 0;
   if (p_req->d == NR_CellConfigRequest_Type_AddOrReconfigure)
   {
+    /* populate each config */
+    /* 1. StaticResource Config */
+    if(p_req->v.AddOrReconfigure.StaticResourceConfig.d)
+    {
+
+    }
+
+    /* 2. CellConfigCommon: currently NR_InitialCellPower_Type is processed after cell config  */
+    if(p_req->v.AddOrReconfigure.CellConfigCommon.d)
+    {
+
+    }
+
+    /* 3.  PhysicalLayer */
+    /* TODO: populate fields to
+         RC.nrrrc[gnbId]->carrier.servingcellconfigcommon
+         RC.nrrrc[gnbId]->carrier.cellConfigDedicated
+    */
+    if(p_req->v.AddOrReconfigure.PhysicalLayer.d)
+    {
+
+    }
+
+    /* 4.  BcchConfig */
+    /* TODO: populate all BcchConfig fields to
+              RC.nrrrc[gnbId]->carrier.mib
+              RC.nrrrc[gnbId]->carrier.siblock1
+              RC.nrrrc[gnbId]->carrier.systemInformation
+     */
+    if(p_req->v.AddOrReconfigure.BcchConfig.d)
+    {
+
+    }
+
+    /* 5. PcchConfig */
+    if(p_req->v.AddOrReconfigure.PcchConfig.d)
+    {
+
+    }
+
+    /* 6. RachProcedureConfig */
+    if(p_req->v.AddOrReconfigure.RachProcedureConfig.d)
+    {
+
+    }
+
+    /* 7. DcchDtchConfig */
+    if(p_req->v.AddOrReconfigure.DcchDtchConfig.d)
+    {
+      if(NULL == RC.nrrrc[gnbId]->carrier.dcchDtchConfig){
+        RC.nrrrc[gnbId]->carrier.dcchDtchConfig = calloc(1,sizeof(NR_DcchDtchConfig_t));
+      }
+      NR_DcchDtchConfig_t * dcchDtchConfig = RC.nrrrc[gnbId]->carrier.dcchDtchConfig;
+      if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.DL.d)
+      {
+
+      }
+
+      if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.d)
+      {
+        if(NULL==dcchDtchConfig->ul){
+          dcchDtchConfig->ul = calloc(1,sizeof(*(dcchDtchConfig->ul)));
+        }
+        if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.d){
+
+          if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.d){
+            if(NULL == dcchDtchConfig->ul->dci_info){
+              dcchDtchConfig->ul->dci_info = calloc(1,sizeof(*(dcchDtchConfig->ul->dci_info)));
+            }
+            if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.d){
+              if(NULL == dcchDtchConfig->ul->dci_info->resoure_assignment){
+                 dcchDtchConfig->ul->dci_info->resoure_assignment = calloc(1,sizeof(*(dcchDtchConfig->ul->dci_info->resoure_assignment)));
+              }
+              if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.d){
+                dcchDtchConfig->ul->dci_info->resoure_assignment->FirstRbIndex =
+                            p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.FirstRbIndex;
+                dcchDtchConfig->ul->dci_info->resoure_assignment->Nprb =
+                            p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.FreqDomain.v.Nprb;
+              }
+              if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.d) {
+                if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.v.d > 0){
+                  struct NR_TransportBlockSingleTransmission_Type * tbst = &p_req->v.AddOrReconfigure.DcchDtchConfig.v.UL.v.SearchSpaceAndDci.v.DciInfo.v.ResoureAssignment.v.TransportBlockScheduling.v.v[0];
+                  dcchDtchConfig->ul->dci_info->resoure_assignment->transportBlock_scheduling.imcs = tbst->ImcsValue;
+                  dcchDtchConfig->ul->dci_info->resoure_assignment->transportBlock_scheduling.RedundancyVersion = tbst->RedundancyVersion;
+                  dcchDtchConfig->ul->dci_info->resoure_assignment->transportBlock_scheduling.ToggleNDI = tbst->ToggleNDI;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.DrxCtrl.d)
+      {
+
+      }
+
+      if(p_req->v.AddOrReconfigure.DcchDtchConfig.v.MeasGapCtrl.d)
+      {
+
+      }
+    }
+
+    /* 8. ServingCellConfig */
+    /* TODO: populate ServingCellConfig to
+        RC.nrrrc[gnbId]->carrier.cell_GroupId
+        RC.nrrrc[gnbId]->carrier.mac_cellGroupConfig
+        RC.nrrrc[gnbId]->carrier.physicalCellGroupConfig
+    */
+    if(p_req->v.AddOrReconfigure.ServingCellConfig.d)
+    {
+
+    }
+    if(cell_State != SS_STATE_NOT_CONFIGURED){
+      /* Trigger RRC Cell reconfig when cell is active */
+      MessageDef *msg_p = NULL;
+      msg_p = itti_alloc_new_message (TASK_GNB_APP, 0, NRRRC_CONFIGURATION_REQ);
+      LOG_I(GNB_APP,"ss_gNB Sending configuration message to NR_RRC task\n");
+      memcpy(&NRRRC_CONFIGURATION_REQ(msg_p), &RC.nrrrc[gnbId]->configuration,sizeof(NRRRC_CONFIGURATION_REQ(msg_p)));
+      itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnbId), msg_p);
+      return true;
+    }
+
+    /* following code shall be optimized and moved to "PhysicalLayer" populating*/
+    /*****************************************************************************/
     /* Populating PhyCellId */
     if (p_req->v.AddOrReconfigure.PhysicalLayer.v.Common.v.PhysicalCellId.d == true)
     {
@@ -785,6 +913,7 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req)
           *RC.nrrrc[gnbId]->configuration.scc->uplinkConfigCommon->frequencyInfoUL->p_Max);
 
     }
+    /*****************************************************************************/
   }
 
   return true;

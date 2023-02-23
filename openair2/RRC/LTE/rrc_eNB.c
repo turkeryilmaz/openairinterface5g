@@ -1269,6 +1269,7 @@ extern void clean_eNb_dlsch(LTE_eNB_DLSCH_t *dlsch);
 void release_UE_in_freeList(module_id_t mod_id) {
   PHY_VARS_eNB                             *eNB_PHY = NULL;
   eNB_MAC_INST                             *eNB_MAC = RC.mac[mod_id];
+  int                                       CC_id;
   pthread_mutex_lock(&lock_ue_freelist);
 
   for(int ue_num = 0; ue_num < sizeofArray(eNB_MAC->UE_free_ctrl) ; ue_num++) {
@@ -1278,7 +1279,7 @@ void release_UE_in_freeList(module_id_t mod_id) {
       protocol_ctxt_t  ctxt;
       PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, mod_id, ENB_FLAG_YES, rnti, 0, 0,mod_id);
 
-      for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
         eNB_PHY = RC.eNB[mod_id][CC_id];
         int id;
         // clean ULSCH entries for rnti

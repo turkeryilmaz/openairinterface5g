@@ -157,18 +157,29 @@ typedef struct ss_req_pdcp_cnt_s {
   uint8_t rb_id;
 } ss_req_pdcp_cnt_t;
 
+#define RACH_PREAMBLE_PRESENT 0x01
+#define PDCCH_ORDER_PRESENT 0x02
 typedef struct _pdcchOrder_t
 {
   uint8_t preambleIndex;
   uint8_t prachMaskIndex;
 }pdcchOrder_t;
 
+typedef enum L1MacIndCtrl_e {
+  IndCtrlMode_NOT_PRESENT = 0,
+  IndCtrlMode_ENABLE = 1,
+  IndCtrlMode_DISABLE = 2
+} L1MacIndCtrl;
 
 #define RACH_PREAMBLE_PRESENT 0x01
 #define PDCCH_ORDER_PRESENT 0x02
 typedef struct ss_l1macind_ctrl_s {
   uint8_t bitmask;
+  int cell_index;
   bool rachpreamble_enable;
+  L1MacIndCtrl RachPreamble_Ctrl;
+  L1MacIndCtrl UL_HARQ_Ctrl;
+  L1MacIndCtrl HarqError_Ctrl;
   pdcchOrder_t pdcchOrder;
 } ss_l1macind_ctrl_t;
 
@@ -322,6 +333,29 @@ typedef struct ss_vt_time_out_s {
 } ss_vt_time_out_t;
 
 /** SYS IND */
+typedef enum SysInd_Type_e {
+  SysInd_Type_Error = 1,
+  SysInd_Type_RachPreamble = 2,
+  SysInd_Type_SchedReq = 3,
+  SysInd_Type_BSR = 4,
+  SysInd_Type_UL_HARQ = 5,
+  SysInd_Type_C_RNTI = 6,
+  SysInd_Type_PHR = 7,
+  SysInd_Type_HarqError = 8,
+  SysInd_Type_RlcDiscardInd = 9,
+  SysInd_Type_PeriodicRI = 10,
+  SysInd_Type_EPHR = 11,
+  SysInd_Type_CqiInd = 12,
+  SysInd_Type_SrsInd = 13,
+  SysInd_Type_DC_PHR = 14,
+} SysInd_Type;
+
+typedef struct harq_error_s {
+  bool bIsUL;
+  int Id;
+  int CURRENT_TX_NB;
+} harq_error_t;
+
 typedef struct ss_system_ind_s
 {
     bool           bitmask; //Flag for presence of optional parameter repetitionsPerPreambleAttempt
@@ -331,6 +365,10 @@ typedef struct ss_system_ind_s
     uint8_t        ra_PreambleIndex;
     bool           prtPower_Type;
     uint32_t       repetitionsPerPreambleAttempt;
+    SysInd_Type    sysind_type;
+    int            UL_Harq;
+    harq_error_t   HarqError;
+
 } ss_system_ind_t;
 
 #endif /* SS_MESSAGES_TYPES_H_ */
