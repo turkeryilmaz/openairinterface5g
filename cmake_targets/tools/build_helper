@@ -279,6 +279,10 @@ install_xran_from_sources(){
     cd phy
     git checkout oran_release_bronze_v1.1
 
+    cd fhi_lib/lib/src
+    sed -i 's/pmc -u -b 0/pmc -u -b 0 -d 24/' xran_sync_api.c
+    cd ../../../
+
     echo_info "\Copy XRAN patched to phy/ directory"
     scp -r $OPENAIR_DIR/cmake_targets/tools/oran_fhi_integration_patches/ .
 
