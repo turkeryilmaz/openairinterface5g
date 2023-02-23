@@ -107,9 +107,19 @@ EXTERN int16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]
 = { NULL, NULL, NULL}
 #endif
 ;
+EXTERN int16_t *primary_synchro_nr_sl[NUMBER_PSS_SEQUENCE_SL]
+#ifdef INIT_VARIABLES_PSS_NR_H
+= { NULL, NULL}
+#endif
+;
 EXTERN int16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
+#endif
+;
+EXTERN int16_t *primary_synchro_nr2_sl[NUMBER_PSS_SEQUENCE_SL]
+#ifdef INIT_VARIABLES_PSS_NR_H
+= { NULL, NULL}
 #endif
 ;
 EXTERN int16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE]
@@ -117,7 +127,11 @@ EXTERN int16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE]
 = { NULL, NULL, NULL}
 #endif
 ;
-
+EXTERN int16_t *primary_synchro_time_nr_sl[NUMBER_PSS_SEQUENCE_SL]
+#ifdef INIT_VARIABLES_PSS_NR_H
+= { NULL, NULL}
+#endif
+;
 /* profiling structure */
 EXTERN time_stats_t generic_time[TIME_LAST];
 

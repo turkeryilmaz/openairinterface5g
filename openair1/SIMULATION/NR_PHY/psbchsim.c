@@ -51,8 +51,6 @@
 #include <executables/softmodem-common.h>
 #include <executables/nr-uesoftmodem.h>
 #include "openair1/SCHED_NR_UE/defs.h"
-#include "openair1/SIMULATION/NR_PHY/nr_pss_sl_test.h"
-#include "openair1/SIMULATION/NR_PHY/nr_sss_sl_test.h"
 
 //#define DEBUG_NR_PSBCHSIM
 double cpuf;
@@ -117,7 +115,6 @@ int run_initial_sync = 1;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
-bool pss_sss_test = false;
 
 void free_psbchsim_members(PHY_VARS_NR_UE *UE,
                            double **s_re,
@@ -289,11 +286,6 @@ static void get_sim_cl_opts(int argc, char **argv)
         cfo = atof(optarg);
         break;
 
-      case 'p':
-        printf("Setting PSS and SSS tests\n");
-        pss_sss_test = atoi(optarg);
-        break;
-
       case 'P':
         psbch_phase = atoi(optarg);
         if (psbch_phase > 3)
@@ -383,26 +375,21 @@ int main(int argc, char **argv)
 
   double fs = 0;
   double scs = 30000;
-  double bw = 100e6;
   switch (mu) {
     case 1:
       scs = 30000;
       UE->frame_parms.Lmax = 1;
       if (N_RB_DL == 217) {
         fs = 122.88e6;
-        bw = 80e6;
       }
       else if (N_RB_DL == 245) {
         fs = 122.88e6;
-        bw = 90e6;
       }
       else if (N_RB_DL == 273) {
         fs = 122.88e6;
-        bw = 100e6;
       }
       else if (N_RB_DL == 106) {
         fs = 61.44e6;
-        bw = 40e6;
       }
       else AssertFatal(1==0,"Unsupported numerology for mu %d, N_RB %d\n",mu, N_RB_DL);
       break;
@@ -411,7 +398,6 @@ int main(int argc, char **argv)
       scs = 120000;
       if (N_RB_DL == 66) {
         fs = 122.88e6;
-        bw = 100e6;
       }
       else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
       break;
@@ -449,13 +435,6 @@ int main(int argc, char **argv)
   if (init_nr_ue_signal(UE, 1) != 0) {
     printf("Error at UE NR initialisation\n");
     exit(-1);
-  }
-
-  if (pss_sss_test) {
-    test_pss_sl(UE);
-    test_sss_sl(UE);
-    free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata, input_fd);
-    return 0;
   }
 
   nr_gold_psbch(UE);

@@ -36,6 +36,7 @@
 
 #include "PHY/defs_nr_UE.h"
 #include "PHY/MODULATION/modulation_UE.h"
+#include "executables/softmodem-common.h"
 
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 
@@ -83,7 +84,11 @@ void init_context_sss_nr(int amp)
     x1[i+7] = (x1[i + 1] + x1[i])%(2);
   }
 
-  for (int N_ID_2 = 0; N_ID_2 < N_ID_2_NUMBER; N_ID_2++) {
+  int nid_2_num = N_ID_2_NUMBER;
+  if (get_softmodem_params()->sl_mode != 0) {
+    nid_2_num = N_ID_2_NUMBER_SL;
+  }
+  for (int N_ID_2 = 0; N_ID_2 < nid_2_num; N_ID_2++) {
 
     for (int N_ID_1 = 0; N_ID_1 < N_ID_1_NUMBER; N_ID_1++) {
 
@@ -212,8 +217,11 @@ int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
   int16_t *pss_ext2,*sss_ext2,*sss_ext3,tmp_re,tmp_im,tmp_re2,tmp_im2;
   uint8_t aarx,i;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-
-  pss = primary_synchro_nr2[ue->common_vars.eNb_id];
+  if (get_softmodem_params()->sl_mode == 0) {
+    pss = primary_synchro_nr2[ue->common_vars.eNb_id];
+  } else {
+    pss = primary_synchro_nr2_sl[ue->common_vars.eNb_id];
+  }
 
   sss_ext3 = (int16_t*)&sss_ext[0][0];
 

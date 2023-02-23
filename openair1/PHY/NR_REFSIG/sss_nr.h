@@ -54,6 +54,7 @@
 #define  SCALING_METRIC_SSS_NR        (15)//(19)
 
 #define  N_ID_2_NUMBER                (NUMBER_PSS_SEQUENCE)
+#define  N_ID_2_NUMBER_SL             (NUMBER_PSS_SEQUENCE_SL)
 #define  N_ID_1_NUMBER                (NUMBER_SSS_SEQUENCE)
 
 #define  GET_NID2(Nid_cell)           (Nid_cell%3)

@@ -422,10 +422,13 @@ int main(int argc, char *argv[])
 
     Nid2 = GET_NID2(Nid_cell[index]);
     Nid1 = GET_NID1(Nid_cell[index]);
-
+    int nid_2_num = N_ID_2_NUMBER;
+    if (get_softmodem_params()->sl_mode != 0) {
+      nid_2_num = N_ID_2_NUMBER_SL;
+    }
     for (int position = 0; position < size_test_position; position++) {
 
-      PHY_vars_UE->frame_parms.Nid_cell = (3 * N_ID_1_NUMBER) + N_ID_2_NUMBER; /* set to unvalid value */
+      PHY_vars_UE->frame_parms.Nid_cell = (3 * N_ID_1_NUMBER) + nid_2_num; /* set to unvalid value */
 
       decoded_pbch = (*p_test_synchro_pss_sss)(PHY_vars_UE, test_position[position], Nid2); /* return phase index which gives phase error from an array */
 

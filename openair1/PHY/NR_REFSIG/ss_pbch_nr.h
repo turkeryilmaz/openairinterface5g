@@ -40,16 +40,14 @@
 #define VOID_PARAMETER                (void)   /* avoid a compiler warning for unused parameters of function */
 
 /* PSS parameters */
-#ifdef PHY_SIDE_LINK
-#define  NUMBER_PSS_SEQUENCE          (2)
-#define  PSS_SEQ_OFFSET               (22)    // 0 for NR, 22 for SL
-#else
+#define  NUMBER_PSS_SEQUENCE_SL       (2)
+#define  PSS_SEQ_OFFSET_SL            (22)    // 0 for NR, 22 for SL
 #define  NUMBER_PSS_SEQUENCE          (3)
 #define  PSS_SEQ_OFFSET               (0)
-#endif
 #define  SPSS_SSSS_SUB_CARRIER_START  (2)     // 56 for NR, 2 for SL
 #define  PSS_SSS_SUB_CARRIER_START    (56)      // 56 for NR, 2 for SL
 #define  INVALID_PSS_SEQUENCE         (NUMBER_PSS_SEQUENCE)
+#define  INVALID_PSS_SEQUENCE_SL      (NUMBER_PSS_SEQUENCE_SL)
 #define  LENGTH_PSS_NR                (127)
 #define  N_SC_RB                      (12)     /* Resource block size in frequency domain expressed as a number if subcarriers */
 #define  SCALING_PSS_NR               (3)
