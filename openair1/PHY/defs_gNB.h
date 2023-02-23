@@ -33,7 +33,6 @@
 #ifndef __PHY_DEFS_GNB__H__
 #define __PHY_DEFS_GNB__H__
 
-#include "defs_eNB.h"
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
@@ -44,10 +43,9 @@
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "executables/rt_profiling.h"
-
 #include "nfapi_nr_interface_scf.h"
 
-#define MAX_NUM_RU_PER_gNB MAX_NUM_RU_PER_eNB
+#define MAX_NUM_RU_PER_gNB 8
 #define MAX_PUCCH0_NID 8
 
 typedef struct {
@@ -117,21 +115,9 @@ typedef struct {
 } NR_DL_gNB_HARQ_t;
 
 typedef struct {
-  int frame;
-  int slot;
-  nfapi_nr_dl_tti_pdcch_pdu pdcch_pdu;
-} NR_gNB_PDCCH_t;
-
-typedef struct {
   uint8_t active;
   nfapi_nr_dl_tti_csi_rs_pdu csirs_pdu;
 } NR_gNB_CSIRS_t;
-
-typedef struct {
-  int frame;
-  int slot;
-  nfapi_nr_ul_dci_request_pdus_t pdcch_pdu;
-} NR_gNB_UL_PDCCH_t;
 
 typedef struct {
   int frame;
@@ -584,7 +570,7 @@ typedef struct {
   int            prach_I0;
 } PHY_MEASUREMENTS_gNB;
 
-#define MAX_NUM_NR_PRACH_PREAMBLES 64
+
 #define MAX_NUM_NR_RX_RACH_PDUS 4
 #define MAX_NUM_NR_RX_PRACH_PREAMBLES 4
 #define MAX_UL_PDUS_PER_SLOT 8

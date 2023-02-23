@@ -2,6 +2,7 @@
   - Build_Cluster_Image
   - Build_PhySim
   - Run_LDPCTest
+  - Run_LDPCt1Test
   - Run_NRulsimTest
   - Build_eNB
   - WaitEndBuild_eNB
@@ -51,3 +52,4 @@
   - Push_Local_Registry
   - Pull_Local_Registry
   - Clean_Test_Server_Images
+  - Custom_Command

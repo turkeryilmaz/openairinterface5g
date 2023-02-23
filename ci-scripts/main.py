@@ -43,7 +43,7 @@ import cls_physim               #class PhySim for physical simulators build and 
 import cls_cots_ue              #class CotsUe for Airplane mode control
 import cls_containerize         #class Containerize for all container-based operations on RAN/UE objects
 import cls_static_code_analysis #class for static code analysis
-import cls_ci_ueinfra			#class defining the multi Ue infrastrucure
+import cls_ci_ueinfra		        #class defining the multi Ue infrastrucure
 import cls_physim1          #class PhySim for physical simulators deploy and run
 import cls_cluster              # class for building/deploying on cluster
 
@@ -70,6 +70,7 @@ import subprocess
 from multiprocessing import Process, Lock, SimpleQueue
 logging.basicConfig(
 	level=logging.DEBUG,
+	stream=sys.stdout,
 	format="[%(asctime)s] %(levelname)8s: %(message)s"
 )
 
@@ -471,7 +472,7 @@ def GetParametersFromXML(action):
 		if (string_field is not None):
 			CONTAINERS.cliOptions = string_field
 
-	elif action == 'Run_LDPCTest' or action == 'Run_NRulsimTest':
+	elif action == 'Run_LDPCTest' or action == 'Run_NRulsimTest' or action == 'Run_LDPCt1Test':
 		ldpc.runargs = test.findtext('physim_run_args')
 
 	elif action == 'LicenceAndFormattingCheck':
@@ -498,6 +499,9 @@ def GetParametersFromXML(action):
 		string_field = test.findtext('test_svr_id')
 		if (string_field is not None):
 			CONTAINERS.testSvrId = string_field
+	elif action == 'Custom_Command':
+		RAN.node = test.findtext('node')
+		RAN.command = test.findtext('command')
 
 	else:
 		logging.warning(f"unknown action {action} from option-parsing point-of-view")
@@ -879,6 +883,9 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 					RAN.BuildeNB(HTML)
 				elif action == 'WaitEndBuild_eNB':
 					RAN.WaitBuildeNBisFinished(HTML)
+				elif action == 'Custom_Command':
+					logging.info(f"Executing custom command")
+					RAN.CustomCommand(HTML)
 				elif action == 'Initialize_eNB':
 					check_eNB = False
 					check_OAI_UE = False
@@ -954,6 +961,10 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 						RAN.prematureExit = True
 				elif action == 'Run_LDPCTest':
 					HTML=ldpc.Run_LDPCTest(HTML,CONST,id)
+					if ldpc.exitStatus==1:
+						RAN.prematureExit = True
+				elif action == 'Run_LDPCt1Test':
+					HTML=ldpc.Run_LDPCt1Test(HTML,CONST,id)
 					if ldpc.exitStatus==1:
 						RAN.prematureExit = True
 				elif action == 'Run_NRulsimTest':
