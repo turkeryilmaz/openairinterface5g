@@ -399,7 +399,7 @@ int main(int argc, char **argv)
         fs = 61.44e6;
         bw = 40e6;
       }
-      else AssertFatal(1==0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
       break;
     case 3:
       UE->frame_parms.Lmax = 64;
@@ -408,7 +408,7 @@ int main(int argc, char **argv)
         fs = 122.88e6;
         bw = 100e6;
       }
-      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
       break;
   }
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model, fs, bw, 300e-9, 0, 0, 0, 0);

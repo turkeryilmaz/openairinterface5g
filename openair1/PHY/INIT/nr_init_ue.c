@@ -518,8 +518,7 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
   for (int i = 0; i < NUMBER_OF_CONNECTED_gNB_MAX; i++) {
     for (int j = 0; j < num_codeword; j++) {
       for (int k = 0; k < RX_NB_TH_MAX; k++) {
-        if ((get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) &&
-             (get_softmodem_params()->sync_ref)) {
+        if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
           AssertFatal((ue->slsch_rx[k][i][j] =
                        new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, ue->max_ldpc_iterations, ue->frame_parms.N_RB_DL)) != NULL,
                        "Can't get ue slsch_rx structures\n");
@@ -528,11 +527,10 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
           AssertFatal((ue->dlsch[k][i][j] =
                        new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, ue->max_ldpc_iterations, ue->frame_parms.N_RB_DL)) != NULL,
                        "Can't get ue dlsch structures\n");
-          LOG_D(NR_PHY, "dlsch[%d][%d][%d] => %p\n",k,i,j,ue->dlsch[k][i][j]);
+          LOG_D(NR_PHY, "dlsch[%d][%d][%d] => %p\n", k, i, j, ue->dlsch[k][i][j]);
         }
         if (j == 0) {
-          if ((get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) &&
-              (!get_softmodem_params()->sync_ref)) {
+          if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
             AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL,
                          "Can't get ue slsch structures\n");
             LOG_D(NR_PHY, "slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
@@ -540,7 +538,7 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
           if (get_softmodem_params()->sl_mode == 0 || get_softmodem_params()->sl_mode == 1) {
             AssertFatal((ue->ulsch[k][i] = new_nr_ue_ulsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL,
                          "Can't get ue ulsch structures\n");
-            LOG_D(PHY,"ulsch[%d][%d] => %p\n",k,i,ue->ulsch[k][i]);
+            LOG_D(NR_PHY,"ulsch[%d][%d] => %p\n", k, i, ue->ulsch[k][i]);
           }
         }
       }
