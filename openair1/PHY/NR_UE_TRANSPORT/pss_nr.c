@@ -89,10 +89,13 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
 
   #define INITIAL_PSS_NR    (7)
   const int x_initial[INITIAL_PSS_NR] = {0, 1, 1 , 0, 1, 1, 1};
-  if (get_softmodem_params()->sl_mode == 0)
-    assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
-  else
+  int pss_seq_offset = PSS_SEQ_OFFSET;
+  if (get_softmodem_params()->sl_mode != 0) {
     assert(N_ID_2 < NUMBER_PSS_SEQUENCE_SL);
+    pss_seq_offset = PSS_SEQ_OFFSET_SL;
+  } else {
+    assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
+  }
   assert(size <= SYNCF_TMP_SIZE);
   assert(size <= SYNC_TMP_SIZE);
 
@@ -108,7 +111,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   }
 
   for (int n=0; n < LENGTH_PSS_NR; n++) {
-    int m = (n + PSS_SEQ_OFFSET + 43*N_ID_2)%(LENGTH_PSS_NR);
+    int m = (n + pss_seq_offset + 43*N_ID_2)%(LENGTH_PSS_NR);
     d_pss[n] = 1 - 2*x[m];
   }
 
@@ -810,6 +813,7 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
                             shift);
     }
     cd_t r1d = {r1.r, r1.i}, r2d = {r2.r, r2.i};
+    // estimation of fractional frequency offset: angle[(result1)'*(result2)]/pi
     ffo_est = atan2(r1d.r * r2d.i - r2d.r * r1d.i, r1d.r * r2d.r + r1d.i * r2d.i) / M_PI;
 
 #ifdef DBG_PSS_NR
