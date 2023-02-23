@@ -535,21 +535,29 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 
 	/* If it is PRACH slot, copy prach IQ from XRAN PRACH buffer to OAI PRACH buffer */
 	if(is_prach_slot) {
-
 	  for(sym_idx = 0; sym_idx < pPrachCPConfig->numSymbol; sym_idx++) {
 		for (int aa=0;aa<ru->nb_rx;aa++) {
 	  	  mb = (struct rte_mbuf *) p_xran_dev_ctx_2->sFHPrachRxBbuIoBufCtrl[tti % 40][0][aa].sBufferList.pBuffers[sym_idx].pCtrl;
 		  if(mb) {
 			uint16_t *dst, *src;
 			int idx = 0;
-			  dst = (uint16_t * )((uint8_t *)ru->prach_buf[aa] + (sym_idx*576));
+			  dst = (uint16_t * )((uint8_t *)ru->prach_buf[aa]);// + (sym_idx*576));
 			  src = (uint16_t *) ((uint8_t *) p_xran_dev_ctx_2->sFHPrachRxBbuIoBufCtrl[tti % 40][0][aa].sBufferList.pBuffers[sym_idx].pData);
 
 			/* convert Network order to host order */
-			  for (idx = 0; idx < 576/2; idx++)
-			  {
-			  	dst[idx] = ntohs(src[idx]);
+			  if (sym_idx==0) {
+			    for (idx = 0; idx < 576/2; idx++)
+			    {
+			    	((int16_t*)dst)[idx] = ((int16_t)ntohs(src[idx]))>>2;
+			    }
 			  }
+			  else {
+			    for (idx = 0; idx < 576/2; idx++)
+			    {
+			    	((int16_t*)dst)[idx] += ((int16_t)ntohs(src[idx]))>>2;
+			    }
+			  }
+
 
 	          } else {
 			  /* TODO: Unlikely this code never gets executed */
@@ -677,8 +685,8 @@ int xran_fh_rx_read_slot(void *xranlib_, ru_info_t *ru, int *frame, int *slot, i
                           payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
                           src1 = src2 + payload_len/2;
                           for (idx = 0; idx < payload_len/(2*sizeof(int16_t)); idx++) {
-                            ((uint16_t *)dst1)[idx] = ntohs(((uint16_t *)src1)[idx]);
-                            ((uint16_t *)dst2)[idx] = ntohs(((uint16_t *)src2)[idx]);
+                            ((int16_t *)dst1)[idx] = ((int16_t)ntohs(((uint16_t *)src1)[idx]))>>2;
+                            ((int16_t *)dst2)[idx] = ((int16_t)ntohs(((uint16_t *)src2)[idx]))>>2;
                           }
                        } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
                           struct xranlib_decompress_request  bfp_decom_req_2;

@@ -145,11 +145,11 @@ static void init_nr_rlc_data_req_queue(void)
 
   pthread_mutex_init(&q.m, NULL);
   pthread_cond_init(&q.c, NULL);
-
-  if (pthread_create(&t, NULL, rlc_data_req_thread, NULL) != 0) {
+  /*if (pthread_create(&t, NULL, rlc_data_req_thread, NULL) != 0) {
     LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
-  }
+  }*/
+  threadCreate(&t, rlc_data_req_thread, NULL, "rlc_data_req_thread", -1, OAI_PRIORITY_RT_MAX); 
 }
 
 static void enqueue_rlc_data_req(const protocol_ctxt_t *const ctxt_pP,
