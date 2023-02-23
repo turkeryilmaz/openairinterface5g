@@ -2026,6 +2026,7 @@ include_directories(${NAS_SRC}UE/EMM/SAP)
 include_directories(${NAS_SRC}UE/ESM)
 include_directories(${NAS_SRC}UE/ESM/SAP)
 
+add_definitions("-DPHY_SIDE_LINK")
 # nbiot
 add_definitions("-DNUMBER_OF_UE_MAX_NB_IoT=16")
 set (NBIOT_SOURCES
