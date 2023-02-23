@@ -52,6 +52,7 @@
 #include "acpSys.h"
 #include "ss_eNB_sys_task.h"
 #include "ss_eNB_context.h"
+#include "ss_eNB_vt_timer_task.h"
 #include "ss_eNB_multicell_helper.h"
 
 #include "udp_eNB_task.h"
@@ -752,6 +753,8 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     }
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
+      msgCnf->Confirm.v.L1MacIndCtrl = true;
+      break;
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:
@@ -1547,14 +1550,21 @@ static void sys_handle_enquire_timing(ss_set_timinfo_t *tinfo)
   }
 }
 
-static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacInd_Ctrl)
+static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
 {
+  enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_L1MacIndCtrl;
+  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+  bool resVal = true;
+  struct L1Mac_IndicationControl_Type *L1MacInd_Ctrl = &(req->Request.v.L1MacIndCtrl);
+  assert(L1MacInd_Ctrl);
+  LOG_A(ENB_SS,"[SYS] l1macind ctrl, RachPreamble=%d UL_HARQ=%d HarqError=%d\n",L1MacInd_Ctrl->RachPreamble.d, L1MacInd_Ctrl->UL_HARQ.d, L1MacInd_Ctrl->HarqError.d);
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_L1MACIND_CTRL);
   if (message_p)
   {
-    LOG_A(ENB_SS,"[SYS] l1macind ctrl, prach preamble: %d\n",L1MacInd_Ctrl->RachPreamble.d);
+    SS_L1MACIND_CTRL(message_p).cell_index = cell_index;
     if(L1MacInd_Ctrl->RachPreamble.d)
     {
+      LOG_A(ENB_SS, "[SYS] l1macind ctrl RachPreamble type %d received from TTCN\n", L1MacInd_Ctrl->RachPreamble.v);
       if(IndicationAndControlMode_enable == L1MacInd_Ctrl->RachPreamble.v)
       {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = true;
@@ -1563,12 +1573,62 @@ static void sys_handle_l1macind_ctrl(struct L1Mac_IndicationControl_Type *L1MacI
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
       }
     }
-    int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
-    if (send_res < 0)
+    SS_L1MACIND_CTRL(message_p).UL_HARQ_Ctrl = IndCtrlMode_NOT_PRESENT;
+    if(L1MacInd_Ctrl->UL_HARQ.d)
     {
-      LOG_A(ENB_SS, "[SYS] Error sending to MAC");
+      LOG_A(ENB_SS, "[SYS] l1macind ctrl UL_HARQ type %d received from TTCN\n", L1MacInd_Ctrl->UL_HARQ.v);
+      if (IndicationAndControlMode_enable == L1MacInd_Ctrl->UL_HARQ.v)
+      {
+        SS_L1MACIND_CTRL(message_p).UL_HARQ_Ctrl = IndCtrlMode_ENABLE;
+      }
+      else if (IndicationAndControlMode_disable == L1MacInd_Ctrl->UL_HARQ.v)
+      {
+        SS_L1MACIND_CTRL(message_p).UL_HARQ_Ctrl = IndCtrlMode_DISABLE;
+      }
     }
+    SS_L1MACIND_CTRL(message_p).HarqError_Ctrl = IndCtrlMode_NOT_PRESENT;
+    if(L1MacInd_Ctrl->HarqError.d)
+    {
+      LOG_A(ENB_SS, "[SYS] l1macind ctrl HarqError type %d received from TTCN\n", L1MacInd_Ctrl->HarqError.v);
+      if (IndicationAndControlMode_enable == L1MacInd_Ctrl->HarqError.v)
+      {
+        SS_L1MACIND_CTRL(message_p).HarqError_Ctrl = IndCtrlMode_ENABLE;
+      }
+      else if (IndicationAndControlMode_disable == L1MacInd_Ctrl->HarqError.v)
+      {
+        SS_L1MACIND_CTRL(message_p).HarqError_Ctrl = IndCtrlMode_DISABLE;
+      }
+    }
+    uint8_t msg_queued = 0;
+		if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+		{
+			ss_set_timinfo_t tinfo, timer_tinfo;
+			tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
+			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
+			timer_tinfo = tinfo;
+			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
+
+			LOG_A(ENB_SS,"VT_TIMER SYS  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+
+			if(msg_queued)
+			{
+				 msg_queued = vt_timer_setup(timer_tinfo, TASK_MAC_ENB, 0,message_p);
+			}
+			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+
+		}
+		if (!msg_queued)
+		{
+      int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
+      if (send_res < 0)
+      {
+        LOG_A(ENB_SS, "[SYS] Error sending to MAC");
+      }
+    	LOG_A(ENB_SS, "Send res: %d", send_res);
+		}
   }
+  send_sys_cnf(resType, resVal, cnfType, NULL);
 }
 
 /*
@@ -1882,7 +1942,7 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
 
     case SystemRequest_Type_L1MacIndCtrl:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type L1MacIndCtrl received\n");
-      sys_handle_l1macind_ctrl(&(req->Request.v.L1MacIndCtrl));
+      sys_handle_l1macind_ctrl(req);
       break;
 
     case SystemRequest_Type_PdcchOrder:

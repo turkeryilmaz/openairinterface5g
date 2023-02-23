@@ -1450,7 +1450,7 @@ initiate_ra_proc(module_id_t module_idP,
             ra[i].rnti,
             ra[i].state);
 
-      if(RC.ss.l1macind.rachpreamble_enable)
+      if(RC.ss.l1macind[CC_id].rachpreamble_enable)
       {
         // Populate and send the SS_SYSTEM_IND to System Simulator
         MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);

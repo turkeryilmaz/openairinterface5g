@@ -1263,6 +1263,7 @@ extern void clean_eNb_dlsch(LTE_eNB_DLSCH_t *dlsch);
 void release_UE_in_freeList(module_id_t mod_id) {
   PHY_VARS_eNB                             *eNB_PHY = NULL;
   eNB_MAC_INST                             *eNB_MAC = RC.mac[mod_id];
+  int                                       CC_id;
   pthread_mutex_lock(&lock_ue_freelist);
 
   for(int ue_num = 0; ue_num < sizeofArray(eNB_MAC->UE_free_ctrl) ; ue_num++) {
