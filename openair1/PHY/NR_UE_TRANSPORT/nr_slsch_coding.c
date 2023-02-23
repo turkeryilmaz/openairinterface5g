@@ -49,11 +49,11 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
   for (int i = 0; i < NR_MAX_ULSCH_HARQ_PROCESSES; i++) {
     if (slsch->harq_processes[i]) {
       if (slsch->harq_processes[i]->a) {
-        free16(slsch->harq_processes[i]->a, a_segments * 1056);
+        free16(slsch->harq_processes[i]->a, slsch_bytes);
         slsch->harq_processes[i]->a = NULL;
       }
       if (slsch->harq_processes[i]->b) {
-        free16(slsch->harq_processes[i]->b, a_segments * 1056);
+        free16(slsch->harq_processes[i]->b, slsch_bytes);
         slsch->harq_processes[i]->b = NULL;
       }
       for (int r=0; r < a_segments; r++) {
