@@ -21,7 +21,7 @@
 #include "xran_common.h"
 #include "xran_frame_struct.h"
 
-#define XRAN_UT_CFG_FILENAME "conf.json"
+#define XRAN_UT_CFG_FILENAME "oran.fhi.json"
 
 #define XRAN_UT_KEY_GLOBALCFG "GLOBAL"
 #define XRAN_UT_KEY_GLOBALCFG_IO "io_cfg"

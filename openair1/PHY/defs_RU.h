@@ -688,7 +688,7 @@ typedef struct RRU_CONFIG_msg_s {
   uint8_t msg[MAX_RRU_CONFIG_SIZE];
 } RRU_CONFIG_msg_t;
 
-typedef enum { OAI_IF5_only = 0, OAI_IF4p5_only = 1, OAI_IF5_and_IF4p5 = 2, MBP_IF5 = 3, ORAN_only = 4, MAX_FH_FMTs = 4 } FH_fmt_options_t;
+typedef enum { OAI_IF5_only = 0, OAI_IF4p5_only = 1, OAI_IF5_and_IF4p5 = 2, MBP_IF5 = 3, ORAN_only = 4, MAX_FH_FMTs = 5 } FH_fmt_options_t;
 
 typedef struct RRU_capabilities_s {
   /// Fronthaul format

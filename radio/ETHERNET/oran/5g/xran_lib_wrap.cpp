@@ -825,9 +825,9 @@ int xranLibWraper::Init(struct xran_fh_config *pCfg)
             pRbMap->prbMap[0].numSymb = 14;
           }
           pRbMap->prbMap[0].nBeamIndex = 0;
-          /* Update according to the target compression in conf.json */
+          /* Update according to the target compression in oran.fhi.json */
           pRbMap->prbMap[0].compMethod = m_xranConf.ru_conf.compMeth; /* xran_compression_method */
-          /* Update according to the target compression in conf.json */
+          /* Update according to the target compression in oran.fhi.json */
           pRbMap->prbMap[0].iqWidth = m_xranConf.ru_conf.iqWidth;
 
           if (get_rucategory() == XRAN_CATEGORY_A) {
@@ -866,9 +866,9 @@ int xranLibWraper::Init(struct xran_fh_config *pCfg)
           }
           pRbMap->prbMap[0].nBeamIndex = 0;
           /* xran_compression_method */
-          /* Modify according to the target compression from conf.json */
+          /* Modify according to the target compression from oran.fhi.json */
           pRbMap->prbMap[0].compMethod = m_xranConf.ru_conf.compMeth;
-          /* Update IQ-Width based on conf.json */
+          /* Update IQ-Width based on oran.fhi.json */
           pRbMap->prbMap[0].iqWidth = m_xranConf.ru_conf.iqWidth;
 
           if (get_rucategory() == XRAN_CATEGORY_A) {
