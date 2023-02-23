@@ -61,7 +61,7 @@ int encode_supported_codec_list(SupportedCodecList *supportedcodeclist, uint8_t 
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SUPPORTED_CODEC_LIST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SUPPORTED_CODEC_LIST_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_supported_codec_list_xml(supportedcodeclist, iei);
 #endif

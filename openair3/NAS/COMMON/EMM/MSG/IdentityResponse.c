@@ -35,7 +35,7 @@ int decode_identity_response(identity_response_msg *identity_response, uint8_t *
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, IDENTITY_RESPONSE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, IDENTITY_RESPONSE_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_mobile_identity(&identity_response->mobileidentity, 0, buffer + decoded, len - decoded)) < 0)
@@ -52,7 +52,7 @@ int encode_identity_response(identity_response_msg *identity_response, uint8_t *
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, IDENTITY_RESPONSE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, IDENTITY_RESPONSE_MINIMUM_LENGTH, (int)len);
 
   if ((encode_result =
          encode_mobile_identity(&identity_response->mobileidentity, 0, buffer +

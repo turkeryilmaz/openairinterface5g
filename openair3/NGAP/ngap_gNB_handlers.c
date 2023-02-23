@@ -225,7 +225,7 @@ int ngap_gNB_handle_message(uint32_t assoc_id, int32_t stream,
   if (pdu.choice.initiatingMessage->procedureCode >= sizeof(ngap_messages_callback) / (3 * sizeof(
         ngap_message_decoded_callback))
       || (pdu.present > NGAP_NGAP_PDU_PR_unsuccessfulOutcome)) {
-    NGAP_ERROR("[SCTP %d] Either procedureCode %ld or direction %d exceed expected\n",
+    NGAP_ERROR("[SCTP %u] Either procedureCode %ld or direction %d exceed expected\n",
                assoc_id, pdu.choice.initiatingMessage->procedureCode, pdu.present);
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);
     return -1;
@@ -235,7 +235,7 @@ int ngap_gNB_handle_message(uint32_t assoc_id, int32_t stream,
    * This can mean not implemented or no procedure for gNB (wrong direction).
    */
   if (ngap_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL) {
-    NGAP_ERROR("[SCTP %d] No handler for procedureCode %ld in %s\n",
+    NGAP_ERROR("[SCTP %u] No handler for procedureCode %ld in %s\n",
                assoc_id, pdu.choice.initiatingMessage->procedureCode,
                ngap_direction2String(pdu.present - 1));
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);
@@ -261,12 +261,12 @@ int ngap_gNB_handle_ng_setup_failure(uint32_t               assoc_id,
 
   /* S1 Setup Failure == Non UE-related procedure -> stream 0 */
   if (stream != 0) {
-    NGAP_WARN("[SCTP %d] Received s1 setup failure on stream != 0 (%d)\n",
+    NGAP_WARN("[SCTP %u] Received s1 setup failure on stream != 0 (%u)\n",
               assoc_id, stream);
   }
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received S1 setup response for non existing "
+    NGAP_ERROR("[SCTP %u] Received S1 setup response for non existing "
                "AMF context\n", assoc_id);
     return -1;
   }
@@ -274,11 +274,13 @@ int ngap_gNB_handle_ng_setup_failure(uint32_t               assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupFailureIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_Cause,true);
 
-  if ((ie->value.choice.Cause.present == NGAP_Cause_PR_misc) &&
-      (ie->value.choice.Cause.choice.misc == NGAP_CauseMisc_unspecified)) {
-    NGAP_WARN("Received NG setup failure for AMF... AMF is not ready\n");
-  } else {
-    NGAP_ERROR("Received NG setup failure for AMF... please check your parameters\n");
+  if (ie) {
+    if ((ie->value.choice.Cause.present == NGAP_Cause_PR_misc) &&
+        (ie->value.choice.Cause.choice.misc == NGAP_CauseMisc_unspecified)) {
+        NGAP_WARN("Received NG setup failure for AMF... AMF is not ready\n");
+    } else {
+        NGAP_ERROR("Received NG setup failure for AMF... please check your parameters\n");
+    }
   }
 
   amf_desc_p->state = NGAP_GNB_STATE_WAITING;
@@ -299,13 +301,13 @@ int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
 
   /* NG Setup Response == Non UE-related procedure -> stream 0 */
   if (stream != 0) {
-    NGAP_ERROR("[SCTP %d] Received ng setup response on stream != 0 (%d)\n",
+    NGAP_ERROR("[SCTP %u] Received ng setup response on stream != 0 (%u)\n",
                assoc_id, stream);
     return -1;
   }
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received NG setup response for non existing "
+    NGAP_ERROR("[SCTP %u] Received NG setup response for non existing "
                "AMF context\n", assoc_id);
     return -1;
   }
@@ -316,7 +318,11 @@ int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
   /* The list of served guami can contain at most 256 elements.
    * NR related guami is the first element in the list, i.e with an id of 0.
    */
-  NGAP_DEBUG("servedGUAMIs.list.count %d\n", ie->value.choice.ServedGUAMIList.list.count);
+  if (ie != NULL) {
+    NGAP_DEBUG("servedGUAMIs.list.count %d\n", ie->value.choice.ServedGUAMIList.list.count);
+  } else {
+    NGAP_ERROR("Protocol IE id %d not found in NG setup response\n", NGAP_ProtocolIE_ID_id_ServedGUAMIList);
+  }
   DevAssert(ie->value.choice.ServedGUAMIList.list.count > 0);
   DevAssert(ie->value.choice.ServedGUAMIList.list.count <= NGAP_maxnoofServedGUAMIs);
 
@@ -371,7 +377,7 @@ int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_RelativeAMFCapacity, true);
 
-  amf_desc_p->relative_amf_capacity = ie->value.choice.RelativeAMFCapacity;
+  if (ie != NULL) amf_desc_p->relative_amf_capacity = ie->value.choice.RelativeAMFCapacity;
 
   /* mandatory set the amf name */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
@@ -390,9 +396,11 @@ int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupResponseIEs_t, ie, container,
                                NGAP_ProtocolIE_ID_id_PLMNSupportList, true);
 
-  NGAP_DEBUG("PLMNSupportList.list.count %d\n", ie->value.choice.PLMNSupportList.list.count);
-  DevAssert(ie->value.choice.PLMNSupportList.list.count > 0);
-  DevAssert(ie->value.choice.PLMNSupportList.list.count <= NGAP_maxnoofPLMNs);
+  if (ie != NULL) {
+    NGAP_DEBUG("PLMNSupportList.list.count %d\n", ie->value.choice.PLMNSupportList.list.count);
+    DevAssert(ie->value.choice.PLMNSupportList.list.count > 0);
+    DevAssert(ie->value.choice.PLMNSupportList.list.count <= NGAP_maxnoofPLMNs);
+  }
 
   STAILQ_INIT(&amf_desc_p->plmn_supports);
 
@@ -459,12 +467,12 @@ int ngap_gNB_handle_error_indication(uint32_t         assoc_id,
 
   /* NG Setup Failure == Non UE-related procedure -> stream 0 */
   if (stream != 0) {
-    NGAP_WARN("[SCTP %d] Received ng Error indication on stream != 0 (%d)\n",
+    NGAP_WARN("[SCTP %u] Received ng Error indication on stream != 0 (%u)\n",
               assoc_id, stream);
   }
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received ng Error indication for non existing "
+    NGAP_ERROR("[SCTP %u] Received ng Error indication for non existing "
                "AMF context\n", assoc_id);
     return -1;
   }
@@ -841,7 +849,7 @@ int ngap_gNB_handle_initial_context_request(uint32_t   assoc_id,
   container = &pdu->choice.initiatingMessage->value.choice.InitialContextSetupRequest;
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received initial context setup request for non "
+    NGAP_ERROR("[SCTP %u] Received initial context setup request for non "
                "existing AMF context\n", assoc_id);
     return -1;
   }
@@ -865,7 +873,7 @@ int ngap_gNB_handle_initial_context_request(uint32_t   assoc_id,
 
     if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
                      ran_ue_ngap_id)) == NULL) {
-      NGAP_ERROR("[SCTP %d] Received initial context setup request for non "
+      NGAP_ERROR("[SCTP %u] Received initial context setup request for non "
                  "existing UE context 0x%06lx\n", assoc_id,
                  ran_ue_ngap_id);
       return -1;
@@ -1187,7 +1195,7 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
   container = &pdu->choice.initiatingMessage->value.choice.UEContextReleaseCommand;
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received UE context release command for non "
+    NGAP_ERROR("[SCTP %u] Received UE context release command for non "
                "existing AMF context\n", assoc_id);
     return -1;
   }
@@ -1203,7 +1211,7 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
 
         if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
                          gnb_ue_ngap_id)) == NULL) {
-          NGAP_ERROR("[SCTP %d] Received UE context release command for non "
+          NGAP_ERROR("[SCTP %u] Received UE context release command for non "
                      "existing UE context 0x%06lx\n",
                      assoc_id,
                      gnb_ue_ngap_id);
@@ -1260,7 +1268,7 @@ int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
   container = &pdu->choice.initiatingMessage->value.choice.PDUSessionResourceSetupRequest;
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received pdu session resource setup request for non "
+    NGAP_ERROR("[SCTP %u] Received pdu session resource setup request for non "
                "existing AMF context\n", assoc_id);
     return -1;
   }
@@ -1287,7 +1295,7 @@ int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
 
   if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
                    ran_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received pdu session resource setup request for non "
+    NGAP_ERROR("[SCTP %u] Received pdu session resource setup request for non "
                "existing UE context 0x%06lx\n", assoc_id,
                ran_ue_ngap_id);
     return -1;
@@ -1482,7 +1490,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
   DevAssert(pdu != NULL);
   container = &pdu->choice.initiatingMessage->value.choice.Paging;
   // received Paging Message from AMF
-  NGAP_DEBUG("[SCTP %d] Received Paging Message From AMF\n",assoc_id);
+  NGAP_DEBUG("[SCTP %u] Received Paging Message From AMF\n",assoc_id);
 
   /* Paging procedure -> stream != 0 */
   if (stream == 0) {
@@ -1492,7 +1500,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
   }
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received Paging for non "
+    NGAP_ERROR("[SCTP %u] Received Paging for non "
                "existing AMF context\n", assoc_id);
     return -1;
   }
@@ -1500,7 +1508,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
   ngap_gNB_instance = amf_desc_p->ngap_gNB_instance;
 
   if (ngap_gNB_instance == NULL) {
-    NGAP_ERROR("[SCTP %d] Received Paging for non existing AMF context : ngap_gNB_instance is NULL\n",
+    NGAP_ERROR("[SCTP %u] Received Paging for non existing AMF context : ngap_gNB_instance is NULL\n",
                assoc_id);
     return -1;
   }
@@ -1518,7 +1526,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
     OCTET_STRING_TO_INT8(&ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI->aMFPointer, msg->ue_paging_identity.s_tmsi.amf_pointer);
     OCTET_STRING_TO_INT32(&ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI->fiveG_TMSI, msg->ue_paging_identity.s_tmsi.m_tmsi);
 
-    NGAP_DEBUG("[SCTP %d] Received Paging Identity amf_set_id %d, amf_pointer %d, m_tmsi %d\n",
+    NGAP_DEBUG("[SCTP %u] Received Paging Identity amf_set_id %d, amf_pointer %d, m_tmsi %d\n",
                assoc_id,
                msg->ue_paging_identity.s_tmsi.amf_set_id,
                msg->ue_paging_identity.s_tmsi.amf_pointer,
@@ -1548,7 +1556,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
                              NGAP_ProtocolIE_ID_id_TAIListForPaging, true);
 
   if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
-    NGAP_INFO("[SCTP %d] Received Paging taiList For Paging: count %d\n", assoc_id, ie->value.choice.TAIListForPaging.list.count);
+    NGAP_INFO("[SCTP %u] Received Paging taiList For Paging: count %d\n", assoc_id, ie->value.choice.TAIListForPaging.list.count);
 
     for (int i = 0; i < ie->value.choice.TAIListForPaging.list.count; i++) {
       NGAP_TAIListForPagingItem_t *item_p;
@@ -1558,7 +1566,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
                       msg->plmn_identity[i].mnc_digit_length);
       OCTET_STRING_TO_INT16(&(item_p->tAI.tAC), msg->tac[i]);
       msg->tai_size++;
-      NGAP_DEBUG("[SCTP %d] Received Paging: MCC %d, MNC %d, TAC %d\n", assoc_id,
+      NGAP_DEBUG("[SCTP %u] Received Paging: MCC %d, MNC %d, TAC %d\n", assoc_id,
                  msg->plmn_identity[i].mcc,
                  msg->plmn_identity[i].mnc,
                  msg->tac[i]);
@@ -1568,7 +1576,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
   }
 
   //paging parameter values
-  NGAP_DEBUG("[SCTP %d] Received Paging parameters: Paging Identity amf_set_id %d amf_pointer %d m_tmsi %d paging_drx %d paging_priority %d\n",assoc_id,
+  NGAP_DEBUG("[SCTP %u] Received Paging parameters: Paging Identity amf_set_id %d amf_pointer %d m_tmsi %d paging_drx %d paging_priority %d\n",assoc_id,
              msg->ue_paging_identity.s_tmsi.amf_set_id,
              msg->ue_paging_identity.s_tmsi.amf_pointer,
              msg->ue_paging_identity.s_tmsi.m_tmsi,
@@ -1595,7 +1603,7 @@ int ngap_gNB_handle_pdusession_modify_request(uint32_t               assoc_id,
   container = &pdu->choice.initiatingMessage->value.choice.PDUSessionResourceModifyRequest;
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received PDUSession Resource modify request for non "
+    NGAP_ERROR("[SCTP %u] Received PDUSession Resource modify request for non "
                "existing AMF context\n", assoc_id);
     return -1;
   }
@@ -1622,7 +1630,7 @@ int ngap_gNB_handle_pdusession_modify_request(uint32_t               assoc_id,
 
   if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
                    gnb_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received PDUSession Resource modify request for non "
+    NGAP_ERROR("[SCTP %u] Received PDUSession Resource modify request for non "
                "existing UE context 0x%08lx\n", assoc_id,
                gnb_ue_ngap_id);
     return -1;
@@ -1631,7 +1639,7 @@ int ngap_gNB_handle_pdusession_modify_request(uint32_t               assoc_id,
   ue_desc_p->rx_stream = stream;
 
   if (ue_desc_p->amf_ue_ngap_id != amf_ue_ngap_id) {
-    NGAP_WARN("UE context amf_ue_ngap_id is different form that of the message (%ld != %ld)",
+    NGAP_WARN("UE context amf_ue_ngap_id is different form that of the message (%lu != %lu)",
               (uint64_t)ue_desc_p->amf_ue_ngap_id, amf_ue_ngap_id);
     MessageDef *message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, NGAP_PDUSESSION_MODIFY_RESP);
     ngap_pdusession_modify_resp_t* msg=&NGAP_PDUSESSION_MODIFY_RESP(message_p);
@@ -1809,7 +1817,7 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
   container = &pdu->choice.initiatingMessage->value.choice.PDUSessionResourceReleaseCommand;
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received pdu session release command for non existing AMF context\n", assoc_id);
+    NGAP_ERROR("[SCTP %u] Received pdu session release command for non existing AMF context\n", assoc_id);
     return -1;
   }
 
@@ -1836,7 +1844,7 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
 
   if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
                    gnb_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received PDUSession Resource release command for non existing UE context 0x%08lx\n", assoc_id,
+    NGAP_ERROR("[SCTP %u] Received PDUSession Resource release command for non existing UE context 0x%08lx\n", assoc_id,
                ie->value.choice.RAN_UE_NGAP_ID);
     return -1;
   }
@@ -1855,7 +1863,7 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
               (uint64_t)ue_desc_p->amf_ue_ngap_id, amf_ue_ngap_id);
   }
 
-  NGAP_DEBUG("[SCTP %d] Received pdu session release command for gNB_UE_NGAP_ID %lu amf_ue_ngap_id %lu\n",
+  NGAP_DEBUG("[SCTP %u] Received pdu session release command for gNB_UE_NGAP_ID %lu amf_ue_ngap_id %lu\n",
              assoc_id, gnb_ue_ngap_id, amf_ue_ngap_id);
   MessageDef * message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PDUSESSION_RELEASE_COMMAND);
   ngap_pdusession_release_command_t * msg=&NGAP_PDUSESSION_RELEASE_COMMAND(message_p);

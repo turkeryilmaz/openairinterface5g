@@ -49,7 +49,7 @@ int encode_llc_service_access_point_identifier(LlcServiceAccessPointIdentifier *
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LLC_SERVICE_ACCESS_POINT_IDENTIFIER_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LLC_SERVICE_ACCESS_POINT_IDENTIFIER_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_llc_service_access_point_identifier_xml(llcserviceaccesspointidentifier, iei);
 #endif

@@ -50,7 +50,7 @@ int encode_ksi_and_sequence_number(KsiAndSequenceNumber *ksiandsequencenumber, u
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, KSI_AND_SEQUENCE_NUMBER_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, KSI_AND_SEQUENCE_NUMBER_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_ksi_and_sequence_number_xml(ksiandsequencenumber, iei);
 #endif

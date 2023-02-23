@@ -5,6 +5,8 @@
 #include "utils.h"
 #include "event.h"
 #include "../T_defs.h"
+#include <sys/time.h>
+#include <time.h>
 
 void usage(void)
 {
@@ -196,8 +198,9 @@ int main(int n, char **v)
     tag      = e.e[tag_arg].i;
 
     if (tag < 0 || tag >= number_of_tags) {
-      struct tm *tt;
-      tt = localtime(&t.tv_sec);
+      struct timeval t;
+      gettimeofday(&t, NULL);
+      struct tm* tt = localtime(&t.tv_sec);
       printf("ERROR: invalid tag (%d), skipping event for frame %d subframe %d (time %2.2d:%2.2d:%2.2d.%9.9ld)\n",
              tag, frame, subframe,
              tt->tm_hour, tt->tm_min, tt->tm_sec, t.tv_nsec);
@@ -212,8 +215,9 @@ int main(int n, char **v)
     cur_subframe = subframe;
 
     if (cache[tag].filled) {
-      struct tm *tt;
-      tt = localtime(&t.tv_sec);
+      struct timeval t;
+      gettimeofday(&t, NULL);
+      struct tm* tt = localtime(&t.tv_sec);
       printf("ERROR: tag %d present twice at frame %d subframe %d (time %2.2d:%2.2d:%2.2d.%9.9ld)\n",
              tag, frame, subframe,
              tt->tm_hour, tt->tm_min, tt->tm_sec, t.tv_nsec);
@@ -223,6 +227,8 @@ int main(int n, char **v)
 
     store_in_cache(cache, tag, &ebuf);
     cache[tag].filled = 1;
+    struct timeval t;
+    gettimeofday(&t, NULL);
     cache[tag].t = t;
   }
 

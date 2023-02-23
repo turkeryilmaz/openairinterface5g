@@ -35,7 +35,7 @@ int decode_authentication_request(authentication_request_msg *authentication_req
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, AUTHENTICATION_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, AUTHENTICATION_REQUEST_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_nas_key_set_identifier(&authentication_request->naskeysetidentifierasme, 0, *(buffer + decoded), len - decoded)) < 0)
@@ -62,7 +62,7 @@ int encode_authentication_request(authentication_request_msg *authentication_req
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_REQUEST_MINIMUM_LENGTH, (int)len);
 
   *(buffer + encoded) = ((encode_u8_nas_key_set_identifier(&authentication_request->naskeysetidentifierasme) & 0x0f) << 4) | 0x00;
   encoded++;

@@ -70,7 +70,7 @@ int encode_apn_aggregate_maximum_bit_rate(ApnAggregateMaximumBitRate *apnaggrega
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, APN_AGGREGATE_MAXIMUM_BIT_RATE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, APN_AGGREGATE_MAXIMUM_BIT_RATE_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_apn_aggregate_maximum_bit_rate_xml(apnaggregatemaximumbitrate, iei);
 #endif

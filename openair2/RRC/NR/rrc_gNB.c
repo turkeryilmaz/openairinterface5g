@@ -3908,7 +3908,7 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
     if (ue_ctxt->Initialue_identity_5g_s_TMSI.presence)
       fprintf(f, " S-TMSI %x\n", ue_ctxt->Initialue_identity_5g_s_TMSI.fiveg_tmsi);
 
-    fprintf(f, " failure timer %d/8\n", ue_ctxt->ul_failure_timer);
+    fprintf(f, " failure timer %u/8\n", ue_ctxt->ul_failure_timer);
 
     if (ue_ctxt->UE_Capability_nr) {
       fprintf(f,

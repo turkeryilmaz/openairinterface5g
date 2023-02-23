@@ -35,7 +35,7 @@ int decode_cs_service_notification(cs_service_notification_msg *cs_service_notif
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, CS_SERVICE_NOTIFICATION_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, CS_SERVICE_NOTIFICATION_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_paging_identity(&cs_service_notification->pagingidentity, 0, buffer + decoded, len - decoded)) < 0)
@@ -114,7 +114,7 @@ int encode_cs_service_notification(cs_service_notification_msg *cs_service_notif
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, CS_SERVICE_NOTIFICATION_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, CS_SERVICE_NOTIFICATION_MINIMUM_LENGTH, (int)len);
 
   if ((encode_result =
          encode_paging_identity(&cs_service_notification->pagingidentity, 0,

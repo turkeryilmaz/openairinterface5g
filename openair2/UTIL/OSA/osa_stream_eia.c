@@ -220,7 +220,7 @@ int stream_compute_integrity_eia2(stream_cipher_t *stream_cipher, uint8_t out[4]
   DevAssert(stream_cipher != NULL);
   ;
   DevAssert((stream_cipher->blength & 0x7) == 0);
-  DevAssert(stream_cipher->key_length == 16 && "k_iv.key and stream_cipher mismatch");
+  DevAssert(stream_cipher->key_length == 16, "k_iv.key and stream_cipher mismatch");
   DevAssert(stream_cipher->bearer < 32);
   DevAssert(stream_cipher->direction < 2);
 

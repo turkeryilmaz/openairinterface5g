@@ -147,7 +147,7 @@ int stream_encrypt_eea2(stream_cipher_t *stream_cipher, uint8_t **out)
 
   if (*out == NULL) {
     *out = calloc(1, (stream_cipher->blength >> 3) + 1);
-    DevAssert(*out != NULL && "Memory exhausted");
+    DevAssert(*out != NULL, "Memory exhausted");
   }
 
   aes_128_t p = {0};
@@ -157,7 +157,7 @@ int stream_encrypt_eea2(stream_cipher_t *stream_cipher, uint8_t **out)
   p.iv16.d.bearer = stream_cipher->bearer;
   p.iv16.d.direction = stream_cipher->direction;
 
-  DevAssert((stream_cipher->blength & 0x07) == 0 && "Cipher length must be multiple of one octet");
+  DevAssert((stream_cipher->blength & 0x07) == 0, "Cipher length must be multiple of one octet");
   const uint32_t byte_lenght = stream_cipher->blength >> 3;
   // Precondition: out must have enough space, at least as much as the input
   const size_t len_out = byte_lenght;

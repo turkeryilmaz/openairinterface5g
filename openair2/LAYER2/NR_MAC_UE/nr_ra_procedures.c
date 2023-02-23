@@ -188,7 +188,13 @@ void init_RA(module_id_t mod_id,
   }
 
   AssertFatal(ss_id>-1,"Didn't find ra-SearchSpace\n");
-  AssertFatal(commonSearchSpaceList->list.count > 0, "common SearchSpace list has 0 elements\n");
+  if (commonSearchSpaceList != NULL && commonSearchSpaceList->list.count > 0) {
+    // Access the field of the struct pointed to by commonSearchSpaceList
+  } else {
+    LOG_E(MAC, "common SearchSpace list has 0 elements or is NULL\n");
+    return -1;
+  }
+
   // Common searchspace list
   for (int i = 0; i < commonSearchSpaceList->list.count; i++) {
     ss = commonSearchSpaceList->list.array[i];

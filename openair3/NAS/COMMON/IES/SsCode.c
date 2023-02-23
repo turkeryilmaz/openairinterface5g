@@ -49,7 +49,7 @@ int encode_ss_code(SsCode *sscode, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SS_CODE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SS_CODE_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_ss_code_xml(sscode, iei);
 #endif

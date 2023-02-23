@@ -49,7 +49,7 @@ int encode_lcs_indicator(LcsIndicator *lcsindicator, uint8_t iei, uint8_t *buffe
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LCS_INDICATOR_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LCS_INDICATOR_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_lcs_indicator_xml(lcsindicator, iei);
 #endif

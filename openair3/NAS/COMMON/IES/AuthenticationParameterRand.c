@@ -55,7 +55,7 @@ int encode_authentication_parameter_rand(AuthenticationParameterRand *authentica
   uint32_t encode_result;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_PARAMETER_RAND_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_PARAMETER_RAND_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_authentication_parameter_rand_xml(authenticationparameterrand, iei);
 #endif

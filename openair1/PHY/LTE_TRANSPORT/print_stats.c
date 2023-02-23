@@ -430,7 +430,7 @@ int dump_ue_stats(PHY_VARS_UE *ue, UE_rxtx_proc_t *proc,char *buffer, int length
       }
 
       RRC_status = mac_UE_get_rrc_status(ue->Mod_id, 0);
-      len += sprintf(&buffer[len],"[UE PROC] RRC status = %d\n",RRC_status);
+      len += sprintf(&buffer[len],"[UE PROC] RRC status = %u\n",RRC_status);
       len += sprintf(&buffer[len], "[UE PROC] Transmission Mode %d \n",ue->transmission_mode[eNB]);
       len += sprintf(&buffer[len], "[UE PROC] PBCH err conseq %d, PBCH error total %d, PBCH FER %d\n",
                      ue->pbch_vars[eNB]->pdu_errors_conseq,

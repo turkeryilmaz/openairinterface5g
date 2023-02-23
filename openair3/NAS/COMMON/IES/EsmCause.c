@@ -49,7 +49,7 @@ int encode_esm_cause(EsmCause *esmcause, uint8_t iei, uint8_t *buffer, uint32_t 
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ESM_CAUSE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ESM_CAUSE_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_esm_cause_xml(esmcause, iei);
 #endif

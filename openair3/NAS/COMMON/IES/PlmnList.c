@@ -60,7 +60,7 @@ int encode_plmn_list(PlmnList *plmnlist, uint8_t iei, uint8_t *buffer, uint32_t 
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PLMN_LIST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PLMN_LIST_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_plmn_list_xml(plmnlist, iei);
 #endif

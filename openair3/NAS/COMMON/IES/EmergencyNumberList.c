@@ -69,7 +69,7 @@ int encode_emergency_number_list(EmergencyNumberList *emergencynumberlist, uint8
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EMERGENCY_NUMBER_LIST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EMERGENCY_NUMBER_LIST_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_emergency_number_list_xml(emergencynumberlist, iei);
 #endif

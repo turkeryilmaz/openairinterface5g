@@ -35,7 +35,7 @@ int decode_pdn_disconnect_request(pdn_disconnect_request_msg *pdn_disconnect_req
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, PDN_DISCONNECT_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, PDN_DISCONNECT_REQUEST_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_linked_eps_bearer_identity(&pdn_disconnect_request->linkedepsbeareridentity, 0, *(buffer + decoded) & 0x0f, len - decoded)) < 0)
@@ -79,7 +79,7 @@ int encode_pdn_disconnect_request(pdn_disconnect_request_msg *pdn_disconnect_req
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PDN_DISCONNECT_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PDN_DISCONNECT_REQUEST_MINIMUM_LENGTH, (int)len);
 
   *(buffer + encoded) = (encode_u8_linked_eps_bearer_identity(&pdn_disconnect_request->linkedepsbeareridentity) & 0x0f);
   encoded++;

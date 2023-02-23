@@ -683,15 +683,19 @@ int main(int argc, char **argv) {
   char buf[64];
   memset(buf,0,sizeof(buf));
   proc_fd = fopen("/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq", "r");
-
-  if(!proc_fd)
+ 
+  if (proc_fd == NULL) {
     printf("cannot open /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq");
-  else {
-    while(fgets(buf, 63, proc_fd))
-      printf("%s", buf);
+  } else {
+    while(fgets(buf, 63, proc_fd)) {
+        printf("%s", buf);
+    }
   }
 
-  fclose(proc_fd);
+  if (proc_fd != NULL) {
+    fclose(proc_fd);
+  }
+
   cpu_freq_GHz = ((double)atof(buf))/1e6;
 #else
   cpu_freq_GHz = get_cpu_freq_GHz();

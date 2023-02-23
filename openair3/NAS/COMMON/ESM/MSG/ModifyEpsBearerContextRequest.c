@@ -35,7 +35,7 @@ int decode_modify_eps_bearer_context_request(modify_eps_bearer_context_request_m
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   /* Decoding optional fields */
@@ -158,7 +158,7 @@ int encode_modify_eps_bearer_context_request(modify_eps_bearer_context_request_m
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, (int)len);
 
   if ((modify_eps_bearer_context_request->presencemask & MODIFY_EPS_BEARER_CONTEXT_REQUEST_NEW_EPS_QOS_PRESENT)
       == MODIFY_EPS_BEARER_CONTEXT_REQUEST_NEW_EPS_QOS_PRESENT) {

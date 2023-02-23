@@ -31,7 +31,7 @@
 int decode_ue_radio_capability_information_update_needed(UeRadioCapabilityInformationUpdateNeeded *ueradiocapabilityinformationupdateneeded, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   int decoded = 0;
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, UE_RADIO_CAPABILITY_INFORMATION_UPDATE_NEEDED_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, UE_RADIO_CAPABILITY_INFORMATION_UPDATE_NEEDED_MINIMUM_LENGTH, (int)len);
 
   if (iei > 0) {
     CHECK_IEI_DECODER((*buffer & 0xf0), iei);
@@ -61,7 +61,7 @@ int encode_ue_radio_capability_information_update_needed(UeRadioCapabilityInform
 {
   uint8_t encoded = 0;
   /* Checking length and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, UE_RADIO_CAPABILITY_INFORMATION_UPDATE_NEEDED_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, UE_RADIO_CAPABILITY_INFORMATION_UPDATE_NEEDED_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_ue_radio_capability_information_update_needed_xml(ueradiocapabilityinformationupdateneeded, iei);
 #endif

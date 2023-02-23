@@ -35,7 +35,7 @@ int decode_guti_reallocation_command(guti_reallocation_command_msg *guti_realloc
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, GUTI_REALLOCATION_COMMAND_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, GUTI_REALLOCATION_COMMAND_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_eps_mobile_identity(&guti_reallocation_command->guti, 0, buffer + decoded, len - decoded)) < 0)
@@ -79,7 +79,7 @@ int encode_guti_reallocation_command(guti_reallocation_command_msg *guti_realloc
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, GUTI_REALLOCATION_COMMAND_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, GUTI_REALLOCATION_COMMAND_MINIMUM_LENGTH, (int)len);
 
   if ((encode_result =
          encode_eps_mobile_identity(&guti_reallocation_command->guti, 0, buffer

@@ -36,7 +36,7 @@ int decode_service_request(service_request_msg *service_request, uint8_t *buffer
 
   LOG_FUNC_IN;
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SERVICE_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SERVICE_REQUEST_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_ksi_and_sequence_number(&service_request->ksiandsequencenumber, 0, buffer + decoded, len - decoded)) < 0)
@@ -59,7 +59,7 @@ int encode_service_request(service_request_msg *service_request, uint8_t *buffer
 
   LOG_FUNC_IN;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SERVICE_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SERVICE_REQUEST_MINIMUM_LENGTH, (int)len);
 
   if ((encode_result =
          encode_ksi_and_sequence_number(&service_request->ksiandsequencenumber,

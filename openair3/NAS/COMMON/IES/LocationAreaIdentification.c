@@ -58,7 +58,7 @@ int encode_location_area_identification(LocationAreaIdentification *locationarea
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LOCATION_AREA_IDENTIFICATION_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LOCATION_AREA_IDENTIFICATION_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_location_area_identification_xml(locationareaidentification, iei);
 #endif

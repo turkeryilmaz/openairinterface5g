@@ -1067,7 +1067,7 @@ static int _at_response_encode_cgpaddr(char* buffer, const at_response_t* data)
 
             if (cgpaddr->PDP_addr_1[i] != NULL) {
                 /* IPv4 address */
-                offset += sprintf(buffer+offset, ",%hhu.%hhu.%hhu.%hhu",
+                offset += sprintf(buffer+offset, ",%u.%u.%u.%u",
                                   (unsigned int)cgpaddr->PDP_addr_1[i][0],
                                   (unsigned int)cgpaddr->PDP_addr_1[i][1],
                                   (unsigned int)cgpaddr->PDP_addr_1[i][2],
@@ -1077,14 +1077,14 @@ static int _at_response_encode_cgpaddr(char* buffer, const at_response_t* data)
             if (cgpaddr->PDP_addr_2[i] != NULL) {
                 /* IPv6 Link-local address prefixe */
                 offset += sprintf(buffer+offset,
-                                  ",%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
+                                  ",%u.%u.%u.%u.%u.%u.%u.%u",
                                   (unsigned int)0xfe, (unsigned int)0x80,
                                   (unsigned int)0, (unsigned int)0,
                                   (unsigned int)0, (unsigned int)0,
                                   (unsigned int)0, (unsigned int)0);
                 /* IPv6 Link-local address */
                 offset += sprintf(buffer+offset,
-                                  ".%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
+                                  ".%u.%u.%u.%u.%u.%u.%u.%u",
                                   (unsigned int)cgpaddr->PDP_addr_2[i][0],
                                   (unsigned int)cgpaddr->PDP_addr_2[i][1],
                                   (unsigned int)cgpaddr->PDP_addr_2[i][2],

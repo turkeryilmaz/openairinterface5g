@@ -59,7 +59,7 @@ int encode_authentication_failure_parameter(AuthenticationFailureParameter *auth
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_FAILURE_PARAMETER_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_FAILURE_PARAMETER_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_authentication_failure_parameter_xml(authenticationfailureparameter, iei);
 #endif

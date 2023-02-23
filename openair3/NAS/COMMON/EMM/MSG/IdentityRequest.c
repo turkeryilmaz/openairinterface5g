@@ -35,7 +35,7 @@ int decode_identity_request(identity_request_msg *identity_request, uint8_t *buf
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, IDENTITY_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, IDENTITY_REQUEST_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_identity_type_2(&identity_request->identitytype, 0, *(buffer + decoded) >> 4, len - decoded)) < 0)
@@ -50,7 +50,7 @@ int encode_identity_request(identity_request_msg *identity_request, uint8_t *buf
   int encoded = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, IDENTITY_REQUEST_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, IDENTITY_REQUEST_MINIMUM_LENGTH, (int)len);
 
   *(buffer + encoded) = encode_u8_identity_type_2(&identity_request->identitytype) & 0x0f;
   encoded++;

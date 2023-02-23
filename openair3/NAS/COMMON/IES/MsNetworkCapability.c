@@ -59,7 +59,7 @@ int encode_ms_network_capability(MsNetworkCapability *msnetworkcapability, uint8
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MS_NETWORK_CAPABILITY_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MS_NETWORK_CAPABILITY_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_ms_network_capability_xml(msnetworkcapability, iei);
 #endif

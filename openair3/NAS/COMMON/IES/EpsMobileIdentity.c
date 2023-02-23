@@ -80,7 +80,7 @@ int encode_eps_mobile_identity(EpsMobileIdentity *epsmobileidentity, uint8_t iei
   int encoded_rc = TLV_ENCODE_VALUE_DOESNT_MATCH;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EPS_MOBILE_IDENTITY_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EPS_MOBILE_IDENTITY_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_eps_mobile_identity_xml(epsmobileidentity, iei);
 #endif

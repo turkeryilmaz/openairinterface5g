@@ -53,7 +53,7 @@ int encode_daylight_saving_time(DaylightSavingTime *daylightsavingtime, uint8_t 
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DAYLIGHT_SAVING_TIME_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DAYLIGHT_SAVING_TIME_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_daylight_saving_time_xml(daylightsavingtime, iei);
 #endif

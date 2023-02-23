@@ -82,7 +82,7 @@ int encode_quality_of_service(QualityOfService *qualityofservice, uint8_t iei, u
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, QUALITY_OF_SERVICE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, QUALITY_OF_SERVICE_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_quality_of_service_xml(qualityofservice, iei);
 #endif

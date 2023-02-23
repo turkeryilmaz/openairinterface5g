@@ -53,7 +53,7 @@ int encode_drx_parameter(DrxParameter *drxparameter, uint8_t iei, uint8_t *buffe
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DRX_PARAMETER_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DRX_PARAMETER_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_drx_parameter_xml(drxparameter, iei);
 #endif

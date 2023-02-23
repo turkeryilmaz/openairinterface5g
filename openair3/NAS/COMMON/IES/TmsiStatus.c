@@ -31,7 +31,7 @@
 int decode_tmsi_status(TmsiStatus *tmsistatus, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   int decoded = 0;
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, TMSI_STATUS_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, TMSI_STATUS_MINIMUM_LENGTH, (int)len);
 
   if (iei > 0) {
     CHECK_IEI_DECODER((*buffer & 0xf0), iei);
@@ -61,7 +61,7 @@ int encode_tmsi_status(TmsiStatus *tmsistatus, uint8_t iei, uint8_t *buffer, uin
 {
   uint8_t encoded = 0;
   /* Checking length and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TMSI_STATUS_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TMSI_STATUS_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_tmsi_status_xml(tmsistatus, iei);
 #endif

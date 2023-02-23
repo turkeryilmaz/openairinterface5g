@@ -151,7 +151,7 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
     ++loader_data.numshlibs;
     if (loader_data.numshlibs > loader_data.maxshlibs) {
       fprintf(stderr, "[LOADER] can not load more than %d shlibs\n",
-              loader_data.maxshlibs);
+              (int)loader_data.maxshlibs);
       ret = -1;
       goto load_module_shlib_exit;
     }

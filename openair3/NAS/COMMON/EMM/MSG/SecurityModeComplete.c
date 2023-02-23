@@ -35,7 +35,7 @@ int decode_security_mode_complete(security_mode_complete_msg *security_mode_comp
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SECURITY_MODE_COMPLETE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SECURITY_MODE_COMPLETE_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   /* Decoding optional fields */
@@ -74,7 +74,7 @@ int encode_security_mode_complete(security_mode_complete_msg *security_mode_comp
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SECURITY_MODE_COMPLETE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SECURITY_MODE_COMPLETE_MINIMUM_LENGTH, (int)len);
 
   LOG_TRACE(INFO,"SECURITY MODE COMMAND COMPLETE:  presencemask: %d \n",security_mode_complete->presencemask);
 

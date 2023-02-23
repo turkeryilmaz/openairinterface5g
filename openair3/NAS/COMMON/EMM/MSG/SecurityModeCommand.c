@@ -35,7 +35,7 @@ int decode_security_mode_command(security_mode_command_msg *security_mode_comman
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SECURITY_MODE_COMMAND_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SECURITY_MODE_COMMAND_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_nas_security_algorithms(&security_mode_command->selectednassecurityalgorithms, 0, buffer + decoded, len - decoded)) < 0)
@@ -115,7 +115,7 @@ int encode_security_mode_command(security_mode_command_msg *security_mode_comman
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SECURITY_MODE_COMMAND_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SECURITY_MODE_COMMAND_MINIMUM_LENGTH, (int)len);
 
   if ((encode_result =
          encode_nas_security_algorithms(&security_mode_command->selectednassecurityalgorithms,

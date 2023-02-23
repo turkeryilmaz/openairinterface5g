@@ -345,9 +345,11 @@ void do_UL_sig(sim_t *sim, uint16_t subframe, uint8_t abstraction_flag, LTE_DL_F
   
   // Compute RX signal for eNB = eNB_id
   for (UE_id=0; UE_id<NB_UE_INST; UE_id++) {
-    
+    if (PHY_vars_UE_g[UE_id][CC_id]->common_vars.txdata == NULL) {
+      continue; // skip this UE if txdata is NULL
+    }    
+    AssertFatal(PHY_vars_UE_g[UE_id][CC_id]->common_vars.txdata != NULL,"txdata is null\n");
     txdata = PHY_vars_UE_g[UE_id][CC_id]->common_vars.txdata;
-    AssertFatal(txdata != NULL,"txdata is null\n");
 
     sf_offset = subframe*frame_parms->samples_per_tti;
     if (subframe>0) sf_offset_tdd = sf_offset - PHY_vars_UE_g[UE_id][CC_id]->N_TA_offset;

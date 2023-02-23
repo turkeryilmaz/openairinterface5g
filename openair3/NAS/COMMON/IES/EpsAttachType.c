@@ -31,7 +31,7 @@
 int decode_eps_attach_type(EpsAttachType *epsattachtype, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   int decoded = 0;
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, EPS_ATTACH_TYPE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, EPS_ATTACH_TYPE_MINIMUM_LENGTH, (int)len);
 
   if (iei > 0) {
     CHECK_IEI_DECODER((*buffer & 0xf0), iei);
@@ -61,7 +61,7 @@ int encode_eps_attach_type(EpsAttachType *epsattachtype, uint8_t iei, uint8_t *b
 {
   uint8_t encoded = 0;
   /* Checking length and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EPS_ATTACH_TYPE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EPS_ATTACH_TYPE_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_eps_attach_type_xml(epsattachtype, iei);
 #endif

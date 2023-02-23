@@ -595,11 +595,11 @@ int main(int argc, char **argv) {
   memset(buf,0,sizeof(buf));
   proc_fd = fopen("/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq", "r");
 
-  if(!proc_fd)
-    printf("cannot open /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq");
-  else {
-    while(fgets(buf, 63, proc_fd))
-      printf("%s", buf);
+  if (proc_fd == NULL) {
+    printf("Error: cannot open /sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_cur_freq");
+  } else {
+    while (fgets(buf, 63, proc_fd) != NULL) {
+    printf("%s", buf);
   }
 
   fclose(proc_fd);

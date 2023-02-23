@@ -88,7 +88,7 @@ int encode_protocol_configuration_options(ProtocolConfigurationOptions *protocol
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PROTOCOL_CONFIGURATION_OPTIONS_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PROTOCOL_CONFIGURATION_OPTIONS_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_protocol_configuration_options_xml(protocolconfigurationoptions, iei);
 #endif

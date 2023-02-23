@@ -2149,8 +2149,8 @@ void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_add
   printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n",
          __FUNCTION__,config->vnf_ip_addr, config->vnf_p5_port,
          pnf.phys[0].local_addr,
-         pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
-         pnf.phys[0].udp.rx_port);
+         pnf.phys[0].udp.tx_addr, (int)pnf.phys[0].udp.tx_port,
+         (int)pnf.phys[0].udp.rx_port);
   config->cell_search_req = &cell_search_request;
          
     
@@ -2201,8 +2201,8 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
          __FUNCTION__,
          config->vnf_ip_addr, config->vnf_p5_port,
          pnf.phys[0].local_addr,
-         pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
-         pnf.phys[0].udp.rx_port);
+         pnf.phys[0].udp.tx_addr, (int)pnf.phys[0].udp.tx_port,
+         (int)pnf.phys[0].udp.rx_port);
   config->pnf_param_req = &pnf_param_request;
   config->pnf_config_req = &pnf_config_request;
   config->pnf_start_req = &pnf_start_request;

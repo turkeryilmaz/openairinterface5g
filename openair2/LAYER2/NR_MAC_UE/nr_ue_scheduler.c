@@ -238,7 +238,7 @@ void ul_layers_config(NR_UE_MAC_INST_t *mac, nfapi_nr_ue_pusch_pdu_t *pusch_conf
       }
     }
   }
-
+  }
   /*-------------------- Changed to enable Transform precoding in RF SIM------------------------------------------------*/
 
  /*if (pusch_config_pdu->transformPrecoder == transformPrecoder_enabled) {

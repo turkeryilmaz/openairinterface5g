@@ -59,7 +59,7 @@ int encode_cli(Cli *cli, uint8_t iei, uint8_t *buffer, uint32_t len)
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, CLI_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, CLI_MINIMUM_LENGTH, (int)len);
 #if defined (NAS_DEBUG)
   dump_cli_xml(cli, iei);
 #endif

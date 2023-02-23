@@ -740,6 +740,7 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
 
   // exit dlsch procedures as there are no active dlsch
   if (is_cw0_active != ACTIVE && is_cw1_active != ACTIVE)
+    free(rx_ind);
     return false;
 
   // start ldpc decode for CW 0

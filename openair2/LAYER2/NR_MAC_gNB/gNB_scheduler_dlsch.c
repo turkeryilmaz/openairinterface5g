@@ -940,14 +940,15 @@ void nr_schedule_ue_spec(module_id_t module_id,
     NR_tda_info_t *tda_info = &sched_pdsch->tda_info;
     NR_pdsch_dmrs_t *dmrs_parms = &sched_pdsch->dmrs_parms;
     NR_UE_harq_t *harq = &sched_ctrl->harq_processes[current_harq_pid];
-    DevAssert(!harq->is_waiting);
-    add_tail_nr_list(&sched_ctrl->feedback_dl_harq, current_harq_pid);
-    NR_sched_pucch_t *pucch = &sched_ctrl->sched_pucch[sched_pdsch->pucch_allocation];
-    harq->feedback_frame = pucch->frame;
-    harq->feedback_slot = pucch->ul_slot;
-    harq->is_waiting = true;
-    UE->mac_stats.dl.rounds[harq->round]++;
-    LOG_D(NR_MAC,
+      DevAssert(!harq->is_waiting);
+      add_tail_nr_list(&sched_ctrl->feedback_dl_harq, current_harq_pid);
+      NR_sched_pucch_t *pucch = &sched_ctrl->sched_pucch[sched_pdsch->pucch_allocation];
+      harq->feedback_frame = pucch->frame;
+      harq->feedback_slot = pucch->ul_slot;
+      harq->is_waiting = true;
+      UE->mac_stats.dl.rounds[harq->round]++;
+    
+      LOG_D(NR_MAC,
           "%4d.%2d [DLSCH/PDSCH/PUCCH] RNTI %04x DCI L %d start %3d RBs %3d startSymbol %2d nb_symbol %2d dmrspos %x MCS %2d nrOfLayers %d TBS %4d HARQ PID %2d round %d RV %d NDI %d dl_data_to_ULACK %d (%d.%d) PUCCH allocation %d TPC %d\n",
           frame,
           slot,
@@ -970,7 +971,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
           pucch->ul_slot,
           sched_pdsch->pucch_allocation,
           sched_ctrl->tpc1);
-
+     
     const int bwp_id = current_BWP->bwp_id;
     const int coresetid = sched_ctrl->coreset->controlResourceSetId;
 
@@ -1022,7 +1023,9 @@ void nr_schedule_ue_spec(module_id_t module_id,
     pdsch_pdu->qamModOrder[0] = Qm;
     pdsch_pdu->mcsIndex[0] = sched_pdsch->mcs;
     pdsch_pdu->mcsTable[0] = current_BWP->mcsTableIdx;
-    AssertFatal(harq!=NULL,"harq is null\n");
+    if (harq == NULL) {
+      AssertFatal(0, "harq is null\n");
+    }
     AssertFatal(harq->round<gNB_mac->dl_bler.harq_round_max,"%d",harq->round);
     pdsch_pdu->rvIndex[0] = nr_rv_round_map[harq->round%4];
     pdsch_pdu->TBSize[0] = TBS;

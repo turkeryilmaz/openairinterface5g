@@ -463,10 +463,14 @@ void configure_ss_coreset(NR_UE_MAC_INST_t *mac,
                           NR_BWP_Id_t dl_bwp_id) {
 
   NR_BWP_DownlinkCommon_t *bwp_Common = get_bwp_downlink_common(mac, dl_bwp_id);
-  AssertFatal(bwp_Common != NULL, "bwp_Common is null\n");
+  if (bwp_Common == NULL) {
+    AssertFatal(0, "bwp_Common is null\n");
+  }
 
   NR_SetupRelease_PDCCH_ConfigCommon_t *pdcch_ConfigCommon = bwp_Common->pdcch_ConfigCommon;
-  AssertFatal(pdcch_ConfigCommon != NULL, "pdcch_ConfigCommon is null\n");
+  if (pdcch_ConfigCommon == NULL) {
+    AssertFatal(0, "pdcch_ConfigCommon is null\n");
+  }
 
   // configuring eventual common coreset
   NR_ControlResourceSet_t *coreset = pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
@@ -475,14 +479,19 @@ void configure_ss_coreset(NR_UE_MAC_INST_t *mac,
 
   NR_BWP_DownlinkDedicated_t *dl_bwp_Dedicated = dl_bwp_id>0 ? scd->downlinkBWP_ToAddModList->list.array[dl_bwp_id - 1]->bwp_Dedicated:
                                                                scd->initialDownlinkBWP;
-
-  AssertFatal(dl_bwp_Dedicated != NULL, "dl_bwp_Dedicated is null\n");
+  if (dl_bwp_Dedicated == NULL) {
+    AssertFatal(0, "dl_bwp_Dedicated is null\n");
+  }
 
   NR_SetupRelease_PDCCH_Config_t *pdcch_Config = dl_bwp_Dedicated->pdcch_Config;
-  AssertFatal(pdcch_Config != NULL, "pdcch_Config is null\n");
+  if (pdcch_Config == NULL) {
+    AssertFatal(0, "pdcch_Config is null\n");
+  }
 
   struct NR_PDCCH_Config__controlResourceSetToAddModList *controlResourceSetToAddModList = pdcch_Config->choice.setup->controlResourceSetToAddModList;
-  AssertFatal(controlResourceSetToAddModList != NULL, "controlResourceSetToAddModList is null\n");
+  if (controlResourceSetToAddModList == NULL) {
+    AssertFatal(0, "controlResourceSetToAddModList is null\n");
+  }
 
   // configuring dedicated coreset
   // In case network reconfigures control resource set with the same ControlResourceSetId as used for commonControlResourceSet configured via PDCCH-ConfigCommon,
@@ -493,7 +502,10 @@ void configure_ss_coreset(NR_UE_MAC_INST_t *mac,
   }
 
   struct NR_PDCCH_Config__searchSpacesToAddModList *searchSpacesToAddModList = pdcch_Config->choice.setup->searchSpacesToAddModList;
-  AssertFatal(searchSpacesToAddModList != NULL, "searchSpacesToAddModList is null\n");
+  if (searchSpacesToAddModList == NULL) {
+    AssertFatal(0, "searchSpacesToAddModList is null\n");
+  }
+  
   AssertFatal(searchSpacesToAddModList->list.count > 0, "list of UE specifically configured Search Spaces is empty\n");
   AssertFatal(searchSpacesToAddModList->list.count < FAPI_NR_MAX_SS_PER_BWP, "too many searchpaces per coreset %d\n", searchSpacesToAddModList->list.count);
 
@@ -510,7 +522,9 @@ void configure_ss_coreset(NR_UE_MAC_INST_t *mac,
   }
 
   struct NR_PDCCH_ConfigCommon__commonSearchSpaceList *commonSearchSpaceList = pdcch_ConfigCommon->choice.setup->commonSearchSpaceList;
-  AssertFatal(commonSearchSpaceList != NULL, "commonSearchSpaceList is null\n");
+  if (commonSearchSpaceList == NULL) {
+    AssertFatal(0, "commonSearchSpaceList is null\n");
+  }
   AssertFatal(commonSearchSpaceList->list.count > 0, "PDCCH CSS list has 0 elements\n");
 
   // Check available CSSs in the commonSearchSpaceList (list of additional common search spaces)

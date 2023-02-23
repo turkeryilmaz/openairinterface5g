@@ -35,7 +35,7 @@ int decode_esm_information_response(esm_information_response_msg *esm_informatio
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, ESM_INFORMATION_RESPONSE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, ESM_INFORMATION_RESPONSE_MINIMUM_LENGTH, (int)len);
 
   /* Decoding mandatory fields */
   /* Decoding optional fields */
@@ -86,7 +86,7 @@ int encode_esm_information_response(esm_information_response_msg *esm_informatio
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ESM_INFORMATION_RESPONSE_MINIMUM_LENGTH, len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ESM_INFORMATION_RESPONSE_MINIMUM_LENGTH, (int)len);
 
   if ((esm_information_response->presencemask & ESM_INFORMATION_RESPONSE_ACCESS_POINT_NAME_PRESENT)
       == ESM_INFORMATION_RESPONSE_ACCESS_POINT_NAME_PRESENT) {
