@@ -55,7 +55,7 @@ CMAKE_BUILD_TYPE="RelWithDebInfo"
 CMAKE_CMD="$CMAKE"
 BUILD_ECLIPSE=0
 NR="False"
-OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope"
+OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope ldpc_cuda ldpc_t1"
 ulfiusdep=$(basename ./`find /usr/lib* -name libulfius.so`)
 jssondep=$(basename ./`find /usr/lib* -name libjansson.so`)
 if [ "$ulfiusdep" == "libulfius.so" -a "$jssondep" == "libjansson.so" ] ; then
@@ -285,6 +285,10 @@ function main() {
        --UE-gen-nvram)
             gen_nvram_path=$(readlink -f "$2")
             shift 2;;
+       --UE-ip)
+            UE_ip=1
+            echo_info "Will compile UE"
+            shift;;
        -w | --hardware)
             # Use OAI_USRP as the key word USRP is used inside UHD driver           
             case "$2" in
@@ -390,13 +394,16 @@ function main() {
                   if [ "$alib" = "$oklib" ] ; then
                     BUILD_OPTLIB="$BUILD_OPTLIB $alib" 
                     echo_info "Enabling build of lib${alib}.so" 
-                    fi   
-                  done
-                done
-	          if [ "${BUILD_OPTLIB## }" != "$2" ] ; then
-                 echo_fatal "Unknown optional library in $2, valid libraries are $OPTIONAL_LIBRARIES" 
+		  fi
+	        done
+	      done
+	      if [ "${BUILD_OPTLIB## }" != "$2" ] ; then
+                echo_fatal "Unknown optional library in $2, valid libraries are $OPTIONAL_LIBRARIES"
               fi
             fi
+	    for oklib in $BUILD_OPTLIB ; do
+	      CMAKE_CMD="$CMAKE_CMD -DENABLE_${oklib^^}=ON"
+	    done
             shift 2;;		
         --noavx512)
             CMAKE_CMD="$CMAKE_CMD -DAVX512=OFF"
@@ -542,7 +549,7 @@ function main() {
       execlist="$execlist ocp-enb"
   fi
   if [ "$gNB" = "1" ] ; then
-      execlist="$execlist nr-softmodem"
+      execlist="$execlist nr-softmodem nr-cuup"
   fi
   if [ "$RU" = "1" ] ; then
       execlist="$execlist oairu"
@@ -599,7 +606,7 @@ function main() {
 
     echo_info "Compiling UE specific part"
 
-    if [ $IS_CONTAINER -eq 0 ]
+    if [ $UE_ip -eq 1 ]
     then
       echo_info "Building ue_ip module"
       compilations $BUILD_DIR ue_ip

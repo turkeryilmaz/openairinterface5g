@@ -42,7 +42,6 @@
 #include "PHY/INIT/phy_init.h"
 #include "PHY/LTE_TRANSPORT/transport_proto.h"
 #include "PHY/LTE_UE_TRANSPORT/transport_proto_ue.h"
-#include "PHY/TOOLS/lte_phy_scope.h"
 #include "SCHED/sched_eNB.h"
 #include "SCHED_UE/sched_UE.h"
 #include "SIMULATION/TOOLS/sim.h"
@@ -69,18 +68,15 @@ double cpuf;
 #include <openair1/SIMULATION/LTE_PHY/common_sim.h>
 channel_desc_t *eNB2UE[NUMBER_OF_eNB_MAX][NUMBER_OF_UE_MAX];
 channel_desc_t *UE2eNB[NUMBER_OF_UE_MAX][NUMBER_OF_eNB_MAX];
-//Added for PHY abstractionopenair1/PHY/TOOLS/lte_phy_scope.h
 node_desc_t *enb_data[NUMBER_OF_eNB_MAX];
 node_desc_t *ue_data[NUMBER_OF_UE_MAX];
 //double sinr_bler_map[MCS_COUNT][2][16];
 
 extern uint16_t beta_ack[16],beta_ri[16],beta_cqi[16];
 //extern  char* namepointer_chMag ;
-int xforms=0;
 THREAD_STRUCT thread_struct;
 nfapi_ue_release_request_body_t release_rntis;
 
-FD_lte_phy_scope_enb *form_enb;
 char title[255];
 
 /*the following parameters are used to control the processing times*/
@@ -435,7 +431,6 @@ int main(int argc, char **argv) {
     { "delay_chan", "Channel delay",0, iptr:&delay,  defintval:0, TYPE_INT, 0 },
     { "Doppler", "Maximum doppler shift",0, dblptr:&maxDoppler,  defdblval:0.0, TYPE_DOUBLE, 0 },
     { "Zdump", "dump table",PARAMFLAG_BOOL,  iptr:&dump_table, defintval:0, TYPE_INT, 0 },
-    { "Forms", "Display the soft scope", PARAMFLAG_BOOL, iptr:&xforms,  defintval:0, TYPE_INT, 0 },
     { "Lparallel", "Enable parallel execution",0, strptr:NULL,  defstrval:NULL, TYPE_STRING,  0 },
     { "Iterations", "Number of iterations of turbo decoder", 0, iptr:&max_turbo_iterations,  defintval:4, TYPE_INT, 0 },
     { "Performance", "Display CPU perfomance of each L1 piece", PARAMFLAG_BOOL,  iptr:NULL,  defintval:0, TYPE_INT, 0 },
@@ -695,13 +690,6 @@ int main(int argc, char **argv) {
     fprintf(csv_fdUL,"data_all%d=[",mcs);
   }
 
-  if (xforms==1) {
-    fl_initialize (&argc, argv, NULL, 0, 0);
-    form_enb = create_lte_phy_scope_enb();
-    sprintf (title, "LTE PHY SCOPE eNB");
-    fl_show_form (form_enb->lte_phy_scope_enb, FL_PLACE_HOTSPOT, FL_FULLBORDER, title);
-  }
-
   UE->pdcch_vars[0][0]->crnti = 14;
   UE->frame_parms.soundingrs_ul_config_common.enabled_flag = srs_flag;
   UE->frame_parms.soundingrs_ul_config_common.srs_BandwidthConfig = 2;
@@ -756,9 +744,7 @@ int main(int argc, char **argv) {
 
   if(get_thread_worker_conf() == WORKER_ENABLE) {
     extern void init_fep_thread(RU_t *, pthread_attr_t *);
-    extern void init_td_thread(PHY_VARS_eNB *);
-    init_fep_thread(ru,NULL);
-    init_td_thread(eNB);
+    init_fep_thread(ru, NULL);
   }
 
   // Create transport channel structures for 2 transport blocks (MIMO)
@@ -1265,9 +1251,6 @@ int main(int argc, char **argv) {
         if ((errs[0]>=100) && (trials>(n_frames/2)))
           break;
 
-        if (xforms==1)
-          phy_scope_eNB(form_enb,eNB,0);
-
         double t_tx = inMicroS(UE->phy_proc_tx.p_time);
         double t_tx_ifft = inMicroS(UE->ofdm_mod_stats.p_time);
         double t_tx_mod = inMicroS(UE->ulsch_modulation_stats.p_time);
@@ -1394,13 +1377,12 @@ int main(int argc, char **argv) {
         printStatIndent2(&eNB->ulsch_deinterleaving_stats,"sub-block interleaving" );
         printStatIndent2(&eNB->ulsch_demultiplexing_stats,"sub-block demultiplexing" );
         printStatIndent2(&eNB->ulsch_rate_unmatching_stats,"sub-block rate-matching" );
-        printf("    |__ turbo_decoder(%d bits), avg iterations: %.1f       %.2f us (%d cycles, %d trials)\n",
-               eNB->ulsch[0]->harq_processes[harq_pid]->Cminus ?
-               eNB->ulsch[0]->harq_processes[harq_pid]->Kminus :
-               eNB->ulsch[0]->harq_processes[harq_pid]->Kplus,
-               eNB->ulsch_tc_intl1_stats.trials/(double)eNB->ulsch_tc_init_stats.trials,
-               (double)eNB->ulsch_turbo_decoding_stats.diff/eNB->ulsch_turbo_decoding_stats.trials*timeBase,
-               (int)((double)eNB->ulsch_turbo_decoding_stats.diff/eNB->ulsch_turbo_decoding_stats.trials),
+        printf("    |__ harqID: %d turbo_decoder(%d bits), avg iterations: %.1f       %.2f us (%d cycles, %d trials)\n",
+               harq_pid,
+               eNB->ulsch[0]->harq_processes[harq_pid]->Cminus ? eNB->ulsch[0]->harq_processes[harq_pid]->Kminus : eNB->ulsch[0]->harq_processes[harq_pid]->Kplus,
+               eNB->ulsch_tc_intl1_stats.trials / (double)eNB->ulsch_tc_init_stats.trials,
+               (double)eNB->ulsch_turbo_decoding_stats.diff / eNB->ulsch_turbo_decoding_stats.trials * timeBase,
+               (int)((double)eNB->ulsch_turbo_decoding_stats.diff / eNB->ulsch_turbo_decoding_stats.trials),
                eNB->ulsch_turbo_decoding_stats.trials);
         printStatIndent3(&eNB->ulsch_tc_init_stats,"init");
         printStatIndent3(&eNB->ulsch_tc_alpha_stats,"alpha");

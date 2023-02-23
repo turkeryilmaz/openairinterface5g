@@ -664,8 +664,6 @@ int remove_ue_list(UE_list_t *listP, int UE_id);
 void dump_ue_list(UE_list_t *listP);
 void init_ue_list(UE_list_t *listP);
 int UE_num_active_CC(UE_info_t *listP, int ue_idP);
-int UE_PCCID(module_id_t mod_idP, int ue_idP);
-rnti_t UE_RNTI(module_id_t mod_idP, int ue_idP);
 
 uint8_t find_rb_table_index(uint8_t average_rbs);
 
@@ -1026,10 +1024,6 @@ uint8_t frame_subframe2_dl_harq_pid(LTE_TDD_Config_t *tdd_Config, int abs_frameP
 uint8_t ul_subframe2_k_phich(COMMON_channels_t *cc, sub_frame_t ul_subframe);
 
 unsigned char ul_ACK_subframe2M(LTE_TDD_Config_t *tdd_Config,unsigned char subframe);
-
-int to_rbg(int dl_Bandwidth);
-
-int to_prb(int dl_Bandwidth);
 
 uint8_t get_Msg3harqpid(COMMON_channels_t *cc,
                         frame_t frame, sub_frame_t current_subframe);
