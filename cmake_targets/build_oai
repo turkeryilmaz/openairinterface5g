@@ -56,7 +56,14 @@ CMAKE_CMD="$CMAKE"
 MAKE_CMD=make
 BUILD_ECLIPSE=0
 NR="False"
-OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope nrqtscope ldpc_cuda ldpc_t1 websrv oai_iqplayer"
+OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope ldpc_cuda ldpc_offload_t1 ldpc_offload_t2"
+ulfiusdep=$(basename ./`find /usr/lib* -name libulfius.so`)
+jssondep=$(basename ./`find /usr/lib* -name libjansson.so`)
+if [ "$ulfiusdep" == "libulfius.so" -a "$jssondep" == "libjansson.so" ] ; then
+  OPTIONAL_LIBRARIES+=" websrv"
+else
+  echo_warning "  websrv optional build not included in build-lib option  as dependencies requirements not met "
+fi
 RU=0
 CMAKE_C_FLAGS=()
 CMAKE_CXX_FLAGS=()

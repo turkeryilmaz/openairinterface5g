@@ -678,11 +678,11 @@ int main(int argc, char **argv)
   if (gNB->ldpc_offload_flag == 1) {
     char version [] = "_";
     strcat(version,ldpc_offload_version);
-    if (!strcmp(ldpc_offload_version,"T1") || !strcmp(ldpc_offload_version,"T2")){
+    if (!strcmp(ldpc_offload_version,"t1") || !strcmp(ldpc_offload_version,"t2")){
        strcpy(gNB->ldpc_offload_version,version);
     } else {
-      AssertFatal(strcmp(ldpc_offload_version,"") != 0, "Select offload library version: -o T1 / -o T2\n");
-      AssertFatal(strcmp(ldpc_offload_version,"T1") == 0 || !strcmp(ldpc_offload_version,"T2") == 0,
+      AssertFatal(strcmp(ldpc_offload_version,"") != 0, "Select offload library version: -o t1 / -o t2\n");
+      AssertFatal(strcmp(ldpc_offload_version,"t1") == 0 || !strcmp(ldpc_offload_version,"t2") == 0,
                          "Unsupported offload library version\n");
     }
   }

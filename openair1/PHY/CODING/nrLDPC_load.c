@@ -74,7 +74,7 @@ return 0;
 
 int load_nrLDPClib_offload(char *version) {
   char *ptr = (char*)config_get_if();
-  char libname[64]="ldpc";
+  char libname[64]="ldpc_offload";
   char *shlibversion=NULL;
 
   if (ptr == NULL) {
@@ -89,7 +89,7 @@ int load_nrLDPClib_offload(char *version) {
   } else if (version == NULL) {
     ret=load_module_shlib(libname,shlib_decoffload_fdesc,sizeof(shlib_decoffload_fdesc)/sizeof(loader_shlibfunc_t),NULL);
     paramdef_t LoaderParams[] ={{"shlibversion", NULL, 0, strptr:&shlibversion, defstrval:"", TYPE_STRING, 0, NULL}};
-    ret = config_get(LoaderParams,sizeof(LoaderParams)/sizeof(paramdef_t), "loader.ldpc");
+    ret = config_get(LoaderParams,sizeof(LoaderParams)/sizeof(paramdef_t), "loader.ldpc_offload");
     version = shlibversion;
   }
 
@@ -98,7 +98,7 @@ int load_nrLDPClib_offload(char *version) {
   t_nrLDPC_dec_params decParams;
   t_nrLDPC_dec_params* p_decParams    = &decParams;
 
-  int8_t   l[68*384];
+  int8_t   l[68*384+16];
   int8_t llrProcBuf[22*384];
 
   p_decParams->Z = 384;
@@ -106,9 +106,9 @@ int load_nrLDPClib_offload(char *version) {
 
   //paramdef_t LoaderParams[] ={{"shlibversion", NULL, 0, strptr:&shlibversion, defstrval:"", TYPE_STRING, 0, NULL}};
   //ret = config_get(LoaderParams,sizeof(LoaderParams)/sizeof(paramdef_t), "loader.ldpc_offload");
-  if (!strcmp(version,"_T1")) {
+  if (!strcmp(version,"_t1")) {
     p_decParams->lib_version = 1;
-  } else if (!strcmp(version,"_T2")) {
+  } else if (!strcmp(version,"_t2")) {
     p_decParams->lib_version = 2;
   } else {
     ret = 0;
