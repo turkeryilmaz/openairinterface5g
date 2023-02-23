@@ -146,6 +146,7 @@ int physide_ul_full_slot_call_back(void *param)
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 void *define_oran_pointer()
 {
   xranLibWraper *xranlib;
@@ -154,13 +155,7 @@ void *define_oran_pointer()
 
   return xranlib;
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 void dump_oran_config(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -183,13 +178,7 @@ void dump_oran_config(void *xranlib_)
   printf("* Number RBs UL  = %d\n", nulrbs);
   printf("**--**--**--**--**--**--**--**--**--**--**--**\n");
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int setup_oran(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -198,13 +187,7 @@ int setup_oran(void *xranlib_)
   }
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int open_oran_callback(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -212,13 +195,7 @@ int open_oran_callback(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int open_oran(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -229,13 +206,7 @@ int open_oran(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int initialize_oran(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -244,13 +215,7 @@ int initialize_oran(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int start_oran(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -258,13 +223,7 @@ int start_oran(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int stop_oran(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -272,13 +231,7 @@ int stop_oran(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int close_oran(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -286,13 +239,7 @@ int close_oran(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int register_physide_callbacks(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -303,13 +250,7 @@ int register_physide_callbacks(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int load_iq_from_file(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -359,13 +300,7 @@ int load_iq_from_file(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int xran_fh_tx_send_buffer(void *xranlib_)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -472,13 +407,7 @@ int xran_fh_tx_send_buffer(void *xranlib_)
   }
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int read_prach_data(ru_info_t *ru, int frame, int slot)
 {
   p_xran_dev_ctx_2 = xran_dev_get_ctx();
@@ -517,13 +446,7 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
   }
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int xran_fh_rx_read_slot(void *xranlib_, ru_info_t *ru, int *frame, int *slot, int oframe, int oslot, uint8_t sync)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -684,13 +607,7 @@ int xran_fh_rx_read_slot(void *xranlib_, ru_info_t *ru, int *frame, int *slot, i
   }
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 int xran_fh_tx_send_slot(void *xranlib_, ru_info_t *ru, int frame, int slot, uint64_t timestamp)
 {
   xranLibWraper *xranlib = ((xranLibWraper *)xranlib_);
@@ -833,7 +750,6 @@ int xran_fh_tx_send_slot(void *xranlib_, ru_info_t *ru, int frame, int slot, uin
 }
 #endif
 
-int64_t count_sec = 0;
 struct xran_common_counters x_counters;
 uint64_t nTotalTime;
 uint64_t nUsedTime;
@@ -879,13 +795,7 @@ int compute_xran_statistics(void *xranlib_)
 
   return (0);
 }
-#ifdef __cplusplus
-}
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 void check_xran_ptp_sync()
 {
   int res;
@@ -894,6 +804,7 @@ void check_xran_ptp_sync()
   else
     printf("Machine is synchronized using PTP!\n");
 }
+
 #ifdef __cplusplus
 }
 #endif
