@@ -24,6 +24,12 @@ make install T=x86_64-native-linuxapp-gcc
 
   https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/Setup-Configuration_fh.html
 
+  Update Linux Boot arguments 
+```
+BOOT_IMAGE=(hd0,gpt2)/vmlinuz-4.18.0-425.10.1.rt7.220.el8_7.x86_64 root=/dev/mapper/rhel_skylark-root ro crashkernel=auto resume=/dev/mapper/rhel_skylark-swap rd.lvm.lv=rhel_skylark/root rd.lvm.lv=rhel_skylark/swap rhgb quiet igb.max_vfs=2 intel_iommu=on iommu=pt intel_pstate=disable nosoftlockup tsc=nowatchdog mitigations=off cgroup_memory=1 cgroup_enable=memory mce=off idle=poll hugepagesz=1G hugepages=40 hugepagesz=2M hugepages=0 default_hugepagesz=1G selinux=0 enforcing=0 nmi_watchdog=0 softlockup_panic=0 audit=0 skew_tick=1 skew_tick=1 isolcpus=managed_irq,domain,0-2,8-17 intel_pstate=disable nosoftlockup tsc=reliable
+```
+  Use isolated CPU 0-2 for DPDK/ORAN, CPU 8 for ru_thread in our example config 
+
 * PTP configuration
 
   https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/PTP-configuration_fh.html
@@ -61,7 +67,7 @@ git apply oran-fhi-5-remove-not-used-dependencies.patch
    
 ```
 export XRAN_LIB_DIR=~/phy/fhi_lib/lib/build
-export XRAN_DIR=~//phy/fhi_lib
+export XRAN_DIR=~/phy/fhi_lib
 export RTE_SDK=~/dpdk-20.05
 export RTE_TARGET=x86_64-native-linuxapp-gcc
 export RTE_INCLUDE=${RTE_SDK}/${RTE_TARGET}/include
@@ -88,12 +94,12 @@ cd cmake_targets
 
    ```
    cd ran_build/build
-   cp ../../tools/oran_fhi_integration_patches/conf.json .
+   cp ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.conf.json .
    ```
- * Change to MAC address of DU/RU and PCI address of your setup in conf.json
+ * Update MAC address of DU/RU and PCIe address of your setup in oran.conf.json
 
 ```
-sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/oran_fh.conf --sa --reorder-thread-disable 1
+sudo ./nr-softmodem -O ../../../targets/PROJECTS/GENERIC-NR-5GC/CONF/oran.fh.band78.fr1.273PRB.conf --sa --reorder-thread-disable 
 ```
 
 
