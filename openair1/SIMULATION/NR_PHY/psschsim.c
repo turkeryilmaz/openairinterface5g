@@ -442,6 +442,7 @@ int main(int argc, char **argv)
   unsigned int G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
   NR_UE_ULSCH_t *slsch_ue = nearbyUE->slsch[0][0];
   nr_slsch_encoding(nearbyUE, slsch_ue, &nearbyUE->frame_parms, harq_pid, G);
+  printf("tx is done\n");
 
   #if 0
   unsigned int errors_bit_uncoded = 0;
