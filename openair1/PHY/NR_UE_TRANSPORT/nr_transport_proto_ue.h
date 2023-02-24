@@ -1014,6 +1014,19 @@ void nr_pusch_codeword_scrambling(uint8_t *in,
                                   bool uci_on_pusch,
                                   uint32_t* out);
 
+/*! \brief Perform PSSCH scrambling. TS 38.211 V16.10.0 subclause 8.3.1.1
+  @param[in] in, Pointer to input bits
+  @param[in] size, of input bits
+  @param[in] control_size, of control input bits
+  @param[in] Nid, cell id
+  @param[out] out, the scrambled bits
+*/
+void nr_pusch_codeword_scrambling_sl(uint8_t *in,
+                                      uint32_t size,
+                                      uint32_t SCI2_bits,
+                                      uint32_t Nid,
+                                      uint32_t* out);
+
 /** \brief Perform the following functionalities:
     - encoding
     - scrambling

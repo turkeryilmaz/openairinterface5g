@@ -55,55 +55,32 @@
 
 //extern int32_t uplink_counter;
 
-void nr_pusch_codeword_scrambling_uci(uint8_t *in,
+void nr_pusch_codeword_scrambling_sl(uint8_t *in,
                                       uint32_t size,
+                                      uint32_t SCI2_bits,
                                       uint32_t Nid,
-                                      uint32_t n_RNTI,
                                       uint32_t* out)
 {
-  uint8_t reset, b_idx;
-  uint32_t x1, x2, s=0, temp_out;
+  uint8_t reset, b_idx, c;
+  uint32_t x1, x2, s = 0, temp_out;
 
   reset = 1;
-  x2 = (n_RNTI<<15) + Nid;
+  x2 = (Nid << 15) + 1010;
 
-  for (int i=0; i<size; i++) {
-    b_idx = i&0x1f;
-    if (b_idx==0) {
-      s = lte_gold_generic(&x1, &x2, reset);
-      reset = 0;
-      if (i)
-        out++;
+  s = lte_gold_generic(&x1, &x2, 1);
+  int m_ij, i, j = 0;
+  for (i = 0; i < size; i++) {
+    if (in[i] == PUSCH_x) {
+      out[i] = out[i - 2];
+      j = j + 1;
+    } else {
+      m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
+      c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);
+      out[i] = (in[i] + c) & 1;
     }
-    if (in[i]==NR_PUSCH_x)
-      *out ^= 1<<b_idx;
-    else if (in[i]==NR_PUSCH_y){
-      if (b_idx!=0)
-        *out ^= (*out & (1<<(b_idx-1)))<<1;
-      else{
-
-        temp_out = *(out-1);
-        *out ^= temp_out>>31;
-
-      }
-    }
-    else
-      *out ^= (((in[i])&1) ^ ((s>>b_idx)&1))<<b_idx;
-    //printf("i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
+    if (i % 32 == 31)
+      s = lte_gold_generic(&x1, &x2, 0);
   }
-}
-
-void nr_pusch_codeword_scrambling(uint8_t *in,
-                                  uint32_t size,
-                                  uint32_t Nid,
-                                  uint32_t n_RNTI,
-                                  bool uci_on_pusch,
-                                  uint32_t* out)
-{
-  if (uci_on_pusch)
-    nr_pusch_codeword_scrambling_uci(in, size, Nid, n_RNTI, out);
-  else
-    nr_codeword_scrambling(in, size, 0, Nid, n_RNTI, out);
 }
 
 void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
@@ -181,24 +158,24 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   ///////////
   ////////////////////////////////////////////////////////////////////
 
-  /////////////////////////ULSCH scrambling/////////////////////////
+  /////////////////////////SLSCH scrambling/////////////////////////
   ///////////
 
   uint32_t available_bits = G;
-  uint32_t scrambled_output[(available_bits>>5)+1];
-  memset(scrambled_output, 0, ((available_bits>>5)+1)*sizeof(uint32_t));
+  uint32_t SCI2_bits = 0; //TODO: Update
+  uint32_t scrambled_output[(available_bits >> 5) + 1];
+  memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));
 
-  nr_pusch_codeword_scrambling(harq_process_ul_ue->f,
-                               available_bits,
-                               slsch_ue->Nid_cell,
-                               rnti,
-                               false,
-                               scrambled_output);
+  nr_pusch_codeword_scrambling_sl(harq_process_ul_ue->f,
+                                   available_bits,
+                                   SCI2_bits,
+                                   slsch_ue->Nid_cell,
+                                   scrambled_output);
 
   /////////////
   //////////////////////////////////////////////////////////////////////////
 
-  /////////////////////////ULSCH modulation/////////////////////////
+  /////////////////////////SLSCH modulation/////////////////////////
   ///////////
 
   int max_num_re = Nl*number_of_symbols*nb_rb*NR_NB_SC_PER_RB;
@@ -206,10 +183,10 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   nr_modulation(scrambled_output, // assume one codeword for the moment
                 available_bits,
+                SCI2_bits,
                 mod_order,
                 (int16_t *)d_mod);
 
-    
   ///////////
   ////////////////////////////////////////////////////////////////////////
 

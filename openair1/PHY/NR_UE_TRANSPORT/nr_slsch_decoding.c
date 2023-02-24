@@ -20,7 +20,7 @@
  */
 
 // [from nrUE coding]
-#include "PHY/defs_UE.h"
+#include "PHY/defs_nr_UE.h"
 #include "PHY/phy_extern_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_slsch.h"
