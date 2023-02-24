@@ -1584,10 +1584,10 @@ static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
       if(IndicationAndControlMode_enable == L1MacInd_Ctrl->RachPreamble.v)
       {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = true;
-        SS_L1MACIND_CTRL(message_p).bitmask |= RACH_PREAMBLE_PRESENT;
       } else {
         SS_L1MACIND_CTRL(message_p).rachpreamble_enable = false;
       }
+      SS_L1MACIND_CTRL(message_p).bitmask |= RACH_PREAMBLE_PRESENT;
     }
     SS_L1MACIND_CTRL(message_p).UL_HARQ_Ctrl = IndCtrlMode_NOT_PRESENT;
     if(L1MacInd_Ctrl->UL_HARQ.d)
