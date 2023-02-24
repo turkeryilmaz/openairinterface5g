@@ -33,6 +33,7 @@
 #include "nrLDPC_mPass.h"
 #include "nrLDPC_cnProc.h"
 #include "nrLDPC_bnProc.h"
+#include "nrLDPC_intrinsics.h"
 // #define UNROLL_CN_PROC 1
 // #define UNROLL_BN_PROC 1
 // #define UNROLL_BN_PROC_PC 1
@@ -113,7 +114,7 @@
 
 
 
-#define NR_LDPC_ENABLE_PARITY_CHECK
+// #define NR_LDPC_ENABLE_PARITY_CHECK
 //#define NR_LDPC_PROFILER_DETAIL
 
 #ifdef NR_LDPC_DEBUG_MODE
@@ -131,7 +132,13 @@ int32_t nrLDPC_decod(t_nrLDPC_dec_params* p_decParams, int8_t* p_llr, int8_t* p_
     t_nrLDPC_lut* p_lut = &lut;
 
     // Initialize decoder core(s) with correct LUTs
+    #ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->ldpcInit);
+    #endif
     numLLR = nrLDPC_init(p_decParams, p_lut);
+    #ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->ldpcInit);
+    #endif
 
     // Launch LDPC decoder core for one segment
     numIter = nrLDPC_decoder_core(p_llr, p_out, numLLR, p_lut, p_decParams, p_profiler);
@@ -158,11 +165,20 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
     uint8_t  numMaxIter = p_decParams->numMaxIter;
     e_nrLDPC_outMode outMode = p_decParams->outMode;
 
+    // Allocate LDPC processing buffers on stack
+    // Note, input buffers p_llr, p_out are probably allocated on heap
+    #ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->ldpcMemAlloc);
+    #endif
     int8_t procBuf[NR_LDPC_SIZE_CN_PROC_BUF]      __attribute__ ((aligned(64))) = {0};
     int8_t procBufRes[NR_LDPC_SIZE_CN_PROC_BUF]   __attribute__ ((aligned(64))) = {0};
     int8_t llrRes[NR_LDPC_MAX_NUM_LLR]            __attribute__ ((aligned(64))) = {0};
     // int8_t llrProcBuf[NR_LDPC_MAX_NUM_LLR]        __attribute__ ((aligned(64))) = {0};
     int8_t llrOut[NR_LDPC_MAX_NUM_LLR]            __attribute__ ((aligned(64))) = {0};
+    #ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->ldpcMemAlloc);
+    #endif
+
     // Minimum number of iterations is 1
     // 0 iterations means hard-decision on input LLRs
     uint32_t i = 1;
@@ -336,7 +352,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
     // nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
     //nrLDPC_llrRes2llrOut(p_lut, p_llrOut, llrRes, Z, BG);
     // nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z,BG);
-    nrLDPC_bnProcPcOpt2(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
+    nrLDPC_bnProcPcOpt3(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
     // nrLDPC_llr2llrProcBuf(p_lut, llrRes, p_llrOut, Z, BG);
     // memcpy(llrRes,p_llrOut,NR_LDPC_MAX_NUM_LLR*sizeof(int8_t));
 #else        
@@ -617,7 +633,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
 #ifndef UNROLL_BN_PROC_PC
         //nrLDPC_bnProcPc(p_lut, procBuf, procBufRes, llrProcBuf, llrRes, Z);
         // nrLDPC_bnProcPcOpt(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
-        nrLDPC_bnProcPcOpt2(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
+        nrLDPC_bnProcPcOpt3(p_lut, procBuf, procBufRes, p_llr, llrRes, Z, BG);
         // nrLDPC_llr2llrProcBuf(p_lut, llrRes, p_llrOut, Z, BG);
         // memcpy(llrRes,p_llrOut,NR_LDPC_MAX_NUM_LLR*sizeof(int8_t));
 #else

@@ -96,6 +96,8 @@ typedef struct nrLDPCoffload_params {
  */
 #ifndef CODEGEN
 typedef struct nrLDPC_time_stats {
+    time_stats_t ldpcInit; /**< Statistics for function nrLDPC_init */
+    time_stats_t ldpcMemAlloc; /**< Statistics for LDPC memory allocation */
     time_stats_t llr2llrProcBuf; /**< Statistics for function llr2llrProcBuf */
     time_stats_t llr2CnProcBuf; /**< Statistics for function llr2CnProcBuf */
     time_stats_t cnProc; /**< Statistics for function cnProc */
