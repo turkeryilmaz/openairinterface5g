@@ -1,6 +1,8 @@
 #!/bin/bash
 DIRBIN="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 pyang=$(which pyang)
+yanglint=$(which yanglint)
+
 OUTPUT_GNODEB="$DIRBIN/xml/gnodeb"
 OUTPUT_CU="$DIRBIN/xml/cu"
 OUTPUT_DU="$DIRBIN/xml/du"
@@ -18,10 +20,11 @@ case "$1" in
     validate)
         $pyang --strict "$DIRBIN/yang/"*.yang
         if [ $? -eq 0 ]; then
-            echo "succeeded"
+            echo "yang files are consistent"
         else
-            echo "failed"
+            echo "there is an inconsistency in the yang files"
         fi
+        $yanglint --strict -p "$DIRBIN/yang/" "$DIRBIN/xml/gnodeb_filled.xml"
         #$pyang --lint "$DIRBIN/yang/"*.yang
         
     ;;

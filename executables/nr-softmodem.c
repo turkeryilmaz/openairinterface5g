@@ -79,6 +79,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "nfapi/oai_integration/vendor_ext.h"
 
+#include "common/utils/netconf/netconf.h"
+
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
 int nfapi_sync_var=-1; //!< protected by mutex \ref nfapi_sync_mutex
@@ -517,6 +519,10 @@ void init_pdcp(void) {
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
   start_background_system();
+
+  //netconf
+  netconf_init();
+  netconf_test();
 
   ///static configuration for NR at the moment
   if ( load_configmodule(argc,argv,CONFIG_ENABLECMDLINEONLY) == NULL) {

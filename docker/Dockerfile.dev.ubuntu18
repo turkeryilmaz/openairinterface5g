@@ -25,7 +25,7 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base:latest as ran-build
+FROM ran-base:latest as ran-dev
 
 # run dependencies install for netconf
 RUN ./docker/scripts/netconf_dep_install.sh
@@ -45,6 +45,31 @@ WORKDIR /oai-ran
 # build all targets so final targets can be created afterwards
 RUN /bin/sh oaienv && \
     cd cmake_targets && \
-    mkdir -p log && \
+    mkdir -p log
     # ./build_oai --eNB --gNB --RU --UE --nrUE --ninja --build-lib all -w USRP --verbose-ci --noavx512 -c
-    ./build_oai --gNB -w USRP --build-lib telnetsrv --verbose-ci --noavx512 -c
+    # ./build_oai --gNB -w USRP --build-lib telnetsrv --verbose-ci --noavx512 -c
+
+# Add netconf user and configure access
+RUN \
+    adduser netconf && \
+    echo "netconf:netconf!" | chpasswd && \
+    mkdir -p /home/netconf/.ssh
+
+# # Initialize netopeer2
+RUN \
+    /usr/local/share/netopeer2/merge_hostkey.sh && \
+    /usr/local/share/netopeer2/merge_config.sh
+COPY docker/scripts/gnb_entrypoint.sh /opt/oai-gnb/bin/entrypoint.sh
+WORKDIR /opt/oai-gnb
+#EXPOSE 2152/udp  # S1U, GTP/UDP
+#EXPOSE 22100/tcp # ?
+#EXPOSE 36412/udp # S1C, SCTP/UDP
+#EXPOSE 36422/udp # X2C, SCTP/UDP
+#EXPOSE 50000/udp # IF5 / ORI (control)
+#EXPOSE 50001/udp # IF5 / ECPRI (data)
+
+# ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
+# CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf"]
+
+WORKDIR /oai-ran/cmake_targets
+CMD ["/bin/sh", "-c", "sleep infinity"]

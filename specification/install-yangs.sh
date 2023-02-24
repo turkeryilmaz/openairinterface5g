@@ -40,3 +40,6 @@ do
     echo "$DIR_YANGS/$file"
     sysrepoctl -i "$DIR_YANGS/$file"
 done
+
+sysrepoctl -c _3gpp-common-managed-function -e MeasurementsUnderManagedFunction
+sysrepoctl -c _3gpp-common-managed-element -e FmUnderManagedElement

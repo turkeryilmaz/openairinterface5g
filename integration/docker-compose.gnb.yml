@@ -4,7 +4,7 @@ services:
   gnb:
     image: oai-gnb:latest
     privileged: true
-    container_name: sa-b200-gnb
+    container_name: gnodeb01-test
     environment:
       - USE_VOLUMED_CONF="yes"
       - USE_B2XX="yes"

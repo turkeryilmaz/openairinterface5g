@@ -116,6 +116,7 @@ For example, the eNB:
 
 ```bash
 docker build --target oai-enb --tag oai-enb:latest --file docker/Dockerfile.eNB.ubuntu18 .
+docker build --target oai-gnb --tag oai-gnb:latest --file docker/Dockerfile.gNB.ubuntu22 .
 ```
 
 After a while:
