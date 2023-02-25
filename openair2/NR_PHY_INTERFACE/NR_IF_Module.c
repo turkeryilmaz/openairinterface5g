@@ -385,22 +385,25 @@ static void match_crc_rx_pdu(nfapi_nr_rx_data_indication_t *rx_ind, nfapi_nr_crc
   }
 }
 
-static void assign_fapi_pdu_pointers(uint32_t **fapi_pdu_list, gNB_MAC_INST *mac) {
+static void assign_fapi_pdu_pointers(uint32_t *fapi_pdu_list[NFAPI_CC_MAX][NFAPI_NR_MAX_TX_REQUEST_PDUS][NFAPI_NR_MAX_TX_REQUEST_TLV], gNB_MAC_INST *mac) {
   if (fapi_pdu_list == NULL) return;
 
-  int count = 0;
   for (int cc=0; cc < NFAPI_CC_MAX; cc++) {
     for (int pdu=0; pdu < NFAPI_NR_MAX_TX_REQUEST_PDUS; pdu++) {
       for (int tlv=0; tlv < NFAPI_NR_MAX_TX_REQUEST_TLV; tlv++) {
-        mac->TX_req[cc].pdu_list[pdu].TLVs[tlv].value.ptr = fapi_pdu_list[count];
-        mac->TX_req[cc].pdu_list[pdu].TLVs[tlv].tag = 1;
-        count++;
+        mac->TX_req[cc].pdu_list[pdu].TLVs[tlv].value.ptr = fapi_pdu_list[cc][pdu][tlv];
+        if (fapi_pdu_list[cc][pdu][tlv])
+          mac->TX_req[cc].pdu_list[pdu].TLVs[tlv].tag = 1;
+        else
+          mac->TX_req[cc].pdu_list[pdu].TLVs[tlv].tag = 0;
       }
     }
   }
 }
 
-void NR_UL_indication(NR_UL_IND_t *UL_info, uint32_t **fapi_pdu_list, void *phyMsg) {
+void NR_UL_indication(NR_UL_IND_t *UL_info,
+                      uint32_t *fapi_pdu_list[NFAPI_CC_MAX][NFAPI_NR_MAX_TX_REQUEST_PDUS][NFAPI_NR_MAX_TX_REQUEST_TLV],
+                      processingData_L1tx_t *phyMsg) {
   AssertFatal(UL_info!=NULL,"UL_info is null\n");
   module_id_t      module_id   = UL_info->module_id;
   int              CC_id       = UL_info->CC_id;

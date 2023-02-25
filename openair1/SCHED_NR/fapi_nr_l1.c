@@ -132,7 +132,7 @@ void handle_nr_nfapi_pdsch_pdu(processingData_L1tx_t *msgTx,
 
 }
 
-void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO, void *phyMsg){
+void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO, processingData_L1tx_t *msgTx){
   
   PHY_VARS_gNB *gNB;
   // copy data from L2 interface into L1 structures
@@ -162,7 +162,6 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO, void *phyMsg){
   if (NFAPI_MODE == NFAPI_MONOLITHIC){
 
     if (slot_type == NR_DOWNLINK_SLOT || slot_type == NR_MIXED_SLOT) {
-      processingData_L1tx_t *msgTx = (processingData_L1tx_t *) phyMsg;
 
       msgTx->num_pdsch_slot=0;
       msgTx->num_dl_pdcch=0;
