@@ -699,11 +699,9 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
           continue;
         }
 
-
-	NR_UE_info_t* UE = add_new_nr_ue(gNB_mac, ra->rnti, ra->CellGroup);
+        NR_UE_info_t *UE = add_new_nr_ue(gNB_mac, ra->rnti, ra->CellGroup);
         if (!UE) {
           LOG_W(NR_MAC, "Random Access %i discarded at state %i (TC_RNTI %04x RNTI %04x): max number of users achieved!\n", i, ra->state,ra->rnti,current_rnti);
-
           nr_mac_remove_ra_rnti(gnb_mod_idP, ra->rnti);
           nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
           return;
@@ -1373,7 +1371,7 @@ void nr_ue_max_mcs_min_rb(int mu, int ph_limit, NR_sched_pusch_t *sched_pusch, N
                                    sched_pusch->dmrs_info.N_PRB_DMRS*sched_pusch->dmrs_info.num_dmrs_symb,
                                    deltaMCS);
 
-  while (ph_limit < tx_power && *Rb >= minRb) {
+  while (ph_limit < tx_power && *Rb > minRb) {
     (*Rb)--;
     tbs_bits = nr_compute_tbs(Qm, R, *Rb,
                               sched_pusch->tda_info.nrOfSymbols,
@@ -1390,7 +1388,7 @@ void nr_ue_max_mcs_min_rb(int mu, int ph_limit, NR_sched_pusch_t *sched_pusch, N
                                  deltaMCS);
   }
 
-  while (ph_limit < tx_power && *mcs > 6) {
+  while (ph_limit < tx_power && *mcs > 0) {
     (*mcs)--;
     update_ul_ue_R_Qm(*mcs, ul_bwp->mcs_table, ul_bwp->pusch_Config, &R, &Qm);
     tbs_bits = nr_compute_tbs(Qm, R, *Rb,
