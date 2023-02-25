@@ -36,7 +36,7 @@
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
-
+#include "CODING/nrPolar_tools/nr_polar_pssch_defs.h"
 
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -344,6 +344,20 @@ typedef struct {//from gNB code for PSSCH Rx
   uint8_t cl_done;
   /// flag to indicate DTX on reception
   int DTX;
+
+  // The following are for Polar coding.
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  //uint32_t pdu_fer;
+  uint32_t pssch_a;
+  uint32_t pssch_a_interleaved;
+  uint32_t pssch_a_prime;
+  uint32_t pssch_e[NR_POLAR_PSSCH_E_DWORD];
 } NR_UE_PSSCH;
 
 typedef struct {

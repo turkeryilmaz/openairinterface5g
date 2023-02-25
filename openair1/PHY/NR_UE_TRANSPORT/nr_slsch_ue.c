@@ -83,14 +83,14 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
   }
 }
 
-void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
                             unsigned char harq_pid,
                             uint32_t frame,
                             uint8_t slot,
                             uint8_t thread_id,
                             int gNB_id) {
 
-  LOG_D(PHY,"nr_ue_ulsch_procedures hard_id %d %d.%d\n",harq_pid,frame,slot);
+  LOG_D(PHY,"nr_ue_slsch_tx_procedures hard_id %d %d.%d\n",harq_pid,frame,slot);
 
   int8_t Wf[2], Wt[2];
   int l_prime[2], delta;
@@ -107,7 +107,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   NR_UE_ULSCH_t *ulsch_ue = UE->ulsch[thread_id][gNB_id];//TODO delete it
   NR_UE_ULSCH_t *slsch_ue = UE->slsch[thread_id][gNB_id];
   NR_UL_UE_HARQ_t *harq_process_ul_ue = slsch_ue->harq_processes[harq_pid];
-  nfapi_nr_ue_pusch_pdu_t *pusch_pdu = &harq_process_ul_ue->pssch_pdu;
+  nfapi_nr_ue_pssch_pdu_t *pusch_pdu = &harq_process_ul_ue->pssch_pdu;
 
   int start_symbol          = pusch_pdu->start_symbol_index;
   uint16_t ul_dmrs_symb_pos = pusch_pdu->ul_dmrs_symb_pos;
@@ -139,9 +139,38 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   N_RE_prime = NR_NB_SC_PER_RB*number_of_symbols - nb_dmrs_re_per_rb*number_dmrs_symbols - N_PRB_oh;
   harq_process_ul_ue->num_of_mod_symbols = N_RE_prime*nb_rb;
 
-  /////////////////////////SLSCH coding/////////////////////////
-  ///////////
 
+  /////////////////////////SLSCH SCI2 coding/////////////////////////
+  // TODO: update the following
+    /* payload is 56 bits */
+  PSSCH_SCI2_payload pssch_payload;             // NR Side Link Payload for Rel 16
+  pssch_payload.coverageIndicator = 0;     // 1 bit
+  pssch_payload.tddConfig = 0xFFF;         // 12 bits for TDD configuration
+  pssch_payload.DFN = 0x3FF;               // 10 bits for DFN
+  pssch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
+  pssch_payload.reserved = 0;              // 2 bits reserved
+
+  NR_UE_PSSCH m_pssch;
+  UE->pssch_vars[0] = &m_pssch;
+  NR_UE_PSSCH *pssch = UE->pssch_vars[0];
+  memset((void *)pssch, 0, sizeof(NR_UE_PSSCH));
+
+  pssch->pssch_a = *((uint32_t *)&pssch_payload);
+  pssch->pssch_a_interleaved = pssch->pssch_a; // skip interlevaing for Sidelink
+
+  // Encoder reversal
+  uint64_t a_reversed = 0;
+  for (int i = 0; i < NR_POLAR_PSSCH_SCI2_PAYLOAD_BITS; i++)
+    a_reversed |= (((uint64_t)pssch->pssch_a_interleaved >> i) & 1) << (31 - i);
+
+  /// CRC, coding and rate matching
+  polar_encoder_fast(&a_reversed, (void*)pssch->pssch_e, 0, 0,
+                     NR_POLAR_PSSCH_MESSAGE_TYPE,
+                     NR_POLAR_PSSCH_SCI2_PAYLOAD_BITS,
+                     NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+
+
+  /////////////////////////SLSCH data coding/////////////////////////
   unsigned int G = nr_get_G(nb_rb, number_of_symbols,
                             nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl);
 
@@ -155,37 +184,38 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     return;
 
 
-  ///////////
-  ////////////////////////////////////////////////////////////////////
-
   /////////////////////////SLSCH scrambling/////////////////////////
-  ///////////
-
   uint32_t available_bits = G;
   uint32_t SCI2_bits = 0; //TODO: Update
   uint32_t scrambled_output[(available_bits >> 5) + 1];
   memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));
 
   nr_pusch_codeword_scrambling_sl(harq_process_ul_ue->f,
-                                   available_bits,
-                                   SCI2_bits,
-                                   slsch_ue->Nid_cell,
-                                   scrambled_output);
+                                  available_bits,
+                                  SCI2_bits,
+                                  slsch_ue->Nid_cell,
+                                  scrambled_output);
 
-  /////////////
   //////////////////////////////////////////////////////////////////////////
 
   /////////////////////////SLSCH modulation/////////////////////////
-  ///////////
 
   int max_num_re = Nl*number_of_symbols*nb_rb*NR_NB_SC_PER_RB;
   int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
 
+  // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
-                available_bits,
                 SCI2_bits,
-                mod_order,
+                2,
                 (int16_t *)d_mod);
+
+  // modulating SL-SCH bits
+
+  //TODO: revisit here.
+  nr_modulation(scrambled_output + (SCI2_bits >> 5), // assume one codeword for the moment
+                available_bits - SCI2_bits,
+                mod_order,
+                (int16_t *)(d_mod + SCI2_bits / 2));
 
   ///////////
   ////////////////////////////////////////////////////////////////////////
@@ -395,7 +425,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                        dmrs_type,
                                        K_ptrs,
                                        nb_rb,
-                                       pusch_pdu->pusch_ptrs.ptrs_ports_list[0].ptrs_re_offset,
+                                       pusch_pdu->pssch_ptrs.ptrs_ports_list[0].ptrs_re_offset,
                                        start_sc,
                                        frame_parms->ofdm_symbol_size);
         }
@@ -567,7 +597,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 }
 
 
-uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
+uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
                                       uint8_t slot,
                                       NR_DL_FRAME_PARMS *frame_parms,
                                       uint8_t n_antenna_ports) {
