@@ -77,7 +77,9 @@
   {"DCIN" ,                        CONFIG_HLP_FI_ScalingFN,0,                   .u16ptr=&I_ScalingFN,                        .defintval=1,      TYPE_UINT16,   0}, \
   {"DCID" ,                        CONFIG_HLP_FI_ScalingFD,0,                   .u16ptr=&I_ScalingFD,                        .defintval=2,      TYPE_UINT16,   0}, \
   {"DCDN" ,                        CONFIG_HLP_FD_ScalingFN,0,                   .u16ptr=&D_ScalingFN,                        .defintval=0,      TYPE_UINT16,   0}, \
-  {"DCDD" ,                        CONFIG_HLP_FD_ScalingFD,0,                   .u16ptr=&D_ScalingFD,                        .defintval=1,      TYPE_UINT16,   0}  \
+  {"DCDD" ,                        CONFIG_HLP_FD_ScalingFD,0,                   .u16ptr=&D_ScalingFD,                        .defintval=1,      TYPE_UINT16,   0},  \
+  {"DCP" ,                         CONFIG_HLP_FP_Scaling,0,                     .dblptr=&PScaling,                           .defdblval=0.33,   TYPE_DOUBLE,   0},  \
+  {"DCI" ,                         CONFIG_HLP_FI_Scaling,0,                     .dblptr=&IScaling,                           .defdblval=0.5,    TYPE_DOUBLE,   0},  \
 }
 // clang-format on
 

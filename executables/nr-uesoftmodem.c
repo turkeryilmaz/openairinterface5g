@@ -441,6 +441,11 @@ uint16_t I_ScalingFD = 2; //I scaling factor (denominator) of the PID controller
 uint16_t D_ScalingFN = 0; //D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
 uint16_t D_ScalingFD = 1; //D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
 
+double PScaling = 0.33;
+double IScaling = 0.5;
+
+int commonDoppler = 421528;
+
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;

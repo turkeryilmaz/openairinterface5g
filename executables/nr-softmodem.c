@@ -578,6 +578,7 @@ int32_t fdopplerRate;
 uint32_t fdopplerVar;
 int tdriftComp = 1;
 int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
+int commonDoppler = 0;  // common doppler to be compensated at UE, but set here to avoid linking error
 
 int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
