@@ -1,21 +1,21 @@
 {
     "GLOBAL": {
         "io_cfg": {
-            "dpdk_dev_up":          "0000:01:02.0",
-            "dpdk_dev_cp":          "0000:01:02.1",
+            "dpdk_dev_up":          "0000:8a:0a.0",
+            "dpdk_dev_cp":          "0000:8a:0a.1",
             "bbdev_mode":           "none",
-            "system_core":          61,
-            "core":                 62,
-            "pkt_proc_core":        63,
-            "timing_core":          62,
-            "pkt_aux_core":         62,
+            "system_core":          0,
+            "core":                 1,
+            "pkt_proc_core":        2,
+            "timing_core":          1,
+            "pkt_aux_core":         1,
             "txq_id":         0,
             "rxq_id":         0,
             "dpdkBasebandFecMode":  0,
             "dpdkBasebandDevice":   "",
             "mtu":                  8870,
             "o_du_macaddr":         "00:11:22:33:44:66",
-            "o_ru_macaddr":         "B8:CE:F6:33:8C:67",
+            "o_ru_macaddr":         "98:ae:71:01:64:D8",
             "cp_vlan_tag":          1,
             "up_vlan_tag":          2
             },
@@ -42,8 +42,8 @@
             "sub6":             true,
             "mu":               1,
             "num_cc":           1,
-            "num_eaxc":         1,
-            "ant_elm_trx":      1,
+            "num_eaxc":         2,
+            "ant_elm_trx":      2,
             "chbw_dl":          100,
             "chbw_ul":          100,
             "iq_width":         16,
@@ -69,12 +69,12 @@
             "Ta4_max":          180
             },
         "slotcfg_0": {
-            "desc":     "DDDSU_12D2G",
+            "desc":     "DDDSU_6D4G4U",
             "period":   5,
             "slot0":    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
             "slot1":    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
             "slot2":    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-            "slot3":    [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2 ],
+            "slot3":    [ 0, 0, 0, 0, 0, 0, 2, 2, 2, 1, 1, 1, 1, 1 ],
             "slot4":    [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
             },
         "slotcfg_1": {
