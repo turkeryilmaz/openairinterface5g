@@ -127,6 +127,9 @@
 #define CONFIG_HLP_FD_ScalingFN  "Set the D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
 #define CONFIG_HLP_FD_ScalingFD  "Set the D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
 
+#define CONFIG_HLP_FP_Scaling "set scaling P"
+#define CONFIG_HLP_FI_Scaling "set scaling I"
+
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
@@ -189,5 +192,10 @@ extern uint16_t I_ScalingFN; //I scaling factor (numerator) of the PID controlle
 extern uint16_t I_ScalingFD; //I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
 extern uint16_t D_ScalingFN; //D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
 extern uint16_t D_ScalingFD; //D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
+
+extern double PScaling;
+extern double IScaling;
+
+extern int commonDoppler;
 
 #endif

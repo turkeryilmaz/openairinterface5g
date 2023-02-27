@@ -36,6 +36,7 @@
 #endif*/
 
 extern int fdopplerComp; 
+extern int commonDoppler;
 
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
@@ -93,7 +94,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
     {
       unsigned int nsamps = frame_parms->ofdm_symbol_size + curr_nb_prefix; 
       int16_t *rxdataDopp_ptr = (int16_t *)&common_vars->rxdata[aa][SampIdxDopplerUERx];
-      int DopplerToComp = -(ue->DopplerEst);
+      int DopplerToComp = -(ue->DopplerEst + commonDoppler);
       nr_apply_Doppler( rxdataDopp_ptr, nsamps, DopplerToComp , &SampIdxDopplerUERx, frame_parms);
     }
     

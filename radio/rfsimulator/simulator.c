@@ -850,16 +850,21 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
     LOG_W(HW, "rfsimulator: only 4 antenna tested\n");
   }
 
+  static double timeForDoppler = 0;
+  int currDoppler = 0;
+  static uint64_t counter = 0;
+  static int initDoppler = 0;
+
   static uint64_t SampIdxDoppler = 0; //sample index in the calculation of the Doppler shift
   //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
-  uint32_t NrSampFrame = fsamp/100; //Number of samples per frame (10ms)
-  static int32_t fdopplerStep = 1<<20;
-  static uint32_t CntDoppRate = 1; //counter for the Doppler rate
-  static int32_t fdopplerCurr = 1<<20; //current Doppler
-  if ( fdopplerStep == 1<<20 )
-    fdopplerStep = fdopplerRate/100;
-  if ( fdopplerCurr == 1<<20 )
-    fdopplerCurr = fdoppler;
+  // uint32_t NrSampFrame = fsamp/100; //Number of samples per frame (10ms)
+  // static int32_t fdopplerStep = 1<<20;
+  // static uint32_t CntDoppRate = 1; //counter for the Doppler rate
+  // static int32_t fdopplerCurr = 1<<20; //current Doppler
+  // if ( fdopplerStep == 1<<20 )
+  //   fdopplerStep = fdopplerRate/100;
+  // if ( fdopplerCurr == 1<<20 )
+  //   fdopplerCurr = fdoppler;
 
   rfsimulator_state_t *t = device->priv;
   LOG_D(HW, "Enter rfsimulator_read, expect %d samples, will release at TS: %ld, nbAnt %d\n", nsamps, t->nextRxTstamp+nsamps, nbAnt);
@@ -952,6 +957,25 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
           sample_t *out=(sample_t *)samplesVoid[a];
           int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
 
+          if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
+          {
+            timeForDoppler = 1050 + (double)SampIdxDoppler/fsamp;
+			      const float R = 6371000;  const float h = 600000;
+            double ue_posX = 0; double ue_posY = 0; double ue_posZ = R;
+            static float wsat = 0.0011; 
+            double sat_posX = 0; double sat_posY = (R+h) * cos(wsat*timeForDoppler);  double sat_posZ = (R+h) * sin(wsat*timeForDoppler); 
+            float norm_d = sqrt(((ue_posX - sat_posX) * (ue_posX - sat_posX)) + ((ue_posY - sat_posY) * (ue_posY - sat_posY)) + ((ue_posZ - sat_posZ) * (ue_posZ - sat_posZ)));
+            float cos_theta = (sat_posY - ue_posY) / norm_d;
+            double fc = 20e9;
+            double c = 299792458;
+            int currDopplerTmp = (int)((wsat*R / c) * fc * (R/(R+h)) * cos_theta);
+
+            if (SampIdxDoppler == 0)
+              initDoppler = currDopplerTmp;
+
+            currDoppler =  currDopplerTmp - initDoppler;            
+          }
+
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
             for (int a_tx=0; a_tx<nbAnt_tx; a_tx++) { //sum up signals from nbAnt_tx antennas
@@ -960,6 +984,18 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
             } // end for a_tx
 
 
+            if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
+            {
+              int16_t outRealTmp = out[i].r;
+              int16_t outImagTmp = out[i].i;
+
+              out[i].r = (short)(outRealTmp * cos(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp) - outImagTmp * sin(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp));
+              out[i].i = (short)(outImagTmp * cos(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp) + outRealTmp * sin(2*M_PI*(double)SampIdxDoppler*currDoppler/fsamp));
+
+              SampIdxDoppler++;
+            }
+
+            /*
             int16_t outRealTmp = out[i].r;
             int16_t outImagTmp = out[i].i;
 
@@ -976,6 +1012,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
                 fdopplerCurr += 2*fdopplerStep;
               }
             }
+            */
 
           } // end for i (number of samps)
         } // end of no channel modeling
@@ -983,6 +1020,24 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
     }
   }
 
+  
+  if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
+  {
+    char filename[40];
+    sprintf(filename,"DataSim.m");
+
+    FILE *fptr;
+    fptr = fopen(filename,"a");
+  
+    if (counter % 1600 == 0)
+    {
+      fprintf(fptr,"%d\n",currDoppler);
+    }
+    fclose(fptr);
+    counter++;
+  }
+  
+  
   *ptimestamp = t->nextRxTstamp; // return the time of the first sample
   t->nextRxTstamp+=nsamps;
   LOG_D(HW,"Rx to upper layer: %d from %ld to %ld, energy in first antenna %d\n",

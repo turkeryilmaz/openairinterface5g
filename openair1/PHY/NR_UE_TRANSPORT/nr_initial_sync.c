@@ -45,6 +45,8 @@
 #include "PHY/NR_REFSIG/sss_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 
+#include "PHY/MODULATION/nr_modulation.h"
+
 extern openair0_config_t openair0_cfg[];
 //static  nfapi_nr_config_request_t config_t;
 //static  nfapi_nr_config_request_t* config =&config_t;
@@ -200,6 +202,8 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 char duplex_string[2][4] = {"FDD","TDD"};
 char prefix_string[2][9] = {"NORMAL","EXTENDED"};
 
+extern int commonDoppler;
+
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                     PHY_VARS_NR_UE *ue,
                     int n_frames, int sa)
@@ -214,6 +218,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   int ret=-1;
   int rx_power=0; //aarx,
+
+  uint32_t SampIdxUERxInitSync = 0;
 
   nr_phy_data_t phy_data = {0};
   NR_UE_PDCCH_CONFIG *phy_pdcch_config = &phy_data.phy_pdcch_config;
@@ -245,6 +251,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
    // initial sync performed on two successive frames, if pbch passes on first frame, no need to process second frame 
    // only one frame is used for symulation tools
    for(is=0; is<n_frames;is++) {
+    nr_apply_Doppler( &ue->common_vars.rxdata[0][is*fp->samples_per_frame], fp->samples_per_frame,
+      -commonDoppler, &SampIdxUERxInitSync, fp);
 
     /* process pss search on received buffer */
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
