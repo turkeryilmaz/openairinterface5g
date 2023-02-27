@@ -31,7 +31,7 @@
 int decode_imeisv_request(ImeisvRequest *imeisvrequest, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   int decoded = 0;
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, IMEISV_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, IMEISV_REQUEST_MINIMUM_LENGTH, len);
 
   if (iei > 0) {
     CHECK_IEI_DECODER((*buffer & 0xf0), iei);
@@ -61,7 +61,7 @@ int encode_imeisv_request(ImeisvRequest *imeisvrequest, uint8_t iei, uint8_t *bu
 {
   uint8_t encoded = 0;
   /* Checking length and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, IMEISV_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, IMEISV_REQUEST_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_imeisv_request_xml(imeisvrequest, iei);
 #endif

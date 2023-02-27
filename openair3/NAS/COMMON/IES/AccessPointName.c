@@ -64,7 +64,7 @@ int encode_access_point_name(AccessPointName *accesspointname, uint8_t iei, uint
   uint32_t     index_copy;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ACCESS_POINT_NAME_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ACCESS_POINT_NAME_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_access_point_name_xml(accesspointname, iei);
 #endif

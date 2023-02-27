@@ -58,7 +58,7 @@ int encode_voice_domain_preference_and_ue_usage_setting(VoiceDomainPreferenceAnd
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, VOICE_DOMAIN_PREFERENCE_AND_UE_USAGE_SETTING_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, VOICE_DOMAIN_PREFERENCE_AND_UE_USAGE_SETTING_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_voice_domain_preference_and_ue_usage_setting_xml(voicedomainpreferenceandueusagesetting, iei);
 #endif

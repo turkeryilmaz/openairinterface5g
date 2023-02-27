@@ -1049,12 +1049,12 @@ void nr_rlc_activate_srb0(int rnti, int module_id, int cc_id, int uid,
   struct srb0_data           *srb0_data;
 
   srb0_data = calloc(1, sizeof(struct srb0_data));
-  AssertFatal(srb0_data != NULL, "out of memory\n");
+  AssertFatal(srb0_data, "out of memory\n");
 
   srb0_data->module_id = module_id;
-  srb0_data->CC_id     = cc_id;
-  srb0_data->rnti      = rnti;
-  srb0_data->uid       = uid;
+  srb0_data->CC_id = cc_id;
+  srb0_data->rnti = rnti;
+  srb0_data->uid = uid;
   srb0_data->send_initial_ul_rrc_message = send_initial_ul_rrc_message;
 
   nr_rlc_manager_lock(nr_rlc_ue_manager);

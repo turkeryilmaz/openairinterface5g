@@ -99,7 +99,7 @@ void rotate_cpx_vector(c16_t *x,
   // N is the number of complex numbers
   // output_shift reduces the result of the multiplication by this number of bits
   //AssertFatal(N%8==0, "To be developped");
-  if ( (intptr_t)x%32 == 0 && y != NULL && !(intptr_t)y%32 == 0 && __builtin_cpu_supports("avx2")) {
+  if ((intptr_t)x % 32 == 0 && !(intptr_t)y % 32 == 0 && __builtin_cpu_supports("avx2")) {
     // output is 32 bytes aligned, but not the input
     
     const c16_t for_re={alpha->r, -alpha->i};
@@ -121,7 +121,8 @@ void rotate_cpx_vector(c16_t *x,
       *yd=simde_mm256_shuffle_epi8(tmp,perm_mask);
     }
     c16_t* alpha16=(c16_t*) alpha, *yLast;
-    yLast=((c16_t*)y)+(N/8)*8;
+    if (y != NULL)
+      yLast = ((c16_t *)y) + (N / 8) * 8;
     for (c16_t* xTail=(c16_t*) end;
          xTail<((c16_t*) x)+N;
          xTail++, yLast++) {

@@ -1232,11 +1232,10 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t instance, f1ap_ue_contex
     /* optional */
     /* procedureCode */
     if (0) {
-      ie11->value.choice.CriticalityDiagnostics.procedureCode = (F1AP_ProcedureCode_t *)calloc(1, sizeof(F1AP_ProcedureCode_t));
-      if (ie11->value.choice.CriticalityDiagnostics.procedureCode) {
-        free(ie11->value.choice.CriticalityDiagnostics.procedureCode);
+      if (ie11->value.choice.CriticalityDiagnostics.procedureCode == NULL) {
+        ie11->value.choice.CriticalityDiagnostics.procedureCode = (F1AP_ProcedureCode_t *)calloc(1, sizeof(F1AP_ProcedureCode_t));
       }
-      ie11->value.choice.CriticalityDiagnostics.procedureCode = 0L;
+      *ie11->value.choice.CriticalityDiagnostics.procedureCode = 0L;
     }
 
     /* optional */
@@ -1249,10 +1248,10 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t instance, f1ap_ue_contex
     /* optional */
     /* procedureCriticality */
     if (0) {
-      if (ie11->value.choice.CriticalityDiagnostics.procedureCriticality != F1AP_Criticality_reject) {
+      if (ie11->value.choice.CriticalityDiagnostics.procedureCriticality == NULL) {
         ie11->value.choice.CriticalityDiagnostics.procedureCriticality = (F1AP_Criticality_t *)calloc(1, sizeof(F1AP_Criticality_t));
-        *ie11->value.choice.CriticalityDiagnostics.procedureCriticality = F1AP_Criticality_reject;
       }
+      *ie11->value.choice.CriticalityDiagnostics.procedureCriticality = F1AP_Criticality_reject;
     }
 
     /* optional */

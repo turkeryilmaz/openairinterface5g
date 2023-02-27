@@ -49,7 +49,7 @@ int encode_paging_identity(PagingIdentity *pagingidentity, uint8_t iei, uint8_t 
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PAGING_IDENTITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PAGING_IDENTITY_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_paging_identity_xml(pagingidentity, iei);
 #endif

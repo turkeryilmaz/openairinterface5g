@@ -103,7 +103,7 @@ int encode_eps_quality_of_service(EpsQualityOfService *epsqualityofservice, uint
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EPS_QUALITY_OF_SERVICE_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EPS_QUALITY_OF_SERVICE_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_eps_quality_of_service_xml(epsqualityofservice, iei);
 #endif

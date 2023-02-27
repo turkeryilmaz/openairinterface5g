@@ -68,7 +68,7 @@ int encode_network_name(NetworkName *networkname, uint8_t iei, uint8_t *buffer, 
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, NETWORK_NAME_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, NETWORK_NAME_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_network_name_xml(networkname, iei);
 #endif

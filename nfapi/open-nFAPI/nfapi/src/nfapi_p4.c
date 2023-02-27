@@ -1627,7 +1627,7 @@ int nfapi_p4_message_pack(void *pMessageBuf, uint32_t messageBufLen, void *pPack
 int nfapi_p4_message_header_unpack(void *pMessageBuf, uint32_t messageBufLen, void *pUnpackedBuf, uint32_t unpackedBufLen, nfapi_p4_p5_codec_config_t *config) {
   nfapi_p4_p5_message_header_t *pMessageHeader = pUnpackedBuf;
   uint8_t *pReadPackedMessage = pMessageBuf;
-  uint8_t *end = (pMessageBuf == NULL) ? NULL : pMessageBuf + messageBufLen;
+  uint8_t *end = pMessageBuf == NULL ? NULL : pMessageBuf + messageBufLen;
 
   if (pMessageBuf == NULL || pUnpackedBuf == NULL) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "P4 header unpack supplied pointers are null\n");

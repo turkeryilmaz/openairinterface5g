@@ -35,7 +35,7 @@ int decode_service_reject(service_reject_msg *service_reject, uint8_t *buffer, u
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SERVICE_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, SERVICE_REJECT_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_emm_cause(&service_reject->emmcause, 0, buffer + decoded, len - decoded)) < 0)
@@ -52,7 +52,7 @@ int encode_service_reject(service_reject_msg *service_reject, uint8_t *buffer, u
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SERVICE_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SERVICE_REJECT_MINIMUM_LENGTH, len);
 
   if ((encode_result = encode_emm_cause(&service_reject->emmcause, 0, buffer +
                                         encoded, len - encoded)) < 0)        //Return in case of error

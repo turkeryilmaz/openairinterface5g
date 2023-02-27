@@ -35,7 +35,7 @@ int decode_tracking_area_update_accept(tracking_area_update_accept_msg *tracking
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, TRACKING_AREA_UPDATE_ACCEPT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, TRACKING_AREA_UPDATE_ACCEPT_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_eps_update_result(&tracking_area_update_accept->epsupdateresult, 0, *(buffer + decoded) >> 4, len - decoded)) < 0)
@@ -223,7 +223,7 @@ int encode_tracking_area_update_accept(tracking_area_update_accept_msg *tracking
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRACKING_AREA_UPDATE_ACCEPT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRACKING_AREA_UPDATE_ACCEPT_MINIMUM_LENGTH, len);
 
   *(buffer + encoded) = ((encode_u8_eps_update_result(&tracking_area_update_accept->epsupdateresult) & 0x0f) << 4) | 0x00;
   encoded++;

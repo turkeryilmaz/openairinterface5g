@@ -96,7 +96,7 @@ int encode_ue_network_capability(UeNetworkCapability *uenetworkcapability, uint8
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, UE_NETWORK_CAPABILITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, UE_NETWORK_CAPABILITY_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_ue_network_capability_xml(uenetworkcapability, iei);
 #endif

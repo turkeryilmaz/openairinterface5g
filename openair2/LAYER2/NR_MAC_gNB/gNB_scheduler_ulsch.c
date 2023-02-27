@@ -42,7 +42,7 @@
 const int get_ul_tda(gNB_MAC_INST *nrmac, const NR_ServingCellConfigCommon_t *scc, int frame, int slot) {
 
   /* there is a mixed slot only when in TDD */
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc && scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   AssertFatal(tdd || nrmac->common_channels->frame_type == FDD, "Dynamic TDD not handled yet\n");
 
   if (tdd && tdd->nrofUplinkSymbols > 1) { // if there is uplink symbols in mixed slot
@@ -883,9 +883,15 @@ uint8_t get_max_tpmi(const NR_PUSCH_Config_t *pusch_Config,
     return max_tpmi;
   }
 
-  long max_rank = *pusch_Config->maxRank;
-  long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
-  long *codebookSubset = pusch_Config->codebookSubset;
+  long max_rank = -1;
+  long *ul_FullPowerTransmission = NULL;
+  long *codebookSubset = NULL;
+
+  if (pusch_Config != NULL) {
+    max_rank = *pusch_Config->maxRank;
+    *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
+    *codebookSubset = pusch_Config->codebookSubset;
+  }
 
   if (num_ue_srs_ports == 2) {
 
@@ -1927,7 +1933,7 @@ bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t
 
   /* Calculate mask: if any RB in vrb_map_UL is blocked (1), the current RB will be 0 */
   for (int i = 0; i < bwpSize; i++)
-    rballoc_mask[i] = (i >= st && i <= e)*SL_to_bitmap(startSymbolIndex, nrOfSymbols);
+    if (scc != NULL) rballoc_mask[i] = (i >= st && i <= e)*SL_to_bitmap(startSymbolIndex, nrOfSymbols);
 
   int bw = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
   int average_agg_level = 4; // TODO find a better estimation

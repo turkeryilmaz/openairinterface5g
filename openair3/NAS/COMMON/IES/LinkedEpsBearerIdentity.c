@@ -31,7 +31,7 @@
 int decode_linked_eps_bearer_identity(LinkedEpsBearerIdentity *linkedepsbeareridentity, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   int decoded = 0;
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, LINKED_EPS_BEARER_IDENTITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, LINKED_EPS_BEARER_IDENTITY_MINIMUM_LENGTH, len);
 
   if (iei > 0) {
     CHECK_IEI_DECODER((*buffer & 0xf0), iei);
@@ -61,7 +61,7 @@ int encode_linked_eps_bearer_identity(LinkedEpsBearerIdentity *linkedepsbearerid
 {
   uint8_t encoded = 0;
   /* Checking length and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LINKED_EPS_BEARER_IDENTITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LINKED_EPS_BEARER_IDENTITY_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_linked_eps_bearer_identity_xml(linkedepsbeareridentity, iei);
 #endif

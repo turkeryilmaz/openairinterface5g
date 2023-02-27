@@ -64,7 +64,7 @@ int encode_fgc_nas_message_container(FGCNasMessageContainer *nasmessagecontainer
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, FGC_NAS_MESSAGE_CONTAINER_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, FGC_NAS_MESSAGE_CONTAINER_MINIMUM_LENGTH, len);
 
   if (iei > 0) {
     *buffer = iei;

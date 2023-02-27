@@ -66,7 +66,7 @@ int encode_sor_transparent_container(SORTransparentContainer *sortransparentcont
   uint32_t encoded = 0;
   int32_t encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SOR_TRANSPARENT_CONTAINER_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, SOR_TRANSPARENT_CONTAINER_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_sor_transparent_container_xml(sortransparentcontainer, iei);
 #endif

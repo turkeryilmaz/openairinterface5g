@@ -79,7 +79,7 @@ int derive_key(algorithm_type_dist_t alg_type, uint8_t alg_id, const uint8_t key
   byte_array_t data = {.buf = string, .len = 7};
   if (*out == NULL) {
     *out = malloc(sizeof(uint8_t) * 32);
-    DevAssert(*out != NULL, "Memory exhausted");
+    AssertFatal(*out != NULL, "Memory exhausted");
   }
   kdf(key, data, 32, *out);
 
@@ -111,7 +111,7 @@ int nr_derive_key(algorithm_type_dist_t alg_type, uint8_t alg_id, const uint8_t 
 
   if (*out == NULL) {
     *out = malloc(sizeof(uint8_t) * 32);
-    DevAssert(*out != NULL, "Memory exhausted");
+    AssertFatal(*out != NULL, "Memory exhausted");
   }
   kdf(key, data, 32, *out);
 

@@ -31,7 +31,7 @@
 int decode_detach_type(DetachType *detachtype, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   int decoded = 0;
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, DETACH_TYPE_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, DETACH_TYPE_MINIMUM_LENGTH, len);
 
   if (iei > 0) {
     CHECK_IEI_DECODER((*buffer & 0xf0), iei);
@@ -63,7 +63,7 @@ int encode_detach_type(DetachType *detachtype, uint8_t iei, uint8_t *buffer, uin
 {
   uint8_t encoded = 0;
   /* Checking length and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DETACH_TYPE_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DETACH_TYPE_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_detach_type_xml(detachtype, iei);
 #endif

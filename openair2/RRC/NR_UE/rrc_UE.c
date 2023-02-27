@@ -298,14 +298,12 @@ int8_t nr_rrc_ue_process_scg_config(const module_id_t module_id, NR_CellGroupCon
   int i;
   if(cell_group_config==NULL){
     //  initial list
-    if(cell_group_config->spCellConfig != NULL){
-      if(cell_group_config->spCellConfig->spCellConfigDedicated != NULL){
-        if(cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList != NULL){
-          for(i=0; i<cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count; ++i){
-            RRC_LIST_MOD_ADD(NR_UE_rrc_inst[module_id].BWP_Downlink_list, cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[i], bwp_Id);
-          }
+    if (cell_group_config != NULL && cell_group_config->spCellConfig != NULL &&
+        cell_group_config->spCellConfig->spCellConfigDedicated != NULL &&
+        cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList != NULL) {
+        for (i = 0; i < cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count; i++) {
+          RRC_LIST_MOD_ADD(NR_UE_rrc_inst[module_id].BWP_Downlink_list, cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[i], bwp_Id);
         }
-      }
     }
   }else{
     //  maintain list

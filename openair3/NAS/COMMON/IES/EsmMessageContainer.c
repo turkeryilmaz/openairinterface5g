@@ -66,7 +66,7 @@ int encode_esm_message_container(EsmMessageContainer *esmmessagecontainer, uint8
   uint32_t encoded = 0;
   int32_t encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ESM_MESSAGE_CONTAINER_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ESM_MESSAGE_CONTAINER_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_esm_message_container_xml(esmmessagecontainer, iei);
 #endif

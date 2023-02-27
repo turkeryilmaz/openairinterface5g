@@ -2105,13 +2105,13 @@ static int check_unpack_length(nfapi_message_id_e msgId, uint32_t unpackedBufLen
   nfapi_p4_p5_message_header_t *pMessageHeader = pUnpackedBuf;
   uint8_t *pReadPackedMessage = pMessageBuf;
   uint8_t *end = NULL;
+  if (pMessageBuf != NULL)
+    end = (uint8_t *)pMessageBuf + messageBufLen;
 
   if (pMessageBuf == NULL || pUnpackedBuf == NULL) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 header unpack supplied pointers are null\n");
     return -1;
   }
-
-  end = (uint8_t *)pMessageBuf + messageBufLen;
 
   if (messageBufLen < NFAPI_HEADER_LENGTH || unpackedBufLen < sizeof(nfapi_p4_p5_message_header_t)) {
     NFAPI_TRACE(NFAPI_TRACE_ERROR, "P5 header unpack supplied message buffer is too small %d, %d\n", messageBufLen, unpackedBufLen);

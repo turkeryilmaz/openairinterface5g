@@ -93,7 +93,7 @@ int encode_traffic_flow_template(TrafficFlowTemplate *trafficflowtemplate, uint8
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRAFFIC_FLOW_TEMPLATE_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRAFFIC_FLOW_TEMPLATE_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_traffic_flow_template_xml(trafficflowtemplate, iei);
 #endif

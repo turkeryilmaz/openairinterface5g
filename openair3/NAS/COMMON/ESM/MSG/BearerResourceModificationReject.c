@@ -35,7 +35,7 @@ int decode_bearer_resource_modification_reject(bearer_resource_modification_reje
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, BEARER_RESOURCE_MODIFICATION_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, BEARER_RESOURCE_MODIFICATION_REJECT_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_esm_cause(&bearer_resource_modification_reject->esmcause, 0, buffer + decoded, len - decoded)) < 0)
@@ -79,7 +79,7 @@ int encode_bearer_resource_modification_reject(bearer_resource_modification_reje
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, BEARER_RESOURCE_MODIFICATION_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, BEARER_RESOURCE_MODIFICATION_REJECT_MINIMUM_LENGTH, len);
 
   if ((encode_result =
          encode_esm_cause(&bearer_resource_modification_reject->esmcause, 0,

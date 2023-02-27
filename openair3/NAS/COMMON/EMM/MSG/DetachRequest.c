@@ -35,7 +35,7 @@ int decode_detach_request(detach_request_msg *detach_request, uint8_t *buffer, u
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, DETACH_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, DETACH_REQUEST_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_detach_type(&detach_request->detachtype, 0, *(buffer + decoded) & 0x0f, len - decoded)) < 0)
@@ -60,7 +60,7 @@ int encode_detach_request(detach_request_msg *detach_request, uint8_t *buffer, u
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DETACH_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, DETACH_REQUEST_MINIMUM_LENGTH, len);
 
   *(buffer + encoded) = ((encode_u8_nas_key_set_identifier(&detach_request->naskeysetidentifier) << 4) | (encode_u8_detach_type(&detach_request->detachtype) & 0x0f));
   encoded++;

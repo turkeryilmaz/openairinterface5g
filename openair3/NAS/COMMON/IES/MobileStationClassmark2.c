@@ -71,7 +71,7 @@ int encode_mobile_station_classmark_2(MobileStationClassmark2 *mobilestationclas
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MOBILE_STATION_CLASSMARK_2_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MOBILE_STATION_CLASSMARK_2_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_mobile_station_classmark_2_xml(mobilestationclassmark2, iei);
 #endif

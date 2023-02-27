@@ -35,7 +35,7 @@ int decode_emm_information(emm_information_msg *emm_information, uint8_t *buffer
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, EMM_INFORMATION_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, EMM_INFORMATION_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   /* Decoding optional fields */
@@ -122,7 +122,7 @@ int encode_emm_information(emm_information_msg *emm_information, uint8_t *buffer
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EMM_INFORMATION_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EMM_INFORMATION_MINIMUM_LENGTH, len);
 
   if ((emm_information->presencemask & EMM_INFORMATION_FULL_NAME_FOR_NETWORK_PRESENT)
       == EMM_INFORMATION_FULL_NAME_FOR_NETWORK_PRESENT) {

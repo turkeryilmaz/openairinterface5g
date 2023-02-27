@@ -49,7 +49,7 @@ int encode_nonce(Nonce *nonce, uint8_t iei, uint8_t *buffer, uint32_t len)
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, NONCE_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, NONCE_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_nonce_xml(nonce, iei);
 #endif

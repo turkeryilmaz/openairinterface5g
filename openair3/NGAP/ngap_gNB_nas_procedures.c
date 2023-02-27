@@ -395,8 +395,7 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
     }
   }
 
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNASTransport_IEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_NAS_PDU, true);
+  if (container != NULL) NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNASTransport_IEs_t, ie, container, NGAP_ProtocolIE_ID_id_NAS_PDU, true);
   /* Forward the NAS PDU to NR-RRC */
   if (ie != NULL) {
     ngap_gNB_itti_send_nas_downlink_ind(ngap_gNB_instance->instance,

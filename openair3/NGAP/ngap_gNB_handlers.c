@@ -274,13 +274,10 @@ int ngap_gNB_handle_ng_setup_failure(uint32_t               assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_NGSetupFailureIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_Cause,true);
 
-  if (ie) {
-    if ((ie->value.choice.Cause.present == NGAP_Cause_PR_misc) &&
-        (ie->value.choice.Cause.choice.misc == NGAP_CauseMisc_unspecified)) {
-        NGAP_WARN("Received NG setup failure for AMF... AMF is not ready\n");
-    } else {
-        NGAP_ERROR("Received NG setup failure for AMF... please check your parameters\n");
-    }
+  if (ie && ie->value.choice.Cause.present == NGAP_Cause_PR_misc && ie->value.choice.Cause.choice.misc == NGAP_CauseMisc_unspecified) {
+    NGAP_WARN("Received NG setup failure for AMF... AMF is not ready\n");
+  } else {
+    NGAP_ERROR("Received NG setup failure for AMF... please check your parameters\n");
   }
 
   amf_desc_p->state = NGAP_GNB_STATE_WAITING;

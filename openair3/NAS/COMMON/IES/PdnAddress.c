@@ -61,7 +61,7 @@ int encode_pdn_address(PdnAddress *pdnaddress, uint8_t iei, uint8_t *buffer, uin
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PDN_ADDRESS_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PDN_ADDRESS_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_pdn_address_xml(pdnaddress, iei);
 #endif

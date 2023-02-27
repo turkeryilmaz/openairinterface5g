@@ -49,7 +49,7 @@ int encode_time_zone(TimeZone *timezone, uint8_t iei, uint8_t *buffer, uint32_t 
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TIME_ZONE_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TIME_ZONE_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_time_zone_xml(timezone, iei);
 #endif

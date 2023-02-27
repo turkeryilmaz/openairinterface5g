@@ -98,7 +98,7 @@ int encode_mobile_identity(MobileIdentity *mobileidentity, uint8_t iei, uint8_t 
   int encoded_rc = TLV_ENCODE_VALUE_DOESNT_MATCH;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MOBILE_IDENTITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MOBILE_IDENTITY_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_mobile_identity_xml(mobileidentity, iei);
 #endif

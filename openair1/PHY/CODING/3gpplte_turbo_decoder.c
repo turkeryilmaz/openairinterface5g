@@ -1025,28 +1025,25 @@ unsigned char phy_threegpplte_turbo_decoder_scalar(llr_t *y,
     // check status on output
 
     oldcrc= *((unsigned int *)(&decoded_bytes[(n>>3)-crc_len]));
+    uint32_t temp_crc;
 
     switch (crc_type) {
 
     case CRC24_A:
-      oldcrc&=0x00ffffff;
-      crc = crc24a(&decoded_bytes[F>>3],
-                   n-24-F)>>8;
-      temp=((uint8_t *)&crc)[2];
-      ((uint8_t *)&crc)[2] = ((uint8_t *)&crc)[0];
-      ((uint8_t *)&crc)[0] = temp;
+      crc = crc24a(&decoded_bytes[F>>3], n-24-F) >> 8;
+      temp_crc = ((crc & 0xFF) << 16) | ((crc & 0xFF00) << 8) | (crc >> 16);
+      crc = temp_crc;
+
 
       //           msg("CRC24_A = %x, oldcrc = %x (F %d)\n",crc,oldcrc,F);
 
       break;
 
     case CRC24_B:
-      oldcrc&=0x00ffffff;
-      crc = crc24b(decoded_bytes,
-                   n-24)>>8;
-      temp=((uint8_t *)&crc)[2];
-      ((uint8_t *)&crc)[2] = ((uint8_t *)&crc)[0];
-      ((uint8_t *)&crc)[0] = temp;
+      crc = crc24b(decoded_bytes, n-24) >> 8;
+      temp_crc = ((crc & 0xFF) << 16) | ((crc & 0xFF00) << 8) | (crc >> 16);
+      crc = temp_crc;
+
 
       //      msg("CRC24_B = %x, oldcrc = %x\n",crc,oldcrc);
 

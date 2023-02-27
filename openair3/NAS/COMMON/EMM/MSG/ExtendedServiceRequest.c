@@ -35,7 +35,7 @@ int decode_extended_service_request(extended_service_request_msg *extended_servi
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, EXTENDED_SERVICE_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, EXTENDED_SERVICE_REQUEST_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_service_type(&extended_service_request->servicetype, 0, *(buffer + decoded) >> 4, len - decoded)) < 0)
@@ -60,7 +60,7 @@ int encode_extended_service_request(extended_service_request_msg *extended_servi
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EXTENDED_SERVICE_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, EXTENDED_SERVICE_REQUEST_MINIMUM_LENGTH, len);
 
   *(buffer + encoded) = ((encode_u8_service_type(&extended_service_request->servicetype) & 0x0f) << 4) | (encode_u8_nas_key_set_identifier(&extended_service_request->naskeysetidentifier) & 0x0f);
   encoded++;

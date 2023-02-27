@@ -58,7 +58,7 @@ int encode_tracking_area_identity(TrackingAreaIdentity *trackingareaidentity, ui
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRACKING_AREA_IDENTITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRACKING_AREA_IDENTITY_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_tracking_area_identity_xml(trackingareaidentity, iei);
 #endif

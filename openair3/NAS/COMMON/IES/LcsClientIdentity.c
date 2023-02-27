@@ -59,7 +59,7 @@ int encode_lcs_client_identity(LcsClientIdentity *lcsclientidentity, uint8_t iei
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LCS_CLIENT_IDENTITY_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, LCS_CLIENT_IDENTITY_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_lcs_client_identity_xml(lcsclientidentity, iei);
 #endif

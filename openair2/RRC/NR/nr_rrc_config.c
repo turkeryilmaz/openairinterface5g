@@ -1139,9 +1139,8 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   NR_ControlResourceSet_t *coreset = calloc(1,sizeof(*coreset));
   uint64_t ssb_bitmap = get_ssb_bitmap(scc);
   rrc_coreset_config(coreset, bwp->bwp_Id, curr_bwp, ssb_bitmap);
-  if (bwp->bwp_Common->pdcch_ConfigCommon->present == NR_SetupRelease_PDCCH_ConfigCommon_PR_setup && bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet != NULL) {
+  if (bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet != NULL)
     free(bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet);
-  }
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet = coreset;
 
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->searchSpaceZero=NULL;
@@ -1181,20 +1180,16 @@ void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
 
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
 
-  if (bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList) {
+  if (bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList)
     free(bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList);
-  }
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 10+bwp->bwp_Id, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
+
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToReleaseList = NULL;
   bwp->bwp_Dedicated->pdsch_Config = config_pdsch(ssb_bitmap, bwp->bwp_Id, dl_antenna_ports);
 
-  set_dl_mcs_table(bwp->bwp_Common->genericParameters.subcarrierSpacing,
-                   force_256qam_off ? NULL : uecap,
-                   bwp->bwp_Dedicated,
-                   scc);
-  free(bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList);
+  set_dl_mcs_table(bwp->bwp_Common->genericParameters.subcarrierSpacing, force_256qam_off ? NULL : uecap, bwp->bwp_Dedicated, scc);
 }
 
 void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,

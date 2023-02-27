@@ -35,7 +35,7 @@ int decode_uplink_nas_transport(uplink_nas_transport_msg *uplink_nas_transport, 
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, UPLINK_NAS_TRANSPORT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, UPLINK_NAS_TRANSPORT_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_nas_message_container(&uplink_nas_transport->nasmessagecontainer, 0, buffer + decoded, len - decoded)) < 0)
@@ -52,7 +52,7 @@ int encode_uplink_nas_transport(uplink_nas_transport_msg *uplink_nas_transport, 
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, UPLINK_NAS_TRANSPORT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, UPLINK_NAS_TRANSPORT_MINIMUM_LENGTH, len);
 
   if ((encode_result =
          encode_nas_message_container(&uplink_nas_transport->nasmessagecontainer,

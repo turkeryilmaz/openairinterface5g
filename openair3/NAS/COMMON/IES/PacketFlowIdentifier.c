@@ -53,7 +53,7 @@ int encode_packet_flow_identifier(PacketFlowIdentifier *packetflowidentifier, ui
   uint8_t *lenPtr;
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PACKET_FLOW_IDENTIFIER_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PACKET_FLOW_IDENTIFIER_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_packet_flow_identifier_xml(packetflowidentifier, iei);
 #endif

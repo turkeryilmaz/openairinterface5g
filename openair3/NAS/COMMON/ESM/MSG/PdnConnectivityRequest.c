@@ -35,7 +35,7 @@ int decode_pdn_connectivity_request(pdn_connectivity_request_msg *pdn_connectivi
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, PDN_CONNECTIVITY_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, PDN_CONNECTIVITY_REQUEST_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_request_type(&pdn_connectivity_request->pdntype, 0, *(buffer + decoded) >> 4, len - decoded)) < 0)
@@ -106,7 +106,7 @@ int encode_pdn_connectivity_request(pdn_connectivity_request_msg *pdn_connectivi
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PDN_CONNECTIVITY_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, PDN_CONNECTIVITY_REQUEST_MINIMUM_LENGTH, len);
 
   *(buffer + encoded) = ((encode_u8_pdn_type(&pdn_connectivity_request->pdntype) & 0x0f) << 4) | (encode_u8_request_type(&pdn_connectivity_request->requesttype) & 0x0f);
   encoded++;

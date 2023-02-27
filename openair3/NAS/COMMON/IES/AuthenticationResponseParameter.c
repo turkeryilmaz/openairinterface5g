@@ -59,7 +59,7 @@ int encode_authentication_response_parameter(AuthenticationResponseParameter *au
   uint32_t encoded = 0;
   int encode_result;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_RESPONSE_PARAMETER_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, AUTHENTICATION_RESPONSE_PARAMETER_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_authentication_response_parameter_xml(authenticationresponseparameter, iei);
 #endif

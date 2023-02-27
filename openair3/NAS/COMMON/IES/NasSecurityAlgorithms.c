@@ -50,7 +50,7 @@ int encode_nas_security_algorithms(NasSecurityAlgorithms *nassecurityalgorithms,
 {
   uint32_t encoded = 0;
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, NAS_SECURITY_ALGORITHMS_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, NAS_SECURITY_ALGORITHMS_MINIMUM_LENGTH, len);
 #if defined (NAS_DEBUG)
   dump_nas_security_algorithms_xml(nassecurityalgorithms, iei);
 #endif

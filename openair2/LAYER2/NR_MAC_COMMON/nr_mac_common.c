@@ -2882,7 +2882,7 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
         // shall be configured with the same value for all these SRS resources.
         if (srs_resource_set->usage == NR_SRS_ResourceSet__usage_codebook) {
           NR_SRS_Resource_t *srs_resource = srs_config->srs_ResourceToAddModList->list.array[sri];
-          AssertFatal(srs_resource != NULL, "SRS resource indicated by DCI does not exist\n");
+          AssertFatal(srs_resource, "SRS resource indicated by DCI does not exist\n");
           n_antenna_port = 1 << srs_resource->nrofSRS_Ports;
           break;
         }
@@ -3021,6 +3021,9 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       const uint8_t *nrOfLayers,
                                       uint32_t *val) {
 
+  long max_rank = -1;
+  long *ul_FullPowerTransmission = NULL;
+  long *codebookSubset = NULL;
   // It is only applicable to codebook based transmission. This field occupies 0 bits for non-codebook based
   // transmission. It also occupies 0 bits for codebook based transmission using a single antenna port.
   uint8_t nbits = 0;
@@ -3034,9 +3037,11 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
     return nbits;
   }
 
-  long max_rank = *pusch_Config->maxRank;
-  long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
-  long *codebookSubset = pusch_Config->codebookSubset;
+  if (pusch_Config != NULL) {
+    max_rank = *pusch_Config->maxRank;
+    *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
+    *codebookSubset = pusch_Config->codebookSubset;
+  }
 
   if (pusch_antenna_ports == 2) {
 

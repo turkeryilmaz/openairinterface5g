@@ -35,7 +35,7 @@ int decode_modify_eps_bearer_context_reject(modify_eps_bearer_context_reject_msg
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REJECT_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_esm_cause(&modify_eps_bearer_context_reject->esmcause, 0, buffer + decoded, len - decoded)) < 0)
@@ -79,7 +79,7 @@ int encode_modify_eps_bearer_context_reject(modify_eps_bearer_context_reject_msg
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, MODIFY_EPS_BEARER_CONTEXT_REJECT_MINIMUM_LENGTH, len);
 
   if ((encode_result =
          encode_esm_cause(&modify_eps_bearer_context_reject->esmcause, 0,

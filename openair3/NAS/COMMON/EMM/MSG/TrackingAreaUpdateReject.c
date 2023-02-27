@@ -35,7 +35,7 @@ int decode_tracking_area_update_reject(tracking_area_update_reject_msg *tracking
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, TRACKING_AREA_UPDATE_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, TRACKING_AREA_UPDATE_REJECT_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_emm_cause(&tracking_area_update_reject->emmcause, 0, buffer + decoded, len - decoded)) < 0)
@@ -52,7 +52,7 @@ int encode_tracking_area_update_reject(tracking_area_update_reject_msg *tracking
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRACKING_AREA_UPDATE_REJECT_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, TRACKING_AREA_UPDATE_REJECT_MINIMUM_LENGTH, len);
 
   if ((encode_result =
          encode_emm_cause(&tracking_area_update_reject->emmcause, 0, buffer +

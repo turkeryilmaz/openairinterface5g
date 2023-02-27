@@ -35,7 +35,7 @@ int decode_activate_dedicated_eps_bearer_context_request(activate_dedicated_eps_
   int decoded_result = 0;
 
   // Check if we got a NULL pointer and if buffer length is >= minimum length expected for the message.
-  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, ACTIVATE_DEDICATED_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_DECODER(buffer, ACTIVATE_DEDICATED_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, len);
 
   /* Decoding mandatory fields */
   if ((decoded_result = decode_u8_linked_eps_bearer_identity(&activate_dedicated_eps_bearer_context_request->linkedepsbeareridentity, 0, *(buffer + decoded), len - decoded)) < 0)
@@ -149,7 +149,7 @@ int encode_activate_dedicated_eps_bearer_context_request(activate_dedicated_eps_
   int encode_result = 0;
 
   /* Checking IEI and pointer */
-  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ACTIVATE_DEDICATED_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, (int)len);
+  CHECK_PDU_POINTER_AND_LENGTH_ENCODER(buffer, ACTIVATE_DEDICATED_EPS_BEARER_CONTEXT_REQUEST_MINIMUM_LENGTH, len);
 
   *(buffer + encoded) = encode_u8_linked_eps_bearer_identity(&activate_dedicated_eps_bearer_context_request->linkedepsbeareridentity) & 0x0f;
   encoded++;
