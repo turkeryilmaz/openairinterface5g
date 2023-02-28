@@ -158,6 +158,10 @@ init_SI(
   LTE_SystemInformationBlockType1_v1310_IEs_t *sib1_v13ext=(LTE_SystemInformationBlockType1_v1310_IEs_t *)NULL;
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
 
+  if (CC_id >= MAX_NUM_CCs) {
+      LOG_E(RRC,"%s CC_ID (%d) > MAX_NUM_CCs (%d) \r\n",__FUNCTION__, CC_id, MAX_NUM_CCs);
+  }
+
   if(configuration->radioresourceconfig[CC_id].mbms_dedicated_serving_cell == true) {
     LOG_A(RRC, "Configuring MIB FeMBMS (N_RB_DL %d)\n",
           (int)configuration->N_RB_DL[CC_id]);

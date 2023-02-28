@@ -854,20 +854,23 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
     {
        //The flag is used to initilize the cell in the RRC layer during init_SI funciton
         RC.ss.CC_conf_flag[cell_index] = 1;
-        
+        returnState = SS_STATE_CELL_CONFIGURED;
       //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
       if (cell_index)
       {
-        //Increment the nb_CC supported as new cell is confiured
-        RC.nb_CC[0] ++;
-        
-        //Set the number of MAC_CC to current configured CC value
-        *RC.nb_mac_CC= RC.nb_CC[0];
-              
-        LOG_A (ENB_SS,"CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
-               RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
+
+        //Increment the nb_CC supported as new cell is confiured. 
+        if ((RC.nb_CC[0] + 1) >= MAX_NUM_CCs) {
+          LOG_E (ENB_SS,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
+        } else {
+          RC.nb_CC[0] ++;
+          //Set the number of MAC_CC to current configured CC value
+          *RC.nb_mac_CC= RC.nb_CC[0];
+                
+          LOG_I (ENB_SS,"[SYS] CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
+                RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
+        }
       }
-      returnState = SS_STATE_CELL_CONFIGURED;
     }
 
 
