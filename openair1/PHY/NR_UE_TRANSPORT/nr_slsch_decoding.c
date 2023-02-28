@@ -55,7 +55,7 @@ static uint64_t nb_error_decod =0;
 
 notifiedFIFO_t freeBlocks_dl;
 notifiedFIFO_elt_t *msgToPush_dl;
-int nbDlProcessing =0;
+int nbDlProcessing =0; 
 
 void free_nr_ue_dlsch(NR_UE_DLSCH_t **dlschptr, uint16_t N_RB_DL) {
 
@@ -384,9 +384,8 @@ void nr_processDLSegment(void* arg) {
   }
 }
 
-uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
+uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            UE_nr_rxtx_proc_t *proc,
-                           int eNB_id,
                            short *dlsch_llr,
                            NR_DL_FRAME_PARMS *frame_parms,
                            NR_UE_DLSCH_t *dlsch,
@@ -404,7 +403,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   t_nrLDPC_dec_params *p_decParams = &decParams;
 
   if (!harq_process) {
-    LOG_E(PHY,"dlsch_decoding.c: NULL harq_process pointer\n");
+    LOG_E(PHY,"slsch_decoding.c: NULL harq_process pointer\n");
     return(dlsch->max_ldpc_iterations + 1);
   }
 
@@ -431,12 +430,12 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   int nbDecode = 0;
   
   if (!dlsch_llr) {
-    LOG_E(PHY,"dlsch_decoding.c: NULL dlsch_llr pointer\n");
+    LOG_E(PHY,"slsch_decoding.c: NULL dlsch_llr pointer\n");
     return(dlsch->max_ldpc_iterations + 1);
   }
 
   if (!frame_parms) {
-    LOG_E(PHY,"dlsch_decoding.c: NULL frame_parms pointer\n");
+    LOG_E(PHY,"slsch_decoding.c: NULL frame_parms pointer\n");
     return(dlsch->max_ldpc_iterations + 1);
   }
 

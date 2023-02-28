@@ -30,31 +30,31 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include <openair2/UTIL/OPT/opt.h>
 
-void nr_attach_crc_to_payload(NR_UL_UE_HARQ_t *harq_process, int max_payload_bytes, uint32_t A) {
+void nr_attach_crc_to_payload(unsigned char *in, uint8_t *out, int max_payload_bytes, uint32_t in_size, uint32_t *out_size) {
 
     unsigned int crc = 1;
-    if (A > NR_MAX_PSSCH_TBS) {
+    if (in_size > NR_MAX_PSSCH_TBS) {
       // Add 24-bit crc (polynomial A) to payload
-      crc = crc24a(harq_process->a, A) >> 8;
-      harq_process->a[A >> 3] = ((uint8_t*)&crc)[2];
-      harq_process->a[1 + (A >> 3)] = ((uint8_t*)&crc)[1];
-      harq_process->a[2 + (A >> 3)] = ((uint8_t*)&crc)[0];
-      harq_process->B = A + 24;
+      crc = crc24a(in, in_size) >> 8;
+      in[in_size >> 3] = ((uint8_t*)&crc)[2];
+      in[1 + (in_size >> 3)] = ((uint8_t*)&crc)[1];
+      in[2 + (in_size >> 3)] = ((uint8_t*)&crc)[0];
+      *out_size = in_size + 24;
 
-      AssertFatal((A / 8) + 4 <= max_payload_bytes,
-                  "A %d is too big (A / 8 + 4 = %d > %d)\n", A, (A / 8) + 4, max_payload_bytes);
+      AssertFatal((in_size / 8) + 4 <= max_payload_bytes,
+                  "A %d is too big (A / 8 + 4 = %d > %d)\n", in_size, (in_size / 8) + 4, max_payload_bytes);
 
-      memcpy(harq_process->b, harq_process->a, (A / 8) + 4);
+      memcpy(out, in, (in_size / 8) + 4);
     } else {
       // Add 16-bit crc (polynomial A) to payload
-      crc = crc16(harq_process->a, A) >> 16;
-      harq_process->a[A >> 3] = ((uint8_t*)&crc)[1];
-      harq_process->a[1 + (A >> 3)] = ((uint8_t*)&crc)[0];
-      harq_process->B = A + 16;
+      crc = crc16(in, in_size) >> 16;
+      in[in_size >> 3] = ((uint8_t*)&crc)[1];
+      in[1 + (in_size >> 3)] = ((uint8_t*)&crc)[0];
+      *out_size = in_size + 16;
 
-      AssertFatal((A / 8) + 3 <= max_payload_bytes,
-                  "A %d is too big (A / 8 + 3 = %d > %d)\n", A, (A / 8) + 3, max_payload_bytes);
+      AssertFatal((in_size / 8) + 3 <= max_payload_bytes,
+                  "A %d is too big (A / 8 + 3 = %d > %d)\n", in_size, (in_size / 8) + 3, max_payload_bytes);
 
-      memcpy(harq_process->b, harq_process->a, (A / 8) + 3);  // using 3 bytes to mimic the case of 24 bit crc
+      memcpy(out, in, (in_size / 8) + 3);  // using 3 bytes to mimic the case of 24 bit crc
     }
 }

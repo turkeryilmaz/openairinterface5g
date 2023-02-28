@@ -52,6 +52,7 @@
 
 //#define DEBUG_NR_SLSCHSIM
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
+#define SCI2_LEN_SIZE 35
 RAN_CONTEXT_t RC;
 double cpuf;
 uint16_t NB_UE_INST = 1;
@@ -82,6 +83,17 @@ typedef struct {
   uint8_t beta_offset;
   uint8_t dmrs_port;
 } SCI_1_A;
+
+typedef struct {
+  uint8_t harq_pid;
+  bool new_data;
+  uint8_t red_version;
+  uint8_t src_id;
+  uint16_t dst_id;
+  bool harq_enb;
+  uint8_t cast_type;
+  bool csi_req;
+} SCI_2_A;
 
 typedef struct {
   double scs;
@@ -412,7 +424,8 @@ int main(int argc, char **argv)
   rel16_sl_rx->mcs_index            = Imcs;
   rel16_sl_rx->pssch_data.rv_index  = 0;
   rel16_sl_rx->target_code_rate     = code_rate;
-  rel16_sl_rx->pssch_data.tb_size   = TBS >> 3;
+  rel16_sl_rx->pssch_data.tb_size   = TBS >> 3; // bytes
+  rel16_sl_rx->pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
   rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
 
   NR_UL_UE_HARQ_t *harq_process_nearbyUE = nearbyUE->slsch[0][0]->harq_processes[harq_pid];
@@ -427,13 +440,18 @@ int main(int argc, char **argv)
   harq_process_nearbyUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
   harq_process_nearbyUE->pssch_pdu.pssch_data.rv_index = 0;
   harq_process_nearbyUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
   harq_process_nearbyUE->pssch_pdu.target_code_rate = code_rate;
   harq_process_nearbyUE->pssch_pdu.qam_mod_order = mod_order;
   unsigned char *test_input = harq_process_nearbyUE->a;
+  unsigned char *sci_input = harq_process_nearbyUE->a_sci2;
 
   crcTableInit();
   for (int i = 0; i < TBS / 8; i++)
     test_input[i] = (unsigned char) rand();
+
+  for (int i = 0; i < 4; i++)
+    sci_input[i] = (unsigned char) rand();
 
 #ifdef DEBUG_NR_ULSCHSIM
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);

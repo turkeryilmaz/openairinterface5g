@@ -116,9 +116,17 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     DevAssert(slsch->harq_processes[i]->a);
     bzero(slsch->harq_processes[i]->a, slsch_bytes);
 
+    slsch->harq_processes[i]->a_sci2 = malloc16(slsch_bytes);
+    DevAssert(slsch->harq_processes[i]->a_sci2);
+    bzero(slsch->harq_processes[i]->a_sci2, slsch_bytes);
+
     slsch->harq_processes[i]->b = malloc16(slsch_bytes);
     DevAssert(slsch->harq_processes[i]->b);
     bzero(slsch->harq_processes[i]->b, slsch_bytes);
+
+    slsch->harq_processes[i]->b_sci2 = malloc16(slsch_bytes);
+    DevAssert(slsch->harq_processes[i]->b_sci2);
+    bzero(slsch->harq_processes[i]->b_sci2, slsch_bytes);
 
     slsch->harq_processes[i]->c = malloc16(a_segments * sizeof(uint8_t *));
     slsch->harq_processes[i]->d = malloc16(a_segments * sizeof(uint16_t *));
@@ -158,7 +166,8 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
   start_meas(&ue->slsch_encoding_stats);
   NR_UL_UE_HARQ_t *harq_process = slsch->harq_processes[harq_pid];
   uint16_t nb_rb = harq_process->pssch_pdu.rb_size;
-  uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3;
+  uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3; // payload size in bits
+  uint32_t A_sci = harq_process->pssch_pdu.pssch_data.sci2_size << 3;
   uint32_t *pz = &harq_process->Z;
   uint8_t mod_order = harq_process->pssch_pdu.qam_mod_order;
   uint16_t Kr = 0;
@@ -185,7 +194,10 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     LOG_D(NR_PHY, "encoding thinks this is a new packet \n");
 #endif
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
-    nr_attach_crc_to_payload(harq_process, max_payload_bytes, A);
+    nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
+    nr_attach_crc_to_payload(harq_process->a_sci2, harq_process->b_sci2, max_payload_bytes, A_sci, &harq_process->B_sci2);
+
+    printf("size of SCI_2 before crc: %d and after is: %d\n",A_sci, harq_process->B_sci2);
 
     ///////////////////////// b---->| block segmentation |---->c /////////////////////////
 

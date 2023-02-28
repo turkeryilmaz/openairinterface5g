@@ -995,9 +995,23 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                      uint8_t harq_pid,
                      unsigned int G);
 
-void nr_attach_crc_to_payload(NR_UL_UE_HARQ_t *harq_process,
-                     int max_payload_bytes,
-                     uint32_t A);
+uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
+                         UE_nr_rxtx_proc_t *proc,
+                         short *dlsch_llr,
+                         NR_DL_FRAME_PARMS *frame_parms,
+                         NR_UE_DLSCH_t *dlsch,
+                         NR_DL_UE_HARQ_t *harq_process,
+                         uint32_t frame,
+                         uint16_t nb_symb_sch,
+                         uint8_t nr_slot_rx,
+                         uint8_t harq_pid,
+                         uint8_t is_crnti);
+
+void nr_attach_crc_to_payload(unsigned char *in,
+                              uint8_t *out,
+                              int max_payload_bytes,
+                              uint32_t in_size,
+                              uint32_t *out_size);
 
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in, Pointer to input bits
