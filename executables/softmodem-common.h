@@ -69,6 +69,7 @@ extern "C"
 #define CONFIG_HLP_ULF           "Set the uplink frequency offset for all component carriers\n"
 #define CONFIG_HLP_CHOFF         "Channel id offset\n"
 #define CONFIG_HLP_SOFTS         "Enable soft scope and L1 and L2 stats (Xforms)\n"
+#define CONFIG_HLP_SOFTS_QT      "Enable soft scope and L1 and L2 stats (QT)\n"
 #define CONFIG_HLP_ITTIL         "Generate ITTI analyzser logs (similar to wireshark logs but with more details)\n"
 #define CONFIG_HLP_DLMCS         "Set the maximum downlink MCS\n"
 #define CONFIG_HLP_STMON         "Enable processing timing measurement of lte softmodem on per subframe basis \n"
@@ -112,7 +113,6 @@ extern "C"
 /*   optname                 helpstr                  paramflags      XXXptr                              defXXXval              type         numelt   */
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 #define RF_CONFIG_FILE      softmodem_params.rf_config_file
-#define SPLIT73             softmodem_params.split73
 #define TP_CONFIG           softmodem_params.threadPoolConfig
 #define PHY_TEST            softmodem_params.phy_test
 #define SL_PHY_TEST         softmodem_params.sl_phy_test
@@ -146,9 +146,8 @@ extern "C"
 
 extern int usrp_tx_thread;
 #define CMDLINE_PARAMS_DESC {  \
-    {"rf-config-file",       CONFIG_HLP_RFCFGF,       0,              strptr:&RF_CONFIG_FILE,             defstrval:NULL,        TYPE_STRING, 0},                     \
-    {"split73",              CONFIG_HLP_SPLIT73,      0,              strptr:&SPLIT73,                    defstrval:NULL,        TYPE_STRING, 0},                     \
-    {"thread-pool",          CONFIG_HLP_TPOOL,        0,              strptr:&TP_CONFIG,                  defstrval:"-1,-1,-1,-1,-1,-1,-1,-1", TYPE_STRING, 0},       \
+    {"rf-config-file",       CONFIG_HLP_RFCFGF,       0,              strptr:&RF_CONFIG_FILE,    defstrval:NULL,        TYPE_STRING, 0},\
+    {"thread-pool",          CONFIG_HLP_TPOOL,        0,              strptr:&TP_CONFIG,         defstrval:"-1,-1,-1,-1,-1,-1,-1,-1",         TYPE_STRING, 0},     \
     {"phy-test",             CONFIG_HLP_PHYTST,       PARAMFLAG_BOOL, iptr:&PHY_TEST,                     defintval:0,           TYPE_INT,    0},                     \
     {"do-ra",                CONFIG_HLP_DORA,         PARAMFLAG_BOOL, iptr:&DO_RA,                        defintval:0,           TYPE_INT,    0},                     \
     {"sa",                   CONFIG_HLP_SA,           PARAMFLAG_BOOL, iptr:&SA,                           defintval:0,           TYPE_INT,    0},                     \
@@ -162,7 +161,8 @@ extern int usrp_tx_thread;
     {"C" ,                   CONFIG_HLP_DLF,          0,              u64ptr:&(downlink_frequency[0][0]), defuintval:2680000000, TYPE_UINT64, 0},                     \
     {"CO" ,                  CONFIG_HLP_ULF,          0,              iptr:&(uplink_frequency_offset[0][0]), defintval:0,        TYPE_INT,    0},                     \
     {"a" ,                   CONFIG_HLP_CHOFF,        0,              iptr:&CHAIN_OFFSET,                 defintval:0,           TYPE_INT,    0},                     \
-    {"d" ,                   CONFIG_HLP_SOFTS,        PARAMFLAG_BOOL, uptr:(uint32_t *)&do_forms,         defintval:0,           TYPE_INT8,   0},                     \
+    {"d" ,                   CONFIG_HLP_SOFTS,        PARAMFLAG_BOOL, uptr:&do_forms,                     defintval:0,           TYPE_UINT,   0},                     \
+    {"dqt" ,                 CONFIG_HLP_SOFTS_QT,     PARAMFLAG_BOOL, uptr:&do_forms_qt,                  defintval:0,           TYPE_UINT,   0},                     \
     {"q" ,                   CONFIG_HLP_STMON,        PARAMFLAG_BOOL, iptr:&opp_enabled,                  defintval:0,           TYPE_INT,    0},                     \
     {"numerology" ,          CONFIG_HLP_NUMEROLOGY,   PARAMFLAG_BOOL, iptr:&NUMEROLOGY,                   defintval:1,           TYPE_INT,    0},                     \
     {"band" ,                CONFIG_HLP_BAND,         0,              iptr:&BAND,                         defintval:78,          TYPE_INT,    0},                     \
@@ -284,6 +284,8 @@ extern int usrp_tx_thread;
 #define SOFTMODEM_4GUE_BIT            (1<<22)
 #define SOFTMODEM_5GUE_BIT            (1<<23)
 #define SOFTMODEM_NOSTATS_BIT         (1<<24)
+#define SOFTMODEM_DOSCOPE_QT_BIT      (1<<25)
+
 #define SOFTMODEM_FUNC_BITS (SOFTMODEM_ENB_BIT | SOFTMODEM_GNB_BIT | SOFTMODEM_5GUE_BIT | SOFTMODEM_4GUE_BIT)
 #define MAPPING_SOFTMODEM_FUNCTIONS {{"enb",SOFTMODEM_ENB_BIT},{"gnb",SOFTMODEM_GNB_BIT},{"4Gue",SOFTMODEM_4GUE_BIT},{"5Gue",SOFTMODEM_5GUE_BIT}}
 
@@ -295,6 +297,7 @@ extern int usrp_tx_thread;
 #define IS_SOFTMODEM_SIML1           ( get_softmodem_optmask() & SOFTMODEM_SIML1_BIT)
 #define IS_SOFTMODEM_DLSIM           ( get_softmodem_optmask() & SOFTMODEM_DLSIM_BIT)
 #define IS_SOFTMODEM_DOSCOPE         ( get_softmodem_optmask() & SOFTMODEM_DOSCOPE_BIT)
+#define IS_SOFTMODEM_DOSCOPE_QT      ( get_softmodem_optmask() & SOFTMODEM_DOSCOPE_QT_BIT)
 #define IS_SOFTMODEM_IQPLAYER        ( get_softmodem_optmask() & SOFTMODEM_RECPLAY_BIT)
 #define IS_SOFTMODEM_TELNETCLT_BIT   ( get_softmodem_optmask() & SOFTMODEM_TELNETCLT_BIT)    
 #define IS_SOFTMODEM_ENB_BIT         ( get_softmodem_optmask() & SOFTMODEM_ENB_BIT)
@@ -307,7 +310,6 @@ typedef struct {
   uint64_t       optmask;
   //THREAD_STRUCT  thread_struct;
   char           *rf_config_file;
-  char           *split73;
   char           *threadPoolConfig;
   int            phy_test;
   int            sl_phy_test;

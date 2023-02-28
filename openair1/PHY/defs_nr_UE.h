@@ -37,8 +37,6 @@
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 
-
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
