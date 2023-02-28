@@ -38,6 +38,7 @@ void nfapi_trace(nfapi_trace_level_t, char const *caller, const char *format, ..
 nfapi_trace_level_t nfapi_trace_level(void);
 
 #define NFAPI_TRACE(LEVEL, FORMAT, ...) do {                            \
-   nfapi_trace(LEVEL, __func__, FORMAT, ##__VA_ARGS__);            \
+    if (nfapi_trace_level() >= (LEVEL))                                 \
+        nfapi_trace(LEVEL, __func__, FORMAT, ##__VA_ARGS__);            \
 } while (0)
 
