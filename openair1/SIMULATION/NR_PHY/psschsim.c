@@ -72,29 +72,6 @@ nrUE_params_t *get_nrUE_params(void) {
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 
-
-typedef struct {
-  uint8_t priority;
-  uint8_t freq_res;
-  uint8_t time_res;
-  uint8_t period;
-  uint16_t dmrs_pattern;
-  uint8_t mcs;
-  uint8_t beta_offset;
-  uint8_t dmrs_port;
-} SCI_1_A;
-
-typedef struct {
-  uint8_t harq_pid;
-  bool new_data;
-  uint8_t red_version;
-  uint8_t src_id;
-  uint16_t dst_id;
-  bool harq_enb;
-  uint8_t cast_type;
-  bool csi_req;
-} SCI_2_A;
-
 typedef struct {
   double scs;
   double bw;
@@ -287,7 +264,7 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   LOG_I(NR_PHY, "tx UE configured\n");
 }
 
-void set_sci(SCI_1_A *sci) {
+void set_sci(SCI_1_A *sci, uint8_t mcs) {
   sci->period = 0;
   sci->dmrs_pattern = 0b0001000001000; // LSB is slot 1 and MSB is slot 13
   sci->beta_offset = 0;
@@ -295,7 +272,7 @@ void set_sci(SCI_1_A *sci) {
   sci->priority = 0;
   sci->freq_res = 1;
   sci->time_res = 1;
-  sci->mcs = 0;
+  sci->mcs = mcs;
 }
 
 void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
@@ -444,14 +421,19 @@ int main(int argc, char **argv)
   harq_process_nearbyUE->pssch_pdu.target_code_rate = code_rate;
   harq_process_nearbyUE->pssch_pdu.qam_mod_order = mod_order;
   unsigned char *test_input = harq_process_nearbyUE->a;
-  unsigned char *sci_input = harq_process_nearbyUE->a_sci2;
+  uint64_t *sci_input = harq_process_nearbyUE->a_sci2;
+
+  SCI_2_A *sci2 = &harq_process_nearbyUE->pssch_pdu.sci2;
+  SCI_1_A *sci1 = &harq_process_nearbyUE->pssch_pdu.sci1;
+  set_sci(sci1, Imcs);
 
   crcTableInit();
   for (int i = 0; i < TBS / 8; i++)
     test_input[i] = (unsigned char) rand();
 
-  for (int i = 0; i < 4; i++)
-    sci_input[i] = (unsigned char) rand();
+  uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
+  *sci_input = u;//rand() % (u - 0 + 1);
+  printf("the sci2 is:%"PRIu64" and %"PRIu64"\n",*sci_input,*harq_process_nearbyUE->a_sci2);
 
 #ifdef DEBUG_NR_ULSCHSIM
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);

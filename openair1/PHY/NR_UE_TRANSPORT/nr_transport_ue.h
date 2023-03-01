@@ -119,9 +119,9 @@ typedef struct {
   // LDPC lifting size
   uint32_t Z;
   //pointer to SCI2 payload from MAC interface
-  unsigned char *a_sci2;
-  //pointer to sci2 after crc 
-  uint8_t *b_sci2;
+  uint64_t *a_sci2;
+  //pointer to sci2 after crc + polar encoding and rate matching
+  uint64_t *b_sci2;
   /// The sci2's payload + CRC size in bits, "B" from 36-212
   uint32_t B_sci2;
 

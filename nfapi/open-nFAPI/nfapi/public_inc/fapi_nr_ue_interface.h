@@ -346,6 +346,28 @@ typedef struct
   int8_t absolute_delta_PUSCH;
 } nfapi_nr_ue_pusch_pdu_t;
 
+typedef struct {
+  uint8_t priority;
+  uint8_t freq_res;
+  uint8_t time_res;
+  uint8_t period;
+  uint16_t dmrs_pattern;
+  uint8_t mcs;
+  uint8_t beta_offset;
+  uint8_t dmrs_port;
+} SCI_1_A;
+
+typedef struct {
+  uint8_t harq_pid;
+  bool new_data;
+  uint8_t red_version;
+  uint8_t src_id;
+  uint16_t dst_id;
+  bool harq_enb;
+  uint8_t cast_type;
+  bool csi_req;
+} SCI_2_A;
+
 typedef struct
 {
   uint16_t pdu_bit_map;//Bitmap indicating presence of optional PDUs (see above)
@@ -393,6 +415,10 @@ typedef struct
   nfapi_nr_ue_ul_beamforming_t beamforming;
   //OAI specific
   int8_t absolute_delta_PUSCH;
+  // SCI1 for PSSCH
+  SCI_1_A sci1;
+  // SCI2 for PSSCH
+  SCI_2_A sci2;
 } nfapi_nr_ue_pssch_pdu_t;
 
 typedef struct {
