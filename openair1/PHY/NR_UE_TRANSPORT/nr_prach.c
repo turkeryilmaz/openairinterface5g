@@ -500,8 +500,8 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
   #endif
 
   for (i=0; i<prach_len; i++) {
-    ((int16_t*)(&ue->common_vars.txdata[0][prach_start]))[2*i] = prach[2*i];
-    ((int16_t*)(&ue->common_vars.txdata[0][prach_start]))[2*i+1] = prach[2*i+1];
+    ((&ue->common_vars.txdata[0][prach_start].r))[i] = prach[2*i];
+    ((&ue->common_vars.txdata[0][prach_start].i))[i] = prach[2*i+1];
   }
 
   //printf("----------------------\n");
