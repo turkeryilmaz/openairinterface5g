@@ -520,15 +520,15 @@ int main( int argc, char **argv ) {
   int ru_id, CC_id = 0;
   start_background_system();
 
-  //netconf
-  netconf_init();
-  netconf_test();
-
   ///static configuration for NR at the moment
   if ( load_configmodule(argc,argv,CONFIG_ENABLECMDLINEONLY) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
 
+  //netconf
+  netconf_init();
+  netconf_test();
+  
   set_softmodem_sighandler();
 #ifdef DEBUG_CONSOLE
   setvbuf(stdout, NULL, _IONBF, 0);

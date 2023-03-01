@@ -2429,6 +2429,9 @@ add_executable(nr-softmodem
   ${OPENAIR_DIR}/common/utils/lte/ue_power.c
   ${OPENAIR_DIR}/common/utils/lte/prach_utils.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${OPENAIR_DIR}/common/utils/netconf/utils.c
+  ${OPENAIR_DIR}/common/utils/netconf/ves.c
+  ${OPENAIR_DIR}/common/utils/netconf/o1config.c
   ${OPENAIR_DIR}/common/utils/netconf/netconf_session.c
   ${OPENAIR_DIR}/common/utils/netconf/netconf.c
   ${PHY_INTERFACE_DIR}/queue_t.c
@@ -2845,6 +2848,7 @@ if(OAI_NW_DRIVER_USE_NETLINK)
 endif()
 make_driver(ue_ip ${OPENAIR2_DIR}/NETWORK_DRIVER/UE_IP ${ue_ip_src})
 
+#include (common/utils/netconf/netconf_CMakeLists.txt)
 include (common/utils/telnetsrv/telnetsrv_CMakeLists.txt)
 include(${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/CMakeLists.txt)
 include (${OPENAIR_DIR}/common/utils/websrv/websrv_CMakeLists.txt)

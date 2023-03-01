@@ -100,6 +100,3 @@ else
     exec "$@"
 fi
 
-echo "=================================="
-echo "== Starting netopeer2-server"
-netopeer2-server &

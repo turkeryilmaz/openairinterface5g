@@ -1,14 +1,37 @@
 #include "netconf.h"
 #include "netconf_session.h"
+#include "o1config.h"
 
 int netconf_init(void) {
     int rc = 0;
 
-    sr_log_stderr(SR_LL_WRN);
-    rc = netconf_session_init();
-    if(rc != 0) {
-        printf("netconf_session_init() failed\n");
-    }
+    printf("Reading config...");
+    o1_config_t config={};
+    rc = o1_readconfig(&config);
+    printf("done %d\n",rc);
+
+    printf("Printing config:\n");
+    printf("netconf_node_id: %s\n", config.netconf_node_id);
+    printf("netconf_username: %s\n", config.netconf_username);
+    printf("netconf_password: %s\n", config.netconf_password);
+    printf("netconf_port = %d\n", config.netconf_port);
+    printf("netconf_host: %s\n", config.netconf_host);
+    printf("ves_url: %s\n", config. ves_url);
+    printf("ves_nf_vendor_name: %s\n", config.ves_nf_vendor_name);
+    printf("ves_nf_naming_code: %s\n", config.ves_nf_naming_code);
+    printf("ves_oam_ipv4: %s\n", config.ves_oam_ipv4);
+    printf("ves_oam_ipv6: %s\n", config.ves_oam_ipv6);
+    printf("ves_ftp_server_port = %d\n", config.ves_ftp_server_port);
+    printf("ves_ftp_listen_addr: %s\n", config.ves_ftp_listen_addr);
+    printf("=======\n");
+
+
+
+    // sr_log_stderr(SR_LL_WRN);
+    // rc = netconf_session_init();
+    // if(rc != 0) {
+    //     printf("netconf_session_init() failed\n");
+    // }
 
     return rc;
 }

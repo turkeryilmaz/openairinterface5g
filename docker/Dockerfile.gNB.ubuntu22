@@ -25,9 +25,10 @@
 #
 #---------------------------------------------------------------------
 
-FROM ran-base:latest as gnb-base
+ARG BASETAG="latest"
+FROM ran-base:${BASETAG} as gnb-base
 
-FROM ran-build:latest AS gnb-build
+FROM ran-build:${BASETAG} AS gnb-build
 
 RUN python3 ./docker/scripts/generateTemplate.py ./docker/scripts/gnb_parameters.yaml && \
     cp /oai-ran/docker/scripts/gnb_entrypoint.sh /oai-ran/docker/scripts/entrypoint.sh
@@ -54,11 +55,13 @@ RUN apt-get update && \
         iproute2 \
         iputils-ping \
         gdb \
-#        python \
         python3 \
         python3-six \
         python3-requests \
-        libusb-1.0-0 && \
+        libusb-1.0-0 \
+        # libyang/sysrepo/netopeer2
+        libpcre2-8-0 \
+        openssh-client && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oai-gnb/bin
@@ -78,22 +81,23 @@ COPY --from=gnb-build \
     /oai-ran/cmake_targets/ran_build/build/libldpc_optim.so \
     /oai-ran/cmake_targets/ran_build/build/libldpc_optim8seg.so \
     /oai-ran/cmake_targets/ran_build/build/libldpc_orig.so \
-#    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
     /usr/local/lib/
 
 # Now we are copying from builder-image the UHD files.
 COPY --from=gnb-base /usr/local/bin/uhd_find_devices /usr/local/bin
 COPY --from=gnb-base /usr/local/lib/libuhd.so.4.3.0 /usr/local/lib
 COPY --from=gnb-base /usr/local/lib/uhd/utils/uhd_images_downloader.py /opt/oai-gnb/bin
-# COPY --from=gnb-base \
-#    /usr/lib/x86_64-linux-gnu/libboost_date_time.so.1.65.1 \
-#    /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.65.1 \
-    # /usr/lib/x86_64-linux-gnu/libboost_regex.so.1.65.1 \
-    # /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.65.1 \
-    # /usr/lib/x86_64-linux-gnu/libboost_thread.so.1.65.1 \
-    # /usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1 \
-    # /usr/lib/x86_64-linux-gnu/libboost_program_options.so.1.65.1 \
-    # /usr/lib/x86_64-linux-gnu/
+COPY --from=gnb-base \
+    /usr/lib/x86_64-linux-gnu/libboost_date_time.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_regex.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_thread.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_chrono.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/libboost_program_options.so.1.74.0 \
+    /usr/lib/x86_64-linux-gnu/
 
 RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai_device.so" && \
     ldconfig
@@ -102,6 +106,43 @@ RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai
 WORKDIR /opt/oai-gnb/etc
 COPY --from=gnb-build /oai-ran/docker/etc .
 
+# Copy relevant netopeer/sysrepo files for gNB
+COPY --from=gnb-build \
+    /usr/local/bin/yanglint \
+    /usr/local/bin/yangre \
+    /usr/local/bin/sysrepo-plugind \
+    /usr/local/bin/sysrepocfg \
+    /usr/local/bin/sysrepoctl \
+    /usr/local/bin/netopeer2-cli \
+    /usr/local/bin/
+
+COPY --from=gnb-build /usr/local/sbin/netopeer2-server /usr/local/sbin/netopeer2-server
+COPY --from=gnb-build \
+    /usr/local/lib/libnetconf2.so \
+    /usr/local/lib/libssh.so \
+    /usr/local/lib/libsysrepo.so \
+    /usr/local/lib/libyang.so \
+    /usr/local/lib/sysrepo-plugind/ \
+    /usr/local/lib/
+
+RUN ldconfig
+
+COPY --from=gnb-build /usr/local/share/yang /usr/local/share/yang
+COPY --from=gnb-build /usr/local/share/netopeer2 /usr/local/share/netopeer2
+COPY --from=gnb-build /etc/sysrepo /etc/sysrepo
+
+
+# Add netconf user and configure access
+RUN \
+    adduser netconf && \
+    echo "netconf:netconf!" | chpasswd && \
+    mkdir -p /home/netconf/.ssh
+
+# # Initialize netopeer2
+RUN \
+    /usr/local/share/netopeer2/merge_hostkey.sh && \
+    /usr/local/share/netopeer2/merge_config.sh
+COPY docker/scripts/gnb_entrypoint.sh /opt/oai-gnb/bin/entrypoint.sh
 WORKDIR /opt/oai-gnb
 #EXPOSE 2152/udp  # S1U, GTP/UDP
 #EXPOSE 22100/tcp # ?
