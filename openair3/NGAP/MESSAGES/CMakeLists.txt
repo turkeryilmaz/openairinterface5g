@@ -9,8 +9,11 @@ else()
   message(FATAL_ERROR "unknown NGAP_RELEASE ${NGAP_RELEASE}")
 endif()
 
+message("in ngap: program_path ${CMAKE_PROGRAM_PATH}")
+message("in ngap: PATH $ENV{PATH}")
+
 add_custom_command(OUTPUT ${ngap_source} ${ngap_headers}
-  COMMAND ASN1C_PREFIX=NGAP_ asn1c -pdu=all -fcompound-names -gen-APER -no-gen-BER -no-gen-JER -no-gen-OER -no-gen-UPER -no-gen-example -fno-include-deps -findirect-choice -D ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${NGAP_GRAMMAR}
+  COMMAND ASN1C_PREFIX=NGAP_ ${CMAKE_BINARY_DIR}/new_asn1c/bin/asn1c -pdu=all -fcompound-names -gen-APER -no-gen-BER -no-gen-JER -no-gen-OER -no-gen-UPER -no-gen-example -fno-include-deps -findirect-choice -D ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${NGAP_GRAMMAR}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${NGAP_GRAMMAR}
   COMMENT "Generating NGAP source files from ${CMAKE_CURRENT_SOURCE_DIR}/${NGAP_GRAMMAR}"
 )

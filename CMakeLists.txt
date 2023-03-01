@@ -2680,3 +2680,26 @@ add_subdirectory(doc)
 add_subdirectory(openair1)
 add_subdirectory(openair2)
 add_subdirectory(openair3)
+
+# Download and use specific version of asn1c
+# this is a hack, it will be removed at some point
+add_custom_target (
+  new_asn1c
+  DEPENDS ${CMAKE_BINARY_DIR}/new_asn1c/bin/asn1c
+)
+add_custom_command (
+  OUTPUT ${CMAKE_BINARY_DIR}/new_asn1c/bin/asn1c
+  COMMAND make -f new_asn1c.make new_asn1c INSTALL_DIR="${CMAKE_BINARY_DIR}/new_asn1c"
+  WORKING_DIRECTORY ${OPENAIR_DIR}/cmake_targets/tools
+)
+add_dependencies(asn1_e1ap new_asn1c)
+add_dependencies(asn1_f1ap new_asn1c)
+add_dependencies(asn1_m2ap new_asn1c)
+add_dependencies(asn1_lte_rrc new_asn1c)
+add_dependencies(asn1_nr_rrc new_asn1c)
+add_dependencies(asn1_x2ap new_asn1c)
+add_dependencies(asn1_lpp new_asn1c)
+add_dependencies(asn1_m3ap new_asn1c)
+add_dependencies(asn1_ngap new_asn1c)
+add_dependencies(asn1_nrppa new_asn1c)
+add_dependencies(asn1_s1ap new_asn1c)
