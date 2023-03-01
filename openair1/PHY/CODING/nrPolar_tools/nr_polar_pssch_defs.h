@@ -23,8 +23,8 @@
 #define __NR_POLAR_PSSCH_DEFS__H__
 
 #define NR_POLAR_PSSCH_AGGREGATION_LEVEL 0 //uint8_t
-#define NR_POLAR_PSSCH_MESSAGE_TYPE 3      //int8_t
-#define NR_POLAR_PSSCH_SCI2_PAYLOAD_BITS 32     //uint16_t
+#define NR_POLAR_PSSCH_MESSAGE_TYPE 4      //int8_t
+#define NR_POLAR_PSSCH_PAYLOAD_BITS 32     //uint16_t
 #define NR_POLAR_PSSCH_CRC_PARITY_BITS 24
 #define NR_POLAR_PSSCH_CRC_ERROR_CORRECTION_BITS 3
 //Assumed 3 by 3GPP when NR_POLAR_PSSCH_L>8 to meet false alarm rate requirements.

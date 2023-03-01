@@ -39,6 +39,7 @@
 
 #define NR_PUSCH_x 2 // UCI placeholder bit TS 38.212 V15.4.0 subclause 5.3.3.1
 #define NR_PUSCH_y 3 // UCI placeholder bit
+#define NR_PSSCH_x 4 // SCI2 placeholder bit
 
 extern short nr_qpsk_mod_table[8];
 // Functions below implement 36-211 and 36-212
@@ -1024,7 +1025,7 @@ void nr_pusch_codeword_scrambling(uint8_t *in,
 void nr_pusch_codeword_scrambling_sl(uint8_t *in,
                                       uint32_t size,
                                       uint32_t SCI2_bits,
-                                      uint32_t Nid,
+                                      uint16_t Nid,
                                       uint32_t* out);
 
 /** \brief Perform the following functionalities:

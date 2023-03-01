@@ -192,6 +192,18 @@ t_nrPolar_params * nr_polar_params(int8_t messageType,
     newPolarInitNode->encoderLength = NR_POLAR_PSBCH_E;
     newPolarInitNode->crcCorrectionBits = NR_POLAR_PSBCH_CRC_ERROR_CORRECTION_BITS;
     newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
+  } else if (messageType == 4) { // PSSCH
+    newPolarInitNode->n_max = NR_POLAR_PSSCH_N_MAX;
+    newPolarInitNode->i_il = NR_POLAR_PSSCH_I_IL;
+    newPolarInitNode->i_seg = NR_POLAR_PSSCH_I_SEG;
+    newPolarInitNode->n_pc = NR_POLAR_PSSCH_N_PC;
+    newPolarInitNode->n_pc_wm = NR_POLAR_PSSCH_N_PC_WM;
+    newPolarInitNode->i_bil = NR_POLAR_PSSCH_I_BIL;
+    newPolarInitNode->crcParityBits = NR_POLAR_PSSCH_CRC_PARITY_BITS;
+    newPolarInitNode->payloadBits = NR_POLAR_PSSCH_PAYLOAD_BITS;
+    newPolarInitNode->encoderLength = NR_POLAR_PSSCH_E;
+    newPolarInitNode->crcCorrectionBits = NR_POLAR_PSSCH_CRC_ERROR_CORRECTION_BITS;
+    newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
   } else {
     AssertFatal(1 == 0, "[nr_polar_init] Incorrect Message Type(%d)", messageType);
   }
