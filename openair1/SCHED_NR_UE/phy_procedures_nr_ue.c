@@ -316,19 +316,19 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms, 0);
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
       apply_nr_rotation(&ue->frame_parms,
-                        (int16_t*)&ue->common_vars.txdataF[aa][txdataF_offset],
+                        &ue->common_vars.txdataF[aa][txdataF_offset],
                         slot_tx, 0, 1); // Conducts rotation on 0th symbol
-      PHY_ofdm_mod(&ue->common_vars.txdataF[aa][txdataF_offset],
-                    (int*)&ue->common_vars.txdata[aa][slot_timestamp],
+      PHY_ofdm_mod((int*)&ue->common_vars.txdataF[aa][txdataF_offset],
+                   (int*)&ue->common_vars.txdata[aa][slot_timestamp],
                     ue->frame_parms.ofdm_symbol_size,
                     1, // Takes IDFT of 1st symbol (first PSBCH)
                     ue->frame_parms.nb_prefix_samples0,
                     CYCLIC_PREFIX);
       apply_nr_rotation(&ue->frame_parms,
-                        (int16_t*)&ue->common_vars.txdataF[aa][txdataF_offset],
+                        &ue->common_vars.txdataF[aa][txdataF_offset],
                        slot_tx, 1, 13); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
-      PHY_ofdm_mod(&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
-                    (int*)&ue->common_vars.txdata[aa][ue->frame_parms.ofdm_symbol_size +
+      PHY_ofdm_mod((int*)&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
+                   (int*)&ue->common_vars.txdata[aa][ue->frame_parms.ofdm_symbol_size +
                                       ue->frame_parms.nb_prefix_samples0 +
                                       ue->frame_parms.nb_prefix_samples +
                                       slot_timestamp], // Starting output offset at CP0 + PSBCH0 + CP1

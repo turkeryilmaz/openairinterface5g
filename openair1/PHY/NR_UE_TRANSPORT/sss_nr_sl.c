@@ -117,17 +117,17 @@ int nr_sl_generate_sss(int32_t *txdataF,
 
 static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
                                  UE_nr_rxtx_proc_t *proc,
-                                 int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                                 int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                                 int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                                 int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
+                                 c16_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                                 c16_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
+                                 c16_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                                 c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int32_t **rxdataF  =  ue->common_vars.rxdataF;
+  c16_t **rxdataF  =  ue->common_vars.rxdataF;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
 
-  int32_t *pss0_rxF, *pss0_rxF_ext;
-  int32_t *sss0_rxF, *sss0_rxF_ext;
+  c16_t *pss0_rxF, *pss0_rxF_ext;
+  c16_t *sss0_rxF, *sss0_rxF_ext;
   for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     pss0_rxF  =  &rxdataF[aarx][PSS0_SL_SYMBOL_NB * ofdm_symbol_size];
     sss0_rxF  =  &rxdataF[aarx][SSS0_SL_SYMBOL_NB * ofdm_symbol_size];
@@ -145,8 +145,8 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     }
   }
 
-  int32_t *pss1_rxF, *pss1_rxF_ext;
-  int32_t *sss1_rxF, *sss1_rxF_ext;
+  c16_t *pss1_rxF, *pss1_rxF_ext;
+  c16_t *sss1_rxF, *sss1_rxF_ext;
   for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     pss1_rxF  =  &rxdataF[aarx][PSS1_SL_SYMBOL_NB * ofdm_symbol_size];
     sss1_rxF  =  &rxdataF[aarx][SSS1_SL_SYMBOL_NB * ofdm_symbol_size];
@@ -262,10 +262,10 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
 
 int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metric, uint8_t *phase_max, int *freq_offset_sss)
 {
-  int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
-  int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
-  int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
-  int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
+  c16_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
+  c16_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
+  c16_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
+  c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
   pss_sss_sl_extract_nr(ue, proc, pss0_ext, sss0_ext, pss1_ext, sss1_ext);

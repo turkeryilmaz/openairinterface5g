@@ -223,7 +223,7 @@ void rx_func(void *param) {
     //apply the rx signal rotation here
     for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
       apply_nr_rotation_ul(&gNB->frame_parms,
-                           gNB->common_vars.rxdataF[aa],
+                           (c16_t *)gNB->common_vars.rxdataF[aa],
                            slot_rx,
                            0,
                            gNB->frame_parms.Ncp==EXTENDED?12:14);
