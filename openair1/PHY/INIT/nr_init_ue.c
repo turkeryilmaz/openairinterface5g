@@ -35,7 +35,6 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "executables/softmodem-common.h"
 
-
 extern uint16_t beta_cqi[16];
 
 /*! \brief Helper function to allocate memory for DLSCH data structures.
@@ -544,7 +543,7 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
           LOG_D(NR_PHY, "ulsch[%d][%d] => %p\n", k, i, ue->ulsch[k][i]);
           if (get_softmodem_params()->sl_mode != 0) {
             AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_SLSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL, "Can't get ue slsch structures\n");
-            AssertFatal((ue->slsch_rx[k][i] = new_nr_ue_slsch_rx(ue->frame_parms.N_RB_UL, NR_MAX_SLSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL, "Can't get ue slsch structures\n");
+            AssertFatal((ue->slsch_rx[k][i] = new_nr_ue_slsch_rx(ue->frame_parms.N_RB_DL, NR_MAX_SLSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL, "Can't get ue slsch structures\n");
             LOG_D(NR_PHY, "slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
           }
         }

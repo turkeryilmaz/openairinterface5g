@@ -89,20 +89,20 @@ void free_nr_ue_slsch_rx(NR_UE_ULSCH_t **slschptr, uint16_t N_RB_UL)
 }
 
 
-NR_UE_ULSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms)
+NR_UE_DLSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_DL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms)
 {
 
   int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
   uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
 
-  if (N_RB_UL != 273) {
-    a_segments = a_segments * N_RB_UL;
+  if (N_RB_DL != 273) {
+    a_segments = a_segments * N_RB_DL;
     a_segments = a_segments / 273 + 1;
   }
 
   uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
 
-  NR_UE_ULSCH_t *slsch = malloc16(sizeof(NR_UE_ULSCH_t));
+  NR_UE_DLSCH_t *slsch = malloc16(sizeof(NR_UE_DLSCH_t));
   DevAssert(slsch);
   memset(slsch, 0, sizeof(*slsch));
 
@@ -110,7 +110,7 @@ NR_UE_ULSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_UL, int number_of_harq_pids, NR_
 
   for (int i = 0; i < number_of_harq_pids; i++) {
 
-    slsch->harq_processes[i] = (NR_UL_UE_HARQ_t *)malloc16_clear(sizeof(NR_UL_UE_HARQ_t));
+    slsch->harq_processes[i] = (NR_DL_UE_HARQ_t *)malloc16_clear(sizeof(NR_DL_UE_HARQ_t));
     slsch->harq_processes[i]->b = (uint8_t*)malloc16_clear(slsch_bytes);
     slsch->harq_processes[i]->c = (uint8_t**)malloc16_clear(a_segments * sizeof(uint8_t *));
     slsch->harq_processes[i]->d = (int16_t**)malloc16_clear(a_segments * sizeof(int16_t *));

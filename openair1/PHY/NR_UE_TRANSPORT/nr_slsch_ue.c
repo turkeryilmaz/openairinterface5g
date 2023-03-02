@@ -232,6 +232,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
                                      Nl,
                                      SCI2_mod_order,
                                      multiplexed_output);
+
   /////////////////////////SLSCH scrambling/////////////////////////
   uint32_t scrambled_output[(available_bits >> 5) + 1];
   memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));

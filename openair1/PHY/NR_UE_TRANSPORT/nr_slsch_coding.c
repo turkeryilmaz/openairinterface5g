@@ -113,6 +113,7 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     memset(slsch->harq_processes[i], 0, sizeof(NR_UL_UE_HARQ_t));
 
     slsch->harq_processes[i]->a = malloc16(slsch_bytes);
+    printf("slsch->harq_processes[%d]->a = %p, hq = %p\n", i, slsch->harq_processes[i]->a, slsch->harq_processes[i]);
     DevAssert(slsch->harq_processes[i]->a);
     bzero(slsch->harq_processes[i]->a, slsch_bytes);
 

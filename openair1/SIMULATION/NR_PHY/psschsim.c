@@ -40,6 +40,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
+#include "PHY/NR_UE_TRANSPORT/nr_slsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
@@ -334,11 +335,15 @@ nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
 
+/// @brief 
+/// @param argc 
+/// @param argv 
+/// @return 
 int main(int argc, char **argv)
 {
   // **** Initialization ****
   int i, sf;
-  double snr_step = 0.1;
+  double snr_step = 0.1 * 100;
   FILE *output_fd = NULL;
   //uint8_t write_output_file = 0;
   SCI_1_A first_sci;
@@ -354,6 +359,7 @@ int main(int argc, char **argv)
   uint64_t burst_position = 0x01;
   uint8_t Imcs = 9;
   uint8_t max_ldpc_iterations = 5;
+  get_softmodem_params()->sl_mode = 2;
 
   double DS_TDL = 300e-9;//.03;
   cpuf = get_cpu_freq_GHz();
@@ -425,8 +431,11 @@ int main(int argc, char **argv)
     }
   }
   */
-  init_nr_ue_transport(&txUE);
-  init_nr_ue_transport(&rxUE);
+  init_nr_ue_transport(txUE);
+  printf("slsch[0]  => %p\n", txUE->slsch[0]);
+  printf("slsch[0][0]  => %p\n", txUE->slsch[0][0]);
+
+  init_nr_ue_transport(rxUE);
 
   s_re = malloc(n_tx*sizeof(double*));
   s_im = malloc(n_tx*sizeof(double*));
@@ -436,28 +445,30 @@ int main(int argc, char **argv)
   unsigned char harq_pid = 0;
   unsigned int TBS = 8424;
   unsigned int available_bits;
+  unsigned int G_slsch;
 
-  uint8_t length_dmrs = 1;
+  uint8_t number_dmrs_symbols = 2;
   uint8_t N_PRB_oh;
   uint16_t N_RE_prime,code_rate;
   unsigned char mod_order;
   uint8_t rvidx = 0;
   uint8_t UE_id = 0;
 
-  NR_UE_ULSCH_t *slsch_rxUE = rxUE->slsch[UE_id];
-  NR_UL_UE_HARQ_t *harq_process_rxUE = slsch_rxUE->harq_processes[harq_pid];
+  NR_UE_DLSCH_t *slsch_rxUE = rxUE->slsch_rx[UE_id][0];
+  NR_DL_UE_HARQ_t *harq_process_rxUE = slsch_rxUE->harq_processes[harq_pid];
   nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
 
   if ((Nl == 4)||(Nl == 3))
     nb_re_dmrs = nb_re_dmrs*2;
 
-  mod_order = nr_get_Qm_ul(Imcs, 0);
-  code_rate = nr_get_code_rate_ul(Imcs, 0);
-  available_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
-  TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*length_dmrs, 0, 0, Nl);
+  mod_order = nr_get_Qm_ul(Imcs, 0);//{2,6790},
+  code_rate = nr_get_code_rate_ul(Imcs, 0);//{2,6790},
+  G_slsch = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
+  TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*number_dmrs_symbols, 0, 0, Nl);
+  // Available bits 27984 TBS 18432 mod_order 2
+  printf("\nG_slsch bits %u TBS %u mod_order %d TBS/8 %d\n", G_slsch, TBS, mod_order, TBS / 8);
 
-  printf("\nAvailable bits %u TBS %u mod_order %d\n", available_bits, TBS, mod_order);
 
   /////////// setting rel15_ul parameters ///////////
   rel16_ul->mcs_index           = Imcs;
@@ -482,7 +493,7 @@ int main(int argc, char **argv)
   DevAssert(harq_process_txUE);
 
   N_PRB_oh   = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
-  N_RE_prime = NR_NB_SC_PER_RB*nb_symb_sch - nb_re_dmrs - N_PRB_oh;
+  N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
   harq_process_txUE->pssch_pdu.mcs_index = Imcs;
   harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
   harq_process_txUE->pssch_pdu.rb_size = N_RB;
@@ -499,21 +510,75 @@ int main(int argc, char **argv)
   ///////////
   ////////////////////////////////////////////////////////////////////////////////////////////
 
-  for (i = 0; i < TBS / 8; i++)
-    test_input[i] = (unsigned char) rand();
+  //for (i = 0; i < TBS / 8; i++)
+  for (i = 0; i < 10; i++)
+   test_input[i] = i;//(unsigned char) rand();
 
-#ifdef DEBUG_NR_ULSCHSIM
-  for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n",test_input[i]);
+#define DEBUG_NR_SLSCHSIM 1
+#ifdef DEBUG_NR_SLSCHSIM
+  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+  for (i = 0; i < 10; i++) printf("test_input[i]=%hhu \n", test_input[i]);
 #endif
 
-  /////////////////////////SLSCH coding/////////////////////////
+  /////////////////////////SLSCH SCI2 coding/////////////////////////
+  // TODO: update the following
+    /* payload is 56 bits */
+  PSSCH_SCI2_payload pssch_payload;             // NR Side Link Payload for Rel 16
+  pssch_payload.coverageIndicator = 0;     // 1 bit
+  pssch_payload.tddConfig = 0xFFF;         // 12 bits for TDD configuration
+  pssch_payload.DFN = 0x3FF;               // 10 bits for DFN
+  pssch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
+  pssch_payload.reserved = 0;              // 2 bits reserved
+
+  NR_UE_PSSCH m_pssch;
+  txUE->pssch_vars[0] = &m_pssch;
+  NR_UE_PSSCH *pssch = txUE->pssch_vars[0];
+  memset((void *)pssch, 0, sizeof(NR_UE_PSSCH));
+
+  pssch->pssch_a = *((uint32_t *)&pssch_payload);
+  pssch->pssch_a_interleaved = pssch->pssch_a; // skip interlevaing for Sidelink
+
+  // Encoder reversal
+  uint64_t a_reversed = 0;
+  for (int i = 0; i < NR_POLAR_PSSCH_PAYLOAD_BITS; i++)
+    a_reversed |= (((uint64_t)pssch->pssch_a_interleaved >> i) & 1) << (31 - i);
+  uint16_t Nidx;
+  Nidx = get_Nidx_from_CRC(&a_reversed, 0, 0,
+                           NR_POLAR_PSSCH_MESSAGE_TYPE,
+                           NR_POLAR_PSSCH_PAYLOAD_BITS,
+                           NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+
+  /// CRC, coding and rate matching
+  polar_encoder_fast(&a_reversed, (void*)pssch->pssch_e, 0, 0,
+                     NR_POLAR_PSSCH_MESSAGE_TYPE,
+                     NR_POLAR_PSSCH_PAYLOAD_BITS,
+                     NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+
+
+  /////////////////////////SLSCH data coding/////////////////////////
   ///////////
-  unsigned int G = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
+  G_slsch = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
 
   if (input_fd == NULL) {
-    // [TODO] encoding tx data at tx UE
-    nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G);
+    nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch);
   }
+
+  //////////////////SLSCH data and control multiplexing//////////////
+  available_bits = G_slsch + NR_POLAR_PSSCH_E;
+  uint32_t SCI2_bits = NR_POLAR_PSSCH_E;
+  uint8_t  SCI2_mod_order = 2;
+  uint8_t multiplexed_output[available_bits];
+  memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
+
+  nr_pssch_data_control_multiplexing(harq_process_txUE->f,
+                                     (uint8_t*)pssch->pssch_e,
+                                     G_slsch,
+                                     SCI2_bits,
+                                     Nl,
+                                     SCI2_mod_order,
+                                     multiplexed_output);
+
+
 
   printf("\n");
 
@@ -591,8 +656,8 @@ int main(int argc, char **argv)
     free_nr_ue_slsch(&txUE->slsch[sf][0], N_RB, frame_parms);
 
   term_nr_ue_signal(txUE, 1);
-  free(txUE);
-  free(rxUE);
+  //free(txUE);
+  //free(rxUE);
 
   free_channel_desc_scm(UE2UE);
   free(bw_setting);

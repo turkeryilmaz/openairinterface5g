@@ -22,7 +22,6 @@
 #include "PHY/defs_nr_UE.h"
 
 void free_nr_ue_slsch_rx(NR_UE_ULSCH_t **slschptr, uint16_t N_RB_UL);
-NR_UE_ULSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS *frame_parms);
 
 uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *ue,
                            uint8_t SLSCH_id,
