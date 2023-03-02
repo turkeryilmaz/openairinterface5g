@@ -181,10 +181,10 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
 *********************************************************************/
 
 int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
-                     int32_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                     int32_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
-                     int32_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
-                     int32_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
+                     c16_t pss0_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                     c16_t sss0_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR],
+                     c16_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
+                     c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
   int16_t *pss, *pss0_ext2, *sss0_ext2, *pss1_ext2, *sss1_ext2;
   int16_t tmp_re, tmp_im, tmp_re2, tmp_im2;
