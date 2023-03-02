@@ -185,8 +185,12 @@ typedef struct {
   uint32_t TBS;
   /// The payload + CRC size in bits
   uint32_t B;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
+  uint32_t B_sci2;
   /// Pointer to the payload
   uint8_t *b;
+  /// Pointer to the sci2 payload
+  uint8_t *b_sci2;
   /// Pointers to transport block segments
   uint8_t **c;
   /// soft bits for each received segment ("d"-sequence)(for definition see 36-212 V8.6 2009-03, p.15)

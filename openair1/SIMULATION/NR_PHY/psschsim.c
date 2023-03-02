@@ -78,7 +78,7 @@ typedef struct {
   double fs;
 } BW;
 
-double snr0 =- 2.0;
+double snr0 =100;//- 2.0;
 double snr1 = 2.0;
 uint8_t snr1set = 0;
 int n_trials = 1;
@@ -433,7 +433,7 @@ int main(int argc, char **argv)
 
   uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
   *sci_input = u;//rand() % (u - 0 + 1);
-  printf("the sci2 is:%"PRIu64" and %"PRIu64"\n",*sci_input,*harq_process_nearbyUE->a_sci2);
+  printf("the sci2 is:%"PRIu64"\n",*sci_input);
 
 #ifdef DEBUG_NR_ULSCHSIM
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
@@ -444,7 +444,7 @@ int main(int argc, char **argv)
   nr_slsch_encoding(nearbyUE, slsch_ue, &nearbyUE->frame_parms, harq_pid, G);
   printf("tx is done\n");
 
-  #if 0
+  #if 1
   unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
@@ -455,13 +455,14 @@ int main(int argc, char **argv)
   short channel_output_uncoded[HNA_SIZE];
   unsigned char estimated_output_bit[HNA_SIZE];
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
+  int numb_bits = slsch_ue->harq_processes[harq_pid]->B_sci2;
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
     n_errors = 0;
     n_false_positive = 0;
     for (int trial = 0; trial < n_trials; trial++) {
       errors_bit_uncoded = 0;
-      for (int i = 0; i < available_bits; i++) {
-        if (slsch_ue->harq_processes[harq_pid]->f[i] == 0)
+      for (int i = 0; i < numb_bits; i++) {
+        if (slsch_ue->harq_processes[harq_pid]->f_sci2[i] == 0)
           modulated_input[i] = 1.0;        ///sqrt(2);  //QPSK
         else
           modulated_input[i] = -1.0;        ///sqrt(2);
@@ -476,16 +477,20 @@ int main(int argc, char **argv)
           channel_output_uncoded[i] = 1;  //QPSK demod
         else
           channel_output_uncoded[i] = 0;
-        if (channel_output_uncoded[i] != slsch_ue->harq_processes[harq_pid]->f[i])
+        if (channel_output_uncoded[i] != slsch_ue->harq_processes[harq_pid]->f_sci2[i])
           errors_bit_uncoded = errors_bit_uncoded + 1;
       }
-
+  #endif
+  #if 1
       int frame = 0;
       int slot = 0;
       UE_nr_rxtx_proc_t proc;
-      int ret = nr_dlsch_decoding(syncRefUE, &proc, 0, channel_output_fixed, &syncRefUE->frame_parms,
-                                  slsch_ue_rx, slsch_ue_rx->harq_processes[0], frame, nb_symb_sch,
-                                  slot, harq_pid, 0);
+      // this is a small hack :D
+      slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
+      uint32_t ret = nr_slsch_decoding(syncRefUE, &proc,channel_output_fixed,
+                                  &syncRefUE->frame_parms, slsch_ue_rx,
+                                  slsch_ue_rx->harq_processes[0], frame,
+                                  nb_symb_sch, slot, harq_pid);
 
       if (ret)
         n_errors++;
@@ -518,7 +523,7 @@ int main(int argc, char **argv)
     free_nr_ue_slsch(&nearbyUE->slsch[sf][0], N_RB_UL, &nearbyUE->frame_parms);
     free_nr_ue_dlsch(&syncRefUE->slsch_rx[sf][0][0], N_RB_DL);
   }
-  term_nr_ue_transport(nearbyUE);
+  //term_nr_ue_transport(nearbyUE);
   term_nr_ue_transport(syncRefUE);
   term_nr_ue_signal(syncRefUE, 1);
   term_nr_ue_signal(nearbyUE, 1);

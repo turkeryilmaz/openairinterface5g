@@ -32,7 +32,7 @@
 #include <inttypes.h>
 
 //#define DEBUG_SLSCH_CODING
-#define NR_POLAR_SCI2_MESSAGE_TYPE 3
+#define NR_POLAR_SCI2_MESSAGE_TYPE 4
 #define NR_POLAR_SCI2_PAYLOAD_BITS 35
 #define NR_POLAR_SCI2_AGGREGATION_LEVEL 0
 
@@ -182,8 +182,8 @@ uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
   */
 
   uint16_t tmp2 = alpha * harq_process->num_of_mod_symbols; // it is assumed that number of RB for PSCCH is 0.
-
-  uint16_t Qprime = min(tmp1 + 1, tmp2);
+  int gamma = 461;
+  uint16_t Qprime = min(tmp1 + 1, tmp2) + gamma;
   uint16_t Gsci2 = Qprime * Qmsci2;
   return Gsci2;
 }
@@ -242,16 +242,14 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                        polar_encoder_output_len,
                        NR_POLAR_SCI2_AGGREGATION_LEVEL);
 
-    for (int i=0 ; i<polar_encoder_output_len>>3 ; i++){
-      printf("input to polar is: %"PRIu64" output is: %d\n",*harq_process->a_sci2, harq_process->b_sci2[i]);
-    }
-
+    harq_process->B_sci2 = polar_encoder_output_len;
     byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
-
+    /*
     for (int i=0 ; i<polar_encoder_output_len ; i++){
       printf("%d",harq_process->f_sci2[i]);
     }
     printf("\n");
+    */
 
     nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
     //nr_attach_crc_to_payload(harq_process->a_sci2, harq_process->b_sci2, max_payload_bytes, A_sci, &harq_process->B_sci2);
