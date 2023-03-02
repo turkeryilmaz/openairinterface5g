@@ -393,8 +393,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            uint32_t frame,
                            uint16_t nb_symb_sch,
                            uint8_t nr_slot_rx,
-                           uint8_t harq_pid,
-                           uint8_t is_crnti) {
+                           uint8_t harq_pid) {
   uint32_t A,E;
   uint32_t G;
   uint32_t ret,offset;

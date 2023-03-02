@@ -120,10 +120,12 @@ typedef struct {
   uint32_t Z;
   //pointer to SCI2 payload from MAC interface
   uint64_t *a_sci2;
-  //pointer to sci2 after crc + polar encoding and rate matching
-  uint64_t *b_sci2;
-  /// The sci2's payload + CRC size in bits, "B" from 36-212
+  //pointer to sci2 after crc + polar encoding and rate matching stored in bytes
+  uint8_t *b_sci2;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
   uint32_t B_sci2;
+  // pointer ot output of polar encoder stored in bits
+  uint8_t *f_sci2;
 
 
 } NR_UL_UE_HARQ_t;

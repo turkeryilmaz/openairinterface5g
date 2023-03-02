@@ -153,6 +153,10 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     DevAssert(slsch->harq_processes[i]->f);
     bzero(slsch->harq_processes[i]->f, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
 
+    slsch->harq_processes[i]->f_sci2 = malloc16(NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+    DevAssert(slsch->harq_processes[i]->f_sci2);
+    bzero(slsch->harq_processes[i]->f_sci2, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+
     slsch->harq_processes[i]->subframe_scheduling_flag = 0;
     slsch->harq_processes[i]->first_tx = 1;
   }
@@ -167,7 +171,7 @@ uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
   uint8_t Qmsci2 = 2; //modulation order of SCI2
   float beta = 1.125; // harq_process->pssch_pdu.sci1.beta_offset;
   uint8_t alpha = 1; // hardcoded for now
-  uint16_t R = harq_process->pssch_pdu.target_code_rate;
+  float R = (float)harq_process->pssch_pdu.target_code_rate / (1024*10);
 
   uint16_t tmp1 = (Osci2 + Lsci2) * beta / (Qmsci2 * R);
   /*
@@ -179,9 +183,19 @@ uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
 
   uint16_t tmp2 = alpha * harq_process->num_of_mod_symbols; // it is assumed that number of RB for PSCCH is 0.
 
-  uint16_t Qprime = min(tmp1,tmp2);
+  uint16_t Qprime = min(tmp1 + 1, tmp2);
+  uint16_t Gsci2 = Qprime * Qmsci2;
+  return Gsci2;
+}
 
-  return Qprime;
+void byte2bit(uint8_t *in_bytes, uint8_t *out_bits, uint16_t num_bytes) {
+
+  for (int i=0 ; i<num_bytes ; i++) {
+    for (int b=0 ; b<8 ; b++){
+      out_bits[i*8 + b] = (in_bytes[i]>>b) & 1;
+    }
+  }
+  return;
 }
 
 int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
@@ -222,12 +236,23 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 #endif
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
     uint16_t polar_encoder_output_len = polar_encoder_output_length(harq_process);
+    printf("output length of polar encoder is:%d bits\n",polar_encoder_output_len);
     polar_encoder_fast(harq_process->a_sci2, (void*)harq_process->b_sci2, 0, 0,
                        NR_POLAR_SCI2_MESSAGE_TYPE,
                        polar_encoder_output_len,
                        NR_POLAR_SCI2_AGGREGATION_LEVEL);
 
-    printf("input to polar is: %"PRIu64" output is: %"PRIu64"\n",*harq_process->a_sci2,*harq_process->b_sci2);
+    for (int i=0 ; i<polar_encoder_output_len>>3 ; i++){
+      printf("input to polar is: %"PRIu64" output is: %d\n",*harq_process->a_sci2, harq_process->b_sci2[i]);
+    }
+
+    byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
+
+    for (int i=0 ; i<polar_encoder_output_len ; i++){
+      printf("%d",harq_process->f_sci2[i]);
+    }
+    printf("\n");
+
     nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
     //nr_attach_crc_to_payload(harq_process->a_sci2, harq_process->b_sci2, max_payload_bytes, A_sci, &harq_process->B_sci2);
 
