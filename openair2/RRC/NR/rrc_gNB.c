@@ -142,6 +142,7 @@ void openair_nr_rrc_on(const protocol_ctxt_t *const ctxt_pP) {
 ///---------------------------------------------------------------------------------------------------------------///
 
 static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration) {
+  int mac_common_config_done = 0;
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     if(NULL==rrc->carrier.MIB){
@@ -169,20 +170,18 @@ static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration
   if (NODE_IS_MONOLITHIC(rrc->node_type)){
     if(!mac_common_config_done) {
       rrc_mac_config_req_gNB(rrc->module_id,
-                                          rrc->carrier.ssb_SubcarrierOffset,
-                                          rrc->carrier.pdsch_AntennaPorts,
-                                          rrc->carrier.pusch_AntennaPorts,
-                                                           rrc->carrier.sib1_tda,
-                                                           rrc->carrier.minRXTXTIME,
-                                          (NR_ServingCellConfigCommon_t *)rrc->carrier.servingcellconfigcommon,
-                                          &rrc->carrier.mib,
-                                          0,
-                                          0, // WIP hardcoded rnti
-                                          (NR_CellGroupConfig_t *)NULL
-                                        );
+                           rrc->configuration.pdsch_AntennaPorts,
+                           rrc->configuration.pusch_AntennaPorts,
+                           rrc->configuration.sib1_tda,
+                           rrc->configuration.minRXTXTIME,
+                           rrc->carrier.servingcellconfigcommon,
+                           &rrc->carrier.mib,
+                           rrc->carrier.siblock1,
+                           0,
+                           0, // WIP hardcoded rnti
+                           NULL);
       mac_common_config_done = 1;
     }
-    rrc_mac_config_dedicate_scheduling(rrc->module_id, rrc->carrier.dcchDtchConfig);
   }
 
   /* set flag to indicate that cell information is configured. This is required
