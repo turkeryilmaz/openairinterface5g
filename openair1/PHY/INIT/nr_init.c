@@ -855,8 +855,10 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
   } //ULSCH_id
 
   for (int i=0; i < NUM_TX_TH; i++) {
-    reset_DLSCH_struct(gNB, gNB->txThreadData[i]);
-    free_phy_fapi_pdus(gNB->txThreadData[i]->fapi_pdu_list);
+    if (gNB->txThreadData[i]) {
+      reset_DLSCH_struct(gNB, gNB->txThreadData[i]);
+      free_phy_fapi_pdus(gNB->txThreadData[i]->fapi_pdu_list);
+    }
   }
 }
 
