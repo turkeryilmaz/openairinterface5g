@@ -51,6 +51,7 @@
 
 #include "acpDrb.h"
 #include "ss_eNB_context.h"
+#include "ss_eNB_vt_timer_task.h"
 
 extern RAN_CONTEXT_t RC;
 //extern uint16_t ss_rnti_g;
@@ -166,6 +167,33 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
       }
     }
 
+    SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
+    uint8_t msg_queued = 0;
+    if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+    {
+      ss_set_timinfo_t tinfo, timer_tinfo;
+      tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
+      tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
+      timer_tinfo = tinfo;
+      msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
+      LOG_A(ENB_SS,"VT_TIMER DRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+
+      if(msg_queued)
+      {
+        msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
+        LOG_A(ENB_SS, "DRB_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+          tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+      }
+    }
+    if (!msg_queued)
+    {
+      int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
+      if (send_res < 0)
+      {
+        LOG_A(ENB_APP, "[SS_DRB] Error in itti_send_msg_to_task");
+      }
+      LOG_A(ENB_APP, "Send res: %d", send_res);
+    }
   }
   SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
 
@@ -274,7 +302,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
                 {
 			case SS_DRB_PDU_IND:
 			{
-                                int cell_index;
+                                int cell_index = 0;
                                 if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
                                   cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
                                   LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
