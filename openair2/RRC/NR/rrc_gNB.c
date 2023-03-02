@@ -144,7 +144,9 @@ void openair_nr_rrc_on(const protocol_ctxt_t *const ctxt_pP) {
 static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration) {
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
-    rrc->carrier.MIB             = (uint8_t *) malloc16(4);
+    if(NULL==rrc->carrier.MIB){
+      rrc->carrier.MIB = (uint8_t *) malloc16(4);
+    }
     rrc->carrier.sizeof_MIB      = do_MIB_NR(rrc,0);
   }
 
@@ -153,7 +155,9 @@ static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration
   }
 
   if (!NODE_IS_DU(rrc->node_type)) {
-    rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
+    if(NULL == rrc->carrier.SIB23){
+      rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
+    }
     AssertFatal(rrc->carrier.SIB23 != NULL, "cannot allocate memory for SIB");
     rrc->carrier.sizeof_SIB23 = do_SIB23_NR(&rrc->carrier, configuration);
     LOG_I(NR_RRC,"do_SIB23_NR, size %d \n ", rrc->carrier.sizeof_SIB23);
@@ -162,18 +166,23 @@ static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration
 
   LOG_I(NR_RRC,"Done init_NR_SI\n");
 
-  if (NODE_IS_MONOLITHIC(rrc->node_type) || NODE_IS_DU(rrc->node_type)){
-    rrc_mac_config_req_gNB(rrc->module_id,
-                           rrc->configuration.pdsch_AntennaPorts,
-                           rrc->configuration.pusch_AntennaPorts,
-                           rrc->configuration.sib1_tda,
-                           rrc->configuration.minRXTXTIME,
-                           rrc->carrier.servingcellconfigcommon,
-                           &rrc->carrier.mib,
-                           rrc->carrier.siblock1,
-                           0,
-                           0, // WIP hardcoded rnti
-                           NULL);
+  if (NODE_IS_MONOLITHIC(rrc->node_type)){
+    if(!mac_common_config_done) {
+      rrc_mac_config_req_gNB(rrc->module_id,
+                                          rrc->carrier.ssb_SubcarrierOffset,
+                                          rrc->carrier.pdsch_AntennaPorts,
+                                          rrc->carrier.pusch_AntennaPorts,
+                                                           rrc->carrier.sib1_tda,
+                                                           rrc->carrier.minRXTXTIME,
+                                          (NR_ServingCellConfigCommon_t *)rrc->carrier.servingcellconfigcommon,
+                                          &rrc->carrier.mib,
+                                          0,
+                                          0, // WIP hardcoded rnti
+                                          (NR_CellGroupConfig_t *)NULL
+                                        );
+      mac_common_config_done = 1;
+    }
+    rrc_mac_config_dedicate_scheduling(rrc->module_id, rrc->carrier.dcchDtchConfig);
   }
 
   /* set flag to indicate that cell information is configured. This is required
@@ -216,6 +225,7 @@ static void rrc_gNB_mac_rrc_init(gNB_RRC_INST *rrc)
 char openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_RrcConfigurationReq *configuration) {
   protocol_ctxt_t      ctxt = { 0 };
   gNB_RRC_INST         *rrc=RC.nrrrc[gnb_mod_idP];
+  int                      init_config_flag = 0;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, gnb_mod_idP, GNB_FLAG_YES, NOT_A_RNTI, 0, 0,gnb_mod_idP);
   LOG_I(NR_RRC,
         PROTOCOL_NR_RRC_CTXT_FMT" Init...\n",
@@ -224,6 +234,8 @@ char openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_RrcConfigu
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
   AssertFatal(NUMBER_OF_UE_MAX < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
   AssertFatal(configuration!=NULL,"configuration input is null\n");
+if(!rrc->cell_info_configured) {
+    init_config_flag = 1;
   rrc->module_id = gnb_mod_idP;
   rrc->Nb_ue = 0;
   rrc_gNB_mac_rrc_init(rrc);
@@ -241,9 +253,12 @@ char openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_RrcConfigu
   pthread_mutex_init(&rrc->cell_info_mutex,NULL);
   rrc->cell_info_configured = 0;
   LOG_I(NR_RRC, PROTOCOL_NR_RRC_CTXT_FMT" Checking release \n",PROTOCOL_NR_RRC_CTXT_ARGS(&ctxt));
+}
   init_NR_SI(rrc, configuration);
-  rrc_init_nr_global_param();
-  openair_nr_rrc_on(&ctxt);
+  if(init_config_flag){
+    rrc_init_nr_global_param();
+    openair_nr_rrc_on(&ctxt);
+  }
   return 0;
 }//END openair_rrc_gNB_configuration
 
