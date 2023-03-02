@@ -922,6 +922,9 @@ typedef struct {
   /// PUSCH DMRS sequence
   uint32_t ****nr_gold_pusch_dmrs;
 
+  /// PSSCH DMRS sequence
+  uint32_t ***nr_gold_pssch_dmrs;
+
   uint32_t X_u[64][839];
 
   // flag to activate PRB based averaging of channel estimates

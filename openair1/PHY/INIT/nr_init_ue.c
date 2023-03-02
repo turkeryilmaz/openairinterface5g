@@ -218,6 +218,24 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     }
   }
 
+  /////////////////////////PSSCH DMRS init/////////////////////////
+  ///////////
+
+  // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
+  int pssch_dmrs_init_length =  ((fp->N_RB_UL * 12) >> 5) + 1;
+  ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
+  uint32_t ***pssch_dmrs = ue->nr_gold_pusch_dmrs;
+
+  for (slot=0; slot<fp->slots_per_frame; slot++) {
+    pssch_dmrs[slot] = (uint32_t **)malloc16(fp->symbols_per_slot * sizeof(uint32_t *));
+    AssertFatal(pssch_dmrs[slot] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d - malloc failed\n", slot);
+
+    for (symb=0; symb<fp->symbols_per_slot; symb++) {
+      pssch_dmrs[slot][symb] = (uint32_t *)malloc16(pssch_dmrs_init_length * sizeof(uint32_t));
+      AssertFatal(pssch_dmrs[slot][symb] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
+    }
+  }
+
   ///////////
   ////////////////////////////////////////////////////////////////////////////////////////////
 
