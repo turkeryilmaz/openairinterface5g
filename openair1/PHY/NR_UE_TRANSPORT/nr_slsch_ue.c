@@ -69,6 +69,7 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     const uint8_t b_idx = i & 0x1f;
     if (b_idx == 0) {
       s = lte_gold_generic(&x1, &x2, reset);
+      printf("s 0x%x \n", s);
       reset = 0;
       if (i)
         out++;
@@ -80,8 +81,64 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
       m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
       c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);
       *out ^= ((in[i] + c) & 1) << b_idx;
+      printf("m %d in[%d] 0x%x c 0x%x out 0x%x \n", m_ij, i, in[i], c, *out);
     }
-    //LOG_D(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
+    //LOG_I(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
+  }
+}
+
+void nr_slsch_layer_demapping(int16_t *llr_cw,
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int16_t **llr_layers)
+{
+
+  switch (Nl) {
+    case 1:
+      memcpy((void*)llr_cw, (void*)llr_layers[0], (length) * sizeof(int16_t));
+      break;
+    case 2:
+    case 3:
+    case 4:
+      for (int i = 0; i < (length / Nl / mod_order); i++) {
+        for (int l = 0; l < Nl; l++) {
+          for (int m = 0; m < mod_order; m++) {
+            llr_cw[i * Nl * mod_order + l * mod_order + m] = llr_layers[l][i * mod_order + m];
+          }
+        }
+      }
+      break;
+  default:
+  AssertFatal(0, "Not supported number of layers %d\n", Nl);
+  }
+}
+
+
+void nr_pusch_codeword_unscrambling_sl(uint32_t* in,
+                                     uint32_t size,
+                                     uint32_t SCI2_bits,
+                                     uint16_t Nid,
+                                     uint8_t *out)
+{
+  uint8_t reset = 1, c, j = 0;
+  uint32_t x1, x2, s = 0;
+  int m_ij = 0;
+  x2 = (Nid << 15) + 1010; // 1010 is following the spec. 38.211, 8.3.1.1
+  for (int i = 0; i < size; i++) {
+    const uint8_t b_idx = i & 0x1f;
+    if (b_idx == 0) {
+      s = lte_gold_generic(&x1, &x2, reset);
+      printf("s 0x%x \n", s);
+      reset = 0;
+      if (i)
+        in++;
+    }
+    m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
+    c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);
+    out[i]  = ((*in >> i) + c) & 1;
+    printf("m %d *in 0x%x c 0x%x out[%d] %d \n", m_ij, *in, c, i, out[i]);
+    //LOG_I(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
   }
 }
 
@@ -112,6 +169,55 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
     }
     memcpy(out + SCI2_bits * Nl, in_slssh, slssh_bits);
   }
+#define DEBUG_NR_SLSCH_MUX 0
+#ifdef DEBUG_NR_SLSCH_MUX
+  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+  printf("Nl %d, muxed_bits[i]= ", Nl);
+  for (int i = 0; i < SCI2_bits * Nl + slssh_bits; i++)
+    printf("%u ", out[i]);
+  printf("\n");
+#endif
+}
+
+void nr_pssch_data_control_demultiplexing(uint8_t *in,
+                                        uint32_t slssh_bits,
+                                        uint32_t SCI2_bits,
+                                        uint8_t Nl,
+                                        uint8_t Q_SCI2,
+                                        uint8_t *out_slssh,
+                                        uint8_t *out_sci2)
+{
+  if (Nl == 1) {
+    memcpy(out_sci2, in, SCI2_bits);
+    memcpy(out_slssh, in + SCI2_bits, slssh_bits);
+  } else if (Nl == 2) {
+    uint32_t  M = SCI2_bits / Q_SCI2;
+    uint8_t m = 0;
+    for (int i = 0; i < M; i++) {
+      for (int v = 0; v < Nl; v++) {
+        for (int q = 0; q < Q_SCI2; q++) {
+          if(v == 0)
+            out_sci2[i * Q_SCI2 + q] = in[m];
+          m = m + 1;
+        }
+      }
+    }
+    memcpy(out_slssh, in + SCI2_bits * Nl, slssh_bits);
+  }
+#define DEBUG_NR_SLSCH_MUX 1
+#ifdef DEBUG_NR_SLSCH_MUX
+  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+  printf("Nl %d, demuxed sci2_bits[i]= ", Nl);
+  for (int i = 0; i < SCI2_bits; i++) {
+    printf("%u ", out_sci2[i]);
+  }
+  printf("\n");
+  printf("Nl %d, demuxed slssh_bits[i]= ", Nl);
+  for (int i = 0; i < slssh_bits; i++) {
+    printf("%u ", out_slssh[i]);
+  }
+  printf("\n");
+#endif
 }
 
 void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
@@ -135,7 +241,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   int      N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
   uint16_t number_dmrs_symbols = 0;
 
-  NR_UE_ULSCH_t *ulsch_ue = UE->ulsch[thread_id][gNB_id];//TODO delete it
   NR_UE_ULSCH_t *slsch_ue = UE->slsch[thread_id][gNB_id];
   NR_UL_UE_HARQ_t *harq_process_ul_ue = slsch_ue->harq_processes[harq_pid];
   nfapi_nr_ue_pssch_pdu_t *pssch_pdu = &harq_process_ul_ue->pssch_pdu;
@@ -423,7 +528,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
           // TODO: performance improvement, we can skip the modulation of DMRS symbols outside the bandwidth part
           // Perform this on gold sequence, not required when SC FDMA operation is done,
           LOG_D(PHY,"DMRS in symbol %d\n",l);
-          nr_modulation(pssch_dmrs[l][pssch_pdu->scid], n_dmrs*2, DMRS_MOD_ORDER, mod_dmrs); // currently only codeword 0 is modulated. Qm = 2 as DMRS is QPSK modulated
+          nr_modulation(pssch_dmrs[l], n_dmrs*2, DMRS_MOD_ORDER, mod_dmrs); // currently only codeword 0 is modulated. Qm = 2 as DMRS is QPSK modulated
         } else {
           dmrs_idx = 0;
         }
@@ -433,7 +538,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
         if(is_ptrs_symbol(l, slsch_ue->ptrs_symbols)) {
           is_ptrs_sym = 1;
-          nr_modulation(pssch_dmrs[l][pssch_pdu->scid], nb_rb, DMRS_MOD_ORDER, mod_ptrs);
+          nr_modulation(pssch_dmrs[l], nb_rb, DMRS_MOD_ORDER, mod_ptrs);
         }
       }
 

@@ -113,7 +113,6 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     memset(slsch->harq_processes[i], 0, sizeof(NR_UL_UE_HARQ_t));
 
     slsch->harq_processes[i]->a = malloc16(slsch_bytes);
-    printf("slsch->harq_processes[%d]->a = %p, hq = %p\n", i, slsch->harq_processes[i]->a, slsch->harq_processes[i]);
     DevAssert(slsch->harq_processes[i]->a);
     bzero(slsch->harq_processes[i]->a, slsch_bytes);
 
@@ -223,7 +222,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     ///////////////////////// c---->| LDPC coding |---->d /////////////////////////
 
 #ifdef DEBUG_SLSCH_CODING
-    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
+    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, harq_process->BG);
     for (int r = 0; r < harq_process->C; r++) {
       //channel_input[r] = &harq_process->d[r][0];
       LOG_D(NR_PHY, "Encoder: B %d F %d \n", harq_process->B, harq_process->F);
