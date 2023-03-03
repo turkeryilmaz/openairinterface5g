@@ -631,8 +631,8 @@ NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* rrc_config_
       RRC_LIST_INIT(NR_UE_rrc_inst[nr_ue].CSI_SSB_ResourceSet_list, NR_maxNrofCSI_SSB_ResourceSets);
       RRC_LIST_INIT(NR_UE_rrc_inst[nr_ue].CSI_ResourceConfig_list, NR_maxNrofCSI_ResourceConfigurations);
       RRC_LIST_INIT(NR_UE_rrc_inst[nr_ue].CSI_ReportConfig_list, NR_maxNrofCSI_ReportConfigurations);
-
-      init_SL_preconfig_NR(&NR_UE_rrc_inst[nr_ue], 0);
+      if (get_softmodem_params()->sl_mode != 0)
+        init_SL_preconfig_NR(&NR_UE_rrc_inst[nr_ue], 0);
     }
 
     NR_UE_rrc_inst->uecap_file = uecap_file;
