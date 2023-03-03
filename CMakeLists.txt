@@ -2416,7 +2416,7 @@ target_link_libraries(nr-softmodem PRIVATE ${LIB_LMS_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
-#add_dependencies(nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
+add_dependencies(nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
 
 #if (ENABLE_LDPC_T1)
 #  add_dependencies(nr-softmodem ldpc_t1)
