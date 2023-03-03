@@ -548,13 +548,13 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 			  if (sym_idx==0) {
 			    for (idx = 0; idx < 576/2; idx++)
 			    {
-			    	((int16_t*)dst)[idx] = ((int16_t)ntohs(src[idx]))>>2;
+			    	((int16_t*)dst)[idx] = ((int16_t)ntohs(src[idx]))>>4;
 			    }
 			  }
 			  else {
 			    for (idx = 0; idx < 576/2; idx++)
 			    {
-			    	((int16_t*)dst)[idx] += ((int16_t)ntohs(src[idx]))>>2;
+			    	((int16_t*)dst)[idx] += ((int16_t)ntohs(src[idx]))>>4;
 			    }
 			  }
 
