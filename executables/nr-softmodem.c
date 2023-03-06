@@ -701,8 +701,8 @@ void read_mac_sm(mac_ind_msg_t* data)
     rd->dl_aggr_retx_prb = UE->mac_stats.dl.total_rbs_retx;
     rd->ul_aggr_retx_prb = UE->mac_stats.ul.total_rbs_retx;
 
-    rd->dl_aggr_bytes_sdus = UE->mac_stats.dl.lc_bytes[3];
-    rd->ul_aggr_bytes_sdus = UE->mac_stats.ul.lc_bytes[3];
+    rd->dl_aggr_bytes_sdus = stats->dl.lc_bytes[4];//UE->mac_stats.dl.lc_bytes[3] + UE->mac_stats.dl.lc_bytes[4] + UE->mac_stats.dl.lc_bytes[5];
+    rd->ul_aggr_bytes_sdus = stats->ul.lc_bytes[4]; //UE->mac_stats.ul.lc_bytes[3]  +  UE->mac_stats.ul.lc_bytes[4]  + UE->mac_stats.ul.lc_bytes[5];
 
     rd->dl_aggr_sdus = UE->mac_stats.dl.num_mac_sdu;
     rd->ul_aggr_sdus = UE->mac_stats.ul.num_mac_sdu;
@@ -716,7 +716,7 @@ void read_mac_sm(mac_ind_msg_t* data)
     rd->ul_mcs1 = sched_ctrl->ul_bler_stats.mcs;
     rd->ul_bler = sched_ctrl->ul_bler_stats.bler;
     rd->dl_mcs2 = 0;
-    rd->ul_mcs2 = 0;
+    rd->ul_mcs2 = -1*avg_rsrp; // we use ul_mcs2 to transport rsrp because we didn't change the flexric MAC SM. TODO: use KPM SM, we multiply it by -1 because MAC SM does not support negative values
     rd->phr = sched_ctrl->ph;
 
     // the OAI brance used in this release of felxric have a  know problem with the phr
@@ -727,7 +727,6 @@ void read_mac_sm(mac_ind_msg_t* data)
     if(rd->phr < -39){
       rd->phr = -39;
     }
-    // rd->phr = 40;
 
     // getting the ngap id of a ue 
 
