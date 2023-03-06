@@ -565,14 +565,17 @@ int main(int argc, char **argv)
   }
   printf("line number = %d\n", __LINE__);
   //////////////////SLSCH data and control multiplexing//////////////
-  G_slsch = 4;
+  G_slsch = 32;//4;
   harq_process_txUE->f[0] = 0;
   harq_process_txUE->f[1] = 1;
   harq_process_txUE->f[2] = 0;
   harq_process_txUE->f[3] = 1;
 
-  SCI2_bits = 4;
-  pssch->pssch_e[0] = 0x01010000;
+  SCI2_bits = 32;//NR_POLAR_PSSCH_E;//4;
+
+  //for(i = 0; i < )
+
+  pssch->pssch_e[0] = 0x01010000;//-> 0011
 
   available_bits += G_slsch;
   available_bits += SCI2_bits;
@@ -627,24 +630,24 @@ int main(int argc, char **argv)
 #endif
 
   /////////////////////////SLSCH modulation/////////////////////////
-  uint32_t scrambled[2];
+  // uint32_t scrambled[2];
 
-  scrambled[0] = 0x01010000;
-  scrambled[1] = 0xFFFFFFFF;
-  SCI2_bits = 32;
-  G_slsch = 32;
+  // scrambled[0] = 0x01010000;
+  // scrambled[1] = 0xFFFFFFFF;
+  // SCI2_bits = 32;
+  // G_slsch = 32;
 
   int max_num_re = Nl * nb_symb_sch * N_RB * NR_NB_SC_PER_RB;
   int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
 
   // modulating for the 2nd-stage SCI bits
-  nr_modulation(scrambled, // assume one codeword for the moment
+  nr_modulation(scrambled_output, // assume one codeword for the moment
                 SCI2_bits,
                 SCI2_mod_order,
                 (int16_t *)d_mod);
 
   // modulating SL-SCH bits
-  nr_modulation(scrambled + (SCI2_bits >> 5), // assume one codeword for the moment
+  nr_modulation(scrambled_output + (SCI2_bits >> 5), // assume one codeword for the moment
                 G_slsch,
                 mod_order,
                 (int16_t *)(d_mod + SCI2_bits / SCI2_mod_order));
@@ -679,11 +682,12 @@ nr_ulsch_compute_llr(d_mod, &a, &b,
                      ulsch_llr, N_RB, nb_re_SCI2,
                      symbol, SCI2_mod_order);
 
-nr_ulsch_compute_llr(d_mod + SCI2_bits / SCI2_mod_order, &a, &b,
+nr_ulsch_compute_llr(d_mod + (SCI2_bits / SCI2_mod_order), &a, &b,
                      ulsch_llr + nb_re_SCI2 * 2, N_RB, nb_re_slsch,
                      symbol, mod_order);
 
 #ifdef DEBUG_NR_SLSCHSIM
+
   printf("SCI2 llr value= ");
   for (i = 0; i < SCI2_bits; i++) {
     if (i%8 == 0) printf("\n");
@@ -691,7 +695,7 @@ nr_ulsch_compute_llr(d_mod + SCI2_bits / SCI2_mod_order, &a, &b,
   }
   printf("\n\n");
   printf("SLSCH llr value= ");
-  for (i = 0; i < nb_re_slsch; i++) {
+  for (i = 0; i < G_slsch; i++) {
     if (i%8 == 0) printf("\n");
     printf("0x%x ", ulsch_llr[i + SCI2_bits]);
   }
@@ -708,21 +712,46 @@ nr_ulsch_compute_llr(d_mod + SCI2_bits / SCI2_mod_order, &a, &b,
 #endif
 
   /////////////////////////SLSCH descrambling/////////////////////////
-uint8_t descrambled[128];
-  //nr_pusch_codeword_unscrambling_sl(scrambled_output,
-  nr_pusch_codeword_unscrambling_sl((int32_t) ulsch_llr,
-                                  available_bits,
-                                  SCI2_bits,
-                                  Nidx,
-                                  descrambled);
+
+
+nr_codeword_unscrambling(ulsch_llr,
+                         SCI2_bits, 0,
+                         Nidx, 0);
+
+nr_codeword_unscrambling(ulsch_llr + SCI2_bits,
+                         G_slsch, 0,
+                         Nidx, 0);
 
 #ifdef DEBUG_NR_SLSCHSIM
-  printf("Nidx= %d\n", Nidx);
-  printf("unscrambled bits[i]= ");
-  for (i = 0; i < available_bits; i++)
-    printf("%d ", descrambled[i]);
+  printf("Unscrambled SCI2 llr value= ");
+  for (i = 0; i < SCI2_bits; i++) {
+    if (i%8 == 0) printf("\n");
+    printf("0x%x ", ulsch_llr[i]);
+  }
+  printf("\n\n");
+  printf("Unscrambled SLSCH llr value= ");
+  for (i = 0; i < nb_re_slsch; i++) {
+    if (i%8 == 0) printf("\n");
+    printf("0x%x ", ulsch_llr[i + SCI2_bits]);
+  }
   printf("\n\n");
 #endif
+
+uint8_t descrambled[128];
+//   //nr_pusch_codeword_unscrambling_sl(scrambled_output,
+//   nr_codeword_unscrambling_sl((int32_t) ulsch_llr,
+//                                   available_bits,
+//                                   SCI2_bits,
+//                                   Nidx,
+//                                   descrambled);
+
+// #ifdef DEBUG_NR_SLSCHSIM
+//   printf("Nidx= %d\n", Nidx);
+//   printf("unscrambled bits[i]= ");
+//   for (i = 0; i < available_bits; i++)
+//     printf("%d ", descrambled[i]);
+//   printf("\n\n");
+// #endif
 
 
   //////////////////SLSCH data and control demultiplexing//////////////

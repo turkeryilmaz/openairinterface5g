@@ -115,7 +115,7 @@ void nr_slsch_layer_demapping(int16_t *llr_cw,
 }
 
 
-void nr_pusch_codeword_unscrambling_sl(uint32_t* in,
+void nr_codeword_unscrambling_sl_org(uint32_t* in,
                                      uint32_t size,
                                      uint32_t SCI2_bits,
                                      uint16_t Nid,
