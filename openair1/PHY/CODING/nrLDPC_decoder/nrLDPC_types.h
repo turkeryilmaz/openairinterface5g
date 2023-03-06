@@ -101,6 +101,15 @@ typedef struct nrLDPC_time_stats {
     time_stats_t llr2llrProcBuf; /**< Statistics for function llr2llrProcBuf */
     time_stats_t llr2CnProcBuf; /**< Statistics for function llr2CnProcBuf */
     time_stats_t cnProc; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng3; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng4; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng5; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng6; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng7; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng8; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng9; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng10; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng19; /**< Statistics for function cnProc */
     time_stats_t cnProcPc; /**< Statistics for function cnProcPc */
     time_stats_t bnProcPc; /**< Statistics for function bnProcPc */
     time_stats_t bnProc; /**< Statistics for function bnProc */

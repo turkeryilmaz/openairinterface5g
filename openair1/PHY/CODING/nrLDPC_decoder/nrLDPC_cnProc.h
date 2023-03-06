@@ -376,7 +376,7 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
    \param p_lut Pointer to decoder LUTs
    \param Z Lifting size
 */
-static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z)
+static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z, t_nrLDPC_time_stats* p_profiler)
 {
     const uint8_t*  lut_numCnInCnGroups   = p_lut->numCnInCnGroups;
     const uint32_t* lut_startAddrCnGroups = p_lut->startAddrCnGroups;
@@ -405,7 +405,9 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
 
     // =====================================================================
     // Process group with 3 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng3);
+#endif
     if (lut_numCnInCnGroups[0] > 0)
     {
         // Number of groups of 32 CNs for parallel processing
@@ -446,10 +448,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng3);
+#endif
     // =====================================================================
     // Process group with 4 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng4);
+#endif
     // Offset is 5*384/32 = 60
     const uint8_t lut_idxCnProcG4[4][3] = {{60,120,180}, {0,120,180}, {0,60,180}, {0,60,120}};
 
@@ -495,10 +501,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng4);
+#endif
     // =====================================================================
     // Process group with 5 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng5);
+#endif
     // Offset is 18*384/32 = 216
     const uint16_t lut_idxCnProcG5[5][4] = {{216,432,648,864}, {0,432,648,864},
                                             {0,216,648,864}, {0,216,432,864}, {0,216,432,648}};
@@ -545,10 +555,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng5);
+#endif
     // =====================================================================
     // Process group with 6 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng6);
+#endif
     // Offset is 8*384/32 = 96
     const uint16_t lut_idxCnProcG6[6][5] = {{96,192,288,384,480}, {0,192,288,384,480},
                                             {0,96,288,384,480}, {0,96,192,384,480},
@@ -596,10 +610,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng6);
+#endif
     // =====================================================================
     // Process group with 7 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng7);
+#endif
     // Offset is 5*384/32 = 60
     const uint16_t lut_idxCnProcG7[7][6] = {{60,120,180,240,300,360}, {0,120,180,240,300,360},
                                             {0,60,180,240,300,360},   {0,60,120,240,300,360},
@@ -648,10 +666,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng7);
+#endif
     // =====================================================================
     // Process group with 8 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng8);
+#endif
     // Offset is 2*384/32 = 24
     const uint8_t lut_idxCnProcG8[8][7] = {{24,48,72,96,120,144,168}, {0,48,72,96,120,144,168},
                                            {0,24,72,96,120,144,168}, {0,24,48,96,120,144,168},
@@ -700,10 +722,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng8);
+#endif
     // =====================================================================
     // Process group with 9 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng9);
+#endif
     // Offset is 2*384/32 = 24
     const uint8_t lut_idxCnProcG9[9][8] = {{24,48,72,96,120,144,168,192}, {0,48,72,96,120,144,168,192},
                                            {0,24,72,96,120,144,168,192}, {0,24,48,96,120,144,168,192},
@@ -753,10 +779,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng9);
+#endif
     // =====================================================================
     // Process group with 10 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng10);
+#endif
     // Offset is 1*384/32 = 12
     const uint8_t lut_idxCnProcG10[10][9] = {{12,24,36,48,60,72,84,96,108}, {0,24,36,48,60,72,84,96,108},
                                              {0,12,36,48,60,72,84,96,108}, {0,12,24,48,60,72,84,96,108},
@@ -806,10 +836,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng10);
+#endif
     // =====================================================================
     // Process group with 19 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng19);
+#endif
     // Offset is 4*384/32 = 12
     const uint16_t lut_idxCnProcG19[19][18] = {{48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
                                                {0,48,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
@@ -864,7 +898,9 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng19);
+#endif
 }
 
 #endif

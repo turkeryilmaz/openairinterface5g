@@ -240,7 +240,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
     if (BG==1) 
     {
 #ifndef UNROLL_CN_PROC      
-        nrLDPC_cnProc_BG1(p_lut, procBuf, procBufRes, Z);
+        nrLDPC_cnProc_BG1(p_lut, procBuf, procBufRes, Z, p_profiler);
 #else        
         switch (R)
         {
@@ -527,7 +527,7 @@ static inline uint32_t nrLDPC_decoder_core(int8_t* p_llr, int8_t* p_out, uint32_
         if (BG==1) 
         {
 #ifndef UNROLL_CN_PROC
-           nrLDPC_cnProc_BG1(p_lut, procBuf, procBufRes, Z);
+            nrLDPC_cnProc_BG1(p_lut, procBuf, procBufRes, Z, p_profiler);
 #else        
            switch (R) {
             case 13:
