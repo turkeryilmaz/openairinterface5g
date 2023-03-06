@@ -308,6 +308,8 @@ void rx_func(void *param) {
     syncMsg = gNB->msgDataTx;
     syncMsg->gNB = gNB; 
     syncMsg->timestamp_tx = info->timestamp_tx;
+    syncMsg->frame = frame_tx;
+    syncMsg->slot = slot_tx;
     tx_func(syncMsg);
 #endif
   } else if (get_softmodem_params()->continuous_tx) {

@@ -385,6 +385,42 @@ static void match_crc_rx_pdu(nfapi_nr_rx_data_indication_t *rx_ind, nfapi_nr_crc
   }
 }
 
+void scheduler(module_id_t module_id,int frame,int slot) {
+
+  
+  NR_IF_Module_t   *ifi        = nr_if_inst[module_id];
+  gNB_MAC_INST     *mac        = RC.nrmac[module_id];
+
+
+  gNB_dlsch_ulsch_scheduler(module_id,frame,slot);
+  ifi->CC_mask            = 0;
+  sched_info->module_id   = module_id;
+  sched_info->CC_id       = CC_id;
+  sched_info->frame       = frame;
+  sched_info->slot        = slot;
+  sched_info->DL_req      = &mac->DL_req[CC_id];
+  sched_info->UL_dci_req  = &mac->UL_dci_req[CC_id];
+
+  sched_info->UL_tti_req  = mac->UL_tti_req[CC_id];
+
+  sched_info->TX_req      = &mac->TX_req[CC_id];
+#ifdef DUMP_FAPI
+  dump_dl(sched_info);
+#endif
+
+  AssertFatal(ifi->NR_Schedule_response!=NULL,
+              "nr_schedule_response is null (mod %d, cc %d)\n",
+              module_id,
+              CC_id);
+  ifi->NR_Schedule_response(sched_info);
+
+  LOG_D(NR_PHY,"NR_Schedule_response: SFN SLOT:%d %d dl_pdus:%d\n",
+        sched_info->frame,
+        sched_info->slot,
+        sched_info->DL_req->dl_tti_request_body.nPDUs);
+
+
+}
 void NR_UL_indication(NR_UL_IND_t *UL_info) {
   AssertFatal(UL_info!=NULL,"UL_info is null\n");
   module_id_t      module_id   = UL_info->module_id;
@@ -464,22 +500,18 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
     ifi->CC_mask |= (1<<CC_id);
 
     if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
-      /*
-      eNB_dlsch_ulsch_scheduler(module_id,
-          (UL_info->frame+((UL_info->slot>(9-sl_ahead))?1:0)) % 1024,
-          (UL_info->slot+sl_ahead)%10);
-      */
       nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
       int spf = get_spf(cfg);
-      gNB_dlsch_ulsch_scheduler(module_id,
-				(UL_info->frame+((UL_info->slot>(spf-1-ifi->sl_ahead))?1:0)) % 1024,
-				(UL_info->slot+ifi->sl_ahead)%spf);
+      int frame = (UL_info->frame+((UL_info->slot>(spf-1-ifi->sl_ahead))?1:0)) & 1023;
+      int slot = (UL_info->slot+ifi->sl_ahead)%spf;
+      scheduler(module_id,frame,slot); /*
+      gNB_dlsch_ulsch_scheduler(module_id,frame,slot);
 
       ifi->CC_mask            = 0;
       sched_info->module_id   = module_id;
       sched_info->CC_id       = CC_id;
-      sched_info->frame       = (UL_info->frame + ((UL_info->slot>(spf-1-ifi->sl_ahead)) ? 1 : 0)) % 1024;
-      sched_info->slot        = (UL_info->slot+ifi->sl_ahead)%spf;
+      sched_info->frame       = frame;
+      sched_info->slot        = slot;
       sched_info->DL_req      = &mac->DL_req[CC_id];
       sched_info->UL_dci_req  = &mac->UL_dci_req[CC_id];
 
@@ -499,7 +531,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
       LOG_D(NR_PHY,"NR_Schedule_response: SFN SLOT:%d %d dl_pdus:%d\n",
 	    sched_info->frame,
 	    sched_info->slot,
-	    sched_info->DL_req->dl_tti_request_body.nPDUs);
+	    sched_info->DL_req->dl_tti_request_body.nPDUs);*/
     }
   }
 }
@@ -516,6 +548,7 @@ NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {
 
     nr_if_inst[Mod_id]->CC_mask=0;
     nr_if_inst[Mod_id]->NR_UL_indication = NR_UL_indication;
+    nr_if_inst[Mod_id]->NR_mac_scheduler = gNB_dlsch_ulsch_scheduler;
     AssertFatal(pthread_mutex_init(&nr_if_inst[Mod_id]->if_mutex,NULL)==0,
                 "allocation of nr_if_inst[%d]->if_mutex fails\n",Mod_id);
   }
