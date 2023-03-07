@@ -252,7 +252,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     */
 
     nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
-    //nr_attach_crc_to_payload(harq_process->a_sci2, harq_process->b_sci2, max_payload_bytes, A_sci, &harq_process->B_sci2);
 
     ///////////////////////// b---->| block segmentation |---->c /////////////////////////
 

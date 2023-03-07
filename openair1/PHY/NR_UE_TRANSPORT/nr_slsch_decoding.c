@@ -95,7 +95,7 @@ bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, b
       int nb=abortTpoolJob(&get_nrUE_params()->Tpool, req->key);
       nb+=abortNotifiedFIFOJob(nf_p, req->key);
       LOG_D(PHY,"downlink segment error %d/%d, aborted %d segments\n",rdata->segment_r,rdata->nbSegments, nb);
-      LOG_D(PHY, "DLSCH %d in error\n",rdata->dlsch_id);
+      LOG_D(PHY, "SLSCH %d in error\n",rdata->dlsch_id);
       last = true;
     }
   }
@@ -115,7 +115,7 @@ bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, b
       //  LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d (pid %d, round %d, TBS %d)\n",phy_vars_ue->Mod_id,nr_slot_rx,harq_pid,harq_process->round,harq_process->TBS);
       //}
       dlsch->last_iteration_cnt = rdata->decodeIterations;
-      LOG_D(PHY, "DLSCH received ok \n");
+      LOG_I(PHY, "SLSCH received ok \n");
     } else {
       //LOG_D(PHY,"[UE %d] DLSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d, mcs %d) Kr %d r %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id, frame, nr_slot_rx, harq_pid,harq_process->status, harq_process->round,harq_process->TBS,harq_process->mcs,Kr,r,harq_process->round);
@@ -126,7 +126,7 @@ bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, b
       //        phy_vars_ue->Mod_id,nr_slot_rx,harq_pid,harq_process->status,harq_process->round,dlsch->Mdlharq,harq_process->TBS);
       //}
       dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
-      LOG_D(PHY, "DLSCH received nok \n");
+      LOG_I(PHY, "SLSCH received nok \n");
     }
     return true; //stop
   }
@@ -170,16 +170,15 @@ void nr_sl_processDLSegment(void* arg) {
   K_bits_F = Kr-harq_process->F;
 
   t_nrLDPC_time_stats procTime = {0};
-
-
+  t_nrLDPC_time_stats* p_procTime = &procTime ;
 
   start_meas(&rdata->ts_deinterleave);
 
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_DEINTERLEAVING, VCD_FUNCTION_IN);
-  int16_t w[E];
+  int16_t harq_e[E];
   nr_deinterleaving_ldpc(E,
                          Qm,
-                         w, // [hna] w is e
+                         harq_e, // [hna] w is e
                          dlsch_llr+r_offset);
   //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_DEINTERLEAVING, VCD_FUNCTION_OUT);
   stop_meas(&rdata->ts_deinterleave);
@@ -200,13 +199,13 @@ void nr_sl_processDLSegment(void* arg) {
                                p_decoderParms->BG,
                                p_decoderParms->Z,
                                harq_process->d[r],
-                               w,
+                               harq_e,
                                harq_process->C,
                                harq_process->rvidx,
                                harq_process->first_rx,
                                E,
                                harq_process->F,
-                               Kr-harq_process->F-2*(p_decoderParms->Z))==-1) {
+                               Kr-harq_process->F-2*(p_decoderParms->Z),false)==-1) {
     //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_RATE_MATCHING, VCD_FUNCTION_OUT);
     stop_meas(&rdata->ts_rate_unmatch);
     LOG_E(PHY,"dlsch_decoding.c: Problem in rate_matching\n");
@@ -258,7 +257,7 @@ void nr_sl_processDLSegment(void* arg) {
     no_iteration_ldpc = nrLDPC_decoder(p_decoderParms,
                                        (int8_t *)&pl[0],
                                        llrProcBuf,
-                                       &procTime);
+                                       p_procTime);
     //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_LDPC, VCD_FUNCTION_OUT);
 
     LOG_D(PHY,"no_iteration_ldpc = %d\n", no_iteration_ldpc);
@@ -368,6 +367,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   */
 
   // SCI2 decoding //
+  #if 0
   uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2
   nr_sci2_quantize(decoder_input, dlsch_llr, harq_process->B_sci2);
@@ -380,9 +380,9 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 
 
   printf("the polar decoder output is:%"PRIu64"\n",tmp);
-
+  #endif
   nb_rb = harq_process->nb_rb;
-  A = harq_process->TBS;
+  A = (harq_process->TBS) << 3;
   ret = dlsch->max_ldpc_iterations + 1;
   dlsch->last_iteration_cnt = ret;
   harq_process->G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, dmrs_length, harq_process->Qm,harq_process->Nl);
@@ -469,13 +469,11 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   Kr_bytes = Kr>>3;
   offset = 0;
   void (*nr_processDLSegment_ptr)(void*) = &nr_sl_processDLSegment;
-  notifiedFIFO_t nf;
-  initNotifiedFIFO(&nf);
   for (r=0; r<harq_process->C; r++) {
     //printf("start rx segment %d\n",r);
     E = nr_get_E(G, harq_process->C, harq_process->Qm, harq_process->Nl, r);
     union ldpcReqUnion id = {.s={dlsch->rnti,frame,nr_slot_rx,0,0}};
-    notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(ldpcDecode_ue_t), id.p, &nf, nr_processDLSegment_ptr);
+    notifiedFIFO_elt_t *req=newNotifiedFIFO_elt(sizeof(ldpcDecode_ue_t), id.p, &phy_vars_ue->respDecode, nr_processDLSegment_ptr);
     ldpcDecode_ue_t * rdata=(ldpcDecode_ue_t *) NotifiedFifoData(req);
 
     rdata->phy_vars_ue = phy_vars_ue;
@@ -507,13 +505,13 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     //////////////////////////////////////////////////////////////////////////////////////////
   }
   for (r=0; r<nbDecode; r++) {
-    notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);
+    notifiedFIFO_elt_t *req=pullTpool(&phy_vars_ue->respDecode, &phy_vars_ue->threadPool);
     if (req == NULL)
       break; // Tpool has been stopped
     bool last = false;
     if (r == nbDecode - 1)
       last = true;
-    bool stop = nr_ue_sl_postDecode(phy_vars_ue, req, last, &nf);
+    bool stop = nr_ue_sl_postDecode(phy_vars_ue, req, last, &phy_vars_ue->respDecode);
     delNotifiedFIFO_elt(req);
     if (stop)
       break;
