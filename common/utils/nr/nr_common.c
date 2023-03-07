@@ -47,10 +47,12 @@ int tables_5_3_2[5][11] = {
 int get_supported_band_index(int scs, int band, int n_rbs){
 
   int scs_index = scs;
-  if (band>256)
+  if (band>256){
     scs_index++;
+    LOG_I(NR_MAC, "scs_index %d\n",scs_index);}
+
   for (int i=0; i<11; i++) {
-    if(n_rbs == tables_5_3_2[scs][i])
+    if(n_rbs == tables_5_3_2[scs_index][i])
       return i;
   }
   return (-1); // not found

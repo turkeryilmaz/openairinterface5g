@@ -168,6 +168,7 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO){
     memset(&gNB->common_vars.beam_id[0][i*tdd_period_in_slots*fp->symbols_per_slot],
            Sched_INFO->tdd_beam_association[i],
            fp->symbols_per_slot*tdd_period_in_slots*sizeof(uint8_t));
+           LOG_D(PHY,"tdd_beam_association %d\n",Sched_INFO->tdd_beam_association[i]);
   }
 
   if (NFAPI_MODE == NFAPI_MONOLITHIC){

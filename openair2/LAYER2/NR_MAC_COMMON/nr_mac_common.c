@@ -2645,7 +2645,9 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
     ubwpd=cg->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_id-1]->bwp_Dedicated;
     ubwpc=cg->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_id-1]->bwp_Common;
     pdsch_Config = (bwpd->pdsch_Config) ? bwpd->pdsch_Config->choice.setup : NULL;
-    pdcch_Config = (bwpd->pdcch_Config) ? bwpd->pdcch_Config->choice.setup : NULL;
+    pdcch_Config = bwpc->pdcch_ConfigCommon->choice.setup;
+   // pdcch_Config = (bwpd->pdcch_Config) ? bwpd->pdcch_Config->choice.setup : bwpc->pdcch_ConfigCommon->choice.setup;
+   //pdcch_Config = (bwpd->pdcch_Config) ? bwpd->pdcch_Config->choice.setup : NULL; // we should the pdcch_Config here that it gets the config from the commonBWP
     pucch_Config = (ubwpd->pucch_Config) ? ubwpd->pucch_Config->choice.setup : NULL;
     pusch_Config = (ubwpd->pusch_Config) ? ubwpd->pusch_Config->choice.setup : NULL;
     srs_config = (ubwpd->srs_Config) ? ubwpd->srs_Config->choice.setup : NULL;
@@ -2680,6 +2682,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
     case NR_UL_DCI_FORMAT_0_1:
       /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2, ULSCH indicator 1 --16
       size += 16;
+     // size += 17;
       // Carrier indicator
       if (cg->spCellConfig->spCellConfigDedicated->crossCarrierSchedulingConfig != NULL) {
         dci_pdu->carrier_indicator.nbits=3;
@@ -2688,6 +2691,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       // UL/SUL indicator
       if (cg->spCellConfig->spCellConfigDedicated->supplementaryUplink != NULL) {
         dci_pdu->carrier_indicator.nbits=1;
+        LOG_D(NR_MAC,"PUSCH ul_sul indicater nbits %d\n",dci_pdu->carrier_indicator.nbits);
         size += dci_pdu->ul_sul_indicator.nbits;
       }
       // BWP Indicator
@@ -2699,6 +2703,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         dci_pdu->bwp_indicator.nbits = n_ul_bwp;
       else
         dci_pdu->bwp_indicator.nbits = 2;
+      LOG_D(NR_MAC,"PUSCH BWP Indicator nbits %d\n",dci_pdu->bwp_indicator.nbits);
       size += dci_pdu->bwp_indicator.nbits;
       // Freq domain assignment
       if (pusch_Config) {
@@ -2736,6 +2741,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
           pusch_Config->frequencyHopping!=NULL && 
           pusch_Config->resourceAllocation != NR_PUSCH_Config__resourceAllocation_resourceAllocationType0) {
         dci_pdu->frequency_hopping_flag.nbits = 1;
+        LOG_D(NR_MAC,"PUSCH frequency_hopping_flag nbits %d\n",dci_pdu->frequency_hopping_flag.nbits); 
         size += 1;
       }
       // 1st DAI
@@ -2752,6 +2758,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
           cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup->codeBlockGroupTransmission != NULL) { //TODO not sure about that
         dci_pdu->dai[1].nbits = 2;
         size += dci_pdu->dai[1].nbits;
+      LOG_D(NR_MAC,"DAI2 nbits %d\n",dci_pdu->dai[1].nbits);
       }
       // SRS resource indicator
       if (srs_config &&
@@ -2851,11 +2858,13 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         dci_pdu->srs_request.nbits = 2;
       else
         dci_pdu->srs_request.nbits = 3;
+      LOG_D(NR_MAC,"dci_pdu->srs_request.nbits.nbits = %d\n",dci_pdu->srs_request.nbits);
       size += dci_pdu->srs_request.nbits;
       // CSI request
       if (cg->spCellConfig->spCellConfigDedicated->csi_MeasConfig != NULL) {
         if (cg->spCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup->reportTriggerSize != NULL) {
           dci_pdu->csi_request.nbits = *cg->spCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup->reportTriggerSize;
+          LOG_D(NR_MAC,"dci_pdu->csi_request.nbits = %d\n",dci_pdu->csi_request.nbits);
           size += dci_pdu->csi_request.nbits;
         }
       }
@@ -2864,6 +2873,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
           cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->codeBlockGroupTransmission != NULL) {
         int num = cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->codeBlockGroupTransmission->choice.setup->maxCodeBlockGroupsPerTransportBlock;
         dci_pdu->cbgti.nbits = 2 + (num<<1);
+        LOG_D(NR_MAC,"dci_pdu->cbgti.nbits = %d\n",dci_pdu->cbgti.nbits);
         size += dci_pdu->cbgti.nbits;
       }
       // PTRS - DMRS association
@@ -2876,18 +2886,21 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         dci_pdu->ptrs_dmrs_association.nbits = 0;
       else
         dci_pdu->ptrs_dmrs_association.nbits = 2;
+      LOG_D(NR_MAC,"dci_pdu->ptrs_dmrs_association.nbits = %d\n",dci_pdu->ptrs_dmrs_association.nbits);
       size += dci_pdu->ptrs_dmrs_association.nbits;
       // beta offset indicator
       if (pusch_Config &&
           pusch_Config->uci_OnPUSCH!=NULL){
         if (pusch_Config->uci_OnPUSCH->choice.setup->betaOffsets->present == NR_UCI_OnPUSCH__betaOffsets_PR_dynamic) {
           dci_pdu->beta_offset_indicator.nbits = 2;
+          LOG_D(NR_MAC,"dci_pdu->beta_offset_indicator.nbits = %d\n",dci_pdu->beta_offset_indicator.nbits);
           size += dci_pdu->beta_offset_indicator.nbits;
         }
       }
       // DMRS sequence init
       if (transformPrecoder == NR_PUSCH_Config__transformPrecoder_disabled) {
          dci_pdu->dmrs_sequence_initialization.nbits = 1;
+         LOG_D(NR_MAC,"dci_pdu->dmrs_sequence_initialization.nbits = %d\n",dci_pdu->dmrs_sequence_initialization.nbits);
          size += dci_pdu->dmrs_sequence_initialization.nbits;
       }
       break;
@@ -3018,7 +3031,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       size += dci_pdu->antenna_ports.nbits;
       LOG_D(NR_MAC,"dci_pdu->antenna_ports.nbits %d\n",dci_pdu->antenna_ports.nbits);
       // Tx Config Indication
-      for (int i = 0; i < pdcch_Config->controlResourceSetToAddModList->list.count; i++) {
+     /* for (int i = 0; i < pdcch_Config->controlResourceSetToAddModList->list.count; i++) {
         if (pdcch_Config->controlResourceSetToAddModList->list.array[i]->controlResourceSetId == coreset_id) {
           long *isTciEnable = pdcch_Config->controlResourceSetToAddModList->list.array[i]->tci_PresentInDCI;
           if (isTciEnable != NULL) {
@@ -3027,7 +3040,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
           }
           break;
         }
-      }
+      }*/
       // SRS request
       if (cg->spCellConfig->spCellConfigDedicated->supplementaryUplink==NULL)
         dci_pdu->srs_request.nbits = 2;

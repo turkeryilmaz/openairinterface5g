@@ -73,6 +73,24 @@ int gpio789=0;
 extern int usrp_tx_thread;
 
 
+
+
+std::vector<std::string> sxx = {
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+  "DB0_RF0",
+};
+
+
 typedef struct {
 
   // --------------------------------
@@ -97,6 +115,10 @@ typedef struct {
 
   //! TX forward samples. We use usrp_time_offset to get this value
   int tx_forward_nsamps; //166 for 20Mhz
+
+
+  //! gpio bank to use 
+ // std::string gpio_bank;
 
   // --------------------------------
   // Debug and output control
@@ -274,16 +296,46 @@ static int trx_usrp_start(openair0_device *device) {
   usrp_state_t *s = (usrp_state_t *)device->priv;
 
   if (device->type != USRP_X400_DEV) {
+
+    //std::vector<std::string> gpio_banks = s->usrp->get_gpio_banks(0); 
+    // s->gpio_bank = "FP0"; //good for B210, X310 and N310
+
+
     //set data direction register (DDR) to output
     s->usrp->set_gpio_attr("FP0", "DDR", 0xfff, 0xfff);
     //set lower 5 bits to be controlled automatically by ATR (the rest 7 bits are controlled manually)
-    s->usrp->set_gpio_attr("FP0", "CTRL", 0x1f,0xfff);
-    //set pin 1 (TX/RX1) to 1 for MHU1 for transmistting
-    s->usrp->set_gpio_attr("FP0", "ATR_TX", (1<<1), 0x1f);
+    //s->usrp->set_gpio_attr("FP0", "CTRL", 0x1f,0xfff);
+    //set lower GPIO#1 to be controlled automatically by ATR (the rest  bits are controlled manually)
+    s->usrp->set_gpio_attr("FP0", "CTRL",(1<<1),0xfff);
+    //set GPIO1 (Tx/Rx1)  to 1 for MHU1 for transmistting
+    s->usrp->set_gpio_attr("FP0", "ATR_XX", (1<<1), 0xfff);
+
     //set pin 4 (ID0) to 1 and pins 2 (TX/RX2) & 3 (ID1) to 0
-    s->usrp->set_gpio_attr("FP0", "ATR_XX", (1<<4), 0x1f);
+
+    //s->usrp->set_gpio_attr("FP0", "ATR_XX", (1<<4), 0x1f);
+    //set GPIO4 (ID0) to 1 and GPIO2 (TX/RX2) &GPIO3 (ID1) to 0
+    s->usrp->set_gpio_attr("FP0", "OUT", (1<<4), 0x1c);
+
     //set the output pins to 1
-    s->usrp->set_gpio_attr("FP0", "OUT", 0x7e0, 0xfe0);
+    //s->usrp->set_gpio_attr("FP0", "OUT", 0x7e0, 0xfe0);
+  }
+
+
+   else  {
+
+  // s->gpio_bank="GPIO0";
+
+   //set every pin on GPIO0 to be ocntrolled by DB1_RF0
+   s->usrp->set_gpio_src("GPIO0", sxx);
+   //set data direction register (DDR) to output
+   s->usrp->set_gpio_attr("GPIO0", "DDR", 0xfff, 0xfff);
+   //set lower GPIO#1 to be controlled automatically by ATR (the rest  bits are controlled manually)
+   s->usrp->set_gpio_attr("GPIO0", "CTRL",(1<<1), (1<<1));
+   //set GPIO1 (Tx/Rx1)  to 1 for MHU1 for transmistting
+   s->usrp->set_gpio_attr("GPIO0", "ATR_XX", (1<<1), (1<<1));
+   //set GPIO4 (ID0) to 1 and GPIO2 (TX/RX2) &GPIO3 (ID1) to 0
+   s->usrp->set_gpio_attr("GPIO0", "OUT", (1<<4), 0x1c);
+
   }
 
   s->wait_for_first_pps = 1;
@@ -460,7 +512,7 @@ VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_BEAM_SWITCHI
       // push GPIO bits 5-9 from flags_msb
       int gpio5ten=(flags_msb&63)<<5;
       s->usrp->set_command_time(s->tx_md.time_spec);
-      s->usrp->set_gpio_attr("FP0", "OUT", gpio5ten, 0x7e0);
+      s->usrp->set_gpio_attr("GPIO0","OUT", gpio5ten, 0x7e0);
       s->usrp->clear_command_time();
     }
 VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_BEAM_SWITCHING_GPIO,0);
@@ -601,7 +653,7 @@ void *trx_usrp_write_thread(void * arg){
       // push GPIO bits 5-9 from flags_msb
       int gpio5ten=(flags_msb&63)<<5;
       s->usrp->set_command_time(s->tx_md.time_spec);
-      s->usrp->set_gpio_attr("FP0", "OUT", gpio5ten, 0x7e0);
+      s->usrp->set_gpio_attr("GPIO0", "OUT", gpio5ten, 0x7e0);
       s->usrp->clear_command_time();
     }
 

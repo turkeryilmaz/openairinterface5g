@@ -65,7 +65,7 @@
 
 #include "common/ran_context.h"
 
-//#define DEBUG_DCI
+#define DEBUG_DCI
 
 extern RAN_CONTEXT_t RC;
 
@@ -276,14 +276,17 @@ NR_ControlResourceSet_t *get_coreset(gNB_MAC_INST *nrmac,
 			     "search space\n");
     return coreset;
   } else {
-    const int n = ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.count;
+       NR_ControlResourceSet_t *coreset;
+       coreset = ((NR_BWP_Downlink_t*)bwp)->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet;
+       return coreset;
+   /* const int n = ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.count;
     for (int i = 0; i < n; i++) {
       NR_ControlResourceSet_t *coreset =
           ((NR_BWP_DownlinkDedicated_t*)bwp)->pdcch_Config->choice.setup->controlResourceSetToAddModList->list.array[i];
       if (coreset_id == coreset->controlResourceSetId) {
         return coreset;
       }
-    }
+    }*/
     AssertFatal(0, "Couldn't find coreset with id %ld\n", coreset_id);
   }
 }
@@ -895,7 +898,8 @@ void config_uldci(const NR_SIB1_t *sib1,
 
   dci_pdu_rel15->frequency_domain_assignment.val =
       PRBalloc_to_locationandbandwidth0(pusch_pdu->rb_size, pusch_pdu->rb_start, ul_bwp->BWPSize);
-  dci_pdu_rel15->time_domain_assignment.val = time_domain_assignment;
+ // dci_pdu_rel15->time_domain_assignment.val = time_domain_assignment;
+    dci_pdu_rel15->time_domain_assignment.val = 2; //hardcoded
   dci_pdu_rel15->frequency_hopping_flag.val = pusch_pdu->frequency_hopping;
   dci_pdu_rel15->mcs = pusch_pdu->mcs_index;
   dci_pdu_rel15->ndi = pusch_pdu->pusch_data.new_data_indicator;
@@ -911,7 +915,7 @@ void config_uldci(const NR_SIB1_t *sib1,
       dci_pdu_rel15->format_indicator = 0;
       break;
     case NR_UL_DCI_FORMAT_0_1:
-      LOG_D(NR_MAC,"Configuring DCI Format 0_1\n");
+      LOG_I(NR_MAC,"Configuring DCI Format 0_1\n");
       dci_pdu_rel15->dai[0].val = 0; //TODO
       // bwp indicator as per table 7.3.1.1.2-1 in 38.212
       dci_pdu_rel15->bwp_indicator.val = ul_bwp->n_ul_bwp < 4 ? bwp_id : bwp_id - 1;
@@ -939,7 +943,7 @@ void config_uldci(const NR_SIB1_t *sib1,
       AssertFatal(0, "Valid UL formats are 0_0 and 0_1\n");
   }
 
-  LOG_D(NR_MAC,
+  LOG_I(NR_MAC,
         "%s() ULDCI type 0 payload: dci_format %d, freq_alloc %d, time_alloc %d, freq_hop_flag %d, precoding_information.val %d antenna_ports.val %d mcs %d tpc %d ndi %d rv %d\n",
         __func__,
         dci_format,
@@ -981,12 +985,12 @@ void nr_configure_pdcch(nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu,
 
   pdcch_pdu->DurationSymbols  = coreset->duration;
 
-  for (int i=0;i<6;i++)
+  for (int i=0;i<6;i++) {
     pdcch_pdu->FreqDomainResource[i] = coreset->frequencyDomainResources.buf[i];
-
-  LOG_D(MAC,"Coreset : BWPstart %d, BWPsize %d, SCS %d, freq %x, , duration %d\n",
-        pdcch_pdu->BWPStart,pdcch_pdu->BWPSize,(int)pdcch_pdu->SubcarrierSpacing,(int)coreset->frequencyDomainResources.buf[0],(int)coreset->duration);
-
+    if (coreset->frequencyDomainResources.buf[i]!=0x00) 
+        LOG_I(MAC,"Coreset : BWPstart %d, BWPsize %d, SCS %d, freq %x, , duration %d\n",
+        pdcch_pdu->BWPStart,pdcch_pdu->BWPSize,(int)pdcch_pdu->SubcarrierSpacing,(int)coreset->frequencyDomainResources.buf[i],(int)coreset->duration);
+}
   pdcch_pdu->CceRegMappingType = pdcch->CceRegMappingType;
   pdcch_pdu->RegBundleSize = pdcch->RegBundleSize;
   pdcch_pdu->InterleaverSize = pdcch->InterleaverSize;
@@ -1386,7 +1390,8 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                              scc->uplinkConfigCommon->initialUplinkBWP,
                              CellGroup, dci_pdu_rel15, dci_format,
                              rnti_type, N_RB, bwp_id, coreset_id, cset0_bwp_size);
-  pdcch_dci_pdu->PayloadSizeBits = dci_size;
+   pdcch_dci_pdu->PayloadSizeBits = dci_size;
+  //pdcch_dci_pdu->PayloadSizeBits = 38;
   AssertFatal(dci_size <= 64, "DCI sizes above 64 bits not yet supported");
   if (dci_format == NR_DL_DCI_FORMAT_1_1 || dci_format == NR_UL_DCI_FORMAT_0_1)
     prepare_dci(CellGroup, current_BWP, coreset, dci_pdu_rel15, dci_format);
@@ -1947,7 +1952,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     pos += 1;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->dmrs_sequence_initialization.val & 0x1) << (dci_size - pos);
   }
-  LOG_D(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
+  LOG_I(NR_MAC, "DCI has %d bits and the payload is %lx\n", dci_size, *dci_pdu);
 }
 
 int get_spf(nfapi_nr_config_request_scf_t *cfg) {
@@ -2385,7 +2390,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                                                target_ss);
     sched_ctrl->coreset = get_coreset(nr_mac,
                                       scc,
-                                      bwpd,
+                                      dl_bwp,
                                       sched_ctrl->search_space,
                                       target_ss);
 

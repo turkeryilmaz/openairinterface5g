@@ -190,7 +190,7 @@ void rx_func(void *param) {
         gNB->ulsch_stats[j].rnti = 0;
     }
     for (j = 0; j < NUMBER_OF_NR_DLSCH_MAX; j++)
-      if (gNB->dlsch[j][0]->rnti == rnti_to_remove[i]) {
+      if (gNB->dlsch[j][0] != NULL && gNB->dlsch[j][0]->rnti == rnti_to_remove[i]) {
         gNB->dlsch[j][0]->rnti = 0;
         gNB->dlsch[j][0]->harq_mask = 0;
         //clean_gNB_dlsch(gNB->dlsch[j][0]);

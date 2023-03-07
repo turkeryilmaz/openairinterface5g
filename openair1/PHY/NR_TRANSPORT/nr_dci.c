@@ -39,7 +39,7 @@
 
 //#define DEBUG_PDCCH_DMRS
 //#define DEBUG_DCI
-//#define DEBUG_CHANNEL_CODING
+#define DEBUG_CHANNEL_CODING
 
 void nr_pdcch_scrambling(uint32_t *in,
                          uint32_t size,
@@ -50,7 +50,7 @@ void nr_pdcch_scrambling(uint32_t *in,
   uint32_t x1, x2, s=0;
   reset = 1;
   x2 = (scrambling_RNTI<<16) + Nid;
-  LOG_D(PHY,"PDCCH Scrambling x2 %x : scrambling_RNTI %x \n", x2, scrambling_RNTI);
+  LOG_I(PHY,"PDCCH Scrambling x2 %x : scrambling_RNTI %x \n", x2, scrambling_RNTI);
   for (int i=0; i<size; i++) {
     if ((i&0x1f)==0) {
       s = lte_gold_generic(&x1, &x2, reset);
@@ -167,8 +167,8 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
     nr_modulation(scrambled_output, encoded_length, DMRS_MOD_ORDER, mod_dci); //Qm = 2 as DMRS is QPSK modulated
 #ifdef DEBUG_DCI
     
-    for (int i=0; i<encoded_length>>1; i++)
-      printf("i %d mod_dci %d %d\n", i, mod_dci[i<<1], mod_dci[(i<<1)+1] );
+   // for (int i=0; i<encoded_length>>1; i++)
+     // printf("i %d mod_dci %d %d\n", i, mod_dci[i<<1], mod_dci[(i<<1)+1] );
     
 #endif
 
