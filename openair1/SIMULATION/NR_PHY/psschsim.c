@@ -443,8 +443,10 @@ int main(int argc, char **argv)
   unsigned char harq_pid = 0;
   unsigned int TBS = 8424;
   uint32_t available_bits = 0;
-  uint32_t SCI2_bits = 0;
-  uint32_t G_slsch;
+  uint32_t G_SCI2_bits = 0;
+  uint32_t G_slsch_bits = 0;
+  uint32_t M_SCI2_bits = 0;
+  uint32_t M_data_bits = 0;
 
   uint8_t number_dmrs_symbols = 2;
   uint8_t N_PRB_oh;
@@ -463,10 +465,10 @@ int main(int argc, char **argv)
 
   mod_order = nr_get_Qm_ul(Imcs, 0);//{2,6790},
   code_rate = nr_get_code_rate_ul(Imcs, 0);//{2,6790},
-  G_slsch = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
+  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
   TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*number_dmrs_symbols, 0, 0, Nl);
   // Available bits 27984 TBS 18432 mod_order 2
-  printf("\nG_slsch bits %u TBS %u mod_order %d TBS/8 %d\n", G_slsch, TBS, mod_order, TBS / 8);
+  printf("\nG_slsch_bits %u TBS %u mod_order %d TBS/8 %d\n", G_slsch_bits, TBS, mod_order, TBS / 8);
 
 
   /////////// setting rel15_ul parameters ///////////
@@ -558,46 +560,48 @@ int main(int argc, char **argv)
 
   /////////////////////////SLSCH data coding/////////////////////////
   ///////////
-  G_slsch = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
+  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
   if (input_fd == NULL) {
-    //nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch);
+    //nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch_bits);
   }
 
   //////////////////SLSCH data and control multiplexing//////////////
 
   // TODO: Remove the following hard coded case.
-  SCI2_bits = 32;
-  G_slsch = 32;
+  Nl = 1;
+  G_SCI2_bits = 32;
+  pssch->pssch_e[0] = 0x0101;//-> 0011
 
-  pssch->pssch_e[0] = 0x01010000;//-> 0011
+  G_slsch_bits = 32;
   harq_process_txUE->f[0] = 0;
   harq_process_txUE->f[1] = 1;
   harq_process_txUE->f[2] = 0;
   harq_process_txUE->f[3] = 1;
   // TODO: Remove the above hard coded case.
 
-
-  available_bits += G_slsch;
-  available_bits += SCI2_bits;
-  uint8_t  SCI2_mod_order = 2;
-  uint8_t multiplexed_output[available_bits];
-  memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
-
 #ifdef DEBUG_NR_SLSCHSIM
   printf("encoded SCI2_bits[i]= ");
-  for (i = 0; i < SCI2_bits; i++)
+  for (i = 0; i < G_SCI2_bits; i++)
     printf("%u ", ((uint8_t *)pssch->pssch_e)[i]);
   printf("\n\n");
   printf("encoded SLSCH_bits[i]= ");
-  for (i = 0; i < G_slsch; i++)
+  for (i = 0; i < G_slsch_bits; i++)
     printf("%u ", harq_process_txUE->f[i]);
   printf("\n\n");
 #endif
 
+  M_SCI2_bits = G_SCI2_bits * Nl; //assume multiple of 32 bits
+  M_data_bits = G_slsch_bits;
+  available_bits += M_SCI2_bits;
+  available_bits += M_data_bits;
+  uint8_t  SCI2_mod_order = 2;
+  uint8_t multiplexed_output[available_bits];
+  memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
+
   nr_pssch_data_control_multiplexing(harq_process_txUE->f,
                                      (uint8_t*)pssch->pssch_e,
-                                     G_slsch,
-                                     SCI2_bits,
+                                     G_slsch_bits,
+                                     G_SCI2_bits,
                                      Nl,
                                      SCI2_mod_order,
                                      multiplexed_output);
@@ -615,15 +619,19 @@ int main(int argc, char **argv)
 
   nr_pusch_codeword_scrambling_sl(multiplexed_output,
                                   available_bits,
-                                  SCI2_bits,
+                                  M_SCI2_bits,
                                   Nidx,
                                   scrambled_output);
 
 #ifdef DEBUG_NR_SLSCHSIM
   printf("Nidx= %d\n", Nidx);
-  printf("scambled output_bits[i]= ");
-  for (i = 0; i < (available_bits + 31) >> 5; i++)
+  printf("scambled SCI2_bits[i]= ");
+  for (i = 0; i < (M_SCI2_bits + 31) >> 5; i++)
     printf("0x%x ", scrambled_output[i]);
+  printf("\n\n");
+  printf("scambled data_bits[i]= ");
+  for (i = 0; i < (M_data_bits + 31) >> 5; i++)
+    printf("0x%x ", scrambled_output[i+ M_SCI2_bits]);
   printf("\n\n");
 #endif
 
@@ -634,29 +642,29 @@ int main(int argc, char **argv)
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
-                SCI2_bits,
+                M_SCI2_bits,
                 SCI2_mod_order,
                 (int16_t *)d_mod);
 
   // modulating SL-SCH bits
-  nr_modulation(scrambled_output + (SCI2_bits >> 5), // assume one codeword for the moment
-                G_slsch,
+  nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
+                M_data_bits,
                 mod_order,
-                (int16_t *)(d_mod + SCI2_bits / SCI2_mod_order));
+                (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
 
 
 #ifdef DEBUG_NR_SLSCHSIM
   printf("modulated SCI2_bits[i]= ");
-  for (i = 0; i < SCI2_bits / SCI2_mod_order; i++) {
+  for (i = 0; i < M_SCI2_bits / SCI2_mod_order; i++) {
     if (i%4 == 0) printf("\n");
     printf("0x%x ", d_mod[i]);
   }
   printf("\n\n");
 
   printf("modulated SLSCH_bits[i]= ");
-  for (i = 0; i < G_slsch / mod_order; i++) {
+  for (i = 0; i < M_data_bits / mod_order; i++) {
     if (i%4 == 0) printf("\n");
-    printf("0x%x ", d_mod[i + SCI2_bits / SCI2_mod_order]);
+    printf("0x%x ", d_mod[i + M_SCI2_bits / SCI2_mod_order]);
   }
   printf("\n\n");
 #endif
@@ -664,8 +672,8 @@ int main(int argc, char **argv)
   /////////////////////////LLRs computation/////////////////////////
 
   int16_t *ulsch_llr = rxUE->pssch_vars[UE_id]->llr;
-  int nb_re_SCI2 = SCI2_bits/SCI2_mod_order;
-  int nb_re_slsch = G_slsch/mod_order;
+  int nb_re_SCI2 = M_SCI2_bits/SCI2_mod_order;
+  int nb_re_slsch = M_data_bits/mod_order;
   uint8_t  symbol = 5;
   int32_t a = 1;
   int32_t b = 1;
@@ -674,22 +682,22 @@ int main(int argc, char **argv)
                       ulsch_llr, N_RB, nb_re_SCI2,
                       symbol, SCI2_mod_order);
 
-  nr_ulsch_compute_llr(d_mod + (SCI2_bits / SCI2_mod_order), &a, &b,
+  nr_ulsch_compute_llr(d_mod + (M_SCI2_bits / SCI2_mod_order), &a, &b,
                       ulsch_llr + nb_re_SCI2 * 2, N_RB, nb_re_slsch,
                       symbol, mod_order);
 
 #ifdef DEBUG_NR_SLSCHSIM
 
   printf("SCI2 llr value= ");
-  for (i = 0; i < SCI2_bits; i++) {
+  for (i = 0; i < M_SCI2_bits; i++) {
     if (i%8 == 0) printf("\n");
     printf("0x%x ", ulsch_llr[i] & 0xFFFF);
   }
   printf("\n\n");
   printf("SLSCH llr value= ");
-  for (i = 0; i < G_slsch; i++) {
+  for (i = 0; i < M_data_bits; i++) {
     if (i%8 == 0) printf("\n");
-    printf("0x%x ", ulsch_llr[i + SCI2_bits] & 0xFFFF);
+    printf("0x%x ", ulsch_llr[i + M_SCI2_bits] & 0xFFFF);
   }
   printf("\n\n");
 #endif
@@ -705,7 +713,7 @@ int main(int argc, char **argv)
 
   /////////////////////////SLSCH descrambling/////////////////////////
 
-nr_codeword_unscrambling(ulsch_llr, available_bits, 0, Nidx, 0);
+nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
 
 #ifdef DEBUG_NR_SLSCHSIM
   printf("Unscrambled llr value= ");
@@ -716,23 +724,20 @@ nr_codeword_unscrambling(ulsch_llr, available_bits, 0, Nidx, 0);
   printf("\n\n");
 #endif
 
-uint8_t descrambled[128];
-
-
   //////////////////SLSCH data and control demultiplexing//////////////
 
-int16_t *llr_polar_ctrl = ulsch_llr;//SCI2_bits
-int16_t *llr_ldpc_data = ulsch_llr + SCI2_bits * Nl; //G_slsch
+int16_t *llr_polar_ctrl = ulsch_llr;//len: M_SCI2_bits
+int16_t *llr_ldpc_data = ulsch_llr + M_SCI2_bits; //len: M_data_bits
 
 #ifdef DEBUG_NR_SLSCHSIM
   printf("demultiplexed SCI2_bits[i]= ");
-  for (i = 0; i < SCI2_bits; i++) {
+  for (i = 0; i < M_SCI2_bits; i++) {
     if (i % 8 == 0) printf("\n");
     printf("0x%x ", llr_polar_ctrl[i] & 0xFFFF);
   }
   printf("\n\n");
   printf("demultiplexed SLSCH_bits[i]= ");
-  for (i = 0; i < G_slsch; i++) {
+  for (i = 0; i < M_data_bits; i++) {
     if (i % 8 == 0) printf("\n");
     printf("0x%x ", llr_ldpc_data[i] & 0xFFFF);
   }

@@ -69,13 +69,14 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     const uint8_t b_idx = i & 0x1f;
     if (b_idx == 0) {
       s = lte_gold_generic(&x1, &x2, reset);
+      printf("scrambling s = 0x%x\n", s);
       reset = 0;
       if (i)
         out++;
     }
     if (in[i] == NR_PSSCH_x) {
       *out ^= ((*out >> (b_idx - 2)) & 1) << b_idx;
-      j = j + 1;
+      j++;
     } else {
       m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
       c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);

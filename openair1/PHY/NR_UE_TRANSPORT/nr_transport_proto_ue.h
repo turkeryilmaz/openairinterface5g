@@ -1769,6 +1769,14 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
 
 void dump_nrdlsch(PHY_VARS_NR_UE *ue,uint8_t gNB_id,uint8_t nr_slot_rx,unsigned int *coded_bits_per_codeword,int round,  unsigned char harq_pid);
 
+void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
+                                        uint8_t *in_sci2,
+                                        uint32_t slssh_bits,
+                                        uint32_t SCI2_bits,
+                                        uint8_t Nl,
+                                        uint8_t Q_SCI2,
+                                        uint8_t* out);
+
 /**@}*/
 #endif
 
