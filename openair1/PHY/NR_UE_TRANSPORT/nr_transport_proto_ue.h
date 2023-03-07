@@ -284,7 +284,7 @@ int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uin
 @returns 0 on success
  */
 int nr_sl_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
-                              int32_t *txdataF,
+                              c16_t *txdataF,
                               int16_t amp,
                               uint8_t ssb_start_symbol,
                               NR_DL_FRAME_PARMS *frame_parms);
@@ -295,7 +295,7 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
 @param
 @returns 0 on success
  */
-int nr_sl_generate_pss(int32_t *txdataF,
+int nr_sl_generate_pss(c16_t *txdataF,
                     int16_t amp,
                     uint8_t ssb_start_symbol,
                     NR_DL_FRAME_PARMS *frame_parms);
@@ -306,7 +306,7 @@ int nr_sl_generate_pss(int32_t *txdataF,
 @param
 @returns 0 on success
  */
-int nr_sl_generate_sss(int32_t *txdataF,
+int nr_sl_generate_sss(c16_t *txdataF,
                     int16_t amp,
                     uint8_t ssb_start_symbol,
                     NR_DL_FRAME_PARMS *frame_parms);
@@ -318,7 +318,7 @@ int nr_sl_generate_sss(int32_t *txdataF,
 @returns 0 on success
  */
 int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
-                         int32_t *txdataF,
+                         c16_t *txdataF,
                          int16_t amp,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,

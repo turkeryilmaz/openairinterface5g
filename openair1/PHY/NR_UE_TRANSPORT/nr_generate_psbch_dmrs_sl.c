@@ -36,7 +36,7 @@
 
 
 int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
-                           int32_t *txdataF,
+                           c16_t *txdataF,
                            int16_t amp,
                            uint8_t ssb_start_symbol,
                            NR_DL_FRAME_PARMS *frame_parms) {

@@ -32,7 +32,7 @@
 #include "PHY/NR_REFSIG/sss_nr.h"
 
 
-int nr_sl_generate_sss(int32_t *txdataF,
+int nr_sl_generate_sss(c16_t *txdataF,
                        int16_t amp,
                        uint8_t ssb_start_symbol,
                        NR_DL_FRAME_PARMS *frame_parms)

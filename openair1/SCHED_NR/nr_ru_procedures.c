@@ -76,7 +76,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
   LOG_D(PHY,"SFN/SF:RU:TX:%d/%d aa %d Generating slot %d (first_symbol %d num_symbols %d) slot_offset %d, slot_offsetF %d\n",ru->proc.frame_tx, ru->proc.tti_tx,aa,slot,first_symbol,num_symbols,slot_offset,slot_offsetF);
   
   if (fp->Ncp == 1) {
-    PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
+    PHY_ofdm_mod((int *)&ru->common.txdataF_BF[aa][slot_offsetF],
                  (int*)&ru->common.txdata[aa][slot_offset],
                  fp->ofdm_symbol_size,
                  num_symbols,
@@ -86,14 +86,14 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
     if (fp->numerology_index != 0) {
       
       if (!(slot%(fp->slots_per_subframe/2))&&(first_symbol==0)) { // case where first symbol in slot has longer prefix
-        PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
+        PHY_ofdm_mod((int *)&ru->common.txdataF_BF[aa][slot_offsetF],
                      (int*)&ru->common.txdata[aa][slot_offset],
                      fp->ofdm_symbol_size,
                      1,
                      fp->nb_prefix_samples0,
                      CYCLIC_PREFIX);
 
-        PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF+fp->ofdm_symbol_size],
+        PHY_ofdm_mod((int *)&ru->common.txdataF_BF[aa][slot_offsetF+fp->ofdm_symbol_size],
                      (int*)&ru->common.txdata[aa][slot_offset+fp->nb_prefix_samples0+fp->ofdm_symbol_size],
                      fp->ofdm_symbol_size,
                      num_symbols-1,
@@ -101,7 +101,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
                      CYCLIC_PREFIX);
       }
       else { // all symbols in slot have shorter prefix
-        PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
+        PHY_ofdm_mod((int *)&ru->common.txdataF_BF[aa][slot_offsetF],
                      (int*)&ru->common.txdata[aa][slot_offset],
                      fp->ofdm_symbol_size,
                      num_symbols,
@@ -112,7 +112,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
     else { //numerology_index == 0
       for (uint16_t idx_sym=abs_first_symbol; idx_sym<abs_first_symbol+num_symbols; idx_sym++) {
         if (idx_sym%0x7) {
-          PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
+          PHY_ofdm_mod((int *)&ru->common.txdataF_BF[aa][slot_offsetF],
                        (int*)&ru->common.txdata[aa][slot_offset],
                        fp->ofdm_symbol_size,
                        1,
@@ -122,7 +122,7 @@ void nr_feptx0(RU_t *ru,int tti_tx,int first_symbol, int num_symbols, int aa) {
           slot_offsetF += fp->ofdm_symbol_size;
         }
         else {
-          PHY_ofdm_mod(&ru->common.txdataF_BF[aa][slot_offsetF],
+          PHY_ofdm_mod((int *)&ru->common.txdataF_BF[aa][slot_offsetF],
                        (int*)&ru->common.txdata[aa][slot_offset],
                        fp->ofdm_symbol_size,
                        1,
@@ -166,7 +166,7 @@ void nr_feptx_ofdm(RU_t *ru,int frame_tx,int tti_tx) {
 
   LOG_D(PHY,"feptx_ofdm (TXPATH): frame %d, slot %d: txp (time %p) %d dB, txp (freq) %d dB\n",
 	frame_tx,slot,txdata,dB_fixed(signal_energy((int32_t*)txdata,fp->get_samples_per_slot(
-  slot,fp))),dB_fixed(signal_energy_nodc(ru->common.txdataF_BF[aa],2*slot_sizeF)));
+  slot,fp))),dB_fixed(signal_energy_nodc((int32_t*)ru->common.txdataF_BF[aa],2*slot_sizeF)));
 
 }
 
@@ -212,8 +212,8 @@ void nr_feptx_prec(RU_t *ru,int frame_tx,int tti_tx) {
       bw  = ru->beam_weights[0];
       for (l=0;l<fp->symbols_per_slot;l++) {
         for (aa=0;aa<ru->nb_tx;aa++) {
-          nr_beam_precoding(ru->common.txdataF,
-                            ru->common.txdataF_BF,
+          nr_beam_precoding((int32_t **)ru->common.txdataF,
+                            (int32_t **)ru->common.txdataF_BF,
                             fp,
                             bw,
                             tti_tx,
@@ -250,8 +250,8 @@ void nr_fep_full(RU_t *ru, int slot) {
   for (l = 0; l < fp->symbols_per_slot; l++) {
     for (aa = 0; aa < fp->nb_antennas_rx; aa++) {
       nr_slot_fep_ul(fp,
-                     ru->common.rxdata[aa],
-                     &ru->common.rxdataF[aa][offset],
+                     (int32_t*)ru->common.rxdata[aa],
+                     (int32_t*)&ru->common.rxdataF[aa][offset],
                      l,
                      proc->tti_rx,
                      ru->N_TA_offset);
@@ -307,8 +307,8 @@ void nr_feptx(void *arg) {
      AssertFatal(1==0,"This needs to be fixed, do not use beamforming.\n");
      int32_t ***bw  = ru->beam_weights[0];
      for(int i=0; i<fp->symbols_per_slot; ++i){
-       nr_beam_precoding(ru->gNB_list[0]->common_vars.txdataF,
-                         ru->common.txdataF_BF,
+       nr_beam_precoding((int32_t**)ru->gNB_list[0]->common_vars.txdataF,
+                         (int32_t**) ru->common.txdataF_BF,
                          fp,
                          bw,
                          slot,
@@ -385,8 +385,8 @@ void nr_fep(void* arg) {
   int offset = (tti_rx&3) * fp->symbols_per_slot * fp->ofdm_symbol_size;
   for (int l = startSymbol; l <= endSymbol; l++) 
       nr_slot_fep_ul(fp,
-                     ru->common.rxdata[aid],
-                     &ru->common.rxdataF[aid][offset],
+                     (int32_t*)ru->common.rxdata[aid],
+                     (int32_t*)&ru->common.rxdataF[aid][offset],
                      l,
                      tti_rx,
                      ru->N_TA_offset);

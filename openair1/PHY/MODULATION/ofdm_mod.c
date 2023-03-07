@@ -40,7 +40,7 @@ This section deals with basic functions for OFDM Modulation.
 //#define DEBUG_OFDM_MOD
 
 
-void normal_prefix_mod(c16_t *txdataF, c16_t *txdata,uint8_t nsymb,LTE_DL_FRAME_PARMS *frame_parms)
+void normal_prefix_mod(int32_t *txdataF, int32_t *txdata,uint8_t nsymb,LTE_DL_FRAME_PARMS *frame_parms)
 {
 
 
@@ -308,8 +308,8 @@ void do_OFDM_mod(c16_t **txdataF, c16_t **txdata, uint32_t frame,uint16_t next_s
                        CYCLIC_PREFIX);
         else {
           LOG_D(PHY,"Frame %d, subframe %d: Doing PDCCH modulation\n",frame,next_slot>>1);
-          normal_prefix_mod(&txdataF[aa][slot_offset_F],
-                            &txdata[aa][slot_offset],
+          normal_prefix_mod((int32_t *)&txdataF[aa][slot_offset_F],
+                            (int32_t *)&txdata[aa][slot_offset],
                             2,
                             frame_parms);
         }
@@ -323,8 +323,8 @@ void do_OFDM_mod(c16_t **txdataF, c16_t **txdata, uint32_t frame,uint16_t next_s
                      frame_parms->nb_prefix_samples,               // number of prefix samples
                      CYCLIC_PREFIX);
       else {
-        normal_prefix_mod(&txdataF[aa][slot_offset_F],
-                          &txdata[aa][slot_offset],
+        normal_prefix_mod((int32_t *)&txdataF[aa][slot_offset_F],
+                          (int32_t *)&txdata[aa][slot_offset],
                           7,
                           frame_parms);
       }

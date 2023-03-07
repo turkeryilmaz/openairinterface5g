@@ -58,7 +58,7 @@ static void nr_psbch_quantize(int16_t *psbch_llr8,
   }
 }
 
-static uint16_t nr_psbch_extract(int **rxdataF,
+static uint16_t nr_psbch_extract(c16_t **rxdataF,
                                 const int estimateSz,
                                 struct complex16 dl_ch_estimates[][estimateSz],
                                 struct complex16 rxdataF_ext[][PSBCH_MAX_RE_PER_SYMBOL],
@@ -292,7 +292,7 @@ static void nr_psbch_unscrambling(NR_UE_PSBCH *psbch,
 void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
 {
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  int **txdataF = ue->common_vars.txdataF;
+  c16_t **txdataF = ue->common_vars.txdataF;
   uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
   int txdataF_offset = slot * fp->samples_per_slot_wCP;
 

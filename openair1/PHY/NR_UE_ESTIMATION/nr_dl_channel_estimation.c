@@ -739,7 +739,7 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
 
   uint8_t nushift;
   uint8_t ssb_index=current_ssb->i_ssb;
-  int **rxdataF=ue->common_vars.rxdataF;
+  c16_t **rxdataF=ue->common_vars.rxdataF;
 
   nushift =  0; //ue->frame_parms.Nid_cell%4;
   ue->frame_parms.nushift = nushift;
@@ -1107,7 +1107,7 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
   int ch_offset,symbol_offset;
 
   uint8_t nushift;
-   int **rxdataF=ue->common_vars.rxdataF;
+   c16_t **rxdataF=ue->common_vars.rxdataF;
 
   nushift = 0;// ue->frame_parms.Nid_cell%4;
   ue->frame_parms.nushift = nushift;

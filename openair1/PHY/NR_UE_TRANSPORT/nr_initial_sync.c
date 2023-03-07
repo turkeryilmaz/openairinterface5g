@@ -305,12 +305,14 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     }
     LOG_I(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
           ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
+    const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
+    __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
       for (int i = 0; i < 13; i++)
         nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset,
-                              false, (c16_t *)ue->common_vars.rxdataF[0]);
+                              false, rxdataF);
       LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
       int freq_offset_sss = 0;
       ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);

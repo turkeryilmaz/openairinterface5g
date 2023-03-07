@@ -729,6 +729,7 @@ typedef struct nr_rxtx_thread_data_s {
   UE_nr_rxtx_proc_t proc;
   PHY_VARS_NR_UE    *UE;
   int writeBlockSize;
+  notifiedFIFO_t txFifo;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

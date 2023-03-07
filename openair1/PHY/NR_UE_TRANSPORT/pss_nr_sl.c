@@ -30,7 +30,7 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 
-int nr_sl_generate_pss(int32_t *txdataF,
+int nr_sl_generate_pss(c16_t *txdataF,
                        int16_t amp,
                        uint8_t ssb_start_symbol,
                        NR_DL_FRAME_PARMS *frame_parms)

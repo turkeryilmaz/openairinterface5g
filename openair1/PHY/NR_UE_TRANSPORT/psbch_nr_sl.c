@@ -187,7 +187,7 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
 }
 
 int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
-                         int32_t *txdataF,
+                         c16_t *txdataF,
                          int16_t amp,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,
