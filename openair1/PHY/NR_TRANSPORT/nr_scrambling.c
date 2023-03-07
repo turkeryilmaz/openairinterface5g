@@ -86,12 +86,10 @@ void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t N
     x2 = (Nid << 15) + 1010; // 1010 is following the spec. 38.211, 8.3.1.1
   }
 
-
 #if defined(__x86_64__) || defined(__i386__)
   uint8_t *s8=(uint8_t *)&s;
   __m128i *llr128 = (__m128i*)llr;
   s = lte_gold_generic(&x1, &x2, 1);
-  printf("s0 = 0x%x\n", s);
 
   for (int i = 0, j = 0; i < ((size >> 5) + ((size & 0x1f) > 0 ? 1 : 0)); i++, j += 4) {
     llr128[j]   = _mm_mullo_epi16(llr128[j],byte2m128i[s8[0]]);
@@ -99,7 +97,6 @@ void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t N
     llr128[j+2] = _mm_mullo_epi16(llr128[j+2],byte2m128i[s8[2]]);
     llr128[j+3] = _mm_mullo_epi16(llr128[j+3],byte2m128i[s8[3]]);
     s = lte_gold_generic(&x1, &x2, 0);
-    printf("s%d = 0x%x\n", i, s);
   }
 #else
   uint8_t reset = 1;
@@ -107,7 +104,6 @@ void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t N
   for (uint32_t i=0; i<size; i++) {
     if ((i&0x1f)==0) {
       s = lte_gold_generic(&x1, &x2, reset);
-      printf("ss = 0x%x\n", s);
       reset = 0;
     }
     if (((s>>(i&0x1f))&1)==1)

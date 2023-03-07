@@ -69,7 +69,6 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     const uint8_t b_idx = i & 0x1f;
     if (b_idx == 0) {
       s = lte_gold_generic(&x1, &x2, reset);
-      printf("s 0x%x \n", s);
       reset = 0;
       if (i)
         out++;
@@ -81,7 +80,6 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
       m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
       c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);
       *out ^= ((in[i] + c) & 1) << b_idx;
-      printf("m %d in[%d] 0x%x c 0x%x out 0x%x \n", m_ij, i, in[i], c, *out);
     }
     //LOG_I(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
   }
@@ -111,34 +109,6 @@ void nr_slsch_layer_demapping(int16_t *llr_cw,
       break;
   default:
   AssertFatal(0, "Not supported number of layers %d\n", Nl);
-  }
-}
-
-
-void nr_codeword_unscrambling_sl_org(uint32_t* in,
-                                     uint32_t size,
-                                     uint32_t SCI2_bits,
-                                     uint16_t Nid,
-                                     uint8_t *out)
-{
-  uint8_t reset = 1, c, j = 0;
-  uint32_t x1, x2, s = 0;
-  int m_ij = 0;
-  x2 = (Nid << 15) + 1010; // 1010 is following the spec. 38.211, 8.3.1.1
-  for (int i = 0; i < size; i++) {
-    const uint8_t b_idx = i & 0x1f;
-    if (b_idx == 0) {
-      s = lte_gold_generic(&x1, &x2, reset);
-      printf("s 0x%x \n", s);
-      reset = 0;
-      if (i)
-        in++;
-    }
-    m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
-    c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);
-    out[i]  = ((*in >> i) + c) & 1;
-    printf("m %d *in 0x%x c 0x%x out[%d] %d \n", m_ij, *in, c, i, out[i]);
-    //LOG_I(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
   }
 }
 
@@ -175,47 +145,6 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
   printf("Nl %d, muxed_bits[i]= ", Nl);
   for (int i = 0; i < SCI2_bits * Nl + slssh_bits; i++)
     printf("%u ", out[i]);
-  printf("\n");
-#endif
-}
-
-void nr_pssch_data_control_demultiplexing(uint8_t *in,
-                                        uint32_t slssh_bits,
-                                        uint32_t SCI2_bits,
-                                        uint8_t Nl,
-                                        uint8_t Q_SCI2,
-                                        uint8_t *out_slssh,
-                                        uint8_t *out_sci2)
-{
-  if (Nl == 1) {
-    memcpy(out_sci2, in, SCI2_bits);
-    memcpy(out_slssh, in + SCI2_bits, slssh_bits);
-  } else if (Nl == 2) {
-    uint32_t  M = SCI2_bits / Q_SCI2;
-    uint8_t m = 0;
-    for (int i = 0; i < M; i++) {
-      for (int v = 0; v < Nl; v++) {
-        for (int q = 0; q < Q_SCI2; q++) {
-          if(v == 0)
-            out_sci2[i * Q_SCI2 + q] = in[m];
-          m = m + 1;
-        }
-      }
-    }
-    memcpy(out_slssh, in + SCI2_bits * Nl, slssh_bits);
-  }
-#define DEBUG_NR_SLSCH_MUX 1
-#ifdef DEBUG_NR_SLSCH_MUX
-  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
-  printf("Nl %d, demuxed sci2_bits[i]= ", Nl);
-  for (int i = 0; i < SCI2_bits; i++) {
-    printf("%u ", out_sci2[i]);
-  }
-  printf("\n");
-  printf("Nl %d, demuxed slssh_bits[i]= ", Nl);
-  for (int i = 0; i < slssh_bits; i++) {
-    printf("%u ", out_slssh[i]);
-  }
   printf("\n");
 #endif
 }
