@@ -33,6 +33,12 @@
 #include "PHY/sse_intrin.h"
 #include "nrLDPC_intrinsics.h"
 
+/**
+   \brief Performs BN processing on the CN results buffer and stores the results in the LLR results buffer as well as the CN results buffer.
+          At every BN, the sum of the returned LLRs from the connected CNs and the LLR of the receiver input is computed.
+   \param p_lut Pointer to decoder LUTs
+   \param Z Lifting size
+*/
 static inline void nrLDPC_bnProcPcOpt3(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, int8_t* llr, int8_t* llrRes, uint16_t Z, uint8_t BG)
 {
     const uint32_t* p_addrEdgeInCnBuffer = p_lut->addrEdgeInCnBuffer;
@@ -70,19 +76,14 @@ static inline void nrLDPC_bnProcPcOpt3(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, i
 
     uint32_t c;
     uint32_t r;
-    uint32_t i,j;
-    uint16_t M;
+    int32_t i,j;
+    int16_t M;
         
     uint16_t remShift;
     uint16_t remShift32;
-    uint16_t M1;
-
-    // TODO no need for set to 0
-    // int16_t llrResTmp[384] __attribute__ ((aligned(64))) = {0};
-    // int8_t  cnShifted[30*384] __attribute__ ((aligned(64))) = {0};
-    // int8_t tmp[64] __attribute__ ((aligned(64))) = {0};
+    int16_t M1;
+    const __m256i* p_minLLR = (__m256i*) minLLR256_epi8;
     int16_t llrResTmp[384] __attribute__ ((aligned(64)));
-    // int8_t  cnShifted[30*384] __attribute__ ((aligned(64)));
     int8_t tmp[64] __attribute__ ((aligned(64)));
 
     __m256i* p_tmp256 = (__m256i*)tmp;
@@ -212,12 +213,14 @@ static inline void nrLDPC_bnProcPcOpt3(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, i
             // First 16 LLRs of first CN
             ymm1 = simde_mm256_cvtepi8_epi16(p_cnProcBufRes128[0]);
 
-            *p_llrResTmp256++ = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            *p_llrResTmp256 = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            p_llrResTmp256++;
 
             // Second 16 LLRs of first CN
             ymm1 = simde_mm256_cvtepi8_epi16(p_cnProcBufRes128[1]);
 
-            *p_llrResTmp256++ = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            *p_llrResTmp256 = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            p_llrResTmp256++;
             }
             // Wrap around
             p_tmp256[0] = simde_mm256_loadu_si256((__m256i*)&p_cnProcBufRes[Z-32]);
@@ -227,12 +230,14 @@ static inline void nrLDPC_bnProcPcOpt3(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, i
             // First 16 LLRs of first CN
             ymm1 = simde_mm256_cvtepi8_epi16(p_cnProcBufRes128[0]);
 
-            *p_llrResTmp256++ = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            *p_llrResTmp256 = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            p_llrResTmp256++;
 
             // Second 16 LLRs of first CN
             ymm1 = simde_mm256_cvtepi8_epi16(p_cnProcBufRes128[1]);
 
-            *p_llrResTmp256++ = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            *p_llrResTmp256 = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+            p_llrResTmp256++;
 
             // First half
 
@@ -245,12 +250,14 @@ static inline void nrLDPC_bnProcPcOpt3(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, i
                 // First 16 LLRs of first CN
                 ymm1 = simde_mm256_cvtepi8_epi16(p_cnProcBufRes128[0]);
 
-                *p_llrResTmp256++ = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+                *p_llrResTmp256 = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+                p_llrResTmp256++;
 
                 // Second 16 LLRs of first CN
                 ymm1 = simde_mm256_cvtepi8_epi16(p_cnProcBufRes128[1]);
 
-                *p_llrResTmp256++ = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+                *p_llrResTmp256 = simde_mm256_adds_epi16(ymm1, *p_llrResTmp256);
+                p_llrResTmp256++;
             }
 
 
@@ -283,6 +290,8 @@ static inline void nrLDPC_bnProcPcOpt3(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, i
             ymmRes1 = p_llrResTmp256[j+1];
             // Pack results back to epi8
             ymm0 = simde_mm256_packs_epi16(ymmRes0, ymmRes1);
+            // We need to saturate -128 to -127
+            // ymm0 = simde_mm256_max_epi8(ymm0, *p_minLLR); // 128 in epi8 is -127
             // ymm0     = [ymmRes1[255:128] ymmRes0[255:128] ymmRes1[127:0] ymmRes0[127:0]]
             // p_llrRes = [ymmRes1[255:128] ymmRes1[127:0] ymmRes0[255:128] ymmRes0[127:0]]
             *p_llrRes = simde_mm256_permute4x64_epi64(ymm0, 0xD8);
