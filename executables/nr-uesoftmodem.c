@@ -259,6 +259,7 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
                                         int N_RB_UL,
                                         int mu,
                                         int Nid_SL,
+                                        int CC_id,
                                         uint64_t position_in_burst)
 {
   uint64_t rev_burst = 0;
@@ -280,8 +281,8 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
-  nrUE_config->carrier_config.dl_frequency               = 450000;
-  nrUE_config->carrier_config.uplink_frequency           = 450000;
+  nrUE_config->carrier_config.dl_frequency               = downlink_frequency[CC_id][0] / 1000;
+  nrUE_config->carrier_config.uplink_frequency           = downlink_frequency[CC_id][0] / 1000;
   ue->mac_enabled                                        = 1;
   fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
   fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
@@ -308,24 +309,17 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   for (int i = 0; i < len; i++) {
     ue->slss->sl_mib[i] = 0;
   }
-  #if 1
   ue->slss->sl_mib_length = 32;
   ue->slss->sl_numssb_withinperiod_r16 = 2;
   ue->slss->sl_timeinterval_r16 = 20;
   ue->slss->sl_timeoffsetssb_r16 = 2;
-
   ue->slss->sl_numssb_withinperiod_r16_copy = 2;
   ue->slss->sl_timeinterval_r16_copy = 20;
   ue->slss->sl_timeoffsetssb_r16_copy = 2;
-  #endif
   ue->slss->slss_id = Nid_SL;
   ue->is_synchronized_sl = 0;
   ue->UE_fo_compensation = 0;
   ue->sync_ref = get_softmodem_params()->sync_ref;
-
-  nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
-  init_timeshift_rotation(fp);
-  init_symbol_rotation(fp);
   ue->configured = true;
   LOG_I(NR_PHY, "nrUE configured\n");
 }
@@ -577,22 +571,26 @@ int main( int argc, char **argv ) {
       memset(UE[CC_id],0,sizeof(PHY_VARS_NR_UE));
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-      if (get_softmodem_params()->sl_mode == 2) {
-          nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
+      if (get_softmodem_params()->sl_mode != 0) {
+        mac->if_module = NULL;
+        LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
+        nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, CC_id, SSB_positions);
       }
-      uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
-      mac->nr_band = nr_band;
-      nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
-                                downlink_frequency[CC_id][0],
-                                uplink_frequency_offset[CC_id][0],
-                                get_softmodem_params()->numerology,
-                                nr_band);
-
-      if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
-        mac->if_module->phy_config_request(&mac->phy_config);
-      if (get_softmodem_params()->sl_mode != 2) {
+      if (get_softmodem_params()->sa) {
+        uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
+        mac->nr_band = nr_band;
+        nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
+                                  downlink_frequency[CC_id][0],
+                                  uplink_frequency_offset[CC_id][0],
+                                  get_softmodem_params()->numerology,
+                                  nr_band);
+      } else {
+        if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
+          mac->if_module->phy_config_request(&mac->phy_config);
         nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, &UE[CC_id]->nrUE_config,
-                                *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
+                               get_softmodem_params()->sl_mode == 0 ?
+                               *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
+                               UE[CC_id]->frame_parms.nr_band);
       }
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
