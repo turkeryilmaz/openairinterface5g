@@ -1106,8 +1106,8 @@ int main(int argc, char **argv)
                          frame_parms->nb_prefix_samples,
                          CYCLIC_PREFIX);
           } else {
-            nr_normal_prefix_mod(&gNB->common_vars.txdataF[aa][txdataF_offset],
-                                 &txdata[aa][tx_offset],
+            nr_normal_prefix_mod((c16_t *)&gNB->common_vars.txdataF[aa][txdataF_offset],
+                                 (c16_t *)&txdata[aa][tx_offset],
                                  14,
                                  frame_parms,
                                  slot);

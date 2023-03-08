@@ -523,11 +523,11 @@ int main(int argc, char **argv)
       for (int aatx=0;aatx<1;aatx++)
         bzero(txdataF[aatx],frame_parms->ofdm_symbol_size*sizeof(int));
       if(format==0 && do_DTX==0){
-        nr_generate_pucch0(UE, txdataF, frame_parms, amp, nr_slot_tx, &pucch_tx_pdu);
+        nr_generate_pucch0(UE, (c16_t **)txdataF, frame_parms, amp, nr_slot_tx, &pucch_tx_pdu);
       } else if (format == 1 && do_DTX==0){
-        nr_generate_pucch1(UE, txdataF, frame_parms, amp, nr_slot_tx, &pucch_tx_pdu);
+        nr_generate_pucch1(UE, (c16_t **)txdataF, frame_parms, amp, nr_slot_tx, &pucch_tx_pdu);
       } else if (do_DTX == 0){
-        nr_generate_pucch2(UE, txdataF, frame_parms, amp, nr_slot_tx, &pucch_tx_pdu);
+        nr_generate_pucch2(UE, (c16_t **)txdataF, frame_parms, amp, nr_slot_tx, &pucch_tx_pdu);
       }
 
       // SNR Computation

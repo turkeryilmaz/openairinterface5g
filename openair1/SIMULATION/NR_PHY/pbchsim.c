@@ -619,7 +619,7 @@ int main(int argc, char **argv)
         for (aa=0; aa<gNB->frame_parms.nb_antennas_tx; aa++) {
           if (cyclic_prefix_type == 1) {
             apply_nr_rotation(frame_parms,
-                              (int16_t*)gNB->common_vars.txdataF[aa],
+                              (c16_t*)gNB->common_vars.txdataF[aa],
                               slot,
                               0,
                               12);
@@ -632,7 +632,7 @@ int main(int argc, char **argv)
             CYCLIC_PREFIX);
           } else {
             apply_nr_rotation(frame_parms,
-                              (int16_t*)gNB->common_vars.txdataF[aa],
+                              (c16_t*)gNB->common_vars.txdataF[aa],
                               slot,
                               0,
                               14);

@@ -81,7 +81,7 @@ int front_end_chanEst(PHY_VARS_UE *ue,
              unsigned char Ns,
             int reset_freq_est);
 
-void apply_7_5_kHz(PHY_VARS_UE *phy_vars_ue, c16_t*txdata, uint8_t subframe);
+void apply_7_5_kHz(PHY_VARS_UE *phy_vars_ue,  int32_t*txdata, uint8_t subframe);
 
 
 int compute_BF_weights(int32_t **beam_weights, int32_t **calib_dl_ch_estimates, PRECODE_TYPE_t precode_type, int nb_ant, int nb_freq);

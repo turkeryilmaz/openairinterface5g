@@ -707,8 +707,8 @@ void ulsch_detection_mrc(LTE_DL_FRAME_PARMS *frame_parms,
 #endif
 }
 
-void ulsch_extract_rbs_single(c16_t **rxdataF,
-                              c16_t **rxdataF_ext,
+void ulsch_extract_rbs_single(int32_t **rxdataF,
+                              int32_t **rxdataF_ext,
                               uint32_t first_rb,
                               uint32_t nb_rb,
                               uint8_t l,
@@ -716,7 +716,7 @@ void ulsch_extract_rbs_single(c16_t **rxdataF,
                               LTE_DL_FRAME_PARMS *frame_parms) {
   uint16_t nb_rb1,nb_rb2;
   uint8_t aarx;
-  c16_t *rxF,*rxF_ext;
+  int32_t *rxF,*rxF_ext;
   //uint8_t symbol = l+Ns*frame_parms->symbols_per_tti/2;
   uint8_t symbol = l+((7-frame_parms->Ncp)*(Ns&1)); ///symbol within sub-frame
   AssertFatal((frame_parms->nb_antennas_rx>0) && (frame_parms->nb_antennas_rx<5),

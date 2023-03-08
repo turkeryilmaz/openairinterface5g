@@ -326,7 +326,7 @@ int main(int argc, char **argv) {
 
   printf("SNR0 %f, SNR1 %f\n",snr0,snr1);
   frame_parms = &eNB->frame_parms;
-  txdata = UE->common_vars.txdata;
+  txdata = (int**)UE->common_vars.txdata;
   printf("txdata %p\n",&txdata[0][subframe*frame_parms->samples_per_tti]);
   s_re = malloc(2*sizeof(double *));
   s_im = malloc(2*sizeof(double *));

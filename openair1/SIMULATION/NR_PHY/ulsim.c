@@ -1270,7 +1270,7 @@ int main(int argc, char **argv)
           tx_offset = frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0);
           txlev_sum = 0;
           for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
-            atxlev[aa] = signal_energy(&UE->common_vars.txdata[aa][tx_offset + 5 * frame_parms->ofdm_symbol_size + 4 * frame_parms->nb_prefix_samples + frame_parms->nb_prefix_samples0],
+            atxlev[aa] = signal_energy((int32_t *)&UE->common_vars.txdata[aa][tx_offset + 5 * frame_parms->ofdm_symbol_size + 4 * frame_parms->nb_prefix_samples + frame_parms->nb_prefix_samples0],
                                        frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples);
 
             txlev_sum += atxlev[aa];
@@ -1328,7 +1328,7 @@ int main(int argc, char **argv)
 
         for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++)  {
           apply_nr_rotation_ul(&gNB->frame_parms,
-                               gNB->common_vars.rxdataF[aa],
+                               (c16_t *)gNB->common_vars.rxdataF[aa],
                                slot,
                                0,
                                gNB->frame_parms.Ncp == EXTENDED ? 12 : 14);
