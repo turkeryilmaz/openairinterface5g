@@ -147,7 +147,7 @@ int main(int argc, char **argv)
   int loglvl = OAILOG_WARNING;
   uint64_t SSB_positions=0x01;
   uint16_t nb_symb_sch = 12;
-  uint16_t nb_rb = 50;
+  uint16_t nb_rb = 106;
   uint8_t Imcs = 9;
   uint8_t Nl = 1;
   uint8_t max_ldpc_iterations = 5;
@@ -508,7 +508,7 @@ int main(int argc, char **argv)
   ////////////////////////////////////////////////////////////////////////////////////////////
 
   for (i = 0; i < TBS / 8; i++)
-    test_input[i] = (unsigned char) rand();
+    test_input[i] = (unsigned char) (i+3);//rand();
 
 #ifdef DEBUG_NR_ULSCHSIM
   for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n",test_input[i]);
@@ -607,18 +607,19 @@ int main(int argc, char **argv)
       for (i = 0; i < TBS; i++) {
         estimated_output_bit[i] = (ulsch_gNB->harq_processes[harq_pid]->b[i/8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+        printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
 
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
       }
-/*
+
       if (errors_bit > 0) {
         n_false_positive++;
         if (n_trials == 1)
           printf("errors_bit %u (trial %d)\n", errors_bit, trial);
       }
-      printf("\n");*/
+      printf("\n");
     }
     
     printf("*****************************************\n");

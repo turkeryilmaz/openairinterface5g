@@ -1143,6 +1143,7 @@ typedef struct
   uint8_t  harq_process_id;
   uint8_t  new_data_indicator;
   uint32_t tb_size;
+  uint8_t sci2_size;
   uint16_t num_cb;
   uint8_t cb_present_and_position[(NFAPI_MAX_NUM_CB+7) / 8];
 

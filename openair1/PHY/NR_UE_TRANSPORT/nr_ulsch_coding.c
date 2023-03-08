@@ -224,7 +224,7 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
     int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER*harq_process->pusch_pdu.nrOfLayers*1056;
 
-    nr_attach_crc_to_payload(harq_process, max_payload_bytes, A);
+    nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
 
 ///////////
 ///////////////////////////////////////////////////////////////////////////

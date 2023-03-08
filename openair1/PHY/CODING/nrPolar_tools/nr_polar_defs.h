@@ -43,6 +43,7 @@
 #include "PHY/CODING/nrPolar_tools/nr_polar_uci_defs.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_psbch_defs.h"
+#include "PHY/CODING/nrPolar_tools/nr_polar_pssch_defs.h"
 #include "PHY/CODING/coding_defs.h"
 //#include "SIMULATION/TOOLS/sim.h"
 

@@ -118,6 +118,16 @@ typedef struct {
   uint8_t BG;
   // LDPC lifting size
   uint32_t Z;
+  //pointer to SCI2 payload from MAC interface
+  uint64_t *a_sci2;
+  //pointer to sci2 after crc + polar encoding and rate matching stored in bytes
+  uint8_t *b_sci2;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
+  uint32_t B_sci2;
+  // pointer ot output of polar encoder stored in bits
+  uint8_t *f_sci2;
+
+
 } NR_UL_UE_HARQ_t;
 
 typedef struct {
@@ -175,8 +185,12 @@ typedef struct {
   uint32_t TBS;
   /// The payload + CRC size in bits
   uint32_t B;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
+  uint32_t B_sci2;
   /// Pointer to the payload
   uint8_t *b;
+  /// Pointer to the sci2 payload
+  uint8_t *b_sci2;
   /// Pointers to transport block segments
   uint8_t **c;
   /// soft bits for each received segment ("d"-sequence)(for definition see 36-212 V8.6 2009-03, p.15)
