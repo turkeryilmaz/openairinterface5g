@@ -444,8 +444,8 @@ typedef struct gNB_L1_proc_t_s {
   pthread_t L1_stats_thread;
   /// pthread structure for printing time meas
   pthread_t process_stats_thread;
-  /// pthread structure for reordering L1 tx thread messages
-  pthread_t pthread_tx_reorder;
+  /// pthread structure for sending samples to RU
+  pthread_t RU_tx_thread;
   /// flag to indicate first RX acquisition
   int first_rx;
   /// flag to indicate first TX transmission
@@ -747,7 +747,6 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t resp_L1;
   notifiedFIFO_t L1_tx_free;
   notifiedFIFO_t L1_tx_filled;
-  notifiedFIFO_t L1_tx_out;
   notifiedFIFO_t resp_RU_tx;
   tpool_t threadPool;
   int nbDecode;
@@ -756,6 +755,9 @@ typedef struct PHY_VARS_gNB_s {
   rt_L1_profiling_t rt_L1_profiling; 
   /// holds pointer to Tx thread messages. Used only for freeing at exit
   struct processingData_L1tx *txThreadData[NUM_TX_TH];
+  /// for tx slot wait if finished out of order
+  notifiedFIFO_t tx_wait[NUM_TX_TH];
+  _Atomic int tx_wait_idx;
 } PHY_VARS_gNB;
 
 typedef struct LDPCDecode_s {
