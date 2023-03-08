@@ -1028,6 +1028,8 @@ typedef struct {
   int dl_errors;
   int dl_stats[8];
   void* scopeData;
+  tpool_t threadPool;
+  notifiedFIFO_t respDecode;
 } PHY_VARS_NR_UE;
 
 /* this structure is used to pass both UE phy vars and
