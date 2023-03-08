@@ -293,8 +293,8 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   uint16_t Nid1;
   uint8_t Nid2 = ue->common_vars.N2_id;
   *tot_metric = INT_MIN;
-  int16_t *sss0 = (int16_t*)&sss0_ext[0][0];
-  int16_t *sss1 = (int16_t*)&sss1_ext[0][0];
+  c16_t *sss0 = &sss0_ext[0][0];
+  c16_t *sss1 = &sss1_ext[0][0];
   int32_t metric = 0;
   int32_t metric_re = 0;
   int16_t *d;
@@ -305,8 +305,8 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
       d = (int16_t *)&d_sss[Nid2][Nid1];
       // This is the inner product using one particular value of each unknown parameter
       for (int i = 0; i < LENGTH_SSS_NR; i++) {
-        metric_re += d[i] * (((phase_re_nr[phase] * sss0[2 *i ]) >> SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase] * sss0[2 * i + 1]) >> SCALING_METRIC_SSS_NR)) +
-                     d[i] * (((phase_re_nr[phase] * sss1[2 *i ]) >> SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase] * sss1[2 * i + 1]) >> SCALING_METRIC_SSS_NR));
+        metric_re += d[i] * (((phase_re_nr[phase] * sss0[i].r) >> SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase] * sss0[i].i) >> SCALING_METRIC_SSS_NR)) +
+                     d[i] * (((phase_re_nr[phase] * sss1[i].r) >> SCALING_METRIC_SSS_NR) - ((phase_im_nr[phase] * sss1[i].i) >> SCALING_METRIC_SSS_NR));
       }
       metric = metric_re;
       if (metric > *tot_metric) {
@@ -338,10 +338,10 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   int im = 0;
   d = (int16_t *)&d_sss[Nid2][Nid1];
   for(int i = 0; i < LENGTH_SSS_NR; i++) {
-    re += d[i] * sss0[2 * i];
-    im += d[i] * sss0[2 * i + 1];
-    re += d[i] * sss1[2 * i];
-    im += d[i] * sss1[2 * i + 1];
+    re += d[i] * sss0[i].r;
+    im += d[i] * sss0[i].i;
+    re += d[i] * sss1[i].r;
+    im += d[i] * sss1[i].i;
   }
 
   double ffo_sss = atan2(im, re) / M_PI / 4.3;
