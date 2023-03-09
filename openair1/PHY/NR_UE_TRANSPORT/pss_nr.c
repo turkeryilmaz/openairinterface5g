@@ -622,7 +622,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 
   #ifndef NR_UNIT_TEST
 
-    LOG_D(NR_PHY, "PSS execution duration %4d microseconds \n", duration_ms);
+    printf("PSS execution duration %4d microseconds \n", duration_ms);
 
   #endif
 

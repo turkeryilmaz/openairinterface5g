@@ -553,7 +553,7 @@ int main( int argc, char **argv ) {
       init_pdcp(0);
     }
     else {
-      init_pdcp(node_number + ue_id_g);
+      init_pdcp(mode_offset + ue_id_g);
     }
   }
 
@@ -579,6 +579,7 @@ int main( int argc, char **argv ) {
       PHY_vars_UE_g[0][CC_id] = (PHY_VARS_NR_UE *)malloc(sizeof(PHY_VARS_NR_UE));
       UE[CC_id] = PHY_vars_UE_g[0][CC_id];
       memset(UE[CC_id],0,sizeof(PHY_VARS_NR_UE));
+
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
       if (get_softmodem_params()->sl_mode != 0) {
@@ -602,6 +603,7 @@ int main( int argc, char **argv ) {
                                *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
                                UE[CC_id]->frame_parms.nr_band);
       }
+
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
 

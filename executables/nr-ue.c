@@ -454,7 +454,6 @@ static void UE_synch(void *arg) {
           UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
         }
       }
-
       break;
 
     case si:
@@ -647,7 +646,6 @@ void UE_processing(nr_rxtx_thread_data_t *rxtxD) {
 
   ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
 }
-
 
 void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockSize) {
   void *dummy_tx[UE->frame_parms.nb_antennas_tx];
@@ -1051,6 +1049,7 @@ void *UE_thread(void *arg) {
   bool syncRunning=false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
   int absolute_slot=0, decoded_frame_rx=INT_MAX, trashed_frames=0;
+  //LOG_I(PHY,"Process slot %d total gain %d\n", slot_nr, UE->rx_total_gain_dB);
 
   while (!oai_exit) {
     if (UE->lost_sync) {
@@ -1221,7 +1220,6 @@ void *UE_thread(void *arg) {
 
   return NULL;
 }
-
 
 void init_NR_UE(int nb_inst,
                 char* uecap_file,

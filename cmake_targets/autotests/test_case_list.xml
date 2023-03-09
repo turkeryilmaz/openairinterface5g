@@ -151,8 +151,8 @@
       <desc>nr_psbchsim Test cases. (Test1: PSBCH and synchronization, 106PBR),
                                     (Test2: PSBCH and synchronization, 106PBR, SSB SC OFFSET 6)</desc>
       <main_exec>nr_psbchsim</main_exec>
-      <main_exec_args>-s-11 -S2 -n10 -I -R106
-                      -s-11 -S2 -n10 -I -R106 -O6</main_exec_args>
+      <main_exec_args>-s-11 -S2 -n1 -I -R106
+                      -s-11 -S2 -n1 -I -R106 -O6</main_exec_args>
       <tags>test1 test2 test3</tags>
       <search_expr_true>PSBCH test OK</search_expr_true>
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>

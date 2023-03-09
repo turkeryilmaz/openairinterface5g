@@ -121,7 +121,7 @@ void free_psbchsim_members(PHY_VARS_NR_UE *UE,
                            double **s_im,
                            double **r_re,
                            double **r_im,
-                           int **txdata,
+                           c16_t **txdata,
                            FILE *input_fd)
 {
   term_nr_ue_signal(UE, 1);
@@ -409,14 +409,14 @@ int main(int argc, char **argv)
   double **s_im = malloc(2 * sizeof(double*));
   double **r_re = malloc(2 * sizeof(double*));
   double **r_im = malloc(2 * sizeof(double*));
-  int **txdata = calloc(2, sizeof(int*));
+  c16_t **txdata = calloc(2, sizeof(c16_t*));
   for (int i = 0; i < 2; i++) {
     s_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     s_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     r_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     r_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     printf("Allocating %d samples for txdata\n", frame_length_complex_samples);
-    txdata[i] = malloc16_clear(2 * frame_length_complex_samples * sizeof(int));
+    txdata[i] = malloc16_clear(2 * frame_length_complex_samples * sizeof(c16_t));
   }
 
   UE->slss = calloc(1, sizeof(*UE->slss));
@@ -508,8 +508,8 @@ int main(int argc, char **argv)
     for (int trial = 0; trial < n_trials; trial++) {
       for (int i = 0; i < frame_length_complex_samples; i++) {
         for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
-          r_re[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1)]);
-          r_im[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1) + 1]);
+          r_re[aa][i] = ((double)txdata[aa][i].r);
+          r_im[aa][i] = ((double)txdata[aa][i].i);
         }
       }
 
