@@ -52,7 +52,6 @@
 #include "executables/nr-uesoftmodem.h"
 #include "PHY/impl_defs_top.h"
 
-#define DEBUG_NR_SLSCHSIM
 //#define DEBUG_NR_SLSCHSIM
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 #define SCI2_LEN_SIZE 35
@@ -67,7 +66,6 @@ const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
 PHY_VARS_NR_UE *PHY_vars_UE_g[1][1] = { { NULL } };
 uint16_t n_rnti = 0x1234;
 openair0_config_t openair0_cfg[MAX_CARDS];
-double **s_re, **s_im, **r_re, **r_im;
 
 uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
@@ -391,16 +389,10 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
   return;
 }
 
-/// @brief
-/// @param argc
-/// @param argv
-/// @return
 int main(int argc, char **argv)
 {
   // **** Initialization ****
-  int i;
   double snr_step = 0.2;
-  //uint8_t write_output_file = 0;
   int frame = 0, slot = 0;
   unsigned char qbits = 8;
   uint64_t burst_position = 0x01;
@@ -456,22 +448,8 @@ int main(int argc, char **argv)
     free(syncRefUE);
     exit(-1);
   }
-
   init_nr_ue_transport(nearbyUE);
   init_nr_ue_transport(syncRefUE);
-
-  s_re = malloc(n_tx*sizeof(double*));
-  s_im = malloc(n_tx*sizeof(double*));
-  r_re = malloc(n_rx*sizeof(double*));
-  r_im = malloc(n_rx*sizeof(double*));
-
-  unsigned char harq_pid = 0;
-  unsigned int TBS = 8424;
-  uint32_t available_bits = 0;
-  uint32_t G_SCI2_bits = 0;
-  uint32_t G_slsch_bits = 0;
-  uint32_t M_SCI2_bits = 0;
-  uint32_t M_data_bits = 0;
 
   uint8_t number_dmrs_symbols = 2;
   uint16_t N_RE_prime;
@@ -480,25 +458,27 @@ int main(int argc, char **argv)
 
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
-  uint8_t nb_codewords = 1;
+  if ((Nl == 4) || (Nl == 3))
+    nb_re_dmrs = nb_re_dmrs * 2;
   uint8_t Imcs = 9;
+  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
+  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
+  uint8_t nb_codewords = 1;
   uint16_t nb_symb_sch = 12;
+  uint32_t available_bits = 0;
+  uint32_t G_SCI2_bits = 0;
+  uint32_t G_slsch_bits = 0;
+  uint32_t M_SCI2_bits = 0;
+  uint32_t M_data_bits = 0;
+  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
+  unsigned int TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*number_dmrs_symbols, 0, 0, Nl);
+  printf("\nG_slsch_bits %u TBS %u mod_order %d TBS/8 %d\n", G_slsch_bits, TBS, mod_order, TBS / 8);
 
+  unsigned char harq_pid = 0;
   NR_UE_DLSCH_t *slsch_syncRefUE = syncRefUE->slsch_rx[UE_id][0][0];
   NR_DL_UE_HARQ_t *harq_process_syncRefUE = slsch_syncRefUE->harq_processes[harq_pid];
   nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_syncRefUE->pssch_pdu;
   NR_UE_ULSCH_t *slsch_ue = nearbyUE->slsch[0][0];
-
-  if ((Nl == 4)||(Nl == 3))
-    nb_re_dmrs = nb_re_dmrs*2;
-
-  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);//{2,6790},
-  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);//{2,6790},
-  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
-  TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*number_dmrs_symbols, 0, 0, Nl);
-  // Available bits 27984 TBS 18432 mod_order 2
-  printf("\nG_slsch_bits %u TBS %u mod_order %d TBS/8 %d\n", G_slsch_bits, TBS, mod_order, TBS / 8);
-
 
   /////////// setting rel15_ul parameters ///////////
   rel16_ul->mcs_index           = Imcs;
@@ -508,28 +488,6 @@ int main(int argc, char **argv)
   rel16_ul->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
 
   /////////////////////////[adk] preparing UL harq_process parameters/////////////////////////
-  ///////////
-  NR_UL_UE_HARQ_t *harq_process_nearbyUE = slsch_ue->harq_processes[harq_pid];
-  DevAssert(harq_process_nearbyUE);
-
-  uint8_t N_PRB_oh   = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
-  N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
-  harq_process_nearbyUE->pssch_pdu.mcs_index = Imcs;
-  harq_process_nearbyUE->pssch_pdu.nrOfLayers = Nl;
-  harq_process_nearbyUE->pssch_pdu.rb_size = N_RB;
-  harq_process_nearbyUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_nearbyUE->num_of_mod_symbols = N_RE_prime * N_RB * nb_codewords;
-  harq_process_nearbyUE->pssch_pdu.pssch_data.rv_index = rvidx;
-  harq_process_nearbyUE->pssch_pdu.pssch_data.tb_size  = TBS>>3;
-  harq_process_nearbyUE->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
-  harq_process_nearbyUE->pssch_pdu.target_code_rate = code_rate;
-  harq_process_nearbyUE->pssch_pdu.qam_mod_order = mod_order;
-  uint64_t *sci_input = harq_process_nearbyUE->a_sci2;
-  //SCI_2_A *sci2 = &harq_process_nearbyUE->pssch_pdu.sci2;
-  SCI_1_A *sci1 = &harq_process_nearbyUE->pssch_pdu.sci1;
-  set_sci(sci1, Imcs);
-  unsigned char *test_input = harq_process_nearbyUE->a;
-
 
   NR_UE_DLSCH_t *slsch_ue_rx = syncRefUE->slsch_rx[0][0][0];
   slsch_ue_rx->harq_processes[harq_pid]->Nl = Nl;
@@ -549,75 +507,49 @@ int main(int argc, char **argv)
   rel16_sl_rx->pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
   rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
 
-  uint64_t u = pow(2, SCI2_LEN_SIZE) - 1;
-  *sci_input = u;//rand() % (u - 0 + 1);
-  printf("the sci2 is:%"PRIu64"\n", *sci_input);
+  NR_UL_UE_HARQ_t *harq_process_nearbyUE = slsch_ue->harq_processes[harq_pid];
+  DevAssert(harq_process_nearbyUE);
+  uint8_t N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
+  N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
+  harq_process_nearbyUE->pssch_pdu.mcs_index = Imcs;
+  harq_process_nearbyUE->pssch_pdu.nrOfLayers = Nl;
+  harq_process_nearbyUE->pssch_pdu.rb_size = N_RB;
+  harq_process_nearbyUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_nearbyUE->num_of_mod_symbols = N_RE_prime * N_RB * nb_codewords;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.rv_index = rvidx;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
+  harq_process_nearbyUE->pssch_pdu.target_code_rate = code_rate;
+  harq_process_nearbyUE->pssch_pdu.qam_mod_order = mod_order;
+  unsigned char *test_input = harq_process_nearbyUE->a;
+  uint64_t *sci_input = harq_process_nearbyUE->a_sci2;
+
+  //SCI_2_A *sci2 = &harq_process_nearbyUE->pssch_pdu.sci2;
+  SCI_1_A *sci1 = &harq_process_nearbyUE->pssch_pdu.sci1;
+  set_sci(sci1, Imcs);
 
   crcTableInit();
   for (int i = 0; i < TBS / 8; i++)
     test_input[i] = (unsigned char) (i+3);//rand();
 
-  ////////////////////////////////////////////////////////////////////////////////////////////
+  uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
+  *sci_input = u;//rand() % (u - 0 + 1);
+  printf("the sci2 is:%"PRIu64"\n",*sci_input);
 
-//#define DEBUG_NR_SLSCHSIM 1
-#ifdef DEBUG_NR_SLSCHSIM
-  for (i = 0; i < 10; i++)
-   test_input[i] = i;//(unsigned char) rand();
-  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
-  for (i = 0; i < 10; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+#ifdef DEBUG_NR_ULSCHSIM
+  for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
 #endif
 
-  /////////////////////////SLSCH SCI2 coding/////////////////////////
-  // TODO: update the following
-  PSSCH_SCI2_payload pssch_payload;
-  NR_UE_PSSCH m_pssch;
-  nearbyUE->pssch_vars[0] = &m_pssch;
-  NR_UE_PSSCH *pssch = nearbyUE->pssch_vars[0];
-  memset((void *)pssch, 0, sizeof(NR_UE_PSSCH));
 
-  pssch->pssch_a = *((uint32_t *)&pssch_payload);
-  pssch->pssch_a_interleaved = pssch->pssch_a; // skip interlevaing for Sidelink
-
-  // Encoder reversal
-  uint64_t a_reversed = 0;
-  for (int i = 0; i < NR_POLAR_PSSCH_PAYLOAD_BITS; i++)
-    a_reversed |= (((uint64_t)pssch->pssch_a_interleaved >> i) & 1) << (31 - i);
-  uint16_t Nidx = 0;
-
-#if 0
-  Nidx = get_Nidx_from_CRC(&a_reversed, 0, 0,
-                           NR_POLAR_PSSCH_MESSAGE_TYPE,
-                           NR_POLAR_PSSCH_PAYLOAD_BITS,
-                           NR_POLAR_PSSCH_AGGREGATION_LEVEL);
-
-  /// CRC, coding and rate matching
-  polar_encoder_fast(&a_reversed, (void*)pssch->pssch_e, 0, 0,
-                     NR_POLAR_PSSCH_MESSAGE_TYPE,
-                     NR_POLAR_PSSCH_PAYLOAD_BITS,
-                     NR_POLAR_PSSCH_AGGREGATION_LEVEL);
-  SCI2_bits = NR_POLAR_PSSCH_E;
-  available_bits += NR_POLAR_PSSCH_E;
-#endif
-
-  /////////////////////////SLSCH data coding/////////////////////////
+  /////////////////////////SLSCH coding/////////////////////////
 
   G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
   if (input_fd == NULL) {
-    //nr_slsch_encoding(nearbyUE, slsch_ue, frame_parms, harq_pid, G_slsch_bits);
+    nr_slsch_encoding(nearbyUE, slsch_ue, &nearbyUE->frame_parms, harq_pid, G_slsch_bits);
   }
+  G_SCI2_bits = harq_process_nearbyUE->B_sci2;
 
   //////////////////SLSCH data and control multiplexing//////////////
-
-  // TODO: Remove the following hard coded case.
-  G_SCI2_bits = 32;
-  pssch->pssch_e[0] = 0x0101;//-> 0011
-
-  G_slsch_bits = 32;
-  harq_process_nearbyUE->f[0] = 0;
-  harq_process_nearbyUE->f[1] = 1;
-  harq_process_nearbyUE->f[2] = 0;
-  harq_process_nearbyUE->f[3] = 1;
-  // TODO: Remove the above hard coded case.
 
   M_SCI2_bits = G_SCI2_bits * Nl;
   M_data_bits = G_slsch_bits;
@@ -628,7 +560,7 @@ int main(int argc, char **argv)
   memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
 
   nr_pssch_data_control_multiplexing(harq_process_nearbyUE->f,
-                                     (uint8_t*)pssch->pssch_e,
+                                     (uint8_t*)harq_process_nearbyUE->b_sci2,
                                      G_slsch_bits,
                                      G_SCI2_bits,
                                      Nl,
@@ -637,6 +569,7 @@ int main(int argc, char **argv)
 
 
   /////////////////////////SLSCH scrambling/////////////////////////
+  uint16_t Nidx = slsch_ue->harq_processes[harq_pid]->Nidx;
   uint32_t scrambled_output[(available_bits >> 5) + 1];
   memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));
 
@@ -694,8 +627,8 @@ nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
 
   //////////////////SLSCH data and control demultiplexing/////////////
 
-int16_t *llr_polar_ctrl = ulsch_llr;//len: M_SCI2_bits
-int16_t *llr_ldpc_data = ulsch_llr + M_SCI2_bits; //len: M_data_bits
+  // int16_t *llr_polar_ctrl = ulsch_llr;//len: M_SCI2_bits
+  // int16_t *llr_ldpc_data = ulsch_llr + M_SCI2_bits; //len: M_data_bits
 
   #if 1
   unsigned int errors_bit_uncoded = 0;

@@ -240,7 +240,13 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                        polar_encoder_output_len,
                        NR_POLAR_SCI2_AGGREGATION_LEVEL);
 
+    harq_process->Nidx = get_Nidx_from_CRC(harq_process->a_sci2, 0, 0,
+                           NR_POLAR_PSSCH_MESSAGE_TYPE,
+                           polar_encoder_output_len,
+                           NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+
     harq_process->B_sci2 = polar_encoder_output_len;
+
     byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
     /*
     for (int i=0 ; i<polar_encoder_output_len ; i++){

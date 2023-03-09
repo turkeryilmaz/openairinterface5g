@@ -118,6 +118,7 @@ typedef struct {
   uint8_t BG;
   // LDPC lifting size
   uint32_t Z;
+  uint16_t Nidx;
 
   /////////////////////// slsch decoding ///////////////////////
   /// Frame where current HARQ round was sent
