@@ -718,7 +718,7 @@
       <NRCellDU xmlns="urn:3gpp:sa5:_3gpp-nr-nrm-nrcelldu">
         <id>1</id>
         <attributes>
-          <rRMPolicyMemberList>
+          <rRMPolicyMemberList ht:logfile-line="199+">
             <mcc>999</mcc>
             <mnc>81</mnc>
             <sd>FFFFFF</sd>

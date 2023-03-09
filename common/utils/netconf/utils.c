@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 long int get_microseconds_since_epoch(void) {
     time_t t = time(0);
@@ -77,4 +78,11 @@ char *str_replace_inplace(char *s, const char *rep, const char *with) {
         return 0;
     }
     return ret;
+}
+
+char *get_hostname(void) {
+    char hostname[1024];
+    hostname[1023] = '\0';
+    gethostname(hostname, 1023);
+    return strdup(hostname);
 }

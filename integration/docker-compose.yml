@@ -62,77 +62,214 @@ services:
       - smo
 
 
-  ves-collector:
-    image: ${VES_COLLECTOR_IMAGE}
-    container_name: ves-collector
-    environment:
-      - DMAAPHOST=onap-dmaap
-    ports:
-      - ${PUBPORT_VES}:8443
-    volumes:
-      - ./ves-collector/collector.properties:/opt/app/VESCollector/etc/collector.properties
-    networks:
-      - smo
-      - oam
-
-  zookeeper:
-    image: ${ZOOKEEPER_IMAGE}
-    container_name: zookeeper
-    environment:
-      - ZOOKEEPER_REPLICAS=1
-      - ZOOKEEPER_TICK_TIME=2000
-      - ZOOKEEPER_SYNC_LIMIT=5
-      - ZOOKEEPER_INIT_LIMIT=10
-      - ZOOKEEPER_MAX_CLIENT_CNXNS=200
-      - ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT=3
-      - ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL=24
-      - ZOOKEEPER_CLIENT_PORT=2181
-      - KAFKA_OPTS=-Djava.security.auth.login.config=/etc/zookeeper/secrets/jaas/zk_server_jaas.conf -Dzookeeper.kerberos.removeHostFromPrincipal=true -Dzookeeper.kerberos.removeRealmFromPrincipal=true -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider -Dzookeeper.requireClientAuthScheme=sasl
-      - ZOOKEEPER_SERVER_ID=
-    volumes:
-      -  ./zookeeper/zk_server_jaas.conf:/etc/zookeeper/secrets/jaas/zk_server_jaas.conf
-    networks:
-      - smo
-
-  kafka:
-    image: ${KAFKA_IMAGE}
-    container_name: kafka
-    environment:
-      - enableCadi=false
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS=40000
-      - KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS=40000
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL_PLAINTEXT:PLAINTEXT,EXTERNAL_PLAINTEXT:PLAINTEXT
-      - KAFKA_ADVERTISED_LISTENERS=INTERNAL_PLAINTEXT://kafka:9092
-      - KAFKA_LISTENERS=INTERNAL_PLAINTEXT://0.0.0.0:9092
-      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL_PLAINTEXT
-      - KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE=false
-      - KAFKA_OPTS=-Djava.security.auth.login.config=/etc/kafka/secrets/jaas/zk_client_jaas.conf
-      - KAFKA_ZOOKEEPER_SET_ACL=true
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      # Reduced the number of partitions only to avoid the timeout error for the first subscribe call in slow environment
-      - KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS=1
+  dcae-pm-mapper:
+    image: ${PM_MAPPER_IMAGE}
+    container_name: dcae-pm-mapper
     depends_on:
-     - zookeeper
-    volumes:
-      - ./kafka/zk_client_jaas.conf:/etc/kafka/secrets/jaas/zk_client_jaas.conf
+      dmaap-dr-prov:
+        condition: service_healthy
+    environment:
+      CBS_CLIENT_CONFIG_PATH: ${PM_MAPPER_TARGET_CONFIG_PATH}
+      CONFIG_BINDING_SERVICE: 0.0.0.0
+      CONFIG_BINDING_SERVICE_SERVICE_PORT: 10000
+      JAVA_TOOL_OPTIONS: -agentlib:jdwp=transport=dt_socket,address=*:5005,server=y,suspend=n
+      PROCESSING_LIMIT_RATE: 1
+      PROCESSING_THREADS_COUNT: 1
+      THREADS_MULTIPLIER: 1
+    extra_hosts:
+    - dmaap-dr-node:${DMAAP_DR_NODE_IP}
+    - message-router:$MR_IP
+    hostname: dcae-pm-mapper
     networks:
-      - smo
+      smo:
+        ipv4_address: ${PM_MAPPER_IP}
+    ports:
+    - ${PM_MAPPER_PORT_1}:8081
+    - ${PM_MAPPER_PORT_2}:5005
+    volumes:
+    - ./dcae/pm_mount_config.yaml:${PM_MAPPER_TARGET_CONFIG_PATH}
+    - ./dcae/certs:/opt/app/pm-mapper/etc/certs/
+  dcae-ves-collector:
+    image: ${DCAE_VES_COLLECTOR_IMAGE}
+    container_name: dcae-ves-collector
+    environment:
+      DMAAPHOST: dmaap
+    hostname: dcae-ves-collector
+    labels:
+    - traefik.enable=true
+    - traefik.http.routers.ves.rule=Host(`ves.${SOLUTION_DOMAIN}`)
+    - traefik.http.routers.ves.service=ves
+    - traefik.http.routers.ves.tls=true
+    - traefik.http.services.ves.loadbalancer.server.port=8443
+    - traefik.http.services.ves.loadbalancer.server.scheme=https
+    - traefik.http.routers.ves.tls.certresolver=CertificateResolver0
+    networks:
+      oam:
+        ipv4_address: ${DCAE_VES_COLLECTOROLLECTOR_OAM_IP}
+        ipv6_address: ${DCAE_VES_COLLECTOROLLECTOR_OAM_IPv6}
+      smo:
+        ipv4_address: ${DCAE_VES_COLLECTOROLLECTOR_SMO_IP}
+        ipv6_address: ${DCAE_VES_COLLECTOROLLECTOR_SMO_IPv6}
+      traefik-proxy: {}
+    ports:
+    - 8080:8080
+    - 8443:8443
+    volumes:
+    - ./dcae/collector.properties:/opt/app/VESCollector/etc/collector.properties
+    - ./dcae/ves-dmaap-config.json:/opt/app/VESCollector/etc/ves-dmaap-config.json
+    - ./dcae/externalRepo:/opt/app/VESCollector/etc/externalRepo
+  
+  dcae-dfc:
+    image: ${DCAE_DFC_IMAGE}
+    container_name: dcae-dfc
+    environment:
+      CBS_CLIENT_CONFIG_PATH: ${DCAE_DFC_TARGET_CONFIG_PATH}
+      CONFIG_BINDING_SERVICE: 0.0.0.0
+      CONFIG_BINDING_SERVICE_SERVICE_PORT: 10000
+      JAVA_TOOL_OPTIONS: -agentlib:jdwp=transport=dt_socket,address=*:8000,server=y,suspend=n
+    extra_hosts:
+    - dmaap-dr-node:${DMAAP_DR_NODE_IP}
+    - dmaap-dr-prov:${DMAAP_DR_PROV_IP}
+    networks:
+      smo:
+        ipv4_address: ${DCAE_DFC_IP}
+    ports:
+    - 8100:8100
+    - 8000:8000
+    volumes:
+    - ./dcae/dfc_mount_config.yaml:${DCAE_DFC_TARGET_CONFIG_PATH}
+    - ./dcae/dfc_spring_application.yaml:${DCAE_DFC_TARGET_SPRING_CONFIG}
 
-  dmaap:
-    image: ${DMAAP_IMAGE}
-    container_name: onap-dmaap
+  dmaap-dr-node:
+    image: ${DMAAP_DR_NODE_IMAGE}
+    container_name: dmaap-dr-node
+    depends_on:
+      dmaap-dr-prov:
+        condition: service_healthy
+    extra_hosts:
+    - dmaap-dr-prov:$DMAAP_DR_PROV_IP
+    - dcae-pm-mapper:$PM_MAPPER_IP
+    hostname: dmaap-dr-node
+    networks:
+      smo:
+        ipv4_address: $DMAAP_DR_NODE_IP
+    ports:
+    - ${DMAAP_DR_NODE_PORT_1}:8443
+    - ${DMAAP_DR_NODE_PORT_2}:8080
+    volumes:
+    - ./ressources-onap-addon/dmaap-dr-mount/node.properties:/opt/app/datartr/etc/node.properties
+
+  dmaap-dr-prov:
+    image: ${DMAAP_DR_PROV_IP_IMAGE}
+    container_name: dmaap-dr-prov
+    hostname: dmaap-dr-prov
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    extra_hosts:
+    - dmaap-dr-node:${DMAAP_DR_NODE_IP}
+    - dcae-pm-mapper:${PM_MAPPER_IP}
+    healthcheck:
+      interval: 10s
+      retries: 5
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://dmaap-dr-prov:8080/internal/prov
+      timeout: 10s
+    networks:
+      smo:
+        ipv4_address: ${DMAAP_DR_PROV_IP}
+    ports:
+    - 20443:8443
+    - ${DMAAP_DR_PROV_PORT_1}:8443
+    - ${DMAAP_DR_PROV_PORT_2}:8080
+    volumes:
+    - ./ressources-onap-addon/dmaap-dr-mount/provserver.properties:/opt/app/datartr/etc/provserver.properties
+
+  dmaap-kafka:
+    container_name: dmaap-kafka
+    image: ${DMAAP_KAFKA_IMAGE}
+    hostname: kafka
+    depends_on:
+    - dmaap-zookeeper
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL_PLAINTEXT://kafka:9092
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL_PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL_PLAINTEXT://0.0.0.0:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL_PLAINTEXT:PLAINTEXT,EXTERNAL_PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/jaas/zk_client_jaas.conf
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS: 40000
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: 40000
+      KAFKA_ZOOKEEPER_SET_ACL: 'true'
+      enableCadi: 'false'
+    volumes:
+    - ./ressources-onap-addon/dmaap-kafka/zk_client_jaas.conf:/etc/kafka/secrets/jaas/zk_client_jaas.conf
+    networks:
+      smo:
+        aliases:
+        - kafka
+        ipv4_address: ${DMAAP_KAFKA_IP}
+        ipv6_address: ${DMAAP_KAFKA_IPv6}
+    ports:
+    - 9092:9092
+
+  dmaap-message-router:
+    container_name: dmaap-message-router
+    depends_on:
+    - dmaap-zookeeper
+    - dmaap-kafka
     environment:
       enableCadi: 'false'
-    depends_on:
-      - zookeeper
-      - kafka
-    volumes:
-      - ./dmaap/MsgRtrApi.properties:/appl/dmaapMR1/bundleconfig/etc/appprops/MsgRtrApi.properties
-      - ./dmaap/logback.xml:/appl/dmaapMR1/bundleconfig/etc/logback.xml
-      - ./dmaap/cadi.properties:/appl/dmaapMR1/etc/cadi.properties
+    image: ${DMAAP_MR_IMAGE}
     networks:
-      - smo
+      smo:
+        aliases:
+        - dmaap
+        ipv4_address: ${DMAAP_MR_IP}
+        ipv6_address: ${DMAAP_MR_IPv6}
+    ports:
+    - 3904:3904
+    - 3905:3905
+    volumes:
+    - ./dmaap/MsgRtrApi.properties:/appl/dmaapMR1/bundleconfig/etc/appprops/MsgRtrApi.properties
+    - ./dmaap/logback.xml:/appl/dmaapMR1/bundleconfig/etc/logback.xml
+    - ./dmaap/cadi.properties:/appl/dmaapMR1/etc/cadi.properties
+
+  dmaap-zookeeper:
+    image: ${DMAAP_ZOOKEEPER_IMAGE}
+    container_name: dmaap-zookeeper
+    hostname: zookeeper
+    environment:
+      KAFKA_OPTS: -Djava.security.auth.login.config=/etc/zookeeper/secrets/jaas/zk_server_jaas.conf
+        -Dzookeeper.kerberos.removeHostFromPrincipal=true -Dzookeeper.kerberos.removeRealmFromPrincipal=true
+        -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+        -Dzookeeper.requireClientAuthScheme=sasl
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: 24
+      ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT: 3
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_INIT_LIMIT: 10
+      ZOOKEEPER_MAX_CLIENT_CNXNS: 200
+      ZOOKEEPER_REPLICAS: 1
+      ZOOKEEPER_SERVER_ID: null
+      ZOOKEEPER_SYNC_LIMIT: 5
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+    - 2181:2181
+    volumes:
+    - ./ressources-onap-addon/dmaap-zookeeper/zk_server_jaas.conf:/etc/zookeeper/secrets/jaas/zk_server_jaas.conf
+    networks:
+      smo:
+        aliases:
+        - zookeeper
+        ipv4_address: ${DMAAP_ZOOKEEPER_IP}
+        ipv6_address: ${DMAAP_ZOOKEEPER_IPv6}
+
 
 networks:
   oam:

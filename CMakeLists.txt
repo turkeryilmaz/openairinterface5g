@@ -2430,6 +2430,7 @@ add_executable(nr-softmodem
   ${OPENAIR_DIR}/common/utils/lte/prach_utils.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${OPENAIR_DIR}/common/utils/netconf/utils.c
+  ${OPENAIR_DIR}/common/utils/netconf/http_client.c
   ${OPENAIR_DIR}/common/utils/netconf/ves.c
   ${OPENAIR_DIR}/common/utils/netconf/o1config.c
   ${OPENAIR_DIR}/common/utils/netconf/netconf_session.c
@@ -2453,7 +2454,7 @@ target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPT
 target_link_libraries(nr-softmodem PRIVATE ${LIB_LMS_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc asn1_lte_rrc)
-target_link_libraries(nr-softmodem PRIVATE yang sysrepo)
+target_link_libraries(nr-softmodem PRIVATE yang sysrepo curl)
 
 add_dependencies( nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
 

@@ -1,0 +1,37 @@
+set(NETCONFROOT ${OPENAIR_DIR}/common/utils/netconf )
+
+set(NETCONFROOTSRV_SOURCE
+    ${NETCONFROOT}/netconf.c
+    ${NETCONFROOT}/netconf_session.c
+    ${NETCONFROOT}/o1config.c
+    ${NETCONFROOT}/utils.c
+    ${NETCONFROOT}/ves.c
+    )
+    
+add_library(netconfsrv MODULE ${NETCONFSRV_SOURCE} )
+target_link_libraries(netconfsrv PRIVATE yang sysrepo )
+
+foreach(NETCONFLIB enb gnb 4Gue 5Gue)
+    set(NETCONFLIB_SRCS "")
+    foreach(NETCONFLIB_ASRC measurements phycmd)
+       set(NETCONFLIB_SRC ${OPENAIR_DIR}/common/utils/netconfsrv/netconfsrv_${NETCONFLIB}_${NETCONFLIB_ASRC}.c)
+       if (EXISTS ${NETCONFLIB_SRC})
+          set( NETCONFLIB_SRCS "${NETCONFLIB_SRC};${NETCONFLIB_SRCS}")
+       endif()
+    endforeach()
+    if(NOT "${NETCONFLIB_SRCS}" STREQUAL "")
+       message("Add ${NETCONFLIB} specific telnet functions in libnetconfsrv_${NETCONFLIB}.so")
+       add_library(netconfsrv_${NETCONFLIB} MODULE ${NETCONFLIB_SRCS} )
+       add_dependencies(netconfsrv netconfsrv_${NETCONFLIB})
+       target_link_libraries(netconfsrv_${NETCONFLIB} PRIVATE asn1_nr_rrc asn1_lte_rrc)
+       install(TARGETS  netconfsrv_${NETCONFLIB} DESTINATION bin)
+    else()
+       message("No specific netconf functions for ${NETCONFLIB}")
+    endif()  
+endforeach()
+
+install(TARGETS netconfsrv DESTINATION bin)
+
+if (EXISTS "${OPENAIR_CMAKE}/ran_build/build" AND IS_DIRECTORY "${OPENAIR_CMAKE}/ran_build/build")
+     install(TARGETS netconfsrv DESTINATION ${OPENAIR_CMAKE}/ran_build/build)
+endif (EXISTS "${OPENAIR_CMAKE}/ran_build/build" AND IS_DIRECTORY "${OPENAIR_CMAKE}/ran_build/build")

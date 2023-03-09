@@ -1,0 +1,92 @@
+#/*
+# * Licensed to the OpenAirInterface (OAI) Software Alliance under one or more
+# * contributor license agreements.  See the NOTICE file distributed with
+# * this work for additional information regarding copyright ownership.
+# * The OpenAirInterface Software Alliance licenses this file to You under
+# * the OAI Public License, Version 1.1  (the "License"); you may not use this file
+# * except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *      http://www.openairinterface.org/?page_id=698
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *-------------------------------------------------------------------------------
+# * For more information about the OpenAirInterface (OAI) Software Alliance:
+# *      contact@openairinterface.org
+# */
+#---------------------------------------------------------------------
+#
+# Dockerfile for the Open-Air-Interface BUILD service
+#   Valid for Ubuntu 18.04
+#
+#---------------------------------------------------------------------
+
+ARG BASETAG="latest"
+FROM ran-build:${BASETAG} AS gnb-build
+
+FROM ran-base:${BASETAG} as ran-dev
+
+# run dependencies install for netconf
+RUN ./docker/scripts/netconf_dep_install.sh
+
+RUN rm -Rf /oai-ran
+WORKDIR /oai-ran
+COPY . .
+
+# get and install required YANG libraries
+RUN \
+    cd /oai-ran/specification && \
+    ./get-yangs.sh && \
+    ./install-yangs.sh
+
+WORKDIR /oai-ran
+
+# build all targets so final targets can be created afterwards
+RUN /bin/sh oaienv && \
+    cd cmake_targets && \
+    mkdir -p log
+    # ./build_oai --eNB --gNB --RU --UE --nrUE --ninja --build-lib all -w USRP --verbose-ci --noavx512 -c
+    # ./build_oai --gNB -w USRP --build-lib telnetsrv --build-lib --verbose-ci --noavx512 -c
+
+COPY --from=gnb-build \
+    /oai-ran/cmake_targets/ran_build/build/liboai_eth_transpro.so \
+    /oai-ran/cmake_targets/ran_build/build/librfsimulator.so \
+    /oai-ran/cmake_targets/ran_build/build/liboai_usrpdevif.so \
+    /oai-ran/cmake_targets/ran_build/build/libcoding.so \
+    /oai-ran/cmake_targets/ran_build/build/libparams_libconfig.so \
+    /oai-ran/cmake_targets/ran_build/build/libdfts.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc_optim.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc_optim8seg.so \
+    /oai-ran/cmake_targets/ran_build/build/libldpc_orig.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
+    /usr/local/lib/
+
+# Add netconf user and configure access
+RUN \
+    adduser netconf && \
+    echo "netconf:netconf!" | chpasswd && \
+    mkdir -p /home/netconf/.ssh
+
+# # Initialize netopeer2
+RUN \
+    /usr/local/share/netopeer2/merge_hostkey.sh && \
+    /usr/local/share/netopeer2/merge_config.sh
+COPY docker/scripts/gnb_entrypoint.sh /opt/oai-gnb/bin/entrypoint.sh
+WORKDIR /opt/oai-gnb
+#EXPOSE 2152/udp  # S1U, GTP/UDP
+#EXPOSE 22100/tcp # ?
+#EXPOSE 36412/udp # S1C, SCTP/UDP
+#EXPOSE 36422/udp # X2C, SCTP/UDP
+#EXPOSE 50000/udp # IF5 / ORI (control)
+#EXPOSE 50001/udp # IF5 / ECPRI (data)
+
+# ENTRYPOINT ["/opt/oai-gnb/bin/entrypoint.sh"]
+# CMD ["/opt/oai-gnb/bin/nr-softmodem", "-O", "/opt/oai-gnb/etc/gnb.conf"]
+
+WORKDIR /oai-ran/cmake_targets
+CMD ["/bin/sh", "-c", "sleep infinity"]

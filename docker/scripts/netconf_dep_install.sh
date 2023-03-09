@@ -65,3 +65,14 @@ cd build
 cmake -DCMAKE_BUILD_TYPE:String="$BUILD_MODE" -DGENERATE_HOSTKEY=OFF -DMERGE_LISTEN_CONFIG=OFF ..
 make -j4
 make install
+
+# build and install cURL
+cd $INSTALL_PATH
+git clone --single-branch --branch curl-7_87_0 https://github.com/curl/curl.git
+cd $INSTALL_PATH/curl
+mkdir -p build
+cd build
+cmake -DBUILD_TESTING=OFF ..
+make -j4
+make install
+ldconfig
