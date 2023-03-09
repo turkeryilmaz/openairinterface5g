@@ -115,7 +115,7 @@ void tx_func(void *param) {
   int frame_tx = info->frame;
   int slot_tx = info->slot;
   PHY_VARS_gNB *gNB = info->gNB;
-  int tx_wait_idx = gNB->tx_wait_idx++;
+  int tx_wait_idx = info->tx_wait_idx;
 
   int absslot_tx = info->timestamp_tx/info->gNB->frame_parms.get_samples_per_slot(slot_tx,&info->gNB->frame_parms);
   int absslot_rx = absslot_tx-gNB->RU_list[0]->sl_ahead;
@@ -289,19 +289,18 @@ void rx_func(void *param) {
     syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->timestamp_tx = info->timestamp_tx;
+    syncMsg->tx_wait_idx = gNB->tx_wait_idx++;
     res->key = slot_tx;
     pushTpool(&gNB->threadPool, res);
   } else if (get_softmodem_params()->continuous_tx) {
-    notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
-    if (res == NULL)
-      return; // Tpool has been stopped
-    processingData_L1tx_t *syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
-    syncMsg->gNB = gNB;
-    syncMsg->timestamp_tx = info->timestamp_tx;
-    syncMsg->frame = frame_tx;
-    syncMsg->slot = slot_tx;
-    res->key = slot_tx;
-    pushNotifiedFIFO(&gNB->L1_tx_free, res);
+    notifiedFIFO_elt_t *msg = newNotifiedFIFO_elt(sizeof(processingData_RU_t), 0, NULL, NULL);
+    processingData_RU_t *syncMsgRU = (processingData_RU_t *)NotifiedFifoData(msg);
+    syncMsgRU->frame_tx = frame_tx;
+    syncMsgRU->slot_tx = slot_tx;
+    syncMsgRU->timestamp_tx = info->timestamp_tx;
+    syncMsgRU->ru = gNB->RU_list[0];
+    msg->key = slot_tx;
+    pushNotifiedFIFO(&gNB->resp_RU_tx, msg);
   }
 
 #if 0
