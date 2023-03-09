@@ -529,7 +529,7 @@ int main(int argc, char **argv)
   short channel_output_uncoded[HNA_SIZE];
   unsigned char estimated_output_bit[HNA_SIZE];
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  int numb_bits = available_bits;//slsch_ue->harq_processes[harq_pid]->B_sci2;
+  int numb_bits = available_bits + slsch_ue->harq_processes[harq_pid]->B_sci2;
   unsigned char qbits = 8;
 
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
@@ -538,7 +538,7 @@ int main(int argc, char **argv)
     for (int trial = 0; trial < n_trials; trial++) {
       errors_bit_uncoded = 0;
       for (int i = 0; i < numb_bits; i++) {
-        if (slsch_ue->harq_processes[harq_pid]->f[i] == 0){
+        if (slsch_ue->harq_processes[harq_pid]->f_multiplexed[i] == 0){
           modulated_input[i] = 1.0;        ///sqrt(2);  //QPSK
         }else{
           modulated_input[i] = -1.0;        ///sqrt(2);
@@ -575,16 +575,25 @@ int main(int argc, char **argv)
       for (int i = 0; i < TBS; i++) {
         estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+        #if 0
         printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
+        #endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
       }
+      if (errors_bit > 0) {
+        n_false_positive++;
+        if (n_trials == 1)
+          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
+      }
+      printf("\n");
+    }
 
       printf("*****************************************\n");
-      printf("SNR %f, BLER %f (number of erros bit %d)\n", SNR,
-            (float) n_errors / (float) n_trials,
-            errors_bit);
+      printf("SNR %f, BLER %f (false positive %f)\n", SNR,
+           (float) n_errors / (float) n_trials,
+           (float) n_false_positive / (float) n_trials);
       printf("*****************************************\n");
       printf("\n");
 
@@ -594,7 +603,6 @@ int main(int argc, char **argv)
         break;
       }
       printf("\n");
-    }
   }
   #endif
   for (int sf = 0; sf < 2; sf++) {
