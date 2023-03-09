@@ -35,6 +35,7 @@
 #include "PHY/defs_gNB.h"
 #include "PHY/INIT/phy_init.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
@@ -51,46 +52,22 @@
 #include "common/utils/threadPool/thread-pool.h"
 #include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "executables/nr-uesoftmodem.h"
+#include "PHY/impl_defs_top.h"
 
-//#define DEBUG_NR_ULSCHSIM
-
-typedef struct {
-  uint8_t priority;
-  uint8_t freq_res;
-  uint8_t time_res;
-  uint8_t period;
-  uint16_t dmrs_pattern;
-  uint8_t mcs;
-  uint8_t beta_offset;
-  uint8_t dmrs_port;
-} SCI_1_A;
-
-typedef struct {
-  double scs;
-  double bw;
-  double fs;
-} BW;
-
-THREAD_STRUCT thread_struct;
-PHY_VARS_NR_UE *txUE;
-PHY_VARS_NR_UE *rxUE;
+//#define DEBUG_NR_SLSCHSIM
+#define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
+#define SCI2_LEN_SIZE 35
 RAN_CONTEXT_t RC;
-int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
-uint64_t downlink_frequency[MAX_NUM_CCs][4];
 
-SCM_t channel_model = AWGN;  //Rayleigh1_anticorr;
-uint16_t N_RB = 106, mu = 1, nb_symb_sch = 12;
-uint8_t nb_re_dmrs = 6;
-int slot = 0;
-FILE *input_fd = NULL;
-int loglvl = OAILOG_WARNING;
-int trial, n_trials = 1, n_errors = 0, n_false_positive = 0;
-double SNR, snr0 = -2.0, snr1 = 2.0, SNR_lin;
-uint8_t snr1set = 0;
-uint8_t n_tx = 1, n_rx = 1, nb_codewords = 1;
-uint8_t Nl = 1; // number of layers
-UE_nr_rxtx_proc_t proc;
-double **s_re, **s_im, **r_re, **r_im;
+double cpuf;
+uint16_t NB_UE_INST = 1;
+openair0_config_t openair0_cfg[MAX_CARDS];
+uint8_t const nr_rv_round_map[4] = {0, 2, 3, 1};
+const short conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
+const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
+PHY_VARS_NR_UE *PHY_vars_UE_g[1][1] = { { NULL } };
+uint16_t n_rnti = 0x1234;
+openair0_config_t openair0_cfg[MAX_CARDS];
 
 uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
@@ -98,7 +75,97 @@ softmodem_params_t *get_softmodem_params(void) {
   return &softmodem_params;
 }
 
+nrUE_params_t nrUE_params;
+nrUE_params_t *get_nrUE_params(void) {
+  return &nrUE_params;
+}
+
+bool nr_ue_sl_postDecode_sim(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool last, notifiedFIFO_t *nf_p) {
+  ldpcDecode_ue_t *rdata = (ldpcDecode_ue_t*) NotifiedFifoData(req);
+  NR_DL_UE_HARQ_t *harq_process = rdata->harq_process;
+  NR_UE_DLSCH_t *dlsch = (NR_UE_DLSCH_t *) rdata->dlsch;
+  int r = rdata->segment_r;
+
+  merge_meas(&phy_vars_ue->dlsch_deinterleaving_stats, &rdata->ts_deinterleave);
+  merge_meas(&phy_vars_ue->dlsch_rate_unmatching_stats, &rdata->ts_rate_unmatch);
+  merge_meas(&phy_vars_ue->dlsch_ldpc_decoding_stats, &rdata->ts_ldpc_decode);
+
+  bool decodeSuccess = (rdata->decodeIterations < (1+dlsch->max_ldpc_iterations));
+
+  if (decodeSuccess) {
+    memcpy(harq_process->b+rdata->offset,
+           harq_process->c[r],
+           rdata->Kr_bytes - (harq_process->F>>3) -((harq_process->C>1)?3:0));
+
+  } else {
+    if ( !last ) {
+      int nb=abortTpoolJob(&get_nrUE_params()->Tpool, req->key);
+      nb+=abortNotifiedFIFOJob(nf_p, req->key);
+      LOG_D(PHY,"downlink segment error %d/%d, aborted %d segments\n",rdata->segment_r,rdata->nbSegments, nb);
+      LOG_D(PHY, "SLSCH %d in error\n",rdata->dlsch_id);
+      last = true;
+    }
+  }
+
+  // if all segments are done
+  if (last) {
+    if (decodeSuccess) {
+      //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
+      //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
+      harq_process->status = SCH_IDLE;
+      harq_process->ack = 1;
+
+      //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d, mcs %d)\n",
+      //  phy_vars_ue->Mod_id, frame, subframe, harq_pid, harq_process->status, harq_process->round,harq_process->TBS,harq_process->mcs);
+
+      //if(is_crnti) {
+      //  LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d (pid %d, round %d, TBS %d)\n",phy_vars_ue->Mod_id,nr_slot_rx,harq_pid,harq_process->round,harq_process->TBS);
+      //}
+      dlsch->last_iteration_cnt = rdata->decodeIterations;
+      LOG_D(PHY, "SLSCH received ok \n");
+    } else {
+      //LOG_D(PHY,"[UE %d] DLSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d, mcs %d) Kr %d r %d harq_process->round %d\n",
+      //      phy_vars_ue->Mod_id, frame, nr_slot_rx, harq_pid,harq_process->status, harq_process->round,harq_process->TBS,harq_process->mcs,Kr,r,harq_process->round);
+      harq_process->ack = 0;
+
+      //if(is_crnti) {
+      //  LOG_D(PHY,"[UE %d] DLSCH: Setting NACK for nr_slot_rx %d (pid %d, pid status %d, round %d/Max %d, TBS %d)\n",
+      //        phy_vars_ue->Mod_id,nr_slot_rx,harq_pid,harq_process->status,harq_process->round,dlsch->Mdlharq,harq_process->TBS);
+      //}
+      dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
+      LOG_D(PHY, "SLSCH received nok \n");
+    }
+    return true; //stop
+  }
+  else
+  {
+	return false; //not last one
+  }
+}
+
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
+
+typedef struct {
+  double scs;
+  double bw;
+  double fs;
+} BW;
+
+double snr0 =100;//- 2.0;
+double snr1 = 2.0;
+uint8_t snr1set = 0;
+int n_trials = 1;
+uint8_t n_tx = 1;
+uint8_t n_rx = 1;
+int ssb_subcarrier_offset = 0;
+FILE *input_fd = NULL;
+SCM_t channel_model = AWGN;
+int N_RB = 106;
+int N_RB_UL = 106;
+int N_RB_DL = 106;
+int mu = 1;
+int loglvl = OAILOG_WARNING;
+int seed = 0;
 
 static void get_sim_cl_opts(int argc, char **argv)
 {
@@ -162,6 +229,10 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 'R':
+        N_RB_UL = atoi(optarg);
+        break;
+
+      case 'r':
         N_RB = atoi(optarg);
         break;
 
@@ -203,7 +274,8 @@ static void get_sim_cl_opts(int argc, char **argv)
           printf("-y Number of TX antennas used in eNB\n");
           printf("-z Number of RX antennas used in UE\n");
           printf("-W number of layer\n");
-          printf("-R N_RB\n");
+          printf("-R N_RB_UL\n");
+          printf("-r nb_rb\n");
           printf("-F Input filename (.txt format) for RX conformance testing\n");
           printf("-m MCS\n");
           printf("-l number of symbol\n");
@@ -214,19 +286,10 @@ static void get_sim_cl_opts(int argc, char **argv)
   }
 }
 
-uint8_t const nr_rv_round_map[4] = {0, 2, 3, 1};
-const short conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
-const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
-double cpuf;
-uint16_t NB_UE_INST = 1;
-
-// needed for some functions
-PHY_VARS_NR_UE *PHY_vars_UE_g[1][1] = { { NULL } };
-uint16_t n_rnti = 0x1234;
-openair0_config_t openair0_cfg[MAX_CARDS];
 
 void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
-                                    int N_RB,
+                                    int N_RB_UL,
+                                    int N_RB_DL,
                                     int mu,
                                     uint64_t position_in_burst)
 {
@@ -237,14 +300,14 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
     rev_burst |= (((position_in_burst >> (63 - i)) & 0x01) << i);
 
   nrUE_config->ssb_config.scs_common               = mu;
-  nrUE_config->ssb_table.ssb_subcarrier_offset     = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a        = (N_RB - 20) >> 1;
+  nrUE_config->ssb_table.ssb_subcarrier_offset     = ssb_subcarrier_offset;
+  nrUE_config->ssb_table.ssb_offset_point_a        = (N_RB_UL - 20) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask = (rev_burst >> 32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type       = TDD;
   nrUE_config->ssb_table.ssb_period                = 1; //10ms
-  nrUE_config->carrier_config.dl_grid_size[mu]     = N_RB;
-  nrUE_config->carrier_config.ul_grid_size[mu]     = N_RB;
+  nrUE_config->carrier_config.dl_grid_size[mu]     = N_RB_DL;
+  nrUE_config->carrier_config.ul_grid_size[mu]     = N_RB_UL;
   nrUE_config->carrier_config.num_tx_ant           = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant           = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                = 0;
@@ -266,18 +329,15 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   }
 
   fp->threequarter_fs = 0;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB, fp->nr_band);
+  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
 
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   fp->ofdm_offset_divisor = UINT_MAX;
-  init_symbol_rotation(fp);
-  init_timeshift_rotation(fp);
-
   ue->configured = 1;
   LOG_I(NR_PHY, "tx UE configured\n");
 }
 
-void set_sci(SCI_1_A *sci) {
+void set_sci(SCI_1_A *sci, uint8_t mcs) {
   sci->period = 0;
   sci->dmrs_pattern = 0b0001000001000; // LSB is slot 1 and MSB is slot 13
   sci->beta_offset = 0;
@@ -285,11 +345,11 @@ void set_sci(SCI_1_A *sci) {
   sci->priority = 0;
   sci->freq_res = 1;
   sci->time_res = 1;
-  sci->mcs = 0;
+  sci->mcs = mcs;
 }
 
 void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
-  double scs, fs, bw;
+  double scs = 0, fs = 0, bw = 0;
   switch (mu) {
     case 1:
       scs = 30000;
@@ -331,78 +391,49 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
   return;
 }
 
-nrUE_params_t nrUE_params;
-nrUE_params_t *get_nrUE_params(void) {
-  return &nrUE_params;
-}
-
 int main(int argc, char **argv)
 {
   // **** Initialization ****
-  int i, sf;
-  double snr_step = 0.1;
-  FILE *output_fd = NULL;
-  //uint8_t write_output_file = 0;
-  SCI_1_A first_sci;
-  //set 1st SCI parameters.
-  set_sci(&first_sci);
-  channel_desc_t *UE2UE;
-  uint8_t extended_prefix_flag = 0;
-  int frame = 0, slot = 0;
-  NR_DL_FRAME_PARMS *frame_parms;
-  double sigma;
-  unsigned char qbits = 8;
-  int ret = 0;
+  double snr_step = 0.2;
   uint64_t burst_position = 0x01;
-  uint8_t Imcs = 9;
-  uint8_t max_ldpc_iterations = 5;
+  get_softmodem_params()->sl_mode = 2;
 
-  double DS_TDL = 300e-9;//.03;
   cpuf = get_cpu_freq_GHz();
 
   if (load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY) == 0) {
-    exit_fun("[NR_SSCHSIM] Error, configuration module init failed\n");
+    exit_fun("[NR_PSBCHSIM] Error, configuration module init failed\n");
   }
-
   get_sim_cl_opts(argc, argv);
-  randominit(0);
-  // logging initialization
+  randominit(seed);
   logInit();
   set_glog(loglvl);
-  T_stdout = 1;
+  load_nrLDPClib(NULL);
 
-  if (snr1set == 0)
-    snr1 = snr0 + 10;
+  PHY_VARS_NR_UE *nearbyUE = malloc(sizeof(PHY_VARS_NR_UE));
+  nearbyUE->frame_parms.N_RB_DL = N_RB_DL;
+  nearbyUE->frame_parms.N_RB_UL = N_RB_UL;
+  nearbyUE->frame_parms.Ncp = NORMAL;
+  nearbyUE->frame_parms.nb_antennas_tx = 1;
+  nearbyUE->frame_parms.nb_antennas_rx = n_rx;
+  nearbyUE->max_ldpc_iterations = 5;
+  PHY_VARS_NR_UE *syncRefUE = malloc(sizeof(PHY_VARS_NR_UE));
+  syncRefUE->frame_parms.nb_antennas_tx = n_tx;
+  syncRefUE->frame_parms.nb_antennas_rx = 1;
+  initTpool("n", &syncRefUE->threadPool, true);
+  initNotifiedFIFO(&syncRefUE->respDecode);
 
-  txUE = malloc(sizeof(PHY_VARS_NR_UE));
-  rxUE = malloc(sizeof(PHY_VARS_NR_UE));
-  frame_parms = &txUE->frame_parms; //to be initialized I suppose (maybe not necessary for PBCH)
-  frame_parms->N_RB_DL = N_RB;
-  frame_parms->N_RB_UL = N_RB;
-  frame_parms->Ncp = extended_prefix_flag ? EXTENDED : NORMAL;
-  txUE->max_ldpc_iterations = max_ldpc_iterations;
-
-  memcpy(&txUE->frame_parms, frame_parms, sizeof(NR_DL_FRAME_PARMS));
-
-  txUE->frame_parms.nb_antennas_tx = 1;
-  txUE->frame_parms.nb_antennas_rx = n_rx;
-
-  nr_phy_config_request_psschsim(txUE, N_RB, mu, burst_position);
-  memcpy(&rxUE->frame_parms, frame_parms, sizeof(NR_DL_FRAME_PARMS));
-
-  rxUE->frame_parms.nb_antennas_tx = n_tx;
-  rxUE->frame_parms.nb_antennas_rx = 1;
+  nr_phy_config_request_psschsim(nearbyUE, N_RB_UL, N_RB_DL, mu, burst_position);
+  nr_phy_config_request_psschsim(syncRefUE, N_RB_UL, N_RB_DL, mu, burst_position);
 
   BW *bw_setting = malloc(sizeof(BW));
-  set_fs_bw(txUE, mu, N_RB, bw_setting);
+  set_fs_bw(nearbyUE, mu, N_RB_UL, bw_setting);
 
-  UE2UE = new_channel_desc_scm(n_tx,
-                               n_rx,
-                               channel_model,
-                               bw_setting->fs, //N_RB2sampling_rate(N_RB_DL),
-                               bw_setting->bw, //N_RB2channel_bandwidth(N_RB_DL),
-                               DS_TDL,
-                               0, 0, 0, 0);
+  double DS_TDL = 300e-9; //.03;
+  channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model,
+                                               bw_setting->fs,
+                                               bw_setting->bw,
+                                               DS_TDL,
+                                               0, 0, 0, 0);
 
   if (UE2UE == NULL) {
     printf("Problem generating channel model. Exiting.\n");
@@ -410,56 +441,44 @@ int main(int argc, char **argv)
     exit(-1);
   }
 
-  if (init_nr_ue_signal(txUE, 1) != 0 || init_nr_ue_signal(rxUE, 1) != 0) {
+  if (init_nr_ue_signal(nearbyUE, 1) != 0 || init_nr_ue_signal(syncRefUE, 1) != 0) {
     printf("Error at UE NR initialisation.\n");
     free(bw_setting);
-    free(txUE);
-    free(rxUE);
+    free(nearbyUE);
+    free(syncRefUE);
     exit(-1);
   }
-  /*
-  for (sf = 0; sf < 2; sf++) {
-    txUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
-    rxUE->slsch_rx[sf][0] = new_nr_ue_ulsch(N_RB, 8, frame_parms);
-    if (!txUE->slsch[sf][0]) {
-      printf("Can't get ue ulsch structures.\n");
-      exit(-1);
-    }
-  }
-  */
-  init_nr_ue_transport(&txUE);
-  init_nr_ue_transport(&rxUE);
+  init_nr_ue_transport(nearbyUE);
+  init_nr_ue_transport(syncRefUE);
 
-  s_re = malloc(n_tx*sizeof(double*));
-  s_im = malloc(n_tx*sizeof(double*));
-  r_re = malloc(n_rx*sizeof(double*));
-  r_im = malloc(n_rx*sizeof(double*));
-
-  unsigned char harq_pid = 0;
-  unsigned int TBS = 8424;
-  unsigned int available_bits;
-
-  uint8_t length_dmrs = 1;
-  uint8_t N_PRB_oh;
-  uint16_t N_RE_prime,code_rate;
-  unsigned char mod_order;
+  uint8_t number_dmrs_symbols = 2;
+  uint16_t N_RE_prime;
   uint8_t rvidx = 0;
   uint8_t UE_id = 0;
 
-  NR_UE_ULSCH_t *slsch_rxUE = rxUE->slsch[UE_id];
-  NR_UL_UE_HARQ_t *harq_process_rxUE = slsch_rxUE->harq_processes[harq_pid];
-  nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
-  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
+  uint8_t nb_re_dmrs = 6;
+  uint8_t Nl = 1; // number of layers
+  if ((Nl == 4) || (Nl == 3))
+    nb_re_dmrs = nb_re_dmrs * 2;
+  uint8_t Imcs = 9;
+  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
+  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
+  uint8_t nb_codewords = 1;
+  uint16_t nb_symb_sch = 12;
+  uint32_t available_bits = 0;
+  uint32_t G_SCI2_bits = 0;
+  uint32_t G_slsch_bits = 0;
+  uint32_t M_SCI2_bits = 0;
+  uint32_t M_data_bits = 0;
+  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
+  unsigned int TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*number_dmrs_symbols, 0, 0, Nl);
+  printf("\nG_slsch_bits %u TBS %u mod_order %d TBS/8 %d\n", G_slsch_bits, TBS, mod_order, TBS / 8);
 
-  if ((Nl == 4)||(Nl == 3))
-    nb_re_dmrs = nb_re_dmrs*2;
-
-  mod_order = nr_get_Qm_ul(Imcs, 0);
-  code_rate = nr_get_code_rate_ul(Imcs, 0);
-  available_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
-  TBS = nr_compute_tbs(mod_order,code_rate, N_RB, nb_symb_sch, nb_re_dmrs*length_dmrs, 0, 0, Nl);
-
-  printf("\nAvailable bits %u TBS %u mod_order %d\n", available_bits, TBS, mod_order);
+  unsigned char harq_pid = 0;
+  NR_UE_DLSCH_t *slsch_syncRefUE = syncRefUE->slsch_rx[UE_id][0][0];
+  NR_DL_UE_HARQ_t *harq_process_syncRefUE = slsch_syncRefUE->harq_processes[harq_pid];
+  nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_syncRefUE->pssch_pdu;
+  NR_UE_ULSCH_t *slsch_ue = nearbyUE->slsch[0][0];
 
   /////////// setting rel15_ul parameters ///////////
   rel16_ul->mcs_index           = Imcs;
@@ -467,146 +486,244 @@ int main(int argc, char **argv)
   rel16_ul->target_code_rate    = code_rate;
   rel16_ul->pssch_data.tb_size  = TBS>>3;
   rel16_ul->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
-  ///////////////////////////////////////////////////
-
-  double modulated_input[16 * 68 * 384]; // [hna] 16 segments, 68*Zc
-  short channel_output_fixed[16 * 68 * 384];
-  short channel_output_uncoded[16 * 68 * 384];
-  unsigned int errors_bit_uncoded = 0;
-  unsigned int errors_bit = 0;
-
-  unsigned char test_input_bit[16 * 68 * 384];
-  unsigned char estimated_output_bit[16 * 68 * 384];
 
   /////////////////////////[adk] preparing UL harq_process parameters/////////////////////////
-  ///////////
-  NR_UL_UE_HARQ_t *harq_process_txUE = slsch_ue->harq_processes[harq_pid];
-  DevAssert(harq_process_txUE);
 
-  N_PRB_oh   = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
-  N_RE_prime = NR_NB_SC_PER_RB*nb_symb_sch - nb_re_dmrs - N_PRB_oh;
-  harq_process_txUE->pssch_pdu.mcs_index = Imcs;
-  harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
-  harq_process_txUE->pssch_pdu.rb_size = N_RB;
-  harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_txUE->num_of_mod_symbols = N_RE_prime*N_RB*nb_codewords;
-  harq_process_txUE->pssch_pdu.pssch_data.rv_index = rvidx;
-  harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS>>3;
-  harq_process_txUE->pssch_pdu.target_code_rate = code_rate;
-  harq_process_txUE->pssch_pdu.qam_mod_order = mod_order;
-  unsigned char *test_input = harq_process_txUE->a;
+  NR_UE_DLSCH_t *slsch_ue_rx = syncRefUE->slsch_rx[0][0][0];
+  slsch_ue_rx->harq_processes[harq_pid]->Nl = Nl;
+  slsch_ue_rx->harq_processes[harq_pid]->Qm = mod_order;
+  slsch_ue_rx->harq_processes[harq_pid]->nb_rb = N_RB;
+  slsch_ue_rx->harq_processes[harq_pid]->TBS = TBS >> 3;
+  slsch_ue_rx->harq_processes[harq_pid]->n_dmrs_cdm_groups = 1;
+  slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = 16;
+  slsch_ue_rx->harq_processes[harq_pid]->mcs = Imcs;
+  slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = 0;
+  slsch_ue_rx->harq_processes[harq_pid]->R = code_rate;
+  nfapi_nr_pssch_pdu_t *rel16_sl_rx = &slsch_ue_rx->harq_processes[harq_pid]->pssch_pdu;
+  rel16_sl_rx->mcs_index            = Imcs;
+  rel16_sl_rx->pssch_data.rv_index  = 0;
+  rel16_sl_rx->target_code_rate     = code_rate;
+  rel16_sl_rx->pssch_data.tb_size   = TBS >> 3; // bytes
+  rel16_sl_rx->pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
+  rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
+
+  NR_UL_UE_HARQ_t *harq_process_nearbyUE = slsch_ue->harq_processes[harq_pid];
+  DevAssert(harq_process_nearbyUE);
+  uint8_t N_PRB_oh = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
+  N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
+  harq_process_nearbyUE->pssch_pdu.mcs_index = Imcs;
+  harq_process_nearbyUE->pssch_pdu.nrOfLayers = Nl;
+  harq_process_nearbyUE->pssch_pdu.rb_size = N_RB;
+  harq_process_nearbyUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_nearbyUE->num_of_mod_symbols = N_RE_prime * N_RB * nb_codewords;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.rv_index = rvidx;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
+  harq_process_nearbyUE->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
+  harq_process_nearbyUE->pssch_pdu.target_code_rate = code_rate;
+  harq_process_nearbyUE->pssch_pdu.qam_mod_order = mod_order;
+  unsigned char *test_input = harq_process_nearbyUE->a;
+  uint64_t *sci_input = harq_process_nearbyUE->a_sci2;
+
+  SCI_1_A *sci1 = &harq_process_nearbyUE->pssch_pdu.sci1;
+  set_sci(sci1, Imcs);
 
   crcTableInit();
+  for (int i = 0; i < TBS / 8; i++)
+    test_input[i] = (unsigned char) (i+3);//rand();
 
-  ///////////
-  ////////////////////////////////////////////////////////////////////////////////////////////
+  uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
+  *sci_input = u;//rand() % (u - 0 + 1);
+  printf("the sci2 is:%"PRIu64"\n",*sci_input);
 
-  for (i = 0; i < TBS / 8; i++)
-    test_input[i] = (unsigned char) rand();
-
-#ifdef DEBUG_NR_ULSCHSIM
-  for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n",test_input[i]);
+#ifdef DEBUG_NR_PSSCHSIM
+  for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
 #endif
 
+
   /////////////////////////SLSCH coding/////////////////////////
-  ///////////
-  unsigned int G = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
 
+  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
   if (input_fd == NULL) {
-    // [TODO] encoding tx data at tx UE
-    nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G);
+    nr_slsch_encoding(nearbyUE, slsch_ue, &nearbyUE->frame_parms, harq_pid, G_slsch_bits);
   }
+  G_SCI2_bits = harq_process_nearbyUE->B_sci2;
 
-  printf("\n");
+  //////////////////SLSCH data and control multiplexing//////////////
 
-  for (SNR = snr0; SNR < snr1; SNR += snr_step) {
+  M_SCI2_bits = G_SCI2_bits * Nl;
+  M_data_bits = G_slsch_bits;
+  available_bits += M_SCI2_bits;
+  available_bits += M_data_bits;
+  uint8_t  SCI2_mod_order = 2;
+  uint8_t multiplexed_output[available_bits];
+  memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
+
+  nr_pssch_data_control_multiplexing(harq_process_nearbyUE->f,
+                                     (uint8_t*)harq_process_nearbyUE->b_sci2,
+                                     G_slsch_bits,
+                                     G_SCI2_bits,
+                                     Nl,
+                                     SCI2_mod_order,
+                                     multiplexed_output);
+
+
+  /////////////////////////SLSCH scrambling/////////////////////////
+  uint16_t Nidx = slsch_ue->harq_processes[harq_pid]->Nidx;
+  uint32_t scrambled_output[(available_bits >> 5) + 1];
+  memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));
+
+  nr_pusch_codeword_scrambling_sl(multiplexed_output,
+                                  available_bits,
+                                  M_SCI2_bits,
+                                  Nidx,
+                                  scrambled_output);
+
+  /////////////////////////SLSCH modulation/////////////////////////
+
+  int max_num_re = Nl * nb_symb_sch * N_RB * NR_NB_SC_PER_RB;
+  int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
+
+  // modulating for the 2nd-stage SCI bits
+  nr_modulation(scrambled_output, // assume one codeword for the moment
+                M_SCI2_bits,
+                SCI2_mod_order,
+                (int16_t *)d_mod);
+
+  // modulating SL-SCH bits
+  nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
+                M_data_bits,
+                mod_order,
+                (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
+
+  /////////////////////////LLRs computation/////////////////////////
+
+  int16_t *ulsch_llr = syncRefUE->pssch_vars[UE_id]->llr;
+  int nb_re_SCI2 = M_SCI2_bits/SCI2_mod_order;
+  int nb_re_slsch = M_data_bits/mod_order;
+  uint8_t  symbol = 5;
+  int32_t a = 1;
+  int32_t b = 1;
+
+  nr_ulsch_compute_llr(d_mod, &a, &b,
+                      ulsch_llr, N_RB, nb_re_SCI2,
+                      symbol, SCI2_mod_order);
+
+  nr_ulsch_compute_llr(d_mod + (M_SCI2_bits / SCI2_mod_order), &a, &b,
+                      ulsch_llr + nb_re_SCI2 * 2, N_RB, nb_re_slsch,
+                      symbol, mod_order);
+
+#if 0
+  nr_ulsch_layer_demapping(rxUE->pssch_vars[UE_id].llr,
+                           rel16_ul->nrOfLayers,
+                           rel16_ul->qam_mod_order,
+                           available_bits,
+                           rxUE->pssch_vars[UE_id]->llr_layers);
+#endif
+
+  /////////////////////////SLSCH descrambling/////////////////////////
+
+nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
+
+  //////////////////SLSCH data and control demultiplexing/////////////
+
+  // int16_t *llr_polar_ctrl = ulsch_llr;//len: M_SCI2_bits
+  // int16_t *llr_ldpc_data = ulsch_llr + M_SCI2_bits; //len: M_data_bits
+
+  unsigned int errors_bit_uncoded = 0;
+  unsigned int errors_bit = 0;
+  unsigned int n_errors = 0;
+  unsigned int n_false_positive = 0;
+  double modulated_input[HNA_SIZE];
+  unsigned char test_input_bit[HNA_SIZE];
+  short channel_output_fixed[HNA_SIZE];
+  short channel_output_uncoded[HNA_SIZE];
+  unsigned char estimated_output_bit[HNA_SIZE];
+  snr1 = snr1set == 0 ? snr0 + 10 : snr1;
+  int numb_bits = available_bits;
+  unsigned char qbits = 8;
+
+  for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
     n_false_positive = 0;
-
-    for (trial = 0; trial < n_trials; trial++) {
+    for (int trial = 0; trial < n_trials; trial++) {
       errors_bit_uncoded = 0;
-      for (i = 0; i < available_bits; i++) {
-        if (slsch_ue->harq_processes[harq_pid]->f[i] == 0)
+      for (int i = 0; i < numb_bits; i++) {
+        if (slsch_ue->harq_processes[harq_pid]->f_multiplexed[i] == 0){
           modulated_input[i] = 1.0;        ///sqrt(2);  //QPSK
-        else
+        }else{
           modulated_input[i] = -1.0;        ///sqrt(2);
+        }
 
-        SNR_lin = pow(10, SNR / 10.0);
-        sigma = 1.0 / sqrt(2 * SNR_lin);
+        double SNR_lin = pow(10, SNR / 10.0);
+        double sigma = 1.0 / sqrt(2 * SNR_lin);
         channel_output_fixed[i] = (short) quantize(sigma / 4.0 / 4.0,
                                                    modulated_input[i] + sigma * gaussdouble(0.0, 1.0),
                                                    qbits);
-
-        //printf("channel_output_fixed[%d]: %d\n",i,channel_output_fixed[i]);
-
-        //Uncoded BER
         if (channel_output_fixed[i] < 0)
           channel_output_uncoded[i] = 1;  //QPSK demod
         else
           channel_output_uncoded[i] = 0;
-
         if (channel_output_uncoded[i] != slsch_ue->harq_processes[harq_pid]->f[i])
           errors_bit_uncoded = errors_bit_uncoded + 1;
       }
 
-     uint32_t G = nr_get_G(N_RB,
-                           nb_symb_sch,
-                           nb_re_dmrs,
-                           1, // FIXME only single dmrs is implemented
-                           mod_order,
-                           Nl);
-
-      ret = nr_slsch_decoding(rxUE, UE_id, channel_output_fixed, frame_parms, rel16_ul,
-                              frame, slot, harq_pid, G);
+      int frame = 0;
+      int slot = 0;
+      UE_nr_rxtx_proc_t proc;
+      // this is a small hack :D
+      slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
+      uint32_t ret = nr_slsch_decoding(syncRefUE, &proc,channel_output_fixed,
+                                  &syncRefUE->frame_parms, slsch_ue_rx,
+                                  slsch_ue_rx->harq_processes[0], frame,
+                                  nb_symb_sch, slot, harq_pid);
 
       if (ret)
         n_errors++;
 
-      //count errors
       errors_bit = 0;
-
-      for (i = 0; i < TBS; i++) {
-        test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7);
-
+      for (int i = 0; i < TBS; i++) {
+        estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+        test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+#if DEBUG_NR_PSSCHSIM
+        printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
+#endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
       }
+      if (errors_bit > 0) {
+        n_false_positive++;
+        if (n_trials == 1)
+          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
+      }
+      printf("\n");
+    }
 
-    printf("*****************************************\n");
-    printf("SNR %f, BLER %f (false positive %f)\n", SNR,
+      printf("*****************************************\n");
+      printf("SNR %f, BLER %f (false positive %f)\n", SNR,
            (float) n_errors / (float) n_trials,
            (float) n_false_positive / (float) n_trials);
-    printf("*****************************************\n");
-    printf("\n");
-
-    if (n_errors == 0) {
-      printf("PSSCH test OK\n");
+      printf("*****************************************\n");
       printf("\n");
-      break;
-    }
-    printf("\n");
-  }
-  }
 
-  for (sf = 0; sf < 2; sf++)
-    free_nr_ue_slsch(&txUE->slsch[sf][0], N_RB, frame_parms);
-
-  term_nr_ue_signal(txUE, 1);
-  free(txUE);
-  free(rxUE);
+      if (n_errors == 0) {
+        printf("PSSCH test OK\n");
+        printf("\n");
+        break;
+      }
+      printf("\n");
+  }
+  //term_nr_ue_transport(nearbyUE);
+  term_nr_ue_transport(syncRefUE);
+  term_nr_ue_signal(syncRefUE, 1);
+  term_nr_ue_signal(nearbyUE, 1);
+  free(nearbyUE);
+  free(syncRefUE);
 
   free_channel_desc_scm(UE2UE);
   free(bw_setting);
 
-  if (output_fd)
-    fclose(output_fd);
-
-  if (input_fd)
-    fclose(input_fd);
-
   loader_reset();
   logTerm();
-
-  return (n_errors);
+  return (0);
 }

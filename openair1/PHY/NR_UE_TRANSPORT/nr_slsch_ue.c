@@ -76,13 +76,40 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     }
     if (in[i] == NR_PSSCH_x) {
       *out ^= ((*out >> (b_idx - 2)) & 1) << b_idx;
-      j = j + 1;
+      j++;
     } else {
       m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
       c = (uint8_t)((s >> ((i - m_ij) % 32)) & 1);
       *out ^= ((in[i] + c) & 1) << b_idx;
     }
-    //LOG_D(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
+    //LOG_I(NR_PHY, "i %d b_idx %d in %d s 0x%08x out 0x%08x\n", i, b_idx, in[i], s, *out);
+  }
+}
+
+void nr_slsch_layer_demapping(int16_t *llr_cw,
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int16_t **llr_layers)
+{
+
+  switch (Nl) {
+    case 1:
+      memcpy((void*)llr_cw, (void*)llr_layers[0], (length) * sizeof(int16_t));
+      break;
+    case 2:
+    case 3:
+    case 4:
+      for (int i = 0; i < (length / Nl / mod_order); i++) {
+        for (int l = 0; l < Nl; l++) {
+          for (int m = 0; m < mod_order; m++) {
+            llr_cw[i * Nl * mod_order + l * mod_order + m] = llr_layers[l][i * mod_order + m];
+          }
+        }
+      }
+      break;
+  default:
+  AssertFatal(0, "Not supported number of layers %d\n", Nl);
   }
 }
 
@@ -145,7 +172,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   uint16_t nb_rb            = pssch_pdu->rb_size;
   uint8_t Nl                = pssch_pdu->nrOfLayers;
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
-  uint16_t rnti             = pssch_pdu->rnti;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
   uint16_t bwp_start        = pssch_pdu->bwp_start;
   int start_symbol          = pssch_pdu->start_symbol_index;
@@ -162,84 +188,42 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   nb_dmrs_re_per_rb = 6 * cdm_grps_no_data;
 
-  LOG_D(NR_PHY, "slsch TX %x : start_rb %d nb_rb %d mod_order %d Nl %d Tpmi %d bwp_start %d start_sc %d start_symbol %d num_symbols %d cdmgrpsnodata %d num_dmrs %d dmrs_re_per_rb %d\n",
-        rnti, start_rb, nb_rb, mod_order, Nl, pssch_pdu->Tpmi, bwp_start, start_sc, start_symbol, number_of_symbols, cdm_grps_no_data, number_dmrs_symbols, nb_dmrs_re_per_rb);
-
-  /////////////////////////SLSCH SCI2 coding/////////////////////////
-  // TODO: update the following
-    /* payload is 56 bits */
-  PSSCH_SCI2_payload pssch_payload;             // NR Side Link Payload for Rel 16
-  pssch_payload.harq_pid = 4;
-  pssch_payload.ndi = 0;
-  pssch_payload.red_version = 0;
-  pssch_payload.s_id = 0;
-  pssch_payload.d_id = 0;
-  pssch_payload.harq_fdbk_enabled = 0;
-  pssch_payload.ctype_ind = 0;
-  pssch_payload.csi_request = 0;
-
-  NR_UE_PSSCH m_pssch;
-  UE->pssch_vars[0] = &m_pssch;
-  NR_UE_PSSCH *pssch = UE->pssch_vars[0];
-  memset((void *)pssch, 0, sizeof(NR_UE_PSSCH));
-
-  pssch->pssch_a = *((uint32_t *)&pssch_payload);
-  pssch->pssch_a_interleaved = pssch->pssch_a; // skip interlevaing for Sidelink
-
-  // Encoder reversal
-  uint64_t a_reversed = 0;
-  for (int i = 0; i < NR_POLAR_PSSCH_PAYLOAD_BITS; i++)
-    a_reversed |= (((uint64_t)pssch->pssch_a_interleaved >> i) & 1) << (31 - i);
-  uint16_t Nidx;
-  Nidx = get_Nidx_from_CRC(&a_reversed, 0, 0,
-                           NR_POLAR_PSSCH_MESSAGE_TYPE,
-                           NR_POLAR_PSSCH_PAYLOAD_BITS,
-                           NR_POLAR_PSSCH_AGGREGATION_LEVEL);
-
-  /// CRC, coding and rate matching
-  polar_encoder_fast(&a_reversed, (void*)pssch->pssch_e, 0, 0,
-                     NR_POLAR_PSSCH_MESSAGE_TYPE,
-                     NR_POLAR_PSSCH_PAYLOAD_BITS,
-                     NR_POLAR_PSSCH_AGGREGATION_LEVEL);
-
-  /////////////////////////SLSCH data coding/////////////////////////
-  unsigned int G_slsch = nr_get_G(nb_rb, number_of_symbols,
+  /////////////////////////SLSCH coding/////////////////////////
+  unsigned int G_slsch_bits = nr_get_G(nb_rb, number_of_symbols,
                             nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl);
 
-
-  trace_NRpdu(DIRECTION_UPLINK,
-              harq_process_ul_ue->a,
-              harq_process_ul_ue->pssch_pdu.pssch_data.tb_size,
-              WS_C_RNTI, rnti, frame, slot, 0, 0);
-
-  if (nr_slsch_encoding(UE, slsch_ue, frame_parms, harq_pid, G_slsch) == -1)
+  if (nr_slsch_encoding(UE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
     return;
+  unsigned int G_SCI2_bits = harq_process_ul_ue->B_sci2;
 
   //////////////////SLSCH data and control multiplexing//////////////
-  uint32_t available_bits = G_slsch + NR_POLAR_PSSCH_E;
-  uint32_t SCI2_bits = NR_POLAR_PSSCH_E;
+  uint32_t available_bits = 0;
+  uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
+  uint32_t M_data_bits = G_slsch_bits;
+  available_bits += M_SCI2_bits;
+  available_bits += M_data_bits;
   uint8_t  SCI2_mod_order = 2;
   uint8_t multiplexed_output[available_bits];
   memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
 
   nr_pssch_data_control_multiplexing(harq_process_ul_ue->f,
-                                     (uint8_t*)pssch->pssch_e,
-                                     G_slsch,
-                                     SCI2_bits,
+                                     (uint8_t*)harq_process_ul_ue->b_sci2,
+                                     G_slsch_bits,
+                                     G_SCI2_bits,
                                      Nl,
                                      SCI2_mod_order,
                                      multiplexed_output);
+
   /////////////////////////SLSCH scrambling/////////////////////////
+  uint16_t Nidx = slsch_ue->harq_processes[harq_pid]->Nidx;
   uint32_t scrambled_output[(available_bits >> 5) + 1];
   memset(scrambled_output, 0, ((available_bits >> 5) + 1) * sizeof(uint32_t));
 
   nr_pusch_codeword_scrambling_sl(multiplexed_output,
                                   available_bits,
-                                  SCI2_bits,
+                                  M_SCI2_bits,
                                   Nidx,
                                   scrambled_output);
-
-  //////////////////////////////////////////////////////////////////////////
 
   /////////////////////////SLSCH modulation/////////////////////////
 
@@ -248,15 +232,15 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
-                SCI2_bits,
+                M_SCI2_bits,
                 SCI2_mod_order,
                 (int16_t *)d_mod);
 
   // modulating SL-SCH bits
-  nr_modulation(scrambled_output + (SCI2_bits >> 5), // assume one codeword for the moment
-                G_slsch,
+  nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
+                M_data_bits,
                 mod_order,
-                (int16_t *)(d_mod + SCI2_bits / SCI2_mod_order));
+                (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
 
   ////////////////////////////////////////////////////////////////////////
 
@@ -268,12 +252,12 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   uint16_t n_dmrs = (bwp_start + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
   int16_t mod_dmrs[n_dmrs << 1] __attribute((aligned(16)));
 
-  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
 
   /////////////////////////SLSCH layer mapping/////////////////////////
 
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
-  uint16_t n_symbs = (SCI2_bits << 1) / SCI2_mod_order + (G_slsch << 1) / mod_order;
+  uint16_t n_symbs = (M_SCI2_bits << 1) / SCI2_mod_order + (M_data_bits << 1) / mod_order;
   for (int nl = 0; nl < Nl; nl++)
     tx_layers[nl] = (int16_t *)malloc16_clear(n_symbs * sizeof(int16_t));
 
@@ -284,7 +268,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   ////////////////SLSCH Mapping to virtual resource blocks////////////////
   l_prime[0] = 0; // single symbol ap 0
   pssch_pdu->dmrs_ports = (Nl == 2) ? 0b11 : 0b01;
-  uint16_t G_SCI2_bits = 1024; // TODO: Update value
   uint16_t M_SCI2_Layer = G_SCI2_bits / SCI2_mod_order;
 
   int encoded_length = frame_parms->N_RB_UL * 14 * NR_NB_SC_PER_RB * mod_order * Nl;

@@ -77,6 +77,8 @@ NR_UE_ULSCH_t *new_nr_ue_ulsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
 
 NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms);
 
+NR_UE_DLSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_DL, int number_of_harq_pids, NR_DL_FRAME_PARMS *frame_parms);
+
 /** \brief This function computes the LLRs for ML (max-logsum approximation) dual-stream QPSK/QPSK reception.
     @param stream0_in Input from channel compensated (MR combined) stream 0
     @param stream1_in Input from channel compensated (MR combined) stream 1
@@ -996,9 +998,22 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                      uint8_t harq_pid,
                      unsigned int G);
 
-void nr_attach_crc_to_payload(NR_UL_UE_HARQ_t *harq_process,
-                     int max_payload_bytes,
-                     uint32_t A);
+uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
+                         UE_nr_rxtx_proc_t *proc,
+                         short *dlsch_llr,
+                         NR_DL_FRAME_PARMS *frame_parms,
+                         NR_UE_DLSCH_t *dlsch,
+                         NR_DL_UE_HARQ_t *harq_process,
+                         uint32_t frame,
+                         uint16_t nb_symb_sch,
+                         uint8_t nr_slot_rx,
+                         uint8_t harq_pid);
+
+void nr_attach_crc_to_payload(unsigned char *in,
+                              uint8_t *out,
+                              int max_payload_bytes,
+                              uint32_t in_size,
+                              uint32_t *out_size);
 
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in, Pointer to input bits
@@ -1766,6 +1781,14 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 
 void dump_nrdlsch(PHY_VARS_NR_UE *ue,uint8_t gNB_id,uint8_t nr_slot_rx,unsigned int *coded_bits_per_codeword,int round,  unsigned char harq_pid);
+
+void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
+                                        uint8_t *in_sci2,
+                                        uint32_t slssh_bits,
+                                        uint32_t SCI2_bits,
+                                        uint8_t Nl,
+                                        uint8_t Q_SCI2,
+                                        uint8_t* out);
 
 /**@}*/
 #endif
