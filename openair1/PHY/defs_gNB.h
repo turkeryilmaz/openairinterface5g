@@ -44,6 +44,11 @@
 #include "executables/rt_profiling.h"
 #include "nfapi_nr_interface_scf.h"
 
+#ifdef __cplusplus
+#include <atomic>
+#define _Atomic(X) std::atomic< X >
+#endif
+
 #define MAX_NUM_RU_PER_gNB 8
 #define MAX_PUCCH0_NID 8
 #define NUM_TX_TH 2
@@ -757,7 +762,7 @@ typedef struct PHY_VARS_gNB_s {
   struct processingData_L1tx *txThreadData[NUM_TX_TH];
   /// for tx slot wait if finished out of order
   notifiedFIFO_t tx_wait[NUM_TX_TH];
-  _Atomic int tx_wait_idx;
+  _Atomic(int) tx_wait_idx;
 } PHY_VARS_gNB;
 
 typedef struct LDPCDecode_s {
