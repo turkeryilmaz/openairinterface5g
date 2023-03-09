@@ -601,7 +601,6 @@ int main(int argc, char **argv)
       }
       printf("\n");
   }
-
   //term_nr_ue_transport(nearbyUE);
   term_nr_ue_transport(syncRefUE);
   term_nr_ue_signal(syncRefUE, 1);
