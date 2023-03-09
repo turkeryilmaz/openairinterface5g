@@ -78,6 +78,7 @@ int PRBalloc_to_locationandbandwidth(int NPRB,int RBstart);
 int get_subband_size(int NPRB,int size);
 void SLIV2SL(int SLIV,int *S,int *L);
 int get_dmrs_port(int nl, uint16_t dmrs_ports);
+int get_dmrs_port_sl(int nl, uint16_t dmrs_ports);
 uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols);
 int get_nb_periods_per_frame(uint8_t tdd_period);
 int get_supported_band_index(int scs, int band, int n_rbs);

@@ -288,6 +288,24 @@ int get_dmrs_port(int nl, uint16_t dmrs_ports) {
   return p;
 }
 
+int get_dmrs_port_sl(int nl, uint16_t dmrs_ports) {
+
+  if (dmrs_ports == 0) return 0; // dci 1_0
+  int p = -1;
+  int found = -1;
+  for (int i = 0; i < 2; i++) { // loop over dmrs ports
+    if((dmrs_ports >> i) & 0x01) { // check if current bit is 1
+      found++;
+      if (found == nl) { // found antenna port number corresponding to current layer
+        p = i;
+        break;
+      }
+    }
+  }
+  AssertFatal(p > -1, "No dmrs port corresponding to layer %d found\n", nl);
+  return p;
+}
+
 frame_type_t get_frame_type(uint16_t current_band, uint8_t scs_index)
 {
   frame_type_t current_type;

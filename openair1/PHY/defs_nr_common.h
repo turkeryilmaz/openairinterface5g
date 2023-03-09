@@ -413,11 +413,14 @@ typedef struct {
 /* NR Sidelink PSSCH SCI2 payload fields */
 typedef struct {
   //TODO: update the following
-  uint32_t coverageIndicator : 1;
-  uint32_t tddConfig : 12;
-  uint32_t DFN : 10;
-  uint32_t slotIndex : 7;
-  uint32_t reserved : 2;
+  uint32_t harq_pid : 4;
+  uint32_t ndi : 1;
+  uint32_t red_version : 2;
+  uint32_t s_id : 8;
+  uint32_t d_id : 16;
+  uint32_t harq_fdbk_enabled : 1;
+  uint32_t ctype_ind : 2;
+  uint32_t csi_request : 1;
 } PSSCH_SCI2_payload;
 
 /// Enumeration of SL_channel_config

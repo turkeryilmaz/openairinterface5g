@@ -40,7 +40,9 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
+#include "openair1/PHY/NR_UE_TRANSPORT/nr_slsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
+
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
