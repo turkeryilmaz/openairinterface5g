@@ -29,8 +29,12 @@
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include <openair2/UTIL/OPT/opt.h>
+#include <inttypes.h>
 
 //#define DEBUG_SLSCH_CODING
+#define NR_POLAR_SCI2_MESSAGE_TYPE 4
+#define NR_POLAR_SCI2_PAYLOAD_BITS 35
+#define NR_POLAR_SCI2_AGGREGATION_LEVEL 0
 
 void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
                       uint16_t N_RB_UL,
@@ -116,9 +120,17 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     DevAssert(slsch->harq_processes[i]->a);
     bzero(slsch->harq_processes[i]->a, slsch_bytes);
 
+    slsch->harq_processes[i]->a_sci2 = malloc16(slsch_bytes);
+    DevAssert(slsch->harq_processes[i]->a_sci2);
+    bzero(slsch->harq_processes[i]->a_sci2, slsch_bytes);
+
     slsch->harq_processes[i]->b = malloc16(slsch_bytes);
     DevAssert(slsch->harq_processes[i]->b);
     bzero(slsch->harq_processes[i]->b, slsch_bytes);
+
+    slsch->harq_processes[i]->b_sci2 = malloc16(slsch_bytes);
+    DevAssert(slsch->harq_processes[i]->b_sci2);
+    bzero(slsch->harq_processes[i]->b_sci2, slsch_bytes);
 
     slsch->harq_processes[i]->c = malloc16(a_segments * sizeof(uint8_t *));
     slsch->harq_processes[i]->d = malloc16(a_segments * sizeof(uint16_t *));
@@ -141,6 +153,10 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     DevAssert(slsch->harq_processes[i]->f);
     bzero(slsch->harq_processes[i]->f, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
 
+    slsch->harq_processes[i]->f_sci2 = malloc16(NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+    DevAssert(slsch->harq_processes[i]->f_sci2);
+    bzero(slsch->harq_processes[i]->f_sci2, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+
     slsch->harq_processes[i]->subframe_scheduling_flag = 0;
     slsch->harq_processes[i]->first_tx = 1;
   }
@@ -148,6 +164,39 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
   return(slsch);
 }
 
+uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
+  // calculating length of sequence comming out of rate matching for SCI2 based on 8.4.4 TS38212
+  uint8_t Osci2 = NR_POLAR_SCI2_PAYLOAD_BITS;
+  uint8_t Lsci2 = 24;
+  uint8_t Qmsci2 = 2; //modulation order of SCI2
+  float beta = 1.125; // harq_process->pssch_pdu.sci1.beta_offset;
+  uint8_t alpha = 1; // hardcoded for now
+  float R = (float)harq_process->pssch_pdu.target_code_rate / (1024*10);
+
+  uint16_t tmp1 = (Osci2 + Lsci2) * beta / (Qmsci2 * R);
+  /*
+  // following lines should be uncommented if number of RB for PSCCH is not 0.
+  uint8_t N_sh_sym = harq_process->pssch_pdu.nr_of_symbols;
+  uint8_t N_psfch_symb = 0; //hardcoded
+  uint8_t N_pssch_symb = N_sh_sym - N_psfch_symb;
+  */
+
+  uint16_t tmp2 = alpha * harq_process->num_of_mod_symbols; // it is assumed that number of RB for PSCCH is 0.
+  int gamma = 461;
+  uint16_t Qprime = min(tmp1 + 1, tmp2) + gamma;
+  uint16_t Gsci2 = Qprime * Qmsci2;
+  return Gsci2;
+}
+
+void byte2bit(uint8_t *in_bytes, uint8_t *out_bits, uint16_t num_bytes) {
+
+  for (int i=0 ; i<num_bytes ; i++) {
+    for (int b=0 ; b<8 ; b++){
+      out_bits[i*8 + b] = (in_bytes[i]>>b) & 1;
+    }
+  }
+  return;
+}
 
 int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                       NR_UE_ULSCH_t *slsch,
@@ -158,7 +207,8 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
   start_meas(&ue->slsch_encoding_stats);
   NR_UL_UE_HARQ_t *harq_process = slsch->harq_processes[harq_pid];
   uint16_t nb_rb = harq_process->pssch_pdu.rb_size;
-  uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3;
+  uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3; // payload size in bits
+  uint32_t A_sci = harq_process->pssch_pdu.pssch_data.sci2_size << 3;
   uint32_t *pz = &harq_process->Z;
   uint8_t mod_order = harq_process->pssch_pdu.qam_mod_order;
   uint16_t Kr = 0;
@@ -185,7 +235,23 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     LOG_D(NR_PHY, "encoding thinks this is a new packet \n");
 #endif
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
-    nr_attach_crc_to_payload(harq_process, max_payload_bytes, A);
+    uint16_t polar_encoder_output_len = polar_encoder_output_length(harq_process);
+    printf("output length of polar encoder is:%d bits\n",polar_encoder_output_len);
+    polar_encoder_fast(harq_process->a_sci2, (void*)harq_process->b_sci2, 0, 0,
+                       NR_POLAR_SCI2_MESSAGE_TYPE,
+                       polar_encoder_output_len,
+                       NR_POLAR_SCI2_AGGREGATION_LEVEL);
+
+    harq_process->B_sci2 = polar_encoder_output_len;
+    byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
+    /*
+    for (int i=0 ; i<polar_encoder_output_len ; i++){
+      printf("%d",harq_process->f_sci2[i]);
+    }
+    printf("\n");
+    */
+
+    nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
 
     ///////////////////////// b---->| block segmentation |---->c /////////////////////////
 

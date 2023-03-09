@@ -192,7 +192,7 @@ t_nrPolar_params * nr_polar_params(int8_t messageType,
     newPolarInitNode->encoderLength = NR_POLAR_PSBCH_E;
     newPolarInitNode->crcCorrectionBits = NR_POLAR_PSBCH_CRC_ERROR_CORRECTION_BITS;
     newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
-  } else if (messageType == 4) { // PSSCH
+  } else if (messageType == 4) { // SCI2_A
     newPolarInitNode->n_max = NR_POLAR_PSSCH_N_MAX;
     newPolarInitNode->i_il = NR_POLAR_PSSCH_I_IL;
     newPolarInitNode->i_seg = NR_POLAR_PSSCH_I_SEG;
@@ -201,7 +201,7 @@ t_nrPolar_params * nr_polar_params(int8_t messageType,
     newPolarInitNode->i_bil = NR_POLAR_PSSCH_I_BIL;
     newPolarInitNode->crcParityBits = NR_POLAR_PSSCH_CRC_PARITY_BITS;
     newPolarInitNode->payloadBits = NR_POLAR_PSSCH_PAYLOAD_BITS;
-    newPolarInitNode->encoderLength = NR_POLAR_PSSCH_E;
+    newPolarInitNode->encoderLength = messageLength;
     newPolarInitNode->crcCorrectionBits = NR_POLAR_PSSCH_CRC_ERROR_CORRECTION_BITS;
     newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
   } else {

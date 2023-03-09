@@ -113,7 +113,6 @@ uint16_t Nid_cell = 0;
 uint16_t Nid_SL = 336 + 10;
 uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
-FILE *input_fd = NULL;
 SCM_t channel_model = AWGN;
 int N_RB_DL = 273;
 int mu = 1;
@@ -125,13 +124,12 @@ int seed = 0;
 bool pss_sss_test = false;
 
 void free_psbchsim_members(channel_desc_t *UE2UE,
-                            PHY_VARS_NR_UE *UE,
-                            double **s_re,
-                            double **s_im,
-                            double **r_re,
-                            double **r_im,
-                            int **txdata,
-                            FILE *input_fd)
+                           PHY_VARS_NR_UE *UE,
+                           double **s_re,
+                           double **s_im,
+                           double **r_re,
+                           double **r_im,
+                           int **txdata)
 {
   free_channel_desc_scm(UE2UE);
   term_nr_ue_signal(UE, 1);
@@ -150,9 +148,6 @@ void free_psbchsim_members(channel_desc_t *UE2UE,
   free(r_re);
   free(r_im);
   free(txdata);
-
-  if (input_fd)
-    fclose(input_fd);
 
   loader_reset();
   logTerm();
@@ -220,14 +215,6 @@ static void get_sim_cl_opts(int argc, char **argv)
     char c;
     while ((c = getopt(argc, argv, "F:g:hIL:m:M:n:N:o:O:p:P:r:R:s:S:x:y:z:")) != -1) {
     switch (c) {
-      case 'F':
-        input_fd = fopen(optarg, "r");
-        if (input_fd == NULL) {
-          printf("Problem with filename %s. Exiting.\n", optarg);
-          exit(-1);
-        }
-        break;
-
       case 'g':
         switch((char)*optarg) {
           case 'A':
@@ -412,7 +399,7 @@ int main(int argc, char **argv)
         fs = 61.44e6;
         bw = 40e6;
       }
-      else AssertFatal(1==0,"Unsupported numerology for mu %d, N_RB %d\n",mu, N_RB_DL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
       break;
     case 3:
       UE->frame_parms.Lmax = 64;
@@ -421,7 +408,7 @@ int main(int argc, char **argv)
         fs = 122.88e6;
         bw = 100e6;
       }
-      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
       break;
   }
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model, fs, bw, 300e-9, 0, 0, 0, 0);
@@ -464,7 +451,7 @@ int main(int argc, char **argv)
   if (pss_sss_test) {
     test_pss_sl(UE);
     test_sss_sl(UE);
-    free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
+    free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata);
     return 0;
   }
 
@@ -639,7 +626,7 @@ int main(int argc, char **argv)
     }
   } // NSR
 
-  free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata, input_fd);
+  free_psbchsim_members(UE2UE, UE, s_re, s_im, r_re, r_im, txdata);
 
   return 0;
 }
