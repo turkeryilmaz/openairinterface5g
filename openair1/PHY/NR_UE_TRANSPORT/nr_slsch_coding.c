@@ -48,7 +48,6 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
     a_segments = a_segments * N_RB_UL;
     a_segments = a_segments / MAX_NUM_NR_RB + 1;
   }
-  uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
 
   for (int i = 0; i < NR_MAX_ULSCH_HARQ_PROCESSES; i++) {
     if (slsch->harq_processes[i]) {
@@ -212,7 +211,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
   NR_UL_UE_HARQ_t *harq_process = slsch->harq_processes[harq_pid];
   uint16_t nb_rb = harq_process->pssch_pdu.rb_size;
   uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3; // payload size in bits
-  uint32_t A_sci = harq_process->pssch_pdu.pssch_data.sci2_size << 3;
   uint32_t *pz = &harq_process->Z;
   uint8_t mod_order = harq_process->pssch_pdu.qam_mod_order;
   uint16_t Kr = 0;
@@ -401,7 +399,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     harq_process->f_multiplexed[ind] = harq_process->f[i];
     ind++;
   }
-  #if 0
+#if DEBUG_SLSCH_CODING
   int j = 0;
   for (int i = harq_process->B_sci2 - 10 +1 ; i < harq_process->B_sci2 + 10 ; i++){
     printf("f_mul: %u ",harq_process->f_multiplexed[i]);
@@ -413,6 +411,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     }
   }
   printf("\n");
-  #endif
+#endif
   return(0);
 }
