@@ -73,7 +73,7 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
                       uint16_t N_RB_UL,
                       NR_DL_FRAME_PARMS* frame_parms);
 
-void free_nr_ue_slsch_rx(NR_UE_ULSCH_t **slschptr, uint16_t N_RB_UL);
+void free_nr_ue_slsch_rx(NR_UE_DLSCH_t ***slschptr, uint16_t N_RB_UL);
 
 NR_UE_ULSCH_t *new_nr_ue_ulsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms);
 

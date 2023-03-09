@@ -79,7 +79,7 @@ static void nr_sci2_quantize(int16_t *psbch_llr8,
   }
 }
 
-void free_nr_ue_slsch_rx(NR_UE_ULSCH_t **slschptr, uint16_t N_RB_UL)
+void free_nr_ue_slsch_rx(NR_UE_DLSCH_t ***slschptr, uint16_t N_RB_UL)
 {
 
   uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * NR_MAX_NB_LAYERS_SL;  //number of segments to be allocated
@@ -442,7 +442,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   */
 
   // SCI2 decoding //
-  #if 0
+  #if 1
   uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2
   nr_sci2_quantize(decoder_input, dlsch_llr, harq_process->B_sci2);

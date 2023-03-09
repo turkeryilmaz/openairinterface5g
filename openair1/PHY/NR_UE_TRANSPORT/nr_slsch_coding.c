@@ -48,45 +48,44 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
     a_segments = a_segments * N_RB_UL;
     a_segments = a_segments / MAX_NUM_NR_RB + 1;
   }
-  uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
 
   for (int i = 0; i < NR_MAX_SLSCH_HARQ_PROCESSES; i++) {
     if (slsch->harq_processes[i]) {
       if (slsch->harq_processes[i]->a) {
-        free16(slsch->harq_processes[i]->a, slsch_bytes);
+        free(slsch->harq_processes[i]->a);
         slsch->harq_processes[i]->a = NULL;
       }
       if (slsch->harq_processes[i]->b) {
-        free16(slsch->harq_processes[i]->b, slsch_bytes);
+        free(slsch->harq_processes[i]->b);
         slsch->harq_processes[i]->b = NULL;
       }
       for (int r=0; r < a_segments; r++) {
         if (slsch->harq_processes[i]->c[r]) {
-          free16(slsch->harq_processes[i]->c[r], 8448);
+          free(slsch->harq_processes[i]->c[r]);
           slsch->harq_processes[i]->c[r] = NULL;
         }
         if (slsch->harq_processes[i]->d[r]) {
-          free16(slsch->harq_processes[i]->d[r], 68 * 384);
+          free(slsch->harq_processes[i]->d[r]);
           slsch->harq_processes[i]->d[r] = NULL;
         }
       }
       if (slsch->harq_processes[i]->c) {
-        free16(slsch->harq_processes[i]->c, a_segments * sizeof(uint8_t *));
+        free(slsch->harq_processes[i]->c);
         slsch->harq_processes[i]->c = NULL;
       }
       if (slsch->harq_processes[i]->d) {
-        free16(slsch->harq_processes[i]->d, a_segments * sizeof(uint8_t *));
+        free(slsch->harq_processes[i]->d);
         slsch->harq_processes[i]->d = NULL;
       }
       if (slsch->harq_processes[i]->e) {
-        free16(slsch->harq_processes[i]->e, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+        free(slsch->harq_processes[i]->e);
         slsch->harq_processes[i]->e = NULL;
       }
       if (slsch->harq_processes[i]->f) {
-        free16(slsch->harq_processes[i]->f, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+        free(slsch->harq_processes[i]->f);
         slsch->harq_processes[i]->f = NULL;
       }
-      free16(slsch->harq_processes[i], sizeof(NR_UL_UE_HARQ_t));
+      free(slsch->harq_processes[i]);
       slsch->harq_processes[i] = NULL;
     }
   }
@@ -208,7 +207,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
   NR_UL_UE_HARQ_t *harq_process = slsch->harq_processes[harq_pid];
   uint16_t nb_rb = harq_process->pssch_pdu.rb_size;
   uint32_t A = harq_process->pssch_pdu.pssch_data.tb_size << 3; // payload size in bits
-  uint32_t A_sci = harq_process->pssch_pdu.pssch_data.sci2_size << 3;
   uint32_t *pz = &harq_process->Z;
   uint8_t mod_order = harq_process->pssch_pdu.qam_mod_order;
   uint16_t Kr = 0;
