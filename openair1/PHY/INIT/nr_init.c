@@ -1039,7 +1039,7 @@ void reset_DLSCH_struct(const PHY_VARS_gNB *gNB, processingData_L1tx_t *msg)
   int num_cw = NR_MAX_NB_LAYERS > 4? 2:1;
   for (int i = 0; i < NUMBER_OF_NR_DLSCH_MAX; i++)
     for (int j=0; j<num_cw; j++)
-      free_gNB_dlsch(&msg->dlsch[i][j], grid_size, fp);
+      free_gNB_dlsch(msg->dlsch[i][j], grid_size, fp);
 }
 
 void init_nr_transport(PHY_VARS_gNB *gNB)

@@ -494,6 +494,9 @@ void init_gNB_Tpool_msgs(int inst) {
 void term_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB = RC.gNB[inst];
   abortTpool(&gNB->threadPool);
+  // allow threads to finish/stop before freeing memory
+  usleep(10000);
+  phy_free_nr_gNB(gNB);
   abortNotifiedFIFO(&gNB->respDecode);
   abortNotifiedFIFO(&gNB->resp_L1);
   abortNotifiedFIFO(&gNB->L1_tx_free);
