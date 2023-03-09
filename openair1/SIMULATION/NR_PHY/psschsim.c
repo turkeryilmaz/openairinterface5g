@@ -602,10 +602,6 @@ int main(int argc, char **argv)
       printf("\n");
   }
 
-  for (int sf = 0; sf < 0; sf++) {
-    free_nr_ue_slsch(&nearbyUE->slsch[sf][0], N_RB_UL, &nearbyUE->frame_parms);
-    free_nr_ue_dlsch(&syncRefUE->slsch_rx[sf][0][0], N_RB_DL);
-  }
   //term_nr_ue_transport(nearbyUE);
   term_nr_ue_transport(syncRefUE);
   term_nr_ue_signal(syncRefUE, 1);
