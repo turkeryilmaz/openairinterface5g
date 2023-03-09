@@ -62,6 +62,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
+#include "NR_ServingCellConfigCommonSIB.h"
 
 /* PHY */
 #include "openair1/PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
