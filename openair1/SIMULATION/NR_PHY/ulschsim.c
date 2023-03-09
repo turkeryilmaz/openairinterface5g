@@ -607,9 +607,8 @@ int main(int argc, char **argv)
       for (i = 0; i < TBS; i++) {
         estimated_output_bit[i] = (ulsch_gNB->harq_processes[harq_pid]->b[i/8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-        #if 0
         printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
-        #endif
+
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }

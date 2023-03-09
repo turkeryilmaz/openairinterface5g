@@ -341,7 +341,7 @@ void set_sci(SCI_1_A *sci, uint8_t mcs) {
 }
 
 void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
-  double scs, fs, bw;
+  double scs = 0, fs = 0, bw = 0;
   switch (mu) {
     case 1:
       scs = 30000;
@@ -497,7 +497,6 @@ int main(int argc, char **argv)
   unsigned char *test_input = harq_process_nearbyUE->a;
   uint64_t *sci_input = harq_process_nearbyUE->a_sci2;
 
-  SCI_2_A *sci2 = &harq_process_nearbyUE->pssch_pdu.sci2;
   SCI_1_A *sci1 = &harq_process_nearbyUE->pssch_pdu.sci1;
   set_sci(sci1, Imcs);
 
@@ -509,7 +508,7 @@ int main(int argc, char **argv)
   *sci_input = u;//rand() % (u - 0 + 1);
   printf("the sci2 is:%"PRIu64"\n",*sci_input);
 
-#ifdef DEBUG_NR_ULSCHSIM
+#ifdef DEBUG_NR_PSSCHSIM
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
 #endif
 
@@ -518,7 +517,6 @@ int main(int argc, char **argv)
   nr_slsch_encoding(nearbyUE, slsch_ue, &nearbyUE->frame_parms, harq_pid, G);
   printf("tx is done\n");
 
-  #if 1
   unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
@@ -556,8 +554,7 @@ int main(int argc, char **argv)
         if (channel_output_uncoded[i] != slsch_ue->harq_processes[harq_pid]->f[i])
           errors_bit_uncoded = errors_bit_uncoded + 1;
       }
-  #endif
-  #if 1
+
       int frame = 0;
       int slot = 0;
       UE_nr_rxtx_proc_t proc;
@@ -575,9 +572,9 @@ int main(int argc, char **argv)
       for (int i = 0; i < TBS; i++) {
         estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-        #if 0
+#if DEBUG_NR_PSSCHSIM
         printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
-        #endif
+#endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
@@ -604,8 +601,8 @@ int main(int argc, char **argv)
       }
       printf("\n");
   }
-  #endif
-  for (int sf = 0; sf < 2; sf++) {
+
+  for (int sf = 0; sf < 0; sf++) {
     free_nr_ue_slsch(&nearbyUE->slsch[sf][0], N_RB_UL, &nearbyUE->frame_parms);
     free_nr_ue_dlsch(&syncRefUE->slsch_rx[sf][0][0], N_RB_DL);
   }
