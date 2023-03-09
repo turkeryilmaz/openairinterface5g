@@ -557,7 +557,7 @@ int main(int argc, char **argv)
   memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
 
   nr_pssch_data_control_multiplexing(harq_process_nearbyUE->f,
-                                     (uint8_t*)harq_process_nearbyUE->b_sci2,
+                                     harq_process_nearbyUE->f_sci2,
                                      G_slsch_bits,
                                      G_SCI2_bits,
                                      Nl,
