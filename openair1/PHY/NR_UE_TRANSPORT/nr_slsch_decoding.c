@@ -367,10 +367,12 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   */
 
   // SCI2 decoding //
-  #if 0
+  short *sci2_llr = dlsch_llr;
+  short *data_llr = dlsch_llr + harq_process->B_sci2;
+  #if 1
   uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2
-  nr_sci2_quantize(decoder_input, dlsch_llr, harq_process->B_sci2);
+  nr_sci2_quantize(decoder_input, sci2_llr, harq_process->B_sci2);
   uint32_t decoder_state = polar_decoder_int16(decoder_input,
                                               (uint64_t *)&tmp,
                                               0,
@@ -380,6 +382,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 
 
   printf("the polar decoder output is:%"PRIu64"\n",tmp);
+  harq_process->b_sci2 = &tmp;
   #endif
   nb_rb = harq_process->nb_rb;
   A = (harq_process->TBS) << 3;
@@ -479,7 +482,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     rdata->phy_vars_ue = phy_vars_ue;
     rdata->harq_process = harq_process;
     rdata->decoderParms = decParams;
-    rdata->dlsch_llr = dlsch_llr;
+    rdata->dlsch_llr = data_llr;
     rdata->Kc = kc;
     rdata->harq_pid = harq_pid;
     rdata->segment_r = r;
