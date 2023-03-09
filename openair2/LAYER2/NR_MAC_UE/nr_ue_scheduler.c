@@ -60,6 +60,8 @@
 
 //#define SRS_DEBUG
 
+const uint8_t nr_rv_round_map[4] = { 0, 2, 3, 1 };
+
 static prach_association_pattern_t prach_assoc_pattern;
 static ssb_list_info_t ssb_list;
 

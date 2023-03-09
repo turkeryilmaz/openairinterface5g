@@ -113,6 +113,8 @@
 
 #define NR_NB_NSCID 2
 
+#define MAX_LDPC_ITERATIONS 5
+
 extern const uint8_t nr_rv_round_map[4]; 
 
 static inline
@@ -407,6 +409,16 @@ typedef struct {
   uint32_t slotIndex : 7;
   uint32_t reserved : 2;
 } PSBCH_payload;
+
+/* NR Sidelink PSSCH SCI2 payload fields */
+typedef struct {
+  //TODO: update the following
+  uint32_t coverageIndicator : 1;
+  uint32_t tddConfig : 12;
+  uint32_t DFN : 10;
+  uint32_t slotIndex : 7;
+  uint32_t reserved : 2;
+} PSSCH_SCI2_payload;
 
 /// Enumeration of SL_channel_config
 typedef enum {

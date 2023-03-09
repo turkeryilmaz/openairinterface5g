@@ -129,6 +129,23 @@ typedef struct {
   // pointer ot output of data-control multiplexer in bits
   uint8_t *f_multiplexed;
 
+
+  /////////////////////// slsch decoding ///////////////////////
+  /// Frame where current HARQ round was sent
+  uint32_t frame;
+  /// Slot where current HARQ round was sent
+  uint32_t slot;
+  /// Flag to indicate that the UL configuration has been handled. Used to remove a stale ULSCH when frame wraps around
+  uint8_t handled;
+
+  /// Transport block size (This is A from 38.212 V16.10.0 section 5.1)
+  uint32_t TBS;
+  /// Number of bits in each code block after rate matching for LDPC code (38.212 V16.10.0 section 5.4.2.1)
+  uint32_t E;
+  /// Number of segments processed so far
+  uint32_t processedSegments;
+  bool new_rx;
+  //////////////////////////////////////////////////////////////
 } NR_UL_UE_HARQ_t;
 
 typedef struct {
@@ -140,6 +157,8 @@ typedef struct {
   // UL number of harq processes
   uint8_t number_harq_processes_for_pusch;
   /// Minimum number of CQI bits for PUSCH (36-212 r8.6, Sec 5.2.4.1 p. 37)
+  /// HARQ process mask, indicates which processes are currently active
+  uint16_t harq_mask;
   uint8_t O_CQI_MIN;
   /// ACK/NAK Bundling flag
   uint8_t bundling;
@@ -153,6 +172,8 @@ typedef struct {
   uint8_t power_offset;
   // for cooperative communication
   uint8_t cooperation_flag;
+  /// Allocated RNTI for this SLSCH
+  uint16_t rnti;
   /// RNTI type
   uint8_t rnti_type;
   /// Cell ID
@@ -173,6 +194,10 @@ typedef struct {
   //uint8_t num_cba_dci[10];
   /// allocated CBA RNTI
   //uint16_t cba_rnti[4];//NUM_MAX_CBA_GROUP];
+  /// Maximum number of LDPC iterations in sidelink decoding
+  uint8_t max_ldpc_iterations;
+  /// number of iterations used in last LDPC decoding in sidelink decoding
+  uint8_t last_iteration_cnt;
 } NR_UE_ULSCH_t;
 
 typedef struct {

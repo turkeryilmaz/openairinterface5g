@@ -40,6 +40,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
+#include "PHY/NR_UE_TRANSPORT/nr_slsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
@@ -49,7 +50,30 @@
 #include "common/utils/threadPool/thread-pool.h"
 #include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "executables/nr-uesoftmodem.h"
+#include "PHY/impl_defs_top.h"
 
+#define DEBUG_NR_SLSCHSIM
+
+typedef struct {
+  uint8_t priority;
+  uint8_t freq_res;
+  uint8_t time_res;
+  uint8_t period;
+  uint16_t dmrs_pattern;
+  uint8_t mcs;
+  uint8_t beta_offset;
+  uint8_t dmrs_port;
+} SCI_1_A;
+
+typedef struct {
+  double scs;
+  double bw;
+  double fs;
+} BW;
+
+THREAD_STRUCT thread_struct;
+PHY_VARS_NR_UE *txUE;
+PHY_VARS_NR_UE *rxUE;
 //#define DEBUG_NR_SLSCHSIM
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 #define SCI2_LEN_SIZE 35
@@ -72,68 +96,7 @@ nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
 
-bool nr_ue_sl_postDecode_sim(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool last, notifiedFIFO_t *nf_p) {
-  ldpcDecode_ue_t *rdata = (ldpcDecode_ue_t*) NotifiedFifoData(req);
-  NR_DL_UE_HARQ_t *harq_process = rdata->harq_process;
-  NR_UE_DLSCH_t *dlsch = (NR_UE_DLSCH_t *) rdata->dlsch;
-  int r = rdata->segment_r;
 
-  merge_meas(&phy_vars_ue->dlsch_deinterleaving_stats, &rdata->ts_deinterleave);
-  merge_meas(&phy_vars_ue->dlsch_rate_unmatching_stats, &rdata->ts_rate_unmatch);
-  merge_meas(&phy_vars_ue->dlsch_ldpc_decoding_stats, &rdata->ts_ldpc_decode);
-
-  bool decodeSuccess = (rdata->decodeIterations < (1+dlsch->max_ldpc_iterations));
-
-  if (decodeSuccess) {
-    memcpy(harq_process->b+rdata->offset,
-           harq_process->c[r],
-           rdata->Kr_bytes - (harq_process->F>>3) -((harq_process->C>1)?3:0));
-
-  } else {
-    if ( !last ) {
-      int nb=abortTpoolJob(&get_nrUE_params()->Tpool, req->key);
-      nb+=abortNotifiedFIFOJob(nf_p, req->key);
-      LOG_D(PHY,"downlink segment error %d/%d, aborted %d segments\n",rdata->segment_r,rdata->nbSegments, nb);
-      LOG_D(PHY, "SLSCH %d in error\n",rdata->dlsch_id);
-      last = true;
-    }
-  }
-
-  // if all segments are done
-  if (last) {
-    if (decodeSuccess) {
-      //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
-      //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
-      harq_process->status = SCH_IDLE;
-      harq_process->ack = 1;
-
-      //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d, mcs %d)\n",
-      //  phy_vars_ue->Mod_id, frame, subframe, harq_pid, harq_process->status, harq_process->round,harq_process->TBS,harq_process->mcs);
-
-      //if(is_crnti) {
-      //  LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d (pid %d, round %d, TBS %d)\n",phy_vars_ue->Mod_id,nr_slot_rx,harq_pid,harq_process->round,harq_process->TBS);
-      //}
-      dlsch->last_iteration_cnt = rdata->decodeIterations;
-      LOG_D(PHY, "SLSCH received ok \n");
-    } else {
-      //LOG_D(PHY,"[UE %d] DLSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d, mcs %d) Kr %d r %d harq_process->round %d\n",
-      //      phy_vars_ue->Mod_id, frame, nr_slot_rx, harq_pid,harq_process->status, harq_process->round,harq_process->TBS,harq_process->mcs,Kr,r,harq_process->round);
-      harq_process->ack = 0;
-
-      //if(is_crnti) {
-      //  LOG_D(PHY,"[UE %d] DLSCH: Setting NACK for nr_slot_rx %d (pid %d, pid status %d, round %d/Max %d, TBS %d)\n",
-      //        phy_vars_ue->Mod_id,nr_slot_rx,harq_pid,harq_process->status,harq_process->round,dlsch->Mdlharq,harq_process->TBS);
-      //}
-      dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
-      LOG_D(PHY, "SLSCH received nok \n");
-    }
-    return true; //stop
-  }
-  else
-  {
-	return false; //not last one
-  }
-}
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 
@@ -371,7 +334,10 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
         fs = 122.88e6;
         bw = 100e6;
       }
-      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
+      break;
+    default:
+      AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
       break;
   }
   bw_setting->scs = scs;
@@ -380,14 +346,42 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
   return;
 }
 
+nrUE_params_t nrUE_params;
+nrUE_params_t *get_nrUE_params(void) {
+  return &nrUE_params;
+}
+
 int main(int argc, char **argv)
 {
   get_softmodem_params()->sl_mode = 2;
+  // **** Initialization ****
+  int i, sf;
+  double snr_step = 0.1 * 100;
+  FILE *output_fd = NULL;
+  //uint8_t write_output_file = 0;
+  SCI_1_A first_sci;
+  //set 1st SCI parameters.
+  set_sci(&first_sci);
+  channel_desc_t *UE2UE;
+  int frame = 0, slot = 0;
+  NR_DL_FRAME_PARMS *frame_parms;
+  double sigma;
+  unsigned char qbits = 8;
+  int ret = 0;
+  uint8_t Imcs = 9;
+  uint8_t max_ldpc_iterations = 5;
+  get_softmodem_params()->sl_mode = 2;
+
+  double DS_TDL = 300e-9;//.03;
+  cpuf = get_cpu_freq_GHz();
+
   if (load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY) == 0) {
     exit_fun("[NR_PSBCHSIM] Error, configuration module init failed\n");
   }
+
   get_sim_cl_opts(argc, argv);
-  randominit(seed);
+  randominit(0);
+  // logging initialization
   logInit();
   set_glog(loglvl);
   load_nrLDPClib(NULL);
@@ -446,16 +440,34 @@ int main(int argc, char **argv)
   get_softmodem_params()->sync_ref = true;
   init_nr_ue_transport(syncRefUE);
 
-  uint8_t nb_re_dmrs = 6;
-  uint8_t Nl = 1; // number of layers
-  if ((Nl == 4) || (Nl == 3))
-    nb_re_dmrs = nb_re_dmrs * 2;
-  uint8_t Imcs = 9;
-  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
-  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
+  s_re = malloc(n_tx*sizeof(double*));
+  s_im = malloc(n_tx*sizeof(double*));
+  r_re = malloc(n_rx*sizeof(double*));
+  r_im = malloc(n_rx*sizeof(double*));
+
+
   uint8_t length_dmrs = 1;
-  uint16_t nb_symb_sch = 12;
-  unsigned int available_bits = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
+  uint8_t N_PRB_oh;
+  uint16_t N_RE_prime,code_rate;
+  unsigned char mod_order;
+  uint8_t rvidx = 0;
+  uint8_t UE_id = 0;
+   uint16_t nb_symb_sch = 12;
+   uint8_t nb_re_dmrs = 6;
+  uint8_t Nl = 1; // number of layers
+
+  NR_UE_DLSCH_t *dlsch_rxUE = rxUE->ulsch[UE_id];
+  NR_DL_UE_HARQ_t *harq_process_rxUE = dlsch_rxUE->harq_processes[harq_pid];
+  nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
+  NR_UE_DLSCH_t *dlsch0_ue = rxUE->dlsch[0][0][0];
+  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
+
+  if ((Nl == 4)||(Nl == 3))
+    nb_re_dmrs = nb_re_dmrs*2;
+
+  mod_order = nr_get_Qm_ul(Imcs, 0);
+  code_rate = nr_get_code_rate_ul(Imcs, 0);
+  available_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
   unsigned int TBS = nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
   printf("\nAvailable bits %u TBS %u mod_order %d\n", available_bits, TBS, mod_order);
 
@@ -530,6 +542,269 @@ int main(int argc, char **argv)
   int numb_bits = available_bits + slsch_ue->harq_processes[harq_pid]->B_sci2;
   unsigned char qbits = 8;
 
+  unsigned char test_input_bit[16 * 68 * 384];
+  unsigned char estimated_output_bit[16 * 68 * 384];
+
+  /////////////////////////[adk] preparing UL harq_process parameters/////////////////////////
+  ///////////
+  NR_UL_UE_HARQ_t *harq_process_txUE = slsch_ue->harq_processes[harq_pid];
+  DevAssert(harq_process_txUE);
+
+  N_PRB_oh   = 0; // higher layer (RRC) parameter xOverhead in PUSCH-ServingCellConfig
+  N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
+  harq_process_txUE->pssch_pdu.mcs_index = Imcs;
+  harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
+  harq_process_txUE->pssch_pdu.rb_size = n_rb;
+  harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_txUE->num_of_mod_symbols = N_RE_prime*n_rb*nb_codewords;
+  harq_process_txUE->pssch_pdu.pssch_data.rv_index = rvidx;
+  harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS>>3;
+  harq_process_txUE->pssch_pdu.target_code_rate = code_rate;
+  harq_process_txUE->pssch_pdu.qam_mod_order = mod_order;
+  unsigned char *test_input = harq_process_txUE->a;
+
+  crcTableInit();
+
+  ///////////
+  ////////////////////////////////////////////////////////////////////////////////////////////
+
+//#define DEBUG_NR_SLSCHSIM 1
+#ifdef DEBUG_NR_SLSCHSIM
+  for (i = 0; i < 10; i++)
+   test_input[i] = i;//(unsigned char) rand();
+  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+  for (i = 0; i < 10; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+#endif
+
+  /////////////////////////SLSCH SCI2 coding/////////////////////////
+  // TODO: update the following
+    /* payload is 56 bits */
+  PSSCH_SCI2_payload pssch_payload;             // NR Side Link Payload for Rel 16
+  pssch_payload.coverageIndicator = 0;     // 1 bit
+  pssch_payload.tddConfig = 0xFFF;         // 12 bits for TDD configuration
+  pssch_payload.DFN = 0x3FF;               // 10 bits for DFN
+  pssch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
+  pssch_payload.reserved = 0;              // 2 bits reserved
+
+  NR_UE_PSSCH m_pssch;
+  txUE->pssch_vars[0] = &m_pssch;
+  NR_UE_PSSCH *pssch = txUE->pssch_vars[0];
+  memset((void *)pssch, 0, sizeof(NR_UE_PSSCH));
+
+  pssch->pssch_a = *((uint32_t *)&pssch_payload);
+  pssch->pssch_a_interleaved = pssch->pssch_a; // skip interlevaing for Sidelink
+
+  // Encoder reversal
+  uint64_t a_reversed = 0;
+  for (int i = 0; i < NR_POLAR_PSSCH_PAYLOAD_BITS; i++)
+    a_reversed |= (((uint64_t)pssch->pssch_a_interleaved >> i) & 1) << (31 - i);
+  uint16_t Nidx = 0;
+
+#if 0
+  Nidx = get_Nidx_from_CRC(&a_reversed, 0, 0,
+                           NR_POLAR_PSSCH_MESSAGE_TYPE,
+                           NR_POLAR_PSSCH_PAYLOAD_BITS,
+                           NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+
+  /// CRC, coding and rate matching
+  polar_encoder_fast(&a_reversed, (void*)pssch->pssch_e, 0, 0,
+                     NR_POLAR_PSSCH_MESSAGE_TYPE,
+                     NR_POLAR_PSSCH_PAYLOAD_BITS,
+                     NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+  SCI2_bits = NR_POLAR_PSSCH_E;
+  available_bits += NR_POLAR_PSSCH_E;
+#endif
+
+  /////////////////////////SLSCH data coding/////////////////////////
+  ///////////
+  G_slsch_bits = nr_get_G(N_RB, nb_symb_sch, nb_re_dmrs, number_dmrs_symbols, mod_order, Nl);
+  if (input_fd == NULL) {
+    //nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch_bits);
+  }
+
+  //////////////////SLSCH data and control multiplexing//////////////
+
+  // TODO: Remove the following hard coded case.
+  Nl = 1;
+  G_SCI2_bits = 32;
+  pssch->pssch_e[0] = 0x0101;//-> 0011
+
+  G_slsch_bits = 32;
+  harq_process_txUE->f[0] = 0;
+  harq_process_txUE->f[1] = 1;
+  harq_process_txUE->f[2] = 0;
+  harq_process_txUE->f[3] = 1;
+  // TODO: Remove the above hard coded case.
+
+#ifdef DEBUG_NR_SLSCHSIM
+  printf("encoded SCI2_bits[i]= ");
+  for (i = 0; i < G_SCI2_bits; i++)
+    printf("%u ", ((uint8_t *)pssch->pssch_e)[i]);
+  printf("\n\n");
+  printf("encoded SLSCH_bits[i]= ");
+  for (i = 0; i < G_slsch_bits; i++)
+    printf("%u ", harq_process_txUE->f[i]);
+  printf("\n\n");
+#endif
+
+  M_SCI2_bits = G_SCI2_bits * Nl; //assume multiple of 32 bits
+  M_data_bits = G_slsch_bits;
+  available_bits += M_SCI2_bits;
+  available_bits += M_data_bits;
+  uint8_t  SCI2_mod_order = 2;
+  uint8_t multiplexed_output[available_bits];
+  memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
+
+  nr_pssch_data_control_multiplexing(harq_process_txUE->f,
+                                     (uint8_t*)pssch->pssch_e,
+                                     G_slsch_bits,
+                                     G_SCI2_bits,
+                                     Nl,
+                                     SCI2_mod_order,
+                                     multiplexed_output);
+
+#ifdef DEBUG_NR_SLSCHSIM
+  printf("multiplexed SLSCH_bits[i]= ");
+  for (i = 0; i < available_bits; i++)
+    printf("%u ", multiplexed_output[i]);
+  printf("\n\n");
+#endif
+
+  /////////////////////////SLSCH scrambling/////////////////////////
+  uint32_t scrambled_output[(available_bits >> 5) + 1];
+  memset(scrambled_output, 0, ((available_bits >> 5) + 1)*sizeof(uint32_t));
+
+  nr_pusch_codeword_scrambling_sl(multiplexed_output,
+                                  available_bits,
+                                  M_SCI2_bits,
+                                  Nidx,
+                                  scrambled_output);
+
+#ifdef DEBUG_NR_SLSCHSIM
+  printf("Nidx= %d\n", Nidx);
+  printf("scambled SCI2_bits[i]= ");
+  for (i = 0; i < (M_SCI2_bits + 31) >> 5; i++)
+    printf("0x%x ", scrambled_output[i]);
+  printf("\n\n");
+  printf("scambled data_bits[i]= ");
+  for (i = 0; i < (M_data_bits + 31) >> 5; i++)
+    printf("0x%x ", scrambled_output[i+ M_SCI2_bits]);
+  printf("\n\n");
+#endif
+
+  /////////////////////////SLSCH modulation/////////////////////////
+
+  int max_num_re = Nl * nb_symb_sch * N_RB * NR_NB_SC_PER_RB;
+  int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
+
+  // modulating for the 2nd-stage SCI bits
+  nr_modulation(scrambled_output, // assume one codeword for the moment
+                M_SCI2_bits,
+                SCI2_mod_order,
+                (int16_t *)d_mod);
+
+  // modulating SL-SCH bits
+  nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
+                M_data_bits,
+                mod_order,
+                (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
+
+
+#ifdef DEBUG_NR_SLSCHSIM
+  printf("modulated SCI2_bits[i]= ");
+  for (i = 0; i < M_SCI2_bits / SCI2_mod_order; i++) {
+    if (i%4 == 0) printf("\n");
+    printf("0x%x ", d_mod[i]);
+  }
+  printf("\n\n");
+
+  printf("modulated SLSCH_bits[i]= ");
+  for (i = 0; i < M_data_bits / mod_order; i++) {
+    if (i%4 == 0) printf("\n");
+    printf("0x%x ", d_mod[i + M_SCI2_bits / SCI2_mod_order]);
+  }
+  printf("\n\n");
+#endif
+
+  /////////////////////////LLRs computation/////////////////////////
+
+  int16_t *ulsch_llr = rxUE->pssch_vars[UE_id]->llr;
+  int nb_re_SCI2 = M_SCI2_bits/SCI2_mod_order;
+  int nb_re_slsch = M_data_bits/mod_order;
+  uint8_t  symbol = 5;
+  int32_t a = 1;
+  int32_t b = 1;
+
+  nr_ulsch_compute_llr(d_mod, &a, &b,
+                      ulsch_llr, n_rb, nb_re_SCI2,
+                      symbol, SCI2_mod_order);
+
+  nr_ulsch_compute_llr(d_mod + (M_SCI2_bits / SCI2_mod_order), &a, &b,
+                      ulsch_llr + nb_re_SCI2 * 2, n_rb, nb_re_slsch,
+                      symbol, mod_order);
+
+#ifdef DEBUG_NR_SLSCHSIM
+
+  printf("SCI2 llr value= ");
+  for (i = 0; i < M_SCI2_bits; i++) {
+    if (i%8 == 0) printf("\n");
+    printf("0x%x ", ulsch_llr[i] & 0xFFFF);
+  }
+  printf("\n\n");
+  printf("SLSCH llr value= ");
+  for (i = 0; i < M_data_bits; i++) {
+    if (i%8 == 0) printf("\n");
+    printf("0x%x ", ulsch_llr[i + M_SCI2_bits] & 0xFFFF);
+  }
+  printf("\n\n");
+#endif
+
+
+#if 0
+  nr_ulsch_layer_demapping(rxUE->pssch_vars[UE_id].llr,
+                           rel16_ul->nrOfLayers,
+                           rel16_ul->qam_mod_order,
+                           available_bits,
+                           rxUE->pssch_vars[UE_id]->llr_layers);
+#endif
+
+  /////////////////////////SLSCH descrambling/////////////////////////
+
+nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
+
+#ifdef DEBUG_NR_SLSCHSIM
+  printf("Unscrambled llr value= ");
+  for (i = 0; i < available_bits; i++) {
+    if (i % 8 == 0) printf("\n");
+    printf("0x%x ", ulsch_llr[i] & 0xFFFF);
+  }
+  printf("\n\n");
+#endif
+
+  //////////////////SLSCH data and control demultiplexing//////////////
+
+int16_t *llr_polar_ctrl = ulsch_llr;//len: M_SCI2_bits
+int16_t *llr_ldpc_data = ulsch_llr + M_SCI2_bits; //len: M_data_bits
+
+#ifdef DEBUG_NR_SLSCHSIM
+  printf("demultiplexed SCI2_bits[i]= ");
+  for (i = 0; i < M_SCI2_bits; i++) {
+    if (i % 8 == 0) printf("\n");
+    printf("0x%x ", llr_polar_ctrl[i] & 0xFFFF);
+  }
+  printf("\n\n");
+  printf("demultiplexed SLSCH_bits[i]= ");
+  for (i = 0; i < M_data_bits; i++) {
+    if (i % 8 == 0) printf("\n");
+    printf("0x%x ", llr_ldpc_data[i] & 0xFFFF);
+  }
+  printf("\n\n");
+#endif
+
+
+  printf("\n");
+
+  for (SNR = snr0; SNR < snr1; SNR += snr_step) {
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
     n_errors = 0;
     n_false_positive = 0;

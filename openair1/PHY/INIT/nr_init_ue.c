@@ -35,7 +35,6 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "executables/softmodem-common.h"
 
-
 extern uint16_t beta_cqi[16];
 
 /*! \brief Helper function to allocate memory for DLSCH data structures.
@@ -90,6 +89,56 @@ void phy_init_nr_ue_PDSCH(NR_UE_PDSCH *const pdsch,
       pdsch->dl_ch_magr0[idx]             = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
     }
   }
+}
+
+void phy_init_nr_ue_PSSCH(NR_UE_PSSCH *const pssch,
+                           const NR_DL_FRAME_PARMS *const fp) {
+
+  AssertFatal( pssch, "pssch == 0" );
+  int max_ul_mimo_layers = 2;
+  pssch->llr = (int16_t *)malloc16_clear( (8*((3*8*6144)+12))*sizeof(int16_t) ); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
+  pssch->llr_layers = (int16_t **)malloc16(fp->nb_antennas_rx*sizeof(int32_t **) );
+  for (int i = 0; i < max_ul_mimo_layers; i++) {
+    pssch->llr_layers[i] = (int16_t *)malloc16_clear( (8*((3*8*6144)+12))*sizeof(int16_t) ); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
+  }
+#if 0
+  pssch->rxdataF_ext            = (int32_t **)malloc16_clear( fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->rxdataF_uespec_pilots  = (int32_t **)malloc16_clear( fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->rxdataF_comp0          = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->rho                    = (int32_t ***)malloc16_clear( fp->nb_antennas_rx*sizeof(int32_t **) );
+  pssch->ul_ch_estimates        = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->ul_ch_estimates_ext    = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->ul_ch_mag0             = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->ul_ch_magb0            = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->ul_ch_magr0            = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->ptrs_phase_per_slot    = (int32_t **)malloc16_clear( fp->nb_antennas_rx*sizeof(int32_t *) );
+  pssch->ptrs_re_per_slot       = (int32_t **)malloc16_clear( fp->nb_antennas_rx*sizeof(int32_t *) );
+  // the allocated memory size is fixed:
+  AssertFatal( fp->nb_antennas_rx <= 4, "nb_antennas_rx > 4" );//Extend the max number of UE Rx antennas to 4
+
+  const size_t num = 7*2*fp->N_RB_DL*12;
+  for (int i=0; i<fp->nb_antennas_rx; i++) {
+    pssch->rxdataF_ext[i]              = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+    pssch->ptrs_phase_per_slot[i]      = (int32_t *)malloc16_clear( sizeof(int32_t) * 14 );
+    pssch->ptrs_re_per_slot[i]         = (int32_t *)malloc16_clear( sizeof(int32_t) * 14);
+    pssch->rho[i]                      = (int32_t **)malloc16_clear( NR_MAX_NB_LAYERS*NR_MAX_NB_LAYERS*sizeof(int32_t *) );
+
+    for (int j=0; j<NR_MAX_NB_LAYERS; j++) {
+      const int idx = (j*fp->nb_antennas_rx)+i;
+      for (int k=0; k<NR_MAX_NB_LAYERS; k++) {
+        pssch->rho[i][j*NR_MAX_NB_LAYERS+k] = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+      }
+      pssch->rxdataF_comp0[idx]           = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+      pssch->ul_ch_estimates[idx]         = (int32_t *)malloc16_clear( sizeof(int32_t) * fp->ofdm_symbol_size*7*2);
+      pssch->ul_ch_estimates_ext[idx]     = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+      pssch->ul_bf_ch_estimates[idx]      = (int32_t *)malloc16_clear( sizeof(int32_t) * fp->ofdm_symbol_size*7*2);
+      pssch->ul_bf_ch_estimates_ext[idx]  = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+      pssch->ul_ch_mag0[idx]              = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+      pssch->ul_ch_magb0[idx]             = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+      pssch->ul_ch_magr0[idx]             = (int32_t *)malloc16_clear( sizeof(int32_t) * num );
+    }
+  }
+#endif
 }
 
 void phy_term_nr_ue__PDSCH(NR_UE_PDSCH* pdsch, const NR_DL_FRAME_PARMS *const fp)
@@ -218,6 +267,24 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     }
   }
 
+  /////////////////////////PSSCH DMRS init/////////////////////////
+  ///////////
+
+  // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
+  int pssch_dmrs_init_length =  ((fp->N_RB_UL * 12) >> 5) + 1;
+  ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
+  uint32_t ***pssch_dmrs = ue->nr_gold_pusch_dmrs;
+
+  for (slot=0; slot<fp->slots_per_frame; slot++) {
+    pssch_dmrs[slot] = (uint32_t **)malloc16(fp->symbols_per_slot * sizeof(uint32_t *));
+    AssertFatal(pssch_dmrs[slot] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d - malloc failed\n", slot);
+
+    for (symb=0; symb<fp->symbols_per_slot; symb++) {
+      pssch_dmrs[slot][symb] = (uint32_t *)malloc16(pssch_dmrs_init_length * sizeof(uint32_t));
+      AssertFatal(pssch_dmrs[slot][symb] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
+    }
+  }
+
   ///////////
   ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -318,6 +385,20 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
       for (i=0; i<NR_MAX_NB_LAYERS; i++) {
         ue->pdsch_vars[th_id][gNB_id]->layer_llr[i] = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
       }
+    }
+  }
+
+  // SLSCH
+  for (gNB_id = 0; gNB_id < ue->n_connected_gNB + 1; gNB_id++) {
+    ue->pssch_vars[gNB_id] = (NR_UE_PSSCH *)malloc16_clear(sizeof(NR_UE_PSSCH));
+    phy_init_nr_ue_PSSCH(ue->pssch_vars[gNB_id], fp);
+
+    int nb_codewords = NR_MAX_NB_LAYERS_SL > 4 ? 2 : 1;
+    for (i = 0; i < nb_codewords; i++) {
+      ue->pssch_vars[gNB_id]->llr = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
+    }
+    for (i = 0; i < NR_MAX_NB_LAYERS_SL; i++) {
+      ue->pssch_vars[gNB_id]->llr_layers[i] = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
     }
   }
 
@@ -499,6 +580,7 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
           free_nr_ue_ulsch(&ue->ulsch[k][i], N_RB_DL, &ue->frame_parms);
           if (get_softmodem_params()->sl_mode != 0) {
             free_nr_ue_slsch(&ue->slsch[k][i], N_RB_DL, &ue->frame_parms);
+            free_nr_ue_slsch_rx(&ue->slsch_rx[k][i], N_RB_DL, &ue->frame_parms);
           }
         }
       }

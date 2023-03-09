@@ -22,6 +22,7 @@
 #include "nr_transport_common_proto.h"
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#include "executables/softmodem-common.h"
 
 void nr_codeword_scrambling(uint8_t *in,
                             uint32_t size,
@@ -105,4 +106,30 @@ void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t N
       llr[i] = -llr[i];
   }
 #endif
+}
+
+void nr_codeword_unscrambling_sl(int16_t* llr, uint32_t size, uint8_t SCI2_bits, uint32_t Nid, uint8_t Nl)
+{
+  uint32_t x1;
+  uint32_t x2 = (Nid << 15) + 1010; // 1010 is following the spec. 38.211, 8.3.1.1;
+  uint32_t s = 0, j = 0, m_ij = 0;
+
+  uint8_t reset = 1;
+
+  for (uint32_t  i = 0; i < size; i++) {
+    if ((i & 0x1f)==0) {
+      s = lte_gold_generic(&x1, &x2, reset);
+      reset = 0;
+    }
+    if (Nl == 2) {
+      if ((i < SCI2_bits) && ((i / 2) & 1)) {
+        llr[i] = llr[i - 2];
+        j++;
+        continue;
+      }
+    }
+    m_ij =  (i < SCI2_bits) ? j : SCI2_bits;
+    if (((s >> ((i - m_ij) & 0x1f)) & 1) == 1)
+      llr[i] = -llr[i];
+  }
 }
