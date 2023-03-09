@@ -675,14 +675,15 @@ int main(int argc, char **argv)
                                   scrambled_output);
 
 #ifdef DEBUG_NR_SLSCHSIM
-  printf("Nidx= %d\n", Nidx);
+  printf("Nidx = %d\n", Nidx);
+  printf("M_SCI2_bits = %u\n", M_SCI2_bits);
   printf("scambled SCI2_bits = ");
   for (i = 0; i < (M_SCI2_bits + 31) >> 5; i++)
     printf("0x%x ", scrambled_output[i]);
   printf("\n\n");
   printf("scambled data_bits = ");
   for (i = 0; i < (M_data_bits + 31) >> 5; i++)
-    printf("0x%x ", scrambled_output[i+ M_SCI2_bits]);
+    printf("0x%x ", scrambled_output[i + ((M_SCI2_bits + 31) >> 5)]);
   printf("\n\n");
 #endif
 
