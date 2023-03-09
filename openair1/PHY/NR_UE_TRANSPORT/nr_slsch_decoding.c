@@ -79,36 +79,6 @@ static void nr_sci2_quantize(int16_t *psbch_llr8,
   }
 }
 
-void free_nr_ue_slsch_rx(NR_UE_DLSCH_t ***slschptr, uint16_t N_RB_UL)
-{
-
-  uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * NR_MAX_NB_LAYERS_SL;  //number of segments to be allocated
-  NR_UE_ULSCH_t *slsch = *slschptr;
-
-  if (N_RB_UL != 273) {
-    a_segments = a_segments * N_RB_UL;
-    a_segments = a_segments / 273 + 1;
-  }
-
-  for (int i = 0; i < NR_MAX_SLSCH_HARQ_PROCESSES; i++) {
-    if (slsch->harq_processes[i]) {
-      if (slsch->harq_processes[i]->b) {
-        free_and_zero(slsch->harq_processes[i]->b);
-        slsch->harq_processes[i]->b = NULL;
-      }
-      for (int r = 0; r < a_segments; r++) {
-        free_and_zero(slsch->harq_processes[i]->c[r]);
-        free_and_zero(slsch->harq_processes[i]->d[r]);
-      }
-      free_and_zero(slsch->harq_processes[i]->c);
-      free_and_zero(slsch->harq_processes[i]->d);
-      free_and_zero(slsch->harq_processes[i]);
-      slsch->harq_processes[i] = NULL;
-    }
-  }
-  free_and_zero(*slschptr);
-}
-
 NR_UE_DLSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_DL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms)
 {
 
@@ -442,10 +412,12 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   */
 
   // SCI2 decoding //
+  short *sci2_llr = dlsch_llr;
+  short *data_llr = dlsch_llr + harq_process->B_sci2 * harq_process->Nl;
   #if 1
   uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2
-  nr_sci2_quantize(decoder_input, dlsch_llr, harq_process->B_sci2);
+  nr_sci2_quantize(decoder_input, sci2_llr, harq_process->B_sci2);
   uint32_t decoder_state = polar_decoder_int16(decoder_input,
                                               (uint64_t *)&tmp,
                                               0,
@@ -455,6 +427,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 
 
   printf("the polar decoder output is:%"PRIu64"\n",tmp);
+  harq_process->b_sci2 = &tmp;
   #endif
   nb_rb = harq_process->nb_rb;
   A = (harq_process->TBS) << 3;
@@ -554,7 +527,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     rdata->phy_vars_ue = phy_vars_ue;
     rdata->harq_process = harq_process;
     rdata->decoderParms = decParams;
-    rdata->dlsch_llr = dlsch_llr;
+    rdata->dlsch_llr = data_llr;
     rdata->Kc = kc;
     rdata->harq_pid = harq_pid;
     rdata->segment_r = r;

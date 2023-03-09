@@ -144,7 +144,8 @@ typedef struct {
   uint32_t B_sci2;
   // pointer ot output of polar encoder stored in bits
   uint8_t *f_sci2;
-
+  // pointer ot output of data-control multiplexer in bits
+  uint8_t *f_multiplexed;
 
 } NR_UL_UE_HARQ_t;
 
@@ -216,7 +217,7 @@ typedef struct {
   /// Pointer to the payload
   uint8_t *b;
   /// Pointer to the sci2 payload
-  uint8_t *b_sci2;
+  uint64_t *b_sci2;
   /// Pointers to transport block segments
   uint8_t **c;
   /// soft bits for each received segment ("d"-sequence)(for definition see 36-212 V8.6 2009-03, p.15)

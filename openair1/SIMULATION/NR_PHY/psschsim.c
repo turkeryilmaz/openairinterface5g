@@ -347,7 +347,7 @@ void set_sci(SCI_1_A *sci, uint8_t mcs) {
 }
 
 void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
-  double scs, fs, bw;
+  double scs = 0, fs = 0, bw = 0;
   switch (mu) {
     case 1:
       scs = 30000;
@@ -393,8 +393,6 @@ int main(int argc, char **argv)
 {
   // **** Initialization ****
   double snr_step = 0.2;
-  int frame = 0, slot = 0;
-  unsigned char qbits = 8;
   uint64_t burst_position = 0x01;
   get_softmodem_params()->sl_mode = 2;
 
@@ -524,7 +522,6 @@ int main(int argc, char **argv)
   unsigned char *test_input = harq_process_nearbyUE->a;
   uint64_t *sci_input = harq_process_nearbyUE->a_sci2;
 
-  //SCI_2_A *sci2 = &harq_process_nearbyUE->pssch_pdu.sci2;
   SCI_1_A *sci1 = &harq_process_nearbyUE->pssch_pdu.sci1;
   set_sci(sci1, Imcs);
 
@@ -536,7 +533,7 @@ int main(int argc, char **argv)
   *sci_input = u;//rand() % (u - 0 + 1);
   printf("the sci2 is:%"PRIu64"\n",*sci_input);
 
-#ifdef DEBUG_NR_ULSCHSIM
+#ifdef DEBUG_NR_PSSCHSIM
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
 #endif
 
@@ -630,24 +627,26 @@ nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
   // int16_t *llr_polar_ctrl = ulsch_llr;//len: M_SCI2_bits
   // int16_t *llr_ldpc_data = ulsch_llr + M_SCI2_bits; //len: M_data_bits
 
-  #if 1
   unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
+  unsigned int n_false_positive = 0;
   double modulated_input[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
   short channel_output_fixed[HNA_SIZE];
   short channel_output_uncoded[HNA_SIZE];
   unsigned char estimated_output_bit[HNA_SIZE];
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  int numb_bits = available_bits;//slsch_ue->harq_processes[harq_pid]->B_sci2;
+  int numb_bits = available_bits;
+  unsigned char qbits = 8;
 
   for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
+    n_false_positive = 0;
     for (int trial = 0; trial < n_trials; trial++) {
       errors_bit_uncoded = 0;
       for (int i = 0; i < numb_bits; i++) {
-        if (slsch_ue->harq_processes[harq_pid]->f[i] == 0){
+        if (slsch_ue->harq_processes[harq_pid]->f_multiplexed[i] == 0){
           modulated_input[i] = 1.0;        ///sqrt(2);  //QPSK
         }else{
           modulated_input[i] = -1.0;        ///sqrt(2);
@@ -665,6 +664,9 @@ nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
         if (channel_output_uncoded[i] != slsch_ue->harq_processes[harq_pid]->f[i])
           errors_bit_uncoded = errors_bit_uncoded + 1;
       }
+
+      int frame = 0;
+      int slot = 0;
       UE_nr_rxtx_proc_t proc;
       // this is a small hack :D
       slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
@@ -680,16 +682,25 @@ nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
       for (int i = 0; i < TBS; i++) {
         estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+#if DEBUG_NR_PSSCHSIM
         printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
+#endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
       }
+      if (errors_bit > 0) {
+        n_false_positive++;
+        if (n_trials == 1)
+          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
+      }
+      printf("\n");
+    }
 
       printf("*****************************************\n");
-      printf("SNR %f, BLER %f (number of erros bit %d)\n", SNR,
-            (float) n_errors / (float) n_trials,
-            errors_bit);
+      printf("SNR %f, BLER %f (false positive %f)\n", SNR,
+           (float) n_errors / (float) n_trials,
+           (float) n_false_positive / (float) n_trials);
       printf("*****************************************\n");
       printf("\n");
 
@@ -699,12 +710,6 @@ nr_codeword_unscrambling_sl(ulsch_llr, available_bits, M_SCI2_bits, Nidx, Nl);
         break;
       }
       printf("\n");
-    }
-  }
-  #endif
-  for (int sf = 0; sf < 2; sf++) {
-    free_nr_ue_slsch(&nearbyUE->slsch[sf][0], N_RB_UL, &nearbyUE->frame_parms);
-    free_nr_ue_dlsch(&syncRefUE->slsch_rx[sf][0][0], N_RB_DL);
   }
   //term_nr_ue_transport(nearbyUE);
   term_nr_ue_transport(syncRefUE);

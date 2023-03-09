@@ -156,6 +156,10 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
     DevAssert(slsch->harq_processes[i]->f_sci2);
     bzero(slsch->harq_processes[i]->f_sci2, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
 
+    slsch->harq_processes[i]->f_multiplexed = malloc16(NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+    DevAssert(slsch->harq_processes[i]->f_multiplexed);
+    bzero(slsch->harq_processes[i]->f_multiplexed, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+
     slsch->harq_processes[i]->subframe_scheduling_flag = 0;
     slsch->harq_processes[i]->first_tx = 1;
   }
@@ -168,11 +172,11 @@ uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
   uint8_t Osci2 = NR_POLAR_SCI2_PAYLOAD_BITS;
   uint8_t Lsci2 = 24;
   uint8_t Qmsci2 = 2; //modulation order of SCI2
-  float beta = 1.125; // harq_process->pssch_pdu.sci1.beta_offset;
-  uint8_t alpha = 1; // hardcoded for now
+  double beta = 1.125; // harq_process->pssch_pdu.sci1.beta_offset;
+  double alpha = 1; // hardcoded for now
   float R = (float)harq_process->pssch_pdu.target_code_rate / (1024*10);
 
-  uint16_t tmp1 = (Osci2 + Lsci2) * beta / (Qmsci2 * R);
+  double tmp1 = (Osci2 + Lsci2) * beta / (Qmsci2 * R);
   /*
   // following lines should be uncommented if number of RB for PSCCH is not 0.
   uint8_t N_sh_sym = harq_process->pssch_pdu.nr_of_symbols;
@@ -180,9 +184,9 @@ uint16_t polar_encoder_output_length(NR_UL_UE_HARQ_t *harq_process) {
   uint8_t N_pssch_symb = N_sh_sym - N_psfch_symb;
   */
 
-  uint16_t tmp2 = alpha * harq_process->num_of_mod_symbols; // it is assumed that number of RB for PSCCH is 0.
+  double tmp2 = alpha * harq_process->num_of_mod_symbols; // it is assumed that number of RB for PSCCH is 0.
   int gamma = 461;
-  uint16_t Qprime = min(tmp1 + 1, tmp2) + gamma;
+  uint16_t Qprime = min(ceil(tmp1), ceil(tmp2)) + gamma;
   uint16_t Gsci2 = Qprime * Qmsci2;
   return Gsci2;
 }
@@ -394,5 +398,25 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
   stop_meas(&ue->slsch_encoding_stats);
+  // dummy multiplexer 
+  harq_process->f_multiplexed = harq_process->f_sci2;
+  int ind = harq_process->B_sci2;
+  for (int i=0 ; i<G ; i++){
+    harq_process->f_multiplexed[ind] = harq_process->f[i];
+    ind++;
+  }
+#if DEBUG_SLSCH_CODING
+  int j = 0;
+  for (int i = harq_process->B_sci2 - 10 +1 ; i < harq_process->B_sci2 + 10 ; i++){
+    printf("f_mul: %u ",harq_process->f_multiplexed[i]);
+    if (i < harq_process->B_sci2){
+      printf("f_sci: %u -- %d\n",harq_process->f_sci2[i],i);
+    }else{
+      printf("f_data: %u-- %d\n",harq_process->f[j],i);
+      j++;
+    }
+  }
+  printf("\n");
+#endif
   return(0);
 }

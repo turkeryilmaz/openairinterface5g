@@ -274,7 +274,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
   int pssch_dmrs_init_length =  ((fp->N_RB_UL * 12) >> 5) + 1;
   ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
-  uint32_t ***pssch_dmrs = ue->nr_gold_pusch_dmrs;
+  uint32_t ***pssch_dmrs = ue->nr_gold_pssch_dmrs;
 
   for (slot=0; slot<fp->slots_per_frame; slot++) {
     pssch_dmrs[slot] = (uint32_t **)malloc16(fp->symbols_per_slot * sizeof(uint32_t *));
@@ -578,7 +578,7 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
       for (int k = 0; k < RX_NB_TH_MAX; k++) {
         free_nr_ue_dlsch(&ue->dlsch[k][i][j], N_RB_DL);
         if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
-          free_nr_ue_slsch_rx(&ue->slsch_rx[k][i][j], N_RB_DL);
+          free_nr_ue_dlsch(&ue->slsch_rx[k][i][j], N_RB_DL);
         }
         if (j == 0) {
           free_nr_ue_ulsch(&ue->ulsch[k][i], N_RB_DL, &ue->frame_parms);
