@@ -69,7 +69,6 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     const uint8_t b_idx = i & 0x1f;
     if (b_idx == 0) {
       s = lte_gold_generic(&x1, &x2, reset);
-      printf("scrambling s = 0x%x\n", s);
       reset = 0;
       if (i)
         out++;
@@ -140,14 +139,6 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
     }
     memcpy(out + SCI2_bits * Nl, in_slssh, slssh_bits);
   }
-#define DEBUG_NR_SLSCH_MUX 0
-#ifdef DEBUG_NR_SLSCH_MUX
-  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
-  printf("Nl %d, muxed_bits[i]= ", Nl);
-  for (int i = 0; i < SCI2_bits * Nl + slssh_bits; i++)
-    printf("%u ", out[i]);
-  printf("\n");
-#endif
 }
 
 void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
