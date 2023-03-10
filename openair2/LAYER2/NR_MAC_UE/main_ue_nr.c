@@ -65,7 +65,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
       if (IS_SOFTMODEM_NOS1){
         pdcp_layer_init();
         nr_DRB_preconfiguration(nr_ue_mac_inst->crnti);
-        nr_ue_mac_inst->logicalChannelBearer_exist[0] = true;
+        nr_ue_mac_inst->logicalChannelBearer_exist[4] = true; // DRB0 has LCID 4
       }
       // Allocate memory for ul_config_request in the mac instance. This is now a pointer and will
       // point to a list of structures (one for each UL slot) to store PUSCH scheduling parameters
