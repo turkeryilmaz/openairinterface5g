@@ -207,7 +207,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
 
   nr_pssch_data_control_multiplexing(harq_process_ul_ue->f,
-                                     (uint8_t*)harq_process_ul_ue->b_sci2,
+                                     harq_process_ul_ue->f_sci2,
                                      G_slsch_bits,
                                      G_SCI2_bits,
                                      Nl,

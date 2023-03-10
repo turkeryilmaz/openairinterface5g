@@ -58,7 +58,6 @@
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 #define SCI2_LEN_SIZE 35
 RAN_CONTEXT_t RC;
-
 double cpuf;
 uint16_t NB_UE_INST = 1;
 openair0_config_t openair0_cfg[MAX_CARDS];
@@ -559,7 +558,7 @@ int main(int argc, char **argv)
   memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
 
   nr_pssch_data_control_multiplexing(harq_process_nearbyUE->f,
-                                     (uint8_t*)harq_process_nearbyUE->b_sci2,
+                                     harq_process_nearbyUE->f_sci2,
                                      G_slsch_bits,
                                      G_SCI2_bits,
                                      Nl,

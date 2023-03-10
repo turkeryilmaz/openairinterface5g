@@ -250,7 +250,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                            NR_POLAR_PSSCH_AGGREGATION_LEVEL);
 
     harq_process->B_sci2 = polar_encoder_output_len;
-
     byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
     /*
     for (int i=0 ; i<polar_encoder_output_len ; i++){
