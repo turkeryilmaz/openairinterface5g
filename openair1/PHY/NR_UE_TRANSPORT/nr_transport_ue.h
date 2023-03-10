@@ -128,8 +128,8 @@ typedef struct {
   uint8_t *f_sci2;
   // pointer ot output of data-control multiplexer in bits
   uint8_t *f_multiplexed;
-
-
+  // size of multiplexed output in bits
+  uint32_t B_multiplexed;
   /////////////////////// slsch decoding ///////////////////////
   /// Frame where current HARQ round was sent
   uint32_t frame;

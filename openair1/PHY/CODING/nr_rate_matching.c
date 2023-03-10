@@ -484,9 +484,6 @@ int nr_rate_matching_ldpc_rx(uint32_t Tbslbrm,
                              uint32_t F,
                              uint32_t Foffset,
                              bool is_sl)
-                             uint32_t F,
-                             uint32_t Foffset,
-                             bool is_sl)
 {
   uint32_t Ncb, ind, k, Nref, N;
 

@@ -392,6 +392,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
   stop_meas(&ue->slsch_encoding_stats);
+  harq_process->B_multiplexed = G + harq_process->B_sci2;
   // dummy multiplexer 
   harq_process->f_multiplexed = harq_process->f_sci2;
   int ind = harq_process->B_sci2;

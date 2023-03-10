@@ -69,7 +69,9 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     const uint8_t b_idx = i & 0x1f;
     if (b_idx == 0) {
       s = lte_gold_generic(&x1, &x2, reset);
+      #if 0
       printf("scrambling s = 0x%x\n", s);
+      #endif
       reset = 0;
       if (i)
         out++;
@@ -140,7 +142,7 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
     }
     memcpy(out + SCI2_bits * Nl, in_slssh, slssh_bits);
   }
-#define DEBUG_NR_SLSCH_MUX 0
+//#define DEBUG_NR_SLSCH_MUX 0
 #ifdef DEBUG_NR_SLSCH_MUX
   //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
   printf("Nl %d, muxed_bits[i]= ", Nl);
@@ -245,10 +247,10 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
                             nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl);
 
 
-  trace_NRpdu(DIRECTION_UPLINK,
-              harq_process_ul_ue->a,
-              harq_process_ul_ue->pssch_pdu.pssch_data.tb_size,
-              WS_C_RNTI, rnti, frame, slot, 0, 0);
+  // trace_NRpdu(DIRECTION_UPLINK,
+  //             harq_process_ul_ue->a,
+  //             harq_process_ul_ue->pssch_pdu.pssch_data.tb_size,
+  //             WS_C_RNTI, rnti, frame, slot, 0, 0);
 
   if (nr_slsch_encoding(UE, slsch_ue, frame_parms, harq_pid, G_slsch) == -1)
     return;

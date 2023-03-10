@@ -580,7 +580,7 @@ void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
           free_nr_ue_ulsch(&ue->ulsch[k][i], N_RB_DL, &ue->frame_parms);
           if (get_softmodem_params()->sl_mode != 0) {
             free_nr_ue_slsch(&ue->slsch[k][i], N_RB_DL, &ue->frame_parms);
-            free_nr_ue_slsch_rx(&ue->slsch_rx[k][i], N_RB_DL, &ue->frame_parms);
+            //free_nr_ue_slsch_rx(&ue->slsch_rx[k][i], N_RB_DL, &ue->frame_parms);
           }
         }
       }

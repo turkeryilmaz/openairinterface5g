@@ -866,7 +866,6 @@ typedef struct {
   NR_UE_DLSCH_t   *slsch_rx[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX][NR_MAX_NB_LAYERS_SL>4 ? 2:1]; // two RxTx Threads
   NR_UE_ULSCH_t   *ulsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_ULSCH_t   *slsch[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_SyncRefUE_MAX];
-  NR_UE_DLSCH_t   *slsch_rx[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_SyncRefUE_MAX];
   NR_UE_DLSCH_t   *dlsch_SI[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_ra[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_DLSCH_t   *dlsch_p[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -1178,8 +1177,6 @@ typedef struct {
   int dl_errors;
   int dl_stats[8];
   void* scopeData;
-  tpool_t threadPool;
-  notifiedFIFO_t respDecode;
 } PHY_VARS_NR_UE;
 
 /* this structure is used to pass both UE phy vars and
