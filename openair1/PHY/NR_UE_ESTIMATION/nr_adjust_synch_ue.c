@@ -100,7 +100,8 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
 
   TO_I_Ctrl += diff; //integral of all offsets
   ue->rx_offset = diff;
-  ue->rx_offset_TO = diff+TO_I_Ctrl/I_ScalingF; //PI controller
+  //ue->rx_offset_TO = diff+TO_I_Ctrl/I_ScalingF; //PI controller
+  ue->rx_offset_TO = (TO_PScaling*diff) + (TO_I_Ctrl*TO_IScaling); //PI controller
   ue->rx_offset_slot = 1;
   ue->rx_offset_comp = 0;
 

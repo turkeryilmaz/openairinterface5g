@@ -441,6 +441,9 @@ uint16_t D_ScalingFD = 1; //D scaling factor (denominator) of the PID controller
 double PScaling = 0.33;
 double IScaling = 0.5;
 
+double TO_PScaling = 1;
+double TO_IScaling = 0.1;
+
 int commonDoppler = 421528;
 
 
