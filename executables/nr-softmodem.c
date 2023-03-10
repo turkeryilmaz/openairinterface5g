@@ -673,13 +673,6 @@ void read_mac_sm(mac_ind_msg_t* data)
     const NR_UE_sched_ctrl_t* sched_ctrl = &UE->UE_sched_ctrl;
     mac_ue_stats_impl_t* rd = &data->ue_stats[i];
 
-    // rsrp value 
-    NR_mac_stats_t *stats = &UE->mac_stats;
-    const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;
-
-    // end rsrp value 
-
-
     rd->frame = RC.nrmac[mod_id]->frame;
     rd->slot = RC.nrmac[mod_id]->slot;
 
@@ -701,8 +694,8 @@ void read_mac_sm(mac_ind_msg_t* data)
     rd->dl_aggr_retx_prb = UE->mac_stats.dl.total_rbs_retx;
     rd->ul_aggr_retx_prb = UE->mac_stats.ul.total_rbs_retx;
 
-    rd->dl_aggr_bytes_sdus = stats->dl.lc_bytes[4];//UE->mac_stats.dl.lc_bytes[3] + UE->mac_stats.dl.lc_bytes[4] + UE->mac_stats.dl.lc_bytes[5];
-    rd->ul_aggr_bytes_sdus = stats->ul.lc_bytes[4]; //UE->mac_stats.ul.lc_bytes[3]  +  UE->mac_stats.ul.lc_bytes[4]  + UE->mac_stats.ul.lc_bytes[5];
+    rd->dl_aggr_bytes_sdus = stats->dl.lc_bytes[4] + UE->mac_stats.dl.lc_bytes[5]; // data from two DRBs
+    rd->ul_aggr_bytes_sdus = stats->ul.lc_bytes[4] + UE->mac_stats.ul.lc_bytes[5]; // data from two DRBs
 
     rd->dl_aggr_sdus = UE->mac_stats.dl.num_mac_sdu;
     rd->ul_aggr_sdus = UE->mac_stats.ul.num_mac_sdu;
@@ -715,11 +708,9 @@ void read_mac_sm(mac_ind_msg_t* data)
     rd->dl_bler = sched_ctrl->dl_bler_stats.bler;
     rd->ul_mcs1 = sched_ctrl->ul_bler_stats.mcs;
     rd->ul_bler = sched_ctrl->ul_bler_stats.bler;
-    rd->dl_mcs2 = 0;
-    rd->ul_mcs2 = -1*avg_rsrp; // we use ul_mcs2 to transport rsrp because we didn't change the flexric MAC SM. TODO: use KPM SM, we multiply it by -1 because MAC SM does not support negative values
     rd->phr = sched_ctrl->ph;
 
-    // the OAI brance used in this release of felxric have a  know problem with the phr
+    // the OAI branch used in this release of felxric have a  know problem with the phr
     //  this is a hotfix to avoid any crush at flexric level later 
     if (rd->phr > 40){
       rd->phr = 40;
@@ -728,16 +719,26 @@ void read_mac_sm(mac_ind_msg_t* data)
       rd->phr = -39;
     }
 
-    // getting the ngap id of a ue 
+    /****************************************************************************************************/
+    /*We used ul_mcs2 and dl_mcs2 to transport RSRP and amf_ue_ngap_id to avoid changing flexric MAC SM */
+    /*TODO: use KPM SM to add as many metrics we want without changing the SM*/
+    /****************************************************************************************************/
+    // getting average RSRP 
+    NR_mac_stats_t *stats = &UE->mac_stats;
+    const int avg_rsrp = stats->num_rsrp_meas > 0 ? stats->cumul_rsrp / stats->num_rsrp_meas : 0;
+    rd->ul_mcs2 = -1*avg_rsrp; // we use ul_mcs2 to transport rsrp because we didn't change the flexric MAC SM, we multiply it by -1 because ul_mcs2 is unsigned 
+    // end getting average RSRP
 
+
+    // getting the AMF NGAP ID of the UE 
     uint16_t const rnti = UE->rnti;
     struct rrc_gNB_ue_context_s *ue_context_p = NULL;
     ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[mod_id], rnti);
-    if (ue_context_p != NULL) {
+    if (ue_context_p != NULL)
       rd->dl_mcs2 = ue_context_p->ue_context.amf_ue_ngap_id;
-    }
-
-    /// end getting ngap context for ue 
+    else 
+      rd->dl_mcs2 = 0;
+    /// end getting AMF NGAP ID of the UE
 
     const uint32_t bufferSize = sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes;
     rd->bsr = bufferSize;
