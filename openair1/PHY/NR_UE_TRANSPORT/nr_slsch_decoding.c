@@ -79,44 +79,6 @@ static void nr_sci2_quantize(int16_t *psbch_llr8,
   }
 }
 
-NR_UE_DLSCH_t *new_nr_ue_slsch_rx(uint16_t N_RB_DL, int number_of_harq_pids, NR_DL_FRAME_PARMS* frame_parms)
-{
-
-  int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
-  uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
-
-  if (N_RB_DL != 273) {
-    a_segments = a_segments * N_RB_DL;
-    a_segments = a_segments / 273 + 1;
-  }
-
-  uint32_t slsch_bytes = a_segments * 1056;  // allocated bytes per segment
-
-  NR_UE_DLSCH_t *slsch = malloc16(sizeof(NR_UE_DLSCH_t));
-  DevAssert(slsch);
-  memset(slsch, 0, sizeof(*slsch));
-
-  slsch->max_ldpc_iterations = MAX_LDPC_ITERATIONS;
-
-  for (int i = 0; i < number_of_harq_pids; i++) {
-
-    slsch->harq_processes[i] = (NR_DL_UE_HARQ_t *)malloc16_clear(sizeof(NR_DL_UE_HARQ_t));
-    slsch->harq_processes[i]->b = (uint8_t*)malloc16_clear(slsch_bytes);
-    slsch->harq_processes[i]->c = (uint8_t**)malloc16_clear(a_segments * sizeof(uint8_t *));
-    slsch->harq_processes[i]->d = (int16_t**)malloc16_clear(a_segments * sizeof(int16_t *));
-    for (int r = 0; r < a_segments; r++) {
-      slsch->harq_processes[i]->c[r] = (uint8_t*)malloc16_clear(8448 * sizeof(uint8_t));
-      slsch->harq_processes[i]->d[r] = (int16_t*)malloc16_clear((68 * 384) * sizeof(int16_t));
-    }
-  }
-
-  return(slsch);
-}
-
-#ifdef PRINT_CRC_CHECK
-  static uint32_t prnt_crc_cnt = 0;
-#endif
-
 
 bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool last, notifiedFIFO_t *nf_p) {
   ldpcDecode_ue_t *rdata = (ldpcDecode_ue_t*) NotifiedFifoData(req);
