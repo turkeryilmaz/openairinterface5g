@@ -132,6 +132,9 @@
 #define CONFIG_HLP_FP_Scaling "set scaling P"
 #define CONFIG_HLP_FI_Scaling "set scaling I"
 
+#define CONFIG_HLP_TP_Scaling "set scaling P for TO"
+#define CONFIG_HLP_TI_Scaling "set scaling I for TO"
+
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
 /*   optname         helpstr          paramflags          XXXptr                     defXXXval            type           numelt   */
@@ -197,6 +200,9 @@ extern uint16_t D_ScalingFD; //D scaling factor (denominator) of the PID control
 
 extern double PScaling;
 extern double IScaling;
+
+extern double TO_PScaling;
+extern double TO_IScaling;
 
 extern int commonDoppler;
 

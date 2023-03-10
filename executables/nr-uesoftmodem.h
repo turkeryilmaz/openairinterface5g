@@ -80,6 +80,8 @@
   {"DCDD" ,                        CONFIG_HLP_FD_ScalingFD,0,                   .u16ptr=&D_ScalingFD,                        .defintval=1,      TYPE_UINT16,   0},  \
   {"DCP" ,                         CONFIG_HLP_FP_Scaling,0,                     .dblptr=&PScaling,                           .defdblval=0.33,   TYPE_DOUBLE,   0},  \
   {"DCI" ,                         CONFIG_HLP_FI_Scaling,0,                     .dblptr=&IScaling,                           .defdblval=0.5,    TYPE_DOUBLE,   0},  \
+  {"TOP" ,                         CONFIG_HLP_TP_Scaling,0,                     .dblptr=&TO_PScaling,                        .defdblval=1.0,    TYPE_DOUBLE, 0},  \
+  {"TOI" ,                         CONFIG_HLP_TI_Scaling,0,                     .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE, 0}  \
 }
 // clang-format on
 
