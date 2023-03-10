@@ -39,6 +39,7 @@
 
 #define NR_PUSCH_x 2 // UCI placeholder bit TS 38.212 V15.4.0 subclause 5.3.3.1
 #define NR_PUSCH_y 3 // UCI placeholder bit
+#define NR_PSSCH_x 4 // SCI2 placeholder bit
 
 extern short nr_qpsk_mod_table[8];
 // Functions below implement 36-211 and 36-212
@@ -1027,6 +1028,19 @@ void nr_pusch_codeword_scrambling(uint8_t *in,
                                   bool uci_on_pusch,
                                   uint32_t* out);
 
+/*! \brief Perform PSSCH scrambling. TS 38.211 V16.10.0 subclause 8.3.1.1
+  @param[in] in, Pointer to input bits
+  @param[in] size, of input bits
+  @param[in] control_size, of control input bits
+  @param[in] Nid, cell id
+  @param[out] out, the scrambled bits
+*/
+void nr_pusch_codeword_scrambling_sl(uint8_t *in,
+                                      uint32_t size,
+                                      uint32_t SCI2_bits,
+                                      uint16_t Nid,
+                                      uint32_t* out);
+
 /** \brief Perform the following functionalities:
     - encoding
     - scrambling
@@ -1041,6 +1055,19 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                uint8_t thread_id,
                                int gNB_id);
 
+/** \brief Perform the following functionalities:
+    - encoding
+    - scrambling
+    - modulation
+    - transform precoding
+*/
+
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
+                               unsigned char harq_pid,
+                               uint32_t frame,
+                               uint8_t slot,
+                               uint8_t thread_id,
+                               int gNB_id);
 
 /** \brief This function does IFFT for PUSCH
 */
@@ -1752,6 +1779,14 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 
 void dump_nrdlsch(PHY_VARS_NR_UE *ue,uint8_t gNB_id,uint8_t nr_slot_rx,unsigned int *coded_bits_per_codeword,int round,  unsigned char harq_pid);
+
+void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
+                                        uint8_t *in_sci2,
+                                        uint32_t slssh_bits,
+                                        uint32_t SCI2_bits,
+                                        uint8_t Nl,
+                                        uint8_t Q_SCI2,
+                                        uint8_t* out);
 
 /**@}*/
 #endif

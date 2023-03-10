@@ -49,43 +49,43 @@ void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
     a_segments = a_segments / MAX_NUM_NR_RB + 1;
   }
 
-  for (int i = 0; i < NR_MAX_ULSCH_HARQ_PROCESSES; i++) {
+  for (int i = 0; i < NR_MAX_SLSCH_HARQ_PROCESSES; i++) {
     if (slsch->harq_processes[i]) {
       if (slsch->harq_processes[i]->a) {
-        free16(slsch->harq_processes[i]->a, slsch_bytes);
+        free(slsch->harq_processes[i]->a);
         slsch->harq_processes[i]->a = NULL;
       }
       if (slsch->harq_processes[i]->b) {
-        free16(slsch->harq_processes[i]->b, slsch_bytes);
+        free(slsch->harq_processes[i]->b);
         slsch->harq_processes[i]->b = NULL;
       }
       for (int r=0; r < a_segments; r++) {
         if (slsch->harq_processes[i]->c[r]) {
-          free16(slsch->harq_processes[i]->c[r], 8448);
+          free(slsch->harq_processes[i]->c[r]);
           slsch->harq_processes[i]->c[r] = NULL;
         }
         if (slsch->harq_processes[i]->d[r]) {
-          free16(slsch->harq_processes[i]->d[r], 68 * 384);
+          free(slsch->harq_processes[i]->d[r]);
           slsch->harq_processes[i]->d[r] = NULL;
         }
       }
       if (slsch->harq_processes[i]->c) {
-        free16(slsch->harq_processes[i]->c, a_segments * sizeof(uint8_t *));
+        free(slsch->harq_processes[i]->c);
         slsch->harq_processes[i]->c = NULL;
       }
       if (slsch->harq_processes[i]->d) {
-        free16(slsch->harq_processes[i]->d, a_segments * sizeof(uint8_t *));
+        free(slsch->harq_processes[i]->d);
         slsch->harq_processes[i]->d = NULL;
       }
       if (slsch->harq_processes[i]->e) {
-        free16(slsch->harq_processes[i]->e, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+        free(slsch->harq_processes[i]->e);
         slsch->harq_processes[i]->e = NULL;
       }
       if (slsch->harq_processes[i]->f) {
-        free16(slsch->harq_processes[i]->f, NR_SYMBOLS_PER_SLOT * N_RB_UL * 12 * 8);
+        free(slsch->harq_processes[i]->f);
         slsch->harq_processes[i]->f = NULL;
       }
-      free16(slsch->harq_processes[i], sizeof(NR_UL_UE_HARQ_t));
+      free(slsch->harq_processes[i]);
       slsch->harq_processes[i] = NULL;
     }
   }
@@ -100,7 +100,7 @@ NR_UE_ULSCH_t *new_nr_ue_slsch(uint16_t N_RB_UL, int number_of_harq_pids, NR_DL_
   NR_UE_ULSCH_t *slsch = malloc16(sizeof(NR_UE_ULSCH_t));
   DevAssert(slsch);
   memset(slsch, 0, sizeof(*slsch));
-  slsch->number_harq_processes_for_pusch = NR_MAX_ULSCH_HARQ_PROCESSES;
+  slsch->number_harq_processes_for_pusch = NR_MAX_SLSCH_HARQ_PROCESSES;
 
   int max_layers = (frame_parms->nb_antennas_tx < NR_MAX_NB_LAYERS_SL) ? frame_parms->nb_antennas_tx : NR_MAX_NB_LAYERS_SL;
   uint16_t a_segments = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * max_layers;  //number of segments to be allocated
@@ -244,6 +244,11 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                        polar_encoder_output_len,
                        NR_POLAR_SCI2_AGGREGATION_LEVEL);
 
+    harq_process->Nidx = get_Nidx_from_CRC(harq_process->a_sci2, 0, 0,
+                           NR_POLAR_PSSCH_MESSAGE_TYPE,
+                           polar_encoder_output_len,
+                           NR_POLAR_PSSCH_AGGREGATION_LEVEL);
+
     harq_process->B_sci2 = polar_encoder_output_len;
     byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
     /*
@@ -290,7 +295,7 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
     ///////////////////////// c---->| LDPC coding |---->d /////////////////////////
 
 #ifdef DEBUG_SLSCH_CODING
-    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, BG);
+    LOG_D(NR_PHY, "segment Z %d k %d Kr %d BG %d\n", *pz, harq_process->K, Kr, harq_process->BG);
     for (int r = 0; r < harq_process->C; r++) {
       //channel_input[r] = &harq_process->d[r][0];
       LOG_D(NR_PHY, "Encoder: B %d F %d \n", harq_process->B, harq_process->F);

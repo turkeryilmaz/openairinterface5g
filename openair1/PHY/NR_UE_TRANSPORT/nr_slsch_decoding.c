@@ -30,6 +30,12 @@
 * \warning
 */
 
+// [from nrUE coding]
+// #include "PHY/CODING/lte_interleaver_inline.h"
+// #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
+// #include "common/utils/LOG/vcd_signal_dumper.h"
+// #include <openair2/UTIL/OPT/opt.h>
+
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "PHY/defs_nr_UE.h"
 #include "SCHED_NR_UE/harq_nr.h"
@@ -368,7 +374,7 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
 
   // SCI2 decoding //
   short *sci2_llr = dlsch_llr;
-  short *data_llr = dlsch_llr + harq_process->B_sci2;
+  short *data_llr = dlsch_llr + harq_process->B_sci2 * harq_process->Nl;
   #if 1
   uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2

@@ -18,6 +18,7 @@
 #        define NUMBER_OF_SCH_STATS_MAX 16
 
 #        define NUMBER_OF_NR_SCH_STATS_MAX 16
+#        define NUMBER_OF_NR_SLSCH_STATS_MAX 16
 
 #        define NUMBER_OF_NR_PUCCH_MAX 16
 #        define NUMBER_OF_NR_SR_MAX 16
