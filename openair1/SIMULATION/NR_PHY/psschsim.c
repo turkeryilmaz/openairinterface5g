@@ -56,7 +56,6 @@
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 #define SCI2_LEN_SIZE 35
 RAN_CONTEXT_t RC;
-
 double cpuf;
 uint16_t NB_UE_INST = 1;
 openair0_config_t openair0_cfg[MAX_CARDS];

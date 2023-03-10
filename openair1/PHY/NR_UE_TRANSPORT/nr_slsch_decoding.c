@@ -79,7 +79,6 @@ static void nr_sci2_quantize(int16_t *psbch_llr8,
   }
 }
 
-
 bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool last, notifiedFIFO_t *nf_p) {
   ldpcDecode_ue_t *rdata = (ldpcDecode_ue_t*) NotifiedFifoData(req);
   NR_DL_UE_HARQ_t *harq_process = rdata->harq_process;

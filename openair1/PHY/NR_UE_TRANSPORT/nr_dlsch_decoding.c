@@ -298,8 +298,7 @@ void nr_processDLSegment(void* arg) {
                                harq_process->first_rx,
                                E,
                                harq_process->F,
-                               Kr-harq_process->F-2*(p_decoderParms->Z),
-                               false) == -1) {
+                               Kr-harq_process->F-2*(p_decoderParms->Z),false)==-1) {
     //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_RATE_MATCHING, VCD_FUNCTION_OUT);
     stop_meas(&rdata->ts_rate_unmatch);
     LOG_E(PHY,"dlsch_decoding.c: Problem in rate_matching\n");
