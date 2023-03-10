@@ -94,7 +94,7 @@ softmodem_params_t *get_softmodem_params(void) {
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 
-double snr0 =100;//- 2.0;
+double snr0 =100;
 double snr1 = 2.0;
 uint8_t snr1set = 0;
 int n_trials = 1;
@@ -509,6 +509,7 @@ int main(int argc, char **argv)
   
   int max_num_re = Nl * nb_symb_sch * nb_rb * NR_NB_SC_PER_RB;
   int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
+  int32_t ch_out[max_num_re] __attribute__ ((aligned(16)));
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
@@ -524,6 +525,7 @@ int main(int argc, char **argv)
 
   printf("tx is done\n");
 
+
   /////////////////////////LLRs computation/////////////////////////
   // this is a small hack :D
   slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
@@ -534,26 +536,6 @@ int main(int argc, char **argv)
   int32_t a = 1;
   int32_t b = 1;
 
-  nr_ulsch_compute_llr(d_mod, &a, &b,
-                      ulsch_llr, nb_rb, nb_re_SCI2,
-                      symbol, SCI2_mod_order);
-
-  nr_ulsch_compute_llr(d_mod + (slsch_ue_rx->harq_processes[0]->B_sci2 / SCI2_mod_order), &a, &b,
-                      ulsch_llr + nb_re_SCI2 * 2, nb_rb, nb_re_slsch,
-                      symbol, mod_order);
-
-#if 0
-  nr_ulsch_layer_demapping(rxUE->pssch_vars[UE_id].llr,
-                           rel16_ul->nrOfLayers,
-                           rel16_ul->qam_mod_order,
-                           available_bits,
-                           rxUE->pssch_vars[UE_id]->llr_layers);
-#endif
-
-  /////////////////////////SLSCH descrambling/////////////////////////
-  // hacky [TODO]
-  nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, 0, Nl);
-
   unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
@@ -563,100 +545,90 @@ int main(int argc, char **argv)
   short channel_output_fixed[HNA_SIZE];
   short channel_output_uncoded[HNA_SIZE];
   unsigned char estimated_output_bit[HNA_SIZE];
-  int frame = 0;
-  int slot = 0;
-  UE_nr_rxtx_proc_t proc;
-  uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr,
-                            &rxUE->frame_parms, slsch_ue_rx,
-                            slsch_ue_rx->harq_processes[0], frame,
-                            nb_symb_sch, slot, harq_pid);
 
-  for (int i = 0; i < TBS; i++) {
-    estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+  for (double SNR = snr0 ; SNR < snr1; SNR += 1) {
+    n_errors = 0;
+    n_false_positive = 0;
 
-#if DEBUG_NR_SLSCHSIM
-    //
-    if (i < 100){
-      printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
-      if (i % 8 == 0){
-        printf("tx data[%d]: %u, rx data[%d]: %u\n",i / 8,test_input[i / 8],i / 8,slsch_ue_rx->harq_processes[harq_pid]->b[i / 8]);
+    double SNR_lin = pow(10, SNR / 10.0);
+    double sigma = 1.0 / sqrt(2 * SNR_lin);
+    for (int trial = 0; trial < n_trials; trial++) {
+      for (int i=0 ; i <max_num_re; i++){
+        ch_out[i] = d_mod[i] + sigma * gaussdouble(0.0, 1.0);
       }
+
+      nr_ulsch_compute_llr(ch_out, &a, &b,
+                          ulsch_llr, nb_rb, nb_re_SCI2,
+                          symbol, SCI2_mod_order);
+
+      nr_ulsch_compute_llr(ch_out + (slsch_ue_rx->harq_processes[0]->B_sci2 / SCI2_mod_order), &a, &b,
+                          ulsch_llr + nb_re_SCI2 * 2, nb_rb, nb_re_slsch,
+                          symbol, mod_order);
+
+    #if 0
+      nr_ulsch_layer_demapping(rxUE->pssch_vars[UE_id].llr,
+                              rel16_ul->nrOfLayers,
+                              rel16_ul->qam_mod_order,
+                              available_bits,
+                              rxUE->pssch_vars[UE_id]->llr_layers);
+    #endif
+
+      /////////////////////////SLSCH descrambling/////////////////////////
+      // hacky [TODO]
+      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, 0, Nl);
+
+      int frame = 0;
+      int slot = 0;
+      UE_nr_rxtx_proc_t proc;
+      uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr,
+                                &rxUE->frame_parms, slsch_ue_rx,
+                                slsch_ue_rx->harq_processes[0], frame,
+                                nb_symb_sch, slot, harq_pid);
+      if (ret)
+        n_errors++;
+
+      errors_bit = 0;
+      for (int i = 0; i < TBS; i++) {
+        estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+        test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+
+    #if DEBUG_NR_SLSCHSIM
+        //
+        if (i < 100){
+          printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
+          if (i % 8 == 0){
+            printf("tx data[%d]: %u, rx data[%d]: %u\n",i / 8,test_input[i / 8],i / 8,slsch_ue_rx->harq_processes[harq_pid]->b[i / 8]);
+          }
+        }
+    #endif
+        if (estimated_output_bit[i] != test_input_bit[i]) {
+          errors_bit++;
+        }
+      }
+      //printf("num of bit error: %d\n",errors_bit);
+      if (errors_bit > 0) {
+        n_false_positive++;
+        if (n_trials == 1)
+          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
+      }
+    } // trial
+
+    printf("*****************************************\n");
+    printf("SNR %f, BLER %f (false positive %f)\n", SNR,
+          (float) n_errors / (float) n_trials,
+          (float) n_false_positive / (float) n_trials);
+    printf("*****************************************\n");
+    printf("\n");
+
+    if (n_errors == 0) {
+      printf("PUSCH test OK\n");
+      printf("\n");
+      break;
     }
-#endif
-    if (estimated_output_bit[i] != test_input_bit[i]) {
-      errors_bit++;
-    }
-  }
-  printf("num of bit error: %d\n",errors_bit);
+    printf("\n");
 
-  snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  int numb_bits = available_bits + slsch_ue->harq_processes[harq_pid]->B_sci2;
-  unsigned char qbits = 8;
+  } // snr
 
-//   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
-//     n_errors = 0;
-//     n_false_positive = 0;
-//     for (int trial = 0; trial < n_trials; trial++) {
-//       errors_bit_uncoded = 0;
-//       for (int i = 0; i < numb_bits; i++) {
-//         if (slsch_ue->harq_processes[harq_pid]->f_multiplexed[i] == 0){
-//           modulated_input[i] = 1.0;        ///sqrt(2);  //QPSK
-//         }else{
-//           modulated_input[i] = -1.0;        ///sqrt(2);
-//         }
-
-//         double SNR_lin = pow(10, SNR / 10.0);
-//         double sigma = 1.0 / sqrt(2 * SNR_lin);
-//         channel_output_fixed[i] = (short) quantize(sigma / 4.0 / 4.0,
-//                                                    modulated_input[i] + sigma * gaussdouble(0.0, 1.0),
-//                                                    qbits);
-//         if (channel_output_fixed[i] < 0)
-//           channel_output_uncoded[i] = 1;  //QPSK demod
-//         else
-//           channel_output_uncoded[i] = 0;
-//         if (channel_output_uncoded[i] != slsch_ue->harq_processes[harq_pid]->f[i])
-//           errors_bit_uncoded = errors_bit_uncoded + 1;
-//       }
-
-      
-
-//       if (ret)
-//         n_errors++;
-
-//       errors_bit = 0;
-//       for (int i = 0; i < TBS; i++) {
-//         estimated_output_bit[i] = (slsch_ue_rx->harq_processes[harq_pid]->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-//         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-// #if DEBUG_NR_PSSCHSIM
-//         printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
-// #endif
-//         if (estimated_output_bit[i] != test_input_bit[i]) {
-//           errors_bit++;
-//         }
-//       }
-//       if (errors_bit > 0) {
-//         n_false_positive++;
-//         if (n_trials == 1)
-//           printf("errors_bit %u (trial %d)\n", errors_bit, trial);
-//       }
-//       printf("\n");
-//     }
-
-//       printf("*****************************************\n");
-//       printf("SNR %f, BLER %f (false positive %f)\n", SNR,
-//            (float) n_errors / (float) n_trials,
-//            (float) n_false_positive / (float) n_trials);
-//       printf("*****************************************\n");
-//       printf("\n");
-
-//       if (n_errors == 0) {
-//         printf("PUSCH test OK\n");
-//         printf("\n");
-//         break;
-//       }
-//       printf("\n");
-//   }
   //term_nr_ue_transport(txUE);
   term_nr_ue_transport(rxUE);
   term_nr_ue_signal(rxUE, 1);
