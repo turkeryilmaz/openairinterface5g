@@ -95,6 +95,7 @@
 /// suppress compiler warning for unused arguments
 #define UNUSED(x) (void)x;
 
+#define NB_RB_SCI1 20
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
 #include "time_meas.h"
