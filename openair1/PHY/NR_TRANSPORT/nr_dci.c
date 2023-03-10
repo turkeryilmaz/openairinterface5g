@@ -38,7 +38,7 @@
 #include "common/utils/nr/nr_common.h"
 
 //#define DEBUG_PDCCH_DMRS
-//#define DEBUG_DCI
+#define DEBUG_DCI
 #define DEBUG_CHANNEL_CODING
 
 void nr_pdcch_scrambling(uint32_t *in,
@@ -106,8 +106,8 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
     cset_start_symb = pdcch_pdu_rel15->StartSymbolIndex;
     cset_nsymb = pdcch_pdu_rel15->DurationSymbols;
     dci_idx = 0;
-    LOG_D(PHY, "pdcch: Coreset rb_offset %d, nb_rb %d BWP Start %d\n",rb_offset,n_rb,pdcch_pdu_rel15->BWPStart);
-    LOG_D(PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
+    LOG_I(PHY, "pdcch: Coreset rb_offset %d, nb_rb %d BWP Start %d\n",rb_offset,n_rb,pdcch_pdu_rel15->BWPStart);
+    LOG_I(PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
     // DMRS length is per OFDM symbol
     uint32_t dmrs_length = n_rb*6; //2(QPSK)*3(per RB)*6(REG per CCE)
     uint32_t encoded_length = dci_pdu->AggregationLevel*108; //2(QPSK)*9(per RB)*6(REG per CCE)
@@ -236,7 +236,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
               ((int16_t *) txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] =
                   (amp * mod_dci[(dci_idx << 1) + 1]) >> 15;
 #ifdef DEBUG_DCI
-              LOG_D(PHY,"PDCCH: l %d position %d => (%d,%d)\n",l,k,((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1],
+              LOG_I(PHY,"PDCCH: l %d position %d => (%d,%d)\n",l,k,((int16_t *)txdataF)[(l*frame_parms->ofdm_symbol_size + k)<<1],
                ((int16_t *)txdataF)[((l*frame_parms->ofdm_symbol_size + k)<<1)+1]);
 #endif
 
@@ -253,7 +253,7 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
       } // cce_count
     } // symbol_idx
 
-    LOG_D(PHY,
+    LOG_I(PHY,
           "DCI: payloadSize = %d | payload = %llx\n",
           dci_pdu->PayloadSizeBits,
           *(unsigned long long *)dci_pdu->Payload);

@@ -431,7 +431,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
   else                        cqi=(640+SNRtimes10)/5;
 
 
-  if ((pusch_pdu->mcs_index == 9 || 6) && (PUSCH_detectedd ==1) && ((Setting_NACkK == 1) && (dumpsig==1)) && (counterFlag > 0)) {
+ /* if ((pusch_pdu->mcs_index == 9 || 6) && (PUSCH_detectedd ==1) && ((Setting_NACkK == 1) && (dumpsig==1)) && (counterFlag > 0)) {
 
       __attribute__((unused))
 #ifdef __AVX2__
@@ -465,7 +465,7 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
       }
       exit(-1);
 
-    }
+    }*/
 
 
   // crc indication

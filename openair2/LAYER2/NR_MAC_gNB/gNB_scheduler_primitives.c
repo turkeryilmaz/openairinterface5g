@@ -898,8 +898,8 @@ void config_uldci(const NR_SIB1_t *sib1,
 
   dci_pdu_rel15->frequency_domain_assignment.val =
       PRBalloc_to_locationandbandwidth0(pusch_pdu->rb_size, pusch_pdu->rb_start, ul_bwp->BWPSize);
- // dci_pdu_rel15->time_domain_assignment.val = time_domain_assignment;
-    dci_pdu_rel15->time_domain_assignment.val = 2; //hardcoded
+  dci_pdu_rel15->time_domain_assignment.val = time_domain_assignment;
+  //  dci_pdu_rel15->time_domain_assignment.val = 2; //hardcoded
   dci_pdu_rel15->frequency_hopping_flag.val = pusch_pdu->frequency_hopping;
   dci_pdu_rel15->mcs = pusch_pdu->mcs_index;
   dci_pdu_rel15->ndi = pusch_pdu->pusch_data.new_data_indicator;
