@@ -331,8 +331,8 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
           n += (k_prime) ? 0 : 1;
 
         } else if (!is_dmrs_sym) {
-            ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = ((int16_t *)tx_layers[nl])[m << 1];
-            ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = ((int16_t *)tx_layers[nl])[(m << 1) + 1];
+          ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = ((int16_t *)tx_layers[nl])[m << 1];
+          ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = ((int16_t *)tx_layers[nl])[(m << 1) + 1];
 
 #ifdef DEBUG_PUSCH_MAPPING
           printf("DATA: layer %d\t m %d\t l %d \t k %d \t tx_precoding: %d %d\n",
@@ -341,24 +341,24 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 #endif
           m++;
         } else if ((is_dmrs_sym) && (is_dmrs != 1)) {
-            if (m0 < M_SCI2_Layer) {
-                ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = ((int16_t *)tx_layers[nl])[m0 << 1];
-                ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = ((int16_t *)tx_layers[nl])[(m0 << 1) + 1];
-                m0++;
-            } else {
-                ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = ((int16_t *)tx_layers[nl])[m << 1];
-                ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = ((int16_t *)tx_layers[nl])[(m << 1) + 1];
-                m++;
-            }
+          if (m0 < M_SCI2_Layer) {
+            ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = ((int16_t *)tx_layers[nl])[m0 << 1];
+            ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = ((int16_t *)tx_layers[nl])[(m0 << 1) + 1];
+            m0++;
           } else {
-              ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = 0;
-              ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = 0;
+            ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = ((int16_t *)tx_layers[nl])[m << 1];
+            ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = ((int16_t *)tx_layers[nl])[(m << 1) + 1];
+            m++;
+          }
+        } else {
+          ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1]       = 0;
+          ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1] = 0;
         }
         if (++k >= frame_parms->ofdm_symbol_size)
-            k -= frame_parms->ofdm_symbol_size;
+          k -= frame_parms->ofdm_symbol_size;
       } //for (i = 0; i < nb_rb * NR_NB_SC_PER_RB; i++)
-    }//for (l = start_symbol; l < start_symbol + number_of_symbols; l++)
-  }//for (nl = 0; nl < Nl; nl++)
+    } //for (l = start_symbol; l < start_symbol + number_of_symbols; l++)
+  } //for (nl = 0; nl < Nl; nl++)
 
   /////SLSCH Mapping from virtual to physical resource blocks mapping/////
 
@@ -373,10 +373,10 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
     for (int l = start_symbol; l < number_of_symbols; l++) {
       uint16_t k;
       if (1 <= l && l <= 3) { // Assumption there are three SLCCH symbols
-          k = start_sc + nb_re_sci1;
-        } else {
-            k = start_sc;
-        }
+        k = start_sc + nb_re_sci1;
+      } else {
+        k = start_sc;
+      }
       for (int rb = 0; rb < nb_rb; rb++) {
         //get pmi info
         uint8_t pmi = pssch_pdu->Tpmi;
@@ -384,45 +384,45 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
           if (k + NR_NB_SC_PER_RB <= frame_parms->ofdm_symbol_size) { // RB does not cross DC
             if (ap < pssch_pdu->nrOfLayers) {
               if (1 <= l && l <= 3)
-                  memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size  + k],
-                        &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k - nb_re_sci1)],
-                        NR_NB_SC_PER_RB * sizeof(int32_t));
+                memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size  + k],
+                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k - nb_re_sci1)],
+                      NR_NB_SC_PER_RB * sizeof(int32_t));
               else
-                  memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size  + k],
-                        &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k)],
-                        NR_NB_SC_PER_RB * sizeof(int32_t));
+                memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size  + k],
+                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k)],
+                      NR_NB_SC_PER_RB * sizeof(int32_t));
             } else {
-                  memset(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
-                        0,
-                        NR_NB_SC_PER_RB * sizeof(int32_t));
-            }
-          } else { // RB does cross DC
-              int neg_length = frame_parms->ofdm_symbol_size - k;
-              int pos_length = NR_NB_SC_PER_RB - neg_length;
-              if (ap < pssch_pdu->nrOfLayers) {
-                if (1 <= l && l <= 3)
-                    memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
-                          &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k - nb_re_sci1)],
-                          neg_length * sizeof(int32_t));
-                else
-                    memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
-                          &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k)],
-                          neg_length * sizeof(int32_t));
-                memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size],
-                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size)],
-                      pos_length * sizeof(int32_t));
-              } else {
                 memset(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
                       0,
+                      NR_NB_SC_PER_RB * sizeof(int32_t));
+            }
+          } else { // RB does cross DC
+            int neg_length = frame_parms->ofdm_symbol_size - k;
+            int pos_length = NR_NB_SC_PER_RB - neg_length;
+            if (ap < pssch_pdu->nrOfLayers) {
+              if (1 <= l && l <= 3)
+                memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
+                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k - nb_re_sci1)],
                       neg_length * sizeof(int32_t));
-                memset(&txdataF[ap][l * frame_parms->ofdm_symbol_size],
-                      0,
-                      pos_length * sizeof(int32_t));
-              }
+              else
+                memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
+                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k)],
+                      neg_length * sizeof(int32_t));
+              memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size],
+                    &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size)],
+                    pos_length * sizeof(int32_t));
+            } else {
+              memset(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
+                    0,
+                    neg_length * sizeof(int32_t));
+              memset(&txdataF[ap][l * frame_parms->ofdm_symbol_size],
+                    0,
+                    pos_length * sizeof(int32_t));
+            }
           }
           k += NR_NB_SC_PER_RB;
           if (k >= frame_parms->ofdm_symbol_size) {
-              k -= frame_parms->ofdm_symbol_size;
+            k -= frame_parms->ofdm_symbol_size;
           }
         }
       } //RB loop
