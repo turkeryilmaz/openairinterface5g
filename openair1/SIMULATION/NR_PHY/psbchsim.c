@@ -95,6 +95,23 @@ int nr_ue_pdcch_procedures(PHY_VARS_NR_UE *ue,
                            c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
   return 0;
 }
+
+
+void nr_fill_dl_indication(nr_downlink_indication_t *dl_ind,
+                           fapi_nr_dci_indication_t *dci_ind,
+                           fapi_nr_rx_indication_t *rx_ind,
+                           UE_nr_rxtx_proc_t *proc,
+                           PHY_VARS_NR_UE *ue,
+                           void *phy_data) {}
+void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
+                           uint8_t pdu_type,
+                           PHY_VARS_NR_UE *ue,
+                           NR_UE_DLSCH_t *dlsch0,
+                           NR_UE_DLSCH_t *dlsch1,
+                           uint16_t n_pdus,
+                           UE_nr_rxtx_proc_t *proc,
+                           void *typeSpecific ) {}
+
 double cfo = 0;
 double snr0 =- 2.0;
 double snr1 = 2.0;

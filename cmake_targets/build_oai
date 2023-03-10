@@ -508,7 +508,7 @@ function main() {
   [[ "$UE" == 1 ]] &&    execlist="$execlist lte-uesoftmodem"
   [[ "$nrUE" == 1 ]] &&  execlist="$execlist nr-uesoftmodem"
   # TODO: fix: dlsim_tm4 pucchsim prachsim pdcchsim pbchsim mbmssim
-  [[ "$SIMUS_PHY" == "1" ]] && execlist="$execlist dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim"
+  [[ "$SIMUS_PHY" == "1" ]] && execlist="$execlist dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_psbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim"
   [[ "$BUILD_OPTLIB" != "" ]] && execlist="$execlist $BUILD_OPTLIB"
   [[ "$execlist" != "" ]] && execlist="$execlist params_libconfig coding rfsimulator"
 
@@ -567,40 +567,6 @@ function main() {
   fi
 
   cd  $DIR/$BUILD_DIR/build
-  
-  ##################
-  # PHY simulators #
-  ##################
-  if [ "$SIMUS_PHY" = "1" ] ; then
-    echo_info "Compiling physical unitary tests simulators"
-    # TODO: fix: dlsim_tm4 pucchsim prachsim pdcchsim pbchsim mbmssim
-    simlist="dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_psbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim"
-	# simlist="ldpctest"
-    for f in $simlist ; do
-      compilations $BUILD_DIR $f
-    done
-    compilations $BUILD_DIR coding
-  fi
-
-  ###################
-  # Core simulators #
-  ###################
-  if [ "$SIMUS_CORE" = "1" ] ; then
-    echo_info "Compiling security unitary tests simulators"
-    simlist="secu_knas_encrypt_eia1 secu_kenb aes128_ctr_encrypt aes128_ctr_decrypt secu_knas_encrypt_eea2 secu_knas secu_knas_encrypt_eea1 kdf aes128_cmac_encrypt secu_knas_encrypt_eia2"
-    for f in $simlist ; do
-      compilations $BUILD_DIR test_$f
-    done
-  fi
-  
-  ######################
-  # Optional libraries #
-  ######################
-  if [ ! -z "$BUILD_OPTLIB" ] ; then 
-     for oklib in $BUILD_OPTLIB ; do
-         compilations $BUILD_DIR $oklib
-     done
-  fi
 
   ####################################################
   # Build RF device and transport protocol libraries #
