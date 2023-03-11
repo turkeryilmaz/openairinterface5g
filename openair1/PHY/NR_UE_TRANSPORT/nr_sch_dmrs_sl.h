@@ -36,16 +36,12 @@
 #define NR_PSSCH_DMRS_ANTENNA_PORT0 1000
 #define NR_PSSCH_DMRS_NB_ANTENNA_PORTS 2
 
-void get_antenna_ports_sl(uint8_t *ap, uint8_t n_symbs);
+void get_Wt_sl(int16_t *Wt, uint8_t ap);
 
-void get_Wt_sl(int8_t *Wt, uint8_t ap);
+void get_Wf_sl(int16_t *Wf, uint8_t ap);
 
-void get_Wf_sl(int8_t *Wf, uint8_t ap);
-
-uint8_t get_delta_sl(uint8_t ap);
+int16_t get_delta_sl(uint8_t ap);
 
 uint16_t get_dmrs_freq_idx_sl(uint16_t n, uint8_t k_prime, uint8_t delta);
-
-uint8_t get_l0(uint16_t dlDmrsSymbPos);
 
 #endif
