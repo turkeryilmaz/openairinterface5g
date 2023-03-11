@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include "assertions.h"
 #include "nr_common.h"
+#include "executables/softmodem-common.h"
 
 const char *duplex_mode[]={"FDD","TDD"};
 
@@ -271,30 +272,17 @@ int get_nb_periods_per_frame(uint8_t tdd_period) {
 
 
 int get_dmrs_port(int nl, uint16_t dmrs_ports) {
-
-  if (dmrs_ports == 0) return 0; // dci 1_0
-  int p = -1;
-  int found = -1;
-  for (int i=0; i<12; i++) { // loop over dmrs ports
-    if((dmrs_ports>>i)&0x01) { // check if current bit is 1
-      found++;
-      if (found == nl) { // found antenna port number corresponding to current layer
-        p = i;
-        break;
-      }
-    }
+  int nb_of_ports;
+  if (get_softmodem_params()->sl_mode == 2) {
+    nb_of_ports = 2;
+  } else {
+    nb_of_ports = 12;
   }
-  AssertFatal(p>-1,"No dmrs port corresponding to layer %d found\n",nl);
-  return p;
-}
-
-int get_dmrs_port_sl(int nl, uint16_t dmrs_ports) {
-
   if (dmrs_ports == 0) return 0; // dci 1_0
   int p = -1;
   int found = -1;
-  for (int i = 0; i < 2; i++) { // loop over dmrs ports
-    if((dmrs_ports >> i) & 0x01) { // check if current bit is 1
+  for (int i = 0; i < nb_of_ports; i++) {
+    if ((dmrs_ports >> i) & 0x01) { // check if current bit is 1
       found++;
       if (found == nl) { // found antenna port number corresponding to current layer
         p = i;

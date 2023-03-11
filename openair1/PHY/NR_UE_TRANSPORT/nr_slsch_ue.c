@@ -151,7 +151,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
-  int8_t Wf[2], Wt[2];
+  int16_t Wf[2], Wt[2];
   int l_prime[2], delta;
   uint8_t nb_dmrs_re_per_rb;
   int i;
@@ -248,7 +248,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   nr_init_pssch_dmrs(UE, Nidx);
 
-  uint32_t *pssch_dmrs = UE->nr_gold_pssch_dmrs[slot];
+  uint32_t **pssch_dmrs = UE->nr_gold_pssch_dmrs[slot];
   uint16_t n_dmrs = (bwp_start + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
   int16_t mod_dmrs[n_dmrs << 1] __attribute((aligned(16)));
 
@@ -279,7 +279,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
     uint8_t k_prime = 0;
     uint16_t m = M_SCI2_Layer;
     uint16_t m0 = 0;
-    int dmrs_port = get_dmrs_port_sl(nl, pssch_pdu->dmrs_ports);
+    int dmrs_port = get_dmrs_port(nl, pssch_pdu->dmrs_ports);
     // DMRS params for this dmrs port
     get_Wt_sl(Wt, dmrs_port);
     get_Wf_sl(Wf, dmrs_port);

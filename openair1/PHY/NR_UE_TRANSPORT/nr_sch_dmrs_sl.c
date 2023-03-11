@@ -33,24 +33,19 @@
 #include "nr_sch_dmrs_sl.h"
 
 /*Table 8.4.1.1.2-2 38211 Columns: ap - CDM group - Delta - Wf(0) - Wf(1) - Wt(0)*/
-int8_t pssch_dmrs[2][6] = {{1000, 0, 0, 1, 1, 1},
+int16_t pssch_dmrs[2][6] = {{1000, 0, 0, 1, 1, 1},
                             {1001, 0, 0, 1, -1, 1}};
 
-void get_antenna_ports_sl(uint8_t *ap, uint8_t n_symbs) {
-  for (int i = 0; i < 2; i++)
-    *(ap + i) = 1000 + i;
-}
-
-void get_Wt_sl(int8_t *Wt, uint8_t ap) {
+void get_Wt_sl(int16_t *Wt, uint8_t ap) {
     *(Wt) = pssch_dmrs[ap][5];
 }
 
-void get_Wf_sl(int8_t *Wf, uint8_t ap) {
+void get_Wf_sl(int16_t *Wf, uint8_t ap) {
   for (int i = 0; i < 2; i++)
     *(Wf + i) = pssch_dmrs[ap][3 + i];
 }
 
-uint8_t get_delta_sl(uint8_t ap) {
+int16_t get_delta_sl(uint8_t ap) {
   return pssch_dmrs[ap][2];
 }
 
@@ -59,13 +54,3 @@ uint16_t get_dmrs_freq_idx_sl(uint16_t n, uint8_t k_prime, uint8_t delta) {
   return dmrs_idx;
 }
 
-uint8_t get_l0(uint16_t dlDmrsSymbPos) {
-
-  uint16_t mask=dlDmrsSymbPos;
-  int l0;
-  for (l0=0;l0<14;l0++) {
-    if ((mask&1) == 1) break;
-    mask>>=1;
-  }
-  return (l0);
-}

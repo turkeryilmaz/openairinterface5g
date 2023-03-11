@@ -450,7 +450,7 @@ int main(int argc, char **argv)
   init_nr_ue_transport(nearbyUE);
   init_nr_ue_transport(syncRefUE);
 
-  uint8_t number_dmrs_symbols = 2;
+  uint8_t number_dmrs_symbols = 1;
   uint16_t N_RE_prime;
   uint8_t rvidx = 0;
   uint8_t UE_id = 0;
