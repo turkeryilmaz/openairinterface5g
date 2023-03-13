@@ -184,7 +184,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   uint16_t nb_rb            = pssch_pdu->rb_size;
   uint8_t Nl                = pssch_pdu->nrOfLayers;
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
-  uint16_t rnti             = pssch_pdu->rnti;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
   uint16_t bwp_start        = pssch_pdu->bwp_start;
   int start_symbol          = pssch_pdu->start_symbol_index;
@@ -239,7 +238,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   /////////////////////////SLSCH data coding/////////////////////////
   unsigned int G_slsch_bits = nr_get_G(nb_rb, number_of_symbols,
                             nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl);
-
 
   if (nr_slsch_encoding(UE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
     return;

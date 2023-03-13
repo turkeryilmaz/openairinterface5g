@@ -396,7 +396,7 @@ int main(int argc, char **argv)
   }
 #ifdef DEBUG_NR_SLSCHSIM
   for (int sf = 0; sf < 2; sf++) {
-    txUE->slsch[sf][0] = new_nr_ue_ulsch(nb_rb, 8, txUE->frame_parms);
+    txUE->slsch[sf][0] = new_nr_ue_ulsch(nb_rb, 8, &txUE->frame_parms);
     if (!txUE->slsch[sf][0]) {
       printf("Can't get ue ulsch structures.\n");
       exit(-1);
@@ -618,7 +618,7 @@ int main(int argc, char **argv)
     printf("\n");
 
     if (n_errors == 0) {
-      printf("PUSCH test OK\n");
+      printf("PSSCH test OK\n");
       printf("\n");
       break;
     }
