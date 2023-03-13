@@ -18,6 +18,7 @@
 #        define NUMBER_OF_SCH_STATS_MAX 16
 
 #        define NUMBER_OF_NR_SCH_STATS_MAX 16
+#        define NUMBER_OF_NR_SLSCH_STATS_MAX 16
 
 #        define NUMBER_OF_NR_PUCCH_MAX 16
 #        define NUMBER_OF_NR_SR_MAX 16
@@ -32,16 +33,19 @@
 #                    define NUMBER_OF_NR_UE_MAX 4
 #                    define NUMBER_OF_CONNECTED_eNB_MAX 1
 #                    define NUMBER_OF_CONNECTED_gNB_MAX 1
+#                    define NUMBER_OF_CONNECTED_SyncRefUE_MAX 1
 #            else
 #                    define NUMBER_OF_UE_MAX 256
 #                    define NUMBER_OF_CONNECTED_eNB_MAX 1
 #                    define NUMBER_OF_CONNECTED_gNB_MAX 1
+#                    define NUMBER_OF_CONNECTED_SyncRefUE_MAX 1
 #            endif
 #        else
 #                    define NUMBER_OF_UE_MAX 4
 #                    define NUMBER_OF_NR_UE_MAX 4
 #                    define NUMBER_OF_CONNECTED_eNB_MAX 1
 #                    define NUMBER_OF_CONNECTED_gNB_MAX 1
+#                    define NUMBER_OF_CONNECTED_SyncRefUE_MAX 1
 #        endif
 #else
 #        define NUMBER_OF_eNB_MAX 7

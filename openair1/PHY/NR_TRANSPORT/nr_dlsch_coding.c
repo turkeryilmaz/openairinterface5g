@@ -262,7 +262,8 @@ void ldpc8blocks( void *p) {
                           impp->F,
                           Kr-impp->F-2*(*impp->Zc),
                           rel15->rvIndex[0],
-                          E);
+                          E,
+                          false);
    if (Kr-impp->F-2*(*impp->Zc)> E)  {
     LOG_E(PHY,"dlsch coding A %d  Kr %d G %d (nb_rb %d, nb_symb_sch %d, nb_re_dmrs %d, length_dmrs %d, mod_order %d)\n",
           A,impp->K,G, nb_rb,nb_symb_sch,nb_re_dmrs,length_dmrs,(int)mod_order);

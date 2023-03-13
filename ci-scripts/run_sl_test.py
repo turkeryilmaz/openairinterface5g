@@ -209,25 +209,14 @@ class TestThread(threading.Thread):
             LOGGER.error("Queue is empty!")
             sys.exit(1)
         try:
-            nearby_proc = None
-            syncref_proc = None
             while not self.queue.empty():
                 job = self.queue.get()
                 if "nearby" == job:
                     thread_delay(job, delay = 0)
-                    nearby_proc = self.launch_nearby(job)
-                    LOGGER.info(f"nearby_proc = {nearby_proc}")
+                    self.launch_nearby(job)
                 if "syncref" == job and not OPTS.no_run:
                     thread_delay(job, delay = self.delay)
-                    syncref_proc = self.launch_syncref(job)
-                    LOGGER.info(f"syncref_proc = {syncref_proc}")
-            if not OPTS.basic and not OPTS.no_run:
-                LOGGER.info(f"Process running... {job}")
-                time.sleep(OPTS.duration)
-                if nearby_proc:
-                    self.kill_process("nearby", nearby_proc)
-                if syncref_proc:
-                    self.kill_process("syncref", syncref_proc)
+                    self.launch_syncref(job)
             self.queue.task_done()
         except Exception as inst:
             LOGGER.info(f"Failed to operate on job with type {type(inst)} and args {inst.args}")
@@ -237,6 +226,7 @@ class TestThread(threading.Thread):
         if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
         else: cmd = self.commands.launch_cmds[job]
         proc = Popen(cmd, shell=True)
+        LOGGER.info(f"syncref_proc = {proc}")
         if not OPTS.basic and not OPTS.no_run:
             LOGGER.info(f"Process running... {job}")
             time.sleep(OPTS.duration)
@@ -253,6 +243,7 @@ class TestThread(threading.Thread):
                         shell=False,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)
+            LOGGER.info(f"nearby_proc = {proc}")
             remote_output = proc.stdout.readlines()
             if remote_output == []:
                 nearby_result = proc.stderr.readlines()
@@ -263,6 +254,7 @@ class TestThread(threading.Thread):
                 self.find_nearby_result_metric(nearby_result)
         else:
             proc = Popen(cmd, shell=True)
+            LOGGER.info(f"nearby_proc = {proc}")
             if not OPTS.basic and not OPTS.no_run:
                 LOGGER.info(f"Process running... {job}")
                 time.sleep(OPTS.duration)
@@ -276,7 +268,8 @@ class TestThread(threading.Thread):
         for line in remote_log:
             if type(line) is not str:
                 line = line.decode()
-            LOGGER.debug(line.strip())
+            if OPTS.test == 'usrp':
+                LOGGER.info(line.strip())
             # 'SyncRef UE found. RSRP: -100 dBm/RE. It took {delta_time_s} seconds'
             if 'SyncRef UE found' in line:
                 fields = line.split(maxsplit=12)

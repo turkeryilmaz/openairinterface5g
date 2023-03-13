@@ -59,6 +59,7 @@ typedef enum {
 typedef struct {
   /// NDAPI struct for UE
   nfapi_nr_ue_pusch_pdu_t pusch_pdu;
+  nfapi_nr_ue_pssch_pdu_t pssch_pdu;
   /// Indicator of first transmission
   uint8_t first_tx;
   /// HARQ tx status
@@ -117,6 +118,35 @@ typedef struct {
   uint8_t BG;
   // LDPC lifting size
   uint32_t Z;
+  uint16_t Nidx;
+
+  /////////////////////// slsch decoding ///////////////////////
+  /// Frame where current HARQ round was sent
+  uint32_t frame;
+  /// Slot where current HARQ round was sent
+  uint32_t slot;
+  /// Flag to indicate that the UL configuration has been handled. Used to remove a stale ULSCH when frame wraps around
+  uint8_t handled;
+
+  /// Transport block size (This is A from 38.212 V16.10.0 section 5.1)
+  uint32_t TBS;
+  /// Number of bits in each code block after rate matching for LDPC code (38.212 V16.10.0 section 5.4.2.1)
+  uint32_t E;
+  /// Number of segments processed so far
+  uint32_t processedSegments;
+  bool new_rx;
+  //////////////////////////////////////////////////////////////
+  //pointer to SCI2 payload from MAC interface
+  uint64_t *a_sci2;
+  //pointer to sci2 after crc + polar encoding and rate matching stored in bytes
+  uint8_t *b_sci2;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
+  uint32_t B_sci2;
+  // pointer ot output of polar encoder stored in bits
+  uint8_t *f_sci2;
+  // pointer ot output of data-control multiplexer in bits
+  uint8_t *f_multiplexed;
+
 } NR_UL_UE_HARQ_t;
 
 typedef struct {
@@ -128,6 +158,8 @@ typedef struct {
   // UL number of harq processes
   uint8_t number_harq_processes_for_pusch;
   /// Minimum number of CQI bits for PUSCH (36-212 r8.6, Sec 5.2.4.1 p. 37)
+  /// HARQ process mask, indicates which processes are currently active
+  uint16_t harq_mask;
   uint8_t O_CQI_MIN;
   /// ACK/NAK Bundling flag
   uint8_t bundling;
@@ -141,6 +173,8 @@ typedef struct {
   uint8_t power_offset;
   // for cooperative communication
   uint8_t cooperation_flag;
+  /// Allocated RNTI for this SLSCH
+  uint16_t rnti;
   /// RNTI type
   uint8_t rnti_type;
   /// Cell ID
@@ -161,6 +195,10 @@ typedef struct {
   //uint8_t num_cba_dci[10];
   /// allocated CBA RNTI
   //uint16_t cba_rnti[4];//NUM_MAX_CBA_GROUP];
+  /// Maximum number of LDPC iterations in sidelink decoding
+  uint8_t max_ldpc_iterations;
+  /// number of iterations used in last LDPC decoding in sidelink decoding
+  uint8_t last_iteration_cnt;
 } NR_UE_ULSCH_t;
 
 typedef struct {
@@ -174,8 +212,12 @@ typedef struct {
   uint32_t TBS;
   /// The payload + CRC size in bits
   uint32_t B;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
+  uint32_t B_sci2;
   /// Pointer to the payload
   uint8_t *b;
+  /// Pointer to the sci2 payload
+  uint64_t *b_sci2;
   /// Pointers to transport block segments
   uint8_t **c;
   /// soft bits for each received segment ("d"-sequence)(for definition see 36-212 V8.6 2009-03, p.15)
@@ -260,7 +302,7 @@ typedef struct {
   /// PDU BITMAP 
   uint16_t pduBitmap;
 
-  nfapi_nr_pusch_pdu_t ssch_pdu;
+  nfapi_nr_pssch_pdu_t pssch_pdu;
 } NR_DL_UE_HARQ_t;
 
 typedef struct {

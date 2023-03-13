@@ -230,6 +230,7 @@ typedef struct
   uint8_t  harq_process_id;
   uint8_t  new_data_indicator;
   uint32_t tb_size;
+  uint8_t sci2_size;
   uint16_t num_cb;
   uint8_t cb_present_and_position[(NFAPI_UE_MAX_NUM_CB+7) / 8];
 
@@ -344,6 +345,81 @@ typedef struct
   //OAI specific
   int8_t absolute_delta_PUSCH;
 } nfapi_nr_ue_pusch_pdu_t;
+
+typedef struct {
+  uint8_t priority;
+  uint8_t freq_res;
+  uint8_t time_res;
+  uint8_t period;
+  uint16_t dmrs_pattern;
+  uint8_t mcs;
+  uint8_t beta_offset;
+  uint8_t dmrs_port;
+} SCI_1_A;
+
+typedef struct {
+  uint8_t harq_pid;
+  bool new_data;
+  uint8_t red_version;
+  uint8_t src_id;
+  uint16_t dst_id;
+  bool harq_enb;
+  uint8_t cast_type;
+  bool csi_req;
+} SCI_2_A;
+
+typedef struct
+{
+  uint16_t pdu_bit_map;//Bitmap indicating presence of optional PDUs (see above)
+  uint16_t rnti;
+  uint32_t handle;//An opaque handling returned in the RxData.indication and/or UCI.indication message
+  //BWP
+  uint16_t bwp_size;
+  uint16_t bwp_start;
+  uint8_t  subcarrier_spacing;
+  uint8_t  cyclic_prefix;
+  //pusch information always include
+  uint16_t target_code_rate;
+  uint8_t  qam_mod_order;
+  uint8_t  mcs_index;
+  uint8_t  mcs_table;
+  uint8_t  transform_precoding;
+  uint16_t data_scrambling_id;
+  uint8_t  nrOfLayers;
+  uint8_t  Tpmi;
+  //DMRS
+  uint16_t  sl_dmrs_symb_pos;
+  uint8_t  dmrs_config_type;
+  uint16_t ul_dmrs_scrambling_id;
+  uint8_t  scid;
+  uint8_t  num_dmrs_cdm_grps_no_data;
+  uint16_t dmrs_ports;//DMRS ports. [TS38.212 7.3.1.1.2] provides description between DCI 0-1 content and DMRS ports. Bitmap occupying the 11 LSBs with: bit 0: antenna port 1000 bit 11: antenna port 1011 and for each bit 0: DMRS port not used 1: DMRS port used
+  //Pusch Allocation in frequency domain [TS38.214, sec 6.1.2.2]
+  uint8_t  resource_alloc;
+  uint8_t  rb_bitmap[36];//
+  uint16_t rb_start;
+  uint16_t rb_size;
+  uint8_t  vrb_to_prb_mapping;
+  uint8_t  frequency_hopping;
+  uint16_t tx_direct_current_location;//The uplink Tx Direct Current location for the carrier. Only values in the value range of this field between 0 and 3299, which indicate the subcarrier index within the carrier corresponding 1o the numerology of the corresponding uplink BWP and value 3300, which indicates "Outside the carrier" and value 3301, which indicates "Undetermined position within the carrier" are used. [TS38.331, UplinkTxDirectCurrentBWP IE]
+  uint8_t  uplink_frequency_shift_7p5khz;
+  //Resource Allocation in time domain
+  uint8_t  start_symbol_index;
+  uint8_t  nr_of_symbols;
+  uint32_t tbslbrm;
+  //Optional Data only included if indicated in pduBitmap
+  nfapi_nr_ue_pusch_data_t pssch_data;
+  nfapi_nr_ue_pusch_ptrs_t pssch_ptrs;
+  nfapi_nr_ue_dfts_ofdm_t dfts_ofdm;
+  //beamforming
+  nfapi_nr_ue_ul_beamforming_t beamforming;
+  //OAI specific
+  int8_t absolute_delta_PUSCH;
+  // SCI1 for PSSCH
+  SCI_1_A sci1;
+  // SCI2 for PSSCH
+  SCI_2_A sci2;
+} nfapi_nr_ue_pssch_pdu_t;
 
 typedef struct {
 } fapi_nr_ul_srs_parms_v4;

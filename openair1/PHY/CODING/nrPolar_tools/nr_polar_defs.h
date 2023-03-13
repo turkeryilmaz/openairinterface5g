@@ -43,6 +43,7 @@
 #include "PHY/CODING/nrPolar_tools/nr_polar_uci_defs.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_psbch_defs.h"
+#include "PHY/CODING/nrPolar_tools/nr_polar_pssch_defs.h"
 #include "PHY/CODING/coding_defs.h"
 //#include "SIMULATION/TOOLS/sim.h"
 
@@ -158,6 +159,13 @@ void polar_encoder_fast(uint64_t *A,
                         int8_t messageType,
                         uint16_t messageLength,
                         uint8_t aggregation_level);
+
+uint16_t get_Nidx_from_CRC(uint64_t *A,
+                           int32_t crcmask,
+                           uint8_t ones_flag,
+                           int8_t messageType,
+                           uint16_t messageLength,
+                           uint8_t aggregation_level);
 
 int8_t polar_decoder(double *input,
                      uint32_t *output,

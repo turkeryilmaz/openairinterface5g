@@ -78,6 +78,8 @@ void nr_codeword_scrambling(uint8_t *in,
 
 void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI);
 
+void nr_codeword_unscrambling_sl(int16_t* llr, uint32_t size, uint8_t SCI2_bits, uint32_t Nid, uint8_t Nl);
+
 /**@}*/
 
 void init_pucch2_luts(void);

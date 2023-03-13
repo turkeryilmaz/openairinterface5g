@@ -33,6 +33,7 @@
 #include "PHY/CODING/coding_extern.h"
 #include "PHY/phy_extern_nr_ue.h"
 #include "PHY/sse_intrin.h"
+#include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
 #include "PHY/INIT/phy_init.h"
 #include "openair1/SCHED_NR_UE/defs.h"
