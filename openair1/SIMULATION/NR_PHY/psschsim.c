@@ -414,13 +414,14 @@ int main(int argc, char **argv)
   // r_im = malloc(n_rx*sizeof(double*));
 
 
-  uint8_t length_dmrs = 1;
   uint8_t UE_id = 0;
   uint16_t nb_symb_sch = 12;
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
   uint8_t  SCI2_mod_order = 2;
+  uint16_t dlDmrsSymbPos = 16+1024;
+  uint8_t length_dmrs = get_num_dmrs(dlDmrsSymbPos);
   unsigned char harq_pid = 0;
 
   //nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
@@ -442,7 +443,7 @@ int main(int argc, char **argv)
   slsch_ue_rx->harq_processes[harq_pid]->nb_rb = nb_rb;
   slsch_ue_rx->harq_processes[harq_pid]->TBS = TBS >> 3;
   slsch_ue_rx->harq_processes[harq_pid]->n_dmrs_cdm_groups = 1;
-  slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = 16;
+  slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = dlDmrsSymbPos;
   slsch_ue_rx->harq_processes[harq_pid]->mcs = Imcs;
   slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = 0;
   slsch_ue_rx->harq_processes[harq_pid]->R = code_rate;
