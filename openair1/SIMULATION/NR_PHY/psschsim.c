@@ -35,12 +35,14 @@
 #include "PHY/defs_gNB.h"
 #include "PHY/INIT/phy_init.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
+
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
@@ -421,8 +423,6 @@ int main(int argc, char **argv)
   uint8_t  SCI2_mod_order = 2;
   unsigned char harq_pid = 0;
 
-  NR_UE_DLSCH_t *dlsch_rxUE = rxUE->dlsch[UE_id];
-  NR_DL_UE_HARQ_t *harq_process_rxUE = dlsch_rxUE->harq_processes[harq_pid];
   //nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
   //NR_UE_DLSCH_t *dlsch0_ue = rxUE->dlsch[0][0][0];
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
@@ -536,16 +536,16 @@ int main(int argc, char **argv)
   int32_t a = 1;
   int32_t b = 1;
 
-  unsigned int errors_bit_uncoded = 0;
+  //unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
   unsigned int n_false_positive = 0;
-  double modulated_input[HNA_SIZE];
+  //double modulated_input[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
-  short channel_output_fixed[HNA_SIZE];
-  short channel_output_uncoded[HNA_SIZE];
+  //short channel_output_fixed[HNA_SIZE];
+  //short channel_output_uncoded[HNA_SIZE];
   unsigned char estimated_output_bit[HNA_SIZE];
-
+  snr1 = snr1set == 0 ? snr0 + 10 : snr1;
   for (double SNR = snr0 ; SNR < snr1; SNR += 1) {
     n_errors = 0;
     n_false_positive = 0;
