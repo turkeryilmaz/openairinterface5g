@@ -215,7 +215,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
                                      multiplexed_output);
 
   /////////////////////////SLSCH scrambling/////////////////////////
-  uint16_t Nidx = slsch_ue->harq_processes[harq_pid]->Nidx;
+  uint16_t Nidx = slsch_ue->Nid_cell;
   uint32_t scrambled_output[(available_bits >> 5) + 1];
   memset(scrambled_output, 0, ((available_bits >> 5) + 1) * sizeof(uint32_t));
 
