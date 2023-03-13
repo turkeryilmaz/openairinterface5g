@@ -2452,7 +2452,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
   LTE_InterFreqCarrierFreqInfo_t *InterFreqCarrierInfo;
 
   /* Handling multiple entities in InterFrequencyList for SIB5 message */
-  for(int i=0;i<configuration->InterFreqCarrierFreqInfoCount;i++) {
+  for(int i=0;i<configuration->InterFreqCarrierFreqInfoCount[CC_id];i++) {
     InterFreqCarrierInfo = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo));
     InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].dl_CarrierFreq;
     InterFreqCarrierInfo->q_RxLevMin = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_RxLevMin;

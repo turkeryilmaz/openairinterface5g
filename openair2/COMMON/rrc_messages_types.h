@@ -498,7 +498,7 @@ typedef struct RrcConfigurationReq_s {
 
   //SIB5
   bool                         sib5_Present[MAX_NUM_CCs];
-  int                          InterFreqCarrierFreqInfoCount;
+  int                          InterFreqCarrierFreqInfoCount[MAX_NUM_CCs];
   InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
 
   //SIB18
