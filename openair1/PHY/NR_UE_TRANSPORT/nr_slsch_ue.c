@@ -51,6 +51,7 @@
 #include <openair2/UTIL/OPT/opt.h>
 
 //#define DEBUG_PUSCH_MAPPING
+//#define DEBUG_PSSCH_SCRAMBLING
 //#define DEBUG_MAC_PDU
 //#define DEBUG_DFT_IDFT
 
@@ -70,9 +71,9 @@ void nr_pusch_codeword_scrambling_sl(uint8_t *in,
     const uint8_t b_idx = i & 0x1f;
     if (b_idx == 0) {
       s = lte_gold_generic(&x1, &x2, reset);
-      #if 0
+#if DEBUG_PSSCH_SCRAMBLING
       printf("scrambling s = 0x%x\n", s);
-      #endif
+#endif
       reset = 0;
       if (i)
         out++;
@@ -145,11 +146,11 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
   }
 //#define DEBUG_NR_SLSCH_MUX 0
 #ifdef DEBUG_NR_SLSCH_MUX
-  //for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
-  printf("Nl %d, muxed_bits[i]= ", Nl);
-  for (int i = 0; i < SCI2_bits * Nl + slssh_bits; i++)
-    printf("%u ", out[i]);
-  printf("\n");
+  for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n", test_input[i]);
+    printf("Nl %d, muxed_bits[i]= ", Nl);
+    for (int i = 0; i < SCI2_bits * Nl + slssh_bits; i++)
+      printf("%u ", out[i]);
+    printf("\n");
 #endif
 }
 
@@ -176,7 +177,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   NR_UL_UE_HARQ_t *harq_process_ul_ue = slsch_ue->harq_processes[harq_pid];
   nfapi_nr_ue_pssch_pdu_t *pssch_pdu = &harq_process_ul_ue->pssch_pdu;
 
-  int start_symbol          = pssch_pdu->start_symbol_index;
   uint16_t sl_dmrs_symb_pos = pssch_pdu->sl_dmrs_symb_pos;
   uint8_t number_of_symbols = pssch_pdu->nr_of_symbols;
   uint8_t dmrs_type         = pssch_pdu->dmrs_config_type;
@@ -187,6 +187,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   uint16_t rnti             = pssch_pdu->rnti;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
   uint16_t bwp_start        = pssch_pdu->bwp_start;
+  int start_symbol          = pssch_pdu->start_symbol_index;
   frame_parms->first_carrier_offset = 0;
   frame_parms->ofdm_symbol_size     = 2048;
   uint16_t start_sc    = frame_parms->first_carrier_offset + (start_rb + bwp_start) * NR_NB_SC_PER_RB;
@@ -199,11 +200,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   }
 
   nb_dmrs_re_per_rb = 6 * cdm_grps_no_data;
-
-  // trace_NRpdu(DIRECTION_UPLINK,
-  //             harq_process_ul_ue->a,
-  //             harq_process_ul_ue->pssch_pdu.pssch_data.tb_size,
-  //             WS_C_RNTI, rnti, frame, slot, 0, 0);
 
 
   /////////////////////////SLSCH SCI2 coding/////////////////////////
@@ -244,11 +240,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   unsigned int G_slsch_bits = nr_get_G(nb_rb, number_of_symbols,
                             nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl);
 
-
-  // trace_NRpdu(DIRECTION_UPLINK,
-  //             harq_process_ul_ue->a,
-  //             harq_process_ul_ue->pssch_pdu.pssch_data.tb_size,
-  //             WS_C_RNTI, rnti, frame, slot, 0, 0);
 
   if (nr_slsch_encoding(UE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
     return;

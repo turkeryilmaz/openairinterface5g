@@ -55,7 +55,7 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/MODULATION/modulation_common.h"
 
-#define DEBUG_NR_SLSCHSIM 1 
+#define DEBUG_NR_SLSCHSIM 1
 
 // typedef struct {
 //   uint8_t priority;
@@ -96,7 +96,7 @@ softmodem_params_t *get_softmodem_params(void) {
 
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 
-double snr0 =100;
+double snr0 = 100;
 double snr1 = 2.0;
 uint8_t snr1set = 0;
 int n_trials = 1;
@@ -395,13 +395,13 @@ int main(int argc, char **argv)
     exit(-1);
   }
 #ifdef DEBUG_NR_SLSCHSIM
-  // for (int sf = 0; sf < 2; sf++) {
-  //   txUE->slsch[sf][0] = new_nr_ue_ulsch(nb_rb, 8, txUE->frame_parms);
-  //   if (!txUE->slsch[sf][0]) {
-  //     printf("Can't get ue ulsch structures.\n");
-  //     exit(-1);
-  //   }
-  // }
+  for (int sf = 0; sf < 2; sf++) {
+    txUE->slsch[sf][0] = new_nr_ue_ulsch(nb_rb, 8, txUE->frame_parms);
+    if (!txUE->slsch[sf][0]) {
+      printf("Can't get ue ulsch structures.\n");
+      exit(-1);
+    }
+  }
 #endif
   get_softmodem_params()->sync_ref = false;
   init_nr_ue_transport(txUE);
@@ -420,16 +420,14 @@ int main(int argc, char **argv)
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
   uint8_t  SCI2_mod_order = 2;
-  uint16_t dlDmrsSymbPos = 16+1024;
+  uint16_t dlDmrsSymbPos = 16 + 1024;
   uint8_t length_dmrs = get_num_dmrs(dlDmrsSymbPos);
   unsigned char harq_pid = 0;
 
-  //nfapi_nr_pssch_pdu_t *rel16_ul = &harq_process_rxUE->pssch_pdu;
-  //NR_UE_DLSCH_t *dlsch0_ue = rxUE->dlsch[0][0][0];
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
 
-  if ((Nl == 4)||(Nl == 3))
-    nb_re_dmrs = nb_re_dmrs*2;
+  if ((Nl == 4) || (Nl == 3))
+    nb_re_dmrs = nb_re_dmrs * 2;
 
   uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
@@ -507,7 +505,7 @@ int main(int argc, char **argv)
                                   harq_process_txUE->B_sci2,
                                   0,
                                   scrambled_output);
-  
+
   int max_num_re = Nl * nb_symb_sch * nb_rb * NR_NB_SC_PER_RB;
   int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
   int32_t ch_out[max_num_re] __attribute__ ((aligned(16)));
@@ -594,8 +592,7 @@ int main(int argc, char **argv)
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 
     #if DEBUG_NR_SLSCHSIM
-        //
-        if (i < 100){
+        if (i < 100) {
           printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
           if (i % 8 == 0){
             printf("tx data[%d]: %u, rx data[%d]: %u\n",i / 8,test_input[i / 8],i / 8,slsch_ue_rx->harq_processes[harq_pid]->b[i / 8]);
@@ -606,7 +603,6 @@ int main(int argc, char **argv)
           errors_bit++;
         }
       }
-      //printf("num of bit error: %d\n",errors_bit);
       if (errors_bit > 0) {
         n_false_positive++;
         if (n_trials == 1)
