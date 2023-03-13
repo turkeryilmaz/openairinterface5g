@@ -134,7 +134,6 @@ int main(int argc, char **argv){
   double sigma2, sigma2_dB = 0, SNR, snr0 = -2.0, snr1 = 0.0, ue_speed0 = 0.0, ue_speed1 = 0.0;
   double **s_re, **s_im, **r_re, **r_im, iqim = 0.0, delay_avg = 0, ue_speed = 0, fs=-1, bw;
   int i, l, aa, aarx, trial, n_frames = 1, prach_start, rx_prach_start; //, ntrials=1;
-  c16_t **txdata;
   int N_RB_UL = 106, delay = 0, NCS_config = 13, rootSequenceIndex = 1, threequarter_fs = 0, mu = 1, fd_occasion = 0, loglvl = OAILOG_INFO, numRA = 0, prachStartSymbol = 0;
   uint8_t snr1set = 0, ue_speed1set = 0, transmission_mode = 1, n_tx = 1, n_rx = 1, awgn_flag = 0, msg1_frequencystart = 0, num_prach_fd_occasions = 1, prach_format=0;
   uint8_t config_index = 98, prach_sequence_length = 1, restrictedSetConfig = 0, N_dur, N_t_slot, start_symbol;
@@ -586,7 +585,7 @@ int main(int argc, char **argv){
 
   ue_prach_pdu           = &UE->prach_vars[0]->prach_pdu;
   ue_prach_config        = &UE->nrUE_config.prach_config;
-  txdata                 = UE->common_vars.txdata;
+  c16_t **txdata         = UE->common_vars.txdata;
 
   UE->prach_vars[0]->amp        = AMP;
   ue_prach_pdu->root_seq_id     = rootSequenceIndex;
@@ -679,16 +678,16 @@ int main(int argc, char **argv){
   for (i = 0; i < frame_parms->samples_per_subframe; i++) {
     for (aa=0; aa<1; aa++) {
       if (awgn_flag == 0) {
-        s_re[aa][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
-        s_im[aa][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
+        s_re[aa][i] = ((double)(((short *)&txdata[aa][prach_start].r))[i]);
+        s_im[aa][i] = ((double)(((short *)&txdata[aa][prach_start].i))[i]);
       } else {
         for (aarx=0; aarx<gNB->frame_parms.nb_antennas_rx; aarx++) {
           if (aa==0) {
-            r_re[aarx][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
-            r_im[aarx][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
+            r_re[aarx][i] = ((double)(((short *)&txdata[aa][prach_start].r))[i]);
+            r_im[aarx][i] = ((double)(((short *)&txdata[aa][prach_start].i))[i]);
           } else {
-            r_re[aarx][i] += ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
-            r_im[aarx][i] += ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
+            r_re[aarx][i] += ((double)(((short *)&txdata[aa][prach_start].r))[i]);
+            r_im[aarx][i] += ((double)(((short *)&txdata[aa][prach_start].i))[i]);
           }
         }
       }
