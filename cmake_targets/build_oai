@@ -566,8 +566,6 @@ function main() {
     fi
   fi
 
-  cd  $DIR/$BUILD_DIR/build
-
   ####################################################
   # Build RF device and transport protocol libraries #
   ####################################################

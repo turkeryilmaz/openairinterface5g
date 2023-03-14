@@ -220,7 +220,7 @@ int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
   if (get_softmodem_params()->sl_mode == 0) {
     pss = primary_synchro_nr2[ue->common_vars.eNb_id];
   } else {
-    pss = primary_synchro_nr2_sl[ue->common_vars.eNb_id];
+    pss = primary_synchro_nr2_sl[ue->common_vars.N2_id];
   }
 
   sss_ext3 = (int16_t*)&sss_ext[0][0];
@@ -348,7 +348,11 @@ int do_pss_sss_extract_nr(PHY_VARS_NR_UE *ue,
     pss_rxF_ext = &pss_ext[aarx][0];
     sss_rxF_ext = &sss_ext[aarx][0];
 
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START;
+    unsigned int k = frame_parms->first_carrier_offset +
+                     frame_parms->ssb_start_subcarrier +
+                     get_softmodem_params()->sl_mode == 0 ?
+                     PSS_SSS_SUB_CARRIER_START :
+                     PSS_SSS_SUB_CARRIER_START_SL;
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 

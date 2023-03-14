@@ -730,40 +730,27 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
                              int dmrss,
                              NR_UE_SSB *current_ssb)
 {
-  int pilot[300] __attribute__((aligned(16)));
-  unsigned short k;
-  unsigned int pilot_cnt;
-  int16_t ch[2],*pil,*rxF;
-  int symbol_offset;
-
-
-  uint8_t nushift;
-  uint8_t ssb_index=current_ssb->i_ssb;
-  c16_t **rxdataF=ue->common_vars.rxdataF;
-
-  nushift =  0; //ue->frame_parms.Nid_cell%4;
-  ue->frame_parms.nushift = nushift;
-  unsigned int  ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
-  if (ssb_offset>= ue->frame_parms.ofdm_symbol_size) ssb_offset-=ue->frame_parms.ofdm_symbol_size;
-
-  AssertFatal(dmrss >= 0 && dmrss <= 12,
-	      "symbol %d is illegal for PSBCH DM-RS \n",
-	      dmrss);
-
-  symbol_offset = ue->frame_parms.ofdm_symbol_size*symbol;
-
-  k = nushift;
+  ue->frame_parms.nushift = 0;
+  unsigned int ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
+  if (ssb_offset>= ue->frame_parms.ofdm_symbol_size)
+    ssb_offset-=ue->frame_parms.ofdm_symbol_size;
 
 #ifdef DEBUG_CH
-  printf("PSBCH DMRS Correlation : ThreadId %d, gNB_id %d , OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n",proc->thread_id, gNB_id,ue->frame_parms.ofdm_symbol_size,
-         ue->frame_parms.Ncp,Ns,k, symbol);
+  printf("PSBCH DMRS Correlation : ThreadId %d, gNB_id %d , OFDM size %d, Ncp=%d, Ns=%d, symbol %d, ssb_offset %d\n",
+         proc->thread_id, gNB_id, ue->frame_parms.ofdm_symbol_size, ue->frame_parms.Ncp, Ns, symbol, ssb_offset);
 #endif
 
-  if (0 < dmrss && dmrss < 5) return 0;
-  // generate pilot
-  nr_psbch_dmrs_rx(dmrss, &ue->nr_gold_psbch[ssb_index], &pilot[0]);
+  AssertFatal(dmrss >= 0 && dmrss <= 12, "symbol %d is illegal for PSBCH DM-RS \n", dmrss);
+  int pilot[300] __attribute__((aligned(16)));
+  nr_psbch_dmrs_rx(dmrss, &ue->nr_gold_psbch[current_ssb->i_ssb], &pilot[0]);
+  if (0 < dmrss && dmrss < 5)
+    return 0;
 
-  for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
+  int16_t ch[2], *pil, *rxF;
+  c16_t **rxdataF = ue->common_vars.rxdataF;
+  int symbol_offset = ue->frame_parms.ofdm_symbol_size * symbol;
+  unsigned short k = 0;
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     int re_offset = ssb_offset;
     pil   = (int16_t *)&pilot[0];
     rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
@@ -792,7 +779,7 @@ int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
     re_offset = (re_offset+4) % ue->frame_parms.ofdm_symbol_size;
     rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k+re_offset)];
 
-    for (pilot_cnt = 3; pilot_cnt < (3 * 11); pilot_cnt += 3) {
+    for (int pilot_cnt = 3; pilot_cnt < (3 * 11); pilot_cnt += 3) {
       ch[0] = (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
       ch[1] = (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
       current_ssb->c_re += ch[0];

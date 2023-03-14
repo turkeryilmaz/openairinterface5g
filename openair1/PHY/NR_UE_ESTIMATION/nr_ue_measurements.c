@@ -238,7 +238,7 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
     for (int i = 0; i < NUM_SSS_SYMBOLS; i++) {
       uint8_t l_sss = (SSS_START_IDX + i) % ue->frame_parms.symbols_per_slot;
       int16_t *rxF_sss = (int16_t *)&ue->common_vars.rxdataF[aarx][(l_sss * ue->frame_parms.ofdm_symbol_size)];
-      for (int k = SPSS_SSSS_SUB_CARRIER_START; k < (SPSS_SSSS_SUB_CARRIER_START + LENGTH_SSS_NR); k++) {
+      for (int k = PSS_SSS_SUB_CARRIER_START_SL; k < (PSS_SSS_SUB_CARRIER_START_SL + LENGTH_SSS_NR); k++) {
 #ifdef DEBUG_MEAS_UE
       LOG_I(NR_PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k * 2], rxF_sss[k * 2 + 1]);
 #endif

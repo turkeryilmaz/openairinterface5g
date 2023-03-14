@@ -67,7 +67,7 @@ int nr_sl_generate_sss(c16_t *txdataF,
   /// Resource mapping
 
   // SSS occupies a predefined position (subcarriers 2-129, symbol 3) within the SSB block starting from
-  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
+  int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
   int l = ssb_start_symbol + 3;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
@@ -80,7 +80,7 @@ int nr_sl_generate_sss(c16_t *txdataF,
   }
 
   // SSS occupies a predefined position (subcarriers 2 to 129, symbol 4) within the SSB block starting from
-  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
+  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
   l = ssb_start_symbol + 4;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
@@ -133,7 +133,7 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     sss0_rxF  =  &rxdataF[aarx][SSS0_SL_SYMBOL_NB * ofdm_symbol_size];
     pss0_rxF_ext = &pss0_ext[aarx][0];
     sss0_rxF_ext = &sss0_ext[aarx][0];
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
     if (k >= frame_parms->ofdm_symbol_size)
       k-=frame_parms->ofdm_symbol_size;
 
@@ -152,7 +152,7 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     sss1_rxF  =  &rxdataF[aarx][SSS1_SL_SYMBOL_NB * ofdm_symbol_size];
     pss1_rxF_ext = &pss1_ext[aarx][0];
     sss1_rxF_ext = &sss1_ext[aarx][0];
-    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + SPSS_SSSS_SUB_CARRIER_START;
+    unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
     if (k >= frame_parms->ofdm_symbol_size)
       k-=frame_parms->ofdm_symbol_size;
 

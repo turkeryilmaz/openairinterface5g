@@ -111,7 +111,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   }
 
   for (int n=0; n < LENGTH_PSS_NR; n++) {
-    int m = (n + pss_seq_offset + 43*N_ID_2)%(LENGTH_PSS_NR);
+    int m = (n + pss_seq_offset + 43 * N_ID_2) % (LENGTH_PSS_NR);
     d_pss[n] = 1 - 2*x[m];
   }
 
@@ -165,7 +165,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   */
   unsigned int subcarrier_start = PSS_SSS_SUB_CARRIER_START;
   if (get_softmodem_params()->sl_mode == 2)
-    subcarrier_start = SPSS_SSSS_SUB_CARRIER_START;
+    subcarrier_start = PSS_SSS_SUB_CARRIER_START_SL;
   AssertFatal(get_softmodem_params()->sl_mode != 1, "Sidelink mode 1 is not supported yet.");
 
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
@@ -712,7 +712,9 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
 
   // performing the correlation on a frame length plus one symbol for the first of the two frame
   // to take into account the possibility of PSS in between the two frames 
-  unsigned int length = is == 0 ? frame_parms->samples_per_frame + (2 * frame_parms->ofdm_symbol_size) : frame_parms->samples_per_frame;
+  unsigned int length = is == 0 ?
+                        frame_parms->samples_per_frame + (2 * frame_parms->ofdm_symbol_size) :
+                        frame_parms->samples_per_frame;
 
   AssertFatal(length > 0, "illegal length %d\n", length);
   int64_t peak_value = 0;
@@ -742,14 +744,16 @@ int pss_search_time_nr(int **rxdata, ///rx data in time domain
   /* This is required by SIMD (single instruction Multiple Data) Extensions of Intel processors. */
   /* Correlation computation is based on a a dot product which is realized thank to SIMS extensions */
   int pss_sequence = NUMBER_PSS_SEQUENCE;
+  int step = 8;
   int64_t avg_sl[NUMBER_PSS_SEQUENCE_SL] = {0};
   int64_t avg[NUMBER_PSS_SEQUENCE] = {0};
-  if (get_softmodem_params()->sl_mode != 0){
+  if (get_softmodem_params()->sl_mode != 0) {
     pss_sequence = NUMBER_PSS_SEQUENCE_SL;
+    step = 4;
   }
   for (int pss_index = 0; pss_index < pss_sequence; pss_index++) {
 
-    for (unsigned int n = 0; n < length; n += 4) { //
+    for (unsigned int n = 0; n < length; n += step) { //
 
       int64_t pss_corr_ue=0;
       /* calculate dot product of primary_synchro_time_nr and rxdata[ar][n]

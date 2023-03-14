@@ -40,12 +40,12 @@
 #define VOID_PARAMETER                (void)   /* avoid a compiler warning for unused parameters of function */
 
 /* PSS parameters */
-#define  NUMBER_PSS_SEQUENCE_SL       (2)
-#define  PSS_SEQ_OFFSET_SL            (22)    // 0 for NR, 22 for SL
 #define  NUMBER_PSS_SEQUENCE          (3)
+#define  NUMBER_PSS_SEQUENCE_SL       (2)
 #define  PSS_SEQ_OFFSET               (0)
-#define  SPSS_SSSS_SUB_CARRIER_START  (2)     // 56 for NR, 2 for SL
-#define  PSS_SSS_SUB_CARRIER_START    (56)      // 56 for NR, 2 for SL
+#define  PSS_SEQ_OFFSET_SL            (22)
+#define  PSS_SSS_SUB_CARRIER_START    (56)
+#define  PSS_SSS_SUB_CARRIER_START_SL (2)
 #define  INVALID_PSS_SEQUENCE         (NUMBER_PSS_SEQUENCE)
 #define  INVALID_PSS_SEQUENCE_SL      (NUMBER_PSS_SEQUENCE_SL)
 #define  LENGTH_PSS_NR                (127)

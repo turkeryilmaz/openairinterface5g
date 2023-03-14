@@ -388,7 +388,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   @param mode current running mode
 */
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
-                    PHY_VARS_NR_UE *phy_vars_ue,
+                    PHY_VARS_NR_UE *phy_vars_ue, 
                     int n_frames,
                     int sa);
 

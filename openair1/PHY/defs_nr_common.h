@@ -281,20 +281,6 @@ typedef struct {
   uint32_t reserved : 2;
 } PSBCH_payload;
 
-/// Enumeration of SL_channel_config
-typedef enum {
-  NO_SL=0,
-  PSCCH_12_EVEN=1,
-  PSCCH_12_ODD=2,
-  PSCCH_34_EVEN=3,
-  PSCCH_34_ODD=4,
-  PSSCH_12=5,
-  PSSCH_34=6,
-  PSDCH=7,
-  PSBCH=8,
-  MAX_SLTYPES=9
-} NR_SL_chan_t;
-
 // PRS config structures
 typedef struct {
     uint16_t PRSResourceSetPeriod[2];   // [slot period, slot offset] of a PRS resource set

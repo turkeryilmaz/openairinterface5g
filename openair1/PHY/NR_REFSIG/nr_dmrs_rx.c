@@ -239,7 +239,7 @@ int nr_psbch_dmrs_rx(int symbol,
                     unsigned int *nr_gold_psbch,
                     int32_t *output)
 {
-  AssertFatal(symbol >= 0 && symbol < 14,"illegal symbol %d\n", symbol);
+  AssertFatal(symbol >= 0 && symbol < 14, "Illegal symbol %d\n", symbol);
   int offset = (symbol == 0) ? 0 : 4;
   int m0 = (symbol - offset) * 33;
   int m1 = ((symbol - offset) + 1) * 33;

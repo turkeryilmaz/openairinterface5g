@@ -23,28 +23,10 @@
 #define __PHY_EXTERN_NR_UE__H__
 
 #include "PHY/defs_nr_UE.h"
-//#include "common/ran_context.h"
-
-#ifdef XFORMS
-  #include "PHY/TOOLS/nr_phy_scope.h"
-  extern uint32_t do_forms;
-#endif
-
-extern char* namepointer_chMag ;
-extern char* namepointer_log2;
-extern char  fmageren_name2[512];
-
-extern unsigned int RX_DMA_BUFFER[4][NB_ANTENNAS_RX];
-extern unsigned int TX_DMA_BUFFER[4][NB_ANTENNAS_TX];
 
 extern uint64_t downlink_frequency[MAX_NUM_CCs][4];
 extern int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
 extern uint64_t sidelink_frequency[MAX_NUM_CCs][4];
-
-extern const short conjugate[8],conjugate2[8];
-extern int number_of_cards;
-
-
 extern PHY_VARS_NR_UE ***PHY_vars_UE_g;
 
 #endif /*__PHY_EXTERN_H__ */

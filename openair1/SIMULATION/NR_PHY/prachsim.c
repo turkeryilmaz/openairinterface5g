@@ -678,16 +678,16 @@ int main(int argc, char **argv){
   for (i = 0; i < frame_parms->samples_per_subframe; i++) {
     for (aa=0; aa<1; aa++) {
       if (awgn_flag == 0) {
-        s_re[aa][i] = ((double)(((short *)&txdata[aa][prach_start].r))[i]);
-        s_im[aa][i] = ((double)(((short *)&txdata[aa][prach_start].i))[i]);
+        s_re[aa][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
+        s_im[aa][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
       } else {
         for (aarx=0; aarx<gNB->frame_parms.nb_antennas_rx; aarx++) {
           if (aa==0) {
-            r_re[aarx][i] = ((double)(((short *)&txdata[aa][prach_start].r))[i]);
-            r_im[aarx][i] = ((double)(((short *)&txdata[aa][prach_start].i))[i]);
+            r_re[aarx][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
+            r_im[aarx][i] = ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
           } else {
-            r_re[aarx][i] += ((double)(((short *)&txdata[aa][prach_start].r))[i]);
-            r_im[aarx][i] += ((double)(((short *)&txdata[aa][prach_start].i))[i]);
+            r_re[aarx][i] += ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)]);
+            r_im[aarx][i] += ((double)(((short *)&txdata[aa][prach_start]))[(i<<1)+1]);
           }
         }
       }

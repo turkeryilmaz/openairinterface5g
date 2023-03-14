@@ -394,7 +394,9 @@ static void UE_synch(void *arg) {
   UE->is_synchronized_sl = 0;
 
   if (UE->UE_scan == 0) {
+
     for (i=0; i<openair0_cfg[UE->rf_map.card].rx_num_channels; i++) {
+
       LOG_I( PHY, "[SCHED][UE] Check absolute frequency DL %f, UL %f (RF card %d, oai_exit %d, channel %d, rx_num_channels %d)\n",
         openair0_cfg[UE->rf_map.card].rx_freq[UE->rf_map.chain+i],
         openair0_cfg[UE->rf_map.card].tx_freq[UE->rf_map.chain+i],
@@ -404,13 +406,55 @@ static void UE_synch(void *arg) {
         openair0_cfg[0].rx_num_channels);
 
     }
+
   } else {
     LOG_E(PHY,"Fixme!\n");
+    /*
+    for (i=0; i<openair0_cfg[UE->rf_map.card].rx_num_channels; i++) {
+      downlink_frequency[UE->rf_map.card][UE->rf_map.chain+i] = bands_to_scan.band_info[CC_id].dl_min;
+      uplink_frequency_offset[UE->rf_map.card][UE->rf_map.chain+i] =
+        bands_to_scan.band_info[CC_id].ul_min-bands_to_scan.band_info[CC_id].dl_min;
+      openair0_cfg[UE->rf_map.card].rx_freq[UE->rf_map.chain+i] = downlink_frequency[CC_id][i];
+      openair0_cfg[UE->rf_map.card].tx_freq[UE->rf_map.chain+i] =
+        downlink_frequency[CC_id][i]+uplink_frequency_offset[CC_id][i];
+      openair0_cfg[UE->rf_map.card].rx_gain[UE->rf_map.chain+i] = UE->rx_total_gain_dB;
+    }
+    */
   }
 
-  LOG_W(PHY, "Starting sync detection and this is sync mode %d\n", sync_mode);
+  LOG_W(PHY, "Starting sync detection\n");
 
   switch (sync_mode) {
+    /*
+    case pss:
+      LOG_I(PHY,"[SCHED][UE] Scanning band %d (%d), freq %u\n",bands_to_scan.band_info[current_band].band, current_band,bands_to_scan.band_info[current_band].dl_min+current_offset);
+      //lte_sync_timefreq(UE,current_band,bands_to_scan.band_info[current_band].dl_min+current_offset);
+      current_offset += 20000000; // increase by 20 MHz
+
+      if (current_offset > bands_to_scan.band_info[current_band].dl_max-bands_to_scan.band_info[current_band].dl_min) {
+        current_band++;
+        current_offset=0;
+      }
+
+      if (current_band==bands_to_scan.nbands) {
+        current_band=0;
+        oai_exit=1;
+      }
+
+      for (i=0; i<openair0_cfg[UE->rf_map.card].rx_num_channels; i++) {
+        downlink_frequency[UE->rf_map.card][UE->rf_map.chain+i] = bands_to_scan.band_info[current_band].dl_min+current_offset;
+        uplink_frequency_offset[UE->rf_map.card][UE->rf_map.chain+i] = bands_to_scan.band_info[current_band].ul_min-bands_to_scan.band_info[0].dl_min + current_offset;
+        openair0_cfg[UE->rf_map.card].rx_freq[UE->rf_map.chain+i] = downlink_frequency[CC_id][i];
+        openair0_cfg[UE->rf_map.card].tx_freq[UE->rf_map.chain+i] = downlink_frequency[CC_id][i]+uplink_frequency_offset[CC_id][i];
+        openair0_cfg[UE->rf_map.card].rx_gain[UE->rf_map.chain+i] = UE->rx_total_gain_dB;
+
+        if (UE->UE_scan_carrier) {
+          openair0_cfg[UE->rf_map.card].autocal[UE->rf_map.chain+i] = 1;
+        }
+      }
+
+      break;
+    */
     case pbch:
       LOG_I(PHY, "[UE thread Synch] Running Initial Synch (mode %d)\n",UE->mode);
 
@@ -458,7 +502,6 @@ static void UE_synch(void *arg) {
       break;
 
     case si:
-      break;
 
     case psbch:
       LOG_I(PHY, "[UE thread Synch] Running Initial SL-Synch (mode %d)\n", UE->mode);
@@ -562,18 +605,17 @@ void processSlotTX(void *arg) {
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_tx_t phy_data = {0};
 
-  LOG_D(NR_PHY, "processSlotTX %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
+  LOG_D(PHY,"%d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
   if (UE->sync_ref)
     proc->tx_slot_type = NR_UPLINK_SLOT;
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT){
 
     // trigger L2 to run ue_scheduler thru IF module
     // [TODO] mapping right after NR initial sync
-    if (get_softmodem_params()->sl_mode != 2) {
-      if(UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
-        start_meas(&UE->ue_ul_indication_stats);
-        nr_uplink_indication_t ul_indication;
-        memset((void*)&ul_indication, 0, sizeof(ul_indication));
+    if (get_softmodem_params()->sl_mode != 2 && UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
+      start_meas(&UE->ue_ul_indication_stats);
+      nr_uplink_indication_t ul_indication;
+      memset((void*)&ul_indication, 0, sizeof(ul_indication));
 
       ul_indication.module_id = UE->Mod_id;
       ul_indication.gNB_index = proc->gNB_id;
@@ -584,19 +626,19 @@ void processSlotTX(void *arg) {
       ul_indication.slot_tx   = proc->nr_slot_tx;
       ul_indication.phy_data      = &phy_data;
 
-        UE->if_inst->ul_indication(&ul_indication);
-        stop_meas(&UE->ue_ul_indication_stats);
-      }
+      UE->if_inst->ul_indication(&ul_indication);
+      stop_meas(&UE->ue_ul_indication_stats);
     }
 
     if (get_softmodem_params()->sl_mode == 0) {
       phy_procedures_nrUE_TX(UE, proc, 0);
-      RU_write(rxtxD);
     } else {
       phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
   }
-
+  if (get_softmodem_params()->sl_mode == 0) {
+    RU_write(rxtxD);
+  }
 }
 
 void processSlotRX_SL(void *arg) {
@@ -687,7 +729,7 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
                    UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms),
                    UE->frame_parms.nb_antennas_rx), "");
 
-      if (IS_SOFTMODEM_RFSIM && !get_softmodem_params()->sync_ref)
+      if (IS_SOFTMODEM_RFSIM)
         dummyWrite(UE,*timestamp, UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms));
       if (toTrash)
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
@@ -699,12 +741,12 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
-    int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl : UE->rx_offset;
+    int rx_offset = (get_softmodem_params()->sl_mode != 0) ? UE->rx_offset_sl : UE->rx_offset;
     LOG_I(NR_PHY, "Resynchronizing RX by %d samples (mode = %d)\n", rx_offset, UE->mode);
 
     if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
       // Resynchonize by slot (will work with numerology 1 only)
-      for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe/2 ) {
+      for ( int size=rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe/2 ) {
 	int unitTransfer=size>UE->frame_parms.samples_per_subframe/2 ? UE->frame_parms.samples_per_subframe/2 : size ;
 	AssertFatal(unitTransfer ==
 		    UE->rfdevice.trx_read_func(&UE->rfdevice,
@@ -715,11 +757,11 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
       }
     } else {
       *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
-      for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
+      for ( int size=rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
 	int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
 	// we write before read because gNB waits for UE to write and both executions halt
 	// this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
-        if (IS_SOFTMODEM_RFSIM && !get_softmodem_params()->sync_ref) dummyWrite(UE,*timestamp, unitTransfer);
+        if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
 	AssertFatal(unitTransfer ==
 		    UE->rfdevice.trx_read_func(&UE->rfdevice,
 					       timestamp,
@@ -733,15 +775,18 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
 int computeSamplesShift(PHY_VARS_NR_UE *UE) {
   int samples_shift = -(UE->rx_offset>>1);
-  if (get_softmodem_params()->sl_mode != 2) {
+  if (get_softmodem_params()->sl_mode == 0) {
     UE->rx_offset = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
   } else {
     UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
   }
-  UE->max_pos_fil = 0; // reset IIR filter when sample shift is applied
   if (samples_shift != 0) {
     LOG_I(NR_PHY,"Adjusting frame in time by %i samples\n", samples_shift);
-    UE->rx_offset = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
+    if (get_softmodem_params()->sl_mode == 0) {
+      UE->rx_offset = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
+    } else {
+      UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
+    }
     UE->max_pos_fil += samples_shift << 15; // reset IIR filter when sample shift is applied
   }
   return samples_shift;
@@ -1062,7 +1107,6 @@ void *UE_thread(void *arg) {
   bool syncRunning=false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
   int absolute_slot=0, decoded_frame_rx=INT_MAX, trashed_frames=0;
-  //LOG_I(PHY,"Process slot %d total gain %d\n", slot_nr, UE->rx_total_gain_dB);
 
   while (!oai_exit) {
     if (UE->lost_sync) {
@@ -1152,6 +1196,7 @@ void *UE_thread(void *arg) {
     curMsg.proc.rx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.frame_rx, curMsg.proc.nr_slot_rx);
     curMsg.proc.tx_slot_type = nr_ue_slot_select(cfg, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx);
     curMsg.proc.decoded_frame_rx=-1;
+    //LOG_I(PHY,"Process slot %d total gain %d\n", slot_nr, UE->rx_total_gain_dB);
 
 #ifdef OAI_ADRV9371_ZC706
     /*uint32_t total_gain_dB_prev = 0;

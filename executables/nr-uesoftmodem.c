@@ -155,13 +155,6 @@ int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
 uint32_t       N_RB_DL    = 106;
-uint16_t           Nid_SL = 0;
-uint64_t SSB_positions = 0x01;
-int mu = 1;
-uint8_t n_tx = 1;
-uint8_t n_rx = 1;
-uint16_t Nid_cell = 0;
-int ssb_subcarrier_offset = 0;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution
@@ -262,20 +255,23 @@ nrUE_params_t *get_nrUE_params(void) {
 }
 
 static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
-                                        int N_RB_DL,
-                                        int N_RB_UL,
-                                        int mu,
-                                        int Nid_SL,
-                                        int CC_id,
-                                        uint64_t position_in_burst)
+                                     int N_RB_DL,
+                                     int N_RB_UL,
+                                     int CC_id)
 {
   uint64_t rev_burst = 0;
+  uint64_t SSB_positions = 0x01;
+  int mu = 1;
+  uint8_t n_tx = 1;
+  uint8_t n_rx = 1;
+  uint16_t Nid_cell = 0;
+  int ssb_subcarrier_offset = 0;
   for (int i = 0; i < 64; i++)
     rev_burst |= (((SSB_positions >> (63-i))&0x01) << i);
 
   NR_DL_FRAME_PARMS *fp                                  = &ue->frame_parms;
   fapi_nr_config_request_t *nrUE_config                  = &ue->nrUE_config;
-  nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
+  nrUE_config->cell_config.phy_cell_id                   = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
   nrUE_config->ssb_table.ssb_offset_point_a              = 0;
@@ -302,7 +298,7 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   fp->nb_antenna_ports_gNB = n_tx;
   fp->N_RB_DL = N_RB_DL;
   fp->Nid_cell = Nid_cell;
-  fp->Nid_SL = Nid_SL;
+  fp->Nid_SL = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
   fp->nushift = 0; //No nushift in SL
   fp->ssb_type = nr_ssb_type_C; //Note: case c for NR SL???
   fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
@@ -325,7 +321,7 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   ue->slss->sl_numssb_withinperiod_r16_copy = 2;
   ue->slss->sl_timeinterval_r16_copy = 20;
   ue->slss->sl_timeoffsetssb_r16_copy = 2;
-  ue->slss->slss_id = Nid_SL;
+  ue->slss->slss_id = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
   ue->is_synchronized_sl = 0;
   ue->UE_fo_compensation = 0;
   ue->sync_ref = get_softmodem_params()->sync_ref;
@@ -579,7 +575,6 @@ int main( int argc, char **argv ) {
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
-  Nid_SL = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;
   if (!get_softmodem_params()->emulate_l1) {
     for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
       PHY_vars_UE_g[0][CC_id] = (PHY_VARS_NR_UE *)malloc(sizeof(PHY_VARS_NR_UE));
@@ -591,7 +586,7 @@ int main( int argc, char **argv ) {
       if (get_softmodem_params()->sl_mode != 0) {
         mac->if_module = NULL;
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
-        nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, CC_id, SSB_positions);
+        nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, CC_id);
       }
       if (get_softmodem_params()->sa) {
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
@@ -668,7 +663,7 @@ static void init_bler_table(char *env_string) {
     snprintf(fName, sizeof(fName), "%s/mcs%d_awgn_5G.csv", awgn_results_dir, i);
     FILE *pFile = fopen(fName, "r");
     if (!pFile) {
-      LOG_E(NR_MAC, "open %s: %s\n", fName, strerror(errno));
+      LOG_E(NR_MAC, "%s: open %s: %s\n", __func__, fName, strerror(errno));
       continue;
     }
     size_t bufSize = 1024;
