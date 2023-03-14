@@ -553,7 +553,6 @@ int main(int argc, char **argv)
       /////////////////////////SLSCH descrambling/////////////////////////
       // hacky [TODO]
       nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, 0, Nl);
-
       UE_nr_rxtx_proc_t proc;
       uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr,
                                 &rxUE->frame_parms, slsch_ue_rx,
