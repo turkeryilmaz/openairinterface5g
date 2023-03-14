@@ -502,7 +502,7 @@ int main(int argc, char **argv)
   memset(scrambled_output, 0, ((harq_process_txUE->B_multiplexed >> 5) + 1)*sizeof(uint32_t));
   nr_pusch_codeword_scrambling_sl(harq_process_txUE->f_multiplexed,
                                   harq_process_txUE->B_multiplexed,
-                                  harq_process_txUE->B_sci2,
+                                  harq_process_txUE->B_sci2 * Nl,
                                   0,
                                   scrambled_output);
 
@@ -512,15 +512,15 @@ int main(int argc, char **argv)
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
-                harq_process_txUE->B_sci2,
+                harq_process_txUE->B_sci2 * Nl,
                 SCI2_mod_order,
                 (int16_t *)d_mod);
 
   // modulating SL-SCH bits
-  nr_modulation(scrambled_output + (harq_process_txUE->B_sci2 >> 5), // assume one codeword for the moment
+  nr_modulation(scrambled_output + (harq_process_txUE->B_sci2 * Nl >> 5), // assume one codeword for the moment
                 G,
                 mod_order,
-                (int16_t *)(d_mod + harq_process_txUE->B_sci2 / SCI2_mod_order));
+                (int16_t *)(d_mod + harq_process_txUE->B_sci2 * Nl / SCI2_mod_order));
 
   printf("tx is done\n");
 
@@ -529,7 +529,7 @@ int main(int argc, char **argv)
   // this is a small hack :D
   slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
   int16_t *ulsch_llr = rxUE->pssch_vars[UE_id]->llr;
-  int nb_re_SCI2 = slsch_ue_rx->harq_processes[0]->B_sci2/SCI2_mod_order;
+  int nb_re_SCI2 = slsch_ue_rx->harq_processes[0]->B_sci2 * Nl / SCI2_mod_order;
   int nb_re_slsch = G/mod_order;
   uint8_t  symbol = 5;
   int32_t a = 1;
@@ -574,7 +574,7 @@ int main(int argc, char **argv)
 
       /////////////////////////SLSCH descrambling/////////////////////////
       // hacky [TODO]
-      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, 0, Nl);
+      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2 * Nl, 0, Nl);
 
       int frame = 0;
       int slot = 0;

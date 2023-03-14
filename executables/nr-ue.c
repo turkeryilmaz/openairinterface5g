@@ -659,50 +659,7 @@ void processSlotTX(void *arg) {
 void processSlotRX_SL(void *arg) {
   nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
   rxtxD->ue_sched_mode = NOT_PUSCH;
-
-  if (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
-
-    if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
-      nr_downlink_indication_t dl_indication;
-      nr_fill_dl_indication(&dl_indication, NULL, NULL, proc, UE, gNB_id, &phy_pdcch_config);
-      UE->if_inst->dl_indication(&dl_indication, NULL);
-    }
-  // Process Rx data for one sub-frame
-    uint64_t a=rdtsc_oai();
-    phy_procedures_nrUE_RX(UE, proc, gNB_id, &phy_pdcch_config, &rxtxD->txFifo);
-    LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
-
-    // Wait for PUSCH processing to finish
-    notifiedFIFO_elt_t *res;
-    res = pullTpool(&rxtxD->txFifo,&(get_nrUE_params()->Tpool));
-    if (res == NULL)
-      return; // Tpool has been stopped
-    delNotifiedFIFO_elt(res);
-
-    // calling UL_indication to schedule things other than PUSCH (eg, PUCCH)
-    rxtxD->ue_sched_mode = NOT_PUSCH;
-    processSlotTX(rxtxD);
-  } else {
-    rxtxD->ue_sched_mode = SCHED_ALL;
-    processSlotTX(rxtxD);
-  }
-#if 0
-  if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
-    if (UE->UE_mode[gNB_id] <= PUSCH) {
-      if (get_softmodem_params()->usim_test==0) {
-        pucch_procedures_ue_nr(UE,
-                               gNB_id,
-                               proc);
-      }
-      LOG_D(PHY, "Sending Uplink data \n");
-      nr_ue_pusch_common_procedures(UE,
-                                    proc->nr_slot_tx,
-                                    &UE->frame_parms,
-                                    UE->frame_parms.nb_antennas_tx);
-    }
-    LOG_D(PHY,"****** end TX-Chain for AbsSubframe %d.%d ******\n", proc->frame_tx, proc->nr_slot_tx);
-  }
-#endif
+  processSlotTX(rxtxD);
 }
 
 void processSlotRX(void *arg) {
