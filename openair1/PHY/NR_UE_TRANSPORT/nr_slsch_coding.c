@@ -243,7 +243,10 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
                        NR_POLAR_SCI2_MESSAGE_TYPE,
                        polar_encoder_output_len,
                        NR_POLAR_SCI2_AGGREGATION_LEVEL);
-
+    slsch->Nidx = get_Nidx_from_CRC(harq_process->a_sci2, 0, 0,
+                                    NR_POLAR_SCI2_MESSAGE_TYPE,
+                                    polar_encoder_output_len,
+                                    NR_POLAR_SCI2_AGGREGATION_LEVEL);
     harq_process->B_sci2 = polar_encoder_output_len;
     byte2bit(harq_process->b_sci2, harq_process->f_sci2, polar_encoder_output_len>>3);
     /*
@@ -392,14 +395,14 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_UE_ULSCH_ENCODING, VCD_FUNCTION_OUT);
   stop_meas(&ue->slsch_encoding_stats);
-  harq_process->B_multiplexed = G + harq_process->B_sci2;
-  // dummy multiplexer 
-  harq_process->f_multiplexed = harq_process->f_sci2;
-  int ind = harq_process->B_sci2;
-  for (int i=0 ; i<G ; i++){
-    harq_process->f_multiplexed[ind] = harq_process->f[i];
-    ind++;
-  }
+  harq_process->B_multiplexed = G + harq_process->B_sci2 * harq_process->pssch_pdu.nrOfLayers;
+  // dummy multiplexer
+  // harq_process->f_multiplexed = harq_process->f_sci2;
+  // int ind = harq_process->B_sci2;
+  // for (int i=0 ; i<G ; i++){
+  //   harq_process->f_multiplexed[ind] = harq_process->f[i];
+  //   ind++;
+  // }
 #if DEBUG_SLSCH_CODING
   int j = 0;
   for (int i = harq_process->B_sci2 - 10 +1 ; i < harq_process->B_sci2 + 10 ; i++){

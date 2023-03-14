@@ -416,12 +416,13 @@ int main(int argc, char **argv)
 
   uint8_t UE_id = 0;
   uint16_t nb_symb_sch = 12;
+  uint8_t dmrsConfigType = 0;
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
   uint8_t  SCI2_mod_order = 2;
-  uint16_t dlDmrsSymbPos = 16 + 1024;
-  uint8_t length_dmrs = get_num_dmrs(dlDmrsSymbPos);
+  uint16_t dmrsSymbPos = 16 + 1024; // symbol 4 and 10
+  uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   unsigned char harq_pid = 0;
 
 
@@ -442,9 +443,9 @@ int main(int argc, char **argv)
   slsch_ue_rx->harq_processes[harq_pid]->nb_rb = nb_rb;
   slsch_ue_rx->harq_processes[harq_pid]->TBS = TBS >> 3;
   slsch_ue_rx->harq_processes[harq_pid]->n_dmrs_cdm_groups = 1;
-  slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = dlDmrsSymbPos;
+  slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = dmrsSymbPos;
   slsch_ue_rx->harq_processes[harq_pid]->mcs = Imcs;
-  slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = 0;
+  slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = dmrsConfigType;
   slsch_ue_rx->harq_processes[harq_pid]->R = code_rate;
   nfapi_nr_pssch_pdu_t *rel16_sl_rx = &slsch_ue_rx->harq_processes[harq_pid]->pssch_pdu;
   rel16_sl_rx->mcs_index            = Imcs;
@@ -466,12 +467,15 @@ int main(int argc, char **argv)
   harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
   harq_process_txUE->pssch_pdu.rb_size = nb_rb;
   harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_txUE->pssch_pdu.dmrs_config_type = dmrsConfigType;
   harq_process_txUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
   harq_process_txUE->pssch_pdu.pssch_data.rv_index = 0;
   harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
   harq_process_txUE->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
   harq_process_txUE->pssch_pdu.target_code_rate = code_rate;
   harq_process_txUE->pssch_pdu.qam_mod_order = mod_order;
+  harq_process_txUE->pssch_pdu.sl_dmrs_symb_pos = dmrsSymbPos;
+  harq_process_txUE->pssch_pdu.num_dmrs_cdm_grps_no_data = 1;
   unsigned char *test_input = harq_process_txUE->a;
   uint64_t *sci_input = harq_process_txUE->a_sci2;
 
@@ -490,54 +494,14 @@ int main(int argc, char **argv)
   for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
 #endif
 
-  unsigned int G = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
-  nr_slsch_encoding(txUE, slsch_ue, &txUE->frame_parms, harq_pid, G);
-
-  nr_pssch_data_control_multiplexing(harq_process_txUE->f,
-                                     harq_process_txUE->f_sci2,
-                                     G,
-                                     G_SCI2_bits,
-                                     Nl,
-                                     SCI2_mod_order,
-                                     harq_process_txUE->f_multiplexed);
-
-  uint32_t scrambled_output[(harq_process_txUE->B_multiplexed >> 5) + 1];
-  memset(scrambled_output, 0, ((harq_process_txUE->B_multiplexed >> 5) + 1)*sizeof(uint32_t));
-  nr_pusch_codeword_scrambling_sl(harq_process_txUE->f_multiplexed,
-                                  harq_process_txUE->B_multiplexed,
-                                  M_SCI2_bits,
-                                  0,
-                                  scrambled_output);
-
+  int frame = 0;
+  int slot = 0;
   int max_num_re = Nl * nb_symb_sch * nb_rb * NR_NB_SC_PER_RB;
   int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
   int32_t ch_out[max_num_re] __attribute__ ((aligned(16)));
-
-  // modulating for the 2nd-stage SCI bits
-  nr_modulation(scrambled_output, // assume one codeword for the moment
-                M_SCI2_bits,
-                SCI2_mod_order,
-                (int16_t *)d_mod);
-
-  // modulating SL-SCH bits
-  nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
-                G,
-                mod_order,
-                (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
-
-  /////////////////////////DMRS Modulation/////////////////////////
-  int slot = 0;
-  uint16_t Nidx = slsch_ue->Nid_cell;
-  nr_init_pssch_dmrs(txUE, Nidx);
-  uint32_t **pssch_dmrs = txUE->nr_gold_pssch_dmrs[slot];
-  /////////////////////////SLSCH layer mapping/////////////////////////
-  uint32_t M_data_bits = G;
-  int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
-  uint16_t n_symbs = (M_SCI2_bits << 1) / SCI2_mod_order + (M_data_bits << 1) / mod_order;
-  for (int nl = 0; nl < Nl; nl++)
-    tx_layers[nl] = (int16_t *)malloc16_clear(n_symbs * sizeof(int16_t));
-
-  nr_ue_layer_mapping((int16_t *)d_mod, Nl, n_symbs, tx_layers);
+   unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
+                            nb_re_dmrs, length_dmrs, mod_order, Nl);
+  nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot, d_mod);
 
   printf("tx is done\n");
 
@@ -590,11 +554,9 @@ int main(int argc, char **argv)
     #endif
 
       /////////////////////////SLSCH descrambling/////////////////////////
-      // hacky [TODO]
-      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2 * Nl, 0, Nl);
-
-      int frame = 0;
-      int slot = 0;
+      // hacky [TODO]: size and Nid should be calcualted in receiver
+      // Nid is Nidx calcualted in scrambler from CRC
+      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, txUE->slsch[0][0]->Nidx, Nl);
       UE_nr_rxtx_proc_t proc;
       uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr,
                                 &rxUE->frame_parms, slsch_ue_rx,

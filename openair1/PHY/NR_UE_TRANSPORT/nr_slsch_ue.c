@@ -142,12 +142,11 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
   }
 }
 
-void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                             unsigned char harq_pid,
                             uint32_t frame,
                             uint8_t slot,
-                            uint8_t thread_id,
-                            int gNB_id) {
+                            int32_t *d_mod) {
 
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
@@ -156,7 +155,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   int32_t **txdataF = UE->common_vars.txdataF;
   uint16_t number_dmrs_symbols = 0;
 
-  NR_UE_ULSCH_t *slsch_ue = UE->slsch[thread_id][gNB_id];
+  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
   NR_UL_UE_HARQ_t *harq_process_ul_ue = slsch_ue->harq_processes[harq_pid];
   nfapi_nr_ue_pssch_pdu_t *pssch_pdu = &harq_process_ul_ue->pssch_pdu;
 
@@ -166,22 +165,19 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   uint8_t Nl                = pssch_pdu->nrOfLayers;
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
+  uint16_t dmrs_pos         = pssch_pdu->sl_dmrs_symb_pos;
   int start_symbol          = pssch_pdu->start_symbol_index;
   frame_parms->first_carrier_offset = 0;
   frame_parms->ofdm_symbol_size     = 2048;
 
-  for (int i = start_symbol; i < number_of_symbols; i++) {
-    if((sl_dmrs_symb_pos >> i) & 0x01)
-      number_dmrs_symbols += 1;
-  }
-
+  uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
   nb_dmrs_re_per_rb = 6 * cdm_grps_no_data;
 
-  /////////////////////////SLSCH coding/////////////////////////
+  /////////////////////////SLSCH data and SCI2 encoding/////////////////////////
   unsigned int G_slsch_bits = nr_get_G(nb_rb, number_of_symbols,
-                            nb_dmrs_re_per_rb, number_dmrs_symbols, mod_order, Nl);
+                            nb_dmrs_re_per_rb, length_dmrs, mod_order, Nl);
 
-  if (nr_slsch_encoding(UE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
+  if (nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
     return;
   unsigned int G_SCI2_bits = harq_process_ul_ue->B_sci2;
 
@@ -192,32 +188,30 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   available_bits += M_SCI2_bits;
   available_bits += M_data_bits;
   uint8_t  SCI2_mod_order = 2;
-  uint8_t multiplexed_output[available_bits];
-  memset(multiplexed_output, 0, available_bits * sizeof(uint8_t));
 
   nr_pssch_data_control_multiplexing(harq_process_ul_ue->f,
                                      harq_process_ul_ue->f_sci2,
                                      G_slsch_bits,
-                                     G_SCI2_bits,
+                                     harq_process_ul_ue->B_sci2,
                                      Nl,
                                      SCI2_mod_order,
-                                     multiplexed_output);
+                                     harq_process_ul_ue->f_multiplexed);
 
   /////////////////////////SLSCH scrambling/////////////////////////
-  uint16_t Nidx = slsch_ue->Nid_cell;
-  uint32_t scrambled_output[(available_bits >> 5) + 1];
-  memset(scrambled_output, 0, ((available_bits >> 5) + 1) * sizeof(uint32_t));
+  uint16_t Nidx = slsch_ue->Nidx;
+  uint32_t scrambled_output[(harq_process_ul_ue->B_multiplexed >> 5) + 1];
+  memset(scrambled_output, 0, ((harq_process_ul_ue->B_multiplexed >> 5) + 1) * sizeof(uint32_t));
 
-  nr_pusch_codeword_scrambling_sl(multiplexed_output,
-                                  available_bits,
+  nr_pusch_codeword_scrambling_sl(harq_process_ul_ue->f_multiplexed,
+                                  harq_process_ul_ue->B_multiplexed,
                                   M_SCI2_bits,
                                   Nidx,
                                   scrambled_output);
 
   /////////////////////////SLSCH modulation/////////////////////////
 
-  int max_num_re = Nl * number_of_symbols * nb_rb * NR_NB_SC_PER_RB;
-  int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
+  // int max_num_re = Nl * number_of_symbols * nb_rb * NR_NB_SC_PER_RB;
+  // int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
@@ -227,24 +221,23 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   // modulating SL-SCH bits
   nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
-                M_data_bits,
+                G_slsch_bits,
                 mod_order,
                 (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
 
   ////////////////////////////////////////////////////////////////////////
-
+  #if 0
   /////////////////////////DMRS Modulation/////////////////////////
 
-  nr_init_pssch_dmrs(UE, Nidx);
+  nr_init_pssch_dmrs(txUE, Nidx);
 
   uint32_t **pssch_dmrs = UE->nr_gold_pssch_dmrs[slot];
-
   ////////////////////////////////////////////////////////////////////////////////
 
   /////////////////////////SLSCH layer mapping/////////////////////////
 
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
-  uint16_t n_symbs = (M_SCI2_bits << 1) / SCI2_mod_order + (M_data_bits << 1) / mod_order;
+  uint16_t n_symbs = (M_SCI2_bits) / SCI2_mod_order + (M_data_bits) / mod_order;
   for (int nl = 0; nl < Nl; nl++)
     tx_layers[nl] = (int16_t *)malloc16_clear(n_symbs * sizeof(int16_t));
 
@@ -253,8 +246,11 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   ////////////////////////////////////////////////////////////////////////
 
   ////////////////SLSCH Mapping to virtual resource blocks////////////////
+
   int16_t** tx_precoding = virtual_resource_mapping(frame_parms, pssch_pdu, G_SCI2_bits, SCI2_mod_order, tx_layers, pssch_dmrs, txdataF);
+
   /////SLSCH Mapping from virtual to physical resource blocks mapping/////
+
   physical_resource_mapping(frame_parms, pssch_pdu, tx_precoding, txdataF);
 
   NR_UL_UE_HARQ_t *harq_process_slsch = NULL;
@@ -267,8 +263,8 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   }
   free_and_zero(tx_layers);
   free_and_zero(tx_precoding);
-  ////////////////////////////////////////////////////////////////////////
 }
+
 int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
                               nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
                               unsigned int G_SCI2_bits,
