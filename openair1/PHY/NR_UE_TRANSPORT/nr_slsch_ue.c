@@ -210,7 +210,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                                      harq_process_ul_ue->f_multiplexed);
 
   /////////////////////////SLSCH scrambling/////////////////////////
-  uint16_t Nidx = slsch_ue->Nid_cell;
+  uint16_t Nidx = 0;//slsch_ue->Nid_cell;
   uint32_t scrambled_output[(harq_process_ul_ue->B_multiplexed >> 5) + 1];
   memset(scrambled_output, 0, ((harq_process_ul_ue->B_multiplexed >> 5) + 1) * sizeof(uint32_t));
 

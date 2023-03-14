@@ -416,6 +416,7 @@ int main(int argc, char **argv)
 
   uint8_t UE_id = 0;
   uint16_t nb_symb_sch = 12;
+  uint8_t dmrsConfigType = 0;
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
@@ -443,7 +444,7 @@ int main(int argc, char **argv)
   slsch_ue_rx->harq_processes[harq_pid]->n_dmrs_cdm_groups = 1;
   slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = dmrsSymbPos;
   slsch_ue_rx->harq_processes[harq_pid]->mcs = Imcs;
-  slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = 0;
+  slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = dmrsConfigType;
   slsch_ue_rx->harq_processes[harq_pid]->R = code_rate;
   nfapi_nr_pssch_pdu_t *rel16_sl_rx = &slsch_ue_rx->harq_processes[harq_pid]->pssch_pdu;
   rel16_sl_rx->mcs_index            = Imcs;
@@ -463,6 +464,7 @@ int main(int argc, char **argv)
   harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
   harq_process_txUE->pssch_pdu.rb_size = nb_rb;
   harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
+  harq_process_txUE->pssch_pdu.dmrs_config_type = dmrsConfigType;
   harq_process_txUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
   harq_process_txUE->pssch_pdu.pssch_data.rv_index = 0;
   harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
