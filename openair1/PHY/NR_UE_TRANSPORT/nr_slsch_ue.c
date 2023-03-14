@@ -151,12 +151,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
-  int16_t Wf[2], Wt[2];
-  int l_prime[2], delta;
   uint8_t nb_dmrs_re_per_rb;
-  int i;
-  int sample_offsetF;
-
   NR_DL_FRAME_PARMS *frame_parms = &UE->frame_parms;
   int32_t **txdataF = UE->common_vars.txdataF;
   uint16_t number_dmrs_symbols = 0;
@@ -167,19 +162,13 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
 
   uint16_t sl_dmrs_symb_pos = pssch_pdu->sl_dmrs_symb_pos;
   uint8_t number_of_symbols = pssch_pdu->nr_of_symbols;
-  uint8_t dmrs_type         = pssch_pdu->dmrs_config_type;
-  uint16_t start_rb         = pssch_pdu->rb_start;
   uint16_t nb_rb            = pssch_pdu->rb_size;
   uint8_t Nl                = pssch_pdu->nrOfLayers;
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
-  uint16_t bwp_start        = pssch_pdu->bwp_start;
   int start_symbol          = pssch_pdu->start_symbol_index;
   frame_parms->first_carrier_offset = 0;
   frame_parms->ofdm_symbol_size     = 2048;
-  uint16_t start_sc    = frame_parms->first_carrier_offset + (start_rb + bwp_start) * NR_NB_SC_PER_RB;
-  if (start_sc >= frame_parms->ofdm_symbol_size)
-    start_sc -= frame_parms->ofdm_symbol_size;
 
   for (int i = start_symbol; i < number_of_symbols; i++) {
     if((sl_dmrs_symb_pos >> i) & 0x01)
@@ -249,8 +238,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   nr_init_pssch_dmrs(UE, Nidx);
 
   uint32_t **pssch_dmrs = UE->nr_gold_pssch_dmrs[slot];
-  uint16_t n_dmrs = (bwp_start + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
-  int16_t mod_dmrs[n_dmrs << 1] __attribute((aligned(16)));
 
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -266,6 +253,47 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
   ////////////////////////////////////////////////////////////////////////
 
   ////////////////SLSCH Mapping to virtual resource blocks////////////////
+  int16_t** tx_precoding = virtual_resource_mapping(frame_parms, pssch_pdu, G_SCI2_bits, SCI2_mod_order, tx_layers, pssch_dmrs, txdataF);
+  /////SLSCH Mapping from virtual to physical resource blocks mapping/////
+  physical_resource_mapping(frame_parms, pssch_pdu, tx_precoding, txdataF);
+
+  NR_UL_UE_HARQ_t *harq_process_slsch = NULL;
+  harq_process_slsch = UE->slsch[thread_id][gNB_id]->harq_processes[harq_pid];
+  harq_process_slsch->status = SCH_IDLE;
+
+  for (int nl = 0; nl < Nl; nl++) {
+    free_and_zero(tx_layers[nl]);
+    free_and_zero(tx_precoding[nl]);
+  }
+  free_and_zero(tx_layers);
+  free_and_zero(tx_precoding);
+  ////////////////////////////////////////////////////////////////////////
+}
+int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                              nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                              unsigned int G_SCI2_bits,
+                              uint8_t  SCI2_mod_order,
+                              int16_t **tx_layers,
+                              uint32_t **pssch_dmrs,
+                              int32_t **txdataF
+                             ) {
+  uint8_t mod_order = pssch_pdu->qam_mod_order;
+  int start_symbol  = pssch_pdu->start_symbol_index;
+  uint8_t Nl        = pssch_pdu->nrOfLayers;
+  uint8_t number_of_symbols = pssch_pdu->nr_of_symbols;
+  uint16_t start_rb         = pssch_pdu->rb_start;
+  uint16_t bwp_start        = pssch_pdu->bwp_start;
+  uint16_t sl_dmrs_symb_pos = pssch_pdu->sl_dmrs_symb_pos;
+  uint16_t nb_rb            = pssch_pdu->rb_size;
+  uint8_t dmrs_type         = pssch_pdu->dmrs_config_type;
+  int16_t Wf[2], Wt[2];
+  int sample_offsetF, l_prime[2], delta;
+  uint16_t start_sc = frame_parms->first_carrier_offset + (start_rb + bwp_start) * NR_NB_SC_PER_RB;
+  uint16_t n_dmrs = (bwp_start + start_rb + nb_rb) * ((dmrs_type == pusch_dmrs_type1) ? 6 : 4);
+  int16_t mod_dmrs[n_dmrs << 1] __attribute((aligned(16)));
+  if (start_sc >= frame_parms->ofdm_symbol_size)
+    start_sc -= frame_parms->ofdm_symbol_size;
+
   l_prime[0] = 0; // single symbol ap 0
   pssch_pdu->dmrs_ports = (Nl == 2) ? 0b11 : 0b01;
   uint16_t M_SCI2_Layer = G_SCI2_bits / SCI2_mod_order;
@@ -305,7 +333,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
         }
       }
 
-      for (i = 0; i < nb_rb * NR_NB_SC_PER_RB; i++) {
+      for (int i = 0; i < nb_rb * NR_NB_SC_PER_RB; i++) {
         uint8_t is_dmrs = 0;
 
         sample_offsetF = l * frame_parms->ofdm_symbol_size + k;
@@ -359,11 +387,21 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
       } //for (i = 0; i < nb_rb * NR_NB_SC_PER_RB; i++)
     } //for (l = start_symbol; l < start_symbol + number_of_symbols; l++)
   } //for (nl = 0; nl < Nl; nl++)
+  return tx_precoding;
+}
 
-  /////SLSCH Mapping from virtual to physical resource blocks mapping/////
-
+void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                               nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                               int16_t** tx_precoding,
+                               int32_t **txdataF
+                              ) {
   uint16_t nb_re_sci1 = NB_RB_SCI1 * NR_NB_SC_PER_RB;
-
+  uint16_t start_rb   = pssch_pdu->rb_start;
+  uint16_t bwp_start  = pssch_pdu->bwp_start;
+  uint16_t nb_rb      = pssch_pdu->rb_size;
+  int start_symbol    = pssch_pdu->start_symbol_index;
+  uint8_t number_of_symbols = pssch_pdu->nr_of_symbols;
+  uint16_t start_sc = frame_parms->first_carrier_offset + (start_rb + bwp_start) * NR_NB_SC_PER_RB;
   for (int ap = 0; ap < frame_parms->nb_antennas_tx; ap++) {
     // Copying symbol 1 to symbol 0 (AGC)
     memcpy(&txdataF[ap][start_sc],
@@ -428,20 +466,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
       } //RB loop
     } // symbol loop
   } // port loop
-
-  NR_UL_UE_HARQ_t *harq_process_slsch = NULL;
-  harq_process_slsch = UE->slsch[thread_id][gNB_id]->harq_processes[harq_pid];
-  harq_process_slsch->status = SCH_IDLE;
-
-  for (int nl = 0; nl < Nl; nl++) {
-    free_and_zero(tx_layers[nl]);
-    free_and_zero(tx_precoding[nl]);
-  }
-  free_and_zero(tx_layers);
-  free_and_zero(tx_precoding);
-  ////////////////////////////////////////////////////////////////////////
 }
-
 
 uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
                                       uint8_t slot,

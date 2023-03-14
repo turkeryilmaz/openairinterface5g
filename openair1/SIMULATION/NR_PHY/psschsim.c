@@ -424,6 +424,7 @@ int main(int argc, char **argv)
   uint8_t length_dmrs = get_num_dmrs(dlDmrsSymbPos);
   unsigned char harq_pid = 0;
 
+
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
 
   if ((Nl == 4) || (Nl == 3))
@@ -456,6 +457,8 @@ int main(int argc, char **argv)
 
   NR_UL_UE_HARQ_t *harq_process_txUE = txUE->slsch[0][0]->harq_processes[harq_pid];
   DevAssert(harq_process_txUE);
+  unsigned int G_SCI2_bits = harq_process_txUE->B_sci2;
+  uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
   uint8_t N_PRB_oh = 0;
   uint16_t N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
   uint8_t nb_codewords = 1;
@@ -493,7 +496,7 @@ int main(int argc, char **argv)
   nr_pssch_data_control_multiplexing(harq_process_txUE->f,
                                      harq_process_txUE->f_sci2,
                                      G,
-                                     harq_process_txUE->B_sci2,
+                                     G_SCI2_bits,
                                      Nl,
                                      SCI2_mod_order,
                                      harq_process_txUE->f_multiplexed);
@@ -502,7 +505,7 @@ int main(int argc, char **argv)
   memset(scrambled_output, 0, ((harq_process_txUE->B_multiplexed >> 5) + 1)*sizeof(uint32_t));
   nr_pusch_codeword_scrambling_sl(harq_process_txUE->f_multiplexed,
                                   harq_process_txUE->B_multiplexed,
-                                  harq_process_txUE->B_sci2 * Nl,
+                                  M_SCI2_bits,
                                   0,
                                   scrambled_output);
 
@@ -512,15 +515,29 @@ int main(int argc, char **argv)
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
-                harq_process_txUE->B_sci2 * Nl,
+                M_SCI2_bits,
                 SCI2_mod_order,
                 (int16_t *)d_mod);
 
   // modulating SL-SCH bits
-  nr_modulation(scrambled_output + (harq_process_txUE->B_sci2 * Nl >> 5), // assume one codeword for the moment
+  nr_modulation(scrambled_output + (M_SCI2_bits >> 5), // assume one codeword for the moment
                 G,
                 mod_order,
-                (int16_t *)(d_mod + harq_process_txUE->B_sci2 * Nl / SCI2_mod_order));
+                (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
+
+  /////////////////////////DMRS Modulation/////////////////////////
+  int slot = 0;
+  uint16_t Nidx = slsch_ue->Nid_cell;
+  nr_init_pssch_dmrs(txUE, Nidx);
+  uint32_t **pssch_dmrs = txUE->nr_gold_pssch_dmrs[slot];
+  /////////////////////////SLSCH layer mapping/////////////////////////
+  uint32_t M_data_bits = G;
+  int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
+  uint16_t n_symbs = (M_SCI2_bits << 1) / SCI2_mod_order + (M_data_bits << 1) / mod_order;
+  for (int nl = 0; nl < Nl; nl++)
+    tx_layers[nl] = (int16_t *)malloc16_clear(n_symbs * sizeof(int16_t));
+
+  nr_ue_layer_mapping((int16_t *)d_mod, Nl, n_symbs, tx_layers);
 
   printf("tx is done\n");
 
