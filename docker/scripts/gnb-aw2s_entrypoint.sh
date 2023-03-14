@@ -14,7 +14,7 @@ fi
 
 echo "=================================="
 echo "== Configuration file:"
-cat $PREFIX/etc/enb.conf
+cat $PREFIX/etc/gnb.conf
 
 # enable printing of stack traces on assert
 export gdbStacks=1
