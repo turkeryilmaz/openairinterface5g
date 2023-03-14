@@ -118,8 +118,18 @@ typedef struct {
   uint8_t BG;
   // LDPC lifting size
   uint32_t Z;
-  uint16_t Nidx;
-
+  //pointer to SCI2 payload from MAC interface
+  uint64_t *a_sci2;
+  //pointer to sci2 after crc + polar encoding and rate matching stored in bytes
+  uint8_t *b_sci2;
+  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
+  uint32_t B_sci2;
+  // pointer ot output of polar encoder stored in bits
+  uint8_t *f_sci2;
+  // pointer ot output of data-control multiplexer in bits
+  uint8_t *f_multiplexed;
+  // size of multiplexed output in bits
+  uint32_t B_multiplexed;
   /////////////////////// slsch decoding ///////////////////////
   /// Frame where current HARQ round was sent
   uint32_t frame;
@@ -136,17 +146,6 @@ typedef struct {
   uint32_t processedSegments;
   bool new_rx;
   //////////////////////////////////////////////////////////////
-  //pointer to SCI2 payload from MAC interface
-  uint64_t *a_sci2;
-  //pointer to sci2 after crc + polar encoding and rate matching stored in bytes
-  uint8_t *b_sci2;
-  /// The sci2's payload + CRC + channel coder + rate matching size in bits, "B" from 36-212
-  uint32_t B_sci2;
-  // pointer ot output of polar encoder stored in bits
-  uint8_t *f_sci2;
-  // pointer ot output of data-control multiplexer in bits
-  uint8_t *f_multiplexed;
-
 } NR_UL_UE_HARQ_t;
 
 typedef struct {
