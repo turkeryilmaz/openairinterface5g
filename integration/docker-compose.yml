@@ -44,8 +44,8 @@ services:
       - ./sdnc/oauth-aaa-app-config.xml:/opt/onap/sdnc/data/oauth-aaa-app-config.xml
     depends_on:
       - sdnrdb
-      - dmaap
-      - ves-collector
+      - dmaap-kafka
+      - dcae-ves-collector
     networks:
       - oam
       - smo
@@ -76,16 +76,15 @@ services:
       PROCESSING_LIMIT_RATE: 1
       PROCESSING_THREADS_COUNT: 1
       THREADS_MULTIPLIER: 1
-    extra_hosts:
-    - dmaap-dr-node:${DMAAP_DR_NODE_IP}
-    - message-router:$MR_IP
+    # extra_hosts:
+    # - dmaap-dr-node:${DMAAP_DR_NODE_IP}
+    # - message-router:$MR_IP
     hostname: dcae-pm-mapper
     networks:
-      smo:
-        ipv4_address: ${PM_MAPPER_IP}
-    ports:
-    - ${PM_MAPPER_PORT_1}:8081
-    - ${PM_MAPPER_PORT_2}:5005
+      - smo
+    # ports:
+    # - ${PM_MAPPER_PORT_1}:8081
+    # - ${PM_MAPPER_PORT_2}:5005
     volumes:
     - ./dcae/pm_mount_config.yaml:${PM_MAPPER_TARGET_CONFIG_PATH}
     - ./dcae/certs:/opt/app/pm-mapper/etc/certs/
@@ -104,16 +103,12 @@ services:
     - traefik.http.services.ves.loadbalancer.server.scheme=https
     - traefik.http.routers.ves.tls.certresolver=CertificateResolver0
     networks:
-      oam:
-        ipv4_address: ${DCAE_VES_COLLECTOROLLECTOR_OAM_IP}
-        ipv6_address: ${DCAE_VES_COLLECTOROLLECTOR_OAM_IPv6}
-      smo:
-        ipv4_address: ${DCAE_VES_COLLECTOROLLECTOR_SMO_IP}
-        ipv6_address: ${DCAE_VES_COLLECTOROLLECTOR_SMO_IPv6}
-      traefik-proxy: {}
-    ports:
-    - 8080:8080
-    - 8443:8443
+      - oam
+      - smo
+      - traefik-proxy
+    # ports:
+    # - 8080:8080
+    # - 8443:8443
     volumes:
     - ./dcae/collector.properties:/opt/app/VESCollector/etc/collector.properties
     - ./dcae/ves-dmaap-config.json:/opt/app/VESCollector/etc/ves-dmaap-config.json
@@ -127,48 +122,46 @@ services:
       CONFIG_BINDING_SERVICE: 0.0.0.0
       CONFIG_BINDING_SERVICE_SERVICE_PORT: 10000
       JAVA_TOOL_OPTIONS: -agentlib:jdwp=transport=dt_socket,address=*:8000,server=y,suspend=n
-    extra_hosts:
-    - dmaap-dr-node:${DMAAP_DR_NODE_IP}
-    - dmaap-dr-prov:${DMAAP_DR_PROV_IP}
-    networks:
-      smo:
-        ipv4_address: ${DCAE_DFC_IP}
-    ports:
-    - 8100:8100
-    - 8000:8000
+    # extra_hosts:
+    # - dmaap-dr-node:${DMAAP_DR_NODE_IP}
+    # - dmaap-dr-prov:${DMAAP_DR_PROV_IP}
     volumes:
     - ./dcae/dfc_mount_config.yaml:${DCAE_DFC_TARGET_CONFIG_PATH}
     - ./dcae/dfc_spring_application.yaml:${DCAE_DFC_TARGET_SPRING_CONFIG}
+    networks:
+      - smo
+    # ports:
+    # - 8100:8100
+    # - 8000:8000
 
   dmaap-dr-node:
     image: ${DMAAP_DR_NODE_IMAGE}
     container_name: dmaap-dr-node
+    hostname: dmaap-dr-node
     depends_on:
       dmaap-dr-prov:
         condition: service_healthy
-    extra_hosts:
-    - dmaap-dr-prov:$DMAAP_DR_PROV_IP
-    - dcae-pm-mapper:$PM_MAPPER_IP
-    hostname: dmaap-dr-node
-    networks:
-      smo:
-        ipv4_address: $DMAAP_DR_NODE_IP
-    ports:
-    - ${DMAAP_DR_NODE_PORT_1}:8443
-    - ${DMAAP_DR_NODE_PORT_2}:8080
+    # extra_hosts:
+    # - dmaap-dr-prov:$DMAAP_DR_PROV_IP
+    # - dcae-pm-mapper:$PM_MAPPER_IP
     volumes:
-    - ./ressources-onap-addon/dmaap-dr-mount/node.properties:/opt/app/datartr/etc/node.properties
+    - ./dmaap/dr_node.properties:/opt/app/datartr/etc/node.properties
+    networks:
+      - smo
+    # ports:
+    # - ${DMAAP_DR_NODE_PORT_1}:8443
+    # - ${DMAAP_DR_NODE_PORT_2}:8080
 
   dmaap-dr-prov:
     image: ${DMAAP_DR_PROV_IP_IMAGE}
     container_name: dmaap-dr-prov
     hostname: dmaap-dr-prov
     depends_on:
-      mariadb:
+      dmaap-dr-mariadb:
         condition: service_healthy
-    extra_hosts:
-    - dmaap-dr-node:${DMAAP_DR_NODE_IP}
-    - dcae-pm-mapper:${PM_MAPPER_IP}
+    # extra_hosts:
+    # - dmaap-dr-node:${DMAAP_DR_NODE_IP}
+    # - dcae-pm-mapper:${PM_MAPPER_IP}
     healthcheck:
       interval: 10s
       retries: 5
@@ -177,16 +170,15 @@ services:
       - curl
       - -f
       - http://dmaap-dr-prov:8080/internal/prov
-      timeout: 10s
-    networks:
-      smo:
-        ipv4_address: ${DMAAP_DR_PROV_IP}
-    ports:
-    - 20443:8443
-    - ${DMAAP_DR_PROV_PORT_1}:8443
-    - ${DMAAP_DR_PROV_PORT_2}:8080
+      timeout: 30s
     volumes:
-    - ./ressources-onap-addon/dmaap-dr-mount/provserver.properties:/opt/app/datartr/etc/provserver.properties
+    - ./dmaap/dr_provserver.properties:/opt/app/datartr/etc/provserver.properties
+    networks:
+      - smo
+    # ports:
+    # - 20443:8443
+    # - ${DMAAP_DR_PROV_PORT_1}:8443
+    # - ${DMAAP_DR_PROV_PORT_2}:8080
 
   dmaap-kafka:
     container_name: dmaap-kafka
@@ -209,37 +201,33 @@ services:
       KAFKA_ZOOKEEPER_SET_ACL: 'true'
       enableCadi: 'false'
     volumes:
-    - ./ressources-onap-addon/dmaap-kafka/zk_client_jaas.conf:/etc/kafka/secrets/jaas/zk_client_jaas.conf
+    - ./dmaap/zk_client_jaas.conf:/etc/kafka/secrets/jaas/zk_client_jaas.conf
     networks:
       smo:
         aliases:
         - kafka
-        ipv4_address: ${DMAAP_KAFKA_IP}
-        ipv6_address: ${DMAAP_KAFKA_IPv6}
-    ports:
-    - 9092:9092
+    # ports:
+    # - 9092:9092
 
   dmaap-message-router:
+    image: ${DMAAP_MR_IMAGE}
     container_name: dmaap-message-router
     depends_on:
     - dmaap-zookeeper
     - dmaap-kafka
     environment:
       enableCadi: 'false'
-    image: ${DMAAP_MR_IMAGE}
-    networks:
-      smo:
-        aliases:
-        - dmaap
-        ipv4_address: ${DMAAP_MR_IP}
-        ipv6_address: ${DMAAP_MR_IPv6}
-    ports:
-    - 3904:3904
-    - 3905:3905
     volumes:
     - ./dmaap/MsgRtrApi.properties:/appl/dmaapMR1/bundleconfig/etc/appprops/MsgRtrApi.properties
     - ./dmaap/logback.xml:/appl/dmaapMR1/bundleconfig/etc/logback.xml
     - ./dmaap/cadi.properties:/appl/dmaapMR1/etc/cadi.properties
+    networks:
+      smo:
+        aliases:
+        - dmaap
+    # ports:
+    # - 3904:3904
+    # - 3905:3905
 
   dmaap-zookeeper:
     image: ${DMAAP_ZOOKEEPER_IMAGE}
@@ -259,21 +247,42 @@ services:
       ZOOKEEPER_SERVER_ID: null
       ZOOKEEPER_SYNC_LIMIT: 5
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-    - 2181:2181
     volumes:
-    - ./ressources-onap-addon/dmaap-zookeeper/zk_server_jaas.conf:/etc/zookeeper/secrets/jaas/zk_server_jaas.conf
+    - ./dmaap/zk_server_jaas.conf:/etc/zookeeper/secrets/jaas/zk_server_jaas.conf
+    # ports:
+    # - 2181:2181
     networks:
       smo:
         aliases:
         - zookeeper
-        ipv4_address: ${DMAAP_ZOOKEEPER_IP}
-        ipv6_address: ${DMAAP_ZOOKEEPER_IPv6}
-
-
+  dmaap-dr-mariadb:
+    image: ${DMAAP_DR_DB_IMAGE}
+    container_name: dmaap-dr-mariadb
+    hostname: mariadb
+    environment:
+      MYSQL_DATABASE: datarouter
+      MYSQL_PASSWORD: datarouter
+      MYSQL_ROOT_PASSWORD: datarouter
+      MYSQL_USER: datarouter
+    healthcheck:
+      interval: 10s
+      retries: 5
+      test:
+      - CMD
+      - mysqladmin
+      - ping
+      - -h
+      - localhost
+      - --silent
+      timeout: 30s
+    networks:
+      - smo
+    # ports:
+    # - ${DMAAP_DR_DB_PORT}:3306
 networks:
   oam:
     external: true
   smo:
     external: true
-  
+  traefik-proxy:
+    external: true
