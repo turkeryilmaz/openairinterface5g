@@ -1067,7 +1067,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
                                uint32_t frame,
                                uint8_t slot,
                                uint8_t thread_id,
-                               int gNB_id);
+                               int32_t *d_mod);
 
 /** \brief This function does IFFT for PUSCH
 */
