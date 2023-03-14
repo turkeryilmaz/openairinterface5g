@@ -178,6 +178,8 @@ typedef struct {
   uint8_t rnti_type;
   /// Cell ID
   int     Nid_cell;
+  // Nidx = it is used for SLSCH scrambler 
+  uint16_t Nidx;
   /// f_PUSCH parameter for PUSCH power control
   int16_t f_pusch;
   /// Po_PUSCH - target output power for PUSCH

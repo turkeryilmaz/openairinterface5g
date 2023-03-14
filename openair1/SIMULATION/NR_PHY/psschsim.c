@@ -421,7 +421,7 @@ int main(int argc, char **argv)
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
   uint8_t  SCI2_mod_order = 2;
-  uint16_t dmrsSymbPos = 16;// + 1024;
+  uint16_t dmrsSymbPos = 16 + 1024; // symbol 4 and 10
   uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   unsigned char harq_pid = 0;
 
@@ -498,7 +498,7 @@ int main(int argc, char **argv)
   int32_t ch_out[max_num_re] __attribute__ ((aligned(16)));
    unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
                             nb_re_dmrs, length_dmrs, mod_order, Nl);
-  nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot, 0,d_mod);
+  nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot, d_mod);
 
   printf("tx is done\n");
 
@@ -551,8 +551,9 @@ int main(int argc, char **argv)
     #endif
 
       /////////////////////////SLSCH descrambling/////////////////////////
-      // hacky [TODO]
-      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, 0, Nl);
+      // hacky [TODO]: size and Nid should be calcualted in receiver
+      // Nid is Nidx calcualted in scrambler from CRC
+      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, txUE->slsch[0][0]->Nidx, Nl);
       UE_nr_rxtx_proc_t proc;
       uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr,
                                 &rxUE->frame_parms, slsch_ue_rx,
