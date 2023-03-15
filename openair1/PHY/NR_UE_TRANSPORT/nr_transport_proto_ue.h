@@ -802,6 +802,15 @@ void nr_dlsch_channel_compensation_core(int **rxdataF_ext,
                                      int length,
                                      int start_point);
 
+/* Apply layer demapping */
+void nr_dlsch_layer_demapping(int16_t **llr_cw,
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int32_t codeword_TB0,
+                              int32_t codeword_TB1,
+                              int16_t **llr_layers);
+
 void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint8_t start_symbol,
                              uint16_t L,

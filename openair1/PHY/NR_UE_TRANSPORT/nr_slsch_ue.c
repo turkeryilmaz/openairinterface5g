@@ -151,8 +151,8 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
   uint8_t nb_dmrs_re_per_rb;
-  NR_DL_FRAME_PARMS *frame_parms = &UE->frame_parms;
-  int32_t **txdataF = UE->common_vars.txdataF;
+  NR_DL_FRAME_PARMS *frame_parms = &txUE->frame_parms;
+  int32_t **txdataF = txUE->common_vars.txdataF;
   uint16_t number_dmrs_symbols = 0;
 
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
@@ -225,15 +225,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                 mod_order,
                 (int16_t *)(d_mod + M_SCI2_bits / SCI2_mod_order));
 
-  ////////////////////////////////////////////////////////////////////////
-  #if 0
-  /////////////////////////DMRS Modulation/////////////////////////
-
-  nr_init_pssch_dmrs(txUE, Nidx);
-
-  uint32_t **pssch_dmrs = UE->nr_gold_pssch_dmrs[slot];
-  ////////////////////////////////////////////////////////////////////////////////
-
   /////////////////////////SLSCH layer mapping/////////////////////////
 
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
@@ -243,8 +234,13 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
 
   nr_ue_layer_mapping((int16_t *)d_mod, Nl, n_symbs, tx_layers);
 
-  ////////////////////////////////////////////////////////////////////////
+  /////////////////////////DMRS Modulation/////////////////////////
 
+  nr_init_pssch_dmrs(txUE, Nidx);
+
+  uint32_t **pssch_dmrs = txUE->nr_gold_pssch_dmrs[slot];
+
+#if 1
   ////////////////SLSCH Mapping to virtual resource blocks////////////////
 
   int16_t** tx_precoding = virtual_resource_mapping(frame_parms, pssch_pdu, G_SCI2_bits, SCI2_mod_order, tx_layers, pssch_dmrs, txdataF);
@@ -254,9 +250,9 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   physical_resource_mapping(frame_parms, pssch_pdu, tx_precoding, txdataF);
 
   NR_UL_UE_HARQ_t *harq_process_slsch = NULL;
-  harq_process_slsch = UE->slsch[thread_id][gNB_id]->harq_processes[harq_pid];
+  harq_process_slsch = slsch_ue->harq_processes[harq_pid];
   harq_process_slsch->status = SCH_IDLE;
-
+#endif
   for (int nl = 0; nl < Nl; nl++) {
     free_and_zero(tx_layers[nl]);
     free_and_zero(tx_precoding[nl]);

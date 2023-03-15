@@ -396,7 +396,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
     int nb_codewords = NR_MAX_NB_LAYERS_SL > 4 ? 2 : 1;
     for (i = 0; i < nb_codewords; i++) {
-      ue->pssch_vars[gNB_id]->llr = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
+      ue->pssch_vars[gNB_id]->llr[i] = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
     }
     for (i = 0; i < NR_MAX_NB_LAYERS_SL; i++) {
       ue->pssch_vars[gNB_id]->llr_layers[i] = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
