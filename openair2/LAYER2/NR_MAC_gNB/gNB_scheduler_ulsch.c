@@ -1331,11 +1331,11 @@ void pf_ul(module_id_t module_id,
                                         sched_ctrl->coreset,
                                         Y);
     if (CCEIndex<0) {
-      LOG_I(NR_MAC, "%4d.%2d no free CCE for UL DCI UE %04x\n", frame, slot, iterator->UE->rnti);
+      LOG_D(NR_MAC, "%4d.%2d no free CCE for UL DCI UE %04x\n", frame, slot, iterator->UE->rnti);
       iterator++;
       continue;
     }
-    else LOG_I(NR_MAC, "%4d.%2d free CCE for UL DCI UE %04x\n",frame,slot, iterator->UE->rnti);
+    else LOG_D(NR_MAC, "%4d.%2d free CCE for UL DCI UE %04x\n",frame,slot, iterator->UE->rnti);
 
     NR_UE_UL_BWP_t *current_BWP = &iterator->UE->current_UL_BWP;
 
