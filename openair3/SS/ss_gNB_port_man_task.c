@@ -52,9 +52,8 @@ static void ss_dumpReqMsg(struct NR_SYSTEM_CTRL_REQ *msg)
     LOG_A(GNB_APP, "\tRequest=%d\n", msg->Request.d);
 }
 
-void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
+void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF* recvCnf)
 {
-    struct NR_SYSTEM_CTRL_CNF cnf;
     const size_t size = 16 * 1024;
     uint32_t status;
     
@@ -99,7 +98,7 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
 
     /* Encode message
      */
-    if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
+    if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, recvCnf) != 0)
     {
         acpFree(buffer);
         return;
