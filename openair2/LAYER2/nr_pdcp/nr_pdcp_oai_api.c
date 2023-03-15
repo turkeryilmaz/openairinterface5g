@@ -45,7 +45,8 @@
     exit(1); \
   } while (0)
 
-static nr_pdcp_ue_manager_t *nr_pdcp_ue_manager;
+
+nr_pdcp_ue_manager_t *nr_pdcp_ue_manager;
 
 /* TODO: handle time a bit more properly */
 static uint64_t nr_pdcp_current_time;

@@ -52,51 +52,21 @@ static void ss_dumpReqMsg(struct NR_SYSTEM_CTRL_REQ *msg)
     LOG_A(GNB_APP, "\tRequest=%d\n", msg->Request.d);
 }
 
-void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
+void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF* recvCnf)
 {
-    struct NR_SYSTEM_CTRL_CNF cnf;
     const size_t size = 16 * 1024;
     uint32_t status;
-
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
-
     size_t msgSize = size;
-    memset(&cnf, 0, sizeof(cnf));
-    cnf.Common.CellId = recvCnf.Common.CellId;
-    cnf.Common.RoutingInfo.d = RoutingInfo_Type_None;
-    cnf.Common.RoutingInfo.v.None = true;
-    cnf.Common.TimingInfo.d = TimingInfo_Type_Now;
-    cnf.Common.TimingInfo.v.Now = true;
-    cnf.Common.Result.d = recvCnf.Common.Result.d;
-    cnf.Common.Result.v.Success = recvCnf.Common.Result.v.Success;
-    cnf.Confirm.d = recvCnf.Confirm.d;
-    LOG_A(GNB_APP, "[SS-PORTMAN] Attn CNF received cellId %d result %d type %d \n",
-                     cnf.Common.CellId,cnf.Common.Result.d, recvCnf.Confirm.d);
-    switch (recvCnf.Confirm.d)
-    {
-    case NR_SystemConfirm_Type_Cell:
-        cnf.Confirm.v.Cell = true;
-        break;
-    case NR_SystemConfirm_Type_RadioBearerList:
-        cnf.Confirm.v.RadioBearerList= true;
-        break;
-    case NR_SystemConfirm_Type_CellAttenuationList:
-        cnf.Confirm.v.CellAttenuationList= true;
-        break;
-    case NR_SystemConfirm_Type_PdcpCount:
-        cnf.Confirm.v.PdcpCount.d = recvCnf.Confirm.v.PdcpCount.d;
-        cnf.Confirm.v.PdcpCount.v = recvCnf.Confirm.v.PdcpCount.v;
-        break;
-    case NR_SystemConfirm_Type_AS_Security:
-        cnf.Confirm.v.AS_Security = true;
-        break;
-    default:
-        LOG_A(GNB_APP, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
-    }
+
+    recvCnf->Common.RoutingInfo.d = RoutingInfo_Type_None;
+    recvCnf->Common.RoutingInfo.v.None = true;
+    recvCnf->Common.TimingInfo.d = TimingInfo_Type_None;
+    recvCnf->Common.TimingInfo.v.None = true;
 
     /* Encode message
      */
-    if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, &cnf) != 0)
+    if (acpNrSysProcessEncSrv(nrctx_g, buffer, &msgSize, recvCnf) != 0)
     {
         acpFree(buffer);
         return;
@@ -275,12 +245,11 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   }
   else if (userId == 0)
   {
-    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:0\n", __FUNCTION__);
     // No message (timeout on socket)
     if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
     {
-      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_RRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB_GNB task \n", SS_NRRRC_PDU_IND);
-      MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
+      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_NRRRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB_GNB task \n", SS_NRRRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_NRRRC_PDU_IND);
       if (message_p)
       {
         /* Populate the message to SS */
@@ -353,7 +322,7 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
       case SS_NR_SYS_PORT_MSG_CNF:
         {
           LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
-          ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
+          ss_nr_port_man_send_cnf((SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
           result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
         }
         break;

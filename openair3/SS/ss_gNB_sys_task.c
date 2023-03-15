@@ -33,6 +33,9 @@
 #include "ss_gNB_sys_task.h"
 #include "ss_gNB_context.h"
 
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
+
 #include "common/utils/LOG/ss-log.h"
 #define MSC_INTERFACE
 #include "msc.h"
@@ -40,13 +43,11 @@
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
 
-extern uint16_t ss_rnti_nr_g;
-extern SSConfigContext_t SS_context;
 extern pthread_cond_t cell_config_5G_done_cond;
 extern pthread_mutex_t cell_config_5G_done_mutex;
+
 static int sys_send_udp_msg(uint8_t *buffer, uint32_t buffer_len, uint32_t buffer_offset, uint32_t peerIpAddr, uint16_t peerPort);
 char *local_5G_address = "127.0.0.1" ;
-
 
 typedef enum
 {
@@ -56,7 +57,8 @@ typedef enum
 } sidl_msg_id;
 
 static bool reqCnfFlag_g = false;
-void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req);
+static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req);
+
 int cell_config_5G_done=-1;
 int cell_config_5G_done_indication();
 bool ss_task_sys_nr_handle_cellConfig5G (struct NR_CellConfigRequest_Type *p_req,int cell_State);
@@ -103,64 +105,67 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
   LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
   struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
   MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
+  assert(message_p);
 
-  /* The request has send confirm flag flase so do nothing in this funciton */
-  if (reqCnfFlag_g == false)
+  msgCnf->Common.CellId = SS_context.eutra_cellId;
+  msgCnf->Common.Result.d = resType;
+  msgCnf->Common.Result.v.Success = resVal;
+  msgCnf->Confirm.d = cnfType;
+  switch (cnfType)
   {
-    LOG_A(GNB_APP, "[SYS-GNB] No confirm required\n");
-    return ;
+    case NR_SystemConfirm_Type_Cell:
+      {
+        LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration\n");
+        msgCnf->Confirm.v.Cell = true;
+      } break;
+    case NR_SystemConfirm_Type_CellAttenuationList:
+      {
+        LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration\n");
+        msgCnf->Common.CellId = 0;
+        msgCnf->Confirm.v.CellAttenuationList = true;
+      } break;
+    case NR_SystemConfirm_Type_PdcpCount:
+      {
+        if (msg)
+        {
+          LOG_A(GNB_APP, "[SYS-GNB] Send confirm for NR_SystemConfirm_Type_PdcpCount\n");
+          memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct NR_PDCP_CountCnf_Type));
+        }
+        } break;
+    case NR_SystemConfirm_Type_AS_Security:
+      {
+        LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration NR_SystemConfirm_Type_AS_Security\n");
+        msgCnf->Confirm.v.AS_Security = true;
+        break;
+      }
+    case NR_SystemConfirm_Type_DeltaValues:
+      {
+        LOG_A(GNB_APP, "[SYS-GNB] Send confirmation for 'DeltaValues'\n");
+        if (msg)
+        {
+          memcpy(&msgCnf->Confirm.v.DeltaValues, msg, sizeof(struct UE_NR_DeltaValues_Type));
+        }
+      }; break;
+    case NR_SystemConfirm_Type_RadioBearerList:
+      {
+        LOG_A(GNB_APP, "[SYS-GNB] Send confirmation for 'RadioBearerList'\n");
+        msgCnf->Confirm.v.RadioBearerList = true;
+      }; break;
+    default:
+      LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]\n");
+  }
+  SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
+  int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
+  if (send_res < 0)
+  {
+    LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]\n");
+  }
+  else
+  {
+    LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:%d to Port Manager\n", __FUNCTION__, cnfType);
   }
 
-  if (message_p)
-  {
-    LOG_A(GNB_APP, "[SYS-GNB] Send SS_NR_SYS_PORT_MSG_CNF\n");
-    msgCnf->Common.CellId = SS_context.eutra_cellId;
-    msgCnf->Common.Result.d = resType;
-    msgCnf->Common.Result.v.Success = resVal;
-    msgCnf->Confirm.d = cnfType;
-    switch (cnfType)
-    {
-      case NR_SystemConfirm_Type_Cell:
-        {
-          LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration\n");
-          msgCnf->Confirm.v.Cell = true;
-          break;
-        }
-      case NR_SystemConfirm_Type_RadioBearerList:
-        {
-          LOG_A(GNB_APP, "[SYS-GNB] Send confirm for RadioBearerList\n");
-          msgCnf->Confirm.v.RadioBearerList = true;
-          break;
-        }
-      case NR_SystemConfirm_Type_PdcpCount:
-        {
-          if (msg)
-            memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct NR_PDCP_CountCnf_Type));
-          else
-            SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
-          break;
-        }
-      case NR_SystemConfirm_Type_AS_Security:
-        {
-          LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration NR_SystemConfirm_Type_AS_Security\n");
-          msgCnf->Confirm.v.AS_Security = true;
-          break;
-        }
-      default:
-        LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]\n");
-    }
-    SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
-    if (send_res < 0)
-    {
-      LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]\n");
-    }
-    else
-    {
-      LOG_A(GNB_APP, "[SYS-GNB] fxn:%s NR_SYSTEM_CTRL_CNF sent for cnfType:%d to Port Manager\n", __FUNCTION__, cnfType);
-    }
-  }
-  LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
+  LOG_D(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
 }
 /*
  * Function : sys_handle_nr_enquire_timing
@@ -252,10 +257,14 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
 static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
   int enterState = RC.ss.State;
-  if(req->Common.CellId)
+   
+  if (req->Common.CellId > 0) {
     SS_context.eutra_cellId = req->Common.CellId;
+ }
+
   LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
       RC.ss.State, req->Request.d, SS_context.eutra_cellId, req->Common.ControlInfo.CnfFlag);
+
   switch (RC.ss.State)
   {
     case SS_STATE_NOT_CONFIGURED:
@@ -271,12 +280,13 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
 
         if (RC.ss.State == SS_STATE_NOT_CONFIGURED)
         {
+          SS_context.eutra_cellId = req->Common.CellId;
           RC.ss.State  = SS_STATE_CELL_ACTIVE;
           SS_context.State = SS_STATE_CELL_ACTIVE;
           LOG_A(GNB_APP, "[SYS-GNB] RC.ss.State changed to ACTIVE \n");
         }
-        send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
 
+        send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
 
         if (req->Request.v.Cell.d == NR_CellConfigRequest_Type_AddOrReconfigure)
         {
@@ -299,7 +309,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           }
           cellConfig->maxRefPower= p_cellConfig->CellConfigCommon.v.InitialCellPower.v.MaxReferencePower;
           cellConfig->absoluteFrequencyPointA = p_cellConfig->PhysicalLayer.v.Downlink.v.FrequencyInfoDL.v.v.R15.absoluteFrequencyPointA;
-          LOG_A(ENB_SS,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
+          LOG_A(GNB_APP,"5G Cell configuration received for cell_id: %d Initial attenuation: %d \
               Max ref power: %d\n for absoluteFrequencyPointA : %ld =================================== \n",
               cellConfig->header.cell_id,
               cellConfig->initialAttenuation, cellConfig->maxRefPower,
@@ -331,7 +341,10 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
               {
                 LOG_E(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_Cell \n");
               }
-              send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
+
+              if ( req->Common.ControlInfo.CnfFlag) {
+                send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
+              }
             }
             break;
           case NR_SystemRequest_Type_EnquireTiming:
@@ -364,23 +377,26 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_PdcpCount:
             {
               LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_PdcpCount received\n");
-              if (false == ss_task_sys_nr_handle_pdcpCount(req))
-              {
-                LOG_A(GNB_APP, "[SYS-GNB] Error handling Cell Config 5G for NR_SystemRequest_Type_PdcpCount \n");
-                return;
-              }
+              ss_task_sys_nr_handle_pdcpCount(req);
             }
             break;
           case NR_SystemRequest_Type_AS_Security:
             {
               LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_AS_Security \n");
-              send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_AS_Security, NULL);
+              if ( req->Common.ControlInfo.CnfFlag) {
+                send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_AS_Security, NULL);
+              }
+            }
+            break;
+          case NR_SystemRequest_Type_DeltaValues:
+            {
+              ss_task_sys_nr_handle_deltaValues(req);
+              LOG_A(GNB_APP, "[SYS-GNB] Sent SYS CNF for NR_SystemRequest_Type_DeltaValues\n");
             }
             break;
           default:
             {
-              LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
-                  RC.ss.State, req->Request.d);
+              LOG_E(GNB_APP, "[SYS-GNB] Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n", RC.ss.State, req->Request.d);
             }
             break;
         }
@@ -389,90 +405,6 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
   }
   LOG_A(GNB_APP, "[SYS-GNB] SS_STATE %d New SS_STATE %d received SystemRequest_Type %d\n",
       enterState, RC.ss.State, req->Request.d);
-}
-
-/* 
- * =============================================================================================================
- * Function Name: valid_nr_sys_msg
- * Parameter    : SYSTEM_CTRL_REQ *req, is the message having ASP Defination of NR_SYSTEM_CTRL_REQ (38.523-3) 
- *                which is received on SIDL via TTCN.
- * Description  : This function validates the validity of System Control Request Type. On successfull validation,
- *                this function sends the dummy confirmation to PORTMAN which is further forwareded towards TTCN.
- * Returns      : TRUE if recevied command is supported by SYS state handler
- *                FALSE if received command is not supported by SYS handler 
- * ============================================================================================================
-*/
-
-bool valid_nr_sys_msg(struct NR_SYSTEM_CTRL_REQ *req)
-{
-  bool valid = false;
-  enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-  bool resVal = true;
-  bool sendDummyCnf = true;
-  enum NR_SystemConfirm_Type_Sel cnfType = 0;
-
-  LOG_A(GNB_APP, "[SYS-GNB] received req : %d for cell %d RC.ss.State %d \n",
-      req->Request.d, req->Common.CellId, RC.ss.State);
-  switch (req->Request.d)
-  {
-    case NR_SystemRequest_Type_Cell:
-      if (RC.ss.State >= SS_STATE_NOT_CONFIGURED)
-      {
-        valid = true;
-        sendDummyCnf = false;
-        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      }
-      else
-      {
-        cnfType = NR_SystemConfirm_Type_Cell;
-        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      }
-      break;
-    case NR_SystemRequest_Type_EnquireTiming:
-      valid = true;
-      sendDummyCnf = false;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      break;
-    case NR_SystemRequest_Type_DeltaValues:
-      valid = true;
-      sendDummyCnf = false;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      break;
-    case NR_SystemRequest_Type_RadioBearerList:
-      valid = true;
-      sendDummyCnf = false;
-      cnfType = NR_SystemConfirm_Type_RadioBearerList;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      break;
-    case NR_SystemRequest_Type_CellAttenuationList:
-      valid = true;
-      sendDummyCnf = false;
-      cnfType = NR_SystemConfirm_Type_CellAttenuationList;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      break;
-    case NR_SystemRequest_Type_AS_Security:
-      valid = true;
-      sendDummyCnf = false;
-      cnfType = NR_SystemConfirm_Type_AS_Security;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      break;
-    case NR_SystemRequest_Type_PdcpCount:
-      valid = true;
-      sendDummyCnf = false;
-      cnfType = NR_SystemConfirm_Type_PdcpCount;
-      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-      break;
-    default:
-      valid = false;
-      sendDummyCnf = false;
-  }
-  if (sendDummyCnf)
-  {
-    send_sys_cnf(resType, resVal, cnfType, NULL);
-    LOG_A(GNB_APP, "[SYS-GNB] Sending Dummy OK Req %d cnTfype %d ResType %d ResValue %d\n",
-        req->Request.d, cnfType, resType, resVal);
-  }
-  return valid;
 }
 
 
@@ -494,7 +426,6 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 
 	itti_receive_msg(TASK_SYS_GNB, &received_msg);
 
-	LOG_D(GNB_APP, "Entry in fxn:%s \n", __FUNCTION__);
 	/* Check if there is a packet to handle */
 	if (received_msg != NULL)
 	{
@@ -510,15 +441,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 
 			case SS_NR_SYS_PORT_MSG_IND:
 				{
-
-					if (valid_nr_sys_msg(SS_NR_SYS_PORT_MSG_IND(received_msg).req))
-					{
-						ss_task_sys_nr_handle_req(SS_NR_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
-					}
-					else
-					{
-						LOG_A(GNB_APP, "TASK_SYS_GNB: Not handled SYS_PORT message received \n");
-					}
+					ss_task_sys_nr_handle_req(SS_NR_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
 				}
 				break;
 			case UDP_DATA_IND:
@@ -602,49 +525,24 @@ void *ss_gNB_sys_task(void *arg)
  *              per cell's band configuration.
  * Returns    : None
  */
-void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
+static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 {
-	LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
-	struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
-	MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
-	if (!message_p)
-	{
-		LOG_A(GNB_APP, "[SYS-GNB] Error Allocating Memory for message NR_SYSTEM_CTRL_CNF \n");
-		return ;
+  if ( req->Common.ControlInfo.CnfFlag) {
+    struct UE_NR_DeltaValues_Type vals = {};
+    struct DeltaValues_Type* deltaPrimaryBand = &vals.DeltaPrimaryBand;
+    struct DeltaValues_Type* deltaSecondaryBand = &vals.DeltaSecondaryBand;
 
-	}
-	msgCnf->Common.CellId = 0;
-	msgCnf->Common.RoutingInfo.d = NR_RoutingInfo_Type_None;
-	msgCnf->Common.RoutingInfo.v.None = true;
-	msgCnf->Common.TimingInfo.d = TimingInfo_Type_None;
-	msgCnf->Common.TimingInfo.v.None = true;
-	msgCnf->Common.Result.d = ConfirmationResult_Type_Success;
-	msgCnf->Common.Result.v.Success = true;
+    deltaPrimaryBand->DeltaNRf1 = 0;
+    deltaPrimaryBand->DeltaNRf2 = 0;
+    deltaPrimaryBand->DeltaNRf3 = 0;
+    deltaPrimaryBand->DeltaNRf4 = 0;
 
-	msgCnf->Confirm.d = NR_SystemConfirm_Type_DeltaValues;
-	struct UE_NR_DeltaValues_Type* vals = &msgCnf->Confirm.v.DeltaValues;
-	struct DeltaValues_Type* deltaPrimaryBand = &vals->DeltaPrimaryBand;
-	struct DeltaValues_Type* deltaSecondaryBand = &vals->DeltaSecondaryBand;
-
-	deltaPrimaryBand->DeltaNRf1 = 0;
-	deltaPrimaryBand->DeltaNRf2 = 0;
-	deltaPrimaryBand->DeltaNRf3 = 0;
-	deltaPrimaryBand->DeltaNRf4 = 0;
-
-	deltaSecondaryBand->DeltaNRf1 = 0;
-	deltaSecondaryBand->DeltaNRf2 = 0;
-	deltaSecondaryBand->DeltaNRf3 = 0;
-	deltaSecondaryBand->DeltaNRf4 = 0;
-	msgCnf->Confirm.v.Cell = true;
-
-	SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
-	int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
-	if (send_res < 0)
-	{
-		LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
-	}
-	LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
-
+    deltaSecondaryBand->DeltaNRf1 = 0;
+    deltaSecondaryBand->DeltaNRf2 = 0;
+    deltaSecondaryBand->DeltaNRf3 = 0;
+    deltaSecondaryBand->DeltaNRf4 = 0;
+    send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_DeltaValues, (void*) &vals);
+  }
 }
 
 /*
@@ -1237,7 +1135,9 @@ bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
 
   }
 
-  send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_RadioBearerList, NULL);
+  if ( req->Common.ControlInfo.CnfFlag) {
+    send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_RadioBearerList, NULL);
+  }
   LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
   return true;
 }
@@ -1279,26 +1179,204 @@ bool ss_task_sys_nr_handle_cellConfigAttenuation(struct NR_SYSTEM_CTRL_REQ *req)
   return true;
 }
 
+
+extern nr_pdcp_ue_manager_t *nr_pdcp_ue_manager; /**< NR-PDCP doesn't suupport ITTI messages like it was done in eNB-PDCP*/
+
+
+/**
+ * @brief get rb by id from nr_pdcp_ue
+ * 
+ * @param ue 
+ * @param srb 
+ * @param rb_id 
+ * @return nr_pdcp_entity_t* 
+ */
+static nr_pdcp_entity_t * ss_task_sys_get_rb(nr_pdcp_ue_t *ue, bool srb, uint16_t rb_id)
+{
+    nr_pdcp_entity_t * rb;
+    if (srb) {
+      if (rb_id < 1 || rb_id > 2)
+        rb = NULL;
+      else
+        rb = ue->srb[rb_id - 1];
+    } else {
+      if (rb_id < 1 || rb_id > 5)
+        rb = NULL;
+      else
+        rb = ue->drb[rb_id - 1];
+    }
+
+    return rb;
+}
+
+/**
+ * @brief Fill on PDCP count struct 
+ * @see struct NR_PdcpCountInfo_Type
+ * 
+ * @param v 
+ * @param ue 
+ * @param isSrb 
+ * @param rbId 
+ */
+static bool ss_task_sys_fill_pdcp_cnt_rb(struct NR_PdcpCountInfo_Type* v, nr_pdcp_ue_t *ue, bool isSrb, uint8_t rbId)
+{
+  
+  if (rbId == 0) {
+    return false;
+  }
+
+  nr_pdcp_entity_t* rb = ss_task_sys_get_rb(ue, isSrb, rbId);
+  if (rb == NULL)
+  {
+    LOG_E(GNB_APP, "%s rbrId is NULL: %id\r\n", isSrb ? "SRB": "DRB", rbId);
+    static nr_pdcp_entity_t _rb = {};
+    rb = &_rb;
+  }
+
+  if (isSrb)
+  {
+    v->RadioBearerId.d = NR_RadioBearerId_Type_Srb;
+    v->RadioBearerId.v.Srb = rbId;
+    v->UL.v.Format = E_PdcpCount_Srb; // E_NrPdcpCount_Srb;
+    v->DL.v.Format = E_PdcpCount_Srb; // E_NrPdcpCount_Srb;
+  }
+  else
+  {
+    v->RadioBearerId.d = NR_RadioBearerId_Type_Drb;
+    v->RadioBearerId.v.Drb = rbId;
+    v->UL.v.Format = E_PdcpCount_DrbShortSQN; // E_NrPdcpCount_DrbSQN12;
+    v->DL.v.Format = E_PdcpCount_DrbShortSQN; // E_NrPdcpCount_DrbSQN12;
+  }
+
+  v->UL.d = true;
+  v->DL.d = true;
+
+  uint32_t ul_cnt = rb->rx_next - 1;
+  uint32_t dl_cnt = rb->tx_next - 1;
+
+  LOG_A(GNB_APP, "PDCP-Count srb:%d rb:%d SDU(UL)(rx): %d\n", isSrb, rbId, ul_cnt);
+  LOG_A(GNB_APP, "PDCP-Count srb:%d rb:%d PDU(DL)(tx): %d\n", isSrb, rbId, dl_cnt);
+
+  int_to_bin(ul_cnt, 32, v->UL.v.Value);
+  int_to_bin(dl_cnt, 32, v->DL.v.Value);
+
+  return true;
+}
+
+/**
+ * @brief Send PDCP count confirmation
+ * 
+ * @param req 
+ * @return true 
+ * @return false 
+ */
+bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
+{
+  (void)req;
+
+  //uint16_t rnti = SS_context.SSCell_list[req->Common.CellId].ss_rnti_g;
+  uint16_t rnti = SS_context.ss_rnti_g;
+  if (!req->Common.ControlInfo.CnfFlag) {
+    return true;
+  }
+
+  if (req->Request.v.PdcpCount.d == NR_PDCP_CountReq_Type_Get)
+  {
+      struct NR_PDCP_CountCnf_Type PdcpCount = {};
+      PdcpCount.d = NR_PDCP_CountCnf_Type_Get;
+
+      nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager, rnti);
+
+      if (ue == NULL)
+      {
+        LOG_E(GNB_APP, "could not found suitable UE with rnti: %d\r\n", rnti);
+        return false;
+      }
+
+      if (req->Request.v.PdcpCount.v.Get.d == NR_PdcpCountGetReq_Type_AllRBs)
+      {
+
+        PdcpCount.v.Get.d = 5;
+        const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
+        PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(size);
+        if (!ss_task_sys_fill_pdcp_cnt_rb(PdcpCount.v.Get.v, ue, true, 1)) 
+        {
+          LOG_E(GNB_APP, "could not found suitable SRB RB \r\n");
+          acpFree(PdcpCount.v.Get.v);
+          return false;
+        }
+
+        for(uint8_t i = 1; i< PdcpCount.v.Get.d; i++) // about magic number 5 @see do_pdcp_data_ind() where it max_drb also 5
+        {
+          if(!ss_task_sys_fill_pdcp_cnt_rb(&PdcpCount.v.Get.v[i], ue, false, i))
+          {
+            LOG_E(GNB_APP, "DRB %i is null \r\n", i);
+            acpFree(PdcpCount.v.Get.v);
+            return false;
+          }
+        }
+
+      }
+      else if (req->Request.v.PdcpCount.v.Get.d == NR_PdcpCountGetReq_Type_SingleRB)
+      {
+          PdcpCount.v.Get.d = 1;
+
+          PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(sizeof(struct NR_PdcpCountInfo_Type));
+          uint8_t rbId = req->Request.v.PdcpCount.v.Get.v.SingleRB.d == NR_RadioBearerId_Type_Srb ? req->Request.v.PdcpCount.v.Get.v.SingleRB.v.Srb 
+                : req->Request.v.PdcpCount.v.Get.v.SingleRB.d == NR_RadioBearerId_Type_Drb ? req->Request.v.PdcpCount.v.Get.v.SingleRB.v.Drb : 0;
+
+          if(!ss_task_sys_fill_pdcp_cnt_rb(PdcpCount.v.Get.v, ue, req->Request.v.PdcpCount.v.Get.v.SingleRB.d == NR_RadioBearerId_Type_Srb, rbId))
+          {
+            LOG_E(GNB_APP, "could not found suitable RB %d\r\n", rbId);
+            acpFree(PdcpCount.v.Get.v);
+            return false;
+          }
+      }
+      else
+      {
+        LOG_E(GNB_APP, "it's not an PdcpCount.v.Get for single-rb not all-rbs cmd\r\n", __PRETTY_FUNCTION__, __LINE__);
+        return false;
+      }
+
+      send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
+      LOG_A(GNB_APP, "Exit from fxn:%s\n", __FUNCTION__);
+      return true;
+  }
+  else if (req->Request.v.PdcpCount.d == NR_PDCP_CountReq_Type_Set)
+  {
+    send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, NULL);
+    return true;
+  }
+  else
+  {
+    LOG_E(GNB_APP, "%s:%d it's nor a get nor set cmd\r\n", __PRETTY_FUNCTION__, __LINE__);
+    return false;
+  }
+
+  return false;
+}
+
 /*
  * Function : sys_5G_send_proxy
  * Description: Sends the messages from SYS to proxy
  */
 static void sys_5G_send_proxy(void *msg, int msgLen)
 {
-  LOG_A(ENB_SS, "Entry in %s\n", __FUNCTION__);
+  LOG_A(GNB_APP, "Entry in %s\n", __FUNCTION__);
   uint32_t peerIpAddr = 0;
   uint16_t peerPort = proxy_5G_send_port;
 
   IPV4_STR_ADDR_TO_INT_NWBO(local_5G_address,peerIpAddr, " BAD IP Address");
 
-  LOG_A(ENB_SS, "Sending CELL CONFIG 5G to Proxy\n");
+  LOG_A(GNB_APP, "Sending CELL CONFIG 5G to Proxy\n");
   int8_t *temp = msg;
 
   /** Send to proxy */
   sys_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);
-  LOG_A(ENB_SS, "Exit from %s\n", __FUNCTION__);
+  LOG_A(GNB_APP, "Exit from %s\n", __FUNCTION__);
   return;
 }
+
 
 /*
  * Function : sys_send_udp_msg
@@ -1318,7 +1396,7 @@ static int sys_send_udp_msg(
 
   if (message_p)
   {
-    LOG_A(ENB_SS, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d \n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
+    LOG_A(GNB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d \n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;
@@ -1329,7 +1407,7 @@ static int sys_send_udp_msg(
   }
   else
   {
-    LOG_A(ENB_SS, "Failed Sending UDP_DATA_REQ length %u offset %u \n", buffer_len, buffer_offset);
+    LOG_A(GNB_APP, "Failed Sending UDP_DATA_REQ length %u offset %u \n", buffer_len, buffer_offset);
     return -1;
   }
 }
@@ -1351,7 +1429,7 @@ static int sys_5G_send_init_udp(const udpSockReq_t *req)
   UDP_INIT(message_p).port = req->port;
   //addr.s_addr = req->ss_ip_addr;
   UDP_INIT(message_p).address = req->address; //inet_ntoa(addr);
-  LOG_A(ENB_SS, "Tx UDP_INIT IP addr %s (%x)\n", UDP_INIT(message_p).address, UDP_INIT(message_p).port);
+  LOG_A(GNB_APP, "Tx UDP_INIT IP addr %s (%x)\n", UDP_INIT(message_p).address, UDP_INIT(message_p).port);
   MSC_LOG_EVENT(
       MSC_GTPU_ENB,
       "0 UDP bind  %s:%u",
@@ -1361,32 +1439,3 @@ static int sys_5G_send_init_udp(const udpSockReq_t *req)
 }
 
 
-bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
-{
-
-  LOG_A(ENB_SS, "Entry in fxn:%s\n", __FUNCTION__);
-  struct NR_PDCP_CountCnf_Type PdcpCount;
-
-  PdcpCount.d = NR_PDCP_CountCnf_Type_Get;
-  PdcpCount.v.Get.d = 1;
-  const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
-  PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(size);
-  for (int i = 0; i < PdcpCount.v.Get.d; i++)
-  {
-    PdcpCount.v.Get.v[i].RadioBearerId.d = NR_RadioBearerId_Type_Srb;
-    PdcpCount.v.Get.v[i].RadioBearerId.v.Srb = 1;
-    PdcpCount.v.Get.v[i].UL.d = true;
-    PdcpCount.v.Get.v[i].DL.d = true;
-
-    PdcpCount.v.Get.v[i].UL.v.Format = E_PdcpCount_Srb;
-    PdcpCount.v.Get.v[i].DL.v.Format = E_PdcpCount_Srb;
-
-    int_to_bin(1, 32, PdcpCount.v.Get.v[i].UL.v.Value);
-    int_to_bin(1, 32, PdcpCount.v.Get.v[i].DL.v.Value);
-  }
-
-  send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
-  LOG_A(ENB_SS, "Exit from fxn:%s\n", __FUNCTION__);
-  return true;
-
-}
