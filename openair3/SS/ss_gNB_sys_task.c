@@ -261,7 +261,7 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
 static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
   int enterState = RC.ss.State;
-
+  
   if (req->Common.CellId > 0) {
     SS_context.eutra_cellId = req->Common.CellId;
   }
@@ -1375,7 +1375,7 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
 
       if (req->Request.v.PdcpCount.v.Get.d == NR_PdcpCountGetReq_Type_AllRBs)
       {
-
+ 
         PdcpCount.v.Get.d = 5;
         const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
         PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(size);
@@ -1417,7 +1417,7 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
         LOG_E(GNB_APP, "it's not an PdcpCount.v.Get for single-rb not all-rbs cmd\r\n", __PRETTY_FUNCTION__, __LINE__);
         return false;
       }
-
+      
       send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
       LOG_A(GNB_APP, "Exit from fxn:%s\n", __FUNCTION__);
       return true;

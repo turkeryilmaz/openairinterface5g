@@ -147,8 +147,11 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
         cnf.Confirm.v.PdcchOrder = true;
         break;
 
-    case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
+      LOG_A(ENB_SS, "[SS-PORTMAN] SystemConfirm_Type_L1MacIndCtrl\n");
+      cnf.Confirm.v.L1MacIndCtrl = true;
+      break;
+    case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:

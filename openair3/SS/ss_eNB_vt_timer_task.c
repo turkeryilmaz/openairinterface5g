@@ -36,7 +36,6 @@
 extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 
-
 /*
  * Function : vt_add_sf
  * Description: Helper function to add offset to SFN_SF
@@ -60,6 +59,7 @@ static void vt_subtract_sf(uint16_t *frameP, uint8_t *subframeP, int offset)
   }
   *subframeP = (*subframeP+10-offset)%10;
 }
+
 /*
  * Function : msg_can_be_queued
  * Description: Helper function to check if the received MSG shall be queued
@@ -72,12 +72,11 @@ uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_ti
 
 	LOG_A(ENB_APP,"VT_TIMER Enter msg_can_be_queued for  SFN %d , SF %d\n",req_tinfo.sfn,req_tinfo.sf);
 
-	vt_subtract_sf(&req_tinfo.sfn,&req_tinfo.sf, curr_tinfo.sf);
-
-	if((req_tinfo.sfn - curr_tinfo.sfn) > 0)
+   /*It is nonsense to check req_tinfo is after curr_tinfo */
+	if(req_tinfo.sfn != curr_tinfo.sfn || ((req_tinfo.sfn == curr_tinfo.sfn) && (req_tinfo.sf - curr_tinfo.sf) > 0) )
 	{
 		LOG_A(ENB_APP,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SF %d\n",timer_tinfo->sfn,timer_tinfo->sf);
-		vt_subtract_sf(&timer_tinfo->sfn,&timer_tinfo->sf, 7);
+		vt_subtract_sf(&timer_tinfo->sfn,&timer_tinfo->sf, 4); /* queued ahead of 4 subframes because of mac schedule 4 subframes ahead when processing */
 		return true;
 	}
 
@@ -117,9 +116,8 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 
 
 	  uint32_t sfnSfKey = (tinfo.sfn << 4) | tinfo.sf;
-	  hash_rc = hashtable_is_key_exists(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
 	  //printf("VT_TIMER foudn queued SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-	  if (hash_rc == HASH_TABLE_OK)
+	  while (hashtable_is_key_exists(SS_context.vt_timer_table, (hash_key_t)sfnSfKey) == HASH_TABLE_OK)
 	  {
 		  LOG_D(ENB_APP,"VT_TIMER  Timeout sending  curr SFN %d SF %d\n",
 		  					SS_context.sfn,SS_context.sf);

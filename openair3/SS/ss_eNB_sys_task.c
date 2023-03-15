@@ -197,7 +197,7 @@ static int sys_send_udp_msg(
     uint32_t buffer_len,
     uint32_t buffer_offset,
     uint32_t peerIpAddr,
-    uint16_t peerPort, int msg_queued, ss_set_timinfo_t timer_tinfo)
+    uint16_t peerPort,int msg_queued, ss_set_timinfo_t timer_tinfo)
 {
   // Create and alloc new message
   MessageDef *message_p = NULL;
@@ -452,8 +452,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         {
           if (SIB1_CELL_NON_CE.v.cellSelectionInfo_v920.d)
           {
-            LOG_A(ENB_SS, "[SYS] [SIB1] q-QualMin: %d \n", SIB1_CELL_Q_QUALMIN);
-            RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
+              LOG_A(ENB_SS, "[SYS] [SIB1] q-QualMin: %d \n", SIB1_CELL_Q_QUALMIN);
+              RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
           }
         }
 	    }
@@ -670,7 +670,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 #if 0
       if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
       {
-        ss_set_timinfo_t tinfo, timer_tinfo;
         tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
         tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
         timer_tinfo = tinfo;
@@ -793,10 +792,10 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       msgCnf->Confirm.v.PdcchOrder = true;
       break;
     }
-    case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_L1MacIndCtrl:
       msgCnf->Confirm.v.L1MacIndCtrl = true;
       break;
+    case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
     case SystemConfirm_Type_L1_TestMode:
@@ -1951,7 +1950,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
         }
       }
     }
-  else if (ASSecurity->d == AS_Security_Type_Release)
+    else if (ASSecurity->d == AS_Security_Type_Release)
     {
       LOG_A(ENB_SS, "[SYS] AS_Security_Type_Release received\n");
     }
@@ -2138,7 +2137,7 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
   bool sendDummyCnf = true;
   enum SystemConfirm_Type_Sel cnfType = 0;
 
-  // if (req->Common.ControlInfo.CnfFlag == false)
+  // if (req->Common.ControlInfo.CnfFlag == FALSE)
   // {
   //   return FALSE;
   // }
@@ -2214,7 +2213,7 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     break;
    case SystemRequest_Type_PdcchOrder:
     valid = true;
-    sendDummyCnf = true;
+    sendDummyCnf = false;
     cnfType = SystemConfirm_Type_PdcchOrder;
     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;

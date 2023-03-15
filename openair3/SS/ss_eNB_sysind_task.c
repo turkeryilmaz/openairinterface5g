@@ -119,6 +119,32 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
            ind.Indication.v.RachPreamble.RepetitionsPerPreambleAttempt.d = true;
            ind.Indication.v.RachPreamble.RepetitionsPerPreambleAttempt.v = p_ind->repetitionsPerPreambleAttempt;
         }
+        if(SysInd_Type_UL_HARQ == p_ind->sysind_type)
+        {
+          LOG_A(ENB_SS, "[SS_SYSIND] SYSTEM_IND with UL HARQ %d\n", p_ind->UL_Harq);
+          ind.Indication.d = SystemIndication_Type_UL_HARQ;
+          if (p_ind->UL_Harq)
+            ind.Indication.v.UL_HARQ = HARQ_Type_ack;
+          else
+            ind.Indication.v.UL_HARQ = HARQ_Type_nack;
+	      }
+	      else if (SysInd_Type_HarqError == p_ind->sysind_type)
+	      {
+          LOG_A(ENB_SS, "SYSTEM_IND with HarqError \n");
+          ind.Indication.d = SystemIndication_Type_HarqError;
+          if (p_ind->HarqError.bIsUL)
+          {
+            ind.Indication.v.HarqError.d = HarqError_Type_UL;
+            ind.Indication.v.HarqError.v.UL.Id = p_ind->HarqError.Id;
+            ind.Indication.v.HarqError.v.UL.CURRENT_TX_NB = p_ind->HarqError.CURRENT_TX_NB;
+          }
+          else
+          {
+            ind.Indication.v.HarqError.d = HarqError_Type_DL;
+            ind.Indication.v.HarqError.v.DL.Id = p_ind->HarqError.Id;
+            ind.Indication.v.HarqError.v.DL.CURRENT_TX_NB = p_ind->HarqError.CURRENT_TX_NB;
+          }
+        }
 
         /* Encode message */
         if (acpSysIndProcessToSSEncSrv(ctx_sysind_g, buffer, &msgSize, &ind) != 0)
@@ -160,7 +186,7 @@ ss_eNB_read_from_sysind_socket(acpCtx_t ctx)
 	while (1)
 	{
 		int userId = acpRecvMsg(ctx, &msgSize, buffer);
-		LOG_A(ENB_SS, "[SS_SYSIND] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+		LOG_D(ENB_SS, "[SS_SYSIND] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
 		// Error handling
 		if (userId < 0)
@@ -274,7 +300,7 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
                 {
                 case SS_SYSTEM_IND:
                 {
-                        int cell_index;
+                        int cell_index = 0;
                         if(received_msg->ittiMsg.ss_system_ind.physCellId){
                           cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_system_ind.physCellId, SS_context.SSCell_list);
                           LOG_A(ENB_SS,"[SS_SYSIND] cell_index in SS_SYSTEM_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
