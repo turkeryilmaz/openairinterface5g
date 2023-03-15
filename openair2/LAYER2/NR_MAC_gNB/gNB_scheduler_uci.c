@@ -639,6 +639,8 @@ void evaluate_rsrp_report(NR_UE_info_t *UE,
   }
   csi_report->nb_of_csi_ssb_report++;
   int strongest_ssb_rsrp = get_measured_rsrp(sched_ctrl->CSI_report.ssb_cri_report.RSRP);
+  UE_info->rsrpReportStatus = true;
+  UE_info->ssb_rsrp = strongest_ssb_rsrp;
   NR_mac_stats_t *stats = &UE->mac_stats;
   // including ssb rsrp in mac stats
   stats->cumul_rsrp += strongest_ssb_rsrp;

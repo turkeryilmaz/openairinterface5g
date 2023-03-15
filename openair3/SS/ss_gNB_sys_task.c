@@ -39,6 +39,8 @@
 #include "common/utils/LOG/ss-log.h"
 #define MSC_INTERFACE
 #include "msc.h"
+#include "softmodem-common.h"
+#include "../../openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
@@ -48,6 +50,7 @@ extern pthread_mutex_t cell_config_5G_done_mutex;
 
 static int sys_send_udp_msg(uint8_t *buffer, uint32_t buffer_len, uint32_t buffer_offset, uint32_t peerIpAddr, uint16_t peerPort);
 char *local_5G_address = "127.0.0.1" ;
+extern softmodem_params_t *get_softmodem_params(void);
 
 typedef enum
 {
@@ -131,7 +134,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
           LOG_A(GNB_APP, "[SYS-GNB] Send confirm for NR_SystemConfirm_Type_PdcpCount\n");
           memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct NR_PDCP_CountCnf_Type));
         }
-        } break;
+      } break;
     case NR_SystemConfirm_Type_AS_Security:
       {
         LOG_A(GNB_APP, "[SYS-GNB] Send confirm for cell configuration NR_SystemConfirm_Type_AS_Security\n");
@@ -154,6 +157,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     default:
       LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]\n");
   }
+
   SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
   int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
   if (send_res < 0)
@@ -257,12 +261,12 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
 static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
   int enterState = RC.ss.State;
-   
+
   if (req->Common.CellId > 0) {
     SS_context.eutra_cellId = req->Common.CellId;
- }
+  }
 
-  LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
+  LOG_A(GNB_APP, "[SYS-GNB] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n", 
       RC.ss.State, req->Request.d, SS_context.eutra_cellId, req->Common.ControlInfo.CnfFlag);
 
   switch (RC.ss.State)
@@ -286,7 +290,7 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           LOG_A(GNB_APP, "[SYS-GNB] RC.ss.State changed to ACTIVE \n");
         }
 
-        send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
+       send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_Cell, NULL);
 
         if (req->Request.v.Cell.d == NR_CellConfigRequest_Type_AddOrReconfigure)
         {
@@ -441,7 +445,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 
 			case SS_NR_SYS_PORT_MSG_IND:
 				{
-					ss_task_sys_nr_handle_req(SS_NR_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
+						ss_task_sys_nr_handle_req(SS_NR_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
 				}
 				break;
 			case UDP_DATA_IND:
@@ -527,22 +531,99 @@ void *ss_gNB_sys_task(void *arg)
  */
 static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 {
-  if ( req->Common.ControlInfo.CnfFlag) {
-    struct UE_NR_DeltaValues_Type vals = {};
-    struct DeltaValues_Type* deltaPrimaryBand = &vals.DeltaPrimaryBand;
-    struct DeltaValues_Type* deltaSecondaryBand = &vals.DeltaSecondaryBand;
+	LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
+	struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
+	MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
+	if (!message_p)
+	{
+		LOG_A(GNB_APP, "[SYS-GNB] Error Allocating Memory for message NR_SYSTEM_CTRL_CNF \n");
+		return ;
 
-    deltaPrimaryBand->DeltaNRf1 = 0;
-    deltaPrimaryBand->DeltaNRf2 = 0;
-    deltaPrimaryBand->DeltaNRf3 = 0;
-    deltaPrimaryBand->DeltaNRf4 = 0;
+	}
+	msgCnf->Common.CellId = 0;
+	msgCnf->Common.RoutingInfo.d = NR_RoutingInfo_Type_None;
+	msgCnf->Common.RoutingInfo.v.None = true;
+	msgCnf->Common.TimingInfo.d = TimingInfo_Type_None;
+	msgCnf->Common.TimingInfo.v.None = true;
+	msgCnf->Common.Result.d = ConfirmationResult_Type_Success;
+	msgCnf->Common.Result.v.Success = true;
 
-    deltaSecondaryBand->DeltaNRf1 = 0;
-    deltaSecondaryBand->DeltaNRf2 = 0;
-    deltaSecondaryBand->DeltaNRf3 = 0;
-    deltaSecondaryBand->DeltaNRf4 = 0;
-    send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_DeltaValues, (void*) &vals);
+	msgCnf->Confirm.d = NR_SystemConfirm_Type_DeltaValues;
+	struct UE_NR_DeltaValues_Type* vals = &msgCnf->Confirm.v.DeltaValues;
+	struct DeltaValues_Type* deltaPrimaryBand = &vals->DeltaPrimaryBand;
+	struct DeltaValues_Type* deltaSecondaryBand = &vals->DeltaSecondaryBand;
+
+	deltaPrimaryBand->DeltaNRf1 = 0;
+	deltaPrimaryBand->DeltaNRf2 = 0;
+	deltaPrimaryBand->DeltaNRf3 = 0;
+	deltaPrimaryBand->DeltaNRf4 = 0;
+
+	deltaSecondaryBand->DeltaNRf1 = 0;
+	deltaSecondaryBand->DeltaNRf2 = 0;
+	deltaSecondaryBand->DeltaNRf3 = 0;
+	deltaSecondaryBand->DeltaNRf4 = 0;
+  uint16_t mac_inst = 0;
+  LOG_A(GNB_APP, "[SYS-GNB] absoluteFrequencySSB:%ld reportedrsrp:%d\n",
+      *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+      RC.nrmac[0]->UE_info.ssb_rsrp);
+
+  if ( ((get_softmodem_params()->numerology >= 1 || get_softmodem_params()->numerology <= 2) && (RC.ss.State == SS_STATE_CELL_ACTIVE)) && (RC.nrmac[0]->UE_info.rsrpReportStatus) )
+  {
+      LOG_A(GNB_APP, "[SYS-GNB] received SYSTEM_CTRL_REQ with DeltaValues in Active State for Primary Band \n");
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf1 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf1:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf1);
+      }
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf2 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf2:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf2);
+      }
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf3 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf3:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf3);
+      }
+      if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf4 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf4:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf4);
+      }
   }
+  else if ((get_softmodem_params()->numerology >= 2 && RC.ss.State == SS_STATE_CELL_ACTIVE) && (RC.nrmac[0]->UE_info.rsrpReportStatus))
+  {
+      LOG_A(GNB_APP, "[SYS-GNB] received SYSTEM_CTRL_REQ with DeltaValues in Active State for Secondary Band \n");
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaSecondaryBand->DeltaNRf1 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf1:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf1);
+      }
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf2 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf2:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf2);
+      }
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf3 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf3:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf3);
+      }
+      if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
+      {
+        deltaPrimaryBand->DeltaNRf4 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        LOG_A(GNB_APP, "updated DeltaNRf4:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf4);
+      }
+  }
+
+	SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
+	int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
+	if (send_res < 0)
+	{
+		LOG_A(GNB_APP, "[SYS-GNB] Error sending to [SS-PORTMAN-GNB]");
+	}
+	LOG_A(GNB_APP, "[SYS-GNB] Exit from fxn:%s\n", __FUNCTION__);
+
 }
 
 /*
@@ -813,7 +894,6 @@ bool ss_task_sys_nr_handle_cellConfig5G(struct NR_CellConfigRequest_Type *p_req,
     }
     /*****************************************************************************/
   }
-
   return true;
 }
 
@@ -1134,7 +1214,6 @@ bool ss_task_sys_nr_handle_cellConfigRadioBearer(struct NR_SYSTEM_CTRL_REQ *req)
     }
 
   }
-
   if ( req->Common.ControlInfo.CnfFlag) {
     send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_RadioBearerList, NULL);
   }
@@ -1180,6 +1259,7 @@ bool ss_task_sys_nr_handle_cellConfigAttenuation(struct NR_SYSTEM_CTRL_REQ *req)
 }
 
 
+
 extern nr_pdcp_ue_manager_t *nr_pdcp_ue_manager; /**< NR-PDCP doesn't suupport ITTI messages like it was done in eNB-PDCP*/
 
 
@@ -1220,7 +1300,7 @@ static nr_pdcp_entity_t * ss_task_sys_get_rb(nr_pdcp_ue_t *ue, bool srb, uint16_
  */
 static bool ss_task_sys_fill_pdcp_cnt_rb(struct NR_PdcpCountInfo_Type* v, nr_pdcp_ue_t *ue, bool isSrb, uint8_t rbId)
 {
-  
+
   if (rbId == 0) {
     return false;
   }
@@ -1344,8 +1424,8 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
   }
   else if (req->Request.v.PdcpCount.d == NR_PDCP_CountReq_Type_Set)
   {
-    send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, NULL);
-    return true;
+      send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, NULL);
+      return true;
   }
   else
   {
@@ -1437,5 +1517,4 @@ static int sys_5G_send_init_udp(const udpSockReq_t *req)
       UDP_INIT(message_p).port);
   return itti_send_msg_to_task(TASK_UDP, 0, message_p);
 }
-
 

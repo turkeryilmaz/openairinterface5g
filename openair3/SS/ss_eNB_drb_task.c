@@ -201,7 +201,7 @@ static void
 ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 
 	size_t msgSize = size; //2
-	int cell_index;
+        int cell_index = 0;
 
 	LOG_A(ENB_SS, "Entry in fxn:%s\n", __FUNCTION__);
 	while (1)

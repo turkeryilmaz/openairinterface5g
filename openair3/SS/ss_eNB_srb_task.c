@@ -302,7 +302,7 @@ static inline void
 ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 {
 	size_t msgSize = size; //2
-        int cell_index;
+        int cell_index = 0;
 
 	while (1)
 	{
