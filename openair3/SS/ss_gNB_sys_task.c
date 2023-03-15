@@ -160,7 +160,6 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     default:
       LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]\n");
   }
-
   SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
   int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
   if (send_res < 0)
@@ -1437,7 +1436,6 @@ static nr_pdcp_entity_t * ss_task_sys_get_rb(nr_pdcp_ue_t *ue, bool srb, uint16_
  */
 static bool ss_task_sys_fill_pdcp_cnt_rb(struct NR_PdcpCountInfo_Type* v, nr_pdcp_ue_t *ue, bool isSrb, uint8_t rbId)
 {
-
   if (rbId == 0) {
     return false;
   }
@@ -1527,7 +1525,6 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
 
       if (req->Request.v.PdcpCount.v.Get.d == NR_PdcpCountGetReq_Type_AllRBs)
       {
- 
         PdcpCount.v.Get.d = 5;
         const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
         PdcpCount.v.Get.v =(struct NR_PdcpCountInfo_Type *)acpMalloc(size);
