@@ -160,6 +160,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     default:
       LOG_A(GNB_APP, "[SYS-GNB] Error not handled CNF TYPE to [SS-PORTMAN-GNB]\n");
   }
+
   SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
   int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN_GNB, INSTANCE_DEFAULT, message_p);
   if (send_res < 0)
@@ -379,7 +380,6 @@ static void sys_handle_nr_paging_req(struct NR_PagingTrigger_Type *pagingRequest
 static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_timinfo_t *tinfo)
 {
   int enterState = RC.ss.State;
-  
   if (req->Common.CellId > 0) {
     SS_context.eutra_cellId = req->Common.CellId;
   }
