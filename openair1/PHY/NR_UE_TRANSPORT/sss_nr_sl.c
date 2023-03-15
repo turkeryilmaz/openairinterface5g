@@ -190,7 +190,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
   int16_t tmp_re, tmp_im, tmp_re2, tmp_im2;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   if (get_softmodem_params()->sl_mode == 0) {
-    pss = primary_synchro_nr2[ue->common_vars.N2_id];
+    pss = primary_synchro_nr2[ue->common_vars.eNb_id];
   } else {
     pss = primary_synchro_nr2_sl[ue->common_vars.N2_id];
   }

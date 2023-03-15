@@ -37,6 +37,7 @@
 #include "openair1/SCHED_NR_UE/defs.h"
 #include <openair1/PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h>
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
+#include "openair1/PHY/NR_REFSIG/refsig_defs_ue.h"
 
 //#define DEBUG_PSBCH
 //#define DEBUG_PSBCH_ENCODING
