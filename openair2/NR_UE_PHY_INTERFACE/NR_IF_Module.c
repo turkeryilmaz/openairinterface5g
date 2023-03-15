@@ -218,6 +218,7 @@ void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
     }
     case NFAPI_NR_PHY_MSG_TYPE_SRS_INDICATION:
     break;
+
     default:
     break;
   }
@@ -675,6 +676,7 @@ static void fill_dci_from_dl_config(nr_downlink_indication_t*dl_ind, fapi_nr_dl_
     }
   }
 }
+
 
 void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
                            nfapi_nr_tx_data_request_t *tx_data_request,

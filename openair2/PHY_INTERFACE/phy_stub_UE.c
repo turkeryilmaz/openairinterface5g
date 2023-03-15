@@ -1451,7 +1451,11 @@ void *ue_standalone_pnf_task(void *context)
         break;
       }
       default:
-        LOG_E(MAC, "Case Statement has no corresponding nfapi message\n");
+        if (header.message_id >= NFAPI_VENDOR_EXT_MSG_MIN && header.message_id <= NFAPI_VENDOR_EXT_MSG_MAX) {
+          LOG_I(MAC, "Unsupported vendor extension received\n");
+        } else {
+          LOG_E(MAC, "Case Statement has no corresponding nfapi message\n");
+        }
         break;
       }
     }
@@ -1684,6 +1688,11 @@ static void print_rx_ind(nfapi_rx_indication_t *p)
       encoded_size = nfapi_p7_message_pack(&UL->sr_ind, buffer, sizeof(buffer), NULL);
       LOG_I(MAC, "SR_IND sent to Proxy, Size: %d\n", encoded_size);
       break;
+    case NFAPI_SUBFRAME_INDICATION:
+      encoded_size = nfapi_p7_message_pack(&UL->vt_ue_sf_ind, buffer, sizeof(buffer), NULL);
+      LOG_D(MAC, "UE_SF_IND sent to Proxy, Size: %d\n", encoded_size);
+      break;
+
     default:
       LOG_I(MAC, "%s Unknown Message msg_type :: %u\n", __func__, msg_type);
       return;
@@ -1832,6 +1841,18 @@ char *nfapi_ul_config_req_to_string(nfapi_ul_config_request_t *req)
             ul_pdu_type_to_string(req->ul_config_request_body.ul_config_pdu_list[i].pdu_type));
     }
     return result;
+}
+
+void fill_ue_sf_indication_UE_MAC(int Mod_id, int frame, int subframe, uint16_t ack_sfn_sf, UL_IND_t *UL_INFO)
+{
+  pthread_mutex_lock(&fill_ul_mutex.vt_ue_sf_mutex);
+
+  nfapi_ue_sf_indication_vt_t *ue_sf_ind = &UL_INFO->vt_ue_sf_ind;
+
+  ue_sf_ind->sfn_sf = frame << 4 | subframe;
+  ue_sf_ind->header.message_id = NFAPI_SUBFRAME_INDICATION;
+
+  pthread_mutex_unlock(&fill_ul_mutex.vt_ue_sf_mutex);
 }
 
 /* Dummy functions*/

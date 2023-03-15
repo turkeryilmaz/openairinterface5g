@@ -32,7 +32,6 @@
 #include <arpa/inet.h>
 
 #include "nfapi_nr_interface_scf.h"
-#include "nfapi_vnf_interface.h"
 #include "nfapi_vnf.h"
 #include "nfapi.h"
 #include "vendor_ext.h"
@@ -1633,6 +1632,8 @@ req->nfapi_config.tx_data_timing_offset.tl.tag = NFAPI_NR_NFAPI_TX_DATA_TIMING_O
 int param_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_param_response_t *resp) {
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_PARAM_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
   vnf_info *vnf = (vnf_info *)(config->user_data);
+  if (get_softmodem_params()->virtual_time)
+    printf("[VNF] Virtual time enabled\n");
   vnf_p7_info *p7_vnf = vnf->p7_vnfs;
   pnf_info *pnf = vnf->pnfs;
   phy_info *phy = pnf->phys;

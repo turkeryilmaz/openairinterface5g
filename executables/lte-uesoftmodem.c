@@ -88,7 +88,6 @@ uint16_t sf_ahead=4;
 int tddflag;
 char *emul_iface;
 
-
 pthread_cond_t sync_cond;
 pthread_mutex_t sync_mutex;
 int sync_var=-1; //!< protected by mutex \ref sync_mutex.
@@ -607,6 +606,10 @@ int main( int argc, char **argv ) {
           PHY_vars_UE_g[i][CC_id]->mac_enabled = 0;
         else
           PHY_vars_UE_g[i][CC_id]->mac_enabled = 1;
+
+        PHY_vars_UE_g[i][CC_id]->virtual_time = get_softmodem_params()->virtual_time;
+        if (get_softmodem_params()->virtual_time)
+          LOG_I(NFAPI_VNF, "UE Id: %d running in VIRTUAL TIME mode.\n", i);
       }
     }
   } else init_openair0(frame_parms[0],(int)rx_gain[0][0]);

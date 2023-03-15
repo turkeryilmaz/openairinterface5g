@@ -102,6 +102,7 @@ typedef struct ru_config_s {
 
 extern void RCconfig_L1(void);
 extern void RCconfig_macrlc(void);
+extern void RCconfig_ssparam(void);
 extern void UE_config_stub_pnf(void);
 extern int  RCconfig_gtpu(void );
 extern void RCConfig(void);

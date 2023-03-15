@@ -171,6 +171,9 @@ void hi_dci0_req_UE_MAC(int sfn,
                         nfapi_hi_dci0_request_pdu_t* bch,
                         int num_ue);
 
+// To send UE_SF.indication in virtual time.
+void fill_ue_sf_indication_UE_MAC(int Mod_id, int frame, int subframe, uint16_t ack_sfn_sf, UL_IND_t *UL_INFO);
+
 // The following set of memcpy functions should be getting called as callback functions from
 // pnf_p7_subframe_ind.
 
