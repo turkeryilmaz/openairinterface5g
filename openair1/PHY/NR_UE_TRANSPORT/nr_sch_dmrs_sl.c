@@ -53,4 +53,3 @@ uint16_t get_dmrs_freq_idx_sl(uint16_t n, uint8_t k_prime, uint8_t delta) {
   uint16_t dmrs_idx = 6 * n + k_prime + delta;
   return dmrs_idx;
 }
-

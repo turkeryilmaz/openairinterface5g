@@ -321,7 +321,7 @@ typedef struct {//from gNB code for PSSCH Rx
   int slsch_noise_power_tot;
   /// \brief llr values.
   /// - first index: ? [0..1179743] (hard coded)
-  int16_t *llr;
+  int16_t **llr;
   /// \brief llr values per layer.
   /// - first index: ? [0..3] (hard coded)
   /// - first index: ? [0..1179743] (hard coded)

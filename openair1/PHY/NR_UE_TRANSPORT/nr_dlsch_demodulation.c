@@ -94,15 +94,6 @@ uint8_t nr_zero_forcing_rx(int **rxdataF_comp,
                                    unsigned char symbol,
                                    int length);
 
-/* Apply layer demapping */
-static void nr_dlsch_layer_demapping(int16_t **llr_cw,
-                                     uint8_t Nl,
-                                     uint8_t mod_order,
-                                     uint32_t length,
-                                     int32_t codeword_TB0,
-                                     int32_t codeword_TB1,
-                                     int16_t **llr_layers);
-
 /* compute LLR */
 static int nr_dlsch_llr(NR_UE_PDSCH **pdsch_vars,
                         NR_DL_FRAME_PARMS *frame_parms,
@@ -539,7 +530,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                              dlsch[0]->harq_processes[harq_pid]->G,
                              codeword_TB0,
                              codeword_TB1,
-                             pdsch_vars[gNB_id]->layer_llr);    
+                             pdsch_vars[gNB_id]->layer_llr);
   }
   
   stop_meas(&ue->generic_stat_bis[proc->thread_id][slot]);
@@ -2342,13 +2333,13 @@ uint8_t nr_zero_forcing_rx(int **rxdataF_comp,
   return(0);
 }
 
-static void nr_dlsch_layer_demapping(int16_t **llr_cw,
-				     uint8_t Nl,
-				     uint8_t mod_order,
-				     uint32_t length,
-				     int32_t codeword_TB0,
-				     int32_t codeword_TB1,
-				     int16_t **llr_layers) {
+void nr_dlsch_layer_demapping(int16_t **llr_cw,
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int32_t codeword_TB0,
+                              int32_t codeword_TB1,
+                              int16_t **llr_layers) {
 
   switch (Nl) {
     case 1:

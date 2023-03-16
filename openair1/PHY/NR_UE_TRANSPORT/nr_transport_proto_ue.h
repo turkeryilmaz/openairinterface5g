@@ -802,6 +802,15 @@ void nr_dlsch_channel_compensation_core(int **rxdataF_ext,
                                      int length,
                                      int start_point);
 
+/* Apply layer demapping */
+void nr_dlsch_layer_demapping(int16_t **llr_cw,
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int32_t codeword_TB0,
+                              int32_t codeword_TB1,
+                              int16_t **llr_layers);
+
 void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint8_t start_symbol,
                              uint16_t L,
@@ -1076,6 +1085,19 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
                                       NR_DL_FRAME_PARMS *frame_parms,
                                       uint8_t Nl);
 
+int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                              nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                              unsigned int G_SCI2_bits,
+                              uint8_t  SCI2_mod_order,
+                              int16_t **tx_layers,
+                              uint32_t **pssch_dmrs,
+                              int32_t **txdataF
+                             );
+
+void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                               nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                               int16_t** tx_precoding,
+                               int32_t **txdataF);
 void *nr_dlsch_decoding_2thread0(void *arg);
 
 void *nr_dlsch_decoding_2thread1(void *arg);
