@@ -341,8 +341,6 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 	{
 	}
 
-//	ss_eNB_read_from_drb_socket(ctx_drb_g);
-
 	return NULL;
 
 }
