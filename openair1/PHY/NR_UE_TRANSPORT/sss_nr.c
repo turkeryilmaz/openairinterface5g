@@ -548,8 +548,7 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metric, 
       // if the current metric is better than the last save it
       if (metric > *tot_metric) {
         *tot_metric = metric;
-        ue->frame_parms.Nid_SL = Nid1 + 336 * Nid2;
-        ue->frame_parms.Nid_cell = Nid2 +(3 * Nid1);
+        ue->frame_parms.Nid_cell = Nid2+(3*Nid1);
         *phase_max = phase;
 
 #ifdef DEBUG_SSS_NR

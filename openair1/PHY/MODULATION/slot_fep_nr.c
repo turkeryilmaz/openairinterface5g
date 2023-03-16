@@ -166,11 +166,13 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  bool is_synced = ue->is_synchronized;
-  if(get_softmodem_params()->sl_mode == 2) {
-    is_synced = ue->is_synchronized_sl;
+  if (get_softmodem_params()->sl_mode == 2) {
+    if (ue->is_synchronized_sl) {
+      nb_prefix_samples  = frame_parms->nb_prefix_samples;
+      nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
+    }
   }
-  if (is_synced) {
+  if (pbch_decoded) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   }

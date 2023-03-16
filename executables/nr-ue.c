@@ -606,7 +606,7 @@ void processSlotTX(void *arg) {
   nr_phy_data_tx_t phy_data = {0};
 
   LOG_D(PHY,"%d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
-  if (UE->sync_ref)
+  if (UE->sync_ref && get_softmodem_params()->sl_mode != 0)
     proc->tx_slot_type = NR_UPLINK_SLOT;
   if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT){
 
@@ -746,7 +746,7 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
     if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
       // Resynchonize by slot (will work with numerology 1 only)
-      for ( int size=rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe/2 ) {
+      for (int size = rx_offset; size > 0; size -= UE->frame_parms.samples_per_subframe / 2) {
 	int unitTransfer=size>UE->frame_parms.samples_per_subframe/2 ? UE->frame_parms.samples_per_subframe/2 : size ;
 	AssertFatal(unitTransfer ==
 		    UE->rfdevice.trx_read_func(&UE->rfdevice,
@@ -757,11 +757,11 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
       }
     } else {
       *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
-      for ( int size=rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
+      for (int size = rx_offset; size > 0; size -= UE->frame_parms.samples_per_subframe) {
 	int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
 	// we write before read because gNB waits for UE to write and both executions halt
 	// this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
-        if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
+        if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer); 
 	AssertFatal(unitTransfer ==
 		    UE->rfdevice.trx_read_func(&UE->rfdevice,
 					       timestamp,
@@ -775,11 +775,6 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
 int computeSamplesShift(PHY_VARS_NR_UE *UE) {
   int samples_shift = -(UE->rx_offset>>1);
-  if (get_softmodem_params()->sl_mode == 0) {
-    UE->rx_offset = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
-  } else {
-    UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
-  }
   if (samples_shift != 0) {
     LOG_I(NR_PHY,"Adjusting frame in time by %i samples\n", samples_shift);
     if (get_softmodem_params()->sl_mode == 0) {
@@ -793,7 +788,10 @@ int computeSamplesShift(PHY_VARS_NR_UE *UE) {
 }
 
 static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sync) {
-  uint16_t nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
+  uint16_t nb_prefix_samples0 = fp->nb_prefix_samples0;
+  if (get_softmodem_params()->sl_mode != 0) {
+    nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
+  }
   if (fp->numerology_index == 0)
     return fp->nb_prefix_samples0 + fp->ofdm_symbol_size;
   int num_samples = (slot % (fp->slots_per_subframe / 2)) ? fp->nb_prefix_samples : nb_prefix_samples0;

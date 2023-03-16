@@ -249,7 +249,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
 
 /*******************************************************************
 *
-* NAME :         rx_sss_nr
+* NAME :         rx_sss_sl_nr
 *
 * PARAMETERS :   none
 *

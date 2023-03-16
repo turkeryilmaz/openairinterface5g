@@ -969,6 +969,7 @@ int config_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy, nfap
     phy_config.CC_id=0;
     phy_config.cfg = req;
     phy_config_request(&phy_config);
+    dump_frame_parms(fp);
   }
     phy_info->remote_port = req->nfapi_config.p7_vnf_port.value;
   struct sockaddr_in vnf_p7_sockaddr;
