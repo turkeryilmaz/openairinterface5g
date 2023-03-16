@@ -227,11 +227,11 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
   uint16_t num_sci_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
   uint16_t num_data_symbs = (M_data_bits << 1) / mod_order;
+  uint32_t num_sum_symbs = (num_sci_symbs + num_data_symbs) >> 1;
   for (int nl = 0; nl < Nl; nl++)
     tx_layers[nl] = (int16_t *)malloc16_clear((num_sci_symbs + num_data_symbs) * sizeof(int16_t));
 
-  nr_ue_layer_mapping((int16_t *)d_mod, Nl, num_sci_symbs/SCI2_mod_order, tx_layers);
-  nr_ue_layer_mapping((int16_t *)(d_mod + M_SCI2_bits), Nl, num_data_symbs/mod_order, (tx_layers + M_SCI2_bits * 2 / Nl));
+  nr_ue_layer_mapping((int16_t *)d_mod, Nl, num_sum_symbs, tx_layers);
 
   /////////////////////////DMRS Modulation/////////////////////////
 
