@@ -274,21 +274,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
       LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d sf %d",
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
-    MessageDef *message_p_vtp = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
-    if (message_p_vtp && RC.ss.vtp_ready)
-    {
-      SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
-      SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;
-      SS_UPD_TIM_INFO(message_p_vtp).physCellId = RC.rrc[eNB->UL_INFO.module_id]->carrier[eNB->UL_INFO.CC_id].physCellId;
-      int send_res = itti_send_msg_to_task(TASK_VTP, 0, message_p_vtp);
-      if (send_res < 0)
-      {
-        printf("Error in itti_send_msg_to_task");
-        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
-      }
-      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to VTP task itti_send_msg_to_task sfn %d sf %d",
-            eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
-    }
+
     MessageDef *message_p_vt_timer = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
     if (message_p_vt_timer)
     {
@@ -302,6 +288,24 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
       }
       LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to TASK_VT_TIMER task itti_send_msg_to_task sfn %d sf %d",
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+    }
+
+    if (eNB->UL_INFO.subframe == 0) {
+      MessageDef *message_p_vtp = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
+      if (message_p_vtp && RC.ss.vtp_ready)
+      {
+        SS_UPD_TIM_INFO(message_p_vtp).sf = eNB->UL_INFO.subframe;
+        SS_UPD_TIM_INFO(message_p_vtp).sfn = eNB->UL_INFO.frame;
+        SS_UPD_TIM_INFO(message_p_vtp).physCellId = RC.rrc[eNB->UL_INFO.module_id]->carrier[eNB->UL_INFO.CC_id].physCellId;
+        int send_res = itti_send_msg_to_task(TASK_VTP, 0, message_p_vtp);
+        if (send_res < 0)
+        {
+          printf("Error in itti_send_msg_to_task");
+          // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
+        }
+        LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to VTP task itti_send_msg_to_task sfn %d sf %d",
+              eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+      }
     }
   }
 
@@ -526,11 +530,10 @@ void eNB_top(PHY_VARS_eNB *eNB,
     L1_proc->timestamp_tx = ru_proc->timestamp_rx + (ru->sf_ahead*fp->samples_per_tti);
     L1_proc->frame_rx     = ru_proc->frame_rx;
     L1_proc->subframe_rx  = ru_proc->tti_rx;
-    L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-ru->sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
-    L1_proc->subframe_tx  = (L1_proc->subframe_rx + ru->sf_ahead)%10;
-    
+    L1_proc->frame_tx     = (L1_proc->subframe_rx > (9-sf_ahead)) ? (L1_proc->frame_rx+1)&1023 : L1_proc->frame_rx;
+    L1_proc->subframe_tx  = (L1_proc->subframe_rx + sf_ahead)%10;
     if (rxtx(eNB,L1_proc,string) < 0)
-      LOG_E(PHY,"eNB %d CC_id %d failed during execution\n",eNB->Mod_id,eNB->CC_id);  
+      LOG_E(PHY,"eNB %d CC_id %d failed during execution\n",eNB->Mod_id,eNB->CC_id);
     ru_proc->timestamp_tx = L1_proc->timestamp_tx;
     ru_proc->tti_tx  = L1_proc->subframe_tx;
     ru_proc->frame_tx     = L1_proc->frame_tx;
@@ -614,7 +617,7 @@ int wakeup_tx(PHY_VARS_eNB *eNB,
   int ret;
   LOG_D(PHY,"ENTERED wakeup_tx (IC %d)\n",L1_proc_tx->instance_cnt);
   // check if subframe is a has TX else return
-  if (subframe_select(&eNB->frame_parms,subframe_tx) == SF_UL) return 0;  
+  if (subframe_select(&eNB->frame_parms,subframe_tx) == SF_UL) return 0;
   AssertFatal((ret = pthread_mutex_lock(&L1_proc_tx->mutex))==0,"mutex_lock returns %d\n",ret);
   LOG_D(PHY,"L1 RX %d.%d Waiting to wake up L1 TX %d.%d (IC L1TX %d)\n",frame_rx,subframe_rx,frame_tx,subframe_tx,L1_proc_tx->instance_cnt);
 
@@ -659,7 +662,7 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,
       ru_proc->frame_rx,ru_proc->tti_rx,L1_proc->frame_rx,L1_proc->subframe_rx);
 */
     return(0);
-   
+
   }
 
   ++L1_proc->instance_cnt;
@@ -1211,7 +1214,7 @@ void init_transport(PHY_VARS_eNB *eNB) {
   eNB->check_for_SUMIMO_transmissions = 0;
   fp->pucch_config_common.deltaPUCCH_Shift = 1;
   if (eNB->use_DTX == 0) fill_subframe_mask(eNB);
-  
+
 }
 
 
@@ -1229,9 +1232,9 @@ void init_eNB_afterRU(void) {
      // map antennas and PRACH signals to eNB RX
       LOG_I(PHY,"Mapping RX ports from %d RUs to eNB %d\n",eNB->num_RU,eNB->Mod_id);
       eNB->frame_parms.nb_antennas_rx       = 0;
-      LOG_I(PHY,"eNB->num_RU:%d\n", eNB->num_RU);     
+      LOG_I(PHY,"eNB->num_RU:%d\n", eNB->num_RU);
       if (NFAPI_MODE==NFAPI_MODE_PNF) AssertFatal(eNB->num_RU>0,"Number of RU attached to eNB %d is      zero\n",eNB->Mod_id);
-      for (int ru_id=0; ru_id<eNB->num_RU; ru_id++) 
+      for (int ru_id=0; ru_id<eNB->num_RU; ru_id++)
          eNB->frame_parms.nb_antennas_rx    += eNB->RU_list[ru_id]->nb_rx;
       phy_init_lte_eNB(eNB,0,0);
       LOG_I(PHY,"Overwriting eNB->prach_vars.rxsigF[0]:%p\n", eNB->prach_vars.rxsigF[0]);
@@ -1316,7 +1319,7 @@ void init_eNB(int single_thread_flag,
     if (RC.eNB[inst] == NULL) RC.eNB[inst] = (PHY_VARS_eNB **) malloc(RC.nb_CC[inst]*sizeof(PHY_VARS_eNB *));
 
     for (CC_id=0; CC_id<RC.nb_L1_CC[inst]; CC_id++) {
-      if (RC.eNB[inst][CC_id] == NULL) 
+      if (RC.eNB[inst][CC_id] == NULL)
          RC.eNB[inst][CC_id] = (PHY_VARS_eNB *) calloc(1,sizeof(PHY_VARS_eNB));
 
       eNB                     = RC.eNB[inst][CC_id];
