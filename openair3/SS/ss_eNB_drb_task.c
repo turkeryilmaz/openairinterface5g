@@ -195,17 +195,6 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
       LOG_A(ENB_APP, "Send res: %d", send_res);
     }
   }
-#if 0
-  SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
-
-  int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
-  if (send_res < 0)
-  {
-    LOG_A(ENB_APP, "[SS_DRB] Error in itti_send_msg_to_task");
-  }
-  LOG_A(ENB_APP, "Send res: %d", send_res);
-#endif
-
 }
 
 static void
