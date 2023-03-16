@@ -86,6 +86,10 @@ int create_tasks(uint32_t enb_nb) {
     rc = itti_create_task(TASK_SS_DRB, ss_eNB_drb_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS DRB failed\n");
 
+    rc = itti_create_task(TASK_SS_DRB_ACP, ss_eNB_drb_acp_task, NULL);
+    AssertFatal(rc >= 0, "Create task for SS DRB ACP failed\n");
+
+
     /* Task for support Virtual Time for TTCN  engine */
     rc = itti_create_task(TASK_VTP, ss_eNB_vtp_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS VTP failed\n");
