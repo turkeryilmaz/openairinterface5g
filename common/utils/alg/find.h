@@ -31,16 +31,27 @@ SOFTWARE.
 #include "assoc_container/assoc_generic.h"
 #include "assoc_container/bimap.h"
 
+
+/*
+ * It returns the first position in the data structure where the predicate i.e., param f,  returns true
+ * @param ds: data structure
+ * @param start_it: valid iterator position within the seq_arr_t. 
+ * @param end_it: end iterator position. range [start_it, end). end needs to be reacheable from start_it. 
+ * @param value: the value to compare with.
+ * @param f: the predicate. Returns true if the value and the object pointed to by the iterator match. value is 
+ *           the first argument and the iterator the second 
+ * */
+
 // Sequencial containers
 
-void* find_if_arr(seq_arr_t* arr, void* start_it, void* end_it, void* value, bool (*f)(const void*, const void*));
+void* find_if_arr(seq_arr_t* ds, void* start_it, void* end_it, void* value, bool (*f)(const void*, const void*));
 
 // Associative containers
 
-void* find_if_rb_tree(assoc_rb_tree_t* tree, void* start_it, void* end_it, void const* value, bool (*f)(const void*, const void*));
+void* find_if_rb_tree(assoc_rb_tree_t* ds, void* start_it, void* end_it, void const* value, bool (*f)(const void*, const void*));
 
-bml_iter_t find_if_bi_map_left(bi_map_t* map, bml_iter_t start_it, bml_iter_t end_it, void const* value, bool (*f)(const void*, const void*));
+bml_iter_t find_if_bi_map_left(bi_map_t* ds, bml_iter_t start_it, bml_iter_t end_it, void const* value, bool (*f)(const void*, const void*));
 
-bmr_iter_t find_if_bi_map_right(bi_map_t* map, bmr_iter_t start_it, bmr_iter_t end_it, void const* value, bool (*f)(const void*, const void*));
+bmr_iter_t find_if_bi_map_right(bi_map_t* ds, bmr_iter_t start_it, bmr_iter_t end_it, void const* value, bool (*f)(const void*, const void*));
 
 #endif

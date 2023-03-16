@@ -54,6 +54,11 @@ SOFTWARE.
     } while(0)
 
 
+/*
+ * Find an element in a data structure if the predicate is true 
+ */
+
+
 #define find_if(T,U,W,X,Y) _Generic ((T), seq_arr_t*:  find_if_arr, \
                                           assoc_rb_tree_t*: find_if_rb_tree, \
                                           default: find_if_arr) (T,U,W,X,Y)

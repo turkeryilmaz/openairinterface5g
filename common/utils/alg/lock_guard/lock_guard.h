@@ -33,8 +33,12 @@ SOFTWARE.
 #include <pthread.h>
 
 
-// ToDO: Have a look at the implementation on QEMU_LOCK_GUARD
-
+/*
+ * Lock guard mechanism in C, similar to std::lock_guard. The lock unlocks at the end of the scope.
+ * Very helpfull to avoid forgetting unlock from functions with multiple return statements.
+ * Similar to the mechanism found at QEMU_LOCK_GUARD
+ * @param X pthread_mutex_t* or pthread_mutex_t const* 
+ */
 
 void mir_dummy_lock_guard();
 void mir_dummy_lock_guard_const();

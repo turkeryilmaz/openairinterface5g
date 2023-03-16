@@ -58,31 +58,98 @@ typedef struct {
 
 } assoc_rb_tree_t;
 
+
+
+/*
+ * Init the rb ds
+ * @param tree: the ds to initialize 
+ * @param key_sz: Size of the key i.e., sizeof(T), that the rb_tree will store. 
+ * @param comp: Compare function in the RB tree. 
+ * @param t: Free function to free the value if needed 
+*/
 void assoc_rb_tree_init(assoc_rb_tree_t* tree, size_t key_sz, int (*comp)(const void*, const void*), free_func_t f);
 
+/*
+ * Free the rb ds
+ * @param tree: the ds
+*/
 void assoc_rb_tree_free(assoc_rb_tree_t* tree);
 
 // Modifiers
 // The tree is responsible for freeing the void* key and value memory later
+
+/*
+ * Insert key-value 
+ * @param tree: the ds
+ * @param key a pointer to the key
+ * @param key_sz  sizeof(key) 
+ * @param value Pointer to the value. Ownership is transfere i.e., the RB tree will
+ *              free it. It needs to be allocated in the heap 
+*/
 void assoc_rb_tree_insert(assoc_rb_tree_t* tree, void const* key, size_t key_sz, void* value);
 
-// It returns the void* of value. the void* of the key is freed
+/*
+ * Extract value It returns the void* of value. the void* of the key is freed
+ * @param tree: the ds
+ * @param key a pointer to the key
+ * @return value 
+ * @pre @p key must exist in the ds
+*/
 void* assoc_rb_tree_extract(assoc_rb_tree_t* tree, void* key);
 
-// Get the key from an iterator
+
+/*
+ * Get the key from an iterator 
+ * @param tree: the ds
+ * @param it a pointer to the key
+ * @return key from the ds. It does not free it. 
+ * @pre @p it must exist in the ds
+*/
 void* assoc_rb_tree_key(assoc_rb_tree_t* tree, void* it);
 
-// Get the value pointer form an iterator
+
+/*
+ * Get the value pointer form an iterator
+ * @param tree: the ds
+ * @param it a pointer to the key
+ * @return key from the ds. It does not free it. 
+ * @pre @p it must exist in the ds
+*/
 void* assoc_rb_tree_value(assoc_rb_tree_t* tree, void* it);
 
-// Capacity
+/*
+ * Size of the current ds 
+ * @param tree: the ds
+ * @return number of elements in the ds 
+*/
 size_t assoc_rb_tree_size(assoc_rb_tree_t* tree);
 
 // Forward Iterator Concept
-void* assoc_rb_tree_front(assoc_rb_tree_t const* treea);
 
+/*
+ * Get the iterator to the first element 
+ * @param tree: the ds
+ * @return iterator to the first element 
+*/
+void* assoc_rb_tree_front(assoc_rb_tree_t const* tree);
+
+
+/*
+ * Get the next iterator  
+ * @param tree: the ds
+ * @param it iterator 
+ * @return iterator to the next element 
+ * @pre iterator must be in the ds 
+*/
 void* assoc_rb_tree_next(assoc_rb_tree_t const* tree, void* it);
 
+
+/*
+ * Get the last iterator 
+ * @param tree: the ds
+ * @return iterator to one past the last element in the ds 
+*/
 void* assoc_rb_tree_end(assoc_rb_tree_t const* tree);
 
 #endif
+

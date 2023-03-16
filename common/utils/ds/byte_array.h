@@ -28,14 +28,19 @@
 #include <string.h>
 #include "common/utils/assertions.h"
 
+/*
+ * Simple and efficient data structure to bring together the length and the pointer
+ * You can cheaply copy and return it as it only utilizes two registers in x86-64
+ */
 typedef struct {
   size_t len;
   uint8_t* buf;
 } byte_array_t;
 
-typedef struct {
-  uint8_t buf[32];
-} byte_array_32_t;
+
+/////////////////////////////////////////////////////////////
+// These macros need to be removed once the KPM is upgraded 
+/////////////////////////////////////////////////////////////
 
 /* create on the stack a byte_array_t named 'name' implemented as array of length 'length'*/
 #define BYTE_ARRAY_STACK(name, length)           \

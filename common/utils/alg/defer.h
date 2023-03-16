@@ -28,6 +28,8 @@ SOFTWARE.
 /*
  * Defer mechanism taken from http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2542.pdf
  * It may become part of the C2X standard in <stddefer.h>
+ * Basically, what is included in the defer statement, will be executed when the end of the
+ * scope where it was defined happened i.e., it uses the same mechanims as the C++ destructors
  */
 
 #define CONCAT_IMPL( x, y ) x##y
@@ -41,13 +43,6 @@ SOFTWARE.
 
 
 #if defined __clang__  // requires -fblocks (lambdas) and -lBlocksRuntime in the linker
-
-/*
-#define TOKENPASTE(x, y) x ## y
-#define TOKENPASTE2(x, y) TOKENPASTE(x, y)
-#define UNIQUE_DF_FUNC TOKENPASTE2(DF_ , __COUNTER__)
-#define UNIQUE_FUNC_IMPL TOKENPASTE2( DF_impl_ , __LINE__ )
-*/
 
 void cleanup_deferred (void (^*d) (void));
 
