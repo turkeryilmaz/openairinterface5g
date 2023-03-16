@@ -153,20 +153,17 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   uint8_t nb_dmrs_re_per_rb;
   NR_DL_FRAME_PARMS *frame_parms = &txUE->frame_parms;
   int32_t **txdataF = txUE->common_vars.txdataF;
-  uint16_t number_dmrs_symbols = 0;
 
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
   NR_UL_UE_HARQ_t *harq_process_ul_ue = slsch_ue->harq_processes[harq_pid];
   nfapi_nr_ue_pssch_pdu_t *pssch_pdu = &harq_process_ul_ue->pssch_pdu;
 
-  uint16_t sl_dmrs_symb_pos = pssch_pdu->sl_dmrs_symb_pos;
   uint8_t number_of_symbols = pssch_pdu->nr_of_symbols;
   uint16_t nb_rb            = pssch_pdu->rb_size;
   uint8_t Nl                = pssch_pdu->nrOfLayers;
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
   uint16_t dmrs_pos         = pssch_pdu->sl_dmrs_symb_pos;
-  int start_symbol          = pssch_pdu->start_symbol_index;
   frame_parms->first_carrier_offset = 0;
   frame_parms->ofdm_symbol_size     = 2048;
 
@@ -228,11 +225,13 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   /////////////////////////SLSCH layer mapping/////////////////////////
 
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
-  uint16_t n_symbs = (M_SCI2_bits) / SCI2_mod_order + (M_data_bits) / mod_order;
+  uint16_t num_sci_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
+  uint16_t num_data_symbs = (M_data_bits << 1) / mod_order;
   for (int nl = 0; nl < Nl; nl++)
-    tx_layers[nl] = (int16_t *)malloc16_clear(n_symbs * sizeof(int16_t));
+    tx_layers[nl] = (int16_t *)malloc16_clear((num_sci_symbs + num_data_symbs) * sizeof(int16_t));
 
-  nr_ue_layer_mapping((int16_t *)d_mod, Nl, n_symbs, tx_layers);
+  nr_ue_layer_mapping((int16_t *)d_mod, Nl, num_sci_symbs/SCI2_mod_order, tx_layers);
+  nr_ue_layer_mapping((int16_t *)(d_mod + M_SCI2_bits), Nl, num_data_symbs/mod_order, (tx_layers + M_SCI2_bits * 2 / Nl));
 
   /////////////////////////DMRS Modulation/////////////////////////
 

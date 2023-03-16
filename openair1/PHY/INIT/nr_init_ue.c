@@ -97,7 +97,7 @@ void phy_init_nr_ue_PSSCH(NR_UE_PSSCH *const pssch,
 
   AssertFatal( pssch, "pssch == 0" );
   int max_ul_mimo_layers = 2;
-  pssch->llr = (int16_t *)malloc16_clear( (8*((3*8*6144)+12))*sizeof(int16_t) ); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
+  pssch->llr = (int16_t **)malloc16_clear((8 * ((3 * 8 * 6144) + 12)) * sizeof(int16_t*)); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
   pssch->llr_layers = (int16_t **)malloc16(fp->nb_antennas_rx*sizeof(int32_t **) );
   for (int i = 0; i < max_ul_mimo_layers; i++) {
     pssch->llr_layers[i] = (int16_t *)malloc16_clear( (8*((3*8*6144)+12))*sizeof(int16_t) ); // [hna] 6144 is LTE and (8*((3*8*6144)+12)) is not clear
@@ -381,10 +381,10 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     int nb_codewords = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
     for (th_id=0; th_id<RX_NB_TH_MAX; th_id++) {
       for (i=0; i<nb_codewords; i++) {
-        ue->pdsch_vars[th_id][gNB_id]->llr[i] = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
+        ue->pdsch_vars[th_id][gNB_id]->llr[i] = (int16_t *)malloc16_clear((8 * (3 * 8 * 8448)) * sizeof(int16_t));//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
       }
       for (i=0; i<NR_MAX_NB_LAYERS; i++) {
-        ue->pdsch_vars[th_id][gNB_id]->layer_llr[i] = (int16_t *)malloc16_clear( (8*(3*8*8448))*sizeof(int16_t) );//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
+        ue->pdsch_vars[th_id][gNB_id]->layer_llr[i] = (int16_t *)malloc16_clear((8 * (3 * 8 * 8448)) * sizeof(int16_t));//Q_m = 8 bits/Sym, Code_Rate=3, Number of Segments =8, Circular Buffer K_cb = 8448
       }
     }
   }

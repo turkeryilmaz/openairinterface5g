@@ -547,14 +547,15 @@ int main(int argc, char **argv)
                             ulsch_llr[0] + nb_re_SCI2 * 2, nb_rb, nb_re_slsch,
                             symbol, mod_order);
       }
+      // For SCI2
       nr_dlsch_layer_demapping(rxUE->pssch_vars[UE_id]->llr,
                              slsch_ue_rx->harq_processes[harq_pid]->Nl,
                              SCI2_mod_order,
-                             M_SCI2_bits,
+                             G_SCI2_bits,
                              slsch_ue_rx->harq_processes[harq_pid]->codeword,
                              -1,
                              rxUE->pssch_vars[UE_id]->llr_layers);
-
+      // For Data
       nr_dlsch_layer_demapping(rxUE->pssch_vars[UE_id]->llr + M_SCI2_bits,
                               slsch_ue_rx->harq_processes[harq_pid]->Nl,
                               mod_order,
@@ -566,9 +567,9 @@ int main(int argc, char **argv)
       /////////////////////////SLSCH descrambling/////////////////////////
       // hacky [TODO]: size and Nid should be calcualted in receiver
       // Nid is Nidx calcualted in scrambler from CRC
-      nr_codeword_unscrambling_sl(ulsch_llr, harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, txUE->slsch[0][0]->Nidx, Nl);
+      nr_codeword_unscrambling_sl(ulsch_llr[0], harq_process_txUE->B_multiplexed, slsch_ue_rx->harq_processes[0]->B_sci2, txUE->slsch[0][0]->Nidx, Nl);
       UE_nr_rxtx_proc_t proc;
-      uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr,
+      uint32_t ret = nr_slsch_decoding(rxUE, &proc, ulsch_llr[0],
                                 &rxUE->frame_parms, slsch_ue_rx,
                                 slsch_ue_rx->harq_processes[0], frame,
                                 nb_symb_sch, slot, harq_pid);
