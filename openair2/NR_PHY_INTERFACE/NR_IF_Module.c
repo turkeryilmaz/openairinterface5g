@@ -531,6 +531,15 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
 	    sched_info->frame,
 	    sched_info->slot,
 	    sched_info->DL_req->dl_tti_request_body.nPDUs);
+
+      /* send DL slot indication */
+      if (NFAPI_MODE == NFAPI_MODE_VNF){
+		extern int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind);
+		nfapi_nr_slot_indication_scf_t slot_ind;
+		slot_ind.sfn = sched_info->frame;
+		slot_ind.slot = sched_info->slot;
+		oai_nfapi_slot_ind(&slot_ind);
+      }
     }
   }
   LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);
@@ -547,6 +556,7 @@ NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {
     LOG_I(MAC,"Allocating shared L1/L2 interface structure for instance %d @ %p\n",Mod_id,nr_if_inst[Mod_id]);
 
     nr_if_inst[Mod_id]->CC_mask=0;
+    nr_if_inst[Mod_id]->sl_ahead = 1; /* schedule next slot */
     nr_if_inst[Mod_id]->NR_UL_indication = NR_UL_indication;
     AssertFatal(pthread_mutex_init(&nr_if_inst[Mod_id]->if_mutex,NULL)==0,
                 "allocation of nr_if_inst[%d]->if_mutex fails\n",Mod_id);

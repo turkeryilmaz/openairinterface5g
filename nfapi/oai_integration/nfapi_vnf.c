@@ -2146,3 +2146,17 @@ int oai_nfapi_ue_release_req(nfapi_ue_release_request_t *release_req){
     }
     return retval;
 }
+
+int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind)
+{
+	LOG_D(NR_PHY, "Entering oai_nfapi_slot_ind sfn:%d,slot:%d\n", slot_ind->sfn, slot_ind->slot);
+	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
+	slot_ind->header.message_id= NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION;
+
+	int retval = nfapi_vnf_p7_nr_slot_ind(p7_config, slot_ind);
+
+	if (retval!=0) {
+		LOG_E(PHY, "%s() Problem sending retval:%d\n", __FUNCTION__, retval);
+	}
+	return retval;
+}
