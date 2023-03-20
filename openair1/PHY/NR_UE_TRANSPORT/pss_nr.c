@@ -603,9 +603,9 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
                                         frame_parms,
                                         fo_flag,
                                         is,
-                                        get_softmodem_params()->sl_mode == 0 ?
+                                        ((get_softmodem_params()->sl_mode == 0) ?
                                                 (int *)&PHY_vars_UE->common_vars.eNb_id :
-                                                (int *)&PHY_vars_UE->common_vars.N2_id,
+                                                (int *)&PHY_vars_UE->common_vars.N2_id),
                                         (int *)&PHY_vars_UE->common_vars.freq_offset);
 
 

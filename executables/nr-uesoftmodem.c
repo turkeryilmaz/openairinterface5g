@@ -600,9 +600,9 @@ int main( int argc, char **argv ) {
         if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
           mac->if_module->phy_config_request(&mac->phy_config);
         nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, &UE[CC_id]->nrUE_config,
-                               get_softmodem_params()->sl_mode == 0 ?
+                               ((get_softmodem_params()->sl_mode == 0) ?
                                *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
-                               UE[CC_id]->frame_parms.nr_band);
+                               UE[CC_id]->frame_parms.nr_band));
       }
 
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);

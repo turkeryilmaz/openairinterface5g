@@ -350,9 +350,9 @@ int do_pss_sss_extract_nr(PHY_VARS_NR_UE *ue,
 
     unsigned int k = frame_parms->first_carrier_offset +
                      frame_parms->ssb_start_subcarrier +
-                     get_softmodem_params()->sl_mode == 0 ?
+                     ((get_softmodem_params()->sl_mode == 0) ?
                      PSS_SSS_SUB_CARRIER_START :
-                     PSS_SSS_SUB_CARRIER_START_SL;
+                     PSS_SSS_SUB_CARRIER_START_SL);
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 

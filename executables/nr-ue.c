@@ -387,11 +387,15 @@ static void UE_synch(void *arg) {
   syncData_t *syncD=(syncData_t *) arg;
   int i, hw_slot_offset;
   PHY_VARS_NR_UE *UE = syncD->UE;
-  sync_mode_t sync_mode = get_softmodem_params()->sl_mode == 2 ? psbch : pbch;
+  sync_mode_t sync_mode = pbch;
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
-  UE->is_synchronized = 0;
-  UE->is_synchronized_sl = 0;
+  if (get_softmodem_params()->sl_mode == 2) {
+    UE->is_synchronized_sl = 0;
+    sync_mode = psbch;
+  } else {
+    UE->is_synchronized = 0;
+  }
 
   if (UE->UE_scan == 0) {
 
@@ -631,7 +635,7 @@ void processSlotTX(void *arg) {
     }
 
     if (get_softmodem_params()->sl_mode == 0) {
-      phy_procedures_nrUE_TX(UE, proc, 0);
+      phy_procedures_nrUE_TX(UE, proc, &phy_data);
     } else {
       phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
