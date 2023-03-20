@@ -597,8 +597,10 @@ int main( int argc, char **argv ) {
                                   get_softmodem_params()->numerology,
                                   nr_band);
       } else {
-        if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
+        if (mac->if_module != NULL && mac->if_module->phy_config_request != NULL) {
           mac->if_module->phy_config_request(&mac->phy_config);
+          mac->phy_config_request_sent = true;
+        }
         nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, &UE[CC_id]->nrUE_config,
                                ((get_softmodem_params()->sl_mode == 0) ?
                                *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
