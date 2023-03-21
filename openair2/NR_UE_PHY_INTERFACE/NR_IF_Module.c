@@ -230,7 +230,7 @@ void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
         }
 
         LOG_D(NR_MAC, "SLOT_IND sent to Proxy, Size: %d Frame %d Slot %d\n", encoded_size,
-                UL_INFO->rach_ind.sfn, UL_INFO->rach_ind.slot);
+                UL_INFO->vt_ue_slot_ind.sfn, UL_INFO->vt_ue_slot_ind.slot);
         if (send(ue_tx_sock_descriptor, buffer, encoded_size, 0) < 0)
         {
                 LOG_E(NR_MAC, "Send Proxy NR_UE failed\n");

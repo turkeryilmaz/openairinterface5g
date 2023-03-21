@@ -250,10 +250,10 @@ static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint
     {
         LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
                                             NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
+        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
         NR_UL_IND_t ul_info = {
                 .vt_ue_slot_ind = *vt_ue_slot_ind,
         };
-        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
         send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
         ul_info.vt_ue_slot_ind.sfn = 0;
         ul_info.vt_ue_slot_ind.slot = 0;
