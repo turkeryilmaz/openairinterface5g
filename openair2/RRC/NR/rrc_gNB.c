@@ -919,6 +919,33 @@ rrc_gNB_store_RRCReconfiguration(
       }
     }
   }
+
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+  if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
+    gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+    rrc_mac_config_req_gNB(rrc->module_id,
+                           rrc->configuration.pdsch_AntennaPorts,
+                           rrc->configuration.pusch_AntennaPorts,
+                           rrc->configuration.sib1_tda,
+                           rrc->configuration.minRXTXTIME,
+                           NULL,
+                           NULL,
+                           NULL,
+                           0,
+                           ue_p->rnti,
+                           ue_p->masterCellGroup);
+
+    uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList ?
+                        NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
+
+    nr_mac_enable_ue_rrc_processing_timer(ctxt_pP->module_id,
+                                          ue_context_pP->ue_context.rnti,
+                                          *rrc->carrier.servingcellconfigcommon->ssbSubcarrierSpacing,
+                                          delay_ms);
+  }
 }
 
 //-----------------------------------------------------------------------------
