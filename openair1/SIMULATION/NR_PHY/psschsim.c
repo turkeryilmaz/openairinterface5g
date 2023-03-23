@@ -503,7 +503,6 @@ int main(int argc, char **argv)
 
   int frame = 0;
   int slot = 0;
-  int max_num_re = Nl * nb_symb_sch * nb_rb * NR_NB_SC_PER_RB;
   int16_t **tx_layers;
   int32_t **txdataF = txUE->common_vars.txdataF;
    unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
@@ -524,16 +523,13 @@ int main(int argc, char **argv)
   int16_t **ulsch_llr_layers = rxUE->pssch_vars[UE_id]->llr_layers;
   int16_t **ulsch_llr_layers_adj = rxUE->pssch_vars[UE_id]->llr_layers_adj;
   int nb_re_SCI2 = slsch_ue_rx->harq_processes[0]->B_sci2 / SCI2_mod_order;
-  int nb_re_slsch = G / mod_order;
 
   uint16_t num_sci2_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
   uint16_t num_data_symbs = (G << 1) / mod_order;
   uint16_t num_sci2_samples = num_sci2_symbs >> 1;
-  uint16_t num_data_samples = num_data_symbs >> 1;
 
   int32_t **rxdataF = rxUE->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   UE_nr_rxtx_proc_t proc;
-  int dlsch_id = 0;
   int start_symbol    = rel16_sl_rx->start_symbol_index;
   uint8_t number_of_symbols = rel16_sl_rx->nr_of_symbols;
 
@@ -557,13 +553,13 @@ int main(int argc, char **argv)
     n_errors = 0;
     n_false_positive = 0;
 
-    double SNR_lin = pow(10, SNR / 10.0);
-    double sigma = 1.0 / sqrt(2 * SNR_lin);
+    //double SNR_lin = pow(10, SNR / 10.0);
+    //double sigma = 1.0 / sqrt(2 * SNR_lin);
     for (int trial = 0; trial < n_trials; trial++) {
       uint32_t rxdataF_ext_offset = 0;
       for (int aatx = 0; aatx < Nl; aatx++) {
         for (int i = 0 ; i < rxUE->frame_parms.samples_per_slot_wCP; i++){
-          rxdataF[aatx][i] = txdataF[aatx][i] ;//+ sigma * gaussdouble(0.0, 1.0);
+          rxdataF[aatx][i] = txdataF[aatx][i]; //+ sigma * gaussdouble(0.0, 1.0);
         }
       }
 
@@ -582,8 +578,6 @@ int main(int argc, char **argv)
         if (1 <= symbol && symbol <= 3) {
           nb_re_sci1 = NR_NB_SC_PER_RB * NB_RB_SCI1;
         }
-        int soffset = (slot & 3) * rxUE->frame_parms.symbols_per_slot * rxUE->frame_parms.ofdm_symbol_size;
-
         uint32_t allocatable_sci2_re = min(nb_re_sci2, NR_NB_SC_PER_RB * harq_process_rxUE->nb_rb / 2 - nb_re_sci1);
 
         nr_slsch_extract_rbs(rxdataF,
@@ -597,7 +591,7 @@ int main(int argc, char **argv)
 
         for (int aatx = 0; aatx < Nl; aatx++) {
           if (dmrs_symbol_flag == 0) {
-            nr_ulsch_compute_llr(&pssch_vars->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB],
+            nr_slsch_compute_llr(&pssch_vars->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB],
                                 &a, &b,
                                 &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB],
                                 (harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB - nb_re_sci1) / NR_NB_SC_PER_RB,
@@ -612,7 +606,7 @@ int main(int argc, char **argv)
             data_offset += harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB - nb_re_sci1;
           } else {
             if (allocatable_sci2_re > 0) {
-              nr_ulsch_compute_llr(&pssch_vars->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB],
+              nr_slsch_compute_llr(&pssch_vars->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB],
                                   &a, &b,
                                   &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB],
                                   allocatable_sci2_re / 6,
@@ -628,7 +622,7 @@ int main(int argc, char **argv)
             uint32_t diff_re = NR_NB_SC_PER_RB * harq_process_rxUE->nb_rb / 2 - nb_re_sci1 - allocatable_sci2_re;
             if (diff_re > 0) {
               uint32_t offset = allocatable_sci2_re;
-              nr_ulsch_compute_llr(&pssch_vars->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB + offset],
+              nr_slsch_compute_llr(&pssch_vars->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB + offset],
                                   &a, &b,
                                   &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][symbol * harq_process_rxUE->nb_rb * NR_NB_SC_PER_RB + offset],
                                   diff_re / NR_NB_SC_PER_RB,

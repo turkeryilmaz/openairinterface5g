@@ -175,7 +175,7 @@ int16_t** nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                             nb_dmrs_re_per_rb, length_dmrs, mod_order, Nl);
 
   if (nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
-    return;
+    return NULL;
   unsigned int G_SCI2_bits = harq_process_ul_ue->B_sci2;
 
   //////////////////SLSCH data and control multiplexing//////////////
