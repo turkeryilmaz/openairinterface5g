@@ -62,6 +62,16 @@ int nr_pdsch_dmrs_rx(PHY_VARS_NR_UE *ue,
                      unsigned short nb_pdsch_rb,
                      uint8_t config_type);
 
+int nr_pssch_dmrs_rx(PHY_VARS_NR_UE *ue,
+                     unsigned int Ns,
+                     unsigned int *nr_gold_pusch,
+                     int32_t *output,
+                     unsigned short p,
+                     unsigned char lp,
+                     unsigned short nb_pusch_rb,
+                     uint32_t re_offset,
+                     uint8_t dmrs_type);
+
 void nr_gold_pbch(PHY_VARS_NR_UE* ue);
 
 void nr_gold_psbch(PHY_VARS_NR_UE* ue);
@@ -71,6 +81,9 @@ void nr_gold_pdcch(PHY_VARS_NR_UE* ue,
 
 void nr_gold_pdsch(PHY_VARS_NR_UE* ue,
                    int nscid,
+                   uint32_t nid);
+
+void nr_gold_pssch(PHY_VARS_NR_UE* ue,
                    uint32_t nid);
 
 void nr_init_pusch_dmrs(PHY_VARS_NR_UE* ue,

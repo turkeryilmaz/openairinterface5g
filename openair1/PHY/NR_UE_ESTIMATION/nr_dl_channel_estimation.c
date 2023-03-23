@@ -38,6 +38,63 @@
 #define CH_INTERP 0
 #define NO_INTERP 1
 
+void freq2time(uint16_t ofdm_symbol_size,
+               int16_t *freq_signal,
+               int16_t *time_signal) {
+
+  switch (ofdm_symbol_size) {
+    case 128:
+      idft(IDFT_128, freq_signal, time_signal, 1);
+      break;
+    case 256:
+      idft(IDFT_256, freq_signal, time_signal, 1);
+      break;
+    case 512:
+      idft(IDFT_512, freq_signal, time_signal, 1);
+      break;
+    case 1024:
+      idft(IDFT_1024, freq_signal, time_signal, 1);
+      break;
+    case 1536:
+      idft(IDFT_1536, freq_signal, time_signal, 1);
+      break;
+    case 2048:
+      idft(IDFT_2048, freq_signal, time_signal, 1);
+      break;
+    case 4096:
+      idft(IDFT_4096, freq_signal, time_signal, 1);
+      break;
+    case 8192:
+      idft(IDFT_8192, freq_signal, time_signal, 1);
+      break;
+    default:
+      idft(IDFT_512, freq_signal, time_signal, 1);
+      break;
+  }
+}
+
+__attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *in1,
+                                                                         int *offset1,
+                                                                         const int step1,
+                                                                         c16_t *in2,
+                                                                         int *offset2,
+                                                                         const int step2,
+                                                                         const int modulo2,
+                                                                         const int N) {
+
+  int localOffset1=*offset1;
+  int localOffset2=*offset2;
+  c32_t cumul={0}; 
+  for (int i=0; i<N; i++) {
+    cumul=c32x16maddShift(in1[localOffset1], in2[localOffset2], cumul, 15);
+    localOffset1+=step1;
+    localOffset2= (localOffset2 + step2) % modulo2;
+  }
+  *offset1=localOffset1;
+  *offset2=localOffset2;
+  return c16x32div(cumul, N);
+}
+
 int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
                              UE_nr_rxtx_proc_t *proc,
                              uint8_t gNB_id,
@@ -778,6 +835,488 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
   if (dmrss == 12)
     UEscopeCopy(ue, psbchDlChEstimateTime, (void*)dl_ch_estimates_time, sizeof(struct complex16), ue->frame_parms.nb_antennas_rx, idftsizeidx);
 
+  return(0);
+}
+
+int nr_pssch_channel_estimation(PHY_VARS_NR_UE *ue,
+                                unsigned char Ns,
+                                unsigned short p,
+                                unsigned char symbol,
+                                int ul_id,
+                                unsigned short bwp_start_subcarrier,
+                                nfapi_nr_pssch_pdu_t *pssch_pdu) {
+  c16_t pilot[3280] __attribute__((aligned(16)));
+  int16_t *fl,*fm,*fr,*fml,*fmr,*fmm,*fdcl,*fdcr,*fdclh,*fdcrh;
+
+  const int chest_freq = ue->chest_freq;
+
+#ifdef DEBUG_CH
+  FILE *debug_ch_est;
+  debug_ch_est = fopen("debug_ch_est.txt","w");
+#endif
+  //uint16_t Nid_cell = (eNB_offset == 0) ? ue->frame_parms.Nid_cell : ue->measurements.adj_cell_id[eNB_offset-1];
+  c16_t **sl_ch_estimates  = (c16_t **) ue->pssch_vars[ul_id]->sl_ch_estimates;
+  const int symbolSize = ue->frame_parms.ofdm_symbol_size;
+  const int soffset = (Ns&3)*ue->frame_parms.symbols_per_slot*symbolSize;
+  const int nushift = (p>>1)&1;
+  ue->frame_parms.nushift = nushift;
+  int ch_offset     = symbolSize*symbol;
+  const int symbol_offset = symbolSize*symbol;
+
+  const int k0 = bwp_start_subcarrier;
+  const int nb_rb_pusch = pssch_pdu->rb_size;
+
+  LOG_D(PHY, "In %s: ch_offset %d, soffset %d, symbol_offset %d, OFDM size %d, Ns = %d, k0 = %d, symbol %d\n",
+        __FUNCTION__,
+        ch_offset, soffset,
+        symbol_offset,
+        symbolSize,
+        Ns,
+        k0,
+        symbol);
+
+  switch (nushift) {
+    case 0:
+      fl = filt8_l0;
+      fm = filt8_m0;
+      fr = filt8_r0;
+      fmm = filt8_mm0;
+      fml = filt8_m0;
+      fmr = filt8_mr0;
+      fdcl = filt8_dcl0;
+      fdcr = filt8_dcr0;
+      fdclh = filt8_dcl0_h;
+      fdcrh = filt8_dcr0_h;
+      break;
+
+    case 1:
+      fl = filt8_l1;
+      fm = filt8_m1;
+      fr = filt8_r1;
+      fmm = filt8_mm1;
+      fml = filt8_ml1;
+      fmr = filt8_mm1;
+      fdcl = filt8_dcl1;
+      fdcr = filt8_dcr1;
+      fdclh = filt8_dcl1_h;
+      fdcrh = filt8_dcr1_h;
+      break;
+
+    default:
+#ifdef DEBUG_CH
+      if (debug_ch_est)
+        fclose(debug_ch_est);
+
+#endif
+      return(-1);
+      break;
+  }
+
+  //------------------generate DMRS------------------//
+
+  if(pssch_pdu->ul_dmrs_scrambling_id != ue->pssch_gold_init_rx)  {
+    ue->pssch_gold_init_rx = pssch_pdu->ul_dmrs_scrambling_id;
+    nr_gold_pssch(ue, pssch_pdu->ul_dmrs_scrambling_id);
+  }
+
+  if (pssch_pdu->transform_precoding == transformPrecoder_disabled) {
+    nr_pssch_dmrs_rx(ue, Ns, ue->nr_gold_pssch_dmrs[Ns][symbol], (int32_t *)pilot, (1000+p), 0, nb_rb_pusch,
+                     (pssch_pdu->bwp_start + pssch_pdu->rb_start)*NR_NB_SC_PER_RB, pssch_pdu->dmrs_config_type);
+  }
+#if 0
+  else { // if transform precoding or SC-FDMA is enabled in Uplink
+    // NR_SC_FDMA supports type1 DMRS so only 6 DMRS REs per RB possible
+    const uint16_t index = get_index_for_dmrs_lowpapr_seq(nb_rb_pusch * (NR_NB_SC_PER_RB/2));
+    const uint8_t u = pssch_pdu->dfts_ofdm.low_papr_group_number;
+    const uint8_t v = pssch_pdu->dfts_ofdm.low_papr_sequence_number;
+    int16_t *dmrs_seq = gNB_dmrs_lowpaprtype1_sequence[u][v][index];
+    AssertFatal(index >= 0, "Num RBs not configured according to 3GPP 38.211 section 6.3.1.4. For PUSCH with transform precoding, num RBs cannot be multiple of any other primenumber other than 2,3,5\n");
+    AssertFatal(dmrs_seq != NULL, "DMRS low PAPR seq not found, check if DMRS sequences are generated");
+    LOG_D(PHY,"Transform Precoding params. u: %d, v: %d, index for dmrsseq: %d\n", u, v, index);
+    nr_pusch_lowpaprtype1_dmrs_rx(ue, Ns, dmrs_seq, (int32_t *)pilot, 1000, 0, nb_rb_pusch, 0, pssch_pdu->dmrs_config_type);
+#ifdef DEBUG_PUSCH
+    printf ("NR_UL_CHANNEL_EST: index %d, u %d,v %d\n", index, u, v);
+    LOG_M("gNb_DMRS_SEQ.m","gNb_DMRS_SEQ", dmrs_seq,6*nb_rb_pusch,1,1);
+#endif
+  }
+#endif
+  //------------------------------------------------//
+
+#ifdef DEBUG_PUSCH
+
+  for (int i = 0; i < (6 * nb_rb_pusch); i++) {
+    LOG_I(PHY, "In %s: %d + j*(%d)\n", __FUNCTION__, pilot[i].r,pilot[i].i);
+  }
+
+#endif
+  const uint8_t b_shift = pssch_pdu->nrOfLayers == 1;
+
+  for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
+    c16_t *rxdataF = (c16_t *)&ue->common_vars.common_vars_rx_data_per_thread[ul_id].rxdataF[aarx][symbol_offset];
+    c16_t *ul_ch = &sl_ch_estimates[p*ue->frame_parms.nb_antennas_rx+aarx][ch_offset];
+
+    memset(ul_ch,0,sizeof(*ul_ch)*symbolSize);
+#ifdef DEBUG_PUSCH
+    LOG_I(PHY, "In %s symbol_offset %d, nushift %d\n", __FUNCTION__, symbol_offset, nushift);
+    LOG_I(PHY, "In %s ch est pilot, N_RB_UL %d\n", __FUNCTION__, ue->frame_parms.N_RB_UL);
+    LOG_I(PHY, "In %s bwp_start_subcarrier %d, k0 %d, first_carrier %d, nb_rb_pusch %d\n", __FUNCTION__, bwp_start_subcarrier, k0, ue->frame_parms.first_carrier_offset, nb_rb_pusch);
+    LOG_I(PHY, "In %s ul_ch addr %p nushift %d\n", __FUNCTION__, ul_ch, nushift);
+#endif
+
+    if (pssch_pdu->dmrs_config_type == pusch_dmrs_type1 && chest_freq == 0) {
+      c16_t *pil   = pilot;
+      int re_offset = k0;
+      LOG_D(PHY,"PUSCH estimation DMRS type 1, Freq-domain interpolation");
+      // For configuration type 1: k = 4*n + 2*k' + delta,
+      // where k' is 0 or 1, and delta is in Table 6.4.1.1.3-1 from TS 38.211
+      int pilot_cnt = 0;
+      int delta = nr_pusch_dmrs_delta(pusch_dmrs_type1, p);
+
+      for (int n = 0; n < 3*nb_rb_pusch; n++) {
+        // LS estimation
+        c32_t ch = {0};
+
+        for (int k_line = 0; k_line <= 1; k_line++) {
+          re_offset = (k0 + (n << 2) + (k_line << 1) + delta) % symbolSize;
+          ch=c32x16maddShift(*pil,
+                             rxdataF[soffset + re_offset],
+                             ch,
+                             15+b_shift);
+          pil++;
+        }
+
+        c16_t ch16= {.r=(int16_t)ch.r, .i=(int16_t)ch.i};
+
+        // Channel interpolation
+        for (int k_line = 0; k_line <= 1; k_line++) {
+#ifdef DEBUG_PUSCH
+          re_offset = (k0 + (n << 2) + (k_line << 1)) % symbolSize;
+          c16_t *rxF = &rxdataF[soffset + re_offset];
+          printf("pilot %4u: pil -> (%6d,%6d), rxF -> (%4d,%4d), ch -> (%4d,%4d)\n",
+                 pilot_cnt, pil->r, pil->i, rxF->r, rxF->i, ch.r, ch.i);
+#endif
+          
+          if (pilot_cnt == 0) {
+            c16multaddVectRealComplex(fl, &ch16, ul_ch, 8);
+          } else if (pilot_cnt == 1) {
+            c16multaddVectRealComplex(fml, &ch16, ul_ch, 8);
+          } else if (pilot_cnt == (6*nb_rb_pusch-2)) {
+            c16multaddVectRealComplex(fmr, &ch16, ul_ch, 8);
+            ul_ch+=4;
+          } else if (pilot_cnt == (6*nb_rb_pusch-1)) {
+            c16multaddVectRealComplex(fr, &ch16, ul_ch, 8);
+          } else if (pilot_cnt%2 == 0) {
+            c16multaddVectRealComplex(fmm, &ch16, ul_ch, 8);
+            ul_ch+=4;
+          } else {
+            c16multaddVectRealComplex(fm, &ch16, ul_ch, 8);
+          }
+          
+          pilot_cnt++;
+        }
+      }
+
+      // check if PRB crosses DC and improve estimates around DC
+      if ((bwp_start_subcarrier < symbolSize) && (bwp_start_subcarrier+nb_rb_pusch*12 >= symbolSize)) {
+        ul_ch = &sl_ch_estimates[p*ue->frame_parms.nb_antennas_rx+aarx][ch_offset];
+        const uint16_t idxDC = symbolSize - bwp_start_subcarrier;
+        re_offset = k0;
+        pil = pilot + idxDC / 2 - 1;
+        ul_ch += idxDC - 2 ;
+        ul_ch = memset(ul_ch, 0, sizeof(*ul_ch)*5);
+        re_offset = (re_offset + idxDC - 2) % symbolSize;
+        const c16_t ch=c16mulShift(*pil,
+                                   rxdataF[soffset+nushift+re_offset],
+                                   15);
+
+        // for proper alignment of SIMD vectors
+        if((ue->frame_parms.N_RB_UL&1)==0) {
+          c16multaddVectRealComplex(fdcl, &ch, ul_ch-2, 8);
+          pil += 2;
+          re_offset = (re_offset+4) % symbolSize;
+          const c16_t ch_tmp=c16mulShift(*pil,
+                                         rxdataF[nushift+re_offset],
+                                         15);
+          c16multaddVectRealComplex(fdcr, &ch_tmp, ul_ch-2, 8);
+        } else {
+          c16multaddVectRealComplex(fdclh, &ch, ul_ch, 8);
+          pil += 2;
+          re_offset = (re_offset+4) % symbolSize;
+          const c16_t ch_tmp=c16mulShift(*pil,
+                                         rxdataF[soffset+nushift+re_offset],
+                                         15);
+          c16multaddVectRealComplex(fdcrh, &ch_tmp, ul_ch, 8);
+        }
+      }
+
+#ifdef DEBUG_PUSCH
+      ul_ch = &sl_ch_estimates[p*ue->frame_parms.nb_antennas_rx+aarx][ch_offset];
+
+      for(uint16_t idxP=0; idxP<ceil((float)nb_rb_pusch*12/8); idxP++) {
+        printf("(%3d)\t",idxP);
+
+        for(uint8_t idxI=0; idxI<8; idxI++) {
+          printf("%d\t%d\t",ul_ch[idxP*8+idxI].r,ul_ch[idxP*8+idxI].i);
+        }
+
+        printf("\n");
+      }
+
+#endif
+    } else if (pssch_pdu->dmrs_config_type == pusch_dmrs_type2 && chest_freq == 0) { //pusch_dmrs_type2  |p_r,p_l,d,d,d,d,p_r,p_l,d,d,d,d|
+      LOG_D(PHY,"PUSCH estimation DMRS type 2, Freq-domain interpolation");
+      c16_t *pil   = pilot;
+      int re_offset = k0;
+      // Treat first DMRS specially (left edge)
+      *ul_ch=c16mulShift(*pil,
+                         rxdataF[soffset+nushift+re_offset],
+                         15);
+      pil++;
+      ul_ch++;
+      re_offset = (re_offset + 1)%symbolSize;
+      ch_offset++;
+
+      // TO verify: used after the loop, likely a piece of code is missing for ch_r
+      c16_t ch_r;
+      for (int re_cnt = 1; re_cnt < (nb_rb_pusch*NR_NB_SC_PER_RB) - 5; re_cnt += 6) {
+        c16_t ch_l=c16mulShift(*pil,
+                               rxdataF[soffset+nushift+re_offset],
+                               15);
+        *ul_ch = ch_l;
+        pil++;
+        ul_ch++;
+        ch_offset++;
+        multadd_real_four_symbols_vector_complex_scalar(filt8_ml2,
+                                                      &ch_l,
+                                                      ul_ch);
+        re_offset = (re_offset+5)%symbolSize;
+        ch_r=c16mulShift(*pil,
+                         rxdataF[soffset+nushift+re_offset],
+                         15);
+        multadd_real_four_symbols_vector_complex_scalar(filt8_mr2,
+                                                        &ch_r,
+                                                        ul_ch);
+        //for (int re_idx = 0; re_idx < 8; re_idx += 2)
+        //printf("ul_ch = %d + j*%d\n", ul_ch[re_idx], ul_ch[re_idx+1]);
+        ul_ch += 4;
+        ch_offset += 4;
+        *ul_ch = ch_r;
+        pil++;
+        ul_ch++;
+        ch_offset++;
+        re_offset = (re_offset + 1)%symbolSize;
+      }
+      
+      // Treat last pilot specially (right edge)
+      c16_t ch_l=c16mulShift(*pil,
+                             rxdataF[soffset+nushift+re_offset],
+                             15);
+      *ul_ch = ch_l;
+      ul_ch++;
+      ch_offset++;
+      multadd_real_four_symbols_vector_complex_scalar(filt8_rr1,
+                                                      &ch_l,
+                                                      ul_ch);
+      multadd_real_four_symbols_vector_complex_scalar(filt8_rr2,
+                                                      &ch_r,
+                                                      ul_ch);
+      __m128i *ul_ch_128 = (__m128i *)&sl_ch_estimates[p*ue->frame_parms.nb_antennas_rx+aarx][ch_offset];
+      ul_ch_128[0] = _mm_slli_epi16 (ul_ch_128[0], 2);
+    } 
+
+    else if (pssch_pdu->dmrs_config_type == pusch_dmrs_type1) { // this is case without frequency-domain linear interpolation, just take average of LS channel estimates of 6 DMRS REs and use a common value for the whole PRB
+      LOG_D(PHY,"PUSCH estimation DMRS type 1, no Freq-domain interpolation\n");
+      c16_t *rxF   =  &rxdataF[soffset + nushift];
+      int pil_offset = 0;
+      int re_offset = k0;
+      c16_t ch;
+      
+      // First PRB
+      ch=c32x16cumulVectVectWithSteps(pilot, &pil_offset, 1, rxF, &re_offset, 2, symbolSize, 6);
+
+#if NO_INTERP
+      for (c16_t *end=ul_ch+12; ul_ch<end; ul_ch++)
+        *ul_ch=ch;
+#else
+      c16multaddVectRealComplex(filt8_avlip0, ch, ul_ch, 8);
+      ul_ch += 8;
+      c16multaddVectRealComplex(filt8_avlip1, ch, ul_ch, 8);
+      ul_ch += 8;
+      c16multaddVectRealComplex(filt8_avlip2, ch, ul_ch, 8);
+      ul_ch -= 12;
+#endif
+
+      for (int pilot_cnt=6; pilot_cnt<6*(nb_rb_pusch-1); pilot_cnt += 6) {
+        ch=c32x16cumulVectVectWithSteps(pilot, &pil_offset, 1, rxF, &re_offset, 2, symbolSize, 6);
+
+#if NO_INTERP
+      for (c16_t *end=ul_ch+12; ul_ch<end; ul_ch++)
+          *ul_ch=ch;
+#else
+        ul_ch[3].r += (ch.r * 1365)>>15; // 1/12*16384
+        ul_ch[3].i += (ch.i * 1365)>>15; // 1/12*16384
+
+        ul_ch += 4;
+        multadd_real_vector_complex_scalar(filt8_avlip3, ch, ul_ch, 8);
+
+        ul_ch += 8;
+        multadd_real_vector_complex_scalar(filt8_avlip4, ch, ul_ch, 8);
+
+        ul_ch += 8;
+        multadd_real_vector_complex_scalar(filt8_avlip5, ch, ul_ch, 8);
+        ul_ch -= 8;
+#endif
+      }
+      // Last PRB
+      ch=c32x16cumulVectVectWithSteps(pilot, &pil_offset, 1, rxF, &re_offset, 2, symbolSize, 6);
+      
+#if NO_INTERP
+      for (c16_t *end=ul_ch+12; ul_ch<end; ul_ch++)
+        *ul_ch=ch;
+#else
+      ul_ch[3].r += (ch.r * 1365)>>15; // 1/12*16384
+      ul_ch[3].i += (ch.i * 1365)>>15; // 1/12*16384
+      
+      ul_ch += 4;
+      c16multaddVectRealComplex(filt8_avlip3,
+                                         ch,
+                                         ul_ch,
+                                         8);
+      
+      ul_ch += 8;
+      c16multaddVectRealComplex(filt8_avlip6,
+                                         ch,
+                                         ul_ch,
+                                         8);
+#endif
+    } else  { // this is case without frequency-domain linear interpolation, just take average of LS channel estimates of 4 DMRS REs and use a common value for the whole PRB
+      LOG_D(PHY,"PUSCH estimation DMRS type 2, no Freq-domain interpolation");
+      c16_t *pil   = pilot;
+      int re_offset = k0;
+      c32_t ch0={0};
+      //First PRB
+      ch0=c32x16mulShift(*pil,
+                         rxdataF[soffset + nushift + re_offset],
+                         15);
+      pil++;
+      re_offset = (re_offset+1) % symbolSize;
+      ch0=c32x16maddShift(*pil,
+                          rxdataF[nushift+re_offset],
+                          ch0,
+                          15);
+      pil++;
+      re_offset = (re_offset+5) % symbolSize;
+      ch0=c32x16maddShift(*pil,
+                          rxdataF[nushift+re_offset],
+                          ch0,
+                          15);
+      re_offset = (re_offset+1) % symbolSize;
+      ch0=c32x16maddShift(*pil,
+                          rxdataF[nushift+re_offset],
+                          ch0,
+                          15);
+      pil++;
+      re_offset = (re_offset+5) % symbolSize;
+
+      c16_t ch=c16x32div(ch0, 4);
+#if NO_INTERP
+      for (c16_t *end=ul_ch+12; ul_ch<end; ul_ch++)
+        *ul_ch=ch;
+#else
+      c16multaddVectRealComplex(filt8_avlip0, &ch, ul_ch, 8);
+      ul_ch += 8;
+      c16multaddVectRealComplex(filt8_avlip1, &ch, ul_ch, 8);
+      ul_ch += 8;
+      c16multaddVectRealComplex(filt8_avlip2, &ch, ul_ch, 8);
+      ul_ch -= 12;
+#endif
+
+      for (int pilot_cnt=4; pilot_cnt<4*(nb_rb_pusch-1); pilot_cnt += 4) {
+        c32_t ch0;
+        ch0=c32x16mulShift(*pil, rxdataF[nushift+re_offset], 15);
+        pil++;
+        re_offset = (re_offset+1) % symbolSize;
+
+        ch0=c32x16maddShift(*pil, rxdataF[nushift+re_offset], ch0, 15);
+        pil++;
+        re_offset = (re_offset+5) % symbolSize;
+
+        ch0=c32x16maddShift(*pil, rxdataF[nushift+re_offset], ch0, 15);
+        pil++;
+        re_offset = (re_offset+1) % symbolSize;
+
+        ch0=c32x16maddShift(*pil, rxdataF[nushift+re_offset], ch0, 15);
+        pil++;
+        re_offset = (re_offset+5) % symbolSize;
+
+        ch=c16x32div(ch0, 4);
+
+#if NO_INTERP
+        for (c16_t *end=ul_ch+12; ul_ch<end; ul_ch++)
+          *ul_ch=ch;
+#else
+        ul_ch[3]=c16maddShift(ch,(c16_t) {1365,1365},15); // 1365 = 1/12*16384 (full range is +/- 32768)
+        ul_ch += 4;
+        c16multaddVectRealComplex(filt8_avlip3, &ch, ul_ch, 8);
+        ul_ch += 8;
+        c16multaddVectRealComplex(filt8_avlip4, &ch, ul_ch, 8);
+        ul_ch += 8;
+        c16multaddVectRealComplex(filt8_avlip5, &ch, ul_ch, 8);
+        ul_ch -= 8;
+#endif
+      }
+
+      // Last PRB
+      ch0=c32x16mulShift(*pil, rxdataF[nushift+re_offset], 15);
+      pil++;
+      re_offset = (re_offset+1) % symbolSize;
+      
+      ch0=c32x16maddShift(*pil, rxdataF[nushift+re_offset], ch0, 15);
+      pil++;
+      re_offset = (re_offset+5) % symbolSize;
+      
+      ch0=c32x16maddShift(*pil, rxdataF[nushift+re_offset], ch0, 15);
+      pil++;
+      re_offset = (re_offset+1) % symbolSize;
+      
+      ch0=c32x16maddShift(*pil, rxdataF[nushift+re_offset], ch0, 15);
+      pil++;
+      re_offset = (re_offset+5) % symbolSize;
+      
+      ch=c16x32div(ch0, 4);
+#if NO_INTERP
+      for (c16_t *end=ul_ch+12; ul_ch<end; ul_ch++)
+          *ul_ch=ch;
+#else
+      ul_ch[3]=c16maddShift(ch, c16_t {1365,1365},15);// 1365 = 1/12*16384 (full range is +/- 32768)
+      ul_ch += 4;
+      c16multaddVectRealComplex(filt8_avlip3, &ch, ul_ch, 8);
+      ul_ch += 8;
+      c16multaddVectRealComplex(filt8_avlip6, &ch, ul_ch, 8);
+#endif
+    }
+    
+#ifdef DEBUG_PUSCH
+    ul_ch = &sl_ch_estimates[p*ue->frame_parms.nb_antennas_rx+aarx][ch_offset];
+
+    for(int idxP=0; idxP<ceil((float)nb_rb_pusch*12/8); idxP++) {
+      for(int idxI=0; idxI<8; idxI++) {
+        printf("%d\t%d\t",ul_ch[idxP*8+idxI].r,ul_ch[idxP*8+idxI].i);
+      }
+
+      printf("%d\n",idxP);
+    }
+
+#endif
+    // Convert to time domain
+    freq2time(symbolSize,
+              (int16_t *) &sl_ch_estimates[aarx][symbol_offset],
+              (int16_t *) ue->pssch_vars[ul_id]->sl_ch_estimates_time[aarx]);
+  }
+
+#ifdef DEBUG_CH
+  fclose(debug_ch_est);
+#endif
   return(0);
 }
 

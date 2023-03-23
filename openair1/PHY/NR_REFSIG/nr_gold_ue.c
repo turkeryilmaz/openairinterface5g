@@ -65,6 +65,29 @@ void nr_gold_psbch(PHY_VARS_NR_UE* ue)
   }
 }
 
+void nr_gold_pssch(PHY_VARS_NR_UE* ue, uint32_t nid) {
+
+  unsigned char ns;
+  unsigned int n, x1, x2;
+  int reset;
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  unsigned short l;
+  int pssch_dmrs_init_length =  ((fp->N_RB_UL * 12) >> 5) + 1;
+
+  for (ns = 0; ns < fp->slots_per_frame; ns++) {
+    for (l = 0; l < fp->symbols_per_slot; l++) {
+      reset = 1;
+      x2 = ((1 << 17) * (fp->symbols_per_slot * ns + l + 1) * ((nid << 1) + 1) +((nid << 1)));
+      LOG_D(PHY,"DMRS slot %d, symb %d x2 %x\n",ns,l,x2);
+
+      for (n = 0; n < pssch_dmrs_init_length; n++) {
+        ue->nr_gold_pssch_dmrs[ns][l][n] = lte_gold_generic(&x1, &x2, reset);
+        reset = 0;
+      }
+    }
+  }
+}
+
 void nr_gold_pdcch(PHY_VARS_NR_UE* ue,
                    unsigned short nid)
 {

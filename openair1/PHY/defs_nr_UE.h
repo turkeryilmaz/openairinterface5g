@@ -326,6 +326,7 @@ typedef struct {//from gNB code for PSSCH Rx
   /// - first index: ? [0..3] (hard coded)
   /// - first index: ? [0..1179743] (hard coded)
   int16_t **llr_layers;
+  int16_t **llr_layers_adj;
   /// DMRS symbol index, to be updated every DMRS symbol within a slot.
   uint8_t dmrs_symbol;
   // PTRS symbol index, to be updated every PTRS symbol within a slot.
@@ -898,6 +899,8 @@ typedef struct {
 
 #endif
 
+  uint16_t pssch_gold_init;
+  uint16_t pssch_gold_init_rx;
 
   /// PBCH DMRS sequence
   uint32_t nr_gold_pbch[2][64][NR_PBCH_DMRS_LENGTH_DWORD];

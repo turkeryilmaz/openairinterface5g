@@ -148,6 +148,17 @@ int phy_procedures_nrUE_RX(PHY_VARS_NR_UE *ue,
                            NR_UE_PDCCH_CONFIG *phy_pdcch_config,
                            notifiedFIFO_t *txFifo);
 
+/*! \brief Scheduling for UE Sidelink RX procedures in normal subframes.
+  @param ue                     Pointer to UE variables on which to act
+  @param proc                   Pointer to proc information
+  @param synchRefUE_id          Local id of synchRefUE on which to act
+  @param txFifo                 Result fifo if PSSCH is run in parallel
+*/
+int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           uint8_t synchRefUE_id,
+                           notifiedFIFO_t *txFifo);
+
 int phy_procedures_slot_parallelization_nrUE_RX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint8_t eNB_id, uint8_t abstraction_flag, uint8_t do_pdcch_flag, relaying_type_t r_type);
 
 void processSlotTX(void *arg);

@@ -369,9 +369,12 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   }
   if (ue->is_synchronized_sl == 1) {
     // TODO: check gNB's downlink side code. The following is from nrUE's uplink side.
+    int16_t **tx_layers;
+    int32_t **txdataF = txUE->common_vars.txdataF;
     for (uint8_t harq_pid = 0; harq_pid < ue->slsch[proc->thread_id][gNB_id]->number_harq_processes_for_pusch; harq_pid++) {
       if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE)
-        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx, NULL);
+        // TODO: Need to remove return value and update the last argument.
+        tx_layers = nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx, txdataF);
     }
   }
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);

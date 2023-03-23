@@ -35,7 +35,7 @@
 #include "PHY/impl_defs_top.h"
 
 
-
+#if 0
 //----------------------------------------------------------------------------------------------
 // QPSK
 //----------------------------------------------------------------------------------------------
@@ -468,9 +468,9 @@ void nr_ulsch_64qam_llr(int32_t *rxdataF_comp,
   _m_empty();
 #endif
 }
+#endif
 
-
-void nr_ulsch_compute_llr(int32_t *rxdataF_comp,
+void nr_slsch_compute_llr(int32_t *rxdataF_comp,
                           int32_t *ul_ch_mag,
                           int32_t *ul_ch_magb,
                           int16_t *ulsch_llr,

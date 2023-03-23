@@ -104,6 +104,14 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                 unsigned short bwp_start_subcarrier,
                                 unsigned short nb_rb_pdsch);
 
+int nr_pssch_channel_estimation(PHY_VARS_NR_UE *ue,
+                                unsigned char Ns,
+                                unsigned short p,
+                                unsigned char symbol,
+                                int ul_id,
+                                unsigned short bwp_start_subcarrier,
+                                nfapi_nr_pssch_pdu_t *pssch_pdu);
+
 void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
                         PHY_VARS_NR_UE *ue,
                         module_id_t gNB_id,
