@@ -38,6 +38,10 @@
 
 #define NR_PBCH_PDU_BITS 24
 
+void freq2time(uint16_t ofdm_symbol_size,
+               int16_t *freq_signal,
+               int16_t *time_signal);
+
 /*!
 \fn int nr_generate_pss
 \brief Generation of the NR PSS

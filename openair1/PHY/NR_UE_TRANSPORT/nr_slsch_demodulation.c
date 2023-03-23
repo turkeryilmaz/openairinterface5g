@@ -58,9 +58,7 @@ void nr_slsch_extract_rbs(int32_t **rxdataF,
   int nb_re_pssch2 = nb_re_pssch;
 #endif
   for (aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
-    //uint16_t m0 = 0;
     uint16_t m = 0;
-
     rxF = (int16_t *)&rxdataF[aarx][soffset + (symbol * frame_parms->ofdm_symbol_size)];
     rxF_ext = (int16_t *)&pssch_vars->rxdataF_ext[aarx][symbol * nb_re_pssch2]; // [hna] rxdataF_ext isn't contiguous in order to solve an alignment problem ib llr computation in case of mod_order = 4, 6
 

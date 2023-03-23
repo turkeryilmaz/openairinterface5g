@@ -80,10 +80,6 @@ void nr_codeword_unscrambling(int16_t* llr, uint32_t size, uint8_t q, uint32_t N
 
 void nr_codeword_unscrambling_sl(int16_t* llr, uint32_t size, uint8_t SCI2_bits, uint32_t Nid, uint8_t Nl);
 
-void freq2time(uint16_t ofdm_symbol_size,
-               int16_t *freq_signal,
-               int16_t *time_signal);
-
 /*!
 \brief This function implements the idft transform precoding in PUSCH
 \param z Pointer to input in frequnecy domain, and it is also the output in time domain
