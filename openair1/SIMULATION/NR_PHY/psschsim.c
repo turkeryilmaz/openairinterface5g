@@ -503,11 +503,10 @@ int main(int argc, char **argv)
 
   int frame = 0;
   int slot = 0;
-  int16_t **tx_layers;
   int32_t **txdataF = txUE->common_vars.txdataF;
    unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
                             nb_re_dmrs, length_dmrs, mod_order, Nl);
-  tx_layers = nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot, txdataF);
+  nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot, txdataF);
 
   unsigned int G_SCI2_bits = harq_process_txUE->B_sci2;
   uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
@@ -714,11 +713,6 @@ int main(int argc, char **argv)
     printf("\n");
 
   } // snr
-
-  for (int nl = 0; nl < Nl; nl++) {
-    free_and_zero(tx_layers[nl]);
-  }
-  free_and_zero(tx_layers);
 
   //term_nr_ue_transport(txUE);
   term_nr_ue_transport(rxUE);

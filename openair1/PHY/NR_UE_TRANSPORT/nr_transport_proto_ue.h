@@ -1111,11 +1111,11 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     - modulation
     - transform precoding
 */
-int16_t** nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
-                                    unsigned char harq_pid,
-                                    uint32_t frame,
-                                    uint8_t slot,
-                                    int32_t **txdataF);
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
+                               unsigned char harq_pid,
+                               uint32_t frame,
+                               uint8_t slot,
+                               int32_t **txdataF);
 
 void nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *UE,
                                unsigned char harq_pid,

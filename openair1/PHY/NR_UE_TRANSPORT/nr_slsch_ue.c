@@ -142,7 +142,7 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
   }
 }
 
-int16_t** nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                                     unsigned char harq_pid,
                                     uint32_t frame,
                                     uint8_t slot,
@@ -175,7 +175,7 @@ int16_t** nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                             nb_dmrs_re_per_rb, length_dmrs, mod_order, Nl);
 
   if (nr_slsch_encoding(txUE, slsch_ue, frame_parms, harq_pid, G_slsch_bits) == -1)
-    return NULL;
+    return;
   unsigned int G_SCI2_bits = harq_process_ul_ue->B_sci2;
 
   //////////////////SLSCH data and control multiplexing//////////////
@@ -252,18 +252,16 @@ int16_t** nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
 
   physical_resource_mapping(frame_parms, pssch_pdu, tx_precoding, txdataF);
 
-
   NR_UL_UE_HARQ_t *harq_process_slsch = NULL;
   harq_process_slsch = slsch_ue->harq_processes[harq_pid];
   harq_process_slsch->status = SCH_IDLE;
 
   for (int nl = 0; nl < Nl; nl++) {
-    // free_and_zero(tx_layers[nl]);
+    free_and_zero(tx_layers[nl]);
     free_and_zero(tx_precoding[nl]);
   }
-  // free_and_zero(tx_layers);
+  free_and_zero(tx_layers);
   free_and_zero(tx_precoding);
-  return tx_layers;
 }
 
 int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
@@ -312,8 +310,7 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
     delta = get_delta_sl(dmrs_port);
 
     for (int l = start_symbol; l < start_symbol + number_of_symbols; l++) {
-      uint16_t k0 = (1 <= l && l <= 3) ? start_sc + nb_re_sci1 : start_sc;
-      uint16_t k = k0;
+      uint16_t k = (1 <= l && l <= 3) ? start_sc + nb_re_sci1 : start_sc;
       uint16_t n = 0;
       uint8_t is_dmrs_sym = 0;
       uint16_t dmrs_idx = 0;

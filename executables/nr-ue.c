@@ -719,7 +719,7 @@ void processSlotRX(void *arg) {
 
   if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
     if (get_softmodem_params()->sl_mode == 2) {
-      //phy_procedures_nrUE_SL_RX(UE, proc, 0, &rxtxD->txFifo);
+      phy_procedures_nrUE_SL_RX(UE, proc, 0, &rxtxD->txFifo);
       processSlotTX(rxtxD);
     } else if (UE->UE_mode[gNB_id] <= PUSCH) {
       if (get_softmodem_params()->usim_test==0) {
