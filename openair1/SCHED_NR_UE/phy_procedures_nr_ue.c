@@ -371,7 +371,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     // TODO: check gNB's downlink side code. The following is from nrUE's uplink side.
     for (uint8_t harq_pid = 0; harq_pid < ue->slsch[proc->thread_id][gNB_id]->number_harq_processes_for_pusch; harq_pid++) {
       if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
-        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx, ue->common_vars.txdataF);
+        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx);
       }
     }
   }

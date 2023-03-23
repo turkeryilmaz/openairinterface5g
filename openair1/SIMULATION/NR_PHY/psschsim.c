@@ -506,7 +506,7 @@ int main(int argc, char **argv)
   int32_t **txdataF = txUE->common_vars.txdataF;
    unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
                             nb_re_dmrs, length_dmrs, mod_order, Nl);
-  nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot, txdataF);
+  nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
 
   unsigned int G_SCI2_bits = harq_process_txUE->B_sci2;
   uint32_t M_SCI2_bits = G_SCI2_bits * Nl;

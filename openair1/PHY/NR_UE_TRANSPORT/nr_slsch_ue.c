@@ -145,14 +145,13 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
 void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                                     unsigned char harq_pid,
                                     uint32_t frame,
-                                    uint8_t slot,
-                                    int32_t **txdataF) {
+                                    uint8_t slot) {
 
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
   uint8_t nb_dmrs_re_per_rb;
   NR_DL_FRAME_PARMS *frame_parms = &txUE->frame_parms;
-  //int32_t **txdataF = txUE->common_vars.txdataF;
+  int32_t **txdataF = txUE->common_vars.txdataF;
 
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
   NR_UL_UE_HARQ_t *harq_process_ul_ue = slsch_ue->harq_processes[harq_pid];

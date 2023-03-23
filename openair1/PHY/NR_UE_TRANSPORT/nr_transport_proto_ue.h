@@ -979,29 +979,6 @@ void nr_dlsch_scale_channel(int32_t **dl_ch_estimates_ext,
                          uint32_t len,
                          uint16_t nb_rb);
 
-void nr_slsch_channel_level(int **sl_ch_estimates_ext,
-                            NR_DL_FRAME_PARMS *frame_parms,
-                            int32_t *avg,
-                            uint8_t symbol,
-                            uint32_t len,
-                            uint8_t  nrOfLayers,
-                            unsigned short nb_rb);
-
-void nr_slsch_channel_compensation(int **rxdataF_ext,
-                                int **ul_ch_estimates_ext,
-                                int **ul_ch_mag,
-                                int **ul_ch_magb,
-                                int **rxdataF_comp,
-                                int ***rho,
-                                NR_DL_FRAME_PARMS *frame_parms,
-                                unsigned char symbol,
-                                int length,
-                                uint8_t is_dmrs_symbol,
-                                unsigned char mod_order,
-                                uint8_t  nrOfLayers,
-                                unsigned short nb_rb,
-                                unsigned char output_shift);
-
 /** \brief This is the top-level entry point for DLSCH decoding in UE.  It should be replicated on several
     threads (on multi-core machines) corresponding to different HARQ processes. The routine first
     computes the segmentation information, followed by rate dematching and sub-block deinterleaving the of the
@@ -1114,8 +1091,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                                unsigned char harq_pid,
                                uint32_t frame,
-                               uint8_t slot,
-                               int32_t **txdataF);
+                               uint8_t slot);
 
 void nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *UE,
                                unsigned char harq_pid,
