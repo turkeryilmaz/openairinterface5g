@@ -143,10 +143,9 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
 }
 
 void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
-                            unsigned char harq_pid,
-                            uint32_t frame,
-                            uint8_t slot,
-                            int32_t *d_mod) {
+                                    unsigned char harq_pid,
+                                    uint32_t frame,
+                                    uint8_t slot) {
 
   LOG_D(NR_PHY, "nr_ue_slsch_tx_procedures hard_id %d %d.%d\n", harq_pid, frame, slot);
 
@@ -207,8 +206,8 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
 
   /////////////////////////SLSCH modulation/////////////////////////
 
-  // int max_num_re = Nl * number_of_symbols * nb_rb * NR_NB_SC_PER_RB;
-  // int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
+  int max_num_re = Nl * number_of_symbols * nb_rb * NR_NB_SC_PER_RB;
+  int32_t d_mod[max_num_re] __attribute__ ((aligned(16)));
 
   // modulating for the 2nd-stage SCI bits
   nr_modulation(scrambled_output, // assume one codeword for the moment
@@ -225,11 +224,14 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   /////////////////////////SLSCH layer mapping/////////////////////////
 
   int16_t **tx_layers = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
-  uint16_t num_sci_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
+  uint16_t num_sci2_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
   uint16_t num_data_symbs = (M_data_bits << 1) / mod_order;
-  uint32_t num_sum_symbs = (num_sci_symbs + num_data_symbs) >> 1;
+  uint32_t num_sum_symbs = (num_sci2_symbs + num_data_symbs) >> 1;
+  printf("num_sci2_symbs %u\n", num_sci2_symbs);
+  printf("num_data_symbs %u\n", num_data_symbs);
+  printf("sum %u\n", num_sci2_symbs + num_data_symbs);
   for (int nl = 0; nl < Nl; nl++)
-    tx_layers[nl] = (int16_t *)malloc16_clear((num_sci_symbs + num_data_symbs) * sizeof(int16_t));
+    tx_layers[nl] = (int16_t *)malloc16_clear((num_sci2_symbs + num_data_symbs) * sizeof(int16_t));
 
   nr_ue_layer_mapping((int16_t *)d_mod, Nl, num_sum_symbs, tx_layers);
 
@@ -239,19 +241,20 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
 
   uint32_t **pssch_dmrs = txUE->nr_gold_pssch_dmrs[slot];
 
-#if 1
+
   ////////////////SLSCH Mapping to virtual resource blocks////////////////
 
   int16_t** tx_precoding = virtual_resource_mapping(frame_parms, pssch_pdu, G_SCI2_bits, SCI2_mod_order, tx_layers, pssch_dmrs, txdataF);
 
-  /////SLSCH Mapping from virtual to physical resource blocks mapping/////
+
+  /////////SLSCH Mapping from virtual to physical resource blocks/////////
 
   physical_resource_mapping(frame_parms, pssch_pdu, tx_precoding, txdataF);
 
   NR_UL_UE_HARQ_t *harq_process_slsch = NULL;
   harq_process_slsch = slsch_ue->harq_processes[harq_pid];
   harq_process_slsch->status = SCH_IDLE;
-#endif
+
   for (int nl = 0; nl < Nl; nl++) {
     free_and_zero(tx_layers[nl]);
     free_and_zero(tx_precoding[nl]);
@@ -288,6 +291,7 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
   l_prime[0] = 0; // single symbol ap 0
   pssch_pdu->dmrs_ports = (Nl == 2) ? 0b11 : 0b01;
   uint16_t M_SCI2_Layer = G_SCI2_bits / SCI2_mod_order;
+  uint16_t nb_re_sci1 = NB_RB_SCI1 * NR_NB_SC_PER_RB; //NB_RB_SCI1 needs to be from parameter.
 
   int encoded_length = frame_parms->N_RB_UL * 14 * NR_NB_SC_PER_RB * mod_order * Nl;
   int16_t **tx_precoding = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
@@ -304,8 +308,8 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
     get_Wf_sl(Wf, dmrs_port);
     delta = get_delta_sl(dmrs_port);
 
-    for (int l = start_symbol; l < number_of_symbols; l++) {
-      uint16_t k = start_sc;
+    for (int l = start_symbol; l < start_symbol + number_of_symbols; l++) {
+      uint16_t k = (1 <= l && l <= 3) ? start_sc + nb_re_sci1 : start_sc;
       uint16_t n = 0;
       uint8_t is_dmrs_sym = 0;
       uint16_t dmrs_idx = 0;
@@ -324,7 +328,7 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
         }
       }
 
-      for (int i = 0; i < nb_rb * NR_NB_SC_PER_RB; i++) {
+      for (int i = k; i < nb_rb * NR_NB_SC_PER_RB; i++) {
         uint8_t is_dmrs = 0;
 
         sample_offsetF = l * frame_parms->ofdm_symbol_size + k;
@@ -386,7 +390,7 @@ void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
                                int16_t** tx_precoding,
                                int32_t **txdataF
                               ) {
-  uint16_t nb_re_sci1 = NB_RB_SCI1 * NR_NB_SC_PER_RB;
+  uint16_t nb_re_sci1 = NB_RB_SCI1 * NR_NB_SC_PER_RB; //NB_RB_SCI1 needs to be from parameter.
   uint16_t start_rb   = pssch_pdu->rb_start;
   uint16_t bwp_start  = pssch_pdu->bwp_start;
   uint16_t nb_rb      = pssch_pdu->rb_size;
@@ -399,7 +403,7 @@ void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
           &tx_precoding[ap][2 * (frame_parms->ofdm_symbol_size + start_sc)],
           NR_NB_SC_PER_RB * sizeof(int32_t));
 
-    for (int l = start_symbol; l < number_of_symbols; l++) {
+    for (int l = start_symbol; l < start_symbol + number_of_symbols; l++) {
       uint16_t k;
       if (1 <= l && l <= 3) { // Assumption there are three SLCCH symbols
         k = start_sc + nb_re_sci1;
@@ -414,7 +418,7 @@ void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
             if (ap < pssch_pdu->nrOfLayers) {
               if (1 <= l && l <= 3)
                 memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size  + k],
-                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k - nb_re_sci1)],
+                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k)],
                       NR_NB_SC_PER_RB * sizeof(int32_t));
               else
                 memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size  + k],
@@ -431,7 +435,7 @@ void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
             if (ap < pssch_pdu->nrOfLayers) {
               if (1 <= l && l <= 3)
                 memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],
-                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k - nb_re_sci1)],
+                      &tx_precoding[ap][2 * (l * frame_parms->ofdm_symbol_size + k)],
                       neg_length * sizeof(int32_t));
               else
                 memcpy(&txdataF[ap][l * frame_parms->ofdm_symbol_size + k],

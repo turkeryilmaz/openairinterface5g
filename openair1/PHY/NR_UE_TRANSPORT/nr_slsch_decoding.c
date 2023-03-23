@@ -338,9 +338,9 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   vcd_signal_dumper_dump_function_by_name(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_SEGMENTATION, VCD_FUNCTION_IN);
 
   //NR_DL_UE_HARQ_t *harq_process = dlsch->harq_processes[0];
-  
+
   int nbDecode = 0;
-  
+
   if (!dlsch_llr) {
     LOG_E(PHY,"slsch_decoding.c: NULL dlsch_llr pointer\n");
     return(dlsch->max_ldpc_iterations + 1);
@@ -351,30 +351,10 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     return(dlsch->max_ldpc_iterations + 1);
   }
 
-  /*if (nr_slot_rx> (frame_parms->slots_per_frame-1)) {
-    printf("dlsch_decoding.c: Illegal slot index %d\n",nr_slot_rx);
-    return(dlsch->max_ldpc_iterations + 1);
-  }*/
-  /*if (harq_process->harq_ack.ack != 2) {
-    LOG_D(PHY, "[UE %d] DLSCH @ SF%d : ACK bit is %d instead of DTX even before PDSCH is decoded!\n",
-        phy_vars_ue->Mod_id, nr_slot_rx, harq_process->harq_ack.ack);
-  }*/
-  //  nb_rb = dlsch->nb_rb;
-  /*
-  if (nb_rb > frame_parms->N_RB_DL) {
-    printf("dlsch_decoding.c: Illegal nb_rb %d\n",nb_rb);
-    return(max_ldpc_iterations + 1);
-    }*/
-  /*harq_pid = dlsch->current_harq_pid[proc->thread_id];
-  if (harq_pid >= 8) {
-    printf("dlsch_decoding.c: Illegal harq_pid %d\n",harq_pid);
-    return(max_ldpc_iterations + 1);
-  }
-  */
-
   // SCI2 decoding //
   short *sci2_llr = dlsch_llr;
   short *data_llr = dlsch_llr + harq_process->B_sci2 * harq_process->Nl;
+
   #if 1
   uint64_t tmp = 0;
   int16_t decoder_input[1792] = {0}; // 1792 = harq_process->B_sci2

@@ -370,8 +370,9 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   if (ue->is_synchronized_sl == 1) {
     // TODO: check gNB's downlink side code. The following is from nrUE's uplink side.
     for (uint8_t harq_pid = 0; harq_pid < ue->slsch[proc->thread_id][gNB_id]->number_harq_processes_for_pusch; harq_pid++) {
-      if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE)
-        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx, NULL);
+      if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
+        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx);
+      }
     }
   }
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
@@ -1420,6 +1421,33 @@ void *UE_thread_slot1_dl_processing(void *arg) {
   return &UE_dl_slot1_processing_retval;
 }
 #endif
+
+int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           uint8_t synchRefUE_id,
+                           notifiedFIFO_t *txFifo) {
+
+  int frame_rx = proc->frame_rx;
+  int slot_rx = proc->nr_slot_rx;
+
+  // Start PSSCH processing here. It runs in parallel with PSSCH processing
+  notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), proc->nr_slot_tx, txFifo, processSlotTX);
+  nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(newElt);
+  curMsg->proc = *proc;
+  curMsg->UE = ue;
+  pushTpool(&(get_nrUE_params()->Tpool), newElt);
+
+  if (ue->is_synchronized_sl == 0)
+    return (0);
+
+  NR_UE_DLSCH_t   *slsch = ue->slsch_rx[proc->thread_id][synchRefUE_id][0];
+  for (unsigned char harq_pid = 0; harq_pid < slsch->number_harq_processes_for_pdsch; harq_pid++) {
+    if (slsch->harq_processes[harq_pid]->status == ACTIVE)
+      nr_rx_pssch(ue, proc, slsch, frame_rx, slot_rx, harq_pid);
+  }
+  LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_rx, slot_rx);
+  return (0);
+}
 
 int phy_procedures_nrUE_RX(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,

@@ -21,14 +21,9 @@
 
 #include "PHY/defs_UE.h"
 #include "PHY/phy_extern_ue.h"
-#include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/CODING/coding_defs.h"
 #include "PHY/CODING/coding_extern.h"
-#include "PHY/CODING/lte_interleaver_inline.h"
-#include "PHY/CODING/nrLDPC_extern.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
-#include "common/utils/LOG/vcd_signal_dumper.h"
-#include <openair2/UTIL/OPT/opt.h>
 
 void nr_attach_crc_to_payload(unsigned char *in, uint8_t *out, int max_payload_bytes, uint32_t in_size, uint32_t *out_size) {
 

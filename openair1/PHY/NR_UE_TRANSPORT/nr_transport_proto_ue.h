@@ -582,6 +582,15 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
                      uint16_t nb_rb,
                      uint8_t beamforming_mode);
 
+void nr_slsch_compute_llr(int32_t *rxdataF_comp,
+                          int32_t *ul_ch_mag,
+                          int32_t *ul_ch_magb,
+                          int16_t *ulsch_llr,
+                          uint32_t nb_rb,
+                          uint32_t nb_re,
+                          uint8_t  symbol,
+                          uint8_t  mod_order);
+
 /** \fn dlsch_siso(NR_DL_FRAME_PARMS *frame_parms,
     int32_t **rxdataF_comp,
     int32_t **rxdataF_comp_i,
@@ -725,6 +734,15 @@ void nr_dlsch_extract_rbs(int **rxdataF,
                           NR_DL_FRAME_PARMS *frame_parms,
                           uint16_t dlDmrsSymbPos,
                           int chest_time_type);
+
+void nr_slsch_extract_rbs(int32_t **rxdataF,
+                          NR_UE_PSSCH *pssch_vars,
+                          int slot,
+                          unsigned char symbol,
+                          uint8_t is_dmrs_symbol,
+                          nfapi_nr_pssch_pdu_t *pusch_pdu,
+                          NR_DL_FRAME_PARMS *frame_parms,
+                          NR_DL_UE_HARQ_t *harq);
 
 /** \fn dlsch_extract_rbs_TM7(int32_t **rxdataF,
     int32_t **dl_bf_ch_estimates,
@@ -1070,12 +1088,17 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
     - modulation
     - transform precoding
 */
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
+                               unsigned char harq_pid,
+                               uint32_t frame,
+                               uint8_t slot);
 
-void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *UE,
+void nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *UE,
                                unsigned char harq_pid,
                                uint32_t frame,
                                uint8_t slot,
-                               int32_t *d_mod);
+                               uint8_t thread_id,
+                               int gNB_id);
 
 /** \brief This function does IFFT for PUSCH
 */
@@ -1796,6 +1819,13 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
              RX_type_t rx_type,
              unsigned char i_mod,
 		unsigned char harq_pid);
+
+void nr_rx_pssch(PHY_VARS_NR_UE *nrUE,
+                 UE_nr_rxtx_proc_t *proc,
+                 NR_UE_DLSCH_t *slsch,
+                 int frame,
+                 int slot,
+                 unsigned char harq_pid);
 
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 

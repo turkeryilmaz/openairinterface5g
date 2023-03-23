@@ -1605,6 +1605,9 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_scrambling.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/scrambling_luts.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/srs_modulation_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_transport_common.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_sch_llr_computation_common.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_sch_demodulation_common.c
   )
 
   set(PHY_NR_SRC
@@ -1672,6 +1675,8 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_llr_computation.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_demodulation.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_llr_computation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_transport_common.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_decoding.c

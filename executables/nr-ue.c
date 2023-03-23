@@ -650,16 +650,10 @@ void processSlotTX(void *arg) {
 
     if (get_softmodem_params()->sl_mode == 0 && rxtxD->ue_sched_mode != NOT_PUSCH) {
       phy_procedures_nrUE_TX(UE, proc, 0);
-    } else if (get_softmodem_params()->sl_mode == 2) {
+    } else if ((get_softmodem_params()->sl_mode == 2) && (UE->is_synchronized_sl == 0)) {
       phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
   }
-}
-
-void processSlotRX_SL(void *arg) {
-  nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
-  rxtxD->ue_sched_mode = NOT_PUSCH;
-  processSlotTX(rxtxD);
 }
 
 void processSlotRX(void *arg) {
@@ -724,7 +718,10 @@ void processSlotRX(void *arg) {
   }
 
   if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
-    if (UE->UE_mode[gNB_id] <= PUSCH) {
+    if (get_softmodem_params()->sl_mode == 2) {
+      phy_procedures_nrUE_SL_RX(UE, proc, 0, &rxtxD->txFifo);
+      processSlotTX(rxtxD);
+    } else if (UE->UE_mode[gNB_id] <= PUSCH) {
       if (get_softmodem_params()->usim_test==0) {
         pucch_procedures_ue_nr(UE,
                                gNB_id,
@@ -737,14 +734,14 @@ void processSlotRX(void *arg) {
                                     &UE->frame_parms,
                                     UE->frame_parms.nb_antennas_tx);
     }
-
-    if (UE->UE_mode[gNB_id] > NOT_SYNCHED && UE->UE_mode[gNB_id] < PUSCH) {
+    if (UE->UE_mode[gNB_id] > NOT_SYNCHED && UE->UE_mode[gNB_id] < PUSCH && get_softmodem_params()->sl_mode != 2) {
       nr_ue_prach_procedures(UE, proc, gNB_id);
     }
     LOG_D(PHY,"****** end TX-Chain for AbsSubframe %d.%d ******\n", proc->frame_tx, proc->nr_slot_tx);
   }
-
-  ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
+  if (get_softmodem_params()->sl_mode != 2) {
+    ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
+  }
 }
 
 void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockSize) {
@@ -909,7 +906,7 @@ void *UE_thread_SL(void *arg) {
   int absolute_slot = 0, decoded_frame_rx = INT_MAX, trashed_frames = 0, start_rx_stream = 0;
 
   for (int i = 0; i < NR_RX_NB_TH + 1; i++) {// NR_RX_NB_TH working + 1 we are making to be pushed
-    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX_SL);
+    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX);
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(newElt);
     initNotifiedFIFO(&curMsg->txFifo);
     pushNotifiedFIFO_nothreadSafe(&freeBlocks, newElt);
@@ -922,7 +919,7 @@ void *UE_thread_SL(void *arg) {
       nb += abortNotifiedFIFOJob(&nf, RX_JOB_ID);
       LOG_I(PHY,"Number of aborted slots %d\n",nb);
       for (int i=0; i<nb; i++)
-        pushNotifiedFIFO_nothreadSafe(&freeBlocks, newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX_SL));
+        pushNotifiedFIFO_nothreadSafe(&freeBlocks, newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX));
       nbSlotProcessing = 0;
       UE->is_synchronized_sl = 0;
       UE->lost_sync_sl = 0;
