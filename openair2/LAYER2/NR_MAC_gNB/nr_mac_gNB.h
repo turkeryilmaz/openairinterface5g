@@ -675,6 +675,8 @@ typedef struct {
   NR_gNB_UCI_STATS_t uci_statS;
   float ul_thr_ue;
   float dl_thr_ue;
+  bool rsrpReportStatus;
+  int ssb_rsrp;
 } NR_UE_info_t;
 
 typedef struct {
@@ -682,8 +684,6 @@ typedef struct {
   // last element always NULL
   pthread_mutex_t mutex;
   NR_UE_info_t *list[MAX_MOBILES_PER_GNB+1];
-  bool rsrpReportStatus;
-  int ssb_rsrp;
   bool sched_csirs;
   uid_allocator_t uid_allocator;
 } NR_UEs_t;

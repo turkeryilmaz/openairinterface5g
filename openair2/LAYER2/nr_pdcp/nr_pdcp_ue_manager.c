@@ -89,7 +89,7 @@ nr_pdcp_ue_t *nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager_t *_m, int rnti)
   nr_pdcp_manager_lock(m);
   for (i = 0; i < m->ue_count; i++)
   {
-    if (m->ue_list[i]->rnti == rnti) 
+    if (m->ue_list[i]->rntiMaybeUEid == rnti)
     {
       ret = m->ue_list[i];
       break;

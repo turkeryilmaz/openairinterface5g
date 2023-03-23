@@ -35,6 +35,7 @@
 
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
+#include "openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_primitives.c"
 
 #include "common/utils/LOG/ss-log.h"
 #define MSC_INTERFACE
@@ -534,6 +535,7 @@ static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 	LOG_A(GNB_APP, "[SYS-GNB] Entry in fxn:%s\n", __FUNCTION__);
 	struct NR_SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct NR_SYSTEM_CTRL_CNF));
 	MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, SS_NR_SYS_PORT_MSG_CNF);
+
 	if (!message_p)
 	{
 		LOG_A(GNB_APP, "[SYS-GNB] Error Allocating Memory for message NR_SYSTEM_CTRL_CNF \n");
@@ -563,57 +565,63 @@ static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 	deltaSecondaryBand->DeltaNRf3 = 0;
 	deltaSecondaryBand->DeltaNRf4 = 0;
   uint16_t mac_inst = 0;
-  LOG_A(GNB_APP, "[SYS-GNB] absoluteFrequencySSB:%ld reportedrsrp:%d\n",
-      *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
-      RC.nrmac[0]->UE_info.ssb_rsrp);
+  NR_UE_info_t *UE = NULL;
+  LOG_A(GNB_APP, "[SYS-GNB] absoluteFrequencySSB:%ld\n",
+      *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
 
-  if ( ((get_softmodem_params()->numerology >= 1 || get_softmodem_params()->numerology <= 2) && (RC.ss.State == SS_STATE_CELL_ACTIVE)) && (RC.nrmac[0]->UE_info.rsrpReportStatus) )
+  if ((get_softmodem_params()->numerology >= 1 || get_softmodem_params()->numerology <= 2) && (RC.ss.State == SS_STATE_CELL_ACTIVE))
   {
+      UE = find_nr_UE(&RC.nrmac[0]->UE_info, SS_context.ss_rnti_g);
+      if(UE->rsrpReportStatus){
       LOG_A(GNB_APP, "[SYS-GNB] received SYSTEM_CTRL_REQ with DeltaValues in Active State for Primary Band \n");
       if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf1 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf1 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf1:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf1);
       }
       if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf2 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf2 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf2:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf2);
       }
       if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf3 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf3 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf3:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf3);
       }
       if (req->Request.v.DeltaValues.DeltaPrimary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf4 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf4 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf4:%d for deltaPrimaryBand \n", deltaPrimaryBand->DeltaNRf4);
       }
+    }
   }
-  else if ((get_softmodem_params()->numerology >= 2 && RC.ss.State == SS_STATE_CELL_ACTIVE) && (RC.nrmac[0]->UE_info.rsrpReportStatus))
+  else if ((get_softmodem_params()->numerology >= 2 && RC.ss.State == SS_STATE_CELL_ACTIVE) && (UE->rsrpReportStatus))
   {
+      UE = find_nr_UE(&RC.nrmac[0]->UE_info, SS_context.ss_rnti_g);
+      if(UE->rsrpReportStatus){
       LOG_A(GNB_APP, "[SYS-GNB] received SYSTEM_CTRL_REQ with DeltaValues in Active State for Secondary Band \n");
       if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf1.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaSecondaryBand->DeltaNRf1 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaSecondaryBand->DeltaNRf1 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf1:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf1);
       }
       if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf2.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf2 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf2 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf2:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf2);
       }
       if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf3.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf3 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf3 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf3:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf3);
       }
       if (req->Request.v.DeltaValues.DeltaSecondary.Ssb_NRf4.v.v.R15 == *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB)
       {
-        deltaPrimaryBand->DeltaNRf4 = RC.nrmac[0]->UE_info.ssb_rsrp + 82;
+        deltaPrimaryBand->DeltaNRf4 = UE->ssb_rsrp + 82;
         LOG_A(GNB_APP, "updated DeltaNRf4:%d for deltaSecondaryBand \n", deltaSecondaryBand->DeltaNRf4);
       }
+    }
   }
 
 	SS_NR_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
