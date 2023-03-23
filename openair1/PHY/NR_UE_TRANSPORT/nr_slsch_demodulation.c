@@ -5,7 +5,6 @@
 #include "PHY/NR_TRANSPORT/nr_sch_dmrs.h"
 #include "PHY/NR_REFSIG/dmrs_nr.h"
 #include "PHY/NR_REFSIG/ptrs_nr.h"
-#include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include "PHY/defs_nr_common.h"
 #include "common/utils/nr/nr_common.h"
 #include "openair1/PHY/NR_TRANSPORT/nr_transport_common_proto.h"
@@ -50,7 +49,6 @@ void nr_slsch_extract_rbs(int32_t **rxdataF,
     start_re += nb_re_sci1;
   }
   nb_re_pssch = NR_NB_SC_PER_RB * harq->nb_rb;
-  //printf("start_re %u soffset %d nb_antennas_rx %u  nb_re_pssch %u\n", start_re, soffset, frame_parms->nb_antennas_rx, nb_re_pssch);
 
 #ifdef __AVX2__
   int nb_re_pssch2 = nb_re_pssch + (nb_re_pssch & 7);
