@@ -35,6 +35,7 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -234,6 +235,8 @@ typedef struct {
   int32_t *sync_corr;
   /// estimated frequency offset (in radians) for all subcarriers
   int32_t freq_offset;
+  // N2_id - assigned based on in coverage status received in pss
+  int32_t N2_id;
   /// eNb_id user is synched to
   int32_t eNb_id;
 } NR_UE_COMMON;
@@ -321,6 +324,25 @@ typedef struct {
   //uint32_t pdu_fer;
 } NR_UE_PBCH;
 
+#define PSBCH_A 32
+#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
+#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
+
+typedef struct {
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  //uint32_t pdu_fer;
+  uint32_t psbch_a;
+  uint32_t psbch_a_interleaved;
+  uint32_t psbch_a_prime;
+  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
+} NR_UE_PSBCH;
+
 typedef struct {
   int16_t amp;
   bool active;
@@ -377,6 +399,7 @@ typedef struct {
   uint8_t Mod_id;
   /// \brief Component carrier ID for this PHY instance
   uint8_t CC_id;
+  bool configured;
   /// \brief Mapping of CC_id antennas to cards
   openair0_rf_map      rf_map;
   //uint8_t local_flag;
@@ -394,8 +417,14 @@ typedef struct {
   int if_freq_off;
   /// \brief Indicator that UE is synchronized to a gNB
   int is_synchronized;
+  /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
+  int is_synchronized_sl;
   /// \brief Indicator that UE lost frame synchronization
   int lost_sync;
+  /// \brief Indicator that UE lost frame synchronization on Sidelink
+  int lost_sync_sl;
+  /// \brief Indicator that UE is an SynchRef UE
+  int sync_ref;
   /// Data structure for UE process scheduling
   UE_nr_proc_t proc;
   /// Flag to indicate the UE shouldn't do timing correction at all
@@ -436,10 +465,13 @@ typedef struct {
   fapi_nr_config_request_t nrUE_config;
 
   NR_UE_PBCH      *pbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_SLSS_t       *slss;
+
   NR_UE_PRS       *prs_vars[NR_MAX_PRS_COMB_SIZE];
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
@@ -673,6 +705,7 @@ typedef struct nr_rxtx_thread_data_s {
   UE_nr_rxtx_proc_t proc;
   PHY_VARS_NR_UE    *UE;
   int writeBlockSize;
+  notifiedFIFO_t txFifo;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {

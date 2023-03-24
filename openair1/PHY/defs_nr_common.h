@@ -69,6 +69,10 @@
 
 #define NR_PBCH_DMRS_LENGTH 144 // in mod symbols
 #define NR_PBCH_DMRS_LENGTH_DWORD 10 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+#define NR_PSBCH_MAX_NB_CARRIERS 132
+#define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
+#define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
+#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
 
 /*used for the resource mapping*/
 #define NR_MAX_PDCCH_DMRS_LENGTH 576 // 16(L)*2(QPSK)*3(3 DMRS symbs per REG)*6(REG per CCE)
@@ -92,6 +96,9 @@
 
 #define MAX_NUM_NR_SRS_SYMBOLS 4
 #define MAX_NUM_NR_SRS_AP 4
+
+#define NR_RX_NB_TH 1
+#define NR_NB_TH_SLOT 2
 
 #define NR_NB_NSCID 2
 
@@ -157,6 +164,8 @@ struct NR_DL_FRAME_PARMS {
   uint64_t dl_CarrierFreq;
   /// UL carrier frequency
   uint64_t ul_CarrierFreq;
+  /// SL carrier frequency
+  uint64_t sl_CarrierFreq;
   /// TX attenuation
   uint32_t att_tx;
   /// RX attenuation
@@ -164,7 +173,12 @@ struct NR_DL_FRAME_PARMS {
   ///  total Number of Resource Block Groups: this is ceil(N_PRB/P)
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
+
+  uint16_t tdd_slot_config;
+  uint8_t tdd_period;
   uint8_t tdd_config;
+  /// Sidelink Cell ID
+  uint16_t Nid_SL;
   /// Cell ID
   uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
@@ -216,8 +230,8 @@ struct NR_DL_FRAME_PARMS {
   /// Cyclic Prefix for DL (0=Normal CP, 1=Extended CP)
   lte_prefix_type_t Ncp;
   /// sequence which is computed based on carrier frequency and numerology to rotate/derotate each OFDM symbol according to Section 5.3 in 38.211
-  /// First dimension is for the direction of the link (0 DL, 1 UL)
-  c16_t symbol_rotation[2][224];
+  /// First dimension is for the direction of the link (0 DL, 1 UL, 2 SL)
+  c16_t symbol_rotation[3][224];
   /// sequence used to compensate the phase rotation due to timeshifted OFDM symbols
   /// First dimenstion is for different CP lengths
   c16_t timeshift_symbol_rotation[4096*2] __attribute__ ((aligned (16)));
@@ -257,6 +271,15 @@ struct NR_DL_FRAME_PARMS {
   /// OFDM symbol offset divisor for UL
   uint32_t ofdm_offset_divisor;
 };
+
+/* NR Sidelink PSBCH payload fields */
+typedef struct {
+  uint32_t coverageIndicator : 1;
+  uint32_t tddConfig : 12;
+  uint32_t DFN : 10;
+  uint32_t slotIndex : 7;
+  uint32_t reserved : 2;
+} PSBCH_payload;
 
 // PRS config structures
 typedef struct {
