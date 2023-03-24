@@ -80,20 +80,6 @@ unsigned char offset_mumimo_llr_drange[29][3]={{8,8,8},{7,7,7},{7,7,7},{7,7,7},{
 #define print_ints(s,x) printf("%s = %d %d %d %d\n",s,(x)[0],(x)[1],(x)[2],(x)[3])
 #define print_shorts(s,x) printf("%s = [%d+j*%d, %d+j*%d, %d+j*%d, %d+j*%d]\n",s,(x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5],(x)[6],(x)[7])
 
-/* compute H_h_H matrix inversion up to 4x4 matrices */
-uint8_t nr_zero_forcing_rx(int **rxdataF_comp,
-                                   int **dl_ch_mag,
-                                   int **dl_ch_magb,
-                                   int **dl_ch_magr,
-                                   int **dl_ch_estimates_ext,
-                                   unsigned short nb_rb,
-                                   unsigned char n_rx,
-                                   unsigned char n_tx,//number of layer
-                                   unsigned char mod_order,
-                                   int shift,
-                                   unsigned char symbol,
-                                   int length);
-
 /* compute LLR */
 static int nr_dlsch_llr(NR_UE_PDSCH **pdsch_vars,
                         NR_DL_FRAME_PARMS *frame_parms,

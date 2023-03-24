@@ -31,6 +31,7 @@
 #include "common/utils/nr/nr_common.h"
 #include "filt16a_32.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
+#include "executables/softmodem-common.h"
 
 //#define DEBUG_PDSCH
 //#define DEBUG_PDCCH
@@ -1070,7 +1071,11 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
   // checking if re-initialization of scrambling IDs is needed
   if (scrambling_id != ue->scramblingID_dlsch[nscid]){
     ue->scramblingID_dlsch[nscid] = scrambling_id;
-    nr_gold_pdsch(ue, nscid, scrambling_id);
+    if (get_softmodem_params()->sl_mode == 2){
+      nr_gold_pssch(ue, nscid, scrambling_id);
+    } else{
+      nr_gold_pdsch(ue, nscid, scrambling_id);
+    }
   }
 
   nr_pdsch_dmrs_rx(ue, Ns, ue->nr_gold_pdsch[gNB_id][Ns][symbol][0], &pilot[0], 1000+p, 0, nb_rb_pdsch+rb_offset, config_type);

@@ -836,6 +836,20 @@ void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint16_t *llr_deint,
                              uint16_t nb_rb_pdsch);
 
+/* compute H_h_H matrix inversion up to 4x4 matrices */
+uint8_t nr_zero_forcing_rx(int **rxdataF_comp,
+                                   int **dl_ch_mag,
+                                   int **dl_ch_magb,
+                                   int **dl_ch_magr,
+                                   int **dl_ch_estimates_ext,
+                                   unsigned short nb_rb,
+                                   unsigned char n_rx,
+                                   unsigned char n_tx,//number of layer
+                                   unsigned char mod_order,
+                                   int shift,
+                                   unsigned char symbol,
+                                   int length);
+
 //This function is used to compute multiplications in Hhermitian * H matrix
 void conjch0_mult_ch1(int *ch0,
                       int *ch1,
@@ -1093,12 +1107,14 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                                uint32_t frame,
                                uint8_t slot);
 
-void nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *UE,
-                               unsigned char harq_pid,
-                               uint32_t frame,
-                               uint8_t slot,
-                               uint8_t thread_id,
-                               int gNB_id);
+uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
+                            unsigned char harq_pid,
+                            uint32_t frame,
+                            uint8_t slot,
+                            int32_t **rxdata,
+                            uint32_t multiplex_input_len,
+                            uint32_t Nidx,
+                            UE_nr_rxtx_proc_t proc);
 
 /** \brief This function does IFFT for PUSCH
 */
