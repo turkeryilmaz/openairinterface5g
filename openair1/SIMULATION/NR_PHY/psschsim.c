@@ -258,6 +258,7 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   nrUE_config->tdd_table.tdd_period                = 0;
 
   ue->mac_enabled = 1;
+  ue->is_synchronized_sl = 1;
   if (mu == 0) {
     fp->dl_CarrierFreq = 2600000000;
     fp->ul_CarrierFreq = 2600000000;
@@ -389,7 +390,7 @@ int main(int argc, char **argv)
   }
 
   if (init_nr_ue_signal(txUE, 1) != 0 || init_nr_ue_signal(rxUE, 1) != 0) {
-    printf("Error at UE NR initialisation.\n");
+    printf("Error at UE NR initialization.\n");
     free(bw_setting);
     free(txUE);
     free(rxUE);
@@ -503,10 +504,12 @@ int main(int argc, char **argv)
 
   int frame = 0;
   int slot = 0;
-  int32_t **txdataF = txUE->common_vars.txdataF;
-   unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
+  int32_t **txdata = txUE->common_vars.txdata;
+  unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
                             nb_re_dmrs, length_dmrs, mod_order, Nl);
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
+
+  nr_ue_pssch_common_procedures(txUE, slot, &txUE->frame_parms, Nl);
 
   unsigned int G_SCI2_bits = harq_process_txUE->B_sci2;
   uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
@@ -529,7 +532,8 @@ int main(int argc, char **argv)
 
   int32_t **rxdataF = rxUE->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   UE_nr_rxtx_proc_t proc;
-  int start_symbol    = rel16_sl_rx->start_symbol_index;
+  proc.thread_id = 0;
+  int start_symbol = rel16_sl_rx->start_symbol_index;
   uint8_t number_of_symbols = rel16_sl_rx->nr_of_symbols;
 
   //uint8_t  symbol = 5;
@@ -547,7 +551,13 @@ int main(int argc, char **argv)
   unsigned char estimated_output_bit[HNA_SIZE];
   double snr_step = 0.2;
   snr1 = snr1set == 0 ? snr0 + snr_step * 1 : snr1;
-
+  int frame_length_complex_samples = txUE->frame_parms.samples_per_subframe * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  double **r_re = malloc(2 * sizeof(double*));
+  double **r_im = malloc(2 * sizeof(double*));
+  for (int i = 0; i < 2; i++) {
+    r_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
+    r_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
+  }
   for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
     n_false_positive = 0;
@@ -555,13 +565,24 @@ int main(int argc, char **argv)
     //double SNR_lin = pow(10, SNR / 10.0);
     //double sigma = 1.0 / sqrt(2 * SNR_lin);
     for (int trial = 0; trial < n_trials; trial++) {
-      uint32_t rxdataF_ext_offset = 0;
-      for (int aatx = 0; aatx < Nl; aatx++) {
-        for (int i = 0 ; i < rxUE->frame_parms.samples_per_slot_wCP; i++){
-          rxdataF[aatx][i] = txdataF[aatx][i]; //+ sigma * gaussdouble(0.0, 1.0);
+
+      for (int i = 0; i < frame_length_complex_samples; i++) {
+        for (int aa = 0; aa < txUE->frame_parms.nb_antennas_tx; aa++) {
+          r_re[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1)]);
+          r_im[aa][i] = ((double)(((short *)txdata[aa]))[(i << 1) + 1]);
         }
       }
 
+      for (int i = 0; i < frame_length_complex_samples; i++) {
+        //double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
+        //double sigma2 = pow(10, sigma2_dB / 10);
+        for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
+          ((short*) rxUE->common_vars.rxdata[aa])[2 * i] = (short) ((r_re[aa][i]));
+          ((short*) rxUE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i]));
+        }
+      }
+
+      uint32_t rxdataF_ext_offset = 0;
       uint32_t nb_re_sci2 = nb_re_SCI2;
       printf("start_symbol %d \n", start_symbol);
       printf("number_of_symbols %u \n", number_of_symbols);
@@ -570,8 +591,9 @@ int main(int argc, char **argv)
       uint32_t data_offset = num_sci2_samples;
       uint32_t sci2_offset = 0;
 
-
       for(uint8_t symbol = start_symbol; symbol < (start_symbol + number_of_symbols); symbol++) {
+        nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[0], &rxdataF[0][0], symbol, slot, 0);
+        apply_nr_rotation_ul(&rxUE->frame_parms, &rxdataF[0][0], slot, start_symbol, number_of_symbols, NR_LINK_TYPE_SL);
         uint8_t dmrs_symbol_flag = (rel16_sl_rx->ul_dmrs_symb_pos >> symbol) & 0x01;
         uint16_t nb_re_sci1 = 0;
         if (1 <= symbol && symbol <= 3) {
