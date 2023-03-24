@@ -509,7 +509,7 @@ int main(int argc, char **argv)
                             nb_re_dmrs, length_dmrs, mod_order, Nl);
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
 
-  nr_ue_pssch_common_procedures(txUE, slot, &txUE->frame_parms, Nl);
+  nr_ue_pssch_common_procedures(txUE, slot, &txUE->frame_parms, Nl, NR_LINK_TYPE_SL);
 
   unsigned int G_SCI2_bits = harq_process_txUE->B_sci2;
   uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
@@ -552,9 +552,9 @@ int main(int argc, char **argv)
   double snr_step = 0.2;
   snr1 = snr1set == 0 ? snr0 + snr_step * 1 : snr1;
   int frame_length_complex_samples = txUE->frame_parms.samples_per_subframe * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
-  double **r_re = malloc(2 * sizeof(double*));
-  double **r_im = malloc(2 * sizeof(double*));
-  for (int i = 0; i < 2; i++) {
+  double **r_re = malloc(NR_MAX_NB_LAYERS_SL * sizeof(double*));
+  double **r_im = malloc(NR_MAX_NB_LAYERS_SL * sizeof(double*));
+  for (int i = 0; i < NR_MAX_NB_LAYERS_SL; i++) {
     r_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     r_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
   }
@@ -591,9 +591,13 @@ int main(int argc, char **argv)
       uint32_t data_offset = num_sci2_samples;
       uint32_t sci2_offset = 0;
 
-      for(uint8_t symbol = start_symbol; symbol < (start_symbol + number_of_symbols); symbol++) {
-        nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[0], &rxdataF[0][0], symbol, slot, 0);
-        apply_nr_rotation_ul(&rxUE->frame_parms, &rxdataF[0][0], slot, start_symbol, number_of_symbols, NR_LINK_TYPE_SL);
+      for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
+        for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
+            nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[aa], rxdataF[aa], ofdm_symbol, slot, 0);
+        }
+        apply_nr_rotation_ul(&rxUE->frame_parms, rxdataF[aa], slot, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
+      }
+      for (uint8_t symbol = start_symbol; symbol < number_of_symbols; symbol++) {
         uint8_t dmrs_symbol_flag = (rel16_sl_rx->ul_dmrs_symb_pos >> symbol) & 0x01;
         uint16_t nb_re_sci1 = 0;
         if (1 <= symbol && symbol <= 3) {
