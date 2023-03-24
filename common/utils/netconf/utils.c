@@ -3,9 +3,11 @@
 #include "utils.h"
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "netconf_log.h"
 
 long int get_microseconds_since_epoch(void) {
     time_t t = time(0);
@@ -16,6 +18,28 @@ long int get_microseconds_since_epoch(void) {
     useconds = t*1000000 + tv.tv_usec; //add the microseconds to the seconds
 
     return useconds;
+}
+
+char *get_netconf_timestamp(void) {
+    time_t rawtime = time(0);
+    char *nctime = 0;
+
+    if (rawtime == -1) {
+        netconf_log_error("time() failed");
+        return 0;
+    }
+    else {
+        struct tm *ptm = gmtime(&rawtime);
+        if (ptm == 0) {
+            netconf_log_error("gmtime failed");
+        }
+        else {
+            asprintf(&nctime, "%04d-%02d-%02dT%02d:%02d:%02d.0Z", ptm->tm_year + 1900, ptm->tm_mon + 1,
+                    ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
+        }
+    }
+
+    return nctime;
 }
 
 char *str_replace(const char *orig, const char *rep, const char *with) {
@@ -85,4 +109,10 @@ char *get_hostname(void) {
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
     return strdup(hostname);
+}
+
+unsigned long int get_file_size(const char *filename) {
+    struct stat st;
+    stat(filename, &st);
+    return st.st_size;
 }

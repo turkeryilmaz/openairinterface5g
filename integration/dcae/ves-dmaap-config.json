@@ -1,42 +1,226 @@
 {
-    "ves-pnfRegistration": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_PNFREG_OUTPUT"},
-        "type": "message_router"
+    "ves-syslog": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
     },
-    "ves-3gpp-fault-supervision": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_FAULTSUPERVISION_OUTPUT"},
-        "type": "message_router"
+    "ves-statechange": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
     },
-    "ves-notification": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_NOTIFICATION_OUTPUT"},
-        "type": "message_router"
-    },
-    "ves-3gpp-heartbeat": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_HEARTBEAT_OUTPUT"},
-        "type": "message_router"
-    },
-    "ves-3gpp-performance-assurance": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_PERFORMANCEASSURANCE_OUTPUT"},
-        "type": "message_router"
-    },
-    "ves-3gpp-provisioning": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_PROVISIONING_OUTPUT"},
-        "type": "message_router"
-    },
-    "ves-fault": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_FAULT_OUTPUT"},
-        "type": "message_router"
+    "ves-thresholdCrossingAlert": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
     },
     "ves-heartbeat": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_HEARTBEAT_OUTPUT"},
-        "type": "message_router"
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_HEARTBEAT_OUTPUT/"
+        }
     },
     "ves-other": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_OTHER_OUTPUT"},
-        "type": "message_router"
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_OTHER_OUTPUT/"
+        }
+    },
+    "ves-mobileflow": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-sipsignaling": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-voicequality": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-fault": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_FAULT_OUTPUT/"
+        }
     },
     "ves-measurement": {
-        "dmaap_info": {"topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_MEASUREMENT_OUTPUT"},
-        "type": "message_router"
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_MEASUREMENT_OUTPUT/"
+        }
+    },
+    "ves-3gpp-fault-supervision": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_FAULTSUPERVISION_OUTPUT/"
+        }
+    },
+    "ves-3gpp-provisioning": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_PROVISIONING_OUTPUT/"
+        }
+    },
+    "ves-3gpp-heartbeat": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_HEARTBEAT_OUTPUT/"
+        }
+    },
+    "ves-3gpp-performance-assurance": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_PERFORMANCEASSURANCE_OUTPUT/"
+        }
+    },
+    "ves-syslog-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-statechange-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-thresholdCrossingAlert-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-heartbeat-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-other-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-mobileflow-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-sipsignaling-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTSves7_valid_ip_v4.json-DEV"
+        }
+    },
+    "ves-voicequality-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-fault-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-measurement-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-3gpp-fault-supervision-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_FAULTSUPERVISION_OUTPUT"
+        }
+    },
+    "ves-3gpp-provisioning-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.SEC_3GPP_FAULTSUPERVISION_OUTPUT"
+        }
+    },
+    "ves-3gpp-heartbeat-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-3gpp-performance-assurance-secondary": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/DCAE-SE-COLLECTOR-EVENTS-DEV"
+        }
+    },
+    "ves-pnfRegistration": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_PNFREG_OUTPUT/"
+        }
+    },
+    "ves-o1-notify-pnf-registration": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_O1_NOTIFY_PNF_REGISTRATION_OUTPUT/"
+        }
+    },
+    "ves-o-ran-sc-du-hello-world-pm-streaming-oas3": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_O_RAN_SC_HELLO_WORLD_PM_STREAMING_OUTPUT/"
+        }
+    },
+    "ves-file-ready": {
+        "type": "message_router",
+        "dmaap_info": {
+            "location": "mtl5",
+            "topic_url": "http://dmaap-message-router:3904/events/unauthenticated.VES_FILE_READY_OUTPUT/"
+        }
     }
 }

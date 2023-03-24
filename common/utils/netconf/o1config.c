@@ -22,7 +22,6 @@ int o1_config_read(o1_config_t* config) {
         {"vesBasicAuthPassword",         "ves endpoint password to authorize\n",                 simOpt,  strptr:&config->ves_basicauth_password,     defstrval:"",              TYPE_STRING,    0 },
         {"vesNfVendorName",              "vendor name information for ves packages\n",           simOpt,  strptr:&config->ves_nf_vendor_name,         defstrval:"OAI",           TYPE_STRING,    0 },
         {"vesNfNamingCode",              "naming code information for ves packages\n",           simOpt,  strptr:&config->ves_nf_naming_code,         defstrval:"gNodeB",        TYPE_STRING,    0 },
-        {"vesOamIpv4",                   "oam ipv4 information for ves mount package\n",         simOpt,  strptr:&config->ves_oam_ipv4,               defstrval:"",              TYPE_STRING,    0 },
         {"vesOamIpv6",                   "oam ipv6 information for ves mount package\n",         simOpt,  strptr:&config->ves_oam_ipv6,               defstrval:"",              TYPE_STRING,    0 },
         {"vesFtpServerPort",             "ftp server port to serve pm data\n",                   simOpt,  u16ptr:&(config->ves_ftp_server_port),      defuintval:21,             TYPE_UINT16,    0 },
         {"vesFtpServerListenAddress",    "ftp listen address to serve pm data\n",                simOpt,  strptr:&config->ves_ftp_listen_addr,        defstrval:"0.0.0.0",       TYPE_STRING,    0 },
@@ -41,7 +40,6 @@ int o1_config_read(o1_config_t* config) {
     config->ves_basicauth_password = strdup("sample1");
     config->ves_nf_vendor_name = strdup("OpenAirInterface");
     config->ves_nf_naming_code = strdup("OGNB");
-    config->ves_oam_ipv4 = strdup("10.30.40.50");
     config->ves_oam_ipv6 = strdup("");
     config->ves_ftp_server_port = 21;
     config->ves_ftp_listen_addr = strdup("0.0.0.0");
@@ -64,7 +62,6 @@ void o1_config_free(o1_config_t* config) {
     free(config->ves_basicauth_password);
     free(config->ves_nf_vendor_name);
     free(config->ves_nf_naming_code);
-    free(config->ves_oam_ipv4);
     free(config->ves_oam_ipv6);
     free(config->ves_ftp_listen_addr);
 }
@@ -81,7 +78,6 @@ void o1_config_print(o1_config_t *config) {
     netconf_log("ves_password: %s", config-> ves_basicauth_password);
     netconf_log("ves_nf_vendor_name: %s", config->ves_nf_vendor_name);
     netconf_log("ves_nf_naming_code: %s", config->ves_nf_naming_code);
-    netconf_log("ves_oam_ipv4: %s", config->ves_oam_ipv4);
     netconf_log("ves_oam_ipv6: %s", config->ves_oam_ipv6);
     netconf_log("ves_ftp_server_port = %d", config->ves_ftp_server_port);
     netconf_log("ves_ftp_listen_addr: %s", config->ves_ftp_listen_addr);

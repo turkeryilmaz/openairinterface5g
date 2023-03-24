@@ -60,8 +60,10 @@ RUN apt-get update && \
         python3-requests \
         libusb-1.0-0 \
         # libyang/sysrepo/netopeer2
+        psmisc \
         libpcre2-8-0 \
-        openssh-client && \
+        openssh-client \
+        vsftpd && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oai-gnb/bin
@@ -118,6 +120,7 @@ COPY --from=gnb-build \
 
 COPY --from=gnb-build /usr/local/sbin/netopeer2-server /usr/local/sbin/netopeer2-server
 COPY --from=gnb-build \
+    /usr/local/lib/libcurl.so \
     /usr/local/lib/libnetconf2.so \
     /usr/local/lib/libssh.so \
     /usr/local/lib/libsysrepo.so \
@@ -138,11 +141,26 @@ RUN \
     echo "netconf:netconf!" | chpasswd && \
     mkdir -p /home/netconf/.ssh
 
+### FTP and SFTP configuration
+RUN \
+    mkdir /ftp && \
+    chown -R netconf:netconf /ftp && \
+    mkdir /var/run/vsftpd && \
+    mkdir /var/run/vsftpd/empty  && \
+    mkdir /run/sshd && \
+    echo "Match User netconf\n    ChrootDirectory /\n    X11Forwarding no\n    AllowTcpForwarding no\n    ForceCommand internal-sftp -d /ftp" >> /etc/ssh/sshd_config
+
+COPY docker/config/vsftpd.conf /etc/vsftpd.conf
+COPY docker/config/vsftpd.userlist /etc/vsftpd.userlist
+
+
 # # Initialize netopeer2
 RUN \
     /usr/local/share/netopeer2/merge_hostkey.sh && \
     /usr/local/share/netopeer2/merge_config.sh
+
 COPY docker/scripts/gnb_entrypoint.sh /opt/oai-gnb/bin/entrypoint.sh
+
 WORKDIR /opt/oai-gnb
 #EXPOSE 2152/udp  # S1U, GTP/UDP
 #EXPOSE 22100/tcp # ?

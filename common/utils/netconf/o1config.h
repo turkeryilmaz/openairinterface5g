@@ -15,7 +15,6 @@ typedef struct {
     char *ves_basicauth_password; 
     char *ves_nf_vendor_name;
     char *ves_nf_naming_code;
-    char *ves_oam_ipv4;
     char *ves_oam_ipv6;
     uint16_t ves_ftp_server_port;
     char *ves_ftp_listen_addr;

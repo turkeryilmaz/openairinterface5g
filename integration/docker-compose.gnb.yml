@@ -12,7 +12,9 @@ services:
       - ENABLE_NETCONF=true
     volumes:
         - /dev:/dev
-        - ./gNodeB/gnb.conf:/opt/oai-gnb/etc/mounted.conf
+#        - ./gNodeB/gnb.conf:/opt/oai-gnb/etc/mounted.conf:ro
+        - ./gNodeB/gnb.conf:/opt/oai-gnb/etc/gnb.conf 
+        - ./gNodeB/ftp:/ftp
     healthcheck:
       # pgrep does NOT work
       test: /bin/bash -c "ps aux | grep -v grep | grep -c softmodem"

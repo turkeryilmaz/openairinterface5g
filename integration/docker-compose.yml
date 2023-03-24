@@ -89,7 +89,12 @@ services:
     - ./dcae/pm_mount_config.yaml:${PM_MAPPER_TARGET_CONFIG_PATH}
     - ./dcae/certs:/opt/app/pm-mapper/etc/certs/
   dcae-ves-collector:
-    image: ${DCAE_VES_COLLECTOR_IMAGE}
+#    image: ${DCAE_VES_COLLECTOR_IMAGE}
+    image: ${DCAE_VES_COLLECTOR_IMAGE}-modified
+    build:
+      context: ./dcae/ves-image
+      args:
+        - BASEIMAGE=${DCAE_VES_COLLECTOR_IMAGE}
     container_name: dcae-ves-collector
     environment:
       DMAAPHOST: dmaap
@@ -112,7 +117,7 @@ services:
     volumes:
     - ./dcae/collector.properties:/opt/app/VESCollector/etc/collector.properties
     - ./dcae/ves-dmaap-config.json:/opt/app/VESCollector/etc/ves-dmaap-config.json
-    - ./dcae/externalRepo:/opt/app/VESCollector/etc/externalRepo
+#    - ./dcae/externalRepo:/opt/app/VESCollector/etc/externalRepo
   
   dcae-dfc:
     image: ${DCAE_DFC_IMAGE}

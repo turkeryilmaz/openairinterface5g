@@ -26,7 +26,7 @@
     \"timeZoneOffset\": \"+00:00\",\
     \"version\": \"4.1\",\
     \"vesEventListenerVersion\": \"7.2.1\",\
-    \"stndDefinedNamespace\": \"o1-notify-pnf-registration\",\
+    \"stndDefinedNamespace\": \"@stndDefinedNamespace@\",\
     \"nfcNamingCode\": \"NFC\"\
 }"
 
@@ -58,11 +58,11 @@
     }\
 }"
 
-#define VES_PNF_ALARMING_TEMPLATE "\"stndDefinedFields\": {\
-    \"schemaReference\": \"https://forge.3gpp.org/rep/sa5/MnS/-/raw/Rel-16/OpenAPI/TS28532_FaultMnS.yaml#components/schemas/NotifyNewAlarm\",\
+#define VES_PNF_ALARMING_TEMPLATE_RAISE "\"stndDefinedFields\": {\
+    \"schemaReference\": \"https://forge.3gpp.org/rep/sa5/MnS/raw/Rel-18/OpenAPI/TS28532_FaultMnS.yaml#components/schemas/NotifyNewAlarm\",\
     \"data\": {\
         \"href\": \"href1\",\
-        \"notificationId\": 0,\
+        \"notificationId\": @seqId@,\
         \"notificationType\": \"notifyNewAlarm\",\
         \"eventTime\": \"@eventTime@\",\
         \"systemDN\": \"xyz\",\
@@ -96,6 +96,47 @@
     \"stndDefinedFieldsVersion\": \"1.0\"\
 }"
 
+#define VES_PNF_ALARMING_TEMPLATE_CLEAR "\"stndDefinedFields\": {\
+    \"schemaReference\": \"https://forge.3gpp.org/rep/sa5/MnS/raw/Rel-18/OpenAPI/TS28532_FaultMnS.yaml#components/schemas/NotifyClearedAlarm\",\
+    \"data\": {\
+        \"href\": \"href1\",\
+        \"notificationId\": @seqId@,\
+        \"notificationType\": \"notifyNewAlarm\",\
+        \"eventTime\": \"@eventTime@\",\
+        \"systemDN\": \"xyz\",\
+        \"alarmId\": \"@alarm@\",\
+        \"alarmType\": \"COMMUNICATIONS_ALARM\",\
+        \"probableCause\": \"@alarm@\",\
+        \"perceivedSeverity\": \"@severity@\",\
+        \"clearUserId\": \"@vendor@\",\
+        \"clearSystemId\": \"@vendor@\"\
+    },\
+    \"stndDefinedFieldsVersion\": \"1.0\"\
+}"
+
+#define VES_FILE_READY_TEMPLATE "\"stndDefinedFields\": {\
+    \"schemaReference\": \"https://forge.3gpp.org/rep/sa5/MnS/raw/Rel-18/OpenAPI/TS28532_FileDataReportingMnS.yaml#components/schemas/NotifyFileReady\",\
+    \"data\": {\
+        \"href\": \"href1\",\
+        \"notificationId\": 0,\
+        \"notificationType\": \"notifyFileReady\",\
+        \"eventTime\": \"@eventTime@\",\
+        \"systemDN\": \"xyz\",\
+        \"fileInfoList\": [{\
+            \"fileLocation\": \"@fileLocation@\",\
+            \"fileSize\": @fileSize@,\
+            \"fileReadyTime\": \"@eventTime@\",\
+            \"fileExpirationTime\": \"@expTime@\",\
+            \"fileCompression\": \"no\",\
+            \"fileFormat\": \"xml\",\
+            \"fileDataType\": \"Performance\"\
+        }],\
+        \"additionalText\": \"Have fun!\"\
+    },\
+    \"stndDefinedFieldsVersion\": \"1.0\"\
+}"
+
+/*    
 #define VES_FILE_READY_TEMPLATE "\"notificationFields\": {\
     \"changeIdentifier\":  \"PM_MEAS_FILES\",\
     \"changeType\":  \"FileReady\",\
@@ -104,7 +145,7 @@
         {\
             \"name\":  \"@filename@\",\
             \"hashMap\":  {\
-                \"location\": \"@filelocation@\",\
+                \"location\": \"@fileLocation@\",\
                 \"compression\": \"gzip\",\
                 \"fileFormatType\": \"org.3GPP.32.435#measCollec\",\
                 \"fileFormatVersion\": \"V5\"\
@@ -112,15 +153,21 @@
         }\
     ]\
 }"
+*/
 
 struct memory {
     char *response;
     size_t size;
 };
 
-static int ves_execute(char *priority, char *domain, char *event_type, char* main_content);
+static int ves_execute(char *priority, char *domain, char *event_type, char *stnd_defined_namespace, char* main_content);
 static int ves_http_request(const char *url, const char *username, const char* password, const char *method, const char *send_data, int *response_code, char **recv_data);
 static size_t curl_write_cb(void *data, size_t size, size_t nmemb, void *userp);
+static int vsftp_daemon_init(void);
+static int vsftp_daemon_deinit(void);
+static int sftp_daemon_init(void);
+static int sftp_daemon_deinit(void);
+
 
 static ves_config_t ves_config = {0};
 static int ves_seq_id = 0;
@@ -176,6 +223,18 @@ int ves_init(ves_config_t *config, ves_header_t *ves) {
         goto failed;
     }
 
+    int rc = vsftp_daemon_init();
+    if(rc != 0) {
+        netconf_log_error("vsftp_daemon_init() failed");
+        goto failed;
+    }
+
+    // rc = sftp_daemon_init();
+    // if(rc != 0) {
+    //     netconf_log_error("sftp_daemon_init() failed");
+    //     goto failed;
+    // }
+
     return 0;
 
 failed:
@@ -185,6 +244,9 @@ failed:
 }
 
 void ves_free() {
+    vsftp_daemon_deinit();
+    // sftp_daemon_deinit();
+
     free(ves_common_header);
     free(ves_config.url);
     free(ves_config.username);
@@ -282,7 +344,8 @@ int ves_pnf_registration_execute(ves_registration_data_t *ves) {
         goto failed;
     }
 
-    int rc = ves_execute(PRIORITY_PNFREGISTRATION, DOMAIN_PNFREGISTRAION, EVENTTYPE_PNFREGISTRATION, content);
+    int rc = ves_execute(PRIORITY_PNFREGISTRATION, DOMAIN_PNFREGISTRAION, EVENTTYPE_PNFREGISTRATION, 
+        STNDDEF_NAMESPACE_NONE, content);
     if(rc != 0) {
         netconf_log_error("ves_execute() failed");
         goto failed;
@@ -308,29 +371,45 @@ int ves_pnf_pmdata_fileready_execute(ves_file_ready_t* ves_data) {
         goto failed;
     }
 
+    char *filesize = 0;
+    asprintf(&filesize, "%lu", ves_data->filesize);
+    if(filesize == 0) {
+        netconf_log_error("asprintf() failed");
+        goto failed;
+    }
+
     // fill template
-    content = str_replace_inplace(content, "@filename@", ves_data->filename);
+    content = str_replace_inplace(content, "@expTime@", ves_data->expires_on);
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
     }
 
-    content = str_replace_inplace(content, "@filelocation@", ves_data->filelocation);
+    content = str_replace_inplace(content, "@fileLocation@", ves_data->filelocation);
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
     }
 
-    int rc = ves_execute(PRIORITY_PMDATA, DOMAIN_PMDATA, EVENTTYPE_PNFALARMING, content);
+    content = str_replace_inplace(content, "@fileSize@", filesize);
+    if(content == 0) {
+        netconf_log_error("str_replace_inplace failed");
+        goto failed;
+    }
+
+    int rc = ves_execute(PRIORITY_PMDATA, DOMAIN_PMDATA, EVENTTYPE_PNFALARMING, 
+        STNDDEF_NAMESPACE_NONE, content);
     if(rc != 0) {
         netconf_log_error("ves_execute() failed");
         goto failed;
     }
 
+    free(filesize);
     free(content);
     return 0;
 
 failed:
+    free(filesize);
     free(content);
     return 1;
 }
@@ -338,39 +417,73 @@ failed:
  * send ves pnf alarm
  * 
 */
-int ves_pnf_alarm_execute(ves_alarm_t* ves_alarm){
-    char *content = strdup(VES_PNF_ALARMING_TEMPLATE);
+int ves_pnf_alarm_execute(ves_alarm_t* ves_alarm) {
+    char *content;
+    char *timestamp = 0;
+    char *seq_id = 0;
+    
+    if (strcmp(VES_ALARM_ALARMTYPE_NONALARM, ves_alarm->alarm_type) == 0) {
+        content = strdup(VES_PNF_ALARMING_TEMPLATE_CLEAR);
+    }
+    else {
+        content = strdup(VES_PNF_ALARMING_TEMPLATE_RAISE);
+    }
+     
     if(content == 0) {
         netconf_log_error("strdup() failed");
         goto failed;
     }
 
-    // fill template
-    content = str_replace_inplace(content, "@eventTime@", "");
+    // asprintf(&timestamp, "%lu", get_microseconds_since_epoch());
+    // if(timestamp == 0) {
+    //     netconf_log_error("asprintf() failed");
+    //     goto failed;
+    // }
+    timestamp = get_netconf_timestamp();
+
+    asprintf(&seq_id, "%d", ves_seq_id);
+    if(seq_id == 0) {
+        netconf_log_error("asprintf() failed");
+        goto failed;
+    }
+
+    content = str_replace_inplace(content, "@eventTime@", timestamp);
+    if(content == 0) {
+        netconf_log_error("str_replace_inplace failed");
+        goto failed;
+    }
+    
+    content = str_replace_inplace(content, "@seqId@", seq_id);
+    if(content == 0) {
+        netconf_log_error("str_replace_inplace() failed");
+        goto failed;
+    }
+    
+    content = str_replace_inplace(content, "@notificationId@", "");
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
     }
 
-    content = str_replace_inplace(content, "@alarm@", "");
+    content = str_replace_inplace(content, "@alarm@", ves_alarm->alarm_name);
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
     }
 
-    content = str_replace_inplace(content, "@severity@", "");
+    content = str_replace_inplace(content, "@severity@", ves_alarm->severity);
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
     }
 
-    content = str_replace_inplace(content, "@type@", "");
+    content = str_replace_inplace(content, "@type@", ves_alarm->alarm_type);
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
     }
 
-    content = str_replace_inplace(content, "@vendor@", "");
+    content = str_replace_inplace(content, "@vendor@", ves_alarm->vendor);
     if(content == 0) {
         netconf_log_error("str_replace_inplace failed");
         goto failed;
@@ -383,7 +496,8 @@ int ves_pnf_alarm_execute(ves_alarm_t* ves_alarm){
     }
 
     
-    int rc = ves_execute(PRIORITY_PNFALARMING, DOMAIN_PNFALARMING, EVENTTYPE_PNFALARMING, content);
+    int rc = ves_execute(PRIORITY_PNFALARMING, DOMAIN_STNDDEFINED, EVENTTYPE_PNFALARMING,
+        STNDDEF_NAMESPACE_FAULT, content);
     if(rc != 0) {
         netconf_log_error("ves_execute() failed");
         goto failed;
@@ -397,7 +511,7 @@ failed:
     return 1;
 }
 
-static int ves_execute(char *priority, char *domain, char *event_type, char* main_content) {
+static int ves_execute(char *priority, char *domain, char *event_type, char *stnd_defined_namespace, char* main_content) {
     char *timestamp = 0;
     char *seq_id = 0;
     char *post_data = 0;
@@ -447,6 +561,12 @@ static int ves_execute(char *priority, char *domain, char *event_type, char* mai
     }
 
     header = str_replace_inplace(header, "@eventType@", event_type);
+    if(header == 0) {
+        netconf_log_error("str_replace_inplace() failed");
+        goto failed;
+    }
+
+    header = str_replace_inplace(header, "@stndDefinedNamespace@", stnd_defined_namespace);
     if(header == 0) {
         netconf_log_error("str_replace_inplace() failed");
         goto failed;
@@ -518,6 +638,12 @@ static int ves_http_request(const char *url, const char *username, const char* p
     }
 
     header = curl_slist_append(header, "Accept: application/json");
+    if(!header) {
+        netconf_log_error("curl_slist_append() failed");
+        goto failed;
+    }
+
+    header = curl_slist_append(header, "X-MinorVersion: 1");
     if(!header) {
         netconf_log_error("curl_slist_append() failed");
         goto failed;
@@ -644,7 +770,7 @@ static int ves_http_request(const char *url, const char *username, const char* p
         }
         *response_code = http_rc;
     }
-
+    
     if(recv_data) {
         *recv_data = response_data.response;
     }
@@ -677,4 +803,20 @@ static size_t curl_write_cb(void *data, size_t size, size_t nmemb, void *userp) 
     mem->response[mem->size] = 0;
 
     return realsize;
+}
+
+static int vsftp_daemon_init(void) {
+    return system("/usr/sbin/vsftpd &");
+}
+
+static int vsftp_daemon_deinit(void) {
+    return system("killall -9 vsftpd");
+}
+
+static int sftp_daemon_init(void) {
+    return system("/usr/sbin/sshd -D &");
+}
+
+static int sftp_daemon_deinit(void) {
+    return system("killall -9 sshd");
 }

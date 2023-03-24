@@ -30,6 +30,11 @@ FROM ran-build:${BASETAG} AS gnb-build
 
 FROM ran-base:${BASETAG} as ran-dev
 
+RUN apt-get update && \
+    apt-get install --yes \
+        openssh-client \
+        vsftpd
+
 # run dependencies install for netconf
 RUN ./docker/scripts/netconf_dep_install.sh
 
@@ -71,6 +76,18 @@ RUN \
     adduser netconf && \
     echo "netconf:netconf!" | chpasswd && \
     mkdir -p /home/netconf/.ssh
+    
+### FTP and SFTP configuration
+RUN \
+    mkdir /ftp && \
+    chown -R netconf:netconf /ftp && \
+    mkdir /var/run/vsftpd && \
+    mkdir /var/run/vsftpd/empty  && \
+    mkdir /run/sshd && \
+    echo "Match User netconf\n    ChrootDirectory /\n    X11Forwarding no\n    AllowTcpForwarding no\n    ForceCommand internal-sftp -d /ftp" >> /etc/ssh/sshd_config
+
+COPY docker/config/vsftpd.conf /etc/vsftpd.conf
+COPY docker/config/vsftpd.userlist /etc/vsftpd.userlist
 
 # # Initialize netopeer2
 RUN \

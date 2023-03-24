@@ -25,4 +25,5 @@ nfapi_nr_interface_scf
 
 **/*_3gpp*.yang
 **/specification/available-yangs
+**/integration/dcae/externalRepo
 /dev

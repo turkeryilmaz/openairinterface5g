@@ -35,13 +35,15 @@ typedef struct ves_registration_data {
 typedef struct ves_file_ready {
     char *filename;
     char *filelocation;
+    unsigned long int filesize;
+    char *expires_on;
 } ves_file_ready_t;
 
 //
 typedef struct ves_alarm {
     char *alarm_name;
     char *severity;
-    char *alarm_type;
+    char *alarm_type;  //TODO: maybe we should think about enum
     char *vendor;
     char *model;
 } ves_alarm_t;
@@ -51,12 +53,21 @@ typedef struct ves_alarm {
 #define DOMAIN_PNFALARMING              "fault"
 #define DOMAIN_HEARTBEAT                "heartbeat"
 #define DOMAIN_PMDATA                   "measurement"
+#define DOMAIN_STNDDEFINED              "stndDefined"
 #define EVENTTYPE_PNFREGISTRATION       "EventType5G"
 #define EVENTTYPE_PNFALARMING           "O_RAN_COMPONENT_Alarms"
 #define EVENTTYPE_PMDATA                "Notification-gnb_Nokia-FileReady"
 #define PRIORITY_PNFREGISTRATION        "Low"
 #define PRIORITY_PNFALARMING            "Low"
 #define PRIORITY_PMDATA                 "Low"
+#define STNDDEF_NAMESPACE_FAULT         "3GPP-FaultSupervision"
+#define STNDDEF_NAMESPACE_NONE          ""
+
+#define VES_ALARM_SEVERITY_CLEARED      "CLEARED"
+#define VES_ALARM_ALARMTYPE_ALARM       "ALARM"
+#define VES_ALARM_ALARMTYPE_NONALARM    "NON-ALARM"
+
+
 
 int ves_init(ves_config_t *config, ves_header_t *header);
 void ves_free();

@@ -73,12 +73,18 @@ elif [[ -v USE_N3XX ]]; then
 fi
 
 # enable printing of stack traces on assert
-export gdbStacks=1
-
+export gdbStacks=0
 if $ENABLE_NETCONF; then
+    echo "clearing shared memory for sysrepo"
+    rm -rf /dev/shm/sr*
+    if [ $? -eq 0 ]; then
+        echo "succeeded"
+    else
+        echo "failed"
+    fi
     echo "=================================="
     echo "== starting netconf server in background"
-    netopeer2-server -d -v2 &
+    netopeer2-server -v2 -d &
 fi
 
 echo "=================================="

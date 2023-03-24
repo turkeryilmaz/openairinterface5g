@@ -2,6 +2,7 @@ set(NETCONFROOT ${OPENAIR_DIR}/common/utils/netconf )
 
 set(NETCONFROOTSRV_SOURCE
     ${NETCONFROOT}/netconf.c
+    ${NETCONFROOT}/netconf_demos.c
     ${NETCONFROOT}/netconf_session.c
     ${NETCONFROOT}/o1config.c
     ${NETCONFROOT}/utils.c

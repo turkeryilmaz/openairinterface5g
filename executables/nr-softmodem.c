@@ -527,7 +527,7 @@ int main( int argc, char **argv ) {
 
   //netconf
   netconf_init();
-  netconf_test();
+  
   
   set_softmodem_sighandler();
 #ifdef DEBUG_CONSOLE
@@ -733,6 +733,7 @@ int main( int argc, char **argv ) {
   }
 
   logClean();
+  netconf_free();
   printf("Bye.\n");
   return 0;
 }

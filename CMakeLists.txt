@@ -2429,12 +2429,13 @@ add_executable(nr-softmodem
   ${OPENAIR_DIR}/common/utils/lte/ue_power.c
   ${OPENAIR_DIR}/common/utils/lte/prach_utils.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
-  ${OPENAIR_DIR}/common/utils/netconf/utils.c
-  ${OPENAIR_DIR}/common/utils/netconf/http_client.c
-  ${OPENAIR_DIR}/common/utils/netconf/ves.c
-  ${OPENAIR_DIR}/common/utils/netconf/o1config.c
   ${OPENAIR_DIR}/common/utils/netconf/netconf_session.c
   ${OPENAIR_DIR}/common/utils/netconf/netconf.c
+  ${OPENAIR_DIR}/common/utils/netconf/netconf_demos.c
+  ${OPENAIR_DIR}/common/utils/netconf/o1config.c
+  ${OPENAIR_DIR}/common/utils/netconf/utils.c
+  ${OPENAIR_DIR}/common/utils/netconf/ves_demo_alarm.c
+  ${OPENAIR_DIR}/common/utils/netconf/ves.c
   ${PHY_INTERFACE_DIR}/queue_t.c
   ${XFORMSINTERFACE_SOURCE}
   ${T_SOURCE}

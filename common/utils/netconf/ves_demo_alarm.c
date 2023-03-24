@@ -53,13 +53,13 @@ static void *ves_demo_alarm_routine(void *arg) {
         };
         if(alarm_type) {
             netconf_log("set alarm");
-            alarm.severity = "URGENT";
-            alarm.alarm_type = "ALARM";
+            alarm.severity = "MAJOR";
+            alarm.alarm_type = VES_ALARM_ALARMTYPE_ALARM;
         }
         else {
             netconf_log("clear alarm");
-            alarm.severity = "NONE";
-            alarm.alarm_type = "NON-ALARM";
+            alarm.severity = VES_ALARM_SEVERITY_CLEARED;
+            alarm.alarm_type = VES_ALARM_ALARMTYPE_NONALARM;
         }
 
 
