@@ -161,7 +161,11 @@ int write_file_matlab(const char *fname,
       break;
 
     case 1:  // complex 16-bit
-    case 13:
+    case 13: // real u32-bit
+      for (i=0; i<length; i+=dec) {
+        fprintf(fp,"%"PRIu32"\n",((uint32_t *)data)[i]);
+      }
+      break;
     case 14:
     case 15:
       for (i=0; i<length<<1; i+=(2*dec)) {

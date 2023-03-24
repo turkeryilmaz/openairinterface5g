@@ -74,6 +74,7 @@ void nr_gold_pdsch(PHY_VARS_NR_UE* ue,
                    uint32_t nid);
 
 void nr_gold_pssch(PHY_VARS_NR_UE* ue,
+                   int nscid,
                    uint32_t nid);
 
 void nr_init_pusch_dmrs(PHY_VARS_NR_UE* ue,
