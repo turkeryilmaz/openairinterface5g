@@ -1102,10 +1102,6 @@ void nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *UE,
 
 /** \brief This function does IFFT for PUSCH
 */
-uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
-                                      uint8_t slot,
-                                      NR_DL_FRAME_PARMS *frame_parms,
-                                      uint8_t n_antenna_ports);
 
 uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
                                       uint8_t slot,

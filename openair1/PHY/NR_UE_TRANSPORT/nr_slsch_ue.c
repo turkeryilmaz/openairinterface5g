@@ -468,18 +468,35 @@ uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
                                       NR_DL_FRAME_PARMS *frame_parms,
                                       uint8_t n_antenna_ports) {
 
-  int tx_offset = frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0);
-  int start_symbol = UE->slsch[0][0]->harq_processes[0]->pssch_pdu.start_symbol_index;
-  int num_symbols = UE->slsch[0][0]->harq_processes[0]->pssch_pdu.nr_of_symbols;
-  int32_t **txdata = UE->common_vars.txdata;
-  int32_t **txdataF = UE->common_vars.txdataF;
+  int tx_offset, ap;
+  int32_t **txdata;
+  int32_t **txdataF;
 
-  int symb_offset = (slot % frame_parms->slots_per_subframe) * frame_parms->symbols_per_slot;
-  for(int ap = 0; ap < n_antenna_ports; ap++) {
-    for (int s = start_symbol; s < num_symbols; s++){
+  /////////////////////////IFFT///////////////////////
+  ///////////
+
+  tx_offset = frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0);
+
+  // clear the transmit data array for the current subframe
+  /*for (int aa=0; aa<UE->frame_parms.nb_antennas_tx; aa++) {
+	  memset(&UE->common_vars.txdata[aa][tx_offset],0,UE->frame_parms.samples_per_slot*sizeof(int32_t));
+	  //memset(&UE->common_vars.txdataF[aa][tx_offset],0,UE->frame_parms.samples_per_slot*sizeof(int32_t));
+  }*/
+
+
+  txdata = UE->common_vars.txdata;
+  txdataF = UE->common_vars.txdataF;
+
+  int symb_offset = (slot%frame_parms->slots_per_subframe)*frame_parms->symbols_per_slot;
+  for(ap = 0; ap < n_antenna_ports; ap++) {
+    for (int s=0;s<NR_NUMBER_OF_SYMBOLS_PER_SLOT;s++){
       c16_t *this_symbol = (c16_t *)&txdataF[ap][frame_parms->ofdm_symbol_size * s];
-      c16_t rot = frame_parms->symbol_rotation[1][s + symb_offset];
-      printf("offset is %d rotating txdataF symbol %d (%d) => (%d.%d)\n", tx_offset, s, s + symb_offset, rot.r, rot.i);
+      c16_t rot=frame_parms->symbol_rotation[1][s + symb_offset];
+      LOG_D(PHY,"rotating txdataF symbol %d (%d) => (%d.%d)\n",
+	    s,
+	    s + symb_offset,
+	    rot.r, rot.i);
+
       if (frame_parms->N_RB_UL & 1) {
         rotate_cpx_vector(this_symbol, &rot, this_symbol,
                           (frame_parms->N_RB_UL + 1) * 6, 15);
@@ -498,7 +515,7 @@ uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
     }
   }
 
-  for (int ap = 0; ap < n_antenna_ports; ap++) {
+  for (ap = 0; ap < n_antenna_ports; ap++) {
     if (frame_parms->Ncp == 1) { // extended cyclic prefix
       PHY_ofdm_mod(txdataF[ap],
                    &txdata[ap][tx_offset],
@@ -509,7 +526,7 @@ uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
     } else { // normal cyclic prefix
       nr_normal_prefix_mod(txdataF[ap],
                            &txdata[ap][tx_offset],
-                           num_symbols,
+                           14,
                            frame_parms,
                            slot);
     }
