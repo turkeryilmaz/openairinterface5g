@@ -750,7 +750,17 @@ static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedul
   if(tdd)
     sr_slot = tdd->nrofDownlinkSlots; // SR in the first uplink slot
 
+    LOG_I(NR_RRC,"sr_slot (%d)\n",sr_slot);
+    LOG_I(NR_RRC,"SCS (%ld)\n",*scc->ssbSubcarrierSpacing);
+
+
   schedulingRequestResourceConfig->periodicityAndOffset = calloc(1,sizeof(*schedulingRequestResourceConfig->periodicityAndOffset));
+
+  if (*scc->ssbSubcarrierSpacing == 3){   // just a hack for FR2, the whole function should be implemented better;
+    schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl40;
+    schedulingRequestResourceConfig->periodicityAndOffset->choice.sl640 = sr_slot;
+    return;
+  }
 
   if(sr_slot<10){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl10;
@@ -782,6 +792,7 @@ static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedul
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl320 = sr_slot;
     return;
   }
+
   schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl640;
   schedulingRequestResourceConfig->periodicityAndOffset->choice.sl640 = sr_slot;
 }

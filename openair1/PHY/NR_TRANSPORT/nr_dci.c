@@ -39,7 +39,7 @@
 
 //#define DEBUG_PDCCH_DMRS
 #define DEBUG_DCI
-#define DEBUG_CHANNEL_CODING
+//#define DEBUG_CHANNEL_CODING
 
 void nr_pdcch_scrambling(uint32_t *in,
                          uint32_t size,
@@ -50,7 +50,7 @@ void nr_pdcch_scrambling(uint32_t *in,
   uint32_t x1, x2, s=0;
   reset = 1;
   x2 = (scrambling_RNTI<<16) + Nid;
-  LOG_I(PHY,"PDCCH Scrambling x2 %x : scrambling_RNTI %x \n", x2, scrambling_RNTI);
+  LOG_D(PHY,"PDCCH Scrambling x2 %x : scrambling_RNTI %x \n", x2, scrambling_RNTI);
   for (int i=0; i<size; i++) {
     if ((i&0x1f)==0) {
       s = lte_gold_generic(&x1, &x2, reset);
@@ -106,8 +106,8 @@ void nr_generate_dci(PHY_VARS_gNB *gNB,
     cset_start_symb = pdcch_pdu_rel15->StartSymbolIndex;
     cset_nsymb = pdcch_pdu_rel15->DurationSymbols;
     dci_idx = 0;
-    LOG_I(PHY, "pdcch: Coreset rb_offset %d, nb_rb %d BWP Start %d\n",rb_offset,n_rb,pdcch_pdu_rel15->BWPStart);
-    LOG_I(PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
+    LOG_D(PHY, "pdcch: Coreset rb_offset %d, nb_rb %d BWP Start %d\n",rb_offset,n_rb,pdcch_pdu_rel15->BWPStart);
+    LOG_D(PHY, "pdcch: Coreset starting subcarrier %d on symbol %d (%d symbols)\n", cset_start_sc, cset_start_symb, cset_nsymb);
     // DMRS length is per OFDM symbol
     uint32_t dmrs_length = n_rb*6; //2(QPSK)*3(per RB)*6(REG per CCE)
     uint32_t encoded_length = dci_pdu->AggregationLevel*108; //2(QPSK)*9(per RB)*6(REG per CCE)

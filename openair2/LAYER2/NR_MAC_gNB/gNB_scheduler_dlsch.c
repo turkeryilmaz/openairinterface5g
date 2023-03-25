@@ -980,7 +980,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
     nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu = gNB_mac->pdcch_pdu_idx[CC_id][coresetid];
 
     if (!pdcch_pdu) {
-      LOG_I(NR_MAC, "creating pdcch pdu, pdcch_pdu = NULL. \n");
+      LOG_D(NR_MAC, "creating pdcch pdu, pdcch_pdu = NULL. \n");
       nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdcch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
       memset(dl_tti_pdcch_pdu, 0, sizeof(nfapi_nr_dl_tti_request_pdu_t));
       dl_tti_pdcch_pdu->PDUType = NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE;

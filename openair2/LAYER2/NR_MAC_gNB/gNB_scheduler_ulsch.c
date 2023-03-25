@@ -534,7 +534,7 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
   gNB_MAC_INST *gNB_mac = RC.nrmac[gnb_mod_idP];
 
   const int current_rnti = rntiP;
-  LOG_I(NR_MAC, "rx_sdu for rnti %04x\n", current_rnti);
+  LOG_D(NR_MAC, "rx_sdu for rnti %04x\n", current_rnti);
   const int target_snrx10 = gNB_mac->pusch_target_snrx10;
   const int pusch_failure_thres = gNB_mac->pusch_failure_thres;
   
@@ -890,7 +890,7 @@ static bool nr_UE_is_to_be_scheduled(const NR_ServingCellConfigCommon_t *scc,
    * (3) or we did not schedule it in more than 10 frames */
   const bool has_data = sched_ctrl->estimated_ul_buffer > sched_ctrl->sched_ul_bytes;
   const bool high_inactivity = diff >= (ulsch_max_frame_inactivity > 0 ? ulsch_max_frame_inactivity * n : num_slots_per_period);
-  LOG_D(NR_MAC,
+  LOG_I(NR_MAC,
         "%4d.%2d UL inactivity %d slots has_data %d SR %d\n",
         frame,
         slot,

@@ -195,7 +195,7 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
   nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[rdata->ulsch_id]->harq_processes[rdata->harq_pid]->ulsch_pdu;
   bool decodeSuccess = (rdata->decodeIterations <= rdata->decoderParms.numMaxIter);
   ulsch_harq->processedSegments++;
-  LOG_I(PHY, "processing result of segment: %d, processed %d/%d\n",
+  LOG_D(PHY, "processing result of segment: %d, processed %d/%d\n",
 	rdata->segment_r, ulsch_harq->processedSegments, rdata->nbSegments);
   gNB->nbDecode--;
   LOG_I(PHY,"remain to decoded in subframe: %d\n", gNB->nbDecode);
@@ -234,7 +234,7 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
 
       LOG_I(PHY, "ULSCH received ok \n");
      // counterFlag+=1;
-      LOG_I(PHY, "counterFlag ok %d\n",counterFlag);
+     // LOG_I(PHY, "counterFlag ok %d\n",counterFlag);
 
       nr_fill_indication(gNB,ulsch_harq->frame, ulsch_harq->slot, rdata->ulsch_id, rdata->harq_pid, 0,0);
       dumpsig=1;
@@ -250,7 +250,7 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
 	          r);
       Setting_NACkK=1;
       counterFlag+=1;
-      LOG_I(PHY, "counterFlag ok %d\n",counterFlag);
+     // LOG_I(PHY, "counterFlag ok %d\n",counterFlag);
       ulsch_harq->handled  = 1;
 
       LOG_I(PHY, "ULSCH %d in error\n",rdata->ulsch_id);

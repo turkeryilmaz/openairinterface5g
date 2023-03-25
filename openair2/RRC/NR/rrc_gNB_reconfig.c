@@ -118,9 +118,14 @@ void fill_default_secondaryCellGroup(NR_ServingCellConfigCommon_t *servingcellco
   secondaryCellGroup->rlc_BearerToAddModList = calloc(1,sizeof(*secondaryCellGroup->rlc_BearerToAddModList));
   ASN_SEQUENCE_ADD(&secondaryCellGroup->rlc_BearerToAddModList->list, RLC_BearerConfig);
 
-  NR_MAC_CellGroupConfig_t *mac_CellGroupConfig = secondaryCellGroup->mac_CellGroupConfig;
+ // NR_MAC_CellGroupConfig_t *mac_CellGroupConfig = secondaryCellGroup->mac_CellGroupConfig;
 
-  mac_CellGroupConfig=calloc(1,sizeof(*mac_CellGroupConfig));
+ // mac_CellGroupConfig=calloc(1,sizeof(*mac_CellGroupConfig));
+
+  NR_MAC_CellGroupConfig_t *mac_CellGroupConfig = calloc(1,sizeof(*mac_CellGroupConfig));
+  secondaryCellGroup->mac_CellGroupConfig = mac_CellGroupConfig;
+
+
   mac_CellGroupConfig->drx_Config = NULL;
 
   mac_CellGroupConfig->bsr_Config=calloc(1,sizeof(*mac_CellGroupConfig->bsr_Config));
@@ -139,8 +144,8 @@ void fill_default_secondaryCellGroup(NR_ServingCellConfigCommon_t *servingcellco
   secondaryCellGroup->physicalCellGroupConfig = calloc(1,sizeof(*secondaryCellGroup->physicalCellGroupConfig));
   secondaryCellGroup->physicalCellGroupConfig->harq_ACK_SpatialBundlingPUCCH=NULL;
   secondaryCellGroup->physicalCellGroupConfig->harq_ACK_SpatialBundlingPUSCH=NULL;
-  //secondaryCellGroup->physicalCellGroupConfig->p_NR_FR1=calloc(1,sizeof(*secondaryCellGroup->physicalCellGroupConfig->p_NR_FR1));
-  //*secondaryCellGroup->physicalCellGroupConfig->p_NR_FR1=20;
+ //secondaryCellGroup->physicalCellGroupConfig->p_NR_FR1=calloc(1,sizeof(*secondaryCellGroup->physicalCellGroupConfig->p_NR_FR1));
+  secondaryCellGroup->physicalCellGroupConfig->p_NR_FR1=NULL;
   secondaryCellGroup->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook=NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
   secondaryCellGroup->physicalCellGroupConfig->tpc_SRS_RNTI=NULL;
   secondaryCellGroup->physicalCellGroupConfig->tpc_PUCCH_RNTI=NULL;
