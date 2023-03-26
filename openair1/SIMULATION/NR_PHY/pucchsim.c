@@ -387,7 +387,7 @@ int main(int argc, char **argv)
   }
   actual_payload &= ((1<<nr_bit)-1);
 
-  printf("Transmitted payload is %ld, do_DTX = %d\n",actual_payload,do_DTX);
+  printf("Transmitted payload is %lu, do_DTX = %d\n",actual_payload,do_DTX);
 
   RC.gNB = calloc(1, sizeof(PHY_VARS_gNB *));
   RC.gNB[0] = calloc(1,sizeof(PHY_VARS_gNB));
