@@ -120,8 +120,7 @@ int main (int argc, const char* argv[])
   const char* devpath = user_parser_get_devpath();
   const char* devattr = user_parser_get_devattr();
 
-  printf("%s -host %s -port %s -dev %s -params %s\n",
-         argv[0], host, port, devpath, devattr);
+  if(devpath != NULL) printf("%s -host %s -port %s -dev %s -params %s\n", argv[0], host, port, devpath, devattr);
 
   /*
    * Initialize the communication channel to the NAS sublayer

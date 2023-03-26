@@ -339,14 +339,12 @@ int8_t nr_rrc_ue_process_scg_config(const module_id_t module_id, NR_CellGroupCon
   int i;
   if(cell_group_config==NULL){
     //  initial list
-    if(cell_group_config->spCellConfig != NULL){
-      if(cell_group_config->spCellConfig->spCellConfigDedicated != NULL){
-        if(cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList != NULL){
-          for(i=0; i<cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count; ++i){
-            RRC_LIST_MOD_ADD(NR_UE_rrc_inst[module_id].BWP_Downlink_list, cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[i], bwp_Id);
-          }
+    if (cell_group_config != NULL && cell_group_config->spCellConfig != NULL &&
+        cell_group_config->spCellConfig->spCellConfigDedicated != NULL &&
+        cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList != NULL) {
+        for (i = 0; i < cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count; i++) {
+          RRC_LIST_MOD_ADD(NR_UE_rrc_inst[module_id].BWP_Downlink_list, cell_group_config->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[i], bwp_Id);
         }
-      }
     }
   }else{
     //  maintain list
@@ -2823,7 +2821,7 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
             uint32_t nr_RadioBearer_size = hdr.RadioBearer_size;
             uint32_t nr_SecondaryCellGroup_size = hdr.SecondaryCellGroup_size;
             AssertFatal(sizeof(hdr) + nr_RadioBearer_size + nr_SecondaryCellGroup_size <= msg_len,
-                      "nr_RadioBearerConfig1_r15 size %d nr_SecondaryCellGroupConfig_r15 size %d sizeof(hdr) %zu, msg_len = %d\n",
+                      "nr_RadioBearerConfig1_r15 size %u nr_SecondaryCellGroupConfig_r15 size %u sizeof(hdr) %zu, msg_len = %d\n",
                       nr_RadioBearer_size,
                       nr_SecondaryCellGroup_size,
                       sizeof(hdr), msg_len);

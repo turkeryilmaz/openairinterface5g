@@ -3392,7 +3392,7 @@ int dlsch_modulation(PHY_VARS_eNB* phy_vars_eNB,
   if (dlsch0 != NULL){
   amp_rho_a = (int16_t)(((int32_t)amp*dlsch0->sqrt_rho_a)>>13); //amp=512 in  full scale; dlsch0->sqrt_rho_a=8192in Q2.13, 1 in full scale
   amp_rho_b = (int16_t)(((int32_t)amp*dlsch0->sqrt_rho_b)>>13);
-  } else{
+  }else if (dlsch1 != NULL){
   amp_rho_a = (int16_t)(((int32_t)amp*dlsch1->sqrt_rho_a)>>13);
   amp_rho_b = (int16_t)(((int32_t)amp*dlsch1->sqrt_rho_b)>>13);
   }

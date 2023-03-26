@@ -89,21 +89,17 @@ extern int errorCodeDecoder;
 
 void tlv_decode_perror(void);
 
-#define CHECK_PDU_POINTER_AND_LENGTH_DECODER(bUFFER, mINIMUMlENGTH, lENGTH)    \
-  if (bUFFER == NULL)                                                    \
-        {                                                                      \
-                printf("(%s:%d) Got NULL pointer for the payload\n",           \
-                __FILE__, __LINE__);                                           \
-                errorCodeDecoder = TLV_DECODE_BUFFER_NULL;                     \
-                LOG_FUNC_RETURN(TLV_DECODE_BUFFER_NULL);                       \
-        }                                                                      \
-        if (lENGTH < mINIMUMlENGTH)                                            \
-        {                                                                      \
-                printf("(%s:%d) Expecting at least %d bytes, got %d\n",        \
-                      __FILE__, __LINE__, mINIMUMlENGTH, lENGTH);              \
-                errorCodeDecoder = TLV_DECODE_BUFFER_TOO_SHORT;                \
-                LOG_FUNC_RETURN(TLV_DECODE_BUFFER_TOO_SHORT);                  \
-        }
+#define CHECK_PDU_POINTER_AND_LENGTH_DECODER(bUFFER, mINIMUMlENGTH, lENGTH)                             \
+  if (bUFFER == NULL) {                                                                                 \
+    printf("(%s:%d) Got NULL pointer for the payload\n", __FILE__, __LINE__);                           \
+    errorCodeDecoder = TLV_DECODE_BUFFER_NULL;                                                          \
+    LOG_FUNC_RETURN(TLV_DECODE_BUFFER_NULL);                                                            \
+  }                                                                                                     \
+  if (lENGTH < mINIMUMlENGTH) {                                                                         \
+    printf("(%s:%d) Expecting at least %d bytes, got %u\n", __FILE__, __LINE__, mINIMUMlENGTH, lENGTH); \
+    errorCodeDecoder = TLV_DECODE_BUFFER_TOO_SHORT;                                                     \
+    LOG_FUNC_RETURN(TLV_DECODE_BUFFER_TOO_SHORT);                                                       \
+  }
 
 #define CHECK_LENGTH_DECODER(bUFFERlENGTH, lENGTH)                             \
         if (bUFFERlENGTH < lENGTH)                                             \

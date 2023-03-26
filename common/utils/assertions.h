@@ -70,8 +70,7 @@ _Assert_(cOND, _Assert_Exit_, #vALUE1": %" PRIdMAX "\n" #vALUE2 ": %" PRIdMAX "\
 
 #define DevParam(vALUE1, vALUE2, vALUE3)    DevCheck(0, vALUE1, vALUE2, vALUE3)
 
-#define DevAssert(cOND)                     _Assert_(cOND, _Assert_Exit_, "")
-
+#define DevAssert(cOND) _Assert_(cOND, _Assert_Exit_, "")
 #define DevMessage(mESSAGE)                 _Assert_(0, _Assert_Exit_, #mESSAGE)
 
 #define CHECK_INIT_RETURN(fCT)                                  \

@@ -497,7 +497,7 @@ void get_cexp_doppler(struct complexd *cexp_doppler, channel_desc_t *chan_desc, 
     cexp_doppler[t_idx].i = cimag(tmp_cexp_doppler);
 
 #ifdef DOPPLER_DEBUG
-    printf("(%2i) t_us = %f, cos_theta = %f, fs = %f, cexp_doppler = (%f, %f)\n", t_idx, t * 1e6, cos_theta[t_idx], fs[t_idx], cexp_doppler[t_idx].r, cexp_doppler[t_idx].i);
+    printf("(%u) t_us = %f, cos_theta = %f, fs = %f, cexp_doppler = (%f, %f)\n", t_idx, t * 1e6, cos_theta[t_idx], fs[t_idx], cexp_doppler[t_idx].r, cexp_doppler[t_idx].i);
 #endif
   }
 }
@@ -2233,8 +2233,12 @@ int get_modchannel_index(char *buf, int debug, void *vdata, telnet_printfunc_t p
   }
   if (debug)
     LOG_I(UTIL, "%s received %s\n", __FUNCTION__, buf);
-  webdatadef_t *tdata = (webdatadef_t *)vdata;
-  tdata->numlines = 0;
+    webdatadef_t *tdata = NULL;
+    if (vdata != NULL) {
+      tdata = (webdatadef_t *)vdata;
+      tdata->numlines = 0;
+    }
+
   if (strncmp(buf, "set", 3) == 0) {
     return get_channel_params(buf, debug, vdata, prnt);
   }
@@ -2251,7 +2255,7 @@ int get_modchannel_index(char *buf, int debug, void *vdata, telnet_printfunc_t p
       snprintf(tdata->tblname, sizeof(tdata->tblname) - 1, "No running model in the system");
     }
   }
-  return tdata->numlines;
+  return (tdata != NULL) ? tdata->numlines : -1;
 } /* get_currentchannel_type */
 /*------------------------------------------------------------------------------------------------------------------*/
 
