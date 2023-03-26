@@ -1686,13 +1686,15 @@ void select_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch)
       pucch->pucch_resource = NULL;
       return;
     }
-    n_list = resourceSetToAddModList->list.array[pucch->resource_set_id]->resourceList.list.count;
+    if (resourceSetToAddModList != NULL && resourceSetToAddModList->list.array[pucch->resource_set_id] != NULL) {
+      n_list = resourceSetToAddModList->list.array[pucch->resource_set_id]->resourceList.list.count;
+    }
     if (pucch->resource_indicator > n_list) {
       LOG_E(MAC,"Invalid PUCCH resource id %d\n",pucch->resource_indicator);
       pucch->pucch_resource = NULL;
       return;
     }
-    current_resource_id = resourceSetToAddModList->list.array[pucch->resource_set_id]->resourceList.list.array[pucch->resource_indicator];
+    if(resourceSetToAddModList != NULL) current_resource_id = resourceSetToAddModList->list.array[pucch->resource_set_id]->resourceList.list.array[pucch->resource_indicator];
     n_list = resourceToAddModList->list.count;
     int res_found = 0;
     for (int i=0; i<n_list; i++) {

@@ -965,7 +965,7 @@ rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(
   ue_initial_id  = msg->ue_initial_id;
   gNB_ue_ngap_id = msg->gNB_ue_ngap_id;
   ue_context_p   = rrc_gNB_get_ue_context_from_ngap_ids(instance, ue_initial_id, gNB_ue_ngap_id);
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, ue_context_p->ue_context.rnti, 0, 0, 0);
+  if (ue_context_p != NULL) PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, ue_context_p->ue_context.rnti, 0, 0, 0);
   rrc = RC.nrrrc[ctxt.module_id];
   LOG_I(NR_RRC, "[gNB %ld] Received %s: ue_initial_id %d, gNB_ue_ngap_id %u \n",
         instance, msg_name, ue_initial_id, gNB_ue_ngap_id);

@@ -1235,23 +1235,19 @@ uint8_t phy_threegpplte_turbo_decoder8(int16_t *y,
       // check the CRC
       uint32_t oldcrc;
       memcpy(&oldcrc, &decoded_bytes[(n >> 3) - crc_len], crc_len);
+      uint32_t temp_crc;
+
       switch (crc_type) {
         case CRC24_A:
-          oldcrc&=0x00ffffff;
-          crc = crc24a(&decoded_bytes[F>>3],
-                       n-24-F)>>8;
-          temp=((uint8_t *)&crc)[2];
-          ((uint8_t *)&crc)[2] = ((uint8_t *)&crc)[0];
-          ((uint8_t *)&crc)[0] = temp;
+          crc = crc24a(&decoded_bytes[F>>3], n-24-F) >> 8;
+          temp_crc = ((crc & 0xFF) << 16) | ((crc & 0xFF00) << 8) | (crc >> 16);
+          crc = temp_crc;
           break;
 
         case CRC24_B:
-          oldcrc&=0x00ffffff;
-          crc = crc24b(decoded_bytes,
-                       n-24)>>8;
-          temp=((uint8_t *)&crc)[2];
-          ((uint8_t *)&crc)[2] = ((uint8_t *)&crc)[0];
-          ((uint8_t *)&crc)[0] = temp;
+          crc = crc24b(decoded_bytes, n-24) >> 8;
+          temp_crc = ((crc & 0xFF) << 16) | ((crc & 0xFF00) << 8) | (crc >> 16);
+          crc = temp_crc;
           break;
 
         case CRC16:

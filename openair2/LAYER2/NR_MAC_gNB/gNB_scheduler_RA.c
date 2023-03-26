@@ -781,8 +781,9 @@ void nr_generate_Msg3_retransmission(module_id_t module_idP, int CC_id, frame_t 
     // generation of DCI 0_0 to schedule msg3 retransmission
     NR_SearchSpace_t *ss = ra->ra_ss;
     NR_ControlResourceSet_t *coreset = ra->coreset;
-    AssertFatal(coreset!=NULL,"Coreset cannot be null for RA-Msg3 retransmission\n");
-
+    if (coreset == NULL) {
+      AssertFatal(0,"Coreset cannot be null for RA-Msg3 retransmission\n");
+    }
     nfapi_nr_ul_dci_request_t *ul_dci_req = &nr_mac->UL_dci_req[CC_id];
 
     const int coresetid = coreset->controlResourceSetId;

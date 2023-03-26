@@ -153,6 +153,7 @@ int main(int n, char **v)
     char *v;
     int vpos = 0;
     struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
     char *buf;
 
     /* read event from file */

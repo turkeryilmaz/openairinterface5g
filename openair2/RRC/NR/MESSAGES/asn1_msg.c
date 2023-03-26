@@ -1520,7 +1520,7 @@ int16_t do_RRCReconfiguration(
         ie->nonCriticalExtension->dedicatedNAS_MessageList = dedicatedNAS_MessageList;
     }
 
-    if(cellGroupConfig!=NULL){
+    if(cellGroupConfig!=NULL && ue_context_pP!=NULL){
       update_cellGroupConfig(cellGroupConfig,
                              ue_context_pP->local_uid,
                              ue_context_pP ? ue_context_pP->ue_context.UE_Capability_nr : NULL,

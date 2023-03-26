@@ -239,11 +239,14 @@ void fill_default_secondaryCellGroup(NR_ServingCellConfigCommon_t *servingcellco
   }
   initialUplinkBWP->pusch_Config = config_pusch(pusch_Config, servingcellconfigcommon);
 
-  long maxMIMO_Layers = servingcellconfigdedicated->uplinkConfig &&
+  long maxMIMO_Layers = -1;
+  if (servingcellconfigdedicated != NULL) {
+    maxMIMO_Layers = servingcellconfigdedicated->uplinkConfig &&
                                 servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig &&
                                 servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1 &&
                                 servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers ?
                             *servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers : 1;
+  }
 
   int curr_bwp = NRRIV2BW(servingcellconfigcommon->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
   initialUplinkBWP->srs_Config = calloc(1,sizeof(*initialUplinkBWP->srs_Config));
@@ -421,7 +424,7 @@ void fill_default_secondaryCellGroup(NR_ServingCellConfigCommon_t *servingcellco
  secondaryCellGroup->spCellConfig->spCellConfigDedicated->pathlossReferenceLinking=NULL;
  secondaryCellGroup->spCellConfig->spCellConfigDedicated->servingCellMO=NULL;
 
-  *servingcellconfigdedicated = *secondaryCellGroup->spCellConfig->spCellConfigDedicated;
+  if (servingcellconfigdedicated != NULL) *servingcellconfigdedicated = *secondaryCellGroup->spCellConfig->spCellConfigDedicated;
 
   if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
     xer_fprint(stdout, &asn_DEF_NR_SpCellConfig, (void *)secondaryCellGroup->spCellConfig);
