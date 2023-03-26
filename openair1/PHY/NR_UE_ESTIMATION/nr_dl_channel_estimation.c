@@ -1201,7 +1201,7 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
         rxF = (int16_t *)&rxdataF[aarx][(symbol_offset+k+1)];
       }
 #ifdef DEBUG_PDCCH
-      printf("pilot[%d] = (%d, %d)\trxF[%d] = (%d, %d)\n", pilot_cnt, pil[0], pil[1], k+1, rxF[0], rxF[1]);
+      printf("pilot[%u] = (%d, %d)\trxF[%d] = (%d, %d)\n", pilot_cnt, pil[0], pil[1], k+1, rxF[0], rxF[1]);
 #endif
       ch_sum[0] += (int16_t)(((int32_t)pil[0]*rxF[0] - (int32_t)pil[1]*rxF[1])>>15);
       ch_sum[1] += (int16_t)(((int32_t)pil[0]*rxF[1] + (int32_t)pil[1]*rxF[0])>>15);
