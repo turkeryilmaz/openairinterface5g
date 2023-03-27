@@ -530,17 +530,17 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
       Doppler_I_Ctrl += DopplerErr;
       // ue->DopplerEst = (int32_t)(DopplerErr*P_ScalingFN/P_ScalingFD + Doppler_I_Ctrl*I_ScalingFN/I_ScalingFD +
       //   (DopplerErr-DopplerErrLast)*D_ScalingFN/D_ScalingFD); //PID controller
-      ue->DopplerEst = (int32_t)(DopplerErr*PScaling + Doppler_I_Ctrl*IScaling); //PID controller
+      ue->DopplerEst = (int32_t)( (DopplerErr * FO_PScaling) + (Doppler_I_Ctrl * FO_IScaling) ); //PI controller
       DopplerErrLast = DopplerErr;
 
-//#ifdef DEBUG_PBCH
+#ifdef DEBUG_PBCH
       double rx_gain = openair0_cfg[0].rx_gain[0];
       double rx_gain_offset = openair0_cfg[0].rx_gain_offset[0];
       double DopplerEstMax = M_PI/ (2*M_PI*(DMRS_idx_current-DMRS_idx_last)*TOfdm);
       LOG_I(PHY, "**** DopplerEst: %f, ue->DopplerEst: %d, chLevel: %i, chLevelLog: %u, outShift: %u, re: %i, im: %i, phase: %f, rxG: %f, rxGOff: %f\n",
             DopplerEst, ue->DopplerEst, channelLevel, channelLevelLog, outputShift, Dot_Prod_Res.r, Dot_Prod_Res.i, Res_phase, rx_gain, rx_gain_offset);
       LOG_I(PHY, "DopplerEstMax: %f, PScaling: %f, IScaling: %f\n", DopplerEstMax, PScaling, IScaling);
-//#endif
+#endif
     }
 
 #ifdef DEBUG_PBCH

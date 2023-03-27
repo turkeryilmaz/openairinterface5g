@@ -840,31 +840,22 @@ static bool flushInput(rfsimulator_state_t *t, int timeout, int nsamps_for_initi
 }
 
 //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
-extern int32_t fdoppler; //center Doppler frequency shift
-extern int32_t fdopplerRate; //Doppler rate in Hz/s
-extern uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
+extern int32_t fdoppler; // flag to simulate frequency offset (default active = 1, 0 = de-activate)
 const uint32_t fsamp = 61440000; //sampling frequency
+extern uint16_t pathStartingTime;    // time [sec] at which satellite is becoming visible to the UE 
+extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
+extern int uePosY;              // y-axis coordinate [m] of UE position
 
 static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimestamp, void **samplesVoid, int nsamps, int nbAnt) {
   if (nbAnt > 4) {
     LOG_W(HW, "rfsimulator: only 4 antenna tested\n");
   }
 
-  static double timeForDoppler = 0;
   int currDoppler = 0;
   static uint64_t counter = 0;
   static int initDoppler = 0;
-
   static uint64_t SampIdxDoppler = 0; //sample index in the calculation of the Doppler shift
   //Paramters for Doppler shift. Assume the Doppler frequency changes every frame
-  // uint32_t NrSampFrame = fsamp/100; //Number of samples per frame (10ms)
-  // static int32_t fdopplerStep = 1<<20;
-  // static uint32_t CntDoppRate = 1; //counter for the Doppler rate
-  // static int32_t fdopplerCurr = 1<<20; //current Doppler
-  // if ( fdopplerStep == 1<<20 )
-  //   fdopplerStep = fdopplerRate/100;
-  // if ( fdopplerCurr == 1<<20 )
-  //   fdopplerCurr = fdoppler;
 
   rfsimulator_state_t *t = device->priv;
   LOG_D(HW, "Enter rfsimulator_read, expect %d samples, will release at TS: %ld, nbAnt %d\n", nsamps, t->nextRxTstamp+nsamps, nbAnt);
@@ -956,25 +947,38 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
           sample_t *out=(sample_t *)samplesVoid[a];
           int nbAnt_tx = ptr->th.nbAnt;//number of Tx antennas
+          
+          double timeForDoppler = (double)pathStartingTime;
+          if (counter > 6000)
+            timeForDoppler = (double)pathStartingTime + (double)SampIdxDoppler/fsamp;
+          
+          if (timeForDoppler > (double)pathEndingTime)
+            timeForDoppler = (double)pathEndingTime;
+          
+          const float R = 6371000;  const float h = 600000;
+          double ue_posX = 0; double ue_posY = (double)uePosY; double ue_posZ = R;
+          static float wsat = 0.0011; 
+          double sat_posX = 0; double sat_posY = (R+h) * cos(wsat*timeForDoppler);  double sat_posZ = (R+h) * sin(wsat*timeForDoppler); 
+          float norm_d = sqrt(((ue_posX - sat_posX) * (ue_posX - sat_posX)) + ((ue_posY - sat_posY) * (ue_posY - sat_posY)) + ((ue_posZ - sat_posZ) * (ue_posZ - sat_posZ)));
+          float cos_theta = (sat_posY - ue_posY) / norm_d;
+          double fc = 20e9;
+          double freqScale = 1;
+          if (t-> typeStamp == ENB_MAGICDL)
+            freqScale = (double)1769080000/2169080000;
+          double c = 299792458;
 
-          if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
+          if (fdoppler == 1)
           {
-            timeForDoppler = 1050 + (double)SampIdxDoppler/fsamp;
-			      const float R = 6371000;  const float h = 600000;
-            double ue_posX = 0; double ue_posY = 0; double ue_posZ = R;
-            static float wsat = 0.0011; 
-            double sat_posX = 0; double sat_posY = (R+h) * cos(wsat*timeForDoppler);  double sat_posZ = (R+h) * sin(wsat*timeForDoppler); 
-            float norm_d = sqrt(((ue_posX - sat_posX) * (ue_posX - sat_posX)) + ((ue_posY - sat_posY) * (ue_posY - sat_posY)) + ((ue_posZ - sat_posZ) * (ue_posZ - sat_posZ)));
-            float cos_theta = (sat_posY - ue_posY) / norm_d;
-            double fc = 20e9;
-            double c = 299792458;
-            int currDopplerTmp = (int)((wsat*R / c) * fc * (R/(R+h)) * cos_theta);
+            int currDopplerTmp = (int)((wsat*R / c) * fc * freqScale * (R/(R+h)) * cos_theta);
 
             if (SampIdxDoppler == 0)
               initDoppler = currDopplerTmp;
 
-            currDoppler =  currDopplerTmp - initDoppler;            
+            currDoppler =  (currDopplerTmp - initDoppler) ;
           }
+          
+          //RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
+          printf("**** counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);        
 
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
@@ -983,8 +987,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
               out[i].i += (short)(ptr->circularBuf[((t->nextRxTstamp-RFsim_PropDelay+i)*nbAnt_tx+a_tx)%CirSize].i*H_awgn_mimo[a][a_tx]);
             } // end for a_tx
 
-
-            if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
+            if ((counter > 6000))
             {
               int16_t outRealTmp = out[i].r;
               int16_t outImagTmp = out[i].i;
@@ -995,7 +998,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
               SampIdxDoppler++;
             }
 
-            /*
+            /* Saw-tooth-shaped doppler
             int16_t outRealTmp = out[i].r;
             int16_t outImagTmp = out[i].i;
 
@@ -1019,8 +1022,9 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
       } // end for a (number of rx antennas)
     }
   }
-
   
+  counter++;
+  /*
   if ((t-> typeStamp != ENB_MAGICDL) && (TO_UE_flag == 1))
   {
     char filename[40];
@@ -1035,8 +1039,7 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
     }
     fclose(fptr);
     counter++;
-  }
-  
+  }*/
   
   *ptimestamp = t->nextRxTstamp; // return the time of the first sample
   t->nextRxTstamp+=nsamps;

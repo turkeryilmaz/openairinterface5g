@@ -571,11 +571,12 @@ void init_pdcp(void) {
 uint64_t RFsim_PropDelay = 0;
 uint16_t NTN_gNB_k2 = 0;
 uint16_t max_ul_sched_frame = 1;
-int fdoppler = 0;
+int fdoppler = 1;               // flag to simulate frequency offset at the RF-Simulator (default active = 1, 0 = de-activate)
 int fdopplerComp = 1;
 int RFsim_DriftPerFrame = 0;
-int32_t fdopplerRate;
-uint32_t fdopplerVar;
+uint16_t pathStartingTime = 1050;
+uint16_t pathEndingTime = 1280;
+int uePosY = 0;
 int tdriftComp = 1;
 int32_t fdopplerPrePost = 0; //pre/post compensation of the Doppler shift at the gNB side
 int commonDoppler = 0;  // common doppler to be compensated at UE, but set here to avoid linking error

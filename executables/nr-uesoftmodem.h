@@ -64,22 +64,17 @@
   {"P" ,                           CONFIG_HLP_PROPD,           0,               .u64ptr=&RFsim_PropDelay,                    .defintval=0,      TYPE_UINT64,   0}, \
   {"ue_slot_Rx_Tx" ,               CONFIG_HLP_UESLOTRXTX,      0,               .u16ptr=&NTN_UE_slot_Rx_to_Tx,               .defintval=0,      TYPE_UINT16,   0}, \
   {"ue_k2" ,                       CONFIG_HLP_UEK2,            0,               .u16ptr=&NTN_UE_k2,                          .defintval=0,      TYPE_UINT16,   0}, \
-  {"FD" ,                          CONFIG_HLP_FDoppler,    0,                   .iptr=&fdoppler,                             .defintval=0,      TYPE_INT,      0}, \
+  {"FD" ,                          CONFIG_HLP_FDoppler,        0,               .iptr=&fdoppler,                             .defintval=0,      TYPE_INT,      0}, \
   {"FC" ,                          CONFIG_HLP_FDopplerComp,    0,               .iptr=&fdopplerComp,                         .defintval=1,      TYPE_INT,      0}, \
-  {"TD" ,                          CONFIG_HLP_TDRIFT,      0,                   .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
-  {"DSR" ,                         CONFIG_HLP_FDopplerRate,0,                   .iptr=&fdopplerRate,                         .defintval=0,      TYPE_INT32,    0}, \
-  {"DSV" ,                         CONFIG_HLP_FDopplerVar, 0,                   .uptr=&fdopplerVar,                          .defintval=0,      TYPE_UINT32,   0}, \
-  {"TC" ,                          CONFIG_HLP_TDriftComp,    0,                 .iptr=&tdriftComp,                           .defintval=1,      TYPE_INT,      0}, \
-  {"DCPN" ,                        CONFIG_HLP_FP_ScalingFN,0,                   .u16ptr=&P_ScalingFN,                        .defintval=1,      TYPE_UINT16,   0}, \
-  {"DCPD" ,                        CONFIG_HLP_FP_ScalingFD,0,                   .u16ptr=&P_ScalingFD,                        .defintval=3,      TYPE_UINT16,   0}, \
-  {"DCIN" ,                        CONFIG_HLP_FI_ScalingFN,0,                   .u16ptr=&I_ScalingFN,                        .defintval=1,      TYPE_UINT16,   0}, \
-  {"DCID" ,                        CONFIG_HLP_FI_ScalingFD,0,                   .u16ptr=&I_ScalingFD,                        .defintval=2,      TYPE_UINT16,   0}, \
-  {"DCDN" ,                        CONFIG_HLP_FD_ScalingFN,0,                   .u16ptr=&D_ScalingFN,                        .defintval=0,      TYPE_UINT16,   0}, \
-  {"DCDD" ,                        CONFIG_HLP_FD_ScalingFD,0,                   .u16ptr=&D_ScalingFD,                        .defintval=1,      TYPE_UINT16,   0},  \
-  {"DCP" ,                         CONFIG_HLP_FP_Scaling,0,                     .dblptr=&PScaling,                           .defdblval=0.33,   TYPE_DOUBLE,   0},  \
-  {"DCI" ,                         CONFIG_HLP_FI_Scaling,0,                     .dblptr=&IScaling,                           .defdblval=0.5,    TYPE_DOUBLE,   0},  \
-  {"TOP" ,                         CONFIG_HLP_TP_Scaling,0,                     .dblptr=&TO_PScaling,                        .defdblval=1.0,    TYPE_DOUBLE, 0},  \
-  {"TOI" ,                         CONFIG_HLP_TI_Scaling,0,                     .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE, 0}  \
+  {"TD" ,                          CONFIG_HLP_TDRIFT,          0,               .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
+  {"PST" ,                         CONFIG_HLP_PathStart,       0,               .u16ptr=&pathStartingTime,                   .defintval=1050,   TYPE_UINT16,   0}, \
+  {"PET" ,                         CONFIG_HLP_PathEnd,         0,               .u16ptr=&pathEndingTime,                     .defintval=1280,   TYPE_UINT16,   0}, \
+  {"ue_PosY" ,                     CONFIG_HLP_uePosY,          0,               .iptr=&uePosY,                               .defintval=0,      TYPE_INT,      0}, \
+  {"TC" ,                          CONFIG_HLP_TDriftComp,      0,               .iptr=&tdriftComp,                           .defintval=1,      TYPE_INT,      0}, \
+  {"FOP" ,                         CONFIG_HLP_FO_PScaling,     0,               .dblptr=&FO_PScaling,                        .defdblval=0.33,   TYPE_DOUBLE,   0}, \
+  {"FOI" ,                         CONFIG_HLP_FO_IScaling,     0,               .dblptr=&FO_IScaling,                        .defdblval=0.5,    TYPE_DOUBLE,   0}, \
+  {"TOP" ,                         CONFIG_HLP_TP_Scaling,      0,               .dblptr=&TO_PScaling,                        .defdblval=1.0,    TYPE_DOUBLE,   0}, \
+  {"TOI" ,                         CONFIG_HLP_TI_Scaling,      0,               .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE,   0}  \
 }
 // clang-format on
 
