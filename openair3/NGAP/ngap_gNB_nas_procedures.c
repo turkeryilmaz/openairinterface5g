@@ -335,8 +335,7 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
     if (ie) gnb_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;  
   }
 
-  if ((ue_desc_p = ngap_gNB_get_ue_context(ngap_gNB_instance,
-                   gnb_ue_ngap_id)) == NULL) {
+  if ((ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id)) == NULL) {
     NGAP_ERROR("[SCTP %u] Received NAS downlink message for non existing UE context gNB_UE_NGAP_ID: 0x%lx\n",
                assoc_id,
                gnb_ue_ngap_id);
@@ -368,7 +367,6 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
   /* Forward the NAS PDU to NR-RRC */
   if (ie != NULL) {
     ngap_gNB_itti_send_nas_downlink_ind(ngap_gNB_instance->instance,
-                                        ue_desc_p->ue_initial_id,
                                         ue_desc_p->gNB_ue_ngap_id,
                                         ie->value.choice.NAS_PDU.buf,
                                         ie->value.choice.NAS_PDU.size);

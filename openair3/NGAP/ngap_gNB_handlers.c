@@ -709,7 +709,6 @@ static int ngap_gNB_handle_initial_context_request(uint32_t assoc_id, uint32_t s
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_InitialContextSetupRequestIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID, true);
 
-<<<<<<< Updated upstream
   const NGAP_RAN_UE_NGAP_ID_t ran_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;
   ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(ran_ue_ngap_id);
   if (!ue_desc_p) {
@@ -718,19 +717,6 @@ static int ngap_gNB_handle_initial_context_request(uint32_t assoc_id, uint32_t s
         "existing UE context 0x%06lx\n",
         assoc_id,
         ran_ue_ngap_id);
-=======
-  if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
-    ran_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;
-
-    if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
-                     ran_ue_ngap_id)) == NULL) {
-      NGAP_ERROR("[SCTP %u] Received initial context setup request for non "
-                 "existing UE context 0x%06lx\n", assoc_id,
-                 ran_ue_ngap_id);
-      return -1;
-    }
-  } else {
->>>>>>> Stashed changes
     return -1;
   }
 
@@ -877,7 +863,6 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_UEContextReleaseCommand_IEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_UE_NGAP_IDs, true);
 
-<<<<<<< Updated upstream
   switch (ie->value.choice.UE_NGAP_IDs.present) {
     case NGAP_UE_NGAP_IDs_PR_uE_NGAP_ID_pair:
       gnb_ue_ngap_id = ie->value.choice.UE_NGAP_IDs.choice.uE_NGAP_ID_pair->rAN_UE_NGAP_ID;
@@ -895,31 +880,6 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
 
         if (ue_desc_p->amf_ue_ngap_id == 0) { // case of Detach Request and switch off from RRC_IDLE mode
           ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
-=======
-  if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
-    switch (ie->value.choice.UE_NGAP_IDs.present) {
-      case NGAP_UE_NGAP_IDs_PR_uE_NGAP_ID_pair:
-        gnb_ue_ngap_id = ie->value.choice.UE_NGAP_IDs.choice.uE_NGAP_ID_pair->rAN_UE_NGAP_ID;
-        asn_INTEGER2ulong(&(ie->value.choice.UE_NGAP_IDs.choice.uE_NGAP_ID_pair->aMF_UE_NGAP_ID), &amf_ue_ngap_id);
-
-        if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
-                         gnb_ue_ngap_id)) == NULL) {
-          NGAP_ERROR("[SCTP %u] Received UE context release command for non "
-                     "existing UE context 0x%06lx\n",
-                     assoc_id,
-                     gnb_ue_ngap_id);
-          return -1;
-        } else {
-          message_p    = itti_alloc_new_message(TASK_NGAP, 0, NGAP_UE_CONTEXT_RELEASE_COMMAND);
-
-          if (ue_desc_p->amf_ue_ngap_id == 0) { // case of Detach Request and switch off from RRC_IDLE mode
-            ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
-          }
-
-          NGAP_UE_CONTEXT_RELEASE_COMMAND(message_p).gNB_ue_ngap_id = gnb_ue_ngap_id;
-          itti_send_msg_to_task(TASK_RRC_GNB, ue_desc_p->gNB_instance->instance, message_p);
-          return 0;
->>>>>>> Stashed changes
         }
 
         NGAP_UE_CONTEXT_RELEASE_COMMAND(message_p).gNB_ue_ngap_id = gnb_ue_ngap_id;
@@ -977,15 +937,9 @@ int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container, NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID, true);
   ran_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;
 
-<<<<<<< Updated upstream
   ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(ran_ue_ngap_id);
   if (!ue_desc_p) {
     NGAP_ERROR("[SCTP %d] Received pdu session resource setup request for non "
-=======
-  if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
-                   ran_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %u] Received pdu session resource setup request for non "
->>>>>>> Stashed changes
                "existing UE context 0x%06lx\n", assoc_id,
                ran_ue_ngap_id);
     return -1;
@@ -1076,7 +1030,6 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
 
    MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PAGING_IND);
    ngap_paging_ind_t * msg=&NGAP_PAGING_IND(message_p);
-<<<<<<< Updated upstream
    memset(msg, 0, sizeof(*msg));
 
    /* convert NGAP_PagingIEs_t to ngap_paging_ind_t */
@@ -1104,46 +1057,11 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
    } else {
      msg->paging_drx = NGAP_PAGING_DRX_256;
    }
-=======
-  
-  /* convert NGAP_PagingIEs_t to ngap_paging_ind_t */
-  /* id-UEIdentityIndexValue : convert UE Identity Index value */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_UEPagingIdentity, true);
-
-  if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
-    OCTET_STRING_TO_INT16(&ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI->aMFSetID, msg->ue_paging_identity.s_tmsi.amf_set_id);
-    OCTET_STRING_TO_INT8(&ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI->aMFPointer, msg->ue_paging_identity.s_tmsi.amf_pointer);
-    OCTET_STRING_TO_INT32(&ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI->fiveG_TMSI, msg->ue_paging_identity.s_tmsi.m_tmsi);
-
-    NGAP_DEBUG("[SCTP %u] Received Paging Identity amf_set_id %d, amf_pointer %d, m_tmsi %d\n",
-               assoc_id,
-               msg->ue_paging_identity.s_tmsi.amf_set_id,
-               msg->ue_paging_identity.s_tmsi.amf_pointer,
-               msg->ue_paging_identity.s_tmsi.m_tmsi);
-  } else {
-    return -1;
-  }
-
-
-  msg->paging_drx = NGAP_PAGING_DRX_256;
-  /* id-pagingDRX */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_PagingDRX, false);
-
-  /* optional */
-  if (ie) {
-    msg->paging_drx = ie->value.choice.PagingDRX;
-  } else {
-    msg->paging_drx = NGAP_PAGING_DRX_256;
-  }
->>>>>>> Stashed changes
 
   /* id-TAIList */
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_TAIListForPaging, true);
 
-<<<<<<< Updated upstream
   NGAP_INFO("[SCTP %d] Received Paging taiList For Paging: count %d\n", assoc_id, ie->value.choice.TAIListForPaging.list.count);
 
   for (int i = 0; i < ie->value.choice.TAIListForPaging.list.count; i++) {
@@ -1153,26 +1071,6 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
     OCTET_STRING_TO_INT16(&(item_p->tAI.tAC), msg->tac[i]);
     msg->tai_size++;
     NGAP_DEBUG("[SCTP %d] Received Paging: MCC %d, MNC %d, TAC %d\n", assoc_id, msg->plmn_identity[i].mcc, msg->plmn_identity[i].mnc, msg->tac[i]);
-=======
-  if (ie != NULL) { /* checked by macro but cppcheck doesn't see it */
-    NGAP_INFO("[SCTP %u] Received Paging taiList For Paging: count %d\n", assoc_id, ie->value.choice.TAIListForPaging.list.count);
-
-    for (int i = 0; i < ie->value.choice.TAIListForPaging.list.count; i++) {
-      NGAP_TAIListForPagingItem_t *item_p;
-      item_p = (NGAP_TAIListForPagingItem_t *)ie->value.choice.TAIListForPaging.list.array[i];
-      TBCD_TO_MCC_MNC(&(item_p->tAI.pLMNIdentity), msg->plmn_identity[i].mcc,
-                      msg->plmn_identity[i].mnc,
-                      msg->plmn_identity[i].mnc_digit_length);
-      OCTET_STRING_TO_INT16(&(item_p->tAI.tAC), msg->tac[i]);
-      msg->tai_size++;
-      NGAP_DEBUG("[SCTP %u] Received Paging: MCC %d, MNC %d, TAC %d\n", assoc_id,
-                 msg->plmn_identity[i].mcc,
-                 msg->plmn_identity[i].mnc,
-                 msg->tac[i]);
-    }
-  } else {
-    return -1;
->>>>>>> Stashed changes
   }
 
   //paging parameter values
@@ -1218,7 +1116,6 @@ static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t
                              NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID, true);
 
     gnb_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;
-<<<<<<< Updated upstream
     ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id);
     if (!ue_desc_p) {
       NGAP_ERROR(
@@ -1228,19 +1125,6 @@ static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t
           gnb_ue_ngap_id);
       return -1;
     }
-=======
-  } else {
-    return -1;
-  }
-
-  if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
-                   gnb_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %u] Received PDUSession Resource modify request for non "
-               "existing UE context 0x%08lx\n", assoc_id,
-               gnb_ue_ngap_id);
-    return -1;
-  }
->>>>>>> Stashed changes
 
   ue_desc_p->rx_stream = stream;
   /* id-PDUSessionResourceModifyListModReq */
@@ -1335,15 +1219,9 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
     return -1;
   }
 
-<<<<<<< Updated upstream
   ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id);
   if (!ue_desc_p) {
     NGAP_ERROR("[SCTP %d] Received PDUSession Resource release command for non existing UE context 0x%08lx\n", assoc_id,
-=======
-  if ((ue_desc_p = ngap_gNB_get_ue_context(amf_desc_p->ngap_gNB_instance,
-                   gnb_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %u] Received PDUSession Resource release command for non existing UE context 0x%08lx\n", assoc_id,
->>>>>>> Stashed changes
                ie->value.choice.RAN_UE_NGAP_ID);
     return -1;
   }
