@@ -453,7 +453,7 @@ typedef struct {
 //TTN (for D2D)
 #define SL_DISCOVERY 8 //LCID (fake)
 #define MAX_NUM_DEST 10
-
+#define MIBSLCH 8
 // ULSCH LCHAN IDs
 /*!\brief LCID of extended power headroom for ULSCH */
 #define EXTENDED_POWER_HEADROOM 25
