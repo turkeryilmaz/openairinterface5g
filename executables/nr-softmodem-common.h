@@ -118,8 +118,9 @@
 #define CONFIG_HLP_FDoppler      "Set the maximum Doppler frequency shift\n"
 #define CONFIG_HLP_FDopplerComp  "Execute continous frequency offset compensation\n"
 #define CONFIG_HLP_TDRIFT        "Set the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)\n"
-#define CONFIG_HLP_FDopplerRate  "Set the Doppler rate in Hz/s\n"
-#define CONFIG_HLP_FDopplerVar   "Set Doppler variance, [fdoppler +/- fdopplerVar]\n"
+#define CONFIG_HLP_PathStart     "Set the time [sec] at which satellite is becoming visible to the UE"
+#define CONFIG_HLP_PathEnd       "Set the time [sec] at which satellite is no more visible to the UE"
+#define CONFIG_HLP_uePosY        "Set the y-axis coordinate [m] of UE position" 
 #define CONFIG_HLP_TDriftComp    "Execute continous timing drift compensation\n"
 #define CONFIG_HLP_FDopplerPrePost      "Set the pre/post compensation value for the Doppler shift at the gNB side\n"
 #define CONFIG_HLP_FP_ScalingFN  "Set the P scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
@@ -129,8 +130,8 @@
 #define CONFIG_HLP_FD_ScalingFN  "Set the D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
 #define CONFIG_HLP_FD_ScalingFD  "Set the D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
 
-#define CONFIG_HLP_FP_Scaling "set scaling P"
-#define CONFIG_HLP_FI_Scaling "set scaling I"
+#define CONFIG_HLP_FO_PScaling "set P scaling factor of the PID controller for the frequency offset compensation"
+#define CONFIG_HLP_FO_IScaling "set I scaling factor of the PID controller for the frequency offset compensation"
 
 #define CONFIG_HLP_TP_Scaling "set scaling P for TO"
 #define CONFIG_HLP_TI_Scaling "set scaling I for TO"
@@ -184,22 +185,16 @@ extern uint16_t NTN_UE_slot_Rx_to_Tx; //the additional Rx to Tx slot number at U
 extern uint16_t NTN_UE_k2; //the additional k2 value at UE
 extern uint16_t NTN_gNB_k2; //the additional k2 value at gNB
 extern uint16_t max_ul_sched_frame; //Set the maximum number of buffered UL scheduled frames at gNB, for UL_tti_req_ahead and vrb_map_UL
-extern int fdoppler;             //maximum Doppler frequency shift in Hz
+extern int fdoppler;             // flag to simulate frequency offset at the RF-Simulator (default active = 1, 0 = de-activate)
 extern int fdopplerComp;         // flag to activate/deactivate continous frequency offset compensation
 extern int RFsim_DriftPerFrame; //the timing offset/drift per frame in the RF simulator (expressed in number of samples per frame)
-extern int32_t fdopplerRate; //Doppler rate in Hz/s
-extern uint32_t fdopplerVar; //Doppler variance, [fdoppler +/- fdopplerVar]
+extern uint16_t pathStartingTime;    // time [sec] at which satellite is becoming visible to the UE.
+extern uint16_t pathEndingTime;      // time [sec] at which satellite is no more visible to the UE
+extern int uePosY;              // y-axis coordinate [m] of UE position
 extern int tdriftComp;         // flag to activate/deactivate continous timing drift compensation
 extern int32_t fdopplerPrePost; //pre/post compensation of the Doppler shift at the gNB side
-extern uint16_t P_ScalingFN; //P scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
-extern uint16_t P_ScalingFD; //P scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
-extern uint16_t I_ScalingFN; //I scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
-extern uint16_t I_ScalingFD; //I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
-extern uint16_t D_ScalingFN; //D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side
-extern uint16_t D_ScalingFD; //D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side
-
-extern double PScaling;
-extern double IScaling;
+extern double FO_PScaling;  // P scaling factor of the PID controller for the Doppler compensation at UE side
+extern double FO_IScaling;  // I scaling factor of the PID controller for the Doppler compensation at UE side
 
 extern double TO_PScaling;
 extern double TO_IScaling;
