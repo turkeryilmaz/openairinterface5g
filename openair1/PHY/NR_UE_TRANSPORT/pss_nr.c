@@ -557,7 +557,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 {
   NR_DL_FRAME_PARMS *frame_parms = &(PHY_vars_UE->frame_parms);
   int synchro_position;
-  int **rxdata = NULL;
+  c16_t **rxdata = NULL;
   int fo_flag = PHY_vars_UE->UE_fo_compensation;  // flag to enable freq offset estimation and compensation
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SYNCHRO_NR, VCD_FUNCTION_IN);
@@ -569,10 +569,10 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 
   if (rate_change != 1) {
 
-    rxdata = (int32_t**)malloc16(frame_parms->nb_antennas_rx*sizeof(int32_t*));
+    rxdata = (c16_t**)malloc16(frame_parms->nb_antennas_rx * sizeof(c16_t*));
 
-    for (int aa=0; aa < frame_parms->nb_antennas_rx; aa++) {
-      rxdata[aa] = (int32_t*) malloc16_clear( (frame_parms->samples_per_frame+8192)*sizeof(int32_t));
+    for (int aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
+      rxdata[aa] = (c16_t*)malloc16_clear((frame_parms->samples_per_frame + 8192) * sizeof(c16_t));
     }
 #ifdef SYNCHRO_DECIMAT
 
@@ -699,7 +699,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 *
 *********************************************************************/
 
-int pss_search_time_nr(int **rxdata, ///rx data in time domain
+int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
                        NR_DL_FRAME_PARMS *frame_parms,
                        int fo_flag,
                        int is,
