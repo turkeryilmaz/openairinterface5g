@@ -1047,9 +1047,9 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
 
   uint8_t nushift;
   int **dl_ch_estimates;
-  if (get_softmodem_params()->sl_mode == 2){
+  if (get_softmodem_params()->sl_mode == 2) {
     dl_ch_estimates = ue->pssch_vars[gNB_id]->sl_ch_estimates;
-  }else{
+  } else {
     dl_ch_estimates = ue->pdsch_vars[proc->thread_id][gNB_id]->dl_ch_estimates;
   }
   int **rxdataF=ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
