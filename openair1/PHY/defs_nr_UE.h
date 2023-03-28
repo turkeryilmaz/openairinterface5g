@@ -295,6 +295,10 @@ typedef struct {//from gNB code for PSSCH Rx
   int32_t ***rho;
   /// \f$\log_2(\max|H_i|^2)\f$
   int16_t log2_maxh;
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh0;
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh1;
   /// \brief Magnitude of Uplink Channel first layer (16QAM level/First 64QAM level).
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - second index: ? [0..168*N_RB_UL[
@@ -312,6 +316,8 @@ typedef struct {//from gNB code for PSSCH Rx
   /// - second index: ? [0..168*N_RB_UL[
   int32_t **sl_ch_magb1[8][8];
   /// measured RX power based on DRS
+  /// \brief Magnitude of Downlink Channel, first layer (256QAM level).
+  int32_t **sl_ch_magr0;
   int slsch_power[8];
   /// total signal over antennas
   int slsch_power_tot;

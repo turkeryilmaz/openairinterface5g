@@ -1046,7 +1046,12 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
   int ch_offset,symbol_offset;
 
   uint8_t nushift;
-  int **dl_ch_estimates = ue->pdsch_vars[proc->thread_id][gNB_id]->dl_ch_estimates;
+  int **dl_ch_estimates;
+  if (get_softmodem_params()->sl_mode == 2){
+    dl_ch_estimates = ue->pssch_vars[gNB_id]->sl_ch_estimates;
+  }else{
+    dl_ch_estimates = ue->pdsch_vars[proc->thread_id][gNB_id]->dl_ch_estimates;
+  }
   int **rxdataF=ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF;
 
   ch_offset     = ue->frame_parms.ofdm_symbol_size*symbol;
@@ -1954,6 +1959,9 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
     }
 #endif
   }
+  char filename[40];
+  sprintf(filename,"dl_ch_output.m");
+  LOG_M(filename,"dl_ch_output",&dl_ch,4*(ue->frame_parms.ofdm_symbol_size), 1, 13-13);
   return(0);
 }
 
