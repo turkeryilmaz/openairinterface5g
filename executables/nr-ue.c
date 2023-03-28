@@ -621,10 +621,7 @@ void processSlotTX(void *arg) {
   uint8_t gNB_id = 0;
 
   LOG_D(NR_PHY, "processSlotTX %d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, tx_slot_type);
-  if (UE->sync_ref)
-    tx_slot_type = NR_UPLINK_SLOT;
-  if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT){
-
+  if (tx_slot_type == NR_UPLINK_SLOT || tx_slot_type == NR_MIXED_SLOT || UE->sync_ref) {
     // trigger L2 to run ue_scheduler thru IF module
     // [TODO] mapping right after NR initial sync
     if (get_softmodem_params()->sl_mode != 2) {
@@ -677,7 +674,7 @@ void processSlotRX(void *arg) {
     }
   }
 
-  if (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT){
+  if ((get_softmodem_params()->sl_mode != 2) && (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT)) {
 
     if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
       nr_downlink_indication_t dl_indication;
@@ -714,6 +711,8 @@ void processSlotRX(void *arg) {
 
   } else {
     rxtxD->ue_sched_mode = SCHED_ALL;
+    if (get_softmodem_params()->sl_mode == 2)
+      rxtxD->ue_sched_mode = NOT_PUSCH;
     processSlotTX(rxtxD);
   }
 
