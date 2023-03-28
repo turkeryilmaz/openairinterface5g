@@ -587,6 +587,12 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       }
     }
   }
+    char filename[40];
+  sprintf(filename,"ch_est_output.m");
+  LOG_M(filename,"ch_est_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata.m");
+  LOG_M(filename,"rxdata",rxdata[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+
 
   if (rxUE->chest_time == 1) { // averaging time domain channel estimates
     nr_chest_time_domain_avg(&rxUE->frame_parms,
@@ -628,10 +634,10 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                         pilots,
                         &slsch_ue_rx_harq->pssch_pdu,
                         &rxUE->frame_parms,
-                        slsch_ue_rx_harq);
+                        slsch_ue_rx_harq,
+                        rxUE->chest_time);
 
     stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
-
   //----------------------------------------------------------
   //--------------------- Channel Scaling --------------------
   //----------------------------------------------------------
@@ -751,7 +757,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
 
     for (int aatx = 0; aatx < Nl; aatx++) {
       if (pilots == 0) {
-        nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+        nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_comp[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                              &rxUE->pssch_vars[UE_id]->sl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                              &rxUE->pssch_vars[UE_id]->sl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                              &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
@@ -769,7 +775,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       } else {
         if (allocatable_sci2_re > 0) {
 
-          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_comp[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                                &rxUE->pssch_vars[UE_id]->sl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                                &rxUE->pssch_vars[UE_id]->sl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                                &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
@@ -788,7 +794,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
         if (diff_re > 0) {
           uint32_t offset = allocatable_sci2_re;
 
-          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
+          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_comp[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
                                &rxUE->pssch_vars[UE_id]->sl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
                                &rxUE->pssch_vars[UE_id]->sl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
                                &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
@@ -810,6 +816,12 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       }
     }
   }//symbol
+  sprintf(filename,"ch_est_ext_output.m");
+  LOG_M(filename,"ch_est_ext_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_ext.m");
+  LOG_M(filename,"rxdata_ext",rxUE->pssch_vars[UE_id]->rxdataF_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_comp.m");
+  LOG_M(filename,"rxdata_comp",rxUE->pssch_vars[UE_id]->rxdataF_comp[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   /////////////// Layer demapping ////////////////////////
   // For SCI2
   nr_dlsch_layer_demapping(rxUE->pssch_vars[UE_id]->llr,
