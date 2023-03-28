@@ -1959,9 +1959,7 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
     }
 #endif
   }
-  char filename[40];
-  sprintf(filename,"dl_ch_output.m");
-  LOG_M(filename,"dl_ch_output",&dl_ch,4*(ue->frame_parms.ofdm_symbol_size), 1, 13-13);
+
   return(0);
 }
 
