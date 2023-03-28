@@ -53,6 +53,29 @@
 #define NR_POLAR_PBCH_E 864   //uint16_t
 #define NR_POLAR_PBCH_E_DWORD 27 // NR_POLAR_PBCH_E/32
 
+#endif
+
+#ifndef __NR_POLAR_PSBCH_DEFS__H__
+#define __NR_POLAR_PSBCH_DEFS__H__
+
+#define NR_POLAR_PSBCH_AGGREGATION_LEVEL 0 //uint8_t
+#define NR_POLAR_PSBCH_MESSAGE_TYPE 3      //int8_t
+#define NR_POLAR_PSBCH_PAYLOAD_BITS 32     //uint16_t
+#define NR_POLAR_PSBCH_CRC_PARITY_BITS 24
+#define NR_POLAR_PSBCH_CRC_ERROR_CORRECTION_BITS 3
+
+//Sec. 7.1.4: Channel Coding
+#define NR_POLAR_PSBCH_N_MAX 9   //uint8_t
+#define NR_POLAR_PSBCH_I_IL 1    //uint8_t
+#define NR_POLAR_PSBCH_I_SEG 0   //uint8_t
+#define NR_POLAR_PSBCH_N_PC 0    //uint8_t
+#define NR_POLAR_PSBCH_N_PC_WM 0 //uint8_t
+
+//Sec. 7.1.5: Rate Matching
+#define NR_POLAR_PSBCH_I_BIL 0 //uint8_t
+#define NR_POLAR_PSBCH_E 1792   //uint16_t
+#define NR_POLAR_PSBCH_E_DWORD 56 // NR_POLAR_PSBCH_E/32
+
 /*
  * TEST CODE
  */

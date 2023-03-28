@@ -111,12 +111,7 @@ void phase_shift_samples(int16_t *samples, int length, int16_t phase_shift_re, i
 
 void display_data(int pss_sequence_number, int16_t *rxdata, int position) {
 #ifdef DEBUG_TEST_PSS
-  int pss_sequence;
-  if (get_softmodem_params()->sl_mode != 0) {
-    pss_sequence = NUMBER_PSS_SEQUENCE_SL;
-  } else (
-    pss_sequence = NUMBER_PSS_SEQUENCE;
-  )
+  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   int16_t *pss_sequence[pss_sequence] = {primary_synch0_time, primary_synch1_time, primary_synch2_time};
   int16_t *pss_sequence_sl[pss_sequence] = {primary_synch0_time, primary_synch1_time};
   int16_t *pss_sequence_time = pss_sequence[pss_sequence_number];;
@@ -459,9 +454,7 @@ int set_pss_in_rx_buffer(PHY_VARS_NR_UE *PHY_vars_UE, int position_symbol, int p
     printf("This pss sequence can not be fully written in the received window \n");
     return (-1);
   }
-  int pss_sequence = NUMBER_PSS_SEQUENCE;
-  if (get_softmodem_params()->sl_mode != 0)
-    pss_sequence = NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   if ((pss_sequence_number >= pss_sequence) && (pss_sequence_number < 0)) {
     printf("Unknow pss sequence %d \n", pss_sequence_number);
     return (-1);
@@ -518,9 +511,7 @@ void set_sequence_pss(PHY_VARS_NR_UE *PHY_vars_UE, int position_symbol, int pss_
   if (position_symbol < 0) {
     set_pss_in_rx_buffer_from_external_buffer(PHY_vars_UE, input_buffer);
   }
-  int pss_sequence = NUMBER_PSS_SEQUENCE;
-  if (get_softmodem_params()->sl_mode != 0)
-    pss_sequence = NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   /* write pss sequence in received ue buffer */
   else if (pss_sequence_number < pss_sequence) {
     if (position_symbol > (samples_for_frame - frame_parms->ofdm_symbol_size)) {

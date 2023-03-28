@@ -212,16 +212,11 @@ int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
                   int32_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                   int32_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int16_t *pss;
   int16_t *pss_ext2,*sss_ext2,*sss_ext3,tmp_re,tmp_im,tmp_re2,tmp_im2;
   uint8_t aarx,i;
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-
-  if (get_softmodem_params()->sl_mode == 0) {
-    pss = primary_synchro_nr2[ue->common_vars.eNb_id];
-  } else {
-    pss = primary_synchro_nr2_sl[ue->common_vars.N2_id];
-  }
+  int id = get_softmodem_params()->sl_mode == 0 ? ue->common_vars.eNb_id : ue->common_vars.N2_id;
+  int16_t *pss = primary_synchro_nr2[id];
 
   sss_ext3 = (int16_t*)&sss_ext[0][0];
 
