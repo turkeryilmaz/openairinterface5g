@@ -575,7 +575,6 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   unsigned short port = 0;
   unsigned char nscid = 0; // it is not used for SL, so should be zero
   unsigned short Nid = Nidx%(1<<16);
-  proc.thread_id =0;
   for (int sym = start_sym ; sym < (start_sym+nb_symb_sch) ; sym++){
     if (dmrs_pos & (1 << sym)){
       for (uint8_t aatx=0; aatx<Nl; aatx++) {
@@ -588,15 +587,16 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       }
     }
   }
-  // printf("channel estimate:\n");
-  // for (int i=0; i<10;i++){
-  //   printf("%"PRId32" ",rxUE->pdsch_vars[0][0]->dl_ch_estimates[0][i]);
-  // }
-  // printf("\n");
+    char filename[40];
+  sprintf(filename,"ch_est_output.m");
+  LOG_M(filename,"ch_est_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata.m");
+  LOG_M(filename,"rxdata",rxdata[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+
 
   if (rxUE->chest_time == 1) { // averaging time domain channel estimates
     nr_chest_time_domain_avg(&rxUE->frame_parms,
-                              rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_estimates,
+                              rxUE->pssch_vars[UE_id]->sl_ch_estimates,
                               nb_symb_sch,
                               start_sym,
                               dmrs_pos,
@@ -634,10 +634,10 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                         pilots,
                         &slsch_ue_rx_harq->pssch_pdu,
                         &rxUE->frame_parms,
-                        slsch_ue_rx_harq);
+                        slsch_ue_rx_harq,
+                        rxUE->chest_time);
 
     stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
-
   //----------------------------------------------------------
   //--------------------- Channel Scaling --------------------
   //----------------------------------------------------------
@@ -645,11 +645,11 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
     #if 1
     int32_t nb_re_pssch = (pilots==1)? (nb_rb*dmrs_data_re) : (nb_rb*12);
     start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
-    nr_dlsch_scale_channel(rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_estimates_ext,
+    nr_dlsch_scale_channel(rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
                           &rxUE->frame_parms,
                           Nl,
                           rxUE->frame_parms.nb_antennas_rx,
-                          rxUE->dlsch[proc.thread_id][0],
+                          rxUE->dlsch[UE_id][0],
                           sym,
                           pilots,
                           nb_re_pssch,
@@ -661,7 +661,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
     //----------------------------------------------------------
     start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
     if (first_symbol_flag==1) {
-      nr_dlsch_channel_level(rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_estimates_ext,
+      nr_dlsch_channel_level(rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
                             &rxUE->frame_parms,
                             Nl,
                             avg,
@@ -677,7 +677,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
           median[(aatx*rxUE->frame_parms.nb_antennas_rx)+aarx] = avg[(aatx*rxUE->frame_parms.nb_antennas_rx)+aarx];
         }
       if (slsch_ue_rx_harq->Nl > 1) {
-        nr_dlsch_channel_level_median(rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_estimates_ext,
+        nr_dlsch_channel_level_median(rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
                                       median,
                                       Nl,
                                       rxUE->frame_parms.nb_antennas_rx,
@@ -689,14 +689,14 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
           }
         }
       }
-      rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh = (log2_approx(avgs)/2) + 1;
-      //LOG_I(PHY, "avgs Power per SC is %d lg2_maxh %d\n", avgs,  rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh);
+      rxUE->pssch_vars[UE_id]->log2_maxh = (log2_approx(avgs)/2) + 1;
+      //LOG_I(PHY, "avgs Power per SC is %d lg2_maxh %d\n", avgs,  rxUE->pssch_vars[UE_id]->log2_maxh);
       LOG_D(PHY,"[SLSCH] AbsSubframe %d.%d log2_maxh = %d [log2_maxh0 %d log2_maxh1 %d] (%d,%d)\n",
             frame%1024,
             slot,
-            rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh,
-            rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh0,
-            rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh1,
+            rxUE->pssch_vars[UE_id]->log2_maxh,
+            rxUE->pssch_vars[UE_id]->log2_maxh0,
+            rxUE->pssch_vars[UE_id]->log2_maxh1,
             avg[0],
             avgs);
     }
@@ -705,13 +705,13 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   /////////////////////////////////////////////////////////
   ////////////// Channel Compensation /////////////////////
     start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
-    nr_dlsch_channel_compensation(rxUE->pdsch_vars[proc.thread_id][0]->rxdataF_ext,
-                                  rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_estimates_ext,
-                                  rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_mag0,
-                                  rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magb0,
-                                  rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magr0,
-                                  rxUE->pdsch_vars[proc.thread_id][0]->rxdataF_comp0,
-                                  NULL,//NULL:disable meas. rxUE->pdsch_vars[proc.thread_id][0]->rho:enable meas.
+    nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
+                                  rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
+                                  rxUE->pssch_vars[UE_id]->sl_ch_mag0,
+                                  rxUE->pssch_vars[UE_id]->sl_ch_magb0,
+                                  rxUE->pssch_vars[UE_id]->sl_ch_magr0,
+                                  rxUE->pssch_vars[UE_id]->rxdataF_comp,
+                                  NULL,//NULL:disable meas. rxUE->pssch_vars[UE_id]->rho:enable meas.
                                   &rxUE->frame_parms,
                                   Nl,
                                   sym,
@@ -719,34 +719,34 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                                   first_symbol_flag,
                                   slsch_ue_rx_harq->Qm,
                                   nb_rb,
-                                  rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh,
+                                  rxUE->pssch_vars[UE_id]->log2_maxh,
                                   &rxUE->measurements); // log2_maxh+I0_shift
     stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
 
     start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
 
     if (rxUE->frame_parms.nb_antennas_rx > 1) {
-      nr_dlsch_detection_mrc(rxUE->pdsch_vars[proc.thread_id][0]->rxdataF_comp0,
-                            (Nl>1)? rxUE->pdsch_vars[proc.thread_id][0]->rho : NULL,
-                            rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_mag0,
-                            rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magb0,
-                            rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magr0,
+      nr_dlsch_detection_mrc(rxUE->pssch_vars[UE_id]->rxdataF_comp,
+                            (Nl>1)? rxUE->pssch_vars[UE_id]->rho : NULL,
+                            rxUE->pssch_vars[UE_id]->sl_ch_mag0,
+                            rxUE->pssch_vars[UE_id]->sl_ch_magb0,
+                            rxUE->pssch_vars[UE_id]->sl_ch_magr0,
                             Nl,
                             rxUE->frame_parms.nb_antennas_rx,
                             sym,
                             nb_rb,
                             nb_re_pssch);
       if (Nl >= 2)//Apply zero forcing for 2, 3, and 4 Tx layers
-        nr_zero_forcing_rx(rxUE->pdsch_vars[proc.thread_id][0]->rxdataF_comp0,
-                          rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_mag0,
-                          rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magb0,
-                          rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magr0,
-                          rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_estimates_ext,
+        nr_zero_forcing_rx(rxUE->pssch_vars[UE_id]->rxdataF_comp,
+                          rxUE->pssch_vars[UE_id]->sl_ch_mag0,
+                          rxUE->pssch_vars[UE_id]->sl_ch_magb0,
+                          rxUE->pssch_vars[UE_id]->sl_ch_magr0,
+                          rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
                           nb_rb,
                           rxUE->frame_parms.nb_antennas_rx,
                           Nl,
                           slsch_ue_rx_harq->Qm,
-                          rxUE->pdsch_vars[proc.thread_id][0]->log2_maxh,
+                          rxUE->pssch_vars[UE_id]->log2_maxh,
                           sym,
                           nb_re_pssch);
     }
@@ -757,9 +757,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
 
     for (int aatx = 0; aatx < Nl; aatx++) {
       if (pilots == 0) {
-        nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
-                             &rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
-                             &rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+        nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_comp[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+                             &rxUE->pssch_vars[UE_id]->sl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+                             &rxUE->pssch_vars[UE_id]->sl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                              &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                              (nb_rb * NR_NB_SC_PER_RB - nb_re_sci1) / NR_NB_SC_PER_RB,
                              nb_rb * NR_NB_SC_PER_RB - nb_re_sci1,
@@ -775,9 +775,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       } else {
         if (allocatable_sci2_re > 0) {
 
-          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
-                               &rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
-                               &rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_comp[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+                               &rxUE->pssch_vars[UE_id]->sl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
+                               &rxUE->pssch_vars[UE_id]->sl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                                &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                                allocatable_sci2_re / 6,
                                allocatable_sci2_re,
@@ -794,9 +794,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
         if (diff_re > 0) {
           uint32_t offset = allocatable_sci2_re;
 
-          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_ext[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
-                               &rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
-                               &rxUE->pdsch_vars[proc.thread_id][0]->dl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
+          nr_slsch_compute_llr(&rxUE->pssch_vars[UE_id]->rxdataF_comp[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
+                               &rxUE->pssch_vars[UE_id]->sl_ch_mag0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
+                               &rxUE->pssch_vars[UE_id]->sl_ch_magb0[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
                                &ulsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB + offset],
                                diff_re / NR_NB_SC_PER_RB,
                                diff_re,
@@ -816,6 +816,12 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       }
     }
   }//symbol
+  sprintf(filename,"ch_est_ext_output.m");
+  LOG_M(filename,"ch_est_ext_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_ext.m");
+  LOG_M(filename,"rxdata_ext",rxUE->pssch_vars[UE_id]->rxdataF_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_comp.m");
+  LOG_M(filename,"rxdata_comp",rxUE->pssch_vars[UE_id]->rxdataF_comp[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   /////////////// Layer demapping ////////////////////////
   // For SCI2
   nr_dlsch_layer_demapping(rxUE->pssch_vars[UE_id]->llr,

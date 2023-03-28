@@ -742,7 +742,8 @@ void nr_slsch_extract_rbs(int32_t **rxdataF,
                           uint8_t is_dmrs_symbol,
                           nfapi_nr_pssch_pdu_t *pusch_pdu,
                           NR_DL_FRAME_PARMS *frame_parms,
-                          NR_DL_UE_HARQ_t *harq);
+                          NR_DL_UE_HARQ_t *harq,
+                          int chest_time_type);
 
 /** \fn dlsch_extract_rbs_TM7(int32_t **rxdataF,
     int32_t **dl_bf_ch_estimates,
