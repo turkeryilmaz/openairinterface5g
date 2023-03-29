@@ -90,8 +90,8 @@ void apply_7_5_kHz(PHY_VARS_UE *ue,int32_t*txdata,uint8_t slot)
 #if defined(__x86_64__) || defined(__i386__)
     mmtmp_re = _mm_madd_epi16(*txptr128,*kHz7_5ptr128);
     // Real part of complex multiplication (note: 7_5kHz signal is conjugated for this to work)
-    mmtmp_im = _mm_shufflelo_epi16(*kHz7_5ptr128,_MM_SHUFFLE(2,3,0,1));
-    mmtmp_im = _mm_shufflehi_epi16(mmtmp_im,_MM_SHUFFLE(2,3,0,1));
+    mmtmp_im = _mm_shufflelo_epi16(*kHz7_5ptr128, SIMDE_MM_SHUFFLE(2,3,0,1));
+    mmtmp_im = _mm_shufflehi_epi16(mmtmp_im, SIMDE_MM_SHUFFLE(2,3,0,1));
     mmtmp_im = _mm_sign_epi16(mmtmp_im,*(__m128i*)&conjugate75[0]);
     mmtmp_im = _mm_madd_epi16(mmtmp_im,txptr128[0]);
     mmtmp_re = _mm_srai_epi32(mmtmp_re,15);

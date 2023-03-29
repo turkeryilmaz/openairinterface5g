@@ -228,12 +228,12 @@ void qam64_qam16_avx2(short *stream0_in,
       /*
     xmm0 = rho01_128i[i];
     xmm1 = rho01_128i[i+1];
-    xmm0 = _mm_shufflelo_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shufflehi_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shuffle_epi32(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflelo_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflehi_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shuffle_epi32(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm0 = _mm_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = _mm_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = _mm_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = _mm_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = _mm_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = _mm_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     //xmm0 = [Re(0,1) Re(2,3) Im(0,1) Im(2,3)]
     //xmm1 = [Re(4,5) Re(6,7) Im(4,5) Im(6,7)]
     xmm2 = _mm_unpacklo_epi64(xmm0,xmm1); // Re(rho)
@@ -305,12 +305,12 @@ void qam64_qam16_avx2(short *stream0_in,
     /*
     xmm0 = stream1_128i_in[i];
     xmm1 = stream1_128i_in[i+1];
-    xmm0 = simde_mm256_shufflelo_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = simde_mm256_shufflehi_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = simde_mm256_shuffle_epi32(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shufflelo_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shufflehi_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shuffle_epi32(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     //xmm0 = [Re(0,1) Re(2,3) Im(0,1) Im(2,3)]
     //xmm1 = [Re(4,5) Re(6,7) Im(4,5) Im(6,7)]
     y1r = simde_mm256_unpacklo_epi64(xmm0,xmm1); //[y1r(1),y1r(2),y1r(3),y1r(4)]
@@ -605,12 +605,12 @@ void qam64_qam16_avx2(short *stream0_in,
     // Rearrange desired channel magnitudes
     xmm2 = ch_mag_128i[i]; // = [|h|^2(1),|h|^2(1),|h|^2(2),|h|^2(2)]*(2/sqrt(10))
     xmm3 = ch_mag_128i[i+1]; // = [|h|^2(3),|h|^2(3),|h|^2(4),|h|^2(4)]*(2/sqrt(10))
-    xmm2 = simde_mm256_shufflelo_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = simde_mm256_shufflehi_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = simde_mm256_shuffle_epi32(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = simde_mm256_shufflelo_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = simde_mm256_shufflehi_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = simde_mm256_shuffle_epi32(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm256_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm256_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm256_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm256_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm256_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm256_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     ch_mag_des = simde_mm256_unpacklo_epi64(xmm2,xmm3);
     */
 
@@ -620,12 +620,12 @@ void qam64_qam16_avx2(short *stream0_in,
     /*
     xmm2 = ch_mag_128i_i[i];
     xmm3 = ch_mag_128i_i[i+1];
-    xmm2 = simde_mm256_shufflelo_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = simde_mm256_shufflehi_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = simde_mm256_shuffle_epi32(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = simde_mm256_shufflelo_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = simde_mm256_shufflehi_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = simde_mm256_shuffle_epi32(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm256_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm256_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm256_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm256_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm256_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm256_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     ch_mag_int  = simde_mm256_unpacklo_epi64(xmm2,xmm3);
     */
 
@@ -1784,13 +1784,13 @@ void qam64_qam64_avx2(int32_t *stream0_in,
       /*
     xmm0 = rho01_256i[i];
     xmm1 = rho01_256i[i+1];
-    xmm0 = simde_mm256_shufflelo_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = simde_mm256_shufflehi_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = simde_mm256_shuffle_epi32(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
 
-    xmm1 = simde_mm256_shufflelo_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shufflehi_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shuffle_epi32(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
 
     //xmm0 = [Re(0,1,2,3)   Im(0,1,2,3)   Re(4,5,6,7)     Im(4,5,6,7)]
     //xmm0 = [Re(8,9,10,11) Im(8,9,10,11) Re(12,13,14,15) Im(12,13,14,15)]
@@ -1869,13 +1869,13 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     /*
     xmm0 = stream1_256i_in[i];
     xmm1 = stream1_256i_in[i+1];
-    xmm0 = simde_mm256_shufflelo_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = simde_mm256_shufflehi_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = simde_mm256_shuffle_epi32(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm256_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
 
-    xmm1 = simde_mm256_shufflelo_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shufflehi_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = simde_mm256_shuffle_epi32(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm256_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
 
     y1r = simde_mm256_unpacklo_epi64(xmm0, xmm1);
     y1r = simde_mm256_permute4x64_epi64(y1r,0xd8); // Re(y1)
@@ -2154,12 +2154,12 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     // Rearrange desired MF output
     xmm0 = stream0_256i_in[i];
     xmm1 = stream0_256i_in[i+1];
-    xmm0 = _mm_shufflelo_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shufflehi_epi16(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shuffle_epi32(xmm0,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflelo_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflehi_epi16(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shuffle_epi32(xmm1,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm0 = _mm_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = _mm_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = _mm_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = _mm_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = _mm_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = _mm_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     //xmm0 = [Re(0,1) Re(2,3) Im(0,1) Im(2,3)]
     //xmm1 = [Re(4,5) Re(6,7) Im(4,5) Im(6,7)]
     y0r = _mm_unpacklo_epi64(xmm0,xmm1); // = [y0r(1),y0r(2),y0r(3),y0r(4)]
@@ -2173,12 +2173,12 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     /*
     xmm2 = ch_mag_256i[i];
     xmm3 = ch_mag_256i[i+1];
-    xmm2 = _mm_shufflelo_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shufflehi_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shuffle_epi32(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflelo_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflehi_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shuffle_epi32(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm2 = _mm_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = _mm_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = _mm_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = _mm_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = _mm_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = _mm_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     ch_mag_des = _mm_unpacklo_epi64(xmm2,xmm3);
     */
     // xmm2 is dummy variable that contains the same values as ch_mag_des
@@ -2189,12 +2189,12 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     /*
     xmm2 = ch_mag_256i_i[i];
     xmm3 = ch_mag_256i_i[i+1];
-    xmm2 = _mm_shufflelo_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shufflehi_epi16(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shuffle_epi32(xmm2,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflelo_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflehi_epi16(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shuffle_epi32(xmm3,0xd8); //_MM_SHUFFLE(0,2,1,3));
+    xmm2 = _mm_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = _mm_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = _mm_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = _mm_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = _mm_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = _mm_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     ch_mag_int  = _mm_unpacklo_epi64(xmm2,xmm3);
     */
     seperate_real_imag_parts(&ch_mag_int, &xmm2, ch_mag_256i_i[i], ch_mag_256i_i[i+1]);

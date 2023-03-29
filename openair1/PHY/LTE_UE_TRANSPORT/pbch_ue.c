@@ -242,8 +242,8 @@ void pbch_channel_compensation(int **rxdataF_ext,
         mmtmpP0 = _mm_madd_epi16(dl_ch128[0],rxdataF128[0]);
         //  print_ints("re",&mmtmpP0);
         // mmtmpP0 contains real part of 4 consecutive outputs (32-bit)
-        mmtmpP1 = _mm_shufflelo_epi16(dl_ch128[0],_MM_SHUFFLE(2,3,0,1));
-        mmtmpP1 = _mm_shufflehi_epi16(mmtmpP1,_MM_SHUFFLE(2,3,0,1));
+        mmtmpP1 = _mm_shufflelo_epi16(dl_ch128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+        mmtmpP1 = _mm_shufflehi_epi16(mmtmpP1, SIMDE_MM_SHUFFLE(2,3,0,1));
         mmtmpP1 = _mm_sign_epi16(mmtmpP1,*(__m128i *)&conjugate[0]);
         //  print_ints("im",&mmtmpP1);
         mmtmpP1 = _mm_madd_epi16(mmtmpP1,rxdataF128[0]);
@@ -263,8 +263,8 @@ void pbch_channel_compensation(int **rxdataF_ext,
         // multiply by conjugated channel
         mmtmpP0 = _mm_madd_epi16(dl_ch128[1],rxdataF128[1]);
         // mmtmpP0 contains real part of 4 consecutive outputs (32-bit)
-        mmtmpP1 = _mm_shufflelo_epi16(dl_ch128[1],_MM_SHUFFLE(2,3,0,1));
-        mmtmpP1 = _mm_shufflehi_epi16(mmtmpP1,_MM_SHUFFLE(2,3,0,1));
+        mmtmpP1 = _mm_shufflelo_epi16(dl_ch128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+        mmtmpP1 = _mm_shufflehi_epi16(mmtmpP1, SIMDE_MM_SHUFFLE(2,3,0,1));
         mmtmpP1 = _mm_sign_epi16(mmtmpP1,*(__m128i *)&conjugate[0]);
         mmtmpP1 = _mm_madd_epi16(mmtmpP1,rxdataF128[1]);
         // mmtmpP1 contains imag part of 4 consecutive outputs (32-bit)
@@ -281,8 +281,8 @@ void pbch_channel_compensation(int **rxdataF_ext,
           // multiply by conjugated channel
           mmtmpP0 = _mm_madd_epi16(dl_ch128[2],rxdataF128[2]);
           // mmtmpP0 contains real part of 4 consecutive outputs (32-bit)
-          mmtmpP1 = _mm_shufflelo_epi16(dl_ch128[2],_MM_SHUFFLE(2,3,0,1));
-          mmtmpP1 = _mm_shufflehi_epi16(mmtmpP1,_MM_SHUFFLE(2,3,0,1));
+          mmtmpP1 = _mm_shufflelo_epi16(dl_ch128[2], SIMDE_MM_SHUFFLE(2,3,0,1));
+          mmtmpP1 = _mm_shufflehi_epi16(mmtmpP1, SIMDE_MM_SHUFFLE(2,3,0,1));
           mmtmpP1 = _mm_sign_epi16(mmtmpP1,*(__m128i *)&conjugate[0]);
           mmtmpP1 = _mm_madd_epi16(mmtmpP1,rxdataF128[2]);
           // mmtmpP1 contains imag part of 4 consecutive outputs (32-bit)

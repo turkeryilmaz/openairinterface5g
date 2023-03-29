@@ -388,8 +388,8 @@ void mch_channel_compensation(int **rxdataF_ext,
       mmtmpD0 = _mm_madd_epi16(dl_ch128[0],rxdataF128[0]);
       //  print_ints("re",&mmtmpD0);
       // mmtmpD0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[0],_MM_SHUFFLE(2,3,0,1));
-      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)&conjugate[0]);
       //  print_ints("im",&mmtmpD1);
       mmtmpD1 = _mm_madd_epi16(mmtmpD1,rxdataF128[0]);
@@ -409,8 +409,8 @@ void mch_channel_compensation(int **rxdataF_ext,
       // multiply by conjugated channel
       mmtmpD0 = _mm_madd_epi16(dl_ch128[1],rxdataF128[1]);
       // mmtmpD0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[1],_MM_SHUFFLE(2,3,0,1));
-      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)conjugate);
       mmtmpD1 = _mm_madd_epi16(mmtmpD1,rxdataF128[1]);
       // mmtmpD1 contains imag part of 4 consecutive outputs (32-bit)
@@ -514,8 +514,8 @@ void mch_channel_compensation_khz_1dot25(int **rxdataF_ext,
       mmtmpD0 = _mm_madd_epi16(dl_ch128[0],rxdataF128[0]);
       //  print_ints("re",&mmtmpD0);
       // mmtmpD0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[0],_MM_SHUFFLE(2,3,0,1));
-      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)&conjugate[0]);
       //  print_ints("im",&mmtmpD1);
       mmtmpD1 = _mm_madd_epi16(mmtmpD1,rxdataF128[0]);
@@ -535,8 +535,8 @@ void mch_channel_compensation_khz_1dot25(int **rxdataF_ext,
       // multiply by conjugated channel
       mmtmpD0 = _mm_madd_epi16(dl_ch128[1],rxdataF128[1]);
       // mmtmpD0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[1],_MM_SHUFFLE(2,3,0,1));
-      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflelo_epi16(dl_ch128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)conjugate);
       mmtmpD1 = _mm_madd_epi16(mmtmpD1,rxdataF128[1]);
       // mmtmpD1 contains imag part of 4 consecutive outputs (32-bit)
