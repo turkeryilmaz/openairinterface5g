@@ -79,8 +79,8 @@ static inline void cmac(__m128i a,__m128i b, __m128i *re32, __m128i *im32)
   cmac_tmp_re32  = _mm_madd_epi16(a,cmac_tmp);
 
  
-  //  cmac_tmp    = _mm_shufflelo_epi16(b,_MM_SHUFFLE(2,3,0,1));
-  //  cmac_tmp    = _mm_shufflehi_epi16(cmac_tmp,_MM_SHUFFLE(2,3,0,1));
+  //  cmac_tmp    = _mm_shufflelo_epi16(b, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  cmac_tmp    = _mm_shufflehi_epi16(cmac_tmp, SIMDE_MM_SHUFFLE(2,3,0,1));
   cmac_tmp = _mm_shuffle_epi8(b,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   cmac_tmp_im32  = _mm_madd_epi16(cmac_tmp,a);
 
@@ -99,8 +99,8 @@ static inline void cmacc(__m128i a,__m128i b, __m128i *re32, __m128i *im32)
 
 
   cmac_tmp    = _mm_sign_epi16(b,*(__m128i*)reflip);
-  //  cmac_tmp    = _mm_shufflelo_epi16(b,_MM_SHUFFLE(2,3,0,1));
-  //  cmac_tmp    = _mm_shufflehi_epi16(cmac_tmp,_MM_SHUFFLE(2,3,0,1));
+  //  cmac_tmp    = _mm_shufflelo_epi16(b, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  cmac_tmp    = _mm_shufflehi_epi16(cmac_tmp, SIMDE_MM_SHUFFLE(2,3,0,1));
   cmac_tmp = _mm_shuffle_epi8(cmac_tmp,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   cmac_tmp_im32  = _mm_madd_epi16(cmac_tmp,a);
 
@@ -152,8 +152,8 @@ static inline void cmult(__m128i a,__m128i b, __m128i *re32, __m128i *im32)
 
   mmtmpb    = _mm_sign_epi16(b,*(__m128i*)reflip);
   *re32     = _mm_madd_epi16(a,mmtmpb);
-  //  mmtmpb    = _mm_shufflelo_epi16(b,_MM_SHUFFLE(2,3,0,1));
-  //  mmtmpb    = _mm_shufflehi_epi16(mmtmpb,_MM_SHUFFLE(2,3,0,1));
+  //  mmtmpb    = _mm_shufflelo_epi16(b, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  mmtmpb    = _mm_shufflehi_epi16(mmtmpb, SIMDE_MM_SHUFFLE(2,3,0,1));
   mmtmpb        = _mm_shuffle_epi8(b,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   *im32  = _mm_madd_epi16(a,mmtmpb);
 
@@ -856,12 +856,12 @@ static inline void ibfly4_tw1(__m128i *x0,__m128i *x1,__m128i *x2,__m128i *x3,
   *(y0) = _mm_adds_epi16(*(x0),_mm_adds_epi16(*(x1),_mm_adds_epi16(*(x2),*(x3))));
 
   x1_flip = _mm_sign_epi16(*(x1),*(__m128i*)conjugatedft);
-  //  x1_flip = _mm_shufflelo_epi16(x1_flip,_MM_SHUFFLE(2,3,0,1));
-  //  x1_flip = _mm_shufflehi_epi16(x1_flip,_MM_SHUFFLE(2,3,0,1));
+  //  x1_flip = _mm_shufflelo_epi16(x1_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  x1_flip = _mm_shufflehi_epi16(x1_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
   x1_flip = _mm_shuffle_epi8(x1_flip,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   x3_flip = _mm_sign_epi16(*(x3),*(__m128i*)conjugatedft);
-  //  x3_flip = _mm_shufflelo_epi16(x3_flip,_MM_SHUFFLE(2,3,0,1));
-  //  x3_flip = _mm_shufflehi_epi16(x3_flip,_MM_SHUFFLE(2,3,0,1));
+  //  x3_flip = _mm_shufflelo_epi16(x3_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  x3_flip = _mm_shufflehi_epi16(x3_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
   x3_flip = _mm_shuffle_epi8(x3_flip,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   *(y1)   = _mm_subs_epi16(*(x0),_mm_adds_epi16(x1_flip,_mm_subs_epi16(*(x2),x3_flip)));
   *(y2)   = _mm_subs_epi16(*(x0),_mm_subs_epi16(*(x1),_mm_subs_epi16(*(x2),*(x3))));
@@ -899,12 +899,12 @@ static inline void bfly4_16(__m128i *x0,__m128i *x1,__m128i *x2,__m128i *x3,
   *(y2)   = _mm_subs_epi16(x02t,x13t);
 
   x1_flip = _mm_sign_epi16(x1t,*(__m128i*)conjugatedft);
-  //  x1_flip = _mm_shufflelo_epi16(x1_flip,_MM_SHUFFLE(2,3,0,1));
-  //  x1_flip = _mm_shufflehi_epi16(x1_flip,_MM_SHUFFLE(2,3,0,1));
+  //  x1_flip = _mm_shufflelo_epi16(x1_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  x1_flip = _mm_shufflehi_epi16(x1_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
   x1_flip = _mm_shuffle_epi8(x1_flip,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   x3_flip = _mm_sign_epi16(x3t,*(__m128i*)conjugatedft);
-  //  x3_flip = _mm_shufflelo_epi16(x3_flip,_MM_SHUFFLE(2,3,0,1));
-  //  x3_flip = _mm_shufflehi_epi16(x3_flip,_MM_SHUFFLE(2,3,0,1));
+  //  x3_flip = _mm_shufflelo_epi16(x3_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  x3_flip = _mm_shufflehi_epi16(x3_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
   x3_flip = _mm_shuffle_epi8(x3_flip,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   x02t  = _mm_subs_epi16(*(x0),x2t);
   x13t  = _mm_subs_epi16(x1_flip,x3_flip);
@@ -986,12 +986,12 @@ static inline void ibfly4_16(__m128i *x0,__m128i *x1,__m128i *x2,__m128i *x3,
   *(y2)   = _mm_subs_epi16(x02t,x13t);
 
   x1_flip = _mm_sign_epi16(x1t,*(__m128i*)conjugatedft);
-  //  x1_flip = _mm_shufflelo_epi16(x1_flip,_MM_SHUFFLE(2,3,0,1));
-  //  x1_flip = _mm_shufflehi_epi16(x1_flip,_MM_SHUFFLE(2,3,0,1));
+  //  x1_flip = _mm_shufflelo_epi16(x1_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  x1_flip = _mm_shufflehi_epi16(x1_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
   x1_flip = _mm_shuffle_epi8(x1_flip,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   x3_flip = _mm_sign_epi16(x3t,*(__m128i*)conjugatedft);
-  //  x3_flip = _mm_shufflelo_epi16(x3_flip,_MM_SHUFFLE(2,3,0,1));
-  //  x3_flip = _mm_shufflehi_epi16(x3_flip,_MM_SHUFFLE(2,3,0,1));
+  //  x3_flip = _mm_shufflelo_epi16(x3_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
+  //  x3_flip = _mm_shufflehi_epi16(x3_flip, SIMDE_MM_SHUFFLE(2,3,0,1));
   x3_flip = _mm_shuffle_epi8(x3_flip,_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2));
   x02t  = _mm_subs_epi16(*(x0),x2t);
   x13t  = _mm_subs_epi16(x1_flip,x3_flip);

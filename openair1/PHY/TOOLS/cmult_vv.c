@@ -69,8 +69,8 @@ int mult_cpx_conj_vector(int16_t *x1,
   // we compute 4 cpx multiply for each loop
   for(i=0; i<(N>>2); i++) {
     tmp_re = simde_mm_madd_epi16(*x1_128,*x2_128);
-    tmp_im = simde_mm_shufflelo_epi16(*x1_128,_MM_SHUFFLE(2,3,0,1));
-    tmp_im = simde_mm_shufflehi_epi16(tmp_im,_MM_SHUFFLE(2,3,0,1));
+    tmp_im = simde_mm_shufflelo_epi16(*x1_128, SIMDE_MM_SHUFFLE(2,3,0,1));
+    tmp_im = simde_mm_shufflehi_epi16(tmp_im, SIMDE_MM_SHUFFLE(2,3,0,1));
     tmp_im = simde_mm_sign_epi16(tmp_im,*(simde__m128i*)&conjug[0]);
     tmp_im = simde_mm_madd_epi16(tmp_im,*x2_128);
     tmp_re = simde_mm_srai_epi32(tmp_re,output_shift);
@@ -130,9 +130,9 @@ int mult_cpx_vector(int16_t *x1, //Q15
     //print_shorts("tmp_re1:",&tmp_re[i]);
     tmp_re = simde_mm_madd_epi16(tmp_re,*x2_128); //Q28
     //print_ints("tmp_re2:",&tmp_re[i]);
-    tmp_im = simde_mm_shufflelo_epi16(*x1_128,_MM_SHUFFLE(2,3,0,1)); //Q15
+    tmp_im = simde_mm_shufflelo_epi16(*x1_128, SIMDE_MM_SHUFFLE(2,3,0,1)); //Q15
     //print_shorts("tmp_im1:",&tmp_im[i]);
-    tmp_im = simde_mm_shufflehi_epi16(tmp_im,_MM_SHUFFLE(2,3,0,1)); //Q15
+    tmp_im = simde_mm_shufflehi_epi16(tmp_im, SIMDE_MM_SHUFFLE(2,3,0,1)); //Q15
     //print_shorts("tmp_im2:",&tmp_im[i]);
     tmp_im = simde_mm_madd_epi16(tmp_im, *x2_128); //Q28
     //print_ints("tmp_im3:",&tmp_im[i]);
@@ -189,8 +189,8 @@ int multadd_cpx_vector(int16_t *x1,
   for(i=0; i<(N>>2); i++) {
     tmp_re = simde_mm_sign_epi16(*x1_128,*(simde__m128i*)&conjug2[0]);
     tmp_re = simde_mm_madd_epi16(tmp_re,*x2_128);
-    tmp_im = simde_mm_shufflelo_epi16(*x1_128,_MM_SHUFFLE(2,3,0,1));
-    tmp_im = simde_mm_shufflehi_epi16(tmp_im,_MM_SHUFFLE(2,3,0,1));
+    tmp_im = simde_mm_shufflelo_epi16(*x1_128, SIMDE_MM_SHUFFLE(2,3,0,1));
+    tmp_im = simde_mm_shufflehi_epi16(tmp_im, SIMDE_MM_SHUFFLE(2,3,0,1));
     tmp_im = simde_mm_madd_epi16(tmp_im,*x2_128);
     tmp_re = simde_mm_srai_epi32(tmp_re,output_shift);
     tmp_im = simde_mm_srai_epi32(tmp_im,output_shift);
