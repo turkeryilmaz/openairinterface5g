@@ -35,7 +35,6 @@
 #include "PHY/sse_intrin.h"
 #include "common/utils/assertions.h"
 #include <simde/simde-common.h>
-//#include <simde/arm/neon.h>
 #include <simde/x86/sse.h>
 
 #define simd_q15_t simde__m128i
@@ -191,50 +190,6 @@ extern "C" {
       y128++;
       x128++;
     } 
- /*   
-#elif defined(__arm__) || defined(__aarch64__)
-    // Default implementation for ARM
-    uint32_t i;
-
-    // do 8 multiplications at a time
-    simd_q15_t alpha_r_128,alpha_i_128,yr,yi,*x_128=(simd_q15_t*)x,*y_128=(simd_q15_t*)y;
-    int j;
-
-    //  printf("alpha = %d,%d\n",alpha[0],alpha[1]);
-    alpha_r_128 = set1_int16(alpha->r);
-    alpha_i_128 = set1_int16(alpha->i);
-
-    j=0;
-
-    for (i=0; i<N>>3; i++) {
-
-      yr     = mulhi_s1_int16(alpha_r_128,x_128[i]);
-      yi     = mulhi_s1_int16(alpha_i_128,x_128[i]);
-      int16x8x2_t yint;
-      yint = vzipq_s16(yr,yi);
-      y_128[j]   = adds_int16(y_128[j],yint.val[0]);
-      j++;
-      y_128[j]   = adds_int16(y_128[j],yint.val[1]);
-
-      j++;
-    }
-#else
-    // Almost dead code (BMC)
-    for (int i=0; i<N; i++) {
-      int tmpr=y[i].r+((x[i]*alpha->r)>>14);
-      if (tmpr>INT16_MAX)
-        tmpr=INT16_MAX;
-      if (tmpr<INT16_MIN)
-        tmpr=INT16_MIN;
-      int tmpi=y[i].i+((x[i]*alpha->i)>>14);
-      if (tmpi>INT16_MAX)
-        tmpi=INT16_MAX;
-      if (tmpi<INT16_MIN)
-        tmpi=INT16_MIN;
-      y[i].r=(int16_t)tmpr;
-      y[i].i=(int16_t)tmpi;
-    }
-#endif*/
   }
 //cmult_sv.h
 
