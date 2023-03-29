@@ -1391,13 +1391,13 @@ void nr_dlsch_detection_mrc(uint32_t rx_size_symbol,
 void nr_a_sum_b(c16_t *input_x, c16_t *input_y, unsigned short nb_rb)
 {
   unsigned short rb;
-  __m128i *x = (__m128i *)input_x;
-  __m128i *y = (__m128i *)input_y;
+  simde__m128i *x = (simde__m128i *)input_x;
+  simde__m128i *y = (simde__m128i *)input_y;
 
   for (rb=0; rb<nb_rb; rb++) {
-    x[0] = _mm_adds_epi16(x[0], y[0]);
-    x[1] = _mm_adds_epi16(x[1], y[1]);
-    x[2] = _mm_adds_epi16(x[2], y[2]);
+    x[0] = simde_mm_adds_epi16(x[0], y[0]);
+    x[1] = simde_mm_adds_epi16(x[1], y[1]);
+    x[2] = simde_mm_adds_epi16(x[2], y[2]);
     x += 3;
     y += 3;
   }
