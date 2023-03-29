@@ -206,7 +206,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
                                   M_SCI2_bits,
                                   Nidx,
                                   scrambled_output);
-  #if DEBUG_PSSCH_MAPPING
+  #ifdef DEBUG_PSSCH_MAPPING
     char filename[40];
     sprintf(filename,"scramble_output.m");
     LOG_M(filename,"scramble_output",&scrambled_output,(harq_process_ul_ue->B_multiplexed >> 5) + 1, 1, 13);
@@ -577,6 +577,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   uint32_t rxdataF_ext_offset = 0;
   uint32_t sci2_offset = 0;
   uint32_t data_offset = num_sci2_samples;
+  uint32_t diff_re_comp;
 
   /////////////// Channel Estimation ///////////////////////
 
@@ -715,22 +716,70 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   /////////////////////////////////////////////////////////
   ////////////// Channel Compensation /////////////////////
     start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
-    nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
-                                  rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
-                                  rxUE->pssch_vars[UE_id]->sl_ch_mag0,
-                                  rxUE->pssch_vars[UE_id]->sl_ch_magb0,
-                                  rxUE->pssch_vars[UE_id]->sl_ch_magr0,
-                                  rxUE->pssch_vars[UE_id]->rxdataF_comp,
-                                  NULL,//NULL:disable meas. rxUE->pssch_vars[UE_id]->rho:enable meas.
-                                  &rxUE->frame_parms,
-                                  Nl,
-                                  sym,
-                                  nb_re_pssch,
-                                  first_symbol_flag,
-                                  slsch_ue_rx_harq->Qm,
-                                  nb_rb,
-                                  rxUE->pssch_vars[UE_id]->log2_maxh,
-                                  &rxUE->measurements); // log2_maxh+I0_shift
+
+    if (pilots==0){
+      nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
+                                    rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
+                                    rxUE->pssch_vars[UE_id]->sl_ch_mag0,
+                                    rxUE->pssch_vars[UE_id]->sl_ch_magb0,
+                                    rxUE->pssch_vars[UE_id]->sl_ch_magr0,
+                                    rxUE->pssch_vars[UE_id]->rxdataF_comp,
+                                    NULL,//NULL:disable meas. rxUE->pssch_vars[UE_id]->rho:enable meas.
+                                    &rxUE->frame_parms,
+                                    Nl,
+                                    sym,
+                                    nb_re_pssch,
+                                    first_symbol_flag,
+                                    slsch_ue_rx_harq->Qm,
+                                    nb_rb,
+                                    rxUE->pssch_vars[UE_id]->log2_maxh,
+                                    &rxUE->measurements,
+                                    0); // log2_maxh+I0_shift
+
+    } else { // DMRS symbol
+        if (allocatable_sci2_re > 0) {
+          // for SCI2
+          nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
+                                        rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
+                                        rxUE->pssch_vars[UE_id]->sl_ch_mag0,
+                                        rxUE->pssch_vars[UE_id]->sl_ch_magb0,
+                                        rxUE->pssch_vars[UE_id]->sl_ch_magr0,
+                                        rxUE->pssch_vars[UE_id]->rxdataF_comp,
+                                        NULL,//NULL:disable meas. rxUE->pssch_vars[UE_id]->rho:enable meas.
+                                        &rxUE->frame_parms,
+                                        Nl,
+                                        sym,
+                                        allocatable_sci2_re,
+                                        first_symbol_flag,
+                                        SCI2_mod_order,
+                                        nb_rb,
+                                        rxUE->pssch_vars[UE_id]->log2_maxh,
+                                        &rxUE->measurements,
+                                        0);
+          diff_re_comp = NR_NB_SC_PER_RB * slsch_ue_rx_harq->nb_rb / 2 - nb_re_sci1 - allocatable_sci2_re;
+        } else {
+          diff_re_comp = nb_re_pssch;
+          printf("----%d---- %"PRIu32"\n",sym, diff_re_comp);
+        }
+        nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
+                                      rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
+                                      rxUE->pssch_vars[UE_id]->sl_ch_mag0,
+                                      rxUE->pssch_vars[UE_id]->sl_ch_magb0,
+                                      rxUE->pssch_vars[UE_id]->sl_ch_magr0,
+                                      rxUE->pssch_vars[UE_id]->rxdataF_comp,
+                                      NULL,//NULL:disable meas. rxUE->pssch_vars[UE_id]->rho:enable meas.
+                                      &rxUE->frame_parms,
+                                      Nl,
+                                      sym,
+                                      diff_re_comp,
+                                      first_symbol_flag,
+                                      slsch_ue_rx_harq->Qm,
+                                      nb_rb,
+                                      rxUE->pssch_vars[UE_id]->log2_maxh,
+                                      &rxUE->measurements,
+                                      allocatable_sci2_re);
+    }
+
     stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
 
     start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);

@@ -55,6 +55,7 @@
 #include "PHY/MODULATION/modulation_common.h"
 
 #define DEBUG_NR_SLSCHSIM 1
+//#define DEBUG_NR_PSSCHSIM
 
 // typedef struct {
 //   uint8_t priority;
@@ -532,7 +533,7 @@ int main(int argc, char **argv)
   unsigned char test_input_bit[HNA_SIZE];
   //short channel_output_uncoded[HNA_SIZE];
   unsigned char estimated_output_bit[HNA_SIZE];
-  double snr_step = 0.2;
+  double snr_step = 2;
   snr1 = snr1set == 0 ? snr0 + snr_step * 1 : snr1;
   int frame_length_complex_samples = txUE->frame_parms.samples_per_subframe * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
   double **r_re = malloc(NR_MAX_NB_LAYERS_SL * sizeof(double*));
@@ -544,6 +545,7 @@ int main(int argc, char **argv)
   for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
     n_false_positive = 0;
+    errors_bit = 0;
 
     //double SNR_lin = pow(10, SNR / 10.0);
     //double sigma = 1.0 / sqrt(2 * SNR_lin);
@@ -557,17 +559,17 @@ int main(int argc, char **argv)
       }
 
       for (int i = 0; i < frame_length_complex_samples; i++) {
-        //double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
-        //double sigma2 = pow(10, sigma2_dB / 10);
+        double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
+        double sigma2 = pow(10, sigma2_dB / 10);
         for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
-          ((short*) rxUE->common_vars.rxdata[aa])[2 * i] = (short) ((r_re[aa][i]));
-          ((short*) rxUE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i]));
+          ((short*) rxUE->common_vars.rxdata[aa])[2 * i] = (short) ((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          ((short*) rxUE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
-      printf("start_symbol %d \n", start_symbol);
-      printf("number_of_symbols %u \n", number_of_symbols);
-      printf("M_SCI2_bits %u \n", M_SCI2_bits);
-      printf("num_sci2_samples %u \n", num_sci2_samples);
+      // printf("start_symbol %d \n", start_symbol);
+      // printf("number_of_symbols %u \n", number_of_symbols);
+      // printf("M_SCI2_bits %u \n", M_SCI2_bits);
+      // printf("num_sci2_samples %u \n", num_sci2_samples);
 
       for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
@@ -583,34 +585,31 @@ int main(int argc, char **argv)
                                                harq_process_txUE->B_multiplexed,
                                                txUE->slsch[0][0]->Nidx,proc);
 
-      if (ret != 1)
+      if (ret)
         n_errors++;
 
-      errors_bit = 0;
-      for (int i = 0; i < min(80, TBS); i++) {
+      for (int i = 0; i < TBS; i++) {
         estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-        if(i % 8 == 0){
+
+        if(i % 8 == 0 && i < 80){
            printf("TxByte : %2u  vs  %2u : RxByte\n", test_input[i / 8], harq_process_rxUE->b[i / 8]);
         }
-#if DEBUG_NR_PSSCHSIM
-        printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
-#endif
+
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
       }
       if (errors_bit > 0) {
         n_false_positive++;
-        if (n_trials == 1)
           printf("errors_bit %u (trial %d)\n", errors_bit, trial);
       }
     } // trial
 
     printf("*****************************************\n");
-    printf("SNR %f, BLER %f (false positive %f)\n", SNR,
+    printf("SNR %f, BLER %f BER %f\n", SNR,
           (float) n_errors / (float) n_trials,
-          (float) n_false_positive / (float) n_trials);
+          (float) errors_bit / (float) (n_trials * TBS));
     printf("*****************************************\n");
     printf("\n");
 

@@ -402,7 +402,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                                 dlsch0_harq->Qm,
                                 nb_rb_pdsch,
                                 pdsch_vars[gNB_id]->log2_maxh,
-                                measurements); // log2_maxh+I0_shift
+                                measurements,
+                                0); // log2_maxh+I0_shift
     stop_meas(&ue->generic_stat_bis[proc->thread_id][slot]);
     if (cpumeas(CPUMEAS_GETSTATE))
       LOG_D(PHY, "[AbsSFN %u.%d] Slot%d Symbol %d log2_maxh %d channel_level %d: Channel Comp  %5.2f \n", frame, nr_slot_rx, slot, symbol, pdsch_vars[gNB_id]->log2_maxh, proc->channel_level, ue->generic_stat_bis[proc->thread_id][slot].p_time/(cpuf*1000.0));
@@ -626,7 +627,8 @@ void nr_dlsch_channel_compensation(int **rxdataF_ext,
                                 unsigned char mod_order,
                                 unsigned short nb_rb,
                                 unsigned char output_shift,
-                                PHY_NR_MEASUREMENTS *measurements)
+                                PHY_NR_MEASUREMENTS *measurements,
+                                uint32_t offset)
 {
 
 #if defined(__i386) || defined(__x86_64)
@@ -656,12 +658,12 @@ void nr_dlsch_channel_compensation(int **rxdataF_ext,
 
     for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
 
-      dl_ch128          = (__m128i *)&dl_ch_estimates_ext[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12];
-      dl_ch_mag128      = (__m128i *)&dl_ch_mag[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12];
-      dl_ch_mag128b     = (__m128i *)&dl_ch_magb[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12];
-      dl_ch_mag128r     = (__m128i *)&dl_ch_magr[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12];
-      rxdataF128        = (__m128i *)&rxdataF_ext[aarx][symbol*nb_rb*12];
-      rxdataF_comp128   = (__m128i *)&rxdataF_comp[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12];
+      dl_ch128          = (__m128i *)&dl_ch_estimates_ext[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12 + offset];
+      dl_ch_mag128      = (__m128i *)&dl_ch_mag[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12 + offset];
+      dl_ch_mag128b     = (__m128i *)&dl_ch_magb[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12 + offset];
+      dl_ch_mag128r     = (__m128i *)&dl_ch_magr[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12 + offset];
+      rxdataF128        = (__m128i *)&rxdataF_ext[aarx][symbol*nb_rb*12 + offset];
+      rxdataF_comp128   = (__m128i *)&rxdataF_comp[(aatx*frame_parms->nb_antennas_rx)+aarx][symbol*nb_rb*12 + offset];
 
       for (rb=0; rb<nb_rb_0; rb++) {
         if (mod_order>2) {
