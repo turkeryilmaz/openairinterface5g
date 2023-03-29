@@ -150,8 +150,8 @@ int mult_cpx_vector(int16_t *x1, //Q15
     x2_128++;
     y_128++;
   }
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
   return(0);
 }
 

@@ -84,12 +84,10 @@ void nrLDPC_bnProcPc_BG1_generator_AVX2(const char *dir, int R)
 
     fprintf(fd,"        simde__m256i* p_bnProcBuf; \n");
     fprintf(fd,"        simde__m256i* p_llrProcBuf;\n");
-    fprintf(fd,"        simde__m256i* p_llrRes; \n");
-  //  fprintf(fd,"        simde__m256i* p_bnProcBufRes; \n");
-//    fprintf(fd,"        simde__m256i* p_llrProcBuf256; \n");
+    fprintf(fd, "        simde__m256i* p_llrRes; \n");
+    //  fprintf(fd,"        simde__m256i* p_bnProcBufRes; \n");
+    //    fprintf(fd,"        simde__m256i* p_llrProcBuf256; \n");
     fprintf(fd,"         uint32_t M ;\n");
-
-
 
     // =====================================================================
     // Process group with 2 CNs
@@ -343,8 +341,6 @@ fprintf(fd,  "// Process group with 7 CNs \n");
             // Add LLR from receiver input
         fprintf(fd,"            p_llrRes[i] = simde_mm256_adds_epi8(p_llrRes[i], p_llrProcBuf[i]);\n");
 
-
-
         fprintf(fd,"}\n");
    }
    // =====================================================================
@@ -424,8 +420,6 @@ fprintf(fd,  "// Process group with 9 CNs \n");
 
             // Add LLR from receiver input
         fprintf(fd,"            p_llrRes[i] = simde_mm256_adds_epi8(p_llrRes[i], p_llrProcBuf[i]);\n");
-
-
 
         fprintf(fd,"}\n");
 
@@ -581,7 +575,6 @@ fprintf(fd,  "// Process group with 13 CNs \n");
         // Set pointers to start of group 2
         fprintf(fd,"    p_bnProcBuf     = (simde__m256i*) &bnProcBuf    [%u];\n",lut_startAddrBnGroups[idxBnGroup]);
         fprintf(fd,"    p_llrProcBuf    = (simde__m256i*) &llrProcBuf   [%d];\n",lut_startAddrBnGroupsLlr[idxBnGroup]);
->>>>>>> d1cf42f143 (SIMDe modifications of Intel CRC to allow for aarch64 build.)
         fprintf(fd,"    p_llrRes        = (simde__m256i*) &llrRes       [%d];\n",lut_startAddrBnGroupsLlr[idxBnGroup]);
         // Loop over BNs
         fprintf(fd,"            for (int i=0;i<M;i++) {\n");

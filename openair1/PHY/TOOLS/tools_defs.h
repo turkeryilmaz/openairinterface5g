@@ -47,10 +47,6 @@
 #define mulhi_s1_int16(a,b) simde_mm_slli_epi16(simde_mm_mulhi_epi16(a,b),2)
 #define adds_int16(a,b) simde_mm_adds_epi16(a,b)
 #define mullo_int16(a,b) simde_mm_mullo_epi16(a,b)
-#if defined(__arm__) || defined(__aarch64__)
-#define _mm_empty()
-#define _m_empty()
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -245,10 +241,10 @@ extern "C" {
   //   y.i += (x * alpha.i) >> 14
   // See regular C implementation at the end
   static __attribute__((always_inline)) inline void c16multaddVectRealComplex(const int16_t *x,
-                                                                       const c16_t *alpha,
-                                                                       c16_t *y,
-                                                                       const int N) {
-//#if defined(__x86_64__) || defined(__i386__)
+                                                                              const c16_t *alpha,
+                                                                              c16_t *y,
+                                                                              const int N)
+  {
     // Default implementation for x86
     const int8_t makePairs[32] __attribute__((aligned(32)))={
       0,1,0+16,1+16,
@@ -275,7 +271,7 @@ extern "C" {
       *y128= simde_mm_adds_epi16(simde_mm256_extracti128_si256(x_mul_alpha_x2,1),*y128);
       y128++;
       x128++;
-    } 
+    }
   }
 //cmult_sv.h
 
@@ -304,9 +300,9 @@ static __attribute__((always_inline)) inline void multadd_real_four_symbols_vect
 
     simd_q15_t y_128 = simde_mm_loadu_si128((simd_q15_t *)y);
     y_128 = simde_mm_adds_epi16(y_128, simde_mm_unpacklo_epi16(yr, yi));
-    y_128 = simd__mm_adds_epi16(y_128, simde_mm_unpackhi_epi16(yr, yi));
+    y_128 = simde_mm_adds_epi16(y_128, simde_mm_unpackhi_epi16(yr, yi));
 
-    _mm_storeu_si128((simd_q15_t *)y, y_128);
+    simde_mm_storeu_si128((simd_q15_t *)y, y_128);
 }
 
 /*!\fn void multadd_complex_vector_real_scalar(int16_t *x,int16_t alpha,int16_t *y,uint8_t zero_flag,uint32_t N)

@@ -324,7 +324,7 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
   }
 
  simde_mm_empty();
-  _m_empty();
+ simde_m_empty();
 }
 
 //==============================================================================================

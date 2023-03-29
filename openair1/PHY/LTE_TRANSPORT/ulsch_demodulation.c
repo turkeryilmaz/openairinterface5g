@@ -626,7 +626,7 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
                                 uint8_t output_shift) {
   uint16_t rb;
 
-  simde__m128i *ul_ch128,*ul_ch_mag128,*ul_ch_mag128b,*rxdataF128,*rxdataF_comp128;
+  simde__m128i *ul_ch128, *ul_ch_mag128, *rxdataF128, *rxdataF_comp128;
   uint8_t aarx;//,symbol_mod;
   simde__m128i mmtmpU0,mmtmpU1,mmtmpU2,mmtmpU3;
 
