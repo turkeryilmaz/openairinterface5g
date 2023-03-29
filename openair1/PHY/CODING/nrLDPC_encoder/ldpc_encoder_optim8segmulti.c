@@ -97,14 +97,10 @@ int nrLDPC_encod(unsigned char **input,unsigned char **output,int Zc,int Kb,shor
   LOG_D(PHY,"ldpc_encoder_optim_8seg: PDU (seg 0) %x %x %x %x\n",input[0][0],input[0][1],input[0][2],input[0][3]);
 #endif
 
-  AssertFatal(Zc>0,"no valid Zc found for block length %d\n",block_length);
-
-#if defined(__arm__) || defined(__aarch64__)
-  simd_size = 16;
-#else  
+  AssertFatal(Zc > 0, "no valid Zc found for block length %d\n", block_length);
   if ((Zc&31) > 0) simd_size = 16;
-  else          simd_size = 32;
-#endif
+  else
+    simd_size = 32;
   unsigned char cc[22*Zc] __attribute__((aligned(32))); //padded input, unpacked, max size
   unsigned char dd[46*Zc] __attribute__((aligned(32))); //coded parity part output, unpacked, max size
 

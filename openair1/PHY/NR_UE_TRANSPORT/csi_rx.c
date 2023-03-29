@@ -89,8 +89,8 @@ void nr_det_A_MF_2x2(int32_t *a_mf_00,
     a_mf_10_128+=1;
     a_mf_11_128+=1;
   }
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 void nr_squared_matrix_element(int32_t *a,
@@ -103,8 +103,8 @@ void nr_squared_matrix_element(int32_t *a,
     a_sq_128+=1;
     a_128+=1;
   }
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 void nr_numer_2x2(int32_t *a_00_sq,
@@ -128,8 +128,8 @@ void nr_numer_2x2(int32_t *a_00_sq,
     a_10_sq_128+=1;
     a_11_sq_128+=1;
   }
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 bool is_csi_rs_in_symbol(const fapi_nr_dl_config_csirs_pdu_rel15_t csirs_config_pdu, const int symbol) {

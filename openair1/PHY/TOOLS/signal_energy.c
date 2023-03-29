@@ -106,8 +106,8 @@ int32_t signal_energy_amp_shift(int32_t *input,uint32_t length)
 
   temp -= temp2;
 
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 
   return((temp>0)?temp:1);
 }

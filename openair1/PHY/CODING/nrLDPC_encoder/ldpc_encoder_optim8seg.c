@@ -92,12 +92,9 @@ int nrLDPC_encod(unsigned char **test_input,unsigned char **channel_input,int Zc
 
   AssertFatal(Zc>0,"no valid Zc found for block length %d\n",block_length);
 
-#if defined(__arm__) || defined(__aarch64__)
-  simd_size = 16;
-#else  
   if ((Zc&31) > 0) simd_size = 16;
   else          simd_size = 32;
-#endif
+
   unsigned char c[22*Zc] __attribute__((aligned(32))); //padded input, unpacked, max size
   unsigned char d[46*Zc] __attribute__((aligned(32))); //coded parity part output, unpacked, max size
 

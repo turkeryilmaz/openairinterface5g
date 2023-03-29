@@ -126,8 +126,8 @@ void nr_modulation(uint32_t *in,
   uint64_t x,x1,x2;
 
 #if defined(__SSE2__)
-  __m128i *nr_mod_table128;
-  __m128i *out128;
+  simde__m128i *nr_mod_table128;
+  simde__m128i *out128;
 #endif
 
   LOG_D(PHY,"nr_modulation: length %d, mod_order %d\n",length,mod_order);
@@ -136,8 +136,8 @@ void nr_modulation(uint32_t *in,
 
 #if defined(__SSE2__)
   case 2:
-    nr_mod_table128 = (__m128i*) nr_qpsk_byte_mod_table;
-    out128 = (__m128i*) out;
+    nr_mod_table128 = (simde__m128i *)nr_qpsk_byte_mod_table;
+    out128 = (simde__m128i *)out;
     for (i=0; i<length/8; i++)
       out128[i] = nr_mod_table128[in_bytes[i]];
     // the bits that are left out

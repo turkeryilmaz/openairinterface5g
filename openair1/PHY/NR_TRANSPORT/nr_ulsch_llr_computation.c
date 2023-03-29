@@ -130,8 +130,8 @@ void nr_ulsch_16qam_llr(int32_t *rxdataF_comp,
 
   }
 
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 //----------------------------------------------------------------------------------------------
@@ -250,8 +250,8 @@ void nr_ulsch_64qam_llr(int32_t *rxdataF_comp,
     ulsch_llr+=24;
   }
 
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 void nr_ulsch_256qam_llr(int32_t *rxdataF_comp,

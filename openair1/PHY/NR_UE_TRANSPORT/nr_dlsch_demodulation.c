@@ -1145,8 +1145,8 @@ void nr_dlsch_channel_level(uint32_t rx_size_symbol,
                 //  printf("Channel level : %d\n",avg[(aatx<<1)+aarx]);
     }
 
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol, int32_t dl_ch_estimates_ext[][rx_size_symbol], int32_t *median, int n_tx, int n_rx, int length)
@@ -1191,9 +1191,8 @@ static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol, int32_t dl_ch
       }
   }
 
-  _mm_empty();
-  _m_empty();
-
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 //==============================================================================================
@@ -1376,11 +1375,11 @@ void nr_dlsch_detection_mrc(uint32_t rx_size_symbol,
       for (i=0; i<nb_rb_0*3; i++) {
         //      print_shorts("mrc rho0:",&rho128_0[i]);
         //      print_shorts("mrc rho1:",&rho128_1[i]);
-        rho128_0[i] = simde_mm_adds_epi16(_mm_srai_epi16(rho128_0[i],1),_mm_srai_epi16(rho128_1[i],1));
+        rho128_0[i] = simde_mm_adds_epi16(simde_mm_srai_epi16(rho128_0[i],1),simde_mm_srai_epi16(rho128_1[i],1));
       }*/
       }
-    _mm_empty();
-    _m_empty();
+      simde_mm_empty();
+      simde_m_empty();
   }
 }
 
@@ -1736,8 +1735,8 @@ void nr_conjch0_mult_ch1(int *ch0,
     dl_ch1_128+=1;
     ch0conj_ch1_128+=1;
   }
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 /* Zero Forcing Rx function: up to 4 layers

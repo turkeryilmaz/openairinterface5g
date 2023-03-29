@@ -2743,14 +2743,19 @@ void dlsch_channel_level(int **dl_ch_estimates_ext,
         avg128D = simde_mm_add_epi32(avg128D,simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[0],dl_ch128[0]),x));
         avg128D = simde_mm_add_epi32(avg128D,simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[1],dl_ch128[1]),x));
 
-        //avg128D = simde_mm_add_epi32(avg128D,simde_mm_madd_epi16(dl_ch128[0],simde_mm_srai_epi16(_mm_mulhi_epi16(dl_ch128[0], coeff128),15)));
-        //avg128D = simde_mm_add_epi32(avg128D,simde_mm_madd_epi16(dl_ch128[1],simde_mm_srai_epi16(_mm_mulhi_epi16(dl_ch128[1], coeff128),15)));
+        // avg128D =
+        // simde_mm_add_epi32(avg128D,simde_mm_madd_epi16(dl_ch128[0],simde_mm_srai_epi16(simde_mm_mulhi_epi16(dl_ch128[0],
+        // coeff128),15))); avg128D =
+        // simde_mm_add_epi32(avg128D,simde_mm_madd_epi16(dl_ch128[1],simde_mm_srai_epi16(simde_mm_mulhi_epi16(dl_ch128[1],
+        // coeff128),15)));
 
         if (((symbol_mod == 0) || (symbol_mod == (frame_parms->Ncp-1)))&&(frame_parms->nb_antenna_ports_eNB!=1)) {
           dl_ch128+=2;
         } else {
           avg128D = simde_mm_add_epi32(avg128D,simde_mm_srai_epi32(simde_mm_madd_epi16(dl_ch128[2],dl_ch128[2]),x));
-          //avg128D = simde_mm_add_epi32(avg128D,simde_mm_madd_epi16(dl_ch128[2],simde_mm_srai_epi16(_mm_mulhi_epi16(dl_ch128[2], coeff128),15)));
+          // avg128D =
+          // simde_mm_add_epi32(avg128D,simde_mm_madd_epi16(dl_ch128[2],simde_mm_srai_epi16(simde_mm_mulhi_epi16(dl_ch128[2],
+          // coeff128),15)));
           dl_ch128+=3;
         }
 
@@ -3702,8 +3707,8 @@ void dlsch_alamouti(LTE_DL_FRAME_PARMS *frame_parms,
   int jj = (symbol*frame_parms->N_RB_DL*12);
   uint8_t symbol_mod = (symbol>=(7-frame_parms->Ncp)) ? symbol-(7-frame_parms->Ncp) : symbol;
   uint8_t pilots = ((symbol_mod==0)||(symbol_mod==(4-frame_parms->Ncp))) ? 1 : 0;
-  //amp = _mm_set1_epi16(ONE_OVER_2_Q15);
-  //    printf("Doing alamouti!\n");
+  // amp = simde_mm_set1_epi16(ONE_OVER_2_Q15);
+  //     printf("Doing alamouti!\n");
   rxF0     = (short *)&rxdataF_comp[0][jj]; //tx antenna 0  h0*y
   rxF1     = (short *)&rxdataF_comp[2][jj]; //tx antenna 1  h1*y
   ch_mag0 = (simde__m128i *)&dl_ch_mag[0][jj];
@@ -3759,8 +3764,7 @@ void dlsch_alamouti(LTE_DL_FRAME_PARMS *frame_parms,
   simde_m_empty();
 }
 
-
-//==================g=========================================================================
+//==============================================================================================
 // Extraction functions
 //==============================================================================================
 

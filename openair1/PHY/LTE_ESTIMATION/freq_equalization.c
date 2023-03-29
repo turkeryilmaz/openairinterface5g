@@ -23,7 +23,7 @@
 #include "PHY/sse_intrin.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 
-// This is 4096/(1:4096) in __m128i format
+// This is 4096/(1:4096) in simde__m128i format
 simde__m128i inv_ch[4096];/* = {512,512,512,512,512,512,512,512,
                          256,256,256,256,256,256,256,256,
                          170,170,170,170,170,170,170,170,
@@ -313,7 +313,8 @@ void freq_equalization(LTE_DL_FRAME_PARMS *frame_parms,
     if (amp>4095)
       amp=4095;
 
-    //printf("freq_eq: symbol %d re %d => mag %d,amp %d,inv %d, prod %d (%d,%d)\n",symbol,re,*((int16_t*)(&ul_ch_mag128[re])),amp,_mm_extract_epi16(inv_ch[amp],0),(*((int16_t*)(&ul_ch_mag128[re]))*_mm_extract_epi16(inv_ch[amp],0))>>3,*(int16_t*)&(rxdataF_comp128[re]),*(1+(int16_t*)&(rxdataF_comp128[re])));
+    // printf("freq_eq: symbol %d re %d => mag %d,amp %d,inv %d, prod %d
+    // (%d,%d)\n",symbol,re,*((int16_t*)(&ul_ch_mag128[re])),amp,simde_mm_extract_epi16(inv_ch[amp],0),(*((int16_t*)(&ul_ch_mag128[re]))*_mm_extract_epi16(inv_ch[amp],0))>>3,*(int16_t*)&(rxdataF_comp128[re]),*(1+(int16_t*)&(rxdataF_comp128[re])));
     rxdataF_comp128[re] = simde_mm_srai_epi16(simde_mm_mullo_epi16(rxdataF_comp128[re],inv_ch[amp]),3);
 
     if (Qm==4)

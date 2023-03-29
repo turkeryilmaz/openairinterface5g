@@ -397,26 +397,26 @@ static inline void bfly4(int16x8_t *x0,int16x8_t *x1,int16x8_t *x2,int16x8_t *x3
   cmult(*(x1),*(tw1),&x1r_2,&x1i_2);
   cmult(*(x2),*(tw2),&x2r_2,&x2i_2);
   cmult(*(x3),*(tw3),&x3r_2,&x3i_2);
-  //  dy0r = _mm_add_epi32(x0r_2,_mm_add_epi32(x1r_2,_mm_add_epi32(x2r_2,x3r_2)));
-  //  dy0i = _mm_add_epi32(x0i_2,_mm_add_epi32(x1i_2,_mm_add_epi32(x2i_2,x3i_2)));
+  //  dy0r = simde_mm_add_epi32(x0r_2,simde_mm_add_epi32(x1r_2,simde_mm_add_epi32(x2r_2,x3r_2)));
+  //  dy0i = simde_mm_add_epi32(x0i_2,simde_mm_add_epi32(x1i_2,simde_mm_add_epi32(x2i_2,x3i_2)));
   //  *(y0)  = cpack(dy0r,dy0i);
   dy0r = vqaddq_s32(x1r_2,vqaddq_s32(x2r_2,x3r_2));
   dy0i = vqaddq_s32(x1i_2,vqaddq_s32(x2i_2,x3i_2));
   *(y0)  = vqaddq_s16(*(x0),cpack(dy0r,dy0i));
-  //  dy1r = _mm_add_epi32(x0r_2,_mm_sub_epi32(x1i_2,_mm_add_epi32(x2r_2,x3i_2)));
-  //  dy1i = _mm_sub_epi32(x0i_2,_mm_add_epi32(x1r_2,_mm_sub_epi32(x2i_2,x3r_2)));
+  //  dy1r = simde_mm_add_epi32(x0r_2,simde_mm_sub_epi32(x1i_2,simde_mm_add_epi32(x2r_2,x3i_2)));
+  //  dy1i = simde_mm_sub_epi32(x0i_2,simde_mm_add_epi32(x1r_2,simde_mm_sub_epi32(x2i_2,x3r_2)));
   //  *(y1)  = cpack(dy1r,dy1i);
   dy1r = vqsubq_s32(x1i_2,vqaddq_s32(x2r_2,x3i_2));
   dy1i = vqsubq_s32(vqsubq_s32(x3r_2,x2i_2),x1r_2);
   *(y1)  = vqaddq_s16(*(x0),cpack(dy1r,dy1i));
-  //  dy2r = _mm_sub_epi32(x0r_2,_mm_sub_epi32(x1r_2,_mm_sub_epi32(x2r_2,x3r_2)));
-  //  dy2i = _mm_sub_epi32(x0i_2,_mm_sub_epi32(x1i_2,_mm_sub_epi32(x2i_2,x3i_2)));
+  //  dy2r = simde_mm_sub_epi32(x0r_2,simde_mm_sub_epi32(x1r_2,simde_mm_sub_epi32(x2r_2,x3r_2)));
+  //  dy2i = simde_mm_sub_epi32(x0i_2,simde_mm_sub_epi32(x1i_2,simde_mm_sub_epi32(x2i_2,x3i_2)));
   //  *(y2)  = cpack(dy2r,dy2i);
   dy2r = vqsubq_s32(vqsubq_s32(x2r_2,x3r_2),x1r_2);
   dy2i = vqsubq_s32(vqsubq_s32(x2i_2,x3i_2),x1i_2);
   *(y2)  = vqaddq_s16(*(x0),cpack(dy2r,dy2i));
-  //  dy3r = _mm_sub_epi32(x0r_2,_mm_add_epi32(x1i_2,_mm_sub_epi32(x2r_2,x3i_2)));
-  //  dy3i = _mm_add_epi32(x0i_2,_mm_sub_epi32(x1r_2,_mm_add_epi32(x2i_2,x3r_2)));
+  //  dy3r = simde_mm_sub_epi32(x0r_2,simde_mm_add_epi32(x1i_2,simde_mm_sub_epi32(x2r_2,x3i_2)));
+  //  dy3i = simde_mm_add_epi32(x0i_2,simde_mm_sub_epi32(x1r_2,simde_mm_add_epi32(x2i_2,x3r_2)));
   //  *(y3) = cpack(dy3r,dy3i);
   dy3r = vqsubq_s32(vqsubq_s32(x3i_2,x2r_2),x1i_2);
   dy3i = vqsubq_s32(x1r_2,vqaddq_s32(x2i_2,x3r_2));
@@ -3631,8 +3631,8 @@ void idft65536(int16_t *x,int16_t *y,unsigned char scale)
 
   }
 
-  _mm_empty();
-  _m_empty();
+  simde_mm_empty();
+  simde_m_empty();
 }
 int16_t twa73728[49152] __attribute__((aligned(32)));
 int16_t twb73728[49152] __attribute__((aligned(32)));
@@ -8124,6 +8124,5 @@ int main(int argc, char**argv)
 }
 
 
-#endif
 #endif
 #endif

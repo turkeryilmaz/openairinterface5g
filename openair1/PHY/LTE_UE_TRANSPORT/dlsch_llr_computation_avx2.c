@@ -56,11 +56,11 @@
  // Auxiliary Makros
 
  // calculate interference magnitude
-#define interference_abs_epi16(psi, int_ch_mag, int_mag, c1, c2)              \
-  tmp_result = simde_mm256_cmpgt_epi16(int_ch_mag, psi);                      \
-  tmp_result2 = simde_mm256_xor_si256(tmp_result, (*(__m256i *)&ones256[0])); \
-  tmp_result = simde_mm256_and_si256(tmp_result, c1);                         \
-  tmp_result2 = simde_mm256_and_si256(tmp_result2, c2);                       \
+#define interference_abs_epi16(psi, int_ch_mag, int_mag, c1, c2)                   \
+  tmp_result = simde_mm256_cmpgt_epi16(int_ch_mag, psi);                           \
+  tmp_result2 = simde_mm256_xor_si256(tmp_result, (*(simde__m256i *)&ones256[0])); \
+  tmp_result = simde_mm256_and_si256(tmp_result, c1);                              \
+  tmp_result2 = simde_mm256_and_si256(tmp_result2, c2);                            \
   const simde__m256i int_mag = simde_mm256_or_si256(tmp_result, tmp_result2);
 
  // calculate interference magnitude
@@ -68,7 +68,7 @@
  // interval x>6
 #define interference_abs_64qam_epi16(psi, int_ch_mag, int_two_ch_mag, int_three_ch_mag, a, c1, c3, c5, c7) \
   tmp_result = simde_mm256_cmpgt_epi16(int_two_ch_mag, psi);                                               \
-  tmp_result3 = simde_mm256_xor_si256(tmp_result, (*(__m256i *)&ones256[0]));                              \
+  tmp_result3 = simde_mm256_xor_si256(tmp_result, (*(simde__m256i *)&ones256[0]));                         \
   tmp_result2 = simde_mm256_cmpgt_epi16(int_ch_mag, psi);                                                  \
   tmp_result = simde_mm256_xor_si256(tmp_result, tmp_result2);                                             \
   tmp_result4 = simde_mm256_cmpgt_epi16(psi, int_three_ch_mag);                                            \
@@ -121,10 +121,10 @@
   tmp_result2 = simde_mm256_slli_epi16(tmp_result2, 1);                \
   const simde__m256i a_sq = simde_mm256_adds_epi16(tmp_result, tmp_result2);
 
- void seperate_real_imag_parts(__m256i *out_re, __m256i *out_im, __m256i in0, __m256i in1)
+ void seperate_real_imag_parts(simde__m256i *out_re, simde__m256i *out_im, simde__m256i in0, simde__m256i in1)
  {
-   __m256i tmp0;
-   __m256i tmp1;
+   simde__m256i tmp0;
+   simde__m256i tmp1;
 
    in0 = simde_mm256_shufflelo_epi16(in0, 0xd8); //_MM_SHUFFLE(0,2,1,3));
    in0 = simde_mm256_shufflehi_epi16(in0, 0xd8); //_MM_SHUFFLE(0,2,1,3));
@@ -225,20 +225,20 @@ void qam64_qam16_avx2(short *stream0_in,
   for (i=0; i<len256; i+=2) {
 
     // Get rho
-      /*
-    xmm0 = rho01_128i[i];
-    xmm1 = rho01_128i[i+1];
-    xmm0 = _mm_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    //xmm0 = [Re(0,1) Re(2,3) Im(0,1) Im(2,3)]
-    //xmm1 = [Re(4,5) Re(6,7) Im(4,5) Im(6,7)]
-    xmm2 = _mm_unpacklo_epi64(xmm0,xmm1); // Re(rho)
-    xmm3 = _mm_unpackhi_epi64(xmm0,xmm1); // Im(rho)
-      */
+    /*
+  xmm0 = rho01_128i[i];
+  xmm1 = rho01_128i[i+1];
+  xmm0 = simde_mm_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+  xmm0 = simde_mm_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+  xmm0 = simde_mm_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+  xmm1 = simde_mm_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+  xmm1 = simde_mm_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+  xmm1 = simde_mm_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+  //xmm0 = [Re(0,1) Re(2,3) Im(0,1) Im(2,3)]
+  //xmm1 = [Re(4,5) Re(6,7) Im(4,5) Im(6,7)]
+  xmm2 = simde_mm_unpacklo_epi64(xmm0,xmm1); // Re(rho)
+  xmm3 = simde_mm_unpackhi_epi64(xmm0,xmm1); // Im(rho)
+    */
     simde__m256i xmm0, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8;
     seperate_real_imag_parts(&xmm2, &xmm3, rho01_256i[i], rho01_256i[i+1]);
 
@@ -2154,16 +2154,16 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     // Rearrange desired MF output
     xmm0 = stream0_256i_in[i];
     xmm1 = stream0_256i_in[i+1];
-    xmm0 = _mm_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm0 = _mm_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm1 = _mm_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm_shufflelo_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm_shufflehi_epi16(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm0 = simde_mm_shuffle_epi32(xmm0,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm_shufflelo_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm_shufflehi_epi16(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm1 = simde_mm_shuffle_epi32(xmm1,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
     //xmm0 = [Re(0,1) Re(2,3) Im(0,1) Im(2,3)]
     //xmm1 = [Re(4,5) Re(6,7) Im(4,5) Im(6,7)]
-    y0r = _mm_unpacklo_epi64(xmm0,xmm1); // = [y0r(1),y0r(2),y0r(3),y0r(4)]
-    y0i = _mm_unpackhi_epi64(xmm0,xmm1);
+    y0r = simde_mm_unpacklo_epi64(xmm0,xmm1); // = [y0r(1),y0r(2),y0r(3),y0r(4)]
+    y0i = simde_mm_unpackhi_epi64(xmm0,xmm1);
     */
     simde__m256i y0r, y0i;
     seperate_real_imag_parts(&y0r, &y0i, stream0_256i_in[i], stream0_256i_in[i+1]);
@@ -2173,13 +2173,13 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     /*
     xmm2 = ch_mag_256i[i];
     xmm3 = ch_mag_256i[i+1];
-    xmm2 = _mm_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    ch_mag_des = _mm_unpacklo_epi64(xmm2,xmm3);
+    xmm2 = simde_mm_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    ch_mag_des = simde_mm_unpacklo_epi64(xmm2,xmm3);
     */
     // xmm2 is dummy variable that contains the same values as ch_mag_des
     seperate_real_imag_parts(&ch_mag_des, &xmm2, ch_mag_256i[i], ch_mag_256i[i+1]);
@@ -2189,13 +2189,13 @@ void qam64_qam64_avx2(int32_t *stream0_in,
     /*
     xmm2 = ch_mag_256i_i[i];
     xmm3 = ch_mag_256i_i[i+1];
-    xmm2 = _mm_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm2 = _mm_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    xmm3 = _mm_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
-    ch_mag_int  = _mm_unpacklo_epi64(xmm2,xmm3);
+    xmm2 = simde_mm_shufflelo_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm_shufflehi_epi16(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm2 = simde_mm_shuffle_epi32(xmm2,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm_shufflelo_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm_shufflehi_epi16(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    xmm3 = simde_mm_shuffle_epi32(xmm3,0xd8); // SIMDE_MM_SHUFFLE(0,2,1,3));
+    ch_mag_int  = simde_mm_unpacklo_epi64(xmm2,xmm3);
     */
     seperate_real_imag_parts(&ch_mag_int, &xmm2, ch_mag_256i_i[i], ch_mag_256i_i[i+1]);
 

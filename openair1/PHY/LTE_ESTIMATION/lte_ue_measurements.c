@@ -530,8 +530,9 @@ void construct_HhH_elements(int *ch0conj_ch0, //00_00
   after_mf_11_128 = (simde__m128i *)after_mf_11;
 
   for (rb=0; rb<3*nb_rb; rb++) {
-
-    after_mf_00_128[0] =simde_mm_adds_epi16(ch0conj_ch0_128[0],ch3conj_ch3_128[0]);// _mm_adds_epi32(ch0conj_ch0_128[0], ch3conj_ch3_128[0]); //00_00 + 10_10
+    after_mf_00_128[0] =
+        simde_mm_adds_epi16(ch0conj_ch0_128[0],
+                            ch3conj_ch3_128[0]); // simde_mm_adds_epi32(ch0conj_ch0_128[0], ch3conj_ch3_128[0]); //00_00 + 10_10
     after_mf_11_128[0] =simde_mm_adds_epi16(ch1conj_ch1_128[0], ch2conj_ch2_128[0]); //01_01 + 11_11
     after_mf_01_128[0] =simde_mm_adds_epi16(ch0conj_ch1_128[0], ch2conj_ch3_128[0]);//00_01 + 10_11
     after_mf_10_128[0] =simde_mm_adds_epi16(ch1conj_ch0_128[0], ch3conj_ch2_128[0]);//01_00 + 11_10
@@ -609,11 +610,16 @@ void det_HhH(int32_t *after_mf_00,
 
 {
   unsigned short rb;
-  __m128i *after_mf_00_128,*after_mf_01_128, *after_mf_11_128, ad_re_128, bc_re_128;
+  simde__m128i *after_mf_00_128, *after_mf_01_128, *after_mf_11_128, ad_re_128, bc_re_128;
   //__m128i *after_mf_10_128; // the variable is only written, but leave it here for "symmetry" in the algorithm
-  __m128i *det_fin_128, det_128;
+  simde__m128i *det_fin_128, det_128;
 
-  det_fin_128 = (__m128i *)det_fin;
+  after_mf_00_128 = (simde__m128i *)after_mf_00;
+  after_mf_01_128 = (simde__m128i *)after_mf_01;
+  //after_mf_10_128 = (__m128i *)after_mf_10;
+  after_mf_11_128 = (simde__m128i *)after_mf_11;
+
+  det_fin_128 = (simde__m128i *)det_fin;
 
   for (rb=0; rb<3*nb_rb; rb++) {
 
@@ -631,7 +637,7 @@ void det_HhH(int32_t *after_mf_00,
     print_ints("ad_re_128:",(int32_t*)&ad_re_128);
     print_ints("bc_re_128:",(int32_t*)&bc_re_128);
     print_ints("det_fin_128:",(int32_t*)&det_fin_128[0]);
-#endif
+#endif 
 
     det_fin_128+=1;
     after_mf_00_128+=1;
@@ -1010,11 +1016,7 @@ void lte_ue_measurements(PHY_VARS_UE *ue,
   //int rx_power[NUMBER_OF_CONNECTED_eNB_MAX];
   int i;
   unsigned int limit,subband;
-#if defined(__x86_64__) || defined(__i386__)
-  __m128i *dl_ch0_128,*dl_ch1_128;
-#elif defined(__arm__) || defined(__aarch64__)
-  int16x8_t *dl_ch0_128, *dl_ch1_128;
-#endif
+  simde__m128i *dl_ch0_128, *dl_ch1_128;
   int *dl_ch0=NULL,*dl_ch1=NULL;
 
   LTE_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
@@ -1250,24 +1252,24 @@ void lte_ue_measurements(PHY_VARS_UE *ue,
             pmi128_im = simde_mm_add_epi32(pmi128_im,mmtmpPMI1);
                //   print_ints(" pmi128_im 0 ",&pmi128_im);
 
-          /*  mmtmpPMI0 = _mm_xor_si128(mmtmpPMI0,mmtmpPMI0);
-            mmtmpPMI1 = _mm_xor_si128(mmtmpPMI1,mmtmpPMI1);
+            /*  mmtmpPMI0 = simde_mm_xor_si128(mmtmpPMI0,mmtmpPMI0);
+              mmtmpPMI1 = simde_mm_xor_si128(mmtmpPMI1,mmtmpPMI1);
 
-            mmtmpPMI0 = _mm_madd_epi16(dl_ch0_128[1],dl_ch1_128[1]);
-                 //  print_ints("re",&mmtmpPMI0);
-            mmtmpPMI1 = _mm_shufflelo_epi16(dl_ch1_128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
-              //  print_ints("_mm_shufflelo_epi16",&mmtmpPMI1);
-            mmtmpPMI1 = _mm_shufflehi_epi16(mmtmpPMI1, SIMDE_MM_SHUFFLE(2,3,0,1));
-                //  print_ints("_mm_shufflehi_epi16",&mmtmpPMI1);
-            mmtmpPMI1 = _mm_sign_epi16(mmtmpPMI1,*(__m128i*)&conjugate);
-               //  print_ints("_mm_sign_epi16",&mmtmpPMI1);
-            mmtmpPMI1 = _mm_madd_epi16(mmtmpPMI1,dl_ch0_128[1]);
-               //   print_ints("mm_madd_epi16",&mmtmpPMI1);
-            // mmtmpPMI1 contains imag part of 4 consecutive outputs (32-bit)
-            pmi128_re = _mm_add_epi32(pmi128_re,mmtmpPMI0);
-                //  print_ints(" pmi128_re 1",&pmi128_re);
-            pmi128_im = _mm_add_epi32(pmi128_im,mmtmpPMI1);
-            //print_ints(" pmi128_im 1 ",&pmi128_im);*/
+              mmtmpPMI0 = simde_mm_madd_epi16(dl_ch0_128[1],dl_ch1_128[1]);
+                   //  print_ints("re",&mmtmpPMI0);
+              mmtmpPMI1 = simde_mm_shufflelo_epi16(dl_ch1_128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+                //  print_ints("_mm_shufflelo_epi16",&mmtmpPMI1);
+              mmtmpPMI1 = simde_mm_shufflehi_epi16(mmtmpPMI1, SIMDE_MM_SHUFFLE(2,3,0,1));
+                  //  print_ints("_mm_shufflehi_epi16",&mmtmpPMI1);
+              mmtmpPMI1 = simde_mm_sign_epi16(mmtmpPMI1,*(simde__m128i*)&conjugate);
+                 //  print_ints("_mm_sign_epi16",&mmtmpPMI1);
+              mmtmpPMI1 = simde_mm_madd_epi16(mmtmpPMI1,dl_ch0_128[1]);
+                 //   print_ints("mm_madd_epi16",&mmtmpPMI1);
+              // mmtmpPMI1 contains imag part of 4 consecutive outputs (32-bit)
+              pmi128_re = simde_mm_add_epi32(pmi128_re,mmtmpPMI0);
+                  //  print_ints(" pmi128_re 1",&pmi128_re);
+              pmi128_im = simde_mm_add_epi32(pmi128_im,mmtmpPMI1);
+              //print_ints(" pmi128_im 1 ",&pmi128_im);*/
 
             dl_ch0_128++;
             dl_ch1_128++;

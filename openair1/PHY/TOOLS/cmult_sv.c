@@ -48,10 +48,9 @@ void multadd_complex_vector_real_scalar(int16_t *x,
     for (n=0; n<N>>2; n++) {
       y_128[n] = adds_int16(y_128[n],mulhi_int16(x_128[n],alpha_128));
     }
- 
-  _mm_empty();
-  _m_empty();
 
+  simde_mm_empty();
+  simde_m_empty();
 }
 
 void multadd_real_vector_complex_scalar(const int16_t *x, const int16_t *alpha, int16_t *y, uint32_t N)
@@ -86,7 +85,7 @@ void rotate_cpx_vector(c16_t *x,
   // N is the number of complex numbers
   // output_shift reduces the result of the multiplication by this number of bits
   //AssertFatal(N%8==0, "To be developped");
-#if defined(__x86_64__) || defined(__i386__)
+
   if ( (intptr_t)x%32 == 0  && !(intptr_t)y%32 == 0 && __builtin_cpu_supports("avx2")) {
     // output is 32 bytes aligned, but not the input
     
@@ -116,7 +115,6 @@ void rotate_cpx_vector(c16_t *x,
       *yLast=c16mulShift(*xTail,*alpha16,output_shift);
     }
   } else {
-#endif	  
     // Multiply elementwise two complex vectors of N elements
     // x        - input 1    in the format  |Re0  Im0 |,......,|Re(N-1) Im(N-1)|
     //            We assume x1 with a dynamic of 15 bit maximum
@@ -164,9 +162,7 @@ void rotate_cpx_vector(c16_t *x,
       xd+=4;
       y_128+=1;
     }
-#if defined(__x86__) || defined(__x86_64__)
   }
-#endif 
 }
 
 #ifdef MAIN
