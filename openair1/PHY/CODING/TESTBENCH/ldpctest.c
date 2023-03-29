@@ -434,7 +434,7 @@ int test_ldpc(short max_iterations,
   return *errors;
 }
 
-int main(int argc, int8_t *argv[])
+int main(int argc, char *argv[])
 {
 
   unsigned int errors, errors_bit, crc_misses;
