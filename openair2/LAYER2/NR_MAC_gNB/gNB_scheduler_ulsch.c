@@ -1624,7 +1624,7 @@ void pf_ul(module_id_t module_id,
     LOG_D(NR_MAC,"pf_ul: preparing UL scheduling for UE %04x\n",UE->rnti);
     NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
 
-    int rbStart = 0; // wrt BWP start
+    int rbStart = max(nrmac->grant_rbStart,0); // wrt BWP start
 
     const uint16_t bwpSize = current_BWP->BWPSize;
     NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
@@ -1674,7 +1674,7 @@ void pf_ul(module_id_t module_id,
     }
 
     const NR_bler_options_t *bo = &nrmac->ul_bler;
-    const int max_mcs = bo->max_mcs; /* no per-user maximum MCS yet */
+    const int max_mcs = nrmac->grant_mcs? min(nrmac->grant_mcs, bo->max_mcs): (bo->max_mcs); /* no per-user maximum MCS yet */
     if (bo->harq_round_max == 1)
       sched_pusch->mcs = max_mcs;
     else
@@ -1708,8 +1708,13 @@ void pf_ul(module_id_t module_id,
       LOG_D(NR_MAC,"Looking for min_rb %d RBs, starting at %d num_dmrs_cdm_grps_no_data %d\n",
             min_rb, rbStart, sched_pusch->dmrs_info.num_dmrs_cdm_grps_no_data);
       const uint16_t slbitmap = SL_to_bitmap(sched_pusch->tda_info.startSymbolIndex, sched_pusch->tda_info.nrOfSymbols);
-      while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
-        rbStart++;
+      if(nrmac->grant_prb){
+        /* use configured rbStart */
+        rbStart = nrmac->grant_rbStart;
+      }else {
+        while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
+          rbStart++;
+      }
       if (rbStart + min_rb >= bwpSize) {
         LOG_W(NR_MAC, "cannot allocate continuous UL data for RNTI %04x: no resources (rbStart %d, min_rb %d, bwpSize %d\n",
               UE->rnti,rbStart,min_rb,bwpSize);
@@ -1724,7 +1729,7 @@ void pf_ul(module_id_t module_id,
                          sched_ctrl->aggregation_level);
 
       NR_sched_pusch_t *sched_pusch = &sched_ctrl->sched_pusch;
-      sched_pusch->mcs = min(nrmac->min_grant_mcs, sched_pusch->mcs);
+      sched_pusch->mcs = nrmac->grant_mcs?min(nrmac->grant_mcs, sched_pusch->mcs):(sched_pusch->mcs);
       update_ul_ue_R_Qm(sched_pusch->mcs, current_BWP->mcs_table, current_BWP->pusch_Config, &sched_pusch->R, &sched_pusch->Qm);
       sched_pusch->rbStart = rbStart;
       sched_pusch->rbSize = min_rb;
@@ -1791,15 +1796,24 @@ void pf_ul(module_id_t module_id,
                                                 &sched_pusch->tda_info,
                                                 sched_pusch->nrOfLayers);
 
-    int rbStart = 0;
+    int rbStart = max(nrmac->grant_rbStart,0);
     const uint16_t slbitmap = SL_to_bitmap(sched_pusch->tda_info.startSymbolIndex, sched_pusch->tda_info.nrOfSymbols);
     const uint16_t bwpSize = current_BWP->BWPSize;
-    while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
-      rbStart++;
+    if(nrmac->grant_prb){
+        /* use configured rbStart */
+        rbStart = nrmac->grant_rbStart;
+    }else {
+      while (rbStart < bwpSize && (rballoc_mask[rbStart] & slbitmap) != slbitmap)
+        rbStart++;
+    }
     sched_pusch->rbStart = rbStart;
     uint16_t max_rbSize = 1;
-    while (rbStart + max_rbSize < bwpSize && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap)
-      max_rbSize++;
+    if(nrmac->grant_prb){
+      max_rbSize = nrmac->grant_prb;
+    } else {
+      while (rbStart + max_rbSize < bwpSize && (rballoc_mask[rbStart + max_rbSize] & slbitmap) == slbitmap)
+        max_rbSize++;
+    }
 
     if (rbStart + min_rb >= bwpSize || max_rbSize < min_rb) {
       LOG_D(NR_MAC, "cannot allocate UL data for RNTI %04x: no resources (rbStart %d, min_rb %d, bwpSize %d)\n", iterator->UE->rnti, rbStart, min_rb, bwpSize);

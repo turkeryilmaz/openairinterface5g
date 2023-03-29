@@ -465,8 +465,10 @@ int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t 
       NR_DciFormat_0_X_ResourceAssignment_t * dci0_resouceAssignment = dcchDtchConfig->ul->dci_info->resoure_assignment;
       if(dci0_resouceAssignment){
         nrmac->min_grant_prb = dci0_resouceAssignment->Nprb;
-        nrmac->min_grant_mcs= dci0_resouceAssignment->transportBlock_scheduling.imcs;
-        LOG_I(NR_MAC,"config mac PUSCH scheduler rbSize:%d, mcs:%d \n",nrmac->min_grant_prb,nrmac->min_grant_mcs);
+        nrmac->grant_prb = dci0_resouceAssignment->Nprb;
+        nrmac->grant_mcs= dci0_resouceAssignment->transportBlock_scheduling.imcs;
+        nrmac->grant_rbStart = dci0_resouceAssignment->FirstRbIndex;
+        LOG_I(NR_MAC,"config mac PUSCH scheduler rbSize:%d, mcs:%d, rbStart:%d \n",nrmac->grant_prb,nrmac->grant_mcs,nrmac->grant_rbStart);
       }
     }
   }
