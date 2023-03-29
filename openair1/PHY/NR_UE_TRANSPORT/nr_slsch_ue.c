@@ -759,7 +759,6 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
           diff_re_comp = NR_NB_SC_PER_RB * slsch_ue_rx_harq->nb_rb / 2 - nb_re_sci1 - allocatable_sci2_re;
         } else {
           diff_re_comp = nb_re_pssch;
-          printf("----%d---- %"PRIu32"\n",sym, diff_re_comp);
         }
         nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
                                       rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,

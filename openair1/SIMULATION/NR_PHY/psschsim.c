@@ -56,6 +56,7 @@
 
 #define DEBUG_NR_SLSCHSIM 1
 //#define DEBUG_NR_PSSCHSIM
+#define DEBUG_NR_PSSCHSIM2
 
 // typedef struct {
 //   uint8_t priority;
@@ -592,7 +593,7 @@ int main(int argc, char **argv)
         estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 
-        if(i % 8 == 0 && i < 80){
+        if (i % 8 == 0) {
            printf("TxByte : %2u  vs  %2u : RxByte\n", test_input[i / 8], harq_process_rxUE->b[i / 8]);
         }
 
