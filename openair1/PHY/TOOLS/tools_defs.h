@@ -37,6 +37,7 @@
 #include "common/utils/utils.h"
 #include <simde/simde-common.h>
 #include <simde/x86/sse.h>
+#include <simde/x86/avx2.h>
 
 #define simd_q15_t simde__m128i
 #define simdshort_q15_t simde__m64
