@@ -23,11 +23,11 @@
 
 //#define NR_SSS_DEBUG
 
-int nr_generate_sss(  c16_t *txdataF,
-                      int16_t amp,
-                      uint8_t ssb_start_symbol,
-                      nfapi_nr_config_request_scf_t* config,
-                      NR_DL_FRAME_PARMS *frame_parms)
+int nr_generate_sss(c16_t *txdataF,
+                    int16_t amp,
+                    uint8_t ssb_start_symbol,
+                    nfapi_nr_config_request_scf_t* config,
+                    NR_DL_FRAME_PARMS *frame_parms)
 {
   int16_t x0[NR_SSS_LENGTH];
   int16_t x1[NR_SSS_LENGTH];

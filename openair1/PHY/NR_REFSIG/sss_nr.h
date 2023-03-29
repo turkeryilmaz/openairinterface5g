@@ -68,6 +68,8 @@
 #define  SSS_START_IDX                (3)      /* [0:PSBCH 1:PSS0 2:PSS1 3:SSS0 4:SSS1] */
 #define  NUM_SSS_SYMBOLS              (2)
 
+#define SSS_METRIC_FLOOR_NR   (30000)
+
 /************** VARIABLES *****************************************/
 
 #define PHASE_HYPOTHESIS_NUMBER       (16)
@@ -89,7 +91,7 @@ EXTERN const int16_t phase_im_nr[PHASE_HYPOTHESIS_NUMBER]
 #endif
 ;
 
-EXTERN int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
+EXTERN c16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 
 /************** FUNCTION ******************************************/
 
