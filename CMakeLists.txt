@@ -2015,6 +2015,7 @@ set (SIMUSRC
   ${OPENAIR1_DIR}/SIMULATION/RF/adc.c
 )
 add_library(SIMU STATIC ${SIMUSRC} )
+target_link_libraries(SIMU PRIVATE cblas)
 target_include_directories(SIMU PUBLIC ${OPENAIR1_DIR}/SIMULATION/TOOLS ${OPENAIR1_DIR}/SIMULATION/RF)
 
 # Qt-based scope
