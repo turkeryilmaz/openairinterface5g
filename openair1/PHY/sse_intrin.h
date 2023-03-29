@@ -73,9 +73,9 @@
 #include <simde/x86/clmul.h>
 
 #include <simde/arm/neon.h>
-#include <stdbool.h>
 #define _MM_SHUFFLE(z, y, x, w) (((z) << 6) | ((y) << 4) | ((x) << 2) | (w))
 #endif // x86_64 || i386
+#include <stdbool.h>
 #include "assertions.h"
 
 /*
