@@ -428,13 +428,13 @@ int test_ldpc(short max_iterations,
   return *errors;
 }
 
-int main(int argc, int8_t *argv[])
+int main(int argc, char *argv[])
 {
 
   unsigned int errors, errors_bit, crc_misses;
   double errors_bit_uncoded;
   short block_length=8448; // decoder supports length: 1201 -> 1280, 2401 -> 2560
-  int8_t *ldpc_version=NULL; /* version of the ldpc decoder library to use (XXX suffix to use when loading libldpc_XXX.so */
+  char *ldpc_version=NULL; /* version of the ldpc decoder library to use (XXX suffix to use when loading libldpc_XXX.so */
   short max_iterations=5;
   int n_segments=1;
   //double rate=0.333;
