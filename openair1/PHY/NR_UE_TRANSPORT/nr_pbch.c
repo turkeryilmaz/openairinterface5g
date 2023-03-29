@@ -195,34 +195,19 @@ int nr_pbch_channel_level(struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER
                           NR_DL_FRAME_PARMS *frame_parms,
 			  int nb_re) {
   int16_t nb_rb=nb_re/12;
-#if defined(__x86_64__) || defined(__i386__)
-  __m128i avg128;
-  __m128i *dl_ch128;
-#elif defined(__arm__) || defined(__aarch64__)
-  int32x4_t avg128;
-  int16x8_t *dl_ch128;
-#endif
+  simde__m128i avg128;
+  simde__m128i *dl_ch128;
   int avg1=0,avg2=0;
 
   for (int aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
     //clear average level
-#if defined(__x86_64__) || defined(__i386__)
-    avg128 = _mm_setzero_si128();
-    dl_ch128=(__m128i *)dl_ch_estimates_ext[aarx];
-#elif defined(__arm__) || defined(__aarch64__)
-    avg128 = vdupq_n_s32(0);
-    dl_ch128=(int16x8_t *)dl_ch_estimates_ext[aarx];
-#endif
+    avg128 = simde_mm_setzero_si128();
+    dl_ch128=(simde__m128i *)dl_ch_estimates_ext[aarx];
 
     for (int rb=0; rb<nb_rb; rb++) {
-#if defined(__x86_64__) || defined(__i386__)
-      avg128 = _mm_add_epi32(avg128,_mm_madd_epi16(dl_ch128[0],dl_ch128[0]));
-      avg128 = _mm_add_epi32(avg128,_mm_madd_epi16(dl_ch128[1],dl_ch128[1]));
-      avg128 = _mm_add_epi32(avg128,_mm_madd_epi16(dl_ch128[2],dl_ch128[2]));
-#elif defined(__arm__) || defined(__aarch64__)
-      abort();
-      // to be filled in
-#endif
+      avg128 = simde_mm_add_epi32(avg128, simde_mm_madd_epi16(dl_ch128[0],dl_ch128[0]));
+      avg128 = simde_mm_add_epi32(avg128, simde_mm_madd_epi16(dl_ch128[1],dl_ch128[1]));
+      avg128 = simde_mm_add_epi32(avg128, simde_mm_madd_epi16(dl_ch128[2],dl_ch128[2]));
       dl_ch128+=3;
       /*
       if (rb==0) {
