@@ -124,7 +124,7 @@ void nr_dlsch_16qam_llr(NR_DL_FRAME_PARMS *frame_parms,
  // printf("len+=%d\n", len);
   for (i=0; i<len; i++) {
 
-    xmm0 =simde_mm_abs_epi16(rxF[i]);
+    simde__m128i xmm0 =simde_mm_abs_epi16(rxF[i]);
     xmm0 =simde_mm_subs_epi16(ch_mag[i],xmm0);
 
     // lambda_1=y_R, lambda_2=|y_R|-|h|^2, lamda_3=y_I, lambda_4=|y_I|-|h|^2
@@ -185,7 +185,7 @@ void nr_dlsch_64qam_llr(NR_DL_FRAME_PARMS *frame_parms,
   len2+=((len_mod4==0)?0:1);
 
   for (i=0; i<len2; i++) {
-     simde__m128i __m128i xmm1, xmm2;
+     simde__m128i xmm1, xmm2;
     xmm1 =simde_mm_abs_epi16(rxF[i]);
     xmm1 =simde_mm_subs_epi16(ch_mag[i],xmm1);
     xmm2 =simde_mm_abs_epi16(xmm1);
