@@ -73,7 +73,6 @@
 #include <simde/x86/clmul.h>
 
 #include <simde/arm/neon.h>
-#define _MM_SHUFFLE(z, y, x, w) (((z) << 6) | ((y) << 4) | ((x) << 2) | (w))
 #endif // x86_64 || i386
 #include <stdbool.h>
 #include "assertions.h"
@@ -87,8 +86,8 @@ static inline simde__m128i mulByConjugate128(simde__m128i *a, simde__m128i *b, i
 
   simde__m128i realPart = simde_mm_madd_epi16(*a,*b);
   realPart = simde_mm_srai_epi32(realPart,output_shift);
-  simde__m128i imagPart = simde_mm_shufflelo_epi16(*b,_MM_SHUFFLE(2,3,0,1));
-  imagPart = simde_mm_shufflehi_epi16(imagPart,_MM_SHUFFLE(2,3,0,1));
+  simde__m128i imagPart = simde_mm_shufflelo_epi16(*b, SIMDE_MM_SHUFFLE(2,3,0,1));
+  imagPart = simde_mm_shufflehi_epi16(imagPart, SIMDE_MM_SHUFFLE(2,3,0,1));
   imagPart = simde_mm_sign_epi16(imagPart,*(simde__m128i *)minusConjug128);
   imagPart = simde_mm_madd_epi16(imagPart,*a);
   imagPart = simde_mm_srai_epi32(imagPart,output_shift);

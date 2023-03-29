@@ -654,8 +654,8 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       mmtmpU0 = simde_mm_madd_epi16(ul_ch128[0],rxdataF128[0]);
       //        print_ints("re",&mmtmpU0);
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpU1 = simde_mm_shufflelo_epi16(ul_ch128[0],_MM_SHUFFLE(2,3,0,1));
-      mmtmpU1 = simde_mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = simde_mm_shufflelo_epi16(ul_ch128[0],SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = simde_mm_shufflehi_epi16(mmtmpU1,SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = simde_mm_sign_epi16(mmtmpU1,*(simde__m128i *)&conjugate[0]);
       mmtmpU1 = simde_mm_madd_epi16(mmtmpU1,rxdataF128[0]);
       //      print_ints("im",&mmtmpU1);
@@ -678,8 +678,8 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       // multiply by conjugated channel
       mmtmpU0 = simde_mm_madd_epi16(ul_ch128[1],rxdataF128[1]);
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpU1 = simde_mm_shufflelo_epi16(ul_ch128[1],_MM_SHUFFLE(2,3,0,1));
-      mmtmpU1 = simde_mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = simde_mm_shufflelo_epi16(ul_ch128[1],SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = simde_mm_shufflehi_epi16(mmtmpU1,SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = simde_mm_sign_epi16(mmtmpU1,*(simde__m128i *)conjugate);
       mmtmpU1 = simde_mm_madd_epi16(mmtmpU1,rxdataF128[1]);
       // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -697,8 +697,8 @@ void ulsch_channel_compensation(int32_t **rxdataF_ext,
       //       multiply by conjugated channel
       mmtmpU0 = simde_mm_madd_epi16(ul_ch128[2],rxdataF128[2]);
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpU1 = simde_mm_shufflelo_epi16(ul_ch128[2],_MM_SHUFFLE(2,3,0,1));
-      mmtmpU1 = simde_mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = simde_mm_shufflelo_epi16(ul_ch128[2],SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = simde_mm_shufflehi_epi16(mmtmpU1,SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = simde_mm_sign_epi16(mmtmpU1,*(simde__m128i *)conjugate);
       mmtmpU1 = simde_mm_madd_epi16(mmtmpU1,rxdataF128[2]);
       // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
