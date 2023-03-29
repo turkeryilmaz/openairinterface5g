@@ -335,9 +335,9 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
 
           #ifdef DEBUG_PSSCH_MAPPING
           char filename[40];
-          if (l==4){
-            sprintf(filename,"tx_dmrs_output_4.m");
-            LOG_M(filename,"tx_dmrs_output",mod_dmrs,1200, 1, 3);
+          if (l == 4){
+            sprintf(filename, "tx_dmrs_output_4.m");
+            LOG_M(filename, "tx_dmrs_output", mod_dmrs, 1200, 1, 3);
           }
           #endif
         } else {
