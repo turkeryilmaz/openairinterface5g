@@ -334,14 +334,6 @@ typedef struct {
 #define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
 
 typedef struct {
-  /// \brief Total number of PDU errors.
-  uint32_t pdu_errors;
-  /// \brief Total number of PDU errors 128 frames ago.
-  uint32_t pdu_errors_last;
-  /// \brief Total number of consecutive PDU errors.
-  uint32_t pdu_errors_conseq;
-  /// \brief FER (in percent) .
-  //uint32_t pdu_fer;
   uint32_t psbch_a;
   uint32_t psbch_a_interleaved;
   uint32_t psbch_a_prime;

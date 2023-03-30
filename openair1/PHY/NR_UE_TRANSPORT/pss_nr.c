@@ -81,6 +81,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   for (int n = 0; n < LENGTH_PSS_NR; n++) {
     int m = (n + pss_seq_offset + 43 * N_ID_2) % (LENGTH_PSS_NR);
     d_pss[n].r = (1 - 2 * x[m]);
+    d_pss[n].i = 0;
   }
 
   /* PSS is directly mapped to subcarrier without modulation 38.211 */
@@ -88,7 +89,9 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   c16_t *primary_synchro2 = primary_synchro_nr[N_ID_2];
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
     primary_synchro[i].r = ((d_pss[i].r * SHRT_MAX) >> SCALING_PSS_NR);
-    primary_synchro2[i] = d_pss[i];
+    primary_synchro[i].i = ((d_pss[i].i * SHRT_MAX) >> SCALING_PSS_NR);
+    primary_synchro2[i].r = d_pss[i].r;
+    primary_synchro2[i].i = d_pss[i].i;
   }
 
   /* call of IDFT should be done with ordered input as below
@@ -112,6 +115,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   *
   * sample 0 is for continuous frequency which is used here
   */
+
   unsigned int subcarrier_start = get_softmodem_params()->sl_mode == 0 ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
@@ -119,18 +123,19 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   c16_t in[fp->ofdm_symbol_size];
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
-    in[k] = primary_synchro[i];
+    in[k].r = primary_synchro[i].r;
+    in[k].i = primary_synchro[i].i;
     k++;
     if (k == fp->ofdm_symbol_size) k = 0;
   }
 
   /* IFFT will give temporal signal of Pss */
-
-  c16_t out[fp->ofdm_symbol_size];
+  c16_t out[2 * fp->ofdm_symbol_size] __attribute__((aligned(32)));
   idft((int16_t)get_idft(fp->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
   c16_t *primary_synchro_time = primary_synchro_time_nr[N_ID_2];
   for (unsigned int i = 0; i < fp->ofdm_symbol_size; i++) {
-    primary_synchro_time[i] = out[i];
+    primary_synchro_time[i].r = out[i].r;
+    primary_synchro_time[i].i = out[i].i;
   }
 }
 
@@ -154,15 +159,15 @@ void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
   c16_t *p = NULL;
   int pss_sequence = get_softmodem_params()->sl_mode == 0 ?  NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int i = 0; i < pss_sequence; i++) {
-    p = malloc16(2 * frame_parms_ue->ofdm_symbol_size);
+    p = malloc16(2 * sizeof(int16_t) * frame_parms_ue->ofdm_symbol_size);
     if (p != NULL) {
       primary_synchro_time_nr[i] = p;
-      bzero(primary_synchro_time_nr[i], 2 * frame_parms_ue->ofdm_symbol_size);
+      bzero(primary_synchro_time_nr[i], 2 * sizeof(int16_t) * frame_parms_ue->ofdm_symbol_size);
     }
-    p = malloc16(2 * frame_parms_ue->ofdm_symbol_size);
+    p = malloc16(2 * sizeof(int16_t) * LENGTH_PSS_NR);
     if (p != NULL) {
       primary_synchro_nr[i] = p;
-      bzero(primary_synchro_nr[i], 2 * frame_parms_ue->ofdm_symbol_size);
+      bzero(primary_synchro_nr[i], 2 * sizeof(int16_t) * LENGTH_PSS_NR);
     }
     generate_pss_nr(frame_parms_ue, i, pss_sequence);
   }
