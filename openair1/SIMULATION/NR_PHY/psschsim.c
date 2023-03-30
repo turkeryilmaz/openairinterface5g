@@ -482,6 +482,7 @@ int main(int argc, char **argv)
   harq_process_txUE->pssch_pdu.sl_dmrs_symb_pos = dmrsSymbPos;
   harq_process_txUE->pssch_pdu.num_dmrs_cdm_grps_no_data = 1;
   harq_process_txUE->pssch_pdu.start_symbol_index = start_symbol;
+  harq_process_txUE->pssch_pdu.transform_precoding = transformPrecoder_disabled;
   unsigned char *test_input = harq_process_txUE->a;
   uint64_t *sci_input = harq_process_txUE->a_sci2;
 

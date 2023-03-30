@@ -332,6 +332,14 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
           // Perform this on gold sequence, not required when SC FDMA operation is done,
           LOG_D(NR_PHY, "DMRS in symbol %d\n", l);
           nr_modulation(pssch_dmrs[l], n_dmrs * 2, DMRS_MOD_ORDER, mod_dmrs); // currently only codeword 0 is modulated. Qm = 2 as DMRS is QPSK modulated
+
+          #ifdef DEBUG_PSSCH_MAPPING
+          char filename[40];
+          if (l == 4){
+            sprintf(filename, "tx_dmrs_output_4.m");
+            LOG_M(filename, "tx_dmrs_output", mod_dmrs, 1200, 1, 3);
+          }
+          #endif
         } else {
             dmrs_idx = 0;
         }
@@ -587,12 +595,14 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       }
     }
   }
-    char filename[40];
+
+  #ifdef DEBUG_PSSCH_MAPPING
+  char filename[40];
   sprintf(filename,"ch_est_output.m");
   LOG_M(filename,"ch_est_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   sprintf(filename,"rxdata.m");
   LOG_M(filename,"rxdata",rxdata[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
-
+  #endif
 
   if (rxUE->chest_time == 1) { // averaging time domain channel estimates
     nr_chest_time_domain_avg(&rxUE->frame_parms,
@@ -816,12 +826,15 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
       }
     }
   }//symbol
+
+  #ifdef DEBUG_PSSCH_MAPPING
   sprintf(filename,"ch_est_ext_output.m");
   LOG_M(filename,"ch_est_ext_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   sprintf(filename,"rxdata_ext.m");
   LOG_M(filename,"rxdata_ext",rxUE->pssch_vars[UE_id]->rxdataF_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   sprintf(filename,"rxdata_comp.m");
   LOG_M(filename,"rxdata_comp",rxUE->pssch_vars[UE_id]->rxdataF_comp[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  #endif
   /////////////// Layer demapping ////////////////////////
   // For SCI2
   nr_dlsch_layer_demapping(rxUE->pssch_vars[UE_id]->llr,
