@@ -37,10 +37,11 @@
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 unsigned char symbol,
-                unsigned char Ns)
+                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   NR_UE_COMMON *common_vars      = &ue->common_vars;
+  int Ns = proc->nr_slot_rx;
 
   AssertFatal(symbol < frame_parms->symbols_per_slot, "slot_fep: symbol must be between 0 and %d\n", frame_parms->symbols_per_slot-1);
   AssertFatal(Ns < frame_parms->slots_per_frame, "slot_fep: Ns must be between 0 and %d\n", frame_parms->slots_per_frame-1);
@@ -75,8 +76,6 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   //#endif
 
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
-    memset(&common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],0,frame_parms->ofdm_symbol_size*sizeof(int32_t));
-
     int16_t *rxdata_ptr = (int16_t *)&common_vars->rxdata[aa][rx_offset];
 
     // if input to dft is not 256-bit aligned
@@ -92,7 +91,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
     dft(dftsize,
         rxdata_ptr,
-        (int16_t *)&common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
+        (int16_t *)&rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
         1);
 
     stop_meas(&ue->rx_dft_stats);
@@ -108,7 +107,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 #endif
 
     c16_t *shift_rot = frame_parms->timeshift_symbol_rotation;
-    c16_t *this_symbol = (c16_t *)&common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
+    c16_t *this_symbol = &rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
 
     if (frame_parms->N_RB_DL & 1) {
       rotate_cpx_vector(this_symbol, &rot2, this_symbol,
@@ -149,18 +148,20 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
                           UE_nr_rxtx_proc_t *proc,
                           unsigned char symbol,
-                          unsigned char Ns,
-                          int sample_offset)
+                          int sample_offset,
+                          bool pbch_decoded,
+                          c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   NR_UE_COMMON *common_vars   = &ue->common_vars;
+  int Ns = proc->nr_slot_rx;
 
   AssertFatal(symbol < frame_parms->symbols_per_slot, "slot_fep: symbol must be between 0 and %d\n", frame_parms->symbols_per_slot-1);
   AssertFatal(Ns < frame_parms->slots_per_frame, "slot_fep: Ns must be between 0 and %d\n", frame_parms->slots_per_frame-1);
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  if (ue->is_synchronized) {
+  if (pbch_decoded) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   }
@@ -188,7 +189,6 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 #endif
 
   for (unsigned char aa=0; aa<frame_parms->nb_antennas_rx; aa++) {
-    memset(&common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],0,frame_parms->ofdm_symbol_size*sizeof(int32_t));
 
     int16_t *rxdata_ptr;
     rx_offset%=frame_length_samples*2;
@@ -224,7 +224,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
     dft(dftsize,
         rxdata_ptr,
-        (int16_t *)&common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
+        (int16_t *)&rxdataF[aa][frame_parms->ofdm_symbol_size*symbol],
         1);
 
     stop_meas(&ue->rx_dft_stats);
@@ -239,7 +239,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 	   symbol+symb_offset,rot2.r,rot2.i);
 #endif
 
-    c16_t *this_symbol = (c16_t *)&common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
+    c16_t *this_symbol = &rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
     rotate_cpx_vector(this_symbol, &rot2, this_symbol, frame_parms->ofdm_symbol_size, 15);
   }
 

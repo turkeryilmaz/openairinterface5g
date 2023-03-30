@@ -189,7 +189,7 @@ rrc_gNB_ue_context_5g_s_tmsi_exist(
 {
     struct rrc_gNB_ue_context_s        *ue_context_p = NULL;
     RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head) {
-        LOG_I(NR_RRC,"checking for UE 5G S-TMSI %ld: rnti %d \n",
+        LOG_I(NR_RRC,"Checking for UE 5G S-TMSI %ld: RNTI %04x\n",
               s_TMSI, ue_context_p->ue_context.rnti);
 
         if (ue_context_p->ue_context.ng_5G_S_TMSI_Part1 == s_TMSI) {
@@ -210,7 +210,7 @@ rrc_gNB_get_next_free_ue_context(
 //-----------------------------------------------------------------------------
 {
   struct rrc_gNB_ue_context_s        *ue_context_p = NULL;
-  ue_context_p = rrc_gNB_get_ue_context(rrc_instance_pP, ctxt_pP->rnti);
+  ue_context_p = rrc_gNB_get_ue_context(rrc_instance_pP, ctxt_pP->rntiMaybeUEid);
 
   if (ue_context_p == NULL) {
     ue_context_p = rrc_gNB_allocate_new_UE_context(rrc_instance_pP);
@@ -222,8 +222,8 @@ rrc_gNB_get_next_free_ue_context(
       return NULL;
     }
 
-    ue_context_p->ue_id_rnti                    = ctxt_pP->rnti; // here ue_id_rnti is just a key, may be something else
-    ue_context_p->ue_context.rnti               = ctxt_pP->rnti; // yes duplicate, 1 may be removed
+    ue_context_p->ue_id_rnti = ctxt_pP->rntiMaybeUEid; // here ue_id_rnti is just a key, may be something else
+    ue_context_p->ue_context.rnti = ctxt_pP->rntiMaybeUEid; // yes duplicate, 1 may be removed
     ue_context_p->ue_context.random_ue_identity = ue_identityP;
     RB_INSERT(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_p);
     LOG_D(NR_RRC,

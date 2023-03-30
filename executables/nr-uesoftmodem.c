@@ -35,19 +35,16 @@
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "common/utils/nr/nr_common.h"
 
-#include "sdr/COMMON/common_lib.h"
-#include "sdr/ETHERNET/USERSPACE/LIB/if_defs.h"
+#include "radio/COMMON/common_lib.h"
+#include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
-#include "SCHED/sched_common_vars.h"
-#include "PHY/MODULATION/modulation_vars.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 //#include "../../SIMU/USER/init_lte.h"
 
-#include "LAYER2/MAC/mac_vars.h"
 #include "RRC/LTE/rrc_vars.h"
 #include "PHY_INTERFACE/phy_interface_vars.h"
 #include "NR_IF_Module.h"
@@ -62,10 +59,11 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "UTIL/OPT/opt.h"
 #include "enb_config.h"
+#include "pdcp.h"
 
 #include "intertask_interface.h"
 
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "system.h"
 #include <openair2/RRC/NR_UE/rrc_proto.h>
 #include <openair2/LAYER2/NR_MAC_UE/mac_defs.h>
@@ -85,6 +83,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "nr_nas_msg_sim.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
+#include "openair2/GNB_APP/gnb_paramdef.h"
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -104,6 +103,8 @@ int config_sync_var=-1;
 instance_t CUuniqInstance=0;
 instance_t DUuniqInstance=0;
 
+int get_node_type() {return -1;}
+
 RAN_CONTEXT_t RC;
 int oai_exit = 0;
 
@@ -117,6 +118,8 @@ int                 vcdflag = 0;
 
 double          rx_gain_off = 0.0;
 char             *usrp_args = NULL;
+char             *tx_subdev = NULL;
+char             *rx_subdev = NULL;
 char       *rrc_config_path = NULL;
 char            *uecap_file = NULL;
 int               dumpframe = 0;
@@ -159,7 +162,7 @@ uint8_t abstraction_flag=0;
 
 nr_bler_struct nr_bler_data[NR_NUM_MCS];
 
-static void init_bler_table(void);
+static void init_bler_table(char*);
 
 /*---------------------BMC: timespec helpers -----------------------------*/
 
@@ -211,7 +214,8 @@ int create_tasks_nrue(uint32_t ue_nb) {
   return 0;
 }
 
-void exit_function(const char *file, const char *function, const int line, const char *s) {
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert)
+{
   int CC_id;
 
   if (s != NULL) {
@@ -227,8 +231,12 @@ void exit_function(const char *file, const char *function, const int line, const
     }
   }
 
-  sleep(1); //allow lte-softmodem threads to exit first
-  exit(1);
+  if (assert) {
+    abort();
+  } else {
+    sleep(1); // allow lte-softmodem threads to exit first
+    exit(EXIT_SUCCESS);
+  }
 }
 
 uint64_t get_nrUE_optmask(void) {
@@ -359,6 +367,8 @@ void init_openair0(void) {
     openair0_cfg[card].configFilename = get_softmodem_params()->rf_config_file;
 
     if (usrp_args) openair0_cfg[card].sdr_addrs = usrp_args;
+    if (tx_subdev) openair0_cfg[card].tx_subdev = tx_subdev;
+    if (rx_subdev) openair0_cfg[card].rx_subdev = rx_subdev;
 
   }
 }
@@ -387,6 +397,18 @@ void *rrc_enb_process_msg(void *notUsed) {
   return NULL;
 }
 
+static void get_channel_model_mode() {
+  paramdef_t GNBParams[]  = GNBPARAMS_DESC;
+  config_get(GNBParams, sizeof(GNBParams)/sizeof(paramdef_t), NULL);
+  int num_xp_antennas = *GNBParams[GNB_PDSCH_ANTENNAPORTS_XP_IDX].iptr;
+
+  if (num_xp_antennas == 2)
+    init_bler_table("NR_MIMO2x2_AWGN_RESULTS_DIR");
+  else
+    init_bler_table("NR_AWGN_RESULTS_DIR");
+}
+
+int NB_UE_INST = 1;
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;
@@ -396,12 +418,6 @@ int main( int argc, char **argv ) {
         set_exe_prio = 0;
   if (set_exe_prio)
     set_priority(79);
-
-  if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1)
-  {
-    fprintf(stderr, "mlockall: %s\n", strerror(errno));
-    return EXIT_FAILURE;
-  }
 
   //uint8_t beta_ACK=0,beta_RI=0,beta_CQI=2;
   PHY_VARS_NR_UE *UE[MAX_NUM_CCs];
@@ -459,13 +475,11 @@ int main( int argc, char **argv ) {
     }
   }
 
-  NB_UE_INST=1;
-  NB_INST=1;
   PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE **));
   PHY_vars_UE_g[0] = malloc(sizeof(PHY_VARS_NR_UE *)*MAX_NUM_CCs);
   if (get_softmodem_params()->emulate_l1) {
-    RCconfig_nr_ue_L1();
-    init_bler_table();
+    RCconfig_nr_ue_macrlc();
+    get_channel_model_mode();
   }
 
   if (get_softmodem_params()->do_ra)
@@ -513,7 +527,10 @@ int main( int argc, char **argv ) {
     pthread_mutex_init(&ue_pf_po_mutex, NULL);
     memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
     set_latency_target();
-    mlockall(MCL_CURRENT | MCL_FUTURE);
+
+    if(IS_SOFTMODEM_DOSCOPE_QT) {
+      load_softscope("nrqt",PHY_vars_UE_g[0][0]);
+    }
 
     if(IS_SOFTMODEM_DOSCOPE) {
       load_softscope("nr",PHY_vars_UE_g[0][0]);
@@ -546,12 +563,12 @@ int main( int argc, char **argv ) {
 }
 
 // Read in each MCS file and build BLER-SINR-TB table
-static void init_bler_table(void) {
+static void init_bler_table(char *env_string) {
   memset(nr_bler_data, 0, sizeof(nr_bler_data));
 
-  const char *awgn_results_dir = getenv("AWGN_RESULTS_DIR");
+  const char *awgn_results_dir = getenv(env_string);
   if (!awgn_results_dir) {
-    LOG_W(NR_MAC, "No $AWGN_RESULTS_DIR\n");
+    LOG_W(NR_MAC, "No %s\n", env_string);
     return;
   }
 
@@ -573,7 +590,7 @@ static void init_bler_table(void) {
         continue;
       }
 
-      if (nlines > NUM_SINR) {
+      if (nlines > NR_NUM_SINR) {
         LOG_E(NR_MAC, "BLER FILE ERROR - num lines greater than expected - file: %s\n", fName);
         abort();
       }

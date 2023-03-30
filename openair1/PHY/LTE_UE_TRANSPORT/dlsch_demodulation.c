@@ -30,7 +30,7 @@
  * \warning
  */
 #include "PHY/defs_UE.h"
-#include "PHY/phy_extern_ue.h"
+#include "PHY/phy_extern.h"
 #include "SCHED_UE/sched_UE.h"
 #include "transport_ue.h"
 #include "transport_proto_ue.h"
@@ -370,8 +370,15 @@ int rx_pdsch(PHY_VARS_UE *ue,
 
 #if UE_TIMING_TRACE
   stop_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
-  LOG_D(PHY, "[AbsSFN %d.%d] Slot%d Symbol %d Flag %d type %d: Pilot/Data extraction  %5.2f \n",frame,subframe,slot,symbol,
-        ue->high_speed_flag,type,ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time/(cpuf*1000.0));
+  LOG_D(PHY,
+        "[AbsSFN %d.%d] Slot%d Symbol %d Flag %d type %d: Pilot/Data extraction  %5.2f \n",
+        frame,
+        subframe,
+        slot,
+        symbol,
+        ue->high_speed_flag,
+        type,
+        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time / (get_cpu_freq_GHz() * 1000.0));
 #endif
 #if UE_TIMING_TRACE
   start_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
@@ -398,7 +405,13 @@ int rx_pdsch(PHY_VARS_UE *ue,
 
 #if UE_TIMING_TRACE
   stop_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
-  LOG_D(PHY, "[AbsSFN %d.%d] Slot%d Symbol %d: Channel Scale  %5.2f \n",frame,subframe,slot,symbol,ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time/(cpuf*1000.0));
+  LOG_D(PHY,
+        "[AbsSFN %d.%d] Slot%d Symbol %d: Channel Scale  %5.2f \n",
+        frame,
+        subframe,
+        slot,
+        symbol,
+        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time / (get_cpu_freq_GHz() * 1000.0));
   start_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
 #endif
 
@@ -507,8 +520,14 @@ int rx_pdsch(PHY_VARS_UE *ue,
 #endif
 #if UE_TIMING_TRACE
   stop_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
-  LOG_D(PHY, "[AbsSFN %d.%d] Slot%d Symbol %d first_symbol_flag %d: Channel Level  %5.2f \n",frame,subframe,slot,symbol,first_symbol_flag,
-        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time/(cpuf*1000.0));
+  LOG_D(PHY,
+        "[AbsSFN %d.%d] Slot%d Symbol %d first_symbol_flag %d: Channel Level  %5.2f \n",
+        frame,
+        subframe,
+        slot,
+        symbol,
+        first_symbol_flag,
+        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time / (get_cpu_freq_GHz() * 1000.0));
   start_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
 #endif
 
@@ -731,8 +750,14 @@ int rx_pdsch(PHY_VARS_UE *ue,
 
 #if UE_TIMING_TRACE
   stop_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
-  LOG_D(PHY, "[AbsSFN %d.%d] Slot%d Symbol %d log2_maxh %d Channel Comp  %5.2f \n",frame,subframe,slot,symbol,pdsch_vars[eNB_id]->log2_maxh,
-        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time/(cpuf*1000.0));
+  LOG_D(PHY,
+        "[AbsSFN %d.%d] Slot%d Symbol %d log2_maxh %d Channel Comp  %5.2f \n",
+        frame,
+        subframe,
+        slot,
+        symbol,
+        pdsch_vars[eNB_id]->log2_maxh,
+        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time / (get_cpu_freq_GHz() * 1000.0));
   start_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
 #endif
 
@@ -805,7 +830,13 @@ int rx_pdsch(PHY_VARS_UE *ue,
 
 #if UE_TIMING_TRACE
   stop_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
-  LOG_D(PHY, "[AbsSFN %d.%d] Slot%d Symbol %d: Channel Combine  %5.2f \n",frame,subframe,slot,symbol,ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time/(cpuf*1000.0));
+  LOG_D(PHY,
+        "[AbsSFN %d.%d] Slot%d Symbol %d: Channel Combine  %5.2f \n",
+        frame,
+        subframe,
+        slot,
+        symbol,
+        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time / (get_cpu_freq_GHz() * 1000.0));
   start_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
 #endif
   //printf("LLR dlsch0_harq->Qm %d rx_type %d cw0 %d cw1 %d symbol %d \n",dlsch0_harq->Qm,rx_type,codeword_TB0,codeword_TB1,symbol);
@@ -1168,7 +1199,13 @@ int rx_pdsch(PHY_VARS_UE *ue,
 
 #if UE_TIMING_TRACE
   stop_meas(&ue->generic_stat_bis[ue->current_thread_id[subframe]][slot]);
-  LOG_D(PHY, "[AbsSFN %d.%d] Slot%d Symbol %d: LLR Computation  %5.2f \n",frame,subframe,slot,symbol,ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time/(cpuf*1000.0));
+  LOG_D(PHY,
+        "[AbsSFN %d.%d] Slot%d Symbol %d: LLR Computation  %5.2f \n",
+        frame,
+        subframe,
+        slot,
+        symbol,
+        ue->generic_stat_bis[ue->current_thread_id[subframe]][slot].p_time / (get_cpu_freq_GHz() * 1000.0));
 #endif
   // Please keep it: useful for debugging
 #if 0
@@ -1453,7 +1490,7 @@ void dlsch_channel_compensation(int **rxdataF_ext,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   unsigned short rb;
   unsigned char aatx,aarx,symbol_mod,pilots=0;
   int16x4_t *dl_ch128,*dl_ch128_2,*rxdataF128;
@@ -1863,7 +1900,7 @@ void prec2A_TM56_128(unsigned char pmi,__m128i *ch0,__m128i *ch1) {
   _mm_empty();
   _m_empty();
 }
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 void prec2A_TM56_128(unsigned char pmi,__m128i *ch0,__m128i *ch1) {
   // sqrt(2) is already taken into account in computation sqrt_rho_a, sqrt_rho_b,
   //so removed it
@@ -2159,7 +2196,7 @@ void dlsch_channel_compensation_TM56(int **rxdataF_ext,
   measurements->precoded_cqi_dB[eNB_id][0] = dB_fixed2(precoded_signal_strength,measurements->n0_power_tot);
   //printf("eNB_id %d, symbol %d: precoded CQI %d dB\n",eNB_id,symbol,
   //   measurements->precoded_cqi_dB[eNB_id][0]);
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   uint32_t rb,Nre;
   uint32_t aarx,symbol_mod,pilots=0;
   int16x4_t *dl_ch0_128,*dl_ch1_128,*rxdataF128;
@@ -2714,7 +2751,7 @@ void dlsch_channel_compensation_TM34(LTE_DL_FRAME_PARMS *frame_parms,
   //  measurements->precoded_cqi_dB[eNB_id][0]);
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   unsigned short rb,Nre;
   unsigned char aarx,symbol_mod,pilots=0;
   int precoded_signal_strength0=0,precoded_signal_strength1=0, rx_power_correction;
@@ -3064,7 +3101,7 @@ void dlsch_dual_stream_correlation(LTE_DL_FRAME_PARMS *frame_parms,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 
@@ -3140,7 +3177,7 @@ void dlsch_detection_mrc(LTE_DL_FRAME_PARMS *frame_parms,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   unsigned char aatx;
   int i;
   int16x8_t *rxdataF_comp128_0,*rxdataF_comp128_1,*rxdataF_comp128_i0,*rxdataF_comp128_i1,*dl_ch_mag128_0,*dl_ch_mag128_1,*dl_ch_mag128_0b,*dl_ch_mag128_1b,*rho128_0,*rho128_1,*rho128_i0,*rho128_i1,
@@ -3366,7 +3403,7 @@ void dlsch_scale_channel(int **dl_ch_estimates_ext,
     }
   }
 
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 
@@ -3433,7 +3470,7 @@ void dlsch_channel_level(int **dl_ch_estimates_ext,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   short rb;
   unsigned char aatx,aarx,nre=12,symbol_mod;
   int32x4_t avg128D;
@@ -3533,7 +3570,7 @@ void dlsch_channel_level_core(int **dl_ch_estimates_ext,
   _mm_empty();
   _m_empty();
   /* FIXME This part needs to be adapted like the one above */
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   short rb;
   unsigned char aatx,aarx,nre=12,symbol_mod;
   int32x4_t avg128D;
@@ -3627,7 +3664,7 @@ void dlsch_channel_level_median(int **dl_ch_estimates_ext,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   short rb;
   unsigned char aatx,aarx,nre=12,symbol_mod;
   int32x4_t norm128D;
@@ -3997,7 +4034,7 @@ void dlsch_channel_aver_band(int **dl_ch_estimates_ext,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 
@@ -4369,7 +4406,7 @@ void dlsch_channel_level_TM34(int **dl_ch_estimates_ext,
   avg_1[0] = avg_0[0];
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 
@@ -4438,7 +4475,7 @@ void dlsch_channel_level_TM56(int **dl_ch_estimates_ext,
   avg[0] = cmax(avg[0],avg[1]);
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 
@@ -4501,7 +4538,7 @@ void dlsch_channel_level_TM7(int **dl_bf_ch_estimates_ext,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 //#define ONE_OVER_2_Q15 16384
@@ -4585,7 +4622,7 @@ void dlsch_alamouti(LTE_DL_FRAME_PARMS *frame_parms,
 
   _mm_empty();
   _m_empty();
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #endif
 }
 

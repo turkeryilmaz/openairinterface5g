@@ -339,7 +339,7 @@ void nr_dft(int32_t *z, int32_t *d, uint32_t Msc_PUSCH)
 {
 #if defined(__x86_64__) || +defined(__i386__)
   __m128i dft_in128[1][3240], dft_out128[1][3240];
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   int16x8_t dft_in128[1][3240], dft_out128[1][3240];
 #endif
   uint32_t *dft_in0 = (uint32_t*)dft_in128[0], *dft_out0 = (uint32_t*)dft_out128[0];
@@ -348,7 +348,7 @@ void nr_dft(int32_t *z, int32_t *d, uint32_t Msc_PUSCH)
 
 #if defined(__x86_64__) || defined(__i386__)
   __m128i norm128;
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   int16x8_t norm128;
 #endif
 
@@ -364,13 +364,13 @@ void nr_dft(int32_t *z, int32_t *d, uint32_t Msc_PUSCH)
 
 #if defined(__x86_64__) || defined(__i386__)
       norm128 = _mm_set1_epi16(9459);
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
       norm128 = vdupq_n_s16(9459);
 #endif
       for (i=0; i<12; i++) {
 #if defined(__x86_64__) || defined(__i386__)
         ((__m128i*)dft_out0)[i] = _mm_slli_epi16(_mm_mulhi_epi16(((__m128i*)dft_out0)[i], norm128), 1);
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
         ((int16x8_t*)dft_out0)[i] = vqdmulhq_s16(((int16x8_t*)dft_out0)[i], norm128);
 #endif
       }
@@ -618,7 +618,7 @@ void init_symbol_rotation(NR_DL_FRAME_PARMS *fp) {
   for (uint8_t ll = 0; ll < 2; ll++){
 
     double f0 = f[ll];
-    LOG_I(PHY, "Doing symbol rotation calculation for gNB TX/RX, f0 %f Hz, Nsymb %d\n", f0, nsymb);
+    LOG_D(PHY, "Doing symbol rotation calculation for gNB TX/RX, f0 %f Hz, Nsymb %d\n", f0, nsymb);
     c16_t *symbol_rotation = fp->symbol_rotation[ll];
 
     double tl = 0.0;
@@ -641,7 +641,7 @@ void init_symbol_rotation(NR_DL_FRAME_PARMS *fp) {
       symbol_rotation[l].r = (int16_t)floor(exp_re * 32767);
       symbol_rotation[l].i = (int16_t)floor(exp_im * 32767);
 
-      LOG_I(PHY, "Symbol rotation %d/%d => tl %f (%d,%d) (%f)\n",
+      LOG_D(PHY, "Symbol rotation %d/%d => tl %f (%d,%d) (%f)\n",
         l,
         nsymb,
         tl,
@@ -666,7 +666,7 @@ void init_timeshift_rotation(NR_DL_FRAME_PARMS *fp)
     fp->timeshift_symbol_rotation[i].i = (int16_t)round(exp_im * 32767);
 
     if (i < 10)
-      LOG_I(PHY,"Timeshift symbol rotation %d => (%d,%d) %f\n",i,
+      LOG_D(PHY,"Timeshift symbol rotation %d => (%d,%d) %f\n",i,
             fp->timeshift_symbol_rotation[i].r,
             fp->timeshift_symbol_rotation[i].i,
             poff);

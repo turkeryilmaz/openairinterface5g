@@ -231,20 +231,15 @@ void handle_nr_srs(NR_UL_IND_t *UL_info) {
   const frame_t frame = UL_info->srs_ind.sfn;
   const sub_frame_t slot = UL_info->srs_ind.slot;
   const int num_srs = UL_info->srs_ind.number_of_pdus;
-  const nfapi_nr_srs_indication_pdu_t *srs_list = UL_info->srs_ind.pdu_list;
+  nfapi_nr_srs_indication_pdu_t *srs_list = UL_info->srs_ind.pdu_list;
 
   for (int i = 0; i < num_srs; i++) {
-    const nfapi_nr_srs_indication_pdu_t *srs_ind = &srs_list[i];
+    nfapi_nr_srs_indication_pdu_t *srs_ind = &srs_list[i];
     LOG_D(NR_PHY, "(%d.%d) UL_info->srs_ind.pdu_list[%d].rnti: 0x%04x\n", frame, slot, i, srs_ind->rnti);
     handle_nr_srs_measurements(module_id,
                                frame,
                                slot,
-                               srs_ind->rnti,
-                               srs_ind->timing_advance,
-                               srs_ind->num_symbols,
-                               srs_ind->wide_band_snr,
-                               srs_ind->num_reported_symbols,
-                               srs_ind->reported_symbol_list);
+                               srs_ind);
   }
 
   UL_info->srs_ind.number_of_pdus = 0;
@@ -396,7 +391,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
   int              CC_id       = UL_info->CC_id;
   NR_Sched_Rsp_t   *sched_info = &NR_Sched_INFO[module_id][CC_id];
   NR_IF_Module_t   *ifi        = nr_if_inst[module_id];
-  gNB_MAC_INST     *mac        = RC.nrmac[module_id];
+
   LOG_D(NR_PHY,"SFN/SLOT:%d.%d module_id:%d CC_id:%d UL_info[rach_pdus:%zu rx_ind:%zu crcs:%zu]\n",
         UL_info->frame, UL_info->slot,
         module_id, CC_id,
@@ -448,8 +443,6 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
 
   handle_nr_rach(UL_info);
   handle_nr_uci(UL_info);
-  // clear UL DCI prior to handling ULSCH
-  mac->UL_dci_req[CC_id].numPdus = 0;
   handle_nr_ulsch(UL_info);
   handle_nr_srs(UL_info);
 
@@ -457,7 +450,9 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
     free_unqueued_nfapi_indications(rach_ind, uci_ind, rx_ind, crc_ind);
   }
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
-
+    gNB_MAC_INST     *mac        = RC.nrmac[module_id];
+    // clear UL DCI prior to handling ULSCH
+    mac->UL_dci_req[CC_id].numPdus = 0;
     if (ifi->CC_mask==0) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_slot = UL_info->slot;

@@ -40,11 +40,10 @@
 #include "nr_rrc_types.h"
 
 #include "common/ngran_types.h"
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "COMMON/platform_types.h"
 #include "mac_rrc_dl.h"
-
-//#include "COMMON/mac_rrc_primitives.h"
+#include "cucp_cuup_if.h"
 
 #include "NR_SIB1.h"
 #include "NR_RRCReconfigurationComplete.h"
@@ -56,11 +55,7 @@
 #include "NR_PLMN-IdentityInfo.h"
 #include "NR_MCC-MNC-Digit.h"
 #include "NR_NG-5G-S-TMSI.h"
-//#include "MCCH-Message.h"
-//#include "MBSFNAreaConfiguration-r9.h"
-//#include "SCellToAddMod-r10.h"
-//#include "AS-Config.h"
-//#include "AS-Context.h"
+
 #include "NR_UE-NR-Capability.h"
 #include "NR_UE-MRDC-Capability.h"
 #include "NR_MeasResults.h"
@@ -90,6 +85,12 @@
 #define NR_RRC_SETUP_DELAY_MS           10
 #define NR_RRC_RECONFIGURATION_DELAY_MS 10
 #define NR_RRC_BWP_SWITCHING_DELAY_MS   6
+
+// 3GPP TS 38.133 - Section 8 - Table 8.2.1.2.7-2: Parameters which cause interruption other than SCS
+// This table was recently added to 3GPP. It shows that changing the parameters locationAndBandwidth, nrofSRS-Ports or
+// maxMIMO-Layers-r16 causes an interruption. This parameter is not yet being used in code, but has been placed here
+// for future reference.
+#define NR_OF_SRS_PORTS_SWITCHING_DELAY_MS 30
 
 #define NR_UE_MODULE_INVALID ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!!
 #define NR_UE_INDEX_INVALID  ((module_id_t) ~0) // FIXME attention! depends on type uint8_t!!! used to be -1
@@ -277,10 +278,9 @@ typedef struct gNB_RRC_UE_s {
   NR_DRB_ToAddModList_t             *DRB_configList;
   NR_DRB_ToAddModList_t             *DRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   NR_DRB_ToReleaseList_t            *DRB_Release_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
-  uint8_t                            DRB_active[8];
+  uint8_t                            DRB_active[NGAP_MAX_DRBS_PER_UE];
 
   NR_SRB_INFO                       SI;
-  NR_SRB_INFO                       Srb0;
   NR_SRB_INFO_TABLE_ENTRY           Srb1;
   NR_SRB_INFO_TABLE_ENTRY           Srb2;
   NR_MeasConfig_t                   *measConfig;
@@ -297,6 +297,9 @@ typedef struct gNB_RRC_UE_s {
   NR_CellGroupConfig_t               *masterCellGroup;
   NR_RRCReconfiguration_t            *reconfig;
   NR_RadioBearerConfig_t             *rb_config;
+
+  /* Pointer to save spCellConfig during RRC Reestablishment procedures */
+  NR_SpCellConfig_t                  *spCellConfigReestablishment;
 
   ImsiMobileIdentity_t               imsi;
 
@@ -320,7 +323,7 @@ typedef struct gNB_RRC_UE_s {
   uint16_t                           ng_5G_S_TMSI_Part2;
   NR_EstablishmentCause_t            establishment_cause;
 
-  /* Information from UE RRC ConnectionReestablishmentRequest */
+  /* Information from UE RRCReestablishmentRequest */
   NR_ReestablishmentCause_t          reestablishment_cause;
 
   /* UE id for initial connection to S1AP */
@@ -342,9 +345,7 @@ typedef struct gNB_RRC_UE_s {
   uint8_t                            nb_of_modify_e_rabs;
   uint8_t                            nb_of_failed_e_rabs;
   nr_e_rab_param_t                   modify_e_rab[NB_RB_MAX];//[S1AP_MAX_E_RAB];
-  /* Total number of pdu session already setup in the list */
-  uint8_t                            setup_pdu_sessions;
-  /* Number of pdu session to be setup in the list */
+  /* Number of pdu session managed for the ue */
   uint8_t                            nb_of_pdusessions;
   /* Number of e_rab to be modified in the list */
   uint8_t                            nb_of_modify_pdusessions;
@@ -353,7 +354,7 @@ typedef struct gNB_RRC_UE_s {
   /* list of e_rab to be setup by RRC layers */
   /* list of pdu session to be setup by RRC layers */
   nr_e_rab_param_t                   e_rab[NB_RB_MAX];//[S1AP_MAX_E_RAB];
-  pdu_session_param_t                pduSession[NR_NB_RB_MAX];//[NGAP_MAX_PDU_SESSION];
+  pdu_session_param_t                pduSession[NGAP_MAX_PDU_SESSION];
   //release e_rabs
   uint8_t                            nb_release_of_e_rabs;
   e_rab_failed_t                     e_rabs_release_failed[S1AP_MAX_E_RAB];
@@ -383,7 +384,8 @@ typedef struct gNB_RRC_UE_s {
   uint8_t                            established_pdu_sessions_flag;
   uint32_t                           ue_rrc_inactivity_timer;
   int8_t                             reestablishment_xid;
-  //------------------------------------------------------------------------------//
+  uint32_t                           ue_reestablishment_counter;
+  uint32_t                           ue_reconfiguration_after_reestablishment_counter;
   NR_CellGroupId_t                                      cellGroupId;
   struct NR_SpCellConfig                                *spCellConfig;
   struct NR_CellGroupConfig__sCellToAddModList          *sCellconfig;
@@ -406,12 +408,12 @@ typedef struct rrc_gNB_ue_context_s {
   /* Uniquely identifies the UE between MME and eNB within the eNB.
    * This id is encoded on 24bits.
    */
-  rnti_t         ue_id_rnti;
+  ue_id_t         ue_id_rnti;
 
   // another key for protocol layers but should not be used as a key for RB tree
   uid_t          local_uid;
 
-  /* UE id for initial connection to S1AP */
+  /* UE id for initial connection to NGAP */
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
 
@@ -443,10 +445,8 @@ typedef struct {
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
   NR_ServingCellConfig_t                    *servingcellconfig;
-  NR_PDCCH_ConfigSIB1_t                     *pdcch_ConfigSIB1;
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
   NR_SRB_INFO                               SI;
-  NR_SRB_INFO                               Srb0;
   int                                       p_gNB;
 
 } rrc_gNB_carrier_data_t;
@@ -472,6 +472,16 @@ typedef struct nr_mac_rrc_dl_if_s {
   dl_rrc_message_transfer_func_t dl_rrc_message_transfer;
 } nr_mac_rrc_dl_if_t;
 
+typedef struct cucp_cuup_if_s {
+  cucp_cuup_bearer_context_setup_func_t bearer_context_setup;
+  cucp_cuup_bearer_context_setup_func_t bearer_context_mod;
+} cucp_cuup_if_t;
+
+typedef struct nr_reestablish_rnti_map_s {
+  ue_id_t ue_id;
+  rnti_t c_rnti;
+} nr_reestablish_rnti_map_t;
+
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -494,6 +504,9 @@ typedef struct gNB_RRC_INST_s {
 
   // RRC configuration
   gNB_RrcConfigurationReq configuration;
+
+  // gNB N3 GTPU instance
+  instance_t e1_inst;
 
   // other PLMN parameters
   /// Mobile country code
@@ -522,7 +535,11 @@ typedef struct gNB_RRC_INST_s {
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
 
+  nr_reestablish_rnti_map_t nr_reestablish_rnti_map[MAX_MOBILES_PER_GNB];
+
   nr_mac_rrc_dl_if_t mac_rrc;
+  cucp_cuup_if_t cucp_cuup;
+
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error

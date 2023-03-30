@@ -23,17 +23,12 @@
 #include "common/utils/nr/nr_common.h"
 #include "common/ran_context.h"
 #include "PHY/defs_gNB.h"
-#include "PHY/phy_extern.h"
 #include "PHY/NR_REFSIG/nr_refsig.h"
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "openair1/PHY/MODULATION/nr_modulation.h"
-/*#include "RadioResourceConfigCommonSIB.h"
-#include "RadioResourceConfigDedicated.h"
-#include "TDD-Config.h"
-#include "MBSFN-SubframeConfigList.h"*/
 #include "openair1/PHY/defs_RU.h"
 #include "openair1/PHY/CODING/nrLDPC_extern.h"
 #include "assertions.h"
@@ -69,6 +64,17 @@ int l1_north_init_gNB() {
   }
 
   return(0);
+}
+
+void init_ul_delay_table(NR_DL_FRAME_PARMS *fp)
+{
+  for (int delay = -MAX_UL_DELAY_COMP; delay <= MAX_UL_DELAY_COMP; delay++) {
+    for (int k = 0; k < fp->ofdm_symbol_size; k++) {
+      double complex delay_cexp = cexp(I * (2.0 * M_PI * k * delay / fp->ofdm_symbol_size));
+      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].r = (int16_t)round(256 * creal(delay_cexp));
+      fp->ul_delay_table[MAX_UL_DELAY_COMP + delay][k].i = (int16_t)round(256 * cimag(delay_cexp));
+    }
+  }
 }
 
 int init_codebook_gNB(PHY_VARS_gNB *gNB) {
@@ -138,7 +144,7 @@ int init_codebook_gNB(PHY_VARS_gNB *gNB) {
 
       int max_mimo_layers = (CSI_RS_antenna_ports<NR_MAX_NB_LAYERS) ? CSI_RS_antenna_ports : NR_MAX_NB_LAYERS;
 
-      gNB->nr_mimo_precoding_matrix = (int32_t ***)malloc16(max_mimo_layers* sizeof(int32_t **));
+      gNB->nr_mimo_precoding_matrix = (int32_t ***)malloc16(max_mimo_layers * sizeof(int32_t **));
       int32_t ***mat = gNB->nr_mimo_precoding_matrix;
       double complex res_code;
 
@@ -194,9 +200,9 @@ int init_codebook_gNB(PHY_VARS_gNB *gNB) {
         }
       }
 
-      int llc;
-      int mmc;
-      double complex phase_sign;
+      int llc = 0;
+      int mmc = 0;
+      double complex phase_sign = 0;
       //Table 5.2.2.2.1-6:
       //Codebook for 2-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
       //Compute the code book size for generating 2 layers out of Tx antenna ports
@@ -473,9 +479,8 @@ int init_codebook_gNB(PHY_VARS_gNB *gNB) {
   return 0;
 }
 
-int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
-                    unsigned char is_secondary_gNB,
-                    unsigned char lowmem_flag) {
+int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
+{
   // shortcuts
   NR_DL_FRAME_PARMS *const fp       = &gNB->frame_parms;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
@@ -494,15 +499,6 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
 
   while(gNB->configured == 0) usleep(10000);
 
-  if (lowmem_flag == 1) {
-    gNB->number_of_nr_dlsch_max = 2;
-    gNB->number_of_nr_ulsch_max = 2;
-  }
-  else {
-    gNB->number_of_nr_dlsch_max = NUMBER_OF_NR_DLSCH_MAX;
-    gNB->number_of_nr_ulsch_max = NUMBER_OF_NR_ULSCH_MAX;
-  }  
-
   load_dftslib();
 
   crcTableInit();
@@ -515,6 +511,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
     load_nrLDPClib_offload(); 
 
   init_codebook_gNB(gNB);
+  init_ul_delay_table(fp);
 
   // PBCH DMRS gold sequences generation
   nr_init_pbch_dmrs(gNB);
@@ -615,13 +612,8 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
   gNB->nr_csi_info->csi_gold_init = cfg->cell_config.phy_cell_id.value;
   nr_init_csi_rs(&gNB->frame_parms, gNB->nr_csi_info->nr_gold_csi_rs, cfg->cell_config.phy_cell_id.value);
 
-  for (int id=0; id<NUMBER_OF_NR_SRS_MAX; id++) {
-    gNB->nr_srs_info[id] = (nr_srs_info_t *)malloc16_clear(sizeof(nr_srs_info_t));
-    gNB->nr_srs_info[id]->srs_generated_signal = (int32_t**)malloc16_clear(MAX_NUM_NR_SRS_AP*sizeof(int32_t*));
-    for(int ap=0; ap<MAX_NUM_NR_SRS_AP; ap++) {
-      gNB->nr_srs_info[id]->srs_generated_signal[ap] = (int32_t*)malloc16_clear(fp->ofdm_symbol_size*MAX_NUM_NR_SRS_SYMBOLS*sizeof(int32_t));
-    }
-  }
+  //PRS init
+  nr_init_prs(gNB);
 
   generate_ul_reference_signal_sequences(SHRT_MAX);
 
@@ -631,7 +623,14 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
   /// Transport init necessary for NR synchro
   init_nr_transport(gNB);
 
-  gNB->first_run_I0_measurements = 1;
+  gNB->nr_srs_info = (nr_srs_info_t **)malloc16_clear(gNB->max_nb_srs * sizeof(nr_srs_info_t*));
+  for (int id = 0; id < gNB->max_nb_srs; id++) {
+    gNB->nr_srs_info[id] = (nr_srs_info_t *)malloc16_clear(sizeof(nr_srs_info_t));
+    gNB->nr_srs_info[id]->srs_generated_signal = (int32_t**)malloc16_clear(MAX_NUM_NR_SRS_AP*sizeof(int32_t*));
+    for(int ap=0; ap<MAX_NUM_NR_SRS_AP; ap++) {
+      gNB->nr_srs_info[id]->srs_generated_signal[ap] = (int32_t*)malloc16_clear(fp->ofdm_symbol_size*MAX_NUM_NR_SRS_SYMBOLS*sizeof(int32_t));
+    }
+  }
 
   common_vars->txdataF = (int32_t **)malloc16(Ptx*sizeof(int32_t*));
   common_vars->rxdataF = (int32_t **)malloc16(Prx*sizeof(int32_t*));
@@ -661,13 +660,9 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB,
   int n_buf = Prx*max_ul_mimo_layers;
 
   int nb_re_pusch = N_RB_UL * NR_NB_SC_PER_RB;
-#ifdef __AVX2__
   int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
-#else
-  int nb_re_pusch2 = nb_re_pusch;
-#endif
 
-  for (int ULSCH_id=0; ULSCH_id<gNB->number_of_nr_ulsch_max; ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < NUMBER_OF_NR_ULSCH_MAX; ULSCH_id++) {
     pusch_vars[ULSCH_id] = (NR_gNB_PUSCH *)malloc16_clear( sizeof(NR_gNB_PUSCH) );
     pusch_vars[ULSCH_id]->rxdataF_ext           = (int32_t **)malloc16(Prx*sizeof(int32_t *) );
     pusch_vars[ULSCH_id]->ul_ch_estimates       = (int32_t **)malloc16(n_buf*sizeof(int32_t *) );
@@ -774,13 +769,14 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
   free_and_zero(nr_gold_csi_rs);
   free_and_zero(gNB->nr_csi_info);
 
-  for (int id = 0; id < NUMBER_OF_NR_SRS_MAX; id++) {
+  for (int id = 0; id < gNB->max_nb_srs; id++) {
     for(int i=0; i<MAX_NUM_NR_SRS_AP; i++) {
       free_and_zero(gNB->nr_srs_info[id]->srs_generated_signal[i]);
     }
     free_and_zero(gNB->nr_srs_info[id]->srs_generated_signal);
     free_and_zero(gNB->nr_srs_info[id]);
   }
+  free_and_zero(gNB->nr_srs_info);
 
   free_ul_reference_signal_sequences();
   free_gnb_lowpapr_sequences();
@@ -792,6 +788,17 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
     free_and_zero(common_vars->txdataF[i]);
     free_and_zero(common_vars->beam_id[i]);
   }
+
+  for (int rsc=0; rsc < gNB->prs_vars.NumPRSResources; rsc++) {
+    for (int slot=0; slot<fp->slots_per_frame; slot++) {
+      for (int symb=0; symb<fp->symbols_per_slot; symb++) {
+        free_and_zero(gNB->nr_gold_prs[rsc][slot][symb]);
+      }
+      free_and_zero(gNB->nr_gold_prs[rsc][slot]);
+    }
+    free_and_zero(gNB->nr_gold_prs[rsc]);
+  }
+  free_and_zero(gNB->nr_gold_prs);
 
   /* Do NOT free per-antenna txdataF/rxdataF: the gNB gets a pointer to the
    * RU's txdataF/rxdataF, and the RU will free that */
@@ -807,7 +814,7 @@ void phy_free_nr_gNB(PHY_VARS_gNB *gNB)
   free_and_zero(prach_vars->prach_ifft);
 
   NR_gNB_PUSCH** pusch_vars = gNB->pusch_vars;
-  for (int ULSCH_id=0; ULSCH_id<gNB->number_of_nr_ulsch_max; ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < NUMBER_OF_NR_ULSCH_MAX; ULSCH_id++) {
     for (int i=0; i< max_ul_mimo_layers; i++)
       free_and_zero(pusch_vars[ULSCH_id]->llr_layers[i]);
     for (int i = 0; i < Prx; i++) {
@@ -895,7 +902,6 @@ void nr_phy_config_request_sim(PHY_VARS_gNB *gNB,
   gNB_config->tdd_table.tdd_period.value = 0;
   //gNB_config->subframe_config.dl_cyclic_prefix_type.value = (fp->Ncp == NORMAL) ? NFAPI_CP_NORMAL : NFAPI_CP_EXTENDED;
 
-  gNB->mac_enabled   = 1;
   if (mu==0) {
     fp->dl_CarrierFreq = 2600000000;//from_nrarfcn(gNB_config->nfapi_config.rf_bands.rf_band[0],gNB_config->nfapi_config.nrarfcn.value);
     fp->ul_CarrierFreq = 2600000000;//fp->dl_CarrierFreq - (get_uldl_offset(gNB_config->nfapi_config.rf_bands.rf_band[0])*100000);
@@ -934,7 +940,6 @@ void nr_phy_config_request(NR_PHY_Config_t *phy_config) {
   nfapi_nr_config_request_scf_t *gNB_config = &RC.gNB[Mod_id]->gNB_config;
 
   memcpy((void*)gNB_config,phy_config->cfg,sizeof(*phy_config->cfg));
-  RC.gNB[Mod_id]->mac_enabled     = 1;
 
   uint64_t dl_bw_khz = (12*gNB_config->carrier_config.dl_grid_size[gNB_config->ssb_config.scs_common.value].value)*(15<<gNB_config->ssb_config.scs_common.value);
   fp->dl_CarrierFreq = ((dl_bw_khz>>1) + gNB_config->carrier_config.dl_frequency.value)*1000 ;
@@ -987,10 +992,10 @@ void init_DLSCH_struct(PHY_VARS_gNB *gNB, processingData_L1tx_t *msg) {
   msg->num_pdsch_slot = 0;
 
   int num_cw = NR_MAX_NB_LAYERS > 4? 2:1;
-  for (int i=0; i<gNB->number_of_nr_dlsch_max; i++) {
-    LOG_I(PHY,"Allocating Transport Channel Buffers for DLSCH %d/%d\n",i,gNB->number_of_nr_dlsch_max);
+  for (int i = 0; i < NUMBER_OF_NR_DLSCH_MAX; i++) {
+    LOG_D(PHY,"Allocating Transport Channel Buffers for DLSCH %d/%d\n", i, NUMBER_OF_NR_DLSCH_MAX);
     for (int j=0; j<num_cw; j++) {
-      msg->dlsch[i][j] = new_gNB_dlsch(fp,1,16,NSOFT,0,grid_size);
+      msg->dlsch[i][j] = new_gNB_dlsch(fp, grid_size);
       AssertFatal(msg->dlsch[i][j]!=NULL,"Can't initialize dlsch %d \n", i);
     }
   }
@@ -1002,32 +1007,62 @@ void reset_DLSCH_struct(const PHY_VARS_gNB *gNB, processingData_L1tx_t *msg)
   const nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
   const uint16_t grid_size = cfg->carrier_config.dl_grid_size[fp->numerology_index].value;
   int num_cw = NR_MAX_NB_LAYERS > 4? 2:1;
-  for (int i=0; i<gNB->number_of_nr_dlsch_max; i++)
+  for (int i = 0; i < NUMBER_OF_NR_DLSCH_MAX; i++)
     for (int j=0; j<num_cw; j++)
       free_gNB_dlsch(&msg->dlsch[i][j], grid_size, fp);
 }
 
-void init_nr_transport(PHY_VARS_gNB *gNB) {
+void init_nr_transport(PHY_VARS_gNB *gNB)
+{
+
   NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
+  const nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
   LOG_I(PHY, "Initialise nr transport\n");
 
-  memset(gNB->num_pdsch_rnti, 0, sizeof(uint16_t)*80);
+  int nb_slots_per_period = cfg->cell_config.frame_duplex_type.value ?
+                            fp->slots_per_frame / get_nb_periods_per_frame(cfg->tdd_table.tdd_period.value) :
+                            fp->slots_per_frame;
+  int nb_ul_slots_period = 0;
+  if (cfg->cell_config.frame_duplex_type.value) {
+    for(int i=0; i<nb_slots_per_period; i++) {
+      for(int j=0; j<NR_NUMBER_OF_SYMBOLS_PER_SLOT; j++) {
+        if(cfg->tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list[j].slot_config.value == 1) { // UL symbol
+          nb_ul_slots_period++;
+          break;
+        }  
+      }
+    }
+  }
+  else
+    nb_ul_slots_period = fp->slots_per_frame;
 
-  for (int i=0; i<NUMBER_OF_NR_PUCCH_MAX; i++) {
-    LOG_I(PHY,"Allocating Transport Channel Buffers for PUCCH %d/%d\n",i,NUMBER_OF_NR_PUCCH_MAX);
+  int buffer_ul_slots; // the UL channels are scheduled sl_ahead before they are transmitted
+  int slot_ahead = gNB->if_inst ? gNB->if_inst->sl_ahead : 6;
+  if (slot_ahead > nb_slots_per_period)
+    buffer_ul_slots = nb_ul_slots_period + (slot_ahead - nb_slots_per_period);
+  else
+    buffer_ul_slots = (nb_ul_slots_period < slot_ahead) ? nb_ul_slots_period : slot_ahead;
+
+  gNB->max_nb_pucch = MAX_MOBILES_PER_GNB * buffer_ul_slots;
+  gNB->max_nb_srs = buffer_ul_slots << 1; // assuming at most 2 SRS per slot
+
+  gNB->pucch = (NR_gNB_PUCCH_t **) malloc16(gNB->max_nb_pucch * sizeof(NR_gNB_PUCCH_t*));
+  for (int i = 0; i < gNB->max_nb_pucch; i++) {
+    LOG_D(PHY,"Allocating Transport Channel Buffers for PUCCH %d/%d\n", i, gNB->max_nb_pucch);
     gNB->pucch[i] = new_gNB_pucch();
-    AssertFatal(gNB->pucch[i]!=NULL,"Can't initialize pucch %d \n", i);
+    AssertFatal(gNB->pucch[i] != NULL,"Can't initialize pucch %d \n", i);
   }
 
-  for (int i=0; i<NUMBER_OF_NR_SRS_MAX; i++) {
-    LOG_I(PHY,"Allocating Transport Channel Buffers for SRS %d/%d\n",i,NUMBER_OF_NR_SRS_MAX);
+  gNB->srs = (NR_gNB_SRS_t **) malloc16(gNB->max_nb_srs * sizeof(NR_gNB_SRS_t*));
+  for (int i = 0; i < gNB->max_nb_srs; i++) {
+    LOG_D(PHY,"Allocating Transport Channel Buffers for SRS %d/%d\n", i, gNB->max_nb_srs);
     gNB->srs[i] = new_gNB_srs();
     AssertFatal(gNB->srs[i]!=NULL,"Can't initialize srs %d \n", i);
   }
 
-  for (int i=0; i<gNB->number_of_nr_ulsch_max; i++) {
+  for (int i = 0; i < NUMBER_OF_NR_ULSCH_MAX; i++) {
 
-    LOG_I(PHY,"Allocating Transport Channel Buffers for ULSCH  %d/%d\n",i,gNB->number_of_nr_ulsch_max);
+    LOG_D(PHY,"Allocating Transport Channel Buffers for ULSCH  %d/%d\n", i, NUMBER_OF_NR_ULSCH_MAX);
 
     gNB->ulsch[i] = new_gNB_ulsch(gNB->max_ldpc_iterations, fp->N_RB_UL);
 
@@ -1046,12 +1081,14 @@ void reset_nr_transport(PHY_VARS_gNB *gNB)
 {
   const NR_DL_FRAME_PARMS *fp = &gNB->frame_parms;
 
-  for (int i = 0; i < NUMBER_OF_NR_PUCCH_MAX; i++)
+  for (int i = 0; i < gNB->max_nb_pucch; i++)
     free_gNB_pucch(gNB->pucch[i]);
+  free(gNB->pucch);
 
-  for (int i = 0; i < NUMBER_OF_NR_SRS_MAX; i++)
+  for (int i = 0; i < gNB->max_nb_srs; i++)
     free_gNB_srs(gNB->srs[i]);
+  free(gNB->srs);
 
-  for (int i=0; i<gNB->number_of_nr_ulsch_max; i++)
+  for (int i = 0; i < NUMBER_OF_NR_ULSCH_MAX; i++)
     free_gNB_ulsch(&gNB->ulsch[i], fp->N_RB_UL);
 }

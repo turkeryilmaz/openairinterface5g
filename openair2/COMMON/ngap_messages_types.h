@@ -133,6 +133,18 @@ typedef struct ngap_ambr_s {
 typedef enum ngap_priority_level_s {
   NGAP_PRIORITY_LEVEL_SPARE       = 0,
   NGAP_PRIORITY_LEVEL_HIGHEST     = 1,
+  NGAP_PRIORITY_LEVEL_2           = 2,
+  NGAP_PRIORITY_LEVEL_3           = 3,
+  NGAP_PRIORITY_LEVEL_4           = 4,
+  NGAP_PRIORITY_LEVEL_5           = 5,
+  NGAP_PRIORITY_LEVEL_6           = 6,
+  NGAP_PRIORITY_LEVEL_7           = 7,
+  NGAP_PRIORITY_LEVEL_8           = 8,
+  NGAP_PRIORITY_LEVEL_9           = 9,
+  NGAP_PRIORITY_LEVEL_10          = 10,
+  NGAP_PRIORITY_LEVEL_11          = 11,
+  NGAP_PRIORITY_LEVEL_12          = 12,
+  NGAP_PRIORITY_LEVEL_13          = 13,
   NGAP_PRIORITY_LEVEL_LOWEST      = 14,
   NGAP_PRIORITY_LEVEL_NO_PRIORITY = 15
 } ngap_priority_level_t;
@@ -262,9 +274,15 @@ typedef struct ngap_transport_layer_addr_s {
       dEST.length = sOURCE.length;                    \
   } while (0)
 
+typedef enum {
+  non_dynamic,
+  dynamic
+} fiveQI_type_t;
+
 typedef struct pdusession_level_qos_parameter_s {
   uint8_t  qfi;
   uint64_t fiveQI;
+  fiveQI_type_t fiveQI_type;
   ngap_allocation_retention_priority_t allocation_retention_priority;
 } pdusession_level_qos_parameter_t;
 
@@ -281,6 +299,8 @@ typedef struct pdusession_s {
   ngap_transport_layer_addr_t      upf_addr;
   /* S-GW Tunnel endpoint identifier */
   uint32_t                         gtp_teid;
+  /* Stores the DRB ID of the DRBs used by this PDU Session */
+  uint8_t                          used_drbs[NGAP_MAX_DRBS_PER_UE];
 } pdusession_t;
 
 
@@ -692,11 +712,20 @@ typedef struct ngap_pdusession_setup_req_s {
   /* gNB ue ngap id as initialized by NGAP layer */
   uint32_t  gNB_ue_ngap_id;
 
+  /* S-NSSAI */
+  ngap_allowed_NSSAI_t allowed_nssai[8];
+
   /* Number of pdusession to be setup in the list */
   uint8_t nb_pdusessions_tosetup;
 
   /* E RAB setup request */
   pdusession_t pdusession_setup_params[NGAP_MAX_PDUSESSION];
+
+  /* UE Uplink Aggregated Max Bitrates */
+  uint64_t ueAggMaxBitRateUplink;
+
+  /* UE Downlink Aggregated Max Bitrates */
+  uint64_t ueAggMaxBitRateDownlink;
 
 } ngap_pdusession_setup_req_t;
 

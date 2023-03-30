@@ -23,6 +23,7 @@
 
 #include "mac_proto.h"
 #include "openair2/RRC/NR/rrc_gNB_UE_context.h"
+#include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
 #include "NR_RRCSetup.h"
 #include "NR_DL-CCCH-Message.h"
@@ -35,7 +36,9 @@ int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc)
   /* dispatch message to dl_rrc_message_rrcSetup() and others, similar to as is
    * done in the DU (should be the same here) */
 
-  if (dl_rrc->srb_id == 0) {
+  LOG_D(NR_MAC, "DL RRC Message Transfer with %d bytes for RNTI %04x SRB %d\n", dl_rrc->rrc_container_length, dl_rrc->rnti, dl_rrc->srb_id);
+
+  if (dl_rrc->srb_id == CCCH) { // SRB 0
 
     NR_DL_CCCH_Message_t *dl_ccch_msg = NULL;
     asn_dec_rval_t dec_rval = uper_decode(NULL,
@@ -56,7 +59,7 @@ int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc)
       AssertFatal(0, "rrcReject not implemented yet\n");
       break;
     case NR_DL_CCCH_MessageType__c1_PR_rrcSetup:
-      LOG_I(NR_MAC, "DL-CCCH/SRB0, received rrcSetup for RNTI %04x\n", dl_rrc->rnti);
+      LOG_D(NR_MAC, "DL-CCCH/SRB0, received rrcSetup for RNTI %04x\n", dl_rrc->rnti);
       return dl_rrc_message_rrcSetup(module_id, dl_rrc, dl_ccch_msg->message.choice.c1->choice.rrcSetup);
       break;
     case NR_DL_CCCH_MessageType__c1_PR_spare2:
@@ -69,6 +72,12 @@ int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc)
       AssertFatal(0 == 1, "Unknown DL-CCCH/SRB0 message %d\n", dl_ccch_msg->message.choice.c1->present);
       break;
     }
+    return 0;
+  } else if (dl_rrc->srb_id == DCCH) { // SRB 1
+    nr_rlc_srb_recv_sdu(dl_rrc->rnti, DCCH, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
+    return 0;
+  } else if (dl_rrc->srb_id == DCCH1) { // SRB 2
+    nr_rlc_srb_recv_sdu(dl_rrc->rnti, DCCH1, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
     return 0;
   }
 
@@ -92,37 +101,21 @@ int dl_rrc_message_rrcSetup(module_id_t module_id, const f1ap_dl_rrc_message_t *
   AssertFatal(dec_rval.code == RC_OK, "could not decode masterCellGroup\n");
 
   /* there might be a memory leak for the cell group if we call this multiple
-   * times. Also, the first parameters of rrc_mac_config_req_gNB() are only
-   * relevant when setting the scc, which we don't do (and cannot do) here. */
-  rrc_pdsch_AntennaPorts_t pap = {0};
-  rrc_mac_config_req_gNB(module_id,
-                         pap, /* only when scc != NULL */
-                         0, /* only when scc != NULL */
-                         0, /* only when scc != NULL */
-                         0, /* only when scc != NULL */
-                         NULL, /* scc */
-                         NULL, /* mib */
-                         NULL, /* sib1 */
-                         0, /* add_ue */
-                         dl_rrc->rnti,
-                         cellGroup);
+   * times. */
+  nr_mac_update_cellgroup(RC.nrmac[module_id], dl_rrc->rnti, cellGroup);
 
   /* TODO: drop the RRC context */
   gNB_RRC_INST *rrc = RC.nrrrc[module_id];
   struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context(rrc, dl_rrc->rnti);
   gNB_RRC_UE_t *ue_p = &ue_context_p->ue_context;
-  ue_context_p->ue_context.SRB_configList = rrcSetup_ies->radioBearerConfig.srb_ToAddModList;
-  ue_context_p->ue_context.masterCellGroup = cellGroup;
+  ue_p->SRB_configList = rrcSetup_ies->radioBearerConfig.srb_ToAddModList;
+  ue_p->masterCellGroup = cellGroup;
 
-  /* TODO: this should pass through RLC and NOT the RRC with a shared buffer */
-  AssertFatal(ue_p->Srb0.Active == 1,"SRB0 is not active\n");
-  memcpy(ue_p->Srb0.Tx_buffer.Payload, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
-  ue_p->Srb0.Tx_buffer.payload_size = dl_rrc->rrc_container_length;
+  nr_rlc_srb_recv_sdu(dl_rrc->rnti, CCCH, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
 
-  protocol_ctxt_t ctxt = { .module_id = module_id, .rnti = dl_rrc->rnti };
+  protocol_ctxt_t ctxt = {.module_id = module_id, .rntiMaybeUEid = dl_rrc->rnti};
   nr_rrc_rlc_config_asn1_req(&ctxt,
                              ue_context_p->ue_context.SRB_configList,
-                             NULL,
                              NULL,
                              NULL,
                              cellGroup->rlc_BearerToAddModList);

@@ -25,6 +25,8 @@
  * \email yoshio.inoue@fujitsu.com,masayuki.harada@fujitsu.com
  * \date 2020
  * \version 0.1
+ *
+ * 2023.01.27 Vladimir Dorovskikh 16 digits IMEISV
  */
 
 
@@ -37,7 +39,9 @@
 #include "nr_nas_msg_sim.h"
 #include "aka_functions.h"
 #include "secu_defs.h"
+#include "kdf.h"
 #include "PduSessionEstablishRequest.h"
+#include "PduSessionEstablishmentAccept.h"
 #include "intertask_interface.h"
 #include "openair2/RRC/NAS/nas_config.h"
 #include <openair3/UICC/usim_interface.h>
@@ -187,18 +191,20 @@ void transferRES(uint8_t ck[16], uint8_t ik[16], uint8_t *input, uint8_t rand[16
   oldS[33] = 0x08;
 
 
-  uint8_t key[32];
+  uint8_t key[32] = {0};
   memcpy(&key[0], ck, 16);
   memcpy(&key[16], ik, 16);  //KEY
-  uint8_t out[32];
-  kdf(key, 32, S, 31 + netNamesize, out, 32);
-  for (int i = 0; i < 16; i++)
-    output[i] = out[16 + i];
+  uint8_t out[32] = {0};
+
+  byte_array_t data = {.buf = S, .len = 31 + netNamesize};
+  kdf(key, data, 32, out);
+
+  memcpy(output, out + 16, 16);
 }
 
 void derive_kausf(uint8_t ck[16], uint8_t ik[16], uint8_t sqn[6], uint8_t kausf[32], uicc_t *uicc) {
   uint8_t S[100]={0};
-  uint8_t key[32];
+  uint8_t key[32] = {0};
 
   memcpy(&key[0], ck, 16);
   memcpy(&key[16], ik, 16);  //KEY
@@ -212,7 +218,9 @@ void derive_kausf(uint8_t ck[16], uint8_t ik[16], uint8_t sqn[6], uint8_t kausf[
   }
   S[9 + netNamesize] = 0x00;
   S[10 + netNamesize] = 0x06;
-  kdf(key, 32, S, 11 + netNamesize, kausf, 32);
+
+  byte_array_t data = {.buf = S, .len = 11 +  netNamesize};
+  kdf(key, data, 32, kausf);
 }
 
 void derive_kseaf(uint8_t kausf[32], uint8_t kseaf[32], uicc_t *uicc) {
@@ -222,12 +230,14 @@ void derive_kseaf(uint8_t kausf[32], uint8_t kseaf[32], uicc_t *uicc) {
   int netNamesize = strlen((char*)S+1);
   S[1 + netNamesize] = (uint8_t)((netNamesize & 0xff00) >> 8);
   S[2 + netNamesize] = (uint8_t)(netNamesize & 0x00ff);
-  kdf(kausf, 32, S, 3 + netNamesize, kseaf, 32);
+
+  byte_array_t data = {.buf = S , .len = 3 + netNamesize};
+  kdf(kausf, data, 32, kseaf);
 }
 
 void derive_kamf(uint8_t *kseaf, uint8_t *kamf, uint16_t abba, uicc_t* uicc) {
   int imsiLen = strlen(uicc->imsiStr);
-  uint8_t S[100];
+  uint8_t S[100] = {0};
   S[0] = 0x6D;  //FC = 0x6D
   memcpy(&S[1], uicc->imsiStr, imsiLen );
   S[1 + imsiLen] = (uint8_t)((imsiLen & 0xff00) >> 8);
@@ -236,12 +246,14 @@ void derive_kamf(uint8_t *kseaf, uint8_t *kamf, uint16_t abba, uicc_t* uicc) {
   S[4 + imsiLen] = (abba & 0xff00) >> 8;
   S[5 + imsiLen] = 0x00;
   S[6 + imsiLen] = 0x02;
-  kdf(kseaf, 32, S, 7 + imsiLen, kamf, 32);
+
+  byte_array_t data = {.buf = S, .len = 7 + imsiLen};
+  kdf(kseaf, data, 32, kamf);
 }
 
 //------------------------------------------------------------------------------
 void derive_knas(algorithm_type_dist_t nas_alg_type, uint8_t nas_alg_id, uint8_t kamf[32], uint8_t *knas_int) {
-  uint8_t S[20];
+  uint8_t S[20] = {0};
   uint8_t out[32] = { 0 };
   S[0] = 0x69;  //FC
   S[1] = (uint8_t)(nas_alg_type & 0xFF);
@@ -250,19 +262,20 @@ void derive_knas(algorithm_type_dist_t nas_alg_type, uint8_t nas_alg_id, uint8_t
   S[4] = nas_alg_id;
   S[5] = 0x00;
   S[6] = 0x01;
-  kdf(kamf, 32, S, 7, out, 32);
-  for (int i = 0; i < 16; i++)
-    knas_int[i] = out[16 + i];
+
+  byte_array_t data = {.buf = S, .len = 7};
+  kdf(kamf, data, 32, out);
+
+  memcpy(knas_int, out+16, 16);
 }
 
 void derive_kgnb(uint8_t kamf[32], uint32_t count, uint8_t *kgnb){
   /* Compute the KDF input parameter
    * S = FC(0x6E) || UL NAS Count || 0x00 0x04 || 0x01 || 0x00 0x01
    */
-  uint8_t  input[32];
+  uint8_t  input[32] = {0};
   //    uint16_t length    = 4;
   //    int      offset    = 0;
-  uint8_t out[32] = { 0 };
 
   LOG_TRACE(INFO, "%s  with count= %d", __FUNCTION__, count);
   memset(input, 0, 32);
@@ -281,9 +294,9 @@ void derive_kgnb(uint8_t kamf[32], uint32_t count, uint8_t *kgnb){
   input[8] = 0;
   input[9] = 1;
 
-  kdf(kamf, 32, input, 10, out, 32);
-  for (int i = 0; i < 32; i++)
-    kgnb[i] = out[i];
+  byte_array_t data = {.buf = input, .len = 10};
+  kdf(kamf, data, 32, kgnb);
+
   printf("kgnb : ");
   for(int pp=0;pp<32;pp++)
    printf("%02x ",kgnb[pp]);
@@ -522,6 +535,31 @@ int nas_itti_kgnb_refresh_req(const uint8_t kgnb[32], int instance) {
   return itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
 }
 
+static int addImeisv(int Mod_id,MM_msg *mm_msg)
+{
+  int i=0;
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac01 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac02 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac03 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac04 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac05 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac06 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac07 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac08 = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit09    = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit10    = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit11    = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit12    = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit13    = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit14    = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitsv1   = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitsv2   = getImeisvDigit(Mod_id,i++);
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.spare  = 0x0f;
+  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.oddeven = 1;
+  return 19;
+}
+
 static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg)
 {
   int size = sizeof(mm_msg_header_t);
@@ -551,12 +589,7 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   mm_msg->fgs_security_mode_complete.messagetype           = FGS_SECURITY_MODE_COMPLETE;
   size += 1;
 
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit1  = 1;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitp1 = 1;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitp  = 1;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.oddeven = 0;
-  size += 5;
+  size += addImeisv(Mod_id, mm_msg);
 
   mm_msg->fgs_security_mode_complete.fgsnasmessagecontainer.nasmessagecontainercontents.value  = registration_request_buf;
   mm_msg->fgs_security_mode_complete.fgsnasmessagecontainer.nasmessagecontainercontents.length = registration_request_len;
@@ -750,7 +783,7 @@ static void generatePduSessionEstablishRequest(int Mod_id, uicc_t * uicc, as_nas
   int dnnSize=strlen(uicc->dnnStr);
   mm_msg->uplink_nas_transport.dnn.value=calloc(1,dnnSize+1);
   mm_msg->uplink_nas_transport.dnn.length = dnnSize + 1;
-  mm_msg->uplink_nas_transport.dnn.value[0] = dnnSize + 1;
+  mm_msg->uplink_nas_transport.dnn.value[0] = dnnSize;
   memcpy(mm_msg->uplink_nas_transport.dnn.value+1,uicc->dnnStr, dnnSize);
   size += (1+1+dnnSize+1);
 
@@ -908,42 +941,8 @@ void *nas_nrue_task(void *args_p)
             LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
           }
         } else if(msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC){
-            uint8_t offset = 0;
-            uint8_t *payload_container = NULL;
-            offset += SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH;
-            uint16_t payload_container_length = htons(((dl_nas_transport_t *)(pdu_buffer + offset))->payload_container_length);
-            if ((payload_container_length >= PAYLOAD_CONTAINER_LENGTH_MIN) && (payload_container_length <= PAYLOAD_CONTAINER_LENGTH_MAX)) {
-              offset += (PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH + 3);
-            }
-
-            if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length) {
-              payload_container = pdu_buffer + offset;
-            }
-            offset = 0;
-            uint8_t pdu_id = *(pdu_buffer+14);
-            while(offset < payload_container_length) {
-	      // Fixme: this is not good 'type' 0x29 searching in TLV like structure
-	      // AND fix dirsty code copy hereafter of the same!!!
-              if (*(payload_container + offset) == 0x29) { // PDU address IEI
-                if ((*(payload_container+offset+1) == 0x05) && (*(payload_container +offset+2) == 0x01)) { // IPV4
-                  nas_getparams();
-                  sprintf(baseNetAddress, "%d.%d", *(payload_container+offset+3), *(payload_container+offset+4));
-                  int third_octet = *(payload_container+offset+5);
-                  int fourth_octet = *(payload_container+offset+6);
-                  LOG_I(NAS, "Received PDU Session Establishment Accept, UE IP: %d.%d.%d.%d\n",
-                    *(payload_container+offset+3), *(payload_container+offset+4),
-                    *(payload_container+offset+5), *(payload_container+offset+6));
-                  nas_config(1,third_octet,fourth_octet,"oaitun_ue");
-                }
-              }
-              if (*(payload_container + offset) == 0x79) {
-                uint8_t qfi = *(payload_container+offset+3);
-                set_qfi_pduid(qfi, pdu_id);
-                break;
-              }
-              offset++;
-            }
-          }
+          capture_pdu_session_establishment_accept_msg(pdu_buffer, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.length);
+        }
 
         break;
       }
@@ -992,7 +991,7 @@ void *nas_nrue_task(void *args_p)
 	    uint8_t offset = 0;
 	    uint8_t *payload_container = pdu_buffer;
 	    offset += SECURITY_PROTECTED_5GS_NAS_MESSAGE_HEADER_LENGTH;
-	    uint16_t payload_container_length = htons(((dl_nas_transport_t *)(pdu_buffer + offset))->payload_container_length);
+	    uint32_t payload_container_length = htons(((dl_nas_transport_t *)(pdu_buffer + offset))->payload_container_length);
 	    if ((payload_container_length >= PAYLOAD_CONTAINER_LENGTH_MIN) &&
 		(payload_container_length <= PAYLOAD_CONTAINER_LENGTH_MAX))
 	      offset += (PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH + 3);

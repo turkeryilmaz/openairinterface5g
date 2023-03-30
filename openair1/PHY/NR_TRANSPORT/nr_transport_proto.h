@@ -38,6 +38,14 @@
 
 #define NR_PBCH_PDU_BITS 24
 
+
+int nr_generate_prs(uint32_t **nr_gold_prs,
+                    int32_t *txdataF,
+                    int16_t amp,
+                    prs_config_t *prs_cfg,
+                    nfapi_nr_config_request_scf_t *config,
+                    NR_DL_FRAME_PARMS *frame_parms);
+
 /*!
 \fn int nr_generate_pss
 \brief Generation of the NR PSS
@@ -100,10 +108,6 @@ int nr_generate_pbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
 void nr_init_pbch_interleaver(uint8_t *interleaver);
 
 NR_gNB_DLSCH_t *new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms,
-                              unsigned char Kmimo,
-                              unsigned char Mdlharq,
-                              uint32_t Nsoft,
-                              uint8_t abstraction_flag,
                               uint16_t N_RB);
 
 void free_gNB_dlsch(NR_gNB_DLSCH_t **dlschptr, uint16_t N_RB, const NR_DL_FRAME_PARMS* frame_parms);
@@ -151,7 +155,8 @@ void nr_ulsch_scale_channel(int32_t **ul_ch_estimates_ext,
                             uint8_t is_dmrs_symbol,                           
                             uint32_t len,
                             uint8_t nrOfLayers,
-                            uint16_t nb_rb);
+                            uint16_t nb_rb,
+                            int shift_ch_ext);
 
 /** \brief This function computes the average channel level over all allocated RBs and antennas (TX/RX) in order to compute output shift for compensated signal
     @param ul_ch_estimates_ext Channel estimates in allocated RBs

@@ -22,9 +22,12 @@
 #ifndef _NR_PDCP_ENTITY_H_
 #define _NR_PDCP_ENTITY_H_
 
+#include <stdbool.h>
 #include <stdint.h>
+#include "openair2/COMMON/platform_types.h"
 
 #include "nr_pdcp_sdu.h"
+#include "openair2/RRC/NR/rrc_gNB_radio_bearers.h"
 
 typedef enum {
   NR_PDCP_DRB_AM,
@@ -99,9 +102,8 @@ typedef struct nr_pdcp_entity_t {
   /* configuration variables */
   int rb_id;
   int pdusession_id;
-  int has_sdap;
-  int has_sdapULheader;
-  int has_sdapDLheader;
+  bool has_sdap_rx;
+  bool has_sdap_tx;
   int sn_size;                  /* SN size, in bits */
   int t_reordering;             /* unit: ms, -1 for infinity */
   int discard_timer;            /* unit: ms, -1 for infinity */
@@ -149,12 +151,28 @@ typedef struct nr_pdcp_entity_t {
   int           rx_size;
   int           rx_maxsize;
   nr_pdcp_statistics_t stats;
+
+  // WARNING: This is a hack!
+  // 3GPP TS 38.331 (RRC) version 15.3 
+  // Section 5.3.4.3 Reception of the SecurityModeCommand by the UE 
+  // The UE needs to send the Security Mode Complete message. However, the message 
+  // needs to be sent without being ciphered. 
+  // However:
+  // 1- The Security Mode Command arrives to the UE with the cipher algo (e.g., nea2).
+  // 2- The UE is configured with the cipher algo.
+  // 3- The Security Mode Complete message is sent to the itti task queue.
+  // 4- The ITTI task, forwards the message ciphering (e.g., nea2) it. 
+  // 5- The gNB cannot understand the ciphered Security Mode Complete message.
+  bool security_mode_completed;
 } nr_pdcp_entity_t;
 
 nr_pdcp_entity_t *new_nr_pdcp_entity(
     nr_pdcp_entity_type_t type,
-    int is_gnb, int rb_id, int pdusession_id,int has_sdap,
-    int has_sdapULheader,int has_sdapDLheader,
+    int is_gnb,
+    int rb_id,
+    int pdusession_id,
+    bool has_sdap_rx,
+    bool has_sdap_tx,
     void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
                         char *buf, int size),
     void *deliver_sdu_data,
@@ -169,6 +187,6 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     unsigned char *ciphering_key,
     unsigned char *integrity_key);
 
-void nr_DRB_preconfiguration(uint16_t crnti);
+void nr_DRB_preconfiguration(ue_id_t crntiMaybeUEid);
 
 #endif /* _NR_PDCP_ENTITY_H_ */

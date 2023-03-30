@@ -42,7 +42,7 @@
 
 #include "PHY/types.h"
 
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 
 #include "PHY/defs_gNB.h"
 #include "SCHED/sched_eNB.h"
@@ -55,7 +55,7 @@
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
-#include "sdr/COMMON/common_lib.h"
+#include "radio/COMMON/common_lib.h"
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
@@ -192,27 +192,20 @@ void rx_func(void *param) {
         gNB->ulsch[j]->harq_mask = 0;
         int h;
         for (h = 0; h < NR_MAX_ULSCH_HARQ_PROCESSES; h++) {
-          gNB->ulsch[j]->harq_processes[h]->status = SCH_IDLE;
+          gNB->ulsch[j]->harq_processes[h]->status = NR_SCH_IDLE;
           gNB->ulsch[j]->harq_processes[h]->round  = 0;
           gNB->ulsch[j]->harq_processes[h]->handled = 0;
         }
         up_removed++;
       }
-    for (j = 0; j < NUMBER_OF_NR_PUCCH_MAX; j++)
+
+    for (j = 0; j < gNB->max_nb_pucch; j++)
       if (gNB->pucch[j]->active > 0 &&
           gNB->pucch[j]->pucch_pdu.rnti == rnti_to_remove[i]) {
         gNB->pucch[j]->active = 0;
         gNB->pucch[j]->pucch_pdu.rnti = 0;
         pucch_removed++;
       }
-#if 0
-    for (j = 0; j < NUMBER_OF_NR_PDCCH_MAX; j++)
-      gNB->pdcch_pdu[j].frame = -1;
-    for (j = 0; j < NUMBER_OF_NR_PDCCH_MAX; j++)
-      gNB->ul_pdcch_pdu[j].frame = -1;
-    for (j = 0; j < NUMBER_OF_NR_PRACH_MAX; j++)
-      gNB->prach_vars.list[j].frame = -1;
-#endif
   }
   if (rnti_to_remove_count) LOG_W(NR_PHY, "to remove rnti_to_remove_count=%d, up_removed=%d down_removed=%d pucch_removed=%d\n", rnti_to_remove_count, up_removed, down_removed, pucch_removed);
   rnti_to_remove_count = 0;
@@ -254,7 +247,7 @@ void rx_func(void *param) {
   stop_meas(&gNB->ul_indication_stats);
 
   int tx_slot_type = nr_slot_select(cfg,frame_rx,slot_tx);
-  if (tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) {
+  if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
     notifiedFIFO_elt_t *res;
     processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
@@ -470,7 +463,7 @@ void init_gNB_Tpool(int inst) {
     pushNotifiedFIFO(&gNB->L1_tx_free, msgL1Tx); // to unblock the process in the beginning
   }
 
-  if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT))
+  if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE!=NFAPI_MODE_VNF))
      threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
 
   LOG_I(PHY,"Creating thread for TX reordering and dispatching to RU\n");
@@ -546,7 +539,7 @@ void init_eNB_afterRU(void) {
     gNB = RC.gNB[inst];
     gNB->ldpc_offload_flag = ldpc_offload_flag;
 
-    phy_init_nr_gNB(gNB,0,0);
+    phy_init_nr_gNB(gNB);
 
     // map antennas and PRACH signals to gNB RX
     if (0) AssertFatal(gNB->num_RU>0,"Number of RU attached to gNB %d is zero\n",gNB->Mod_id);
