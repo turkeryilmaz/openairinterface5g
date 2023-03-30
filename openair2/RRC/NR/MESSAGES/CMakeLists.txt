@@ -1,11 +1,18 @@
+<<<<<<< HEAD
 set(NR_RRC_VERSION 17 3 0)
+=======
+set(NR_RRC_VERSION 16 4 1)
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 make_version(NR_RRC_cc ${NR_RRC_VERSION})
 string(REPLACE ";" "." NR_RRC_RELEASE "${NR_RRC_VERSION}")
 
 if(NR_RRC_RELEASE VERSION_EQUAL "16.4.1")
   include(ASN.1/nr-rrc-16.4.1.cmake)
+<<<<<<< HEAD
 elseif(NR_RRC_RELEASE VERSION_EQUAL "17.3.0")
   include(ASN.1/nr-rrc-17.3.0.cmake)
+=======
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 else()
   message(FATAL_ERROR "unknown NR_RRC_RELEASE ${NR_RRC_RELEASE}")
 endif()

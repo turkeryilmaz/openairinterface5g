@@ -654,7 +654,6 @@ pdcp_data_ind(
   uint16_t     pdcp_uid=0;
 
   MessageDef  *message_p        = NULL;
-  uint8_t     *gtpu_buffer_p    = NULL;
   uint32_t    rx_hfn_for_count;
   int         pdcp_sn_for_count;
   int         security_ok;

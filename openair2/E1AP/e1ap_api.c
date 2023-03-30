@@ -23,7 +23,6 @@
 
 #include <arpa/inet.h>
 #include "e1ap_api.h"
-
 #include "nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_e1_api.h"
 #include "openair2/RRC/NR/cucp_cuup_if.h"

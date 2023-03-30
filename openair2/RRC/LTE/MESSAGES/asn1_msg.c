@@ -942,9 +942,15 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
       exit(1);
 
 
+<<<<<<< HEAD
     *dummy_mcc_0 = (configuration->mcc[CC_id][i] / 100) % 10;
     *dummy_mcc_1 = (configuration->mcc[CC_id][i] / 10) % 10;
     *dummy_mcc_2 = (configuration->mcc[CC_id][i] / 1) % 10;
+=======
+    *dummy_mcc_0 = (configuration->mcc[i] / 100) % 10;
+    *dummy_mcc_1 = (configuration->mcc[i] / 10) % 10;
+    *dummy_mcc_2 = (configuration->mcc[i] / 1) % 10;
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
     asn1cSeqAdd(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_0);
     asn1cSeqAdd(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_1);
     asn1cSeqAdd(&PLMN_identity_info[i].plmn_Identity.mcc->list, dummy_mcc_2);
@@ -983,7 +989,11 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     }
 
     //assign_enum(&PLMN_identity_info.cellReservedForOperatorUse,PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved);
+<<<<<<< HEAD
     PLMN_identity_info[i].cellReservedForOperatorUse=configuration->cellReservedForOperatorUse[CC_id][i];
+=======
+    PLMN_identity_info[i].cellReservedForOperatorUse=LTE_PLMN_IdentityInfo__cellReservedForOperatorUse_notReserved;
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
     asn1cSeqAdd(&(*sib1)->cellAccessRelatedInfo.plmn_IdentityList.list,&PLMN_identity_info[i]);
   }
 
@@ -1062,12 +1072,20 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,&sib_type);
   asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo);
   if(configuration->eMBMS_M2_configured){
+<<<<<<< HEAD
          *sib_type2=LTE_SIB_Type_sibType13_v920;
          asn1cSeqAdd(&schedulingInfo2->sib_MappingInfo.list,sib_type2);
          asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,schedulingInfo2);
   }
   //  asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,NULL);
 
+=======
+         sib_type2=LTE_SIB_Type_sibType13_v920;
+         asn1cSeqAdd(&schedulingInfo2.sib_MappingInfo.list,&sib_type2);
+         asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo2);
+  }
+  //  asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,NULL);
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
   if (configuration->frame_type[CC_id] == TDD)
   {
@@ -2938,7 +2956,6 @@ do_RRCConnectionSetup(
   struct LTE_SRB_ToAddMod__rlc_Config *SRB1_rlc_config = NULL;
   struct LTE_SRB_ToAddMod__logicalChannelConfig *SRB1_lchan_config = NULL;
   struct LTE_LogicalChannelConfig__ul_SpecificParameters *SRB1_ul_SpecificParameters = NULL;
-  LTE_PhysicalConfigDedicated_t *physicalConfigDedicated2 = NULL;
   LTE_DL_CCCH_Message_t dl_ccch_msg;
   LTE_RRCConnectionSetup_t *rrcConnectionSetup = NULL;
   LTE_DL_FRAME_PARMS *frame_parms = &RC.eNB[ctxt_pP->module_id][CC_id]->frame_parms;
@@ -3006,7 +3023,7 @@ do_RRCConnectionSetup(
   SRB1_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup;
   asn1cSeqAdd(&(*SRB_configList)->list,SRB1_config);
   // PhysicalConfigDedicated
-  physicalConfigDedicated2 = CALLOC(1,sizeof(*physicalConfigDedicated2));
+  LTE_PhysicalConfigDedicated_t *physicalConfigDedicated2 = CALLOC(1,sizeof(*physicalConfigDedicated2));
   *physicalConfigDedicated = physicalConfigDedicated2;
   physicalConfigDedicated2->pdsch_ConfigDedicated         = CALLOC(1,sizeof(*physicalConfigDedicated2->pdsch_ConfigDedicated));
   physicalConfigDedicated2->pucch_ConfigDedicated         = CALLOC(1,sizeof(*physicalConfigDedicated2->pucch_ConfigDedicated));
@@ -4805,6 +4822,7 @@ int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
   static LTE_PCCH_Message_t pcch_msg;
   LTE_PagingRecord_t *paging_record_p = NULL;
   int j;
+<<<<<<< HEAD
   static uint8_t oneTimeProcessingFlag = 0;
   static uint8_t count = 0;
   /* This block of code will be one time */
@@ -4820,6 +4838,40 @@ int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
     if (pagingRecordCount > 0)
     {
       pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(LTE_PagingRecordList_t));
+=======
+  pcch_msg.message.present           = LTE_PCCH_MessageType_PR_c1;
+  pcch_msg.message.choice.c1.present = LTE_PCCH_MessageType__c1_PR_paging;
+  pcch_msg.message.choice.c1.choice.paging.pagingRecordList = CALLOC(1,sizeof(*pcch_msg.message.choice.c1.choice.paging.pagingRecordList));
+  pcch_msg.message.choice.c1.choice.paging.systemInfoModification = NULL;
+  pcch_msg.message.choice.c1.choice.paging.etws_Indication = NULL;
+  pcch_msg.message.choice.c1.choice.paging.nonCriticalExtension = NULL;
+  asn_set_empty(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list);
+  pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count = 0;
+
+  if ((paging_record_p = calloc(1, sizeof(LTE_PagingRecord_t))) == NULL) {
+    /* Possible error on calloc */
+    return (-1);
+  }
+
+  memset(paging_record_p, 0, sizeof(LTE_PagingRecord_t));
+
+  /* convert ue_paging_identity_t to PagingUE_Identity_t */
+  if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_s_tmsi) {
+    paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_s_TMSI;
+    MME_CODE_TO_OCTET_STRING(ue_paging_identity.choice.s_tmsi.mme_code,
+                             &paging_record_p->ue_Identity.choice.s_TMSI.mmec);
+    paging_record_p->ue_Identity.choice.s_TMSI.mmec.bits_unused = 0;
+    M_TMSI_TO_OCTET_STRING(ue_paging_identity.choice.s_tmsi.m_tmsi,
+                           &paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI);
+    paging_record_p->ue_Identity.choice.s_TMSI.m_TMSI.bits_unused = 0;
+  } else if (ue_paging_identity.presenceMask == UE_PAGING_IDENTITY_imsi) {
+    paging_record_p->ue_Identity.present = LTE_PagingUE_Identity_PR_imsi;
+    LTE_IMSI_Digit_t imsi_digit[21];
+
+    for (j = 0; j< ue_paging_identity.choice.imsi.length; j++) {  /* IMSI size */
+      imsi_digit[j] = (LTE_IMSI_Digit_t)ue_paging_identity.choice.imsi.buffer[j];
+      asn1cSeqAdd(&paging_record_p->ue_Identity.choice.imsi.list, &imsi_digit[j]);
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
     }
     oneTimeProcessingFlag = 1;
   }
@@ -4881,8 +4933,17 @@ int16_t do_Paging(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
       *(pcch_msg.message.choice.c1.choice.paging.systemInfoModification) = LTE_Paging__systemInfoModification_true;
     }
 
+<<<<<<< HEAD
     enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_PCCH_Message, NULL, (void *)&pcch_msg,
       buffer, buffer_size);
+=======
+  /* add to list */
+  asn1cSeqAdd(&pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list, paging_record_p);
+  LOG_D(RRC, "[eNB %d] do_Paging paging_record: cn_Domain %ld, ue_paging_identity.presenceMask %d, PagingRecordList.count %d\n",
+        Mod_id, paging_record_p->cn_Domain, ue_paging_identity.presenceMask, pcch_msg.message.choice.c1.choice.paging.pagingRecordList->list.count);
+  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_PCCH_Message, NULL, (void *)&pcch_msg,
+                                   buffer, buffer_size);
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
     if(enc_rval.encoded == -1) {
       LOG_I(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",

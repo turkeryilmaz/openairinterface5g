@@ -48,10 +48,14 @@ Description Implements the EPS Mobility Management procedures executed
 #include "networkDef.h"
 #include "nas_log.h"
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "executables/lte-softmodem.h"
 =======
 #include "targets/RT/USER/lte-softmodem.h"
 >>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
+=======
+#include "executables/lte-softmodem.h"
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 #include "emm_proc.h"
 
 #include <assert.h>

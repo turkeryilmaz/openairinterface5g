@@ -75,7 +75,11 @@ U[HW]I ru thread Writing file header to /tmp/iqfile
 ```
 
 ### Playback/replay mode
+<<<<<<< HEAD
 When replaying iq's received by eNB or gNB The option works only for 40MHz bandwidth 3/4 sampling because the information stored in the iq's file header regarding bandwidth is not yet properly processed. In addition the current implementation has only been validated with nr-uesoftmodem in 5G SA configuration.  
+=======
+When replaying iq's received by eNB or gNB The option works only for 5MHz bandwidth because the information stored in the iq's file header regarding bandwidth is not yet properly processed.  
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
  In this version,  mismatch between file content and run time parameters might lead to unpredictable results. In addition a file recorded on a AVX2-capable processor cannot be replayed on a non-AVX2-capable processor (this is to be further investigated).
 options for replay mode are:
 * `subframes-replay` Activate replay mode
@@ -159,6 +163,10 @@ The replay feature is implemented as a oai device.
 * s device is automatically, dynamicaly loaded when the player feature is activated at runtime when the boolean  `device.recplay.subframes-replay` option is set.
 
 ### iq's file format
+<<<<<<< HEAD
 The recorder adds a header containing the device type, the bandwith and a format identifier. Using these information when replaying a file has not yet been implemented, so the player only supports USRP B2xx device and 40MHz bandwith 3/4 sampling. 
+=======
+The recorder adds a header containing the device type, the bandwith and a format identifier. Using these information when replaying a file has not yet been implemented, so the player only supports USRP B2xx device and 5MHz bandwith. 
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
 [oai Wikis home](https://gitlab.eurecom.fr/oai/openairinterface5g/wikis/home)

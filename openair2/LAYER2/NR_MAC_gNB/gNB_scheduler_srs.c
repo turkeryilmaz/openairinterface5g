@@ -275,9 +275,22 @@ void nr_schedule_srs(int module_id, frame_t frame, int slot)
         continue;
       }
 
-      uint16_t period = srs_period[srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.present];
-      uint16_t offset = get_nr_srs_offset(srs_resource->resourceType.choice.periodic->periodicityAndOffset_p);
-      int n_slots_frame = nr_slots_per_frame[current_BWP->scs];
+      NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(current_BWP, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
+      const int num_tda = tdaList->list.count;
+      int max_k2 = 0;
+      // avoid last one in the list (for msg3)
+      for (int i = 0; i < num_tda - 1; i++) {
+        int k2 = get_K2(tdaList, i, current_BWP->scs);
+        max_k2 = k2 > max_k2 ? k2 : max_k2;
+      }
+
+      // we are sheduling SRS max_k2 slot in advance for the presence of SRS to be taken into account when scheduling PUSCH
+      const int n_slots_frame = nr_slots_per_frame[current_BWP->scs];
+      const int sched_slot = (slot + max_k2) % n_slots_frame;
+      const int sched_frame = (frame + ((slot + max_k2) / n_slots_frame)) % 1024;
+
+      const uint16_t period = srs_period[srs_resource->resourceType.choice.periodic->periodicityAndOffset_p.present];
+      const uint16_t offset = get_nr_srs_offset(srs_resource->resourceType.choice.periodic->periodicityAndOffset_p);
 
       // Check if UE will transmit the SRS in this frame
       if (((frame - offset / n_slots_frame) * n_slots_frame) % period == 0) {

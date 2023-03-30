@@ -181,6 +181,25 @@ int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_P
 
 }
 
+int get_pucch_index(int frame, int slot, int n_slots_frame, const NR_TDD_UL_DL_Pattern_t *tdd, int sched_pucch_size)
+{
+  // PUCCH structures are indexed by slot in the PUCCH period determined by sched_pucch_size number of UL slots
+  // this functions return the index to the structure for slot passed to the function
+  const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
+  const int n_ul_slots_period = tdd ? tdd->nrofUplinkSlots + (tdd->nrofUplinkSymbols > 0 ? 1 : 0) : n_slots_frame;
+  const int nr_slots_period = tdd ? n_slots_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity) : n_slots_frame;
+  const int n_ul_slots_frame = n_slots_frame / nr_slots_period * n_ul_slots_period;
+  // (frame * n_ul_slots_frame) adds up the number of UL slots in the previous frames
+  const int frame_start      = frame * n_ul_slots_frame;
+  // ((slot / nr_slots_period) * n_ul_slots_period) adds up the number of UL slots in the previous TDD periods of this frame
+  const int ul_period_start  = (slot / nr_slots_period) * n_ul_slots_period;
+  // ((slot % nr_slots_period) - first_ul_slot_period) gives the progressive number of the slot in this TDD period
+  const int ul_period_slot   = (slot % nr_slots_period) - first_ul_slot_period;
+  // the sum gives the index of current UL slot in the frame which is normalized wrt sched_pucch_size
+  return (frame_start + ul_period_start + ul_period_slot) % sched_pucch_size;
+
+}
+
 void nr_schedule_pucch(gNB_MAC_INST *nrmac,
                        frame_t frameP,
                        sub_frame_t slotP)
@@ -199,7 +218,6 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
     NR_sched_pucch_t *curr_pucch = &UE->UE_sched_ctrl.sched_pucch[pucch_index];
     if (!curr_pucch->active)
       continue;
-
     DevAssert(frameP == curr_pucch->frame && slotP == curr_pucch->ul_slot);
 
     const uint16_t O_ack = curr_pucch->dai_c;
@@ -215,9 +233,10 @@ void nr_schedule_pucch(gNB_MAC_INST *nrmac,
 
 void nr_csi_meas_reporting(int Mod_idP,
                            frame_t frame,
-                           sub_frame_t slot) {
-
-  UE_iterator(RC.nrmac[Mod_idP]->UE_info.list, UE ) {
+                           sub_frame_t slot)
+{
+  gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
+  UE_iterator(nrmac->UE_info.list, UE ) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
@@ -721,7 +740,8 @@ void evaluate_cqi_report(uint8_t *payload,
                          int cumul_bits,
                          uint8_t ri,
                          NR_UE_info_t *UE,
-                         long *cqi_Table){
+                         uint8_t cqi_Table)
+{
 
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
 
@@ -745,8 +765,7 @@ void evaluate_cqi_report(uint8_t *payload,
   // TODO for wideband case and multiple TB
   const int cqi_idx = sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.wb_cqi_1tb;
   const int mcs_table = UE->current_DL_BWP.mcsTableIdx;
-  const int cqi_table = sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.cqi_table;
-  sched_ctrl->dl_max_mcs = get_mcs_from_cqi(mcs_table, cqi_table, cqi_idx);
+  sched_ctrl->dl_max_mcs = get_mcs_from_cqi(mcs_table, cqi_Table, cqi_idx);
 }
 
   // TODO for wideband case and multiple TB
@@ -822,6 +841,7 @@ void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   NR_CSI_ReportConfig__reportQuantity_PR reportQuantity_type = NR_CSI_ReportConfig__reportQuantity_PR_NOTHING;
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
+  NR_UE_DL_BWP_t *dl_bwp = &UE->current_DL_BWP;
   const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
   int cumul_bits = 0;
   int r_index = -1;
@@ -833,6 +853,7 @@ void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
     uint8_t li_bitlen = 0;
     uint8_t pmi_bitlen = 0;
     NR_CSI_ReportConfig_t *csirep = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[csi_report_id];
+    uint8_t cqi_table = (dl_bwp->dci_format == NR_DL_DCI_FORMAT_1_1 && csirep->cqi_Table) ? *csirep->cqi_Table : NR_CSI_ReportConfig__cqi_Table_table1;
     const NR_PUCCH_CSI_Resource_t *pucchcsires = csirep->reportConfigType.choice.periodic->pucch_CSI_ResourceList.list.array[0];
     if(pucchcsires->uplinkBandwidthPartId != ul_bwp->bwp_id)
       continue;
@@ -860,7 +881,7 @@ void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           cumul_bits += ri_bitlen;
           if (r_index != -1)
             skip_zero_padding(&cumul_bits,csi_report,r_index,bitlen);
-          evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,csirep->cqi_Table);
+          evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,cqi_table);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_PMI_CQI:
           cri_bitlen = csi_report->csi_meas_bitlen.cri_bitlen;
@@ -876,7 +897,7 @@ void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           pmi_bitlen = evaluate_pmi_report(payload,csi_report,cumul_bits,r_index,sched_ctrl);
           sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.csi_report_id = csi_report_id;
           cumul_bits += pmi_bitlen;
-          evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,csirep->cqi_Table);
+          evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,cqi_table);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_LI_PMI_CQI:
           cri_bitlen = csi_report->csi_meas_bitlen.cri_bitlen;
@@ -894,7 +915,7 @@ void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           pmi_bitlen = evaluate_pmi_report(payload,csi_report,cumul_bits,r_index,sched_ctrl);
           sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.csi_report_id = csi_report_id;
           cumul_bits += pmi_bitlen;
-          evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,csirep->cqi_Table);
+          evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,cqi_table);
           break;
         default:
           AssertFatal(1==0, "Invalid or not supported CSI measurement report\n");
@@ -1063,7 +1084,7 @@ void set_pucch_allocation(const NR_PUCCH_Config_t *pucch_Config,
                           NR_sched_pucch_t *pucch)
 {
   if(r_pucch<0){
-    const NR_PUCCH_Resource_t *resource = pucch_Config->resourceToAddModList->list.array[0];
+    const NR_PUCCH_Resource_t *resource = ul_bwp->pucch_Config->resourceToAddModList->list.array[0];
     DevAssert(resource->format.present == NR_PUCCH_Resource__format_PR_format0);
     pucch->second_hop_prb = resource->secondHopPRB!= NULL ?  *resource->secondHopPRB : 0;
     pucch->nr_of_symb = resource->format.choice.format0->nrofSymbols;
@@ -1071,7 +1092,7 @@ void set_pucch_allocation(const NR_PUCCH_Config_t *pucch_Config,
     pucch->prb_start = resource->startingPRB;
   }
   else{
-    int rsetindex = *scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup->pucch_ResourceCommon;
+    int rsetindex = *ul_bwp->pucch_ConfigCommon->pucch_ResourceCommon;
     set_r_pucch_parms(rsetindex,
                       r_pucch,
                       bwp_size,

@@ -662,7 +662,6 @@ int wakeup_rxtx(PHY_VARS_eNB *eNB,
       ru_proc->frame_rx,ru_proc->tti_rx,L1_proc->frame_rx,L1_proc->subframe_rx);
 */
     return(0);
-
   }
 
   ++L1_proc->instance_cnt;
@@ -1203,7 +1202,6 @@ void init_transport(PHY_VARS_eNB *eNB) {
   eNB->check_for_SUMIMO_transmissions = 0;
   fp->pucch_config_common.deltaPUCCH_Shift = 1;
   if (eNB->use_DTX == 0) fill_subframe_mask(eNB);
-
 }
 
 

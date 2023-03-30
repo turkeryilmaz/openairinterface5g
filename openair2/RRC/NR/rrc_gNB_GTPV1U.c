@@ -40,6 +40,7 @@
 //#endif
 
 # include "common/ran_context.h"
+#include "openair2/RRC/NR/rrc_gNB_GTPV1U.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -97,20 +98,19 @@ int nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(const protocol_ctxt_t *const ct
     ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[ctxt_pP->module_id], ctxt_pP->rntiMaybeUEid);
 
     for (i = 0; i < create_tunnel_resp_pP->num_tunnels; i++) {
-      ue_context_p->ue_context.gnb_gtp_teid[inde_list[i]]  = create_tunnel_resp_pP->gnb_NGu_teid[i];
-      ue_context_p->ue_context.gnb_gtp_addrs[inde_list[i]] = create_tunnel_resp_pP->gnb_addr;
-      ue_context_p->ue_context.gnb_gtp_psi[inde_list[i]]   = create_tunnel_resp_pP->pdusession_id[i];
-      LOG_I(NR_RRC, PROTOCOL_NR_RRC_CTXT_UE_FMT" nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP tunnel (%u, %u) bearer UE context index %u, msg index %u, id %u, gtp addr len %d \n",
+      ue_context_p->ue_context.gnb_gtp_teid[i + offset] = create_tunnel_resp_pP->gnb_NGu_teid[i];
+      ue_context_p->ue_context.gnb_gtp_addrs[i + offset] = create_tunnel_resp_pP->gnb_addr;
+      ue_context_p->ue_context.gnb_gtp_psi[i + offset] = create_tunnel_resp_pP->pdusession_id[i];
+      LOG_I(NR_RRC,
+            PROTOCOL_NR_RRC_CTXT_UE_FMT " nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP tunnel (%u, %u) bearer UE context index %u, id %u, gtp addr len %d \n",
             PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP),
             create_tunnel_resp_pP->gnb_NGu_teid[i],
-            ue_context_p->ue_context.gnb_gtp_teid[inde_list[i]],
-            inde_list[i],
+            ue_context_p->ue_context.gnb_gtp_teid[i + offset],
             i,
             create_tunnel_resp_pP->pdusession_id[i],
             create_tunnel_resp_pP->gnb_addr.length);
     }
 
-        (void)rnti; /* avoid gcc warning "set but not used" */
     return 0;
   } else {
     return -1;

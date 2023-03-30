@@ -33,11 +33,7 @@
 
 
 #include "COMMON/platform_types.h"
-<<<<<<< HEAD
 #include "common/platform_constants.h"
-=======
-#include "COMMON/platform_constants.h"
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "SCHED_UE/sched_UE.h"
 #include "LTE_SystemInformationBlockType2.h"

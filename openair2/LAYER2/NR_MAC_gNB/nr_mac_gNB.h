@@ -103,6 +103,8 @@ extern const uint8_t nr_rv_round_map[4];
 
 #define MIN_NUM_PRBS_TO_SCHEDULE  5
 
+extern const uint8_t nr_rv_round_map[4];
+
 /*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
  * Especially useful in the scheduler and to keep "classes" of users. */
 typedef struct {
@@ -187,8 +189,6 @@ typedef struct {
   uint8_t msg3_cqireq;
   /// Round of Msg3 HARQ
   uint8_t msg3_round;
-  /// Flag to indicate if Msg3 carries a DCCH or DTCH message
-  bool msg3_dcch_dtch;
   int msg3_startsymb;
   int msg3_nrsymb;
   /// TBS used for Msg4
@@ -355,12 +355,6 @@ typedef struct NR_sched_pucch {
   int nr_of_symb;
   int start_symb;
 } NR_sched_pucch_t;
-
-typedef struct NR_tda_info {
-  mappingType_t mapping_type;
-  int startSymbolIndex;
-  int nrOfSymbols;
-} NR_tda_info_t;
 
 typedef struct NR_pusch_dmrs {
   uint8_t N_PRB_DMRS;
@@ -687,11 +681,8 @@ typedef struct {
   asn_enc_rval_t enc_rval;
   // UE selected beam index
   uint8_t UE_beam_index;
-  bool Msg3_dcch_dtch;
   bool Msg4_ACKed;
   uint32_t ra_timer;
-  /// Sched CSI-RS: scheduling decisions
-  NR_gNB_UCI_STATS_t uci_statS;
   float ul_thr_ue;
   float dl_thr_ue;
 } NR_UE_info_t;
@@ -758,6 +749,8 @@ typedef struct gNB_MAC_INST_s {
   /// NFAPI UL TTI Request Structure for future TTIs, dynamically allocated
   /// because length depends on number of slots
   nfapi_nr_ul_tti_request_t        *UL_tti_req_ahead[NFAPI_CC_MAX];
+  int UL_tti_req_ahead_size;
+  int vrb_map_UL_size;
   /// NFAPI HI/DCI0 Config Request Structure
   nfapi_nr_ul_dci_request_t         UL_dci_req[NFAPI_CC_MAX];
   /// NFAPI DL PDU structure

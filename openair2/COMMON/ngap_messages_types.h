@@ -664,6 +664,9 @@ typedef struct ngap_pdusession_setup_req_s {
   // Fixme: illogical, nssai is part of each pdu session
   ngap_allowed_NSSAI_t allowed_nssai[8];
 
+  /* S-NSSAI */
+  ngap_allowed_NSSAI_t allowed_nssai[8];
+
   /* Number of pdusession to be setup in the list */
   uint8_t nb_pdusessions_tosetup;
 

@@ -127,7 +127,7 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   gNB->frame = frame;
   gNB->slot = slot;
 
-  start_meas(&RC.nrmac[module_idP]->eNB_scheduler);
+  start_meas(&gNB->eNB_scheduler);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ULSCH_SCHEDULER,VCD_FUNCTION_IN);
 
   /* send tick to RLC and RRC every ms */
@@ -149,30 +149,13 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     const int size = gNB->vrb_map_UL_size;
     const int prev_slot = frame * num_slots + slot + size - 1;
     uint16_t *vrb_map_UL = cc[CC_id].vrb_map_UL;
-    memcpy(&vrb_map_UL[last_slot * MAX_BWP_SIZE], &RC.nrmac[module_idP]->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
+    memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
 
-    clear_nr_nfapi_information(RC.nrmac[module_idP], CC_id, frame, slot);
-
-    /*VNF first entry into scheduler. Since frame numbers for future_ul_tti_req of some future slots 
-    will not be set before we encounter them, set them here */
-
-    if (NFAPI_MODE == NFAPI_MODE_VNF){
-      if(vnf_first_sched_entry == 1)
-      {
-        for (int i = 0; i<num_slots; i++){
-          if(i < slot)
-            gNB->UL_tti_req_ahead[CC_id][i].SFN = (frame + 1) % 1024;
-          else
-            gNB->UL_tti_req_ahead[CC_id][i].SFN = frame;
-        }
-        vnf_first_sched_entry = 0;
-      }
-    }
-  }
+    clear_nr_nfapi_information(gNB, CC_id, frame, slot);
 
   if ((slot == 0) && (frame & 127) == 0) {
     char stats_output[16000] = {0};
-    dump_mac_stats(RC.nrmac[module_idP], stats_output, sizeof(stats_output), true);
+    dump_mac_stats(gNB, stats_output, sizeof(stats_output), true);
     LOG_I(NR_MAC, "Frame.Slot %d.%d\n%s\n", frame, slot, stats_output);
   }
 

@@ -38,7 +38,6 @@
 #include "common/utils/LOG/log.h"
 #include "asn1_msg.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
-#include "rrc_eNB_UE_context.h"
 #include "common/ran_context.h"
 
 #define DEBUG_NR_RRC 1

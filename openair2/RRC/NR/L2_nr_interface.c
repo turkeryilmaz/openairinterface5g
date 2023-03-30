@@ -28,7 +28,6 @@
  * \email: raymond.knopp@eurecom.fr, kroempa@gmail.com
  */
 
-#include <f1ap_du_rrc_message_transfer.h>
 #include "platform_types.h"
 #include "nr_rrc_defs.h"
 #include "nr_rrc_extern.h"
@@ -91,7 +90,7 @@ void nr_rrc_mac_update_cellgroup(rnti_t rntiMaybeUEid, NR_CellGroupConfig_t *cgc
   /* Hack: only trigger PDCP if in CU, otherwise it is triggered by RU threads
    * Ideally, PDCP would not neet to be triggered like this but react to ITTI
    * messages automatically */
-  if (ctxt_pP->enb_flag && NODE_IS_CU(RC.nrrrc[ctxt_pP->module_id]->node_type))
+  if (ctxt_pP->enb_flag)
     pdcp_run(ctxt_pP);
 
   return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
@@ -106,9 +105,7 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
                              uint8_t *const    buffer_pP)
 {
 
-#ifdef DEBUG_RRC
   LOG_D(RRC,"[eNB %d] mac_rrc_data_req to SRB ID=%ld\n",Mod_idP,Srb_id);
-#endif
 
   // MIBCH
   if ((Srb_id & RAB_OFFSET) == MIBCH) {
@@ -117,9 +114,6 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
     uint8_t sfn_msb = (uint8_t)((frameP>>4)&0x3f);
     rrc_gNB_carrier_data_t *carrier = &RC.nrrrc[Mod_idP]->carrier;
     NR_BCCH_BCH_Message_t *mib = &carrier->mib;
-
-    mib->message.choice.mib->pdcch_ConfigSIB1.controlResourceSetZero = carrier->pdcch_ConfigSIB1->controlResourceSetZero;
-    mib->message.choice.mib->pdcch_ConfigSIB1.searchSpaceZero = carrier->pdcch_ConfigSIB1->searchSpaceZero;
 
     mib->message.choice.mib->systemFrameNumber.buf[0] = sfn_msb << 2;
     enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_BCH_Message,

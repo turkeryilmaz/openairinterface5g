@@ -104,6 +104,15 @@
 
 extern RAN_CONTEXT_t RC;
 
+extern void pdcp_config_set_security(const protocol_ctxt_t *const ctxt_pP,
+                                     pdcp_t *const pdcp_pP,
+                                     const rb_id_t rb_idP,
+                                     const uint16_t lc_idP,
+                                     const uint8_t security_modeP,
+                                     uint8_t *const kRRCenc,
+                                     uint8_t *const kRRCint,
+                                     uint8_t *const  kUPenc);
+
 static inline uint64_t bitStr_to_uint64(BIT_STRING_t *asn);
 
 mui_t rrc_gNB_mui = 0;
@@ -799,17 +808,7 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
-    rrc_mac_config_req_gNB(rrc->module_id,
-                           rrc->configuration.pdsch_AntennaPorts,
-                           rrc->configuration.pusch_AntennaPorts,
-                           rrc->configuration.sib1_tda,
-                           rrc->configuration.minRXTXTIME,
-                           NULL,
-                           NULL,
-                           NULL,
-                           0,
-                           ue_p->rnti,
-                           ue_p->masterCellGroup);
+    nr_mac_update_cellgroup(RC.nrmac[rrc->module_id], ue_p->rnti, ue_p->masterCellGroup);
 
     uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
                         ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
@@ -1362,6 +1361,8 @@ rrc_gNB_generate_dedicatedRRCReconfiguration_release(
                                    NULL,
                                    NULL);
   LOG_DUMPMSG(NR_RRC,DEBUG_RRC,(char *)buffer,size, "[MSG] RRC Reconfiguration\n");
+
+  ue_context_pP->ue_context.pdu_session_release_command_flag = 1;
 
   /* Free all NAS PDUs */
   if (nas_length > 0) {
@@ -2939,7 +2940,6 @@ static void rrc_DU_process_ue_context_modification_request(MessageDef *msg_p, in
       memcpy(addr.buffer, &drb_p.up_ul_tnl[0].tl_address, sizeof(drb_p.up_ul_tnl[0].tl_address));
       addr.length=sizeof(drb_p.up_ul_tnl[0].tl_address)*8;
       extern instance_t DUuniqInstance;
-      if (!drb_id_to_setup_start) drb_id_to_setup_start = drb_p.drb_id;
       incoming_teid = newGtpuCreateTunnel(DUuniqInstance,
                                           req->rnti,
                                           drb_p.drb_id,
@@ -3129,7 +3129,6 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
     if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
       xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, UE->masterCellGroup);
     }
-
     rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p, cellGroupConfig);
 
     free(cellGroupConfig->rlc_BearerToAddModList);
@@ -4031,6 +4030,19 @@ void *rrc_gnb_task(void *args_p) {
         }
         break;
 
+      case E1AP_SETUP_REQ:
+        LOG_I(NR_RRC, "Received E1AP_SETUP_REQ for instance %d\n", (int)instance);
+        rrc_gNB_process_e1_setup_req(&E1AP_SETUP_REQ(msg_p), instance);
+        break;
+
+      case E1AP_BEARER_CONTEXT_SETUP_RESP:
+        LOG_I(NR_RRC, "Received E1AP_BEARER_CONTEXT_SETUP_RESP for instance %d\n", (int)instance);
+        rrc_gNB_process_e1_bearer_context_setup_resp(&E1AP_BEARER_CONTEXT_SETUP_RESP(msg_p), instance);
+
+      case NGAP_PAGING_IND:
+        rrc_gNB_process_PAGING_IND(msg_p, msg_name_p, instance);
+        break;
+
       default:
         LOG_E(NR_RRC, "[gNB %ld] Received unexpected message %s\n", instance, msg_name_p);
         break;
@@ -4303,3 +4315,4 @@ void nr_rrc_trigger(protocol_ctxt_t *ctxt, int CC_id, int frame, int subframe)
   LOG_D(NR_RRC, "Time in RRC: %u/ %u \n", frame, subframe);
   itti_send_msg_to_task(TASK_RRC_GNB, ctxt->module_id, message_p);
 }
+

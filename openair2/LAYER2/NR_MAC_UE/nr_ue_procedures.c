@@ -199,51 +199,6 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
   }
 }
 
-void get_bwp_info(NR_UE_MAC_INST_t *mac,
-                  int dl_bwp_id,
-                  int ul_bwp_id,
-                  NR_BWP_DownlinkDedicated_t **bwpd,
-                  NR_BWP_DownlinkCommon_t **bwpc,
-                  NR_BWP_UplinkDedicated_t **ubwpd,
-                  NR_BWP_UplinkCommon_t **ubwpc) {
-
-  if (dl_bwp_id > 0) {
-    AssertFatal(mac->DLbwp[dl_bwp_id-1]!=NULL,"mac->DLbwp[%d] is null, shouldn't be\n", (int)dl_bwp_id-1);
-    *bwpd = mac->DLbwp[dl_bwp_id-1]->bwp_Dedicated;
-  } else {
-    if (mac->cg &&
-        mac->cg->spCellConfig &&
-        mac->cg->spCellConfig->spCellConfigDedicated &&
-        mac->cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP)
-      *bwpd = mac->cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP;
-  }
-
-  *bwpc = get_bwp_downlink_common(mac, dl_bwp_id);
-  AssertFatal(*bwpc!=NULL,"bwpc shouldn't be null\n");
-
-    if (ul_bwp_id > 0) {
-       AssertFatal(mac->ULbwp[ul_bwp_id-1]!=NULL,"mac->ULbwp[%d] is null, shouldn't be\n",
-                   ul_bwp_id-1);
-       *ubwpd = mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated;
-       if (mac->ULbwp[ul_bwp_id-1]->bwp_Common) *ubwpc = mac->ULbwp[ul_bwp_id-1]->bwp_Common;
-       else if (mac->scc) *ubwpc = mac->scc->uplinkConfigCommon->initialUplinkBWP;
-       else if (mac->scc_SIB) *ubwpc = &mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP;
-       AssertFatal(*bwpc!=NULL,"bwpc shouldn't be null\n");
-
-    }
-    else {
-       if (mac->cg &&
-           mac->cg->spCellConfig &&
-           mac->cg->spCellConfig->spCellConfigDedicated &&
-           mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
-           mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP)
-          *ubwpd = mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP;
-       if (mac->scc) *ubwpc = mac->scc->uplinkConfigCommon->initialUplinkBWP;
-       else if (mac->scc_SIB) *ubwpc = &mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP;
-       AssertFatal(*ubwpc!=NULL,"ubwpc shouldn't be null\n");
-    }
-}
-
 NR_BWP_DownlinkCommon_t *get_bwp_downlink_common(NR_UE_MAC_INST_t *mac, NR_BWP_Id_t dl_bwp_id) {
   NR_BWP_DownlinkCommon_t *bwp_Common = NULL;
   if (dl_bwp_id > 0 && mac->cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList) {
@@ -510,138 +465,6 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
     LOG_D(MAC,"ULSCH n_RB_DLBWP = %i\n", n_RB_ULBWP);
     LOG_D(MAC,"ULSCH number_rbs = %i\n", pusch_config_pdu->rb_size);
     LOG_D(MAC,"ULSCH start_rb = %i\n", pusch_config_pdu->rb_start);
-  }
-  return 0;
-}
-
-int8_t nr_ue_process_dci_time_dom_resource_assignment(NR_UE_MAC_INST_t *mac,
-                                                      NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList,
-                                                      NR_PDSCH_TimeDomainResourceAllocationList_t *pdsch_TimeDomainAllocationList,
-						      nfapi_nr_ue_pusch_pdu_t *pusch_config_pdu,
-						      fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config_pdu,
-                                                      int *mapping_type,
-						      uint8_t time_domain_ind,
-                                                      int default_abc,
-                                                      bool use_default){
-
-  int dmrs_typeA_pos = (mac->scc != NULL) ? mac->scc->dmrs_TypeA_Position : mac->mib->dmrs_TypeA_Position;
-
-//  uint8_t k_offset=0;
-  int sliv_S=0;
-  int sliv_L=0;
-  uint8_t mu_pusch = 1;
-
-  // definition table j Table 6.1.2.1.1-4
-  uint8_t j = (mu_pusch==3)?3:(mu_pusch==2)?2:1;
-  uint8_t table_6_1_2_1_1_2_time_dom_res_alloc_A[16][3]={ // for PUSCH from TS 38.214 subclause 6.1.2.1.1
-    {j,  0,14}, // row index 1
-    {j,  0,12}, // row index 2
-    {j,  0,10}, // row index 3
-    {j,  2,10}, // row index 4
-    {j,  4,10}, // row index 5
-    {j,  4,8},  // row index 6
-    {j,  4,6},  // row index 7
-    {j+1,0,14}, // row index 8
-    {j+1,0,12}, // row index 9
-    {j+1,0,10}, // row index 10
-    {j+2,0,14}, // row index 11
-    {j+2,0,12}, // row index 12
-    {j+2,0,10}, // row index 13
-    {j,  8,6},  // row index 14
-    {j+3,0,14}, // row index 15
-    {j+3,0,10}  // row index 16
-  };
-  /*uint8_t table_6_1_2_1_1_3_time_dom_res_alloc_A_extCP[16][3]={ // for PUSCH from TS 38.214 subclause 6.1.2.1.1
-    {j,  0,8},  // row index 1
-    {j,  0,12}, // row index 2
-    {j,  0,10}, // row index 3
-    {j,  2,10}, // row index 4
-    {j,  4,4},  // row index 5
-    {j,  4,8},  // row index 6
-    {j,  4,6},  // row index 7
-    {j+1,0,8},  // row index 8
-    {j+1,0,12}, // row index 9
-    {j+1,0,10}, // row index 10
-    {j+2,0,6},  // row index 11
-    {j+2,0,12}, // row index 12
-    {j+2,0,10}, // row index 13
-    {j,  8,4},  // row index 14
-    {j+3,0,8},  // row index 15
-    {j+3,0,10}  // row index 16
-    };*/
-
-  /*
-   * TS 38.214 subclause 5.1.2.1 Resource allocation in time domain (downlink)
-   */
-  if(dlsch_config_pdu != NULL){
-    if (pdsch_TimeDomainAllocationList && use_default==false) {
-
-      if (time_domain_ind >= pdsch_TimeDomainAllocationList->list.count) {
-        LOG_E(MAC, "time_domain_ind %d >= pdsch->TimeDomainAllocationList->list.count %d\n",
-              time_domain_ind, pdsch_TimeDomainAllocationList->list.count);
-        dlsch_config_pdu->start_symbol   = 0;
-        dlsch_config_pdu->number_symbols = 0;
-        return -1;
-      }
-
-      int startSymbolAndLength = pdsch_TimeDomainAllocationList->list.array[time_domain_ind]->startSymbolAndLength;
-      int S,L;
-      SLIV2SL(startSymbolAndLength,&S,&L);
-      dlsch_config_pdu->start_symbol=S;
-      dlsch_config_pdu->number_symbols=L;
-
-      LOG_D(MAC,"SLIV = %i\n", startSymbolAndLength);
-      LOG_D(MAC,"start_symbol = %i\n", dlsch_config_pdu->start_symbol);
-      LOG_D(MAC,"number_symbols = %i\n", dlsch_config_pdu->number_symbols);
-
-    }
-    else {// Default configuration from tables
-
-      bool is_typeA;
-      get_info_from_tda_tables(default_abc,
-                               time_domain_ind,
-                               dmrs_typeA_pos,
-                               1, // normal CP
-                               &is_typeA,
-                               &sliv_S,
-                               &sliv_L);
-      *mapping_type = is_typeA? typeA : typeB;
-      dlsch_config_pdu->number_symbols = sliv_L;
-      dlsch_config_pdu->start_symbol = sliv_S;
-    }
-  }	/*
-	 * TS 38.214 subclause 6.1.2.1 Resource allocation in time domain (uplink)
-	 */
-  if(pusch_config_pdu != NULL){
-    if (pusch_TimeDomainAllocationList && use_default==false) {
-      if (time_domain_ind >= pusch_TimeDomainAllocationList->list.count) {
-        LOG_E(NR_MAC, "time_domain_ind %d >= pusch->TimeDomainAllocationList->list.count %d\n",
-              time_domain_ind, pusch_TimeDomainAllocationList->list.count);
-        pusch_config_pdu->start_symbol_index=0;
-        pusch_config_pdu->nr_of_symbols=0;
-        return -1;
-      }
-      
-      LOG_D(NR_MAC,"Filling Time-Domain Allocation from pusch_TimeDomainAllocationList\n");
-      int startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[time_domain_ind]->startSymbolAndLength;
-      int S,L;
-      SLIV2SL(startSymbolAndLength,&S,&L);
-      pusch_config_pdu->start_symbol_index=S;
-      pusch_config_pdu->nr_of_symbols=L;
-    }
-    else {
-      LOG_D(NR_MAC,"Filling Time-Domain Allocation from tables\n");
-//      k_offset = table_6_1_2_1_1_2_time_dom_res_alloc_A[time_domain_ind-1][0];
-      sliv_S   = table_6_1_2_1_1_2_time_dom_res_alloc_A[time_domain_ind][1];
-      sliv_L   = table_6_1_2_1_1_2_time_dom_res_alloc_A[time_domain_ind][2];
-      // k_offset = table_6_1_2_1_1_3_time_dom_res_alloc_A_extCP[nr_pdci_info_extracted->time_dom_resource_assignment][0];
-      // sliv_S   = table_6_1_2_1_1_3_time_dom_res_alloc_A_extCP[nr_pdci_info_extracted->time_dom_resource_assignment][1];
-      // sliv_L   = table_6_1_2_1_1_3_time_dom_res_alloc_A_extCP[nr_pdci_info_extracted->time_dom_resource_assignment][2];
-      pusch_config_pdu->nr_of_symbols = sliv_L;
-      pusch_config_pdu->start_symbol_index = sliv_S;
-    }
-    LOG_D(NR_MAC,"start_symbol = %i\n", pusch_config_pdu->start_symbol_index);
-    LOG_D(NR_MAC,"number_symbols = %i\n", pusch_config_pdu->nr_of_symbols);
   }
   return 0;
 }
@@ -936,10 +759,8 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       dlsch_config_pdu_1_0->dlDmrsScramblingId = mac->physCellId;
 
     struct NR_DMRS_DownlinkConfig *dl_dmrs_config = NULL;
-    if(dl_bwp_id>0 && mac->DLbwp[dl_bwp_id-1] != NULL)
-      dl_dmrs_config = (mappingtype == typeA) ?
-                       mac->DLbwp[dl_bwp_id-1]->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup :
-                       mac->DLbwp[dl_bwp_id-1]->bwp_Dedicated->pdsch_Config->choice.setup->dmrs_DownlinkForPDSCH_MappingTypeB->choice.setup;
+    if (pdsch_config)
+      dl_dmrs_config = (tda_info.mapping_type == typeA) ? pdsch_config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup : pdsch_config->dmrs_DownlinkForPDSCH_MappingTypeB->choice.setup;
 
     dlsch_config_pdu_1_0->nscid = 0;
     if(dl_dmrs_config && dl_dmrs_config->scramblingID0)
@@ -953,7 +774,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
                                                          mac->scc ? mac->scc->dmrs_TypeA_Position : mac->mib->dmrs_TypeA_Position,
                                                          dlsch_config_pdu_1_0->number_symbols,
                                                          dlsch_config_pdu_1_0->start_symbol,
-                                                         mappingtype,
+                                                         tda_info.mapping_type,
                                                          1);
 
     dlsch_config_pdu_1_0->dmrsConfigType = (dl_dmrs_config != NULL) ?
@@ -1023,13 +844,8 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     if (dci->tpc == 3) dlsch_config_pdu_1_0->accumulated_delta_PUCCH = 3;
     // Sanity check for pucch_resource_indicator value received to check for false DCI.
     valid = 0;
-    if (ul_bwp_id > 0 &&
-        mac->ULbwp[ul_bwp_id-1] &&
-        mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated &&
-        mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated->pucch_Config &&
-        mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup&&
-        mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup->resourceSetToAddModList) {
-      pucch_res_set_cnt = mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup->resourceSetToAddModList->list.count;
+    if (pucch_Config && pucch_Config->resourceSetToAddModList) {
+      pucch_res_set_cnt = pucch_Config->resourceSetToAddModList->list.count;
       for (int id = 0; id < pucch_res_set_cnt; id++) {
 	if (dci->pucch_resource_indicator < mac->ULbwp[ul_bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup->resourceSetToAddModList->list.array[id]->resourceList.list.count) {
 	  valid = 1;
@@ -1196,7 +1012,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
         AssertFatal(1==0,"Invalid dmrs sequence initialization value\n");
     }
 
-    struct NR_DMRS_DownlinkConfig *dl_dmrs_config = (mappingtype == typeA) ?
+    struct NR_DMRS_DownlinkConfig *dl_dmrs_config = (tda_info.mapping_type == typeA) ?
                                                     pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup :
                                                     pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeB->choice.setup;
 
@@ -1379,6 +1195,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
 
     /* dmrs symbol positions*/
     dlsch_config_pdu_1_1->dlDmrsSymbPos = fill_dmrs_mask(pdsch_Config,
+                                                         NR_DL_DCI_FORMAT_1_1,
                                                          mac->scc? mac->scc->dmrs_TypeA_Position:mac->mib->dmrs_TypeA_Position,
                                                          dlsch_config_pdu_1_1->number_symbols,
                                                          dlsch_config_pdu_1_1->start_symbol,
@@ -1452,7 +1269,7 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
                                                nb_rb_oh, 0, Nl);
 
     // TBS_LBRM according to section 5.4.2.1 of 38.212
-    long *maxMIMO_Layers = mac->cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers;
+    long *maxMIMO_Layers = current_DL_BWP->pdsch_servingcellconfig->ext1->maxMIMO_Layers;
     AssertFatal (maxMIMO_Layers != NULL,"Option with max MIMO layers not configured is not supported\n");
     int nl_tbslbrm = *maxMIMO_Layers < 4 ? *maxMIMO_Layers : 4;
     int bw_tbslbrm = get_dlbw_tbslbrm(current_DL_BWP->initial_BWPSize, mac->cg);
@@ -1660,7 +1477,6 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
              mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup) {
       pucch_Config = mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup;
     }
-    else AssertFatal(1==0,"no pucch_Config\n");
 
     pucch_pdu->bwp_size = current_UL_BWP->BWPSize;
     pucch_pdu->bwp_start = current_UL_BWP->BWPStart;
@@ -1775,14 +1591,8 @@ void nr_ue_configure_pucch(NR_UE_MAC_INST_t *mac,
   }
   else AssertFatal(1==0,"problem with pucch configuration\n");
 
-  NR_PUCCH_ConfigCommon_t *pucch_ConfigCommon;
-  if (bwp_id>0 &&
-      mac->ULbwp[bwp_id-1] &&
-      mac->ULbwp[bwp_id-1]->bwp_Common &&
-      mac->ULbwp[bwp_id-1]->bwp_Common->pucch_ConfigCommon)
-                     pucch_ConfigCommon = mac->ULbwp[bwp_id-1]->bwp_Common->pucch_ConfigCommon->choice.setup;
-  else if (mac->scc) pucch_ConfigCommon = mac->scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon->choice.setup;
-  else               pucch_ConfigCommon = mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.pucch_ConfigCommon->choice.setup;
+  NR_PUCCH_ConfigCommon_t *pucch_ConfigCommon = current_UL_BWP->pucch_ConfigCommon;
+
   if (pucch_ConfigCommon->hoppingId != NULL)
     pucch_pdu->hopping_id = *pucch_ConfigCommon->hoppingId;
   else
@@ -2007,34 +1817,12 @@ NR_PUCCH_Resource_t *find_pucch_resource_from_list(struct NR_PUCCH_Config__resou
 *
 *********************************************************************/
 
-void select_pucch_resource(NR_UE_MAC_INST_t *mac,
-                           PUCCH_sched_t *pucch) {
-
+void select_pucch_resource(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *pucch)
+{
   NR_PUCCH_ResourceId_t *current_resource_id = NULL;
   NR_BWP_Id_t bwp_id = mac->current_UL_BWP.bwp_id;
   int n_list;
-
-  if (pucch->is_common == 1 ||
-      (bwp_id == 0 &&
-       mac->cg == NULL) ||
-      (bwp_id == 0 &&
-       mac->cg &&
-       mac->cg->spCellConfig &&
-       mac->cg->spCellConfig->spCellConfigDedicated &&
-       mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
-       mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP &&
-       mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config &&
-       mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup &&
-       mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup->resourceSetToAddModList &&
-       mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup->resourceSetToAddModList->list.array[0] == NULL) ||
-      (mac->ULbwp[bwp_id-1] &&
-       mac->ULbwp[bwp_id-1]->bwp_Dedicated &&
-       mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config &&
-       mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup &&
-       mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup->resourceSetToAddModList &&
-       mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup->resourceSetToAddModList->list.array[0] == NULL)
-      ){
-
+  if (pucch->is_common == 1 || !pucch_Config || !pucch_Config->resourceSetToAddModList || pucch_Config->resourceSetToAddModList->list.array[0] == NULL) {
     /* see TS 38.213 9.2.1  PUCCH Resource Sets */
     int delta_PRI = pucch->resource_indicator;
     int n_CCE_0 = pucch->n_CCE;
@@ -2510,8 +2298,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
           sched_frame = (sched_frame + 1) % 1024;
         }
         AssertFatal(sched_slot < slots_per_frame, "sched_slot was calculated incorrect %d\n", sched_slot);
-        LOG_D(PHY,"HARQ pid %d is active for %d.%d (dl_slot %d, feedback_to_ul %d, is_common %d\n",
-              dl_harq_pid, sched_frame,sched_slot,current_harq->dl_slot,current_harq->feedback_to_ul,current_harq->is_common);
+        LOG_D(PHY, "HARQ pid %d is active for %d.%d (dl_slot %d, feedback_to_ul %d\n", dl_harq_pid, sched_frame, sched_slot, current_harq->dl_slot, current_harq->feedback_to_ul);
         /* check if current tx slot should transmit downlink acknowlegment */
         if (sched_frame == frame && sched_slot == slot) {
           if (get_softmodem_params()->emulate_l1) {
@@ -2583,10 +2370,8 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
   U_DAI_c = number_harq_feedback/number_of_code_word;
   N_m_c_rx = number_harq_feedback;
   int N_SPS_c = 0; /* FFS TODO_NR multicells and SPS are not supported at the moment */
-  if (mac->cg != NULL &&
-      mac->cg->physicalCellGroupConfig != NULL &&
-      mac->cg->physicalCellGroupConfig->harq_ACK_SpatialBundlingPUCCH != NULL) {
-    int N_TB_max_DL = bwpd->pdsch_Config->choice.setup->maxNrofCodeWordsScheduledByDCI[0];
+  if (current_UL_BWP->harq_ACK_SpatialBundlingPUCCH != NULL) {
+    int N_TB_max_DL = current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI[0];
     pucch->n_HARQ_ACK = (((V_DAI_m_DL - U_DAI_c)%4) * N_TB_max_DL) + N_m_c_rx + N_SPS_c;
     LOG_D(MAC, "PUCCH power n(%d) = ( V(%d) - U(%d) )mod4 * N_TB(%d) + N(%d) \n", pucch->n_HARQ_ACK, V_DAI_m_DL, U_DAI_c, N_TB_max_DL, N_m_c_rx);
   }
@@ -2714,23 +2499,6 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac,
 
   const int n_slots_frame = nr_slots_per_frame[current_UL_BWP->scs];
 
-  if (bwp_id>0 &&
-      mac->ULbwp[bwp_id-1] &&
-      mac->ULbwp[bwp_id-1]->bwp_Dedicated &&
-      mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config &&
-      mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup) {
-    pucch_Config =  mac->ULbwp[bwp_id-1]->bwp_Dedicated->pucch_Config->choice.setup;
-  }
-  else if (bwp_id==0 &&
-           mac->cg &&
-           mac->cg->spCellConfig &&
-           mac->cg->spCellConfig->spCellConfigDedicated &&
-           mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
-           mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP &&
-           mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config &&
-           mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup) {
-    pucch_Config = mac->cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->pucch_Config->choice.setup;
-  }
   if(!pucch_Config ||
      !pucch_Config->schedulingRequestResourceToAddModList ||
      pucch_Config->schedulingRequestResourceToAddModList->list.count==0)
@@ -4067,12 +3835,14 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
                 module_idP, frameP, pduP[1], pduP[2], pduP[3], pduP[4], pduP[5], pduP[6]);
 
           bool ra_success = true;
-          for(int i = 0; i<mac_len; i++) {
-            if(ra->cont_res_id[i] != pduP[i+1]) {
-              ra_success = false;
-              break;
-            }
-          }
+	  if (!IS_SOFTMODEM_IQPLAYER) { // Control is bypassed when replaying IQs (BMC)
+	    for(int i = 0; i<mac_len; i++) {
+	      if(ra->cont_res_id[i] != pduP[i+1]) {
+		ra_success = false;
+		break;
+	      }
+	    }
+	  }
 
           if ( (ra->RA_active == 1) && ra_success) {
             nr_ra_succeeded(module_idP, gNB_index, frameP, slot);

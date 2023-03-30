@@ -68,6 +68,7 @@ Description Defines the authentication EMM procedure executed by the
 #include "usim_api.h"
 #include "secu_defs.h"
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "kdf.h"
 #include "Authentication.h"
 #include "executables/lte-softmodem.h"
@@ -75,6 +76,11 @@ Description Defines the authentication EMM procedure executed by the
 #include "Authentication.h"
 #include "targets/RT/USER/lte-softmodem.h"
 >>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
+=======
+#include "kdf.h"
+#include "Authentication.h"
+#include "executables/lte-softmodem.h"
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
 
 /****************************************************************************/
@@ -989,10 +995,14 @@ static int _authentication_kasme(const OctetString *autn,
             input_s[8],input_s[9],input_s[10],input_s[11],
             input_s[12],input_s[13]);
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
   assert(ck->length + ik->length == 32);
   byte_array_t data = {.len = offset, .buf = input_s};
   kdf(key, data, kasme->length, kasme->value);
+<<<<<<< HEAD
 =======
   /* TODO !!! Compute the Kasme key */
   // todo_hmac_256(key, input_s, kasme->value);
@@ -1003,6 +1013,8 @@ static int _authentication_kasme(const OctetString *autn,
       kasme->value,
       kasme->length);
 >>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
+=======
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
   LOG_TRACE(INFO,"EMM-PROC  KASME (l=%d)%s",
             kasme->length,

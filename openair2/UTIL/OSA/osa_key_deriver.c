@@ -123,7 +123,10 @@ int nr_derive_key(algorithm_type_dist_t alg_type, uint8_t alg_id, const uint8_t 
 
 int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t key[32], uint8_t *key_ng_ran_star)
 {
+<<<<<<< HEAD
   uint8_t *out;
+=======
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   uint8_t s[10] = {0};
 
   /* FC */
@@ -136,6 +139,7 @@ int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t 
   /* L0 = length(P0) = 2 */
   s[3] = 0x00;
   s[4] = 0x02;
+<<<<<<< HEAD
 
   /* P1 = NR ARFCN */
   s[5] = (nr_arfcn_dl & 0x00ff0000) >> 16;
@@ -147,6 +151,19 @@ int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t 
   s[9] = 0x03;
 
 
+=======
+
+  /* P1 = NR ARFCN */
+  s[5] = (nr_arfcn_dl & 0x00ff0000) >> 16;
+  s[6] = (nr_arfcn_dl & 0x0000ff00) >> 8;
+  s[7] = (nr_arfcn_dl & 0x000000ff);
+
+  /* L1 = length(P1) = 3 */
+  s[8] = 0x00;
+  s[9] = 0x03;
+
+
+>>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   byte_array_t data = {.buf = s, .len = 10};
   const uint32_t len_key = 32;
   kdf(key, data, len_key, key_ng_ran_star);

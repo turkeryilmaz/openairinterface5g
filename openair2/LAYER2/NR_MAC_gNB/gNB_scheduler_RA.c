@@ -591,7 +591,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
       ra_rnti = 1 + symbol + (slotP * 14) + (freq_index * 14 * 80) + (ul_carrier_id * 14 * 80 * 8);
 
     // Configure RA BWP
-    configure_UE_BWP(nr_mac, scc, NULL, ra, NULL);
+    configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 1);
 
@@ -647,11 +647,12 @@ void nr_initiate_ra_proc(module_id_t module_idP,
     int loop = 0;
     if (ra->rnti == 0) { // This condition allows for the usage of a preconfigured rnti for the CFRA
       do {
-        ra->rnti = (taus() % 65518) + 1;
+        // 3GPP TS 38.321 version 15.13.0 Section 7.1 Table 7.1-1: RNTI values
+        ra->rnti = (taus() % 0xffef) + 1;
         loop++;
       } while (loop != 100
                && !((find_nr_UE(&nr_mac->UE_info, ra->rnti) == NULL) && (find_nr_RA_id(module_idP, CC_id, ra->rnti) == -1)
-                    && ra->rnti >= 1 && ra->rnti <= 65519));
+                    && ra->rnti >= 0x1 && ra->rnti <= 0xffef));
       if (loop == 100) {
         LOG_E(NR_MAC, "%s:%d:%s: [RAPROC] initialisation random access aborted\n", __FILE__, __LINE__, __FUNCTION__);
         abort();
@@ -699,6 +700,8 @@ void nr_schedule_RA(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) {
         case Msg3_retransmission:
           nr_generate_Msg3_retransmission(module_idP, CC_id, frameP, slotP, ra);
           break;
+        case Msg3_dcch_dtch:
+          nr_generate_Msg3_dcch_dtch_response(module_idP, CC_id, frameP, slotP, ra);
         case Msg4:
           nr_generate_Msg4(module_idP, CC_id, frameP, slotP, ra);
           break;
@@ -749,7 +752,7 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
 
-  NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList;
+  NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
   int mu = ul_bwp->scs;
   uint8_t K2 = *pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->k2;
   const int sched_frame = (frame + (slot + K2 >= nr_slots_per_frame[mu])) % 1024;
@@ -923,12 +926,14 @@ void nr_get_Msg3alloc(module_id_t module_id,
                       sub_frame_t current_slot,
                       frame_t current_frame,
                       NR_RA_t *ra,
-                      int16_t *tdd_beam_association) {
+                      int16_t *tdd_beam_association)
+{
 
   // msg3 is scheduled in mixed slot in the following TDD period
 
   uint16_t msg3_nb_rb = 8; // sdu has 6 or 8 bytes
-  frame_type_t frame_type = RC.nrmac[module_id]->common_channels->frame_type;
+  gNB_MAC_INST *mac = RC.nrmac[module_id];
+  frame_type_t frame_type = mac->common_channels->frame_type;
 
   NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
 
@@ -940,7 +945,7 @@ void nr_get_Msg3alloc(module_id_t module_id,
   int Msg3maxsymb = 14, Msg3start = 0;
   ra->Msg3_tda_id = 16; // initialization to a value above limit
 
-  NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList;
+  NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
 
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   const int n_slots_frame = nr_slots_per_frame[mu];
@@ -1137,8 +1142,10 @@ static void nr_add_msg3(module_id_t module_idP, int CC_id, frame_t frameP, sub_f
     return;
   }
 
+  const int scs = ul_bwp->scs;
   const uint16_t mask = SL_to_bitmap(ra->msg3_startsymb, ra->msg3_nrsymb);
-  uint16_t *vrb_map_UL = &RC.nrmac[module_idP]->common_channels[CC_id].vrb_map_UL[ra->Msg3_slot * MAX_BWP_SIZE];
+  int buffer_index = ul_buffer_index(ra->Msg3_frame, ra->Msg3_slot, scs, mac->vrb_map_UL_size);
+  uint16_t *vrb_map_UL = &RC.nrmac[module_idP]->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
   for (int i = 0; i < ra->msg3_nb_rb; ++i) {
     AssertFatal(!(vrb_map_UL[i + ra->msg3_first_rb + ra->msg3_bwp_start] & mask),
                 "RB %d in %4d.%2d is already taken, cannot allocate Msg3!\n",
@@ -1166,8 +1173,8 @@ static void nr_add_msg3(module_id_t module_idP, int CC_id, frame_t frameP, sub_f
   const int ibwp_size = ul_bwp->initial_BWPSize;
   const int scs = ul_bwp->scs;
   const int fh = (ul_bwp->pusch_Config && ul_bwp->pusch_Config->frequencyHopping) ? 1 : 0;
-  const int startSymbolAndLength = ul_bwp->tdaList->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
-  const int mappingtype = ul_bwp->tdaList->list.array[ra->Msg3_tda_id]->mappingType;
+  const int startSymbolAndLength = ul_bwp->tdaList_Common->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
+  const int mappingtype = ul_bwp->tdaList_Common->list.array[ra->Msg3_tda_id]->mappingType;
 
   LOG_D(NR_MAC, "Frame %d, Slot %d Adding Msg3 UL Config Request for (%d,%d) : (%d,%d,%d) for rnti: %d\n",
     frameP,
@@ -1235,12 +1242,9 @@ static void nr_generate_Msg2(module_id_t module_idP,
     const int coresetid = coreset->controlResourceSetId;
     // Calculate number of symbols
     int time_domain_assignment = get_dl_tda(nr_mac, scc, slotP);
-    NR_tda_info_t tda_info = nr_get_pdsch_tda_info(dl_bwp,
-                                                   time_domain_assignment);
-
-    NR_ControlResourceSet_t *coreset = ra->coreset;
-
-    AssertFatal(coreset!=NULL,"Coreset cannot be null for RA-Msg2\n");
+    int mux_pattern = type0_PDCCH_CSS_config ? type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern : 1;
+    NR_tda_info_t tda_info = get_dl_tda_info(dl_bwp, ss->searchSpaceType->present, time_domain_assignment,
+                                             scc->dmrs_TypeA_Position, mux_pattern, NR_RNTI_RA, coresetid, false);
 
     uint16_t *vrb_map = cc[CC_id].vrb_map;
     for (int i = 0; (i < rbSize) && (rbStart <= (BWPSize - rbSize)); i++) {
@@ -1280,7 +1284,6 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
     // look up the PDCCH PDU for this CC, BWP, and CORESET. If it does not exist, create it. This is especially
     // important if we have multiple RAs, and the DLSCH has to reuse them, so we need to mark them
-    const int coresetid = coreset->controlResourceSetId;
     nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15 = nr_mac->pdcch_pdu_idx[CC_id][coresetid];
     if (!pdcch_pdu_rel15) {
       nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdcch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
@@ -1691,7 +1694,25 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
   }
 
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  NR_SearchSpace_t *ss = ra->ra_ss;
+
+  NR_ControlResourceSet_t *coreset = ra->coreset;
+  AssertFatal(coreset!=NULL,"Coreset cannot be null for RA-Msg4\n");
+
+  // Only need to schedule DCI with and empty DL
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
+  long BWPStart = 0;
+  long BWPSize = 0;
+  NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = NULL;
+  if(*ss->controlResourceSetId!=0) {
+    BWPStart = dl_bwp->BWPStart;
+    BWPSize  = dl_bwp->BWPSize;
+  } else {
+    type0_PDCCH_CSS_config = &nr_mac->type0_PDCCH_CSS_config[ra->beam_id];
+    BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
+    BWPSize = type0_PDCCH_CSS_config->num_rbs;
+  }
 
   // if it is a DL slot, if the RA is in MSG4 state
   if (is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP) &&
@@ -1920,19 +1941,10 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
       }
     }
 
-    // look up the PDCCH PDU for this CC, BWP, and CORESET. If it does not exist, create it. This is especially
-    // important if we have multiple RAs, and the DLSCH has to reuse them, so we need to mark them
-    const int coresetid = coreset->controlResourceSetId;
-    nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15 = nr_mac->pdcch_pdu_idx[CC_id][coresetid];
-    if (!pdcch_pdu_rel15) {
-      nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdcch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
-      memset(dl_tti_pdcch_pdu, 0, sizeof(nfapi_nr_dl_tti_request_pdu_t));
-      dl_tti_pdcch_pdu->PDUType = NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE;
-      dl_tti_pdcch_pdu->PDUSize = (uint8_t)(2 + sizeof(nfapi_nr_dl_tti_pdcch_pdu));
-      dl_req->nPDUs += 1;
-      pdcch_pdu_rel15 = &dl_tti_pdcch_pdu->pdcch_pdu.pdcch_pdu_rel15;
-      nr_configure_pdcch(pdcch_pdu_rel15, coreset, false, &ra->sched_pdcch);
-      nr_mac->pdcch_pdu_idx[CC_id][coresetid] = pdcch_pdu_rel15;
+    int alloc = nr_acknack_scheduling(nr_mac, UE, frameP, slotP, r_pucch, 1);
+    if (alloc < 0) {
+      LOG_D(NR_MAC,"Couldn't find a pucch allocation for ack nack (msg4) in frame %d slot %d\n",frameP,slotP);
+      return;
     }
 
     nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdsch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
@@ -2125,8 +2137,8 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
                        &ra->sched_pdcch,
                        CCEIndex,
                        aggregation_level);
-    for (int rb = 0; rb < pdsch_pdu_rel15->rbSize; rb++) {
-      vrb_map[BWPStart + rb + pdsch_pdu_rel15->rbStart] |= SL_to_bitmap(msg4_tda.startSymbolIndex, msg4_tda.nrOfSymbols);
+    for (int rb = 0; rb < rbSize; rb++) {
+      vrb_map[BWPStart + rb + rbStart] |= SL_to_bitmap(msg4_tda.startSymbolIndex, msg4_tda.nrOfSymbols);
     }
 
     LOG_D(NR_MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);

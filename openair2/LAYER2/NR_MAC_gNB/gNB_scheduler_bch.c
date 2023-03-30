@@ -620,11 +620,7 @@ void schedule_nr_sib1(module_id_t module_idP,
 
       AssertFatal((startSymbolIndex+nrOfSymbols)<14,"SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n",time_domain_allocation);
 
-      NR_tda_info_t tda_info = {
-        .mapping_type = is_typeA ? typeA : typeB,
-        .startSymbolIndex = startSymbolIndex,
-        .nrOfSymbols = nrOfSymbols
-      };
+      AssertFatal((tda_info.startSymbolIndex + tda_info.nrOfSymbols) < 14, "SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n", time_domain_allocation);
 
       NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc,
                                                       NULL,
@@ -642,7 +638,7 @@ void schedule_nr_sib1(module_id_t module_idP,
 
       nfapi_nr_dl_tti_request_body_t *dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
       int pdu_index = gNB_mac->pdu_index[0]++;
-      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, startSymbolIndex, nrOfSymbols);
+      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, tda_info.startSymbolIndex, tda_info.nrOfSymbols);
 
       const int ntx_req = TX_req->Number_of_PDUs;
       nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[ntx_req];

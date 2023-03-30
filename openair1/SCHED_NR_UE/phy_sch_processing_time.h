@@ -50,11 +50,7 @@
 //   when PDSCH DM-RS position l1 for the additional DM-RS is != 1,2
 
 */
-<<<<<<< HEAD
 static const int8_t pdsch_N_1_capability_1[4][4] = {
-=======
-int8_t pdsch_N_1_capability_1[4][4] = {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 /* mu      A            B            C   */
 {  0,      8,           14,          13  },
 {  1,      10,          13,          13  },
@@ -73,11 +69,7 @@ int8_t pdsch_N_1_capability_1[4][4] = {
 //   dmrs-DownlinkForPDSCH-MappingTypeA and dmrs-DownlinkForPDSCH-MappingTypeB
 // mu == 2 is for FR1 only
 */
-<<<<<<< HEAD
 static const float pdsch_N_1_capability_2[3][2] = {
-=======
-float pdsch_N_1_capability_2[3][2] = {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 /* mu      A */   
 {  0,      3   },
 {  1,      4.5 },
@@ -92,11 +84,7 @@ float pdsch_N_1_capability_2[3][2] = {
 //   carrying the DCI scheduling the PUSCH was transmitted
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 */
-<<<<<<< HEAD
 static const int8_t pusch_N_2_timing_capability_1[4][2] = {
-=======
-int8_t pusch_N_2_timing_capability_1[4][2] = {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 /* mu      N_2   */
 {  0,      10 },
 {  1,      12 },
@@ -113,11 +101,7 @@ int8_t pusch_N_2_timing_capability_1[4][2] = {
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 // mu == 2 is for FR1 only
 */
-<<<<<<< HEAD
 static const float pusch_N_2_timing_capability_2[3][2] = {
-=======
-float pusch_N_2_timing_capability_2[3][2] = {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 /* mu      N_2   */
 {  0,      5   },
 {  1,      5.5 },
@@ -132,11 +116,7 @@ float pusch_N_2_timing_capability_2[3][2] = {
 //   carrying the DCI scheduling the PUSCH was transmitted
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 */
-<<<<<<< HEAD
 static const float pusch_d_2_2_timing_capability_1[4][2] = {
-=======
-float pusch_d_2_2_timing_capability_1[4][2] = {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 /* mu      d_2_2   */
 {  0,      1   },
 {  1,      2   },
@@ -152,11 +132,7 @@ float pusch_d_2_2_timing_capability_1[4][2] = {
 //   carrying the DCI scheduling the PUSCH was transmitted
 //   mu_UL is the SCS of the UL channel with which PUSCH to be transmitted
 */
-<<<<<<< HEAD
 static const float pusch_d_2_2_timing_capability_2[4][2] = {
-=======
-float pusch_d_2_2_timing_capability_2[4][2] = {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 /* mu      d_2_2   */
 {  0,      3   },
 {  1,      5   },
