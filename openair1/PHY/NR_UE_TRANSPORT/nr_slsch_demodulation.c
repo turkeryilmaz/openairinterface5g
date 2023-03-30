@@ -36,9 +36,9 @@ void nr_slsch_extract_rbs(int32_t **rxdataF,
 
   int8_t validDmrsEst;
   if (chest_time_type == 0)
-    validDmrsEst = get_valid_dmrs_idx_for_channel_est(harq->dlDmrsSymbPos,symbol);
+    validDmrsEst = get_valid_dmrs_idx_for_channel_est(harq->dlDmrsSymbPos, symbol);
   else
-    validDmrsEst = get_next_dmrs_symbol_in_slot(harq->dlDmrsSymbPos,harq->start_symbol,harq->nb_symbols); // get first dmrs symbol index
+    validDmrsEst = get_next_dmrs_symbol_in_slot(harq->dlDmrsSymbPos, harq->start_symbol, harq->nb_symbols); // get first dmrs symbol index
 
   if (1 <= symbol && symbol <= 3) {
     nb_re_sci1 = NR_NB_SC_PER_RB * NB_RB_SCI1;
