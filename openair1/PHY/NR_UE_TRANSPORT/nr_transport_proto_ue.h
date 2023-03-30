@@ -806,7 +806,8 @@ void nr_dlsch_channel_compensation(int32_t **rxdataF_ext,
                                 uint8_t mod_order,
                                 uint16_t nb_rb,
                                 uint8_t output_shift,
-                                PHY_NR_MEASUREMENTS *phy_measurements);
+                                PHY_NR_MEASUREMENTS *phy_measurements,
+                                uint32_t offset);
 
 void nr_dlsch_channel_compensation_core(int **rxdataF_ext,
                                      int **dl_ch_estimates_ext,
