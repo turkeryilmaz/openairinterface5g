@@ -203,7 +203,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   NR_DL_FRAME_PARMS *const fp            = &ue->frame_parms;
   NR_UE_COMMON *const common_vars        = &ue->common_vars;
   NR_UE_PBCH  **const pbch_vars          = ue->pbch_vars;
-  NR_UE_PSBCH **const psbch_vars         = ue->psbch_vars;
   NR_UE_PRACH **const prach_vars         = ue->prach_vars;
   NR_UE_CSI_IM **const csiim_vars        = ue->csiim_vars;
   NR_UE_CSI_RS **const csirs_vars        = ue->csirs_vars;
@@ -359,7 +358,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
     prach_vars[gNB_id] = (NR_UE_PRACH *)malloc16_clear(sizeof(NR_UE_PRACH));
     pbch_vars[gNB_id] = (NR_UE_PBCH *)malloc16_clear(sizeof(NR_UE_PBCH));
-    psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
     csiim_vars[gNB_id] = (NR_UE_CSI_IM *)malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = (NR_UE_CSI_RS *)malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = (NR_UE_SRS *)malloc16_clear(sizeof(NR_UE_SRS));
@@ -479,7 +477,6 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     free_and_zero(ue->srs_vars[gNB_id]);
 
     free_and_zero(ue->pbch_vars[gNB_id]);
-    free_and_zero(ue->psbch_vars[gNB_id]);
     free_and_zero(ue->prach_vars[gNB_id]);
   }
 

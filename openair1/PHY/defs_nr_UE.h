@@ -329,17 +329,6 @@ typedef struct {
   //uint32_t pdu_fer;
 } NR_UE_PBCH;
 
-#define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
-
-typedef struct {
-  uint32_t psbch_a;
-  uint32_t psbch_a_interleaved;
-  uint32_t psbch_a_prime;
-  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
-} NR_UE_PSBCH;
-
 typedef struct {
   int16_t amp;
   bool active;
@@ -462,7 +451,6 @@ typedef struct {
   fapi_nr_config_request_t nrUE_config;
 
   NR_UE_PBCH      *pbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
-  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];

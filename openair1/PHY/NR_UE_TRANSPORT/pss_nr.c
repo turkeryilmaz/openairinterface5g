@@ -70,28 +70,30 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   AssertFatal(fp->ofdm_symbol_size > 127,"Illegal ofdm_symbol_size %d\n",fp->ofdm_symbol_size);
   AssertFatal(N_ID_2>=0 && N_ID_2 <=2,"Illegal N_ID_2 %d\n",N_ID_2);
   const int x_initial[INITIAL_PSS_NR] = {0, 1, 1 , 0, 1, 1, 1};
-  int_least16_t x[LENGTH_PSS_NR];
+  int16_t x[LENGTH_PSS_NR];
   for (int i = 0; i < INITIAL_PSS_NR; i++)
     x[i] = x_initial[i];
 
   for (int i = 0; i < (LENGTH_PSS_NR - INITIAL_PSS_NR); i++)
     x[i + INITIAL_PSS_NR] = (x[i + 4] + x[i]) % 2;
 
-  c16_t d_pss[LENGTH_PSS_NR];
+  int16_t d_pss[LENGTH_PSS_NR];
   for (int n = 0; n < LENGTH_PSS_NR; n++) {
     int m = (n + pss_seq_offset + 43 * N_ID_2) % (LENGTH_PSS_NR);
-    d_pss[n].r = (1 - 2 * x[m]);
-    d_pss[n].i = 0;
+    d_pss[n] = (1 - 2 * x[m]);
   }
 
   /* PSS is directly mapped to subcarrier without modulation 38.211 */
   c16_t primary_synchro[LENGTH_PSS_NR];
-  c16_t *primary_synchro2 = primary_synchro_nr[N_ID_2];
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
-    primary_synchro[i].r = ((d_pss[i].r * SHRT_MAX) >> SCALING_PSS_NR);
-    primary_synchro[i].i = ((d_pss[i].i * SHRT_MAX) >> SCALING_PSS_NR);
-    primary_synchro2[i].r = d_pss[i].r;
-    primary_synchro2[i].i = d_pss[i].i;
+    primary_synchro[i].r = ((d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR);
+    primary_synchro[i].i = 0;
+    }
+
+  c16_t *primary_synchro2 = primary_synchro_nr[N_ID_2];
+  for (int i = 0; i < LENGTH_PSS_NR / 2; i++) {
+    primary_synchro2[i].r = d_pss[2 * i];
+    primary_synchro2[i].i = d_pss[2 * i + 1];
   }
 
   /* call of IDFT should be done with ordered input as below
@@ -130,7 +132,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   }
 
   /* IFFT will give temporal signal of Pss */
-  c16_t out[2 * fp->ofdm_symbol_size] __attribute__((aligned(32)));
+  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
   idft((int16_t)get_idft(fp->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
   c16_t *primary_synchro_time = primary_synchro_time_nr[N_ID_2];
   for (unsigned int i = 0; i < fp->ofdm_symbol_size; i++) {
@@ -164,10 +166,10 @@ void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
       primary_synchro_time_nr[i] = p;
       bzero(primary_synchro_time_nr[i], 2 * sizeof(int16_t) * frame_parms_ue->ofdm_symbol_size);
     }
-    p = malloc16(2 * sizeof(int16_t) * LENGTH_PSS_NR);
+    p = malloc16(2 * sizeof(int16_t) * frame_parms_ue->ofdm_symbol_size);
     if (p != NULL) {
       primary_synchro_nr[i] = p;
-      bzero(primary_synchro_nr[i], 2 * sizeof(int16_t) * LENGTH_PSS_NR);
+      bzero(primary_synchro_nr[i], 2 * sizeof(int16_t) * frame_parms_ue->ofdm_symbol_size);
     }
     generate_pss_nr(frame_parms_ue, i, pss_sequence);
   }
@@ -468,17 +470,17 @@ int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
   int maxval = 0;
   for (int i = 0; i < frame_parms->ofdm_symbol_size;i++) {
     maxval = max(maxval, primary_synchro_time_nr[0][i].r);
-    maxval = max(maxval, -primary_synchro_time_nr[0][i].r);
-    maxval = max(maxval, primary_synchro_time_nr[1][i].r);
-    maxval = max(maxval, -primary_synchro_time_nr[1][i].r);
     maxval = max(maxval, primary_synchro_time_nr[0][i].i);
+    maxval = max(maxval, -primary_synchro_time_nr[0][i].r);
     maxval = max(maxval, -primary_synchro_time_nr[0][i].i);
+    maxval = max(maxval, primary_synchro_time_nr[1][i].r);
     maxval = max(maxval, primary_synchro_time_nr[1][i].i);
+    maxval = max(maxval, -primary_synchro_time_nr[1][i].r);
     maxval = max(maxval, -primary_synchro_time_nr[1][i].i);
     if (get_softmodem_params()->sl_mode == 0) {
       maxval = max(maxval, primary_synchro_time_nr[2][i].r);
-      maxval = max(maxval, -primary_synchro_time_nr[2][i].r);
       maxval = max(maxval, primary_synchro_time_nr[2][i].i);
+      maxval = max(maxval, -primary_synchro_time_nr[2][i].r);
       maxval = max(maxval, -primary_synchro_time_nr[2][i].i);
     }
   }
@@ -487,7 +489,7 @@ int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
   int64_t avg[avg_size];
   bzero(avg, avg_size);
 
-  int shift = log2_approx(maxval);//*(frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples)*2);
+  int shift = log2_approx(maxval);
   int64_t peak_value = 0;
   unsigned int peak_position = 0;
   unsigned int pss_source = 0;
@@ -524,13 +526,13 @@ int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
     // Computing cross-correlation at peak on half the symbol size for first half of data
     c32_t r1 = dot_product(primary_synchro_time_nr[pss_source],
                            &(rxdata[0][peak_position + is * frame_parms->samples_per_frame]),
-                           frame_parms->ofdm_symbol_size,
+                           frame_parms->ofdm_symbol_size >> 1,
                            shift);
     // Computing cross-correlation at peak on half the symbol size for data shifted by half symbol size
     // as it is real and complex it is necessary to shift by a value equal to symbol size to obtain such shift
-    c32_t r2 = dot_product(primary_synchro_time_nr[pss_source],
-                           &(rxdata[0][peak_position + is * frame_parms->samples_per_frame]),
-                           frame_parms->ofdm_symbol_size,
+    c32_t r2 = dot_product(primary_synchro_time_nr[pss_source] + (frame_parms->ofdm_symbol_size >> 1),
+                           &(rxdata[0][peak_position + is * frame_parms->samples_per_frame]) + (frame_parms->ofdm_symbol_size >> 1),
+                           frame_parms->ofdm_symbol_size >> 1,
                            shift);
     cd_t r1d = {r1.r, r1.i}, r2d = {r2.r, r2.i};
     // estimation of fractional frequency offset: angle[(result1)'*(result2)]/pi
@@ -540,7 +542,7 @@ int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
   *id = pss_source;
 
   for (int pss_index = 0; pss_index < NUMBER_PSS_SEQUENCE; pss_index++)
-    avg[pss_index] /= (length / step);
+    avg[pss_index] /= (length / 4);
 
   LOG_I(NR_PHY, "[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n",
         pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value), dB_fixed64(avg[pss_source]), ffo_est);

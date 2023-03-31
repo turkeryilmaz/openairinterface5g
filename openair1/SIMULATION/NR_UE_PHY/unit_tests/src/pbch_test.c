@@ -97,7 +97,7 @@ int test_synchro_pss_sss_nr(PHY_VARS_NR_UE *PHY_vars_UE, int position_symbol, in
   UE_nr_rxtx_proc_t proc = {0};
   int synchro_position;
   int offset;
-  int16_t *tmp;
+  c16_t *tmp;
   int32_t metric_fdd_ncp=0;
   uint8_t phase_fdd_ncp;
   int rate_change = SYNCHRO_RATE_CHANGE_FACTOR;
@@ -118,7 +118,7 @@ int test_synchro_pss_sss_nr(PHY_VARS_NR_UE *PHY_vars_UE, int position_symbol, in
   /* knowing that synchronisation position gives pss ofdm start one can deduce start of sss symbol */
   offset = (position_symbol + (SSS_SYMBOL_NB - PSS_SYMBOL_NB)*(frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples));
 
-  tmp = (int16_t *)&PHY_vars_UE->common_vars.rxdata[0][offset];
+  tmp = &PHY_vars_UE->common_vars.rxdata[0][offset];
 
   insert_sss_nr(tmp, frame_parms);
 
