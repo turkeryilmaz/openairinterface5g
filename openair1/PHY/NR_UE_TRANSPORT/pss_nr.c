@@ -410,7 +410,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 *
 * NAME :         pss_search_time_nr
 *
-* PARAMETERS :   received buffer
+* PARAMETERS :   received buffer in time domain
 *                frame parameters
 *
 * RETURN :       position of detected pss
