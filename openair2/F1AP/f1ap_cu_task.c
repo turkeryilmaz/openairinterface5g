@@ -96,20 +96,20 @@ static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr) {
   // 2. use RC.rrc[nb_id] to fill the sctp_init_t with the ip, port
   // 3. creat an itti message to init
   LOG_I(F1AP, "F1AP_CU_SCTP_REQ(create socket)\n");
-  MessageDef  *message_p = NULL;
-  message_p = itti_alloc_new_message (TASK_CU_F1, 0, SCTP_INIT_MSG);
-  message_p->ittiMsg.sctp_init.port = F1AP_PORT_NUMBER;
-  message_p->ittiMsg.sctp_init.ppid = F1AP_SCTP_PPID;
-  message_p->ittiMsg.sctp_init.ipv4 = 1;
-  message_p->ittiMsg.sctp_init.ipv6 = 0;
-  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(my_addr);
+  MessageDef *message_p = SCTP_INIT_MSG_alloc(TASK_CU_F1, 0);
+  sctp_init_t *msg = SCTP_INIT_MSG_data(message_p);
+  msg->port = F1AP_PORT_NUMBER;
+  msg->ppid = F1AP_SCTP_PPID;
+  msg->ipv4 = 1;
+  msg->ipv6 = 0;
+  msg->nb_ipv4_addr = 1;
+  msg->ipv4_address[0] = inet_addr(my_addr);
   /*
    * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
    * * * * Disable it for now.
    */
-  message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
-  message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  msg->nb_ipv6_addr = 0;
+  msg->ipv6_address[0] = "0:0:0:0:0:0:0:1";
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
 }
 
@@ -129,59 +129,54 @@ void *F1AP_CU_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_CU_F1, &received_msg);
+    instance_t inst=ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+   
     LOG_D(F1AP, "CU Task Received %s for instance %ld\n",
-          ITTI_MSG_NAME(received_msg), ITTI_MSG_DESTINATION_INSTANCE(received_msg));
+          ITTI_MSG_NAME(received_msg), inst);
     switch (ITTI_MSG_ID(received_msg)) {
       case SCTP_NEW_ASSOCIATION_IND:
-        cu_task_handle_sctp_association_ind(ITTI_MSG_ORIGIN_INSTANCE(received_msg),
-                                            &received_msg->ittiMsg.sctp_new_association_ind,
-                                            IPaddrs);
+        cu_task_handle_sctp_association_ind(ITTI_MSG_ORIGIN_INSTANCE(received_msg),SCTP_NEW_ASSOCIATION_IND_data(received_msg),IPaddrs);
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
-        cu_task_handle_sctp_association_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                             &received_msg->ittiMsg.sctp_new_association_resp);
+        cu_task_handle_sctp_association_resp(inst,SCTP_NEW_ASSOCIATION_RESP_data(received_msg));
         break;
 
       case SCTP_DATA_IND:
-        cu_task_handle_sctp_data_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &received_msg->ittiMsg.sctp_data_ind);
+        cu_task_handle_sctp_data_ind(inst,SCTP_DATA_IND_data(received_msg));
         break;
 
       case F1AP_SETUP_RESP: // from rrc
-        CU_send_F1_SETUP_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                  &F1AP_SETUP_RESP(received_msg));
+        CU_send_F1_SETUP_RESPONSE(inst,
+                                  F1AP_SETUP_RESP_data(received_msg));
         break;
 
       case F1AP_GNB_CU_CONFIGURATION_UPDATE: // from rrc
-        CU_send_gNB_CU_CONFIGURATION_UPDATE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                            &F1AP_GNB_CU_CONFIGURATION_UPDATE(received_msg));
+        CU_send_gNB_CU_CONFIGURATION_UPDATE(inst,F1AP_GNB_CU_CONFIGURATION_UPDATE_data(received_msg));
         break;
 
       case F1AP_DL_RRC_MESSAGE: // from rrc
-        CU_send_DL_RRC_MESSAGE_TRANSFER(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                        &F1AP_DL_RRC_MESSAGE(received_msg));
-        free(F1AP_DL_RRC_MESSAGE(received_msg).rrc_container);
+        CU_send_DL_RRC_MESSAGE_TRANSFER(inst,
+                                        F1AP_DL_RRC_MESSAGE_data(received_msg));
+        free(F1AP_DL_RRC_MESSAGE_data(received_msg)->rrc_container);
         break;
 
       case F1AP_UE_CONTEXT_SETUP_REQ: // from rrc
-        CU_send_UE_CONTEXT_SETUP_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                         &F1AP_UE_CONTEXT_SETUP_REQ(received_msg));
+        CU_send_UE_CONTEXT_SETUP_REQUEST(inst,
+                                         F1AP_UE_CONTEXT_SETUP_REQ_data(received_msg));
         break;
 
       case F1AP_UE_CONTEXT_MODIFICATION_REQ:
-        CU_send_UE_CONTEXT_MODIFICATION_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                                &F1AP_UE_CONTEXT_MODIFICATION_REQ(received_msg));
+        CU_send_UE_CONTEXT_MODIFICATION_REQUEST(inst,
+                                                F1AP_UE_CONTEXT_MODIFICATION_REQ_data(received_msg));
         break;
 
       case F1AP_UE_CONTEXT_RELEASE_CMD: // from rrc
-        CU_send_UE_CONTEXT_RELEASE_COMMAND(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                           &F1AP_UE_CONTEXT_RELEASE_CMD(received_msg));
+        CU_send_UE_CONTEXT_RELEASE_COMMAND(inst,F1AP_UE_CONTEXT_RELEASE_CMD_data(received_msg));
         break;
 
       case F1AP_PAGING_IND:
-        CU_send_Paging(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                       &F1AP_PAGING_IND(received_msg));
+        CU_send_Paging(inst,F1AP_PAGING_IND_data(received_msg));
         break;
 
       //    case F1AP_SETUP_RESPONSE: // This is from RRC

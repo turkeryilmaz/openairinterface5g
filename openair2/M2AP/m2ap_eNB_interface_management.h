@@ -32,7 +32,7 @@
 
 #ifndef M2AP_ENB_INTERFACE_MANAGEMENT_H_
 #define M2AP_ENB_INTERFACE_MANAGEMENT_H_
-
+#include "openair2/COMMON/sctp_messages_types.h"
 /*
  * Session Start 
  */

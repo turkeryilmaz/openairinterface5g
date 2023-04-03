@@ -46,6 +46,7 @@
 #include "queue.h"
 #include "assertions.h"
 #include "conversions.h"
+#include "openair2/X2AP/x2ap_eNB_itti_messaging.h"
 
 struct x2ap_enb_map;
 struct x2ap_eNB_data_s;
@@ -221,8 +222,8 @@ int x2ap_eNB_init_sctp (x2ap_eNB_instance_t *instance_p,
   sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
-  message = itti_alloc_new_message (TASK_X2AP, 0, SCTP_INIT_MSG_MULTI_REQ);
-  sctp_init = &message->ittiMsg.sctp_init_multi;
+  message = SCTP_INIT_MSG_MULTI_REQ_alloc(TASK_X2AP, 0);
+  sctp_init = SCTP_INIT_MSG_MULTI_REQ_data(message);
   sctp_init->port = enb_port_for_X2C;
   sctp_init->ppid = X2AP_SCTP_PPID;
   sctp_init->ipv4 = 1;
@@ -253,8 +254,8 @@ static void x2ap_eNB_register_eNB(x2ap_eNB_instance_t *instance_p,
   x2ap_eNB_data_t                  *x2ap_enb_data             = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(target_eNB_ip_address != NULL);
-  message = itti_alloc_new_message(TASK_X2AP, 0, SCTP_NEW_ASSOCIATION_REQ);
-   sctp_new_association_req_t *sctp_new_association_req = &message->ittiMsg.sctp_new_association_req;
+  message = SCTP_NEW_ASSOCIATION_REQ_alloc(TASK_X2AP, 0);
+  sctp_new_association_req_t *sctp_new_association_req = SCTP_NEW_ASSOCIATION_REQ_data(message);
   sctp_new_association_req->port = enb_port_for_X2C;
   sctp_new_association_req->ppid = X2AP_SCTP_PPID;
   sctp_new_association_req->in_streams  = in_streams;
@@ -640,6 +641,7 @@ void *x2ap_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_X2AP, &received_msg);
+    instance_t inst=ITTI_MSG_DESTINATION_INSTANCE(received_msg);
     LOG_D(X2AP, "Received message %d:%s\n",
 	       ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
@@ -649,67 +651,58 @@ void *x2ap_task(void *arg) {
         break;
 
       case X2AP_SUBFRAME_PROCESS:
-        x2ap_check_timers(ITTI_MSG_DESTINATION_INSTANCE(received_msg));
+        x2ap_check_timers(inst);
         break;
 
       case X2AP_REGISTER_ENB_REQ:
-        x2ap_eNB_handle_register_eNB(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &X2AP_REGISTER_ENB_REQ(received_msg));
+        x2ap_eNB_handle_register_eNB(inst,X2AP_REGISTER_ENB_REQ_data(received_msg));
         break;
 
       case X2AP_HANDOVER_REQ:
-        x2ap_eNB_handle_handover_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &X2AP_HANDOVER_REQ(received_msg));
+        x2ap_eNB_handle_handover_req(inst,X2AP_HANDOVER_REQ_data(received_msg));
         break;
 
       case X2AP_HANDOVER_REQ_ACK:
-        x2ap_eNB_handle_handover_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                         &X2AP_HANDOVER_REQ_ACK(received_msg));
+        x2ap_eNB_handle_handover_req_ack(inst,X2AP_HANDOVER_REQ_ACK_data(received_msg));
         break;
 
       case X2AP_UE_CONTEXT_RELEASE:
-        x2ap_eNB_ue_context_release(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                                &X2AP_UE_CONTEXT_RELEASE(received_msg));
+        x2ap_eNB_ue_context_release(inst, X2AP_UE_CONTEXT_RELEASE_data(received_msg));
         break;
 
       case X2AP_ENDC_SGNB_ADDITION_REQ:
-        x2ap_eNB_handle_sgNB_add_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &X2AP_ENDC_SGNB_ADDITION_REQ(received_msg));
+        x2ap_eNB_handle_sgNB_add_req(inst,
+                                     X2AP_ENDC_SGNB_ADDITION_REQ_data(received_msg));
         break;
 
       case X2AP_ENDC_SGNB_ADDITION_REQ_ACK:
-    	  x2ap_gNB_trigger_sgNB_add_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-    			  &X2AP_ENDC_SGNB_ADDITION_REQ_ACK(received_msg));
+    	  x2ap_gNB_trigger_sgNB_add_req_ack(inst,
+    			  X2AP_ENDC_SGNB_ADDITION_REQ_ACK_data(received_msg));
     	break;
 
       case X2AP_ENDC_SGNB_RECONF_COMPLETE:
-        x2ap_eNB_trigger_sgnb_reconfiguration_complete(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                          &X2AP_ENDC_SGNB_RECONF_COMPLETE(received_msg));
+        x2ap_eNB_trigger_sgnb_reconfiguration_complete(inst,
+                          X2AP_ENDC_SGNB_RECONF_COMPLETE_data(received_msg));
         break;
 
       case X2AP_ENDC_SGNB_RELEASE_REQUEST:
-        x2ap_eNB_handle_sgNB_release_request(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                          &X2AP_ENDC_SGNB_RELEASE_REQUEST(received_msg));
+        x2ap_eNB_handle_sgNB_release_request(inst,X2AP_ENDC_SGNB_RELEASE_REQUEST_data(received_msg));
         break;
 
       case SCTP_INIT_MSG_MULTI_CNF:
-        x2ap_eNB_handle_sctp_init_msg_multi_cnf(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                                &received_msg->ittiMsg.sctp_init_msg_multi_cnf);
+        x2ap_eNB_handle_sctp_init_msg_multi_cnf(inst,SCTP_INIT_MSG_MULTI_CNF_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
-        x2ap_eNB_handle_sctp_association_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                              &received_msg->ittiMsg.sctp_new_association_resp);
+        x2ap_eNB_handle_sctp_association_resp(inst, SCTP_NEW_ASSOCIATION_RESP_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_IND:
-        x2ap_eNB_handle_sctp_association_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                             &received_msg->ittiMsg.sctp_new_association_ind);
+        x2ap_eNB_handle_sctp_association_ind(inst, SCTP_NEW_ASSOCIATION_IND_data(received_msg));
         break;
 
       case SCTP_DATA_IND:
-        x2ap_eNB_handle_sctp_data_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                      &received_msg->ittiMsg.sctp_data_ind);
+        x2ap_eNB_handle_sctp_data_ind(inst, SCTP_DATA_IND_data(received_msg));
         break;
 
       default:
@@ -770,6 +763,6 @@ mutex_error:
 
 void x2ap_trigger(void)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_X2AP, 0, X2AP_SUBFRAME_PROCESS);
+  MessageDef *msg = X2AP_SUBFRAME_PROCESS_alloc(TASK_X2AP, 0);
   itti_send_msg_to_task(TASK_X2AP, 0, msg);
 }

@@ -43,7 +43,7 @@
 
 #include "RRC/NR/nr_rrc_defs.h"
 #include "RRC/NR/nr_rrc_config.h"
-
+#include "openair2/COMMON/rrc_messages_types.h"
 
 /*
  * The variant of the above function which dumps the BASIC-XER (XER_F_BASIC)

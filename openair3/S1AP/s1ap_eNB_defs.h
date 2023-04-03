@@ -23,7 +23,8 @@
 
 #include "queue.h"
 #include "tree.h"
-
+#include "common/ngran_types.h"
+#include "openair2/COMMON/as_message.h"
 #include "sctp_eNB_defs.h"
 
 #ifndef S1AP_ENB_DEFS_H_

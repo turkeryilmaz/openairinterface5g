@@ -27,14 +27,13 @@
  * \version 0.1
  */
  
-#include <stdint.h>
-
-#include "queue.h"
-#include "tree.h"
-
 #ifndef NGAP_GNB_DEFS_H_
 #define NGAP_GNB_DEFS_H_
-
+#include <stdint.h>
+#include "queue.h"
+#include "tree.h"
+#include "openair2/COMMON/s1ap_messages_types.h"
+#include "openair2/COMMON/ngap_messages_types.h"
 #define NGAP_GNB_NAME_LENGTH_MAX    (150)
 
 typedef enum {

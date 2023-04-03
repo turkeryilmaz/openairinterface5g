@@ -30,18 +30,6 @@
 #define PDCP_MESSAGES_TYPES_H_
 
 //-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-#define RRC_DCCH_DATA_REQ(mSGpTR)               (mSGpTR)->ittiMsg.rrc_dcch_data_req
-#define RRC_DCCH_DATA_IND(mSGpTR)               (mSGpTR)->ittiMsg.rrc_dcch_data_ind
-#define RRC_PCCH_DATA_REQ(mSGpTR)               (mSGpTR)->ittiMsg.rrc_pcch_data_req
-#define RRC_NRUE_CAP_INFO_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_nrue_cap_info_ind
-#define RRC_DCCH_DATA_COPY_IND(mSGpTR)          (mSGpTR)->ittiMsg.rrc_dcch_data_copy_ind
-
-// gNB
-#define NR_RRC_DCCH_DATA_REQ(mSGpTR)            (mSGpTR)->ittiMsg.nr_rrc_dcch_data_req
-#define NR_RRC_DCCH_DATA_IND(mSGpTR)            (mSGpTR)->ittiMsg.nr_rrc_dcch_data_ind
-
-//-------------------------------------------------------------------------------------------//
 // Messages between RRC and PDCP layers
 typedef struct RrcDcchDataReq_s {
   uint32_t frame;
@@ -106,5 +94,19 @@ typedef struct RrcPcchDataReq_s {
   uint8_t      ue_index;
   uint8_t      CC_id;
 } RrcPcchDataReq;
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/pdcp_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/pdcp_messages_def.h"
+ #undef MESSAGE_DEF
 
 #endif /* PDCP_MESSAGES_TYPES_H_ */

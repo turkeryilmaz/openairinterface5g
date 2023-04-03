@@ -24,21 +24,10 @@
 
 #include "LTE_asn_constant.h"
 #include "NR_asn_constant.h"
+#include "common/ngran_types.h"
 
 #define GTPV1U_MAX_BEARERS_PER_UE max_val_LTE_DRB_Identity
 #define NR_GTPV1U_MAX_BEARERS_PER_UE max_val_NR_DRB_Identity
-
-#define GTPV1U_ENB_TUNNEL_DATA_IND(mSGpTR)    (mSGpTR)->ittiMsg.Gtpv1uTunnelDataInd
-#define GTPV1U_TUNNEL_DATA_REQ(mSGpTR)    (mSGpTR)->ittiMsg.Gtpv1uTunnelDataReq
-#define GTPV1U_ENB_DATA_FORWARDING_REQ(mSGpTR)    (mSGpTR)->ittiMsg.Gtpv1uDataForwardingReq
-#define GTPV1U_ENB_DATA_FORWARDING_IND(mSGpTR)    (mSGpTR)->ittiMsg.Gtpv1uDataForwardingInd
-#define GTPV1U_ENB_END_MARKER_REQ(mSGpTR)     (mSGpTR)->ittiMsg.Gtpv1uEndMarkerReq
-#define GTPV1U_ENB_END_MARKER_IND(mSGpTR)     (mSGpTR)->ittiMsg.Gtpv1uEndMarkerInd
-
-#define GTPV1U_REQ(mSGpTR)    (mSGpTR)->ittiMsg.gtpv1uReq
-
-#define GTPV1U_DU_BUFFER_REPORT_REQ(mSGpTR)    (mSGpTR)->ittiMsg.NRGtpv1uBufferReportReq
-
 #define GTPV1U_ALL_TUNNELS_TEID (teid_t)0xFFFFFFFF
 
 typedef struct gtpv1u_enb_create_x2u_tunnel_req_s {
@@ -207,4 +196,18 @@ typedef struct gtpv1u_DU_buffer_report_req_s {
   pdusessionid_t         pdusession_id;
 } gtpv1u_DU_buffer_report_req_t;
 
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/gtpv1_u_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/gtpv1_u_messages_def.h"
+ #undef MESSAGE_DEF
 #endif /* GTPV1_U_MESSAGES_TYPES_H_ */

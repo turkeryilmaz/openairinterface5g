@@ -19,6 +19,9 @@
  *      contact@openairinterface.org
  */
 
+#ifndef NAS_ITTI_MESSAGING_H_
+#define NAS_ITTI_MESSAGING_H_
+
 #include <string.h>
 #include <stdint.h>
 #include <ctype.h>
@@ -27,9 +30,8 @@
 #include "intertask_interface.h"
 #include "esm_proc.h"
 
-#ifndef NAS_ITTI_MESSAGING_H_
-#define NAS_ITTI_MESSAGING_H_
-
+#include "openair3/NAS/COMMON/API/NETWORK/nas_message.h"
+#include "openair2/COMMON/as_message.h"
 # if (defined(ENABLE_NAS_UE_LOGGING) && defined(NAS_BUILT_IN_UE))
 int nas_itti_plain_msg(
   const char *buffer,

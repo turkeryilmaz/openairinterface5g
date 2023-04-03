@@ -29,6 +29,7 @@
 #include "common/utils/ocp_itti/intertask_interface.h"
 #include "openair2/GNB_APP/gnb_paramdef.h"
 #include "openair3/ocp-gtpu/gtp_itf.h"
+#include "openair2/COMMON/e1ap_messages_types.h"
 
 static void get_NGU_S1U_addr(char **addr, uint16_t *port)
 {
@@ -68,7 +69,7 @@ static void get_NGU_S1U_addr(char **addr, uint16_t *port)
 
 MessageDef *RCconfig_NR_CU_E1(bool separate_CUUP_process)
 {
-  MessageDef *msgConfig = itti_alloc_new_message(TASK_GNB_APP, 0, E1AP_SETUP_REQ);
+  MessageDef *msgConfig = E1AP_SETUP_REQ_alloc(TASK_GNB_APP, 0);
   if (!msgConfig)
     return NULL;
 
@@ -85,7 +86,7 @@ MessageDef *RCconfig_NR_CU_E1(bool separate_CUUP_process)
     config_getlist(&GNBParamList, GNBParams, sizeofArray(GNBParams), NULL);
     paramdef_t *gnbParms = GNBParamList.paramarray[0];
     AssertFatal(gnbParms[GNB_GNB_ID_IDX].uptr != NULL, "gNB id %d is not defined in configuration file\n", 0);
-    e1ap_setup_req_t *e1Setup = &E1AP_SETUP_REQ(msgConfig);
+    e1ap_setup_req_t *e1Setup = E1AP_SETUP_REQ_data(msgConfig);
     msgConfig->ittiMsgHeader.destinationInstance = 0;
     e1Setup->gNB_cu_up_id = *(gnbParms[GNB_GNB_ID_IDX].uptr);
 

@@ -28,8 +28,10 @@
 
 
 extern "C" {
+  #include "errno.h"
 #include <intertask_interface.h>
 #include <common/utils/system.h>
+#include <common/utils/LOG/log.h>
 
   typedef struct timer_elm_s {
     timer_type_t type;     ///< Timer type
@@ -93,33 +95,15 @@ extern "C" {
   }
 
   // in the two following functions, the +32 in malloc is there to deal with gcc memory alignment
-  // because a struct size can be larger than sum(sizeof(struct components))
-  // We should remove the itti principle of a huge union for all types of messages in paramter "msg_t ittiMsg"
-  // to use a more C classical pointer casting "void * ittiMsg", later casted in the right struct
-  // but we would have to change all legacy macros, as per this example
-  // #define S1AP_REGISTER_ENB_REQ(mSGpTR)           (mSGpTR)->ittiMsg.s1ap_register_enb_req
-  // would become
-  // #define S1AP_REGISTER_ENB_REQ(mSGpTR)           (s1ap_register_enb_req) mSGpTR)->ittiMsg
-  MessageDef *itti_alloc_new_message_sized(task_id_t origin_task_id, instance_t originInstance, MessagesIds message_id, MessageHeaderSize size) {
+  // we give a aligned allocation for the message and cleared memory
+  MessageDef *itti_alloc_sized(task_id_t origin_task_id, instance_t originInstance, MessagesIds message_id, MessageHeaderSize size)
+  {
     MessageDef *temp = (MessageDef *)itti_malloc (origin_task_id, TASK_UNKNOWN, sizeof(MessageHeader) +32 + size);
     temp->ittiMsgHeader.messageId = message_id;
     temp->ittiMsgHeader.originTaskId = origin_task_id;
     temp->ittiMsgHeader.ittiMsgSize = size;
+    temp->ittiMsg=(void*)((((uintptr_t)(temp+1))+31)& ~(31UL));
     return temp;
-  }
-
-  MessageDef *itti_alloc_new_message(task_id_t origin_task_id, instance_t originInstance, MessagesIds message_id) {
-    int size=sizeof(MessageHeader) + 32 + messages_info[message_id].size;
-    MessageDef *temp = (MessageDef *)itti_malloc (origin_task_id, TASK_UNKNOWN, size);
-    temp->ittiMsgHeader.messageId = message_id;
-    temp->ittiMsgHeader.originTaskId = origin_task_id;
-    temp->ittiMsgHeader.ittiMsgSize = size;
-    temp->ittiMsgHeader.destinationTaskId=TASK_UNKNOWN;
-    temp->ittiMsgHeader.originInstance=originInstance;
-    temp->ittiMsgHeader.destinationInstance=0;
-    temp->ittiMsgHeader.lte_time= {0};
-    return temp;
-    //return itti_alloc_new_message_sized(origin_task_id, message_id, messages_info[message_id].size);
   }
 
   static inline int itti_send_msg_to_task_locked(task_id_t destination_task_id, instance_t destinationInstance, MessageDef *message) {
@@ -202,9 +186,9 @@ extern "C" {
             ++next_it;
 
             if ( it->second.timeout < current_time ) {
-              MessageDef *message = itti_alloc_new_message(TASK_TIMER, it->second.instance,TIMER_HAS_EXPIRED);
-              message->ittiMsg.timer_has_expired.timer_id=it->first;
-              message->ittiMsg.timer_has_expired.arg=it->second.timer_arg;
+              MessageDef *message = TIMER_HAS_EXPIRED_alloc(TASK_TIMER, it->second.instance);
+              TIMER_HAS_EXPIRED_data(message)->timer_id=it->first;
+               TIMER_HAS_EXPIRED_data(message)->arg=it->second.timer_arg;
 
               if (itti_send_msg_to_task_locked(task_id, it->second.instance, message) < 0) {
                 LOG_W(ITTI,"Failed to send msg TIMER_HAS_EXPIRED to task %u\n", task_id);

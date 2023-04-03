@@ -32,43 +32,6 @@
 #include "common/ngran_types.h"
 #include "LTE_asn_constant.h"
 //-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-
-#define NGAP_REGISTER_GNB_REQ(mSGpTR)           (mSGpTR)->ittiMsg.ngap_register_gnb_req
-
-#define NGAP_REGISTER_GNB_CNF(mSGpTR)           (mSGpTR)->ittiMsg.ngap_register_gnb_cnf
-#define NGAP_DEREGISTERED_GNB_IND(mSGpTR)       (mSGpTR)->ittiMsg.ngap_deregistered_gnb_ind
-
-#define NGAP_NAS_FIRST_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_nas_first_req
-#define NGAP_UPLINK_NAS(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_uplink_nas
-#define NGAP_UE_CAPABILITIES_IND(mSGpTR)        (mSGpTR)->ittiMsg.ngap_ue_cap_info_ind
-#define NGAP_INITIAL_CONTEXT_SETUP_RESP(mSGpTR) (mSGpTR)->ittiMsg.ngap_initial_context_setup_resp
-#define NGAP_INITIAL_CONTEXT_SETUP_FAIL(mSGpTR) (mSGpTR)->ittiMsg.ngap_initial_context_setup_fail
-#define NGAP_UE_CONTEXT_RELEASE_RESP(mSGpTR)    (mSGpTR)->ittiMsg.ngap_ue_release_resp
-#define NGAP_NAS_NON_DELIVERY_IND(mSGpTR)       (mSGpTR)->ittiMsg.ngap_nas_non_delivery_ind
-#define NGAP_UE_CTXT_MODIFICATION_RESP(mSGpTR)  (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_resp
-#define NGAP_UE_CTXT_MODIFICATION_FAIL(mSGpTR)  (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_fail
-#define NGAP_PDUSESSION_SETUP_RESP(mSGpTR)           (mSGpTR)->ittiMsg.ngap_pdusession_setup_resp
-#define NGAP_PDUSESSION_SETUP_FAIL(mSGpTR) (mSGpTR)->ittiMsg.ngap_pdusession_setup_request_fail
-#define NGAP_PDUSESSION_MODIFY_RESP(mSGpTR)           (mSGpTR)->ittiMsg.ngap_pdusession_modify_resp
-#define NGAP_PATH_SWITCH_REQ(mSGpTR)            (mSGpTR)->ittiMsg.ngap_path_switch_req
-#define NGAP_PATH_SWITCH_REQ_ACK(mSGpTR)        (mSGpTR)->ittiMsg.ngap_path_switch_req_ack
-#define NGAP_PDUSESSION_MODIFICATION_IND(mSGpTR)     (mSGpTR)->ittiMsg.ngap_pdusession_modification_ind
-
-#define NGAP_DOWNLINK_NAS(mSGpTR)               (mSGpTR)->ittiMsg.ngap_downlink_nas
-#define NGAP_INITIAL_CONTEXT_SETUP_REQ(mSGpTR)  (mSGpTR)->ittiMsg.ngap_initial_context_setup_req
-#define NGAP_UE_CTXT_MODIFICATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.ngap_ue_ctxt_modification_req
-#define NGAP_UE_CONTEXT_RELEASE_COMMAND(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_release_command
-#define NGAP_UE_CONTEXT_RELEASE_COMPLETE(mSGpTR) (mSGpTR)->ittiMsg.ngap_ue_release_complete
-#define NGAP_PDUSESSION_SETUP_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_setup_req
-#define NGAP_PDUSESSION_MODIFY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ngap_pdusession_modify_req
-#define NGAP_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ngap_paging_ind
-
-#define NGAP_UE_CONTEXT_RELEASE_REQ(mSGpTR)     (mSGpTR)->ittiMsg.ngap_ue_release_req
-#define NGAP_PDUSESSION_RELEASE_COMMAND(mSGpTR)      (mSGpTR)->ittiMsg.ngap_pdusession_release_command
-#define NGAP_PDUSESSION_RELEASE_RESPONSE(mSGpTR)     (mSGpTR)->ittiMsg.ngap_pdusession_release_resp
-
-//-------------------------------------------------------------------------------------------//
 /* Maximum number of e-rabs to be setup/deleted in a single message.
  * Even if only one bearer will be modified by message.
  */
@@ -83,12 +46,6 @@
 #define NGAP_IMSI_LENGTH           16
 
 #define QOSFLOW_MAX_VALUE           64
-
-/* Security key length used within gNB
- * Even if only 16 bytes will be effectively used,
- * the key length is 32 bytes (256 bits)
- */
-#define SECURITY_KEY_LENGTH 32
 
 typedef enum ngap_paging_drx_e {
   NGAP_PAGING_DRX_32  = 0x0,
@@ -854,5 +811,21 @@ typedef struct ngap_pdusession_release_resp_s {
   pdusession_failed_t  pdusessions_failed[NGAP_MAX_PDUSESSION];
 
 } ngap_pdusession_release_resp_t;
+
+#include "common/utils/ocp_itti/intertask_interface.h"
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/ngap_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/ngap_messages_def.h"
+#undef MESSAGE_DEF
 
 #endif /* NGAP_MESSAGES_TYPES_H_ */

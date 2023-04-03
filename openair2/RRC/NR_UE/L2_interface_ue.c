@@ -36,6 +36,7 @@
 #include "rrc_vars.h"
 #include "MAC/mac.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
+#include "openair2/COMMON/pdcp_messages_types.h"
 
 typedef uint32_t channel_t;
 
@@ -72,13 +73,14 @@ nr_mac_rrc_data_ind_ue(
             sdu_size = pdu_len;
           }
 
-          message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_BCCH_DATA_IND);
-          memset(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, 0, BCCH_SDU_SIZE);
-          memcpy(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).frame = frame; //frameP
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).sub_frame = sub_frame; //sub_frameP
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu_size = sdu_size;
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).gnb_index = gNB_index;
+          message_p = NR_RRC_MAC_BCCH_DATA_IND_alloc(TASK_MAC_UE, 0);
+          NRRrcMacBcchDataInd *msg=NR_RRC_MAC_BCCH_DATA_IND_data (message_p);
+          memset(msg->sdu, 0, BCCH_SDU_SIZE);
+          memcpy(msg->sdu, pduP, sdu_size);
+          msg->frame = frame; //frameP
+          msg->sub_frame = sub_frame; //sub_frameP
+          msg->sdu_size = sdu_size;
+          msg->gnb_index = gNB_index;
           itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
         }
         break;
@@ -97,14 +99,15 @@ nr_mac_rrc_data_ind_ue(
             sdu_size =  pdu_len;
           }
 
-          message_p = itti_alloc_new_message (TASK_MAC_UE, 0, NR_RRC_MAC_CCCH_DATA_IND);
-          memset (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
-          memcpy (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).frame     = frame; //frameP
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).sub_frame = sub_frame; //sub_frameP
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu_size  = sdu_size;
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).gnb_index = gNB_index;
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).rnti      = rnti;  //rntiP
+          message_p = NR_RRC_MAC_CCCH_DATA_IND_alloc(TASK_MAC_UE, 0);
+          NRRrcMacCcchDataInd *msg=NR_RRC_MAC_CCCH_DATA_IND_data (message_p);
+          memset (msg->sdu, 0, CCCH_SDU_SIZE);
+          memcpy (msg->sdu, pduP, sdu_size);
+          msg->frame     = frame; //frameP
+          msg->sub_frame = sub_frame; //sub_frameP
+          msg->sdu_size  = sdu_size;
+          msg->gnb_index = gNB_index;
+          msg->rnti      = rnti;  //rntiP
           itti_send_msg_to_task (TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE( module_id ), message_p);
         }
         break;

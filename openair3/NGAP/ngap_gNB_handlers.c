@@ -81,8 +81,8 @@ void ngap_handle_ng_setup_message(ngap_gNB_amf_data_t *amf_desc_p, int sctp_shut
 
       /* If there are no more associated AMF, inform gNB app */
       if (amf_desc_p->ngap_gNB_instance->ngap_amf_associated_nb == 0) {
-        MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_DEREGISTERED_GNB_IND);
-        NGAP_DEREGISTERED_GNB_IND(message_p).nb_amf = 0;
+        MessageDef *message_p = NGAP_DEREGISTERED_GNB_IND_alloc(TASK_NGAP, 0);
+        NGAP_DEREGISTERED_GNB_IND_data(message_p)->nb_amf = 0;
         itti_send_msg_to_task(TASK_GNB_APP, amf_desc_p->ngap_gNB_instance->instance, message_p);
       }
     }
@@ -98,8 +98,8 @@ void ngap_handle_ng_setup_message(ngap_gNB_amf_data_t *amf_desc_p, int sctp_shut
 
     /* If there are no more pending messages, inform gNB app */
     if (amf_desc_p->ngap_gNB_instance->ngap_amf_pending_nb == 0) {
-      MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_REGISTER_GNB_CNF);
-      NGAP_REGISTER_GNB_CNF(message_p).nb_amf = amf_desc_p->ngap_gNB_instance->ngap_amf_associated_nb;
+      MessageDef *message_p = NGAP_REGISTER_GNB_CNF_alloc(TASK_NGAP, 0);
+      NGAP_REGISTER_GNB_CNF_data(message_p)->nb_amf = amf_desc_p->ngap_gNB_instance->ngap_amf_associated_nb;
       itti_send_msg_to_task(TASK_GNB_APP, amf_desc_p->ngap_gNB_instance->instance, message_p);
     }
   }
@@ -724,10 +724,9 @@ static int ngap_gNB_handle_initial_context_request(uint32_t assoc_id, uint32_t s
 
   ue_desc_p->rx_stream = stream;
   ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
-  
-  MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_INITIAL_CONTEXT_SETUP_REQ);
-  ngap_initial_context_setup_req_t * msg=&NGAP_INITIAL_CONTEXT_SETUP_REQ(message_p);
-  memset(msg, 0, sizeof(*msg));
+
+  MessageDef *message_p = NGAP_INITIAL_CONTEXT_SETUP_REQ_alloc(TASK_NGAP, 0);
+  ngap_initial_context_setup_req_t * msg=NGAP_INITIAL_CONTEXT_SETUP_REQ_data(message_p);
   msg->gNB_ue_ngap_id = ue_desc_p->gNB_ue_ngap_id;
   msg->amf_ue_ngap_id = ue_desc_p->amf_ue_ngap_id;
   /* id-UEAggregateMaximumBitRate */
@@ -871,13 +870,13 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
             gnb_ue_ngap_id);
         return -1;
       } else {
-        message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_UE_CONTEXT_RELEASE_COMMAND);
+        message_p = NGAP_UE_CONTEXT_RELEASE_COMMAND_alloc(TASK_NGAP, 0);
 
         if (ue_desc_p->amf_ue_ngap_id == 0) { // case of Detach Request and switch off from RRC_IDLE mode
           ue_desc_p->amf_ue_ngap_id = amf_ue_ngap_id;
         }
 
-        NGAP_UE_CONTEXT_RELEASE_COMMAND(message_p).gNB_ue_ngap_id = gnb_ue_ngap_id;
+        NGAP_UE_CONTEXT_RELEASE_COMMAND_data(message_p)->gNB_ue_ngap_id = gnb_ue_ngap_id;
         itti_send_msg_to_task(TASK_RRC_GNB, ue_desc_p->gNB_instance->instance, message_p);
         return 0;
       }
@@ -947,8 +946,8 @@ int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
               (uint64_t)ue_desc_p->amf_ue_ngap_id, amf_ue_ngap_id);
   }
 
-  MessageDef * message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PDUSESSION_SETUP_REQ);
-  ngap_pdusession_setup_req_t * msg=&NGAP_PDUSESSION_SETUP_REQ(message_p);
+  MessageDef *message_p = NGAP_PDUSESSION_SETUP_REQ_alloc(TASK_NGAP, 0);
+  ngap_pdusession_setup_req_t * msg=NGAP_PDUSESSION_SETUP_REQ_data(message_p);
   memset(msg, 0, sizeof(*msg));
   msg->gNB_ue_ngap_id = ue_desc_p->gNB_ue_ngap_id;
   msg->amf_ue_ngap_id = ue_desc_p->amf_ue_ngap_id;
@@ -1023,18 +1022,17 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
     return -1;
   }
 
-   MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PAGING_IND);
-   ngap_paging_ind_t * msg=&NGAP_PAGING_IND(message_p);
-   memset(msg, 0, sizeof(*msg));
+  MessageDef *message_p = NGAP_PAGING_IND_alloc(TASK_NGAP, 0);
+  ngap_paging_ind_t *msg = NGAP_PAGING_IND_data(message_p);
 
-   /* convert NGAP_PagingIEs_t to ngap_paging_ind_t */
-   /* id-UEIdentityIndexValue : convert UE Identity Index value */
-   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container, NGAP_ProtocolIE_ID_id_UEPagingIdentity, true);
+  /* convert NGAP_PagingIEs_t to ngap_paging_ind_t */
+  /* id-UEIdentityIndexValue : convert UE Identity Index value */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container, NGAP_ProtocolIE_ID_id_UEPagingIdentity, true);
 
-   struct NGAP_FiveG_S_TMSI *fiveG_S_TMSI = ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI;
-   OCTET_STRING_TO_INT16(&fiveG_S_TMSI->aMFSetID, msg->ue_paging_identity.s_tmsi.amf_set_id);
-   OCTET_STRING_TO_INT8(&fiveG_S_TMSI->aMFPointer, msg->ue_paging_identity.s_tmsi.amf_pointer);
-   OCTET_STRING_TO_INT32(&fiveG_S_TMSI->fiveG_TMSI, msg->ue_paging_identity.s_tmsi.m_tmsi);
+  struct NGAP_FiveG_S_TMSI *fiveG_S_TMSI = ie->value.choice.UEPagingIdentity.choice.fiveG_S_TMSI;
+  OCTET_STRING_TO_INT16(&fiveG_S_TMSI->aMFSetID, msg->ue_paging_identity.s_tmsi.amf_set_id);
+  OCTET_STRING_TO_INT8(&fiveG_S_TMSI->aMFPointer, msg->ue_paging_identity.s_tmsi.amf_pointer);
+  OCTET_STRING_TO_INT32(&fiveG_S_TMSI->fiveG_TMSI, msg->ue_paging_identity.s_tmsi.m_tmsi);
 
    NGAP_DEBUG("[SCTP %u] Received Paging Identity amf_set_id %d, amf_pointer %d, m_tmsi %d\n",
               assoc_id,
@@ -1042,13 +1040,13 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
               msg->ue_paging_identity.s_tmsi.amf_pointer,
               msg->ue_paging_identity.s_tmsi.m_tmsi);
 
-   msg->paging_drx = NGAP_PAGING_DRX_256;
-   /* id-pagingDRX */
-   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container, NGAP_ProtocolIE_ID_id_PagingDRX, false);
+  msg->paging_drx = NGAP_PAGING_DRX_256;
+  /* id-pagingDRX */
+  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container, NGAP_ProtocolIE_ID_id_PagingDRX, false);
 
-   /* optional */
-   if (ie) {
-     msg->paging_drx = ie->value.choice.PagingDRX;
+  /* optional */
+  if (ie) {
+    msg->paging_drx = ie->value.choice.PagingDRX;
    } else {
      msg->paging_drx = NGAP_PAGING_DRX_256;
    }
@@ -1128,9 +1126,8 @@ static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t
   if (ue_desc_p->amf_ue_ngap_id != amf_ue_ngap_id) {
     NGAP_WARN("UE context amf_ue_ngap_id is different form that of the message (%lu != %lu)",
               (uint64_t)ue_desc_p->amf_ue_ngap_id, amf_ue_ngap_id);
-    MessageDef *message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, NGAP_PDUSESSION_MODIFY_RESP);
-    ngap_pdusession_modify_resp_t* msg=&NGAP_PDUSESSION_MODIFY_RESP(message_p);
-    memset(msg, 0, sizeof(*msg));
+    MessageDef *message_p = NGAP_PDUSESSION_MODIFY_RESP_alloc(TASK_RRC_GNB, 0);
+    ngap_pdusession_modify_resp_t* msg=NGAP_PDUSESSION_MODIFY_RESP_data(message_p);
     msg->gNB_ue_ngap_id = gnb_ue_ngap_id;
     for (int nb_of_pdusessions_failed = 0; nb_of_pdusessions_failed < ie->value.choice.PDUSessionResourceModifyListModReq.list.count; nb_of_pdusessions_failed++) {
         NGAP_PDUSessionResourceModifyItemModReq_t *item_p;
@@ -1146,8 +1143,8 @@ static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t
     return -1;
   }
 
-  MessageDef *message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PDUSESSION_MODIFY_REQ);
-  ngap_pdusession_modify_req_t * msg=&NGAP_PDUSESSION_MODIFY_REQ(message_p);
+  MessageDef *message_p = NGAP_PDUSESSION_MODIFY_REQ_alloc(TASK_NGAP, 0);
+  ngap_pdusession_modify_req_t * msg=NGAP_PDUSESSION_MODIFY_REQ_data(message_p);
   memset(msg, 0, sizeof(*msg));
   msg->amf_ue_ngap_id  = amf_ue_ngap_id;
   msg->gNB_ue_ngap_id = gnb_ue_ngap_id;
@@ -1230,9 +1227,8 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
 
   NGAP_DEBUG("[SCTP %u] Received pdu session release command for gNB_UE_NGAP_ID %lu amf_ue_ngap_id %lu\n",
              assoc_id, gnb_ue_ngap_id, amf_ue_ngap_id);
-  MessageDef * message_p = itti_alloc_new_message(TASK_NGAP, 0, NGAP_PDUSESSION_RELEASE_COMMAND);
-  ngap_pdusession_release_command_t * msg=&NGAP_PDUSESSION_RELEASE_COMMAND(message_p);
-  memset(msg, 0, sizeof(*msg));
+  MessageDef *message_p = NGAP_PDUSESSION_RELEASE_COMMAND_alloc(TASK_NGAP, 0);
+  ngap_pdusession_release_command_t * msg=NGAP_PDUSESSION_RELEASE_COMMAND_data(message_p);
 
   msg->gNB_ue_ngap_id = gnb_ue_ngap_id;
   msg->amf_ue_ngap_id = amf_ue_ngap_id;

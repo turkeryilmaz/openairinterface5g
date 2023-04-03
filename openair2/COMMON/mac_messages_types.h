@@ -31,29 +31,7 @@
 
 #include <LTE_DRX-Config.h>
 #include "OCTET_STRING.h"
-
-//-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-#define RRC_MAC_IN_SYNC_IND(mSGpTR)             (mSGpTR)->ittiMsg.rrc_mac_in_sync_ind
-#define RRC_MAC_OUT_OF_SYNC_IND(mSGpTR)         (mSGpTR)->ittiMsg.rrc_mac_out_of_sync_ind
-
-#define RRC_MAC_BCCH_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_bcch_data_req
-#define RRC_MAC_BCCH_DATA_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_bcch_data_ind
-#define NR_RRC_MAC_BCCH_DATA_IND(mSGpTR)        (mSGpTR)->ittiMsg.nr_rrc_mac_bcch_data_ind
-
-#define RRC_MAC_BCCH_MBMS_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_bcch_mbms_data_req
-#define RRC_MAC_BCCH_MBMS_DATA_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_bcch_mbms_data_ind
-
-#define RRC_MAC_CCCH_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_ccch_data_req
-#define RRC_MAC_CCCH_DATA_CNF(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_ccch_data_cnf
-#define RRC_MAC_CCCH_DATA_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_ccch_data_ind
-#define NR_RRC_MAC_CCCH_DATA_IND(mSGpTR)        (mSGpTR)->ittiMsg.nr_rrc_mac_ccch_data_ind
-
-#define RRC_MAC_MCCH_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_mcch_data_req
-#define RRC_MAC_MCCH_DATA_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_mcch_data_ind
-#define RRC_MAC_PCCH_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_pcch_data_req
-
-#define RRC_MAC_DRX_CONFIG_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_drx_config_req
+#include "common/utils/ocp_itti/intertask_interface.h"
 
 // Some constants from "LAYER2/MAC/defs.h"
 #define BCCH_SDU_SIZE                           (512)
@@ -182,5 +160,20 @@ typedef struct rrc_mac_drx_config_req_s {
   /* DRX configuration from MacMainConfig to configure UE's local timers */
   LTE_DRX_Config_t * drx_Configuration;
 } rrc_mac_drx_config_req_t;
+
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/mac_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/mac_messages_def.h"
+ #undef MESSAGE_DEF
 
 #endif /* MAC_MESSAGES_TYPES_H_ */

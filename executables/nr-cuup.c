@@ -29,6 +29,7 @@
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/GNB_APP/gnb_config.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
+#include "openair3/SCTP/sctp_eNB_task.h"
 
 RAN_CONTEXT_t RC;
 THREAD_STRUCT thread_struct;

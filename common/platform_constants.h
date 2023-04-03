@@ -89,4 +89,7 @@
 
 #define UNUSED_VARIABLE(vARIABLE) (void)(vARIABLE)
 
+#define SECURITY_KEY_LENGTH 32
+
+
 #endif /* __PLATFORM_CONSTANTS_H__ */

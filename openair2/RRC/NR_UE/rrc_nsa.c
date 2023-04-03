@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 #include "common/utils/LOG/log.h"
 #include "openair2/RRC/NR_UE/rrc_proto.h"
 

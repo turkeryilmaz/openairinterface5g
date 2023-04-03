@@ -30,7 +30,7 @@
 
 #include "queue.h"
 #include "tree.h"
-
+#include "openair1/PHY/defs_common.h"
 #include "sctp_eNB_defs.h"
 #include "s1ap_messages_types.h"
 #include "x2ap_messages_types.h"

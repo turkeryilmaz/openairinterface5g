@@ -30,8 +30,8 @@ static void ue_context_setup_response_direct(const f1ap_ue_context_setup_t *req,
   AssertFatal(req->drbs_to_be_setup_length == 0, "not implemented\n");
 
   (void) req; /* we don't need the request -- it is to set up GTP in F1 case */
-  MessageDef *msg = itti_alloc_new_message (TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_SETUP_RESP);
-  f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_RESP(msg);
+  MessageDef *msg = F1AP_UE_CONTEXT_SETUP_RESP_alloc(TASK_MAC_GNB, 0);
+  f1ap_ue_context_setup_t *f1ap_msg = F1AP_UE_CONTEXT_SETUP_RESP_data(msg);
   /* copy all fields, but reallocate memory buffers! */
   *f1ap_msg = *resp;
 
@@ -59,8 +59,8 @@ static void ue_context_modification_response_direct(const f1ap_ue_context_modif_
                                                     const f1ap_ue_context_modif_resp_t *resp)
 {
   (void)req; /* we don't need the request -- it is to set up GTP in F1 case */
-  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_MODIFICATION_RESP);
-  f1ap_ue_context_modif_resp_t *f1ap_msg = &F1AP_UE_CONTEXT_MODIFICATION_RESP(msg);
+  MessageDef *msg =  F1AP_UE_CONTEXT_MODIFICATION_RESP_alloc(TASK_MAC_GNB, 0);
+  f1ap_ue_context_modif_resp_t *f1ap_msg = F1AP_UE_CONTEXT_MODIFICATION_RESP_data(msg);
 
   f1ap_msg->gNB_CU_ue_id = resp->gNB_CU_ue_id;
   f1ap_msg->gNB_DU_ue_id = resp->gNB_DU_ue_id;
@@ -114,25 +114,25 @@ static void ue_context_modification_response_direct(const f1ap_ue_context_modif_
 
 static void ue_context_release_request_direct(const f1ap_ue_context_release_req_t* req)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_RELEASE_REQ);
-  f1ap_ue_context_release_req_t *f1ap_msg = &F1AP_UE_CONTEXT_RELEASE_REQ(msg);
+  MessageDef *msg = F1AP_UE_CONTEXT_RELEASE_REQ_alloc(TASK_MAC_GNB, 0);
+  f1ap_ue_context_release_req_t *f1ap_msg = F1AP_UE_CONTEXT_RELEASE_REQ_data(msg);
   *f1ap_msg = *req;
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
 static void ue_context_release_complete_direct(const f1ap_ue_context_release_complete_t *complete)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_UE_CONTEXT_RELEASE_COMPLETE);
-  f1ap_ue_context_release_complete_t *f1ap_msg = &F1AP_UE_CONTEXT_RELEASE_COMPLETE(msg);
+  MessageDef *msg = F1AP_UE_CONTEXT_RELEASE_COMPLETE_alloc(TASK_MAC_GNB, 0);
+  f1ap_ue_context_release_complete_t *f1ap_msg = F1AP_UE_CONTEXT_RELEASE_COMPLETE_data(msg);
   *f1ap_msg = *complete;
   itti_send_msg_to_task(TASK_RRC_GNB, 0, msg);
 }
 
 static void initial_ul_rrc_message_transfer_direct(module_id_t module_id, const f1ap_initial_ul_rrc_message_t *ul_rrc)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_INITIAL_UL_RRC_MESSAGE);
+  MessageDef *msg = F1AP_INITIAL_UL_RRC_MESSAGE_alloc(TASK_MAC_GNB, 0);
   /* copy all fields, but reallocate rrc_containers! */
-  f1ap_initial_ul_rrc_message_t *f1ap_msg = &F1AP_INITIAL_UL_RRC_MESSAGE(msg);
+  f1ap_initial_ul_rrc_message_t *f1ap_msg = F1AP_INITIAL_UL_RRC_MESSAGE_data(msg);
   *f1ap_msg = *ul_rrc;
 
   f1ap_msg->rrc_container = malloc(ul_rrc->rrc_container_length);

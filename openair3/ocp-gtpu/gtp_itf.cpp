@@ -1247,12 +1247,12 @@ void *gtpv1uTask(void *args)  {
           // DATA TO BE SENT TO UDP
 
         case GTPV1U_TUNNEL_DATA_REQ: {
-          gtpv1uSend(compatInst(myInstance), &GTPV1U_TUNNEL_DATA_REQ(message_p), false, false);
+          gtpv1uSend(compatInst(myInstance), GTPV1U_TUNNEL_DATA_REQ_data(message_p), false, false);
         }
         break;
 
         case GTPV1U_DU_BUFFER_REPORT_REQ:{
-          gtpv1uSendDlDeliveryStatus(compatInst(myInstance), &GTPV1U_DU_BUFFER_REPORT_REQ(message_p));
+          gtpv1uSendDlDeliveryStatus(compatInst(myInstance), GTPV1U_DU_BUFFER_REPORT_REQ_data(message_p));
         }
         break;
 
@@ -1264,8 +1264,8 @@ void *gtpv1uTask(void *args)  {
           break;
 
         case GTPV1U_ENB_END_MARKER_REQ:
-          gtpv1uEndTunnel(compatInst(myInstance), &GTPV1U_TUNNEL_DATA_REQ(message_p));
-          itti_free(TASK_GTPV1_U, GTPV1U_TUNNEL_DATA_REQ(message_p).buffer);
+          gtpv1uEndTunnel(compatInst(myInstance), GTPV1U_TUNNEL_DATA_REQ_data(message_p));
+          itti_free(TASK_GTPV1_U, GTPV1U_TUNNEL_DATA_REQ_data(message_p)->buffer);
           break;
 
         case GTPV1U_ENB_DATA_FORWARDING_REQ:
@@ -1277,8 +1277,8 @@ void *gtpv1uTask(void *args)  {
 
         case GTPV1U_REQ:
           // to be dev: should be removed, to use API
-          strcpy(addr.originHost, GTPV1U_REQ(message_p).localAddrStr);
-          strcpy(addr.originService, GTPV1U_REQ(message_p).localPortStr);
+          strcpy(addr.originHost, GTPV1U_REQ_data(message_p)->localAddrStr);
+          strcpy(addr.originService, GTPV1U_REQ_data(message_p)->localPortStr);
           strcpy(addr.destinationService,addr.originService);
           AssertFatal((legacyInstanceMapping=gtpv1Init(addr))!=0,"Instance 0 reserved for legacy\n");
           break;

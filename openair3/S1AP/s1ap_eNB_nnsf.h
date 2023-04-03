@@ -21,7 +21,7 @@
 
 #ifndef S1AP_ENB_NNSF_H_
 #define S1AP_ENB_NNSF_H_
-
+#include "openair2/COMMON/s1ap_messages_types.h"
 struct s1ap_eNB_mme_data_s *
 s1ap_eNB_nnsf_select_mme(s1ap_eNB_instance_t       *instance_p,
                          rrc_establishment_cause_t  cause);

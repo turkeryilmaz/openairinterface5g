@@ -7,7 +7,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+  #include <limits.h>
+  #include "common/utils/hashtable/hashtable.h"
+#include "openair2/COMMON/gtpv1_u_messages_types.h"
   typedef bool (*gtpCallback)(protocol_ctxt_t  *ctxt_pP,
                               const srb_flag_t     srb_flagP,
                               const rb_id_t        rb_idP,

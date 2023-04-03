@@ -178,8 +178,7 @@ int MCE_handle_MBMS_SESSION_START_RESPONSE(instance_t instance,
   int MCE_MBMS_M2AP_ID=-1;
   int ENB_MBMS_M2AP_ID=-1;
 
-
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M2AP_MCE, 0,M2AP_MBMS_SESSION_START_RESP); //TODO
+  MessageDef *msg_g = M2AP_MBMS_SESSION_START_RESP_alloc(TASK_M2AP_MCE, 0);
 
   LOG_D(M2AP, "M2AP: SessionStart-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);
@@ -307,8 +306,7 @@ int MCE_handle_MBMS_SESSION_STOP_RESPONSE(instance_t instance,
   int MCE_MBMS_M2AP_ID=-1;
   int ENB_MBMS_M2AP_ID=-1;
 
-
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M2AP_MCE, 0,M2AP_MBMS_SESSION_STOP_RESP); //TODO
+  MessageDef *msg_g = M2AP_MBMS_SESSION_STOP_RESP_alloc(TASK_M2AP_MCE, 0);
 
   LOG_D(M2AP, "M2AP: SessionStop-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);
@@ -598,43 +596,42 @@ int MCE_handle_MBMS_SCHEDULING_INFORMATION_RESPONSE(instance_t instance,
   //int MCE_MBMS_M2AP_ID=-1;
   //int ENB_MBMS_M2AP_ID=-1;
 
+   MessageDef *msg_g = M2AP_MBMS_SCHEDULING_INFORMATION_RESP_alloc(TASK_M2AP_MCE, 0);
 
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M2AP_MCE, 0,M2AP_MBMS_SCHEDULING_INFORMATION_RESP); //TODO
+   //  LOG_D(M2AP, "M2AP: SessionStop-Resp: protocolIEs.list.count %d\n",
+   //         in->protocolIEs.list.count);
+   //  for (int i=0;i < in->protocolIEs.list.count; i++) {
+   //     ie = in->protocolIEs.list.array[i];
+   //     //switch (ie->id) {
+   //     //case M2AP_ProtocolIE_ID_id_MCE_MBMS_M2AP_ID:
+   //     //  AssertFatal(ie->criticality == M2AP_Criticality_reject,
+   //     //              "ie->criticality != M2AP_Criticality_reject\n");
+   //     //  AssertFatal(ie->value.present == M2AP_sessionStopIEs__value_PR_MCE_MBMS_M2AP_ID,
+   //     //              "ie->value.present != M2AP_sessionStopIEs__value_PR_MCE_MBMS_M2AP_ID\n");
+   //     //  TransactionId=ie->value.choice.MCE_MBMS_M2AP_ID;
+   //     //  LOG_D(M2AP, "M2AP: SessionStop-Resp: MCE_MBMS_M2AP_ID %d\n",
+   //     //        MCE_MBMS_M2AP_ID);
+   //     //  break;
+   //     // case M2AP_ProtocolIE_ID_id_ENB_MBMS_M2AP_ID:
+   //     //  AssertFatal(ie->criticality == M2AP_Criticality_reject,
+   //     //              "ie->criticality != M2AP_Criticality_reject\n");
+   //     //  AssertFatal(ie->value.present == M2AP_sessionStopIEs__value_PR_ENB_MBMS_M2AP_ID,
+   //     //              "ie->value.present != M2AP_sessionStopIEs__value_PR_ENB_MBMS_M2AP_ID\n");
+   //     //  TransactionId=ie->value.choice.ENB_MBMS_M2AP_ID;
+   //     //  LOG_D(M2AP, "M2AP: SessionStop-Resp: ENB_MBMS_M2AP_ID %d\n",
+   //     //        ENB_MBMS_M2AP_ID);
+   //     //  break;
+   //     //}
+   //  }
+   //
+   //  M2AP_SESSION_STOP_RESP(msg_p).
+   //
+   //   LOG_D(M2AP, "Sending M2AP_SCHEDULING_INFO_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
+   //         assoc_id,ENB_MODULE_ID_TO_INSTANCE(assoc_id));
+   //   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(assoc_id), msg_p);
 
-//  LOG_D(M2AP, "M2AP: SessionStop-Resp: protocolIEs.list.count %d\n",
-//         in->protocolIEs.list.count);
-//  for (int i=0;i < in->protocolIEs.list.count; i++) {
-//     ie = in->protocolIEs.list.array[i];
-//     //switch (ie->id) {
-//     //case M2AP_ProtocolIE_ID_id_MCE_MBMS_M2AP_ID:
-//     //  AssertFatal(ie->criticality == M2AP_Criticality_reject,
-//     //              "ie->criticality != M2AP_Criticality_reject\n");
-//     //  AssertFatal(ie->value.present == M2AP_sessionStopIEs__value_PR_MCE_MBMS_M2AP_ID,
-//     //              "ie->value.present != M2AP_sessionStopIEs__value_PR_MCE_MBMS_M2AP_ID\n");
-//     //  TransactionId=ie->value.choice.MCE_MBMS_M2AP_ID;
-//     //  LOG_D(M2AP, "M2AP: SessionStop-Resp: MCE_MBMS_M2AP_ID %d\n",
-//     //        MCE_MBMS_M2AP_ID);
-//     //  break;
-//     // case M2AP_ProtocolIE_ID_id_ENB_MBMS_M2AP_ID:
-//     //  AssertFatal(ie->criticality == M2AP_Criticality_reject,
-//     //              "ie->criticality != M2AP_Criticality_reject\n");
-//     //  AssertFatal(ie->value.present == M2AP_sessionStopIEs__value_PR_ENB_MBMS_M2AP_ID,
-//     //              "ie->value.present != M2AP_sessionStopIEs__value_PR_ENB_MBMS_M2AP_ID\n");
-//     //  TransactionId=ie->value.choice.ENB_MBMS_M2AP_ID;
-//     //  LOG_D(M2AP, "M2AP: SessionStop-Resp: ENB_MBMS_M2AP_ID %d\n",
-//     //        ENB_MBMS_M2AP_ID);
-//     //  break;
-//     //}
-//  }
-//
-//  M2AP_SESSION_STOP_RESP(msg_p).
-//
-//   LOG_D(M2AP, "Sending M2AP_SCHEDULING_INFO_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
-//         assoc_id,ENB_MODULE_ID_TO_INSTANCE(assoc_id));
-//   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(assoc_id), msg_p);
-
-    itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), msg_g);
-//
+   itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), msg_g);
+   //
    return 0;
                        
 }
@@ -695,16 +692,16 @@ int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p = itti_alloc_new_message(TASK_MCE_APP, 0, M2AP_SETUP_REQ); 
-  
+  message_p = M2AP_SETUP_REQ_alloc(TASK_MCE_APP, 0);
+  m2ap_setup_req_t * msg=M2AP_SETUP_REQ_data(message_p);
   /* assoc_id */
-  M2AP_SETUP_REQ(message_p).assoc_id = assoc_id;
+  msg->assoc_id = assoc_id;
 
  /* GlobalENB_id */
  // this function exits if the ie is mandatory
   M2AP_FIND_PROTOCOLIE_BY_ID(M2AP_M2SetupRequest_Ies_t, ie, container,
                              M2AP_ProtocolIE_ID_id_GlobalENB_ID, true);
-  //asn_INTEGER2ulong(&ie->value.choice.GlobalENB_ID.eNB_ID, &M2AP_SETUP_REQ(message_p).GlobalENB_ID);
+  //asn_INTEGER2ulong(&ie->value.choice.GlobalENB_ID.eNB_ID, &msg->GlobalENB_ID);
   if(ie!=NULL){
   if(ie->value.choice.GlobalENB_ID.eNB_ID.present == M2AP_ENB_ID_PR_macro_eNB_ID){
   }else if(ie->value.choice.GlobalENB_ID.eNB_ID.present == M2AP_ENB_ID_PR_short_Macro_eNB_ID){
@@ -712,19 +709,19 @@ int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
   }
   }
 
-  LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).GlobalENB_ID %lu \n", M2AP_SETUP_REQ(message_p).GlobalENB_ID);
+  LOG_D(M2AP, "msg->GlobalENB_ID %lu \n", msg->GlobalENB_ID);
 
   /* ENB_name */
   M2AP_FIND_PROTOCOLIE_BY_ID(M2AP_M2SetupRequest_Ies_t, ie, container,
                               M2AP_ProtocolIE_ID_id_ENBname, false);
   if(ie!=NULL){
-	  M2AP_SETUP_REQ(message_p).ENBname = calloc(ie->value.choice.ENBname.size + 1, sizeof(char));
-	  memcpy(M2AP_SETUP_REQ(message_p).ENBname, ie->value.choice.ENBname.buf,
+	  msg->ENBname = calloc(ie->value.choice.ENBname.size + 1, sizeof(char));
+	  memcpy(msg->ENBname, ie->value.choice.ENBname.buf,
 		 ie->value.choice.ENBname.size);
 
 	  /* Convert the mme name to a printable string */
-	  M2AP_SETUP_REQ(message_p).ENBname[ie->value.choice.ENBname.size] = '\0';
-	  LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).gNB_DU_name %s \n", M2AP_SETUP_REQ(message_p).ENBname);
+	  msg->ENBname[ie->value.choice.ENBname.size] = '\0';
+	  LOG_D(M2AP, "msg->gNB_DU_name %s \n", msg->ENBname);
   }
    /* ENB_MBMS_Configuration_data_List */
 
@@ -733,45 +730,45 @@ int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
                               M2AP_ProtocolIE_ID_id_ENB_MBMS_Configuration_data_List, true);
 
   if(ie!=NULL){
-	  M2AP_SETUP_REQ(message_p).num_mbms_available = ie->value.choice.ENB_MBMS_Configuration_data_List.list.count;
-	  LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).num_mbms_available %d \n",
-		M2AP_SETUP_REQ(message_p).num_mbms_available);
-	  num_mbms_available = M2AP_SETUP_REQ(message_p).num_mbms_available;
+	  msg->num_mbms_available = ie->value.choice.ENB_MBMS_Configuration_data_List.list.count;
+	  LOG_D(M2AP, "msg->num_mbms_available %d \n",
+		msg->num_mbms_available);
+	  num_mbms_available = msg->num_mbms_available;
 	  for (i=0; i<num_mbms_available; i++) {
 		 M2AP_ENB_MBMS_Configuration_data_Item_t *mbms_configuration_item_p;
 		 mbms_configuration_item_p = &(((M2AP_ENB_MBMS_Configuration_data_ItemIEs_t *)ie->value.choice.ENB_MBMS_Configuration_data_List.list.array[i])->value.choice.ENB_MBMS_Configuration_data_Item);
 	    /* eCGI */
 	       //mbms_configuration_item_p->eCGI ... (M2AP_ECGI_t)
 
-	    OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.pLMN_Identity),M2AP_SETUP_REQ(message_p).plmn_identity[i]);
-	    //OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.eUTRANcellIdentifier),M2AP_SETUP_REQ(message_p).eutran_cell_identifier[i]);
+	    OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.pLMN_Identity),msg->plmn_identity[i]);
+	    //OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.eUTRANcellIdentifier),msg->eutran_cell_identifier[i]);
 	    /* mbsfnSynchronisationArea */
 	       //mbms_configuration_item_p->mbsfnSynchronisationArea ... (M2AP_MBSFN_SynchronisationArea_ID_t)
 
-	    M2AP_SETUP_REQ(message_p).mbsfn_synchronization_area[i]=mbms_configuration_item_p->mbsfnSynchronisationArea;
+	    msg->mbsfn_synchronization_area[i]=mbms_configuration_item_p->mbsfnSynchronisationArea;
 	    /* mbmsServiceAreaList */
 	       //mbms_configuration_item_p->mbmsServiceAreaList ... (M2AP_MBMS_Service_Area_ID_List_t)
 	  }
   }
     
 //    /* tac */
-//    OCTET_STRING_TO_INT16(&(served_celles_item_p->served_Cell_Information.fiveGS_TAC), M2AP_SETUP_REQ(message_p).tac[i]);
-//    LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).tac[%d] %d \n",
-//          i, M2AP_SETUP_REQ(message_p).tac[i]);
+//    OCTET_STRING_TO_INT16(&(served_celles_item_p->served_Cell_Information.fiveGS_TAC), msg->tac[i]);
+//    LOG_D(M2AP, "msg->tac[%d] %d \n",
+//          i, msg->tac[i]);
 //
 //    /* - nRCGI */
-//    TBCD_TO_MCC_MNC(&(served_celles_item_p->served_Cell_Information.nRCGI.pLMN_Identity), M2AP_SETUP_REQ(message_p).mcc[i],
-//                    M2AP_SETUP_REQ(message_p).mnc[i],
-//                    M2AP_SETUP_REQ(message_p).mnc_digit_length[i]);
+//    TBCD_TO_MCC_MNC(&(served_celles_item_p->served_Cell_Information.nRCGI.pLMN_Identity), msg->mcc[i],
+//                    msg->mnc[i],
+//                    msg->mnc_digit_length[i]);
 //    
 //    
 //    // NR cellID
 //    BIT_STRING_TO_NR_CELL_IDENTITY(&served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity,
-//				   M2AP_SETUP_REQ(message_p).nr_cellid[i]);
+//				   msg->nr_cellid[i]);
 //    LOG_D(M2AP, "[SCTP %d] Received nRCGI: MCC %d, MNC %d, CELL_ID %llu\n", assoc_id,
-//          M2AP_SETUP_REQ(message_p).mcc[i],
-//          M2AP_SETUP_REQ(message_p).mnc[i],
-//          (long long unsigned int)M2AP_SETUP_REQ(message_p).nr_cellid[i]);
+//          msg->mcc[i],
+//          msg->mnc[i],
+//          (long long unsigned int)msg->nr_cellid[i]);
 //    LOG_D(M2AP, "nr_cellId : %x %x %x %x %x\n",
 //          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[0],
 //          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[1],
@@ -779,36 +776,36 @@ int MCE_handle_M2_SETUP_REQUEST(instance_t instance,
 //          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[3],
 //          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[4]);
 //    /* - nRPCI */
-//    M2AP_SETUP_REQ(message_p).nr_pci[i] = served_celles_item_p->served_Cell_Information.nRPCI;
-//    LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).nr_pci[%d] %d \n",
-//          i, M2AP_SETUP_REQ(message_p).nr_pci[i]);
+//    msg->nr_pci[i] = served_celles_item_p->served_Cell_Information.nRPCI;
+//    LOG_D(M2AP, "msg->nr_pci[%d] %d \n",
+//          i, msg->nr_pci[i]);
 //  
 //    // System Information
 //    /* mib */
-//    M2AP_SETUP_REQ(message_p).mib[i] = calloc(served_celles_item_p->gNB_DU_System_Information->mIB_message.size + 1, sizeof(char));
-//    memcpy(M2AP_SETUP_REQ(message_p).mib[i], served_celles_item_p->gNB_DU_System_Information->mIB_message.buf,
+//    msg->mib[i] = calloc(served_celles_item_p->gNB_DU_System_Information->mIB_message.size + 1, sizeof(char));
+//    memcpy(msg->mib[i], served_celles_item_p->gNB_DU_System_Information->mIB_message.buf,
 //           served_celles_item_p->gNB_DU_System_Information->mIB_message.size);
 //    /* Convert the mme name to a printable string */
-//    M2AP_SETUP_REQ(message_p).mib[i][served_celles_item_p->gNB_DU_System_Information->mIB_message.size] = '\0';
-//    M2AP_SETUP_REQ(message_p).mib_length[i] = served_celles_item_p->gNB_DU_System_Information->mIB_message.size;
-//    LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).mib[%d] %s , len = %d \n",
-//          i, M2AP_SETUP_REQ(message_p).mib[i], M2AP_SETUP_REQ(message_p).mib_length[i]);
+//    msg->mib[i][served_celles_item_p->gNB_DU_System_Information->mIB_message.size] = '\0';
+//    msg->mib_length[i] = served_celles_item_p->gNB_DU_System_Information->mIB_message.size;
+//    LOG_D(M2AP, "msg->mib[%d] %s , len = %d \n",
+//          i, msg->mib[i], msg->mib_length[i]);
 //
 //    /* sib1 */
-//    M2AP_SETUP_REQ(message_p).sib1[i] = calloc(served_celles_item_p->gNB_DU_System_Information->sIB1_message.size + 1, sizeof(char));
-//    memcpy(M2AP_SETUP_REQ(message_p).sib1[i], served_celles_item_p->gNB_DU_System_Information->sIB1_message.buf,
+//    msg->sib1[i] = calloc(served_celles_item_p->gNB_DU_System_Information->sIB1_message.size + 1, sizeof(char));
+//    memcpy(msg->sib1[i], served_celles_item_p->gNB_DU_System_Information->sIB1_message.buf,
 //           served_celles_item_p->gNB_DU_System_Information->sIB1_message.size);
 //    /* Convert the mme name to a printable string */
-//    M2AP_SETUP_REQ(message_p).sib1[i][served_celles_item_p->gNB_DU_System_Information->sIB1_message.size] = '\0';
-//    M2AP_SETUP_REQ(message_p).sib1_length[i] = served_celles_item_p->gNB_DU_System_Information->sIB1_message.size;
-//    LOG_D(M2AP, "M2AP_SETUP_REQ(message_p).sib1[%d] %s , len = %d \n",
-//          i, M2AP_SETUP_REQ(message_p).sib1[i], M2AP_SETUP_REQ(message_p).sib1_length[i]);
+//    msg->sib1[i][served_celles_item_p->gNB_DU_System_Information->sIB1_message.size] = '\0';
+//    msg->sib1_length[i] = served_celles_item_p->gNB_DU_System_Information->sIB1_message.size;
+//    LOG_D(M2AP, "msg->sib1[%d] %s , len = %d \n",
+//          i, msg->sib1[i], msg->sib1_length[i]);
 //  }
 
 
   //printf("m2ap_mce_data_from_enb->assoc_id %d %d\n",m2ap_mce_data_from_enb->assoc_id,assoc_id);
 
-  *m2ap_mce_data_from_enb = M2AP_SETUP_REQ(message_p);
+  *m2ap_mce_data_from_enb = *M2AP_SETUP_REQ_data(message_p);
   //printf("m2ap_mce_data_from_enb->assoc_id %d %d\n",m2ap_mce_data_from_enb->assoc_id,assoc_id);
 
   if (num_mbms_available > 0) {
@@ -1158,11 +1155,9 @@ int MCE_handle_MCE_CONFIGURATION_UPDATE_FAILURE(instance_t instance,
 
    //M2AP_MCEConfigurationUpdateFailure_Ies_t *ie;
 
+  MessageDef *msg_p = M2AP_MCE_CONFIGURATION_UPDATE_FAILURE_alloc(TASK_M2AP_MCE, 0);
 
-  MessageDef *msg_p = itti_alloc_new_message (TASK_M2AP_MCE, 0, M2AP_MCE_CONFIGURATION_UPDATE_FAILURE);
-
-   LOG_D(M2AP, "M2AP: MCEConfigurationUpdate-Failure: protocolIEs.list.count %d\n",
-         in->protocolIEs.list.count);
+  LOG_D(M2AP, "M2AP: MCEConfigurationUpdate-Failure: protocolIEs.list.count %d\n", in->protocolIEs.list.count);
   // for (int i=0;i < in->protocolIEs.list.count; i++) {
   //   ie = in->protocolIEs.list.array[i];
   //  // switch (ie->id) {
@@ -1215,8 +1210,7 @@ int MCE_handle_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_MCE, 0, M2AP_MCE_CONFIGURATION_UPDATE_ACK);
-
+  message_p = M2AP_MCE_CONFIGURATION_UPDATE_ACK_alloc(TASK_M2AP_MCE, 0);
 
   itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -1252,8 +1246,7 @@ int MCE_handle_ENB_CONFIGURATION_UPDATE(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_MCE, 0, M2AP_MCE_CONFIGURATION_UPDATE_ACK);
-
+  message_p = M2AP_MCE_CONFIGURATION_UPDATE_ACK_alloc(TASK_M2AP_MCE, 0);
 
   itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -1355,8 +1348,7 @@ int MCE_handle_MBMS_SERVICE_COUNTING_RESPONSE(instance_t instance,
   //int MCE_MBMS_M2AP_ID=-1;
   //int ENB_MBMS_M2AP_ID=-1;
 
-
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M2AP_MCE, 0,M2AP_MBMS_SERVICE_COUNTING_RESP); //TODO
+  MessageDef *msg_g = M2AP_MBMS_SERVICE_COUNTING_RESP_alloc(TASK_M2AP_MCE, 0);
 
   LOG_D(M2AP, "M2AP: MbmsServiceCounting-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);

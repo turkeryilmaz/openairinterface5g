@@ -640,8 +640,8 @@ int CU_handle_UE_CONTEXT_SETUP_RESPONSE(instance_t       instance,
   F1AP_UEContextSetupResponse_t    *container;
   F1AP_UEContextSetupResponseIEs_t *ie;
   DevAssert(pdu);
-  msg_p = itti_alloc_new_message(TASK_DU_F1, 0,  F1AP_UE_CONTEXT_SETUP_RESP);
-  f1ap_ue_context_setup_t *f1ap_ue_context_setup_resp = &F1AP_UE_CONTEXT_SETUP_RESP(msg_p);
+  msg_p = F1AP_UE_CONTEXT_SETUP_RESP_alloc(TASK_DU_F1, 0);
+  f1ap_ue_context_setup_t *f1ap_ue_context_setup_resp = F1AP_UE_CONTEXT_SETUP_RESP_data(msg_p);
   container = &pdu->choice.successfulOutcome->value.choice.UEContextSetupResponse;
   int i;
   /* GNB_CU_UE_F1AP_ID */
@@ -777,8 +777,8 @@ int CU_handle_UE_CONTEXT_SETUP_FAILURE(instance_t       instance,
 
 int CU_handle_UE_CONTEXT_RELEASE_REQUEST(instance_t instance, uint32_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_CU_F1, 0,  F1AP_UE_CONTEXT_RELEASE_REQ);
-  f1ap_ue_context_release_req_t *req = &F1AP_UE_CONTEXT_RELEASE_REQ(msg);
+  MessageDef *msg = F1AP_UE_CONTEXT_RELEASE_REQ_alloc(TASK_CU_F1, 0);
+  f1ap_ue_context_release_req_t *req = F1AP_UE_CONTEXT_RELEASE_REQ_data(msg);
   F1AP_UEContextReleaseRequest_t    *container;
   F1AP_UEContextReleaseRequestIEs_t *ie;
   DevAssert(pdu);
@@ -965,8 +965,8 @@ int CU_handle_UE_CONTEXT_RELEASE_COMPLETE(instance_t       instance,
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[instance], rnti);
 
   if (ue_context_p) {
-    MessageDef *msg = itti_alloc_new_message(TASK_CU_F1, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
-    NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).gNB_ue_ngap_id = ue_context_p->ue_context.gNB_ue_ngap_id;
+    MessageDef *msg = NGAP_UE_CONTEXT_RELEASE_COMPLETE_alloc(TASK_CU_F1, 0);
+    NGAP_UE_CONTEXT_RELEASE_COMPLETE_data(msg)->gNB_ue_ngap_id = ue_context_p->ue_context.gNB_ue_ngap_id;
     itti_send_msg_to_task(TASK_NGAP, instance, msg);
     rrc_gNB_remove_ue_context(RC.nrrrc[instance], ue_context_p);
   } else {
@@ -1599,8 +1599,8 @@ int CU_handle_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t       instance,
   F1AP_UEContextModificationResponse_t    *container;
   F1AP_UEContextModificationResponseIEs_t *ie;
   DevAssert(pdu);
-  msg_p = itti_alloc_new_message(TASK_DU_F1, 0,  F1AP_UE_CONTEXT_MODIFICATION_RESP);
-  f1ap_ue_context_modif_resp_t *f1ap_ue_context_modification_resp = &F1AP_UE_CONTEXT_MODIFICATION_RESP(msg_p);
+  msg_p = F1AP_UE_CONTEXT_MODIFICATION_RESP_alloc(TASK_DU_F1, 0);
+  f1ap_ue_context_modif_resp_t *f1ap_ue_context_modification_resp = F1AP_UE_CONTEXT_MODIFICATION_RESP_data(msg_p);
   container = &pdu->choice.successfulOutcome->value.choice.UEContextModificationResponse;
   int i;
 

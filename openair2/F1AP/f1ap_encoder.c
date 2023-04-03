@@ -110,7 +110,7 @@ int f1ap_encode_initiating(f1ap_message *f1ap_message_p,
 
   message_string_size = strlen(message_string);
 
-  message_p = itti_alloc_new_message_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
+  message_p = itti_alloc_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
   message_p->ittiMsg.f1ap_f1_setup_log.size = message_string_size;
   memcpy(&message_p->ittiMsg.f1ap_f1_setup_log.text, message_string, message_string_size);
 
@@ -146,7 +146,7 @@ int f1ap_encode_successfull_outcome(f1ap_message *f1ap_message_p,
 
     f1ap_xer_print_f1ap_initialcontextsetupresponse(f1ap_xer__print2sp, message_string, f1ap_message_p);
     message_id = F1AP_INITIAL_CONTEXT_SETUP_LOG;
-    message_p = itti_alloc_new_message_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
+    message_p = itti_alloc_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
     message_p->ittiMsg.f1ap_initial_context_setup_log.size = message_string_size;
     memcpy(&message_p->ittiMsg.f1ap_initial_context_setup_log.text, message_string, message_string_size);
     itti_send_msg_to_task(TASK_UNKNOWN, INSTANCE_DEFAULT, message_p);
@@ -158,7 +158,7 @@ int f1ap_encode_successfull_outcome(f1ap_message *f1ap_message_p,
             &f1ap_message_p->msg.f1ap_UEContextReleaseCompleteIEs, buffer, len);
     f1ap_xer_print_f1ap_uecontextreleasecomplete(f1ap_xer__print2sp, message_string, f1ap_message_p);
     message_id = F1AP_UE_CONTEXT_RELEASE_COMPLETE_LOG;
-    message_p = itti_alloc_new_message_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
+    message_p = itti_alloc_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
     message_p->ittiMsg.f1ap_ue_context_release_complete_log.size = message_string_size;
     memcpy(&message_p->ittiMsg.f1ap_ue_context_release_complete_log.text, message_string, message_string_size);
     itti_send_msg_to_task(TASK_UNKNOWN, INSTANCE_DEFAULT, message_p);
@@ -209,7 +209,7 @@ int f1ap_encode_unsuccessfull_outcome(f1ap_message *f1ap_message_p,
 
   message_string_size = strlen(message_string);
 
-  message_p = itti_alloc_new_message_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
+  message_p = itti_alloc_sized(TASK_F1AP, message_id, message_string_size + sizeof (IttiMsgText));
   message_p->ittiMsg.f1ap_initial_context_setup_log.size = message_string_size;
   memcpy(&message_p->ittiMsg.f1ap_initial_context_setup_log.text, message_string, message_string_size);
 

@@ -1177,7 +1177,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/PHY_INTERFACE/phy_interface_extern.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/PHY_INTERFACE/queue_t.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/PHY_INTERFACE/IF_Module.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/rlc_messages_types.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/platform_constants.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/nas_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/gtpv1_u_messages_types.h \
@@ -1200,7 +1199,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/flexran_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/m3ap_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/mac_messages_def.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/udp_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/x2ap_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/pdcp_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/phy_messages_types.h \
@@ -1215,7 +1213,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/openair_defs.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/rrc_messages_types.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/mac_primitives.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/rlc_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/ngap_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/gtpv1_u_messages_def.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/COMMON/udp_messages_types.h \

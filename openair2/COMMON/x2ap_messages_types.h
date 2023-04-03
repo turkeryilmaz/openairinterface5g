@@ -22,6 +22,8 @@
 #ifndef X2AP_MESSAGES_TYPES_H_
 #define X2AP_MESSAGES_TYPES_H_
 
+#include "openair1/PHY/defs_common.h"
+#include "radio/COMMON/common_lib.h"
 #include "s1ap_messages_types.h"
 #include "LTE_PhysCellId.h"
 
@@ -30,31 +32,6 @@ typedef enum {
   X2AP_CAUSE_T_DC_OVERALL_TIMEOUT,
   X2AP_CAUSE_RADIO_CONNECTION_WITH_UE_LOST,
 } x2ap_cause_t;
-
-//-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-
-
-#define X2AP_REGISTER_ENB_REQ(mSGpTR)                           (mSGpTR)->ittiMsg.x2ap_register_enb_req
-#define X2AP_SETUP_REQ(mSGpTR)                                  (mSGpTR)->ittiMsg.x2ap_setup_req
-#define X2AP_SETUP_RESP(mSGpTR)                                 (mSGpTR)->ittiMsg.x2ap_setup_resp
-#define X2AP_RESET_REQ(mSGpTR)                                  (mSGpTR)->ittiMsg.x2ap_reset_req
-#define X2AP_RESET_RESP(mSGpTR)                                 (mSGpTR)->ittiMsg.x2ap_reset_resp
-#define X2AP_HANDOVER_REQ(mSGpTR)                               (mSGpTR)->ittiMsg.x2ap_handover_req
-#define X2AP_HANDOVER_REQ_ACK(mSGpTR)                           (mSGpTR)->ittiMsg.x2ap_handover_req_ack
-#define X2AP_REGISTER_ENB_CNF(mSGpTR)                           (mSGpTR)->ittiMsg.x2ap_register_enb_cnf
-#define X2AP_DEREGISTERED_ENB_IND(mSGpTR)                       (mSGpTR)->ittiMsg.x2ap_deregistered_enb_ind
-#define X2AP_UE_CONTEXT_RELEASE(mSGpTR)                         (mSGpTR)->ittiMsg.x2ap_ue_context_release
-#define X2AP_HANDOVER_CANCEL(mSGpTR)                            (mSGpTR)->ittiMsg.x2ap_handover_cancel
-#define X2AP_SENB_ADDITION_REQ(mSGpTR)                          (mSGpTR)->ittiMsg.x2ap_senb_addition_req
-#define X2AP_ENDC_SGNB_ADDITION_REQ(mSGpTR)                     (mSGpTR)->ittiMsg.x2ap_ENDC_sgnb_addition_req
-#define X2AP_ENDC_SGNB_ADDITION_REQ_ACK(mSGpTR)                 (mSGpTR)->ittiMsg.x2ap_ENDC_sgnb_addition_req_ACK
-#define X2AP_ENDC_SGNB_RECONF_COMPLETE(mSGpTR)                  (mSGpTR)->ittiMsg.x2ap_ENDC_sgnb_reconf_complete
-#define X2AP_ENDC_SGNB_RELEASE_REQUEST(mSGpTR)                  (mSGpTR)->ittiMsg.x2ap_ENDC_sgnb_release_request
-#define X2AP_ENDC_SGNB_RELEASE_REQUIRED(mSGpTR)                 (mSGpTR)->ittiMsg.x2ap_ENDC_sgnb_release_required
-#define X2AP_ENDC_DC_PREP_TIMEOUT(mSGpTR)                       (mSGpTR)->ittiMsg.x2ap_ENDC_dc_prep_timeout
-#define X2AP_ENDC_DC_OVERALL_TIMEOUT(mSGpTR)                    (mSGpTR)->ittiMsg.x2ap_ENDC_dc_overall_timeout
-#define X2AP_ENDC_SETUP_REQ(mSGpTR)                             (mSGpTR)->ittiMsg.x2ap_ENDC_setup_req
 
 #define X2AP_MAX_NB_ENB_IP_ADDRESS 2
 
@@ -440,4 +417,18 @@ typedef struct x2ap_ENDC_dc_overall_timeout_s {
   int rnti;
 } x2ap_ENDC_dc_overall_timeout_t;
 
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/x2ap_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/x2ap_messages_def.h"
+ #undef MESSAGE_DEF
 #endif /* X2AP_MESSAGES_TYPES_H_ */

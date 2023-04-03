@@ -55,28 +55,6 @@ LINK COMMANDS:
     Link_Action / Power Up    RRC Connection establishment
 */
 
-#define RRC_RAL_SYSTEM_CONFIGURATION_IND(mSGpTR)          (mSGpTR)->ittiMsg.rrc_ral_system_configuration_ind
-#define RRC_RAL_SYSTEM_INFORMATION_IND(mSGpTR)            (mSGpTR)->ittiMsg.rrc_ral_system_information_ind
-
-#define RRC_RAL_SCAN_REQ(mSGpTR)                          (mSGpTR)->ittiMsg.rrc_ral_scan_req
-#define RRC_RAL_SCAN_CONF(mSGpTR)                         (mSGpTR)->ittiMsg.rrc_ral_scan_conf
-
-#define RRC_RAL_CONFIGURE_THRESHOLD_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_ral_configure_threshold_req
-#define RRC_RAL_CONFIGURE_THRESHOLD_CONF(mSGpTR)          (mSGpTR)->ittiMsg.rrc_ral_configure_threshold_conf
-#define RRC_RAL_MEASUREMENT_REPORT_IND(mSGpTR)            (mSGpTR)->ittiMsg.rrc_ral_measurement_report_ind
-
-#define RRC_RAL_CONNECTION_ESTABLISHMENT_REQ(mSGpTR)      (mSGpTR)->ittiMsg.rrc_ral_connection_establishment_req
-#define RRC_RAL_CONNECTION_ESTABLISHMENT_CONF(mSGpTR)     (mSGpTR)->ittiMsg.rrc_ral_connection_establishment_conf
-#define RRC_RAL_CONNECTION_ESTABLISHMENT_IND(mSGpTR)      (mSGpTR)->ittiMsg.rrc_ral_connection_establishment_ind
-#define RRC_RAL_CONNECTION_REESTABLISHMENT_IND(mSGpTR)    (mSGpTR)->ittiMsg.rrc_ral_connection_reestablishment_ind
-#define RRC_RAL_CONNECTION_RECONFIGURATION_REQ(mSGpTR)    (mSGpTR)->ittiMsg.rrc_ral_connection_reconfiguration_req
-#define RRC_RAL_CONNECTION_RECONFIGURATION_IND(mSGpTR)    (mSGpTR)->ittiMsg.rrc_ral_connection_reconfiguration_ind
-#define RRC_RAL_CONNECTION_RECONFIGURATION_HO_IND(mSGpTR) (mSGpTR)->ittiMsg.rrc_ral_connection_reconfiguration_ho_ind
-
-#define RRC_RAL_CONNECTION_RELEASE_REQ(mSGpTR)            (mSGpTR)->ittiMsg.rrc_ral_connection_release_req
-#define RRC_RAL_CONNECTION_RELEASE_CONF(mSGpTR)           (mSGpTR)->ittiMsg.rrc_ral_connection_release_conf
-#define RRC_RAL_CONNECTION_RELEASE_IND(mSGpTR)            (mSGpTR)->ittiMsg.rrc_ral_connection_release_ind
-
 #include "MIH_C_header_codec.h"
 
 typedef MIH_C_TRANSACTION_ID_T ral_transaction_id_t;
@@ -363,8 +341,5 @@ typedef struct rrc_ral_connection_release_conf_s {
 typedef struct rrc_ral_connection_release_ind_s {
   uint16_t     ue_id;
 } rrc_ral_connection_release_ind_t;
-
-
-
 
 #endif /* RAL_MESSAGES_TYPES_H_ */

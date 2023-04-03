@@ -73,15 +73,15 @@ int MCE_handle_MBMS_SESSION_START_REQUEST(instance_t instance,
 //
 //  container = &pdu->choice.initiatingMessage.value.choice.SessionStartRequest;
 
-    message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_START_REQ);
+    message_p = M3AP_MBMS_SESSION_START_REQ_alloc(TASK_M3AP_MCE, 0);
 
-//
-//  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
-//  if (stream != 0) {
-//    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
-//              assoc_id, stream);
-//  }
-//
+    //
+    //  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
+    //  if (stream != 0) {
+    //    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
+    //              assoc_id, stream);
+    //  }
+    //
 
     itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -239,17 +239,17 @@ int MCE_handle_MBMS_SESSION_STOP_REQUEST(instance_t instance,
 	//MCE_send_MBMS_SESSION_STOP_RESPONSE(instance,assoc_id);
   //}else
 	//MCE_send_MBMS_SESSION_STOP_FAILURE(instance,assoc_id);
-    message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_STOP_REQ);
+  message_p = M3AP_MBMS_SESSION_STOP_REQ_alloc(TASK_M3AP_MCE, 0);
 
-//
-//  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
-//  if (stream != 0) {
-//    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
-//              assoc_id, stream);
-//  }
-//
+  //
+  //  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
+  //  if (stream != 0) {
+  //    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
+  //              assoc_id, stream);
+  //  }
+  //
 
-    itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
+  itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
 
 
@@ -344,17 +344,17 @@ int MCE_handle_MBMS_SESSION_UPDATE_REQUEST(instance_t instance,
 	//MCE_send_MBMS_SESSION_STOP_RESPONSE(instance,assoc_id);
   //}else
 	//MCE_send_MBMS_SESSION_STOP_FAILURE(instance,assoc_id);
-    message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, M3AP_MBMS_SESSION_UPDATE_REQ);
+  message_p = M3AP_MBMS_SESSION_UPDATE_REQ_alloc(TASK_M3AP_MCE, 0);
 
-//
-//  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
-//  if (stream != 0) {
-//    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
-//              assoc_id, stream);
-//  }
-//
+  //
+  //  /* M3 Setup Request == Non UE-related procedure -> stream 0 */
+  //  if (stream != 0) {
+  //    LOG_W(M3AP, "[SCTP %d] Received MMBS session start request on stream != 0 (%d)\n",
+  //              assoc_id, stream);
+  //  }
+  //
 
-    itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
+  itti_send_msg_to_task(TASK_MCE_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
 
 
@@ -678,16 +678,16 @@ int MCE_handle_M3_SETUP_RESPONSE(instance_t instance,
    //int num_cells_to_activate = 0;
    //M3AP_Cells_to_be_Activated_List_Item_t *cell;
 
-   MessageDef *msg_p = itti_alloc_new_message (TASK_M3AP_MCE, 0, M3AP_SETUP_RESP);
+   MessageDef *msg_p = M3AP_SETUP_RESP_alloc(TASK_M3AP_MCE, 0);
 
-  // LOG_D(M3AP, "M3AP: M3Setup-Resp: protocolIEs.list.count %d\n",
-  //       in->protocolIEs.list.count);
-  // for (int i=0;i < in->protocolIEs.list.count; i++) {
-  //   ie = in->protocolIEs.list.array[i];
-  // }
-   //AssertFatal(GlobalMCE_ID!=-1,"GlobalMCE_ID was not sent\n");
-   //AssertFatal(num_cells_to_activate>0,"No cells activated\n");
-   //M3AP_SETUP_RESP (msg_p).num_cells_to_activate = num_cells_to_activate;
+   // LOG_D(M3AP, "M3AP: M3Setup-Resp: protocolIEs.list.count %d\n",
+   //       in->protocolIEs.list.count);
+   // for (int i=0;i < in->protocolIEs.list.count; i++) {
+   //   ie = in->protocolIEs.list.array[i];
+   // }
+   // AssertFatal(GlobalMCE_ID!=-1,"GlobalMCE_ID was not sent\n");
+   // AssertFatal(num_cells_to_activate>0,"No cells activated\n");
+   // M3AP_SETUP_RESP (msg_p).num_cells_to_activate = num_cells_to_activate;
 
    //for (int i=0;i<num_cells_to_activate;i++)  
    //  AssertFatal(M3AP_SETUP_RESP (msg_p).num_SI[i] > 0, "System Information %d is missing",i);

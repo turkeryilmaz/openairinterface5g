@@ -253,8 +253,8 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance,
 
   
   // We copy and store in F1 task data, RRC will free "req" as it frees all itti received messages
-  message_p = itti_alloc_new_message(TASK_CU_F1, 0, F1AP_SETUP_REQ);
-  memcpy(&F1AP_SETUP_REQ(message_p), req, sizeof(f1ap_setup_req_t) );
+  message_p = F1AP_SETUP_REQ_alloc(TASK_CU_F1, 0);
+  memcpy(F1AP_SETUP_REQ_data(message_p), req, sizeof(f1ap_setup_req_t) );
   
   if (req->num_cells_available > 0) {
       itti_send_msg_to_task(TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(instance), message_p);

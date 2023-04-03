@@ -405,7 +405,7 @@ void terminate_task(module_id_t mod_id, task_id_t from, task_id_t to) {
   LOG_I(ENB_APP, "sending TERMINATE_MESSAGE from task %s (%d) to task %s (%d)\n",
         itti_get_task_name(from), from, itti_get_task_name(to), to);
   MessageDef *msg;
-  msg = itti_alloc_new_message (from, 0, TERMINATE_MESSAGE);
+  msg = TERMINATE_MESSAGE_alloc(from, 0);
   itti_send_msg_to_task (to, ENB_MODULE_ID_TO_INSTANCE(mod_id), msg);
 }
 
@@ -501,8 +501,8 @@ int main ( int argc, char **argv )
     }
 
     for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++) {
-      MessageDef *msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, RRC_CONFIGURATION_REQ);
-      RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
+      MessageDef *msg_p = RRC_CONFIGURATION_REQ_alloc(TASK_ENB_APP, 0);
+      *RRC_CONFIGURATION_REQ_data(msg_p) = RC.rrc[enb_id]->configuration;
       itti_send_msg_to_task (TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
       rrc_enb_process_itti_msg(NULL);
     }

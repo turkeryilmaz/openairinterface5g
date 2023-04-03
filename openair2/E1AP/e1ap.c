@@ -107,8 +107,8 @@ void e1_task_handle_sctp_data_ind(instance_t instance, sctp_data_ind_t *sctp_dat
 }
 
 void e1ap_itti_send_sctp_close_association(bool isCu, instance_t instance) {
-  MessageDef *message = itti_alloc_new_message(TASK_S1AP, 0, SCTP_CLOSE_ASSOCIATION);
-  sctp_close_association_t *sctp_close_association = &message->ittiMsg.sctp_close_association;
+  MessageDef *message = SCTP_CLOSE_ASSOCIATION_alloc(TASK_S1AP, 0);
+  sctp_close_association_t *sctp_close_association =  SCTP_CLOSE_ASSOCIATION_data(message);
   sctp_close_association->assoc_id      = e1ap_assoc_id(isCu,instance);
   itti_send_msg_to_task(TASK_SCTP, instance, message);
 }
@@ -322,8 +322,8 @@ int e1apCUCP_handle_SETUP_REQUEST(e1ap_upcp_inst_t *inst, const E1AP_E1AP_PDU_t 
   DevAssert(pdu != NULL);
   extract_SETUP_REQUEST(pdu, &inst->setupReq);
   /* Create ITTI message and send to queue */
-  MessageDef *msg_p = itti_alloc_new_message(TASK_CUCP_E1, 0 /*unused by callee*/, E1AP_SETUP_REQ);
-  memcpy(&E1AP_SETUP_REQ(msg_p), &inst->setupReq, sizeof(e1ap_setup_req_t));
+  MessageDef *msg_p = E1AP_SETUP_REQ_alloc(TASK_CUCP_E1, 0);
+  memcpy(E1AP_SETUP_REQ_data(msg_p), &inst->setupReq, sizeof(e1ap_setup_req_t));
 
   if (inst->setupReq.supported_plmns > 0) {
     itti_send_msg_to_task(TASK_RRC_GNB, 0 /*unused by callee*/, msg_p);
@@ -1054,8 +1054,8 @@ int e1apCUCP_handle_BEARER_CONTEXT_SETUP_RESPONSE(e1ap_upcp_inst_t *inst, const 
   DevAssert(pdu->choice.successfulOutcome->criticality == E1AP_Criticality_reject);
   DevAssert(pdu->choice.successfulOutcome->value.present == E1AP_SuccessfulOutcome__value_PR_BearerContextSetupResponse);
 
-  MessageDef *msg = itti_alloc_new_message(TASK_CUCP_E1, 0, E1AP_BEARER_CONTEXT_SETUP_RESP);
-  e1ap_bearer_setup_resp_t *bearerCxt = &E1AP_BEARER_CONTEXT_SETUP_RESP(msg);
+  MessageDef *msg = E1AP_BEARER_CONTEXT_SETUP_RESP_alloc(TASK_CUCP_E1, 0);
+  e1ap_bearer_setup_resp_t *bearerCxt = E1AP_BEARER_CONTEXT_SETUP_RESP_data(msg);
   extract_BEARER_CONTEXT_SETUP_RESPONSE(pdu, bearerCxt);
   // Fixme: instance is the NGAP instance, no good way to set it here
   instance_t instance = 0;
@@ -1525,8 +1525,8 @@ static void e1_task_send_sctp_association_req(long task_id, instance_t instance,
 {
   DevAssert(e1ap_setup_req != NULL);
   getCxtE1(instance)->sockState = SCTP_STATE_CLOSED;
-  MessageDef *message_p = itti_alloc_new_message(task_id, 0, SCTP_NEW_ASSOCIATION_REQ);
-  sctp_new_association_req_t *sctp_new_req = &message_p->ittiMsg.sctp_new_association_req;
+  MessageDef *message_p = SCTP_NEW_ASSOCIATION_REQ_alloc(task_id, 0);
+  sctp_new_association_req_t *sctp_new_req = SCTP_NEW_ASSOCIATION_REQ_data(message_p);
   sctp_new_req->ulp_cnx_id = instance;
   sctp_new_req->port = E1AP_PORT_NUMBER;
   sctp_new_req->ppid = E1AP_SCTP_PPID;
@@ -1604,19 +1604,20 @@ void cuup_init_n3(instance_t instance)
 void cucp_task_send_sctp_init_req(instance_t instance, char *my_addr) {
   LOG_I(E1AP, "E1AP_CUCP_SCTP_REQ(create socket)\n");
   MessageDef  *message_p = NULL;
-  message_p = itti_alloc_new_message (TASK_CUCP_E1, 0, SCTP_INIT_MSG);
-  message_p->ittiMsg.sctp_init.port = E1AP_PORT_NUMBER;
-  message_p->ittiMsg.sctp_init.ppid = E1AP_SCTP_PPID;
-  message_p->ittiMsg.sctp_init.ipv4 = 1;
-  message_p->ittiMsg.sctp_init.ipv6 = 0;
-  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(my_addr);
+  message_p = SCTP_INIT_MSG_alloc(TASK_CUCP_E1, 0);
+  sctp_init_t *msg=SCTP_INIT_MSG_data(message_p);
+  msg->port = E1AP_PORT_NUMBER;
+  msg->ppid = E1AP_SCTP_PPID;
+  msg->ipv4 = 1;
+  msg->ipv6 = 0;
+  msg->nb_ipv4_addr = 1;
+  msg->ipv4_address[0] = inet_addr(my_addr);
   /*
    * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
    * * * * Disable it for now.
    */
-  message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
-  message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  msg->nb_ipv6_addr = 0;
+  msg->ipv6_address[0] = "0:0:0:0:0:0:0:1";
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
 }
 
@@ -1656,15 +1657,15 @@ void *E1AP_CUCP_task(void *arg) {
 
     switch (ITTI_MSG_ID(msg)) {
       case SCTP_NEW_ASSOCIATION_IND:
-        e1_task_handle_sctp_association_ind(CPtype, ITTI_MSG_ORIGIN_INSTANCE(msg), &msg->ittiMsg.sctp_new_association_ind);
+        e1_task_handle_sctp_association_ind(CPtype, ITTI_MSG_ORIGIN_INSTANCE(msg), SCTP_NEW_ASSOCIATION_IND_data(msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
-        e1_task_handle_sctp_association_resp(CPtype, ITTI_MSG_ORIGIN_INSTANCE(msg), &msg->ittiMsg.sctp_new_association_resp);
+        e1_task_handle_sctp_association_resp(CPtype, ITTI_MSG_ORIGIN_INSTANCE(msg), SCTP_NEW_ASSOCIATION_RESP_data(msg));
         break;
 
       case E1AP_SETUP_REQ: {
-        e1ap_setup_req_t *req = &E1AP_SETUP_REQ(msg);
+        e1ap_setup_req_t *req = E1AP_SETUP_REQ_data(msg);
         if (req->CUCP_e1_ip_address.ipv4 == 0) {
           LOG_E(E1AP, "No IPv4 address configured\n");
           return NULL;
@@ -1673,19 +1674,19 @@ void *E1AP_CUCP_task(void *arg) {
       } break;
 
       case SCTP_DATA_IND:
-        e1_task_handle_sctp_data_ind(myInstance, &msg->ittiMsg.sctp_data_ind);
+        e1_task_handle_sctp_data_ind(myInstance, SCTP_DATA_IND_data(msg));
         break;
 
       case E1AP_SETUP_RESP:
-        e1ap_send_SETUP_RESPONSE(myInstance, &E1AP_SETUP_RESP(msg));
+        e1ap_send_SETUP_RESPONSE(myInstance, E1AP_SETUP_RESP_data(msg));
         break;
 
       case E1AP_BEARER_CONTEXT_SETUP_REQ:
-        e1apCUCP_send_BEARER_CONTEXT_SETUP_REQUEST(myInstance, &E1AP_BEARER_CONTEXT_SETUP_REQ(msg));
+        e1apCUCP_send_BEARER_CONTEXT_SETUP_REQUEST(myInstance, E1AP_BEARER_CONTEXT_SETUP_REQ_data(msg));
         break;
 
       case E1AP_BEARER_CONTEXT_MODIFICATION_REQ:
-        e1apCUCP_send_BEARER_CONTEXT_MODIFICATION_REQUEST(myInstance, &E1AP_BEARER_CONTEXT_SETUP_REQ(msg));
+        e1apCUCP_send_BEARER_CONTEXT_MODIFICATION_REQUEST(myInstance, E1AP_BEARER_CONTEXT_SETUP_REQ_data(msg));
         break;
 
       default:
@@ -1714,18 +1715,18 @@ void *E1AP_CUUP_task(void *arg) {
     LOG_I(E1AP, "CUUP received %s for instance %ld\n", messages_info[msgType].name, myInstance);
     switch (msgType) {
       case E1AP_SETUP_REQ: {
-        e1ap_setup_req_t *msgSetup = &E1AP_SETUP_REQ(msg);
+        e1ap_setup_req_t *msgSetup = E1AP_SETUP_REQ_data(msg);
         createE1inst(UPtype, myInstance, msgSetup);
 
         e1_task_send_sctp_association_req(TASK_CUUP_E1, myInstance, msgSetup);
       } break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
-        e1_task_handle_sctp_association_resp(UPtype, myInstance, &msg->ittiMsg.sctp_new_association_resp);
+        e1_task_handle_sctp_association_resp(UPtype, myInstance, SCTP_NEW_ASSOCIATION_RESP_data(msg));
         break;
 
       case SCTP_DATA_IND:
-        e1_task_handle_sctp_data_ind(myInstance, &msg->ittiMsg.sctp_data_ind);
+        e1_task_handle_sctp_data_ind(myInstance, SCTP_DATA_IND_data(msg));
         break;
 
       case TIMER_HAS_EXPIRED:

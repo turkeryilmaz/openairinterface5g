@@ -30,7 +30,7 @@
 #ifndef RRC_GNB_GTPV1U_H_
 #define RRC_GNB_GTPV1U_H_
 
-
+#include "openair2/COMMON/gtpv1_u_messages_types.h"
 int
 rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(
   const protocol_ctxt_t *const ctxt_pP,

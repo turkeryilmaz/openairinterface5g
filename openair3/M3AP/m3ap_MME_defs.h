@@ -25,19 +25,20 @@
  * \date 2019
  * \version 0.1
  */
-
+#ifndef M3AP_MME_DEFS_H_
+#define M3AP_MME_DEFS_H_
 #include <stdint.h>
 
 #include "queue.h"
 #include "tree.h"
+#include "common/ngran_types.h"
+#include "openair1/PHY/defs_common.h"
+#include "openair2/COMMON/m3ap_messages_types.h"
 
 #include "sctp_eNB_defs.h"
 
 #include "m3ap_ids.h" //looks X2AP specific for HO
 #include "m3ap_timers.h"
-
-#ifndef M3AP_MME_DEFS_H_
-#define M3AP_MME_DEFS_H_
 
 #define M3AP_MME_NAME_LENGTH_MAX    (150)
 

@@ -54,6 +54,7 @@
 #include "common/config/config_userapi.h"
 #include "RRC_config_tools.h"
 #include "enb_paramdef.h"
+#include "openair2/COMMON/m3ap_messages_types.h"
 
 int RCconfig_MME(void ) {
   //int               num_enbs                      = 0;
@@ -93,12 +94,13 @@ int RCconfig_MME(void ) {
 
   if (address) {
     MessageDef *message;
-    AssertFatal((message = itti_alloc_new_message(TASK_MME_APP, 0, M3AP_MME_SCTP_REQ))!=NULL,"");
-    M3AP_MME_SCTP_REQ (message).mme_m3_ip_address.ipv6 = 0;
-    M3AP_MME_SCTP_REQ (message).mme_m3_ip_address.ipv4 = 1;
-    strcpy( M3AP_MME_SCTP_REQ (message).mme_m3_ip_address.ipv4_address, address);
+    AssertFatal((message = M3AP_MME_SCTP_REQ_alloc(TASK_MME_APP, 0)) != NULL, "");
+    m3ap_mme_sctp_req_t *msg=M3AP_MME_SCTP_REQ_data(message);
+    msg->mme_m3_ip_address.ipv6 = 0;
+    msg->mme_m3_ip_address.ipv4 = 1;
+    strcpy( msg->mme_m3_ip_address.ipv4_address, address);
     LOG_I(MME_APP,"Configuring M3_C address : %s\n",address/*,M3AP_MME_SCTP_REQ(message).mme_m3_ip_address*/);
-    M3AP_MME_SCTP_REQ(message).mme_port_for_M3C = mme_port_for_m3c;
+    msg->mme_port_for_M3C = mme_port_for_m3c;
     itti_send_msg_to_task (TASK_M3AP_MME, 0, message); // data model is wrong: gtpu doesn't have enb_id (or module_id)
   } else
     LOG_E(MCE_APP,"invalid address for M2AP\n");

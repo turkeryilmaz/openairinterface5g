@@ -30,7 +30,7 @@
 #include "executables/softmodem-common.h"
 
 
-
+extern uint16_t ue_idx_standalone;
 /***************************************************************************************************************************************/
 /* command line options definitions, CMDLINE_XXXX_DESC macros are used to initialize paramdef_t arrays which are then used as argument
    when calling config_get or config_getlist functions                                                                                 */

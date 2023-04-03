@@ -33,6 +33,7 @@
 
 #include "nas_user.h"
 #include "common/ran_context.h"
+#include "openair2/COMMON/rrc_messages_types.h"
 // FIXME make command line option for NAS_UE_AUTOSTART
 # define NAS_UE_AUTOSTART 1
 
@@ -180,9 +181,7 @@ void *nas_ue_task(void *args_p)
 
   /* Set UE activation state */
   for (instance = NB_eNB_INST; instance < (NB_eNB_INST + NB_UE_INST); instance++) {
-    MessageDef *message_p;
-
-    message_p = itti_alloc_new_message(TASK_NAS_UE, 0, DEACTIVATE_MESSAGE);
+    MessageDef *message_p = DEACTIVATE_MESSAGE_alloc(TASK_NAS_UE, 0);
     itti_send_msg_to_task(TASK_L2L1, instance, message_p);
   }
 
@@ -221,60 +220,60 @@ void *nas_ue_task(void *args_p)
         LOG_I(NAS, "[UE %d] Received %s\n", Mod_id,  ITTI_MSG_NAME (msg_p));
         break;
 
-      case NAS_CELL_SELECTION_CNF:
+      case NAS_CELL_SELECTION_CNF:{
+        NasCellSelectionCnf *msg=NAS_CELL_SELECTION_CNF_data(msg_p);
         LOG_I(NAS, "[UE %d] Received %s: errCode %u, cellID %u, tac %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CELL_SELECTION_CNF (msg_p).errCode, NAS_CELL_SELECTION_CNF (msg_p).cellID, NAS_CELL_SELECTION_CNF (msg_p).tac);
-
-        {
-          int cell_found = (NAS_CELL_SELECTION_CNF (msg_p).errCode == AS_SUCCESS);
-
-          nas_proc_cell_info (user, cell_found, NAS_CELL_SELECTION_CNF (msg_p).tac,
-                              NAS_CELL_SELECTION_CNF (msg_p).cellID, NAS_CELL_SELECTION_CNF (msg_p).rat,
-                              NAS_CELL_SELECTION_CNF (msg_p).rsrq, NAS_CELL_SELECTION_CNF (msg_p).rsrp);
-        }
+              msg->errCode, msg->cellID, msg->tac);
+          int cell_found = (msg->errCode == AS_SUCCESS);
+          nas_proc_cell_info (user, cell_found, msg->tac,
+                              msg->cellID, msg->rat,
+                              msg->rsrq, msg->rsrp);
+      }
         break;
 
       case NAS_CELL_SELECTION_IND:
         LOG_I(NAS, "[UE %d] Received %s: cellID %u, tac %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CELL_SELECTION_IND (msg_p).cellID, NAS_CELL_SELECTION_IND (msg_p).tac);
+              NAS_CELL_SELECTION_IND_data (msg_p)->cellID, NAS_CELL_SELECTION_IND_data (msg_p)->tac);
 
         /* TODO not processed by NAS currently */
         break;
 
       case NAS_PAGING_IND:
         LOG_I(NAS, "[UE %d] Received %s: cause %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_PAGING_IND (msg_p).cause);
+              NAS_PAGING_IND_data (msg_p)->cause);
 
         /* TODO not processed by NAS currently */
         break;
 
       case NAS_CONN_ESTABLI_CNF:
+        {
+          NasConnEstabCnf *msg=NAS_CONN_ESTABLI_CNF_data (msg_p);
         LOG_I(NAS, "[UE %d] Received %s: errCode %u, length %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CONN_ESTABLI_CNF (msg_p).errCode, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.length);
+              msg->errCode, msg->nasMsg.length);
 
-        if ((NAS_CONN_ESTABLI_CNF (msg_p).errCode == AS_SUCCESS)
-            || (NAS_CONN_ESTABLI_CNF (msg_p).errCode == AS_TERMINATED_NAS)) {
-          nas_proc_establish_cnf(user, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.data, NAS_CONN_ESTABLI_CNF (msg_p).nasMsg.length);
+        if ((msg->errCode == AS_SUCCESS)
+            || (msg->errCode == AS_TERMINATED_NAS)) {
+          nas_proc_establish_cnf(user, msg->nasMsg.data, msg->nasMsg.length);
 
           /* TODO checks if NAS will free the nas message, better to do it there anyway! */
           // result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data);
           // AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
         }
-
+        }
         break;
 
       case NAS_CONN_RELEASE_IND:
         LOG_I(NAS, "[UE %d] Received %s: cause %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_CONN_RELEASE_IND (msg_p).cause);
+              NAS_CONN_RELEASE_IND_data (msg_p)->cause);
 
-        nas_proc_release_ind (user, NAS_CONN_RELEASE_IND (msg_p).cause);
+        nas_proc_release_ind (user, NAS_CONN_RELEASE_IND_data (msg_p)->cause);
         break;
 
       case NAS_UPLINK_DATA_CNF:
         LOG_I(NAS, "[UE %d] Received %s: UEid %u, errCode %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_UPLINK_DATA_CNF (msg_p).UEid, NAS_UPLINK_DATA_CNF (msg_p).errCode);
+              NAS_UPLINK_DATA_CNF_data (msg_p)->UEid, NAS_UPLINK_DATA_CNF_data (msg_p)->errCode);
 
-        if (NAS_UPLINK_DATA_CNF (msg_p).errCode == AS_SUCCESS) {
+        if (NAS_UPLINK_DATA_CNF_data (msg_p)->errCode == AS_SUCCESS) {
           nas_proc_ul_transfer_cnf (user);
         } else {
           nas_proc_ul_transfer_rej (user);
@@ -284,13 +283,13 @@ void *nas_ue_task(void *args_p)
 
       case NAS_DOWNLINK_DATA_IND:
         LOG_I(NAS, "[UE %d] Received %s: UEid %u, length %u\n", Mod_id,  ITTI_MSG_NAME (msg_p),
-              NAS_DOWNLINK_DATA_IND (msg_p).UEid, NAS_DOWNLINK_DATA_IND (msg_p).nasMsg.length);
+              NAS_DOWNLINK_DATA_IND_data (msg_p)->UEid, NAS_DOWNLINK_DATA_IND_data (msg_p)->nasMsg.length);
 
-        nas_proc_dl_transfer_ind (user, NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data, NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length);
+        nas_proc_dl_transfer_ind (user, NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.data, NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.length);
 
         if (0) {
           /* TODO checks if NAS will free the nas message, better to do it there anyway! */
-          result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data);
+          result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.data);
           AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
         }
 

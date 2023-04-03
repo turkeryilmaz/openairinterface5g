@@ -43,6 +43,8 @@
 #include "NR_CG-ConfigInfo.h"
 #include "NR_SecurityConfig.h"
 #include "NR_CellGroupConfig.h"
+#include "openair2/COMMON/x2ap_messages_types.h"
+#include "openair2/COMMON/e1ap_messages_types.h"
 
 #define NR_MAX_SUPPORTED_DL_LAYERS 2
 

@@ -30,7 +30,8 @@
 
 #include "queue.h"
 #include "tree.h"
-
+#include "common/ngran_types.h"
+#include "openair1/PHY/defs_common.h"
 #include "sctp_eNB_defs.h"
 
 #include "m2ap_ids.h" //looks X2AP specific for HO
@@ -39,6 +40,7 @@
 #ifndef M2AP_MCE_DEFS_H_
 #define M2AP_MCE_DEFS_H_
 
+#include "openair2/COMMON/m2ap_messages_types.h"
 #define M2AP_MCE_NAME_LENGTH_MAX    (150)
 
 typedef enum {

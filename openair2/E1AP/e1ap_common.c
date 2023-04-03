@@ -221,8 +221,8 @@ int e1ap_encode_send(E1_t type, e1ap_setup_req_t *setupReq, E1AP_E1AP_PDU_t *pdu
     LOG_E(E1AP, "%s: Failed to encode E1AP message\n", func);
     return -1;
   }
-  MessageDef *message = itti_alloc_new_message((type == CPtype) ? TASK_CUCP_E1 : TASK_CUUP_E1, 0, SCTP_DATA_REQ);
-  sctp_data_req_t *s = &message->ittiMsg.sctp_data_req;
+  MessageDef *message = SCTP_DATA_REQ_alloc((type == CPtype) ? TASK_CUCP_E1 : TASK_CUUP_E1, 0);
+  sctp_data_req_t *s = SCTP_DATA_REQ_data(message);
   s->assoc_id = setupReq->assoc_id;
   s->buffer = buffer;
   s->buffer_length = encoded;

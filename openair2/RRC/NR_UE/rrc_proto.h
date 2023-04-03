@@ -41,7 +41,7 @@
 #include "NR_RadioBearerConfig.h"
 #include "openair2/PHY_INTERFACE/queue_t.h"
 #include "common/utils/ocp_itti/intertask_interface.h"
-
+#include "openair2/RRC/LTE/rrc_types.h"
 extern queue_t nr_rach_ind_queue;
 extern queue_t nr_rx_ind_queue;
 extern queue_t nr_crc_ind_queue;

@@ -1107,7 +1107,7 @@ static void sctp_eNB_process_itti_msg()
             if (sctp_create_new_listener(
                         ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                         ITTI_MSG_ORIGIN_ID(received_msg),
-                        &received_msg->ittiMsg.sctp_init,0) < 0) {
+                        SCTP_INIT_MSG_data(received_msg),0) < 0) {
                 /* SCTP socket creation or bind failed... */
                 SCTP_ERROR("Failed to create new SCTP listener\n");
             }
@@ -1118,7 +1118,7 @@ static void sctp_eNB_process_itti_msg()
            int multi_sd = sctp_create_new_listener(
                            ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                            ITTI_MSG_ORIGIN_ID(received_msg),
-                           &received_msg->ittiMsg.sctp_init_multi,1);
+                           SCTP_INIT_MSG_MULTI_REQ_data(received_msg),1);
             /* We received a new connection request */
             if (multi_sd < 0) {
                 /* SCTP socket creation or bind failed... */
@@ -1134,19 +1134,19 @@ static void sctp_eNB_process_itti_msg()
         case SCTP_NEW_ASSOCIATION_REQ: {
             sctp_handle_new_association_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                             ITTI_MSG_ORIGIN_ID(received_msg),
-                                            &received_msg->ittiMsg.sctp_new_association_req);
+                                            SCTP_NEW_ASSOCIATION_REQ_data(received_msg));
         }
         break;
 
         case SCTP_NEW_ASSOCIATION_REQ_MULTI: {
             sctp_handle_new_association_req_multi(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                                   ITTI_MSG_ORIGIN_ID(received_msg),
-                                                  &received_msg->ittiMsg.sctp_new_association_req_multi);
+                                                  SCTP_NEW_ASSOCIATION_REQ_MULTI_data(received_msg));
         }
         break;
 
         case SCTP_CLOSE_ASSOCIATION:
-          sctp_close_association(&received_msg->ittiMsg.sctp_close_association);
+          sctp_close_association(SCTP_CLOSE_ASSOCIATION_data(received_msg));
           break;
 
         case TERMINATE_MESSAGE:
@@ -1155,7 +1155,7 @@ static void sctp_eNB_process_itti_msg()
             break;
 
         case SCTP_DATA_REQ: {
-          sctp_send_data(&received_msg->ittiMsg.sctp_data_req);
+          sctp_send_data(SCTP_DATA_REQ_data(received_msg));
         }
         break;
 

@@ -34,24 +34,6 @@
 #include "nas_message.h"
 
 //-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-#define NAS_DL_EMM_RAW_MSG(mSGpTR)                  (mSGpTR)->ittiMsg.nas_dl_emm_raw_msg
-#define NAS_UL_EMM_RAW_MSG(mSGpTR)                  (mSGpTR)->ittiMsg.nas_ul_emm_raw_msg
-
-#define NAS_DL_EMM_PROTECTED_MSG(mSGpTR)            (mSGpTR)->ittiMsg.nas_dl_emm_protected_msg
-#define NAS_UL_EMM_PROTECTED_MSG(mSGpTR)            (mSGpTR)->ittiMsg.nas_ul_emm_protected_msg
-#define NAS_DL_EMM_PLAIN_MSG(mSGpTR)                (mSGpTR)->ittiMsg.nas_dl_emm_plain_msg
-#define NAS_UL_EMM_PLAIN_MSG(mSGpTR)                (mSGpTR)->ittiMsg.nas_ul_emm_plain_msg
-
-#define NAS_DL_ESM_RAW_MSG(mSGpTR)                  (mSGpTR)->ittiMsg.nas_dl_esm_raw_msg
-#define NAS_UL_ESM_RAW_MSG(mSGpTR)                  (mSGpTR)->ittiMsg.nas_ul_esm_raw_msg
-
-#define NAS_DL_ESM_PROTECTED_MSG(mSGpTR)            (mSGpTR)->ittiMsg.nas_dl_esm_protected_msg
-#define NAS_UL_ESM_PROTECTED_MSG(mSGpTR)            (mSGpTR)->ittiMsg.nas_ul_esm_protected_msg
-#define NAS_DL_ESM_PLAIN_MSG(mSGpTR)                (mSGpTR)->ittiMsg.nas_dl_esm_plain_msg
-#define NAS_UL_ESM_PLAIN_MSG(mSGpTR)                (mSGpTR)->ittiMsg.nas_ul_esm_plain_msg
-
-//-------------------------------------------------------------------------------------------//
 #define NAS_DATA_LENGHT_MAX     256
 
 typedef enum {
@@ -141,5 +123,21 @@ typedef struct nas_esm_protected_msg_s {
   esm_message_ids_t               present;
   ESM_msg                         choice;
 } nas_esm_protected_msg_t;
+
+#include "common/utils/ocp_itti/intertask_interface.h"
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/nas_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/nas_messages_def.h"
+#undef MESSAGE_DEF
 
 #endif /* NAS_MESSAGES_TYPES_H_ */

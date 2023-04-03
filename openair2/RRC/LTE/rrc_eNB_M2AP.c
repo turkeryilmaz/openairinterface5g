@@ -37,6 +37,7 @@
 # include "common/ran_context.h"
 #include "pdcp.h"
 #include "uper_encoder.h"
+#include "openair2/COMMON/m2ap_messages_types.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -1309,8 +1310,7 @@ rrc_eNB_process_M2AP_MBMS_SCHEDULING_INFORMATION(
 	 rrc_M2AP_init_MBMS(ctxt_pP->module_id, CC_id, 0);
 	 rrc_M2AP_openair_rrc_top_init_MBMS(RC.rrc[ctxt_pP->module_id]->carrier[CC_id].MBMS_flag);
  }*/
- MessageDef      *msg_p;
- msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, M2AP_MBMS_SCHEDULING_INFORMATION_RESP);
+ MessageDef *msg_p = M2AP_MBMS_SCHEDULING_INFORMATION_RESP_alloc(TASK_RRC_ENB, 0);
  itti_send_msg_to_task (TASK_M2AP_ENB, ENB_MODULE_ID_TO_INSTANCE(instance), msg_p);
 
  pthread_mutex_unlock(&RC.rrc[ctxt_pP->module_id]->cell_info_mutex);
@@ -1350,7 +1350,7 @@ rrc_eNB_process_M2AP_MBMS_SESSION_START_REQ(
  pthread_mutex_unlock(&RC.rrc[ctxt_pP->module_id]->cell_info_mutex);
 
  MessageDef      *msg_p;
- msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, M2AP_MBMS_SESSION_START_RESP);
+ msg_p = M2AP_MBMS_SESSION_START_RESP_alloc(TASK_RRC_ENB, 0);
  itti_send_msg_to_task (TASK_M2AP_ENB, ENB_MODULE_ID_TO_INSTANCE(instance), msg_p);
 
  return 0;
@@ -1418,7 +1418,7 @@ void rrc_eNB_send_M2AP_MBMS_SCHEDULING_INFORMATION_RESP(
 )
 {
   MessageDef      *msg_p;
-  msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, M2AP_MBMS_SCHEDULING_INFORMATION_RESP);
+  msg_p = M2AP_MBMS_SCHEDULING_INFORMATION_RESP_alloc(TASK_RRC_ENB, 0);
   itti_send_msg_to_task (TASK_M2AP_ENB, ENB_MODULE_ID_TO_INSTANCE(ctxt_pP->instance), msg_p);
 }
 
@@ -1428,7 +1428,7 @@ void rrc_eNB_send_M2AP_MBMS_SESSION_START_RESP(
 )
 {
   MessageDef      *msg_p;
-  msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, M2AP_MBMS_SESSION_START_RESP);
+  msg_p = M2AP_MBMS_SESSION_START_RESP_alloc(TASK_RRC_ENB, 0);
   itti_send_msg_to_task (TASK_M2AP_ENB, ENB_MODULE_ID_TO_INSTANCE(ctxt_pP->instance), msg_p);
 }
 
@@ -1438,7 +1438,7 @@ void rrc_eNB_send_M2AP_MBMS_SESSION_STOP_RESP(
 )
 {
   MessageDef      *msg_p;
-  msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, M2AP_MBMS_SESSION_STOP_RESP);
+  msg_p = M2AP_MBMS_SESSION_STOP_RESP_alloc(TASK_RRC_ENB, 0);
   itti_send_msg_to_task (TASK_M2AP_ENB, ENB_MODULE_ID_TO_INSTANCE(ctxt_pP->instance), msg_p);
 }
 
@@ -1448,6 +1448,6 @@ void rrc_eNB_send_M2AP_MBMS_SESSION_UPDATE_RESP(
 )
 {
   MessageDef      *msg_p;
-  msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, M2AP_MBMS_SESSION_UPDATE_RESP);
+  msg_p = M2AP_MBMS_SESSION_UPDATE_RESP_alloc(TASK_RRC_ENB, 0);
   itti_send_msg_to_task (TASK_M2AP_ENB, ENB_MODULE_ID_TO_INSTANCE(ctxt_pP->instance), msg_p);
 }

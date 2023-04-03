@@ -39,6 +39,7 @@
 #include "NR_UL-CCCH-Message.h"
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
+#include "openair2/COMMON/gtpv1_u_messages_types.h"
 
 extern RAN_CONTEXT_t RC;
 
@@ -450,29 +451,29 @@ rb_found:
     if (NODE_IS_DU(type)) {
       if(is_srb) {
 	MessageDef *msg;
-	msg = itti_alloc_new_message(TASK_RLC_ENB, 0, F1AP_UL_RRC_MESSAGE);
-	uint8_t *message_buffer = itti_malloc (TASK_RLC_ENB, TASK_DU_F1, size);
+  msg = F1AP_UL_RRC_MESSAGE_alloc(TASK_RLC_ENB, 0);
+  uint8_t *message_buffer = itti_malloc (TASK_RLC_ENB, TASK_DU_F1, size);
 	memcpy (message_buffer, buf, size);
-	F1AP_UL_RRC_MESSAGE(msg).rnti = ue->rnti;
-	F1AP_UL_RRC_MESSAGE(msg).srb_id = rb_id;
-	F1AP_UL_RRC_MESSAGE(msg).rrc_container = message_buffer;
-	F1AP_UL_RRC_MESSAGE(msg).rrc_container_length = size;
+        f1ap_ul_rrc_message_t *ul=F1AP_UL_RRC_MESSAGE_data(msg);
+	ul->rnti = ue->rnti;
+	ul->srb_id = rb_id;
+	ul->rrc_container = message_buffer;
+	ul->rrc_container_length = size;
 	itti_send_msg_to_task(TASK_DU_F1, ENB_MODULE_ID_TO_INSTANCE(0 /*ctxt_pP->module_id*/), msg);
 	return;
       } else {
-	MessageDef *msg = itti_alloc_new_message_sized(TASK_RLC_ENB, 0, GTPV1U_TUNNEL_DATA_REQ,
-						       sizeof(gtpv1u_tunnel_data_req_t) + size);
-	gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(msg);
-	req->buffer=(uint8_t*)(req+1);
-	memcpy(req->buffer,buf,size);
-	req->length=size;
-	req->offset=0;
-	req->ue_id=ue->rnti;
-	req->bearer_id=rb_id;
-	LOG_D(RLC, "Received uplink user-plane traffic at RLC-DU to be sent to the CU, size %d \n", size);
-	extern instance_t DUuniqInstance;
-	itti_send_msg_to_task(TASK_GTPV1_U, DUuniqInstance, msg);
-	return;
+        MessageDef *msg = itti_alloc_sized(TASK_RLC_ENB, 0, GTPV1U_TUNNEL_DATA_REQ, sizeof(gtpv1u_tunnel_data_req_t) + size);
+        gtpv1u_tunnel_data_req_t *req = GTPV1U_TUNNEL_DATA_REQ_data(msg);
+        req->buffer = (uint8_t *)(req + 1);
+        memcpy(req->buffer, buf, size);
+        req->length = size;
+        req->offset = 0;
+        req->ue_id = ue->rnti;
+        req->bearer_id = rb_id;
+        LOG_D(RLC, "Received uplink user-plane traffic at RLC-DU to be sent to the CU, size %d \n", size);
+        extern instance_t DUuniqInstance;
+        itti_send_msg_to_task(TASK_GTPV1_U, DUuniqInstance, msg);
+        return;
       }
     }
   }
@@ -538,7 +539,7 @@ rb_found:
     return;
 
 #if 0
-  msg = itti_alloc_new_message(TASK_RLC_ENB, RLC_SDU_INDICATION);
+  msg = RLC_SDU_INDICATION_alloc(TASK_RLC_ENB, 0);
   RLC_SDU_INDICATION(msg).rnti          = ue->rnti;
   RLC_SDU_INDICATION(msg).is_successful = 1;
   RLC_SDU_INDICATION(msg).srb_id        = rb_id;
@@ -595,7 +596,7 @@ rb_found:
     return;
 
 #if 0
-  msg = itti_alloc_new_message(TASK_RLC_ENB, RLC_SDU_INDICATION);
+  msg = RLC_SDU_INDICATION_alloc(TASK_RLC_ENB, 0);
   RLC_SDU_INDICATION(msg).rnti          = ue->rnti;
   RLC_SDU_INDICATION(msg).is_successful = 0;
   RLC_SDU_INDICATION(msg).srb_id        = rb_id;

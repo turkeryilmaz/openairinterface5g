@@ -41,6 +41,7 @@
 #include "nr_pdcp_e1_api.h"
 #include "gnb_config.h"
 #include "executables/softmodem-common.h"
+#include "openair2/COMMON/pdcp_messages_types.h"
 
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
@@ -660,13 +661,12 @@ static void deliver_pdu_drb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
   protocol_ctxt_t ctxt = { .enb_flag = 1, .rntiMaybeUEid = ue_id };
 
   if (NODE_IS_CU(node_type)) {
-    MessageDef  *message_p = itti_alloc_new_message_sized(TASK_PDCP_ENB, 0,
-							  GTPV1U_TUNNEL_DATA_REQ,
-							  sizeof(gtpv1u_tunnel_data_req_t)
-							  + size
-							  + GTPU_HEADER_OVERHEAD_MAX);
+    MessageDef *message_p = itti_alloc_sized(TASK_PDCP_ENB,
+                                             0,
+                                             GTPV1U_TUNNEL_DATA_REQ,
+                                             sizeof(gtpv1u_tunnel_data_req_t) + size + GTPU_HEADER_OVERHEAD_MAX);
     AssertFatal(message_p != NULL, "OUT OF MEMORY");
-    gtpv1u_tunnel_data_req_t *req=&GTPV1U_TUNNEL_DATA_REQ(message_p);
+    gtpv1u_tunnel_data_req_t *req=GTPV1U_TUNNEL_DATA_REQ_data(message_p);
     uint8_t *gtpu_buffer_p = (uint8_t*)(req+1);
     memcpy(gtpu_buffer_p+GTPU_HEADER_OVERHEAD_MAX, 
 	   buf, size);
@@ -707,9 +707,9 @@ static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
 
 srb_found:
   if (entity->is_gnb) {
-    MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_GNB, 0, F1AP_UL_RRC_MESSAGE);
+    MessageDef *message_p = F1AP_UL_RRC_MESSAGE_alloc(TASK_PDCP_GNB, 0);
     AssertFatal(message_p != NULL, "OUT OF MEMORY\n");
-    f1ap_ul_rrc_message_t *ul_rrc = &F1AP_UL_RRC_MESSAGE(message_p);
+    f1ap_ul_rrc_message_t *ul_rrc = F1AP_UL_RRC_MESSAGE_data(message_p);
     ul_rrc->rnti = ue->rntiMaybeUEid;
     ul_rrc->srb_id = srb_id;
     ul_rrc->rrc_container = malloc(size);
@@ -721,12 +721,13 @@ srb_found:
     uint8_t *rrc_buffer_p = itti_malloc(TASK_PDCP_UE, TASK_RRC_NRUE, size);
     AssertFatal(rrc_buffer_p != NULL, "OUT OF MEMORY\n");
     memcpy(rrc_buffer_p, buf, size);
-    MessageDef *message_p = itti_alloc_new_message(TASK_PDCP_UE, 0, NR_RRC_DCCH_DATA_IND);
+    MessageDef *message_p = NR_RRC_DCCH_DATA_IND_alloc(TASK_PDCP_UE, 0);
     AssertFatal(message_p != NULL, "OUT OF MEMORY\n");
-    NR_RRC_DCCH_DATA_IND(message_p).dcch_index = srb_id;
-    NR_RRC_DCCH_DATA_IND(message_p).sdu_p = rrc_buffer_p;
-    NR_RRC_DCCH_DATA_IND(message_p).sdu_size = size;
-    NR_RRC_DCCH_DATA_IND(message_p).rnti = ue->rntiMaybeUEid;
+    NRRrcDcchDataInd * ind=NR_RRC_DCCH_DATA_IND_data(message_p);
+    ind->dcch_index = srb_id;
+    ind->sdu_p = rrc_buffer_p;
+    ind->sdu_size = size;
+    ind->rnti = ue->rntiMaybeUEid;
     itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
   }
 }

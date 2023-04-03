@@ -2155,9 +2155,10 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
 void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
   LOG_I(NR_RRC,"Received F1 Setup Request from gNB_DU %llu (%s)\n",(unsigned long long int)f1_setup_req->gNB_DU_id,f1_setup_req->gNB_DU_name);
   int cu_cell_ind = 0;
-  MessageDef *msg_p =itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_SETUP_RESP);
-  F1AP_SETUP_RESP (msg_p).num_cells_to_activate = 0;
-  MessageDef *msg_p2=itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_GNB_CU_CONFIGURATION_UPDATE);
+  MessageDef *msg_p = F1AP_SETUP_RESP_alloc(TASK_RRC_GNB, 0);
+  F1AP_SETUP_RESP_data(msg_p)->num_cells_to_activate = 0;
+  MessageDef *msg_p2 = F1AP_GNB_CU_CONFIGURATION_UPDATE_alloc(TASK_RRC_GNB, 0);
+  f1ap_gnb_cu_configuration_update_t *msg_update= F1AP_GNB_CU_CONFIGURATION_UPDATE_data(msg_p2);
 
   for (int i = 0; i < f1_setup_req->num_cells_available; i++) {
     for (int j=0; j<RC.nb_nr_inst; j++) {
@@ -2167,7 +2168,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
           rrc->configuration.mnc[0] == f1_setup_req->cell[i].mnc &&
           rrc->nr_cellid == f1_setup_req->cell[i].nr_cellid) {
 	//fixme: multi instance is not consistent here
-	F1AP_SETUP_RESP (msg_p).gNB_CU_name  = rrc->node_name;
+	F1AP_SETUP_RESP_data(msg_p)->gNB_CU_name  = rrc->node_name;
         // check that CU rrc instance corresponds to mcc/mnc/cgi (normally cgi should be enough, but just in case)
         LOG_W(NR_RRC, "instance %d sib1 length %d\n", i, f1_setup_req->sib1_length[i]);
         AssertFatal(rrc->carrier.mib == NULL, "CU MIB is already initialized: double F1 setup request?\n");
@@ -2200,23 +2201,23 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *f1_setup_req) {
 
         rrc->carrier.physCellId = f1_setup_req->cell[i].nr_pci;
 
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).gNB_CU_name                                = rrc->node_name;
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mcc                           = rrc->configuration.mcc[0];
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mnc                           = rrc->configuration.mnc[0];
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].mnc_digit_length              = rrc->configuration.mnc_digit_length[0];
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].nr_cellid                     = rrc->nr_cellid;
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].nrpci                         = f1_setup_req->cell[i].nr_pci;
+	msg_update->gNB_CU_name                                = rrc->node_name;
+	msg_update->cells_to_activate[cu_cell_ind].mcc         = rrc->configuration.mcc[0];
+	msg_update->cells_to_activate[cu_cell_ind].mnc         = rrc->configuration.mnc[0];
+	msg_update->cells_to_activate[cu_cell_ind].mnc_digit_length = rrc->configuration.mnc_digit_length[0];
+	msg_update->cells_to_activate[cu_cell_ind].nr_cellid   = rrc->nr_cellid;
+	msg_update->cells_to_activate[cu_cell_ind].nrpci       = f1_setup_req->cell[i].nr_pci;
         int num_SI= 0;
 
         if (rrc->carrier.SIB23) {
-          F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].SI_container[2]        = rrc->carrier.SIB23;
-          F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].SI_container_length[2] = rrc->carrier.sizeof_SIB23;
+          msg_update->cells_to_activate[cu_cell_ind].SI_container[2]        = rrc->carrier.SIB23;
+          msg_update->cells_to_activate[cu_cell_ind].SI_container_length[2] = rrc->carrier.sizeof_SIB23;
           num_SI++;
         }
 
-        F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).cells_to_activate[cu_cell_ind].num_SI = num_SI;
+        msg_update->cells_to_activate[cu_cell_ind].num_SI = num_SI;
         cu_cell_ind++;
-	F1AP_GNB_CU_CONFIGURATION_UPDATE (msg_p2).num_cells_to_activate = cu_cell_ind;
+	msg_update->num_cells_to_activate = cu_cell_ind;
 	// send
         break;
       } else {// setup_req mcc/mnc match rrc internal list element
@@ -2280,7 +2281,7 @@ void rrc_gNB_process_dc_overall_timeout(const module_id_t gnb_mod_idP, x2ap_ENDC
 
 static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance_t instance)
 {
-  f1ap_ue_context_setup_t *resp = &F1AP_UE_CONTEXT_SETUP_RESP(msg_p);
+  f1ap_ue_context_setup_t *resp = F1AP_UE_CONTEXT_SETUP_RESP_data(msg_p);
   gNB_RRC_INST *rrc = RC.nrrrc[instance];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, resp->rnti);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
@@ -2309,7 +2310,7 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
 static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p)
 {
   const int instance = 0;
-  f1ap_ue_context_release_req_t *req = &F1AP_UE_CONTEXT_RELEASE_REQ(msg_p);
+  f1ap_ue_context_release_req_t *req = F1AP_UE_CONTEXT_RELEASE_REQ_data(msg_p);
   gNB_RRC_INST *rrc = RC.nrrrc[instance];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, req->rnti);
 
@@ -2324,7 +2325,7 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p)
 static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
 {
   const int instance = 0;
-  f1ap_ue_context_release_complete_t *complete = &F1AP_UE_CONTEXT_RELEASE_COMPLETE(msg_p);
+  f1ap_ue_context_release_complete_t *complete = F1AP_UE_CONTEXT_RELEASE_COMPLETE_data(msg_p);
   gNB_RRC_INST *rrc = RC.nrrrc[instance];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, complete->rnti);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
@@ -2338,7 +2339,7 @@ static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
 
 static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, instance_t instance)
 {
-  f1ap_ue_context_modif_resp_t *resp = &F1AP_UE_CONTEXT_MODIFICATION_RESP(msg_p);
+  f1ap_ue_context_setup_t *resp=F1AP_UE_CONTEXT_MODIFICATION_RESP_data(msg_p);
   protocol_ctxt_t ctxt = {.rntiMaybeUEid = resp->rnti, .module_id = instance, .instance = instance, .enb_flag = 1, .eNB_index = instance};
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, resp->rnti);
@@ -2543,24 +2544,13 @@ static int get_dl_mimo_layers(const gNB_RRC_INST *rrc, const NR_UE_NR_Capability
   return(1);
 }
 
-void nr_rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
-
-  MessageDef *msg;
-
-  /* send a tick to x2ap */
-  if (is_x2ap_enabled()){
-    msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_SUBFRAME_PROCESS);
-    itti_send_msg_to_task(TASK_X2AP, ctxt_pP->module_id, msg);
-  }
-}
-
 int rrc_gNB_process_e1_setup_req(e1ap_setup_req_t *req, instance_t instance) {
 
   AssertFatal(req->supported_plmns <= PLMN_LIST_MAX_SIZE, "Supported PLMNs is more than PLMN_LIST_MAX_SIZE\n");
   gNB_RRC_INST *rrc = RC.nrrrc[0]; //TODO: remove hardcoding of RC index here
-  MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_GNB, instance, E1AP_SETUP_RESP);
+  MessageDef *msg_p = E1AP_SETUP_RESP_alloc(TASK_RRC_GNB, instance);
 
-  e1ap_setup_resp_t *resp = &E1AP_SETUP_RESP(msg_p);
+  e1ap_setup_resp_t *resp = E1AP_SETUP_RESP_data(msg_p);
   resp->transac_id = req->transac_id;
 
   for (int i=0; i < req->supported_plmns; i++) {
@@ -2746,36 +2736,38 @@ void *rrc_gnb_task(void *args_p) {
 
       case TIMER_HAS_EXPIRED:
         /* only this one handled for now */
-        DevAssert(TIMER_HAS_EXPIRED(msg_p).timer_id == stats_timer_id);
+        DevAssert(TIMER_HAS_EXPIRED_data(msg_p)->timer_id == stats_timer_id);
         write_rrc_stats(RC.nrrrc[0]);
         break;
 
       case F1AP_INITIAL_UL_RRC_MESSAGE:
         AssertFatal(NODE_IS_CU(RC.nrrrc[instance]->node_type) || NODE_IS_MONOLITHIC(RC.nrrrc[instance]->node_type),
                     "should not receive F1AP_INITIAL_UL_RRC_MESSAGE, need call by CU!\n");
-        rrc_gNB_process_initial_ul_rrc_message(&F1AP_INITIAL_UL_RRC_MESSAGE(msg_p));
+        rrc_gNB_process_initial_ul_rrc_message(F1AP_INITIAL_UL_RRC_MESSAGE_data(msg_p));
         break;
 
       /* Messages from PDCP */
-      case F1AP_UL_RRC_MESSAGE:
+    case F1AP_UL_RRC_MESSAGE: {
+      f1ap_ul_rrc_message_t *msg=F1AP_UL_RRC_MESSAGE_data(msg_p);
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
                                       instance,
                                       GNB_FLAG_YES,
-                                      F1AP_UL_RRC_MESSAGE(msg_p).rnti,
+                                      msg->rnti,
                                       0,
                                       0);
         LOG_D(NR_RRC,
               "Decoding DCCH %d: ue %04lx, inst %ld, ctxt %p, size %d\n",
-              F1AP_UL_RRC_MESSAGE(msg_p).srb_id,
+              msg->srb_id,
               ctxt.rntiMaybeUEid,
               instance,
               &ctxt,
-              F1AP_UL_RRC_MESSAGE(msg_p).rrc_container_length);
+              msg->rrc_container_length);
         rrc_gNB_decode_dcch(&ctxt,
-                            F1AP_UL_RRC_MESSAGE(msg_p).srb_id,
-                            F1AP_UL_RRC_MESSAGE(msg_p).rrc_container,
-                            F1AP_UL_RRC_MESSAGE(msg_p).rrc_container_length);
-        free(F1AP_UL_RRC_MESSAGE(msg_p).rrc_container);
+                            msg->srb_id,
+                            msg->rrc_container,
+                            msg->rrc_container_length);
+        free(msg->rrc_container);
+    }
         break;
 
       case NGAP_DOWNLINK_NAS:
@@ -2796,13 +2788,13 @@ void *rrc_gnb_task(void *args_p) {
 
       /* Messages from gNB app */
       case NRRRC_CONFIGURATION_REQ:
-        openair_rrc_gNB_configuration(instance, &NRRRC_CONFIGURATION_REQ(msg_p));
+        openair_rrc_gNB_configuration(instance, NRRRC_CONFIGURATION_REQ_data(msg_p));
         break;
 
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
         AssertFatal(NODE_IS_CU(RC.nrrrc[instance]->node_type), "should not receive F1AP_SETUP_REQUEST, need call by CU!\n");
-        rrc_gNB_process_f1_setup_req(&F1AP_SETUP_REQ(msg_p));
+        rrc_gNB_process_f1_setup_req(F1AP_SETUP_REQ_data(msg_p));
         break;
 
       case F1AP_UE_CONTEXT_SETUP_RESP:
@@ -2824,7 +2816,7 @@ void *rrc_gnb_task(void *args_p) {
       /* Messages from X2AP */
       case X2AP_ENDC_SGNB_ADDITION_REQ:
         LOG_I(NR_RRC, "Received ENDC sgNB addition request from X2AP \n");
-        rrc_gNB_process_AdditionRequestInformation(instance, &X2AP_ENDC_SGNB_ADDITION_REQ(msg_p));
+        rrc_gNB_process_AdditionRequestInformation(instance, X2AP_ENDC_SGNB_ADDITION_REQ_data(msg_p));
         break;
 
       case X2AP_ENDC_SGNB_RECONF_COMPLETE:
@@ -2837,11 +2829,11 @@ void *rrc_gnb_task(void *args_p) {
 
       case X2AP_ENDC_SGNB_RELEASE_REQUEST:
         LOG_I(NR_RRC, "Received ENDC sgNB release request from X2AP \n");
-        rrc_gNB_process_release_request(instance, &X2AP_ENDC_SGNB_RELEASE_REQUEST(msg_p));
+        rrc_gNB_process_release_request(instance, X2AP_ENDC_SGNB_RELEASE_REQUEST_data(msg_p));
         break;
 
       case X2AP_ENDC_DC_OVERALL_TIMEOUT:
-        rrc_gNB_process_dc_overall_timeout(instance, &X2AP_ENDC_DC_OVERALL_TIMEOUT(msg_p));
+        rrc_gNB_process_dc_overall_timeout(instance, X2AP_ENDC_DC_OVERALL_TIMEOUT_data(msg_p));
         break;
 
       case NGAP_UE_CONTEXT_RELEASE_REQ:
@@ -2853,11 +2845,11 @@ void *rrc_gnb_task(void *args_p) {
         break;
 
       case E1AP_SETUP_REQ:
-        rrc_gNB_process_e1_setup_req(&E1AP_SETUP_REQ(msg_p), instance);
+        rrc_gNB_process_e1_setup_req(E1AP_SETUP_REQ_data(msg_p), instance);
         break;
 
       case E1AP_BEARER_CONTEXT_SETUP_RESP:
-        rrc_gNB_process_e1_bearer_context_setup_resp(&E1AP_BEARER_CONTEXT_SETUP_RESP(msg_p), instance);
+        rrc_gNB_process_e1_bearer_context_setup_resp(E1AP_BEARER_CONTEXT_SETUP_RESP_data(msg_p), instance);
 
       case NGAP_PAGING_IND:
         rrc_gNB_process_PAGING_IND(msg_p, instance);

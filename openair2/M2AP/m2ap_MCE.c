@@ -47,7 +47,7 @@
 #include "queue.h"
 #include "assertions.h"
 #include "conversions.h"
-
+#include "openair2/M2AP/m2ap_itti_messaging.h"
 struct m2ap_mce_map;
 struct m2ap_MCE_data_s;
 
@@ -231,8 +231,8 @@ int m2ap_MCE_init_sctp (m2ap_MCE_instance_t *instance_p,
   sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
-  message = itti_alloc_new_message (TASK_M2AP_MCE, 0, SCTP_INIT_MSG_MULTI_REQ);
-  sctp_init = &message->ittiMsg.sctp_init_multi;
+  message = SCTP_INIT_MSG_MULTI_REQ_alloc(TASK_M2AP_MCE, 0);
+  sctp_init = SCTP_INIT_MSG_MULTI_REQ_data(message);
   sctp_init->port = mce_port_for_M2C;
   sctp_init->ppid = M2AP_SCTP_PPID;
   sctp_init->ipv4 = 1;
@@ -265,8 +265,8 @@ static void m2ap_MCE_register_MCE(m2ap_MCE_instance_t *instance_p,
   m2ap_MCE_data_t                  *m2ap_mce_data             = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(target_MCE_ip_address != NULL);
-  message = itti_alloc_new_message(TASK_M2AP_MCE, 0, SCTP_NEW_ASSOCIATION_REQ_MULTI);
-  sctp_new_association_req = &message->ittiMsg.sctp_new_association_req_multi;
+  message = SCTP_NEW_ASSOCIATION_REQ_MULTI_alloc(TASK_M2AP_MCE, 0);
+  sctp_new_association_req =  SCTP_NEW_ASSOCIATION_REQ_MULTI_data(message);
   sctp_new_association_req->port = mce_port_for_M2C;
   sctp_new_association_req->ppid = M2AP_SCTP_PPID;
   sctp_new_association_req->in_streams  = in_streams;
@@ -505,38 +505,20 @@ void MCE_task_send_sctp_init_req(instance_t enb_id, m2ap_mce_sctp_req_t * m2ap_m
   LOG_I(M2AP, "M2AP_SCTP_REQ(create socket)\n");
   MessageDef  *message_p = NULL;
 
-  message_p = itti_alloc_new_message (TASK_M2AP_MCE, 0, SCTP_INIT_MSG);
-
- // if( m2ap_mce_sctp_req == NULL ){
- //         message_p->ittiMsg.sctp_init.port = M2AP_PORT_NUMBER;
- //         message_p->ittiMsg.sctp_init.ppid = M2AP_SCTP_PPID;
- //         message_p->ittiMsg.sctp_init.ipv4 = 1;
- //         message_p->ittiMsg.sctp_init.ipv6 = 0;
- //         message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
- //         //message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(RC.rrc[enb_id]->eth_params_s.my_addr);
- //         message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr("127.0.0.7");
- //         /*
- //          * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
- //          * * * * Disable it for now.
- //          */
- //         message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
- //         message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
- // }else{
-	  message_p->ittiMsg.sctp_init.port = m2ap_mce_sctp_req->mce_port_for_M2C;
-	  message_p->ittiMsg.sctp_init.ppid = M2AP_SCTP_PPID;
-	  message_p->ittiMsg.sctp_init.ipv4 = 1;
-	  message_p->ittiMsg.sctp_init.ipv6 = 0;
-	  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-	  //message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(RC.rrc[enb_id]->eth_params_s.my_addr);
-	  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(m2ap_mce_sctp_req->mce_m2_ip_address.ipv4_address);
+  message_p = SCTP_INIT_MSG_alloc(TASK_M2AP_MCE, 0);
+  sctp_init_t * msg= SCTP_INIT_MSG_data(message_p);
+	  msg->port = m2ap_mce_sctp_req->mce_port_for_M2C;
+	  msg->ppid = M2AP_SCTP_PPID;
+	  msg->ipv4 = 1;
+	  msg->ipv6 = 0;
+	  msg->nb_ipv4_addr = 1;
+	  msg->ipv4_address[0] = inet_addr(m2ap_mce_sctp_req->mce_m2_ip_address.ipv4_address);
 	  /*
 	   * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
 	   * * * * Disable it for now.
 	   */
-	  message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
-	  message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
- // }
-
+	  msg->nb_ipv6_addr = 0;
+	  msg->ipv6_address[0] = "0:0:0:0:0:0:0:1";
   itti_send_msg_to_task(TASK_SCTP, enb_id, message_p);
 }
 
@@ -552,85 +534,72 @@ void *m2ap_MCE_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_M2AP_MCE, &received_msg);
-
+    instance_t inst=ITTI_MSG_DESTINATION_INSTANCE(received_msg);
     switch (ITTI_MSG_ID(received_msg)) {
       case MESSAGE_TEST:
-	LOG_W(M2AP,"MCE Received MESSAGE_TEST Message\n");
-	//MessageDef * message_p = itti_alloc_new_message(TASK_M2AP_MCE, 0, MESSAGE_TEST);
-        //itti_send_msg_to_task(TASK_M3AP, 1/*ctxt_pP->module_id*/, message_p);
-	break;
+        LOG_W(M2AP, "MCE Received MESSAGE_TEST Message\n");
+        break;
       case TERMINATE_MESSAGE:
         M2AP_WARN(" *** Exiting M2AP thread\n");
         itti_exit_task();
         break;
 
       case M2AP_MCE_SCTP_REQ:
-	MCE_task_send_sctp_init_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-				     &M2AP_MCE_SCTP_REQ(received_msg));
+	MCE_task_send_sctp_init_req(inst,M2AP_MCE_SCTP_REQ_data(received_msg));
 	break;
 
       case M2AP_SUBFRAME_PROCESS:
-        m2ap_check_timers(ITTI_MSG_DESTINATION_INSTANCE(received_msg));
+        m2ap_check_timers(inst);
         break;
 
       case M2AP_REGISTER_MCE_REQ:
 	LOG_I(M2AP,"MCE Received M2AP_REGISTER_MCE_REQ Message\n");
-        m2ap_MCE_handle_register_MCE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_REGISTER_MCE_REQ(received_msg));
+        m2ap_MCE_handle_register_MCE(inst,M2AP_REGISTER_MCE_REQ_data(received_msg));
         break;
 
       case M2AP_SETUP_RESP:
 	LOG_I(M2AP,"MCE Received M2AP_SETUP_RESP Message\n");
-	MCE_send_M2_SETUP_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-				    &M2AP_SETUP_RESP(received_msg));
+	MCE_send_M2_SETUP_RESPONSE(inst,M2AP_SETUP_RESP_data(received_msg));
 	break;
 
       case M2AP_SETUP_FAILURE:
 	LOG_I(M2AP,"MCE Received M2AP_SETUP_FAILURE Message\n");
-	MCE_send_M2_SETUP_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-				    &M2AP_SETUP_FAILURE(received_msg));
+	MCE_send_M2_SETUP_FAILURE(inst,M2AP_SETUP_FAILURE_data(received_msg));
 	break;
 
       case M2AP_MBMS_SCHEDULING_INFORMATION:
 	LOG_I(M2AP,"MCE Received M2AP_MBMS_SCHEDULING_INFORMATION Message\n");
-        MCE_send_MBMS_SCHEDULING_INFORMATION(0,
-						&M2AP_MBMS_SCHEDULING_INFORMATION(received_msg));
+        MCE_send_MBMS_SCHEDULING_INFORMATION(0,M2AP_MBMS_SCHEDULING_INFORMATION_data(received_msg));
 	break;
 
        case M2AP_MBMS_SESSION_START_REQ:
 	LOG_I(M2AP,"MCE Received M2AP_MBMS_SESSION_START_REQ Message\n");
-        MCE_send_MBMS_SESSION_START_REQUEST(0,
-						&M2AP_MBMS_SESSION_START_REQ(received_msg));
+        MCE_send_MBMS_SESSION_START_REQUEST(0,M2AP_MBMS_SESSION_START_REQ_data(received_msg));
 	break;
 
        case M2AP_MBMS_SESSION_STOP_REQ:
 	LOG_I(M2AP,"MCE Received M2AP_MBMS_SESSION_STOP_REQ Message\n");
-        MCE_send_MBMS_SESSION_STOP_REQUEST(0,
-						&M2AP_MBMS_SESSION_STOP_REQ(received_msg));
+        MCE_send_MBMS_SESSION_STOP_REQUEST(0,M2AP_MBMS_SESSION_STOP_REQ_data(received_msg));
 	break;
 	
        case M2AP_MBMS_SESSION_UPDATE_REQ:
 	LOG_I(M2AP,"MCE Received M2AP_MBMS_SESSION_UPDATE_REQ Message\n");
-        MCE_send_MBMS_SESSION_UPDATE_REQUEST(0,
-						&M2AP_MBMS_SESSION_UPDATE_REQ(received_msg));
+        MCE_send_MBMS_SESSION_UPDATE_REQUEST(0,M2AP_MBMS_SESSION_UPDATE_REQ_data(received_msg));
 	break;
 
        case M2AP_RESET:
 	LOG_I(M2AP,"MCE Received M2AP_RESET Message\n");
-        MCE_send_RESET(0,
-						&M2AP_RESET(received_msg));
+        MCE_send_RESET(0,M2AP_RESET_data(received_msg));
 	break;
 
        case M2AP_ENB_CONFIGURATION_UPDATE_ACK:
 	LOG_I(M2AP,"MCE Received M2AP_ENB_CONFIGURATION_UPDATE_ACK Message\n");
-        MCE_send_ENB_CONFIGURATION_UPDATE_ACKNOWLEDGE(0,
-						&M2AP_ENB_CONFIGURATION_UPDATE_ACK(received_msg));
+        MCE_send_ENB_CONFIGURATION_UPDATE_ACKNOWLEDGE(0,M2AP_ENB_CONFIGURATION_UPDATE_ACK_data(received_msg));
 	break;
 
        case M2AP_ENB_CONFIGURATION_UPDATE_FAILURE:
 	LOG_I(M2AP,"MCE Received M2AP_ENB_CONFIGURATION_UPDATE_FAILURE Message\n");
-        MCE_send_ENB_CONFIGURATION_UPDATE_FAILURE(0,
-						&M2AP_ENB_CONFIGURATION_UPDATE_FAILURE(received_msg));
+        MCE_send_ENB_CONFIGURATION_UPDATE_FAILURE(0,M2AP_ENB_CONFIGURATION_UPDATE_FAILURE_data(received_msg));
 	break;
 
 
@@ -642,42 +611,39 @@ void *m2ap_MCE_task(void *arg) {
 
 
 //      case M2AP_HANDOVER_REQ:
-//        m2ap_MCE_handle_handover_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+//        m2ap_MCE_handle_handover_req(inst,
 //                                     &M2AP_HANDOVER_REQ(received_msg));
 //        break;
 //
 //      case M2AP_HANDOVER_REQ_ACK:
-//        m2ap_MCE_handle_handover_req_ack(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+//        m2ap_MCE_handle_handover_req_ack(inst,
 //                                         &M2AP_HANDOVER_REQ_ACK(received_msg));
 //        break;
 //
 //      case M2AP_UE_CONTEXT_RELEASE:
-//        m2ap_MCE_ue_context_release(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+//        m2ap_MCE_ue_context_release(inst,
 //                                                &M2AP_UE_CONTEXT_RELEASE(received_msg));
 //        break;
 //
       case SCTP_INIT_MSG_MULTI_CNF:
         LOG_D(M2AP,"MCE Received SCTP_INIT_MSG_MULTI_CNF Message\n");
-        m2ap_MCE_handle_sctp_init_msg_multi_cnf(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                                &received_msg->ittiMsg.sctp_init_msg_multi_cnf);
+        m2ap_MCE_handle_sctp_init_msg_multi_cnf(inst,SCTP_INIT_MSG_MULTI_CNF_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
         LOG_D(M2AP,"MCE Received SCTP_NEW_ASSOCIATION_RESP Message\n");
-        m2ap_MCE_handle_sctp_association_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                              &received_msg->ittiMsg.sctp_new_association_resp);
+        m2ap_MCE_handle_sctp_association_resp(inst, SCTP_NEW_ASSOCIATION_RESP_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_IND:
         LOG_D(M2AP,"MCE Received SCTP_NEW_ASSOCIATION Message\n");
-        m2ap_MCE_handle_sctp_association_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                             &received_msg->ittiMsg.sctp_new_association_ind);
+        m2ap_MCE_handle_sctp_association_ind(inst,SCTP_NEW_ASSOCIATION_IND_data(received_msg));
         break;
 
       case SCTP_DATA_IND:
         LOG_D(M2AP,"MCE Received SCTP_DATA_IND Message\n");
-        m2ap_MCE_handle_sctp_data_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                      &received_msg->ittiMsg.sctp_data_ind);
+        m2ap_MCE_handle_sctp_data_ind(inst,
+                                      SCTP_DATA_IND_data(received_msg));
         break;
 
       default:

@@ -28,7 +28,7 @@
 
 #ifndef RRC_MESSAGES_TYPES_H_
 #define RRC_MESSAGES_TYPES_H_
-
+#include "openair1/PHY/defs_common.h"
 #include "as_message.h"
 #include "rrc_types.h"
 #include "s1ap_messages_types.h"
@@ -43,56 +43,6 @@
 #include "NR_RACH-ConfigCommon.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_ServingCellConfig.h"
-//-------------------------------------------------------------------------------------------//
-// Messages for RRC logging
-#if defined(DISABLE_ITTI_XER_PRINT)
-  #include "LTE_BCCH-DL-SCH-Message.h"
-  #include "LTE_DL-CCCH-Message.h"
-  #include "LTE_DL-DCCH-Message.h"
-  #include "LTE_UE-EUTRA-Capability.h"
-  #include "LTE_UL-CCCH-Message.h"
-  #include "LTE_UL-DCCH-Message.h"
-
-  typedef LTE_BCCH_DL_SCH_Message_t   RrcDlBcchMessage;
-  typedef LTE_DL_CCCH_Message_t       RrcDlCcchMessage;
-  typedef LTE_DL_DCCH_Message_t       RrcDlDcchMessage;
-  typedef LTE_UE_EUTRA_Capability_t   RrcUeEutraCapability;
-  typedef LTE_UL_CCCH_Message_t       RrcUlCcchMessage;
-  typedef LTE_UL_DCCH_Message_t       RrcUlDcchMessage;
-#endif
-
-//-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-#define RRC_STATE_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_state_ind
-
-#define RRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.rrc_configuration_req
-
-#define NBIOTRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nbiotrrc_configuration_req
-
-#define NRRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nrrrc_configuration_req
-
-#define NAS_KENB_REFRESH_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_kenb_refresh_req
-#define NAS_CELL_SELECTION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_req
-#define NAS_CONN_ESTABLI_REQ(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_establi_req
-#define NAS_UPLINK_DATA_REQ(mSGpTR)     (mSGpTR)->ittiMsg.nas_ul_data_req
-#define NAS_DEREGISTRATION_REQ(mSGpTR)  (mSGpTR)->ittiMsg.nas_deregistration_req
-
-#define NAS_RAB_ESTABLI_RSP(mSGpTR)     (mSGpTR)->ittiMsg.nas_rab_est_rsp
-
-#define NAS_CELL_SELECTION_CNF(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_cnf
-#define NAS_CELL_SELECTION_IND(mSGpTR)  (mSGpTR)->ittiMsg.nas_cell_selection_ind
-#define NAS_PAGING_IND(mSGpTR)          (mSGpTR)->ittiMsg.nas_paging_ind
-#define NAS_CONN_ESTABLI_CNF(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_establi_cnf
-#define NAS_CONN_RELEASE_IND(mSGpTR)    (mSGpTR)->ittiMsg.nas_conn_release_ind
-#define NAS_UPLINK_DATA_CNF(mSGpTR)     (mSGpTR)->ittiMsg.nas_ul_data_cnf
-#define NAS_DOWNLINK_DATA_IND(mSGpTR)   (mSGpTR)->ittiMsg.nas_dl_data_ind
-
-#define RRC_SUBFRAME_PROCESS(mSGpTR)    (mSGpTR)->ittiMsg.rrc_subframe_process
-
-#define RLC_SDU_INDICATION(mSGpTR)      (mSGpTR)->ittiMsg.rlc_sdu_indication
-#define NRDuDlReq(mSGpTR)      (mSGpTR)->ittiMsg.nr_du_dl_req
-
-#define NAS_OAI_TUN_NSA(mSGpTR)         (mSGpTR)->ittiMsg.nas_oai_tun_nsa
 
 //-------------------------------------------------------------------------------------------//
 typedef struct RrcStateInd_s {
@@ -471,4 +421,18 @@ typedef struct rlc_sdu_indication_s {
   int message_id;
 } RlcSduIndication;
 
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/rrc_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/rrc_messages_def.h"
+ #undef MESSAGE_DEF
 #endif /* RRC_MESSAGES_TYPES_H_ */

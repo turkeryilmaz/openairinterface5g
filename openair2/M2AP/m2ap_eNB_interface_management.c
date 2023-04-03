@@ -84,12 +84,8 @@ int eNB_handle_MBMS_SCHEDULING_INFORMATION(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MBMS_SCHEDULING_INFORMATION);
-  //message_p2  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MBMS_SCHEDULING_INFORMATION);
-
-
-
-
+  message_p = M2AP_MBMS_SCHEDULING_INFORMATION_alloc(TASK_M2AP_ENB, 0);
+  m2ap_mbms_scheduling_information_t * msg=M2AP_MBMS_SCHEDULING_INFORMATION_data(message_p);
 
   M2AP_FIND_PROTOCOLIE_BY_ID(M2AP_MbmsSchedulingInformation_Ies_t, ie, container,M2AP_ProtocolIE_ID_id_MCCH_Update_Time ,true);
   //printf("id %d\n",ie->id);
@@ -106,7 +102,7 @@ int eNB_handle_MBMS_SCHEDULING_INFORMATION(instance_t instance,
 
 	  const asn_anonymous_sequence_ *list = _A_CSEQUENCE_FROM_VOID((void*)&ie->value.choice.MBSFN_Area_Configuration_List);
 	  if(list->count > 0 ){
-		M2AP_MBMS_SCHEDULING_INFORMATION(message_p).num_mbms_area_config_list = list->count;
+		msg->num_mbms_area_config_list = list->count;
 	  }
 	  for(i=0; i < list->count; i++ ){
 		  void * memb_ptr = list->array[i];
@@ -122,29 +118,29 @@ int eNB_handle_MBMS_SCHEDULING_INFORMATION(instance_t instance,
 		  M2AP_MBSFN_Area_Configuration_Item_t * m2ap_mbsfn_area_configuration_item = (M2AP_MBSFN_Area_Configuration_Item_t*)memb_ptr1;
 		  //printf("count %d\n",m2ap_mbsfn_area_configuration_item->value.choice.PMCH_Configuration_List.list.count);
 		  if(m2ap_mbsfn_area_configuration_item->value.choice.PMCH_Configuration_List.list.count > 0){
-			M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].num_pmch_config_list = m2ap_mbsfn_area_configuration_item->value.choice.PMCH_Configuration_List.list.count;
+			msg->mbms_area_config_list[i].num_pmch_config_list = m2ap_mbsfn_area_configuration_item->value.choice.PMCH_Configuration_List.list.count;
 		  }
 		  for(j=0; j < m2ap_mbsfn_area_configuration_item->value.choice.PMCH_Configuration_List.list.count; j++){
 			  M2AP_PMCH_Configuration_Item_t * m2ap_pmchconfiguration_item =&(((M2AP_PMCH_Configuration_ItemIEs_t*)m2ap_mbsfn_area_configuration_item->value.choice.PMCH_Configuration_List.list.array[j])->value.choice.PMCH_Configuration_Item);
-			  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].data_mcs = m2ap_pmchconfiguration_item->pmch_Configuration.dataMCS;
-			  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mch_scheduling_period = m2ap_pmchconfiguration_item->pmch_Configuration.mchSchedulingPeriod;
-			  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].allocated_sf_end = m2ap_pmchconfiguration_item->pmch_Configuration.allocatedSubframesEnd;
+			  msg->mbms_area_config_list[i].pmch_config_list[j].data_mcs = m2ap_pmchconfiguration_item->pmch_Configuration.dataMCS;
+			  msg->mbms_area_config_list[i].pmch_config_list[j].mch_scheduling_period = m2ap_pmchconfiguration_item->pmch_Configuration.mchSchedulingPeriod;
+			  msg->mbms_area_config_list[i].pmch_config_list[j].allocated_sf_end = m2ap_pmchconfiguration_item->pmch_Configuration.allocatedSubframesEnd;
 			  //printf("dataMCS %lu\n",m2ap_pmchconfiguration_item->pmch_Configuration.dataMCS);
 			  //printf("allocatedSubframesEnd %lu\n",m2ap_pmchconfiguration_item->pmch_Configuration.allocatedSubframesEnd);
 			  if(m2ap_pmchconfiguration_item->mbms_Session_List.list.count > 0){
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].num_mbms_session_list = m2ap_pmchconfiguration_item->mbms_Session_List.list.count;
+				msg->mbms_area_config_list[i].pmch_config_list[j].num_mbms_session_list = m2ap_pmchconfiguration_item->mbms_Session_List.list.count;
 			  }
 			  for(k=0; k < m2ap_pmchconfiguration_item->mbms_Session_List.list.count; k++){
 				//long mnc,mcc,mnc_length;
 				PLMNID_TO_MCC_MNC(&m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.pLMNidentity,
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mcc,
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc,
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc_length);
+				msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mcc,
+				msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc,
+				msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc_length);
 				//char buf[4];
 				
 				//BUFFER_TO_INT32(buf,);
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].service_id = ((m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[0]<<16) | (m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[1]<<8) | (m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[2])); //
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].lcid = m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->lcid; //*/
+				msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].service_id = ((m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[0]<<16) | (m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[1]<<8) | (m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[2])); //
+				msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].lcid = m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->lcid; //*/
 				//LOG_E(M2AP,"buf[0]:%d buf[1]:%d buf[2]:%d\n",m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[0],m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[1],m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.serviceID.buf[2]);
 			  }
 		  }
@@ -153,22 +149,22 @@ int eNB_handle_MBMS_SCHEDULING_INFORMATION(instance_t instance,
 		  M2AP_MBSFN_Area_Configuration_Item_t * m2ap_mbsfn_area_configuration_item2 = (M2AP_MBSFN_Area_Configuration_Item_t*)memb_ptr2;
 		  //printf("count %d\n",m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.count);
 		  if(m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.count > 0){
-			M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].num_mbms_sf_config_list = m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.count;
+			msg->mbms_area_config_list[i].num_mbms_sf_config_list = m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.count;
 		  }
 		  for(j=0; j < m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.count; j++){
 			  M2AP_MBSFN_Subframe_Configuration_t * m2ap_mbsfn_sf_configuration = &(((M2AP_MBSFN_Subframe_ConfigurationItem_t*)m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.array[j])->value.choice.MBSFN_Subframe_Configuration);
 			  //printf("radioframe_allocation_period %lu\n",m2ap_mbsfn_sf_configuration->radioframeAllocationPeriod);
 			  //printf("radioframe_allocation_offset %lu\n",m2ap_mbsfn_sf_configuration->radioframeAllocationOffset);
-			  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_sf_config_list[j].radioframe_allocation_period = m2ap_mbsfn_sf_configuration->radioframeAllocationPeriod;
-			  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_sf_config_list[j].radioframe_allocation_offset = m2ap_mbsfn_sf_configuration->radioframeAllocationOffset;
+			  msg->mbms_area_config_list[i].mbms_sf_config_list[j].radioframe_allocation_period = m2ap_mbsfn_sf_configuration->radioframeAllocationPeriod;
+			  msg->mbms_area_config_list[i].mbms_sf_config_list[j].radioframe_allocation_offset = m2ap_mbsfn_sf_configuration->radioframeAllocationOffset;
 			  if( m2ap_mbsfn_sf_configuration->subframeAllocation.present == M2AP_MBSFN_Subframe_Configuration__subframeAllocation_PR_fourFrames ) {
 				LOG_I(RRC,"is_four_sf\n");
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_sf_config_list[j].is_four_sf = 1;
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_sf_config_list[j].subframe_allocation = m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[0] | (m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[1]<<8) | (m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[0]<<16);
+				msg->mbms_area_config_list[i].mbms_sf_config_list[j].is_four_sf = 1;
+				msg->mbms_area_config_list[i].mbms_sf_config_list[j].subframe_allocation = m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[0] | (m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[1]<<8) | (m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[0]<<16);
 			  }else{
 				LOG_I(RRC,"is_one_sf\n");
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_sf_config_list[j].is_four_sf = 0;
-				M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_sf_config_list[j].subframe_allocation = (m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[0] >> 2) & 0x3F;
+				msg->mbms_area_config_list[i].mbms_sf_config_list[j].is_four_sf = 0;
+				msg->mbms_area_config_list[i].mbms_sf_config_list[j].subframe_allocation = (m2ap_mbsfn_sf_configuration->subframeAllocation.choice.oneFrame.buf[0] >> 2) & 0x3F;
 			  }
                   }
 		
@@ -177,12 +173,12 @@ int eNB_handle_MBMS_SCHEDULING_INFORMATION(instance_t instance,
 		  M2AP_MBSFN_Area_Configuration_Item_t * m2ap_mbsfn_area_configuration_item3 = (M2AP_MBSFN_Area_Configuration_Item_t*)memb_ptr3;
 		  //printf("count %d\n",m2ap_mbsfn_area_configuration_item2->value.choice.MBSFN_Subframe_ConfigurationList.list.count);
 		  //printf("Common_Subframe_Allocation_Period %lu\n",m2ap_mbsfn_area_configuration_item3->value.choice.Common_Subframe_Allocation_Period);
-		  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].common_sf_allocation_period = m2ap_mbsfn_area_configuration_item3->value.choice.Common_Subframe_Allocation_Period;
+		  msg->mbms_area_config_list[i].common_sf_allocation_period = m2ap_mbsfn_area_configuration_item3->value.choice.Common_Subframe_Allocation_Period;
 
 		  //printf("%lu\n", ((M2AP_MBSFN_Area_Configuration_Item_t*)memb_ptr4)->id);
 		  M2AP_MBSFN_Area_Configuration_Item_t * m2ap_mbsfn_area_configuration_item4 = (M2AP_MBSFN_Area_Configuration_Item_t*)memb_ptr4;
 		  //printf("MBMS_Area_ID %lu\n",m2ap_mbsfn_area_configuration_item4->value.choice.MBSFN_Area_ID);
-		  M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].mbms_area_id = m2ap_mbsfn_area_configuration_item4->value.choice.MBSFN_Area_ID;
+		  msg->mbms_area_config_list[i].mbms_area_id = m2ap_mbsfn_area_configuration_item4->value.choice.MBSFN_Area_ID;
 	  } 
 	
 
@@ -282,8 +278,7 @@ int eNB_handle_MBMS_SESSION_START_REQUEST(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MBMS_SESSION_START_REQ);
-
+  message_p = M2AP_MBMS_SESSION_START_REQ_alloc(TASK_M2AP_ENB, 0);
 
   itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -445,8 +440,7 @@ int eNB_handle_MBMS_SESSION_STOP_REQUEST(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MBMS_SESSION_STOP_REQ);
-
+  message_p = M2AP_MBMS_SESSION_STOP_REQ_alloc(TASK_M2AP_ENB, 0);
 
   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -714,9 +708,8 @@ int eNB_handle_M2_SETUP_RESPONSE(instance_t instance,
    //M2AP_Cells_to_be_Activated_List_Item_t *cell;
    int i,j;
 
-   MessageDef *msg_p = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_SETUP_RESP);
-   //MessageDef *msg_p2 = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_SETUP_RESP);
-
+   MessageDef *msg_p = M2AP_SETUP_RESP_alloc(TASK_M2AP_ENB, 0);
+   m2ap_setup_resp_t *msg=M2AP_SETUP_RESP_data(msg_p);
    LOG_D(M2AP, "M2AP: M2Setup-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);
    for (j=0;j < in->protocolIEs.list.count; j++) {
@@ -730,9 +723,9 @@ int eNB_handle_M2_SETUP_RESPONSE(instance_t instance,
        LOG_D(M2AP, "M2AP: M2Setup-Resp: GlobalMCE_ID \n");/*,
              GlobalMCE_ID);*/
        /*PLMNID_TO_MCC_MNC(&m2ap_pmchconfiguration_item->mbms_Session_List.list.array[k]->tmgi.pLMNidentity,
-				&M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mcc,
-				&M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc,
-				&M2AP_MBMS_SCHEDULING_INFORMATION(message_p).mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc_length);*/
+				&msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mcc,
+				&msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc,
+				&msg->mbms_area_config_list[i].pmch_config_list[j].mbms_session_list[k].mnc_length);*/
 
        
        break;
@@ -754,7 +747,7 @@ int eNB_handle_M2_SETUP_RESPONSE(instance_t instance,
 		   "ie->value.present != M2AP_M2SetupResponse_Ies__value_PR_MCCHrelatedBCCH_ConfigPerMBSFNArea\n");
        num_cells_to_activate = ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list.count;
        if(ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list.count > 0 ){
-        	M2AP_SETUP_RESP(msg_p).num_mcch_config_per_mbsfn = ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list.count;
+        	msg->num_mcch_config_per_mbsfn = ie->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea.list.count;
        }
        //LOG_D(M2AP, "M2AP: Activating %d cells\n",num_cells_to_activate);
        for (i=0;i<num_cells_to_activate;i++) {
@@ -762,11 +755,11 @@ int eNB_handle_M2_SETUP_RESPONSE(instance_t instance,
 	AssertFatal(mcch_related_bcch_config_per_mbms_area_ies->id == M2AP_ProtocolIE_ID_id_MCCHrelatedBCCH_ConfigPerMBSFNArea_Item, 
 			" mcch_related_bcch_config_per_mbms_area_ies->id != M2AP_ProtocolIE_ID_id_MCCHrelatedBCCH_ConfigPerMBSFNArea_Item ");
 	M2AP_MCCHrelatedBCCH_ConfigPerMBSFNArea_Item_t * config_per_mbsfn_area_item = &mcch_related_bcch_config_per_mbms_area_ies->value.choice.MCCHrelatedBCCH_ConfigPerMBSFNArea_Item;
-	M2AP_SETUP_RESP(msg_p).mcch_config_per_mbsfn[i].pdcch_length = (uint8_t)config_per_mbsfn_area_item->pdcchLength; 
-	M2AP_SETUP_RESP(msg_p).mcch_config_per_mbsfn[i].offset 	     = (uint8_t)config_per_mbsfn_area_item->offset;
-	M2AP_SETUP_RESP(msg_p).mcch_config_per_mbsfn[i].modification_period = (uint8_t)config_per_mbsfn_area_item->modificationPeriod;
-	M2AP_SETUP_RESP(msg_p).mcch_config_per_mbsfn[i].mcs 	     = (uint8_t)config_per_mbsfn_area_item->modulationAndCodingScheme;
-	M2AP_SETUP_RESP(msg_p).mcch_config_per_mbsfn[i].repetition_period  = (uint8_t)config_per_mbsfn_area_item->repetitionPeriod;
+	msg->mcch_config_per_mbsfn[i].pdcch_length = (uint8_t)config_per_mbsfn_area_item->pdcchLength; 
+	msg->mcch_config_per_mbsfn[i].offset 	     = (uint8_t)config_per_mbsfn_area_item->offset;
+	msg->mcch_config_per_mbsfn[i].modification_period = (uint8_t)config_per_mbsfn_area_item->modificationPeriod;
+	msg->mcch_config_per_mbsfn[i].mcs 	     = (uint8_t)config_per_mbsfn_area_item->modulationAndCodingScheme;
+	msg->mcch_config_per_mbsfn[i].repetition_period  = (uint8_t)config_per_mbsfn_area_item->repetitionPeriod;
 
 	//LOG_E(M2AP,"mcs %lu\n",config_per_mbsfn_area_item->modulationAndCodingScheme);
 	//LOG_E(M2AP,"pdcch_length %lu\n",config_per_mbsfn_area_item->pdcchLength);
@@ -777,7 +770,7 @@ int eNB_handle_M2_SETUP_RESPONSE(instance_t instance,
 	
 
 	if(config_per_mbsfn_area_item->subframeAllocationInfo.size == 1){
-		M2AP_SETUP_RESP(msg_p).mcch_config_per_mbsfn[i].subframe_allocation_info = config_per_mbsfn_area_item->subframeAllocationInfo.buf[0]>>2;
+		msg->mcch_config_per_mbsfn[i].subframe_allocation_info = config_per_mbsfn_area_item->subframeAllocationInfo.buf[0]>>2;
 		LOG_D(M2AP,"subframe_allocation_info %d\n", config_per_mbsfn_area_item->subframeAllocationInfo.buf[0]);
 	}		
        }
@@ -811,8 +804,7 @@ int eNB_handle_M2_SETUP_FAILURE(instance_t instance,
 
    M2AP_M2SetupFailure_Ies_t *ie;
 
-
-  MessageDef *msg_p = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_SETUP_FAILURE);
+   MessageDef *msg_p = M2AP_SETUP_FAILURE_alloc(TASK_M2AP_ENB, 0);
 
    LOG_D(M2AP, "M2AP: M2Setup-Failure: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);
@@ -999,37 +991,35 @@ int eNB_handle_eNB_CONFIGURATION_UPDATE_FAILURE(instance_t instance,
 
    //M2AP_ENBConfigurationUpdateFailure_Ies_t *ie;
 
+  MessageDef *msg_p = M2AP_ENB_CONFIGURATION_UPDATE_FAILURE_alloc(TASK_M2AP_ENB, 0);
 
-  MessageDef *msg_p = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_ENB_CONFIGURATION_UPDATE_FAILURE);
+  LOG_D(M2AP, "M2AP: ENBConfigurationUpdate-Failure: protocolIEs.list.count %d\n", in->protocolIEs.list.count);
+  // for (int i=0;i < in->protocolIEs.list.count; i++) {
+  //   ie = in->protocolIEs.list.array[i];
+  //  // switch (ie->id) {
+  //  // case M2AP_ProtocolIE_ID_id_TimeToWait:
+  //  //   AssertFatal(ie->criticality == M2AP_Criticality_ignore,
+  //  //    	   "ie->criticality != M2AP_Criticality_ignore\n");
+  //  //   AssertFatal(ie->value.present == M2AP_M2SetupFailure_Ies__value_PR_TimeToWait,
+  //  //    	   "ie->value.present != M2AP_M2SetupFailure_Ies__value_PR_TimeToWait\n");
+  //  //   LOG_D(M2AP, "M2AP: M2Setup-Failure: TimeToWait %d\n");/*,
+  //  //         GlobalMCE_ID);*/
+  //  //   break;
+  //  // }
+  // }
+  // AssertFatal(GlobalMCE_ID!=-1,"GlobalMCE_ID was not sent\n");
+  // AssertFatal(num_cells_to_activate>0,"No cells activated\n");
+  // M2AP_SETUP_RESP (msg_p).num_cells_to_activate = num_cells_to_activate;
 
-   LOG_D(M2AP, "M2AP: ENBConfigurationUpdate-Failure: protocolIEs.list.count %d\n",
-         in->protocolIEs.list.count);
-   //for (int i=0;i < in->protocolIEs.list.count; i++) {
-   //  ie = in->protocolIEs.list.array[i];
-   // // switch (ie->id) {
-   // // case M2AP_ProtocolIE_ID_id_TimeToWait:
-   // //   AssertFatal(ie->criticality == M2AP_Criticality_ignore,
-   // //    	   "ie->criticality != M2AP_Criticality_ignore\n");
-   // //   AssertFatal(ie->value.present == M2AP_M2SetupFailure_Ies__value_PR_TimeToWait,
-   // //    	   "ie->value.present != M2AP_M2SetupFailure_Ies__value_PR_TimeToWait\n");
-   // //   LOG_D(M2AP, "M2AP: M2Setup-Failure: TimeToWait %d\n");/*,
-   // //         GlobalMCE_ID);*/
-   // //   break;
-   // // }
-   //}
-   //AssertFatal(GlobalMCE_ID!=-1,"GlobalMCE_ID was not sent\n");
-   //AssertFatal(num_cells_to_activate>0,"No cells activated\n");
-   //M2AP_SETUP_RESP (msg_p).num_cells_to_activate = num_cells_to_activate;
+  // for (int i=0;i<num_cells_to_activate;i++)
+  //   AssertFatal(M2AP_SETUP_RESP (msg_p).num_SI[i] > 0, "System Information %d is missing",i);
 
-   //for (int i=0;i<num_cells_to_activate;i++)  
-   //  AssertFatal(M2AP_SETUP_RESP (msg_p).num_SI[i] > 0, "System Information %d is missing",i);
+  // LOG_D(M2AP, "Sending M2AP_SETUP_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
+  //       assoc_id,ENB_MOeNBLE_ID_TO_INSTANCE(assoc_id));
 
-   //LOG_D(M2AP, "Sending M2AP_SETUP_RESP ITTI message to ENB_APP with assoc_id (%d->%d)\n",
-   //      assoc_id,ENB_MOeNBLE_ID_TO_INSTANCE(assoc_id));
+  itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(assoc_id), msg_p);
 
-   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(assoc_id), msg_p);
-
-   return 0;
+  return 0;
 }
 
 
@@ -1056,8 +1046,7 @@ int eNB_handle_eNB_CONFIGURATION_UPDATE_ACKNOWLEDGE(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_ENB_CONFIGURATION_UPDATE_ACK);
-
+  message_p = M2AP_ENB_CONFIGURATION_UPDATE_ACK_alloc(TASK_M2AP_ENB, 0);
 
   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -1091,8 +1080,7 @@ int eNB_handle_MCE_CONFIGURATION_UPDATE(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MCE_CONFIGURATION_UPDATE);
-
+  message_p = M2AP_MCE_CONFIGURATION_UPDATE_alloc(TASK_M2AP_ENB, 0);
 
   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -1162,8 +1150,7 @@ int eNB_handle_MBMS_SESSION_UPDATE_REQUEST(instance_t instance,
               assoc_id, stream);
   }
 
-  message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MBMS_SESSION_UPDATE_REQ);
-
+  message_p = M2AP_MBMS_SESSION_UPDATE_REQ_alloc(TASK_M2AP_ENB, 0);
 
   itti_send_msg_to_task(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
 
@@ -1246,13 +1233,7 @@ int eNB_handle_MBMS_SERVICE_COUNTING_REQ(instance_t instance,
 	break;					
 
      }
- }
-
-
-
-   //message_p  = itti_alloc_new_message (TASK_M2AP_ENB, 0, M2AP_MBMS_SERVICE_COUNTING_REQ);
-
-
+  }
    return 0;
 }
 int eNB_send_MBMS_SERVICE_COUNTING_REPORT(instance_t instance, m2ap_mbms_service_counting_report_t * m2ap_mbms_service_counting_report)

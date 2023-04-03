@@ -36,9 +36,9 @@ void m3ap_MCE_itti_send_sctp_data_req(instance_t instance, int32_t assoc_id, uin
   MessageDef      *message_p;
   sctp_data_req_t *sctp_data_req;
 
-  message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, SCTP_DATA_REQ);
+  message_p = SCTP_DATA_REQ_alloc(TASK_M3AP_MCE, 0);
 
-  sctp_data_req = &message_p->ittiMsg.sctp_data_req;
+  sctp_data_req = SCTP_DATA_REQ_data(message_p);
 
   sctp_data_req->assoc_id      = assoc_id;
   sctp_data_req->buffer        = buffer;
@@ -56,8 +56,8 @@ void m3ap_MCE_itti_send_sctp_close_association(instance_t instance, int32_t asso
   MessageDef               *message_p = NULL;
   sctp_close_association_t *sctp_close_association_p = NULL;
 
-  message_p = itti_alloc_new_message(TASK_M3AP_MCE, 0, SCTP_CLOSE_ASSOCIATION);
-  sctp_close_association_p = &message_p->ittiMsg.sctp_close_association;
+  message_p = SCTP_CLOSE_ASSOCIATION_alloc(TASK_M3AP_MCE, 0);
+  sctp_close_association_p = SCTP_CLOSE_ASSOCIATION_data(message_p);
   sctp_close_association_p->assoc_id      = assoc_id;
 
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);
@@ -70,9 +70,9 @@ void m3ap_MME_itti_send_sctp_data_req(instance_t instance, int32_t assoc_id, uin
   MessageDef      *message_p;
   sctp_data_req_t *sctp_data_req;
 
-  message_p = itti_alloc_new_message(TASK_M3AP_MME, 0, SCTP_DATA_REQ);
+  message_p = SCTP_DATA_REQ_alloc(TASK_M3AP_MME, 0);
 
-  sctp_data_req = &message_p->ittiMsg.sctp_data_req;
+  sctp_data_req =  SCTP_DATA_REQ_data(message_p);
 
   sctp_data_req->assoc_id      = assoc_id;
   sctp_data_req->buffer        = buffer;
@@ -88,8 +88,8 @@ void m3ap_MME_itti_send_sctp_close_association(instance_t instance, int32_t asso
   MessageDef               *message_p = NULL;
   sctp_close_association_t *sctp_close_association_p = NULL;
 
-  message_p = itti_alloc_new_message(TASK_M3AP_MME, 0, SCTP_CLOSE_ASSOCIATION);
-  sctp_close_association_p = &message_p->ittiMsg.sctp_close_association;
+  message_p = SCTP_CLOSE_ASSOCIATION_alloc(TASK_M3AP_MME, 0);
+  sctp_close_association_p = SCTP_CLOSE_ASSOCIATION_data(message_p);
   sctp_close_association_p->assoc_id      = assoc_id;
 
   itti_send_msg_to_task(TASK_SCTP, instance, message_p);

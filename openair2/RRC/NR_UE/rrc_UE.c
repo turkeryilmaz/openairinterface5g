@@ -74,6 +74,9 @@
 #include "SIMULATION/TOOLS/sim.h" // for taus
 
 #include "nr_nas_msg_sim.h"
+#include <openair2/RRC/NR/nr_rrc_proto.h>
+#include "openair2/COMMON/pdcp_messages_types.h"
+#include "openair2/COMMON/nas_messages_types.h"
 
 NR_UE_RRC_INST_t *NR_UE_rrc_inst;
 /* NAS Attach request with IMSI */
@@ -1399,8 +1402,8 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
 	   case NR_DL_DCCH_MessageType__c1_PR_NOTHING:
 	   case NR_DL_DCCH_MessageType__c1_PR_rrcResume:
 	   case NR_DL_DCCH_MessageType__c1_PR_rrcRelease:
-	     msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_RELEASE_IND);
-	     if((nr_dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present == NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
+       msg_p = NAS_CONN_RELEASE_IND_alloc(TASK_RRC_NRUE, 0);
+       if((nr_dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present == NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
 		(nr_dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)){
 		 nr_dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationTimer =
 		 NR_RRCRelease_IEs__deprioritisationReq__deprioritisationTimer_min5;
@@ -2059,10 +2062,11 @@ nr_rrc_ue_establish_srb2(
        for (list_count = 0; list_count < ie->nonCriticalExtension->dedicatedNAS_MessageList->list.count; list_count++) {
 	 pdu_length = ie->nonCriticalExtension->dedicatedNAS_MessageList->list.array[list_count]->size;
 	 pdu_buffer = ie->nonCriticalExtension->dedicatedNAS_MessageList->list.array[list_count]->buf;
-	 msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
-	 NAS_CONN_ESTABLI_CNF(msg_p).errCode = AS_SUCCESS;
-	 NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length = pdu_length;
-	 NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data = pdu_buffer;
+   msg_p = NAS_CONN_ESTABLI_CNF_alloc(TASK_RRC_NRUE, 0);
+   NasConnEstabCnf*msg=NAS_CONN_ESTABLI_CNF_data(msg_p);
+           msg->errCode = AS_SUCCESS;
+	 msg->nasMsg.length = pdu_length;
+	 msg->nasMsg.data = pdu_buffer;
 	 itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
        }
 
@@ -2151,7 +2155,7 @@ nr_rrc_ue_establish_srb2(
          LOG_I(NR_RRC, "[UE %d] Received RRC Release (gNB %d)\n",
            ctxt_pP->module_id, gNB_indexP);
 
-         msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_RELEASE_IND);
+         msg_p = NAS_CONN_RELEASE_IND_alloc(TASK_RRC_NRUE, 0);
 
          if((dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present ==
              NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
@@ -2192,10 +2196,10 @@ nr_rrc_ue_establish_srb2(
                dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message;
 
            MessageDef *msg_p;
-           msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
-           NAS_DOWNLINK_DATA_IND(msg_p).UEid = ctxt_pP->module_id; // TODO set the UEid to something else ?
-           NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length = dedicatedNAS_Message->size;
-           NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data = dedicatedNAS_Message->buf;
+           msg_p = NAS_DOWNLINK_DATA_IND_alloc(TASK_RRC_NRUE, 0);
+           NAS_DOWNLINK_DATA_IND_data(msg_p)->UEid = ctxt_pP->module_id; // TODO set the UEid to something else ?
+           NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.length = dedicatedNAS_Message->size;
+           NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.data = dedicatedNAS_Message->buf;
            itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
          }
        }
@@ -2251,59 +2255,68 @@ nr_rrc_ue_establish_srb2(
          break;
 
        case NR_RRC_MAC_BCCH_DATA_IND:
+         {
+           NRRrcMacBcchDataInd *msg=NR_RRC_MAC_BCCH_DATA_IND_data(msg_p);
          LOG_D(NR_RRC, "[UE %d] Received %s: frameP %d, gNB %d\n", ue_mod_id, ITTI_MSG_NAME (msg_p),
-               NR_RRC_MAC_BCCH_DATA_IND (msg_p).frame, NR_RRC_MAC_BCCH_DATA_IND (msg_p).gnb_index);
-         PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, NOT_A_RNTI, NR_RRC_MAC_BCCH_DATA_IND (msg_p).frame, 0,NR_RRC_MAC_BCCH_DATA_IND (msg_p).gnb_index);
+               msg->frame, msg->gnb_index);
+         PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, NOT_A_RNTI, msg->frame, 0,msg->gnb_index);
          nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message (ctxt.module_id,
-                  NR_RRC_MAC_BCCH_DATA_IND (msg_p).gnb_index,
-                  NR_RRC_MAC_BCCH_DATA_IND (msg_p).sdu,
-                  NR_RRC_MAC_BCCH_DATA_IND (msg_p).sdu_size,
-                  NR_RRC_MAC_BCCH_DATA_IND (msg_p).rsrq,
-                  NR_RRC_MAC_BCCH_DATA_IND (msg_p).rsrp);
+                  msg->gnb_index,
+                  msg->sdu,
+                  msg->sdu_size,
+                  msg->rsrq,
+                  msg->rsrp);
+         }
          break;
 
        case NR_RRC_MAC_CCCH_DATA_IND:
+         {
+           NRRrcMacCcchDataInd *msg=NR_RRC_MAC_CCCH_DATA_IND_data(msg_p);
          LOG_D(NR_RRC, "[UE %d] RNTI %x Received %s: frameP %d, gNB %d\n",
                ue_mod_id,
-               NR_RRC_MAC_CCCH_DATA_IND (msg_p).rnti,
+               msg->rnti,
                ITTI_MSG_NAME (msg_p),
-               NR_RRC_MAC_CCCH_DATA_IND (msg_p).frame,
-               NR_RRC_MAC_CCCH_DATA_IND (msg_p).gnb_index);
-         srb_info_p = &NR_UE_rrc_inst[ue_mod_id].Srb0[NR_RRC_MAC_CCCH_DATA_IND (msg_p).gnb_index];
-         memcpy (srb_info_p->Rx_buffer.Payload, NR_RRC_MAC_CCCH_DATA_IND (msg_p).sdu,
-           NR_RRC_MAC_CCCH_DATA_IND (msg_p).sdu_size);
-         srb_info_p->Rx_buffer.payload_size = NR_RRC_MAC_CCCH_DATA_IND (msg_p).sdu_size;
-         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_NO, NR_RRC_MAC_CCCH_DATA_IND (msg_p).rnti, NR_RRC_MAC_CCCH_DATA_IND (msg_p).frame, 0);
-              // PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, NR_RRC_MAC_CCCH_DATA_IND (msg_p).rnti, NR_RRC_MAC_CCCH_DATA_IND (msg_p).frame, 0, NR_RRC_MAC_CCCH_DATA_IND (msg_p).gnb_index);
+               msg->frame,
+               msg->gnb_index);
+         srb_info_p = &NR_UE_rrc_inst[ue_mod_id].Srb0[msg->gnb_index];
+         memcpy (srb_info_p->Rx_buffer.Payload, msg->sdu,
+           msg->sdu_size);
+         srb_info_p->Rx_buffer.payload_size = msg->sdu_size;
+         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_NO, msg->rnti, msg->frame, 0);
+              // PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, msg->rnti, msg->frame, 0, msg->gnb_index);
               nr_rrc_ue_decode_ccch (&ctxt,
                                   srb_info_p,
-                                  NR_RRC_MAC_CCCH_DATA_IND (msg_p).gnb_index);
+                                  msg->gnb_index);
+         }
          break;
 
       /* PDCP messages */
       case NR_RRC_DCCH_DATA_IND:
-        PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, NR_RRC_DCCH_DATA_IND (msg_p).module_id, GNB_FLAG_NO, NR_RRC_DCCH_DATA_IND (msg_p).rnti, NR_RRC_DCCH_DATA_IND (msg_p).frame, 0,NR_RRC_DCCH_DATA_IND (msg_p).gNB_index);
+        {
+          NRRrcDcchDataInd *msg=  NR_RRC_DCCH_DATA_IND_data (msg_p);
+        PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, msg->module_id, GNB_FLAG_NO, msg->rnti, msg->frame, 0,msg->gNB_index);
         LOG_D(NR_RRC, "[UE %d] Received %s: frameP %d, DCCH %d, gNB %d\n",
-              NR_RRC_DCCH_DATA_IND (msg_p).module_id,
+              msg->module_id,
               ITTI_MSG_NAME (msg_p),
-              NR_RRC_DCCH_DATA_IND (msg_p).frame,
-              NR_RRC_DCCH_DATA_IND (msg_p).dcch_index,
-              NR_RRC_DCCH_DATA_IND (msg_p).gNB_index);
+              msg->frame,
+              msg->dcch_index,
+              msg->gNB_index);
         LOG_D(NR_RRC, PROTOCOL_RRC_CTXT_UE_FMT"Received %s DCCH %d, gNB %d\n",
               PROTOCOL_NR_RRC_CTXT_UE_ARGS(&ctxt),
               ITTI_MSG_NAME (msg_p),
-              NR_RRC_DCCH_DATA_IND (msg_p).dcch_index,
-              NR_RRC_DCCH_DATA_IND (msg_p).gNB_index);
+              msg->dcch_index,
+              msg->gNB_index);
         nr_rrc_ue_decode_dcch (
           &ctxt,
-          NR_RRC_DCCH_DATA_IND (msg_p).dcch_index,
-          NR_RRC_DCCH_DATA_IND (msg_p).sdu_p,
-          NR_RRC_DCCH_DATA_IND (msg_p).sdu_size,
-          NR_RRC_DCCH_DATA_IND (msg_p).gNB_index);
+          msg->dcch_index,
+          msg->sdu_p,
+          msg->sdu_size,
+          msg->gNB_index);
+        }
         break;
 
       case NAS_KENB_REFRESH_REQ:
-        memcpy((void *)NR_UE_rrc_inst[ue_mod_id].kgnb, (void *)NAS_KENB_REFRESH_REQ(msg_p).kenb, sizeof(NR_UE_rrc_inst[ue_mod_id].kgnb));
+        memcpy((void *)NR_UE_rrc_inst[ue_mod_id].kgnb, (void *)NAS_KENB_REFRESH_REQ_data(msg_p)->kenb, sizeof(NR_UE_rrc_inst[ue_mod_id].kgnb));
         LOG_D(RRC, "[UE %d] Received %s: refreshed RRC::KgNB = "
               "%02x%02x%02x%02x"
               "%02x%02x%02x%02x"
@@ -2327,9 +2340,9 @@ nr_rrc_ue_establish_srb2(
       case NAS_UPLINK_DATA_REQ: {
         uint32_t length;
         uint8_t *buffer;
-        LOG_I(NR_RRC, "[UE %d] Received %s: UEid %d\n", ue_mod_id, ITTI_MSG_NAME (msg_p), NAS_UPLINK_DATA_REQ (msg_p).UEid);
+        LOG_I(NR_RRC, "[UE %d] Received %s: UEid %d\n", ue_mod_id, ITTI_MSG_NAME (msg_p), NAS_UPLINK_DATA_REQ_data (msg_p)->UEid);
         /* Create message for PDCP (ULInformationTransfer_t) */
-        length = do_NR_ULInformationTransfer(&buffer, NAS_UPLINK_DATA_REQ (msg_p).nasMsg.length, NAS_UPLINK_DATA_REQ (msg_p).nasMsg.data);
+        length = do_NR_ULInformationTransfer(&buffer, NAS_UPLINK_DATA_REQ_data (msg_p)->nasMsg.length, NAS_UPLINK_DATA_REQ_data(msg_p)->nasMsg.data);
         /* Transfer data to PDCP */
         PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, ue_mod_id, GNB_FLAG_NO, NR_UE_rrc_inst[ue_mod_id].rnti, 0, 0,0);
         // check if SRB2 is created, if yes request data_req on DCCH1 (SRB2)

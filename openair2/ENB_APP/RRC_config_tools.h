@@ -28,7 +28,7 @@
 */
 #ifndef RRC_CONFIG_TOOLS_H_
 #define RRC_CONFIG_TOOLS_H_
-
+#include "openair1/PHY/defs_common.h"
 #define KHz (1000UL)
 #define MHz (1000*KHz)
 

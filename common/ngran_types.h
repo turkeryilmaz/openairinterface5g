@@ -32,7 +32,7 @@
 
 #ifndef __NGRAN_TYPES_H__
 #define __NGRAN_TYPES_H__
-
+#include <stdint.h>
 typedef enum {
   ngran_eNB       = 0,
   ngran_ng_eNB    = 1,
@@ -56,5 +56,33 @@ typedef enum { CPtype = 0, UPtype } E1_t;
 #define GTPV1_U_PORT_NUMBER (2152)
 
 typedef enum { non_dynamic, dynamic } fiveQI_type_t;
+
+typedef struct transport_layer_addr_s {
+  /* Length of the transport layer address buffer in bits. S1AP layer received a
+   * bit string<1..160> containing one of the following addresses: ipv4,
+   * ipv6, or ipv4 and ipv6. The layer doesn't interpret the buffer but
+   * silently forward it to S1-U.
+   */
+  uint8_t length;
+  uint8_t buffer[20]; // in network byte order
+} transport_layer_addr_t;
+
+typedef struct net_ip_address_s {
+  unsigned ipv4:1;
+  unsigned ipv6:1;
+  char ipv4_address[16];
+  char ipv6_address[46];
+} net_ip_address_t;
+typedef enum cell_type_e {
+  CELL_MACRO_ENB,
+  CELL_HOME_ENB,
+  CELL_MACRO_GNB
+} cell_type_t;
+typedef enum paging_drx_e {
+  PAGING_DRX_32  = 0x0,
+  PAGING_DRX_64  = 0x1,
+  PAGING_DRX_128 = 0x2,
+  PAGING_DRX_256 = 0x3
+} paging_drx_t;
 #define maxSRBs 4
 #endif

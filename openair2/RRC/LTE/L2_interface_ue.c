@@ -47,6 +47,7 @@
 #include "common/ran_context.h"
 
 #include "intertask_interface.h"
+#include "openair2/COMMON/pdcp_messages_types.h"
 
 //#define RRC_DATA_REQ_DEBUG
 
@@ -84,21 +85,19 @@ mac_rrc_data_req_ue(
 
   if( (UE_rrc_inst[Mod_idP].Srb0[eNB_index].Tx_buffer.payload_size > 0) ) {
     {
-      MessageDef *message_p;
       int ccch_size = UE_rrc_inst[Mod_idP].Srb0[eNB_index].Tx_buffer.payload_size;
-      int sdu_size = sizeof(RRC_MAC_CCCH_DATA_REQ (message_p).sdu);
-
+      MessageDef *message_p = RRC_MAC_CCCH_DATA_REQ_alloc(TASK_RRC_UE, 0);
+      RrcMacCcchDataReq *msg = RRC_MAC_CCCH_DATA_REQ_data(message_p);
+      int sdu_size = sizeof(msg->sdu);
       if (ccch_size > sdu_size) {
         LOG_E(RRC, "SDU larger than CCCH SDU buffer size (%d, %d)", ccch_size, sdu_size);
         ccch_size = sdu_size;
       }
-
-      message_p = itti_alloc_new_message (TASK_RRC_UE, 0, RRC_MAC_CCCH_DATA_REQ);
-      RRC_MAC_CCCH_DATA_REQ (message_p).frame = frameP;
-      RRC_MAC_CCCH_DATA_REQ (message_p).sdu_size = ccch_size;
-      memset (RRC_MAC_CCCH_DATA_REQ (message_p).sdu, 0, CCCH_SDU_SIZE);
-      memcpy (RRC_MAC_CCCH_DATA_REQ (message_p).sdu, UE_rrc_inst[Mod_idP].Srb0[eNB_index].Tx_buffer.Payload, ccch_size);
-      RRC_MAC_CCCH_DATA_REQ (message_p).enb_index = eNB_index;
+      msg->frame = frameP;
+      msg->sdu_size = ccch_size;
+      memset (msg->sdu, 0, sizeof(msg->sdu));
+      memcpy (msg->sdu, UE_rrc_inst[Mod_idP].Srb0[eNB_index].Tx_buffer.Payload, ccch_size);
+      msg->enb_index = eNB_index;
 
       itti_send_msg_to_task (TASK_MAC_UE, UE_MODULE_ID_TO_INSTANCE(Mod_idP), message_p);
     }
@@ -144,8 +143,9 @@ mac_rrc_data_ind_ue(
   if(srb_idP == BCCH_SI_MBMS) {
     LOG_D(RRC,"[UE %d] Received SDU for BCCH on MBMS SRB %ld from eNB %d\n",module_idP,srb_idP,eNB_indexP);
     {
-      MessageDef *message_p;
-      int msg_sdu_size = sizeof(RRC_MAC_BCCH_MBMS_DATA_IND (message_p).sdu);
+      MessageDef *message_p = RRC_MAC_BCCH_MBMS_DATA_IND_alloc(TASK_MAC_UE, 0);
+      RrcMacBcchMbmsDataInd *msg=RRC_MAC_BCCH_MBMS_DATA_IND_data(message_p);
+      int msg_sdu_size = sizeof(msg->sdu);
 
       if (sdu_lenP > msg_sdu_size) {
         LOG_E(RRC, "SDU larger than BCCH SDU buffer size (%d, %d)", sdu_lenP, msg_sdu_size);
@@ -154,15 +154,14 @@ mac_rrc_data_ind_ue(
         sdu_size = sdu_lenP;
       }
 
-      message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_BCCH_MBMS_DATA_IND);
-      memset (RRC_MAC_BCCH_MBMS_DATA_IND (message_p).sdu, 0, BCCH_SDU_MBMS_SIZE);
-      RRC_MAC_BCCH_MBMS_DATA_IND (message_p).frame     = frameP;
-      RRC_MAC_BCCH_MBMS_DATA_IND (message_p).sub_frame = sub_frameP;
-      RRC_MAC_BCCH_MBMS_DATA_IND (message_p).sdu_size  = sdu_size;
-      memcpy (RRC_MAC_BCCH_MBMS_DATA_IND (message_p).sdu, sduP, sdu_size);
-      RRC_MAC_BCCH_MBMS_DATA_IND (message_p).enb_index = eNB_indexP;
-      RRC_MAC_BCCH_MBMS_DATA_IND (message_p).rsrq      = 30 /* TODO change phy to report rspq */;
-      RRC_MAC_BCCH_MBMS_DATA_IND (message_p).rsrp      = 45 /* TODO change phy to report rspp */;
+      memset (msg->sdu, 0, BCCH_SDU_MBMS_SIZE);
+      msg->frame     = frameP;
+      msg->sub_frame = sub_frameP;
+      msg->sdu_size  = sdu_size;
+      memcpy (msg->sdu, sduP, sdu_size);
+      msg->enb_index = eNB_indexP;
+      msg->rsrq      = 30 /* TODO change phy to report rspq */;
+      msg->rsrp      = 45 /* TODO change phy to report rspp */;
       itti_send_msg_to_task (TASK_RRC_UE, ctxt.instance, message_p);
     }
   }
@@ -170,8 +169,9 @@ mac_rrc_data_ind_ue(
   if(srb_idP == BCCH) {
     LOG_D(RRC,"[UE %d] Received SDU for BCCH on SRB %ld from eNB %d\n",module_idP,srb_idP,eNB_indexP);
     {
-      MessageDef *message_p;
-      int msg_sdu_size = sizeof(RRC_MAC_BCCH_DATA_IND (message_p).sdu);
+      MessageDef *message_p = RRC_MAC_BCCH_DATA_IND_alloc(TASK_MAC_UE, 0);
+      RrcMacBcchDataInd *msg=RRC_MAC_BCCH_DATA_IND_data(message_p);
+      int msg_sdu_size = sizeof(msg->sdu);
 
       if (sdu_lenP > msg_sdu_size) {
         LOG_E(RRC, "SDU larger than BCCH SDU buffer size (%d, %d)", sdu_lenP, msg_sdu_size);
@@ -180,15 +180,14 @@ mac_rrc_data_ind_ue(
         sdu_size = sdu_lenP;
       }
 
-      message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_BCCH_DATA_IND);
-      memset (RRC_MAC_BCCH_DATA_IND (message_p).sdu, 0, BCCH_SDU_SIZE);
-      RRC_MAC_BCCH_DATA_IND (message_p).frame     = frameP;
-      RRC_MAC_BCCH_DATA_IND (message_p).sub_frame = sub_frameP;
-      RRC_MAC_BCCH_DATA_IND (message_p).sdu_size  = sdu_size;
-      memcpy (RRC_MAC_BCCH_DATA_IND (message_p).sdu, sduP, sdu_size);
-      RRC_MAC_BCCH_DATA_IND (message_p).enb_index = eNB_indexP;
-      RRC_MAC_BCCH_DATA_IND (message_p).rsrq      = 30 /* TODO change phy to report rspq */;
-      RRC_MAC_BCCH_DATA_IND (message_p).rsrp      = 45 /* TODO change phy to report rspp */;
+      memset (msg->sdu, 0, BCCH_SDU_SIZE);
+      msg->frame     = frameP;
+      msg->sub_frame = sub_frameP;
+      msg->sdu_size  = sdu_size;
+      memcpy (msg->sdu, sduP, sdu_size);
+      msg->enb_index = eNB_indexP;
+      msg->rsrq      = 30 /* TODO change phy to report rspq */;
+      msg->rsrp      = 45 /* TODO change phy to report rspp */;
       itti_send_msg_to_task (TASK_RRC_UE, ctxt.instance, message_p);
     }
   }
@@ -202,7 +201,8 @@ mac_rrc_data_ind_ue(
     if (sdu_lenP>0) {
       LOG_T(RRC,"[UE %d] Received SDU for CCCH on SRB %ld from eNB %d\n",module_idP,srb_idP & RAB_OFFSET,eNB_indexP);
       {
-        MessageDef *message_p;
+        MessageDef *message_p = RRC_MAC_CCCH_DATA_IND_alloc(TASK_MAC_UE, 0);
+        RrcMacCcchDataInd *msg= RRC_MAC_CCCH_DATA_IND_data(message_p);
         int msg_sdu_size = CCCH_SDU_SIZE;
 
         if (sdu_lenP > msg_sdu_size) {
@@ -212,14 +212,13 @@ mac_rrc_data_ind_ue(
           sdu_size =  sdu_lenP;
         }
 
-        message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_CCCH_DATA_IND);
-        memset (RRC_MAC_CCCH_DATA_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
-        memcpy (RRC_MAC_CCCH_DATA_IND (message_p).sdu, sduP, sdu_size);
-        RRC_MAC_CCCH_DATA_IND (message_p).frame     = frameP;
-        RRC_MAC_CCCH_DATA_IND (message_p).sub_frame = sub_frameP;
-        RRC_MAC_CCCH_DATA_IND (message_p).sdu_size  = sdu_size;
-        RRC_MAC_CCCH_DATA_IND (message_p).enb_index = eNB_indexP;
-        RRC_MAC_CCCH_DATA_IND (message_p).rnti      = rntiP;
+        memset (msg->sdu, 0, CCCH_SDU_SIZE);
+        memcpy (msg->sdu, sduP, sdu_size);
+        msg->frame     = frameP;
+        msg->sub_frame = sub_frameP;
+        msg->sdu_size  = sdu_size;
+        msg->enb_index = eNB_indexP;
+        msg->rnti      = rntiP;
         itti_send_msg_to_task (TASK_RRC_UE, ctxt.instance, message_p);
       }
     }
@@ -230,22 +229,22 @@ mac_rrc_data_ind_ue(
           module_idP,frameP, mbsfn_sync_areaP, srb_idP & RAB_OFFSET,eNB_indexP);
 
     {
-      MessageDef *message_p;
-      int msg_sdu_size = sizeof(RRC_MAC_MCCH_DATA_IND (message_p).sdu);
+      MessageDef *message_p = RRC_MAC_MCCH_DATA_IND_alloc(TASK_MAC_UE, 0);
+      RrcMacMcchDataInd *msg=RRC_MAC_MCCH_DATA_IND_data(message_p);
+      int msg_sdu_size = sizeof(msg->sdu);
 
       if (sdu_size > msg_sdu_size) {
         LOG_E(RRC, "SDU larger than MCCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
         sdu_size = msg_sdu_size;
       }
 
-      message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_MCCH_DATA_IND);
-      RRC_MAC_MCCH_DATA_IND (message_p).frame           = frameP;
-      RRC_MAC_MCCH_DATA_IND (message_p).sub_frame       = sub_frameP;
-      RRC_MAC_MCCH_DATA_IND (message_p).sdu_size        = sdu_lenP;
-      memset (RRC_MAC_MCCH_DATA_IND (message_p).sdu, 0, MCCH_SDU_SIZE);
-      memcpy (RRC_MAC_MCCH_DATA_IND (message_p).sdu, sduP, sdu_lenP);
-      RRC_MAC_MCCH_DATA_IND (message_p).enb_index       = eNB_indexP;
-      RRC_MAC_MCCH_DATA_IND (message_p).mbsfn_sync_area = mbsfn_sync_areaP;
+      msg->frame           = frameP;
+      msg->sub_frame       = sub_frameP;
+      msg->sdu_size        = sdu_lenP;
+      memset( msg->sdu, 0, sizeof(msg->sdu));
+      memcpy( msg->sdu, sduP, sdu_lenP);
+      msg->enb_index       = eNB_indexP;
+      msg->mbsfn_sync_area = mbsfn_sync_areaP;
       itti_send_msg_to_task (TASK_RRC_UE, ctxt.instance, message_p);
     }
   }
@@ -282,18 +281,19 @@ rrc_data_req_ue(
                        ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
                        sdu_sizeP);
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    message_p = itti_alloc_new_message (ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, 0, RRC_DCCH_DATA_REQ);
-    RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
-    RRC_DCCH_DATA_REQ (message_p).enb_flag  = ctxt_pP->enb_flag;
-    RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;
-    RRC_DCCH_DATA_REQ (message_p).muip      = muiP;
-    RRC_DCCH_DATA_REQ (message_p).confirmp  = confirmP;
-    RRC_DCCH_DATA_REQ (message_p).sdu_size  = sdu_sizeP;
-    RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
-    RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
-    RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-    RRC_DCCH_DATA_REQ(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-    RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
+    message_p = RRC_DCCH_DATA_REQ_alloc(ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, 0);
+    RrcDcchDataReq *msg=RRC_DCCH_DATA_REQ_data(message_p);
+    msg->frame     = ctxt_pP->frame;
+    msg->enb_flag  = ctxt_pP->enb_flag;
+    msg->rb_id     = rb_idP;
+    msg->muip      = muiP;
+    msg->confirmp  = confirmP;
+    msg->sdu_size  = sdu_sizeP;
+    msg->sdu_p     = message_buffer;
+    msg->mode      = modeP;
+    msg->module_id = ctxt_pP->module_id;
+    msg->rnti = ctxt_pP->rntiMaybeUEid;
+    msg->eNB_index = ctxt_pP->eNB_index;
     itti_send_msg_to_task (
       TASK_PDCP_UE,
       ctxt_pP->instance,
@@ -321,14 +321,15 @@ rrc_data_ind_ue(
     uint8_t *message_buffer;
     message_buffer = itti_malloc (ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, sdu_sizeP);
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    message_p = itti_alloc_new_message (ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, 0, RRC_DCCH_DATA_IND);
-    RRC_DCCH_DATA_IND (message_p).frame      = ctxt_pP->frame;
-    RRC_DCCH_DATA_IND (message_p).dcch_index = DCCH_index;
-    RRC_DCCH_DATA_IND (message_p).sdu_size   = sdu_sizeP;
-    RRC_DCCH_DATA_IND (message_p).sdu_p      = message_buffer;
-    RRC_DCCH_DATA_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-    RRC_DCCH_DATA_IND (message_p).module_id  = ctxt_pP->module_id;
-    RRC_DCCH_DATA_IND (message_p).eNB_index  = ctxt_pP->eNB_index;
+    message_p = RRC_DCCH_DATA_IND_alloc(ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, 0);
+    RrcDcchDataInd* msg= RRC_DCCH_DATA_IND_data(message_p);
+    msg->frame      = ctxt_pP->frame;
+    msg->dcch_index = DCCH_index;
+    msg->sdu_size   = sdu_sizeP;
+    msg->sdu_p      = message_buffer;
+    msg->rnti = ctxt_pP->rntiMaybeUEid;
+    msg->module_id  = ctxt_pP->module_id;
+    msg->eNB_index  = ctxt_pP->eNB_index;
     itti_send_msg_to_task (TASK_RRC_UE, ctxt_pP->instance, message_p);
   }
 }
@@ -339,9 +340,9 @@ void rrc_in_sync_ind(module_id_t Mod_idP, frame_t frameP, uint16_t eNB_index) {
   {
     MessageDef *message_p;
     //LOG_I(RRC,"sending a message to task_mac_ue\n");
-    message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_IN_SYNC_IND);
-    RRC_MAC_IN_SYNC_IND (message_p).frame = frameP;
-    RRC_MAC_IN_SYNC_IND (message_p).enb_index = eNB_index;
+    message_p = RRC_MAC_IN_SYNC_IND_alloc(TASK_MAC_UE, 0);
+    RRC_MAC_IN_SYNC_IND_data (message_p)->frame = frameP;
+    RRC_MAC_IN_SYNC_IND_data (message_p)->enb_index = eNB_index;
     itti_send_msg_to_task (TASK_RRC_UE, UE_MODULE_ID_TO_INSTANCE(Mod_idP), message_p);
   }
 }
@@ -359,9 +360,9 @@ void rrc_out_of_sync_ind(module_id_t Mod_idP, frame_t frameP, uint16_t eNB_index
 
   {
     MessageDef *message_p;
-    message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_OUT_OF_SYNC_IND);
-    RRC_MAC_OUT_OF_SYNC_IND (message_p).frame = frameP;
-    RRC_MAC_OUT_OF_SYNC_IND (message_p).enb_index = eNB_index;
+    message_p = RRC_MAC_OUT_OF_SYNC_IND_alloc(TASK_MAC_UE, 0);
+    RRC_MAC_OUT_OF_SYNC_IND_data (message_p)->frame = frameP;
+    RRC_MAC_OUT_OF_SYNC_IND_data (message_p)->enb_index = eNB_index;
     itti_send_msg_to_task (TASK_RRC_UE, UE_MODULE_ID_TO_INSTANCE(Mod_idP), message_p);
   }
 }
@@ -385,8 +386,8 @@ int mac_ue_ccch_success_ind(module_id_t Mod_idP, uint8_t eNB_index) {
   //-------------------------------------------------------------------------------------------//
   {
     MessageDef *message_p;
-    message_p = itti_alloc_new_message (TASK_MAC_UE, 0, RRC_MAC_CCCH_DATA_CNF);
-    RRC_MAC_CCCH_DATA_CNF (message_p).enb_index = eNB_index;
+    message_p = RRC_MAC_CCCH_DATA_CNF_alloc(TASK_MAC_UE, 0);
+    RRC_MAC_CCCH_DATA_CNF_data (message_p)->enb_index = eNB_index;
     itti_send_msg_to_task (TASK_RRC_UE, UE_MODULE_ID_TO_INSTANCE(Mod_idP), message_p);
   }
   return 0;

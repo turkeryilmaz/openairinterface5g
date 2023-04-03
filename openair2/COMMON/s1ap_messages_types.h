@@ -21,44 +21,11 @@
 
 #ifndef S1AP_MESSAGES_TYPES_H_
 #define S1AP_MESSAGES_TYPES_H_
-
+#include "common/ngran_types.h"
+#include "openair2/COMMON/as_message.h"
 #include "LTE_asn_constant.h"
 //-------------------------------------------------------------------------------------------//
 // Defines to access message fields.
-
-#define S1AP_REGISTER_ENB_REQ(mSGpTR)           (mSGpTR)->ittiMsg.s1ap_register_enb_req
-
-#define S1AP_REGISTER_ENB_CNF(mSGpTR)           (mSGpTR)->ittiMsg.s1ap_register_enb_cnf
-#define S1AP_DEREGISTERED_ENB_IND(mSGpTR)       (mSGpTR)->ittiMsg.s1ap_deregistered_enb_ind
-
-#define S1AP_NAS_FIRST_REQ(mSGpTR)              (mSGpTR)->ittiMsg.s1ap_nas_first_req
-#define S1AP_UPLINK_NAS(mSGpTR)                 (mSGpTR)->ittiMsg.s1ap_uplink_nas
-#define S1AP_UE_CAPABILITIES_IND(mSGpTR)        (mSGpTR)->ittiMsg.s1ap_ue_cap_info_ind
-#define S1AP_INITIAL_CONTEXT_SETUP_RESP(mSGpTR) (mSGpTR)->ittiMsg.s1ap_initial_context_setup_resp
-#define S1AP_INITIAL_CONTEXT_SETUP_FAIL(mSGpTR) (mSGpTR)->ittiMsg.s1ap_initial_context_setup_fail
-#define S1AP_UE_CONTEXT_RELEASE_RESP(mSGpTR)    (mSGpTR)->ittiMsg.s1ap_ue_release_resp
-#define S1AP_NAS_NON_DELIVERY_IND(mSGpTR)       (mSGpTR)->ittiMsg.s1ap_nas_non_delivery_ind
-#define S1AP_UE_CTXT_MODIFICATION_RESP(mSGpTR)  (mSGpTR)->ittiMsg.s1ap_ue_ctxt_modification_resp
-#define S1AP_UE_CTXT_MODIFICATION_FAIL(mSGpTR)  (mSGpTR)->ittiMsg.s1ap_ue_ctxt_modification_fail
-#define S1AP_E_RAB_SETUP_RESP(mSGpTR)           (mSGpTR)->ittiMsg.s1ap_e_rab_setup_resp
-#define S1AP_E_RAB_SETUP_FAIL(mSGpTR)           (mSGpTR)->ittiMsg.s1ap_e_rab_setup_req_fail
-#define S1AP_E_RAB_MODIFY_RESP(mSGpTR)           (mSGpTR)->ittiMsg.s1ap_e_rab_modify_resp
-#define S1AP_PATH_SWITCH_REQ(mSGpTR)            (mSGpTR)->ittiMsg.s1ap_path_switch_req
-#define S1AP_PATH_SWITCH_REQ_ACK(mSGpTR)        (mSGpTR)->ittiMsg.s1ap_path_switch_req_ack
-#define S1AP_E_RAB_MODIFICATION_IND(mSGpTR)     (mSGpTR)->ittiMsg.s1ap_e_rab_modification_ind
-
-#define S1AP_DOWNLINK_NAS(mSGpTR)               (mSGpTR)->ittiMsg.s1ap_downlink_nas
-#define S1AP_INITIAL_CONTEXT_SETUP_REQ(mSGpTR)  (mSGpTR)->ittiMsg.s1ap_initial_context_setup_req
-#define S1AP_UE_CTXT_MODIFICATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.s1ap_ue_ctxt_modification_req
-#define S1AP_UE_CONTEXT_RELEASE_COMMAND(mSGpTR) (mSGpTR)->ittiMsg.s1ap_ue_release_command
-#define S1AP_UE_CONTEXT_RELEASE_COMPLETE(mSGpTR) (mSGpTR)->ittiMsg.s1ap_ue_release_complete
-#define S1AP_E_RAB_SETUP_REQ(mSGpTR)              (mSGpTR)->ittiMsg.s1ap_e_rab_setup_req
-#define S1AP_E_RAB_MODIFY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.s1ap_e_rab_modify_req
-#define S1AP_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.s1ap_paging_ind
-
-#define S1AP_UE_CONTEXT_RELEASE_REQ(mSGpTR)     (mSGpTR)->ittiMsg.s1ap_ue_release_req
-#define S1AP_E_RAB_RELEASE_COMMAND(mSGpTR)      (mSGpTR)->ittiMsg.s1ap_e_rab_release_command
-#define S1AP_E_RAB_RELEASE_RESPONSE(mSGpTR)     (mSGpTR)->ittiMsg.s1ap_e_rab_release_resp
 
 //-------------------------------------------------------------------------------------------//
 /* Maximum number of e-rabs to be setup/deleted in a single message.
@@ -79,18 +46,8 @@
  * the key length is 32 bytes (256 bits)
  */
 #define SECURITY_KEY_LENGTH 32
-typedef enum cell_type_e {
-  CELL_MACRO_ENB,
-  CELL_HOME_ENB,
-  CELL_MACRO_GNB
-} cell_type_t;
 
-typedef enum paging_drx_e {
-  PAGING_DRX_32  = 0x0,
-  PAGING_DRX_64  = 0x1,
-  PAGING_DRX_128 = 0x2,
-  PAGING_DRX_256 = 0x3
-} paging_drx_t;
+
 
 /* Lower value codepoint
  * indicates higher priority.
@@ -110,13 +67,6 @@ typedef enum cn_domain_s {
   CN_DOMAIN_PS = 1,
   CN_DOMAIN_CS = 2
 } cn_domain_t;
-
-typedef struct net_ip_address_s {
-  unsigned ipv4:1;
-  unsigned ipv6:1;
-  char ipv4_address[16];
-  char ipv6_address[46];
-} net_ip_address_t;
 
 typedef uint64_t bitrate_t;
 
@@ -227,23 +177,6 @@ typedef struct nas_pdu_s {
   /* Length of the octet string */
   uint32_t  length;
 } nas_pdu_t, ue_radio_cap_t;
-
-typedef struct transport_layer_addr_s {
-  /* Length of the transport layer address buffer in bits. S1AP layer received a
-   * bit string<1..160> containing one of the following addresses: ipv4,
-   * ipv6, or ipv4 and ipv6. The layer doesn't interpret the buffer but
-   * silently forward it to S1-U.
-   */
-  uint8_t length;
-  uint8_t buffer[20]; // in network byte order
-} transport_layer_addr_t;
-
-#define TRANSPORT_LAYER_ADDR_COPY(dEST,sOURCE)        \
-  do {                                                \
-      AssertFatal(sOURCE.len <= 20);                  \
-      memcpy(dEST.buffer, sOURCE.buffer, sOURCE.len); \
-      dEST.length = sOURCE.length;                    \
-  } while (0)
 
 typedef struct e_rab_level_qos_parameter_s {
   uint8_t qci;
@@ -781,5 +714,21 @@ typedef struct s1ap_e_rab_release_resp_s {
   e_rab_failed_t e_rabs_failed[S1AP_MAX_E_RAB];
 
 } s1ap_e_rab_release_resp_t;
+
+#include "common/utils/ocp_itti/intertask_interface.h"
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/s1ap_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/s1ap_messages_def.h"
+#undef MESSAGE_DEF
 
 #endif /* S1AP_MESSAGES_TYPES_H_ */

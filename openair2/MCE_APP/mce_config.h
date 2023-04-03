@@ -45,6 +45,7 @@
 #include "RRC/LTE/rrc_defs.h"
 #include <intertask_interface.h>
 #include "enb_paramdef.h"
+#include "openair2/COMMON/m2ap_messages_types.h"
 
 #define IPV4_STR_ADDR_TO_INT_NWBO(AdDr_StR,NwBo,MeSsAgE ) do {\
             struct in_addr inp;\

@@ -24,7 +24,7 @@
 #include "intertask_interface.h"
 #include "nas_itti_messaging.h"
 #include "common/ran_context.h"
-
+#include "openair2/COMMON/rrc_messages_types.h"
 #   define TASK_ORIGIN  TASK_NAS_UE
 
 
@@ -97,46 +97,42 @@ int nas_itti_protected_msg(const char *buffer, const nas_message_t *msg, const i
 #endif
 
 int nas_itti_kenb_refresh_req(const Byte_t kenb[32], int user_id) {
-  MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_NAS_UE, 0, NAS_KENB_REFRESH_REQ);
-  memcpy(NAS_KENB_REFRESH_REQ(message_p).kenb, kenb, sizeof(NAS_KENB_REFRESH_REQ(message_p).kenb));
+  MessageDef *message_p = NAS_KENB_REFRESH_REQ_alloc(TASK_NAS_UE, 0);
+  memcpy(NAS_KENB_REFRESH_REQ_data(message_p)->kenb, kenb, sizeof(NAS_KENB_REFRESH_REQ_data(message_p)->kenb));
   return itti_send_msg_to_task(TASK_RRC_UE, NB_eNB_INST + user_id, message_p);
 }
 
 int nas_itti_cell_info_req(const plmn_t plmnID, const Byte_t rat, int user_id) {
-  MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_NAS_UE, 0, NAS_CELL_SELECTION_REQ);
-  NAS_CELL_SELECTION_REQ(message_p).plmnID    = plmnID;
-  NAS_CELL_SELECTION_REQ(message_p).rat       = rat;
+  MessageDef *message_p = NAS_CELL_SELECTION_REQ_alloc(TASK_NAS_UE, 0);
+  NAS_CELL_SELECTION_REQ_data(message_p)->plmnID    = plmnID;
+  NAS_CELL_SELECTION_REQ_data(message_p)->rat       = rat;
   return itti_send_msg_to_task(TASK_RRC_UE, NB_eNB_INST + user_id, message_p);
 }
 
 int nas_itti_nas_establish_req(as_cause_t cause, as_call_type_t type, as_stmsi_t s_tmsi, plmn_t plmnID, Byte_t *data, uint32_t length, int user_id) {
-  MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_NAS_UE, 0, NAS_CONN_ESTABLI_REQ);
-  NAS_CONN_ESTABLI_REQ(message_p).cause                       = cause;
-  NAS_CONN_ESTABLI_REQ(message_p).type                        = type;
-  NAS_CONN_ESTABLI_REQ(message_p).s_tmsi                      = s_tmsi;
-  NAS_CONN_ESTABLI_REQ(message_p).plmnID                      = plmnID;
-  NAS_CONN_ESTABLI_REQ(message_p).initialNasMsg.data          = data;
-  NAS_CONN_ESTABLI_REQ(message_p).initialNasMsg.length        = length;
+  MessageDef *message_p = NAS_CONN_ESTABLI_REQ_alloc(TASK_NAS_UE, 0);
+  NasConnEstabliReq *msg=NAS_CONN_ESTABLI_REQ_data(message_p);
+  msg->cause                       = cause;
+  msg->type                        = type;
+  msg->s_tmsi                      = s_tmsi;
+  msg->plmnID                      = plmnID;
+  msg->initialNasMsg.data          = data;
+  msg->initialNasMsg.length        = length;
   return itti_send_msg_to_task(TASK_RRC_UE, NB_eNB_INST + user_id, message_p);
 }
 
 int nas_itti_ul_data_req(const uint32_t ue_id, void *const data, const uint32_t length, int user_id) {
-  MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_NAS_UE, 0, NAS_UPLINK_DATA_REQ);
-  NAS_UPLINK_DATA_REQ(message_p).UEid          = ue_id;
-  NAS_UPLINK_DATA_REQ(message_p).nasMsg.data   = data;
-  NAS_UPLINK_DATA_REQ(message_p).nasMsg.length = length;
+  MessageDef *message_p = NAS_UPLINK_DATA_REQ_alloc(TASK_NAS_UE, 0);
+  NAS_UPLINK_DATA_REQ_data(message_p)->UEid          = ue_id;
+  NAS_UPLINK_DATA_REQ_data(message_p)->nasMsg.data   = data;
+  NAS_UPLINK_DATA_REQ_data(message_p)->nasMsg.length = length;
   return itti_send_msg_to_task(TASK_RRC_UE, NB_eNB_INST + user_id, message_p);
 }
 
 int nas_itti_rab_establish_rsp(const as_stmsi_t s_tmsi, const as_rab_id_t rabID, const nas_error_code_t errCode, int user_id) {
-  MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_NAS_UE, 0, NAS_RAB_ESTABLI_RSP);
-  NAS_RAB_ESTABLI_RSP(message_p).s_tmsi       = s_tmsi;
-  NAS_RAB_ESTABLI_RSP(message_p).rabID        = rabID;
-  NAS_RAB_ESTABLI_RSP(message_p).errCode      = errCode;
+  MessageDef *message_p = NAS_RAB_ESTABLI_RSP_alloc(TASK_NAS_UE, 0);
+  NAS_RAB_ESTABLI_RSP_data(message_p)->s_tmsi       = s_tmsi;
+  NAS_RAB_ESTABLI_RSP_data(message_p)->rabID        = rabID;
+  NAS_RAB_ESTABLI_RSP_data(message_p)->errCode      = errCode;
   return itti_send_msg_to_task(TASK_RRC_UE, NB_eNB_INST + user_id, message_p);
 }

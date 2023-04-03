@@ -110,19 +110,20 @@ bool gtpv_data_req(const protocol_ctxt_t*   const ctxt_pP,
     message_buffer = itti_malloc (TASK_GTPV1_U, TASK_DATA_FORWARDING, sdu_sizeP);
     
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    
-    message_p = itti_alloc_new_message (TASK_GTPV1_U, 0, GTPV1U_ENB_DATA_FORWARDING_IND);
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).frame 	= ctxt_pP->frame;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).enb_flag	= ctxt_pP->enb_flag;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).rb_id 	= rb_idP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).muip		= muiP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).confirmp	= confirmP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).sdu_size	= sdu_sizeP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).sdu_p 	= message_buffer;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).mode		= modeP;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).module_id = ctxt_pP->module_id;
-    GTPV1U_ENB_DATA_FORWARDING_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-    GTPV1U_ENB_DATA_FORWARDING_IND (message_p).eNB_index = ctxt_pP->eNB_index;
+
+    message_p = GTPV1U_ENB_DATA_FORWARDING_IND_alloc(TASK_GTPV1_U, 0);
+    gtpv1u_enb_data_forwarding_ind_t *msg=GTPV1U_ENB_DATA_FORWARDING_IND_data (message_p);
+    msg->frame 	= ctxt_pP->frame;
+    msg->enb_flag	= ctxt_pP->enb_flag;
+    msg->rb_id 	= rb_idP;
+    msg->muip		= muiP;
+    msg->confirmp	= confirmP;
+    msg->sdu_size	= sdu_sizeP;
+    msg->sdu_p 	= message_buffer;
+    msg->mode		= modeP;
+    msg->module_id = ctxt_pP->module_id;
+    msg->rnti = ctxt_pP->rntiMaybeUEid;
+    msg->eNB_index = ctxt_pP->eNB_index;
     
     itti_send_msg_to_task (TASK_DATA_FORWARDING, ctxt_pP->instance, message_p);
     return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
@@ -133,19 +134,20 @@ bool gtpv_data_req(const protocol_ctxt_t*   const ctxt_pP,
     message_buffer = itti_malloc (TASK_GTPV1_U, TASK_END_MARKER, sdu_sizeP);
     
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    
-    message_p = itti_alloc_new_message (TASK_GTPV1_U, 0, GTPV1U_ENB_END_MARKER_IND);
-    GTPV1U_ENB_END_MARKER_IND (message_p).frame 	= ctxt_pP->frame;
-    GTPV1U_ENB_END_MARKER_IND (message_p).enb_flag	= ctxt_pP->enb_flag;
-    GTPV1U_ENB_END_MARKER_IND (message_p).rb_id 	= rb_idP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).muip	= muiP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).confirmp	= confirmP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).sdu_size	= sdu_sizeP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).sdu_p 	= message_buffer;
-    GTPV1U_ENB_END_MARKER_IND (message_p).mode	= modeP;
-    GTPV1U_ENB_END_MARKER_IND (message_p).module_id = ctxt_pP->module_id;
-    GTPV1U_ENB_END_MARKER_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-    GTPV1U_ENB_END_MARKER_IND (message_p).eNB_index = ctxt_pP->eNB_index;
+
+    message_p = GTPV1U_ENB_END_MARKER_IND_alloc(TASK_GTPV1_U, 0);
+    gtpv1u_enb_end_marker_ind_t * msg=GTPV1U_ENB_END_MARKER_IND_data(message_p);
+    msg->frame 	= ctxt_pP->frame;
+    msg->enb_flag	= ctxt_pP->enb_flag;
+    msg->rb_id 	= rb_idP;
+    msg->muip	= muiP;
+    msg->confirmp	= confirmP;
+    msg->sdu_size	= sdu_sizeP;
+    msg->sdu_p 	= message_buffer;
+    msg->mode	= modeP;
+    msg->module_id = ctxt_pP->module_id;
+    msg->rnti = ctxt_pP->rntiMaybeUEid;
+    msg->eNB_index = ctxt_pP->eNB_index;
     
     itti_send_msg_to_task (TASK_END_MARKER, ctxt_pP->instance, message_p);
     return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
@@ -186,13 +188,14 @@ bool gtpv_data_req_new(protocol_ctxt_t  *ctxt,
       //ue_context_p->ue_context.handover_info->state = HO_END_MARKER;
       MessageDef *msg;
       // Configure end marker
-      msg = itti_alloc_new_message(TASK_GTPV1_U, 0, GTPV1U_ENB_END_MARKER_REQ);
-      GTPV1U_ENB_END_MARKER_REQ(msg).buffer = itti_malloc(TASK_GTPV1_U, TASK_GTPV1_U, GTPU_HEADER_OVERHEAD_MAX + sdu_buffer_sizeP);
-      memcpy(&GTPV1U_ENB_END_MARKER_REQ(msg).buffer[GTPU_HEADER_OVERHEAD_MAX],  sdu_buffer_pP, sdu_buffer_sizeP);
-      GTPV1U_ENB_END_MARKER_REQ(msg).length = sdu_buffer_sizeP;
-      GTPV1U_ENB_END_MARKER_REQ(msg).rnti = ctxt->rntiMaybeUEid;
-      GTPV1U_ENB_END_MARKER_REQ(msg).rab_id = rb_idP;
-      GTPV1U_ENB_END_MARKER_REQ(msg).offset = GTPU_HEADER_OVERHEAD_MAX;
+      msg = GTPV1U_ENB_END_MARKER_REQ_alloc(TASK_GTPV1_U, 0);
+      gtpv1u_enb_end_marker_req_t *req=GTPV1U_ENB_END_MARKER_REQ_data(msg);
+      req->buffer = itti_malloc(TASK_GTPV1_U, TASK_GTPV1_U, GTPU_HEADER_OVERHEAD_MAX + sdu_buffer_sizeP);
+      memcpy(&req->buffer[GTPU_HEADER_OVERHEAD_MAX],  sdu_buffer_pP, sdu_buffer_sizeP);
+      req->length = sdu_buffer_sizeP;
+      req->rnti = ctxt->rntiMaybeUEid;
+      req->rab_id = rb_idP;
+      req->offset = GTPU_HEADER_OVERHEAD_MAX;
       LOG_I(GTPU, "Send End Marker to GTPV1-U at frame %d and subframe %d \n", ctxt->frame,ctxt->subframe);
       itti_send_msg_to_task(TASK_GTPV1_U, ENB_MODULE_ID_TO_INSTANCE(ctxt->module_id), msg);
       return 0;

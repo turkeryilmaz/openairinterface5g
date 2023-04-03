@@ -21,7 +21,7 @@
 
 #ifndef S1AP_ENB_DEFAULT_VALUES_H_
 #define S1AP_ENB_DEFAULT_VALUES_H_
-
+#include "common/openairinterface5g_limits.h"
 #define ENB_TAC (1)
 #define ENB_MCC (208)
 #define ENB_MNC (92)

@@ -32,6 +32,8 @@
 
 #ifndef M3AP_MME_INTERFACE_MANAGEMENT_H_
 #define M3AP_MME_INTERFACE_MANAGEMENT_H_
+#include "openair2/COMMON/sctp_messages_types.h"
+#include "openair2/COMMON/m3ap_messages_types.h"
 /*
  * MBMS Session start
  */

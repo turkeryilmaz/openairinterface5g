@@ -473,11 +473,12 @@ rb_found:
   if (!is_enb)
     return;
 
-  msg = itti_alloc_new_message(TASK_RLC_ENB, 0, RLC_SDU_INDICATION);
-  RLC_SDU_INDICATION(msg).rnti          = ue->rnti;
-  RLC_SDU_INDICATION(msg).is_successful = 1;
-  RLC_SDU_INDICATION(msg).srb_id        = rb_id;
-  RLC_SDU_INDICATION(msg).message_id    = sdu_id;
+  msg = RLC_SDU_INDICATION_alloc(TASK_RLC_ENB, 0);
+  RlcSduIndication *indic=RLC_SDU_INDICATION_data(msg);
+  indic->rnti          = ue->rnti;
+  indic->is_successful = 1;
+  indic->srb_id        = rb_id;
+  indic->message_id    = sdu_id;
   /* TODO: accept more than 1 instance? here we send to instance id 0 */
   itti_send_msg_to_task(TASK_RRC_ENB, 0, msg);
 }
@@ -526,11 +527,12 @@ rb_found:
   if (!is_enb)
     return;
 
-  msg = itti_alloc_new_message(TASK_RLC_ENB, 0, RLC_SDU_INDICATION);
-  RLC_SDU_INDICATION(msg).rnti          = ue->rnti;
-  RLC_SDU_INDICATION(msg).is_successful = 0;
-  RLC_SDU_INDICATION(msg).srb_id        = rb_id;
-  RLC_SDU_INDICATION(msg).message_id    = -1;
+  msg = RLC_SDU_INDICATION_alloc(TASK_RLC_ENB, 0);
+  RlcSduIndication *indic=RLC_SDU_INDICATION_data(msg);
+  indic->rnti          = ue->rnti;
+  indic->is_successful = 0;
+  indic->srb_id        = rb_id;
+  indic->message_id    = -1;
   /* TODO: accept more than 1 instance? here we send to instance id 0 */
   itti_send_msg_to_task(TASK_RRC_ENB, 0, msg);
 }

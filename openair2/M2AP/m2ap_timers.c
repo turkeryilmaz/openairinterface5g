@@ -86,7 +86,7 @@ void m2ap_check_timers(instance_t instance)
   //  m2ap_eNB_generate_m2_handover_cancel(instance_p, target, i, cause);
 
   //  /* inform RRC of cancellation */
-  //  msg = itti_alloc_new_message(TASK_M2AP, M2AP_HANDOVER_CANCEL);
+  //  msg = M2AP_HANDOVER_CANCEL_alloc(TASK_M2AP, 0);
   //  M2AP_HANDOVER_CANCEL(msg).rnti  = m2ap_id_get_rnti(m, i);
   //  M2AP_HANDOVER_CANCEL(msg).cause = cause;
   //  itti_send_msg_to_task(TASK_RRC_ENB, instance_p->instance, msg);

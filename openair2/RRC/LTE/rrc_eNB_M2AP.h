@@ -30,7 +30,7 @@
 #ifndef RRC_ENB_M2AP_H_
 #define RRC_ENB_M2AP_H_
 
-
+#include "openair2/COMMON/m2ap_messages_types.h"
 int
 rrc_eNB_process_M2AP_SETUP_RESP(
   const protocol_ctxt_t *const ctxt_pP,

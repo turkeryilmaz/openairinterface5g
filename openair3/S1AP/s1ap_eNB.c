@@ -136,8 +136,8 @@ static void s1ap_eNB_register_mme(s1ap_eNB_instance_t *instance_p,
 //  struct s1ap_eNB_mme_data_s *mme                         = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(mme_ip_address != NULL);
-  message_p = itti_alloc_new_message(TASK_S1AP, 0, SCTP_NEW_ASSOCIATION_REQ);
-  sctp_new_association_req_p = &message_p->ittiMsg.sctp_new_association_req;
+  message_p = SCTP_NEW_ASSOCIATION_REQ_alloc(TASK_S1AP, 0);
+  sctp_new_association_req_p = SCTP_NEW_ASSOCIATION_REQ_data(message_p);
   sctp_new_association_req_p->port = mme_port;
   sctp_new_association_req_p->ppid = S1AP_SCTP_PPID;
   sctp_new_association_req_p->in_streams  = in_streams;
@@ -306,12 +306,11 @@ void s1ap_eNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
         if(cnt < NUMBER_OF_UE_MAX) {
           enb_s1ap_id[cnt] = ue_p->eNB_ue_s1ap_id;
           cnt++;
-          
-          message_p = NULL;
-          message_p = itti_alloc_new_message(TASK_S1AP, 0, S1AP_UE_CONTEXT_RELEASE_COMMAND);
-          
+
+          message_p = S1AP_UE_CONTEXT_RELEASE_COMMAND_alloc(TASK_S1AP, 0);
+
           if( message_p != NULL ) {
-            S1AP_UE_CONTEXT_RELEASE_COMMAND(message_p).eNB_ue_s1ap_id = ue_p->eNB_ue_s1ap_id;
+            S1AP_UE_CONTEXT_RELEASE_COMMAND_data(message_p)->eNB_ue_s1ap_id = ue_p->eNB_ue_s1ap_id;
             
             if( itti_send_msg_to_task(TASK_RRC_ENB, ue_p->eNB_instance->instance, message_p) < 0 ) {
               S1AP_ERROR("UE Context Release Command Transmission Failure: eNB_ue_s1ap_id=%u\n", ue_p->eNB_ue_s1ap_id);
@@ -512,123 +511,102 @@ void *s1ap_eNB_process_itti_msg(void *notUsed) {
   MessageDef *received_msg = NULL;
   int         result;
   itti_receive_msg(TASK_S1AP, &received_msg);
-
+  instance_t inst=ITTI_MSG_DESTINATION_INSTANCE(received_msg);
   switch (ITTI_MSG_ID(received_msg)) {
     case TERMINATE_MESSAGE:
       S1AP_WARN(" *** Exiting S1AP thread\n");
       itti_exit_task();
       break;
 
-    case S1AP_REGISTER_ENB_REQ: {
-      /* Register a new eNB.
+    case S1AP_REGISTER_ENB_REQ:       /* Register a new eNB.
        * in Virtual mode eNBs will be distinguished using the mod_id/
        * Each eNB has to send an S1AP_REGISTER_ENB message with its
        * own parameters.
        */
-      s1ap_eNB_handle_register_eNB(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                   &S1AP_REGISTER_ENB_REQ(received_msg));
-    }
+      s1ap_eNB_handle_register_eNB(inst,
+                                   S1AP_REGISTER_ENB_REQ_data(received_msg));
     break;
 
-    case SCTP_NEW_ASSOCIATION_RESP: {
-      s1ap_eNB_handle_sctp_association_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                            &received_msg->ittiMsg.sctp_new_association_resp);
-    }
+    case SCTP_NEW_ASSOCIATION_RESP: 
+      s1ap_eNB_handle_sctp_association_resp(inst,
+                                            SCTP_NEW_ASSOCIATION_RESP_data(received_msg));
     break;
 
-    case SCTP_DATA_IND: {
-      s1ap_eNB_handle_sctp_data_ind(&received_msg->ittiMsg.sctp_data_ind);
-    }
+    case SCTP_DATA_IND:
+      s1ap_eNB_handle_sctp_data_ind(SCTP_DATA_IND_data(received_msg));
     break;
 
-    case S1AP_NAS_FIRST_REQ: {
-      s1ap_eNB_handle_nas_first_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                    &S1AP_NAS_FIRST_REQ(received_msg));
-    }
+    case S1AP_NAS_FIRST_REQ:
+      s1ap_eNB_handle_nas_first_req(inst,
+                                    S1AP_NAS_FIRST_REQ_data(received_msg));
     break;
 
-    case S1AP_UPLINK_NAS: {
-      s1ap_eNB_nas_uplink(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                          &S1AP_UPLINK_NAS(received_msg));
-    }
+    case S1AP_UPLINK_NAS: 
+      s1ap_eNB_nas_uplink(inst,
+                          S1AP_UPLINK_NAS_data(received_msg));
     break;
 
-    case S1AP_UE_CAPABILITIES_IND: {
-      s1ap_eNB_ue_capabilities(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                               &S1AP_UE_CAPABILITIES_IND(received_msg));
-    }
+    case S1AP_UE_CAPABILITIES_IND: 
+      s1ap_eNB_ue_capabilities(inst,
+                               S1AP_UE_CAPABILITIES_IND_data(received_msg));
     break;
 
-    case S1AP_INITIAL_CONTEXT_SETUP_RESP: {
-      s1ap_eNB_initial_ctxt_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                 &S1AP_INITIAL_CONTEXT_SETUP_RESP(received_msg));
-    }
+    case S1AP_INITIAL_CONTEXT_SETUP_RESP:
+      s1ap_eNB_initial_ctxt_resp(inst,
+                                 S1AP_INITIAL_CONTEXT_SETUP_RESP_data(received_msg));
+      break;
+
+    case S1AP_E_RAB_SETUP_RESP: 
+      s1ap_eNB_e_rab_setup_resp(inst,S1AP_E_RAB_SETUP_RESP_data(received_msg));
     break;
 
-    case S1AP_E_RAB_SETUP_RESP: {
-      s1ap_eNB_e_rab_setup_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                &S1AP_E_RAB_SETUP_RESP(received_msg));
-    }
+    case S1AP_E_RAB_MODIFY_RESP: 
+      s1ap_eNB_e_rab_modify_resp(inst,
+                                 S1AP_E_RAB_MODIFY_RESP_data(received_msg));
     break;
 
-    case S1AP_E_RAB_MODIFY_RESP: {
-      s1ap_eNB_e_rab_modify_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                 &S1AP_E_RAB_MODIFY_RESP(received_msg));
-    }
+    case S1AP_NAS_NON_DELIVERY_IND:
+      s1ap_eNB_nas_non_delivery_ind(inst,
+                                    S1AP_NAS_NON_DELIVERY_IND_data(received_msg));
     break;
 
-    case S1AP_NAS_NON_DELIVERY_IND: {
-      s1ap_eNB_nas_non_delivery_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                    &S1AP_NAS_NON_DELIVERY_IND(received_msg));
-    }
+    case S1AP_PATH_SWITCH_REQ:
+      s1ap_eNB_path_switch_req(inst,
+                               S1AP_PATH_SWITCH_REQ_data(received_msg));
     break;
 
-    case S1AP_PATH_SWITCH_REQ: {
-      s1ap_eNB_path_switch_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                               &S1AP_PATH_SWITCH_REQ(received_msg));
-    }
+    case S1AP_E_RAB_MODIFICATION_IND:
+    	s1ap_eNB_generate_E_RAB_Modification_Indication(inst,
+    	                               S1AP_E_RAB_MODIFICATION_IND_data(received_msg));
     break;
 
-    case S1AP_E_RAB_MODIFICATION_IND: {
-    	s1ap_eNB_generate_E_RAB_Modification_Indication(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-    	                               &S1AP_E_RAB_MODIFICATION_IND(received_msg));
-    }
-    break;
-
-    case S1AP_UE_CONTEXT_RELEASE_COMPLETE: {
-      s1ap_ue_context_release_complete(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                       &S1AP_UE_CONTEXT_RELEASE_COMPLETE(received_msg));
-    }
+    case S1AP_UE_CONTEXT_RELEASE_COMPLETE: 
+      s1ap_ue_context_release_complete(inst,
+                                       S1AP_UE_CONTEXT_RELEASE_COMPLETE_data(received_msg));
     break;
 
     case S1AP_UE_CONTEXT_RELEASE_REQ: {
       s1ap_eNB_instance_t               *s1ap_eNB_instance_p           = NULL; // test
       struct s1ap_eNB_ue_context_s      *ue_context_p                  = NULL; // test
-      s1ap_ue_context_release_req(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                  &S1AP_UE_CONTEXT_RELEASE_REQ(received_msg));
-      s1ap_eNB_instance_p = s1ap_eNB_get_instance(ITTI_MSG_DESTINATION_INSTANCE(received_msg)); // test
+      s1ap_ue_context_release_req(inst,S1AP_UE_CONTEXT_RELEASE_REQ_data(received_msg));
+      s1ap_eNB_instance_p = s1ap_eNB_get_instance(inst); // test
       DevAssert(s1ap_eNB_instance_p != NULL); // test
 
       if ((ue_context_p = s1ap_eNB_get_ue_context(s1ap_eNB_instance_p,
-                          S1AP_UE_CONTEXT_RELEASE_REQ(received_msg).eNB_ue_s1ap_id)) == NULL) { // test
+                          S1AP_UE_CONTEXT_RELEASE_REQ_data(received_msg)->eNB_ue_s1ap_id)) == NULL) { // test
         /* The context for this eNB ue s1ap id doesn't exist in the map of eNB UEs */
         S1AP_ERROR("Failed to find ue context associated with eNB ue s1ap id: %u\n",
-                   S1AP_UE_CONTEXT_RELEASE_REQ(received_msg).eNB_ue_s1ap_id); // test
+                   S1AP_UE_CONTEXT_RELEASE_REQ_data(received_msg)->eNB_ue_s1ap_id); // test
       }  // test
     }
     break;
 
-    case S1AP_E_RAB_RELEASE_RESPONSE: {
-      s1ap_eNB_e_rab_release_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                  &S1AP_E_RAB_RELEASE_RESPONSE(received_msg));
-    }
+    case S1AP_E_RAB_RELEASE_RESPONSE: 
+      s1ap_eNB_e_rab_release_resp(inst, S1AP_E_RAB_RELEASE_RESPONSE_data(received_msg));
     break;
 
     case TIMER_HAS_EXPIRED:
-    {
-      s1ap_eNB_timer_expired(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                             &received_msg->ittiMsg.timer_has_expired);
-    }
+      s1ap_eNB_timer_expired(inst,TIMER_HAS_EXPIRED_data(received_msg));
     break;
 
     default:
@@ -776,9 +754,9 @@ static int s1ap_sctp_req(s1ap_eNB_instance_t *instance_p,
       S1AP_ERROR("Invalid instance_p\n");
       return -1;
   }
-  
-  message_p = itti_alloc_new_message(TASK_S1AP, 0, SCTP_NEW_ASSOCIATION_REQ);
-  sctp_new_association_req_p = &message_p->ittiMsg.sctp_new_association_req;
+
+  message_p = SCTP_NEW_ASSOCIATION_REQ_alloc(TASK_S1AP, 0);
+  sctp_new_association_req_p =SCTP_NEW_ASSOCIATION_REQ_data(message_p);
   sctp_new_association_req_p->port = S1AP_PORT_NUMBER;
   sctp_new_association_req_p->ppid = S1AP_SCTP_PPID;
   sctp_new_association_req_p->in_streams  = instance_p->sctp_in_streams;

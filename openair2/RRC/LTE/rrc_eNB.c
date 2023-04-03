@@ -92,6 +92,8 @@
 
 #include "intertask_interface.h"
 #include "softmodem-common.h"
+#include "openair3/S1AP/s1ap_eNB.h"
+#include "openair2/COMMON/pdcp_messages_types.h"
 
 #if ENABLE_RAL
   #include "rrc_eNB_ral.h"
@@ -1839,8 +1841,7 @@ void rrc_generate_SgNBReleaseRequest(
 //-----------------------------------------------------------------------------
 {
   MessageDef      *msg;
-  msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_ENDC_SGNB_RELEASE_REQ);
-  memset(&(X2AP_ENDC_SGNB_RELEASE_REQ(msg)), 0, sizeof(x2ap_ENDC_sgnb_release_req_t));
+  msg = X2AP_ENDC_SGNB_RELEASE_REQ_alloc(TASK_RRC_ENB, 0)
   // X2AP_ENDC_SGNB_RELEASE_REQ(msg).MeNB_ue_x2_id = ;
   // X2AP_ENDC_SGNB_RELEASE_REQ(msg).SgNB_ue_x2_id = ;
   // X2AP_ENDC_SGNB_RELEASE_REQ(msg).cause = ;
@@ -3439,33 +3440,33 @@ rrc_eNB_process_MeasurementReport(
         if(encode_CG_ConfigInfo(enc_buf,sizeof(enc_buf),ue_context_pP,&enc_size) == RRC_OK)
           LOG_I(RRC,"CG-ConfigInfo encoded successfully\n");
 
-        msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_ENDC_SGNB_ADDITION_REQ);
-        memset(&(X2AP_ENDC_SGNB_ADDITION_REQ(msg)), 0, sizeof(x2ap_ENDC_sgnb_addition_req_t));
+        msg = X2AP_ENDC_SGNB_ADDITION_REQ_alloc(TASK_RRC_ENB, 0);
+        x2ap_ENDC_sgnb_addition_req_t *msgAdd=X2AP_ENDC_SGNB_ADDITION_REQ_data(msg);
 
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).rnti = ctxt_pP->rntiMaybeUEid;
+        msgAdd->rnti = ctxt_pP->rntiMaybeUEid;
 
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).security_capabilities.encryption_algorithms = ue_context_pP->ue_context.nr_security.ciphering_algorithms;
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).security_capabilities.integrity_algorithms = ue_context_pP->ue_context.nr_security.integrity_algorithms;
+        msgAdd->security_capabilities.encryption_algorithms = ue_context_pP->ue_context.nr_security.ciphering_algorithms;
+        msgAdd->security_capabilities.integrity_algorithms = ue_context_pP->ue_context.nr_security.integrity_algorithms;
 
-        memcpy(X2AP_ENDC_SGNB_ADDITION_REQ(msg).kgnb, ue_context_pP->ue_context.nr_security.kgNB, 32);
+        memcpy(msgAdd->kgnb, ue_context_pP->ue_context.nr_security.kgNB, 32);
 
-        memcpy(X2AP_ENDC_SGNB_ADDITION_REQ(msg).rrc_buffer,enc_buf,enc_size);
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).rrc_buffer_size = enc_size;
+        memcpy(msgAdd->rrc_buffer,enc_buf,enc_size);
+        msgAdd->rrc_buffer_size = enc_size;
 
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).target_physCellId
+        msgAdd->target_physCellId
           //= measResults2->measResultNeighCells->choice.measResultNeighCellListNR_r15.list.array[0]->pci_r15;
           = measResults2->measResultNeighCells->choice.measResultListEUTRA.list.array[0]->physCellId;
 
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).target_physCellId = 0;
+        msgAdd->target_physCellId = 0;
         //For the moment we have a single E-RAB which will be the one to be added to the gNB
         //Not sure how to select bearers to be added if there are multiple.
-        X2AP_ENDC_SGNB_ADDITION_REQ(msg).nb_e_rabs_tobeadded = 1;
+        msgAdd->nb_e_rabs_tobeadded = 1;
 
-        for (int e_rab=0; e_rab < X2AP_ENDC_SGNB_ADDITION_REQ(msg).nb_e_rabs_tobeadded; e_rab++) {
-          X2AP_ENDC_SGNB_ADDITION_REQ(msg).e_rabs_tobeadded[e_rab].e_rab_id = ue_context_pP->ue_context.e_rab[e_rab].param.e_rab_id;
-          X2AP_ENDC_SGNB_ADDITION_REQ(msg).e_rabs_tobeadded[e_rab].gtp_teid = ue_context_pP->ue_context.e_rab[e_rab].param.gtp_teid;
-          X2AP_ENDC_SGNB_ADDITION_REQ(msg).e_rabs_tobeadded[e_rab].drb_ID = ue_context_pP->ue_context.DRB_configList->list.array[e_rab]->drb_Identity;
-          memcpy(&X2AP_ENDC_SGNB_ADDITION_REQ(msg).e_rabs_tobeadded[e_rab].sgw_addr,
+        for (int e_rab=0; e_rab < msgAdd->nb_e_rabs_tobeadded; e_rab++) {
+          msgAdd->e_rabs_tobeadded[e_rab].e_rab_id = ue_context_pP->ue_context.e_rab[e_rab].param.e_rab_id;
+          msgAdd->e_rabs_tobeadded[e_rab].gtp_teid = ue_context_pP->ue_context.e_rab[e_rab].param.gtp_teid;
+          msgAdd->e_rabs_tobeadded[e_rab].drb_ID = ue_context_pP->ue_context.DRB_configList->list.array[e_rab]->drb_Identity;
+          memcpy(&msgAdd->e_rabs_tobeadded[e_rab].sgw_addr,
                  &ue_context_pP->ue_context.e_rab[e_rab].param.sgw_addr,
                  sizeof(transport_layer_addr_t));
         }
@@ -3579,43 +3580,44 @@ rrc_eNB_process_MeasurementReport(
     ue_context_pP->ue_context.StatusRrc = RRC_HO_EXECUTION;
     ue_context_pP->ue_context.handover_info->state = HO_REQUEST;
     /* HO Preparation message */
-    msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_HANDOVER_REQ);
+    msg = X2AP_HANDOVER_REQ_alloc(TASK_RRC_ENB, 0);
+    x2ap_handover_req_t *req=X2AP_HANDOVER_REQ_data(msg);
     rrc_eNB_generate_HandoverPreparationInformation(
       ue_context_pP,
-      X2AP_HANDOVER_REQ(msg).rrc_buffer,
-      &X2AP_HANDOVER_REQ(msg).rrc_buffer_size);
-    X2AP_HANDOVER_REQ(msg).rnti = ctxt_pP->rntiMaybeUEid;
-    X2AP_HANDOVER_REQ(msg).target_physCellId = measResults2->measResultNeighCells->choice.
+      req->rrc_buffer,
+      &req->rrc_buffer_size);
+    req->rnti = ctxt_pP->rntiMaybeUEid;
+    req->target_physCellId = measResults2->measResultNeighCells->choice.
         measResultListEUTRA.list.array[ncell_index]->physCellId;
-    X2AP_HANDOVER_REQ(msg).ue_gummei.mcc = ue_context_pP->ue_context.ue_gummei.mcc;
-    X2AP_HANDOVER_REQ(msg).ue_gummei.mnc = ue_context_pP->ue_context.ue_gummei.mnc;
-    X2AP_HANDOVER_REQ(msg).ue_gummei.mnc_len = ue_context_pP->ue_context.ue_gummei.mnc_len;
-    X2AP_HANDOVER_REQ(msg).ue_gummei.mme_code = ue_context_pP->ue_context.ue_gummei.mme_code;
-    X2AP_HANDOVER_REQ(msg).ue_gummei.mme_group_id = ue_context_pP->ue_context.ue_gummei.mme_group_id;
+    req->ue_gummei.mcc = ue_context_pP->ue_context.ue_gummei.mcc;
+    req->ue_gummei.mnc = ue_context_pP->ue_context.ue_gummei.mnc;
+    req->ue_gummei.mnc_len = ue_context_pP->ue_context.ue_gummei.mnc_len;
+    req->ue_gummei.mme_code = ue_context_pP->ue_context.ue_gummei.mme_code;
+    req->ue_gummei.mme_group_id = ue_context_pP->ue_context.ue_gummei.mme_group_id;
     // Don't know how to get this ID?
-    X2AP_HANDOVER_REQ(msg).mme_ue_s1ap_id = ue_context_pP->ue_context.mme_ue_s1ap_id;
-    X2AP_HANDOVER_REQ(msg).security_capabilities = ue_context_pP->ue_context.security_capabilities;
+    req->mme_ue_s1ap_id = ue_context_pP->ue_context.mme_ue_s1ap_id;
+    req->security_capabilities = ue_context_pP->ue_context.security_capabilities;
     // compute keNB*
     earfcn_dl = (uint32_t)to_earfcn_DL(RC.rrc[ctxt_pP->module_id]->carrier[0].eutra_band, RC.rrc[ctxt_pP->module_id]->carrier[0].dl_CarrierFreq,
                                        RC.rrc[ctxt_pP->module_id]->carrier[0].N_RB_DL);
-    derive_keNB_star(ue_context_pP->ue_context.kenb, X2AP_HANDOVER_REQ(msg).target_physCellId, earfcn_dl, true, KeNB_star);
-    memcpy(X2AP_HANDOVER_REQ(msg).kenb, KeNB_star, 32);
-    X2AP_HANDOVER_REQ(msg).kenb_ncc = ue_context_pP->ue_context.kenb_ncc;
-    //X2AP_HANDOVER_REQ(msg).ue_ambr=ue_context_pP->ue_context.ue_ambr;
-    X2AP_HANDOVER_REQ(msg).nb_e_rabs_tobesetup = ue_context_pP->ue_context.setup_e_rabs;
+    derive_keNB_star(ue_context_pP->ue_context.kenb, req->target_physCellId, earfcn_dl, true, KeNB_star);
+    memcpy(req->kenb, KeNB_star, 32);
+    req->kenb_ncc = ue_context_pP->ue_context.kenb_ncc;
+    //req->ue_ambr=ue_context_pP->ue_context.ue_ambr;
+    req->nb_e_rabs_tobesetup = ue_context_pP->ue_context.setup_e_rabs;
 
     for (int i=0; i<ue_context_pP->ue_context.setup_e_rabs; i++) {
-      X2AP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].e_rab_id = ue_context_pP->ue_context.e_rab[i].param.e_rab_id;
-      X2AP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].eNB_addr = ue_context_pP->ue_context.e_rab[i].param.sgw_addr;
-      X2AP_HANDOVER_REQ(msg).e_rabs_tobesetup[i].gtp_teid = ue_context_pP->ue_context.e_rab[i].param.gtp_teid;
-      X2AP_HANDOVER_REQ(msg).e_rab_param[i].qos.qci = ue_context_pP->ue_context.e_rab[i].param.qos.qci;
-      X2AP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.priority_level = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
-      X2AP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.pre_emp_capability = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.pre_emp_capability;
-      X2AP_HANDOVER_REQ(msg).e_rab_param[i].qos.allocation_retention_priority.pre_emp_vulnerability = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.pre_emp_vulnerability;
+      req->e_rabs_tobesetup[i].e_rab_id = ue_context_pP->ue_context.e_rab[i].param.e_rab_id;
+      req->e_rabs_tobesetup[i].eNB_addr = ue_context_pP->ue_context.e_rab[i].param.sgw_addr;
+      req->e_rabs_tobesetup[i].gtp_teid = ue_context_pP->ue_context.e_rab[i].param.gtp_teid;
+      req->e_rab_param[i].qos.qci = ue_context_pP->ue_context.e_rab[i].param.qos.qci;
+      req->e_rab_param[i].qos.allocation_retention_priority.priority_level = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.priority_level;
+      req->e_rab_param[i].qos.allocation_retention_priority.pre_emp_capability = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.pre_emp_capability;
+      req->e_rab_param[i].qos.allocation_retention_priority.pre_emp_vulnerability = ue_context_pP->ue_context.e_rab[i].param.qos.allocation_retention_priority.pre_emp_vulnerability;
     }
 
     /* TODO: don't do that, X2AP should find the target by itself */
-    //X2AP_HANDOVER_REQ(msg).target_mod_id = 0;
+    //req->target_mod_id = 0;
     LOG_I(RRC,
           "[eNB %d] Frame %d: potential handover preparation: store the information in an intermediate structure in case of failure\n",
           ctxt_pP->module_id, ctxt_pP->frame);
@@ -3826,8 +3828,8 @@ void rrc_eNB_handover_ue_context_release(
   int e_rab = 0;
   //MessageDef *msg_release_p = NULL;
   uint32_t eNB_ue_s1ap_id = ue_context_p->ue_context.eNB_ue_s1ap_id;
-  //msg_release_p = itti_alloc_new_message(TASK_RRC_ENB, 0, S1AP_UE_CONTEXT_RELEASE);
-  //itti_send_msg_to_task(TASK_S1AP, ctxt_pP->module_id, msg_release_p);
+  // msg_release_p = S1AP_UE_CONTEXT_RELEASE_alloc(TASK_RRC_ENB, 0);
+  // itti_send_msg_to_task(TASK_S1AP, ctxt_pP->module_id, msg_release_p);
   s1ap_ue_context_release(ctxt_pP->instance, ue_context_p->ue_context.eNB_ue_s1ap_id);
   gtpv1u_enb_delete_tunnel_req_t delete_tunnels={0};
   delete_tunnels.rnti = ue_context_p->ue_context.rnti;
@@ -3895,23 +3897,24 @@ check_handovers(
         MessageDef *msg;
         // Configure target
         ue_context_p->ue_context.handover_info->state = HO_FORWARDING;
-        msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_HANDOVER_REQ_ACK);
+        msg = X2AP_HANDOVER_REQ_ACK_alloc(TASK_RRC_ENB, 0);
+        x2ap_handover_req_ack_t *req=X2AP_HANDOVER_REQ_ACK_data(msg);
         rrc_eNB_generate_HO_RRCConnectionReconfiguration(ctxt_pP, ue_context_p,
-            X2AP_HANDOVER_REQ_ACK(msg).rrc_buffer,
-            sizeof(X2AP_HANDOVER_REQ_ACK(msg).rrc_buffer),
-            &X2AP_HANDOVER_REQ_ACK(msg).rrc_buffer_size);
+            req->rrc_buffer,
+            sizeof(req->rrc_buffer),
+            &req->rrc_buffer_size);
         rrc_eNB_configure_rbs_handover(ue_context_p,ctxt_pP);
-        X2AP_HANDOVER_REQ_ACK(msg).rnti = ue_context_p->ue_context.rnti;
-        X2AP_HANDOVER_REQ_ACK(msg).x2_id_target = ue_context_p->ue_context.handover_info->x2_id;
-        X2AP_HANDOVER_REQ_ACK(msg).source_assoc_id = ue_context_p->ue_context.handover_info->assoc_id;
+        req->rnti = ue_context_p->ue_context.rnti;
+        req->x2_id_target = ue_context_p->ue_context.handover_info->x2_id;
+        req->source_assoc_id = ue_context_p->ue_context.handover_info->assoc_id;
         /* Call admission control not implemented yet */
-        X2AP_HANDOVER_REQ_ACK(msg).nb_e_rabs_tobesetup = ue_context_p->ue_context.setup_e_rabs;
+        req->nb_e_rabs_tobesetup = ue_context_p->ue_context.setup_e_rabs;
 
         for (int i=0; i<ue_context_p->ue_context.setup_e_rabs; i++) {
           /* set gtpv teid info */
-          X2AP_HANDOVER_REQ_ACK(msg).e_rabs_tobesetup[i].e_rab_id = ue_context_p->ue_context.e_rab[i].param.e_rab_id;
-          X2AP_HANDOVER_REQ_ACK(msg).e_rabs_tobesetup[i].gtp_teid = ue_context_p->ue_context.enb_gtp_x2u_teid[i];
-          X2AP_HANDOVER_REQ_ACK(msg).e_rabs_tobesetup[i].eNB_addr = ue_context_p->ue_context.enb_gtp_x2u_addrs[i];
+          req->e_rabs_tobesetup[i].e_rab_id = ue_context_p->ue_context.e_rab[i].param.e_rab_id;
+          req->e_rabs_tobesetup[i].gtp_teid = ue_context_p->ue_context.enb_gtp_x2u_teid[i];
+          req->e_rabs_tobesetup[i].eNB_addr = ue_context_p->ue_context.enb_gtp_x2u_addrs[i];
         }
 
         itti_send_msg_to_task(TASK_X2AP, ENB_MODULE_ID_TO_INSTANCE(ctxt_pP->module_id), msg);
@@ -3932,33 +3935,34 @@ check_handovers(
 
         if (msg_p != NULL) {
           switch (ITTI_MSG_ID(msg_p)) {
-            case GTPV1U_ENB_DATA_FORWARDING_IND:
+          case GTPV1U_ENB_DATA_FORWARDING_IND: {
+            gtpv1u_enb_data_forwarding_ind_t *msg=GTPV1U_ENB_DATA_FORWARDING_IND_data(msg_p);
               PROTOCOL_CTXT_SET_BY_MODULE_ID(
                 &ctxt,
-                GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).module_id,
-                GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).enb_flag,
-                GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rnti,
-                GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).frame,
+                msg->module_id,
+                msg->enb_flag,
+                msg->rnti,
+                msg->frame,
                 0,
-                GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).eNB_index);
+                msg->eNB_index);
               LOG_D(RRC, PROTOCOL_CTXT_FMT"[check_handovers]Received %s from %s: instance %ld, rb_id %ld, muiP %d, confirmP %d, mode %d\n",
                     PROTOCOL_CTXT_ARGS(&ctxt),
                     ITTI_MSG_NAME (msg_p),
                     ITTI_MSG_ORIGIN_NAME(msg_p),
                     ITTI_MSG_DESTINATION_INSTANCE (msg_p),
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id,
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).muip,
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).confirmp,
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).mode);
-              LOG_I(RRC, "Before calling pdcp_data_req from check_handovers! GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id: %ld \n", GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id);
+                    msg->rb_id,
+                    msg->muip,
+                    msg->confirmp,
+                    msg->mode);
+              LOG_I(RRC, "Before calling pdcp_data_req from check_handovers! msg->rb_id: %ld \n", msg->rb_id);
               result = pdcp_data_req (&ctxt,
                                       SRB_FLAG_NO,
-                                      GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id,
-                                      GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).muip,
-                                      GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).confirmp,
-                                      GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).sdu_size,
-                                      GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).sdu_p,
-                                      GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).mode, NULL, NULL
+                                      msg->rb_id,
+                                      msg->muip,
+                                      msg->confirmp,
+                                      msg->sdu_size,
+                                      msg->sdu_p,
+                                      msg->mode, NULL, NULL
                                      );
 
               if (result != true) {
@@ -3968,8 +3972,9 @@ check_handovers(
               }
 
               // Message buffer has been processed, free it now.
-              result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).sdu_p);
+              result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), msg->sdu_p);
               AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+          }  
               break;
 
             default:
@@ -4000,33 +4005,34 @@ check_handovers(
 
         if (msg_p != NULL) {
           switch (ITTI_MSG_ID(msg_p)) {
-            case GTPV1U_ENB_END_MARKER_IND:
+          case GTPV1U_ENB_END_MARKER_IND: {
+            gtpv1u_enb_end_marker_ind_t *msg=GTPV1U_ENB_END_MARKER_IND_data(msg_p);
               PROTOCOL_CTXT_SET_BY_MODULE_ID(
                 &ctxt,
-                GTPV1U_ENB_END_MARKER_IND (msg_p).module_id,
-                GTPV1U_ENB_END_MARKER_IND (msg_p).enb_flag,
-                GTPV1U_ENB_END_MARKER_IND (msg_p).rnti,
-                GTPV1U_ENB_END_MARKER_IND (msg_p).frame,
+                msg->module_id,
+                msg->enb_flag,
+                msg->rnti,
+                msg->frame,
                 0,
-                GTPV1U_ENB_END_MARKER_IND (msg_p).eNB_index);
+                msg->eNB_index);
               LOG_I(RRC, PROTOCOL_CTXT_FMT"[check_handovers]Received %s from %s: instance %ld, rb_id %ld, muiP %d, confirmP %d, mode %d\n",
                     PROTOCOL_CTXT_ARGS(&ctxt),
                     ITTI_MSG_NAME (msg_p),
                     ITTI_MSG_ORIGIN_NAME(msg_p),
                     ITTI_MSG_DESTINATION_INSTANCE (msg_p),
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id,
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).muip,
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).confirmp,
-                    GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).mode);
-              LOG_D(RRC, "Before calling pdcp_data_req from check_handovers! GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id: %ld \n", GTPV1U_ENB_DATA_FORWARDING_IND (msg_p).rb_id);
+                    msg->rb_id,
+                    msg->muip,
+                    msg->confirmp,
+                    msg->mode);
+              LOG_D(RRC, "Before calling pdcp_data_req from check_handovers! msg->rb_id: %ld \n", msg->rb_id);
               result = pdcp_data_req (&ctxt,
                                       SRB_FLAG_NO,
-                                      GTPV1U_ENB_END_MARKER_IND (msg_p).rb_id,
-                                      GTPV1U_ENB_END_MARKER_IND (msg_p).muip,
-                                      GTPV1U_ENB_END_MARKER_IND (msg_p).confirmp,
-                                      GTPV1U_ENB_END_MARKER_IND (msg_p).sdu_size,
-                                      GTPV1U_ENB_END_MARKER_IND (msg_p).sdu_p,
-                                      GTPV1U_ENB_END_MARKER_IND (msg_p).mode, NULL, NULL
+                                      msg->rb_id,
+                                      msg->muip,
+                                      msg->confirmp,
+                                      msg->sdu_size,
+                                      msg->sdu_p,
+                                      msg->mode, NULL, NULL
                                      );
 
               if (result != true) {
@@ -4036,8 +4042,8 @@ check_handovers(
               }
 
               // Message buffer has been processed, free it now.
-              result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), GTPV1U_ENB_END_MARKER_IND (msg_p).sdu_p);
-              AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+              result = itti_free (ITTI_MSG_ORIGIN_ID(msg_p), msg->sdu_p);
+              AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);}
               break;
 
             default:
@@ -5440,7 +5446,7 @@ void rrc_eNB_process_reconfiguration_complete_endc(const protocol_ctxt_t *const 
 {
   MessageDef *msg_p;
 
-  msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, X2AP_ENDC_SGNB_RECONF_COMPLETE);
+  msg_p = X2AP_ENDC_SGNB_RECONF_COMPLETE_alloc(TASK_RRC_ENB, 0);
 
   /* MeNB_ue_x2_id is unknown, set to 0.
    * This is not correct but X2 id in the eNB is only 12 bits,
@@ -5453,9 +5459,9 @@ void rrc_eNB_process_reconfiguration_complete_endc(const protocol_ctxt_t *const 
    * interoperate with a non-OAI gNB. The OAI gNB does not
    * care about MeNB_ue_x2_id.
    */
-  X2AP_ENDC_SGNB_RECONF_COMPLETE(msg_p).MeNB_ue_x2_id   = 0;
-  X2AP_ENDC_SGNB_RECONF_COMPLETE(msg_p).SgNB_ue_x2_id   = ue_context_p->ue_context.gnb_rnti;
-  X2AP_ENDC_SGNB_RECONF_COMPLETE(msg_p).gnb_x2_assoc_id = ue_context_p->ue_context.gnb_x2_assoc_id;
+  X2AP_ENDC_SGNB_RECONF_COMPLETE_data(msg_p)->MeNB_ue_x2_id   = 0;
+  X2AP_ENDC_SGNB_RECONF_COMPLETE_data(msg_p)->SgNB_ue_x2_id   = ue_context_p->ue_context.gnb_rnti;
+  X2AP_ENDC_SGNB_RECONF_COMPLETE_data(msg_p)->gnb_x2_assoc_id = ue_context_p->ue_context.gnb_x2_assoc_id;
   itti_send_msg_to_task (TASK_X2AP, ctxt_pP->instance, msg_p);
 }
 
@@ -7199,7 +7205,7 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
 
   if (RC.rrc[ENB_INSTANCE_TO_MODULE_ID(ctxt_pP->instance)]->configuration.enable_x2) {
     /* send a tick to x2ap */
-    msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_SUBFRAME_PROCESS);
+    msg = X2AP_SUBFRAME_PROCESS_alloc(TASK_RRC_ENB, 0);
     itti_send_msg_to_task(TASK_X2AP, ctxt_pP->module_id, msg);
     check_handovers(ctxt_pP); // counter, get the value and aggregate
   }
@@ -7422,10 +7428,11 @@ void rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
     if (ue_to_be_removed[cur_ue]->ue_context.StatusRrc == RRC_NR_NSA ||
         ue_to_be_removed[cur_ue]->ue_context.StatusRrc == RRC_NR_NSA_RECONFIGURED) {
       MessageDef *message_p;
-      message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_ENDC_SGNB_RELEASE_REQUEST);
-      X2AP_ENDC_SGNB_RELEASE_REQUEST(message_p).rnti = ue_to_be_removed[cur_ue]->ue_context.gnb_rnti;
-      X2AP_ENDC_SGNB_RELEASE_REQUEST(message_p).assoc_id = ue_to_be_removed[cur_ue]->ue_context.gnb_x2_assoc_id;
-      X2AP_ENDC_SGNB_RELEASE_REQUEST(message_p).cause = X2AP_CAUSE_RADIO_CONNECTION_WITH_UE_LOST;
+      message_p = X2AP_ENDC_SGNB_RELEASE_REQUEST_alloc(TASK_RRC_ENB, 0);
+      x2ap_ENDC_sgnb_release_request_t *msg=X2AP_ENDC_SGNB_RELEASE_REQUEST_data(message_p);
+      msg->rnti = ue_to_be_removed[cur_ue]->ue_context.gnb_rnti;
+      msg->assoc_id = ue_to_be_removed[cur_ue]->ue_context.gnb_x2_assoc_id;
+      msg->cause = X2AP_CAUSE_RADIO_CONNECTION_WITH_UE_LOST;
       itti_send_msg_to_task(TASK_X2AP, ctxt_pP->module_id, message_p);
       /* set state to RRC_NR_NSA_DELETED to avoid sending X2AP_ENDC_SGNB_RELEASE_REQUEST again later */
       ue_to_be_removed[cur_ue]->ue_context.StatusRrc = RRC_NR_NSA_DELETED;
@@ -7653,34 +7660,37 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       break;
 
     /* Messages from MAC */
-    case RRC_MAC_CCCH_DATA_IND:
+  case RRC_MAC_CCCH_DATA_IND: {
+    RrcMacCcchDataInd *msg=RRC_MAC_CCCH_DATA_IND_data(msg_p);
         PROTOCOL_CTXT_SET_BY_INSTANCE(
-            &ctxt, RRC_MAC_CCCH_DATA_IND(msg_p).enb_index, ENB_FLAG_YES, RRC_MAC_CCCH_DATA_IND(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
-        LOG_I(RRC, "Decoding CCCH : inst %ld, CC_id %d, ctxt %p, sib_info_p->Rx_buffer.payload_size %d\n", instance, RRC_MAC_CCCH_DATA_IND(msg_p).CC_id, &ctxt, RRC_MAC_CCCH_DATA_IND(msg_p).sdu_size);
+            &ctxt, msg->enb_index, ENB_FLAG_YES, msg->rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
+        LOG_I(RRC, "Decoding CCCH : inst %ld, CC_id %d, ctxt %p, sib_info_p->Rx_buffer.payload_size %d\n", instance, msg->CC_id, &ctxt, msg->sdu_size);
 
-      if (RRC_MAC_CCCH_DATA_IND(msg_p).sdu_size >= CCCH_SDU_SIZE) {
-          LOG_I(RRC, "CCCH message has size %d > %d\n", RRC_MAC_CCCH_DATA_IND(msg_p).sdu_size, CCCH_SDU_SIZE);
+      if (msg->sdu_size >= CCCH_SDU_SIZE) {
+          LOG_I(RRC, "CCCH message has size %d > %d\n", msg->sdu_size, CCCH_SDU_SIZE);
         break;
       }
 
-        rrc_eNB_decode_ccch(&ctxt, (uint8_t *)RRC_MAC_CCCH_DATA_IND(msg_p).sdu, RRC_MAC_CCCH_DATA_IND(msg_p).sdu_size, RRC_MAC_CCCH_DATA_IND(msg_p).CC_id);
+        rrc_eNB_decode_ccch(&ctxt, (uint8_t *)msg->sdu, msg->sdu_size, msg->CC_id);
       break;
+  }
 
     /* Messages from PDCP */
-    case RRC_DCCH_DATA_IND:
-        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, ENB_FLAG_YES, RRC_DCCH_DATA_IND(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_UE_FMT " Received on DCCH %d %s\n", PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt), RRC_DCCH_DATA_IND(msg_p).dcch_index, msg_name_p);
-        rrc_eNB_decode_dcch(&ctxt, RRC_DCCH_DATA_IND(msg_p).dcch_index, RRC_DCCH_DATA_IND(msg_p).sdu_p, RRC_DCCH_DATA_IND(msg_p).sdu_size);
+  case RRC_DCCH_DATA_IND: {
+    RrcDcchDataInd *msg=RRC_DCCH_DATA_IND_data(msg_p);
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, ENB_FLAG_YES, msg->rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
+        LOG_D(RRC, PROTOCOL_RRC_CTXT_UE_FMT " Received on DCCH %d %s\n", PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt), msg->dcch_index, msg_name_p);
+        rrc_eNB_decode_dcch(&ctxt, msg->dcch_index, msg->sdu_p, msg->sdu_size);
       // Message buffer has been processed, free it now.
-      result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), RRC_DCCH_DATA_IND(msg_p).sdu_p);
+      result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), msg->sdu_p);
 
       if (result != EXIT_SUCCESS) {
           LOG_I(RRC, "Failed to free memory (%d)!\n", result);
         break;
       }
-
+  }
       break;
-
+     
     /* Messages from S1AP */
     case S1AP_DOWNLINK_NAS:
       rrc_eNB_process_S1AP_DOWNLINK_NAS(msg_p, msg_name_p, instance, &rrc_eNB_mui);
@@ -7726,28 +7736,28 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       break;
 
     case X2AP_SETUP_REQ:
-      rrc_eNB_process_x2_setup_request(instance, &X2AP_SETUP_REQ(msg_p));
+      rrc_eNB_process_x2_setup_request(instance, X2AP_SETUP_REQ_data(msg_p));
       break;
 
     case X2AP_SETUP_RESP:
-      rrc_eNB_process_x2_setup_response(instance, &X2AP_SETUP_RESP(msg_p));
+      rrc_eNB_process_x2_setup_response(instance, X2AP_SETUP_RESP_data(msg_p));
       break;
 
     case X2AP_HANDOVER_REQ:
       LOG_I(RRC, "[eNB %ld] target eNB Receives X2 HO Req %s\n", instance, msg_name_p);
-      rrc_eNB_process_handoverPreparationInformation(instance, &X2AP_HANDOVER_REQ(msg_p));
+      rrc_eNB_process_handoverPreparationInformation(instance, X2AP_HANDOVER_REQ_data(msg_p));
       break;
 
     case X2AP_HANDOVER_REQ_ACK: {
       struct rrc_eNB_ue_context_s        *ue_context_p = NULL;
-      x2ap_handover_req_ack_t         *x2ap_handover_req_ack = NULL;
+      x2ap_handover_req_ack_t         *ho_req = X2AP_HANDOVER_REQ_ACK_data(msg_p);
       hashtable_rc_t                    hash_rc      = HASH_TABLE_KEY_NOT_EXISTS;
       gtpv1u_ue_data_t                  *gtpv1u_ue_data_p = NULL;
-      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], X2AP_HANDOVER_REQ_ACK(msg_p).rnti);
+      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], ho_req->rnti);
 
       if (ue_context_p == NULL) {
         /* is it possible? */
-          LOG_E(RRC, "could not find UE (rnti %x) while processing X2AP_HANDOVER_REQ_ACK\n", X2AP_HANDOVER_REQ_ACK(msg_p).rnti);
+          LOG_E(RRC, "could not find UE (rnti %x) while processing X2AP_HANDOVER_REQ_ACK\n", ho_req->rnti);
         exit(1);
       }
 
@@ -7761,44 +7771,43 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
       /* set target enb gtp teid */
       if (hash_rc == HASH_TABLE_KEY_NOT_EXISTS) {
-        LOG_E(RRC, "X2AP_HANDOVER_REQ_ACK func(), hashtable_get failed: while getting ue rnti %x in hashtable ue_mapping\n", ue_context_p->ue_context.rnti);
+        LOG_E(RRC, "HO_REQ func(), hashtable_get failed: while getting ue rnti %x in hashtable ue_mapping\n", ue_context_p->ue_context.rnti);
       } else {
         uint8_t nb_e_rabs_tobesetup = 0;
         ebi_t   eps_bearer_id       = 0;
         int     ip_offset           = 0;
         in_addr_t  in_addr;
-        x2ap_handover_req_ack = &X2AP_HANDOVER_REQ_ACK(msg_p);
-        nb_e_rabs_tobesetup = x2ap_handover_req_ack->nb_e_rabs_tobesetup;
+        nb_e_rabs_tobesetup = ho_req->nb_e_rabs_tobesetup;
         ue_context_p->ue_context.nb_x2u_e_rabs = nb_e_rabs_tobesetup;
 
           for (int i = 0; i < nb_e_rabs_tobesetup; i++) {
           ip_offset               = 0;
-          eps_bearer_id = x2ap_handover_req_ack->e_rabs_tobesetup[i].e_rab_id;
+          eps_bearer_id = ho_req->e_rabs_tobesetup[i].e_rab_id;
           ue_context_p->ue_context.enb_gtp_x2u_ebi[i] = eps_bearer_id;
-          ue_context_p->ue_context.enb_gtp_x2u_teid[i] = x2ap_handover_req_ack->e_rabs_tobesetup[i].gtp_teid;
-          gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].teid_teNB = x2ap_handover_req_ack->e_rabs_tobesetup[i].gtp_teid;
+          ue_context_p->ue_context.enb_gtp_x2u_teid[i] = ho_req->e_rabs_tobesetup[i].gtp_teid;
+          gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].teid_teNB = ho_req->e_rabs_tobesetup[i].gtp_teid;
 
-            if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 4) || (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
-            in_addr = *((in_addr_t *)x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer);
+            if ((ho_req->e_rabs_tobesetup[i].eNB_addr.length == 4) || (ho_req->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
+            in_addr = *((in_addr_t *)ho_req->e_rabs_tobesetup[i].eNB_addr.buffer);
             ip_offset = 4;
             gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip_addr = in_addr;
-            ue_context_p->ue_context.enb_gtp_x2u_addrs[i] = x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr;
+            ue_context_p->ue_context.enb_gtp_x2u_addrs[i] = ho_req->e_rabs_tobesetup[i].eNB_addr;
           }
 
-            if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 16) || (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
-              memcpy(gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip6_addr.s6_addr, &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset], 16);
+            if ((ho_req->e_rabs_tobesetup[i].eNB_addr.length == 16) || (ho_req->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
+              memcpy(gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip6_addr.s6_addr, &ho_req->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset], 16);
           }
         }
       }
 
-      rrc_eNB_process_handoverCommand(instance, ue_context_p, &X2AP_HANDOVER_REQ_ACK(msg_p));
+      rrc_eNB_process_handoverCommand(instance, ue_context_p, ho_req);
       ue_context_p->ue_context.handover_info->state = HO_PREPARE;
       break;
     }
 
     case X2AP_UE_CONTEXT_RELEASE: {
       struct rrc_eNB_ue_context_s        *ue_context_p = NULL;
-      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], X2AP_UE_CONTEXT_RELEASE(msg_p).rnti);
+      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], X2AP_UE_CONTEXT_RELEASE_data(msg_p)->rnti);
       LOG_I(RRC, "[eNB %ld] source eNB receives the X2 UE CONTEXT RELEASE %s\n", instance, msg_name_p);
       DevAssert(ue_context_p != NULL);
 
@@ -7812,8 +7821,9 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case X2AP_HANDOVER_CANCEL: {
       struct rrc_eNB_ue_context_s        *ue_context_p = NULL;
       char *cause;
+      x2ap_handover_cancel_t *cancel=X2AP_HANDOVER_CANCEL_data(msg_p);
 
-      switch (X2AP_HANDOVER_CANCEL(msg_p).cause) {
+      switch (cancel->cause) {
         case X2AP_T_RELOC_PREP_TIMEOUT:
           cause = "T_RelocPrep timeout";
           break;
@@ -7827,12 +7837,12 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           exit(1);
       }
 
-      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], X2AP_HANDOVER_CANCEL(msg_p).rnti);
+      ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], cancel->rnti);
 
         if (ue_context_p != NULL && ue_context_p->ue_context.handover_info != NULL) {
-          LOG_I(RRC, "[eNB %ld] eNB receives X2 HANDOVER CANCEL for rnti %x, cause %s [%s]\n", instance, X2AP_HANDOVER_CANCEL(msg_p).rnti, cause, msg_name_p);
+          LOG_I(RRC, "[eNB %ld] eNB receives X2 HANDOVER CANCEL for rnti %x, cause %s [%s]\n", instance, cancel->rnti, cause, msg_name_p);
 
-        if (X2AP_HANDOVER_CANCEL(msg_p).cause == X2AP_T_RELOC_PREP_TIMEOUT) {
+        if (cancel->cause == X2AP_T_RELOC_PREP_TIMEOUT) {
           /* for prep timeout, simply return to normal state */
           /* TODO: be sure that it's correct to set Status to RRC_RECONFIGURED */
           ue_context_p->ue_context.StatusRrc = RRC_RECONFIGURED;
@@ -7851,79 +7861,80 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         else
           failure_cause = "UE not in handover";
 
-        LOG_W(RRC, "[eNB %ld] cannot process (%s) X2 HANDOVER CANCEL for rnti %x, cause %s, ignoring\n", instance, failure_cause, X2AP_HANDOVER_CANCEL(msg_p).rnti, cause);
+        LOG_W(RRC, "[eNB %ld] cannot process (%s) X2 HANDOVER CANCEL for rnti %x, cause %s, ignoring\n", instance, failure_cause, cancel->rnti, cause);
       }
 
       break;
     }
 
     case X2AP_ENDC_SETUP_REQ:
-      rrc_eNB_process_ENDC_x2_setup_request(instance, &X2AP_ENDC_SETUP_REQ(msg_p));
+      rrc_eNB_process_ENDC_x2_setup_request(instance, X2AP_ENDC_SETUP_REQ_data(msg_p));
       break;
 
     case X2AP_ENDC_SGNB_ADDITION_REQ_ACK: {
-      rrc_eNB_process_AdditionResponseInformation(ENB_INSTANCE_TO_MODULE_ID(instance), &X2AP_ENDC_SGNB_ADDITION_REQ_ACK(msg_p));
+      rrc_eNB_process_AdditionResponseInformation(ENB_INSTANCE_TO_MODULE_ID(instance), X2AP_ENDC_SGNB_ADDITION_REQ_ACK_data(msg_p));
       break;
     }
 
     case X2AP_ENDC_DC_PREP_TIMEOUT: {
-      rrc_eNB_process_ENDC_DC_prep_timeout(ENB_INSTANCE_TO_MODULE_ID(instance), &X2AP_ENDC_DC_PREP_TIMEOUT(msg_p));
+      rrc_eNB_process_ENDC_DC_prep_timeout(ENB_INSTANCE_TO_MODULE_ID(instance), X2AP_ENDC_DC_PREP_TIMEOUT_data(msg_p));
       break;
     }
 
     case X2AP_ENDC_SGNB_RELEASE_REQUIRED: {
-      rrc_eNB_process_ENDC_sgNB_release_required(ENB_INSTANCE_TO_MODULE_ID(instance), &X2AP_ENDC_SGNB_RELEASE_REQUIRED(msg_p));
+      rrc_eNB_process_ENDC_sgNB_release_required(ENB_INSTANCE_TO_MODULE_ID(instance), X2AP_ENDC_SGNB_RELEASE_REQUIRED_data(msg_p));
       break;
     }
 
     /* Messages from eNB app */
     case RRC_CONFIGURATION_REQ:
-      LOG_I(RRC, "[eNB %ld] Received %s : %p\n", instance, msg_name_p, &RRC_CONFIGURATION_REQ(msg_p));
-      openair_rrc_eNB_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_CONFIGURATION_REQ(msg_p));
+      LOG_I(RRC, "[eNB %ld] Received %s \n", instance, msg_name_p);
+      openair_rrc_eNB_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), RRC_CONFIGURATION_REQ_data(msg_p));
       break;
 
     case RRC_SUBFRAME_PROCESS:
-      rrc_subframe_process(&RRC_SUBFRAME_PROCESS(msg_p).ctxt, RRC_SUBFRAME_PROCESS(msg_p).CC_id);
+      rrc_subframe_process(&RRC_SUBFRAME_PROCESS_data(msg_p)->ctxt, RRC_SUBFRAME_PROCESS_data(msg_p)->CC_id);
       break;
 
     case M2AP_SETUP_RESP:
-        rrc_eNB_process_M2AP_SETUP_RESP(&ctxt, 0 /*CC_id*/, ENB_INSTANCE_TO_MODULE_ID(instance), &M2AP_SETUP_RESP(msg_p));
+        rrc_eNB_process_M2AP_SETUP_RESP(&ctxt, 0 /*CC_id*/, ENB_INSTANCE_TO_MODULE_ID(instance), M2AP_SETUP_RESP_data(msg_p));
       break;
 
     case M2AP_MBMS_SCHEDULING_INFORMATION:
-        rrc_eNB_process_M2AP_MBMS_SCHEDULING_INFORMATION(&ctxt, 0 /*CC_id*/, ENB_INSTANCE_TO_MODULE_ID(instance), &M2AP_MBMS_SCHEDULING_INFORMATION(msg_p));
+        rrc_eNB_process_M2AP_MBMS_SCHEDULING_INFORMATION(&ctxt, 0 /*CC_id*/, ENB_INSTANCE_TO_MODULE_ID(instance), M2AP_MBMS_SCHEDULING_INFORMATION_data(msg_p));
       break;
 
     case M2AP_MBMS_SESSION_START_REQ:
-        rrc_eNB_process_M2AP_MBMS_SESSION_START_REQ(&ctxt, 0 /*CC_id*/, ENB_INSTANCE_TO_MODULE_ID(instance), &M2AP_MBMS_SESSION_START_REQ(msg_p));
+        rrc_eNB_process_M2AP_MBMS_SESSION_START_REQ(&ctxt, 0 /*CC_id*/, ENB_INSTANCE_TO_MODULE_ID(instance), M2AP_MBMS_SESSION_START_REQ_data(msg_p));
       break;
 
     case M2AP_MBMS_SESSION_STOP_REQ:
-        rrc_eNB_process_M2AP_MBMS_SESSION_STOP_REQ(&ctxt, &M2AP_MBMS_SESSION_STOP_REQ(msg_p));
+        rrc_eNB_process_M2AP_MBMS_SESSION_STOP_REQ(&ctxt, M2AP_MBMS_SESSION_STOP_REQ_data(msg_p));
       break;
 
     case M2AP_RESET:
-        rrc_eNB_process_M2AP_RESET(&ctxt, &M2AP_RESET(msg_p));
+        rrc_eNB_process_M2AP_RESET(&ctxt, M2AP_RESET_data(msg_p));
       break;
 
     case M2AP_ENB_CONFIGURATION_UPDATE_ACK:
-        rrc_eNB_process_M2AP_ENB_CONFIGURATION_UPDATE_ACK(&ctxt, &M2AP_ENB_CONFIGURATION_UPDATE_ACK(msg_p));
+        rrc_eNB_process_M2AP_ENB_CONFIGURATION_UPDATE_ACK(&ctxt, M2AP_ENB_CONFIGURATION_UPDATE_ACK_data(msg_p));
       break;
 
     case M2AP_ERROR_INDICATION:
-        rrc_eNB_process_M2AP_ERROR_INDICATION(&ctxt, &M2AP_ERROR_INDICATION(msg_p));
+        rrc_eNB_process_M2AP_ERROR_INDICATION(&ctxt, M2AP_ERROR_INDICATION_data(msg_p));
       break;
 
     case M2AP_MBMS_SERVICE_COUNTING_REQ:
-        rrc_eNB_process_M2AP_MBMS_SERVICE_COUNTING_REQ(&ctxt, &M2AP_MBMS_SERVICE_COUNTING_REQ(msg_p));
+        rrc_eNB_process_M2AP_MBMS_SERVICE_COUNTING_REQ(&ctxt, M2AP_MBMS_SERVICE_COUNTING_REQ_data(msg_p));
       break;
 
     case M2AP_MCE_CONFIGURATION_UPDATE:
-        rrc_eNB_process_M2AP_MCE_CONFIGURATION_UPDATE(&ctxt, &M2AP_MCE_CONFIGURATION_UPDATE(msg_p));
+        rrc_eNB_process_M2AP_MCE_CONFIGURATION_UPDATE(&ctxt,
+                                                      M2AP_MCE_CONFIGURATION_UPDATE_data(msg_p));
       break;
 
     case RLC_SDU_INDICATION:
-        process_rlc_sdu_indication(instance, RLC_SDU_INDICATION(msg_p).rnti, RLC_SDU_INDICATION(msg_p).is_successful, RLC_SDU_INDICATION(msg_p).srb_id, RLC_SDU_INDICATION(msg_p).message_id);
+        process_rlc_sdu_indication(instance, RLC_SDU_INDICATION_data(msg_p)->rnti, RLC_SDU_INDICATION_data(msg_p)->is_successful, RLC_SDU_INDICATION_data(msg_p)->srb_id, RLC_SDU_INDICATION_data(msg_p)->message_id);
       break;
 
     default:
@@ -8282,9 +8293,9 @@ rrc_rx_tx(
 //-----------------------------------------------------------------------------
 {
   MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_RRC_ENB, 0, RRC_SUBFRAME_PROCESS);
-  RRC_SUBFRAME_PROCESS(message_p).ctxt  = *ctxt_pP;
-  RRC_SUBFRAME_PROCESS(message_p).CC_id = CC_id;
+  message_p = RRC_SUBFRAME_PROCESS_alloc(TASK_RRC_ENB, 0);
+  RRC_SUBFRAME_PROCESS_data(message_p)->ctxt  = *ctxt_pP;
+  RRC_SUBFRAME_PROCESS_data(message_p)->CC_id = CC_id;
   itti_send_msg_to_task(TASK_RRC_ENB, ctxt_pP->module_id, message_p);
   rrc_enb_process_itti_msg(NULL);
   return RRC_OK;

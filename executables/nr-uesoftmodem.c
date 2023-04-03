@@ -394,7 +394,7 @@ static void trigger_stop(int sig)
 static void trigger_deregistration(int sig)
 {
   if (!stop_immediately) {
-    MessageDef *msg = itti_alloc_new_message(TASK_RRC_UE_SIM, 0, NAS_DEREGISTRATION_REQ);
+    MessageDef *msg = NAS_DEREGISTRATION_REQ_alloc(TASK_RRC_UE_SIM, 0);
     itti_send_msg_to_task(TASK_NAS_NRUE, 0, msg);
     stop_immediately = true;
     static const char m[] = "Press ^C again to trigger immediate shutdown\n";

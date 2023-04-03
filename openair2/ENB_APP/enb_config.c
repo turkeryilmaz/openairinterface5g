@@ -58,6 +58,7 @@
 #include "enb_paramdef.h"
 #include "executables/thread-common.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
+#include "openair2/COMMON/m2ap_messages_types.h"
 
 extern uint32_t to_earfcn_DL(int eutra_bandP, uint32_t dl_CarrierFreq, uint32_t bw);
 extern uint32_t to_earfcn_UL(int eutra_bandP, uint32_t ul_CarrierFreq, uint32_t bw);
@@ -1841,12 +1842,13 @@ int RCconfig_gtpu(void ) {
 
   if (address) {
     MessageDef *message;
-    AssertFatal((message = itti_alloc_new_message(TASK_ENB_APP, 0, GTPV1U_REQ))!=NULL,"");
-    IPV4_STR_ADDR_TO_INT_NWBO ( address, GTPV1U_REQ(message).localAddr, "BAD IP ADDRESS FORMAT FOR eNB S1_U !\n" );
-    LOG_I(GTPU,"Configuring GTPu address : %s -> %x\n",address,GTPV1U_REQ(message).localAddr);
-    GTPV1U_REQ(message).localPort = enb_port_for_S1U;
-    strcpy(GTPV1U_REQ(message).localAddrStr,address);
-    sprintf(GTPV1U_REQ(message).localPortStr,"%d", enb_port_for_S1U);
+    AssertFatal((message = GTPV1U_REQ_alloc(TASK_ENB_APP, 0)) != NULL, "");
+    Gtpv1uReq* msg= GTPV1U_REQ_data(message);
+    IPV4_STR_ADDR_TO_INT_NWBO ( address, msg->localAddr, "BAD IP ADDRESS FORMAT FOR eNB S1_U !\n" );
+    LOG_I(GTPU,"Configuring GTPu address : %s -> %x\n",address,msg->localAddr);
+    msg->localPort = enb_port_for_S1U;
+    strcpy(msg->localAddrStr,address);
+    sprintf(msg->localPortStr,"%d", enb_port_for_S1U);
     itti_send_msg_to_task (TASK_GTPV1_U, 0, message); // data model is wrong: gtpu doesn't have enb_id (or module_id)
   } else
     LOG_E(GTPU,"invalid address for S1U\n");
@@ -1928,20 +1930,21 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             char aprefix[MAX_OPTNAME_SIZE*80 + 8];
             sprintf(aprefix,"%s.[%i]",ENB_CONFIG_STRING_ENB_LIST,k);
             /* Some default/random parameters */
-            M2AP_REGISTER_ENB_REQ (msg_p).eNB_id = enb_id;
+            m2ap_register_enb_req_t *msg=M2AP_REGISTER_ENB_REQ_data(msg_p);
+           msg->eNB_id = enb_id;
 
             if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_MACRO_ENB") == 0) {
-              M2AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_MACRO_ENB;
+             msg->cell_type = CELL_MACRO_ENB;
             } else  if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_HOME_ENB") == 0) {
-              M2AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_HOME_ENB;
+             msg->cell_type = CELL_HOME_ENB;
             } else {
               AssertFatal (0,
                            "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
                            RC.config_file_name, i, *(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr));
             }
 
-            M2AP_REGISTER_ENB_REQ (msg_p).eNB_name         = strdup(*(ENBParamList.paramarray[k][ENB_ENB_NAME_IDX].strptr));
-            M2AP_REGISTER_ENB_REQ (msg_p).tac              = *ENBParamList.paramarray[k][ENB_TRACKING_AREA_CODE_IDX].uptr;
+           msg->eNB_name         = strdup(*(ENBParamList.paramarray[k][ENB_ENB_NAME_IDX].strptr));
+           msg->tac              = *ENBParamList.paramarray[k][ENB_TRACKING_AREA_CODE_IDX].uptr;
             config_getlist(&PLMNParamList, PLMNParams, sizeof(PLMNParams)/sizeof(paramdef_t), aprefix);
 
 
@@ -1952,9 +1955,9 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
 //         if (MBMSParamList.numelt < 1 || MBMSParamList.numelt > 8)
 //              AssertFatal(0, "The number of MBMS Areas must be in [1,8], but is %d\n",
 //                          MBMSParamList.numelt);
-//         M2AP_REGISTER_ENB_REQ (msg_p).num_mbms_service_area_list = MBMSParamList.numelt;
+//        msg->num_mbms_service_area_list = MBMSParamList.numelt;
 //         for(J=0; J<MBMSParamList.numelt;J++){
-//             M2AP_REGISTER_ENB_REQ (msg_p).mbms_service_area_list[J] = *MBMSParamList.paramarray[J][ENB_MBMS_SERVICE_AREA_IDX].uptr;
+//            msg->mbms_service_area_list[J] = *MBMSParamList.paramarray[J][ENB_MBMS_SERVICE_AREA_IDX].uptr;
 //         }
 //
 
@@ -1964,7 +1967,7 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             if (MBMSConfigParamList.numelt < 1 || MBMSConfigParamList.numelt > 8)
               AssertFatal(0, "The number of MBMS Config Data must be in [1,8], but is %d\n",
                           MBMSConfigParamList.numelt);
-            M2AP_REGISTER_ENB_REQ (msg_p).num_mbms_configuration_data_list = MBMSConfigParamList.numelt;
+           msg->num_mbms_configuration_data_list = MBMSConfigParamList.numelt;
            for(int I=0; I < MBMSConfigParamList.numelt; I++){
 
                    sprintf(aprefix2,"%s.[%i].%s.[%i]",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_MBMS_CONFIGURATION_DATA_LIST,I);
@@ -1972,9 +1975,9 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
                    if (MBMSParamList.numelt < 1 || MBMSParamList.numelt > 8)
                      AssertFatal(0, "The number of MBMS Areas must be in [1,8], but is %d\n",
                                  MBMSParamList.numelt);
-                   M2AP_REGISTER_ENB_REQ (msg_p).mbms_configuration_data_list[I].num_mbms_service_area_list = MBMSParamList.numelt;
+                  msg->mbms_configuration_data_list[I].num_mbms_service_area_list = MBMSParamList.numelt;
                    for(J=0; J<MBMSParamList.numelt;J++){
-                       M2AP_REGISTER_ENB_REQ (msg_p).mbms_configuration_data_list[I].mbms_service_area_list[J] = *MBMSParamList.paramarray[J][ENB_MBMS_SERVICE_AREA_IDX].uptr;
+                      msg->mbms_configuration_data_list[I].mbms_service_area_list[J] = *MBMSParamList.paramarray[J][ENB_MBMS_SERVICE_AREA_IDX].uptr;
                    }
 
           }
@@ -1987,26 +1990,26 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             if (PLMNParamList.numelt > 1)
               LOG_W(M2AP, "M2AP currently handles only one PLMN, ignoring the others!\n");
 
-            M2AP_REGISTER_ENB_REQ (msg_p).mcc = *PLMNParamList.paramarray[0][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
-            M2AP_REGISTER_ENB_REQ (msg_p).mnc = *PLMNParamList.paramarray[0][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
-            M2AP_REGISTER_ENB_REQ (msg_p).mnc_digit_length = *PLMNParamList.paramarray[0][ENB_MNC_DIGIT_LENGTH].u8ptr;
-            AssertFatal(M2AP_REGISTER_ENB_REQ(msg_p).mnc_digit_length == 3
-                        || M2AP_REGISTER_ENB_REQ(msg_p).mnc < 100,
+           msg->mcc = *PLMNParamList.paramarray[0][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
+           msg->mnc = *PLMNParamList.paramarray[0][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
+           msg->mnc_digit_length = *PLMNParamList.paramarray[0][ENB_MNC_DIGIT_LENGTH].u8ptr;
+            AssertFatal(msg->mnc_digit_length == 3
+                        || msg->mnc < 100,
                         "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
-                        M2AP_REGISTER_ENB_REQ(msg_p).mnc);
+                        msg->mnc);
             /* CC params */
             config_getlist(&CCsParamList, NULL, 0, aprefix);
-            M2AP_REGISTER_ENB_REQ (msg_p).num_cc = CCsParamList.numelt;
+           msg->num_cc = CCsParamList.numelt;
 
             if (CCsParamList.numelt > 0) {
               //char ccspath[MAX_OPTNAME_SIZE*2 + 16];
               for (J = 0; J < CCsParamList.numelt ; J++) {
                 sprintf(aprefix, "%s.[%i].%s.[%i]", ENB_CONFIG_STRING_ENB_LIST, k, ENB_CONFIG_STRING_COMPONENT_CARRIERS, J);
                 config_get(CCsParams, sizeof(CCsParams)/sizeof(paramdef_t), aprefix);
-                M2AP_REGISTER_ENB_REQ (msg_p).eutra_band[J] = ccparams_lte.eutra_band;
-                M2AP_REGISTER_ENB_REQ (msg_p).downlink_frequency[J] = (uint32_t) ccparams_lte.downlink_frequency;
-                M2AP_REGISTER_ENB_REQ (msg_p).uplink_frequency_offset[J] = (unsigned int) ccparams_lte.uplink_frequency_offset;
-                M2AP_REGISTER_ENB_REQ (msg_p).Nid_cell[J]= ccparams_lte.Nid_cell;
+               msg->eutra_band[J] = ccparams_lte.eutra_band;
+               msg->downlink_frequency[J] = (uint32_t) ccparams_lte.downlink_frequency;
+               msg->uplink_frequency_offset[J] = (unsigned int) ccparams_lte.uplink_frequency_offset;
+               msg->Nid_cell[J]= ccparams_lte.Nid_cell;
 
                 if (ccparams_lte.Nid_cell>503) {
                   AssertFatal (0,
@@ -2014,7 +2017,7 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
                                RC.config_file_name, k, ccparams_lte.Nid_cell);
                 }
 
-                M2AP_REGISTER_ENB_REQ (msg_p).N_RB_DL[J]= ccparams_lte.N_RB_DL;
+               msg->N_RB_DL[J]= ccparams_lte.N_RB_DL;
 
                 if ((ccparams_lte.N_RB_DL!=6) && (ccparams_lte.N_RB_DL!=15) && (ccparams_lte.N_RB_DL!=25) && (ccparams_lte.N_RB_DL!=50) && (ccparams_lte.N_RB_DL!=75) && (ccparams_lte.N_RB_DL!=100)) {
                   AssertFatal (0,
@@ -2023,17 +2026,17 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
                 }
 
                 if (strcmp(ccparams_lte.frame_type, "FDD") == 0) {
-                  M2AP_REGISTER_ENB_REQ (msg_p).frame_type[J] = FDD;
+                 msg->frame_type[J] = FDD;
                 } else  if (strcmp(ccparams_lte.frame_type, "TDD") == 0) {
-                  M2AP_REGISTER_ENB_REQ (msg_p).frame_type[J] = TDD;
+                 msg->frame_type[J] = TDD;
                 } else {
                   AssertFatal (0,
                                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for frame_type choice: FDD or TDD !\n",
                                RC.config_file_name, k, ccparams_lte.frame_type);
                 }
 
-                M2AP_REGISTER_ENB_REQ (msg_p).fdd_earfcn_DL[J] = to_earfcn_DL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency, ccparams_lte.N_RB_DL);
-                M2AP_REGISTER_ENB_REQ (msg_p).fdd_earfcn_UL[J] = to_earfcn_UL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency + ccparams_lte.uplink_frequency_offset, ccparams_lte.N_RB_DL);
+               msg->fdd_earfcn_DL[J] = to_earfcn_DL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency, ccparams_lte.N_RB_DL);
+               msg->fdd_earfcn_UL[J] = to_earfcn_UL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency + ccparams_lte.uplink_frequency_offset, ccparams_lte.N_RB_DL);
               }
             }
 
@@ -2042,22 +2045,22 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             AssertFatal(M2ParamList.numelt <= M2AP_MAX_NB_ENB_IP_ADDRESS,
                         "value of M2ParamList.numelt %d must be lower than M2AP_MAX_NB_ENB_IP_ADDRESS %d value: reconsider to increase M2AP_MAX_NB_ENB_IP_ADDRESS\n",
                         M2ParamList.numelt,M2AP_MAX_NB_ENB_IP_ADDRESS);
-            M2AP_REGISTER_ENB_REQ (msg_p).nb_m2 = 0;
+           msg->nb_m2 = 0;
 
             for (l = 0; l < M2ParamList.numelt; l++) {
-              M2AP_REGISTER_ENB_REQ (msg_p).nb_m2 += 1;
-              strcpy(M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4_address,*(M2ParamList.paramarray[l][ENB_M2_IPV4_ADDRESS_IDX].strptr));
-              strcpy(M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6_address,*(M2ParamList.paramarray[l][ENB_M2_IPV6_ADDRESS_IDX].strptr));
+             msg->nb_m2 += 1;
+              strcpy(msg->target_mce_m2_ip_address[l].ipv4_address,*(M2ParamList.paramarray[l][ENB_M2_IPV4_ADDRESS_IDX].strptr));
+              strcpy(msg->target_mce_m2_ip_address[l].ipv6_address,*(M2ParamList.paramarray[l][ENB_M2_IPV6_ADDRESS_IDX].strptr));
 
               if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 0;
+               msg->target_mce_m2_ip_address[l].ipv4 = 1;
+               msg->target_mce_m2_ip_address[l].ipv6 = 0;
               } else if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 0;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 1;
+               msg->target_mce_m2_ip_address[l].ipv4 = 0;
+               msg->target_mce_m2_ip_address[l].ipv6 = 1;
               } else if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 1;
+               msg->target_mce_m2_ip_address[l].ipv4 = 1;
+               msg->target_mce_m2_ip_address[l].ipv6 = 1;
               }
             }
             // timers
@@ -2076,35 +2079,35 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             //    exit(1);
             //  }
 
-            //  M2AP_REGISTER_ENB_REQ (msg_p).t_reloc_prep = t_reloc_prep;
-            //  M2AP_REGISTER_ENB_REQ (msg_p).tx2_reloc_overall = tx2_reloc_overall;
+            // msg->t_reloc_prep = t_reloc_prep;
+            // msg->tx2_reloc_overall = tx2_reloc_overall;
             //}
             // SCTP SETTING
-            M2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = SCTP_OUT_STREAMS;
-            M2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams  = SCTP_IN_STREAMS;
+           msg->sctp_out_streams = SCTP_OUT_STREAMS;
+           msg->sctp_in_streams  = SCTP_IN_STREAMS;
 
             if (EPC_MODE_ENABLED) {
               sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_SCTP_CONFIG);
               config_get( SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
-              M2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
-              M2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
+             msg->sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
+             msg->sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
             }
 
             sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
             // NETWORK_INTERFACES
             config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-            M2AP_REGISTER_ENB_REQ (msg_p).enb_port_for_M2C = (uint32_t)*(NETParams[ENB_PORT_FOR_M2C_IDX].uptr);
+           msg->enb_port_for_M2C = (uint32_t)*(NETParams[ENB_PORT_FOR_M2C_IDX].uptr);
 
-            if ((NETParams[ENB_IPV4_ADDR_FOR_M2C_IDX].strptr == NULL) || (M2AP_REGISTER_ENB_REQ (msg_p).enb_port_for_M2C == 0)) {
+            if ((NETParams[ENB_IPV4_ADDR_FOR_M2C_IDX].strptr == NULL) || (msg->enb_port_for_M2C == 0)) {
               LOG_E(RRC,"Add eNB IPv4 address and/or port for M2C in the CONF file!\n");
               exit(1);
             }
 
             cidr = *(NETParams[ENB_IPV4_ADDR_FOR_M2C_IDX].strptr);
             address = strtok(cidr, "/");
-            M2AP_REGISTER_ENB_REQ (msg_p).enb_m2_ip_address.ipv6 = 0;
-            M2AP_REGISTER_ENB_REQ (msg_p).enb_m2_ip_address.ipv4 = 1;
-            strcpy(M2AP_REGISTER_ENB_REQ (msg_p).enb_m2_ip_address.ipv4_address, address);
+           msg->enb_m2_ip_address.ipv6 = 0;
+           msg->enb_m2_ip_address.ipv4 = 1;
+            strcpy(msg->enb_m2_ip_address.ipv4_address, address);
           }
         }
       }
@@ -2188,17 +2191,18 @@ int RCconfig_S1(
             paramdef_t NETParams[] =  NETPARAMS_DESC;
             char aprefix[MAX_OPTNAME_SIZE*2 + 8];
             sprintf(aprefix, "%s.[%i]", ENB_CONFIG_STRING_ENB_LIST, k);
-            S1AP_REGISTER_ENB_REQ (msg_p).eNB_id = enb_id;
+            s1ap_register_enb_req_t * msg=S1AP_REGISTER_ENB_REQ_data(msg_p);
+            msg->eNB_id = enb_id;
 
             if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_MACRO_ENB") == 0) {
-              S1AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_MACRO_ENB;
+              msg->cell_type = CELL_MACRO_ENB;
             } else  if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_HOME_ENB") == 0) {
-              S1AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_HOME_ENB;
+              msg->cell_type = CELL_HOME_ENB;
               // Temporary option to be able to parse an eNB configuration file which is treated as gNB from
               // the X2AP layer and test the setup of an ENDC X2AP connection. To be removed when we are ready to
               // parse an actual gNB configuration file wrt. the X2AP parameters instead.
             } else  if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_MACRO_GNB") == 0) {
-              S1AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_MACRO_GNB;
+              msg->cell_type = CELL_MACRO_GNB;
             } else {
               AssertFatal(0,
                           "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
@@ -2207,8 +2211,8 @@ int RCconfig_S1(
                           *(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr));
             }
 
-            S1AP_REGISTER_ENB_REQ (msg_p).eNB_name = strdup(*(ENBParamList.paramarray[k][ENB_ENB_NAME_IDX].strptr));
-            S1AP_REGISTER_ENB_REQ(msg_p).tac = *ENBParamList.paramarray[k][ENB_TRACKING_AREA_CODE_IDX].uptr;
+            msg->eNB_name = strdup(*(ENBParamList.paramarray[k][ENB_ENB_NAME_IDX].strptr));
+            msg->tac = *ENBParamList.paramarray[k][ENB_TRACKING_AREA_CODE_IDX].uptr;
             AssertFatal(!ENBParamList.paramarray[k][ENB_MOBILE_COUNTRY_CODE_IDX_OLD].strptr
                         && !ENBParamList.paramarray[k][ENB_MOBILE_NETWORK_CODE_IDX_OLD].strptr,
                         "It seems that you use an old configuration file. Please change the existing\n"
@@ -2220,62 +2224,62 @@ int RCconfig_S1(
                         "    plmn_list = ( { mcc = 208; mnc = 93; mnc_length = 2; } )\n");
             if(*ENBParamList.paramarray[k][ENB_S1SETUP_RSP_TIMER_IDX].uptr <= 0xffff)
             {
-              S1AP_REGISTER_ENB_REQ(msg_p).s1_setuprsp_wait_timer = *ENBParamList.paramarray[k][ENB_S1SETUP_RSP_TIMER_IDX].uptr;
+              msg->s1_setuprsp_wait_timer = *ENBParamList.paramarray[k][ENB_S1SETUP_RSP_TIMER_IDX].uptr;
             }
             else
             {
               LOG_E(S1AP, 
                     "s1setup_rsp_timer value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_S1SETUP_RSP_TIMER_IDX].uptr);
-              S1AP_REGISTER_ENB_REQ(msg_p).s1_setuprsp_wait_timer = 5;
+              msg->s1_setuprsp_wait_timer = 5;
             }
 
             if(*ENBParamList.paramarray[k][ENB_S1SETUP_REQ_TIMER_IDX].uptr <= 0xffff)
             {
-              S1AP_REGISTER_ENB_REQ(msg_p).s1_setupreq_wait_timer = *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_TIMER_IDX].uptr;
+              msg->s1_setupreq_wait_timer = *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_TIMER_IDX].uptr;
             }
             else
             {
               LOG_E(S1AP, 
                     "s1setup_req_timer value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_TIMER_IDX].uptr);
-              S1AP_REGISTER_ENB_REQ(msg_p).s1_setupreq_wait_timer = 5;
+              msg->s1_setupreq_wait_timer = 5;
             }
 
             if(*ENBParamList.paramarray[k][ENB_S1SETUP_REQ_COUNT_IDX].uptr <= 0xffff)
             {
-              S1AP_REGISTER_ENB_REQ(msg_p).s1_setupreq_count = *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_COUNT_IDX].uptr;
+              msg->s1_setupreq_count = *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_COUNT_IDX].uptr;
             }
             else
             {
               LOG_E(S1AP, 
                     "s1setup_req_count value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_COUNT_IDX].uptr);
-              S1AP_REGISTER_ENB_REQ(msg_p).s1_setupreq_count = 0xffff;
+              msg->s1_setupreq_count = 0xffff;
             }
 
             if(*ENBParamList.paramarray[k][ENB_SCTP_REQ_TIMER_IDX].uptr <= 0xffff)
             {
-              S1AP_REGISTER_ENB_REQ(msg_p).sctp_req_timer = *ENBParamList.paramarray[k][ENB_SCTP_REQ_TIMER_IDX].uptr;
+              msg->sctp_req_timer = *ENBParamList.paramarray[k][ENB_SCTP_REQ_TIMER_IDX].uptr;
             }
             else
             {
               LOG_E(S1AP, 
                     "sctp_req_timer value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_SCTP_REQ_TIMER_IDX].uptr);
-              S1AP_REGISTER_ENB_REQ(msg_p).sctp_req_timer = 180;
+              msg->sctp_req_timer = 180;
             }
 
             if(*ENBParamList.paramarray[k][ENB_SCTP_REQ_COUNT_IDX].uptr <= 0xffff)
             {
-              S1AP_REGISTER_ENB_REQ(msg_p).sctp_req_count = *ENBParamList.paramarray[k][ENB_SCTP_REQ_COUNT_IDX].uptr;
+              msg->sctp_req_count = *ENBParamList.paramarray[k][ENB_SCTP_REQ_COUNT_IDX].uptr;
             }
             else
             {
               LOG_E(S1AP, 
                     "sctp_req_count value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_SCTP_REQ_COUNT_IDX].uptr);
-              S1AP_REGISTER_ENB_REQ(msg_p).sctp_req_count = 0xffff;
+              msg->sctp_req_count = 0xffff;
             }
             config_getlist(&PLMNParamList, PLMNParams, sizeof(PLMNParams)/sizeof(paramdef_t), aprefix);
 
@@ -2284,16 +2288,16 @@ int RCconfig_S1(
                           PLMNParamList.numelt);
             }
 
-            S1AP_REGISTER_ENB_REQ(msg_p).num_plmn = PLMNParamList.numelt;
+            msg->num_plmn = PLMNParamList.numelt;
 
             for (int l = 0; l < PLMNParamList.numelt; ++l) {
-              S1AP_REGISTER_ENB_REQ(msg_p).mcc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
-              S1AP_REGISTER_ENB_REQ(msg_p).mnc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
-              S1AP_REGISTER_ENB_REQ(msg_p).mnc_digit_length[l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
-              AssertFatal(S1AP_REGISTER_ENB_REQ(msg_p).mnc_digit_length[l] == 3
-                          || S1AP_REGISTER_ENB_REQ(msg_p).mnc[l] < 100,
+              msg->mcc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
+              msg->mnc[l] = *PLMNParamList.paramarray[l][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
+              msg->mnc_digit_length[l] = *PLMNParamList.paramarray[l][ENB_MNC_DIGIT_LENGTH].u8ptr;
+              AssertFatal(msg->mnc_digit_length[l] == 3
+                          || msg->mnc[l] < 100,
                           "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
-                          S1AP_REGISTER_ENB_REQ(msg_p).mnc[l]);
+                          msg->mnc[l]);
             }
 
             /* Default DRX param */
@@ -2308,22 +2312,22 @@ int RCconfig_S1(
 
             switch (ccparams_lte.pcch_defaultPagingCycle) {
               case 32: {
-                S1AP_REGISTER_ENB_REQ(msg_p).default_drx = 0;
+                msg->default_drx = 0;
                 break;
               }
 
               case 64: {
-                S1AP_REGISTER_ENB_REQ(msg_p).default_drx = 1;
+                msg->default_drx = 1;
                 break;
               }
 
               case 128: {
-                S1AP_REGISTER_ENB_REQ(msg_p).default_drx = 2;
+                msg->default_drx = 2;
                 break;
               }
 
               case 256: {
-                S1AP_REGISTER_ENB_REQ(msg_p).default_drx = 3;
+                msg->default_drx = 3;
                 break;
               }
 
@@ -2331,75 +2335,75 @@ int RCconfig_S1(
                 LOG_E(S1AP, "Default I-DRX value in conf file is invalid (%i). Should be 32, 64, 128 or 256. \
                        Default DRX set to 32 in MME configuration\n",
                       ccparams_lte.pcch_defaultPagingCycle);
-                S1AP_REGISTER_ENB_REQ(msg_p).default_drx = 0;
+                msg->default_drx = 0;
               }
             }
 
             /* MME connection params */
             sprintf(aprefix, "%s.[%i]", ENB_CONFIG_STRING_ENB_LIST, k);
             config_getlist(&S1ParamList, S1Params, sizeof(S1Params)/sizeof(paramdef_t), aprefix);
-            S1AP_REGISTER_ENB_REQ (msg_p).nb_mme = 0;
+            msg->nb_mme = 0;
 
             for (int l = 0; l < S1ParamList.numelt; l++) {
-              S1AP_REGISTER_ENB_REQ (msg_p).nb_mme += 1;
-              strcpy(S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4_address,*(S1ParamList.paramarray[l][ENB_MME_IPV4_ADDRESS_IDX].strptr));
-              strcpy(S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6_address,*(S1ParamList.paramarray[l][ENB_MME_IPV6_ADDRESS_IDX].strptr));
+              msg->nb_mme += 1;
+              strcpy(msg->mme_ip_address[l].ipv4_address,*(S1ParamList.paramarray[l][ENB_MME_IPV4_ADDRESS_IDX].strptr));
+              strcpy(msg->mme_ip_address[l].ipv6_address,*(S1ParamList.paramarray[l][ENB_MME_IPV6_ADDRESS_IDX].strptr));
 
               if (strcmp(*(S1ParamList.paramarray[l][ENB_MME_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 1;
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 0;
+                msg->mme_ip_address[l].ipv4 = 1;
+                msg->mme_ip_address[l].ipv6 = 0;
               } else if (strcmp(*(S1ParamList.paramarray[l][ENB_MME_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 0;
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 1;
+                msg->mme_ip_address[l].ipv4 = 0;
+                msg->mme_ip_address[l].ipv6 = 1;
               } else if (strcmp(*(S1ParamList.paramarray[l][ENB_MME_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 1;
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 1;
+                msg->mme_ip_address[l].ipv4 = 1;
+                msg->mme_ip_address[l].ipv6 = 1;
               }
 
               if (S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].iptr) {
-                S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l] = S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].numelt;
+                msg->broadcast_plmn_num[l] = S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].numelt;
               } else {
-                S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l] = 0;
+                msg->broadcast_plmn_num[l] = 0;
               }
 
               /* set S1-mme port (sctp) */
-              S1AP_REGISTER_ENB_REQ(msg_p).mme_port[l] = *S1ParamList.paramarray[l][ENB_MME_PORT_IDX].u16ptr;
+              msg->mme_port[l] = *S1ParamList.paramarray[l][ENB_MME_PORT_IDX].u16ptr;
 
-              AssertFatal(S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l] <= S1AP_REGISTER_ENB_REQ(msg_p).num_plmn,
+              AssertFatal(msg->broadcast_plmn_num[l] <= msg->num_plmn,
                           "List of broadcast PLMN to be sent to MME can not be longer than actual "
                           "PLMN list (max %d, but is %d)\n",
-                          S1AP_REGISTER_ENB_REQ(msg_p).num_plmn,
-                          S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l]);
+                          msg->num_plmn,
+                          msg->broadcast_plmn_num[l]);
 
-              for (int el = 0; el < S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l]; ++el) {
+              for (int el = 0; el < msg->broadcast_plmn_num[l]; ++el) {
                 /* UINTARRAY gets mapped to int, see config_libconfig.c:223 */
-                S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_index[l][el] = S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].iptr[el];
-                AssertFatal(S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_index[l][el] >= 0
-                            && S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_index[l][el] < S1AP_REGISTER_ENB_REQ(msg_p).num_plmn,
+                msg->broadcast_plmn_index[l][el] = S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].iptr[el];
+                AssertFatal(msg->broadcast_plmn_index[l][el] >= 0
+                            && msg->broadcast_plmn_index[l][el] < msg->num_plmn,
                             "index for MME's MCC/MNC (%d) is an invalid index for the registered PLMN IDs (%d)\n",
-                            S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_index[l][el],
-                            S1AP_REGISTER_ENB_REQ(msg_p).num_plmn);
+                            msg->broadcast_plmn_index[l][el],
+                            msg->num_plmn);
               }
 
               /* if no broadcasst_plmn array is defined, fill default values */
-              if (S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l] == 0) {
-                S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l] = S1AP_REGISTER_ENB_REQ(msg_p).num_plmn;
+              if (msg->broadcast_plmn_num[l] == 0) {
+                msg->broadcast_plmn_num[l] = msg->num_plmn;
 
-                for (int el = 0; el < S1AP_REGISTER_ENB_REQ(msg_p).num_plmn; ++el) {
-                  S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_index[l][el] = el;
+                for (int el = 0; el < msg->num_plmn; ++el) {
+                  msg->broadcast_plmn_index[l][el] = el;
                 }
               }
             }
 
             // SCTP SETTING
-            S1AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = SCTP_OUT_STREAMS;
-            S1AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams  = SCTP_IN_STREAMS;
+            msg->sctp_out_streams = SCTP_OUT_STREAMS;
+            msg->sctp_in_streams  = SCTP_IN_STREAMS;
 
             if (EPC_MODE_ENABLED) {
               sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_SCTP_CONFIG);
               config_get( SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
-              S1AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
-              S1AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
+              msg->sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
+              msg->sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
             }
 
             sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
@@ -2407,9 +2411,9 @@ int RCconfig_S1(
             config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
             cidr = *(NETParams[ENB_IPV4_ADDRESS_FOR_S1_MME_IDX].strptr);
             address = strtok(cidr, "/");
-            S1AP_REGISTER_ENB_REQ (msg_p).enb_ip_address.ipv6 = 0;
-            S1AP_REGISTER_ENB_REQ (msg_p).enb_ip_address.ipv4 = 1;
-            strcpy(S1AP_REGISTER_ENB_REQ (msg_p).enb_ip_address.ipv4_address, address);
+            msg->enb_ip_address.ipv6 = 0;
+            msg->enb_ip_address.ipv4 = 1;
+            strcpy(msg->enb_ip_address.ipv4_address, address);
             break;
           }
         }
@@ -2484,20 +2488,21 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
             char aprefix[MAX_OPTNAME_SIZE*80 + 8];
             sprintf(aprefix,"%s.[%i]",ENB_CONFIG_STRING_ENB_LIST,k);
             /* Some default/random parameters */
-            X2AP_REGISTER_ENB_REQ (msg_p).eNB_id = enb_id;
+            x2ap_register_enb_req_t *msg= X2AP_REGISTER_ENB_REQ_data(msg_p);
+            msg->eNB_id = enb_id;
 
             if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_MACRO_ENB") == 0) {
-              X2AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_MACRO_ENB;
+              msg->cell_type = CELL_MACRO_ENB;
             } else  if (strcmp(*(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr), "CELL_HOME_ENB") == 0) {
-              X2AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_HOME_ENB;
+              msg->cell_type = CELL_HOME_ENB;
             }else {
               AssertFatal (0,
                            "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
                            RC.config_file_name, i, *(ENBParamList.paramarray[k][ENB_CELL_TYPE_IDX].strptr));
             }
 
-            X2AP_REGISTER_ENB_REQ (msg_p).eNB_name         = strdup(*(ENBParamList.paramarray[k][ENB_ENB_NAME_IDX].strptr));
-            X2AP_REGISTER_ENB_REQ (msg_p).tac              = *ENBParamList.paramarray[k][ENB_TRACKING_AREA_CODE_IDX].uptr;
+            msg->eNB_name         = strdup(*(ENBParamList.paramarray[k][ENB_ENB_NAME_IDX].strptr));
+            msg->tac              = *ENBParamList.paramarray[k][ENB_TRACKING_AREA_CODE_IDX].uptr;
             config_getlist(&PLMNParamList, PLMNParams, sizeof(PLMNParams)/sizeof(paramdef_t), aprefix);
 
             if (PLMNParamList.numelt < 1 || PLMNParamList.numelt > 6)
@@ -2507,26 +2512,26 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
             if (PLMNParamList.numelt > 1)
               LOG_W(X2AP, "X2AP currently handles only one PLMN, ignoring the others!\n");
 
-            X2AP_REGISTER_ENB_REQ (msg_p).mcc = *PLMNParamList.paramarray[0][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
-            X2AP_REGISTER_ENB_REQ (msg_p).mnc = *PLMNParamList.paramarray[0][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
-            X2AP_REGISTER_ENB_REQ (msg_p).mnc_digit_length = *PLMNParamList.paramarray[0][ENB_MNC_DIGIT_LENGTH].u8ptr;
-            AssertFatal(X2AP_REGISTER_ENB_REQ(msg_p).mnc_digit_length == 3
-                        || X2AP_REGISTER_ENB_REQ(msg_p).mnc < 100,
+            msg->mcc = *PLMNParamList.paramarray[0][ENB_MOBILE_COUNTRY_CODE_IDX].uptr;
+            msg->mnc = *PLMNParamList.paramarray[0][ENB_MOBILE_NETWORK_CODE_IDX].uptr;
+            msg->mnc_digit_length = *PLMNParamList.paramarray[0][ENB_MNC_DIGIT_LENGTH].u8ptr;
+            AssertFatal(msg->mnc_digit_length == 3
+                        || msg->mnc < 100,
                         "MNC %d cannot be encoded in two digits as requested (change mnc_digit_length to 3)\n",
-                        X2AP_REGISTER_ENB_REQ(msg_p).mnc);
+                        msg->mnc);
             /* CC params */
             config_getlist(&CCsParamList, NULL, 0, aprefix);
-            X2AP_REGISTER_ENB_REQ (msg_p).num_cc = CCsParamList.numelt;
+            msg->num_cc = CCsParamList.numelt;
 
             if (CCsParamList.numelt > 0) {
               //char ccspath[MAX_OPTNAME_SIZE*2 + 16];
               for (J = 0; J < CCsParamList.numelt ; J++) {
                 sprintf(aprefix, "%s.[%i].%s.[%i]", ENB_CONFIG_STRING_ENB_LIST, k, ENB_CONFIG_STRING_COMPONENT_CARRIERS, J);
                 config_get(CCsParams, sizeof(CCsParams)/sizeof(paramdef_t), aprefix);
-                X2AP_REGISTER_ENB_REQ (msg_p).eutra_band[J] = ccparams_lte.eutra_band;
-                X2AP_REGISTER_ENB_REQ (msg_p).downlink_frequency[J] = (uint32_t) ccparams_lte.downlink_frequency;
-                X2AP_REGISTER_ENB_REQ (msg_p).uplink_frequency_offset[J] = (unsigned int) ccparams_lte.uplink_frequency_offset;
-                X2AP_REGISTER_ENB_REQ (msg_p).Nid_cell[J]= ccparams_lte.Nid_cell;
+                msg->eutra_band[J] = ccparams_lte.eutra_band;
+                msg->downlink_frequency[J] = (uint32_t) ccparams_lte.downlink_frequency;
+                msg->uplink_frequency_offset[J] = (unsigned int) ccparams_lte.uplink_frequency_offset;
+                msg->Nid_cell[J]= ccparams_lte.Nid_cell;
 
                 if (ccparams_lte.Nid_cell>503) {
                   AssertFatal (0,
@@ -2534,7 +2539,7 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
                                RC.config_file_name, k, ccparams_lte.Nid_cell);
                 }
 
-                X2AP_REGISTER_ENB_REQ (msg_p).N_RB_DL[J]= ccparams_lte.N_RB_DL;
+                msg->N_RB_DL[J]= ccparams_lte.N_RB_DL;
 
                 if ((ccparams_lte.N_RB_DL!=6) && (ccparams_lte.N_RB_DL!=15) && (ccparams_lte.N_RB_DL!=25) && (ccparams_lte.N_RB_DL!=50) && (ccparams_lte.N_RB_DL!=75) && (ccparams_lte.N_RB_DL!=100)) {
                   AssertFatal (0,
@@ -2543,19 +2548,19 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
                 }
 
                 if (strcmp(ccparams_lte.frame_type, "FDD") == 0) {
-                  X2AP_REGISTER_ENB_REQ (msg_p).frame_type[J] = FDD;
+                  msg->frame_type[J] = FDD;
                 } else  if (strcmp(ccparams_lte.frame_type, "TDD") == 0) {
-                  X2AP_REGISTER_ENB_REQ (msg_p).frame_type[J] = TDD;
-                  X2AP_REGISTER_ENB_REQ (msg_p).subframeAssignment[J] = ccparams_lte.tdd_config;
-                  X2AP_REGISTER_ENB_REQ (msg_p).specialSubframe[J] = ccparams_lte.tdd_config_s;
+                  msg->frame_type[J] = TDD;
+                  msg->subframeAssignment[J] = ccparams_lte.tdd_config;
+                  msg->specialSubframe[J] = ccparams_lte.tdd_config_s;
                 } else {
                   AssertFatal (0,
                                "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for frame_type choice: FDD or TDD !\n",
                                RC.config_file_name, k, ccparams_lte.frame_type);
                 }
 
-                X2AP_REGISTER_ENB_REQ (msg_p).fdd_earfcn_DL[J] = to_earfcn_DL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency, ccparams_lte.N_RB_DL);
-                X2AP_REGISTER_ENB_REQ (msg_p).fdd_earfcn_UL[J] = to_earfcn_UL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency + ccparams_lte.uplink_frequency_offset, ccparams_lte.N_RB_DL);
+                msg->fdd_earfcn_DL[J] = to_earfcn_DL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency, ccparams_lte.N_RB_DL);
+                msg->fdd_earfcn_UL[J] = to_earfcn_UL(ccparams_lte.eutra_band, ccparams_lte.downlink_frequency + ccparams_lte.uplink_frequency_offset, ccparams_lte.N_RB_DL);
               }
             }
 
@@ -2564,23 +2569,23 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
             AssertFatal(X2ParamList.numelt <= X2AP_MAX_NB_ENB_IP_ADDRESS,
                         "value of X2ParamList.numelt %d must be lower than X2AP_MAX_NB_ENB_IP_ADDRESS %d value: reconsider to increase X2AP_MAX_NB_ENB_IP_ADDRESS\n",
                         X2ParamList.numelt,X2AP_MAX_NB_ENB_IP_ADDRESS);
-            X2AP_REGISTER_ENB_REQ (msg_p).nb_x2 = 0;
+            msg->nb_x2 = 0;
             LOG_I(X2AP,"X2ParamList.numelt %d\n",X2ParamList.numelt);
             for (l = 0; l < X2ParamList.numelt; l++) {
-              X2AP_REGISTER_ENB_REQ (msg_p).nb_x2 += 1;
-              strcpy(X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4_address,*(X2ParamList.paramarray[l][ENB_X2_IPV4_ADDRESS_IDX].strptr));
-              strcpy(X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6_address,*(X2ParamList.paramarray[l][ENB_X2_IPV6_ADDRESS_IDX].strptr));
+              msg->nb_x2 += 1;
+              strcpy(msg->target_enb_x2_ip_address[l].ipv4_address,*(X2ParamList.paramarray[l][ENB_X2_IPV4_ADDRESS_IDX].strptr));
+              strcpy(msg->target_enb_x2_ip_address[l].ipv6_address,*(X2ParamList.paramarray[l][ENB_X2_IPV6_ADDRESS_IDX].strptr));
 
               LOG_I(X2AP,"registering with ip : %s\n",*(X2ParamList.paramarray[l][ENB_X2_IPV4_ADDRESS_IDX].strptr));
               if (strcmp(*(X2ParamList.paramarray[l][ENB_X2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 1;
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 0;
+                msg->target_enb_x2_ip_address[l].ipv4 = 1;
+                msg->target_enb_x2_ip_address[l].ipv6 = 0;
               } else if (strcmp(*(X2ParamList.paramarray[l][ENB_X2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 0;
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 1;
+                msg->target_enb_x2_ip_address[l].ipv4 = 0;
+                msg->target_enb_x2_ip_address[l].ipv6 = 1;
               } else if (strcmp(*(X2ParamList.paramarray[l][ENB_X2_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 1;
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 1;
+                msg->target_enb_x2_ip_address[l].ipv4 = 1;
+                msg->target_enb_x2_ip_address[l].ipv6 = 1;
               }
             }
 
@@ -2606,37 +2611,37 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
                 exit(1);
               }
 
-              X2AP_REGISTER_ENB_REQ (msg_p).t_reloc_prep = t_reloc_prep;
-              X2AP_REGISTER_ENB_REQ (msg_p).tx2_reloc_overall = tx2_reloc_overall;
-              X2AP_REGISTER_ENB_REQ (msg_p).t_dc_prep = t_dc_prep;
-              X2AP_REGISTER_ENB_REQ (msg_p).t_dc_overall = t_dc_overall;
+              msg->t_reloc_prep = t_reloc_prep;
+              msg->tx2_reloc_overall = tx2_reloc_overall;
+              msg->t_dc_prep = t_dc_prep;
+              msg->t_dc_overall = t_dc_overall;
             }
             // SCTP SETTING
-            X2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = SCTP_OUT_STREAMS;
-            X2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams  = SCTP_IN_STREAMS;
+            msg->sctp_out_streams = SCTP_OUT_STREAMS;
+            msg->sctp_in_streams  = SCTP_IN_STREAMS;
 
             if (EPC_MODE_ENABLED) {
               sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_SCTP_CONFIG);
               config_get( SCTPParams,sizeof(SCTPParams)/sizeof(paramdef_t),aprefix);
-              X2AP_REGISTER_ENB_REQ (msg_p).sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
-              X2AP_REGISTER_ENB_REQ (msg_p).sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
+              msg->sctp_in_streams = (uint16_t)*(SCTPParams[ENB_SCTP_INSTREAMS_IDX].uptr);
+              msg->sctp_out_streams = (uint16_t)*(SCTPParams[ENB_SCTP_OUTSTREAMS_IDX].uptr);
             }
 
             sprintf(aprefix,"%s.[%i].%s",ENB_CONFIG_STRING_ENB_LIST,k,ENB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
             // NETWORK_INTERFACES
             config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-            X2AP_REGISTER_ENB_REQ (msg_p).enb_port_for_X2C = (uint32_t)*(NETParams[ENB_PORT_FOR_X2C_IDX].uptr);
+            msg->enb_port_for_X2C = (uint32_t)*(NETParams[ENB_PORT_FOR_X2C_IDX].uptr);
 
-            if ((NETParams[ENB_IPV4_ADDR_FOR_X2C_IDX].strptr == NULL) || (X2AP_REGISTER_ENB_REQ (msg_p).enb_port_for_X2C == 0)) {
+            if ((NETParams[ENB_IPV4_ADDR_FOR_X2C_IDX].strptr == NULL) || (msg->enb_port_for_X2C == 0)) {
              LOG_E(RRC,"Add eNB IPv4 address and/or port for X2C in the CONF file!\n");
              exit(1);
            }
 
             cidr = *(NETParams[ENB_IPV4_ADDR_FOR_X2C_IDX].strptr);
             address = strtok(cidr, "/");
-            X2AP_REGISTER_ENB_REQ (msg_p).enb_x2_ip_address.ipv6 = 0;
-            X2AP_REGISTER_ENB_REQ (msg_p).enb_x2_ip_address.ipv4 = 1;
-            strcpy(X2AP_REGISTER_ENB_REQ (msg_p).enb_x2_ip_address.ipv4_address, address);
+            msg->enb_x2_ip_address.ipv6 = 0;
+            msg->enb_x2_ip_address.ipv4 = 1;
+            strcpy(msg->enb_x2_ip_address.ipv4_address, address);
           }
         }
       }

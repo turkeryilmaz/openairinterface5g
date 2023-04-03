@@ -25,6 +25,8 @@
 #define INTERTASK_INTERFACE_H_
 #include <stdint.h>
 #include <sys/epoll.h>
+#include "string.h"
+#include <signal.h>
 
 #include <mem_block.h>
 #include <assertions.h>
@@ -74,201 +76,7 @@ typedef struct IttiMsgText_s {
   char      text[];
 } IttiMsgText;
 
-#include <openair2/COMMON/phy_messages_types.h>
-#include <openair2/COMMON/mac_messages_types.h>
-#include <openair2/COMMON/rlc_messages_types.h>
-#include <openair2/COMMON/pdcp_messages_types.h>
-#include <openair2/COMMON/networkDef.h>
-#include <openair2/COMMON/as_message.h>
-#include <openair2/RRC/LTE/rrc_types.h>
-#include <openair2/COMMON/rrc_messages_types.h>
-#include <openair2/COMMON/e1ap_messages_types.h>
-
-#include <openair3/NAS/COMMON/UTIL/OctetString.h>
-#include <openair3/NAS/COMMON/IES/AccessPointName.h>
-#include <openair3/NAS/COMMON/IES/AdditionalUpdateResult.h>
-#include <openair3/NAS/COMMON/IES/AdditionalUpdateType.h>
-#include <openair3/NAS/COMMON/IES/ApnAggregateMaximumBitRate.h>
-#include <openair3/NAS/COMMON/IES/AuthenticationFailureParameter.h>
-#include <openair3/NAS/COMMON/IES/AuthenticationParameterAutn.h>
-#include <openair3/NAS/COMMON/IES/AuthenticationParameterRand.h>
-#include <openair3/NAS/COMMON/IES/AuthenticationResponseParameter.h>
-#include <openair3/NAS/COMMON/IES/CipheringKeySequenceNumber.h>
-#include <openair3/NAS/COMMON/IES/Cli.h>
-#include <openair3/NAS/COMMON/IES/CsfbResponse.h>
-#include <openair3/NAS/COMMON/IES/DaylightSavingTime.h>
-#include <openair3/NAS/COMMON/IES/DetachType.h>
-#include <openair3/NAS/COMMON/IES/DrxParameter.h>
-#include <openair3/NAS/COMMON/IES/EmergencyNumberList.h>
-#include <openair3/NAS/COMMON/IES/EmmCause.h>
-#include <openair3/NAS/COMMON/IES/EpsAttachResult.h>
-#include <openair3/NAS/COMMON/IES/EpsAttachType.h>
-#include <openair3/NAS/COMMON/IES/EpsBearerContextStatus.h>
-#include <openair3/NAS/COMMON/IES/EpsBearerIdentity.h>
-#include <openair3/NAS/COMMON/IES/EpsMobileIdentity.h>
-#include <openair3/NAS/COMMON/IES/EpsNetworkFeatureSupport.h>
-#include <openair3/NAS/COMMON/IES/EpsQualityOfService.h>
-#include <openair3/NAS/COMMON/IES/EpsUpdateResult.h>
-#include <openair3/NAS/COMMON/IES/EpsUpdateType.h>
-#include <openair3/NAS/COMMON/IES/EsmCause.h>
-#include <openair3/NAS/COMMON/IES/EsmInformationTransferFlag.h>
-#include <openair3/NAS/COMMON/IES/EsmMessageContainer.h>
-#include <openair3/NAS/COMMON/IES/GprsTimer.h>
-#include <openair3/NAS/COMMON/IES/GutiType.h>
-#include <openair3/NAS/COMMON/IES/IdentityType2.h>
-#include <openair3/NAS/COMMON/IES/ImeisvRequest.h>
-#include <openair3/NAS/COMMON/IES/KsiAndSequenceNumber.h>
-#include <openair3/NAS/COMMON/IES/LcsClientIdentity.h>
-#include <openair3/NAS/COMMON/IES/LcsIndicator.h>
-#include <openair3/NAS/COMMON/IES/LinkedEpsBearerIdentity.h>
-#include <openair3/NAS/COMMON/IES/LlcServiceAccessPointIdentifier.h>
-#include <openair3/NAS/COMMON/IES/LocationAreaIdentification.h>
-#include <openair3/NAS/COMMON/IES/MessageType.h>
-#include <openair3/NAS/COMMON/IES/MobileIdentity.h>
-#include <openair3/NAS/COMMON/IES/MobileStationClassmark2.h>
-#include <openair3/NAS/COMMON/IES/MobileStationClassmark3.h>
-#include <openair3/NAS/COMMON/IES/MsNetworkCapability.h>
-#include <openair3/NAS/COMMON/IES/MsNetworkFeatureSupport.h>
-#include <openair3/NAS/COMMON/IES/NasKeySetIdentifier.h>
-#include <openair3/NAS/COMMON/IES/NasMessageContainer.h>
-#include <openair3/NAS/COMMON/IES/NasRequestType.h>
-#include <openair3/NAS/COMMON/IES/NasSecurityAlgorithms.h>
-#include <openair3/NAS/COMMON/IES/NetworkName.h>
-#include <openair3/NAS/COMMON/IES/Nonce.h>
-#include <openair3/NAS/COMMON/IES/PacketFlowIdentifier.h>
-#include <openair3/NAS/COMMON/IES/PagingIdentity.h>
-#include <openair3/NAS/COMMON/IES/PdnAddress.h>
-#include <openair3/NAS/COMMON/IES/PdnType.h>
-#include <openair3/NAS/COMMON/IES/PlmnList.h>
-#include <openair3/NAS/COMMON/IES/ProcedureTransactionIdentity.h>
-#include <openair3/NAS/COMMON/IES/ProtocolConfigurationOptions.h>
-#include <openair3/NAS/COMMON/IES/ProtocolDiscriminator.h>
-#include <openair3/NAS/COMMON/IES/PTmsiSignature.h>
-#include <openair3/NAS/COMMON/IES/QualityOfService.h>
-#include <openair3/NAS/COMMON/IES/RadioPriority.h>
-#include <openair3/NAS/COMMON/IES/SecurityHeaderType.h>
-#include <openair3/NAS/COMMON/IES/ServiceType.h>
-#include <openair3/NAS/COMMON/IES/ShortMac.h>
-#include <openair3/NAS/COMMON/IES/SsCode.h>
-#include <openair3/NAS/COMMON/IES/SupportedCodecList.h>
-#include <openair3/NAS/COMMON/IES/TimeZoneAndTime.h>
-#include <openair3/NAS/COMMON/IES/TimeZone.h>
-#include <openair3/NAS/COMMON/IES/TmsiStatus.h>
-#include <openair3/NAS/COMMON/IES/TrackingAreaIdentity.h>
-#include <openair3/NAS/COMMON/IES/TrackingAreaIdentityList.h>
-#include <openair3/NAS/COMMON/IES/TrafficFlowAggregateDescription.h>
-#include <openair3/NAS/COMMON/IES/TrafficFlowTemplate.h>
-#include <openair3/NAS/COMMON/IES/TransactionIdentifier.h>
-#include <openair3/NAS/COMMON/IES/UeNetworkCapability.h>
-#include <openair3/NAS/COMMON/IES/UeRadioCapabilityInformationUpdateNeeded.h>
-#include <openair3/NAS/COMMON/IES/UeSecurityCapability.h>
-#include <openair3/NAS/COMMON/IES/VoiceDomainPreferenceAndUeUsageSetting.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextAccept.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ActivateDedicatedEpsBearerContextRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ActivateDefaultEpsBearerContextAccept.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ActivateDefaultEpsBearerContextReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ActivateDefaultEpsBearerContextRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/BearerResourceAllocationReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/BearerResourceAllocationRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/BearerResourceModificationReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/BearerResourceModificationRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/DeactivateEpsBearerContextAccept.h>
-#include <openair3/NAS/COMMON/ESM/MSG/DeactivateEpsBearerContextRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/esm_cause.h>
-#include <openair3/NAS/COMMON/ESM/MSG/EsmInformationRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/EsmInformationResponse.h>
-#include <openair3/NAS/COMMON/ESM/MSG/EsmStatus.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ModifyEpsBearerContextAccept.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ModifyEpsBearerContextReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/ModifyEpsBearerContextRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/PdnConnectivityReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/PdnConnectivityRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/PdnDisconnectReject.h>
-#include <openair3/NAS/COMMON/ESM/MSG/PdnDisconnectRequest.h>
-#include <openair3/NAS/COMMON/ESM/MSG/esm_msgDef.h>
-#include <openair3/NAS/COMMON/ESM/MSG/esm_msg.h>
-
-#include <openair3/NAS/COMMON/EMM/MSG/AttachAccept.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AttachComplete.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AttachReject.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AttachRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AuthenticationFailure.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AuthenticationReject.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AuthenticationRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/AuthenticationResponse.h>
-#include <openair3/NAS/COMMON/EMM/MSG/CsServiceNotification.h>
-#include <openair3/NAS/COMMON/EMM/MSG/DetachAccept.h>
-#include <openair3/NAS/COMMON/EMM/MSG/DetachRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/DownlinkNasTransport.h>
-#include <openair3/NAS/COMMON/EMM/MSG/emm_cause.h>
-#include <openair3/NAS/COMMON/EMM/MSG/EmmInformation.h>
-#include <openair3/NAS/COMMON/EMM/MSG/EmmStatus.h>
-#include <openair3/NAS/COMMON/EMM/MSG/ExtendedServiceRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/GutiReallocationCommand.h>
-#include <openair3/NAS/COMMON/EMM/MSG/GutiReallocationComplete.h>
-#include <openair3/NAS/COMMON/EMM/MSG/IdentityRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/IdentityResponse.h>
-#include <openair3/NAS/COMMON/EMM/MSG/NASSecurityModeCommand.h>
-#include <openair3/NAS/COMMON/EMM/MSG/NASSecurityModeComplete.h>
-#include <openair3/NAS/COMMON/EMM/MSG/SecurityModeReject.h>
-#include <openair3/NAS/COMMON/EMM/MSG/ServiceReject.h>
-#include <openair3/NAS/COMMON/EMM/MSG/ServiceRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/TrackingAreaUpdateAccept.h>
-#include <openair3/NAS/COMMON/EMM/MSG/TrackingAreaUpdateComplete.h>
-#include <openair3/NAS/COMMON/EMM/MSG/TrackingAreaUpdateReject.h>
-#include <openair3/NAS/COMMON/EMM/MSG/TrackingAreaUpdateRequest.h>
-#include <openair3/NAS/COMMON/EMM/MSG/UplinkNasTransport.h>
-#include <openair3/NAS/COMMON/EMM/MSG/emm_msgDef.h>
-#include <openair3/NAS/COMMON/EMM/MSG/emm_msg.h>
-
-#include <openair3/NAS/COMMON/API/NETWORK/nas_message.h>
-#include <openair2/COMMON/nas_messages_types.h>
-#if ENABLE_RAL
-  #include <ral_messages_types.h>
-#endif
-#include <openair2/COMMON/s1ap_messages_types.h>
-#include <openair2/COMMON/x2ap_messages_types.h>
-#include <openair2/COMMON/m2ap_messages_types.h>
-#include <openair2/COMMON/m3ap_messages_types.h>
-#include <openair2/COMMON/sctp_messages_types.h>
-#include <openair2/COMMON/udp_messages_types.h>
-#include <openair2/COMMON/gtpv1_u_messages_types.h>
-#include <openair2/COMMON/ngap_messages_types.h>
-#include <openair3/SCTP/sctp_eNB_task.h>
-#include <openair3/NAS/UE/nas_proc_defs.h>
-#include <openair3/NAS/UE/ESM/esmData.h>
-#include <openair3/NAS/COMMON/UTIL/nas_timer.h>
-#include <openair3/NAS/UE/ESM/esm_pt_defs.h>
-#include <openair3/NAS/UE/EMM/emm_proc_defs.h>
-#include <openair3/NAS/UE/EMM/emmData.h>
-#include <openair3/NAS/UE/EMM/IdleMode_defs.h>
-#include <openair3/NAS/UE/EMM/emm_fsm_defs.h>
-#include <openair3/NAS/UE/EMM/emmData.h>
-#include <openair3/NAS/COMMON/securityDef.h>
-#include <openair3/NAS/UE/EMM/Authentication.h>
-#include <openair3/NAS/UE/EMM/SecurityModeControl.h>
-#include <openair3/NAS/UE/API/USIM/usim_api.h>
-#include <openair3/NAS/COMMON/userDef.h>
-#include <openair3/NAS/UE/API/USER/at_command.h>
-#include <openair3/NAS/UE/API/USER/at_response.h>
-#include <openair3/NAS/UE/API/USER/user_api_defs.h>
-#include <openair3/NAS/UE/EMM/LowerLayer_defs.h>
-#include <openair3/NAS/UE/user_defs.h>
-#include <openair3/NAS/UE/nas_ue_task.h>
-#include <openair3/S1AP/s1ap_eNB.h>
-#include <openair3/MME_APP/mme_app.h>
-//#include <proto.h>
-
 void *rrc_enb_process_itti_msg(void *);
-#include <openair3/SCTP/sctp_eNB_task.h>
-#include <openair3/NGAP/ngap_gNB.h>
-
-/*
-  static const char *const messages_definition_xml = {
-  #include <messages_xml.h>
-  };
-*/
 
 typedef uint32_t MessageHeaderSize;
 typedef uint32_t itti_message_types_t;
@@ -361,9 +169,6 @@ typedef enum {
   FOREACH_TASK(TASK_ENUM)
 } task_id_t;
 
-extern uint16_t ue_idx_standalone;
-extern uint16_t node_number;
-
 typedef task_id_t thread_id_t;
 
 typedef enum message_priorities_e {
@@ -376,30 +181,22 @@ typedef enum message_priorities_e {
   MESSAGE_PRIORITY_MIN       = 10,
 } message_priorities_t;
 
-
-#define FOREACH_MSG(INTERNAL_MSG)         \
-  INTERNAL_MSG(TIMER_HAS_EXPIRED,  MESSAGE_PRIORITY_MED, timer_has_expired_t, timer_has_expired) \
-  INTERNAL_MSG(INITIALIZE_MESSAGE, MESSAGE_PRIORITY_MED, IttiMsgEmpty, initialize_message)  \
-  INTERNAL_MSG(ACTIVATE_MESSAGE,   MESSAGE_PRIORITY_MED, IttiMsgEmpty, activate_message) \
-  INTERNAL_MSG(DEACTIVATE_MESSAGE, MESSAGE_PRIORITY_MED, IttiMsgEmpty, deactivate_message)  \
-  INTERNAL_MSG(TERMINATE_MESSAGE,  MESSAGE_PRIORITY_MAX, IttiMsgEmpty, terminate_message) \
-  INTERNAL_MSG(MESSAGE_TEST,       MESSAGE_PRIORITY_MED, IttiMsgEmpty, message_test)
+#define FOREACH_MSG(INTERNAL_MSG)                                            \
+  INTERNAL_MSG(TIMER_HAS_EXPIRED, MESSAGE_PRIORITY_MED, timer_has_expired_t) \
+  INTERNAL_MSG(INITIALIZE_MESSAGE, MESSAGE_PRIORITY_MED, IttiMsgEmpty)       \
+  INTERNAL_MSG(ACTIVATE_MESSAGE, MESSAGE_PRIORITY_MED, IttiMsgEmpty)         \
+  INTERNAL_MSG(DEACTIVATE_MESSAGE, MESSAGE_PRIORITY_MED, IttiMsgEmpty)       \
+  INTERNAL_MSG(TERMINATE_MESSAGE, MESSAGE_PRIORITY_MAX, IttiMsgEmpty)        \
+  INTERNAL_MSG(MESSAGE_TEST, MESSAGE_PRIORITY_MED, IttiMsgEmpty)
 
 /* This enum defines messages ids. Each one is unique. */
 typedef enum {
-#define MESSAGE_DEF(iD, pRIO, sTRUCT, fIELDnAME) iD,
+#define MESSAGE_DEF(iD, pRIO, sTRUCT) iD,
   FOREACH_MSG(MESSAGE_DEF)
 #include <all_msg.h>
 #undef MESSAGE_DEF
-  MESSAGES_ID_MAX,
+      MESSAGES_ID_MAX,
 } MessagesIds;
-
-typedef union msg_s {
-#define MESSAGE_DEF(iD, pRIO, sTRUCT, fIELDnAME) sTRUCT fIELDnAME;
-  FOREACH_MSG(MESSAGE_DEF)
-#include <all_msg.h>
-#undef MESSAGE_DEF
-} msg_t;
 
 typedef struct MessageHeader_s {
   MessagesIds messageId;          /**< Unique message id as referenced in enum MessagesIds */
@@ -414,26 +211,46 @@ typedef struct MessageHeader_s {
 typedef struct message_info_s {
   MessagesIds id;
   message_priorities_t priority;
-  /* Message payload size */
-  MessageHeaderSize size;
   /* Printable name */
   const char name[256];
 } message_info_t;
 
-/* Map message id to message information */
-static const message_info_t messages_info[] = {
-#define MESSAGE_DEF(iD, pRIO, sTRUCT, fIELDnAME) { iD, pRIO, sizeof(sTRUCT), #iD },
-  FOREACH_MSG(MESSAGE_DEF)
-#include <all_msg.h>
-#undef MESSAGE_DEF
-};
-
 typedef struct MessageDef_s {
   MessageHeader ittiMsgHeader; /**< Message header */
-  msg_t         ittiMsg;
+  void*         ittiMsg;
 } MessageDef;
 
 
+/** \brief Alloc and memset(0) a new itti message.
+   \param origin_task_id Task ID of the sending task
+   \param message_id Message ID
+   \param size size of the payload to send
+   @returns NULL in case of failure or newly allocated mesage ref
+ **/
+MessageDef *itti_alloc_sized(task_id_t origin_task_id, instance_t originInstance, MessagesIds message_id, MessageHeaderSize size);
+
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+FOREACH_MSG(MESSAGE_DEF)
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+  FOREACH_MSG(MESSAGE_DEF)
+#undef MESSAGE_DEF
+
+/* Map message id to message information */
+  static const message_info_t messages_info[] = {
+#define MESSAGE_DEF(iD, pRIO, sTRUCT) {iD, pRIO, #iD},
+      FOREACH_MSG(MESSAGE_DEF)
+#include <all_msg.h>
+#undef MESSAGE_DEF
+  };
 
 /* Extract the instance from a message */
 #define ITTI_MSG_ID(mSGpTR)                 ((mSGpTR)->ittiMsgHeader.messageId)
@@ -444,7 +261,6 @@ typedef struct MessageDef_s {
 #define ITTI_MSG_NAME(mSGpTR)               itti_get_message_name(ITTI_MSG_ID(mSGpTR))
 #define ITTI_MSG_ORIGIN_NAME(mSGpTR)        itti_get_task_name(ITTI_MSG_ORIGIN_ID(mSGpTR))
 #define ITTI_MSG_DESTINATION_NAME(mSGpTR)   itti_get_task_name(ITTI_MSG_DESTINATION_ID(mSGpTR))
-#define TIMER_HAS_EXPIRED(mSGpTR)           (mSGpTR)->ittiMsg.timer_has_expired
 
 #define INSTANCE_DEFAULT    (UINT16_MAX - 1)
 
@@ -534,16 +350,6 @@ const char *itti_get_task_name(task_id_t task_id);
 /** \brief Alloc and memset(0) a new itti message.
    \param origin_task_id Task ID of the sending task
    \param message_id Message ID
-   @returns NULL in case of failure or newly allocated mesage ref
- **/
-MessageDef *itti_alloc_new_message(
-  task_id_t         origin_task_id,
-  instance_t originInstance,
-  MessagesIds       message_id);
-
-/** \brief Alloc and memset(0) a new itti message.
-   \param origin_task_id Task ID of the sending task
-   \param message_id Message ID
    \param size size of the payload to send
    @returns NULL in case of failure or newly allocated mesage ref
  **/
@@ -568,8 +374,6 @@ void itti_set_task_real_time(task_id_t task_id);
 void itti_send_terminate_message(task_id_t task_id);
 
 void *itti_malloc(task_id_t origin_task_id, task_id_t destination_task_id, ssize_t size);
-void *calloc_or_fail(size_t size);
-void *malloc_or_fail(size_t size);
 int memory_read(const char *datafile, void *data, size_t size);
 int itti_free(task_id_t task_id, void *ptr);
 

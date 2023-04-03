@@ -146,8 +146,8 @@ void process_e1_bearer_context_setup_req(instance_t instance, e1ap_bearer_setup_
   // GTP tunnel for UL
   drb_config_N3gtpu_create(req, &create_tunnel_resp_N3, inst->gtpInstN3);
 
-  MessageDef *msg = itti_alloc_new_message(TASK_CUCP_E1, 0, E1AP_BEARER_CONTEXT_SETUP_RESP);
-  e1ap_bearer_setup_resp_t *resp = &E1AP_BEARER_CONTEXT_SETUP_RESP(msg);
+  MessageDef *msg = E1AP_BEARER_CONTEXT_SETUP_RESP_alloc(TASK_CUCP_E1, 0);
+  e1ap_bearer_setup_resp_t *resp = E1AP_BEARER_CONTEXT_SETUP_RESP_data(msg);
 
   in_addr_t my_addr;
   if (inet_pton(AF_INET, inst->setupReq.localAddressF1U, &my_addr) != 1)

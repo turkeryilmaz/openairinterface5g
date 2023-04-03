@@ -32,6 +32,7 @@
 
 #ifndef M3AP_MCE_INTERFACE_MANAGEMENT_H_
 #define M3AP_MCE_INTERFACE_MANAGEMENT_H_
+#include "openair2/COMMON/sctp_messages_types.h"
 
 /*
  * Session Start 

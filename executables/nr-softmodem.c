@@ -81,6 +81,8 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "gnb_config.h"
 #include "openair2/E1AP/e1ap_common.h"
 #include "openair2/E1AP/e1ap_api.h"
+#include "openair3/SCTP/sctp_eNB_task.h"
+
 
 pthread_cond_t nfapi_sync_cond;
 pthread_mutex_t nfapi_sync_mutex;
@@ -404,7 +406,7 @@ static int create_gNB_tasks(void) {
     if (node_type == ngran_gNB_CU || node_type == ngran_gNB) {
       MessageDef *msg = RCconfig_NR_CU_E1(false);
       instance_t inst = 0;
-      createE1inst(UPtype, inst, &E1AP_SETUP_REQ(msg));
+      createE1inst(UPtype, inst, E1AP_SETUP_REQ_data(msg));
       cuup_init_n3(inst);
       itti_free(TASK_UNKNOWN, msg);
       getCxtE1(inst)->same_process = true;
@@ -539,7 +541,7 @@ void wait_gNBs(void) {
 void terminate_task(task_id_t task_id, module_id_t mod_id) {
   LOG_I(GNB_APP, "sending TERMINATE_MESSAGE to task %s (%d)\n", itti_get_task_name(task_id), task_id);
   MessageDef *msg;
-  msg = itti_alloc_new_message (TASK_ENB_APP, 0, TERMINATE_MESSAGE);
+  msg = TERMINATE_MESSAGE_alloc(TASK_ENB_APP, 0);
   itti_send_msg_to_task (task_id, ENB_MODULE_ID_TO_INSTANCE(mod_id), msg);
 }
 

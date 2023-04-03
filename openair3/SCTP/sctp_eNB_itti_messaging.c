@@ -27,13 +27,9 @@
 int sctp_itti_send_init_msg_multi_cnf(task_id_t task_id, instance_t instance, int multi_sd)
 {
   MessageDef      *message_p;
-  sctp_init_msg_multi_cnf_t *sctp_init_msg_multi_cnf_p;
+  message_p = SCTP_INIT_MSG_MULTI_CNF_alloc(TASK_SCTP, 0);
 
-  message_p = itti_alloc_new_message(TASK_SCTP, 0, SCTP_INIT_MSG_MULTI_CNF);
-
-  sctp_init_msg_multi_cnf_p = &message_p->ittiMsg.sctp_init_msg_multi_cnf;
-
-  sctp_init_msg_multi_cnf_p->multi_sd = multi_sd;
+  SCTP_INIT_MSG_MULTI_CNF_data(message_p)->multi_sd = multi_sd;
 
   return itti_send_msg_to_task(task_id, instance, message_p);
 }
@@ -45,9 +41,9 @@ int sctp_itti_send_new_message_ind(task_id_t task_id, instance_t instance,
   MessageDef      *message_p;
   sctp_data_ind_t *sctp_data_ind_p;
 
-  message_p = itti_alloc_new_message(TASK_SCTP, 0, SCTP_DATA_IND);
+  message_p = SCTP_DATA_IND_alloc(TASK_SCTP, 0);
 
-  sctp_data_ind_p = &message_p->ittiMsg.sctp_data_ind;
+  sctp_data_ind_p =  SCTP_DATA_IND_data(message_p);
 
   sctp_data_ind_p->buffer = itti_malloc(TASK_SCTP, task_id, sizeof(uint8_t) * buffer_length);
 
@@ -69,9 +65,9 @@ int sctp_itti_send_association_resp(task_id_t task_id, instance_t instance,
   MessageDef                  *message_p;
   sctp_new_association_resp_t *sctp_new_association_resp_p;
 
-  message_p = itti_alloc_new_message(TASK_SCTP, 0, SCTP_NEW_ASSOCIATION_RESP);
+  message_p = SCTP_NEW_ASSOCIATION_RESP_alloc(TASK_SCTP, 0);
 
-  sctp_new_association_resp_p = &message_p->ittiMsg.sctp_new_association_resp;
+  sctp_new_association_resp_p = SCTP_NEW_ASSOCIATION_RESP_data(message_p);
 
   sctp_new_association_resp_p->in_streams  = in_streams;
   sctp_new_association_resp_p->out_streams = out_streams;
@@ -89,9 +85,9 @@ int sctp_itti_send_association_ind(task_id_t task_id, instance_t instance,
   MessageDef                 *message_p;
   sctp_new_association_ind_t *sctp_new_association_ind_p;
 
-  message_p = itti_alloc_new_message(TASK_SCTP, 0, SCTP_NEW_ASSOCIATION_IND);
+  message_p = SCTP_NEW_ASSOCIATION_IND_alloc(TASK_SCTP, 0);
 
-  sctp_new_association_ind_p = &message_p->ittiMsg.sctp_new_association_ind;
+  sctp_new_association_ind_p = SCTP_NEW_ASSOCIATION_IND_data(message_p);
 
   sctp_new_association_ind_p->assoc_id    = assoc_id;
   sctp_new_association_ind_p->port        = port;

@@ -37,6 +37,7 @@
 #include "common/ran_context.h"
 
 #include "intertask_interface.h"
+#include "openair2/COMMON/pdcp_messages_types.h"
 
 //#define RRC_DATA_REQ_DEBUG
 //#define DEBUG_RRC 1
@@ -69,19 +70,20 @@ rrc_data_req(
                      ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
                      sdu_sizeP);
   memcpy (message_buffer, buffer_pP, sdu_sizeP);
-  message_p = itti_alloc_new_message (ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, 0, RRC_DCCH_DATA_REQ);
-  RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
-  RRC_DCCH_DATA_REQ (message_p).enb_flag  = ctxt_pP->enb_flag;
-  RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;
-  RRC_DCCH_DATA_REQ (message_p).muip      = muiP;
-  RRC_DCCH_DATA_REQ (message_p).confirmp  = confirmP;
-  RRC_DCCH_DATA_REQ (message_p).sdu_size  = sdu_sizeP;
-  RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
-  //memcpy (RRC_DCCH_DATA_REQ (message_p).sdu_p, buffer_pP, sdu_sizeP);
-  RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
-  RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-  RRC_DCCH_DATA_REQ(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-  RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
+  message_p = RRC_DCCH_DATA_REQ_alloc(ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, 0);
+  RrcDcchDataReq*msg=RRC_DCCH_DATA_REQ_data(message_p);
+  msg->frame     = ctxt_pP->frame;
+  msg->enb_flag  = ctxt_pP->enb_flag;
+  msg->rb_id     = rb_idP;
+  msg->muip      = muiP;
+  msg->confirmp  = confirmP;
+  msg->sdu_size  = sdu_sizeP;
+  msg->sdu_p     = message_buffer;
+  //memcpy (msg->sdu_p, buffer_pP, sdu_sizeP);
+  msg->mode      = modeP;
+  msg->module_id = ctxt_pP->module_id;
+  RRC_DCCH_DATA_REQ_data(message_p)->rnti = ctxt_pP->rntiMaybeUEid;
+  msg->eNB_index = ctxt_pP->eNB_index;
   itti_send_msg_to_task (
     ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE,
     ctxt_pP->instance,
@@ -116,14 +118,15 @@ rrc_data_ind(
     uint8_t *message_buffer;
     message_buffer = itti_malloc (ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, sdu_sizeP);
     memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    message_p = itti_alloc_new_message (ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, 0, RRC_DCCH_DATA_IND);
-    RRC_DCCH_DATA_IND (message_p).frame      = ctxt_pP->frame;
-    RRC_DCCH_DATA_IND (message_p).dcch_index = DCCH_index;
-    RRC_DCCH_DATA_IND (message_p).sdu_size   = sdu_sizeP;
-    RRC_DCCH_DATA_IND (message_p).sdu_p      = message_buffer;
-    RRC_DCCH_DATA_IND(message_p).rnti = ctxt_pP->rntiMaybeUEid;
-    RRC_DCCH_DATA_IND (message_p).module_id  = ctxt_pP->module_id;
-    RRC_DCCH_DATA_IND (message_p).eNB_index  = ctxt_pP->eNB_index;
+    message_p = RRC_DCCH_DATA_IND_alloc(ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, 0);
+    RrcDcchDataInd *msg=RRC_DCCH_DATA_IND_data(message_p);
+    msg->frame      = ctxt_pP->frame;
+    msg->dcch_index = DCCH_index;
+    msg->sdu_size   = sdu_sizeP;
+    msg->sdu_p      = message_buffer;
+    RRC_DCCH_DATA_IND_data(message_p)->rnti = ctxt_pP->rntiMaybeUEid;
+    msg->module_id  = ctxt_pP->module_id;
+    msg->eNB_index  = ctxt_pP->eNB_index;
     itti_send_msg_to_task (ctxt_pP->enb_flag ? TASK_RRC_ENB : TASK_RRC_UE, ctxt_pP->instance, message_p);
   }
 }

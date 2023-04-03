@@ -62,10 +62,16 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_EstablishmentCause.h"
+#include "NR_SIB1.h"
+#include "openair2/COMMON/ngap_messages_types.h"
+#include "openair3/NAS/COMMON/IES/MobileIdentity.h"
+#include "openair2/COMMON/rrc_messages_types.h"
 
 //-------------------
 
 #include "intertask_interface.h"
+#include "radio/COMMON/common_lib.h"
+#include "common/openairinterface5g_limits.h"
 
 /* TODO: be sure this include is correct.
  * It solves a problem of compilation of the RRH GW,

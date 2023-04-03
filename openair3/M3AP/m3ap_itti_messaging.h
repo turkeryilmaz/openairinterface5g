@@ -28,6 +28,7 @@
 
 #ifndef M3AP_MCE_ITTI_MESSAGING_H_
 #define M3AP_MCE_ITTI_MESSAGING_H_
+#include "openair2/COMMON/sctp_messages_types.h"
 
 void m3ap_MCE_itti_send_sctp_data_req(instance_t instance, int32_t assoc_id, uint8_t *buffer,
                                       uint32_t buffer_length, uint16_t stream);

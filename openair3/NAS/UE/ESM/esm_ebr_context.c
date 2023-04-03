@@ -333,8 +333,8 @@ int esm_ebr_context_create(
                   LOG_TRACE(WARNING, "ESM-PROC  - Failed to system command string");
                 }
                 LOG_D(NAS, "Sending NAS_OAI_TUN_NSA msg to LTE UE via itti\n");
-                MessageDef *msg_p = itti_alloc_new_message(TASK_NAS_UE, 0, NAS_OAI_TUN_NSA);
-                memcpy(NAS_OAI_TUN_NSA(msg_p).buffer, command_line, sizeof(NAS_OAI_TUN_NSA(msg_p).buffer));
+                MessageDef *msg_p = NAS_OAI_TUN_NSA_alloc(TASK_NAS_UE, 0);
+                memcpy(NAS_OAI_TUN_NSA_data(msg_p)->buffer, command_line, sizeof(NAS_OAI_TUN_NSA_data(msg_p)->buffer));
                 itti_send_msg_to_task(TASK_RRC_UE, 0, msg_p);
               }
 

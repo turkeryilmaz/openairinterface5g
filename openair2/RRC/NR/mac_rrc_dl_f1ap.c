@@ -26,8 +26,8 @@
 
 static void ue_context_setup_request_f1ap(const f1ap_ue_context_setup_t *req)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
-  f1ap_ue_context_setup_t *f1ap_msg = &F1AP_UE_CONTEXT_SETUP_REQ(msg);
+  MessageDef *msg = F1AP_UE_CONTEXT_SETUP_REQ_alloc(TASK_RRC_GNB, 0);
+  f1ap_ue_context_setup_t *f1ap_msg = F1AP_UE_CONTEXT_SETUP_REQ_data(msg);
   *f1ap_msg = *req;
   AssertFatal(req->cu_to_du_rrc_information == NULL, "cu_to_du_rrc_information not supported yet\n");
   AssertFatal(req->drbs_to_be_setup == NULL, "drbs_to_be_setup not supported yet\n");
@@ -43,8 +43,8 @@ static void ue_context_setup_request_f1ap(const f1ap_ue_context_setup_t *req)
 
 static void ue_context_modification_request_f1ap(const f1ap_ue_context_modif_req_t *req)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_MODIFICATION_REQ);
-  f1ap_ue_context_modif_req_t *f1ap_msg = &F1AP_UE_CONTEXT_MODIFICATION_REQ(msg);
+  MessageDef *msg = F1AP_UE_CONTEXT_MODIFICATION_REQ_alloc(TASK_RRC_GNB, 0);
+  f1ap_ue_context_modif_req_t *f1ap_msg = F1AP_UE_CONTEXT_MODIFICATION_REQ_data(msg);
   *f1ap_msg = *req;
   AssertFatal(req->cu_to_du_rrc_information == NULL, "cu_to_du_rrc_information not supported yet\n");
   AssertFatal(req->drbs_to_be_modified_length == 0, "drbs_to_be_modified not supported yet\n");
@@ -73,8 +73,8 @@ static void ue_context_modification_request_f1ap(const f1ap_ue_context_modif_req
 
 static void ue_context_release_command_f1ap(const f1ap_ue_context_release_cmd_t *cmd)
 {
-  MessageDef *message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_RELEASE_CMD);
-  f1ap_ue_context_release_cmd_t *msg = &F1AP_UE_CONTEXT_RELEASE_CMD(message_p);
+  MessageDef *message_p = F1AP_UE_CONTEXT_RELEASE_CMD_alloc(TASK_RRC_GNB, 0);
+  f1ap_ue_context_release_cmd_t *msg = F1AP_UE_CONTEXT_RELEASE_CMD_data(message_p);
   *msg = *cmd;
   itti_send_msg_to_task (TASK_CU_F1, 0, message_p);
 }
@@ -83,8 +83,8 @@ static void dl_rrc_message_transfer_f1ap(module_id_t module_id, const f1ap_dl_rr
 {
   /* TODO call F1AP function directly? no real-time constraint here */
 
-  MessageDef *message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_DL_RRC_MESSAGE);
-  f1ap_dl_rrc_message_t *msg = &F1AP_DL_RRC_MESSAGE(message_p);
+  MessageDef *message_p = F1AP_DL_RRC_MESSAGE_alloc(TASK_RRC_GNB, 0);
+  f1ap_dl_rrc_message_t *msg = F1AP_DL_RRC_MESSAGE_data(message_p);
   *msg = *dl_rrc;
   if (dl_rrc->rrc_container) {
     msg->rrc_container = malloc(dl_rrc->rrc_container_length);

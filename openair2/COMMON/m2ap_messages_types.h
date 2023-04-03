@@ -25,56 +25,7 @@
 
 #include "s1ap_messages_types.h"
 #include "LTE_PhysCellId.h"
-
-//-------------------------------------------------------------------------------------------//
-// Defines to access message fields.
-
-#define M2AP_MCE_SCTP_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mce_sctp_req
-
-#define M2AP_REGISTER_ENB_REQ(mSGpTR)           (mSGpTR)->ittiMsg.m2ap_register_enb_req
-//#define M2AP_HANDOVER_REQ(mSGpTR)               (mSGpTR)->ittiMsg.m2ap_handover_req
-//#define M2AP_HANDOVER_REQ_ACK(mSGpTR)           (mSGpTR)->ittiMsg.m2ap_handover_req_ack
-#define M2AP_REGISTER_ENB_CNF(mSGpTR)           (mSGpTR)->ittiMsg.m2ap_register_enb_cnf
-#define M2AP_DEREGISTERED_ENB_IND(mSGpTR)       (mSGpTR)->ittiMsg.m2ap_deregistered_enb_ind
-//#define M2AP_UE_CONTEXT_RELEASE(mSGpTR)         (mSGpTR)->ittiMsg.m2ap_ue_context_release
-//#define M2AP_HANDOVER_CANCEL(mSGpTR)            (mSGpTR)->ittiMsg.m2ap_handover_cancel
-
-#define M2AP_ENB_SCTP_REQ(mSGpTR)                   (mSGpTR)->ittiMsg.m2ap_enb_sctp_req
-#define M2AP_SETUP_REQ(mSGpTR)                     (mSGpTR)->ittiMsg.m2ap_setup_req
-#define M2AP_SETUP_RESP(mSGpTR)                    (mSGpTR)->ittiMsg.m2ap_setup_resp
-#define M2AP_SETUP_FAILURE(mSGpTR)                 (mSGpTR)->ittiMsg.m2ap_setup_failure
-
-
-#define M2AP_REGISTER_MCE_REQ(mSGpTR)           (mSGpTR)->ittiMsg.m2ap_register_mce_req
-
-
-
-#define M2AP_MBMS_SCHEDULING_INFORMATION(mSGpTR) 	(mSGpTR)->ittiMsg.m2ap_mbms_scheduling_information
-#define M2AP_MBMS_SCHEDULING_INFORMATION_RESP(mSGpTR) 	(mSGpTR)->ittiMsg.m2ap_mbms_scheduling_information_resp
-#define M2AP_MBMS_SESSION_START_REQ(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_start_req
-#define M2AP_MBMS_SESSION_START_RESP(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_start_resp
-#define M2AP_MBMS_SESSION_START_FAILURE(mSGpTR) 	(mSGpTR)->ittiMsg.m2ap_session_start_failure
-#define M2AP_MBMS_SESSION_STOP_REQ(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_stop_req
-#define M2AP_MBMS_SESSION_STOP_RESP(mSGpTR) 		(mSGpTR)->ittiMsg.m2ap_session_stop_resp
-
-#define M2AP_RESET(mSGpTR)				(mSGpTR)->ittiMsg.m2ap_reset
-#define M2AP_ENB_CONFIGURATION_UPDATE(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_enb_configuration_update
-#define M2AP_ENB_CONFIGURATION_UPDATE_ACK(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_enb_configuration_update_ack
-#define M2AP_ENB_CONFIGURATION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_enb_configuration_update_failure
-#define M2AP_MCE_CONFIGURATION_UPDATE(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mce_configuration_update
-#define M2AP_MCE_CONFIGURATION_UPDATE_ACK(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mce_configuration_update_ack
-#define M2AP_MCE_CONFIGURATION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mce_configuration_update_failure
-
-#define M2AP_ERROR_INDICATION(mSGpTR)			(mSGpTR)->ittiMsg.m2ap_error_indication
-#define M2AP_MBMS_SESSION_UPDATE_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_session_update_req
-#define M2AP_MBMS_SESSION_UPDATE_RESP(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_session_update_resp
-#define	M2AP_MBMS_SESSION_UPDATE_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mbms_session_update_failure
-#define M2AP_MBMS_SERVICE_COUNTING_REPORT(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_report
-#define M2AP_MBMS_OVERLOAD_NOTIFICATION(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_overload_notification
-#define M2AP_MBMS_SERVICE_COUNTING_REQ(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_req
-#define M2AP_MBMS_SERVICE_COUNTING_RESP(mSGpTR)		(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_resp
-#define M2AP_MBMS_SERVICE_COUNTING_FAILURE(mSGpTR)	(mSGpTR)->ittiMsg.m2ap_mbms_service_counting_failure
-
+#include "openair1/PHY/defs_common.h"
 #define M2AP_MAX_NB_ENB_IP_ADDRESS 2
 #define M2AP_MAX_NB_MCE_IP_ADDRESS 2
 
@@ -733,4 +684,18 @@ typedef struct m2ap_mbms_service_counting_failure_s {
 //  uint32_t mme_ue_s1ap_id;
 //} m2ap_handover_req_ack_t;
 //
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT *iD##_data(MessageDef *msg) \
+  {                                                \
+    return (sTRUCT *)msg->ittiMsg;                 \
+  }
+#include "openair2/COMMON/m2ap_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef *iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/m2ap_messages_def.h"
+ #undef MESSAGE_DEF
 #endif /* M2AP_MESSAGES_TYPES_H_ */

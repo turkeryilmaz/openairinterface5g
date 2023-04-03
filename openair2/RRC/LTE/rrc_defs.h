@@ -49,6 +49,9 @@
 
 #include "LAYER2/MAC/mac.h"
 #include "openair2/RRC/common.h"
+#include "openair2/COMMON/s1ap_messages_types.h"
+#include "openair2/COMMON/rrc_messages_types.h"
+
 //for D2D
 #define DEBUG_CTRL_SOCKET
 

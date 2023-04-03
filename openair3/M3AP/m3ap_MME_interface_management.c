@@ -264,8 +264,7 @@ int MME_handle_MBMS_SESSION_START_RESPONSE(instance_t instance,
   int MME_MBMS_M3AP_ID=-1;
   int MCE_MBMS_M3AP_ID=-1;
 
-
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M3AP_MME, 0,M3AP_MBMS_SESSION_START_RESP); //TODO
+  MessageDef *msg_g = M3AP_MBMS_SESSION_START_RESP_alloc(TASK_M3AP_MME, 0);
 
   LOG_D(M3AP, "M3AP: SessionStart-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);
@@ -392,8 +391,7 @@ int MME_handle_MBMS_SESSION_STOP_RESPONSE(instance_t instance,
   int MME_MBMS_M3AP_ID=-1;
   int MCE_MBMS_M3AP_ID=-1;
 
-
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M3AP_MME, 0,M3AP_MBMS_SESSION_STOP_RESP); //TODO
+  MessageDef *msg_g = M3AP_MBMS_SESSION_STOP_RESP_alloc(TASK_M3AP_MME, 0);
 
   LOG_D(M3AP, "M3AP: MBMSSessionStop-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);
@@ -504,74 +502,75 @@ int MME_handle_M3_SETUP_REQUEST(instance_t instance,
 //              assoc_id, stream);
 //  }
 //
-    message_p = itti_alloc_new_message(TASK_M3AP_MME, 0, M3AP_SETUP_REQ); 
+    message_p = M3AP_SETUP_REQ_alloc(TASK_M3AP_MME, 0);
     //printf("M3AP_SETUP_REQ(message_p).assoc_id %d\n",M3AP_SETUP_REQ(message_p).assoc_id);
 //  
 //  /* assoc_id */
-    M3AP_SETUP_REQ(message_p).assoc_id = assoc_id;
+    m3ap_setup_req_t * msg=M3AP_SETUP_REQ_data(message_p);
+    msg->assoc_id = assoc_id;
 //
 // /* GlobalMCE_id */
 // // this function exits if the ie is mandatory
 //  M3AP_FIND_PROTOCOLIE_BY_ID(M3AP_M3SetupRequestIEs_t, ie, container,
 //                             M3AP_ProtocolIE_ID_id_Global_MCE_ID, true);
-//  asn_INTEGER2ulong(&ie->value.choice.GlobalMCE_ID, &M3AP_SETUP_REQ(message_p).GlobalMCE_ID);
-//  LOG_W(M3AP, "M3AP_SETUP_REQ(message_p).GlobalMCE_ID %lu \n", M3AP_SETUP_REQ(message_p).GlobalMCE_ID);
+//  asn_INTEGER2ulong(&ie->value.choice.GlobalMCE_ID, &msg->GlobalMCE_ID);
+//  LOG_W(M3AP, "msg->GlobalMCE_ID %lu \n", msg->GlobalMCE_ID);
 //
 //  /* MCE_name */
 //  M3AP_FIND_PROTOCOLIE_BY_ID(M3AP_M3SetupRequestIEs_t, ie, container,
 //                              M3AP_ProtocolIE_ID_id_MCEname, true);
-//  M3AP_SETUP_REQ(message_p).MCEname = calloc(ie->value.choice.MCEname.size + 1, sizeof(char));
-//  memcpy(M3AP_SETUP_REQ(message_p).MCEname, ie->value.choice.MCEname.buf,
+//  msg->MCEname = calloc(ie->value.choice.MCEname.size + 1, sizeof(char));
+//  memcpy(msg->MCEname, ie->value.choice.MCEname.buf,
 //         ie->value.choice.MCEname.size);
 //
 //  /* Convert the mme name to a printable string */
-//  M3AP_SETUP_REQ(message_p).MCEname[ie->value.choice.MCEname.size] = '\0';
-//  LOG_W(M3AP, "M3AP_SETUP_REQ(message_p).gNB_DU_name %s \n", M3AP_SETUP_REQ(message_p).MCEname);
+//  msg->MCEname[ie->value.choice.MCEname.size] = '\0';
+//  LOG_W(M3AP, "msg->gNB_DU_name %s \n", msg->MCEname);
 //   /* MCE_MBMS_Configuration_data_List */
 //  M3AP_FIND_PROTOCOLIE_BY_ID(M3AP_M3SetupRequestIEs_t, ie, container,
 //                              M3AP_ProtocolIE_ID_id_MCE_MBMS_Configuration_data_List, true);
-//  M3AP_SETUP_REQ(message_p).num_mbms_available = ie->value.choice.MCE_MBMS_Configuration_data_List.list.count;
-//  LOG_W(M3AP, "M3AP_SETUP_REQ(message_p).num_mbms_available %d \n",
-//        M3AP_SETUP_REQ(message_p).num_mbms_available);
-//  int num_mbms_available = M3AP_SETUP_REQ(message_p).num_mbms_available;
+//  msg->num_mbms_available = ie->value.choice.MCE_MBMS_Configuration_data_List.list.count;
+//  LOG_W(M3AP, "msg->num_mbms_available %d \n",
+//        msg->num_mbms_available);
+//  int num_mbms_available = msg->num_mbms_available;
 //  for (i=0; i<num_mbms_available; i++) {
 //	 M3AP_MCE_MBMS_Configuration_data_Item_t *mbms_configuration_item_p;
 //         mbms_configuration_item_p = &(((M3AP_MCE_MBMS_Configuration_data_ItemIEs_t *)ie->value.choice.MCE_MBMS_Configuration_data_List.list.array[i])->value.choice.MCE_MBMS_Configuration_data_Item);
 //    /* eCGI */
 //       //mbms_configuration_item_p->eCGI ... (M3AP_ECGI_t)
 //
-//    OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.pLMN_Identity),M3AP_SETUP_REQ(message_p).plmn_identity[i]);
-//    //OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.eUTRANcellIdentifier),M3AP_SETUP_REQ(message_p).eutran_cell_identifier[i]);
+//    OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.pLMN_Identity),msg->plmn_identity[i]);
+//    //OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->eCGI.eUTRANcellIdentifier),msg->eutran_cell_identifier[i]);
 //    /* mbsfnSynchronisationArea */
 //       //mbms_configuration_item_p->mbsfnSynchronisationArea ... (M3AP_MBSFN_SynchronisationArea_ID_t)
 //
-//    M3AP_SETUP_REQ(message_p).mbsfn_synchronization_area[i]=mbms_configuration_item_p->mbsfnSynchronisationArea;
+//    msg->mbsfn_synchronization_area[i]=mbms_configuration_item_p->mbsfnSynchronisationArea;
 //    /* mbmsServiceAreaList */
 //       //mbms_configuration_item_p->mbmsServiceAreaList ... (M3AP_MBMS_Service_Area_ID_List_t)
 //   for(j=0;j<1;j++){
-//   	//OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->mbmsServiceAreaList.list.array[j]), M3AP_SETUP_REQ(message_p).service_area_id[i][j]);
+//   	//OCTET_STRING_TO_INT16(&(mbms_configuration_item_p->mbmsServiceAreaList.list.array[j]), msg->service_area_id[i][j]);
 //   }
 //
 // }
 //    
 ////    /* tac */
-////    OCTET_STRING_TO_INT16(&(served_celles_item_p->served_Cell_Information.fiveGS_TAC), M3AP_SETUP_REQ(message_p).tac[i]);
-////    LOG_D(M3AP, "M3AP_SETUP_REQ(message_p).tac[%d] %d \n",
-////          i, M3AP_SETUP_REQ(message_p).tac[i]);
+////    OCTET_STRING_TO_INT16(&(served_celles_item_p->served_Cell_Information.fiveGS_TAC), msg->tac[i]);
+////    LOG_D(M3AP, "msg->tac[%d] %d \n",
+////          i, msg->tac[i]);
 ////
 ////    /* - nRCGI */
-////    TBCD_TO_MCC_MNC(&(served_celles_item_p->served_Cell_Information.nRCGI.pLMN_Identity), M3AP_SETUP_REQ(message_p).mcc[i],
-////                    M3AP_SETUP_REQ(message_p).mnc[i],
-////                    M3AP_SETUP_REQ(message_p).mnc_digit_length[i]);
+////    TBCD_TO_MCC_MNC(&(served_celles_item_p->served_Cell_Information.nRCGI.pLMN_Identity), msg->mcc[i],
+////                    msg->mnc[i],
+////                    msg->mnc_digit_length[i]);
 ////    
 ////    
 ////    // NR cellID
 ////    BIT_STRING_TO_NR_CELL_IDENTITY(&served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity,
-////				   M3AP_SETUP_REQ(message_p).nr_cellid[i]);
+////				   msg->nr_cellid[i]);
 ////    LOG_D(M3AP, "[SCTP %d] Received nRCGI: MCC %d, MNC %d, CELL_ID %llu\n", assoc_id,
-////          M3AP_SETUP_REQ(message_p).mcc[i],
-////          M3AP_SETUP_REQ(message_p).mnc[i],
-////          (long long unsigned int)M3AP_SETUP_REQ(message_p).nr_cellid[i]);
+////          msg->mcc[i],
+////          msg->mnc[i],
+////          (long long unsigned int)msg->nr_cellid[i]);
 ////    LOG_D(M3AP, "nr_cellId : %x %x %x %x %x\n",
 ////          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[0],
 ////          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[1],
@@ -579,35 +578,35 @@ int MME_handle_M3_SETUP_REQUEST(instance_t instance,
 ////          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[3],
 ////          served_celles_item_p->served_Cell_Information.nRCGI.nRCellIdentity.buf[4]);
 ////    /* - nRPCI */
-////    M3AP_SETUP_REQ(message_p).nr_pci[i] = served_celles_item_p->served_Cell_Information.nRPCI;
-////    LOG_D(M3AP, "M3AP_SETUP_REQ(message_p).nr_pci[%d] %d \n",
-////          i, M3AP_SETUP_REQ(message_p).nr_pci[i]);
+////    msg->nr_pci[i] = served_celles_item_p->served_Cell_Information.nRPCI;
+////    LOG_D(M3AP, "msg->nr_pci[%d] %d \n",
+////          i, msg->nr_pci[i]);
 ////  
 ////    // System Information
 ////    /* mib */
-////    M3AP_SETUP_REQ(message_p).mib[i] = calloc(served_celles_item_p->gNB_DU_System_Information->mIB_message.size + 1, sizeof(char));
-////    memcpy(M3AP_SETUP_REQ(message_p).mib[i], served_celles_item_p->gNB_DU_System_Information->mIB_message.buf,
+////    msg->mib[i] = calloc(served_celles_item_p->gNB_DU_System_Information->mIB_message.size + 1, sizeof(char));
+////    memcpy(msg->mib[i], served_celles_item_p->gNB_DU_System_Information->mIB_message.buf,
 ////           served_celles_item_p->gNB_DU_System_Information->mIB_message.size);
 ////    /* Convert the mme name to a printable string */
-////    M3AP_SETUP_REQ(message_p).mib[i][served_celles_item_p->gNB_DU_System_Information->mIB_message.size] = '\0';
-////    M3AP_SETUP_REQ(message_p).mib_length[i] = served_celles_item_p->gNB_DU_System_Information->mIB_message.size;
-////    LOG_D(M3AP, "M3AP_SETUP_REQ(message_p).mib[%d] %s , len = %d \n",
-////          i, M3AP_SETUP_REQ(message_p).mib[i], M3AP_SETUP_REQ(message_p).mib_length[i]);
+////    msg->mib[i][served_celles_item_p->gNB_DU_System_Information->mIB_message.size] = '\0';
+////    msg->mib_length[i] = served_celles_item_p->gNB_DU_System_Information->mIB_message.size;
+////    LOG_D(M3AP, "msg->mib[%d] %s , len = %d \n",
+////          i, msg->mib[i], msg->mib_length[i]);
 ////
 ////    /* sib1 */
-////    M3AP_SETUP_REQ(message_p).sib1[i] = calloc(served_celles_item_p->gNB_DU_System_Information->sIB1_message.size + 1, sizeof(char));
-////    memcpy(M3AP_SETUP_REQ(message_p).sib1[i], served_celles_item_p->gNB_DU_System_Information->sIB1_message.buf,
+////    msg->sib1[i] = calloc(served_celles_item_p->gNB_DU_System_Information->sIB1_message.size + 1, sizeof(char));
+////    memcpy(msg->sib1[i], served_celles_item_p->gNB_DU_System_Information->sIB1_message.buf,
 ////           served_celles_item_p->gNB_DU_System_Information->sIB1_message.size);
 ////    /* Convert the mme name to a printable string */
-////    M3AP_SETUP_REQ(message_p).sib1[i][served_celles_item_p->gNB_DU_System_Information->sIB1_message.size] = '\0';
-////    M3AP_SETUP_REQ(message_p).sib1_length[i] = served_celles_item_p->gNB_DU_System_Information->sIB1_message.size;
-////    LOG_D(M3AP, "M3AP_SETUP_REQ(message_p).sib1[%d] %s , len = %d \n",
-////          i, M3AP_SETUP_REQ(message_p).sib1[i], M3AP_SETUP_REQ(message_p).sib1_length[i]);
+////    msg->sib1[i][served_celles_item_p->gNB_DU_System_Information->sIB1_message.size] = '\0';
+////    msg->sib1_length[i] = served_celles_item_p->gNB_DU_System_Information->sIB1_message.size;
+////    LOG_D(M3AP, "msg->sib1[%d] %s , len = %d \n",
+////          i, msg->sib1[i], msg->sib1_length[i]);
 ////  }
 //
 //
     //printf("m3ap_mme_data_from_mce->assoc_id %d %d\n",m3ap_mme_data_from_mce->assoc_id,assoc_id);
-    *m3ap_mme_data_from_mce = M3AP_SETUP_REQ(message_p);
+    *m3ap_mme_data_from_mce = *M3AP_SETUP_REQ_data(message_p);
     //printf("m3ap_mme_data_from_mce->assoc_id %d %d\n",m3ap_mme_data_from_mce->assoc_id,assoc_id);
 //
     itti_send_msg_to_task(TASK_MME_APP, ENB_MODULE_ID_TO_INSTANCE(instance), message_p);
@@ -1027,8 +1026,7 @@ int MME_handle_MBMS_SESSION_UPDATE_RESPONSE(instance_t instance,
   int MME_MBMS_M3AP_ID=-1;
   int MCE_MBMS_M3AP_ID=-1;
 
-
-  MessageDef *msg_g = itti_alloc_new_message(TASK_M3AP_MME, 0,M3AP_MBMS_SESSION_UPDATE_RESP); //TODO
+  MessageDef *msg_g = M3AP_MBMS_SESSION_UPDATE_RESP_alloc(TASK_M3AP_MME, 0);
 
   LOG_D(M3AP, "M3AP: SessionUpdate-Resp: protocolIEs.list.count %d\n",
          in->protocolIEs.list.count);

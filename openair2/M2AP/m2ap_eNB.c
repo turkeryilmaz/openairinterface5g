@@ -233,8 +233,8 @@ int m2ap_eNB_init_sctp (m2ap_eNB_instance_t *instance_p,
   sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
-  message = itti_alloc_new_message (TASK_M2AP_ENB, 0, SCTP_INIT_MSG_MULTI_REQ);
-  sctp_init = &message->ittiMsg.sctp_init_multi;
+  message = SCTP_INIT_MSG_MULTI_REQ_alloc(TASK_M2AP_ENB, 0);
+  sctp_init =SCTP_INIT_MSG_MULTI_REQ_data(message);
   sctp_init->port = enb_port_for_M2C;
   sctp_init->ppid = M2AP_SCTP_PPID;
   sctp_init->ipv4 = 1;
@@ -267,8 +267,8 @@ static void m2ap_eNB_register_eNB(m2ap_eNB_instance_t *instance_p,
   m2ap_eNB_data_t                  *m2ap_enb_data             = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(target_eNB_ip_address != NULL);
-  message = itti_alloc_new_message(TASK_M2AP_ENB, 0, SCTP_NEW_ASSOCIATION_REQ_MULTI);
-  sctp_new_association_req = &message->ittiMsg.sctp_new_association_req_multi;
+  message = SCTP_NEW_ASSOCIATION_REQ_MULTI_alloc(TASK_M2AP_ENB, 0);
+  sctp_new_association_req =SCTP_NEW_ASSOCIATION_REQ_MULTI_data(message);
   sctp_new_association_req->port = enb_port_for_M2C;
   sctp_new_association_req->ppid = M2AP_SCTP_PPID;
   sctp_new_association_req->in_streams  = in_streams;
@@ -426,125 +426,6 @@ void m2ap_eNB_handle_sctp_init_msg_multi_cnf(
   }
 }
 
-//static
-//void m2ap_eNB_handle_handover_req(instance_t instance,
-//                                  m2ap_handover_req_t *m2ap_handover_req)
-//{
-//  m2ap_eNB_instance_t *instance_p;
-//  m2ap_eNB_data_t     *target;
-//  m2ap_id_manager     *id_manager;
-//  int                 ue_id;
-//
-//  int target_pci = m2ap_handover_req->target_physCellId;
-//
-//  instance_p = m2ap_eNB_get_instance(instance);
-//  DevAssert(instance_p != NULL);
-//
-//  target = m2ap_is_eNB_pci_in_list(target_pci);
-//  DevAssert(target != NULL);
-//
-//  /* allocate m2ap ID */
-//  id_manager = &instance_p->id_manager;
-//  ue_id = m2ap_allocate_new_id(id_manager);
-//  if (ue_id == -1) {
-//    M2AP_ERROR("could not allocate a new M2AP UE ID\n");
-//    /* TODO: cancel handover: send (to be defined) message to RRC */
-//    exit(1);
-//  }
-//  /* id_source is ue_id, id_target is unknown yet */
-//  m2ap_set_ids(id_manager, ue_id, m2ap_handover_req->rnti, ue_id, -1);
-//  m2ap_id_set_state(id_manager, ue_id, M2ID_STATE_SOURCE_PREPARE);
-//  m2ap_set_reloc_prep_timer(id_manager, ue_id,
-//                            m2ap_timer_get_tti(&instance_p->timers));
-//  m2ap_id_set_target(id_manager, ue_id, target);
-//
-//  m2ap_eNB_generate_m2_handover_request(instance_p, target, m2ap_handover_req, ue_id);
-//}
-
-//static
-//void m2ap_eNB_handle_handover_req_ack(instance_t instance,
-//                                      m2ap_handover_req_ack_t *m2ap_handover_req_ack)
-//{
-//  /* TODO: remove this hack (the goal is to find the correct
-//   * eNodeB structure for the other end) - we need a proper way for RRC
-//   * and M2AP to identify eNodeBs
-//   * RRC knows about mod_id and M2AP knows about eNB_id (eNB_ID in
-//   * the configuration file)
-//   * as far as I understand.. CROUX
-//   */
-//  m2ap_eNB_instance_t *instance_p;
-//  m2ap_eNB_data_t     *target;
-//  int source_assoc_id = m2ap_handover_req_ack->source_assoc_id;
-//  int                 ue_id;
-//  int                 id_source;
-//  int                 id_target;
-//
-//  instance_p = m2ap_eNB_get_instance(instance);
-//  DevAssert(instance_p != NULL);
-//
-//  target = m2ap_get_eNB(NULL, source_assoc_id, 0);
-//  DevAssert(target != NULL);
-//
-//  /* rnti is a new information, save it */
-//  ue_id     = m2ap_handover_req_ack->m2_id_target;
-//  id_source = m2ap_id_get_id_source(&instance_p->id_manager, ue_id);
-//  id_target = ue_id;
-//  m2ap_set_ids(&instance_p->id_manager, ue_id, m2ap_handover_req_ack->rnti, id_source, id_target);
-//
-//  m2ap_eNB_generate_m2_handover_request_ack(instance_p, target, m2ap_handover_req_ack);
-//}
-//
-//static
-//void m2ap_eNB_ue_context_release(instance_t instance,
-//                                 m2ap_ue_context_release_t *m2ap_ue_context_release)
-//{
-//  m2ap_eNB_instance_t *instance_p;
-//  m2ap_eNB_data_t     *target;
-//  int source_assoc_id = m2ap_ue_context_release->source_assoc_id;
-//  int ue_id;
-//  instance_p = m2ap_eNB_get_instance(instance);
-//  DevAssert(instance_p != NULL);
-//
-//  target = m2ap_get_eNB(NULL, source_assoc_id, 0);
-//  DevAssert(target != NULL);
-//
-//  m2ap_eNB_generate_m2_ue_context_release(instance_p, target, m2ap_ue_context_release);
-//
-//  /* free the M2AP UE ID */
-//  ue_id = m2ap_find_id_from_rnti(&instance_p->id_manager, m2ap_ue_context_release->rnti);
-//  if (ue_id == -1) {
-//    M2AP_ERROR("could not find UE %x\n", m2ap_ue_context_release->rnti);
-//    exit(1);
-//  }
-//  m2ap_release_id(&instance_p->id_manager, ue_id);
-//}
-
-//void MCE_task_send_sctp_init_req(instance_t enb_id) {
-//  // 1. get the itti msg, and retrive the enb_id from the message
-//  // 2. use RC.rrc[enb_id] to fill the sctp_init_t with the ip, port
-//  // 3. creat an itti message to init
-//
-//  LOG_I(M2AP, "M2AP_SCTP_REQ(create socket)\n");
-//  MessageDef  *message_p = NULL;
-//
-//  message_p = itti_alloc_new_message (M2AP, 0, SCTP_INIT_MSG);
-//  message_p->ittiMsg.sctp_init.port = M2AP_PORT_NUMBER;
-//  message_p->ittiMsg.sctp_init.ppid = M2AP_SCTP_PPID;
-//  message_p->ittiMsg.sctp_init.ipv4 = 1;
-//  message_p->ittiMsg.sctp_init.ipv6 = 0;
-//  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-//  //message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(RC.rrc[enb_id]->eth_params_s.my_addr);
-//  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr("127.0.0.7");
-//  /*
-//   * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
-//   * * * * Disable it for now.
-//   */
-//  message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
-//  message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
-//
-//  itti_send_msg_to_task(TASK_SCTP, enb_id, message_p);
-//}
-//
 void *m2ap_eNB_task(void *arg) {
   MessageDef *received_msg = NULL;
   int         result;
@@ -557,118 +438,98 @@ void *m2ap_eNB_task(void *arg) {
 
   while (1) {
     itti_receive_msg(TASK_M2AP_ENB, &received_msg);
-
+    instance_t inst=ITTI_MSG_DESTINATION_INSTANCE(received_msg);
     switch (ITTI_MSG_ID(received_msg)) {
       case MESSAGE_TEST:
-	LOG_D(M2AP,"eNB Received MESSAGE_TEST Message %s\n",itti_get_task_name(ITTI_MSG_ORIGIN_ID(received_msg)));
-	//MessageDef * message_p = itti_alloc_new_message(TASK_M2AP_ENB, 0, MESSAGE_TEST);
-        //itti_send_msg_to_task(TASK_M3AP, 1/*ctxt_pP->module_id*/, message_p);
-	break;
+        LOG_D(M2AP, "eNB Received MESSAGE_TEST Message %s\n", itti_get_task_name(ITTI_MSG_ORIGIN_ID(received_msg)));
+        break;
       case TERMINATE_MESSAGE:
         M2AP_WARN(" *** Exiting M2AP thread\n");
         itti_exit_task();
         break;
 
       case M2AP_SUBFRAME_PROCESS:
-        m2ap_check_timers(ITTI_MSG_DESTINATION_INSTANCE(received_msg));
+        m2ap_check_timers(inst);
         break;
 
       case M2AP_REGISTER_ENB_REQ:
 	LOG_I(M2AP,"eNB Received M2AP_REGISTER_ENB_REQ Message\n");
-        m2ap_eNB_handle_register_eNB(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_REGISTER_ENB_REQ(received_msg));
+        m2ap_eNB_handle_register_eNB(inst,M2AP_REGISTER_ENB_REQ_data(received_msg));
         break;
-
-
       case M2AP_MBMS_SCHEDULING_INFORMATION_RESP:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SCHEDULING_INFORMATION_RESP Message\n");
-        eNB_send_MBMS_SCHEDULING_INFORMATION_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SCHEDULING_INFORMATION_RESP(received_msg));
+        eNB_send_MBMS_SCHEDULING_INFORMATION_RESPONSE(inst,M2AP_MBMS_SCHEDULING_INFORMATION_RESP_data(received_msg));
 	break;
       case M2AP_MBMS_SESSION_START_RESP:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SESSION_START_RESP Message\n");
-        eNB_send_MBMS_SESSION_START_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SESSION_START_RESP(received_msg));
+        eNB_send_MBMS_SESSION_START_RESPONSE(inst,M2AP_MBMS_SESSION_START_RESP_data(received_msg));
 	break;
       case M2AP_MBMS_SESSION_START_FAILURE:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SESSION_START_FAILURE Message\n");
-        eNB_send_MBMS_SESSION_START_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SESSION_START_FAILURE(received_msg));
+        eNB_send_MBMS_SESSION_START_FAILURE(inst,M2AP_MBMS_SESSION_START_FAILURE_data(received_msg));
 	break;
       case M2AP_MBMS_SESSION_STOP_RESP:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SESSION_STOP_RESP Message\n");
-        eNB_send_MBMS_SESSION_STOP_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SESSION_STOP_RESP(received_msg));
+        eNB_send_MBMS_SESSION_STOP_RESPONSE(inst,M2AP_MBMS_SESSION_STOP_RESP_data(received_msg));
 	break;
       case M2AP_ENB_CONFIGURATION_UPDATE:
 	LOG_I(M2AP,"eNB M2AP_ENB_CONFIGURATION_UPDATE Message\n");
-        eNB_send_eNB_CONFIGURATION_UPDATE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_ENB_CONFIGURATION_UPDATE(received_msg));
+        eNB_send_eNB_CONFIGURATION_UPDATE(inst,M2AP_ENB_CONFIGURATION_UPDATE_data(received_msg));
 	break;
       case M2AP_MCE_CONFIGURATION_UPDATE_ACK:
 	LOG_I(M2AP,"eNB M2AP_MCE_CONFIGURATION_UPDATE_ACK Message\n");
-        //eNB_send_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+        //eNB_send_MCE_CONFIGURATION_UPDATE_ACKNOWLEDGE(inst,
          //                            &M2AP_MCE_CONFIGURATION_UPDATE_ACK(received_msg));
 	break;
       case M2AP_MCE_CONFIGURATION_UPDATE_FAILURE:
 	LOG_I(M2AP,"eNB M2AP_MCE_CONFIGURATION_UPDATE_FAILURE Message\n");
-        //(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
+        //(inst,
                                      //&M2AP_MCE_CONFIGURATION_UPDATE_FAILURE(received_msg));
 	break;
       case M2AP_MBMS_SESSION_UPDATE_RESP:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SESSION_UPDATE_RESP Message\n");
-        eNB_send_MBMS_SESSION_UPDATE_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SESSION_UPDATE_RESP(received_msg));
+        eNB_send_MBMS_SESSION_UPDATE_RESPONSE(inst,M2AP_MBMS_SESSION_UPDATE_RESP_data(received_msg));
 	break;
       case M2AP_MBMS_SESSION_UPDATE_FAILURE:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SESSION_UPDATE_FAILURE Message\n");
-        eNB_send_MBMS_SESSION_UPDATE_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SESSION_UPDATE_FAILURE(received_msg));
+        eNB_send_MBMS_SESSION_UPDATE_FAILURE(inst,M2AP_MBMS_SESSION_UPDATE_FAILURE_data(received_msg));
 	break;
       case M2AP_MBMS_SERVICE_COUNTING_REPORT:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SERVICE_COUNTING_REPORT Message\n");
-        eNB_send_MBMS_SERVICE_COUNTING_REPORT(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SERVICE_COUNTING_REPORT(received_msg));
+        eNB_send_MBMS_SERVICE_COUNTING_REPORT(inst,M2AP_MBMS_SERVICE_COUNTING_REPORT_data(received_msg));
 	break;
       case M2AP_MBMS_OVERLOAD_NOTIFICATION:
 	LOG_I(M2AP,"eNB M2AP_MBMS_OVERLOAD_NOTIFICATION Message\n");
-        eNB_send_MBMS_OVERLOAD_NOTIFICATION(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_OVERLOAD_NOTIFICATION(received_msg));
+        eNB_send_MBMS_OVERLOAD_NOTIFICATION(inst,M2AP_MBMS_OVERLOAD_NOTIFICATION_data(received_msg));
 	break;
       case M2AP_MBMS_SERVICE_COUNTING_RESP:
 	LOG_I(M2AP,"eNB M2AP_MBMS_SERVICE_COUNTING_RESP Message\n");
-        eNB_send_MBMS_SERVICE_COUNTING_RESP(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SERVICE_COUNTING_RESP(received_msg));
+        eNB_send_MBMS_SERVICE_COUNTING_RESP(inst,M2AP_MBMS_SERVICE_COUNTING_RESP_data(received_msg));
 	break;
       case M2AP_MBMS_SERVICE_COUNTING_FAILURE:
 	LOG_I(M2AP,"eNB  Message\n");
-        eNB_send_MBMS_SERVICE_COUNTING_FAILURE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                     &M2AP_MBMS_SERVICE_COUNTING_FAILURE(received_msg));
+        eNB_send_MBMS_SERVICE_COUNTING_FAILURE(inst,M2AP_MBMS_SERVICE_COUNTING_FAILURE_data(received_msg));
 	break;
 
 
       case SCTP_INIT_MSG_MULTI_CNF:
 	LOG_I(M2AP,"eNB Received SCTP_INIT_MSG_MULTI_CNF Message\n");
-        m2ap_eNB_handle_sctp_init_msg_multi_cnf(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                                &received_msg->ittiMsg.sctp_init_msg_multi_cnf);
+        m2ap_eNB_handle_sctp_init_msg_multi_cnf(inst,SCTP_INIT_MSG_MULTI_CNF_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
 	LOG_I(M2AP,"eNB Received SCTP_NEW_ASSOCIATION_RESP Message\n");
-        m2ap_eNB_handle_sctp_association_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                              &received_msg->ittiMsg.sctp_new_association_resp);
+        m2ap_eNB_handle_sctp_association_resp(inst,SCTP_NEW_ASSOCIATION_RESP_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_IND:
 	LOG_I(M2AP,"eNB Received SCTP_NEW_ASSOCIATION Message\n");
-        m2ap_eNB_handle_sctp_association_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                             &received_msg->ittiMsg.sctp_new_association_ind);
+        m2ap_eNB_handle_sctp_association_ind(inst,SCTP_NEW_ASSOCIATION_IND_data(received_msg));
         break;
 
       case SCTP_DATA_IND:
 	LOG_I(M2AP,"eNB Received SCTP_DATA_IND Message\n");
-        m2ap_eNB_handle_sctp_data_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                      &received_msg->ittiMsg.sctp_data_ind);
+        m2ap_eNB_handle_sctp_data_ind(inst,SCTP_DATA_IND_data(received_msg));
         break;
 
       default:

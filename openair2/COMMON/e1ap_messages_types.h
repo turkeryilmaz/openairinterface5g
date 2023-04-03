@@ -38,12 +38,6 @@
 #define E1AP_MAX_NUM_DRBS 4
 #define E1AP_MAX_NUM_UP_PARAM 4
 
-#define E1AP_SETUP_REQ(mSGpTR)                            (mSGpTR)->ittiMsg.e1ap_setup_req
-#define E1AP_SETUP_RESP(mSGpTR)                           (mSGpTR)->ittiMsg.e1ap_setup_resp
-#define E1AP_BEARER_CONTEXT_SETUP_REQ(mSGpTR)             (mSGpTR)->ittiMsg.e1ap_bearer_setup_req
-#define E1AP_BEARER_CONTEXT_SETUP_RESP(mSGpTR)            (mSGpTR)->ittiMsg.e1ap_bearer_setup_resp
-#define E1AP_BEARER_CONTEXT_MODIFICATION_REQ(mSGpTR)      (mSGpTR)->ittiMsg.e1ap_bearer_setup_req
-
 typedef f1ap_net_ip_address_t e1ap_net_ip_address_t;
 
 typedef struct PLMN_ID_s {
@@ -223,5 +217,20 @@ typedef struct e1ap_bearer_setup_resp_s {
   int numPDUSessions;
   pdu_session_setup_t pduSession[E1AP_MAX_NUM_PDU_SESSIONS];
 } e1ap_bearer_setup_resp_t;
+
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)              \
+  static inline sTRUCT* iD##_data(MessageDef* msg) \
+  {                                                \
+    return (sTRUCT*)msg->ittiMsg;                  \
+  }
+#include "openair2/COMMON/e1ap_messages_def.h"
+#undef MESSAGE_DEF
+#define MESSAGE_DEF(iD, pRIO, sTRUCT)                                                 \
+  static inline MessageDef* iD##_alloc(task_id_t origintaskID, instance_t originINST) \
+  {                                                                                   \
+    return itti_alloc_sized(origintaskID, originINST, iD, sizeof(sTRUCT));            \
+  }
+#include "openair2/COMMON/e1ap_messages_def.h"
+ #undef MESSAGE_DEF
 
 #endif /* E1AP_MESSAGES_TYPES_H */

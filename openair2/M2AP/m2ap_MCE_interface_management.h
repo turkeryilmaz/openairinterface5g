@@ -32,6 +32,7 @@
 
 #ifndef M2AP_MCE_INTERFACE_MANAGEMENT_H_
 #define M2AP_MCE_INTERFACE_MANAGEMENT_H_
+#include "openair2/COMMON/m2ap_messages_types.h"
 /*
  * MBMS Session start
  */

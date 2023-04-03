@@ -542,8 +542,8 @@ static void generateAuthenticationResp(nr_ue_nas_t *nas, as_nas_info_t *initialN
 int nas_itti_kgnb_refresh_req(const uint8_t kgnb[32])
 {
   MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_KENB_REFRESH_REQ);
-  memcpy(NAS_KENB_REFRESH_REQ(message_p).kenb, kgnb, sizeof(NAS_KENB_REFRESH_REQ(message_p).kenb));
+  message_p = NAS_KENB_REFRESH_REQ_alloc(TASK_NAS_NRUE, 0);
+  memcpy(NAS_KENB_REFRESH_REQ_data(message_p)->kenb, kgnb, sizeof(NAS_KENB_REFRESH_REQ_data(message_p)->kenb));
   return itti_send_msg_to_task(TASK_RRC_NRUE, 0, message_p);
 }
 
@@ -896,8 +896,8 @@ uint8_t get_msg_type(uint8_t *pdu_buffer, uint32_t length) {
 
 static void send_nas_uplink_data_req(instance_t instance, const as_nas_info_t *initial_nas_msg)
 {
-  MessageDef *msg = itti_alloc_new_message(TASK_NAS_NRUE, 0, NAS_UPLINK_DATA_REQ);
-  ul_info_transfer_req_t *req = &NAS_UPLINK_DATA_REQ(msg);
+  MessageDef *msg = NAS_UPLINK_DATA_REQ_alloc(TASK_NAS_NRUE, 0);
+  ul_info_transfer_req_t *req = NAS_UPLINK_DATA_REQ_data(msg);
   req->UEid = instance;
   req->nasMsg.data = (uint8_t *) initial_nas_msg->data;
   req->nasMsg.length = initial_nas_msg->length;
@@ -942,9 +942,9 @@ void *nas_nrue_task(void *args_p)
                 "[UE %ld] Received %s: errCode %u, cellID %u, tac %u\n",
                 instance,
                 ITTI_MSG_NAME(msg_p),
-                NAS_CELL_SELECTION_CNF(msg_p).errCode,
-                NAS_CELL_SELECTION_CNF(msg_p).cellID,
-                NAS_CELL_SELECTION_CNF(msg_p).tac);
+                NAS_CELL_SELECTION_CNF_data(msg_p)->errCode,
+                NAS_CELL_SELECTION_CNF_data(msg_p)->cellID,
+                NAS_CELL_SELECTION_CNF_data(msg_p)->tac);
           // as_stmsi_t s_tmsi={0, 0};
           // as_nas_info_t nas_info;
           // plmn_t plmnID={0, 0, 0, 0};
@@ -953,26 +953,26 @@ void *nas_nrue_task(void *args_p)
           break;
 
         case NAS_CELL_SELECTION_IND:
-          LOG_I(NAS, "[UE %ld] Received %s: cellID %u, tac %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_CELL_SELECTION_IND(msg_p).cellID, NAS_CELL_SELECTION_IND(msg_p).tac);
+          LOG_I(NAS, "[UE %ld] Received %s: cellID %u, tac %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_CELL_SELECTION_IND_data(msg_p)->cellID, NAS_CELL_SELECTION_IND_data(msg_p)->tac);
 
           /* TODO not processed by NAS currently */
           break;
 
         case NAS_PAGING_IND:
-          LOG_I(NAS, "[UE %ld] Received %s: cause %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_PAGING_IND(msg_p).cause);
-
+          LOG_I(NAS, "[UE %ld] Received %s: cause %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_PAGING_IND_data(msg_p)->cause);
           /* TODO not processed by NAS currently */
           break;
 
         case NAS_CONN_ESTABLI_CNF: {
-          LOG_I(NAS, "[UE %ld] Received %s: errCode %u, length %u\n", instance, ITTI_MSG_NAME(msg_p), NAS_CONN_ESTABLI_CNF(msg_p).errCode, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
+          NasConnEstabCnf *msg=NAS_CONN_ESTABLI_CNF_data(msg_p);
+          LOG_I(NAS, "[UE %ld] Received %s: errCode %u, length %u\n", instance, ITTI_MSG_NAME(msg_p), msg->errCode, msg->nasMsg.length);
 
-          pdu_buffer = NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.data;
-          msg_type = get_msg_type(pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
+          pdu_buffer = msg->nasMsg.data;
+          msg_type = get_msg_type(pdu_buffer, msg->nasMsg.length);
 
           if (msg_type == REGISTRATION_ACCEPT) {
             LOG_I(NAS, "[UE] Received REGISTRATION ACCEPT message\n");
-            decodeRegistrationAccept(pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length, nas);
+            decodeRegistrationAccept(pdu_buffer, NAS_CONN_ESTABLI_CNF_data(msg_p)->nasMsg.length, nas);
 
             as_nas_info_t initialNasMsg;
             memset(&initialNasMsg, 0, sizeof(as_nas_info_t));
@@ -990,7 +990,7 @@ void *nas_nrue_task(void *args_p)
               LOG_I(NAS, "Send NAS_UPLINK_DATA_REQ message(PduSessionEstablishRequest)\n");
             }
           } else if (msg_type == FGS_PDU_SESSION_ESTABLISHMENT_ACC) {
-            capture_pdu_session_establishment_accept_msg(pdu_buffer, NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length);
+            capture_pdu_session_establishment_accept_msg(pdu_buffer, msg->nasMsg.length);
           }
 
           break;
@@ -998,7 +998,7 @@ void *nas_nrue_task(void *args_p)
 
       case NAS_CONN_RELEASE_IND:
         LOG_I(NAS, "[UE %ld] Received %s: cause %u\n", instance, ITTI_MSG_NAME (msg_p),
-              NAS_CONN_RELEASE_IND (msg_p).cause);
+              NAS_CONN_RELEASE_IND_data (msg_p)->cause);
         /* the following is not clean, but probably necessary: we need to give
          * time to RLC to Ack the SRB1 PDU which contained the RRC release
          * message. Hence, we just below wait some time, before finally
@@ -1009,14 +1009,14 @@ void *nas_nrue_task(void *args_p)
 
       case NAS_UPLINK_DATA_CNF:
         LOG_I(NAS, "[UE %ld] Received %s: UEid %u, errCode %u\n", instance, ITTI_MSG_NAME (msg_p),
-              NAS_UPLINK_DATA_CNF (msg_p).UEid, NAS_UPLINK_DATA_CNF (msg_p).errCode);
+              NAS_UPLINK_DATA_CNF_data (msg_p)->UEid, NAS_UPLINK_DATA_CNF_data (msg_p)->errCode);
 
         break;
 
       case NAS_DEREGISTRATION_REQ: {
           LOG_I(NAS, "[UE %ld] Received %s\n", instance, ITTI_MSG_NAME(msg_p));
           if (nas->guti) {
-            nas_deregistration_req_t *req = &NAS_DEREGISTRATION_REQ(msg_p);
+            nas_deregistration_req_t *req = NAS_DEREGISTRATION_REQ_data(msg_p);
             as_nas_info_t initialNasMsg = {0};
             generateDeregistrationRequest(nas, &initialNasMsg, req);
             send_nas_uplink_data_req(instance, &initialNasMsg);
@@ -1028,16 +1028,15 @@ void *nas_nrue_task(void *args_p)
 
       case NAS_DOWNLINK_DATA_IND:
       {
-        LOG_I(NAS,
-              "[UE %ld] Received %s: length %u , buffer %p\n",
-              instance,
-              ITTI_MSG_NAME(msg_p),
-              NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length,
-              NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data);
+        LOG_I(NAS, "[UE %ld] Received %s: UEid %lu, length %u , buffer %p\n", instance,
+                                                                            ITTI_MSG_NAME (msg_p),
+                                                                            instance,
+                                                                            NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.length,
+                                                                            NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.data);
         as_nas_info_t initialNasMsg={0};
 
-        pdu_buffer = NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data;
-        msg_type = get_msg_type(pdu_buffer, NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length);
+        pdu_buffer = NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.data;
+        msg_type = get_msg_type(pdu_buffer, NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.length);
 
         switch(msg_type){
 
@@ -1066,7 +1065,7 @@ void *nas_nrue_task(void *args_p)
 	    if ((payload_container_length >= PAYLOAD_CONTAINER_LENGTH_MIN) &&
 		(payload_container_length <= PAYLOAD_CONTAINER_LENGTH_MAX))
 	      offset += (PLAIN_5GS_NAS_MESSAGE_HEADER_LENGTH + 3);
-	    if (offset < NAS_CONN_ESTABLI_CNF(msg_p).nasMsg.length) 
+	    if (offset < NAS_DOWNLINK_DATA_IND_data(msg_p)->nasMsg.length) 
 	      payload_container = pdu_buffer + offset;
 	    
 	    while(offset < payload_container_length) {

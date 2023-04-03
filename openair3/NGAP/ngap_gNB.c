@@ -57,6 +57,7 @@
 #include "ngap_gNB_itti_messaging.h"
 
 #include "ngap_gNB_ue_context.h" // test, to be removed
+#include "openair2/COMMON/sctp_messages_types.h"
 
 #include "assertions.h"
 #include "conversions.h"
@@ -98,8 +99,8 @@ static void ngap_gNB_register_amf(ngap_gNB_instance_t *instance_p,
 
   DevAssert(instance_p != NULL);
   DevAssert(amf_ip_address != NULL);
-  message_p = itti_alloc_new_message(TASK_NGAP, 0, SCTP_NEW_ASSOCIATION_REQ);
-  sctp_new_association_req_p = &message_p->ittiMsg.sctp_new_association_req;
+  message_p = SCTP_NEW_ASSOCIATION_REQ_alloc(TASK_NGAP, 0);
+  sctp_new_association_req_p = SCTP_NEW_ASSOCIATION_REQ_data(message_p);
   sctp_new_association_req_p->port = NGAP_PORT_NUMBER;
   sctp_new_association_req_p->ppid = NGAP_SCTP_PPID;
   sctp_new_association_req_p->in_streams  = in_streams;
@@ -290,63 +291,63 @@ void *ngap_gNB_process_itti_msg(void *notUsed) {
          * Each gNB has to send an NGAP_REGISTER_GNB message with its
          * own parameters.
          */
-        ngap_gNB_handle_register_gNB(instance, &NGAP_REGISTER_GNB_REQ(received_msg));
+        ngap_gNB_handle_register_gNB(instance, NGAP_REGISTER_GNB_REQ_data(received_msg));
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
-        ngap_gNB_handle_sctp_association_resp(instance, &received_msg->ittiMsg.sctp_new_association_resp);
+        ngap_gNB_handle_sctp_association_resp(instance,SCTP_NEW_ASSOCIATION_RESP_data(received_msg));
         break;
 
       case SCTP_DATA_IND:
-        ngap_gNB_handle_sctp_data_ind(&received_msg->ittiMsg.sctp_data_ind);
+        ngap_gNB_handle_sctp_data_ind(SCTP_DATA_IND_data(received_msg));
         break;
 
       case NGAP_NAS_FIRST_REQ:
-        ngap_gNB_handle_nas_first_req(instance, &NGAP_NAS_FIRST_REQ(received_msg));
+        ngap_gNB_handle_nas_first_req(instance, NGAP_NAS_FIRST_REQ_data(received_msg));
         break;
 
       case NGAP_UPLINK_NAS:
-        ngap_gNB_nas_uplink(instance, &NGAP_UPLINK_NAS(received_msg));
+        ngap_gNB_nas_uplink(instance, NGAP_UPLINK_NAS_data(received_msg));
         break;
 
       case NGAP_UE_CAPABILITIES_IND:
-        ngap_gNB_ue_capabilities(instance, &NGAP_UE_CAPABILITIES_IND(received_msg));
+        ngap_gNB_ue_capabilities(instance, NGAP_UE_CAPABILITIES_IND_data(received_msg));
         break;
 
       case NGAP_INITIAL_CONTEXT_SETUP_RESP:
-        ngap_gNB_initial_ctxt_resp(instance, &NGAP_INITIAL_CONTEXT_SETUP_RESP(received_msg));
+        ngap_gNB_initial_ctxt_resp(instance, NGAP_INITIAL_CONTEXT_SETUP_RESP_data(received_msg));
         break;
 
       case NGAP_PDUSESSION_SETUP_RESP:
-        ngap_gNB_pdusession_setup_resp(instance, &NGAP_PDUSESSION_SETUP_RESP(received_msg));
+        ngap_gNB_pdusession_setup_resp(instance, NGAP_PDUSESSION_SETUP_RESP_data(received_msg));
         break;
 
       case NGAP_PDUSESSION_MODIFY_RESP:
-        ngap_gNB_pdusession_modify_resp(instance, &NGAP_PDUSESSION_MODIFY_RESP(received_msg));
+        ngap_gNB_pdusession_modify_resp(instance, NGAP_PDUSESSION_MODIFY_RESP_data(received_msg));
         break;
 
       case NGAP_NAS_NON_DELIVERY_IND:
-        ngap_gNB_nas_non_delivery_ind(instance, &NGAP_NAS_NON_DELIVERY_IND(received_msg));
+        ngap_gNB_nas_non_delivery_ind(instance, NGAP_NAS_NON_DELIVERY_IND_data(received_msg));
         break;
 
       case NGAP_PATH_SWITCH_REQ:
-        ngap_gNB_path_switch_req(instance, &NGAP_PATH_SWITCH_REQ(received_msg));
+        ngap_gNB_path_switch_req(instance, NGAP_PATH_SWITCH_REQ_data(received_msg));
         break;
 
       case NGAP_PDUSESSION_MODIFICATION_IND:
-        ngap_gNB_generate_PDUSESSION_Modification_Indication(instance, &NGAP_PDUSESSION_MODIFICATION_IND(received_msg));
+        ngap_gNB_generate_PDUSESSION_Modification_Indication(instance, NGAP_PDUSESSION_MODIFICATION_IND_data(received_msg));
         break;
 
       case NGAP_UE_CONTEXT_RELEASE_COMPLETE:
-        ngap_ue_context_release_complete(instance, &NGAP_UE_CONTEXT_RELEASE_COMPLETE(received_msg));
+        ngap_ue_context_release_complete(instance, NGAP_UE_CONTEXT_RELEASE_COMPLETE_data(received_msg));
         break;
 
       case NGAP_UE_CONTEXT_RELEASE_REQ:
-        ngap_ue_context_release_req(instance, &NGAP_UE_CONTEXT_RELEASE_REQ(received_msg));
+        ngap_ue_context_release_req(instance, NGAP_UE_CONTEXT_RELEASE_REQ_data(received_msg));
         break;
 
       case NGAP_PDUSESSION_RELEASE_RESPONSE:
-        ngap_gNB_pdusession_release_resp(instance, &NGAP_PDUSESSION_RELEASE_RESPONSE(received_msg));
+        ngap_gNB_pdusession_release_resp(instance, NGAP_PDUSESSION_RELEASE_RESPONSE_data(received_msg));
         break;
 
       default:

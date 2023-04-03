@@ -25,19 +25,21 @@
  * \date 2019
  * \version 0.1
  */
+#ifndef M2AP_ENB_DEFS_H_
+#define M2AP_ENB_DEFS_H_
 
 #include <stdint.h>
 
 #include "queue.h"
 #include "tree.h"
+#include "common/ngran_types.h"
+#include "openair1/PHY/defs_common.h"
 
 #include "sctp_eNB_defs.h"
 
 #include "m2ap_ids.h" //looks X2AP specific for HO
 #include "m2ap_timers.h"
-
-#ifndef M2AP_ENB_DEFS_H_
-#define M2AP_ENB_DEFS_H_
+#include "openair2/COMMON/m2ap_messages_types.h"
 
 #define M2AP_ENB_NAME_LENGTH_MAX    (150)
 
