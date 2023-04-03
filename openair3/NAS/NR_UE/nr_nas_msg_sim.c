@@ -47,6 +47,8 @@
 #include <openair1/SIMULATION/ETH_TRANSPORT/proto.h>
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
 
+// #define AUTH_ALGO_MILENAGE
+
 uint8_t  *registration_request_buf;
 uint32_t  registration_request_len;
 extern char *baseNetAddress;
@@ -174,6 +176,27 @@ int mm_msg_encode(MM_msg *mm_msg, uint8_t *buffer, uint32_t len) {
   LOG_FUNC_RETURN (header_result + encode_result);
 }
 
+void derive_keys_xor(uint8_t key[16], uint8_t rand[16], uint8_t ck[16], uint8_t ik[16], uint8_t ak[6], uint8_t res[16]) {
+  // RES aka XDOut
+  for (int i = 0; i < 16; ++i) {
+    res[i] = key[i] ^ rand[i];
+  }
+  printf("res: "); for (int i = 0; i < 16; ++i) printf("%02x", res[i]); printf("\n");
+  // AK
+  for (int i = 0; i <6 ; i++) {
+    ak[i] = res[3+i];
+  }
+  printf("ak: "); for (int i = 0; i < 6; ++i) printf("%02x", ak[i]); printf("\n");
+  // CK
+  memmove(&ck[0], &res[1], 15);
+  ck[15] = res[0];
+  printf("ck: "); for (int i = 0; i < 16; ++i) printf("%02x", ck[i]); printf("\n");
+  // IK
+  memmove(&ik[0], &ck[1], 15);
+  ik[15] = ck[0];
+  printf("ik: "); for (int i = 0; i < 16; ++i) printf("%02x", ik[i]); printf("\n");
+}
+
 void transferRES(uint8_t ck[16], uint8_t ik[16], uint8_t *input, uint8_t rand[16], uint8_t *output, uicc_t* uicc) {
   uint8_t S[100]={0};
   S[0] = 0x6B;
@@ -185,6 +208,7 @@ void transferRES(uint8_t ck[16], uint8_t ik[16], uint8_t *input, uint8_t rand[16
     S[3 + netNamesize + i] = rand[i];
   S[19 + netNamesize] = 0x00;
   S[20 + netNamesize] = 0x10;
+#ifdef AUTH_ALGO_MILENAGE
   for (int i = 0; i < 8; i++)
     S[21 + netNamesize + i] = input[i];
   S[29 + netNamesize] = 0x00;
@@ -204,33 +228,52 @@ void transferRES(uint8_t ck[16], uint8_t ik[16], uint8_t *input, uint8_t rand[16
     oldS[24 + i] = input[i];
   oldS[32] = 0x00;
   oldS[33] = 0x08;
-
+#else
+  for (int i = 0; i < 16; i++) {
+    S[21 + netNamesize + i] = input[i];
+  }
+  S[37 + netNamesize] = 0x00;
+  S[38 + netNamesize] = 0x10;
+#endif
 
   uint8_t key[32];
   memcpy(&key[0], ck, 16);
   memcpy(&key[16], ik, 16);  //KEY
   uint8_t out[32];
+#ifdef AUTH_ALGO_MILENAGE
   kdf(key, 32, S, 31 + netNamesize, out, 32);
-  for (int i = 0; i < 16; i++)
+#else
+  kdf(key, 32, S, 39 + netNamesize, out, 32);
+#endif
+  for (int i = 0; i < 16; i++) {
     output[i] = out[16 + i];
+  }
 }
 
 void derive_kausf(uint8_t ck[16], uint8_t ik[16], uint8_t sqn[6], uint8_t kausf[32], uicc_t *uicc) {
+
   uint8_t S[100]={0};
   uint8_t key[32];
 
+  printf(">>> %s\n", __FUNCTION__); for (int i = 0; i < 32; ++i) printf("%02x", key[i]); printf("\n");
   memcpy(&key[0], ck, 16);
   memcpy(&key[16], ik, 16);  //KEY
+  printf("Key: "); for (int i = 0; i < 32; ++i) printf("%02x", key[i]); printf("\n");
+
   S[0] = 0x6A;
+  printf("%s, nmc-sz=%d\n", uicc->imsiStr, uicc->nmc_size);
   servingNetworkName (S+1, uicc->imsiStr, uicc->nmc_size);
   int netNamesize = strlen((char*)S+1);
   S[1 + netNamesize] = (uint8_t)((netNamesize & 0xff00) >> 8);
   S[2 + netNamesize] = (uint8_t)(netNamesize & 0x00ff);
   for (int i = 0; i < 6; i++) {
-   S[3 + netNamesize + i] = sqn[i];
+    S[3 + netNamesize + i] = sqn[i];
   }
   S[9 + netNamesize] = 0x00;
   S[10 + netNamesize] = 0x06;
+
+  printf("Key: "); for (int i = 0; i < 11 + netNamesize; ++i) printf("%02x", S[i]); printf("\n");
+
   kdf(key, 32, S, 11 + netNamesize, kausf, 32);
 }
 
@@ -274,7 +317,7 @@ void derive_knas(algorithm_type_dist_t nas_alg_type, uint8_t nas_alg_id, uint8_t
     knas_int[i] = out[16 + i];
 }
 
-void derive_kgnb(uint8_t kamf[32], uint32_t count, uint8_t *kgnb){
+void derive_kgnb(uint8_t kamf[32], uint32_t count, uint8_t *kgnb) {
   /* Compute the KDF input parameter
    * S = FC(0x6E) || UL NAS Count || 0x00 0x04 || 0x01 || 0x00 0x01
    */
@@ -336,7 +379,11 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
 
   uint8_t resTemp[16];
   uint8_t ck[16], ik[16];
+#ifdef AUTH_ALGO_MILENAGE
   f2345(uicc->key, rand, resTemp, ck, ik, ak, uicc->opc);
+#else
+  derive_keys_xor(uicc->key, rand, ck, ik, ak, resTemp);
+#endif
 
   transferRES(ck, ik, resTemp, rand, output, uicc);
 
@@ -350,30 +397,11 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
   derive_knas(0x02, 2, kamf, knas_int);
   derive_kgnb(kamf,0,kgnb);
 
-  printf("kausf:");
-  for(int i = 0; i < 32; i++){
-    printf("%x ", kausf[i]);
-  }
-  printf("\n");
-
-  printf("kseaf:");
-  for(int i = 0; i < 32; i++){
-    printf("%x ", kseaf[i]);
-  }
-
-  printf("\n");
-
-  printf("kamf:");
-  for(int i = 0; i < 32; i++){
-    printf("%x ", kamf[i]);
-  }
-  printf("\n");
-
-  printf("knas_int:\n");
-  for(int i = 0; i < 16; i++){
-    printf("%x ", knas_int[i]);
-  }
-  printf("\n");
+  printf("xres:");     for(int i = 0; i < 16; i++) printf("%02x", output[i]);   printf("\n");
+  printf("kausf:");    for(int i = 0; i < 32; i++) printf("%02x", kausf[i]);    printf("\n");
+  printf("kseaf:");    for(int i = 0; i < 32; i++) printf("%02x", kseaf[i]);    printf("\n");
+  printf("kamf:");     for(int i = 0; i < 32; i++) printf("%02x", kamf[i]);     printf("\n");
+  printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", knas_int[i]); printf("\n");
 }
 
 void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
@@ -510,8 +538,8 @@ static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, 
   OctetString res;
   res.length = 16;
   res.value = calloc(1,16);
-  /* Workaround fix of bypassing authentication for the TTCN */
-  //memcpy(res.value,ue_security_key[Mod_id]->res,16);
+
+  memcpy(res.value,ue_security_key[Mod_id]->res,16);
 
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg;
