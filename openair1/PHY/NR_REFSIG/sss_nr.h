@@ -91,7 +91,7 @@ EXTERN const int16_t phase_im_nr[PHASE_HYPOTHESIS_NUMBER]
 #endif
 ;
 
-EXTERN c16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
+EXTERN int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 
 /************** FUNCTION ******************************************/
 
