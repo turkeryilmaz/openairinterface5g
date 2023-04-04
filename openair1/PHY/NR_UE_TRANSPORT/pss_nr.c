@@ -89,7 +89,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
     primary_synchro[i].r = ((d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR);
     primary_synchro[i].i = 0;
     primary_synchro2[i].r = d_pss[i];
-    primary_synchro2[i].i = 0;
+    primary_synchro2[i].i = d_pss[i];
   }
 
   /* call of IDFT should be done with ordered input as below
@@ -118,7 +118,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
-  c16_t in[fp->ofdm_symbol_size];
+  c16_t in[sizeof(int16_t) * fp->ofdm_symbol_size];
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
     in[k]= primary_synchro[i];
@@ -126,7 +126,9 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
     if (k == fp->ofdm_symbol_size) k = 0;
   }
 
-  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
+  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size];
+  memset(out, 0, sizeof(out));
+  memset(primary_synchro_time_nr[N_ID_2], 0, sizeof(int16_t) * fp->ofdm_symbol_size);
   idft((int16_t)get_idft(fp->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
   for (unsigned int i = 0; i < fp->ofdm_symbol_size; i++) {
     primary_synchro_time_nr[N_ID_2][i] = out[i];

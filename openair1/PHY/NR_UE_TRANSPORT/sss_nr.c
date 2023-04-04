@@ -74,8 +74,8 @@ void init_context_sss_nr(int amp)
     x1[i] = x1_initial[i];
   }
   for (int i = 0; i < (LENGTH_SSS_NR - INITIAL_SSS_NR); i++) {
-    x0[i + 7] = (x0[i + 4] + x0[i])% (2);
-    x1[i + 7] = (x1[i + 1] + x1[i])% (2);
+    x0[i + 7] = (x0[i + 4] + x0[i]) % (2);
+    x1[i + 7] = (x1[i + 1] + x1[i]) % (2);
   }
 
   int nid_2_num = get_softmodem_params()->sl_mode == 0 ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
@@ -143,9 +143,9 @@ void insert_sss_nr(c16_t *sss_time,
   unsigned int k = ofdm_symbol_size - ((LENGTH_SSS_NR/2)+1);
 
   /* SSS is directly mapped to subcarrier */
-  c16_t in[ofdm_symbol_size];
+  c16_t in[sizeof(int16_t) * ofdm_symbol_size];
   memset(in, 0, sizeof(in));
-  for (int i=0; i < LENGTH_SSS_NR; i++) {
+  for (int i = 0; i < LENGTH_SSS_NR; i++) {
     in[i].r = d_sss[Nid2][Nid1][i];
     in[i].i = 0;
     k++;
@@ -156,9 +156,11 @@ void insert_sss_nr(c16_t *sss_time,
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
-  c16_t out[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
+  c16_t out[sizeof(int16_t) * ofdm_symbol_size];
+  memset(out, 0, sizeof(out));
+  memset(sss_time, 0, sizeof(int16_t) * ofdm_symbol_size);
   idft(IDFT_2048, (int16_t *)&in, (int16_t *)&out, 1);
-  for (unsigned int i = 0; i <ofdm_symbol_size; i++) {
+  for (unsigned int i = 0; i < ofdm_symbol_size; i++) {
     sss_time[i] = out[i];
   }
 }
