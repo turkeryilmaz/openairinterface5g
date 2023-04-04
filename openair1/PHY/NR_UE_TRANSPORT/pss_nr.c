@@ -70,7 +70,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   AssertFatal(N_ID_2>=0 && N_ID_2 <=2,"Illegal N_ID_2 %d\n",N_ID_2);
   int16_t d_pss[LENGTH_PSS_NR];
   int16_t x[LENGTH_PSS_NR];
-  int16_t *primary_synchro_time = primary_synchro_time_nr[N_ID_2];
+  int16_t *primary_synchro_time = (int16_t *)primary_synchro_time_nr[N_ID_2];
   unsigned int length = fp->ofdm_symbol_size;
   unsigned int size = length * IQ_SIZE; /* i & q */
   int16_t *primary_synchro = primary_synchro_nr[N_ID_2]; /* pss in complex with alternatively i then q */
@@ -263,7 +263,7 @@ void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
   int sizePss = LENGTH_PSS_NR * IQ_SIZE;  /* complex value i & q signed 16 bits */
   int size = ofdm_symbol_size * IQ_SIZE; /* i and q samples signed 16 bits */
   int16_t *p = NULL;
-  int16_t *q = NULL;
+  c16_t *q = NULL;
 
   AssertFatal(ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n",ofdm_symbol_size);
   for (int i = 0; i < NUMBER_PSS_SEQUENCE; i++) {
