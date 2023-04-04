@@ -1102,7 +1102,7 @@ static int _nas_message_decrypt(
     LOG_FUNC_RETURN (0);
   };
   LOG_FUNC_RETURN (0);
-  
+
 }
 
 /****************************************************************************
