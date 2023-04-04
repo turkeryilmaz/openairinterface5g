@@ -85,17 +85,33 @@
 #define PAYLOAD_CONTAINER_LENGTH_MIN                       3
 #define PAYLOAD_CONTAINER_LENGTH_MAX                       65537
 
+#define NR_NAS_CIP_INT_KEY_LEN_BYTES                       (16)
+
+
+
+#define NIA0_ALG_ID     EIA0_ALG_ID
+// 3GPP TS 33.501: D.3.1.2 128-NIA1 128-NIA1 is identical to 128-EIA1 as specified in Annex B of TS 33.401
+#define NIA1_128_ALG_ID EIA1_128_ALG_ID
+// 3GPP TS 33.501: D.3.1.3 128-NIA2 128-NIA2 is identical to 128-EIA2 as specified in Annex B of TS 33.401
+#define NIA2_128_ALG_ID EIA2_128_ALG_ID
+
+#define NEA0_ALG_ID     EEA0_ALG_ID
+// 3GPP TS 33.501: D.2.1.2 128-NEA1 128-NEA1 is identical to 128-EEA1 as specified in Annex B of TS 33.401
+#define NEA1_128_ALG_ID EEA1_128_ALG_ID
+// 3GPP TS 33.501: D.2.1.3 128-NEA2 128-NEA2 is identical to 128-EEA2 as specified in Annex B of TS 33.401
+#define NEA2_128_ALG_ID EEA2_128_ALG_ID
+
 /* Security Key for SA UE */
 typedef struct {
   uint8_t kausf[32];
   uint8_t kseaf[32];
   uint8_t kamf[32];
-  uint8_t knas_int[16];
+  uint8_t knas_int[NR_NAS_CIP_INT_KEY_LEN_BYTES];
+  uint8_t knas_enc[NR_NAS_CIP_INT_KEY_LEN_BYTES];
   uint8_t res[16];
   uint8_t rand[16];
   uint8_t kgnb[32];
 } ue_sa_security_key_t;
-
 
 typedef enum fgs_protocol_discriminator_e {
   /* Protocol discriminator identifier for 5GS Mobility Management */
@@ -104,7 +120,6 @@ typedef enum fgs_protocol_discriminator_e {
   /* Protocol discriminator identifier for 5GS Session Management */
   FGS_SESSION_MANAGEMENT_MESSAGE =    0x2E,
 } fgs_protocol_discriminator_t;
-
 
 typedef struct {
   uint8_t ex_protocol_discriminator;
@@ -135,8 +150,6 @@ typedef union {
   fgs_service_request_msg                fgs_service_request;
 } MM_msg;
 
-
-
 typedef struct {
   MM_msg mm_msg;    /* 5GS Mobility Management messages */
 } fgs_nas_message_plain_t;
@@ -145,7 +158,6 @@ typedef struct {
   fgs_nas_message_security_header_t header;
   fgs_nas_message_plain_t plain;
 } fgs_nas_message_security_protected_t;
-
 
 typedef union {
   fgs_nas_message_security_header_t header;
@@ -184,7 +196,12 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id);
 void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id);
 void *nas_nrue_task(void *args_p);
 
+/**
+ * The helper function to recalculate the kgnb, where kgnb=f(kamf, ulNasCount).
+ * With current implementation, NAS calulates and reports the kgnb value to RRC
+ * once, but UE need this key refreshed after the RRC Release for subsequent
+ * calculations of AS Security keys. Note, the NAS keeps track of UlNASCount.
+ */
+void updateKgNB(int Mod_id, uint8_t *kgnb);
+
 #endif /* __NR_NAS_MSG_SIM_H__*/
-
-
-
