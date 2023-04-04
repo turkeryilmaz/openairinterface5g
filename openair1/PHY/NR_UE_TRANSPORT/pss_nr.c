@@ -64,68 +64,33 @@
 *
 *********************************************************************/
 
-void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
+void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
 {
   AssertFatal(fp->ofdm_symbol_size > 127,"Illegal ofdm_symbol_size %d\n",fp->ofdm_symbol_size);
   AssertFatal(N_ID_2>=0 && N_ID_2 <=2,"Illegal N_ID_2 %d\n",N_ID_2);
-  int16_t d_pss[LENGTH_PSS_NR];
+
+  const int x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
   int16_t x[LENGTH_PSS_NR];
-  int16_t *primary_synchro_time = (int16_t *)primary_synchro_time_nr[N_ID_2];
-  unsigned int length = fp->ofdm_symbol_size;
-  unsigned int size = length * IQ_SIZE; /* i & q */
-  int16_t *primary_synchro = primary_synchro_nr[N_ID_2]; /* pss in complex with alternatively i then q */
-  int16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
-
-
-  #define INITIAL_PSS_NR    (7)
-  const int x_initial[INITIAL_PSS_NR] = {0, 1, 1 , 0, 1, 1, 1};
-
-  assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
-  assert(size <= SYNCF_TMP_SIZE);
-  assert(size <= SYNC_TMP_SIZE);
-
-  bzero(synchroF_tmp, size);
-  bzero(synchro_tmp, size);
-
-  for (int i=0; i < INITIAL_PSS_NR; i++) {
+  for (int i = 0; i < INITIAL_PSS_NR; i++)
     x[i] = x_initial[i];
+
+  for (int i = 0; i < (LENGTH_PSS_NR - INITIAL_PSS_NR); i++)
+    x[i + INITIAL_PSS_NR] = (x[i + 4] + x[i]) % (2);
+
+  int16_t d_pss[LENGTH_PSS_NR];
+  for (int n = 0; n < LENGTH_PSS_NR; n++) {
+    int m = (n + 43 * N_ID_2) % (LENGTH_PSS_NR);
+    d_pss[n] = 1 - 2 * x[m];
   }
 
-  for (int i=0; i < (LENGTH_PSS_NR - INITIAL_PSS_NR); i++) {
-    x[i+INITIAL_PSS_NR] = (x[i + 4] + x[i])%(2);
+  c16_t *primary_synchro = primary_synchro_nr[N_ID_2];
+  c16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2];
+  for (int i = 0; i < LENGTH_PSS_NR; i++) {
+    primary_synchro[i].r = ((d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR);
+    primary_synchro[i].i = 0;
+    primary_synchro2[i].r = d_pss[i];
+    primary_synchro2[i].i = 0;
   }
-
-  for (int n=0; n < LENGTH_PSS_NR; n++) {
-    int m = (n + 43*N_ID_2)%(LENGTH_PSS_NR);
-    d_pss[n] = 1 - 2*x[m];
-  }
-
-  /* PSS is directly mapped to subcarrier without modulation 38.211 */
-  for (int i=0; i < LENGTH_PSS_NR; i++) {
-#if 1
-    primary_synchro[2*i] = (d_pss[i] * SHRT_MAX)>>SCALING_PSS_NR; /* Maximum value for type short int ie int16_t */
-    primary_synchro[2*i+1] = 0;
-    primary_synchro2[i] = d_pss[i];
-#else
-    primary_synchro[2*i] = d_pss[i] * AMP;
-    primary_synchro[2*i+1] = 0;
-    primary_synchro2[i] = d_pss[i];
-#endif
-  }
-
-#ifdef DBG_PSS_NR
-
-  if (N_ID_2 == 0) {
-    char output_file[255];
-    char sequence_name[255];
-    sprintf(output_file, "pss_seq_%d_%u.m", N_ID_2, length);
-    sprintf(sequence_name, "pss_seq_%d_%u", N_ID_2, length);
-    printf("file %s sequence %s\n", output_file, sequence_name);
-
-    LOG_M(output_file, sequence_name, primary_synchro, LENGTH_PSS_NR, 1, 1);
-  }
-
-#endif
 
   /* call of IDFT should be done with ordered input as below
   *
@@ -149,99 +114,24 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + 56; //and
+  unsigned int subcarrier_start = get_softmodem_params()->sl_mode == 0 ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
+  unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
-
-  for (int i=0; i < LENGTH_PSS_NR; i++) {
-    synchroF_tmp[2*k] = primary_synchro[2*i];
-    synchroF_tmp[2*k+1] = primary_synchro[2*i+1];
-
+  c16_t in[fp->ofdm_symbol_size];
+  memset(in, 0, sizeof(in));
+  for (int i = 0; i < LENGTH_PSS_NR; i++) {
+    in[k]= primary_synchro[i];
     k++;
-
-    if (k == length) k=0;
-    
+    if (k == fp->ofdm_symbol_size) k = 0;
   }
 
-  /* IFFT will give temporal signal of Pss */
-
- 
- 
-  idft((int16_t)get_idft(length),
-  	   synchroF_tmp,          /* complex input */
-       synchro_tmp,           /* complex output */
-       1);                 /* scaling factor */
-
-  /* then get final pss in time */
-  for (unsigned int i=0; i<length; i++) {
-    ((int32_t *)primary_synchro_time)[i] = ((int32_t *)synchro_tmp)[i];
+  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
+  idft((int16_t)get_idft(fp->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
+  for (unsigned int i = 0; i < fp->ofdm_symbol_size; i++) {
+    primary_synchro_time_nr[N_ID_2][i] = out[i];
   }
 
-#ifdef DBG_PSS_NR
-
-  if (N_ID_2 == 0) {
-    char output_file[255];
-    char sequence_name[255];
-    sprintf(output_file, "%s%d_%u%s","pss_seq_t_", N_ID_2, length, ".m");
-    sprintf(sequence_name, "%s%d_%u","pss_seq_t_", N_ID_2, length);
-
-    printf("file %s sequence %s\n", output_file, sequence_name);
-
-    LOG_M(output_file, sequence_name, primary_synchro_time, length, 1, 1);
-    sprintf(output_file, "%s%d_%u%s","pss_seq_f_", N_ID_2, length, ".m");
-    sprintf(sequence_name, "%s%d_%u","pss_seq_f_", N_ID_2, length);
-    LOG_M(output_file, sequence_name, synchroF_tmp, length, 1, 1);
-  }
-
-#endif
-
-
-
-#if 0
-
-/* it allows checking that process of idft on a signal and then dft gives same signal with limited errors */
-
-  if ((N_ID_2 == 0) && (length == 256)) {
-
-    LOG_M("pss_f00.m","pss_f00",synchro_tmp,length,1,1);
-
-
-    bzero(synchroF_tmp, size);
-
-  
-
-    /* get pss in the time domain by applying an inverse FFT */
-    dft((int16_t)get_dft(length),
-    	synchro_tmp,           /* complex input */
-        synchroF_tmp,          /* complex output */
-        1);                 /* scaling factor */
-
-    if ((N_ID_2 == 0) && (length == 256)) {
-      LOG_M("pss_f_0.m","pss_f_0",synchroF_tmp,length,1,1);
-    }
-
-    /* check Pss */
-    k = length - (LENGTH_PSS_NR/2);
-
-#define LIMIT_ERROR_FFT   (10)
-
-    for (int i=0; i < LENGTH_PSS_NR; i++) {
-      if (abs(synchroF_tmp[2*k] - primary_synchro[2*i]) > LIMIT_ERROR_FFT) {
-      printf("Pss Error[%d] Compute %d Reference %d \n", k, synchroF_tmp[2*k], primary_synchro[2*i]);
-      }
-    
-      if (abs(synchroF_tmp[2*k+1] - primary_synchro[2*i+1]) > LIMIT_ERROR_FFT) {
-        printf("Pss Error[%d] Compute %d Reference %d\n", (2*k+1), synchroF_tmp[2*k+1], primary_synchro[2*i+1]);
-      }
-
-      k++;
-
-      if (k >= length) {
-        k-=length;
-      }
-    }
-  }
-#endif
 }
 
 /*******************************************************************
@@ -259,61 +149,38 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp,int N_ID_2)
 
 void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 {
-  int ofdm_symbol_size = frame_parms_ue->ofdm_symbol_size;
-  int sizePss = LENGTH_PSS_NR * IQ_SIZE;  /* complex value i & q signed 16 bits */
-  int size = ofdm_symbol_size * IQ_SIZE; /* i and q samples signed 16 bits */
-  int16_t *p = NULL;
-  c16_t *q = NULL;
 
-  AssertFatal(ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n",ofdm_symbol_size);
-  for (int i = 0; i < NUMBER_PSS_SEQUENCE; i++) {
-
-    p = malloc16(sizePss); /* pss in complex with alternatively i then q */
+  AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal frame_parms_ue->ofdm_symbol_size %d\n",
+              frame_parms_ue->ofdm_symbol_size);
+  c16_t *p = NULL;
+  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  for (int i = 0; i < pss_sequence; i++) {
+    p = malloc(LENGTH_PSS_NR * sizeof(c16_t));
     if (p != NULL) {
       primary_synchro_nr[i] = p;
-      bzero( primary_synchro_nr[i], sizePss);
-    }
-    else {
+      bzero(primary_synchro_nr[i], LENGTH_PSS_NR * sizeof(c16_t));
+    } else {
       LOG_E(PHY,"Fatal memory allocation problem \n");
       assert(0);
     }
-    p = malloc(LENGTH_PSS_NR*2);
+    p = malloc(LENGTH_PSS_NR * sizeof(c16_t));
     if (p != NULL) {
       primary_synchro_nr2[i] = p;
-      bzero( primary_synchro_nr2[i],LENGTH_PSS_NR*2);
+      bzero(primary_synchro_nr2[i], LENGTH_PSS_NR * sizeof(c16_t));
+    } else {
+      LOG_E(PHY,"Fatal memory allocation problem \n");
+      assert(0);
     }
-    q = malloc16(size);
-    if (q != NULL) {
-      primary_synchro_time_nr[i] = q;
-      bzero( primary_synchro_time_nr[i], size);
-    }
-    else {
+    p = malloc(sizeof(c16_t) * frame_parms_ue->ofdm_symbol_size);
+    if (p != NULL) {
+      primary_synchro_time_nr[i] = p;
+      bzero(primary_synchro_time_nr[i], sizeof(c16_t) * frame_parms_ue->ofdm_symbol_size);
+    } else {
       LOG_E(PHY,"Fatal memory allocation problem \n");
      assert(0);
     }
 
-    generate_pss_nr(frame_parms_ue,i);
-  }
-}
-
-/*******************************************************************
-*
-* NAME :         free_context_pss_nr
-*
-* PARAMETERS :   none
-*
-* RETURN :       none
-*
-* DESCRIPTION :  free context related to pss
-*
-*********************************************************************/
-
-void free_context_pss_nr(void)
-{
-  for (int i = 0; i < NUMBER_PSS_SEQUENCE; i++) {
-    free_and_zero(primary_synchro_nr[i]);
-    free_and_zero(primary_synchro_nr2[i]);
-    free_and_zero(primary_synchro_time_nr[i]);
+    generate_pss_nr(frame_parms_ue, i, pss_sequence);
   }
 }
 
@@ -331,25 +198,7 @@ void free_context_pss_nr(void)
 
 void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 {
-#ifndef STATIC_SYNC_BUFFER
-
-  /* initialise global buffers for synchronisation */
-  synchroF_tmp = malloc16(SYNCF_TMP_SIZE);
-  if (synchroF_tmp == NULL) {
-    LOG_E(PHY,"Fatal memory allocation problem \n");
-    assert(0);
-  }
-
-  synchro_tmp = malloc16(SYNC_TMP_SIZE);
-  if (synchro_tmp == NULL) {
-    LOG_E(PHY,"Fatal memory allocation problem \n");
-    assert(0);
-  }
-
-#endif
-
   init_context_pss_nr(frame_parms_ue);
-
   init_context_sss_nr(AMP);
 }
 
@@ -367,29 +216,11 @@ void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 
 void free_context_synchro_nr(void)
 {
-#ifndef STATIC_SYNC_BUFFER
-
-  if (synchroF_tmp != NULL) {
-    free(synchroF_tmp);
-    synchroF_tmp = NULL;
+  for (int i = 0; i < NUMBER_PSS_SEQUENCE; i++) {
+    free_and_zero(primary_synchro_nr[i]);
+    free_and_zero(primary_synchro_nr2[i]);
+    free_and_zero(primary_synchro_time_nr[i]);
   }
-  else {
-    LOG_E(PHY,"Fatal memory deallocation problem \n");
-    assert(0);
-  }
-
-  if (synchro_tmp != NULL) {
-    free(synchro_tmp);
-    synchro_tmp = NULL;
-  }
-  else {
-    LOG_E(PHY,"Fatal memory deallocation problem \n");
-    assert(0);
-  }
-
-#endif
-
-  free_context_pss_nr();
 }
 
 /*******************************************************************
@@ -409,42 +240,10 @@ void set_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_change
   /* set new value according to rate_change */
   frame_parms_ue->ofdm_symbol_size = (frame_parms_ue->ofdm_symbol_size / rate_change);
   frame_parms_ue->samples_per_subframe = (frame_parms_ue->samples_per_subframe / rate_change);
-
-  free_context_pss_nr();
-
-  /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
-  init_context_synchro_nr(frame_parms_ue);
-
-#ifdef SYNCHRO_DECIMAT
-  set_pss_nr(frame_parms_ue->ofdm_symbol_size);
-#endif
+  init_context_pss_nr(frame_parms_ue);
+  init_context_sss_nr(AMP);
 }
 
-/*******************************************************************
-*
-* NAME :         restore_frame_context_pss_nr
-*
-* PARAMETERS :   configuration for UE and eNB with new FFT size
-*
-* RETURN :       0 if OK else error
-*
-* DESCRIPTION :  initialisation of UE and eNode contexts
-*
-*********************************************************************/
-
-void restore_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_change)
-{
-  frame_parms_ue->ofdm_symbol_size = frame_parms_ue->ofdm_symbol_size * rate_change;
-  frame_parms_ue->samples_per_subframe = frame_parms_ue->samples_per_subframe * rate_change;
-
-  free_context_pss_nr();
-
-  /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
-  init_context_synchro_nr(frame_parms_ue);
-#ifdef SYNCHRO_DECIMAT
-  set_pss_nr(frame_parms_ue->ofdm_symbol_size);
-#endif
-}
 
 /********************************************************************
 *

@@ -159,7 +159,7 @@ void insert_sss_nr(c16_t *sss_time,
   c16_t out[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
   idft(IDFT_2048, (int16_t *)&in, (int16_t *)&out, 1);
   for (unsigned int i = 0; i <ofdm_symbol_size; i++) {
-    ((int32_t *)sss_time)[i] = ((int32_t *)synchro_tmp)[i];
+    sss_time[i] = out[i];
   }
 }
 
@@ -179,37 +179,28 @@ int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
                   c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                   c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int16_t *pss;
-  int16_t *pss_ext2,*sss_ext2,*sss_ext3,tmp_re,tmp_im,tmp_re2,tmp_im2;
-  uint8_t aarx,i;
-  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-
-  pss = primary_synchro_nr2[ue->common_vars.eNb_id];
-
-  sss_ext3 = (int16_t*)&sss_ext[0][0];
-
-
-  for (aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
-
-    sss_ext2 = (int16_t*)&sss_ext[aarx][0];
-    pss_ext2 = (int16_t*)&pss_ext[aarx][0];
-
-  int32_t amp;
-  int shift;
-    for (i = 0; i < LENGTH_PSS_NR; i++) {
-      // This is H*(PSS) = R* \cdot PSS
-      tmp_re = pss_ext2[i*2] * pss[i];
-      tmp_im = -pss_ext2[i*2+1] * pss[i];
-      amp = (((int32_t)tmp_re)*tmp_re) + ((int32_t)tmp_im)*tmp_im;
-      shift = log2_approx(amp)/2;
-      tmp_re2 = (int16_t)(((tmp_re * (int32_t)sss_ext2[i*2])>>shift)    - ((tmp_im * (int32_t)sss_ext2[i*2+1]>>shift)));
-      tmp_im2 = (int16_t)(((tmp_re * (int32_t)sss_ext2[i*2+1])>>shift)  + ((tmp_im * (int32_t)sss_ext2[i*2]>>shift)));
-      if (aarx==0) {
-        sss_ext3[i<<1]      = tmp_re2;
-        sss_ext3[1+(i<<1)]  = tmp_im2;
+  int id = get_softmodem_params()->sl_mode == 0 ? ue->common_vars.eNb_id : ue->common_vars.N2_id;
+  c16_t *pss = primary_synchro_nr2[id];
+  c16_t tmp, tmp2;
+  c16_t *sss_ext3 = &sss_ext[0][0];
+  for (uint8_t aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+    c16_t *sss_ext2 = &sss_ext[aarx][0];
+    c16_t *pss_ext2 = &pss_ext[aarx][0];
+    int32_t amp;
+    int shift;
+    for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
+      tmp.r = pss_ext2[i].r * pss[i].r;
+      tmp.i = -pss_ext2[i].i * pss[i].i;
+      amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
+      shift = log2_approx(amp) / 2;
+      tmp2.r = (int16_t)(((tmp.r * (int32_t)sss_ext2[i].r) >> shift) - ((tmp.i * (int32_t)sss_ext2[i].i >> shift)));
+      tmp2.i = (int16_t)(((tmp.r * (int32_t)sss_ext2[i].i) >> shift) + ((tmp.i * (int32_t)sss_ext2[i].r >> shift)));
+      if (aarx == 0) {
+        sss_ext3[i].r = tmp2.r;
+        sss_ext3[i].i = tmp2.i;
       } else {
-        sss_ext3[i<<1]      += tmp_re2;
-        sss_ext3[1+(i<<1)]  += tmp_im2;
+        sss_ext3[i].r += tmp2.r;
+        sss_ext3[i].i += tmp2.i;
       }
     }
   }
