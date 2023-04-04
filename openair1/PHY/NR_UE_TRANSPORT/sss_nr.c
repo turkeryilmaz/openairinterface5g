@@ -156,7 +156,7 @@ void insert_sss_nr(c16_t *sss_time,
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
-  c16_t out[sizeof(int16_t) * ofdm_symbol_size];
+  c16_t out[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
   memset(out, 0, sizeof(out));
   memset(sss_time, 0, sizeof(int16_t) * ofdm_symbol_size);
   idft(IDFT_2048, (int16_t *)&in, (int16_t *)&out, 1);

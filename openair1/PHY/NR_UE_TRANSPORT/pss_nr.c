@@ -126,7 +126,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
     if (k == fp->ofdm_symbol_size) k = 0;
   }
 
-  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size];
+  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(out, 0, sizeof(out));
   memset(primary_synchro_time_nr[N_ID_2], 0, sizeof(int16_t) * fp->ofdm_symbol_size);
   idft((int16_t)get_idft(fp->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
