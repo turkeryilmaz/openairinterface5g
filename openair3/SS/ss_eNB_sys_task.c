@@ -297,9 +297,9 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 {
   CellConfigReq_t *cellConfig;
   assert(req);
-  struct CellConfigRequest_Type *Cell=&(req->Request.v.Cell);
+  struct CellConfigRequest_Type *Cell = &(req->Request.v.Cell);
   assert(Cell);
-  struct CellConfigInfo_Type *AddOrReconfigure=&(Cell->v.AddOrReconfigure);
+  struct CellConfigInfo_Type *AddOrReconfigure = &(Cell->v.AddOrReconfigure);
   assert(AddOrReconfigure);
 
   if (AddOrReconfigure->Basic.d == false && AddOrReconfigure->Active.d == false)
@@ -312,14 +312,14 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
-    printf("eNB_Inst %d Number of CC configured %d\n", enb_id,RC.nb_CC[enb_id]);
+    printf("eNB_Inst %d Number of CC configured %d\n", enb_id, RC.nb_CC[enb_id]);
+    MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
+    RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
     if (AddOrReconfigure->Basic.d == true)
     {
-      MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
-      RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
       if (AddOrReconfigure->Basic.v.StaticCellInfo.d == true)
       {
-        init_cell_context(cell_index, enb_id,msg_p);
+        init_cell_context(cell_index, enb_id, msg_p);
 
         /** Handle Static Cell Info */
         /** TDD: 1 FDD: 0 in OAI */
@@ -345,7 +345,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         /** TODO: Not filled now */
         /** eNB Cell ID: AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.eNB_CellId.v */
         /** CellTimingInfo: */
-
 
         uint32_t dl_Freq = from_earfcn(band, AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Earfcn);
         RRC_CONFIGURATION_REQ(msg_p).downlink_frequency[cell_index] = dl_Freq;
@@ -386,14 +385,14 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
           LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid DL Bandwidth configuration \n");
           return false;
         }
-        LOG_A(ENB_SS, "[SYS] DL Bandwidth for cellIndex(%d):%d\n",cell_index,RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index]);
+        LOG_A(ENB_SS, "[SYS] DL Bandwidth for cellIndex(%d):%d\n", cell_index, RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index]);
       }
 #define BCCH_CONFIG AddOrReconfigure->Basic.v.BcchConfig
       if (AddOrReconfigure->Basic.v.BcchConfig.d == true)
       {
-	  LOG_A(ENB_SS, "[SYS] BCCH Config update in Cell config \n");
-        RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index]= (AddOrReconfigure->Basic.v.BcchConfig.v.StopSib1Transmission.d)?1:0;
-        LOG_A(ENB_SS, "[SYS] stopSib1Transmission for cellIndex(%d) %s\n",cell_index,RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index]?"yes":"no");
+        LOG_A(ENB_SS, "[SYS] BCCH Config update in Cell config \n");
+        RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index] = (AddOrReconfigure->Basic.v.BcchConfig.v.StopSib1Transmission.d) ? 1 : 0;
+        LOG_A(ENB_SS, "[SYS] stopSib1Transmission for cellIndex(%d) %s\n", cell_index, RRC_CONFIGURATION_REQ(msg_p).stopSib1Transmission[cell_index] ? "yes" : "no");
         if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.d == true)
         {
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.d == true)
@@ -442,242 +441,219 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 #define SIB1_CELL_SEL_INFO SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.cellSelectionInfo
 #define SIB1_CELL_NON_CE SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.v.nonCriticalExtension
 #define SIB1_CELL_Q_QUALMIN SIB1_CELL_NON_CE.v.cellSelectionInfo_v920.v.q_QualMin_r9
-	  if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.d == true)
-	  {
+          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.d == true)
+          {
             LOG_A(ENB_SS, "[SYS] [SIB1] q-RxLevMin: %d \n", SIB1_CELL_SEL_INFO.q_RxLevMin);
             RRC_CONFIGURATION_REQ(msg_p).q_RxLevMin[cell_index] = SIB1_CELL_SEL_INFO.q_RxLevMin;
-	    if (SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.d)
-	    {
-        if (SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.v.nonCriticalExtension.d)
-        {
-          if (SIB1_CELL_NON_CE.v.cellSelectionInfo_v920.d)
-          {
-              LOG_A(ENB_SS, "[SYS] [SIB1] q-QualMin: %d \n", SIB1_CELL_Q_QUALMIN);
-              RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
+            if (SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.d)
+            {
+              if (SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.nonCriticalExtension.v.nonCriticalExtension.d)
+              {
+                if (SIB1_CELL_NON_CE.v.cellSelectionInfo_v920.d)
+                {
+                  LOG_A(ENB_SS, "[SYS] [SIB1] q-QualMin: %d \n", SIB1_CELL_Q_QUALMIN);
+                  RRC_CONFIGURATION_REQ(msg_p).q_QualMin[cell_index] = SIB1_CELL_Q_QUALMIN;
+                }
+              }
+            }
           }
-        }
-	    }
-	  }
 
-    RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d;
-    RRC_CONFIGURATION_REQ(msg_p).schedulingInfo = CALLOC(RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count,sizeof(struct lte_SchedulingInfo_s));
+          RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d;
+          RRC_CONFIGURATION_REQ(msg_p).schedulingInfo = CALLOC(RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count, sizeof(struct lte_SchedulingInfo_s));
 
-    for(int k=0;k < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d; k++) {
-      RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].si_Periodicity = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].si_Periodicity;
-      for(int j=0;j < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d; j++) {
-        RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].sib_MappingInfo.LTE_SIB_Type[k] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.v[j];
-      }
-    }
+          for (int k = 0; k < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d; k++)
+          {
+            RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].si_Periodicity = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].si_Periodicity;
+            for (int j = 0; j < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d; j++)
+            {
+              RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].sib_MappingInfo.LTE_SIB_Type[k] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.v[j];
+            }
+          }
 
-    RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
-    RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
+          RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
+          RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;
 
-    RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
-    for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index]; ++i) {
-      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.d == true)
-      {
-            RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[0] *100 +  SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[1] *10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[2];
-      }
-      if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 2) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] *10 +  SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1];
-       } else if(SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 3) {
-        RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] *100 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1] *10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[2];
-      }
-      RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[cell_index][i]=SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d;
-      RRC_CONFIGURATION_REQ(msg_p).cellReservedForOperatorUse[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].cellReservedForOperatorUse;
-    }
+          RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
+          for (int i = 0; i < RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index]; ++i)
+          {
+            if (SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.d == true)
+            {
+              RRC_CONFIGURATION_REQ(msg_p).mcc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[0] * 100 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[1] * 10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mcc.v[2];
+            }
+            if (SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 2)
+            {
+              RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] * 10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1];
+            }
+            else if (SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d == 3)
+            {
+              RRC_CONFIGURATION_REQ(msg_p).mnc[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[0] * 100 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[1] * 10 + SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.v[2];
+            }
+            RRC_CONFIGURATION_REQ(msg_p).mnc_digit_length[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].plmn_Identity.mnc.d;
+            RRC_CONFIGURATION_REQ(msg_p).cellReservedForOperatorUse[cell_index][i] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.v[i].cellReservedForOperatorUse;
+          }
           if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.d == true)
           {
-              LOG_A(ENB_SS, "[SYS] [SIs] size=%ld", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
-              for (int i=0; i< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d; ++i)
-              {
-                if (SQN_BCCH_DL_SCH_MessageType_c1 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.d)
-                {
-                   if (SQN_BCCH_DL_SCH_MessageType_c1_systemInformation == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.d)
-                   {
-                     if(SQN_SystemInformation_criticalExtensions_systemInformation_r8 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.d)
-                     {
-                       for(int j=0; j< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.d; j++)
-                       {
-                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
-                           RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
-                         }
-                         /* SIB3 */
-                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib3 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
-                           RRC_CONFIGURATION_REQ(msg_p).q_Hyst[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionInfoCommon.q_Hyst;
-                           RRC_CONFIGURATION_REQ(msg_p).threshServingLow[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.threshServingLow;
-                           RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
-                           RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
-                           RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
-                           RRC_CONFIGURATION_REQ(msg_p).neighCellConfig[cell_index] = (uint8_t)bin_to_int(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.neighCellConfig,2);
-                           if(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]){
-                             free(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]);
-                             RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index] = NULL;
-                           }
-                           if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.q_QualMin_r9.d){
-                             RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index] = calloc(1,sizeof(long));
-                             *(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.q_QualMin_r9.v;
-                           }
-                           if(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]){
-                             free(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]);
-                             RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = NULL;
-                           }
-                           if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.d){
-                             RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = calloc(1,sizeof(long));
-                             *(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.v;
-                           }
-                         }
-                         /* SIB4: Received SIB4 from TTCN */
-                         if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib4 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
-                           RRC_CONFIGURATION_REQ(msg_p).sib4_Present[cell_index] = true;
-                           if(true == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.d) {
-                             RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d;
-                             RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount[cell_index],sizeof(struct IntraFreqNeighCellInfo_s));
-                             RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListPresent[cell_index] = true;
-                             for(int k=0;k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d; k++) {
-                               RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index][k].physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[k].physCellId;
-                               RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index][k].q_OffsetCell = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[k].q_OffsetCell;
-                             }
-                           }
-                           if(true == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqBlackCellList.d) {
-                             RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellListCount[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqBlackCellList.v.d;
-                             RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellList[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellListCount[cell_index],sizeof(struct PhysCellIdRange_s));
-                             RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellListPresent[cell_index] = true;
-                             for(int k=0;k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqBlackCellList.v.d; k++) {
-                               RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellList[cell_index][k].start = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqBlackCellList.v.v[k].start;
-                                if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqBlackCellList.v.v[k].range.d) {
-                                 RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellList[cell_index][k].range_Present = true;
-                                 RRC_CONFIGURATION_REQ(msg_p).intraFreqBlackCellList[cell_index][k].range = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqBlackCellList.v.v[k].range.v;
-                                }
-                             }
-                            }
-                         }
-                        /* SIB5: Received SIB5 from TTCN */
-                        if(SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib5 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d) {
-                           RRC_CONFIGURATION_REQ(msg_p).sib5_Present[cell_index] = true;
-                           RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfoCount[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d;
-                           RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfoCount[cell_index],sizeof(struct InterFreqCarrierFreqInfo_s));
-                           for(int k=0;k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d; k++) {
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].dl_CarrierFreq = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].dl_CarrierFreq;
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_RxLevMin = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_RxLevMin;
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].p_Max.d) {
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].p_Max_Present = true;
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].p_Max = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].p_Max.v;
-                             }
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA;
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.d) {
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA_SF_Present = true;
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA_SF->sf_Medium = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.v.sf_Medium;
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA_SF->sf_High = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.v.sf_High;
-                             }
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_High = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_High;
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Low = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Low;
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].allowedMeasBandwidth = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].allowedMeasBandwidth;
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].presenceAntennaPort1 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].presenceAntennaPort1;
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.d) {
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority = CALLOC(1,sizeof(long));
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority_Present = true;
-                               *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.v;
-                             }
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].neighCellConfig = (uint8_t)bin_to_int(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].neighCellConfig,2);
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.d) {
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreqPresent = true;
-                             RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreq = CALLOC(1,sizeof(enum LTE_Q_OffsetRange));
-                             *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreq) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.v;
-                             }
-                            if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.d) {
-                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqNeighCellList_Present = true;
-                              for(int l=0; l< AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.d; l++) {
-                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqNeighCellList->physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.v[l].physCellId;
-                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqNeighCellList->q_OffsetCell = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.v[l].q_OffsetCell;
-                               }
-                             }
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.d) {
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList_Present = true;
-                               for(int m=0; m<AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.d; m++) {
-                                 RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList->start = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].start;
-                                 if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].range.d) {
-                                   RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList->range_Present = true;
-                                   RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList->range = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].range.v;
-                                 }
-                               }
-                             }
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMin_r9.d) {
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMin_r9_Present = true;
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMin_r9 = CALLOC(1,sizeof(long));
-                               *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMin_r9) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMin_r9.v;
-                             }
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.d) {
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Q_r9_Present = true;
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Q_r9.threshX_HighQ_r9 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.v.threshX_HighQ_r9;
-                               RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Q_r9.threshX_LowQ_r9 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.v.threshX_LowQ_r9;
-                             }
-                             if(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMinWB_r11.d) {
-                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMinWB_r11_Present = true;
-                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMinWB_r11 = CALLOC(1,sizeof(long));
-                                *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMinWB_r11) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMinWB_r11.v;
-                             }
-                           }
-                         }
-                       }
-                     }
-                   }
-                 }
-               }
-             }
-    RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] = 0;
-    for(int i=0; i <16; i++)
-    {
-      RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] +=(SIB1_CELL_ACCESS_REL_INFO.trackingAreaCode[i]<<(15-i));
-    }
-    LOG_A(ENB_SS, "[SYS] [SIB1] tac: 0x%x\n", RRC_CONFIGURATION_REQ(msg_p).tac[cell_index]);
-    RRC_CONFIGURATION_REQ(msg_p).cellBarred[cell_index] = SIB1_CELL_ACCESS_REL_INFO.cellBarred;
-    RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection[cell_index]=SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
-        }
-      }
-      //store the modified cell config back
-      memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
-
-      /* Active Parameters: only process ActiveParam when basic info availabe to avoid sending too many RRC_CONFIGURATION_REQ to RRC */
-      if (AddOrReconfigure->Active.d == true)
-      {
-        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
-        if (AddOrReconfigure->Active.v.RachProcedureConfig.d == true)
-        {
-          if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.d == true)
-          {
-            for (int i=0;i < (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.d);i++)
+            LOG_A(ENB_SS, "[SYS] [SIs] size=%ld", AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d);
+            for (int i = 0; i < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.d; ++i)
             {
-              if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.d == ContentionResolutionCtrl_Type_TCRNTI_Based)
+              if (SQN_BCCH_DL_SCH_MessageType_c1 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.d)
               {
-                if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.d == TCRNTI_ContentionResolutionCtrl_Type_MacPdu)
+                if (SQN_BCCH_DL_SCH_MessageType_c1_systemInformation == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.d)
                 {
-                  if(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.d == ContentionResolution_ContainedDlschSdu_Type_RlcPduCCCH)
+                  if (SQN_SystemInformation_criticalExtensions_systemInformation_r8 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.d)
                   {
-                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = true;
-                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index] = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.d;
-                    memcpy(RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH[cell_index],AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.v,RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
-                  }
-                  else
-                  {
-                    RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = false;
-                    if(SS_context.SSCell_list[cell_index].State == SS_STATE_NOT_CONFIGURED)
-                    RC.ss.CBRA_flag = true;
+                    for (int j = 0; j < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.d; j++)
+                    {
+                      if (SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib2 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                      {
+                        RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_config_index = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_ConfigIndex;
+                        RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_high_speed = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.highSpeedFlag;
+                        RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_zero_correlation = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.zeroCorrelationZoneConfig;
+                        RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].prach_freq_offset = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib2.radioResourceConfigCommon.prach_Config.prach_ConfigInfo.prach_FreqOffset;
+                      }
+                      /* SIB3 */
+                      if (SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib3 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                      {
+                        RRC_CONFIGURATION_REQ(msg_p).q_Hyst[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionInfoCommon.q_Hyst;
+                        RRC_CONFIGURATION_REQ(msg_p).threshServingLow[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.threshServingLow;
+                        RRC_CONFIGURATION_REQ(msg_p).cellReselectionPriority[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.cellReselectionServingFreqInfo.cellReselectionPriority;
+                        RRC_CONFIGURATION_REQ(msg_p).sib3_q_RxLevMin[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.q_RxLevMin;
+                        RRC_CONFIGURATION_REQ(msg_p).t_ReselectionEUTRA[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.t_ReselectionEUTRA;
+                        RRC_CONFIGURATION_REQ(msg_p).neighCellConfig[cell_index] = (uint8_t)bin_to_int(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.intraFreqCellReselectionInfo.neighCellConfig, 2);
+                        if (RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index])
+                        {
+                          free(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]);
+                          RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index] = NULL;
+                        }
+                        if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.q_QualMin_r9.d)
+                        {
+                          RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index] = calloc(1, sizeof(long));
+                          *(RRC_CONFIGURATION_REQ(msg_p).sib3_q_QualMin[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.q_QualMin_r9.v;
+                        }
+                        if (RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index])
+                        {
+                          free(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]);
+                          RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = NULL;
+                        }
+                        if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.d)
+                        {
+                          RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index] = calloc(1, sizeof(long));
+                          *(RRC_CONFIGURATION_REQ(msg_p).sib3_threshServingLowQ[cell_index]) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib3.threshServingLowQ_r9.v;
+                        }
+                      }
+                      /* SIB4: Received SIB4 from TTCN */
+                      if (SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib4 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                      {
+                        RRC_CONFIGURATION_REQ(msg_p).sib4_Present[cell_index] = true;
+                        if (true == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.d)
+                        {
+                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d;
+                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount, sizeof(struct IntraFreqNeighCellInfo_s));
+                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListPresent = true;
+                          for (int k = 0; k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d; k++)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index][k].physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[k].physCellId;
+                            RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index][k].q_OffsetCell = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[k].q_OffsetCell;
+                          }
+                        }
+                      }
+                      /* SIB5: Received SIB5 from TTCN */
+                      if (SQN_SystemInformation_r8_IEs_sib_TypeAndInfo_s_sib5 == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].d)
+                      {
+                        RRC_CONFIGURATION_REQ(msg_p).sib5_Present[cell_index] = true;
+                        RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfoCount[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d;
+                        RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfoCount, sizeof(struct InterFreqCarrierFreqInfo_s));
+                        for (int k = 0; k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.d; k++)
+                        {
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].dl_CarrierFreq = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].dl_CarrierFreq;
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_RxLevMin = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_RxLevMin;
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].p_Max.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].p_Max_Present = true;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].p_Max = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].p_Max.v;
+                          }
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA;
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA_SF_Present = true;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA_SF->sf_Medium = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.v.sf_Medium;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].t_ReselectionEUTRA_SF->sf_High = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].t_ReselectionEUTRA_SF.v.sf_High;
+                          }
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_High = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_High;
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Low = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Low;
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].allowedMeasBandwidth = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].allowedMeasBandwidth;
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].presenceAntennaPort1 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].presenceAntennaPort1;
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority = CALLOC(1, sizeof(long));
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority_Present = true;
+                            *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].cellReselectionPriority) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].cellReselectionPriority.v;
+                          }
+                          RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].neighCellConfig = (uint8_t)bin_to_int(AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].neighCellConfig, 2);
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreqPresent = true;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreq = CALLOC(1, sizeof(enum LTE_Q_OffsetRange));
+                            *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_OffsetFreq) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_OffsetFreq.v;
+                          }
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqNeighCellList_Present = true;
+                            for (int l = 0; l < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.d; l++)
+                            {
+                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqNeighCellList->physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.v[l].physCellId;
+                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqNeighCellList->q_OffsetCell = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqNeighCellList.v.v[l].q_OffsetCell;
+                            }
+                          }
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList_Present = true;
+                            for (int m = 0; m < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.d; m++)
+                            {
+                              RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList->start = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].start;
+                              if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].range.d)
+                              {
+                                RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].interFreqBlackCellList->range = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].interFreqBlackCellList.v.v[m].range.v;
+                              }
+                            }
+                          }
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMin_r9.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMin_r9_Present = true;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMin_r9 = CALLOC(1, sizeof(long));
+                            *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMin_r9) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMin_r9.v;
+                          }
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Q_r9_Present = true;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Q_r9.threshX_HighQ_r9 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.v.threshX_HighQ_r9;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].threshX_Q_r9.threshX_LowQ_r9 = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].threshX_Q_r9.v.threshX_LowQ_r9;
+                          }
+                          if (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMinWB_r11.d)
+                          {
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMinWB_r11_Present = true;
+                            RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMinWB_r11 = CALLOC(1, sizeof(long));
+                            *(RRC_CONFIGURATION_REQ(msg_p).InterFreqCarrierFreqInfo[cell_index][k].q_QualMinWB_r11) = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib5.interFreqCarrierFreqList.v[k].q_QualMinWB_r11.v;
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           }
+          RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] = 0;
+          for (int i = 0; i < 16; i++)
+          {
+            RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] += (SIB1_CELL_ACCESS_REL_INFO.trackingAreaCode[i] << (15 - i));
+          }
+          LOG_A(ENB_SS, "[SYS] [SIB1] tac: 0x%x\n", RRC_CONFIGURATION_REQ(msg_p).tac[cell_index]);
+          RRC_CONFIGURATION_REQ(msg_p).cellBarred[cell_index] = SIB1_CELL_ACCESS_REL_INFO.cellBarred;
+          RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection[cell_index] = SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
         }
       }
-      else
-      {
-        RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = false;
-      }
-      LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n",RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index],RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index],RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
+
       uint8_t msg_queued = 0;
       ss_set_timinfo_t tinfo, timer_tinfo;
 #if 0
@@ -696,43 +672,117 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 					  tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
         }
       }
-#endif
+
       if (!msg_queued)
       {
         LOG_A(ENB_SS, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
         itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
       }
+#endif
       /** Handle Initial Cell power, Sending to Proxy */
       if (AddOrReconfigure->Basic.v.InitialCellPower.d == true)
       {
         SS_context.SSCell_list[cell_index].maxRefPower = AddOrReconfigure->Basic.v.InitialCellPower.v.MaxReferencePower;
         switch (AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.d)
         {
-          case Attenuation_Type_Value:
-            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned on value: %d dBm \n",
-                  AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value);
-            cellConfig->initialAttenuation = AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value;
-            break;
-          case Attenuation_Type_Off:
-            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned off \n");
-            cellConfig->initialAttenuation = 80;  /* attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
-            break;
-          case Attenuation_Type_UNBOUND_VALUE:
-          default:
-            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Unbound or Invalid value received\n");
+        case Attenuation_Type_Value:
+          LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned on value: %d dBm \n",
+                AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value);
+          cellConfig->initialAttenuation = AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value;
+          break;
+        case Attenuation_Type_Off:
+          LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned off \n");
+          cellConfig->initialAttenuation = 80; /* attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
+          break;
+        case Attenuation_Type_UNBOUND_VALUE:
+        default:
+          LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Unbound or Invalid value received\n");
         }
 
         cellConfig->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
-        cellConfig->maxRefPower= SS_context.SSCell_list[cell_index].maxRefPower;
+        cellConfig->maxRefPower = SS_context.SSCell_list[cell_index].maxRefPower;
         cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
         cellConfig->header.cell_index = cell_index;
-        LOG_A(ENB_SS,"===Cell configuration received for cell_id: %d Initial attenuation: %d Max ref power: %d for DL_EARFCN: %d cell_index %d=== \n",
-            cellConfig->header.cell_id,
-            cellConfig->initialAttenuation, cellConfig->maxRefPower,
-            cellConfig->dl_earfcn,cell_index);
+        LOG_A(ENB_SS, "===Cell configuration received for cell_id: %d Initial attenuation: %d Max ref power: %d for DL_EARFCN: %d cell_index %d=== \n",
+              cellConfig->header.cell_id,
+              cellConfig->initialAttenuation, cellConfig->maxRefPower,
+              cellConfig->dl_earfcn, cell_index);
         sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t), msg_queued, timer_tinfo);
       }
-    }   
+    }
+    // Cell Config Active Param
+    if (AddOrReconfigure->Active.d == true)
+    {
+      LOG_A(ENB_SS, "[SYS] Cell Config Active Present\n");
+      RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = true;
+      LOG_A(ENB_SS, "[SYS] Active.v.C_RNTI.d=%d Active.v.RachProcedureConfig.d=%d\n", AddOrReconfigure->Active.v.C_RNTI.d, AddOrReconfigure->Active.v.RachProcedureConfig.d);
+      if (AddOrReconfigure->Active.v.C_RNTI.d == true)
+      {
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].b_C_RNTI_Present = true;
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI = bin_to_int(AddOrReconfigure->Active.v.C_RNTI.v, 16);
+        SS_context.SSCell_list[cell_index].ss_rnti_g = RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI;
+        LOG_A(ENB_SS, "[SYS] C_RNTI present in Active Cell Config %d\n", RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI);
+      } else {
+        RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].b_C_RNTI_Present = false;
+      }
+      if (AddOrReconfigure->Active.v.RachProcedureConfig.d == true)
+      {
+        if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.d == true)
+        {
+          for (int i = 0; i < (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.d); i++)
+          {
+            if (RandomAccessResponseConfig_Type_Ctrl == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.d)
+            {
+              LOG_A(ENB_SS, "[SYS] RAResponse present in Active Cell Config\n");
+              if (RandomAccessResponse_Type_List == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.d)
+              {
+                RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].numRar = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.d;
+                for (int j = 0; j < AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.d; j++)
+                {
+                  if (TempC_RNTI_Type_SameAsC_RNTI == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.v[j].TempC_RNTI.d)
+                  {
+                    LOG_A(ENB_SS, "[SYS] RAResponse present in Active Cell Config is TempC_RNTI_Type_SameAsC_RNTI\n");
+                    RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].Rar[j].Temp_C_RNTI = RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI;
+                  }
+                  else if (TempC_RNTI_Type_Explicit == AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.v[j].TempC_RNTI.d)
+                  {
+                    LOG_A(ENB_SS, "[SYS] RAResponse present in Active Cell Config is TempC_RNTI_Type_Explicit\n");
+                    RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].Rar[j].Temp_C_RNTI = bin_to_int(AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].RAResponse.v.Ctrl.Rar.v.List.v[j].TempC_RNTI.v.Explicit, 16);
+                  }
+                }
+              }
+            }
+            if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.d == ContentionResolutionCtrl_Type_TCRNTI_Based)
+            {
+              if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.d == TCRNTI_ContentionResolutionCtrl_Type_MacPdu)
+              {
+                if (AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.d == ContentionResolution_ContainedDlschSdu_Type_RlcPduCCCH)
+                {
+                  RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = true;
+                  RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index] = AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.d;
+                  memcpy(RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH[cell_index], AddOrReconfigure->Active.v.RachProcedureConfig.v.RachProcedureList.v.v[i].ContentionResolutionCtrl.v.TCRNTI_Based.v.MacPdu.ContainedRlcPdu.v.RlcPduCCCH.v, RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
+                }
+                else
+                {
+                  // RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index] = false;
+                  if (SS_context.SSCell_list[cell_index].State == SS_STATE_NOT_CONFIGURED)
+                    RC.ss.CBRA_flag = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else
+    {
+      // RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index] = false;
+    }
+    LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n", RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
+    // store the modified cell config back
+     memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
+    LOG_A(ENB_SS, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
+    itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
   }
   return true;
 }
@@ -791,9 +841,9 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
       break;
     case SystemConfirm_Type_PdcpCount:
       if (msg)
-      memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct PDCP_CountCnf_Type));
+        memcpy(&msgCnf->Confirm.v.PdcpCount, msg, sizeof(struct PDCP_CountCnf_Type));
       else
-      SS_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
+        SS_SYS_PORT_MSG_CNF(message_p).cnf = msgCnf;
       break;
 
     case SystemConfirm_Type_Paging:
@@ -811,6 +861,8 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
+        msgCnf->Confirm.v.PdcpHandoverControl = true;
+        break;
     case SystemConfirm_Type_L1_TestMode:
     case SystemConfirm_Type_ActivateScell:
     case SystemConfirm_Type_MbmsConfig:
@@ -872,14 +924,14 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
       if (cell_index)
       {
 
-        //Increment the nb_CC supported as new cell is confiured. 
+        //Increment the nb_CC supported as new cell is confiured.
         if ((RC.nb_CC[0] ) >= MAX_NUM_CCs) {
           LOG_E (ENB_SS,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
         } else {
           RC.nb_CC[0] ++;
           //Set the number of MAC_CC to current configured CC value
           *RC.nb_mac_CC= RC.nb_CC[0];
-                
+
           LOG_I (ENB_SS,"[SYS] CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
         }
@@ -1393,6 +1445,15 @@ int sys_handle_pdcp_count_req(struct PDCP_CountReq_Type *PdcpCount)
       LOG_A(ENB_SS, "[SYS] Error sending SS_SET_PDCP_CNT to PDCP_ENB \n");
     }
 
+    //Sending Confirm for Set PDCPCount
+    enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpCount;
+    enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+    bool resVal = true;
+    struct PDCP_CountCnf_Type PdcpCount;
+    PdcpCount.d = PDCP_CountCnf_Type_Set;
+    PdcpCount.v.Set = true;
+    send_sys_cnf(resType, resVal, cnfType, (void *)&PdcpCount);
+
     break;
   case PDCP_CountReq_Type_UNBOUND_VALUE:
     LOG_A(ENB_SS, "[SYS] Pdcp_CountReq_Type UNBOUND receivied\n");
@@ -1580,7 +1641,7 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 									SS_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
 									paging_ue_index_g = ((paging_ue_index_g +4) % MAX_MOBILES_PER_ENB) ;
 									oneTimeProcessingFlag = 1;
-								} 
+								}
 								break;
 							case SQN_PagingUE_Identity_imsi:
 								p_record_msg->ue_paging_identity.presenceMask = UE_PAGING_IDENTITY_imsi;
@@ -1857,7 +1918,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
       if(ASSecurity->v.StartRestart.Integrity.d == true)
       {
         intKey = true;
-        RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfroPresent = true;
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent = true;
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm = ASSecurity->v.StartRestart.Integrity.v.Algorithm;
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint = CALLOC(1,32);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint,0,32);
@@ -1875,7 +1936,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
                 RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].RadioBearerId.v.Srb;
                 break;
               case RadioBearerId_Type_Drb:
-                RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].RadioBearerId.v.Drb;
+                RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].RadioBearerId.v.Drb + 3;
                 break;
               case RadioBearerId_Type_UNBOUND_VALUE:
                 break;
@@ -1912,6 +1973,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
         for(int k=0;k<16;k++) {
           LOG_A(ENB_SS,"[SYS] kUPenc in SS: %02x \n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
         }
+        LOG_A(ENB_SS, "[SYS] Ciphering ActTimeList.d = %lu\n", ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.d);
         for(int i=0;i < ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.d; i++)
         {
           switch(ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.d)
@@ -1920,7 +1982,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
               RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.v.Srb;
               break;
             case RadioBearerId_Type_Drb:
-              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.v.Drb;
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.v.Drb + 3;
               break;
             case RadioBearerId_Type_UNBOUND_VALUE:
               break;
@@ -1937,9 +1999,9 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
             RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].DL.format = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].DL.v.SQN.Format;
             RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].DL.sqn = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].DL.v.SQN.Value;
           }
+          LOG_A(ENB_SS, "[SYS] Ciphering ActTimeList i=%d rb_id=%d\n", i, RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id);
         }
       }
-
       uint8_t msg_queued = 0;
       if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
       {
@@ -1953,17 +2015,17 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
         if(msg_queued)
         {
           msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, 0,msg_p);
-          LOG_A(ENB_SS, "AS Security Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-          tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
         }
+        LOG_A(ENB_SS, "AS_Security Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
+					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
       }
       if (!msg_queued)
       {
-        int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, msg_p);
-        if (send_res < 0)
-        {
-          LOG_A(ENB_SS, "[SYS] Error sending RRC_AS_SECURITY_CONFIG_REQ to RRC_ENB");
-        }
+      int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, msg_p);
+      if (send_res < 0)
+      {
+         LOG_A(ENB_SS, "[SYS] Error sending RRC_AS_SECURITY_CONFIG_REQ to RRC_ENB\n");
+      }
       }
     }
     else if (ASSecurity->d == AS_Security_Type_Release)
@@ -1993,7 +2055,7 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     LOG_A(ENB_SS,"[SYS] cell_index: %d eutra_cellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId);
    printf("[SYS] cell_index: %d eutra_cellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId);
 
-  }	
+  }
   int enterState = SS_context.SSCell_list[cell_index].State;
   int exitState = SS_context.SSCell_list[cell_index].State;
   LOG_A(ENB_SS, "[SYS] Current SS_STATE %d received SystemRequest_Type %d eutra_cellId %d cnf_flag %d\n",
@@ -2065,6 +2127,14 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     case SystemRequest_Type_PdcpCount:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type PDCP_Count received\n");
       sys_handle_pdcp_count_req(&(req->Request.v.PdcpCount));
+      break;
+
+    case SystemRequest_Type_PdcpHandoverControl:
+      LOG_A(ENB_SS, "[SYS] SystemRequest_Type PdcpHandoverControl received\n");
+      enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpHandoverControl;
+      enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+      bool resVal = true;
+      send_sys_cnf(resType, resVal, cnfType, NULL);
       break;
 
     case SystemRequest_Type_AS_Security:
@@ -2233,6 +2303,12 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
     cnfType = SystemConfirm_Type_PdcchOrder;
     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
     break;
+   case SystemRequest_Type_PdcpHandoverControl:
+    valid = true;
+    sendDummyCnf = false;
+    cnfType = SystemConfirm_Type_PdcpHandoverControl;
+    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+    break;
   default:
     valid = false;
     sendDummyCnf = false;
@@ -2309,7 +2385,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
     case SS_VNG_PROXY_REQ: {
         LOG_A(ENB_SS, "[SYS] received %s from %s \n", ITTI_MSG_NAME(received_msg),
             ITTI_MSG_ORIGIN_NAME(received_msg));
-        
+
         VngCmdReq_t *req      = (VngCmdReq_t *)malloc(sizeof(VngCmdReq_t));
         req->header.preamble  = 0xFEEDC0DE;
         req->header.msg_id    = SS_VNG_CMD_REQ;
@@ -2352,7 +2428,7 @@ printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
         else
         {
           PdcpCount.v.Get.v[i].RadioBearerId.d = RadioBearerId_Type_Drb;
-          PdcpCount.v.Get.v[i].RadioBearerId.v.Drb = SS_GET_PDCP_CNT(received_msg).rb_info[i].rb_id;
+          PdcpCount.v.Get.v[i].RadioBearerId.v.Drb = SS_GET_PDCP_CNT(received_msg).rb_info[i].rb_id - 3;
         }
         PdcpCount.v.Get.v[i].UL.d = true;
         PdcpCount.v.Get.v[i].DL.d = true;

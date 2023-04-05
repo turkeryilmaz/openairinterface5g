@@ -160,7 +160,7 @@ typedef struct AS_CipheringInfo_s {
 }AS_CipheringInfo;
 
 typedef struct RrcAsSecurityConfigReq_s {
-        bool isIntegrityInfroPresent;
+        bool isIntegrityInfoPresent;
         AS_IntegrityInfo Integrity;
         bool isCipheringInfoPresent;
         AS_CipheringInfo Ciphering;
@@ -365,6 +365,17 @@ typedef struct IntraFreqNeighCellInfo_s {
   long                    q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
 
+typedef struct Rar_s {
+  uint16_t Temp_C_RNTI;
+}Rar_t;
+
+typedef struct Cell_ActiveParam_s {
+  bool b_C_RNTI_Present;
+  uint16_t C_RNTI;
+  uint8_t numRar;
+  Rar_t   Rar[10];
+}Cell_ActiveParam_t;
+
 // eNB: ENB_APP -> RRC messages
 typedef struct RrcConfigurationReq_s {
   uint32_t                cell_identity;
@@ -556,6 +567,7 @@ typedef struct RrcConfigurationReq_s {
   long     q_QualMin[MAX_NUM_CCs];
   
   bool     ActiveParamPresent[MAX_NUM_CCs];
+  Cell_ActiveParam_t ActiveParam[MAX_NUM_CCs];
   //SS: Cell Config Active Params
   bool     RlcPduCCCH_Present[MAX_NUM_CCs];
   uint8_t  RlcPduCCCH_Size[MAX_NUM_CCs];

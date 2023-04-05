@@ -154,6 +154,8 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     case SystemConfirm_Type_Sps:
     case SystemConfirm_Type_RlcIndCtrl:
     case SystemConfirm_Type_PdcpHandoverControl:
+        cnf.Confirm.v.PdcpHandoverControl = true;
+        break;
     case SystemConfirm_Type_L1_TestMode:
     case SystemConfirm_Type_ActivateScell:
     case SystemConfirm_Type_MbmsConfig:

@@ -4900,14 +4900,16 @@ int do_HandoverPreparation(char *ho_buf, int ho_size, LTE_UE_EUTRA_Capability_t 
   LTE_UE_CapabilityRAT_Container_t *ue_cap_rat_container;
   char rrc_buf[rrc_size];
   memset(rrc_buf, 0, rrc_size);
-  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UE_EUTRA_Capability,
-                                   NULL,
-                                   ue_eutra_cap,
-                                   rrc_buf,
-                                   rrc_size);
-  /* TODO: free the OCTET_STRING */
-  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+  if (RC.ss.mode == SS_ENB) {
+    enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UE_EUTRA_Capability,
+                                     NULL,
+                                     ue_eutra_cap,
+                                     rrc_buf,
+                                     rrc_size);
+    /* TODO: free the OCTET_STRING */
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
+  }
   memset(&ho, 0, sizeof(ho));
   ho.criticalExtensions.present = LTE_HandoverPreparationInformation__criticalExtensions_PR_c1;
   ho.criticalExtensions.choice.c1.present = LTE_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation_r8;
@@ -4920,14 +4922,16 @@ int do_HandoverPreparation(char *ho_buf, int ho_size, LTE_UE_EUTRA_Capability_t 
                    rrc_buf, rrc_size) != -1, "fatal: OCTET_STRING_fromBuf failed\n");
     asn1cSeqAdd(&ho_info->ue_RadioAccessCapabilityInfo.list, ue_cap_rat_container);
   }
-  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_HandoverPreparationInformation,
-                                   NULL,
-                                   &ho,
-                                   ho_buf,
-                                   ho_size);
-  /* TODO: free the OCTET_STRING */
-  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+  if (RC.ss.mode == SS_ENB) {
+    enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_HandoverPreparationInformation,
+                                     NULL,
+                                     &ho,
+                                     ho_buf,
+                                     ho_size);
+    /* TODO: free the OCTET_STRING */
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
+  }
   return((enc_rval.encoded+7)/8);
 }
 
