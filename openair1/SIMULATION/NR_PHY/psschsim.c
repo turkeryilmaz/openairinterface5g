@@ -56,7 +56,7 @@
 
 #define DEBUG_NR_SLSCHSIM 1
 //#define DEBUG_NR_PSSCHSIM
-#define DEBUG_NR_PSSCHSIM2
+//#define DEBUG_NR_PSSCHSIM2
 
 // typedef struct {
 //   uint8_t priority;
@@ -416,7 +416,6 @@ int main(int argc, char **argv)
   uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
-  uint8_t  SCI2_mod_order = 2;
   uint16_t dmrsSymbPos = 16 + 1024; // symbol 4 and 10
   uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   uint16_t start_symbol = 1; // start from 0
@@ -431,7 +430,7 @@ int main(int argc, char **argv)
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
   unsigned int available_bits = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
   unsigned int TBS = nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
-  printf("\nAvailable bits %u TBS %u mod_order %d\n", available_bits, TBS, mod_order);
+  printf("\nAvailable bits %u TBS %u code rate %u/10240 mod_order %d\n", available_bits, TBS, code_rate, mod_order);
 
   NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0][0];
   slsch_ue_rx->harq_processes[harq_pid]->Nl = Nl;
@@ -508,23 +507,13 @@ int main(int argc, char **argv)
   int32_t **txdata = txUE->common_vars.txdata;
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
 
-  unsigned int G_SCI2_bits = harq_process_txUE->B_sci2;
-  uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
-
   printf("tx is done\n");
-
-
-  /////////////////////////LLRs computation/////////////////////////
   // this is a small hack :D
   slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
-
-  uint16_t num_sci2_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
-  uint16_t num_sci2_samples = num_sci2_symbs >> 1;
 
   int32_t **rxdataF = rxUE->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   UE_nr_rxtx_proc_t proc;
   proc.thread_id = 0;
-  uint8_t number_of_symbols = rel16_sl_rx->nr_of_symbols;
 
   //unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
@@ -548,8 +537,6 @@ int main(int argc, char **argv)
     n_false_positive = 0;
     errors_bit = 0;
 
-    //double SNR_lin = pow(10, SNR / 10.0);
-    //double sigma = 1.0 / sqrt(2 * SNR_lin);
     for (int trial = 0; trial < n_trials; trial++) {
 
       for (int i = 0; i < frame_length_complex_samples; i++) {
@@ -567,10 +554,6 @@ int main(int argc, char **argv)
           ((short*) rxUE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
-      // printf("start_symbol %d \n", start_symbol);
-      // printf("number_of_symbols %u \n", number_of_symbols);
-      // printf("M_SCI2_bits %u \n", M_SCI2_bits);
-      // printf("num_sci2_samples %u \n", num_sci2_samples);
 
       for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
@@ -589,14 +572,14 @@ int main(int argc, char **argv)
       if (ret)
         n_errors++;
 
-      for (int i = 0; i < TBS; i++) {
+      for (int i = 0; i < min(1537*8,TBS); i++) {
         estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-
+        #ifdef DEBUG_NR_PSSCHSIM2
         if (i % 8 == 0) {
            printf("TxByte : %2u  vs  %2u : RxByte\n", test_input[i / 8], harq_process_rxUE->b[i / 8]);
         }
-
+        #endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
@@ -610,7 +593,7 @@ int main(int argc, char **argv)
     printf("*****************************************\n");
     printf("SNR %f, BLER %f BER %f\n", SNR,
           (float) n_errors / (float) n_trials,
-          (float) errors_bit / (float) (n_trials * TBS));
+          (float) errors_bit / (float) (n_trials * min(1537*8,TBS)));
     printf("*****************************************\n");
     printf("\n");
 
