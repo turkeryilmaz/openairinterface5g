@@ -86,7 +86,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   c16_t *primary_synchro = primary_synchro_nr[N_ID_2];
   c16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2];
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
-    primary_synchro[i].r = ((d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR);
+    primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR;
     primary_synchro[i].i = 0;
     primary_synchro2[i].r = d_pss[i];
     primary_synchro2[i].i = d_pss[i];
@@ -357,16 +357,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 #endif
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_IN);
-  synchro_position = pss_search_time_nr(rxdata,
-                                        frame_parms,
-                                        fo_flag,
-                                        is,
-                                        ((get_softmodem_params()->sl_mode == 0) ?
-                                                (int *)&PHY_vars_UE->common_vars.eNb_id :
-                                                (int *)&PHY_vars_UE->common_vars.N2_id),
-                                        (int *)&PHY_vars_UE->common_vars.freq_offset);
-
-
+  synchro_position = pss_search_time_nr(rxdata, PHY_vars_UE, fo_flag, is);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PSS_SEARCH_TIME_NR, VCD_FUNCTION_OUT);
 
 #if TEST_SYNCHRO_TIMING_PSS
@@ -456,13 +447,9 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 *
 *********************************************************************/
 
-int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
-                       NR_DL_FRAME_PARMS *frame_parms,
-                       int fo_flag,
-                       int is,
-                       int *id,
-                       int *f_off)
+int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
 {
+  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   unsigned int length = is == 0 ? frame_parms->samples_per_frame + (2 * frame_parms->ofdm_symbol_size) :
                         frame_parms->samples_per_frame;
   AssertFatal(length > 0, "illegal length %d\n", length);
@@ -496,9 +483,15 @@ int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
   /* Search pss in the received buffer each 4 samples which ensures a memory alignment on 128 bits (32 bits x 4 ) */
   /* This is required by SIMD (single instruction Multiple Data) Extensions of Intel processors. */
   /* Correlation computation is based on a a dot product which is realized thank to SIMS extensions */
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
-  unsigned int step = get_softmodem_params()->sl_mode == 0 ? 8 : 4;
-  for (int pss_index = 0; pss_index < pss_sequence; pss_index++) {
+
+  uint16_t pss_index_start = 0;
+  uint16_t pss_index_end = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  if (ue->target_Nid_cell != -1) {
+    pss_index_start = GET_NID2(ue->target_Nid_cell);
+    pss_index_end = pss_index_start + 1;
+  }
+  unsigned int step = get_softmodem_params()->sl_mode == 0 ? 4 : 8;
+  for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++) {
     for (unsigned int n = 0; n < length; n += step) {
       int64_t pss_corr_ue = 0;
       for (unsigned int ar = 0; ar < frame_parms->nb_antennas_rx; ar++) {
@@ -538,10 +531,11 @@ int pss_search_time_nr(c16_t **rxdata, ///rx data in time domain
     // estimation of fractional frequency offset: angle[(result1)'*(result2)]/pi
     ffo_est = atan2(r1d.r * r2d.i - r2d.r * r1d.i, r1d.r * r2d.r + r1d.i * r2d.i) / M_PI;
   }
-  *f_off = ffo_est * frame_parms->subcarrier_spacing;
+  ue->common_vars.freq_offset = ffo_est * frame_parms->subcarrier_spacing;
+  int *id = get_softmodem_params()->sl_mode == 0 ? (int *)&ue->common_vars.eNb_id : (int *)&ue->common_vars.N2_id;
   *id = pss_source;
 
-  for (int pss_index = 0; pss_index < NUMBER_PSS_SEQUENCE; pss_index++)
+  for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++)
     avg[pss_index] /= (length / 4);
 
   LOG_I(NR_PHY, "[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n",
