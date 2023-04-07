@@ -427,7 +427,7 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 {
 	MessageDef *received_msg = NULL;
 	int result;
-	static ss_nrset_timinfo_t tinfo = {.sfn = 0xFFFF, .slot = 0xFF};
+	static ss_nrset_timinfo_t tinfo = {.sfn = 0xFFFF, .slot = 0xFFFFFFFF};
 
 	itti_receive_msg(TASK_SYS_GNB, &received_msg);
 
@@ -441,6 +441,8 @@ void *ss_gNB_sys_process_itti_msg(void *notUsed)
 					LOG_D(GNB_APP, "TASK_SYS_GNB received SS_NRUPD_TIM_INFO with sfn=%d slot=%d\n", SS_NRUPD_TIM_INFO(received_msg).sfn, SS_NRUPD_TIM_INFO(received_msg).slot);
 					tinfo.slot = SS_NRUPD_TIM_INFO(received_msg).slot;
 					tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
+					g_log->sfn = tinfo.sfn;
+					g_log->sf  = tinfo.slot;
 				}
 				break;
 

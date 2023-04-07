@@ -2280,7 +2280,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
       SS_context.sf  = tinfo.sf;
 
       g_log->sfn = tinfo.sfn;
-      g_log->sf = tinfo.sf;
+      g_log->sf = (uint32_t)tinfo.sf;
 
     }
     break;

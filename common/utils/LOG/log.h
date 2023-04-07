@@ -292,7 +292,7 @@ typedef struct {
   uint64_t                dump_mask;
 #if 1
   uint16_t                sfn;
-  uint8_t                 sf;
+  uint32_t                sf;
 #endif
 } log_t;
 

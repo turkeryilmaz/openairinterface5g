@@ -440,9 +440,9 @@ TRACEPOINT_EVENT(
     ),
     TP_FIELDS(
 		 ctf_string(MODNAME, component)
-		 ctf_integer(uint32_t, EVENTID, event_id)
-		 ctf_integer(uint32_t, SFN, sfn)
-		 ctf_integer(uint32_t, SF, sf)
+		 ctf_integer(int32_t, EVENTID, event_id)
+		 ctf_integer(int32_t, SFN, sfn)
+		 ctf_integer(int32_t, SF, sf)
 		 ctf_string(FUNCTION, funcName)
 		 ctf_integer(uint32_t, LINE, lineNo)
 		 ctf_integer(uint8_t,  RLCMODE, rlc_pkt.rlcMode)
