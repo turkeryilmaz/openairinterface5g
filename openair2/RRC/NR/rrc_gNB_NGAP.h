@@ -116,10 +116,6 @@ nr_rrc_pdcp_config_security(
     const uint8_t          send_security_mode_command
 );
 
-int
-rrc_gNB_process_PAGING_IND(
-    MessageDef *msg_p,
-    const char *msg_name,
-    instance_t instance);
+int rrc_gNB_process_PAGING_IND(MessageDef *msg_p, instance_t instance);
 
 #endif

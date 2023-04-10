@@ -400,10 +400,6 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     *mnc1=(mnc/10)%10;
     asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc2);
     *mnc2=(mnc)%10;
-
-    //if (nr_plmn->mcc != NULL)
-    //RRM_FREE(nr_plmn->mcc);
-
   }//end plmn loop
 
   nr_plmn_info->cellIdentity.buf = CALLOC(1,5);
@@ -553,7 +549,7 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   UL->initialUplinkBWP.genericParameters = configuration->scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
   UL->initialUplinkBWP.rach_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon;
   UL->initialUplinkBWP.pusch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon;
-  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = null;
+  UL->initialUplinkBWP.pusch_ConfigCommon->choice.setup->groupHoppingEnabledTransformPrecoding = NULL;
 
   UL->initialUplinkBWP.pucch_ConfigCommon = configuration->scc->uplinkConfigCommon->initialUplinkBWP->pucch_ConfigCommon;
 
@@ -662,6 +658,7 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   AssertFatal(enc_rval.encoded <= NR_MAX_SIB_LENGTH, "ASN1 encoded length %zd bits. 3GPP TS 38.331 section 5.2.1 - The physical layer imposes a limit to the maximum size a SIB can take. The maximum SIB1 or SI message size is 2976 bits.\n", enc_rval.encoded);
+
   return((enc_rval.encoded+7)/8);
 }
 
@@ -710,8 +707,6 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                enc_rval.failed_type->name, enc_rval.encoded);
   return((enc_rval.encoded+7)/8);
 }
-
-
 
 void do_SpCellConfig(gNB_RRC_INST *rrc,
                       struct NR_SpCellConfig  *spconfig){
@@ -1380,7 +1375,7 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGr
   // DRB Configuration
   for (int i = bearer_id_start; i < bearer_id_start + nb_bearers_to_setup; i++ ){
     const NR_RLC_Config_PR rlc_conf = use_rlc_um_for_drb ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
-    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_DRB_RLC_BearerConfig(3 + i, i, rlc_conf, priority[i-1]);
+    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_DRB_RLC_BearerConfig(3 + i, i, rlc_conf, priority[0]); // Fixme: priority hardcoded see caller function, all is wrong
     asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
     asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
   }
@@ -1760,18 +1755,10 @@ uint8_t do_NR_SecurityModeCommand(
                                    buffer,
                                    100);
 
-  if(enc_rval.encoded == -1) {
-    LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
-          enc_rval.failed_type->name, enc_rval.encoded);
-    return -1;
-  }
+  AssertFatal(enc_rval.encoded >0 , "ASN1 message encoding failed (%s, %lu)!\n",
+              enc_rval.failed_type->name, enc_rval.encoded);
 
   LOG_D(NR_RRC, "[gNB %d] securityModeCommand for UE %lx Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
-
-  if (enc_rval.encoded==-1) {
-    LOG_E(NR_RRC, "[gNB %d] ASN1 : securityModeCommand encoding failed for UE %lx\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
-    return(-1);
-  }
 
   //  rrc_ue_process_ueCapabilityEnquiry(0,1000,&dl_dcch_msg.message.choice.c1.choice.ueCapabilityEnquiry,0);
   //  exit(-1);
@@ -1852,18 +1839,10 @@ uint8_t do_NR_SA_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
                                    buffer,
                                    100);
 
-  if(enc_rval.encoded == -1) {
-    LOG_I(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
-          enc_rval.failed_type->name, enc_rval.encoded);
-    return -1;
-  }
+  AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
+              enc_rval.failed_type->name, enc_rval.encoded);
 
   LOG_D(NR_RRC, "[gNB %d] NR UECapabilityRequest for UE %lx Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
-
-  if (enc_rval.encoded==-1) {
-    LOG_E(NR_RRC, "[gNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %lx\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
-    return(-1);
-  }
 
   return((enc_rval.encoded+7)/8);
 }
@@ -2369,8 +2348,11 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
     asn1cSeqAdd(&(*SRB_configList2)->list, SRB2_config);
   }
 
-    *SRB_configList = CALLOC(1, sizeof(LTE_SRB_ToAddModList_t));
-    asn1cSeqAdd(&(*SRB_configList)->list,SRB1_config);
+  if (SRB2_config == NULL) {
+    LOG_W(NR_RRC, "SRB2 configuration does not exist in SRB configuration list\n");
+  } else {
+    asn1cSeqAdd(&(*SRB_configList2)->list, SRB2_config);
+  }
 
   *SRB_configList = CALLOC(1, sizeof(NR_SRB_ToAddModList_t));
   asn1cSeqAdd(&(*SRB_configList)->list, SRB1_config);

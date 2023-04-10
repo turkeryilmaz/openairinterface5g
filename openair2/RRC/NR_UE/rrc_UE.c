@@ -1023,7 +1023,7 @@ int nr_decode_SI(const protocol_ctxt_t *const ctxt_pP, const uint8_t gNB_index)
   //  NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt++;
 
   //  if (NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIcnt == sib1->schedulingInfoList.list.count)
-  //    rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE_NR );
+  //    rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
 
   //  LOG_I(NR_RRC, "SIStatus %x, SIcnt %d/%d\n",
   //        NR_UE_rrc_inst[ctxt_pP->module_id].Info[gNB_index].SIStatus,
@@ -2581,9 +2581,7 @@ nr_rrc_ue_process_ueCapabilityEnquiry(
     UE_Capability_nr = CALLOC(1,sizeof(NR_UE_NR_Capability_t));
     NR_BandNR_t *nr_bandnr;
     nr_bandnr  = CALLOC(1,sizeof(NR_BandNR_t));
-    nr_bandnr->bandNR = 78;
-    nr_bandnr->multipleTCI = CALLOC(1, sizeof(long));
-    *nr_bandnr->multipleTCI = NR_BandNR__multipleTCI_supported;
+    nr_bandnr->bandNR = 1;
     asn1cSeqAdd(&UE_Capability_nr->rf_Parameters.supportedBandListNR.list,
                      nr_bandnr);
   }

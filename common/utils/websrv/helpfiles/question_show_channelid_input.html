@@ -10,6 +10,8 @@
  *
  *      http://www.openairinterface.org/?page_id=698
  *
+ * Author and copyright: Laurent Thomas, open-cells.com
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +21,7 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
+<<<<<<< HEAD:common/utils/websrv/helpfiles/question_show_channelid_input.html
 /*! \file common/utils/websrv/helpfiles/question_show_channelid_input.html
  * \brief: implementation of web interface frontend for oai
  * \help file loaded at run time using the help api's
@@ -32,3 +35,18 @@
  */
 -->
 channel index: channel model index in the channel modelisation module, it is printed when listing all defined models using the "show current" button.
+=======
+
+#ifndef E1AP_API_H
+#define E1AP_API_H
+
+#include "platform_types.h"
+#include "openair2/COMMON/e1ap_messages_types.h"
+#include "openair2/E1AP/e1ap_common.h"
+void cuup_init_n3(instance_t instance);
+void process_e1_bearer_context_setup_req(instance_t, e1ap_bearer_setup_req_t *const req);
+void CUUP_process_bearer_context_mod_req(instance_t, e1ap_bearer_setup_req_t *const req);
+
+void CUUP_process_bearer_release_command(instance_t, e1ap_bearer_release_cmd_t *const cmd);
+#endif
+>>>>>>> 4cb79994d4... openair2 rebased initial changes:openair2/E1AP/e1ap_api.h

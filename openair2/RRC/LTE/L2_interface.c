@@ -47,10 +47,10 @@
 
 #include "intertask_interface.h"
 
-#include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
 #include "openair3/SS/ss_eNB_context.h"
 extern RAN_CONTEXT_t RC;
+
 //------------------------------------------------------------------------------
 int8_t
 mac_rrc_data_req(
