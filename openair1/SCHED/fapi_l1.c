@@ -39,6 +39,7 @@
 #include "fapi_l1.h"
 
 #include "common/ran_context.h"
+#include "openair1/PHY/LTE_TRANSPORT/dlsch_tbs_full.h"
 extern RAN_CONTEXT_t RC;
 
 int oai_nfapi_dl_config_req(nfapi_dl_config_request_t *dl_config_req);

@@ -38,7 +38,7 @@
 #include "executables/softmodem-common.h"
 #include "nr_transport_proto_ue.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_dci_defs.h"
-#include "PHY/phy_extern_nr_ue.h"
+#include "PHY/phy_extern.h"
 #include "PHY/CODING/coding_extern.h"
 #include "PHY/sse_intrin.h"
 #include "common/utils/nr/nr_common.h"
@@ -59,7 +59,6 @@ char nr_dci_format_string[8][30] = {
 
 //#define DEBUG_DCI_DECODING 1
 
-//#define NR_LTE_PDCCH_DCI_SWITCH
 //#define NR_PDCCH_DCI_DEBUG            // activates NR_PDCCH_DCI_DEBUG logs
 #ifdef NR_PDCCH_DCI_DEBUG
 #define LOG_DDD(a, ...) printf("<-NR_PDCCH_DCI_DEBUG (%s)-> " a, __func__, ##__VA_ARGS__ )
@@ -686,7 +685,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
   get_coreset_rballoc(rel15->coreset.frequency_domain_resource,&n_rb,&rb_offset);
 
   // Pointers to extracted PDCCH symbols in frequency-domain.
-  int32_t rx_size = 4*n_rb*12;
+  int32_t rx_size = ((4 * frame_parms->N_RB_DL * 12 + 31) >> 5) << 5;
   __attribute__ ((aligned(32))) int32_t rxdataF_ext[frame_parms->nb_antennas_rx][rx_size];
   __attribute__ ((aligned(32))) int32_t rxdataF_comp[frame_parms->nb_antennas_rx][rx_size];
   __attribute__ ((aligned(32))) int32_t pdcch_dl_ch_estimates_ext[frame_parms->nb_antennas_rx][rx_size];
@@ -936,6 +935,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
           dci_ind->dci_list[dci_ind->number_of_dcis].N_CCE = L;
           dci_ind->dci_list[dci_ind->number_of_dcis].dci_format = rel15->dci_format_options[k];
           dci_ind->dci_list[dci_ind->number_of_dcis].ss_type = rel15->dci_type_options[k];
+          dci_ind->dci_list[dci_ind->number_of_dcis].coreset_type = rel15->coreset.CoreSetType;
           int n_rb, rb_offset;
           get_coreset_rballoc(rel15->coreset.frequency_domain_resource, &n_rb, &rb_offset);
           dci_ind->dci_list[dci_ind->number_of_dcis].cset_start = rel15->BWPStart + rb_offset;

@@ -33,7 +33,6 @@
 #ifndef __PHY_DEFS_GNB__H__
 #define __PHY_DEFS_GNB__H__
 
-#include "defs_eNB.h"
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
 #include "openair2/NR_PHY_INTERFACE/NR_IF_Module.h"
@@ -43,10 +42,9 @@
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
 #include "executables/rt_profiling.h"
-
 #include "nfapi_nr_interface_scf.h"
 
-#define MAX_NUM_RU_PER_gNB MAX_NUM_RU_PER_eNB
+#define MAX_NUM_RU_PER_gNB 8
 #define MAX_PUCCH0_NID 8
 
 typedef struct {
@@ -62,14 +60,6 @@ typedef struct {
   uint32_t pbch_a_prime;
   uint32_t pbch_e[NR_POLAR_PBCH_E_DWORD];
 } NR_gNB_PBCH;
-
-typedef struct {
-  uint8_t ssb_start_symbol;
-  uint8_t n_hf;
-  uint8_t Lmax;
-  uint8_t ssb_index;
-  int32_t sfn;
-} NR_PBCH_parms_t;
 
 
 typedef enum {
@@ -102,21 +92,9 @@ typedef struct {
 } NR_DL_gNB_HARQ_t;
 
 typedef struct {
-  int frame;
-  int slot;
-  nfapi_nr_dl_tti_pdcch_pdu pdcch_pdu;
-} NR_gNB_PDCCH_t;
-
-typedef struct {
   uint8_t active;
   nfapi_nr_dl_tti_csi_rs_pdu csirs_pdu;
 } NR_gNB_CSIRS_t;
-
-typedef struct {
-  int frame;
-  int slot;
-  nfapi_nr_ul_dci_request_pdus_t pdcch_pdu;
-} NR_gNB_UL_PDCCH_t;
 
 typedef struct {
   int frame;
@@ -567,9 +545,19 @@ typedef struct {
   int            subband_cqi_tot_dB[NUMBER_OF_NR_ULSCH_MAX][275];
   /// PRACH background noise level
   int            prach_I0;
+
+  struct delay_s {
+    /// Time shift in number of samples estimated based on DMRS-PUSCH
+    int pusch_est_delay;
+    /// Max position in OFDM symbol related to time shift estimation based on DMRS-PUSCH
+    int pusch_delay_max_pos;
+    /// Max value related to time shift estimation based on DMRS-PUSCH
+    int pusch_delay_max_val;
+  } delay[NUMBER_OF_NR_ULSCH_MAX];
+
 } PHY_MEASUREMENTS_gNB;
 
-#define MAX_NUM_NR_PRACH_PREAMBLES 64
+
 #define MAX_NUM_NR_RX_RACH_PDUS 4
 #define MAX_NUM_NR_RX_PRACH_PREAMBLES 4
 #define MAX_UL_PDUS_PER_SLOT 8
@@ -617,16 +605,15 @@ typedef struct PHY_VARS_gNB_s {
   nfapi_nr_ul_tti_request_t     UL_tti_req;
   nfapi_nr_uci_indication_t uci_indication;
   
+  int max_nb_pucch;
+  int max_nb_srs;
   NR_gNB_PBCH        pbch;
   NR_gNB_COMMON      common_vars;
   NR_gNB_PRACH       prach_vars;
   NR_gNB_PRS         prs_vars;
   NR_gNB_PUSCH       *pusch_vars[NUMBER_OF_NR_ULSCH_MAX];
-  NR_gNB_PUCCH_t     *pucch[NUMBER_OF_NR_PUCCH_MAX];
-  NR_gNB_SRS_t       *srs[NUMBER_OF_NR_SRS_MAX];
-  NR_gNB_PDCCH_t     pdcch_pdu[NUMBER_OF_NR_PDCCH_MAX];
-  NR_gNB_UL_PDCCH_t  ul_pdcch_pdu[NUMBER_OF_NR_PDCCH_MAX];
-  NR_gNB_DLSCH_t     *dlsch[NUMBER_OF_NR_DLSCH_MAX][2];    // Nusers times two spatial streams
+  NR_gNB_PUCCH_t     **pucch;
+  NR_gNB_SRS_t       **srs;
   NR_gNB_ULSCH_t     *ulsch[NUMBER_OF_NR_ULSCH_MAX];  // [Nusers times]
   /// statistics for DLSCH measurement collection
   NR_gNB_SCH_STATS_t dlsch_stats[NUMBER_OF_NR_SCH_STATS_MAX];
@@ -636,7 +623,7 @@ typedef struct PHY_VARS_gNB_s {
   t_nrPolar_params    **polarParams;
 
   /// SRS variables
-  nr_srs_info_t *nr_srs_info[NUMBER_OF_NR_SRS_MAX];
+  nr_srs_info_t **nr_srs_info;
 
   /// CSI variables
   nr_csi_info_t *nr_csi_info;
@@ -763,8 +750,6 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t resp_RU_tx;
   tpool_t threadPool;
   int nbDecode;
-  int number_of_nr_dlsch_max;
-  int number_of_nr_ulsch_max;
   void *scopeData;
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling; 
@@ -827,7 +812,7 @@ typedef struct processingData_L1tx {
   PHY_VARS_gNB *gNB;
   nfapi_nr_dl_tti_pdcch_pdu pdcch_pdu[NFAPI_NR_MAX_NB_CORESETS];
   nfapi_nr_ul_dci_request_pdus_t ul_pdcch_pdu[NFAPI_NR_MAX_NB_CORESETS];
-  NR_gNB_CSIRS_t csirs_pdu[NUMBER_OF_NR_CSIRS_MAX];
+  NR_gNB_CSIRS_t csirs_pdu[NR_SYMBOLS_PER_SLOT];
   NR_gNB_DLSCH_t *dlsch[NUMBER_OF_NR_DLSCH_MAX][2];
   NR_gNB_SSB_t ssb[64];
   uint16_t num_pdsch_slot;

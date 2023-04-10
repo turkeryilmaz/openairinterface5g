@@ -31,19 +31,18 @@
 #include "fapi_nr_l1.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_UE_TRANSPORT/srs_modulation_nr.h"
 #include "T.h"
 #include "executables/nr-softmodem.h"
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
+#include "NR_SRS-ResourceSet.h"
 
 #include "assertions.h"
 
 #include <time.h>
-
-#include "intertask_interface.h"
 
 //#define DEBUG_RXDATA
 //#define SRS_IND_DEBUG
@@ -184,7 +183,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_GENERATE_DLSCH,0);
   }
 
-  for (int i=0;i<NUMBER_OF_NR_CSIRS_MAX;i++){
+  for (int i = 0; i < NR_SYMBOLS_PER_SLOT; i++){
     NR_gNB_CSIRS_t *csirs = &msgTx->csirs_pdu[i];
     if (csirs->active == 1) {
       LOG_D(PHY, "CSI-RS generation started in frame %d.%d\n",frame,slot);
@@ -244,7 +243,7 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
     if (decodeSuccess && !gNB->pusch_vars[rdata->ulsch_id]->DTX) {
       LOG_D(PHY,"[gNB %d] ULSCH: Setting ACK for SFN/SF %d.%d (pid %d, ndi %d, status %d, round %d, TBS %d, Max interation (all seg) %d)\n",
             gNB->Mod_id,ulsch_harq->frame,ulsch_harq->slot,rdata->harq_pid,pusch_pdu->pusch_data.new_data_indicator,ulsch_harq->status,ulsch_harq->round,ulsch_harq->TBS,rdata->decodeIterations);
-      ulsch_harq->status = SCH_IDLE;
+      ulsch_harq->status = NR_SCH_IDLE;
       ulsch_harq->round  = 0;
       ulsch->harq_mask &= ~(1 << rdata->harq_pid);
 
@@ -401,8 +400,8 @@ void nr_fill_indication(PHY_VARS_gNB *gNB, int frame, int slot_rx, int ULSCH_id,
 
   nfapi_nr_pusch_pdu_t *pusch_pdu = &harq_process->ulsch_pdu;
 
-  //  pdu->data                              = gNB->ulsch[ULSCH_id+1]->harq_processes[harq_pid]->b;
-  int sync_pos = nr_est_timing_advance_pusch(gNB, ULSCH_id); // estimate timing advance for MAC
+  // Get estimated timing advance for MAC
+  int sync_pos = gNB->measurements.delay[ULSCH_id].pusch_est_delay;
 
   // scale the 16 factor in N_TA calculation in 38.213 section 4.2 according to the used FFT size
   uint16_t bw_scaling = 16 * gNB->frame_parms.ofdm_symbol_size / 2048;
@@ -529,7 +528,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int i=0;i<NUMBER_OF_NR_PUCCH_MAX;i++){
+  for (int i = 0; i < gNB->max_nb_pucch; i++){
     NR_gNB_PUCCH_t *pucch = gNB->pucch[i];
     if (pucch) {
       if ((pucch->active == 1) &&
@@ -552,7 +551,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int ULSCH_id=0;ULSCH_id<gNB->number_of_nr_ulsch_max;ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < NUMBER_OF_NR_ULSCH_MAX; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = gNB->ulsch[ULSCH_id];
     int harq_pid;
     NR_UL_gNB_HARQ_t *ulsch_harq;
@@ -582,7 +581,7 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int i=0;i<NUMBER_OF_NR_SRS_MAX;i++) {
+  for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = gNB->srs[i];
     if (srs) {
       if ((srs->active == 1) && (srs->frame == frame_rx) && (srs->slot == slot_rx)) {
@@ -713,7 +712,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
 
   start_meas(&gNB->phy_proc_rx);
 
-  for (int i=0;i<NUMBER_OF_NR_PUCCH_MAX;i++){
+  for (int i = 0; i < gNB->max_nb_pucch; i++){
     NR_gNB_PUCCH_t *pucch = gNB->pucch[i];
     if (pucch) {
       if (NFAPI_MODE == NFAPI_MODE_PNF)
@@ -775,7 +774,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int ULSCH_id=0;ULSCH_id<gNB->number_of_nr_ulsch_max;ULSCH_id++) {
+  for (int ULSCH_id = 0; ULSCH_id < NUMBER_OF_NR_ULSCH_MAX; ULSCH_id++) {
     NR_gNB_ULSCH_t *ulsch = gNB->ulsch[ULSCH_id];
     NR_UL_gNB_HARQ_t *ulsch_harq;
 
@@ -870,7 +869,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
     }
   }
 
-  for (int i = 0; i < NUMBER_OF_NR_SRS_MAX; i++) {
+  for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = gNB->srs[i];
     if (srs) {
       if ((srs->active == 1) && (srs->frame == frame_rx) && (srs->slot == slot_rx)) {
@@ -886,7 +885,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
         int32_t srs_estimated_channel_time[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
         int32_t srs_estimated_channel_time_shifted[frame_parms->nb_antennas_rx][1 << srs_pdu->num_ant_ports][frame_parms->ofdm_symbol_size];
         int8_t snr_per_rb[srs_pdu->bwp_size];
-        int8_t snr;
+        int8_t snr = 0;
 
         start_meas(&gNB->generate_srs_stats);
         if (check_srs_pdu(srs_pdu, &gNB->nr_srs_info[i]->srs_pdu) == 0) {

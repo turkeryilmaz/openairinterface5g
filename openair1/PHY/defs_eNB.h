@@ -182,9 +182,6 @@ typedef struct {
 
 typedef struct {
   /// \brief ?.
-  /// first index: ? [0..1023] (hard coded)
-  int16_t *prachF;
-  /// \brief ?.
   /// first index: ce_level [0..3]
   /// second index: rx antenna [0..63] (hard coded) \note Hard coded array size indexed by \c nb_antennas_rx.
   /// third index: frequency-domain sample [0..ofdm_symbol_size*12[
@@ -762,7 +759,6 @@ typedef struct PHY_VARS_eNB_s {
   int32_t pusch_stats_mcs[NUMBER_OF_UE_MAX][10240];
   int32_t pusch_stats_bsr[NUMBER_OF_UE_MAX][10240];
   int32_t pusch_stats_BO[NUMBER_OF_UE_MAX][10240];
-  uint8_t *FS6bufferZone;
   int32_t pusch_signal_threshold;
 } PHY_VARS_eNB;
 

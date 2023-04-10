@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-#include "phy_init.h"
+#include "nr_phy_init.h"
 #include "common/utils/nr/nr_common.h"
 #include "common/utils/LOG/log.h"
 
@@ -154,8 +154,8 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
       fp->slots_per_subframe = nr_slots_per_subframe[NR_MU_1];
        while(nr_ssb_table[idx][0]!=fp->nr_band ||
              nr_ssb_table[idx][1]!=30) {
-/*        AssertFatal(nr_ssb_table[idx][0]<=fp->nr_band,"SCS %d not applicable to band %d\n",
-                    fp->subcarrier_spacing,fp->nr_band); */
+       /*AssertFatal(nr_ssb_table[idx][0]<=fp->nr_band,"SCS %d not applicable to band %d\n",
+                    fp->subcarrier_spacing,fp->nr_band);*/
         idx++;
       }
       fp->ssb_type = nr_ssb_table[idx][2];
@@ -252,7 +252,6 @@ int nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg,
 
 
   LOG_I(PHY,"Initializing frame parms for mu %d, N_RB %d, Ncp %d\n",mu, fp->N_RB_DL, Ncp);
-
 
   if (Ncp == NFAPI_CP_EXTENDED)
     AssertFatal(mu == NR_MU_2,"Invalid cyclic prefix %d for numerology index %d\n", Ncp, mu);

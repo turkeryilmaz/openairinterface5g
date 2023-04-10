@@ -38,7 +38,7 @@
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_UE_TRANSPORT/pucch_nr.h"
@@ -46,8 +46,8 @@
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
 #include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
-#include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
 #include "executables/nr-uesoftmodem.h"
+#include "nfapi/oai_integration/vendor_ext.h"
 
 THREAD_STRUCT thread_struct;
 PHY_VARS_gNB *gNB;
@@ -59,14 +59,19 @@ uint64_t downlink_frequency[MAX_NUM_CCs][4];
 
 double cpuf;
 //uint8_t nfapi_mode = 0;
-uint16_t NB_UE_INST = 1;
+const int NB_UE_INST = 1;
 uint8_t const nr_rv_round_map[4] = {0, 2, 3, 1};
 const short conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
 const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
 // needed for some functions
 PHY_VARS_NR_UE * PHY_vars_UE_g[1][1]={{NULL}};
 
+uint64_t get_softmodem_optmask(void) {return 0;}
+softmodem_params_t *get_softmodem_params(void) {return 0;}
+
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
+NR_IF_Module_t *NR_IF_Module_init(int Mod_id) { return (NULL); }
+nfapi_mode_t nfapi_getmode(void) { return NFAPI_MODE_UNKNOWN; }
 
 nrUE_params_t nrUE_params={0};
 
@@ -404,6 +409,8 @@ int main(int argc, char **argv)
   cfg->carrier_config.num_tx_ant.value = n_tx;
   cfg->carrier_config.num_rx_ant.value = n_rx;
   nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,Nid_cell,SSB_positions);
+  gNB->gNB_config.tdd_table.tdd_period.value = 6;
+  set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
   phy_init_nr_gNB(gNB);
   /* RU handles rxdataF, and gNB just has a pointer. Here, we don't have an RU,
    * so we need to allocate that memory as well. */
@@ -582,7 +589,7 @@ int main(int argc, char **argv)
             rxdataF[aarx][i].r = (int16_t)(100.0*(rxr + nr)/sqrt((double)txlev));
             rxdataF[aarx][i].i=(int16_t)(100.0*(rxi + ni)/sqrt((double)txlev));
 
-            if (n_trials==1 && abs(txr) > 0) printf("symb %d, re %d , aarx %d : txr %f, txi %f, chr %f, chi %f, nr %f, ni %f, rxr %f, rxi %f => %d,%d\n",
+            if (n_trials==1 && fabs(txr) > 0) printf("symb %d, re %d , aarx %d : txr %f, txi %f, chr %f, chi %f, nr %f, ni %f, rxr %f, rxi %f => %d,%d\n",
                                                     symb, re, aarx, txr,txi,
                                                     UE2gNB->chF[aarx][re].r,UE2gNB->chF[aarx][re].i,
                                                     nr,ni, rxr,rxi,
@@ -720,6 +727,11 @@ int main(int argc, char **argv)
   }
   free_channel_desc_scm(UE2gNB);
   term_freq_channel();
+
+  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES * (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  for (int i = 0; i < nb_slots_to_set; ++i)
+    free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
+  free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
   for (i = 0; i < n_rx; i++)
     free(gNB->common_vars.rxdataF[i]);
