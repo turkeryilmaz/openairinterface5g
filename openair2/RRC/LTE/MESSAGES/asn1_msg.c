@@ -2369,24 +2369,41 @@ uint8_t do_SIB4(uint8_t Mod_id,
     exit(-1);
   }
 
-  LOG_I(RRC,"[eNB %d] Configuration SIB4, intraFreqNeighCellListPresent: %d \n", Mod_id, configuration->intraFreqNeighCellListPresent);
+  LOG_I(RRC,"[eNB %d] Configuration SIB4, intraFreqNeighCellListPresent: %d \n", Mod_id, configuration->intraFreqNeighCellListPresent[CC_id]);
   sib4_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   memset(sib4_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib4_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4;
   *sib4 = &sib4_part->choice.sib4;
 
   /* Checking if intraFreqNeighCellList is present in SIB4 */
-  if(true == configuration->intraFreqNeighCellListPresent) {
-    (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount,sizeof(struct LTE_IntraFreqNeighCellList));
+  if(true == configuration->intraFreqNeighCellListPresent[CC_id]) {
+    (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount[CC_id],sizeof(struct LTE_IntraFreqNeighCellList));
     LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
     /* Handling multiple entities in intraFreqNeighCellList for SIB4 message */
-    for(int i = 0; i < configuration->intraFreqNeighCellListCount; i++){
+    for(int i = 0; i < configuration->intraFreqNeighCellListCount[CC_id]; i++){
       IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
       IntraFreqNeighCellInfo->physCellId = configuration->intraFreqNeighCellList[CC_id][i].physCellId;
       IntraFreqNeighCellInfo->q_OffsetCell = configuration->intraFreqNeighCellList[CC_id][i].q_OffsetCell;
       asn1cSeqAdd(&(*sib4)->intraFreqNeighCellList->list,IntraFreqNeighCellInfo);
     }
   }
+
+  /* Checking if intraFreqBlackCellList is present in SIB4 */
+  if (true == configuration->intraFreqBlackCellListPresent[CC_id]) {
+    (*sib4)->intraFreqBlackCellList = CALLOC(configuration->intraFreqBlackCellListCount[CC_id], sizeof(struct LTE_IntraFreqBlackCellList));
+    LTE_PhysCellIdRange_t *PhysCellIdRange;
+    /* Handling multiple entities in intraFreqBlackCellList for SIB4 message */
+    for (int i = 0; i < configuration->intraFreqBlackCellListCount[CC_id]; i++) {
+      PhysCellIdRange = CALLOC(1, sizeof(struct LTE_PhysCellIdRange));
+      PhysCellIdRange->start = configuration->intraFreqBlackCellList[CC_id][i].start;
+      if (true == configuration->intraFreqBlackCellList[CC_id][i].range_Present) {
+        PhysCellIdRange->range = CALLOC(1, sizeof(long));
+        PhysCellIdRange->range = (long *)configuration->intraFreqBlackCellList[CC_id][i].range;
+      }
+      asn1cSeqAdd(&(*sib4)->intraFreqBlackCellList->list, PhysCellIdRange);
+    }
+  }
+
   /* TODO : Need to handle all remaining ext and lateNonCriticalExtension IE properly */
   (*sib4)->lateNonCriticalExtension = NULL;
   (*sib4)->ext1 = NULL;

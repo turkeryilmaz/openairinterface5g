@@ -322,7 +322,8 @@ typedef struct lte_SchedulingInfo_s {
 
 typedef struct PhysCellIdRange_s {
   long         start;
-  e_LTE_PhysCellIdRange__range range; 
+  bool         range_Present;
+  e_LTE_PhysCellIdRange__range range;
 }PhysCellIdRange_t;
 
 typedef struct threshX_Q_r9_s {
@@ -492,9 +493,12 @@ typedef struct RrcConfigurationReq_s {
 
   //SIB4
   bool                       sib4_Present[MAX_NUM_CCs];
-  bool                       intraFreqNeighCellListPresent;
-  int                        intraFreqNeighCellListCount;
+  bool                       intraFreqNeighCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqNeighCellListCount[MAX_NUM_CCs];
   IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
+  bool                       intraFreqBlackCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqBlackCellListCount[MAX_NUM_CCs];
+  PhysCellIdRange_t         *intraFreqBlackCellList[MAX_NUM_CCs];
 
   //SIB5
   bool                         sib5_Present[MAX_NUM_CCs];
