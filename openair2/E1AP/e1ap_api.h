@@ -9,6 +9,8 @@
  *
  *      http://www.openairinterface.org/?page_id=698
  *
+ * Author and copyright: Laurent Thomas, open-cells.com
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,13 +21,15 @@
  *      contact@openairinterface.org
  */
 
-/*! \file f1ap_du_interface_management.h
- * \brief f1ap interface management for DU
- * \author EURECOM/NTUST
- * \date 2018
- * \version 0.1
- * \company Eurecom
- * \email: navid.nikaein@eurecom.fr, bing-kai.hong@eurecom.fr
- * \note
- * \warning
- */
+#ifndef E1AP_API_H
+#define E1AP_API_H
+
+#include "platform_types.h"
+#include "openair2/COMMON/e1ap_messages_types.h"
+#include "openair2/E1AP/e1ap_common.h"
+void cuup_init_n3(instance_t instance);
+void process_e1_bearer_context_setup_req(instance_t, e1ap_bearer_setup_req_t *const req);
+void CUUP_process_bearer_context_mod_req(instance_t, e1ap_bearer_setup_req_t *const req);
+
+void CUUP_process_bearer_release_command(instance_t, e1ap_bearer_release_cmd_t *const cmd);
+#endif

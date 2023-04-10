@@ -41,16 +41,14 @@
 #include "rrc_types.h"
 //#include "PHY/phy_defs.h"
 #include "LAYER2/RLC/rlc.h"
-#include "RRC/NR/nr_rrc_types.h"
 #include "NR_UE-MRDC-Capability.h"
 #include "NR_UE-NR-Capability.h"
 
-
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "COMMON/platform_types.h"
 
 #include "LAYER2/MAC/mac.h"
-
+#include "openair2/RRC/common.h"
 //for D2D
 #define DEBUG_CTRL_SOCKET
 
@@ -661,8 +659,6 @@ typedef struct eNB_RRC_UE_s {
 
 } eNB_RRC_UE_t;
 
-typedef uid_t ue_uid_t;
-
 typedef struct rrc_eNB_ue_context_s {
   /* Tree related data */
   RB_ENTRY(rrc_eNB_ue_context_s) entries;
@@ -714,8 +710,7 @@ typedef struct {
   LTE_BCCH_DL_SCH_Message_t             systemInformation;
   LTE_BCCH_DL_SCH_Message_t             systemInformation_BR;
   LTE_BCCH_BCH_Message_MBMS_t            mib_fembms;
-  LTE_BCCH_DL_SCH_Message_MBMS_t         siblock1_MBMS;
-  LTE_BCCH_DL_SCH_Message_MBMS_t         systemInformation_MBMS;
+  LTE_BCCH_DL_SCH_Message_MBMS_t siblock1_MBMS;
   LTE_SchedulingInfo_MBMS_r14_t 	 schedulingInfo_MBMS;
   LTE_PLMN_IdentityInfo_t		 PLMN_identity_info_MBMS[6];
   LTE_MCC_MNC_Digit_t			 dummy_mcc_MBMS[6][3], dummy_mnc_MBMS[6][3];
@@ -758,7 +753,6 @@ typedef struct {
 
 typedef struct eNB_RRC_INST_s {
   /// southbound midhaul configuration
-  ngran_node_t                    node_type;
   eth_params_t                    eth_params_s;
   char                            *node_name;
   uint32_t                        node_id;

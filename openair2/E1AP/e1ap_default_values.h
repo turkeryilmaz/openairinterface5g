@@ -19,26 +19,10 @@
  *      contact@openairinterface.org
  */
 
-/*! \file f1ap_messaging.h
- * \brief f1ap procedures
- * \author EURECOM/NTUST
- * \date 2018
- * \version 0.1
- * \company Eurecom
- * \email: navid.nikaein@eurecom.fr, bing-kai.hong@eurecom.fr
- * \note
- * \warning
- */
+#ifndef E1AP_DEFAULT_VALUES_H
+#define E1AP_DEFAULT_VALUES_H
 
+#define E1AP_PORT_NUMBER (38462)
+#define E1AP_SCTP_PPID   (64)
 
-#ifndef F1AP_MESSAGING_H_
-#define F1AP_MESSAGING_H_
-
-void f1ap_send_sctp_data_req(instance_t instance, int32_t assoc_id, uint8_t *buffer,
-                             uint32_t buffer_length, uint16_t stream);
-
-void f1ap_send_sctp_close_association(instance_t instance,
-                                      int32_t assoc_id);
-
-
-#endif /* F1AP_MESSAGING_H_ */
+#endif

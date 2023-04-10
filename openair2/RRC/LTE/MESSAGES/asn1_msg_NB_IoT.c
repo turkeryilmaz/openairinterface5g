@@ -37,7 +37,6 @@
 #include "common/utils/LOG/log.h"
 #include "oai_asn1.h"
 #include <asn_application.h>
-#include <asn_internal.h> /* for _ASN_DEFAULT_STACK_MAX */
 #include <per_encoder.h>
 #include "asn1_msg.h"
 

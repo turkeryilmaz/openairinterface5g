@@ -40,7 +40,6 @@
 #include <errno.h>  /* for errno */
 
 #include <asn_application.h>
-#include <asn_internal.h> /* for _ASN_DEFAULT_STACK_MAX */
 
 #include "RRC/LTE/rrc_defs.h"
 #include "LTE_SL-DestinationInfoList-r12.h"

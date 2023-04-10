@@ -46,7 +46,6 @@
 #include "common/utils/LOG/log.h"
 #include "oai_asn1.h"
 #include <asn_application.h>
-#include <asn_internal.h> /* for _ASN_DEFAULT_STACK_MAX */
 #include <per_encoder.h>
 #include "executables/lte-softmodem.h"
 #include "assertions.h"
@@ -116,9 +115,6 @@ typedef struct xer_sprint_string_s {
   size_t string_size;
   size_t string_index;
 } xer_sprint_string_t;
-
-extern unsigned char NB_eNB_INST;
-
 
 extern RAN_CONTEXT_t RC;
 

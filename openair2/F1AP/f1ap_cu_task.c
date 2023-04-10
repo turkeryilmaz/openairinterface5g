@@ -57,8 +57,11 @@ static void cu_task_handle_sctp_association_ind(instance_t instance, sctp_new_as
   f1ap_cu_data->sctp_in_streams  = sctp_new_association_ind->in_streams;
   f1ap_cu_data->sctp_out_streams = sctp_new_association_ind->out_streams;
   f1ap_cu_data->default_sctp_stream_id = 0;
-  getCxt(CUtype, instance)->gtpInst=cu_task_create_gtpu_instance(IPaddrs);
-  AssertFatal(getCxt(CUtype, instance)->gtpInst>0,"Failed to create CU F1-U UDP listener");
+  if (RC.nrrrc[GNB_INSTANCE_TO_MODULE_ID(instance)]->node_type != ngran_gNB_CUCP) {
+    getCxt(CUtype, instance)->gtpInst = cu_task_create_gtpu_instance(IPaddrs);
+    AssertFatal(getCxt(CUtype, instance)->gtpInst > 0, "Failed to create CU F1-U UDP listener");
+  } else
+    LOG_I(F1AP, "In F1AP connection, don't start GTP-U, as we have also E1AP\n");
   // Fixme: fully inconsistent instances management
   // dirty global var is a bad fix
   CUuniqInstance=getCxt(CUtype, instance)->gtpInst;
@@ -89,8 +92,8 @@ static void cu_task_handle_sctp_data_ind(instance_t instance, sctp_data_ind_t *s
 }
 
 static void cu_task_send_sctp_init_req(instance_t instance, char *my_addr) {
-  // 1. get the itti msg, and retrive the enb_id from the message
-  // 2. use RC.rrc[enb_id] to fill the sctp_init_t with the ip, port
+  // 1. get the itti msg, and retrive the nb_id from the message
+  // 2. use RC.rrc[nb_id] to fill the sctp_init_t with the ip, port
   // 3. creat an itti message to init
   LOG_I(F1AP, "F1AP_CU_SCTP_REQ(create socket)\n");
   MessageDef  *message_p = NULL;
@@ -120,80 +123,63 @@ void *F1AP_CU_task(void *arg) {
   eth_params_t *IPaddrs;
 
   // Hardcoded instance id!
-  if (RC.nrrrc && RC.nrrrc[0]->node_type == ngran_gNB_CU)
-    IPaddrs=&RC.nrrrc[0]->eth_params_s;
-  else
-    IPaddrs=&RC.rrc[0]->eth_params_s;
+  IPaddrs = &RC.nrrrc[0]->eth_params_s;
 
   cu_task_send_sctp_init_req(0, IPaddrs->my_addr);
 
   while (1) {
     itti_receive_msg(TASK_CU_F1, &received_msg);
-
+    LOG_D(F1AP, "CU Task Received %s for instance %ld\n",
+          ITTI_MSG_NAME(received_msg), ITTI_MSG_DESTINATION_INSTANCE(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
       case SCTP_NEW_ASSOCIATION_IND:
-        LOG_I(F1AP, "CU Task Received SCTP_NEW_ASSOCIATION_IND for instance %ld\n",
-              ITTI_MSG_DESTINATION_INSTANCE(received_msg));
         cu_task_handle_sctp_association_ind(ITTI_MSG_ORIGIN_INSTANCE(received_msg),
                                             &received_msg->ittiMsg.sctp_new_association_ind,
                                             IPaddrs);
         break;
 
       case SCTP_NEW_ASSOCIATION_RESP:
-        LOG_I(F1AP, "CU Task Received SCTP_NEW_ASSOCIATION_RESP for instance %ld\n",
-              ITTI_MSG_DESTINATION_INSTANCE(received_msg));
         cu_task_handle_sctp_association_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                              &received_msg->ittiMsg.sctp_new_association_resp);
         break;
 
       case SCTP_DATA_IND:
-        LOG_I(F1AP, "CU Task Received SCTP_DATA_IND for Instance %ld\n",
-              ITTI_MSG_DESTINATION_INSTANCE(received_msg));
         cu_task_handle_sctp_data_ind(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                      &received_msg->ittiMsg.sctp_data_ind);
         break;
 
       case F1AP_SETUP_RESP: // from rrc
-        LOG_I(F1AP, "CU Task Received F1AP_SETUP_RESP\n");
         CU_send_F1_SETUP_RESPONSE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                   &F1AP_SETUP_RESP(received_msg));
         break;
 
       case F1AP_GNB_CU_CONFIGURATION_UPDATE: // from rrc
-        LOG_I(F1AP, "CU Task Received F1AP_GNB_CU_CONFIGURAITON_UPDATE\n");
-        // CU_send_f1setup_resp(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-        //                                       &F1AP_SETUP_RESP(received_msg));
         CU_send_gNB_CU_CONFIGURATION_UPDATE(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                             &F1AP_GNB_CU_CONFIGURATION_UPDATE(received_msg));
         break;
 
       case F1AP_DL_RRC_MESSAGE: // from rrc
-        LOG_I(F1AP, "CU Task Received F1AP_DL_RRC_MESSAGE\n");
         CU_send_DL_RRC_MESSAGE_TRANSFER(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                         &F1AP_DL_RRC_MESSAGE(received_msg));
         free(F1AP_DL_RRC_MESSAGE(received_msg).rrc_container);
         break;
 
       case F1AP_UE_CONTEXT_SETUP_REQ: // from rrc
-        LOG_I(F1AP, "CU Task Received F1AP_UE_CONTEXT_SETUP_REQ\n");
         CU_send_UE_CONTEXT_SETUP_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                          &F1AP_UE_CONTEXT_SETUP_REQ(received_msg));
         break;
 
       case F1AP_UE_CONTEXT_MODIFICATION_REQ:
-        LOG_I(F1AP, "CU Task received F1AP_UE_CONTEXT_MODIFICATION_REQ\n");
         CU_send_UE_CONTEXT_MODIFICATION_REQUEST(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
-                                                &F1AP_UE_CONTEXT_MODIFICATION_REQ(received_msg));
+                                                &F1AP_UE_CONTEXT_SETUP_REQ(received_msg));
         break;
 
       case F1AP_UE_CONTEXT_RELEASE_CMD: // from rrc
-        LOG_I(F1AP, "CU Task Received F1AP_UE_CONTEXT_RELEASE_CMD\n");
         CU_send_UE_CONTEXT_RELEASE_COMMAND(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                                            &F1AP_UE_CONTEXT_RELEASE_CMD(received_msg));
         break;
 
       case F1AP_PAGING_IND:
-        LOG_I(F1AP, "CU Task Received F1AP_PAGING_IND\n");
         CU_send_Paging(ITTI_MSG_DESTINATION_INSTANCE(received_msg),
                        &F1AP_PAGING_IND(received_msg));
         break;
