@@ -848,9 +848,73 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
     ue->if_inst->dl_indication(&dl_indication);
   }
 
+<<<<<<< HEAD
   // DLSCH decoding finished! don't wait anymore
   const int ack_nack_slot = (proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) % ue->frame_parms.slots_per_frame;
   send_slot_ind(ue->tx_resume_ind_fifo[ack_nack_slot], proc->nr_slot_rx);
+=======
+  if (ue->mac_enabled == 1) { // TODO: move this from PHY to MAC layer!
+
+    /* Time Alignment procedure
+    // - UE processing capability 1
+    // - Setting the TA update to be applied after the reception of the TA command
+    // - Timing adjustment computed according to TS 38.213 section 4.2
+    // - Durations of N1 and N2 symbols corresponding to PDSCH and PUSCH are
+    //   computed according to sections 5.3 and 6.4 of TS 38.214 */
+    const int numerology = ue->frame_parms.numerology_index;
+    const int ofdm_symbol_size = ue->frame_parms.ofdm_symbol_size;
+    const int nb_prefix_samples = ue->frame_parms.nb_prefix_samples;
+    const int samples_per_subframe = ue->frame_parms.samples_per_subframe;
+    const int slots_per_frame = ue->frame_parms.slots_per_frame;
+    const int slots_per_subframe = ue->frame_parms.slots_per_subframe;
+
+    const double tc_factor = 1.0 / samples_per_subframe;
+    const uint16_t bw_scaling = get_bw_scaling(ofdm_symbol_size);
+
+    const int Ta_max = 3846; // Max value of 12 bits TA Command
+    const double N_TA_max = Ta_max * bw_scaling * tc_factor;
+
+    NR_UE_MAC_INST_t *mac = get_mac_inst(0);
+    NR_BWP_Id_t ul_bwp = mac->current_UL_BWP.bwp_id;
+
+    NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = NULL;
+    if(ul_bwp){
+      if (mac->ULbwp[ul_bwp-1] &&
+          mac->ULbwp[ul_bwp-1]->bwp_Dedicated &&
+          mac->ULbwp[ul_bwp-1]->bwp_Dedicated->pusch_Config &&
+          mac->ULbwp[ul_bwp-1]->bwp_Dedicated->pusch_Config->choice.setup &&
+          mac->ULbwp[ul_bwp-1]->bwp_Dedicated->pusch_Config->choice.setup->pusch_TimeDomainAllocationList) {
+        pusch_TimeDomainAllocationList = mac->ULbwp[ul_bwp-1]->bwp_Dedicated->pusch_Config->choice.setup->pusch_TimeDomainAllocationList->choice.setup;
+      }
+      else if (mac->ULbwp[ul_bwp-1] &&
+               mac->ULbwp[ul_bwp-1]->bwp_Common &&
+               mac->ULbwp[ul_bwp-1]->bwp_Common->pusch_ConfigCommon &&
+               mac->ULbwp[ul_bwp-1]->bwp_Common->pusch_ConfigCommon->choice.setup &&
+               mac->ULbwp[ul_bwp-1]->bwp_Common->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList) {
+        pusch_TimeDomainAllocationList = mac->ULbwp[ul_bwp-1]->bwp_Common->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
+      }
+    }
+    else if (mac->scc_SIB &&
+             mac->scc_SIB->uplinkConfigCommon &&
+             mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.pusch_ConfigCommon &&
+             mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.pusch_ConfigCommon->choice.setup &&
+             mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList) {
+      pusch_TimeDomainAllocationList = mac->scc_SIB->uplinkConfigCommon->initialUplinkBWP.pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
+    }
+    long mapping_type_ul = pusch_TimeDomainAllocationList ? pusch_TimeDomainAllocationList->list.array[0]->mappingType : NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeA;
+
+    NR_PDSCH_Config_t *pdsch_Config = mac->current_DL_BWP.pdsch_Config;
+    NR_PDSCH_TimeDomainResourceAllocationList_t *pdsch_TimeDomainAllocationList = mac->current_DL_BWP.tdaList_Common;
+    long mapping_type_dl = pdsch_TimeDomainAllocationList ? pdsch_TimeDomainAllocationList->list.array[0]->mappingType : NR_PDSCH_TimeDomainResourceAllocation__mappingType_typeA;
+
+    NR_DMRS_DownlinkConfig_t *NR_DMRS_dlconfig = NULL;
+    if (pdsch_Config) {
+      if (mapping_type_dl == NR_PDSCH_TimeDomainResourceAllocation__mappingType_typeA)
+        NR_DMRS_dlconfig = (NR_DMRS_DownlinkConfig_t *)pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup;
+      else
+        NR_DMRS_dlconfig = (NR_DMRS_DownlinkConfig_t *)pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeB->choice.setup;
+    }
+>>>>>>> b7db35a810... Rebasing openair1 directory
 
   if (ue->phy_sim_dlsch_b)
     memcpy(ue->phy_sim_dlsch_b, p_b, dlsch_bytes);

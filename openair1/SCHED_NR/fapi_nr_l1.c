@@ -158,12 +158,17 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
   if (NFAPI_MODE == NFAPI_MONOLITHIC){
 
     if (slot_type == NR_DOWNLINK_SLOT || slot_type == NR_MIXED_SLOT) {
-      notifiedFIFO_elt_t *res;
-      res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
-      if (res == NULL)
-        return; // Tpool has been stopped, nothing to process
-      processingData_L1tx_t *msgTx = (processingData_L1tx_t *)NotifiedFifoData(res);
-      const time_stats_t ts = exec_time_stats_NotifiedFIFO(res);
+      notifiedFIFO_elt_t *res=NULL;
+      processingData_L1tx_t *msgTx=NULL;
+      if (!gNB->reorder_thread_disable) {
+	res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
+        if (res == NULL)
+          return; // Tpool has been stopped, nothing to process
+        msgTx = (processingData_L1tx_t *)NotifiedFifoData(res);
+      } else {
+        msgTx = gNB->msgDataTx; //newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
+      }
+      /*const time_stats_t ts = exec_time_stats_NotifiedFIFO(res);
       merge_meas(&gNB->phy_proc_tx, &ts);
 */
       msgTx->num_pdsch_slot = 0;
@@ -212,7 +217,13 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
       for (int i=0; i<number_ul_dci_pdu; i++)
         msgTx->ul_pdcch_pdu[i] = UL_dci_req->ul_dci_pdu_list[i];
 
-      pushNotifiedFIFO(&gNB->L1_tx_filled,res);
+      /* Both the current thread and the TX thread will access the sched_info
+       * at the same time, so increase its reference counter, so that it is
+       * released only when both threads are done with it.
+       */
+      inc_ref_sched_response(Sched_INFO->sched_response_id);
+      if (!gNB->reorder_thread_disable)
+	pushNotifiedFIFO(&gNB->L1_tx_filled,res);
     }
 
     for (int i = 0; i < number_ul_tti_pdu; i++) {
@@ -242,23 +253,16 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
 
   if (NFAPI_MODE == NFAPI_MODE_VNF) { //If VNF, oai_nfapi functions send respective p7 msgs to PNF for which nPDUs is greater than 0
 
-    if(number_ul_tti_pdu>0) {
-      //UL_tti_req->header.phy_id = Sched_INFO->CC_id + 1;
+    if(number_ul_tti_pdu>0)
       oai_nfapi_ul_tti_req(UL_tti_req);
-    }
 
-    if (number_ul_dci_pdu>0) {
-      //UL_dci_req->header.phy_id = Sched_INFO->CC_id + 1;
+    if (number_ul_dci_pdu>0)
       oai_nfapi_ul_dci_req(UL_dci_req);
-    }
 
-    if (number_tx_data_pdu>0) {
-      //TX_req->header.phy_id = Sched_INFO->CC_id + 1;
+    if (number_tx_data_pdu>0)
       oai_nfapi_tx_data_req(TX_req);
-    }
 
-    if (number_dl_pdu>0) {
-      //DL_req->header.phy_id = Sched_INFO->CC_id + 1;
+    if (number_dl_pdu>0)
       oai_nfapi_dl_tti_req(DL_req);
   }
 

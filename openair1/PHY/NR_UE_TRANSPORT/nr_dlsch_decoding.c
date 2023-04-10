@@ -53,6 +53,18 @@
 
 static extended_kpi_ue kpiStructure = {0};
 
+<<<<<<< HEAD
+extended_kpi_ue* getKPIUE(void) {
+  return &kpiStructure;
+}
+=======
+static extended_kpi_ue kpiStructure = {0};
+
+notifiedFIFO_t freeBlocks_dl;
+notifiedFIFO_elt_t *msgToPush_dl;
+int nbDlProcessing =0;
+>>>>>>> b7db35a810... Rebasing openair1 directory
+
 extended_kpi_ue* getKPIUE(void) {
   return &kpiStructure;
 }
@@ -105,6 +117,7 @@ bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool
     kpiStructure.dl_mcs = dlsch->dlsch_config.mcs;
     kpiStructure.nofRBs = dlsch->dlsch_config.number_rbs;
 
+<<<<<<< HEAD
     if (*num_seg_ok == harq_process->C) {
       if (harq_process->C > 1) {
         /* check global CRC */
@@ -119,6 +132,9 @@ bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool
           return true; //stop
         }
       }
+=======
+    if (decodeSuccess) {
+>>>>>>> b7db35a810... Rebasing openair1 directory
       //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
       harq_process->status = SCH_IDLE;
