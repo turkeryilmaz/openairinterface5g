@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "LTE_BCCH-BCH-Message.h"
 #include "LTE_RadioResourceConfigCommon.h"
 #include "LTE_RadioResourceConfigCommonSIB.h"
@@ -1139,14 +1139,6 @@ typedef struct {
   ///remove RA flag
   bool raFlag;
 } UE_free_ctrl_t;
-/*! \brief REMOVE UE list used by eNB to order UEs/CC for deleting*/
-typedef struct {
-  /// deleting control info
-  UE_free_ctrl_t UE_free_ctrl[NUMBER_OF_UE_MAX+1];
-  int num_UEs;
-  int head_freelist; ///the head position of the delete list
-  int tail_freelist; ///the tail position of the delete list
-} UE_free_list_t;
 
 /**
  * describes contiguous RBs

@@ -135,7 +135,7 @@ generate_dlsch_header(unsigned char *mac_header,
     AssertFatal(timing_advance_cmd < 64, "timing_advance_cmd %d > 63\n",
                 timing_advance_cmd);
     ((TIMING_ADVANCE_CMD *) ce_ptr)->TA = timing_advance_cmd;    //(timing_advance_cmd+31)&0x3f;
-    LOG_A(MAC, "timing advance =%d (%d)\n",
+    LOG_D(MAC, "timing advance =%d (%d)\n",
           timing_advance_cmd,
           ((TIMING_ADVANCE_CMD *) ce_ptr)->TA);
     ce_ptr += sizeof(TIMING_ADVANCE_CMD);
@@ -1372,7 +1372,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           ta_update = ue_sched_ctl->ta_update;
 
           /* If we send TA then set timer to not send it for a while */
-         if (ta_update != 31)
+          if (ta_update != 31)
             ue_sched_ctl->ta_timer = 20;
 
           /* Reset ta_update */
@@ -1380,8 +1380,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           ue_sched_ctl->ta_update_f = 31.0;
         } else {
           ta_update = 31;
-        }
-   
+        } 
 
         ta_len = (ta_update != 31) ? 2 : 0;
         header_len_dcch = 2; // 2 bytes DCCH SDU subheader
@@ -2463,7 +2462,7 @@ schedule_PCH(module_id_t module_idP,
         eNB->eNB_stats[CC_id].total_pcch_buffer += pcch_sdu_length;
         eNB->eNB_stats[CC_id].pcch_mcs = mcs;
         //paging first_rb log
-        LOG_A(MAC,"[eNB %d] Frame %d subframe %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
+        LOG_D(MAC,"[eNB %d] Frame %d subframe %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
               module_idP,
               frameP,
               subframeP,

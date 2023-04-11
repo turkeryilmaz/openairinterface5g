@@ -250,21 +250,28 @@ typedef struct protocol_ctxt_s {
   MODULE_ID_TO_INSTANCE( (CtXt_h)->module_id , (CtXt_h)->instance , (CtXt_h)->enb_flag )
 
 #define PROTOCOL_CTXT_SET_BY_MODULE_ID(Ctxt_Pp, mODULE_iD, eNB_fLAG, rNTI, fRAME, sUBfRAME, eNB_iNDEX) \
-  (Ctxt_Pp)->module_id = mODULE_iD;                                                                    \
-  (Ctxt_Pp)->enb_flag = eNB_fLAG;                                                                      \
-  (Ctxt_Pp)->rntiMaybeUEid = rNTI;                                                                     \
-  (Ctxt_Pp)->frame = fRAME;                                                                            \
-  (Ctxt_Pp)->subframe = sUBfRAME;                                                                      \
-  (Ctxt_Pp)->eNB_index = eNB_iNDEX;                                                                    \
-  PROTOCOL_CTXT_COMPUTE_INSTANCE(Ctxt_Pp)
+  do {                                                                                                 \
+    (Ctxt_Pp)->module_id = mODULE_iD;                                                                  \
+    (Ctxt_Pp)->enb_flag = eNB_fLAG;                                                                    \
+    (Ctxt_Pp)->rntiMaybeUEid = rNTI;                                                                   \
+    (Ctxt_Pp)->frame = fRAME;                                                                          \
+    (Ctxt_Pp)->subframe = sUBfRAME;                                                                    \
+    (Ctxt_Pp)->eNB_index = eNB_iNDEX;                                                                  \
+    (Ctxt_Pp)->brOption = false;                 /* set a default value */                             \
+    PROTOCOL_CTXT_COMPUTE_INSTANCE(Ctxt_Pp);                                                           \
+  } while (0)
 
 #define PROTOCOL_CTXT_SET_BY_INSTANCE(Ctxt_Pp, iNSTANCE, eNB_fLAG, rNTI, fRAME, sUBfRAME) \
-  (Ctxt_Pp)->instance = iNSTANCE;                                                         \
-  (Ctxt_Pp)->enb_flag = eNB_fLAG;                                                         \
-  (Ctxt_Pp)->rntiMaybeUEid = rNTI;                                                        \
-  (Ctxt_Pp)->frame = fRAME;                                                               \
-  (Ctxt_Pp)->subframe = sUBfRAME;                                                         \
-  PROTOCOL_CTXT_COMPUTE_MODULE_ID(Ctxt_Pp)
+  do {                                                                                    \
+    (Ctxt_Pp)->instance = iNSTANCE;                                                       \
+    (Ctxt_Pp)->enb_flag = eNB_fLAG;                                                       \
+    (Ctxt_Pp)->rntiMaybeUEid = rNTI;                                                      \
+    (Ctxt_Pp)->frame = fRAME;                                                             \
+    (Ctxt_Pp)->subframe = sUBfRAME;                                                       \
+    (Ctxt_Pp)->eNB_index = 0;                    /* set a default value */                \
+    (Ctxt_Pp)->brOption = false;                 /* set a default value */                \
+    PROTOCOL_CTXT_COMPUTE_MODULE_ID(Ctxt_Pp);                                             \
+  } while (0)
 
 #define PROTOCOL_CTXT_FMT "[FRAME %05u][%s][MOD %02d][RNTI %" PRIx64 "]"
 #define PROTOCOL_CTXT_ARGS(CTXT_Pp) (CTXT_Pp)->frame, ((CTXT_Pp)->enb_flag == ENB_FLAG_YES) ? "eNB" : " UE", (CTXT_Pp)->module_id, (CTXT_Pp)->rntiMaybeUEid

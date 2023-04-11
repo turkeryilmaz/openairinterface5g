@@ -123,7 +123,10 @@ int nr_derive_key(algorithm_type_dist_t alg_type, uint8_t alg_id, const uint8_t 
 
 int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t key[32], uint8_t *key_ng_ran_star)
 {
+<<<<<<< HEAD
   uint8_t *out;
+=======
+>>>>>>> 72a0439677... Complete openair2 rebased changes for 4G
   uint8_t s[10] = {0};
 
   /* FC */
@@ -146,10 +149,10 @@ int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t 
   s[8] = 0x00;
   s[9] = 0x03;
 
-  kdf(s, 10, key, 32, &out, 32);
 
-  memcpy(key_ng_ran_star, out, 32);
-  free(out);
+  byte_array_t data = {.buf = s, .len = 10};
+  const uint32_t len_key = 32;
+  kdf(key, data, len_key, key_ng_ran_star);
 
   return 0;
 }
