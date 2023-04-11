@@ -23,7 +23,7 @@
 #define GTPV1_U_MESSAGES_TYPES_H_
 
 #include "LTE_asn_constant.h"
-
+#include "NR_asn_constant.h"
 
 #define GTPV1U_MAX_BEARERS_PER_UE max_val_LTE_DRB_Identity
 #define NR_GTPV1U_MAX_BEARERS_PER_UE max_val_NR_DRB_Identity
@@ -107,7 +107,7 @@ typedef struct gtpv1u_enb_delete_tunnel_resp_s {
 } gtpv1u_enb_delete_tunnel_resp_t;
 
 
-typedef struct gtpv1u_tunnel_data_req_s{
+typedef struct gtpv1u_tunnel_data_req_s {
   uint8_t               *buffer;
   uint32_t               length;
   uint32_t               offset;               ///< start of message offset in buffer
@@ -185,7 +185,7 @@ typedef struct gtpv1u_gnb_create_tunnel_resp_s {
   ue_id_t                ue_id;
   int                    num_tunnels;
   teid_t                 gnb_NGu_teid[NR_GTPV1U_MAX_BEARERS_PER_UE];  ///< Tunnel Endpoint Identifier
-  pdusessionid_t pdusession_id[NR_GTPV1U_MAX_BEARERS_PER_UE];
+  pdusessionid_t         pdusession_id[NR_GTPV1U_MAX_BEARERS_PER_UE];
   transport_layer_addr_t gnb_addr;
 } gtpv1u_gnb_create_tunnel_resp_t;
 typedef struct gtpv1u_gnb_delete_tunnel_req_s {

@@ -38,9 +38,8 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
+#include "PHY/defs_eNB.h"
 
 #include "RRC/LTE/rrc_extern.h"
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
@@ -58,6 +57,7 @@
 #include <dlfcn.h>
 
 #include "T.h"
+#include "openair2/LAYER2/MAC/mac_extern.h"
 
 #define ENABLE_MAC_PAYLOAD_DEBUG
 //#define DEBUG_eNB_SCHEDULER 1
@@ -65,26 +65,7 @@
 #include "common/ran_context.h"
 extern RAN_CONTEXT_t RC;
 
-
-//------------------------------------------------------------------------------
-void
-add_ue_dlsch_info(module_id_t module_idP,
-                  int CC_id,
-                  int UE_id,
-                  sub_frame_t subframeP,
-                  UE_DLSCH_STATUS status,
-                  rnti_t rnti)
-//------------------------------------------------------------------------------
-{
-  eNB_DLSCH_INFO *info = &eNB_dlsch_info[module_idP][CC_id][UE_id];
-  // LOG_D(MAC, "%s(module_idP:%d, CC_id:%d, UE_id:%d, subframeP:%d, status:%d) serving_num:%d rnti:%x\n", __FUNCTION__, module_idP, CC_id, UE_id, subframeP, status, eNB_dlsch_info[module_idP][CC_id][UE_id].serving_num, UE_RNTI(module_idP,UE_id));
-  info->rnti = rnti;
-  //  info->weight = weight;
-  info->subframe = subframeP;
-  info->status = status;
-  info->serving_num++;
-  return;
-}
+mac_rlc_am_muilist_t rlc_am_mui;
 
 //------------------------------------------------------------------------------
 int
@@ -154,7 +135,7 @@ generate_dlsch_header(unsigned char *mac_header,
     AssertFatal(timing_advance_cmd < 64, "timing_advance_cmd %d > 63\n",
                 timing_advance_cmd);
     ((TIMING_ADVANCE_CMD *) ce_ptr)->TA = timing_advance_cmd;    //(timing_advance_cmd+31)&0x3f;
-    LOG_A(MAC, "timing advance =%d (%d)\n",
+    LOG_D(MAC, "timing advance =%d (%d)\n",
           timing_advance_cmd,
           ((TIMING_ADVANCE_CMD *) ce_ptr)->TA);
     ce_ptr += sizeof(TIMING_ADVANCE_CMD);
@@ -1391,7 +1372,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           ta_update = ue_sched_ctl->ta_update;
 
           /* If we send TA then set timer to not send it for a while */
-         if (ta_update != 31)
+          if (ta_update != 31)
             ue_sched_ctl->ta_timer = 20;
 
           /* Reset ta_update */
@@ -1399,8 +1380,7 @@ schedule_ue_spec_br(module_id_t module_idP,
           ue_sched_ctl->ta_update_f = 31.0;
         } else {
           ta_update = 31;
-        }
-   
+        } 
 
         ta_len = (ta_update != 31) ? 2 : 0;
         header_len_dcch = 2; // 2 bytes DCCH SDU subheader
@@ -2482,7 +2462,7 @@ schedule_PCH(module_id_t module_idP,
         eNB->eNB_stats[CC_id].total_pcch_buffer += pcch_sdu_length;
         eNB->eNB_stats[CC_id].pcch_mcs = mcs;
         //paging first_rb log
-        LOG_A(MAC,"[eNB %d] Frame %d subframe %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
+        LOG_D(MAC,"[eNB %d] Frame %d subframe %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
               module_idP,
               frameP,
               subframeP,

@@ -19,34 +19,15 @@
  *      contact@openairinterface.org
  */
 
-/*! \file OCG_detect_file.h
-* \brief
-* \author Lusheng Wang and navid nikaein
-* \date 2011
-* \version 0.1
-* \company Eurecom
-* \email: navid.nikaein@eurecom.fr
-* \note
-* \warning
-*/
+/* gNB_CUUP application layer -> E1AP messages */
+MESSAGE_DEF(E1AP_SETUP_REQ  , MESSAGE_PRIORITY_MED , e1ap_setup_req_t , e1ap_setup_req)
 
-#ifndef __OCG_DETECT_FILE_H__
+/* E1AP -> eNB_DU or eNB_CU_RRC -> E1AP application layer messages */
+MESSAGE_DEF(E1AP_SETUP_RESP , MESSAGE_PRIORITY_MED, e1ap_setup_resp_t , e1ap_setup_resp)
 
-#define __OCG_DETECT_FILE_H__
+MESSAGE_DEF(E1AP_BEARER_CONTEXT_SETUP_REQ , MESSAGE_PRIORITY_MED , e1ap_bearer_setup_req_t , e1ap_bearer_setup_req)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-/** @defgroup _detect_file Detect File
- *  @ingroup _fn
- *  @brief Detect new XML configuration file in USER_XML_FOLDER
- * @{*/
-//int detect_file(int argc, char *argv[], char folder[DIR_LENGTH_MAX]);
-int detect_file(char folder[DIR_LENGTH_MAX], char is_local_server[FILENAME_LENGTH_MAX]);
-/* @}*/
+MESSAGE_DEF(E1AP_BEARER_CONTEXT_SETUP_RESP , MESSAGE_PRIORITY_MED , e1ap_bearer_setup_resp_t , e1ap_bearer_setup_resp)
 
-#ifdef __cplusplus
-}
-#endif
+MESSAGE_DEF(E1AP_BEARER_CONTEXT_MODIFICATION_REQ , MESSAGE_PRIORITY_MED , e1ap_bearer_setup_req_t , e1ap_bearer_mod_req)
 
-#endif
