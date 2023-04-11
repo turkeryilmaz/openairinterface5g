@@ -46,7 +46,9 @@ extern "C" {
     std::vector<MessageDef *> message_queue;
     std::map<long,timer_elm_t> timer_map;
     uint64_t next_timer=UINT64_MAX;
+    struct epoll_event *events =NULL;
     int nb_fd_epoll=0;
+    int nb_events=0;
     int epoll_fd=-1;
     int sem_fd=-1;
   } task_list_t;
@@ -166,6 +168,8 @@ extern "C" {
     struct epoll_event event;
     task_list_t *t=tasks[task_id];
     t->nb_fd_epoll++;
+    t->events = (struct epoll_event *)realloc((void *)t->events,
+                t->nb_fd_epoll * sizeof(struct epoll_event));
     event.events  = EPOLLIN | EPOLLERR;
     event.data.u64 = 0;
     event.data.fd  = fd;

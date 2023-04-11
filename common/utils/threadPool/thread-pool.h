@@ -288,7 +288,7 @@ static inline notifiedFIFO_elt_t *pullTpool(notifiedFIFO_t *responseFifo, tpool_
   notifiedFIFO_elt_t *msg= pullNotifiedFIFO(responseFifo);
   if (msg == NULL)
     return NULL;
-  AssertFatal(t->traceFd, "Thread pool used while not initialized");
+  AssertFatal(t->traceFd != 0, "Thread pool used while not initialized");
   if (t->measurePerf)
     msg->returnTime=rdtsc_oai();
 

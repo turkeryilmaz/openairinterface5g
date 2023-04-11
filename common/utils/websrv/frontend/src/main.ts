@@ -16,29 +16,28 @@
  * limitations under the License.
  *-------------------------------------------------------------------------------
  * For more information about the OpenAirInterface (OAI) Software Alliance:
- *      conmnc_digit_lengtht@openairinterface.org
+ *      contact@openairinterface.org
  */
 
-#include "mac_rrc_dl.h"
-#include "nr_rrc_defs.h"
+/*! \file common/utils/websrv/frontend/src/main.ts
+ * \brief: implementation of web interface frontend for oai
+ * \this is the frontend application main source but interesting things atarts in the app.module import 
+ * \author:  Yacine  El Mghazli, Francois TABURET
+ * \date 2022
+ * \version 0.1
+ * \company NOKIA BellLabs France
+ * \email: yacine.el_mghazli@nokia-bell-labs.com  francois.taburet@nokia-bell-labs.com
+ * \note
+ * \warning
+ */
+import {enableProdMode} from "@angular/core";
+import {platformBrowserDynamic} from "@angular/platform-browser-dynamic";
 
-static void dl_rrc_message_transfer_f1ap(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc)
-{
-  /* TODO call F1AP function directly? no real-time constraint here */
+import {AppModule} from "./app/app.module";
+import {environment} from "./environments/environment";
 
-  MessageDef *message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_DL_RRC_MESSAGE);
-  f1ap_dl_rrc_message_t *msg = &F1AP_DL_RRC_MESSAGE(message_p);
-  *msg = *dl_rrc;
-  if (dl_rrc->rrc_container) {
-    msg->rrc_container = malloc(dl_rrc->rrc_container_length);
-    AssertFatal(msg->rrc_container != NULL, "out of memory\n");
-    msg->rrc_container_length = dl_rrc->rrc_container_length;
-    memcpy(msg->rrc_container, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
-  }
-  itti_send_msg_to_task (TASK_CU_F1, module_id, message_p);
+if (environment.production) {
+  enableProdMode();
 }
 
-void mac_rrc_dl_f1ap_init(nr_mac_rrc_dl_if_t *mac_rrc)
-{
-  mac_rrc->dl_rrc_message_transfer = dl_rrc_message_transfer_f1ap;
-}
+platformBrowserDynamic().bootstrapModule(AppModule).catch((err) => console.error(err));
