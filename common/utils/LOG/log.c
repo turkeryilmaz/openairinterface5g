@@ -88,7 +88,6 @@ mapping log_options[] = {
   {NULL,-1}
 };
 
-
 mapping log_maskmap[] = LOG_MASKMAP_INIT;
 
 char *log_level_highlight_start[] = {LOG_RED, LOG_ORANGE, LOG_GREEN, "", LOG_BLUE, LOG_CYBL};  /*!< \brief Optional start-format strings for highlighting */
@@ -385,8 +384,8 @@ void  log_getconfig(log_t *g_log)
 }
 
 int register_log_component(char *name,
-		                   char *fext,
-						   int compidx)
+                           char *fext,
+                           int compidx)
 {
   int computed_compidx=compidx;
 
@@ -487,6 +486,7 @@ int logInit (void)
   register_log_component("SDAP","",SDAP);
   register_log_component("S1AP","",S1AP);
   register_log_component("F1AP","",F1AP);
+  register_log_component("E1AP","",E1AP);
   register_log_component("M2AP","",M2AP);
   register_log_component("M3AP","",M3AP);
   register_log_component("SCTP","",SCTP);
@@ -552,11 +552,11 @@ static inline int log_header(log_component_t *c,
 
   char l[32];
   if (flag & FLAG_FILE_LINE && flag & FLAG_FUNCT )
-    snprintf(l, sizeof l, "(%.23s:%d) ", func, line);
+    snprintf(l, sizeof l, "(%s:%d) ", func, line);
   else if (flag & FLAG_FILE_LINE)
     snprintf(l, sizeof l, "(%d) ", line);
   else if (flag & FLAG_FUNCT)
-    snprintf(l, sizeof l, "(%.28s) ", func);
+    snprintf(l, sizeof l, "(%s) ", func);
   else
     l[0] = 0;
 

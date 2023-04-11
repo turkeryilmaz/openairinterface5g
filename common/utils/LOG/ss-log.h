@@ -64,6 +64,12 @@
         g_log->sf, _string, buf, len);                 \
     } while(0)
 
+#define LOG_SS_NAS_PKT(component, _string, buf, len) do {  \
+    tracepoint(SSeNB, SS_PKT,                          \
+        "SS-NR-NAS-PDU", -1,  g_log->sfn,                     \
+        g_log->sf, _string, buf, len);                 \
+    } while(0)
+
 #define LOG_SS_MAC_PKT(component, _string, sfn, sf, mac_pack_info, buf, len) do {  \
     tracepoint(SSeNB, SS_MAC_PKT,           \
         "SS-MAC-PDU", -1, sfn, sf,          \

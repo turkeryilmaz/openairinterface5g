@@ -137,4 +137,5 @@ typedef struct {
 
 extern RAN_CONTEXT_t RC;
 
+#define NB_eNB_INST RC.nb_inst
 #endif
