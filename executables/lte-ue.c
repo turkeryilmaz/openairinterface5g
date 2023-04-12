@@ -85,8 +85,8 @@ extern void multicast_link_start(void (*rx_handlerP) (unsigned int, char *),
                                  char *multicast_ifname);
 extern int multicast_link_write_sock(int groupP, char *dataP, uint32_t sizeP);
 
-uint16_t processingDelay = 1; /** 1 ms */
-int	tx_req_num_elems;
+
+int tx_req_num_elems;
 extern uint16_t sf_ahead;
 //extern int tx_req_UE_MAC1();
 
@@ -789,9 +789,7 @@ static void *UE_thread_rxn_txnp4(void *arg) {
 #endif
     }
 
-#if UE_TIMING_TRACE
-    start_meas(&UE->generic_stat);
-#endif
+    start_UE_TIMING(UE->generic_stat);
 
     if (UE->mac_enabled==1) {
       int ret = ue_scheduler(UE->Mod_id,
@@ -809,9 +807,7 @@ static void *UE_thread_rxn_txnp4(void *arg) {
       }
     }
 
-#if UE_TIMING_TRACE
-    stop_meas(&UE->generic_stat);
-#endif
+    stop_UE_TIMING(UE->generic_stat);
 
     // Prepare the future Tx data
 
@@ -995,15 +991,6 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg) {
     LOG_I(MAC, "received from proxy frame %d subframe %d\n",
           NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf));
 
-#if 1 /** Processing delay */
-    if (processingDelay > 0) {
-       struct timespec rqtp, rmtp;
-       rqtp.tv_sec = processingDelay / 1000;
-       rqtp.tv_nsec = 1e6 * (processingDelay % 1000);
-       nanosleep(&rqtp, &rmtp);
-    }
-#endif
-
     if (ul_config_req != NULL) {
       uint8_t ul_num_pdus = ul_config_req->ul_config_request_body.number_of_pdus;
 
@@ -1090,9 +1077,7 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg) {
     for (ue_index = 0; ue_index < ue_num; ue_index++) {
       ue_Mod_id = ue_thread_id + NB_THREAD_INST * ue_index; // Always 0 in standalone pnf mode
       UE = PHY_vars_UE_g[ue_Mod_id][0];
-#if UE_TIMING_TRACE
-      start_meas(&UE->generic_stat);
-#endif
+      start_UE_TIMING(UE->generic_stat);
       int rx_frame = NFAPI_SFNSF2SF(sfn_sf) < 4 ? (NFAPI_SFNSF2SFN(sfn_sf) + 1023) % 1024 : NFAPI_SFNSF2SFN(sfn_sf); // subtracting 4 from subframe_tx
       int rx_subframe = NFAPI_SFNSF2SF(sfn_sf) < 4 ? NFAPI_SFNSF2SF(sfn_sf) + 6 : NFAPI_SFNSF2SF(sfn_sf) - 4;
       LOG_D(MAC, "rx_frame %d rx_subframe %d\n", rx_frame, rx_subframe);
@@ -1113,10 +1098,7 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg) {
         }
       }
 
-#if UE_TIMING_TRACE
-      stop_meas(&UE->generic_stat);
-#endif
-
+      stop_UE_TIMING(UE->generic_stat);
       // Prepare the future Tx data
       if ((subframe_select(&UE->frame_parms, NFAPI_SFNSF2SF(sfn_sf)) == SF_UL) ||
           (UE->frame_parms.frame_type == FDD)) {
@@ -1175,11 +1157,6 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg) {
                 NFAPI_SFNSF2SFN(ul_config_req->sfn_sf), NFAPI_SFNSF2SF(ul_config_req->sfn_sf));
         }
       }
-
-      /** TODO: FC */
-      if (1 /** UE is L2 Sim mode */) {
-        fill_ue_slot_indication_UE_MAC(ue_Mod_id, NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf), sfn_sf, UL_INFO);
-      }
     } //for (Mod_id=0; Mod_id<NB_UE_INST; Mod_id++)
 
     if (UL_INFO->crc_ind.crc_indication_body.number_of_crcs > 0) {
@@ -1220,18 +1197,6 @@ static void *UE_phy_stub_standalone_pnf_task(void *arg) {
       sent_any = true;
       //LOG_I(MAC, "ul_config_req_UE_MAC 2.51 \n");
       UL_INFO->sr_ind.sr_indication_body.number_of_srs = 0;
-    }
-
-    /** TODO: FC Send UE_SLOT.indication here after processing everything */
-    if ( 1 /** UE is SS mode */ && UL_INFO->vt_ue_sf_ind.sfn_sf >= 0)
-    {
-        LOG_D(MAC, "Sending UE_SLOT.indication at SFN: %d SF: %d for Ack'ing sfn: %d sf: %d \n", 
-            NFAPI_SFNSF2SFN(sfn_sf), NFAPI_SFNSF2SF(sfn_sf), 
-            NFAPI_SFNSF2SFN(UL_INFO->vt_ue_sf_ind.sfn_sf),
-            NFAPI_SFNSF2SF(UL_INFO->vt_ue_sf_ind.sfn_sf));
-        send_standalone_msg(UL_INFO, UL_INFO->vt_ue_sf_ind.header.message_id);
-        sent_any = true;
-        UL_INFO->vt_ue_sf_ind.sfn_sf = 0;
     }
 
     // De-allocate memory of nfapi requests copies before next subframe round
@@ -1524,9 +1489,7 @@ static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg) {
           phy_procedures_UE_SL_TX(UE,proc);
       }
 
-#if UE_TIMING_TRACE
-      start_meas(&UE->generic_stat);
-#endif
+      start_UE_TIMING(UE->generic_stat);
 
       if (UE->mac_enabled==1) {
         ret = ue_scheduler(ue_Mod_id,
@@ -1544,10 +1507,7 @@ static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg) {
         }
       }
 
-#if UE_TIMING_TRACE
-      stop_meas(&UE->generic_stat);
-#endif
-
+      stop_UE_TIMING(UE->generic_stat);
       // Prepare the future Tx data
 
       if ((subframe_select( &UE->frame_parms, proc->subframe_tx) == SF_UL) ||
@@ -1724,154 +1684,8 @@ static void *UE_phy_stub_single_thread_rxn_txnp4(void *arg) {
  * \returns a pointer to an int. The storage is not on the heap and must not be freed.
  */
 
-static void *UE_phy_stub_thread_rxn_txnp4(void *arg) {
-#if 0
-  thread_top_init("UE_phy_stub_thread_rxn_txnp4",1,870000L,1000000L,1000000L);
-  module_id_t Mod_id = 0;
-  static __thread int UE_thread_rxtx_retval;
-  struct rx_tx_thread_data *rtd = arg;
-  UE_rxtx_proc_t *proc = rtd->proc;
-  PHY_VARS_UE    *UE   = rtd->UE;
-  phy_stub_ticking->ticking_var = -1;
-  proc->subframe_rx=proc->sub_frame_start;
-  // CAREFUL HERE!
-  wait_sync("UE_phy_stub_thread_rxn_txnp4");
-
-  while (!oai_exit) {
-    if (pthread_mutex_lock(&phy_stub_ticking->mutex_ticking) != 0) {
-      LOG_E( MAC, "[SCHED][UE] error locking mutex for UE RXTX\n" );
-      exit_fun("nothing to add");
-    }
-
-    while (phy_stub_ticking->ticking_var < 0) {
-      // most of the time, the thread is waiting here
-      //pthread_cond_wait( &proc->cond_rxtx, &proc->mutex_rxtx )
-      LOG_D(MAC,"Waiting for ticking_var\n");
-      pthread_cond_wait( &phy_stub_ticking->cond_ticking, &phy_stub_ticking->mutex_ticking);
-    }
-
-    phy_stub_ticking->ticking_var--;
-
-    if (pthread_mutex_unlock(&phy_stub_ticking->mutex_ticking) != 0) {
-      LOG_E( MAC, "[SCHED][UE] error unlocking mutex for UE RXn_TXnp4\n" );
-      exit_fun("nothing to add");
-    }
-
-    proc->subframe_rx=timer_subframe;
-    proc->frame_rx = timer_frame;
-    proc->subframe_tx=(timer_subframe+4)%10;
-    proc->frame_tx = proc->frame_rx + (proc->subframe_rx>5?1:0);
-    // Process Rx data for one sub-frame
-    lte_subframe_t sf_type = subframe_select( &UE->frame_parms, proc->subframe_rx);
-
-    if ((sf_type == SF_DL) ||
-        (UE->frame_parms.frame_type == FDD) ||
-        (sf_type == SF_S)) {
-      if (UE->frame_parms.frame_type == TDD) {
-        LOG_D(PHY, "TDD%d,%s: calling UE_RX\n",
-              UE->frame_parms.tdd_config,
-              (sf_type==SF_DL? "SF_DL" :
-               (sf_type==SF_UL? "SF_UL" :
-                (sf_type==SF_S ? "SF_S"  : "UNKNOWN_SF_TYPE"))));
-      } else {
-        LOG_D(PHY, "%s,%s: calling UE_RX\n",
-              (UE->frame_parms.frame_type==FDD? "FDD":
-               (UE->frame_parms.frame_type==TDD? "TDD":"UNKNOWN_DUPLEX_MODE")),
-              (sf_type==SF_DL? "SF_DL" :
-               (sf_type==SF_UL? "SF_UL" :
-                (sf_type==SF_S ? "SF_S"  : "UNKNOWN_SF_TYPE"))));
-      }
-
-      phy_procedures_UE_SL_RX(UE,proc);
-      oai_subframe_ind(timer_frame, timer_subframe);
-
-      if(dl_config_req!= NULL) {
-        AssertFatal(0, "dl_config_req_UE_MAC() not handled\n");
-        //dl_config_req_UE_MAC(dl_config_req, Mod_id);
-      }
-
-      //if(UE_mac_inst[Mod_id].hi_dci0_req!= NULL){
-      if (hi_dci0_req!=NULL && hi_dci0_req->hi_dci0_request_body.hi_dci0_pdu_list!=NULL) {
-        AssertFatal(0, "hi_dci0_req_UE_MAC() not handled\n");
-        //hi_dci0_req_UE_MAC(hi_dci0_req, Mod_id);
-        //if(UE_mac_inst[Mod_id].hi_dci0_req->hi_dci0_request_body.hi_dci0_pdu_list!=NULL){
-        free(hi_dci0_req->hi_dci0_request_body.hi_dci0_pdu_list);
-        hi_dci0_req->hi_dci0_request_body.hi_dci0_pdu_list = NULL;
-        //}
-        free(hi_dci0_req);
-        hi_dci0_req = NULL;
-      } else if(hi_dci0_req!=NULL) {
-        free(hi_dci0_req);
-        hi_dci0_req = NULL;
-      }
-
-      if (NFAPI_MODE!=NFAPI_UE_STUB_PNF)
-        phy_procedures_UE_SL_TX(UE,proc);
-    }
-
-#if UE_TIMING_TRACE
-    start_meas(&UE->generic_stat);
-#endif
-
-    if (UE->mac_enabled==1) {
-      int ret = ue_scheduler(UE->Mod_id,
-                             proc->frame_rx,
-                             proc->subframe_rx,
-                             proc->frame_tx,
-                             proc->subframe_tx,
-                             subframe_select(&UE->frame_parms,proc->subframe_tx),
-                             0,
-                             0);
-
-      if (ret != CONNECTION_OK)
-        LOG_E( PHY, "[UE %"PRIu8"] Frame %"PRIu32", subframe %u %s\n",
-               UE->Mod_id, proc->frame_rx, proc->subframe_tx,get_connectionloss_errstr(ret) );
-    }
-
-#if UE_TIMING_TRACE
-    stop_meas(&UE->generic_stat);
-#endif
-
-    // Prepare the future Tx data
-
-    if ((subframe_select( &UE->frame_parms, proc->subframe_tx) == SF_UL) ||
-        (UE->frame_parms.frame_type == FDD) )
-      if ((UE_mac_inst[Mod_id].UE_mode[0] == PRACH) ) {
-        // check if we have PRACH opportunity
-        if (is_prach_subframe(&UE->frame_parms,proc->frame_tx, proc->subframe_tx)) {
-          PRACH_RESOURCES_t *prach_resources = ue_get_rach(Mod_id, 0, proc->frame_tx, 0, proc->subframe_tx);
-
-          if(prach_resources!=NULL) {
-            fill_rach_indication_UE_MAC(Mod_id, proc->frame_tx,proc->subframe_tx, UL_INFO, prach_resources->ra_PreambleIndex, prach_resources->ra_RNTI);
-            Msg1_transmitted(Mod_id, 0, proc->frame_tx, 0);
-            UE_mac_inst[Mod_id].UE_mode[0] = RA_RESPONSE;
-          }
-
-          //ue_prach_procedures(ue,proc,eNB_id,abstraction_flag,mode);
-        }
-      } // mode is PRACH
-
-    // Substitute call to phy_procedures Tx with call to phy_stub functions in order to trigger
-    // UE Tx procedures directly at the MAC layer, based on the received ul_config requests from the vnf (eNB).
-    // Generate UL_indications which correspond to UL traffic.
-    if(ul_config_req!= NULL && ul_config_req->ul_config_request_body.ul_config_pdu_list != NULL) {
-      //LOG_I(MAC, "UE_phy_stub_thread_rxn_txnp4 ul_config_req is not NULL \n");
-      ul_config_req_UE_MAC(ul_config_req, timer_frame, timer_subframe, Mod_id);
-
-      if(ul_config_req->ul_config_request_body.ul_config_pdu_list != NULL) {
-        free(ul_config_req->ul_config_request_body.ul_config_pdu_list);
-        ul_config_req->ul_config_request_body.ul_config_pdu_list = NULL;
-      }
-
-      free(ul_config_req);
-      ul_config_req = NULL;
-    } else if(ul_config_req!=NULL) {
-      free(ul_config_req);
-      ul_config_req = NULL;
-    }
-  }
-
-#endif // disabled
+static void *UE_phy_stub_thread_rxn_txnp4(void *arg)
+{
   // thread finished
   free(arg);
   return NULL; //return &UE_thread_rxtx_retval;

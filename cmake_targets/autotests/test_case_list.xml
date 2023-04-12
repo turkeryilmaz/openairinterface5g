@@ -159,9 +159,9 @@
       <main_exec_args>-n100 -R106 -b106 -s5
                       -n100 -R217 -b217 -s5
                       -n100 -R273 -b273 -s5
-                      -n100 -s1 -t25
-                      -n100 -s1 -t33
-                      -n100 -s1 -t50
+                      -n100 -s1 -S2 -t25
+                      -n100 -s1 -S2 -t33
+                      -n100 -s5 -S7 -t50
                       -n100 -m0 -e0 -R25 -b25 -i 2 1 0</main_exec_args>
       <tags>test1 test2 test3 test4 test5 test6 test7</tags>
       <search_expr_true>PDSCH test OK</search_expr_true>
@@ -193,15 +193,17 @@
                                  (Test3: 106 MCS-TABLE 256 QAM MCS Index 26),
                                  (Test4: MCS 0, low SNR performance),
                                  (Test5: 4x4 MIMO, 1 Layer),
-                                 (Test6: 4x4 MIMO, 2 Layers)</desc>
+                                 (Test6: 4x4 MIMO, 2 Layers),
+                                 (Test7: 4x4 MIMO, 4 Layers)</desc>
       <main_exec>nr_dlsim</main_exec>
       <main_exec_args>-n100 -e27 -s30
-                      -n100 -e16 -s10
+                      -n100 -e16 -s11 -S13
                       -n100 -q1 -e26 -s30
                       -n100 -e0 -t95 -S-1.0 -i 2 1 0
                       -n10 -s20 -U 3 0 0 2 -gR -x1 -y4 -z4
-                      -n10 -s20 -U 3 0 0 2 -gR -x2 -y4 -z4</main_exec_args>
-      <tags>test1 test2 test3 test4 test5 test6</tags>
+                      -n10 -s20 -U 3 0 0 2 -gR -x2 -y4 -z4
+                      -n10 -s20 -U 3 0 0 2 -x4 -y4 -z4</main_exec_args>
+      <tags>test1 test2 test3 test4 test5 test6 test7</tags>
       <search_expr_true>PDSCH test OK</search_expr_true>
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>
       <nruns>3</nruns>
@@ -218,9 +220,9 @@
       <main_exec_args>-n100 -s5 -T 2 2 2
                       -n100 -s5 -T 2 1 2
                       -n100 -s5 -T 2 0 4
-                      -n100 -s2 -U 2 0 1
-                      -n100 -s2 -U 2 0 2
-                      -n100 -s2 -U 2 1 3</main_exec_args>
+                      -n100 -s5 -S7 -U 2 0 1
+                      -n100 -s5 -S7 -U 2 0 2
+                      -n100 -s5 -S7 -U 2 1 3</main_exec_args>
       <tags>test1 test2 test3 test4 test5 test6</tags>
       <search_expr_true>PDSCH test OK</search_expr_true>
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>
@@ -349,17 +351,18 @@
     </testCase>
 
     <testCase id="nr_ulsim.misc">
-      <desc>nr_ulsim Test cases. (Test1: MCS 9 106 PRBs),
-                                 (Test2: MCS 16 50 PRBs),
-                                 (Test3: MCS 28 50 PRBs),
-                                 (Test4: MCS 9 217 PRBs),
-                                 (Test5: MCS 9 273 PRBs),
+      <desc>nr_ulsim Test cases. (Test1: MCS 9, 106 PRBs),
+                                 (Test2: MCS 16, 50 PRBs),
+                                 (Test3: MCS 28, 50 PRBs),
+                                 (Test4: MCS 9, 217 PRBs),
+                                 (Test5: MCS 9, 273 PRBs),
                                  (Test6: PUSCH Type A, 2 DMRS Symbols),
                                  (Test7: PUSCH Type A, 3 DMRS, 4 PTRS, 5 Interpolated Symbols),
                                  (Test8: PUSCH Type B, 3 DMRS, 2 PTRS, 7 Interpolated Symbols),
                                  (Test9: PUSCH Type B, 3 DMRS, 2 PTRS, 3 Interpolated Symbols),
                                  (Test10: 25 PRBs, 15 kHz SCS),
-                                 (Test11: MCS 0, low SNR performance)</desc>
+                                 (Test11: MCS 0, low SNR performance)
+                                 (Test12: MCS 28, 106 PRBs, Time shift 8)</desc>
       <main_exec>nr_ulsim</main_exec>
       <main_exec_args>-n100 -m9 -r106 -s5
                       -n100 -m16 -s10
@@ -372,8 +375,9 @@
                       -n100 -s5 -T 2,2 -U 1,2,1,1
                       -n100 -s5 -a4 -b8 -T 1,2 -U 1,3,1,1
                       -n100 -u0 -m0 -R25 -r25 -i 1,0
-                      -n100 -m0 -S -0.6 -i 1,0</main_exec_args>
-      <tags>test1 test2 test3 test4 test5 test6 test7 test8 test9 test10 test11</tags>
+                      -n100 -m0 -S -0.6 -i 1,0
+                      -n100 -m 28 -R106 -r106 -t90 -s24 -S24 -d 8</main_exec_args>
+      <tags>test1 test2 test3 test4 test5 test6 test7 test8 test9 test10 test11 test12</tags>
       <search_expr_true>PUSCH test OK</search_expr_true>
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>
       <nruns>3</nruns>
@@ -464,7 +468,7 @@
                       -n100 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R106 -r106 -U 1,1,1,2 -z8 -s5.5 -S5.5
                       -n100 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R273 -r273 -U 1,1,1,2 -z2 -s13.1 -S13.1
                       -n100 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R273 -r273 -U 1,1,1,2 -z4 -s9.2 -S9.2
-                      -n100 -b14 -I7 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R273 -r273 -U 1,1,1,2 -z8 -s5.9 -S5.9</main_exec_args>
+                      -n100 -b14 -I8 -i 0,1 -g A,l,10 -t70 -u 1 -m20 -R273 -r273 -U 1,1,1,2 -z8 -s5.9 -S5.9</main_exec_args>
       <tags>test1 test2 test3 test4 test5 test6 test7 test8 test9 test10 test11 test12 test13 test14 test15 test16 test17 test18 test19 test20 test21 test22 test23 test24</tags>
       <search_expr_true>PUSCH test OK</search_expr_true>
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>

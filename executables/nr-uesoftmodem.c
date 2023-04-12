@@ -389,6 +389,7 @@ static void get_channel_model_mode() {
     init_bler_table("NR_AWGN_RESULTS_DIR");
 }
 
+int NB_UE_INST = 1;
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;
@@ -507,6 +508,10 @@ int main( int argc, char **argv ) {
     pthread_mutex_init(&ue_pf_po_mutex, NULL);
     memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
     set_latency_target();
+
+    if(IS_SOFTMODEM_DOSCOPE_QT) {
+      load_softscope("nrqt",PHY_vars_UE_g[0][0]);
+    }
 
     if(IS_SOFTMODEM_DOSCOPE) {
       load_softscope("nr",PHY_vars_UE_g[0][0]);

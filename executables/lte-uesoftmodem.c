@@ -39,6 +39,7 @@
 #include "assertions.h"
 
 #include "PHY/types.h"
+#include "pdcp.h"
 
 #include "PHY/defs_UE.h"
 #include "common/ran_context.h"
@@ -54,11 +55,8 @@
 
 #include "PHY/phy_vars_ue.h"
 #include "PHY/LTE_TRANSPORT/transport_vars.h"
-#include "SCHED/sched_common_vars.h"
-#include "PHY/MODULATION/modulation_vars.h"
 
 #include "LAYER2/MAC/mac.h"
-#include "LAYER2/MAC/mac_vars.h"
 #include "LAYER2/MAC/mac_proto.h"
 #include "RRC/LTE/rrc_vars.h"
 #include "PHY_INTERFACE/phy_interface_vars.h"
@@ -246,7 +244,7 @@ unsigned int build_rfdc(int dcoff_i_rxfe, int dcoff_q_rxfe) {
 }
 
 
-void exit_function(const char *file, const char *function, const int line, const char *s) {
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert) {
   int CC_id;
   logClean();
   printf("%s:%d %s() Exiting OAI softmodem: %s\n",file,line, function, ((s==NULL)?"":s));
@@ -260,12 +258,15 @@ void exit_function(const char *file, const char *function, const int line, const
             PHY_vars_UE_g[0][CC_id]->rfdevice.trx_end_func(&PHY_vars_UE_g[0][CC_id]->rfdevice);
   }
 
-  sleep(1); //allow lte-softmodem threads to exit first
-
   if(PHY_vars_UE_g != NULL )
     itti_terminate_tasks (TASK_UNKNOWN);
 
-  exit(1);
+  if (assert) {
+    abort();
+  } else {
+    sleep(1); // allow lte-softmodem threads to exit first
+    exit(EXIT_SUCCESS);
+  }
 }
 
 extern int16_t dlsch_demod_shift;
@@ -517,14 +518,14 @@ AssertFatal(false,"");
 	return NULL;
 }
 
+int NB_UE_INST = 1;
+
 int main( int argc, char **argv ) {
 
   int CC_id;
   uint8_t  abstraction_flag=0;
   // Default value for the number of UEs. It will hold,
   // if not changed from the command line option --num-ues
-  NB_UE_INST=1;
-  NB_THREAD_INST=1;
   configmodule_interface_t *config_mod;
   start_background_system();
   config_mod = load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY);
@@ -550,18 +551,6 @@ int main( int argc, char **argv ) {
 
   EPC_MODE_ENABLED = !IS_SOFTMODEM_NOS1;
   printf("Running with %d UE instances\n",NB_UE_INST);
-
-  // Checking option of nums_ue_thread.
-  if(NB_THREAD_INST < 1) {
-    printf("Running with 0 UE rxtx thread, exiting.\n");
-    abort();
-  }
-
-  // Checking option's relation between nums_ue_thread and num-ues
-  if(NB_UE_INST <NB_THREAD_INST ) {
-    printf("Number of UEs < number of UE rxtx threads, exiting.\n");
-    abort();
-  }
 
 #if T_TRACER
   T_Config_Init();
@@ -604,8 +593,6 @@ int main( int argc, char **argv ) {
     frame_parms[CC_id]->nb_antennas_rx     = nb_antenna_rx;
     frame_parms[CC_id]->nb_antenna_ports_eNB = 1; //initial value overwritten by initial sync later
   }
-
-  NB_INST=1;
 
   if(NFAPI_MODE==NFAPI_UE_STUB_PNF || NFAPI_MODE==NFAPI_MODE_STANDALONE_PNF) {
     PHY_vars_UE_g = malloc(sizeof(PHY_VARS_UE **)*NB_UE_INST);

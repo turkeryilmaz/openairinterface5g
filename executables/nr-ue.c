@@ -33,6 +33,7 @@
 #include "executables/softmodem-common.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "radio/COMMON/common_lib.h"
+#include "pdcp.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -219,8 +220,6 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
   }
   if (dl_tti_request) {
     int dl_tti_sfn_slot = NFAPI_SFNSLOT2HEX(dl_tti_request->SFN, dl_tti_request->Slot);
-    LOG_A(NR_MAC, "[%d %d] sfn/slot dl_tti_request received \n",
-    		 NFAPI_SFNSLOT2SFN(dl_tti_sfn_slot), NFAPI_SFNSLOT2SLOT(dl_tti_sfn_slot));
     nfapi_nr_tx_data_request_t *tx_data_request = unqueue_matching(&nr_tx_req_queue, MAX_QUEUE_SIZE, sfn_slot_matcher, &dl_tti_sfn_slot);
     if (!tx_data_request) {
       LOG_E(NR_MAC, "[%d %d] No corresponding tx_data_request for given dl_tti_request sfn/slot\n",
@@ -321,8 +320,6 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
   int last_sfn_slot = -1;
   uint16_t sfn_slot = 0;
 
-  nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind = (nfapi_ue_slot_indication_vt_t *) calloc(1, 
-                                  sizeof(nfapi_ue_slot_indication_vt_t));
   module_id_t mod_id = 0;
   NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
   for (int i = 0; i < NR_MAX_HARQ_PROCESSES; i++) {
@@ -342,10 +339,6 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       continue;
     }
     if (slot_ind) {
-    	frame_t frame = NFAPI_SFNSLOT2SFN(*slot_ind);
-        int slot = NFAPI_SFNSLOT2SLOT(*slot_ind);
-        LOG_A(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
-              frame, slot);
       sfn_slot = *slot_ind;
       free_and_zero(slot_ind);
     }
@@ -373,8 +366,6 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     }
     if (mac->scc == NULL && mac->scc_SIB == NULL) {
       LOG_D(MAC, "[NSA] mac->scc == NULL and [SA] mac->scc_SIB == NULL!\n");
-      if (1 /** MODE == VT */)
-        send_vt_slot_ack(vt_ue_slot_ind, sfn_slot);
       continue;
     }
 
@@ -441,8 +432,6 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
       pdcp_run(&ctxt);
     }
     process_queued_nr_nfapi_msgs(mac, sfn_slot);
-    if (1 /** MODE == VT */)
-      send_vt_slot_ack(vt_ue_slot_ind, sfn_slot);
   }
   return NULL;
 }
@@ -594,7 +583,7 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
     txp[i] = (void *)&UE->common_vars.txdata[i][UE->frame_parms.get_samples_slot_timestamp(
              proc->nr_slot_tx, &UE->frame_parms, 0)];
 
-  radio_tx_flag_t flags = Invalid;
+  radio_tx_burst_flag_t flags = TX_BURST_INVALID;
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
 
@@ -616,13 +605,13 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
     uint8_t first_tx_slot = tdd_period - num_UL_slots;
 
     if (slot_tx_usrp % tdd_period == first_tx_slot)
-      flags = StartOfBurst;
+      flags = TX_BURST_START;
     else if (slot_tx_usrp % tdd_period == first_tx_slot + num_UL_slots - 1)
-      flags = EndOfBurst;
+      flags = TX_BURST_END;
     else if (slot_tx_usrp % tdd_period > first_tx_slot)
-      flags = MiddleOfBurst;
+      flags = TX_BURST_MIDDLE;
   } else {
-    flags = MiddleOfBurst;
+    flags = TX_BURST_MIDDLE;
   }
 
   if (flags || IS_SOFTMODEM_RFSIM)
@@ -791,19 +780,32 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
     LOG_I(PHY,"Resynchronizing RX by %d samples (mode = %d)\n",UE->rx_offset,UE->mode);
 
-    *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
-    for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
-      int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
-      // we write before read because gNB waits for UE to write and both executions halt
-      // this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
-      if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
-      AssertFatal(unitTransfer ==
-                  UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                             timestamp,
-                                             (void **)UE->common_vars.rxdata,
-                                             unitTransfer,
-                                             UE->frame_parms.nb_antennas_rx),"");
-      *timestamp += unitTransfer; // this does not affect the read but needed for RFSIM write
+    if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
+      // Resynchonize by slot (will work with numerology 1 only)
+      for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe/2 ) {
+	int unitTransfer=size>UE->frame_parms.samples_per_subframe/2 ? UE->frame_parms.samples_per_subframe/2 : size ;
+	AssertFatal(unitTransfer ==
+		    UE->rfdevice.trx_read_func(&UE->rfdevice,
+					       timestamp,
+					       (void **)UE->common_vars.rxdata,
+					       unitTransfer,
+					       UE->frame_parms.nb_antennas_rx),"");
+      }
+    } else {
+      *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
+      for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
+	int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
+	// we write before read because gNB waits for UE to write and both executions halt
+	// this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
+	if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
+	AssertFatal(unitTransfer ==
+		    UE->rfdevice.trx_read_func(&UE->rfdevice,
+					       timestamp,
+					       (void **)UE->common_vars.rxdata,
+					       unitTransfer,
+					       UE->frame_parms.nb_antennas_rx),"");
+	*timestamp += unitTransfer; // this does not affect the read but needed for RFSIM write
+      }
     }
 }
 

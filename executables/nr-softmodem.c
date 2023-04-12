@@ -370,7 +370,8 @@ static int create_gNB_tasks(void) {
     }
   }
 
-  if (get_softmodem_params()->sa) {
+  if (get_softmodem_params()->sa &&
+      !NODE_IS_DU(node_type)) {
 
     char*             gnb_ipv4_address_for_NGU      = NULL;
     uint32_t          gnb_port_for_NGU              = 0;
@@ -386,7 +387,7 @@ static int create_gNB_tasks(void) {
         LOG_E(NGAP, "No AMF configuration in the file.\n");
         exit(1);
       } else {
-	LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
+        LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
       }
     }
     
@@ -399,7 +400,6 @@ static int create_gNB_tasks(void) {
   }
 
   if (gnb_nb > 0) {
-    RCconfig_nr_ssparam();
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;
