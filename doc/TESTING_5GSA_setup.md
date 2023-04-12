@@ -91,7 +91,8 @@ In the first part (*amf_ip_address*) we specify the IP of the AMF and in the sec
 
 Please read [CN5G tutorial for more details](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed/-/blob/master/README.md).
 
-### **gNB configuration in CU/DU split mode**
+### gNB configuration in F1 (CU/DU split mode)
+
 For the configuration of the gNB in CU and DU blocks, the following sample configuration files are provided for the [CU](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/targets/PROJECTS/GENERIC-NR-5GC/CONF/cu_gnb.conf) and the [DU](https://gitlab.eurecom.fr/oai/openairinterface5g/-/blob/develop/targets/PROJECTS/GENERIC-NR-5GC/CONF/du_gnb.conf) entities respectively. These configuration files have to be updated with the IP addresses of the CU and the DU over the F1 interface. For example, in the following section from the DU configuration file, *local_n_address* corresponds to the DU address and *remote_n_address* corresponds to the CU address:
 
 ```bash
@@ -112,9 +113,11 @@ MACRLCs = (
 );
 ```
 
-
 At the point of writing this document the control-plane exchanges between the CU and the DU over *F1-C* interface, as well as some IP traffic tests over *F1-U* have been validated using the OAI gNB/nrUE in RFSIMULATOR mode. 
- 
+
+### gNB configuration with F1 and E1
+
+Please refer to [E1-design](E1-design) for more information.
 
 ## 1.2  OAI 5G Core Network installation and configuration
 The instructions for the installation of OAI CN components (AMF, SMF, NRF, UPF) using `docker-compose` can be found [here](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed/-/blob/master/README.md).
@@ -204,7 +207,7 @@ the gNB can be launched in 2 modes:
 - To launch the OAI UE (valid in `monolithic` gNB and `CU/DU split` gNB):
  ```bash
 sudo RFSIMULATOR=127.0.0.1 ./nr-uesoftmodem -r 106 --numerology 1 --band 78 -C 3619200000 \
-    --rfsim --sa --nokrnmod -O <PATH_TO_UE_CONF_FILE>
+    --rfsim --sa -O <PATH_TO_UE_CONF_FILE>
 ```
 
 If you get the following error:

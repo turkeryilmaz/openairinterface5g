@@ -46,7 +46,6 @@ FROM registry.access.redhat.com/ubi8/ubi:latest as oai-physim
 RUN yum update -y && \
     yum install -y --enablerepo="ubi-8-codeready-builder" \
         lksctp-tools \
-        nettle \
         tzdata \
         atlas \
         hostname \
@@ -85,8 +84,6 @@ COPY --from=phy-sim-build \
     /lib64/libforms.so.2 \
     /lib64/libblas.so.3 \
     /lib64/liblapack.so.3 \
-    /lib64/libexslt.so.0 \
-    /lib64/libxslt.so.1 \
     /usr/lib64/libasan.so.5 \
     /oai-ran/cmake_targets/ran_build/build/libdfts.so \
     /oai-ran/cmake_targets/ran_build/build/libldpc.so \
@@ -101,7 +98,6 @@ WORKDIR /usr/bin/
 COPY --from=phy-sim-build \
     /usr/bin/killall \
     /usr/bin/xmlstarlet \
-    /usr/bin/svn \
     ./
 
 # Copy the relevant configuration files for phySim

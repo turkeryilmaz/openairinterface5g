@@ -42,12 +42,9 @@
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
-#include "SCHED/sched_common_vars.h"
-#include "PHY/MODULATION/modulation_vars.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 //#include "../../SIMU/USER/init_lte.h"
 
-#include "LAYER2/MAC/mac_vars.h"
 #include "RRC/LTE/rrc_vars.h"
 #include "PHY_INTERFACE/phy_interface_vars.h"
 #include "NR_IF_Module.h"
@@ -62,10 +59,11 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "UTIL/OPT/opt.h"
 #include "enb_config.h"
+#include "pdcp.h"
 
 #include "intertask_interface.h"
 
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "system.h"
 #include <openair2/RRC/NR_UE/rrc_proto.h>
 #include <openair2/LAYER2/NR_MAC_UE/mac_defs.h>
@@ -104,6 +102,8 @@ int config_sync_var=-1;
 // not used in UE
 instance_t CUuniqInstance=0;
 instance_t DUuniqInstance=0;
+
+int get_node_type() {return -1;}
 
 RAN_CONTEXT_t RC;
 int oai_exit = 0;
@@ -214,7 +214,8 @@ int create_tasks_nrue(uint32_t ue_nb) {
   return 0;
 }
 
-void exit_function(const char *file, const char *function, const int line, const char *s) {
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert)
+{
   int CC_id;
 
   if (s != NULL) {
@@ -230,8 +231,12 @@ void exit_function(const char *file, const char *function, const int line, const
     }
   }
 
-  sleep(1); //allow lte-softmodem threads to exit first
-  exit(1);
+  if (assert) {
+    abort();
+  } else {
+    sleep(1); // allow lte-softmodem threads to exit first
+    exit(EXIT_SUCCESS);
+  }
 }
 
 uint64_t get_nrUE_optmask(void) {
@@ -403,6 +408,7 @@ static void get_channel_model_mode() {
     init_bler_table("NR_AWGN_RESULTS_DIR");
 }
 
+int NB_UE_INST = 1;
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;
@@ -469,8 +475,6 @@ int main( int argc, char **argv ) {
     }
   }
 
-  NB_UE_INST=1;
-  NB_INST=1;
   PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE **));
   PHY_vars_UE_g[0] = malloc(sizeof(PHY_VARS_NR_UE *)*MAX_NUM_CCs);
   if (get_softmodem_params()->emulate_l1) {
@@ -523,6 +527,10 @@ int main( int argc, char **argv ) {
     pthread_mutex_init(&ue_pf_po_mutex, NULL);
     memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
     set_latency_target();
+
+    if(IS_SOFTMODEM_DOSCOPE_QT) {
+      load_softscope("nrqt",PHY_vars_UE_g[0][0]);
+    }
 
     if(IS_SOFTMODEM_DOSCOPE) {
       load_softscope("nr",PHY_vars_UE_g[0][0]);

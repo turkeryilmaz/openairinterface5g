@@ -54,16 +54,10 @@ BUILD_COVERITY_SCAN=0
 DISABLE_HARDWARE_DEPENDENCY="False"
 CMAKE_BUILD_TYPE="RelWithDebInfo"
 CMAKE_CMD="$CMAKE"
+MAKE_CMD=make
 BUILD_ECLIPSE=0
 NR="False"
-OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope"
-ulfiusdep=$(basename ./`find /usr/lib* -name libulfius.so`)
-jssondep=$(basename ./`find /usr/lib* -name libjansson.so`)
-if [ "$ulfiusdep" == "libulfius.so" -a "$jssondep" == "libjansson.so" ] ; then
-  OPTIONAL_LIBRARIES+=" websrv"
-else
-  echo_warning "  websrv optional build not included in build-lib option  as dependencies requirements not met "
-fi
+OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope nrqtscope ldpc_cuda ldpc_t1 websrv oai_iqplayer"
 RU=0
 CMAKE_C_FLAGS=()
 CMAKE_CXX_FLAGS=()
@@ -86,7 +80,7 @@ Options:
 -d | --build-dir
    Sets build directory (will be <oai-root>/cmake_targets/<build-dir>/build)
 -I | --install-external-packages
-   Installs required packages such as LibXML, asn1.1 compiler, freediameter, ...
+   Installs required packages such as LibXML, asn1.1 compiler, ...
    This option will require root password
 --install-optional-packages
    Install useful but not mandatory packages such as valgrind
@@ -100,8 +94,6 @@ Options:
    enable cmake debugging messages
 --eNB
   Makes the LTE softmodem
---eNBocp
-  Makes the OCP LTE softmodem
 --gNB
   Makes the NR softmodem
 --RU
@@ -255,10 +247,6 @@ function main() {
             eNB=1
             echo_info "Will compile eNB"
             shift;;
-       --eNBocp)
-            eNBocp=1
-            echo_info "Will compile OCP eNB"
-            shift;;
       --gNB)
             gNB=1
             echo_info "Will compile gNB"
@@ -286,6 +274,10 @@ function main() {
        --UE-gen-nvram)
             gen_nvram_path=$(readlink -f "$2")
             shift 2;;
+       --UE-ip)
+            UE_ip=1
+            echo_info "Will compile UE"
+            shift;;
        -w | --hardware)
             # Use OAI_USRP as the key word USRP is used inside UHD driver           
             case "$2" in
@@ -308,10 +300,6 @@ function main() {
        -P | --phy_simulators)
             SIMUS_PHY=1
             echo_info "Will compile dlsim, ulsim, ..."
-            shift;;
-       -S | --core_simulators)
-            SIMUS_CORE=1
-            echo_info "Will compile security unitary tests"
             shift;;
        -s | --check)
             OAI_TEST=1
@@ -389,13 +377,16 @@ function main() {
                   if [ "$alib" = "$oklib" ] ; then
                     BUILD_OPTLIB="$BUILD_OPTLIB $alib" 
                     echo_info "Enabling build of lib${alib}.so" 
-                    fi   
-                  done
+                  fi
                 done
-	          if [ "${BUILD_OPTLIB## }" != "$2" ] ; then
-                 echo_fatal "Unknown optional library in $2, valid libraries are $OPTIONAL_LIBRARIES" 
+              done
+              if [ "${BUILD_OPTLIB## }" != "$2" ] ; then
+                echo_fatal "Unknown optional library in $2, valid libraries are $OPTIONAL_LIBRARIES"
               fi
             fi
+            for oklib in $BUILD_OPTLIB ; do
+              CMAKE_CMD="$CMAKE_CMD -DENABLE_${oklib^^}=ON"
+            done            
             shift 2;;		
         --noavx512)
             CMAKE_CMD="$CMAKE_CMD -DAVX512=OFF"
@@ -451,7 +442,7 @@ function main() {
   ########################################################
   # to be discussed
   
-  if [ "$eNB" = "1" -o "$eNBocp" = "1" -o "$gNB" = "1" ] ; then
+  if [ "$eNB" = "1" -o "$gNB" = "1" ] ; then
       if [ "$HW" = "None" -a  "$TP" = "None" ] ; then
 	      echo_info "No local radio head and no transport protocol selected"
       fi
@@ -470,20 +461,7 @@ function main() {
   # Setting and printing OAI envs, we should check here #
   #######################################################
 
-  echo_info "2. Setting the OAI PATHS ..."
-
   cecho "OPENAIR_DIR    = $OPENAIR_DIR" $green
-
-  # for conf files copy in this bash script
-  if [ -d /usr/lib/freeDiameter ]; then
-    export FREEDIAMETER_PREFIX=/usr
-  else
-    if [ -d /usr/local/lib/freeDiameter ]; then
-      export FREEDIAMETER_PREFIX=/usr/local
-    else
-      echo_warning "FreeDiameter prefix not found, install freeDiameter if EPC, HSS"
-    fi
-  fi
 
   if [ "$CLEAN_ALL" = "1" ] ; then
     clean_all_files
@@ -525,30 +503,15 @@ function main() {
   fi
 
   execlist=""
-  if [ "$eNB" = "1" ] ; then
-      execlist="$execlist lte-softmodem"
-  fi
-  if [ "$eNBocp" = "1" ] ; then
-      execlist="$execlist ocp-enb"
-  fi
-  if [ "$gNB" = "1" ] ; then
-      execlist="$execlist nr-softmodem"
-  fi
-  if [ "$RU" = "1" ] ; then
-      execlist="$execlist oairu"
-  fi
-  if [ "$UE" = 1 ] ; then
-      execlist="$execlist lte-uesoftmodem"
-  fi
-  if [ "$nrUE" = 1 ] ; then
-      execlist="$execlist nr-uesoftmodem"
-  fi
-
-  if [[ "$execlist" == "" && "$SIMUS_PHY" != "1" && "$HW" == "None" ]]; then
-    SKIP_SHARED_LIB_FLAG="True"
-  fi
-
-  echo_info "3. building the compilation directives ..."
+  [[ "$eNB" == "1" ]] && execlist="$execlist lte-softmodem"
+  [[ "$gNB" == "1" ]] && execlist="$execlist nr-softmodem nr-cuup"
+  [[ "$RU" == "1" ]] &&  execlist="$execlist oairu"
+  [[ "$UE" == 1 ]] &&    execlist="$execlist lte-uesoftmodem"
+  [[ "$nrUE" == 1 ]] &&  execlist="$execlist nr-uesoftmodem"
+  # TODO: fix: dlsim_tm4 pucchsim prachsim pdcchsim pbchsim mbmssim
+  [[ "$SIMUS_PHY" == "1" ]] && execlist="$execlist dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim"
+  [[ "$BUILD_OPTLIB" != "" ]] && execlist="$execlist $BUILD_OPTLIB"
+  [[ "$execlist" != "" ]] && execlist="$execlist params_libconfig coding rfsimulator"
 
   DIR=$OPENAIR_DIR/cmake_targets
 
@@ -565,34 +528,19 @@ function main() {
   echo_info "running $CMAKE_CMD"
   eval $CMAKE_CMD
   
-  for f in $execlist ; do
-      echo_info "Compiling $f..."
-      compilations $BUILD_DIR $f
-  done
-  
-  
-  # mandatory shared libraries common to UE and (e/g)NB
-  
-  if [ "$SKIP_SHARED_LIB_FLAG" = "False" ]; then
-      echo_info "Building shared libraries common to UE and gNB"
-
-      # configuration module libraries, one currently available, using libconfig
-      config_libconfig_shlib=params_libconfig
-      
-      compilations $BUILD_DIR $config_libconfig_shlib
-      
-      compilations $BUILD_DIR coding
-      
+  if [[ "$execlist" != "" ]]; then
+    echo_info "Compiling $execlist..."
+    compilations $BUILD_DIR all.txt $execlist
   fi
   
   if [ "$UE" = 1 ] ; then
 
     echo_info "Compiling UE specific part"
 
-    if [ $IS_CONTAINER -eq 0 ]
+    if [ "$UE_ip" = 1 ]
     then
       echo_info "Building ue_ip module"
-      compilations $BUILD_DIR ue_ip
+      compilations $BUILD_DIR ue_ip.txt ue_ip
     else
       echo_info "Bypassing ue_ip build"
     fi #IS_CONTAINER
@@ -607,9 +555,9 @@ function main() {
     cd $DIR/nas_sim_tools/build
 
     eval $CMAKE_CMD ..
-    compilations nas_sim_tools usim
-    compilations nas_sim_tools nvram
-    compilations nas_sim_tools conf2uedata
+    compilations nas_sim_tools usim.txt usim
+    compilations nas_sim_tools nvram.txt nvram
+    compilations nas_sim_tools conf2uedata.txt conf2uedata
 
     # generate USIM data
     if [ -f conf2uedata ]; then
@@ -619,95 +567,41 @@ function main() {
     fi
   fi
 
-  cd  $DIR/$BUILD_DIR/build
-  
-  ##################
-  # PHY simulators #
-  ##################
-  if [ "$SIMUS_PHY" = "1" ] ; then
-    echo_info "Compiling physical unitary tests simulators"
-    # TODO: fix: dlsim_tm4 pucchsim prachsim pdcchsim pbchsim mbmssim
-    simlist="dlsim ulsim ldpctest polartest smallblocktest nr_pbchsim nr_dlschsim nr_ulschsim nr_dlsim nr_ulsim nr_pucchsim nr_prachsim"
-	# simlist="ldpctest"
-    for f in $simlist ; do
-      compilations $BUILD_DIR $f
-    done
-    compilations $BUILD_DIR coding
-  fi
-
-  ###################
-  # Core simulators #
-  ###################
-  if [ "$SIMUS_CORE" = "1" ] ; then
-    echo_info "Compiling security unitary tests simulators"
-    simlist="secu_knas_encrypt_eia1 secu_kenb aes128_ctr_encrypt aes128_ctr_decrypt secu_knas_encrypt_eea2 secu_knas secu_knas_encrypt_eea1 kdf aes128_cmac_encrypt secu_knas_encrypt_eia2"
-    for f in $simlist ; do
-      compilations $BUILD_DIR test_$f
-    done
-  fi
-  
-  ######################
-  # Optional libraries #
-  ######################
-  if [ ! -z "$BUILD_OPTLIB" ] ; then 
-     for oklib in $BUILD_OPTLIB ; do
-         compilations $BUILD_DIR $oklib
-         if [ "$oklib" == "websrv" ] ; then
-           BUILD_WEBSRVFRONT=1
-           echo_info "Build of websrv frontend enabled"
-           fi
-     done
-  fi
-  
-  ############################################
-  # Optional targets (others than libraries) #
-  ############################################  
-  if [ "$BUILD_WEBSRVFRONT" = "1" ] ; then
-    npmv=`command npm -v`
-    npms=$?
-    nodev=`command node -v`
-    nodes=$?
-    if [ "$npms" == "0" -a "$nodes" == "0" ] ; then
-      compilations $BUILD_DIR websrvfront
-    else
-      echo_warning "build of websrv front-end skipped, dependencies not met : " $npmv " " $nodev
-    fi
-  fi
   ####################################################
   # Build RF device and transport protocol libraries #
   ####################################################
-  if [ "$eNB" = "1" -o "$eNBocp" = "1" -o "$UE" = "1" -o "$gNB" = "1" -o "$RU" = "1"  -o "$nrUE" = "1" ] ; then
+  if [ "$eNB" = "1" -o "$UE" = "1" -o "$gNB" = "1" -o "$RU" = "1"  -o "$nrUE" = "1" ] ; then
 
       # build RF device libraries
       if [ "$HW" != "None" ] ; then
           rm -f liboai_device.so
 
           if [ "$HW" == "OAI_USRP" ] ; then
-              compilations $BUILD_DIR oai_usrpdevif
+              compilations $BUILD_DIR oai_usrpdevif.txt oai_usrpdevif
 
               ln -sf liboai_usrpdevif.so liboai_device.so
               echo_info "liboai_device.so is linked to USRP device library"        
           elif [ "$HW" == "OAI_BLADERF" ] ; then
               if [ -f "/usr/include/libbladeRF.h" ] ; then
-                  compilations $BUILD_DIR oai_bladerfdevif
+                  compilations $BUILD_DIR oai_bladerfdevif.txt oai_bladerfdevif
               fi
 
               ln -sf liboai_bladerfdevif.so liboai_device.so
               echo_info "liboai_device.so is linked to BLADERF device library"	 
           elif [ "$HW" == "OAI_LMSSDR" ] ; then
 #              if [ -f "/usr/include/libbladeRF.h" ] ; then
-                  compilations $BUILD_DIR oai_lmssdrdevif
+                  compilations $BUILD_DIR oai_lmssdrdevif.txt oai_lmssdrdevif
 #              fi
 
               ln -sf liboai_lmssdrdevif.so liboai_device.so
               echo_info "liboai_device.so is linked to LMSSDR device library"	 
           elif [ "$HW" == "OAI_IRIS" ] ; then
-              compilations $BUILD_DIR oai_irisdevif
+              compilations $BUILD_DIR oai_irisdevif.txt oai_irisdevif
 
               ln -s liboai_irisdevif.so liboai_device.so
               echo_info "liboai_device.so is linked to IRIS device library"
           elif [ "$HW" == "OAI_AW2SORI" ] ; then
-              compilations $BUILD_DIR aw2sori_transpro
+              compilations $BUILD_DIR aw2sori_transpro.txt aw2sori_transpro
 
               ln -sf libaw2sori_transpro.so libthirdparty_transpro.so
               echo_info "build libthirdparty_transpro.so for AW2SORI fronthaul"
@@ -716,28 +610,22 @@ function main() {
           fi
       fi
 
-      #build simulators devices
-      if [ "$SKIP_SHARED_LIB_FLAG" = "False" ]; then
-          echo_info "Compiling rfsimulator"
-          compilations $BUILD_DIR rfsimulator
-      fi
-
       #build transport protocol libraries (currently only ETHERNET is available)
       if [ "$SKIP_SHARED_LIB_FLAG" = "False" ]; then
           echo_info "Building transport protocol libraries"
           rm -f liboai_transpro.so
 	  if [ "$TP" == "Ethernet" ]; then
-              compilations $BUILD_DIR oai_eth_transpro
+              compilations $BUILD_DIR oai_eth_transpro.txt oai_eth_transpro
               ln -sf liboai_eth_transpro.so liboai_transpro.so
               echo_info "liboai_transpro.so is linked to ETHERNET transport"
 	  fi
 	  if [ "$TP" == "benetel4g" ]; then
-              compilations $BUILD_DIR benetel_4g
+              compilations $BUILD_DIR benetel_4g.txt benetel4g
               ln -sf libbenetel_4g.so liboai_transpro.so
               echo_info "liboai_transpro.so is linked to BENETEL4G transport"
 	  fi
 	  if [ "$TP" == "benetel5g" ]; then
-              compilations $BUILD_DIR benetel_5g
+              compilations $BUILD_DIR benetel_5g.txt benetel_5g
               ln -sf libbenetel_5g.so liboai_transpro.so
               echo_info "liboai_transpro.so is linked to BENETEL4G transport"
 	  fi
@@ -761,7 +649,6 @@ function main() {
   # Auto-tests #
   ##############
   if [ "$OAI_TEST" = "1" ] ; then
-    echo_info "10. Running OAI pre commit tests (pre-ci) ..."
     echo_error "These scripts ASSUME that user is in /etc/sudoers and can execute commands without PASSWORD prompt"
     echo_error "Add the following lines in /etc/sudoers file to make your __user_name__ sudo without password prompt"
     echo_error " __your_user_name__ ALL = (ALL:ALL) NOPASSWD: ALL"
@@ -781,7 +668,6 @@ function main() {
     fi
     wait
   else
-    echo_info "10. Bypassing the Tests ..."
     echo_success "BUILD SHOULD BE SUCCESSFUL"
   fi
 
