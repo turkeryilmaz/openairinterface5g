@@ -51,6 +51,8 @@
 #include "common/utils/LOG/ss-log.h"
 #include "ss_eNB_context.h"
 #include "ss_eNB_multicell_helper.h"
+extern RAN_CONTEXT_t RC;
+
 
 int get_cell_index(uint16_t cell_id, SS_Cell_Context_t SSCell_list[]){
   for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
@@ -79,6 +81,8 @@ int get_cell_index_pci(uint16_t physCellId, SS_Cell_Context_t SSCell_list[]){
 }
 void init_ss_context(SS_Cell_Context_t SSCell_list[]){
   memset(SSCell_list, 0, (sizeof(SS_Cell_Context_t) * 8));
+  memset(RC.ss.l1macind,0,sizeof(RC.ss.l1macind));
+
   for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
     SSCell_list[Cell_idx].eutra_cellId = -1;
   }

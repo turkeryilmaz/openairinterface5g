@@ -75,8 +75,8 @@ uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_ti
    /*It is nonsense to check req_tinfo is after curr_tinfo */
 	if(req_tinfo.sfn != curr_tinfo.sfn || ((req_tinfo.sfn == curr_tinfo.sfn) && (req_tinfo.sf - curr_tinfo.sf) > 0) )
 	{
-		LOG_A(ENB_APP,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SF %d\n",timer_tinfo->sfn,timer_tinfo->sf);
 		vt_subtract_sf(&timer_tinfo->sfn,&timer_tinfo->sf, 4); /* queued ahead of 4 subframes because of mac schedule 4 subframes ahead when processing */
+		LOG_A(ENB_APP,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SF %d\n",timer_tinfo->sfn,timer_tinfo->sf);
 		return true;
 	}
 
@@ -89,12 +89,14 @@ uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_ti
  */
 uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t instance, void *msg)
 {
+	LOG_A(ENB_APP,"VT_TIMER setup1 for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 	uint32_t sfnSfKey = (tinfo.sfn << 4) | tinfo.sf;
 	vt_timer_elm_t *timer_ele_p;
 	timer_ele_p = calloc(1, sizeof(vt_timer_elm_t));
 	timer_ele_p->instance = instance;
 	timer_ele_p->task_id = task_id;
 	timer_ele_p->msg = msg;
+  LOG_A(ENB_APP,"VT_TIMER setup2 for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 
 	if (hashtable_insert(SS_context.vt_timer_table,
 	   (hash_key_t)sfnSfKey, (void *)timer_ele_p) == HASH_TABLE_OK)
@@ -102,6 +104,7 @@ uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t inst
 		LOG_A(ENB_APP,"VT_TIMER setup for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 		return 1;
 	}
+  LOG_A(ENB_APP,"VT_TIMER not setup for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 	return 0;
 }
 /*
@@ -141,7 +144,6 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 		  }
 		  LOG_D(ENB_APP,"VT_TIMER  Timeout sending done curr SFN %d SF %d\n",
 		 		  					SS_context.sfn,SS_context.sf);
-
 
 	  }
 }

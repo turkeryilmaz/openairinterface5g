@@ -124,7 +124,11 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
           LOG_A(ENB_SS, "[SS_SYSIND] SYSTEM_IND with UL HARQ %d\n", p_ind->UL_Harq);
           ind.Indication.d = SystemIndication_Type_UL_HARQ;
           if (p_ind->UL_Harq)
+          {
+            ind.Common.RlcBearerRouting.d = false ;
+            ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 1;
             ind.Indication.v.UL_HARQ = HARQ_Type_ack;
+          }
           else
             ind.Indication.v.UL_HARQ = HARQ_Type_nack;
 	      }

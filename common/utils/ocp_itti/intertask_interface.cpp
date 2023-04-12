@@ -322,6 +322,15 @@ extern "C" {
     return 0;
   }
 
+  int itti_create_task_prio(task_id_t task_id,
+                       void *(*start_routine)(void *),
+                       void *args_p,int addprio) {
+    task_list_t *t=tasks[task_id];
+    threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,(OAI_PRIORITY_RT)+addprio);
+    LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
+    return 0;
+  }
+
   void itti_exit_task(void) {
     pthread_exit (NULL);
   }

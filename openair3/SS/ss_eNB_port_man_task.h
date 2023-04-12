@@ -21,8 +21,11 @@
 
 #ifndef SS_ENB_TASK_PORT_MAN_H_
 #define SS_ENB_TASK_PORT_MAN_H_
+#include "acpSys.h"
 
 void  ss_eNB_port_man_init(void);
 void *ss_eNB_port_man_task(void *arg);
+void *ss_eNB_port_man_acp_task(void *arg);
+bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req);
 
 #endif /* SS_ENB_TASK_PORT_MAN_H_ */

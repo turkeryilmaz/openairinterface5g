@@ -309,6 +309,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
   cellConfig->header.preamble = 0xFEEDC0DE;
   cellConfig->header.msg_id = SS_CELL_CONFIG;
   cellConfig->header.length = sizeof(proxy_ss_header_t);
+  MessageDef *msg_p = NULL;
 
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
@@ -325,16 +326,16 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         /** TDD: 1 FDD: 0 in OAI */
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.RAT.d)
         {
-        case EUTRA_RAT_Type_FDD:
-          RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = 0; /** FDD */
-          break;
-        case EUTRA_RAT_Type_TDD:
-          RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = 1; /** TDD */
-          break;
-        case EUTRA_RAT_Type_HalfDuplexFDD:
-        case EUTRA_RAT_Type_UNBOUND_VALUE:
-          /* LOG */
-          return false;
+          case EUTRA_RAT_Type_FDD:
+            RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = 0; /** FDD */
+            break;
+          case EUTRA_RAT_Type_TDD:
+            RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = 1; /** TDD */
+            break;
+          case EUTRA_RAT_Type_HalfDuplexFDD:
+          case EUTRA_RAT_Type_UNBOUND_VALUE:
+            /* LOG */
+            return false;
         }
 
         int band = AddOrReconfigure->Basic.v.StaticCellInfo.v.Common.EutraBand;
@@ -362,28 +363,28 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 
         switch (AddOrReconfigure->Basic.v.StaticCellInfo.v.Downlink.Bandwidth)
         {
-        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n6:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 6;
-          break;
-        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n15:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 15;
-          break;
-        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n25:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 25;
-          break;
-        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n50:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 50;
-          break;
-        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n75:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 75;
-          break;
-        case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n100:
-          RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 100;
-          break;
-        default:
-          /** LOG */
-          LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid DL Bandwidth configuration \n");
-          return false;
+          case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n6:
+            RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 6;
+            break;
+          case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n15:
+            RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 15;
+            break;
+          case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n25:
+            RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 25;
+            break;
+          case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n50:
+            RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 50;
+            break;
+          case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n75:
+            RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 75;
+            break;
+          case SQN_CarrierBandwidthEUTRA_dl_Bandwidth_e_n100:
+            RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] = 100;
+            break;
+          default:
+            /** LOG */
+            LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid DL Bandwidth configuration \n");
+            return false;
         }
         LOG_A(ENB_SS, "[SYS] DL Bandwidth for cellIndex(%d):%d\n", cell_index, RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index]);
       }
@@ -402,40 +403,40 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
             LOG_A(ENB_SS, "[SYS] CellConfigRequest PHICH Duration: %d\n", BCCH_CONFIG.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Duration);
             switch (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Duration)
             {
-            case SQN_PHICH_Config_phich_Duration_e_normal:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_duration = LTE_PHICH_Config__phich_Duration_normal;
-              break;
-            case SQN_PHICH_Config_phich_Duration_e_extended:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_duration = LTE_PHICH_Config__phich_Duration_extended;
-              break;
-            default:
-              LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid PHICH Duration\n");
-              return false;
+              case SQN_PHICH_Config_phich_Duration_e_normal:
+                RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_duration = LTE_PHICH_Config__phich_Duration_normal;
+                break;
+              case SQN_PHICH_Config_phich_Duration_e_extended:
+                RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_duration = LTE_PHICH_Config__phich_Duration_extended;
+                break;
+              default:
+                LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid PHICH Duration\n");
+                return false;
             }
 
             LOG_A(ENB_SS, "[SYS] CellConfigRequest PHICH Resource: %d\n", BCCH_CONFIG.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Resource);
             switch (AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.phich_Config.phich_Resource)
             {
-            case SQN_PHICH_Config_phich_Resource_e_oneSixth:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_oneSixth;
-              break;
-            case SQN_PHICH_Config_phich_Resource_e_half:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_half;
-              break;
-            case SQN_PHICH_Config_phich_Resource_e_one:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_one;
-              break;
-            case SQN_PHICH_Config_phich_Resource_e_two:
-              RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_two;
-              break;
-            default:
-              LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid PHICH Resource\n");
-              return false;
+              case SQN_PHICH_Config_phich_Resource_e_oneSixth:
+                RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_oneSixth;
+                break;
+              case SQN_PHICH_Config_phich_Resource_e_half:
+                RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_half;
+                break;
+              case SQN_PHICH_Config_phich_Resource_e_one:
+                RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_one;
+                break;
+              case SQN_PHICH_Config_phich_Resource_e_two:
+                RRC_CONFIGURATION_REQ(msg_p).radioresourceconfig[cell_index].phich_resource = LTE_PHICH_Config__phich_Resource_two;
+                break;
+              default:
+                LOG_A(ENB_SS, "[SYS] CellConfigRequest Invalid PHICH Resource\n");
+                return false;
             }
 
             RRC_CONFIGURATION_REQ(msg_p).schedulingInfoSIB1_BR_r13[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.MIB.v.message.schedulingInfoSIB1_BR_r13;
           }
-/** TODO: FIXME: Possible bug if not checking boolean flag for presence */
+          /** TODO: FIXME: Possible bug if not checking boolean flag for presence */
 #define SIDL_SIB1_VAL AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIB1.v.message.v
 #define SIB1_CELL_ACCESS_REL_INFO SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.cellAccessRelatedInfo
 #define SIB1_CELL_SEL_INFO SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.cellSelectionInfo
@@ -682,7 +683,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         {
           msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, 0,msg_p);
           LOG_A(ENB_SS, "Cell_Config Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-					  tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+              tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
         }
       }
 
@@ -698,18 +699,18 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         SS_context.SSCell_list[cell_index].maxRefPower = AddOrReconfigure->Basic.v.InitialCellPower.v.MaxReferencePower;
         switch (AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.d)
         {
-        case Attenuation_Type_Value:
-          LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned on value: %d dBm \n",
+          case Attenuation_Type_Value:
+            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned on value: %d dBm \n",
                 AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value);
-          cellConfig->initialAttenuation = AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value;
-          break;
-        case Attenuation_Type_Off:
-          LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned off \n");
-          cellConfig->initialAttenuation = 80; /* attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
-          break;
-        case Attenuation_Type_UNBOUND_VALUE:
-        default:
-          LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Unbound or Invalid value received\n");
+            cellConfig->initialAttenuation = AddOrReconfigure->Basic.v.InitialCellPower.v.Attenuation.v.Value;
+            break;
+          case Attenuation_Type_Off:
+            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Attenuation turned off \n");
+            cellConfig->initialAttenuation = 80; /* attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
+            break;
+          case Attenuation_Type_UNBOUND_VALUE:
+          default:
+            LOG_A(ENB_SS, "[SYS] [InitialCellPower.v.Attenuation.v.Value] Unbound or Invalid value received\n");
         }
 
         cellConfig->header.cell_id = SS_context.SSCell_list[cell_index].PhysicalCellId;
@@ -717,9 +718,9 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
         cellConfig->header.cell_index = cell_index;
         LOG_A(ENB_SS, "===Cell configuration received for cell_id: %d Initial attenuation: %d Max ref power: %d for DL_EARFCN: %d cell_index %d=== \n",
-              cellConfig->header.cell_id,
-              cellConfig->initialAttenuation, cellConfig->maxRefPower,
-              cellConfig->dl_earfcn, cell_index);
+            cellConfig->header.cell_id,
+            cellConfig->initialAttenuation, cellConfig->maxRefPower,
+            cellConfig->dl_earfcn, cell_index);
         sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t), msg_queued, timer_tinfo);
       }
     }
@@ -793,10 +794,118 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     }
     LOG_A(ENB_APP, "SS: ActiveParamPresent: %d, RlcPduCCCH_Present: %d, RLC Container PDU size: %d \n", RRC_CONFIGURATION_REQ(msg_p).ActiveParamPresent[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Present[cell_index], RRC_CONFIGURATION_REQ(msg_p).RlcPduCCCH_Size[cell_index]);
     // store the modified cell config back
-     memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
+    memcpy(&(RC.rrc[enb_id]->configuration), &RRC_CONFIGURATION_REQ(msg_p), sizeof(RRC_CONFIGURATION_REQ(msg_p)));
     LOG_A(ENB_SS, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
     itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+
+    /* Active Config for ULGrant Params */
+    bool destTaskMAC = false;
+    for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
+    {
+      if (AddOrReconfigure->Active.d == true)
+      {
+        do 
+        {
+          if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.d == true)
+          {
+            msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), SS_ULGRANT_INFO);
+            LOG_I(ENB_SS, "[SYS] Received ULGrant in Active State\n");
+            SS_ULGRANT_INFO(msg_p).cell_index = cell_index;
+            if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d == UL_GrantConfig_Type_OnSR_Reception)
+            {
+              RC.ss.ulgrant_info[cell_index].ulGrantType = ON_SR_RECEPTION_PRESENT;
+              SS_ULGRANT_INFO(msg_p).ulGrantType = ON_SR_RECEPTION_PRESENT;
+              LOG_I(ENB_SS, "[SYS] Received ulGrantType ON_SR_RECEPTION\n");
+            }
+            else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d == UL_GrantConfig_Type_None)
+            {
+              RC.ss.ulgrant_info[cell_index].ulGrantType = NONE_PRESENT;
+              SS_ULGRANT_INFO(msg_p).ulGrantType = NONE_PRESENT;
+              LOG_I(ENB_SS, "[SYS] Received ulGrantType UL_GrantConfig_Type_None\n");
+            }
+            else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d == UL_GrantConfig_Type_Periodic)
+            {
+              SS_ULGRANT_INFO(msg_p).ulGrantType = PERIODIC_PRESENT;
+              SS_ULGRANT_INFO(msg_p).periodiGrantInfo.ULGrantPeriodType  = 
+                AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.d; 
+              LOG_I(ENB_SS, "[SYS] ULGrantPeriodType:%d\n", SS_ULGRANT_INFO(msg_p).periodiGrantInfo.ULGrantPeriodType);
+              if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.d == ULGrant_Period_Type_Duration)
+              {
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.period.duration = 
+                  AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.v.Duration; 
+                LOG_I(ENB_SS, "[SYS] Received Periodic ULGrant type ULGrant_Period_Type_Duration: %d received:%d\n", 
+                    SS_ULGRANT_INFO(msg_p).periodiGrantInfo.period.duration,
+                    AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.v.Duration);
+
+              }
+              else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.d == ULGrant_Period_Type_OnlyOnce)
+              {
+                LOG_I(ENB_SS, "[SYS] Received Periodic ULGrant type ULGrant_Period_Type_OnlyOnce\n");
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.period.onlyOnce = true;
+              }
+
+              if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.NoOfRepetitions.d == 1)
+              {
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous = 1;
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles = 0;
+                LOG_I(ENB_SS, "[SYS] line:%d Continuous:%d NumOfCycles:%d\n", 
+                    __LINE__,
+                    SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous,
+                    SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles);
+              }
+              else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.NoOfRepetitions.d == 2)
+              {
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles =
+                  AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.NoOfRepetitions.v.NumOfCycles;
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous = 0;
+                LOG_I(ENB_SS, "[SYS] line:%d Continuous:%d NumOfCycles:%d\n", 
+                    __LINE__,
+                    SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous,
+                    SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles);
+              }
+              else
+              {
+                LOG_A(ENB_SS, "[SYS] Received invalid Transmission Repetation Type in Periodic ULGrant%d\n",
+                    SS_ULGRANT_INFO(msg_p).periodiGrantInfo.ULGrantPeriodType);
+                break;
+              }
+              destTaskMAC = true;
+            }
+            else
+            {
+              LOG_A(ENB_SS, "[SYS] ULGrantType %d is not supported. Current supported ULGrant is OnSR_Reception & periodic only \n", 
+                  AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d);
+            }
+          }
+        }while(0);
+      }
+
+      /* Currently only queuing UL_GrantConfig from Cell Config API. On timer expiry, message will be sent to MAC */
+      if (destTaskMAC == true)
+      {
+        uint8_t msg_queued = 0;
+        /* Checking if message have to be queued */
+        if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+        {
+          ss_set_timinfo_t tinfo;
+          tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
+          tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
+          if (tinfo.sfn > SS_context.sfn || tinfo.sf > SS_context.sf)
+          {
+            msg_queued = vt_timer_setup(tinfo, TASK_MAC_ENB, 0, msg_p);
+          }
+          LOG_A(ENB_SS,"Enquiry Timing MSG queued for future SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+        }
+
+        if (!msg_queued)
+        {
+          LOG_A(ENB_SS, "Sending SS_ULGRANT_INFO to MAC\n");
+          itti_send_msg_to_task(TASK_MAC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
+        }
+      }
+    }
   }
+
   return true;
 }
 /*
@@ -813,15 +922,15 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
                          enum SystemConfirm_Type_Sel cnfType,
                          void *msg)
 {
-  struct SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct SYSTEM_CTRL_CNF));
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_SYS_PORT_MSG_CNF);
-
   /* The request has send confirm flag flase so do nothing in this funciton */
   if (reqCnfFlag_g == false)
   {
      LOG_A(ENB_SS, "[SYS] No confirm required\n");
      return ;
   }
+
+  struct SYSTEM_CTRL_CNF *msgCnf = CALLOC(1, sizeof(struct SYSTEM_CTRL_CNF));
+  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0, SS_SYS_PORT_MSG_CNF);
 
   if (message_p)
   {
@@ -1718,27 +1827,11 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 	LOG_A(ENB_SS, "[SYS] Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
 }
 
-
-/*
- * Function : sys_handle_enquire_timing
- * Description: Sends the enquire timing update to PORTMAN
- */
-static void sys_handle_enquire_timing(ss_set_timinfo_t *tinfo)
+static void sys_vt_add_sf(uint16_t *frameP, uint8_t *subframeP, int offset)
 {
-  MessageDef *message_p = itti_alloc_new_message(TASK_SYS, 0,SS_SET_TIM_INFO);
-  if (message_p)
-  {
-    LOG_A(ENB_SS, "[SYS] Reporting info sfn:%d\t sf:%d.\n", tinfo->sfn, tinfo->sf);
-    SS_SET_TIM_INFO(message_p).sf = tinfo->sf;
-    SS_SET_TIM_INFO(message_p).sfn = tinfo->sfn;
-    SS_SET_TIM_INFO(message_p).cell_index = cell_index;
+    *frameP    = (*frameP + ((*subframeP + offset) / 10))%1024;
 
-    int send_res = itti_send_msg_to_task(TASK_SS_PORTMAN, 0, message_p);
-    if (send_res < 0)
-    {
-      LOG_A(ENB_SS, "[SYS] Error sending to [SS-PORTMAN]");
-    }
-  }
+    *subframeP = ((*subframeP + offset) % 10);
 }
 
 static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
@@ -1803,6 +1896,7 @@ static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
 
 			if(msg_queued)
 			{
+         sys_vt_add_sf(&timer_tinfo.sfn,&timer_tinfo.sf,5);
 				 msg_queued = vt_timer_setup(timer_tinfo, TASK_MAC_ENB, 0,message_p);
 			}
 			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
@@ -2062,6 +2156,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
  */
 static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t *tinfo)
 {
+  LOG_A(ENB_SS, "swetank1212: SFN:%d SF:%d\n", req->Common.TimingInfo.v.SubFrame.SFN.v.Number, req->Common.TimingInfo.v.SubFrame.Subframe.v.Number);
   if(req->Common.CellId){
     cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
     SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
@@ -2132,11 +2227,6 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type_CellAttenuationList received\n");
       sys_handle_cell_attn_req(req);
       break;
-    case SystemRequest_Type_EnquireTiming:
-      sys_handle_enquire_timing(tinfo);
-      LOG_A(ENB_SS, "[SYS] SystemRequest_Type_EnquireTiming received\n");
-      break;
-
     case SystemRequest_Type_PdcpCount:
       LOG_A(ENB_SS, "[SYS] SystemRequest_Type PDCP_Count received\n");
       sys_handle_pdcp_count_req(&(req->Request.v.PdcpCount));
@@ -2257,14 +2347,6 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
       cnfType = SystemConfirm_Type_Cell;
     }
     break;
-  case SystemRequest_Type_EnquireTiming:
-    if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
-    {
-      valid = true;
-      sendDummyCnf = false;
-       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-    }
-    break;
   case SystemRequest_Type_CellAttenuationList:
     if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
     {
@@ -2367,9 +2449,11 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
 
       SS_context.sfn = tinfo.sfn;
       SS_context.sf  = tinfo.sf;
+//      SS_context.hsfn  = tinfo.hsfn;
 
       g_log->sfn = tinfo.sfn;
       g_log->sf = (uint32_t)tinfo.sf;
+      LOG_A(ENB_SS_SYS_TASK_, "[SYS] received SS_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
 
     }
     break;
