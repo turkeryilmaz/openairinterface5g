@@ -860,7 +860,7 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
       {
 
         //Increment the nb_CC supported as new cell is confiured. 
-        if ((RC.nb_CC[0] + 1) >= MAX_NUM_CCs) {
+        if ((RC.nb_CC[0] ) >= MAX_NUM_CCs) {
           LOG_E (ENB_SS,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
         } else {
           RC.nb_CC[0] ++;
