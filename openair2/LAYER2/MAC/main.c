@@ -291,12 +291,6 @@ void *mac_enb_task(void *arg)
     itti_receive_msg(TASK_MAC_ENB, &received_msg);
 
     switch (ITTI_MSG_ID(received_msg)) {
-      case RRC_MAC_DRX_CONFIG_REQ:
-        LOG_I(MAC, "MAC Task Received RRC_MAC_DRX_CONFIG_REQ\n");
-        /* Set timers and thresholds values in local MAC context of UE */
-        eNB_Config_Local_DRX(ITTI_MSG_DESTINATION_INSTANCE(received_msg), &received_msg->ittiMsg.rrc_mac_drx_config_req);
-        break;
-
       case SS_L1MACIND_CTRL:
         LOG_I(MAC, "MAC Task Received SS_L1MACIND_CTRL\n");
         int CC_id = received_msg->ittiMsg.ss_l1macind_ctrl.cell_index;

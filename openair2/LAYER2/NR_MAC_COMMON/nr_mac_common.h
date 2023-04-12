@@ -36,6 +36,9 @@
 #include "nr_mac.h"
 #include "common/utils/nr/nr_common.h"
 
+#define NB_SRS_PERIOD         (18)
+static const uint16_t srs_period[NB_SRS_PERIOD] = { 0, 1, 2, 4, 5, 8, 10, 16, 20, 32, 40, 64, 80, 160, 320, 640, 1280, 2560};
+
 typedef enum {
   pusch_dmrs_pos0 = 0,
   pusch_dmrs_pos1 = 1,
@@ -48,11 +51,6 @@ typedef enum {
   pusch_len2 = 2
 } pusch_maxLength_t;
 
-typedef enum {
-  typeA = 0,
-  typeB = 1
-} mappingType_t;
-
 uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti);
 
 uint8_t get_BG(uint32_t A, uint16_t R);
@@ -61,7 +59,13 @@ uint64_t from_nrarfcn(int nr_bandP, uint8_t scs_index, uint32_t dl_nrarfcn);
 
 uint32_t to_nrarfcn(int nr_bandP, uint64_t dl_CarrierFreq, uint8_t scs_index, uint32_t bw);
 
-int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Position,int NrOfSymbols,int startSymbol,mappingType_t mappingtype,int length);
+int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
+                       int dci_format,
+                       int dmrs_TypeA_Position,
+                       int NrOfSymbols,
+                       int startSymbol,
+                       mappingType_t mappingtype,
+                       int length);
 
 int is_nr_DL_slot(NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon,slot_t slotP);
 
@@ -80,15 +84,22 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       const uint8_t *nrOfLayers,
                                       uint32_t *val);
 
-uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
-                     const NR_BWP_UplinkCommon_t *initialUplinkBWP,
-                     const NR_UE_DL_BWP_t *DL_BWP,
+NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type);
+
+NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type);
+
+NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type, int tda_index);
+
+NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda_index, int dmrs_typeA_pos,
+                              int mux_pattern, nr_rnti_type_t rnti_type, int coresetid, bool sib1);
+
+uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                      const NR_UE_UL_BWP_t *UL_BWP,
                      const NR_CellGroupConfig_t *cg,
                      dci_pdu_rel15_t *dci_pdu,
                      nr_dci_format_t format,
                      nr_rnti_type_t rnti_type,
-                     int controlResourceSetId,
+                     NR_ControlResourceSet_t *coreset,
                      int bwp_id,
                      int ss_type,
                      uint16_t cset0_bwp_size,
@@ -151,6 +162,8 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 
 int ul_ant_bits(NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig,long transformPrecoder);
 
+uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type);
+
 int get_format0(uint8_t index, uint8_t unpaired,frequency_range_t);
 
 int64_t *get_prach_config_info(frequency_range_t freq_range,
@@ -209,13 +222,12 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
 uint16_t get_ssb_start_symbol(const long band, NR_SubcarrierSpacing_t scs, int i_ssb);
 
-void get_info_from_tda_tables(int default_abc,
-                              int tda,
-                              int dmrs_TypeA_Position,
-                              int normal_CP,
-                              bool *is_mapping_typeA,
-                              int *startSymbolIndex,
-                              int *nrOfSymbols);
+NR_tda_info_t get_info_from_tda_tables(default_table_type_t table_type,
+                                       int tda,
+                                       int dmrs_TypeA_Position,
+                                       int normal_CP);
+
+default_table_type_t get_default_table_type(int mux_pattern);
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config);
 void fill_searchSpaceZero(NR_SearchSpace_t *ss0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config);
@@ -262,12 +274,7 @@ bool set_ul_ptrs_values(NR_PTRS_UplinkConfig_t *ul_ptrs_config,
 @param    rnti_type        rnti type
 @param    configuredGrant  indicates whether a configured grant was received or not
 @returns                   transformPrecoding value */
-uint8_t get_transformPrecoding(const NR_BWP_UplinkCommon_t *initialUplinkBWP,
-                               const NR_PUSCH_Config_t *pusch_config,
-                               const NR_BWP_UplinkDedicated_t *ubwp,
-                               uint8_t *dci_format,
-                               int rnti_type,
-                               uint8_t configuredGrant);
+uint8_t get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant);
 
 void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
                                const int CC_idP,

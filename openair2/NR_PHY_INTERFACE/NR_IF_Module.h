@@ -33,10 +33,11 @@
 #ifndef __NR_IF_MODULE__H__
 #define __NR_IF_MODULE__H__
 
+#include <pthread.h>
 #include <stdint.h>
 #include "nfapi_nr_interface.h"
 #include "nfapi_nr_interface_scf.h"
-#include "platform_constants.h"
+#include "common/platform_constants.h"
 #include "platform_types.h"
 
 #define MAX_NUM_DL_PDU 100

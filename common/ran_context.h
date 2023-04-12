@@ -34,7 +34,7 @@
 #define __RAN_CONTEXT_H__
 
 #include <pthread.h>
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "PHY/defs_eNB.h"
 #include "PHY/types.h"
 #include "PHY/impl_defs_top.h"
