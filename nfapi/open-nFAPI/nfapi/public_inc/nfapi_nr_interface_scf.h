@@ -452,7 +452,7 @@ typedef struct
 // ERROR enums
 typedef enum {    // Table 2-22
   NFAPI_NR_PARAM_MSG_OK = 0, 
-	NFAPI_NR_PARAM_MSG_INVALID_STATE
+  NFAPI_NR_PARAM_MSG_INVALID_STATE
 } nfapi_nr_param_errors_e;
 
 typedef enum {    // Table 2-25
@@ -463,7 +463,7 @@ typedef enum {    // Table 2-25
 
 typedef enum {    // Table 2-27
   NFAPI_NR_START_MSG_OK = 0,       
-	NFAPI_NR_START_MSG_INVALID_STATE
+  NFAPI_NR_START_MSG_INVALID_STATE
 } nfapi_nr_start_errors_e;
 
 //PNF P5 NR 
@@ -678,9 +678,6 @@ typedef struct {
   uint16_t slot;//0->319
   
 } nfapi_nr_slot_indication_scf_t;
-
-/** VTUESLOT.indication sent from UE as an ACK in the virtual time scenario */
-typedef nfapi_nr_slot_indication_scf_t nfapi_ue_slot_indication_vt_t;
 
 // 3.4.2
 

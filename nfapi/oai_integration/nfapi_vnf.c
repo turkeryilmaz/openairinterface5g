@@ -41,6 +41,7 @@
 #include "PHY/LTE_TRANSPORT/transport_proto.h"
 #include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "executables/lte-softmodem.h"
+#include "openair1/PHY/defs_gNB.h"
 
 #include "common/ran_context.h"
 #include "openair2/PHY_INTERFACE/queue_t.h"
@@ -240,6 +241,13 @@ void oai_create_enb(void) {
     FAPI_configured_for_a_CC = 1;
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB Cell %d is now configured\n", __FUNCTION__,CC_id);
   }
+
+  do {
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for eNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
+    usleep(50000);
+  } while(eNB->configured != 1);
+
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB is now configured\n", __FUNCTION__);
 }
 
 void oai_enb_init(void) {
@@ -665,9 +673,17 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
     } else {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
 
-      if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][CC_id]->configured:%d\n", RC.eNB[0][CC_id]->configured);
-    }
+  if (RC.eNB && RC.eNB[0][0]->configured) {
+    uint16_t sfn = NFAPI_SFNSF2SFN(sfn_sf);
+    uint16_t sf = NFAPI_SFNSF2SF(sfn_sf);
+    //LOG_D(PHY,"[VNF] subframe indication sfn_sf:%d sfn:%d sf:%d\n", sfn_sf, sfn, sf);
+    wake_eNB_rxtx(RC.eNB[0][0], sfn, sf);
+  } else {
+    NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
+
+    if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->configured:%d\n", RC.eNB[0][0]->configured);
   }
+
   return 0;
 }
 
@@ -1701,6 +1717,7 @@ int nr_config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_config_re
   nfapi_nr_start_request_scf_t req;
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_CONFIG_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
   NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Calling oai_enb_init()\n");
+  oai_enb_init(); // TODO: change to gnb
   memset(&req, 0, sizeof(req));
   req.header.message_id = NFAPI_NR_PHY_MSG_TYPE_START_REQUEST;
   req.header.phy_id = resp->header.phy_id;
@@ -1722,13 +1739,24 @@ int config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_config_response
 }
 
 int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t *resp) {
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-  vnf_info *vnf = (vnf_info *)(config->user_data);
-  pnf_info *pnf = vnf->pnfs;
-  phy_info *phy = pnf->phys;
-  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-  nfapi_vnf_p7_add_pnf((p7_vnf->config), phy->remote_addr, htons(phy->remote_port), phy->id);
-  return 0;
+	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+	vnf_info *vnf = (vnf_info *)(config->user_data);
+	pnf_info *pnf = vnf->pnfs;
+	phy_info *phy = pnf->phys;
+	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
+	uint16_t port =htons(phy->remote_port);
+	char *remote_addr = (char *) malloc(strlen(phy->remote_addr)+1);
+	memset(remote_addr, 0, strlen(phy->remote_addr)+1);
+	strncpy(remote_addr, phy->remote_addr, strlen(phy->remote_addr));
+	for(int i=0; i < pnf->num_phys; i++ )
+	{
+		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
+		LOG_D(NFAPI_VNF, "MultiCell: fxn:%d phy_id added:%d\n", p5_idx, resp->header.phy_id);
+		phy +=1;
+	}
+	free(remote_addr);
+	remote_addr = NULL;
+	return 0;
 }
 
 int nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_start_response_scf_t *resp) {
@@ -1802,7 +1830,7 @@ void vnf_start_thread(void *ptr) {
 
 static vnf_info vnf;
 
-void configure_nr_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
+void configure_nr_nfapi_vnf(char *vnf_addr, int vnf_p5_port, char *pnf_ip_addr, int pnf_p7_port, int vnf_p7_port) {
   nfapi_setmode(NFAPI_MODE_VNF);
   memset(&vnf, 0, sizeof(vnf));
   memset(vnf.p7_vnfs, 0, sizeof(vnf.p7_vnfs));
@@ -1853,7 +1881,7 @@ void configure_nr_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
 }
 
 
-void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port) {
+void configure_nfapi_vnf(char *vnf_addr, int vnf_p5_port, char *pnf_ip_addr, int pnf_p7_port, int vnf_p7_port) {
   nfapi_setmode(NFAPI_MODE_VNF);
   memset(&vnf, 0, sizeof(vnf));
   memset(vnf.p7_vnfs, 0, sizeof(vnf.p7_vnfs));
@@ -2145,18 +2173,4 @@ int oai_nfapi_ue_release_req(nfapi_ue_release_request_t *release_req){
         release_req->ue_release_request_body.number_of_TLVs = 0;
     }
     return retval;
-}
-
-int oai_nfapi_slot_ind(nfapi_nr_slot_indication_scf_t * slot_ind)
-{
-	LOG_D(NR_PHY, "Entering oai_nfapi_slot_ind sfn:%d,slot:%d\n", slot_ind->sfn, slot_ind->slot);
-	nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
-	slot_ind->header.message_id= NFAPI_NR_PHY_MSG_TYPE_SLOT_INDICATION;
-
-	int retval = nfapi_vnf_p7_nr_slot_ind(p7_config, slot_ind);
-
-	if (retval!=0) {
-		LOG_E(PHY, "%s() Problem sending retval:%d\n", __FUNCTION__, retval);
-	}
-	return retval;
 }

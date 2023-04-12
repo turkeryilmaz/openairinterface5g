@@ -668,16 +668,6 @@ int nfapi_vnf_p7_del_pnf(nfapi_vnf_p7_config_t* config, int phy_id)
 
 	return 0;
 }
-
-int nfapi_vnf_p7_nr_slot_ind(nfapi_vnf_p7_config_t* config, nfapi_nr_slot_indication_scf_t* req)
-{
-  if(config == 0 || req == 0)
-		return -1;
-
-	vnf_p7_t* vnf_p7 = (vnf_p7_t*)config;
-	return vnf_nr_p7_pack_and_send_p7_msg(vnf_p7, &req->header);
-}
-
 int nfapi_vnf_p7_dl_config_req(nfapi_vnf_p7_config_t* config, nfapi_dl_config_request_t* req)
 {
 	//NFAPI_TRACE(NFAPI_TRACE_INFO, "%s(config:%p req:%p)\n", __FUNCTION__, config, req);
