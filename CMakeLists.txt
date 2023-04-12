@@ -52,9 +52,10 @@ include_directories(${CRYPTO_INCLUDE_DIRS})
 #uhd 4.0 and iris installs by default in /usr/local
 include_directories("/usr/local/include/")
 #use native cmake method as this package is not in pkg-config
-add_list2_option(RF_BOARD "None" "RF head type" "None" "OAI_USRP" "OAI_BLADERF" "OAI_LMSSDR" "OAI_SIMU")
+add_list2_option(RF_BOARD "None" "RF head type" "None" "OAI_USRP" "OAI_BLADERF" "OAI_LMSSDR" "OAI_SIMU" "EXMIMO")
 if (${RF_BOARD} STREQUAL "OAI_USRP")
   find_package(Boost REQUIRED)
+  include_directories(${LIBBOOST_INCLUDE_DIR})
 
 elseif (${RF_BOARD} STREQUAL "OAI_IRIS")
     include_directories("radio/IRIS/USERSPACE/LIB/")
@@ -126,6 +127,11 @@ endif()
 #########################################################
 # Base directories, compatible with legacy OAI building #
 #########################################################
+set (OPENAIR_DIR     $ENV{OPENAIR_DIR})
+if("${OPENAIR_DIR}" STREQUAL "")
+  string(REGEX REPLACE "/cmake_targets.*$" "" OPENAIR_DIR ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
 set (NFAPI_DIR       ${OPENAIR_DIR}/nfapi/open-nFAPI)
 set (NFAPI_USER_DIR  ${OPENAIR_DIR}/nfapi/oai_integration)
 set (OPENAIR1_DIR    ${OPENAIR_DIR}/openair1)
@@ -263,6 +269,7 @@ set(GIT_COMMIT_DATE   "UNKNOWN")
 
 find_package(Git)
 if(GIT_FOUND)
+  message("git found: ${GIT_EXECUTABLE}")
   # Get the current working branch
   execute_process(
     COMMAND git rev-parse --abbrev-ref HEAD
@@ -316,6 +323,16 @@ endif()
 ##################################################
 # ASN.1 grammar C code generation & dependencies #
 ##################################################
+# A difficulty: asn1c generates C code of a un-predictable list of files
+# so, generate the c from asn1c once at cmake run time
+# So, if someone modify the asn.1 source file in such as way that it will create
+# (so creating new asn.1 objects instead of modifying the object attributes)
+# New C code source file, cmake must be re-run (instead of re-running make only)
+#############
+set(asn1_generated_dir ${OPENAIR_BIN_DIR})
+
+set(protoc_call "${OPENAIR_CMAKE}/tools/generate_protobuf")
+set(protobuf_generated_dir ${OPENAIR_BIN_DIR})
 
 # RRC
 ######
@@ -331,10 +348,46 @@ target_link_libraries(lte_rrc PRIVATE nr_rrc)
 add_library(nr_rrc ${OPENAIR2_DIR}/RRC/NR/MESSAGES/asn1_msg.c)
 target_link_libraries(nr_rrc PUBLIC asn1_nr_rrc asn1_lte_rrc)
 
+# Warning: if you modify ASN.1 source file to generate new C files, cmake should be re-run instead of make
+set(nr_rrc_cmd ${OPENAIR_CMAKE}/tools/make_asn1c_includes.sh "NR_" "-findirect-choice" "${NR_RRC_FULL_DIR}")
+
+compile_asn1("${NR_RRC_GRAMMAR}" "${nr_rrc_cmd}"  nr_rrc_flag)
+
+file(GLOB nr_rrc_source ${NR_RRC_FULL_DIR}/*.c)
+file(GLOB nr_rrc_h ${NR_RRC_FULL_DIR}/*.h)
+add_library(NR_RRC_LIB ${nr_rrc_h} ${nr_rrc_source}
+    ${OPENAIR2_DIR}/RRC/NR/MESSAGES/asn1_msg.c
+    )
+add_dependencies(NR_RRC_LIB nr_rrc_flag)
+include_directories ("${NR_RRC_FULL_DIR}")
 
 # S1AP
+# Same limitation as described in RRC: unknown generated file list
+# so we generate it at cmake time
 ##############
+set (S1AP_RELEASE R15)
+
 set(S1AP_DIR ${OPENAIR3_DIR}/S1AP)
+make_version(S1AP_VERSION 15 6 0)
+set(S1AP_ASN_FILES "s1ap-15.6.0.asn1")
+
+add_definitions(-DS1AP_VERSION=${S1AP_VERSION})
+set(S1AP_ASN_DIR ${S1AP_DIR}/MESSAGES/ASN1/${S1AP_RELEASE})
+set(S1AP_C_DIR ${asn1_generated_dir}/S1AP_${S1AP_RELEASE})
+
+# Warning: if you modify ASN.1 source file to generate new C files, cmake should be re-run instead of make
+set(s1ap_cmd ${OPENAIR_CMAKE}/tools/make_asn1c_includes.sh  "S1AP_" -fno-include-deps "${S1AP_C_DIR}")
+
+compile_asn1("${S1AP_ASN_DIR}/${S1AP_ASN_FILES}" "${s1ap_cmd}"  s1ap_flag)
+
+file(GLOB S1AP_source ${S1AP_C_DIR}/*.c)
+add_library(S1AP_LIB
+  ${S1AP_source}
+  ${S1AP_DIR}/s1ap_common.c
+  )
+add_dependencies(S1AP_LIB rrc_flag s1ap_flag)
+
+include_directories ("${S1AP_C_DIR}")
 include_directories ("${S1AP_DIR}")
 add_library(s1ap
   ${S1AP_DIR}/s1ap_common.c
@@ -355,8 +408,32 @@ target_link_libraries(s1ap PUBLIC asn1_s1ap)
 target_link_libraries(s1ap PRIVATE nr_rrc asn1_nr_rrc_hdrs lte_rrc)
 
 # NGAP
+# Same limitation as described in RRC: unknown generated file list
+# so we generate it at cmake time
 ##############
+set (NGAP_RELEASE R15)
+
 set(NGAP_DIR ${OPENAIR3_DIR}/NGAP)
+make_version(NGAP_VERSION 15 8 0)
+set(NGAP_ASN_FILES "ngap-15.8.0.asn1")
+
+add_definitions(-DNGAP_VERSION=${NGAP_VERSION})
+set(NGAP_ASN_DIR ${NGAP_DIR}/MESSAGES/ASN1/ASN1_files)
+set(NGAP_C_DIR ${asn1_generated_dir}/NGAP_${NGAP_RELEASE})
+
+# Warning: if you modify ASN.1 source file to generate new C files, cmake should be re-run instead of make
+set (ngap_cmd ${OPENAIR_CMAKE}/tools/make_asn1c_includes.sh "NGAP_" "-fno-include-deps -findirect-choice" "${NGAP_C_DIR}")
+
+compile_asn1("${NGAP_ASN_DIR}/${NGAP_ASN_FILES}" "${ngap_cmd}"  ngap_flag)
+
+file(GLOB NGAP_source ${NGAP_C_DIR}/*.c)
+add_library(NGAP_LIB
+  ${NGAP_source}
+#  ${NGAP_DIR}/ngap_common.c
+  )
+add_dependencies(NGAP_LIB rrc_flag ngap_flag)
+
+include_directories ("${NGAP_C_DIR}")
 include_directories ("${NGAP_DIR}")
 add_library(ngap
   ${NGAP_DIR}/ngap_gNB.c
@@ -376,10 +453,21 @@ target_link_libraries(ngap PUBLIC asn1_ngap)
 target_link_libraries(ngap PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 #M2AP
+# Same limitation as described in RRC/S1AP: unknown generated file list
+# so we generate it at cmake time
 ##############
+add_list1_option(M2AP_RELEASE R14 "M2AP ASN.1 grammar version" R14)
+
 set(M2AP_DIR ${OPENAIR2_DIR}/M2AP)
 add_library(m2ap
   ${M2AP_DIR}/m2ap_common.c
+  )
+add_dependencies(M2AP_LIB rrc_flag m2_flag)
+
+include_directories ("${M2AP_C_DIR}")
+include_directories ("${M2AP_DIR}")
+
+add_library(M2AP_ENB
   ${M2AP_DIR}/m2ap_eNB.c
   ${M2AP_DIR}/m2ap_MCE.c
   ${M2AP_DIR}/m2ap_decoder.c
@@ -401,10 +489,49 @@ target_link_libraries(m2ap PRIVATE lte_rrc nr_rrc)
 target_include_directories(m2ap PRIVATE "${M2AP_DIR}")
 
 #M3AP
+# Same limitation as described in RRC/S1AP: unknown generated file list
+# so we generate it at cmake time
 ##############
+add_list1_option(M3AP_RELEASE R14 "M3AP ASN.1 grammar version" R14)
+
 set(M3AP_DIR ${OPENAIR3_DIR}/M3AP)
-add_library(m3ap
+if (${M3AP_RELEASE} STREQUAL "R8")
+  make_version(M3AP_VERSION 8 9 0)
+  set(M3AP_ASN_FILES m3ap-8.9.0.asn1)
+elseif (${M3AP_RELEASE} STREQUAL "R11")
+  make_version(M3AP_VERSION 11 9 0)
+  set(M3AP_ASN_FILES m3ap-11.9.0.asn1)
+elseif (${M3AP_RELEASE} STREQUAL "R12")
+  make_version(M3AP_VERSION 12 9 0)
+  set(M3AP_ASN_FILES m3ap-12.9.0.asn1)
+elseif (${M3AP_RELEASE} STREQUAL "R14")
+  make_version(M3AP_VERSION 14 0 0)
+  set(M3AP_ASN_FILES m3ap-14.0.0.asn1)
+elseif (${M3AP_RELEASE} STREQUAL "R15")
+  make_version(M3AP_VERSION 15 1 0)
+  set(M3AP_ASN_FILES m3ap-15.1.0.asn1)
+endif(${M3AP_RELEASE} STREQUAL "R8")
+add_definitions(-DM3AP_VERSION=${M3AP_VERSION})
+set(M3AP_ASN_DIR ${M3AP_DIR}/MESSAGES/ASN1/${M3AP_RELEASE})
+set(M3AP_C_DIR ${asn1_generated_dir}/M3AP_${M3AP_RELEASE})
+
+# Warning: if you modify ASN.1 source file to generate new C files, cmake should be re-run instead of make
+set(m3_cmd ${OPENAIR_CMAKE}/tools/make_asn1c_includes.sh  "M3AP_" -fno-include-deps "${M3AP_C_DIR}")
+
+compile_asn1("${M3AP_ASN_DIR}/${M3AP_ASN_FILES}" "${m3_cmd}"  m3_flag)
+
+file(GLOB M3AP_source ${M3AP_C_DIR}/*.c)
+
+add_library(M3AP_LIB
+  ${M3AP_source}
   ${M3AP_DIR}/m3ap_common.c
+  )
+add_dependencies(M3AP_LIB rrc_flag m3_flag)
+
+include_directories ("${M3AP_C_DIR}")
+include_directories ("${M3AP_DIR}")
+
+add_library(M3AP_ENB
   ${M3AP_DIR}/m3ap_decoder.c
   ${M3AP_DIR}/m3ap_encoder.c
   ${M3AP_DIR}/m3ap_MCE_handler.c
@@ -425,8 +552,32 @@ target_link_libraries(m3ap PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 target_include_directories(m3ap PUBLIC "${M3AP_DIR}")
 
 #X2AP
+# Same limitation as described in RRC/S1AP: unknown generated file list
+# so we generate it at cmake time
 ##############
+set (X2AP_RELEASE R15)
+
 set(X2AP_DIR ${OPENAIR2_DIR}/X2AP)
+make_version(X2AP_VERSION 15 6 0)
+set(X2AP_ASN_FILES x2ap-15.6.0.asn1)
+
+add_definitions(-DX2AP_VERSION=${X2AP_VERSION})
+set(X2AP_ASN_DIR ${X2AP_DIR}/MESSAGES/ASN1/${X2AP_RELEASE})
+set(X2AP_C_DIR ${asn1_generated_dir}/X2AP_${X2AP_RELEASE})
+# Warning: if you modify ASN.1 source file to generate new C files, cmake should be re-run instead of make
+set(x2_cmd ${OPENAIR_CMAKE}/tools/make_asn1c_includes.sh "X2AP_" -fno-include-deps "${X2AP_C_DIR}")
+
+compile_asn1("${X2AP_ASN_DIR}/${X2AP_ASN_FILES}" "${x2_cmd}"  x2_flag)
+
+file(GLOB X2AP_source ${X2AP_C_DIR}/*.c)
+
+add_library(X2AP_LIB
+  ${X2AP_source}
+  ${X2AP_DIR}/x2ap_common.c
+  )
+add_dependencies(X2AP_LIB rrc_flag x2_flag)
+
+include_directories ("${X2AP_C_DIR}")
 include_directories ("${X2AP_DIR}")
 add_library(x2ap
   ${X2AP_DIR}/x2ap_common.c
@@ -548,6 +699,27 @@ set(HWLIB_IRIS_SOURCE
 add_library(oai_irisdevif MODULE ${HWLIB_IRIS_SOURCE})
 target_include_directories(oai_irisdevif PRIVATE /usr/local/lib/SoapySDR/modules0.7/)
 target_link_libraries(oai_irisdevif SoapySDR)
+
+# TCP bridge libraries
+######################################################################
+
+# this one is for internal use at Eurecom and is not documented
+set(HWLIB_TCP_BRIDGE_SOURCE
+  ${OPENAIR_TARGETS}/ARCH/tcp_bridge/tcp_bridge.c
+  )
+add_library(tcp_bridge MODULE ${HWLIB_TCP_BRIDGE_SOURCE} )
+
+#get_target_property(tcp_bridge_cflags tcp_bridge COMPILE_FLAGS)
+#set_target_properties(tcp_bridge PROPERTIES COMPILE_FLAGS "${tcp_bridge_cflags} -fvisibility=hidden")
+set_target_properties(tcp_bridge PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+
+# this one is to connect OAI eNB and OAI UE in the basic simulator
+# see targets/ARCH/tcp_bridge/README.tcp_bridge_oai for usage
+set(HWLIB_TCP_BRIDGE_OAI_SOURCE
+  ${OPENAIR_TARGETS}/ARCH/tcp_bridge/tcp_bridge_oai.c
+  )
+add_library(tcp_bridge_oai MODULE ${HWLIB_TCP_BRIDGE_OAI_SOURCE} )
+set_target_properties(tcp_bridge_oai PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # Benetel 4G library
 ######################################################################
@@ -748,6 +920,8 @@ include_directories("${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/RRC")
 include_directories("${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/PDCP")
 include_directories("${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/S1AP")
 include_directories("${OPENAIR2_DIR}/UTIL/OSA")
+include_directories("${OPENAIR2_DIR}/UTIL/LFDS/liblfds6.1.1/liblfds611/inc")
+include_directories("${OPENAIR2_DIR}/UTIL/LFDS/liblfds7.0.0/liblfds700/inc")
 include_directories("${OPENAIR2_DIR}/UTIL/MEM")
 include_directories("${OPENAIR2_DIR}/UTIL/LISTS")
 include_directories("${OPENAIR2_DIR}/UTIL/FIFO")
@@ -760,9 +934,151 @@ include_directories("${OPENAIR2_DIR}/UTIL/OPT")
 include_directories("${OPENAIR2_DIR}/UTIL/OMV")
 include_directories("${OPENAIR_DIR}")
 
-###########
-# Utilities
-###############
+# Utilities Library
+################
+# set the version of protobuf messages, V3 not supported yet
+add_list1_option(FLPT_VERSION V2 "FLPT MSG  protobuf  grammar version" V2 V3)
+
+if (${FLPT_VERSION} STREQUAL "V2")
+  set (FLPTDIR V2)
+elseif (${FLPT_VERSION} STREQUAL "V3")
+  set (FLPTDIR V3)
+endif(${FLPT_VERSION} STREQUAL "V2")
+
+set(FLPT_MSG_DIR ${OPENAIR2_DIR}/ENB_APP/MESSAGES/${FLPTDIR} )
+set(FLPT_MSG_FILES
+  ${FLPT_MSG_DIR}/header.proto
+  ${FLPT_MSG_DIR}/flexran.proto
+  ${FLPT_MSG_DIR}/stats_common.proto
+  ${FLPT_MSG_DIR}/stats_messages.proto
+  ${FLPT_MSG_DIR}/time_common.proto
+  ${FLPT_MSG_DIR}/controller_commands.proto
+  ${FLPT_MSG_DIR}/mac_primitives.proto
+  ${FLPT_MSG_DIR}/config_messages.proto
+  ${FLPT_MSG_DIR}/config_common.proto
+  ${FLPT_MSG_DIR}/control_delegation.proto
+  )
+
+set(FLPT_C_DIR ${protobuf_generated_dir}/FLPT_${FLPTDIR})
+#message("calling protoc_call=${protoc_call} FLPT_C_DIR=${FLPT_C_DIR} FLPT_MSG_FILES=${FLPT_MSG_FILES}")
+execute_process(COMMAND ${protoc_call} ${FLPT_C_DIR} ${FLPT_MSG_DIR} ${FLPT_MSG_FILES})
+file(GLOB FLPT_source ${FLPT_C_DIR}/*.c)
+set(FLPT_OAI_generated
+  ${FLPT_C_DIR}/header.pb-c.c
+  ${FLPT_C_DIR}/flexran.pb-c.c
+  ${FLPT_C_DIR}/stats_common.pb-c.c
+  ${FLPT_C_DIR}/stats_messages.pb-c.c
+  ${FLPT_C_DIR}/time_common.pb-c.c
+  ${FLPT_C_DIR}/controller_commands.pb-c.c
+  ${FLPT_C_DIR}/mac_primitives.pb-c.c
+  ${FLPT_C_DIR}/config_messages.pb-c.c
+  ${FLPT_C_DIR}/config_common.pb-c.c
+  ${FLPT_C_DIR}/control_delegation.pb-c.c
+  )
+
+file(GLOB flpt_h ${FLPT_C_DIR}/*.h)
+set(flpt_h ${flpt_h} )
+
+add_library(FLPT_MSG
+  ${FLPT_OAI_generated}
+  ${FLPT_source}
+  )
+set(FLPT_MSG_LIB FLPT_MSG)
+#message("prpt c dir is : ${FLPT_C_DIR}")
+include_directories (${FLPT_C_DIR})
+
+add_library(ASYNC_IF
+  ${OPENAIR2_DIR}/UTIL/ASYNC_IF/socket_link.c
+  ${OPENAIR2_DIR}/UTIL/ASYNC_IF/link_manager.c
+  ${OPENAIR2_DIR}/UTIL/ASYNC_IF/message_queue.c
+  ${OPENAIR2_DIR}/UTIL/ASYNC_IF/ringbuffer_queue.c
+  )
+set(ASYNC_IF_LIB ASYNC_IF)
+include_directories(${OPENAIR2_DIR}/UTIL/ASYNC_IF)
+
+add_library(FLEXRAN_AGENT
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_handler.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_common.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_ran_api.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_timer.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_common_internal.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/PHY/flexran_agent_phy.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/MAC/flexran_agent_mac.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/RRC/flexran_agent_rrc.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/RRC/flexran_agent_rrc_internal.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/PDCP/flexran_agent_pdcp.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/S1AP/flexran_agent_s1ap.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_task_manager.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_net_comm.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_async.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/MAC/flexran_agent_mac_internal.c
+  ${OPENAIR2_DIR}/ENB_APP/CONTROL_MODULES/MAC/flexran_agent_mac_slice_verification.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_app.c
+  )
+add_dependencies(FLEXRAN_AGENT rrc_flag)
+set(FLEXRAN_AGENT_LIB FLEXRAN_AGENT)
+add_library(flapp_sample SHARED
+  ${OPENAIR2_DIR}/ENB_APP/flexran_apps/sample.c
+)
+set_target_properties(flapp_sample PROPERTIES C_VISIBILITY_PRESET hidden)
+add_library(flapp_imsi SHARED
+  ${OPENAIR2_DIR}/ENB_APP/flexran_apps/imsi.c
+)
+set_target_properties(flapp_imsi PROPERTIES C_VISIBILITY_PRESET hidden)
+add_custom_target(flapp_all DEPENDS
+  flapp_sample
+  flapp_imsi
+)
+#include_directories(${OPENAIR2_DIR}/ENB_APP)
+
+set(PROTOBUF_LIB "protobuf-c")
+
+FIND_PATH(LIBYAML_INCLUDE_DIR NAMES yaml.h)
+FIND_LIBRARY(LIBYAML_LIBRARIES NAMES yaml libyaml)
+
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Yaml DEFAULT_MSG LIBYAML_LIBRARIES LIBYAML_INCLUDE_DIR)
+MARK_AS_ADVANCED(LIBYAML_INCLUDE_DIR LIBYAML_LIBRARIES)
+
+#set(PROTOBUF_LIB "protobuf") #for Cpp
+
+# set the version of protobuf messages, V3 not supported yet
+add_list1_option(FSPT_VERSION V2 "FSPT MSG  protobuf  grammar version" V2 V3)
+
+if (${FSPT_VERSION} STREQUAL "V2")
+  set (FSPTDIR V2)
+elseif (${FSPT_VERSION} STREQUAL "V3")
+  set (FSPTDIR V3)
+endif(${FSPT_VERSION} STREQUAL "V2")
+
+set(FSPT_MSG_DIR ${OPENAIR_DIR}/targets/COMMON/MESSAGES/${FSPTDIR} )
+set(FSPT_MSG_FILES
+  ${FSPT_MSG_DIR}/flexsplit.proto
+  )
+
+set(FSPT_C_DIR ${protobuf_generated_dir}/FSPT_${FSPTDIR})
+message("calling protoc_call=${protoc_call} FSPT_C_DIR=${FSPT_C_DIR} FSPT_MSG_DIR=${FSPT_MSG_DIR} FSPT_MSG_FILES=${FSPT_MSG_FILES}")
+execute_process(COMMAND ${protoc_call} ${FSPT_C_DIR} ${FSPT_MSG_DIR} ${FSPT_MSG_FILES})
+file(GLOB FSPT_source ${FSPT_C_DIR}/*.c)
+set(FSPT_OAI_generated
+  ${FSPT_C_DIR}/flexsplit.pb-c.c
+  )
+
+file(GLOB fspt_h ${FSPT_C_DIR}/*.h)
+set(fspt_h ${fspt_h} )
+
+add_library(FSPT_MSG
+  ${FSPT_OAI_generated}
+  ${FSPT_source}
+  )
+set(FSPT_MSG_LIB FSPT_MSG)
+message("fspt c dir is : ${FSPT_C_DIR}")
+include_directories (${FSPT_C_DIR})
+
+set(PROTOBUF_LIB "protobuf-c")
+
+#set(PROTOBUF_LIB "protobuf") #for Cpp
 
 add_library(HASHTABLE
   ${OPENAIR_DIR}/common/utils/hashtable/hashtable.c
@@ -829,6 +1145,7 @@ target_link_libraries(SCHED_LIB PRIVATE asn1_lte_rrc_hdrs)
 
 set(SCHED_NR_SRC
   ${OPENAIR1_DIR}/SCHED_NR/fapi_nr_l1.c
+  ${OPENAIR1_DIR}/SCHED_NR/phy_procedures_nr_common.c
   ${OPENAIR1_DIR}/SCHED_NR/phy_procedures_nr_gNB.c
   ${OPENAIR1_DIR}/SCHED_NR/nr_prach_procedures.c
   ${OPENAIR1_DIR}/SCHED_NR/phy_frame_config_nr.c
@@ -856,6 +1173,7 @@ target_link_libraries(SCHED_UE_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 set(SCHED_SRC_NR_UE
   ${OPENAIR1_DIR}/SCHED_NR_UE/phy_procedures_nr_ue.c
+  ${OPENAIR1_DIR}/SCHED_NR/phy_procedures_nr_common.c
   ${OPENAIR1_DIR}/SCHED_NR_UE/fapi_nr_ue_l1.c
   ${OPENAIR1_DIR}/SCHED_NR_UE/phy_frame_config_nr_ue.c
   ${OPENAIR1_DIR}/SCHED_NR_UE/harq_nr.c
@@ -1103,6 +1421,7 @@ set(PHY_SRC
 
 set(PHY_SRC_RU
   ${OPENAIR1_DIR}/PHY/LTE_TRANSPORT/if4_tools.c
+  ${OPENAIR1_DIR}/PHY/LTE_TRANSPORT/if5_tools.c
   ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/drs_modulation.c
   ${OPENAIR1_DIR}/PHY/LTE_TRANSPORT/ulsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/LTE_ESTIMATION/lte_ul_channel_estimation.c
@@ -1190,6 +1509,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_ulsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ul_ref_seq_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_dmrs_rx.c
+  ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_csi_rs.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gold.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_gen_mod_table.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/dmrs_nr.c
@@ -1234,6 +1554,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_prach.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/dci_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/dci_tools_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pucch_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/csi_rx.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_uci_tools_common.c
@@ -1271,8 +1592,14 @@ if (${SMBV})
   set(PHY_SRC "${PHY_SRC} ${OPENAIR1_DIR}/PHY/TOOLS/smbv.c")
 endif  (${SMBV})
 
-set(PHY_SRC_UE ${PHY_SRC_UE} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
-set(PHY_NR_UE_SRC ${PHY_NR_UE_SRC} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
+if (${COMPILATION_AVX2} STREQUAL "True")
+  #set(PHY_SRC ${PHY_SRC} ${OPENAIR1_DIR}/PHY/LTE_TRANSPORT/dlsch_llr_computation_avx2.c)
+  set(PHY_SRC_UE ${PHY_SRC_UE} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
+endif ()
+
+if (${COMPILATION_AVX2} STREQUAL "True")
+  set(PHY_NR_UE_SRC ${PHY_NR_UE_SRC} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
+endif ()
 
 add_library(PHY_COMMON ${PHY_SRC_COMMON})
 add_dependencies(PHY_COMMON dfts)
@@ -1384,6 +1711,7 @@ set(L2_SRC
   ${PDCP_DIR}/pdcp_primitives.c
   ${PDCP_DIR}/pdcp_util.c
   ${PDCP_DIR}/pdcp_security.c
+  ${PDCP_DIR}/pdcp_netlink.c
   ${OPENAIR2_DIR}/LAYER2/openair2_proc.c
 #  ${RRC_DIR}/rrc_UE.c
   ${RRC_DIR}/rrc_eNB.c
@@ -1441,6 +1769,7 @@ set(L2_SRC_UE
   ${PDCP_DIR}/pdcp_primitives.c
   ${PDCP_DIR}/pdcp_util.c
   ${PDCP_DIR}/pdcp_security.c
+  ${PDCP_DIR}/pdcp_netlink.c
   ${RRC_DIR}/rrc_UE.c
   ${RRC_DIR}/rrc_common.c
   ${RRC_DIR}/L2_interface_common.c
@@ -1531,6 +1860,7 @@ set (MAC_NR_SRC_UE
   ${NR_UE_MAC_DIR}/nr_ue_procedures.c
   ${NR_UE_MAC_DIR}/nr_ue_scheduler.c
   ${NR_UE_MAC_DIR}/nr_ue_dci_configuration.c
+  ${NR_UE_MAC_DIR}/nr_l1_helpers.c
   ${NR_UE_MAC_DIR}/nr_ra_procedures.c
   ${NR_UE_MAC_DIR}/nr_ue_power_procedures.c
 )
@@ -1651,6 +1981,12 @@ include_directories("${OPENAIR1_DIR}/SCHED_NR_UE")
 
 # CN libs
 ##########################
+
+add_library(CN_UTILS
+  ${OPENAIR3_DIR}/UTILS/conversions.c
+  ${OPENAIR3_DIR}/UTILS/enum_string.c
+  ${OPENAIR3_DIR}/UTILS/mcc_mnc_itu.c
+  )
 
 add_library (GTPV1U
   ${NR_RRC_DIR}/rrc_gNB_GTPV1U.c
@@ -2286,6 +2622,8 @@ add_executable(lte-uesoftmodem
   ${SHLIB_LOADER_SOURCES}
   )
 
+add_dependencies(lte-uesoftmodem rrc_flag s1ap_flag x2_flag)
+
 if (NOT ${NOS1})
 	target_compile_definitions(lte-uesoftmodem PRIVATE -DPDCP_USE_NETLINK)
 endif()
@@ -2328,6 +2666,7 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   ${T_SOURCE}
   ${SHLIB_LOADER_SOURCES}
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_ran_api_to_fix.c
   )
 
 target_link_libraries(nr-softmodem PRIVATE
@@ -2633,7 +2972,7 @@ foreach(myExe s1ap
     ${OPENAIR3_DIR}/TEST/test_${myExe}.c
     )
   target_link_libraries (test_${myExe}
-    -Wl,--start-group SECU_CN UTIL -Wl,--end-group m rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} CONFIG_LIB
+    -Wl,--start-group SECU_CN UTIL LFDS -Wl,--end-group m rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} CONFIG_LIB
     )
 endforeach(myExe)
 
@@ -2731,6 +3070,50 @@ add_executable(rb_tool
   ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/RB_TOOL/rb_tool.c
 )
 target_include_directories(rb_tool PRIVATE ${OPENAIR2_DIR}/NETWORK_DRIVER/MESH/)
+
+# nr-ittisim
+###################################################
+
+add_executable(nr-ittisim
+  ${rrc_h}
+  ${nr_rrc_h}
+  ${OPENAIR2_DIR}/GNB_APP/gnb_app.c
+  ${OPENAIR2_DIR}/GNB_APP/gnb_config.c
+  ${OPENAIR_DIR}/executables/nr-gnb.c
+  ${OPENAIR_DIR}/executables/nr-ru.c
+  ${OPENAIR2_DIR}/SIMULATION/NR_RRC/itti_sim.c
+  ${OPENAIR_DIR}/executables/softmodem-common.c
+  ${OPENAIR1_DIR}/SIMULATION/TOOLS/taus.c
+  ${OPENAIR_TARGETS}/ARCH/COMMON/common_lib.c
+  ${OPENAIR_TARGETS}/ARCH/COMMON/record_player.c
+  ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
+  ${OPENAIR2_DIR}/RRC/NAS/rb_config.c
+  ${OPENAIR1_DIR}/SIMULATION/ETH_TRANSPORT/netlink_init.c
+  ${OPENAIR3_DIR}/NAS/UE/nas_ue_task.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${OPENAIR_DIR}/common/utils/lte/ue_power.c
+  ${OPENAIR_DIR}/common/utils/lte/prach_utils.c
+  ${OPENAIR2_DIR}/ENB_APP/flexran_agent_ran_api_to_fix.c
+  ${XFORMSINTERFACE_SOURCE}
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
+
+target_link_libraries (nr-ittisim
+  -Wl,--start-group
+  UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU LFDS GTPV1U SECU_CN SECU_OSA
+  ITTI ${FLPT_MSG_LIB} ${ASYNC_IF_LIB} ${FLEXRAN_AGENT_LIB} LFDS7 ${RAL_LIB} ${NAS_SIM_LIB} RRC_LIB NR_RRC_LIB
+  NGAP_LIB NGAP_GNB S1AP_LIB S1AP_ENB L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB
+  X2AP_LIB X2AP_ENB F1AP_LIB F1AP M2AP_LIB M2AP_ENB M3AP_LIB M3AP_ENB ${FSPT_MSG_LIB}
+  PHY_NR_UE SCHED_NR_UE_LIB NR_L2_UE
+  -Wl,--end-group z dl)
+
+target_link_libraries (nr-ittisim ${LIBXML2_LIBRARIES})
+target_link_libraries (nr-ittisim pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${NETTLE_LIBRARIES} sctp  ${XFORMS_LIBRARIES} ${PROTOBUF_LIB}  ${CMAKE_DL_LIBS} ${LIBYAML_LIBRARIES} ${ATLAS_LIBRARIES})
+target_link_libraries (nr-ittisim ${LIB_LMS_LIBRARIES})
+target_link_libraries (nr-ittisim ${T_LIB})
+
+add_dependencies( nr-ittisim ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 
 # ???
 ####################
