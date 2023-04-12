@@ -201,26 +201,6 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 }
 
-
-static inline void ss_enable_vtp()
-{
-      VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
-      req->header.preamble = 0xFEEDC0DE;
-      req->header.msg_id = SS_VTP_ENABLE;
-      req->header.length = sizeof(proxy_ss_header_t);
-      req->header.cell_id = SS_context.SSCell_list[cellIndex].PhysicalCellId;
-
-      req->tinfo.sfn = 0;
-      req->tinfo.sf = 0;
-
-      LOG_A(ENB_APP, "VTP_ENABLE Command to proxy sent for cell_id: %d SFN %d SF %d\n",
-            req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf);
-
-      LOG_A(ENB_APP,"VTP_ENABLE Command to proxy sent for cell_id: %d\n",
-            req->header.cell_id );
-      vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
-
-}
 //------------------------------------------------------------------------------
 static bool isConnected = false;
 static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
@@ -277,7 +257,7 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
         if (userId == MSG_SysVTEnquireTimingAck_userId)
         {
             LOG_A(ENB_APP, "[SS-VTP] Received VTEnquireTimingAck Request\n");
-
+            LOG_D(ENB_SS, "fxn1:%s received VTEnquireTimingAck Request from TTCN \n", __FUNCTION__);
 
             if (acpSysVTEnquireTimingAckDecSrv(ctx, buffer, msgSize, &virtualTime) != 0)
             {
@@ -330,7 +310,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             ss_set_timinfo_t tinfo;
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
-
+            LOG_D(ENB_SS, "fxn1:%s Received SS_UPD_TIM_INFO\n", __FUNCTION__);
             if(SS_UPD_TIM_INFO(received_msg).physCellId) {
               cellIndex = get_cell_index_pci(SS_UPD_TIM_INFO(received_msg).physCellId, SS_context.SSCell_list);
               LOG_A(ENB_SS,"[VTP] cellIndex in SS_UPD_TIM_INFO: %d PhysicalCellId: %d \n",cellIndex,SS_context.SSCell_list[cellIndex].PhysicalCellId);
@@ -348,12 +328,14 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
 
         case TERMINATE_MESSAGE:
         {
+            LOG_D(ENB_SS, "fxn1:%s Received TERMINATE_MESSAGE\n", __FUNCTION__);
             LOG_E(ENB_APP, "[SS-VTP] Terminate message %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
             itti_exit_task();
         }
         break;
 
         default:
+            LOG_D(ENB_SS, "fxn1:%s Received unhandled message\n", __FUNCTION__);
             LOG_E(ENB_APP, "[SS-VTP] Received unhandled message %d:%s\n",
                   ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         }
@@ -363,6 +345,7 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
     }
     ss_eNB_read_from_vtp_socket(ctx_vtp_g, false);
 
+    LOG_D(ENB_SS, "Exit from fxn1:%s \n", __FUNCTION__);
     return NULL;
 }
 
@@ -440,7 +423,7 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		ss_enable_vtp();
+		RC.ss.vtp_ready = 1;
 		sleep(1);
 		while (1) {
 			(void) ss_eNB_vtp_process_itti_msg(NULL);

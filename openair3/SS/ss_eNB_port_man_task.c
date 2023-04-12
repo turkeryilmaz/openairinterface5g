@@ -338,7 +338,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
     size_t msgSize = size; //2
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
     assert(buffer);
-
+    LOG_D(ENB_SS, "Entry from fxn:%s\n", __FUNCTION__);
     int userId = acpRecvMsg(ctx, &msgSize, buffer);
 
     // Error handling
@@ -349,17 +349,19 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
             // Message not mapped to user id,
             // this error should not appear on server side for the messages
             // received from clients
+          LOG_E(GNB_APP, "[SS-PORTMAN] Error: Message not mapped to user id\n");
         }
         else if (userId == -ACP_ERR_SIDL_FAILURE)
         {
             // Server returned service error,
             // this error should not appear on server side for the messages
             // received from clients
+            LOG_E(GNB_APP, "[SS-PORTMAN] Error: Server returned service error \n");
             SidlStatus sidlStatus = -1;
             acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
         }
         else if (userId == -ACP_PEER_DISCONNECTED){
-            LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
+            LOG_E(GNB_APP, "[SS_SRB] Error: Peer ordered shutdown\n");
         } 
         else if (userId == -ACP_PEER_CONNECTED){
             LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
@@ -389,7 +391,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
                 int send_res = itti_send_msg_to_task(TASK_SS_SRB, 0, message_p);
                 if (send_res < 0)
                 {
-                    LOG_A(ENB_SS, "Error in sending Wake up signal /SS_RRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB\n", SS_RRC_PDU_IND);
+                    LOG_E(ENB_SS, "Error in sending Wake up signal /SS_RRC_PDU_IND (msg_Id:%d)  to TASK_SS_SRB\n", SS_RRC_PDU_IND);
                 }
             }
         }
@@ -404,16 +406,29 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
 
         if (userId == MSG_SysProcess_userId)
         {
+         bool ret_Val = false;
+          struct SYSTEM_CTRL_REQ *sys_req = (struct SYSTEM_CTRL_REQ *)req;
+          if (sys_req->Request.d == SystemRequest_Type_EnquireTiming)
+          {
+            LOG_I(ENB_SS, "[SS-PORTMAN] Received EnquireTiming\n");
+            ret_Val = ss_eNB_port_man_handle_enquiryTiming(sys_req);
+            if (ret_Val == false)
+              LOG_E(ENB_SS, "Error Sending EnquiryTiming Respone to TTCN\n");
+          }
+          else
+          {
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0,  SS_SYS_PORT_MSG_IND);
             if (message_p)
             {
-                SS_SYS_PORT_MSG_IND(message_p).req = req;
-                SS_SYS_PORT_MSG_IND(message_p).userId = userId;
-                itti_send_msg_to_task(TASK_SYS, 0, message_p);
+              SS_SYS_PORT_MSG_IND(message_p).req = req;
+              SS_SYS_PORT_MSG_IND(message_p).userId = userId;
+              itti_send_msg_to_task(TASK_SYS, 0, message_p);
             }
+          }
         }
     }
     acpSysProcessFreeSrv(req);
+    LOG_D(ENB_SS, "Exit from fxn:%s\n", __FUNCTION__);
     return;
 }
 
@@ -430,7 +445,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
     int result;
-
+    LOG_D(ENB_SS, "Entry in fxn:%s\n", __FUNCTION__);
     itti_poll_msg(TASK_SS_PORTMAN, &received_msg);
 
     /* Check if there is a packet to handle */
@@ -473,7 +488,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
     }
 
     ss_eNB_read_from_socket(ctx_g);
-
+    LOG_D(ENB_SS, "Exit from fxn:%s\n", __FUNCTION__);
     return NULL;
 }
 
@@ -499,3 +514,60 @@ void *ss_eNB_port_man_task(void *arg)
 
     return NULL;
 }
+
+bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
+{
+  struct SYSTEM_CTRL_CNF cnf;
+  const size_t msgSize = 16 * 1024;
+  unsigned char *buffer = (unsigned char *)acpMalloc(msgSize);
+  int status = 0;
+
+  if (!buffer)
+    return false;
+
+  memset(&cnf, 0, sizeof(cnf));
+  cnf.Common.CellId = sys_req->Common.CellId;
+
+  cnf.Common.RoutingInfo.d = RoutingInfo_Type_None;
+  cnf.Common.RoutingInfo.v.None = true;
+
+  cnf.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
+  cnf.Common.TimingInfo.v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
+  cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number = SS_context.sfn;
+  cnf.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
+  cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = SS_context.sf;
+  cnf.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
+  cnf.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
+  cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_FirstSlot;
+  cnf.Common.TimingInfo.v.SubFrame.Slot.v.FirstSlot = true;
+
+  cnf.Common.Result.d = ConfirmationResult_Type_Success;
+  cnf.Common.Result.v.Success = true;
+
+  cnf.Confirm.d = SystemConfirm_Type_EnquireTiming;
+  cnf.Confirm.v.EnquireTiming = true;
+
+  /* Encode message */
+  if (acpSysProcessEncSrv(ctx_g, buffer, &msgSize, &cnf) != 0)
+  {
+    acpFree(buffer);
+    return false;
+  }
+
+  /* Send message */
+  status = acpSendMsg(ctx_g, msgSize, buffer);
+  if (status != 0)
+  {
+    LOG_A(ENB_SS, "[SS-PORTMAN] acpSendMsg failed for EnquiryTiming.\n");
+    acpFree(buffer);
+    return false;
+  }
+
+  LOG_A(ENB_SS, "[SS-PORTMAN] enquiryTiming CNF sent successfully for SFN:%d SF:%d\n", 
+    cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number, 
+    cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number);
+  return true;
+
+}
+
+

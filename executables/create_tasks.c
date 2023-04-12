@@ -95,7 +95,7 @@ int create_tasks(uint32_t enb_nb) {
     AssertFatal(rc >= 0, "Create task for SS VTP failed\n");
 
     /* Task for support Virtual Time timer management */
-    rc = itti_create_task(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL);
+    rc = itti_create_task_prio(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL, 10);
     AssertFatal(rc >= 0, "Create task for SS_VT_TIMER failed\n");
   }
 
@@ -104,7 +104,7 @@ int create_tasks(uint32_t enb_nb) {
   AssertFatal(rc >= 0, "Create task for eNB APP failed\n");
 
   LOG_I(RRC,"Creating RRC eNB Task\n");
-  rc = itti_create_task (TASK_RRC_ENB, rrc_enb_task, NULL);
+  rc = itti_create_task_prio (TASK_RRC_ENB, rrc_enb_task, NULL, 6);
   AssertFatal(rc >= 0, "Create task for RRC eNB failed\n");
 
   if (get_softmodem_params()->emulate_l1 || (EPC_MODE_ENABLED && split73 != SPLIT73_DU)) {

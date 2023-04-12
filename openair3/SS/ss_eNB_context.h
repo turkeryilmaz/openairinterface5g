@@ -66,6 +66,7 @@ typedef struct SSConfigContext_s {
   /** List of Cells */
   SS_Cell_Context_t SSCell_list[8];
   /** Timing info */
+  uint16_t hsfn;
   uint16_t sfn;
   uint8_t  sf;
 

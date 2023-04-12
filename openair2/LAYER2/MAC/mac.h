@@ -546,7 +546,8 @@ typedef enum {
 /*!\brief  scheduler mode */
 typedef enum {
   SCHED_MODE_DEFAULT = 0,     /// default cheduler
-  SCHED_MODE_FAIR_RR      /// fair raund robin
+  SCHED_MODE_FAIR_RR,      /// fair raund robin
+  SCHED_MODE_SS           // Scheduler for SS_SOFTMODEM mode
 } SCHEDULER_MODES;
 
 /*! \brief temporary struct for ULSCH sched */

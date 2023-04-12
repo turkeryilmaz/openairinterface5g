@@ -477,15 +477,15 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
       if ((pdcp_p->security_activated != 0) &&
           (((pdcp_p->cipheringAlgorithm) != 0) ||
            ((pdcp_p->integrityProtAlgorithm) != 0))) {
-          uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
+        uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
           if (RC.ss.mode >= SS_SOFTMODEM) {
-              if(srb_flagP && rb_idP==1){
-                LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
-                uper_decode(NULL,   &asn_DEF_LTE_DL_DCCH_Message,
-                      (void **)&dl_dcch_msg,
-                      (const void *)sdu_buffer_pP,
-                      sdu_buffer_sizeP, 0, 0);
+            if(srb_flagP && rb_idP==1){
+              LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+              uper_decode(NULL,   &asn_DEF_LTE_DL_DCCH_Message,
+                  (void **)&dl_dcch_msg,
+                  (const void *)sdu_buffer_pP,
+                  sdu_buffer_sizeP, 0, 0);
               if(dl_dcch_msg){
                 if(dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_securityModeCommand){
                   pdcp_p->cipheringAlgorithm = 0;
@@ -494,20 +494,20 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
                 ASN_STRUCT_FREE(asn_DEF_LTE_DL_DCCH_Message,dl_dcch_msg);
               }
             }
-	  }
-	  start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
+          }
+          start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
         } else {
           start_meas(&UE_pdcp_stats[ctxt_pP->module_id].apply_security);
         }
 
         pdcp_apply_security(ctxt_pP,
-                            pdcp_p,
-                            srb_flagP,
-                            rb_idP % LTE_maxDRB,
-                            pdcp_header_len,
-                            current_sn,
-                            pdcp_pdu_p->data,
-                            sdu_buffer_sizeP);
+            pdcp_p,
+            srb_flagP,
+            rb_idP % LTE_maxDRB,
+            pdcp_header_len,
+            current_sn,
+            pdcp_pdu_p->data,
+            sdu_buffer_sizeP);
 
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
           pdcp_p->cipheringAlgorithm = ciphyeringAlgorithm;
@@ -1493,7 +1493,9 @@ pdcp_run (
                 RRC_DCCH_DATA_REQ (msg_p).muip,
                 RRC_DCCH_DATA_REQ (msg_p).confirmp,
                 RRC_DCCH_DATA_REQ (msg_p).mode);
-          LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld \n", RRC_DCCH_DATA_REQ (msg_p).rb_id);
+          LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld frame %d subframe %d\n",
+           RRC_DCCH_DATA_REQ (msg_p).rb_id,ctxt_pP->frame,ctxt_pP->subframe);
+
           result = pdcp_data_req (&ctxt,
                                   SRB_FLAG_YES,
                                   RRC_DCCH_DATA_REQ (msg_p).rb_id,

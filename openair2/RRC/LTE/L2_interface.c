@@ -380,7 +380,7 @@ mac_rrc_data_ind(
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_idP, ENB_FLAG_YES, rntiP, frameP, sub_frameP,0);
 
   if((srb_idP & RAB_OFFSET) == CCCH) {
-    LOG_D(RRC, "[eNB %d] Received SDU for CCCH on SRB %ld\n", module_idP, srb_idP);
+    LOG_D(RRC, "[eNB %d] Received SDU for CCCH on SRB %ld SFN:%d SF:%d\n", module_idP, srb_idP, frameP, sub_frameP);
     ctxt.brOption = brOption;
 
 //#ifdef ENB_SS

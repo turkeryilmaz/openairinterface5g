@@ -2503,3 +2503,62 @@ schedule_PCH(module_id_t module_idP,
   stop_meas(&eNB->schedule_pch);
   return;
 }
+
+void
+schedule_dlsch_ss(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP, int *mbsfn_flag) {
+  if (is_pmch_subframe(frameP, subframeP, &RC.eNB[module_idP][0]->frame_parms))
+    return;
+
+  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
+    // for TDD: check that we have to act here, otherwise skip
+    COMMON_channels_t *cc = &RC.mac[module_idP]->common_channels[CC_id];
+    if (cc->tdd_Config) {
+      int tdd_sfa = cc->tdd_Config->subframeAssignment;
+
+      switch (subframeP) {
+        case 0:
+          // always continue
+          break;
+
+        case 1:
+        case 2:
+          continue;
+
+        case 3:
+          if (tdd_sfa != 2 && tdd_sfa != 5)
+            continue;
+          break;
+
+        case 4:
+          if (tdd_sfa != 1 && tdd_sfa != 2 && tdd_sfa != 4 && tdd_sfa != 5)
+            continue;
+          break;
+
+        case 5:
+          break;
+
+        case 6:
+        case 7:
+          if (tdd_sfa != 3 && tdd_sfa != 4 && tdd_sfa != 5)
+            continue;
+          break;
+
+        case 8:
+          if (tdd_sfa != 2 && tdd_sfa != 3 && tdd_sfa != 4 && tdd_sfa != 5)
+            continue;
+          break;
+
+        case 9:
+          if (tdd_sfa == 0)
+            continue;
+          break;
+      }
+    }
+
+    if (mbsfn_flag[CC_id] != 0)
+      continue;
+
+    schedule_ue_spec(module_idP, CC_id, frameP, subframeP);
+  }
+}
+

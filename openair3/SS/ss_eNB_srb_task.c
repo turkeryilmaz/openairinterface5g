@@ -124,7 +124,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind,int cell_index)
 	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
 	ind.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
-	ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 0;
+	ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 1;
 
 	ind.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_Any;
 	ind.Common.TimingInfo.v.SubFrame.Slot.v.Any = true;
@@ -260,19 +260,22 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 		if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
 		{
 			ss_set_timinfo_t tinfo, timer_tinfo;
+      memset(&tinfo, 0, sizeof(tinfo));
+      memset(&timer_tinfo, 0, sizeof(timer_tinfo));
 			tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
 			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
 			timer_tinfo = tinfo;
 			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
-
+      LOG_I(ENB_SS, "msg_queued:%d\n",msg_queued);
 			LOG_A(ENB_SS,"VT_TIMER SRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 
 			if(msg_queued)
 			{
 				 msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
-			}
-			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
+			   LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
 					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+			}
+      LOG_I(ENB_SS, "msg_queued2:%d\n",msg_queued);
 
 		}
 		if (!msg_queued)
@@ -347,32 +350,32 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 			}
 		}
 		else if (MSG_SysSrbProcessFromSS_userId == userId)
-		{
-			struct EUTRA_RRC_PDU_REQ *req = NULL;
-			LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] EUTRA_RRC_PDU_REQ Received \n");
-			// Got the message
-			if (acpSysSrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
-			{
-				LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] acpSysSrbProcessFromSSDecSrv Failed\n");
-				break;
-			}
-                        if(req->Common.CellId){
-                          cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
-                          SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
-                          LOG_A(ENB_SS,"[SS_SRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
-                        }
-			if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
-			{
-				ss_task_handle_rrc_pdu_req(req);
-			}
-			else
-			{
-				LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
-			}
+    {
+      struct EUTRA_RRC_PDU_REQ *req = NULL;
+      LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] EUTRA_RRC_PDU_REQ Received \n");
+      // Got the message
+      if (acpSysSrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
+      {
+        LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] acpSysSrbProcessFromSSDecSrv Failed\n");
+        break;
+      }
+      if(req->Common.CellId){
+        cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
+        SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
+        LOG_A(ENB_SS,"[SS_SRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+      }
+      if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
+      {
+        ss_task_handle_rrc_pdu_req(req);
+      }
+      else
+      {
+        LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+      }
 
-			acpSysSrbProcessFromSSFreeSrv(req);
-			return;
-		}
+      acpSysSrbProcessFromSSFreeSrv(req);
+      return;
+    }
 		else if (MSG_SysSrbProcessToSS_userId == userId)
 		{
 			LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] EUTRA_RRC_PDU_IND Received; ignoring \n");
