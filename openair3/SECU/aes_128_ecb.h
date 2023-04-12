@@ -19,26 +19,12 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MESSAGES_TYPES_H_
-#define MESSAGES_TYPES_H_
+#ifndef AES_128_ECB_OAI_H
+#define AES_128_ECB_OAI_H
 
-#include "intertask_messages_types.h"
-#include "timer_messages_types.h"
+#include "aes_128.h"
+#include "common/utils/ds/byte_array.h"
 
-#include "security_types.h"
+void aes_128_ecb(const aes_128_t* k_iv, byte_array_t msg, size_t len_out, uint8_t out[len_out]);
 
-#include "gtpv1_u_messages_types.h"
-#include "ip_forward_messages_types.h"
-#include "s11_messages_types.h"
-#include "s1ap_messages_types.h"
-#include "nas_messages_types.h"
-#include "s6a_messages_types.h"
-#include "sctp_messages_types.h"
-#include "sgw_lite_messages_types.h"
-#include "udp_messages_types.h"
-#include "mme_app_messages_types.h"
-#include "m2ap_messages_types.h"
-#include "ngap_messages_types.h"
-
-
-#endif /* MESSAGES_TYPES_H_ */
+#endif

@@ -19,26 +19,35 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MESSAGES_TYPES_H_
-#define MESSAGES_TYPES_H_
+#include "aes_128_ecb.h"
+#include "common/utils/assertions.h"
+#include <openssl/aes.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 
-#include "intertask_messages_types.h"
-#include "timer_messages_types.h"
+void aes_128_ecb(const aes_128_t* k_iv, byte_array_t msg, size_t len_out, uint8_t out[len_out])
+{
+  DevAssert(k_iv != NULL);
+  DevAssert(k_iv->type == NONE_INITIALIZATION_VECTOR);
 
-#include "security_types.h"
+  // Create and initialise the context
+  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+  DevAssert(ctx != NULL);
 
-#include "gtpv1_u_messages_types.h"
-#include "ip_forward_messages_types.h"
-#include "s11_messages_types.h"
-#include "s1ap_messages_types.h"
-#include "nas_messages_types.h"
-#include "s6a_messages_types.h"
-#include "sctp_messages_types.h"
-#include "sgw_lite_messages_types.h"
-#include "udp_messages_types.h"
-#include "mme_app_messages_types.h"
-#include "m2ap_messages_types.h"
-#include "ngap_messages_types.h"
+  // Initialise the encryption operation.
+  int rc = EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, k_iv->key, NULL);
+  DevAssert(rc == 1);
 
+  int len_ev = 0;
+  rc = EVP_EncryptUpdate(ctx, out, &len_ev, msg.buf, msg.len);
+  DevAssert(!(len_ev > len_out) && "Buffer overflow");
 
-#endif /* MESSAGES_TYPES_H_ */
+  // Finalise the encryption. Normally ciphertext bytes may be written at
+  // this stage, but this does not occur in GCM mode
+  rc = EVP_EncryptFinal_ex(ctx, out + len_ev, &len_ev);
+  DevAssert(rc == 1);
+
+  // Get the tag
+  // rc == EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag))
+  EVP_CIPHER_CTX_free(ctx);
+}

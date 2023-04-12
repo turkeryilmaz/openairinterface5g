@@ -19,26 +19,11 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MESSAGES_TYPES_H_
-#define MESSAGES_TYPES_H_
+#ifndef OAI_NAS_STREAM_EIA1_H
+#define OAI_NAS_STREAM_EIA1_H
 
-#include "intertask_messages_types.h"
-#include "timer_messages_types.h"
+#include "secu_defs.h"
 
-#include "security_types.h"
+void nas_stream_encrypt_eia1(nas_stream_cipher_t const* stream_cipher, uint8_t out[4]);
 
-#include "gtpv1_u_messages_types.h"
-#include "ip_forward_messages_types.h"
-#include "s11_messages_types.h"
-#include "s1ap_messages_types.h"
-#include "nas_messages_types.h"
-#include "s6a_messages_types.h"
-#include "sctp_messages_types.h"
-#include "sgw_lite_messages_types.h"
-#include "udp_messages_types.h"
-#include "mme_app_messages_types.h"
-#include "m2ap_messages_types.h"
-#include "ngap_messages_types.h"
-
-
-#endif /* MESSAGES_TYPES_H_ */
+#endif

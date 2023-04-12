@@ -19,26 +19,26 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MESSAGES_TYPES_H_
-#define MESSAGES_TYPES_H_
+#include "nas_stream_eea0.h"
 
-#include "intertask_messages_types.h"
-#include "timer_messages_types.h"
+#include "common/utils/assertions.h"
+#include "common/utils/LOG/log.h"
 
-#include "security_types.h"
+#include <string.h>
 
-#include "gtpv1_u_messages_types.h"
-#include "ip_forward_messages_types.h"
-#include "s11_messages_types.h"
-#include "s1ap_messages_types.h"
-#include "nas_messages_types.h"
-#include "s6a_messages_types.h"
-#include "sctp_messages_types.h"
-#include "sgw_lite_messages_types.h"
-#include "udp_messages_types.h"
-#include "mme_app_messages_types.h"
-#include "m2ap_messages_types.h"
-#include "ngap_messages_types.h"
+void nas_stream_encrypt_eea0(nas_stream_cipher_t const *stream_cipher, uint8_t *out)
+{
+  DevAssert(stream_cipher != NULL);
+  DevAssert(out != NULL);
 
+  LOG_D(OSA,
+        "Entering stream_encrypt_eea0, bits length %u, bearer %u, "
+        "count %u, direction %s\n",
+        stream_cipher->blength,
+        stream_cipher->bearer,
+        stream_cipher->count,
+        stream_cipher->direction == SECU_DIRECTION_DOWNLINK ? "Downlink" : "Uplink");
 
-#endif /* MESSAGES_TYPES_H_ */
+  uint32_t byte_length = (stream_cipher->blength + 7) >> 3;
+  memcpy(out, stream_cipher->message, byte_length);
+}
