@@ -56,6 +56,7 @@
 #include "NR_SDAP-Config.h"
 #include "NR_PDCP-Config.h"
 #include "NR_RLC-BearerConfig.h"
+#include "NR_asn_constant.h"
 
 #define MAX_RBS (LTE_maxDRB + 3)
 #define MAX_NR_RBS (NR_maxDRB+3)
