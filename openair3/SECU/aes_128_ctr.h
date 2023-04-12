@@ -19,34 +19,15 @@
  *      contact@openairinterface.org
  */
 
-/*
-  mme_config.h
-  AUTHOR  : Javier Morgade
-  COMPANY : Vicomtech, Spain
-  EMAIL   : javier.morgade@ieee.org
-*/
+#ifndef AES_128_CTR_OAI_H
+#define AES_128_CTR_OAI_H
 
-#ifndef __MME_APP_MME_CONFIG__H__
-#define __MME_APP_MME_CONFIG__H__
+#include "aes_128.h"
+#include "common/utils/ds/byte_array.h"
+#include <endian.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <libconfig.h>
+void aes_128_ctr(const aes_128_t* k_iv, byte_array_t msg, size_t len_out, uint8_t out[len_out]);
 
-#include "commonDef.h"
-#include "platform_types.h"
-#include "common/platform_constants.h"
-#include "PHY/impl_defs_top.h"
-#include "PHY/defs_eNB.h"
-#include "s1ap_messages_types.h"
-#include "LTE_SystemInformationBlockType2.h"
-#include "rrc_messages_types.h"
-#include "RRC/LTE/rrc_defs.h"
-#include <intertask_interface.h>
-#include "enb_paramdef.h"
-
-int RCconfig_MME(void);
-
-#endif /* __MME_APP_MME_CONFIG__H__ */
-/** @} */
+#endif

@@ -19,34 +19,15 @@
  *      contact@openairinterface.org
  */
 
-/*
-  mme_config.h
-  AUTHOR  : Javier Morgade
-  COMPANY : Vicomtech, Spain
-  EMAIL   : javier.morgade@ieee.org
-*/
+#ifndef SHA_256_HMAC_OAI_H
+#define SHA_256_HMAC_OAI_H 
 
-#ifndef __MME_APP_MME_CONFIG__H__
-#define __MME_APP_MME_CONFIG__H__
+#include <stdint.h>
+#include <stdlib.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <libconfig.h>
+#include "byte_array.h"
 
-#include "commonDef.h"
-#include "platform_types.h"
-#include "common/platform_constants.h"
-#include "PHY/impl_defs_top.h"
-#include "PHY/defs_eNB.h"
-#include "s1ap_messages_types.h"
-#include "LTE_SystemInformationBlockType2.h"
-#include "rrc_messages_types.h"
-#include "RRC/LTE/rrc_defs.h"
-#include <intertask_interface.h>
-#include "enb_paramdef.h"
+void sha_256_hmac(const uint8_t key[32], byte_array_t data, size_t len, uint8_t out[len]);
 
-int RCconfig_MME(void);
+#endif
 
-#endif /* __MME_APP_MME_CONFIG__H__ */
-/** @} */

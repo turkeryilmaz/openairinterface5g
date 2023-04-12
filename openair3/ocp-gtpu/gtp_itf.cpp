@@ -94,7 +94,6 @@ typedef struct Gtpv1uExtHeader {
 #define GTP_END_MARKER                                       (254)
 #define GTP_GPDU                                             (255)
 
-
 typedef struct gtpv1u_bearer_s {
   /* TEID used in dl and ul */
   teid_t          teid_incoming;                ///< eNB TEID
@@ -127,8 +126,7 @@ class gtpEndPoint {
   uint8_t foundAddr[20];
   int foundAddrLen;
   int ipVersion;
-  map<uint64_t,teidData_t> ue2te_mapping;
-  map<uint64_t,ueidData_t> te2ue_mapping;
+  map<uint64_t, teidData_t> ue2te_mapping;
   // we use the same port number for source and destination address
   // this allow using non standard gtp port number (different from 2152)
   // and so, for example tu run 4G and 5G cores on one system
@@ -142,7 +140,7 @@ class gtpEndPoints {
   pthread_mutex_t gtp_lock=PTHREAD_MUTEX_INITIALIZER;
   // the instance id will be the Linux socket handler, as this is uniq
   map<uint64_t, gtpEndPoint> instances;
-
+  map<uint64_t, ueidData_t> te2ue_mapping;
   gtpEndPoints() {
     unsigned int seed;
     fill_random(&seed, sizeof(seed));
@@ -593,22 +591,17 @@ teid_t newGtpuCreateTunnel(instance_t instance,
 
   teid_t incoming_teid=gtpv1uNewTeid();
 
-  while ( inst->te2ue_mapping.find(incoming_teid) != inst->te2ue_mapping.end() ) {
+  while (globGtp.te2ue_mapping.find(incoming_teid) != globGtp.te2ue_mapping.end()) {
     LOG_W(GTPU, "[%ld] generated a random Teid that exists, re-generating (%x)\n", instance, incoming_teid);
     incoming_teid=gtpv1uNewTeid();
   };
 
-  inst->te2ue_mapping[incoming_teid].ue_id=ue_id;
-
-  inst->te2ue_mapping[incoming_teid].incoming_rb_id= incoming_bearer_id;
-
-  inst->te2ue_mapping[incoming_teid].outgoing_teid= outgoing_teid;
-
-  inst->te2ue_mapping[incoming_teid].callBack=callBack;
-
-  inst->te2ue_mapping[incoming_teid].callBackSDAP = callBackSDAP;
-
-  inst->te2ue_mapping[incoming_teid].pdusession_id = (uint8_t)outgoing_bearer_id;
+  globGtp.te2ue_mapping[incoming_teid].ue_id = ue_id;
+  globGtp.te2ue_mapping[incoming_teid].incoming_rb_id = incoming_bearer_id;
+  globGtp.te2ue_mapping[incoming_teid].outgoing_teid = outgoing_teid;
+  globGtp.te2ue_mapping[incoming_teid].callBack = callBack;
+  globGtp.te2ue_mapping[incoming_teid].callBackSDAP = callBackSDAP;
+  globGtp.te2ue_mapping[incoming_teid].pdusession_id = (uint8_t)outgoing_bearer_id;
 
   gtpv1u_bearer_t *tmp=&inst->ue2te_mapping[ue_id].bearers[outgoing_bearer_id];
 
@@ -641,13 +634,14 @@ teid_t newGtpuCreateTunnel(instance_t instance,
   pthread_mutex_unlock(&globGtp.gtp_lock);
   char ip4[INET_ADDRSTRLEN];
   char ip6[INET6_ADDRSTRLEN];
-  LOG_I(GTPU, "[%ld] Created tunnel for UE ID %lu, teid for DL: %x, teid for UL %x to remote IPv4: %s, IPv6 %s\n",
+  LOG_I(GTPU,
+        "[%ld] Created tunnel for UE ID %lu, teid for incoming: %x, teid for outgoing %x to remote IPv4: %s, IPv6 %s\n",
         instance,
         ue_id,
         tmp->teid_incoming,
         tmp->teid_outgoing,
-        inet_ntop(AF_INET,(void *)&tmp->outgoing_ip_addr, ip4,INET_ADDRSTRLEN ),
-        inet_ntop(AF_INET6,(void *)&tmp->outgoing_ip6_addr.s6_addr, ip6, INET6_ADDRSTRLEN));
+        inet_ntop(AF_INET, (void *)&tmp->outgoing_ip_addr, ip4, INET_ADDRSTRLEN),
+        inet_ntop(AF_INET6, (void *)&tmp->outgoing_ip6_addr.s6_addr, ip6, INET6_ADDRSTRLEN));
   return incoming_teid;
 }
 
@@ -767,13 +761,32 @@ int gtpv1u_create_ngu_tunnel(  const instance_t instance,
   return !GTPNOK;
 }
 
-int gtpv1u_update_ngu_tunnel(
-  const instance_t instanceP,
-  const gtpv1u_gnb_create_tunnel_req_t *const  create_tunnel_req_pP,
-  const ue_id_t prior_ueid
-) {
-  AssertFatal( false, "to be developped\n");
-  return GTPNOK;
+int gtpv1u_update_ngu_tunnel(const instance_t instanceP, const gtpv1u_gnb_create_tunnel_req_t *const create_tunnel_req_pP, const ue_id_t prior_ue_id)
+{
+  LOG_D(GTPU, "[%ld] Update tunnels from UEid %lx to UEid %lx\n", instanceP, prior_ue_id, create_tunnel_req_pP->ue_id);
+
+  pthread_mutex_lock(&globGtp.gtp_lock);
+
+  auto inst = &globGtp.instances[compatInst(instanceP)];
+  auto it = inst->ue2te_mapping.find(prior_ue_id);
+  if (it == inst->ue2te_mapping.end()) {
+    LOG_W(GTPU, "[%ld] Delete GTP tunnels for UEid: %lx, but no tunnel exits\n", instanceP, prior_ue_id);
+    pthread_mutex_unlock(&globGtp.gtp_lock);
+    return GTPNOK;
+  }
+
+  for (int i = 0; i < create_tunnel_req_pP->num_tunnels; i++) {
+    teid_t incoming_teid = inst->ue2te_mapping[prior_ue_id].bearers[create_tunnel_req_pP->pdusession_id[i]].teid_incoming;
+    if (globGtp.te2ue_mapping[incoming_teid].ue_id == prior_ue_id) {
+      globGtp.te2ue_mapping[incoming_teid].ue_id = create_tunnel_req_pP->ue_id;
+    }
+  }
+
+  inst->ue2te_mapping[create_tunnel_req_pP->ue_id] = it->second;
+  inst->ue2te_mapping.erase(it);
+
+  pthread_mutex_unlock(&globGtp.gtp_lock);
+  return !GTPNOK;
 }
 
 int gtpv1u_create_x2u_tunnel(
@@ -795,7 +808,7 @@ int newGtpuDeleteAllTunnels(instance_t instance, ue_id_t ue_id) {
   for (auto j=ptrUe->second.bearers.begin();
        j!=ptrUe->second.bearers.end();
        ++j) {
-    inst->te2ue_mapping.erase(j->second.teid_incoming);
+    globGtp.te2ue_mapping.erase(j->second.teid_incoming);
     nb++;
   }
 
@@ -826,7 +839,7 @@ int newGtpuDeleteTunnels(instance_t instance, ue_id_t ue_id, int nbTunnels, pdus
     if ( ptr2 == ptrUe->second.bearers.end() ) {
       LOG_E(GTPU,"[%ld] GTP-U instance: delete of not existing tunnel UE ID:RAB: %ld/%x\n", instance, ue_id, pdusession_id[i]);
     } else {
-      inst->te2ue_mapping.erase(ptr2->second.teid_incoming);
+      globGtp.te2ue_mapping.erase(ptr2->second.teid_incoming);
       nb++;
     }
   }
@@ -913,9 +926,9 @@ static int Gtpv1uHandleEndMarker(int h,
   // the socket Linux file handler is the instance id
   getInstRetInt(h);
 
-  auto tunnel=inst->te2ue_mapping.find(ntohl(msgHdr->teid));
+  auto tunnel = globGtp.te2ue_mapping.find(ntohl(msgHdr->teid));
 
-  if ( tunnel == inst->te2ue_mapping.end() ) {
+  if (tunnel == globGtp.te2ue_mapping.end()) {
     LOG_E(GTPU,"[%d] Received a incoming packet on unknown teid (%x) Dropping!\n", h, msgHdr->teid);
     pthread_mutex_unlock(&globGtp.gtp_lock);
     return GTPNOK;
@@ -973,10 +986,9 @@ static int Gtpv1uHandleGpdu(int h,
   pthread_mutex_lock(&globGtp.gtp_lock);
   // the socket Linux file handler is the instance id
   getInstRetInt(h);
+  auto tunnel = globGtp.te2ue_mapping.find(ntohl(msgHdr->teid));
 
-  auto tunnel=inst->te2ue_mapping.find(ntohl(msgHdr->teid));
-
-  if ( tunnel == inst->te2ue_mapping.end() ) {
+  if (tunnel == globGtp.te2ue_mapping.end()) {
     LOG_E(GTPU,"[%d] Received a incoming packet on unknown teid (%x) Dropping!\n", h, ntohl(msgHdr->teid));
     pthread_mutex_unlock(&globGtp.gtp_lock);
     return GTPNOK;
@@ -986,7 +998,7 @@ static int Gtpv1uHandleGpdu(int h,
   //Minimum length of GTP-U header if non of the optional fields are present
   unsigned int offset = sizeof(Gtpv1uMsgHeaderT);
 
-  uint8_t qfi = -1;
+  int8_t qfi = -1;
   bool rqi = false;
   uint32_t NR_PDCP_PDU_SN = 0;
 
@@ -1143,10 +1155,7 @@ static int Gtpv1uHandleGpdu(int h,
      * according to TS 38.425: Fig. 5.5.2.2-1 and section 5.5.3.24*/
     extensionHeader->length  = 1+sizeof(DlDataDeliveryStatus_flagsT)+3+1+1;
     gtpv1uCreateAndSendMsg(
-        h, peerIp, peerPort, GTP_GPDU,
-        inst->te2ue_mapping[ntohl(msgHdr->teid)].outgoing_teid,
-        NULL, 0, false, false, 0, 0, NR_RAN_CONTAINER,
-        extensionHeader->buffer, extensionHeader->length);
+        h, peerIp, peerPort, GTP_GPDU, globGtp.te2ue_mapping[ntohl(msgHdr->teid)].outgoing_teid, NULL, 0, false, false, 0, 0, NR_RAN_CONTAINER, extensionHeader->buffer, extensionHeader->length);
   }
 
   LOG_D(GTPU,"[%d] Received a %d bytes packet for: teid:%x\n", h,
@@ -1223,20 +1232,20 @@ void *gtpv1uTask(void *args)  {
     itti_receive_msg(TASK_GTPV1_U, &message_p);
 
     if (message_p != NULL ) {
-      openAddr_t addr= {0};
-
-      switch (ITTI_MSG_ID(message_p)) {
-        // DATA TO BE SENT TO UDP
+      openAddr_t addr= {{0}};
+      const instance_t myInstance = ITTI_MSG_DESTINATION_INSTANCE(message_p);
+      const int msgType = ITTI_MSG_ID(message_p);
+      LOG_D(GTPU, "GTP-U received %s for instance %ld\n", messages_info[msgType].name, myInstance);
+      switch (msgType) {
+          // DATA TO BE SENT TO UDP
 
         case GTPV1U_TUNNEL_DATA_REQ: {
-          gtpv1uSend(compatInst(ITTI_MSG_DESTINATION_INSTANCE(message_p)),
-                      &GTPV1U_TUNNEL_DATA_REQ(message_p), false, false);
+          gtpv1uSend(compatInst(myInstance), &GTPV1U_TUNNEL_DATA_REQ(message_p), false, false);
         }
         break;
 
         case GTPV1U_DU_BUFFER_REPORT_REQ:{
-          gtpv1uSendDlDeliveryStatus(compatInst(ITTI_MSG_DESTINATION_INSTANCE(message_p)),
-              &GTPV1U_DU_BUFFER_REPORT_REQ(message_p));
+          gtpv1uSendDlDeliveryStatus(compatInst(myInstance), &GTPV1U_DU_BUFFER_REPORT_REQ(message_p));
         }
         break;
 
@@ -1248,8 +1257,7 @@ void *gtpv1uTask(void *args)  {
           break;
 
         case GTPV1U_ENB_END_MARKER_REQ:
-          gtpv1uEndTunnel(compatInst(ITTI_MSG_DESTINATION_INSTANCE(message_p)),
-                          &GTPV1U_TUNNEL_DATA_REQ(message_p));
+          gtpv1uEndTunnel(compatInst(myInstance), &GTPV1U_TUNNEL_DATA_REQ(message_p));
           itti_free(TASK_GTPV1_U, GTPV1U_TUNNEL_DATA_REQ(message_p).buffer);
           break;
 
