@@ -679,9 +679,6 @@ typedef struct {
   
 } nfapi_nr_slot_indication_scf_t;
 
-/** VTUESLOT.indication sent from UE as an ACK in the virtual time scenario */
-typedef nfapi_nr_slot_indication_scf_t nfapi_ue_slot_indication_vt_t;
-
 // 3.4.2
 
 //for pdcch_pdu:
