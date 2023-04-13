@@ -38,12 +38,12 @@ typedef struct{
 
   sm_agent_t base;
 
-#ifdef ASN
+#ifdef E2SM_KPM_ASN
   kpm_enc_asn_t enc;
-#elif FLATBUFFERS 
+#elif E2SM_KPM_FLATBUFFERS
   //pdcp_enc_fb_t enc;
   static_assert(false, "Encryption FLATBUFFERS not implemented yet");
-#elif PLAIN
+#elif E2SM_KPM_PLAIN
   kpm_enc_plain_t enc;
 #else
   static_assert(false, "No encryption type selected");

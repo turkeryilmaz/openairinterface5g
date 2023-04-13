@@ -33,11 +33,11 @@
 typedef struct{
   sm_ric_t base;
 
-#ifdef ASN
+#ifdef E2SM_KPM_ASN
   kpm_enc_asn_t enc;
-#elif FLATBUFFERS 
+#elif E2SM_KPM_FLATBUFFERS
   static_assert(false, "Flatbuffer not implemented");
-#elif PLAIN
+#elif E2SM_KPM_PLAIN
   kpm_enc_plain_t enc;
 #else
   static_assert(false, "No encryption type selected");

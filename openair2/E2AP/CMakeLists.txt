@@ -23,9 +23,9 @@ message(STATUS "Selected E2AP_ENCODING: ${E2AP_ENCODING}")
 #######
 
 # KPM service Model encoding definitions
-set(SM_ENCODING_KPM "ASN" CACHE STRING "The KPM SM encoding to use")
-set_property(CACHE SM_ENCODING_KPM PROPERTY STRINGS "PLAIN" "ASN" "FLATBUFFERS")
-message(STATUS "Selected KPM SM_ENCODING: ${SM_ENCODING_KPM}")
+set(SM_ENCODING_KPM "E2SM_KPM_ASN" CACHE STRING "The KPM SM encoding to use")
+set_property(CACHE SM_ENCODING_KPM PROPERTY STRINGS "E2SM_KPM_PLAIN" "E2SM_KPM_ASN" "E2SM_KPM_FLATBUFFERS")
+message(STATUS "Selected SM_ENCODING_KPM: ${SM_ENCODING_KPM}")
 
 add_subdirectory(agent)
 add_subdirectory(lib)

@@ -10,13 +10,13 @@ add_library(kpm_sm SHARED
 # store the library inside the sm folder and not kpm_sm_v2.02 to group all
 set_target_properties(kpm_sm PROPERTIES LIBRARY_OUTPUT_DIRECTORY ..)
 
-if(SM_ENCODING_KPM STREQUAL "PLAIN")
+if(SM_ENCODING_KPM STREQUAL "E2SM_KPM_PLAIN")
   target_sources(kpm_sm PRIVATE enc/kpm_enc_plain.c dec/kpm_dec_plain.c)
-elseif(SM_ENCODING_KPM STREQUAL "ASN")
+elseif(SM_ENCODING_KPM STREQUAL "E2SM_KPM_ASN")
   add_subdirectory(ie/asn)
   target_sources(kpm_sm PRIVATE enc/kpm_enc_asn.c dec/kpm_dec_asn.c)
   target_link_libraries(kpm_sm PRIVATE m asn1_e2sm_kpm)
-elseif(SM_ENCODING_KPM STREQUAL "FLATBUFFERS" )
+elseif(SM_ENCODING_KPM STREQUAL "E2SM_KPM_FLATBUFFERS" )
   message(FATAL_ERROR "KPM SM FB not implemented")
 else()
   message(FATAL_ERROR "Unknown KPM SM encoding type")
