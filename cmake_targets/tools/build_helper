@@ -839,7 +839,7 @@ install_simde_from_source(){
     cd /tmp/simde
     # brute force copy into /usr/include
     $SUDO \cp -rv ../simde /usr/include
-    $SUDO patch /usr/include/simde/x86/avx.h << FIN
+    $SUDO patch -R /usr/include/simde/x86/avx.h << FIN
 --- /usr/include/simde/x86/avx.h.old	2022-10-03 19:17:39.828223432 +0200
 +++ /usr/include/simde/x86/avx.h	2022-10-05 16:19:55.086019445 +0200
 @@ -3643,6 +3643,9 @@
