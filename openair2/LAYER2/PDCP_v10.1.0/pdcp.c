@@ -477,6 +477,13 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
       if ((pdcp_p->security_activated != 0) &&
           (((pdcp_p->cipheringAlgorithm) != 0) ||
            ((pdcp_p->integrityProtAlgorithm) != 0))) {
+        printf("kRRCint in PDCP:\n");
+        for(int i=0;i<32;i++)
+        {
+          printf("%02x",pdcp_p->kRRCint);
+        }
+        printf("\n");
+
         uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
           if (RC.ss.mode >= SS_SOFTMODEM) {
@@ -2528,6 +2535,7 @@ pdcp_config_set_security_cipher(
   DevAssert(pdcp_pP != NULL);
   pdcp_pP->cipheringAlgorithm     = security_modeP;
   pdcp_pP->security_activated = 1;
+  LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
 }
 
 //-----------------------------------------------------------------------------
@@ -2552,11 +2560,12 @@ pdcp_config_set_security(
           PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP,pdcp_pP),
           pdcp_pP->cipheringAlgorithm,
           pdcp_pP->integrityProtAlgorithm);
-    pdcp_pP->kRRCenc = kRRCenc;
-    pdcp_pP->kRRCint = kRRCint;
-    pdcp_pP->kUPenc  = kUPenc;
+    if(kRRCenc != NULL) pdcp_pP->kRRCenc = kRRCenc;
+    if(kRRCint != NULL) pdcp_pP->kRRCint = kRRCint;
+    if(kUPenc != NULL)  pdcp_pP->kUPenc  = kUPenc;
     /* Activate security */
     pdcp_pP->security_activated = 1;
+  LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
   }
 }
 

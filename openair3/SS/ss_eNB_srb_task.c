@@ -270,11 +270,20 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			LOG_A(ENB_SS,"VT_TIMER SRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 
 			if(msg_queued)
-			{
-				 msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
-			   LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
-					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-			}
+      {
+        /* Below adjustment is made as MAC is taking 1 extra SF before scheduling and "msg_can_be_queued" is adjusting by 4 SF */
+        if (timer_tinfo.sf == 0)
+        {
+          timer_tinfo.sfn--;
+          timer_tinfo.sf = 9;
+        }
+        else
+          timer_tinfo.sf--;
+        
+        msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
+        LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+            tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
+      }
       LOG_I(ENB_SS, "msg_queued2:%d\n",msg_queued);
 
 		}

@@ -9,7 +9,7 @@
 
 static IF_Module_t *if_inst[MAX_IF_MODULES];
 static Sched_Rsp_t Sched_INFO[MAX_IF_MODULES][MAX_NUM_CCs];
-
+uint8_t sf_ahead_for_dl = 0;
 extern uint16_t pdcch_order_table[16];
 extern int cell_index;
 extern uint8_t pdcchOrder_rcvd;
@@ -785,6 +785,7 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
   uint8_t sf_ahead_dl = ul_subframe2_k_phich(&mac->common_channels[CC_id], UL_info->subframe);
 
   if(sf_ahead_dl!=255) {
+    sf_ahead_for_dl = sf_ahead_dl;
     mac->HI_DCI0_req[CC_id][(UL_info->subframe+sf_ahead_dl)%10].hi_dci0_request_body.number_of_hi                     = 0;
     LOG_D(MAC,"current (%d,%d) clear HI_DCI0_req[0][%d]\n",UL_info->frame,UL_info->subframe,(UL_info->subframe+sf_ahead_dl)%10);
   }

@@ -10058,24 +10058,30 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
       LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
       if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint)
       {
-        for(int i=16;i<32;i++)
+        printf("kRRCint in RRC:\n");
+        for(int i=0;i<32;i++)
         {
           LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
         }
+        printf("\n");
       }
       if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
       {
+        printf("kRRCenc in RRC:\n");
         for(int j=0;j<16;j++)
         {
           LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
         }
+        printf("\n");
       }
       if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
       {
+        LOG_D(RRC,"kUPenc in RRC:\n");
         for(int k=0;k<16;k++)
         {
           LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
         }
+        LOG_D(RRC,"\n");
       }
       PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
                                     instance,

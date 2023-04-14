@@ -1364,6 +1364,7 @@ void schedule_ulsch_rnti_emtc(module_id_t   module_idP,
           cc[CC_id].vrb_map_UL[5] = 1;
           cc[CC_id].vrb_map_UL[6] = 1;
           UE_template->ul_SR = 0;
+          LOG_D(MAC, "fxn:%s ul_SR=0 for ue:%d\n", __FUNCTION__, rnti);
           status = mac_eNB_get_rrc_status(module_idP,rnti);
           cqi_req = 0;
           /* Power control: compute the expected ULSCH RX snr (for the stats) */
@@ -2011,6 +2012,7 @@ schedule_ulsch_rnti(module_id_t   module_idP,
 
     /* Reset the scheduling request */
     UE_template_ptr->ul_SR = 0;
+    LOG_D(MAC, "fxn:%s ul_SR=0 for ue:%d\n", __FUNCTION__, rnti);
     const uint8_t status = mac_eNB_get_rrc_status(module_idP, rnti);
 
     /* Power control */
@@ -2577,7 +2579,8 @@ schedule_ulsch_ss(module_id_t module_idP,
     }
       
     /* if schedule is false, it means SFN/SF for ULGrant had not yet arrived */
-    schedule = check_ulGrant_Schedule(frameP, subframeP, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
+//    schedule = check_ulGrant_Schedule(frameP, subframeP, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
+    schedule = check_ulGrant_Schedule(RC.eNB[0][CC_id]->UL_INFO.frame, RC.eNB[0][CC_id]->UL_INFO.subframe, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
     if (schedule == false )
       continue;
 

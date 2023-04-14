@@ -803,12 +803,14 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
               RC.ss.ulgrant_info[cell_index].ulGrantType = ON_SR_RECEPTION_PRESENT;
               SS_ULGRANT_INFO(msg_p).ulGrantType = ON_SR_RECEPTION_PRESENT;
               LOG_I(ENB_SS, "[SYS] Received ulGrantType ON_SR_RECEPTION\n");
+              destTaskMAC = true;
             }
             else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d == UL_GrantConfig_Type_None)
             {
               RC.ss.ulgrant_info[cell_index].ulGrantType = NONE_PRESENT;
               SS_ULGRANT_INFO(msg_p).ulGrantType = NONE_PRESENT;
               LOG_I(ENB_SS, "[SYS] Received ulGrantType UL_GrantConfig_Type_None\n");
+              destTaskMAC = true;
             }
             else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d == UL_GrantConfig_Type_Periodic)
             {
@@ -1870,12 +1872,15 @@ static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
         SS_L1MACIND_CTRL(message_p).HarqError_Ctrl = IndCtrlMode_DISABLE;
       }
     }
+    LOG_D(ENB_SS, "fxn:%s line:%d\n",__FUNCTION__, __LINE__);
     uint8_t msg_queued = 0;
 		if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
 		{
+      LOG_D(ENB_SS, "fxn:%s line:%d\n",__FUNCTION__, __LINE__);
 			ss_set_timinfo_t tinfo, timer_tinfo;
 			tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
 			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
+      LOG_D(ENB_SS, "fxn:%s line:%d tinfo.sfn:%d tinfo.sf:%d\n",__FUNCTION__, __LINE__, tinfo.sfn, tinfo.sf);
 			timer_tinfo = tinfo;
 			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
 
@@ -1883,7 +1888,7 @@ static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
 
 			if(msg_queued)
 			{
-         sys_vt_add_sf(&timer_tinfo.sfn,&timer_tinfo.sf,5);
+         sys_vt_add_sf(&timer_tinfo.sfn,&timer_tinfo.sf,4);
 				 msg_queued = vt_timer_setup(timer_tinfo, TASK_MAC_ENB, 0,message_p);
 			}
 			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
