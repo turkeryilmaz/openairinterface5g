@@ -460,7 +460,6 @@ int logInit (void)
   register_log_component("OTG_GP","dat",OTG_GP);
   register_log_component("OTG_GP_BG","dat",OTG_GP_BG);
   register_log_component("OTG_JITTER","dat",OTG_JITTER);
-  register_log_component("OCG","",OCG);
   register_log_component("PERF","",PERF);
   register_log_component("OIP","",OIP);
   register_log_component("OCM","log",OCM);
@@ -472,8 +471,6 @@ int logInit (void)
   register_log_component("ENB_SS","log",ENB_SS);
   register_log_component("MCE_APP","log",MCE_APP);
   register_log_component("MME_APP","log",MME_APP);
-  register_log_component("FLEXRAN_AGENT","log",FLEXRAN_AGENT);
-  register_log_component("PROTO_AGENT","log",PROTO_AGENT);
   register_log_component("TMR","",TMR);
   register_log_component("EMU","log",EMU);
   register_log_component("USIM","txt",USIM);
@@ -552,11 +549,11 @@ static inline int log_header(log_component_t *c,
 
   char l[32];
   if (flag & FLAG_FILE_LINE && flag & FLAG_FUNCT )
-    snprintf(l, sizeof l, "(%s:%d) ", func, line);
+    snprintf(l, sizeof l, "(%.23s:%d) ", func, line);
   else if (flag & FLAG_FILE_LINE)
     snprintf(l, sizeof l, "(%d) ", line);
   else if (flag & FLAG_FUNCT)
-    snprintf(l, sizeof l, "(%s) ", func);
+    snprintf(l, sizeof l, "(%.28s) ", func);
   else
     l[0] = 0;
 
@@ -836,15 +833,13 @@ void logClean (void)
   int i;
 
   if(isLogInitDone()) {
-    LOG_UI(PHY,"\n");
-
     for (i=MIN_LOG_COMPONENTS; i < MAX_LOG_COMPONENTS; i++) {
       close_component_filelog(i);
     }
   }
 }
 
-extern volatile int oai_exit;//extern int oai_exit;
+extern int oai_exit;
 void flush_mem_to_file(void)
 {
   int fp;

@@ -204,7 +204,6 @@ hashtable_rc_t hashtable_dump_content (const hash_table_t *const hashtblP, char 
  */
 hashtable_rc_t hashtable_insert(hash_table_t *const hashtblP, const hash_key_t keyP, void *dataP) {
   hash_node_t *node = NULL;
-  hash_node_t *node_prev = NULL;
   hash_size_t  hash = 0;
 
   if (hashtblP == NULL) {
@@ -212,7 +211,6 @@ hashtable_rc_t hashtable_insert(hash_table_t *const hashtblP, const hash_key_t k
   }
 
   hash=hashtblP->hashfunc(keyP)%hashtblP->size;
-/*
   node=hashtblP->nodes[hash];
 
   while(node) {
@@ -240,28 +238,11 @@ hashtable_rc_t hashtable_insert(hash_table_t *const hashtblP, const hash_key_t k
   }
 
   hashtblP->nodes[hash]=node;
-*/
-
-  /* insert the new node to tail of the node list with same key */
-  if(!(node=malloc(sizeof(hash_node_t)))) return -1;
-  node->key=keyP;
-  node->data=dataP;
-  node->next = NULL;
-
-  node_prev = hashtblP->nodes[hash];
-  if(!node_prev){
-    hashtblP->nodes[hash] = node;
-  } else {
-    while(node_prev->next){
-      node_prev = node_prev->next;
-    }
-    node_prev->next = node;
-  }
   return HASH_TABLE_OK;
 }
 //-------------------------------------------------------------------------------------------------------------------------------
 /*
- * To remove an element from the hash table, we just search for it in the linked list head for that hash value,
+ * To remove an element from the hash table, we just search for it in the linked list for that hash value,
  * and remove it if it is found. If it was not found, it is an error and -1 is returned.
  */
 hashtable_rc_t hashtable_remove(hash_table_t *const hashtblP, const hash_key_t keyP) {
@@ -296,7 +277,7 @@ hashtable_rc_t hashtable_remove(hash_table_t *const hashtblP, const hash_key_t k
 }
 //-------------------------------------------------------------------------------------------------------------------------------
 /*
- * Searching for an element is easy. We just search through the linked list head for the corresponding hash value.
+ * Searching for an element is easy. We just search through the linked list for the corresponding hash value.
  * NULL is returned if we didn't find it.
  */
 hashtable_rc_t hashtable_get(const hash_table_t *const hashtblP, const hash_key_t keyP, void **dataP) {

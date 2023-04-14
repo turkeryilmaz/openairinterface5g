@@ -34,6 +34,7 @@
 #define __RAN_CONTEXT_H__
 
 #include <pthread.h>
+#include <stdint.h>
 #include "common/platform_constants.h"
 #include "PHY/defs_eNB.h"
 #include "PHY/types.h"
@@ -47,6 +48,16 @@
 #include "RRC/NR/nr_rrc_defs.h"
 #include "radio/SS/ss_config.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
+// forward declarations to avoid including the full typess ***eNB;
+struct PHY_VARS_gNB_s;
+struct PHY_VARS_eNB_NB_IoT_s;
+struct eNB_RRC_INST_s;
+struct gNB_RRC_INST_s;
+struct eNB_MAC_INST_s;
+struct eNB_MAC_INST_NB_IoT_s;
+struct gNB_MAC_INST_s;
+struct gtpv1u_data_s;
+struct RU_t_s;
 
 typedef struct RBConfig_s {
         bool isRBConfigValid;
@@ -118,7 +129,7 @@ typedef struct {
   /// NR MAC context variables
   struct gNB_MAC_INST_s **nrmac;
   /// GTPu descriptor 
-  gtpv1u_data_t *gtpv1u_data_g;
+  struct gtpv1u_data_s *gtpv1u_data_g;
   /// RU descriptors. These describe what each radio unit is supposed to do and contain the necessary functions for fronthaul interfaces
   struct RU_t_s **ru;
   /// Mask to indicate fronthaul setup status of RU (hard-limit to 64 RUs)

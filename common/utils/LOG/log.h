@@ -199,7 +199,6 @@ typedef enum {
   MAC,
   EMU,
   SIM,
-  OCG,
   OMG,
   OPT,
   OTG,
@@ -232,11 +231,9 @@ typedef enum {
   ENB_SS,
   MCE_APP,
   MME_APP,
-  FLEXRAN_AGENT,
   TMR,
   USIM,
   LOCALIZE,
-  PROTO_AGENT,
   F1U,
   X2AP,
   M2AP,
@@ -317,6 +314,7 @@ void logTerm (void);
 int  isLogInitDone (void);
 void logRecord_mt(const char *file, const char *func, int line,int comp, int level, const char *format, ...) __attribute__ ((format (printf, 6, 7)));
 void vlogRecord_mt(const char *file, const char *func, int line, int comp, int level, const char *format, va_list args );
+void logRecord_tp(const char *file, const char *func, int line,int comp, int level, const char *format, ...) __attribute__ ((format (printf, 6, 7)));
 void log_dump(int component, void *buffer, int buffsize,int datatype, const char *format, ... );
 int  set_log(int component, int level);
 void set_glog(int level);
@@ -497,11 +495,6 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
 # define LOG_P(lvl, _string, buf, len)  do {     \
     if(g_log->log_component[PKT].level >= lvl) { \
        LOG_SS_PKT(PKT, _string, buf, len);       \
-    } } while(0)
-
-# define LOG_NAS_P(lvl, _string, buf, len)  do {     \
-    if(g_log->log_component[PKT].level >= lvl) { \
-       LOG_SS_NAS_PKT(PKT, _string, buf, len);       \
     } } while(0)
 
 # define LOG_MAC_P(lvl, _string, sfn, sf, mac_pack_info, buf, len)  do {  \
