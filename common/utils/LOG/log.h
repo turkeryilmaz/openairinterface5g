@@ -497,6 +497,11 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
        LOG_SS_PKT(PKT, _string, buf, len);       \
     } } while(0)
 
+# define LOG_NAS_P(lvl, _string, buf, len)  do {     \
+    if(g_log->log_component[PKT].level >= lvl) { \
+       LOG_SS_NAS_PKT(PKT, _string, buf, len);       \
+    } } while(0)
+
 # define LOG_MAC_P(lvl, _string, sfn, sf, mac_pack_info, buf, len)  do {  \
     if(g_log->log_component[PKT].level >= lvl) {                          \
        LOG_SS_MAC_PKT(PKT, _string, sfn, sf, mac_pack_info, buf, len);    \
