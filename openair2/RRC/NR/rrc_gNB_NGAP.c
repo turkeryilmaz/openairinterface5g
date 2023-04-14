@@ -646,6 +646,10 @@ rrc_gNB_send_NGAP_UPLINK_NAS(
         NGAP_UPLINK_NAS(msg_p).gNB_ue_ngap_id = UE->gNB_ue_ngap_id;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.length = pdu_length;
         NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer = pdu_buffer;
+        if(RC.ss.mode == SS_GNB)
+        {
+          LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", pdu_buffer, pdu_length);
+        }
         // extract_imsi(NGAP_UPLINK_NAS (msg_p).nas_pdu.buffer,
         //               NGAP_UPLINK_NAS (msg_p).nas_pdu.length,
         //               ue_context_pP);
@@ -795,12 +799,31 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
 
       drb->rLC_Mode = E1AP_RLC_Mode_rlc_am;
 
-      drb->numCellGroups = 1; // assume one cell group associated with a DRB
+    PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, ue_context_p->ue_context.rnti, 0, 0, 0);
+    for (int i = 0; i < NR_NB_RB_MAX - 3; i++) {
+      if(ue_context_p->ue_context.pduSession[i].status >= PDU_SESSION_STATUS_DONE)
+        continue;
+      ue_context_p->ue_context.pduSession[i].status      = PDU_SESSION_STATUS_NEW;
+      ue_context_p->ue_context.pduSession[i].param       = NGAP_PDUSESSION_SETUP_REQ(msg_p).pdusession_setup_params[pdu_sessions_done];
+      create_tunnel_req.pdusession_id[pdu_sessions_done] = NGAP_PDUSESSION_SETUP_REQ(msg_p).pdusession_setup_params[pdu_sessions_done].pdusession_id;
+      create_tunnel_req.incoming_rb_id[pdu_sessions_done]= i+1;
+      create_tunnel_req.outgoing_teid[pdu_sessions_done]  = NGAP_PDUSESSION_SETUP_REQ(msg_p).pdusession_setup_params[pdu_sessions_done].gtp_teid;
+      create_tunnel_req.outgoing_qfi[pdu_sessions_done]  = NGAP_PDUSESSION_SETUP_REQ(msg_p).pdusession_setup_params[pdu_sessions_done].qos[0].qfi;
+      memcpy(create_tunnel_req.dst_addr[pdu_sessions_done].buffer,
+              NGAP_PDUSESSION_SETUP_REQ(msg_p).pdusession_setup_params[pdu_sessions_done].upf_addr.buffer,
+              sizeof(uint8_t)*20);
+      create_tunnel_req.dst_addr[pdu_sessions_done].length = NGAP_PDUSESSION_SETUP_REQ(msg_p).pdusession_setup_params[pdu_sessions_done].upf_addr.length;
+      LOG_I(NR_RRC,"NGAP PDUSESSION SETUP REQ: local index %d teid %u, pdusession id %d \n",
+            i,
+            create_tunnel_req.outgoing_teid[pdu_sessions_done],
+            create_tunnel_req.pdusession_id[pdu_sessions_done]);
+      inde_list[pdu_sessions_done] = i;
+      pdu_sessions_done++;
 
-      for (int k=0; k < drb->numCellGroups; k++) {
-        cell_group_t *cellGroup = drb->cellGroupList + k;
-        cellGroup->id = 0; // MCG
+      if(pdu_sessions_done >= nb_pdusessions_tosetup) {
+        break;
       }
+    }
 
       drb->numQosFlow2Setup = session->nb_qos;
       for (int k=0; k < drb->numQosFlow2Setup; k++) {
@@ -815,6 +838,44 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
         qos->pre_emptionVulnerability = session->qos[k].allocation_retention_priority.pre_emp_vulnerability;
       }
     }
+    else{
+      /*Generate a UE context modification request message towards the DU to instruct the DU
+       *for SRB2 and DRB configuration and get the updates on master cell group config from the DU*/
+      MessageDef *message_p;
+      message_p = itti_alloc_new_message (TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_MODIFICATION_REQ);
+      f1ap_ue_context_setup_t *req=&F1AP_UE_CONTEXT_MODIFICATION_REQ (message_p);
+      req->rnti             = ue_context_p->ue_context.rnti;
+      req->mcc              = RC.nrrrc[ctxt.module_id]->configuration.mcc[0];
+      req->mnc              = RC.nrrrc[ctxt.module_id]->configuration.mnc[0];
+      req->mnc_digit_length = RC.nrrrc[ctxt.module_id]->configuration.mnc_digit_length[0];
+      req->nr_cellid        = RC.nrrrc[ctxt.module_id]->nr_cellid;
+
+      /*Instruction towards the DU for SRB2 configuration*/
+      req->srbs_to_be_setup = malloc(1*sizeof(f1ap_srb_to_be_setup_t));
+      req->srbs_to_be_setup_length = 1;
+      f1ap_srb_to_be_setup_t *SRBs=req->srbs_to_be_setup;
+      SRBs[0].srb_id = 2;
+      SRBs[0].lcid = 2;
+
+      /*Instruction towards the DU for DRB configuration and tunnel creation*/
+      gtpv1u_gnb_create_tunnel_req_t  create_tunnel_req;
+      memset(&create_tunnel_req, 0, sizeof(gtpv1u_gnb_create_tunnel_req_t));
+      req->drbs_to_be_setup = malloc(1*sizeof(f1ap_drb_to_be_setup_t));
+      req->drbs_to_be_setup_length = 1;
+      f1ap_drb_to_be_setup_t *DRBs=req->drbs_to_be_setup;
+      LOG_D(RRC, "Length of DRB list:%d \n", req->drbs_to_be_setup_length);
+      DRBs[0].drb_id = 1;
+      DRBs[0].rlc_mode = RLC_MODE_AM;
+      DRBs[0].up_ul_tnl[0].tl_address = inet_addr(RC.nrrrc[ctxt.module_id]->eth_params_s.my_addr);
+      DRBs[0].up_ul_tnl[0].port=RC.nrrrc[ctxt.module_id]->eth_params_s.my_portd;
+      DRBs[0].up_ul_tnl_length = 1;
+      DRBs[0].up_dl_tnl[0].tl_address = inet_addr(RC.nrrrc[ctxt.module_id]->eth_params_s.remote_addr);
+      DRBs[0].up_dl_tnl[0].port=RC.nrrrc[ctxt.module_id]->eth_params_s.remote_portd;
+      DRBs[0].up_dl_tnl_length = 1;
+
+      itti_send_msg_to_task (TASK_CU_F1, ctxt.module_id, message_p);
+    }
+    return(0);
   }
   int xid = rrc_gNB_get_next_transaction_identifier(instance);
   UE->xids[xid] = RRC_PDUSESSION_ESTABLISH;

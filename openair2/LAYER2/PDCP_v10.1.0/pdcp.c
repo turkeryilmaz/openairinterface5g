@@ -596,7 +596,6 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
           break;
       } // switch case
     }
-  }
 
   if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
     stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_req);

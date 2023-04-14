@@ -349,7 +349,6 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
   } else {
     ret = nr_mac_prepare_ra_nsa_ue(RC.nrmac[rrc->module_id], ue_context_p->ue_context.rnti, ue_context_p->ue_context.secondaryCellGroup);
   }
-  AssertFatal(ret, "cannot add NSA UE in MAC, aborting\n");
 
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, rrc->module_id, GNB_FLAG_YES, ue_context_p->ue_context.rnti, 0, 0, rrc->module_id);
   if (get_softmodem_params()->do_ra) ctxt.enb_flag = 0;
@@ -364,7 +363,6 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
 
   nr_pdcp_add_drbs(ctxt.enb_flag,
                    ctxt.rntiMaybeUEid,
-                   0,
                    ue_context_p->ue_context.rb_config->drb_ToAddModList,
                    (ue_context_p->ue_context.integrity_algorithm << 4) | ue_context_p->ue_context.ciphering_algorithm,
                    kUPenc,

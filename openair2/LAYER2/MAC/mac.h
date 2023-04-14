@@ -506,7 +506,7 @@ typedef struct {
 } __attribute__ ((__packed__)) ULDCH_PDU;
 
 /*!\brief RA process state*/
-typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_ACK } RA_state;
+typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_ACK, CBRAMSG4, WAITMSG5} RA_state;
 /*!\brief  UE DLSCH scheduling states*/
 typedef enum { S_DL_NONE = 0, S_DL_SCHEDULED } UE_DLSCH_STATUS;
 /*!\brief  scheduler mode */

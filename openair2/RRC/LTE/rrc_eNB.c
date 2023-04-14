@@ -3932,7 +3932,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
                           (LTE_PMCH_InfoList_r9_t *)NULL,
                           0,
                           0);
-<<<<<<< HEAD
 
   if (RC.ss.mode > SS_ENB)
   {
@@ -3999,8 +3998,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       LOG_A(RRC, "OSA Can't find Hash of UE rnti %x\n", rnti);
     }
   }
-=======
->>>>>>> 4cb79994d4... openair2 rebased initial changes
 
   if (RC.ss.mode > SS_ENB)
   {
@@ -6423,7 +6420,6 @@ rrc_eNB_generate_RRCConnectionSetup(
      }
   }
 
-<<<<<<< HEAD
   if (EPC_MODE_ENABLED) {
     rrc_eNB_process_security (
       ctxt_pP,
@@ -6434,51 +6430,6 @@ rrc_eNB_generate_RRCConnectionSetup(
       ue_context_p,
       ue_context_p->ue_context.kenb);
     rrc_pdcp_config_security(ctxt_pP, ue_context_p, false);
-=======
-  LOG_DUMPMSG(RRC,DEBUG_RRC,
-              (char *)(ue_p->Srb0.Tx_buffer.Payload),
-              ue_p->Srb0.Tx_buffer.payload_size,
-              "[MSG] RRC Connection Setup\n");
-
-  // configure SRB1/SRB2, PhysicalConfigDedicated, MAC_MainConfig for UE
-  if (*SRB_configList != NULL) {
-    for (int cnt = 0; cnt < (*SRB_configList)->list.count; cnt++) {
-      if ((*SRB_configList)->list.array[cnt]->srb_Identity == 1) {
-        SRB1_config = (*SRB_configList)->list.array[cnt];
-
-        if (SRB1_config->logicalChannelConfig) {
-          if (SRB1_config->logicalChannelConfig->present == LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue) {
-            SRB1_logicalChannelConfig = &SRB1_config->logicalChannelConfig->choice.explicitValue;
-          } else {
-            SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
-          }
-        } else {
-          SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
-        }
-
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_UE_FMT " RRC_eNB --- MAC_CONFIG_REQ  (SRB1) ---> MAC_eNB\n", PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
-
-        rrc_mac_config_req_eNB_t tmp = {0};
-        tmp.CC_id = ue_context_pP->ue_context.primaryCC_id;
-        tmp.rnti = ue_context_pP->ue_context.rnti;
-        tmp.physicalConfigDedicated = ue_context_pP->ue_context.physicalConfigDedicated;
-        tmp.mac_MainConfig = ue_context_pP->ue_context.mac_MainConfig;
-        tmp.logicalChannelIdentity = 1;
-        tmp.logicalChannelConfig = SRB1_logicalChannelConfig;
-        tmp.measGapConfig = ue_context_pP->ue_context.measGapConfig;
-        rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
-        break;
-      }
-    }
-
-    LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT " [RAPROC] Logical Channel DL-CCCH, Generating RRCConnectionSetup (bytes %d)\n", PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP), ue_p->Srb0.Tx_buffer.payload_size);
-    // activate release timer, if RRCSetupComplete not received after 100 frames, remove UE
-    ue_context_pP->ue_context.ue_release_timer = 1;
-    // remove UE after 10 frames after RRCConnectionRelease is triggered
-    ue_context_pP->ue_context.ue_release_timer_thres = 1000;
-    /* init timers */
-    ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
->>>>>>> 4cb79994d4... openair2 rebased initial changes
   }
 }
 
@@ -7842,12 +7793,17 @@ rrc_eNB_decode_ccch(
                                    (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
           rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
         }
 =======
         rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
 
 >>>>>>> 4cb79994d4... openair2 rebased initial changes
+=======
+          rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
+        }
+>>>>>>> 8831b74be2... Fix Some Compilation issue
         break;
 
       default:
@@ -10299,6 +10255,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                   NULL,
                   (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
+<<<<<<< HEAD
               if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
                 rrc_rlc_config_asn1_req(&ctxt,
                     ue_context_pP->ue_context.SRB_configList,
@@ -10309,6 +10266,13 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
             } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
               rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             }
+=======
+              rrc_rlc_config_asn1_req(&ctxt,
+                  ue_context_pP->ue_context.SRB_configList,
+                  (LTE_DRB_ToAddModList_t *)NULL,
+                  (LTE_DRB_ToReleaseList_t *)NULL,
+                  (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
+>>>>>>> 8831b74be2... Fix Some Compilation issue
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             lchannelType = Bearer_CCCH_e;

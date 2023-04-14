@@ -43,7 +43,8 @@
 #include "common/platform_constants.h"
 #include "COMMON/platform_types.h"
 #include "mac_rrc_dl.h"
-#include "cucp_cuup_if.h"
+
+//#include "COMMON/mac_rrc_primitives.h"
 
 #include "NR_SIB1.h"
 #include "NR_RRCReconfigurationComplete.h"
@@ -55,7 +56,11 @@
 #include "NR_PLMN-IdentityInfo.h"
 #include "NR_MCC-MNC-Digit.h"
 #include "NR_NG-5G-S-TMSI.h"
-
+//#include "MCCH-Message.h"
+//#include "MBSFNAreaConfiguration-r9.h"
+//#include "SCellToAddMod-r10.h"
+//#include "AS-Config.h"
+//#include "AS-Context.h"
 #include "NR_UE-NR-Capability.h"
 #include "NR_UE-MRDC-Capability.h"
 #include "NR_MeasResults.h"
@@ -74,6 +79,17 @@
   #include "as_message.h"
 
   #include "commonDef.h"
+
+
+/*I will change the name of the structure for compile purposes--> hope not to undo this process*/
+
+typedef unsigned int uid_nr_t;
+#define NR_UID_LINEAR_ALLOCATOR_BITMAP_SIZE (((MAX_MOBILES_PER_GNB/8)/sizeof(unsigned int)) + 1)
+
+typedef struct nr_uid_linear_allocator_s {
+  unsigned int   bitmap[NR_UID_LINEAR_ALLOCATOR_BITMAP_SIZE];
+} nr_uid_allocator_t;
+    
 
 #define PROTOCOL_NR_RRC_CTXT_UE_FMT                PROTOCOL_CTXT_FMT
 #define PROTOCOL_NR_RRC_CTXT_UE_ARGS(CTXT_Pp)      PROTOCOL_NR_CTXT_ARGS(CTXT_Pp)
@@ -261,9 +277,6 @@ typedef struct gNB_RRC_UE_s {
   NR_RRCReconfiguration_t            *reconfig;
   NR_RadioBearerConfig_t             *rb_config;
 
-  /* Pointer to save spCellConfig during RRC Reestablishment procedures */
-  NR_SpCellConfig_t                  *spCellConfigReestablishment;
-
   ImsiMobileIdentity_t               imsi;
 
   /* KgNB as derived from KASME received from EPC */
@@ -286,7 +299,7 @@ typedef struct gNB_RRC_UE_s {
   uint16_t                           ng_5G_S_TMSI_Part2;
   NR_EstablishmentCause_t            establishment_cause;
 
-  /* Information from UE RRCReestablishmentRequest */
+  /* Information from UE RRC ConnectionReestablishmentRequest */
   NR_ReestablishmentCause_t          reestablishment_cause;
 
   /* UE id for initial connection to S1AP */
@@ -331,12 +344,50 @@ typedef struct gNB_RRC_UE_s {
 
 } gNB_RRC_UE_t;
 
+typedef uid_t ue_uid_t;
+
 typedef struct rrc_gNB_ue_context_s {
   /* Tree related data */
   RB_ENTRY(rrc_gNB_ue_context_s) entries;
   /* UE id for initial connection to NGAP */
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
+
+/* PUSCH,PDSCH dedicated DCCH,DTCH scheduling configuration from external */
+typedef struct NR_DciFormat_0_X_ResourceAssignment {
+  int32_t FirstRbIndex;
+  int32_t Nprb;
+  struct NR_TransportBlockScheduling{
+    uint8_t imcs;
+    uint8_t RedundancyVersion;
+    bool ToggleNDI;
+  } transportBlock_scheduling;
+}NR_DciFormat_0_X_ResourceAssignment_t;
+
+typedef struct NR_DcchDtchConfig_UL {
+  struct NR_DciUlinfo {
+    NR_DciFormat_0_X_ResourceAssignment_t * resoure_assignment;
+
+    uint8_t * pusch_hopping_ctrl_flag;
+    uint8_t * tpc_command_pusch;
+    uint8_t * ul_sul_indicator;
+    //NR_DciFormat0_0 * dci0_0;
+    //NR_DciFormat0_1 * dci0_1;
+  } * dci_info;
+
+  /*TODO: other config */
+  //PUCCH_Synch
+  //GrantConfig
+
+} NR_DcchDtchConfig_UL_t;
+
+typedef struct NR_DcchDtchConfig {
+  /*TODO: define DL config for activeBWP */
+  //NR_DcchDtchConfig_DL_t * dl;
+
+  NR_DcchDtchConfig_UL_t    * ul;
+} NR_DcchDtchConfig_t;
+/*****************************************************************/
 
 typedef struct {
 
@@ -354,6 +405,13 @@ typedef struct {
   NR_SIB2_t                                *sib2;
   NR_SIB3_t                                *sib3;
   NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
+  int ssb_SubcarrierOffset;
+  int sib1_tda;
+  int pdsch_AntennaPorts;
+  int pusch_AntennaPorts;
+  int minRXTXTIME;
+  int do_CSIRS;
+  int do_SRS;
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
@@ -386,16 +444,6 @@ typedef struct nr_mac_rrc_dl_if_s {
   dl_rrc_message_transfer_func_t dl_rrc_message_transfer;
 } nr_mac_rrc_dl_if_t;
 
-typedef struct cucp_cuup_if_s {
-  cucp_cuup_bearer_context_setup_func_t bearer_context_setup;
-  cucp_cuup_bearer_context_setup_func_t bearer_context_mod;
-} cucp_cuup_if_t;
-
-typedef struct nr_reestablish_rnti_map_s {
-  ue_id_t ue_id;
-  rnti_t c_rnti;
-} nr_reestablish_rnti_map_t;
-
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -412,9 +460,6 @@ typedef struct gNB_RRC_INST_s {
 
   // RRC configuration
   gNB_RrcConfigurationReq configuration;
-
-  // gNB N3 GTPU instance
-  instance_t e1_inst;
 
   // other PLMN parameters
   /// Mobile country code
@@ -443,11 +488,7 @@ typedef struct gNB_RRC_INST_s {
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
 
-  nr_reestablish_rnti_map_t nr_reestablish_rnti_map[MAX_MOBILES_PER_GNB];
-
   nr_mac_rrc_dl_if_t mac_rrc;
-  cucp_cuup_if_t cucp_cuup;
-
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error

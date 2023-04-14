@@ -149,7 +149,7 @@ uint8_t next_available_drb(gNB_RRC_UE_t *ue, rrc_pdu_session_param_t *pdusession
 
   if(!is_gbr) { /* Find if Non-GBR DRB exists in the same PDU Session */
     for (drb_id = 0; drb_id < NGAP_MAX_DRBS_PER_UE; drb_id++)
-      if (pdusession->param.used_drbs[drb_id] == DRB_ACTIVE_NONGBR)
+      if(ue->pduSession[pdusession_id].param.used_drbs[drb_id] == DRB_ACTIVE_NONGBR)
         return drb_id+1;
   }
   /* GBR Flow  or a Non-GBR DRB does not exist in the same PDU Session, find an available DRB */
@@ -162,7 +162,6 @@ uint8_t next_available_drb(gNB_RRC_UE_t *ue, rrc_pdu_session_param_t *pdusession
 }
 
 bool drb_is_active(gNB_RRC_UE_t *ue, uint8_t drb_id) {
-  DevAssert(drb_id > 0);
   if(ue->DRB_active[drb_id-1] == DRB_ACTIVE)
     return true;
   return false;

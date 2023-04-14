@@ -116,7 +116,8 @@ uint8_t do_NR_SA_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
                                    uint8_t               *const buffer,
                                    const uint8_t                Transaction_id);
 
-int do_NR_RRCRelease(uint8_t *buffer, size_t buffer_size, uint8_t Transaction_id);
+uint8_t do_NR_RRCRelease(uint8_t *buffer, size_t buffer_size,
+                         uint8_t Transaction_id);
 
 int16_t do_RRCReconfiguration(
     const protocol_ctxt_t        *const ctxt_pP,

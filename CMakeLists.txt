@@ -766,11 +766,6 @@ add_library(HASHTABLE
 )
 include_directories(${OPENAIR_DIR}/common/utils/hashtable)
 
-add_library(msc MODULE ${OPENAIR_DIR}/common/utils/msc/msc.c )
-target_link_libraries (msc LFDS)
-
-include_directories(${OPENAIR_DIR}/common/utils/msc)
-
 add_library(UTIL
   ${OPENAIR_DIR}/common/utils/LOG/log.c
   ${OPENAIR_DIR}/common/utils/LOG/ss-tp.c
