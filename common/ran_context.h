@@ -35,7 +35,6 @@
 
 #include <pthread.h>
 #include <stdint.h>
-
 // forward declarations to avoid including the full typess ***eNB;
 struct PHY_VARS_gNB_s;
 struct PHY_VARS_eNB_NB_IoT_s;
