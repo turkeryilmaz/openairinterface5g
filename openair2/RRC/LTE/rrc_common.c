@@ -204,12 +204,7 @@ long binary_search_int(const int elements[], long numElem, int value)
    Used for RSRP and RSRQ measurement mapping. Can potentially be used for other things
 */
 //-----------------------------------------------------------------------------
-long
-binary_search_float(
-  float elements[],
-  long numElem,
-  float value
-)
+long binary_search_float(const float elements[], long numElem, float value)
 //-----------------------------------------------------------------------------
 {
   long first, last, middle;

@@ -255,223 +255,218 @@ init_SI(
 
   AssertFatal(carrier->SIB1!=NULL,PROTOCOL_RRC_CTXT_FMT" init_SI: FATAL, no memory for SIB1 allocated\n",
               PROTOCOL_RRC_CTXT_ARGS(ctxt_pP));
-  LOG_I(RRC,"[eNB %d] Node type %d \n ", ctxt_pP->module_id, rrc->node_type);
 
-  if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
-    // copy basic Cell parameters
-    carrier->physCellId      = configuration->Nid_cell[CC_id];
-    carrier->p_eNB           = configuration->nb_antenna_ports[CC_id];
-    carrier->Ncp             = configuration->prefix_type[CC_id];
-    carrier->dl_CarrierFreq  = configuration->downlink_frequency[CC_id];
-    carrier->ul_CarrierFreq  = configuration->downlink_frequency[CC_id]+ configuration->uplink_frequency_offset[CC_id];
-    carrier->eutra_band      = configuration->eutra_band[CC_id];
-    carrier->N_RB_DL         = configuration->N_RB_DL[CC_id];
-    carrier->pbch_repetition = configuration->pbch_repetition[CC_id];
-    LOG_I(RRC, "configuration->schedulingInfoSIB1_BR_r13[CC_id] %d\n",(int)configuration->schedulingInfoSIB1_BR_r13[CC_id]);
-    LOG_A(RRC, "Configuring MIB (N_RB_DL %d,phich_Resource %d,phich_Duration %d, CC_id: %d, MAX_NUM_CCs: %d)\n",
-          (int)configuration->N_RB_DL[CC_id],
-          (int)configuration->radioresourceconfig[CC_id].phich_resource,
-          (int)configuration->radioresourceconfig[CC_id].phich_duration,CC_id,MAX_NUM_CCs);
-    carrier->sizeof_MIB = do_MIB(&rrc->carrier[CC_id],
-                                 configuration->N_RB_DL[CC_id],
-                                 configuration->radioresourceconfig[CC_id].phich_resource,
-                                 configuration->radioresourceconfig[CC_id].phich_duration,
-                                 0,
-                                 configuration->schedulingInfoSIB1_BR_r13[CC_id]
+  // copy basic Cell parameters
+  carrier->physCellId      = configuration->Nid_cell[CC_id];
+  carrier->p_eNB           = configuration->nb_antenna_ports[CC_id];
+  carrier->Ncp             = configuration->prefix_type[CC_id];
+  carrier->dl_CarrierFreq  = configuration->downlink_frequency[CC_id];
+  carrier->ul_CarrierFreq  = configuration->downlink_frequency[CC_id]+ configuration->uplink_frequency_offset[CC_id];
+  carrier->eutra_band      = configuration->eutra_band[CC_id];
+  carrier->N_RB_DL         = configuration->N_RB_DL[CC_id];
+  carrier->pbch_repetition = configuration->pbch_repetition[CC_id];
+  LOG_I(RRC, "configuration->schedulingInfoSIB1_BR_r13[CC_id] %d\n",(int)configuration->schedulingInfoSIB1_BR_r13[CC_id]);
+  LOG_A(RRC, "Configuring MIB (N_RB_DL %d,phich_Resource %d,phich_Duration %d, CC_id: %d, MAX_NUM_CCs: %d)\n",
+        (int)configuration->N_RB_DL[CC_id],
+        (int)configuration->radioresourceconfig[CC_id].phich_resource,
+        (int)configuration->radioresourceconfig[CC_id].phich_duration,CC_id,MAX_NUM_CCs);
+  carrier->sizeof_MIB = do_MIB(&rrc->carrier[CC_id],
+                               configuration->N_RB_DL[CC_id],
+                               configuration->radioresourceconfig[CC_id].phich_resource,
+                               configuration->radioresourceconfig[CC_id].phich_duration,
+                               0,
+                               configuration->schedulingInfoSIB1_BR_r13[CC_id]
+                              );
+  carrier->sizeof_SIB1 = do_SIB1(&rrc->carrier[CC_id],
+                                 ctxt_pP->module_id,
+                                 CC_id,
+                                 false,
+                                 configuration
                                 );
-    carrier->sizeof_SIB1 = do_SIB1(&rrc->carrier[CC_id],
-                                   ctxt_pP->module_id,
+  AssertFatal(carrier->sizeof_SIB1 != 255,"FATAL, RC.rrc[enb_mod_idP].carrier[CC_id].sizeof_SIB1 == 255");
+  RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_BR = 0;
+
+  if (configuration->schedulingInfoSIB1_BR_r13[CC_id] > 0) {
+    if(!RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR) { RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR = (uint8_t *) malloc16(32);}
+    RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_BR = do_SIB1(&RC.rrc[ctxt_pP->module_id]->carrier[CC_id],
+        ctxt_pP->module_id,
+        CC_id, true, configuration);
+  }
+
+  if(NULL== carrier->SIB23){ carrier->SIB23 = (uint8_t *) malloc16(64);}
+  AssertFatal(carrier->SIB23!=NULL,"cannot allocate memory for SIB");
+  carrier->sizeof_SIB23 = do_SIB23(ctxt_pP->module_id,
                                    CC_id,
                                    false,
                                    configuration
                                   );
-    AssertFatal(carrier->sizeof_SIB1 != 255,"FATAL, RC.rrc[enb_mod_idP].carrier[CC_id].sizeof_SIB1 == 255");
-    RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_BR = 0;
+  LOG_I(RRC,"do_SIB23, size %d \n ", carrier->sizeof_SIB23);
+  AssertFatal(carrier->sizeof_SIB23 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB23 == 255");
+  carrier->sizeof_SIB23_BR = 0;
 
-    if (configuration->schedulingInfoSIB1_BR_r13[CC_id] > 0) {
-      if(!RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR) { RC.rrc[ctxt_pP->module_id]->carrier[CC_id].SIB1_BR = (uint8_t *) malloc16(32);}
-      RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sizeof_SIB1_BR = do_SIB1(&RC.rrc[ctxt_pP->module_id]->carrier[CC_id],
-          ctxt_pP->module_id,
-          CC_id, true, configuration);
-    }
+  if (configuration->schedulingInfoSIB1_BR_r13[CC_id]>0) {
+    if(!carrier->SIB23_BR){ carrier->SIB23_BR = (uint8_t *) malloc16(64);}
+    AssertFatal(carrier->SIB23_BR!=NULL,"cannot allocate memory for SIB");
+    carrier->sizeof_SIB23_BR = do_SIB23(ctxt_pP->module_id, CC_id, true, configuration);
   }
 
-  if (!NODE_IS_DU(rrc->node_type)) {
-    if(NULL== carrier->SIB23){ carrier->SIB23 = (uint8_t *) malloc16(64);}
-    AssertFatal(carrier->SIB23!=NULL,"cannot allocate memory for SIB");
-    carrier->sizeof_SIB23 = do_SIB23(ctxt_pP->module_id,
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" SIB2/3 Contents (partial)\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP));
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.n_SB = %ld\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.n_SB);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.hoppingMode = %ld\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.hoppingMode);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.pusch_HoppingOffset = %ld\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.pusch_HoppingOffset);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.enable64QAM = %d\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.enable64QAM);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.groupHoppingEnabled = %d\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.groupHoppingEnabled);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.groupAssignmentPUSCH = %ld\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.groupAssignmentPUSCH);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.sequenceHoppingEnabled = %d\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.sequenceHoppingEnabled);
+  LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.cyclicShift  = %ld\n",
+        PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+        carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.cyclicShift);
+
+  /* Check if SIB4 present for particular CC Then only proceed for creating SIB4 payload */
+  if(true == configuration->sib4_Present[CC_id]) {
+    if(NULL == carrier->SIB4) {
+      carrier->SIB4 = (uint8_t *) malloc16(64);
+    }
+    AssertFatal(carrier->SIB4!=NULL,"cannot allocate memory for SIB4");
+    carrier->sizeof_SIB4 = do_SIB4(ctxt_pP->module_id,
                                      CC_id,
                                      false,
                                      configuration
                                     );
-    LOG_I(RRC,"do_SIB23, size %d \n ", carrier->sizeof_SIB23);
-    AssertFatal(carrier->sizeof_SIB23 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB23 == 255");
-    carrier->sizeof_SIB23_BR = 0;
+    LOG_I(RRC,"do_SIB4, size %d \n ", carrier->sizeof_SIB4);
+    AssertFatal(carrier->sizeof_SIB4 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB4 == 255");
+  }
 
-    if (configuration->schedulingInfoSIB1_BR_r13[CC_id]>0) {
-      if(!carrier->SIB23_BR){ carrier->SIB23_BR = (uint8_t *) malloc16(64);}
-      AssertFatal(carrier->SIB23_BR!=NULL,"cannot allocate memory for SIB");
-      carrier->sizeof_SIB23_BR = do_SIB23(ctxt_pP->module_id, CC_id, true, configuration);
+  /* Check if SIB5 present for particular CC Then only proceed for creating SIB5 payload */
+  if(true == configuration->sib5_Present[CC_id]) {
+    if(NULL == carrier->SIB5) {
+      carrier->SIB5 = (uint8_t *) malloc16(64);
+    }
+    AssertFatal(carrier->SIB5!=NULL,"cannot allocate memory for SIB5");
+    carrier->sizeof_SIB5 = do_SIB5(ctxt_pP->module_id,
+                                     CC_id,
+                                     false,
+                                     configuration
+                                    );
+    LOG_I(RRC,"do_SIB5, size %d \n ", carrier->sizeof_SIB5);
+    AssertFatal(carrier->sizeof_SIB5 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB5 == 255");
+  }
+
+  if (carrier->MBMS_flag > 0) {
+    for (i = 0; i < carrier->sib2->mbsfn_SubframeConfigList->list.count; i++) {
+      // SIB 2
+      //   LOG_D(RRC, "[eNB %ld] mbsfn_SubframeConfigList.list.count = %ld\n", enb_mod_idP, RC.rrc[enb_mod_idP].sib2->mbsfn_SubframeConfigList->list.count);
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" SIB13 contents for MBSFN subframe allocation %d/%d(partial)\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            i,
+            carrier->sib2->mbsfn_SubframeConfigList->list.count);
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" mbsfn_Subframe_pattern is  = %x\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->subframeAllocation.choice.oneFrame.buf[0] >> 0);
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" radioframe_allocation_period  = %ld (just index number, not the real value)\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationPeriod);   // need to display the real value, using array of char (like in dumping SIB2)
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" radioframe_allocation_offset  = %ld\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationOffset);
     }
 
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" SIB2/3 Contents (partial)\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP));
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.n_SB = %ld\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.n_SB);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.hoppingMode = %ld\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.hoppingMode);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.pusch_HoppingOffset = %ld\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.pusch_HoppingOffset);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.enable64QAM = %d\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.pusch_ConfigBasic.enable64QAM);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.groupHoppingEnabled = %d\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.groupHoppingEnabled);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.groupAssignmentPUSCH = %ld\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.groupAssignmentPUSCH);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.sequenceHoppingEnabled = %d\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          (int)carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.sequenceHoppingEnabled);
-    LOG_T(RRC, PROTOCOL_RRC_CTXT_FMT" pusch_config_common.cyclicShift  = %ld\n",
-          PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-          carrier->sib2->radioResourceConfigCommon.pusch_ConfigCommon.ul_ReferenceSignalsPUSCH.cyclicShift);
+    //   SIB13
+    for (i = 0; i < carrier->sib13->mbsfn_AreaInfoList_r9.list.count; i++) {
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" SIB13 contents for MBSFN sync area %d/%d (partial)\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            i,
+            carrier->sib13->mbsfn_AreaInfoList_r9.list.count);
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" MCCH Repetition Period: %ld (just index number, not real value)\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib13->mbsfn_AreaInfoList_r9.list.array[i]->mcch_Config_r9.mcch_RepetitionPeriod_r9);
+      LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" MCCH Offset: %ld\n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib13->mbsfn_AreaInfoList_r9.list.array[i]->mcch_Config_r9.mcch_Offset_r9);
+    }
+  } else memset((void *)&RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib13,0,sizeof(RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib13));
 
-    /* Check if SIB4 present for particular CC Then only proceed for creating SIB4 payload */
-    if(true == configuration->sib4_Present[CC_id]) {
-      if(NULL == carrier->SIB4) {
-        carrier->SIB4 = (uint8_t *) malloc16(64);
-      }
-      AssertFatal(carrier->SIB4!=NULL,"cannot allocate memory for SIB4");
-      carrier->sizeof_SIB4 = do_SIB4(ctxt_pP->module_id,
-                                       CC_id,
-                                       false,
-                                       configuration
-                                      );
-      LOG_I(RRC,"do_SIB4, size %d \n ", carrier->sizeof_SIB4);
-      AssertFatal(carrier->sizeof_SIB4 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB4 == 255");
+  //TTN - SIB 18
+  if (configuration->SL_configured > 0) {
+    for (int j = 0; j < carrier->sib18->commConfig_r12->commRxPool_r12.list.count; j++) {
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Contents of SIB18 %d/%d \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            j+1,
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.count);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 rxPool_sc_CP_Len: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_CP_Len_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 sc_Period_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_Period_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 data_CP_Len_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->data_CP_Len_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 prb_Num_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.prb_Num_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 prb_Start_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.prb_Start_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 prb_End_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.prb_End_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 offsetIndicator: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.offsetIndicator_r12.choice.small_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 subframeBitmap_choice_bs_buf: %s \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.subframeBitmap_r12.choice.bs16_r12.buf);
     }
 
-    /* Check if SIB5 present for particular CC Then only proceed for creating SIB5 payload */
-    if(true == configuration->sib5_Present[CC_id]) {
-      if(NULL == carrier->SIB5) {
-        carrier->SIB5 = (uint8_t *) malloc16(64);
-      }
-      AssertFatal(carrier->SIB5!=NULL,"cannot allocate memory for SIB5");
-      carrier->sizeof_SIB5 = do_SIB5(ctxt_pP->module_id,
-                                       CC_id,
-                                       false,
-                                       configuration
-                                      );
-      LOG_I(RRC,"do_SIB5, size %d \n ", carrier->sizeof_SIB5);
-      AssertFatal(carrier->sizeof_SIB5 != 255,"FATAL, RC.rrc[mod].carrier[CC_id].sizeof_SIB5 == 255");
-    }
-
-    if (carrier->MBMS_flag > 0) {
-      for (i = 0; i < carrier->sib2->mbsfn_SubframeConfigList->list.count; i++) {
-        // SIB 2
-        //   LOG_D(RRC, "[eNB %ld] mbsfn_SubframeConfigList.list.count = %ld\n", enb_mod_idP, RC.rrc[enb_mod_idP].sib2->mbsfn_SubframeConfigList->list.count);
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" SIB13 contents for MBSFN subframe allocation %d/%d(partial)\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              i,
-              carrier->sib2->mbsfn_SubframeConfigList->list.count);
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" mbsfn_Subframe_pattern is  = %x\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->subframeAllocation.choice.oneFrame.buf[0] >> 0);
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" radioframe_allocation_period  = %ld (just index number, not the real value)\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationPeriod);   // need to display the real value, using array of char (like in dumping SIB2)
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" radioframe_allocation_offset  = %ld\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib2->mbsfn_SubframeConfigList->list.array[i]->radioframeAllocationOffset);
-      }
-
-      //   SIB13
-      for (i = 0; i < carrier->sib13->mbsfn_AreaInfoList_r9.list.count; i++) {
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" SIB13 contents for MBSFN sync area %d/%d (partial)\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              i,
-              carrier->sib13->mbsfn_AreaInfoList_r9.list.count);
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" MCCH Repetition Period: %ld (just index number, not real value)\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib13->mbsfn_AreaInfoList_r9.list.array[i]->mcch_Config_r9.mcch_RepetitionPeriod_r9);
-        LOG_D(RRC, PROTOCOL_RRC_CTXT_FMT" MCCH Offset: %ld\n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib13->mbsfn_AreaInfoList_r9.list.array[i]->mcch_Config_r9.mcch_Offset_r9);
-      }
-    } else memset((void *)&RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib13,0,sizeof(RC.rrc[ctxt_pP->module_id]->carrier[CC_id].sib13));
-
-    //TTN - SIB 18
-    if (configuration->SL_configured > 0) {
-      for (int j = 0; j < carrier->sib18->commConfig_r12->commRxPool_r12.list.count; j++) {
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Contents of SIB18 %d/%d \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              j+1,
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.count);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 rxPool_sc_CP_Len: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_CP_Len_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 sc_Period_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_Period_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 data_CP_Len_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->data_CP_Len_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 prb_Num_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.prb_Num_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 prb_Start_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.prb_Start_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 prb_End_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.prb_End_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 offsetIndicator: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.offsetIndicator_r12.choice.small_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB18 subframeBitmap_choice_bs_buf: %s \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib18->commConfig_r12->commRxPool_r12.list.array[j]->sc_TF_ResourceConfig_r12.subframeBitmap_r12.choice.bs16_r12.buf);
-      }
-
-      //TTN - SIB 19
-      for (int j = 0; j < carrier->sib19->discConfig_r12->discRxPool_r12.list.count; j++) {
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Contents of SIB19 %d/%d \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              j+1,
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.count);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 cp_Len_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->cp_Len_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 discPeriod_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->discPeriod_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 numRetx_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->numRetx_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 numRepetition_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->numRepetition_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 prb_Num_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.prb_Num_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 prb_Start_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.prb_Start_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 prb_End_r12: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.prb_End_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 offsetIndicator: %ld \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.offsetIndicator_r12.choice.small_r12);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 subframeBitmap_choice_bs_buf: %s \n",
-              PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
-              carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.subframeBitmap_r12.choice.bs16_r12.buf);
-      }
+    //TTN - SIB 19
+    for (int j = 0; j < carrier->sib19->discConfig_r12->discRxPool_r12.list.count; j++) {
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" Contents of SIB19 %d/%d \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            j+1,
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.count);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 cp_Len_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->cp_Len_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 discPeriod_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->discPeriod_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 numRetx_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->numRetx_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 numRepetition_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->numRepetition_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 prb_Num_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.prb_Num_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 prb_Start_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.prb_Start_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 prb_End_r12: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.prb_End_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 offsetIndicator: %ld \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.offsetIndicator_r12.choice.small_r12);
+      LOG_I(RRC, PROTOCOL_RRC_CTXT_FMT" SIB19 tf_ResourceConfig_r12 subframeBitmap_choice_bs_buf: %s \n",
+            PROTOCOL_RRC_CTXT_ARGS(ctxt_pP),
+            carrier->sib19->discConfig_r12->discRxPool_r12.list.array[j]->tf_ResourceConfig_r12.subframeBitmap_r12.choice.bs16_r12.buf);
     }
   }
 
@@ -6341,7 +6336,7 @@ char openair_rrc_eNB_configuration(
     }
   }
 
-  if (need_init && NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
+  if (need_init)
     // msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, F1AP_SCTP_REQ);
     // RCconfig_CU_F1(msg_p, enb_id);
     setup_ngran_CU(RC.rrc[ctxt.module_id]);
@@ -7159,8 +7154,8 @@ rrc_eNB_decode_ccch(
                                    NULL,
                                    (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-        rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
-
+          rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
+        }
         break;
 
       default:
@@ -9250,13 +9245,11 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                   NULL,
                   (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-              if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
-                rrc_rlc_config_asn1_req(&ctxt,
-                    ue_context_pP->ue_context.SRB_configList,
-                    (LTE_DRB_ToAddModList_t *)NULL,
-                    (LTE_DRB_ToReleaseList_t *)NULL,
-                    (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
-            }
+              rrc_rlc_config_asn1_req(&ctxt,
+                  ue_context_pP->ue_context.SRB_configList,
+                  (LTE_DRB_ToAddModList_t *)NULL,
+                  (LTE_DRB_ToReleaseList_t *)NULL,
+                  (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
           } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
             rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
             lchannelType = Bearer_CCCH_e;

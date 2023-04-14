@@ -493,57 +493,52 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
                 "[MSG] PDCP DL %s PDU on rb_id %ld\n",(srb_flagP)? "CONTROL" : "DATA", rb_idP);
 
     if ((pdcp_pdu_p!=NULL) && (srb_flagP == 0) && (ctxt_pP->enb_flag == 1)) {
-      LOG_D(PDCP, "pdcp data req on drb %ld, size %d, rnti %lx, node_type %d \n", rb_idP, pdcp_pdu_size, ctxt_pP->rntiMaybeUEid, RC.rrc ? RC.rrc[ctxt_pP->module_id]->node_type : -1);
+      LOG_D(PDCP, "pdcp data req on drb %ld, size %d, rnti %lx\n", rb_idP, pdcp_pdu_size, ctxt_pP->rntiMaybeUEid);
 
-      if (ctxt_pP->enb_flag == ENB_FLAG_YES && NODE_IS_DU(RC.rrc[ctxt_pP->module_id]->node_type)) {
-        LOG_E(PDCP, "Can't be DU, bad node type %d \n", RC.rrc[ctxt_pP->module_id]->node_type);
-        ret = false;
-      } else {
-        /* PDCP Tracepoint marker: DL DRB PDU  */
-        pdcp_pkt.direction = 1; /* Assuming DL is 1 */
-        pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
-        pdcp_pkt.channelType = lchannelType;
-        pdcp_pkt.channelId = rb_idP - 1;
-        pdcp_pkt.BCCHTransport = bcchTransportType;
-        pdcp_pkt.no_header_pdu= true;
-        pdcp_pkt.plane= DATA_PLANE_E;
-        pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
-        pdcp_pkt.is_retx = false;
-        pdcp_pkt.pdu_length = pdcp_pdu_size;
-        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
-          LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
+      /* PDCP Tracepoint marker: DL DRB PDU  */
+      pdcp_pkt.direction = 1; /* Assuming DL is 1 */
+      pdcp_pkt.ueid = pdcp_enb[ctxt_pP->module_id].rnti[pdcp_uid];
+      pdcp_pkt.channelType = lchannelType;
+      pdcp_pkt.channelId = rb_idP - 1;
+      pdcp_pkt.BCCHTransport = bcchTransportType;
+      pdcp_pkt.no_header_pdu= true;
+      pdcp_pkt.plane= DATA_PLANE_E;
+      pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
+      pdcp_pkt.is_retx = false;
+      pdcp_pkt.pdu_length = pdcp_pdu_size;
+      if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+        LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
 
-        lchannelType = Bearer_UNDEFINED_e;
-        bcchTransportType = NR_PLANE_UNDEFINED_E;
+      lchannelType = Bearer_UNDEFINED_e;
+      bcchTransportType = NR_PLANE_UNDEFINED_E;
 
-        memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
-        rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_NO, rb_idP, muiP,
-                     confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
-                     destinationL2Id);
-        ret = false;
-        switch (rlc_status) {
-          case RLC_OP_STATUS_OK:
-            LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
-            ret=true;
-            break;
+      memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
+      rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_NO, rb_idP, muiP,
+                   confirmP, pdcp_pdu_size, pdcp_pdu_p,sourceL2Id,
+                   destinationL2Id);
+      ret = false;
+      switch (rlc_status) {
+        case RLC_OP_STATUS_OK:
+          LOG_D(PDCP, "Data sending request over RLC succeeded!\n");
+          ret=true;
+          break;
 
-          case RLC_OP_STATUS_BAD_PARAMETER:
-            LOG_W(PDCP, "Data sending request over RLC failed with 'Bad Parameter' reason!\n");
-            break;
+        case RLC_OP_STATUS_BAD_PARAMETER:
+          LOG_W(PDCP, "Data sending request over RLC failed with 'Bad Parameter' reason!\n");
+          break;
 
-          case RLC_OP_STATUS_INTERNAL_ERROR:
-            LOG_W(PDCP, "Data sending request over RLC failed with 'Internal Error' reason!\n");
-            break;
+        case RLC_OP_STATUS_INTERNAL_ERROR:
+          LOG_W(PDCP, "Data sending request over RLC failed with 'Internal Error' reason!\n");
+          break;
 
-          case RLC_OP_STATUS_OUT_OF_RESSOURCES:
-            LOG_W(PDCP, "Data sending request over RLC failed with 'Out of Resources' reason!\n");
-            break;
+        case RLC_OP_STATUS_OUT_OF_RESSOURCES:
+          LOG_W(PDCP, "Data sending request over RLC failed with 'Out of Resources' reason!\n");
+          break;
 
-          default:
-            LOG_W(PDCP, "RLC returned an unknown status code after PDCP placed the order to send some data (Status Code:%d)\n", rlc_status);
-            break;
-        } // switch case
-      } /* end if node_type is not DU */
+        default:
+          LOG_W(PDCP, "RLC returned an unknown status code after PDCP placed the order to send some data (Status Code:%d)\n", rlc_status);
+          break;
+      } // switch case
     } else { // SRB
         /*PDCP Tracepoint marker: DL SRB PDU   */
         pdcp_pkt.direction = 1; /* Assuming DL is 1 */
@@ -602,7 +597,6 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
         } // switch case
       }
     }
-  }
 
   if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
     stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_req);

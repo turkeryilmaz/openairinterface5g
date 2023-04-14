@@ -43,7 +43,6 @@
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "UTIL/OSA/osa_defs.h"
 #include <openair2/RRC/NR/nr_rrc_proto.h>
-#include "pdcp.h"
 
 void rrc_parse_ue_capabilities(gNB_RRC_INST *rrc, NR_UE_CapabilityRAT_ContainerList_t *UE_CapabilityRAT_ContainerList, x2ap_ENDC_sgnb_addition_req_t *m, NR_CG_ConfigInfo_IEs_t  *cg_config_info) {
   struct rrc_gNB_ue_context_s        *ue_context_p = NULL;
@@ -348,14 +347,31 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc,struct rrc_gNB_ue_context_s *ue_context_
 
   rrc->Nb_ue++;
   // configure MAC and RLC
-  bool ret = false;
-  if (get_softmodem_params()->phy_test) {
-    // phytest mode: we don't set up RA, etc
-    ret = nr_mac_add_test_ue(RC.nrmac[rrc->module_id], ue_context_p->ue_id_rnti, ue_context_p->ue_context.secondaryCellGroup);
+  if (NODE_IS_DU(rrc->node_type)) {
+    rrc_mac_config_req_gNB(rrc->module_id,
+                           rrc->configuration.pdsch_AntennaPorts,
+                           rrc->configuration.pusch_AntennaPorts,
+                           rrc->configuration.sib1_tda,
+                           rrc->configuration.minRXTXTIME,
+                           rrc->carrier.servingcellconfigcommon,
+                           &rrc->carrier.mib,
+                           NULL,
+                           1, // add_ue flag
+                           ue_context_p->ue_id_rnti,
+                           ue_context_p->ue_context.secondaryCellGroup);
   } else {
-    ret = nr_mac_prepare_ra_nsa_ue(RC.nrmac[rrc->module_id], ue_context_p->ue_id_rnti, ue_context_p->ue_context.secondaryCellGroup);
+    rrc_mac_config_req_gNB(rrc->module_id,
+                           rrc->configuration.pdsch_AntennaPorts,
+                           rrc->configuration.pusch_AntennaPorts,
+                           rrc->configuration.sib1_tda,
+                           rrc->configuration.minRXTXTIME,
+                           NULL,
+                           NULL,
+                           NULL,
+                           1, // add_ue flag
+                           ue_context_p->ue_id_rnti,
+                           ue_context_p->ue_context.secondaryCellGroup);
   }
-  AssertFatal(ret, "cannot add NSA UE in MAC, aborting\n");
 
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, rrc->module_id, GNB_FLAG_YES, ue_context_p->ue_id_rnti, 0, 0, rrc->module_id);
   if (get_softmodem_params()->do_ra) ctxt.enb_flag = 0;
@@ -370,7 +386,6 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc,struct rrc_gNB_ue_context_s *ue_context_
 
   nr_pdcp_add_drbs(ctxt.enb_flag,
                    ctxt.rntiMaybeUEid,
-                   0,
                    ue_context_p->ue_context.rb_config->drb_ToAddModList,
                    (ue_context_p->ue_context.integrity_algorithm << 4) | ue_context_p->ue_context.ciphering_algorithm,
                    kUPenc,
@@ -381,6 +396,7 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc,struct rrc_gNB_ue_context_s *ue_context_
                              get_softmodem_params()->sa ? ue_context_p->ue_context.rb_config->srb_ToAddModList : NULL,
                              ue_context_p->ue_context.rb_config->drb_ToAddModList,
                              ue_context_p->ue_context.rb_config->drb_ToReleaseList,
+                             (LTE_PMCH_InfoList_r9_t *)NULL,
                              ue_context_p->ue_context.secondaryCellGroup->rlc_BearerToAddModList);
 
   LOG_D(RRC, "%s:%d: done RRC PDCP/RLC ASN1 request for UE rnti %lx\n", __FUNCTION__, __LINE__, ctxt.rntiMaybeUEid);
