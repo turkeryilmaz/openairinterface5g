@@ -5036,6 +5036,7 @@ SR_indication(module_id_t mod_idP,
       }
 
       UE_info->UE_template[cc_idP][UE_id].ul_SR = 1;
+      LOG_D(MAC, "fxn:%s ul_SR=1 for ue:%d\n", __FUNCTION__, rntiP );
       UE_info->UE_template[cc_idP][UE_id].ul_active = true;
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 1);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 0);

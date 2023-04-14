@@ -3375,6 +3375,7 @@ void schedule_ulsch_rnti_fairRR(module_id_t   module_idP,
         if(ulsch_ue_select[CC_id].list[ulsch_ue_num].ue_priority == SCH_UL_FIRST) {
           UE_template->scheduled_ul_bytes += get_TBS_UL(UE_template->mcs_UL[harq_pid],rb_table[rb_table_index]);
           UE_template->ul_SR = 0;
+          LOG_D(MAC, "fxn:%s ul_SR=0 for ue:%d\n", __FUNCTION__, rnti );
         }
 
         if((ulsch_ue_select[CC_id].list[ulsch_ue_num].ue_priority == SCH_UL_INACTIVE) && (ULSCH_first_end == 0)) {
