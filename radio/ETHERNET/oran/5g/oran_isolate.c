@@ -21,9 +21,11 @@
 
 
 #include <stdio.h>
+#include <string.h>
 #include "common_lib.h"
 #include "ethernet_lib.h"
 #include "oran_isolate.h"
+#include "xran_fh_o_du.h"
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
@@ -45,7 +47,7 @@ int trx_oran_start(openair0_device *device)
   oran_eth_state_t *s = device->priv;
 
   // Start ORAN
-   if ( start_oran(s->oran_priv) !=0 ){
+   if ( xran_start(s->oran_priv) !=0 ){
       printf("%s:%d:%s: Start ORAN failed ... Exit\n",
          __FILE__, __LINE__, __FUNCTION__);
       exit(1); 
@@ -61,8 +63,7 @@ void trx_oran_end(openair0_device *device)
 {
   printf("ORAN: %s\n", __FUNCTION__);
   oran_eth_state_t *s = device->priv;
-  stop_oran(s->oran_priv);
-  close_oran(s->oran_priv);
+  xran_close(s->oran_priv);
 }
 
 
@@ -70,7 +71,7 @@ int trx_oran_stop(openair0_device *device)
 {
   printf("ORAN: %s\n", __FUNCTION__);
   oran_eth_state_t *s = device->priv;
-  stop_oran(s->oran_priv);
+  xran_stop(s->oran_priv);
   return(0);
 }
 
@@ -219,7 +220,7 @@ void oran_fh_if4p5_south_in(RU_t *ru,
   extern uint16_t sl_ahead;
   int f, sl;
 
-  int ret = xran_fh_rx_read_slot(s->oran_priv, &ru_info, &f, &sl, *frame, *slot, sync);
+  int ret = xran_fh_rx_read_slot(&ru_info, &f, &sl, *frame, *slot, sync);
 
   if (ret != 0){
      printf("ORAN: ORAN_fh_if4p5_south_in ERROR in RX function \n");
@@ -263,7 +264,7 @@ void oran_fh_if4p5_south_out(RU_t *ru,
   ru_info.txdataF_BF = ru->common.txdataF_BF;
 //printf("south_out:\tframe=%d\tslot=%d\ttimestamp=%ld\n",frame,slot,timestamp);
 
-  int ret = xran_fh_tx_send_slot(s->oran_priv, &ru_info, frame, slot, timestamp);
+  int ret = xran_fh_tx_send_slot(&ru_info, frame, slot, timestamp);
   if (ret != 0){
      printf("ORAN: ORAN_fh_if4p5_south_out ERROR in TX function \n");
   }
@@ -283,6 +284,25 @@ void *get_internal_parameter(char *name)
 }
 
 
+
+void make_args(char **argv, int *argc, char *string)
+{
+  char tmp[1024]={0x0};
+  FILE *cmd=NULL;
+  int i=0;
+  char *p=NULL;
+											
+  sprintf(tmp, "set - %s && for i in %c$@%c;\n do\n echo $i\ndone",string, '"', '"');
+  cmd=popen(tmp, "r");
+  while (fgets(tmp, sizeof(tmp), cmd)!=NULL)
+  {
+    p=strchr(tmp, '\n');
+    if (p!=NULL) *p=0x0;
+    argv[i] = malloc(strlen(tmp));
+    strcpy(argv[i++], tmp);
+  }
+  *argc=i;
+}
 __attribute__((__visibility__("default")))
 int transport_init(openair0_device *device,
                    openair0_config_t *openair0_cfg,
@@ -318,7 +338,7 @@ int transport_init(openair0_device *device,
   eth->e.flags = ETH_RAW_IF4p5_MODE;
   eth->e.compression = NO_COMPRESS;
   eth->e.if_name = eth_params->local_if_name;
-  eth->oran_priv = define_oran_pointer(); 
+  eth->oran_priv = NULL;//define_oran_pointer(); 
   device->priv = eth;
   device->openair0_cfg=&openair0_cfg[0];
 
@@ -331,11 +351,16 @@ int transport_init(openair0_device *device,
    // Check if the machine is PTP sync
    check_xran_ptp_sync();
 
+   int argc;
+   char *argv[20]={0x0};
+   make_args(&argv,&argc,openair0_cfg->sdr_addrs);
+/*
    // SetUp
    if ( setup_oran(s->oran_priv) !=0 ){ 
       printf("%s:%d:%s: SetUp ORAN failed ... Exit\n",
          __FILE__, __LINE__, __FUNCTION__);
-      exit(1);       
+      ose
+      //c/xit(1);       
    }else{
       printf("SetUp ORAN. Done\n");
    }
@@ -358,6 +383,9 @@ int transport_init(openair0_device *device,
    // Open ORAN
    open_oran(s->oran_priv);
    printf("xran_open. Done\n");
-
+*/
+  for (int c=0;c<argc;c++) 
+     printf("Running oran with param %d : %s\n",c,argv[c]);
+  eth->oran_priv = oai_main(argc,argv);
   return 0;
 }

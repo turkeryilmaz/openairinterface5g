@@ -385,12 +385,13 @@ static void match_crc_rx_pdu(nfapi_nr_rx_data_indication_t *rx_ind, nfapi_nr_crc
   }
 }
 
-void scheduler(module_id_t module_id,int frame,int slot) {
+void scheduler(module_id_t module_id,int CC_id,int frame,int slot) {
 
   
   NR_IF_Module_t   *ifi        = nr_if_inst[module_id];
   gNB_MAC_INST     *mac        = RC.nrmac[module_id];
 
+  NR_Sched_Rsp_t   *sched_info = &NR_Sched_INFO[module_id][CC_id];
 
   gNB_dlsch_ulsch_scheduler(module_id,frame,slot);
   ifi->CC_mask            = 0;
@@ -504,7 +505,7 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
       int spf = get_spf(cfg);
       int frame = (UL_info->frame+((UL_info->slot>(spf-1-ifi->sl_ahead))?1:0)) & 1023;
       int slot = (UL_info->slot+ifi->sl_ahead)%spf;
-      scheduler(module_id,frame,slot); /*
+      scheduler(module_id,CC_id,frame,slot); /*
       gNB_dlsch_ulsch_scheduler(module_id,frame,slot);
 
       ifi->CC_mask            = 0;
@@ -548,7 +549,7 @@ NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {
 
     nr_if_inst[Mod_id]->CC_mask=0;
     nr_if_inst[Mod_id]->NR_UL_indication = NR_UL_indication;
-    nr_if_inst[Mod_id]->NR_mac_scheduler = gNB_dlsch_ulsch_scheduler;
+    nr_if_inst[Mod_id]->NR_mac_scheduler = scheduler;
     AssertFatal(pthread_mutex_init(&nr_if_inst[Mod_id]->if_mutex,NULL)==0,
                 "allocation of nr_if_inst[%d]->if_mutex fails\n",Mod_id);
   }

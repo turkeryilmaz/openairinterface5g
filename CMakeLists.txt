@@ -161,9 +161,9 @@ else()
   set (XRAN_LIB_DIR /usr/local/xran)
 endif()
 
-set (XRAN_DIR         $ENV{XRAN_LIB_DIR}/../src)
+set (XRAN_DIR         $ENV{XRAN_LIB_DIR}/src)
 set (XRAN_COMMON_DIR  $ENV{XRAN_LIB_DIR}/../../test/common)
-set (XRAN_LIB_API_DIR $ENV{XRAN_LIB_DIR}/../api)
+set (XRAN_LIB_API_DIR $ENV{XRAN_LIB_DIR}/api)
 
 Message("XRAN_LIB_DIR: ${XRAN_LIB_DIR}, DPDK_DIR: ${DPDK_DIR}")
 project (OpenAirInterface)
@@ -622,9 +622,11 @@ target_link_libraries(benetel_5g PRIVATE asn1_nr_rrc asn1_lte_rrc)
 ######################################################################
 
 set(ORAN_FHLIB_5G_SOURCE
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran.cpp
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/xran_lib_wrap.cpp
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common_bronze.c
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config_bronze.c
     ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
+    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oaioran.c
     )
 add_library(oran_fhlib_5g MODULE ${ORAN_FHLIB_5G_SOURCE})
 
