@@ -471,6 +471,17 @@ int logInit (void)
   register_log_component("mRAL","",RAL_UE);
   register_log_component("ENB_APP","log",ENB_APP);
   register_log_component("ENB_SS","log",ENB_SS);
+  register_log_component("ENB_SS_PORTMAN","log",ENB_SS_PORTMAN);
+  register_log_component("ENB_SS_SYS_TASK","log",ENB_SS_SYS_TASK);
+  register_log_component("ENB_SS_SRB_ACP","log",ENB_SS_SRB_ACP);
+  register_log_component("ENB_SS_SYSIND","log",ENB_SS_SYSIND);
+  register_log_component("ENB_SS_SYSIND_ACP","log",ENB_SS_SYSIND_ACP);
+  register_log_component("ENB_SS_SRB","log",ENB_SS_SRB);
+  register_log_component("ENB_SS_DRB","log",ENB_SS_DRB);
+  register_log_component("ENB_SS_DRB_ACP","log",ENB_SS_DRB_ACP);
+  register_log_component("ENB_SS_VNG","log",ENB_SS_VNG);
+  register_log_component("ENB_SS_VTP","log",ENB_SS_VTP);
+  register_log_component("ENB_SS_VT_TIMER","log",ENB_SS_VT_TIMER);
   register_log_component("MCE_APP","log",MCE_APP);
   register_log_component("MME_APP","log",MME_APP);
   register_log_component("FLEXRAN_AGENT","log",FLEXRAN_AGENT);
