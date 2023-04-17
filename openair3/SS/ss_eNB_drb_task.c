@@ -73,7 +73,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	struct DRB_COMMON_IND ind = {};
         uint32_t status = 0;
 
-	LOG_A(ENB_APP, "[SS_DRB] Reported drb sdu_size:%d \t drb_id %d\n", pdu_ind->sdu_size, pdu_ind->drb_id);
+	LOG_A(ENB_SS_DRB, "[SS_DRB] Reported drb sdu_size:%d \t drb_id %d\n", pdu_ind->sdu_size, pdu_ind->drb_id);
 
 	DevAssert(pdu_ind != NULL);
         DevAssert(pdu_ind->sdu_size >= 0);
@@ -114,7 +114,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	ind.U_Plane.SubframeData.NoOfTTIs = 1;
 	ind.U_Plane.SubframeData.PduSduList.d = L2DataList_Type_PdcpSdu;
 	ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d = 1;
-	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
+	LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] PDCP SDU Count: %lu\n", ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d);
 	for(int i = 0; i < ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d; i++){
                 ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v = CALLOC(1,(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.d)*(sizeof(PDCP_SDU_Type)));
                 DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
@@ -126,21 +126,21 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	//Encode Message
 	if (acpDrbProcessToSSEncSrv(ctx_drb_g, buffer, &msgSize, &ind) != 0)
         {
-                LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] acpDrbProcessToSSEncSrv Failure\n");
+                LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] acpDrbProcessToSSEncSrv Failure\n");
                 return;
         }
-	LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
+	LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
 
 	//Send Message
 	status = acpSendMsg(ctx_drb_g, msgSize, buffer);
 	if (status != 0)
         {
-                LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_drb_g));
+                LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_drb_g));
                 return;
         }
 	else
         {
-                LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_IND] acpSendMsg Success \n");
+                LOG_A(ENB_SS_DRB, "[SS_DRB][DRB_COMMON_IND] acpSendMsg Success \n");
         }
 
 }
@@ -158,10 +158,10 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
 
     for(int i = 0; i < req->U_Plane.SubframeDataList.d; i++){
       if(req->U_Plane.SubframeDataList.v[i].PduSduList.d == L2DataList_Type_PdcpSdu){
-        LOG_A(ENB_SS, "PDCP SDU Received in DRB_COMMON_REQ");
+        LOG_A(ENB_SS_DRB_ACP, "PDCP SDU Received in DRB_COMMON_REQ");
         for(int j = 0; j < req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.d; j++){
           SS_DRB_PDU_REQ(message_p).sdu_size = req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d;
-          LOG_A(ENB_SS, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
+          LOG_A(ENB_SS_DRB_ACP, "Length of PDCP SDU received in DRB_COMMON_REQ: %lu\n",  req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
           memcpy(SS_DRB_PDU_REQ(message_p).sdu, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].v, req->U_Plane.SubframeDataList.v[i].PduSduList.v.PdcpSdu.v[j].d);
         }
       }
@@ -176,12 +176,12 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
       tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
       timer_tinfo = tinfo;
       msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
-      LOG_A(ENB_SS,"VT_TIMER DRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+      LOG_A(ENB_SS_DRB_ACP,"VT_TIMER DRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 
       if(msg_queued)
       {
         msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
-        LOG_A(ENB_SS, "DRB_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+        LOG_A(ENB_SS_DRB_ACP, "DRB_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
           tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
       }
     }
@@ -190,9 +190,9 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
       int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
       if (send_res < 0)
       {
-        LOG_A(ENB_APP, "[SS_DRB] Error in itti_send_msg_to_task");
+        LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Error in itti_send_msg_to_task");
       }
-      LOG_A(ENB_APP, "Send res: %d", send_res);
+      LOG_A(ENB_SS_DRB_ACP, "Send res: %d", send_res);
     }
   }
 }
@@ -203,7 +203,7 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 	size_t msgSize = size; //2
         int cell_index = 0;
 
-	LOG_A(ENB_SS, "Entry in fxn:%s\n", __FUNCTION__);
+	LOG_A(ENB_SS_DRB_ACP, "Entry in fxn:%s\n", __FUNCTION__);
 	while (1)
 	{
 		int userId = acpRecvMsg(ctx, &msgSize, buffer);
@@ -232,7 +232,7 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 			} 
 			else
 			{
-				LOG_A(ENB_APP, "[SS_DRB] Invalid userId: %d \n", userId);
+				LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Invalid userId: %d \n", userId);
 				break;
 			}
 		}
@@ -245,40 +245,40 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 		else if (MSG_DrbProcessFromSS_userId == userId)
 		{
 			struct DRB_COMMON_REQ *req = NULL;
-			LOG_A(ENB_APP, "[SS_DRB] DRB_COMMON_REQ Received \n");
+			LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] DRB_COMMON_REQ Received \n");
 
 			if (acpDrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
 			{
-				LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] acpDrbProcessFromSSDecSrv Failed\n");
+				LOG_A(ENB_SS_DRB_ACP, "[SS_DRB][DRB_COMMON_REQ] acpDrbProcessFromSSDecSrv Failed\n");
 				break;
 			}
 			if(req->Common.CellId){
 				cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
 				SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
-				LOG_A(ENB_SS,"[SS_DRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+				LOG_A(ENB_SS_DRB_ACP,"[SS_DRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
 			}
 			if(SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
 			{
-				LOG_A(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] DRB_COMMON_REQ Received in CELL_ACTIVE\n");
+				LOG_A(ENB_SS_DRB_ACP, "[SS_DRB][DRB_COMMON_REQ] DRB_COMMON_REQ Received in CELL_ACTIVE\n");
 				ss_task_handle_drb_pdu_req(req,cell_index);
 			}
 			else
 			{
-				LOG_W(ENB_APP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+				LOG_W(ENB_SS_DRB_ACP, "[SS_DRB][DRB_COMMON_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
 			}
 
 			acpDrbProcessFromSSFreeSrv(req);
-			LOG_A(ENB_SS, "Exit from fxn:%s at line:%d \n", __FUNCTION__, __LINE__);
+			LOG_A(ENB_SS_DRB_ACP, "Exit from fxn:%s at line:%d \n", __FUNCTION__, __LINE__);
 			return;
 		}
 		else if (MSG_DrbProcessToSS_userId == userId)
 		{
-			LOG_A(ENB_APP, "[SS_DRB] DRB_COMMON_IND Received; ignoring \n");
+			LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] DRB_COMMON_IND Received; ignoring \n");
 			break;
 		}
 
 	}
-	LOG_A(ENB_SS, "Exit from fxn:%s at line:%d \n", __FUNCTION__, __LINE__);
+	LOG_A(ENB_SS_DRB_ACP, "Exit from fxn:%s at line:%d \n", __FUNCTION__, __LINE__);
 }
 
 void *ss_eNB_drb_process_itti_msg(void *notUsed)
@@ -299,17 +299,17 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
                                 int cell_index=0;
                                 if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
                                   cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
-                                  LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                                  LOG_A(ENB_SS_DRB,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
                                 }
 				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
 	    			if (origin_task == TASK_SS_PORTMAN)
 				{       
-					LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+					LOG_D(ENB_SS_DRB, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
                                 }
 				else
 	                        {
-					LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
+					LOG_A(ENB_SS_DRB, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
 					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
 	                                {
 						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
@@ -317,7 +317,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 					}
 					else
 					{
-						LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+						LOG_A(ENB_SS_DRB, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
 					}
 
 					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
@@ -326,12 +326,12 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 				break;
 
 			case TERMINATE_MESSAGE:
-				LOG_A(ENB_APP, "[SS_DRB] Received TERMINATE_MESSAGE \n");
+				LOG_A(ENB_SS_DRB, "[SS_DRB] Received TERMINATE_MESSAGE \n");
 				itti_exit_task();
 				break;
 
 			default:
-				LOG_A(ENB_APP, "[SS_DRB] Received unhandled message %d:%s\n",
+				LOG_A(ENB_SS_DRB, "[SS_DRB] Received unhandled message %d:%s\n",
 						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 				break;
                         }
@@ -348,7 +348,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 void ss_eNB_drb_init(void)
 {
   IpAddress_t ipaddr;
-  LOG_A(ENB_APP, "[SS_DRB] Starting System Simulator DRB Thread \n");
+  LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Starting System Simulator DRB Thread \n");
 
   const char *hostIp;
   hostIp = RC.ss.hostIp;
@@ -370,11 +370,11 @@ void ss_eNB_drb_init(void)
   int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_drb_g);
   if (ret < 0)
   {
-    LOG_A(ENB_APP, "[SS_DRB] Connection failure err=%d\n", ret);
+    LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Connection failure err=%d\n", ret);
     return;
   }
   int fd1 = acpGetSocketFd(ctx_drb_g);
-  LOG_A(ENB_APP, "[SS_DRB] Connection performed : %d\n", fd1);
+  LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Connection performed : %d\n", fd1);
 
   buffer = (unsigned char *)acpMalloc(size);
   assert(buffer);

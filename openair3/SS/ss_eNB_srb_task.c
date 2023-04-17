@@ -100,7 +100,7 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind,int cell_index)
         LTE_UL_DCCH_Message_t               *ul_dcch_msg = NULL;
         LTE_UL_CCCH_Message_t               *ul_ccch_msg = NULL;
 
-	LOG_A(ENB_SS, "[SS_SRB] Reported rrc sdu_size:%d \t srb_id %d rnti %d\n", pdu_ind->sdu_size, pdu_ind->srb_id, pdu_ind->rnti);
+	LOG_A(ENB_SS_SRB, "[SS_SRB] Reported rrc sdu_size:%d \t srb_id %d rnti %d\n", pdu_ind->sdu_size, pdu_ind->srb_id, pdu_ind->rnti);
 	DevAssert(pdu_ind != NULL);
 	DevAssert(pdu_ind->sdu_size >= 0);
 	DevAssert(pdu_ind->srb_id >= 0);
@@ -179,22 +179,22 @@ static void ss_send_srb_data(ss_rrc_pdu_ind_t *pdu_ind,int cell_index)
    */
 	if (acpSysSrbProcessToSSEncSrv(ctx_srb_g, buffer, &msgSize, &ind) != 0)
 	{
-		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSysSrbProcessToSSEncSrv Failure\n");
+		LOG_A(ENB_SS_SRB, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSysSrbProcessToSSEncSrv Failure\n");
 		return;
 	}
-	LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
+	LOG_A(ENB_SS_SRB, "[SS_SRB][EUTRA_RRC_PDU_IND] Buffer msgSize=%d (!!2) to EUTRACell %d", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
 
 	/* Send message
    */
 	status = acpSendMsg(ctx_srb_g, msgSize, buffer);
 	if (status != 0)
 	{
-		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_srb_g));
+		LOG_A(ENB_SS_SRB, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_srb_g));
 		return;
 	}
 	else
 	{
-		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSendMsg Success \n");
+		LOG_A(ENB_SS_SRB, "[SS_SRB][EUTRA_RRC_PDU_IND] acpSendMsg Success \n");
 	}
 }
 
@@ -251,7 +251,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 		}
 
-		LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
+		LOG_A(ENB_SS_SRB_ACP, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
 			  SS_RRC_PDU_REQ(message_p).srb_id,
 			  req->RrcPdu.d == RRC_MSG_Request_Type_Ccch ? "CCCH" : "DCCH", SS_RRC_PDU_REQ(message_p).sdu_size ,rnti_g);
 
@@ -266,8 +266,8 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
 			timer_tinfo = tinfo;
 			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
-      LOG_I(ENB_SS, "msg_queued:%d\n",msg_queued);
-			LOG_A(ENB_SS,"VT_TIMER SRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+      LOG_I(ENB_SS_SRB_ACP, "msg_queued:%d\n",msg_queued);
+			LOG_A(ENB_SS_SRB_ACP,"VT_TIMER SRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 
 			if(msg_queued)
       {
@@ -281,10 +281,10 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
           timer_tinfo.sf--;
         
         msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
-        LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+        LOG_A(ENB_SS_SRB_ACP, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
             tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
       }
-      LOG_I(ENB_SS, "msg_queued2:%d\n",msg_queued);
+      LOG_I(ENB_SS_SRB_ACP, "msg_queued2:%d\n",msg_queued);
 
 		}
 		if (!msg_queued)
@@ -292,10 +292,10 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
 			if (send_res < 0)
 			{
-				LOG_A(ENB_SS, "[SS_SRB] Error in itti_send_msg_to_task");
+				LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Error in itti_send_msg_to_task");
 			}
 
-			LOG_A(ENB_SS, "Send res: %d", send_res);
+			LOG_A(ENB_SS_SRB_ACP, "Send res: %d", send_res);
 		}
 	}
 }
@@ -319,7 +319,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 	while (1)
 	{
 		int userId = acpRecvMsg(ctx, &msgSize, buffer);
-		LOG_A(ENB_SS, "[SS_SRB] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+		LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
 		// Error handling
 		if (userId < 0)
@@ -346,7 +346,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
             } 
 			else
 			{
-				LOG_A(ENB_SS, "[SS_SRB] Invalid userId: %d \n", userId);
+				LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Invalid userId: %d \n", userId);
 				break;
 			}
 		}
@@ -361,17 +361,17 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 		else if (MSG_SysSrbProcessFromSS_userId == userId)
     {
       struct EUTRA_RRC_PDU_REQ *req = NULL;
-      LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] EUTRA_RRC_PDU_REQ Received \n");
+      LOG_A(ENB_SS_SRB_ACP, "[SS_SRB][EUTRA_RRC_PDU_REQ] EUTRA_RRC_PDU_REQ Received \n");
       // Got the message
       if (acpSysSrbProcessFromSSDecSrv(ctx, buffer, msgSize, &req) != 0)
       {
-        LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_REQ] acpSysSrbProcessFromSSDecSrv Failed\n");
+        LOG_A(ENB_SS_SRB_ACP, "[SS_SRB][EUTRA_RRC_PDU_REQ] acpSysSrbProcessFromSSDecSrv Failed\n");
         break;
       }
       if(req->Common.CellId){
         cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
         SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
-        LOG_A(ENB_SS,"[SS_SRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+        LOG_A(ENB_SS_SRB_ACP,"[SS_SRB] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
       }
       if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
       {
@@ -379,7 +379,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
       }
       else
       {
-        LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+        LOG_A(ENB_SS_SRB_ACP, "ERROR [SS_SRB][EUTRA_RRC_PDU_REQ] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
       }
 
       acpSysSrbProcessFromSSFreeSrv(req);
@@ -387,7 +387,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
     }
 		else if (MSG_SysSrbProcessToSS_userId == userId)
 		{
-			LOG_A(ENB_SS, "[SS_SRB][EUTRA_RRC_PDU_IND] EUTRA_RRC_PDU_IND Received; ignoring \n");
+			LOG_A(ENB_SS_SRB_ACP, "[SS_SRB][EUTRA_RRC_PDU_IND] EUTRA_RRC_PDU_IND Received; ignoring \n");
 			break;
 		}
 	}
@@ -405,7 +405,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 void ss_eNB_srb_init(void)
 {
 	IpAddress_t ipaddr;
-	LOG_A(ENB_SS, "[SS_SRB] Starting System Simulator SRB Thread \n");
+	LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Starting System Simulator SRB Thread \n");
 
 	const char *hostIp;
 	hostIp = RC.ss.hostIp;
@@ -429,11 +429,11 @@ void ss_eNB_srb_init(void)
 	int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
 	if (ret < 0)
 	{
-		LOG_A(ENB_SS, "[SS_SRB] Connection failure err=%d\n", ret);
+		LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Connection failure err=%d\n", ret);
 		return;
 	}
 	int fd1 = acpGetSocketFd(ctx_srb_g);
-	LOG_A(ENB_SS, "[SS_SRB] Connection performed : %d\n", fd1);
+	LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Connection performed : %d\n", fd1);
 
 	buffer = (unsigned char *)acpMalloc(size);
 	assert(buffer);
@@ -471,16 +471,16 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
           task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
           if(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId){
             cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_rrc_pdu_ind.physCellId, SS_context.SSCell_list);
-            LOG_A(ENB_SS,"[SS_SRB] cell_index in SS_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+            LOG_A(ENB_SS_SRB,"[SS_SRB] cell_index in SS_RRC_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
           }
 
           if (origin_task == TASK_SS_PORTMAN)
           {
-            LOG_D(ENB_APP, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+            LOG_D(ENB_SS_SRB, "[SS_SRB] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
           }
           else
           {
-            LOG_A(ENB_SS, "[SS_SRB] Received SS_RRC_PDU_IND from RRC\n");
+            LOG_A(ENB_SS_SRB, "[SS_SRB] Received SS_RRC_PDU_IND from RRC\n");
             if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
             {
               instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
@@ -488,7 +488,7 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
             }
             else
             {
-              LOG_A(ENB_SS, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+              LOG_A(ENB_SS_SRB, "ERROR [SS_SRB][EUTRA_RRC_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
             }
           }
 
@@ -499,12 +499,12 @@ void *ss_eNB_srb_process_itti_msg(void *notUsed)
         break;
 
       case TERMINATE_MESSAGE:
-        LOG_A(ENB_SS, "[SS_SRB] Received TERMINATE_MESSAGE \n");
+        LOG_A(ENB_SS_SRB, "[SS_SRB] Received TERMINATE_MESSAGE \n");
         itti_exit_task();
         break;
 
       default:
-        LOG_A(ENB_SS, "[SS_SRB] Received unhandled message %d:%s\n",
+        LOG_A(ENB_SS_SRB, "[SS_SRB] Received unhandled message %d:%s\n",
             ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         break;
     }
@@ -525,7 +525,7 @@ void *ss_eNB_srb_task(void *arg)
 {
 	while (1)
 	{
-		//LOG_A(ENB_SS,"[SS_SRB] Inside ss_eNB_srb_task \n");
+		//LOG_A(ENB_SS_SRB_ACP,"[SS_SRB] Inside ss_eNB_srb_task \n");
 		(void)ss_eNB_srb_process_itti_msg(NULL);
 	}
 	//acpFree(buffer);
