@@ -547,9 +547,9 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
                         RRC_CONFIGURATION_REQ(msg_p).sib4_Present[cell_index] = true;
                         if (true == AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.d)
                         {
-                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d;
-                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount, sizeof(struct IntraFreqNeighCellInfo_s));
-                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListPresent = true;
+                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount[cell_index] = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d;
+                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index] = CALLOC(RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListCount[cell_index], sizeof(struct IntraFreqNeighCellInfo_s));
+                          RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellListPresent[cell_index] = true;
                           for (int k = 0; k < AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.d; k++)
                           {
                             RRC_CONFIGURATION_REQ(msg_p).intraFreqNeighCellList[cell_index][k].physCellId = AddOrReconfigure->Basic.v.BcchConfig.v.BcchInfo.v.SIs.v.v[i].message.v.c1.v.systemInformation.criticalExtensions.v.systemInformation_r8.sib_TypeAndInfo.v[j].v.sib4.intraFreqNeighCellList.v.v[k].physCellId;
