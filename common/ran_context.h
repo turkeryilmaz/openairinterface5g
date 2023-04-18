@@ -35,19 +35,9 @@
 
 #include <pthread.h>
 #include <stdint.h>
-#include "common/platform_constants.h"
-#include "PHY/defs_eNB.h"
-#include "PHY/types.h"
-#include "PHY/impl_defs_top.h"
 
-#include "ENB_APP/enb_config.h"
-
-#include "PHY/defs_L1_NB_IoT.h"
-#include "RRC/LTE/defs_NB_IoT.h"
-#include "RRC/LTE/rrc_defs.h"
-#include "RRC/NR/nr_rrc_defs.h"
 #include "radio/SS/ss_config.h"
-#include <openair3/ocp-gtpu/gtp_itf.h>
+
 // forward declarations to avoid including the full typess ***eNB;
 struct PHY_VARS_gNB_s;
 struct PHY_VARS_eNB_NB_IoT_s;

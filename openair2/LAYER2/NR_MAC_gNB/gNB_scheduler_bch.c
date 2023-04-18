@@ -38,7 +38,6 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
 #include "RRC/NR/nr_rrc_extern.h"
 #include "common/utils/nr/nr_common.h"
 
@@ -130,10 +129,7 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
     uint8_t ssb_frame_periodicity = 1;  // every how many frames SSB are generated
 
     if (ssb_period > 1) // 0 is every half frame
-    {
-      LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
       ssb_frame_periodicity = 1 << (ssb_period -1);
-    }
 
     if (!(frameP%ssb_frame_periodicity) &&
         ((slotP<(slots_per_frame>>1)) || (ssb_period == 0))) {
@@ -159,7 +155,6 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
       switch (scc->ssb_PositionsInBurst->present) {
         case 1:
           // short bitmap (<3GHz) max 4 SSBs
-          LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
           for (int i_ssb=0; i_ssb<4; i_ssb++) {
             if ((shortBitmap->buf[0]>>(7-i_ssb))&0x01) {
               ssb_start_symbol = get_ssb_start_symbol(band,scs,i_ssb);
@@ -189,7 +184,6 @@ void schedule_nr_mib(module_id_t module_idP, frame_t frameP, sub_frame_t slotP) 
           break;
         case 2:
           // medium bitmap (<6GHz) max 8 SSBs
-          LOG_D(MAC," fxn:%s line:%d \n", __FUNCTION__, __LINE__);
           for (int i_ssb=0; i_ssb<8; i_ssb++) {
             if ((mediumBitmap->buf[0]>>(7-i_ssb))&0x01) {
               ssb_start_symbol = get_ssb_start_symbol(band,scs,i_ssb);
@@ -369,7 +363,6 @@ uint32_t schedule_control_sib1(module_id_t module_id,
                          rbSize, tda_info->nrOfSymbols, N_PRB_DMRS * dmrs_length,0, 0,1) >> 3;
   } while (TBS < gNB_mac->sched_ctrlCommon->num_total_bytes);
 
-
   AssertFatal(TBS>=gNB_mac->sched_ctrlCommon->num_total_bytes,"Couldn't allocate enough resources for %d bytes in SIB1 PDSCH\n",
               gNB_mac->sched_ctrlCommon->num_total_bytes);
 
@@ -459,9 +452,7 @@ void nr_fill_nfapi_dl_sib1_pdu(int Mod_idP,
   pdsch_pdu_rel15->rbStart = pdsch->rbStart;
   pdsch_pdu_rel15->rbSize = pdsch->rbSize;
   pdsch_pdu_rel15->VRBtoPRBMapping = 0;
-  pdsch_pdu_rel15->qamModOrder[0] = nr_get_Qm_dl(pdsch->mcs, mcsTableIdx);
   pdsch_pdu_rel15->TBSize[0] = TBS;
-  pdsch_pdu_rel15->mcsTable[0] = mcsTableIdx;
   pdsch_pdu_rel15->StartSymbolIndex = StartSymbolIndex;
   pdsch_pdu_rel15->NrOfSymbols = NrOfSymbols;
   pdsch_pdu_rel15->dlDmrsSymbPos = pdsch->dmrs_parms.dl_dmrs_symb_pos;
@@ -586,26 +577,11 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
       for (int k=0;k<sib1_sdu_length;k++)
         LOG_D(NR_MAC,"byte %d : %x\n",k,((uint8_t*)sib1_payload)[k]);
 
-      int startSymbolIndex = 0;
-      int nrOfSymbols = 0;
-      bool is_typeA;
+      default_table_type_t table_type = get_default_table_type(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
+      // assuming normal CP
+      NR_tda_info_t tda_info = get_info_from_tda_tables(table_type, time_domain_allocation, gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position, true);
 
-      LOG_D(NR_MAC,"type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
-      LOG_D(NR_MAC,"time_domain_allocation: %i\n", time_domain_allocation);
-      LOG_D(NR_MAC,"dmrs_TypeA_Position: %i\n", gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position);
-      get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
-                               time_domain_allocation,
-                               gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
-                               1, &is_typeA,
-                               &startSymbolIndex, &nrOfSymbols);
-
-      AssertFatal((startSymbolIndex+nrOfSymbols)<14,"SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n",time_domain_allocation);
-
-      NR_tda_info_t tda_info = {
-        .mapping_type = is_typeA ? typeA : typeB,
-        .startSymbolIndex = startSymbolIndex,
-        .nrOfSymbols = nrOfSymbols
-      };
+      AssertFatal((tda_info.startSymbolIndex + tda_info.nrOfSymbols) < 14, "SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n", time_domain_allocation);
 
       NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc,
                                                       NULL,
@@ -623,7 +599,7 @@ void schedule_nr_sib1(module_id_t module_idP, frame_t frameP, sub_frame_t slotP)
 
       nfapi_nr_dl_tti_request_body_t *dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
       int pdu_index = gNB_mac->pdu_index[0]++;
-      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, startSymbolIndex, nrOfSymbols);
+      nr_fill_nfapi_dl_sib1_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, tda_info.startSymbolIndex, tda_info.nrOfSymbols);
 
       const int ntx_req = gNB_mac->TX_req[CC_id].Number_of_PDUs;
       nfapi_nr_pdu_t *tx_req = &gNB_mac->TX_req[CC_id].pdu_list[ntx_req];

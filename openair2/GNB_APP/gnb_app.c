@@ -32,10 +32,8 @@
 #include <nr_pdcp/nr_pdcp.h>
 #include <softmodem-common.h>
 #include <nr-softmodem.h>
-#include <split_headers.h>
 
 #include "gnb_app.h"
-#include "gnb_config.h"
 #include "assertions.h"
 #include "common/ran_context.h"
 
@@ -52,6 +50,8 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp.h>
 #include "openair2/LAYER2/PDCP_v10.1.0/pdcp.h"
+#include "openair2/E1AP/e1ap.h"
+#include "gnb_config.h"
 extern unsigned char NB_gNB_INST;
 
 extern RAN_CONTEXT_t RC;
@@ -65,7 +65,7 @@ pthread_mutex_t cell_config_5G_done_mutex;
 static  void wait_cell_config_5G(char *thread_name);
 
 /*------------------------------------------------------------------------------*/
-static void configure_nr_rrc(uint32_t gnb_id)
+void configure_nr_rrc(uint32_t gnb_id)
 {
   MessageDef *msg_p = NULL;
   //  int CC_id;
@@ -93,7 +93,7 @@ static void configure_nr_rrc(uint32_t gnb_id)
 /*------------------------------------------------------------------------------*/
 
 
-static uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end)//, const Enb_properties_array_t *enb_properties)
+uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end)//, const Enb_properties_array_t *enb_properties)
 {
   uint32_t         gnb_id;
   MessageDef      *msg_p;
@@ -115,7 +115,6 @@ static uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end)//, 
 
         itti_send_msg_to_task (TASK_NGAP, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
       }
-      if (gnb_id == 0) RCconfig_nr_gtpu();
     }
 
     LOG_I(GNB_APP,"[gNB %d] gNB_app_register for instance %d\n", gnb_id, GNB_MODULE_ID_TO_INSTANCE(gnb_id));
@@ -128,7 +127,7 @@ static uint32_t gNB_app_register(uint32_t gnb_id_start, uint32_t gnb_id_end)//, 
 
 
 /*------------------------------------------------------------------------------*/
-static uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end) {
+uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end) {
   uint32_t         gnb_id;
   MessageDef      *msg_p;
   uint32_t         register_gnb_x2_pending = 0;
@@ -151,10 +150,6 @@ static uint32_t gNB_app_register_x2(uint32_t gnb_id_start, uint32_t gnb_id_end) 
 void *gNB_app_task(void *args_p)
 {
 
-  uint32_t                        gnb_nb = RC.nb_nr_inst; 
-  uint32_t                        gnb_id_start = 0;
-  uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
-  uint32_t                        gnb_id;
   MessageDef                      *msg_p           = NULL;
   const char                      *msg_name        = NULL;
   instance_t                      instance;
@@ -164,54 +159,13 @@ void *gNB_app_task(void *args_p)
 
   int cell_to_activate = 0;
   itti_mark_task_ready (TASK_GNB_APP);
-
-  LOG_I(PHY, "%s() Task ready initialize structures\n", __FUNCTION__);
-
-  RCconfig_NR_L1();
-  RCconfig_nr_prs();
-
-  if (RC.nb_nr_macrlc_inst>0) RCconfig_nr_macrlc();
-
-  //  RCconfig_nr_ssparam();
-
-  LOG_I(PHY, "%s() RC.nb_nr_L1_inst:%d\n", __FUNCTION__, RC.nb_nr_L1_inst);
-
-  if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");
-
-  AssertFatal (gnb_nb <= RC.nb_nr_inst,
-               "Number of gNB is greater than gNB defined in configuration file (%d/%d)!",
-               gnb_nb, RC.nb_nr_inst);
-
-  LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);
-
-  RC.nrrrc = (gNB_RRC_INST **)malloc(RC.nb_nr_inst*sizeof(gNB_RRC_INST *));
-  LOG_I(PHY, "%s() RC.nb_nr_inst:%d RC.nrrrc:%p\n", __FUNCTION__, RC.nb_nr_inst, RC.nrrrc);
-
-  for (gnb_id = gnb_id_start; (gnb_id < gnb_id_end) ; gnb_id++) {
-    RC.nrrrc[gnb_id] = (gNB_RRC_INST*)calloc(1,sizeof(gNB_RRC_INST));
-    LOG_I(PHY, "%s() Creating RRC instance RC.nrrrc[%d]:%p (%d of %d)\n", __FUNCTION__, gnb_id, RC.nrrrc[gnb_id], gnb_id+1, gnb_id_end);
-    configure_nr_rrc(gnb_id);
-  }
-
-  if (RC.nb_nr_inst > 0 && !get_softmodem_params()->nsa)  {
-    init_pdcp();
-  }
-
-  if (is_x2ap_enabled() ) { //&& !NODE_IS_DU(RC.rrc[0]->node_type)
-    LOG_I(X2AP, "X2AP enabled \n");
-    __attribute__((unused)) uint32_t x2_register_gnb_pending = gNB_app_register_x2 (gnb_id_start, gnb_id_end);
-  }
-
-  /* For the CU case the gNB registration with the AMF might have to take place after the F1 setup, as the PLMN info
-     * can originate from the DU. Add check on whether x2ap is enabled to account for ENDC NSA scenario.*/
-  if ((get_softmodem_params()->sa || is_x2ap_enabled()) && !NODE_IS_DU(RC.nrrrc[0]->node_type) ) { //&& !NODE_IS_CU(RC.nrrrc[0]->node_type)) {
-    /* Try to register each gNB */
-    //registered_gnb = 0;
-    __attribute__((unused)) uint32_t register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);
-  }
+  ngran_node_t node_type = get_node_type();
 
   if (RC.nb_nr_inst > 0) {
-    if (NODE_IS_CU(RC.nrrrc[0]->node_type)) {
+    if (node_type == ngran_gNB_CUCP ||
+        node_type == ngran_gNB_CU ||
+        node_type == ngran_eNB_CU ||
+        node_type == ngran_ng_eNB_CU) {
 
       if (itti_create_task(TASK_CU_F1, F1AP_CU_task, NULL) < 0) {
         LOG_E(F1AP, "Create task for F1AP CU failed\n");
@@ -219,8 +173,21 @@ void *gNB_app_task(void *args_p)
       }
     }
 
-    if (NODE_IS_DU(RC.nrrrc[0]->node_type)) {
+    if (node_type == ngran_gNB_CUCP) {
+      if (itti_create_task(TASK_CUCP_E1, E1AP_CUCP_task, NULL) < 0)
+        AssertFatal(false, "Create task for E1AP CP failed\n");
+      MessageDef *msg = RCconfig_NR_CU_E1(true);
+      if (msg)
+        itti_send_msg_to_task(TASK_CUCP_E1, 0, msg);
+      else
+        AssertFatal(false, "Send inti to task for E1AP CP failed\n");
+    }
 
+    if (node_type == ngran_gNB_CUUP) {
+      AssertFatal(false, "To run CU-UP use executable nr-cuup\n");
+    }
+
+    if (NODE_IS_DU(node_type)) {
       if (itti_create_task(TASK_DU_F1, F1AP_DU_task, NULL) < 0) {
         LOG_E(F1AP, "Create task for F1AP DU failed\n");
         AssertFatal(1==0,"exiting");
@@ -295,7 +262,7 @@ void *gNB_app_task(void *args_p)
       break;
 
     case F1AP_SETUP_RESP:
-      AssertFatal(NODE_IS_DU(RC.nrrrc[0]->node_type), "Should not have received F1AP_SETUP_RESP in CU/gNB\n");
+      AssertFatal(NODE_IS_DU(node_type), "Should not have received F1AP_SETUP_RESP in CU/gNB\n");
 
       LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
       F1AP_SETUP_RESP(msg_p).gNB_CU_name,F1AP_SETUP_RESP(msg_p).num_cells_to_activate);
@@ -305,7 +272,7 @@ void *gNB_app_task(void *args_p)
 
       break;
     case F1AP_GNB_CU_CONFIGURATION_UPDATE:
-      AssertFatal(NODE_IS_DU(RC.nrrrc[0]->node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
+      AssertFatal(NODE_IS_DU(node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
 
       LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
       F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).gNB_CU_name,F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p).num_cells_to_activate);
@@ -347,7 +314,6 @@ void *gNB_app_task(void *args_p)
 
   return NULL;
 }
-
 
 static  void wait_cell_config_5G(char *thread_name) {
   printf( "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
