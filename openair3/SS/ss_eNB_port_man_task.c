@@ -52,7 +52,6 @@
 #include "ss_eNB_context.h"
 #include "acpSys.h"
 
-extern int prc;
 extern RAN_CONTEXT_t RC;
 extern int  cell_index;
 acpCtx_t ctx_g = NULL;
@@ -339,7 +338,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
     size_t msgSize = size; //2
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
     assert(buffer);
-    LOG_D(ENB_SS_PORTMAN, "Entry from fxn:%s\n", __FUNCTION__);
+    LOG_D(ENB_SS_PORTMAN, "Entry in fxn:%s\n", __FUNCTION__);
     int userId = acpRecvMsg(ctx, &msgSize, buffer);
 
     // Error handling
@@ -406,7 +405,6 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
           acpFree(buffer);
           return;
         }
-
         ss_dumpReqMsg(req);
 
         if (userId == MSG_SysProcess_userId)
@@ -415,6 +413,9 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
           struct SYSTEM_CTRL_REQ *sys_req = (struct SYSTEM_CTRL_REQ *)req;
           if (sys_req->Request.d == SystemRequest_Type_EnquireTiming)
           {
+            LOG_I(ENB_SS_PORTMAN, "Locked the mutex for enq Timing\n"); 
+
+
             LOG_I(ENB_SS_PORTMAN, "Received EnquireTiming\n");
             ret_Val = ss_eNB_port_man_handle_enquiryTiming(sys_req);
             if (ret_Val == false)
@@ -425,7 +426,14 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
             MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0,  SS_SYS_PORT_MSG_IND);
             if (message_p)
             {
-              SS_SYS_PORT_MSG_IND(message_p).req = req;
+              SS_SYS_PORT_MSG_IND(message_p).req = (struct SYSTEM_CTRL_REQ *)malloc(sizeof(struct SYSTEM_CTRL_REQ));
+              if (SS_SYS_PORT_MSG_IND(message_p).req == NULL)
+              {
+                LOG_E(ENB_SS_PORTMAN, "Error allocating memory for SYSTEM CTRL REQ\n");
+                return;
+              }
+              memset(SS_SYS_PORT_MSG_IND(message_p).req, 0, sizeof(struct SYSTEM_CTRL_REQ));
+              memcpy(SS_SYS_PORT_MSG_IND(message_p).req, req, sizeof(struct SYSTEM_CTRL_REQ));
               SS_SYS_PORT_MSG_IND(message_p).userId = userId;
               if (SS_SYS_PORT_MSG_IND(message_p).req)
                 itti_send_msg_to_task(TASK_SYS, 0, message_p);
@@ -570,8 +578,8 @@ bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
   }
 
   LOG_A(ENB_SS_PORTMAN, "enquiryTiming CNF sent successfully for SFN:%d SF:%d\n", 
-    cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number, 
-    cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number);
+      cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number, 
+      cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number);
   acpFree(buffer);
   return true;
 

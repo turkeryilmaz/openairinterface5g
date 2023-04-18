@@ -2326,51 +2326,51 @@ bool valid_sys_msg(struct SYSTEM_CTRL_REQ *req)
         req->Request.d, req->Common.CellId, SS_context.SSCell_list[cell_index].State);
   switch (req->Request.d)
   {
-  case SystemRequest_Type_Cell:
-    if (SS_context.SSCell_list[cell_index].State >= SS_STATE_NOT_CONFIGURED)
-    {
+    case SystemRequest_Type_Cell:
+      if (SS_context.SSCell_list[cell_index].State >= SS_STATE_NOT_CONFIGURED)
+      {
+        valid = true;
+        sendDummyCnf = false;
+        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+      }
+      else
+      {
+        cnfType = SystemConfirm_Type_Cell;
+      }
+      break;
+
+    case SystemRequest_Type_EnquireTiming:
+      sendDummyCnf = false;
+      break;
+    case SystemRequest_Type_CellAttenuationList:
+      if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
+      {
+        valid = true;
+        sendDummyCnf = false;
+        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+      }
+      break;
+    case SystemRequest_Type_RadioBearerList:
+      cnfType = SystemConfirm_Type_RadioBearerList;
       valid = true;
       sendDummyCnf = false;
       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-    }
-    else
-    {
-      cnfType = SystemConfirm_Type_Cell;
-    }
-    break;
-
-  case SystemRequest_Type_EnquireTiming:
-    sendDummyCnf = false;
-    break;
-  case SystemRequest_Type_CellAttenuationList:
-    if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
-    {
+      break;
+    case SystemRequest_Type_AS_Security:
+      cnfType = SystemConfirm_Type_AS_Security;
       valid = true;
       sendDummyCnf = false;
-       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-    }
-    break;
-  case SystemRequest_Type_RadioBearerList:
-    cnfType = SystemConfirm_Type_RadioBearerList;
-    valid = true;
-    sendDummyCnf = false;
-     reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-    break;
-  case SystemRequest_Type_AS_Security:
-    cnfType = SystemConfirm_Type_AS_Security;
-    valid = true;
-    sendDummyCnf = false;
-    reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-    break;
-  case SystemRequest_Type_PdcpCount:
-    if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
-    {
-      valid = true;
-      sendDummyCnf = false;
-       reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
-    }
-    //cnfType = SystemConfirm_Type_PdcpCount;
-    break;
+      reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+      break;
+    case SystemRequest_Type_PdcpCount:
+      if (SS_context.SSCell_list[cell_index].State == SS_STATE_CELL_ACTIVE)
+      {
+        valid = true;
+        sendDummyCnf = false;
+        reqCnfFlag_g = req->Common.ControlInfo.CnfFlag;
+      }
+      //cnfType = SystemConfirm_Type_PdcpCount;
+      break;
 
   case SystemRequest_Type_UE_Cat_Info:
     cnfType = SystemConfirm_Type_UE_Cat_Info;
@@ -2462,6 +2462,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
 
     case SS_SYS_PORT_MSG_IND:
     {
+
       if (valid_sys_msg(SS_SYS_PORT_MSG_IND(received_msg).req))
       {
         ss_task_sys_handle_req(SS_SYS_PORT_MSG_IND(received_msg).req, &tinfo);
@@ -2470,6 +2471,9 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
       {
         LOG_A(ENB_SS_SYS_TASK, "Not hanled SYS_PORT message received \n");
       }
+
+      if (SS_SYS_PORT_MSG_IND(received_msg).req)
+        free(SS_SYS_PORT_MSG_IND(received_msg).req);
     }
     break;
 
@@ -2596,6 +2600,7 @@ printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
             ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
       break;
     }
+
     result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
     AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
     received_msg = NULL;
