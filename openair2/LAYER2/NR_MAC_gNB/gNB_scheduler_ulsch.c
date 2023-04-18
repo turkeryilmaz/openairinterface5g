@@ -789,7 +789,13 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
               } else {
                 // The UE identified by C-RNTI still exists at the gNB
                 // Reset uplink failure flags/counters/timers at RRC
-                nr_mac_gNB_rrc_ul_failure_reset(gnb_mod_idP, frameP, slotP, ra->crnti);
+		uint8_t status;
+                status = nr_mac_gNB_rrc_ul_failure_reset(gnb_mod_idP, frameP, slotP, ra->crnti);
+		if (status > 0) {
+                  mac_remove_nr_ue(gNB_mac, ra->rnti);
+                  nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+		  return;
+		}
 
                 // Reset HARQ processes
                 reset_dl_harq_list(&UE_C->UE_sched_ctrl);
@@ -1663,10 +1669,13 @@ void pf_ul(module_id_t module_id,
 
     const NR_bler_options_t *bo = &nrmac->ul_bler;
     const int max_mcs = bo->max_mcs; /* no per-user maximum MCS yet */
-    if (bo->harq_round_max == 1)
+    if (bo->harq_round_max == 1){
       sched_pusch->mcs = max_mcs;
-    else
+      LOG_I(MAC,"Case 1 ULSCH UL MCS and BLER sched_pusch->mcs %d, bo->harq_round_max %d\n",sched_pusch->mcs, bo->harq_round_max);
+    }else{ 
       sched_pusch->mcs = get_mcs_from_bler(bo, stats, &sched_ctrl->ul_bler_stats, max_mcs, frame);
+      LOG_I(MAC,"Case 2 ULSCH UL MCS and BLER sched_pusch->mcs %d, bo->harq_round_max %d\n",sched_pusch->mcs, bo->harq_round_max);
+    }
 
     /* Schedule UE on SR or UL inactivity and no data (otherwise, will be scheduled
      * based on data to transmit) */

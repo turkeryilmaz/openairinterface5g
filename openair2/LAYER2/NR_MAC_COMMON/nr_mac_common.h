@@ -279,7 +279,8 @@ void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
                                const sub_frame_t subframeP,
                                const rnti_t rntiP);
 
-void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
+//void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
+uint8_t nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
                                      const frame_t frameP,
                                      const sub_frame_t subframeP,
                                      const rnti_t rntiP);

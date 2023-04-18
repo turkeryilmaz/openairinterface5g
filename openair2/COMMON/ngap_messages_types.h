@@ -577,9 +577,6 @@ typedef struct ngap_ue_ctxt_modification_resp_s {
   uint32_t  gNB_ue_ngap_id;
 } ngap_ue_ctxt_modification_resp_t;
 
-typedef struct ngap_ue_release_complete_s {
-  uint32_t gNB_ue_ngap_id;
-} ngap_ue_release_complete_t;
 
 //-------------------------------------------------------------------------------------------//
 // NGAP -> RRC messages
@@ -792,6 +789,14 @@ typedef struct ngap_ue_release_req_s {
   ngap_Cause_t cause;
   long                 cause_value;
 } ngap_ue_release_req_t, ngap_ue_release_resp_t;
+
+typedef struct ngap_ue_release_complete_s {
+  uint32_t gNB_ue_ngap_id;
+
+  uint8_t              nb_of_pdusessions;
+  /* list of pdusession resource by RRC layers */
+  pdusession_release_t pdusessions[NGAP_MAX_PDUSESSION];
+} ngap_ue_release_complete_t;
 
 typedef struct ngap_pdusession_modify_req_s {
   /* AMF UE id  */

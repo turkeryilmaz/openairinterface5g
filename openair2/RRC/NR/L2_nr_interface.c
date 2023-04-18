@@ -130,7 +130,8 @@ void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
   }
 }
 
-void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
+//void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
+uint8_t nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
                                      const frame_t frameP,
                                      const sub_frame_t subframeP,
                                      const rnti_t rntiP) {
@@ -138,7 +139,9 @@ void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
   if (ue_context_p != NULL) {
     LOG_W(RRC,"Frame %d, Subframe %d: UE %x UL failure reset, deactivating timer\n",frameP,subframeP,rntiP);
     ue_context_p->ue_context.ul_failure_timer=0;
+    return 0;
   } else {
     LOG_W(RRC,"Frame %d, Subframe %d: UL failure reset: UE %x unknown \n",frameP,subframeP,rntiP);
   }
+  return 1;
 }

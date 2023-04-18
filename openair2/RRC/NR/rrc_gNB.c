@@ -377,7 +377,7 @@ static void rrc_gNB_generate_RRCSetup(instance_t instance,
 }
 
 //-----------------------------------------------------------------------------
-static void rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id_t module_id, rnti_t rnti, const int CC_id)
+static void rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id_t module_id, rnti_t rnti, const int CC_id,int *MCG, int MCG_len)
 //-----------------------------------------------------------------------------
 {
   LOG_I(NR_RRC, "generate RRCSetup for RRCReestablishmentRequest \n");
@@ -1756,7 +1756,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, rnti_t rnti, const uint
                 " NR_RRCReestablishmentRequest ue_Identity.physCellId(%ld) is not equal to current physCellId(%d), fallback to RRC establishment\n",
                 physCellId,
                 gnb_rrc_inst->carrier.physCellId);
-          rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id, rnti, 0);
+          rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id, rnti, 0, NULL, 0);
           break;
         }
 
@@ -1770,7 +1770,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, rnti_t rnti, const uint
         if (rrcReestablishmentRequest.ue_Identity.c_RNTI < 0x1 || rrcReestablishmentRequest.ue_Identity.c_RNTI > 0xffef) {
           /* c_RNTI range error should not happen */
           LOG_E(NR_RRC, "NR_RRCReestablishmentRequest c_RNTI range error, fallback to RRC establishment\n");
-          rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id, rnti, 0);
+          rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id, rnti, 0, NULL, 0);
           break;
         }
 
@@ -1780,7 +1780,7 @@ static int nr_rrc_gNB_decode_ccch(module_id_t module_id, rnti_t rnti, const uint
         gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
         if (ue_context_p == NULL) {
           LOG_E(NR_RRC, "NR_RRCReestablishmentRequest without UE context, fallback to RRC establishment\n");
-          rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id, c_rnti, 0);
+          rrc_gNB_generate_RRCSetup_for_RRCReestablishmentRequest(module_id, c_rnti, 0, du_to_cu_rrc_container, du_to_cu_rrc_container_len);
           break;
         }
         // c-plane not end
@@ -3417,6 +3417,7 @@ void *rrc_gnb_task(void *args_p) {
   MessageDef *msg_p;
   instance_t                         instance;
   int                                result;
+   uint16_t 			                   status;
   protocol_ctxt_t ctxt = {.module_id = 0, .enb_flag = 1, .instance = 0, .rntiMaybeUEid = 0, .frame = -1, .subframe = -1, .eNB_index = 0, .brOption = false};
 
   /* timer to write stats to file */
@@ -3665,7 +3666,7 @@ rrc_gNB_generate_RRCRelease(
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, deliver_pdu_srb_f1, rrc);
 
-  rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(ctxt_pP->instance, ue_context_pP->ue_context.gNB_ue_ngap_id);
+  rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(ctxt_pP->instance, ue_context_pP);
   ue_context_pP->ue_context.ue_release_timer_rrc = 1;
   /* TODO: 38.331 says for RRC Release that the UE should release everything
    * after 60ms or if lower layers acked receipt of release. Hence, from the

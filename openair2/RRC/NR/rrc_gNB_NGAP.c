@@ -756,6 +756,10 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
 
   for (int i = 0; i < msg->nb_pdusessions_tosetup; i++) {
     rrc_pdu_session_param_t *pduSession = find_pduSession(UE, msg->pdusession_setup_params[i].pdusession_id, true);
+    if (NULL == pduSession) {
+	 LOG_E(NR_RRC, "UE PDU Sessions: %d, PDU Session to setup: %d \n", UE->nb_of_pdusessions, msg->pdusession_setup_params[i].pdusession_id);
+	 continue;
+    }
     pdusession_t *session = &pduSession->param;
     LOG_I(NR_RRC, "Adding pdusession %d, total nb of sessions %d\n", session->pdusession_id, UE->nb_of_pdusessions);
     session->pdusession_id = msg->pdusession_setup_params[i].pdusession_id;
@@ -817,6 +821,15 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
         qos->pre_emptionVulnerability = session->qos[k].allocation_retention_priority.pre_emp_vulnerability;
       }
     }
+  }
+  if (bearer_req.rnti == 0) {
+    LOG_E(NR_RRC, "Couldnt find PDU Sessions. reject !!!\n");
+    MessageDef *msg_fail_p = NULL;
+    msg_fail_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_PDUSESSION_SETUP_REQUEST_FAIL);
+    NGAP_PDUSESSION_SETUP_FAIL(msg_fail_p).gNB_ue_ngap_id = msg->gNB_ue_ngap_id;
+    // TODO add failure cause when defined!
+    itti_send_msg_to_task (TASK_NGAP, instance, msg_fail_p);
+    return ;
   }
   rrc->cucp_cuup.bearer_context_setup(&bearer_req, instance);
   return;
@@ -1173,9 +1186,14 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
 
 void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(
   instance_t instance,
-  uint32_t   gNB_ue_ngap_id) {
+  rrc_gNB_ue_context_t     *const ue_context_pP) {
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
-  NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).gNB_ue_ngap_id = gNB_ue_ngap_id;
+  NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).gNB_ue_ngap_id = ue_context_pP->ue_context.gNB_ue_ngap_id;
+
+  for (int i = 0; i < ue_context_pP->ue_context.nb_of_pdusessions; i++) {
+      NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).pdusessions[i].pdusession_id = ue_context_pP->ue_context.pduSession[i].param.pdusession_id;
+      NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).nb_of_pdusessions++;
+  }
   itti_send_msg_to_task(TASK_NGAP, instance, msg);
 }
 
