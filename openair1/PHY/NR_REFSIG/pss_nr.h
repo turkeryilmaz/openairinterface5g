@@ -86,17 +86,17 @@
 
 /************** VARIABLES *****************************************/
 
-EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]
+EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif
 ;
-EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]
+EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif
 ;
-EXTERN c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE]
+EXTERN c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE] __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif

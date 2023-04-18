@@ -118,7 +118,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
-  c16_t in[sizeof(int16_t) * fp->ofdm_symbol_size];
+  c16_t in[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));;
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
     in[k]= primary_synchro[i];
