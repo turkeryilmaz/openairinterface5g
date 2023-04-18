@@ -143,7 +143,7 @@ void insert_sss_nr(c16_t *sss_time,
   unsigned int k = ofdm_symbol_size - ((LENGTH_SSS_NR/2)+1);
 
   /* SSS is directly mapped to subcarrier */
-  c16_t in[sizeof(int16_t) * ofdm_symbol_size];
+  c16_t in[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_SSS_NR; i++) {
     in[i].r = d_sss[Nid2][Nid1][i];
