@@ -1116,7 +1116,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                             int32_t **rxdata,
                             uint32_t multiplex_input_len,
                             uint32_t Nidx,
-                            UE_nr_rxtx_proc_t proc);
+                            UE_nr_rxtx_proc_t *proc);
 
 /** \brief This function does IFFT for PUSCH
 */

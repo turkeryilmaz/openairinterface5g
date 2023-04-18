@@ -567,7 +567,8 @@ int main(int argc, char **argv)
                                                slot,
                                                rxdataF,
                                                harq_process_txUE->B_multiplexed,
-                                               txUE->slsch[0][0]->Nidx,proc);
+                                               txUE->slsch[0][0]->Nidx,
+                                               &proc);
 
       if (ret)
         n_errors++;

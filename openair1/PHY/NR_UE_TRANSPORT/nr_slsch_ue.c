@@ -541,7 +541,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                             int32_t **rxdata,
                             uint32_t multiplex_input_len,
                             uint32_t Nidx,
-                            UE_nr_rxtx_proc_t proc) {
+                            UE_nr_rxtx_proc_t *proc) {
   int UE_id = 0;
   int16_t **ulsch_llr = rxUE->pssch_vars[UE_id]->llr;
   int16_t **ulsch_llr_layers = rxUE->pssch_vars[UE_id]->llr_layers;
@@ -588,9 +588,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
     if (dmrs_pos & (1 << sym)){
       for (uint8_t aatx=0; aatx<Nl; aatx++) {
         port = get_dmrs_port(aatx,slsch_ue_rx_harq->dmrs_ports);//get_dmrs_port(1,slsch_ue_rx_harq->dmrs_ports);
-        nr_pdsch_channel_estimation(rxUE, &proc, 0, 0, slot,port,
-                                    sym,nscid,Nid,bwp_start,dmrs_config,
-                                    rxUE->frame_parms.first_carrier_offset+(bwp_start + pssch_start_rb)*12,
+        nr_pdsch_channel_estimation(rxUE, proc, 0, 0, slot, port,
+                                    sym,nscid, Nid, bwp_start,dmrs_config,
+                                    rxUE->frame_parms.first_carrier_offset + (bwp_start + pssch_start_rb) * 12,
                                     nb_rb);
 
       }
@@ -637,7 +637,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
     else
       first_symbol_flag = 0;
 
-    start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    start_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
     nr_slsch_extract_rbs(rxdata,
                         rxUE->pssch_vars[UE_id],
                         slot,
@@ -648,14 +648,14 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                         slsch_ue_rx_harq,
                         rxUE->chest_time);
 
-    stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    stop_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
   //----------------------------------------------------------
   //--------------------- Channel Scaling --------------------
   //----------------------------------------------------------
     // Todo: this line should be double check
     #if 1
     int32_t nb_re_pssch = (pilots==1)? (nb_rb*dmrs_data_re) : (nb_rb*12);
-    start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    start_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
     nr_dlsch_scale_channel(rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
                           &rxUE->frame_parms,
                           Nl,
@@ -665,12 +665,12 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                           pilots,
                           nb_re_pssch,
                           nb_rb);
-    stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    stop_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
 
     //----------------------------------------------------------
     //--------------------- Channel Level Calc. ----------------
     //----------------------------------------------------------
-    start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    start_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
     if (first_symbol_flag==1) {
       nr_dlsch_channel_level(rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext,
                             &rxUE->frame_parms,
@@ -711,11 +711,11 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
             avg[0],
             avgs);
     }
-    stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    stop_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
 
   /////////////////////////////////////////////////////////
   ////////////// Channel Compensation /////////////////////
-    start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    start_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
 
     if (pilots==0){
       nr_dlsch_channel_compensation(rxUE->pssch_vars[UE_id]->rxdataF_ext,
@@ -779,9 +779,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                                       allocatable_sci2_re);
     }
 
-    stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    stop_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
 
-    start_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    start_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
 
     if (rxUE->frame_parms.nb_antennas_rx > 1) {
       nr_dlsch_detection_mrc(rxUE->pssch_vars[UE_id]->rxdataF_comp,
@@ -808,7 +808,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                           sym,
                           nb_re_pssch);
     }
-    stop_meas(&rxUE->generic_stat_bis[proc.thread_id][slot]);
+    stop_meas(&rxUE->generic_stat_bis[proc->thread_id][slot]);
 #endif
   ////////////////////////////////////////////////////////
   /////////////// LLR calculation ////////////////////////
@@ -916,7 +916,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   LOG_M(filename,"llr_decoding",ulsch_llr[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   #endif
   /////////////// Decoding SLSCH and SCIA2 //////////////
-  uint32_t ret = nr_slsch_decoding(rxUE, &proc,ulsch_llr[0],
+  uint32_t ret = nr_slsch_decoding(rxUE, proc, ulsch_llr[0],
                             &rxUE->frame_parms, slsch_ue_rx,
                             slsch_ue_rx->harq_processes[0], frame,
                             nb_symb_sch, slot, harq_pid);
