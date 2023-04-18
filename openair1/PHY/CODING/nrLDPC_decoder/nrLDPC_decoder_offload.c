@@ -311,7 +311,7 @@ create_mempools(struct active_device *ad, int socket_id,
 	mp = rte_bbdev_op_pool_create(pool_name, op_type,
 			ops_pool_size, OPS_CACHE_SIZE, socket_id);
 	TEST_ASSERT_NOT_NULL(mp,
-			"ERROR Failed to create %u items ops pool for dev %d on socket %d.",
+			"ERROR Failed to create %u items ops pool for dev %u on socket %d.",
 			ops_pool_size,
 			ad->dev_id,
 			socket_id);

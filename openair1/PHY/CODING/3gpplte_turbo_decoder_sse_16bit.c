@@ -1002,7 +1002,6 @@ uint8_t phy_threegpplte_turbo_decoder16(int16_t *y,
   unsigned int i,j,iind;//,pi;
   unsigned char iteration_cnt=0;
   uint32_t crc, oldcrc, crc_len;
-  uint8_t temp;
 #if defined(__x86_64__) || defined(__i386__)
   __m128i *yp128;
   __m128i tmp={0}, zeros=_mm_setzero_si128();

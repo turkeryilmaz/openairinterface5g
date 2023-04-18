@@ -174,7 +174,7 @@ int ngap_gNB_handle_ng_setup_response(uint32_t               assoc_id,
   if (ie != NULL) {
     NGAP_DEBUG("servedGUAMIs.list.count %d\n", ie->value.choice.ServedGUAMIList.list.count);
   } else {
-    NGAP_ERROR("Protocol IE id %d not found in NG setup response\n", NGAP_ProtocolIE_ID_id_ServedGUAMIList);
+    NGAP_ERROR("Protocol IE id %ld not found in NG setup response\n", NGAP_ProtocolIE_ID_id_ServedGUAMIList);
   }
   DevAssert(ie->value.choice.ServedGUAMIList.list.count > 0);
   DevAssert(ie->value.choice.ServedGUAMIList.list.count <= NGAP_maxnoofServedGUAMIs);
@@ -713,7 +713,7 @@ static int ngap_gNB_handle_initial_context_request(uint32_t assoc_id, uint32_t s
   ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(ran_ue_ngap_id);
   if (!ue_desc_p) {
     NGAP_ERROR(
-        "[SCTP %d] Received initial context setup request for non "
+        "[SCTP %u] Received initial context setup request for non "
         "existing UE context 0x%06lx\n",
         assoc_id,
         ran_ue_ngap_id);
@@ -870,7 +870,7 @@ int ngap_gNB_handle_ue_context_release_command(uint32_t   assoc_id,
       ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id);
       if (!ue_desc_p) {
         NGAP_ERROR(
-            "[SCTP %d] Received UE context release command for non "
+            "[SCTP %u] Received UE context release command for non "
             "existing UE context 0x%06lx\n",
             assoc_id,
             gnb_ue_ngap_id);
@@ -939,7 +939,7 @@ int ngap_gNB_handle_pdusession_setup_request(uint32_t         assoc_id,
 
   ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(ran_ue_ngap_id);
   if (!ue_desc_p) {
-    NGAP_ERROR("[SCTP %d] Received pdu session resource setup request for non "
+    NGAP_ERROR("[SCTP %u] Received pdu session resource setup request for non "
                "existing UE context 0x%06lx\n", assoc_id,
                ran_ue_ngap_id);
     return -1;
@@ -1041,7 +1041,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
    OCTET_STRING_TO_INT8(&fiveG_S_TMSI->aMFPointer, msg->ue_paging_identity.s_tmsi.amf_pointer);
    OCTET_STRING_TO_INT32(&fiveG_S_TMSI->fiveG_TMSI, msg->ue_paging_identity.s_tmsi.m_tmsi);
 
-   NGAP_DEBUG("[SCTP %d] Received Paging Identity amf_set_id %d, amf_pointer %d, m_tmsi %d\n",
+   NGAP_DEBUG("[SCTP %u] Received Paging Identity amf_set_id %d, amf_pointer %d, m_tmsi %d\n",
               assoc_id,
               msg->ue_paging_identity.s_tmsi.amf_set_id,
               msg->ue_paging_identity.s_tmsi.amf_pointer,
@@ -1062,7 +1062,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PagingIEs_t, ie, container,
                              NGAP_ProtocolIE_ID_id_TAIListForPaging, true);
 
-  NGAP_INFO("[SCTP %d] Received Paging taiList For Paging: count %d\n", assoc_id, ie->value.choice.TAIListForPaging.list.count);
+  NGAP_INFO("[SCTP %u] Received Paging taiList For Paging: count %d\n", assoc_id, ie->value.choice.TAIListForPaging.list.count);
 
   for (int i = 0; i < ie->value.choice.TAIListForPaging.list.count; i++) {
     NGAP_TAIListForPagingItem_t *item_p;
@@ -1070,7 +1070,7 @@ int ngap_gNB_handle_paging(uint32_t               assoc_id,
     TBCD_TO_MCC_MNC(&(item_p->tAI.pLMNIdentity), msg->plmn_identity[i].mcc, msg->plmn_identity[i].mnc, msg->plmn_identity[i].mnc_digit_length);
     OCTET_STRING_TO_INT16(&(item_p->tAI.tAC), msg->tac[i]);
     msg->tai_size++;
-    NGAP_DEBUG("[SCTP %d] Received Paging: MCC %d, MNC %d, TAC %d\n", assoc_id, msg->plmn_identity[i].mcc, msg->plmn_identity[i].mnc, msg->tac[i]);
+    NGAP_DEBUG("[SCTP %u] Received Paging: MCC %d, MNC %d, TAC %d\n", assoc_id, msg->plmn_identity[i].mcc, msg->plmn_identity[i].mnc, msg->tac[i]);
   }
 
   //paging parameter values
@@ -1119,7 +1119,7 @@ static int ngap_gNB_handle_pdusession_modify_request(uint32_t assoc_id, uint32_t
     ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id);
     if (!ue_desc_p) {
       NGAP_ERROR(
-          "[SCTP %d] Received PDUSession Resource modify request for non "
+          "[SCTP %u] Received PDUSession Resource modify request for non "
           "existing UE context 0x%08lx\n",
           assoc_id,
           gnb_ue_ngap_id);
@@ -1221,7 +1221,7 @@ int ngap_gNB_handle_pdusession_release_command(uint32_t               assoc_id,
 
   ngap_gNB_ue_context_t *ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id);
   if (!ue_desc_p) {
-    NGAP_ERROR("[SCTP %d] Received PDUSession Resource release command for non existing UE context 0x%08lx\n", assoc_id,
+    NGAP_ERROR("[SCTP %u] Received PDUSession Resource release command for non existing UE context 0x%08lx\n", assoc_id,
                ie->value.choice.RAN_UE_NGAP_ID);
     return -1;
   }
@@ -1364,7 +1364,7 @@ int ngap_gNB_handle_message(uint32_t assoc_id, int32_t stream, const uint8_t *co
 
   /* Checking procedure Code and direction of message */
   if (pdu.choice.initiatingMessage->procedureCode >= sizeof(ngap_messages_callback) / (3 * sizeof(ngap_message_decoded_callback)) || (pdu.present > NGAP_NGAP_PDU_PR_unsuccessfulOutcome)) {
-    NGAP_ERROR("[SCTP %d] Either procedureCode %ld or direction %d exceed expected\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, pdu.present);
+    NGAP_ERROR("[SCTP %u] Either procedureCode %ld or direction %d exceed expected\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, pdu.present);
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);
     return -1;
   }
@@ -1373,7 +1373,7 @@ int ngap_gNB_handle_message(uint32_t assoc_id, int32_t stream, const uint8_t *co
    * This can mean not implemented or no procedure for gNB (wrong direction).
    */
   if (ngap_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL) {
-    NGAP_ERROR("[SCTP %d] No handler for procedureCode %ld in %s\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, ngap_direction2String(pdu.present - 1));
+    NGAP_ERROR("[SCTP %u] No handler for procedureCode %ld in %s\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, ngap_direction2String(pdu.present - 1));
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);
     return -1;
   }
