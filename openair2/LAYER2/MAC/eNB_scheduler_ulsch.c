@@ -2467,13 +2467,6 @@ schedule_ulsch_rnti(module_id_t   module_idP,
 
 bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, uint8_t SR_received)
 {
-  static uint8_t first_scheduling = 0;
-  static frame_t next_scheduling_frame = 0;
-  static sub_frame_t next_scheduling_subframe = 0;
-  static uint32_t num_frame = 0;
-  static uint32_t num_subframe = 0;
-
-
   LOG_I(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
 
   if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)

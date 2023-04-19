@@ -669,6 +669,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
       }
       uint8_t msg_queued = 0;
       ss_set_timinfo_t tinfo, timer_tinfo;
+      timer_tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
+      timer_tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
 #if 0
       if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
       {
@@ -1049,13 +1051,13 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
 
         //Increment the nb_CC supported as new cell is confiured.
         if ((RC.nb_CC[0] ) >= MAX_NUM_CCs) {
-          LOG_E (ENB_SS,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
+          LOG_E (ENB_SS_SYS_TASK,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
         } else {
           RC.nb_CC[0] ++;
           //Set the number of MAC_CC to current configured CC value
           *RC.nb_mac_CC= RC.nb_CC[0];
-
-          LOG_I (ENB_SS,"[SYS] CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
+                
+          LOG_I (ENB_SS_SYS_TASK,"[SYS] CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
         }
       }
