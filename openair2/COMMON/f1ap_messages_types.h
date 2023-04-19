@@ -138,16 +138,16 @@ typedef struct f1ap_setup_req_s {
     struct fdd_s {
       uint32_t ul_nr_arfcn;
       uint8_t ul_scs;
-      uint8_t ul_nrb;
+      uint16_t ul_nrb;
 
       uint32_t dl_nr_arfcn;
       uint8_t dl_scs;
-      uint8_t dl_nrb;
+      uint16_t dl_nrb;
 
       uint32_t sul_active;
       uint32_t sul_nr_arfcn;
       uint8_t sul_scs;
-      uint8_t sul_nrb;
+      uint16_t sul_nrb;
 
       uint8_t ul_num_frequency_bands;
       uint16_t ul_nr_band[32];
@@ -163,12 +163,12 @@ typedef struct f1ap_setup_req_s {
 
       uint32_t nr_arfcn;
       uint8_t scs;
-      uint8_t nrb;
+      uint16_t nrb;
 
       uint32_t sul_active;
       uint32_t sul_nr_arfcn;
       uint8_t sul_scs;
-      uint8_t sul_nrb;
+      uint16_t sul_nrb;
 
       uint8_t num_frequency_bands;
       uint16_t nr_band[32];
@@ -356,13 +356,13 @@ typedef struct cu_to_du_rrc_information_s {
   uint32_t   measConfig_length;
 }cu_to_du_rrc_information_t;
 
-typedef struct du_to_du_rrc_information_s {
+typedef struct du_to_cu_rrc_information_s {
   uint8_t * cellGroupConfig;
-  uint8_t   cellGroupConfig_length;
+  uint32_t  cellGroupConfig_length;
   uint8_t * measGapConfig;
-  uint8_t   measGapConfig_length;
+  uint32_t  measGapConfig_length;
   uint8_t * requestedP_MaxFR1;
-  uint8_t   requestedP_MaxFR1_length;
+  uint32_t  requestedP_MaxFR1_length;
 }du_to_cu_rrc_information_t;
 
 typedef enum QoS_information_e {

@@ -44,7 +44,6 @@ RUN yum repolist --disablerepo=* && \
         libX11 \
         atlas \
         lksctp-tools \
-        nettle \
         tzdata \
         gdb \
         python3 \
@@ -74,6 +73,7 @@ COPY --from=gnb-build \
     /oai-ran/cmake_targets/ran_build/build/libldpc_optim8seg.so \
     /oai-ran/cmake_targets/ran_build/build/libldpc_orig.so \
     /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv_ci.so \
     /usr/local/lib/
 
 COPY --from=gnb-base \
@@ -100,7 +100,7 @@ COPY --from=gnb-base \
 
 # Now we are copying from builder-image the UHD files.
 COPY --from=gnb-base /usr/local/bin/uhd_find_devices /usr/local/bin
-COPY --from=gnb-base /usr/local/lib64/libuhd.so.3.15.0 /usr/local/lib64
+COPY --from=gnb-base /usr/local/lib64/libuhd.so.4.4.0 /usr/local/lib64
 COPY --from=gnb-base /usr/local/lib64/uhd/utils/uhd_images_downloader.py /opt/oai-gnb/bin
 
 WORKDIR /usr/local/share/uhd/rfnoc

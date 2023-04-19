@@ -23,6 +23,7 @@
 
 #include "PHY/defs_UE.h"
 #include "PHY/phy_extern_ue.h"
+#include "PHY/phy_extern.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
 
@@ -470,8 +471,8 @@ void conjch0_mult_ch1(int *ch0,
   for (rb=0; rb<3*nb_rb; rb++) {
 
     mmtmpD0 = simde_mm_madd_epi16(dl_ch0_128[0],dl_ch1_128[0]);
-    mmtmpD1 = simde_mm_shufflelo_epi16(dl_ch0_128[0],_MM_SHUFFLE(2,3,0,1));
-    mmtmpD1 = simde_mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = simde_mm_shufflelo_epi16(dl_ch0_128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = simde_mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
     mmtmpD1 = simde_mm_sign_epi16(mmtmpD1,*(simde__m128i*)&conjugate[0]);
     mmtmpD1 = simde_mm_madd_epi16(mmtmpD1,dl_ch1_128[0]);
     mmtmpD0 = simde_mm_srai_epi32(mmtmpD0,output_shift0);
@@ -1235,9 +1236,9 @@ void lte_ue_measurements(PHY_VARS_UE *ue,
 
             mmtmpPMI0 = simde_mm_madd_epi16(dl_ch0_128[0],dl_ch1_128[0]);
                  //  print_ints("re",&mmtmpPMI0);
-            mmtmpPMI1 = simde_mm_shufflelo_epi16(dl_ch1_128[0],_MM_SHUFFLE(2,3,0,1));
+            mmtmpPMI1 = simde_mm_shufflelo_epi16(dl_ch1_128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
               //  print_ints("_mm_shufflelo_epi16",&mmtmpPMI1);
-            mmtmpPMI1 = simde_mm_shufflehi_epi16(mmtmpPMI1,_MM_SHUFFLE(2,3,0,1));
+            mmtmpPMI1 = simde_mm_shufflehi_epi16(mmtmpPMI1, SIMDE_MM_SHUFFLE(2,3,0,1));
                 //  print_ints("_mm_shufflehi_epi16",&mmtmpPMI1);
             mmtmpPMI1 = simde_mm_sign_epi16(mmtmpPMI1,*(simde__m128i*)&conjugate[0]);
                //  print_ints("_mm_sign_epi16",&mmtmpPMI1);
@@ -1254,9 +1255,9 @@ void lte_ue_measurements(PHY_VARS_UE *ue,
 
             mmtmpPMI0 = _mm_madd_epi16(dl_ch0_128[1],dl_ch1_128[1]);
                  //  print_ints("re",&mmtmpPMI0);
-            mmtmpPMI1 = _mm_shufflelo_epi16(dl_ch1_128[1],_MM_SHUFFLE(2,3,0,1));
+            mmtmpPMI1 = _mm_shufflelo_epi16(dl_ch1_128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
               //  print_ints("_mm_shufflelo_epi16",&mmtmpPMI1);
-            mmtmpPMI1 = _mm_shufflehi_epi16(mmtmpPMI1,_MM_SHUFFLE(2,3,0,1));
+            mmtmpPMI1 = _mm_shufflehi_epi16(mmtmpPMI1, SIMDE_MM_SHUFFLE(2,3,0,1));
                 //  print_ints("_mm_shufflehi_epi16",&mmtmpPMI1);
             mmtmpPMI1 = _mm_sign_epi16(mmtmpPMI1,*(__m128i*)&conjugate);
                //  print_ints("_mm_sign_epi16",&mmtmpPMI1);

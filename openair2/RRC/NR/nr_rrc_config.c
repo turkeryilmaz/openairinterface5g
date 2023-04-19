@@ -35,6 +35,35 @@
 
 const uint8_t slotsperframe[5] = {10, 20, 40, 80, 160};
 
+NR_MAC_CellGroupConfig_t *configure_mac_cellgroup(void)
+{
+  NR_MAC_CellGroupConfig_t * mac_CellGroupConfig = calloc(1, sizeof(*mac_CellGroupConfig));
+
+  mac_CellGroupConfig->bsr_Config = calloc(1, sizeof(*mac_CellGroupConfig->bsr_Config));
+  mac_CellGroupConfig->bsr_Config->periodicBSR_Timer = NR_BSR_Config__periodicBSR_Timer_sf10;
+  mac_CellGroupConfig->bsr_Config->retxBSR_Timer = NR_BSR_Config__retxBSR_Timer_sf80;
+  mac_CellGroupConfig->tag_Config = calloc(1, sizeof(*mac_CellGroupConfig->tag_Config));
+  mac_CellGroupConfig->tag_Config->tag_ToReleaseList = NULL;
+  mac_CellGroupConfig->tag_Config->tag_ToAddModList = calloc(1,sizeof(*mac_CellGroupConfig->tag_Config->tag_ToAddModList));
+  struct NR_TAG *tag=calloc(1,sizeof(*tag));
+  tag->tag_Id = 0;
+  tag->timeAlignmentTimer = NR_TimeAlignmentTimer_infinity;
+  asn1cSeqAdd(&mac_CellGroupConfig->tag_Config->tag_ToAddModList->list,tag);
+
+  set_phr_config(mac_CellGroupConfig);
+
+  mac_CellGroupConfig->schedulingRequestConfig = calloc(1, sizeof(*mac_CellGroupConfig->schedulingRequestConfig));
+  mac_CellGroupConfig->schedulingRequestConfig->schedulingRequestToAddModList = CALLOC(1,sizeof(*mac_CellGroupConfig->schedulingRequestConfig->schedulingRequestToAddModList));
+  struct NR_SchedulingRequestToAddMod *schedulingrequestlist = CALLOC(1,sizeof(*schedulingrequestlist));
+  schedulingrequestlist->schedulingRequestId = 0;
+  schedulingrequestlist->sr_ProhibitTimer = NULL;
+  schedulingrequestlist->sr_TransMax = NR_SchedulingRequestToAddMod__sr_TransMax_n64;
+  asn1cSeqAdd(&(mac_CellGroupConfig->schedulingRequestConfig->schedulingRequestToAddModList->list),schedulingrequestlist);
+
+  mac_CellGroupConfig->skipUplinkTxDynamic=false;
+  mac_CellGroupConfig->ext1 = NULL;
+  return mac_CellGroupConfig;
+}
 
 NR_SearchSpace_t *rrc_searchspace_config(bool is_common,
                                          int searchspaceid,
@@ -710,18 +739,18 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
 
   // UL TDA index 0 is basic slot configuration starting in symbol 0 til the last but one symbol
   struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-  pusch_timedomainresourceallocation->k2  = CALLOC(1,sizeof(long));
+  pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
   *pusch_timedomainresourceallocation->k2 = k2;
   pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0,13);
+  pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(0, 13);
   asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation); 
 
   // UL TDA index 1 in case of SRS
   struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation1 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-  pusch_timedomainresourceallocation1->k2  = CALLOC(1,sizeof(long));
+  pusch_timedomainresourceallocation1->k2 = CALLOC(1,sizeof(long));
   *pusch_timedomainresourceallocation1->k2 = k2;
   pusch_timedomainresourceallocation1->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-  pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0,12);
+  pusch_timedomainresourceallocation1->startSymbolAndLength = get_SLIV(0, 12);
   asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation1);
 
   if(frame_type==TDD) {
@@ -730,28 +759,28 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
       if (ul_symb>1) {
         // UL TDA index 2 for mixed slot (TDD)
         pusch_timedomainresourceallocation = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-        pusch_timedomainresourceallocation->k2  = CALLOC(1,sizeof(long));
+        pusch_timedomainresourceallocation->k2 = CALLOC(1,sizeof(long));
         *pusch_timedomainresourceallocation->k2 = k2;
         pusch_timedomainresourceallocation->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
-        pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(14-ul_symb,ul_symb-1); // starting in fist ul symbol til the last but one
+        pusch_timedomainresourceallocation->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
         asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation);
       }
       // UL TDA index 3 for msg3 in the mixed slot (TDD)
       int nb_periods_per_frame = get_nb_periods_per_frame(scc->tdd_UL_DL_ConfigurationCommon->pattern1.dl_UL_TransmissionPeriodicity);
-      int nb_slots_per_period = ((1<<mu) * 10)/nb_periods_per_frame;
+      int nb_slots_per_period = ((1 << mu) * 10) / nb_periods_per_frame;
       struct NR_PUSCH_TimeDomainResourceAllocation *pusch_timedomainresourceallocation_msg3 = CALLOC(1,sizeof(struct NR_PUSCH_TimeDomainResourceAllocation));
-      pusch_timedomainresourceallocation_msg3->k2  = CALLOC(1,sizeof(long));
+      pusch_timedomainresourceallocation_msg3->k2 = CALLOC(1,sizeof(long));
       int no_mix_slot = ul_symb < 3 ? 1 : 0; // we need at least 2 symbols for scheduling Msg3
       *pusch_timedomainresourceallocation_msg3->k2 = nb_slots_per_period - DELTA[mu] + no_mix_slot;
       if(*pusch_timedomainresourceallocation_msg3->k2 < min_fb_delay)
         *pusch_timedomainresourceallocation_msg3->k2 += nb_slots_per_period;
-      AssertFatal(*pusch_timedomainresourceallocation_msg3->k2<33,"Computed k2 for msg3 %ld is larger than the range allowed by RRC (0..32)\n",
+      AssertFatal(*pusch_timedomainresourceallocation_msg3->k2 < 33,"Computed k2 for msg3 %ld is larger than the range allowed by RRC (0..32)\n",
                   *pusch_timedomainresourceallocation_msg3->k2);
       pusch_timedomainresourceallocation_msg3->mappingType = NR_PUSCH_TimeDomainResourceAllocation__mappingType_typeB;
       if(no_mix_slot)
-        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(0,13); // full allocation if there is no mixed slot
+        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(0, 13); // full allocation if there is no mixed slot
       else
-        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(14-ul_symb,ul_symb-1); // starting in fist ul symbol til the last but one
+        pusch_timedomainresourceallocation_msg3->startSymbolAndLength = get_SLIV(14 - ul_symb, ul_symb - 1); // starting in fist ul symbol til the last but one
       asn1cSeqAdd(&scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list,pusch_timedomainresourceallocation_msg3);
     }
   }
@@ -760,15 +789,12 @@ void nr_rrc_config_ul_tda(NR_ServingCellConfigCommon_t *scc, int min_fb_delay){
 void set_dl_DataToUL_ACK(NR_PUCCH_Config_t *pucch_Config, int min_feedback_time, NR_SubcarrierSpacing_t subcarrierSpacing)
 {
   pucch_Config->dl_DataToUL_ACK = calloc(1,sizeof(*pucch_Config->dl_DataToUL_ACK));
-  const int n_slots_frame = slotsperframe[subcarrierSpacing];
   long *delay[8];
   for (int i = 0; i < 8; i++) {
     int curr_delay = i + min_feedback_time;
-    if (curr_delay <= n_slots_frame) {
-      delay[i] = calloc(1,sizeof(*delay[i]));
-      *delay[i] = curr_delay;
-      asn1cSeqAdd(&pucch_Config->dl_DataToUL_ACK->list,delay[i]);
-    }
+    delay[i] = calloc(1,sizeof(*delay[i]));
+    *delay[i] = curr_delay;
+    asn1cSeqAdd(&pucch_Config->dl_DataToUL_ACK->list,delay[i]);
   }
 }
 
@@ -886,7 +912,7 @@ void set_pucch_power_config(NR_PUCCH_Config_t *pucch_Config, int do_csirs) {
   asn1cSeqAdd(&pucch_Config->spatialRelationInfoToAddModList->list,pucchspatial);
 }
 
-static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedulingRequestResourceConfig, const NR_ServingCellConfigCommon_t *scc)
+static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedulingRequestResourceConfig, const NR_ServingCellConfigCommon_t *scc, int scs)
 {
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   int sr_slot = 1; // in FDD SR in slot 1
@@ -895,43 +921,46 @@ static void set_SR_periodandoffset(NR_SchedulingRequestResourceConfig_t *schedul
 
   schedulingRequestResourceConfig->periodicityAndOffset = calloc(1,sizeof(*schedulingRequestResourceConfig->periodicityAndOffset));
 
-  if(sr_slot<10){
+  if(sr_slot < 10 && scs < NR_SubcarrierSpacing_kHz60){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl10;
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl10 = sr_slot;
     return;
   }
-  if(sr_slot<20){
+  else if(sr_slot < 20 && scs < NR_SubcarrierSpacing_kHz120){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl20;
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl20 = sr_slot;
     return;
   }
-  if(sr_slot<40){
+  else if(sr_slot < 40){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl40;
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl40 = sr_slot;
     return;
   }
-  if(sr_slot<80){
+  else if(sr_slot < 80 || scs == NR_SubcarrierSpacing_kHz15){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl80;
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl80 = sr_slot;
     return;
   }
-  if(sr_slot<160){
+  else if(sr_slot < 160 || scs == NR_SubcarrierSpacing_kHz30){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl160;
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl160 = sr_slot;
     return;
   }
-  if(sr_slot<320){
+  else if(sr_slot < 320 || NR_SubcarrierSpacing_kHz60){
     schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl320;
     schedulingRequestResourceConfig->periodicityAndOffset->choice.sl320 = sr_slot;
     return;
   }
-  schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl640;
-  schedulingRequestResourceConfig->periodicityAndOffset->choice.sl640 = sr_slot;
+  else {
+    schedulingRequestResourceConfig->periodicityAndOffset->present = NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl640;
+    schedulingRequestResourceConfig->periodicityAndOffset->choice.sl640 = sr_slot;
+  }
 }
 
 void scheduling_request_config(const NR_ServingCellConfigCommon_t *scc,
-                               NR_PUCCH_Config_t *pucch_Config) {
-
+                               NR_PUCCH_Config_t *pucch_Config,
+                               int scs)
+{
   // format with <=2 bits in pucch resource set 0
   NR_PUCCH_ResourceSet_t *pucchresset = pucch_Config->resourceSetToAddModList->list.array[0];
   // assigning the 1st pucch resource in the set to scheduling request
@@ -942,7 +971,7 @@ void scheduling_request_config(const NR_ServingCellConfigCommon_t *scc,
   schedulingRequestResourceConfig->schedulingRequestResourceId = 1;
   schedulingRequestResourceConfig->schedulingRequestID = 0;
 
-  set_SR_periodandoffset(schedulingRequestResourceConfig, scc);
+  set_SR_periodandoffset(schedulingRequestResourceConfig, scc, scs);
 
   schedulingRequestResourceConfig->resource = calloc(1,sizeof(*schedulingRequestResourceConfig->resource));
   *schedulingRequestResourceConfig->resource = *pucchressetid;
@@ -994,7 +1023,7 @@ void set_dl_mcs_table(int scs,
     bwp_Dedicated->pdsch_Config->choice.setup->mcs_Table = NULL;
 }
 
-struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Config, const NR_ServingCellConfigCommon_t *scc)
+struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Config)
 {
   struct NR_SetupRelease_PUSCH_Config *setup_puschconfig = calloc(1, sizeof(*setup_puschconfig));
   setup_puschconfig->present = NR_SetupRelease_PUSCH_Config_PR_setup;
@@ -1003,24 +1032,34 @@ struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Confi
   setup_puschconfig->choice.setup = pusch_Config;
 
   pusch_Config->dataScramblingIdentityPUSCH = NULL;
-  pusch_Config->txConfig = calloc(1, sizeof(*pusch_Config->txConfig));
+  if (!pusch_Config->txConfig)
+    pusch_Config->txConfig = calloc(1, sizeof(*pusch_Config->txConfig));
   *pusch_Config->txConfig = NR_PUSCH_Config__txConfig_codebook;
   pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA = NULL;
-  pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB));
+  if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB)
+    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB));
   pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->present = NR_SetupRelease_DMRS_UplinkConfig_PR_setup;
-  pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
+  if (!pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup)
+    pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup = calloc(1, sizeof(*pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup));
   NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
   NR_DMRS_UplinkConfig->dmrs_Type = NULL;
   NR_DMRS_UplinkConfig->dmrs_AdditionalPosition = NULL;
   NR_DMRS_UplinkConfig->phaseTrackingRS = NULL;
   NR_DMRS_UplinkConfig->maxLength = NULL;
-  NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
+  if (!NR_DMRS_UplinkConfig->transformPrecodingDisabled)
+    NR_DMRS_UplinkConfig->transformPrecodingDisabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingDisabled));
   NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID0 = NULL;
   NR_DMRS_UplinkConfig->transformPrecodingDisabled->scramblingID1 = NULL;
-  NR_DMRS_UplinkConfig->transformPrecodingEnabled = NULL;
-  pusch_Config->pusch_PowerControl = calloc(1, sizeof(*pusch_Config->pusch_PowerControl));
+  if (!NR_DMRS_UplinkConfig->transformPrecodingEnabled)
+    NR_DMRS_UplinkConfig->transformPrecodingEnabled = calloc(1, sizeof(*NR_DMRS_UplinkConfig->transformPrecodingEnabled));
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->nPUSCH_Identity = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceHopping = NULL;
+  NR_DMRS_UplinkConfig->transformPrecodingEnabled->sequenceGroupHopping = NULL;
+  if (!pusch_Config->pusch_PowerControl)
+    pusch_Config->pusch_PowerControl = calloc(1, sizeof(*pusch_Config->pusch_PowerControl));
   pusch_Config->pusch_PowerControl->tpc_Accumulation = NULL;
-  pusch_Config->pusch_PowerControl->msg3_Alpha = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->msg3_Alpha));
+  if (!pusch_Config->pusch_PowerControl->msg3_Alpha)
+    pusch_Config->pusch_PowerControl->msg3_Alpha = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->msg3_Alpha));
   *pusch_Config->pusch_PowerControl->msg3_Alpha = NR_Alpha_alpha1;
   pusch_Config->pusch_PowerControl->p0_NominalWithoutGrant = NULL;
   pusch_Config->pusch_PowerControl->p0_AlphaSets = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->p0_AlphaSets));
@@ -1039,7 +1078,8 @@ struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Confi
   asn1cSeqAdd(&pusch_Config->pusch_PowerControl->pathlossReferenceRSToAddModList->list, plrefRS);
   pusch_Config->pusch_PowerControl->pathlossReferenceRSToReleaseList = NULL;
   pusch_Config->pusch_PowerControl->twoPUSCH_PC_AdjustmentStates = NULL;
-  pusch_Config->pusch_PowerControl->deltaMCS = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->deltaMCS));
+  if (!pusch_Config->pusch_PowerControl->deltaMCS)
+    pusch_Config->pusch_PowerControl->deltaMCS = calloc(1, sizeof(*pusch_Config->pusch_PowerControl->deltaMCS));
   *pusch_Config->pusch_PowerControl->deltaMCS = NR_PUSCH_PowerControl__deltaMCS_enabled;
   pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToAddModList = NULL;
   pusch_Config->pusch_PowerControl->sri_PUSCH_MappingToReleaseList = NULL;
@@ -1051,13 +1091,12 @@ struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Confi
   pusch_Config->mcs_Table = NULL;
   pusch_Config->mcs_TableTransformPrecoder = NULL;
   pusch_Config->transformPrecoder = NULL;
-  if (scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->msg3_transformPrecoder == NULL) {
-    pusch_Config->transformPrecoder = calloc(1, sizeof(*pusch_Config->transformPrecoder));
-    *pusch_Config->transformPrecoder = NR_PUSCH_Config__transformPrecoder_disabled;
-  }
-  pusch_Config->codebookSubset = calloc(1, sizeof(*pusch_Config->codebookSubset));
+  if (!pusch_Config->codebookSubset)
+    pusch_Config->codebookSubset = calloc(1, sizeof(*pusch_Config->codebookSubset));
   *pusch_Config->codebookSubset = NR_PUSCH_Config__codebookSubset_nonCoherent;
-  asn1cCallocOne(pusch_Config->maxRank, 1);
+  if (!pusch_Config->maxRank)
+    pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
+  *pusch_Config->maxRank = 1;
   pusch_Config->rbg_Size = NULL;
   pusch_Config->uci_OnPUSCH = NULL;
   pusch_Config->tp_pi2BPSK = NULL;
@@ -1243,7 +1282,7 @@ void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,
   config_pucch_resset0(pucch_Config, uid, curr_bwp, uecap);
   config_pucch_resset1(pucch_Config, uecap);
   set_pucch_power_config(pucch_Config, configuration->do_CSIRS);
-  scheduling_request_config(scc, pucch_Config);
+  scheduling_request_config(scc, pucch_Config, ubwp->bwp_Common->genericParameters.subcarrierSpacing);
   set_dl_DataToUL_ACK(pucch_Config, configuration->minRXTXTIME, ubwp->bwp_Common->genericParameters.subcarrierSpacing);
 
   NR_PUSCH_Config_t *pusch_Config = NULL;
@@ -1251,7 +1290,7 @@ void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,
      bwp_loop < servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count) {
     pusch_Config = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_loop]->bwp_Dedicated->pusch_Config->choice.setup;
   }
-  ubwp->bwp_Dedicated->pusch_Config = config_pusch(pusch_Config, scc);
+  ubwp->bwp_Dedicated->pusch_Config = config_pusch(pusch_Config);
 
   long maxMIMO_Layers = servingcellconfigdedicated &&
                                 servingcellconfigdedicated->uplinkConfig

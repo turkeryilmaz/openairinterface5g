@@ -93,20 +93,9 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_dci_dl_pdu_rel15_t 
   uint16_t monitoringSymbolsWithinSlot = 0;
   int sps = 0;
 
-  AssertFatal(mac->scc == NULL || mac->scc_SIB == NULL, "both scc and scc_SIB cannot be non-null\n");
-
   NR_UE_DL_BWP_t *current_DL_BWP = &mac->current_DL_BWP;
   NR_UE_UL_BWP_t *current_UL_BWP = &mac->current_UL_BWP;
   NR_BWP_Id_t dl_bwp_id = current_DL_BWP ? current_DL_BWP->bwp_id : 0;
-  NR_ServingCellConfigCommon_t *scc = mac->scc;
-  NR_ServingCellConfigCommonSIB_t *scc_SIB = mac->scc_SIB;
-  NR_BWP_DownlinkCommon_t *initialDownlinkBWP=NULL;
-  NR_BWP_UplinkCommon_t *initialUplinkBWP=NULL;
-
-  if (scc!=NULL || scc_SIB != NULL) {
-    initialDownlinkBWP =  scc!=NULL ? scc->downlinkConfigCommon->initialDownlinkBWP : &scc_SIB->downlinkConfigCommon.initialDownlinkBWP;
-    initialUplinkBWP = scc!=NULL ? scc->uplinkConfigCommon->initialUplinkBWP : &scc_SIB->uplinkConfigCommon->initialUplinkBWP;
-  }
 
   NR_SearchSpace_t *ss;
   NR_ControlResourceSet_t *coreset;
@@ -173,24 +162,24 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_dci_dl_pdu_rel15_t 
       // computing alternative size for padding
       dci_pdu_rel15_t temp_pdu;
       if(dci_format == NR_DL_DCI_FORMAT_1_0)
-        alt_size = nr_dci_size(initialDownlinkBWP,initialUplinkBWP,
-                               current_DL_BWP, current_UL_BWP,
-                               mac->cg, &temp_pdu,
-                               NR_UL_DCI_FORMAT_0_0, rnti_type, coreset_id, dl_bwp_id,
-                               ss->searchSpaceType->present, mac->type0_PDCCH_CSS_config.num_rbs, 0);
+        alt_size =
+            nr_dci_size(current_DL_BWP, current_UL_BWP, mac->cg, &temp_pdu, NR_UL_DCI_FORMAT_0_0, rnti_type, coreset, dl_bwp_id, ss->searchSpaceType->present, mac->type0_PDCCH_CSS_config.num_rbs, 0);
       if(dci_format == NR_UL_DCI_FORMAT_0_0)
-        alt_size = nr_dci_size(initialDownlinkBWP,initialUplinkBWP,
-                               current_DL_BWP, current_UL_BWP,
-                               mac->cg, &temp_pdu,
-                               NR_DL_DCI_FORMAT_1_0, rnti_type, coreset_id, dl_bwp_id,
-                               ss->searchSpaceType->present, mac->type0_PDCCH_CSS_config.num_rbs, 0);
+        alt_size =
+            nr_dci_size(current_DL_BWP, current_UL_BWP, mac->cg, &temp_pdu, NR_DL_DCI_FORMAT_1_0, rnti_type, coreset, dl_bwp_id, ss->searchSpaceType->present, mac->type0_PDCCH_CSS_config.num_rbs, 0);
     }
 
-    rel15->dci_length_options[i] = nr_dci_size(initialDownlinkBWP,initialUplinkBWP,
-                                               current_DL_BWP, current_UL_BWP,
-                                               mac->cg, &mac->def_dci_pdu_rel15[dci_format],
-                                               dci_format, NR_RNTI_TC, coreset_id, dl_bwp_id, 
-                                               ss->searchSpaceType->present, mac->type0_PDCCH_CSS_config.num_rbs, alt_size);
+    rel15->dci_length_options[i] = nr_dci_size(current_DL_BWP,
+                                               current_UL_BWP,
+                                               mac->cg,
+                                               &mac->def_dci_pdu_rel15[dl_config->slot][dci_format],
+                                               dci_format,
+                                               NR_RNTI_TC,
+                                               coreset,
+                                               dl_bwp_id,
+                                               ss->searchSpaceType->present,
+                                               mac->type0_PDCCH_CSS_config.num_rbs,
+                                               alt_size);
 
     rel15->BWPStart = coreset_id == 0 ? mac->type0_PDCCH_CSS_config.cset_start_rb : current_DL_BWP->BWPStart;
     rel15->BWPSize = coreset_id == 0 ? mac->type0_PDCCH_CSS_config.num_rbs : current_DL_BWP->BWPSize;
@@ -279,8 +268,8 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
 
   uint8_t bwp_id = mac->current_DL_BWP.bwp_id;
   //NR_ServingCellConfig_t *scd = mac->scg->spCellConfig->spCellConfigDedicated;
-  NR_BWP_DownlinkDedicated_t *bwpd  = (bwp_id>0) ? mac->DLbwp[bwp_id-1]->bwp_Dedicated : mac->cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP;
-  NR_BWP_DownlinkCommon_t *bwp_Common = (bwp_id>0) ? mac->DLbwp[bwp_id-1]->bwp_Common : &mac->scc_SIB->downlinkConfigCommon.initialDownlinkBWP;
+  NR_BWP_DownlinkDedicated_t *bwpd  = (bwp_id>0) ? mac->DLbwp[bwp_id-1]->bwp_Dedicated : (mac->cg ? mac->cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP : NULL);
+  NR_BWP_DownlinkCommon_t *bwp_Common = get_bwp_downlink_common(mac, bwp_id);
 
   LOG_D(NR_MAC, "[DCI_CONFIG] ra_rnti %p (%x) crnti %p (%x) t_crnti %p (%x)\n", &ra->ra_rnti, ra->ra_rnti, &mac->crnti, mac->crnti, &ra->t_crnti, ra->t_crnti);
 
@@ -387,7 +376,7 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
 	  // this is an USS
 	  if (ss->searchSpaceType->choice.ue_Specific &&
 	      ss->searchSpaceType->choice.ue_Specific->dci_Formats == NR_SearchSpace__searchSpaceType__ue_Specific__dci_Formats_formats0_1_And_1_1 &&
-	      (ra->ra_state == RA_SUCCEEDED || get_softmodem_params()->phy_test) &&
+	      mac->state == UE_CONNECTED &&
               mac->crnti > 0) {
 	      // Monitors DCI 01 and 11 scrambled with C-RNTI, or CS-RNTI(s), or SP-CSI-RNTI
             LOG_D(NR_MAC, "[DCI_CONFIG] Configure monitoring of PDCCH candidates in the user specific search space\n");
@@ -428,6 +417,6 @@ void ue_dci_configuration(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_request_t *dl
       } // for ss_id
   }
   else {
-    AssertFatal(1==0,"Handle DCI searching when CellGroup without dedicated BWP\n");
+    LOG_E(MAC,"Cannot handle DCI without dedicated BWP\n");
   }
 }

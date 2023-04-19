@@ -98,6 +98,8 @@ void *one_thread(void *arg) {
       myThread->runningOnKey=-1;
       mutexunlock(tp->incomingFifo.lockF);
     }
+    else
+      delNotifiedFIFO_elt(elt);
   } while (!myThread->terminate);
   return NULL;
 }
@@ -176,7 +178,13 @@ void initFloatingCoresTpool(int nbThreads,tpool_t *pool, bool performanceMeas, c
 #ifdef TEST_THREAD_POOL
 volatile int oai_exit=0;
 
-void exit_function(const char *file, const char *function, const int line, const char *s) {
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert)
+{
+  if (assert) {
+    abort();
+  } else {
+    exit(EXIT_SUCCESS);
+  }
 }
 
 struct testData {

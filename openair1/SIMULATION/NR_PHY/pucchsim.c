@@ -38,7 +38,7 @@
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
 #include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_UE_TRANSPORT/pucch_nr.h"
@@ -46,8 +46,8 @@
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
 #include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
-#include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
 #include "executables/nr-uesoftmodem.h"
+#include "nfapi/oai_integration/vendor_ext.h"
 
 THREAD_STRUCT thread_struct;
 PHY_VARS_gNB *gNB;
@@ -59,14 +59,30 @@ uint64_t downlink_frequency[MAX_NUM_CCs][4];
 
 double cpuf;
 //uint8_t nfapi_mode = 0;
-uint16_t NB_UE_INST = 1;
+const int NB_UE_INST = 1;
 uint8_t const nr_rv_round_map[4] = {0, 2, 3, 1};
 const short conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
 const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
 // needed for some functions
 PHY_VARS_NR_UE * PHY_vars_UE_g[1][1]={{NULL}};
 
+uint64_t get_softmodem_optmask(void) {return 0;}
+softmodem_params_t *get_softmodem_params(void) {return 0;}
+
 void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
+NR_IF_Module_t *NR_IF_Module_init(int Mod_id) { return (NULL); }
+nfapi_mode_t nfapi_getmode(void) { return NFAPI_MODE_UNKNOWN; }
+
+void inc_ref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+void deref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
 
 nrUE_params_t nrUE_params={0};
 
@@ -404,11 +420,13 @@ int main(int argc, char **argv)
   cfg->carrier_config.num_tx_ant.value = n_tx;
   cfg->carrier_config.num_rx_ant.value = n_rx;
   nr_phy_config_request_sim(gNB,N_RB_DL,N_RB_DL,mu,Nid_cell,SSB_positions);
+  gNB->gNB_config.tdd_table.tdd_period.value = 6;
+  set_tdd_config_nr(&gNB->gNB_config, mu, 7, 6, 2, 4);
   phy_init_nr_gNB(gNB);
   /* RU handles rxdataF, and gNB just has a pointer. Here, we don't have an RU,
    * so we need to allocate that memory as well. */
   for (i = 0; i < n_rx; i++)
-    gNB->common_vars.rxdataF[i] = malloc16_clear(gNB->frame_parms.samples_per_frame_wCP*sizeof(int32_t));
+    gNB->common_vars.rxdataF[i] = malloc16_clear(gNB->frame_parms.samples_per_frame_wCP*sizeof(c16_t));
 
   double fs,txbw,rxbw;
   uint32_t samples;
@@ -516,7 +534,7 @@ int main(int argc, char **argv)
     ack_nack_errors=0;
     sr_errors=0;
     n_errors = 0;
-    int **txdataF = gNB->common_vars.txdataF;
+    c16_t **txdataF = gNB->common_vars.txdataF;
     for (trial=0; trial<n_trials; trial++) {
       for (int aatx=0;aatx<1;aatx++)
         bzero(txdataF[aatx],frame_parms->ofdm_symbol_size*sizeof(int));
@@ -531,7 +549,7 @@ int main(int argc, char **argv)
       // SNR Computation
       // standard says: SNR = S / N, where S is the total signal energy, N is the noise energy in the transmission bandwidth (i.e. N_RB_DL resource blocks)
       // txlev = S.
-      int txlev = signal_energy(&txdataF[0][startingSymbolIndex*frame_parms->ofdm_symbol_size], frame_parms->ofdm_symbol_size);
+      int txlev = signal_energy((int32_t *)&txdataF[0][startingSymbolIndex*frame_parms->ofdm_symbol_size], frame_parms->ofdm_symbol_size);
 
       // sigma2 is variance per dimension, so N/(N_RB*12)
       // so, sigma2 = N/(N_RB_DL*12) => (S/SNR)/(N_RB*12)
@@ -541,7 +559,7 @@ int main(int argc, char **argv)
 
       if (n_trials==1) printf("txlev %d (%f dB), offset %d, sigma2 %f ( %f dB)\n",txlev,10*log10(txlev),startingSymbolIndex*frame_parms->ofdm_symbol_size,sigma2,sigma2_dB);
 
-      c16_t **rxdataF =  (struct complex16 **)gNB->common_vars.rxdataF;
+      c16_t **rxdataF =  gNB->common_vars.rxdataF;
       for (int symb=0; symb<gNB->frame_parms.symbols_per_slot;symb++) {
         if (symb<startingSymbolIndex || symb >= startingSymbolIndex+nrofSymbols) {
           int i0 = symb*gNB->frame_parms.ofdm_symbol_size;
@@ -582,7 +600,7 @@ int main(int argc, char **argv)
             rxdataF[aarx][i].r = (int16_t)(100.0*(rxr + nr)/sqrt((double)txlev));
             rxdataF[aarx][i].i=(int16_t)(100.0*(rxi + ni)/sqrt((double)txlev));
 
-            if (n_trials==1 && abs(txr) > 0) printf("symb %d, re %d , aarx %d : txr %f, txi %f, chr %f, chi %f, nr %f, ni %f, rxr %f, rxi %f => %d,%d\n",
+            if (n_trials==1 && fabs(txr) > 0) printf("symb %d, re %d , aarx %d : txr %f, txi %f, chr %f, chi %f, nr %f, ni %f, rxr %f, rxi %f => %d,%d\n",
                                                     symb, re, aarx, txr,txi,
                                                     UE2gNB->chF[aarx][re].r,UE2gNB->chF[aarx][re].i,
                                                     nr,ni, rxr,rxi,
@@ -616,7 +634,7 @@ int main(int argc, char **argv)
       if(format==0){
         nfapi_nr_uci_pucch_pdu_format_0_1_t uci_pdu;
         nfapi_nr_pucch_pdu_t pucch_pdu;
-        gNB->uci_stats[0].rnti          = 0x1234;
+        gNB->phy_stats[0].rnti = 0x1234;
         pucch_pdu.rnti                  = 0x1234;
         pucch_pdu.subcarrier_spacing    = 1;
         pucch_pdu.group_hop_flag        = PUCCH_GroupHopping&1;
@@ -662,7 +680,7 @@ int main(int argc, char **argv)
         free(uci_pdu.harq);
       }
       else if (format==1) {
-        nr_decode_pucch1((int32_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
+        nr_decode_pucch1((c16_t **)rxdataF,PUCCH_GroupHopping,hopping_id,
                          &(payload_received),frame_parms,amp,nr_slot_tx,
                          m0,nrofSymbols,startingSymbolIndex,startingPRB,
                          startingPRB_intraSlotHopping,timeDomainOCC,nr_bit);
@@ -720,6 +738,11 @@ int main(int argc, char **argv)
   }
   free_channel_desc_scm(UE2gNB);
   term_freq_channel();
+
+  int nb_slots_to_set = TDD_CONFIG_NB_FRAMES * (1 << mu) * NR_NUMBER_OF_SUBFRAMES_PER_FRAME;
+  for (int i = 0; i < nb_slots_to_set; ++i)
+    free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list[i].max_num_of_symbol_per_slot_list);
+  free(gNB->gNB_config.tdd_table.max_tdd_periodicity_list);
 
   for (i = 0; i < n_rx; i++)
     free(gNB->common_vars.rxdataF[i]);

@@ -73,8 +73,8 @@ typedef struct nr_pdcp_entity_t {
 
   /* functions provided by the PDCP module */
   void (*recv_pdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size);
-  void (*recv_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
-                   int sdu_id);
+  int (*process_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
+                     int sdu_id, char *pdu_buffer, int pdu_max_size);
   void (*delete_entity)(struct nr_pdcp_entity_t *entity);
   void (*get_stats)(struct nr_pdcp_entity_t *entity, nr_pdcp_statistics_t *out);
 
@@ -95,16 +95,15 @@ typedef struct nr_pdcp_entity_t {
   void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
                       char *buf, int size);
   void *deliver_sdu_data;
-  void (*deliver_pdu)(void *deliver_pdu_data, struct nr_pdcp_entity_t *entity,
+  void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                       char *buf, int size, int sdu_id);
   void *deliver_pdu_data;
 
   /* configuration variables */
   int rb_id;
   int pdusession_id;
-  int has_sdap;
-  int has_sdapULheader;
-  int has_sdapDLheader;
+  bool has_sdap_rx;
+  bool has_sdap_tx;
   int sn_size;                  /* SN size, in bits */
   int t_reordering;             /* unit: ms, -1 for infinity */
   int discard_timer;            /* unit: ms, -1 for infinity */
@@ -169,12 +168,15 @@ typedef struct nr_pdcp_entity_t {
 
 nr_pdcp_entity_t *new_nr_pdcp_entity(
     nr_pdcp_entity_type_t type,
-    int is_gnb, int rb_id, int pdusession_id,int has_sdap,
-    int has_sdapULheader,int has_sdapDLheader,
+    int is_gnb,
+    int rb_id,
+    int pdusession_id,
+    bool has_sdap_rx,
+    bool has_sdap_tx,
     void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
                         char *buf, int size),
     void *deliver_sdu_data,
-    void (*deliver_pdu)(void *deliver_pdu_data, struct nr_pdcp_entity_t *entity,
+    void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                         char *buf, int size, int sdu_id),
     void *deliver_pdu_data,
     int sn_size,

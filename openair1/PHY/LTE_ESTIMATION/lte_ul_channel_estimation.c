@@ -20,12 +20,13 @@
  */
 
 #include "PHY/defs_eNB.h"
-//#include "PHY/phy_extern.h"
+#include "PHY/phy_extern.h"
 #include "PHY/sse_intrin.h"
 //#define DEBUG_CH
 #include "common/utils/LOG/log.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
 #include "lte_estimation.h"
+#include "openair1/PHY/LTE_TRANSPORT/transport_vars.h"
 
 // round(exp(sqrt(-1)*(pi/2)*[0:1:N-1]/N)*pow2(15))
 static int16_t ru_90[2*128] = {32767, 0,32766, 402,32758, 804,32746, 1206,32729, 1608,32706, 2009,32679, 2411,32647, 2811,32610, 3212,32568, 3612,32522, 4011,32470, 4410,32413, 4808,32352, 5205,32286, 5602,32214, 5998,32138, 6393,32058, 6787,31972, 7180,31881, 7571,31786, 7962,31686, 8351,31581, 8740,31471, 9127,31357, 9512,31238, 9896,31114, 10279,30986, 10660,30853, 11039,30715, 11417,30572, 11793,30425, 12167,30274, 12540,30118, 12910,29957, 13279,29792, 13646,29622, 14010,29448, 14373,29269, 14733,29086, 15091,28899, 15447,28707, 15800,28511, 16151,28311, 16500,28106, 16846,27897, 17190,27684, 17531,27467, 17869,27246, 18205,27020, 18538,26791, 18868,26557, 19195,26320, 19520,26078, 19841,25833, 20160,25583, 20475,25330, 20788,25073, 21097,24812, 21403,24548, 21706,24279, 22006,24008, 22302,23732, 22595,23453, 22884,23170, 23170,22884, 23453,22595, 23732,22302, 24008,22006, 24279,21706, 24548,21403, 24812,21097, 25073,20788, 25330,20475, 25583,20160, 25833,19841, 26078,19520, 26320,19195, 26557,18868, 26791,18538, 27020,18205, 27246,17869, 27467,17531, 27684,17190, 27897,16846, 28106,16500, 28311,16151, 28511,15800, 28707,15447, 28899,15091, 29086,14733, 29269,14373, 29448,14010, 29622,13646, 29792,13279, 29957,12910, 30118,12540, 30274,12167, 30425,11793, 30572,11417, 30715,11039, 30853,10660, 30986,10279, 31114,9896, 31238,9512, 31357,9127, 31471,8740, 31581,8351, 31686,7962, 31786,7571, 31881,7180, 31972,6787, 32058,6393, 32138,5998, 32214,5602, 32286,5205, 32352,4808, 32413,4410, 32470,4011, 32522,3612, 32568,3212, 32610,2811, 32647,2411, 32679,2009, 32706,1608, 32729,1206, 32746,804, 32758,402, 32766};
@@ -33,11 +34,6 @@ static int16_t ru_90[2*128] = {32767, 0,32766, 402,32758, 804,32746, 1206,32729,
 static int16_t ru_90c[2*128] = {32767, 0,32766, -402,32758, -804,32746, -1206,32729, -1608,32706, -2009,32679, -2411,32647, -2811,32610, -3212,32568, -3612,32522, -4011,32470, -4410,32413, -4808,32352, -5205,32286, -5602,32214, -5998,32138, -6393,32058, -6787,31972, -7180,31881, -7571,31786, -7962,31686, -8351,31581, -8740,31471, -9127,31357, -9512,31238, -9896,31114, -10279,30986, -10660,30853, -11039,30715, -11417,30572, -11793,30425, -12167,30274, -12540,30118, -12910,29957, -13279,29792, -13646,29622, -14010,29448, -14373,29269, -14733,29086, -15091,28899, -15447,28707, -15800,28511, -16151,28311, -16500,28106, -16846,27897, -17190,27684, -17531,27467, -17869,27246, -18205,27020, -18538,26791, -18868,26557, -19195,26320, -19520,26078, -19841,25833, -20160,25583, -20475,25330, -20788,25073, -21097,24812, -21403,24548, -21706,24279, -22006,24008, -22302,23732, -22595,23453, -22884,23170, -23170,22884, -23453,22595, -23732,22302, -24008,22006, -24279,21706, -24548,21403, -24812,21097, -25073,20788, -25330,20475, -25583,20160, -25833,19841, -26078,19520, -26320,19195, -26557,18868, -26791,18538, -27020,18205, -27246,17869, -27467,17531, -27684,17190, -27897,16846, -28106,16500, -28311,16151, -28511,15800, -28707,15447, -28899,15091, -29086,14733, -29269,14373, -29448,14010, -29622,13646, -29792,13279, -29957,12910, -30118,12540, -30274,12167, -30425,11793, -30572,11417, -30715,11039, -30853,10660, -30986,10279, -31114,9896, -31238,9512, -31357,9127, -31471,8740, -31581,8351, -31686,7962, -31786,7571, -31881,7180, -31972,6787, -32058,6393, -32138,5998, -32214,5602, -32286,5205, -32352,4808, -32413,4410, -32470,4011, -32522,3612, -32568,3212, -32610,2811, -32647,2411, -32679,2009, -32706,1608, -32729,1206, -32746,804, -32758,402, -32766};
 
 #define SCALE 0x3FFF
-
-static const short conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
-
-extern unsigned short dftsizes[34];
-extern int16_t *ul_ref_sigs_rx[30][2][34];
 
 int32_t lte_ul_channel_estimation(LTE_DL_FRAME_PARMS *frame_parms,
                                   L1_rxtx_proc_t *proc,
@@ -131,8 +127,8 @@ int32_t lte_ul_channel_estimation(LTE_DL_FRAME_PARMS *frame_parms,
         // multiply by conjugated channel
         mmtmpU0 = _mm_madd_epi16(ul_ref128[0],rxdataF128[0]);
         // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-        mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[0],_MM_SHUFFLE(2,3,0,1));
-        mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+        mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+        mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1, SIMDE_MM_SHUFFLE(2,3,0,1));
         mmtmpU1 = _mm_sign_epi16(mmtmpU1,*(__m128i *)&conjugate[0]);
         mmtmpU1 = _mm_madd_epi16(mmtmpU1,rxdataF128[0]);
         // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -145,8 +141,8 @@ int32_t lte_ul_channel_estimation(LTE_DL_FRAME_PARMS *frame_parms,
         // multiply by conjugated channel
         mmtmpU0 = _mm_madd_epi16(ul_ref128[1],rxdataF128[1]);
         // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-        mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[1],_MM_SHUFFLE(2,3,0,1));
-        mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+        mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+        mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1, SIMDE_MM_SHUFFLE(2,3,0,1));
         mmtmpU1 = _mm_sign_epi16(mmtmpU1,*(__m128i *)conjugate);
         mmtmpU1 = _mm_madd_epi16(mmtmpU1,rxdataF128[1]);
         // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -157,8 +153,8 @@ int32_t lte_ul_channel_estimation(LTE_DL_FRAME_PARMS *frame_parms,
         ul_ch128[1] = _mm_packs_epi32(mmtmpU2,mmtmpU3);
         mmtmpU0 = _mm_madd_epi16(ul_ref128[2],rxdataF128[2]);
         // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-        mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[2],_MM_SHUFFLE(2,3,0,1));
-        mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+        mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[2], SIMDE_MM_SHUFFLE(2,3,0,1));
+        mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1, SIMDE_MM_SHUFFLE(2,3,0,1));
         mmtmpU1 = _mm_sign_epi16(mmtmpU1,*(__m128i *)conjugate);
         mmtmpU1 = _mm_madd_epi16(mmtmpU1,rxdataF128[2]);
         // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -459,8 +455,8 @@ int32_t lte_ul_channel_estimation_RRU(LTE_DL_FRAME_PARMS *frame_parms,
       // multiply by conjugated channel
       mmtmpU0 = _mm_madd_epi16(ul_ref128[0],rxdataF128[0]);
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[0],_MM_SHUFFLE(2,3,0,1));
-      mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = _mm_sign_epi16(mmtmpU1,*(__m128i *)&conjugate[0]);
       mmtmpU1 = _mm_madd_epi16(mmtmpU1,rxdataF128[0]);
       // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -473,8 +469,8 @@ int32_t lte_ul_channel_estimation_RRU(LTE_DL_FRAME_PARMS *frame_parms,
       // multiply by conjugated channel
       mmtmpU0 = _mm_madd_epi16(ul_ref128[1],rxdataF128[1]);
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[1],_MM_SHUFFLE(2,3,0,1));
-      mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = _mm_sign_epi16(mmtmpU1,*(__m128i *)conjugate);
       mmtmpU1 = _mm_madd_epi16(mmtmpU1,rxdataF128[1]);
       // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -485,8 +481,8 @@ int32_t lte_ul_channel_estimation_RRU(LTE_DL_FRAME_PARMS *frame_parms,
       ul_ch128[1] = _mm_packs_epi32(mmtmpU2,mmtmpU3);
       mmtmpU0 = _mm_madd_epi16(ul_ref128[2],rxdataF128[2]);
       // mmtmpU0 contains real part of 4 consecutive outputs (32-bit)
-      mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[2],_MM_SHUFFLE(2,3,0,1));
-      mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1,_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = _mm_shufflelo_epi16(ul_ref128[2], SIMDE_MM_SHUFFLE(2,3,0,1));
+      mmtmpU1 = _mm_shufflehi_epi16(mmtmpU1, SIMDE_MM_SHUFFLE(2,3,0,1));
       mmtmpU1 = _mm_sign_epi16(mmtmpU1,*(__m128i *)conjugate);
       mmtmpU1 = _mm_madd_epi16(mmtmpU1,rxdataF128[2]);
       // mmtmpU1 contains imag part of 4 consecutive outputs (32-bit)
@@ -835,8 +831,8 @@ int16_t lte_ul_freq_offset_estimation(LTE_DL_FRAME_PARMS *frame_parms,
   // correlate and average the 2 channel estimates ul_ch1*ul_ch2
   for (rb=0; rb<nb_rb; rb++) {
     mmtmpD0 = _mm_madd_epi16(ul_ch1[0],ul_ch2[0]);
-    mmtmpD1 = _mm_shufflelo_epi16(ul_ch1[0],_MM_SHUFFLE(2,3,0,1));
-    mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = _mm_shufflelo_epi16(ul_ch1[0], SIMDE_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
     mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)&conjugate);
     mmtmpD1 = _mm_madd_epi16(mmtmpD1,ul_ch2[0]);
     mmtmpD0 = _mm_srai_epi32(mmtmpD0,output_shift);
@@ -845,8 +841,8 @@ int16_t lte_ul_freq_offset_estimation(LTE_DL_FRAME_PARMS *frame_parms,
     mmtmpD3 = _mm_unpackhi_epi32(mmtmpD0,mmtmpD1);
     R[0] = _mm_packs_epi32(mmtmpD2,mmtmpD3);
     mmtmpD0 = _mm_madd_epi16(ul_ch1[1],ul_ch2[1]);
-    mmtmpD1 = _mm_shufflelo_epi16(ul_ch1[1],_MM_SHUFFLE(2,3,0,1));
-    mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = _mm_shufflelo_epi16(ul_ch1[1], SIMDE_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
     mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)&conjugate);
     mmtmpD1 = _mm_madd_epi16(mmtmpD1,ul_ch2[1]);
     mmtmpD0 = _mm_srai_epi32(mmtmpD0,output_shift);
@@ -855,8 +851,8 @@ int16_t lte_ul_freq_offset_estimation(LTE_DL_FRAME_PARMS *frame_parms,
     mmtmpD3 = _mm_unpackhi_epi32(mmtmpD0,mmtmpD1);
     R[1] = _mm_packs_epi32(mmtmpD2,mmtmpD3);
     mmtmpD0 = _mm_madd_epi16(ul_ch1[2],ul_ch2[2]);
-    mmtmpD1 = _mm_shufflelo_epi16(ul_ch1[2],_MM_SHUFFLE(2,3,0,1));
-    mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1,_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = _mm_shufflelo_epi16(ul_ch1[2], SIMDE_MM_SHUFFLE(2,3,0,1));
+    mmtmpD1 = _mm_shufflehi_epi16(mmtmpD1, SIMDE_MM_SHUFFLE(2,3,0,1));
     mmtmpD1 = _mm_sign_epi16(mmtmpD1,*(__m128i *)&conjugate);
     mmtmpD1 = _mm_madd_epi16(mmtmpD1,ul_ch2[2]);
     mmtmpD0 = _mm_srai_epi32(mmtmpD0,output_shift);

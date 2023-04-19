@@ -35,7 +35,6 @@
 #include "fapi_nr_ue_interface.h"
 #include "fapi_nr_ue_l1.h"
 #include "harq_nr.h"
-//#include "PHY/phy_vars_nr_ue.h"
 #include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 #include "PHY/defs_nr_UE.h"
 #include "PHY/impl_defs_nr.h"
@@ -422,7 +421,8 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response){
       for (int i = 0; i < ul_config->number_pdus; ++i){
 
         AssertFatal(ul_config->ul_config_list[i].pdu_type <= FAPI_NR_UL_CONFIG_TYPES,"pdu_type %d out of bounds\n",ul_config->ul_config_list[i].pdu_type);
-        LOG_D(PHY, "In %s i %d: processing %s PDU of %d total UL PDUs (ul_config %p) \n", __FUNCTION__, i, ul_pdu_type[ul_config->ul_config_list[i].pdu_type - 1], ul_config->number_pdus, ul_config);
+        LOG_D(PHY, "[%d.%d] i %d: processing %s PDU of %d total UL PDUs (ul_config %p) \n",
+              scheduled_response->frame, slot, i, ul_pdu_type[ul_config->ul_config_list[i].pdu_type - 1], ul_config->number_pdus, ul_config);
 
         uint8_t pdu_type = ul_config->ul_config_list[i].pdu_type, current_harq_pid, gNB_id = 0;
         /* PRACH */
@@ -448,7 +448,6 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response){
           LOG_D(PHY, "In %s i %d: copy pusch_config_pdu nrOfLayers:%d, num_dmrs_cdm_grps_no_data:%d \n", __FUNCTION__, i, pusch_config_pdu->nrOfLayers,pusch_config_pdu->num_dmrs_cdm_grps_no_data);
 
           memcpy(pusch_pdu, pusch_config_pdu, sizeof(nfapi_nr_ue_pusch_pdu_t));
-
           if (scheduled_response->tx_request) {
             for (int j=0; j<scheduled_response->tx_request->number_of_pdus; j++) {
               fapi_nr_tx_request_body_t *tx_req_body = &scheduled_response->tx_request->tx_request_body[j];
@@ -542,17 +541,20 @@ int8_t nr_ue_scheduled_response(nr_scheduled_response_t *scheduled_response){
   return 0;
 }
 
-
-
-
-int8_t nr_ue_phy_config_request(nr_phy_config_t *phy_config){
-
+int8_t nr_ue_phy_config_request(nr_phy_config_t *phy_config)
+{
   fapi_nr_config_request_t *nrUE_config = &PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id]->nrUE_config;
-
-  if(phy_config != NULL)
+  if(phy_config != NULL) {
     memcpy(nrUE_config,&phy_config->config_req,sizeof(fapi_nr_config_request_t));
-
+    pushNotifiedFIFO(&PHY_vars_UE_g[phy_config->Mod_id][phy_config->CC_id]->phy_config_ind, newNotifiedFIFO_elt(1,0,NULL,NULL));
+  }
   return 0;
 }
 
+void nr_ue_synch_request(nr_synch_request_t *synch_request)
+{
+  fapi_nr_synch_request_t *synch_req = &PHY_vars_UE_g[synch_request->Mod_id][synch_request->CC_id]->synch_request.synch_req;
+  memcpy(synch_req, &synch_request->synch_req, sizeof(fapi_nr_synch_request_t));
+  PHY_vars_UE_g[synch_request->Mod_id][synch_request->CC_id]->synch_request.received_synch_request = 1;
+}
 

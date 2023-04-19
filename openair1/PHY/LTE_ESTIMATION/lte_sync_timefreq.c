@@ -38,6 +38,7 @@
 //#include "defs.h"
 #include "PHY/defs_UE.h"
 #include "PHY/phy_extern_ue.h"
+#include "PHY/phy_extern.h"
 
 #if defined(__x86_64__) || defined(__i386__)
 #include "pss6144.h"
@@ -137,8 +138,8 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
             mmtmp01 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_1)[re],s),15);
             mmtmp02 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_2)[re],s),15);
 
-            s = _mm_shufflelo_epi16(s,_MM_SHUFFLE(2,3,0,1));
-            s = _mm_shufflehi_epi16(s,_MM_SHUFFLE(2,3,0,1));
+            s = _mm_shufflelo_epi16(s, SIMDE_MM_SHUFFLE(2,3,0,1));
+            s = _mm_shufflehi_epi16(s, SIMDE_MM_SHUFFLE(2,3,0,1));
             s = _mm_sign_epi16(s,*(__m128i*)&conjugate[0]);
             mmtmp10 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_0)[re],s),15);
             mmtmp11 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_1)[re],s),15);
@@ -196,8 +197,8 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
             mmtmp01 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_1)[re],s),15);
             mmtmp02 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_2)[re],s),15);
 
-            s = _mm_shufflelo_epi16(s,_MM_SHUFFLE(2,3,0,1));
-            s = _mm_shufflehi_epi16(s,_MM_SHUFFLE(2,3,0,1));
+            s = _mm_shufflelo_epi16(s, SIMDE_MM_SHUFFLE(2,3,0,1));
+            s = _mm_shufflehi_epi16(s, SIMDE_MM_SHUFFLE(2,3,0,1));
             s = _mm_sign_epi16(s,*(__m128i*)&conjugate[0]);
             mmtmp10 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_0)[re],s),15);
             mmtmp11 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_1)[re],s),15);
@@ -250,8 +251,8 @@ void lte_sync_timefreq(PHY_VARS_UE *ue,int band,unsigned int DL_freq)
             mmtmp01 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_1)[re],s),15);
             mmtmp02 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_2)[re],s),15);
 
-            s = _mm_shufflelo_epi16(s,_MM_SHUFFLE(2,3,0,1));
-            s = _mm_shufflehi_epi16(s,_MM_SHUFFLE(2,3,0,1));
+            s = _mm_shufflelo_epi16(s, SIMDE_MM_SHUFFLE(2,3,0,1));
+            s = _mm_shufflehi_epi16(s, SIMDE_MM_SHUFFLE(2,3,0,1));
             s = _mm_sign_epi16(s,*(__m128i*)&conjugate[0]);
             mmtmp10 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_0)[re],s),15);
             mmtmp11 = _mm_srai_epi32(_mm_madd_epi16(((__m128i*)pss6144_1)[re],s),15);

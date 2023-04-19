@@ -1,13 +1,13 @@
 version: '3.8'
 services:
     oai-gnb:
-        image: oai-gnb:develop
+        image: oaisoftwarealliance/oai-gnb:develop
         privileged: true
         container_name: rfsim5g-oai-gnb
         environment:
             RFSIMULATOR: server
             USE_VOLUMED_CONF: 'yes'
-            USE_ADDITIONAL_OPTIONS: --do-ra --rfsim --noS1 --nokrnmod --log_config.global_log_options level,nocolor,time
+            USE_ADDITIONAL_OPTIONS: --do-ra --rfsim --rfsimulator.wait_timeout 20 --noS1 --log_config.global_log_options level,nocolor,time
         networks:
             public_net:
                 ipv4_address: 192.168.71.140
@@ -21,7 +21,7 @@ services:
             retries: 5
 
     oai-nr-ue:
-        image: oai-nr-ue:develop
+        image: oaisoftwarealliance/oai-nr-ue:develop
         privileged: true
         container_name: rfsim5g-oai-nr-ue
         environment:
@@ -31,7 +31,7 @@ services:
             OPC: 'C42449363BBAD02B66D16BC975D77CC1'
             DNN: oai
             NSSAI_SST: 1
-            USE_ADDITIONAL_OPTIONS: --do-ra --rfsim --noS1 --rrc_config_path etc/rrc/ --nokrnmod --log_config.global_log_options level,nocolor,time
+            USE_ADDITIONAL_OPTIONS: --do-ra --rfsim --noS1 --rrc_config_path etc/rrc/ --log_config.global_log_options level,nocolor,time
         volumes:
           - rrc.config:/opt/oai-nr-ue/etc/rrc/
         depends_on:

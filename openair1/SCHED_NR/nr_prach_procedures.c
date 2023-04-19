@@ -31,7 +31,6 @@
  */
 
 #include "PHY/defs_gNB.h"
-#include "PHY/phy_extern.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "nfapi_nr_interface_scf.h"
 #include "fapi_nr_l1.h"
@@ -43,8 +42,6 @@
 #include "assertions.h"
 
 #include <time.h>
-
-#include "intertask_interface.h"
 
 extern uint8_t nfapi_mode;
 

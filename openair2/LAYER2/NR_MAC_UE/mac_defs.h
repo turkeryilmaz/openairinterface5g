@@ -61,6 +61,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
+#include "NR_ServingCellConfigCommonSIB.h"
 
 
 // ==========
@@ -158,10 +159,11 @@
 
 /*!\brief UE layer 2 status */
 typedef enum {
-    UE_CONNECTION_OK = 0,
-    UE_CONNECTION_LOST,
-    UE_PHY_RESYNCH,
-    UE_PHY_HO_PRACH
+  UE_NOT_SYNC = 0,
+  UE_SYNC,
+  UE_PERFORMING_RA,
+  UE_WAIT_TX_ACK_MSG4,
+  UE_CONNECTED
 } NR_UE_L2_STATE_t;
 
 typedef enum {
@@ -374,12 +376,13 @@ typedef struct {
   uint32_t ssb_index;
   /// SSB RSRP in dBm
   short ssb_rsrp_dBm;
+  int consecutive_bch_failures;
 
-} NR_PHY_meas_t;
+} NR_SSB_meas_t;
 
 /*!\brief Top level UE MAC structure */
 typedef struct {
-
+  NR_UE_L2_STATE_t state;
   NR_ServingCellConfigCommon_t    *scc;
   NR_ServingCellConfigCommonSIB_t *scc_SIB;
   NR_CellGroupConfig_t            *cg;
@@ -405,6 +408,7 @@ typedef struct {
   NR_ControlResourceSet_t         *coreset[MAX_NUM_BWP_UE][FAPI_NR_MAX_CORESET_PER_BWP];
   NR_SearchSpace_t                *SSpace[MAX_NUM_BWP_UE][FAPI_NR_MAX_SS];
 
+  bool phy_config_request_sent;
   frame_type_t frame_type;
 
   ///     Type0-PDCCH seach space
@@ -438,11 +442,12 @@ typedef struct {
   int first_ul_tx[NR_MAX_HARQ_PROCESSES];
   ////	FAPI-like interface message
   fapi_nr_ul_config_request_t *ul_config_request;
-  fapi_nr_dl_config_request_t dl_config_request;
+  fapi_nr_dl_config_request_t *dl_config_request;
 
   ///     Interface module instances
   nr_ue_if_module_t       *if_module;
   nr_phy_config_t         phy_config;
+  nr_synch_request_t      synch_request;
 
   /// BSR report flag management
   uint8_t BSR_reporting_active;
@@ -461,9 +466,9 @@ typedef struct {
   uint16_t nr_band;
   uint8_t ssb_subcarrier_offset;
 
-  NR_PHY_meas_t phy_measurements;
+  NR_SSB_meas_t ssb_measurements;
 
-  dci_pdu_rel15_t def_dci_pdu_rel15[8];
+  dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
 
   // Defined for abstracted mode
   nr_downlink_indication_t dl_info;
@@ -504,7 +509,7 @@ typedef struct prach_association_pattern {
 typedef struct ssb_info {
   bool transmitted; // True if the SSB index is transmitted according to the SSB positions map configuration
   prach_occasion_info_t *mapped_ro[MAX_NB_RO_PER_SSB_IN_ASSOCIATION_PATTERN]; // List of mapped RACH Occasions to this SSB index
-  uint16_t nb_mapped_ro; // Total number of mapped ROs to this SSB index
+  uint32_t nb_mapped_ro; // Total number of mapped ROs to this SSB index
 } ssb_info_t;
 
 // List of all the possible SSBs and their details

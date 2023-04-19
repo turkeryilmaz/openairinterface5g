@@ -76,6 +76,7 @@
 
 #include "LTE_SystemInformationBlockType1.h"
 #include "LTE_SystemInformationBlockType1-BR-r13.h"
+#include "LTE_SystemInformationBlockType1-v8h0-IEs.h"
 
 
 #include "LTE_SIB-Type.h"
@@ -115,9 +116,6 @@ typedef struct xer_sprint_string_s {
   size_t string_size;
   size_t string_index;
 } xer_sprint_string_t;
-
-extern unsigned char NB_eNB_INST;
-
 
 extern RAN_CONTEXT_t RC;
 
@@ -940,7 +938,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   (*sib1)->cellSelectionInfo.q_RxLevMinOffset=NULL;
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
-  (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
+  
   schedulingInfo.si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
   if(configuration->eMBMS_M2_configured){
        schedulingInfo2.si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
@@ -967,7 +965,41 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   (*sib1)->systemInfoValueTag = 0;
   (*sib1)->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v890_IEs_t));
   LTE_SystemInformationBlockType1_v890_IEs_t *sib1_890 = (*sib1)->nonCriticalExtension;
-  sib1_890->lateNonCriticalExtension = NULL;
+
+  if(configuration->eutra_band[CC_id] <= 64) {
+    (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
+    sib1_890->lateNonCriticalExtension = NULL;
+  } else {
+    (*sib1)->freqBandIndicator = 64;
+    
+    sib1_890->lateNonCriticalExtension = calloc(1, sizeof(OCTET_STRING_t));
+    OCTET_STRING_t *octate = (*sib1_890).lateNonCriticalExtension;
+    
+    LTE_SystemInformationBlockType1_v8h0_IEs_t *sib1_8h0 = NULL;
+    sib1_8h0 = calloc(1, sizeof(LTE_SystemInformationBlockType1_v8h0_IEs_t));
+    sib1_8h0->multiBandInfoList = NULL;
+    sib1_8h0->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v9e0_IEs_t)); 
+    
+    long *eutra_band_ptr;
+    eutra_band_ptr = malloc(sizeof(long));
+    *eutra_band_ptr = configuration->eutra_band[CC_id];
+    LTE_SystemInformationBlockType1_v9e0_IEs_t *sib1_9e0 = sib1_8h0->nonCriticalExtension;
+    sib1_9e0->freqBandIndicator_v9e0 = eutra_band_ptr;
+    sib1_9e0->multiBandInfoList_v9e0 = NULL;
+    sib1_9e0->nonCriticalExtension = NULL;
+    char buffer_sib8h0[1024];
+    enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_SystemInformationBlockType1_v8h0_IEs,
+                                     NULL,
+                                     (void *)sib1_8h0,
+                                     buffer_sib8h0,
+                                     1024);
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+                 enc_rval.failed_type->name, enc_rval.encoded); 
+    OCTET_STRING_fromBuf(octate,(const char *)buffer_sib8h0,(enc_rval.encoded + 7) / 8);
+
+    ASN_STRUCT_FREE(asn_DEF_LTE_SystemInformationBlockType1_v8h0_IEs, sib1_8h0); 
+  }
+
   sib1_890->nonCriticalExtension = calloc(1, sizeof(LTE_SystemInformationBlockType1_v920_IEs_t));
   memset(sib1_890->nonCriticalExtension, 0, sizeof(LTE_SystemInformationBlockType1_v920_IEs_t));
   LTE_SystemInformationBlockType1_v920_IEs_t *sib1_920 = (*sib1_890).nonCriticalExtension;
@@ -2465,7 +2497,6 @@ do_RRCConnectionSetup(
   struct LTE_SRB_ToAddMod__rlc_Config *SRB1_rlc_config = NULL;
   struct LTE_SRB_ToAddMod__logicalChannelConfig *SRB1_lchan_config = NULL;
   struct LTE_LogicalChannelConfig__ul_SpecificParameters *SRB1_ul_SpecificParameters = NULL;
-  LTE_PhysicalConfigDedicated_t *physicalConfigDedicated2 = NULL;
   LTE_DL_CCCH_Message_t dl_ccch_msg;
   LTE_RRCConnectionSetup_t *rrcConnectionSetup = NULL;
   LTE_DL_FRAME_PARMS *frame_parms = &RC.eNB[ctxt_pP->module_id][CC_id]->frame_parms;
@@ -2512,7 +2543,7 @@ do_RRCConnectionSetup(
   SRB1_ul_SpecificParameters->logicalChannelGroup = logicalchannelgroup;
   asn1cSeqAdd(&(*SRB_configList)->list,SRB1_config);
   // PhysicalConfigDedicated
-  physicalConfigDedicated2 = CALLOC(1,sizeof(*physicalConfigDedicated2));
+  LTE_PhysicalConfigDedicated_t *physicalConfigDedicated2 = CALLOC(1,sizeof(*physicalConfigDedicated2));
   *physicalConfigDedicated = physicalConfigDedicated2;
   physicalConfigDedicated2->pdsch_ConfigDedicated         = CALLOC(1,sizeof(*physicalConfigDedicated2->pdsch_ConfigDedicated));
   physicalConfigDedicated2->pucch_ConfigDedicated         = CALLOC(1,sizeof(*physicalConfigDedicated2->pucch_ConfigDedicated));
@@ -4382,7 +4413,7 @@ uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t 
   ul_dcch_msg.message.present           = LTE_UL_DCCH_MessageType_PR_c1;
   ul_dcch_msg.message.choice.c1.present = LTE_UL_DCCH_MessageType__c1_PR_ulInformationTransfer;
   ul_dcch_msg.message.choice.c1.choice.ulInformationTransfer.criticalExtensions.present = LTE_ULInformationTransfer__criticalExtensions_PR_c1;
-  ul_dcch_msg.message.choice.c1.choice.ulInformationTransfer.criticalExtensions.choice.c1.present = LTE_DLInformationTransfer__criticalExtensions__c1_PR_dlInformationTransfer_r8;
+  ul_dcch_msg.message.choice.c1.choice.ulInformationTransfer.criticalExtensions.choice.c1.present = LTE_ULInformationTransfer__criticalExtensions__c1_PR_ulInformationTransfer_r8;
   ul_dcch_msg.message.choice.c1.choice.ulInformationTransfer.criticalExtensions.choice.c1.choice.ulInformationTransfer_r8.dedicatedInfoType.present =
     LTE_ULInformationTransfer_r8_IEs__dedicatedInfoType_PR_dedicatedInfoNAS;
   ul_dcch_msg.message.choice.c1.choice.ulInformationTransfer.criticalExtensions.choice.c1.choice.ulInformationTransfer_r8.dedicatedInfoType.choice.dedicatedInfoNAS.size = pdu_length;
