@@ -2485,7 +2485,8 @@ uint8_t do_SIB5(uint8_t Mod_id,
     InterFreqCarrierInfo->allowedMeasBandwidth = configuration->InterFreqCarrierFreqInfo[CC_id][i].allowedMeasBandwidth;
     InterFreqCarrierInfo->presenceAntennaPort1 = configuration->InterFreqCarrierFreqInfo[CC_id][i].presenceAntennaPort1;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority_Present) {
-      InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority;
+      InterFreqCarrierInfo->cellReselectionPriority = CALLOC(1,sizeof(LTE_CellReselectionPriority_t));
+      *(InterFreqCarrierInfo->cellReselectionPriority) = *(configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority);
     }
     LOG_A(RRC,"[eNB][SIB5] CC_id:%d neighCellConfig:0x%x\n",CC_id,configuration->InterFreqCarrierFreqInfo[CC_id][i].neighCellConfig);
     InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,sizeof(uint8_t));
@@ -2493,7 +2494,8 @@ uint8_t do_SIB5(uint8_t Mod_id,
     InterFreqCarrierInfo->neighCellConfig.buf[0] = configuration->InterFreqCarrierFreqInfo[CC_id][i].neighCellConfig<< 6;
     InterFreqCarrierInfo->neighCellConfig.bits_unused = 6;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreqPresent) {
-      InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreq;
+      InterFreqCarrierInfo->q_OffsetFreq = CALLOC(1,sizeof(LTE_Q_OffsetRange_t));
+      *(InterFreqCarrierInfo->q_OffsetFreq) = *(configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreq);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList_Present) {
       //InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
