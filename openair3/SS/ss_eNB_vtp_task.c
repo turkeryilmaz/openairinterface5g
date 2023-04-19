@@ -37,6 +37,7 @@ extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 int cellIndex = 0;
 
+int ss_eNB_vtp_init(void);
 static acpCtx_t ctx_vtp_g = NULL;
 extern SSConfigContext_t SS_context;
 enum MsgUserId
@@ -398,7 +399,6 @@ static void ss_eNB_wait_first_msg(void)
     const size_t size = 16 * 1024;
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
     assert(buffer);
-	size_t msg_sz = size;
 	while (1)
 	{
         ss_eNB_read_from_vtp_socket(ctx_vtp_g, true);
