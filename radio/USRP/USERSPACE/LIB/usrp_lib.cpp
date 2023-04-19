@@ -754,11 +754,11 @@ static int trx_usrp_read(openair0_device *device, openair0_timestamp *ptimestamp
         __m256i tmp = simde_mm256_srai_epi16(buff_tmp[i][j],rxshift);
         simde_mm256_storeu_si256(((__m256i *)buff[i])+j, tmp);
       }
-    }
 #elif defined(__arm__) || defined(__aarch64__)
       for (int j=0; j<nsamps2; j++) 
         ((int16x8_t *)buff[i])[j] = vshrq_n_s16(buff_tmp[i][j],rxshift);
 #endif
+    }
   }
 
   if (samples_received < nsamps) {
