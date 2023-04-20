@@ -371,21 +371,12 @@ static inline void nrLDPC_cnProc_BG2(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
 
 }
 
-
 /**
    \brief Performs CN processing for BG1 on the CN processing buffer and stores the results in the CN processing results buffer.
    \param p_lut Pointer to decoder LUTs
    \param Z Lifting size
 */
-
-
-
-/**
-   \brief Performs CN processing for BG1 on the CN processing buffer and stores the results in the CN processing results buffer.
-   \param p_lut Pointer to decoder LUTs
-   \param Z Lifting size
-*/
-static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z)
+static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int8_t* cnProcBufRes, uint16_t Z, t_nrLDPC_time_stats* p_profiler)
 {
     const uint8_t*  lut_numCnInCnGroups   = p_lut->numCnInCnGroups;
     const uint32_t* lut_startAddrCnGroups = p_lut->startAddrCnGroups;
@@ -414,7 +405,9 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
 
     // =====================================================================
     // Process group with 3 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng3);
+#endif
     if (lut_numCnInCnGroups[0] > 0)
     {
         // Number of groups of 32 CNs for parallel processing
@@ -455,10 +448,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng3);
+#endif
     // =====================================================================
     // Process group with 4 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng4);
+#endif
     // Offset is 5*384/32 = 60
     const uint8_t lut_idxCnProcG4[4][3] = {{60,120,180}, {0,120,180}, {0,60,180}, {0,60,120}};
 
@@ -504,10 +501,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng4);
+#endif
     // =====================================================================
     // Process group with 5 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng5);
+#endif
     // Offset is 18*384/32 = 216
     const uint16_t lut_idxCnProcG5[5][4] = {{216,432,648,864}, {0,432,648,864},
                                             {0,216,648,864}, {0,216,432,864}, {0,216,432,648}};
@@ -554,10 +555,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng5);
+#endif
     // =====================================================================
     // Process group with 6 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng6);
+#endif
     // Offset is 8*384/32 = 96
     const uint16_t lut_idxCnProcG6[6][5] = {{96,192,288,384,480}, {0,192,288,384,480},
                                             {0,96,288,384,480}, {0,96,192,384,480},
@@ -605,10 +610,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng6);
+#endif
     // =====================================================================
     // Process group with 7 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng7);
+#endif
     // Offset is 5*384/32 = 60
     const uint16_t lut_idxCnProcG7[7][6] = {{60,120,180,240,300,360}, {0,120,180,240,300,360},
                                             {0,60,180,240,300,360},   {0,60,120,240,300,360},
@@ -657,10 +666,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng7);
+#endif
     // =====================================================================
     // Process group with 8 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng8);
+#endif
     // Offset is 2*384/32 = 24
     const uint8_t lut_idxCnProcG8[8][7] = {{24,48,72,96,120,144,168}, {0,48,72,96,120,144,168},
                                            {0,24,72,96,120,144,168}, {0,24,48,96,120,144,168},
@@ -709,10 +722,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng8);
+#endif
     // =====================================================================
     // Process group with 9 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng9);
+#endif
     // Offset is 2*384/32 = 24
     const uint8_t lut_idxCnProcG9[9][8] = {{24,48,72,96,120,144,168,192}, {0,48,72,96,120,144,168,192},
                                            {0,24,72,96,120,144,168,192}, {0,24,48,96,120,144,168,192},
@@ -762,10 +779,14 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng9);
+#endif
     // =====================================================================
     // Process group with 10 BNs
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng10);
+#endif
     // Offset is 1*384/32 = 12
     const uint8_t lut_idxCnProcG10[10][9] = {{12,24,36,48,60,72,84,96,108}, {0,24,36,48,60,72,84,96,108},
                                              {0,12,36,48,60,72,84,96,108}, {0,12,24,48,60,72,84,96,108},
@@ -815,27 +836,33 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
             }
         }
     }
-
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng10);
+#endif
     // =====================================================================
-    // Process group with 19 BNs
-
-    // Offset is 4*384/32 = 12
-    const uint16_t lut_idxCnProcG19[19][18] = {{48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
-                                               {0,48,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
-                                               {0,48,96,144,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,288,336,384,432,480,528,576,624,672,720,768,816,864},
-                                               {0,48,96,144,192,240,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,384,432,480,528,576,624,672,720,768,816,864},
-                                               {0,48,96,144,192,240,288,336,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,480,528,576,624,672,720,768,816,864},
-                                               {0,48,96,144,192,240,288,336,384,432,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,576,624,672,720,768,816,864},
-                                               {0,48,96,144,192,240,288,336,384,432,480,528,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,672,720,768,816,864},
-                                               {0,48,96,144,192,240,288,336,384,432,480,528,576,624,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,768,816,864},
-                                               {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,864},
-                                               {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816}};
-
+    // Process group with 19 BNs NEW
+#ifdef NR_LDPC_PROFILER_DETAIL
+    start_meas(&p_profiler->cnProcCng19);
+#endif
     if (lut_numCnInCnGroups[8] > 0)
     {
+        uint32_t N = lut_numCnInCnGroups[8]*Z;
+
+        // Allocate buffer for 1-min, 2-min and sign
+        int8_t min1[N] __attribute__ ((aligned(64)));
+        int8_t min2[N] __attribute__ ((aligned(64)));
+        int8_t sign[N] __attribute__ ((aligned(64)));
+
+        __m256i* p_cn;
+        __m256i* p_min1 = (__m256i*) min1;
+        __m256i* p_min2 = (__m256i*) min2;
+        __m256i* p_sign = (__m256i*) sign;
+        __m256i min1mask,min2mask;
+        __m256i zeros = simde_mm256_setzero_si256();
+
         // Number of groups of 32 CNs for parallel processing
         // Ceil for values not divisible by 32
-        M = (lut_numCnInCnGroups[8]*Z + 31)>>5;
+        M = (N + 31)>>5;
 
         // Set the offset to each bit within a group in terms of 32 Byte
         bitOffsetInGroup = (lut_numCnInCnGroups_BG1_R13[8]*NR_LDPC_ZMAX)>>5;
@@ -844,36 +871,191 @@ static inline void nrLDPC_cnProc_BG1(t_nrLDPC_lut* p_lut, int8_t* cnProcBuf, int
         p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[8]];
         p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[8]];
 
+        // Compute the 2 min values + sign
+        // Init
+        memcpy(p_min1,p_cnProcBuf,N);
+        memcpy(p_min2,&p_cnProcBuf[bitOffsetInGroup],N);
+        memset(p_sign,1,N);
+
+        p_cn = (__m256i*)&p_cnProcBuf[bitOffsetInGroup];
+
+        for (i=0; i<M; i++)
+        {
+            // sign
+            // only change sign if values are not 0
+            *p_sign = simde_mm256_sign_epi8(*p_sign, simde_mm256_blendv_epi8(*p_min1,*p_ones,simde_mm256_cmpeq_epi8(*p_min1,zeros)));
+            *p_sign = simde_mm256_sign_epi8(*p_sign, simde_mm256_blendv_epi8(*p_min2,*p_ones,simde_mm256_cmpeq_epi8(*p_min2,zeros)));
+            // *p_sign = simde_mm256_sign_epi8(*p_sign, *p_cn);
+
+            // abs
+            *p_min1 = simde_mm256_abs_epi8(*p_min1);
+            *p_min2 = simde_mm256_abs_epi8(*p_min2);            
+
+            // Here we exchange values in min1 and min2
+            ymm0 = simde_mm256_abs_epi8(*p_cn);
+            // m1mask = m1>m2;
+            min1mask = simde_mm256_cmpgt_epi8(*p_min1, *p_min2);
+            // m2(m1mask) = m1(m1mask);
+            *p_min2 = simde_mm256_blendv_epi8(*p_min2, *p_min1, min1mask);
+            // m1 = min(m1,s2);
+            *p_min1 = simde_mm256_min_epu8(*p_min1,ymm0);
+
+            p_min1++;
+            p_min2++;
+            p_sign++;
+            p_cn++;
+        }
+        p_min1 -= M;
+        p_min2 -= M;
+        p_sign -= M;
+        p_cn = (__m256i*)&p_cnProcBuf[2*bitOffsetInGroup];
+
+        // Loop over every BN
+        for (j=2; j<19; j++)
+        {
+            for (i=0;i<M;i++)
+            {
+                ymm0 = simde_mm256_abs_epi8(*p_cn);
+                // m1mask = m1>sl;
+                min1mask = simde_mm256_cmpgt_epi8(*p_min1, ymm0);
+                // m2(m1mask) = m1(m1mask);
+                *p_min2 = simde_mm256_blendv_epi8(*p_min2, *p_min1, min1mask);
+                // m1 = min(m1,sl);
+                *p_min1 = simde_mm256_min_epu8(*p_min1,ymm0);
+            
+            
+                // m2mask = (m2 > sl);
+                min2mask = simde_mm256_cmpgt_epi8(*p_min2, ymm0);
+                // m2mask = xor(m2mask,m1mask);
+                min2mask = simde_mm256_xor_si256(min2mask,min1mask);
+                // m2(m2mask) = sl(m2mask);
+                *p_min2 = simde_mm256_blendv_epi8(*p_min2, ymm0, min2mask);
+            
+                // sign
+                *p_sign = simde_mm256_sign_epi8(*p_sign, simde_mm256_blendv_epi8(*p_cn,*p_ones,simde_mm256_cmpeq_epi8(*p_cn,zeros)));
+                // *p_sign = simde_mm256_sign_epi8(*p_sign, *p_cn);
+
+                // _mm256_print_epu8(*p_min1);
+                // _mm256_print_epu8(*p_min2);                                    
+                p_min1++;
+                p_min2++;
+                p_sign++;
+                p_cn++;
+            }
+            p_min1 -= M;
+            p_min2 -= M;
+            p_sign -= M;
+        }
+
+        // Now compute the metric
+        p_min1 = (__m256i*) min1;
+        p_min2 = (__m256i*) min2;
+        p_sign = (__m256i*) sign;
+
         // Loop over every BN
         for (j=0; j<19; j++)
         {
             // Set of results pointer to correct BN address
             p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+            p_cn              = p_cnProcBuf + (j*bitOffsetInGroup);
 
             // Loop over CNs
             for (i=0; i<M; i++)
             {
-                // Abs and sign of 32 CNs (first BN)
-                ymm0 = p_cnProcBuf[lut_idxCnProcG19[j][0] + i];
-                sgn  = simde_mm256_sign_epi8(*p_ones, ymm0);
-                min  = simde_mm256_abs_epi8(ymm0);
+                // Current values
+                ymm0 = simde_mm256_abs_epi8(*p_cn);
+                // Set min to 1-min
+                min = *p_min1;
+                // Check if current values are equal to 1-min
+                min1mask = simde_mm256_cmpeq_epi8(ymm0,*p_min1);
+                // When equal set min to 2-min
+                min = simde_mm256_blendv_epi8(min, *p_min2, min1mask);
 
-                // Loop over BNs
-                for (k=1; k<18; k++)
-                {
-                    ymm0 = p_cnProcBuf[lut_idxCnProcG19[j][k] + i];
-                    min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
-                    sgn  = simde_mm256_sign_epi8(sgn, ymm0);
-                }
+                // Update sign
+                sgn = simde_mm256_sign_epi8(*p_sign, simde_mm256_blendv_epi8(*p_cn,*p_ones,simde_mm256_cmpeq_epi8(*p_cn,zeros)));
+                // sgn = simde_mm256_sign_epi8(*p_sign, *p_cn);
 
                 // Store result
                 min = simde_mm256_min_epu8(min, *p_maxLLR); // 128 in epi8 is -127
                 *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
                 p_cnProcBufResBit++;
+                p_cn++;
+                p_min1++;
+                p_min2++;
+                p_sign++;
             }
+            p_min1 -= M;
+            p_min2 -= M;
+            p_sign -= M;
         }
     }
+#ifdef NR_LDPC_PROFILER_DETAIL
+    stop_meas(&p_profiler->cnProcCng19);
+#endif
 
+    // =====================================================================
+    // Process group with 19 BNs
+
+// #ifdef NR_LDPC_PROFILER_DETAIL
+//     start_meas(&p_profiler->cnProcCng19);
+// #endif
+//     // Offset is 4*384/32 = 12
+//     const uint16_t lut_idxCnProcG19[19][18] = {{48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
+//                                                {0,48,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,192,240,288,336,384,432,480,528,576,624,672,720,768,816,864},
+//                                                {0,48,96,144,240,288,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,288,336,384,432,480,528,576,624,672,720,768,816,864},
+//                                                {0,48,96,144,192,240,336,384,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,384,432,480,528,576,624,672,720,768,816,864},
+//                                                {0,48,96,144,192,240,288,336,432,480,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,480,528,576,624,672,720,768,816,864},
+//                                                {0,48,96,144,192,240,288,336,384,432,528,576,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,576,624,672,720,768,816,864},
+//                                                {0,48,96,144,192,240,288,336,384,432,480,528,624,672,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,672,720,768,816,864},
+//                                                {0,48,96,144,192,240,288,336,384,432,480,528,576,624,720,768,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,768,816,864},
+//                                                {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,816,864}, {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,864},
+//                                                {0,48,96,144,192,240,288,336,384,432,480,528,576,624,672,720,768,816}};
+
+//     if (lut_numCnInCnGroups[8] > 0)
+//     {
+//         // Number of groups of 32 CNs for parallel processing
+//         // Ceil for values not divisible by 32
+//         M = (lut_numCnInCnGroups[8]*Z + 31)>>5;
+
+//         // Set the offset to each bit within a group in terms of 32 Byte
+//         bitOffsetInGroup = (lut_numCnInCnGroups_BG1_R13[8]*NR_LDPC_ZMAX)>>5;
+
+//         // Set pointers to start of group 19
+//         p_cnProcBuf    = (__m256i*) &cnProcBuf   [lut_startAddrCnGroups[8]];
+//         p_cnProcBufRes = (__m256i*) &cnProcBufRes[lut_startAddrCnGroups[8]];
+
+//         // Loop over every BN
+//         for (j=0; j<19; j++)
+//         {
+//             // Set of results pointer to correct BN address
+//             p_cnProcBufResBit = p_cnProcBufRes + (j*bitOffsetInGroup);
+
+//             // Loop over CNs
+//             for (i=0; i<M; i++)
+//             {
+//                 // Abs and sign of 32 CNs (first BN)
+//                 ymm0 = p_cnProcBuf[lut_idxCnProcG19[j][0] + i];
+//                 sgn  = simde_mm256_sign_epi8(*p_ones, ymm0);
+//                 min  = simde_mm256_abs_epi8(ymm0);
+
+//                 // Loop over BNs
+//                 for (k=1; k<18; k++)
+//                 {
+//                     ymm0 = p_cnProcBuf[lut_idxCnProcG19[j][k] + i];
+//                     min  = simde_mm256_min_epu8(min, simde_mm256_abs_epi8(ymm0));
+//                     sgn  = simde_mm256_sign_epi8(sgn, ymm0);
+//                 }
+
+//                 // Store result
+//                 min = simde_mm256_min_epu8(min, *p_maxLLR); // 128 in epi8 is -127
+//                 *p_cnProcBufResBit = simde_mm256_sign_epi8(min, sgn);
+//                 p_cnProcBufResBit++;
+//             }
+//         }
+//     }
+// #ifdef NR_LDPC_PROFILER_DETAIL
+//     stop_meas(&p_profiler->cnProcCng19);
+// #endif
 }
 
 #endif

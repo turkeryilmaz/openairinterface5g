@@ -52,6 +52,8 @@ typedef struct nrLDPC_lut {
     const uint16_t* llr2llrProcBufAddr; /**< LUT for transferring input LLRs to LLR processing buffer */
     const uint8_t*  llr2llrProcBufBnPos; /**< LUT BN position in BG */
     const uint8_t** posBnInCnProcBuf[NR_LDPC_NUM_CN_GROUPS_BG1]; /**< LUT for llr2cnProcBuf */
+    const uint32_t* addrEdgeInCnBuffer;
+    const uint16_t* cShift;
 } t_nrLDPC_lut;
 
 /**
@@ -94,9 +96,20 @@ typedef struct nrLDPCoffload_params {
  */
 #ifndef CODEGEN
 typedef struct nrLDPC_time_stats {
+    time_stats_t ldpcInit; /**< Statistics for function nrLDPC_init */
+    time_stats_t ldpcMemAlloc; /**< Statistics for LDPC memory allocation */
     time_stats_t llr2llrProcBuf; /**< Statistics for function llr2llrProcBuf */
     time_stats_t llr2CnProcBuf; /**< Statistics for function llr2CnProcBuf */
     time_stats_t cnProc; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng3; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng4; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng5; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng6; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng7; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng8; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng9; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng10; /**< Statistics for function cnProc */
+    time_stats_t cnProcCng19; /**< Statistics for function cnProc */
     time_stats_t cnProcPc; /**< Statistics for function cnProcPc */
     time_stats_t bnProcPc; /**< Statistics for function bnProcPc */
     time_stats_t bnProc; /**< Statistics for function bnProc */
