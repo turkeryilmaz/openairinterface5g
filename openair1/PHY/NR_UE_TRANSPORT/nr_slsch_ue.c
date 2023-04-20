@@ -599,10 +599,10 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
 
   #ifdef DEBUG_PSSCH_MAPPING
   char filename[40];
-  sprintf(filename,"ch_est_output.m");
-  LOG_M(filename,"ch_est_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
-  sprintf(filename,"rxdata.m");
-  LOG_M(filename,"rxdata",rxdata[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"ch_est_output_%d.m", slot);
+  LOG_M(filename,"ch_est_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_%d.m", slot);
+  LOG_M(filename,"rxdata",rxdata[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 2);
   #endif
 
   if (rxUE->chest_time == 1) { // averaging time domain channel estimates
@@ -876,14 +876,14 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   }//symbol
 
   #ifdef DEBUG_PSSCH_MAPPING
-  sprintf(filename,"ch_est_ext_output.m");
-  LOG_M(filename,"ch_est_ext_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
-  sprintf(filename,"rxdata_ext.m");
-  LOG_M(filename,"rxdata_ext",rxUE->pssch_vars[UE_id]->rxdataF_ext[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
-  sprintf(filename,"rxdata_comp.m");
-  LOG_M(filename,"rxdata_comp",rxUE->pssch_vars[UE_id]->rxdataF_comp[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"ch_est_ext_output_%d.m", slot);
+  LOG_M(filename,"ch_est_ext_output",rxUE->pssch_vars[UE_id]->sl_ch_estimates_ext[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_ext_%d.m", slot);
+  LOG_M(filename,"rxdata_ext",rxUE->pssch_vars[UE_id]->rxdataF_ext[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"rxdata_comp_%d.m", slot);
+  LOG_M(filename,"rxdata_comp",rxUE->pssch_vars[UE_id]->rxdataF_comp[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   sprintf(filename,"ulsch_llr_layers_adj.m");
-  LOG_M(filename,"ulsch_llr_layers_adj",ulsch_llr_layers_adj[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  LOG_M(filename,"ulsch_llr_layers_adj",ulsch_llr_layers_adj[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   #endif
   /////////////// Layer demapping ////////////////////////
   // For SCI2
@@ -913,7 +913,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   ///////////////////////////////////////////////////////
   #ifdef DEBUG_PSSCH_MAPPING
   sprintf(filename,"llr_decoding.m");
-  LOG_M(filename,"llr_decoding",ulsch_llr[0],12*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  LOG_M(filename,"llr_decoding",ulsch_llr[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   #endif
   /////////////// Decoding SLSCH and SCIA2 //////////////
   uint32_t ret = nr_slsch_decoding(rxUE, proc, ulsch_llr[0],

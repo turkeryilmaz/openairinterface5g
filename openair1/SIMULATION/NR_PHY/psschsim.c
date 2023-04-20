@@ -99,6 +99,7 @@ void init_downlink_harq_status(NR_DL_UE_HARQ_t *dl_harq) {}
 
 double snr0 = 100;
 double snr1 = 2.0;
+int slot = 0;
 uint8_t snr1set = 0;
 int n_trials = 1;
 uint8_t n_tx = 1;
@@ -116,7 +117,7 @@ int seed = 0;
 static void get_sim_cl_opts(int argc, char **argv)
 {
     char c;
-    while ((c = getopt(argc, argv, "F:g:hIL:m:M:n:N:o:O:p:P:r:R:s:S:x:y:z:")) != -1) {
+    while ((c = getopt(argc, argv, "F:g:hIL:l:m:M:n:N:o:O:p:P:r:R:s:S:x:y:z:")) != -1) {
     switch (c) {
       case 'F':
         input_fd = fopen(optarg, "r");
@@ -164,6 +165,10 @@ static void get_sim_cl_opts(int argc, char **argv)
 
       case 'L':
         loglvl = atoi(optarg);
+        break;
+
+      case 'l':
+        slot = atoi(optarg);
         break;
 
       case 'm':
@@ -503,7 +508,7 @@ int main(int argc, char **argv)
 #endif
 
   int frame = 0;
-  int slot = 0;
+  int soffset = (slot & 3) * rxUE->frame_parms.symbols_per_slot * rxUE->frame_parms.ofdm_symbol_size;
   int32_t **txdata = txUE->common_vars.txdata;
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
 
@@ -557,7 +562,7 @@ int main(int argc, char **argv)
 
       for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
-            nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[aa], rxdataF[aa], ofdm_symbol, slot, 0);
+            nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[aa], &rxdataF[aa][soffset], ofdm_symbol, slot, 0);
         }
         apply_nr_rotation_ul(&rxUE->frame_parms, rxdataF[aa], slot, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
       }

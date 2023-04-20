@@ -301,29 +301,28 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   ///////////
   ////////////////////////////////////////////////////////////////////////////////////////////
 
-  for (i=0; i<10; i++)
-    ue->tx_power_dBm[i]=-127;
+  for (i = 0; i < 160; i++)
+    ue->tx_power_dBm[i] =- 127;
+
+  size_t num_samples = fp->samples_per_slot_wCP * fp->slots_per_frame * fp->samples_per_subframe;
 
   // init TX buffers
-  common_vars->txdata  = (int32_t **)malloc16( fp->nb_antennas_tx*sizeof(int32_t *) );
-  common_vars->txdataF = (int32_t **)malloc16( fp->nb_antennas_tx*sizeof(int32_t *) );
-
-  for (i=0; i<fp->nb_antennas_tx; i++) {
-    common_vars->txdata[i]  = (int32_t *)malloc16_clear((fp->samples_per_frame) * sizeof(int32_t));
-    common_vars->txdataF[i] = (int32_t *)malloc16_clear((fp->samples_per_frame) * sizeof(int32_t));
+  common_vars->txdata  = (int32_t **)malloc16(fp->nb_antennas_tx * sizeof(int32_t *));
+  common_vars->txdataF = (int32_t **)malloc16(fp->nb_antennas_tx * sizeof(int32_t *));
+  for (i = 0; i < fp->nb_antennas_tx; i++) {
+    common_vars->txdata[i]  = (int32_t *)malloc16_clear(num_samples * sizeof(int32_t));
+    common_vars->txdataF[i] = (int32_t *)malloc16_clear(num_samples * sizeof(int32_t));
   }
   // init RX buffers
-  common_vars->rxdata   = (int32_t **)malloc16( fp->nb_antennas_rx*sizeof(int32_t *) );
-
-  for (th_id=0; th_id<RX_NB_TH_MAX; th_id++) {
-    common_vars->common_vars_rx_data_per_thread[th_id].rxdataF  = (int32_t **)malloc16( fp->nb_antennas_rx*sizeof(int32_t *) );
+  common_vars->rxdata = (int32_t **)malloc16(fp->nb_antennas_rx * sizeof(int32_t *));
+  for (th_id = 0; th_id < RX_NB_TH_MAX; th_id++) {
+    common_vars->common_vars_rx_data_per_thread[th_id].rxdataF = (int32_t **)malloc16(fp->nb_antennas_rx * sizeof(int32_t *));
   }
 
-  for (i=0; i<fp->nb_antennas_rx; i++) {
-    common_vars->rxdata[i] = (int32_t *) malloc16_clear( (2*(fp->samples_per_frame)+2048)*sizeof(int32_t) );
-
-    for (th_id=0; th_id<RX_NB_TH_MAX; th_id++) {
-      common_vars->common_vars_rx_data_per_thread[th_id].rxdataF[i] = (int32_t *)malloc16_clear( sizeof(int32_t)*(fp->samples_per_slot_wCP) );
+  for (i = 0; i < fp->nb_antennas_rx; i++) {
+    common_vars->rxdata[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * num_samples);
+    for (th_id = 0; th_id < RX_NB_TH_MAX; th_id++) {
+      common_vars->common_vars_rx_data_per_thread[th_id].rxdataF[i] = (int32_t *)malloc16_clear(sizeof(int32_t) * num_samples);
     }
   }
 
@@ -387,7 +386,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
   // SLSCH
-  for (gNB_id = 0; gNB_id < ue->n_connected_gNB + 1; gNB_id++) {
+  for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
     ue->pssch_vars[gNB_id] = (NR_UE_PSSCH *)malloc16_clear(sizeof(NR_UE_PSSCH));
     phy_init_nr_ue_PSSCH(ue->pssch_vars[gNB_id], fp);
   }
