@@ -2010,7 +2010,7 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
       gNB->pusch_vars[ulsch_id].dmrs_symbol = symbol;
     }
 
-    LOG_D(PHY,"symbol %d: nb_re_pusch %d, DMRS symbl used for Chest :%d \n", symbol, nb_re_pusch, gNB->pusch_vars[ulsch_id].dmrs_symbol);
+    LOG_I(PHY,"symbol %d: nb_re_pusch %d, DMRS symbl used for Chest :%d \n", symbol, nb_re_pusch, gNB->pusch_vars[ulsch_id].dmrs_symbol);
 
     if (nb_re_pusch == 0) continue;
 
@@ -2025,9 +2025,9 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
   	   	        rel15_ul->qam_mod_order,rel15_ul->dmrs_config_type);
 
     int soffset   = (slot&3)*frame_parms->symbols_per_slot*frame_parms->ofdm_symbol_size;
-    int32_t rxFext[nb_re_pusch] __attribute__((aligned(32)));
-    int32_t chFext[nb_re_pusch] __attribute__((aligned(32)));
-    int16_t llr16[nb_re_pusch*rel15_ul->qam_mod_order] __attribute__((aligned(32)));
+    int32_t rxFext[nb_re_pusch+8] __attribute__((aligned(32)));
+    int32_t chFext[nb_re_pusch+8] __attribute__((aligned(32)));
+    int16_t llr16[(nb_re_pusch*rel15_ul->qam_mod_order)+16] __attribute__((aligned(32)));
     for (int aa=0;aa<frame_parms->nb_antennas_rx;aa++) {
       nr_ulsch_extract_rbs0(gNB->common_vars.rxdataF[aa],
                             gNB->pusch_vars[ulsch_id].ul_ch_estimates[aa],
@@ -3253,7 +3253,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
                rel15_ul->qam_mod_order,
                rel15_ul->nrOfLayers);
   // initialize scrambling sequence
-  int16_t s[G+16] __attribute__((aligned(32)));
+  int16_t s[G+96] __attribute__((aligned(32)));
 
   nr_codeword_unscrambling_init(s,G,0,rel15_ul->data_scrambling_id,rel15_ul->rnti); 
   void (*nr_pusch_symbol_processing_ptr)(void*) = &nr_pusch_symbol_processing_noprecoding;
