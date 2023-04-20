@@ -2463,7 +2463,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
 
       g_log->sfn = tinfo.sfn;
       g_log->sf = (uint32_t)tinfo.sf;
-      LOG_A(ENB_SS_SYS_TASK_, "[SYS] received SS_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+      LOG_A(ENB_SS_SYS_TASK, "[SYS] received SS_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
 
     }
     break;
