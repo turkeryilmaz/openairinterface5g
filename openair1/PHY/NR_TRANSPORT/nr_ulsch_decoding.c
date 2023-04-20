@@ -671,7 +671,7 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
     notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_t), id.p, &phy_vars_gNB->respDecode, nr_processULSegment_ptr);
     ldpcDecode_t * rdata=(ldpcDecode_t *) NotifiedFifoData(req);
 #endif
-
+    decParams.R = nr_get_R_ldpc_decoder(pusch_pdu->pusch_data.rv_index, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->round);
     rdata->gNB = phy_vars_gNB;
     rdata->ulsch_harq = harq_process;
     rdata->decoderParms = decParams;

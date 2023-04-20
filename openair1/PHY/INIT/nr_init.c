@@ -696,7 +696,7 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
   int nb_re_pusch2 = nb_re_pusch + (nb_re_pusch&7);
   
   gNB->pusch_vars = (NR_gNB_PUSCH *)malloc16_clear(gNB->max_nb_pusch * sizeof(NR_gNB_PUSCH));
-  for (int ULSCH_id=0; ULSCH_id<gNB->number_of_nr_ulsch_max; ULSCH_id++) {
+  for (int ULSCH_id=0; ULSCH_id<gNB->max_nb_pusch; ULSCH_id++) {
     NR_gNB_PUSCH *pusch = &gNB->pusch_vars[ULSCH_id];	  
     pusch->rxdataF_ext           = (int32_t **)malloc16(Prx*sizeof(int32_t *) );
     pusch->ul_ch_estimates       = (int32_t **)malloc16(n_buf*sizeof(int32_t *) );

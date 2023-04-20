@@ -325,7 +325,7 @@ void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
 }
 
 
-void nr_ulsch_extract_rbs0(int32_t *rxdataF,
+void nr_ulsch_extract_rbs0(c16_t *rxdataF,
                            int32_t *chF,
 			   int32_t *rxFext,
 			   int32_t *chFext,
@@ -343,7 +343,7 @@ void nr_ulsch_extract_rbs0(int32_t *rxdataF,
   int nb_re_pusch = NR_NB_SC_PER_RB * pusch_pdu->rb_size;
 
 
-  int32_t *rxF        = &rxdataF[rxoffset];
+  int32_t *rxF        = (int32_t*)&rxdataF[rxoffset];
   int32_t *rxF_ext    = &rxFext[0];
   int32_t *ul_ch0     = &chF[choffset]; 
   int32_t *ul_ch0_ext = &chFext[0];
@@ -3181,7 +3181,7 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
   start_meas(&gNB->ulsch_channel_estimation_stats);
   int max_ch = 0;
   for(uint8_t symbol = rel15_ul->start_symbol_index; symbol < (rel15_ul->start_symbol_index + rel15_ul->nr_of_symbols); symbol++) {
-
+ 
     uint8_t dmrs_symbol_flag = (rel15_ul->ul_dmrs_symb_pos >> symbol) & 0x01;
     LOG_D(PHY, "symbol %d, dmrs_symbol_flag :%d\n", symbol, dmrs_symbol_flag);
     if (dmrs_symbol_flag == 1) {

@@ -206,14 +206,14 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
   }
   else l0 = nb_rb_pusch;  
 
-  LOG_D(PHY, "In %s: ch_offset %d, soffset %d, symbol_offset %d OFDM size %d, Ns = %d, k = %d symbol %d l0 %d l1 %d have_half_prb %d\n",
-        ch_offset, soffset,
+  LOG_D(PHY, "In nr_pusch_channel_estimation: pusch_pdu %p ch_offset %d, soffset %d, symbol_offset %d OFDM size %d, Ns = %d, k = %d symbol %d l0 %d l1 %d have_half_prb %d\n",
+        pusch_pdu,ch_offset, soffset,
         symbol_offset,
         symbolSize,
         Ns,
         k,
         symbol,l0,l1,have_half_prb);
-
+ 
   //------------------generate DMRS------------------//
 
   if(pusch_pdu->ul_dmrs_scrambling_id != gNB->pusch_gold_init[pusch_pdu->scid])  {

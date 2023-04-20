@@ -775,8 +775,6 @@ typedef struct PHY_VARS_gNB_s {
   int nbDecode;
   int use_pusch_tp;
   int num_pusch_symbols_per_thread;
-  int number_of_nr_dlsch_max;
-  int number_of_nr_ulsch_max;
   void *scopeData;
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling; 

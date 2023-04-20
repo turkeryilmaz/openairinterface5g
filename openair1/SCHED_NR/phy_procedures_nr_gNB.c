@@ -399,7 +399,12 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
   nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[ULSCH_id].harq_process->ulsch_pdu;
 
   uint16_t nb_re_dmrs;
+
+#ifndef TASK_MANAGER
+#ifndef OMP_TP
   uint8_t enable_ldpc_offload = gNB->ldpc_offload_flag;
+#endif
+#endif
   uint16_t start_symbol = pusch_pdu->start_symbol_index;
   uint16_t number_symbols = pusch_pdu->nr_of_symbols;
 
@@ -433,7 +438,8 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
         pusch_pdu->ul_dmrs_symb_pos,
 	number_dmrs_symbols, // number of dmrs symbols irrespective of single or double symbol dmrs
 	pusch_pdu->qam_mod_order,
-	pusch_pdu->nrOfLayers);
+	pusch_pdu->nrOfLayers,
+	G);
 
   if (gNB->use_pusch_tp == 0) {
     nr_ulsch_layer_demapping(gNB->pusch_vars[ULSCH_id].llr,
