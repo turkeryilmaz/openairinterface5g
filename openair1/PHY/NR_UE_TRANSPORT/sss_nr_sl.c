@@ -86,7 +86,7 @@ int nr_sl_generate_sss(c16_t *txdataF,
   l = ssb_start_symbol + 4;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
-    int16_t dss_current = (1 - 2*x0[(i + m0) % NR_SSS_LENGTH] ) * (1 - 2*x1[(i + m1) % NR_SSS_LENGTH] ) * 23170;
+    int16_t dss_current = (1 - 2 * x0[(i + m0) % NR_SSS_LENGTH]) * (1 - 2 * x1[(i + m1) % NR_SSS_LENGTH] ) * 23170;
     d_sss[Nid2][Nid1][i] = dss_current;
     txdataF[(l*frame_parms->ofdm_symbol_size + k)].r = (((int16_t)amp) * dss_current) >> 15;
     txdataF[(l*frame_parms->ofdm_symbol_size + k)].i = 0;
