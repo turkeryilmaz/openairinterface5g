@@ -75,11 +75,8 @@ int create_tasks_mbms(uint32_t enb_nb) {
     if(!EPC_MODE_ENABLED){
    // rc = itti_create_task(TASK_SCTP, sctp_eNB_task, NULL);
    // AssertFatal(rc >= 0, "Create task for SCTP failed\n");
-<<<<<<< HEAD
     rc = itti_create_task(TASK_UDP, udp_eNB_task, NULL);
     AssertFatal(rc >= 0, "Create task for UDP failed\n");
-=======
->>>>>>> FRD-1198-2023-w-11-oai-rebase
     rc = itti_create_task(TASK_GTPV1_U, gtpv1uTask, NULL);
     AssertFatal(rc >= 0, "Create task for GTPV1U failed\n");
     }
