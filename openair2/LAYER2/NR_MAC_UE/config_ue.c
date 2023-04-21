@@ -828,8 +828,8 @@ int nr_rrc_mac_config_req_ue(module_id_t module_id,
   }
   return 0;
 }
-void print_sl_preconf_params_mac(NR_SL_PreconfigurationNR_r16_t* sl_preconfigurations,
-                                 NR_SL_FreqConfigCommon_r16_t* freq_conf_cmn)
+void print_sl_preconf_params_mac(const NR_SL_PreconfigurationNR_r16_t* sl_preconfigurations,
+                                 const NR_SL_FreqConfigCommon_r16_t* freq_conf_cmn)
 {
     LOG_D(NR_MAC, "sl_OffsetDFN: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16)); // Integer (1 ..1000)
     LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *(freq_conf_cmn->sl_SyncConfigList_r16->list.array[0]->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16));

@@ -605,8 +605,8 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
 
   // clear the transmit data array for the current subframe
   /*for (int aa=0; aa<UE->frame_parms.nb_antennas_tx; aa++) {
-	  memset(&UE->common_vars.txdata[aa][tx_offset],0,UE->frame_parms.samples_per_slot*sizeof(c16_t));
-	  //memset(&UE->common_vars.txdataF[aa][tx_offset],0,UE->frame_parms.samples_per_slot*sizeof(c16_t));
+	  memset(&UE->common_vars.txdata[aa][tx_offset],0,UE->frame_parms.samples_per_slot*sizeof(int32_t));
+	  //memset(&UE->common_vars.txdataF[aa][tx_offset],0,UE->frame_parms.samples_per_slot*sizeof(int32_t));
   }*/
 
 
