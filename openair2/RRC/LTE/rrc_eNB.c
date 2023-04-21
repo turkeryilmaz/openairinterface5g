@@ -7177,9 +7177,9 @@ void rrc_eNB_as_security_configuration_req(
         kRRCint = CALLOC(1,32);
         kUPenc = CALLOC(1,16);
         kRRCenc = CALLOC(1,16);
-        memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
-        memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
-        memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
+        if (ASSecConfReq->Integrity.kRRCint) memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
+        if (ASSecConfReq->Ciphering.kUPenc) memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
+        if (ASSecConfReq->Ciphering.kRRCenc) memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
 
         pdcp_config_set_security(
           ctxt_pP,
