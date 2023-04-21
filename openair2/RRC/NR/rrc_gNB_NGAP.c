@@ -36,8 +36,9 @@
 
 #include "oai_asn1.h"
 #include "intertask_interface.h"
-#include "pdcp.h"
+#include "nr_pdcp/nr_pdcp_oai_api.h"
 #include "pdcp_primitives.h"
+#include "SDAP/nr_sdap/nr_sdap.h"
 
 #include "openair3/ocp-gtpu/gtp_itf.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
@@ -153,14 +154,9 @@ nr_rrc_pdcp_config_security(
     }
   }
 
-  pdcp_config_set_security(ctxt_pP,
-                           NULL, /* pdcp_pP not used anymore in NR */
-                           DCCH,
-                           DCCH + 2,
-                           enable_ciphering ? UE->ciphering_algorithm | (UE->integrity_algorithm << 4) : 0 | (UE->integrity_algorithm << 4),
-                           kRRCenc,
-                           kRRCint,
-                           kUPenc);
+  uint8_t security_mode =
+      enable_ciphering ? UE->ciphering_algorithm | (UE->integrity_algorithm << 4) : 0 | (UE->integrity_algorithm << 4);
+  nr_pdcp_config_set_security(ctxt_pP->rntiMaybeUEid, DCCH, security_mode, kRRCenc, kRRCint, kUPenc);
 }
 
 //------------------------------------------------------------------------------
@@ -396,7 +392,7 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
     }
     create_tunnel_req.ue_id = UE->rnti;
     gtpv1u_gnb_create_tunnel_resp_t create_tunnel_resp = {0};
-    int ret = gtpv1u_create_ngu_tunnel(instance, &create_tunnel_req, &create_tunnel_resp);
+    int ret = gtpv1u_create_ngu_tunnel(instance, &create_tunnel_req, &create_tunnel_resp, nr_pdcp_data_req_drb, sdap_data_req);
     if (ret != 0) {
       LOG_E(NR_RRC, "rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ : gtpv1u_create_ngu_tunnel failed,start to release UE %x\n", UE->rnti);
       UE->ue_release_timer_ng = 1;
@@ -622,29 +618,11 @@ int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mu
   /*
    * switch UL or DL NAS message without RRC piggybacked to SRB2 if active.
    */
-  switch (RC.nrrrc[ctxt.module_id]->node_type) {
-    case ngran_gNB_CU:
-    case ngran_gNB_CUCP:
-    case ngran_gNB: {
-      long srb_id;
-      if (UE->Srb[2].Active)
-        srb_id = UE->Srb[2].Srb_info.Srb_id;
-      else
-        srb_id = UE->Srb[1].Srb_info.Srb_id;
-      AssertFatal(srb_id > 0 && srb_id < maxSRBs, "");
-      /* Transfer data to PDCP */
-      nr_rrc_data_req(&ctxt, srb_id, (*rrc_gNB_mui)++, SDU_CONFIRM_NO, length, buffer, PDCP_TRANSMISSION_MODE_CONTROL);
-      free(buffer); // nr_rrc_data_req do a second malloc and copy
-    } break;
-
-    case ngran_gNB_DU:
-      // nothing to do for DU
-      break;
-
-    default:
-      LOG_W(NR_RRC, "Unknown node type %d\n", RC.nrrrc[ctxt.module_id]->node_type);
-  }
-  return (0);
+  AssertFatal(!NODE_IS_DU(RC.nrrrc[ctxt.module_id]->node_type), "illegal node type DU: receiving NGAP messages at this node\n");
+  /* Transfer data to PDCP */
+  rb_id_t srb_id = UE->Srb[2].Active ? DCCH1 : DCCH;
+  nr_pdcp_data_req_srb(ctxt.rntiMaybeUEid, srb_id, (*rrc_gNB_mui)++, length, buffer, deliver_pdu_srb_f1, RC.nrrrc[instance]);
+  return 0;
 }
 
 //------------------------------------------------------------------------------

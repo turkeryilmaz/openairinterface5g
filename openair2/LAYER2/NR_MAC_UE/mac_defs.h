@@ -340,7 +340,6 @@ typedef struct {
   bool ack_received;
   uint8_t  pucch_resource_indicator;
   uint16_t feedback_to_ul;
-  int is_common;
   frame_t dl_frame;
   int dl_slot;
   uint8_t ack;
@@ -360,19 +359,18 @@ typedef struct {
 } RAR_grant_t;
 
 typedef struct {
-  int n_HARQ_ACK;
+  NR_PUCCH_Resource_t *pucch_resource;
   uint32_t ack_payload;
   uint8_t sr_payload;
   uint32_t csi_part1_payload;
   uint32_t csi_part2_payload;
-  int resource_indicator;
-  int resource_set_id;
-  int is_common;
-  int initial_pucch_id;
-  NR_PUCCH_Resource_t *pucch_resource;
+  int n_sr;
+  int n_csi;
+  int n_harq;
   int n_CCE;
   int N_CCE;
-  int8_t delta_pucch;
+  int delta_pucch;
+  int initial_pucch_id;
 } PUCCH_sched_t;
 
 typedef struct {
@@ -380,8 +378,9 @@ typedef struct {
   uint32_t ssb_index;
   /// SSB RSRP in dBm
   short ssb_rsrp_dBm;
+  int consecutive_bch_failures;
 
-} NR_PHY_meas_t;
+} NR_SSB_meas_t;
 
 /*!\brief Top level UE MAC structure */
 typedef struct {
@@ -445,11 +444,12 @@ typedef struct {
   int first_ul_tx[NR_MAX_HARQ_PROCESSES];
   ////	FAPI-like interface message
   fapi_nr_ul_config_request_t *ul_config_request;
-  fapi_nr_dl_config_request_t dl_config_request;
+  fapi_nr_dl_config_request_t *dl_config_request;
 
   ///     Interface module instances
   nr_ue_if_module_t       *if_module;
   nr_phy_config_t         phy_config;
+  nr_synch_request_t      synch_request;
 
   /// BSR report flag management
   uint8_t BSR_reporting_active;
@@ -468,9 +468,9 @@ typedef struct {
   uint16_t nr_band;
   uint8_t ssb_subcarrier_offset;
 
-  NR_PHY_meas_t phy_measurements;
+  NR_SSB_meas_t ssb_measurements;
 
-  dci_pdu_rel15_t def_dci_pdu_rel15[8];
+  dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
 
   // Defined for abstracted mode
   nr_downlink_indication_t dl_info;

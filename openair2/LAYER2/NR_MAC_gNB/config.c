@@ -54,10 +54,10 @@ extern RAN_CONTEXT_t RC;
 //extern int l2_init_gNB(void);
 extern uint8_t nfapi_mode;
 
-void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list,
-                             struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_bearer2release_list,
-                             NR_UE_sched_ctrl_t *sched_ctrl) {
-
+static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list,
+                                    struct NR_CellGroupConfig__rlc_BearerToReleaseList *rlc_bearer2release_list,
+                                    NR_UE_sched_ctrl_t *sched_ctrl)
+{
   if (rlc_bearer2release_list) {
     for (int i = 0; i < rlc_bearer2release_list->list.count; i++) {
       for (int idx = 0; idx < sched_ctrl->dl_lc_num; idx++) {
@@ -97,8 +97,9 @@ void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddModList *
 
 }
 
+static void process_drx_Config(NR_UE_sched_ctrl_t *sched_ctrl, NR_SetupRelease_DRX_Config_t *drx_Config)
+{
 
-void process_drx_Config(NR_UE_sched_ctrl_t *sched_ctrl,NR_SetupRelease_DRX_Config_t *drx_Config) {
  if (!drx_Config) return;
  AssertFatal(drx_Config->present != NR_SetupRelease_DRX_Config_PR_NOTHING, "Cannot have NR_SetupRelease_DRX_Config_PR_NOTHING\n");
 
@@ -110,23 +111,27 @@ void process_drx_Config(NR_UE_sched_ctrl_t *sched_ctrl,NR_SetupRelease_DRX_Confi
  }
 }
 
-void process_schedulingRequestConfig(NR_UE_sched_ctrl_t *sched_ctrl,NR_SchedulingRequestConfig_t *schedulingRequestConfig) {
+static void process_schedulingRequestConfig(NR_UE_sched_ctrl_t *sched_ctrl, NR_SchedulingRequestConfig_t *schedulingRequestConfig)
+{
  if (!schedulingRequestConfig) return;
 
    LOG_I(NR_MAC,"Adding SchedulingRequestconfig\n");
 }
 
-void process_bsrConfig(NR_UE_sched_ctrl_t *sched_ctrl,NR_BSR_Config_t *bsr_Config) {
+static void process_bsrConfig(NR_UE_sched_ctrl_t *sched_ctrl, NR_BSR_Config_t *bsr_Config)
+{
   if (!bsr_Config) return;
   LOG_I(NR_MAC,"Adding BSR config\n");
 }
 
-void process_tag_Config(NR_UE_sched_ctrl_t *sched_ctrl,NR_TAG_Config_t *tag_Config) {
+static void process_tag_Config(NR_UE_sched_ctrl_t *sched_ctrl, NR_TAG_Config_t *tag_Config)
+{
   if (!tag_Config) return;
   LOG_I(NR_MAC,"Adding TAG config\n");
 }
 
-void process_phr_Config(NR_UE_sched_ctrl_t *sched_ctrl,NR_SetupRelease_PHR_Config_t *phr_Config) {
+static void process_phr_Config(NR_UE_sched_ctrl_t *sched_ctrl, NR_SetupRelease_PHR_Config_t *phr_Config)
+{
    if (!phr_Config) return;
    AssertFatal(phr_Config->present != NR_SetupRelease_PHR_Config_PR_NOTHING, "Cannot have NR_SetupRelease_PHR_Config_PR_NOTHING\n");
 
@@ -138,11 +143,10 @@ void process_phr_Config(NR_UE_sched_ctrl_t *sched_ctrl,NR_SetupRelease_PHR_Confi
    }
 }
 
-void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_sched_ctrl_t *sched_ctrl) {
-
+void process_CellGroup(NR_CellGroupConfig_t *CellGroup, NR_UE_sched_ctrl_t *sched_ctrl)
+{
    AssertFatal(CellGroup, "CellGroup is null\n");
-   NR_MAC_CellGroupConfig_t   *mac_CellGroupConfig = CellGroup->mac_CellGroupConfig;
-
+   NR_MAC_CellGroupConfig_t *mac_CellGroupConfig = CellGroup->mac_CellGroupConfig;
 
    if (mac_CellGroupConfig) {
      process_drx_Config(sched_ctrl,mac_CellGroupConfig->drx_Config);
@@ -456,6 +460,12 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_S
   sched_ctrl->rrc_processing_timer = (rrc_reconfiguration_delay<<subcarrierSpacing) + sl_ahead;
   LOG_I(NR_MAC, "Activating RRC processing timer for UE %04x with %d ms\n", UE_info->rnti, rrc_reconfiguration_delay);
 
+  // it might happen that timing advance command should be sent during the RRC
+  // processing timer. To prevent this, set a variable as if we would have just
+  // sent it. This way, another TA command will for sure be sent in some
+  // frames, after RRC processing timer.
+  sched_ctrl->ta_frame = (RC.nrmac[Mod_idP]->frame - 1 + 1024) % 1024;
+
   return 0;
 }
 
@@ -651,7 +661,58 @@ bool nr_mac_update_cellgroup(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupCon
     exit(1);
   }
 
+  nr_mac_update_RA(nrmac, rnti, CellGroup);
   process_CellGroup(CellGroup, &UE->UE_sched_ctrl);
+
+  return true;
+}
+
+bool nr_mac_update_RA(gNB_MAC_INST *nrmac, uint32_t rnti, NR_CellGroupConfig_t *CellGroup)
+{
+  // Checking for free RA process
+  NR_COMMON_channels_t *cc = &nrmac->common_channels[0];
+  uint8_t ra_index = 0;
+  for (; ra_index < NR_NB_RA_PROC_MAX; ra_index++) {
+    if ((cc->ra[ra_index].state == RA_IDLE) && (!cc->ra[ra_index].cfra))
+      break;
+  }
+  if (ra_index == NR_NB_RA_PROC_MAX) {
+    LOG_E(NR_MAC, "%s() %s:%d RA processes are not available for CFRA RNTI :%x\n", __FUNCTION__, __FILE__, __LINE__, rnti);
+    return -1;
+  }
+
+  NR_RA_t *ra = &cc->ra[ra_index];
+  if (CellGroup->spCellConfig && CellGroup->spCellConfig->reconfigurationWithSync
+      && CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated != NULL) {
+    if (CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra != NULL) {
+      ra->cfra = true;
+      ra->rnti = rnti;
+      ra->CellGroup = CellGroup;
+      struct NR_CFRA *cfra = CellGroup->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink->cfra;
+      uint8_t num_preamble = cfra->resources.choice.ssb->ssb_ResourceList.list.count;
+      ra->preambles.num_preambles = num_preamble;
+      ra->preambles.preamble_list = (uint8_t *)malloc(num_preamble * sizeof(uint8_t));
+      for (int i = 0; i < cc->num_active_ssb; i++) {
+        for (int j = 0; j < num_preamble; j++) {
+          if (cc->ssb_index[i] == cfra->resources.choice.ssb->ssb_ResourceList.list.array[j]->ssb) {
+            // One dedicated preamble for each beam
+            ra->preambles.preamble_list[i] = cfra->resources.choice.ssb->ssb_ResourceList.list.array[j]->ra_PreambleIndex;
+            break;
+          }
+        }
+      }
+    }
+  } else {
+    ra->cfra = false;
+    ra->rnti = 0;
+    if (ra->preambles.preamble_list == NULL) {
+      ra->preambles.num_preambles = MAX_NUM_NR_PRACH_PREAMBLES;
+      ra->preambles.preamble_list = (uint8_t *)malloc(MAX_NUM_NR_PRACH_PREAMBLES * sizeof(uint8_t));
+      for (int i = 0; i < MAX_NUM_NR_PRACH_PREAMBLES; i++)
+        ra->preambles.preamble_list[i] = i;
+    }
+  }
+  LOG_I(NR_MAC, "Added new %s process for UE RNTI %04x with initial CellGroup\n", ra->cfra ? "CFRA" : "CBRA", rnti);
 
   return true;
 }

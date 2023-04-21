@@ -37,7 +37,6 @@
 #include "COMMON/mac_rrc_primitives.h"
 #include "common/utils/LOG/log.h"
 #include "asn1_msg.h"
-#include "pdcp.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/ran_context.h"
 
@@ -50,8 +49,6 @@ extern mui_t rrc_gNB_mui;
 //-----------------------------------------------------------------------------
 void rrc_init_nr_srb_param(NR_LCHAN_DESC *chan)
 {
-  rrc_rlc_register_rrc (rrc_data_ind, NULL); //register with rlc
-
   chan->transport_block_size = 4;
   chan->max_transport_blocks = 16;
   chan->Delay_class = 1;

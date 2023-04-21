@@ -271,6 +271,40 @@ typedef struct pdu_session_param_s {
   uint8_t cause_value;
 } rrc_pdu_session_param_t;
 
+typedef struct drb_s {
+  int status;
+  int defaultDRBid;
+  int drb_id;
+  int reestablishPDCP;
+  int recoverPDCP;
+  int daps_Config_r16;
+  struct cnAssociation_s {
+    int present;
+    int eps_BearerIdentity;
+    struct sdap_config_s {
+      bool defaultDRB;
+      int pdusession_id;
+      int sdap_HeaderDL;
+      int sdap_HeaderUL;
+      int mappedQoS_FlowsToAdd[QOSFLOW_MAX_VALUE];
+    } sdap_config;
+  } cnAssociation;
+  struct pdcp_config_s {
+    int discardTimer;
+    int pdcp_SN_SizeUL;
+    int pdcp_SN_SizeDL;
+    int t_Reordering;
+    int integrityProtection;
+    struct headerCompression_s {
+      int NotUsed;
+      int present;
+    } headerCompression;
+    struct ext1_s {
+      int cipheringDisabled;
+    } ext1;
+  } pdcp_config;
+} drb_t;
+
 typedef struct gNB_RRC_UE_s {
   uint8_t                            primaryCC_id;
   NR_SRB_ToAddModList_t             *SRB_configList;
@@ -278,9 +312,9 @@ typedef struct gNB_RRC_UE_s {
   NR_DRB_ToAddModList_t             *DRB_configList;
   NR_DRB_ToAddModList_t             *DRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   NR_DRB_ToReleaseList_t            *DRB_Release_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
+  drb_t                              established_drbs[NGAP_MAX_DRBS_PER_UE];
   uint8_t                            DRB_active[NGAP_MAX_DRBS_PER_UE];
 
-  NR_SRB_INFO                       SI;
   NR_SRB_INFO_TABLE_ENTRY Srb[maxSRBs]; // 3gpp max is 3 SRBs, number 1..3, we waste the entry 0 for code simplicity
   NR_MeasConfig_t                   *measConfig;
   NR_HANDOVER_INFO                  *handover_info;
@@ -408,34 +442,23 @@ typedef struct rrc_gNB_ue_context_s {
 
 typedef struct {
 
-  // buffer that contains the encoded messages
-  uint8_t                                   *MIB;
-  uint8_t                                   sizeof_MIB;
-
   uint8_t                                   *SIB1;
   uint16_t                                  sizeof_SIB1;
 
   uint8_t                                   *SIB23;
   uint8_t                                   sizeof_SIB23;
 
-  uint8_t                                   *ServingCellConfigCommon;
-  uint8_t                                   sizeof_servingcellconfigcommon;
-
   int                                       physCellId;
 
-  NR_BCCH_BCH_Message_t                     mib;
-  NR_BCCH_BCH_Message_t                    *mib_DU;
+  NR_BCCH_BCH_Message_t                    *mib;
   NR_SIB1_t                                *siblock1_DU;
-  //NR_BCCH_DL_SCH_Message_t                 *siblock1_DU;
   NR_SIB1_t                                *sib1;
   NR_SIB2_t                                *sib2;
   NR_SIB3_t                                *sib3;
   NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
-  NR_ServingCellConfig_t                    *servingcellconfig;
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
-  NR_SRB_INFO                               SI;
   int                                       p_gNB;
 
 } rrc_gNB_carrier_data_t;

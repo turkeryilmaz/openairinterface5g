@@ -66,7 +66,7 @@
 #define SYNCHRO_FFT_SIZE_MAX           (8192)                       /* maximum size of fft for synchronisation */
 
 #define  NO_RATE_CHANGE                (1)
-
+#define INITIAL_PSS_NR                 (7)
 #ifdef PSS_DECIMATOR
   #define  RATE_CHANGE                 (SYNCHRO_FFT_SIZE_MAX/SYNCHRO_FFT_SIZE_PSS)
   #define  SYNCHRO_FFT_SIZE_PSS        (256)
@@ -86,38 +86,17 @@
 
 /************** VARIABLES *****************************************/
 
-//#define STATIC_SYNC_BUFFER
-
-#ifdef STATIC_SYNC_BUFFER
-/* buffer defined in file lte_sync_time */
-EXTERN int16_t synchro_tmp[SYNC_TMP_SIZE]   __attribute__((aligned(32)));
-EXTERN int16_t synchroF_tmp[SYNCF_TMP_SIZE] __attribute__((aligned(32)));
-#else
-EXTERN int16_t *synchro_tmp;
-EXTERN int16_t *synchroF_tmp;
-#endif
-
-EXTERN int16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]
+EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif
 ;
-EXTERN int16_t *primary_synchro_nr_sl[NUMBER_PSS_SEQUENCE_SL]
-#ifdef INIT_VARIABLES_PSS_NR_H
-= { NULL, NULL}
-#endif
-;
-EXTERN int16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]
+EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif
 ;
-EXTERN int16_t *primary_synchro_nr2_sl[NUMBER_PSS_SEQUENCE_SL]
-#ifdef INIT_VARIABLES_PSS_NR_H
-= { NULL, NULL}
-#endif
-;
-EXTERN int16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE]
+EXTERN c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE] __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif
@@ -137,15 +116,9 @@ EXTERN time_stats_t generic_time[TIME_LAST];
 void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue);
 void free_context_synchro_nr(void);
 void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue);
-void free_context_pss_nr(void);
 int set_pss_nr(int ofdm_symbol_size);
 int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change);
-int pss_search_time_nr(int **rxdata, ///rx data in time domain
-                       NR_DL_FRAME_PARMS *frame_parms,
-		       int fo_flag,
-                       int is,
-                       int *eNB_id,
-		       int *f_off);
+int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is);
 
 #endif
 #undef EXTERN

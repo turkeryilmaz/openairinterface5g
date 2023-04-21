@@ -83,7 +83,7 @@
 
 
 typedef struct {
-  uint8_t decoded_output[64];
+  uint8_t decoded_output[3]; // PBCH paylod not larger than 3B
   uint8_t xtra_byte;
 } fapiPbch_t;
 
@@ -112,7 +112,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint
 
 /*! \brief check weather if current slot in current frame is suitable for SL SSB time slot allocation.
   @param ue Pointer to UE variables on which to act
-  @param frame frame number 
+  @param frame frame number
   @param slot slot number
 */
 bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot);
@@ -124,9 +124,16 @@ bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot);
   @param phy_pdcch_config       PDCCH Config for this slot
   @param txFifo                 Result fifo if PDSCH is run in parallel
 */
-int phy_procedures_nrUE_RX(PHY_VARS_NR_UE *ue,
+
+void send_slot_ind(notifiedFIFO_t *nf, int slot);
+
+void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
                            nr_phy_data_t *phy_data);
+
+void pdsch_processing(PHY_VARS_NR_UE *ue,
+                      UE_nr_rxtx_proc_t *proc,
+                      nr_phy_data_t *phy_data);
 
 int phy_procedures_slot_parallelization_nrUE_RX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint8_t abstraction_flag, uint8_t do_pdcch_flag, relaying_type_t r_type);
 
@@ -185,7 +192,8 @@ void nr_fill_rx_indication(fapi_nr_rx_indication_t *rx_ind,
                            NR_UE_DLSCH_t *dlsch1,
                            uint16_t n_pdus,
                            UE_nr_rxtx_proc_t *proc,
-                           void *typeSpecific);
+                           void *typeSpecific,
+                           uint8_t *b);
 
 bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
                             UE_nr_rxtx_proc_t *proc,

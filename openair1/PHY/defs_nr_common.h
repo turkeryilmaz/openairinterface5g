@@ -179,7 +179,7 @@ struct NR_DL_FRAME_PARMS {
   uint8_t tdd_config;
   /// Sidelink Cell ID
   uint16_t Nid_SL;
-  /// Cell ID  
+  /// Cell ID
   uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
   uint32_t subcarrier_spacing;

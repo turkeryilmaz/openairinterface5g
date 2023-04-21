@@ -89,6 +89,17 @@ softmodem_params_t *get_softmodem_params(void) {
 instance_t DUuniqInstance=0;
 instance_t CUuniqInstance=0;
 
+void inc_ref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+void deref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+
 int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t key[32], uint8_t *key_ng_ran_star)
 {
   return 0;
@@ -106,6 +117,10 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
                               const rb_id_t     Srb_id,
                               uint8_t           *buffer_pP)
 {
+  return 0;
+}
+
+int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index) {
   return 0;
 }
 
@@ -762,8 +777,8 @@ int main(int argc, char **argv){
 	for (l = 0; l < frame_parms->symbols_per_slot; l++) {
 	  for (aa = 0; aa < frame_parms->nb_antennas_rx; aa++) {
 	    nr_slot_fep_ul(frame_parms,
-			   ru->common.rxdata[aa],
-			   ru->common.rxdataF[aa],
+			   (int32_t *)ru->common.rxdata[aa],
+			   (int32_t *)ru->common.rxdataF[aa],
 			   l,
 			   slot,
 			   ru->N_TA_offset);
