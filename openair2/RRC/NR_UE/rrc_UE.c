@@ -2283,6 +2283,7 @@ nr_rrc_ue_establish_srb2(
          }
 
          itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
+         break; //TODO: BLA
 
          /* simulate power OFF, to be able to send RRCSetupRequest to TTCN again */
          LOG_W(NR_RRC, "todo, sleep before removing UE\n");

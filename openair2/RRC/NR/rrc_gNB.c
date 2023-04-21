@@ -230,6 +230,7 @@ char openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_RrcConfigu
   LOG_I(NR_RRC,
         PROTOCOL_NR_RRC_CTXT_FMT" Init...\n",
         PROTOCOL_NR_RRC_CTXT_ARGS(&ctxt));
+  LOG_E(NR_RRC, PROTOCOL_NR_RRC_CTXT_FMT" >>> BLABLABLA Init...\n", PROTOCOL_NR_RRC_CTXT_ARGS(&ctxt)); //TODO:BLA
 
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
   AssertFatal(NUMBER_OF_UE_MAX < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
@@ -258,6 +259,9 @@ if(!rrc->cell_info_configured) {
   if(init_config_flag){
     rrc_init_nr_global_param();
     openair_nr_rrc_on(&ctxt);
+
+    rrc->carrier.sizeof_paging = 0;
+    rrc->carrier.paging = (uint8_t *) malloc16(256);
   }
   return 0;
 }//END openair_rrc_gNB_configuration
@@ -376,6 +380,166 @@ void apply_macrlc_config(gNB_RRC_INST *rrc,
                              NULL,
                              get_softmodem_params()->sa ? cgc->rlc_BearerToAddModList : NULL);
 
+}
+
+int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance_t instance)
+{
+  const unsigned int Ttab[4] = {32,64,128,256};
+  uint8_t Tc;
+  /* uint8_t Tue; */
+  uint32_t pfoffset;
+  uint32_t N;  /* N: min(T,nB). total count of PF in one DRX cycle */
+  uint32_t Ns = 0;  /* Ns: max(1,nB/T) */
+  uint8_t i_s;  /* i_s = floor(UE_ID/N) mod Ns */
+  uint32_t T;  /* DRX cycle */
+  uint8_t CC_id = SS_NR_PAGING_IND(msg_p).cell_index;
+  frame_type_t frame_type = RC.gNB[instance]->frame_parms.frame_type;
+  uint32_t length;
+  uint8_t buffer[RRC_BUF_SIZE];
+  uint8_t *message_buffer;
+  MessageDef *message_p;
+  struct NR_SIB1 *sib1 = RC.nrrrc[instance]->carrier.siblock1->message.choice.c1->choice.systemInformationBlockType1;
+
+  // TODO: set configuration from TTCN SYS message
+
+  /* get default DRX cycle from configuration */
+  Tc = sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.defaultPagingCycle;
+
+  /* set T = min(Tc,Tue) */
+  T = Ttab[Tc];
+  /* set N = PCCH-Config->nAndPagingFrameOffset */
+  switch (sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present) {
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_oneT:
+      N = T;
+      pfoffset = 0;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_halfT:
+      N = T/2;
+      pfoffset = 1;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_quarterT:
+      N = T/4;
+      pfoffset = 3;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_oneEighthT:
+      N = T/8;
+      pfoffset = 7;
+      break;
+    case NR_PCCH_Config__nAndPagingFrameOffset_PR_oneSixteenthT:
+      N = T/16;
+      pfoffset = 15;
+      break;
+    default:
+      LOG_E(NR_RRC, "[gNB %ld] In rrc_gNB_process_SS_PAGING_IND:  pfoffset error (pfoffset %d)\n",
+            instance, sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.nAndPagingFrameOffset.present);
+      return (-1);
+
+  }
+
+  switch (sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.ns) {
+    case NR_PCCH_Config__ns_four:
+      if(*sib1->servingCellConfigCommon->downlinkConfigCommon.initialDownlinkBWP.pdcch_ConfigCommon->choice.setup->pagingSearchSpace == 0){
+        LOG_E(NR_RRC, "[gNB %ld] In rrc_gNB_process_SS_PAGING_IND:  ns error only 1 or 2 is allowed when pagingSearchSpace is 0\n",
+              instance);
+        return (-1);
+      } else {
+        Ns = 4;
+      }
+      break;
+    case NR_PCCH_Config__ns_two:
+      Ns = 2;
+      break;
+    case NR_PCCH_Config__ns_one:
+      Ns = 1;
+      break;
+    default:
+      LOG_E(NR_RRC, "[gNB %ld] In rrc_gNB_process_SS_PAGING_IND: ns error (ns %ld)\n",
+            instance, sib1->servingCellConfigCommon->downlinkConfigCommon.pcch_Config.ns);
+      return (-1);
+  }
+
+  /* insert data to UE_PF_PO or update data in UE_PF_PO */
+  pthread_mutex_lock(&ue_pf_po_mutex);
+  uint8_t i = 0;
+
+  for (i = 0; i < MAX_MOBILES_PER_GNB; i++) {
+    if ((UE_PF_PO[CC_id][i].enable_flag == true && UE_PF_PO[CC_id][i].ue_index_value == (uint16_t)(SS_NR_PAGING_IND(msg_p).ue_index_value)) || (UE_PF_PO[CC_id][i].enable_flag != true)) {
+      /* set T = min(Tc,Tue) */
+      UE_PF_PO[CC_id][i].T = T;
+      /* set UE_ID */
+      UE_PF_PO[CC_id][i].ue_index_value = (uint16_t)SS_NR_PAGING_IND(msg_p).ue_index_value;
+      /* calculate PF and PO */
+      /* set PF_min and PF_offset: (SFN + PF_offset) mod T = (T div N)*(UE_ID mod N) */
+      /* UE_PF_PO[CC_id][i].PF_min = (T / N) * (UE_PF_PO[CC_id][i].ue_index_value % N); */
+      UE_PF_PO[CC_id][i].PF_min = (SS_NR_PAGING_IND(msg_p).sfn % T) + (UE_PF_PO[CC_id][i].ue_index_value % N);
+      /* UE_PF_PO[CC_id][i].PF_min =  SS_NR_PAGING_IND(msg_p).sfn % T; */
+      UE_PF_PO[CC_id][i].PF_offset = pfoffset;
+      /* set i_s */
+      /* i_s = floor(UE_ID/N) mod Ns */
+      i_s = (uint8_t)((UE_PF_PO[CC_id][i].ue_index_value / N) % Ns);
+      UE_PF_PO[CC_id][i].i_s = i_s;
+
+      if (Ns == 1)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? 9 : 0;
+      }
+      else if (Ns == 2)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 + (5 * i_s)) : (5 * i_s);
+      }
+      else if (Ns == 4)
+      {
+        UE_PF_PO[CC_id][i].PO = (frame_type == FDD) ? (4 * (i_s & 1) + (5 * (i_s >> 1))) : ((i_s & 1) + (5 * (i_s >> 1)));
+      }
+      /* UE_PF_PO[CC_id][i].PO = SS_NR_PAGING_IND(msg_p).slot; */
+
+      if (UE_PF_PO[CC_id][i].enable_flag == true) {
+        //paging exist UE log
+        LOG_D(NR_RRC,"[gNB %ld] CC_id %d In rrc_gNB_process_SS_PAGING_IND: Update exist UE %d, T %d, N %d, PF %d, i_s %d, PF_offset %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value,
+              T, N, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].i_s, UE_PF_PO[CC_id][i].PF_offset);
+      } else {
+        /* set enable_flag */
+        UE_PF_PO[CC_id][i].enable_flag = true;
+        //paging new UE log
+        LOG_D(NR_RRC,"[gNB %ld] CC_id %d In rrc_gNB_process_SS_PAGING_IND: Insert a new UE %d, T %d, N %d, PF %d, i_s %d, PF_offset %d\n", instance, CC_id, UE_PF_PO[CC_id][i].ue_index_value,
+              T, N, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].i_s, UE_PF_PO[CC_id][i].PF_offset);
+      }
+      break;
+    }
+  }
+
+  pthread_mutex_unlock(&ue_pf_po_mutex);
+  LOG_E(NR_RRC, ">>> BLABLA: rrc_gNB_process_SS_PAGING_IND Tc=%d T=%d N=%d poffset=%d Ns=%d, instance=%d CC_id=%d frame_type=%d\n", Tc, T, N, pfoffset, Ns, (int)instance, CC_id, frame_type); //TODO:BLA
+  LOG_E(NR_RRC, ">>> BLABLA: rrc_gNB_process_SS_PAGING_IND ue_index_value=%d T=%d PF_min=%d PF_offset=%d i_s=%d PO=%d enable_flag=%d\n", UE_PF_PO[CC_id][i].ue_index_value, UE_PF_PO[CC_id][i].T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PF_offset, UE_PF_PO[CC_id][i].i_s, UE_PF_PO[CC_id][i].PO, UE_PF_PO[CC_id][i].enable_flag); //TODO:BLA
+
+  /* Create message for PDCP (DLInformationTransfer_t) */
+  length = do_NR_Paging(instance, buffer, NULL, SS_NR_PAGING_IND(msg_p).num_paging_record,  SS_NR_PAGING_IND(msg_p).paging_recordList);
+
+  if (SS_NR_PAGING_IND(msg_p).paging_recordList) {
+    free(SS_NR_PAGING_IND(msg_p).paging_recordList);
+    SS_NR_PAGING_IND(msg_p).paging_recordList = NULL;
+  }
+
+  if (length == -1) {
+    LOG_I(NR_RRC, "do_NR_Paging error\n");
+    return -1;
+  }
+
+  message_p = itti_alloc_new_message(TASK_RRC_GNB, instance, RRC_PCCH_DATA_REQ);
+  message_buffer = itti_malloc(TASK_RRC_GNB, TASK_PDCP_ENB, length);
+  /* Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling). */
+  memcpy(message_buffer, buffer, length);
+  RRC_PCCH_DATA_REQ(message_p).sdu_size = length;
+  RRC_PCCH_DATA_REQ(message_p).sdu_p = message_buffer;
+  RRC_PCCH_DATA_REQ(message_p).mode = PDCP_TRANSMISSION_MODE_TRANSPARENT; /* not used */
+  RRC_PCCH_DATA_REQ(message_p).rnti = P_RNTI;
+  RRC_PCCH_DATA_REQ(message_p).ue_index = 0;
+  RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
+  LOG_A(NR_RRC, "[gNB %ld] CC_id %d In do_NR_Paging: send encoded buffer to PDCP buffer_size %d\n", instance, CC_id, length);
+  LOG_E(NR_RRC, ">>> BLABLABLA [gNB %ld] CC_id %d In do_NR_Paging: send encoded buffer to PDCP buffer_size %d\n", instance, CC_id, length); //TODO:BLA
+  itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
+
+  return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -4275,6 +4439,12 @@ void *rrc_gnb_task(void *args_p) {
         rrc_gNB_process_PAGING_IND(msg_p, msg_name_p, instance);
         break;
 
+      case SS_SS_NR_PAGING_IND:
+        LOG_A(NR_RRC, "Received Paging message from SS: %s\n", msg_name_p);
+        LOG_E(NR_RRC, ">> BLABLABLA Received Paging message from SS: %s\n", msg_name_p); //TODO:BLA
+        rrc_gNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
+        break;
+
       case SS_NRRRC_PDU_REQ:
         LOG_A(NR_RRC,"NR RRC received SS_NRRRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_NRRRC_PDU_REQ (msg_p).srb_id, SS_NRRRC_PDU_REQ (msg_p).sdu_size);
 
@@ -4718,12 +4888,10 @@ int rrc_gNB_generate_pcch_msg(uint32_t tmsi, uint8_t paging_drx, instance_t inst
   pthread_mutex_unlock(&ue_pf_po_mutex);
 
   /* Create message for PDCP (DLInformationTransfer_t) */
-  length = do_NR_Paging (instance,
-                         buffer,
-                         tmsi);
+  length = do_NR_Paging(instance, buffer, &tmsi, 0, NULL);
 
   if (length == -1) {
-    LOG_I(NR_RRC, "do_Paging error\n");
+    LOG_I(NR_RRC, "do_NR_Paging error\n");
     return -1;
   }
   // TODO, send message to pdcp

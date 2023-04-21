@@ -519,6 +519,8 @@ typedef struct {
   NR_SRB_INFO                               Srb0;
   int                                       p_gNB;
 
+  uint8_t                           *paging;
+  uint32_t                           sizeof_paging;
 } rrc_gNB_carrier_data_t;
 //---------------------------------------------------
 

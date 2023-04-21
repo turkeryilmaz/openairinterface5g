@@ -130,11 +130,11 @@ extern "C" {
     int message_id = message->ittiMsgHeader.messageId;
     size_t s=t->message_queue.size();
 
-    if ( s > t->admin.queue_size )
-      LOG_E(TMR,"Queue for %s task contains %ld messages\n", itti_get_task_name(destination_task_id), s );
+    // if ( s > t->admin.queue_size )
+    //   LOG_E(TMR,"Queue for %s task contains %ld messages\n", itti_get_task_name(destination_task_id), s );
 
-    if ( s > 50 )
-      LOG_I(ITTI,"Queue for %s task size: %ld (last message %s)\n",itti_get_task_name(destination_task_id), s+1,ITTI_MSG_NAME(message));
+    // if ( s > 50 )
+    //   LOG_I(ITTI,"Queue for %s task size: %ld (last message %s)\n",itti_get_task_name(destination_task_id), s+1,ITTI_MSG_NAME(message));
 
     t->message_queue.insert(t->message_queue.begin(), message);
     eventfd_t sem_counter = 1;

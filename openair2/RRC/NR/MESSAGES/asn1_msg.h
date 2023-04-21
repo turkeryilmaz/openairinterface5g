@@ -198,4 +198,7 @@ do_RRCReestablishmentComplete(
     uint8_t *buffer, size_t buffer_size,
     int64_t rrc_TransactionIdentifier);
 
+uint8_t
+do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t *tmsi, size_t num_paging_record, ss_nr_paging_identity_t *paging_recordList);
+
 #endif  /* __RRC_NR_MESSAGES_ASN1_MSG__H__ */

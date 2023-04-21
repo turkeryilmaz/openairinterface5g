@@ -47,6 +47,7 @@
 #define SS_NRRRC_PDU_IND(mSGpTR)              (mSGpTR)->ittiMsg.ss_nrrrc_pdu_ind
 #define SS_SYS_PROXY_MSG_CNF(mSGpTR)          (mSGpTR)->ittiMsg.udp_data_ind
 #define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind
+#define SS_NR_PAGING_IND(mSGpTR)              (mSGpTR)->ittiMsg.ss_nr_paging_ind
 #define SS_L1MACIND_CTRL(mSGpTR)              (mSGpTR)->ittiMsg.ss_l1macind_ctrl
 
 /** VNG */
@@ -291,10 +292,22 @@ typedef struct ss_paging_identity_s {
   cn_domain_t cn_domain;
 }ss_paging_identity_t;
 
+typedef struct ss_nr_paging_identity_s {
+  nr_ue_paging_identity_t ue_paging_identity;
+
+  bool bAccessTypePresent;
+  access_type_t access_type;
+}ss_nr_paging_identity_t;
+
 typedef struct subframe_offset_list_s {
   uint16_t num;
   sub_frame_t subframe_offset[1000];
 }subframe_offset_list_t;
+
+typedef struct slot_offset_list_s {
+  uint16_t num;
+  slot_t slot_offset[1000];
+}slot_offset_list_t;
 
 typedef struct ss_paging_ind_s {
   uint16_t sfn;
@@ -312,6 +325,19 @@ typedef struct ss_paging_ind_s {
   bool bSubframeOffsetListPresent;
   subframe_offset_list_t subframeOffsetList;
 } ss_paging_ind_t;
+
+typedef struct ss_nr_paging_ind_s {
+  uint16_t sfn;
+  uint32_t  slot;
+  int cell_index;
+
+  unsigned ue_index_value:10;
+
+  uint8_t num_paging_record;
+  ss_nr_paging_identity_t *paging_recordList;
+  bool bSlotOffsetListPresent;
+  slot_offset_list_t slotOffsetList;
+} ss_nr_paging_ind_t;
 
 typedef enum VtpCmd_e {
   VTP_DISABLE = 0,

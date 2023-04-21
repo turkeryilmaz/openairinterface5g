@@ -109,6 +109,7 @@ nr_mac_rrc_data_ind_ue(
         break;
 
       default:
+        LOG_E(NR_RRC, "^^^^ BLABLABLA invalid CHANNEL %x  rnti %x  pdu_len=%d!!!!!", channel, rnti, pdu_len); //TODO:BLA
         break;
     }
 

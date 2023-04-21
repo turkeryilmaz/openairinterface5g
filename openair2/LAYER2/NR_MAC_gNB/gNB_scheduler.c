@@ -232,8 +232,11 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
 
   // This schedules the DCI for Downlink and PDSCH
   start_meas(&gNB->schedule_dlsch);
-  nr_schedule_ue_spec(module_idP, frame, slot); 
+  nr_schedule_ue_spec(module_idP, frame, slot);
   stop_meas(&gNB->schedule_dlsch);
+
+  // This schedules Paging in slot
+  schedule_nr_PCH(module_idP, frame, slot);
 
   nr_sr_reporting(RC.nrmac[module_idP], frame, slot);
 

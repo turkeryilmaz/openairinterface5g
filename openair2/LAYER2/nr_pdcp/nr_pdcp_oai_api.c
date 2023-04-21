@@ -973,6 +973,15 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
       result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_DTCH_DATA_REQ(msg_p).sdu_p);
       AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
       break;
+    case RRC_PCCH_DATA_REQ:
+      LOG_D(PDCP, "PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", RRC_PCCH_DATA_REQ(msg_p).CC_id, RRC_PCCH_DATA_REQ(msg_p).sdu_size);
+      LOG_E(PDCP, ">>> BLABLABLA PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", RRC_PCCH_DATA_REQ(msg_p).CC_id, RRC_PCCH_DATA_REQ(msg_p).sdu_size); //TODO:BLA
+
+      RC.nrrrc[ctxt_pP->module_id]->carrier.sizeof_paging = RRC_PCCH_DATA_REQ(msg_p).sdu_size;
+      memcpy(RC.nrrrc[ctxt_pP->module_id]->carrier.paging, RRC_PCCH_DATA_REQ(msg_p).sdu_p, RRC_PCCH_DATA_REQ(msg_p).sdu_size);
+      result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), RRC_PCCH_DATA_REQ(msg_p).sdu_p);
+      AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
+      break;
     default:
       LOG_E(PDCP, "Received unexpected message %s\n", ITTI_MSG_NAME(msg_p));
       break;

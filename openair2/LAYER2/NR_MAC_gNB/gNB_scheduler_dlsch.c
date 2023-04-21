@@ -46,6 +46,8 @@
 #include "executables/softmodem-common.h"
 #include "../../../nfapi/oai_integration/vendor_ext.h"
 
+#include "openair2/RRC/NR/nr_rrc_extern.h"
+
 ////////////////////////////////////////////////////////
 /////* DLSCH MAC PDU generation (6.1.2 TS 38.321) */////
 ////////////////////////////////////////////////////////
@@ -1316,4 +1318,494 @@ void nr_schedule_ue_spec(module_id_t module_id,
     /* mark UE as scheduled */
     sched_pdsch->rbSize = 0;
   }
+}
+
+void nr_fill_nfapi_dl_paging_pdu(int Mod_idP,
+                                 nfapi_nr_dl_tti_request_body_t *dl_req,
+                                 int pdu_index,
+                                 NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config,
+                                 uint32_t TBS,
+                                 int StartSymbolIndex,
+                                 int NrOfSymbols) {
+
+  gNB_MAC_INST *gNB_mac = RC.nrmac[Mod_idP];
+  NR_COMMON_channels_t *cc = gNB_mac->common_channels;
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  int mcsTableIdx = 0;
+  NR_sched_pdsch_t *pdsch = &gNB_mac->sched_ctrlCommon->sched_pdsch;
+  nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdcch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
+  memset((void*)dl_tti_pdcch_pdu,0,sizeof(nfapi_nr_dl_tti_request_pdu_t));
+  dl_tti_pdcch_pdu->PDUType = NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE;
+  dl_tti_pdcch_pdu->PDUSize = (uint8_t)(2+sizeof(nfapi_nr_dl_tti_pdcch_pdu));
+  dl_req->nPDUs += 1;
+  nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15 = &dl_tti_pdcch_pdu->pdcch_pdu.pdcch_pdu_rel15;
+  nr_configure_pdcch(pdcch_pdu_rel15,
+                     gNB_mac->sched_ctrlCommon->coreset,
+                     true, // sib1
+                     &gNB_mac->sched_ctrlCommon->sched_pdcch);
+
+  nfapi_nr_dl_tti_request_pdu_t *dl_tti_pdsch_pdu = &dl_req->dl_tti_pdu_list[dl_req->nPDUs];
+  memset((void*)dl_tti_pdsch_pdu,0,sizeof(nfapi_nr_dl_tti_request_pdu_t));
+  dl_tti_pdsch_pdu->PDUType = NFAPI_NR_DL_TTI_PDSCH_PDU_TYPE;
+  dl_tti_pdsch_pdu->PDUSize = (uint8_t)(2+sizeof(nfapi_nr_dl_tti_pdsch_pdu));
+  dl_req->nPDUs += 1;
+  nfapi_nr_dl_tti_pdsch_pdu_rel15_t *pdsch_pdu_rel15 = &dl_tti_pdsch_pdu->pdsch_pdu.pdsch_pdu_rel15;
+
+  pdcch_pdu_rel15->CoreSetType = NFAPI_NR_CSET_CONFIG_MIB_SIB1;
+
+  pdsch_pdu_rel15->pduBitmap = 0;
+  pdsch_pdu_rel15->rnti = P_RNTI;
+  pdsch_pdu_rel15->pduIndex = pdu_index;
+
+  pdsch_pdu_rel15->BWPSize  = type0_PDCCH_CSS_config->num_rbs;
+  pdsch_pdu_rel15->BWPStart = type0_PDCCH_CSS_config->cset_start_rb;
+
+  pdsch_pdu_rel15->SubcarrierSpacing = type0_PDCCH_CSS_config->scs_pdcch;
+  pdsch_pdu_rel15->CyclicPrefix = 0;
+
+  pdsch_pdu_rel15->NrOfCodewords = 1;
+  pdsch_pdu_rel15->targetCodeRate[0] = nr_get_code_rate_dl(pdsch->mcs, mcsTableIdx);
+  pdsch_pdu_rel15->qamModOrder[0] = nr_get_Qm_dl(pdsch->mcs, mcsTableIdx);
+  pdsch_pdu_rel15->mcsIndex[0] = pdsch->mcs;
+  pdsch_pdu_rel15->mcsTable[0] = mcsTableIdx;
+  pdsch_pdu_rel15->rvIndex[0] = nr_rv_round_map[0];
+  pdsch_pdu_rel15->dataScramblingId = *scc->physCellId;
+  pdsch_pdu_rel15->nrOfLayers = 1;
+  pdsch_pdu_rel15->transmissionScheme = 0;
+  pdsch_pdu_rel15->refPoint = 1;
+  pdsch_pdu_rel15->dmrsConfigType = 0;
+  pdsch_pdu_rel15->dlDmrsScramblingId = *scc->physCellId;
+  pdsch_pdu_rel15->SCID = 0;
+  pdsch_pdu_rel15->numDmrsCdmGrpsNoData = pdsch->dmrs_parms.numDmrsCdmGrpsNoData;
+  pdsch_pdu_rel15->dmrsPorts = 1;
+  pdsch_pdu_rel15->resourceAlloc = 1;
+  pdsch_pdu_rel15->rbStart = pdsch->rbStart;
+  pdsch_pdu_rel15->rbSize = pdsch->rbSize;
+  pdsch_pdu_rel15->VRBtoPRBMapping = 0;
+  pdsch_pdu_rel15->qamModOrder[0] = nr_get_Qm_dl(pdsch->mcs, mcsTableIdx);
+  pdsch_pdu_rel15->TBSize[0] = TBS;
+  pdsch_pdu_rel15->mcsTable[0] = mcsTableIdx;
+  pdsch_pdu_rel15->StartSymbolIndex = StartSymbolIndex;
+  pdsch_pdu_rel15->NrOfSymbols = NrOfSymbols;
+  pdsch_pdu_rel15->dlDmrsSymbPos = pdsch->dmrs_parms.dl_dmrs_symb_pos;
+  LOG_D(NR_MAC,"sib1:bwpStart %d, bwpSize %d\n",pdsch_pdu_rel15->BWPStart,pdsch_pdu_rel15->BWPSize);
+  LOG_D(NR_MAC,"sib1:rbStart %d, rbSize %d\n",pdsch_pdu_rel15->rbStart,pdsch_pdu_rel15->rbSize);
+  LOG_D(NR_MAC,"sib1:dlDmrsSymbPos = 0x%x\n", pdsch_pdu_rel15->dlDmrsSymbPos);
+
+  pdsch_pdu_rel15->maintenance_parms_v3.tbSizeLbrmBytes = nr_compute_tbslbrm(0,
+                                                                             pdsch_pdu_rel15->BWPSize,
+                                                                             1);
+  pdsch_pdu_rel15->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS<<3,pdsch_pdu_rel15->targetCodeRate[0]);
+
+  /* Fill PDCCH DL DCI PDU */
+  nfapi_nr_dl_dci_pdu_t *dci_pdu = &pdcch_pdu_rel15->dci_pdu[pdcch_pdu_rel15->numDlDci];
+  pdcch_pdu_rel15->numDlDci++;
+  dci_pdu->RNTI = P_RNTI;
+  dci_pdu->ScramblingId = *scc->physCellId;
+  dci_pdu->ScramblingRNTI = 0;
+  dci_pdu->AggregationLevel = gNB_mac->sched_ctrlCommon->aggregation_level;
+  dci_pdu->CceIndex = gNB_mac->sched_ctrlCommon->cce_index;
+  dci_pdu->beta_PDCCH_1_0 = 0;
+  dci_pdu->powerControlOffsetSS = 1;
+
+  /* DCI payload */
+  dci_pdu_rel15_t dci_payload;
+  memset(&dci_payload, 0, sizeof(dci_pdu_rel15_t));
+
+  dci_payload.bwp_indicator.val = 0;
+
+  // frequency domain assignment
+  dci_payload.frequency_domain_assignment.val = PRBalloc_to_locationandbandwidth0(
+      pdsch_pdu_rel15->rbSize, pdsch_pdu_rel15->rbStart, type0_PDCCH_CSS_config->num_rbs);
+
+  dci_payload.time_domain_assignment.val = gNB_mac->sched_ctrlCommon->sched_pdsch.time_domain_allocation;
+  dci_payload.mcs = pdsch->mcs;
+  dci_payload.rv = pdsch_pdu_rel15->rvIndex[0];
+  dci_payload.harq_pid = 0;
+  dci_payload.ndi = 0;
+  dci_payload.dai[0].val = 0;
+  dci_payload.tpc = 0; // table 7.2.1-1 in 38.213
+  dci_payload.pucch_resource_indicator = 0;
+  dci_payload.pdsch_to_harq_feedback_timing_indicator.val = 0;
+  dci_payload.antenna_ports.val = 0;
+  dci_payload.dmrs_sequence_initialization.val = pdsch_pdu_rel15->SCID;
+
+  int dci_format = NR_DL_DCI_FORMAT_1_0;
+  int rnti_type = NR_RNTI_P;
+
+  fill_dci_pdu_rel15(scc,
+                     NULL,
+                     NULL,
+                     NULL,
+                     &pdcch_pdu_rel15->dci_pdu[pdcch_pdu_rel15->numDlDci - 1],
+                     &dci_payload,
+                     dci_format,
+                     rnti_type,
+                     0,
+                     gNB_mac->sched_ctrlCommon->search_space,
+                     gNB_mac->sched_ctrlCommon->coreset,
+                     gNB_mac->cset0_bwp_size);
+
+  LOG_D(MAC,"BWPSize: %i\n", pdcch_pdu_rel15->BWPSize);
+  LOG_D(MAC,"BWPStart: %i\n", pdcch_pdu_rel15->BWPStart);
+  LOG_D(MAC,"SubcarrierSpacing: %i\n", pdcch_pdu_rel15->SubcarrierSpacing);
+  LOG_D(MAC,"CyclicPrefix: %i\n", pdcch_pdu_rel15->CyclicPrefix);
+  LOG_D(MAC,"StartSymbolIndex: %i\n", pdcch_pdu_rel15->StartSymbolIndex);
+  LOG_D(MAC,"DurationSymbols: %i\n", pdcch_pdu_rel15->DurationSymbols);
+  for(int n=0;n<6;n++) LOG_D(MAC,"FreqDomainResource[%i]: %x\n",n, pdcch_pdu_rel15->FreqDomainResource[n]);
+  LOG_D(MAC,"CceRegMappingType: %i\n", pdcch_pdu_rel15->CceRegMappingType);
+  LOG_D(MAC,"RegBundleSize: %i\n", pdcch_pdu_rel15->RegBundleSize);
+  LOG_D(MAC,"InterleaverSize: %i\n", pdcch_pdu_rel15->InterleaverSize);
+  LOG_D(MAC,"CoreSetType: %i\n", pdcch_pdu_rel15->CoreSetType);
+  LOG_D(MAC,"ShiftIndex: %i\n", pdcch_pdu_rel15->ShiftIndex);
+  LOG_D(MAC,"precoderGranularity: %i\n", pdcch_pdu_rel15->precoderGranularity);
+  LOG_D(MAC,"numDlDci: %i\n", pdcch_pdu_rel15->numDlDci);
+
+}
+
+void schedule_nr_PCH(module_id_t module_idP,
+                     frame_t frameP,
+                     sub_frame_t slotP) {
+  uint16_t pcch_sdu_length;
+  int mcs = -1;
+  int CC_id;
+  gNB_MAC_INST *gNB_mac = RC.nrmac[module_idP];
+  NR_COMMON_channels_t *cc;
+  uint8_t *vrb_map;
+  int n_rb_dl;
+  int first_rb = -1;
+  nfapi_dl_config_request_pdu_t *dl_config_pdu;
+  nfapi_tx_request_pdu_t *TX_req;
+  nfapi_nr_dl_tti_request_body_t *dl_req;
+  UE_PF_PO_t *ue_pf_po;
+
+  start_meas(&gNB_mac->schedule_pch);
+
+  for (CC_id = 0; CC_id < RC.nb_nr_mac_CC[module_idP]; CC_id++) {
+    cc              = &gNB_mac->common_channels[CC_id];
+    /* vrb_map         = (void *) &cc->vrb_map; */
+    /* n_rb_dl         = to_prb(cc->mib->message.dl_Bandwidth); */
+    dl_req          = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
+
+    for (uint16_t i = 0; i < MAX_MOBILES_PER_GNB; i++) {
+      ue_pf_po = &UE_PF_PO[CC_id][i];
+
+      if (ue_pf_po->enable_flag != true) {
+        continue;
+      }
+
+      if (frameP % ue_pf_po->T == ue_pf_po->PF_min && slotP == ue_pf_po->PO) {
+        pcch_sdu_length = mac_rrc_nr_data_req(module_idP,
+                                              CC_id,
+                                              frameP,
+                                              PCCH,
+                                              P_RNTI,
+                                              1,
+                                              &cc->PCCH_pdu.payload[0]);
+
+        if (pcch_sdu_length == 0) {
+          LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH not active(size = 0 byte)\n",
+                module_idP,
+                frameP,
+                slotP);
+          LOG_E(NR_MAC, "!!!! BLABLABLA [gNB %d] Frame %d slot %d: PCCH not active(size = 0 byte)\n", module_idP, frameP, slotP); //TODO:BLA
+          continue;
+        }
+
+        LOG_D(NR_MAC, "[gNB %d] Frame %d slot %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n",
+              module_idP,
+              frameP,
+              slotP,
+              CC_id,
+              i,
+              pcch_sdu_length);
+        LOG_E(NR_MAC, "@@@@@@@@@@ BLABLA [gNB %d] Frame %d slot %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes \n", module_idP, frameP, slotP, CC_id, i, pcch_sdu_length); //TODO:BLA
+        #if 0
+        //NO SIB
+        if ((slotP == 0 || slotP == 1 || slotP == 2 || slotP == 4 || slotP == 6 || slotP == 9) ||
+            (slotP == 5 && ((frameP % 2) != 0 && (frameP % 8) != 1))) {
+          switch (n_rb_dl) {
+            case 25:
+              first_rb = 10;
+              break;
+
+            case 50:
+              first_rb = 24;
+              break;
+
+            case 100:
+              first_rb = 48;
+              break;
+          }
+        } else if (slotP == 5 && ((frameP % 2) == 0 || (frameP % 8) == 1)) {  // SIB + paging
+          switch (n_rb_dl) {
+            case 25:
+              first_rb = 14;
+              break;
+
+            case 50:
+              first_rb = 28;
+              break;
+
+            case 100:
+              first_rb = 52;
+              break;
+          }
+        }
+
+        vrb_map[first_rb] = 1;
+        vrb_map[first_rb + 1] = 1;
+        vrb_map[first_rb + 2] = 1;
+        vrb_map[first_rb + 3] = 1;
+
+        /* Get MCS for length of PCH */
+        if (pcch_sdu_length <= get_TBS_DL(0, 3)) {
+          mcs = 0;
+        } else if (pcch_sdu_length <= get_TBS_DL(1, 3)) {
+          mcs = 1;
+        } else if (pcch_sdu_length <= get_TBS_DL(2, 3)) {
+          mcs = 2;
+        } else if (pcch_sdu_length <= get_TBS_DL(3, 3)) {
+          mcs = 3;
+        } else if (pcch_sdu_length <= get_TBS_DL(4, 3)) {
+          mcs = 4;
+        } else if (pcch_sdu_length <= get_TBS_DL(5, 3)) {
+          mcs = 5;
+        } else if (pcch_sdu_length <= get_TBS_DL(6, 3)) {
+          mcs = 6;
+        } else if (pcch_sdu_length <= get_TBS_DL(7, 3)) {
+          mcs = 7;
+        } else if (pcch_sdu_length <= get_TBS_DL(8, 3)) {
+          mcs = 8;
+        } else if (pcch_sdu_length <= get_TBS_DL(9, 3)) {
+          mcs = 9;
+        }
+        #endif
+
+        int time_domain_allocation = gNB_mac->sib1_tda;
+
+        NR_ServingCellConfigCommon_t *scc = gNB_mac->common_channels[CC_id].ServingCellConfigCommon;
+        NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = gNB_mac->type0_PDCCH_CSS_config;
+
+        int startSymbolIndex = 0;
+        int nrOfSymbols = 0;
+        bool is_typeA;
+
+        LOG_D(NR_MAC,"type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
+        LOG_D(NR_MAC,"time_domain_allocation: %i\n", time_domain_allocation);
+        LOG_D(NR_MAC,"dmrs_TypeA_Position: %i\n", gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position);
+        get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
+                                 time_domain_allocation,
+                                 gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
+                                 1, &is_typeA,
+                                 &startSymbolIndex, &nrOfSymbols);
+
+        AssertFatal((startSymbolIndex+nrOfSymbols)<14,"SIB1 TDA %d would cause overlap with CSI-RS. Please select a different SIB1 TDA.\n",time_domain_allocation);
+
+        NR_tda_info_t tda_info = {
+          .mapping_type = is_typeA ? typeA : typeB,
+          .startSymbolIndex = startSymbolIndex,
+          .nrOfSymbols = nrOfSymbols
+        };
+
+        NR_pdsch_dmrs_t dmrs_parms = get_dl_dmrs_params(scc,
+                                                        NULL,
+                                                        &tda_info,
+                                                        1);
+
+        uint8_t candidate_idx = 0;
+
+        /* uint32_t TBS = pcch_sdu_length; */
+        uint32_t TBS = schedule_control_sib1(module_idP, CC_id,
+                                             type0_PDCCH_CSS_config,
+                                             time_domain_allocation,
+                                             &dmrs_parms,
+                                             &tda_info,
+                                             candidate_idx,
+                                             pcch_sdu_length);
+        LOG_E(NR_MAC,">>>> BLABLABLA PAGING TBS=%d (len=%d)\n", TBS, pcch_sdu_length);
+
+
+        int pdu_index = gNB_mac->pdu_index[0]++;
+        nr_fill_nfapi_dl_paging_pdu(module_idP, dl_req, pdu_index, type0_PDCCH_CSS_config, TBS, startSymbolIndex, nrOfSymbols);
+
+        const int ntx_req = gNB_mac->TX_req[CC_id].Number_of_PDUs;
+        nfapi_nr_pdu_t *tx_req = &gNB_mac->TX_req[CC_id].pdu_list[ntx_req];
+
+
+        // Data to be transmitted
+        memcpy(tx_req->TLVs[0].value.direct, &cc->PCCH_pdu.payload[0], TBS);
+
+        tx_req->PDU_length = TBS;
+        tx_req->PDU_index  = pdu_index;
+        tx_req->num_TLV = 1;
+        tx_req->TLVs[0].length = TBS + 2;
+        gNB_mac->TX_req[CC_id].Number_of_PDUs++;
+        gNB_mac->TX_req[CC_id].SFN = frameP;
+        gNB_mac->TX_req[CC_id].Slot = slotP;
+
+
+        #if 0
+        dl_config_pdu = &dl_req->dl_config_pdu_list[dl_req->number_pdu];
+        memset((void *) dl_config_pdu,
+               0,
+               sizeof(nfapi_dl_config_request_pdu_t));
+        dl_config_pdu->pdu_type = NFAPI_DL_CONFIG_DCI_DL_PDU_TYPE;
+        dl_config_pdu->pdu_size = (uint8_t) (2 + sizeof(nfapi_dl_config_dci_dl_pdu));
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.dci_format                  = NFAPI_DL_DCI_FORMAT_1A;
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.harq_process                = 0;
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.tpc                         = 1; // no TPC
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.new_data_indicator_1        = 0;
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.redundancy_version_1        = 0;
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.resource_block_coding = getRIV(n_rb_dl, first_rb, 4);
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.virtual_resource_block_assignment_flag = 0;
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level           = 4;
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.rnti                        = 0xFFFE; // P-RNTI
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.rnti_type                   = 2;    // P-RNTI : see Table 4-10 from SCF082 - nFAPI specifications
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.transmission_power          = 6000; // equal to RS power
+        dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.mcs_1                       = mcs;
+
+        if (!CCE_allocation_infeasible(module_idP,
+                                       CC_id,
+                                       0,
+                                       slotP,
+                                       dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level,
+                                       P_RNTI)) {
+          LOG_D(NR_MAC,"Frame %d: slot %d : Adding common DCI for P_RNTI\n",
+                frameP,
+                slotP);
+          dl_req->number_dci++;
+          dl_req->number_pdu++;
+          dl_req->tl.tag = NFAPI_DL_CONFIG_REQUEST_BODY_TAG;
+          gNB_mac->DL_req[CC_id].sfn_sf = frameP<<4 | slotP;
+          gNB_mac->DL_req[CC_id].header.message_id = NFAPI_DL_CONFIG_REQUEST;
+          dl_config_pdu                                                                  = &dl_req->dl_config_pdu_list[dl_req->number_pdu];
+          memset((void *)dl_config_pdu,
+                 0,
+                 sizeof(nfapi_dl_config_request_pdu_t));
+          if(RC.ss.mode ==SS_GNB)
+          {
+            dl_config_pdu->pdu_type = NFAPI_DL_CONFIG_DLSCH_PDU_TYPE;
+            dl_config_pdu->pdu_size = (uint8_t)(2 + sizeof(nfapi_dl_config_dlsch_pdu));
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.pdu_index = gNB_mac->pdu_index[CC_id];
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.rnti = 0xFFFE;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_allocation_type = 2; // format 1A/1B/1D
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.resource_block_coding = getRIV(n_rb_dl,
+                                                                                   first_rb,
+                                                                                   4);
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.virtual_resource_block_assignment_flag = 0; // localized
+
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.modulation = 2; // QPSK
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.redundancy_version = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transport_blocks = 1; // first block
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transport_block_to_codeword_swap_flag = 0;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transmission_scheme = (cc->p_eNB == 1) ? 0 : 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.number_of_layers = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.number_of_subbands = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.ue_category_capacity = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.pa = 4; // 0 dB
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.delta_power_offset_index = 0;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.ngap = 0;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.nprb = get_subbandsize(cc->mib->message.dl_Bandwidth); // ignored
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.transmission_mode = (cc->p_eNB == 1) ? 1 : 2;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_prb_per_subband = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel8.num_bf_vector = 1;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel10.pdsch_start = 3;
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.ue_type = 0;            // regular UE
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.pdsch_payload_type = 2; // not BR
+            dl_config_pdu->dlsch_pdu.dlsch_pdu_rel13.initial_transmission_sf_io = 0xFFFF;
+	  }
+          else
+          {
+            dl_config_pdu->pdu_type = NFAPI_DL_CONFIG_PCH_PDU_TYPE;
+            dl_config_pdu->pdu_size = (uint8_t)(2 + sizeof(nfapi_dl_config_pch_pdu));
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.tl.tag = NFAPI_DL_CONFIG_REQUEST_PCH_PDU_REL8_TAG;
+            //dl_config_pdu->pch_pdu.pch_pdu_rel8.length = rand_range(0, 42);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.pdu_index = gNB_mac->pdu_index[CC_id];
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.p_rnti = 0xFFFE;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.resource_allocation_type = 2;//rand_range(2, 6);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.virtual_resource_block_assignment_flag = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.resource_block_coding = getRIV(n_rb_dl,
+                                                                                   first_rb,
+                                                                                   4);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.mcs = mcs;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.redundancy_version = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.number_of_transport_blocks = 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.transport_block_to_codeword_swap_flag = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.transmission_scheme = (cc->p_eNB == 1) ? 0 : 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.number_of_layers = 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.codebook_index = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.ue_category_capacity = 1; // rand_range(0, 14);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.pa = 4;                   // rand_range(0, 7);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.transmission_power = 6000;
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.nprb = 0;//get_subbandsize(cc->mib->message.dl_Bandwidth);
+            dl_config_pdu->pch_pdu.pch_pdu_rel8.ngap = 0;
+            dl_config_pdu->pch_pdu.pch_pdu_rel13.tl.tag = NFAPI_DL_CONFIG_REQUEST_PCH_PDU_REL13_TAG;
+            dl_config_pdu->pch_pdu.pch_pdu_rel13.ue_mode = 1;
+            dl_config_pdu->pch_pdu.pch_pdu_rel13.initial_transmission_sf_io = 0xFFFF;
+          }
+
+          dl_req->number_pdu++;
+          gNB_mac->TX_req[CC_id].sfn_sf                                                      = (frameP<<4)+slotP;
+          TX_req = &gNB_mac->TX_req[CC_id].tx_request_body.tx_pdu_list[gNB_mac->TX_req[CC_id].tx_request_body.number_of_pdus];
+          TX_req->pdu_length                                                             = pcch_sdu_length;
+          TX_req->pdu_index                                                              = gNB_mac->pdu_index[CC_id]++;
+          TX_req->num_segments                                                           = 1;
+          TX_req->segments[0].segment_length                                             = pcch_sdu_length;
+          TX_req->segments[0].segment_data                                               = cc->PCCH_pdu.payload;
+          gNB_mac->TX_req[CC_id].tx_request_body.tl.tag                                      = NFAPI_TX_REQUEST_BODY_TAG;
+          gNB_mac->TX_req[CC_id].tx_request_body.number_of_pdus++;
+        } else {
+          LOG_E(NR_MAC,"[gNB %d] CCid %d Frame %d, slot %d : Cannot add DCI 1A/1C for Paging\n",
+                module_idP,
+                CC_id,
+                frameP,
+                slotP);
+          continue;
+        }
+
+        mac_pkt_info_t mac_pkt;
+        mac_pkt.direction = DIRECTION_DOWNLINK;
+        mac_pkt.rnti_type = PCCH;
+        mac_pkt.rnti      = P_RNTI;
+        mac_pkt.harq_pid  = 0;
+        mac_pkt.preamble  = -1; /* TODO */
+
+        LOG_MAC_P(OAILOG_DEBUG, "LTE_MAC_PCCH_PDU", gNB_mac->frame, gNB_mac->slot, mac_pkt, (uint8_t *)&gNB_mac->common_channels[CC_id].PCCH_pdu.payload[0], (int)pcch_sdu_length);
+        trace_pdu(DIRECTION_DOWNLINK,
+                  &gNB_mac->common_channels[CC_id].PCCH_pdu.payload[0],
+                  pcch_sdu_length,
+                  0xffff,
+                  PCCH,
+                  P_RNTI,
+                  gNB_mac->frame,
+                  gNB_mac->slot,
+                  0,
+                  0);
+        /* gNB_mac->gNB_stats[CC_id].total_num_pcch_pdu++; */
+        /* gNB_mac->gNB_stats[CC_id].pcch_buffer = pcch_sdu_length; */
+        /* gNB_mac->gNB_stats[CC_id].total_pcch_buffer += pcch_sdu_length; */
+        /* gNB_mac->gNB_stats[CC_id].pcch_mcs = mcs; */
+        //paging first_rb log
+        LOG_A(NR_MAC,"[gNB %d] Frame %d slot %d PCH: paging_ue_index %d pcch_sdu_length %d mcs %d first_rb %d\n",
+              module_idP,
+              frameP,
+              slotP,
+              ue_pf_po->ue_index_value,
+              pcch_sdu_length,
+              mcs,
+              first_rb);
+  #endif
+        pthread_mutex_lock(&ue_pf_po_mutex);
+        memset(ue_pf_po,
+               0,
+               sizeof(UE_PF_PO_t));
+        pthread_mutex_unlock(&ue_pf_po_mutex);
+      }
+    }
+  }
+
+  /* this might be misleading when pcch is inactive */
+  stop_meas(&gNB_mac->schedule_pch);
+  return;
 }

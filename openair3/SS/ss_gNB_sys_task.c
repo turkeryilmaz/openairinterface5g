@@ -53,6 +53,8 @@ static int sys_send_udp_msg(uint8_t *buffer, uint32_t buffer_len, uint32_t buffe
 char *local_5G_address = "127.0.0.1" ;
 extern softmodem_params_t *get_softmodem_params(void);
 
+static uint16_t paging_ue_index_g = 0;
+
 typedef enum
 {
   UndefinedMsg = 0,
@@ -247,6 +249,122 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
   }
 }
 
+/*
+ * Function : sys_handle_nr_paging_req
+ * Description: Handles the attenuation updates received from TTCN
+ */
+static void sys_handle_nr_paging_req(struct NR_PagingTrigger_Type *pagingRequest, ss_nrset_timinfo_t tinfo)
+{
+    LOG_A(GNB_APP, "[SYS-GNB] Enter sys_handle_nr_paging_req Paging_IND for processing\n");
+
+    /** TODO: Considering only one cell for now */
+    uint8_t cellId = 0; //(uint8_t)pagingRequst->CellId;
+
+    static uint8_t oneTimeProcessingFlag = 0;
+    MessageDef *message_p = itti_alloc_new_message(TASK_SYS_GNB, 0, SS_SS_NR_PAGING_IND);
+    if (message_p == NULL)
+    {
+        return;
+    }
+
+    SS_NR_PAGING_IND(message_p).cell_index = 0; // TODO: change to multicell index later
+    SS_NR_PAGING_IND(message_p).sfn = tinfo.sfn;
+    SS_NR_PAGING_IND(message_p).slot = tinfo.slot;
+    SS_NR_PAGING_IND(message_p).paging_recordList = NULL;
+    SS_NR_PAGING_IND(message_p).bSlotOffsetListPresent = false;
+
+    switch (pagingRequest->Paging.message.d)
+    {
+        case SQN_NR_PCCH_MessageType_c1:
+            if (pagingRequest->Paging.message.v.c1.d)
+            {
+                if (pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.d)
+                {
+                    struct SQN_NR_PagingRecord *p_sdl_msg = NULL;
+                    p_sdl_msg = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.v;
+                    uint8_t numPagingRecord = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d;
+                    size_t pgSize = pagingRequest->Paging.message.v.c1.v.paging.pagingRecordList.v.d * sizeof(ss_nr_paging_identity_t);
+                    SS_NR_PAGING_IND(message_p).paging_recordList = CALLOC(1, pgSize);
+                    ss_nr_paging_identity_t *p_record_msg = SS_NR_PAGING_IND(message_p).paging_recordList;
+                    SS_NR_PAGING_IND(message_p).num_paging_record = numPagingRecord;
+                    for (int count = 0; count < numPagingRecord; count++)
+                    {
+                        p_record_msg->bAccessTypePresent = false;
+                        if (p_sdl_msg->accessType.d)
+                        {
+                            if (p_sdl_msg->accessType.v == SQN_NR_PagingRecord_accessType_e_non3GPP)
+                            {
+                                p_record_msg->bAccessTypePresent = true;
+                                p_record_msg->access_type = ACCESS_TYPE_NON3GPP;
+                            }
+                        }
+
+                        switch (p_sdl_msg->ue_Identity.d)
+                        {
+                            case SQN_NR_PagingUE_Identity_ng_5G_S_TMSI:
+                                p_record_msg->ue_paging_identity.presenceMask = NR_UE_PAGING_IDENTITY_NG_5G_S_TMSI;
+                                p_record_msg->ue_paging_identity.choice.ng_5g_s_tmsi.length = sizeof(p_sdl_msg->ue_Identity.v.ng_5G_S_TMSI);
+                                memcpy((char *)p_record_msg->ue_paging_identity.choice.ng_5g_s_tmsi.buffer,
+                                       (const char *)p_sdl_msg->ue_Identity.v.ng_5G_S_TMSI, sizeof(p_sdl_msg->ue_Identity.v.ng_5G_S_TMSI));
+                                if (oneTimeProcessingFlag == 0)
+                                {
+                                  SS_NR_PAGING_IND(message_p).ue_index_value = paging_ue_index_g;
+                                  paging_ue_index_g = ((paging_ue_index_g + 4) % MAX_MOBILES_PER_GNB);
+                                  oneTimeProcessingFlag = 1;
+                                }
+                                break;
+                            case SQN_NR_PagingUE_Identity_fullI_RNTI:
+                                p_record_msg->ue_paging_identity.presenceMask = NR_UE_PAGING_IDENTITY_FULL_I_RNTI;
+                                p_record_msg->ue_paging_identity.choice.full_i_rnti.length = sizeof(p_sdl_msg->ue_Identity.v.fullI_RNTI);
+                                memcpy((char *)p_record_msg->ue_paging_identity.choice.full_i_rnti.buffer,
+                                       (const char *)p_sdl_msg->ue_Identity.v.fullI_RNTI, sizeof(p_sdl_msg->ue_Identity.v.fullI_RNTI));
+                                break;
+                            case SQN_PagingUE_Identity_UNBOUND_VALUE:
+                                LOG_A(GNB_APP, "[SYS-GNB] Error Unhandled Paging request\n");
+                                break;
+                            default :
+                                LOG_A(GNB_APP, "[SYS-GNB] Invalid Paging request received\n");
+                                break;
+
+                        }
+                        p_sdl_msg++;
+                        p_record_msg++;
+                    }
+                }
+            }
+            if (pagingRequest->SlotOffsetList.d)
+            {
+                LOG_A(GNB_APP, "[SYS-GNB] Slot Offset List present in Paging request\n");
+                SS_NR_PAGING_IND(message_p).bSlotOffsetListPresent = true;
+                SS_NR_PAGING_IND(message_p).slotOffsetList.num = 0;
+                for (int i=0; i < pagingRequest->SlotOffsetList.v.d; i++)
+                {
+                    SS_NR_PAGING_IND(message_p).slotOffsetList.slot_offset[i] = pagingRequest->SlotOffsetList.v.v[i];
+                    SS_NR_PAGING_IND(message_p).slotOffsetList.num++;
+                }
+            }
+
+            int send_res = itti_send_msg_to_task(TASK_RRC_GNB, 0, message_p);
+            if (send_res < 0)
+            {
+                LOG_A(GNB_APP, "[SYS-GNB] Error sending Paging to RRC_GNB");
+            }
+            oneTimeProcessingFlag = 0;
+            LOG_A(GNB_APP, "[SYS-GNB] Paging_IND for Cell_id %d sent to RRC\n", cellId);
+            break;
+        case SQN_NR_PCCH_MessageType_messageClassExtension:
+            LOG_A(GNB_APP, "[SYS-GNB] NR_PCCH_MessageType_messageClassExtension for Cell_id %d received\n", cellId);
+            break;
+        case SQN_NR_PCCH_MessageType_UNBOUND_VALUE:
+            LOG_A(GNB_APP, "[SYS-GNB] Invalid Pging request received Type_UNBOUND_VALUE received\n");
+            break;
+        default:
+            LOG_A(GNB_APP, "[SYS-GNB] Invalid Pging request received\n");
+            break;
+    }
+    LOG_A(GNB_APP, "[SYS-GNB] Exit sys_handle_nr_paging_req Paging_IND processing for Cell_id %d \n", cellId);
+}
+
 /* 
  * =========================================================================================================== 
  * Function Name: ss_task_sys_nr_handle_req
@@ -397,6 +515,16 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
             {
               ss_task_sys_nr_handle_deltaValues(req);
               LOG_A(GNB_APP, "[SYS-GNB] Sent SYS CNF for NR_SystemRequest_Type_DeltaValues\n");
+            }
+            break;
+          case NR_SystemRequest_Type_Paging:
+            {
+                LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Paging: received\n");
+                LOG_E(GNB_APP, "BLABLABLA [SYS-GNB] NR_SystemRequest_Type_Paging: received\n"); //TODO:BLA
+                ss_nrset_timinfo_t pg_timinfo;
+                pg_timinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
+                pg_timinfo.slot = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number; //TODO
+                sys_handle_nr_paging_req(&(req->Request.v.Paging), pg_timinfo);
             }
             break;
           default:

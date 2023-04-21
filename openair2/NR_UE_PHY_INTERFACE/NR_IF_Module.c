@@ -405,6 +405,7 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
         {
             LOG_D(NR_PHY, "[%d, %d] PDSCH PDU for rnti %x\n",
                 dl_tti_request->SFN, dl_tti_request->Slot, pdu_list->pdsch_pdu.pdsch_pdu_rel15.rnti);
+            LOG_E(NR_PHY, ">>> BLABLABLA [%d, %d] PDSCH PDU for rnti %x\n", dl_tti_request->SFN, dl_tti_request->Slot, pdu_list->pdsch_pdu.pdsch_pdu_rel15.rnti); //TODO:BLA
         }
 
         if (pdu_list->PDUType == NFAPI_NR_DL_TTI_PDCCH_PDU_TYPE)
@@ -736,6 +737,7 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
         frame = dl_tti_request->SFN;
         slot = dl_tti_request->Slot;
         LOG_D(NR_PHY, "[%d, %d] dl_tti_request\n", frame, slot);
+        LOG_E(NR_PHY, ">>>> BLABLA [%d, %d] dl_tti_request\n", frame, slot); //TODO:BLA
         copy_dl_tti_req_to_dl_info(&mac->dl_info, dl_tti_request);
         free_and_zero(dl_tti_request);
     }
@@ -751,6 +753,7 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
             frame = tx_data_request->SFN;
             slot = tx_data_request->Slot;
             LOG_D(NR_PHY, "[%d, %d] PDSCH in tx_request\n", frame, slot);
+            LOG_E(NR_PHY, ">>> BLABLABLA [%d, %d] PDSCH in tx_request\n", frame, slot); //TODO:BLA
             copy_tx_data_req_to_dl_info(&mac->dl_info, tx_data_request);
         }
         else {
@@ -774,6 +777,7 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
     else {
         if (pthread_mutex_unlock(&mac->mutex_dl_info)) abort();
         LOG_T(NR_MAC, "All indications were NULL in %s\n", __FUNCTION__);
+        LOG_E(NR_MAC, ">>> BLABLA All indications were NULL in %s\n", __FUNCTION__); //TODO:BLA
         return;
     }
 
@@ -884,6 +888,7 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
             }
             LOG_D(NR_PHY, "Received an NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST message in SFN/slot %d %d. \n",
                     tx_data_request->SFN, tx_data_request->Slot);
+            LOG_E(NR_PHY, ">>> BLABLA Received an NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST message in SFN/slot %d %d. \n", tx_data_request->SFN, tx_data_request->Slot); //TODO:BLA
             if (!put_queue(&nr_tx_req_queue, tx_data_request))
             {
                 LOG_E(NR_PHY, "put_queue failed for tx_request.\n");
@@ -1016,6 +1021,7 @@ void save_pdsch_pdu_for_crnti(nfapi_nr_dl_tti_request_t *dl_tti_request)
         count_sent++;
         LOG_T(NR_MAC, "pdsch_pdu->rnti %x  mac->crnti %x mac->ra.ra_state %d count_sent %d\n",
                       pdsch_pdu->rnti, mac->crnti, mac->ra.ra_state, count_sent);
+        LOG_E(NR_MAC, ">>>> BLABLABLA pdsch_pdu->rnti %x  mac->crnti %x mac->ra.ra_state %d count_sent %d\n", pdsch_pdu->rnti, mac->crnti, mac->ra.ra_state, count_sent); //TODO:BLA
       }
     }
   }
@@ -1283,6 +1289,7 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_
           __FUNCTION__,
           dl_info->rx_ind->rx_indication_body[i].pdu_type,
           dl_info->rx_ind->number_pdus);
+        LOG_E(NR_MAC, ">>BLABLABLA In %s sending DL indication to MAC. 1 PDU type %d of %d total number of PDUs \n", __FUNCTION__, dl_info->rx_ind->rx_indication_body[i].pdu_type, dl_info->rx_ind->number_pdus); //TODO:BLA
 
         switch(dl_info->rx_ind->rx_indication_body[i].pdu_type){
           case FAPI_NR_RX_PDU_TYPE_SSB:
