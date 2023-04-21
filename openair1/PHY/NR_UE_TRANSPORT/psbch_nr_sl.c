@@ -45,7 +45,7 @@
 extern short nr_qpsk_mod_table[8];
 
 int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
-                           int32_t *txdataF,
+                           c16_t *txdataF,
                            int16_t amp,
                            uint8_t ssb_start_symbol,
                            NR_DL_FRAME_PARMS *frame_parms) {
@@ -81,12 +81,12 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
               (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
     int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
     AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
-    ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
-    ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
+    txdataF[idx].r = (amp * mod_dmrs[m << 1]) >> 15;
+    txdataF[idx].i = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
     printf("(%d,%d)\n",
-           ((int16_t *)txdataF)[(idx) << 1],
-           ((int16_t *)txdataF)[((idx) << 1)+1]);
+           txdataF[idx].r,
+           txdataF[idx].i);
 #endif
     k+=4;
     if (k >= frame_parms->ofdm_symbol_size)
@@ -106,12 +106,12 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                 (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
       int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
       AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
-      ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
-      ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
+      txdataF[idx].r = (amp * mod_dmrs[m << 1]) >> 15;
+      txdataF[idx].i = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
       printf("(%d,%d)\n",
-             ((int16_t *)txdataF)[idx],
-             ((int16_t *)txdataF)[(idx)+1]);
+             txdataF[idx].r,
+             txdataF[idx].i);
 #endif
       k+=4;
       if (k >= frame_parms->ofdm_symbol_size)
@@ -283,8 +283,8 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
                 (m << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
       int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
       AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
-      ((int16_t *)txdataF)[idx] = (amp * mod_psbch_e[m << 1]) >> 15;
-      ((int16_t *)txdataF)[(idx) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
+      txdataF[idx].r = (amp * mod_psbch_e[m << 1]) >> 15;
+      txdataF[idx].i = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
       k++;
       m++;
     }
@@ -315,8 +315,8 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
                     "Indexing outside of mod_psbch_e bounds. %d > %lu",
                     (m << 1) + 1 , (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])));
 
-        ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
-        ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
+        txdataF[(l * frame_parms->ofdm_symbol_size + k)].r = (amp * mod_psbch_e[m << 1]) >> 15;
+        txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
         k++;
         m++;
       }

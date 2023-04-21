@@ -447,7 +447,7 @@ int main(int argc, char **argv)
   UE->slss->sl_timeinterval_r16 = 0;
   UE->slss->sl_timeoffsetssb_r16 = 0;
   UE->slss->slss_id = Nid_SL;
-
+  UE->target_Nid_cell = -1;
   UE->is_synchronized_sl = run_initial_sync ? 0 : 1;
   UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
 
@@ -558,8 +558,8 @@ int main(int argc, char **argv)
         double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
         double sigma2 = pow(10, sigma2_dB / 10);
         for (int aa = 0; aa < UE->frame_parms.nb_antennas_rx; aa++) {
-          ((short*) UE->common_vars.rxdata[aa])[2 * i]   = (short) ((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
-          ((short*) UE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          UE->common_vars.rxdata[aa][i].r = r_re[aa][i];
+          UE->common_vars.rxdata[aa][i].i = r_im[aa][i];
         }
       }
 

@@ -72,8 +72,8 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
               (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
     int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
     AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
-    ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
-    ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
+    txdataF[idx].r = (amp * mod_dmrs[m << 1]) >> 15;
+    txdataF[idx].i = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
     printf("(%d,%d)\n",
            ((int16_t *)txdataF)[(idx)],
@@ -98,8 +98,8 @@ int nr_sl_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                 (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
       int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
       AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
-      ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
-      ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
+      txdataF[idx].r = (amp * mod_dmrs[m << 1]) >> 15;
+      txdataF[idx].i = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
       printf("%d (%d,%d)\n", m,
              ((int16_t *)txdataF)[idx],

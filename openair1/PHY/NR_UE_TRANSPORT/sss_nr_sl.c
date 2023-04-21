@@ -71,8 +71,10 @@ int nr_sl_generate_sss(c16_t *txdataF,
   int l = ssb_start_symbol + 3;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
-    int16_t d_sss = (1 - 2 * x0[(i + m0) % NR_SSS_LENGTH] ) * (1 - 2 * x1[(i + m1) % NR_SSS_LENGTH] ) * 23170;
-    ((int16_t*)txdataF)[2 * (l * frame_parms->ofdm_symbol_size + k)] = (((int16_t)amp) * d_sss) >> 15;
+    int16_t dss_current = (1 - 2 * x0[(i + m0) % NR_SSS_LENGTH] ) * (1 - 2 * x1[(i + m1) % NR_SSS_LENGTH] ) * 23170;
+    d_sss[Nid2][Nid1][i] = dss_current;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].r = (((int16_t)amp) * dss_current) >> 15;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = 0;
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
@@ -84,8 +86,10 @@ int nr_sl_generate_sss(c16_t *txdataF,
   l = ssb_start_symbol + 4;
 
   for (int i = 0; i < NR_SSS_LENGTH; i++) {
-    int16_t d_sss = (1 - 2*x0[(i + m0) % NR_SSS_LENGTH] ) * (1 - 2*x1[(i + m1) % NR_SSS_LENGTH] ) * 23170;
-    ((int16_t*)txdataF)[2*(l*frame_parms->ofdm_symbol_size + k)] = (((int16_t)amp) * d_sss) >> 15;
+    int16_t dss_current = (1 - 2*x0[(i + m0) % NR_SSS_LENGTH] ) * (1 - 2*x1[(i + m1) % NR_SSS_LENGTH] ) * 23170;
+    d_sss[Nid2][Nid1][i] = dss_current;
+    txdataF[(l*frame_parms->ofdm_symbol_size + k)].r = (((int16_t)amp) * dss_current) >> 15;
+    txdataF[(l*frame_parms->ofdm_symbol_size + k)].i = 0;
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
@@ -224,8 +228,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)
-      tmp2.r = (int16_t)(((tmp.r * (int32_t)sss1_ext2[i].r) >> shift)    - ((tmp.i * (int32_t)sss1_ext2[i].i >> shift)));
-      tmp2.i = (int16_t)(((tmp.r * (int32_t)sss1_ext2[i].i) >> shift)  + ((tmp.i * (int32_t)sss1_ext2[i].r >> shift)));
+      tmp2.r = (int16_t)(((tmp.r * (int32_t)sss1_ext2[i].r) >> shift) - ((tmp.i * (int32_t)sss1_ext2[i].i >> shift)));
+      tmp2.i = (int16_t)(((tmp.r * (int32_t)sss1_ext2[i].i) >> shift) + ((tmp.i * (int32_t)sss1_ext2[i].r >> shift)));
 
       // MRC on RX antennas
       if (aarx == 0) {

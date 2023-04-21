@@ -29,22 +29,20 @@
 #include "PHY/phy_extern.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
+#include "openair1/PHY/NR_REFSIG/pss_nr.h"
 
 int nr_sl_generate_pss(c16_t *txdataF,
                        int16_t amp,
                        uint8_t ssb_start_symbol,
                        NR_DL_FRAME_PARMS *frame_parms)
 {
-  int16_t x[NR_PSS_LENGTH];
-  const int x_initial[7] = {0, 1, 1 , 0, 1, 1, 1};
-
-  /// Sequence generation
-  for (int i = 0; i < 7; i++)
+  const int x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
+  int16_t x[LENGTH_PSS_NR];
+  for (int i = 0; i < INITIAL_PSS_NR; i++)
     x[i] = x_initial[i];
 
-  for (int i = 0; i < (NR_PSS_LENGTH - 7); i++) {
-    x[i + 7] = (x[i + 4] + x[i]) % 2;
-  }
+  for (int i = 0; i < (LENGTH_PSS_NR - INITIAL_PSS_NR); i++)
+    x[i + INITIAL_PSS_NR] = (x[i + 4] + x[i]) % (2);
 
 #ifdef NR_PSS_DEBUG
   write_output("d_pss.m", "d_pss", (void*)d_pss, NR_PSS_LENGTH, 1, 0);
@@ -52,21 +50,25 @@ int nr_sl_generate_pss(c16_t *txdataF,
 #endif
 
   /// Resource mapping
+  uint8_t Nid2 = frame_parms->Nid_SL / 336;
+  int16_t d_pss[LENGTH_PSS_NR];
+  c16_t *primary_synchro = primary_synchro_nr[Nid2];
+  c16_t *primary_synchro2 = primary_synchro_nr2[Nid2];
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
   if (k >= frame_parms->ofdm_symbol_size) k -= frame_parms->ofdm_symbol_size;
 
   int l = ssb_start_symbol + 1;
-
-  uint8_t Nid2 = frame_parms->Nid_SL / 336;
-  uint8_t idx = 2 * (l * frame_parms->ofdm_symbol_size + frame_parms->ofdm_symbol_size);
-  AssertFatal(idx < frame_parms->samples_per_frame_wCP, "Invalid index into txdataF. Index %d >= %d\n",
-                idx, frame_parms->samples_per_frame_wCP);
   for (int i = 0; i < NR_PSS_LENGTH; i++) {
     int m = (i + 22 + 43 * Nid2) % (NR_PSS_LENGTH);
-    int16_t d_pss = (1 - 2 * x[m]) * 23170;
-    ((int16_t*)txdataF)[2 * (l * frame_parms->ofdm_symbol_size + k)] = (((int16_t)amp) * d_pss) >> 15;
+    d_pss[i] = (1 - 2 * x[m]) * 23170;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].r = (((int16_t)amp) * d_pss[i]) >> 15;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = (((int16_t)amp) * d_pss[i]) >> 15;
+    primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR;
+    primary_synchro[i].i = 0;
+    primary_synchro2[i].r = d_pss[i];
+    primary_synchro2[i].i = d_pss[i];
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
@@ -75,17 +77,16 @@ int nr_sl_generate_pss(c16_t *txdataF,
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
   k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
-  if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
+  if (k >= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
   l = ssb_start_symbol + 2;
-  idx = 2 * (l * frame_parms->ofdm_symbol_size + frame_parms->ofdm_symbol_size);
-  AssertFatal(idx < frame_parms->samples_per_frame_wCP, "Invalid index into txdataF. Index %d >= %d\n",
-                idx, frame_parms->samples_per_frame_wCP);
+
   for (int i = 0; i < NR_PSS_LENGTH; i++) {
-    int m = (i + 22 + 43 * Nid2)%(NR_PSS_LENGTH);
-    int16_t d_pss = (1 - 2 * x[m]) * 23170;
+    int m = (i + 22 + 43 * Nid2) % (NR_PSS_LENGTH);
+    d_pss[i] = (1 - 2 * x[m]) * 23170;
     //      printf("pss: writing position k %d / %d\n",k,frame_parms->ofdm_symbol_size);
-    ((int16_t*)txdataF)[2 * (l * frame_parms->ofdm_symbol_size + k)] = (((int16_t)amp) * d_pss) >> 15;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].r = (((int16_t)amp) * d_pss[i]) >> 15;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = (((int16_t)amp) * d_pss[i]) >> 15;
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
@@ -103,5 +104,22 @@ int nr_sl_generate_pss(c16_t *txdataF,
                                        frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
   }
 #endif
+  k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
+  if (k >= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
+  c16_t in[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
+  memset(in, 0, sizeof(in));
+  for (int i = 0; i < LENGTH_PSS_NR; i++) {
+    in[k]= primary_synchro[i];
+    k++;
+    if (k == frame_parms->ofdm_symbol_size) k = 0;
+  }
+
+  c16_t out[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
+  memset(out, 0, sizeof(out));
+  memset(primary_synchro_time_nr[Nid2], 0, sizeof(int16_t) * frame_parms->ofdm_symbol_size);
+  idft((int16_t)get_idft(frame_parms->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
+  for (unsigned int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
+    primary_synchro_time_nr[Nid2][i] = out[i];
+  }
   return 0;
 }

@@ -455,7 +455,7 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
   AssertFatal(length > 0, "illegal length %d\n", length);
 
   int maxval = 0;
-  for (int i = 0; i < frame_parms->ofdm_symbol_size;i++) {
+  for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
     maxval = max(maxval, primary_synchro_time_nr[0][i].r);
     maxval = max(maxval, primary_synchro_time_nr[0][i].i);
     maxval = max(maxval, -primary_synchro_time_nr[0][i].r);
@@ -490,7 +490,7 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
     pss_index_start = GET_NID2(ue->target_Nid_cell);
     pss_index_end = pss_index_start + 1;
   }
-  unsigned int step = get_softmodem_params()->sl_mode == 0 ? 4 : 8;
+  unsigned int step = get_softmodem_params()->sl_mode == 0 ? 8 : 4;
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++) {
     for (unsigned int n = 0; n < length; n += step) {
       int64_t pss_corr_ue = 0;
