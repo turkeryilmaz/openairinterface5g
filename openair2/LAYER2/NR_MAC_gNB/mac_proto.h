@@ -47,7 +47,7 @@ int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP,
                                           NR_SubcarrierSpacing_t subcarrierSpacing,
                                           uint32_t rrc_reconfiguration_delay);
 
-int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig);
+//int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig);
 
 int rrc_mac_config_req_gNB(module_id_t Mod_idP,
                            rrc_pdsch_AntennaPorts_t pdsch_AntennaPorts,

@@ -242,10 +242,6 @@ void oai_create_enb(void) {
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB Cell %d is now configured\n", __FUNCTION__,CC_id);
   }
 
-  do {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for eNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
-    usleep(50000);
-  } while(eNB->configured != 1);
 
   NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB is now configured\n", __FUNCTION__);
 }
@@ -659,7 +655,7 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
   static uint8_t first_time = 1;
   int CC_id=0;
   /* MultiCell: Function modify for Multiple CC */
-  /*for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) */{
+  /*for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {*/
     if (first_time) {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] subframe indication %d\n", NFAPI_SFNSF2DEC(sfn_sf));
       first_time = 0;

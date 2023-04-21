@@ -456,7 +456,7 @@ void config_common(gNB_MAC_INST *nrmac, int pdsch_AntennaPorts, int pusch_Antenn
     }
   }
 }
-
+#if 0
 int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t *dcchDtchConfig)
 {
   gNB_MAC_INST *nrmac = RC.nrmac[Mod_idP];
@@ -474,6 +474,7 @@ int rrc_mac_config_dedicate_scheduling(module_id_t Mod_idP, NR_DcchDtchConfig_t 
   }
   return 0;
 }
+#endif
 
 int nr_mac_enable_ue_rrc_processing_timer(module_id_t Mod_idP, rnti_t rnti, NR_SubcarrierSpacing_t subcarrierSpacing, uint32_t rrc_reconfiguration_delay) {
 
