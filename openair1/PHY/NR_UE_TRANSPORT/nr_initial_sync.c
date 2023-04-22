@@ -310,7 +310,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       memcpy(ue->common_vars.rxdataF[0], rxdataF[0], rxdataF_sz * sizeof(int32_t));
       LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
       int freq_offset_sss = 0;
-      ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
+      ret = rx_sss_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss, rxdataF);
       if (ue->UE_fo_compensation) {
         double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
         double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;

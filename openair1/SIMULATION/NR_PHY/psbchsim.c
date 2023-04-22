@@ -558,8 +558,8 @@ int main(int argc, char **argv)
         double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
         double sigma2 = pow(10, sigma2_dB / 10);
         for (int aa = 0; aa < UE->frame_parms.nb_antennas_rx; aa++) {
-          UE->common_vars.rxdata[aa][i].r = r_re[aa][i];
-          UE->common_vars.rxdata[aa][i].i = r_im[aa][i];
+          ((short*) UE->common_vars.rxdata[aa])[2 * i] = (short) ((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          ((short*) UE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
 

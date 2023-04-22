@@ -44,8 +44,8 @@ int nr_sl_generate_sss(c16_t *txdataF,
 
   /// Sequence generation
   int Nid = frame_parms->Nid_SL;
-  int Nid1 = Nid % NUMBER_SSS_SEQUENCE;
-  int Nid2 = Nid / NUMBER_SSS_SEQUENCE;
+  int Nid1 = GET_NID1_SL(Nid);
+  int Nid2 = GET_NID2_SL(Nid);
 
   for (int i=0; i < 7; i++) {
     x0[i] = x0_initial[i];
