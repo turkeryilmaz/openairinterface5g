@@ -35,6 +35,21 @@ typedef int(*devfunc_t)(openair0_device *, openair0_config_t *, eth_params_t *);
 uint32_t nr_subcarrier_spacing[MAX_NUM_SUBCARRIER_SPACING] = {15e3, 30e3, 60e3, 120e3, 240e3};
 uint16_t nr_slots_per_subframe[MAX_NUM_SUBCARRIER_SPACING] = {1, 2, 4, 8, 16};
 
+uint32_t get_samples_symbol_timestamp(const int symbol,
+                                      const int slot,
+                                      const NR_DL_FRAME_PARMS *fp,
+                                      const int symb_ahead)
+{
+  int sampleCnt = 0;
+  for (int i = symbol; i < symbol + symb_ahead; i++) {
+    const int absSymbol = slot * fp->symbols_per_slot + i;
+    const int prefix_samples = (absSymbol%(0x7<<fp->numerology_index)) ?
+                               fp->nb_prefix_samples : fp->nb_prefix_samples0;
+    sampleCnt += (prefix_samples + fp->ofdm_symbol_size);
+  }
+  return sampleCnt;
+}
+
 uint32_t get_samples_per_slot(int slot, NR_DL_FRAME_PARMS* fp)
 {
   uint32_t samp_count;
@@ -152,7 +167,7 @@ int main (int argc, char **argv)
   char addr[20] = "192.168.40.2";
   int numerology = 1;
   int runSlots = 100;
-  int slotAhead = 2;
+  int symbolAhead = 36;
   int logLevel = 3;
   char c;
   while ((c = getopt(argc, argv, "a:n:s:x:l:h")) != -1) {
@@ -170,7 +185,7 @@ int main (int argc, char **argv)
       break;
 
     case 'x':
-      slotAhead = atoi(optarg);
+      symbolAhead = atoi(optarg);
       break;
 
     case 'l':
@@ -256,12 +271,15 @@ int main (int argc, char **argv)
   if (device.trx_start_func(&device) != 0) printf("couldn't start radio\n");
 
   printf("Tx slot ahead: %d\nNumber of slots: %d\nSamples per frame: %d\n",
-         slotAhead, runSlots, frame_parms.samples_per_frame);
+         symbolAhead, runSlots, frame_parms.samples_per_frame);
 
-  for (int slot = 0; slot < runSlots; slot++) {
+  uint32_t slot = 0;
+  for (uint32_t symbol = 0; symbol < runSlots*frame_parms.symbols_per_slot; symbol++) {
     /* Read samples */
-    const int localSlot = slot % frame_parms.slots_per_frame;
-    const int readSamples = get_samples_per_slot(localSlot, &frame_parms);
+    const int absSymbol = symbol % (frame_parms.slots_per_frame * frame_parms.symbols_per_slot);
+    int prefixSamples = (absSymbol%(0x7<<numerology)) ?
+                               frame_parms.nb_prefix_samples : frame_parms.nb_prefix_samples0;
+    const int readSamples = prefixSamples + frame_parms.ofdm_symbol_size;
     const clock_t startRx = clock();
     if (readSamples != device.trx_read_func(&device,
                                             &timeStamp,
@@ -271,11 +289,14 @@ int main (int argc, char **argv)
       printf("read error\n");
     }
     const clock_t stopRx = clock();
-    printf("Rx latency %lf\n", (float)(stopRx - startRx)/CLOCKS_PER_SEC);
+    printf("Rx latency %0.2lfus\n", (float)(stopRx - startRx)/CLOCKS_PER_SEC*1e6);
 
     /* write samples */
-    const openair0_timestamp writeTimeStamp = timeStamp + get_samples_slot_timestamp(localSlot, &frame_parms, slotAhead);
-    const int writeSamples = get_samples_per_slot(localSlot + slotAhead, &frame_parms);
+    
+    const openair0_timestamp writeTimeStamp = timeStamp + get_samples_symbol_timestamp(symbol, slot, &frame_parms, symbolAhead);
+    prefixSamples = ((absSymbol+symbolAhead)%(0x7<<numerology)) ?
+                           frame_parms.nb_prefix_samples : frame_parms.nb_prefix_samples0;
+    const int writeSamples = prefixSamples + frame_parms.ofdm_symbol_size;
     const clock_t startTx = clock();
     if (writeSamples != device.trx_write_func(&device,
                                               writeTimeStamp,
@@ -286,6 +307,7 @@ int main (int argc, char **argv)
       printf("write error\n");
     }
     const clock_t stopTx = clock();
-    printf("Tx latency %lf\n", (float)(stopTx - startTx)/CLOCKS_PER_SEC);
+    printf("Tx latency %0.2lfus\n", (float)(stopTx - startTx)/CLOCKS_PER_SEC*1e6);
+    slot += !(symbol % frame_parms.symbols_per_slot);
   }
 }
