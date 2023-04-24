@@ -64,7 +64,7 @@ int nr_sl_generate_pss(c16_t *txdataF,
     int m = (i + 22 + 43 * Nid2) % (NR_PSS_LENGTH);
     d_pss[i] = (1 - 2 * x[m]) * 23170;
     txdataF[(l * frame_parms->ofdm_symbol_size + k)].r = (((int16_t)amp) * d_pss[i]) >> 15;
-    txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = (((int16_t)amp) * d_pss[i]) >> 15;
+    txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = 0;
     primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR;
     primary_synchro[i].i = 0;
     primary_synchro2[i].r = d_pss[i];
