@@ -314,7 +314,8 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   fp->ofdm_offset_divisor = UINT_MAX;
   fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
+  int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_DL);
+  nrUE_config->carrier_config.dl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
 
   ue->slss = calloc(1, sizeof(*ue->slss));
   int len = sizeof(ue->slss->sl_mib) / sizeof(ue->slss->sl_mib[0]);

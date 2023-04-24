@@ -195,7 +195,6 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.dl_frequency               = 450000;
   nrUE_config->carrier_config.uplink_frequency           = 450000;
   nrUE_config->carrier_config.sl_frequency               = 450000;
-  ue->mac_enabled                                        = 1;
   fp->dl_CarrierFreq                                     = 2600000000;
   fp->ul_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;
@@ -212,8 +211,8 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->ofdm_offset_divisor = UINT_MAX;
   fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
-
+  int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_DL);
+  nrUE_config->carrier_config.dl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   init_timeshift_rotation(fp);
   init_symbol_rotation(fp);
