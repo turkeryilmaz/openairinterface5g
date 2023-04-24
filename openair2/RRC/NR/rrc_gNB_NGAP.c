@@ -733,7 +733,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, UE->rnti, 0, 0, 0);
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
-  LOG_I(NR_RRC, "[gNB %ld] gNB_ue_ngap_id %u \n", instance, msg->gNB_ue_ngap_id);
+  LOG_W(NR_RRC, "[gNB %ld] %s() gNB_ue_ngap_id %u\n", instance, __func__, msg->gNB_ue_ngap_id);
 
   if (ue_context_p == NULL) {
     MessageDef *msg_fail_p = NULL;

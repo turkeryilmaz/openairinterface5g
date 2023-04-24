@@ -778,8 +778,9 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
   nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, deliver_pdu_srb_f1, rrc);
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
-    nr_rrc_mac_update_cellgroup(ue_context_pP->ue_context.rnti, ue_context_pP->ue_context.masterCellGroup);
+    // nr_mac_update_cellgroup() already done with cellGroupConfig
 
+    // TODO: processing timer to be implemented
     uint32_t delay_ms = ue_p->masterCellGroup && ue_p->masterCellGroup->spCellConfig && ue_p->masterCellGroup->spCellConfig->spCellConfigDedicated
                                 && ue_p->masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList
                             ? NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS
@@ -1072,6 +1073,8 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
                    kRRCenc,
                    kRRCint);
   freeSRBlist(SRBs);
+
+  // all this should be in preparation of UE context modification
   nr_pdcp_add_drbs(ctxt_pP->enb_flag,
                    ctxt_pP->rntiMaybeUEid,
                    reestablish_ue_id,
