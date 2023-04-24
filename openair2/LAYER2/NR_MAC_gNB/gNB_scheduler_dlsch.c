@@ -574,6 +574,9 @@ void pf_dl(module_id_t module_id,
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_DL_BWP_t *current_BWP = &UE->current_DL_BWP;
 
+    if (sched_ctrl->rrc_processing_timer > 0)
+      continue;
+
     if (sched_ctrl->ul_failure==1)
       continue;
 

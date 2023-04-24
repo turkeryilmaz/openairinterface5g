@@ -1602,6 +1602,8 @@ void pf_ul(module_id_t module_id,
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     if (UE->Msg4_ACKed != true || sched_ctrl->ul_failure == 1)
       continue;
+    if (sched_ctrl->rrc_processing_timer > 0)
+      continue;
 
     LOG_D(NR_MAC,"pf_ul: preparing UL scheduling for UE %04x\n",UE->rnti);
     NR_UE_UL_BWP_t *current_BWP = &UE->current_UL_BWP;
