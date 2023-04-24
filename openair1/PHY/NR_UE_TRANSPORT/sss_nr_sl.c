@@ -138,14 +138,14 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
     pss0_rxF_ext = &pss0_ext[aarx][0];
     sss0_rxF_ext = &sss0_ext[aarx][0];
     unsigned int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
-    if (k >= frame_parms->ofdm_symbol_size)
-      k-=frame_parms->ofdm_symbol_size;
+    if (k >= ofdm_symbol_size)
+      k-=ofdm_symbol_size;
 
     for (int i = 0; i < LENGTH_PSS_NR; i++) {
       pss0_rxF_ext[i] = pss0_rxF[k];
       sss0_rxF_ext[i] = sss0_rxF[k];
       k++;
-      if (k == ofdm_symbol_size) k=0;
+      if (k == ofdm_symbol_size) k = 0;
     }
   }
 
@@ -164,7 +164,7 @@ static int pss_sss_sl_extract_nr(PHY_VARS_NR_UE *ue,
       pss1_rxF_ext[i] = pss1_rxF[k];
       sss1_rxF_ext[i] = sss1_rxF[k];
       k++;
-      if (k == ofdm_symbol_size) k=0;
+      if (k == ofdm_symbol_size) k = 0;
     }
   }
 
@@ -293,13 +293,11 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
   *tot_metric = INT_MIN;
   c16_t *sss0 = &sss0_ext[0][0];
   c16_t *sss1 = &sss1_ext[0][0];
-  int32_t metric = 0;
-  int32_t metric_re = 0;
   int16_t *d;
   for (Nid1 = 0; Nid1 < N_ID_1_NUMBER; Nid1++) {          // all possible Nid1 values
     for (uint8_t phase = 0; phase < PHASE_HYPOTHESIS_NUMBER; phase++) {  // phase offset between PSS and SSS
-      metric = 0;
-      metric_re = 0;
+      int32_t metric = 0;
+      int32_t metric_re = 0;
       d = (int16_t *)&d_sss[Nid2][Nid1];
       // This is the inner product using one particular value of each unknown parameter
       for (int i = 0; i < LENGTH_SSS_NR; i++) {
