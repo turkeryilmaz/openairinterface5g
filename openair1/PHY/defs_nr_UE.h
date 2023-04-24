@@ -383,7 +383,6 @@ typedef struct {
   uint8_t Mod_id;
   /// \brief Component carrier ID for this PHY instance
   uint8_t CC_id;
-  bool configured;
   /// \brief Mapping of CC_id antennas to cards
   openair0_rf_map      rf_map;
   /// \brief Indicator that UE should perform band scanning
@@ -402,10 +401,6 @@ typedef struct {
   int is_synchronized_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
-  /// \brief Indicator that UE lost frame synchronization
-  int lost_sync;
-  /// \brief Indicator that UE lost frame synchronization on Sidelink
-  int lost_sync_sl;
   /// \brief Indicator that UE is an SynchRef UE
   int sync_ref;
   /// Data structure for UE process scheduling
