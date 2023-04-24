@@ -216,8 +216,6 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   init_timeshift_rotation(fp);
   init_symbol_rotation(fp);
-
-  ue->configured = true;
   LOG_I(NR_PHY, "nrUE configured\n");
 }
 

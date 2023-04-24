@@ -295,7 +295,6 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.uplink_frequency           = downlink_frequency[CC_id][0] / 1000;
   nrUE_config->carrier_config.sl_frequency               = sidelink_frequency[CC_id][0] / 1000;
   LOG_D(NR_PHY, "SL Frequency %u\n", nrUE_config->carrier_config.sl_frequency);
-  ue->mac_enabled                                        = 1;
   fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
   fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
   fp->dl_CarrierFreq                                     = 2600000000;
@@ -333,7 +332,6 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   ue->is_synchronized_sl = 0;
   ue->UE_fo_compensation = 0;
   ue->sync_ref = get_softmodem_params()->sync_ref;
-  ue->configured = true;
   LOG_I(NR_PHY, "nrUE configured\n");
 }
 

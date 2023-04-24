@@ -399,6 +399,8 @@ typedef struct {
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
   int is_synchronized_sl;
+  /// \brief Indicator that UE lost frame synchronization on Sidelink
+  int lost_sync_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
   /// \brief Indicator that UE is an SynchRef UE

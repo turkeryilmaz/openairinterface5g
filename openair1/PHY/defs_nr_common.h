@@ -99,6 +99,8 @@
 
 #define NR_NB_NSCID 2
 
+#define NR_RX_NB_TH 1
+
 #define MAX_UL_DELAY_COMP 20
 
 typedef enum {
