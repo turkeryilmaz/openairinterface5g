@@ -97,9 +97,6 @@
 #define MAX_NUM_NR_SRS_SYMBOLS 4
 #define MAX_NUM_NR_SRS_AP 4
 
-#define NR_RX_NB_TH 1
-#define NR_NB_TH_SLOT 2
-
 #define NR_NB_NSCID 2
 
 #define MAX_UL_DELAY_COMP 20
@@ -272,7 +269,9 @@ struct NR_DL_FRAME_PARMS {
   uint32_t ofdm_offset_divisor;
 };
 
-/* NR Sidelink PSBCH payload fields */
+/* NR Sidelink PSBCH payload fields
+   TODO: This will be removed in the future and
+   filled in by the upper layers once developed. */
 typedef struct {
   uint32_t coverageIndicator : 1;
   uint32_t tddConfig : 12;
