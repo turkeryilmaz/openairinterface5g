@@ -99,8 +99,8 @@
                 <class>UndeployGenObject</class>
                 <desc>Undeploy all OAI 5G stack</desc>
                 <yaml_path>yaml_files/5g_rfsimulator_fdd_phytest</yaml_path>
-                <d_retx_th>10,100,100,100</d_retx_th> <!-- phytest: will fail at start! -->
-                <u_retx_th>10,100,100,100</u_retx_th> <!-- phytest: will fail at start! -->
+                <d_retx_th>1,100,100,100</d_retx_th> <!-- phytest: will fail at start! -->
+                <u_retx_th>1,100,100,100</u_retx_th> <!-- phytest: will fail at start! -->
         </testCase>
 
 </testCaseList>
