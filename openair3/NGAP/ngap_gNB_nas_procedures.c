@@ -303,7 +303,7 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
   ngap_gNB_instance_t             *ngap_gNB_instance = NULL;
   NGAP_DownlinkNASTransport_t     *container;
   NGAP_DownlinkNASTransport_IEs_t *ie;
-  NGAP_RAN_UE_NGAP_ID_t            gnb_ue_ngap_id;
+  NGAP_RAN_UE_NGAP_ID_t            gnb_ue_ngap_id = 0;
   uint64_t                         amf_ue_ngap_id;
   DevAssert(pdu != NULL);
 
@@ -315,7 +315,9 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
   // }
 
   if ((amf_desc_p = ngap_gNB_get_AMF(NULL, assoc_id, 0)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received NAS downlink message for non existing AMF context\n", assoc_id);
+    NGAP_ERROR(
+        "[SCTP %u] Received NAS downlink message for non existing AMF context\n",
+        assoc_id);
     return -1;
   }
 
@@ -327,12 +329,14 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
   asn_INTEGER2ulong(&(ie->value.choice.AMF_UE_NGAP_ID), &amf_ue_ngap_id);
 
 
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNASTransport_IEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID, true);
-  gnb_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;
+  if (container) {
+    NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNASTransport_IEs_t, ie, container,
+                               NGAP_ProtocolIE_ID_id_RAN_UE_NGAP_ID, true);
+    if (ie) gnb_ue_ngap_id = ie->value.choice.RAN_UE_NGAP_ID;  
+  }
 
   if ((ue_desc_p = ngap_get_ue_context(gnb_ue_ngap_id)) == NULL) {
-    NGAP_ERROR("[SCTP %d] Received NAS downlink message for non existing UE context gNB_UE_NGAP_ID: 0x%lx\n",
+    NGAP_ERROR("[SCTP %u] Received NAS downlink message for non existing UE context gNB_UE_NGAP_ID: 0x%lx\n",
                assoc_id,
                gnb_ue_ngap_id);
     return -1;
@@ -341,7 +345,7 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
   if (0 == ue_desc_p->rx_stream) {
     ue_desc_p->rx_stream = stream;
   } else if (stream != ue_desc_p->rx_stream) {
-    NGAP_ERROR("[SCTP %d] Received UE-related procedure on stream %u, expecting %u\n",
+    NGAP_ERROR("[SCTP %u] Received UE-related procedure on stream %u, expecting %d\n",
                assoc_id, stream, ue_desc_p->rx_stream);
     return -1;
   }
@@ -359,11 +363,14 @@ int ngap_gNB_handle_nas_downlink(uint32_t         assoc_id,
     }
   }
 
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNASTransport_IEs_t, ie, container,
-                             NGAP_ProtocolIE_ID_id_NAS_PDU, true);
+  if (container != NULL) NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_DownlinkNASTransport_IEs_t, ie, container, NGAP_ProtocolIE_ID_id_NAS_PDU, true);
   /* Forward the NAS PDU to NR-RRC */
-  ngap_gNB_itti_send_nas_downlink_ind(ngap_gNB_instance->instance, ue_desc_p->gNB_ue_ngap_id, ie->value.choice.NAS_PDU.buf, ie->value.choice.NAS_PDU.size);
-
+  if (ie != NULL) {
+    ngap_gNB_itti_send_nas_downlink_ind(ngap_gNB_instance->instance,
+                                        ue_desc_p->gNB_ue_ngap_id,
+                                        ie->value.choice.NAS_PDU.buf,
+                                        ie->value.choice.NAS_PDU.size);
+  }
   return 0;
 }
 
