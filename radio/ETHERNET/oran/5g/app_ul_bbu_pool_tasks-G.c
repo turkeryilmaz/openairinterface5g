@@ -42,7 +42,9 @@
 #include "xran_compression.h"
 #include "xran_cp_api.h"
 #include "xran_fh_o_du.h"
+#if 0
 #include "xran_mlog_task_id.h"
+#endif
 
 extern RuntimeConfig* p_startupConfiguration[XRAN_PORTS_NUM];
 static SampleSplitStruct gsUlCfgAxCTaskSplit[MAX_PHY_INSTANCES][MAX_NUM_OF_SF_5G_CTX][MAX_TEST_SPLIT_NUM];
@@ -141,8 +143,10 @@ int32_t app_bbu_pool_task_ul_config(void * pCookies)
     uint16_t nCellIdx = pEventCtrl->nCellIdx;
     uint32_t nSfIdx = get_ul_sf_idx(pEventCtrl->nSlotIdx, nCellIdx);
     uint32_t nCtxNum = get_ul_sf_ctx(nSfIdx, nCellIdx);
+#if 0
     uint64_t mlog_start = MLogTick();// nTtiStartTime = gTtiStartTime;
     uint32_t mlogVariablesCnt, mlogVariables[50];
+#endif
     uint32_t nRuCcidx = 0;
     int32_t xran_port = 0;
     struct bbu_xran_io_if *psXranIoIf  = app_io_xran_if_get();
@@ -183,6 +187,7 @@ int32_t app_bbu_pool_task_ul_config(void * pCookies)
     else
         rte_panic("neAxc");
 #endif
+#if 0
     mlogVariablesCnt = 0;
     mlogVariables[mlogVariablesCnt++] = 0xCCEECCEE;
     mlogVariables[mlogVariablesCnt++] = pEventCtrl->nSlotIdx;
@@ -192,7 +197,7 @@ int32_t app_bbu_pool_task_ul_config(void * pCookies)
     mlogVariables[mlogVariablesCnt++] = nCtxNum;
     mlogVariables[mlogVariablesCnt++] = xran_port;
     mlogVariables[mlogVariablesCnt++] = nRuCcidx;
-
+#endif
     p_o_xu_cfg = p_startupConfiguration[xran_port];
     if(p_o_xu_cfg == NULL)
             rte_panic("p_o_xu_cfg");
@@ -237,14 +242,15 @@ int32_t app_bbu_pool_task_ul_config(void * pCookies)
 
     xran_prepare_cp_ul_slot(xran_port, nSfIdx, nRuCcidx, /*psXranIoIf->num_cc_per_port[xran_port]*/ 1, nSymbMask, nLayerStart,
                             nLayer, 0, XRAN_NUM_OF_SYMBOL_PER_SLOT);
-
+#if 0
     if (mlogVariablesCnt)
         MLogAddVariables((uint32_t)mlogVariablesCnt, (uint32_t *)mlogVariables, mlog_start);
-
+#endif
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0
     MLogTask(PCID_GNB_UL_CFG_CC0+nCellIdx, mlog_start, MLogTick());
-
+#endif
     return EBBUPOOL_CORRECT;
 }
 
@@ -531,14 +537,16 @@ app_bbu_pool_task_sym2_wakeup(void *pCookies)
     int32_t ret = 0;
     // EventCtrlStruct *pEventCtrl = (EventCtrlStruct *)pCookies;
     // uint16_t nCellIdx = pEventCtrl->nCellIdx;
+#if 0
     uint64_t mlog_start = MLogTick();
-
+#endif
     ret = app_bbu_pool_task_symX_wakeup(pCookies, 2);
 
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0
     MLogTask(PID_GNB_SYM2_WAKEUP, mlog_start, MLogTick());
-
+#endif
     return ret;
 }
 
@@ -547,13 +555,16 @@ app_bbu_pool_task_sym6_wakeup(void *pCookies)
 {
     int32_t ret = 0;
     // EventCtrlStruct *pEventCtrl = (EventCtrlStruct *)pCookies;
+#if 0
     uint64_t mlog_start = MLogTick();
-
+#endif
     ret = app_bbu_pool_task_symX_wakeup(pCookies, 6);
 
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0    
     MLogTask(PID_GNB_SYM6_WAKEUP, mlog_start, MLogTick());
+#endif
     return ret;
 }
 
@@ -562,13 +573,16 @@ app_bbu_pool_task_sym11_wakeup(void *pCookies)
 {
     int32_t ret = 0;
     // EventCtrlStruct *pEventCtrl = (EventCtrlStruct *)pCookies;
+#if 0
     uint64_t mlog_start = MLogTick();
-
+#endif
     ret = app_bbu_pool_task_symX_wakeup(pCookies, 11);
 
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0   
     MLogTask(PID_GNB_SYM11_WAKEUP, mlog_start, MLogTick());
+#endif
     return ret;
 }
 
@@ -577,13 +591,16 @@ app_bbu_pool_task_sym13_wakeup(void *pCookies)
 {
     int32_t ret = 0;
     // EventCtrlStruct *pEventCtrl = (EventCtrlStruct *)pCookies;
+#if 0
     uint64_t mlog_start = MLogTick();
-
+#endif 
     ret = app_bbu_pool_task_symX_wakeup(pCookies, 13);
 
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0   
     MLogTask(PID_GNB_SYM13_WAKEUP, mlog_start, MLogTick());
+#endif
     return ret;
 }
 
@@ -606,7 +623,9 @@ app_bbu_pool_task_prach_wakeup(void *pCookies)
     int32_t xran_port = 0;
     uint32_t nRuCcidx = 0;
     struct xran_fh_config  *pXranConf = NULL;
+#if 0   
     uint64_t mlog_start = MLogTick();
+#endif
     nOranCellIdx = nCellIdx;
     xran_port =  app_io_xran_map_cellid_to_port(psXranIoIf, nOranCellIdx, &nRuCcidx);
     if(xran_port < 0) {
@@ -628,7 +647,9 @@ app_bbu_pool_task_prach_wakeup(void *pCookies)
 
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0    
     MLogTask(PID_GNB_PRACH_WAKEUP, mlog_start, MLogTick());
+#endif
     return EBBUPOOL_CORRECT;
 }
 
@@ -652,7 +673,9 @@ app_bbu_pool_task_srs_wakeup(void *pCookies)
     int32_t xran_port = 0;
     uint32_t nRuCcidx = 0;
     struct xran_fh_config  *pXranConf = NULL;
+#if 0
     uint64_t mlog_start = MLogTick();
+#endif
     nOranCellIdx = nCellIdx;
     xran_port =  app_io_xran_map_cellid_to_port(psXranIoIf, nOranCellIdx, &nRuCcidx);
     if(xran_port < 0) {
@@ -670,6 +693,8 @@ app_bbu_pool_task_srs_wakeup(void *pCookies)
     ret = app_io_xran_srs_decomp_func(nCellIdx, nSfIdx, nSymbMask, 0, Nrx_antennas, nSymStart, XRAN_NUM_OF_SYMBOL_PER_SLOT);
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0    
     MLogTask(PID_GNB_SRS_WAKEUP, mlog_start, MLogTick());
+#endif
     return ret;
 }

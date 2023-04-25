@@ -160,7 +160,7 @@ if(DEFINED ENV{XRAN_LIB_DIR})
 else()
   set (XRAN_LIB_DIR /usr/local/xran)
 endif()
-
+ 
 set (XRAN_DIR         $ENV{XRAN_LIB_DIR}/src)
 set (XRAN_COMMON_DIR  $ENV{XRAN_LIB_DIR}/../../test/common)
 set (XRAN_LIB_API_DIR $ENV{XRAN_LIB_DIR}/api)
@@ -620,14 +620,25 @@ target_link_libraries(benetel_5g PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 # ORAN 5G library
 ######################################################################
+add_boolean_option(ORAN_BRONZE OFF "Build support for Bronze version of ORAN FHI")
+if (ORAN_BRONZE)
+  set(ORAN_FHLIB_5G_SOURCE
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common_bronze.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config_bronze.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oaioran.c
+      )
+else() 
+  set(ORAN_FHLIB_5G_SOURCE
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-G.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common-G.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config-G.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oaioran.c
+      )
 
-set(ORAN_FHLIB_5G_SOURCE
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common_bronze.c
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config_bronze.c
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
-    ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oaioran.c
-    )
+endif()
 add_library(oran_fhlib_5g MODULE ${ORAN_FHLIB_5G_SOURCE})
 
 target_include_directories(oran_fhlib_5g PRIVATE ${XRAN_DIR})
@@ -637,10 +648,14 @@ target_include_directories(oran_fhlib_5g PRIVATE ${XRAN_COMMON_DIR})
 target_include_directories(oran_fhlib_5g PRIVATE ${XRAN_LIB_API_DIR})
 
 set_target_properties(oran_fhlib_5g PROPERTIES COMPILE_FLAGS "-fvisibility=hidden -march=native -I$ENV{RTE_SDK}/$ENV{RTE_TARGET}/include")
-
-SET(DPDK_LIBS "-Wl,-rpath,$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -Wl,--whole-archive -L$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -ldpdk -Wl,--no-whole-archive")
+ 
+#SET(DPDK_LIBS "-Wl,-rpath,$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -Wl,--whole-archive -L$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -ldpdk -Wl,--no-whole-archive")
+execute_process(  
+	COMMAND bash -c "pkg-config --libs libdpdk | tr -d i '\n'| sed 's/[[:space:]]*$//'"
+	OUTPUT_VARIABLE DPDK_LIBS
+)
 TARGET_LINK_LIBRARIES(oran_fhlib_5g PRIVATE ${DPDK_LIBS})
-TARGET_LINK_LIBRARIES(oran_fhlib_5g PRIVATE -L${XRAN_LIB_DIR} -lxran)
+TARGET_LINK_LIBRARIES(oran_fhlib_5g PRIVATE -L${XRAN_LIB_DIR}/build -lxran)
 TARGET_LINK_LIBRARIES(oran_fhlib_5g PRIVATE pthread dl rt m numa)
 target_link_libraries(oran_fhlib_5g PRIVATE asn1_nr_rrc asn1_lte_rrc)
 

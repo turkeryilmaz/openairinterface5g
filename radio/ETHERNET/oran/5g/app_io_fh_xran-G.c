@@ -134,9 +134,11 @@ app_io_xran_sfidx_get(uint8_t nNrOfSlotInSf)
 void
 app_io_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
 {
+#if 0
     uint64_t t1 = MLogTick();
     uint32_t mlogVar[10];
     uint32_t mlogVarCnt = 0;
+#endif
     //uint8_t Numerlogy = app_io_xran_fh_config[0].frame_conf.nNumerology;
     //uint8_t nNrOfSlotInSf = 1<<Numerlogy;
     //int32_t sfIdx = app_io_xran_sfidx_get(nNrOfSlotInSf);
@@ -152,14 +154,14 @@ app_io_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
     uint32_t ant_id, sym_id, idxElm;
     struct xran_prb_map *pRbMap = NULL;
     struct xran_prb_elm *pRbElm = NULL;
-
+#if 0
     mlog_start = MLogTick();
-
+#endif
     nCellIdx = pTag->cellId;
     nSlotIdx = pTag->slotiId; ///((status >> 16) & 0xFFFF);  /** TTI aka slotIdx */
     sym      = pTag->symbol & 0xFF; /* sym */
     ntti = (nSlotIdx + XRAN_N_FE_BUF_LEN -1)  % XRAN_N_FE_BUF_LEN;
-
+#if 0
     {
         mlogVar[mlogVarCnt++] = 0xbcbcbcbc;
         mlogVar[mlogVarCnt++] = o_xu_id;
@@ -172,7 +174,7 @@ app_io_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
 
         MLogAddVariables(mlogVarCnt, mlogVar, mlog_start);
     }
-
+#endif
     if(psIoCtrl == NULL)
     {
         printf("psIoCtrl NULL! o_xu_id= %d\n", o_xu_id);
@@ -209,16 +211,18 @@ app_io_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
             }
         }
     }
-
+    oai_xran_rh_rx_callback(pCallbackTag, status);
     rte_pause();
-
+#if 0
     MLogTask(PID_GNB_SYM_CB, t1, MLogTick());
+#endif
     return;
 }
 
 void
 app_io_xran_fh_rx_prach_callback(void *pCallbackTag, xran_status_t status)
 {
+#if 0
     uint64_t t1 = MLogTick();
     uint32_t mlogVar[10];
     uint32_t mlogVarCnt = 0;
@@ -227,17 +231,21 @@ app_io_xran_fh_rx_prach_callback(void *pCallbackTag, xran_status_t status)
     mlogVar[mlogVarCnt++] = status >> 16; /* tti */
     mlogVar[mlogVarCnt++] = status & 0xFF; /* sym */
     MLogAddVariables(mlogVarCnt, mlogVar, MLogTick());
+#endif
     rte_pause();
-
+#if 0
     MLogTask(PID_GNB_PRACH_CB, t1, MLogTick());
+#endif
 }
 
 void
 app_io_xran_fh_rx_srs_callback(void *pCallbackTag, xran_status_t status)
 {
+#if 0
     uint64_t t1 = MLogTick();
     uint32_t mlogVar[10];
     uint32_t mlogVarCnt = 0;
+#endif
     //uint8_t Numerlogy = app_io_xran_fh_config[0].frame_conf.nNumerology;
     //uint8_t nNrOfSlotInSf = 1<<Numerlogy;
     //int32_t sfIdx = app_io_xran_sfidx_get(nNrOfSlotInSf);
@@ -258,7 +266,7 @@ app_io_xran_fh_rx_srs_callback(void *pCallbackTag, xran_status_t status)
     nSlotIdx = pTag->slotiId; ///((status >> 16) & 0xFFFF);  /** TTI aka slotIdx */
     sym      = pTag->symbol & 0xFF; /* sym */
     ntti = (nSlotIdx + XRAN_N_FE_BUF_LEN-1) % XRAN_N_FE_BUF_LEN;
-
+#if 0
     {
     mlogVar[mlogVarCnt++] = 0xCCCCCCCC;
         mlogVar[mlogVarCnt++] = o_xu_id;
@@ -268,7 +276,7 @@ app_io_xran_fh_rx_srs_callback(void *pCallbackTag, xran_status_t status)
         mlogVar[mlogVarCnt++] = ntti;
     MLogAddVariables(mlogVarCnt, mlogVar, MLogTick());
     }
-
+#endif
     if(psIoCtrl == NULL)
     {
         printf("psIoCtrl NULL! o_xu_id= %d\n", o_xu_id);
@@ -290,12 +298,15 @@ app_io_xran_fh_rx_srs_callback(void *pCallbackTag, xran_status_t status)
             }
         }
     }
+#if 0
     MLogTask(PID_GNB_SRS_CB, t1, MLogTick());
+#endif
 }
 
 void
 app_io_xran_fh_rx_bfw_callback(void *pCallbackTag, xran_status_t status)
 {
+#if 0
     uint64_t t1 = MLogTick();
     uint32_t mlogVar[10];
     uint32_t mlogVarCnt = 0;
@@ -304,46 +315,63 @@ app_io_xran_fh_rx_bfw_callback(void *pCallbackTag, xran_status_t status)
     mlogVar[mlogVarCnt++] = status >> 16; /* tti */
     mlogVar[mlogVarCnt++] = status & 0xFF; /* sym */
     MLogAddVariables(mlogVarCnt, mlogVar, MLogTick());
+#endif
     rte_pause();
-
+#if 0
     MLogTask(PID_GNB_BFW_CB, t1, MLogTick());
+#endif
 }
 
 int32_t
 app_io_xran_dl_tti_call_back(void * param)
 {
+#if 0
     uint64_t t1 = MLogTick();
+#endif
+    oai_physide_dl_tti_call_back(param);
     rte_pause();
+#if 0
     MLogTask(PID_GNB_PROC_TIMING, t1, MLogTick());
+#endif
     return 0;
 }
 
 int32_t
 app_io_xran_ul_half_slot_call_back(void * param)
 {
+#if 0
     uint64_t t1 = MLogTick();
+#endif
     rte_pause();
+#if 0
     MLogTask(PID_GNB_PROC_TIMING, t1, MLogTick());
+#endif
     return 0;
 }
 
 int32_t
 app_io_xran_ul_full_slot_call_back(void * param)
 {
+#if 0
     uint64_t t1 = MLogTick();
+#endif
     rte_pause();
+#if 0
     MLogTask(PID_GNB_PROC_TIMING, t1, MLogTick());
+#endif
     return 0;
 }
 
 int32_t
 app_io_xran_ul_custom_sym_call_back(void * param, struct xran_sense_of_time* time)
 {
+#if 0
     uint64_t t1 = MLogTick();
     uint32_t mlogVar[15];
     uint32_t mlogVarCnt = 0;
+#endif
     uint32_t sym_idx = 0;
-
+#if 0
     mlogVar[mlogVarCnt++] = 0xDEADDEAD;
     if(time) {
         mlogVar[mlogVarCnt++] = time->type_of_event;
@@ -357,9 +385,11 @@ app_io_xran_ul_custom_sym_call_back(void * param, struct xran_sense_of_time* tim
         sym_idx =   time->nSymIdx;
     }
     MLogAddVariables(mlogVarCnt, mlogVar, MLogTick());
-
+#endif
     rte_pause();
+#if 0
     MLogTask(PID_GNB_SYM_CB + sym_idx, t1, MLogTick());
+#endif
     return 0;
 }
 
@@ -1127,6 +1157,7 @@ app_io_xran_ext_type11_populate(struct xran_prb_elm* p_pRbMapElm, char *p_tx_dl_
     return status;
 }
 
+#if 0
 int32_t
 app_io_xran_iq_content_init_cp_rb_map(struct xran_prb_map* pRbMap,
     enum xran_pkt_dir dir, int32_t cc_id, int32_t ant_id, int32_t sym_id, int32_t tti, uint16_t nRBs)
@@ -1676,6 +1707,7 @@ app_io_xran_iq_content_init(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg)
 
     return 0;
 }
+#endif
 
 void app_io_xran_if_stop(void)
 {
@@ -1689,6 +1721,7 @@ void app_io_xran_if_stop(void)
     }
 }
 
+#if 0
 int32_t
 app_io_xran_iq_content_get_up_prach(uint8_t  appMode, struct xran_fh_config  *pXranConf,
                                   struct bbu_xran_io_if *psBbuIo, struct xran_io_shared_ctrl *psIoCtrl, struct o_xu_buffers * p_iq,
@@ -2377,6 +2410,7 @@ app_io_xran_iq_content_get(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg)
     }
     return 0;
 }
+#endif
 
 int32_t
 app_io_xran_eAxCid_conf_set(struct xran_eaxcid_config *p_eAxC_cfg, RuntimeConfig * p_s_cfg)

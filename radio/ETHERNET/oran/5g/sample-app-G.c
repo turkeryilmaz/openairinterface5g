@@ -1205,6 +1205,7 @@ app_alloc_all_cfgs(void)
 int main(int argc, char *argv[])
 #else
 void *oai_main(int argc, char *argv[])
+#endif
 {
     int32_t o_xu_id = 0;
     char filename[256];

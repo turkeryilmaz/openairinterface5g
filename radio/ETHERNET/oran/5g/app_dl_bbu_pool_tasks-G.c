@@ -38,7 +38,9 @@
 #include "xran_compression.h"
 #include "xran_cp_api.h"
 #include "xran_fh_o_du.h"
+#if 0
 #include "xran_mlog_task_id.h"
+#endif
 
 extern RuntimeConfig* p_startupConfiguration[XRAN_PORTS_NUM];
 static SampleSplitStruct gsDlPostSymbolTaskSplit[MAX_PHY_INSTANCES][MAX_NUM_OF_SF_5G_CTX][MAX_TEST_SPLIT_NUM];
@@ -225,8 +227,10 @@ app_bbu_pool_task_dl_config(void *pCookies)
     uint16_t nCellIdx = pEventCtrl->nCellIdx;
     uint32_t nSfIdx = get_dl_sf_idx(pEventCtrl->nSlotIdx, nCellIdx);
     uint32_t nCtxNum = get_dl_sf_ctx(nSfIdx, nCellIdx);
+#if 0
     uint32_t mlogVariablesCnt, mlogVariables[50];
     uint64_t mlog_start = MLogTick();
+#endif
     uint32_t nRuCcidx = 0;
     int32_t xran_port = 0;
     SampleSplitStruct *pTaskPara = (SampleSplitStruct*)pEventCtrl->pTaskPara;
@@ -254,7 +258,7 @@ app_bbu_pool_task_dl_config(void *pCookies)
     pXranConf = &app_io_xran_fh_config[xran_port];
     if(pXranConf == NULL)
         rte_panic("pXranConf");
-
+#if 0
     mlogVariablesCnt = 0;
     mlogVariables[mlogVariablesCnt++] = 0xCCBBCCBB;
     mlogVariables[mlogVariablesCnt++] = pEventCtrl->nSlotIdx;
@@ -264,11 +268,12 @@ app_bbu_pool_task_dl_config(void *pCookies)
     mlogVariables[mlogVariablesCnt++] = nCtxNum;
     mlogVariables[mlogVariablesCnt++] = xran_port;
     mlogVariables[mlogVariablesCnt++] = nRuCcidx;
-
+#endif
     p_o_xu_cfg = p_startupConfiguration[xran_port];
 
-
+#if 0
     mlog_start = MLogTick();
+#endif
 
     if(LAYER_SPLIT == pTaskPara->eSplitType) {
         // iSplit = pTaskPara->nSplitIndex;
@@ -310,14 +315,15 @@ app_bbu_pool_task_dl_config(void *pCookies)
 
     xran_prepare_cp_dl_slot(xran_port, nSfIdx, nRuCcidx, /*psXranIoIf->num_cc_per_port[xran_port]*/ 1, nSymbMask, nLayerStart,
                             nLayer, 0, XRAN_NUM_OF_SYMBOL_PER_SLOT);
-
+#if 0
     if (mlogVariablesCnt)
         MLogAddVariables((uint32_t)mlogVariablesCnt, (uint32_t *)mlogVariables, mlog_start);
-
+#endif
     //unlock the next task
     next_event_unlock(pCookies);
+#if 0
     MLogTask(PCID_GNB_DL_CFG_CC0+nCellIdx, mlog_start, MLogTick());
-
+#endif
     return EBBUPOOL_CORRECT;
 }
 
@@ -443,12 +449,13 @@ int32_t app_bbu_pool_task_dl_post(void *pCookies)
     SampleSplitStruct *pTaskPara = (SampleSplitStruct*)pEventCtrl->pTaskPara;
     uint16_t nSymbStart = 0, nSymb = 0, iOfdmSymb = 0, iSplit = 0;
     uint32_t nSymMask = 0;
+#if 0
     uint64_t mlog_start;
     uint32_t mlogVar[10];
     uint32_t mlogVarCnt = 0;
     uint16_t nLayerStart = 0, nLayer = 0;
     mlog_start = MLogTick();
-
+#endif
     if(LAYER_SPLIT == pTaskPara->eSplitType) {
         nSymbStart = pTaskPara->nSymbStart;
         nSymb = pTaskPara->nSymbNum;
@@ -471,6 +478,7 @@ int32_t app_bbu_pool_task_dl_post(void *pCookies)
 
     app_io_xran_dl_post_func(pEventCtrl->nCellIdx, pEventCtrl->nSlotIdx, /*0x3FFF*/ nSymMask, nLayerStart, nLayer);
 
+#if 0
 #if 1
     {
         mlogVar[mlogVarCnt++] = 0xefefefef;
@@ -484,11 +492,13 @@ int32_t app_bbu_pool_task_dl_post(void *pCookies)
         MLogAddVariables(mlogVarCnt, mlogVar, mlog_start);
     }
 #endif
+#endif
 
     //unlock the next task
     next_event_unlock(pCookies);
-
+#if 0
     MLogTask(PCID_GNB_DL_POST_CC0+nCellIdx, mlog_start, MLogTick());
+#endif
     return EBBUPOOL_CORRECT;
 }
 

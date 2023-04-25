@@ -49,7 +49,11 @@ volatile uint32_t rx_cb_slot = 0;
 #define GetFrameNum(tti,SFNatSecStart,numSubFramePerSystemFrame, numSlotPerSubFrame)  ((((uint32_t)tti / ((uint32_t)numSubFramePerSystemFrame * (uint32_t)numSlotPerSubFrame)) + SFNatSecStart) & 0x3FF)
 #define GetSlotNum(tti, numSlotPerSfn) ((uint32_t)tti % ((uint32_t)numSlotPerSfn))
 
+#ifdef ORAN_BRONZE
 int xran_is_prach_slot(uint32_t subframe_id, uint32_t slot_id);
+#else
+int xran_is_prach_slot(uint8_t PortId, uint32_t subframe_id, uint32_t slot_id);
+#endif
 extern struct xran_fh_config  xranConf;
 
 void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
@@ -59,7 +63,11 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
     uint32_t frame;
     uint32_t subframe;
     uint32_t slot;
-    tti = xran_get_slot_idx(&frame,&subframe,&slot,&second);
+    tti = xran_get_slot_idx(
+#ifndef ORAN_BRONZE
+		    0,
+#endif
+		    &frame,&subframe,&slot,&second);
 
     rx_tti = callback_tag->slotiId;
     rx_sym = callback_tag->symbol;
@@ -112,7 +120,11 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 	/* calculate tti and subframe_id from frame, slot num */
 	int tti = 20 * (frame) + (slot);
 	uint32_t subframe = XranGetSubFrameNum(tti, 2, 10);
-	uint32_t is_prach_slot = xran_is_prach_slot(subframe, (slot % 2));
+	uint32_t is_prach_slot = xran_is_prach_slot(
+#ifndef ORAN_BRONZE
+			0,
+#endif
+			subframe, (slot % 2));
 	int sym_idx = 0;
 
         struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
@@ -235,8 +247,13 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot, int oframe, int o
                     for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
                        struct xran_section_desc *p_sec_desc = NULL;
                        p_prbMapElm = &pRbMap->prbMap[idxElm];
-                       p_sec_desc =  p_prbMapElm->p_sec_desc[sym_id];
-
+                       p_sec_desc = 
+#ifdef ORAN_BRONZE 
+			       p_prbMapElm->p_sec_desc[sym_id];
+#else
+		       //assumes on section descriptor per symbol
+			       &p_prbMapElm->sec_desc[sym_id][0];
+#endif
                        if(pRbMap->nPrbElm==1 && idxElm==0){
                          src = pData;
                        }
@@ -373,7 +390,13 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
                     for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
                        struct xran_section_desc *p_sec_desc = NULL;
                        p_prbMapElm = &pRbMap->prbMap[idxElm];
-                       p_sec_desc =  p_prbMapElm->p_sec_desc[sym_id];
+                       p_sec_desc = 
+#ifdef ORAN_BRONZE 
+			       p_prbMapElm->p_sec_desc[sym_id];
+#else
+		       //assumes on section descriptor per symbol
+			       &p_prbMapElm->sec_desc[sym_id][0];
+#endif
 
                        payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
                        dst =  xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
