@@ -1187,9 +1187,14 @@ pdcp_data_ind(
         SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;
         SS_DRB_PDU_IND (message_p).subframe = ctxt_pP->subframe;
 
-        int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
-        if(send_res < 0) {
-          LOG_E(RRC,"Error in itti_send_msg_to_task");
+        /* Workaround fix for not getting SS_DRB_PDU_IND in other test cases */
+        if(SS_DRB_PDU_IND (message_p).sdu_size > 0) {
+          int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
+          if(send_res < 0) {
+            LOG_E(RRC,"Error in itti_send_msg_to_task");
+          }
+        } else {
+          LOG_A(RRC,"sdu size:%d in SS_DRB_PDU_IND is not greater then zero \n",SS_DRB_PDU_IND (message_p).sdu_size);
         }
       }
     }
