@@ -44,9 +44,6 @@
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
-#define MSC_INTERFACE
-#include "msc.h"
-
 
 #define IPV4_ADDR    "%u.%u.%u.%u"
 #define IPV4_ADDR_FORMAT(aDDRESS)               \
@@ -307,7 +304,6 @@ void *udp_eNB_task(void *args_p)
   udp_enb_init();
 
   itti_mark_task_ready(TASK_UDP);
-  MSC_START_USE();
   LOG_I(UDP_, " Entry in %s\n", __FUNCTION__);
 
   while(1) {
