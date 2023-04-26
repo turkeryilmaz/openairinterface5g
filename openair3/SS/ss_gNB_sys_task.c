@@ -692,7 +692,6 @@ static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req)
 	deltaSecondaryBand->DeltaNRf2 = 0;
 	deltaSecondaryBand->DeltaNRf3 = 0;
 	deltaSecondaryBand->DeltaNRf4 = 0;
-  uint16_t mac_inst = 0;
   NR_UE_info_t *UE = NULL;
   LOG_A(GNB_APP, "[SYS-GNB] absoluteFrequencySSB:%ld\n",
       *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB);
@@ -1563,7 +1562,7 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
       }
       else
       {
-        LOG_E(GNB_APP, "it's not an PdcpCount.v.Get for single-rb not all-rbs cmd\r\n", __PRETTY_FUNCTION__, __LINE__);
+        LOG_E(GNB_APP, "%s line:%d it's not an PdcpCount.v.Get for single-rb not all-rbs cmd\r\n", __PRETTY_FUNCTION__, __LINE__);
         return false;
       }
       
@@ -1598,7 +1597,6 @@ static void sys_5G_send_proxy(void *msg, int msgLen)
   IPV4_STR_ADDR_TO_INT_NWBO(local_5G_address,peerIpAddr, " BAD IP Address");
 
   LOG_A(GNB_APP, "Sending CELL CONFIG 5G to Proxy\n");
-  int8_t *temp = msg;
 
   /** Send to proxy */
   sys_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);

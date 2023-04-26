@@ -134,13 +134,6 @@ pdcp_apply_security(
     encrypt_params.blength    = (pdcp_header_len + sdu_buffer_size) << 3;
     encrypt_params.key        = pdcp_pP->kRRCint + 16; // + 128;
 
-    printf("kRRCint in PDCP:\n");
-    for(int i=0;i<32;i++)
-    {
-      printf("%02x",pdcp_pP->kRRCint);
-    }
-    printf("\n");
-
     mac_i = &pdcp_pdu_buffer[pdcp_header_len + sdu_buffer_size];
 
     /* Both header and data parts are integrity protected for

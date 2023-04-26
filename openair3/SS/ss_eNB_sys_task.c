@@ -335,7 +335,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
   cellConfig->header.preamble = 0xFEEDC0DE;
   cellConfig->header.msg_id = SS_CELL_CONFIG;
   cellConfig->header.length = sizeof(proxy_ss_header_t);
-  MessageDef *msg_p = NULL;
 
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
@@ -681,7 +680,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         }
       }
       uint8_t msg_queued = 0;
-      ss_set_timinfo_t tinfo, timer_tinfo;
+      ss_set_timinfo_t timer_tinfo;
       timer_tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
       timer_tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
 #if 0

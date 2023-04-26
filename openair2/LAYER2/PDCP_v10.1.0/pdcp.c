@@ -477,12 +477,6 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
       if ((pdcp_p->security_activated != 0) &&
           (((pdcp_p->cipheringAlgorithm) != 0) ||
            ((pdcp_p->integrityProtAlgorithm) != 0))) {
-        printf("kRRCint in PDCP:\n");
-        for(int i=0;i<32;i++)
-        {
-          printf("%02x",pdcp_p->kRRCint);
-        }
-        printf("\n");
 
         uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
