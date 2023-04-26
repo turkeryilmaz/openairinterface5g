@@ -4102,7 +4102,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
         }
 
-        LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n",
+        LOG_A(RRC, "OSA Reconfig for SRB2 %ld rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n",
               ctxt_pP->rntiMaybeUEid, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
         key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
@@ -4110,7 +4110,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 
         if (h_rc == HASH_TABLE_OK)
         {
-          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rntiMaybeUEid);
+          LOG_A(RRC, "OSA Setting security for SRB2 %ld rnti \n", ctxt_pP->rntiMaybeUEid);
           pdcp_config_set_security(
               ctxt_pP,
               pdcp_p,
@@ -4131,7 +4131,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       }
       else
       {
-        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
+        LOG_A(RRC, "OSA Setting security for SRB2 failed %ld rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
       }
     }
     else
@@ -6259,7 +6259,7 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
     }
   }
   // Add a new user (called during the HO procedure)
-  LOG_I(RRC, "rrc_eNB_target_add_ue_handover module_id %d rnti %d, ciphering algo: %ld, integrity algo: %ld \n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, RC.ss.HOASSecurityCOnfig.Ciphering.ciphering_algorithm,RC.ss.HOASSecurityCOnfig.Integrity.integrity_algorithm);
+  LOG_I(RRC, "rrc_eNB_target_add_ue_handover module_id %d rnti %ld, ciphering algo: %ld, integrity algo: %ld \n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, RC.ss.HOASSecurityCOnfig.Ciphering.ciphering_algorithm,RC.ss.HOASSecurityCOnfig.Integrity.integrity_algorithm);
       if(RC.ss.HOASSecurityCOnfig.isIntegrityInfoPresent && RC.ss.HOASSecurityCOnfig.Integrity.kRRCint)
       {
         for(int i=16;i<32;i++)
@@ -7148,7 +7148,7 @@ void rrc_eNB_as_security_configuration_req(
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
-  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
+  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%ld cipheringAlgorithm=%ld \n",
          ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
          ASSecConfReq->Ciphering.ciphering_algorithm);
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
@@ -8429,13 +8429,13 @@ rrc_eNB_decode_dcch(
         break;
 
       case LTE_UL_DCCH_MessageType__c1_PR_ueCapabilityInformation:
-        LOG_A(RRC, "Processing ueCapabilityInformation UE %x, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
+        LOG_A(RRC, "Processing ueCapabilityInformation UE %ld, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
 
         T(T_ENB_RRC_UE_CAPABILITY_INFORMATION, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
 
         // to avoid segmentation fault
         if(!ue_context_p) {
-          LOG_I(RRC, "Processing ueCapabilityInformation UE %x, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
+          LOG_I(RRC, "Processing ueCapabilityInformation UE %ld, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
           break;
         }
 
@@ -8456,13 +8456,13 @@ rrc_eNB_decode_dcch(
           xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
         }
 
-        LOG_A(RRC, "got UE capabilities for UE %x\n", ctxt_pP->rntiMaybeUEid);
+        LOG_A(RRC, "got UE capabilities for UE %ld\n", ctxt_pP->rntiMaybeUEid);
         int eutra_index = -1;
 
         for (i = 0; i < ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.count; i++) {
           if (ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[i]->rat_Type ==
               LTE_RAT_Type_nr) {
-              LOG_A(RRC, "got nrUE capabilities for UE %x\n", ctxt_pP->rntiMaybeUEid);
+              LOG_A(RRC, "got nrUE capabilities for UE %ld\n", ctxt_pP->rntiMaybeUEid);
             if(ue_context_p->ue_context.UE_Capability_nr) {
               ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability,ue_context_p->ue_context.UE_Capability_nr);
               ue_context_p->ue_context.UE_Capability_nr = 0;
@@ -8537,7 +8537,7 @@ rrc_eNB_decode_dcch(
           break;
 
         if (ue_context_p->ue_context.UE_Capability) {
-          LOG_I(RRC, "freeing old UE capabilities for UE %x\n", ctxt_pP->rntiMaybeUEid);
+          LOG_I(RRC, "freeing old UE capabilities for UE %ld\n", ctxt_pP->rntiMaybeUEid);
           ASN_STRUCT_FREE(asn_DEF_LTE_UE_EUTRA_Capability,
                           ue_context_p->ue_context.UE_Capability);
           ue_context_p->ue_context.UE_Capability = 0;
@@ -8610,7 +8610,7 @@ rrc_eNB_decode_dcch(
 
         // to avoid segmentation fault
         if(!ue_context_p) {
-          LOG_I(RRC, "Processing ulInformationTransfer UE %x, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
+          LOG_I(RRC, "Processing ulInformationTransfer UE %ld, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
           break;
         }
 

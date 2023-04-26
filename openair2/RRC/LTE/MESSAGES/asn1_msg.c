@@ -2516,7 +2516,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
       InterFreqCarrierInfo->ext1->threshX_Q_r9 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1__threshX_Q_r9));
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_HighQ_r9;
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_LowQ_r9;
-      LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
+      LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %ld threshX_LowQ_r9 %ld\n ",CC_id,
               InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9,
               InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
@@ -3670,10 +3670,10 @@ uint8_t do_SecurityModeCommand(
     return -1;
   }
 
-  LOG_D(RRC, "[eNB %d] securityModeCommand for UE %x Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+  LOG_D(RRC, "[eNB %d] securityModeCommand for UE %ld Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
 
   if (enc_rval.encoded==-1) {
-    LOG_E(RRC, "[eNB %d] ASN1 : securityModeCommand encoding failed for UE %x\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    LOG_E(RRC, "[eNB %d] ASN1 : securityModeCommand encoding failed for UE %ld\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     return(-1);
   }
 
@@ -3787,10 +3787,10 @@ uint8_t do_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
     return -1;
   }
 
-  LOG_D(RRC, "[eNB %d] UECapabilityRequest for UE %x Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+  LOG_D(RRC, "[eNB %d] UECapabilityRequest for UE %ld Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
 
   if (enc_rval.encoded==-1) {
-    LOG_E(RRC, "[eNB %d] ASN1 : UECapabilityRequest encoding failed for UE %x\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    LOG_E(RRC, "[eNB %d] ASN1 : UECapabilityRequest encoding failed for UE %ld\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     return(-1);
   }
 
@@ -3902,10 +3902,10 @@ uint8_t do_NR_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
     return -1;
   }
 
-  LOG_D(RRC, "[eNB %d] NR UECapabilityRequest for UE %x Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+  LOG_D(RRC, "[eNB %d] NR UECapabilityRequest for UE %ld Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
 
   if (enc_rval.encoded==-1) {
-    LOG_E(RRC, "[eNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %x\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    LOG_E(RRC, "[eNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %ld\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     return(-1);
   }
 

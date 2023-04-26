@@ -259,7 +259,7 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
       ssb_subcarrier_offset >>= 1; // this assumes 120kHz SCS for SSB and subCarrierSpacingCommon (only option supported by OAI for now)
   }
   mib->message.choice.mib->ssb_SubcarrierOffset = (rrc->configuration.ssb_SubcarrierOffset)&15;
-  LOG_A(NR_RRC,"ssb_SubcarrierOffset: %d \n",mib->message.choice.mib->ssb_SubcarrierOffset);
+  LOG_A(NR_RRC,"ssb_SubcarrierOffset: %ld \n",mib->message.choice.mib->ssb_SubcarrierOffset);
 
   /*
   * The SIB1 will be sent in this allocation (Type0-PDCCH) : 38.213, 13-4 Table and 38.213 13-11 to 13-14 tables
@@ -1427,11 +1427,9 @@ void fill_initial_cellGroupConfig(int uid,
                                   const int CC_id)
 {
   NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
-  NR_RLC_Config_t                                  *rlc_Config           = NULL;
   NR_LogicalChannelConfig_t                        *logicalChannelConfig = NULL;
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
-  long *logicalChannelGroup = NULL;
 
   cellGroupConfig->cellGroupId = 0;
 
@@ -1555,7 +1553,6 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     NR_SRB_ToAddMod_t                                *SRB1_config          = NULL;
     NR_PDCP_Config_t                                 *pdcp_Config          = NULL;
     NR_CellGroupConfig_t                             *cellGroupConfig      = NULL;
-    char masterCellGroup_buf[1000];
 
     AssertFatal(ue_context_pP != NULL,"ue_context_p is null\n");
     gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
@@ -1949,14 +1946,14 @@ int16_t do_RRCReconfiguration(
         return -1;
     }
 
-    LOG_D(NR_RRC,"[gNB %d] RRCReconfiguration for UE %x Encoded %zd bits (%zd bytes)\n",
+    LOG_D(NR_RRC,"[gNB %d] RRCReconfiguration for UE %ld Encoded %zd bits (%zd bytes)\n",
             ctxt_pP->module_id,
             ctxt_pP->rntiMaybeUEid,
             enc_rval.encoded,
             (enc_rval.encoded+7)/8);
 
     if (enc_rval.encoded == -1) {
-        LOG_E(NR_RRC,"[gNB %d] ASN1 : RRCReconfiguration encoding failed for UE %x\n",
+        LOG_E(NR_RRC,"[gNB %d] ASN1 : RRCReconfiguration encoding failed for UE %ld\n",
             ctxt_pP->module_id,
             ctxt_pP->rntiMaybeUEid);
         return(-1);
