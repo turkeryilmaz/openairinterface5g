@@ -372,6 +372,9 @@ static bool is_my_dci(NR_UE_MAC_INST_t *mac, nfapi_nr_dl_dci_pdu_t *received_pdu
     }
     if (get_softmodem_params()->sa)
     {
+      //TODO:BLA
+        if (received_pdu->RNTI == 0xFFFE)
+            return true;
         if (received_pdu->RNTI != mac->crnti && mac->ra.ra_state == RA_SUCCEEDED)
             return false;
         if (received_pdu->RNTI != mac->ra.t_crnti && mac->ra.ra_state == WAIT_CONTENTION_RESOLUTION)
@@ -391,6 +394,8 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
     memset(mac->nr_ue_emul_l1.index_has_sib, 0, sizeof(mac->nr_ue_emul_l1.index_has_sib));
     mac->nr_ue_emul_l1.expected_rar = false;
     memset(mac->nr_ue_emul_l1.index_has_rar, 0, sizeof(mac->nr_ue_emul_l1.index_has_rar));
+    mac->nr_ue_emul_l1.expected_paging = false;
+    memset(mac->nr_ue_emul_l1.index_has_paging, 0, sizeof(mac->nr_ue_emul_l1.index_has_paging));
     mac->nr_ue_emul_l1.expected_dci = false;
     memset(mac->nr_ue_emul_l1.index_has_dci, 0, sizeof(mac->nr_ue_emul_l1.index_has_dci));
     int pdu_idx = 0;
@@ -443,6 +448,13 @@ static void copy_dl_tti_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi_
                         mac->nr_ue_emul_l1.index_has_rar[j] = true;
                         LOG_T(NR_MAC, "Setting index_has_rar[%d] = true\n", j);
                     }
+                    else if (dci_pdu_list->RNTI == 0xfffe)
+                    {
+                        mac->nr_ue_emul_l1.expected_paging = true;
+                        mac->nr_ue_emul_l1.index_has_paging[j] = true;
+                        LOG_T(NR_MAC, "Setting index_has_paging[%d] = true\n", j);
+                      LOG_E(NR_PHY, ">>> BLABLABLA [%d, %d] PDSCH PDU for rnti %x -- %x !!!!! PAGING\n", dl_tti_request->SFN, dl_tti_request->Slot, pdu_list->pdsch_pdu.pdsch_pdu_rel15.rnti, dci_pdu_list->RNTI); //TODO:BLA
+                    }
                     else
                     {
                         mac->nr_ue_emul_l1.expected_dci = true;
@@ -490,6 +502,7 @@ static void fill_rx_ind(nfapi_nr_pdu_t *pdu_list, fapi_nr_rx_indication_t *rx_in
     }
     LOG_D(NR_PHY, "%s: num_tlv %d and length %d, pdu index %d\n",
         __FUNCTION__, pdu_list->num_TLV, length, pdu_idx);
+    LOG_E(NR_PHY, ">>> BLABLA %s: num_tlv %d and length %d, pdu index %d\n", __FUNCTION__, pdu_list->num_TLV, length, pdu_idx); //TODO:BLA
     uint8_t *pdu = malloc(length);
     AssertFatal(pdu != NULL, "%s: Out of memory in malloc", __FUNCTION__);
     rx_ind->rx_indication_body[pdu_idx].pdsch_pdu.pdu = pdu;
@@ -529,6 +542,7 @@ static void copy_tx_data_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi
     fapi_nr_rx_indication_t *rx_ind = dl_info->rx_ind;
     rx_ind->sfn = tx_data_request->SFN;
     rx_ind->slot = tx_data_request->Slot;
+    LOG_E(NR_MAC, ">>> BLABLA copy_tx_data_req_to_dl_info [%d %d] num_pdus=%d\n", rx_ind->sfn, rx_ind->slot, num_pdus); //TODO:BLA
 
     int pdu_idx = 0;
 
@@ -547,6 +561,12 @@ static void copy_tx_data_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi
             fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_RAR);
             pdu_idx++;
         }
+        else if (mac->nr_ue_emul_l1.index_has_paging[i])
+        {
+            fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_PCH);
+            pdu_idx++;
+            LOG_E(NR_MAC, ">>> BLABLA copy_tx_data_req_to_dl_info [%d %d] num_pdus=%d   !!! PAGING\n", rx_ind->sfn, rx_ind->slot, num_pdus); //TODO:BLA
+        }
         else if (mac->nr_ue_emul_l1.index_has_dci[i])
         {
             fill_rx_ind(pdu_list, rx_ind, pdu_idx, FAPI_NR_RX_PDU_TYPE_DLSCH);
@@ -555,6 +575,7 @@ static void copy_tx_data_req_to_dl_info(nr_downlink_indication_t *dl_info, nfapi
         else
         {
             LOG_T(NR_MAC, "mac->nr_ue_emul_l1.index_has_dci[%d] = 0, so this index contained a DCI for a different UE\n", i);
+            LOG_E(NR_MAC, ">>> BLABLA mac->nr_ue_emul_l1.index_has_dci[%d] = 0, so this index contained a DCI for a different UE\n", i); //TODO:BLA
         }
 
     }
@@ -747,8 +768,9 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
        RAR hasn't been processed yet, we do not want to be filtering the
        tx_data_requests. */
     if (tx_data_request) {
-        if (mac->nr_ue_emul_l1.expected_sib ||
-            mac->nr_ue_emul_l1.expected_rar ||
+        if (mac->nr_ue_emul_l1.expected_sib    ||
+            mac->nr_ue_emul_l1.expected_rar    ||
+            mac->nr_ue_emul_l1.expected_paging ||
             mac->nr_ue_emul_l1.expected_dci) {
             frame = tx_data_request->SFN;
             slot = tx_data_request->Slot;
@@ -758,6 +780,7 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
         }
         else {
             LOG_D(NR_MAC, "Unexpected tx_data_req\n");
+            LOG_E(NR_MAC, "!!! BLABLA Unexpected tx_data_req\n"); //TODO:BLA
         }
         free_and_zero(tx_data_request);
     }
@@ -864,6 +887,7 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
             }
             LOG_D(NR_PHY, "Received an NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST message in sfn/slot %d %d. \n",
                     dl_tti_request->SFN, dl_tti_request->Slot);
+            LOG_E(NR_PHY, ">>> BLABLA Received an NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST message in sfn/slot %d %d. \n", dl_tti_request->SFN, dl_tti_request->Slot); //TODO:BLA
 
             if (is_channel_modeling())
                 save_pdsch_pdu_for_crnti(dl_tti_request);
@@ -1184,6 +1208,23 @@ int8_t handle_csirs_measurements(module_id_t module_id, frame_t frame, int slot,
   return nr_ue_process_csirs_measurements(module_id, frame, slot, csirs_measurements);
 }
 
+int8_t handle_pch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id){
+  /* L1 assigns harq_pid, but in emulated L1 mode we need to assign
+     the harq_pid based on the saved global g_harq_pid. Because we are
+     emulating L1, no antenna measurements are conducted to calculate
+     a harq_pid, therefore we must set it here. */
+  if (get_softmodem_params()->emulate_l1)
+    dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid = g_harq_pid;
+
+  update_harq_status(dl_info->module_id,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
+  if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
+    nr_ue_send_sdu(dl_info, ul_time_alignment, pdu_id);
+
+  return 0;
+}
+
 void update_harq_status(module_id_t module_id, uint8_t harq_pid, uint8_t ack_nack) {
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
@@ -1289,7 +1330,7 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_
           __FUNCTION__,
           dl_info->rx_ind->rx_indication_body[i].pdu_type,
           dl_info->rx_ind->number_pdus);
-        LOG_E(NR_MAC, ">>BLABLABLA In %s sending DL indication to MAC. 1 PDU type %d of %d total number of PDUs \n", __FUNCTION__, dl_info->rx_ind->rx_indication_body[i].pdu_type, dl_info->rx_ind->number_pdus); //TODO:BLA
+        LOG_E(NR_MAC, ">>BLABLABLA In %s sending DL indication to MAC. 1 PDU type %d of %d total number of PDUs --- frame=%d slot=%d \n", __FUNCTION__, dl_info->rx_ind->rx_indication_body[i].pdu_type, dl_info->rx_ind->number_pdus, dl_info->frame, dl_info->slot); //TODO:BLA
 
         switch(dl_info->rx_ind->rx_indication_body[i].pdu_type){
           case FAPI_NR_RX_PDU_TYPE_SSB:
@@ -1324,7 +1365,11 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_
                                                    dl_info->slot,
                                                    &(dl_info->rx_ind->rx_indication_body+i)->csirs_measurements)) << FAPI_NR_CSIRS_IND;
             break;
+          case FAPI_NR_RX_PDU_TYPE_PCH:
+            ret_mask |= (handle_pch(dl_info, ul_time_alignment, i)) << FAPI_NR_RX_PDU_TYPE_RAR;
+            break;
           default:
+        LOG_E(NR_MAC, ">>BLABLABLA NO SWITCH !!! In %s sending DL indication to MAC. 1 PDU type %d of %d total number of PDUs --- frame=%d slot=%d \n", __FUNCTION__, dl_info->rx_ind->rx_indication_body[i].pdu_type, dl_info->rx_ind->number_pdus, dl_info->frame, dl_info->slot); //TODO:BLA
             break;
         }
       }

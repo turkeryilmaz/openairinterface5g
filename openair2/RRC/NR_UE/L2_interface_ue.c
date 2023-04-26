@@ -108,6 +108,12 @@ nr_mac_rrc_data_ind_ue(
         }
         break;
 
+      case PCCH:
+        LOG_T(NR_RRC, "[UE %d] Received SDU for PCCH from gNB %d, pdu_len=%d\n", module_id, gNB_index, pdu_len);
+        LOG_E(NR_RRC, "^^^^^^^^^^ BLABLABLA [UE %d] Received SDU for PCCH from gNB %d, pdu_len=%d\n", module_id, gNB_index, pdu_len); //TODO:BLA
+        AssertFatal(nr_rrc_ue_decode_NR_PCCH_Message(module_id, gNB_index, (uint8_t*)pduP, pdu_len) == 0, "UE decode PCCH error!\n");
+        break;
+
       default:
         LOG_E(NR_RRC, "^^^^ BLABLABLA invalid CHANNEL %x  rnti %x  pdu_len=%d!!!!!", channel, rnti, pdu_len); //TODO:BLA
         break;

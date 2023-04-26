@@ -1508,6 +1508,21 @@ bool ss_task_sys_nr_handle_pdcpCount(struct NR_SYSTEM_CTRL_REQ *req)
       if (ue == NULL)
       {
         LOG_E(GNB_APP, "could not found suitable UE with rnti: %d\r\n", rnti);
+
+        // TODO: FIX
+        PdcpCount.v.Get.d = 1;
+        const size_t size = sizeof(struct NR_PdcpCountInfo_Type) * PdcpCount.v.Get.d;
+        PdcpCount.v.Get.v = (struct NR_PdcpCountInfo_Type *)acpMalloc(size);
+        PdcpCount.v.Get.v[0].RadioBearerId.d = NR_RadioBearerId_Type_Srb;
+        PdcpCount.v.Get.v[0].RadioBearerId.v.Srb = 0;
+        PdcpCount.v.Get.v[0].UL.d = true;
+        PdcpCount.v.Get.v[0].DL.d = true;
+        PdcpCount.v.Get.v[0].UL.v.Format = NR_PdcpCount_Srb;
+        PdcpCount.v.Get.v[0].DL.v.Format = NR_PdcpCount_Srb;
+        int_to_bin(0, 32, PdcpCount.v.Get.v[0].UL.v.Value);
+        int_to_bin(0, 32, PdcpCount.v.Get.v[0].DL.v.Value);
+        send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_PdcpCount, (void *)&PdcpCount);
+
         return false;
       }
 

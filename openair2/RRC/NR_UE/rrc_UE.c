@@ -44,6 +44,7 @@
 #include "NR_RRCReconfiguration.h"
 #include "NR_MeasConfig.h"
 #include "NR_UL-DCCH-Message.h"
+#include "NR_PCCH-Message.h"
 
 #include "rrc_list.h"
 #include "rrc_defs.h"
@@ -61,6 +62,7 @@
 #include "UTIL/OSA/osa_defs.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#include "conversions.h"
 
 #ifndef CELLULAR
   #include "RRC/NR/MESSAGES/asn1_msg.h"
@@ -599,6 +601,94 @@ int8_t nr_rrc_ue_decode_NR_BCCH_BCH_Message(const module_id_t module_id, const u
   ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, bcch_message);
 
   return ret;
+}
+
+static inline uint64_t bitStr_to_uint64(BIT_STRING_t *asn) {
+  uint64_t result = 0;
+  int index;
+  int shift;
+
+  DevCheck ((asn->size > 0) && (asn->size <= 8), asn->size, 0, 0);
+
+  shift = ((asn->size - 1) * 8) - asn->bits_unused;
+  for (index = 0; index < (asn->size - 1); index++) {
+    result |= (uint64_t)asn->buf[index] << shift;
+    shift -= 8;
+  }
+
+  result |= asn->buf[index] >> asn->bits_unused;
+
+  return result;
+}
+
+// TODO: temporary, to support paging from TTCN
+static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_index, NR_PCCH_Message_t *pcch)
+{
+    const uint64_t tsc_NG_TMSI1 = 0x41c2345678;
+    const uint64_t tsc_NR_I_RNTI_Value1 = 0x84f3184d01;
+
+    bool found = false;
+
+    NR_PagingRecordList_t *record = pcch->message.choice.c1->choice.paging->pagingRecordList;
+
+    int num = record->list.count;
+    for (int i = 0; i < num; i++) {
+        NR_PagingRecord_t *rec = record->list.array[i];
+        if (rec->ue_Identity.present == NR_PagingUE_Identity_PR_ng_5G_S_TMSI) {
+            uint64_t tmsi = bitStr_to_uint64(&rec->ue_Identity.choice.ng_5G_S_TMSI);
+
+            LOG_E(NR_RRC, "!!!!!!!! BLABLABLA %s: CHECK TMSI in PCCH: %lx == %lx\n", __FUNCTION__, tmsi, tsc_NG_TMSI1); //TODO:BLA
+            if (tmsi == tsc_NG_TMSI1) {
+                found = true;
+                break;
+            }
+        } else if (rec->ue_Identity.present == NR_PagingUE_Identity_PR_fullI_RNTI) {
+            uint64_t rnti = bitStr_to_uint64(&rec->ue_Identity.choice.fullI_RNTI);
+
+            LOG_E(NR_RRC, "!!!!!!!! BLABLABLA %s: CHECK RNTI in PCCH: %lx == %lx\n", __FUNCTION__, rnti, tsc_NR_I_RNTI_Value1); //TODO:BLA
+            if (rnti == tsc_NR_I_RNTI_Value1) {
+                found = true;
+                break;
+            }
+        } else {
+            abort();
+        }
+    }
+
+    if (found) {
+        LOG_D(NR_RRC, "%s: found ue_Identity in PCCH\n", __FUNCTION__);
+        LOG_E(NR_RRC, "!!!!!!!! BLABLABLA %s: found ue_Identity in PCCH\n", __FUNCTION__); //TODO:BLA
+        NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
+        mac->ra.ra_state = RA_UE_IDLE;
+    }
+}
+
+/*brief decode NR PCCH (Paging) message*/
+int8_t nr_rrc_ue_decode_NR_PCCH_Message(const module_id_t module_id, const uint8_t gNB_index, uint8_t *const buffer, const uint16_t size)
+{
+    NR_PCCH_Message_t *pcch_message = NULL;
+
+    asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_PCCH_Message, (void **)&pcch_message, (const void *)buffer, size);
+
+    int ret;
+    if ((dec_rval.code != RC_OK) || (dec_rval.consumed == 0)) {
+        LOG_E(NR_RRC, "NR_PCCH decode error\n");
+        ret = -1;
+    } else {
+        ret = 0;
+
+        LOG_D(NR_RRC, "[gNB %d] nr_rrc_ue_decode_NR_PCCH_Message: decoded PCCH Message\n", module_id);
+        LOG_E(NR_RRC, ">>> BLABLABLA [gNB %d] nr_rrc_ue_decode_NR_PCCH_Message: decoded PCCH Message\n", module_id); //TODO:BLA
+        if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+            xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, pcch_message);
+        }
+        xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, pcch_message); //TODO:BLA
+
+        nr_ue_check_paging(module_id, gNB_index, pcch_message);
+    }
+    ASN_STRUCT_FREE(asn_DEF_NR_PCCH_Message, pcch_message);
+
+    return ret;
 }
 
 const char *nr_SIBreserved( long value ) {
@@ -1717,6 +1807,9 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
    uint8_t i=0,rv[6];
 
    if(NR_UE_rrc_inst[module_id].Srb0[gNB_index].Tx_buffer.payload_size ==0) {
+       nr_rrc_ue_RRCSetupRequest_count++;
+
+       LOG_E(NR_RRC,"!!!! BLABLABLA Generating RRCSetupRequest\n"); //TODO:BLA
      // Get RRCConnectionRequest, fill random for now
      // Generate random byte stream for contention resolution
      for (i=0; i<6; i++) {
@@ -1729,13 +1822,19 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
        LOG_T(NR_RRC,"%x.",rv[i]);
      }
 
+     NR_EstablishmentCause_t establishmentCause = NR_EstablishmentCause_mo_Signalling;
+
+     if (nr_rrc_ue_RRCSetupRequest_count > 1) {
+         establishmentCause = NR_EstablishmentCause_mt_Access;
+     }
+
      LOG_T(NR_RRC,"\n");
      NR_UE_rrc_inst[module_id].Srb0[gNB_index].Tx_buffer.payload_size =
 	do_RRCSetupRequest(
 	  module_id,
 	  (uint8_t *)NR_UE_rrc_inst[module_id].Srb0[gNB_index].Tx_buffer.Payload,
           sizeof(NR_UE_rrc_inst[module_id].Srb0[gNB_index].Tx_buffer.Payload),
-	  rv);
+	  rv, establishmentCause);
      LOG_I(NR_RRC,"[UE %d] : Logical Channel UL-CCCH (SRB0), Generating RRCSetupRequest (bytes %d, gNB %d)\n",
 	   module_id, NR_UE_rrc_inst[module_id].Srb0[gNB_index].Tx_buffer.payload_size, gNB_index);
 
@@ -1749,8 +1848,6 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
      //printf("\n");
      /*UE_rrc_inst[ue_mod_idP].Srb0[Idx].Tx_buffer.Payload[i] = taus()&0xff;
      UE_rrc_inst[ue_mod_idP].Srb0[Idx].Tx_buffer.payload_size =i; */
-
-     nr_rrc_ue_RRCSetupRequest_count++;
   }
 }
 
@@ -2283,14 +2380,13 @@ nr_rrc_ue_establish_srb2(
          }
 
          itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
-         break; //TODO: BLA
 
          /* simulate power OFF, to be able to send RRCSetupRequest to TTCN again */
          LOG_W(NR_RRC, "todo, sleep before removing UE\n");
          sleep(3);
 
          NR_UE_MAC_INST_t *mac = get_mac_inst(ctxt_pP->module_id);
-         mac->ra.ra_state = RA_UE_IDLE;
+         /* mac->ra.ra_state = RA_UE_IDLE; */
 
          nr_rrc_set_state( ctxt_pP->module_id, RRC_STATE_IDLE_NR );
          nr_rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_NR );

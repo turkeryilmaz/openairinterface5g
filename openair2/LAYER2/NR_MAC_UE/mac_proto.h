@@ -79,6 +79,14 @@ int8_t nr_ue_decode_BCCH_DL_SCH(module_id_t module_id,
                                 uint8_t *pduP,
                                 uint32_t pdu_len);
 
+int8_t nr_ue_decode_paging(module_id_t module_id,
+                           int cc_id,
+                           uint8_t gNB_index,
+                           frame_t frame,
+                           slot_t slot,
+                           void *pduP,
+                           uint32_t pdu_len);
+
 /**\brief primitive from RRC layer to MAC layer to set if bearer exists for a logical channel. todo handle mac_LogicalChannelConfig
    \param module_id                 module id
    \param cc_id                     component carrier id
