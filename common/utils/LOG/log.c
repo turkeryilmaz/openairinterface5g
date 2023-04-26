@@ -472,6 +472,7 @@ int logInit (void)
   register_log_component("ENB_APP","log",ENB_APP);
   register_log_component("ENB_SS","log",ENB_SS);
   register_log_component("ENB_SS_PORTMAN","log",ENB_SS_PORTMAN);
+  register_log_component("ENB_SS_PORTMAN_ACP","log",ENB_SS_PORTMAN_ACP);
   register_log_component("ENB_SS_SYS_TASK","log",ENB_SS_SYS_TASK);
   register_log_component("ENB_SS_SRB_ACP","log",ENB_SS_SRB_ACP);
   register_log_component("ENB_SS_SYSIND","log",ENB_SS_SYSIND);

@@ -24,7 +24,7 @@
 #include "acpSys.h"
 
 void  ss_eNB_port_man_init(void);
-void *ss_eNB_port_man_task(void *arg);
+void *ss_eNB_port_man_eNB_task(void *arg);
 void *ss_eNB_port_man_acp_task(void *arg);
 bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req);
 

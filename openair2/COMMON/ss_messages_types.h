@@ -48,6 +48,7 @@
 #define SS_SYS_PROXY_MSG_CNF(mSGpTR)          (mSGpTR)->ittiMsg.udp_data_ind
 #define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind
 #define SS_NR_PAGING_IND(mSGpTR)              (mSGpTR)->ittiMsg.ss_nr_paging_ind
+#define SS_PAGING_CNF(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_cnf
 #define SS_L1MACIND_CTRL(mSGpTR)              (mSGpTR)->ittiMsg.ss_l1macind_ctrl
 #define SS_ULGRANT_INFO(mSGpTR)               (mSGpTR)->ittiMsg.ss_ulgrant_info
 

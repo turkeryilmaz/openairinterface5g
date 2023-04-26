@@ -495,7 +495,6 @@ rx_sdu(const module_id_t enb_mod_idP,
             }
 
             UE_template_ptr->ul_SR = 1;
-            LOG_D(MAC, "swetank: fxn:%s line:%d rnti:%d ul_SR=1\n", __FUNCTION__, __LINE__, UE_RNTI(enb_mod_idP, UE_id));
             UE_scheduling_control->crnti_reconfigurationcomplete_flag = 1;
             UE_info->UE_template[UE_PCCID(enb_mod_idP, UE_id)][UE_id].configured = 1;
             cancel_ra_proc(enb_mod_idP,
@@ -559,7 +558,6 @@ rx_sdu(const module_id_t enb_mod_idP,
                 }
 
                 UE_template_ptr->ul_SR = 1;
-                LOG_D(MAC, "swetank: fxn:%s line:%d rnti:%d ul_SR=1\n", __FUNCTION__, __LINE__, UE_RNTI(enb_mod_idP, UE_id));
                 UE_scheduling_control->crnti_reconfigurationcomplete_flag = 1;
               } else {
                 cancel_ra_proc(enb_mod_idP, CC_idP, frameP, current_rnti);
@@ -1897,7 +1895,6 @@ schedule_ulsch_rnti(module_id_t   module_idP,
   //uint8_t aggregation = 2;
 
   int sched_frame = frameP;
-  LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
 
   if (sched_subframeP < subframeP) {
     sched_frame++;
@@ -1924,7 +1921,6 @@ schedule_ulsch_rnti(module_id_t   module_idP,
   for (int UE_id = UE_info->list.head; UE_id >= 0; UE_id = UE_info->list.next[UE_id]) {
     if (UE_info->UE_template[CC_id][UE_id].rach_resource_type > 0)
     {
-      LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
       continue;
     }
 
@@ -2552,7 +2548,6 @@ schedule_ulsch_ss(module_id_t module_idP,
   uint8_t ue_found = 0;
 
   /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
-  LOG_D(MAC, "swetank: num CC:%d\n", RC.nb_mac_CC[module_idP]);
   for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
     /* MultiCell: Common channels modify for multiple CC */
     cc = &RC.mac[module_idP]->common_channels[CC_id];
@@ -2568,7 +2563,7 @@ schedule_ulsch_ss(module_id_t module_idP,
     if (ue_found == 0)
     {
       LOG_D(MAC, "%s No UE found\n", __FUNCTION__);
-      return;
+      continue;
     }
       
     /* if schedule is false, it means SFN/SF for ULGrant had not yet arrived */
@@ -2584,7 +2579,6 @@ schedule_ulsch_ss(module_id_t module_idP,
 
       switch (subframeP) {
         case 0:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if ((tdd_sfa == 0) || (tdd_sfa == 3))
             sched_subframe = 4;
           else if (tdd_sfa == 6)
@@ -2595,7 +2589,6 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 1:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if ((tdd_sfa == 0) || (tdd_sfa == 1))
             sched_subframe = 7;
           else if (tdd_sfa == 6)
@@ -2606,11 +2599,9 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 2:  // Don't schedule UL in subframe 2 for TDD
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           return;
 
         case 3:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if (tdd_sfa == 2)
             sched_subframe = 7;
           else
@@ -2619,7 +2610,6 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 4:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if (tdd_sfa == 1)
             sched_subframe = 8;
           else
@@ -2628,7 +2618,6 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 5:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if (tdd_sfa == 0)
             sched_subframe = 9;
           else if (tdd_sfa == 6)
@@ -2639,7 +2628,6 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 6:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if (tdd_sfa == 0 || tdd_sfa == 1)
             sched_subframe = 2;
           else if (tdd_sfa == 6)
@@ -2650,11 +2638,9 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 7:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           return;
 
         case 8:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if ((tdd_sfa >= 2) && (tdd_sfa <= 5))
             sched_subframe = 2;
           else
@@ -2663,7 +2649,6 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         case 9:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           if ((tdd_sfa == 1) || (tdd_sfa == 3) || (tdd_sfa == 4))
             sched_subframe = 3;
           else if (tdd_sfa == 6)
@@ -2674,7 +2659,6 @@ schedule_ulsch_ss(module_id_t module_idP,
           break;
 
         default:
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
           return;
       }
     }
@@ -2687,9 +2671,7 @@ schedule_ulsch_ss(module_id_t module_idP,
     int emtc_active[5];
     memset(emtc_active, 0, 5 * sizeof(int));
 
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
 
     if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
                            cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex, 
@@ -2704,7 +2686,6 @@ schedule_ulsch_ss(module_id_t module_idP,
       for (int i = 0; i < 6; i++)
         cc->vrb_map_UL[start_rb + i] = 1;
     }
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
 
     /* HACK: let's remove the PUCCH from available RBs
      * we suppose PUCCH size is:
@@ -2740,7 +2721,6 @@ schedule_ulsch_ss(module_id_t module_idP,
         exit(1);
     }
 
-          LOG_D(MAC, "swetank: fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     schedule_ulsch_rnti(module_idP, CC_id, frameP, subframeP, sched_subframe);
   }
 

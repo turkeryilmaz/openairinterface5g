@@ -257,7 +257,7 @@ void free_LTE_PagingRecord_t(LTE_PagingRecord_t * ptr)
   }
 }
 
-uint8_t do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t additionalNonMBSFN, uint32_t frame) {
+int do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t additionalNonMBSFN, uint32_t frame) {
   asn_enc_rval_t enc_rval;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms=&carrier->mib_fembms;
   frame=198;
@@ -461,7 +461,7 @@ uint8_t do_MIB_SL(const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index,
   return((enc_rval.encoded+7)/8);
 }
 
-uint8_t do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
+int do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
                      int Mod_id,int CC_id,
                      RrcConfigurationReq *configuration
                     ) {

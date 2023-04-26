@@ -136,6 +136,37 @@ pthread_mutex_t      lock_ue_freelist;
 
 uint8_t ul_sqn,dl_sqn;
 
+void rrc_send_cnf_to_ss(MessageDef *msg_p)
+{
+  MessageDef *message_p = NULL;
+  instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(msg_p);
+  LOG_I(RRC,"Sending confirmation to SYS_TASK for message:%s\n", ITTI_MSG_NAME(msg_p));
+  switch (ITTI_MSG_ID(msg_p))
+  {
+    case RRC_CONFIGURATION_REQ:
+      message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_CONFIGURATION_CNF);
+      RRC_CONFIGURATION_CNF(message_p).status = 1;
+    break;
+
+    case RRC_AS_SECURITY_CONFIG_REQ:
+      message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_AS_SECURITY_CONFIG_CNF);
+      RRC_AS_SECURITY_CONFIG_CNF(message_p).status = 1;
+    break;
+
+    case RRC_RBLIST_CFG_REQ:
+      message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_RBLIST_CFG_CNF);
+      RRC_RBLIST_CFG_CNF(message_p).status = 1;
+    break;
+
+    default:
+      LOG_E(RRC, "fxn:%s Received invalid message type\n", __FUNCTION__);
+    break;
+  }
+  itti_send_msg_to_task(TASK_SYS, instance, message_p);
+  LOG_I(RRC, "Sent Message to SYS_TASK\n");	
+}
+
+
 void
 openair_rrc_on(
   const protocol_ctxt_t *const ctxt_pP
@@ -9741,6 +9772,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case RRC_CONFIGURATION_REQ:
       LOG_I(RRC, "[eNB %ld] Received %s : %p\n", instance, msg_name_p, &RRC_CONFIGURATION_REQ(msg_p));
       openair_rrc_eNB_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_CONFIGURATION_REQ(msg_p));
+      if (RC.ss.mode >= SS_SOFTMODEM)
+        rrc_send_cnf_to_ss(msg_p);
       break;
 
     /* Messages from F1AP task */
@@ -9799,7 +9832,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                                  RLC_SDU_INDICATION(msg_p).message_id);
       break;
 
-//#ifdef ENB_SS
     case SS_RRC_PDU_REQ:
       if (RC.ss.mode >= SS_SOFTMODEM)
       {
@@ -10044,42 +10076,49 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
         break;
 
-    case RRC_AS_SECURITY_CONFIG_REQ:
-      LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint)
-      {
-        printf("kRRCint in RRC:\n");
-        for(int i=0;i<32;i++)
+        case RRC_AS_SECURITY_CONFIG_REQ:
+        LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",
+          instance, 
+          msg_name_p, 
+          &RRC_AS_SECURITY_CONFIG_REQ(msg_p),
+          RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,
+          RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+
+        if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint)
         {
-          LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+          printf("kRRCint in RRC:\n");
+          for(int i=0;i<32;i++)
+          {
+            LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+          }
+          printf("\n");
         }
-        printf("\n");
-      }
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
-      {
-        printf("kRRCenc in RRC:\n");
-        for(int j=0;j<16;j++)
+        if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
         {
-          LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+          printf("kRRCenc in RRC:\n");
+          for(int j=0;j<16;j++)
+          {
+            LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+          }
+          printf("\n");
         }
-        printf("\n");
-      }
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
-      {
-        LOG_D(RRC,"kUPenc in RRC:\n");
-        for(int k=0;k<16;k++)
+        if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
         {
-          LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+          LOG_D(RRC,"kUPenc in RRC:\n");
+          for(int k=0;k<16;k++)
+          {
+            LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+          }
+          LOG_D(RRC,"\n");
         }
-        LOG_D(RRC,"\n");
-      }
-      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                    instance,
-                                    ENB_FLAG_YES,
-                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
-                                    msg_p->ittiMsgHeader.lte_time.frame,
-                                    msg_p->ittiMsgHeader.lte_time.slot);
-      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+            instance,
+            ENB_FLAG_YES,
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+            msg_p->ittiMsgHeader.lte_time.frame,
+            msg_p->ittiMsgHeader.lte_time.slot);
+        rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+        rrc_send_cnf_to_ss(msg_p);
       break;
 
         case SS_SS_PAGING_IND:
@@ -10092,6 +10131,7 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         case RRC_RBLIST_CFG_REQ:
         LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
         rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
+        rrc_send_cnf_to_ss(msg_p);
         break;
 
     default:

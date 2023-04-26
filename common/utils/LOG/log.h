@@ -172,6 +172,7 @@ extern "C" {
 #define DEBUG_ENB_SS_VNG         (1<<30)
 #define DEBUG_ENB_SS_VTP         (1<<31)
 #define DEBUG_ENB_SS_VT_TIMER    (1<<32)
+#define DEBUG_ENB_SS_PORTMAN_ACP (1<<33)
 
 #define LOG_MASKMAP_INIT {\
     {"PRACH",       DEBUG_PRACH},\
@@ -192,6 +193,7 @@ extern "C" {
     {"UE_TIMING",   UE_TIMING},\
     {"ENB_SS",      DEBUG_ENB_SS},\
     {"ENB_SS_PORTMAN",      DEBUG_ENB_SS_PORTMAN},\
+    {"ENB_SS_PORTMAN_ACP",  DEBUG_ENB_SS_PORTMAN_ACP},\
     {"ENB_SS_SYS_TASK",     DEBUG_ENB_SS_SYS_TASK},\
     {"ENB_SS_SRB_ACP",      DEBUG_ENB_SS_SRB_ACP},\
     {"ENB_SS_SYSIND",       DEBUG_ENB_SS_SYSIND},\
@@ -253,6 +255,7 @@ typedef enum {
   ENB_APP,
   ENB_SS,
   ENB_SS_PORTMAN,
+  ENB_SS_PORTMAN_ACP,
   ENB_SS_SYS_TASK,
   ENB_SS_SRB_ACP,
   ENB_SS_SYSIND,
