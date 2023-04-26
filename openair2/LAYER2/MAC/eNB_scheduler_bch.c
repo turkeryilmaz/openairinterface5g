@@ -1266,7 +1266,9 @@ schedule_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP)
     }
   }
 
-  schedule_SIB1_BR(module_idP, frameP, subframeP);
-  schedule_SI_BR(module_idP, frameP, subframeP);
+  if(RC.ss.mode == SS_ENB) {
+    schedule_SIB1_BR(module_idP, frameP, subframeP);
+    schedule_SI_BR(module_idP, frameP, subframeP);
+  }
   stop_meas(&eNB->schedule_si);
 }
