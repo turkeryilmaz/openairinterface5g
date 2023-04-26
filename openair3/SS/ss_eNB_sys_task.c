@@ -58,7 +58,6 @@
 #include "udp_eNB_task.h"
 #include "ss_eNB_proxy_iface.h"
 #include "common/utils/LOG/ss-log.h"
-#include "msc.h"
 
 extern RAN_CONTEXT_t RC;
 extern uint32_t from_earfcn(int eutra_bandP, uint32_t dl_earfcn);
@@ -247,11 +246,6 @@ static int sys_send_init_udp(const udpSockReq_t *req)
   //addr.s_addr = req->ss_ip_addr;
   UDP_INIT(message_p).address = req->address; //inet_ntoa(addr);
   LOG_A(ENB_SS, "Tx UDP_INIT IP addr %s (%x)\n", UDP_INIT(message_p).address, UDP_INIT(message_p).port);
-  MSC_LOG_EVENT(
-      MSC_GTPU_ENB,
-      "0 UDP bind  %s:%u",
-      UDP_INIT(message_p).address,
-      UDP_INIT(message_p).port);
   return itti_send_msg_to_task(TASK_UDP, 0, message_p);
 }
 

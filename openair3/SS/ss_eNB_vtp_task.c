@@ -30,8 +30,7 @@
 #include "ss_eNB_multicell_helper.h"
 #include "SIDL_VIRTUAL_TIME_PORT.h"
 #include "acpSysVT.h"
-#define MSC_INTERFACE
-#include "msc.h"
+#include "enb_config.h"
 
 extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
@@ -66,11 +65,6 @@ static int vtp_send_init_udp(const vtp_udpSockReq_t *req)
   //addr.s_addr = req->ss_ip_addr;
   UDP_INIT(message_p).address = req->address; //inet_ntoa(addr);
   LOG_A(ENB_APP, "Tx UDP_INIT IP addr %s (%x)\n", UDP_INIT(message_p).address, UDP_INIT(message_p).port);
-  MSC_LOG_EVENT(
-      MSC_GTPU_ENB,
-      "0 UDP bind  %s:%u",
-      UDP_INIT(message_p).address,
-      UDP_INIT(message_p).port);
   return itti_send_msg_to_task(TASK_UDP, 0, message_p);
 }
 //------------------------------------------------------------------------------
