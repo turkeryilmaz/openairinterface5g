@@ -2543,6 +2543,17 @@ static int get_dl_mimo_layers(const gNB_RRC_INST *rrc, const NR_UE_NR_Capability
   return(1);
 }
 
+void nr_rrc_subframe_process(protocol_ctxt_t *const ctxt_pP, const int CC_id) {
+
+  MessageDef *msg;
+
+  /* send a tick to x2ap */
+  if (is_x2ap_enabled()){
+    msg = itti_alloc_new_message(TASK_RRC_ENB, 0, X2AP_SUBFRAME_PROCESS);
+    itti_send_msg_to_task(TASK_X2AP, ctxt_pP->module_id, msg);
+  }
+}
+
 int rrc_gNB_process_e1_setup_req(e1ap_setup_req_t *req, instance_t instance) {
 
   AssertFatal(req->supported_plmns <= PLMN_LIST_MAX_SIZE, "Supported PLMNs is more than PLMN_LIST_MAX_SIZE\n");
