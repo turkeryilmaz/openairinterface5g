@@ -334,6 +334,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
     assert(buffer);
 
+    LOG_I(ENB_SS, "[SS-PORTMAN] Entry in fxn:%s \n ", __FUNCTION__);
     int userId = acpRecvMsg(ctx, &msgSize, buffer);
 
     // Error handling
@@ -408,6 +409,7 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
             }
         }
     }
+    LOG_I(ENB_SS, "[SS-PORTMAN] Exit from fxn:%s \n ", __FUNCTION__);
     acpSysProcessFreeSrv(req);
     return;
 }
@@ -425,7 +427,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
 {
     MessageDef *received_msg = NULL;
     int result;
-
+    LOG_I(ENB_SS, "[SS-PORTMAN] Entry in fxn:%s \n ", __FUNCTION__);
     itti_poll_msg(TASK_SS_PORTMAN, &received_msg);
 
     /* Check if there is a packet to handle */
@@ -468,7 +470,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
     }
 
     ss_eNB_read_from_socket(ctx_g);
-
+    LOG_I(ENB_SS, "[SS-PORTMAN] Exit from fxn:%s \n ", __FUNCTION__);
     return NULL;
 }
 

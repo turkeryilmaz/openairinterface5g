@@ -202,7 +202,6 @@ void install_nr_schedule_handlers(NR_IF_Module_t *if_inst);
 void install_schedule_handlers(IF_Module_t *if_inst);
 extern int single_thread_flag;
 extern uint16_t sf_ahead;
-extern uint16_t slot_ahead;
 
 void oai_create_enb(void) {
   int bodge_counter=0;
@@ -241,9 +240,6 @@ void oai_create_enb(void) {
     FAPI_configured_for_a_CC = 1;
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB Cell %d is now configured\n", __FUNCTION__,CC_id);
   }
-
-
-  NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB is now configured\n", __FUNCTION__);
 }
 
 void oai_enb_init(void) {
@@ -382,7 +378,6 @@ int pnf_param_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_pnf_param_re
     pnf->phys[i] = phy;
 	pnf->num_phys = i+1;
   }
-
   for(int i = 0; i < resp->pnf_rf.number_of_rfs; ++i) {
     rf_info rf;
     memset(&rf,0,sizeof(rf));
@@ -655,7 +650,7 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
   static uint8_t first_time = 1;
   int CC_id=0;
   /* MultiCell: Function modify for Multiple CC */
-  /*for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {*/
+  /*for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) */{
     if (first_time) {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] subframe indication %d\n", NFAPI_SFNSF2DEC(sfn_sf));
       first_time = 0;
@@ -679,7 +674,6 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
 
     if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->configured:%d\n", RC.eNB[0][0]->configured);
   }
-
   return 0;
 }
 
@@ -1735,24 +1729,13 @@ int config_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_config_response
 }
 
 int start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_start_response_t *resp) {
-	NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
-	vnf_info *vnf = (vnf_info *)(config->user_data);
-	pnf_info *pnf = vnf->pnfs;
-	phy_info *phy = pnf->phys;
-	vnf_p7_info *p7_vnf = vnf->p7_vnfs;
-	uint16_t port =htons(phy->remote_port);
-	char *remote_addr = (char *) malloc(strlen(phy->remote_addr)+1);
-	memset(remote_addr, 0, strlen(phy->remote_addr)+1);
-	strncpy(remote_addr, phy->remote_addr, strlen(phy->remote_addr));
-	for(int i=0; i < pnf->num_phys; i++ )
-	{
-		nfapi_vnf_p7_add_pnf((p7_vnf->config), remote_addr, (int)port, phy->id);
-		LOG_D(NFAPI_VNF, "MultiCell: fxn:%d phy_id added:%d\n", p5_idx, resp->header.phy_id);
-		phy +=1;
-	}
-	free(remote_addr);
-	remote_addr = NULL;
-	return 0;
+  NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] Received NFAPI_START_RESP idx:%d phy_id:%d\n", p5_idx, resp->header.phy_id);
+  vnf_info *vnf = (vnf_info *)(config->user_data);
+  pnf_info *pnf = vnf->pnfs;
+  phy_info *phy = pnf->phys;
+  vnf_p7_info *p7_vnf = vnf->p7_vnfs;
+  nfapi_vnf_p7_add_pnf((p7_vnf->config), phy->remote_addr, htons(phy->remote_port), phy->id);
+  return 0;
 }
 
 int nr_start_resp_cb(nfapi_vnf_config_t *config, int p5_idx, nfapi_nr_start_response_scf_t *resp) {
@@ -1967,7 +1950,7 @@ int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req)
   LOG_D(NR_PHY, "Entering oai_nfapi_nr_dl_config_req sfn:%d,slot:%d\n", dl_config_req->SFN, dl_config_req->Slot);
   nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
   dl_config_req->header.message_id= NFAPI_NR_PHY_MSG_TYPE_DL_TTI_REQUEST;
-  //dl_config_req->header.phy_id = 1; // DJP HACK TODO FIXME - need to pass this around!!!!
+  //dl_config_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
 
   int retval = nfapi_vnf_p7_nr_dl_config_req(p7_config, dl_config_req);
 
@@ -1985,7 +1968,7 @@ int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req)
 {
   LOG_D(NR_PHY, "Entering oai_nfapi_nr_tx_data_req sfn:%d,slot:%d\n", tx_data_req->SFN, tx_data_req->Slot);
   nfapi_vnf_p7_config_t *p7_config = vnf.p7_vnfs[0].config;
-  //tx_data_req->header.phy_id = 1; // DJP HACK TODO FIXME - need to pass this around!!!!
+  //tx_data_req->header.phy_id = 1; // HACK TODO FIXME - need to pass this around!!!!
   tx_data_req->header.message_id = NFAPI_NR_PHY_MSG_TYPE_TX_DATA_REQUEST;
   //LOG_D(PHY, "[VNF] %s() TX_REQ sfn_sf:%d number_of_pdus:%d\n", __FUNCTION__, NFAPI_SFNSF2DEC(tx_req->sfn_sf), tx_req->tx_request_body.number_of_pdus);
   int retval = nfapi_vnf_p7_tx_data_req(p7_config, tx_data_req);

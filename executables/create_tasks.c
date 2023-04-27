@@ -95,6 +95,9 @@ int create_tasks(uint32_t enb_nb) {
     LOG_I(MAC,"Creating MAC eNB Task\n");
     rc = itti_create_task(TASK_MAC_ENB, mac_enb_task, NULL);
     AssertFatal(rc >= 0, "Create task for MAC eNB failed\n");
+
+    rc = itti_create_task(TASK_UDP, udp_eNB_task, NULL);
+    AssertFatal(rc >= 0, "Create task for UDP failed\n");
   }
 
   LOG_I(ENB_APP, "Creating ENB_APP eNB Task\n");
