@@ -1511,7 +1511,7 @@ void vnf_handle_nr_slot_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf
 		}
 		else
 		{
-			NFAPI_TRACE(NFAPI_TRACE_DEBUG, "%s: Handling NR SLOT Indication\n", __FUNCTION__);
+			NFAPI_TRACE(NFAPI_TRACE_DEBUG, "%s: Handling NR SLOT Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
                         if(vnf_p7->_public.nr_slot_indication)
 			{
 				(vnf_p7->_public.nr_slot_indication)(&ind);
@@ -1537,7 +1537,7 @@ void vnf_handle_nr_rx_data_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* 
 		}
 		else
 		{
-			NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RX Indication\n", __FUNCTION__);
+			NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RX Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
                         if(vnf_p7->_public.nr_rx_data_indication)
 			{
 				(vnf_p7->_public.nr_rx_data_indication)(&ind);
@@ -1563,7 +1563,7 @@ void vnf_handle_nr_crc_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_
 		}
 		else
 		{
-		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling CRC Indication\n", __FUNCTION__);
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling CRC Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_crc_indication)
 			{
 				(vnf_p7->_public.nr_crc_indication)(&ind);
@@ -1589,6 +1589,7 @@ void vnf_handle_nr_srs_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_
 		}
 		else
 		{
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling SRS Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_srs_indication)
 			{
 				(vnf_p7->_public.nr_srs_indication)(&ind);
@@ -1614,7 +1615,7 @@ void vnf_handle_nr_uci_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf_
 		}
 		else
 		{
-		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling UCI Indication\n", __FUNCTION__);
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling UCI Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_uci_indication)
 			{
 				(vnf_p7->_public.nr_uci_indication)(&ind);
@@ -1640,7 +1641,7 @@ void vnf_handle_nr_rach_indication(void *pRecvMsg, int recvMsgLen, vnf_p7_t* vnf
 		}
 		else
 		{
-		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RACH Indication\n", __FUNCTION__);
+		        NFAPI_TRACE(NFAPI_TRACE_INFO, "%s: Handling RACH Indication sfn:%d slot:%d\n", __FUNCTION__, ind.sfn, ind.slot);
 			if(vnf_p7->_public.nr_rach_indication)
 			{
 				(vnf_p7->_public.nr_rach_indication)(&ind);

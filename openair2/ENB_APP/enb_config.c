@@ -145,7 +145,7 @@ void RCconfig_L1(void) {
     // need to create some structures for VNF
     j = 0;
     RC.nb_L1_CC = malloc((1+RC.nb_L1_inst)*sizeof(int));
-    RC.nb_L1_CC[j]=MAX_NUM_CCs;
+    RC.nb_L1_CC[j]=MAX_NUM_CCs; //MultiCell: Initialization of nb_L1_CC with maximum number of CC
 
     if (RC.eNB[j] == NULL) {
       RC.eNB[j]                       = (PHY_VARS_eNB **)malloc((1+MAX_NUM_CCs)*sizeof(PHY_VARS_eNB **));
