@@ -320,6 +320,11 @@ typedef struct {
   fapi_nr_dl_config_dci_dl_pdu_rel15_t pdcch_config[FAPI_NR_MAX_SS];
 } NR_UE_PDCCH_CONFIG;
 
+#define NR_PSBCH_MAX_NB_CARRIERS 132
+#define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
+#define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
+#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
    filled in by the upper layers once developed. */
@@ -673,6 +678,8 @@ typedef struct {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
+  uint16_t tdd_slot_config;
+  uint8_t tdd_period;
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {
