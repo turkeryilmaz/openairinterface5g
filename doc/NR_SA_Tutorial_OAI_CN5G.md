@@ -71,13 +71,13 @@ docker build --target ims --tag asterisk-ims:latest --file ~/oai-cn5g/Dockerfile
 ## 3.1 Start OAI CN5G
 ```bash
 cd ~/oai-cn5g
-docker compose up -d
+docker-compose up -d
 ```
 
 ## 3.2 Stop OAI CN5G
 ```bash
 cd ~/oai-cn5g
-docker compose down
+docker-compose down
 ```
 
 # 4. Run 5G NR SA end-to-end setup with OAI gNB
