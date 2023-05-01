@@ -817,7 +817,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
     {
       if (AddOrReconfigure->Active.d == true)
       {
-        do 
+        do
         {
           if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.d == true)
           {
@@ -841,14 +841,14 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
             else if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d == UL_GrantConfig_Type_Periodic)
             {
               SS_ULGRANT_INFO(msg_p).ulGrantType = PERIODIC_PRESENT;
-              SS_ULGRANT_INFO(msg_p).periodiGrantInfo.ULGrantPeriodType  = 
-                AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.d; 
+              SS_ULGRANT_INFO(msg_p).periodiGrantInfo.ULGrantPeriodType  =
+                AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.d;
               LOG_I(ENB_SS_SYS_TASK, "ULGrantPeriodType:%d\n", SS_ULGRANT_INFO(msg_p).periodiGrantInfo.ULGrantPeriodType);
               if (AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.d == ULGrant_Period_Type_Duration)
               {
-                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.period.duration = 
-                  AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.v.Duration; 
-                LOG_I(ENB_SS_SYS_TASK, "Received Periodic ULGrant type ULGrant_Period_Type_Duration: %d received:%d cell_index:%d\n", 
+                SS_ULGRANT_INFO(msg_p).periodiGrantInfo.period.duration =
+                  AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.v.Duration;
+                LOG_I(ENB_SS_SYS_TASK, "Received Periodic ULGrant type ULGrant_Period_Type_Duration: %d received:%d cell_index:%d\n",
                     SS_ULGRANT_INFO(msg_p).periodiGrantInfo.period.duration,
                     AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.Period.v.Duration,
                     cell_index);
@@ -864,7 +864,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
               {
                 SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous = 1;
                 SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles = 0;
-                LOG_I(ENB_SS_SYS_TASK, "line:%d Continuous:%d NumOfCycles:%d\n", 
+                LOG_I(ENB_SS_SYS_TASK, "line:%d Continuous:%d NumOfCycles:%d\n",
                   __LINE__,
                   SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous,
                   SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles);
@@ -874,7 +874,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
                 SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles =
                   AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.v.Periodic.NoOfRepetitions.v.NumOfCycles;
                 SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous = 0;
-                LOG_I(ENB_SS_SYS_TASK, "line:%d Continuous:%d NumOfCycles:%d\n", 
+                LOG_I(ENB_SS_SYS_TASK, "line:%d Continuous:%d NumOfCycles:%d\n",
                   __LINE__,
                   SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.Continuous,
                   SS_ULGRANT_INFO(msg_p).periodiGrantInfo.transRepType.NumOfCycles);
@@ -889,7 +889,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
             }
             else
             {
-              LOG_A(ENB_SS_SYS_TASK, "ULGrantType %d is not supported. Current supported ULGrant is OnSR_Reception & periodic only \n", 
+              LOG_A(ENB_SS_SYS_TASK, "ULGrantType %d is not supported. Current supported ULGrant is OnSR_Reception & periodic only \n",
                   AddOrReconfigure->Active.v.CcchDcchDtchConfig.v.UL.v.UL_GrantConfig.v.d);
             }
           }
@@ -950,7 +950,7 @@ static void send_sys_cnf(enum ConfirmationResult_Type_Sel resType,
 
   if (message_p)
   {
-    LOG_A(ENB_SS_SYS_TASK, "Send SS_SYS_PORT_MSG_CNF\n");
+    LOG_A(ENB_SS_SYS_TASK, "Send SS_SYS_PORT_MSG_CNF cnf_Type %d, res_Type %d\n",cnfType,resType);
     msgCnf->Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
     msgCnf->Common.Result.d = resType;
     msgCnf->Common.Result.v.Success = resVal;
@@ -1069,8 +1069,8 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
         } else {
           RC.nb_CC[0] ++;
           //Set the number of MAC_CC to current configured CC value
-          *RC.nb_mac_CC= RC.nb_CC[0];
-                
+          //*RC.nb_mac_CC= RC.nb_CC[0];
+
           LOG_I (ENB_SS_SYS_TASK,"[SYS] CC-MGMT nb_cc is incremented current Configured CC are %d current CC_index %d nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
         }
@@ -1089,7 +1089,7 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
   default:
     LOG_A(ENB_SS_SYS_TASK, "CellConfigRequest INVALID Type receivied\n");
   }
-  
+
   if (reqCnfFlag_g == true)
   {
     SS_context.sys_cnf.resType = resType;
@@ -2189,7 +2189,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
     SS_context.sys_cnf.resVal = resVal;
     SS_context.sys_cnf.cnfType = cnfType;
     SS_context.sys_cnf.cnfFlag = 1;
-    memset((void *)SS_context.sys_cnf.msg_buffer, 0, 1000); 
+    memset((void *)SS_context.sys_cnf.msg_buffer, 0, 1000);
   }
 //  send_sys_cnf(resType, resVal, cnfType, NULL);
 }
@@ -2548,7 +2548,7 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
           {
             LOG_A(ENB_SS_SYS_TASK, "Not hanled SYS_PORT message received \n");
           }
-          
+
           if (SS_SYS_PORT_MSG_IND(received_msg).req)
             free(SS_SYS_PORT_MSG_IND(received_msg).req);
 
