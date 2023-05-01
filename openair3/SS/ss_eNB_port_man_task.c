@@ -129,7 +129,7 @@ void ss_port_man_send_cnf(struct SYSTEM_CTRL_CNF recvCnf)
     cnf.Common.Result.d = recvCnf.Common.Result.d;
     cnf.Common.Result.v.Success = recvCnf.Common.Result.v.Success;
     cnf.Confirm.d = recvCnf.Confirm.d;
-    LOG_A(ENB_SS_PORTMAN, "Attn CNF received cellId %d result %d type %d \n",
+    LOG_A(ENB_SS_PORTMAN, "SYS_CNF received cellId %d result %d type %d \n",
                      cnf.Common.CellId,cnf.Common.Result.d, recvCnf.Confirm.d);
     switch (recvCnf.Confirm.d)
     {
@@ -380,10 +380,10 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
         }
         else if (userId == -ACP_PEER_DISCONNECTED){
             LOG_E(ENB_SS_PORTMAN_ACP, "Error: Peer ordered shutdown\n");
-        } 
+        }
         else if (userId == -ACP_PEER_CONNECTED){
             LOG_A(ENB_SS_PORTMAN_ACP, " Peer connection established\n");
-        } 
+        }
         else
         {
             return;
@@ -523,6 +523,9 @@ void *ss_port_man_process_itti_msg(void *notUsed)
         received_msg = NULL;
     }
 
+    /* Now handle notifications for other sockets */
+    ss_eNB_read_from_socket(ctx_g);
+
     LOG_D(ENB_SS_PORTMAN, "Exit from fxn:%s\n", __FUNCTION__);
     return NULL;
 }
@@ -539,6 +542,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
  */
 void *ss_eNB_port_man_eNB_task(void *arg)
 {
+    ss_eNB_port_man_init();
     while (1)
     {
         /* Now handle notifications for other sockets */
@@ -551,11 +555,12 @@ void *ss_eNB_port_man_eNB_task(void *arg)
 
 void *ss_eNB_port_man_acp_task(void *arg)
 {
-    ss_eNB_port_man_init();
+   // ss_eNB_port_man_init();
     while (1)
     {
         /* Now handle notifications for other sockets */
-        ss_eNB_read_from_socket(ctx_g);
+       // ss_eNB_read_from_socket(ctx_g);
+       sleep(1000);
     }
 
     return NULL;
@@ -609,8 +614,8 @@ bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
     return false;
   }
 
-  LOG_A(ENB_SS_PORTMAN, "enquiryTiming CNF sent successfully for SFN:%d SF:%d\n", 
-      cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number, 
+  LOG_A(ENB_SS_PORTMAN, "enquiryTiming CNF sent successfully for SFN:%d SF:%d\n",
+      cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number,
       cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number);
   acpFree(buffer);
   return true;
