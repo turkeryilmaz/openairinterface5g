@@ -64,10 +64,10 @@ int create_tasks(uint32_t enb_nb) {
   {
     rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_eNB_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS manager failed\n");
-
+#if 0
     rc = itti_create_task(TASK_SS_PORTMAN_ACP, ss_eNB_port_man_acp_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS manager failed\n");
-
+#endif
     rc = itti_create_task(TASK_SYS, ss_eNB_sys_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS failed\n");
 

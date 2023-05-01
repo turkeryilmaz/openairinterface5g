@@ -2520,10 +2520,10 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
           {
             LOG_A(ENB_SS_SYS_TASK, "Signalling main thread for cell config done indication\n");
             send_sys_cnf(SS_context.sys_cnf.resType,
-              SS_context.sys_cnf.resVal,
-              SS_context.sys_cnf.cnfType,
-              (void *)SS_context.sys_cnf.msg_buffer);
-              sys_confirm_done_indication();
+                SS_context.sys_cnf.resVal,
+                SS_context.sys_cnf.cnfType,
+                (void *)SS_context.sys_cnf.msg_buffer);
+            sys_confirm_done_indication();
           }
           break;
         }
@@ -2562,11 +2562,11 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
             LOG_A(ENB_SS_SYS_TASK, "Not hanled SYS_PORT message received \n");
           }
 
-          if (SS_SYS_PORT_MSG_IND(received_msg).req)
-            free(SS_SYS_PORT_MSG_IND(received_msg).req);
-
           if (SS_SYS_PORT_MSG_IND(received_msg).req->Common.ControlInfo.CnfFlag == false)
             sys_confirm_done_indication();
+
+          if (SS_SYS_PORT_MSG_IND(received_msg).req)
+            free(SS_SYS_PORT_MSG_IND(received_msg).req);
 
           LOG_A(ENB_SS_SYS_TASK, "Signalling main thread for cell config done indication\n");
 

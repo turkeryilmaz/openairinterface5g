@@ -484,7 +484,7 @@ void *ss_port_man_process_itti_msg(void *notUsed)
     MessageDef *received_msg = NULL;
     int result;
     LOG_D(ENB_SS_PORTMAN, "Entry in fxn:%s\n", __FUNCTION__);
-    itti_receive_msg(TASK_SS_PORTMAN, &received_msg);
+    itti_poll_msg(TASK_SS_PORTMAN, &received_msg);
     if (received_msg != NULL)
     {
         LOG_A(ENB_SS_PORTMAN, "Received a message id : %d \n",
