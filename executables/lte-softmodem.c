@@ -504,6 +504,7 @@ int main ( int argc, char **argv )
     if (RC.ss.mode == SS_SOFTMODEM) {
       /** wait for signal */
       wait_cell_config("TASK_SYS");
+      rrc_enb_process_itti_msg(NULL);
     } else
     {
       for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++) {
