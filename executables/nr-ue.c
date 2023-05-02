@@ -220,7 +220,6 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
     int dl_tti_sfn_slot = NFAPI_SFNSLOT2HEX(dl_tti_request->SFN, dl_tti_request->Slot);
     LOG_A(NR_MAC, "[%d %d] sfn/slot dl_tti_request received \n",
     		 NFAPI_SFNSLOT2SFN(dl_tti_sfn_slot), NFAPI_SFNSLOT2SLOT(dl_tti_sfn_slot));
-    LOG_E(NR_MAC, "@@@ BLABLA [%d %d] sfn/slot dl_tti_request received \n", NFAPI_SFNSLOT2SFN(dl_tti_sfn_slot), NFAPI_SFNSLOT2SLOT(dl_tti_sfn_slot)); //TODO:BLA
     nfapi_nr_tx_data_request_t *tx_data_request = unqueue_matching(&nr_tx_req_queue, MAX_QUEUE_SIZE, sfn_slot_matcher, &dl_tti_sfn_slot);
     if (!tx_data_request) {
       LOG_E(NR_MAC, "[%d %d] No corresponding tx_data_request for given dl_tti_request sfn/slot\n",
@@ -304,8 +303,8 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
     if (slot_ind) {
     	frame_t frame = NFAPI_SFNSLOT2SFN(*slot_ind);
         int slot = NFAPI_SFNSLOT2SLOT(*slot_ind);
-        /* LOG_A(NR_MAC, "The received sfn/slot [%d %d] from proxy\n", */
-        /*       frame, slot); */
+        LOG_A(NR_MAC, "The received sfn/slot [%d %d] from proxy\n",
+              frame, slot);
       sfn_slot = *slot_ind;
       free_and_zero(slot_ind);
     }

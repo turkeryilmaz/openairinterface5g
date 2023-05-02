@@ -520,7 +520,6 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
           case NR_SystemRequest_Type_Paging:
             {
                 LOG_A(GNB_APP, "[SYS-GNB] NR_SystemRequest_Type_Paging: received\n");
-                LOG_E(GNB_APP, "BLABLABLA [SYS-GNB] NR_SystemRequest_Type_Paging: received\n"); //TODO:BLA
                 ss_nrset_timinfo_t pg_timinfo;
                 pg_timinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
                 pg_timinfo.slot = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number; //TODO

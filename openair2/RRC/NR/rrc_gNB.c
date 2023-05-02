@@ -230,7 +230,6 @@ char openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_RrcConfigu
   LOG_I(NR_RRC,
         PROTOCOL_NR_RRC_CTXT_FMT" Init...\n",
         PROTOCOL_NR_RRC_CTXT_ARGS(&ctxt));
-  LOG_E(NR_RRC, PROTOCOL_NR_RRC_CTXT_FMT" >>> BLABLABLA Init...\n", PROTOCOL_NR_RRC_CTXT_ARGS(&ctxt)); //TODO:BLA
 
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
   AssertFatal(NUMBER_OF_UE_MAX < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
@@ -509,8 +508,6 @@ int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, insta
   }
 
   pthread_mutex_unlock(&ue_pf_po_mutex);
-  LOG_E(NR_RRC, ">>> BLABLA: rrc_gNB_process_SS_PAGING_IND Tc=%d T=%d N=%d poffset=%d Ns=%d, instance=%d CC_id=%d frame_type=%d\n", Tc, T, N, pfoffset, Ns, (int)instance, CC_id, frame_type); //TODO:BLA
-  LOG_E(NR_RRC, ">>> BLABLA: rrc_gNB_process_SS_PAGING_IND ue_index_value=%d T=%d PF_min=%d PF_offset=%d i_s=%d PO=%d enable_flag=%d\n", UE_PF_PO[CC_id][i].ue_index_value, UE_PF_PO[CC_id][i].T, UE_PF_PO[CC_id][i].PF_min, UE_PF_PO[CC_id][i].PF_offset, UE_PF_PO[CC_id][i].i_s, UE_PF_PO[CC_id][i].PO, UE_PF_PO[CC_id][i].enable_flag); //TODO:BLA
 
   /* Create message for PDCP (DLInformationTransfer_t) */
   length = do_NR_Paging(instance, buffer, NULL, SS_NR_PAGING_IND(msg_p).num_paging_record,  SS_NR_PAGING_IND(msg_p).paging_recordList);
@@ -536,7 +533,6 @@ int rrc_gNB_process_SS_PAGING_IND(MessageDef *msg_p, const char *msg_name, insta
   RRC_PCCH_DATA_REQ(message_p).ue_index = 0;
   RRC_PCCH_DATA_REQ(message_p).CC_id = CC_id;
   LOG_A(NR_RRC, "[gNB %ld] CC_id %d In do_NR_Paging: send encoded buffer to PDCP buffer_size %d\n", instance, CC_id, length);
-  LOG_E(NR_RRC, ">>> BLABLABLA [gNB %ld] CC_id %d In do_NR_Paging: send encoded buffer to PDCP buffer_size %d\n", instance, CC_id, length); //TODO:BLA
   itti_send_msg_to_task(TASK_PDCP_ENB, instance, message_p);
 
   return 0;
@@ -4441,7 +4437,6 @@ void *rrc_gnb_task(void *args_p) {
 
       case SS_SS_NR_PAGING_IND:
         LOG_A(NR_RRC, "Received Paging message from SS: %s\n", msg_name_p);
-        LOG_E(NR_RRC, ">> BLABLABLA Received Paging message from SS: %s\n", msg_name_p); //TODO:BLA
         rrc_gNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
         break;
 

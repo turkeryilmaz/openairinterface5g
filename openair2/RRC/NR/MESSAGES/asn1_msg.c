@@ -2011,8 +2011,6 @@ uint8_t do_RRCSetupRequest(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size, 
                                    (void *)&ul_ccch_msg,
                                    buffer,
                                    buffer_size);
-  LOG_E(NR_RRC,"!!! BLABLABLA [UE] RRCSetupRequest Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8); //TODO:BLA
-  xer_fprint(stdout, &asn_DEF_NR_UL_CCCH_Message, (void *)&ul_ccch_msg); //TODO:BLA
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(NR_RRC,"[UE] RRCSetupRequest Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
   return((enc_rval.encoded+7)/8);
@@ -2495,7 +2493,6 @@ NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
 
 uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t *tmsi, size_t num_paging_record, ss_nr_paging_identity_t *paging_recordList) {
   LOG_D(NR_RRC, "[gNB %d] do_NR_Paging start\n", Mod_id);
-  LOG_E(NR_RRC, ">>> BLABLA [gNB %d] do_NR_Paging start\n", Mod_id); //TODO:BLA
   NR_PCCH_Message_t pcch_msg;
   memset((void *)&pcch_msg, 0, sizeof(NR_PCCH_Message_t));
 
@@ -2547,14 +2544,12 @@ uint8_t do_NR_Paging(uint8_t Mod_id, uint8_t *buffer, uint32_t *tmsi, size_t num
 
   /* add to list */
   LOG_D(NR_RRC, "[gNB %d] do_NR_Paging paging_record: PagingRecordList.count %d\n", Mod_id, c1->choice.paging->pagingRecordList->list.count);
-  LOG_E(NR_RRC, ">>> BLABLABLA [gNB %d] do_NR_Paging paging_record: PagingRecordList.count %d\n", Mod_id, c1->choice.paging->pagingRecordList->list.count); //TODO:BLA
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_PCCH_Message, NULL, (void *)&pcch_msg, buffer, RRC_BUF_SIZE);
   if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
     if (enc_rval.encoded != -1) {
       xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, (void *)&pcch_msg);
     }
   }
-  xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, (void *)&pcch_msg); fflush(stdout); //TODO:BLA
   ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_PCCH_Message, &pcch_msg);
   if (enc_rval.encoded == -1) {
     LOG_E(NR_RRC, "[gNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",

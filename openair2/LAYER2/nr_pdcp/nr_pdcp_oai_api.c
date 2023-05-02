@@ -975,7 +975,6 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
       break;
     case RRC_PCCH_DATA_REQ:
       LOG_D(PDCP, "PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", RRC_PCCH_DATA_REQ(msg_p).CC_id, RRC_PCCH_DATA_REQ(msg_p).sdu_size);
-      LOG_E(PDCP, ">>> BLABLABLA PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", RRC_PCCH_DATA_REQ(msg_p).CC_id, RRC_PCCH_DATA_REQ(msg_p).sdu_size); //TODO:BLA
 
       RC.nrrrc[ctxt_pP->module_id]->carrier.sizeof_paging = RRC_PCCH_DATA_REQ(msg_p).sdu_size;
       memcpy(RC.nrrrc[ctxt_pP->module_id]->carrier.paging, RRC_PCCH_DATA_REQ(msg_p).sdu_p, RRC_PCCH_DATA_REQ(msg_p).sdu_size);

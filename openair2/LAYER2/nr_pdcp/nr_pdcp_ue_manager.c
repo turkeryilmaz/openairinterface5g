@@ -87,10 +87,8 @@ nr_pdcp_ue_t *nr_pdcp_manager_get_ue_ex(nr_pdcp_ue_manager_t *_m, int rnti)
   }
 
   nr_pdcp_manager_lock(m);
-    LOG_E(PDCP, ">>>> BLABLABLA %s:%d:%s: CHECK RNTI count=%d rnti=%d \n", __FILE__, __LINE__, __FUNCTION__, m->ue_count, rnti); //TODO:BLA
   for (i = 0; i < m->ue_count; i++)
   {
-    LOG_E(PDCP, ">>>> BLABLABLA %s:%d:%s: CHECK RNTI i=%d rnti=%d m->ue_list[i]->rntiMaybeUEid=%d \n", __FILE__, __LINE__, __FUNCTION__, i, rnti, m->ue_list[i]->rntiMaybeUEid); //TODO:BLA
     if (m->ue_list[i]->rntiMaybeUEid == rnti)
     {
       ret = m->ue_list[i];

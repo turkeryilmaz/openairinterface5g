@@ -1016,7 +1016,6 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
       return -1;
     }
 
-    LOG_E(MAC, ">>> BLABLA [%d.%d] BEFORE ASSERT RNTI=%x!\n", frame, slot, rnti); //TODO:BLA
    if(rnti != ra->ra_rnti && rnti != SI_RNTI && rnti != P_RNTI)
      AssertFatal(1+dci->pdsch_to_harq_feedback_timing_indicator.val>=DURATION_RX_TO_TX,"PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
                  1+dci->pdsch_to_harq_feedback_timing_indicator.val,DURATION_RX_TO_TX);
@@ -2776,7 +2775,6 @@ void nr_ue_send_sdu(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *u
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_SEND_SDU, VCD_FUNCTION_IN);
 
   LOG_D(MAC, "In %s [%d.%d] Handling PDSCH PDU...\n", __FUNCTION__, dl_info->frame, dl_info->slot);
-  LOG_E(MAC, ">>> BLABLA In %s [%d.%d] Handling PDSCH PDU...\n", __FUNCTION__, dl_info->frame, dl_info->slot); //TODO:BLA
 
   // Processing MAC PDU
   // it parses MAC CEs subheaders, MAC CEs, SDU subheaderds and SDUs
@@ -3525,7 +3523,6 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
   }
 
   LOG_D(MAC, "In %s [%d.%d]: processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, frameP, slot, pdu_id, pdu_len, dl_info->rx_ind->number_pdus);
-  LOG_E(MAC, ">>> BLABLA In %s [%d.%d]: processing PDU %d (with length %d) of %d total number of PDUs...\n", __FUNCTION__, frameP, slot, pdu_id, pdu_len, dl_info->rx_ind->number_pdus); //TODO:BLA
 
   while (!done && pdu_len > 0){
     uint16_t mac_len = 0x0000;
@@ -3533,7 +3530,6 @@ void nr_ue_process_mac_pdu(nr_downlink_indication_t *dl_info,
     uint8_t rx_lcid = ((NR_MAC_SUBHEADER_FIXED *)pduP)->LCID;
 
     LOG_D(MAC, "[UE] LCID %d, PDU length %d\n", rx_lcid, pdu_len);
-    LOG_E(MAC, ">>> BLABLA [UE] LCID %d, PDU length %d\n", rx_lcid, pdu_len); //TODO:BLA
     bool ret;
     switch(rx_lcid){
       //  MAC CE

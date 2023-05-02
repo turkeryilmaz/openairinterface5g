@@ -1503,10 +1503,6 @@ void nr_fill_nfapi_dl_paging_pdu(int Mod_idP,
   LOG_D(NR_MAC, "paging:bwpStart %d, bwpSize %d\n", pdsch_pdu_rel15->BWPStart, pdsch_pdu_rel15->BWPSize);
   LOG_D(NR_MAC, "paging:rbStart %d, rbSize %d\n", pdsch_pdu_rel15->rbStart, pdsch_pdu_rel15->rbSize);
   LOG_D(NR_MAC, "paging:dlDmrsSymbPos = 0x%x\n", pdsch_pdu_rel15->dlDmrsSymbPos);
-  LOG_E(NR_MAC, ">>> BLABLABLA paging:bwpStart %d, bwpSize %d\n", pdsch_pdu_rel15->BWPStart, pdsch_pdu_rel15->BWPSize); //TODO:BLA
-  LOG_E(NR_MAC, ">>> BLABLABLA paging:rbStart %d, rbSize %d\n", pdsch_pdu_rel15->rbStart, pdsch_pdu_rel15->rbSize); //TODO:BLA
-  LOG_E(NR_MAC, ">>> BLABLABLA paging:dlDmrsSymbPos = 0x%x\n", pdsch_pdu_rel15->dlDmrsSymbPos); //TODO:BLA
-  LOG_E(NR_MAC, ">>> BLABLABLA paging:  mcs=%d mcsTableIdx=%d StartSymbolIndex=%d NrOfSymbols=%d\n", pdsch->mcs, mcsTableIdx, StartSymbolIndex, NrOfSymbols); //TODO:BLA
 
   pdsch_pdu_rel15->maintenance_parms_v3.tbSizeLbrmBytes = nr_compute_tbslbrm(0,
                                                                              pdsch_pdu_rel15->BWPSize,
@@ -1621,7 +1617,6 @@ void schedule_nr_PCH(module_id_t module_idP,
                 module_idP,
                 frameP,
                 slotP);
-          LOG_E(NR_MAC, "!!!! BLABLABLA [gNB %d] Frame %d slot %d: PCCH not active(size = 0 byte)\n", module_idP, frameP, slotP); //TODO:BLA
           continue;
         }
 
@@ -1632,7 +1627,6 @@ void schedule_nr_PCH(module_id_t module_idP,
               CC_id,
               i,
               pcch_sdu_length);
-        LOG_E(NR_MAC, "@@@@@@@@@@ BLABLA [gNB %d] Frame %d slot %d: PCCH->PCH CC_id %d UE_id %d, Received %d bytes  ue_index=%d \n", module_idP, frameP, slotP, CC_id, i, pcch_sdu_length, ue_pf_po->ue_index_value); //TODO:BLA
 
         NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = gNB_mac->type0_PDCCH_CSS_config;
 
@@ -1645,9 +1639,6 @@ void schedule_nr_PCH(module_id_t module_idP,
         LOG_D(NR_MAC, "paging:type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern);
         LOG_D(NR_MAC, "paging:time_domain_allocation: %i\n", time_domain_allocation);
         LOG_D(NR_MAC, "paging:dmrs_TypeA_Position: %i\n", scc->dmrs_TypeA_Position);
-        LOG_E(NR_MAC, ">>> BLABLABLA paging:type0_pdcch_ss_mux_pattern: %i\n", type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern); //TODO:BLA
-        LOG_E(NR_MAC, ">>> BLABLABLA paging:time_domain_allocation: %i\n", time_domain_allocation); //TODO:BLA
-        LOG_E(NR_MAC, ">>> BLABLABLA paging:dmrs_TypeA_Position: %i\n", scc->dmrs_TypeA_Position); //TODO:BLA
         get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
                                  time_domain_allocation,
                                  gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
@@ -1655,7 +1646,6 @@ void schedule_nr_PCH(module_id_t module_idP,
                                  &is_typeA,
                                  &startSymbolIndex,
                                  &nrOfSymbols);
-        LOG_E(NR_MAC, ">>> BLABLABLA paging:  StartSymbolIndex=%d NrOfSymbols=%d\n", startSymbolIndex, nrOfSymbols); //TODO:BLA
 
         NR_tda_info_t tda_info = {
           .mapping_type = is_typeA ? typeA : typeB,
@@ -1675,7 +1665,6 @@ void schedule_nr_PCH(module_id_t module_idP,
                                                &dmrs_parms,
                                                &tda_info,
                                                pcch_sdu_length);
-        LOG_E(NR_MAC,">>>> BLABLABLA PAGING TBS=%d (len=%d)\n", TBS, pcch_sdu_length); //TODO:BLA
 
 
         int pdu_index = gNB_mac->pdu_index[0]++;

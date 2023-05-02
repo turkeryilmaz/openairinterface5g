@@ -164,11 +164,9 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
   // PCCH
   if ((Srb_id & RAB_OFFSET) == PCCH) {
     LOG_T(NR_RRC, "[eNB %d] Frame %d PCCH request (Srb_id %ld)\n", Mod_idP, frameP, Srb_id);
-    LOG_E(NR_RRC, ">>> BLABLABLA [eNB %d] Frame %d PCCH request (Srb_id %ld)\n", Mod_idP, frameP, Srb_id); //TODO:BLA
 
     if (RC.nrrrc[Mod_idP]->carrier.sizeof_paging > 0) {
       LOG_D(NR_RRC, "[eNB %d] PCCH has %d bytes\n", Mod_idP, RC.nrrrc[Mod_idP]->carrier.sizeof_paging);
-      LOG_E(NR_RRC, ">>>> BLABLABLA [eNB %d] PCCH has %d bytes\n", Mod_idP, RC.nrrrc[Mod_idP]->carrier.sizeof_paging); //TODO:BLA
       memcpy(buffer_pP, RC.nrrrc[Mod_idP]->carrier.paging, RC.nrrrc[Mod_idP]->carrier.sizeof_paging);
       Sdu_size = RC.nrrrc[Mod_idP]->carrier.sizeof_paging;
       RC.nrrrc[Mod_idP]->carrier.sizeof_paging = 0;

@@ -637,7 +637,6 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
         if (rec->ue_Identity.present == NR_PagingUE_Identity_PR_ng_5G_S_TMSI) {
             uint64_t tmsi = bitStr_to_uint64(&rec->ue_Identity.choice.ng_5G_S_TMSI);
 
-            LOG_E(NR_RRC, "!!!!!!!! BLABLABLA %s: CHECK TMSI in PCCH: %lx == %lx\n", __FUNCTION__, tmsi, tsc_NG_TMSI1); //TODO:BLA
             if (tmsi == tsc_NG_TMSI1) {
                 found = true;
                 break;
@@ -645,7 +644,6 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
         } else if (rec->ue_Identity.present == NR_PagingUE_Identity_PR_fullI_RNTI) {
             uint64_t rnti = bitStr_to_uint64(&rec->ue_Identity.choice.fullI_RNTI);
 
-            LOG_E(NR_RRC, "!!!!!!!! BLABLABLA %s: CHECK RNTI in PCCH: %lx == %lx\n", __FUNCTION__, rnti, tsc_NR_I_RNTI_Value1); //TODO:BLA
             if (rnti == tsc_NR_I_RNTI_Value1) {
                 found = true;
                 break;
@@ -657,7 +655,6 @@ static void nr_ue_check_paging(const module_id_t module_id, const uint8_t gNB_in
 
     if (found) {
         LOG_D(NR_RRC, "%s: found ue_Identity in PCCH\n", __FUNCTION__);
-        LOG_E(NR_RRC, "!!!!!!!! BLABLABLA %s: found ue_Identity in PCCH\n", __FUNCTION__); //TODO:BLA
         NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
         mac->ra.ra_state = RA_UE_IDLE;
     }
@@ -678,11 +675,9 @@ int8_t nr_rrc_ue_decode_NR_PCCH_Message(const module_id_t module_id, const uint8
         ret = 0;
 
         LOG_D(NR_RRC, "[gNB %d] nr_rrc_ue_decode_NR_PCCH_Message: decoded PCCH Message\n", module_id);
-        LOG_E(NR_RRC, ">>> BLABLABLA [gNB %d] nr_rrc_ue_decode_NR_PCCH_Message: decoded PCCH Message\n", module_id); //TODO:BLA
         if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
             xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, pcch_message);
         }
-        xer_fprint(stdout, &asn_DEF_NR_PCCH_Message, pcch_message); //TODO:BLA
 
         nr_ue_check_paging(module_id, gNB_index, pcch_message);
     }
@@ -1809,7 +1804,6 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
    if(NR_UE_rrc_inst[module_id].Srb0[gNB_index].Tx_buffer.payload_size ==0) {
        nr_rrc_ue_RRCSetupRequest_count++;
 
-       LOG_E(NR_RRC,"!!!! BLABLABLA Generating RRCSetupRequest\n"); //TODO:BLA
      // Get RRCConnectionRequest, fill random for now
      // Generate random byte stream for contention resolution
      for (i=0; i<6; i++) {
