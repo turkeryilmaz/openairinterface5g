@@ -163,12 +163,29 @@ int websrv_string_response(char *astring, struct _u_response *response, int http
 /* set of calls to fill a buffer with a string and  use this buffer in a response */
 void websrv_printf_start(struct _u_response *response, int buffsize, bool async)
 {
-  pthread_mutex_lock(&(websrv_printf_buff.mutex));
-  websrv_printf_buff.buff = malloc(buffsize);
-  websrv_printf_buff.buffptr = websrv_printf_buff.buff;
-  websrv_printf_buff.buffsize = buffsize;
-  websrv_printf_buff.response = response;
-  websrv_printf_buff.async = async;
+int st=-1;
+
+  for( int count=0 ; count < 10 ; count++) {
+    st=pthread_mutex_trylock(&(websrv_printf_buff.mutex));
+    if (st == 0) 
+      break;
+    usleep(100);
+    count++;
+  }
+  if ( st != 0) {
+	 char msg[255];
+	 snprintf(msg,sizeof(msg)-1,"[websrv] cannot allocate print buffer, error %s",strerror(st));
+	 LOG_W(UTIL,"%s",msg);
+	 websrv_string_response(msg, websrv_printf_buff.response, 500, 0);
+  }
+  else
+  {
+    websrv_printf_buff.buff = malloc(buffsize);
+    websrv_printf_buff.buffptr = websrv_printf_buff.buff;
+    websrv_printf_buff.buffsize = buffsize;
+    websrv_printf_buff.response = response;
+    websrv_printf_buff.async = async;
+   }
 }
 
 void websrv_printf_atpos(int pos, const char *message, ...)
@@ -187,7 +204,6 @@ void websrv_printf(const char *message, ...)
   va_list va_args;
   va_start(va_args, message);
   websrv_printf_buff.buffptr += vsnprintf(websrv_printf_buff.buffptr, websrv_printf_buff.buffsize - (websrv_printf_buff.buffptr - websrv_printf_buff.buff) - 1, message, va_args);
-
   va_end(va_args);
   return;
 }

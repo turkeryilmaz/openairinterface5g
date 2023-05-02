@@ -524,7 +524,11 @@ int idx1=0;
 int idx2=NUM_LOG_LEVEL-1;
 char *logsubcmd=NULL;
 
-int s = sscanf(buf,"%ms %i-%i\n",&logsubcmd, &idx1,&idx2);   
+  if (buf == NULL) {
+    prnt("ERROR wrong \"log\" command...\n");
+    return 0;
+  }
+  int s = sscanf(buf,"%ms %i-%i\n",&logsubcmd, &idx1,&idx2);   
    
    if (debug > 0)
        prnt( "proccmd_log received %s\n   s=%i sub command %s\n",buf,s,((logsubcmd==NULL)?"":logsubcmd));

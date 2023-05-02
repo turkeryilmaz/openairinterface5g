@@ -50,18 +50,17 @@ telnetshell_cmddef_t loader_cmdarray[] = {
 int loader_show_cmd(char *buff, int debug, telnet_printfunc_t prnt)
 {
   if (buff == NULL) {
-    prnt("ERROR wrong loader SHOW command...\n");
-    return 0;
+    buff="modules";
   }
    if (debug > 0)
-       prnt( "loader_show_cmd received %s\n",buff);
+       prnt( "loader_show_cmd received \"%s\"\n",buff);
 
       if (strcasestr(buff,"params") != NULL) {
           prnt( "loader parameters:\n");
           prnt( "   Main executable build version: \"%s\"\n", loader_data.mainexec_buildversion);
           prnt( "   Default shared lib path: \"%s\"\n", loader_data.shlibpath);
           prnt( "   Max number of shared lib : %i\n", loader_data.maxshlibs);
-      } else if (strcasestr(buff, "modules") != NULL || buff[0] == 0 || strcasestr(buff, "show") != NULL) {
+      } else if (strcasestr(buff, "modules") != NULL || buff[0] == 0 ) {
         prnt("%i shared lib have been dynamicaly loaded by the oai loader\n", loader_data.numshlibs);
         for (int i = 0; i < loader_data.numshlibs; i++) {
           prnt("   Module %i: %s\n", i, loader_data.shlibs[i].name);

@@ -47,6 +47,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <sys/time.h>
@@ -668,22 +669,19 @@ void run_telnetsrv(void) {
 
       while(filled < ( TELNET_MAX_MSGLENGTH-1)) {
         readc = recv(telnetparams.new_socket, buf+filled, TELNET_MAX_MSGLENGTH-filled-1, 0);
-
-        if(!readc)
+        if(!readc) {
+		  printf ("[TELNETSRV] Telnet Client disconnected, %s\n",strerror(errno));
           break;
-
+	    }
         filled += readc;
 
         if(buf[filled-1] == '\n') {
-          buf[filled-1] = 0;
+          while(isspace(buf[filled-1]))
+             filled--;
+          buf[filled]=0;
           break;
         }
-      }
-
-      if(!readc) {
-        printf ("[TELNETSRV] Telnet Client disconnected.\n");
-        break;
-      }
+      } /* while loop to fill buffer till return entered */
 
       if (telnetparams.telnetdbg > 0)
         printf("[TELNETSRV] Command received: readc %i filled %i \"%s\"\n", readc, filled,buf);

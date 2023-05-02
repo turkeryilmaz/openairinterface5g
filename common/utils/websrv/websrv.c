@@ -34,6 +34,7 @@
 #include <ulfius.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+
 #include "common/config/config_userapi.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/websrv/websrv.h"
@@ -481,7 +482,10 @@ int websrv_processwebfunc(struct _u_response *response, cmdparser_t *modulestruc
   } else {
     char *sptr = index(cmd->cmdname, ' ');
     char cmdbuff[TELNET_CMD_MAXSIZE*3]; //cmd + 2 parameters
-    snprintf(cmdbuff,sizeof(cmdbuff)-1, "%s%s%s %s",(sptr == NULL) ? "" : sptr,(sptr == NULL) ? "" : " ",(np>0) ? pvalue[0] : "",(np>1) ? pvalue[1] : "");
+    snprintf(cmdbuff,sizeof(cmdbuff)-1, "%s%s%s%s%s",
+      (sptr == NULL) ? "" : sptr,
+      (np>0) ? " " : "", (np>0) ? pvalue[0] : "",
+      (np>1) ? " " : "",(np>1) ? pvalue[1] : "");
     if (cmd->qptr != NULL) {
       websrv_printf_start(response, 16384, true);
       telnet_pushcmd(cmd, cmdbuff, websrv_async_printf);

@@ -193,6 +193,7 @@ void websrv_setpoint(int x, int y, websrv_scopedata_msg_t *msg)
   msg->data_xy[msg->data_xy[0]] = (int16_t)y;
 }
 #endif
+
 static void commonGraph(OAIgraph_t *graph, int type, FL_Coord x, FL_Coord y, FL_Coord w, FL_Coord h, const char *label, FL_COLOR pointColor)
 {
   memset(graph, 0, sizeof(*graph));
