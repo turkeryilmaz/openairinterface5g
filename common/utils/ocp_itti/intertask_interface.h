@@ -260,6 +260,8 @@ typedef struct IttiMsgText_s {
 void *rrc_enb_process_itti_msg(void *);
 #include <openair3/SCTP/sctp_eNB_task.h>
 #include <openair3/NGAP/ngap_gNB.h>
+#include <openair3/NRPPA/nrppa_gNB.h>
+#include <openair3/NRPPA/nrppa_messages_types.h>
 
 /*
   static const char *const messages_definition_xml = {
@@ -298,6 +300,7 @@ typedef struct {
 void *rrc_enb_process_msg(void *);
 #define FOREACH_TASK(TASK_DEF)                                       \
   TASK_DEF(TASK_UNKNOWN, TASK_PRIORITY_MED, 50, NULL, NULL)          \
+  TASK_DEF(TASK_NRPPA, TASK_PRIORITY_MED, 200, NULL, NULL)           \
   TASK_DEF(TASK_TIMER, TASK_PRIORITY_MED, 10, NULL, NULL)            \
   TASK_DEF(TASK_L2L1, TASK_PRIORITY_MAX, 200, NULL, NULL)            \
   TASK_DEF(TASK_BM, TASK_PRIORITY_MED, 200, NULL, NULL)              \
@@ -344,6 +347,7 @@ void *rrc_enb_process_msg(void *);
   TASK_DEF(TASK_RRC_NSA_NRUE, TASK_PRIORITY_MED, 200, NULL, NULL)    \
   TASK_DEF(TASK_NAS_NRUE, TASK_PRIORITY_MED, 200, NULL, NULL)        \
   TASK_DEF(TASK_MAX, TASK_PRIORITY_MED, 200, NULL, NULL)
+
 
 #define TASK_DEF(TaskID, pRIO, qUEUEsIZE, FuNc, ThreadFunc)          { pRIO, qUEUEsIZE, #TaskID, FuNc, ThreadFunc },
 

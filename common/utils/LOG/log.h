@@ -236,6 +236,7 @@ typedef enum {
   M2AP,
   M3AP,
   NGAP,
+  NRPPA,
   GNB_APP,
   NR_RRC,
   NR_MAC,
@@ -327,7 +328,7 @@ int register_log_component(char *name, char *fext, int compidx);
 void flush_mem_to_file(void);
 int logInit_log_mem(void);
 void close_log_mem(void);
-  
+
 typedef struct {
   char* buf_p;
   int buf_index;
@@ -363,7 +364,7 @@ typedef struct {
 #define MATLAB_CSHORT_BRACKET1 13
 #define MATLAB_CSHORT_BRACKET2 14
 #define MATLAB_CSHORT_BRACKET3 15
-  
+
 int32_t write_file_matlab(const char *fname, const char *vname, void *data, int length, int dec, unsigned int format, int multiVec);
 #define write_output(a, b, c, d, e, f) write_file_matlab(a, b, c, d, e, f, 0)
 
@@ -448,7 +449,7 @@ int32_t write_file_matlab(const char *fname, const char *vname, void *data, int 
 
 #    define LOG_M(file, vector, data, len, dec, format) do { write_file_matlab(file, vector, data, len, dec, format, 0);} while(0)
 #    define LOG_VAR(A,B) A B
-#    define T_ACTIVE(a) (0) 
+#    define T_ACTIVE(a) (0)
 #  endif /* T_TRACER */
 
 /* avoid warnings for variables only used in LOG macro's but set outside debug section */

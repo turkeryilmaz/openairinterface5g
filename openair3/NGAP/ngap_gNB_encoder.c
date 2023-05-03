@@ -49,6 +49,8 @@ static inline int ngap_gNB_encode_initiating(NGAP_NGAP_PDU_t *pdu, uint8_t **buf
                                       NGAP_ProcedureCode_id_NASNonDeliveryIndication,
                                       NGAP_ProcedureCode_id_UEContextReleaseRequest,
                                       NGAP_ProcedureCode_id_PathSwitchRequest,
+                                      NGAP_ProcedureCode_id_UplinkUEAssociatedNRPPaTransport,
+                                      NGAP_ProcedureCode_id_UplinkNonUEAssociatedNRPPaTransport,
                                       NGAP_ProcedureCode_id_PDUSessionResourceModifyIndication};
   int i;
   for (i = 0; i < sizeofArray(tmp); i++)

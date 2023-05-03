@@ -109,13 +109,13 @@ if(EXISTS "/usr/include/atlas/cblas.h" OR EXISTS "/usr/include/cblas.h")
 
 # for ubuntu 17.10, directories are different
 elseif(EXISTS "/usr/include/x86_64-linux-gnu/cblas.h")
-  
+
   include_directories("/usr/include/x86_64-linux-gnu")
   LINK_DIRECTORIES("/usr/lib/x86_64-linux-gnu")
   list(APPEND ATLAS_LIBRARIES cblas)
   list(APPEND ATLAS_LIBRARIES atlas)
   list(APPEND ATLAS_LIBRARIES lapack)
-  
+
 else()
   message("No Blas/Atlas libs found, some targets will fail")
 endif()
@@ -147,7 +147,7 @@ add_list_string_option(CMAKE_BUILD_TYPE "RelWithDebInfo" "Choose the type of bui
 
 # in case /proc/cpuinfo exists we want to inspect available Intrinsics
 # -so not to go always through SIMDE emulation
-# -so to avoid AVX512 instructions generation by gcc   
+# -so to avoid AVX512 instructions generation by gcc
 execute_process(COMMAND uname -m OUTPUT_VARIABLE CPUARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "CPUARCH ${CPUARCH}")
 if(EXISTS "/proc/cpuinfo")
@@ -360,9 +360,21 @@ add_library(ngap
   ${NGAP_DIR}/ngap_gNB_overload.c
   ${NGAP_DIR}/ngap_gNB_trace.c
   ${NGAP_DIR}/ngap_gNB_ue_context.c
+  ${NGAP_DIR}/ngap_gNB_NRPPa_transport_procedures.c
   )
 target_link_libraries(ngap PUBLIC asn1_ngap)
 target_link_libraries(ngap PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+
+# NRPPA
+##############
+# target asn1_nrppa in openair3/NRPPA/MESSAGES/CMakeLists.txt used below
+set(NRPPA_DIR ${OPENAIR3_DIR}/NRPPA)
+include_directories ("${NRPPA_DIR}")
+add_library(nrppa
+  ${NRPPA_DIR}/nrppa_gNB.c
+  )
+target_link_libraries(nrppa PUBLIC asn1_nrppa)
+target_link_libraries(nrppa PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 #M2AP
 ##############
@@ -1357,7 +1369,7 @@ set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
   )
-  
+
 set(L2_SRC
   ${PDCP_DIR}/pdcp.c
   ${PDCP_DIR}/pdcp_fifo.c
@@ -2254,7 +2266,7 @@ target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
   UTIL HASHTABLE SCTP_CLIENT SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
-  ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
+  ngap nrppa s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap
   -Wl,--end-group z dl)
 
@@ -2270,7 +2282,7 @@ endif()
 
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(nr-softmodem PRIVATE
-  asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
+  asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp asn1_nrppa)
 
 add_executable(nr-cuup
   executables/nr-cuup.c
@@ -2289,7 +2301,7 @@ target_link_libraries(nr-cuup PRIVATE
                       GTPV1U e1ap e1_pdcp_if f1ap SIMU_ETH
                       SECU_OSA SECU_CN ${OPENSSL_LIBRARIES} crypt z sctp dl pthread)
 target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-                      
+
 # nr-uesoftmodem is  UE implementation
 #######################################
 
@@ -2570,7 +2582,7 @@ if (${T_TRACER})
         SECU_OSA SECU_CN SCHED_LIB SCHED_NR_LIB SCHED_RU_LIB SCHED_UE_LIB SCHED_NR_UE_LIB default_sched remote_sched RAL
         NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB NFAPI_VNF_LIB NFAPI_USER_LIB
         PHY_COMMON PHY PHY_UE PHY_NR PHY_NR_COMMON PHY_NR_UE PHY_RU PHY_MEX
-        L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_NR MAC_UE_NR ngap
+        L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_NR MAC_UE_NR ngap nrppa
         CN_UTILS GTPV1U SCTP_CLIENT MME_APP LIB_NAS_UE NB_IoT SIMU SIMU_ETH OPENAIR0_LIB
         ldpc_orig ldpc_optim ldpc_optim8seg ldpc dfts)
     if (TARGET ${i})

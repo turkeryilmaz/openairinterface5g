@@ -48,7 +48,7 @@
 
 // main log variables
 
-// Fixme: a better place to be shure it is called 
+// Fixme: a better place to be shure it is called
 void read_cpu_hardware (void) __attribute__ ((constructor));
 void read_cpu_hardware (void) {__builtin_cpu_init(); }
 
@@ -128,7 +128,7 @@ int write_file_matlab(const char *fname,
     int sz[16]={sizeof(short), 2*sizeof(short),
 		sizeof(int), 2*sizeof(int),
 		sizeof(char), 2*sizeof(char),
-		sizeof(long long), 
+		sizeof(long long),
 		sizeof(double), 2*sizeof(double),
 		sizeof(unsigned char),
 		sizeof(short),
@@ -139,14 +139,14 @@ int write_file_matlab(const char *fname,
 		sizeof(short)
     };
     int eltSz= sz[format&~MATLAB_RAW];
-    if (dec==1) 
+    if (dec==1)
       fwrite(data, eltSz, length, fp);
-    else 
+    else
       for (i=0; i<length; i+=dec)
 	fwrite(data+i*eltSz, eltSz, 1, fp);
-    
+
     fclose(fp);
-    return(0);	
+    return(0);
   }
 
   if ((format != 10 && format !=11  && format != 12 && format != 13 && format != 14) || multiVec)
@@ -496,6 +496,7 @@ int logInit (void)
   register_log_component("NR_MAC","log",NR_MAC);
   register_log_component("NR_PHY","log",NR_PHY);
   register_log_component("NGAP","",NGAP);
+  register_log_component("NRPPA","",NRPPA);
   register_log_component("ITTI","log",ITTI);
   register_log_component("UTIL","log",UTIL);
 
@@ -624,7 +625,7 @@ void log_dump(int component,
   char *wbuf;
   log_component_t *c = &g_log->log_component[component];
   int flag= g_log->flag | c->flag;
-  
+
   switch(datatype) {
     case LOG_DUMP_DOUBLE:
       wbuf=malloc((buffsize * 10)  + 64 + MAX_LOG_TOTAL);
@@ -821,7 +822,7 @@ void flush_mem_to_file(void)
   struct timespec slp_tm;
   slp_tm.tv_sec = 0;
   slp_tm.tv_nsec = 10000;
-  
+
   pthread_setname_np( pthread_self(), "flush_mem_to_file");
 
   while (!oai_exit) {
@@ -975,7 +976,7 @@ int logInit_log_mem (void)
   }
 
   printf("log init done\n");
-  
+
   return 0;
 }
 
@@ -1000,7 +1001,7 @@ void close_log_mem(void){
       }
       close(fp);
       free(log_mem_d[0].buf_p);
-      
+
       snprintf(f_name,1024, "%s_%d.log",log_mem_filename,log_mem_file_cnt);
       fp=open(f_name, O_WRONLY | O_CREAT, 0666);
       ret = write(fp, log_mem_d[1].buf_p, log_mem_d[1].buf_index);

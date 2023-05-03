@@ -75,6 +75,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "NB_IoT_interface.h"
 #include "x2ap_eNB.h"
 #include "ngap_gNB.h"
+#include "nrppa_gNB.h"
 #include "gnb_paramdef.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "nfapi/oai_integration/vendor_ext.h"
@@ -286,7 +287,7 @@ void exit_function(const char *file, const char *function, const int line, const
 
 
 static int create_gNB_tasks(void) {
-  uint32_t                        gnb_nb = RC.nb_nr_inst; 
+  uint32_t                        gnb_nb = RC.nb_nr_inst;
   uint32_t                        gnb_id_start = 0;
   uint32_t                        gnb_id_end = gnb_id_start + gnb_nb;
   LOG_D(GNB_APP, "%s(gnb_nb:%d)\n", __FUNCTION__, gnb_nb);
@@ -364,7 +365,7 @@ static int create_gNB_tasks(void) {
     char aprefix[MAX_OPTNAME_SIZE*2 + 8];
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
     config_get( NETParams,sizeof(NETParams)/sizeof(paramdef_t),aprefix);
-    
+
     for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
       if( NETParams[i].strptr == NULL) {
         LOG_E(NGAP, "No AMF configuration in the file.\n");
@@ -373,10 +374,14 @@ static int create_gNB_tasks(void) {
         LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
       }
     }
-    
+
     if (gnb_nb > 0) {
       if (itti_create_task (TASK_NGAP, ngap_gNB_task, NULL) < 0) {
         LOG_E(NGAP, "Create task for NGAP failed\n");
+        return -1;
+      }
+      if (itti_create_task (TASK_NRPPA, nrppa_gNB_task, NULL) < 0) {
+        LOG_E(NRPPA, "Create task for NRPPA failed\n");
         return -1;
       }
     }
@@ -406,7 +411,7 @@ static int create_gNB_tasks(void) {
       RC.nrrrc[gnb_id_start]->e1_inst = inst; // stupid instance !!!*/
     }
 
-    //Use check on x2ap to consider the NSA scenario 
+    //Use check on x2ap to consider the NSA scenario
     if((is_x2ap_enabled() || get_softmodem_params()->sa) && (node_type != ngran_gNB_CUCP)) {
       if (itti_create_task (TASK_GTPV1_U, &gtpv1uTask, NULL) < 0) {
         LOG_E(GTPU, "Create task for GTPV1U failed\n");
@@ -555,7 +560,7 @@ void init_pdcp(void) {
   uint32_t pdcp_initmask = (IS_SOFTMODEM_NOS1) ?
     PDCP_USE_NETLINK_BIT | LINK_ENB_PDCP_TO_IP_DRIVER_BIT | ENB_NAS_USE_TUN_BIT | SOFTMODEM_NOKRNMOD_BIT:
     LINK_ENB_PDCP_TO_GTPV1U_BIT;
-  
+
   if (!get_softmodem_params()->nsa) {
     if (!NODE_IS_DU(get_node_type())) {
       pdcp_layer_init();
@@ -674,10 +679,10 @@ int main( int argc, char **argv ) {
     for (ru_id=0; ru_id<RC.nb_RU; ru_id++) {
       RC.ru[ru_id]->rf_map.card=0;
       RC.ru[ru_id]->rf_map.chain=CC_id+chain_offset;
-      if (ru_id==0) sl_ahead = RC.ru[ru_id]->sl_ahead;	
+      if (ru_id==0) sl_ahead = RC.ru[ru_id]->sl_ahead;
       else AssertFatal(RC.ru[ru_id]->sl_ahead != RC.ru[0]->sl_ahead,"RU %d has different sl_ahead %d than RU 0 %d\n",ru_id,RC.ru[ru_id]->sl_ahead,RC.ru[0]->sl_ahead);
     }
-    
+
   }
 
   config_sync_var=0;
