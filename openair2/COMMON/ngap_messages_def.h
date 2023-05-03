@@ -49,13 +49,25 @@ MESSAGE_DEF(NGAP_PDUSESSION_RELEASE_RESPONSE_LOG  , MESSAGE_PRIORITY_MED, IttiMs
 MESSAGE_DEF(NGAP_ERROR_INDICATION_LOG        , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_error_indication_log)
 MESSAGE_DEF(NGAP_PATH_SWITCH_REQ_LOG         , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_path_switch_req_log)
 MESSAGE_DEF(NGAP_PATH_SWITCH_REQ_ACK_LOG     , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_path_switch_req_ack_log)
+MESSAGE_DEF(NGAP_UPLINKUEASSOCIATEDNRPPA_LOG            , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_UplinkUEAssociatedNRPPa_log)
+MESSAGE_DEF(NGAP_UPLINKNONUEASSOCIATEDNRPPA_LOG         , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_UplinkNonUEAssociatedNRPPa_log)
+MESSAGE_DEF(NGAP_DOWNLINKUEASSOCIATEDNRPPA_LOG          , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_DownlinkUEAssociatedNRPPa_log)
+MESSAGE_DEF(NGAP_DOWNLINKNONUEASSOCIATEDNRPPA_LOG       , MESSAGE_PRIORITY_MED, IttiMsgText                      , ngap_DownlinkNonUEAssociatedNRPPa_log)
 
 /* gNB application layer -> NGAP messages */
-MESSAGE_DEF(NGAP_REGISTER_GNB_REQ          , MESSAGE_PRIORITY_MED, ngap_register_gnb_req_t          , ngap_register_gnb_req)
+MESSAGE_DEF(NGAP_REGISTER_GNB_REQ               , MESSAGE_PRIORITY_MED, ngap_register_gnb_req_t              , ngap_register_gnb_req)
 
 /* NGAP -> gNB application layer messages */
-MESSAGE_DEF(NGAP_REGISTER_GNB_CNF          , MESSAGE_PRIORITY_MED, ngap_register_gnb_cnf_t          , ngap_register_gnb_cnf)
-MESSAGE_DEF(NGAP_DEREGISTERED_GNB_IND      , MESSAGE_PRIORITY_MED, ngap_deregistered_gnb_ind_t      , ngap_deregistered_gnb_ind)
+MESSAGE_DEF(NGAP_REGISTER_GNB_CNF             , MESSAGE_PRIORITY_MED, ngap_register_gnb_cnf_t            , ngap_register_gnb_cnf)
+MESSAGE_DEF(NGAP_DEREGISTERED_GNB_IND         , MESSAGE_PRIORITY_MED, ngap_deregistered_gnb_ind_t        , ngap_deregistered_gnb_ind)
+
+/* NRPPA -> NGAP messages */
+MESSAGE_DEF(NGAP_UPLINKUEASSOCIATEDNRPPA      , MESSAGE_PRIORITY_MED, ngap_UplinkUEAssociatedNRPPa_t     , ngap_UplinkUEAssociatedNRPPa)
+MESSAGE_DEF(NGAP_UPLINKNONUEASSOCIATEDNRPPA   , MESSAGE_PRIORITY_MED, ngap_UplinkNonUEAssociatedNRPPa_t  , ngap_UplinkNonUEAssociatedNRPPa)
+
+/* NGAP messages -> NRPPA */
+MESSAGE_DEF(NGAP_DOWNLINKUEASSOCIATEDNRPPA      , MESSAGE_PRIORITY_MED, ngap_DownlinkUEAssociatedNRPPa_t     , ngap_DownlinkUEAssociatedNRPPa)
+MESSAGE_DEF(NGAP_DOWNLINKNONUEASSOCIATEDNRPPA   , MESSAGE_PRIORITY_MED, ngap_DownlinkNonUEAssociatedNRPPa_t  , ngap_DownlinkNonUEAssociatedNRPPa)
 
 /* RRC -> NGAP messages */
 MESSAGE_DEF(NGAP_NAS_FIRST_REQ             , MESSAGE_PRIORITY_MED, ngap_nas_first_req_t             , ngap_nas_first_req)

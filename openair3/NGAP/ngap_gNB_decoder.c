@@ -27,7 +27,7 @@
  * \version 0.1
  */
 
- 
+
 #include <stdio.h>
 
 #include "assertions.h"
@@ -86,6 +86,17 @@ static int ngap_gNB_decode_initiating_message(NGAP_NGAP_PDU_t *pdu) {
       free(res.buffer);
       NGAP_INFO("TODO ErrorIndication initiating message\n");
       break;
+
+    case NGAP_ProcedureCode_id_DownlinkUEAssociatedNRPPaTransport:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NGAP_NGAP_PDU, pdu);
+      free(res.buffer);
+      break;
+
+    case NGAP_ProcedureCode_id_DownlinkNonUEAssociatedNRPPaTransport:
+      res = asn_encode_to_new_buffer(NULL, ATS_CANONICAL_XER, &asn_DEF_NGAP_NGAP_PDU, pdu);
+      free(res.buffer);
+      break;
+
 
     default:
       NGAP_ERROR("Unknown procedure ID (%d) for initiating message\n",
