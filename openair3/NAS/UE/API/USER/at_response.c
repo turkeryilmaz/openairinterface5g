@@ -1068,38 +1068,20 @@ static int _at_response_encode_cgpaddr(char* buffer, const at_response_t* data)
             if (cgpaddr->PDP_addr_1[i] != NULL) {
                 /* IPv4 address */
                 offset += sprintf(buffer+offset, ",%hhu.%hhu.%hhu.%hhu",
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
                                   (unsigned char)cgpaddr->PDP_addr_1[i][0],
                                   (unsigned char)cgpaddr->PDP_addr_1[i][1],
                                   (unsigned char)cgpaddr->PDP_addr_1[i][2],
                                   (unsigned char)cgpaddr->PDP_addr_1[i][3]);
-<<<<<<< HEAD
-=======
-                                  (unsigned int)cgpaddr->PDP_addr_1[i][0],
-                                  (unsigned int)cgpaddr->PDP_addr_1[i][1],
-                                  (unsigned int)cgpaddr->PDP_addr_1[i][2],
-                                  (unsigned int)cgpaddr->PDP_addr_1[i][3]);
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
-=======
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
             }
 
             if (cgpaddr->PDP_addr_2[i] != NULL) {
                 /* IPv6 Link-local address prefixe */
                 offset += sprintf(buffer+offset,
                                   ",%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
                                   (unsigned char)0xfe, (unsigned char)0x80,
                                   (unsigned char)0, (unsigned char)0,
                                   (unsigned char)0, (unsigned char)0,
                                   (unsigned char)0, (unsigned char)0);
-<<<<<<< HEAD
                 /* IPv6 Link-local address */
                 offset += sprintf(buffer+offset,
                                   ".%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
@@ -1111,36 +1093,6 @@ static int _at_response_encode_cgpaddr(char* buffer, const at_response_t* data)
                                   (unsigned char)cgpaddr->PDP_addr_2[i][5],
                                   (unsigned char)cgpaddr->PDP_addr_2[i][6],
                                   (unsigned char)cgpaddr->PDP_addr_2[i][7]);
-=======
-                                  (unsigned int)0xfe, (unsigned int)0x80,
-                                  (unsigned int)0, (unsigned int)0,
-                                  (unsigned int)0, (unsigned int)0,
-                                  (unsigned int)0, (unsigned int)0);
-                /* IPv6 Link-local address */
-                offset += sprintf(buffer+offset,
-                                  ".%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][0],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][1],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][2],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][3],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][4],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][5],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][6],
-                                  (unsigned int)cgpaddr->PDP_addr_2[i][7]);
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
-=======
-                /* IPv6 Link-local address */
-                offset += sprintf(buffer+offset,
-                                  ".%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][0],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][1],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][2],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][3],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][4],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][5],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][6],
-                                  (unsigned char)cgpaddr->PDP_addr_2[i][7]);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
             }
 
             offset += sprintf(buffer+offset, "\r\n");

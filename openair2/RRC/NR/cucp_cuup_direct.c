@@ -29,7 +29,8 @@
 #include "nr_rrc_proto.h"
 #include "nr_rrc_extern.h"
 #include "openair2/COMMON/e1ap_messages_types.h"
-#include "UTIL/OSA/osa_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include "nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_e1_api.h"
 #include <openair2/RRC/NR/rrc_gNB_UE_context.h>
@@ -38,6 +39,7 @@
 #include "common/ran_context.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/E1AP/e1ap_common.h"
+
 extern RAN_CONTEXT_t RC;
 
 void fill_e1ap_bearer_setup_resp(e1ap_bearer_setup_resp_t *resp,
@@ -107,7 +109,6 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
 
   gtpv1u_gnb_create_tunnel_req_t  create_tunnel_req={0};
   gtpv1u_gnb_create_tunnel_resp_t create_tunnel_resp={0};
-<<<<<<< HEAD
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
   LOG_W(NR_RRC, "recreate existing tunnels, while adding new ones\n");
   for (int i = 0; i < UE->nb_of_pdusessions; i++) {
@@ -126,21 +127,6 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
                                      &create_tunnel_resp,
                                      nr_pdcp_data_req_drb,
                                      sdap_data_req);
-=======
-
-  int i = ue_context_p->ue_context.nb_of_pdusessions - 1;
-  pdu_session_param_t *pdu = ue_context_p->ue_context.pduSession + i;
-  create_tunnel_req.pdusession_id[0] = pdu->param.pdusession_id;
-  create_tunnel_req.incoming_rb_id[0] = i + 1;
-  create_tunnel_req.outgoing_qfi[0] = req->pduSession[i].DRBnGRanList[0].qosFlows[0].id;
-  memcpy(&create_tunnel_req.dst_addr[0].buffer, &pdu->param.upf_addr.buffer, sizeof(create_tunnel_req.dst_addr[0].buffer));
-  create_tunnel_req.dst_addr[0].length = pdu->param.upf_addr.length;
-  create_tunnel_req.outgoing_teid[0] = pdu->param.gtp_teid;
-
-  create_tunnel_req.num_tunnels = 1;
-  create_tunnel_req.ue_id = ue_context_p->ue_context.rnti;
-  int ret = gtpv1u_create_ngu_tunnel(getCxtE1(instance)->gtpInstN3, &create_tunnel_req, &create_tunnel_resp);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
   if (ret != 0) {
     LOG_E(NR_RRC,"rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ : gtpv1u_create_ngu_tunnel failed,start to release UE rnti %ld\n",
@@ -148,25 +134,21 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
     return ret;
   }
 
-<<<<<<< HEAD
   nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(ctxt_p, &create_tunnel_resp, 0);
-=======
-  nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(ctxt_p, &create_tunnel_resp, i);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
-  uint8_t *kRRCenc = NULL;
-  uint8_t *kRRCint = NULL;
-  uint8_t *kUPenc = NULL;
-  uint8_t *kUPint = NULL;
+  uint8_t kRRCenc[16] = {0};
+  uint8_t kRRCint[16] = {0};
+  uint8_t kUPenc[16] = {0};
+  uint8_t kUPint[16] = {0};
   /* Derive the keys from kgnb */
   if (DRB_configList != NULL) {
-<<<<<<< HEAD
-    nr_derive_key_up_enc(UE->ciphering_algorithm, UE->kgnb, &kUPenc);
-    nr_derive_key_up_int(UE->integrity_algorithm, UE->kgnb, &kUPint);
+    nr_derive_key(UP_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kUPenc);
+    nr_derive_key(UP_INT_ALG, UE->integrity_algorithm, UE->kgnb, kUPint);
   }
 
-  nr_derive_key_rrc_enc(UE->ciphering_algorithm, UE->kgnb, &kRRCenc);
-  nr_derive_key_rrc_int(UE->integrity_algorithm, UE->kgnb, &kRRCint);
+  nr_derive_key(RRC_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kRRCenc);
+  nr_derive_key(RRC_INT_ALG, UE->integrity_algorithm, UE->kgnb, kRRCint);
+
   /* Refresh SRBs/DRBs */
 
   LOG_D(NR_RRC, "Configuring PDCP DRBs/SRBs for UE %x\n", UE->rnti);
@@ -182,41 +164,6 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
                    kUPint,
                    get_softmodem_params()->sa ? UE->masterCellGroup->rlc_BearerToAddModList : NULL);
 
-=======
-    nr_derive_key_up_enc(ue_context_p->ue_context.ciphering_algorithm,
-                         ue_context_p->ue_context.kgnb,
-                         &kUPenc);
-    nr_derive_key_up_int(ue_context_p->ue_context.integrity_algorithm,
-                         ue_context_p->ue_context.kgnb,
-                         &kUPint);
-  }
-
-  nr_derive_key_rrc_enc(ue_context_p->ue_context.ciphering_algorithm,
-                        ue_context_p->ue_context.kgnb,
-                        &kRRCenc);
-  nr_derive_key_rrc_int(ue_context_p->ue_context.integrity_algorithm,
-                        ue_context_p->ue_context.kgnb,
-                        &kRRCint);
-  /* Refresh SRBs/DRBs */
-
-  LOG_D(NR_RRC,"Configuring PDCP DRBs/SRBs for UE %x\n",ue_context_p->ue_context.rnti);
-
-  nr_pdcp_add_srbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid,
-                   SRB_configList,
-                   (ue_context_p->ue_context.integrity_algorithm << 4)
-                   | ue_context_p->ue_context.ciphering_algorithm,
-                   kRRCenc,
-                   kRRCint);
-                   
-  nr_pdcp_add_drbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid, 0,
-                   DRB_configList,
-                   (ue_context_p->ue_context.integrity_algorithm << 4)
-                   | ue_context_p->ue_context.ciphering_algorithm,
-                   kUPenc,
-                   kUPint,
-                   get_softmodem_params()->sa ? ue_context_p->ue_context.masterCellGroup->rlc_BearerToAddModList : NULL);
-  
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   return ret;
 }
 
@@ -235,7 +182,6 @@ static NR_SRB_ToAddModList_t **generateSRB2_confList(gNB_RRC_UE_t *ue, NR_SRB_To
 
   return SRB_configList2;
 }
-<<<<<<< HEAD
 static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, instance_t instance, uint8_t xid)
 {
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[instance], req->rnti);
@@ -244,51 +190,47 @@ static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, UE->rnti, 0, 0, 0);
 
   fill_DRB_configList(&ctxt, ue_context_p, xid);
+  e1ap_bearer_setup_resp_t resp = {0};
+  resp.numPDUSessions = req->numPDUSessions;
+  for (int i = 0; i < resp.numPDUSessions; ++i) {
+    resp.pduSession[i].numDRBSetup = req->pduSession[i].numDRB2Setup;
+    for (int j = 0; j < req->pduSession[i].numDRB2Setup; j++) {
+      DRB_nGRAN_to_setup_t *req_drb = req->pduSession[i].DRBnGRanList + j;
+      DRB_nGRAN_setup_t *resp_drb = resp.pduSession[i].DRBnGRanList + j;
+      resp_drb->id = req_drb->id;
+      resp_drb->numQosFlowSetup = req_drb->numQosFlow2Setup;
+      for (int k = 0; k < resp_drb->numQosFlowSetup; k++)
+        resp_drb->qosFlows[k].id = req_drb->qosFlows[k].id;
+    }
+  }
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
   // Fixme: xid not random, but almost!
   NR_SRB_ToAddModList_t **SRB_configList2 = generateSRB2_confList(UE, UE->SRB_configList, UE->pduSession[0].xid);
   // GTP tunnel for UL
   int ret = drb_config_gtpu_create(&ctxt, ue_context_p, req, UE->DRB_configList, *SRB_configList2, rrc->e1_inst);
-=======
-static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, instance_t instance) {
-  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(RC.nrrrc[GNB_INSTANCE_TO_MODULE_ID(instance)], req->rnti);
-  protocol_ctxt_t ctxt = {0};
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, ue_context_p->ue_context.rnti, 0, 0, 0);
-
-  fill_DRB_configList(&ctxt, ue_context_p);
-
-  gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
-  // Fixme: xid not random, but almost!
-  NR_SRB_ToAddModList_t **SRB_configList2 = generateSRB2_confList(&ue_context_p->ue_context, ue_context_p->ue_context.SRB_configList, ue_context_p->ue_context.pduSession[0].xid);
-  // GTP tunnel for UL
-  int ret = drb_config_gtpu_create(&ctxt, ue_context_p, req, ue_context_p->ue_context.DRB_configList, *SRB_configList2, rrc->e1_inst);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   if (ret < 0) AssertFatal(false, "Unable to configure DRB or to create GTP Tunnel\n");
 
+  // Used to store teids: if monolithic, will simply be NULL
   if(!NODE_IS_CU(RC.nrrrc[ctxt.module_id]->node_type)) {
-    rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p, NULL);
+    // intentionally empty
   } else {
-    e1ap_bearer_setup_resp_t resp; // Used to store teids
     int remote_port = RC.nrrrc[ctxt.module_id]->eth_params_s.remote_portd;
     in_addr_t my_addr = inet_addr(RC.nrrrc[ctxt.module_id]->eth_params_s.my_addr);
     instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
     // GTP tunnel for DL
-<<<<<<< HEAD
     fill_e1ap_bearer_setup_resp(&resp, req, gtpInst, UE->rnti, remote_port, my_addr);
-=======
-    fill_e1ap_bearer_setup_resp(&resp, req, gtpInst, ue_context_p->ue_context.rnti, remote_port, my_addr);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
-
-    prepare_and_send_ue_context_modification_f1(ue_context_p, &resp);
   }
+  // actually, we should receive the corresponding context setup response
+  // message at the RRC and always react to this one. So in the following, we
+  // just call the corresponding message handler
+  prepare_and_send_ue_context_modification_f1(ue_context_p, &resp);
 }
 
-<<<<<<< HEAD
 static void cucp_cuup_bearer_context_mod_direct(e1ap_bearer_setup_req_t *const req, instance_t instance, uint8_t xid) {
-=======
-static void cucp_cuup_bearer_context_mod_direct(e1ap_bearer_setup_req_t *const req, instance_t instance) {
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
+  // only update GTP tunnels if it is really a CU
+  if (!NODE_IS_CU(RC.nrrrc[0]->node_type))
+    return;
   instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
   CU_update_UP_DL_tunnel(req, gtpInst, req->rnti);
 }

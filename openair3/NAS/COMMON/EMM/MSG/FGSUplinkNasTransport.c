@@ -55,17 +55,11 @@ int encode_fgs_payload_container(FGSPayloadContainer *paycontainer, uint8_t iei,
     encoded += encode_result;
   }
   if(iei > 0){
-<<<<<<< HEAD
     uint16_t tmp = htons(encoded - 3);
     memcpy(buffer + 1, &tmp, sizeof(tmp));
   } else {
     uint16_t tmp = htons(encoded - 2);
     memcpy(buffer, &tmp, sizeof(tmp));
-=======
-    *(uint16_t*) (buffer+1) = htons(encoded - 3);
-  } else {
-    *(uint16_t*) (buffer) = htons(encoded - 2);
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
   }
 
   return encoded;
@@ -140,10 +134,7 @@ int encode_fgs_uplink_nas_transport(fgs_uplink_nas_transport_msg *fgs_up_nas_tra
     *(buffer + encoded) = (0x8<<4)|(fgs_up_nas_transport->requesttype &0x7);
     encoded++;
 
-<<<<<<< HEAD
 #if 0
-=======
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     if ((encode_result = encode_nssai(&fgs_up_nas_transport->snssai, 0x22, buffer +encoded)) < 0) {
       return encode_result;
     } else {
@@ -155,11 +146,7 @@ int encode_fgs_uplink_nas_transport(fgs_uplink_nas_transport_msg *fgs_up_nas_tra
     } else {
       encoded += encode_result;
     }
-<<<<<<< HEAD
 #endif
-=======
-
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     return encoded;
 }
 

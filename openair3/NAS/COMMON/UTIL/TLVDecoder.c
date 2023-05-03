@@ -27,7 +27,6 @@
 
 int errorCodeDecoder = 0;
 
-<<<<<<< HEAD
 static const char* const errorCodeStringDecoder[] = {
     "No error",
     "Buffer NULL",
@@ -37,17 +36,6 @@ static const char* const errorCodeStringDecoder[] = {
     "Wrong message type",
     "EXT value doesn't match",
     "Protocol not supported",
-=======
-const char *errorCodeStringDecoder[] = {
-  "No error",
-  "Buffer NULL",
-  "Buffer too short",
-  "Unexpected IEI",
-  "Mandatory field not present",
-  "Wrong message type",
-  "EXT value doesn't match",
-  "Protocol not supported",
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 };
 
 void tlv_decode_perror(void)

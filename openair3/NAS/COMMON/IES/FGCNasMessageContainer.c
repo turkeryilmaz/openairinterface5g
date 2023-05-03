@@ -76,12 +76,8 @@ int encode_fgc_nas_message_container(FGCNasMessageContainer *nasmessagecontainer
   if ((encode_result = encode_octet_string(&nasmessagecontainer->nasmessagecontainercontents, buffer + encoded, len - encoded)) < 0) {
     return encode_result;
   } else {
-<<<<<<< HEAD
     uint16_t tmp = htons(encoded + encode_result - 3);
     memcpy(buffer + 1, &tmp, sizeof(tmp));
-=======
-    *(uint16_t*) (buffer+1) = htons(encoded + encode_result - 3);
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     encoded += encode_result;
   }
 

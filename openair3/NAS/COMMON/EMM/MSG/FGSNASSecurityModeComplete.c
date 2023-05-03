@@ -44,22 +44,15 @@ int encode_fgs_security_mode_complete(fgs_security_mode_complete_msg *fgs_securi
     int encoded = 0;
     int encode_result = 0;
 
-<<<<<<< HEAD
 /*Workaround fix for running OAI-UE with TTCN */
 #if 0
-=======
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     if ((encode_result =
           encode_5gs_mobile_identity(&fgs_security_mode_comp->fgsmobileidentity, 0x77, buffer +
                                      encoded, len - encoded)) < 0) { //Return in case of error
       return encode_result;
-<<<<<<< HEAD
     } else
 #endif
     {
-=======
-    } else {
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
       encoded += encode_result;
       if ((encode_result =
             encode_fgc_nas_message_container(&fgs_security_mode_comp->fgsnasmessagecontainer, 0x71, buffer +

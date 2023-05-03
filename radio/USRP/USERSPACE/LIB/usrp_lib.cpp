@@ -556,10 +556,7 @@ void *trx_usrp_write_thread(void * arg){
   signed char        last_packet;
   int                flags_gpio;
 
-<<<<<<< HEAD
   printf("trx_usrp_write_thread started on cpu %d\n",sched_getcpu());
-=======
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   while(1){
     pthread_mutex_lock(&write_thread->mutex_write);
     while (write_thread->count_write == 0) {
@@ -668,10 +665,6 @@ int trx_usrp_write_init(openair0_device *device){
                (char*)"trx_usrp_write_thread",
                -1,
                OAI_PRIORITY_RT_MAX);
-<<<<<<< HEAD
-=======
-
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   return(0);
 }
 
@@ -1134,13 +1127,10 @@ extern "C" {
       device->type = USRP_X400_DEV;
       usrp_master_clock = 245.76e6;
       args += boost::str(boost::format(",master_clock_rate=%f") % usrp_master_clock);
-<<<<<<< HEAD
 
       // https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks
       if (0 != system("sysctl -w net.core.rmem_max=62500000 net.core.wmem_max=62500000"))
         LOG_W(HW, "Can't set kernel parameters for X4x0\n");
-=======
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
     }
 
     s->usrp = uhd::usrp::multi_usrp::make(args);

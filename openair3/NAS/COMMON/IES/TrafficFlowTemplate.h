@@ -96,15 +96,11 @@ typedef struct {
  * and "no TFT operation" shall be empty.
  * ---------------------------------------------------------------
  */
-<<<<<<< HEAD
 typedef struct {
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
 } NoPacketFilter;
-=======
-typedef struct {} NoPacketFilter;
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 
 typedef NoPacketFilter DeleteExistingTft;
 typedef NoPacketFilter NoTftOperation;
@@ -163,13 +159,9 @@ typedef union {
  */
 
 typedef struct {
-<<<<<<< HEAD
   // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
   // To be removed if the structure is filled
   uint32_t dummy;
-=======
-  /* TODO */
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
 } ParameterList;
 
 /*

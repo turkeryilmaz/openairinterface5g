@@ -27,11 +27,7 @@
 
 struct e1ap_bearer_setup_req_s;
 struct e1ap_bearer_setup_resp_s;
-<<<<<<< HEAD
 typedef void (*cucp_cuup_bearer_context_setup_func_t)(struct e1ap_bearer_setup_req_s *const req, instance_t instance, uint8_t xid);
-=======
-typedef void (*cucp_cuup_bearer_context_setup_func_t)(struct e1ap_bearer_setup_req_s *const req, instance_t instance);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
 struct gNB_RRC_INST_s;
 void cucp_cuup_message_transfer_direct_init(struct gNB_RRC_INST_s *rrc);

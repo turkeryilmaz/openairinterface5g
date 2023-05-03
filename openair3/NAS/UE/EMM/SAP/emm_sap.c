@@ -111,29 +111,17 @@ int emm_sap_send(nas_user_t *user, emm_sap_t *msg)
   if ( (primitive > (emm_primitive_t)EMMREG_PRIMITIVE_MIN) &&
        (primitive < (emm_primitive_t)EMMREG_PRIMITIVE_MAX) ) {
     /* Forward to the EMMREG-SAP */
-<<<<<<< HEAD
     msg->u.emm_reg.primitive = (emm_reg_primitive_t) primitive;
-=======
-    msg->u.emm_reg.primitive = primitive;
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     rc = emm_reg_send(user, &msg->u.emm_reg);
   } else if ( (primitive > (emm_primitive_t)EMMESM_PRIMITIVE_MIN) &&
               (primitive < (emm_primitive_t)EMMESM_PRIMITIVE_MAX) ) {
     /* Forward to the EMMESM-SAP */
-<<<<<<< HEAD
     msg->u.emm_esm.primitive = (emm_esm_primitive_t) primitive;
-=======
-    msg->u.emm_esm.primitive = primitive;
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     rc = emm_esm_send(user, &msg->u.emm_esm);
   } else if ( (primitive > (emm_primitive_t)EMMAS_PRIMITIVE_MIN) &&
               (primitive < (emm_primitive_t)EMMAS_PRIMITIVE_MAX) ) {
     /* Forward to the EMMAS-SAP */
-<<<<<<< HEAD
     msg->u.emm_as.primitive = (emm_as_primitive_t) primitive;
-=======
-    msg->u.emm_as.primitive = primitive;
->>>>>>> ae9c3f241f... Add 'FirecellRD/' from commit '7d2dd949caf489f357689faa6096b2f6cd62b03d'
     rc = emm_as_send(user, &msg->u.emm_as);
   }
   else {

@@ -36,7 +36,6 @@ typedef struct {
 static nr_sdap_entity_info sdap_info;
 
 instance_t *N3GTPUInst = NULL;
-<<<<<<< HEAD
 
 void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu)
 {
@@ -52,18 +51,6 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
                        PDCP_TRANSMISSION_MODE_UNKNOWN,
                        NULL,
                        NULL);
-=======
-
-nr_pdcp_ue_manager_t *nr_pdcp_sdap_get_ue_manager(void);
-
-void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_sdap_ul_hdr_t ctrl_pdu)
-{
-  nr_pdcp_ue_t *ue;
-  nr_pdcp_ue_manager_t *nr_pdcp_ue_manager;
-  nr_pdcp_ue_manager = nr_pdcp_sdap_get_ue_manager();
-  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
-  ue->drb[sdap_ctrl_pdu_drb-1]->recv_sdu(ue->drb[sdap_ctrl_pdu_drb-1], (char*)&ctrl_pdu, SDAP_HDR_LENGTH, RLC_MUI_UNDEFINED);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   LOG_D(SDAP, "Control PDU - Submitting Control PDU to DRB ID:  %ld\n", sdap_ctrl_pdu_drb);
   LOG_D(SDAP, "QFI: %u\n R: %u\n D/C: %u\n", ctrl_pdu.QFI, ctrl_pdu.R, ctrl_pdu.DC);
   return;
@@ -105,7 +92,6 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   if(!pdcp_ent_has_sdap){
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
-<<<<<<< HEAD
     ret = nr_pdcp_data_req_drb(ctxt_p,
                                srb_flag,
                                sdap_drb_id,
@@ -116,18 +102,6 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                                pt_mode,
                                sourceL2Id,
                                destinationL2Id);
-=======
-    ret = pdcp_data_req(ctxt_p,
-                        srb_flag,
-                        sdap_drb_id,
-                        mui,
-                        confirm,
-                        sdu_buffer_size,
-                        sdu_buffer,
-                        pt_mode,
-                        sourceL2Id,
-                        destinationL2Id);
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
 
     if(!ret)
       LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);
@@ -466,20 +440,9 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap
   if(is_defaultDRB) {
     sdap_entity->default_drb = drb_identity;
     LOG_I(SDAP, "Default DRB for the created SDAP entity: %ld \n", sdap_entity->default_drb);
-<<<<<<< HEAD
     LOG_D(SDAP, "RRC updating mapping rules: %d\n", mappedQFIs2AddCount);
     for (int i = 0; i < mappedQFIs2AddCount; i++)
       sdap_entity->qfi2drb_map_update(sdap_entity, mapped_qfi_2_add[i], sdap_entity->default_drb, has_sdap_rx, has_sdap_tx);
-=======
-
-    if(mappedQFIs2AddCount) {
-      LOG_D(SDAP, "RRC updating mapping rules\n");
-      for (int i = 0; i < mappedQFIs2AddCount; i++)
-      {
-        sdap_entity->qfi2drb_map_update(sdap_entity, mapped_qfi_2_add[i], sdap_entity->default_drb, has_sdap_rx, has_sdap_tx);
-      }
-    }
->>>>>>> 947e0e2e49... Merge commit '562ee0315ade742255665a3817686329373ff3ed' into FRD-1198-2023-w-11-oai-rebase
   }
 
   sdap_entity->next_entity = sdap_info.sdap_entity_llist;
