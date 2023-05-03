@@ -503,7 +503,7 @@ function main() {
 
   execlist=""
   [[ "$eNB" == "1" ]] && execlist="$execlist lte-softmodem"
-  [[ "$gNB" == "1" ]] && execlist="$execlist nr-softmodem nr-cuup"
+  [[ "$gNB" == "1" ]] && execlist="$execlist nr-softmodem"
   [[ "$RU" == "1" ]] &&  execlist="$execlist oairu"
   [[ "$UE" == 1 ]] &&    execlist="$execlist lte-uesoftmodem"
   [[ "$nrUE" == 1 ]] &&  execlist="$execlist nr-uesoftmodem"

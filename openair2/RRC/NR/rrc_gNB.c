@@ -198,9 +198,7 @@ static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration
   }
 
   if (!NODE_IS_DU(rrc->node_type)) {
-    if(NULL == rrc->carrier.SIB23){
-      rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
-    }
+    rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
     AssertFatal(rrc->carrier.SIB23 != NULL, "cannot allocate memory for SIB");
     rrc->carrier.sizeof_SIB23 = do_SIB23_NR(&rrc->carrier, configuration);
     LOG_I(NR_RRC,"do_SIB23_NR, size %d \n ", rrc->carrier.sizeof_SIB23);
@@ -268,7 +266,6 @@ static void openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_Rrc
 {
   protocol_ctxt_t      ctxt = { 0 };
   gNB_RRC_INST         *rrc=RC.nrrrc[gnb_mod_idP];
-  int                      init_config_flag = 0;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, gnb_mod_idP, GNB_FLAG_YES, NOT_A_RNTI, 0, 0,gnb_mod_idP);
   LOG_I(NR_RRC,
         PROTOCOL_NR_RRC_CTXT_FMT" Init...\n",
@@ -276,8 +273,6 @@ static void openair_rrc_gNB_configuration(const module_id_t gnb_mod_idP, gNB_Rrc
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
   AssertFatal(NUMBER_OF_UE_MAX < (module_id_t)0xFFFFFFFFFFFFFFFF, " variable overflow");
   AssertFatal(configuration!=NULL,"configuration input is null\n");
-if(!rrc->cell_info_configured) {
-    init_config_flag = 1;
   rrc->module_id = gnb_mod_idP;
   rrc_gNB_CU_DU_init(rrc);
   uid_linear_allocator_init(&rrc->uid_allocator);
@@ -289,12 +284,11 @@ if(!rrc->cell_info_configured) {
   pthread_mutex_init(&rrc->cell_info_mutex,NULL);
   rrc->cell_info_configured = 0;
   LOG_I(NR_RRC, PROTOCOL_NR_RRC_CTXT_FMT" Checking release \n",PROTOCOL_NR_RRC_CTXT_ARGS(&ctxt));
-}
   init_NR_SI(rrc, configuration);
   return;
 } // END openair_rrc_gNB_configuration
 
-char rrc_gNB_rblist_configuration(const module_id_t gnb_mod_idP,NRRrcRblistCfgReq *RblistConfig)
+static void rrc_gNB_process_AdditionRequestInformation(const module_id_t gnb_mod_idP, x2ap_ENDC_sgnb_addition_req_t *m)
 {
   int CC_id = RblistConfig->cell_index;
 
@@ -3138,10 +3132,31 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
 
 static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, const char *msg_name, instance_t instance){
 
-  f1ap_ue_context_setup_t * resp=&F1AP_UE_CONTEXT_SETUP_RESP(msg_p);
+  f1ap_ue_context_setup_t *resp=&F1AP_UE_CONTEXT_SETUP_RESP(msg_p);
   protocol_ctxt_t ctxt = {.rntiMaybeUEid = resp->rnti, .module_id = instance, .instance = instance, .enb_flag = 1, .eNB_index = instance};
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
   struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context(rrc, ctxt.rntiMaybeUEid);
+
+  e1ap_bearer_setup_req_t req = {0};
+  req.numPDUSessionsMod = ue_context_p->ue_context.nb_of_pdusessions;
+  req.gNB_cu_cp_ue_id = ue_context_p->ue_context.gNB_ue_ngap_id;
+  req.rnti = ue_context_p->ue_context.rnti;
+  for (int i=0; i < req.numPDUSessionsMod; i++) {
+    req.pduSessionMod[i].numDRB2Modify = resp->drbs_to_be_setup_length;
+    for (int j=0; j < resp->drbs_to_be_setup_length; j++) {
+      f1ap_drb_to_be_setup_t *drb_f1 = resp->drbs_to_be_setup + j;
+      DRB_nGRAN_to_setup_t *drb_e1 = req.pduSessionMod[i].DRBnGRanModList + j;
+
+      drb_e1->id = drb_f1->drb_id;
+      drb_e1->numDlUpParam = drb_f1->up_dl_tnl_length;
+      drb_e1->DlUpParamList[0].tlAddress = drb_f1->up_dl_tnl[0].tl_address;
+      drb_e1->DlUpParamList[0].teId = drb_f1->up_dl_tnl[0].teid;
+    }
+  }
+
+  // send the F1 response message up to update F1-U tunnel info
+  rrc->cucp_cuup.bearer_context_mod(&req, instance);
+
   NR_CellGroupConfig_t *cellGroupConfig = NULL;
 
   if(resp->du_to_cu_rrc_information->cellGroupConfig!=NULL){
@@ -3675,10 +3690,6 @@ void *rrc_gnb_task(void *args_p) {
         LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
         rrc_gNB_rblist_configuration(instance, &NRRRC_RBLIST_CFG_REQ(msg_p));
         break;
-      case NRRRC_RBLIST_CFG_REQ:
-        LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
-        rrc_gNB_rblist_configuration(GNB_INSTANCE_TO_MODULE_ID(instance), &NRRRC_RBLIST_CFG_REQ(msg_p));
-        break;
 
       /* Messages from F1AP task */
       case F1AP_SETUP_REQ:
@@ -3745,8 +3756,9 @@ void *rrc_gnb_task(void *args_p) {
         rrc_gNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
         break;
 
-      case SS_NRRRC_PDU_REQ:
-        LOG_A(NR_RRC,"NR RRC received SS_NRRRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d\n", SS_NRRRC_PDU_REQ (msg_p).srb_id, SS_NRRRC_PDU_REQ (msg_p).sdu_size);
+      case E1AP_BEARER_CONTEXT_SETUP_RESP:
+        LOG_I(NR_RRC, "Received E1AP_BEARER_CONTEXT_SETUP_RESP for instance %d\n", (int)instance);
+        rrc_gNB_process_e1_bearer_context_setup_resp(&E1AP_BEARER_CONTEXT_SETUP_RESP(msg_p), instance);
 
         PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
                                       instance,

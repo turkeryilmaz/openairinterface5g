@@ -79,7 +79,6 @@
 #include "NR_PagingRecord.h"
 #include "NR_UE-CapabilityRequestFilterNR.h"
 #include "common/utils/nr/nr_common.h"
-#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac.h"
 #if defined(NR_Rel16)
   #include "NR_SCS-SpecificCarrier.h"
   #include "NR_TDD-UL-DL-ConfigCommon.h"
@@ -201,26 +200,6 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
   rrc_gNB_carrier_data_t *carrier = &rrc->carrier;
 
   NR_BCCH_BCH_Message_t *mib = &carrier->mib;
-  /*TODO: for SS mode, mib is coming from TTCN */
-  /*
-  if(RC.ss.mode == SS_SOFTMODEM) {
-    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_BCH_Message,
-                                     NULL,
-                                     (void *)mib,
-                                     carrier->MIB,
-                                     24);
-    LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
-
-    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
-                 enc_rval.failed_type->name, enc_rval.encoded);
-
-    if (enc_rval.encoded==-1) {
-      return(-1);
-    }
-    return((enc_rval.encoded+7)/8);
-  }
-  */
-
   NR_ServingCellConfigCommon_t *scc = carrier->servingcellconfigcommon;
 
   memset(mib,0,sizeof(NR_BCCH_BCH_Message_t));
@@ -253,8 +232,7 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
     if(frequency_range == FR2)
       ssb_subcarrier_offset >>= 1; // this assumes 120kHz SCS for SSB and subCarrierSpacingCommon (only option supported by OAI for now)
   }
-  mib->message.choice.mib->ssb_SubcarrierOffset = (rrc->configuration.ssb_SubcarrierOffset)&15;
-  LOG_A(NR_RRC,"ssb_SubcarrierOffset: %d \n",mib->message.choice.mib->ssb_SubcarrierOffset);
+  mib->message.choice.mib->ssb_SubcarrierOffset = ssb_subcarrier_offset & 15;
 
   /*
   * The SIB1 will be sent in this allocation (Type0-PDCCH) : 38.213, 13-4 Table and 38.213 13-11 to 13-14 tables
@@ -314,8 +292,6 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
                                    (void *)mib,
                                    carrier->MIB,
                                    24);
-  LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
-
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   return((enc_rval.encoded+7)/8);
@@ -323,37 +299,8 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
 
 uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
                     gNB_RrcConfigurationReq *configuration) {
+
   asn_enc_rval_t enc_rval;
-  /*TODO: for SS mode, sib1 is coming from TTCN */
-  /*
-  if(RC.ss.mode == SS_SOFTMODEM) {
-    if(NULL == carrier->siblock1) {
-      return 0;
-    }
-    NR_BCCH_DL_SCH_Message_t *sib1_message = carrier->siblock1;
-
-    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
-      xer_fprint(stdout, &asn_DEF_NR_BCCH_DL_SCH_Message, (const void*)sib1_message);
-    }
-
-    if(carrier->SIB1 == NULL) carrier->SIB1=(uint8_t *) malloc16(NR_MAX_SIB_LENGTH/8);
-    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_DL_SCH_Message,
-        NULL,
-        (void *)sib1_message,
-        carrier->SIB1,
-        NR_MAX_SIB_LENGTH/8);
-    LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB1, NR_MAX_SIB_LENGTH/8);
-
-    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
-        enc_rval.failed_type->name, enc_rval.encoded);
-
-    if (enc_rval.encoded==-1) {
-      return(-1);
-    }
-    return((enc_rval.encoded+7)/8);
-  }
-  */
-
   NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
   carrier->siblock1 = sib1_message;
   sib1_message->message.present = NR_BCCH_DL_SCH_MessageType_PR_c1;
@@ -394,10 +341,6 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     *mnc1=(mnc/10)%10;
     asn1cSequenceAdd(nr_plmn->mnc.list, NR_MCC_MNC_Digit_t, mnc2);
     *mnc2=(mnc)%10;
-
-    //if (nr_plmn->mcc != NULL)
-    //RRM_FREE(nr_plmn->mcc);
-
   }//end plmn loop
 
   nr_plmn_info->cellIdentity.buf = CALLOC(1,5);
@@ -470,21 +413,9 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     scs_scaling = scs_scaling0>>2;
     scs_scaling2 = scs_scaling0>>2;
   }
-  NR_ARFCN_ValueNR_t absoluteFrequencySSB = 0;
-  uint32_t absolute_diff = 0;	
-  if (RC.ss.mode == SS_SOFTMODEM)
-  {
-    LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%ld ", __FUNCTION__, absoluteFrequencySSB);
-    absoluteFrequencySSB = *RC.nrrrc[0]->configuration.scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
-    absolute_diff = absoluteFrequencySSB - configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA;
-  }
-  else
-  {
-    absolute_diff = (*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB -
-        configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
-  }
+  uint32_t absolute_diff = (*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB -
+                             configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
 
-  /*TODO: */
   sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = scs_scaling2 * (absolute_diff/(12*scs_scaling) - 10);
 
   LOG_I(NR_RRC,"SIB1 freq: absoluteFrequencySSB %ld, absoluteFrequencyPointA %ld\n",
@@ -651,11 +582,10 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
                                    (void *)sib1_message,
                                    carrier->SIB1,
                                    NR_MAX_SIB_LENGTH/8);
-  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)carrier->SIB1, NR_MAX_SIB_LENGTH/8);
-
   AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   AssertFatal(enc_rval.encoded <= NR_MAX_SIB_LENGTH, "ASN1 encoded length %zd bits. 3GPP TS 38.331 section 5.2.1 - The physical layer imposes a limit to the maximum size a SIB can take. The maximum SIB1 or SI message size is 2976 bits.\n", enc_rval.encoded);
+
   return((enc_rval.encoded+7)/8);
 }
 
@@ -704,8 +634,6 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                enc_rval.failed_type->name, enc_rval.encoded);
   return((enc_rval.encoded+7)/8);
 }
-
-
 
 void do_SpCellConfig(gNB_RRC_INST *rrc,
                       struct NR_SpCellConfig  *spconfig){
@@ -1036,13 +964,7 @@ void fill_initial_SpCellConfig(int uid,
   SpCellConfig->reconfigurationWithSync = NULL;
   SpCellConfig->rlmInSyncOutOfSyncThreshold = NULL;
   SpCellConfig->rlf_TimersAndConstants = NULL;
-  if (RC.ss.mode >= SS_SOFTMODEM) {
-    /* TODO: fill  SpCellConfig->spCellConfigDedicated with configuration from SS*/
-    /*
-    SpCellConfig->cellConfigDedicated = carrier->cellConfigDedicated;
-    return;
-    */
-  }
+
   SpCellConfig->spCellConfigDedicated = calloc(1,sizeof(*SpCellConfig->spCellConfigDedicated));
   SpCellConfig->spCellConfigDedicated->uplinkConfig = calloc(1,sizeof(*SpCellConfig->spCellConfigDedicated->uplinkConfig));
   NR_UplinkConfig_t *uplinkConfig = SpCellConfig->spCellConfigDedicated->uplinkConfig;
@@ -1335,29 +1257,7 @@ NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR
   return rlc_BearerConfig;
 }
 
-void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGroupConfig_t *ue_context_mastercellGroup, int use_rlc_um_for_drb, uint8_t configure_srb, uint8_t bearer_id_start, uint8_t nb_bearers_to_setup, long *priority,const int CC_id) {
-
-  if (RC.ss.mode >= SS_SOFTMODEM) {
-    /* code not used here. Just keep it here for future checking*/
-    NR_RLC_BearerConfig_t *rlc_BearerConfig       = NULL;
-    NR_RLC_BearerConfig_t * ss_rlc_BearerConfig = NULL;
-    cellGroupConfig->cellGroupId = 0;
-    cellGroupConfig->rlc_BearerToReleaseList = NULL;
-    cellGroupConfig->rlc_BearerToAddModList                          = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToAddModList));
-
-    for(int rbIndex =2; rbIndex < MAX_NR_RBS; rbIndex++){
-      /*SRB2 DRB1 ... SS RLC_BearerConfig */
-      if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid){
-        rlc_BearerConfig      = calloc(1, sizeof(NR_RLC_BearerConfig_t));
-        ss_rlc_BearerConfig = RC.NR_RB_Config[CC_id][rbIndex].RlcBearer;
-
-        fill_rb_RLC_BearerConfig(rbIndex, rlc_BearerConfig, ss_rlc_BearerConfig);
-        asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
-        asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
-      }
-    }
-    return;
-  }
+void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGroupConfig_t *ue_context_mastercellGroup, int use_rlc_um_for_drb, uint8_t configure_srb, uint8_t bearer_id_start, uint8_t nb_bearers_to_setup, long *priority) {
 
   cellGroupConfig->cellGroupId = 0;
   cellGroupConfig->rlc_BearerToReleaseList = NULL;
@@ -1374,7 +1274,7 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGr
   // DRB Configuration
   for (int i = bearer_id_start; i < bearer_id_start + nb_bearers_to_setup; i++ ){
     const NR_RLC_Config_PR rlc_conf = use_rlc_um_for_drb ? NR_RLC_Config_PR_um_Bi_Directional : NR_RLC_Config_PR_am;
-    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_DRB_RLC_BearerConfig(3 + i, i, rlc_conf, priority[i-1]);
+    NR_RLC_BearerConfig_t *rlc_BearerConfig = get_DRB_RLC_BearerConfig(3 + i, i, rlc_conf, priority[0]); // Fixme: priority hardcoded see caller function, all is wrong
     asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
     asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
   }
@@ -1510,16 +1410,11 @@ void fill_initial_cellGroupConfig(int uid,
                                   NR_CellGroupConfig_t *cellGroupConfig,
                                   const NR_ServingCellConfigCommon_t *scc,
                                   const NR_ServingCellConfig_t *servingcellconfigdedicated,
-                                  const gNB_RrcConfigurationReq *configuration,
-                                  const int CC_id)
+                                  const gNB_RrcConfigurationReq *configuration)
 {
-  NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
-  NR_RLC_Config_t                                  *rlc_Config           = NULL;
-  NR_LogicalChannelConfig_t                        *logicalChannelConfig = NULL;
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
-  long *logicalChannelGroup = NULL;
-
+  
   cellGroupConfig->cellGroupId = 0;
 
   if (RC.ss.mode >= SS_SOFTMODEM) {
@@ -1602,33 +1497,6 @@ void fill_initial_cellGroupConfig(int uid,
   cellGroupConfig->sCellToReleaseList                                       = NULL;
 }
 
-bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
-            rrc_gNB_ue_context_t      *ue_context_pP,
-            NR_CellGroupConfig_t *cellGroupConfig)
-{
-  int CC_id = ue_context_pP->ue_context.primaryCC_id;
-  bool update_flag = false;
-  if(RC.ss.mode < SS_SOFTMODEM){
-    return update_flag;
-  }
-
-  if(cellGroupConfig && cellGroupConfig->rlc_BearerToAddModList){
-    for(int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
-      NR_RLC_BearerConfig_t * rlc_BearerConfig = cellGroupConfig->rlc_BearerToAddModList->list.array[i];
-      /* only check rlc_config as it is missing from TTCN */
-      if(!rlc_BearerConfig->rlc_Config && rlc_BearerConfig->servedRadioBearer){
-        int rbIndex = (rlc_BearerConfig->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)? rlc_BearerConfig->servedRadioBearer->choice.srb_Identity : (rlc_BearerConfig->servedRadioBearer->choice.drb_Identity +2);
-        if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid && RC.NR_RB_Config[CC_id][rbIndex].RlcBearer){
-          rlc_BearerConfig->rlc_Config = fill_rb_rlc_config(RC.NR_RB_Config[CC_id][rbIndex].RlcBearer->rlc_Config);
-          update_flag = true;
-        }
-      }
-    }
-  }
-  return update_flag;
-}
-
-
 //------------------------------------------------------------------------------
 int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 uint8_t                      *const buffer,
@@ -1637,8 +1505,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 int                          masterCellGroup_len,
                 const NR_ServingCellConfigCommon_t *scc,
                 const NR_ServingCellConfig_t        *servingcellconfigdedicated,
-                const gNB_RrcConfigurationReq *configuration,
-                const int                    CC_id)
+                const gNB_RrcConfigurationReq *configuration)
 //------------------------------------------------------------------------------
 {
     asn_enc_rval_t                                   enc_rval;
@@ -1669,14 +1536,16 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     /****************************** radioBearerConfig ******************************/
 
     /* Configure SRB1 */
-    if (*SRB_configList){
-      ASN_STRUCT_FREE(asn_DEF_NR_SRB_ToAddModList,*SRB_configList);
-      *SRB_configList = NULL;
+    if (*SRB_configList) {
+        free(*SRB_configList);
     }
 
-    *SRB_configList = CALLOC(1, sizeof(NR_SRB_ToAddModList_t));
-    SRB1_config = CALLOC(1, sizeof(NR_SRB_ToAddMod_t));
+    *SRB_configList = calloc(1, sizeof(NR_SRB_ToAddModList_t));
+    // SRB1
+    /* TODO */
+    SRB1_config = calloc(1, sizeof(NR_SRB_ToAddMod_t));
     SRB1_config->srb_Identity = 1;
+    // pdcp_Config->t_Reordering
     SRB1_config->pdcp_Config = pdcp_Config;
     ie->radioBearerConfig.srb_ToAddModList = *SRB_configList;
     asn1cSeqAdd(&(*SRB_configList)->list, SRB1_config);
@@ -1706,11 +1575,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
 				     (void *)&dl_ccch_msg,
 				     buffer,
 				     1000);
-    LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", buffer, 1000);
 
-    //free content of dl_ccch_msg
-    ie->radioBearerConfig.srb_ToAddModList = NULL; //ue_p->SRB_configList still keep allocated
-    ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NR_DL_CCCH_Message,&dl_ccch_msg);
 
     AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
 	    enc_rval.failed_type->name, enc_rval.encoded);
@@ -1758,11 +1623,6 @@ uint8_t do_NR_SecurityModeCommand(
               enc_rval.failed_type->name, enc_rval.encoded);
 
   LOG_D(NR_RRC, "[gNB %d] securityModeCommand for UE %lx Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
-
-  if (enc_rval.encoded==-1) {
-    LOG_E(NR_RRC, "[gNB %d] ASN1 : securityModeCommand encoding failed for UE %lx\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
-    return(-1);
-  }
 
   //  rrc_ue_process_ueCapabilityEnquiry(0,1000,&dl_dcch_msg.message.choice.c1.choice.ueCapabilityEnquiry,0);
   //  exit(-1);
@@ -1847,11 +1707,6 @@ uint8_t do_NR_SA_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
               enc_rval.failed_type->name, enc_rval.encoded);
 
   LOG_D(NR_RRC, "[gNB %d] NR UECapabilityRequest for UE %lx Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
-
-  if (enc_rval.encoded==-1) {
-    LOG_E(NR_RRC, "[gNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %lx\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
-    return(-1);
-  }
 
   return((enc_rval.encoded+7)/8);
 }

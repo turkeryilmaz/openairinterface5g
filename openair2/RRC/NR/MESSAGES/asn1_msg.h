@@ -74,8 +74,7 @@ void fill_initial_cellGroupConfig(int uid,
                                   NR_CellGroupConfig_t *cellGroupConfig,
                                   const NR_ServingCellConfigCommon_t *scc,
                                   const NR_ServingCellConfig_t *servingcellconfigdedicated,
-                                  const gNB_RrcConfigurationReq *configuration,
-                                  const int CC_id);
+                                  const gNB_RrcConfigurationReq *configuration);
 
 void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                             const int uid,
@@ -88,12 +87,7 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                                 uint8_t configure_srb,
                                 uint8_t bearer_id_start,
                                 uint8_t nb_bearers_to_setup,
-                                long *priority,
-                                const int CC_id);
-
-bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
-            rrc_gNB_ue_context_t      *ue_context_pP,
-            NR_CellGroupConfig_t *cellGroupConfig);
+                                long *priority);
 
 int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 uint8_t                      *const buffer,
@@ -102,8 +96,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 int                          masterCellGroup_len,
                 const NR_ServingCellConfigCommon_t *scc,
                 const NR_ServingCellConfig_t       *servingcellconfigdedicated,
-                const gNB_RrcConfigurationReq *configuration,
-                const int CC_id);
+                const gNB_RrcConfigurationReq *configuration);
 
 uint8_t do_NR_SecurityModeCommand(
                     const protocol_ctxt_t *const ctxt_pP,
