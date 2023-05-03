@@ -588,7 +588,7 @@ void nr_rx_sdu(const module_id_t gnb_mod_idP,
     NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
     const int8_t harq_pid = UE_scheduling_control->feedback_ul_harq.head;
 
-    if (sduP)
+    if (sduP) {
       T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
         T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
         T_BUFFER(sduP, sdu_lenP));

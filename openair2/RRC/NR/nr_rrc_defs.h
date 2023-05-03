@@ -43,8 +43,7 @@
 #include "common/platform_constants.h"
 #include "COMMON/platform_types.h"
 #include "mac_rrc_dl.h"
-
-//#include "COMMON/mac_rrc_primitives.h"
+#include "cucp_cuup_if.h"
 
 #include "NR_SIB1.h"
 #include "NR_RRCReconfigurationComplete.h"
@@ -56,11 +55,7 @@
 #include "NR_PLMN-IdentityInfo.h"
 #include "NR_MCC-MNC-Digit.h"
 #include "NR_NG-5G-S-TMSI.h"
-//#include "MCCH-Message.h"
-//#include "MBSFNAreaConfiguration-r9.h"
-//#include "SCellToAddMod-r10.h"
-//#include "AS-Config.h"
-//#include "AS-Context.h"
+
 #include "NR_UE-NR-Capability.h"
 #include "NR_UE-MRDC-Capability.h"
 #include "NR_MeasResults.h"
@@ -79,17 +74,6 @@
   #include "as_message.h"
 
   #include "commonDef.h"
-
-
-/*I will change the name of the structure for compile purposes--> hope not to undo this process*/
-
-typedef unsigned int uid_nr_t;
-#define NR_UID_LINEAR_ALLOCATOR_BITMAP_SIZE (((MAX_MOBILES_PER_GNB/8)/sizeof(unsigned int)) + 1)
-
-typedef struct nr_uid_linear_allocator_s {
-  unsigned int   bitmap[NR_UID_LINEAR_ALLOCATOR_BITMAP_SIZE];
-} nr_uid_allocator_t;
-    
 
 #define PROTOCOL_NR_RRC_CTXT_UE_FMT                PROTOCOL_CTXT_FMT
 #define PROTOCOL_NR_RRC_CTXT_UE_ARGS(CTXT_Pp)      PROTOCOL_NR_CTXT_ARGS(CTXT_Pp)
@@ -314,6 +298,9 @@ typedef struct gNB_RRC_UE_s {
   NR_RRCReconfiguration_t            *reconfig;
   NR_RadioBearerConfig_t             *rb_config;
 
+  /* Pointer to save spCellConfig during RRC Reestablishment procedures */
+  NR_SpCellConfig_t                  *spCellConfigReestablishment;
+
   ImsiMobileIdentity_t               imsi;
 
   /* KgNB as derived from KASME received from EPC */
@@ -336,7 +323,7 @@ typedef struct gNB_RRC_UE_s {
   uint16_t                           ng_5G_S_TMSI_Part2;
   NR_EstablishmentCause_t            establishment_cause;
 
-  /* Information from UE RRC ConnectionReestablishmentRequest */
+  /* Information from UE RRCReestablishmentRequest */
   NR_ReestablishmentCause_t          reestablishment_cause;
 
   /* UE id for initial connection to S1AP */
@@ -358,9 +345,7 @@ typedef struct gNB_RRC_UE_s {
   uint8_t                            nb_of_modify_e_rabs;
   uint8_t                            nb_of_failed_e_rabs;
   nr_e_rab_param_t                   modify_e_rab[NB_RB_MAX];//[S1AP_MAX_E_RAB];
-  /* Total number of pdu session already setup in the list */
-  uint8_t                            setup_pdu_sessions;
-  /* Number of pdu session to be setup in the list */
+  /* Number of pdu session managed for the ue */
   uint8_t                            nb_of_pdusessions;
   /* Number of e_rab to be modified in the list */
   uint8_t                            nb_of_modify_pdusessions;
@@ -399,7 +384,8 @@ typedef struct gNB_RRC_UE_s {
   uint8_t                            established_pdu_sessions_flag;
   uint32_t                           ue_rrc_inactivity_timer;
   int8_t                             reestablishment_xid;
-  //------------------------------------------------------------------------------//
+  uint32_t                           ue_reestablishment_counter;
+  uint32_t                           ue_reconfiguration_after_reestablishment_counter;
   NR_CellGroupId_t                                      cellGroupId;
   struct NR_SpCellConfig                                *spCellConfig;
   struct NR_CellGroupConfig__sCellToAddModList          *sCellconfig;
@@ -415,8 +401,6 @@ typedef struct gNB_RRC_UE_s {
 
 } gNB_RRC_UE_t;
 
-typedef uid_t ue_uid_t;
-
 typedef struct rrc_gNB_ue_context_s {
   /* Tree related data */
   RB_ENTRY(rrc_gNB_ue_context_s) entries;
@@ -429,7 +413,7 @@ typedef struct rrc_gNB_ue_context_s {
   // another key for protocol layers but should not be used as a key for RB tree
   uid_t          local_uid;
 
-  /* UE id for initial connection to S1AP */
+  /* UE id for initial connection to NGAP */
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
 
@@ -494,29 +478,14 @@ typedef struct {
   NR_SIB2_t                                *sib2;
   NR_SIB3_t                                *sib3;
   NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
-  int ssb_SubcarrierOffset;
-  int sib1_tda;
-  int pdsch_AntennaPorts;
-  int pusch_AntennaPorts;
-  int minRXTXTIME;
-  int do_CSIRS;
-  int do_SRS;
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
   NR_ServingCellConfig_t                    *servingcellconfig;
-  NR_ServingCellConfig_t                    *cellConfigDedicated;
-  NR_PDCCH_ConfigSIB1_t                     *pdcch_ConfigSIB1;
-  /* ServingCellConfig */
-  NR_CellGroupId_t                                cell_GroupId;
-  NR_MAC_CellGroupConfig_t                  *mac_cellGroupConfig;
-  NR_PhysicalCellGroupConfig_t               *physicalCellGroupConfig;
-
   /* dedicate Scheduler Config */
-  NR_DcchDtchConfig_t                    *dcchDtchConfig;
+  NR_DcchDtchConfig_t                       *dcchDtchConfig;
 
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
   NR_SRB_INFO                               SI;
-  NR_SRB_INFO                               Srb0;
   int                                       p_gNB;
 
 } rrc_gNB_carrier_data_t;
@@ -542,6 +511,16 @@ typedef struct nr_mac_rrc_dl_if_s {
   dl_rrc_message_transfer_func_t dl_rrc_message_transfer;
 } nr_mac_rrc_dl_if_t;
 
+typedef struct cucp_cuup_if_s {
+  cucp_cuup_bearer_context_setup_func_t bearer_context_setup;
+  cucp_cuup_bearer_context_setup_func_t bearer_context_mod;
+} cucp_cuup_if_t;
+
+typedef struct nr_reestablish_rnti_map_s {
+  ue_id_t ue_id;
+  rnti_t c_rnti;
+} nr_reestablish_rnti_map_t;
+
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -564,6 +543,9 @@ typedef struct gNB_RRC_INST_s {
 
   // RRC configuration
   gNB_RrcConfigurationReq configuration;
+
+  // gNB N3 GTPU instance
+  instance_t e1_inst;
 
   // other PLMN parameters
   /// Mobile country code
@@ -592,7 +574,11 @@ typedef struct gNB_RRC_INST_s {
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
 
+  nr_reestablish_rnti_map_t nr_reestablish_rnti_map[MAX_MOBILES_PER_GNB];
+
   nr_mac_rrc_dl_if_t mac_rrc;
+  cucp_cuup_if_t cucp_cuup;
+
 } gNB_RRC_INST;
 
 #include "nr_rrc_proto.h" //should be put here otherwise compilation error

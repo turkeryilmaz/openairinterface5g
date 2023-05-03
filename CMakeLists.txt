@@ -823,7 +823,7 @@ set(SCHED_NR_SRC
   ${OPENAIR1_DIR}/SCHED_NR/phy_frame_config_nr.c
 )
 add_library(SCHED_NR_LIB ${SCHED_NR_SRC})
-target_link_libraries(SCHED_NR_LIB PRIVATE asn1_nr_rrc_hdrs)
+target_link_libraries(SCHED_NR_LIB PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 set(SCHED_SRC_RU
   ${OPENAIR1_DIR}/SCHED/ru_procedures.c
@@ -1290,10 +1290,13 @@ add_library(PHY_UE ${PHY_SRC_UE})
 target_link_libraries(PHY_UE PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 
 add_library(PHY_NR_COMMON ${PHY_NR_SRC_COMMON})
+target_link_libraries(PHY_NR_COMMON PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_library(PHY_NR ${PHY_NR_SRC})
+target_link_libraries(PHY_NR PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_library(PHY_NR_UE ${PHY_NR_UE_SRC})
+target_link_libraries(PHY_NR_UE PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_library(PHY_RU ${PHY_SRC_RU})
 target_link_libraries(PHY_RU PRIVATE asn1_lte_rrc_hdrs)
@@ -1561,12 +1564,14 @@ set (MISC_NFAPI_LTE
  )
 
 add_library(MISC_NFAPI_LTE_LIB ${MISC_NFAPI_LTE})
+target_link_libraries(MISC_NFAPI_LTE_LIB PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 set (MISC_NFAPI_NR
  ${OPENAIR1_DIR}/SCHED/nfapi_nr_dummy.c
  )
 
 add_library(MISC_NFAPI_NR_LIB ${MISC_NFAPI_NR})
+target_link_libraries(MISC_NFAPI_NR_LIB PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 add_library(L2
   ${L2_SRC}
@@ -2340,24 +2345,6 @@ endif()
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
 
-add_executable(nr-cuup
-  executables/nr-cuup.c
-  executables/softmodem-common.c
-  ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
-  ${NR_RRC_DIR}/rrc_gNB_UE_context.c
-  ${OPENAIR2_DIR}/E1AP/e1ap_setup.c
-  ${NR_PDCP_SRC}
-  ${NR_SDAP_SRC}
-  ${T_SOURCE}
-  ${SHLIB_LOADER_SOURCES}
-  )
-
-target_link_libraries(nr-cuup PRIVATE
-                      CONFIG_LIB ITTI SCTP_CLIENT
-                      GTPV1U e1ap e1_pdcp_if f1ap SIMU_ETH
-                      SECU_OSA SECU_CN ${OPENSSL_LIBRARIES} crypt z sctp dl pthread)
-target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-                      
 # nr-uesoftmodem is  UE implementation
 #######################################
 

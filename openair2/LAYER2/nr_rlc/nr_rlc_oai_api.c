@@ -37,6 +37,7 @@
 #include "NR_RLC-Config.h"
 #include "common/ran_context.h"
 #include "NR_UL-CCCH-Message.h"
+#include "opt.h"
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 

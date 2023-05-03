@@ -176,6 +176,10 @@ openair0_config_t openair0_cfg[MAX_CARDS];
 
 double cpuf;
 
+/** FC Cell config */
+pthread_cond_t cell_config_done_cond;
+pthread_mutex_t cell_config_done_mutex;
+int cell_config_done=-1;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution

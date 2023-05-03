@@ -298,7 +298,7 @@ static void do_pdcp_data_ind(
     pdcp_pkt.seqnum_length = rb->sn_size;
     pdcp_pkt.maci_present = (rb->has_integrity)?1:0;
     pdcp_pkt.ciphering_disabled = (rb->has_ciphering)?1:0;
-    pdcp_pkt.sdap_header = (rb->has_sdapULheader)?1:0;
+    pdcp_pkt.sdap_header = (rb->has_sdap_rx)?1:0;
     pdcp_pkt.is_retx = 0;
     pdcp_pkt.pdu_length = sdu_buffer_size;
     rb->recv_pdu(rb, (char *)sdu_buffer->data, sdu_buffer_size);
@@ -720,7 +720,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
 
   if (IS_SOFTMODEM_NOS1 || UE_NAS_USE_TUN) {
     LOG_D(PDCP, "IP packet received with size %d, to be sent to SDAP interface, UE ID/RNTI: %ld\n", size, ue->rntiMaybeUEid);
-    sdap_data_ind(entity->rb_id, entity->is_gnb, entity->has_sdap, entity->has_sdapULheader, entity->pdusession_id, ue->rntiMaybeUEid, buf, size);
+    sdap_data_ind(entity->rb_id, entity->is_gnb, entity->has_sdap_rx, entity->pdusession_id, ue->rntiMaybeUEid, buf, size);
   }
   else{
     for (i = 0; i < MAX_DRBS_PER_UE; i++) {
@@ -1185,7 +1185,7 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
           if (rlc_bearer2add_list->list.array[j]->servedRadioBearer != NULL){
             if (rlc_bearer2add_list->list.array[j]->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_drb_Identity){
               if (drb2add_list->list.array[i]->drb_Identity == rlc_bearer2add_list->list.array[j]->servedRadioBearer->choice.drb_Identity){
-                add_drb(enb_flag, rntiMaybeUEid, drb2add_list->list.array[i], rlc_bearer2add_list->list.array[i]->rlc_Config, security_modeP & 0x0f, (security_modeP >> 4) & 0x0f, kUPenc, kUPint);
+                add_drb(enb_flag, rntiMaybeUEid, reestablish_ue_id, drb2add_list->list.array[i], rlc_bearer2add_list->list.array[i]->rlc_Config, security_modeP & 0x0f, (security_modeP >> 4) & 0x0f, kUPenc, kUPint);
               }
             }
           }
@@ -1382,7 +1382,7 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
     pdcp_pkt.seqnum_length 	= rb->sn_size;
     pdcp_pkt.maci_present 	= (rb->has_integrity)?1:0;
     pdcp_pkt.ciphering_disabled 	= (rb->has_ciphering)?1:0;
-    pdcp_pkt.sdap_header 		= (rb->has_sdapULheader)?1:0;
+    pdcp_pkt.sdap_header 		= (rb->has_sdap_rx)?1:0;
     pdcp_pkt.is_retx 		= 0;
     pdcp_pkt.pdu_length 		= sdu_buffer_size;
 
@@ -1465,7 +1465,7 @@ static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
     pdcp_pkt.seqnum_length      = rb->sn_size;
     pdcp_pkt.maci_present       = (rb->has_integrity)?1:0;
     pdcp_pkt.ciphering_disabled = (rb->has_ciphering)?1:0;
-    pdcp_pkt.sdap_header        = (rb->has_sdapULheader)?1:0;
+    pdcp_pkt.sdap_header        = (rb->has_sdap_rx)?1:0;
   }
   pdcp_pkt.is_retx            = 0;
   pdcp_pkt.pdu_length         = sdu_buffer_size;

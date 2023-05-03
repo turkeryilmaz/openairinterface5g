@@ -154,8 +154,6 @@ void rrc_gNB_remove_ue_context(
   RB_REMOVE(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_pP);
   rrc_gNB_free_mem_UE_context(ctxt_pP, ue_context_pP);
   uid_linear_allocator_free(&rrc_instance_pP->uid_allocator, ue_context_pP->local_uid);
-  /*TODO: should use ASN_STRUCT_FREE to release each pointer field of ue_context */
-  /* free fields of ue_context_pP->ue_context */
   free(ue_context_pP);
   rrc_instance_pP->Nb_ue --;
   LOG_I(RRC,
@@ -191,7 +189,7 @@ rrc_gNB_ue_context_5g_s_tmsi_exist(
 {
     struct rrc_gNB_ue_context_s        *ue_context_p = NULL;
     RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head) {
-        LOG_I(NR_RRC,"checking for UE 5G S-TMSI %ld: rnti %d \n",
+        LOG_I(NR_RRC,"Checking for UE 5G S-TMSI %ld: RNTI %04x\n",
               s_TMSI, ue_context_p->ue_context.rnti);
 
         if (ue_context_p->ue_context.ng_5G_S_TMSI_Part1 == s_TMSI) {
