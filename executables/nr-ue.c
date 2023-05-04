@@ -896,10 +896,17 @@ void *UE_thread(void *arg) {
 
     int readBlockSize, writeBlockSize;
 
-    rx_offset_slot = UE->rx_offset_TO * UE->rx_offset_slot / nb_slot_frame - UE->rx_offset_comp;
-    UE->rx_offset_comp += rx_offset_slot;
-    UE->rx_offset_slot++;
-    UL_TO_Tx_ofs += 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+    extern int tdriftComp;
+    if (tdriftComp == 1)
+    {
+      rx_offset_slot = UE->rx_offset_TO * UE->rx_offset_slot / nb_slot_frame - UE->rx_offset_comp;
+      UE->rx_offset_comp += rx_offset_slot;
+      UE->rx_offset_slot++;
+      UL_TO_Tx_ofs += 2*rx_offset_slot; //to adapt the UE's transmission time in order to get aligned at gNB
+    }
+
+    LOG_I(PHY, "diff: %d, PI_Out: %d, offset_slot: %d, offset_UL: %d, TA: %d, TO_PScal: %f, TO_IScal: %f\n", 
+                UE->rx_offset, UE->rx_offset_TO, rx_offset_slot, UL_TO_Tx_ofs, UE->timing_advance, TO_PScaling, TO_IScaling);
 
     readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms) + rx_offset_slot;
     writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
@@ -935,17 +942,37 @@ void *UE_thread(void *arg) {
         LOG_E(PHY,"can't compensate: diff =%d\n", first_symbols);
     }
 
+    printf("**** Option: 4 Activated \n");
+
+    //timing_advance += 1*rx_offset_slot;
+    //timing_advance += 2*rx_offset_slot;
+
+    //UE->timing_advance += 1*rx_offset_slot;
+    UE->timing_advance += 2*rx_offset_slot;
+
     // use previous timing_advance value to compute writeTimestamp
     writeTimestamp = timestamp+
       UE->frame_parms.get_samples_slot_timestamp(slot_nr,&UE->frame_parms,DURATION_RX_TO_TX)
       - firstSymSamp - openair0_cfg[0].tx_sample_advance -
       UE->N_TA_offset - timing_advance;
 
+  	//timing_advance += 1*rx_offset_slot;
+    //timing_advance += 2*rx_offset_slot;
+
+    //UE->timing_advance += 1*rx_offset_slot;
+    //UE->timing_advance += 2*rx_offset_slot;
+
     // but use current UE->timing_advance value to compute writeBlockSize
     if (UE->timing_advance != timing_advance) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
     }
+
+    //timing_advance += 1*rx_offset_slot;
+    //timing_advance += 2*rx_offset_slot;
+
+    //UE->timing_advance += 1*rx_offset_slot;
+    //UE->timing_advance += 2*rx_offset_slot;
 
     nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx);
 
