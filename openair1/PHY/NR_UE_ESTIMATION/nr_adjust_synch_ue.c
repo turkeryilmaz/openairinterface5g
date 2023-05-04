@@ -50,9 +50,9 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   int max_val = 0, max_pos = 0;
   const int sync_pos = 0;
   //uint8_t sync_offset = 0;
+  static int flagInitIScaling = 0;
 
   static int64_t TO_I_Ctrl = 0; //Integral controller for TO
-  int I_ScalingF = 10; //Scaling factor for the I controller, can be adjusted
   static int frameLast = 0; //frame number of last call of nr_adjust_synch_ue()
   static int FirstFlag = 1; //indicate the first call of nr_adjust_synch_ue()
 
@@ -97,10 +97,15 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
     diff /= FrameDiff; //scaled by the frame number
 
   frameLast = frame; //save the last frame number
+  
+  if ( (((diff < -4) || (diff > 4)) && (flagInitIScaling == 0)))
+  {
+	  TO_I_Ctrl = TO_IScalingInit/TO_IScaling;
+	  flagInitIScaling = 1;
+  }
 
   TO_I_Ctrl += diff; //integral of all offsets
   ue->rx_offset = diff;
-  //ue->rx_offset_TO = diff+TO_I_Ctrl/I_ScalingF; //PI controller
   ue->rx_offset_TO = (TO_PScaling*diff) + (TO_I_Ctrl*TO_IScaling); //PI controller
   ue->rx_offset_slot = 1;
   ue->rx_offset_comp = 0;
@@ -114,6 +119,8 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
     ue->rx_offset_slot = 1;
     ue->rx_offset_comp = 0;
   }
+
+  LOG_I(PHY, "Frame: %u, diff: %d, rx_offset_TO: %d, PScaling: %f, IScaling: %f, TA: %d, TO_I_Ctrl: %ld \n", frame, ue->rx_offset, ue->rx_offset_TO, TO_PScaling, TO_IScaling, ue->timing_advance, TO_I_Ctrl);
 
   if(abs(diff)<5)
     count_max_pos_ok ++;

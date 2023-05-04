@@ -35,13 +35,13 @@
   {"P" ,                    CONFIG_HLP_PROPD,          0,                .u64ptr=&RFsim_PropDelay,            .defintval=0,                     TYPE_UINT64, 0},        \
   {"gnb_k2" ,               CONFIG_HLP_GNBK2,          0,                .u16ptr=&NTN_gNB_k2,                 .defintval=0,                     TYPE_UINT16, 0},        \
   {"ul_sched_f" ,           CONFIG_HLP_ULSCHEDF,       0,                .u16ptr=&max_ul_sched_frame,         .defintval=1,                     TYPE_UINT16, 0},        \
-  {"FD" ,                   CONFIG_HLP_FDoppler,       0,                .iptr=&fdoppler,                     .defintval=0,                     TYPE_INT,    0},        \
+  {"FD" ,                   CONFIG_HLP_FDoppler,       0,                .iptr=&fdoppler,                     .defintval=1,                     TYPE_INT,    0},        \
   {"TD" ,                   CONFIG_HLP_TDRIFT,         0,                .iptr=&RFsim_DriftPerFrame,          .defintval=0,                     TYPE_INT,    0},        \
-  {"PST" ,                  CONFIG_HLP_PathStart, 0,                     .u16ptr=&pathStartingTime,           .defintval=1050,                  TYPE_UINT16, 0},        \
-  {"PET" ,                  CONFIG_HLP_PathEnd, 0,                       .u16ptr=&pathEndingTime,             .defintval=1280,                  TYPE_UINT16, 0},        \
-  {"ue_PosY" ,              CONFIG_HLP_uePosY, 0,                        .iptr=&uePosY,                       .defintval=0,                     TYPE_INT,    0},        \
-  {"FDC" ,                  CONFIG_HLP_FDopplerPrePost,    0,            .iptr=&fdopplerPrePost,              .defintval=0,                     TYPE_INT32,  0},        \
-  {"FC" ,                   CONFIG_HLP_FDopplerComp,    0,               .iptr=&fdopplerComp,                 .defintval=0,                     TYPE_INT32,  0}         \
+  {"PST" ,                  CONFIG_HLP_PathStart,      0,                .u16ptr=&pathStartingTime,           .defintval=1050,                  TYPE_UINT16, 0},        \
+  {"PET" ,                  CONFIG_HLP_PathEnd,        0,                .u16ptr=&pathEndingTime,             .defintval=1280,                  TYPE_UINT16, 0},        \
+  {"ue_PosY" ,              CONFIG_HLP_uePosY,         0,                .iptr=&uePosY,                       .defintval=0,                     TYPE_INT,    0},        \
+  {"FDC" ,                  CONFIG_HLP_FDopplerPrePost,0,                .iptr=&fdopplerPrePost,              .defintval=0,                     TYPE_INT32,  0},        \
+  {"FC" ,                   CONFIG_HLP_FDopplerComp,   0,                .iptr=&fdopplerComp,                 .defintval=0,                     TYPE_INT32,  0}         \
 }
 // clang-format on
 

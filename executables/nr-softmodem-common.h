@@ -129,12 +129,11 @@
 #define CONFIG_HLP_FI_ScalingFD  "Set the I scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
 #define CONFIG_HLP_FD_ScalingFN  "Set the D scaling factor (numerator) of the PID controller for the Doppler compensation at UE side"
 #define CONFIG_HLP_FD_ScalingFD  "Set the D scaling factor (denominator) of the PID controller for the Doppler compensation at UE side"
-
 #define CONFIG_HLP_FO_PScaling "set P scaling factor of the PID controller for the frequency offset compensation"
 #define CONFIG_HLP_FO_IScaling "set I scaling factor of the PID controller for the frequency offset compensation"
-
 #define CONFIG_HLP_TP_Scaling "set scaling P for TO"
 #define CONFIG_HLP_TI_Scaling "set scaling I for TO"
+#define CONFIG_HLP_TO_Iinit    "Init the I part of the PI controller for timing offset compensation"
 
 /*--------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters for LOG utility                                             */
@@ -195,6 +194,7 @@ extern int tdriftComp;         // flag to activate/deactivate continous timing d
 extern int32_t fdopplerPrePost; //pre/post compensation of the Doppler shift at the gNB side
 extern double FO_PScaling;  // P scaling factor of the PID controller for the Doppler compensation at UE side
 extern double FO_IScaling;  // I scaling factor of the PID controller for the Doppler compensation at UE side
+extern int TO_IScalingInit;    // initializing the accumulative part (I part) of the PI controller for the timing offset compensation
 
 extern double TO_PScaling;
 extern double TO_IScaling;

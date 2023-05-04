@@ -66,7 +66,7 @@
   {"P" ,                           CONFIG_HLP_PROPD,           0,               .u64ptr=&RFsim_PropDelay,                    .defintval=0,      TYPE_UINT64,   0}, \
   {"ue_slot_Rx_Tx" ,               CONFIG_HLP_UESLOTRXTX,      0,               .u16ptr=&NTN_UE_slot_Rx_to_Tx,               .defintval=0,      TYPE_UINT16,   0}, \
   {"ue_k2" ,                       CONFIG_HLP_UEK2,            0,               .u16ptr=&NTN_UE_k2,                          .defintval=0,      TYPE_UINT16,   0}, \
-  {"FD" ,                          CONFIG_HLP_FDoppler,        0,               .iptr=&fdoppler,                             .defintval=0,      TYPE_INT,      0}, \
+  {"FD" ,                          CONFIG_HLP_FDoppler,        0,               .iptr=&fdoppler,                             .defintval=1,      TYPE_INT,      0}, \
   {"FC" ,                          CONFIG_HLP_FDopplerComp,    0,               .iptr=&fdopplerComp,                         .defintval=1,      TYPE_INT,      0}, \
   {"TD" ,                          CONFIG_HLP_TDRIFT,          0,               .iptr=&RFsim_DriftPerFrame,                  .defintval=0,      TYPE_INT,      0}, \
   {"PST" ,                         CONFIG_HLP_PathStart,       0,               .u16ptr=&pathStartingTime,                   .defintval=1050,   TYPE_UINT16,   0}, \
@@ -76,7 +76,8 @@
   {"FOP" ,                         CONFIG_HLP_FO_PScaling,     0,               .dblptr=&FO_PScaling,                        .defdblval=0.33,   TYPE_DOUBLE,   0}, \
   {"FOI" ,                         CONFIG_HLP_FO_IScaling,     0,               .dblptr=&FO_IScaling,                        .defdblval=0.5,    TYPE_DOUBLE,   0}, \
   {"TOP" ,                         CONFIG_HLP_TP_Scaling,      0,               .dblptr=&TO_PScaling,                        .defdblval=1.0,    TYPE_DOUBLE,   0}, \
-  {"TOI" ,                         CONFIG_HLP_TI_Scaling,      0,               .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE,   0}  \
+  {"TOI" ,                         CONFIG_HLP_TI_Scaling,      0,               .dblptr=&TO_IScaling,                        .defdblval=0.1,    TYPE_DOUBLE,   0}, \
+  {"TOII",                         CONFIG_HLP_TO_Iinit,        0,               .iptr=&TO_IScalingInit,                      .defintval=0,      TYPE_INT,      0},  \
 }
 // clang-format on
 

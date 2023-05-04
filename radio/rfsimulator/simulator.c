@@ -619,7 +619,7 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
   static int64_t TO_sim_shift = 0;
   static uint64_t TO_TS = 0;
   if (RFsim_DriftPerFrame!=0) {
-    if ( TO_gNB_flag) { //a UE is active
+    if ( TO_gNB_flag) { //a gNB is active
       if ( TO_wait_flag ) { //for the first write when a UE is connected
         TO_wait_flag=0;
         TO_TS = timestamp+samples_per_slot*nb_slot_per_fram*300+samples_per_slot*5; //start drifting 300 frames after a UE is active, trying to skip all the "trash" frames (5 trash frames currently)
@@ -971,9 +971,9 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
 
             currDoppler =  (currDopplerTmp - initDoppler) ;
           }
-          
-          //RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
-          printf("**** counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);        
+
+          RFsim_PropDelay = (2 * norm_d / c) * fsamp; 
+          //printf("**** counter: %lu, RFsim_PropDelay[Samp]: %lu , Doppler: %d, freqScale: %f ***** \n ", counter, RFsim_PropDelay, currDoppler, freqScale);        
 
           //LOG_I(HW, "nbAnt_tx %d\n",nbAnt_tx);
           for (int i=0; i < nsamps; i++) {//loop over nsamps
