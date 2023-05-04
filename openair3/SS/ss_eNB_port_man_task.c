@@ -569,13 +569,14 @@ void *ss_eNB_port_man_acp_task(void *arg)
 bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
 {
   struct SYSTEM_CTRL_CNF cnf;
-  const size_t msgSize = 16 * 1024;
-  unsigned char *buffer = (unsigned char *)acpMalloc(msgSize);
+  const size_t size = 16 * 1024;
+  unsigned char *buffer = (unsigned char *)acpMalloc(size);
   int status = 0;
 
   if (!buffer)
     return false;
 
+  size_t msgSize = size;
   memset(&cnf, 0, sizeof(cnf));
   cnf.Common.CellId = sys_req->Common.CellId;
 
@@ -585,10 +586,13 @@ bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
   cnf.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
   cnf.Common.TimingInfo.v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
   cnf.Common.TimingInfo.v.SubFrame.SFN.v.Number = SS_context.sfn;
+
   cnf.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
   cnf.Common.TimingInfo.v.SubFrame.Subframe.v.Number = SS_context.sf;
+
   cnf.Common.TimingInfo.v.SubFrame.HSFN.d = SystemFrameNumberInfo_Type_Number;
   cnf.Common.TimingInfo.v.SubFrame.HSFN.v.Number = SS_context.hsfn;
+
   cnf.Common.TimingInfo.v.SubFrame.Slot.d = SlotTimingInfo_Type_FirstSlot;
   cnf.Common.TimingInfo.v.SubFrame.Slot.v.FirstSlot = true;
 
