@@ -1378,7 +1378,7 @@ typedef struct eNB_MAC_INST_s {
   /// Pointer to IF module instance for PHY
   IF_Module_t *if_inst;
   /// Common cell resources
-  COMMON_channels_t common_channels[NFAPI_CC_MAX];
+  COMMON_channels_t common_channels[MAX_NUM_CCs];
   /// current PDU index (BCH,MCH,DLSCH)
   int16_t pdu_index[NFAPI_CC_MAX];
 

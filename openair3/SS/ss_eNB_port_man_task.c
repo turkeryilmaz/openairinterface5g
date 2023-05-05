@@ -552,20 +552,6 @@ void *ss_eNB_port_man_eNB_task(void *arg)
     return NULL;
 }
 
-
-void *ss_eNB_port_man_acp_task(void *arg)
-{
-   // ss_eNB_port_man_init();
-    while (1)
-    {
-        /* Now handle notifications for other sockets */
-       // ss_eNB_read_from_socket(ctx_g);
-       sleep(1000);
-    }
-
-    return NULL;
-}
-
 bool ss_eNB_port_man_handle_enquiryTiming(struct SYSTEM_CTRL_REQ *sys_req)
 {
   struct SYSTEM_CTRL_CNF cnf;
