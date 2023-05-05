@@ -619,7 +619,8 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
                        NR_ServingCellConfigCommon_t *scc,
                        int numerology,
                        int rbsize,
-                       int mcs_table) {
+                       int mcs_table_dl,
+                       int mcs_table_ul) {
 
   NR_Phy_Parameters_t *phy_Parameters = &cap->phy_Parameters;
   int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
@@ -627,10 +628,15 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
   nr_bandnr->bandNR = band;
   asn1cSeqAdd(&cap->rf_Parameters.supportedBandListNR.list,
                    nr_bandnr);
-  if (mcs_table == 1) {
+  NR_BandNR_t *bandNRinfo = cap->rf_Parameters.supportedBandListNR.list.array[0];
+
+  if (mcs_table_ul == 1) {
+    bandNRinfo->pusch_256QAM = CALLOC(1,sizeof(*bandNRinfo->pusch_256QAM));
+    *bandNRinfo->pusch_256QAM = NR_BandNR__pusch_256QAM_supported;
+  }
+  if (mcs_table_dl == 1) {
     int bw = get_supported_band_index(numerology, band, rbsize);
     if (band>256) {
-      NR_BandNR_t *bandNRinfo = cap->rf_Parameters.supportedBandListNR.list.array[0];
       bandNRinfo->pdsch_256QAM_FR2 = CALLOC(1,sizeof(*bandNRinfo->pdsch_256QAM_FR2));
       *bandNRinfo->pdsch_256QAM_FR2 = NR_BandNR__pdsch_256QAM_FR2_supported;
     }
@@ -949,11 +955,54 @@ static void scheduling_request_config(const NR_ServingCellConfigCommon_t *scc, N
   asn1cSeqAdd(&pucch_Config->schedulingRequestResourceToAddModList->list,schedulingRequestResourceConfig);
 }
 
+static void set_ul_mcs_table(const NR_UE_NR_Capability_t *cap,
+                             const NR_ServingCellConfigCommon_t *scc,
+                             NR_PUSCH_Config_t *pusch_Config)
+{
+
+  if (cap == NULL){
+    pusch_Config->mcs_Table = NULL;
+    return;
+  }
+
+  int band;
+  if (scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList)
+    band = *scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[0];
+  else
+    band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  bool supported = false;
+  for (int i=0;i<cap->rf_Parameters.supportedBandListNR.list.count;i++) {
+    NR_BandNR_t *bandNRinfo = cap->rf_Parameters.supportedBandListNR.list.array[i];
+    if(bandNRinfo->bandNR == band && bandNRinfo->pusch_256QAM) {
+      supported = true;
+      break;
+    }
+  }
+  if (supported) {
+    if(pusch_Config->transformPrecoder == NULL ||
+       *pusch_Config->transformPrecoder == NR_PUSCH_Config__transformPrecoder_disabled) {
+      if(pusch_Config->mcs_Table == NULL)
+        pusch_Config->mcs_Table = calloc(1, sizeof(*pusch_Config->mcs_Table));
+      *pusch_Config->mcs_Table = NR_PUSCH_Config__mcs_Table_qam256;
+    }
+    else {
+      if(pusch_Config->mcs_TableTransformPrecoder == NULL)
+        pusch_Config->mcs_TableTransformPrecoder = calloc(1, sizeof(*pusch_Config->mcs_TableTransformPrecoder));
+      *pusch_Config->mcs_TableTransformPrecoder = NR_PUSCH_Config__mcs_TableTransformPrecoder_qam256;
+    }
+  }
+  else {
+    pusch_Config->mcs_Table = NULL;
+    pusch_Config->mcs_TableTransformPrecoder = NULL;
+  }
+}
+
 static void set_dl_mcs_table(int scs,
                              const NR_UE_NR_Capability_t *cap,
                              NR_BWP_DownlinkDedicated_t *bwp_Dedicated,
                              const NR_ServingCellConfigCommon_t *scc)
 {
+
   if (cap == NULL){
     bwp_Dedicated->pdsch_Config->choice.setup->mcs_Table = NULL;
     return;
@@ -992,7 +1041,9 @@ static void set_dl_mcs_table(int scs,
     bwp_Dedicated->pdsch_Config->choice.setup->mcs_Table = NULL;
 }
 
-static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Config)
+static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusch_Config,
+                                                         const NR_ServingCellConfigCommon_t *scc,
+                                                         const NR_UE_NR_Capability_t *uecap)
 {
   struct NR_SetupRelease_PUSCH_Config *setup_puschconfig = calloc(1, sizeof(*setup_puschconfig));
   setup_puschconfig->present = NR_SetupRelease_PUSCH_Config_PR_setup;
@@ -1057,8 +1108,7 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   pusch_Config->resourceAllocation = NR_PUSCH_Config__resourceAllocation_resourceAllocationType1;
   pusch_Config->pusch_TimeDomainAllocationList = NULL;
   pusch_Config->pusch_AggregationFactor = NULL;
-  pusch_Config->mcs_Table = NULL;
-  pusch_Config->mcs_TableTransformPrecoder = NULL;
+  set_ul_mcs_table(uecap, scc, pusch_Config);
   pusch_Config->transformPrecoder = NULL;
   if (!pusch_Config->codebookSubset)
     pusch_Config->codebookSubset = calloc(1, sizeof(*pusch_Config->codebookSubset));
@@ -1261,7 +1311,7 @@ static void config_uplinkBWP(NR_BWP_Uplink_t *ubwp,
      bwp_loop < servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count) {
     pusch_Config = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_loop]->bwp_Dedicated->pusch_Config->choice.setup;
   }
-  ubwp->bwp_Dedicated->pusch_Config = config_pusch(pusch_Config);
+  ubwp->bwp_Dedicated->pusch_Config = config_pusch(pusch_Config, scc, configuration->force_256qam_off ? NULL : uecap);
 
   long maxMIMO_Layers = servingcellconfigdedicated &&
                                 servingcellconfigdedicated->uplinkConfig
@@ -1592,19 +1642,10 @@ NR_BCCH_BCH_Message_t *get_new_MIB_NR(const NR_ServingCellConfigCommon_t *scc)
   mib->message.choice.mib->spare.bits_unused = 7; // This makes a spare of 1 bits
 
   AssertFatal(scc->ssbSubcarrierSpacing != NULL, "scc->ssbSubcarrierSpacing is null\n");
-  int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
-  frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
   int ssb_subcarrier_offset = 31; // default value for NSA
   if (get_softmodem_params()->sa) {
-    uint32_t absolute_diff = (*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB
-                              - scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
-    int scs_scaling = scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA < 600000 ? 3 : 1;
-    ssb_subcarrier_offset = (absolute_diff / scs_scaling) % 24;
-    if (frequency_range == FR2) {
-      // this assumes 120kHz SCS for SSB and subCarrierSpacingCommon (only
-      // option supported by OAI for now)
-      ssb_subcarrier_offset >>= 1;
-    }
+    ssb_subcarrier_offset = get_ssb_subcarrier_offset(*scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+                                                      scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA);
   }
   mib->message.choice.mib->ssb_SubcarrierOffset = ssb_subcarrier_offset & 15;
 
@@ -1789,32 +1830,17 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const gNB_RrcConfigurationReq *configurati
         frequencyInfoDL->frequencyBandList.list.array[i];
   }
 
-  int scs_scaling0 = 1 << (configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing);
-  int scs_scaling = scs_scaling0;
-  int scs_scaling2 = scs_scaling0;
-  if (frequencyInfoDL->absoluteFrequencyPointA < 600000) {
-    scs_scaling = scs_scaling0 * 3;
-  }
-  if (frequencyInfoDL->absoluteFrequencyPointA > 2016666) {
-    scs_scaling = scs_scaling0 >> 2;
-    scs_scaling2 = scs_scaling0 >> 2;
-  }
-  uint32_t absolute_diff = (*frequencyInfoDL->absoluteFrequencySSB - frequencyInfoDL->absoluteFrequencyPointA);
-
-  sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA =
-      scs_scaling2 * (absolute_diff / (12 * scs_scaling) - 10);
+  const NR_FreqBandIndicatorNR_t band = *configuration->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  frequency_range_t frequency_range = band < 100 ? FR1 : FR2;
+  sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA = get_ssb_offset_to_pointA(*configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB,
+                               configuration->scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
+                               configuration->scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,
+                               frequency_range);
 
   LOG_I(NR_RRC,
-        "SIB1 freq: absoluteFrequencySSB %ld, absoluteFrequencyPointA %ld\n",
-        *frequencyInfoDL->absoluteFrequencySSB,
-        frequencyInfoDL->absoluteFrequencyPointA);
-  LOG_I(NR_RRC,
-        "SIB1 freq: absolute_diff %d, %d*(absolute_diff/(12*%d) - 10) %d\n",
-        absolute_diff,
-        scs_scaling2,
-        scs_scaling,
+	"SIB1 freq: offsetToPointA %d\n",
         (int)sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL.offsetToPointA);
-
+  
   for (int i = 0; i < frequencyInfoDL->scs_SpecificCarrierList.list.count; i++) {
     asn1cSeqAdd(&ServCellCom->downlinkConfigCommon.frequencyInfoDL.scs_SpecificCarrierList.list,
                 frequencyInfoDL->scs_SpecificCarrierList.list.array[i]);
@@ -2057,7 +2083,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   config_pucch_resset1(pucch_Config, NULL);
   set_pucch_power_config(pucch_Config, configuration->do_CSIRS);
 
-  initialUplinkBWP->pusch_Config = config_pusch(NULL);
+  initialUplinkBWP->pusch_Config = config_pusch(NULL, scc, NULL);
 
   long maxMIMO_Layers = uplinkConfig && uplinkConfig->pusch_ServingCellConfig
                                 && uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1
@@ -2385,6 +2411,10 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                    configuration->force_256qam_off ? NULL : uecap,
                    bwp_Dedicated,
                    scc);
+
+  NR_BWP_UplinkDedicated_t *ul_bwp_Dedicated = SpCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP;
+  set_ul_mcs_table(configuration->force_256qam_off ? NULL : uecap, scc, ul_bwp_Dedicated->pusch_Config->choice.setup);
+
   struct NR_ServingCellConfig__downlinkBWP_ToAddModList *DL_BWP_list =
       SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList;
   struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig->uplinkBWP_ToAddModList;
@@ -2395,12 +2425,13 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
       set_dl_mcs_table(scs, configuration->force_256qam_off ? NULL : uecap, bwp->bwp_Dedicated, scc);
     }
   }
-  if (configuration->do_SRS && UL_BWP_list) {
+  if (UL_BWP_list) {
     for (int i = 0; i < UL_BWP_list->list.count; i++) {
       NR_BWP_Uplink_t *ul_bwp = UL_BWP_list->list.array[i];
       int bwp_size = NRRIV2BW(ul_bwp->bwp_Common->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
       if (ul_bwp->bwp_Dedicated->pusch_Config) {
         NR_PUSCH_Config_t *pusch_Config = ul_bwp->bwp_Dedicated->pusch_Config->choice.setup;
+        set_ul_mcs_table(configuration->force_256qam_off ? NULL : uecap, scc, pusch_Config);
         if (pusch_Config->maxRank == NULL) {
           pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
         }
@@ -2609,7 +2640,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
     pusch_Config =
         servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[0]->bwp_Dedicated->pusch_Config->choice.setup;
   }
-  initialUplinkBWP->pusch_Config = config_pusch(pusch_Config);
+  initialUplinkBWP->pusch_Config = config_pusch(pusch_Config, servingcellconfigcommon, uecap);
 
   long maxMIMO_Layers =
       servingcellconfigdedicated->uplinkConfig && servingcellconfigdedicated->uplinkConfig->pusch_ServingCellConfig

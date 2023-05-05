@@ -116,10 +116,8 @@ int get_pucch0_cs_lut_index(PHY_VARS_gNB *gNB,nfapi_nr_pucch_pdu_t* pucch_pdu) {
   gNB->pucch0_lut.nb_id++;
   return(gNB->pucch0_lut.nb_id-1);
 }
-
-
   
-int16_t idft12_re[12][12] = {
+static const int16_t idft12_re[12][12] = {
   {23170,23170,23170,23170,23170,23170,23170,23170,23170,23170,23170,23170},
   {23170,20066,11585,0,-11585,-20066,-23170,-20066,-11585,0,11585,20066},
   {23170,11585,-11585,-23170,-11585,11585,23170,11585,-11585,-23170,-11585,11585},
@@ -134,7 +132,7 @@ int16_t idft12_re[12][12] = {
   {23170,20066,11585,0,-11585,-20066,-23170,-20066,-11585,0,11585,20066}
 };
 
-int16_t idft12_im[12][12] = {
+static const int16_t idft12_im[12][12] = {
   {0,0,0,0,0,0,0,0,0,0,0,0},
   {0,11585,20066,23170,20066,11585,0,-11585,-20066,-23170,-20066,-11585},
   {0,20066,20066,0,-20066,-20066,0,20066,20066,0,-20066,-20066},
@@ -975,15 +973,8 @@ __m256i pucch2_9bit[512*2];
 __m256i pucch2_10bit[1024*2];
 __m256i pucch2_11bit[2048*2];
 
-__m256i *pucch2_lut[9]={pucch2_3bit,
-			pucch2_4bit,
-			pucch2_5bit,
-			pucch2_6bit,
-			pucch2_7bit,
-			pucch2_8bit,
-			pucch2_9bit,
-			pucch2_10bit,
-			pucch2_11bit};
+static __m256i *const pucch2_lut[9] =
+    {pucch2_3bit, pucch2_4bit, pucch2_5bit, pucch2_6bit, pucch2_7bit, pucch2_8bit, pucch2_9bit, pucch2_10bit, pucch2_11bit};
 
 __m64 pucch2_polar_4bit[16];
 __m128i pucch2_polar_llr_num_lut[256],pucch2_polar_llr_den_lut[256];
@@ -1704,8 +1695,10 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
               ((int16_t*)&llrs[half_prb])[7]);
       } // half_prb
     } // symb
+
     // run polar decoder on llrs
-    decoderState = polar_decoder_int16((int16_t*)llrs, decodedPayload, 0, 2,nb_bit,pucch_pdu->prb_size);
+    decoderState = polar_decoder_int16((int16_t *)llrs, decodedPayload, 0, NR_POLAR_UCI_PUCCH_MESSAGE_TYPE, nb_bit, pucch_pdu->prb_size);
+
     LOG_D(PHY,"UCI decoderState %d, payload[0] %llu\n",decoderState,(unsigned long long)decodedPayload[0]);
     if (decoderState>0) decoderState=1;
     corr_dB = dB_fixed64(corr);
@@ -1774,7 +1767,7 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
     }
     bit_left = pucch_pdu->bit_len_csi_part1-((csi_part1_bytes-1)<<3);
     uci_pdu->csi_part1.csi_part1_payload[i] = decodedPayload[0] & ((1<<bit_left)-1);
-    decodedPayload[0] >>= pucch_pdu->bit_len_csi_part1;
+    decodedPayload[0] = pucch_pdu->bit_len_csi_part1 < 64 ? decodedPayload[0] >> pucch_pdu->bit_len_csi_part1 : 0;
   }
   
   if (pucch_pdu->bit_len_csi_part2>0) {

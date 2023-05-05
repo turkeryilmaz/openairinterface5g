@@ -36,9 +36,6 @@
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 
-
-extern uint16_t beta_cqi[16];
-
 void RCconfig_nrUE_prs(void *cfg)
 {
   int j = 0, k = 0, gNB_id = 0;
@@ -234,9 +231,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     ue->bitrate[gNB_id] = 0;
     ue->total_received_bits[gNB_id] = 0;
 
-    ue->ul_time_alignment[gNB_id].apply_ta = 0;
-    ue->ul_time_alignment[gNB_id].ta_frame = -1;
-    ue->ul_time_alignment[gNB_id].ta_slot  = -1;
   }
   // init NR modulation lookup tables
   nr_generate_modulation_table();
@@ -691,6 +685,8 @@ void init_N_TA_offset(PHY_VARS_NR_UE *ue){
     }
 
     ue->N_TA_offset = (int)(N_TA_offset * factor);
+    ue->ta_frame = -1;
+    ue->ta_slot = -1;
 
     LOG_I(PHY,"UE %d Setting N_TA_offset to %d samples (factor %f, UL Freq %lu, N_RB %d, mu %d)\n", ue->Mod_id, ue->N_TA_offset, factor, fp->ul_CarrierFreq, fp->N_RB_DL, fp->numerology_index);
   }
