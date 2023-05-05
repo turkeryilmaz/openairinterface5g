@@ -2474,7 +2474,7 @@ bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, ui
   if (RC.ss.ulgrant_info[CC_id].ulGrantType == ON_SR_RECEPTION_PRESENT )
   {
     LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT\n", __FUNCTION__);
-    if (SR_received == 1)
+    //if (SR_received == 1)
     {
       LOG_D(MAC, " %s ULGrantType: ON_SR_RECEPTION_PRESENT. ULGrant Scheduled at frame:%d subframe:%d\n",
           __FUNCTION__,
@@ -2482,11 +2482,11 @@ bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, ui
           subframeP);
       return true;
     }
-    else
-    {
-      LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT but NOT scheduling\n", __FUNCTION__);
-      return false;
-    }
+    //else
+   // {
+      //LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT but NOT scheduling\n", __FUNCTION__);
+      //return false;
+   // }
   }
 
   /* Handling periodic UL_Grant Configuration */
@@ -2519,7 +2519,7 @@ bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, ui
     }
     else
     {
-      return false;
+      return true;
     }
   }
   RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter = 0;
