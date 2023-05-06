@@ -44,7 +44,7 @@ typedef struct ru_info_s{
         int **prach_buf;
 } ru_info_t;
 
-int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot, int oframe, int oslot, uint8_t sync);
+int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot);
 int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp);
 
 

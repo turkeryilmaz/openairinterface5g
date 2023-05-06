@@ -632,6 +632,7 @@ if (ORAN_BRONZE)
 else() 
   set(ORAN_FHLIB_5G_SOURCE
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-G.c
+      ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/app_io_fh_xran-G.c
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/common-G.c
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/config-G.c
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/oran_isolate.c
@@ -651,7 +652,7 @@ set_target_properties(oran_fhlib_5g PROPERTIES COMPILE_FLAGS "-fvisibility=hidde
  
 #SET(DPDK_LIBS "-Wl,-rpath,$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -Wl,--whole-archive -L$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -ldpdk -Wl,--no-whole-archive")
 execute_process(  
-	COMMAND bash -c "pkg-config --libs libdpdk | tr -d i '\n'| sed 's/[[:space:]]*$//'"
+	COMMAND bash -c "pkg-config --libs libdpdk --static | tr -d '\n'| sed 's/[[:space:]]*$//'"
 	OUTPUT_VARIABLE DPDK_LIBS
 )
 TARGET_LINK_LIBRARIES(oran_fhlib_5g PRIVATE ${DPDK_LIBS})

@@ -536,7 +536,7 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
 
         //printf("numSlots=%u\n", p_o_xu_cfg->numSlots);
         //getchar();
-#if 0
+
         p_iq->iq_playback_buffer_size_dl = (p_o_xu_cfg->numSlots * N_SYM_PER_SLOT * N_SC_PER_PRB *
 
                                     app_xran_get_num_rbs(p_o_xu_cfg->xranTech, p_o_xu_cfg->mu_number,
@@ -570,13 +570,14 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
             if (p_iq->p_tx_play_buffer[i] == NULL)
             exit(-1);
 
-
+#if 0
             p_iq->tx_play_buffer_size[i] = sys_load_file_to_buff(p_o_xu_cfg->ant_file[i],
                             "DL IFFT IN IQ Samples in binary format",
                                 (uint8_t*)p_iq->p_tx_play_buffer[i],
                                 p_iq->tx_play_buffer_size[i],
                             1);
-    }
+#endif
+    	}
 
         if (p_o_xu_cfg->appMode == APP_O_DU && p_o_xu_cfg->xranCat == XRAN_CATEGORY_B) {
             for (i = 0; i < MAX_ANT_CARRIER_SUPPORTED && i < (uint32_t)(p_o_xu_cfg->numCC * p_o_xu_cfg->numAxc); i++) {
@@ -586,13 +587,14 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
 
                 if (p_iq->p_tx_dl_bfw_buffer[i] == NULL)
                 exit(-1);
-
+#if 0
                 p_iq->tx_dl_bfw_buffer_size[i] = sys_load_file_to_buff(p_o_xu_cfg->dl_bfw_file[i],
                                 "DL BF weights IQ Samples in binary format",
                                     (uint8_t*) p_iq->p_tx_dl_bfw_buffer[i],
                                     p_iq->tx_dl_bfw_buffer_size[i],
                                 1);
-        }
+#endif
+    	    }
     }
 
         if (p_o_xu_cfg->appMode == APP_O_DU && p_o_xu_cfg->xranCat == XRAN_CATEGORY_B) {
@@ -603,12 +605,13 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
 
                 if (p_iq->p_tx_ul_bfw_buffer[i] == NULL)
                 exit(-1);
-
+#if 0
                 p_iq->tx_ul_bfw_buffer_size[i] = sys_load_file_to_buff(p_o_xu_cfg->ul_bfw_file[i],
                                 "UL BF weights IQ Samples in binary format",
                                     (uint8_t*) p_iq->p_tx_ul_bfw_buffer[i],
                                     p_iq->tx_ul_bfw_buffer_size[i],
                                 1);
+#endif
         }
     }
 
@@ -621,12 +624,13 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
                  exit(-1);
 
                 memset(p_iq->p_tx_prach_play_buffer[i], 0, PRACH_PLAYBACK_BUFFER_BYTES);
-
+#if 0
                 p_iq->tx_prach_play_buffer_size[i] = sys_load_file_to_buff(p_o_xu_cfg->prach_file[i],
                                  "PRACH IQ Samples in binary format",
                                     (uint8_t*) p_iq->p_tx_prach_play_buffer[i],
                                     p_iq->tx_prach_play_buffer_size[i],
                                  1);
+#endif
                 p_iq->tx_prach_play_buffer_position[i] = 0;
          }
     }
@@ -643,12 +647,13 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
                  exit(-1);
 
                 memset(p_iq->p_tx_srs_play_buffer[i], 0, p_iq->iq_srs_buffer_size_ul);
+#if 0
                 p_iq->tx_srs_play_buffer_size[i] = sys_load_file_to_buff(p_o_xu_cfg->ul_srs_file[i],
                                  "SRS IQ Samples in binary format",
                                     (uint8_t*) p_iq->p_tx_srs_play_buffer[i],
                                     p_iq->tx_srs_play_buffer_size[i],
                                  1);
-
+#endif
                 p_iq->tx_srs_play_buffer_position[i] = 0;
          }
     }
@@ -719,7 +724,7 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
                 memset(p_iq->p_tx_ul_bfw_log_buffer[i], 0, p_iq->iq_bfw_buffer_size_ul);
     }
     }
-
+#if 0
         for (i = 0; i < MAX_ANT_CARRIER_SUPPORTED && i < (uint32_t)(p_o_xu_cfg->numCC * p_o_xu_cfg->numAxc); i++) {
 
             snprintf(filename, sizeof(filename), "./logs/%s%d-play_ant%d.txt",((p_o_xu_cfg->appMode == APP_O_DU) ? "o-du" : "o-ru"), p_o_xu_cfg->o_xu_id,  i);
@@ -874,6 +879,7 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
             }
         }
     }
+#endif
 
 #if 0
         for (i = 0; i < MAX_ANT_CARRIER_SUPPORTED && i < (uint32_t)(p_o_xu_cfg->numCC * p_o_xu_cfg->numAxc); i++) {
@@ -926,7 +932,6 @@ app_setup_o_xu_buffers(UsecaseConfig* p_use_cfg,  RuntimeConfig* p_o_xu_cfg, str
         }
 
     }
-#endif
 #if 0
         for (i = 0; i < MAX_ANT_CARRIER_SUPPORTED && i < (uint32_t)(p_o_xu_cfg->numCC * p_o_xu_cfg->numAxc); i++) {
 
@@ -1327,9 +1332,9 @@ void *oai_main(int argc, char *argv[])
 
     nActiveCoreMask[0] |= ((1 << app_io_xran_fh_init.io_cfg.timing_core) | app_io_xran_fh_init.io_cfg.pkt_proc_core);
     nActiveCoreMask[1] |= app_io_xran_fh_init.io_cfg.pkt_proc_core_64_127;
-
+#if 0
     MLogSetup(nActiveCoreMask[0], nActiveCoreMask[1], nActiveCoreMask[2], nActiveCoreMask[3]);
-
+#endif
     for (o_xu_id = 0; o_xu_id <  p_usecaseConfiguration->oXuNum;  o_xu_id++) {
         RuntimeConfig* p_o_xu_cfg = p_startupConfiguration[o_xu_id];
         totalCC += p_o_xu_cfg->numCC;
@@ -1370,9 +1375,7 @@ void *oai_main(int argc, char *argv[])
     }
         if (app_io_xran_interface(o_xu_id, p_startupConfiguration[o_xu_id], p_usecaseConfiguration, &app_io_xran_fh_init) != 0)
             exit(-1);
-#if 0
         app_io_xran_iq_content_init(o_xu_id, p_startupConfiguration[o_xu_id]);
-#endif
 #ifdef FWK_ENABLED
         if(p_o_xu_cfg->appMode == APP_O_DU && p_usecaseConfiguration->bbu_offload) {
             if ((xret = xran_reg_physide_cb(app_io_xran_handle, app_bbu_dl_tti_call_back, NULL, 10, XRAN_CB_TTI)) != XRAN_STATUS_SUCCESS) {

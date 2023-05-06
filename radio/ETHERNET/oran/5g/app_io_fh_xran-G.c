@@ -37,7 +37,9 @@
 #include "xran_compression.h"
 #include "xran_cp_api.h"
 #include "xran_sync_api.h"
+#if 0
 #include "xran_mlog_task_id.h"
+#endif
 #include "app_io_fh_xran.h"
 #ifdef FWK_ENABLED
 #include "app_bbu_pool.h"
@@ -195,6 +197,7 @@ app_io_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
         return;
     }
 
+    oai_xran_fh_rx_callback(pCallbackTag, status);
     if(sym == XRAN_FULL_CB_SYM)  //full slot callback only
     {
         for(ant_id = 0; ant_id < xran_max_antenna_nr; ant_id++) {
@@ -211,7 +214,6 @@ app_io_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status)
             }
         }
     }
-    oai_xran_rh_rx_callback(pCallbackTag, status);
     rte_pause();
 #if 0
     MLogTask(PID_GNB_SYM_CB, t1, MLogTick());
@@ -711,6 +713,10 @@ app_io_xran_interface(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg, UsecaseConfig
                             } else {
                             xran_init_PrbMap_from_cfg(p_o_xu_cfg->p_PrbMapUl, ptr, p_o_xu_cfg->mtu);
                             }
+	  		    for (int i=0;i<p_o_xu_cfg->p_PrbMapUl->nPrbElm;i++)
+			      printf("IN %d.%d idxElm %d, p_pRbMapElm->nRBStart %d p_pRbMapElm->nRBSize %d\n",j,z,i,p_o_xu_cfg->p_PrbMapUl->prbMap[i].nRBStart,p_o_xu_cfg->p_PrbMapUl->prbMap[i].nRBSize);
+	  		    for (int i=0;i<p_rb_map->nPrbElm;i++)
+			      printf("OUT %d.%d idxElm %d, p_pRbMapElm->nRBStart %d p_pRbMapElm->nRBSize %d\n",j,z,i,p_rb_map->prbMap[i].nRBStart,p_rb_map->prbMap[i].nRBSize);
                         } else {
                             if(p_o_xu_cfg->RunSlotPrbMapEnabled) {
                             if(p_o_xu_cfg->RunSlotPrbMapBySymbolEnable){
@@ -835,7 +841,7 @@ app_io_xran_interface(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg, UsecaseConfig
                     psIoCtrl->sFHPrachRxBbuIoBufCtrl[j][i][z].sBufferList.pBuffers[k].nNumberOfElements = 1;
                     psIoCtrl->sFHPrachRxBbuIoBufCtrl[j][i][z].sBufferList.pBuffers[k].nOffsetInBytes = 0;
 
-                    if (p_o_xu_cfg->appMode == APP_O_RU) {
+//                    if (p_o_xu_cfg->appMode == APP_O_RU) {
                         status = xran_bm_allocate_buffer(psBbuIo->nInstanceHandle[o_xu_id][i],psBbuIo->nBufPoolIndex[o_xu_id][nSectorIndex[i]][eInterfaceType],&ptr, &mb);
                         if(XRAN_STATUS_SUCCESS != status) {
                             rte_panic("Failed at  xran_bm_allocate_buffer, status %d\n",status);
@@ -847,7 +853,7 @@ app_io_xran_interface(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg, UsecaseConfig
                             memset(u32dptr, 0x0, PRACH_PLAYBACK_BUFFER_BYTES);
                         }
                         psIoCtrl->sFHPrachRxBbuIoBufCtrlDecomp[j][i][z].sBufferList.pBuffers[k].pData= (uint8_t *)ptr;
-                    }
+//                    }
                 }
             }
         }
@@ -1157,7 +1163,6 @@ app_io_xran_ext_type11_populate(struct xran_prb_elm* p_pRbMapElm, char *p_tx_dl_
     return status;
 }
 
-#if 0
 int32_t
 app_io_xran_iq_content_init_cp_rb_map(struct xran_prb_map* pRbMap,
     enum xran_pkt_dir dir, int32_t cc_id, int32_t ant_id, int32_t sym_id, int32_t tti, uint16_t nRBs)
@@ -1707,7 +1712,6 @@ app_io_xran_iq_content_init(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg)
 
     return 0;
 }
-#endif
 
 void app_io_xran_if_stop(void)
 {

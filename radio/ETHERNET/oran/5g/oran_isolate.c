@@ -30,6 +30,8 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "openair1/PHY/defs_gNB.h"
+#include "common/utils/threadPool/thread-pool.h"
+#include "oaioran.h"
 
 typedef struct {
   eth_state_t           e;
@@ -38,6 +40,7 @@ typedef struct {
   void                  *oran_priv;
 } oran_eth_state_t;
 
+notifiedFIFO_t oran_sync_fifo;
 
 int trx_oran_start(openair0_device *device)
 {
@@ -220,24 +223,25 @@ void oran_fh_if4p5_south_in(RU_t *ru,
   extern uint16_t sl_ahead;
   int f, sl;
 
-  int ret = xran_fh_rx_read_slot(&ru_info, &f, &sl, *frame, *slot, sync);
-
+  int ret = xran_fh_rx_read_slot(&ru_info, &f, &sl);
+  LOG_D(PHY,"Read %d.%d\n",f,sl);
   if (ret != 0){
-     printf("ORAN: ORAN_fh_if4p5_south_in ERROR in RX function \n");
+     printf("ORAN: %d.%d ORAN_fh_if4p5_south_in ERROR in RX function \n",f,sl);
   }
 
   proc->tti_rx       = sl;
   proc->frame_rx     = f;
   proc->tti_tx       = (sl+sl_ahead)%20;
   proc->frame_tx     = (sl>(19-sl_ahead)) ? (f+1)&1023 : f;
+
   if (proc->first_rx == 0) {
     if (proc->tti_rx != *slot) {
-      LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->frame_rx.proc->tti_rx %d.%d, slot %d)\n",proc->frame_rx,proc->tti_rx,*slot);
+      LOG_E(PHY,"Received Time doesn't correspond to the time we think it is (slot mismatch, received %d.%d, expected %d.%d)\n",proc->frame_rx,proc->tti_rx,*frame,*slot);
       *slot = proc->tti_rx;
     }
 
     if (proc->frame_rx != *frame) {
-      LOG_E(PHY,"Received Timestamp doesn't correspond to the time we think it is (proc->frame_rx %d frame %d proc->tti_rx %d tti %d)\n",proc->frame_rx,*frame,proc->tti_rx,*slot);
+      LOG_E(PHY,"Received Time doesn't correspond to the time we think it is (frame mismatch, %d.%d , expected %d.%d)\n",proc->frame_rx,proc->tti_rx,*frame,*slot);
       *frame=proc->frame_rx;
     }
   } else {
@@ -303,6 +307,8 @@ void make_args(char **argv, int *argc, char *string)
   }
   *argc=i;
 }
+
+
 __attribute__((__visibility__("default")))
 int transport_init(openair0_device *device,
                    openair0_config_t *openair0_cfg,
@@ -348,44 +354,16 @@ int transport_init(openair0_device *device,
 
   printf("ORAN: %s\n", __FUNCTION__);
 
-   // Check if the machine is PTP sync
-   check_xran_ptp_sync();
+  // Check if the machine is PTP sync
+  check_xran_ptp_sync();
 
-   int argc;
-   char *argv[20]={0x0};
-   make_args(&argv,&argc,openair0_cfg->sdr_addrs);
-/*
-   // SetUp
-   if ( setup_oran(s->oran_priv) !=0 ){ 
-      printf("%s:%d:%s: SetUp ORAN failed ... Exit\n",
-         __FILE__, __LINE__, __FUNCTION__);
-      ose
-      //c/xit(1);       
-   }else{
-      printf("SetUp ORAN. Done\n");
-   }
-
-   // Dump ORAN config
-   dump_oran_config(s->oran_priv);
-   
-   // Register physide callbacks
-   register_physide_callbacks(s->oran_priv);
-   printf("Register physide callbacks. Done\n");
-
-   // Open callbacks
-   open_oran_callback(s->oran_priv);
-   printf("Open Oran callbacks. Done\n");
-
-   // Init ORAN
-   initialize_oran(s->oran_priv);
-   printf("Init Oran. Done\n");
-
-   // Open ORAN
-   open_oran(s->oran_priv);
-   printf("xran_open. Done\n");
-*/
+  int argc;
+  char *argv[20]={0x0};
+  make_args(&argv,&argc,openair0_cfg->sdr_addrs);
   for (int c=0;c<argc;c++) 
-     printf("Running oran with param %d : %s\n",c,argv[c]);
+    printf("Running oran with param %d : %s\n",c,argv[c]);
+  initNotifiedFIFO(&oran_sync_fifo);
   eth->oran_priv = oai_main(argc,argv);
+  // create message queues for ORAN sync
   return 0;
 }
