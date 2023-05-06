@@ -20,6 +20,7 @@
  */
 
 typedef struct {
+	uint32_t tti;
 	uint32_t sl;
 	uint32_t f;
 } oran_sync_info_t;

@@ -55,6 +55,7 @@ volatile uint32_t rx_cb_slot = 0;
 #define GetFrameNum(tti,SFNatSecStart,numSubFramePerSystemFrame, numSlotPerSubFrame)  ((((uint32_t)tti / ((uint32_t)numSubFramePerSystemFrame * (uint32_t)numSlotPerSubFrame)) + SFNatSecStart) & 0x3FF)
 #define GetSlotNum(tti, numSlotPerSfn) ((uint32_t)tti % ((uint32_t)numSlotPerSfn))
 
+#define ORAN_BRONZE 1
 #ifdef ORAN_BRONZE
 extern struct xran_fh_config  xranConf;
 int xran_is_prach_slot(uint32_t subframe_id, uint32_t slot_id);
@@ -97,7 +98,7 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
         first_rx_set = 1;
        if (first_read_set == 1) {    
          slot2=slot+(subframe<<1);	     
-         if (last_frame>0 && frame>0 && (slot2>0 && last_frame!=frame) || (slot2 ==0 && last_frame!=(frame-1)))
+         if (last_frame>0 && frame>0 && (slot2>0 && last_frame!=frame) || (slot2 ==0 && last_frame!=((1024+frame-1)&1023)))
 	      LOG_E(PHY,"Jump in frame counter last_frame %d => %d, slot %d\n",last_frame,frame,slot2);
          if (last_slot == -1 || slot2 != last_slot) {	     
 #ifndef USE_POLLING
@@ -107,7 +108,8 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
            info->f  = frame;
            LOG_D(PHY,"Push %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,info->sl,slot,subframe,last_slot);
 #else
-           LOG_I(PHY,"Writing %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,slot2,slot,subframe,last_slot);
+           LOG_D(PHY,"Writing %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,slot2,slot,subframe,last_slot);
+	   oran_sync_info.tti = tti;
            oran_sync_info.sl = slot2;
 	   oran_sync_info.f  = frame;
 #endif
@@ -228,18 +230,21 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
   *frame      = info->f;
   delNotifiedFIFO_elt(res);
 #else
-  LOG_I(PHY,"In  xran_fh_rx_read_slot, first_rx_set %d\n",first_rx_set); 
+  LOG_D(PHY,"In  xran_fh_rx_read_slot, first_rx_set %d\n",first_rx_set); 
   while (first_rx_set ==0) {}
 
   *slot = oran_sync_info.sl;
-  LOG_I(PHY,"oran slot %d, last_slot %d\n",*slot,last_slot);
+  *frame = oran_sync_info.f;
+  uint32_t tti_in=oran_sync_info.tti;
+
+  LOG_D(PHY,"oran slot %d, last_slot %d\n",*slot,last_slot);
   int cnt=0;
-  while (*slot == last_slot)  {
-    *slot = oran_sync_info.sl;
+  //while (*slot == last_slot)  {
+  while (tti_in == oran_sync_info.tti)  {
+    //*slot = oran_sync_info.sl;
     cnt++;
   }
-  *frame = oran_sync_info.f;
-  LOG_I(PHY,"cnt %d, Reading %d.%d\n",cnt,*frame,*slot);
+  LOG_D(PHY,"cnt %d, Reading %d.%d\n",cnt,*frame,*slot);
   last_slot = *slot;
 #endif
   //return(0);

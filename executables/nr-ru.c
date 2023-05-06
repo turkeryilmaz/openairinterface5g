@@ -1198,7 +1198,7 @@ void *ru_thread( void *param ) {
     }
 
     // synchronization on input FH interface, acquire signals/data and block
-    LOG_I(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
+    LOG_D(PHY,"[RU_thread] read data: frame_rx = %d, tti_rx = %d\n", frame, slot);
 
     if (ru->fh_south_in) ru->fh_south_in(ru,&frame,&slot);
     else AssertFatal(1==0, "No fronthaul interface at south port");
@@ -1301,7 +1301,7 @@ void *ru_thread( void *param ) {
 #ifndef USE_MSGQ    
     pushTpool(&gNB->threadPool, res);
 #else
-//    pushNotifiedFIFO(&gNB->resp_L1, res);
+    pushNotifiedFIFO(&gNB->resp_L1, res);
 #endif
   }
 
