@@ -163,7 +163,7 @@ void rrc_send_cnf_to_ss(MessageDef *msg_p)
     break;
   }
   itti_send_msg_to_task(TASK_SYS, instance, message_p);
-  LOG_I(RRC, "Sent Message to SYS_TASK\n");	
+  LOG_I(RRC, "Sent Message to SYS_TASK\n");
 }
 
 
@@ -6751,7 +6751,10 @@ char openair_rrc_eNB_configuration(
   }
 
   for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
+    if (RC.ss.CC_update_flag[CC_id]) {
       init_SI(&ctxt, CC_id, configuration);
+      RC.ss.CC_update_flag[CC_id] = 0;
+    }
   }
 
   if(need_init) {
@@ -10078,8 +10081,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
 
         case RRC_AS_SECURITY_CONFIG_REQ:
         LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",
-          instance, 
-          msg_name_p, 
+          instance,
+          msg_name_p,
           &RRC_AS_SECURITY_CONFIG_REQ(msg_p),
           RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,
           RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);

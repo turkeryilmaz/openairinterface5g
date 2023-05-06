@@ -319,7 +319,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
 
 int tem_proc_ccid = proc->CC_id;
 /* MultiCell: Function modify for Multiple CC */
-  for (int CC_id=0; CC_id<RC.nb_CC[eNB->Mod_id]; CC_id++) {
+  for (int CC_id=0; CC_id<RC.nb_mac_CC[eNB->Mod_id]; CC_id++) {
   eNB->UL_INFO.CC_id     = CC_id;
   proc->CC_id = CC_id;//Temp solution need to be fixed later
   eNB->if_inst->UL_indication(&eNB->UL_INFO, (void*)proc);
@@ -964,7 +964,7 @@ void init_eNB_proc(int inst) {
   pthread_attr_t *attr_prach_br=NULL;
   LOG_I(PHY,"%s(inst:%d) RC.nb_CC[inst]:%d \n",__FUNCTION__,inst,RC.nb_CC[inst]);
 
-  for (CC_id=0; CC_id<RC.nb_CC[inst]; CC_id++) {
+  for (CC_id=0; CC_id<RC.nb_mac_CC[inst]; CC_id++) {
     eNB = RC.eNB[inst][CC_id];
     LOG_I(PHY,"Initializing eNB processes instance:%d CC_id %d \n",inst,CC_id);
     proc = &eNB->proc;
@@ -1253,10 +1253,10 @@ void init_eNB_afterRU(void) {
   LOG_I(PHY,"%s() RC.nb_inst:%d\n", __FUNCTION__, RC.nb_inst);
 
   for (inst=0; inst<RC.nb_inst; inst++) {
-    LOG_I(PHY,"RC.nb_CC[inst]:%d\n", RC.nb_CC[inst]);
+    LOG_I(PHY,"RC.nb_mac_CC[inst]:%d\n", RC.nb_mac_CC[inst]);
 
-    for (CC_id=0; CC_id<RC.nb_CC[inst]; CC_id++) {
-      LOG_I(PHY,"RC.nb_CC[inst:%d][CC_id:%d]:%p\n", inst, CC_id, RC.eNB[inst][CC_id]);
+    for (CC_id=0; CC_id<RC.nb_mac_CC[inst]; CC_id++) {
+      LOG_I(PHY,"RC.nb_mac_CC[inst:%d][CC_id:%d]:%p\n", inst, CC_id, RC.eNB[inst][CC_id]);
       eNB                                  =  RC.eNB[inst][CC_id];
      // map antennas and PRACH signals to eNB RX
       LOG_I(PHY,"Mapping RX ports from %d RUs to eNB %d\n",eNB->num_RU,eNB->Mod_id);
