@@ -7159,6 +7159,10 @@ void rrc_eNB_as_security_configuration_req(
 
   for (int i = 0; i < MAX_RBS; i++)
   {
+    uint8_t  *kRRCenc = NULL;
+    uint8_t  *kRRCint = NULL;
+    uint8_t  *kUPenc = NULL;
+
     if (i < 3)
     {
       rbid_ = i;
@@ -7205,15 +7209,22 @@ void rrc_eNB_as_security_configuration_req(
          * Each RB entry will be freed invidually when the pdcp_remove_ue is invoked
          * during the UE release process.
         */
+        kRRCint = CALLOC(1,32);
+        kUPenc = CALLOC(1,16);
+        kRRCenc = CALLOC(1,16);
+        memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
+        memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
+        memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
+
         pdcp_config_set_security(
           ctxt_pP,
           pdcp_p,
           rbid_,
           rbid_+2,
           (ciphering_algorithm ) |(integrity_algorithm << 4),
-          ASSecConfReq->Ciphering.kRRCenc,
-          ASSecConfReq->Integrity.kRRCint,
-          ASSecConfReq->Ciphering.kUPenc);
+          kRRCenc,
+          kRRCint,
+          kUPenc);
         rb_idx++;
         LOG_I(RRC,"Updated PDCP for rb_id %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
               rb_idx, integrity_algorithm, ciphering_algorithm);
