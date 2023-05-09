@@ -45,6 +45,20 @@ typedef enum ss_mode {
 #define SS_SOFTMODEM    	(0x01)
 #define SS_SOFTMODEM_SRB        (0x02)
 #endif
+typedef struct ss_crnti_config_s {
+  bool b_C_RNTI_Present;
+  uint16_t C_RNTI;
+  bool b_Temp_RNTI_Present;
+  uint16_t Temp_C_RNTI;
+}ss_crnti_config_t;
+
+typedef struct RrcHOAsSecurityConfigReq_s {
+        bool isIntegrityInfoPresent;
+        AS_IntegrityInfo Integrity;
+        bool isCipheringInfoPresent;
+        AS_CipheringInfo Ciphering;
+        int rnti;
+}RrcHOAsSecurityConfig_t; 
 
 typedef struct ss_config_s {
   /** SS mode of operation */
@@ -75,6 +89,8 @@ typedef struct ss_config_s {
   ss_l1macind_ctrl_t l1macind[MAX_NUM_CCs];
   uint8_t CC_conf_flag[MAX_NUM_CCs];
   ss_rrc_pdcp_api_t *ss_pdcp_api;
+  ss_crnti_config_t ss_crnti[MAX_NUM_CCs];
+  RrcHOAsSecurityConfig_t HOASSecurityCOnfig;
 } ss_config_t;
 /**
 typedef enum {

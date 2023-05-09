@@ -161,7 +161,7 @@ typedef struct AS_CipheringInfo_s {
 }AS_CipheringInfo;
 
 typedef struct RrcAsSecurityConfigReq_s {
-        bool isIntegrityInfroPresent;
+        bool isIntegrityInfoPresent;
         AS_IntegrityInfo Integrity;
         bool isCipheringInfoPresent;
         AS_CipheringInfo Ciphering;
@@ -323,7 +323,8 @@ typedef struct lte_SchedulingInfo_s {
 
 typedef struct PhysCellIdRange_s {
   long         start;
-  e_LTE_PhysCellIdRange__range range; 
+  bool         range_Present;
+  e_LTE_PhysCellIdRange__range range;
 }PhysCellIdRange_t;
 
 typedef struct threshX_Q_r9_s {
@@ -364,6 +365,17 @@ typedef struct IntraFreqNeighCellInfo_s {
   long                    physCellId;
   long                    q_OffsetCell;
 }IntraFreqNeighCellInfo_t;
+
+typedef struct Rar_s {
+  uint16_t Temp_C_RNTI;
+}Rar_t;
+
+typedef struct Cell_ActiveParam_s {
+  bool b_C_RNTI_Present;
+  uint16_t C_RNTI;
+  uint8_t numRar;
+  Rar_t   Rar[10];
+}Cell_ActiveParam_t;
 
 // eNB: ENB_APP -> RRC messages
 typedef struct RrcConfigurationReq_s {
@@ -493,9 +505,12 @@ typedef struct RrcConfigurationReq_s {
 
   //SIB4
   bool                       sib4_Present[MAX_NUM_CCs];
-  bool                       intraFreqNeighCellListPresent;
-  int                        intraFreqNeighCellListCount;
+  bool                       intraFreqNeighCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqNeighCellListCount[MAX_NUM_CCs];
   IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
+  bool                       intraFreqBlackCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqBlackCellListCount[MAX_NUM_CCs];
+  PhysCellIdRange_t         *intraFreqBlackCellList[MAX_NUM_CCs];
 
   //SIB5
   bool                         sib5_Present[MAX_NUM_CCs];
@@ -553,6 +568,7 @@ typedef struct RrcConfigurationReq_s {
   long     q_QualMin[MAX_NUM_CCs];
   
   bool     ActiveParamPresent[MAX_NUM_CCs];
+  Cell_ActiveParam_t ActiveParam[MAX_NUM_CCs];
   //SS: Cell Config Active Params
   bool     RlcPduCCCH_Present[MAX_NUM_CCs];
   uint8_t  RlcPduCCCH_Size[MAX_NUM_CCs];

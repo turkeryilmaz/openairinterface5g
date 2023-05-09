@@ -1315,8 +1315,14 @@ int pdcp_fill_ss_pdcp_cnt (
     pc->rb_info[rb_id].is_srb = true;
     pc->rb_info[rb_id].ul_format = E_PdcpCount_Srb;
     pc->rb_info[rb_id].dl_format = E_PdcpCount_Srb;
-    pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 1, pdcp_p->rx_hfn, pdcp_p->next_pdcp_rx_sn - 1);
-    pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 1, pdcp_p->next_pdcp_tx_sn - 1);
+    if (pdcp_p->next_pdcp_rx_sn > 0)
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 1, pdcp_p->rx_hfn, pdcp_p->next_pdcp_rx_sn - 1);
+    else
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 1, pdcp_p->rx_hfn, 0);
+    if (pdcp_p->next_pdcp_tx_sn)
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 1, pdcp_p->next_pdcp_tx_sn - 1);
+    else
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 1, 0);
     LOG_D (PDCP, "SRB DL Count (dec): %d UL Count (dec): %d \n \
                   RX_HFN: %d TX_HFN: %d \n \
                   RX Seq Num: %d TX Seq Num: %d \n",
@@ -1338,8 +1344,14 @@ int pdcp_fill_ss_pdcp_cnt (
       pc->rb_info[rb_id].dl_format = E_PdcpCount_DrbLongSQN;
       LOG_D (PDCP, "DRB Long SQN\n");
     }
-    pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 0, pdcp_p->rx_hfn, pdcp_p->next_pdcp_rx_sn - 1);
-    pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 0, pdcp_p->next_pdcp_tx_sn - 1);
+    if (pdcp_p->next_pdcp_rx_sn > 0)
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 0, pdcp_p->rx_hfn, pdcp_p->next_pdcp_rx_sn - 1);
+    else
+      pc->rb_info[rb_id].ul_count = pdcp_get_next_count_rx(pdcp_p, 0, pdcp_p->rx_hfn, 0);
+    if (pdcp_p->next_pdcp_tx_sn > 0)
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 0, pdcp_p->next_pdcp_tx_sn - 1);
+    else
+      pc->rb_info[rb_id].dl_count = pdcp_get_next_count_tx(pdcp_p, 0, 0);
     LOG_D (PDCP, "DRB DL Count (dec): %d UL Count (dec): %d \n \
                   RX_HFN: %d TX_HFN: %d \n \
                   RX Seq Num: %d TX Seq Num: %d \n",
@@ -2369,14 +2381,17 @@ pdcp_config_req_asn1(const protocol_ctxt_t *const  ctxt_pP,
       /* Security keys */
       if (pdcp_pP->kUPenc != NULL) {
         free(pdcp_pP->kUPenc);
+        pdcp_pP->kUPenc = NULL;
       }
 
       if (pdcp_pP->kRRCint != NULL) {
         free(pdcp_pP->kRRCint);
+        pdcp_pP->kRRCint = NULL;
       }
 
       if (pdcp_pP->kRRCenc != NULL) {
         free(pdcp_pP->kRRCenc);
+        pdcp_pP->kRRCenc = NULL;
       }
 
       memset(pdcp_pP, 0, sizeof(pdcp_t));
@@ -2681,18 +2696,22 @@ pdcp_free (
   if (pdcp_p != NULL) {
     if (pdcp_p->kUPenc != NULL) {
       free(pdcp_p->kUPenc);
+      pdcp_p->kUPenc = NULL;
     }
 
     if (pdcp_p->kRRCint != NULL) {
       free(pdcp_p->kRRCint);
+      pdcp_p->kRRCint = NULL;
     }
 
     if (pdcp_p->kRRCenc != NULL) {
       free(pdcp_p->kRRCenc);
+      pdcp_p->kRRCenc = NULL;
     }
 
     memset(pdcp_pP, 0, sizeof(pdcp_t));
     free(pdcp_pP);
+    pdcp_pP = NULL;
   }
 }
 

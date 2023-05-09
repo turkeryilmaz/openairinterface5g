@@ -664,6 +664,8 @@ typedef struct {
   uint32_t ra_timer;
   float ul_thr_ue;
   float dl_thr_ue;
+  bool rsrpReportStatus;
+  int ssb_rsrp;
 } NR_UE_info_t;
 
 typedef struct {

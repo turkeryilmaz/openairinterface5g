@@ -43,6 +43,7 @@ MESSAGE_DEF(SS_VNG_PROXY_REQ,                 MESSAGE_PRIORITY_MED, ss_vng_proxy
 MESSAGE_DEF(SS_VNG_PROXY_RESP,                MESSAGE_PRIORITY_MED, ss_vng_proxy_resp_t                    , ss_vng_proxy_resp)
 
 MESSAGE_DEF(SS_SS_PAGING_IND,                 MESSAGE_PRIORITY_MED, ss_paging_ind_t                      , ss_paging_ind)
+MESSAGE_DEF(SS_SS_NR_PAGING_IND,              MESSAGE_PRIORITY_MED, ss_nr_paging_ind_t                   , ss_nr_paging_ind)
 
 MESSAGE_DEF(SS_NRRRC_PDU_REQ,                 MESSAGE_PRIORITY_MED, ss_nrrrc_pdu_req_t                      , ss_nrrrc_pdu_req)
 MESSAGE_DEF(SS_NRRRC_PDU_IND,                 MESSAGE_PRIORITY_MED, ss_nrrrc_pdu_ind_t                      , ss_nrrrc_pdu_ind)

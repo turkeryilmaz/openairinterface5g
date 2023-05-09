@@ -57,9 +57,9 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
     struct NR_SYSTEM_CTRL_CNF cnf;
     const size_t size = 16 * 1024;
     uint32_t status;
-
+    
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
-
+    
     size_t msgSize = size;
     memset(&cnf, 0, sizeof(cnf));
     cnf.Common.CellId = recvCnf.Common.CellId;
@@ -89,6 +89,9 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
         break;
     case NR_SystemConfirm_Type_AS_Security:
         cnf.Confirm.v.AS_Security = true;
+        break;
+    case NR_SystemConfirm_Type_DeltaValues:
+        memcpy(&cnf.Confirm.v.DeltaValues, &recvCnf.Confirm.v.DeltaValues, sizeof(struct UE_NR_DeltaValues_Type));
         break;
     default:
         LOG_A(GNB_APP, "[SYS] Error not handled CNF TYPE to [SS-PORTMAN] %d \n", recvCnf.Confirm.d);
@@ -275,12 +278,11 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
   }
   else if (userId == 0)
   {
-    LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s userId:0\n", __FUNCTION__);
     // No message (timeout on socket)
     if (RC.ss.mode >= SS_SOFTMODEM && RC.ss.State >= SS_STATE_CELL_ACTIVE)
     {
-      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_RRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB_GNB task \n", SS_NRRRC_PDU_IND);
-      MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_RRC_PDU_IND);
+      LOG_A(ENB_SS,"[SS-PORTMAN] Sending Wake up signal/SS_NRRRC_PDU_IND (msg_Id:%d) to TASK_SS_SRB task \n", SS_NRRRC_PDU_IND);
+      MessageDef *message_p = itti_alloc_new_message(TASK_SS_PORTMAN, 0, SS_NRRRC_PDU_IND);
       if (message_p)
       {
         /* Populate the message to SS */
@@ -353,7 +355,7 @@ void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
       case SS_NR_SYS_PORT_MSG_CNF:
         {
           LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Received SS_NR_SYS_PORT_MSG_CNF \n");
-          ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
+	  ss_nr_port_man_send_cnf(*(SS_NR_SYS_PORT_MSG_CNF(received_msg).cnf));
           result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
         }
         break;

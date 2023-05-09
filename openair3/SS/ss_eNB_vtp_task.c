@@ -264,6 +264,7 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
         if (isConnected == false || vtInit == true)
         {
             // No message (timeout on socket)
+            RC.ss.vtp_ready = 0;
             break;
         }
 
@@ -356,7 +357,6 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
     }
     ss_eNB_read_from_vtp_socket(ctx_vtp_g, false);
 
-
     return NULL;
 }
 
@@ -415,6 +415,7 @@ static void ss_eNB_wait_first_msg(void)
         ss_eNB_read_from_vtp_socket(ctx_vtp_g, true);
         if (isConnected == true){
             LOG_A(ENB_APP, "[SS_VTP] VT-HANDSHAKE with Client Completed (on-start) \n");
+            RC.ss.vtp_ready = 1;
             break;
         }
         LOG_A(ENB_APP, "[SS_VTP] Waiting for VT-HANDSHAKE with Client(on-start) \n");
@@ -433,7 +434,6 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		RC.ss.vtp_ready = 1;
 		ss_enable_vtp();
 		sleep(1);
 		while (1) {

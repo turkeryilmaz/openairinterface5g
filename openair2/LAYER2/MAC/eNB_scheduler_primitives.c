@@ -2194,7 +2194,7 @@ add_new_ue(module_id_t mod_idP,
     if (UE_info->active[cc_idP][i] == true)
       continue;
 
-    UE_id = i;
+    UE_id = i + cc_idP;
     memset(&UE_info->UE_template[cc_idP][UE_id], 0, sizeof(UE_TEMPLATE));
     UE_info->UE_template[cc_idP][UE_id].rnti = rntiP;
     UE_info->UE_template[cc_idP][UE_id].configured = false;

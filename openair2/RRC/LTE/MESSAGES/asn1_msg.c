@@ -387,7 +387,7 @@ uint8_t do_MIB(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t phich
                                    (void *)mib,
                                    carrier->MIB,
                                    24);
-  LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, 24);
+  LOG_P(OAILOG_INFO, "BCCH_BCH_Message", (uint8_t *)carrier->MIB, (enc_rval.encoded+7)/8);
 
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
@@ -1370,11 +1370,11 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
                                    (void *)bcch_message,
                                    buffer,
                                    100);
-  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 100);
 
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformationBlockType1 Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, ((enc_rval.encoded+7)/8));
 
   if (enc_rval.encoded==-1) {
     return(-1);
@@ -2330,7 +2330,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformation Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
-  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, ((enc_rval.encoded+7)/8));
 
   if (enc_rval.encoded==-1) {
     msg("[RRC] ASN1 : SI encoding failed for SIB23\n");
@@ -2365,24 +2365,41 @@ uint8_t do_SIB4(uint8_t Mod_id,
     exit(-1);
   }
 
-  LOG_I(RRC,"[eNB %d] Configuration SIB4, intraFreqNeighCellListPresent: %d \n", Mod_id, configuration->intraFreqNeighCellListPresent);
+  LOG_I(RRC,"[eNB %d] Configuration SIB4, intraFreqNeighCellListPresent: %d \n", Mod_id, configuration->intraFreqNeighCellListPresent[CC_id]);
   sib4_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   memset(sib4_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib4_part->present = LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member_PR_sib4;
   *sib4 = &sib4_part->choice.sib4;
 
   /* Checking if intraFreqNeighCellList is present in SIB4 */
-  if(true == configuration->intraFreqNeighCellListPresent) {
-    (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount,sizeof(struct LTE_IntraFreqNeighCellList));
+  if(true == configuration->intraFreqNeighCellListPresent[CC_id]) {
+    (*sib4)->intraFreqNeighCellList = CALLOC(configuration->intraFreqNeighCellListCount[CC_id],sizeof(struct LTE_IntraFreqNeighCellList));
     LTE_IntraFreqNeighCellInfo_t *IntraFreqNeighCellInfo;
     /* Handling multiple entities in intraFreqNeighCellList for SIB4 message */
-    for(int i = 0; i < configuration->intraFreqNeighCellListCount; i++){
+    for(int i = 0; i < configuration->intraFreqNeighCellListCount[CC_id]; i++){
       IntraFreqNeighCellInfo = CALLOC(1,sizeof(struct LTE_IntraFreqNeighCellInfo));
       IntraFreqNeighCellInfo->physCellId = configuration->intraFreqNeighCellList[CC_id][i].physCellId;
       IntraFreqNeighCellInfo->q_OffsetCell = configuration->intraFreqNeighCellList[CC_id][i].q_OffsetCell;
       asn1cSeqAdd(&(*sib4)->intraFreqNeighCellList->list,IntraFreqNeighCellInfo);
     }
   }
+
+  /* Checking if intraFreqBlackCellList is present in SIB4 */
+  if (true == configuration->intraFreqBlackCellListPresent[CC_id]) {
+    (*sib4)->intraFreqBlackCellList = CALLOC(configuration->intraFreqBlackCellListCount[CC_id], sizeof(struct LTE_IntraFreqBlackCellList));
+    LTE_PhysCellIdRange_t *PhysCellIdRange;
+    /* Handling multiple entities in intraFreqBlackCellList for SIB4 message */
+    for (int i = 0; i < configuration->intraFreqBlackCellListCount[CC_id]; i++) {
+      PhysCellIdRange = CALLOC(1, sizeof(struct LTE_PhysCellIdRange));
+      PhysCellIdRange->start = configuration->intraFreqBlackCellList[CC_id][i].start;
+      if (true == configuration->intraFreqBlackCellList[CC_id][i].range_Present) {
+        PhysCellIdRange->range = CALLOC(1, sizeof(long));
+        PhysCellIdRange->range = (long *)configuration->intraFreqBlackCellList[CC_id][i].range;
+      }
+      asn1cSeqAdd(&(*sib4)->intraFreqBlackCellList->list, PhysCellIdRange);
+    }
+  }
+
   /* TODO : Need to handle all remaining ext and lateNonCriticalExtension IE properly */
   (*sib4)->lateNonCriticalExtension = NULL;
   (*sib4)->ext1 = NULL;
@@ -2404,7 +2421,7 @@ uint8_t do_SIB4(uint8_t Mod_id,
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformation4 Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
-  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, (enc_rval.encoded+7)/8);
 
   if (enc_rval.encoded==-1) {
     msg("[RRC] ASN1 : SI encoding failed for SIB4\n");
@@ -2534,7 +2551,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(RRC,"[eNB] SystemInformation5 Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);
-  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, 900);
+  LOG_P(OAILOG_INFO, "BCCH_DL_SCH_Message", (uint8_t *)buffer, (enc_rval.encoded+7)/8);
 
   if (enc_rval.encoded==-1) {
     msg("[RRC] ASN1 : SI encoding failed for SIB5\n");
@@ -3242,7 +3259,7 @@ do_RRCConnectionSetup(
                                    (void *)&dl_ccch_msg,
                                    buffer,
                                    100);
-  LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", buffer, 100);
+  LOG_P(OAILOG_DEBUG, "DL_CCCH_Message", buffer, (enc_rval.encoded+7)/8);
   if(enc_rval.encoded == -1) {
     LOG_I(RRC, "[eNB AssertFatal]ASN1 message encoding failed (%s, %lu)!\n",
           enc_rval.failed_type->name, enc_rval.encoded);
@@ -4879,14 +4896,16 @@ int do_HandoverPreparation(char *ho_buf, int ho_size, LTE_UE_EUTRA_Capability_t 
   LTE_UE_CapabilityRAT_Container_t *ue_cap_rat_container;
   char rrc_buf[rrc_size];
   memset(rrc_buf, 0, rrc_size);
-  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UE_EUTRA_Capability,
-                                   NULL,
-                                   ue_eutra_cap,
-                                   rrc_buf,
-                                   rrc_size);
-  /* TODO: free the OCTET_STRING */
-  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+  if (RC.ss.mode == SS_ENB) {
+    enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UE_EUTRA_Capability,
+                                     NULL,
+                                     ue_eutra_cap,
+                                     rrc_buf,
+                                     rrc_size);
+    /* TODO: free the OCTET_STRING */
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
+  }
   memset(&ho, 0, sizeof(ho));
   ho.criticalExtensions.present = LTE_HandoverPreparationInformation__criticalExtensions_PR_c1;
   ho.criticalExtensions.choice.c1.present = LTE_HandoverPreparationInformation__criticalExtensions__c1_PR_handoverPreparationInformation_r8;
@@ -4899,14 +4918,16 @@ int do_HandoverPreparation(char *ho_buf, int ho_size, LTE_UE_EUTRA_Capability_t 
                    rrc_buf, rrc_size) != -1, "fatal: OCTET_STRING_fromBuf failed\n");
     asn1cSeqAdd(&ho_info->ue_RadioAccessCapabilityInfo.list, ue_cap_rat_container);
   }
-  enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_HandoverPreparationInformation,
-                                   NULL,
-                                   &ho,
-                                   ho_buf,
-                                   ho_size);
-  /* TODO: free the OCTET_STRING */
-  AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
+  if (RC.ss.mode == SS_ENB) {
+    enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_HandoverPreparationInformation,
+                                     NULL,
+                                     &ho,
+                                     ho_buf,
+                                     ho_size);
+    /* TODO: free the OCTET_STRING */
+    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
+  }
   return((enc_rval.encoded+7)/8);
 }
 

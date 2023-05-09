@@ -271,7 +271,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			{
 				 msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
 			}
-			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
+			LOG_A(ENB_SS, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
 					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
 
 		}
@@ -302,7 +302,7 @@ static inline void
 ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 {
 	size_t msgSize = size; //2
-        int cell_index;
+        int cell_index = 0;
 
 	while (1)
 	{

@@ -398,6 +398,8 @@ typedef struct HANDOVER_INFO_s {
   uint32_t x2u_teid;
   DATA_FORWARDING_STATE_t forwarding_state;
   DATA_ENDMARK_STATE_t endmark_state;
+  int ss_source_ue_rnti;
+  int ss_target_ue_rnti;
 } HANDOVER_INFO;
 
 typedef struct PER_EVENT_s {

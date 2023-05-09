@@ -214,15 +214,18 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP,
 
   // This schedules the DCI for Downlink and PDSCH
   start_meas(&gNB->schedule_dlsch);
-  nr_schedule_ue_spec(module_idP, frame, slot); 
+  nr_schedule_ue_spec(module_idP, frame, slot);
   stop_meas(&gNB->schedule_dlsch);
+
+  // This schedules Paging in slot
+  schedule_nr_PCH(module_idP, frame, slot);
 
   nr_sr_reporting(gNB, frame, slot);
 
   nr_schedule_pucch(gNB, frame, slot);
 
   stop_meas(&gNB->eNB_scheduler);
-  
+
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_DLSCH_ULSCH_SCHEDULER,VCD_FUNCTION_OUT);
   LOG_D(NR_MAC, "fxn:%s Exit\n", __FUNCTION__);
 }
