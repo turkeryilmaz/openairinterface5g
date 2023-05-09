@@ -756,8 +756,9 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
        RAR hasn't been processed yet, we do not want to be filtering the
        tx_data_requests. */
     if (tx_data_request) {
-        if (mac->nr_ue_emul_l1.expected_sib ||
-            mac->nr_ue_emul_l1.expected_rar ||
+        if (mac->nr_ue_emul_l1.expected_sib    ||
+            mac->nr_ue_emul_l1.expected_rar    ||
+            mac->nr_ue_emul_l1.expected_paging ||
             mac->nr_ue_emul_l1.expected_dci) {
             frame = tx_data_request->SFN;
             slot = tx_data_request->Slot;
@@ -1217,6 +1218,23 @@ int8_t handle_csirs_measurements(module_id_t module_id, frame_t frame, int slot,
   return nr_ue_process_csirs_measurements(module_id, frame, slot, csirs_measurements);
 }
 
+int8_t handle_pch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id){
+  /* L1 assigns harq_pid, but in emulated L1 mode we need to assign
+     the harq_pid based on the saved global g_harq_pid. Because we are
+     emulating L1, no antenna measurements are conducted to calculate
+     a harq_pid, therefore we must set it here. */
+  if (get_softmodem_params()->emulate_l1)
+    dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid = g_harq_pid;
+
+  update_harq_status(dl_info->module_id,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
+                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
+  if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
+    nr_ue_send_sdu(dl_info, ul_time_alignment, pdu_id);
+
+  return 0;
+}
+
 void update_harq_status(module_id_t module_id, uint8_t harq_pid, uint8_t ack_nack) {
 
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
@@ -1365,6 +1383,9 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
                                                    dl_info->frame,
                                                    dl_info->slot,
                                                    &(dl_info->rx_ind->rx_indication_body+i)->csirs_measurements)) << FAPI_NR_CSIRS_IND;
+            break;
+          case FAPI_NR_RX_PDU_TYPE_PCH:
+            ret_mask |= (handle_pch(dl_info, ul_time_alignment, i)) << FAPI_NR_RX_PDU_TYPE_RAR;
             break;
           default:
             break;

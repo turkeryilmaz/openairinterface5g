@@ -182,7 +182,7 @@ add_msg3(module_id_t module_idP, int CC_id, RA_t *ra, frame_t frameP,
     ul_config_pdu->ulsch_pdu.ulsch_pdu_rel8.ul_tx_mode                     = 0;
     ul_config_pdu->ulsch_pdu.ulsch_pdu_rel8.current_tx_nb                  = 0;
     ul_config_pdu->ulsch_pdu.ulsch_pdu_rel8.n_srs                          = 1;
-    ul_config_pdu->ulsch_pdu.ulsch_pdu_rel8.size                           = get_TBS_UL(10, ra->msg3_nb_rb);
+    ul_config_pdu->ulsch_pdu.ulsch_pdu_rel8.size                           = get_TBS_UL(ra->msg3_mcs, ra->msg3_nb_rb);
     ul_req_body->number_of_pdus++;
     ul_req_body->tl.tag                                                    = NFAPI_UL_CONFIG_REQUEST_BODY_TAG;
     ul_req->sfn_sf                                                         = ra->Msg3_frame<<4|ra->Msg3_subframe;
@@ -1417,7 +1417,11 @@ initiate_ra_proc(module_id_t module_idP,
           }
 
           ra[i].rnti = drnti[nb_ue];
-        } else {
+        } else if ((RC.ss.mode > SS_ENB) && RC.ss.ss_crnti[CC_id].b_Temp_RNTI_Present) {
+          // SS_MODE configured setup the CRNTI from the Cell_config
+          ra[i].rnti = RC.ss.ss_crnti[CC_id].Temp_C_RNTI;
+          break;
+        }else {
           ra[i].rnti = taus();
           LOG_D(MAC, "[RAPROC] try rnti:0x%x\n",ra[i].rnti);
         }
@@ -1428,7 +1432,7 @@ initiate_ra_proc(module_id_t module_idP,
                 */
                !(find_UE_id(module_idP, ra[i].rnti) == -1 &&
                  /* 1024 and 60000 arbirarily chosen, not coming from standard */
-                 ra[i].rnti >= 1024 && ra[i].rnti < 60000));
+                 ra[i].rnti >= 1024 && ra[i].rnti < 60000 && (RC.ss.mode > SS_ENB)));
 
       if (loop == 100) {
         printf("%s:%d:%s: FATAL ERROR! contact the authors\n",
@@ -1456,7 +1460,7 @@ initiate_ra_proc(module_id_t module_idP,
         MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
         SS_SYSTEM_IND(m).bitmask = false;
         SS_SYSTEM_IND(m).sfn = frameP;
-        SS_SYSTEM_IND(m).sf = subframeP; 
+        SS_SYSTEM_IND(m).sf = subframeP;
         SS_SYSTEM_IND(m).ra_PreambleIndex = preamble_index;
         SS_SYSTEM_IND(m).prtPower_Type = true;
         SS_SYSTEM_IND(m).repetitionsPerPreambleAttempt = 0;

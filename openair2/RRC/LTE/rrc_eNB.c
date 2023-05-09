@@ -1220,7 +1220,7 @@ void put_UE_in_freelist(module_id_t mod_id, rnti_t rnti, bool removeFlag) {
   pthread_mutex_lock(&lock_ue_freelist);
   LOG_I(PHY,"add ue %d in free list, context flag: %d\n", rnti, removeFlag);
   int i;
-  for (i=0; i < sizeofArray(eNB_MAC->UE_free_ctrl); i++) 
+  for (i=0; i < sizeofArray(eNB_MAC->UE_free_ctrl); i++)
     if (eNB_MAC->UE_free_ctrl[i].rnti == 0)
       break;
   if (i==sizeofArray(eNB_MAC->UE_free_ctrl)) {
@@ -4027,7 +4027,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
         }
 
-        LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n", 
+        LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n",
               ctxt_pP->rntiMaybeUEid, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
         key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
@@ -4534,6 +4534,7 @@ void rrc_eNB_process_handoverPreparationInformation(int mod_id, x2ap_handover_re
   LTE_HandoverPreparationInformation_t *ho = NULL;
   LTE_HandoverPreparationInformation_r8_IEs_t *ho_info;
   asn_dec_rval_t                      dec_rval;
+
   ue_context_target_p = rrc_eNB_get_ue_context(RC.rrc[mod_id], rnti);
 
   if (ue_context_target_p != NULL) {
@@ -7288,14 +7289,21 @@ void rrc_eNB_as_security_configuration_req(
   ss_get_pdcp_cnt_t                   pc;
   uint8_t                             rb_idx = 0;
   uint8_t rbid_;
+
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
-  LOG_A(RRC,"Inside rrc_eNB_as_security_configuration_req \n");
+  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
+         ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
+         ASSecConfReq->Ciphering.ciphering_algorithm);
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
+  memcpy(&RC.ss.HOASSecurityCOnfig,ASSecConfReq,sizeof(RrcAsSecurityConfigReq));
 
   for (int i = 0; i < MAX_RBS; i++)
   {
+    uint8_t  *kRRCenc = NULL;
+    uint8_t  *kRRCint = NULL;
+    uint8_t  *kUPenc = NULL;
     if (i < 3)
     {
       rbid_ = i;
@@ -7309,31 +7317,60 @@ void rrc_eNB_as_security_configuration_req(
     h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
     if (h_rc == HASH_TABLE_OK)
     {
+      LOG_A(RRC, "Current PDCP Context pdcp_p=%p key = %ld rbid_ %d RNTI %d integrityProtAlgorithm=%ld cipheringAlgorithm=%ld\n",
+      pdcp_p, key,rbid_,ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm, ASSecConfReq->Ciphering.ciphering_algorithm);
+
       AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
       RC.ss.ss_pdcp_api->set_pdcp_cnt(pdcp_p, rb_idx, &pc);
       ul_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn;
       dl_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn;
-      /* Apply the security key for all the configured RBs SQN is check is applicable for SRB1.
-       * For SRB 2 the security is activated when the SRB is created already, as UE will apply the 
-       * ciphering and integrity for all RBs.
+
+      /* Ciphering Algo can be received separately in some scenarios from TTCN, so only
+       * Integrity Algo shall be applied , when Ciphering Algo is received it shall be
+       * apllied along with Integrity key setting recevied earlier
        */
-      if(((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) || 
-         ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn) || 
-         (rbid_ == 2))
+      if ((false == ASSecConfReq->isCipheringInfoPresent) ||
+       ((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) ||
+       ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn) ||
+       (rbid_ == 1)||(rbid_ == 2))
       {
+        // Get the prceviously configured algorithm for the RB
+        uint8_t integrity_algorithm = pdcp_p->integrityProtAlgorithm;
+        uint8_t ciphering_algorithm = pdcp_p->cipheringAlgorithm;
+        LOG_D (RRC, "Current PDCP Context integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
+              pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
+
+        //Overwrite with the latest algorithm configuration from TTCN
+        if (ASSecConfReq->isIntegrityInfoPresent)
+          integrity_algorithm = ASSecConfReq->Integrity.integrity_algorithm;
+        if (ASSecConfReq->isCipheringInfoPresent)
+          ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
+
+        /* Allocate the memory for each pdcp_p it stores the data as the AS_Security keys.
+         * Each RB entry will be freed invidually when the pdcp_remove_ue is invoked
+         * during the UE release process.
+        */
+        kRRCint = CALLOC(1,32);
+        kUPenc = CALLOC(1,16);
+        kRRCenc = CALLOC(1,16);
+        memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
+        memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
+        memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
+
         pdcp_config_set_security(
           ctxt_pP,
           pdcp_p,
           rbid_,
           rbid_+2,
-          (ASSecConfReq->Ciphering.ciphering_algorithm ) |(ASSecConfReq->Integrity.integrity_algorithm << 4),
-          ASSecConfReq->Ciphering.kRRCenc,
-          ASSecConfReq->Integrity.kRRCint,
-          ASSecConfReq->Ciphering.kUPenc);
+          (ciphering_algorithm ) |(integrity_algorithm << 4),
+          kRRCenc,
+          kRRCint,
+          kUPenc);
         rb_idx++;
-          LOG_D(RRC,"AS Security configuration received rb_id %d \n",rb_idx);
+        LOG_I(RRC,"Updated PDCP for rb_id %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
+              rb_idx, integrity_algorithm, ciphering_algorithm);
       } else {
-        LOG_A(RRC,"AS Security configuration received from TTCN didn't applied \n");
+        LOG_A(RRC,"AS Security configuration received from TTCN didn't applied rbid_ %d and rb_idx %d \n", rbid_,rb_idx);
       }
     } else {
       LOG_A (PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
@@ -9667,7 +9704,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
           }
         }
       }
-
       rrc_eNB_process_handoverCommand(instance, ue_context_p, &X2AP_HANDOVER_REQ_ACK(msg_p));
       ue_context_p->ue_context.handover_info->state = HO_PREPARE;
       break;
@@ -10308,24 +10344,31 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
         for(int i=16;i<32;i++)
         {
-          LOG_D(RRC,"kRRCint in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+          LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
         }
+      }
+      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
+      {
         for(int j=0;j<16;j++)
         {
-          LOG_D(RRC,"kRRCenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+          LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
         }
+      }
+      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
+      {
         for(int k=0;k<16;k++)
         {
-          LOG_D(RRC,"kUPenc in RRC: %02x",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+          LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
         }
-        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-            instance,
-            ENB_FLAG_YES,
-            RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
-            msg_p->ittiMsgHeader.lte_time.frame,
-            msg_p->ittiMsgHeader.lte_time.slot);
-        rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
-        break;
+      }
+      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                    instance,
+                                    ENB_FLAG_YES,
+                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+                                    msg_p->ittiMsgHeader.lte_time.frame,
+                                    msg_p->ittiMsgHeader.lte_time.slot);
+      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+      break;
 
     case SS_SS_PAGING_IND:
       LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);

@@ -523,6 +523,9 @@ typedef struct RrcConfigurationReq_s {
   bool                       intraFreqNeighCellListPresent;
   int                        intraFreqNeighCellListCount;
   IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
+  bool                       intraFreqBlackCellListPresent[MAX_NUM_CCs];
+  int                        intraFreqBlackCellListCount[MAX_NUM_CCs];
+  PhysCellIdRange_t         *intraFreqBlackCellList[MAX_NUM_CCs];
 
   //SIB5
   bool                         sib5_Present[MAX_NUM_CCs];

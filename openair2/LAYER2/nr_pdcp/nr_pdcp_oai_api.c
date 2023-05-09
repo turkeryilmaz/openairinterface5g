@@ -45,7 +45,8 @@
     exit(1); \
   } while (0)
 
-static nr_pdcp_ue_manager_t *nr_pdcp_ue_manager;
+
+nr_pdcp_ue_manager_t *nr_pdcp_ue_manager;
 
 /* TODO: handle time a bit more properly */
 static uint64_t nr_pdcp_current_time;
@@ -1388,6 +1389,14 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
     LOG_E(PDCP, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+
+  if (rb_id < 1 || rb_id > 2)
+    rb = NULL;
+  else
+    rb = ue->srb[rb_id - 1];
+
 
   /** TRACE PDCP PDU */
   if (NULL != ue && NULL != rb) {
@@ -1409,14 +1418,6 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
     LOG_PDCP_P(OAILOG_INFO, "DL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer, sdu_buffer_size);
   }
 
-  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
-
-  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
-
-  if (rb_id < 1 || rb_id > 2)
-    rb = NULL;
-  else
-    rb = ue->srb[rb_id - 1];
 
 
   /** TRACE PDCP PDU */
@@ -1451,6 +1452,7 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
   int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
   AssertFatal(rb->deliver_pdu == NULL, "SRB callback should be NULL, to be provided on every invocation\n");
 
+  rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 
   deliver_pdu_cb(data, ue_id, rb_id, pdu_buf, pdu_size, muiP);

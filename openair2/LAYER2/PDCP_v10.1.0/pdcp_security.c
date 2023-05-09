@@ -211,10 +211,13 @@ pdcp_validate_security(
     decrypt_params.key = pdcp_pP->kUPenc;// + 128;
   }
 
-  /* Uncipher the block */
-  stream_decrypt(pdcp_pP->cipheringAlgorithm,
-                 &decrypt_params,
-                 &buffer_decrypted);
+  /* Don't need to uncipher the block if sdu buffer is empty */
+  if((sdu_buffer_size - pdcp_header_len) != 0) {
+    /* Uncipher the block */
+    stream_decrypt(pdcp_pP->cipheringAlgorithm,
+                   &decrypt_params,
+                   &buffer_decrypted);
+  }
   if (!IS_SOFTMODEM_IQPLAYER) {
     if (srb_flagP) {
     /* Now check the integrity of the complete PDU */

@@ -152,6 +152,37 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
                 LOG_P(OAILOG_DEBUG, "UL_DCCH_Message", lttng_sdu, pdu_ind->sdu_size);
 
                 xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)ul_dcch_msg);
+
+#define UL_DCCH ul_dcch_msg->message.choice
+#define SETCMPLT_NASINFO c1->choice.rrcSetupComplete->criticalExtensions.choice.rrcSetupComplete->dedicatedNAS_Message
+#define RESCMPLT_NASINFO c1->choice.rrcResumeComplete->criticalExtensions.choice.rrcResumeComplete->dedicatedNAS_Message
+#define UL_NASINFO c1->choice.ulInformationTransfer->criticalExtensions.choice.ulInformationTransfer->dedicatedNAS_Message
+
+                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_rrcSetupComplete) 
+                { 
+                   if (UL_DCCH.c1->choice.rrcSetupComplete->criticalExtensions.present ==
+                                                       NR_RRCSetupComplete__criticalExtensions_PR_rrcSetupComplete) 
+                   {
+                      LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UL_DCCH.SETCMPLT_NASINFO.buf, UL_DCCH.SETCMPLT_NASINFO.size);
+                   }
+                }
+                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_rrcResumeComplete) 
+                { 
+                   if (UL_DCCH.c1->choice.rrcResumeComplete->criticalExtensions.present ==
+                                                       NR_RRCResumeComplete__criticalExtensions_PR_rrcResumeComplete) 
+                   {
+                      LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UL_DCCH.RESCMPLT_NASINFO->buf, UL_DCCH.RESCMPLT_NASINFO->size);
+                   }
+                }
+                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_ulInformationTransfer) 
+                { 
+                   if (UL_DCCH.c1->choice.ulInformationTransfer->criticalExtensions.present ==
+                                                 NR_ULInformationTransfer__criticalExtensions_PR_ulInformationTransfer) 
+                   {
+                      LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UL_DCCH.UL_NASINFO->buf, UL_DCCH.UL_NASINFO->size);
+                   }
+                }
+
                 ind.RrcPdu.d = NR_RRC_MSG_Indication_Type_Dcch;
                 ind.RrcPdu.v.Dcch.d = pdu_ind->sdu_size;
                 ind.RrcPdu.v.Dcch.v = pdu_ind->sdu;
@@ -211,6 +242,10 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
                 }
                 else
                 {
+#define DL_DCCH dl_dcch_msg->message.choice
+#define DL_NASINFO c1->choice.dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message
+#define RECNFG_NASINFO c1->choice.rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->nonCriticalExtension->dedicatedNAS_MessageList
+
                         SS_NRRRC_PDU_REQ(message_p).sdu_size = req->RrcPdu.v.Dcch.d;
                         memcpy(SS_NRRRC_PDU_REQ(message_p).sdu, req->RrcPdu.v.Dcch.v, req->RrcPdu.v.Dcch.d);
                         uper_decode(NULL,
@@ -220,6 +255,29 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
                                     SS_NRRRC_PDU_REQ(message_p).sdu_size,0,0);
 
                         xer_fprint(stdout,&asn_DEF_NR_DL_DCCH_Message,(void *)dl_dcch_msg);
+
+                        if(DL_DCCH.c1->present == NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer) 
+                        { 
+                          if (DL_DCCH.c1->choice.dlInformationTransfer->criticalExtensions.present 
+                                              == NR_DLInformationTransfer__criticalExtensions_PR_dlInformationTransfer) 
+                          {
+                             LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", DL_DCCH.DL_NASINFO->buf, DL_DCCH.DL_NASINFO->size);
+                          }
+                        }
+
+                        if(DL_DCCH.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration) 
+                        { 
+                          if (DL_DCCH.c1->choice.rrcReconfiguration->criticalExtensions.present 
+                                              == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration) 
+                          {
+                             int nas_list_cnt;
+                             for (nas_list_cnt = 0; nas_list_cnt < DL_DCCH.RECNFG_NASINFO->list.count; nas_list_cnt++)  
+                             {
+                                 LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", DL_DCCH.RECNFG_NASINFO->list.array[nas_list_cnt]->buf, DL_DCCH.RECNFG_NASINFO->list.array[nas_list_cnt]->size);
+                             }
+                          }
+                        }
+
                         memcpy(lttng_sdu, SS_NRRRC_PDU_REQ(message_p).sdu, SS_NRRRC_PDU_REQ(message_p).sdu_size);
                         LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_NRRRC_PDU_REQ(message_p).sdu_size);
 

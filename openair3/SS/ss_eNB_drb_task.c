@@ -201,7 +201,7 @@ static void
 ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 
 	size_t msgSize = size; //2
-	int cell_index;
+        int cell_index = 0;
 
 	LOG_A(ENB_SS, "Entry in fxn:%s\n", __FUNCTION__);
 	while (1)
@@ -295,30 +295,29 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 		switch (ITTI_MSG_ID(received_msg))
 		{
 			case SS_DRB_PDU_IND:
-				{
-					int cell_index = 0;
-					if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
-						cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
-						LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
-					}
-					task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
+			{
+                                int cell_index=0;
+                                if(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId){
+                                  cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_drb_pdu_ind.physCellId, SS_context.SSCell_list);
+                                  LOG_A(ENB_SS,"[SS_DRB] cell_index in SS_DRB_PDU_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                                }
+				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
-					if (origin_task == TASK_SS_PORTMAN)
-					{       
-						LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+	    			if (origin_task == TASK_SS_PORTMAN)
+				{       
+					LOG_D(ENB_APP, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+                                }
+				else
+	                        {
+					LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
+					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
+	                                {
+						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
+						ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind,cell_index);
 					}
 					else
 					{
-						LOG_A(ENB_APP, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
-						if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
-						{
-							instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-							ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind,cell_index);
-						}
-						else
-						{
-							LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
-						}
+						LOG_A(ENB_APP, "ERROR [SS_DRB][SS_DRB_PDU_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
 					}
 
 					result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
@@ -335,6 +334,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 				LOG_A(ENB_APP, "[SS_DRB] Received unhandled message %d:%s\n",
 						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 				break;
+                        }
 		}		
 	}
 	else
