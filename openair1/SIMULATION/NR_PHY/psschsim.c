@@ -54,9 +54,7 @@
 #include "PHY/impl_defs_top.h"
 #include "PHY/MODULATION/modulation_common.h"
 
-#define DEBUG_NR_SLSCHSIM 1
-//#define DEBUG_NR_PSSCHSIM
-//#define DEBUG_NR_PSSCHSIM2
+#define DEBUG_NR_PSSCHSIM
 
 // typedef struct {
 //   uint8_t priority;
@@ -101,7 +99,7 @@ double snr0 = 100;
 double snr1 = 2.0;
 int slot = 0;
 uint8_t snr1set = 0;
-int n_trials = 1;
+int n_trials = 5;
 uint8_t n_tx = 1;
 uint8_t n_rx = 1;
 int ssb_subcarrier_offset = 0;
@@ -273,6 +271,9 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
     fp->dl_CarrierFreq = 3600000000;
     fp->ul_CarrierFreq = 3600000000;
     fp->sl_CarrierFreq = 2600000000;
+    nrUE_config->carrier_config.dl_frequency               = fp->dl_CarrierFreq / 1000;
+    nrUE_config->carrier_config.uplink_frequency           = fp->ul_CarrierFreq / 1000;
+    nrUE_config->carrier_config.sl_frequency               = fp->sl_CarrierFreq / 1000;
     fp->nr_band = 78;
   } else if (mu == 3) {
     fp->dl_CarrierFreq = 27524520000;
@@ -381,7 +382,6 @@ int main(int argc, char **argv)
   BW *bw_setting = malloc(sizeof(BW));
   set_fs_bw(txUE, mu, N_RB_UL, bw_setting);
 
-
   double DS_TDL = 300e-9; //.03;
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model,
                                                bw_setting->fs,
@@ -402,7 +402,7 @@ int main(int argc, char **argv)
     free(rxUE);
     exit(-1);
   }
-#ifdef DEBUG_NR_SLSCHSIM
+#ifdef DEBUG_NR_PSSCHSIM
   for (int sf = 0; sf < 2; sf++) {
     txUE->slsch[sf][0] = new_nr_ue_ulsch(nb_rb, 8, &txUE->frame_parms);
     if (!txUE->slsch[sf][0]) {
@@ -416,105 +416,21 @@ int main(int argc, char **argv)
   get_softmodem_params()->sync_ref = true;
   init_nr_ue_transport(rxUE);
 
-  uint16_t nb_symb_sch = 12;
-  uint8_t dmrsConfigType = 0;
-  uint8_t nb_re_dmrs = 6;
-  uint8_t Nl = 1; // number of layers
-  uint8_t Imcs = 9;
-  uint16_t dmrsSymbPos = 16 + 1024; // symbol 4 and 10
-  uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
-  uint16_t start_symbol = 1; // start from 0
-  unsigned char harq_pid = 0;
-
-  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
-
-  if ((Nl == 4) || (Nl == 3))
-    nb_re_dmrs = nb_re_dmrs * 2;
-
-  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
-  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
-  unsigned int available_bits = nr_get_G(nb_rb, nb_symb_sch, nb_re_dmrs, length_dmrs, mod_order, Nl);
-  unsigned int TBS = nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
-  printf("\nAvailable bits %u TBS %u code rate %u/10240 mod_order %d\n", available_bits, TBS, code_rate, mod_order);
-
   NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0][0];
-  slsch_ue_rx->harq_processes[harq_pid]->Nl = Nl;
-  slsch_ue_rx->harq_processes[harq_pid]->Qm = mod_order;
-  slsch_ue_rx->harq_processes[harq_pid]->nb_rb = nb_rb;
-  slsch_ue_rx->harq_processes[harq_pid]->TBS = TBS >> 3;
-  slsch_ue_rx->harq_processes[harq_pid]->n_dmrs_cdm_groups = 1;
-  slsch_ue_rx->harq_processes[harq_pid]->dlDmrsSymbPos = dmrsSymbPos;
-  slsch_ue_rx->harq_processes[harq_pid]->mcs = Imcs;
-  slsch_ue_rx->harq_processes[harq_pid]->dmrsConfigType = dmrsConfigType;
-  slsch_ue_rx->harq_processes[harq_pid]->R = code_rate;
-  slsch_ue_rx->harq_processes[harq_pid]->nb_symbols = nb_symb_sch;
-  slsch_ue_rx->harq_processes[harq_pid]->codeword = 0;
-  slsch_ue_rx->harq_processes[harq_pid]->start_symbol = start_symbol;
+  unsigned char harq_pid = 0;
   NR_DL_UE_HARQ_t *harq_process_rxUE = slsch_ue_rx->harq_processes[harq_pid];
-  nfapi_nr_pssch_pdu_t *rel16_sl_rx = &slsch_ue_rx->harq_processes[harq_pid]->pssch_pdu;
-  rel16_sl_rx->mcs_index            = Imcs;
-  rel16_sl_rx->pssch_data.rv_index  = 0;
-  rel16_sl_rx->target_code_rate     = code_rate;
-  rel16_sl_rx->pssch_data.tb_size   = TBS >> 3; // bytes
-  rel16_sl_rx->pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
-  rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
-  rel16_sl_rx->nr_of_symbols  = nb_symb_sch; // number of symbols per slot
-  rel16_sl_rx->start_symbol_index = start_symbol;
-  rel16_sl_rx->ul_dmrs_symb_pos = harq_process_rxUE->dlDmrsSymbPos;
-  rel16_sl_rx->nrOfLayers = harq_process_rxUE->Nl;
-  rel16_sl_rx->num_dmrs_cdm_grps_no_data = 1;
-  rel16_sl_rx->rb_size = nb_rb;
-  rel16_sl_rx->bwp_start = 0;
-  rel16_sl_rx->rb_start = 0;
-  rel16_sl_rx->dmrs_config_type = dmrsConfigType;
-
-
   NR_UL_UE_HARQ_t *harq_process_txUE = txUE->slsch[0][0]->harq_processes[harq_pid];
   DevAssert(harq_process_txUE);
-  uint8_t N_PRB_oh = 0;
-  uint16_t N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
-  uint8_t nb_codewords = 1;
-  harq_process_txUE->pssch_pdu.mcs_index = Imcs;
-  harq_process_txUE->pssch_pdu.nrOfLayers = Nl;
-  harq_process_txUE->pssch_pdu.rb_size = nb_rb;
-  harq_process_txUE->pssch_pdu.nr_of_symbols = nb_symb_sch;
-  harq_process_txUE->pssch_pdu.dmrs_config_type = dmrsConfigType;
-  harq_process_txUE->num_of_mod_symbols = N_RE_prime * nb_rb * nb_codewords;
-  harq_process_txUE->pssch_pdu.pssch_data.rv_index = 0;
-  harq_process_txUE->pssch_pdu.pssch_data.tb_size  = TBS >> 3;
-  harq_process_txUE->pssch_pdu.pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
-  harq_process_txUE->pssch_pdu.target_code_rate = code_rate;
-  harq_process_txUE->pssch_pdu.qam_mod_order = mod_order;
-  harq_process_txUE->pssch_pdu.sl_dmrs_symb_pos = dmrsSymbPos;
-  harq_process_txUE->pssch_pdu.num_dmrs_cdm_grps_no_data = 1;
-  harq_process_txUE->pssch_pdu.start_symbol_index = start_symbol;
-  harq_process_txUE->pssch_pdu.transform_precoding = transformPrecoder_disabled;
-  unsigned char *test_input = harq_process_txUE->a;
-  uint64_t *sci_input = harq_process_txUE->a_sci2;
-
-  SCI_1_A *sci1 = &harq_process_txUE->pssch_pdu.sci1;
-  set_sci(sci1, Imcs);
-
-  crcTableInit();
-  for (int i = 0; i < TBS / 8; i++)
-    test_input[i] = (unsigned char) (i+3);//rand();
-
-  uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
-  *sci_input = u;//rand() % (u - 0 + 1);
-  printf("the sci2 is:%"PRIu64"\n",*sci_input);
-
-#ifdef DEBUG_NR_PSSCHSIM
-  for (int i = 0; i < TBS / 8; i++) printf("i = %d / %d test_input[i]  =%hhu \n", i, TBS / 8, test_input[i]);
-#endif
 
   int frame = 0;
+  int slot = 0;
   int soffset = (slot & 3) * rxUE->frame_parms.symbols_per_slot * rxUE->frame_parms.ofdm_symbol_size;
   int32_t **txdata = txUE->common_vars.txdata;
+  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
+  crcTableInit();
+  nr_ue_set_slsch(0, slsch_ue, frame, slot);
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
-
   printf("tx is done\n");
-  // this is a small hack :D
-  slsch_ue_rx->harq_processes[0]->B_sci2 = slsch_ue->harq_processes[harq_pid]->B_sci2;
 
   int32_t **rxdataF = rxUE->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   UE_nr_rxtx_proc_t proc;
@@ -537,6 +453,7 @@ int main(int argc, char **argv)
     r_re[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
     r_im[i] = malloc16_clear(frame_length_complex_samples * sizeof(double));
   }
+  nr_ue_set_slsch_rx(rxUE, 0);
   for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
     n_false_positive = 0;
@@ -559,7 +476,16 @@ int main(int argc, char **argv)
           ((short*) rxUE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
-
+#ifdef DEBUG_NR_PSSCHSIM
+      char buffer1[rxUE->frame_parms.ofdm_symbol_size * 4];
+      for (int i = 0; i < 13; i++) {
+        bzero(buffer1, sizeof(buffer1));
+        printf("Slot %d, RXUE Symbol[%d]:  %s\n",
+              slot, rxUE->frame_parms.ofdm_symbol_size * i,
+              hexdump((int16_t *)&rxUE->common_vars.rxdata[0][rxUE->frame_parms.ofdm_symbol_size * i],
+                      rxUE->frame_parms.ofdm_symbol_size * 4, buffer1, sizeof(buffer1)));
+      }
+#endif
       for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
             nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[aa], &rxdataF[aa][soffset], ofdm_symbol, slot, 0);
@@ -578,14 +504,14 @@ int main(int argc, char **argv)
       if (ret)
         n_errors++;
 
-      for (int i = 0; i < min(1537*8,TBS); i++) {
+      for (int i = 0; i < 200; i++) {
         estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-        test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-        #ifdef DEBUG_NR_PSSCHSIM2
+        test_input_bit[i] = (txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+#ifdef DEBUG_NR_PSSCHSIM
         if (i % 8 == 0) {
-           printf("TxByte : %2u  vs  %2u : RxByte\n", test_input[i / 8], harq_process_rxUE->b[i / 8]);
+           printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
         }
-        #endif
+#endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
           errors_bit++;
         }
@@ -599,7 +525,7 @@ int main(int argc, char **argv)
     printf("*****************************************\n");
     printf("SNR %f, BLER %f BER %f\n", SNR,
           (float) n_errors / (float) n_trials,
-          (float) errors_bit / (float) (n_trials * min(1537*8,TBS)));
+          (float) errors_bit / (float) (n_trials * 200));
     printf("*****************************************\n");
     printf("\n");
 

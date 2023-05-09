@@ -1098,18 +1098,25 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                uint8_t thread_id,
                                int gNB_id);
 
+void nr_ue_set_slsch(unsigned char harq_pid,
+                     NR_UE_ULSCH_t *slsch,
+                     uint32_t frame,
+                     uint8_t slot);
+
 /** \brief Perform the following functionalities:
     - encoding
     - scrambling
     - modulation
     - transform precoding
 */
-void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *ue,
                                unsigned char harq_pid,
                                uint32_t frame,
                                uint8_t slot);
 
-uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
+void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid);
+
+uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *ue,
                             unsigned char harq_pid,
                             uint32_t frame,
                             uint8_t slot,
@@ -1136,8 +1143,7 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
                               unsigned int G_SCI2_bits,
                               uint8_t  SCI2_mod_order,
                               int16_t **tx_layers,
-                              uint32_t **pssch_dmrs,
-                              int32_t **txdataF
+                              uint32_t **pssch_dmrs
                              );
 
 void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,

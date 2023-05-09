@@ -191,17 +191,20 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
                          int16_t amp,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,
-                         int sfn,
+                         int abs_slot,
                          NR_DL_FRAME_PARMS *frame_parms) {
   LOG_I(NR_PHY, "PSBCH SL generation started\n");
 
   /* payload is 56 bits */
-  PSBCH_payload psbch_payload;             // NR Side Link Payload for Rel 16
-  psbch_payload.coverageIndicator = 0;     // 1 bit
-  psbch_payload.tddConfig = 0xFFF;         // 12 bits for TDD configuration
-  psbch_payload.DFN = 0x3FF;               // 10 bits for DFN
-  psbch_payload.slotIndex = 0x2A;          // 7 bits for Slot Index //frame_parms->p_TDD_UL_DL_ConfigDedicated->slotIndex;
-  psbch_payload.reserved = 0;              // 2 bits reserved
+  uint16_t nb_slots = ue->frame_parms.slots_per_frame;
+  PSBCH_payload psbch_payload;                   // NR Side Link Payload for Rel 16
+  psbch_payload.coverageIndicator = 0;           // 1 bit
+  psbch_payload.tddConfig = 0xFFF;               // 12 bits for TDD configuration
+  psbch_payload.DFN = abs_slot / nb_slots;       // 10 bits for DFN
+  psbch_payload.slotIndex = abs_slot % nb_slots; // 7 bits for Slot Index //frame_parms-
+  psbch_payload.reserved = 0;                    // 2 bits reserved
+  LOG_D(NR_PHY, "PSBCH SL generation started with DFN %u slotIndex %u for abs_slot %d\n",
+                psbch_payload.DFN, psbch_payload.slotIndex, abs_slot);
 
   NR_UE_PSBCH m_psbch;
   ue->psbch_vars[0] = &m_psbch;
