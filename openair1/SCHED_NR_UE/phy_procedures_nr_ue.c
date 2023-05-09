@@ -60,6 +60,7 @@
 //#define NR_PUCCH_SCHED
 //#define NR_PUCCH_SCHED_DEBUG
 //#define NR_PDSCH_DEBUG
+#define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 
 #ifndef PUCCH
 #define PUCCH
@@ -310,8 +311,6 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
   AssertFatal(frame_tx >= 0 && frame_tx < 1024, "frame_tx %d is not in 0...1023\n",frame_tx);
   AssertFatal(slot_tx >= 0 && slot_tx < 20, "slot_tx %d is not in 0...19\n", slot_tx);
 
-  LOG_D(PHY,"****** start Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
-
   if (get_softmodem_params()->sl_mode == 2) {
     ue->tx_power_dBm[slot_tx] = -127;
     int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.samples_per_slot_wCP;
@@ -368,8 +367,8 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
 #endif
   }
   if (ue->is_synchronized_sl == 1) {
-    // TODO: check gNB's downlink side code. The following is from nrUE's uplink side.
-    for (uint8_t harq_pid = 0; harq_pid < ue->slsch[proc->thread_id][gNB_id]->number_harq_processes_for_pusch; harq_pid++) {
+    for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
+      nr_ue_set_slsch(harq_pid, ue->slsch[proc->thread_id][gNB_id], frame_tx, slot_tx);
       if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
         nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx);
       }
@@ -1431,24 +1430,87 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   int slot_rx = proc->nr_slot_rx;
 
   // Start PSSCH processing here. It runs in parallel with PSSCH processing
-  notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), proc->nr_slot_tx, txFifo, processSlotTX);
-  nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(newElt);
-  curMsg->proc = *proc;
-  curMsg->UE = ue;
-  pushTpool(&(get_nrUE_params()->Tpool), newElt);
-
-  if (ue->is_synchronized_sl == 0)
+  if ((!ue->sync_ref) && (ue->is_synchronized_sl == 0)) {
     return (0);
+  }
 
   NR_UE_DLSCH_t   *slsch = ue->slsch_rx[proc->thread_id][synchRefUE_id][0];
-  for (unsigned char harq_pid = 0; harq_pid < slsch->number_harq_processes_for_pdsch; harq_pid++) {
-    if (slsch->harq_processes[harq_pid]->status == ACTIVE)
-      nr_rx_pssch(ue, proc, slsch, frame_rx, slot_rx, harq_pid);
+  NR_DL_UE_HARQ_t *harq = NULL;
+  int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
+  uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
+
+  for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
+    nr_ue_set_slsch_rx(ue, harq_pid);
+    if (slsch->harq_processes[harq_pid]->status == ACTIVE) {
+      harq = slsch->harq_processes[harq_pid];
+      for (int aa = 0; aa < ue->frame_parms.nb_antennas_rx; aa++) {
+        for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
+          nr_slot_fep_ul(&ue->frame_parms, ue->common_vars.rxdata[aa], &rxdataF[aa][rx_offset], ofdm_symbol, slot_rx, 0);
+        }
+        apply_nr_rotation_ul(&ue->frame_parms, rxdataF[aa], slot_rx, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
+      }
+      uint32_t ret = nr_ue_slsch_rx_procedures(ue,
+                                               harq_pid,
+                                               frame_rx,
+                                               slot_rx,
+                                               rxdataF,
+                                               29008,
+                                               45727,
+                                               proc);
+      if (ret != -1)
+        validate_rx_payload(harq, frame_rx, slot_rx);
+    }
   }
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_rx, slot_rx);
   return (0);
 }
 
+void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
+  unsigned int errors_bit = 0;
+  unsigned char estimated_output_bit[HNA_SIZE];
+  unsigned char test_input_bit[HNA_SIZE];
+  unsigned int n_false_positive = 0;
+  unsigned char test_input[harq->TBS / 8];
+  uint32_t frame_tx = 0;
+  uint32_t slot_tx = 0;
+  unsigned char  randm_tx =0;
+
+
+  for (int i = 0; i < harq->TBS / 8; i++)
+    test_input[i] = (unsigned char) (i + 3);
+
+  for (int i = 0; i < min(80, harq->TBS); i++) {
+    estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+    if(i % 8 == 0){
+      if(i == 8 * 0) slot_tx = harq->b[0];
+      if(i == 8 * 1) frame_tx = harq->b[1];
+      if(i == 8 * 2) frame_tx += (harq->b[2] << 8);
+      if(i == 8 * 3) randm_tx = harq->b[3];
+      if(i  > 8 * 3)
+          LOG_D(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+    }
+#if DEBUG_NR_PSSCHSIM
+    LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+#endif
+    if ((i  >= 8 * 4) && (i  < 8 * 9) && (estimated_output_bit[i] != test_input_bit[i])) {
+      errors_bit++;
+    }
+  }
+
+  LOG_D(PHY,"TxRondm: %4u\n", randm_tx);
+  LOG_D(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
+  LOG_D(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
+
+  if (errors_bit > 0) {
+    n_false_positive++;
+    LOG_D(PHY,"errors_bit %u\n", errors_bit);
+    LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
+  }
+  if (errors_bit == 0) {
+    LOG_D(PHY, "PSSCH test OK\n");
+  }
+}
 int phy_procedures_nrUE_RX(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
                            uint8_t gNB_id,

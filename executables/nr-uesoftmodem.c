@@ -264,14 +264,14 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
 {
   uint64_t rev_burst = 0;
   for (int i = 0; i < 64; i++)
-    rev_burst |= (((SSB_positions >> (63-i))&0x01) << i);
+    rev_burst |= (((position_in_burst >> (63-i))&0x01) << i);
 
   NR_DL_FRAME_PARMS *fp                                  = &ue->frame_parms;
   fapi_nr_config_request_t *nrUE_config                  = &ue->nrUE_config;
   nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a              = 0;
+  nrUE_config->ssb_table.ssb_offset_point_a              = (N_RB_UL - 20) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type             = TDD;
@@ -286,10 +286,12 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.sl_frequency               = sidelink_frequency[CC_id][0] / 1000;
   LOG_D(NR_PHY, "SL Frequency %u\n", nrUE_config->carrier_config.sl_frequency);
   ue->mac_enabled                                        = 1;
+  fp->Ncp                                                = NORMAL;
   fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
   fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
-  fp->dl_CarrierFreq                                     = 2600000000;
-  fp->ul_CarrierFreq                                     = 2600000000;
+  fp->dl_CarrierFreq                                     = 3600000000;
+  fp->ul_CarrierFreq                                     = 3600000000;
+  fp->sl_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
@@ -526,7 +528,7 @@ int main( int argc, char **argv ) {
 
   init_opt() ;
   load_nrLDPClib(NULL);
- 
+
   if (ouput_vcd) {
     vcd_signal_dumper_init("/tmp/openair_dump_nrUE.vcd");
   }
@@ -607,7 +609,11 @@ int main( int argc, char **argv ) {
     memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
     set_latency_target();
     mlockall(MCL_CURRENT | MCL_FUTURE);
-
+    if (get_softmodem_params()->sl_mode == 2) {
+      crcTableInit();
+      initTpool("n", &UE[0]->threadPool, true);
+      initNotifiedFIFO(&UE[0]->respDecode);
+    }
     if(IS_SOFTMODEM_DOSCOPE) {
       load_softscope("nr",PHY_vars_UE_g[0][0]);
     }

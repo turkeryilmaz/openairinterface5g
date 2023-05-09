@@ -238,7 +238,6 @@ int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
 #endif
     int max_payload_bytes = MAX_NUM_NR_SLSCH_SEGMENTS_PER_LAYER * harq_process->pssch_pdu.nrOfLayers * 1056;
     uint16_t polar_encoder_output_len = polar_encoder_output_length(harq_process);
-    printf("output length of polar encoder is:%d bits\n",polar_encoder_output_len);
     polar_encoder_fast(harq_process->a_sci2, (void*)harq_process->b_sci2, 0, 0,
                        NR_POLAR_SCI2_MESSAGE_TYPE,
                        polar_encoder_output_len,

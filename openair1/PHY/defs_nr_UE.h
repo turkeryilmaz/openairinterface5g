@@ -1187,6 +1187,8 @@ typedef struct {
   int dl_errors;
   int dl_stats[8];
   void* scopeData;
+  uint32_t rx_ssb_slot;
+  uint32_t rx_ssb_frame;
 } PHY_VARS_NR_UE;
 
 /* this structure is used to pass both UE phy vars and

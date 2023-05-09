@@ -315,7 +315,7 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
   nr_sl_generate_sss(&txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
   nr_sl_generate_psbch_dmrs(&ue->nr_gold_psbch[ssb_index & 7], &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, fp);
   uint8_t n_hf = 0;
-  nr_generate_sl_psbch(ue, &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, n_hf, frame, fp);
+  nr_generate_sl_psbch(ue, &txdataF[0][txdataF_offset], AMP, ssb_start_symbol, n_hf, frame * fp->slots_per_frame + slot, fp);
 }
 
 int nr_rx_psbch( PHY_VARS_NR_UE *ue,
@@ -429,6 +429,15 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     frame_number_4lsb |= ((result->xtra_byte >> i) & 1) << (3 - i);
 
   proc->decoded_frame_rx = frame_number_4lsb;
+
+  /* payload is 56 bits */
+  PSBCH_payload psbch_rx_payload = *(PSBCH_payload *) &payload;
+  proc->frame_rx = psbch_rx_payload.DFN;
+  proc->nr_slot_rx = psbch_rx_payload.slotIndex;
+  ue->rx_ssb_frame = psbch_rx_payload.DFN;
+  ue->rx_ssb_slot = psbch_rx_payload.slotIndex;
+  LOG_D(NR_PHY, "[PSBCH] slotIndex = %u, frame %u\n", ue->rx_ssb_slot, ue->rx_ssb_frame);
+
 #ifdef DEBUG_PSBCH
   printf("xtra_byte %x payload %x\n", result->xtra_byte, payload);
 
