@@ -927,8 +927,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   if(configuration->eMBMS_M2_configured){
     sib_type2=CALLOC(1,sizeof(LTE_SIB_Type_t));
     schedulingInfo2=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
-    memset(&schedulingInfo2,0,sizeof(LTE_SchedulingInfo_t));
-    memset(&sib_type2,0,sizeof(LTE_SIB_Type_t));
+    memset(schedulingInfo2,0,sizeof(LTE_SchedulingInfo_t));
+    memset(sib_type2,0,sizeof(LTE_SIB_Type_t));
   }
 
   (*sib1)->cellAccessRelatedInfo.plmn_IdentityList.list.free=free_LTE_PLMN_IdentityInfo_t;
@@ -2474,7 +2474,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
     InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].dl_CarrierFreq;
     InterFreqCarrierInfo->q_RxLevMin = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_RxLevMin;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max_Present) {
-      InterFreqCarrierInfo->p_Max = configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max;
+      InterFreqCarrierInfo->p_Max = &configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max;
     }
     InterFreqCarrierInfo->t_ReselectionEUTRA = configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA_SF_Present) {
@@ -2499,11 +2499,11 @@ uint8_t do_SIB5(uint8_t Mod_id,
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList_Present) {
       //InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
-      InterFreqCarrierInfo->interFreqNeighCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList;
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList_Present) {
       //InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
-      InterFreqCarrierInfo->interFreqBlackCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList;
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList);
     }
     if ((true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) ||
     (true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present)) {
@@ -2527,7 +2527,8 @@ uint8_t do_SIB5(uint8_t Mod_id,
        //InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11;
     }
-  asn1cSeqAdd(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
+  //asn1cSeqAdd(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
+  ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList.list,InterFreqCarrierInfo);
   }
 
   // TODO: Need to handle all remaining ext and lateNonCriticalExtension IE properly
