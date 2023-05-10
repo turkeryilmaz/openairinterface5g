@@ -86,6 +86,7 @@ Some directories under `radio` contain READMEs:
 
 - [RFsimulator](../radio/rfsimulator/README.md)
 - [USRP](../radio/USRP/README.md)
+- [O-RAN 7.2 FHI](./ORAN_FHI7.2_Tutorial.md)
 - [BladeRF](../radio/BLADERF/README)
 - [IQPlayer](../radio/iqplayer/DOC/iqrecordplayer_usage.md), and [general documentation](./iqrecordplayer_usage.md)
 
