@@ -41,7 +41,6 @@
 #include "nr_rlc/nr_rlc_oai_api.h"
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 #include <pthread.h>
-#include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 
@@ -90,12 +89,10 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
     }
     else {
       LOG_I(MAC,"Running without CellGroupConfig\n");
-      if (get_softmodem_params()->sl_mode == 0) {
-        nr_rrc_mac_config_req_ue(0, 0, 0, NULL, NULL, NULL, NULL);
-        if (get_softmodem_params()->sa == 1) {
-          AssertFatal(rlc_module_init(0) == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
-        }
-      } else if (get_softmodem_params()->sl_mode == 2) {
+      if (get_softmodem_params()->sa == 1) {
+        AssertFatal(rlc_module_init(0) == 0, "%s: Could not initialize RLC layer\n", __FUNCTION__);
+      }
+      if (get_softmodem_params()->sl_mode == 2) {
         module_id_t module_id = 0;
         int cc_idP = 0;
         uint32_t sourceL2Id, groupL2Id, destinationL2Id;
@@ -107,8 +104,6 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
         nr_rrc_mac_config_req_ue_sl(module_id, cc_idP, &sourceL2Id, &destinationL2Id, &groupL2Id,
                                     rrc_inst->SL_Preconfiguration[0],
                                     directFrameNumber_r16, slotIndex_r16);
-      } else {
-        LOG_E(NR_MAC, "Need implementation.\n");
       }
     }
 
