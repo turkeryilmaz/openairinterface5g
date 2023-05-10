@@ -217,7 +217,6 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
       csirs->active = 0;
     }
   }
-
 //  if ((frame&127) == 0) dump_pdsch_stats(gNB);
 
   // apply the OFDM symbol rotation here
@@ -234,7 +233,6 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
         T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP * sizeof(int32_t)));
     }
   }
-
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX+offset,0);
 }
 
@@ -749,12 +747,12 @@ int fill_srs_channel_matrix(uint8_t *channel_matrix,
 
 int check_srs_pdu(const nfapi_nr_srs_pdu_t *srs_pdu, nfapi_nr_srs_pdu_t *saved_srs_pdu)
 {
-  if (saved_srs_pdu->bwp_start == srs_pdu->bwp_start &&
-      saved_srs_pdu->bwp_size == srs_pdu->bwp_size &&
-      saved_srs_pdu->num_ant_ports == srs_pdu->num_ant_ports &&
-      saved_srs_pdu->time_start_position == srs_pdu->time_start_position &&
-      saved_srs_pdu->num_symbols == srs_pdu->num_symbols &&
-      saved_srs_pdu->config_index == srs_pdu->config_index) {
+  if (saved_srs_pdu->bwp_start == srs_pdu->bwp_start
+      && saved_srs_pdu->bwp_size == srs_pdu->bwp_size
+      && saved_srs_pdu->num_ant_ports == srs_pdu->num_ant_ports
+      && saved_srs_pdu->time_start_position == srs_pdu->time_start_position
+      && saved_srs_pdu->num_symbols == srs_pdu->num_symbols
+      && saved_srs_pdu->config_index == srs_pdu->config_index) {
     return 1;
   }
   *saved_srs_pdu = *srs_pdu;
@@ -1087,7 +1085,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
               LOG_I(NR_PHY,
                     "nr_srs_beamforming_report.prgs[0].prg_list[%3i].rb_snr = %i (%i dB)\n",
                     prg_idx,
-                     nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr,
+                    nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr,
                     (nr_srs_bf_report.prgs[0].prg_list[prg_idx].rb_snr >> 1) - 64);
             }
 #endif
@@ -1127,8 +1125,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
             for (int uI = 0; uI < nr_srs_channel_iq_matrix.num_ue_srs_ports; uI++) {
               for (int gI = 0; gI < nr_srs_channel_iq_matrix.num_gnb_antenna_elements; gI++) {
                 for (int pI = 0; pI < nr_srs_channel_iq_matrix.num_prgs; pI++) {
-                  uint16_t index =
-                      uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
+                  uint16_t index = uI * nr_srs_channel_iq_matrix.num_gnb_antenna_elements * nr_srs_channel_iq_matrix.num_prgs + gI * nr_srs_channel_iq_matrix.num_prgs + pI;
                   LOG_I(NR_PHY,
                         "(uI %i, gI %i, pI %i) channel_matrix --> real %i, imag %i\n",
                         uI,

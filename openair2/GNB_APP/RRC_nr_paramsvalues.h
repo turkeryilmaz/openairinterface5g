@@ -171,7 +171,6 @@
 #define GNB_CONFIG_ABSOLUTEFREQUENCYPOINTA_IDX 7
 #define GNB_CONFIG_DLCARRIERBANDWIDTH_IDX 10
 
-
 #define SCCPARAMS_DESC(scc) { \
 {GNB_CONFIG_STRING_PHYSCELLID,NULL,0,.i64ptr=scc->physCellId,.defint64val=0,TYPE_INT64,0/*0*/}, \
 {GNB_CONFIG_STRING_NTIMINGADVANCEOFFSET,NULL,0,.i64ptr=scc->n_TimingAdvanceOffset,.defint64val=NR_ServingCellConfigCommon__n_TimingAdvanceOffset_n25600,TYPE_INT64,0/*1*/},\

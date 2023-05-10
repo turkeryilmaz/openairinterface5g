@@ -1389,6 +1389,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       // Time domain assignment 4 bit
       for (int i = 0; i < 4; i++)
         *dci_pdu |= (((uint64_t)dci_pdu_rel15->time_domain_assignment.val >> (3 - i)) & 1) << (dci_size - pos++);
+
       LOG_D(NR_MAC, "dci_pdu_rel15->time_domain_assignment.val = %i\n", dci_pdu_rel15->time_domain_assignment.val);
       // VRB to PRB mapping 1 bit
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->vrb_to_prb_mapping.val & 1) << (dci_size - pos++);
@@ -2168,9 +2169,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
     UL_BWP->tdaList_Common = scc->uplinkConfigCommon->initialUplinkBWP->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList;
 
   // setting generic parameters
-  NR_BWP_t dl_genericParameters = (DL_BWP->bwp_id > 0 && dl_bwp) ?
-    dl_bwp->bwp_Common->genericParameters:
-    scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
+  NR_BWP_t dl_genericParameters = (DL_BWP->bwp_id > 0 && dl_bwp) ? dl_bwp->bwp_Common->genericParameters : scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters;
 
   DL_BWP->scs = dl_genericParameters.subcarrierSpacing;
   DL_BWP->cyclicprefix = dl_genericParameters.cyclicPrefix;
@@ -2179,9 +2178,7 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
   DL_BWP->initial_BWPSize = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   DL_BWP->initial_BWPStart = NRRIV2PRBOFFSET(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
 
-  NR_BWP_t ul_genericParameters = (UL_BWP->bwp_id > 0 && ul_bwp) ?
-    ul_bwp->bwp_Common->genericParameters:
-    scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
+  NR_BWP_t ul_genericParameters = (UL_BWP->bwp_id > 0 && ul_bwp) ? ul_bwp->bwp_Common->genericParameters : scc->uplinkConfigCommon->initialUplinkBWP->genericParameters;
 
   UL_BWP->scs = ul_genericParameters.subcarrierSpacing;
   UL_BWP->cyclicprefix = ul_genericParameters.cyclicPrefix;
@@ -2199,7 +2196,6 @@ void configure_UE_BWP(gNB_MAC_INST *nr_mac,
   }
 
   if(UE) {
-
     // Reset required fields in sched_ctrl (e.g. ul_ri and tpmi)
     reset_sched_ctrl(sched_ctrl);
 
@@ -2522,19 +2518,16 @@ uint8_t nr_get_tpc(int target, uint8_t cqi, int incr) {
   return 1; // no change
 }
 
-
-int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config,
-                                nr_dci_format_t dci_format,
-                                uint8_t *pdsch_to_harq_feedback) {
+int get_pdsch_to_harq_feedback(NR_PUCCH_Config_t *pucch_Config, nr_dci_format_t dci_format, uint8_t *pdsch_to_harq_feedback)
+{
   /* already mutex protected: held in nr_acknack_scheduling() */
-
   if (dci_format == NR_DL_DCI_FORMAT_1_0) {
     for (int i = 0; i < 8; i++)
       pdsch_to_harq_feedback[i] = i + 1;
     return 8;
   }
   else {
-    AssertFatal(pucch_Config != NULL && pucch_Config->dl_DataToUL_ACK != NULL,"dl_DataToUL_ACK shouldn't be null here\n");
+    AssertFatal(pucch_Config != NULL && pucch_Config->dl_DataToUL_ACK != NULL, "dl_DataToUL_ACK shouldn't be null here\n");
     for (int i = 0; i < pucch_Config->dl_DataToUL_ACK->list.count; i++) {
       pdsch_to_harq_feedback[i] = *pucch_Config->dl_DataToUL_ACK->list.array[i];
     }

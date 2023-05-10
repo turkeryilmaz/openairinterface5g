@@ -293,7 +293,7 @@ typedef enum {
 
 typedef enum {
   NFAPI_NR_CCE_REG_MAPPING_INTERLEAVED=0,
-  NFAPI_NR_CCE_REG_MAPPING_NON_INTERLEAVED=1 
+  NFAPI_NR_CCE_REG_MAPPING_NON_INTERLEAVED=1
 } nfapi_nr_cce_reg_mapping_type_e;
 
 typedef enum {
