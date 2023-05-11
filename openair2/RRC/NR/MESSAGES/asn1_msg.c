@@ -687,6 +687,85 @@ int do_RRCReject(uint8_t Mod_id,
     return (enc_rval.encoded + 7) / 8;
 }
 
+NR_RLC_Config_t * fill_rb_rlc_config(NR_RLC_Config_t * ss_rlc_config)
+{
+  NR_RLC_Config_t      *rlc_Config  = NULL;
+
+  rlc_Config = calloc(1, sizeof(NR_RLC_Config_t));
+  if(ss_rlc_config){
+    rlc_Config->present                                              = ss_rlc_config->present;
+    if(rlc_Config->present == NR_RLC_Config_PR_am){
+      rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength      = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+      if(ss_rlc_config->choice.am->dl_AM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength) =*(ss_rlc_config->choice.am->dl_AM_RLC.sn_FieldLength);
+      }else {
+        *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+      }
+      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                   = ss_rlc_config->choice.am->dl_AM_RLC.t_Reassembly;
+      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = ss_rlc_config->choice.am->dl_AM_RLC.t_StatusProhibit;
+      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+      if(ss_rlc_config->choice.am->ul_AM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               =*(ss_rlc_config->choice.am->ul_AM_RLC.sn_FieldLength);
+      }else{
+        *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+      }
+      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit             = ss_rlc_config->choice.am->ul_AM_RLC.t_PollRetransmit;
+      rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = ss_rlc_config->choice.am->ul_AM_RLC.pollPDU;
+      rlc_Config->choice.am->ul_AM_RLC.pollByte                        = ss_rlc_config->choice.am->ul_AM_RLC.pollByte;
+      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold           = ss_rlc_config->choice.am->ul_AM_RLC.maxRetxThreshold;
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Bi_Directional){
+      rlc_Config->choice.um_Bi_Directional                      = calloc(1,sizeof(*rlc_Config->choice.um_Bi_Directional));
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = ss_rlc_config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly;
+
+      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Uni_Directional_DL){
+      rlc_Config->choice.um_Uni_Directional_DL            = calloc(1,sizeof(*rlc_Config->choice.um_Uni_Directional_DL));
+      if(ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+      rlc_Config->choice.um_Uni_Directional_DL->dl_UM_RLC.t_Reassembly = ss_rlc_config->choice.um_Uni_Directional_DL->dl_UM_RLC.t_Reassembly;
+    } else if(rlc_Config->present == NR_RLC_Config_PR_um_Uni_Directional_UL){
+      rlc_Config->choice.um_Uni_Directional_UL            = calloc(1,sizeof(*rlc_Config->choice.um_Uni_Directional_UL));
+      rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength = calloc(1,sizeof(NR_SN_FieldLengthUM_t));
+      if(ss_rlc_config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength){
+        *(rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength) = *(ss_rlc_config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength);
+      } else {
+        *(rlc_Config->choice.um_Uni_Directional_UL->ul_UM_RLC.sn_FieldLength) = NR_SN_FieldLengthUM_size12;
+      }
+
+    }
+  }else {
+    rlc_Config->present                                              = NR_RLC_Config_PR_am;
+    rlc_Config->choice.am                                            = calloc(1, sizeof(*rlc_Config->choice.am));
+    rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->dl_AM_RLC.t_Reassembly                    = NR_T_Reassembly_ms35;
+    rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit                = NR_T_StatusProhibit_ms0;
+    rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength                  = calloc(1, sizeof(NR_SN_FieldLengthAM_t));
+    *(rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength)               = NR_SN_FieldLengthAM_size12;
+    rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit                = NR_T_PollRetransmit_ms45;
+    rlc_Config->choice.am->ul_AM_RLC.pollPDU                         = NR_PollPDU_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.pollByte                        = NR_PollByte_infinity;
+    rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold                = NR_UL_AM_RLC__maxRetxThreshold_t8;
+  }
+
+  return rlc_Config;
+}
+
 void fill_initial_SpCellConfig(int uid,
                                NR_SpCellConfig_t *SpCellConfig,
                                const NR_ServingCellConfigCommon_t *scc,
@@ -1201,6 +1280,32 @@ void fill_initial_cellGroupConfig(int uid,
   
   cellGroupConfig->sCellToAddModList                                        = NULL;
   cellGroupConfig->sCellToReleaseList                                       = NULL;
+}
+
+bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
+            rrc_gNB_ue_context_t      *ue_context_pP,
+            NR_CellGroupConfig_t *cellGroupConfig)
+{
+  int CC_id = ue_context_pP->ue_context.primaryCC_id;
+  bool update_flag = false;
+  if(RC.ss.mode < SS_SOFTMODEM){
+    return update_flag;
+  }
+
+  if(cellGroupConfig && cellGroupConfig->rlc_BearerToAddModList){
+    for(int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
+      NR_RLC_BearerConfig_t * rlc_BearerConfig = cellGroupConfig->rlc_BearerToAddModList->list.array[i];
+      /* only check rlc_config as it is missing from TTCN */
+      if(!rlc_BearerConfig->rlc_Config && rlc_BearerConfig->servedRadioBearer){
+        int rbIndex = (rlc_BearerConfig->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)? rlc_BearerConfig->servedRadioBearer->choice.srb_Identity : (rlc_BearerConfig->servedRadioBearer->choice.drb_Identity +2);
+        if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid && RC.NR_RB_Config[CC_id][rbIndex].RlcBearer){
+          rlc_BearerConfig->rlc_Config = fill_rb_rlc_config(RC.NR_RB_Config[CC_id][rbIndex].RlcBearer->rlc_Config);
+          update_flag = true;
+        }
+      }
+    }
+  }
+  return update_flag;
 }
 
 //------------------------------------------------------------------------------

@@ -97,6 +97,7 @@
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/SDAP/nr_sdap/nr_sdap_entity.h"
 #include "cucp_cuup_if.h"
+#include "PHY/defs_gNB.h"
 
 #include "BIT_STRING.h"
 #include "assertions.h"
@@ -827,6 +828,133 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
     LOG_W(NR_RRC, "Unknown node type %d\n", RC.nrrrc[ctxt_pP->module_id]->node_type);
   }
 
+  if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
+    gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+    nr_mac_update_cellgroup(RC.nrmac[rrc->module_id], ue_p->rnti, ue_p->masterCellGroup);
+
+    uint32_t delay_ms = ue_context_pP->ue_context.masterCellGroup &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated &&
+                        ue_context_pP->ue_context.masterCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList ?
+                        NR_RRC_RECONFIGURATION_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS : NR_RRC_RECONFIGURATION_DELAY_MS;
+
+    nr_mac_enable_ue_rrc_processing_timer(ctxt_pP->module_id,
+                                          ue_context_pP->ue_context.rnti,
+                                          *rrc->carrier.servingcellconfigcommon->ssbSubcarrierSpacing,
+                                          delay_ms);
+  }
+}
+
+//-----------------------------------------------------------------------------
+/*
+*  store rrcReconfiguration config in UE context
+*/
+void
+rrc_gNB_store_RRCReconfiguration(
+  const protocol_ctxt_t     *const ctxt_pP,
+  rrc_gNB_ue_context_t      *ue_context_pP,
+  NR_RRCReconfiguration_t * rrcReconfiguration
+)
+//-----------------------------------------------------------------------------
+{
+  NR_SRB_ToAddModList_t        **srb2addList = NULL;
+  NR_DRB_ToAddModList_t        **drb2addList = NULL;
+  NR_DRB_ToAddModList_t        **drb2releaseList = NULL;
+  NR_CellGroupConfig_t          *cellGroupConfig = NULL;
+  long xid;
+
+  AssertFatal (rrcReconfiguration!=NULL, "%s rrcReconfiguration is NULL\n",__FUNCTION__);
+  xid = rrcReconfiguration->rrc_TransactionIdentifier;
+  LOG_D(NR_RRC, "rrc_gNB_store_RRCReconfiguration for transaction %ld\n",xid);
+
+  srb2addList = &ue_context_pP->ue_context.SRB_configList2[xid];
+  drb2addList = &ue_context_pP->ue_context.DRB_configList2[xid];
+  drb2releaseList = &ue_context_pP->ue_context.DRB_Release_configList2[xid];
+
+  if(*srb2addList){
+    LOG_D(NR_RRC, "%s free old SRB_configList2 \n",__FUNCTION__);
+    ASN_STRUCT_FREE(asn_DEF_NR_SRB_ToAddModList,*srb2addList);
+    *srb2addList = NULL;
+  }
+  if(*drb2addList){
+    LOG_D(NR_RRC, "%s free old DRB_configList2 \n",__FUNCTION__);
+    ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToAddModList,*drb2addList);
+    *drb2addList = NULL;
+  }
+  if(*drb2releaseList){
+    LOG_D(NR_RRC, "%s free old DRB_Release_configList2 \n",__FUNCTION__);
+    ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToAddModList,*drb2releaseList);
+    *drb2releaseList = NULL;
+  }
+
+  if(rrcReconfiguration->criticalExtensions.present == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration && rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration){
+    NR_RRCReconfiguration_IEs_t * ie = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration;
+
+    if(ie->radioBearerConfig){
+      if(ie->radioBearerConfig->srb_ToAddModList){
+        LOG_D(NR_RRC, "%s store srb_ToAddModList\n",__FUNCTION__);
+        *srb2addList = ie->radioBearerConfig->srb_ToAddModList;
+        ie->radioBearerConfig->srb_ToAddModList = NULL; /* to avoid the content be released externally */
+      }
+      if(ie->radioBearerConfig->drb_ToAddModList){
+        LOG_D(NR_RRC, "%s store drb_ToAddModList\n",__FUNCTION__);
+        *drb2addList = ie->radioBearerConfig->drb_ToAddModList;
+        ie->radioBearerConfig->drb_ToAddModList = NULL; /* to avoid the content be released externally*/
+      }
+      if(ie->radioBearerConfig->drb_ToReleaseList){
+        LOG_D(NR_RRC, "%s store drb_ToReleaseList\n",__FUNCTION__);
+        *drb2releaseList = ie->radioBearerConfig->drb_ToReleaseList;
+        ie->radioBearerConfig->drb_ToReleaseList = NULL; /* to avoid the content be released externally*/
+      }
+    }
+
+    if(ie->nonCriticalExtension){
+      if(ie->nonCriticalExtension->masterCellGroup){
+        uper_decode(NULL,
+              &asn_DEF_NR_CellGroupConfig,
+              (void **)&cellGroupConfig,
+              (uint8_t *)ie->nonCriticalExtension->masterCellGroup->buf,
+              ie->nonCriticalExtension->masterCellGroup->size, 0, 0);
+
+        if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+          xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)cellGroupConfig);
+        }
+
+        if(cellGroupConfig){
+#if 1
+          NR_CellGroupConfig_t   *masterCellGroup = ue_context_pP->ue_context.masterCellGroup;
+          if(masterCellGroup && cellGroupConfig->rlc_BearerToAddModList){
+            /* we only care the added Bearer configuration here */
+            int count = cellGroupConfig->rlc_BearerToAddModList->list.count;
+            if(count && masterCellGroup->rlc_BearerToAddModList==NULL){
+              /* code would not get here */
+              masterCellGroup->rlc_BearerToAddModList = CALLOC(1,sizeof(struct NR_CellGroupConfig__rlc_BearerToAddModList));
+            }
+            LOG_D(NR_RRC, "%s add rlc_BearerConfig into UE masterCellGroup\n",__FUNCTION__);
+            for(int i=0; i < count; i++){
+              ASN_SEQUENCE_ADD(&masterCellGroup->rlc_BearerToAddModList->list, cellGroupConfig->rlc_BearerToAddModList->list.array[i]);
+            }
+            if (LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+              xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, (const void *)masterCellGroup);
+            }
+            cellGroupConfig->rlc_BearerToAddModList->list.free = NULL; /*not free item pointer as it already added to another list */
+            asn_sequence_empty(&cellGroupConfig->rlc_BearerToAddModList->list);
+          }
+          ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,cellGroupConfig);
+#else
+          if(ue_context_pP->ue_context.masterCellGroup){
+            /* There is issue to free masterCellGroup content here.  */
+            ASN_STRUCT_FREE(asn_DEF_NR_CellGroupConfig,ue_context_pP->ue_context.masterCellGroup);
+          }
+          LOG_D(NR_RRC, "%s store cellGroupConfig\n",__FUNCTION__);
+          ue_context_pP->ue_context.masterCellGroup = cellGroupConfig;
+#endif
+        }
+      }
+    }
+  }
+
+  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
     nr_mac_update_cellgroup(RC.nrmac[rrc->module_id], ue_p->rnti, ue_p->masterCellGroup);
