@@ -1497,6 +1497,32 @@ void fill_initial_cellGroupConfig(int uid,
   cellGroupConfig->sCellToReleaseList                                       = NULL;
 }
 
+bool update_rrcReconfig_cellGroupConfig(const protocol_ctxt_t     *const ctxt_pP,
+            rrc_gNB_ue_context_t      *ue_context_pP,
+            NR_CellGroupConfig_t *cellGroupConfig)
+{
+  int CC_id = ue_context_pP->ue_context.primaryCC_id;
+  bool update_flag = false;
+  if(RC.ss.mode < SS_SOFTMODEM){
+    return update_flag;
+  }
+
+  if(cellGroupConfig && cellGroupConfig->rlc_BearerToAddModList){
+    for(int i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++){
+      NR_RLC_BearerConfig_t * rlc_BearerConfig = cellGroupConfig->rlc_BearerToAddModList->list.array[i];
+      /* only check rlc_config as it is missing from TTCN */
+      if(!rlc_BearerConfig->rlc_Config && rlc_BearerConfig->servedRadioBearer){
+        int rbIndex = (rlc_BearerConfig->servedRadioBearer->present == NR_RLC_BearerConfig__servedRadioBearer_PR_srb_Identity)? rlc_BearerConfig->servedRadioBearer->choice.srb_Identity : (rlc_BearerConfig->servedRadioBearer->choice.drb_Identity +2);
+        if(RC.NR_RB_Config[CC_id][rbIndex].isRBConfigValid && RC.NR_RB_Config[CC_id][rbIndex].RlcBearer){
+          rlc_BearerConfig->rlc_Config = fill_rb_rlc_config(RC.NR_RB_Config[CC_id][rbIndex].RlcBearer->rlc_Config);
+          update_flag = true;
+        }
+      }
+    }
+  }
+  return update_flag;
+}
+
 //------------------------------------------------------------------------------
 int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 uint8_t                      *const buffer,

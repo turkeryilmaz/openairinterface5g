@@ -89,6 +89,8 @@ static const char  nr_nas_attach_req_imsi[] = {
   0x01, 0x27, 0x11,
 };
 
+static size_t nr_rrc_ue_RRCSetupRequest_count = 0;
+
 extern void pdcp_config_set_security(
   const protocol_ctxt_t *const  ctxt_pP,
   pdcp_t          *const pdcp_pP,

@@ -1686,10 +1686,7 @@ void schedule_nr_PCH(module_id_t module_idP,
         get_info_from_tda_tables(type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern,
                                  time_domain_allocation,
                                  gNB_mac->common_channels->ServingCellConfigCommon->dmrs_TypeA_Position,
-                                 1,
-                                 &is_typeA,
-                                 &startSymbolIndex,
-                                 &nrOfSymbols);
+                                 1);
 
         NR_tda_info_t tda_info = {
           .mapping_type = is_typeA ? typeA : typeB,
