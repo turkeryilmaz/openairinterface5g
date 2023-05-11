@@ -40,7 +40,7 @@
 #include "UTIL/OPT/opt.h"
 #include "RRC/NR/nr_rrc_config.h"
 #include "common/utils/nr/nr_common.h"
-
+#include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 
 #define ENABLE_MAC_PAYLOAD_DEBUG
 #define DEBUG_eNB_SCHEDULER 1
