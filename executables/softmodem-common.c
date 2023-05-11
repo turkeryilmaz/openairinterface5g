@@ -108,8 +108,8 @@ void get_common_options(uint32_t execmask) {
   int numparams = sizeof(cmdline_params) / sizeof(paramdef_t);
   config_set_checkfunctions(cmdline_params, cmdline_CheckParams, numparams);
   config_get(cmdline_params, sizeof(cmdline_params) / sizeof(paramdef_t), NULL);
-  nfapi_index = config_paramidx_fromname(cmdline_params, sizeof(cmdline_params) / sizeof(paramdef_t), "nfapi");
-  AssertFatal(nfapi_index != -1, "Index for nfapi config option not found!");
+  nfapi_index = config_paramidx_fromname(cmdline_params, sizeof(cmdline_params) / sizeof(paramdef_t),"nfapi");
+  AssertFatal(nfapi_index != -1,"Index for nfapi config option not found!");
   nfapi_mode = config_get_processedint(&cmdline_params[nfapi_index]);
 
   paramdef_t cmdline_logparams[] =CMDLINE_LOGPARAMS_DESC ;
