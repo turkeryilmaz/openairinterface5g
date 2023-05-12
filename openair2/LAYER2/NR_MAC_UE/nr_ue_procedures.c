@@ -58,6 +58,10 @@
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
+extern int get_nrofHARQ_ProcessesForPDSCH(e_NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH n,
+                                   struct NR_PDSCH_ServingCellConfig__ext3 *ext3);
+extern int get_nrofHARQ_ProcessesForPUSCH(struct NR_PUSCH_ServingCellConfig__ext3 *ext3);
+
 //#define DEBUG_MIB
 //#define ENABLE_MAC_PAYLOAD_DEBUG 1
 //#define DEBUG_EXTRACT_DCI
@@ -2162,6 +2166,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
   NR_UE_HARQ_STATUS_t *current_harq;
   int sched_frame,sched_slot;
   int slots_per_frame;
+  int num_harq_processes = 16;
 
   NR_UE_DL_BWP_t *current_DL_BWP = &mac->current_DL_BWP;
   NR_UE_UL_BWP_t *current_UL_BWP = &mac->current_UL_BWP;
@@ -2169,6 +2174,14 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
   if (current_DL_BWP && current_DL_BWP->pdsch_Config && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI[0] == 2) {
     two_transport_blocks = true;
     number_of_code_word = 2;
+  }
+
+  //Look for 32 harq processes only if numharq = 32
+  if (current_DL_BWP->pdsch_servingcellconfig &&
+      current_DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH &&
+      current_DL_BWP->pdsch_servingcellconfig->ext3) {
+
+    num_harq_processes = 32;
   }
 
   int scs = current_UL_BWP->scs;
@@ -2179,7 +2192,7 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
   /* look for dl acknowledgment which should be done on current uplink slot */
   for (int code_word = 0; code_word < number_of_code_word; code_word++) {
 
-    for (int dl_harq_pid = 0; dl_harq_pid < 16; dl_harq_pid++) {
+    for (int dl_harq_pid = 0; dl_harq_pid < num_harq_processes; dl_harq_pid++) {
 
       current_harq = &mac->dl_harq_info[dl_harq_pid];
 
@@ -2861,7 +2874,10 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
   NR_UE_DL_BWP_t *current_DL_BWP = &mac->current_DL_BWP;
   NR_UE_UL_BWP_t *current_UL_BWP = &mac->current_UL_BWP;
   int N_RB;
-  if(current_DL_BWP)
+  // Default values of DL and UL HARQ processes
+  uint8_t num_dl_harq = 8, num_ul_harq = 16;
+
+  if(current_DL_BWP) {
     N_RB = get_rb_bwp_dci(dci_format,
                           ss_type,
                           mac->type0_PDCCH_CSS_config.num_rbs,
@@ -2869,8 +2885,21 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                           current_DL_BWP->BWPSize,
                           current_UL_BWP->initial_BWPSize,
                           current_DL_BWP->initial_BWPSize);
-  else
+
+    if (current_DL_BWP->pdsch_servingcellconfig && current_DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH) {
+      num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(*current_DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH,
+                                                    current_DL_BWP->pdsch_servingcellconfig->ext3);
+    }
+
+  } else
     N_RB = mac->type0_PDCCH_CSS_config.num_rbs;
+
+  if (current_UL_BWP && current_UL_BWP->pusch_servingcellconfig) {
+    num_ul_harq = get_nrofHARQ_ProcessesForPUSCH(current_UL_BWP->pusch_servingcellconfig->ext3);
+  }
+
+  LOG_D(MAC, "In %s, num_dl_harq:%d, num_ul_harq:%d\n",__FUNCTION__, num_dl_harq, num_ul_harq);
+
   LOG_D(MAC,"nr_extract_dci_info : dci_pdu %lx, size %d\n",*dci_pdu,dci_size);
   switch(dci_format) {
 
@@ -2998,12 +3027,17 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
 #ifdef DEBUG_EXTRACT_DCI
 	LOG_D(MAC,"RV %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->rv,2,dci_size-pos,*dci_pdu);
 #endif
-	  
-	// HARQ process number  4bit
-	pos+=4;
-	dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0xf;
+
+  //LOG_I(MAC, "In %s, NR_DL_DCI_FORMAT_1_0 pos:%d, dci_size:%d\n",__FUNCTION__, pos, dci_size);
+	// HARQ process number  4bit/5bits
+	pos+= (num_dl_harq == 32 ? 5: 4);
+  //LOG_I(MAC, "In %s, NR_DL_DCI_FORMAT_1_0 pos:%d, dci_size:%d\n",__FUNCTION__, pos, dci_size);
+  if (num_dl_harq == 32)
+	  dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x1f;
+  else
+    dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x0f;
 #ifdef DEBUG_EXTRACT_DCI
-	LOG_D(MAC,"HARQ_PID %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->harq_pid,4,dci_size-pos,*dci_pdu);
+	LOG_D(MAC,"HARQ_PID %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->harq_pid,(num_dl_harq == 32)?5:4,dci_size-pos,*dci_pdu);
 #endif
 	  
 	// Downlink assignment index  2bit
@@ -3140,9 +3174,12 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
       pos+=2;
       dci_pdu_rel15->rv = (*dci_pdu>>(dci_size-pos))&3;
 
-      // HARQ process number - 4 bits
-      pos+=4;
-      dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0xf;
+      // HARQ process number - 4 bits/5bits
+	    pos+= (num_dl_harq == 32 ? 5: 4);
+      if (num_dl_harq == 32)
+	      dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x1f;
+      else
+        dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x0f;
 
       // Downlink assignment index - 2 bits
       pos+=2;
@@ -3227,9 +3264,12 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
 #ifdef DEBUG_EXTRACT_DCI
 	LOG_D(MAC,"RV %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->rv,2,dci_size-pos,*dci_pdu);
 #endif
-	// HARQ process number  4bit
-	pos+=4;
-	dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0xf;
+	// HARQ process number  4bit/5bit
+	pos+= (num_ul_harq == 32 ? 5: 4);
+  if (num_ul_harq == 32)
+	  dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x1f;
+  else
+    dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x0f;
 #ifdef DEBUG_EXTRACT_DCI
 	LOG_D(MAC,"HARQ_PID %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->harq_pid,4,dci_size-pos,*dci_pdu);
 #endif
@@ -3291,12 +3331,15 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
 #ifdef DEBUG_EXTRACT_DCI
 	LOG_I(MAC,"RV %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->rv,2,dci_size-pos,*dci_pdu);
 #endif
-	// HARQ process number  4bit
-	pos+=4;
-	dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0xf;
-#ifdef DEBUG_EXTRACT_DCI
+	// HARQ process number  4bit/5bit
+	pos+= (num_ul_harq == 32 ? 5: 4);
+  if (num_ul_harq == 32)
+	  dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x1f;
+  else
+    dci_pdu_rel15->harq_pid  = (*dci_pdu>>(dci_size-pos))&0x0f;
+//#ifdef DEBUG_EXTRACT_DCI
 	LOG_I(MAC,"HARQ_PID %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->harq_pid,4,dci_size-pos,*dci_pdu);
-#endif
+//#endif
 	// TPC command for scheduled PUSCH  E2 bits
 	pos+=2;
 	dci_pdu_rel15->tpc = (*dci_pdu>>(dci_size-pos))&3;
@@ -3361,9 +3404,12 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
         // Redundancy version  2bit
         pos+=dci_pdu_rel15->rv2.nbits;
         dci_pdu_rel15->rv2.val = (*dci_pdu>>(dci_size-pos))&((1<<dci_pdu_rel15->rv2.nbits)-1);
-        // HARQ process number  4bit
-        pos+=4;
-        dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0xf;
+        // HARQ process number  4bit/5bit
+        pos+= (num_dl_harq == 32 ? 5: 4);
+        if (num_dl_harq == 32)
+          dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0x1f;
+        else
+          dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0x0f;
         // Downlink assignment index
         pos+=dci_pdu_rel15->dai[0].nbits;
         dci_pdu_rel15->dai[0].val = (*dci_pdu>>(dci_size-pos))&((1<<dci_pdu_rel15->dai[0].nbits)-1);
@@ -3446,9 +3492,12 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
         pos+=2;
         dci_pdu_rel15->rv= (*dci_pdu>>(dci_size-pos))&3;
 
-        // HARQ process number  4bit
-        pos+=4;
-        dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0xf;
+        // HARQ process number  4bit/5bit
+        pos+= (num_ul_harq == 32 ? 5: 4);
+        if (num_ul_harq == 32)
+          dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0x1f;
+        else
+          dci_pdu_rel15->harq_pid = (*dci_pdu>>(dci_size-pos))&0x0f;
 
         // 1st Downlink assignment index
         pos+=dci_pdu_rel15->dai[0].nbits;

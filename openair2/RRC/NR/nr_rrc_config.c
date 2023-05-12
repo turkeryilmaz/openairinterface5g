@@ -2725,6 +2725,9 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   pusch_scc->ext1->maxMIMO_Layers = calloc(1, sizeof(*pusch_scc->ext1->maxMIMO_Layers));
   *pusch_scc->ext1->maxMIMO_Layers = 1;
   pusch_scc->ext1->processingType2Enabled = NULL;
+  pusch_scc->ext3 = NULL; /*calloc(1, sizeof(*pusch_scc->ext3));
+  pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17 = calloc(1, sizeof(*pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17));
+  *pusch_scc->ext3->nrofHARQ_ProcessesForPUSCH_r17 = NR_PUSCH_ServingCellConfig__ext3__nrofHARQ_ProcessesForPUSCH_r17_n32;*/
 
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->uplinkConfig->carrierSwitching = NULL;
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->supplementaryUplink = NULL;
@@ -2745,6 +2748,10 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   pdsch_servingcellconfig->ext1->maxMIMO_Layers = calloc(1, sizeof(*pdsch_servingcellconfig->ext1->maxMIMO_Layers));
   *pdsch_servingcellconfig->ext1->maxMIMO_Layers = NR_MAX_SUPPORTED_DL_LAYERS;
   pdsch_servingcellconfig->ext1->processingType2Enabled = NULL;
+  pdsch_servingcellconfig->ext3 = NULL; /*calloc(1, sizeof(*pdsch_servingcellconfig->ext3));
+  pdsch_servingcellconfig->ext3->nrofHARQ_ProcessesForPDSCH_v1700 = calloc(1, sizeof(*pdsch_servingcellconfig->ext3->nrofHARQ_ProcessesForPDSCH_v1700));
+  *pdsch_servingcellconfig->ext3->nrofHARQ_ProcessesForPDSCH_v1700 = NR_PDSCH_ServingCellConfig__ext3__nrofHARQ_ProcessesForPDSCH_v1700_n32;*/
+
 
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->csi_MeasConfig = NULL;
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->csi_MeasConfig =
