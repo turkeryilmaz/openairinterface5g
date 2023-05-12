@@ -645,7 +645,6 @@ void processSlotTX(void *arg) {
       phy_procedures_nrUE_TX(UE, proc, 0);
     } else if (get_softmodem_params()->sl_mode == 2) {
       LOG_D(NR_PHY, "processSlotTX\n");
-      nr_ue_set_slsch(0, UE->slsch[proc->thread_id][gNB_id], proc->frame_tx, proc->nr_slot_tx);
       phy_procedures_nrUE_SL_TX(UE, proc, 0);
     }
   }
@@ -743,7 +742,10 @@ void processSlotRX(void *arg) {
 void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockSize) {
   void *dummy_tx[UE->frame_parms.nb_antennas_tx];
   int16_t dummy_tx_data[UE->frame_parms.nb_antennas_tx][2*writeBlockSize]; // 2 because the function we call use pairs of int16_t implicitly as complex numbers
-  memset(dummy_tx_data, 0, sizeof(dummy_tx_data));
+  if (!UE->is_synchronized_sl)
+    memset(dummy_tx_data, 0, sizeof(dummy_tx_data));
+  else
+    memset(dummy_tx_data, 0x1, sizeof(dummy_tx_data));
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     dummy_tx[i]=dummy_tx_data[i];
 
@@ -792,6 +794,7 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
+    UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + 32); // 32 symbols = nb_prefix_samples0 - nb_prefix_samples
     int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl : UE->rx_offset;
     LOG_I(NR_PHY, "Resynchronizing RX by %d samples (mode = %d)\n", rx_offset, UE->mode);
 
@@ -897,8 +900,7 @@ void *UE_thread_SL(void *arg) {
 
   UE->lost_sync_sl = 0;
 
-  //Assumption: sync is achieved
-  UE->is_synchronized_sl = 1;
+  UE->is_synchronized_sl = 0;
 
   UE->sync_ref = get_softmodem_params()->sync_ref;
   bool sync_running_sl = false;
@@ -1047,9 +1049,6 @@ void *UE_thread_SL(void *arg) {
       // read in first symbol of next frame and adjust for timing drift
       uint16_t nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 :
                                                              UE->frame_parms.nb_prefix_samples;
-      if(UE->sync_ref) {
-        nb_prefix_samples0 = UE->frame_parms.nb_prefix_samples0;
-      }
 
       int first_symbols = UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0;
       if (first_symbols > 0) {
@@ -1115,6 +1114,15 @@ void *UE_thread_SL(void *arg) {
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
                                               flags), "");
+      if (UE->sync_ref && IS_SOFTMODEM_RFSIM) {
+        if (! UE->is_synchronized_sl) {
+          uint8_t sync_flag = UE->common_vars.rxdata[0][read_time_stamp + 1] & 0xFF;
+          if (sync_flag > 0) {
+            LOG_D(NR_PHY, "Sync achieved by Nearby\n");
+            UE->is_synchronized_sl = 1;
+          }
+        }
+      }
     }
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++) {
       memset(txp[i], 0, writeBlockSize);

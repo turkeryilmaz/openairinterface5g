@@ -255,7 +255,7 @@ void nr_ue_set_slsch(unsigned char harq_pid,
   test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
   test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
   test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
-  LOG_I(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
+  LOG_D(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
   uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
   *sci_input = u;//rand() % (u - 0 + 1);
 }
