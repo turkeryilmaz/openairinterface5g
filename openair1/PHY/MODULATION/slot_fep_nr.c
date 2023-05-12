@@ -238,7 +238,9 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
     stop_meas(&ue->rx_dft_stats);
 
     int symb_offset = (Ns%frame_parms->slots_per_subframe)*frame_parms->symbols_per_slot;
-    c16_t rot2 = frame_parms->symbol_rotation[0][symbol + symb_offset];
+    c16_t rot2 = frame_parms->symbol_rotation[NR_LINK_TYPE_DL][symbol + symb_offset];
+    if (get_softmodem_params()->sl_mode == 2)
+      rot2 = frame_parms->symbol_rotation[NR_LINK_TYPE_SL][symbol + symb_offset];
     rot2.i=-rot2.i;
 
 #ifdef DEBUG_FEP
