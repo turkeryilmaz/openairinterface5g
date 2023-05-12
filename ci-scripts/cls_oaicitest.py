@@ -114,6 +114,7 @@ class OaiCiTest():
 		self.air_interface=''
 		self.ue_ids = []
 		self.cmd_prefix = '' # prefix before {lte,nr}-uesoftmodem
+		self.cn_iperf_prefix = ''
 
 
 	def BuildOAIUE(self,HTML):
@@ -973,10 +974,8 @@ class OaiCiTest():
 				raise Exception("could not corver prod-trf-gen IP address")
 			cn_target_ip = result.group('trf_ip_addr')
 			SSH.close()
-			cn_iperf_prefix = "docker exec  prod-trf-gen" # -w /iperf-2.0.13  necessary?
-		elif (re.match('OC-OAI-CN5G', EPC.Type, re.IGNORECASE)):
-			cn_target_ip = "172.21.6.102"
-		else: # lteboix, sabox
+			#cn_iperf_prefix = "docker exec  prod-trf-gen" # -w /iperf-2.0.13  necessary? #
+		else: # ltebox, sabox
 			cn_target_ip = "192.172.0.1"
 			cn_iperf_prefix = ""
 

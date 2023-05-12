@@ -25,7 +25,7 @@
         <htmlTabName>Monolithic SA TDD 2x2 gNB</htmlTabName>
         <htmlTabIcon>wrench</htmlTabIcon>
         <repeatCount>1</repeatCount>
-        <TestCaseRequestedList>
+	<TestCaseRequestedList>
  111111
  100001
  000000
@@ -35,7 +35,9 @@
  020001
  020002
  030001
+ 030011
  030002
+ 030022
  100001
         </TestCaseRequestedList>
         <TestCaseExclusionList></TestCaseExclusionList>
@@ -96,21 +98,47 @@
         </testCase>
 
         <testCase id="030001">
-                <class>IperfFromContainer</class>
-                <desc>Iperf UDP Downlink</desc>
-                <server_container_name>rfsim5g-oai-nr-ue</server_container_name>
-                <client_container_name>rfsim5g-oai-ext-dn</client_container_name>
-                <server_options>-B 12.1.1.2 -u -i 1 -s</server_options>
-                <client_options>-c 12.1.1.2 -u -i 1 -t 10 -b 3M</client_options>
+                <class>Iperf</class>
+		<desc>Iperf UDP Downlink</desc>
+		<iperf_args>-B 12.1.1.2 -u -i 1 -s</iperf_args>
+		<direction>DL</direction>
+		<id>rfsim5g_2x2</id>
+		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
+		<iperf_profile>single-ue</iperf_profile>
+        </testCase>
+        <testCase id="030011">
+                <class>Iperf</class>
+		<desc>Iperf UDP Downlink</desc>
+                <cn_iperf_prefix>docker exec -d rfsim5g-oai-ext-dn</cn_iperf_prefix>
+		<iperf_args>-c 12.1.1.2 -u -i 1 -t 10 -b 3M</iperf_args>
+		<direction>DL</direction>
+		<id>rfsim5g_2x2</id>
+		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
+		<iperf_profile>single-ue</iperf_profile>
         </testCase>
 
         <testCase id="030002">
-                <class>IperfFromContainer</class>
-                <desc>Iperf UDP Uplink</desc>
-                <server_container_name>rfsim5g-oai-ext-dn</server_container_name>
-                <client_container_name>rfsim5g-oai-nr-ue</client_container_name>
-                <server_options>-u -i 1 -s</server_options>
-                <client_options>-B 12.1.1.2 -c 192.168.72.135 -u -i 1 -t 10 -b 1M</client_options>
+                <class>Iperf</class>
+		<desc>Iperf UDP Uplink</desc>
+		<iperf_args>-u -i 1 -s</iperf_args>
+		<direction>UL</direction>
+		<id>oai_rfsim_2x2</id>
+		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
+		<iperf_profile>single-ue</iperf_profile>
+	</testCase>
+
+        <testCase id="030022">
+                <class>Iperf</class>
+		<desc>Iperf UDP Uplink</desc>
+		<iperf_args>-B 12.1.1.2 -c 192.168.72.135 -u -i 1 -t 10 -b 1M</iperf_args>
+		<direction>UL</direction>
+		<id>oai_rfsim_2x2</id>
+		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
+		<iperf_profile>single-ue</iperf_profile>
         </testCase>
 
         <testCase id="100001">

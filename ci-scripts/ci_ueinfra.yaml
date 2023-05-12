@@ -19,6 +19,7 @@ nrmodule2_quectel:
   IF: wwan0
   MTU: 1500
   LogStore: /media/ci_qlogs
+  cn_iperf_prefix: docker exec  prod-trf-gen 
 
 adb_ue_1:
   Host: nano
@@ -126,3 +127,10 @@ oai_ue_obelix:
   Host: obelix
   UENetworkScript: ip a show dev oaitun_ue1
   IF: oaitun_ue1
+
+rfsim5g_2x2:
+  Host: localhost
+  UENetworkScript: docker exec rfsim5g-oai-nr-ue ip a show dev oaitun_ue1
+  CmdPrefix: docker exec rfsim5g-oai-nr-ue
+  IF: oaitun_ue1
+  cn_iperf_prefix: docker exec  prod-trf-gen
