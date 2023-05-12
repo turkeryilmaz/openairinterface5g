@@ -420,8 +420,8 @@ typedef struct RrcConfigurationReq_s {
   int                     eMTC_configured;
   int                     SL_configured;
   uint8_t                 systemInfoValueTag[MAX_NUM_CCs];
-  int                     schedulingInfo_count;
-  lte_SchedulingInfo_t    *schedulingInfo;
+  int                     schedulingInfo_count[MAX_NUM_CCs];
+  lte_SchedulingInfo_t    * schedulingInfo[MAX_NUM_CCs];
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];

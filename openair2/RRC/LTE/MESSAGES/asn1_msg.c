@@ -1040,11 +1040,11 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
   int count =0;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    for(int i=0; i < configuration->schedulingInfo_count; i++) {
-      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[i].si_Periodicity;
-      for (int j =0; j < configuration->schedulingInfo[i].sib_MappingInfo.size; j++){
+    for(int i=0; i < configuration->schedulingInfo_count[CC_id]; i++) {
+      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[CC_id][i].si_Periodicity;
+      for (int j =0; j < configuration->schedulingInfo[CC_id][i].sib_MappingInfo.size; j++){
         LTE_SIB_Type_t *st = sib_type + (i*5 + j)*sizeof(LTE_SIB_Type_t);
-        *st = configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[j];
+        *st = configuration->schedulingInfo[CC_id][i].sib_MappingInfo.LTE_SIB_Type[j];
         if(*st == LTE_SIB_Type_sibType4) {
           RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
         }
@@ -1461,7 +1461,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
     exit(-1);
   }
 
-  LOG_I(RRC,"[eNB %d] Configuration SIB2/3, eMBMS = %d\n", Mod_id, configuration->eMBMS_configured);
+  LOG_I(RRC,"[eNB %d] Configuration SIB2/3 for CC_id: %d, eMBMS = %d\n", Mod_id, CC_id, configuration->eMBMS_configured);
   sib2_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib3_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   memset(sib2_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
