@@ -1142,6 +1142,9 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
   *dci_pdu = 0;
   uint16_t alt_size = 0;
   uint16_t N_RB;
+  // Default values of DL and UL HARQ processes
+  uint8_t num_dl_harq = 8, num_ul_harq = 16;
+
   if(current_DL_BWP) {
     N_RB = get_rb_bwp_dci(dci_format,
                           ss->searchSpaceType->present,
@@ -1150,6 +1153,12 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
                           current_DL_BWP->BWPSize,
                           current_UL_BWP->initial_BWPSize,
                           current_DL_BWP->initial_BWPSize);
+
+    if (current_DL_BWP->pdsch_servingcellconfig &&
+        current_DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH) {
+      num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(*current_DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH,
+                                                    current_DL_BWP->pdsch_servingcellconfig->ext3);
+    }
 
     // computing alternative size for padding
     dci_pdu_rel15_t temp_pdu;
@@ -1162,6 +1171,11 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
   }
   else
     N_RB = cset0_bwp_size;
+
+  if (current_UL_BWP &&
+      current_UL_BWP->pusch_servingcellconfig) {
+    num_ul_harq = get_nrofHARQ_ProcessesForPUSCH(current_UL_BWP->pusch_servingcellconfig->ext3);
+  }
 
   int dci_size = nr_dci_size(current_DL_BWP, current_UL_BWP, CellGroup, dci_pdu_rel15, dci_format, rnti_type, coreset, bwp_id, ss->searchSpaceType->present, cset0_bwp_size, alt_size);
   pdcch_dci_pdu->PayloadSizeBits = dci_size;
@@ -1284,10 +1298,16 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
         pos += 2;
         *dci_pdu |= (dci_pdu_rel15->rv & 0x3) << (dci_size - pos);
         LOG_D(NR_MAC, "RV %d (%d bits)=> %d (0x%lx)\n", dci_pdu_rel15->rv, 2, dci_size - pos, *dci_pdu);
-        // HARQ process number  4bit
-        pos += 4;
-        *dci_pdu |= ((dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos));
-        LOG_D(NR_MAC, "HARQ_PID %d (%d bits)=> %d (0x%lx)\n", dci_pdu_rel15->harq_pid, 4, dci_size - pos, *dci_pdu);
+        // HARQ process number  4bit/5bit
+        if (num_dl_harq == 32) {
+          pos += 5;
+          *dci_pdu |= ((dci_pdu_rel15->harq_pid & 0x1f) << (dci_size - pos));
+          LOG_D(NR_MAC, "HARQ_PID %d (%d bits)=> %d (0x%lx)\n", dci_pdu_rel15->harq_pid, 5, dci_size - pos, *dci_pdu);
+        } else {
+          pos += 4;
+          *dci_pdu |= ((dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos));
+          LOG_D(NR_MAC, "HARQ_PID %d (%d bits)=> %d (0x%lx)\n", dci_pdu_rel15->harq_pid, 4, dci_size - pos, *dci_pdu);
+        }
         // Downlink assignment index  2bit
         pos += 2;
         *dci_pdu |= ((dci_pdu_rel15->dai[0].val & 3) << (dci_size - pos));
@@ -1390,9 +1410,14 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       // Redundancy version  2bit
       for (int i = 0; i < 2; i++)
         *dci_pdu |= (((uint64_t)dci_pdu_rel15->rv >> (1 - i)) & 1) << (dci_size - pos++);
-      // HARQ process number  4bit
-      for (int i = 0; i < 4; i++)
-        *dci_pdu |= (((uint64_t)dci_pdu_rel15->harq_pid >> (3 - i)) & 1) << (dci_size - pos++);
+      // HARQ process number  4bit/5bit
+      if (num_dl_harq == 32) {
+        for (int i = 0; i < 5; i++)
+          *dci_pdu |= (((uint64_t)dci_pdu_rel15->harq_pid >> (4 - i)) & 1) << (dci_size - pos++);
+      } else {
+        for (int i = 0; i < 4; i++)
+          *dci_pdu |= (((uint64_t)dci_pdu_rel15->harq_pid >> (3 - i)) & 1) << (dci_size - pos++);
+      }
       // Downlink assignment index – 2 bits
       for (int i = 0; i < 2; i++)
         *dci_pdu |= (((uint64_t)dci_pdu_rel15->dai[0].val >> (1 - i)) & 1) << (dci_size - pos++);
@@ -1450,9 +1475,14 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       // Redundancy version  2bit
       pos+=2;
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->rv & 0x3) << (dci_size - pos);
-      // HARQ process number  4bit
-      pos+=4;
-      *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+        // HARQ process number  4bit/5bit
+        if (num_ul_harq == 32) {
+          pos += 5;
+                *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0x1f) << (dci_size - pos);
+        } else {
+          pos += 4;
+          *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+        }
       // TPC command for scheduled PUSCH – 2 bits
       pos+=2;
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->tpc & 0x3) << (dci_size - pos);
@@ -1503,9 +1533,14 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       // Redundancy version  2bit
       pos+=2;
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->rv & 0x3) << (dci_size - pos);
-      // HARQ process number  4bit
-      pos+=4;
-      *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+        // HARQ process number  4bit/5bit
+        if (num_ul_harq == 32) {
+          pos += 5;
+          *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0x1f) << (dci_size - pos);
+        } else {
+          pos += 4;
+          *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+        }
       // Padding bits
       for (int a = pos; a < dci_size; a++)
         *dci_pdu |= ((uint64_t)dci_pdu_rel15->padding & 1) << (dci_size - pos++);
@@ -1524,7 +1559,7 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       LOG_D(NR_MAC,"dci_pdu_rel15->mcs = %i\n", dci_pdu_rel15->mcs);
       LOG_D(NR_MAC,"dci_pdu_rel15->ndi = %i\n", dci_pdu_rel15->ndi);
       LOG_D(NR_MAC,"dci_pdu_rel15->rv = %i\n", dci_pdu_rel15->rv);
-      LOG_D(NR_MAC,"dci_pdu_rel15->harq_pid = %i\n", dci_pdu_rel15->harq_pid);
+      LOG_I(NR_MAC,"dci_pdu_rel15->harq_pid = %i\n", dci_pdu_rel15->harq_pid);
       LOG_D(NR_MAC,"dci_pdu_rel15->tpc = %i\n", dci_pdu_rel15->tpc);
       LOG_D(NR_MAC,"dci_pdu_rel15->padding = %i\n", dci_pdu_rel15->padding);
 
@@ -1566,9 +1601,14 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
       // Redundancy version  2bit
       pos += 2;
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->rv & 0x3) << (dci_size - pos);
-      // HARQ process number  4bit
-      pos += 4;
-      *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+      // HARQ process number  4bit/5bit
+      if (num_ul_harq == 32) {
+        pos += 5;
+        *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0x1f) << (dci_size - pos);
+      } else {
+        pos += 4;
+        *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+      }
       // 1st Downlink assignment index
       pos += dci_pdu_rel15->dai[0].nbits;
       *dci_pdu |= ((uint64_t)dci_pdu_rel15->dai[0].val & ((1 << dci_pdu_rel15->dai[0].nbits) - 1)) << (dci_size - pos);
@@ -1691,9 +1731,14 @@ void fill_dci_pdu_rel15(const NR_ServingCellConfigCommon_t *scc,
     // Redundancy version  2bit
     pos += dci_pdu_rel15->rv2.nbits;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->rv2.val & ((1 << dci_pdu_rel15->rv2.nbits) - 1)) << (dci_size - pos);
-    // HARQ process number  4bit
-    pos += 4;
-    *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+    // HARQ process number  4bit/5bit
+    if (num_dl_harq == 32) {
+      pos += 5;
+      *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0x1f) << (dci_size - pos);
+    } else {
+      pos += 4;
+      *dci_pdu |= ((uint64_t)dci_pdu_rel15->harq_pid & 0xf) << (dci_size - pos);
+    }
     // Downlink assignment index
     pos += dci_pdu_rel15->dai[0].nbits;
     *dci_pdu |= ((uint64_t)dci_pdu_rel15->dai[0].val & ((1 << dci_pdu_rel15->dai[0].nbits) - 1)) << (dci_size - pos);
@@ -1924,25 +1969,6 @@ int find_nr_RA_id(module_id_t mod_idP, int CC_idP, rnti_t rntiP) {
   return -1;
 }
 
-int get_nrofHARQ_ProcessesForPDSCH(e_NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH n)
-{
-  switch (n) {
-  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n2:
-    return 2;
-  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n4:
-    return 4;
-  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n6:
-    return 6;
-  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n10:
-    return 10;
-  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n12:
-    return 12;
-  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16:
-    return 16;
-  default:
-    return 8;
-  }
-}
 
 void delete_nr_ue_data(NR_UE_info_t *UE, NR_COMMON_channels_t *ccPtr, uid_allocator_t *uia)
 {
@@ -2364,7 +2390,7 @@ void set_sched_pucch_list(NR_UE_sched_ctrl_t *sched_ctrl,
 void create_dl_harq_list(NR_UE_sched_ctrl_t *sched_ctrl,
                          const NR_PDSCH_ServingCellConfig_t *pdsch) {
   const int nrofHARQ = pdsch && pdsch->nrofHARQ_ProcessesForPDSCH ?
-                       get_nrofHARQ_ProcessesForPDSCH(*pdsch->nrofHARQ_ProcessesForPDSCH) : 8;
+                       get_nrofHARQ_ProcessesForPDSCH(*pdsch->nrofHARQ_ProcessesForPDSCH, pdsch->ext3) : 8;
   // add all available DL HARQ processes for this UE
   AssertFatal(sched_ctrl->available_dl_harq.len == sched_ctrl->feedback_dl_harq.len
               && sched_ctrl->available_dl_harq.len == sched_ctrl->retrans_dl_harq.len,

@@ -3272,6 +3272,44 @@ uint16_t get_rb_bwp_dci(nr_dci_format_t format,
   return N_RB;
 }
 
+int get_nrofHARQ_ProcessesForPDSCH(e_NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH n,
+                                   struct NR_PDSCH_ServingCellConfig__ext3 *ext3) {
+
+  //32 HARQ processes supported in rel17
+  if ((ext3 != NULL) &&
+      (ext3->nrofHARQ_ProcessesForPDSCH_v1700 != NULL) &&
+      (*ext3->nrofHARQ_ProcessesForPDSCH_v1700 == NR_PDSCH_ServingCellConfig__ext3__nrofHARQ_ProcessesForPDSCH_v1700_n32))
+    return 32;
+
+  switch (n) {
+  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n2:
+    return 2;
+  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n4:
+    return 4;
+  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n6:
+    return 6;
+  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n10:
+    return 10;
+  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n12:
+    return 12;
+  case NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16:
+    return 16;
+  default:
+    return 8;
+  }
+}
+
+int get_nrofHARQ_ProcessesForPUSCH(struct NR_PUSCH_ServingCellConfig__ext3 *ext3) {
+
+  //32 HARQ processes supported in rel17
+  if ((ext3 != NULL) &&
+      (ext3->nrofHARQ_ProcessesForPUSCH_r17 != NULL) &&
+      (*ext3->nrofHARQ_ProcessesForPUSCH_r17 == NR_PUSCH_ServingCellConfig__ext3__nrofHARQ_ProcessesForPUSCH_r17_n32))
+    return 32;
+
+  return 16;
+}
+
 uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                      const NR_UE_UL_BWP_t *UL_BWP,
                      const NR_CellGroupConfig_t *cg,
@@ -3289,6 +3327,8 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
   uint16_t numRBG = 0;
   long rbg_size_config;
   int num_entries = 0;
+  // Default values of DL and UL HARQ processes
+  uint8_t num_dl_harq = 8, num_ul_harq = 16;
 
   NR_PDSCH_Config_t *pdsch_Config = DL_BWP ? DL_BWP->pdsch_Config : NULL;
   NR_PUSCH_Config_t *pusch_Config = UL_BWP ? UL_BWP->pusch_Config : NULL;
@@ -3296,7 +3336,7 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
   NR_SRS_Config_t *srs_config = UL_BWP ? UL_BWP->srs_Config : NULL;
 
   uint16_t N_RB = cset0_bwp_size;
-  if (DL_BWP)
+  if (DL_BWP) {
     N_RB = get_rb_bwp_dci(format,
                           ss_type,
                           cset0_bwp_size,
@@ -3305,10 +3345,23 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
                           UL_BWP->initial_BWPSize,
                           DL_BWP->initial_BWPSize);
 
+    if (DL_BWP->pdsch_servingcellconfig &&
+        DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH) {
+      num_dl_harq = get_nrofHARQ_ProcessesForPDSCH(*DL_BWP->pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH,
+                                                    DL_BWP->pdsch_servingcellconfig->ext3);
+    }
+  }
+
+  if (UL_BWP && UL_BWP->pusch_servingcellconfig) {
+    num_ul_harq = get_nrofHARQ_ProcessesForPUSCH(UL_BWP->pusch_servingcellconfig->ext3);
+  }
+
+  LOG_D(MAC, "In %s, num_dl_harq:%d, num_ul_harq:%d\n",__FUNCTION__, num_dl_harq, num_ul_harq);
+
   switch(format) {
     case NR_UL_DCI_FORMAT_0_0:
-      /// fixed: Format identifier 1, Hop flag 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2 Time Domain assgnmt 4 --20
-      size += 20;
+      /// fixed: Format identifier 1, Hop flag 1, MCS 5, NDI 1, RV 2, HARQ PID 4/5, PUSCH TPC 2 Time Domain assgnmt 4 --20/21
+      size += (num_ul_harq == 32 ? 21 : 20);
       dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >>1)); // Freq domain assignment -- hopping scenario to be updated
       size += dci_pdu->frequency_domain_assignment.nbits;
       if(alt_size >= size)
@@ -3321,8 +3374,8 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       break;
 
     case NR_UL_DCI_FORMAT_0_1:
-      /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2, ULSCH indicator 1 --16
-      size += 16;
+      /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4/5, PUSCH TPC 2, ULSCH indicator 1 --16/17
+      size += (num_ul_harq == 32 ? 17 : 16);
       // Carrier indicator
       if (cg->spCellConfig->spCellConfigDedicated->crossCarrierSchedulingConfig != NULL) {
         dci_pdu->carrier_indicator.nbits=3;
@@ -3457,12 +3510,12 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       break;
 
     case NR_DL_DCI_FORMAT_1_0:
-      /// fixed: Format identifier 1, VRB2PRB 1, MCS 5, NDI 1, RV 2, HARQ PID 4, DAI 2, PUCCH TPC 2, PUCCH RInd 3, PDSCH to HARQ TInd 3 Time Domain assgnmt 4 -- 28
+      /// fixed: Format identifier 1, VRB2PRB 1, MCS 5, NDI 1, RV 2, HARQ PID 4/5, DAI 2, PUCCH TPC 2, PUCCH RInd 3, PDSCH to HARQ TInd 3 Time Domain assgnmt 4 -- 28/29
 
       // 3GPP TS 38.212 Section 7.3.1.0: DCI size alignment
       // Size of DCI format 1_0 is given by the size of CORESET 0 if CORESET 0 is configured for the cell and the size
       // of initial DL bandwidth part if CORESET 0 is not configured for the cell
-      size = 28;
+      size = (num_dl_harq == 32 ? 29 : 28);
       dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >> 1)); // Freq domain assignment
       size += dci_pdu->frequency_domain_assignment.nbits;
       if(ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific && alt_size >= size)
@@ -3542,7 +3595,7 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
         size += 8;
       }
       // HARQ PID
-      size += 4;
+      size += (num_dl_harq == 32 ? 5 : 4);
       // DAI
       if (DL_BWP->pdsch_HARQ_ACK_Codebook && *DL_BWP->pdsch_HARQ_ACK_Codebook == NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic) { // FIXME in case of more than one serving cell
         dci_pdu->dai[0].nbits = 2;
