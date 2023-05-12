@@ -370,7 +370,6 @@ uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     LOG_E(NR_PHY, "polar_decoder_int16 failed with ret %d\n", decoder_state);
     return(decoder_state);
   }
-  printf("the polar decoder output is:%"PRIu64"\n",tmp);
   harq_process->b_sci2 = &tmp;
   #endif
   nb_rb = harq_process->nb_rb;
