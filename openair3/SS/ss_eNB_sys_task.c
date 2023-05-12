@@ -486,15 +486,21 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
 
           RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d;
           RRC_CONFIGURATION_REQ(msg_p).schedulingInfo = CALLOC(RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count, sizeof(struct lte_SchedulingInfo_s));
-
+          int count =0;
           for (int k = 0; k < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.d; k++)
           {
-            RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].si_Periodicity = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].si_Periodicity;
-            for (int j = 0; j < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d; j++)
-            {
-              RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[k].sib_MappingInfo.LTE_SIB_Type[k] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.v[j];
+            if (SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d) {
+            RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[count].si_Periodicity = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].si_Periodicity;
+              for (int j = 0; j < SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d; j++)
+              {
+                RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[count].sib_MappingInfo.LTE_SIB_Type[j] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.v[j];
+              }
+              RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[count].sib_MappingInfo.size = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d;
+              count ++;
             }
           }
+
+          RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count = count;
 
           RRC_CONFIGURATION_REQ(msg_p).num_plmn[cell_index] = SIB1_CELL_ACCESS_REL_INFO.plmn_IdentityList.d;
           RRC_CONFIGURATION_REQ(msg_p).systemInfoValueTag[cell_index] = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.systemInfoValueTag;

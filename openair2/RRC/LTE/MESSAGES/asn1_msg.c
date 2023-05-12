@@ -895,8 +895,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   LTE_MCC_MNC_Digit_t *dummy_mnc_1;
   LTE_MCC_MNC_Digit_t *dummy_mnc_2;
   asn_enc_rval_t enc_rval;
-  LTE_SchedulingInfo_t schedulingInfo[5],*schedulingInfo2;
-  LTE_SIB_Type_t sib_type[5],*sib_type2;
+  LTE_SchedulingInfo_t *schedulingInfo,*schedulingInfo2;
+  LTE_SIB_Type_t *sib_type,*sib_type2;
   uint8_t *buffer;
   LTE_BCCH_DL_SCH_Message_t *bcch_message;
   LTE_SystemInformationBlockType1_t **sib1;
@@ -922,8 +922,10 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     exit(1);
 
   memset(PLMN_identity_info,0,num_plmn * sizeof(LTE_PLMN_IdentityInfo_t));
+  schedulingInfo=CALLOC(5,sizeof(LTE_SchedulingInfo_t));
   memset(schedulingInfo,0,5*sizeof(LTE_SchedulingInfo_t));
-  memset(sib_type,0,sizeof(LTE_SIB_Type_t));
+  sib_type=CALLOC(5*5,sizeof(LTE_SIB_Type_t));
+  memset(sib_type,0,5*5*sizeof(LTE_SIB_Type_t));
   if(configuration->eMBMS_M2_configured){
     sib_type2=CALLOC(1,sizeof(LTE_SIB_Type_t));
     schedulingInfo2=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
@@ -1036,17 +1038,21 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
   (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
+  int count =0;
   if (RC.ss.mode == SS_SOFTMODEM) {
     for(int i=0; i < configuration->schedulingInfo_count; i++) {
       schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[i].si_Periodicity;
-      sib_type[i]=configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[i];
-      if(sib_type[i] == 1) {
-        RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+      for (int j =0; j < configuration->schedulingInfo[i].sib_MappingInfo.size; j++){
+        LTE_SIB_Type_t *st = sib_type + (i*5 + j)*sizeof(LTE_SIB_Type_t);
+        *st = configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[j];
+        if(*st == LTE_SIB_Type_sibType4) {
+          RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+        }
+        if(*st == LTE_SIB_Type_sibType5) {
+          RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
+        }
+        asn1cSeqAdd(&schedulingInfo[i].sib_MappingInfo.list,st);
       }
-      if(sib_type[i] == 2) {
-        RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
-      }
-      asn1cSeqAdd(&schedulingInfo[i].sib_MappingInfo.list,&sib_type[i]);
       asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo[i]);
     }
   } else {

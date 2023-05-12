@@ -324,6 +324,7 @@ typedef struct RadioResourceConfig_s {
 
 typedef struct lte_sib_MappingInfo_s {
   e_LTE_SIB_Type  LTE_SIB_Type[5];
+  int size;
 }lte_sib_MappingInfo_t;
 
 typedef struct lte_SchedulingInfo_s {
