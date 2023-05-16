@@ -300,7 +300,7 @@ void threegpplte_turbo_encoder_sse(unsigned char *input,
 
   unsigned char systematic2[768] __attribute__((aligned(32)));
   interleave_compact_byte(base_interleaver, input, systematic2, input_length_bytes);
-  simde__m64 *ptr_output = (__m64 *)output;
+  simde__m64 *ptr_output = (simde__m64 *)output;
   unsigned char cur_s1, cur_s2;
   int code_rate;
 

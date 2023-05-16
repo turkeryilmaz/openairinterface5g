@@ -47,10 +47,6 @@
 #define mulhi_s1_int16(a,b) simde_mm_slli_epi16(simde_mm_mulhi_epi16(a,b),2)
 #define adds_int16(a,b) simde_mm_adds_epi16(a,b)
 #define mullo_int16(a,b) simde_mm_mullo_epi16(a,b)
-#if defined(__arm__) || defined(__aarch64__)
-#define simde_mm_empty()
-#define simde_m_empty()
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -306,7 +302,7 @@ static __attribute__((always_inline)) inline void multadd_real_four_symbols_vect
     y_128 = simde_mm_adds_epi16(y_128, simde_mm_unpacklo_epi16(yr, yi));
     y_128 = simde_mm_adds_epi16(y_128, simde_mm_unpackhi_epi16(yr, yi));
 
-    _mm_storeu_si128((simd_q15_t *)y, y_128);
+    simde_mm_storeu_si128((simd_q15_t *)y, y_128);
 }
 
 /*!\fn void multadd_complex_vector_real_scalar(int16_t *x,int16_t alpha,int16_t *y,uint8_t zero_flag,uint32_t N)
