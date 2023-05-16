@@ -403,8 +403,8 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   if (phy_vars_gNB->ldpc_offload_flag) {
     int8_t llrProcBuf[22 * 384];
     //  if (dtx_det==0) {
-    int16_t z_ol[68 * 384];
-    int8_t l_ol[68 * 384];
+    int16_t z_ol[68 * 384 + 16];
+    int8_t l_ol[68 * 384 + 16];
 
     int16_t z[68 * 384 + 16] __attribute__((aligned(16)));
     int8_t l[68 * 384 + 16] __attribute__((aligned(16)));
@@ -432,7 +432,7 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
 
       decParams.R = nr_get_R_ldpc_decoder(pusch_pdu->pusch_data.rv_index, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->round);
 
-     if ((dtx_det == 0) && (pusch_pdu->pusch_data.rv_index == 0)) {
+     //if ((dtx_det == 0) && (pusch_pdu->pusch_data.rv_index == 0)) {
        //if (dtx_det==0){
       if (mcs > -1) {
           memcpy((&z_ol[0]), ulsch_llr + r_offset, E * sizeof(short));
@@ -519,10 +519,10 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
           printf("llrprocbuf [%d] =  %x adr %p\n", k, llrProcBuf[k], llrProcBuf+k);
           }
         */
-      } else {
-        dtx_det = 0;
-        no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
-      }
+      //} else {
+      //  dtx_det = 0;
+      //  no_iteration_ldpc = ulsch->max_ldpc_iterations + 1;
+      //}
       bool decodeSuccess = (no_iteration_ldpc <= ulsch->max_ldpc_iterations);
       if (decodeSuccess) {
         memcpy(harq_process->b + offset, harq_process->c[r], Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));

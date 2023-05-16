@@ -708,7 +708,7 @@ set_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		ops[i]->ldpc_dec.q_m = p_offloadParams->Qm; 
 		ops[i]->ldpc_dec.n_filler = p_offloadParams->F; 
 		ops[i]->ldpc_dec.n_cb = p_offloadParams->n_cb;
-		ops[i]->ldpc_dec.iter_max = 10;
+		ops[i]->ldpc_dec.iter_max = 5;
 		ops[i]->ldpc_dec.rv_index = p_offloadParams->rv; 
 		ops[i]->ldpc_dec.op_flags = RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE; //|RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP; 
 		ops[i]->ldpc_dec.code_block_mode = 1; //ldpc_dec->code_block_mode;
@@ -1302,15 +1302,13 @@ int32_t nrLDPC_decod_offload(t_nrLDPC_dec_params* p_decParams, uint8_t harq_pid,
   int argc_re;
   char *argv_re[10];
   if (p_decParams->lib_version == 2) {
-    argc_re=8;
+    argc_re=6;
     argv_re[0] = "/opt/accelercomm/ACL_BBDEV_latest/dpdk/build/app/testbbdev";
-    argv_re[1] = "--vdev";
-    argv_re[2] = "baseband_accl_ldpc_sw";
-    argv_re[3] = "-l";
-    argv_re[4] = "1-4";
-    argv_re[5] = "-a";
-    argv_re[6] = "21:00.0";
-    argv_re[7] = "--";
+    argv_re[1] = "-l";
+    argv_re[2] = "1-4";
+    argv_re[3] = "-a";
+    argv_re[4] = "41:00.0";
+    argv_re[5] = "--";
   } else if (p_decParams->lib_version == 1 ) {
     argc_re=7;
     argv_re[0] = "/home/eurecom/hongzhi/dpdk-20.05orig/build/app/testbbdev";

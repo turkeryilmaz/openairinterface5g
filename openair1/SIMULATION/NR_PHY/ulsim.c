@@ -676,7 +676,7 @@ int main(int argc, char **argv)
   //phy_init_nr_gNB(gNB);
 
   if (gNB->ldpc_offload_flag == 1) {
-    char version [] = "_";
+    char version[128] = "_";
     strcat(version,ldpc_offload_version);
     if (!strcmp(ldpc_offload_version,"t1") || !strcmp(ldpc_offload_version,"t2")){
        strcpy(gNB->ldpc_offload_version,version);
