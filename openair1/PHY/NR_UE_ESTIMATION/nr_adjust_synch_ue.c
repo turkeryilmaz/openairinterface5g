@@ -89,11 +89,14 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   else
     sync_offset = 0;
 
-  ue->rx_offset = get_softmodem_params()->sl_mode != 2 ? ue->rx_offset : ue->rx_offset_sl;
-  if ( abs(diff) < (SYNCH_HYST+sync_offset) )
-    ue->rx_offset = 0;
-  else
-    ue->rx_offset = diff;
+  int rx_offset = 0;
+  if (abs(diff) > (SYNCH_HYST + sync_offset))
+    rx_offset = diff;
+  if (get_softmodem_params()->sl_mode == 2) {
+    ue->rx_offset_sl = rx_offset;
+  } else {
+    ue->rx_offset = rx_offset;
+  }
 
   if(abs(diff)<5)
     count_max_pos_ok ++;
@@ -122,7 +125,7 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   LOG_D(PHY,"AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
         subframe,
         diff,
-        ue->rx_offset,
+        rx_offset,
         clear,
         max_pos,
         ue->max_pos_fil,
