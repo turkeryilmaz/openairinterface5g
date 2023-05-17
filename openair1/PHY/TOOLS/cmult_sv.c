@@ -74,6 +74,10 @@ void multadd_real_vector_complex_scalar(const int16_t *x, const int16_t *alpha, 
   }
 }
 
+#if defined(__aarch64__) || defined(__arm__) 
+#define __builtin_cpu_supports(a) 0
+#endif
+
 void rotate_cpx_vector(c16_t *x,
                        c16_t *alpha,
                        c16_t *y,

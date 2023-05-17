@@ -36,7 +36,7 @@ int dl_channel_level(c16_t *dl_ch, LTE_DL_FRAME_PARMS *frame_parms)
   int avg;
 
   //clear average level
-  __m128i avg128F = simde_mm_setzero_si128();
+  simde__m128i avg128F = simde_mm_setzero_si128();
   dl_ch128 = (simde__m128i *)dl_ch;
 
   for (rb=0; rb<frame_parms->N_RB_DL; rb++) {

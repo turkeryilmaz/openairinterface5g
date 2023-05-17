@@ -1354,7 +1354,6 @@ fprintf(fd,  "// Process group with <23 CNs \n");
         fprintf(fd, "    p_bnProcBuf     = (simde__m256i*) &bnProcBuf    [%u];\n", lut_startAddrBnGroups[idxBnGroup]);
         fprintf(fd, "    p_llrProcBuf    = (simde__m256i*) &llrProcBuf   [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
         fprintf(fd, "    p_llrRes        = (simde__m512i*) &llrRes       [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
->>>>>>> 40d400cc61 (Use SIMDE)
         // Loop over BNs
         fprintf(fd,"        for (int i=0,j=0;i<M;i++,j+=2) {\n");
             // First 16 LLRs of first CN
@@ -1637,7 +1636,6 @@ fprintf(fd,  "// Process group with 28 CNs \n");
         fprintf(fd, "    p_bnProcBuf     = (simde__m256i*) &bnProcBuf    [%u];\n", lut_startAddrBnGroups[idxBnGroup]);
         fprintf(fd, "    p_llrProcBuf    = (simde__m256i*) &llrProcBuf   [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
         fprintf(fd, "    p_llrRes        = (simde__m512i*) &llrRes       [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
->>>>>>> 40d400cc61 (Use SIMDE)
         // Loop over BNs
         fprintf(fd,"        for (int i=0,j=0;i<M;i++,j+=2) {\n");
             // First 16 LLRs of first CN
