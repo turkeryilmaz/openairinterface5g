@@ -575,6 +575,15 @@ static void UE_synch(void *arg) {
 
         // rerun with new cell parameters and frequency-offset
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
+        hw_slot_offset = ((UE->rx_offset_sl << 1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
+                         round((float)((UE->rx_offset << 1) % UE->frame_parms.samples_per_subframe) / UE->frame_parms.samples_per_slot0);
+
+        LOG_I(PHY,"Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
+              hw_slot_offset,
+              freq_offset,
+              openair0_cfg[UE->rf_map.card].rx_gain[0],
+              openair0_cfg[UE->rf_map.card].rx_freq[0],
+              openair0_cfg[UE->rf_map.card].tx_freq[0]);
         nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
         UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0],0);
 
@@ -793,8 +802,8 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 }
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
-
-    UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + 32); // 32 symbols = nb_prefix_samples0 - nb_prefix_samples
+    int delta_prefix = UE->frame_parms.nb_prefix_samples0 - UE->frame_parms.nb_prefix_samples;
+    UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + delta_prefix);
     int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl : UE->rx_offset;
     LOG_I(NR_PHY, "Resynchronizing RX by %d samples (mode = %d)\n", rx_offset, UE->mode);
 
@@ -816,12 +825,9 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 }
 
 int computeSamplesShift(PHY_VARS_NR_UE *UE) {
-  int samples_shift = -(UE->rx_offset>>1);
-  if (get_softmodem_params()->sl_mode != 2) {
-    UE->rx_offset = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
-  } else {
-    UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
-  }
+  int rx_offset = get_softmodem_params()->sl_mode != 2 ? UE->rx_offset : UE->rx_offset_sl;
+  int samples_shift = -(rx_offset>>1);
+  UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
   UE->max_pos_fil = 0; // reset IIR filter when sample shift is applied
   if (samples_shift != 0) {
     LOG_I(NR_PHY,"Adjusting frame in time by %i samples\n", samples_shift);

@@ -1429,8 +1429,37 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   int frame_rx = proc->frame_rx;
   int slot_rx = proc->nr_slot_rx;
 
-  // Start PSSCH processing here. It runs in parallel with PSSCH processing
-  if ((!ue->sync_ref) && (ue->is_synchronized_sl == 0)) {
+  const int estimateSz = ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size;
+  for (int ssb_index = 0; ssb_index < ue->frame_parms.Lmax; ssb_index++) {
+    int ssb_start_symbol = nr_get_ssb_start_symbol(&ue->frame_parms, ssb_index);
+    int ssb_slot = ssb_start_symbol/ue->frame_parms.symbols_per_slot;
+    int ssb_slot_2 = (ue->nrUE_config.ssb_table.ssb_period == 0) ? ssb_slot+(ue->frame_parms.slots_per_frame>>1) : -1;
+    if (ssb_slot == slot_rx || ssb_slot_2 == slot_rx) {
+      __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[ue->frame_parms.nb_antennas_rx][estimateSz];
+      __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size];
+      for (int i = 0; i < 13; i++) {
+        if (i >= 1 && i <= 4)
+          continue;
+        nr_slot_fep(ue, proc, (ssb_start_symbol+i)%(ue->frame_parms.symbols_per_slot), slot_rx);
+        nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                    proc, 0, 0, i, i, ssb_index&7, ssb_slot_2 == slot_rx);
+      }
+      nr_ue_sl_ssb_rsrp_measurements(ue, ssb_index&7, proc);
+      // resetting ssb index for PBCH detection if there is a stronger SSB index
+      if (ue->measurements.ssb_rsrp_dBm[ssb_index] > ue->measurements.ssb_rsrp_dBm[ue->frame_parms.ssb_index])
+        ue->frame_parms.ssb_index = ssb_index;
+      if (ssb_index == ue->frame_parms.ssb_index) {
+        fapiPsbch_t result;
+        NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
+        nr_rx_psbch(ue, proc, estimateSz, dl_ch_estimates, ue->psbch_vars[0],
+                    &ue->frame_parms, 0, ssb_index&7, SISO, &phy_pdcch_config, &result);
+        LOG_D(NR_PHY, "start adjust sync slot = %d\n", proc->nr_slot_rx);
+        nr_adjust_synch_ue(&ue->frame_parms, ue, 0, ue->frame_parms.ofdm_symbol_size, dl_ch_estimates_time, proc->frame_rx, proc->nr_slot_rx, 0, 16384);
+      }
+    }
+  }
+
+  if (ue->sync_ref || ue->is_synchronized_sl == 0) {
     return (0);
   }
 
@@ -1438,6 +1467,10 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   NR_DL_UE_HARQ_t *harq = NULL;
   int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
+  int sym_offset = ue->frame_parms.get_samples_slot_timestamp(slot_rx,&ue->frame_parms,0);
+  if (slot_rx != 0 && IS_SOFTMODEM_RFSIM) {
+    sym_offset = sym_offset - (ue->frame_parms.ofdm_symbol_size + ue->frame_parms.nb_prefix_samples0);
+  }
 
   for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
     nr_ue_set_slsch_rx(ue, harq_pid);
@@ -1445,18 +1478,11 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
       harq = slsch->harq_processes[harq_pid];
       for (int aa = 0; aa < ue->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
-          nr_slot_fep_ul(&ue->frame_parms, ue->common_vars.rxdata[aa], &rxdataF[aa][rx_offset], ofdm_symbol, slot_rx, 0);
+          nr_slot_fep_ul(&ue->frame_parms, &ue->common_vars.rxdata[aa][sym_offset], &rxdataF[aa][rx_offset], ofdm_symbol, slot_rx, 0);
         }
         apply_nr_rotation_ul(&ue->frame_parms, rxdataF[aa], slot_rx, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
       }
-      uint32_t ret = nr_ue_slsch_rx_procedures(ue,
-                                               harq_pid,
-                                               frame_rx,
-                                               slot_rx,
-                                               rxdataF,
-                                               29008,
-                                               45727,
-                                               proc);
+      uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, 29008, 45727, proc);
       if (ret != -1)
         validate_rx_payload(harq, frame_rx, slot_rx);
     }
