@@ -322,8 +322,8 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem) {
   if (TS_advance < (nsamps/2)) {
      LOG_W(PHY,"Starting TX FH for TS %llu absslot %llu(%llu) last_rxTS %llu TS_advance %llu samples\n",(unsigned long long)timestamp,(unsigned long long)timestamp/nsamps,((unsigned long long)timestamp/nsamps)%20,(unsigned long long)last_rxTS,(unsigned long long)TS_advance);
   }
-     void *buff2;
-#if defined(__x86_64) || defined(__i386__)
+  void *buff2;
+
   int nsamps2 = 256>>3;
   simde__m256i buff_tx[nsamps2 + 1];
   buff2 = (void *)&buff_tx[1] - APP_HEADER_SIZE_BYTES;
