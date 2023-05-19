@@ -317,8 +317,8 @@ set_property(CACHE E2_AGENT PROPERTY STRINGS "ON" "OFF")
 
 if(E2_AGENT)
   # Check that the submodule was 
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openair2/E2AP/CMakeLists.txt)
-    message(STATUS "E2AP submoduled not detected, so fetching it.")
+  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openair2/E2AP/flexric/CMakeLists.txt)
+    message(STATUS "E2AP submoduled not detected, therefore $git submodule init && git submodule update.")
     execute_process(COMMAND git submodule init)
     execute_process(COMMAND git submodule update)
   else()
