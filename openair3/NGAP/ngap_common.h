@@ -129,10 +129,11 @@ extern int asn1_xer_print;
       } else {                                                                                                                          \
         NGAP_INFO("NGAP_FIND_PROTOCOLIE_BY_ID ie is NULL (searching for ie: %ld)\n", IE_ID);                                            \
       }                                                                                                                                 \
+      if (mandatory && !ie) {                                                                                                           \
+        return -1;                                                                                                                      \
+      }                                                                                                                                 \
     }                                                                                                                                   \
   } while (0);                                                                                                                          \
-  if (mandatory && !ie)                                                                                                                 \
-  return -1
 
 /** \brief Function callback prototype.
  **/
