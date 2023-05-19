@@ -400,6 +400,7 @@ static int create_gNB_tasks(void) {
   }
 
   if (gnb_nb > 0) {
+    RCconfig_nr_ssparam();
     if (itti_create_task (TASK_GNB_APP, gNB_app_task, NULL) < 0) {
       LOG_E(GNB_APP, "Create task for gNB APP failed\n");
       return -1;

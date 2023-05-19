@@ -184,7 +184,7 @@ static void nr_rrc_addmod_drbs(int rnti,
 
 static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration)
 {
-
+  static int mac_common_config_done = 0;
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type))
     rrc->carrier.mib = get_new_MIB_NR(rrc->carrier.servingcellconfigcommon);
@@ -199,7 +199,9 @@ static void init_NR_SI(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration
   }
 
   if (!NODE_IS_DU(rrc->node_type)) {
-    rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
+    if(NULL == rrc->carrier.SIB23){
+      rrc->carrier.SIB23 = (uint8_t *) malloc16(100);
+    }
     AssertFatal(rrc->carrier.SIB23 != NULL, "cannot allocate memory for SIB");
     rrc->carrier.sizeof_SIB23 = do_SIB23_NR(&rrc->carrier, configuration);
     LOG_I(NR_RRC,"do_SIB23_NR, size %d \n ", rrc->carrier.sizeof_SIB23);
@@ -1183,6 +1185,7 @@ rrc_gNB_generate_dedicatedRRCReconfiguration(
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
   long drb_priority[NGAP_MAX_DRBS_PER_UE];
   NR_CellGroupConfig_t *cellGroupConfig = NULL;
+  int CC_id = ue_context_pP->ue_context.primaryCC_id;
   int xid = -1;
 
   int drb_id_to_setup_start = 1;
@@ -3848,6 +3851,10 @@ void *rrc_gnb_task(void *args_p) {
       case NRRRC_RBLIST_CFG_REQ:
         LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
         rrc_gNB_rblist_configuration(instance, &NRRRC_RBLIST_CFG_REQ(msg_p));
+        break;
+      case NRRRC_RBLIST_CFG_REQ:
+        LOG_I(NR_RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &NRRRC_RBLIST_CFG_REQ(msg_p),NRRRC_RBLIST_CFG_REQ(msg_p).rb_count);
+        rrc_gNB_rblist_configuration(GNB_INSTANCE_TO_MODULE_ID(instance), &NRRRC_RBLIST_CFG_REQ(msg_p));
         break;
 
       /* Messages from F1AP task */

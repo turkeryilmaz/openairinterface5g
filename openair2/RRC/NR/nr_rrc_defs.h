@@ -74,6 +74,17 @@
 
   #include "commonDef.h"
 
+
+/*I will change the name of the structure for compile purposes--> hope not to undo this process*/
+
+typedef unsigned int uid_nr_t;
+#define NR_UID_LINEAR_ALLOCATOR_BITMAP_SIZE (((MAX_MOBILES_PER_GNB/8)/sizeof(unsigned int)) + 1)
+
+typedef struct nr_uid_linear_allocator_s {
+  unsigned int   bitmap[NR_UID_LINEAR_ALLOCATOR_BITMAP_SIZE];
+} nr_uid_allocator_t;
+    
+
 #define PROTOCOL_NR_RRC_CTXT_UE_FMT                PROTOCOL_CTXT_FMT
 #define PROTOCOL_NR_RRC_CTXT_UE_ARGS(CTXT_Pp)      PROTOCOL_NR_CTXT_ARGS(CTXT_Pp)
 
@@ -389,6 +400,13 @@ typedef struct {
   NR_SIB2_t                                *sib2;
   NR_SIB3_t                                *sib3;
   NR_BCCH_DL_SCH_Message_t                  systemInformation; // SIB23
+  int ssb_SubcarrierOffset;
+  int sib1_tda;
+  int pdsch_AntennaPorts;
+  int pusch_AntennaPorts;
+  int minRXTXTIME;
+  int do_CSIRS;
+  int do_SRS;
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];

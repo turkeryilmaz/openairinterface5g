@@ -74,6 +74,11 @@
 #include "nr_nas_msg_sim.h"
 #include <openair2/RRC/NR/nr_rrc_proto.h>
 
+/* Cell_Search_5G s */
+int8_t rsrp_cell = -128;
+int8_t rsrq_cell = -128;
+/* Cell_Search_5G e */
+
 NR_UE_RRC_INST_t *NR_UE_rrc_inst;
 /* NAS Attach request with IMSI */
 static const char  nr_nas_attach_req_imsi[] = {
@@ -132,7 +137,23 @@ nr_rrc_ue_generate_rrcReestablishmentComplete(
 
 mui_t nr_rrc_mui=0;
 
+/* Cell_Search_5G s */
+bool passes_cell_selection_criteria_nr (NR_SIB1_t *sib1)
+{
+  int srxlev = rsrp_cell;
+  if ( srxlev > 80)
+  {
+    LOG_E (RRC, "cell selection criteria filed \n ");
+    return false;
+  }
+  LOG_A (RRC, "Passes cell selection criteria. \n ");
+  return true;
+}
+/* Cell_Search_5G e */
+
 static Rrc_State_NR_t nr_rrc_get_state (module_id_t ue_mod_idP) {
+  if (ue_mod_idP == 65534)
+    return RRC_STATE_FIRST_NR;
   return NR_UE_rrc_inst[ue_mod_idP].nrRrcState;
 }
 
@@ -1166,6 +1187,16 @@ int8_t nr_rrc_ue_decode_NR_BCCH_DL_SCH_Message(module_id_t module_id,
               xer_fprint(stdout, &asn_DEF_NR_SIB1, (const void *) SI_info->sib1);
             }
             LOG_A(NR_RRC, "SIB1 decoded\n");
+
+            /* Cell_Search_5G s */
+            //uint32_t cell_idx = BIT_STRING_to_uint32(
+            //	&sib1->cellAccessRelatedInfo.plmn_IdentityList.list.array[0]->cellIdentity);
+            if (passes_cell_selection_criteria_nr(sib1) == false)
+            {
+              LOG_E(NR_RRC, "Cell Selection Crieteria not met \n");
+              break;
+            }
+            /* Cell_Search_5G e */
 
             ///	    dump_SIB1();
             // FIXME: improve condition for the RA trigger
@@ -2248,13 +2279,14 @@ nr_rrc_ue_establish_srb2(
 
          msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_RELEASE_IND);
 
-         if((dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present ==
-             NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
-            (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)) {
-           dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationTimer =
-           NR_RRCRelease_IEs__deprioritisationReq__deprioritisationTimer_min5;
-           dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationType =
-           NR_RRCRelease_IEs__deprioritisationReq__deprioritisationType_frequency;
+         if((dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.present == NR_RRCRelease__criticalExtensions_PR_rrcRelease) &&
+             (dl_dcch_msg->message.choice.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcRelease)){
+           if (dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq != NULL) {
+             dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationTimer =
+               NR_RRCRelease_IEs__deprioritisationReq__deprioritisationTimer_min5;
+             dl_dcch_msg->message.choice.c1->choice.rrcRelease->criticalExtensions.choice.rrcRelease->deprioritisationReq->deprioritisationType =
+               NR_RRCRelease_IEs__deprioritisationReq__deprioritisationType_frequency;
+           }
          }
 
          itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
@@ -2286,12 +2318,19 @@ nr_rrc_ue_establish_srb2(
            NR_DedicatedNAS_Message_t *dedicatedNAS_Message =
                dlInformationTransfer->criticalExtensions.choice.dlInformationTransfer->dedicatedNAS_Message;
 
-           MessageDef *msg_p;
+           MessageDef *msg_p,*message_p;
            msg_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_DOWNLINK_DATA_IND);
            NAS_DOWNLINK_DATA_IND(msg_p).UEid = ctxt_pP->module_id; // TODO set the UEid to something else ?
            NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.length = dedicatedNAS_Message->size;
            NAS_DOWNLINK_DATA_IND(msg_p).nasMsg.data = dedicatedNAS_Message->buf;
            itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, msg_p);
+
+           /*Send NAS_CONN_ESTABLI_CNF for handling Registration Accept in DL-Info transfer*/
+           message_p = itti_alloc_new_message(TASK_RRC_NRUE, 0, NAS_CONN_ESTABLI_CNF);
+           NAS_CONN_ESTABLI_CNF(message_p).errCode = AS_SUCCESS;
+           NAS_CONN_ESTABLI_CNF(message_p).nasMsg.length = dedicatedNAS_Message->size;
+           NAS_CONN_ESTABLI_CNF(message_p).nasMsg.data = dedicatedNAS_Message->buf;
+           itti_send_msg_to_task(TASK_NAS_NRUE, ctxt_pP->instance, message_p);
          }
        }
        break;
@@ -2327,6 +2366,7 @@ nr_rrc_ue_establish_srb2(
    int           result;
    NR_SRB_INFO   *srb_info_p;
    protocol_ctxt_t  ctxt;
+   uint16_t      nb_cells = 0;
    itti_mark_task_ready (TASK_RRC_NRUE);
 
    while(1) {
@@ -2450,6 +2490,24 @@ nr_rrc_ue_establish_srb2(
         break;
       }
 
+      /* Cell_Search_5G s*/
+      case PHY_FIND_CELL_IND:
+      {
+        nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
+        LOG_D(RRC, "Received message %s with reports for %d cells.\n", 
+              ITTI_MSG_NAME (msg_p), nb_cells);
+
+        for (int i = 0 ; i < nb_cells; i++) 
+        {
+          rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
+          rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
+          LOG_A (RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", 
+              PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
+        }
+        break;
+      }
+      /* Cell_Search_5G e*/
+
       default:
         LOG_E(NR_RRC, "[UE %d] Received unexpected message %s\n", ue_mod_id, ITTI_MSG_NAME (msg_p));
         break;
@@ -2533,7 +2591,9 @@ nr_rrc_ue_process_ueCapabilityEnquiry(
     UE_Capability_nr = CALLOC(1,sizeof(NR_UE_NR_Capability_t));
     NR_BandNR_t *nr_bandnr;
     nr_bandnr  = CALLOC(1,sizeof(NR_BandNR_t));
-    nr_bandnr->bandNR = 1;
+    nr_bandnr->bandNR = 78;
+    nr_bandnr->multipleTCI = CALLOC(1, sizeof(long));
+    *nr_bandnr->multipleTCI = NR_BandNR__multipleTCI_supported;
     asn1cSeqAdd(&UE_Capability_nr->rf_Parameters.supportedBandListNR.list,
                      nr_bandnr);
   }

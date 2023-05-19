@@ -202,6 +202,7 @@ void install_nr_schedule_handlers(NR_IF_Module_t *if_inst);
 void install_schedule_handlers(IF_Module_t *if_inst);
 extern int single_thread_flag;
 extern uint16_t sf_ahead;
+extern uint16_t slot_ahead;
 
 void oai_create_enb(void) {
   int bodge_counter=0;
