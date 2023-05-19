@@ -53,9 +53,8 @@ int decode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
     CHECK_IEI_DECODER(iei, *buffer);
     decoded++;
   }
-  uint16_t tmp;
-  memcpy(&tmp, buffer + decoded, sizeof(tmp));
-  ielen = (uint8_t)tmp;
+
+  ielen = *(uint16_t*)(buffer + decoded);  /* length is two bytes */
   decoded += 2;
   CHECK_LENGTH_DECODER(len - decoded, ielen);
 
@@ -107,11 +106,9 @@ int encode_5gs_mobile_identity(FGSMobileIdentity *fgsmobileidentity, uint8_t iei
   }
 
   if(iei > 0){
-    uint16_t tmp = htons(encoded + encoded_rc - 3);
-    memcpy(buffer + 1, &tmp, sizeof(tmp));
+    *(uint16_t*) (buffer+1) = htons(encoded  + encoded_rc - 3);
   } else {
-    uint16_t tmp = htons(encoded + encoded_rc - 2);
-    memcpy(buffer, &tmp, sizeof(tmp));
+    *(uint16_t*) buffer = htons(encoded  + encoded_rc - 2);
   }
 
   return (encoded + encoded_rc);

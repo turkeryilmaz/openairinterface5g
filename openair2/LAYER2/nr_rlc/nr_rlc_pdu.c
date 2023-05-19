@@ -151,7 +151,7 @@ void nr_rlc_pdu_encoder_init(nr_rlc_pdu_encoder_t *encoder,
 {
   encoder->byte = 0;
   encoder->bit = 0;
-  encoder->buffer = (unsigned char *)buffer;
+  encoder->buffer = buffer;
   encoder->size = size;
 }
 

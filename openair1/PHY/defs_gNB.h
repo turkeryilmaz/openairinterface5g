@@ -103,8 +103,8 @@ typedef struct {
   int total_bytes_rx;
   int current_Qm;
   int current_RI;
-  int power[MAX_ANT];
-  int noise_power[MAX_ANT];
+  int power[NB_ANTENNAS_RX];
+  int noise_power[NB_ANTENNAS_RX];
   int DTX;
   int sync_pos;
 } NR_gNB_SCH_STATS_t;
@@ -229,9 +229,9 @@ typedef struct {
 
 typedef struct {
   //! estimated received spatial signal power (linear)
-  fourDimArray_t * rx_spatial_power;
+  unsigned int rx_spatial_power[NB_ANTENNAS_TX][NB_ANTENNAS_RX];
   //! estimated received spatial signal power (dB)
-  fourDimArray_t * rx_spatial_power_dB;
+  unsigned int rx_spatial_power_dB[NB_ANTENNAS_TX][NB_ANTENNAS_RX];
   //! estimated rssi (dBm)
   int rx_rssi_dBm;
   //! estimated correlation (wideband linear) between spatial channels (computed in dlsch_demodulation)
@@ -353,40 +353,28 @@ typedef struct {
   /// - first index: rx antenna id [0..nb_antennas_rx[
   /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
   int32_t **ul_ch_magb;
-  /// \brief Magnitude of the UL channel estimates scaled for 4th bit level thresholds in LLR computation
-  /// - first index: rx antenna id [0..nb_antennas_rx[
-  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
-  int32_t **ul_ch_magc;
   /// \brief Cross-correlation of two UE signals.
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: symbol [0..]
   int32_t ***rho;
   /// \f$\log_2(\max|H_i|^2)\f$
   int16_t log2_maxh;
-  /// \brief Magnitude of Uplink Channel first layer (16QAM level/First 64QAM level/First 256QAM level).
+  /// \brief Magnitude of Uplink Channel first layer (16QAM level/First 64QAM level).
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - second index: ? [0..168*N_RB_UL[
   int32_t **ul_ch_mag0;
-  /// \brief Magnitude of Uplink Channel second layer (16QAM level/First 64QAM level/First 256QAM level).
+  /// \brief Magnitude of Uplink Channel second layer (16QAM level/First 64QAM level).
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - second index: ? [0..168*N_RB_UL[
   int32_t **ul_ch_mag1[8][8];
-  /// \brief Magnitude of Uplink Channel, first layer (2nd 64QAM/256QAM level).
+  /// \brief Magnitude of Uplink Channel, first layer (2nd 64QAM level).
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - second index: ? [0..168*N_RB_UL[
   int32_t **ul_ch_magb0;
-  /// \brief Magnitude of Uplink Channel second layer (2nd 64QAM/256QAM level).
+  /// \brief Magnitude of Uplink Channel second layer (2nd 64QAM level).
   /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
   /// - second index: ? [0..168*N_RB_UL[
   int32_t **ul_ch_magb1[8][8];
-  /// \brief Magnitude of Uplink Channel, first layer (3rd 256QAM level).
-  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
-  /// - second index: ? [0..168*N_RB_UL[
-  int32_t **ul_ch_magc0;
-  /// \brief Magnitude of Uplink Channel second layer (3rd 256QAM level).
-  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
-  /// - second index: ? [0..168*N_RB_UL[
-  int32_t **ul_ch_magc1[8][8];
   /// measured RX power based on DRS
   int ulsch_power[8];
   /// total signal over antennas
@@ -558,9 +546,9 @@ typedef struct {
   //! estimated avg noise power (dB)
   unsigned int n0_power_tot_dB;
   //! estimated avg noise power per RB per RX ant (lin)
-  fourDimArray_t *n0_subband_power;
+  unsigned int n0_subband_power[NB_ANTENNAS_RX][275];
   //! estimated avg noise power per RB per RX ant (dB)
-  fourDimArray_t *n0_subband_power_dB;
+  unsigned int n0_subband_power_dB[NB_ANTENNAS_RX][275];
   //! estimated avg subband noise power (dB)
   unsigned int n0_subband_power_avg_dB;
   //! estimated avg subband noise power per antenna (dB)
@@ -569,6 +557,7 @@ typedef struct {
   int n0_subband_power_tot_dB[275];
   //! estimated avg noise power per RB (dBm)
   int n0_subband_power_tot_dBm[275];
+
   /// PRACH background noise level
   int            prach_I0;
 

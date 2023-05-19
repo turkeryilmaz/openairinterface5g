@@ -403,7 +403,7 @@ int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
         LOG_I(NR_PHY,"(%d)  \t%i\t%i\n", subcarrier_log, (int16_t)(r_real_amp&0xFFFF), (int16_t)(r_imag_amp&0xFFFF));
 #endif
 
-        *(c16_t *)&txdataF[p_index][symbol_offset + l_line_offset + subcarrier] = (c16_t){r_real_amp, r_imag_amp};
+        txdataF[p_index][symbol_offset+l_line_offset+subcarrier] = (r_real_amp & 0xFFFF) + ((r_imag_amp<<16)&0xFFFF0000);
 
         // Subcarrier increment
         subcarrier += K_TC;

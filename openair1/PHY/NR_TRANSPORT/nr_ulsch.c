@@ -88,7 +88,8 @@ void nr_fill_ulsch(PHY_VARS_gNB *gNB, int frame, int slot, nfapi_nr_pusch_pdu_t 
     harq->round++;
 
   memcpy(&ulsch->harq_process->ulsch_pdu, ulsch_pdu, sizeof(ulsch->harq_process->ulsch_pdu));
-  LOG_D(PHY, "Initializing nFAPI for ULSCH, harq_pid %d, layers %d\n", harq_pid, ulsch_pdu->nrOfLayers);
+
+  LOG_D(PHY, "Initializing nFAPI for ULSCH, harq_pid %d\n", harq_pid);
 }
 
 void reset_active_ulsch(PHY_VARS_gNB *gNB, int frame)

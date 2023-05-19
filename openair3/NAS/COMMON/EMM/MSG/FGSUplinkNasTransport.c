@@ -55,11 +55,9 @@ int encode_fgs_payload_container(FGSPayloadContainer *paycontainer, uint8_t iei,
     encoded += encode_result;
   }
   if(iei > 0){
-    uint16_t tmp = htons(encoded - 3);
-    memcpy(buffer + 1, &tmp, sizeof(tmp));
+    *(uint16_t*) (buffer+1) = htons(encoded - 3);
   } else {
-    uint16_t tmp = htons(encoded - 2);
-    memcpy(buffer, &tmp, sizeof(tmp));
+    *(uint16_t*) (buffer) = htons(encoded - 2);
   }
 
   return encoded;
