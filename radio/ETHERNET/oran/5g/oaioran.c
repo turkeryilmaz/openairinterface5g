@@ -108,7 +108,7 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
            info->f  = frame;
            LOG_D(PHY,"Push %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,info->sl,slot,subframe,last_slot);
 #else
-           LOG_I(PHY,"Writing %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,slot2,slot,subframe,last_slot);
+           LOG_D(PHY,"Writing %d.%d (slot %d, subframe %d,last_slot %d)\n",frame,slot2,slot,subframe,last_slot);
 	   oran_sync_info.tti = tti;
            oran_sync_info.sl = slot2;
 	   oran_sync_info.f  = frame;
@@ -218,6 +218,11 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
   int idx = 0;
   static int last_slot = -1;
   first_read_set = 1; 
+
+  long old_rx_counter[XRAN_PORTS_NUM] = {0,0,0,0,0,0,0,0};
+  long old_tx_counter[XRAN_PORTS_NUM] = {0,0,0,0,0,0,0,0};
+  struct xran_common_counters x_counters[XRAN_PORTS_NUM];
+
 #ifndef USE_POLLING
   // pull next even from oran_sync_fifo
   notifiedFIFO_elt_t *res=pollNotifiedFIFO(&oran_sync_fifo);
@@ -230,21 +235,21 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
   *frame      = info->f;
   delNotifiedFIFO_elt(res);
 #else
-  LOG_I(PHY,"In  xran_fh_rx_read_slot, first_rx_set %d\n",first_rx_set); 
-  while (1/*first_rx_set ==0*/) {}
+  LOG_D(PHY,"In  xran_fh_rx_read_slot, first_rx_set %d\n",first_rx_set); 
+  while (first_rx_set ==0) {}
 
   *slot = oran_sync_info.sl;
   *frame = oran_sync_info.f;
   uint32_t tti_in=oran_sync_info.tti;
 
-  LOG_I(PHY,"oran slot %d, last_slot %d\n",*slot,last_slot);
+  LOG_D(PHY,"oran slot %d, last_slot %d\n",*slot,last_slot);
   int cnt=0;
   //while (*slot == last_slot)  {
   while (tti_in == oran_sync_info.tti)  {
     //*slot = oran_sync_info.sl;
     cnt++;
   }
-  LOG_I(PHY,"cnt %d, Reading %d.%d\n",cnt,*frame,*slot);
+  LOG_D(PHY,"cnt %d, Reading %d.%d\n",cnt,*frame,*slot);
   last_slot = *slot;
 #endif
   //return(0);
@@ -442,6 +447,32 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
               }
             }
           }
+
+        if ((*frame&0x7f)==0 && *slot == 0 && xran_get_common_counters(app_io_xran_handle, &x_counters[0]) == XRAN_STATUS_SUCCESS) {
+            for (int o_xu_id = 0; o_xu_id <  1 /*p_usecaseConfiguration->oXuNum*/;  o_xu_id++) {
+                printf("[%s%d][rx %7ld pps %7ld kbps %7ld][tx %7ld pps %7ld kbps %7ld] [on_time %ld early %ld late %ld corrupt %ld pkt_dupl %ld Invalid_Ext1_packets %ld Total %ld]\n",
+                    "o-du ",
+                    o_xu_id,
+                    x_counters[o_xu_id].rx_counter,
+                    x_counters[o_xu_id].rx_counter-old_rx_counter[o_xu_id],
+                    x_counters[o_xu_id].rx_bytes_per_sec*8/1000L,
+                    x_counters[o_xu_id].tx_counter,
+                    x_counters[o_xu_id].tx_counter-old_tx_counter[o_xu_id],
+                    x_counters[o_xu_id].tx_bytes_per_sec*8/1000L,
+                    x_counters[o_xu_id].Rx_on_time,
+                    x_counters[o_xu_id].Rx_early,
+                    x_counters[o_xu_id].Rx_late,
+                    x_counters[o_xu_id].Rx_corrupt,
+                    x_counters[o_xu_id].Rx_pkt_dupl,
+                    x_counters[o_xu_id].rx_invalid_ext1_packets,
+                    x_counters[o_xu_id].Total_msgs_rcvd);
+
+                if (x_counters[o_xu_id].rx_counter > old_rx_counter[o_xu_id])
+                    old_rx_counter[o_xu_id] = x_counters[o_xu_id].rx_counter;
+                if (x_counters[o_xu_id].tx_counter > old_tx_counter[o_xu_id])
+                    old_tx_counter[o_xu_id] = x_counters[o_xu_id].tx_counter;
+	    }
+	}
 return(0);                                   
 }
 

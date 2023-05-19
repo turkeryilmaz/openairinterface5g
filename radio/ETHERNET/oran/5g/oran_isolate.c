@@ -57,7 +57,6 @@ int trx_oran_start(openair0_device *device)
    }else{
       printf("Start ORAN. Done\n");
    }
-
   return 0;
 }
 

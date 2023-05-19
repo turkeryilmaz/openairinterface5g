@@ -520,7 +520,7 @@ app_io_xran_interface(uint32_t o_xu_id, RuntimeConfig *p_o_xu_cfg, UsecaseConfig
     for(i = 0; i < nSectorNum; i++)
     {
         eInterfaceType = XRANFTHTX_OUT;
-        printf("nSectorIndex[%d] = %d\n",i,  nSectorIndex[i]);
+        printf("nSectorIndex[%d] = %d, o_xu_id %d,xran_max_antenna_nr %d\n",i,  nSectorIndex[i],o_xu_id,xran_max_antenna_nr);
         status = xran_bm_init(psBbuIo->nInstanceHandle[o_xu_id][i], &psBbuIo->nBufPoolIndex[o_xu_id][nSectorIndex[i]][eInterfaceType],
             NEXT_POW2(XRAN_N_FE_BUF_LEN*xran_max_antenna_nr*XRAN_NUM_OF_SYMBOL_PER_SLOT)-1, nSW_ToFpga_FTH_TxBufferLen);
         if(XRAN_STATUS_SUCCESS != status) {
