@@ -316,13 +316,13 @@ void *gNB_app_task(void *args_p)
 }
 
 static  void wait_cell_config_5G(char *thread_name) {
-  printf( "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
+  LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
   pthread_mutex_lock( &cell_config_5G_done_mutex );
       
   while ( cell_config_5G_done < 0 )
     pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
   
   pthread_mutex_unlock(&cell_config_5G_done_mutex );
-  printf( "[SYS 5G]: got cell config (%s)\n", thread_name);
+  LOG_A( GNB_APP,"[SYS 5G]: got cell config (%s)\n", thread_name);
 }
 

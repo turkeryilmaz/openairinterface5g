@@ -29,6 +29,7 @@
 #include "ss_gNB_proxy_iface.h"
 #include "SIDL_VIRTUAL_TIME_PORT.h"
 #include "acpSysVT.h"
+#include "enb_config.h"
 
 extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
