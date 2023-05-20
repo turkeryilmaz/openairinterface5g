@@ -620,7 +620,7 @@ target_link_libraries(benetel_5g PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 # ORAN 5G library
 ######################################################################
-add_boolean_option(ORAN_BRONZE OFF "Build support for Bronze version of ORAN FHI")
+add_boolean_option(ORAN_BRONZE ON "Build support for Bronze version of ORAN FHI")
 if (ORAN_BRONZE)
   set(ORAN_FHLIB_5G_SOURCE
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c
@@ -648,7 +648,11 @@ target_include_directories(oran_fhlib_5g PRIVATE ${INTEL_LIB})
 target_include_directories(oran_fhlib_5g PRIVATE ${XRAN_COMMON_DIR})
 target_include_directories(oran_fhlib_5g PRIVATE ${XRAN_LIB_API_DIR})
 
+if (ORAN_BRONZE)
+set_target_properties(oran_fhlib_5g PROPERTIES COMPILE_FLAGS "-DORAN_BRONZE -fvisibility=hidden -march=native -I$ENV{RTE_SDK}/$ENV{RTE_TARGET}/include")
+else()
 set_target_properties(oran_fhlib_5g PROPERTIES COMPILE_FLAGS "-fvisibility=hidden -march=native -I$ENV{RTE_SDK}/$ENV{RTE_TARGET}/include")
+endif()
  
 #SET(DPDK_LIBS "-Wl,-rpath,$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -Wl,--whole-archive -L$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -ldpdk -Wl,--no-whole-archive")
 execute_process(  

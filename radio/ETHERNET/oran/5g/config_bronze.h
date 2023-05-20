@@ -75,6 +75,7 @@ typedef struct _RuntimeConfig
                               Set by SIB2, prach-FreqOffset in E-UTRA. */
 
     uint8_t prachConfigIndex;/**< TS36.211 - Table 5.7.1-2 : PRACH Configuration Index */
+    int32_t prachFreqOffset; 
     uint8_t iqswap;          /**< do swap of IQ before send to ETH */
     uint8_t nebyteorderswap; /**< do swap of byte order from host byte order to network byte order. ETH */
     uint8_t compression;     /**< enable use case with compression */
@@ -106,8 +107,8 @@ typedef struct _RuntimeConfig
     uint16_t Ta4_max;
 
     uint8_t enableCP;    /**<  enable C-plane */
-    uint8_t cp_vlan_tag; /**<  C-plane vlan tag */
-    uint8_t up_vlan_tag; /**<  U-plane vlan tag */
+    uint16_t cp_vlan_tag; /**<  C-plane vlan tag */
+    uint16_t up_vlan_tag; /**<  U-plane vlan tag */
 
     int32_t debugStop;
     int32_t debugStopCount;

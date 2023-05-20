@@ -91,6 +91,8 @@
 #define KEY_SRS_ENABLE     "srsEanble"
 
 #define KEY_PRACH_CFGIDX   "prachConfigIndex"
+#define KEY_PRACH_FREQSTART  "prachFreqStart"
+#define KEY_PRACH_FREQOFFSET "prachFreqOffset"
 #define KEY_SRS_SYM_IDX    "srsSym"
 
 #define KEY_MAX_FRAME_ID   "maxFrameId"
@@ -388,6 +390,12 @@ static int fillConfigStruct(RuntimeConfig *config, const char *key, const char *
     } else if (strcmp(key, KEY_PRACH_CFGIDX) == 0) {
         config->prachConfigIndex = atoi(value);
         printf("Prach config index: %d\n",config->prachConfigIndex);
+    } else if (strcmp(key, KEY_PRACH_FREQSTART) == 0) {
+        config->prachOffset = atoi(value);
+        printf("Prach Frequency Start: %d\n",config->prachOffset);
+    } else if (strcmp(key, KEY_PRACH_FREQOFFSET) == 0) {
+        config->prachFreqOffset = atoi(value);
+        printf("Prach Frequency Offset: %d\n",config->prachFreqOffset);
     } else if (strcmp(key, KEY_SRS_SYM_IDX) == 0) {
         config->srsSymMask = atoi(value);
         printf("Srs symbol [0-13]: %d\n",config->srsSymMask);

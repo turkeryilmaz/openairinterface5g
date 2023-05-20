@@ -58,6 +58,7 @@ volatile uint32_t rx_cb_slot = 0;
 //#define ORAN_BRONZE 1
 #ifdef ORAN_BRONZE
 extern struct xran_fh_config  xranConf;
+extern void * xranHandle;
 int xran_is_prach_slot(uint32_t subframe_id, uint32_t slot_id);
 #else
 #include "app_io_fh_xran.h"
@@ -77,7 +78,7 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
     uint32_t frame;
     uint32_t subframe;
     uint32_t slot,slot2;
-    uint32_t rx_tti,rx_sym;
+    uint32_t rx_sym;
 
     static int32_t last_slot=-1;
     static int32_t last_frame=-1;
@@ -88,7 +89,6 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
 #endif
 		    &frame,&subframe,&slot,&second);
 
-    rx_tti = callback_tag->slotiId;
     rx_sym = callback_tag->symbol;
     if (rx_sym == 7) {
       if (first_call_set) {
@@ -98,7 +98,7 @@ void oai_xran_fh_rx_callback(void *pCallbackTag, xran_status_t status){
         first_rx_set = 1;
        if (first_read_set == 1) {    
          slot2=slot+(subframe<<1);	     
-         if (last_frame>0 && frame>0 && (slot2>0 && last_frame!=frame) || (slot2 ==0 && last_frame!=((1024+frame-1)&1023)))
+         if (last_frame>0 && frame>0 && ((slot2>0 && last_frame!=frame) || (slot2 ==0 && last_frame!=((1024+frame-1)&1023))))
 	      LOG_E(PHY,"Jump in frame counter last_frame %d => %d, slot %d\n",last_frame,frame,slot2);
          if (last_slot == -1 || slot2 != last_slot) {	     
 #ifndef USE_POLLING
@@ -219,8 +219,8 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
   static int last_slot = -1;
   first_read_set = 1; 
 
-  long old_rx_counter[XRAN_PORTS_NUM] = {0,0,0,0,0,0,0,0};
-  long old_tx_counter[XRAN_PORTS_NUM] = {0,0,0,0,0,0,0,0};
+  static int64_t old_rx_counter[XRAN_PORTS_NUM] = {0};
+  static int64_t old_tx_counter[XRAN_PORTS_NUM] = {0};
   struct xran_common_counters x_counters[XRAN_PORTS_NUM];
 
 #ifndef USE_POLLING
@@ -447,10 +447,14 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
               }
             }
           }
-
-        if ((*frame&0x7f)==0 && *slot == 0 && xran_get_common_counters(app_io_xran_handle, &x_counters[0]) == XRAN_STATUS_SUCCESS) {
+#ifdef ORAN_BRONZE
+        if ((*frame&0x7f)==0 && *slot == 0 && xran_get_common_counters(xranHandle, &x_counters[0]) == XRAN_STATUS_SUCCESS)
+#else
+        if ((*frame&0x7f)==0 && *slot == 0 && xran_get_common_counters(app_io_xran_handle, &x_counters[0]) == XRAN_STATUS_SUCCESS)
+#endif
+	{
             for (int o_xu_id = 0; o_xu_id <  1 /*p_usecaseConfiguration->oXuNum*/;  o_xu_id++) {
-                printf("[%s%d][rx %7ld pps %7ld kbps %7ld][tx %7ld pps %7ld kbps %7ld] [on_time %ld early %ld late %ld corrupt %ld pkt_dupl %ld Invalid_Ext1_packets %ld Total %ld]\n",
+                LOG_I(PHY,"[%s%d][rx %7ld pps %7ld kbps %7ld][tx %7ld pps %7ld kbps %7ld] [on_time %ld early %ld late %ld corrupt %ld pkt_dupl %ld Invalid_Ext1_packets %ld Total %ld]\n",
                     "o-du ",
                     o_xu_id,
                     x_counters[o_xu_id].rx_counter,
@@ -464,9 +468,14 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                     x_counters[o_xu_id].Rx_late,
                     x_counters[o_xu_id].Rx_corrupt,
                     x_counters[o_xu_id].Rx_pkt_dupl,
+#ifndef ORAN_BRONZE		    
                     x_counters[o_xu_id].rx_invalid_ext1_packets,
+#else
+		    0L,
+#endif
                     x_counters[o_xu_id].Total_msgs_rcvd);
-
+		for (int rxant=0;rxant<xran_max_antenna_nr && rxant<ru->nb_rx;rxant++)
+		   LOG_I(PHY,"[%s%d][pusch%d %7ld prach%d %7ld]\n","o_du",o_xu_id,rxant,x_counters[o_xu_id].rx_pusch_packets[rxant],rxant,x_counters[o_xu_id].rx_prach_packets[rxant]);
                 if (x_counters[o_xu_id].rx_counter > old_rx_counter[o_xu_id])
                     old_rx_counter[o_xu_id] = x_counters[o_xu_id].rx_counter;
                 if (x_counters[o_xu_id].tx_counter > old_tx_counter[o_xu_id])
@@ -624,53 +633,6 @@ return(0);
 
 }
 
-
-
-#if 0
-int64_t count_sec =0;
-struct xran_common_counters x_counters;
-uint64_t nTotalTime;
-uint64_t nUsedTime;
-uint32_t nCoreUsed;
-float nUsedPercent;
-uint64_t old_rx_counter = 0;
-uint64_t old_tx_counter = 0;
-
-int compute_xran_statistics(void *xranlib_){
-  xranLibWraper *xranlib = ((xranLibWraper *) xranlib_);
-           
-  if(xran_get_common_counters(xranlib->get_xranhandle(), &x_counters) == XRAN_STATUS_SUCCESS) {
-     xran_get_time_stats(&nTotalTime, &nUsedTime, &nCoreUsed, 1);
-     nUsedPercent = ((float)nUsedTime * 100.0) / (float)nTotalTime;
-
-     printf("[rx %7ld pps %7ld kbps %7ld][tx %7ld pps %7ld kbps %7ld] [on_time %ld early %ld late %ld corrupt %ld pkt_dupl %ld Total %ld] IO Util: %5.2f %%\n",
-                                 x_counters.rx_counter,
-                                 x_counters.rx_counter-old_rx_counter,
-                                 x_counters.rx_bytes_per_sec*8/1000L,
-                                 x_counters.tx_counter,
-                                 x_counters.tx_counter-old_tx_counter,
-                                 x_counters.tx_bytes_per_sec*8/1000L,
-                                 x_counters.Rx_on_time,
-                                 x_counters.Rx_early,
-                                 x_counters.Rx_late,
-                                 x_counters.Rx_corrupt,
-                                 x_counters.Rx_pkt_dupl,
-                                 x_counters.Total_msgs_rcvd,
-                                 nUsedPercent);
-
-      if(x_counters.rx_counter > old_rx_counter)
-         old_rx_counter = x_counters.rx_counter;
-      if(x_counters.tx_counter > old_tx_counter)
-         old_tx_counter = x_counters.tx_counter;
-  } else {
-      printf("error xran_get_common_counters\n");
-      return(1);
-  }
-
-  return (0);
-
-}
-#endif
 
 
 void check_xran_ptp_sync(){

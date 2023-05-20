@@ -2224,10 +2224,10 @@ void *oai_main(int argc,char *argv[])
     }
 
     pXranConf->prach_conf.nPrachSubcSpacing     = startupConfiguration.mu_number;
-    pXranConf->prach_conf.nPrachFreqStart       = 0;
+    pXranConf->prach_conf.nPrachFreqStart       = startupConfiguration.prachOffset;
     pXranConf->prach_conf.nPrachFilterIdx       = XRAN_FILTERINDEX_PRACH_ABC;
     pXranConf->prach_conf.nPrachConfIdx         = startupConfiguration.prachConfigIndex;
-    pXranConf->prach_conf.nPrachFreqOffset      = -792;
+    pXranConf->prach_conf.nPrachFreqOffset      = startupConfiguration.prachFreqOffset;
 
     pXranConf->srs_conf.symbMask                = startupConfiguration.srsSymMask;
     pXranConf->srs_conf.eAxC_offset             = 2 * startupConfiguration.numAxc; /* PUSCH, PRACH, SRS */
