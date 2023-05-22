@@ -2416,7 +2416,7 @@ if (ENABLE_LDPC_CUDA)
 endif()
 target_link_libraries(ldpctest PRIVATE
   -Wl,--start-group UTIL SIMU PHY_NR PHY_COMMON PHY_NR_COMMON CONFIG_LIB -Wl,--end-group
-  m pthread ${ATLAS_LIBRARIES} dl
+  m pthread armral ${ATLAS_LIBRARIES} dl
   )
 
 add_executable(nr_dlschsim
