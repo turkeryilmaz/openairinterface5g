@@ -45,7 +45,8 @@
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "UTIL/OSA/osa_defs.h"
 #include <openair2/RRC/NR/nr_rrc_proto.h>
-#include "pdcp.h"
+#include "nr_pdcp/nr_pdcp_oai_api.h"
+#include "MESSAGES/asn1_msg.h"
 
 void rrc_parse_ue_capabilities(gNB_RRC_INST *rrc, NR_UE_CapabilityRAT_ContainerList_t *UE_CapabilityRAT_ContainerList, x2ap_ENDC_sgnb_addition_req_t *m, NR_CG_ConfigInfo_IEs_t *cg_config_info)
 {
@@ -100,7 +101,7 @@ void rrc_parse_ue_capabilities(gNB_RRC_INST *rrc, NR_UE_CapabilityRAT_ContainerL
   LOG_A(NR_RRC, "Successfully decoded UE NR capabilities (NR and MRDC)\n");
 
   UE->spCellConfig = calloc(1, sizeof(struct NR_SpCellConfig));
-  UE->spCellConfig->spCellConfigDedicated = rrc->carrier.servingcellconfig;
+  UE->spCellConfig->spCellConfigDedicated = rrc->configuration.scd;
   LOG_I(NR_RRC,"Adding new NSA user (%p)\n",ue_context_p);
   rrc_add_nsa_user(rrc,ue_context_p, m);
 }
@@ -150,15 +151,13 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
 
   // NR RRCReconfiguration
   UE->reconfig = calloc(1, sizeof(NR_RRCReconfiguration_t));
-  UE->secondaryCellGroup = calloc(1, sizeof(NR_CellGroupConfig_t));
   memset((void *)UE->reconfig, 0, sizeof(NR_RRCReconfiguration_t));
   UE->reconfig->rrc_TransactionIdentifier = 0;
   UE->reconfig->criticalExtensions.present = NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration;
   NR_RRCReconfiguration_IEs_t *reconfig_ies=calloc(1,sizeof(NR_RRCReconfiguration_IEs_t));
   UE->reconfig->criticalExtensions.choice.rrcReconfiguration = reconfig_ies;
-  UE->rb_config = calloc(1, sizeof(NR_RRCReconfiguration_t));
   if (get_softmodem_params()->phy_test == 1 || get_softmodem_params()->do_ra == 1 || get_softmodem_params()->sa == 1){
-    fill_default_rbconfig(UE->rb_config, 10 /* EPS bearer ID */, 1 /* drb ID */, NR_CipheringAlgorithm_nea0, NR_SecurityConfig__keyToUse_master);
+    UE->rb_config = get_default_rbconfig(10 /* EPS bearer ID */, 1 /* drb ID */, NR_CipheringAlgorithm_nea0, NR_SecurityConfig__keyToUse_master);
   } else {
     /* TODO: handle more than one bearer */
     if (m == NULL) {
@@ -235,10 +234,20 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
         exit(1);
     }
 
-    fill_default_rbconfig(UE->rb_config, m->e_rabs_tobeadded[0].e_rab_id, m->e_rabs_tobeadded[0].drb_ID, cipher_algo, NR_SecurityConfig__keyToUse_secondary);
+    UE->rb_config = get_default_rbconfig(m->e_rabs_tobeadded[0].e_rab_id, m->e_rabs_tobeadded[0].drb_ID, cipher_algo, NR_SecurityConfig__keyToUse_secondary);
   }
 
   NR_ServingCellConfig_t *scc = UE->spCellConfig ? UE->spCellConfig->spCellConfigDedicated : NULL;
+  UE->secondaryCellGroup = get_default_secondaryCellGroup(carrier->servingcellconfigcommon,
+                                                          scc,
+                                                          UE->UE_Capability_nr,
+                                                          1,
+                                                          1,
+                                                          configuration,
+                                                          ue_context_p->ue_context.gNB_ue_ngap_id);
+  AssertFatal(UE->secondaryCellGroup != NULL, "out of memory\n");
+  xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, UE->secondaryCellGroup);
+
   fill_default_reconfig(carrier->servingcellconfigcommon, scc, reconfig_ies, UE->secondaryCellGroup, UE->UE_Capability_nr, configuration, ue_context_p->ue_context.gNB_ue_ngap_id);
   // the UE context is not yet inserted in the RRC UE manager
   // rrc_gNB_update_ue_context_rnti(UE->secondaryCellGroup->spCellConfig->reconfigurationWithSync->newUE_Identity, rrc,
@@ -282,10 +291,7 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
       memset(&create_tunnel_resp, 0, sizeof(create_tunnel_resp));
       if (!IS_SOFTMODEM_NOS1) {
         LOG_D(RRC, "Calling gtpv1u_create_s1u_tunnel()\n");
-        gtpv1u_create_s1u_tunnel(
-          ctxt.instance,
-          &create_tunnel_req,
-          &create_tunnel_resp);
+        gtpv1u_create_s1u_tunnel(ctxt.instance, &create_tunnel_req, &create_tunnel_resp, nr_pdcp_data_req_drb);
         rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(
           &ctxt,
           &create_tunnel_resp,
@@ -391,22 +397,25 @@ void rrc_remove_nsa_user(gNB_RRC_INST *rrc, int rnti) {
     return;
   }
 
-  pdcp_remove_UE(&ctxt);
+  nr_pdcp_remove_UE(ctxt.rntiMaybeUEid);
 
   rrc_rlc_remove_ue(&ctxt);
 
-  // WHAT A RACE CONDITION
+  // lock the scheduler before removing the UE. Note: mac_remove_nr_ue() checks
+  // that the scheduler is actually locked!
+  NR_SCHED_LOCK(&RC.nrmac[rrc->module_id]->sched_lock);
   mac_remove_nr_ue(RC.nrmac[rrc->module_id], rnti);
+  NR_SCHED_UNLOCK(&RC.nrmac[rrc->module_id]->sched_lock);
   gtpv1u_enb_delete_tunnel_req_t tmp={0};
   tmp.rnti=rnti;
   tmp.from_gnb=1;
   LOG_D(RRC, "ue_context->ue_context.nb_of_e_rabs %d will be deleted for rnti %d\n", ue_context->ue_context.nb_of_e_rabs, rnti);
   for (e_rab = 0; e_rab < ue_context->ue_context.nb_of_e_rabs; e_rab++) {
-    tmp.eps_bearer_id[tmp.num_erab++]= ue_context->ue_context.gnb_gtp_ebi[e_rab];
+    tmp.eps_bearer_id[tmp.num_erab++]= ue_context->ue_context.nsa_gtp_ebi[e_rab];
     // erase data
-    ue_context->ue_context.gnb_gtp_teid[e_rab] = 0;
-    memset(&ue_context->ue_context.gnb_gtp_addrs[e_rab], 0, sizeof(ue_context->ue_context.gnb_gtp_addrs[e_rab]));
-    ue_context->ue_context.gnb_gtp_ebi[e_rab] = 0;
+    ue_context->ue_context.nsa_gtp_teid[e_rab] = 0;
+    memset(&ue_context->ue_context.nsa_gtp_addrs[e_rab], 0, sizeof(ue_context->ue_context.nsa_gtp_addrs[e_rab]));
+    ue_context->ue_context.nsa_gtp_ebi[e_rab] = 0;
   }
   gtpv1u_delete_s1u_tunnel(rrc->module_id,  &tmp);
   /* remove context */

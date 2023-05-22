@@ -67,7 +67,6 @@ PHY_VARS_NR_UE *UE;
 RAN_CONTEXT_t RC;
 RU_t *ru;
 double cpuf;
-extern uint16_t prach_root_sequence_map0_3[838];
 openair0_config_t openair0_cfg[MAX_CARDS];
 //uint8_t nfapi_mode=0;
 uint64_t downlink_frequency[MAX_NUM_CCs][4];
@@ -86,6 +85,17 @@ softmodem_params_t *get_softmodem_params(void) {return 0;}
 instance_t DUuniqInstance=0;
 instance_t CUuniqInstance=0;
 
+void inc_ref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+void deref_sched_response(int _)
+{
+  LOG_E(PHY, "fatal\n");
+  exit(1);
+}
+
 int nr_derive_key_ng_ran_star(uint16_t pci, uint64_t nr_arfcn_dl, const uint8_t key[32], uint8_t *key_ng_ran_star)
 {
   return 0;
@@ -103,6 +113,10 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
                               const rb_id_t     Srb_id,
                               uint8_t           *buffer_pP)
 {
+  return 0;
+}
+
+int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index) {
   return 0;
 }
 

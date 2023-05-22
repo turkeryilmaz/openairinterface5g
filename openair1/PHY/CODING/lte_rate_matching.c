@@ -33,9 +33,12 @@
 
 //#define cmin(a,b) ((a)<(b) ? (a) : (b))
 
-static uint32_t bitrev[32]    = {0,16,8,24,4,20,12,28,2,18,10,26,6,22,14,30,1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31};
-static uint32_t bitrev_x3[32] = {0,48,24,72,12,60,36,84,6,54,30,78,18,66,42,90,3,51,27,75,15,63,39,87,9,57,33,81,21,69,45,93};
-static uint32_t bitrev_cc[32] = {1,17,9,25,5,21,13,29,3,19,11,27,7,23,15,31,0,16,8,24,4,20,12,28,2,18,10,26,6,22,14,30};
+static const uint32_t bitrev[32] = {0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30,
+                                    1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31};
+static const uint32_t bitrev_x3[32] = {0, 48, 24, 72, 12, 60, 36, 84, 6, 54, 30, 78, 18, 66, 42, 90,
+                                       3, 51, 27, 75, 15, 63, 39, 87, 9, 57, 33, 81, 21, 69, 45, 93};
+static const uint32_t bitrev_cc[32] = {1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31,
+                                       0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30};
 
 //#define RM_DEBUG_TX 1
 //#define RM_DEBUG 1
@@ -174,7 +177,7 @@ uint32_t sub_block_interleaving_cc(uint32_t D, uint8_t *d,uint8_t *w) {
 
 void sub_block_deinterleaving_turbo(uint32_t D,int16_t *d,int16_t *w) {
   uint32_t RTC = (D>>5), ND, ND3;
-  uint32_t row,col,Kpi,index;
+  uint32_t row,col,Kpi;
   uint32_t index3,k,k2;
   int16_t *d1,*d2,*d3;
 
@@ -200,7 +203,6 @@ void sub_block_deinterleaving_turbo(uint32_t D,int16_t *d,int16_t *w) {
 #ifdef RM_DEBUG2
     printf("Col %d\n",col);
 #endif
-    index = bitrev[col];
     index3 = bitrev_x3[col];//3*index;
 
     for (row=0; row<RTC; row++) {
@@ -208,7 +210,6 @@ void sub_block_deinterleaving_turbo(uint32_t D,int16_t *d,int16_t *w) {
       d2[index3]   = w[Kpi+k2];
       d3[index3]   = w[Kpi+1+k2];
       index3+=96;
-      index+=32;
       k++;
       k2++;
       k2++;

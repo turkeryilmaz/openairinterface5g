@@ -38,11 +38,13 @@ extern "C"
 #endif
 /* help strings definition for command line options, used in CMDLINE_XXX_DESC macros and printed when -h option is used */
 #define CONFIG_HLP_RFCFGF        "Configuration file for front-end (e.g. LMS7002M)\n"
-#define CONFIG_HLP_SPLIT73       "Split 7.3 (below rate matching) option: <cu|du>:<remote ip address>:<remote port>"
+#define CONFIG_HLP_SPLIT73       "Split 7.3 (below rate matching) option: <cu|du>:<remote ip address>:<remote port>\n"
 #define CONFIG_HLP_TPOOL         "Thread pool configuration: \n\
-  default no pool (runs in calling thread),\n\
   list of cores, comma separated (negative value is no core affinity)\n\
-  example: -1,3 launches two working threads one floating, the second set on core 3"
+  example: -1,3 launches two working threads one floating, the second set on core 3\n\
+  default 8 floating threads\n\
+  use N for no pool (runs in calling thread) recommended with rfsim.\n"
+#define CONFIG_HLP_REORDER       "Disable reorder thread\n"
 #define CONFIG_HLP_ULMAXE        "set the eNodeB max ULSCH erros\n"
 #define CONFIG_HLP_CALUER        "set UE RX calibration\n"
 #define CONFIG_HLP_CALUERM       ""
@@ -56,6 +58,7 @@ extern "C"
 #define CONFIG_HLP_PHYTST        "test UE phy layer, mac disabled\n"
 #define CONFIG_HLP_DORA          "test gNB  and UE with RA procedures\n"
 #define CONFIG_HLP_SA            "run gNB in standalone mode\n"
+#define CONFIG_HLP_SL_MODE       "sets the NR sidelink mode (0: not in sidelink mode, 1: in-coverage/gNB, 2: out-of-coverage/no gNB)"
 #define CONFIG_HLP_EXTS          "tells hardware to use an external timing reference\n"
 #define CONFIG_HLP_DMRSSYNC      "tells RU to insert DMRS in subframe 1 slot 0"
 #define CONFIG_HLP_CLK           "tells hardware to use a clock reference (0:internal, 1:external, 2:gpsdo)\n"
@@ -65,6 +68,7 @@ extern "C"
 #define CONFIG_HLP_NOSNGLT       "Disables single-thread mode in lte-softmodem\n"
 #define CONFIG_HLP_DLF           "Set the downlink frequency for all component carriers\n"
 #define CONFIG_HLP_ULF           "Set the uplink frequency offset for all component carriers\n"
+#define CONFIG_HLP_SLF           "Set the sidelink frequency for all component carriers\n"
 #define CONFIG_HLP_CHOFF         "Channel id offset\n"
 #define CONFIG_HLP_SOFTS         "Enable soft scope and L1 and L2 stats (Xforms)\n"
 #define CONFIG_HLP_SOFTS_QT      "Enable soft scope and L1 and L2 stats (QT)\n"
@@ -109,9 +113,11 @@ extern "C"
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 #define RF_CONFIG_FILE      softmodem_params.rf_config_file
 #define TP_CONFIG           softmodem_params.threadPoolConfig
+#define CONTINUOUS_TX       softmodem_params.continuous_tx
 #define PHY_TEST            softmodem_params.phy_test
 #define DO_RA               softmodem_params.do_ra
 #define SA                  softmodem_params.sa
+#define SL_MODE             softmodem_params.sl_mode
 #define WAIT_FOR_SYNC       softmodem_params.wait_for_sync
 #define SINGLE_THREAD_FLAG  softmodem_params.single_thread_flag
 #define CHAIN_OFFSET        softmodem_params.chain_offset
@@ -131,7 +137,7 @@ extern "C"
 #define NON_STOP            softmodem_params.non_stop
 #define EMULATE_L1          softmodem_params.emulate_l1
 #define CONTINUOUS_TX       softmodem_params.continuous_tx
-
+#define REORDER_THREAD_DISABLE    softmodem_params.reorder_thread_disable
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
 
 extern int usrp_tx_thread;
@@ -139,9 +145,11 @@ extern int usrp_tx_thread;
 #define CMDLINE_PARAMS_DESC {  \
   {"rf-config-file",        CONFIG_HLP_RFCFGF,        0,              .strptr=&RF_CONFIG_FILE,                .defstrval=NULL,          TYPE_STRING, 0},  \
   {"thread-pool",           CONFIG_HLP_TPOOL,         0,              .strptr=&TP_CONFIG,                     .defstrval="-1,-1,-1,-1,-1,-1,-1,-1",  TYPE_STRING, 0},     \
+  {"reorder-thread-disable",CONFIG_HLP_REORDER,     PARAMFLAG_BOOL,   .iptr=&REORDER_THREAD_DISABLE,          .defintval=0,                          TYPE_INT,    0},                     \
   {"phy-test",              CONFIG_HLP_PHYTST,        PARAMFLAG_BOOL, .iptr=&PHY_TEST,                        .defintval=0,             TYPE_INT,    0},  \
   {"do-ra",                 CONFIG_HLP_DORA,          PARAMFLAG_BOOL, .iptr=&DO_RA,                           .defintval=0,             TYPE_INT,    0},  \
   {"sa",                    CONFIG_HLP_SA,            PARAMFLAG_BOOL, .iptr=&SA,                              .defintval=0,             TYPE_INT,    0},  \
+  {"sl-mode",               CONFIG_HLP_SL_MODE,       0,              .u8ptr=&SL_MODE,                        .defintval=0,             TYPE_UINT8,  0},  \
   {"usim-test",             CONFIG_HLP_USIM,          PARAMFLAG_BOOL, .u8ptr=&USIM_TEST,                      .defintval=0,             TYPE_UINT8,  0},  \
   {"clock-source",          CONFIG_HLP_CLK,           0,              .uptr=&CLOCK_SOURCE,                    .defintval=0,             TYPE_UINT,   0},  \
   {"time-source",           CONFIG_HLP_TME,           0,              .uptr=&TIMING_SOURCE,                   .defintval=0,             TYPE_UINT,   0},  \
@@ -178,6 +186,7 @@ extern int usrp_tx_thread;
 
 // clang-format off
 #define CMDLINE_PARAMS_CHECK_DESC {         \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -299,9 +308,11 @@ typedef struct {
   //THREAD_STRUCT  thread_struct;
   char           *rf_config_file;
   char           *threadPoolConfig;
+  int            reorder_thread_disable;
   int            phy_test;
   int            do_ra;
   int            sa;
+  uint8_t        sl_mode;
   uint8_t        usim_test;
   int            emulate_rf;
   int            wait_for_sync; //eNodeB only

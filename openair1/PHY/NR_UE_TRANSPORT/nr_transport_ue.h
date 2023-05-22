@@ -119,8 +119,6 @@ typedef struct {
   uint32_t TBS;
   /// The payload + CRC size in bits
   uint32_t B;
-  /// Pointer to the payload
-  uint8_t *b;
   /// Pointers to transport block segments
   uint8_t **c;
   /// soft bits for each received segment ("d"-sequence)(for definition see 36-212 V8.6 2009-03, p.15)
@@ -167,6 +165,18 @@ typedef struct {
   // PTRS symbol index, to be updated every PTRS symbol within a slot.
   uint8_t ptrs_symbol_index;
 } NR_UE_DLSCH_t;
+
+typedef struct {
+  long  sl_numssb_withinperiod_r16;
+  long  sl_timeoffsetssb_r16;
+  long  sl_timeinterval_r16;
+  long  sl_numssb_withinperiod_r16_copy;
+  long  sl_timeinterval_r16_copy;
+  long  sl_timeoffsetssb_r16_copy;
+  uint16_t slss_id;
+  uint8_t sl_mib_length;
+  uint8_t sl_mib[5];
+} NR_SLSS_t;
 
 
 /**@}*/
