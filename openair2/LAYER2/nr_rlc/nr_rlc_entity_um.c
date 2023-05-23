@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "nr_rlc_pdu.h"
 
@@ -543,8 +544,11 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
     uint64_t time_now = time_average_now();
     uint64_t waited_time = time_now - sdu->sdu->time_of_arrival;
     /* set time_of_arrival to 0 so as to update stats only once */
-    sdu->sdu->time_of_arrival = 0;
+    // sdu->sdu->time_of_arrival = 0;
     time_average_add(entity->common.txsdu_avg_time_to_tx, time_now, waited_time);
+
+    double av = time_average_get_average(entity->common.txsdu_avg_time_to_tx, time_average_now() );
+    printf("Average time in the RLC SDU %lf us \n", av);
   }
 
   nr_rlc_free_sdu_segment(sdu);
@@ -613,8 +617,8 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   entity->common.bstatus.tx_size += compute_pdu_header_size(entity, sdu)
                                     + sdu->size;
 
-  if (entity->common.avg_time_is_on)
-    sdu->sdu->time_of_arrival = time_average_now();
+//  if (entity->common.avg_time_is_on)
+  sdu->sdu->time_of_arrival = time_average_now();
 }
 
 /*************************************************************************/
