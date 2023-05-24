@@ -922,10 +922,12 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     exit(1);
 
   memset(PLMN_identity_info,0,num_plmn * sizeof(LTE_PLMN_IdentityInfo_t));
-  schedulingInfo=CALLOC(5,sizeof(LTE_SchedulingInfo_t));
-  memset(schedulingInfo,0,5*sizeof(LTE_SchedulingInfo_t));
-  sib_type=CALLOC(5*5,sizeof(LTE_SIB_Type_t));
-  memset(sib_type,0,5*5*sizeof(LTE_SIB_Type_t));
+  //Max SIB_INFO is 32 see 3GPP36331 6.4
+  schedulingInfo=CALLOC(32,sizeof(LTE_SchedulingInfo_t));
+  memset(schedulingInfo,0,32*sizeof(LTE_SchedulingInfo_t));
+  //Max SIB_INFO is 32 see 3GPP36331 6.4
+  sib_type=CALLOC(32*32,sizeof(LTE_SIB_Type_t));
+  memset(sib_type,0,32*32*sizeof(LTE_SIB_Type_t));
   if(configuration->eMBMS_M2_configured){
     sib_type2=CALLOC(1,sizeof(LTE_SIB_Type_t));
     schedulingInfo2=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
@@ -1043,7 +1045,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     for(int i=0; i < configuration->schedulingInfo_count[CC_id]; i++) {
       schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[CC_id][i].si_Periodicity;
       for (int j =0; j < configuration->schedulingInfo[CC_id][i].sib_MappingInfo.size; j++){
-        LTE_SIB_Type_t *st = sib_type + (i*5 + j)*sizeof(LTE_SIB_Type_t);
+        LTE_SIB_Type_t *st = sib_type + (i*32 + j)*sizeof(LTE_SIB_Type_t);
         *st = configuration->schedulingInfo[CC_id][i].sib_MappingInfo.LTE_SIB_Type[j];
         if(*st == LTE_SIB_Type_sibType4) {
           RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
