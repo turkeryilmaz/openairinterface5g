@@ -527,14 +527,14 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
     flags = TX_BURST_MIDDLE;
   }
 
-  if (flags || IS_SOFTMODEM_RFSIM)
-    AssertFatal(rxtxD->writeBlockSize ==
-                UE->rfdevice.trx_write_func(&UE->rfdevice,
-                                            proc->timestamp_tx,
-                                            txp,
-                                            rxtxD->writeBlockSize,
-                                            UE->frame_parms.nb_antennas_tx,
-                                            flags),"");
+  AssertFatal(rxtxD->writeBlockSize
+                  == openair0_write_in_order(&UE->rfdevice,
+                                             proc->timestamp_tx,
+                                             txp,
+                                             rxtxD->writeBlockSize,
+                                             UE->frame_parms.nb_antennas_tx,
+                                             flags),
+              "");
 
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     memset(txp[i], 0, rxtxD->writeBlockSize);
@@ -583,10 +583,8 @@ void processSlotTX(void *arg) {
   RU_write(rxtxD);
 }
 
-nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
+void UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data)
 {
-  nr_phy_data_t phy_data = {0};
-
   if (IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa) {
 
     // Start synchronization with a target gNB
@@ -612,23 +610,18 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc)
 
     if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
       nr_downlink_indication_t dl_indication;
-      nr_fill_dl_indication(&dl_indication, NULL, NULL, proc, UE, &phy_data);
+      nr_fill_dl_indication(&dl_indication, NULL, NULL, proc, UE, phy_data);
       UE->if_inst->dl_indication(&dl_indication);
     }
 
     uint64_t a=rdtsc_oai();
-    pbch_pdcch_processing(UE, proc, &phy_data);
-    if (phy_data.dlsch[0].active) {
-      // indicate to tx thread to wait for DLSCH decoding
-      const int ack_nack_slot = (proc->nr_slot_rx + phy_data.dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
-      UE->tx_wait_for_dlsch[ack_nack_slot]++;
-    }
+    pbch_pdcch_processing(UE, proc, phy_data);
 
     LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
   }
 
   ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
-  return phy_data;
+  return;
 }
 
 void UE_dl_processing(void *arg) {
@@ -755,9 +748,6 @@ void *UE_thread(void *arg)
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);
 
-  notifiedFIFO_t txFifo;
-  initNotifiedFIFO(&txFifo);
-
   notifiedFIFO_t freeBlocks;
   initNotifiedFIFO_nothreadSafe(&freeBlocks);
 
@@ -770,8 +760,9 @@ void *UE_thread(void *arg)
   initNotifiedFIFO(&UE->phy_config_ind);
 
   int num_ind_fifo = nb_slot_frame;
+  int tx_wait_for_dlsch[num_ind_fifo];
   for(int i=0; i < num_ind_fifo; i++) {
-    UE->tx_wait_for_dlsch[num_ind_fifo] = 0;
+    tx_wait_for_dlsch[i] = 0;
     UE->tx_resume_ind_fifo[i] = malloc(sizeof(*UE->tx_resume_ind_fifo[i]));
     initNotifiedFIFO(UE->tx_resume_ind_fifo[i]);
   }
@@ -917,32 +908,45 @@ void *UE_thread(void *arg)
     if (curMsg.proc.nr_slot_tx == 0)
       nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.gNB_id);
 
-    // Start TX slot processing here. It runs in parallel with RX slot processing
-    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);
-    nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
+    // Decode DCI
+    notifiedFIFO_elt_t *MsgRx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
+    nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *)NotifiedFifoData(MsgRx);
+    curMsgRx->proc = curMsg.proc;
+    curMsgRx->UE = UE;
+    UE_dl_preprocessing(UE, &curMsg.proc, &curMsgRx->phy_data);
+
+    // From DCI, note in future tx if we have to mait DL decode to be done
+    if (curMsgRx->phy_data.dlsch[0].active) {
+      // indicate to tx thread to wait for DLSCH decoding
+      const int ack_nack_slot =
+          (curMsgRx->proc.nr_slot_rx + curMsgRx->phy_data.dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
+      tx_wait_for_dlsch[ack_nack_slot]++;
+    }
+
+    // We have processed DCI
+    // We have noted down what we have to do in future Tx in  tx_wait_for_dlsch[]
+    // now RX slot processing after DCI. We launch and forget.
+    pushTpool(&(get_nrUE_params()->Tpool), MsgRx);
+
+    // Start TX slot processing here. It runs and end freely but it will wait the ACK/NACK information
+    notifiedFIFO_elt_t *MsgTx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, processSlotTX);
+    nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *)NotifiedFifoData(MsgTx);
     curMsgTx->proc = curMsg.proc;
     curMsgTx->writeBlockSize = writeBlockSize;
     curMsgTx->proc.timestamp_tx = writeTimestamp;
     curMsgTx->UE = UE;
-    curMsgTx->tx_wait_for_dlsch = UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
-    UE->tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
-    pushTpool(&(get_nrUE_params()->Tpool), newElt);
 
-    // RX slot processing. We launch and forget.
-    newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_rx, NULL, UE_dl_processing);
-    nr_rxtx_thread_data_t *curMsgRx = (nr_rxtx_thread_data_t *) NotifiedFifoData(newElt);
-    curMsgRx->proc = curMsg.proc;
-    curMsgRx->UE = UE;
-    curMsgRx->phy_data = UE_dl_preprocessing(UE, &curMsg.proc);
-    pushTpool(&(get_nrUE_params()->Tpool), newElt);
+    curMsgTx->tx_wait_for_dlsch = tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
+    tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
+    pushTpool(&(get_nrUE_params()->Tpool), MsgTx);
 
-    // Wait for TX slot processing to finish
-    notifiedFIFO_elt_t *res;
-    res = pullTpool(&txFifo, &(get_nrUE_params()->Tpool));
-    if (res == NULL)
-      LOG_E(PHY, "Tpool has been aborted\n");
-    else
-      delNotifiedFIFO_elt(res);
+    decoded_frame_rx =
+        (((mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused) << 4) | curMsg.proc.decoded_frame_rx);
+    if (decoded_frame_rx>0 && decoded_frame_rx != curMsg.proc.frame_rx)
+      LOG_E(PHY,
+            "Decoded frame index (%d) is not compatible with current context (%d), UE should go back to synch mode\n",
+            decoded_frame_rx,
+            curMsg.proc.frame_rx);
   } // while !oai_exit
 
   return NULL;
