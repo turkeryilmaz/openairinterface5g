@@ -748,6 +748,10 @@ void *UE_thread(void *arg)
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);
 
+  notifiedFIFO_t txFifo;
+  initNotifiedFIFO(&txFifo);
+  bool oneTxDone = false;
+
   notifiedFIFO_t freeBlocks;
   initNotifiedFIFO_nothreadSafe(&freeBlocks);
 
@@ -928,8 +932,18 @@ void *UE_thread(void *arg)
     // now RX slot processing after DCI. We launch and forget.
     pushTpool(&(get_nrUE_params()->Tpool), MsgRx);
 
+    // in this code, ul seems to be a big race condition, so we wait the previous call to processTX last
+    // Wait for TX slot processing to finish
+    if (oneTxDone) {
+      notifiedFIFO_elt_t *res = pullTpool(&txFifo, &(get_nrUE_params()->Tpool));
+      if (res == NULL)
+        LOG_E(PHY, "Tpool has been aborted\n");
+      else
+        delNotifiedFIFO_elt(res);
+    }
+    oneTxDone = true;
     // Start TX slot processing here. It runs and end freely but it will wait the ACK/NACK information
-    notifiedFIFO_elt_t *MsgTx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, NULL, processSlotTX);
+    notifiedFIFO_elt_t *MsgTx = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);
     nr_rxtx_thread_data_t *curMsgTx = (nr_rxtx_thread_data_t *)NotifiedFifoData(MsgTx);
     curMsgTx->proc = curMsg.proc;
     curMsgTx->writeBlockSize = writeBlockSize;
@@ -937,7 +951,7 @@ void *UE_thread(void *arg)
     curMsgTx->UE = UE;
 
     curMsgTx->tx_wait_for_dlsch = tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx];
-    tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0;
+    tx_wait_for_dlsch[curMsgTx->proc.nr_slot_tx] = 0; // for the next frame
     pushTpool(&(get_nrUE_params()->Tpool), MsgTx);
 
     decoded_frame_rx =
