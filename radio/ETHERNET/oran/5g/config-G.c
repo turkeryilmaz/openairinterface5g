@@ -123,6 +123,8 @@
 
 #define KEY_PRACH_CFGIDX   "prachConfigIndex"
 #define KEY_PRACH_CFGIDX_LTE   "prachConfigIndexLTE"
+#define KEY_PRACH_FREQSTART  "prachFreqStart"
+#define KEY_PRACH_FREQOFFSET "prachFreqOffset"
 #define KEY_SRS_SYM_IDX    "srsSym"
 #define KEY_SRS_SLOT        "srsSlot"
 #define KEY_SRS_NDM_OFFSET  "srsNdmOffset"
@@ -505,6 +507,15 @@ static int fillConfigStruct(RuntimeConfig *config, const char *key, const char *
     } else if (strcmp(key, KEY_PRACH_CFGIDX_LTE) == 0) {
         config->prachConfigIndexLTE = atoi(value);
         printf("Prach config index LTE for DSS: %d\n",config->prachConfigIndexLTE);
+    } else if (strcmp(key, KEY_PRACH_CFGIDX) == 0) {
+        config->prachConfigIndex = atoi(value);
+        printf("Prach config index: %d\n",config->prachConfigIndex);
+    } else if (strcmp(key, KEY_PRACH_FREQSTART) == 0) {
+        config->prachOffset = atoi(value);
+        printf("Prach Frequency Start: %d\n",config->prachOffset);
+    } else if (strcmp(key, KEY_PRACH_FREQOFFSET) == 0) {
+        config->prachFreqOffset = atoi(value);
+        printf("Prach Frequency Offset: %d\n",config->prachFreqOffset);
     } else if (strncmp(key, KEY_FILE_PRACH_AxC, strlen(KEY_FILE_PRACH_AxC)) == 0) {
         unsigned int ant_num = 0;
         sscanf(key,"antPrachC%02u",&ant_num);
