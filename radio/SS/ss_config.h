@@ -58,7 +58,7 @@ typedef struct RrcHOAsSecurityConfigReq_s {
         bool isCipheringInfoPresent;
         AS_CipheringInfo Ciphering;
         int rnti;
-}RrcHOAsSecurityConfig_t; 
+}RrcHOAsSecurityConfig_t;
 
 typedef struct ss_config_s {
   /** SS mode of operation */
@@ -87,10 +87,12 @@ typedef struct ss_config_s {
   int mac_rlc_data_ind_frame;
   int mac_rlc_data_ind_subframe;
   ss_l1macind_ctrl_t l1macind[MAX_NUM_CCs];
+  ss_ulgrant_info_t ulgrant_info[MAX_NUM_CCs];
   uint8_t CC_conf_flag[MAX_NUM_CCs];
   ss_rrc_pdcp_api_t *ss_pdcp_api;
   ss_crnti_config_t ss_crnti[MAX_NUM_CCs];
   RrcHOAsSecurityConfig_t HOASSecurityCOnfig;
+  uint8_t CC_update_flag[MAX_NUM_CCs];
 } ss_config_t;
 /**
 typedef enum {

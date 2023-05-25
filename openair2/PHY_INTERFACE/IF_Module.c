@@ -9,7 +9,6 @@
 
 static IF_Module_t *if_inst[MAX_IF_MODULES];
 static Sched_Rsp_t Sched_INFO[MAX_IF_MODULES][MAX_NUM_CCs];
-
 extern uint16_t pdcch_order_table[16];
 extern int cell_index;
 extern uint8_t pdcchOrder_rcvd;
@@ -62,7 +61,7 @@ void handle_rach(UL_IND_t *UL_info) {
       COMMON_channels_t *cc = eNB->common_channels;
       rnti_t rnti = 0;
       bool retVal = false;
-      for ( int UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ ) 
+      for ( int UE_id = 0; UE_id < NUMBER_OF_UE_MAX; UE_id++ )
       {
         if (eNB->UE_info.active[UL_info->CC_id][UE_id] == false)
           continue;
@@ -763,7 +762,7 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if (ifi->CC_mask < ((1<<RC.nb_CC[module_id])-1)) {
+    if (ifi->CC_mask < ((1<<RC.nb_mac_CC[module_id])-1)) {
       ifi->current_frame    = UL_info->frame;
       ifi->current_subframe = UL_info->subframe;
     } else {
@@ -793,11 +792,11 @@ void UL_indication(UL_IND_t *UL_info, void *proc) {
 
   if (NFAPI_MODE != NFAPI_MODE_PNF) {
     /* MultiCell: Condition modified for Multiple CC */
-    if (ifi->CC_mask == ((1<<RC.nb_CC[module_id])-1)) {
+    if (ifi->CC_mask == ((1<<RC.nb_mac_CC[module_id])-1)) {
       eNB_dlsch_ulsch_scheduler(module_id,
                                 (UL_info->frame+((UL_info->subframe>(9-sf_ahead))?1:0)) % 1024,
                                 (UL_info->subframe+sf_ahead)%10);
-      for (int CC_Id=0; CC_Id<RC.nb_CC[module_id]; CC_Id++) {
+      for (int CC_Id=0; CC_Id<RC.nb_mac_CC[module_id]; CC_Id++) {
         ifi->CC_mask            = 0;
         sched_info->module_id   = module_id;
         sched_info->CC_id       = CC_Id;
@@ -901,7 +900,7 @@ bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels
   if (!CCE_allocation_infeasible(UL_info->module_id, UL_info->CC_id, 0, UL_info->subframe,
         dl_config_pdu->dci_dl_pdu.dci_dl_pdu_rel8.aggregation_level, rnti))
   {
-    
+
     printf("PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
     LOG_D(MAC, "PDCCHOrder scheduled at Frame %d: Subframe %d : Adding common DCI for RNTI %d\n", UL_info->frame, UL_info->subframe, rnti);
     dl_req_body->number_dci++;
@@ -913,7 +912,7 @@ bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels
     printf("PDCCHOrder: CCE Allocation not feasible Frame %d: Subframe %d \n", UL_info->frame, UL_info->subframe);
     LOG_D(MAC, "PDCCHOrder: CCE Allocation not feasible Frame %d: Subframe %d \n", UL_info->frame, UL_info->subframe);
   }
-#if 0 
+#if 0
   dl_config_request.sfn_sf =  UL_info->frame<<4 | UL_info->subframe;
   dl_config_request.dl_config_request_body.number_pdcch_ofdm_symbols = 1;
   dl_config_request.dl_config_request_body.number_dci = 1;
@@ -921,7 +920,7 @@ bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels
   dl_config_request.dl_config_request_body.number_pdsch_rnti = 0;
   dl_config_request.dl_config_request_body.transmission_power_pcfich = 6000;
   dl_config_request.dl_config_request_body.dl_config_pdu_list = &dl_config_pdu;
-  LOG_I(PHY,"Entry In function:%s\ module_id:%d CC_id:%d dl_cqi:%d dl_bw:%d rnti:%d\n", 
+  LOG_I(PHY,"Entry In function:%s\ module_id:%d CC_id:%d dl_cqi:%d dl_bw:%d rnti:%d\n",
     __FUNCTION__,
     UL_info->module_id,
     UL_info->CC_id,
@@ -929,7 +928,7 @@ bool generate_mac_pdcch_order(UL_IND_t *UL_info, uint8_t dl_cqi, COMMON_channels
     cc[UL_info->CC_id].mib->message.dl_Bandwidth,
     rnti);
 #endif
-  
+
 
 #if 0
   if (oai_nfapi_dl_config_req(&dl_config_request) != 0)

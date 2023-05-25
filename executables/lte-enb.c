@@ -271,10 +271,12 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
         printf("Error in itti_send_msg_to_task");
         // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
       }
-      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d sf %d",
+      LOG_D(PHY, "[MAC] SS_UPD_TIM_INFO from  L1_Thread to SYS task itti_send_msg_to_task sfn %d sf %d",
             eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
     }
 
+#ifdef VVJ
+    MessageDef *message_p_vt_timer = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
     if (RC.ss.vtp_ready)
     {
       MessageDef *message_p_vt_timer = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
@@ -292,6 +294,7 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
               eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
       }
     }
+#endif
 
     if (eNB->UL_INFO.subframe == 0) {
       MessageDef *message_p_vtp = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
@@ -314,11 +317,31 @@ static inline int rxtx(PHY_VARS_eNB *eNB,
 
 int tem_proc_ccid = proc->CC_id;
 /* MultiCell: Function modify for Multiple CC */
-  for (int CC_id=0; CC_id<RC.nb_CC[eNB->Mod_id]; CC_id++) {
+  for (int CC_id=0; CC_id<RC.nb_mac_CC[eNB->Mod_id]; CC_id++) {
   eNB->UL_INFO.CC_id     = CC_id;
   proc->CC_id = CC_id;//Temp solution need to be fixed later
   eNB->if_inst->UL_indication(&eNB->UL_INFO, (void*)proc);
   }
+
+  if (RC.ss.mode >= SS_SOFTMODEM)
+  {
+    //#endif /** ENB_SS */
+    MessageDef *message_p_vt_timer = itti_alloc_new_message(TASK_ENB_APP, 0, SS_UPD_TIM_INFO);
+    if (message_p_vt_timer)
+    {
+      SS_UPD_TIM_INFO(message_p_vt_timer).sf = eNB->UL_INFO.subframe;
+      SS_UPD_TIM_INFO(message_p_vt_timer).sfn = eNB->UL_INFO.frame;
+      int send_res = itti_send_msg_to_task(TASK_VT_TIMER, 0, message_p_vt_timer);
+      if (send_res < 0)
+      {
+        printf("Error in itti_send_msg_to_task");
+        // LOG_E( PHY, "[SS] Error in L1_Thread itti_send_msg_to_task"); /** TODO: Need separate logging for SS */
+      }
+      LOG_D(PHY, "[SS] SS_UPD_TIM_INFO from  L1_Thread to TASK_VT_TIMER task itti_send_msg_to_task sfn %d sf %d\n",
+          eNB->UL_INFO.subframe, eNB->UL_INFO.frame); /** TODO: Need separate logging for SS */
+    }
+  }
+
   proc->CC_id = tem_proc_ccid;
 //#endif /** ENB_SS */
 
@@ -341,7 +364,7 @@ int tem_proc_ccid = proc->CC_id;
   /* CONFLICT RESOLUTION: END */
   stop_meas( &softmodem_stats_rxtx_sf );
   LOG_D(PHY,"%s() Exit proc[rx:%d%d tx:%d%d]\n", __FUNCTION__, proc->frame_rx, proc->subframe_rx, proc->frame_tx, proc->subframe_tx);
-  LOG_D(PHY, "rxtx:%lld nfapi:%lld tx:%lld rx:%lld prach:%lld ofdm:%lld ",
+  LOG_D(PHY, "rxtx:%lld nfapi:%lld tx:%lld rx:%lld prach:%lld ofdm:%lld \n",
         softmodem_stats_rxtx_sf.p_time, nfapi_meas.p_time,
         TICK_TO_US(eNB->phy_proc_tx),
         TICK_TO_US(eNB->phy_proc_rx),
@@ -349,7 +372,7 @@ int tem_proc_ccid = proc->CC_id;
         TICK_TO_US(eNB->ofdm_mod_stats)
        );
   LOG_D(PHY,
-        "dlsch[enc:%lld mod:%lld scr:%lld rm:%lld t:%lld i:%lld] rx_dft:%lld ",
+        "dlsch[enc:%lld mod:%lld scr:%lld rm:%lld t:%lld i:%lld] rx_dft:%lld \n",
         TICK_TO_US(eNB->dlsch_encoding_stats),
         TICK_TO_US(eNB->dlsch_modulation_stats),
         TICK_TO_US(eNB->dlsch_scrambling_stats),
@@ -357,13 +380,13 @@ int tem_proc_ccid = proc->CC_id;
         TICK_TO_US(eNB->dlsch_turbo_encoding_stats),
         TICK_TO_US(eNB->dlsch_interleaving_stats),
         TICK_TO_US(eNB->rx_dft_stats));
-  LOG_D(PHY," ulsch[ch:%lld freq:%lld dec:%lld demod:%lld ru:%lld ",
+  LOG_D(PHY," ulsch[ch:%lld freq:%lld dec:%lld demod:%lld ru:%lld \n",
         TICK_TO_US(eNB->ulsch_channel_estimation_stats),
         TICK_TO_US(eNB->ulsch_freq_offset_estimation_stats),
         TICK_TO_US(eNB->ulsch_decoding_stats),
         TICK_TO_US(eNB->ulsch_demodulation_stats),
         TICK_TO_US(eNB->ulsch_rate_unmatching_stats));
-  LOG_D(PHY, "td:%lld dei:%lld dem:%lld llr:%lld tci:%lld ",
+  LOG_D(PHY, "td:%lld dei:%lld dem:%lld llr:%lld tci:%lld \n",
         TICK_TO_US(eNB->ulsch_turbo_decoding_stats),
         TICK_TO_US(eNB->ulsch_deinterleaving_stats),
         TICK_TO_US(eNB->ulsch_demultiplexing_stats),
@@ -921,7 +944,7 @@ void init_eNB_proc(int inst) {
   pthread_attr_t *attr_prach_br=NULL;
   LOG_I(PHY,"%s(inst:%d) RC.nb_CC[inst]:%d \n",__FUNCTION__,inst,RC.nb_CC[inst]);
 
-  for (CC_id=0; CC_id<RC.nb_CC[inst]; CC_id++) {
+  for (CC_id=0; CC_id<RC.nb_mac_CC[inst]; CC_id++) {
     eNB = RC.eNB[inst][CC_id];
     LOG_I(PHY,"Initializing eNB processes instance:%d CC_id %d \n",inst,CC_id);
     proc = &eNB->proc;
@@ -1214,10 +1237,10 @@ void init_eNB_afterRU(void) {
   LOG_I(PHY,"%s() RC.nb_inst:%d\n", __FUNCTION__, RC.nb_inst);
 
   for (inst=0; inst<RC.nb_inst; inst++) {
-    LOG_I(PHY,"RC.nb_CC[inst]:%d\n", RC.nb_CC[inst]);
+    LOG_I(PHY,"RC.nb_mac_CC[inst]:%d\n", RC.nb_mac_CC[inst]);
 
-    for (CC_id=0; CC_id<RC.nb_CC[inst]; CC_id++) {
-      LOG_I(PHY,"RC.nb_CC[inst:%d][CC_id:%d]:%p\n", inst, CC_id, RC.eNB[inst][CC_id]);
+    for (CC_id=0; CC_id<RC.nb_mac_CC[inst]; CC_id++) {
+      LOG_I(PHY,"RC.nb_mac_CC[inst:%d][CC_id:%d]:%p\n", inst, CC_id, RC.eNB[inst][CC_id]);
       eNB                                  =  RC.eNB[inst][CC_id];
      // map antennas and PRACH signals to eNB RX
       LOG_I(PHY,"Mapping RX ports from %d RUs to eNB %d\n",eNB->num_RU,eNB->Mod_id);

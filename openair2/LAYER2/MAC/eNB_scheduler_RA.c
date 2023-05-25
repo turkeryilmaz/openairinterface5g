@@ -1281,7 +1281,7 @@ schedule_RA(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
   uint8_t i;
   start_meas(&mac->schedule_ra);
 
-  for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     // skip UL component carriers if TDD
     if (is_UL_sf(&cc[CC_id], subframeP) == 1)
       continue;
@@ -1400,7 +1400,7 @@ initiate_ra_proc(module_id_t module_idP,
           static int drnti_def[]={ 0xbda7, 0x71da, 0x9c40, 0xc350, 0x2710, 0x4e20, 0x7530, 0x1388, 0x3a98, 0x61a8, 0x88b8, 0xafc8, 0xd6d8, 0x1b58, 0x4268, 0x6978 };
           for (int j=0; j<MAX_MOBILES_PER_ENB && j< (sizeof(drnti_def)/sizeof(int));j++)
             drnti[j]=drnti_def[j];
-          
+
           int nb_ue = 0;
 
           for (int j = 0; j < MAX_MOBILES_PER_ENB; j++) {

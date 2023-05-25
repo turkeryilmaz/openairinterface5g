@@ -422,15 +422,16 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
       if ((pdcp_p->security_activated != 0) &&
           (((pdcp_p->cipheringAlgorithm) != 0) ||
            ((pdcp_p->integrityProtAlgorithm) != 0))) {
-          uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
+
+        uint8_t ciphyeringAlgorithm = pdcp_p->cipheringAlgorithm;
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
           if (RC.ss.mode >= SS_SOFTMODEM) {
-              if(srb_flagP && rb_idP==1){
-                LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
-                uper_decode(NULL,   &asn_DEF_LTE_DL_DCCH_Message,
-                      (void **)&dl_dcch_msg,
-                      (const void *)sdu_buffer_pP,
-                      sdu_buffer_sizeP, 0, 0);
+            if(srb_flagP && rb_idP==1){
+              LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
+              uper_decode(NULL,   &asn_DEF_LTE_DL_DCCH_Message,
+                  (void **)&dl_dcch_msg,
+                  (const void *)sdu_buffer_pP,
+                  sdu_buffer_sizeP, 0, 0);
               if(dl_dcch_msg){
                 if(dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_securityModeCommand){
                   pdcp_p->cipheringAlgorithm = 0;
@@ -439,20 +440,20 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
                 ASN_STRUCT_FREE(asn_DEF_LTE_DL_DCCH_Message,dl_dcch_msg);
               }
             }
-	  }
-	  start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
+          }
+          start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].apply_security);
         } else {
           start_meas(&UE_pdcp_stats[ctxt_pP->module_id].apply_security);
         }
 
         pdcp_apply_security(ctxt_pP,
-                            pdcp_p,
-                            srb_flagP,
-                            rb_idP % LTE_maxDRB,
-                            pdcp_header_len,
-                            current_sn,
-                            pdcp_pdu_p->data,
-                            sdu_buffer_sizeP);
+            pdcp_p,
+            srb_flagP,
+            rb_idP % LTE_maxDRB,
+            pdcp_header_len,
+            current_sn,
+            pdcp_pdu_p->data,
+            sdu_buffer_sizeP);
 
         if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
           pdcp_p->cipheringAlgorithm = ciphyeringAlgorithm;
@@ -1106,9 +1107,14 @@ pdcp_data_ind(
         SS_DRB_PDU_IND (message_p).frame = ctxt_pP->frame;
         SS_DRB_PDU_IND (message_p).subframe = ctxt_pP->subframe;
 
-        int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
-        if(send_res < 0) {
-          LOG_E(RRC,"Error in itti_send_msg_to_task");
+        /* Workaround fix for not getting SS_DRB_PDU_IND in other test cases */
+        if(SS_DRB_PDU_IND (message_p).sdu_size > 0) {
+          int send_res = itti_send_msg_to_task (TASK_SS_DRB, INSTANCE_DEFAULT, message_p);
+          if(send_res < 0) {
+            LOG_E(PDCP,"Error in itti_send_msg_to_task");
+          }
+        } else {
+          LOG_A(PDCP,"sdu size:%d in SS_DRB_PDU_IND is not greater then zero \n",SS_DRB_PDU_IND (message_p).sdu_size);
         }
       }
     }
@@ -1413,7 +1419,9 @@ pdcp_run (
                 RRC_DCCH_DATA_REQ (msg_p).muip,
                 RRC_DCCH_DATA_REQ (msg_p).confirmp,
                 RRC_DCCH_DATA_REQ (msg_p).mode);
-          LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld \n", RRC_DCCH_DATA_REQ (msg_p).rb_id);
+          LOG_D(PDCP, "Before calling pdcp_data_req from pdcp_run! RRC_DCCH_DATA_REQ (msg_p).rb_id: %ld frame %d subframe %d\n",
+           RRC_DCCH_DATA_REQ (msg_p).rb_id,ctxt_pP->frame,ctxt_pP->subframe);
+
           result = pdcp_data_req (&ctxt,
                                   SRB_FLAG_YES,
                                   RRC_DCCH_DATA_REQ (msg_p).rb_id,
@@ -2446,6 +2454,7 @@ pdcp_config_set_security_cipher(
   DevAssert(pdcp_pP != NULL);
   pdcp_pP->cipheringAlgorithm     = security_modeP;
   pdcp_pP->security_activated = 1;
+  LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
 }
 
 //-----------------------------------------------------------------------------
@@ -2470,11 +2479,12 @@ pdcp_config_set_security(
           PROTOCOL_PDCP_CTXT_ARGS(ctxt_pP,pdcp_pP),
           pdcp_pP->cipheringAlgorithm,
           pdcp_pP->integrityProtAlgorithm);
-    pdcp_pP->kRRCenc = kRRCenc;
-    pdcp_pP->kRRCint = kRRCint;
-    pdcp_pP->kUPenc  = kUPenc;
+    if(kRRCenc != NULL) pdcp_pP->kRRCenc = kRRCenc;
+    if(kRRCint != NULL) pdcp_pP->kRRCint = kRRCint;
+    if(kUPenc != NULL)  pdcp_pP->kUPenc  = kUPenc;
     /* Activate security */
     pdcp_pP->security_activated = 1;
+  LOG_D(PDCP, "fxn:%s security_activated = 1\n", __FUNCTION__);
   }
 }
 

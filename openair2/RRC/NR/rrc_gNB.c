@@ -4500,6 +4500,7 @@ void *rrc_gnb_task(void *args_p) {
       case E1AP_BEARER_CONTEXT_SETUP_RESP:
         LOG_I(NR_RRC, "Received E1AP_BEARER_CONTEXT_SETUP_RESP for instance %d\n", (int)instance);
         rrc_gNB_process_e1_bearer_context_setup_resp(&E1AP_BEARER_CONTEXT_SETUP_RESP(msg_p), instance);
+
       case SS_SS_NR_PAGING_IND:
         LOG_A(NR_RRC, "Received Paging message from SS: %s\n", msg_name_p);
         rrc_gNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);

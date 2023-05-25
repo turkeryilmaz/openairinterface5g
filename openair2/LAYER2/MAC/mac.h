@@ -83,7 +83,7 @@
 
 #define MAX_MAC_INST 16
 #define BCCH_PAYLOAD_SIZE_MAX 128
-#define CCCH_PAYLOAD_SIZE_MAX 512 
+#define CCCH_PAYLOAD_SIZE_MAX 512
 #define PCCH_PAYLOAD_SIZE_MAX 128
 #define RAR_PAYLOAD_SIZE_MAX 128
 
@@ -511,8 +511,9 @@ typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_A
 typedef enum { S_DL_NONE = 0, S_DL_SCHEDULED } UE_DLSCH_STATUS;
 /*!\brief  scheduler mode */
 typedef enum {
-  SCHED_MODE_DEFAULT = 0, /// default cheduler
-  SCHED_MODE_FAIR_RR /// fair raund robin
+  SCHED_MODE_DEFAULT = 0,     /// default cheduler
+  SCHED_MODE_FAIR_RR,      /// fair raund robin
+  SCHED_MODE_SS           // Scheduler for SS_SOFTMODEM mode
 } SCHEDULER_MODES;
 /*! \brief temp struct for DLSCH sched */
 typedef struct {
@@ -1311,7 +1312,7 @@ typedef struct eNB_MAC_INST_s {
   /// Pointer to IF module instance for PHY
   IF_Module_t *if_inst;
   /// Common cell resources
-  COMMON_channels_t common_channels[NFAPI_CC_MAX];
+  COMMON_channels_t common_channels[MAX_NUM_CCs];
   /// current PDU index (BCH,MCH,DLSCH)
   int16_t pdu_index[NFAPI_CC_MAX];
 

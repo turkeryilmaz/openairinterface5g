@@ -5032,6 +5032,7 @@ SR_indication(module_id_t mod_idP,
       }
 
       UE_info->UE_template[cc_idP][UE_id].ul_SR = 1;
+      LOG_D(MAC, "fxn:%s ul_SR=1 for ue:%d\n", __FUNCTION__, rntiP );
       UE_info->UE_template[cc_idP][UE_id].ul_active = true;
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 1);
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_SR_INDICATION, 0);
@@ -5157,6 +5158,28 @@ harq_indication(module_id_t mod_idP,
                  (void *) &harq_pdu->harq_indication_fdd_rel13,
                  channel);
   }
+
+    if(IndCtrlMode_ENABLE == RC.ss.l1macind[CC_idP].UL_HARQ_Ctrl)
+    {
+      int i;
+      LOG_I(MAC, "HARQ number_of_ack_nack=%d\n", harq_pdu->harq_indication_fdd_rel13.number_of_ack_nack);
+      for (i = 0; i < harq_pdu->harq_indication_fdd_rel13.number_of_ack_nack; i++)
+      {
+          LOG_I(MAC, "HARQ index %d ACK/NACK %d\n", i, harq_pdu->harq_indication_fdd_rel13.harq_tb_n[i]);
+
+          // Populate and send the SS_SYSTEM_IND to System Simulator
+          MessageDef *m = itti_alloc_new_message(TASK_MAC_ENB, 0, SS_SYSTEM_IND);
+          SS_SYSTEM_IND(m).physCellId = RC.mac[mod_idP]->common_channels[CC_idP].physCellId;
+          SS_SYSTEM_IND(m).sysind_type = SysInd_Type_UL_HARQ;
+          SS_SYSTEM_IND(m).sfn = frameP;
+          SS_SYSTEM_IND(m).sf = subframeP;
+          SS_SYSTEM_IND(m).UL_Harq = harq_pdu->harq_indication_fdd_rel13.harq_tb_n[i];
+          itti_send_msg_to_task(TASK_SS_SYSIND, 0, m);
+          LOG_A(MAC,"MAC Sending SS_SYSTEM_IND with Type %d and UL_Harq %d to System Simulator frame %d Subframe %d\n",
+           SS_SYSTEM_IND(m).sysind_type, SS_SYSTEM_IND(m).UL_Harq,frameP,subframeP);
+      }
+    }
+
 
   /* don't care about cqi reporting if NACK/DTX is there */
   if (channel == 0 && !nack_or_dtx_reported(cc,

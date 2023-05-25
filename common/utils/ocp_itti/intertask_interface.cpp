@@ -147,7 +147,7 @@ extern "C" {
     task_list_t *t=tasks[destination_task_id];
     pthread_mutex_lock (&t->queue_cond_lock);
     int ret=itti_send_msg_to_task_locked(destination_task_id, destinationInstance, message);
-
+    LOG_I(ITTI, "src task:%s dest task:%s msg_name:%s\n",ITTI_MSG_ORIGIN_NAME(message), ITTI_MSG_DESTINATION_NAME(message), ITTI_MSG_NAME(message) );
     while ( t->message_queue.size()>0 && t->admin.func != NULL ) {
       if (t->message_queue.size()>1)
         LOG_W(ITTI,"queue in no thread mode is %ld\n", t->message_queue.size());
@@ -292,7 +292,7 @@ extern "C" {
     } else {
       *received_msg=t->message_queue.back();
       t->message_queue.pop_back();
-      LOG_D(ITTI,"task %s received a message\n",t->admin.name);
+      LOG_D(ITTI,"task %s received message from task:%s \n",t->admin.name, ITTI_MSG_ORIGIN_NAME(*received_msg));
     }
 
     pthread_mutex_unlock (&t->queue_cond_lock);
@@ -318,6 +318,15 @@ extern "C" {
                        void *args_p) {
     task_list_t *t=tasks[task_id];
     threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,OAI_PRIORITY_RT);
+    LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
+    return 0;
+  }
+
+  int itti_create_task_prio(task_id_t task_id,
+                       void *(*start_routine)(void *),
+                       void *args_p,int addprio) {
+    task_list_t *t=tasks[task_id];
+    threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,(OAI_PRIORITY_RT)+addprio);
     LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
     return 0;
   }

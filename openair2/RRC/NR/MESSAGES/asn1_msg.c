@@ -194,7 +194,7 @@ int xer_nr_sprint (char *string, size_t string_size, asn_TYPE_descriptor_t *td, 
 
 //------------------------------------------------------------------------------
 
-uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) { 
+uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
 
   asn_enc_rval_t enc_rval;
   rrc_gNB_carrier_data_t *carrier = &rrc->carrier;
@@ -233,7 +233,7 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
       ssb_subcarrier_offset >>= 1; // this assumes 120kHz SCS for SSB and subCarrierSpacingCommon (only option supported by OAI for now)
   }
   mib->message.choice.mib->ssb_SubcarrierOffset = (rrc->configuration.ssb_SubcarrierOffset)&15;
-  LOG_A(NR_RRC,"ssb_SubcarrierOffset: %d \n",mib->message.choice.mib->ssb_SubcarrierOffset);
+  LOG_A(NR_RRC,"ssb_SubcarrierOffset: %ld \n",mib->message.choice.mib->ssb_SubcarrierOffset);
 
   /*
   * The SIB1 will be sent in this allocation (Type0-PDCCH) : 38.213, 13-4 Table and 38.213 13-11 to 13-14 tables
@@ -251,23 +251,23 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
   case NR_SubcarrierSpacing_kHz15:
     mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs15or60;
     break;
-    
+
   case NR_SubcarrierSpacing_kHz30:
     mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs30or120;
     break;
-    
+
   case NR_SubcarrierSpacing_kHz60:
     mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs15or60;
     break;
-    
+
   case NR_SubcarrierSpacing_kHz120:
     mib->message.choice.mib->subCarrierSpacingCommon = NR_MIB__subCarrierSpacingCommon_scs30or120;
     break;
-    
+
   case NR_SubcarrierSpacing_kHz240:
     AssertFatal(1==0,"Unknown subCarrierSpacingCommon %d\n",(int)*scc->ssbSubcarrierSpacing);
     break;
-    
+
   default:
       AssertFatal(1==0,"Unknown subCarrierSpacingCommon %d\n",(int)*scc->ssbSubcarrierSpacing);
   }
@@ -276,11 +276,11 @@ uint8_t do_MIB_NR(gNB_RRC_INST *rrc,uint32_t frame) {
   case 	NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos2:
     mib->message.choice.mib->dmrs_TypeA_Position = NR_MIB__dmrs_TypeA_Position_pos2;
     break;
-    
+
   case 	NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos3:
     mib->message.choice.mib->dmrs_TypeA_Position = NR_MIB__dmrs_TypeA_Position_pos3;
     break;
-    
+
   default:
     AssertFatal(1==0,"Unknown dmrs_TypeA_Position %d\n",(int)scc->dmrs_TypeA_Position);
   }
@@ -424,7 +424,7 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
     scs_scaling2 = scs_scaling0>>2;
   }
   NR_ARFCN_ValueNR_t absoluteFrequencySSB = 0;
-  uint32_t absolute_diff = 0;	
+  uint32_t absolute_diff = 0;
   if (RC.ss.mode == SS_SOFTMODEM)
   {
     LOG_A(NR_RRC, "fxn:%s absoluteFrequencySSB:%ld ", __FUNCTION__, absoluteFrequencySSB);
@@ -450,9 +450,9 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
 		     configuration->scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[i]);
   }
 
-  initialDownlinkBWP->pdcch_ConfigCommon = 
+  initialDownlinkBWP->pdcch_ConfigCommon =
       configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdcch_ConfigCommon;
-  initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList = 
+  initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->commonSearchSpaceList =
        CALLOC(1,sizeof(struct NR_PDCCH_ConfigCommon__commonSearchSpaceList));
 
   NR_SearchSpace_t *ss1 = rrc_searchspace_config(true, 1, 0);
@@ -468,7 +468,7 @@ uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier,
   asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->searchSpaceOtherSystemInformation, 3);
   asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->pagingSearchSpace, 2);
   asn1cCallocOne(initialDownlinkBWP->pdcch_ConfigCommon->choice.setup->ra_SearchSpace, 1);
-   
+
   initialDownlinkBWP->pdsch_ConfigCommon = configuration->scc->downlinkConfigCommon->initialDownlinkBWP->pdsch_ConfigCommon;
   ServCellCom->downlinkConfigCommon.bcch_Config.modificationPeriodCoeff = NR_BCCH_Config__modificationPeriodCoeff_n2;
   ServCellCom->downlinkConfigCommon.pcch_Config.defaultPagingCycle = NR_PagingCycle_rf256;
@@ -623,7 +623,7 @@ uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
   sib_message->message.choice.c1 = CALLOC(1,sizeof(struct NR_BCCH_DL_SCH_MessageType__c1));
   sib_message->message.choice.c1->present = NR_BCCH_DL_SCH_MessageType__c1_PR_systemInformation;
   sib_message->message.choice.c1->choice.systemInformation = CALLOC(1,sizeof(struct NR_SystemInformation));
-  
+
   struct NR_SystemInformation *sib = sib_message->message.choice.c1->choice.systemInformation;
   sib->criticalExtensions.present = NR_SystemInformation__criticalExtensions_PR_systemInformation;
   sib->criticalExtensions.choice.systemInformation = CALLOC(1, sizeof(struct NR_SystemInformation_IEs));
@@ -948,7 +948,7 @@ void fill_initial_SpCellConfig(int uid,
 
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 5, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
- 
+
   bwp_Dedicated->pdsch_Config = config_pdsch(bitmap, 0, pdsch_AntennaPorts);
 
   SpCellConfig->spCellConfigDedicated->tag_Id=0;
@@ -1363,11 +1363,9 @@ void fill_initial_cellGroupConfig(int uid,
                                  const int CC_id)
 {
   NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
-  NR_RLC_Config_t                                  *rlc_Config           = NULL;
   NR_LogicalChannelConfig_t                        *logicalChannelConfig = NULL;
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
-  long *logicalChannelGroup = NULL;
 
   cellGroupConfig->cellGroupId = 0;
 
@@ -1403,7 +1401,7 @@ void fill_initial_cellGroupConfig(int uid,
   }
 
   cellGroupConfig->rlc_BearerToReleaseList = NULL;
-  
+
   /* mac CellGroup Config */
   mac_CellGroupConfig                                                     = calloc(1, sizeof(*mac_CellGroupConfig));
 
@@ -1433,11 +1431,11 @@ void fill_initial_cellGroupConfig(int uid,
   physicalCellGroupConfig->p_NR_FR1                                         = NULL;
   physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook                          = NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic;
   cellGroupConfig->physicalCellGroupConfig                                  = physicalCellGroupConfig;
-  
+
   cellGroupConfig->spCellConfig                                             = calloc(1,sizeof(*cellGroupConfig->spCellConfig));
 
   fill_initial_SpCellConfig(uid,cellGroupConfig->spCellConfig,scc,servingcellconfigdedicated,configuration);
-  
+
   cellGroupConfig->sCellToAddModList                                        = NULL;
   cellGroupConfig->sCellToReleaseList                                       = NULL;
 }
@@ -1526,7 +1524,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
     ie->radioBearerConfig.drb_ToAddModList  = NULL;
     ie->radioBearerConfig.drb_ToReleaseList = NULL;
     ie->radioBearerConfig.securityConfig    = NULL;
-    
+
     /****************************** masterCellGroup ******************************/
     DevAssert(masterCellGroup && masterCellGroup_len > 0);
     ie->masterCellGroup.buf = malloc(masterCellGroup_len);
@@ -1650,7 +1648,7 @@ uint8_t do_NR_SA_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
   sa_band_info = (NR_FreqBandInformation_t*)calloc(1,sizeof(NR_FreqBandInformation_t));
   sa_band_info->present = NR_FreqBandInformation_PR_bandInformationNR;
   sa_band_info->choice.bandInformationNR = sa_band_infoNR;
-  
+
   sa_band_list = (NR_FreqBandList_t *)calloc(1, sizeof(NR_FreqBandList_t));
   asn1cSeqAdd(&sa_band_list->list, sa_band_info);
 
@@ -1854,11 +1852,18 @@ int16_t do_RRCReconfiguration(
    AssertFatal(enc_rval.encoded >0, "ASN1 message encoding failed (%s, %lu)!\n",
                 enc_rval.failed_type->name, enc_rval.encoded);
 
-    LOG_D(NR_RRC,"[gNB %d] RRCReconfiguration for UE %lx Encoded %zd bits (%zd bytes)\n",
-          ctxt_pP->module_id,
-          ctxt_pP->rntiMaybeUEid,
-          enc_rval.encoded,
-          (enc_rval.encoded+7)/8);
+    LOG_D(NR_RRC,"[gNB %d] RRCReconfiguration for UE %ld Encoded %zd bits (%zd bytes)\n",
+            ctxt_pP->module_id,
+            ctxt_pP->rntiMaybeUEid,
+            enc_rval.encoded,
+            (enc_rval.encoded+7)/8);
+
+    if (enc_rval.encoded == -1) {
+        LOG_E(NR_RRC,"[gNB %d] ASN1 : RRCReconfiguration encoding failed for UE %ld\n",
+            ctxt_pP->module_id,
+            ctxt_pP->rntiMaybeUEid);
+        return(-1);
+    }
 
     return((enc_rval.encoded+7)/8);
 }
@@ -1990,7 +1995,7 @@ do_NR_RRCReconfigurationComplete(
 uint8_t do_RRCSetupComplete(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
                             const uint8_t Transaction_id, uint8_t sel_plmn_id, const int dedicatedInfoNASLength, const char *dedicatedInfoNAS){
   asn_enc_rval_t enc_rval;
-  
+
   NR_UL_DCCH_Message_t  ul_dcch_msg;
   NR_RRCSetupComplete_t *RrcSetupComplete;
   memset((void *)&ul_dcch_msg,0,sizeof(NR_UL_DCCH_Message_t));
@@ -2040,7 +2045,7 @@ uint8_t do_RRCSetupComplete(uint8_t Mod_id, uint8_t *buffer, size_t buffer_size,
 }
 
 //------------------------------------------------------------------------------
-uint8_t 
+uint8_t
 do_NR_DLInformationTransfer(
     uint8_t Mod_id,
     uint8_t **buffer,
@@ -2339,7 +2344,7 @@ NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf)
   asn1cCallocOne(monr1->ext1->freqBandIndicatorNR, band);
   mo1->measObject.choice.measObjectNR = monr1;
   asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
-  
+
   // Reporting Configuration: Specifies how reporting should be done. This could be periodic or event-triggered.
   NR_ReportConfigToAddMod_t *rc = calloc(1, sizeof(*rc));
   rc->reportConfigId = 1;

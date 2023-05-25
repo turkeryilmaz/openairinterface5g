@@ -313,6 +313,20 @@ void *mac_enb_task(void *arg)
         }
         break;
 
+      case SS_ULGRANT_INFO:
+        /* This information will be used by scheduler function schedule_ulsch_ss & schedule_ue_spec_ss */
+        LOG_I(MAC, "Received SS_ULGRANT_INFO from SS for cell_index:%d\n", received_msg->ittiMsg.ss_ulgrant_info.cell_index);
+        memset(&RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index], 0, sizeof(ss_ulgrant_info_t));
+        memcpy(&RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index], &received_msg->ittiMsg.ss_ulgrant_info, sizeof(ss_ulgrant_info_t));
+        LOG_I(MAC,"cell_index:%d duration:%d numCycles:%d\n", 
+          received_msg->ittiMsg.ss_ulgrant_info.cell_index, 
+          received_msg->ittiMsg.ss_ulgrant_info.periodiGrantInfo.period.duration,
+          received_msg->ittiMsg.ss_ulgrant_info.periodiGrantInfo.transRepType.NumOfCycles);
+        LOG_I(MAC,"RC: duration:%d numCycles:%d\n", 
+            RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index].periodiGrantInfo.period.duration,
+            RC.ss.ulgrant_info[received_msg->ittiMsg.ss_ulgrant_info.cell_index].periodiGrantInfo.transRepType.NumOfCycles);
+        break;
+
       case TERMINATE_MESSAGE:
         LOG_W(MAC, " *** Exiting MAC thread\n");
         itti_exit_task();

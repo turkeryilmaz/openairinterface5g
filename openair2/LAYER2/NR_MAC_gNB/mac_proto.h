@@ -110,6 +110,8 @@ nr_pp_impl_ul nr_init_fr1_ulsch_preprocessor(int CC_id);
 
 void schedule_nr_PCH(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);
 
+void schedule_nr_PCH(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);
+
 /////// Random Access MAC-PHY interface functions and primitives ///////
 
 void nr_schedule_RA(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);

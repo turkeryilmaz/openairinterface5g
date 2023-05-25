@@ -22,7 +22,7 @@
 #define _SS_ENB_CONTEXT_
 
 #include "SidlCommon.h"
-
+#include "SIDL_EUTRA_SYSTEM_PORT.h"
 #if 0
 #define SYS_L LOG_SYS(evId, SSConfig.sfn, SSConfig.sf, __VA_ARGS__) 
 #define SRB_L LOG_SRB(evId, SSConfig.sfn, SSConfig.sf, __VA_ARGS__) 
@@ -62,18 +62,28 @@ typedef struct SS_Cell_Context_s{
   uint16_t ss_rnti_g;
 } SS_Cell_Context_t;
 
+typedef struct sys_cnf_info
+{
+  enum ConfirmationResult_Type_Sel resType;
+  bool resVal;
+  enum SystemConfirm_Type_Sel cnfType;
+  uint8_t msg_buffer[1000];
+  uint8_t cnfFlag;
+}sys_cnf_info_t;
+
 typedef struct SSConfigContext_s {
   /** List of Cells */
   SS_Cell_Context_t SSCell_list[8];
   /** Timing info */
+  uint16_t hsfn;
   uint16_t sfn;
   uint8_t  sf;
 
   ss_set_timinfo_t vtinfo;
   hash_table_t   *vt_timer_table   ; // key is SFN_SF
   bool send_atten_cnf;
+  sys_cnf_info_t sys_cnf;
   /** TODO: To add more */
-
 } SSConfigContext_t;
 
 typedef enum {

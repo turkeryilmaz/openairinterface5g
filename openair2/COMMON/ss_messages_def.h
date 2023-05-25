@@ -56,4 +56,4 @@ MESSAGE_DEF(SS_VT_TIME_OUT,                   MESSAGE_PRIORITY_MED, ss_vt_time_o
 MESSAGE_DEF(SS_L1MACIND_CTRL,                 MESSAGE_PRIORITY_MED, ss_l1macind_ctrl_t                     , ss_l1macind_ctrl)
 
 MESSAGE_DEF(SS_SYSTEM_IND,                    MESSAGE_PRIORITY_MED, ss_system_ind_t                        , ss_system_ind)
-
+MESSAGE_DEF(SS_ULGRANT_INFO,                  MESSAGE_PRIORITY_MED, ss_ulgrant_info_t                      , ss_ulgrant_info)

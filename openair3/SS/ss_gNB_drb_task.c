@@ -150,7 +150,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
             bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
             bits_copy_to_array((char *)header->Reserved, 2, (const char *)pdu_ind->sdu, 6);
             data->d = pdu_ind->sdu_size - pdu_header_size;
-            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
+            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
             data->v = CALLOC(1, data->d);
             DevAssert(data->v != NULL);
             memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
@@ -169,7 +169,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
                 bits_copy_to_array((char *)header->SegmentOffset.v, 8, (const char *)pdu_ind->sdu, 16);
             }
             data->d = pdu_ind->sdu_size - pdu_header_size;
-            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
+            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
             data->v = CALLOC(1, data->d);
             DevAssert(data->v != NULL);
             memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);

@@ -167,7 +167,7 @@ rx_sdu(const module_id_t enb_mod_idP,
       UE_scheduling_control->ul_failure_timer = 0;
       UE_scheduling_control->ul_scheduled &= (~(1 << harq_pid));
       UE_scheduling_control->pusch_rx_num[CC_idP]++;
-      
+
       /* Update with smoothing: 3/4 of old value and 1/4 of new.
        * This is the logic that was done in the function
        * lte_est_timing_advance_pusch, maybe it's not necessary?
@@ -177,7 +177,7 @@ rx_sdu(const module_id_t enb_mod_idP,
       UE_scheduling_control->ta_update = (int)UE_scheduling_control->ta_update_f;
       int tmp_snr = (5 * ul_cqi - 640) / 10;
       UE_scheduling_control->pusch_snr[CC_idP] = tmp_snr;
-       
+
       if(tmp_snr > 0 && tmp_snr < 63) {
         double snr_filter_tpc=0.7;
         int snr_thres_tpc=30;
@@ -1432,7 +1432,10 @@ schedule_ulsch_rnti(module_id_t   module_idP,
 
   for (int UE_id = UE_info->list.head; UE_id >= 0; UE_id = UE_info->list.next[UE_id]) {
     if (UE_info->UE_template[CC_id][UE_id].rach_resource_type > 0)
+    {
       continue;
+    }
+
 
     // don't schedule if Msg5 is not received yet
     if (UE_info->UE_template[CC_id][UE_id].configured == false) {
@@ -1517,12 +1520,13 @@ schedule_ulsch_rnti(module_id_t   module_idP,
 
     /* Reset the scheduling request */
     UE_template_ptr->ul_SR = 0;
+    LOG_D(MAC, "fxn:%s ul_SR=0 for ue:%d\n", __FUNCTION__, rnti);
     const uint8_t status = mac_eNB_get_rrc_status(module_idP, rnti);
 
     /* Power control */
     /*
      * Compute the expected ULSCH RX snr (for the stats)
-     * 
+     *
      */
     const int32_t snr = UE_sched_ctrl_ptr->pusch_snr[CC_id];
     const int32_t target_snr = mac->puSch10xSnr / 10;
@@ -2430,3 +2434,270 @@ void schedule_ulsch_rnti_emtc(module_id_t   module_idP,
     } //repetition_number < total_number_of_repetitions
   }   // For loop on PDUs
 }
+bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, uint8_t SR_received)
+{
+  LOG_I(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
+
+  if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)
+  {
+    LOG_I(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
+    return true;
+  }
+
+  if (RC.ss.ulgrant_info[CC_id].ulGrantType == ON_SR_RECEPTION_PRESENT )
+  {
+    LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT\n", __FUNCTION__);
+    //if (SR_received == 1)
+    {
+      LOG_D(MAC, " %s ULGrantType: ON_SR_RECEPTION_PRESENT. ULGrant Scheduled at frame:%d subframe:%d\n",
+          __FUNCTION__,
+          frameP,
+          subframeP);
+      return true;
+    }
+    //else
+   // {
+      //LOG_I(MAC, "%s ulGrantType = ON_SR_RECEPTION_PRESENT but NOT scheduling\n", __FUNCTION__);
+      //return false;
+   // }
+  }
+
+  /* Handling periodic UL_Grant Configuration */
+  RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter++;
+
+  if (RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous == 1)
+    RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles = 1;
+
+  LOG_I(MAC, "fxn:%s CC_id:%d RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous:%d RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles:%d \n",
+      __FUNCTION__,
+      CC_id,
+      RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous,
+      RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles);
+
+  while (RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles)
+  {
+    if ((RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter % RC.ss.ulgrant_info[CC_id].periodiGrantInfo.period.duration) == 0)
+    {
+      LOG_I(MAC, "%s subframe_counter value:%d\n", __FUNCTION__, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
+      LOG_I(MAC, "%s ULGrant scheduled for current Frame %d Subframe:%d. Next ULGrant will be after %d subframe\n",
+          __FUNCTION__,
+          frameP,
+          subframeP,
+          RC.ss.ulgrant_info[CC_id].periodiGrantInfo.period.duration);
+
+      if (RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous == 0)
+        RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles--;
+
+      return true;
+    }
+    else
+    {
+      return true;
+    }
+  }
+  RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter = 0;
+
+  /* When below return is hit, it means now ULGrant will be scheduled in all subframes */
+  return true;
+}
+
+void
+schedule_ulsch_ss(module_id_t module_idP,
+               frame_t frameP,
+               sub_frame_t subframeP)
+{
+  eNB_MAC_INST *mac = NULL;
+  COMMON_channels_t *cc = NULL;
+  int sched_subframe;
+  int sched_frame;
+  /* Init */
+  mac = RC.mac[module_idP];
+  start_meas(&(mac->schedule_ulsch));
+  sched_subframe = (subframeP + 4) % 10;
+  sched_frame = frameP;
+  bool schedule = false;
+  UE_info_t *UE_info = &RC.mac[module_idP]->UE_info;
+  int UE_id = 0;
+  uint8_t ue_found = 0;
+
+  /* Note: RC.nb_mac_CC[module_idP] should be lower than or equal to NFAPI_CC_MAX */
+  for (int CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++, cc++) {
+    /* MultiCell: Common channels modify for multiple CC */
+    cc = &RC.mac[module_idP]->common_channels[CC_id];
+    for (UE_id = 0; UE_id < MAX_MOBILES_PER_ENB; UE_id++) {
+      if (UE_info->active[CC_id][UE_id])
+      {
+        ue_found = 1;
+        LOG_D(MAC, "%s UE found with rnti:%d\n", __FUNCTION__, UE_RNTI(module_idP, UE_id));
+        break;
+      }
+    }
+
+    if (ue_found == 0)
+    {
+      LOG_D(MAC, "%s No UE found\n", __FUNCTION__);
+      continue;
+    }
+
+    /* if schedule is false, it means SFN/SF for ULGrant had not yet arrived */
+//    schedule = check_ulGrant_Schedule(frameP, subframeP, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
+    schedule = check_ulGrant_Schedule(RC.eNB[0][CC_id]->UL_INFO.frame, RC.eNB[0][CC_id]->UL_INFO.subframe, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
+    if (schedule == false )
+      continue;
+
+    LOG_D(MAC, "fxn:%s Scheduling ULGrant\n", __FUNCTION__);
+    /* For TDD: check subframes where we have to act and return if nothing should be done now */
+    if (cc->tdd_Config) {  // Done only for CC_id = 0, assume tdd_Config for all CC_id
+      int tdd_sfa = cc->tdd_Config->subframeAssignment;
+
+      switch (subframeP) {
+        case 0:
+          if ((tdd_sfa == 0) || (tdd_sfa == 3))
+            sched_subframe = 4;
+          else if (tdd_sfa == 6)
+            sched_subframe = 7;
+          else
+            return;
+
+          break;
+
+        case 1:
+          if ((tdd_sfa == 0) || (tdd_sfa == 1))
+            sched_subframe = 7;
+          else if (tdd_sfa == 6)
+            sched_subframe = 8;
+          else
+            return;
+
+          break;
+
+        case 2:  // Don't schedule UL in subframe 2 for TDD
+          return;
+
+        case 3:
+          if (tdd_sfa == 2)
+            sched_subframe = 7;
+          else
+            return;
+
+          break;
+
+        case 4:
+          if (tdd_sfa == 1)
+            sched_subframe = 8;
+          else
+            return;
+
+          break;
+
+        case 5:
+          if (tdd_sfa == 0)
+            sched_subframe = 9;
+          else if (tdd_sfa == 6)
+            sched_subframe = 2;
+          else
+            return;
+
+          break;
+
+        case 6:
+          if (tdd_sfa == 0 || tdd_sfa == 1)
+            sched_subframe = 2;
+          else if (tdd_sfa == 6)
+            sched_subframe = 3;
+          else
+            return;
+
+          break;
+
+        case 7:
+          return;
+
+        case 8:
+          if ((tdd_sfa >= 2) && (tdd_sfa <= 5))
+            sched_subframe = 2;
+          else
+            return;
+
+          break;
+
+        case 9:
+          if ((tdd_sfa == 1) || (tdd_sfa == 3) || (tdd_sfa == 4))
+            sched_subframe = 3;
+          else if (tdd_sfa == 6)
+            sched_subframe = 4;
+          else
+            return;
+
+          break;
+
+        default:
+          return;
+      }
+    }
+
+    if (sched_subframe < subframeP) {
+      sched_frame++;
+      sched_frame %= 1024;
+    }
+
+    int emtc_active[5];
+    memset(emtc_active, 0, 5 * sizeof(int));
+
+    schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
+
+    if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
+                           cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
+                           sched_frame, sched_subframe)) {
+      int start_rb = get_prach_prb_offset(cc->tdd_Config!=NULL ? 1 : 0,
+                                          cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,
+                                          to_prb(cc->ul_Bandwidth),
+                                          cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
+                                          cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_FreqOffset,
+                                          0, // tdd_mapindex
+                                          sched_frame); // Nf
+      for (int i = 0; i < 6; i++)
+        cc->vrb_map_UL[start_rb + i] = 1;
+    }
+
+    /* HACK: let's remove the PUCCH from available RBs
+     * we suppose PUCCH size is:
+     * - for 25 RBs: 1 RB (top and bottom of ressource grid)
+     * - for 50:     2 RBs
+     * - for 100:    3 RBs
+     * This is totally arbitrary and might even be wrong.
+     */
+    switch (to_prb(cc->ul_Bandwidth)) {
+      case 25:
+        cc->vrb_map_UL[0] = 1;
+        cc->vrb_map_UL[24] = 1;
+        break;
+
+      case 50:
+        cc->vrb_map_UL[0] = 1;
+        cc->vrb_map_UL[1] = 1;
+        cc->vrb_map_UL[48] = 1;
+        cc->vrb_map_UL[49] = 1;
+        break;
+
+      case 100:
+        cc->vrb_map_UL[0] = 1;
+        cc->vrb_map_UL[1] = 1;
+        cc->vrb_map_UL[2] = 1;
+        cc->vrb_map_UL[97] = 1;
+        cc->vrb_map_UL[98] = 1;
+        cc->vrb_map_UL[99] = 1;
+        break;
+
+      default:
+        LOG_E(MAC, "RBs setting not handled. Todo.\n");
+        exit(1);
+    }
+
+    schedule_ulsch_rnti(module_idP, CC_id, frameP, subframeP, sched_subframe);
+  }
+
+  LOG_D(MAC, "Exit from fxn:%s\n", __FUNCTION__);
+  stop_meas(&mac->schedule_ulsch);
+}
+

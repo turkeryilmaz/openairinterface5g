@@ -1011,6 +1011,8 @@ int rrc_mac_config_req_eNB(module_id_t Mod_idP, rrc_mac_config_req_eNB_t *param)
   }
 
   eNB->scheduler_mode = global_scheduler_mode;
+  //Set the number of MAC_CC to current configured CC value
+  *RC.nb_mac_CC= RC.nb_CC[0];
   return(0);
 }
 
@@ -1050,7 +1052,7 @@ void eNB_Config_Local_DRX(instance_t Mod_id,
     return;
   }
 
-  /* Modify scheduling control structure according to DRX configuration: doesn't support every configurations! */  
+  /* Modify scheduling control structure according to DRX configuration: doesn't support every configurations! */
   UE_scheduling_control->cdrx_configured = false; // will be set to true when receiving RRC Reconfiguration Complete
   UE_scheduling_control->cdrx_waiting_ack = true; // waiting for RRC Reconfiguration Complete message
   UE_scheduling_control->in_active_time = false;

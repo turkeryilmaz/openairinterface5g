@@ -208,7 +208,7 @@ void oai_create_enb(void) {
   int bodge_counter=0;
   int FAPI_configured_for_a_CC = 0;
   /* MultiCell: Function modify for Multiple CC */
-  for (int CC_id=0; CC_id<RC.nb_CC[0]; CC_id++) {
+  for (int CC_id=0; CC_id<RC.nb_mac_CC[0]; CC_id++) {
     PHY_VARS_eNB *eNB = RC.eNB[0][CC_id];
     if (eNB == NULL)
     {
@@ -237,7 +237,7 @@ void oai_create_enb(void) {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() Waiting for eNB to become configured (by RRC/PHY) - need to wait otherwise NFAPI messages won't contain correct values\n", __FUNCTION__);
       usleep(50000);
     } while(eNB->configured != 1 && !FAPI_configured_for_a_CC);
-    //Set if the 1 CC is configured 
+    //Set if the 1 CC is configured
     FAPI_configured_for_a_CC = 1;
     NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() eNB Cell %d is now configured\n", __FUNCTION__,CC_id);
   }
@@ -262,7 +262,7 @@ void oai_create_gnb(void) {
     RC.gNB[0] = (PHY_VARS_gNB *) calloc(1, sizeof(PHY_VARS_gNB));
     LOG_D(PHY,"[nr-gnb.c] gNB structure RC.gNB[%d] allocated @ %p\n",0,RC.gNB[0]);
   }
-  
+
   PHY_VARS_gNB *gNB = RC.gNB[0];
   RC.nb_nr_CC = (int *)malloc(sizeof(int)); // TODO: find a better function to place this in
 

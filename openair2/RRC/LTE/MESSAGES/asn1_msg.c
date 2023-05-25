@@ -253,7 +253,7 @@ void free_LTE_PagingRecord_t(LTE_PagingRecord_t * ptr)
   }
 }
 
-uint8_t do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t additionalNonMBSFN, uint32_t frame) {
+int do_MIB_FeMBMS(rrc_eNB_carrier_data_t *carrier, uint32_t N_RB_DL, uint32_t additionalNonMBSFN, uint32_t frame) {
   asn_enc_rval_t enc_rval;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms=&carrier->mib_fembms;
   frame=198;
@@ -457,7 +457,7 @@ uint8_t do_MIB_SL(const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index,
   return((enc_rval.encoded+7)/8);
 }
 
-uint8_t do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
+int do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
                      int Mod_id,int CC_id,
                      RrcConfigurationReq *configuration
                     ) {
@@ -891,8 +891,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   LTE_MCC_MNC_Digit_t *dummy_mnc_1;
   LTE_MCC_MNC_Digit_t *dummy_mnc_2;
   asn_enc_rval_t enc_rval;
-  LTE_SchedulingInfo_t schedulingInfo[5],*schedulingInfo2;
-  LTE_SIB_Type_t sib_type[5],*sib_type2;
+  LTE_SchedulingInfo_t *schedulingInfo,*schedulingInfo2;
+  LTE_SIB_Type_t *sib_type,*sib_type2;
   uint8_t *buffer;
   LTE_BCCH_DL_SCH_Message_t *bcch_message;
   LTE_SystemInformationBlockType1_t **sib1;
@@ -918,13 +918,17 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     exit(1);
 
   memset(PLMN_identity_info,0,num_plmn * sizeof(LTE_PLMN_IdentityInfo_t));
-  memset(schedulingInfo,0,5*sizeof(LTE_SchedulingInfo_t));
-  memset(sib_type,0,sizeof(LTE_SIB_Type_t));
+  //Max SIB_INFO is 32 see 3GPP36331 6.4
+  schedulingInfo=CALLOC(32,sizeof(LTE_SchedulingInfo_t));
+  memset(schedulingInfo,0,32*sizeof(LTE_SchedulingInfo_t));
+  //Max SIB_INFO is 32 see 3GPP36331 6.4
+  sib_type=CALLOC(32*32,sizeof(LTE_SIB_Type_t));
+  memset(sib_type,0,32*32*sizeof(LTE_SIB_Type_t));
   if(configuration->eMBMS_M2_configured){
     sib_type2=CALLOC(1,sizeof(LTE_SIB_Type_t));
     schedulingInfo2=CALLOC(1,sizeof(LTE_SchedulingInfo_t));
-    memset(&schedulingInfo2,0,sizeof(LTE_SchedulingInfo_t));
-    memset(&sib_type2,0,sizeof(LTE_SIB_Type_t));
+    memset(schedulingInfo2,0,sizeof(LTE_SchedulingInfo_t));
+    memset(sib_type2,0,sizeof(LTE_SIB_Type_t));
   }
 
   (*sib1)->cellAccessRelatedInfo.plmn_IdentityList.list.free=free_LTE_PLMN_IdentityInfo_t;
@@ -1032,17 +1036,21 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
   (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
+  int count =0;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    for(int i=0; i < configuration->schedulingInfo_count; i++) {
-      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[i].si_Periodicity;
-      sib_type[i]=configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[i];
-      if(sib_type[i] == 1) {
-        RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+    for(int i=0; i < configuration->schedulingInfo_count[CC_id]; i++) {
+      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[CC_id][i].si_Periodicity;
+      for (int j =0; j < configuration->schedulingInfo[CC_id][i].sib_MappingInfo.size; j++){
+        LTE_SIB_Type_t *st = sib_type + (i*32 + j)*sizeof(LTE_SIB_Type_t);
+        *st = configuration->schedulingInfo[CC_id][i].sib_MappingInfo.LTE_SIB_Type[j];
+        if(*st == LTE_SIB_Type_sibType4) {
+          RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+        }
+        if(*st == LTE_SIB_Type_sibType5) {
+          RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
+        }
+        asn1cSeqAdd(&schedulingInfo[i].sib_MappingInfo.list,st);
       }
-      if(sib_type[i] == 2) {
-        RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
-      }
-      asn1cSeqAdd(&schedulingInfo[i].sib_MappingInfo.list,&sib_type[i]);
       asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo[i]);
     }
   } else {
@@ -1451,7 +1459,7 @@ uint8_t do_SIB23(uint8_t Mod_id,
     exit(-1);
   }
 
-  LOG_I(RRC,"[eNB %d] Configuration SIB2/3, eMBMS = %d\n", Mod_id, configuration->eMBMS_configured);
+  LOG_I(RRC,"[eNB %d] Configuration SIB2/3 for CC_id: %d, eMBMS = %d\n", Mod_id, CC_id, configuration->eMBMS_configured);
   sib2_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   sib3_part = CALLOC(1,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
   memset(sib2_part,0,sizeof(struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member));
@@ -2470,7 +2478,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
     InterFreqCarrierInfo->dl_CarrierFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].dl_CarrierFreq;
     InterFreqCarrierInfo->q_RxLevMin = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_RxLevMin;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max_Present) {
-      InterFreqCarrierInfo->p_Max = configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max;
+      InterFreqCarrierInfo->p_Max = &configuration->InterFreqCarrierFreqInfo[CC_id][i].p_Max;
     }
     InterFreqCarrierInfo->t_ReselectionEUTRA = configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].t_ReselectionEUTRA_SF_Present) {
@@ -2481,7 +2489,8 @@ uint8_t do_SIB5(uint8_t Mod_id,
     InterFreqCarrierInfo->allowedMeasBandwidth = configuration->InterFreqCarrierFreqInfo[CC_id][i].allowedMeasBandwidth;
     InterFreqCarrierInfo->presenceAntennaPort1 = configuration->InterFreqCarrierFreqInfo[CC_id][i].presenceAntennaPort1;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority_Present) {
-      InterFreqCarrierInfo->cellReselectionPriority = configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority;
+      InterFreqCarrierInfo->cellReselectionPriority = CALLOC(1,sizeof(LTE_CellReselectionPriority_t));
+      *(InterFreqCarrierInfo->cellReselectionPriority) = *(configuration->InterFreqCarrierFreqInfo[CC_id][i].cellReselectionPriority);
     }
     LOG_A(RRC,"[eNB][SIB5] CC_id:%d neighCellConfig:0x%x\n",CC_id,configuration->InterFreqCarrierFreqInfo[CC_id][i].neighCellConfig);
     InterFreqCarrierInfo->neighCellConfig.buf = CALLOC(1,sizeof(uint8_t));
@@ -2489,15 +2498,16 @@ uint8_t do_SIB5(uint8_t Mod_id,
     InterFreqCarrierInfo->neighCellConfig.buf[0] = configuration->InterFreqCarrierFreqInfo[CC_id][i].neighCellConfig<< 6;
     InterFreqCarrierInfo->neighCellConfig.bits_unused = 6;
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreqPresent) {
-      InterFreqCarrierInfo->q_OffsetFreq = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreq;
+      InterFreqCarrierInfo->q_OffsetFreq = CALLOC(1,sizeof(LTE_Q_OffsetRange_t));
+      *(InterFreqCarrierInfo->q_OffsetFreq) = *(configuration->InterFreqCarrierFreqInfo[CC_id][i].q_OffsetFreq);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList_Present) {
       //InterFreqCarrierInfo->interFreqNeighCellList = CALLOC(1,sizeof(struct LTE_InterFreqNeighCellList));
-      InterFreqCarrierInfo->interFreqNeighCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList;
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqNeighCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqNeighCellList);
     }
     if(true == configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList_Present) {
       //InterFreqCarrierInfo->interFreqBlackCellList = CALLOC(1,sizeof(struct LTE_InterFreqBlackCellList));
-      InterFreqCarrierInfo->interFreqBlackCellList = configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList;
+      ASN_SEQUENCE_ADD(&InterFreqCarrierInfo->interFreqBlackCellList->list, configuration->InterFreqCarrierFreqInfo[CC_id][i].interFreqBlackCellList);
     }
     if ((true == configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9_Present) ||
     (true == configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMin_r9_Present)) {
@@ -2512,7 +2522,7 @@ uint8_t do_SIB5(uint8_t Mod_id,
       InterFreqCarrierInfo->ext1->threshX_Q_r9 = CALLOC(1,sizeof(struct LTE_InterFreqCarrierFreqInfo__ext1__threshX_Q_r9));
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_HighQ_r9;
       InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9 = configuration->InterFreqCarrierFreqInfo[CC_id][i].threshX_Q_r9.threshX_LowQ_r9;
-      LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %d threshX_LowQ_r9 %d\n ",CC_id,
+      LOG_A(RRC,"add ext1  threshX_Q_r9 Low and high for CC_ID %d threshX_HighQ_r9  %ld threshX_LowQ_r9 %ld\n ",CC_id,
               InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_HighQ_r9,
               InterFreqCarrierInfo->ext1->threshX_Q_r9->threshX_LowQ_r9);
     }
@@ -2521,7 +2531,8 @@ uint8_t do_SIB5(uint8_t Mod_id,
        //InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = CALLOC(1,sizeof(LTE_Q_QualMin_r9_t));
       InterFreqCarrierInfo->ext2->q_QualMinWB_r11 = configuration->InterFreqCarrierFreqInfo[CC_id][i].q_QualMinWB_r11;
     }
-  asn1cSeqAdd(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
+  //asn1cSeqAdd(&(*sib5)->interFreqCarrierFreqList,InterFreqCarrierInfo);
+  ASN_SEQUENCE_ADD(&(*sib5)->interFreqCarrierFreqList.list,InterFreqCarrierInfo);
   }
 
   // TODO: Need to handle all remaining ext and lateNonCriticalExtension IE properly
@@ -3666,10 +3677,10 @@ uint8_t do_SecurityModeCommand(
     return -1;
   }
 
-  LOG_D(RRC, "[eNB %d] securityModeCommand for UE %x Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+  LOG_D(RRC, "[eNB %d] securityModeCommand for UE %ld Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
 
   if (enc_rval.encoded==-1) {
-    LOG_E(RRC, "[eNB %d] ASN1 : securityModeCommand encoding failed for UE %x\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    LOG_E(RRC, "[eNB %d] ASN1 : securityModeCommand encoding failed for UE %ld\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     return(-1);
   }
 
@@ -3783,10 +3794,10 @@ uint8_t do_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
     return -1;
   }
 
-  LOG_D(RRC, "[eNB %d] UECapabilityRequest for UE %x Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+  LOG_D(RRC, "[eNB %d] UECapabilityRequest for UE %ld Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
 
   if (enc_rval.encoded==-1) {
-    LOG_E(RRC, "[eNB %d] ASN1 : UECapabilityRequest encoding failed for UE %x\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    LOG_E(RRC, "[eNB %d] ASN1 : UECapabilityRequest encoding failed for UE %ld\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     return(-1);
   }
 
@@ -3898,10 +3909,10 @@ uint8_t do_NR_UECapabilityEnquiry( const protocol_ctxt_t *const ctxt_pP,
     return -1;
   }
 
-  LOG_D(RRC, "[eNB %d] NR UECapabilityRequest for UE %x Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
+  LOG_D(RRC, "[eNB %d] NR UECapabilityRequest for UE %ld Encoded %zd bits (%zd bytes)\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, enc_rval.encoded, (enc_rval.encoded + 7) / 8);
 
   if (enc_rval.encoded==-1) {
-    LOG_E(RRC, "[eNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %x\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
+    LOG_E(RRC, "[eNB %d] ASN1 : NR UECapabilityRequest encoding failed for UE %ld\n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid);
     return(-1);
   }
 

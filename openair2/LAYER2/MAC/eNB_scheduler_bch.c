@@ -93,7 +93,7 @@ schedule_SIB1_MBMS(module_id_t module_idP,
   int k = 0, rvidx;
   uint16_t sfn_sf = frameP<<4|subframeP;
 
-  for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     cc = &eNB->common_channels[CC_id];
     vrb_map = (void *) &cc->vrb_map;
     N_RB_DL = to_prb(cc->mib->message.dl_Bandwidth);
@@ -325,7 +325,7 @@ schedule_SIB1_BR(module_id_t module_idP,
   int k = 0, rvidx;
   uint16_t sfn_sf = frameP<<4|subframeP;
 
-  for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     cc = &eNB->common_channels[CC_id];
     vrb_map = (void *) &cc->vrb_map;
     N_RB_DL = to_prb(cc->mib->message.dl_Bandwidth);
@@ -556,7 +556,7 @@ schedule_SI_BR(module_id_t module_idP, frame_t frameP,
   int                                     rvidx;
   int                                     absSF = (frameP*10)+subframeP;
 
-  for (CC_id=0; CC_id<RC.nb_CC[module_idP]; CC_id++) {
+  for (CC_id=0; CC_id<RC.nb_mac_CC[module_idP]; CC_id++) {
     cc              = &eNB->common_channels[CC_id];
     vrb_map         = (void *)&cc->vrb_map;
     N_RB_DL         = to_prb(cc->mib->message.dl_Bandwidth);
@@ -751,7 +751,7 @@ schedule_SI_MBMS(module_id_t module_idP, frame_t frameP,
 
   // Only schedule LTE System Information in subframe 0
   if (subframeP == 0) {
-    for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+    for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
       cc = &eNB->common_channels[CC_id];
       //printf("*cc->sib1_MBMS->si_WindowLength_r14 %d \n", *cc->sib1_MBMS->si_WindowLength_r14);
       vrb_map = (void *) &cc->vrb_map;
@@ -948,7 +948,7 @@ schedule_fembms_mib(module_id_t module_idP, frame_t frameP, sub_frame_t subframe
   AssertFatal(subframeP == 0, "Subframe must be 0\n");
   AssertFatal((frameP & 15) == 0, "Frame must be a multiple of 16\n");
 
-  for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     dl_config_request = &eNB->DL_req[CC_id];
     dl_req = &dl_config_request->dl_config_request_body;
     cc = &eNB->common_channels[CC_id];
@@ -1007,7 +1007,7 @@ schedule_mib(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP) {
   AssertFatal(subframeP == 0, "Subframe must be 0\n");
   AssertFatal((frameP & 3) == 0, "Frame must be a multiple of 4\n");
 
-  for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+  for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
     dl_config_request = &eNB->DL_req[CC_id];
     dl_req = &dl_config_request->dl_config_request_body;
     cc = &eNB->common_channels[CC_id];
@@ -1075,7 +1075,7 @@ schedule_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP)
 
   // Only schedule LTE System Information in subframe 5
   if (subframeP == 5) {
-    for (CC_id = 0; CC_id < RC.nb_CC[module_idP]; CC_id++) {
+    for (CC_id = 0; CC_id < RC.nb_mac_CC[module_idP]; CC_id++) {
       cc = &eNB->common_channels[CC_id];
       vrb_map = (void *) &cc->vrb_map;
       N_RB_DL = to_prb(cc->mib->message.dl_Bandwidth);
@@ -1264,7 +1264,9 @@ schedule_SI(module_id_t module_idP, frame_t frameP, sub_frame_t subframeP)
     }
   }
 
-  schedule_SIB1_BR(module_idP, frameP, subframeP);
-  schedule_SI_BR(module_idP, frameP, subframeP);
+  if(RC.ss.mode == SS_ENB) {
+    schedule_SIB1_BR(module_idP, frameP, subframeP);
+    schedule_SI_BR(module_idP, frameP, subframeP);
+  }
   stop_meas(&eNB->schedule_si);
 }

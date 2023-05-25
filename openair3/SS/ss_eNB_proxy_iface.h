@@ -32,7 +32,6 @@ typedef enum proxy_ss_message_id {
   SS_VNG_CMD_RESP = 8,
   SS_VTP_REQ = 9,
   SS_VTP_RESP = 10,
-  SS_VTP_ENABLE = 11,
   SS_INVALID_MSG = 0xFF
 } proxy_ss_msgs_e;
 

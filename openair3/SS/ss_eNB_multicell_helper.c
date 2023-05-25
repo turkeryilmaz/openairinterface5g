@@ -51,6 +51,8 @@
 #include "common/utils/LOG/ss-log.h"
 #include "ss_eNB_context.h"
 #include "ss_eNB_multicell_helper.h"
+extern RAN_CONTEXT_t RC;
+
 
 int get_cell_index(uint16_t cell_id, SS_Cell_Context_t SSCell_list[]){
   for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
@@ -79,6 +81,9 @@ int get_cell_index_pci(uint16_t physCellId, SS_Cell_Context_t SSCell_list[]){
 }
 void init_ss_context(SS_Cell_Context_t SSCell_list[]){
   memset(SSCell_list, 0, (sizeof(SS_Cell_Context_t) * 8));
+  memset(RC.ss.l1macind,0,sizeof(RC.ss.l1macind));
+  memset(RC.ss.CC_update_flag,0, (sizeof(RC.ss.CC_update_flag)));
+  memset(RC.ss.CC_conf_flag,0, (sizeof(RC.ss.CC_conf_flag)));
   for(int Cell_idx = 0; Cell_idx < 8; Cell_idx++){
     SSCell_list[Cell_idx].eutra_cellId = -1;
   }
@@ -91,24 +96,24 @@ void init_cell_context(int cell_index, int enb_id, MessageDef *msg_p )
   //Need to add the initialization of all parameters from RCconfig_RRC() function (enb_config.c )
   //RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
 LOG_A(ENB_APP, "[SYS] CC-MGMT init_cell_context cell_index %d \n",cell_index);
-  
+
     // Cell params, MIB/SIB1 in DU
     RRC_CONFIGURATION_REQ(msg_p).tdd_config[cell_index] = RRC_CONFIGURATION_REQ(msg_p).tdd_config[init_cell_id];
     RRC_CONFIGURATION_REQ(msg_p).tdd_config_s[cell_index] = RRC_CONFIGURATION_REQ(msg_p).tdd_config_s[init_cell_id];
 
     RRC_CONFIGURATION_REQ(msg_p).prefix_type[cell_index] = RRC_CONFIGURATION_REQ(msg_p).prefix_type[init_cell_id];
     RRC_CONFIGURATION_REQ(msg_p).pbch_repetition[cell_index] = RRC_CONFIGURATION_REQ(msg_p).pbch_repetition[init_cell_id];
-  
+
   RRC_CONFIGURATION_REQ(msg_p).eutra_band[cell_index] = RRC_CONFIGURATION_REQ(msg_p).eutra_band[init_cell_id] ;
   RRC_CONFIGURATION_REQ(msg_p).downlink_frequency[cell_index] = RRC_CONFIGURATION_REQ(msg_p).downlink_frequency[init_cell_id] ;
   RRC_CONFIGURATION_REQ(msg_p).uplink_frequency_offset[cell_index] = RRC_CONFIGURATION_REQ(msg_p).uplink_frequency_offset[init_cell_id] ;
   RRC_CONFIGURATION_REQ(msg_p).Nid_cell[cell_index] = RRC_CONFIGURATION_REQ(msg_p).Nid_cell[init_cell_id] ;
 
-  
+
 
   RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[cell_index] =RRC_CONFIGURATION_REQ(msg_p).N_RB_DL[init_cell_id];
 
-  
+
 
   RRC_CONFIGURATION_REQ(msg_p).frame_type[cell_index] = RRC_CONFIGURATION_REQ(msg_p).frame_type[init_cell_id];
   //if (config_check_band_frequencies(cell_index,

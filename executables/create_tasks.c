@@ -58,7 +58,7 @@ int create_tasks(uint32_t enb_nb) {
 
   if (RC.ss.mode >= SS_SOFTMODEM)
   {
-    rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_task, NULL);
+    rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_eNB_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS manager failed\n");
 
     rc = itti_create_task(TASK_SYS, ss_eNB_sys_task, NULL);
@@ -90,7 +90,7 @@ int create_tasks(uint32_t enb_nb) {
     AssertFatal(rc >= 0, "Create task for SS VTP failed\n");
 
     /* Task for support Virtual Time timer management */
-    rc = itti_create_task(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL);
+    rc = itti_create_task_prio(TASK_VT_TIMER, ss_eNB_vt_timer_task, NULL, 10);
     AssertFatal(rc >= 0, "Create task for SS_VT_TIMER failed\n");
 
     LOG_I(MAC,"Creating MAC eNB Task\n");
