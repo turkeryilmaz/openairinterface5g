@@ -587,7 +587,7 @@ target_link_libraries(benetel_5g PRIVATE pthread dl rt m numa)
 # LDPC offload library
 ##########################################################
 
-add_boolean_option(ENABLE_LDPC_OFFLOAD_T1 OFF "Build support for LDPC Offload to T1 library")
+add_boolean_option(ENABLE_LDPC_OFFLOAD_T1 OFF "Build support for LDPC Offload to T1 library" OFF)
 if (ENABLE_LDPC_OFFLOAD_T1)
   pkg_check_modules(LIBDPDK_T1 REQUIRED libdpdk=20.05.0)
   find_library(T1 NAMES rte_pmd_hpac_sdfec_pmd REQUIRED)
@@ -600,7 +600,7 @@ if (ENABLE_LDPC_OFFLOAD_T1)
   target_link_libraries(ldpc_offload_t1 ${LIBDPDK_T1_LDFLAGS} ${T1})
 endif()
 
-add_boolean_option(ENABLE_LDPC_OFFLOAD_T2 OFF "Build support for LDPC Offload to T2 library")
+add_boolean_option(ENABLE_LDPC_OFFLOAD_T2 OFF "Build support for LDPC Offload to T2 library" OFF)
 if (ENABLE_LDPC_OFFLOAD_T2)
   set(ENV{PKG_CONFIG_PATH} "/usr/local/lib64/pkgconfig")
   pkg_search_module(LIBDPDK_T2 REQUIRED libdpdk=20.11.3)
