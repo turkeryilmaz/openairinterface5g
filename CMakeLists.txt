@@ -139,13 +139,13 @@ if(EXISTS "/usr/include/atlas/cblas.h" OR EXISTS "/usr/include/cblas.h")
 
 # for ubuntu 17.10, directories are different
 elseif(EXISTS "/usr/include/x86_64-linux-gnu/cblas.h")
-  
+
   include_directories("/usr/include/x86_64-linux-gnu")
   LINK_DIRECTORIES("/usr/lib/x86_64-linux-gnu")
   list(APPEND ATLAS_LIBRARIES cblas)
   list(APPEND ATLAS_LIBRARIES atlas)
   list(APPEND ATLAS_LIBRARIES lapack)
-  
+
 else()
   message("No Blas/Atlas libs found, some targets will fail")
 endif()
@@ -208,7 +208,7 @@ add_list_string_option(CMAKE_BUILD_TYPE "RelWithDebInfo" "Choose the type of bui
 
 # in case /proc/cpuinfo exists we want to inspect available Intrinsics
 # -so not to go always through SIMDE emulation
-# -so to avoid AVX512 instructions generation by gcc   
+# -so to avoid AVX512 instructions generation by gcc
 execute_process(COMMAND uname -m OUTPUT_VARIABLE CPUARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "CPUARCH ${CPUARCH}")
 if(EXISTS "/proc/cpuinfo")
@@ -1526,7 +1526,7 @@ set(NR_SDAP_SRC
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap.c
   ${OPENAIR2_DIR}/SDAP/nr_sdap/nr_sdap_entity.c
   )
-  
+
 set(L2_SRC
   ${PDCP_DIR}/pdcp.c
   ${PDCP_DIR}/pdcp_fifo.c
@@ -1825,6 +1825,7 @@ set(SS_SRC
   ${OPENAIR3_DIR}/SS/ss_gNB_sys_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_vtp_task.c
   ${OPENAIR3_DIR}/SS/ss_gNB_drb_task.c
+  ${OPENAIR3_DIR}/SS/ss_utils.c
 )
 file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
 file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
