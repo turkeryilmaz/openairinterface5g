@@ -440,16 +440,16 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
         // here we have | Prefix | Prach | Prach | Prach | Prach |
         prach_len = (dftlen * 4) + Ncp;
       }
-  } else { // short PRACH sequence
-    if (prach_fmt_id == 9) {
-      // here we have | empty  | Prach |
-      memcpy(prach, prach + dftlen, (Ncp << 2));
-      // here we have | Prefix | Prach |
-      prach_len = (dftlen*1)+Ncp;
-    } else if (prach_fmt_id == 4 || prach_fmt_id == 7) {
-      // here we have | empty  | Prach | empty |
-      memcpy(prach2 + dftlen, prach2, (dftlen << 2));
-      // here we have | empty  | Prach | Prach |
+    } else { // short PRACH sequence
+      if (prach_fmt_id == 9) {
+        // here we have | empty  | Prach |
+        memcpy(prach, prach + dftlen, (Ncp << 2));
+        // here we have | Prefix | Prach |
+        prach_len = (dftlen * 1) + Ncp;
+      } else if (prach_fmt_id == 4 || prach_fmt_id == 7) {
+        // here we have | empty  | Prach | empty |
+        memcpy(prach2 + dftlen, prach2, (dftlen << 2));
+        // here we have | empty  | Prach | Prach |
       memcpy(prach, prach + dftlen * 2, (Ncp<<2));
       // here we have | Prefix | Prach | Prach |
       prach_len = (dftlen*2)+Ncp;
