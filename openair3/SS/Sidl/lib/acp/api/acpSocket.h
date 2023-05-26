@@ -32,19 +32,19 @@ SIDL_BEGIN_C_INTERFACE
 
 /** Connects to server.
  *
- * @param[in]  ipaddr Server ip address
+ * @param[in]  host Server ip address
  * @param[in]  port Server ip port
  * @return   socket fd, or negative number on failure
  */
-int acpSocketConnect(IpAddress_t ipaddr, int port);
+int acpSocketConnect(const char* host, int port);
 
 /** Opens listening socket.
  *
- * @param[in]  ipaddr Server ip address
+ * @param[in]  host Server ip address / unixsocket file
  * @param[in]  port Server ip port
  * @return   socket fd, or negative number on failure
  */
-int acpSocketListen(IpAddress_t ipaddr, int port);
+int acpSocketListen(const char* host, int port);
 
 int acpSocketSelect(int sock, MSec_t socketTimeout);
 

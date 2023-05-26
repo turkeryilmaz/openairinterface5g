@@ -302,13 +302,8 @@ void ss_port_man_send_data(
  */
 void ss_eNB_port_man_init(void)
 {
-    IpAddress_t ipaddr;
-    LOG_A(ENB_SS_PORTMAN_ACP, "Starting System Simulator Manager\n");
 
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
-
+    LOG_A(ENB_SS_PORTMAN_ACP, "[SS-PORTMAN] Starting System Simulator Manager\n");
     // Port number
     int port = RC.ss.Sysport;
 
@@ -325,7 +320,7 @@ void ss_eNB_port_man_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_g);
+    int ret = acpServerInitWithCtx(RC.ss.SysHost ? RC.ss.SysHost : "127.0.0.1", port, msgTable, aSize, &ctx_g);
     if (ret < 0)
     {
         LOG_A(ENB_SS_PORTMAN_ACP, "Connection failure err=%d\n", ret);
@@ -378,10 +373,12 @@ static inline void ss_eNB_read_from_socket(acpCtx_t ctx)
             acpGetMsgSidlStatus(msgSize, buffer, &sidlStatus);
               acpFree(buffer);
         }
-        else if (userId == -ACP_PEER_DISCONNECTED){
+        else if (userId == -ACP_PEER_DISCONNECTED)
+        {
             LOG_E(ENB_SS_PORTMAN_ACP, "Error: Peer ordered shutdown\n");
         }
-        else if (userId == -ACP_PEER_CONNECTED){
+        else if (userId == -ACP_PEER_CONNECTED)
+        {
             LOG_A(ENB_SS_PORTMAN_ACP, " Peer connection established\n");
         }
         else

@@ -419,7 +419,6 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 	ACP_DEBUG_CLOG(ctx, "Sending message '%s'", acpGetMsgName(ACP_HEADER_SIZE, buffer));
 #endif
 
-	int ret;
 
 	int sock = ACP_CTX_CAST(ctx)->sock;
 	if (ACP_CTX_CAST(ctx)->isServer) {
@@ -430,6 +429,8 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 			SIDL_ASSERT(ACP_CTX_CAST(ctx)->lastPeer == -1);
 		}
 	}
+
+	int ret = 0;
 
 	/* Write SIDL message */
 	if (kind != ACP_NTF) {
@@ -507,7 +508,7 @@ int acpInitCtx(const struct acpMsgTable* msgTable, acpCtx_t* ctx)
 	return 0;
 }
 
-int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
+int acpClientInit(acpCtx_t ctx, const char* host, int port, size_t aSize)
 {
 	ACP_DEBUG_ENTER_CLOG(ctx);
 
@@ -516,7 +517,7 @@ int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 		return -ACP_ERR_INVALID_CTX;
 	}
 
-	int sock = acpSocketConnect(ipaddr, port);
+	int sock = acpSocketConnect(host, port);
 	if (sock < 0) {
 		ACP_DEBUG_EXIT_CLOG(ctx, "ACP_ERR_SOCKCONN_ABORTED");
 		return -ACP_ERR_SOCKCONN_ABORTED;
@@ -547,7 +548,7 @@ int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 	return 0;
 }
 
-int acpClientInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx)
+int acpClientInitWithCtx(const char* host, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx)
 {
 	SIDL_ASSERT(ctx);
 	ACP_DEBUG_ENTER_LOG();
@@ -559,7 +560,7 @@ int acpClientInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 		return ret;
 	}
 
-	ret = acpClientInit(_ctx, ipaddr, port, aSize);
+	ret = acpClientInit(_ctx, host, port, aSize);
 	if (ret < 0) {
 		acpDeleteCtx(_ctx);
 
@@ -573,7 +574,7 @@ int acpClientInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 	return 0;
 }
 
-int acpServerInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
+int acpServerInit(acpCtx_t ctx, const char* host, int port, size_t aSize)
 {
 	ACP_DEBUG_ENTER_CLOG(ctx);
 
@@ -582,7 +583,7 @@ int acpServerInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 		return -ACP_ERR_INVALID_CTX;
 	}
 
-	int sock = acpSocketListen(ipaddr, port);
+	int sock = acpSocketListen(host, port);
 	if (sock < 0) {
 		ACP_DEBUG_EXIT_CLOG(ctx, "ACP_ERR_SOCKCONN_ABORTED");
 		return -ACP_ERR_SOCKCONN_ABORTED;
@@ -598,10 +599,10 @@ int acpServerInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize)
 	return 0;
 }
 
-int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx)
+int acpServerInitWithCtx(const char* host, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx)
 {
+	SIDL_ASSERT(host);
 	SIDL_ASSERT(ctx);
-
 	ACP_DEBUG_ENTER_LOG();
 
 	acpCtx_t _ctx = NULL;
@@ -611,7 +612,7 @@ int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable*
 		return ret;
 	}
 
-	ret = acpServerInit(_ctx, ipaddr, port, aSize);
+	ret = acpServerInit(_ctx, host, port, aSize);
 	if (ret < 0) {
 		acpDeleteCtx(_ctx);
 

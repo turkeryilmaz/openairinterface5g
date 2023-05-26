@@ -77,9 +77,9 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
 {
 	struct SYSTEM_IND ind = {};
         uint32_t status = 0;
-       
+
         DevAssert(p_ind != NULL);
-        size_t msgSize = size; 
+        size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
         ind.Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
 
@@ -244,11 +244,8 @@ ss_eNB_read_from_sysind_socket(acpCtx_t ctx)
  */
 void ss_eNB_sysind_init(void)
 {
-	IpAddress_t ipaddr;
+
         LOG_A(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Starting System Simulator SYSIND Thread \n");
-        const char *hostIp;
-        hostIp = RC.ss.hostIp;
-        acpConvertIp(hostIp, &ipaddr);
 
         // Port number
         int port = RC.ss.SysIndport;
@@ -257,13 +254,13 @@ void ss_eNB_sysind_init(void)
                 {"SysIndProcessToSS", MSG_SysIndProcessToSS_userId},
                 // The last element should be NULL
                 {NULL, 0}};
-        
+
         // Arena size to decode received message
         const size_t aSize = 32 * 1024;
 
         // Start listening server and get ACP context,
         // after the connection is performed, we can use all services
-        int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_sysind_g);
+        int ret = acpServerInitWithCtx(RC.ss.SysIndHost ? RC.ss.SysIndHost : "127.0.0.1", port, msgTable, aSize, &ctx_sysind_g);
         if (ret < 0)
         {
                 LOG_A(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Connection failure err=%d\n", ret);

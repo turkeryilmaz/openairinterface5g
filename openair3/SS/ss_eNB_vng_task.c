@@ -175,10 +175,10 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     	    }
             else if (userId == -ACP_PEER_DISCONNECTED){
             	LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
-            } 
+            }
             else if (userId == -ACP_PEER_CONNECTED){
                 LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
-            } 
+            }
     	    else
     	    {
                 LOG_A(ENB_SS_VNG, "[SS-VNG] Invalid userId: %d \n", userId);
@@ -304,17 +304,10 @@ void *ss_eNB_vng_process_itti_msg(void *notUsed)
  */
 void ss_eNB_vng_init(void)
 {
-    IpAddress_t ipaddr;
-
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
-
     // Port number
     int port = RC.ss.Vngport;
 
-    LOG_A(ENB_SS_VNG, "[SS-VNG] Initializing VNG Port %s:%d\n", hostIp, port);
-
+    LOG_A(ENB_SS_VNG, "[SS-VNG] Initializing VNG Port %s:%d\n", RC.ss.VngHost, port);
     //acpInit(malloc, free, 1000);
 
     const struct acpMsgTable msgTable[] = {
@@ -329,7 +322,7 @@ void ss_eNB_vng_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_vng_g);
+    int ret = acpServerInitWithCtx(RC.ss.VngHost ? RC.ss.VngHost : "127.0.0.1", port, msgTable, aSize, &ctx_vng_g);
     if (ret < 0)
     {
         LOG_A(ENB_SS_VNG, "[SS-VNG] Connection failure err=%d\n", ret);

@@ -24,12 +24,17 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/stat.h>
+#include <sys/un.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <regex.h>
+
 
 // Internal includes
 #include "acpSocket.h"
@@ -91,85 +96,98 @@ static int acpSocketSetOpts(int sock, bool isServer)
 	return 0;
 }
 
-int acpSocketConnect(IpAddress_t ipaddr, int port)
+static int acpIsIp(const char* ip)
 {
-	ACP_DEBUG_ENTER_LOG();
+	regex_t regex;
+	int reti = regcomp(&regex, "^([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3}).([0-9]{1,3})$", REG_NEWLINE | REG_ICASE | REG_EXTENDED);
+	SIDL_ASSERT(reti == REG_NOERROR);
 
-	struct sockaddr_in sin;
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = ntohl(ipaddr.v.ipv4);
+	reti = regexec(&regex, ip, 0, NULL, 0);
+	SIDL_ASSERT((reti == REG_NOERROR) || (reti == REG_NOMATCH));
+	return reti;
+}
 
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0) {
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
+static int acpPrepareSocket(const char* host, int port, struct sockaddr ** sin, size_t* sinsz)
+{
+	int sock = -1;
+	uint8_t isUnixSocket = acpIsIp(host);
+	if (!isUnixSocket) {
 
-	if (acpSocketSetOpts(sock, false) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
+		IpAddress_t ipaddr;
+		acpConvertIp(host, &ipaddr);
+		*sin = (struct sockaddr*)acpMalloc(sizeof(struct sockaddr_in));
+		SIDL_ASSERT(*sin);
+		((struct sockaddr_in*)*sin)->sin_family = AF_INET;
+		((struct sockaddr_in*)*sin)->sin_port = htons(port);
+		((struct sockaddr_in*)*sin)->sin_addr.s_addr = ntohl(ipaddr.v.ipv4);
 
-	if (connect(sock, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
-		if ((errno == EINPROGRESS) || (errno == EAGAIN)) {
-			fd_set fdset;
-			FD_ZERO(&fdset);
-			FD_SET(sock, &fdset);
-
-			struct timeval tv;
-			tv.tv_sec = 2;
-			tv.tv_usec = 0;
-
-			if (select(sock + 1, NULL, &fdset, NULL, &tv) == 1) {
-				int valopt;
-				socklen_t optlen = sizeof(valopt);
-				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == -1) || valopt) {
-					close(sock);
-					ACP_DEBUG_EXIT_LOG(strerror(errno));
-					return -1;
-				}
-			} else {
-				close(sock);
-				ACP_DEBUG_EXIT_LOG(strerror(errno));
-				return -1;
-			}
-		} else {
-			close(sock);
+		sock = socket(AF_INET, SOCK_STREAM, 0);
+		if (sock < 0) {
+			acpFree(*sin);
 			ACP_DEBUG_EXIT_LOG(strerror(errno));
 			return -1;
 		}
+
+		*sinsz = sizeof(struct sockaddr_in);
+
+		if (acpSocketSetOpts(sock, false) == -1) {
+			acpFree(*sin);
+			return -1;
+		}
+
+	} else {
+		mode_t pre_umask = umask(0);
+		*sin = (struct sockaddr*)acpMalloc(sizeof(struct sockaddr_un));
+		SIDL_ASSERT(*sin);
+
+		memset(*sin, 0, sizeof(struct sockaddr_un));
+
+		((struct sockaddr_un*)*sin)->sun_family = AF_UNIX;
+		strcpy(((struct sockaddr_un*)*sin)->sun_path, host);
+
+		sock = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (sock < 0) {
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			acpFree(*sin);
+			umask(pre_umask);
+			return -1;
+		}
+
+		int arg = fcntl(sock, F_GETFL, NULL);
+		if (arg == -1) {
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			acpFree(*sin);
+			umask(pre_umask);
+			return -1;
+		}
+
+		arg |= O_NONBLOCK;
+		if (fcntl(sock, F_SETFL, arg) == -1) {
+			ACP_DEBUG_EXIT_LOG(strerror(errno));
+			acpFree(*sin);
+			umask(pre_umask);
+			return -1;
+		}
+
+		*sinsz = sizeof(struct sockaddr_un);
 	}
 
-	ACP_DEBUG_LOG("Connected to server %s:%d", inet_ntoa(sin.sin_addr), port);
-
-	ACP_DEBUG_EXIT_LOG(NULL);
 	return sock;
 }
 
-int acpSocketListen(IpAddress_t ipaddr, int port)
+int acpSocketConnect(const char* host, int port)
 {
 	ACP_DEBUG_ENTER_LOG();
 
-	struct sockaddr_in sin;
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = ntohl(ipaddr.v.ipv4);
+	int sock = -1;
+	struct sockaddr * sin = NULL;
+	size_t sinsz = 0;
 
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0) {
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
+	sock = acpPrepareSocket(host, port, &sin, &sinsz);
+	SIDL_ASSERT(sock >= 0);
+	SIDL_ASSERT(sin);
 
-	if (acpSocketSetOpts(sock, true) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
-	}
-
-	if (bind(sock, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
+	if (connect(sock, sin, sinsz) == -1) {
 		if ((errno == EINPROGRESS) || (errno == EAGAIN)) {
 			fd_set fdset;
 			FD_ZERO(&fdset);
@@ -183,33 +201,81 @@ int acpSocketListen(IpAddress_t ipaddr, int port)
 				int valopt;
 				socklen_t optlen = sizeof(valopt);
 				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == -1) || valopt) {
-					close(sock);
-					ACP_DEBUG_EXIT_LOG(strerror(errno));
-					return -1;
+					goto err;
 				}
 			} else {
-				close(sock);
-				ACP_DEBUG_EXIT_LOG(strerror(errno));
-				return -1;
+				goto err;
 			}
 		} else {
-			close(sock);
-			ACP_DEBUG_EXIT_LOG(strerror(errno));
-			return -1;
+			goto err;
+		}
+	}
+
+	acpFree(sin);
+	ACP_DEBUG_LOG("Connected to server %s:%d", host, port);
+	ACP_DEBUG_EXIT_LOG(NULL);
+	return sock;
+err:
+	acpFree(sin);
+	close(sock);
+	ACP_DEBUG_EXIT_LOG(strerror(errno));
+	return -1;
+}
+
+int acpSocketListen(const char* host, int port)
+{
+	ACP_DEBUG_ENTER_LOG();
+
+	int sock = -1;
+	struct sockaddr * sin = NULL;
+	size_t sinsz = 0;
+
+	if (acpIsIp(host)) {
+		unlink(host);
+	}
+
+	sock = acpPrepareSocket(host, port, &sin, &sinsz);
+	SIDL_ASSERT(sock >= 0);
+	SIDL_ASSERT(sin);
+
+	if (bind(sock, sin, sinsz) == -1) {
+		if ((errno == EINPROGRESS) || (errno == EAGAIN)) {
+			fd_set fdset;
+			FD_ZERO(&fdset);
+			FD_SET(sock, &fdset);
+
+			struct timeval tv;
+			tv.tv_sec = 2;
+			tv.tv_usec = 0;
+
+			if (select(sock + 1, NULL, &fdset, NULL, &tv) == 1) {
+				int valopt;
+				socklen_t optlen = sizeof(valopt);
+				if ((getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&valopt, &optlen) == -1) || valopt) {
+					goto err;
+				}
+			} else {
+				goto err;
+			}
+		} else {
+			goto err;
 		}
 	}
 
 	const int backlog = 3;
 	if (listen(sock, backlog) == -1) {
-		close(sock);
-		ACP_DEBUG_EXIT_LOG(strerror(errno));
-		return -1;
+		goto err;
 	}
 
-	ACP_DEBUG_LOG("Created listening server %s:%d", inet_ntoa(sin.sin_addr), port);
-
+	acpFree(sin);
+	ACP_DEBUG_LOG("Created listening server %s:%d", host, port);
 	ACP_DEBUG_EXIT_LOG(NULL);
 	return sock;
+err:
+	acpFree(sin);
+	close(sock);
+	ACP_DEBUG_EXIT_LOG(strerror(errno));
+	return -1;
 }
 
 int acpSocketSelect(int sock, MSec_t socketTimeout)

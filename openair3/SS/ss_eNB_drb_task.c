@@ -93,7 +93,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
 	ind.Common.TimingInfo.d = TimingInfo_Type_SubFrame;
 	ind.Common.TimingInfo.v.SubFrame.SFN.d = SystemFrameNumberInfo_Type_Number;
 	ind.Common.TimingInfo.v.SubFrame.SFN.v.Number = pdu_ind->frame;
-	
+
 	ind.Common.TimingInfo.v.SubFrame.Subframe.d = SubFrameInfo_Type_Number;
 	ind.Common.TimingInfo.v.SubFrame.Subframe.v.Number = pdu_ind->subframe;
 
@@ -120,7 +120,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind, int cell_index){
                 DevAssert(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v != NULL);
                 ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d = pdu_ind->sdu_size;
                 ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v = CALLOC(1,ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].d);
-		memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size); 
+		memcpy(ind.U_Plane.SubframeData.PduSduList.v.PdcpSdu.v[i].v, pdu_ind->sdu, pdu_ind->sdu_size);
 	}
 
 	//Encode Message
@@ -226,10 +226,10 @@ ss_eNB_read_from_drb_socket(acpCtx_t ctx){
 			}
 			else if (userId == -ACP_PEER_DISCONNECTED){
 				LOG_A(GNB_APP, "[SS_DRB] Peer ordered shutdown\n");
-			} 
+			}
 			else if (userId == -ACP_PEER_CONNECTED){
 				LOG_A(GNB_APP, "[SS_DRB] Peer connection established\n");
-			} 
+			}
 			else
 			{
 				LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Invalid userId: %d \n", userId);
@@ -286,7 +286,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 	MessageDef *received_msg = NULL;
 	int result = 0;
 	itti_receive_msg(TASK_SS_DRB, &received_msg);
-	
+
 
 	/* Check if there is a packet to handle */
 	if (received_msg != NULL)
@@ -303,15 +303,15 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
                                 }
 				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
-	    			if (origin_task == TASK_SS_PORTMAN)
-				{       
+	    		if (origin_task == TASK_SS_PORTMAN)
+				{
 					LOG_D(ENB_SS_DRB, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
-                                }
+                }
 				else
-	                        {
+	            {
 					LOG_A(ENB_SS_DRB, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");
 					if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_ACTIVE)
-	                                {
+	                {
 						instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
 						ss_send_drb_data(&received_msg->ittiMsg.ss_drb_pdu_ind,cell_index);
 					}
@@ -335,7 +335,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 						ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 				break;
                         }
-		}		
+		}
 	}
 	else
 	{
@@ -347,12 +347,7 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
 
 void ss_eNB_drb_init(void)
 {
-  IpAddress_t ipaddr;
   LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Starting System Simulator DRB Thread \n");
-
-  const char *hostIp;
-  hostIp = RC.ss.hostIp;
-  acpConvertIp(hostIp, &ipaddr);
 
   // Port number
   int port = RC.ss.Drbport;
@@ -367,7 +362,7 @@ void ss_eNB_drb_init(void)
 
   // Start listening server and get ACP context,
   // after the connection is performed, we can use all services
-  int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_drb_g);
+  int ret = acpServerInitWithCtx(RC.ss.DrbHost ? RC.ss.DrbHost : "127.0.0.1", port, msgTable, aSize, &ctx_drb_g);
   if (ret < 0)
   {
     LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Connection failure err=%d\n", ret);

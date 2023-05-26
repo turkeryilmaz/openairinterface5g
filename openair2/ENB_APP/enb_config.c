@@ -173,11 +173,17 @@ void RCconfig_ssparam(void) {
   if ( SSConfig_ParamList.numelt > 0) {
     RC.ss.hostIp              = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_HOSTIP_IDX].strptr));
     RC.ss.Sysport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSPORT_IDX].iptr);
+    RC.ss.SysHost             = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSHOST_IDX].strptr));
     RC.ss.Srbport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SRBPORT_IDX].iptr);
+    RC.ss.SrbHost             = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_SRBHOST_IDX].strptr));
     RC.ss.Vngport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VNGPORT_IDX].iptr);
+    RC.ss.VngHost             = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_VNGHOST_IDX].strptr));
     RC.ss.Vtpport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_VTPPORT_IDX].iptr);
+    RC.ss.VtpHost             = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_VTPHOST_IDX].strptr));
     RC.ss.SysIndport          = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSINDPORT_IDX].iptr);
+    RC.ss.SysIndHost             = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_SYSINDHOST_IDX].strptr));
     RC.ss.Drbport             = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_DRBPORT_IDX].iptr);
+    RC.ss.DrbHost             = strdup(*(SSConfig_ParamList.paramarray[0][CONFIG_SS_DRBHOST_IDX].strptr));
     RC.ss.mode                = *(SSConfig_ParamList.paramarray[0][CONFIG_SS_MODE_IDX].iptr);
   }
   LOG_A(ENB_APP,"SS_Config:SSMode %d, hostIp=%s, Sysport=%d, Srbport=%d  Vngport=%d SysIndport=%d Drbport=%d\n",
@@ -284,7 +290,7 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc, int macrlc_has_f1) {
   int               nb_cc                         = 0;
   int32_t           offsetMaxLimit                = 0;
   int32_t           cycleNb                       = 0;
-   
+
   MessageDef *msg_p = itti_alloc_new_message(TASK_RRC_ENB, 0, RRC_CONFIGURATION_REQ);
   ccparams_lte_t ccparams_lte;
   ccparams_sidelink_t SLconfig;
@@ -1964,7 +1970,7 @@ int RCconfig_DU_F1(MessageDef *msg_p, uint32_t i) {
         LOG_I(ENB_APP,"FIAP: DU_ip4_address in DU %p, strlen %d\n",F1AP_SETUP_REQ (msg_p).DU_f1_ip_address.ipv4_address,(int)strlen(RC.mac[k]->eth_params_n.my_addr));
         F1AP_SETUP_REQ (msg_p).DU_f1_ip_address.ipv6 = 0;
         F1AP_SETUP_REQ (msg_p).DU_f1_ip_address.ipv4 = 1;
-	
+
         //strcpy(F1AP_SETUP_REQ (msg_p).DU_f1_ip_address.ipv6_address, "");
         strcpy(F1AP_SETUP_REQ (msg_p).DU_f1_ip_address.ipv4_address, RC.mac[k]->eth_params_n.my_addr);
 	F1AP_SETUP_REQ (msg_p).DUport= RC.mac[k]->eth_params_n.my_portd;
@@ -2451,7 +2457,7 @@ int RCconfig_S1(
             }
             else
             {
-              LOG_E(S1AP, 
+              LOG_E(S1AP,
                     "s1setup_rsp_timer value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_S1SETUP_RSP_TIMER_IDX].uptr);
               S1AP_REGISTER_ENB_REQ(msg_p).s1_setuprsp_wait_timer = 5;
@@ -2463,7 +2469,7 @@ int RCconfig_S1(
             }
             else
             {
-              LOG_E(S1AP, 
+              LOG_E(S1AP,
                     "s1setup_req_timer value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_TIMER_IDX].uptr);
               S1AP_REGISTER_ENB_REQ(msg_p).s1_setupreq_wait_timer = 5;
@@ -2475,7 +2481,7 @@ int RCconfig_S1(
             }
             else
             {
-              LOG_E(S1AP, 
+              LOG_E(S1AP,
                     "s1setup_req_count value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_S1SETUP_REQ_COUNT_IDX].uptr);
               S1AP_REGISTER_ENB_REQ(msg_p).s1_setupreq_count = 0xffff;
@@ -2487,7 +2493,7 @@ int RCconfig_S1(
             }
             else
             {
-              LOG_E(S1AP, 
+              LOG_E(S1AP,
                     "sctp_req_timer value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_SCTP_REQ_TIMER_IDX].uptr);
               S1AP_REGISTER_ENB_REQ(msg_p).sctp_req_timer = 180;
@@ -2499,7 +2505,7 @@ int RCconfig_S1(
             }
             else
             {
-              LOG_E(S1AP, 
+              LOG_E(S1AP,
                     "sctp_req_count value in conf file is invalid (%d). Default value is set.\n",
                     *ENBParamList.paramarray[k][ENB_SCTP_REQ_COUNT_IDX].uptr);
               S1AP_REGISTER_ENB_REQ(msg_p).sctp_req_count = 0xffff;
