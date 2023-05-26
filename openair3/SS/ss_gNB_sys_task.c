@@ -38,6 +38,7 @@
 #include "openair2/LAYER2/NR_MAC_gNB/gNB_scheduler_primitives.c"
 
 #include "common/utils/LOG/ss-log.h"
+#include "ss_utils.h"
 #define MSC_INTERFACE
 #include "msc.h"
 #include "softmodem-common.h"
@@ -245,6 +246,138 @@ static void sys_handle_nr_cell_attn_req(struct NR_CellAttenuationConfig_Type_NR_
       break;
     default:
       LOG_A(GNB_APP, "[SYS-GNB] Invalid CellAttenuationList received\n");
+    }
+  }
+}
+
+/*
+ * Function : sys_handle_nr_as_security_req
+ * Description: Funtion handler of SYS_PORT. Handles the AS
+ * Security command received from TTCN via the PORTMAN.
+ * In :
+ * req  - AS Security Request received from the TTCN via PORTMAN
+ * Out:
+ * newState: No impact on state machine.
+ *
+ */
+static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity)
+{
+  MessageDef *msg_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, RRC_AS_SECURITY_CONFIG_REQ);
+  if(msg_p)
+  {
+    LOG_E(GNB_APP,"[SYS-GNB] AS Security Request Received\n");
+    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti = SS_context.ss_rnti_g;
+
+    switch(ASSecurity->d) {
+    case NR_AS_Security_Type_StartRestart:
+    {
+      if(ASSecurity->v.StartRestart.Integrity.d == true)
+      {
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent = true;
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm = ASSecurity->v.StartRestart.Integrity.v.Algorithm;
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint = CALLOC(1,16);
+        memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint,0,16);
+        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint, 0, ASSecurity->v.StartRestart.Integrity.v.KRRCint, 128);
+        LOG_E(GNB_APP, "[SYS-GNB] kRRCint:\n");
+        for(int i = 0; i < 16; i++) {
+          LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+        }
+
+        if(ASSecurity->v.StartRestart.Integrity.v.ActTimeList.d == true)
+        {
+          for(int i=0;i < ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.d; i++)
+          {
+            switch(ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].RadioBearerId.d)
+            {
+              case RadioBearerId_Type_Srb:
+                RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].RadioBearerId.v.Srb;
+                break;
+              case RadioBearerId_Type_Drb:
+                RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].RadioBearerId.v.Drb;
+                break;
+              case RadioBearerId_Type_UNBOUND_VALUE:
+                break;
+              default:
+              LOG_E(GNB_APP, "[SYS-GNB] AS Security Act time list is Invalid \n");
+            }
+            if (ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].UL.d == NR_PDCP_ActTime_Type_SQN)
+            {
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].UL.format = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].UL.v.SQN.Format;
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].UL.sqn = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].UL.v.SQN.Value;
+            }
+            if (ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].DL.d == NR_PDCP_ActTime_Type_SQN)
+            {
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].DL.format = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].DL.v.SQN.Format;
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.ActTimeList.SecurityActTime[i].DL.sqn = ASSecurity->v.StartRestart.Integrity.v.ActTimeList.v.v[i].DL.v.SQN.Value;
+            }
+          }
+        }
+      }
+
+      if(ASSecurity->v.StartRestart.Ciphering.d == true)
+      {
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent = true;
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm = ASSecurity->v.StartRestart.Ciphering.v.Algorithm;
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc = CALLOC(1,16);
+        memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc,0,16);
+        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc, 0, ASSecurity->v.StartRestart.Ciphering.v.KRRCenc, 128);
+        LOG_E(GNB_APP, "[SYS-GNB] kRRCenc:\n");
+        for(int i = 0; i < 16; i++) {
+          LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[i]);
+        }
+
+        RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc = CALLOC(1,16);
+        memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc,0,16);
+        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc, 0, ASSecurity->v.StartRestart.Ciphering.v.KUPenc, 128);
+        LOG_E(GNB_APP, "[SYS-GNB] kUPenc:\n");
+        for(int i = 0; i < 16; i++) {
+          LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[i]);
+        }
+
+        for(int i=0;i < ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.d; i++)
+        {
+          switch(ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.d)
+          {
+            case RadioBearerId_Type_Srb:
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.v.Srb;
+              break;
+            case RadioBearerId_Type_Drb:
+              RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].RadioBearerId.v.Drb;
+              break;
+            case RadioBearerId_Type_UNBOUND_VALUE:
+              break;
+            default:
+            LOG_E(GNB_APP, "[SYS-GNB] AS Security Act time list is Invalid \n");
+          }
+          if (ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].UL.d == NR_PDCP_ActTime_Type_SQN)
+          {
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].UL.format = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].UL.v.SQN.Format;
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].UL.sqn = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].UL.v.SQN.Value;
+          }
+          if (ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].DL.d == NR_PDCP_ActTime_Type_SQN)
+          {
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].DL.format = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].DL.v.SQN.Format;
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].DL.sqn = ASSecurity->v.StartRestart.Ciphering.v.ActTimeList.v[i].DL.v.SQN.Value;
+          }
+        }
+      }
+    }
+    break;
+
+    case NR_AS_Security_Type_Release:
+    {
+      // TODO
+    }
+    break;
+
+    default:
+      LOG_E(GNB_APP, "[TASK_SYS_GNB] unhandled message type %d\n", ASSecurity->d);
+      return;
+    }
+
+    int send_res = itti_send_msg_to_task(TASK_RRC_GNB, INSTANCE_DEFAULT, msg_p);
+    if (send_res < 0) {
+      LOG_E(GNB_APP, "[SYS-GNB] Error sending RRC_AS_SECURITY_CONFIG_REQ to RRC_gNB task");
     }
   }
 }
@@ -504,8 +637,9 @@ static void ss_task_sys_nr_handle_req(struct NR_SYSTEM_CTRL_REQ *req, ss_nrset_t
             break;
           case NR_SystemRequest_Type_AS_Security:
             {
-              LOG_A(GNB_APP, "[SYS-GNB] Dummy handling for Cell Config 5G NR_SystemRequest_Type_AS_Security \n");
-              if ( req->Common.ControlInfo.CnfFlag) {
+              LOG_A(GNB_APP, "[SYS-GNB] Handling for NR_SystemRequest_Type_AS_Security\n");
+              sys_handle_nr_as_security_req(&(req->Request.v.AS_Security));
+              if (req->Common.ControlInfo.CnfFlag) {
                 send_sys_cnf(ConfirmationResult_Type_Success, true, NR_SystemConfirm_Type_AS_Security, NULL);
               }
             }

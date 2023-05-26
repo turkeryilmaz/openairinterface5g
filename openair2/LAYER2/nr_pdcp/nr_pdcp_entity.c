@@ -31,10 +31,14 @@
 #include "nr_pdcp_sdu.h"
 
 #include "LOG/log.h"
+// 2DO: REMOVE, FOR DEBUG PURPOSES ONLY
+#include "nr_pdcp_security.h"
 
+// RLC to PDCP
 static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                                     char *_buffer, int size)
 {
+  FNIN;
   unsigned char    *buffer = (unsigned char *)_buffer;
   nr_pdcp_sdu_t    *sdu;
   int              rcvd_sn;
@@ -105,22 +109,47 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
   rcvd_count = (rcvd_hfn << entity->sn_size) | rcvd_sn;
 
+  LOG_I(PDCP, "%s: Entity security status(%d): ciphering %d, integrity check %d\n", __FUNCTION__, entity->has_ciphering,
+        entity->has_ciphering?entity->ciphering_algorithm:-1, entity->has_integrity?entity->integrity_algorithm:-1);
+  LOG_MSG(_buffer, size, "RLC => PDCP: rcvd_count=%zu, rcvd_sn=%d: ", rcvd_count, rcvd_sn);
+
   if (entity->has_ciphering)
-    entity->cipher(entity->security_context,
-                   buffer+header_size, size-header_size,
-                   entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
+  {
+    if (entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_SMC) {
+      LOG_I(PDCP, "%s: Skip deciphering during Security Mode Command\n", __FUNCTION__);
+    } else {
+      LOG_I(PDCP, "%s: Deciphering...\n", __FUNCTION__);
+      LOG_MSG(entity->ciphering_key, 16, "cip key: ");
+      LOG_MSG(buffer+header_size, size-header_size, "rbid=%d cnt=%d dir=%d, buffer(%d): ",
+              entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1, size-header_size);
 
-  if (entity->has_integrity) {
-    unsigned char integrity[4] = {0};
-    entity->integrity(entity->integrity_context, integrity,
-                      buffer, size - integrity_size,
+      entity->cipher(entity->security_context, buffer+header_size, size-header_size,
                       entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
-    if (memcmp(integrity, buffer + size - integrity_size, 4) != 0) {
-      LOG_E(PDCP, "discard NR PDU, integrity failed\n");
-      entity->stats.rxpdu_dd_pkts++;
-      entity->stats.rxpdu_dd_bytes += size;
+      LOG_MSG(buffer+header_size, size-header_size, "deciphered: ");
+    }
+  } else {
+    LOG_I(PDCP, "%s: deciphering did not apply\n", __FUNCTION__);
+  }
 
+  if (entity->has_integrity)
+  {
+    LOG_I(PDCP, "%s: Integrity check...\n", __FUNCTION__);
+    LOG_MSG(buffer, size - integrity_size, "rbid=%d cnt=%d dir=%d, buffer(%d): ",
+            entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1, size - integrity_size);
+    unsigned char xmaci[4] = {0};
+    unsigned char *const maci = buffer + size - integrity_size;
 
+    entity->integrity(entity->integrity_context, xmaci, buffer, size - integrity_size,
+                       entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
+    LOG_MSG(entity->integrity_key, 16, "int key: ");
+    LOG_MSG(maci, 4, " maci: ");
+    LOG_MSG(xmaci, 4, "xmaci: ");
+
+    if (memcmp(xmaci, maci, 4) != 0) {
+      LOG_E(PDCP, "%s: discard NR PDU, integrity failed\n", __FUNCTION__);
+       entity->stats.rxpdu_dd_pkts++;
+       entity->stats.rxpdu_dd_bytes += size;
+       exit(1);
     }
   }
 
@@ -129,7 +158,6 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
     LOG_W(PDCP, "discard NR PDU rcvd_count=%d, entity->rx_deliv %d,sdu_in_list %d\n", rcvd_count,entity->rx_deliv,nr_pdcp_sdu_in_list(entity->rx_list,rcvd_count));
     entity->stats.rxpdu_dd_pkts++;
     entity->stats.rxpdu_dd_bytes += size;
-
 
     return;
   }
@@ -174,11 +202,14 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
     entity->rx_reord = entity->rx_next;
     entity->t_reordering_start = entity->t_current;
   }
+  FNOUT;
 }
 
+// RRC to PDCP
 static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
                                     char *buffer, int size, int sdu_id)
 {
+  FNIN;
   uint32_t count;
   int      sn;
   int      header_size;
@@ -191,6 +222,8 @@ static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
 
   count = entity->tx_next;
   sn = entity->tx_next & entity->sn_max;
+
+  LOG_MSG(buffer, size, "RRC => PDCP: count=%zu, sn=%d: ", count, sn);
 
   /* D/C bit is only to be set for DRBs */
   if (entity->type == NR_PDCP_DRB_AM || entity->type == NR_PDCP_DRB_UM) {
@@ -219,26 +252,49 @@ static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
 
   memcpy(buf + header_size, buffer, size);
 
+  LOG_I(PDCP, "Entity security status (%d): ciphering %d, integrity check %d\n", entity->has_ciphering,
+        entity->has_ciphering?entity->ciphering_algorithm:-1, entity->has_integrity?entity->integrity_algorithm:-1);
+
   if (entity->has_integrity){
     uint8_t integrity[4] = {0};
+    LOG_I(PDCP, "%s: Integrity protection...\n", __FUNCTION__);
+    LOG_MSG(buf, header_size + size, "rbid=%d cnt=%d dir=%d, buffer(%d): ", entity->rb_id, count, entity->is_gnb ? 1 : 0, header_size + size);
+    LOG_MSG(entity->integrity_key, 16, "int key: ");
+
     entity->integrity(entity->integrity_context,
                       integrity,
                       (unsigned char *)buf, header_size + size,
                       entity->rb_id, count, entity->is_gnb ? 1 : 0);
-
+    LOG_MSG(integrity, 4, "calculated MACI: ");
     memcpy((unsigned char *)buf + header_size + size, integrity, 4);
+
+  } else if (integrity_size == 4) {
+    // set MAC-I to 0 for SRBs with integrity not active
+    memset(buf + header_size + size, 0, 4);
   }
 
-  // set MAC-I to 0 for SRBs with integrity not active
-  else if (integrity_size == 4)
-    memset(buf + header_size + size, 0, 4);
+  if (entity->has_ciphering)
+  {
+    if (entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_SMC) {
+      /* 3GPP TS 33.501, 6.7.4: RRC DL ciphering @gNB shall start after sending the AS security mode command message */
+      LOG_I(PDCP, "%s: Skip ciphering during Security Mode Command\n", __FUNCTION__);
+      if (!entity->is_gnb && count > 0) {
+        entity->has_ciphering = NR_PDCP_ENTITY_CIPHERING_ON;
+      }
+    } else {
+      LOG_I(PDCP, "%s: Ciphering...\n", __FUNCTION__);
+      LOG_MSG(entity->ciphering_key, 16, "cip key: ");
+      LOG_MSG((unsigned char *)buf + header_size, size + integrity_size,
+             "rbid=%d cnt=%d dir=%d, buffer(%d): ", entity->rb_id, count, entity->is_gnb ? 1 : 0, size + integrity_size);
 
-  if (entity->has_ciphering && (entity->is_gnb || entity->security_mode_completed)){
-    entity->cipher(entity->security_context,
-                   (unsigned char *)buf + header_size, size + integrity_size,
-                   entity->rb_id, count, entity->is_gnb ? 1 : 0);
-  } else {
-    entity->security_mode_completed = true;
+      entity->cipher(entity->security_context, (unsigned char *)buf + header_size,
+                     size + integrity_size, entity->rb_id, count, entity->is_gnb ? 1 : 0);
+      LOG_MSG((unsigned char *)buf+header_size, size + integrity_size, "Ciphered: ");
+    }
+  }
+  else
+  {
+    LOG_I(PDCP, "%s: Ciphering not applied\n", __FUNCTION__);
   }
 
   entity->tx_next++;
@@ -248,8 +304,7 @@ static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
   entity->stats.txpdu_pkts++;
   entity->stats.txpdu_bytes += header_size + size + integrity_size;
   entity->stats.txpdu_sn = sn;
-
-
+  FNOUT;
 }
 
 /* may be called several times, take care to clean previous settings */
@@ -259,26 +314,43 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
                                         int ciphering_algorithm,
                                         char *ciphering_key)
 {
-  if (integrity_algorithm != -1)
+  FNIN;
+  const size_t kKEY_LEN = 16;
+
+  if (!entity) {
+    LOG_E(PDCP, "%s: NULL entity, exiting\n", __FUNCTION__);
+    return;
+  }
+  LOG_I(PDCP, "%s: rb_id=%d INT=%d, CIP=%d\n", __FUNCTION__, entity->rb_id, integrity_algorithm, ciphering_algorithm);
+
+  if (integrity_algorithm != -1) {
     entity->integrity_algorithm = integrity_algorithm;
-  if (ciphering_algorithm != -1)
+  }
+  if (ciphering_algorithm != -1) {
     entity->ciphering_algorithm = ciphering_algorithm;
-  if (integrity_key != NULL)
-    memcpy(entity->integrity_key, integrity_key, 16);
-  if (ciphering_key != NULL)
-    memcpy(entity->ciphering_key, ciphering_key, 16);
+  }
+  if (integrity_key != NULL) {
+    memcpy(entity->integrity_key, integrity_key, kKEY_LEN);
+    LOG_MSG(entity->integrity_key, kKEY_LEN, "integrity_key: ");
+  }
+  if (ciphering_key != NULL) {
+    memcpy(entity->ciphering_key, ciphering_key, kKEY_LEN);
+    LOG_MSG(entity->ciphering_key, kKEY_LEN, "ciphering_key: ");
+  }
 
   if (integrity_algorithm == 0) {
     entity->has_integrity = 0;
-    if (entity->free_integrity != NULL)
+    if (entity->free_integrity != NULL) {
       entity->free_integrity(entity->integrity_context);
+    }
     entity->free_integrity = NULL;
   }
 
   if (integrity_algorithm != 0 && integrity_algorithm != -1) {
     entity->has_integrity = 1;
-    if (entity->free_integrity != NULL)
+    if (entity->free_integrity != NULL) {
       entity->free_integrity(entity->integrity_context);
+    }
     if (integrity_algorithm == 2) {
       entity->integrity_context = nr_pdcp_integrity_nia2_init(entity->integrity_key);
       entity->integrity = nr_pdcp_integrity_nia2_integrity;
@@ -294,9 +366,10 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
   }
 
   if (ciphering_algorithm == 0) {
-    entity->has_ciphering = 0;
-    if (entity->free_security != NULL)
+    entity->has_ciphering = NR_PDCP_ENTITY_CIPHERING_OFF;
+    if (entity->free_security != NULL) {
       entity->free_security(entity->security_context);
+    }
     entity->free_security = NULL;
   }
 
@@ -305,13 +378,16 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
       LOG_E(PDCP, "FATAL: only nea2 supported for the moment\n");
       exit(1);
     }
-    entity->has_ciphering = 1;
-    if (entity->free_security != NULL)
+    entity->has_ciphering = entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_ON?NR_PDCP_ENTITY_CIPHERING_ON:NR_PDCP_ENTITY_CIPHERING_SMC;
+    LOG_I(PDCP, "%s: entity->has_ciphering %d\n", __FUNCTION__, entity->has_ciphering);
+    if (entity->free_security != NULL) {
       entity->free_security(entity->security_context);
+    }
     entity->security_context = nr_pdcp_security_nea2_init(entity->ciphering_key);
     entity->cipher = nr_pdcp_security_nea2_cipher;
     entity->free_security = nr_pdcp_security_nea2_free_security;
   }
+  FNOUT;
 }
 
 static void check_t_reordering(nr_pdcp_entity_t *entity)
@@ -368,17 +444,21 @@ void nr_pdcp_entity_set_time(struct nr_pdcp_entity_t *entity, uint64_t now)
 
 void nr_pdcp_entity_delete(nr_pdcp_entity_t *entity)
 {
+  FNIN;
   nr_pdcp_sdu_t *cur = entity->rx_list;
   while (cur != NULL) {
     nr_pdcp_sdu_t *next = cur->next;
     nr_pdcp_free_sdu(cur);
     cur = next;
   }
-  if (entity->free_security != NULL)
+  if (entity->free_security != NULL) {
     entity->free_security(entity->security_context);
-  if (entity->free_integrity != NULL)
+  }
+  if (entity->free_integrity != NULL) {
     entity->free_integrity(entity->integrity_context);
+  }
   free(entity);
+  FNOUT;
 }
 
 static void nr_pdcp_entity_get_stats(nr_pdcp_entity_t *entity,
@@ -406,6 +486,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     unsigned char *ciphering_key,
     unsigned char *integrity_key)
 {
+  FNIN;
   nr_pdcp_entity_t *ret;
 
   ret = calloc(1, sizeof(nr_pdcp_entity_t));
@@ -444,9 +525,8 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
 
   ret->is_gnb = is_gnb;
 
-  nr_pdcp_entity_set_security(ret,
-                              integrity_algorithm, (char *)integrity_key,
-                              ciphering_algorithm, (char *)ciphering_key);
+  nr_pdcp_entity_set_security(ret, integrity_algorithm, integrity_key, ciphering_algorithm, ciphering_key);
 
+  FNOUT;
   return ret;
 }

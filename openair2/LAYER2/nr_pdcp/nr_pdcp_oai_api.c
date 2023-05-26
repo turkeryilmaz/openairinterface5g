@@ -40,6 +40,9 @@
 #include "openair2/SDAP/nr_sdap/nr_sdap.h"
 #include "executables/softmodem-common.h"
 
+// 2DO: REMOVE, FOR DEBUG PURPOSES ONLY
+#include "nr_pdcp_security.h"
+
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
     exit(1); \
@@ -786,6 +789,7 @@ rb_found:
     memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
     LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
+    LOG_MSG(memblock->data, size, "%s: from RLC to PDCP: ", __FUNCTION__);
     //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
     //printf("\n");
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
@@ -874,9 +878,8 @@ static void deliver_pdu_srb(void *_ue, nr_pdcp_entity_t *entity,
   exit(1);
 
 srb_found:
-
-
   LOG_D(PDCP, "%s(): (srb %d) calling rlc_data_req size %d\n", __func__, srb_id, size);
+  LOG_MSG(buf, size, "%s: PDCP => RLC: ", __FUNCTION__);
   //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
   //printf("\n");
   if ((RC.nrrrc == NULL) || (!NODE_IS_CU(RC.nrrrc[0]->node_type))) {
@@ -1153,12 +1156,15 @@ void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddMo
     for (int i = 0; i < srb2add_list->list.count; i++) {
       add_srb(enb_flag, rntiMaybeUEid, srb2add_list->list.array[i], security_modeP & 0x0f, (security_modeP >> 4) & 0x0f, kRRCenc, kRRCint);
     }
-  } else
+  } else {
     LOG_W(PDCP, "nr_pdcp_add_srbs() with void list\n");
-  if (kRRCenc)
+  }
+  if (kRRCenc) {
     free(kRRCenc);
-  if (kRRCint)
+  }
+  if (kRRCint) {
     free(kRRCint);
+  }
 }
 
 void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
@@ -1314,6 +1320,7 @@ void pdcp_config_set_security(
         uint8_t *const kRRCint_pP,
         uint8_t *const kUPenc_pP)
 {
+  FNIN;
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
   ue_id_t ue_id = ctxt_pP->rntiMaybeUEid;
@@ -1337,15 +1344,16 @@ void pdcp_config_set_security(
 
     integrity_algorithm = (security_modeP>>4) & 0xf;
     ciphering_algorithm = security_modeP & 0x0f;
-    rb->set_security(rb, integrity_algorithm, (char *)kRRCint_pP,
-                     ciphering_algorithm, (char *)kRRCenc_pP);
-    rb->security_mode_completed = false;
+    LOG_MSG(kRRCint_pP, 16, "%s: (%d) kRRCint_pP: ", __FUNCTION__, integrity_algorithm);
+    LOG_MSG(kRRCenc_pP, 16, "%s: (%d) kRRCenc_pP: ", __FUNCTION__, ciphering_algorithm);
+    rb->set_security(rb, integrity_algorithm, kRRCint_pP, ciphering_algorithm, kRRCenc_pP);
   } else {
     LOG_E(PDCP, "%s:%d:%s: TODO\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+  FNOUT;
 }
 
 static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
@@ -1591,4 +1599,22 @@ const bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdc
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 
   return ret;
+}
+
+void nr_pdcp_config_set_smc(ue_id_t crntiMaybeUEid, bool complete)
+{
+  FNIN;
+  nr_pdcp_ue_t *ue;
+  nr_pdcp_entity_t *rb;
+
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, crntiMaybeUEid);
+  if (ue && ue->srb[0]) {
+    rb = ue->srb[0];
+    if (rb->ciphering_algorithm > 0) {
+      rb->has_ciphering = complete ? NR_PDCP_ENTITY_CIPHERING_ON : NR_PDCP_ENTITY_CIPHERING_SMC;
+    }
+  }
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+  FNOUT;
 }

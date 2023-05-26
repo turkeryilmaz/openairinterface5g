@@ -35,6 +35,20 @@ typedef enum {
   NR_PDCP_SRB
 } nr_pdcp_entity_type_t;
 
+/**
+ * 3GPP TS 33.501
+ * RRC downlink ciphering (encryption) at the gNB shall start after sending the AS security mode command message.
+ * RRC uplink deciphering (decryption) at the gNB shall start after receiving and successful verification of the AS security mode complete message.
+ *
+ * RRC uplink ciphering (encryption) at the UE shall start after sending the AS security mode complete message.
+ * RRC downlink deciphering (decryption) at the UE shall start after receiving and successful verification of the AS security mode command message.
+*/
+typedef enum {
+  NR_PDCP_ENTITY_CIPHERING_OFF = 0,
+  NR_PDCP_ENTITY_CIPHERING_ON  = 1,
+  NR_PDCP_ENTITY_CIPHERING_SMC = 2, /* A Transient state to skip decryption @ gNB and encryption @ nrUE during SMC procedure */
+} nr_pdcp_entity_ciphering_state_t;
+
 typedef struct {
   //nr_pdcp_entity_type_t mode;
   /* PDU stats */
@@ -125,7 +139,7 @@ typedef struct nr_pdcp_entity_t {
   int t_reordering_start;
 
   /* security */
-  int has_ciphering;
+  nr_pdcp_entity_ciphering_state_t has_ciphering;
   int has_integrity;
   int ciphering_algorithm;
   int integrity_algorithm;
@@ -152,19 +166,6 @@ typedef struct nr_pdcp_entity_t {
   int           rx_size;
   int           rx_maxsize;
   nr_pdcp_statistics_t stats;
-
-  // WARNING: This is a hack!
-  // 3GPP TS 38.331 (RRC) version 15.3 
-  // Section 5.3.4.3 Reception of the SecurityModeCommand by the UE 
-  // The UE needs to send the Security Mode Complete message. However, the message 
-  // needs to be sent without being ciphered. 
-  // However:
-  // 1- The Security Mode Command arrives to the UE with the cipher algo (e.g., nea2).
-  // 2- The UE is configured with the cipher algo.
-  // 3- The Security Mode Complete message is sent to the itti task queue.
-  // 4- The ITTI task, forwards the message ciphering (e.g., nea2) it. 
-  // 5- The gNB cannot understand the ciphered Security Mode Complete message.
-  bool security_mode_completed;
 } nr_pdcp_entity_t;
 
 nr_pdcp_entity_t *new_nr_pdcp_entity(

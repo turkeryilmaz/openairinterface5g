@@ -37,7 +37,6 @@
 #include "nr_rrc_config.h"
 #include "nr_rrc_defs.h"
 #include "nr_rrc_extern.h"
-#include "assertions.h"
 #include "common/ran_context.h"
 #include "oai_asn1.h"
 #include "rrc_gNB_radio_bearers.h"
@@ -88,6 +87,8 @@
 #include "rrc_gNB_GTPV1U.h"
 
 #include "nr_pdcp/nr_pdcp_entity.h"
+#include "nr_pdcp/nr_pdcp.h"
+#include "pdcp_primitives.h"
 #include "pdcp.h"
 
 #include "intertask_interface.h"
@@ -111,6 +112,13 @@ static inline uint64_t bitStr_to_uint64(BIT_STRING_t *asn);
 
 mui_t                               rrc_gNB_mui = 0;
 uint8_t first_rrcreconfiguration = 0;
+
+
+// temp static storage for AS Security settings to be applied for SRB1 and SRB2
+static e_NR_IntegrityProtAlgorithm _int_algo = 0;
+static NR_CipheringAlgorithm_t     _cip_algo = 0;
+static uint8_t _nr_cp_int_key[16] = {0};
+static uint8_t _nr_cp_cip_key[16] = {0};
 
 ///---------------------------------------------------------------------------------------------------------------///
 ///---------------------------------------------------------------------------------------------------------------///
@@ -1660,6 +1668,8 @@ rrc_gNB_process_RRCReconfigurationComplete(
 
   ue_context_pP->ue_context.ue_reestablishment_timer = 0;
 
+#if 0
+// TTCN does all the calculations of kgNB and derived RRC keys
   /* Derive the keys from kgnb */
   if (DRB_configList != NULL) {
     nr_derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
@@ -1677,10 +1687,17 @@ rrc_gNB_process_RRCReconfigurationComplete(
                         ue_context_pP->ue_context.kgnb,
                         &kRRCint);
   /* Refresh SRBs/DRBs */
+#endif
 
-  LOG_D(NR_RRC,"Configuring PDCP DRBs/SRBs for UE %x\n",ue_context_pP->ue_context.rnti);
+  kRRCenc = (uint8_t*)malloc(16);
+  kRRCint = (uint8_t*)malloc(16);
+  AssertFatal(kRRCint && kRRCenc, "malloc failed");
+  memcpy(kRRCenc, _nr_cp_cip_key, 16);
+  memcpy(kRRCint, _nr_cp_int_key, 16);
 
-  nr_pdcp_add_srbs(ctxt_pP->enb_flag, ctxt_pP->rntiMaybeUEid, SRB_configList, (ue_context_pP->ue_context.integrity_algorithm << 4) | ue_context_pP->ue_context.ciphering_algorithm, kRRCenc, kRRCint);
+  LOG_I(NR_RRC,"Configuring PDCP DRBs/SRBs for UE %x\n",ue_context_pP->ue_context.rnti);
+
+  nr_pdcp_add_srbs(ctxt_pP->enb_flag, ctxt_pP->rntiMaybeUEid, SRB_configList, (_int_algo << 4) | _cip_algo, kRRCenc, kRRCint);
 
   nr_pdcp_add_drbs(ctxt_pP->enb_flag,
                    ctxt_pP->rntiMaybeUEid,
@@ -2672,7 +2689,7 @@ rrc_gNB_decode_dcch(
 
         LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)(Rx_sdu), sdu_sizeP,
                     "[MSG] RRC Connection Reconfiguration Complete\n");
-        LOG_D(NR_RRC,
+        LOG_I(NR_RRC,
             PROTOCOL_NR_RRC_CTXT_UE_FMT" RLC RB %02d --- RLC_DATA_IND %d bytes "
             "(RRCReconfigurationComplete) ---> RRC_gNB]\n",
             PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP),
@@ -2742,7 +2759,7 @@ rrc_gNB_decode_dcch(
 
         LOG_DUMPMSG(NR_RRC, DEBUG_RRC,(char *)Rx_sdu,sdu_sizeP,
                     "[MSG] RRC SetupComplete\n");
-        LOG_D(NR_RRC,
+        LOG_I(NR_RRC,
                 PROTOCOL_NR_RRC_CTXT_UE_FMT" RLC RB %02d --- RLC_DATA_IND %d bytes "
                 "(RRCSetupComplete) ---> RRC_gNB\n",
                 PROTOCOL_NR_RRC_CTXT_UE_ARGS(ctxt_pP),
@@ -2859,7 +2876,9 @@ rrc_gNB_decode_dcch(
         }
 
         /* configure ciphering */
-        nr_rrc_pdcp_config_security(ctxt_pP, ue_context_p, 1);
+        // FIXME: Commented for Bug 124092, no need to NGAP key recalculation
+        // nr_rrc_pdcp_config_security(ctxt_pP, ue_context_p, 1);
+        nr_pdcp_config_set_smc(ctxt_pP->rntiMaybeUEid, true);
 
         if (RC.ss.mode == SS_GNB)
         {
@@ -2877,9 +2896,9 @@ rrc_gNB_decode_dcch(
                   DCCH,
                   sdu_sizeP);
             
-            if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+            // if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
               xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)ul_dcch_msg);
-            }
+            // }
             
             rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
             break;
@@ -4577,6 +4596,37 @@ void *rrc_gnb_task(void *args_p) {
             PDCP_TRANSMISSION_MODE_CONTROL);
         }
         break;
+
+      case RRC_AS_SECURITY_CONFIG_REQ:
+      {
+        _int_algo = (e_NR_IntegrityProtAlgorithm)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm;
+        _cip_algo = (NR_CipheringAlgorithm_t)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm;
+
+        LOG_I(NR_RRC,"[gNB %ld] Received %s: Int algo: %d, Cip algo: %d \n", instance, msg_name_p, _int_algo, _cip_algo);
+
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+          msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
+
+        if (_int_algo > 0) {
+          memcpy(&(_nr_cp_int_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[0]), 16);
+        } else {
+          memset(&(_nr_cp_int_key[0]), 0, 16);
+        }
+
+        if (_cip_algo > 0) {
+          memcpy(&(_nr_cp_cip_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[0]), 16);
+        } else {
+          memset(&(_nr_cp_cip_key[0]), 0, 16);
+        }
+
+        int unused = 0;
+        int rb = 1;
+        pdcp_config_set_security(&ctxt, NULL, rb, unused, _cip_algo | _int_algo << 4,
+            &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[0]),
+            &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[0]),
+            &RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc);
+      }
+      break;
 
       default:
         LOG_E(NR_RRC, "[gNB %ld] Received unexpected message %s\n", instance, msg_name_p);
