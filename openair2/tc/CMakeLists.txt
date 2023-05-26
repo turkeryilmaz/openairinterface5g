@@ -14,7 +14,7 @@ IF( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
   )
 ENDIF()
 
-set(SANITIZER "THREAD" CACHE STRING "Sanitizers")
+set(SANITIZER "NONE" CACHE STRING "Sanitizers")
 #set(SANITIZER "ADDRESS" CACHE STRING "Sanitizers")
 
 set_property(CACHE SANITIZER PROPERTY STRINGS "NONE" "ADDRESS" "THREAD")
@@ -48,7 +48,7 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_executable(tc  
+add_executable(test_tc_rf
   alg_ds/alg/accumulate.c 
   alg_ds/alg/defer.c 
   alg_ds/alg/find.c
@@ -69,7 +69,6 @@ add_executable(tc
   alg_ds/meter/meter.c
   alg_ds/ds/statistics/moving_average/mv_avg_time.c
   alg_ds/ds/statistics/moving_average/mv_avg_elm.c
-  #  alg_ds/ds/trees/rb_tree.c
   main.c 
   tc_api.c
   tc.c 
@@ -81,8 +80,20 @@ add_executable(tc
   tc_sm/ie/tc_data_ie.c
   )
   
-target_link_libraries(tc -lpthread -ldl -lm )
+target_link_libraries(test_tc_rf -lpthread -ldl -lm )
 
-# For profiling and coverage purposes 
-#target_link_libraries(tc /home/mir/workspace/tc/queue/build/libcodel_queue.so)
+
+target_compile_definitions(test_tc_rf PRIVATE TC_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(test_tc_rf PRIVATE TEST_TC_RF)
+
+#"/home/mir/workspace/oai-tc/openair2/tc/sch/build/librr_sch.so")
+#" "${CMAKE_CURRENT_SOURCE_DIR})
+
+message(${CMAKE_CURRENT_SOURCE_DIR})
+
+add_subdirectory(sch)
+add_subdirectory(cls)
+add_subdirectory(pcr)
+add_subdirectory(queue)
+
 

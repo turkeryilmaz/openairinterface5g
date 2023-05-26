@@ -33,6 +33,7 @@
 #include <pthread.h>
 
 #include "../../tc/tc_api.h"
+#include "../../tc/time/time.h"
 #include <stdatomic.h>
 
 typedef struct {
@@ -79,7 +80,8 @@ void tc_egress_fun(uint16_t rnti, uint8_t rb_id_u, uint8_t* data, size_t sz)
                             .brOption = 0
   };
 
-  
+
+int64_t now = time_now_us();
   boolean_t ret = pdcp_data_req(&ctxt_p,
                                 srb_flag,
                                 rb_id,
@@ -92,6 +94,8 @@ void tc_egress_fun(uint16_t rnti, uint8_t rb_id_u, uint8_t* data, size_t sz)
                                 &destinationL2Id);
   if(!ret)
     printf("PDCP refused PDU\n");
+
+  printf("PDCP elapsed time %ld \n", time_now_us() - now);
 }
 
 
@@ -145,7 +149,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 #ifdef TC_SM
   assert(srb_flag == SRB_FLAG_NO);
   if(rb_id != 1){
-    printf("Unknown rb_id = %d \n", rb_id);
+    printf("Unknown rb_id = %ld \n", rb_id);
   }
   assert(rb_id == 1);
   assert(mui == RLC_MUI_UNDEFINED);
@@ -156,7 +160,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   const uint32_t rnti = ctxt_p->rnti;
 
-  tc_rc_t tc_rc = tc_get_or_create(rnti, rb_id);
+  tc_rc_t tc_rc = tc_get_or_create(rnti, sdap_drb_id);
 
   // Configure TC
   if(static_tc == NULL){
@@ -268,6 +272,7 @@ static boolean_t nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   uint8_t* data = sdu_buffer;
   size_t sz = sdu_buffer_size;
 
+  //printf("[mir]: SDAP size %d \n", sz);
   // Ingress data (DL)
   tc_rc = tc_data_req(tc_rc.tc, data, sz);
 

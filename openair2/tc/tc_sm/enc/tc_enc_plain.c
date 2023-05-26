@@ -143,6 +143,15 @@ size_t cal_drp_payload(tc_drp_t const* drp)
 }
 
 static
+size_t cal_mrk_payload(tc_mrk_t const* mrk)
+{
+  assert(mrk != NULL);
+
+  size_t sz = sizeof(mrk->marked_pkts);
+  return sz;
+}
+
+static
 size_t cal_q_payload(tc_queue_t const* q)
 {
   assert(q != NULL);
@@ -164,6 +173,14 @@ size_t cal_q_payload(tc_queue_t const* q)
     sz += cal_drp_payload(&q->codel.drp);
     sz += sizeof(q->codel.avg_sojourn_time);
     sz += sizeof(q->codel.last_sojourn_time);
+  } else if(q->type == TC_QUEUE_ECN_CODEL){
+    sz += sizeof(q->ecn.bytes);
+    sz += sizeof(q->ecn.pkts);
+    sz += sizeof(q->ecn.bytes_fwd);
+    sz += sizeof(q->ecn.pkts_fwd);
+    sz += cal_mrk_payload(&q->ecn.mrk);
+    sz += sizeof(q->ecn.avg_sojourn_time);
+    sz += sizeof(q->ecn.last_sojourn_time);
   } else {
     assert(0!=0 && "unknown queue type");
   }
@@ -179,15 +196,6 @@ size_t cal_shp_payload(tc_shp_t const* shp)
   sz += sizeof(shp->active);
   sz +=  sizeof(shp->max_rate_kbps);
   sz += cal_mtr_payload(&shp->mtr);
-  return sz;
-}
-
-static
-size_t cal_mrk_payload(tc_mrk_t const* mrk)
-{
-  assert(mrk != NULL);
-
-  size_t sz = sizeof(mrk->marked_pkts);
   return sz;
 }
 
@@ -557,6 +565,43 @@ size_t tc_enc_q_codel(uint8_t* it, tc_queue_codel_t const* q)
 }
 
 static
+size_t tc_enc_q_ecn_codel(uint8_t* it, tc_queue_ecn_codel_t const* q)
+{
+  assert(it != NULL);
+  assert(q != NULL);
+
+  memcpy(it, &q->bytes, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  size_t sz = sizeof(uint32_t);
+
+  memcpy(it, &q->pkts, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  sz += sizeof(uint32_t);
+
+  memcpy(it, &q->bytes_fwd, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  sz += sizeof(uint32_t);
+
+  memcpy(it, &q->pkts_fwd, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  sz += sizeof(uint32_t);
+
+  size_t const sz_drp = tc_enc_mrk(it, &q->mrk );
+  it += sz_drp;
+  sz += sz_drp;
+
+  memcpy(it, &q->avg_sojourn_time, sizeof(float));
+  it += sizeof(float);
+  sz += sizeof(float);
+
+  memcpy(it, &q->last_sojourn_time, sizeof(int64_t));
+//  it += sizeof(int64_t);
+  sz += sizeof(int64_t);
+
+  return sz;
+}
+
+static
 size_t tc_enc_q(uint8_t* it, tc_queue_t const* q)
 {
   assert(it != NULL);
@@ -574,6 +619,10 @@ size_t tc_enc_q(uint8_t* it, tc_queue_t const* q)
     size_t const sz_codel = tc_enc_q_codel(it, &q->codel);
     sz += sz_codel;
     it += sz_codel;
+  } else if(q->type == TC_QUEUE_ECN_CODEL){
+    size_t const sz_ecn = tc_enc_q_ecn_codel(it, &q->ecn);
+    sz += sz_ecn;
+    it += sz_ecn;
   } else {
     assert(0!=0 && "unknown queue type");
   }
@@ -897,6 +946,15 @@ size_t cal_tc_ctrl_payload_q_codel(tc_ctrl_queue_codel_t const* codel)
 }
 
 static
+size_t cal_tc_ctrl_payload_q_ecn_codel(tc_ctrl_queue_ecn_codel_t const* ecn)
+{
+  assert(ecn != NULL);
+  size_t sz = sizeof(ecn->target_ms);
+  sz += sizeof(ecn->interval_ms);
+  return sz;
+}
+
+static
 size_t cal_tc_ctrl_payload_q_add(tc_add_ctrl_queue_t const* add)
 {
   assert(add != NULL);
@@ -907,6 +965,8 @@ size_t cal_tc_ctrl_payload_q_add(tc_add_ctrl_queue_t const* add)
     sz += cal_tc_ctrl_payload_q_fifo(&add->fifo); 
   } else if (add->type == TC_QUEUE_CODEL){
     sz += cal_tc_ctrl_payload_q_codel(&add->codel);
+  } else if (add->type == TC_QUEUE_ECN_CODEL){
+    sz += cal_tc_ctrl_payload_q_ecn_codel(&add->ecn);
   } else {
     assert(0!=0 && "Unknwon queue type");
   }
@@ -926,6 +986,8 @@ size_t cal_tc_ctrl_payload_q_mod(tc_mod_ctrl_queue_t const* mod)
     sz += cal_tc_ctrl_payload_q_fifo(&mod->fifo); 
   } else if (mod->type == TC_QUEUE_CODEL ){
     sz += cal_tc_ctrl_payload_q_codel(&mod->codel);
+  } else if (mod->type == TC_QUEUE_ECN_CODEL){
+    sz += cal_tc_ctrl_payload_q_ecn_codel(&mod->ecn);
   } else {
     assert(0!=0 && "Unknwon queue type");
   }
@@ -1710,6 +1772,22 @@ size_t enc_tc_ctrl_payload_q_codel(uint8_t* it, tc_ctrl_queue_codel_t const* cod
   return sz; //sizeof(codel->dummy);
 }
 
+static
+size_t enc_tc_ctrl_payload_q_ecn_codel(uint8_t* it, tc_ctrl_queue_ecn_codel_t const* ecn)
+{
+  assert(it != NULL);
+  assert(ecn != NULL);
+
+  memcpy(it, &ecn->target_ms, sizeof(ecn->target_ms));
+  it += sizeof(ecn->target_ms);
+  size_t sz = sizeof(ecn->target_ms);
+
+  memcpy(it, &ecn->interval_ms, sizeof(ecn->interval_ms));
+//  it += sizeof(codel->interval_ms);
+  sz += sizeof(ecn->interval_ms);
+
+  return sz; //sizeof(codel->dummy);
+}
 
 static
 size_t enc_tc_add_ctrl_payload_q(uint8_t* it, tc_add_ctrl_queue_t const* add)
@@ -1725,6 +1803,8 @@ size_t enc_tc_add_ctrl_payload_q(uint8_t* it, tc_add_ctrl_queue_t const* add)
     sz += enc_tc_ctrl_payload_q_codel(it, &add->codel);
   } else if (add->type == TC_QUEUE_FIFO){
     sz += enc_tc_ctrl_payload_q_fifo(it, &add->fifo);
+  } else if (add->type == TC_QUEUE_ECN_CODEL){
+    sz += enc_tc_ctrl_payload_q_ecn_codel(it, &add->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }
@@ -1750,6 +1830,8 @@ size_t enc_tc_mod_ctrl_payload_q(uint8_t* it, tc_mod_ctrl_queue_t const* mod)
     sz += enc_tc_ctrl_payload_q_codel(it, &mod->codel);
   } else if (mod->type == TC_QUEUE_FIFO){
     sz += enc_tc_ctrl_payload_q_fifo(it, &mod->fifo);
+  } else if (mod->type == TC_QUEUE_ECN_CODEL){
+    sz += enc_tc_ctrl_payload_q_ecn_codel(it, &mod->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }

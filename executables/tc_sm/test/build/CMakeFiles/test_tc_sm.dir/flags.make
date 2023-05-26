@@ -6,5 +6,4 @@ C_FLAGS = -Wall -Wextra -std=c11 -g -fno-omit-frame-pointer -g   -DASN_DISABLE_O
 
 C_DEFINES = -DPLAIN
 
-C_INCLUDES = -I/home/mir/workspace/flexric/src/sm/tc_sm/test -I/home/mir/workspace/flexric/src/sm/tc_sm/test../ie/asn -I/home/mir/workspace/flexric/src/sm/tc_sm/test../ie/fb -I/usr/local/share/asn1c 
-
+C_INCLUDES = -I/home/mir/workspace/flexric/src/sm/tc_sm/test -I/home/mir/workspace/flexric/src/sm/tc_sm/test../ie/asn -I/home/mir/workspace/flexric/src/sm/tc_sm/test../ie/fb -I/usr/local/share/asn1c

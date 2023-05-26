@@ -17,8 +17,9 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-
+#ifndef TEST_TC_RF
 #include "../LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#endif
 
 // All the tc entities are saved in a binary tree.
 static
@@ -84,9 +85,9 @@ void* tc_egress_task(void* arg)
   struct epoll_event events[maxevents];
   const int timeout_ms = 1000;
 
-  int count = 0; 
+  int count = 0;
   while(b_stop_flag == false){
-    const int events_ready = epoll_wait(efd, events, maxevents, timeout_ms); 
+    const int events_ready = epoll_wait(efd, events, maxevents, timeout_ms);
     if(events_ready == -1){
       printf("Error at epoll_wait = %s \n", strerror(errno));
     }
@@ -123,13 +124,15 @@ void* tc_egress_task(void* arg)
         lock_guard(&mtx);
         it = assoc_next(&tc_entities, it);
       }
+
+#ifndef TEST_TC_RF
       if(count % 5 == 0 && tc->rb_id != 0){
         nr_rlc_entity_buffer_status_t b = nr_rlc_get_buffer_status(tc->rnti, tc->rb_id);
         tc_rc_t r = tc_drb_size(tc, b.tx_size);
+        (void)r;
       }
-
+#endif
     }
-
   
   }
 
@@ -270,9 +273,10 @@ tc_rc_t tc_drb_size(tc_handle_t* tc_h, size_t sz)
 {
   assert(tc_h != NULL);
   tc_t* tc = (tc_t*)tc_h; 
-  assert(tc->pcr != NULL);
 
   lock_guard(&tc->mtx);
+
+  assert(tc->pcr != NULL);
   pcr_t* p = tc->pcr;
 
   if(p->type == TC_PCR_5G_BDP){
@@ -284,7 +288,7 @@ tc_rc_t tc_drb_size(tc_handle_t* tc_h, size_t sz)
   }
 
 
-  printf("TC DRB size %ld \n", sz);
+  //printf("TC DRB size %ld tstamp %ld \n", sz, time_now_us());
 
 //  TC_CTRL_ACTION_SM_V0_ADD,
 //  TC_CTRL_ACTION_SM_V0_DEL,
@@ -616,7 +620,7 @@ void tc_conf_del(tc_handle_t* tc, tc_ctrl_msg_t* msg)
 
 */
 
-tc_ctrl_out_t tc_conf(tc_handle_t* tc, tc_ctrl_msg_t* msg)
+tc_ctrl_out_t tc_conf(tc_handle_t* tc, tc_ctrl_msg_t const* msg)
 {
   assert(tc != NULL);
   assert(msg != NULL);

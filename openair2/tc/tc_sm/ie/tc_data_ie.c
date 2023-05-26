@@ -1,6 +1,6 @@
 #include "tc_data_ie.h"
 
-#include "../../alg_ds/alg/eq_float.h"
+#include "../../util/alg_ds/alg/eq_float.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -220,6 +220,7 @@ bool eq_tc_mtr(tc_mtr_t const* m0, tc_mtr_t const* m1)
 
   return true;
 }
+
 
 static
 bool eq_tc_pcr(tc_pcr_t const* m0, tc_pcr_t const* m1)
@@ -500,6 +501,24 @@ bool eq_tc_queue_codel(tc_queue_codel_t const* m0, tc_queue_codel_t const* m1)
 }
 
 static
+bool eq_tc_queue_ecn_codel(tc_queue_ecn_codel_t const* m0, tc_queue_ecn_codel_t const* m1)
+{
+  assert(m0 != NULL);
+  assert(m1 != NULL);
+
+  if(eq_tc_mrk(&m0->mrk, &m1->mrk) == false)
+    return false;
+
+  if(eq_float(m0->avg_sojourn_time, m1->avg_sojourn_time, 0.001 ) == false)
+    return false;
+
+  return  m0->bytes == m1->bytes &&
+          m0->pkts == m1->pkts &&
+          m0->bytes_fwd == m1->bytes_fwd &&
+          m0->pkts_fwd == m1->pkts_fwd;
+}
+
+static
 bool eq_tc_q(tc_queue_t const* m0, tc_queue_t const* m1)
 {
   assert(m0 != NULL);
@@ -516,6 +535,9 @@ bool eq_tc_q(tc_queue_t const* m0, tc_queue_t const* m1)
     if(eq_tc_queue_codel(&m0->codel, &m1->codel) == false)
       return false;
 
+  } else if(m0->type == TC_QUEUE_ECN_CODEL){
+    if(eq_tc_queue_ecn_codel(&m0->ecn, &m1->ecn) == false)
+      return false;
   } else {
     assert(0!=0 && "Unknown queue type");
   }
@@ -714,7 +736,16 @@ tc_drp_t cp_tc_drp(tc_drp_t const* src)
 
   return dst;
 }
+static
+tc_mrk_t cp_tc_mrk(tc_mrk_t const* src)
+{
+  assert(src != NULL);
 
+  tc_mrk_t dst = {0};
+  dst.marked_pkts = src->marked_pkts;
+
+  return dst;
+}
 
 tc_queue_t cp_tc_queue(tc_queue_t const* src)
 {
@@ -731,12 +762,19 @@ tc_queue_t cp_tc_queue(tc_queue_t const* src)
     dst.fifo.avg_sojourn_time = src->fifo.avg_sojourn_time; 
     dst.fifo.drp = cp_tc_drp(&src->fifo.drp);
   } else if(dst.type == TC_QUEUE_CODEL){
-    dst.codel.bytes = src->fifo.bytes; 
-    dst.codel.pkts = src->fifo.pkts; 
-    dst.codel.bytes_fwd = src->fifo.bytes_fwd; 
-    dst.codel.pkts_fwd = src->fifo.pkts_fwd; 
-    dst.codel.avg_sojourn_time = src->fifo.avg_sojourn_time; 
-    dst.codel.drp = cp_tc_drp(&src->fifo.drp);
+    dst.codel.bytes = src->codel.bytes;
+    dst.codel.pkts = src->codel.pkts;
+    dst.codel.bytes_fwd = src->codel.bytes_fwd;
+    dst.codel.pkts_fwd = src->codel.pkts_fwd;
+    dst.codel.avg_sojourn_time = src->codel.avg_sojourn_time;
+    dst.codel.drp = cp_tc_drp(&src->codel.drp);
+  } else if(dst.type == TC_QUEUE_ECN_CODEL){
+    dst.ecn.bytes = src->ecn.bytes;
+    dst.ecn.pkts = src->ecn.pkts;
+    dst.ecn.bytes_fwd = src->ecn.bytes_fwd;
+    dst.ecn.pkts_fwd = src->ecn.pkts_fwd;
+    dst.ecn.avg_sojourn_time = src->ecn.avg_sojourn_time;
+    dst.ecn.mrk = cp_tc_mrk(&src->ecn.mrk);
   } else {
     assert(0!=0 && "Unknown queu type");
   }
@@ -754,17 +792,6 @@ tc_shp_t cp_tc_shp(tc_shp_t const* src)
   dst.id = src->id;
   assert(src->active == 0 || src->active == 1);
   dst.active = src->active;
-  return dst;
-}
-
-static
-tc_mrk_t cp_tc_mrk(tc_mrk_t const* src)
-{
-  assert(src != NULL);
-
-  tc_mrk_t dst = {0}; 
-  dst.marked_pkts = src->marked_pkts;
-
   return dst;
 }
 
@@ -1058,6 +1085,16 @@ tc_ctrl_queue_codel_t cp_tc_ctrl_q_codel(tc_ctrl_queue_codel_t const* src)
 }
 
 static
+tc_ctrl_queue_ecn_codel_t cp_tc_ctrl_q_ecn_codel(tc_ctrl_queue_ecn_codel_t const* src)
+{
+  assert(src != NULL);
+  tc_ctrl_queue_ecn_codel_t dst = { .target_ms = src->target_ms,
+                                    .interval_ms = src->interval_ms };
+
+  return dst;
+}
+
+static
 tc_add_ctrl_queue_t cp_tc_add_ctrl_queue(tc_add_ctrl_queue_t const* src)
 {
   assert(src != NULL);
@@ -1068,6 +1105,8 @@ tc_add_ctrl_queue_t cp_tc_add_ctrl_queue(tc_add_ctrl_queue_t const* src)
     dst.fifo = cp_tc_ctrl_q_fifo(&src->fifo); 
   } else if(dst.type == TC_QUEUE_CODEL ){
     dst.codel = cp_tc_ctrl_q_codel(&src->codel); 
+  } else if(dst.type == TC_QUEUE_ECN_CODEL ){
+    dst.ecn = cp_tc_ctrl_q_ecn_codel(&src->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }

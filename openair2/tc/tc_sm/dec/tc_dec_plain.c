@@ -370,6 +370,44 @@ size_t tc_dec_q_codel(uint8_t const* it, tc_queue_codel_t* q)
 }
 
 static
+size_t tc_dec_q_ecn_codel(uint8_t const* it, tc_queue_ecn_codel_t* q)
+{
+  assert(it != NULL);
+  assert(q != NULL);
+
+  memcpy(&q->bytes, it, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  size_t sz = sizeof(uint32_t);
+
+  memcpy(&q->pkts, it, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  sz += sizeof(uint32_t);
+
+  memcpy(&q->bytes_fwd, it, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  sz += sizeof(uint32_t);
+
+  memcpy(&q->pkts_fwd, it, sizeof(uint32_t) );
+  it += sizeof(uint32_t);
+  sz += sizeof(uint32_t);
+
+  size_t const sz_drp = tc_dec_mrk(it, &q->mrk );
+  it += sz_drp;
+  sz += sz_drp;
+
+  memcpy(&q->avg_sojourn_time, it, sizeof(float));
+  it += sizeof(float);
+  sz += sizeof(float);
+
+  memcpy(&q->last_sojourn_time, it, sizeof(int64_t));
+  it += sizeof(int64_t);
+  sz += sizeof(int64_t);
+
+
+  return sz;
+}
+
+static
 size_t tc_dec_q(uint8_t const* it, tc_queue_t* q)
 {
   assert(it != NULL);
@@ -387,6 +425,10 @@ size_t tc_dec_q(uint8_t const* it, tc_queue_t* q)
     size_t const sz_codel = tc_dec_q_codel(it, &q->codel);
     sz += sz_codel;
     it += sz_codel;
+  } else if(q->type == TC_QUEUE_ECN_CODEL){
+    size_t const sz_ecn = tc_dec_q_ecn_codel(it, &q->ecn);
+    sz += sz_ecn;
+    it += sz_ecn;
   } else {
     assert(0!=0 && "unknown queue type");
   }
@@ -817,6 +859,23 @@ size_t dec_tc_ctrl_payload_q_codel(void const* it, tc_ctrl_queue_codel_t* codel)
   return sz;
 }
 
+static
+size_t dec_tc_ctrl_payload_q_ecn_codel(void const* it, tc_ctrl_queue_ecn_codel_t* ecn)
+{
+  assert(it != NULL);
+  assert(ecn != NULL);
+
+  memcpy(&ecn->target_ms, it, sizeof(ecn->target_ms));
+  size_t sz = sizeof(ecn->target_ms);
+  it += sizeof(ecn->target_ms);
+
+  memcpy(&ecn->interval_ms, it, sizeof(ecn->interval_ms));
+  sz += sizeof(ecn->interval_ms);
+  //it += sizeof(codel->target_ms);
+
+  return sz;
+}
+
 /*
 static
 size_t dec_tc_ctrl_payload_q_add(uint8_t const *it, tc_add_ctrl_queue_t* add)
@@ -1105,6 +1164,8 @@ size_t dec_tc_add_ctrl_payload_q(uint8_t const* it, tc_add_ctrl_queue_t* add)
     sz += dec_tc_ctrl_payload_q_fifo(it, &add->fifo);
   } else if (add->type == TC_QUEUE_CODEL){
     sz += dec_tc_ctrl_payload_q_codel(it, &add->codel);
+  } else if (add->type == TC_QUEUE_ECN_CODEL){
+    sz += dec_tc_ctrl_payload_q_ecn_codel(it, &add->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }
@@ -1146,6 +1207,8 @@ size_t dec_tc_mod_ctrl_payload_q(uint8_t const* it, tc_mod_ctrl_queue_t* mod)
     sz += dec_tc_ctrl_payload_q_fifo(it, &mod->fifo);
   } else if (mod->type == TC_QUEUE_CODEL){
     sz += dec_tc_ctrl_payload_q_codel(it, &mod->codel);
+  } else if (mod->type == TC_QUEUE_ECN_CODEL){
+    sz += dec_tc_ctrl_payload_q_ecn_codel(it, &mod->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }

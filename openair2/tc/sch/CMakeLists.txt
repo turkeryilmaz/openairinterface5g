@@ -1,10 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project (sch)
 set(CMAKE_BUILD_TYPE Debug)
 
-#set (CMAKE_C_FLAGS "-Wall -std=gnu11 -fsanitize=address -fno-omit-frame-pointer -g")
-#set (CMAKE_C_FLAGS "-Wall -std=gnu11 -fsanitize=thread -fno-omit-frame-pointer -g")
 set (CMAKE_C_FLAGS "-Wall -Wextra -std=gnu11 -g")
 
 
@@ -38,9 +36,6 @@ add_compile_options("-pg")
 add_link_options("-pg")
 message("Code Profiler cmd: gprof tc gmon.out > analysis.txt && vim analysis.txt  ")
 endif()
-
-
-
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/rr/)

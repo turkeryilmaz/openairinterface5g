@@ -108,7 +108,7 @@ dodequeue_result_t dodequeue(codel_queue_t *q, int64_t now) {
   // by the amount of time it takes to send such a packet on  
   // the bottleneck).  The 2nd term of the "if" does this.
   int64_t const sojourn_time = now - r.p->tstamp;
-  printf("CoDel sojourn_time = %ld id = %d \n", sojourn_time, q->base.id);
+  printf("CoDel sojourn_time = %ld tstamp = %ld \n", sojourn_time, time_now_us() );
   if (sojourn_time < q->target_us || codel_bytes((queue_t*)q) <= q->maxpacket_) {   
     // went below - stay below for at least INTERVAL 
     q->first_above_time_ = 0; 
@@ -190,7 +190,6 @@ void codel_push(queue_t* q_base, void* data, size_t bytes)
 //    return (q_rc_t){.suceed = false, .reason = "Full Queue " }; 
   }
 
-//  printf("Ingressing pkt into CoDel queue number = %u \n", q_base->id );
 
   codel_queue_t* q = (codel_queue_t*)(q_base);
   codel_pkt_t p = {.data = data, .bytes = bytes, .tstamp = time_now_us() }; 
@@ -204,6 +203,10 @@ void codel_push(queue_t* q_base, void* data, size_t bytes)
   q->bytes_fwd += bytes;
   q->pkts += 1;
   q->pkts_fwd += 1;
+
+
+  printf("Codel queue size = %lu %ld \n", q->bytes, time_now_us() );
+
 }
 
 static

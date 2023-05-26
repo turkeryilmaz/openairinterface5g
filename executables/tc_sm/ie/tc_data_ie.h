@@ -216,6 +216,7 @@ typedef struct {
 typedef enum{
   TC_QUEUE_FIFO,
   TC_QUEUE_CODEL,
+  TC_QUEUE_ECN_CODEL,
 
   TC_QUEUE_END
 } tc_queue_e; 
@@ -243,11 +244,23 @@ typedef struct{
 } tc_queue_codel_t;
 
 typedef struct{
+  uint32_t bytes;
+  uint32_t pkts;
+  uint32_t bytes_fwd;
+  uint32_t pkts_fwd;
+  // marker
+  tc_mrk_t mrk;
+  float avg_sojourn_time;
+  int64_t last_sojourn_time;
+} tc_queue_ecn_codel_t;
+
+typedef struct{
    uint32_t id;
    tc_queue_e type;
     union{
      tc_queue_fifo_t fifo;
      tc_queue_codel_t codel;
+     tc_queue_ecn_codel_t ecn;
     };
 } tc_queue_t;
 
@@ -544,10 +557,17 @@ typedef struct{
 } tc_ctrl_queue_codel_t;
 
 typedef struct{
+  uint32_t target_ms;
+  uint32_t interval_ms;
+} tc_ctrl_queue_ecn_codel_t;
+
+
+typedef struct{
   tc_queue_e type;
    union{
       tc_ctrl_queue_fifo_t fifo;
       tc_ctrl_queue_codel_t codel;
+      tc_ctrl_queue_ecn_codel_t ecn;
   };
 } tc_add_ctrl_queue_t;
 
@@ -557,6 +577,7 @@ typedef struct{
    union{
       tc_ctrl_queue_fifo_t fifo;
       tc_ctrl_queue_codel_t codel;
+      tc_ctrl_queue_ecn_codel_t ecn;
   };
 } tc_mod_ctrl_queue_t;
 

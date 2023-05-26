@@ -221,6 +221,9 @@ SANITIZER:STRING=NONE
 //Dependencies for the target
 codel_queue_LIB_DEPENDS:STATIC=general;-lm;
 
+//Dependencies for the target
+ecn_codel_queue_LIB_DEPENDS:STATIC=general;-lm;
+
 //Value Computed by CMake
 queue_BINARY_DIR:STATIC=/home/tiwa/mir/oai-tc/openair2/tc/queue/build
 
@@ -382,4 +385,3 @@ CMAKE_UNAME:INTERNAL=/bin/uname
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 //STRINGS property for variable: SANITIZER
 SANITIZER-STRINGS:INTERNAL=NONE;ADDRESS;THREAD
-

@@ -44,7 +44,7 @@ boolean_t sdap_data_req(protocol_ctxt_t *ctxt_p,
   }
 
 
-  int64_t now = time_now_us();
+  //int64_t now = time_now_us();
 
   boolean_t ret = sdap_entity->tx_entity(sdap_entity,
                                          ctxt_p,
@@ -60,7 +60,7 @@ boolean_t sdap_data_req(protocol_ctxt_t *ctxt_p,
                                          qfi,
                                          rqi);
 
-  printf("PDCP + SDAP latency %ld \n", time_now_us() - now );
+  //printf("PDCP + SDAP latency %ld \n", time_now_us() - now );
   return ret;
 }
 

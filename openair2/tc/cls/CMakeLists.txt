@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project (cls)
 set(CMAKE_BUILD_TYPE Debug)
@@ -23,7 +23,7 @@ add_link_options("-fsanitize=thread;")
 
 endif()
 
-option(CODE_COVERAGE "Code coverage" ON)
+option(CODE_COVERAGE "Code coverage" OFF)
 if(CODE_COVERAGE)
 add_compile_options("-fprofile-arcs;-ftest-coverage")
 add_link_options("-lgcov;-coverage;")

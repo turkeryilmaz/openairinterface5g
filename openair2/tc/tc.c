@@ -16,6 +16,10 @@
 #include <unistd.h>
 
 
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+#define TC_SRC_DIR EXPAND_AND_QUOTE(TC_CURRENT_SOURCE_DIR)
+
 static
 atomic_size_t queue_id = 0;
 
@@ -216,25 +220,6 @@ void check_dl_error(void)
     assert(0 != 0 && "error loading the init of the shared object");
   }
 }
-/*
-static 
-void load_default_sto_cls(tc_t* tc, queue_t* q)
-{
-  const char* file_path = "/home/mir/workspace/tc/cls/build/librr_cls.so"; 
-  void* handle = dlopen(file_path, RTLD_NOW);
-  assert(handle != NULL && "Could not open the file path");
-  dlerror();    // Clear any existing error 
-  cls_t* (*fp)(void);
-  fp = dlsym(handle, "rr_cls_init");
-  check_dl_error();
-  cls_t* c = fp();
-
-  c->handle = handle; 
-  c->add_queue(c, &q);
-  seq_push_back(&tc->clss, &c, sizeof(cls_t*)); 
-}
-*/
-
 
 static
 void load_cls(tc_t* tc, queue_t* q, const char* file_path, const char* init_func)
@@ -243,6 +228,9 @@ void load_cls(tc_t* tc, queue_t* q, const char* file_path, const char* init_func
   assert(q != NULL);
   assert(file_path != NULL);
   assert(init_func != NULL );
+
+  printf("Load classifier file path = %s \n", file_path );
+  fflush(stdout);
 
   void* handle = dlopen(file_path, RTLD_NOW);
   assert(handle != NULL && "Could not open the file path");
@@ -264,6 +252,10 @@ void load_sch(tc_t* tc, const char* file_path, const char* init_func)
 
   printf("Load scheduler file path = %s \n", file_path );
   void* handle = dlopen(file_path, RTLD_NOW);
+  if(handle == NULL)
+	  printf("Error opening %s \n",dlerror() );
+
+  fflush(stdout);
   assert(handle != NULL && "Could not open the file path");
   dlerror();    /* Clear any existing error */
   sch_t* (*fp)(void);
@@ -280,6 +272,10 @@ void load_pcr(tc_t* tc, const char* file_path, const char* init_func)
   assert(tc != NULL);
   assert(file_path != NULL);
   assert(init_func != NULL);
+
+  printf("Load pacer file path = %s \n", file_path );
+  fflush(stdout);
+
 
   if(tc->pcr != NULL && tc->pcr->handle != NULL)
     free_pcr(tc->pcr);
@@ -300,6 +296,10 @@ void load_pcr(tc_t* tc, const char* file_path, const char* init_func)
 static
 queue_t* load_queue(tc_t* tc, const char* file_path, const char* init_func)
 {
+
+  printf("Load queue file path = %s \n", file_path );
+  fflush(stdout);
+
   // Create the FIFO default queue at position 0
   void* handle = dlopen(file_path, RTLD_NOW);
   if(handle == NULL){
@@ -364,7 +364,7 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
   assert(data != NULL);
   assert(sz != 0);
 
-  //int64_t now = time_now_us();
+  int64_t now = time_now_us();
 
   lock_guard(&tc->mtx);
 
@@ -394,7 +394,7 @@ void tc_ingress_pkts(tc_t* tc, uint8_t* data, size_t sz)
   if(cls_q.cls != NULL)
    cls_q.cls->pkt_fwd(cls_q.cls); 
 
-  //printf("TC Ingress delay %ld \n", time_now_us() - now);
+  printf("TC Ingress delay %ld \n", time_now_us() - now);
 }
 
 //static
@@ -414,11 +414,11 @@ void tc_egress_pkts(tc_t* tc)
 
   sch_t* sch = tc->sch;
   for(;;){
-    //int64_t now = time_now_us(); 
+    int64_t now = time_now_us();
     // Scheduler -> output from which queue
     queue_t* q = sch->next_queue(sch); 
     if(q == NULL || q->size(q) == 0) {
-      printf("Not egresing, queue size == 0\n");
+      //printf("Not egresing, queue size == 0\n");
       break;
     }
 
@@ -481,7 +481,7 @@ void tc_egress_pkts(tc_t* tc)
 
     tc->egress_fun(tc->rnti, tc->rb_id, next_pkt->data, next_pkt->sz);
 
- //   printf("TC Egress delay %ld \n", time_now_us() - now);
+    printf("TC Egress delay %ld \n", time_now_us() - now);
 
     free_pkt(next_pkt);
     //printf("Dequeuing packet from queue id = %d with size = %lu \n", q->id ,q->size(q) );
@@ -704,12 +704,16 @@ tc_rc_t tc_add_q(tc_t* tc, tc_add_ctrl_queue_t const* add)
   assert(add != NULL);
 
   if(add->type == TC_QUEUE_CODEL) {
-    const char* file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libcodel_queue.so"; 
+    const char* file_path = TC_SRC_DIR "/build/queue/libcodel_queue.so";
     const char* init_func = "codel_init";
     tc_add_q_impl(tc, file_path, init_func);
   } else if(add->type == TC_QUEUE_FIFO) {
-    const char* file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libfifo_queue.so"; 
+    const char* file_path = TC_SRC_DIR "/build/queue/libfifo_queue.so";
     const char* init_func = "fifo_init";
+    tc_add_q_impl(tc, file_path, init_func);
+  } else if(add->type == TC_QUEUE_ECN_CODEL) {
+    const char* file_path = TC_SRC_DIR "/build/queue/libecn_codel_queue.so";
+    const char* init_func = "ecn_codel_init";
     tc_add_q_impl(tc, file_path, init_func);
   } else {
     assert(0!=0 && "Unknwon queue type");
@@ -911,7 +915,7 @@ tc_rc_t tc_mod_pcr(tc_t* tc , tc_mod_ctrl_pcr_t const* mod)
   if(mod->type == tc->pcr->type){
     tc->pcr->mod(tc->pcr, mod);
   } else if(mod->type == TC_PCR_DUMMY){
-    const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libdummy_pcr.so";
+    const char* pcr_file_path = TC_SRC_DIR "/build/pcr/libdummy_pcr.so";
     const char* pcr_init_func = "dummy_pcr_init";
     load_pcr(tc,pcr_file_path, pcr_init_func); 
     tc->pcr->mod(tc->pcr, mod);
@@ -922,7 +926,7 @@ tc_rc_t tc_mod_pcr(tc_t* tc , tc_mod_ctrl_pcr_t const* mod)
 //     int64_t now = time_now_us();
 //     printf("ctrl elapsed time %ld \n", now - mod->bdp.tstamp);
     
-    const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libbdp_pcr.so";
+    const char* pcr_file_path = TC_SRC_DIR "/build/pcr/libbdp_pcr.so";
     const char* pcr_init_func = "bdp_pcr_init";
     load_pcr(tc,pcr_file_path, pcr_init_func); 
     printf("PCR BDP loaded \n");
@@ -957,15 +961,15 @@ void tc_load_defaults(tc_t* tc)
 {
   assert(tc != NULL);
 
-  //load default scheduler 
-  const char* sch_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/sch/build/librr_sch.so"; 
+  //load default scheduler
+  const char* sch_file_path = TC_SRC_DIR "/build/sch/librr_sch.so";
   const char* sch_init_func = "rr_init";
   load_sch(tc, sch_file_path, sch_init_func);
 
   //load default queue
-  const char* queue_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libfifo_queue.so" ; 
+  const char* queue_file_path = TC_SRC_DIR "/build/queue/libfifo_queue.so" ;
   const char* queue_init_func = "fifo_init";
-//  const char* queue_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libcodel_queue.so"; 
+//  const char* queue_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/queue/build/libcodel_queue.so";
 //  const char* queue_init_func = "codel_init";
  
   queue_t* q = load_queue(tc, queue_file_path, queue_init_func);
@@ -996,7 +1000,7 @@ void tc_load_defaults(tc_t* tc)
 //  const char* cls_init_func = "sto_cls_init";
 
   // OSI classifier
-  const char* cls_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/cls/build/libosi_cls.so"; 
+  const char* cls_file_path = TC_SRC_DIR "/build/cls/libosi_cls.so";
   const char* cls_init_func = "osi_cls_init";
 
   load_cls(tc,q,cls_file_path, cls_init_func);
@@ -1007,7 +1011,7 @@ void tc_load_defaults(tc_t* tc)
 //  const char* pcr_init_func = "bdp_pcr_init";
 //  load_pcr(tc,pcr_file_path, pcr_init_func); 
 
-  const char* pcr_file_path = "/home/tiwa/mir/oai-tc/openair2/tc/pcr/build/libdummy_pcr.so";
+  const char* pcr_file_path = TC_SRC_DIR "/build/pcr/libdummy_pcr.so";
   const char* pcr_init_func = "dummy_pcr_init";
   load_pcr(tc, pcr_file_path, pcr_init_func); 
 

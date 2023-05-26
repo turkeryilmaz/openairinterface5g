@@ -426,7 +426,7 @@ cls_t* osi_cls_init(void)
   cls->base.mod = osi_cls_mod; 
   cls->base.del = osi_cls_del; 
 
-  seq_init(&cls->filters, sizeof(tc_cls_osi_filter_t));
+  seq_init(&cls->filters,sizeof(tc_cls_osi_filter_t));
   seq_init(&cls->queues, sizeof(queue_t*));
 
   cls->flt_id = 0;

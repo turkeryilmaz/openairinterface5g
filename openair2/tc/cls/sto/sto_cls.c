@@ -79,18 +79,26 @@ void sto_cls_free(cls_t* cls_base)
 static
 void sto_cls_add(cls_t* cls_base, tc_add_ctrl_cls_t const* add )
 {
+  assert( cls_base != NULL );
+  assert( add != NULL );
   assert(0!=0 && "Not implemented!!");
 }
 
 static
 void sto_cls_mod(cls_t* cls_base, tc_mod_ctrl_cls_t const* mod )
 {
+  assert( cls_base != NULL );
+  assert( mod != NULL );
+
   assert(0!=0 && "Not implemented!!");
 }
 
 static
 void sto_cls_del(cls_t* cls_base, tc_del_ctrl_cls_t const* del )
 {
+  assert( cls_base != NULL );
+  assert( del != NULL );
+
   assert(0!=0 && "Not implemented!!");
 }
 
@@ -209,11 +217,11 @@ queue_t* sto_cls_dst_queue(cls_t* cls_base, const uint8_t* data, size_t size)
   // Shitty, just for visualization purposes
   if(tup.sport > 9299 && tup.sport < 9350 && num_queues > 1){
     pos = 1; 
-    printf( "Sto_cls protocol %d src_addr %d dst_add %d src_port %d dst_port %d to queue %d \n",tup.protocol, tup.saddr, tup.daddr, tup.sport, tup.dport, pos);
+    printf( "Sto_cls protocol %d src_addr %d dst_add %d src_port %d dst_port %d to queue %ld \n",tup.protocol, tup.saddr, tup.daddr, tup.sport, tup.dport, pos);
 //    printf("ICMP traffic detected going to queue id = %lu \n", pos); 
   } else {
      pos = 0; 
-    printf( "Sto_cls  protocol %d src_addr %d dst_add %d src_port %d dst_port %d to queue %d \n",tup.protocol, tup.saddr, tup.daddr, tup.sport, tup.dport, pos);
+    printf( "Sto_cls  protocol %d src_addr %d dst_add %d src_port %d dst_port %d to queue %ld \n",tup.protocol, tup.saddr, tup.daddr, tup.sport, tup.dport, pos);
   }
 
   return *(queue_t**)seq_at(&cls->queues, pos);
@@ -233,6 +241,7 @@ tc_cls_t sto_cls_stats(cls_t* cls_base)
 {
   assert(cls_base != NULL);
   sto_cls_t* cls = (sto_cls_t*)cls_base;
+  (void)cls;
 
   tc_cls_t ans = {.type = TC_CLS_STO };
   ans.sto.dummy = 42;
@@ -242,6 +251,7 @@ tc_cls_t sto_cls_stats(cls_t* cls_base)
 static
 const char* sto_cls_name(cls_t* cls)
 {
+  assert(cls != NULL);
   return "Stocastic Classifier";
 }
 

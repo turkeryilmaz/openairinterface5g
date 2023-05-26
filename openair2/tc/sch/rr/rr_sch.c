@@ -33,7 +33,7 @@ void rr_add_queue(sch_t* s_base, queue_t** q)
   rr_t* s = (rr_t*)s_base;
   assert(q != NULL);
   queue_t* tmp = *q;
-  assert( tmp->type == TC_QUEUE_FIFO || tmp->type == TC_QUEUE_CODEL) ;
+  assert( tmp->type == TC_QUEUE_FIFO || tmp->type == TC_QUEUE_CODEL ||  tmp->type == TC_QUEUE_ECN_CODEL) ;
   assert(tmp->id < 128 && "Did you added 128 queues?");
 
   seq_push_back(&s->arr, q, sizeof(queue_t*));
@@ -89,7 +89,7 @@ queue_t* rr_next_queue(sch_t* s_base)
     s->last_idx = 0;
 
   queue_t* q = NULL;
-  for(int i = 0; i < sz; ++i){
+  for(uint32_t i = 0; i < sz; ++i){
       q = *(queue_t**)seq_at(&s->arr, s->last_idx);
       assert(q != NULL);
 
@@ -111,6 +111,7 @@ static
 void rr_pkt_fwd(sch_t* s_base)
 {
   rr_t* s = (rr_t*)s_base;
+  (void)s;
 
 //  s->last_idx += 1;
 //  if(s->last_idx >= seq_size(&s->arr) ){

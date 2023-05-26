@@ -169,8 +169,15 @@ void fill_tc_queue(tc_queue_t* q)
     q->codel.pkts_fwd = rand()%10000;
     q->codel.avg_sojourn_time = 100.5;
     q->codel.last_sojourn_time = rand()%100;
-    fill_tc_drp(&q->fifo.drp);
-
+    fill_tc_drp(&q->codel.drp);
+  } else if(q->type == TC_QUEUE_ECN_CODEL){
+    q->ecn.bytes = rand()%10000;
+    q->ecn.pkts = rand()%10000;
+    q->ecn.bytes_fwd = rand()%10000;
+    q->ecn.pkts_fwd = rand()%10000;
+    q->ecn.avg_sojourn_time = 100.5;
+    q->ecn.last_sojourn_time = rand()%100;
+    fill_tc_mrk(&q->ecn.mrk);
   } else {
     assert(0!=0 && "Unknown queue type");
   }
@@ -478,7 +485,15 @@ void fill_tc_ctrl_queue_codel(tc_ctrl_queue_codel_t* codel)
 
   codel->interval_ms = rand()%256 + 100; 
   codel-> target_ms = rand()%10 + 5;
+}
 
+static
+void fill_tc_ctrl_queue_ecn_codel(tc_ctrl_queue_ecn_codel_t* ecn)
+{
+  assert(ecn != NULL);
+
+  ecn->interval_ms = rand()%256 + 100;
+  ecn->target_ms = rand()%10 + 5;
 }
 
 static
@@ -492,6 +507,8 @@ void fill_tc_ctrl_queue_add(tc_add_ctrl_queue_t* add)
     fill_tc_ctrl_queue_fifo(&add->fifo);
   } else if(add->type == TC_QUEUE_CODEL){
     fill_tc_ctrl_queue_codel(&add->codel);
+  } else if(add->type == TC_QUEUE_ECN_CODEL){
+    fill_tc_ctrl_queue_ecn_codel(&add->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }
@@ -518,6 +535,8 @@ void fill_tc_ctrl_queue_mod(tc_mod_ctrl_queue_t* mod)
     fill_tc_ctrl_queue_fifo(&mod->fifo);
   } else if(mod->type == TC_QUEUE_CODEL){
     fill_tc_ctrl_queue_codel(&mod->codel);
+  } else if(mod->type == TC_QUEUE_ECN_CODEL){
+    fill_tc_ctrl_queue_ecn_codel(&mod->ecn);
   } else {
     assert(0!=0 && "Unknown type");
   }

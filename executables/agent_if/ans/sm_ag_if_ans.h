@@ -26,6 +26,9 @@
 #include "../../rlc_sm/ie/rlc_data_ie.h"
 #include "../../pdcp_sm/ie/pdcp_data_ie.h"
 #include "../../slice_sm/ie/slice_data_ie.h"
+#include "../../tc_sm/ie/tc_data_ie.h"
+
+
 
 typedef enum{
   MAC_AGENT_IF_CTRL_ANS_V0, 

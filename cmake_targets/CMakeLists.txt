@@ -168,26 +168,26 @@ project (OpenAirInterface)
 ##############################################
 # Base CUDA setting
 ##############################################
-find_package(CUDA)
-if (CUDA_FOUND)
-    message ("cuda include ${CUDA_INCLUDE_DIRS}")
-    message ("cuda library ${CUDA_LIBRARY_DIRS}")
+#find_package(CUDA)
+#if (CUDA_FOUND)
+#    message ("cuda include ${CUDA_INCLUDE_DIRS}")
+#    message ("cuda library ${CUDA_LIBRARY_DIRS}")
 
-    add_definitions("-L/usr/local/cuda/lib64")
+    #    add_definitions("-L/usr/local/cuda/lib64")
 
-    SET(CUDA_NVCC_FLAGS
-      "${CUDA_NVCC_FLAGS};-arch=sm_60;")
+    #    SET(CUDA_NVCC_FLAGS
+    #  "${CUDA_NVCC_FLAGS};-arch=sm_60;")
 
     # Disable warnings for CUDA
-    SET(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-lpthread;-w;-O3;--default-stream;per-thread;-I/usr/local/cuda/inc;-L/usr/local/cuda/lib -lcutil;-rdc=true;-lcudadevrt")
-    SET(CUDA_VERBOSE_BUILD ON)
-    SET(CUDA_HOST_COMPILER "/usr/bin/g++")
+    #SET(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-lpthread;-w;-O3;--default-stream;per-thread;-I/usr/local/cuda/inc;-L/usr/local/cuda/lib -lcutil;-rdc=true;-lcudadevrt")
+    #SET(CUDA_VERBOSE_BUILD ON)
+    #SET(CUDA_HOST_COMPILER "/usr/bin/g++")
 
-    SET(CUDA_SEPARABLE_COMPILATION ON)
+    #SET(CUDA_SEPARABLE_COMPILATION ON)
 
-else (CUDA_FOUND)
-   message ("No CUDA tool installed")
-endif ()
+    #else (CUDA_FOUND)
+    #   message ("No CUDA tool installed")
+    #endif ()
 
 ####################################################
 # compilation flags
@@ -2031,6 +2031,12 @@ add_library(L2_NR
   ${MAC_NR_SRC}
   ${GNB_APP_SRC}
   )
+
+#mir
+#set (TC_CURRENT_SOURCE_DIR ${OPENAIR_DIR}/openair2/tc)
+target_compile_definitions(L2_NR PRIVATE TC_CURRENT_SOURCE_DIR=${OPENAIR_DIR}/openair2/tc)
+
+
 
 add_library(L2_LTE_NR
   ${L2_RRC_SRC}

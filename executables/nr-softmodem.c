@@ -941,15 +941,12 @@ sm_ag_if_ans_t write_RAN(sm_ag_if_wr_t const* data)
     int const rb_id = 1;
     tc_rc_t rc = tc_get_or_create(rnti, rb_id);
 
-    // Configuration (add/delete)  
+    // Configuration (add/delete)
     tc_ctrl_out_t out = tc_conf(rc.tc, &data->tc_req_ctrl.msg);
+    assert(out.out == TC_CTRL_OUT_OK);
 
-    printf("Succesfully conf called \n");	
-    printf("Succesfully conf called \n");	
-    printf("Succesfully conf called \n");	
-    printf("Succesfully conf called \n");	
-    printf("Succesfully conf called \n");	
-  } 
+    printf("Succesfully conf called tstamp %ld \n", time_now_us());
+  }
 
   sm_ag_if_ans_t ans = {.type = TC_AGENT_IF_CTRL_ANS_V0 };
 
@@ -1120,8 +1117,8 @@ int main( int argc, char **argv ) {
 
   printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nd_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
 
-  args_t args = {0};
-  init_agent_api( mcc, mnc, mnc_digit_len, nb_id, io, args);
+  fr_args_t args = init_fr_args(1, NULL);
+  init_agent_api( mcc, mnc, mnc_digit_len, nb_id, io, &args);
 //////////////////////////////////
 //////////////////////////////////
 

@@ -1566,7 +1566,7 @@ static int generate_tx_pdu(nr_rlc_entity_am_t *entity, char *buffer, int size)
 
   /* update buffer status */
   entity->common.bstatus.tx_size -= pdu_size;
-  printf("[mir]: RLC DRB buffer = %ld time %ld \n", entity->common.bstatus.tx_size, time_now_us() );
+  printf("[mir]: RLC DRB buffer = %d time %ld \n", entity->common.bstatus.tx_size, time_now_us() );
 
   /* assign SN to SDU */
   sdu->sdu->sn = entity->tx_next;

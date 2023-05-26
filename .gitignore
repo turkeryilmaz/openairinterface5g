@@ -23,3 +23,6 @@ tags
 nfapi_nr_interface_scf
 *.log
 *.out
+*.cmake
+*.o
+*.so

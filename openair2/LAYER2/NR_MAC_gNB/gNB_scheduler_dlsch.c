@@ -435,9 +435,16 @@ int get_next_mcs(void)
   size_t len = 0;
   char * line = NULL;
   ssize_t read = getline(&line, &len, g_fp);
-  if(read == -1) return 10;
+  if(read == -1){
+    printf("File ended, returnning default MCS 10 tstamp %ld \n", time_now_us()  );
+    return 10;
+  }
 
-  int const new_mcs = atoi(line);
+  int new_mcs = atoi(line) - 10;
+  if(new_mcs < 6)
+    new_mcs = 6;
+
+
   printf("Getting new MCS %d time %ld \n", new_mcs, time_now_us() );
 
   if (line)
@@ -475,7 +482,8 @@ void* udp_server(void* arg)
 
   g_last_time = time_now_us(); 
 
-  printf("UDP MCS started  at %ld\n", g_last_time );
+  printf("UDP MCS started tstamp %ld\n", g_last_time );
+
 
   fp_openned = true;
 
@@ -834,6 +842,9 @@ void pf_dl(module_id_t module_id,
            int max_num_ue,
            int n_rb_sched,
            uint16_t *rballoc_mask) {
+
+//  printf("Available n_rb_sched %d tstamp %ld \n", av_rb, time_now_us();
+
   gNB_MAC_INST *mac = RC.nrmac[module_id];
   NR_UE_info_t *UE_info = &mac->UE_info;
   NR_ServingCellConfigCommon_t *scc=mac->common_channels[0].ServingCellConfigCommon;
@@ -843,6 +854,7 @@ void pf_dl(module_id_t module_id,
   int layers[MAX_MOBILES_PER_GNB];
   NR_list_t UE_sched = { .head = -1, .next = ue_array, .tail = -1, .len = MAX_MOBILES_PER_GNB };
 
+  NR_sched_pdsch_t *sched_pdsch = NULL;
   /* Loop UE_info->list to check retransmission */
   for (int UE_id = UE_list->head; UE_id >= 0; UE_id = UE_list->next[UE_id]) {
     if (UE_info->Msg4_ACKed[UE_id] != true) continue;
@@ -851,7 +863,7 @@ void pf_dl(module_id_t module_id,
 
     if (sched_ctrl->ul_failure==1 && get_softmodem_params()->phy_test==0) continue;
 
-    NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
+    sched_pdsch = &sched_ctrl->sched_pdsch;
     NR_pdsch_semi_static_t *ps = &sched_ctrl->pdsch_semi_static;
     /* get the PID of a HARQ process awaiting retrnasmission, or -1 otherwise */
     sched_pdsch->dl_harq_pid = sched_ctrl->retrans_dl_harq.head;
@@ -884,6 +896,7 @@ void pf_dl(module_id_t module_id,
       /* Calculate coeff */
       set_dl_mcs(sched_pdsch,sched_ctrl,&mac->dl_max_mcs,ps->mcsTableIdx);
       sched_pdsch->mcs = get_mcs_from_bler(module_id, /* CC_id = */ 0, frame, slot, UE_id, ps->mcsTableIdx);
+
       layers[UE_id] = set_dl_nrOfLayers(sched_ctrl);
       const uint8_t Qm = nr_get_Qm_dl(sched_pdsch->mcs, ps->mcsTableIdx);
       const uint16_t R = nr_get_code_rate_dl(sched_pdsch->mcs, ps->mcsTableIdx);
@@ -902,6 +915,12 @@ void pf_dl(module_id_t module_id,
       add_tail_nr_list(&UE_sched, UE_id);
     }
   }
+
+  const int av_rb = n_rb_sched;
+
+  int mir_mcs = 0;
+  if(sched_pdsch != NULL)
+    mir_mcs = sched_pdsch->mcs;
 
   const int min_rbSize = 5;
 
@@ -983,7 +1002,7 @@ void pf_dl(module_id_t module_id,
                                         Y);
 
     if (CCEIndex<0) {
-      LOG_D(NR_MAC, "%4d.%2d could not find CCE for DL DCI UE %d/RNTI %04x\n", frame, slot, UE_id, rnti);
+      printf("%4d.%2d could not find CCE for DL DCI UE %d/RNTI %04x\n", frame, slot, UE_id, rnti);
       continue;
     }
 
@@ -994,7 +1013,7 @@ void pf_dl(module_id_t module_id,
     const int alloc = nr_acknack_scheduling(module_id, UE_id, frame, slot, r_pucch, 0);
 
     if (alloc<0) {
-      LOG_D(NR_MAC,
+      printf(
             "could not find PUCCH for UE %d/%04x@%d.%d\n",
             UE_id,
             rnti,
@@ -1078,6 +1097,8 @@ void pf_dl(module_id_t module_id,
     for (int rb = 0; rb < sched_pdsch->rbSize; rb++)
       rballoc_mask[rb + sched_pdsch->rbStart] ^= slbitmap;
   }
+
+  //printf("Available RB %d used %d unused %d MCS %d tstamp %ld \n",av_rb, av_rb - n_rb_sched, n_rb_sched, mir_mcs, time_now_us() );
 }
 
 void nr_fr1_dlsch_preprocessor(module_id_t module_id, frame_t frame, sub_frame_t slot) {
@@ -1184,10 +1205,14 @@ void nr_schedule_ue_spec(module_id_t module_id,
 
 
 
+
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_id];
 
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
     return;
+
+
+  int64_t const now = time_now_us();
 
   //if (slot==7 || slot == 17) return;
 
@@ -1264,6 +1289,9 @@ void nr_schedule_ue_spec(module_id_t module_id,
     harq->feedback_slot = pucch->ul_slot;
     harq->is_waiting = true;
     UE_info->mac_stats[UE_id].dlsch_rounds[harq->round]++;
+
+    printf("TBS %u MCS %u tstamp %ld \n", TBS, sched_pdsch->mcs, time_now_us() );
+
     LOG_D(NR_MAC,
           "%4d.%2d [DLSCH/PDSCH/PUCCH] UE %d RNTI %04x DCI L %d start %3d RBs %3d startSymbol %2d nb_symbol %2d dmrspos %x MCS %2d nrOfLayers %d TBS %4d HARQ PID %2d round %d RV %d NDI %d dl_data_to_ULACK %d (%d.%d) PUCCH allocation %d TPC %d\n",
           frame,
@@ -1672,4 +1700,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
     /* mark UE as scheduled */
     sched_pdsch->rbSize = 0;
   }
+
+  //printf("MAC elapsed time %ld \n", time_now_us() -now);
+
 }

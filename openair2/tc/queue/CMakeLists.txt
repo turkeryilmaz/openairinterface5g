@@ -1,15 +1,12 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project (queue)
 set(CMAKE_BUILD_TYPE Debug)
 
-#set (CMAKE_C_FLAGS "-Wall -std=gnu11 -fsanitize=address -fno-omit-frame-pointer -g")
-#set (CMAKE_C_FLAGS "-Wall -std=gnu11 -fsanitize=thread -fno-omit-frame-pointer -g")
 set (CMAKE_C_FLAGS "-Wall -Wextra -std=gnu11 -g")
 
 
 set(SANITIZER "NONE" CACHE STRING "Sanitizers")
-#set(SANITIZER "ADDRESS" CACHE STRING "Sanitizers")
 
 set_property(CACHE SANITIZER PROPERTY STRINGS "NONE" "ADDRESS" "THREAD")
 message(STATUS "Selected SANITIZER TYPE: ${SANITIZER}")
@@ -26,7 +23,7 @@ add_link_options("-fsanitize=thread;")
 
 endif()
 
-option(CODE_COVERAGE "Code coverage" ON)
+option(CODE_COVERAGE "Code coverage" OFF)
 if(CODE_COVERAGE)
 add_compile_options("-fprofile-arcs;-ftest-coverage")
 add_link_options("-lgcov;-coverage;")
@@ -46,6 +43,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/fifo/)
 
 add_library(fifo_queue SHARED  fifo/fifo_queue.c ../alg_ds/alg/defer.c)
 add_library(codel_queue SHARED codel/codel_queue.c ../alg_ds/alg/defer.c)
+add_library(ecn_codel_queue SHARED ecn_codel/ecn_codel_queue.c ../alg_ds/alg/defer.c)
 
 target_link_libraries(codel_queue -lm)
+target_link_libraries(ecn_codel_queue -lm)
 

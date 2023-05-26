@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <netinet/ip.h>
+#include <poll.h>
 
 pthread_t t_ing;
 
@@ -48,8 +49,10 @@ void* ingress_func(void* arg)
 
     tc_data_req(rc.tc, data, 1500);
 
-    uint32_t const time_sleep = rand() % 10000 + 10; 
-    usleep(time_sleep);
+    uint32_t const time_sleep = rand() % 1000 + 10;
+    poll(NULL, 0, time_sleep);
+
+    free(data);
   }
 
   printf("Ingress thread finished!");
@@ -84,7 +87,7 @@ void egress_fun(uint16_t rnti, uint8_t rb_id, uint8_t* data, size_t sz)
   assert(sz > 0);
   printf("Egressing pkt \n");
 
-//  free(data);
+  //free(data);
 }
 
 static

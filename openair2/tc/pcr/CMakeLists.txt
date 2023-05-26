@@ -1,16 +1,11 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project (pcr)
 set(CMAKE_BUILD_TYPE Debug)
 
-#set (CMAKE_C_FLAGS "-Wall -std=gnu11 -fsanitize=address -fno-omit-frame-pointer -g")
-#set (CMAKE_C_FLAGS "-Wall -std=gnu11 -fsanitize=thread -fno-omit-frame-pointer -g")
-
 set (CMAKE_C_FLAGS "-Wall -Wextra -std=gnu11 -g")
 
-
 set(SANITIZER "NONE" CACHE STRING "Sanitizers")
-#set(SANITIZER "ADDRESS" CACHE STRING "Sanitizers")
 set_property(CACHE SANITIZER PROPERTY STRINGS "NONE" "ADDRESS" "THREAD")
 message(STATUS "Selected SANITIZER TYPE: ${SANITIZER}")
 

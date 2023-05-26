@@ -142,6 +142,19 @@ codel_queue/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/codel_queue.dir/build.make CMakeFiles/codel_queue.dir/build
 .PHONY : codel_queue/fast
 
+#=============================================================================
+# Target rules for targets named ecn_codel_queue
+
+# Build rule for target.
+ecn_codel_queue: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ecn_codel_queue
+.PHONY : ecn_codel_queue
+
+# fast build rule for target.
+ecn_codel_queue/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/build
+.PHONY : ecn_codel_queue/fast
+
 codel/codel_queue.o: codel/codel_queue.c.o
 .PHONY : codel/codel_queue.o
 
@@ -165,6 +178,30 @@ codel/codel_queue.s: codel/codel_queue.c.s
 codel/codel_queue.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/codel_queue.dir/build.make CMakeFiles/codel_queue.dir/codel/codel_queue.c.s
 .PHONY : codel/codel_queue.c.s
+
+ecn_codel/ecn_codel_queue.o: ecn_codel/ecn_codel_queue.c.o
+.PHONY : ecn_codel/ecn_codel_queue.o
+
+# target to build an object file
+ecn_codel/ecn_codel_queue.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/ecn_codel/ecn_codel_queue.c.o
+.PHONY : ecn_codel/ecn_codel_queue.c.o
+
+ecn_codel/ecn_codel_queue.i: ecn_codel/ecn_codel_queue.c.i
+.PHONY : ecn_codel/ecn_codel_queue.i
+
+# target to preprocess a source file
+ecn_codel/ecn_codel_queue.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/ecn_codel/ecn_codel_queue.c.i
+.PHONY : ecn_codel/ecn_codel_queue.c.i
+
+ecn_codel/ecn_codel_queue.s: ecn_codel/ecn_codel_queue.c.s
+.PHONY : ecn_codel/ecn_codel_queue.s
+
+# target to generate assembly for a file
+ecn_codel/ecn_codel_queue.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/ecn_codel/ecn_codel_queue.c.s
+.PHONY : ecn_codel/ecn_codel_queue.c.s
 
 fifo/fifo_queue.o: fifo/fifo_queue.c.o
 .PHONY : fifo/fifo_queue.o
@@ -197,6 +234,7 @@ home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.o: home/tiwa/mir/oai-tc/openai
 home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fifo_queue.dir/build.make CMakeFiles/fifo_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/codel_queue.dir/build.make CMakeFiles/codel_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o
 .PHONY : home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.o
 
 home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.i: home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.i
@@ -206,6 +244,7 @@ home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.i: home/tiwa/mir/oai-tc/openai
 home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fifo_queue.dir/build.make CMakeFiles/fifo_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.i
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/codel_queue.dir/build.make CMakeFiles/codel_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.i
 .PHONY : home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.i
 
 home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.s: home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.s
@@ -215,6 +254,7 @@ home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.s: home/tiwa/mir/oai-tc/openai
 home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fifo_queue.dir/build.make CMakeFiles/fifo_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/codel_queue.dir/build.make CMakeFiles/codel_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ecn_codel_queue.dir/build.make CMakeFiles/ecn_codel_queue.dir/home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.s
 .PHONY : home/tiwa/mir/oai-tc/openair2/tc/alg_ds/alg/defer.c.s
 
 # Help Target
@@ -226,10 +266,14 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... codel_queue"
+	@echo "... ecn_codel_queue"
 	@echo "... fifo_queue"
 	@echo "... codel/codel_queue.o"
 	@echo "... codel/codel_queue.i"
 	@echo "... codel/codel_queue.s"
+	@echo "... ecn_codel/ecn_codel_queue.o"
+	@echo "... ecn_codel/ecn_codel_queue.i"
+	@echo "... ecn_codel/ecn_codel_queue.s"
 	@echo "... fifo/fifo_queue.o"
 	@echo "... fifo/fifo_queue.i"
 	@echo "... fifo/fifo_queue.s"
@@ -249,4 +293,3 @@ help:
 cmake_check_build_system:
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
-

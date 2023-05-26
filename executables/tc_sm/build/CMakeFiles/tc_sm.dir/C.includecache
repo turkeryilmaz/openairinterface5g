@@ -4,7 +4,7 @@
 
 #IncludeRegexComplain: ^$
 
-#IncludeRegexTransform: 
+#IncludeRegexTransform:
 
 /home/mir/workspace/flexric/src/sm/agent_if/ans/sm_ag_if_ans.h
 ../../mac_sm/ie/mac_data_ie.h
@@ -437,4 +437,3 @@ stdint.h
 -
 string.h
 -
-

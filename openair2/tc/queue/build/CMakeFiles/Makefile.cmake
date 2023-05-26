@@ -120,4 +120,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/fifo_queue.dir/DependInfo.cmake"
   "CMakeFiles/codel_queue.dir/DependInfo.cmake"
+  "CMakeFiles/ecn_codel_queue.dir/DependInfo.cmake"
   )

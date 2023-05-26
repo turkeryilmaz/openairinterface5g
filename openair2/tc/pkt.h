@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-
 #define MTU_SIZE 1514
 
 // Pkts Layout

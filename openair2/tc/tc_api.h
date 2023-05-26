@@ -46,7 +46,7 @@ tc_rc_t tc_drb_size(tc_handle_t* tc, size_t sz);
 tc_ind_data_t tc_ind_data(tc_handle_t const* tc_h);
 
 // Configuration (add/delete)  
-tc_ctrl_out_t tc_conf(tc_handle_t* tc, tc_ctrl_msg_t* ctrl);
+tc_ctrl_out_t tc_conf(tc_handle_t* tc, tc_ctrl_msg_t const* ctrl);
 
 #endif
 
