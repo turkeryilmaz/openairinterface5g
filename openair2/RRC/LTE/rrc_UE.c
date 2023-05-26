@@ -1555,7 +1555,7 @@ rrc_ue_process_securityModeCommand(
 
   if (h_rc == HASH_TABLE_OK) {
     LOG_D(RRC, "PDCP_COLL_KEY_VALUE() returns valid key = %ld\n", key);
-    LOG_D(RRC, "driving kRRCenc, kRRCint and kUPenc from KeNB="
+    LOG_D(RRC, "deriving kRRCenc, kRRCint and kUPenc from KeNB="
           "%02x%02x%02x%02x"
           "%02x%02x%02x%02x"
           "%02x%02x%02x%02x"
@@ -1658,7 +1658,7 @@ rrc_ue_process_MBMSCountingRequest(
   LTE_MBMSCountingResponse_r10_t *MBMSCountingResponse = &ul_dcch_msg.message.choice.c1.choice.mbmsCountingResponse_r10;
 
   MBMSCountingResponse->criticalExtensions.present = LTE_MBMSCountingResponse_r10__criticalExtensions_PR_c1;
-  MBMSCountingResponse->criticalExtensions.choice.c1.present = LTE_MBMSCountingResponse_r10__criticalExtensions__c1_PR_countingResponse_r10; 
+  MBMSCountingResponse->criticalExtensions.choice.c1.present = LTE_MBMSCountingResponse_r10__criticalExtensions__c1_PR_countingResponse_r10;
   LTE_MBMSCountingResponse_r10_IEs_t *MBMSCountingResponse_r10_IEs = &MBMSCountingResponse->criticalExtensions.choice.c1.choice.countingResponse_r10;
 
   MBMSCountingResponse_r10_IEs->mbsfn_AreaIndex_r10 = calloc(1,sizeof(long));
@@ -3086,7 +3086,7 @@ int decode_SIB1_MBMS( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_in
   UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIB1systemInfoValueTag_MBMS = sib1_MBMS->systemInfoValueTag_r14;
 
   /*
-  if (EPC_MODE_ENABLED) 
+  if (EPC_MODE_ENABLED)
     {
       int cell_valid = 0;
 
@@ -4275,10 +4275,10 @@ int decode_SI( const protocol_ctxt_t *const ctxt_pP, const uint8_t eNB_index ) {
     }
     if (new_sib == 1) {
       UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt++;
-  
+
       if (UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt == sib1->schedulingInfoList.list.count)
         rrc_set_sub_state( ctxt_pP->module_id, RRC_SUB_STATE_IDLE_SIB_COMPLETE );
-  
+
       LOG_I(RRC,"SIStatus %x, SIcnt %d/%d\n",
             UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIStatus,
             UE_rrc_inst[ctxt_pP->module_id].Info[eNB_index].SIcnt,
