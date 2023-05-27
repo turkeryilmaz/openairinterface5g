@@ -258,7 +258,7 @@ void rx_func(void *param) {
     L1_nr_prach_procedures(gNB,frame_rx,slot_rx);
 
     //WA: comment rotation in tx/rx
-    if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
+    if(1/*(gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)*/) {
       //apply the rx signal rotation here
       for (int aa = 0; aa < gNB->frame_parms.nb_antennas_rx; aa++) {
         apply_nr_rotation_ul(&gNB->frame_parms,

@@ -198,7 +198,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 
 //apply the OFDM symbol rotation here
 // WA: Comment rotation in tx/rx
-  if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
+  if(1/*(gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)*/) {
     for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
       apply_nr_rotation(fp,(int16_t*) &gNB->common_vars.txdataF[aa][txdataF_offset],slot,0,fp->Ncp==EXTENDED?12:14);
 
