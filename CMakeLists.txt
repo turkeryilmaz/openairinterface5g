@@ -620,7 +620,7 @@ target_link_libraries(benetel_5g PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 # ORAN 5G library
 ######################################################################
-add_boolean_option(ORAN_BRONZE OFF "Build support for Bronze version of ORAN FHI")
+add_boolean_option(ORAN_BRONZE ON "Build support for Bronze version of ORAN FHI")
 if (ORAN_BRONZE)
   set(ORAN_FHLIB_5G_SOURCE
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c

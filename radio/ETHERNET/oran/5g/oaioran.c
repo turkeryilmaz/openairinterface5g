@@ -279,6 +279,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
               // This loop would better be more inner to avoid confusion and maybe also errors.
               for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
 
+		 LOG_D(PHY,"ORAN RX: CC %d, ant %d, sym %d, tti %d\n",cc_id,ant_id,sym_idx,tti);
                  uint8_t *pData = xran_ctx->sFrontHaulRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
                  uint8_t *pPrbMapData = xran_ctx->sFrontHaulRxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers->pData;
                  struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
@@ -303,7 +304,10 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 
                     struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
 
+		    LOG_D(PHY,"pRbMap->nPrbElm %d\n",pRbMap->nPrbElm);
                     for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
+		        LOG_D(PHY,"prbMap[%d] : PRBstart %d nPRBs %d\n",
+			      idxElm,pRbMap->prbMap[idxElm].nRBStart,pRbMap->prbMap[idxElm].nRBSize);
                        struct xran_section_desc *p_sec_desc = NULL;
                        p_prbMapElm = &pRbMap->prbMap[idxElm];
 #ifdef ORAN_BRONZE 
@@ -334,6 +338,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                           for (idx = 0; idx < payload_len/(2*sizeof(int16_t)); idx++) {
                             ((int16_t *)dst1)[idx] = ((int16_t)ntohs(((uint16_t *)src1)[idx]))>>2;
                             ((int16_t *)dst2)[idx] = ((int16_t)ntohs(((uint16_t *)src2)[idx]))>>2;
+			    //if (sym_idx==0 && idx<16) LOG_I(PHY,"%d: %d,%d\n",idx,((int16_t *)dst1)[idx],((int16_t *)dst1)[idx]);
                           }
                        } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
                           struct xranlib_decompress_request  bfp_decom_req_2;
@@ -444,9 +449,12 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                      exit(-1);
                      printf("ptr ==NULL\n");
                 }
-              }
-            }
-          }
+
+		 LOG_I(PHY,"%d.%d ant %d sym %d : %p en %d\n",*frame,*slot,ant_id,sym_idx,pos,
+                       signal_energy_nodc(pos,4096));
+              }//sym_ind
+            }//ant_ind
+          }//vv_inf
 #ifdef ORAN_BRONZE
         if ((*frame&0x7f)==0 && *slot == 0 && xran_get_common_counters(xranHandle, &x_counters[0]) == XRAN_STATUS_SUCCESS)
 #else
