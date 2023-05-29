@@ -199,7 +199,7 @@ function main() {
        -d | --build-dir)
             BUILD_DIR=$2
             shift 2;;
-       -e2 | --build-e2)
+       --e2 )
              CMAKE_CMD="$CMAKE_CMD -DE2_AGENT=ON"
              shift
              ;;
