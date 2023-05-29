@@ -280,9 +280,9 @@ static int decodePDUSessionResourceSetup(pdusession_t *session)
   for (int i=0; i<session->pdusessionTransfer.length; i++)
     printf("%02x:",session->pdusessionTransfer.buffer[i]);
   printf("\n");
-  asn_codec_ctx_t st = {.max_stack_size = 100 * 1000};
+  //asn_codec_ctx_t st = {.max_stack_size = 100 * 1000};
   asn_dec_rval_t dec_rval =
-      aper_decode(&st, &asn_DEF_NGAP_PDUSessionResourceSetupRequestTransfer, (void **)&pdusessionTransfer, session->pdusessionTransfer.buffer, session->pdusessionTransfer.length, 0, 0);
+      aper_decode(NULL /*&st*/, &asn_DEF_NGAP_PDUSessionResourceSetupRequestTransfer, (void **)&pdusessionTransfer, session->pdusessionTransfer.buffer, session->pdusessionTransfer.length, 0, 0);
 
   if (dec_rval.code != RC_OK) {
     LOG_E(NR_RRC, "can not decode PDUSessionResourceSetupRequestTransfer\n");
