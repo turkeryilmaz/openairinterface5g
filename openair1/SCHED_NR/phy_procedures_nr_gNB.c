@@ -198,7 +198,7 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 
 //apply the OFDM symbol rotation here
 // WA: Comment rotation in tx/rx
-  if((gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)) {
+  if(1/*(gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)*/) {
     for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
       apply_nr_rotation(fp,(int16_t*) &gNB->common_vars.txdataF[aa][txdataF_offset],slot,0,fp->Ncp==EXTENDED?12:14);
 
@@ -698,7 +698,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
   int pusch_DTX = 0;
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_UESPEC_RX,1);
-  LOG_D(PHY,"phy_procedures_gNB_uespec_RX frame %d, slot %d\n",frame_rx,slot_rx);
+  LOG_I(PHY,"phy_procedures_gNB_uespec_RX frame %d, slot %d\n",frame_rx,slot_rx);
 
   fill_ul_rb_mask(gNB, frame_rx, slot_rx);
 

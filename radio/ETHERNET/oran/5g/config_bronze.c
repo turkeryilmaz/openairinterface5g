@@ -87,7 +87,7 @@
 #define KEY_FILE_AxC        "antC"
 #define KEY_FILE_PRACH_AxC  "antPrachC"
 
-#define KEY_PRACH_ENABLE   "rachEanble"
+#define KEY_PRACH_ENABLE   "rachEnable"
 #define KEY_SRS_ENABLE     "srsEanble"
 
 #define KEY_PRACH_CFGIDX   "prachConfigIndex"
