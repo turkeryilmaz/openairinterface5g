@@ -244,7 +244,7 @@ set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ggdb2 -Wl,-rpath -Wl,${C
 # these changes are related to hardcoded path to include .h files
 set(debugOpt "-ggdb2 -DMALLOC_CHECK_=3 -fno-delete-null-pointer-checks")
 set(CMAKE_C_FLAGS_DEBUG "${debugOpt} -O0")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${debugOpt} -O2")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${debugOpt} -O3")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 # Enable assert() for RelWithDebInfo builds
@@ -2230,6 +2230,8 @@ add_executable(nr-softmodem
   ${nr_rrc_h}
   ${s1ap_h}
 #  ${OPENAIR_BIN_DIR}/messages_xml.h
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
+
   ${OPENAIR_DIR}/executables/nr-gnb.c
   ${OPENAIR_DIR}/executables/nr-ru.c
   ${OPENAIR_DIR}/executables/nr-softmodem.c
@@ -2401,6 +2403,7 @@ target_link_libraries(ldpctest PRIVATE
   )
 
 add_executable(nr_dlschsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/dlschsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2461,6 +2464,7 @@ target_link_libraries(nr_dlsim PRIVATE
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_prachsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/prachsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
@@ -2486,6 +2490,7 @@ target_link_libraries(nr_ulschsim PRIVATE
 target_link_libraries(nr_ulschsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 add_executable(nr_ulsim
+  ${OPENAIR_DIR}/common/utils/thread_pool/task_manager.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/ulsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c

@@ -47,6 +47,41 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "common/utils/LOG/log.h"
 #include <syscall.h>
+
+//#include "SCHED_NR/phy_procedures_nr_gNB.h"
+#include "common/utils/thread_pool/task_manager.h"
+#include <stdint.h>
+#include <time.h>
+
+#include <stdalign.h>
+
+//#include "nr_ulsch_decoding.h"
+
+static inline
+int64_t time_now_us(void)
+{
+  struct timespec tms;
+
+  /* The C11 way */
+  /* if (! timespec_get(&tms, TIME_UTC))  */
+
+  /* POSIX.1-2008 way */
+  if (clock_gettime(CLOCK_REALTIME,&tms)) {
+    return -1;
+  }
+  /* seconds, multiplied with 1 million */
+  int64_t micros = tms.tv_sec * 1000000;
+  /* Add full microseconds */
+  micros += tms.tv_nsec/1000;
+  /* round up if necessary */
+  if (tms.tv_nsec % 1000 >= 500) {
+    ++micros;
+  }
+  return micros;
+}
+
+
+
 //#define DEBUG_ULSCH_DECODING
 //#define gNB_DEBUG_TRACE
 
@@ -117,142 +152,142 @@ NR_gNB_ULSCH_t new_gNB_ulsch(uint8_t max_ldpc_iterations, uint16_t N_RB_UL)
   static uint32_t prnt_crc_cnt = 0;
 #endif
 
-  void nr_processULSegment(void *arg)
-  {
-    ldpcDecode_t *rdata = (ldpcDecode_t *)arg;
-    PHY_VARS_gNB *phy_vars_gNB = rdata->gNB;
-    NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
-    t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
-    int length_dec;
-    int no_iteration_ldpc;
-    int Kr;
-    int Kr_bytes;
-    int K_bits_F;
-    uint8_t crc_type;
-    int i;
-    int j;
-    int r = rdata->segment_r;
-    int A = rdata->A;
-    int E = rdata->E;
-    int Qm = rdata->Qm;
-    int rv_index = rdata->rv_index;
-    int r_offset = rdata->r_offset;
-    uint8_t kc = rdata->Kc;
-    short *ulsch_llr = rdata->ulsch_llr;
-    int max_ldpc_iterations = p_decoderParms->numMaxIter;
-    int8_t llrProcBuf[OAI_UL_LDPC_MAX_NUM_LLR] __attribute__((aligned(32)));
+void nr_processULSegment(void *arg)
+{
+  ldpcDecode_t *rdata = (ldpcDecode_t *)arg;
+  PHY_VARS_gNB *phy_vars_gNB = rdata->gNB;
+  NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
+  t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
+  int length_dec;
+  int no_iteration_ldpc;
+  int Kr;
+  int Kr_bytes;
+  int K_bits_F;
+  uint8_t crc_type;
+  int i;
+  int j;
+  int r = rdata->segment_r;
+  int A = rdata->A;
+  int E = rdata->E;
+  int Qm = rdata->Qm;
+  int rv_index = rdata->rv_index;
+  int r_offset = rdata->r_offset;
+  uint8_t kc = rdata->Kc;
+  short *ulsch_llr = rdata->ulsch_llr;
+  int max_ldpc_iterations = p_decoderParms->numMaxIter;
+  int8_t llrProcBuf[OAI_UL_LDPC_MAX_NUM_LLR] __attribute__((aligned(32)));
 
-    int16_t z[68 * 384 + 16] __attribute__((aligned(16)));
-    int8_t l[68 * 384 + 16] __attribute__((aligned(16)));
+  int16_t z[68 * 384 + 16] __attribute__((aligned(16)));
+  int8_t l[68 * 384 + 16] __attribute__((aligned(16)));
 
-    __m128i *pv = (__m128i *)&z;
-    __m128i *pl = (__m128i *)&l;
+  __m128i *pv = (__m128i *)&z;
+  __m128i *pl = (__m128i *)&l;
 
-    Kr = ulsch_harq->K;
-    Kr_bytes = Kr >> 3;
-    K_bits_F = Kr - ulsch_harq->F;
+  Kr = ulsch_harq->K;
+  Kr_bytes = Kr >> 3;
+  K_bits_F = Kr - ulsch_harq->F;
 
-    t_nrLDPC_time_stats procTime = {0};
-    t_nrLDPC_time_stats *p_procTime = &procTime;
+  t_nrLDPC_time_stats procTime = {0};
+  t_nrLDPC_time_stats *p_procTime = &procTime;
 
-    // start_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
+  // start_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
 
-    ////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////// nr_deinterleaving_ldpc ///////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////// nr_deinterleaving_ldpc ///////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////// ulsch_llr =====> ulsch_harq->e //////////////////////////////
+  //////////////////////////// ulsch_llr =====> ulsch_harq->e //////////////////////////////
 
-    /// code blocks after bit selection in rate matching for LDPC code (38.212 V15.4.0 section 5.4.2.1)
-    int16_t harq_e[E];
+  /// code blocks after bit selection in rate matching for LDPC code (38.212 V15.4.0 section 5.4.2.1)
+  int16_t harq_e[E];
 
-    nr_deinterleaving_ldpc(E, Qm, harq_e, ulsch_llr + r_offset);
+  nr_deinterleaving_ldpc(E, Qm, harq_e, ulsch_llr + r_offset);
 
-    // for (int i =0; i<16; i++)
-    //          printf("rx output deinterleaving w[%d]= %d r_offset %d\n", i,ulsch_harq->w[r][i], r_offset);
+  // for (int i =0; i<16; i++)
+  //          printf("rx output deinterleaving w[%d]= %d r_offset %d\n", i,ulsch_harq->w[r][i], r_offset);
 
-    stop_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
+  stop_meas(&phy_vars_gNB->ulsch_deinterleaving_stats);
 
-    //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////// nr_rate_matching_ldpc_rx ////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////// nr_rate_matching_ldpc_rx ////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////
 
-    ///////////////////////// ulsch_harq->e =====> ulsch_harq->d /////////////////////////
+  ///////////////////////// ulsch_harq->e =====> ulsch_harq->d /////////////////////////
 
-    // start_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+  // start_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
 
-    if (nr_rate_matching_ldpc_rx(rdata->tbslbrm,
-                                 p_decoderParms->BG,
-                                 p_decoderParms->Z,
-                                 ulsch_harq->d[r],
-                                 harq_e,
-                                 ulsch_harq->C,
-                                 rv_index,
-                                 ulsch_harq->d_to_be_cleared[r],
-                                 E,
-                                 ulsch_harq->F,
-                                 Kr - ulsch_harq->F - 2 * (p_decoderParms->Z))
-        == -1) {
-      stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+  if (nr_rate_matching_ldpc_rx(rdata->tbslbrm,
+        p_decoderParms->BG,
+        p_decoderParms->Z,
+        ulsch_harq->d[r],
+        harq_e,
+        ulsch_harq->C,
+        rv_index,
+        ulsch_harq->d_to_be_cleared[r],
+        E,
+        ulsch_harq->F,
+        Kr - ulsch_harq->F - 2 * (p_decoderParms->Z))
+      == -1) {
+    stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
 
-      LOG_E(PHY, "ulsch_decoding.c: Problem in rate_matching\n");
-      rdata->decodeIterations = max_ldpc_iterations + 1;
-      return;
-    } else {
-      stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
-    }
+    LOG_E(PHY, "ulsch_decoding.c: Problem in rate_matching\n");
+    rdata->decodeIterations = max_ldpc_iterations + 1;
+    return;
+  } else {
+    stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
+  }
 
-    ulsch_harq->d_to_be_cleared[r] = false;
+  ulsch_harq->d_to_be_cleared[r] = false;
 
-    memset(ulsch_harq->c[r], 0, Kr_bytes);
+  memset(ulsch_harq->c[r], 0, Kr_bytes);
 
-    if (ulsch_harq->C == 1) {
-      if (A > 3824)
-        crc_type = CRC24_A;
-      else
-        crc_type = CRC16;
+  if (ulsch_harq->C == 1) {
+    if (A > 3824)
+      crc_type = CRC24_A;
+    else
+      crc_type = CRC16;
 
-      length_dec = ulsch_harq->B;
-    } else {
-      crc_type = CRC24_B;
-      length_dec = (ulsch_harq->B + 24 * ulsch_harq->C) / ulsch_harq->C;
-    }
+    length_dec = ulsch_harq->B;
+  } else {
+    crc_type = CRC24_B;
+    length_dec = (ulsch_harq->B + 24 * ulsch_harq->C) / ulsch_harq->C;
+  }
 
-    // start_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
+  // start_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
 
-    // set first 2*Z_c bits to zeros
-    memset(&z[0], 0, 2 * ulsch_harq->Z * sizeof(int16_t));
-    // set Filler bits
-    memset((&z[0] + K_bits_F), 127, ulsch_harq->F * sizeof(int16_t));
-    // Move coded bits before filler bits
-    memcpy((&z[0] + 2 * ulsch_harq->Z), ulsch_harq->d[r], (K_bits_F - 2 * ulsch_harq->Z) * sizeof(int16_t));
-    // skip filler bits
-    memcpy((&z[0] + Kr), ulsch_harq->d[r] + (Kr - 2 * ulsch_harq->Z), (kc * ulsch_harq->Z - Kr) * sizeof(int16_t));
-    // Saturate coded bits before decoding into 8 bits values
-    for (i = 0, j = 0; j < ((kc * ulsch_harq->Z) >> 4) + 1; i += 2, j++) {
-      pl[j] = _mm_packs_epi16(pv[i], pv[i + 1]);
-    }
-    //////////////////////////////////////////////////////////////////////////////////////////
+  // set first 2*Z_c bits to zeros
+  memset(&z[0], 0, 2 * ulsch_harq->Z * sizeof(int16_t));
+  // set Filler bits
+  memset((&z[0] + K_bits_F), 127, ulsch_harq->F * sizeof(int16_t));
+  // Move coded bits before filler bits
+  memcpy((&z[0] + 2 * ulsch_harq->Z), ulsch_harq->d[r], (K_bits_F - 2 * ulsch_harq->Z) * sizeof(int16_t));
+  // skip filler bits
+  memcpy((&z[0] + Kr), ulsch_harq->d[r] + (Kr - 2 * ulsch_harq->Z), (kc * ulsch_harq->Z - Kr) * sizeof(int16_t));
+  // Saturate coded bits before decoding into 8 bits values
+  for (i = 0, j = 0; j < ((kc * ulsch_harq->Z) >> 4) + 1; i += 2, j++) {
+    pl[j] = _mm_packs_epi16(pv[i], pv[i + 1]);
+  }
+  //////////////////////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////// nrLDPC_decoder /////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////// nrLDPC_decoder /////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////
 
-    ////////////////////////////////// pl =====> llrProcBuf //////////////////////////////////
-    p_decoderParms->block_length = length_dec;
-    no_iteration_ldpc = nrLDPC_decoder(p_decoderParms, (int8_t *)&pl[0], llrProcBuf, p_procTime);
+  ////////////////////////////////// pl =====> llrProcBuf //////////////////////////////////
+  p_decoderParms->block_length = length_dec;
+  no_iteration_ldpc = nrLDPC_decoder(p_decoderParms, (int8_t *)&pl[0], llrProcBuf, p_procTime);
 
-    if (check_crc((uint8_t *)llrProcBuf, length_dec, ulsch_harq->F, crc_type)) {
+  if (check_crc((uint8_t *)llrProcBuf, length_dec, ulsch_harq->F, crc_type)) {
 #ifdef PRINT_CRC_CHECK
-      LOG_I(PHY,"Segment %d CRC OK, iterations %d/%d\n",r,no_iteration_ldpc,max_ldpc_iterations);
+    LOG_I(PHY,"Segment %d CRC OK, iterations %d/%d\n",r,no_iteration_ldpc,max_ldpc_iterations);
 #endif
     rdata->decodeIterations = no_iteration_ldpc;
     if (rdata->decodeIterations > p_decoderParms->numMaxIter) rdata->decodeIterations--;
   } else {
 #ifdef PRINT_CRC_CHECK
-      LOG_I(PHY,"CRC NOK\n");
+    LOG_I(PHY,"CRC NOK\n");
 #endif
     rdata->decodeIterations = max_ldpc_iterations + 1;
   }
@@ -261,8 +296,13 @@ NR_gNB_ULSCH_t new_gNB_ulsch(uint8_t max_ldpc_iterations, uint16_t N_RB_UL)
     ulsch_harq->c[r][m]= (uint8_t) llrProcBuf[m];
   }
 
+#ifdef TASK_MANAGER
+  if( phy_vars_gNB->ldpc_offload_flag)
+    nr_postDecode(rdata->gNB, rdata);
+#endif
+
   //stop_meas(&phy_vars_gNB->ulsch_ldpc_decoding_stats);
-  }
+}
 
 uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
                            uint8_t ULSCH_id,
@@ -566,11 +606,21 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   else {
     dtx_det = 0;
 
+#ifdef TASK_MANAGER
+  ldpcDecode_t* arr = calloc(harq_process->C, sizeof(ldpcDecode_t));
+  int idx_arr = 0;
+#endif
+
     for (int r = 0; r < harq_process->C; r++) {
       int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
+#ifdef TASK_MANAGER
+    ldpcDecode_t* rdata = &arr[idx_arr]; 
+    ++idx_arr; 
+#else      
       union ldpcReqUnion id = {.s = {ulsch->rnti, frame, nr_tti_rx, 0, 0}};
       notifiedFIFO_elt_t *req = newNotifiedFIFO_elt(sizeof(ldpcDecode_t), id.p, &phy_vars_gNB->respDecode, &nr_processULSegment);
       ldpcDecode_t *rdata = (ldpcDecode_t *)NotifiedFifoData(req);
+#endif
       decParams.R = nr_get_R_ldpc_decoder(pusch_pdu->pusch_data.rv_index, E, decParams.BG, decParams.Z, &harq_process->llrLen, harq_process->round);
       rdata->gNB = phy_vars_gNB;
       rdata->ulsch_harq = harq_process;
@@ -590,13 +640,24 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       rdata->ulsch = ulsch;
       rdata->ulsch_id = ULSCH_id;
       rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
+#ifdef TASK_MANAGER 
+      task_t t = { .args = rdata, .func =  &nr_processULSegment };
+      async_task_manager(&phy_vars_gNB->man, t);
+#else
       pushTpool(&phy_vars_gNB->threadPool, req);
+#endif
       phy_vars_gNB->nbDecode++;
       LOG_D(PHY, "Added a block to decode, in pipe: %d\n", phy_vars_gNB->nbDecode);
       r_offset += E;
       offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
       //////////////////////////////////////////////////////////////////////////////////////////
     }
+
+#ifdef TASK_MANAGER
+  trigger_and_wait_all_task_manager(&phy_vars_gNB->man);
+  free(arr);
+#endif
+
   }
   return 1;
 }

@@ -39,6 +39,8 @@
 #include "executables/softmodem-common.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "NR_SRS-ResourceSet.h"
+#include "common/utils/thread_pool/task_manager.h"
+
 
 #include "assertions.h"
 
@@ -232,9 +234,15 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX+offset,0);
 }
 
+#ifdef TASK_MANAGER
+void nr_postDecode(PHY_VARS_gNB *gNB, ldpcDecode_t *rdata)
+{
+#else
 void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 {
   ldpcDecode_t *rdata = (ldpcDecode_t*) NotifiedFifoData(req);
+#endif
+
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   NR_gNB_ULSCH_t *ulsch = rdata->ulsch;
   int r = rdata->segment_r;
@@ -252,6 +260,8 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 
   } else {
     if ( rdata->nbSegments != ulsch_harq->processedSegments ) {
+      // Let's forget about this optimization for now
+#ifndef TASK_MANAGER
       int nb = abortTpoolJob(&gNB->threadPool, req->key);
       nb += abortNotifiedFIFOJob(&gNB->respDecode, req->key);
       gNB->nbDecode-=nb;
@@ -260,6 +270,7 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
       AssertFatal(ulsch_harq->processedSegments+nb == rdata->nbSegments,"processed: %d, aborted: %d, total %d\n",
 		  ulsch_harq->processedSegments, nb, rdata->nbSegments);
       ulsch_harq->processedSegments=rdata->nbSegments;
+#endif
     }
   }
 
@@ -350,6 +361,12 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 
 void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH_id, uint8_t harq_pid)
 {
+
+#ifdef TASK_MANAGER
+  trigger_and_spin(&gNB->man);
+#endif
+
+
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[ULSCH_id].harq_process->ulsch_pdu;
 
@@ -408,15 +425,19 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
 
   start_meas(&gNB->ulsch_decoding_stats);
   nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G);
+
+#ifndef TASK_MANAGER
   if (enable_ldpc_offload == 0) {
     while (gNB->nbDecode > 0) {
       notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
       if (req == NULL)
-	break; // Tpool has been stopped
+	      break; // Tpool has been stopped
       nr_postDecode(gNB, req);
       delNotifiedFIFO_elt(req);
     }
   }
+#endif
+
   stop_meas(&gNB->ulsch_decoding_stats);
 }
 

@@ -67,6 +67,8 @@
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "executables/nr-uesoftmodem.h"
+
+#include "common/utils/thread_pool/task_manager.h"
 //#define DEBUG_ULSIM
 
 const char *__asan_default_options()
@@ -585,6 +587,10 @@ int main(int argc, char **argv)
   gNB = RC.gNB[0];
   gNB->ofdm_offset_divisor = UINT_MAX;
   initNotifiedFIFO(&gNB->respDecode);
+
+#ifdef TASK_MANAGER
+  init_task_manager(&gNB->man, threadCnt);
+#endif
 
   initFloatingCoresTpool(threadCnt, &gNB->threadPool, false, "gNB-tpool");
   initNotifiedFIFO(&gNB->respDecode);
