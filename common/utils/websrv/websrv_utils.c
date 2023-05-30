@@ -110,19 +110,41 @@ void websrv_printjson(char *label, json_t *jsonobj, int dbglvl)
 void websrv_dump_request(char *label, const struct _u_request *request, int dbglvl)
 {
   if (dbglvl > 0) {
-    LOG_I(UTIL, "[websrv] %s, request %s, proto %s, verb %s, path %s\n", label, request->http_url, request->http_protocol, request->http_verb, request->http_verb);
+    LOG_I(UTIL,
+          "[websrv] %s, request %s, proto %s, verb %s, path %s\n",
+          label,
+          request->http_url,
+          request->http_protocol,
+          request->http_verb,
+          request->http_verb);
     if (request->map_post_body != NULL)
       for (int i = 0; i < u_map_count(request->map_post_body); i++)
-        LOG_I(UTIL, "[websrv] POST parameter %i %s : %s\n", i, u_map_enum_keys(request->map_post_body)[i], u_map_enum_values(request->map_post_body)[i]);
+        LOG_I(UTIL,
+              "[websrv] POST parameter %i %s : %s\n",
+              i,
+              u_map_enum_keys(request->map_post_body)[i],
+              u_map_enum_values(request->map_post_body)[i]);
     if (request->map_cookie != NULL)
       for (int i = 0; i < u_map_count(request->map_cookie); i++)
-        LOG_I(UTIL, "[websrv] cookie variable %i %s : %s\n", i, u_map_enum_keys(request->map_cookie)[i], u_map_enum_values(request->map_cookie)[i]);
+        LOG_I(UTIL,
+              "[websrv] cookie variable %i %s : %s\n",
+              i,
+              u_map_enum_keys(request->map_cookie)[i],
+              u_map_enum_values(request->map_cookie)[i]);
     if (request->map_header != NULL)
       for (int i = 0; i < u_map_count(request->map_header); i++)
-        LOG_I(UTIL, "[websrv] header variable %i %s : %s\n", i, u_map_enum_keys(request->map_header)[i], u_map_enum_values(request->map_header)[i]);
+        LOG_I(UTIL,
+              "[websrv] header variable %i %s : %s\n",
+              i,
+              u_map_enum_keys(request->map_header)[i],
+              u_map_enum_values(request->map_header)[i]);
     if (request->map_url != NULL)
       for (int i = 0; i < u_map_count(request->map_url); i++)
-        LOG_I(UTIL, "[websrv] url variable %i %s : %s\n", i, u_map_enum_keys(request->map_url)[i], u_map_enum_values(request->map_url)[i]);
+        LOG_I(UTIL,
+              "[websrv] url variable %i %s : %s\n",
+              i,
+              u_map_enum_keys(request->map_url)[i],
+              u_map_enum_values(request->map_url)[i]);
   }
 }
 /*-----------------------------------*/
@@ -163,29 +185,27 @@ int websrv_string_response(char *astring, struct _u_response *response, int http
 /* set of calls to fill a buffer with a string and  use this buffer in a response */
 void websrv_printf_start(struct _u_response *response, int buffsize, bool async)
 {
-int st=-1;
+  int st = -1;
 
-  for( int count=0 ; count < 10 ; count++) {
-    st=pthread_mutex_trylock(&(websrv_printf_buff.mutex));
-    if (st == 0) 
+  for (int count = 0; count < 10; count++) {
+    st = pthread_mutex_trylock(&(websrv_printf_buff.mutex));
+    if (st == 0)
       break;
     usleep(100);
     count++;
   }
-  if ( st != 0) {
-	 char msg[255];
-	 snprintf(msg,sizeof(msg)-1,"[websrv] cannot allocate print buffer, error %s",strerror(st));
-	 LOG_W(UTIL,"%s",msg);
-	 websrv_string_response(msg, websrv_printf_buff.response, 500, 0);
-  }
-  else
-  {
+  if (st != 0) {
+    char msg[255];
+    snprintf(msg, sizeof(msg) - 1, "[websrv] cannot allocate print buffer, error %s", strerror(st));
+    LOG_W(UTIL, "%s", msg);
+    websrv_string_response(msg, websrv_printf_buff.response, 500, 0);
+  } else {
     websrv_printf_buff.buff = malloc(buffsize);
     websrv_printf_buff.buffptr = websrv_printf_buff.buff;
     websrv_printf_buff.buffsize = buffsize;
     websrv_printf_buff.response = response;
     websrv_printf_buff.async = async;
-   }
+  }
 }
 
 void websrv_printf_atpos(int pos, const char *message, ...)
@@ -193,7 +213,8 @@ void websrv_printf_atpos(int pos, const char *message, ...)
   va_list va_args;
   va_start(va_args, message);
 
-  websrv_printf_buff.buffptr = websrv_printf_buff.buff + pos + vsnprintf(websrv_printf_buff.buff + pos, websrv_printf_buff.buffsize - pos - 1, message, va_args);
+  websrv_printf_buff.buffptr = websrv_printf_buff.buff + pos
+                               + vsnprintf(websrv_printf_buff.buff + pos, websrv_printf_buff.buffsize - pos - 1, message, va_args);
 
   va_end(va_args);
   return;
@@ -203,7 +224,10 @@ void websrv_printf(const char *message, ...)
 {
   va_list va_args;
   va_start(va_args, message);
-  websrv_printf_buff.buffptr += vsnprintf(websrv_printf_buff.buffptr, websrv_printf_buff.buffsize - (websrv_printf_buff.buffptr - websrv_printf_buff.buff) - 1, message, va_args);
+  websrv_printf_buff.buffptr += vsnprintf(websrv_printf_buff.buffptr,
+                                          websrv_printf_buff.buffsize - (websrv_printf_buff.buffptr - websrv_printf_buff.buff) - 1,
+                                          message,
+                                          va_args);
   va_end(va_args);
   return;
 }
@@ -223,7 +247,10 @@ void websrv_printf_end(int httpstatus, int dbglvl)
     websrv_string_response(websrv_printf_buff.buff, websrv_printf_buff.response, httpstatus, dbglvl);
   } else if (httpstatus < 1000) {
     LOG_W(UTIL, "[websrv] %s\n", websrv_printf_buff.buff);
-    ulfius_set_binary_body_response(websrv_printf_buff.response, httpstatus, websrv_printf_buff.buff, websrv_printf_buff.buffptr - websrv_printf_buff.buff);
+    ulfius_set_binary_body_response(websrv_printf_buff.response,
+                                    httpstatus,
+                                    websrv_printf_buff.buff,
+                                    websrv_printf_buff.buffptr - websrv_printf_buff.buff);
   }
 
   free(websrv_printf_buff.buff);
