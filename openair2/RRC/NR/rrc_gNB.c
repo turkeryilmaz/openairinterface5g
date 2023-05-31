@@ -2057,19 +2057,36 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
     }
   }
 
-  gNB_RRC_INST *rrc = RC.nrrrc[0];
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
-  f1ap_ue_context_modif_req_t ue_context_modif_req = {
-    .gNB_CU_ue_id = UE->rrc_ue_id,
-    .gNB_DU_ue_id = ue_data.secondary_ue,
-    .mcc = rrc->configuration.mcc[0],
-    .mnc = rrc->configuration.mnc[0],
-    .mnc_digit_length = rrc->configuration.mnc_digit_length[0],
-    .nr_cellid = rrc->nr_cellid,
-    .servCellId = 0, /* TODO: correct value? */
-    .ReconfigComplOutcome = successful_reconfig ? RRCreconf_success : RRCreconf_failure,
-  };
-  rrc->mac_rrc.ue_context_modification_request(&ue_context_modif_req);
+  if (UE->handover_info) {
+    MessageDef *message_p;
+    message_p = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_RELEASE_CMD);
+    f1ap_ue_context_release_cmd_t *rel_cmd = &F1AP_UE_CONTEXT_RELEASE_CMD(message_p);
+    const uint8_t modid_s = UE->handover_info->modid_s;
+    rel_cmd->gNB_CU_ue_id = UE->rrc_ue_id;
+    rel_cmd->gNB_DU_ue_id = find_ho_rnti_by_modid_s(modid_s);
+    rel_cmd->cause = F1AP_CAUSE_RADIO_NETWORK;
+    rel_cmd->cause_value = 10; // 10 = F1AP_CauseRadioNetwork_normal_release
+    gNB_RRC_INST *rrc_instance_source = RC.nrrrc[modid_s];
+    itti_send_msg_to_task(TASK_CU_F1, rrc_instance_source->f1_instance, message_p);
+    free(UE->handover_info);
+    UE->handover_info = NULL;
+    nr_update_ngu_tunnel_after_handover(rrc_instance_source, rel_cmd->gNB_DU_ue_id, ue_context_p, ctxt_pP->rntiMaybeUEid);
+  } else {
+    gNB_RRC_INST *rrc = RC.nrrrc[0];
+    f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+    f1ap_ue_context_modif_req_t ue_context_modif_req = {
+        .gNB_CU_ue_id = UE->rrc_ue_id,
+        .gNB_DU_ue_id = ue_data.secondary_ue,
+        .mcc = rrc->configuration.mcc[0],
+        .mnc = rrc->configuration.mnc[0],
+        .mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+        .nr_cellid = rrc->nr_cellid,
+        .servCellId = 0, /* TODO: correct value? */
+        .ReconfigComplOutcome = successful_reconfig ? RRCreconf_success : RRCreconf_failure,
+    };
+
+    rrc->mac_rrc.ue_context_modification_request(&ue_context_modif_req);
+  }
 }
 //-----------------------------------------------------------------------------
 int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
