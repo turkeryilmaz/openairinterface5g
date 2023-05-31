@@ -48,6 +48,9 @@ enum MsgUserId
 char *vtp_local_address = "127.0.0.1";
 int vtp_proxy_send_port = 7776;
 int vtp_proxy_recv_port = 7777;
+
+int ss_eNB_vtp_init(void);
+
 /*
  * Function : sys_send_init_udp
  * Description: Sends the UDP_INIT message to UDP_TASK to create the receiving socket
@@ -347,33 +350,28 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
 //------------------------------------------------------------------------------
 int ss_eNB_vtp_init(void)
 {
-    IpAddress_t ipaddr;
-
-    const char *hostIp;
-    hostIp = RC.ss.hostIp ? RC.ss.hostIp : "127.0.0.1";
-    acpConvertIp(hostIp, &ipaddr);
-
     // Port number
     int port = RC.ss.Vtpport;
     if (port == 0)
     {
         port = 7780;
     }
-    LOG_A(ENB_SS_VTP, "[SS-VTP] Initializing VTP Port %s:%d\n", hostIp, port);
+
+    LOG_A(ENB_SS_VTP, "[SS-VTP] Initializing VTP Port %s:%d\n", RC.ss.VtpHost, port);
     // acpInit(malloc, free, 1000);
     const struct acpMsgTable msgTable[] = {
         {"SysVTEnquireTimingAck", MSG_SysVTEnquireTimingAck_userId},
         {"SysVTEnquireTimingUpd", MSG_SysVTEnquireTimingUpd_userId},
         // The last element should be NULL
-        {
-            NULL, 0}};
+        {NULL, 0},
+    };
 
     // Arena size to decode received message
     const size_t aSize = 32 * 1024;
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_vtp_g);
+    int ret = acpServerInitWithCtx(RC.ss.VtpHost, port, msgTable, aSize, &ctx_vtp_g);
     if (ret < 0)
     {
         LOG_E(ENB_SS_VTP, "[SS-VTP] Connection failure err=%d\n", ret);
@@ -390,8 +388,7 @@ int ss_eNB_vtp_init(void)
 }
 static void ss_eNB_wait_first_msg(void)
 {
-    const size_t size = 16 * 1024;
-    unsigned char *buffer = (unsigned char *)acpMalloc(size);
+    unsigned char *buffer = (unsigned char *)acpMalloc(16 * 1024);
     assert(buffer);
 	while (1)
 	{

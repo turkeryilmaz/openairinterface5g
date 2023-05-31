@@ -404,12 +404,12 @@ void *ss_gNB_drb_process_itti_msg(void *notUsed)
 
 void ss_gNB_drb_init(void)
 {
-    IpAddress_t ipaddr;
     LOG_A(GNB_APP, "[SS_DRB] Starting System Simulator DRB Thread\n");
+    char* host = RC.ss.DrbHost;
 
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
+    if (host == NULL) {
+        host = RC.ss.hostIp;
+    }
 
     // Port number
     int port = RC.ss.Drbport;
@@ -424,7 +424,7 @@ void ss_gNB_drb_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_drb_g);
+    int ret = acpServerInitWithCtx(host, port, msgTable, aSize, &ctx_drb_g);
     if (ret < 0)
     {
         LOG_A(GNB_APP, "[SS_DRB] Connection failure err=%d\n", ret);

@@ -279,7 +279,7 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
         }
         else
           timer_tinfo.sf--;
-        
+
         msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
         LOG_A(ENB_SS_SRB_ACP, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
             tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
@@ -339,11 +339,11 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
 			else if (userId == -ACP_PEER_DISCONNECTED){
     			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
 				isConnected = false;
-            } 
+            }
             else if (userId == -ACP_PEER_CONNECTED){
 	            LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
 				isConnected = true;
-            } 
+            }
 			else
 			{
 				LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Invalid userId: %d \n", userId);
@@ -404,12 +404,7 @@ ss_eNB_read_from_srb_socket(acpCtx_t ctx)
  */
 void ss_eNB_srb_init(void)
 {
-	IpAddress_t ipaddr;
 	LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Starting System Simulator SRB Thread \n");
-
-	const char *hostIp;
-	hostIp = RC.ss.hostIp;
-	acpConvertIp(hostIp, &ipaddr);
 
 	// Port number
 	int port = RC.ss.Srbport;
@@ -426,7 +421,7 @@ void ss_eNB_srb_init(void)
 
 	// Start listening server and get ACP context,
 	// after the connection is performed, we can use all services
-	int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
+	int ret = acpServerInitWithCtx(RC.ss.SrbHost ? RC.ss.SrbHost : "127.0.0.1", port, msgTable, aSize, &ctx_srb_g);
 	if (ret < 0)
 	{
 		LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Connection failure err=%d\n", ret);

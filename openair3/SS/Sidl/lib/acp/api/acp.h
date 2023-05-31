@@ -179,42 +179,42 @@ int acpInitCtx(const struct acpMsgTable* msgTable, acpCtx_t* ctx);
  * @param[in] aSize Arena size
  * @return   0 on success, or an error code on failure.
  */
-int acpClientInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize);
+int acpClientInit(acpCtx_t ctx, const char* host, int port, size_t aSize);
 
 /** Connects to server.
  * Allocates the context with registering to requested notifications.
  *
- * @param[in]  ipaddr		Server ip address
+ * @param[in]  host		Server ip address
  * @param[in]  port		Server TCP port
  * @param[in]  msgTable		Requested service responses/notifications to register, last element should be with name==NULL
  * @param[in] aSize Arena size
  * @param[out]  ctx 	        ACP Context
  * @return   0 on success, or an error code on failure.
  */
-int acpClientInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx);
+int acpClientInitWithCtx(const char* host, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx);
 
 /** Runs server.
  * Context should be allocated with acpCreateCtx.
  *
  * @param[in]  ctx 	        ACP Context
- * @param[in]  ipaddr		Server ip address
+ * @param[in]  host		Server ip address / unixsocket pipe file
  * @param[in]  port		Server TCP port
  * @param[in] aSize Arena size
  * @return   0 on success, or an error code on failure.
  */
-int acpServerInit(acpCtx_t ctx, IpAddress_t ipaddr, int port, size_t aSize);
+int acpServerInit(acpCtx_t ctx, const char* host, int port, size_t aSize);
 
 /** Runs server.
  * Allocates the context with registering to requested notifications.
  *
- * @param[in]  ipaddr		Server ip address
+ * @param[in]  host		Server ip address / unixsocket pipe path
  * @param[in]  port		Server TCP port
  * @param[in]  msgTable		Requested service responses/notifications to register, last element should be with name==NULL
  * @param[in] aSize Arena size
  * @param[out]  ctx 	        ACP Context
  * @return   0 on success, or an error code on failure.
  */
-int acpServerInitWithCtx(IpAddress_t ipaddr, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx);
+int acpServerInitWithCtx(const char* host, int port, const struct acpMsgTable* msgTable, size_t aSize, acpCtx_t* ctx);
 
 /** Closes the socket from the context,
  * an ACP context is still valid after call.

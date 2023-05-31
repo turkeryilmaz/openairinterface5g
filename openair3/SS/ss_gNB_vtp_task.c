@@ -76,7 +76,7 @@ static void _ss_log_vt(struct VirtualTimeInfo_Type* virtualTime, const char* pre
                 case SlotOffset_Type_Numerology1:
                     _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(1): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology1);
                 break;
-                case SlotOffset_Type_Numerology2: 
+                case SlotOffset_Type_Numerology2:
                     _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(2): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology2);
                 break;
                 case SlotOffset_Type_Numerology3:
@@ -85,7 +85,7 @@ static void _ss_log_vt(struct VirtualTimeInfo_Type* virtualTime, const char* pre
                 case SlotOffset_Type_Numerology4:
                     _msg_end += snprintf(_msg_end, sizeof(_msg) - (_msg_end - _msg), "slot(4): %d", virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology4);
                 break;
-                default: 
+                default:
                     LOG_E(GNB_APP, "Wrong MU\r\n");
                 break;
             }
@@ -144,7 +144,7 @@ void ss_vtp_send_tinfo(
         case SlotOffset_Type_Numerology1:
             virtualTime.TimingInfo.Slot.v.SlotOffset.v.Numerology1 = tinfo->slot;
         break;
-        case SlotOffset_Type_Numerology2: 
+        case SlotOffset_Type_Numerology2:
             virtualTime.TimingInfo.Slot.v.SlotOffset.v.Numerology2 = tinfo->slot;
         break;
         case SlotOffset_Type_Numerology3:
@@ -153,7 +153,7 @@ void ss_vtp_send_tinfo(
         case SlotOffset_Type_Numerology4:
             virtualTime.TimingInfo.Slot.v.SlotOffset.v.Numerology4 = tinfo->slot;
         break;;
-        default: 
+        default:
             virtualTime.TimingInfo.Slot.d =  SlotTimingInfo_Type_UNBOUND_VALUE;
             break;;
     }
@@ -267,7 +267,7 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
             case SlotOffset_Type_Numerology1:
                 req->tinfo.slot = virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology1;
             break;
-            case SlotOffset_Type_Numerology2: 
+            case SlotOffset_Type_Numerology2:
                 req->tinfo.slot = virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology2;
             break;
             case SlotOffset_Type_Numerology3:
@@ -276,7 +276,7 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
             case SlotOffset_Type_Numerology4:
                 req->tinfo.slot = virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology4;
             break;
-            default: 
+            default:
                 req->tinfo.mu = -1;
             break;
         }
@@ -285,7 +285,7 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 
     req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
-    
+
     LOG_A(GNB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN: %d SF: %d mu: %d slot: %d\n",
         req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf, req->tinfo.mu, req->tinfo.slot);
 
@@ -327,10 +327,10 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
    			else if (userId == -ACP_PEER_DISCONNECTED){
     			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
                 return 1;
-            } 
+            }
             else if (userId == -ACP_PEER_CONNECTED){
 	            LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
-            } 
+            }
         }
 
         if (userId == 0)
@@ -386,7 +386,7 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
             tinfo.mu = 1;
             tinfo.sf = SS_NRUPD_TIM_INFO(received_msg).slot / 2;
             tinfo.sfn = SS_NRUPD_TIM_INFO(received_msg).sfn;
-            
+
             if (SS_context.vtp_enabled == 1) {
                 ss_vtp_send_tinfo(TASK_VTP, &tinfo);
             }
@@ -407,23 +407,17 @@ uint8_t ss_gNB_vtp_process_itti_msg(void)
         received_msg = NULL;
     }
 
-    
+
     return ss_gNB_read_from_vtp_socket(ctx_vtp_g);
 }
 
 //------------------------------------------------------------------------------
 int ss_gNB_vtp_init(void)
 {
-    IpAddress_t ipaddr;
-
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
-
     // Port number
     int port = RC.ss.Vtpport ? RC.ss.Vtpport : 7780;
 
-    LOG_A(GNB_APP, "[SS-VTP] Initializing VTP Port %s:%d\n", hostIp, port);
+    LOG_A(GNB_APP, "[SS-VTP] Initializing VTP Port %s:%d\n", RC.ss.hostIp, port);
     // acpInit(malloc, free, 1000);
     const struct acpMsgTable msgTable[] = {
         {"SysVTEnquireTimingAck", MSG_SysVTEnquireTimingAck_userId},
@@ -437,7 +431,8 @@ int ss_gNB_vtp_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_vtp_g);
+    LOG_W(GNB_APP, "[SS-VTP] Connecting to %s\n", RC.ss.VtpHost);
+    int ret = acpServerInitWithCtx(RC.ss.VtpHost, port, msgTable, aSize, &ctx_vtp_g);
     if (ret < 0)
     {
         LOG_E(GNB_APP, "[SS-VTP] Connection failure err=%d\n", ret);

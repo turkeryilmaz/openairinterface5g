@@ -158,26 +158,26 @@ static void ss_send_srb_data(ss_nrrrc_pdu_ind_t *pdu_ind)
 #define RESCMPLT_NASINFO c1->choice.rrcResumeComplete->criticalExtensions.choice.rrcResumeComplete->dedicatedNAS_Message
 #define UL_NASINFO c1->choice.ulInformationTransfer->criticalExtensions.choice.ulInformationTransfer->dedicatedNAS_Message
 
-                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_rrcSetupComplete) 
-                { 
+                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_rrcSetupComplete)
+                {
                    if (UL_DCCH.c1->choice.rrcSetupComplete->criticalExtensions.present ==
-                                                       NR_RRCSetupComplete__criticalExtensions_PR_rrcSetupComplete) 
+                                                       NR_RRCSetupComplete__criticalExtensions_PR_rrcSetupComplete)
                    {
                       LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UL_DCCH.SETCMPLT_NASINFO.buf, UL_DCCH.SETCMPLT_NASINFO.size);
                    }
                 }
-                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_rrcResumeComplete) 
-                { 
+                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_rrcResumeComplete)
+                {
                    if (UL_DCCH.c1->choice.rrcResumeComplete->criticalExtensions.present ==
-                                                       NR_RRCResumeComplete__criticalExtensions_PR_rrcResumeComplete) 
+                                                       NR_RRCResumeComplete__criticalExtensions_PR_rrcResumeComplete)
                    {
                       LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UL_DCCH.RESCMPLT_NASINFO->buf, UL_DCCH.RESCMPLT_NASINFO->size);
                    }
                 }
-                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_ulInformationTransfer) 
-                { 
+                if(UL_DCCH.c1->present == NR_UL_DCCH_MessageType__c1_PR_ulInformationTransfer)
+                {
                    if (UL_DCCH.c1->choice.ulInformationTransfer->criticalExtensions.present ==
-                                                 NR_ULInformationTransfer__criticalExtensions_PR_ulInformationTransfer) 
+                                                 NR_ULInformationTransfer__criticalExtensions_PR_ulInformationTransfer)
                    {
                       LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", UL_DCCH.UL_NASINFO->buf, UL_DCCH.UL_NASINFO->size);
                    }
@@ -256,22 +256,22 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
 
                         xer_fprint(stdout,&asn_DEF_NR_DL_DCCH_Message,(void *)dl_dcch_msg);
 
-                        if(DL_DCCH.c1->present == NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer) 
-                        { 
-                          if (DL_DCCH.c1->choice.dlInformationTransfer->criticalExtensions.present 
-                                              == NR_DLInformationTransfer__criticalExtensions_PR_dlInformationTransfer) 
+                        if(DL_DCCH.c1->present == NR_DL_DCCH_MessageType__c1_PR_dlInformationTransfer)
+                        {
+                          if (DL_DCCH.c1->choice.dlInformationTransfer->criticalExtensions.present
+                                              == NR_DLInformationTransfer__criticalExtensions_PR_dlInformationTransfer)
                           {
                              LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", DL_DCCH.DL_NASINFO->buf, DL_DCCH.DL_NASINFO->size);
                           }
                         }
 
-                        if(DL_DCCH.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration) 
-                        { 
-                          if (DL_DCCH.c1->choice.rrcReconfiguration->criticalExtensions.present 
-                                              == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration) 
+                        if(DL_DCCH.c1->present == NR_DL_DCCH_MessageType__c1_PR_rrcReconfiguration)
+                        {
+                          if (DL_DCCH.c1->choice.rrcReconfiguration->criticalExtensions.present
+                                              == NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration)
                           {
                              int nas_list_cnt;
-                             for (nas_list_cnt = 0; nas_list_cnt < DL_DCCH.RECNFG_NASINFO->list.count; nas_list_cnt++)  
+                             for (nas_list_cnt = 0; nas_list_cnt < DL_DCCH.RECNFG_NASINFO->list.count; nas_list_cnt++)
                              {
                                  LOG_NAS_P(OAILOG_INFO, "NR_NAS_PDU", DL_DCCH.RECNFG_NASINFO->list.array[nas_list_cnt]->buf, DL_DCCH.RECNFG_NASINFO->list.array[nas_list_cnt]->size);
                              }
@@ -300,7 +300,7 @@ static void ss_task_handle_rrc_pdu_req(struct NR_RRC_PDU_REQ *req)
 
 
 //------------------------------------------------------------------------------
-static bool isConnected = false; 
+static bool isConnected = false;
 
 static inline void
 ss_gNB_read_from_srb_socket(acpCtx_t ctx)
@@ -329,11 +329,11 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                         } else if (userId == -ACP_PEER_DISCONNECTED){
              			LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
                                 isConnected = false;
-                        } 
+                        }
                         else if (userId == -ACP_PEER_CONNECTED){
                                 LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
                                 isConnected = true;
-                        } 
+                        }
                         else
                         {
                                 LOG_A(GNB_APP, "[SS_SRB] Invalid userId: %d \n", userId);
@@ -349,7 +349,7 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
                         }
                         else
                           LOG_A(GNB_APP, "[SS_SRB] Connection stopped isConnected:false\n)");
-                         
+
                 }
                 else if (MSG_NrSysSrbProcessFromSS_userId == userId)
                 {
@@ -385,12 +385,7 @@ ss_gNB_read_from_srb_socket(acpCtx_t ctx)
 //------------------------------------------------------------------------------
 void ss_gNB_srb_init(void)
 {
-  IpAddress_t ipaddr;
   LOG_A(GNB_APP, "[SS_SRB] Starting System Simulator SRB Thread \n");
-
-  const char *hostIp;
-  hostIp = RC.ss.hostIp;
-  acpConvertIp(hostIp, &ipaddr);
 
   // Port number
   int port = RC.ss.Srbport;
@@ -413,7 +408,7 @@ void ss_gNB_srb_init(void)
 
   // Start listening server and get ACP context,
   // after the connection is performed, we can use all services
-  int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_srb_g);
+  int ret = acpServerInitWithCtx(RC.ss.SrbHost, port, msgTable, aSize, &ctx_srb_g);
   if (ret < 0)
   {
     LOG_A(GNB_APP, "[SS_SRB] Connection failure err=%d\n", ret);
