@@ -62,10 +62,12 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
   if (rlc_bearer2release_list) {
     for (int i = 0; i < rlc_bearer2release_list->list.count; i++) {
       for (int idx = 0; idx < sched_ctrl->dl_lc_num; idx++) {
-        if (sched_ctrl->dl_lc_ids[idx] == *rlc_bearer2release_list->list.array[i]) {
+        const int lcid = *rlc_bearer2release_list->list.array[i];
+        if (sched_ctrl->dl_lc_ids[idx] == lcid) {
           const int remaining_lcs = sched_ctrl->dl_lc_num - idx - 1;
           memmove(&sched_ctrl->dl_lc_ids[idx], &sched_ctrl->dl_lc_ids[idx + 1], sizeof(sched_ctrl->dl_lc_ids[idx]) * remaining_lcs);
           sched_ctrl->dl_lc_num--;
+          LOG_I(NR_MAC, "remove LCID %d (%s %d)\n", lcid, lcid < 4 ? "SRB" : "DRB", lcid);
           break;
         }
       }
@@ -75,7 +77,7 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
   if (rlc_bearer2add_list) {
     // keep lcids
     for (int i = 0; i < rlc_bearer2add_list->list.count; i++) {
-      const int lcid = rlc_bearer2add_list->list.array[i]->logicalChannelIdentity;
+      const uint8_t lcid = rlc_bearer2add_list->list.array[i]->logicalChannelIdentity;
       bool found = false;
       for (int idx = 0; idx < sched_ctrl->dl_lc_num; idx++) {
         if (sched_ctrl->dl_lc_ids[idx] == lcid) {
@@ -85,9 +87,21 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
       }
 
       if (!found) {
+        /* we assume that the first two are SRB bearers, and we add before
+         * other DRB */
+        uint8_t i = 0;
+        /* go beyond all SRBs */
+        while (i < sched_ctrl->dl_lc_num && sched_ctrl->dl_lc_ids[i] < 4)
+          i++;
+        uint8_t remaining_lcs = sched_ctrl->dl_lc_num - i;
+        memmove(&sched_ctrl->dl_lc_ids[i + 1], &sched_ctrl->dl_lc_ids[i], sizeof(sched_ctrl->dl_lc_ids[i]) * remaining_lcs);
+        sched_ctrl->dl_lc_ids[i] = lcid;
+
         sched_ctrl->dl_lc_num++;
-        sched_ctrl->dl_lc_ids[sched_ctrl->dl_lc_num - 1] = lcid;
-        LOG_D(NR_MAC, "Adding LCID %d (%s %d)\n", lcid, lcid < 4 ? "SRB" : "DRB", lcid);
+
+        LOG_I(NR_MAC, "Adding LCID %d (%s %d)\n", lcid, lcid < 4 ? "SRB" : "DRB", lcid);
+        for (i = 0; i < sched_ctrl->dl_lc_num; ++i)
+          LOG_E(NR_MAC, "bearer %d LCID %s %d\n", i, lcid < 4 ? "SRB" : "DRB", sched_ctrl->dl_lc_ids[i]);
       }
     }
   }
