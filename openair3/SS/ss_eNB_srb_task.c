@@ -251,53 +251,17 @@ static void ss_task_handle_rrc_pdu_req(struct EUTRA_RRC_PDU_REQ *req)
 			LOG_P(OAILOG_DEBUG, "DL_DCCH_Message", lttng_sdu, SS_RRC_PDU_REQ(message_p).sdu_size);
 		}
 
-		LOG_A(ENB_SS_SRB_ACP, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
+		LOG_A(ENB_SS_SRB, "[SS_SRB][EUTRA_RRC_PDU_REQ] sending to TASK_RRC_ENB: {srb: %d, ch: %s, qty: %d rnti %d}\n",
 			  SS_RRC_PDU_REQ(message_p).srb_id,
 			  req->RrcPdu.d == RRC_MSG_Request_Type_Ccch ? "CCCH" : "DCCH", SS_RRC_PDU_REQ(message_p).sdu_size ,rnti_g);
 
 		SS_RRC_PDU_REQ(message_p).rnti = rnti_g;
 
-		uint8_t msg_queued = 0;
-		if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+		if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB, instance_g, message_p))
 		{
-			ss_set_timinfo_t tinfo, timer_tinfo;
-      memset(&tinfo, 0, sizeof(tinfo));
-      memset(&timer_tinfo, 0, sizeof(timer_tinfo));
-			tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-			timer_tinfo = tinfo;
-			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
-      LOG_I(ENB_SS_SRB_ACP, "msg_queued:%d\n",msg_queued);
-			LOG_A(ENB_SS_SRB_ACP,"VT_TIMER SRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-
-			if(msg_queued)
-      {
-        /* Below adjustment is made as MAC is taking 1 extra SF before scheduling and "msg_can_be_queued" is adjusting by 4 SF */
-        if (timer_tinfo.sf == 0)
-        {
-          timer_tinfo.sfn--;
-          timer_tinfo.sf = 9;
-        }
-        else
-          timer_tinfo.sf--;
-
-        msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
-        LOG_A(ENB_SS_SRB_ACP, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
-            tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-      }
-      LOG_I(ENB_SS_SRB_ACP, "msg_queued2:%d\n",msg_queued);
-
+			itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
 		}
-		if (!msg_queued)
-		{
-			int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
-			if (send_res < 0)
-			{
-				LOG_A(ENB_SS_SRB_ACP, "[SS_SRB] Error in itti_send_msg_to_task");
-			}
 
-			LOG_A(ENB_SS_SRB_ACP, "Send res: %d", send_res);
-		}
 	}
 }
 

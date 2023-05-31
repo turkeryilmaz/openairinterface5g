@@ -50,6 +50,7 @@
 #include "common/ran_context.h"
 
 #include "acpSys.h"
+#include "SidlCommon.h"
 #include "ss_eNB_sys_task.h"
 #include "ss_eNB_context.h"
 #include "ss_eNB_vt_timer_task.h"
@@ -74,7 +75,7 @@ extern int cell_config_done;
 
 //extern uint16_t ss_rnti_g;
 
-static void sys_send_proxy(void *msg, int msgLen, int msg_queued, ss_set_timinfo_t timer_tinfo);
+static void sys_send_proxy(void *msg, int msgLen, struct TimingInfo_Type* at);
 int cell_config_done_indication(void);
 static uint16_t paging_ue_index_g = 0;
 extern SSConfigContext_t SS_context;
@@ -213,6 +214,19 @@ int cell_config_done_indication()
   return 0;
 }
 
+
+void set_syscnf(bool reqCnfFlag, enum ConfirmationResult_Type_Sel resType, bool resVal, enum SystemConfirm_Type_Sel cnfType)
+{
+  if (reqCnfFlag == true)
+  {
+    SS_context.sys_cnf.resType = resType;
+    SS_context.sys_cnf.resVal = resVal;
+    SS_context.sys_cnf.cnfType = cnfType;
+    SS_context.sys_cnf.cnfFlag = 1;
+    memset(SS_context.sys_cnf.msg_buffer, 0, 1000);
+  }
+}
+
 /*
  * Function : sys_send_udp_msg
  * Description: Sends the UDP_INIT message to UDP_TASK to create the listening socket
@@ -222,7 +236,7 @@ static int sys_send_udp_msg(
     uint32_t buffer_len,
     uint32_t buffer_offset,
     uint32_t peerIpAddr,
-    uint16_t peerPort,int msg_queued, ss_set_timinfo_t timer_tinfo)
+    uint16_t peerPort, struct TimingInfo_Type* at)
 {
   // Create and alloc new message
   MessageDef *message_p = NULL;
@@ -237,22 +251,18 @@ static int sys_send_udp_msg(
     udp_data_req_p->buffer = buffer;
     udp_data_req_p->buffer_length = buffer_len;
     udp_data_req_p->buffer_offset = buffer_offset;
-    if(msg_queued)
-    {
-      LOG_A(ENB_SS_SYS_TASK, "UDP Message Queued for Proxy\n");
-      return vt_timer_setup(timer_tinfo, TASK_UDP, 0,message_p);
-    }
-    else
+    if(at == NULL || !vt_timer_push_msg(at, TASK_UDP, 0, message_p))
     {
       LOG_A(ENB_SS_SYS_TASK, "Sending UDP_DATA_REQ to TASK_UDP\n");
       return itti_send_msg_to_task(TASK_UDP, 0, message_p);
     }
+
+    return 0;
   }
-  else
-  {
-    LOG_A(ENB_SS_SYS_TASK, "Failed Sending UDP_DATA_REQ length %u offset %u \n", buffer_len, buffer_offset);
-    return -1;
-  }
+
+
+  LOG_A(ENB_SS_SYS_TASK, "Failed Sending UDP_DATA_REQ length %u offset %u \n", buffer_len, buffer_offset);
+  return -1;
 }
 
 /*
@@ -697,33 +707,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
           RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection[cell_index] = SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
         }
       }
-      uint8_t msg_queued = 0;
-      ss_set_timinfo_t timer_tinfo;
-      timer_tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-      timer_tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-#if 0
-      if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
-      {
-        tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-        tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-        timer_tinfo = tinfo;
-        msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
 
-        LOG_A(ENB_SS_SYS_TASK,"VT_TIMER SYS  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-        if(msg_queued)
-        {
-          msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, 0,msg_p);
-          LOG_A(ENB_SS, "Cell_Config Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-              tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-        }
-      }
-
-      if (!msg_queued)
-      {
-        LOG_A(ENB_SS_SYS_TASK, "Sending Cell configuration to RRC from SYSTEM_CTRL_REQ \n");
-        itti_send_msg_to_task(TASK_RRC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
-      }
-#endif
       /** Handle Initial Cell power, Sending to Proxy */
       if (AddOrReconfigure->Basic.v.InitialCellPower.d == true)
       {
@@ -749,10 +733,10 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
         cellConfig->header.cell_index = cell_index;
         LOG_A(ENB_SS_SYS_TASK, "===Cell configuration received for cell_id: %d Initial attenuation: %d Max ref power: %d for DL_EARFCN: %d cell_index %d=== \n",
-              cellConfig->header.cell_id,
-              cellConfig->initialAttenuation, cellConfig->maxRefPower,
-              cellConfig->dl_earfcn, cell_index);
-        sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t), msg_queued, timer_tinfo);
+            cellConfig->header.cell_id,
+            cellConfig->initialAttenuation, cellConfig->maxRefPower,
+            cellConfig->dl_earfcn, cell_index);
+        sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t), &req->Common.TimingInfo);
       }
     }
     // Cell Config Active Param
@@ -917,23 +901,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
       /* Currently only queuing UL_GrantConfig from Cell Config API. On timer expiry, message will be sent to MAC */
       if (destTaskMAC == true)
       {
-        uint8_t msg_queued = 0;
-        /* Checking if message have to be queued */
-        if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+        if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_MAC_ENB,ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p))
         {
-          ss_set_timinfo_t tinfo;
-          tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-          tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-          if (tinfo.sfn > SS_context.sfn || tinfo.sf > SS_context.sf)
-          {
-            msg_queued = vt_timer_setup(tinfo, TASK_MAC_ENB, 0, msg_p);
-          }
-          LOG_A(ENB_SS_SYS_TASK,"UL_Grant Configuration queued for future SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-        }
-
-        if (!msg_queued)
-        {
-          LOG_A(ENB_SS_SYS_TASK, "Sending SS_ULGRANT_INFO to MAC\n");
           itti_send_msg_to_task(TASK_MAC_ENB, ENB_MODULE_ID_TO_INSTANCE(enb_id), msg_p);
         }
       }
@@ -1083,7 +1052,7 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
       {
         //Increment the nb_CC supported as new cell is confiured.
         if (RC.nb_CC[0] >= MAX_NUM_CCs) {
-          LOG_E (ENB_SS_SYS_TASK,"Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
+          LOG_E (ENB_SS_SYS_TASK,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
         } else {
           RC.nb_CC[0] ++;
           //Set the number of MAC_CC to current configured CC value
@@ -1114,14 +1083,7 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
     LOG_A(ENB_SS_SYS_TASK, "CellConfigRequest INVALID Type receivied\n");
   }
 
-  if (reqCnfFlag_g == true)
-  {
-    SS_context.sys_cnf.resType = resType;
-    SS_context.sys_cnf.resVal = resVal;
-    SS_context.sys_cnf.cnfType = cnfType;
-    memset(SS_context.sys_cnf.msg_buffer, 0, 1000);
-    SS_context.sys_cnf.cnfFlag = 1;
-  }
+  set_syscnf(reqCnfFlag_g, resType, resVal, cnfType);
   return returnState;
 }
 
@@ -1487,43 +1449,15 @@ static int sys_handle_radiobearer_list(struct SYSTEM_CTRL_REQ *req)
       }
     }
 
-    uint8_t msg_queued = 0;
-    if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+    if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB,0, msg_p))
     {
-      ss_set_timinfo_t tinfo, timer_tinfo;
-      tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-      tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-      timer_tinfo = tinfo;
-      msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
+      itti_send_msg_to_task(TASK_RRC_ENB, 0, msg_p);
+    }
 
-      LOG_A(ENB_SS_SYS_TASK,"VT_TIMER SYS  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-      if(msg_queued)
-      {
-        msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, 0,msg_p);
-        LOG_A(ENB_SS_SYS_TASK, "RB List Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-      }
-    }
-    if (!msg_queued)
-    {
-      LOG_A(ENB_SS_SYS_TASK, "Send RRC_RBLIST_CFG_REQ to TASK_RRC_ENB, RB Count : %d, Message: %s  \n", RRC_RBLIST_CFG_REQ(msg_p).rb_count, ITTI_MSG_NAME(msg_p));
-      int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, msg_p);
-      if (send_res < 0)
-      {
-        LOG_A(ENB_SS_SYS_TASK, "Error sending RRC_RBLIST_CFG_REQ to RRC_ENB \n");
-      }
-    }
   }
 
-  if (reqCnfFlag_g == true)
-  {
-    SS_context.sys_cnf.resType = resType;
-    SS_context.sys_cnf.resVal = resVal;
-    SS_context.sys_cnf.cnfType = cnfType;
-    SS_context.sys_cnf.cnfFlag = 1;
-    memset(SS_context.sys_cnf.msg_buffer, 0, 1000);
-    returnState = SS_STATE_CELL_ACTIVE;
-  }
+  set_syscnf(reqCnfFlag_g, resType, resVal, cnfType);
+  returnState = reqCnfFlag_g ? SS_STATE_CELL_ACTIVE : returnState;
 //  send_sys_cnf(resType, resVal, cnfType, NULL);
   return returnState;
 }
@@ -1648,7 +1582,7 @@ int sys_handle_pdcp_count_req(struct PDCP_CountReq_Type *PdcpCount)
  * Function : sys_send_proxy
  * Description: Sends the messages from SYS to proxy
  */
-static void sys_send_proxy(void *msg, int msgLen, int msg_queued, ss_set_timinfo_t timer_tinfo)
+static void sys_send_proxy(void *msg, int msgLen, struct TimingInfo_Type* at)
 {
   LOG_A(ENB_SS_SYS_TASK, "In sys_send_proxy\n");
   uint32_t peerIpAddr;
@@ -1666,7 +1600,7 @@ static void sys_send_proxy(void *msg, int msgLen, int msg_queued, ss_set_timinfo
   LOG_A(ENB_SS_SYS_TASK, "\nCell Config End of Buffer\n ");
 
   /** Send to proxy */
-  sys_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort,msg_queued,timer_tinfo);
+  sys_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort, at);
   return;
 }
 
@@ -1674,7 +1608,7 @@ static void sys_send_proxy(void *msg, int msgLen, int msg_queued, ss_set_timinfo
  * Function : sys_cell_attn_update
  * Description: Sends the attenuation updates received from TTCN to proxy
  */
-static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal,int CellIndex, int msg_queued, ss_set_timinfo_t timer_tinfo)
+static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal,int CellIndex,  struct TimingInfo_Type* at)
 {
   LOG_A(ENB_SS_SYS_TASK, "In sys_cell_attn_update, cellIndex:%d \n",CellIndex);
   attenuationConfigReq_t *attnConf = NULL;
@@ -1691,7 +1625,7 @@ static void sys_cell_attn_update(uint8_t cellId, uint8_t attnVal,int CellIndex, 
   IPV4_STR_ADDR_TO_INT_NWBO(local_address, peerIpAddr, " BAD IP Address");
 
   /** Send to proxy */
-  sys_send_udp_msg((uint8_t *)attnConf, sizeof(attenuationConfigReq_t), 0, peerIpAddr, peerPort,msg_queued,timer_tinfo);
+  sys_send_udp_msg((uint8_t *)attnConf, sizeof(attenuationConfigReq_t), 0, peerIpAddr, peerPort, at);
   LOG_A(ENB_SS_SYS_TASK, "Out sys_cell_attn_update\n");
   return;
 }
@@ -1704,22 +1638,7 @@ static void sys_handle_cell_attn_req(struct SYSTEM_CTRL_REQ *req)
   assert(req);
   struct CellAttenuationConfig_Type_CellAttenuationList_Type_Dynamic *CellAttenuationList = &(req->Request.v.CellAttenuationList);
   assert(CellAttenuationList);
-  uint8_t msg_queued = 0;
-  ss_set_timinfo_t tinfo, timer_tinfo;
-  if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
-  {
-    tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-    tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-    timer_tinfo = tinfo;
-    msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
 
-    LOG_A(ENB_SS_SYS_TASK,"VT_TIMER SYS  task received cell_attn MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-    if(msg_queued)
-    {
-      LOG_A(ENB_SS_SYS_TASK, "Cell_Attn Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-           tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-    }
-  }
   for(int i=0;i<CellAttenuationList->d;i++) {
     uint8_t cellId = (uint8_t)CellAttenuationList->v[i].CellId;
     uint8_t CellIndex = get_cell_index(cellId, SS_context.SSCell_list);
@@ -1731,13 +1650,13 @@ static void sys_handle_cell_attn_req(struct SYSTEM_CTRL_REQ *req)
       attnVal = CellAttenuationList->v[i].Attenuation.v.Value;
       LOG_A(ENB_SS_SYS_TASK, "CellAttenuationList for Cell_id %d value %d dBm received\n",
             cellId, attnVal);
-      sys_cell_attn_update(cellId, attnVal,CellIndex,msg_queued,timer_tinfo);
+      sys_cell_attn_update(cellId, attnVal,CellIndex, &req->Common.TimingInfo);
       break;
     case Attenuation_Type_Off:
       attnVal = 80; /* TODO: attnVal hardcoded currently but Need to handle proper Attenuation_Type_Off */
       LOG_A(ENB_SS_SYS_TASK, "CellAttenuationList turn off for Cell_id %d received with attnVal : %d\n",
             cellId,attnVal);
-      sys_cell_attn_update(cellId, attnVal,CellIndex,msg_queued,timer_tinfo);
+      sys_cell_attn_update(cellId, attnVal,CellIndex, &req->Common.TimingInfo);
       break;
     case Attenuation_Type_UNBOUND_VALUE:
       LOG_A(ENB_SS_SYS_TASK, "CellAttenuationList Attenuation_Type_UNBOUND_VALUE received\n");
@@ -1746,6 +1665,7 @@ static void sys_handle_cell_attn_req(struct SYSTEM_CTRL_REQ *req)
       LOG_A(ENB_SS_SYS_TASK, "Invalid CellAttenuationList received\n");
     }
   }
+  //sys_confirm_done_indication();
 }
 /*
  * Function : sys_handle_paging_req
@@ -1887,12 +1807,6 @@ static void sys_handle_paging_req(struct PagingTrigger_Type *pagingRequest, ss_s
 	LOG_A(ENB_SS_SYS_TASK, "Exit sys_handle_paging_req Paging_IND processing for Cell_id %d \n", cellId);
 }
 
-static void sys_vt_add_sf(uint16_t *frameP, uint8_t *subframeP, int offset)
-{
-    *frameP    = (*frameP + ((*subframeP + offset) / 10))%1024;
-
-    *subframeP = ((*subframeP + offset) % 10);
-}
 
 static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
 {
@@ -1943,38 +1857,12 @@ static void sys_handle_l1macind_ctrl(struct SYSTEM_CTRL_REQ *req)
         SS_L1MACIND_CTRL(message_p).HarqError_Ctrl = IndCtrlMode_DISABLE;
       }
     }
-    LOG_D(ENB_SS_SYS_TASK, "fxn:%s line:%d req->Common.TimingInfo.d:%d\n",__FUNCTION__, __LINE__, req->Common.TimingInfo.d);
-    uint8_t msg_queued = 0;
-		if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
-		{
-      LOG_D(ENB_SS_SYS_TASK, "fxn:%s line:%d\n",__FUNCTION__, __LINE__);
-			ss_set_timinfo_t tinfo, timer_tinfo;
-			tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-			tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-      LOG_D(ENB_SS_SYS_TASK, "fxn:%s line:%d tinfo.sfn:%d tinfo.sf:%d\n",__FUNCTION__, __LINE__, tinfo.sfn, tinfo.sf);
-			timer_tinfo = tinfo;
-			msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
 
-			LOG_A(ENB_SS_SYS_TASK,"VT_TIMER SYS  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-
-			if(msg_queued)
-			{
-         sys_vt_add_sf(&timer_tinfo.sfn,&timer_tinfo.sf,4);
-				 msg_queued = vt_timer_setup(timer_tinfo, TASK_MAC_ENB, 0,message_p);
-			}
-			LOG_A(ENB_SS_SYS_TASK, "RRC_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-
-		}
-		if (!msg_queued)
-		{
-      int send_res = itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
-      if (send_res < 0)
-      {
-        LOG_A(ENB_SS_SYS_TASK, "Error sending to MAC");
-      }
-    	LOG_A(ENB_SS_SYS_TASK, "Send res: %d\n", send_res);
-		}
+    vt_add_sf(&req->Common.TimingInfo, 4);
+    if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_MAC_ENB,0, message_p))
+    {
+      itti_send_msg_to_task(TASK_MAC_ENB, 0, message_p);
+    }
   }
   send_sys_cnf(resType, resVal, cnfType, NULL);
   sys_confirm_done_indication();
@@ -2174,32 +2062,9 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
           LOG_A(ENB_SS_SYS_TASK, "Ciphering ActTimeList i=%d rb_id=%d\n", i, RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ActTimeList.SecurityActTime[i].rb_id);
         }
       }
-      uint8_t msg_queued = 0;
-      if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
+      if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB,0, msg_p))
       {
-        ss_set_timinfo_t tinfo, timer_tinfo;
-        tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-        tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-        timer_tinfo = tinfo;
-        msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
-
-        LOG_A(ENB_SS_SYS_TASK,"VT_TIMER SYS  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
-        if(msg_queued)
-        {
-          msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, 0,msg_p);
-          LOG_A(ENB_SS_SYS_TASK, "AS Security Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-          tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-        }
-        LOG_A(ENB_SS_SYS_TASK, "AS_Security Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d\n",
-					tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-      }
-      if (!msg_queued)
-      {
-        int send_res = itti_send_msg_to_task(TASK_RRC_ENB, 0, msg_p);
-        if (send_res < 0)
-        {
-          LOG_A(ENB_SS_SYS_TASK, "Error sending RRC_AS_SECURITY_CONFIG_REQ to RRC_ENB");
-        }
+        itti_send_msg_to_task(TASK_RRC_ENB, 0, msg_p);
       }
     }
     else if (ASSecurity->d == AS_Security_Type_Release)
@@ -2207,14 +2072,7 @@ static void sys_handle_as_security_req(struct SYSTEM_CTRL_REQ *req)
       LOG_A(ENB_SS_SYS_TASK, "AS_Security_Type_Release received\n");
     }
   }
-  if (reqCnfFlag_g == true)
-  {
-    SS_context.sys_cnf.resType = resType;
-    SS_context.sys_cnf.resVal = resVal;
-    SS_context.sys_cnf.cnfType = cnfType;
-    SS_context.sys_cnf.cnfFlag = 1;
-    memset((void *)SS_context.sys_cnf.msg_buffer, 0, 1000);
-  }
+  set_syscnf(reqCnfFlag_g, resType, resVal, cnfType);
 //  send_sys_cnf(resType, resVal, cnfType, NULL);
 }
 
@@ -2586,32 +2444,29 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
         break;
 
       case SS_VNG_PROXY_REQ:
-        {
-          LOG_A(ENB_SS_SYS_TASK, "received %s from %s \n", ITTI_MSG_NAME(received_msg),
-                ITTI_MSG_ORIGIN_NAME(received_msg));
+      {
+        LOG_A(ENB_SS_SYS_TASK, "received %s from %s \n", ITTI_MSG_NAME(received_msg), ITTI_MSG_ORIGIN_NAME(received_msg));
 
-            VngCmdReq_t *req      = (VngCmdReq_t *)malloc(sizeof(VngCmdReq_t));
-            req->header.preamble  = 0xFEEDC0DE;
-            req->header.msg_id    = SS_VNG_CMD_REQ;
-            req->header.length    = sizeof(proxy_ss_header_t);
-            req->header.cell_id   = SS_VNG_PROXY_REQ(received_msg).cell_id;
-            req->header.cell_index = get_cell_index_pci(req->header.cell_id , SS_context.SSCell_list);
-            printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
-            req->bw               = SS_VNG_PROXY_REQ(received_msg).bw;
-            req->cmd              = SS_VNG_PROXY_REQ(received_msg).cmd;
-            req->NocLevel         = SS_VNG_PROXY_REQ(received_msg).Noc_level;
+        VngCmdReq_t *req      = (VngCmdReq_t *)malloc(sizeof(VngCmdReq_t));
+        req->header.preamble  = 0xFEEDC0DE;
+        req->header.msg_id    = SS_VNG_CMD_REQ;
+        req->header.length    = sizeof(proxy_ss_header_t);
+        req->header.cell_id   = SS_VNG_PROXY_REQ(received_msg).cell_id;
+        req->header.cell_index = get_cell_index_pci(req->header.cell_id , SS_context.SSCell_list);
+        printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
+        req->bw               = SS_VNG_PROXY_REQ(received_msg).bw;
+        req->cmd              = SS_VNG_PROXY_REQ(received_msg).cmd;
+        req->NocLevel         = SS_VNG_PROXY_REQ(received_msg).Noc_level;
 
-            LOG_A(ENB_SS_SYS_TASK,"VNG Command for cell_id: %d CMD %d ",
-                    req->header.cell_id, req->cmd);
-            ss_set_timinfo_t timer_tinfo= {0};
-            sys_send_proxy((void *)req, sizeof(VngCmdReq_t), 0, timer_tinfo);
-        }
-        break;
+        LOG_A(ENB_SS_SYS_TASK,"VNG Command for cell_id: %d CMD %d ",
+            req->header.cell_id, req->cmd);
+        sys_send_proxy((void *)req, sizeof(VngCmdReq_t), NULL);
+      }
+      break;
 
     case SS_GET_PDCP_CNT: /** FIXME */
     {
-      LOG_A(ENB_SS_SYS_TASK, "received SS_GET_PDCP_CNT Count from PDCP size %d\n",
-                      SS_GET_PDCP_CNT(received_msg).size);
+      LOG_A(ENB_SS_SYS_TASK, "received SS_GET_PDCP_CNT Count from PDCP size %d\n", SS_GET_PDCP_CNT(received_msg).size);
       enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpCount;
       enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
       bool resVal = true;

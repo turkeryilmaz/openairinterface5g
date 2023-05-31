@@ -37,7 +37,6 @@ extern SSConfigContext_t SS_context;
 extern RAN_CONTEXT_t RC;
 int cellIndex = 0;
 
-int ss_eNB_vtp_init(void);
 static acpCtx_t ctx_vtp_g = NULL;
 extern SSConfigContext_t SS_context;
 enum MsgUserId

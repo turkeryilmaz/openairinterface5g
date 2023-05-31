@@ -27,20 +27,30 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
 #include "hashtable.h"
+#include "intertask_interface.h"
+#include "SidlCommon.h"
+
 #ifndef SS_ENB_VT_TIMER_TASK_H_
 #define SS_ENB_VT_TIMER_TASK_H_
 
 void *ss_eNB_vt_timer_process_itti_msg(void *);
 void *ss_eNB_vt_timer_task(void *arg);
+
+int vt_timer_push_msg(struct TimingInfo_Type* at, task_id_t task_id,instance_t instance, MessageDef *msg_p);
+void vt_add_sf(struct TimingInfo_Type* at, int offset);
+
+
 uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_tinfo);
 uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t instance,void *msg);
+
 
 typedef struct vt_timer_elm_s {
   //uint8_t msg_type;     ///MSG type
   task_id_t task_id;
   instance_t instance;
-  ss_vt_time_out_t *msg; ///< Optional argument that will be passed when timer expires
+  void *msg; ///< Optional argument that will be passed when timer expires
 } vt_timer_elm_t ;
 
 
