@@ -659,7 +659,7 @@ add_boolean_option(NAS_UE                  True  "NAS UE INSTANCE (<> NAS_MME)" 
 ##########################
 # RRC LAYER OPTIONS
 ##########################
-add_boolean_option(RRC_DEFAULT_RAB_IS_AM       True   "set the RLC mode to AM for the default bearer, otherwise it is UM.")
+add_boolean_option(RRC_DEFAULT_RAB_IS_AM       True   "set the RLC mode to AM for the default bearer, otherwise it is UM." ON)
 
 
 ##########################
