@@ -3229,21 +3229,6 @@ typedef struct {
 } vendor_nfapi_cell_search_indication_t;
 #endif
 
-
-typedef struct {
-        nfapi_p7_message_header_t header;
-        uint32_t error_code;
-        nfapi_lte_cell_search_indication_t lte_cell_search_indication;
-#if 0 /** TODO FC Lets's start with only LTE */
-        nfapi_utran_cell_search_indication_t utran_cell_search_indication;
-        nfapi_geran_cell_search_indication_t geran_cell_search_indication;
-        nfapi_pnf_cell_search_state_t pnf_cell_search_state;
-        nfapi_nb_iot_cell_search_indication_t nb_iot_cell_search_indication;
-#endif
-        nfapi_vendor_extension_tlv_t vendor_extension;
-} vendor_nfapi_cell_search_indication_t;
-#endif
-
 typedef struct {
 	uint16_t psc;
 	uint8_t rscp;

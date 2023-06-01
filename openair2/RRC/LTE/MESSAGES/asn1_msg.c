@@ -1032,17 +1032,21 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
   (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
+  int count =0;
   if (RC.ss.mode == SS_SOFTMODEM) {
-    for(int i=0; i < configuration->schedulingInfo_count; i++) {
-      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[i].si_Periodicity;
-      sib_type[i]=configuration->schedulingInfo[i].sib_MappingInfo.LTE_SIB_Type[i];
-      if(sib_type[i] == 1) {
-        RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+    for(int i=0; i < configuration->schedulingInfo_count[CC_id]; i++) {
+      schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[CC_id][i].si_Periodicity;
+      for (int j =0; j < configuration->schedulingInfo[CC_id][i].sib_MappingInfo.size; j++){
+        LTE_SIB_Type_t *st = sib_type + (i*32 + j)*sizeof(LTE_SIB_Type_t);
+        *st = configuration->schedulingInfo[CC_id][i].sib_MappingInfo.LTE_SIB_Type[j];
+        if(*st == LTE_SIB_Type_sibType4) {
+          RC.rrc[Mod_id]->carrier[CC_id].sib4_Scheduled = true;
+        }
+        if(*st == LTE_SIB_Type_sibType5) {
+          RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
+        }
+        asn1cSeqAdd(&schedulingInfo[i].sib_MappingInfo.list,st);
       }
-      if(sib_type[i] == 2) {
-        RC.rrc[Mod_id]->carrier[CC_id].sib5_Scheduled = true;
-      }
-      asn1cSeqAdd(&schedulingInfo[i].sib_MappingInfo.list,&sib_type[i]);
       asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo[i]);
     }
   } else {
@@ -1057,10 +1061,6 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   if(configuration->eMBMS_M2_configured){
        schedulingInfo2->si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
   }
-  // This is for SIB2/3
-  sib_type=LTE_SIB_Type_sibType3;
-  asn1cSeqAdd(&schedulingInfo.sib_MappingInfo.list,&sib_type);
-  asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo);
   if(configuration->eMBMS_M2_configured){
          *sib_type2=LTE_SIB_Type_sibType13_v920;
          asn1cSeqAdd(&schedulingInfo2->sib_MappingInfo.list,sib_type2);

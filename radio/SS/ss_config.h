@@ -67,16 +67,28 @@ typedef struct ss_config_s {
   const char* hostIp;
   /** SYS port number */
   int Sysport;
+  /**< Sys port host (could be unixsocket pipe)*/
+  const char* SysHost;
   /** SRB port number */
   int Srbport;
+  /**< SRB port host (could be unixsocket pipe)*/
+  const char* SrbHost;
   /** VNG port number */
   int Vngport;
+  /**< VNG port host (could be unixsocket pipe)*/
+  const char* VngHost;
   /** VTP port number */
   int Vtpport;
+  /**< VTP host (could be unixsocket pipe)*/
+  const char* VtpHost;
   /** SYSIND port number */
   int SysIndport;
+    /**< SYS-IND port host (could be unixsocket pipe)*/
+  const char* SysIndHost;
   /** DRB port number */
   int Drbport;
+  /**< DRB port host (could be unixsocket pipe)*/
+  const char* DrbHost;
   /** SYS Port NR number */
   int SysportNR;
   uint8_t configured;

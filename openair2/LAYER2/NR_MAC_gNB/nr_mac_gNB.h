@@ -63,7 +63,7 @@
 
 /* Commmon */
 #include "radio/COMMON/common_lib.h"
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "common/ran_context.h"
 #include "collection/linear_alloc.h"
 
@@ -595,7 +595,9 @@ typedef struct {
   uint8_t current_harq_pid;
   int pusch_consecutive_dtx_cnt;
   int pucch_consecutive_dtx_cnt;
-  int ul_failure;
+  bool ul_failure;
+  int ul_failure_timer;
+  int release_timer;
   struct CSI_Report CSI_report;
   bool SR;
   /// information about every HARQ process
@@ -637,6 +639,7 @@ typedef struct NR_mac_dir_stats {
   uint64_t errors;
   uint64_t total_bytes;
   uint32_t current_bytes;
+  uint64_t total_sdu_bytes;
   uint32_t total_rbs;
   uint32_t total_rbs_retx;
   uint32_t num_mac_sdu;
@@ -662,7 +665,10 @@ typedef struct NR_bler_options {
 } NR_bler_options_t;
 
 typedef struct nr_mac_rrc_ul_if_s {
-  /* TODO add other message types as necessary */
+  ue_context_setup_response_func_t ue_context_setup_response;
+  ue_context_modification_response_func_t ue_context_modification_response;
+  ue_context_release_request_func_t ue_context_release_request;
+  ue_context_release_complete_func_t ue_context_release_complete;
   initial_ul_rrc_message_transfer_func_t initial_ul_rrc_message_transfer;
 } nr_mac_rrc_ul_if_t;
 
@@ -817,10 +823,13 @@ typedef struct gNB_MAC_INST_s {
   NR_bler_options_t ul_bler;
   uint8_t min_grant_prb;
   uint8_t min_grant_mcs;
+  bool identity_pm;
   nr_mac_rrc_ul_if_t mac_rrc;
 
   int16_t frame;
   int16_t slot;
+
+  pthread_mutex_t sched_lock;
 
 } gNB_MAC_INST;
 

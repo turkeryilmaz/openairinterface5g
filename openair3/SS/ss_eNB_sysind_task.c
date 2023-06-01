@@ -77,9 +77,9 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
 {
 	struct SYSTEM_IND ind = {};
         uint32_t status = 0;
-       
+
         DevAssert(p_ind != NULL);
-        size_t msgSize = size; 
+        size_t msgSize = size;
         memset(&ind, 0, sizeof(ind));
         ind.Common.CellId = SS_context.SSCell_list[cell_index].eutra_cellId;
 
@@ -108,7 +108,7 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
         ind.Common.RlcBearerRouting.v.d = RlcBearerRouting_Type_EUTRA;
         ind.Common.RlcBearerRouting.v.v.EUTRA = SS_context.SSCell_list[cell_index].eutra_cellId;
 
-        LOG_A(ENB_SS,"[SS_SYSIND][SYSTEM_IND] Frame: %d, Subframe: %d, RAPID: %d, PRTPower: %d, BitMask: %d \n",p_ind->sfn,p_ind->sf,p_ind->ra_PreambleIndex,p_ind->prtPower_Type,p_ind->bitmask);
+        LOG_A(ENB_SS_SYSIND,"[SS_SYSIND][SYSTEM_IND] Frame: %d, Subframe: %d, RAPID: %d, PRTPower: %d, BitMask: %d \n",p_ind->sfn,p_ind->sf,p_ind->ra_PreambleIndex,p_ind->prtPower_Type,p_ind->bitmask);
 
         /* Populate and Send the SYSTEM_IND to Client */
         ind.Indication.d = SystemIndication_Type_RachPreamble;
@@ -121,16 +121,20 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
         }
         if(SysInd_Type_UL_HARQ == p_ind->sysind_type)
         {
-          LOG_A(ENB_SS, "[SS_SYSIND] SYSTEM_IND with UL HARQ %d\n", p_ind->UL_Harq);
+          LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] SYSTEM_IND with UL HARQ %d\n", p_ind->UL_Harq);
           ind.Indication.d = SystemIndication_Type_UL_HARQ;
           if (p_ind->UL_Harq)
+          {
+            ind.Common.RlcBearerRouting.d = false ;
+            ind.Common.TimingInfo.v.SubFrame.HSFN.v.Number = 1;
             ind.Indication.v.UL_HARQ = HARQ_Type_ack;
+          }
           else
             ind.Indication.v.UL_HARQ = HARQ_Type_nack;
 	      }
 	      else if (SysInd_Type_HarqError == p_ind->sysind_type)
 	      {
-          LOG_A(ENB_SS, "SYSTEM_IND with HarqError \n");
+          LOG_A(ENB_SS_SYSIND, "SYSTEM_IND with HarqError \n");
           ind.Indication.d = SystemIndication_Type_HarqError;
           if (p_ind->HarqError.bIsUL)
           {
@@ -149,21 +153,21 @@ static void ss_send_sysind_data(ss_system_ind_t *p_ind,int cell_index)
         /* Encode message */
         if (acpSysIndProcessToSSEncSrv(ctx_sysind_g, buffer, &msgSize, &ind) != 0)
         {
-                LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] acpSysIndProcessToSSEncSrv Failure\n");
+                LOG_A(ENB_SS_SYSIND, "[SS_SYSIND][SYSTEM_IND] acpSysIndProcessToSSEncSrv Failure\n");
                 return;
         }
-        LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] Buffer msgSize=%d (!!2) to EUTRACell %d\n", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
+        LOG_A(ENB_SS_SYSIND, "[SS_SYSIND][SYSTEM_IND] Buffer msgSize=%d (!!2) to EUTRACell %d\n", (int)msgSize,SS_context.SSCell_list[cell_index].eutra_cellId);
 
         /* Send message */
         status = acpSendMsg(ctx_sysind_g, msgSize, buffer);
         if (status != 0)
         {
-                LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_sysind_g));
+                LOG_A(ENB_SS_SYSIND, "[SS_SYSIND][SYSTEM_IND] acpSendMsg failed. Error : %d on fd: %d\n", status, acpGetSocketFd(ctx_sysind_g));
                 return;
         }
         else
         {
-                LOG_A(ENB_SS, "[SS_SYSIND][SYSTEM_IND] acpSendMsg Success \n");
+                LOG_A(ENB_SS_SYSIND, "[SS_SYSIND][SYSTEM_IND] acpSendMsg Success \n");
         }
 
 }
@@ -186,7 +190,7 @@ ss_eNB_read_from_sysind_socket(acpCtx_t ctx)
 	while (1)
 	{
 		int userId = acpRecvMsg(ctx, &msgSize, buffer);
-		LOG_D(ENB_SS, "[SS_SYSIND] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+		LOG_D(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
 		// Error handling
 		if (userId < 0)
@@ -214,7 +218,7 @@ ss_eNB_read_from_sysind_socket(acpCtx_t ctx)
                         }
                         else
                         {
-                                LOG_A(ENB_SS, "[SS_SYSIND] Invalid userId: %d \n", userId);
+                                LOG_A(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Invalid userId: %d \n", userId);
                                 break;
                         }
                 }
@@ -240,11 +244,8 @@ ss_eNB_read_from_sysind_socket(acpCtx_t ctx)
  */
 void ss_eNB_sysind_init(void)
 {
-	IpAddress_t ipaddr;
-        LOG_A(ENB_SS, "[SS_SYSIND] Starting System Simulator SYSIND Thread \n");
-        const char *hostIp;
-        hostIp = RC.ss.hostIp;
-        acpConvertIp(hostIp, &ipaddr);
+
+        LOG_A(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Starting System Simulator SYSIND Thread \n");
 
         // Port number
         int port = RC.ss.SysIndport;
@@ -253,20 +254,20 @@ void ss_eNB_sysind_init(void)
                 {"SysIndProcessToSS", MSG_SysIndProcessToSS_userId},
                 // The last element should be NULL
                 {NULL, 0}};
-        
+
         // Arena size to decode received message
         const size_t aSize = 32 * 1024;
 
         // Start listening server and get ACP context,
         // after the connection is performed, we can use all services
-        int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_sysind_g);
+        int ret = acpServerInitWithCtx(RC.ss.SysIndHost ? RC.ss.SysIndHost : "127.0.0.1", port, msgTable, aSize, &ctx_sysind_g);
         if (ret < 0)
         {
-                LOG_A(ENB_SS, "[SS_SYSIND] Connection failure err=%d\n", ret);
+                LOG_A(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Connection failure err=%d\n", ret);
                 return;
         }
         int fd1 = acpGetSocketFd(ctx_sysind_g);
-        LOG_A(ENB_SS, "[SS_SYSIND] Connection performed : %d\n", fd1);
+        LOG_A(ENB_SS_SYSIND_ACP, "[SS_SYSIND] Connection performed : %d\n", fd1);
 
         buffer = (unsigned char *)acpMalloc(size);
         assert(buffer);
@@ -303,17 +304,17 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
                         int cell_index = 0;
                         if(received_msg->ittiMsg.ss_system_ind.physCellId){
                           cell_index = get_cell_index_pci(received_msg->ittiMsg.ss_system_ind.physCellId, SS_context.SSCell_list);
-                          LOG_A(ENB_SS,"[SS_SYSIND] cell_index in SS_SYSTEM_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
+                          LOG_A(ENB_SS_SYSIND,"[SS_SYSIND] cell_index in SS_SYSTEM_IND: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].PhysicalCellId);
                         }
                         task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
                         if (origin_task == TASK_SS_PORTMAN)
                         {
-                                LOG_D(ENB_APP, "[SS_SYSIND] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
+                                LOG_D(ENB_SS_SYSIND, "[SS_SYSIND] DUMMY WAKEUP receviedfrom PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
                         }
                         else
                         {
-                                LOG_A(ENB_SS, "[SS_SYSIND] Received SS_SYSTEM_IND\n");
+                                LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] Received SS_SYSTEM_IND\n");
                                 if (SS_context.SSCell_list[cell_index].State >= SS_STATE_CELL_CONFIGURED)
                                 {
                                         instance_g = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
@@ -321,7 +322,7 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
                                 }
                                 else
                                 {
-                                        LOG_E(ENB_SS, "[SS_SYSIND][SS_SYSTEM_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
+                                        LOG_E(ENB_SS_SYSIND, "[SS_SYSIND][SS_SYSTEM_IND] received in SS state %d \n", SS_context.SSCell_list[cell_index].State);
                                 }
                         }
                         result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
@@ -330,12 +331,12 @@ void *ss_eNB_sysind_process_itti_msg(void *notUsed)
                 break;
 
 		case TERMINATE_MESSAGE:
-                        LOG_A(ENB_SS, "[SS_SYSIND] Received TERMINATE_MESSAGE \n");
+                        LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] Received TERMINATE_MESSAGE \n");
                         itti_exit_task();
                         break;
 
                 default:
-                        LOG_A(ENB_SS, "[SS_SYSIND] Received unhandled message %d:%s\n",
+                        LOG_A(ENB_SS_SYSIND, "[SS_SYSIND] Received unhandled message %d:%s\n",
                                   ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
                         break;
                 }

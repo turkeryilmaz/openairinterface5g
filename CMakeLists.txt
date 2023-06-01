@@ -136,6 +136,9 @@ set (OPENAIR_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
 
 project (OpenAirInterface)
 
+set(CMAKE_C_COMPILER "/usr/bin/gcc")
+set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+
 ####################################################
 # compilation flags
 #############################################
@@ -584,7 +587,6 @@ SET(DPDK_LIBS "-Wl,-rpath,$ENV{RTE_SDK}/$ENV{RTE_TARGET}/lib -Wl,--whole-archive
 target_link_libraries(benetel_5g PRIVATE ${DPDK_LIBS})
 target_link_libraries(benetel_5g PRIVATE pthread dl rt m numa)
 
-# LDPC offload library
 ##########################################################
 
 # LDPC offload library
@@ -638,7 +640,7 @@ add_boolean_option(LINUX_LIST              False "used only in lists.c: either u
 # PHY options
 ##########################
 add_boolean_option(LOCALIZATION            False "???" ON)
-add_integer_option(MAX_NUM_CCs             3     "????" ON)
+add_integer_option(MAX_NUM_CCs             1     "????" ON)
 add_boolean_option(SMBV                    False "Rohde&Schwarz SMBV100A vector signal generator" ON)
 add_boolean_option(DEBUG_PHY               False "Enable PHY layer debugging options" ON)
 add_boolean_option(DEBUG_PHY_PROC          False "Enable debugging of PHY layer procedures" ON)
@@ -780,33 +782,25 @@ add_library(UTIL
 )
 target_link_libraries(UTIL PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
-set(SECU_OSA_SRC
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_key_deriver.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_snow3g.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eea.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eia.c
-    )
-add_library(SECU_OSA ${SECU_OSA_SRC} $<TARGET_OBJECTS:ds> )
-
-target_include_directories(SECU_OSA PRIVATE ${OPENAIR_DIR}/common/utils/ds/)
-
-set(SECU_CN_SRC
+set(SECURITY_SRC
   ${OPENAIR3_DIR}/SECU/secu_defs.c
   ${OPENAIR3_DIR}/SECU/kdf.c
   ${OPENAIR3_DIR}/SECU/aes_128_ctr.c
   ${OPENAIR3_DIR}/SECU/aes_128_cbc_cmac.c
+  ${OPENAIR3_DIR}/SECU/aes_128_ecb.c
   ${OPENAIR3_DIR}/SECU/sha_256_hmac.c
   ${OPENAIR3_DIR}/SECU/rijndael.c
   ${OPENAIR3_DIR}/SECU/snow3g.c
   ${OPENAIR3_DIR}/SECU/key_nas_deriver.c
+  ${OPENAIR3_DIR}/SECU/nas_stream_eea0.c
   ${OPENAIR3_DIR}/SECU/nas_stream_eea1.c
   ${OPENAIR3_DIR}/SECU/nas_stream_eia1.c
   ${OPENAIR3_DIR}/SECU/nas_stream_eea2.c
   ${OPENAIR3_DIR}/SECU/nas_stream_eia2.c
   )
 
-add_library(SECU_CN ${SECU_CN_SRC} $<TARGET_OBJECTS:ds>)
-target_include_directories(SECU_CN PRIVATE ${OPENAIR_DIR}/common/utils/ds/)
+add_library(SECURITY ${SECURITY_SRC} $<TARGET_OBJECTS:ds>)
+target_include_directories(SECURITY PRIVATE ${OPENAIR_DIR}/common/utils/ds/)
 
 # Physical Channel Procedures Scheduling
 ################################"
@@ -911,6 +905,19 @@ set(NFAPI_USER_SRC
 add_library(NFAPI_USER_LIB ${NFAPI_USER_SRC})
 target_link_libraries(NFAPI_USER_LIB PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 include_directories(${NFAPI_USER_DIR})
+
+# nFAPI lib selection based on the flag
+############################################
+add_boolean_option(NFAPI_PRE_CLEANUP   True  "Flag for compilation without nFAPI Static lib" ON)
+message("NFAPI_PRE_CLEANUP flag is ${NFAPI_PRE_CLEANUP}")
+
+if (NFAPI_PRE_CLEANUP)
+  message("NFAPI_PRE_CLEANUP flag defined, Compile without nFAPI P7 Static Lib")
+  set (NFAPI_STATIC_LIB NFAPI_LIB NFAPI_PNF_LIB)
+else()
+  message("NFAPI_PRE_CLEANUP flag not defined, Compile with nFAPI P7 Static Lib")
+  set (NFAPI_STATIC_LIB  ${OPENAIR_DIR}/../../../Multi-Ue-Proxy/static-lib/libNFAPI-P7.a)
+endif()
 
 # Layer 1
 #############################
@@ -1266,7 +1273,6 @@ set(PHY_SRC_UE ${PHY_SRC_UE} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_comp
 set(PHY_NR_UE_SRC ${PHY_NR_UE_SRC} ${OPENAIR1_DIR}/PHY/LTE_UE_TRANSPORT/dlsch_llr_computation_avx2.c)
 
 add_library(PHY_COMMON ${PHY_SRC_COMMON})
-target_link_libraries(PHY_COMMON PRIVATE asn1_lte_rrc_hdrs)
 add_dependencies(PHY_COMMON dfts)
 target_link_libraries(PHY_COMMON PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -1362,8 +1368,8 @@ set(NR_PDCP_SRC
   #these files should not be here, will be removed at some point when the
   #computation is done directly inside nr_pdcp_integrity_nia1.c instead
   #of reusing code of osa_stream_eia.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eia.c
-  ${OPENAIR2_DIR}/UTIL/OSA/osa_snow3g.c
+  #${OPENAIR2_DIR}/UTIL/OSA/osa_stream_eia.c
+  #${OPENAIR2_DIR}/UTIL/OSA/osa_snow3g.c
   )
 
 set(NR_SDAP_SRC
@@ -1695,21 +1701,6 @@ add_library(SS_SERVER ${ss_sidl} ${ss_acp} ${ss_adbg} ${ss_ser} ${SS_SRC})
 target_link_libraries(SS_SERVER PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 #------------------------------------------------------
 
-#------------------------------------------------------
-include_directories (SIDL_SRC_DIR ${SIDL_CMPLR}/api)
-include_directories (SIDL_SRC_DIR ${SIDL_DIR}/acp/api)
-include_directories (SIDL_SRC_DIR ${SIDL_DIR}/adbg/api)
-include_directories (SIDL_SRC_DIR ${SIDL_DIR}/ser/api)
-set(SS_SRC
-  ${OPENAIR3_DIR}/SS/ss_gNB_srb_task.c
-)
-file(GLOB ss_sidl ${SIDL_CMPLR}/src/*.c)
-file(GLOB ss_acp ${SIDL_DIR}/acp/src/*.c)
-file(GLOB ss_adbg ${SIDL_DIR}/adbg/src/*.c)
-file(GLOB ss_ser ${SIDL_DIR}/ser/src/*.c)
-
-add_library(SS_SERVER ${ss_sidl} ${ss_acp} ${ss_adbg} ${ss_ser} ${SS_SRC})
-add_dependencies(SS_SERVER rrc_flag)
 #------------------------------------------------------
 
 set(SCTP_SRC
@@ -2062,7 +2053,7 @@ add_library(LIB_5GNAS_GNB
   )
 
 target_include_directories(LIB_5GNAS_GNB PRIVATE ${OPENAIR_DIR}/common/utils/ds/)
-target_link_libraries(LIB_5GNAS_GNB PRIVATE SECU_CN ${CRYPTO_LIBRARIES})
+target_link_libraries(LIB_5GNAS_GNB PRIVATE SECURITY ${CRYPTO_LIBRARIES})
 target_link_libraries(LIB_5GNAS_GNB PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 # Simulation library
@@ -2227,7 +2218,7 @@ add_dependencies(lte-softmodem oai_iqplayer)
 
 target_link_libraries(lte-softmodem PRIVATE
   -Wl,--start-group
-  lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT SS_SERVER MME_APP UDP SCHED_LIB SCHED_RU_LIB
+  lte_rrc nr_rrc s1ap m2ap x2ap m3ap GTPV1U SECURITY UTIL HASHTABLE SCTP_CLIENT SS_SERVER MME_APP UDP SCHED_LIB SCHED_RU_LIB
   PHY_COMMON PHY PHY_RU  L2 L2_LTE NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
   ${NAS_UE_LIB} ITTI SIMU SIMU_ETH
   -Wl,--end-group z dl)
@@ -2235,7 +2226,7 @@ target_link_libraries(lte-softmodem PRIVATE
 target_link_libraries(lte-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp)
 target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-target_link_libraries (lte-softmodem lttng-ust)
+target_link_libraries(lte-softmodem PRIVATE lttng-ust)
 
 
 add_executable(oairu
@@ -2290,7 +2281,7 @@ endif()
 target_link_libraries(lte-uesoftmodem PRIVATE
   -Wl,--start-group
   lte_rrc nr_rrc s1ap x2ap m2ap m3ap
-  SECU_CN SECU_OSA UTIL HASHTABLE SCTP_CLIENT MME_APP UDP SCHED_RU_LIB SCHED_UE_LIB PHY_COMMON
+  SECURITY UTIL HASHTABLE SCTP_CLIENT MME_APP UDP SCHED_RU_LIB SCHED_UE_LIB PHY_COMMON
   PHY_UE PHY_RU L2_UE L2_LTE SIMU SIMU_ETH NFAPI_COMMON_LIB ${NFAPI_STATIC_LIB} NFAPI_USER_LIB MISC_NFAPI_LTE_LIB
   ${NAS_UE_LIB} ITTI ${ATLAS_LIBRARIES}
   -Wl,--end-group z dl)
@@ -2298,7 +2289,7 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 target_link_libraries(lte-uesoftmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})
 target_link_libraries(lte-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-target_link_libraries (lte-uesoftmodem lttng-ust)
+target_link_libraries(lte-uesoftmodem PRIVATE lttng-ust)
 
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(lte-uesoftmodem PRIVATE
@@ -2331,7 +2322,7 @@ add_executable(nr-softmodem
 
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
-  UTIL HASHTABLE SCTP_CLIENT SS_SERVER UDP SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU GTPV1U SECU_CN SECU_OSA
+  UTIL HASHTABLE SCTP_CLIENT SS_SERVER UDP SCHED_LIB SCHED_RU_LIB SCHED_NR_LIB PHY_NR PHY PHY_COMMON PHY_NR_COMMON PHY_RU SECURITY
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
   ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap
@@ -2340,7 +2331,7 @@ target_link_libraries(nr-softmodem PRIVATE
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-target_link_libraries (nr-softmodem lttng-ust)
+target_link_libraries(nr-softmodem PRIVATE lttng-ust)
 
 add_dependencies(nr-softmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc)
 
@@ -2352,6 +2343,24 @@ endif()
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
 
+add_executable(nr-cuup
+  executables/nr-cuup.c
+  executables/softmodem-common.c
+  ${OPENAIR2_DIR}/RRC/NAS/nas_config.c
+  ${NR_RRC_DIR}/rrc_gNB_UE_context.c
+  ${OPENAIR2_DIR}/E1AP/e1ap_setup.c
+  ${NR_PDCP_SRC}
+  ${NR_SDAP_SRC}
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
+
+target_link_libraries(nr-cuup PRIVATE
+                      CONFIG_LIB ITTI SCTP_CLIENT
+                      GTPV1U e1ap e1_pdcp_if f1ap SIMU_ETH
+                      SECURITY ${OPENSSL_LIBRARIES} crypt z sctp dl pthread)
+target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
+                     
 # nr-uesoftmodem is  UE implementation
 #######################################
 
@@ -2376,7 +2385,7 @@ add_executable(nr-uesoftmodem
 
 target_link_libraries(nr-uesoftmodem PRIVATE
   -Wl,--start-group
-  nr_rrc SECU_CN SECU_OSA UTIL HASHTABLE UDP SCHED_RU_LIB SCHED_NR_UE_LIB
+  nr_rrc SECURITY UTIL HASHTABLE UDP SCHED_RU_LIB SCHED_NR_UE_LIB
   PHY_COMMON PHY_NR_COMMON PHY_NR_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON NFAPI_COMMON_LIB ${NFAPI_STATIC_LIB}
   NFAPI_USER_LIB MISC_NFAPI_NR_LIB
   ITTI ${ATLAS_LIBRARIES} LIB_5GNAS_GNB LIB_NAS_SIMUE ${NAS_SIM_LIB} SIMU SIMU_ETH
@@ -2385,7 +2394,7 @@ target_link_libraries(nr-uesoftmodem PRIVATE
 target_link_libraries(nr-uesoftmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} ${ATLAS_LIBRARIES})
 target_link_libraries(nr-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-target_link_libraries(nr-uesoftmodem lttng-ust)
+target_link_libraries(nr-uesoftmodem PRIVATE lttng-ust)
 
 add_dependencies( nr-uesoftmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 if (ENABLE_LDPC_CUDA)
@@ -2521,7 +2530,7 @@ add_executable(nr_dlsim
   ${SHLIB_LOADER_SOURCES}
   )
 target_link_libraries(nr_dlsim PRIVATE
-  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_NR MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECU_CN ngap -lz -Wl,--end-group
+  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_NR MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
   m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI ${OPENSSL_LIBRARIES} dl
   )
 target_link_libraries(nr_dlsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
@@ -2570,7 +2579,7 @@ if (ENABLE_LDPC_T1)
 endif()
 
 target_link_libraries(nr_ulsim PRIVATE
-  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_NR MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECU_CN ngap -lz -Wl,--end-group
+  -Wl,--start-group UTIL SIMU SIMU_ETH PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB SCHED_NR_UE_LIB MAC_NR MAC_UE_NR MAC_NR_COMMON nr_rrc CONFIG_LIB L2_NR HASHTABLE x2ap SECURITY ngap -lz -Wl,--end-group
   m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI ${OPENSSL_LIBRARIES} dl
   )
 target_link_libraries(nr_ulsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
@@ -2609,7 +2618,7 @@ foreach(myExe s1ap
     ${OPENAIR3_DIR}/TEST/test_${myExe}.c
     )
   target_link_libraries (test_${myExe}
-    -Wl,--start-group SECU_CN UTIL -Wl,--end-group m rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} CONFIG_LIB
+    -Wl,--start-group SECURITY UTIL -Wl,--end-group m rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} CONFIG_LIB
     )
 endforeach(myExe)
 
@@ -2630,7 +2639,7 @@ if (${T_TRACER})
         ITTI lte_rrc nr_rrc s1ap x2ap m2ap m3ap f1ap
         params_libconfig oai_usrpdevif oai_bladerfdevif oai_lmssdrdevif oai_iqplayer
         oai_eth_transpro oai_mobipass coding HASHTABLE UTIL OMG_SUMO
-        SECU_OSA SECU_CN SCHED_LIB SCHED_NR_LIB SCHED_RU_LIB SCHED_UE_LIB SCHED_NR_UE_LIB default_sched remote_sched RAL
+        SECURITY SCHED_LIB SCHED_NR_LIB SCHED_RU_LIB SCHED_UE_LIB SCHED_NR_UE_LIB default_sched remote_sched RAL
         NFAPI_COMMON_LIB NFAPI_LIB NFAPI_PNF_LIB NFAPI_VNF_LIB NFAPI_USER_LIB
         PHY_COMMON PHY PHY_UE PHY_NR PHY_NR_COMMON PHY_NR_UE PHY_RU PHY_MEX
         L2 L2_LTE L2_NR L2_LTE_NR L2_UE NR_L2_UE L2_UE_LTE_NR MAC_NR_COMMON MAC_NR MAC_UE_NR ngap

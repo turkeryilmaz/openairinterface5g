@@ -161,6 +161,18 @@ extern "C" {
 #define DEBUG_DLSCH_DECOD  (1<<14)
 #define UE_TIMING          (1<<20)
 #define DEBUG_ENB_SS       (1<<21)
+#define DEBUG_ENB_SS_PORTMAN     (1<<22)
+#define DEBUG_ENB_SS_SYS_TASK    (1<<23)
+#define DEBUG_ENB_SS_SRB_ACP     (1<<24)
+#define DEBUG_ENB_SS_SYSIND      (1<<25)
+#define DEBUG_ENB_SS_SYSIND_ACP  (1<<26)
+#define DEBUG_ENB_SS_SRB         (1<<27)
+#define DEBUG_ENB_SS_DRB         (1<<28)
+#define DEBUG_ENB_SS_DRB_ACP     (1<<29)
+#define DEBUG_ENB_SS_VNG         (1<<30)
+#define DEBUG_ENB_SS_VTP         (1<<31)
+#define DEBUG_ENB_SS_VT_TIMER    (1<<32)
+#define DEBUG_ENB_SS_PORTMAN_ACP (1<<33)
 
 #define LOG_MASKMAP_INIT {\
     {"PRACH",       DEBUG_PRACH},\
@@ -180,6 +192,18 @@ extern "C" {
     {"DLSCH_DECOD", DEBUG_DLSCH_DECOD},\
     {"UE_TIMING",   UE_TIMING},\
     {"ENB_SS",      DEBUG_ENB_SS},\
+    {"ENB_SS_PORTMAN",      DEBUG_ENB_SS_PORTMAN},\
+    {"ENB_SS_PORTMAN_ACP",  DEBUG_ENB_SS_PORTMAN_ACP},\
+    {"ENB_SS_SYS_TASK",     DEBUG_ENB_SS_SYS_TASK},\
+    {"ENB_SS_SRB_ACP",      DEBUG_ENB_SS_SRB_ACP},\
+    {"ENB_SS_SYSIND",       DEBUG_ENB_SS_SYSIND},\
+    {"ENB_SS_SYSIND_ACP",   DEBUG_ENB_SS_SYSIND_ACP},\
+    {"ENB_SS_SRB",          DEBUG_ENB_SS_SRB},\
+    {"ENB_SS_DRB",          DEBUG_ENB_SS_DRB},\
+    {"ENB_SS_DRB_ACP",      DEBUG_ENB_SS_DRB_ACP},\
+    {"ENB_SS_VNG",          DEBUG_ENB_SS_VNG},\
+    {"ENB_SS_VTP",          DEBUG_ENB_SS_VTP},\
+    {"ENB_SS_VT_TIMER",     DEBUG_ENB_SS_VT_TIMER},\
     {NULL,-1}\
   }
 
@@ -229,6 +253,18 @@ typedef enum {
   RAL_UE,
   ENB_APP,
   ENB_SS,
+  ENB_SS_PORTMAN,
+  ENB_SS_PORTMAN_ACP,
+  ENB_SS_SYS_TASK,
+  ENB_SS_SRB_ACP,
+  ENB_SS_SYSIND,
+  ENB_SS_SYSIND_ACP,
+  ENB_SS_SRB,
+  ENB_SS_DRB,
+  ENB_SS_DRB_ACP,
+  ENB_SS_VNG,
+  ENB_SS_VTP,
+  ENB_SS_VT_TIMER,
   MCE_APP,
   MME_APP,
   TMR,

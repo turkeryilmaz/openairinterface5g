@@ -72,7 +72,7 @@ void ss_vng_send_cnf(uint8_t status, EUTRA_CellId_Type CellId)
         cnf.Common.Result.v.Error 	= 1; /** TODO: A dummy value */
         cnf.Confirm 			= false;
     }
-    LOG_A(ENB_SS, "[VNG] VNG CNF received cellId %d result %d \n",
+    LOG_A(ENB_SS_VNG, "[VNG] VNG CNF received cellId %d result %d \n",
                      cnf.Common.CellId,cnf.Common.Result.d);
 
     /* Encode message
@@ -87,14 +87,14 @@ void ss_vng_send_cnf(uint8_t status, EUTRA_CellId_Type CellId)
     status = acpSendMsg(ctx_vng_g, msgSize, buffer);
     if (status != 0)
     {
-        LOG_A(ENB_SS, "[VNG] acpSendMsg failed. Error : %d on fd: %d\n",
+        LOG_A(ENB_SS_VNG, "[VNG] acpSendMsg failed. Error : %d on fd: %d\n",
               status, acpGetSocketFd(ctx_vng_g));
         acpFree(buffer);
         return;
     }
     else
     {
-        LOG_A(ENB_SS, "[VNG] acpSendMsg Success \n");
+        LOG_A(ENB_SS_VNG, "[VNG] acpSendMsg Success \n");
     }
     // Free allocated buffer
     acpFree(buffer);
@@ -124,11 +124,11 @@ vng_ss_configure_cell (EUTRA_CellId_Type CellId, Dl_Bandwidth_Type Bandwidth,
     int res = itti_send_msg_to_task(TASK_SYS, 0, message_p);
     if (res < 0)
     {
-        LOG_A(ENB_SS, "[SS-VNG] Error in itti_send_msg_to_task\n");
+        LOG_A(ENB_SS_VNG, "[SS-VNG] Error in itti_send_msg_to_task\n");
     }
     else
     {
-        LOG_A(ENB_SS, "[SS-VNG] Send ITTI message to %s\n", ITTI_MSG_DESTINATION_NAME(message_p));
+        LOG_A(ENB_SS_VNG, "[SS-VNG] Send ITTI message to %s\n", ITTI_MSG_DESTINATION_NAME(message_p));
     }
 }
 
@@ -156,7 +156,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     while (1)
     {
     	int userId = acpRecvMsg(ctx, &msgSize, buffer);
-        LOG_A(ENB_SS, "[SS-VNG] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+        LOG_A(ENB_SS_VNG, "[SS-VNG] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
     	// Error handling
     	if (userId < 0)
@@ -175,13 +175,13 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     	    }
             else if (userId == -ACP_PEER_DISCONNECTED){
             	LOG_A(GNB_APP, "[SS_SRB] Peer ordered shutdown\n");
-            } 
+            }
             else if (userId == -ACP_PEER_CONNECTED){
                 LOG_A(GNB_APP, "[SS_SRB] Peer connection established\n");
-            } 
+            }
     	    else
     	    {
-                LOG_A(ENB_SS, "[SS-VNG] Invalid userId: %d \n", userId);
+                LOG_A(ENB_SS_VNG, "[SS-VNG] Invalid userId: %d \n", userId);
     	    	break;
     	    }
     	}
@@ -194,45 +194,45 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     	else if (userId == MSG_VngProcess_userId)
     	{
             int cell_index;
-            LOG_A(ENB_SS, "[SS-VNG] Received VNG Control Request\n");
+            LOG_A(ENB_SS_VNG, "[SS-VNG] Received VNG Control Request\n");
 
             if (acpVngProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
             {
-                LOG_A(ENB_SS, "[SS-VNG] acpVngProcessDecSrv failed\n");
+                LOG_A(ENB_SS_VNG, "[SS-VNG] acpVngProcessDecSrv failed\n");
             	break;
             }
 
             if(req->Common.CellId){
               cell_index = get_cell_index(req->Common.CellId, SS_context.SSCell_list);
               SS_context.SSCell_list[cell_index].eutra_cellId = req->Common.CellId;
-              LOG_A(ENB_SS,"[SS-VNG] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
+              LOG_A(ENB_SS_VNG,"[SS-VNG] cell_index: %d eutra_cellId: %d PhysicalCellId: %d \n",cell_index,SS_context.SSCell_list[cell_index].eutra_cellId,SS_context.SSCell_list[cell_index].PhysicalCellId);
             }
 
             if (SS_context.SSCell_list[cell_index].State < SS_STATE_CELL_ACTIVE) {
-                LOG_A(ENB_SS, "[SS-VNG] Request received in an invalid state: %d \n", SS_context.SSCell_list[cell_index].State);
+                LOG_A(ENB_SS_VNG, "[SS-VNG] Request received in an invalid state: %d \n", SS_context.SSCell_list[cell_index].State);
             	break;
             }
             /** TODO: Dump message here */
             switch (req->Request.d)
             {
             	case EUTRA_VngConfigRequest_Type_Configure:
-                        LOG_A(ENB_SS, "[SS-VNG] Received Configure request\n");
+                        LOG_A(ENB_SS_VNG, "[SS-VNG] Received Configure request\n");
                         vng_ss_configure_cell(req->Common.CellId, req->Request.v.Configure.Bandwidth,
                                 req->Request.v.Configure.NocLevel, (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Configure, cell_index);
             		break;
             	case EUTRA_VngConfigRequest_Type_Activate:
-                        LOG_A(ENB_SS, "[SS-VNG] Received Activate request\n");
+                        LOG_A(ENB_SS_VNG, "[SS-VNG] Received Activate request\n");
                         vng_ss_configure_cell(req->Common.CellId, (0xFF),
                                 (0xFFFF), (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Activate, cell_index);
             		break;
             	case EUTRA_VngConfigRequest_Type_Deactivate:
-                        LOG_A(ENB_SS, "[SS-VNG] Received Deactivate request\n");
+                        LOG_A(ENB_SS_VNG, "[SS-VNG] Received Deactivate request\n");
                         vng_ss_configure_cell(req->Common.CellId, (0xFF),
                                 (0xFFFF), (VngProxyCmd_e)EUTRA_VngConfigRequest_Type_Deactivate, cell_index);
             		break;
             	case EUTRA_VngConfigRequest_Type_UNBOUND_VALUE:
             	default:
-                        LOG_A(ENB_SS, "[SS-VNG] Received unhandled message in VNG Port\n");
+                        LOG_A(ENB_SS_VNG, "[SS-VNG] Received unhandled message in VNG Port\n");
             }
 
             if (req->Request.d == EUTRA_VngConfigRequest_Type_UNBOUND_VALUE || req->Request.d > EUTRA_VngConfigRequest_Type_Deactivate)
@@ -265,7 +265,7 @@ void *ss_eNB_vng_process_itti_msg(void *notUsed)
 	{
 	    case SS_VNG_PROXY_RESP:
             {
-                LOG_A(ENB_SS, "[SS-VNG] Response receieved from %s CellId: %d Status: %d\n",
+                LOG_A(ENB_SS_VNG, "[SS-VNG] Response receieved from %s CellId: %d Status: %d\n",
                     ITTI_MSG_ORIGIN_NAME(received_msg), SS_VNG_PROXY_RESP(received_msg).cell_id,
 		    SS_VNG_PROXY_RESP(received_msg).status);
 
@@ -280,7 +280,7 @@ void *ss_eNB_vng_process_itti_msg(void *notUsed)
                 break;
             }
             default:
-                LOG_A(ENB_SS, "[VNG] Received unhandled message %d:%s\n",
+                LOG_A(ENB_SS_VNG, "[VNG] Received unhandled message %d:%s\n",
                     ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
 	}
     result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
@@ -304,17 +304,10 @@ void *ss_eNB_vng_process_itti_msg(void *notUsed)
  */
 void ss_eNB_vng_init(void)
 {
-    IpAddress_t ipaddr;
-
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
-
     // Port number
     int port = RC.ss.Vngport;
 
-    LOG_A(ENB_SS, "[SS-VNG] Initializing VNG Port %s:%d\n", hostIp, port);
-
+    LOG_A(ENB_SS_VNG, "[SS-VNG] Initializing VNG Port %s:%d\n", RC.ss.VngHost, port);
     //acpInit(malloc, free, 1000);
 
     const struct acpMsgTable msgTable[] = {
@@ -329,17 +322,17 @@ void ss_eNB_vng_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_vng_g);
+    int ret = acpServerInitWithCtx(RC.ss.VngHost ? RC.ss.VngHost : "127.0.0.1", port, msgTable, aSize, &ctx_vng_g);
     if (ret < 0)
     {
-        LOG_A(ENB_SS, "[SS-VNG] Connection failure err=%d\n", ret);
+        LOG_A(ENB_SS_VNG, "[SS-VNG] Connection failure err=%d\n", ret);
         return;
     }
 #ifdef ACP_DEBUG_DUMP_MSGS /** TODO: Need to verify */
     adbgSetPrintLogFormat(ctx, true);
 #endif
     int fd1 = acpGetSocketFd(ctx_vng_g);
-    LOG_A(ENB_SS, "[SS-VNG] Connected: %d\n", fd1);
+    LOG_A(ENB_SS_VNG, "[SS-VNG] Connected: %d\n", fd1);
 
     //itti_subscribe_event_fd(TASK_VNG, fd1);
 

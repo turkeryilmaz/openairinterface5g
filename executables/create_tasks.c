@@ -58,7 +58,7 @@ int create_tasks(uint32_t enb_nb) {
 
   if (RC.ss.mode >= SS_SOFTMODEM)
   {
-    rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_task, NULL);
+    rc = itti_create_task(TASK_SS_PORTMAN, ss_eNB_port_man_eNB_task, NULL);
     AssertFatal(rc >= 0, "Create task for SS manager failed\n");
 
     rc = itti_create_task(TASK_SYS, ss_eNB_sys_task, NULL);

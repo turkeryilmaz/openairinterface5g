@@ -474,32 +474,6 @@ int send_mac_slot_indications(vnf_p7_t* vnf_p7, uint16_t sfn, uint16_t slot)
 	return 0;
 }
 
-int send_mac_slot_indications(vnf_p7_t* vnf_p7, uint16_t sfn, uint16_t slot)
-{
-	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;
-	while(curr != 0)
-	{
-		if(curr->in_sync == 1 || 1 /** FIXME: System simulator mode */)
-		{
-			// ask for subframes in the future
-			//uint16_t sfn_sf_adv = increment_sfn_sf_by(curr->sfn_sf, 2);
-
-			//vnf_p7->_public.subframe_indication(&(vnf_p7->_public), curr->phy_id, sfn_sf_adv);
-            // suggestion fix by Haruki NAOI
-			//printf("\nsfn:%d, slot:%d\n",curr->sfn,curr->slot);
-                        if (1) {
-			    vnf_p7->_public.slot_indication(&(vnf_p7->_public), curr->phy_id, sfn, slot);
-                        }
-                        else
-			    vnf_p7->_public.slot_indication(&(vnf_p7->_public), curr->phy_id, curr->sfn,curr->slot);
-		}
-
-		curr = curr->next;
-	}
-
-	return 0;
-}
-
 int send_mac_subframe_indications(vnf_p7_t* vnf_p7, uint16_t sfn_sf)
 {
 	nfapi_vnf_p7_connection_info_t* curr = vnf_p7->p7_connections;

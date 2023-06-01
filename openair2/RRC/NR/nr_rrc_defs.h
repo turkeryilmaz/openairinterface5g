@@ -344,6 +344,15 @@ typedef struct gNB_RRC_UE_s {
 typedef struct rrc_gNB_ue_context_s {
   /* Tree related data */
   RB_ENTRY(rrc_gNB_ue_context_s) entries;
+
+  /* Uniquely identifies the UE between MME and eNB within the eNB.
+   * This id is encoded on 24bits.
+   */
+  ue_id_t         ue_id_rnti;
+
+  // another key for protocol layers but should not be used as a key for RB tree
+  uid_t          local_uid;
+
   /* UE id for initial connection to NGAP */
   struct gNB_RRC_UE_s   ue_context;
 } rrc_gNB_ue_context_t;
@@ -386,11 +395,18 @@ typedef struct NR_DcchDtchConfig {
 
 typedef struct {
 
+  // buffer that contains the encoded messages
+  uint8_t                                   *MIB;
+  uint8_t                                   sizeof_MIB;
+
   uint8_t                                   *SIB1;
   uint16_t                                  sizeof_SIB1;
 
   uint8_t                                   *SIB23;
   uint8_t                                   sizeof_SIB23;
+
+  uint8_t                                   *ServingCellConfigCommon;
+  uint8_t                                   sizeof_servingcellconfigcommon;
 
   int                                       physCellId;
 
@@ -409,7 +425,20 @@ typedef struct {
   int do_SRS;
   NR_BCCH_DL_SCH_Message_t                  *siblock1;
   NR_ServingCellConfigCommon_t              *servingcellconfigcommon;
+  NR_ServingCellConfig_t                    *servingcellconfig;
+  NR_ServingCellConfig_t                    *cellConfigDedicated;
+  NR_PDCCH_ConfigSIB1_t                     *pdcch_ConfigSIB1;
+  /* ServingCellConfig */
+  NR_CellGroupId_t                                cell_GroupId;
+  NR_MAC_CellGroupConfig_t                  *mac_cellGroupConfig;
+  NR_PhysicalCellGroupConfig_t               *physicalCellGroupConfig;
+
+  /* dedicate Scheduler Config */
+  NR_DcchDtchConfig_t                       *dcchDtchConfig;
+
   NR_CellGroupConfig_t                      *secondaryCellGroup[MAX_NR_RRC_UE_CONTEXTS];
+  NR_SRB_INFO                               SI;
+  NR_SRB_INFO                               Srb0;
   int                                       p_gNB;
 
   uint8_t                                   *paging;

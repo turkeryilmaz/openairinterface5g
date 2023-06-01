@@ -58,7 +58,6 @@
 #include "nr-uesoftmodem.h"
 #include "plmn_data.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
-#include "UTIL/OSA/osa_defs.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "conversions.h"

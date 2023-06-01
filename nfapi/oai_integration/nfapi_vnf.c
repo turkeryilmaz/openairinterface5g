@@ -665,15 +665,8 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
     } else {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
 
-  if (RC.eNB && RC.eNB[0][0]->configured) {
-    uint16_t sfn = NFAPI_SFNSF2SFN(sfn_sf);
-    uint16_t sf = NFAPI_SFNSF2SF(sfn_sf);
-    //LOG_D(PHY,"[VNF] subframe indication sfn_sf:%d sfn:%d sf:%d\n", sfn_sf, sfn, sf);
-    wake_eNB_rxtx(RC.eNB[0][0], sfn, sf);
-  } else {
-    NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
-
-    if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->configured:%d\n", RC.eNB[0][0]->configured);
+      if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->configured:%d\n", RC.eNB[0][0]->configured);
+    }
   }
   return 0;
 }

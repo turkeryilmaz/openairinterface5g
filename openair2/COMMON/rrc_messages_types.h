@@ -84,12 +84,15 @@
 #define RRC_STATE_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_state_ind
 
 #define RRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.rrc_configuration_req
+#define RRC_CONFIGURATION_CNF(mSGpTR)   (mSGpTR)->ittiMsg.rrc_configuration_cnf
 
 #define RRC_RBLIST_CFG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.rrc_rblist_cfg_req
+#define RRC_RBLIST_CFG_CNF(mSGpTR)      (mSGpTR)->ittiMsg.rrc_rblist_cfg_cnf
 
 #define RRC_UE_CAT_INFO(mSGpTR)      (mSGpTR)->ittiMsg.rrc_ue_cat_info
 
 #define RRC_AS_SECURITY_CONFIG_REQ(mSGpTR)      (mSGpTR)->ittiMsg.rrc_as_security_config_req
+#define RRC_AS_SECURITY_CONFIG_CNF(mSGpTR)      (mSGpTR)->ittiMsg.rrc_as_security_config_cnf
 
 #define NBIOTRRC_CONFIGURATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.nbiotrrc_configuration_req
 
@@ -169,6 +172,10 @@ typedef struct RrcAsSecurityConfigReq_s {
         int rnti;
 }RrcAsSecurityConfigReq;
 
+typedef struct RrcAsSecurityConfigCnf_s {
+  bool status;
+}RrcAsSecurityConfigCnf;
+
 enum ue_CategoryDL_v1310_e {
         ue_CategoryDL_v1310_e_n17 = 0,
         ue_CategoryDL_v1310_e_m1 = 1,
@@ -229,6 +236,10 @@ typedef struct RrcRblistCfgReq_s {
   int cell_index;
   rb_info rb_list[MAX_RBS];
 } RrcRblistCfgReq;
+
+typedef struct RrcRblistCfgCnf_s {
+  bool status;
+}RrcRblistCfgCnf;
 
 typedef struct RrcStateInd_s {
   Rrc_State_t     state;
@@ -315,6 +326,7 @@ typedef struct RadioResourceConfig_s {
 
 typedef struct lte_sib_MappingInfo_s {
   e_LTE_SIB_Type  LTE_SIB_Type[5];
+  int size;
 }lte_sib_MappingInfo_t;
 
 typedef struct lte_SchedulingInfo_s {
@@ -410,8 +422,8 @@ typedef struct RrcConfigurationReq_s {
   int                     eMTC_configured;
   int                     SL_configured;
   uint8_t                 systemInfoValueTag[MAX_NUM_CCs];
-  int                     schedulingInfo_count;
-  lte_SchedulingInfo_t    *schedulingInfo;
+  int                     schedulingInfo_count[MAX_NUM_CCs];
+  lte_SchedulingInfo_t    * schedulingInfo[MAX_NUM_CCs];
 
   RadioResourceConfig     radioresourceconfig[MAX_NUM_CCs];
   RadioResourceConfig     radioresourceconfig_BR[MAX_NUM_CCs];
@@ -518,20 +530,6 @@ typedef struct RrcConfigurationReq_s {
   int                          InterFreqCarrierFreqInfoCount[MAX_NUM_CCs];
   InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
 
-  //SIB4
-  bool                       sib4_Present[MAX_NUM_CCs];
-  bool                       intraFreqNeighCellListPresent;
-  int                        intraFreqNeighCellListCount;
-  IntraFreqNeighCellInfo_t  *intraFreqNeighCellList[MAX_NUM_CCs];
-  bool                       intraFreqBlackCellListPresent[MAX_NUM_CCs];
-  int                        intraFreqBlackCellListCount[MAX_NUM_CCs];
-  PhysCellIdRange_t         *intraFreqBlackCellList[MAX_NUM_CCs];
-
-  //SIB5
-  bool                         sib5_Present[MAX_NUM_CCs];
-  int                          InterFreqCarrierFreqInfoCount[MAX_NUM_CCs];
-  InterFreqCarrierFreqInfo_t   *InterFreqCarrierFreqInfo[MAX_NUM_CCs];
-
   //SIB18
   e_LTE_SL_CP_Len_r12            rxPool_sc_CP_Len[MAX_NUM_CCs];
   e_LTE_SL_PeriodComm_r12        rxPool_sc_Period[MAX_NUM_CCs];
@@ -590,6 +588,11 @@ typedef struct RrcConfigurationReq_s {
   uint8_t  RlcPduCCCH[MAX_NUM_CCs][100];
 
 } RrcConfigurationReq;
+
+typedef struct RrcConfigurationCnf_s
+{
+  bool status;
+}RrcConfigurationCnf;
 
 #define MAX_NUM_NBIOT_CELEVELS    3
 

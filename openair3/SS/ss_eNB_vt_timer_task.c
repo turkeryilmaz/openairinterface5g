@@ -70,13 +70,13 @@ uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_ti
 	curr_tinfo.sfn = SS_context.sfn;
 	curr_tinfo.sf = SS_context.sf;
 
-	LOG_A(ENB_APP,"VT_TIMER Enter msg_can_be_queued for  SFN %d , SF %d\n",req_tinfo.sfn,req_tinfo.sf);
+	LOG_A(ENB_SS_VT_TIMER,"VT_TIMER Enter msg_can_be_queued for  SFN %d , SF %d\n",req_tinfo.sfn,req_tinfo.sf);
 
    /*It is nonsense to check req_tinfo is after curr_tinfo */
 	if(req_tinfo.sfn != curr_tinfo.sfn || ((req_tinfo.sfn == curr_tinfo.sfn) && (req_tinfo.sf - curr_tinfo.sf) > 0) )
 	{
-		LOG_A(ENB_APP,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SF %d\n",timer_tinfo->sfn,timer_tinfo->sf);
 		vt_subtract_sf(&timer_tinfo->sfn,&timer_tinfo->sf, 4); /* queued ahead of 4 subframes because of mac schedule 4 subframes ahead when processing */
+		LOG_A(ENB_SS_VT_TIMER,"VT_TIMER MSG to be queued  TRUE for  SFN %d , SF %d\n",timer_tinfo->sfn,timer_tinfo->sf);
 		return true;
 	}
 
@@ -89,19 +89,22 @@ uint8_t msg_can_be_queued(ss_set_timinfo_t req_tinfo, ss_set_timinfo_t *timer_ti
  */
 uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t instance, void *msg)
 {
+	LOG_A(ENB_SS_VT_TIMER,"VT_TIMER setup1 for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 	uint32_t sfnSfKey = (tinfo.sfn << 4) | tinfo.sf;
 	vt_timer_elm_t *timer_ele_p;
 	timer_ele_p = calloc(1, sizeof(vt_timer_elm_t));
 	timer_ele_p->instance = instance;
 	timer_ele_p->task_id = task_id;
 	timer_ele_p->msg = msg;
+  LOG_A(ENB_SS_VT_TIMER,"VT_TIMER setup2 for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 
 	if (hashtable_insert(SS_context.vt_timer_table,
 	   (hash_key_t)sfnSfKey, (void *)timer_ele_p) == HASH_TABLE_OK)
 	{
-		LOG_A(ENB_APP,"VT_TIMER setup for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+		LOG_A(ENB_SS_VT_TIMER,"VT_TIMER setup for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 		return 1;
 	}
+  LOG_A(ENB_SS_VT_TIMER,"VT_TIMER not setup for  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 	return 0;
 }
 /*
@@ -119,29 +122,28 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 	  //printf("VT_TIMER foudn queued SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
 	  while (hashtable_is_key_exists(SS_context.vt_timer_table, (hash_key_t)sfnSfKey) == HASH_TABLE_OK)
 	  {
-		  LOG_D(ENB_APP,"VT_TIMER  Timeout sending  curr SFN %d SF %d\n",
+		  LOG_D(ENB_SS_VT_TIMER,"VT_TIMER  Timeout sending  curr SFN %d SF %d\n",
 		  					SS_context.sfn,SS_context.sf);
 
 		  hash_rc = hashtable_get(SS_context.vt_timer_table, (hash_key_t)sfnSfKey, (void **)&timer_ele_p);
 
-		  LOG_A(ENB_APP,"VT_TIMER Enter check SFN %d , SF %d taskID %d timer_ele.task_id instance %ld \n",
+		  LOG_A(ENB_SS_VT_TIMER,"VT_TIMER Enter check SFN %d , SF %d taskID %d timer_ele.task_id instance %ld \n",
 						  tinfo.sfn,tinfo.sf, timer_ele_p->task_id,timer_ele_p->instance);
 
 		  int send_res = itti_send_msg_to_task(timer_ele_p->task_id,timer_ele_p->instance, (MessageDef *)timer_ele_p->msg);
 		  if (send_res < 0)
 		  {
-				LOG_A(ENB_APP, "[VT_TIMER] Error in SS_VT_TIME_OUT itti_send_msg_to_task");
+				LOG_A(ENB_SS_VT_TIMER, "[VT_TIMER] Error in SS_VT_TIME_OUT itti_send_msg_to_task");
 		  }
 		  else
 		  {
-			  LOG_A(ENB_APP,"VT_TIMER Sent message to  taskID %d timer_ele.task_id instance %ld \n",
+			  LOG_A(ENB_SS_VT_TIMER,"VT_TIMER Sent message to  taskID %d timer_ele.task_id instance %ld \n",
 			  						  timer_ele_p->task_id,timer_ele_p->instance);
 			  hash_rc = hashtable_remove(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
 
 		  }
-		  LOG_D(ENB_APP,"VT_TIMER  Timeout sending done curr SFN %d SF %d\n",
+		  LOG_D(ENB_SS_VT_TIMER,"VT_TIMER  Timeout sending done curr SFN %d SF %d\n",
 		 		  					SS_context.sfn,SS_context.sf);
-
 
 	  }
 }
@@ -165,7 +167,7 @@ void *ss_eNB_vt_timer_process_itti_msg(void *notUsed)
             ss_set_timinfo_t tinfo;
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
-            LOG_D(ENB_APP, "[VT_TIMER] received_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+            LOG_D(ENB_SS_VT_TIMER, "[VT_TIMER] received_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
 
             ss_vt_timer_check(tinfo);
         }
@@ -176,7 +178,7 @@ void *ss_eNB_vt_timer_process_itti_msg(void *notUsed)
             break;
         }
         default:
-            LOG_E(ENB_APP, "[SS-VT_TIMER] Received unhandled message %d:%s\n",
+            LOG_E(ENB_SS_VT_TIMER, "[SS-VT_TIMER] Received unhandled message %d:%s\n",
                   ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         }
         result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
@@ -207,14 +209,14 @@ void* ss_eNB_vt_timer_task(void *arg) {
 	int retVal = ss_eNB_vt_timer_init();
 
 	if (retVal != -1) {
-		LOG_A(ENB_APP, "[SS-VT_TIMER] Enabled TASK_VT_TIMER starting the itti_msg_handler \n");
+		LOG_A(ENB_SS_VT_TIMER, "[SS-VT_TIMER] Enabled TASK_VT_TIMER starting the itti_msg_handler \n");
 
 		while (1) {
 			(void) ss_eNB_vt_timer_process_itti_msg(NULL);
 		}
 	} else {
 
-		LOG_A(ENB_APP, "[SS-VT_TIMER] TASK_VT_TIMER port disabled at eNB \n");
+		LOG_A(ENB_SS_VT_TIMER, "[SS-VT_TIMER] TASK_VT_TIMER port disabled at eNB \n");
 		sleep(10);
 	}
 

@@ -75,8 +75,6 @@
 #include "RRC/NAS/nas_config.h"
 #include "RRC/NAS/rb_config.h"
 
-#include "UTIL/OSA/osa_defs.h"
-
 #include "rrc_gNB_NGAP.h"
 
 #include "rrc_gNB_GTPV1U.h"

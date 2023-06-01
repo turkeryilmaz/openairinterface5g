@@ -35,6 +35,9 @@
 
 #include <pthread.h>
 #include <stdint.h>
+
+#include "radio/SS/ss_config.h"
+
 // forward declarations to avoid including the full typess ***eNB;
 struct PHY_VARS_gNB_s;
 struct PHY_VARS_eNB_NB_IoT_s;
@@ -45,9 +48,6 @@ struct eNB_MAC_INST_NB_IoT_s;
 struct gNB_MAC_INST_s;
 struct gtpv1u_data_s;
 struct RU_t_s;
-#define SS_ENB  0x00
-#define SS_SOFTMODEM    0x01
-#define SS_SOFTMODEM_SRB        0x02
 
 typedef struct RBConfig_s {
         bool isRBConfigValid;

@@ -143,9 +143,6 @@ tbs_size_t mac_rlc_data_req(
   rlc_pkt.direction                 = 1 /* Downlink */;
   rlc_pkt.ueid                      = rntiP;
 
-  lte_rlc_pkt_info_t rlc_pkt;
-  rlc_pkt.direction                 = 1 /* Downlink */;
-  rlc_pkt.ueid                      = rntiP;
   rlc_manager_lock(rlc_ue_manager);
   ue = rlc_manager_get_ue(rlc_ue_manager, rntiP);
 

@@ -48,7 +48,8 @@
 
 #define F1AP_DL_RRC_MESSAGE(mSGpTR)                (mSGpTR)->ittiMsg.f1ap_dl_rrc_message
 #define F1AP_UE_CONTEXT_RELEASE_REQ(mSGpTR)        (mSGpTR)->ittiMsg.f1ap_ue_context_release_req
-#define F1AP_UE_CONTEXT_RELEASE_CMD(mSGpTR)        (mSGpTR)->ittiMsg.f1ap_ue_context_release_req
+#define F1AP_UE_CONTEXT_RELEASE_CMD(mSGpTR)        (mSGpTR)->ittiMsg.f1ap_ue_context_release_cmd
+#define F1AP_UE_CONTEXT_RELEASE_COMPLETE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_ue_context_release_complete
 
 #define F1AP_PAGING_IND(mSGpTR)                    (mSGpTR)->ittiMsg.f1ap_paging_ind
 
@@ -409,7 +410,7 @@ typedef struct f1ap_ue_context_setup_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
-} f1ap_ue_context_setup_t;
+} f1ap_ue_context_setup_t, f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
 
 typedef enum F1ap_Cause_e {
   F1AP_CAUSE_NOTHING,  /* No components present */
@@ -425,8 +426,8 @@ typedef struct f1ap_ue_context_release_s {
   long          cause_value;
   uint8_t      *rrc_container;
   int           rrc_container_length;
-} f1ap_ue_context_release_req_t, f1ap_ue_context_release_cmd_t,
-  f1ap_ue_context_release_cplt_t;
+  int           srb_id;
+} f1ap_ue_context_release_req_t, f1ap_ue_context_release_cmd_t, f1ap_ue_context_release_complete_t;
 
 typedef struct f1ap_paging_ind_s {
   uint16_t ueidentityindexvalue;

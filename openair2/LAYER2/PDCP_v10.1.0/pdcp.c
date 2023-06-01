@@ -50,7 +50,6 @@
 #include "common/openairinterface5g_limits.h"
 #include "executables/lte-softmodem.h"
 #include "SIMULATION/ETH_TRANSPORT/proto.h"
-#include "UTIL/OSA/osa_defs.h"
 #include "openair2/RRC/NAS/nas_config.h"
 #include "intertask_interface.h"
 #include "openair3/S1AP/s1ap_eNB.h"
@@ -596,6 +595,7 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
           break;
       } // switch case
     }
+  }
 
   if (ctxt_pP->enb_flag == ENB_FLAG_YES) {
     stop_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_req);

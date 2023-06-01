@@ -48,7 +48,9 @@
 #define SS_SYS_PROXY_MSG_CNF(mSGpTR)          (mSGpTR)->ittiMsg.udp_data_ind
 #define SS_PAGING_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_ind
 #define SS_NR_PAGING_IND(mSGpTR)              (mSGpTR)->ittiMsg.ss_nr_paging_ind
+#define SS_PAGING_CNF(mSGpTR)                 (mSGpTR)->ittiMsg.ss_paging_cnf
 #define SS_L1MACIND_CTRL(mSGpTR)              (mSGpTR)->ittiMsg.ss_l1macind_ctrl
+#define SS_ULGRANT_INFO(mSGpTR)               (mSGpTR)->ittiMsg.ss_ulgrant_info
 
 /** VNG */
 #define SS_VNG_PROXY_REQ(mSGpTR)              (mSGpTR)->ittiMsg.ss_vng_proxy_req
@@ -70,14 +72,7 @@
 /** NR SRB */
 #define SS_RRC_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_req
 #define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
-
-/** SYS IND */
-#define SS_SYSTEM_IND(mSGpTR)                 (mSGpTR)->ittiMsg.ss_system_ind
-
-/** NR SRB */
-#define SS_RRC_PDU_REQ(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_req
-#define SS_RRC_PDU_IND(mSGpTR)                (mSGpTR)->ittiMsg.ss_rrc_pdu_ind
-
+#define SS_ULGRANT_INFO(mSGpTR)               (mSGpTR)->ittiMsg.ss_ulgrant_info
 /** PORTMAN */
 typedef struct ss_sys_port_msg_ind {
   struct SYSTEM_CTRL_REQ* req;
@@ -325,7 +320,7 @@ typedef struct ss_paging_ind_s {
    * Specified in 3GPP TS 36.304
    */
   unsigned ue_index_value:10;
-  
+
   uint8_t num_paging_record;
   ss_paging_identity_t *paging_recordList;
   bool systemInfoModification;
@@ -403,5 +398,40 @@ typedef struct ss_system_ind_s
     harq_error_t   HarqError;
 
 } ss_system_ind_t;
+
+typedef union _ULGrantPeriodicity_u
+{
+  int duration;
+  uint8_t onlyOnce;
+}ULGrantPeriodicity_u;
+
+
+
+typedef struct _transRep_type
+{
+  uint8_t Continuous; /* This can have value '0' or '1'*/
+  int NumOfCycles;
+}transRep_type_t;
+
+typedef struct _periodicGrantType
+{
+  uint8_t ULGrantPeriodType;
+  ULGrantPeriodicity_u period;
+  transRep_type_t transRepType;
+  uint32_t subframe_counter;
+}periodicGrantType_t;
+
+#define ON_SR_RECEPTION_PRESENT   1
+#define PERIODIC_PRESENT          2
+#define PERIODIC_ON_SR_RECEPTION_PRESENT  3
+#define NONE_PRESENT              4
+typedef struct _ss_ulgrant_info_t
+{
+  uint8_t ulGrantType;
+  periodicGrantType_t periodiGrantInfo;
+  uint32_t  cell_index;
+}ss_ulgrant_info_t;
+
+
 
 #endif /* SS_MESSAGES_TYPES_H_ */

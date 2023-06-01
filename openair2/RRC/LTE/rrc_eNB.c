@@ -81,16 +81,14 @@
 #include "RRC/NAS/nas_config.h"
 #include "RRC/NAS/rb_config.h"
 
-#include "UTIL/OSA/osa_defs.h"
-
 #include "rrc_eNB_S1AP.h"
 #include "rrc_eNB_GTPV1U.h"
 #include "rrc_eNB_M2AP.h"
 
 #include "pdcp.h"
-#include "pdcp_primitives.h"
+#include "openair3/SECU/key_nas_deriver.h"
+#include "openair3/SECU/secu_defs.h"
 #include "openair3/ocp-gtpu/gtp_itf.h"
-#include <openair3/ocp-gtpu/gtp_itf.h>
 
 #include "intertask_interface.h"
 #include "softmodem-common.h"
@@ -129,7 +127,7 @@ mui_t                               rrc_eNB_mui = 0;
 extern uint32_t to_earfcn_DL(int eutra_bandP, uint32_t dl_CarrierFreq, uint32_t bw);
 extern int rrc_eNB_process_security(const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, security_capabilities_t *security_capabilities_pP);
 extern void process_eNB_security_key (const protocol_ctxt_t *const ctxt_pP, rrc_eNB_ue_context_t *const ue_context_pP, uint8_t *security_key_pP);
-extern int derive_keNB_star(const uint8_t *kenb_32, const uint16_t pci, const uint32_t earfcn_dl, const bool is_rel8_only, uint8_t *kenb_star);
+extern void derive_keNB_star(const uint8_t *kenb_32, const uint16_t pci, const uint32_t earfcn_dl, const bool is_rel8_only, uint8_t *kenb_star);
 extern int rrc_eNB_generate_RRCConnectionReconfiguration_endc(protocol_ctxt_t *ctxt, rrc_eNB_ue_context_t *ue_context, unsigned char *buffer, int buffer_size, OCTET_STRING_t *scg_group_config,
     OCTET_STRING_t *scg_RB_config);
 extern struct rrc_eNB_ue_context_s *get_first_ue_context(eNB_RRC_INST *rrc_instance_pP);
@@ -139,6 +137,37 @@ RRC_release_list_t   rrc_release_info;
 pthread_mutex_t      lock_ue_freelist;
 
 uint8_t ul_sqn,dl_sqn;
+
+void rrc_send_cnf_to_ss(MessageDef *msg_p)
+{
+  MessageDef *message_p = NULL;
+  instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(msg_p);
+  LOG_I(RRC,"Sending confirmation to SYS_TASK for message:%s\n", ITTI_MSG_NAME(msg_p));
+  switch (ITTI_MSG_ID(msg_p))
+  {
+    case RRC_CONFIGURATION_REQ:
+      message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_CONFIGURATION_CNF);
+      RRC_CONFIGURATION_CNF(message_p).status = 1;
+    break;
+
+    case RRC_AS_SECURITY_CONFIG_REQ:
+      message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_AS_SECURITY_CONFIG_CNF);
+      RRC_AS_SECURITY_CONFIG_CNF(message_p).status = 1;
+    break;
+
+    case RRC_RBLIST_CFG_REQ:
+      message_p = itti_alloc_new_message(TASK_RRC_ENB, instance, RRC_RBLIST_CFG_CNF);
+      RRC_RBLIST_CFG_CNF(message_p).status = 1;
+    break;
+
+    default:
+      LOG_E(RRC, "fxn:%s Received invalid message type\n", __FUNCTION__);
+    break;
+  }
+  itti_send_msg_to_task(TASK_SYS, instance, message_p);
+  LOG_I(RRC, "Sent Message to SYS_TASK\n");
+}
+
 
 void
 openair_rrc_on(
@@ -3187,27 +3216,6 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
             DRB_rlc_config->choice.am.dl_AM_RLC.t_Reordering = LTE_T_Reordering_ms35;
             DRB_rlc_config->choice.am.dl_AM_RLC.t_StatusProhibit = LTE_T_StatusProhibit_ms25;
           }
-          if (p_drb->list.array[drb_idx]->pdcp_Config != NULL)
-          {
-            DRB_pdcp_config = CALLOC(1, sizeof(*DRB_pdcp_config));
-            DRB_config->pdcp_Config = DRB_pdcp_config;
-            DRB_pdcp_config->discardTimer = CALLOC(1, sizeof(long));
-            if (p_drb->list.array[drb_idx]->pdcp_Config->discardTimer != NULL)
-            {
-              *DRB_pdcp_config->discardTimer = *p_drb->list.array[drb_idx]->pdcp_Config->discardTimer;
-            }
-#ifdef RRC_DEFAULT_RAB_IS_AM // EXMIMO_IOT
-            PDCP_rlc_AM = CALLOC(1, sizeof(*PDCP_rlc_AM));
-            DRB_pdcp_config->rlc_AM = PDCP_rlc_AM;
-            if(1) {
-              //            PDCP_rlc_AM->statusReportRequired = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].PdcpCfg.rlc_AM->statusReportRequired;
-              if (p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM != NULL)
-              {
-                PDCP_rlc_AM->statusReportRequired = p_drb->list.array[drb_idx]->pdcp_Config->rlc_AM->statusReportRequired;
-              }
-            } else {
-              PDCP_rlc_AM->statusReportRequired = FALSE;
-            }
 #else
           if(1) {
             DRB_rlc_config->present = RC.RB_Config[ue_context_pP->ue_context.primaryCC_id][3].RlcCfg.present;
@@ -3961,7 +3969,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
           memcpy(kUPenc, pdcp_p->kUPenc, 16);
         }
 
-        LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n",
+        LOG_A(RRC, "OSA Reconfig for SRB2 %ld rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n",
               ctxt_pP->rntiMaybeUEid, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
 
         key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
@@ -3969,7 +3977,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
 
         if (h_rc == HASH_TABLE_OK)
         {
-          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rntiMaybeUEid);
+          LOG_A(RRC, "OSA Setting security for SRB2 %ld rnti \n", ctxt_pP->rntiMaybeUEid);
           pdcp_config_set_security(
               ctxt_pP,
               pdcp_p,
@@ -3990,73 +3998,7 @@ void rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t 
       }
       else
       {
-        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
-      }
-    }
-    else
-    {
-      LOG_A(RRC, "OSA Can't find Hash of UE rnti %x\n", rnti);
-    }
-  }
-
-  if (RC.ss.mode > SS_ENB)
-  {
-    pdcp_t *pdcp_p = NULL;
-    rb_id_t rbid_ = 1;
-    hash_key_t key = HASHTABLE_NOT_A_KEY_VALUE;
-    key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, rbid_, 1);
-    int8_t h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-    if (h_rc == HASH_TABLE_OK)
-    {
-      security_modeP = (pdcp_p->cipheringAlgorithm | (pdcp_p->integrityProtAlgorithm << 4));
-      if (security_modeP)
-      {       
-        if (pdcp_p->kRRCenc)
-        {
-          kRRCenc = MALLOC(16);
-          memcpy(kRRCenc, pdcp_p->kRRCenc, 16);
-        }
-        if (pdcp_p->kRRCint)
-        {
-          kRRCint = MALLOC(32);
-          memcpy(kRRCint, pdcp_p->kRRCint, 32);
-        }
-        if (pdcp_p->kUPenc)
-        {
-          kUPenc = MALLOC(16);
-          memcpy(kUPenc, pdcp_p->kUPenc, 16);
-        }
-
-        LOG_A(RRC, "OSA Reconfig for SRB2 %d rnti pdcp_p->integrityProtAlgorithm=%d pdcp_p->cipheringAlgorithm=%d \n",
-              ctxt_pP->rntiMaybeUEid, pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
-
-        key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, ctxt_pP->enb_flag, DCCH1, SRB_FLAG_YES);
-        h_rc = hashtable_get(pdcp_coll_p, key, (void **)&pdcp_p);
-
-        if (h_rc == HASH_TABLE_OK)
-        {
-          LOG_A(RRC, "OSA Setting security for SRB2 %d rnti \n", ctxt_pP->rntiMaybeUEid);
-          pdcp_config_set_security(
-              ctxt_pP,
-              pdcp_p,
-              DCCH1,
-              DCCH1 + 2,
-              security_modeP,
-              kRRCenc,
-              kRRCint,
-              kUPenc);
-        }
-        else
-        {
-          LOG_E(RRC,
-                PROTOCOL_RRC_CTXT_UE_FMT "Could not get PDCP instance for SRB DCCH1 %u\n",
-                PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
-                DCCH1);
-        }
-      }
-      else
-      {
-        LOG_A(RRC, "OSA Setting security for SRB2 failed %d rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
+        LOG_A(RRC, "OSA Setting security for SRB2 failed %ld rnti as SRB1 is not enabled security yet \n", ctxt_pP->rntiMaybeUEid);
       }
     }
     else
@@ -6109,7 +6051,7 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
     }
   }
   // Add a new user (called during the HO procedure)
-  LOG_I(RRC, "rrc_eNB_target_add_ue_handover module_id %d rnti %d, ciphering algo: %ld, integrity algo: %ld \n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, RC.ss.HOASSecurityCOnfig.Ciphering.ciphering_algorithm,RC.ss.HOASSecurityCOnfig.Integrity.integrity_algorithm);
+  LOG_I(RRC, "rrc_eNB_target_add_ue_handover module_id %d rnti %ld, ciphering algo: %ld, integrity algo: %ld \n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, RC.ss.HOASSecurityCOnfig.Ciphering.ciphering_algorithm,RC.ss.HOASSecurityCOnfig.Integrity.integrity_algorithm);
       if(RC.ss.HOASSecurityCOnfig.isIntegrityInfoPresent && RC.ss.HOASSecurityCOnfig.Integrity.kRRCint)
       {
         for(int i=16;i<32;i++)
@@ -6191,24 +6133,16 @@ rrc_eNB_process_RRCConnectionReconfigurationComplete(
 
   /* End of CDRX processing */
   T(T_ENB_RRC_CONNECTION_RECONFIGURATION_COMPLETE, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
-    int8_t security_modeP = 0xff;
-    if (RC.ss.mode == SS_ENB)
-    {
-      /* Derive the keys from kenb */
-      if (DRB_configList != NULL) {
-        derive_key_up_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                          ue_context_pP->ue_context.kenb,
-                          &kUPenc);
-      }
-
-      derive_key_rrc_enc(ue_context_pP->ue_context.ciphering_algorithm,
-                         ue_context_pP->ue_context.kenb,
-                         &kRRCenc);
-      derive_key_rrc_int(ue_context_pP->ue_context.integrity_algorithm,
-                         ue_context_pP->ue_context.kenb,
-                         &kRRCint);
-      security_modeP = 0xff;
+  int8_t security_modeP = 0xff;
+  if (RC.ss.mode == SS_ENB) {
+    /* Derive the keys from kenb */
+    if (DRB_configList != NULL) {
+      derive_key_nas(UP_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kUPenc);
     }
+
+    derive_key_nas(RRC_ENC_ALG, ue_context_pP->ue_context.ciphering_algorithm, ue_context_pP->ue_context.kenb, kRRCenc);
+    derive_key_nas(RRC_INT_ALG, ue_context_pP->ue_context.integrity_algorithm, ue_context_pP->ue_context.kenb, kRRCint);
+  }
 
   /* Refresh SRBs/DRBs */
   rrc_pdcp_config_asn1_req(ctxt_pP,
@@ -6420,17 +6354,79 @@ rrc_eNB_generate_RRCConnectionSetup(
      }
   }
 
-  if (EPC_MODE_ENABLED) {
-    rrc_eNB_process_security (
-      ctxt_pP,
-      ue_context_p,
-      &ue_context_p->ue_context.security_capabilities);
-    process_eNB_security_key (
-      ctxt_pP,
-      ue_context_p,
-      ue_context_p->ue_context.kenb);
-    rrc_pdcp_config_security(ctxt_pP, ue_context_p, false);
+  LOG_DUMPMSG(RRC,DEBUG_RRC,
+              (char *)(ue_p->Srb0.Tx_buffer.Payload),
+              ue_p->Srb0.Tx_buffer.payload_size,
+              "[MSG] RRC Connection Setup\n");
+
+  // configure SRB1/SRB2, PhysicalConfigDedicated, MAC_MainConfig for UE
+  if (*SRB_configList != NULL) {
+    for (int cnt = 0; cnt < (*SRB_configList)->list.count; cnt++) {
+      if ((*SRB_configList)->list.array[cnt]->srb_Identity == 1) {
+        SRB1_config = (*SRB_configList)->list.array[cnt];
+
+        if (SRB1_config->logicalChannelConfig) {
+          if (SRB1_config->logicalChannelConfig->present == LTE_SRB_ToAddMod__logicalChannelConfig_PR_explicitValue) {
+            SRB1_logicalChannelConfig = &SRB1_config->logicalChannelConfig->choice.explicitValue;
+          } else {
+            SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
+          }
+        } else {
+          SRB1_logicalChannelConfig = &SRB1_logicalChannelConfig_defaultValue;
+        }
+
+        LOG_D(RRC, PROTOCOL_RRC_CTXT_UE_FMT " RRC_eNB --- MAC_CONFIG_REQ  (SRB1) ---> MAC_eNB\n", PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
+
+        rrc_mac_config_req_eNB_t tmp = {0};
+        tmp.CC_id = ue_context_pP->ue_context.primaryCC_id;
+        tmp.rnti = ue_context_pP->ue_context.rnti;
+        tmp.physicalConfigDedicated = ue_context_pP->ue_context.physicalConfigDedicated;
+        tmp.mac_MainConfig = ue_context_pP->ue_context.mac_MainConfig;
+        tmp.logicalChannelIdentity = 1;
+        tmp.logicalChannelConfig = SRB1_logicalChannelConfig;
+        tmp.measGapConfig = ue_context_pP->ue_context.measGapConfig;
+        rrc_mac_config_req_eNB(ctxt_pP->module_id, &tmp);
+        break;
+      }
+    }
+
+    LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT " [RAPROC] Logical Channel DL-CCCH, Generating RRCConnectionSetup (bytes %d)\n", PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP), ue_p->Srb0.Tx_buffer.payload_size);
+    // activate release timer, if RRCSetupComplete not received after 100 frames, remove UE
+    ue_context_pP->ue_context.ue_release_timer = 1;
+    // remove UE after 10 frames after RRCConnectionRelease is triggered
+    ue_context_pP->ue_context.ue_release_timer_thres = 1000;
+    /* init timers */
+    ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
   }
+}
+
+//-----------------------------------------------------------------------------
+void rrc_eNB_process_reconfiguration_complete_endc(const protocol_ctxt_t *const ctxt_pP,
+        rrc_eNB_ue_context_t *const ue_context_p)
+//-----------------------------------------------------------------------------
+{
+  MessageDef *msg_p;
+
+  msg_p = itti_alloc_new_message (TASK_RRC_ENB, 0, X2AP_ENDC_SGNB_RECONF_COMPLETE);
+
+  /* MeNB_ue_x2_id is unknown, set to 0.
+   * This is not correct but X2 id in the eNB is only 12 bits,
+   * so unfortunately we can't use rnti.
+   * To be corrected if needed.
+   * As of today, when stopping t_dc_prep we remove the UE
+   * from X2. To keep the id until the 'reconfiguration complete' message is received
+   * needs a rethink/rewrite of this logic. For simplicity, let's
+   * keep it as is. The only problem we can get is if/when we
+   * interoperate with a non-OAI gNB. The OAI gNB does not
+   * care about MeNB_ue_x2_id.
+   */
+  X2AP_ENDC_SGNB_RECONF_COMPLETE(msg_p).MeNB_ue_x2_id   = 0;
+  X2AP_ENDC_SGNB_RECONF_COMPLETE(msg_p).SgNB_ue_x2_id   = ue_context_p->ue_context.gnb_rnti;
+  X2AP_ENDC_SGNB_RECONF_COMPLETE(msg_p).gnb_x2_assoc_id = ue_context_p->ue_context.gnb_x2_assoc_id;
+  itti_send_msg_to_task (TASK_X2AP, ctxt_pP->instance, msg_p);
+}
+
+void setup_ngran_CU(eNB_RRC_INST *rrc) {
 }
 
 //-----------------------------------------------------------------------------
@@ -6484,7 +6480,10 @@ char openair_rrc_eNB_configuration(
   }
 
   for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
+    if (RC.ss.CC_update_flag[CC_id]) {
       init_SI(&ctxt, CC_id, configuration);
+      RC.ss.CC_update_flag[CC_id] = 0;
+    }
   }
 
   if(need_init) {
@@ -6534,21 +6533,12 @@ char openair_rrc_eNB_configuration(
       }
     }
   }
-  if (UE_scheduling_control->cdrx_waiting_ack == true) {
-    UE_scheduling_control->cdrx_waiting_ack = false;
-    UE_scheduling_control->cdrx_configured = true; // Set to TRUE when RRC Connection Reconfiguration is received
-    LOG_I(RRC, "CDRX configuration activated after RRC Connection Reconfiguration Complete reception\n");
-  }
   else {
     openair_rrc_on(&ctxt);
   }
 
   for (CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++){
     if(configuration->ActiveParamPresent[CC_id] == true)
-  /* End of CDRX processing */
-  T(T_ENB_RRC_CONNECTION_RECONFIGURATION_COMPLETE, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
-    int8_t security_modeP = 0xff;
-    if (RC.ss.mode == SS_ENB)
     {
       LOG_A(RRC,"CRNTI present=%d %d numRar=%d",configuration->ActiveParam[CC_id].b_C_RNTI_Present, configuration->ActiveParam[CC_id].C_RNTI, configuration->ActiveParam[CC_id].numRar);
 
@@ -6570,11 +6560,6 @@ char openair_rrc_eNB_configuration(
       }
     }
   }
-
-  if (need_init)
-    // msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, F1AP_SCTP_REQ);
-    // RCconfig_CU_F1(msg_p, enb_id);
-    setup_ngran_CU(RC.rrc[ctxt.module_id]);
 
   return 0;
 }
@@ -6890,410 +6875,7 @@ void rrc_eNB_as_security_configuration_req(
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
-  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
-         ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
-         ASSecConfReq->Ciphering.ciphering_algorithm);
-  AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
-  memcpy(&RC.ss.HOASSecurityCOnfig,ASSecConfReq,sizeof(RrcAsSecurityConfigReq));
-
-  for (int i = 0; i < MAX_RBS; i++)
-  {
-    uint8_t  *kRRCenc = NULL;
-    uint8_t  *kRRCint = NULL;
-    uint8_t  *kUPenc = NULL;
-    if (i < 3)
-    {
-      rbid_ = i;
-      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag, rbid_, 1);
-    }
-    else
-    {
-      rbid_ = i - 3;
-      key = PDCP_COLL_KEY_VALUE(ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag, rbid_, 0);
-    }
-    h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
-    if (h_rc == HASH_TABLE_OK)
-    {
-      LOG_A(RRC, "Current PDCP Context pdcp_p=%p key = %ld rbid_ %d RNTI %d integrityProtAlgorithm=%ld cipheringAlgorithm=%ld\n",
-      pdcp_p, key,rbid_,ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm, ASSecConfReq->Ciphering.ciphering_algorithm);
-
-      AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
-      RC.ss.ss_pdcp_api->set_pdcp_cnt(pdcp_p, rb_idx, &pc);
-      ul_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn;
-      dl_sqn = ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn;
-
-      /* Ciphering Algo can be received separately in some scenarios from TTCN, so only
-       * Integrity Algo shall be applied , when Ciphering Algo is received it shall be
-       * apllied along with Integrity key setting recevied earlier
-       */
-      if ((false == ASSecConfReq->isCipheringInfoPresent) ||
-       ((pc.rb_info[rb_idx].ul_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].UL.sqn) ||
-       ((pc.rb_info[rb_idx].dl_count+1) == ASSecConfReq->Ciphering.ActTimeList.SecurityActTime[rb_idx].DL.sqn) ||
-       (rbid_ == 1)||(rbid_ == 2))
-      {
-        // Get the prceviously configured algorithm for the RB
-        uint8_t integrity_algorithm = pdcp_p->integrityProtAlgorithm;
-        uint8_t ciphering_algorithm = pdcp_p->cipheringAlgorithm;
-        LOG_D (RRC, "Current PDCP Context integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
-              pdcp_p->integrityProtAlgorithm, pdcp_p->cipheringAlgorithm);
-
-        //Overwrite with the latest algorithm configuration from TTCN
-        if (ASSecConfReq->isIntegrityInfoPresent)
-          integrity_algorithm = ASSecConfReq->Integrity.integrity_algorithm;
-        if (ASSecConfReq->isCipheringInfoPresent)
-          ciphering_algorithm = ASSecConfReq->Ciphering.ciphering_algorithm;
-
-        /* Allocate the memory for each pdcp_p it stores the data as the AS_Security keys.
-         * Each RB entry will be freed invidually when the pdcp_remove_ue is invoked
-         * during the UE release process.
-        */
-        kRRCint = CALLOC(1,32);
-        kUPenc = CALLOC(1,16);
-        kRRCenc = CALLOC(1,16);
-        memcpy(kRRCint,ASSecConfReq->Integrity.kRRCint, 32);
-        memcpy(kUPenc,ASSecConfReq->Ciphering.kUPenc, 16);
-        memcpy(kRRCenc,ASSecConfReq->Ciphering.kRRCenc, 16);
-
-        pdcp_config_set_security(
-          ctxt_pP,
-          pdcp_p,
-          rbid_,
-          rbid_+2,
-          (ciphering_algorithm ) |(integrity_algorithm << 4),
-          kRRCenc,
-          kRRCint,
-          kUPenc);
-        rb_idx++;
-        LOG_I(RRC,"Updated PDCP for rb_id %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
-              rb_idx, integrity_algorithm, ciphering_algorithm);
-      } else {
-        LOG_A(RRC,"AS Security configuration received from TTCN didn't applied rbid_ %d and rb_idx %d \n", rbid_,rb_idx);
-      }
-    } else {
-      LOG_A (PDCP, "No entry on hastable for rbid_: %d ctxt module_id %d rnti %d enb_flag %d\n",
-                  rbid_, ctxt_pP->module_id, ASSecConfReq->rnti, ctxt_pP->enb_flag);
-    }
-  }
-
-  if (need_init && NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type))
-    // msg_p = itti_alloc_new_message (TASK_ENB_APP, 0, F1AP_SCTP_REQ);
-    // RCconfig_CU_F1(msg_p, enb_id);
-    setup_ngran_CU(RC.rrc[ctxt.module_id]);
-
-  return 0;
-}
-
-static
-void rrc_eNB_generate_RRCConnectionReestablishmentReject_unknown_UE(protocol_ctxt_t *const ctxt_pP,
-    const int CC_id) {
-  struct rrc_eNB_ue_context_s *ue_context_p = rrc_eNB_get_next_free_ue_context(ctxt_pP, ctxt_pP->rntiMaybeUEid);
-  rrc_eNB_generate_RRCConnectionReestablishmentReject(ctxt_pP,
-      ue_context_p,
-      CC_id);
-  ue_context_p->ue_context.ul_failure_timer = 500;  // 500 milliseconds to send the message and remove temporary entry
-}
-
-//-----------------------------------------------------------------------------
-char rrc_eNB_rblist_configuration(
-  const module_id_t enb_mod_idP,
-  RrcRblistCfgReq *RblistConfig
-)
-//-----------------------------------------------------------------------------
-{
-  protocol_ctxt_t ctxt;
-
-  LOG_A(RRC,"Inside rrc_eNB_rblist_configuration, CC_id: %d \n",CC_id);
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, enb_mod_idP, ENB_FLAG_YES, NOT_A_RNTI, 0, 0,enb_mod_idP);
-  AssertFatal(RblistConfig!=NULL,"RB list configuration input is null\n");
-  AssertFatal(RblistConfig->rb_count <= MAX_RBS ,"RB Count exceed the Max RBs Supported");
-
-  for(int i=0;i<RblistConfig->rb_count;i++)
-  {
-    LOG_A(RRC,"i: %d ,RB Id:%d \n",i,RblistConfig->rb_list[i].RbId);
-    int rbIndex = RblistConfig->rb_list[i].RbId; /*RB ID is used as a unique index in RB Array inside RC*/
-    AssertFatal(rbIndex <= MAX_RBS, "RB Index exceed the Max RBs Supported");
-    RC.RB_Config[CC_id][rbIndex].isRBConfigValid = TRUE;
-    if(RblistConfig->rb_list[i].RbConfig.isPDCPConfigValid == TRUE) {
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_AM == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_AM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_AM));
-        }
-        RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_AM->statusReportRequired = RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM->statusReportRequired;
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_AM);
-      }
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_UM != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_UM == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_UM = CALLOC(1, sizeof(struct LTE_PDCP_Config__rlc_UM));
-        }
-        RC.RB_Config[CC_id][rbIndex].PdcpCfg.rlc_UM->pdcp_SN_Size = RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_UM->pdcp_SN_Size;
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.rlc_UM);
-      }
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.discardTimer != NULL)  {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.discardTimer == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.discardTimer = CALLOC(1, sizeof(long));
-        }
-        RC.RB_Config[CC_id][rbIndex].PdcpCfg.discardTimer = RblistConfig->rb_list[i].RbConfig.Pdcp.discardTimer;
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.discardTimer);
-      }
-
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.present = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.present;
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.maxCID != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.maxCID == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.maxCID = CALLOC(1, sizeof(long));
-        }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.maxCID = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.maxCID;
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.maxCID);
-      }
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0001 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0001;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0002 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0002;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0003 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0003;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0004 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0004;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0006 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0006;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0101 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0101;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0102 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0101;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0103 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0103;
-      RC.RB_Config[CC_id][rbIndex].PdcpCfg.headerCompression.choice.rohc.profiles.profile0x0104 = RblistConfig->rb_list[i].RbConfig.Pdcp.headerCompression.choice.rohc.profiles.profile0x0104;
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1 != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext1 == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext1 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext1));
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1->rn_IntegrityProtection_r10 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext1->rn_IntegrityProtection_r10 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext1->rn_IntegrityProtection_r10 = CALLOC(1, sizeof(long));
-          }
-          *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext1->rn_IntegrityProtection_r10) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1->rn_IntegrityProtection_r10);
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1->rn_IntegrityProtection_r10);
-        }
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext1);
-      }
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2 != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext2 == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext2 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext2));
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2->pdcp_SN_Size_v1130 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext2->pdcp_SN_Size_v1130 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext2->pdcp_SN_Size_v1130 = CALLOC(1, sizeof(long));
-          }
-          *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext2->pdcp_SN_Size_v1130) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2->pdcp_SN_Size_v1130);
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2->pdcp_SN_Size_v1130);
-        }
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext2);
-      }
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3 != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3 == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext3));
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->ul_DataSplitDRB_ViaSCG_r12 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3->ul_DataSplitDRB_ViaSCG_r12 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3->ul_DataSplitDRB_ViaSCG_r12 = CALLOC(1, sizeof(bool));
-          }
-          *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3->ul_DataSplitDRB_ViaSCG_r12) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->ul_DataSplitDRB_ViaSCG_r12);
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->ul_DataSplitDRB_ViaSCG_r12);
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->t_Reordering_r12 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3->t_Reordering_r12 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3->t_Reordering_r12 = CALLOC(1, sizeof(long));
-          }
-          *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext3->t_Reordering_r12) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->t_Reordering_r12);
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3->t_Reordering_r12);
-        }
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext3);
-      }
-
-       if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4 != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4 == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4));
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4__ul_DataSplitThreshold_r13));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13->present;
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->ul_DataSplitThreshold_r13->choice.setup = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13->choice.setup;
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->ul_DataSplitThreshold_r13);
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->pdcp_SN_Size_v1310 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->pdcp_SN_Size_v1310 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->pdcp_SN_Size_v1310  = CALLOC(1, sizeof(long));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->pdcp_SN_Size_v1310 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->pdcp_SN_Size_v1310;
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->pdcp_SN_Size_v1310);
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext4__statusFeedback_r13));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->present;
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13);
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_TypeForPolling_r13);
-          }
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13);
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type1_r13);
-          }
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13);
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Type2_r13);
-          }
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13);
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13->choice.setup.statusPDU_Periodicity_Offset_r13);
-          }
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4->statusFeedback_r13);
-        }
-       free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext4);
-      }
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5 != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5 == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5));
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5__ul_LWA_Config_r14));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->present;
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DRB_ViaWLAN_r14 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DRB_ViaWLAN_r14;
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14);
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14->choice.setup.ul_LWA_DataSplitThreshold_r14);
-          }
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->ul_LWA_Config_r14);
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext5__uplinkOnlyHeaderCompression_r14));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->present;
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14);
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.profiles_r14.profile0x0006_r14 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.profiles_r14.profile0x0006_r14;
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14->choice.rohc_r14.maxCID_r14);
-          }
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5->uplinkOnlyHeaderCompression_r14);
-        }
-        free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext5);
-      }
-
-
-      if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6 != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6 == NULL) {
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6));
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6__uplinkDataCompression_r15));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->bufferSize_r15 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->bufferSize_r15;
-          if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->dictionary_r15 != NULL) {
-            if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->dictionary_r15 == NULL) {
-              RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->dictionary_r15 = CALLOC(1, sizeof(long));
-            }
-            *(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->uplinkDataCompression_r15->dictionary_r15) = *(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->dictionary_r15);
-            free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15->dictionary_r15);
-          }
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->uplinkDataCompression_r15);
-        }
-        if(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15 != NULL) {
-          if(RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15 == NULL) {
-            RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15 = CALLOC(1, sizeof(struct LTE_PDCP_Config__ext6__pdcp_DuplicationConfig_r15));
-          }
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15->present = RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15->present;
-          RC.RB_Config[CC_id][rbIndex].PdcpCfg.ext6->pdcp_DuplicationConfig_r15->choice.setup.pdcp_Duplication_r15 = RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15->choice.setup.pdcp_Duplication_r15;
-          free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6->pdcp_DuplicationConfig_r15);
-        }
-     free(RblistConfig->rb_list[i].RbConfig.Pdcp.ext6);
-     }
-    }
-
-    if(RblistConfig->rb_list[i].RbConfig.isRLCConfigValid == TRUE) {
-      memcpy(&(RC.RB_Config[CC_id][rbIndex].RlcCfg),&(RblistConfig->rb_list[i].RbConfig.Rlc),sizeof(struct LTE_RLC_Config));
-    }
-    if(RblistConfig->rb_list[i].RbConfig.isLogicalChannelIdValid == TRUE) {
-      RC.RB_Config[CC_id][rbIndex].LogicalChannelId = RblistConfig->rb_list[i].RbConfig.LogicalChannelId;
-    }
-    if(RblistConfig->rb_list[i].RbConfig.isMacConfigValid == TRUE) {
-      if(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters != NULL) {
-        if(RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters == NULL) {
-          RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ul_SpecificParameters));
-        }
-        RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters->priority = RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters->priority;
-        RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate = RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters->prioritisedBitRate;
-        free(RblistConfig->rb_list[i].RbConfig.Mac.ul_SpecificParameters);
-     }
-
-     if(RblistConfig->rb_list[i].RbConfig.Mac.ext3 != NULL) {
-       if(RC.RB_Config[CC_id][rbIndex].Mac.ext3 == NULL) {
-         RC.RB_Config[CC_id][rbIndex].Mac.ext3 = CALLOC(1, sizeof(struct LTE_LogicalChannelConfig__ext3));
-       }
-       if(RblistConfig->rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14 != NULL) {
-         if(RC.RB_Config[CC_id][rbIndex].Mac.ext3->laa_UL_Allowed_r14 == NULL) {
-           RC.RB_Config[CC_id][rbIndex].Mac.ext3->laa_UL_Allowed_r14 = CALLOC(1, sizeof(bool));
-         }
-         *(RC.RB_Config[CC_id][rbIndex].Mac.ext3->laa_UL_Allowed_r14) = *(RblistConfig->rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14);
-         free(RblistConfig->rb_list[i].RbConfig.Mac.ext3->laa_UL_Allowed_r14);
-       }
-       free(RblistConfig->rb_list[i].RbConfig.Mac.ext3);
-      }
-    }
-    if(RblistConfig->rb_list[i].RbConfig.isDiscardULDataValid == TRUE) {
-      RC.RB_Config[CC_id][rbIndex].DiscardULData = RblistConfig->rb_list[i].RbConfig.DiscardULData;
-    }
-
-    LOG_A(RRC,"PDCP Config discardTimer: address=%p \n",RC.RB_Config[CC_id][rbIndex].PdcpCfg.discardTimer);
-    LOG_A(RRC,"Present RLC Config: %d \n",RC.RB_Config[CC_id][rbIndex].RlcCfg.present);
-    LOG_A(RRC,"am.ul_AM_RLC.t_PollRetransmit: %ld , am.ul_AM_RLC.LTE_PollPDU_t:%ld, am.ul_AM_RLC.LTE_PollByte_t:%ld, am.ul_AM_RLC.maxRetxThreshold: %ld ,am.dl_AM_RLC.t_Reordering: %ld,am.dl_AM_RLC.t_StatusProhibit: %ld \n",RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.am.ul_AM_RLC.t_PollRetransmit,RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollPDU,RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.am.ul_AM_RLC.pollByte,RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.am.ul_AM_RLC.maxRetxThreshold,RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_Reordering, RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.am.dl_AM_RLC.t_StatusProhibit);
-    LOG_A(RRC,"um_Bi_Directional.ul_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.sn_FieldLength: %ld, um_Bi_Directional.dl_UM_RLC.t_Reordering: %ld \n",RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.um_Bi_Directional.ul_UM_RLC.sn_FieldLength,RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.sn_FieldLength,RC.RB_Config[CC_id][rbIndex].RlcCfg.choice.um_Bi_Directional.dl_UM_RLC.t_Reordering);
-    LOG_A(RRC,"LogicalChannelId: %ld \n",RC.RB_Config[CC_id][rbIndex].LogicalChannelId);
-    LOG_A(RRC,"Mac.ul_SpecificParameters->priority: %ld, Mac.ul_SpecificParameters->prioritisedBitRate: %ld \n",RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters->priority,RC.RB_Config[CC_id][rbIndex].Mac.ul_SpecificParameters->prioritisedBitRate);
-    LOG_A(RRC,"DiscardULData: %d \n",RC.RB_Config[CC_id][rbIndex].DiscardULData);
-  }
-  return 0;
-}
-
-//-----------------------------------------------------------------------------
-void rrc_eNB_as_security_configuration_req(
-  const protocol_ctxt_t   *const ctxt_pP,
-  const module_id_t enb_mod_idP,
-  RrcAsSecurityConfigReq *ASSecConfReq
-)
-//-----------------------------------------------------------------------------
-{
-  pdcp_t  *pdcp_p   = NULL;
-  hashtable_rc_t                      h_rc;
-  hash_key_t                          key = HASHTABLE_NOT_A_KEY_VALUE;
-  ss_get_pdcp_cnt_t                   pc;
-  uint8_t                             rb_idx = 0;
-  uint8_t rbid_;
-
-  if (NULL == ctxt_pP) {
-    LOG_A(RRC, "No context to get PdcpCount\n");
-  }
-  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
+  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%ld cipheringAlgorithm=%ld \n",
          ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
          ASSecConfReq->Ciphering.ciphering_algorithm);
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
@@ -7828,30 +7410,7 @@ rrc_eNB_decode_ccch(
                                    NULL,
                                    (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
 
-
           rrc_rlc_config_asn1_req(ctxt_pP, ue_context_p->ue_context.SRB_configList, NULL, NULL, NULL, 0, 0);
-        }
-        rrc_eNB_generate_RRCConnectionSetup(ctxt_pP, ue_context_p, CC_id);
-        LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT"CALLING RLC CONFIG SRB1 (rbid %d)\n",
-              PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP),
-              Idx);
-        rrc_pdcp_config_asn1_req(ctxt_pP,
-                                 ue_context_p->ue_context.SRB_configList,
-                                 (LTE_DRB_ToAddModList_t *) NULL,
-                                 (LTE_DRB_ToReleaseList_t *) NULL,
-                                 0xff,
-                                 NULL,
-                                 NULL,
-                                 NULL,
-                                 (LTE_PMCH_InfoList_r9_t *) NULL,NULL);
-
-        if (!NODE_IS_CU(RC.rrc[ctxt_pP->module_id]->node_type)) {
-          rrc_rlc_config_asn1_req(ctxt_pP,
-                                  ue_context_p->ue_context.SRB_configList,
-                                  (LTE_DRB_ToAddModList_t *) NULL,
-                                  (LTE_DRB_ToReleaseList_t *) NULL,
-                                  (LTE_PMCH_InfoList_r9_t *) NULL, 0, 0
-                                 );
         }
         break;
 
@@ -8563,13 +8122,13 @@ rrc_eNB_decode_dcch(
         break;
 
       case LTE_UL_DCCH_MessageType__c1_PR_ueCapabilityInformation:
-        LOG_A(RRC, "Processing ueCapabilityInformation UE %x, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
+        LOG_A(RRC, "Processing ueCapabilityInformation UE %ld, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
 
         T(T_ENB_RRC_UE_CAPABILITY_INFORMATION, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
 
         // to avoid segmentation fault
         if(!ue_context_p) {
-          LOG_I(RRC, "Processing ueCapabilityInformation UE %x, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
+          LOG_I(RRC, "Processing ueCapabilityInformation UE %ld, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
           break;
         }
 
@@ -8590,13 +8149,13 @@ rrc_eNB_decode_dcch(
           xer_fprint(stdout, &asn_DEF_LTE_UL_DCCH_Message, (void *)ul_dcch_msg);
         }
 
-        LOG_A(RRC, "got UE capabilities for UE %x\n", ctxt_pP->rntiMaybeUEid);
+        LOG_A(RRC, "got UE capabilities for UE %ld\n", ctxt_pP->rntiMaybeUEid);
         int eutra_index = -1;
 
         for (i = 0; i < ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.count; i++) {
           if (ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.array[i]->rat_Type ==
               LTE_RAT_Type_nr) {
-              LOG_A(RRC, "got nrUE capabilities for UE %x\n", ctxt_pP->rntiMaybeUEid);
+              LOG_A(RRC, "got nrUE capabilities for UE %ld\n", ctxt_pP->rntiMaybeUEid);
             if(ue_context_p->ue_context.UE_Capability_nr) {
               ASN_STRUCT_FREE(asn_DEF_NR_UE_NR_Capability,ue_context_p->ue_context.UE_Capability_nr);
               ue_context_p->ue_context.UE_Capability_nr = 0;
@@ -8671,7 +8230,7 @@ rrc_eNB_decode_dcch(
           break;
 
         if (ue_context_p->ue_context.UE_Capability) {
-          LOG_I(RRC, "freeing old UE capabilities for UE %lx\n", ctxt_pP->rntiMaybeUEid);
+          LOG_I(RRC, "freeing old UE capabilities for UE %ld\n", ctxt_pP->rntiMaybeUEid);
           ASN_STRUCT_FREE(asn_DEF_LTE_UE_EUTRA_Capability,
                           ue_context_p->ue_context.UE_Capability);
           ue_context_p->ue_context.UE_Capability = 0;
@@ -8744,7 +8303,7 @@ rrc_eNB_decode_dcch(
 
         // to avoid segmentation fault
         if(!ue_context_p) {
-          LOG_I(RRC, "Processing ulInformationTransfer UE %lx, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
+          LOG_I(RRC, "Processing ulInformationTransfer UE %ld, ue_context_p is NULL\n", ctxt_pP->rntiMaybeUEid);
           break;
         }
 
@@ -9667,40 +9226,6 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
                      &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset],
                      16);
             }
-      /* set target enb gtp teid */
-      if (hash_rc == HASH_TABLE_KEY_NOT_EXISTS) {
-        LOG_E(RRC, "X2AP_HANDOVER_REQ_ACK func(), hashtable_get failed: while getting ue rnti %x in hashtable ue_mapping\n", ue_context_p->ue_context.rnti);
-      } else {
-        uint8_t nb_e_rabs_tobesetup = 0;
-        ebi_t   eps_bearer_id       = 0;
-        int     ip_offset           = 0;
-        in_addr_t  in_addr;
-        x2ap_handover_req_ack = &X2AP_HANDOVER_REQ_ACK(msg_p);
-        nb_e_rabs_tobesetup = x2ap_handover_req_ack->nb_e_rabs_tobesetup;
-        ue_context_p->ue_context.nb_x2u_e_rabs = nb_e_rabs_tobesetup;
-
-          for (int i = 0; i < nb_e_rabs_tobesetup; i++) {
-          ip_offset               = 0;
-          eps_bearer_id = x2ap_handover_req_ack->e_rabs_tobesetup[i].e_rab_id;
-          ue_context_p->ue_context.enb_gtp_x2u_ebi[i] = eps_bearer_id;
-          ue_context_p->ue_context.enb_gtp_x2u_teid[i] = x2ap_handover_req_ack->e_rabs_tobesetup[i].gtp_teid;
-          gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].teid_teNB = x2ap_handover_req_ack->e_rabs_tobesetup[i].gtp_teid;
-
-            if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 4) || (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
-            in_addr = *((in_addr_t *)x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer);
-            ip_offset = 4;
-            gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip_addr = in_addr;
-            ue_context_p->ue_context.enb_gtp_x2u_addrs[i] = x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr;
-          }
-
-
-            if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 16) || (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
-              memcpy(gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip6_addr.s6_addr, &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset], 16);
-          if ((x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 16) ||
-              (x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.length == 20)) {
-            memcpy(gtpv1u_ue_data_p->bearers[eps_bearer_id - GTPV1U_BEARER_OFFSET].tenb_ip6_addr.s6_addr,
-                   &x2ap_handover_req_ack->e_rabs_tobesetup[i].eNB_addr.buffer[ip_offset],
-                   16);
           }
         }
       }
@@ -9793,6 +9318,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     case RRC_CONFIGURATION_REQ:
       LOG_I(RRC, "[eNB %ld] Received %s : %p\n", instance, msg_name_p, &RRC_CONFIGURATION_REQ(msg_p));
       openair_rrc_eNB_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_CONFIGURATION_REQ(msg_p));
+      if (RC.ss.mode >= SS_SOFTMODEM)
+        rrc_send_cnf_to_ss(msg_p);
       break;
 
     case RRC_SUBFRAME_PROCESS:
@@ -10082,304 +9609,62 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
         pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
         break;
 
-    case RRC_AS_SECURITY_CONFIG_REQ:
-      LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint)
-      {
-        for(int i=16;i<32;i++)
+        case RRC_AS_SECURITY_CONFIG_REQ:
+        LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",
+          instance,
+          msg_name_p,
+          &RRC_AS_SECURITY_CONFIG_REQ(msg_p),
+          RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,
+          RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
+
+        if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isIntegrityInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint)
         {
-          LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+          printf("kRRCint in RRC:\n");
+          for(int i=0;i<32;i++)
+          {
+            LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+          }
+          printf("\n");
         }
-      }
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
-      {
-        for(int j=0;j<16;j++)
+        if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
         {
-          LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+          printf("kRRCenc in RRC:\n");
+          for(int j=0;j<16;j++)
+          {
+            LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
+          }
+          printf("\n");
         }
-      }
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
-      {
-        for(int k=0;k<16;k++)
+        if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
         {
-          LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+          LOG_D(RRC,"kUPenc in RRC:\n");
+          for(int k=0;k<16;k++)
+          {
+            LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
+          }
+          LOG_D(RRC,"\n");
         }
-      }
-      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                    instance,
-                                    ENB_FLAG_YES,
-                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
-                                    msg_p->ittiMsgHeader.lte_time.frame,
-                                    msg_p->ittiMsgHeader.lte_time.slot);
-      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+            instance,
+            ENB_FLAG_YES,
+            RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
+            msg_p->ittiMsgHeader.lte_time.frame,
+            msg_p->ittiMsgHeader.lte_time.slot);
+        rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
+        rrc_send_cnf_to_ss(msg_p);
       break;
 
-      case SS_SS_PAGING_IND:
+        case SS_SS_PAGING_IND:
         LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
         rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
         lchannelType = Bearer_PCCH_e;
         bcchTransportType = bch_TRANSPORT;
         break;
 
-      case RRC_RBLIST_CFG_REQ:
-        LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
-        rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
-        break;
-//#ifdef ENB_SS
-    case SS_RRC_PDU_REQ:
-      if (RC.ss.mode >= SS_SOFTMODEM)
-      {
-#ifndef NR_ENABLE
-
-        LOG_A(RRC,"RRC received SS_RRC_PDU_REQ SRB_ID:%d SDU_SIZE:%d rnti %d instance %ld\n", SS_RRC_PDU_REQ (msg_p).srb_id, SS_RRC_PDU_REQ (msg_p).sdu_size,
-            SS_RRC_PDU_REQ(msg_p).rnti,instance);
-
-        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-            instance,
-            ENB_FLAG_YES,
-            SS_RRC_PDU_REQ(msg_p).rnti,
-            msg_p->ittiMsgHeader.lte_time.frame,
-            msg_p->ittiMsgHeader.lte_time.slot);
-
-        if ((SS_RRC_PDU_REQ(msg_p).srb_id) != 0)
-        {
-          LTE_DL_DCCH_Message_t *dl_dcch_msg = NULL;
-          LOG_A(RRC, "Sending RRC PDU by rrc_data_req function \n");
-
-          uper_decode(NULL,
-              &asn_DEF_LTE_DL_DCCH_Message,
-              (void **)&dl_dcch_msg,
-              (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
-              SS_RRC_PDU_REQ(msg_p).sdu_size, 0, 0);
-          {
-            LOG_A(RRC, "DL-DCCH: ");
-            for (int i = 0; i < SS_RRC_PDU_REQ(msg_p).sdu_size; i++)
-            {
-              LOG_A(RRC, "%x.", SS_RRC_PDU_REQ(msg_p).sdu[i]);
-            }
-            LOG_A(RRC, "\n");
-          }
-          LOG_A(RRC, "DL DCCH size: %d \n", SS_RRC_PDU_REQ(msg_p).sdu_size);
-
-          if (LOG_DEBUGFLAG(DEBUG_ASN1))
-          {
-            xer_fprint(stdout, &asn_DEF_LTE_DL_DCCH_Message, (void *)dl_dcch_msg);
-          }
-          if (dl_dcch_msg->message.choice.c1.present == LTE_DL_DCCH_MessageType__c1_PR_rrcConnectionReconfiguration)
-          {
-            lchannelType = Bearer_DCCH_e;
-            bcchTransportType = dlsch_TRANSPORT;
-            struct rrc_eNB_ue_context_s *ue_context_p = NULL;
-            ue_context_p = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
-            RC.rrc_Transaction_Identifier = dl_dcch_msg->message.choice.c1.choice.rrcConnectionReconfiguration.rrc_TransactionIdentifier;
-            LOG_A(RRC, "[eNB %ld] SRB2 Received SDU on SRB %d rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).srb_id, SS_RRC_PDU_REQ(msg_p).rnti);
-            if (ue_context_p && ue_context_p->ue_context.UE_Capability == NULL)
-            {
-              LOG_A(RRC, "[eNB %ld] SRB2 reconfigure on  rnti %d\n", instance, SS_RRC_PDU_REQ(msg_p).rnti);
-              rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt, ue_context_p, 0);
-            }
-          }
-            LOG_A(RRC,"swetank SRB : before calling rrc_data_req SS_RRC_PDU_REQ(msg_p).srb_id:%d \n", SS_RRC_PDU_REQ(msg_p).srb_id);
-            rrc_data_req(&ctxt,
-                //DCCH,     swetank fix 
-                SS_RRC_PDU_REQ(msg_p).srb_id,
-                rrc_eNB_mui++,
-                SDU_CONFIRM_NO,
-                SS_RRC_PDU_REQ(msg_p).sdu_size,
-                SS_RRC_PDU_REQ(msg_p).sdu,
-                PDCP_TRANSMISSION_MODE_CONTROL);
-            /* TTCN triggered release, need to clean up the eNB's UE context
-             * the lower layer UE state , setting the UE release timer 10 SF
-             * rrc_subframe_process function will check each SF about the UE
-             * marked for release and do the clean up after 10 SF.
-             * 10 SF time is given to ensure the rrcConnectionRelease PDU
-             * is delivered to UE without any issue.
-             */
-            if (dl_dcch_msg->message.present == LTE_DL_DCCH_MessageType_PR_c1)
-            {
-              struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
-
-              ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
-              uint8_t cc_id = 0;
-              LOG_A(RRC, "RRC Connection Release message received \n");
-              if (NULL == ue_context_pP)
-              {
-                LOG_W(RRC, "ue_context_pP is already NULL \n");
-              }
-              else {
-              cc_id = ue_context_pP->ue_context.primaryCC_id;
-              ue_context_pP->ue_context.ue_reestablishment_timer = 0;
-              ue_context_pP->ue_context.ue_release_timer = 1;
-              ue_context_pP->ue_context.ue_release_timer_thres = 10;
-              ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
-              ue_context_pP->ue_context.ue_release_timer_rrc = 0;
-              ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
-              }
-              if (RC.ss.CBRA_flag)
-              {
-                struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
-
-                ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
-                uint8_t cc_id = 0;
-                LOG_A(RRC, "RRC Connection Release message received \n");
-                if (NULL == ue_context_pP)
-                {
-                  LOG_W(RRC, "ue_context_pP is already NULL \n");
-                }
-                else {
-                  cc_id = ue_context_pP->ue_context.primaryCC_id;
-                  ue_context_pP->ue_context.ue_reestablishment_timer = 0;
-                  ue_context_pP->ue_context.ue_release_timer = 1;
-                  ue_context_pP->ue_context.ue_release_timer_thres = 10;
-                  ue_context_pP->ue_context.ue_rrc_inactivity_timer = 0;
-                  ue_context_pP->ue_context.ue_release_timer_rrc = 0;
-                  ue_context_pP->ue_context.ue_release_timer_thres_rrc = 0;
-                }
-                security_mode_command_send = TRUE;
-                as_security_conf_ciphering = FALSE;
-                ciphering_algorithm = 0;
-                if (RC.ss.CBRA_flag)
-                {
-                  RRCConnSetup_PDU_Present[cc_id] = FALSE;
-                }
-              }
-            }
-          }
-          else
-          {
-            struct rrc_eNB_ue_context_s *ue_context_pP = NULL;
-            LTE_DL_CCCH_Message_t *dl_ccch_msg=NULL;
-            ue_context_pP = rrc_eNB_get_ue_context(RC.rrc[instance], SS_RRC_PDU_REQ(msg_p).rnti);
-            LOG_A(RRC, "Genreating RRC-CS from TTCN message RRC_PDU_REQ\n");
-            uint8_t cc_id = ue_context_pP->ue_context.primaryCC_id;
-            module_id_t Idx;
-            LOG_A(RRC, "Received data on SRB0 from SS, module id: %d, Frame: %d, instance: %lu \n",
-                ctxt.module_id, msg_p->ittiMsgHeader.lte_time.frame, instance);
-
-          uper_decode(NULL,
-                      &asn_DEF_LTE_DL_CCCH_Message,
-                      (void **)&dl_ccch_msg,
-                      (uint8_t *)SS_RRC_PDU_REQ(msg_p).sdu,
-                      SS_RRC_PDU_REQ(msg_p).sdu_size,0,0);
-
-          xer_fprint(stdout,&asn_DEF_LTE_DL_CCCH_Message,(void *)dl_ccch_msg);
-
-          RRCMsgOnSRB0_PDUSize[cc_id] = SS_RRC_PDU_REQ(msg_p).sdu_size;
-          memcpy(RRCMsgOnSRB0_PDU[cc_id], SS_RRC_PDU_REQ(msg_p).sdu, SS_RRC_PDU_REQ(msg_p).sdu_size);
-
-          Idx = DCCH;
-          // SRB1
-          ue_context_pP->ue_context.Srb1.Active = 1;
-          ue_context_pP->ue_context.Srb1.Srb_info.Srb_id = Idx;
-          memcpy(&ue_context_pP->ue_context.Srb1.Srb_info.Lchan_desc[0],
-                 &DCCH_LCHAN_DESC,
-                 LCHAN_DESC_SIZE);
-          memcpy(&ue_context_pP->ue_context.Srb1.Srb_info.Lchan_desc[1],
-                 &DCCH_LCHAN_DESC,
-                 LCHAN_DESC_SIZE);
-          // SRB2: set  it to go through SRB1 with id 1 (DCCH)
-          ue_context_pP->ue_context.Srb2.Active = 1;
-          ue_context_pP->ue_context.Srb2.Srb_info.Srb_id = Idx;
-          memcpy(&ue_context_pP->ue_context.Srb2.Srb_info.Lchan_desc[0],
-                 &DCCH_LCHAN_DESC,
-                 LCHAN_DESC_SIZE);
-          memcpy(&ue_context_pP->ue_context.Srb2.Srb_info.Lchan_desc[1],
-                 &DCCH_LCHAN_DESC,
-                 LCHAN_DESC_SIZE);
-
-          if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionSetup) {
-            lchannelType = Bearer_CCCH_e;
-            bcchTransportType = dlsch_TRANSPORT;
-            RRCConnSetup_PDU_Present[cc_id] = true;
-            rrc_eNB_generate_RRCConnectionSetup(&ctxt, ue_context_pP, cc_id);
-
-            LOG_I(RRC, PROTOCOL_RRC_CTXT_UE_FMT "CALLING RLC CONFIG SRB1 (rbid %d)\n",
-                  PROTOCOL_RRC_CTXT_UE_ARGS(&ctxt),
-                  Idx);
-    LOG_A(RRC,"swetank: rrc_pdcp_config_asn1_req called from function:%s line:%d\n", __FUNCTION__, __LINE__);
-              rrc_pdcp_config_asn1_req(&ctxt,
-                  ue_context_pP->ue_context.SRB_configList,
-                  (LTE_DRB_ToAddModList_t *)NULL,
-                  (LTE_DRB_ToReleaseList_t *)NULL,
-                  0xff,
-                  NULL,
-                  NULL,
-                  NULL,
-                  (LTE_PMCH_InfoList_r9_t *)NULL, NULL);
-
-              if (!NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
-                rrc_rlc_config_asn1_req(&ctxt,
-                    ue_context_pP->ue_context.SRB_configList,
-                    (LTE_DRB_ToAddModList_t *)NULL,
-                    (LTE_DRB_ToReleaseList_t *)NULL,
-                    (LTE_PMCH_InfoList_r9_t *)NULL, 0, 0);
-              }
-            } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
-              rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
-            }
-          } else if (dl_ccch_msg->message.choice.c1.present == LTE_DL_CCCH_MessageType__c1_PR_rrcConnectionReject) {
-            rrc_eNB_generate_RRCConnectionReject(&ctxt, ue_context_pP, cc_id);
-            lchannelType = Bearer_CCCH_e;
-            bcchTransportType = dlsch_TRANSPORT;
-          }
-#endif
-        }
-        break;
-        //#endif
-
-        case SS_DRB_PDU_REQ:
-        LOG_A(RRC, "[eNB %ld] RRC Received SS_DRB_PDU_REQ with RNTI: %d, Frame: %d, Slot: %d\n", instance, SS_DRB_PDU_REQ(msg_p).rnti, msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
-        PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                      instance,
-                                      ENB_FLAG_YES,
-                                      SS_DRB_PDU_REQ(msg_p).rnti,
-                                      msg_p->ittiMsgHeader.lte_time.frame,
-                                      msg_p->ittiMsgHeader.lte_time.slot);
-        lchannelType = Bearer_DCCH_e;
-        bcchTransportType = dlsch_TRANSPORT;
-        pdcp_data_req(&ctxt, SRB_FLAG_NO, SS_DRB_PDU_REQ(msg_p).drb_id, 0, 0, SS_DRB_PDU_REQ(msg_p).sdu_size, SS_DRB_PDU_REQ(msg_p).sdu, PDCP_TRANSMISSION_MODE_DATA, NULL, NULL);
-        break;
-
-        case RRC_AS_SECURITY_CONFIG_REQ:
-        LOG_A(RRC,"[eNB %ld] Received %s : %p, Integrity_Algo: %d, Ciphering_Algo: %ld \n",instance, msg_name_p, &RRC_AS_SECURITY_CONFIG_REQ(msg_p),RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm,RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm);
-        for(int i=16;i<32;i++)
-        {
-          LOG_D(RRC,"kRRCint in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
-        }
-      }
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc)
-      {
-        for(int j=0;j<16;j++)
-        {
-          LOG_D(RRC,"kRRCenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[j]);
-        }
-      }
-      if(RRC_AS_SECURITY_CONFIG_REQ(msg_p).isCipheringInfoPresent && RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc)
-      {
-        for(int k=0;k<16;k++)
-        {
-          LOG_D(RRC,"kUPenc in RRC: %02x\n",RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[k]);
-        }
-      }
-      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
-                                    instance,
-                                    ENB_FLAG_YES,
-                                    RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti,
-                                    msg_p->ittiMsgHeader.lte_time.frame,
-                                    msg_p->ittiMsgHeader.lte_time.slot);
-      rrc_eNB_as_security_configuration_req(&ctxt, ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_AS_SECURITY_CONFIG_REQ(msg_p));
-      break;
-
-    case SS_SS_PAGING_IND:
-      LOG_A(RRC, "[eNB %ld] Received Paging message from SS: %s\n", instance, msg_name_p);
-      rrc_eNB_process_SS_PAGING_IND(msg_p, msg_name_p, instance);
-      lchannelType = Bearer_PCCH_e;
-      bcchTransportType = bch_TRANSPORT;
-      break;
-
         case RRC_RBLIST_CFG_REQ:
         LOG_A(RRC, "[eNB %ld] Received %s : %p, RB Count:%d\n", instance, msg_name_p, &RRC_RBLIST_CFG_REQ(msg_p),RRC_RBLIST_CFG_REQ(msg_p).rb_count);
         rrc_eNB_rblist_configuration(ENB_INSTANCE_TO_MODULE_ID(instance), &RRC_RBLIST_CFG_REQ(msg_p));
+        rrc_send_cnf_to_ss(msg_p);
         break;
 
     default:

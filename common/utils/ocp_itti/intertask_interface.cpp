@@ -148,7 +148,7 @@ extern "C" {
     task_list_t *t=tasks[destination_task_id];
     pthread_mutex_lock (&t->queue_cond_lock);
     int ret=itti_send_msg_to_task_locked(destination_task_id, destinationInstance, message);
-
+    LOG_I(ITTI, "src task:%s dest task:%s msg_name:%s\n",ITTI_MSG_ORIGIN_NAME(message), ITTI_MSG_DESTINATION_NAME(message), ITTI_MSG_NAME(message) );
     while ( t->message_queue.size()>0 && t->admin.func != NULL ) {
       if (t->message_queue.size()>1)
         LOG_W(ITTI,"queue in no thread mode is %ld\n", t->message_queue.size());
@@ -293,7 +293,7 @@ extern "C" {
     } else {
       *received_msg=t->message_queue.back();
       t->message_queue.pop_back();
-      LOG_D(ITTI,"task %s received a message\n",t->admin.name);
+      LOG_D(ITTI,"task %s received message from task:%s \n",t->admin.name, ITTI_MSG_ORIGIN_NAME(*received_msg));
     }
 
     pthread_mutex_unlock (&t->queue_cond_lock);
@@ -319,6 +319,15 @@ extern "C" {
                        void *args_p) {
     task_list_t *t=tasks[task_id];
     threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,OAI_PRIORITY_RT);
+    LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
+    return 0;
+  }
+
+  int itti_create_task_prio(task_id_t task_id,
+                       void *(*start_routine)(void *),
+                       void *args_p,int addprio) {
+    task_list_t *t=tasks[task_id];
+    threadCreate (&t->thread, start_routine, args_p, (char *)itti_get_task_name(task_id),-1,(OAI_PRIORITY_RT)+addprio);
     LOG_I(ITTI,"Created Posix thread %s\n",  itti_get_task_name(task_id) );
     return 0;
   }
@@ -435,24 +444,32 @@ extern "C" {
   void itti_send_terminate_message(task_id_t task_id) {
   }
 
-  pthread_mutex_t signal_mutex;
+  sem_t itti_sem_block;
+  void itti_wait_tasks_unblock()
+  {
+    int rc = sem_post(&itti_sem_block);
+    AssertFatal(rc == 0, "error in sem_post(): %d %s\n", errno, strerror(errno));
+  }
 
   static void catch_sigterm(int) {
     static const char msg[] = "\n** Caught SIGTERM, shutting down\n";
     __attribute__((unused))
     int unused = write(STDOUT_FILENO, msg, sizeof(msg) - 1);
-    pthread_mutex_unlock(&signal_mutex);
+    itti_wait_tasks_unblock();
   }
 
-  void itti_wait_tasks_end(void) {
+  void itti_wait_tasks_end(void (*handler)(int))
+  {
+    int rc = sem_init(&itti_sem_block, 0, 0);
+    AssertFatal(rc == 0, "error in sem_init(): %d %s\n", errno, strerror(errno));
 
-    pthread_mutex_init(&signal_mutex, NULL);
-    pthread_mutex_lock(&signal_mutex);
+    if (handler == NULL) /* no handler given: install default */
+      handler = catch_sigterm;
+    signal(SIGTERM, handler);
+    signal(SIGINT, handler);
 
-    signal(SIGTERM, catch_sigterm);
-    signal(SIGINT, catch_sigterm);
-
-    pthread_mutex_lock(&signal_mutex);
+    rc = sem_wait(&itti_sem_block);
+    AssertFatal(rc == 0, "error in sem_wait(): %d %s\n", errno, strerror(errno));
   }
 
   void itti_update_lte_time(uint32_t frame, uint8_t slot) {}

@@ -26,8 +26,6 @@
 #include <stdint.h>
 #include <openssl/cmac.h>
 
-#include "UTIL/OSA/osa_defs.h"
-
 int stream_compute_integrity_eia1(stream_cipher_t *stream_cipher, uint8_t out[4]);
 
 void *nr_pdcp_integrity_nia1_init(unsigned char *integrity_key)

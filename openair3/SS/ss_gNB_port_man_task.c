@@ -57,9 +57,9 @@ void ss_nr_port_man_send_cnf(struct NR_SYSTEM_CTRL_CNF recvCnf)
     struct NR_SYSTEM_CTRL_CNF cnf;
     const size_t size = 16 * 1024;
     uint32_t status;
-    
+
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
-    
+
     size_t msgSize = size;
     memset(&cnf, 0, sizeof(cnf));
     cnf.Common.CellId = recvCnf.Common.CellId;
@@ -198,12 +198,7 @@ void ss_nr_port_man_send_data(
 //------------------------------------------------------------------------------
 void ss_gNB_port_man_init(void)
 {
-    IpAddress_t ipaddr;
     LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Starting GNB System Simulator Manager\n");
-
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
 
     // Port number
     int port = RC.ss.SysportNR;
@@ -219,7 +214,7 @@ void ss_gNB_port_man_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &nrctx_g);
+    int ret = acpServerInitWithCtx(RC.ss.SysHost, port, msgTable, aSize, &nrctx_g);
     if (ret < 0)
     {
         LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Connection failure err=%d\n", ret);
@@ -266,10 +261,10 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
     }
     else if (userId == -ACP_PEER_DISCONNECTED){
       LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Peer ordered shutdown\n");
-    } 
+    }
     else if (userId == -ACP_PEER_CONNECTED){
       LOG_A(GNB_APP, "[SS-PORTMAN-GNB] Peer connection established\n");
-    } 
+    }
     else
     {
       LOG_A(GNB_APP, "[SS-PORTMAN-GNB] fxn:%s line:%d\n", __FUNCTION__, __LINE__);

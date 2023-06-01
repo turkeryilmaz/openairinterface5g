@@ -150,7 +150,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
             bits_copy_to_array((char *)header->SegmentationInfo, 0, (const char *)pdu_ind->sdu, 2);
             bits_copy_to_array((char *)header->Reserved, 2, (const char *)pdu_ind->sdu, 6);
             data->d = pdu_ind->sdu_size - pdu_header_size;
-            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
+            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
             data->v = CALLOC(1, data->d);
             DevAssert(data->v != NULL);
             memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
@@ -169,7 +169,7 @@ static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
                 bits_copy_to_array((char *)header->SegmentOffset.v, 8, (const char *)pdu_ind->sdu, 16);
             }
             data->d = pdu_ind->sdu_size - pdu_header_size;
-            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %lu\n", pdu_ind->sdu_size);
+            LOG_A(GNB_APP, "[SS_DRB] Length of RLC PDU received in NR_DRB_COMMON_IND: %d\n", pdu_ind->sdu_size);
             data->v = CALLOC(1, data->d);
             DevAssert(data->v != NULL);
             memcpy(data->v, pdu_ind->sdu + pdu_header_size, data->d);
@@ -404,12 +404,12 @@ void *ss_gNB_drb_process_itti_msg(void *notUsed)
 
 void ss_gNB_drb_init(void)
 {
-    IpAddress_t ipaddr;
     LOG_A(GNB_APP, "[SS_DRB] Starting System Simulator DRB Thread\n");
+    char* host = RC.ss.DrbHost;
 
-    const char *hostIp;
-    hostIp = RC.ss.hostIp;
-    acpConvertIp(hostIp, &ipaddr);
+    if (host == NULL) {
+        host = RC.ss.hostIp;
+    }
 
     // Port number
     int port = RC.ss.Drbport;
@@ -424,7 +424,7 @@ void ss_gNB_drb_init(void)
 
     // Start listening server and get ACP context,
     // after the connection is performed, we can use all services
-    int ret = acpServerInitWithCtx(ipaddr, port, msgTable, aSize, &ctx_drb_g);
+    int ret = acpServerInitWithCtx(host, port, msgTable, aSize, &ctx_drb_g);
     if (ret < 0)
     {
         LOG_A(GNB_APP, "[SS_DRB] Connection failure err=%d\n", ret);
