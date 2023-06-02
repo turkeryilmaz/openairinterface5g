@@ -83,7 +83,7 @@ static NR_SearchSpace_t *rrc_searchspace_config(bool is_common, int searchspacei
   return ss;
 }
 
-static NR_ControlResourceSet_t *get_coreset_config(int bwp_id, int curr_bwp, uint64_t ssb_bitmap)
+static NR_ControlResourceSet_t *get_coreset_config(int bwp_id, int curr_bwp, uint64_t ssb_bitmap, bool do_csirs)
 {
   NR_ControlResourceSet_t *coreset = calloc(1, sizeof(*coreset));
   AssertFatal(coreset != NULL, "out of memory\n");
@@ -105,13 +105,15 @@ static NR_ControlResourceSet_t *get_coreset_config(int bwp_id, int curr_bwp, uin
   coreset->controlResourceSetId = bwp_id + 1;
 
   coreset->tci_StatesPDCCH_ToAddList=calloc(1,sizeof(*coreset->tci_StatesPDCCH_ToAddList));
-  NR_TCI_StateId_t *tci[64];
-  for (int i=0;i<64;i++) {
-    if ((ssb_bitmap>>(63-i))&0x01){
-      tci[i]=calloc(1,sizeof(*tci[i]));
-      *tci[i] = i;
-      asn1cSeqAdd(&coreset->tci_StatesPDCCH_ToAddList->list,tci[i]);
-    }
+  int n_ssb = 0;
+  for (int i = 0; i < 64; i++) {
+    if ((ssb_bitmap>>(63 - i)) & 0x01)
+      n_ssb++;
+  }
+  for (int j = 0; j < n_ssb; j++) {
+    NR_TCI_StateId_t *tci = calloc(1, sizeof(*tci));
+    *tci = j + do_csirs ? n_ssb : 0;
+    asn1cSeqAdd(&coreset->tci_StatesPDCCH_ToAddList->list, tci);
   }
   coreset->tci_StatesPDCCH_ToReleaseList = NULL;
   coreset->tci_PresentInDCI = NULL;
@@ -144,42 +146,42 @@ static void set_csirs_periodicity(NR_NZP_CSI_RS_Resource_t *nzpcsi0, int id, int
 {
   nzpcsi0->periodicityAndOffset = calloc(1,sizeof(*nzpcsi0->periodicityAndOffset));
   // TODO ideal period to be set according to estimation by the gNB on how fast the channel changes
-  const int ideal_period = 320;
+  const int period = 320;
   const int offset = nb_slots_per_period * id;
 
-  if (ideal_period < 5) {
+  if (period < 5) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots4;
     nzpcsi0->periodicityAndOffset->choice.slots4 = offset;
   }
-  else if (ideal_period < 6) {
+  else if (period < 6) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots5;
     nzpcsi0->periodicityAndOffset->choice.slots5 = offset;
   }
-  else if (ideal_period < 9) {
+  else if (period < 9) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots8;
     nzpcsi0->periodicityAndOffset->choice.slots8 = offset;
   }
-  else if (ideal_period < 11) {
+  else if (period < 11) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots10;
     nzpcsi0->periodicityAndOffset->choice.slots10 = offset;
   }
-  else if (ideal_period < 17) {
+  else if (period < 17) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots16;
     nzpcsi0->periodicityAndOffset->choice.slots16 = offset;
   }
-  else if (ideal_period < 21) {
+  else if (period < 21) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots20;
     nzpcsi0->periodicityAndOffset->choice.slots20 = offset;
   }
-  else if (ideal_period < 41) {
+  else if (period < 41) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots40;
     nzpcsi0->periodicityAndOffset->choice.slots40 = offset;
   }
-  else if (ideal_period < 81) {
+  else if (period < 81) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots80;
     nzpcsi0->periodicityAndOffset->choice.slots80 = offset;
   }
-  else if (ideal_period < 161) {
+  else if (period < 161) {
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots160;
     nzpcsi0->periodicityAndOffset->choice.slots160 = offset;
   }
@@ -187,6 +189,53 @@ static void set_csirs_periodicity(NR_NZP_CSI_RS_Resource_t *nzpcsi0, int id, int
     nzpcsi0->periodicityAndOffset->present = NR_CSI_ResourcePeriodicityAndOffset_PR_slots320;
     AssertFatal(offset / 320 < nb_dl_slots_period, "Cannot allocate CSI-RS for BWP %d. Not enough resources for CSI-RS\n", id);
     nzpcsi0->periodicityAndOffset->choice.slots320 = (offset % 320) + (offset / 320);
+  }
+}
+
+static void config_csirs_for_tracking(const NR_ServingCellConfigCommon_t *servingcellconfigcommon,
+                                      uint64_t ssb_bitmap,
+                                      int curr_bwp)
+{
+  int n_ssb = 0;
+  for (int i = 0; i < 64; i++) {
+    if (((ssb_bitmap >> (63 - i)) & 0x01) == 0)
+      continue;
+    NR_NZP_CSI_RS_ResourceSet_t *nzpcsirs = calloc(1,sizeof(*nzpcsirs));
+    nzpcsirs->nzp_CSI_ResourceSetId = 4 + n_ssb;
+    nzpcsirs->repetition = calloc(1, sizeof(*nzpcsirs->repetition));
+    *nzpcsirs->repetition = NR_NZP_CSI_RS_ResourceSet__repetition_off;
+    nzpcsirs->trs_Info = calloc(1, sizeof(*nzpcsirs->trs_Info));
+    *nzpcsirs->trs_Info = NR_NZP_CSI_RS_ResourceSet__trs_Info_true;
+    for (int j = 0; j < 4; j++) {
+      NR_NZP_CSI_RS_ResourceId_t *nzpid = calloc(1,sizeof(*nzpid));
+      *nzpid = n_ssb * 4 + j + 1;
+      asn1cSeqAdd(&nzpcsirs->nzp_CSI_RS_Resources, nzpid);
+      NR_NZP_CSI_RS_Resource_t *nzpcsi = calloc(1,sizeof(*nzpcsi));
+      nzpcsi->nzp_CSI_RS_ResourceId = *nzpid;
+      NR_CSI_RS_ResourceMapping_t resourceMapping;
+      resourceMapping.nrofPorts = NR_CSI_RS_ResourceMapping__nrofPorts_p1;
+      resourceMapping.cdm_Type = NR_CSI_RS_ResourceMapping__cdm_Type_noCDM;
+      resourceMapping.density.present = NR_CSI_RS_ResourceMapping__density_PR_three;
+      resourceMapping.density.choice.three = (NULL_t) 0;
+      resourceMapping.freqBand.startingRB = 0;
+      resourceMapping.freqBand.nrofRBs = ((curr_bwp >> 2) + (curr_bwp % 4 > 0)) << 2;
+      resourceMapping.frequencyDomainAllocation.present = NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row1;
+      resourceMapping.frequencyDomainAllocation.choice.row1.buf = calloc(2, sizeof(uint8_t));
+      resourceMapping.frequencyDomainAllocation.choice.row2.size = 1;
+      resourceMapping.frequencyDomainAllocation.choice.row2.bits_unused = 4;
+      resourceMapping.frequencyDomainAllocation.choice.row2.buf[0] = 1 << (n_ssb % 4);
+      resourceMapping.firstOFDMSymbolInTimeDomain = (4 << (j & 0x01)) + (n_ssb & 0x01);
+      resourceMapping.firstOFDMSymbolInTimeDomain2 = NULL;
+      //TODO periodicity and offset, not sure yet
+      nzpcsi->resourceMapping = resourceMapping;
+      nzpcsi->scramblingID = *servingcellconfigcommon->physCellId;
+      nzpcsi->powerControlOffset = 0;
+      nzpcsi->powerControlOffsetSS = calloc(1,sizeof(*nzpcsi->powerControlOffsetSS));
+      *nzpcsi->powerControlOffsetSS = NR_NZP_CSI_RS_Resource__powerControlOffsetSS_db0;
+      nzpcsi->qcl_InfoPeriodicCSI_RS = calloc(1,sizeof(*nzpcsi->qcl_InfoPeriodicCSI_RS));
+      *nzpcsi->qcl_InfoPeriodicCSI_RS = n_ssb;
+      n_ssb++;
+    }
   }
 }
 
@@ -205,7 +254,7 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
     nzpcsirs0->nzp_CSI_ResourceSetId = id;
     NR_NZP_CSI_RS_ResourceId_t *nzpid0 = calloc(1,sizeof(*nzpid0));
     *nzpid0 = id;
-    asn1cSeqAdd(&nzpcsirs0->nzp_CSI_RS_Resources,nzpid0);
+    asn1cSeqAdd(&nzpcsirs0->nzp_CSI_RS_Resources, nzpid0);
     nzpcsirs0->repetition = NULL;
     nzpcsirs0->aperiodicTriggeringOffset = NULL;
     nzpcsirs0->trs_Info = NULL;
@@ -267,8 +316,7 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
     *nzpcsi0->powerControlOffsetSS = NR_NZP_CSI_RS_Resource__powerControlOffsetSS_db0;
     nzpcsi0->scramblingID = *servingcellconfigcommon->physCellId;
     set_csirs_periodicity(nzpcsi0, id, nb_slots_per_period, nb_dl_slots_period);
-    nzpcsi0->qcl_InfoPeriodicCSI_RS = calloc(1,sizeof(*nzpcsi0->qcl_InfoPeriodicCSI_RS));
-    *nzpcsi0->qcl_InfoPeriodicCSI_RS = 0;
+    nzpcsi0->qcl_InfoPeriodicCSI_RS = NULL;
     asn1cSeqAdd(&csi_MeasConfig->nzp_CSI_RS_ResourceToAddModList->list,nzpcsi0);
   }
   else {
@@ -1128,7 +1176,7 @@ static struct NR_SetupRelease_PUSCH_Config *config_pusch(NR_PUSCH_Config_t *pusc
   return setup_puschconfig;
 }
 
-static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, int bwp_Id, int dl_antenna_ports)
+static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, int bwp_Id, int dl_antenna_ports, bool do_csirs)
 {
   struct NR_SetupRelease_PDSCH_Config *setup_pdsch_Config = calloc(1,sizeof(*setup_pdsch_Config));
   setup_pdsch_Config->present = NR_SetupRelease_PDSCH_Config_PR_setup;
@@ -1168,6 +1216,17 @@ static struct NR_SetupRelease_PDSCH_Config *config_pdsch(uint64_t ssb_bitmap, in
     tcid->qcl_Type1.referenceSignal.choice.ssb = i;
     tcid->qcl_Type1.qcl_Type = NR_QCL_Info__qcl_Type_typeC;
   }
+  if (do_csirs) {
+    for (int j = 0; j < n_ssb; j++) {
+      asn1cSequenceAdd(pdsch_Config->tci_StatesToAddModList->list, NR_TCI_State_t, tcid);
+      tcid->tci_StateId = j + n_ssb;
+      tcid->qcl_Type1.cell = NULL;
+      asn1cCallocOne(tcid->qcl_Type1.bwp_Id, bwp_Id);
+      tcid->qcl_Type1.referenceSignal.present = NR_QCL_Info__referenceSignal_PR_csi_rs;
+      tcid->qcl_Type1.referenceSignal.choice.csi_rs = ((j + 1) * 4) + 1;
+      tcid->qcl_Type1.qcl_Type = NR_QCL_Info__qcl_Type_typeA;
+    }
+  }
   return setup_pdsch_Config;
 }
 
@@ -1177,6 +1236,7 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
                                const NR_UE_NR_Capability_t *uecap,
                                int dl_antenna_ports,
                                bool force_256qam_off,
+                               bool do_csirs,
                                int bwp_loop,
                                bool is_SA)
 {
@@ -1204,7 +1264,7 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   int curr_bwp = NRRIV2BW(bwp->bwp_Common->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
 
   uint64_t ssb_bitmap = get_ssb_bitmap(scc);
-  NR_ControlResourceSet_t *coreset = get_coreset_config(bwp->bwp_Id, curr_bwp, ssb_bitmap);
+  NR_ControlResourceSet_t *coreset = get_coreset_config(bwp->bwp_Id, curr_bwp, ssb_bitmap, do_csirs);
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet = coreset;
 
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->searchSpaceZero=NULL;
@@ -1249,7 +1309,7 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
   bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToReleaseList = NULL;
-  bwp->bwp_Dedicated->pdsch_Config = config_pdsch(ssb_bitmap, bwp->bwp_Id, dl_antenna_ports);
+  bwp->bwp_Dedicated->pdsch_Config = config_pdsch(ssb_bitmap, bwp->bwp_Id, dl_antenna_ports, do_csirs);
 
   set_dl_mcs_table(bwp->bwp_Common->genericParameters.subcarrierSpacing,
                    force_256qam_off ? NULL : uecap,
@@ -2140,7 +2200,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
       calloc(1, sizeof(*bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList));
 
   uint64_t bitmap = get_ssb_bitmap(scc);
-  NR_ControlResourceSet_t *coreset = get_coreset_config(0, curr_bwp, bitmap);
+  NR_ControlResourceSet_t *coreset = get_coreset_config(0, curr_bwp, bitmap, configuration->do_CSIRS);
 
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
 
@@ -2150,7 +2210,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 5, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
-  bwp_Dedicated->pdsch_Config = config_pdsch(bitmap, 0, pdsch_AntennaPorts);
+  bwp_Dedicated->pdsch_Config = config_pdsch(bitmap, 0, pdsch_AntennaPorts, configuration->do_CSIRS);
 
   SpCellConfig->spCellConfigDedicated->tag_Id = 0;
   SpCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig =
@@ -2170,7 +2230,7 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
         calloc(1, sizeof(*SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList));
     for (int bwp_loop = 0; bwp_loop < n_dl_bwp; bwp_loop++) {
       NR_BWP_Downlink_t *bwp = calloc(1, sizeof(*bwp));
-      config_downlinkBWP(bwp, scc, servingcellconfigdedicated, NULL, 0, false, bwp_loop, true);
+      config_downlinkBWP(bwp, scc, servingcellconfigdedicated, NULL, 0, false, configuration->do_CSIRS, bwp_loop, true);
       asn1cSeqAdd(&SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
     }
     SpCellConfig->spCellConfigDedicated->firstActiveDownlinkBWP_Id =
@@ -2638,7 +2698,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
       calloc(1, sizeof(*secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP));
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->pdcch_Config = NULL;
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->pdsch_Config =
-      config_pdsch(bitmap, 0, dl_antenna_ports);
+      config_pdsch(bitmap, 0, dl_antenna_ports, configuration->do_CSIRS);
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->initialDownlinkBWP->sps_Config =
       NULL; // calloc(1,sizeof(struct NR_SetupRelease_SPS_Config));
 
@@ -2689,6 +2749,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
                          uecap,
                          dl_antenna_ports,
                          configuration->force_256qam_off,
+                         configuration->do_CSIRS,
                          bwp_loop,
                          false);
       asn1cSeqAdd(&secondaryCellGroup->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list, bwp);
