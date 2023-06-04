@@ -935,7 +935,7 @@ static void add_drb_am(int is_gnb, int rnti, struct NR_DRB_ToAddMod *s,
   int t_reordering = -1;
   if (s->pdcp_Config->t_Reordering != NULL) {
     t_reordering = decode_t_reordering(*s->pdcp_Config->t_Reordering);
-    printf("\n\n\n\n Came to line 954 add_drb_am and t_reordering is %d\n\n\n\n", t_reordering);
+    //printf("\n\n\n\n Came to line 954 add_drb_am and t_reordering is %d\n\n\n\n", t_reordering);
   }
 
   if (s->pdcp_Config->drb != NULL
