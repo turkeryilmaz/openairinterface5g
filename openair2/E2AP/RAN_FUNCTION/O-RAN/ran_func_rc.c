@@ -1,7 +1,7 @@
 #include "ran_func_rc.h"
-#include "../flexric/test/rnd/fill_rnd_data_rc.h"
-#include "../flexric/src/sm/rc_sm/ie/ir/lst_ran_param.h"
-#include "../flexric/src/sm/rc_sm/ie/ir/ran_param_list.h"
+#include "../../flexric/test/rnd/fill_rnd_data_rc.h"
+#include "../../flexric/src/sm/rc_sm/ie/ir/lst_ran_param.h"
+#include "../../flexric/src/sm/rc_sm/ie/ir/ran_param_list.h"
 #include <assert.h>
 #include <stdio.h>
 #include <pthread.h>

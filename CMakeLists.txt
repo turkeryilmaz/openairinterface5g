@@ -320,10 +320,18 @@ if(E2_AGENT)
   if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openair2/E2AP/flexric/CMakeLists.txt)
     message(STATUS "E2AP submoduled not detected, therefore $git submodule init && git submodule update.")
     execute_process(COMMAND git submodule init)
-    execute_process(COMMAND git submodule update)
+    execute_process(COMMAND git submodule update) 
   else()
     message(STATUS "E2AP submodule detected.")
   endif()
+
+  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openair2/E2AP/flexric/CMakeLists.txt)
+    message(FATAL_ERROR "The submodules for E2 agent were not downloaded!")
+  endif()
+
+  execute_process(COMMAND git submodule foreach git pull) 
+  #execute_process(COMMAND git submodule update) 
+
   set(E2AP_DIR ${OPENAIR2_DIR}/E2AP)
   add_subdirectory ("${E2AP_DIR}")
 endif()
@@ -1570,8 +1578,8 @@ add_library(L2
 target_link_libraries(L2 PRIVATE x2ap s1ap lte_rrc m2ap)
 target_link_libraries(L2 PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 if(E2_AGENT)
-target_link_libraries(L2 PUBLIC e2_agent e2_ran_func)
-target_compile_definitions(L2 PRIVATE E2_AGENT)
+  target_link_libraries(L2 PUBLIC e2_agent e2_ran_func)
+  target_compile_definitions(L2 PRIVATE E2_AGENT)
 endif()
 
 
@@ -1605,8 +1613,8 @@ target_link_libraries(e1_pdcp_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
 if(E2_AGENT)
-target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
-target_compile_definitions(L2_NR PRIVATE E2_AGENT)
+  target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
+  target_compile_definitions(L2_NR PRIVATE E2_AGENT)
 endif()
 
 
@@ -2190,7 +2198,7 @@ target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 if(E2_AGENT)
-target_compile_definitions(lte-softmodem PRIVATE E2_AGENT)
+  target_compile_definitions(lte-softmodem PRIVATE E2_AGENT)
 endif()
 
 add_executable(oairu
@@ -2305,7 +2313,7 @@ endif()
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
 if(E2_AGENT)
-target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
+  target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
 endif()
 
 

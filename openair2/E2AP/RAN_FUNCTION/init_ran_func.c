@@ -1,13 +1,13 @@
 #include "init_ran_func.h"
 #include "../flexric/src/agent/e2_agent_api.h"
-#include "ran_func_mac.h"
-#include "ran_func_rlc.h"
-#include "ran_func_pdcp.h"
-#include "ran_func_slice.h"
-#include "ran_func_tc.h"
-#include "ran_func_gtp.h"
-#include "ran_func_kpm.h"
-#include "ran_func_rc.h"
+#include "CUSTOMIZED/ran_func_mac.h"
+#include "CUSTOMIZED/ran_func_rlc.h"
+#include "CUSTOMIZED/ran_func_pdcp.h"
+#include "CUSTOMIZED/ran_func_slice.h"
+#include "CUSTOMIZED/ran_func_tc.h"
+#include "CUSTOMIZED/ran_func_gtp.h"
+#include "O-RAN/ran_func_kpm.h"
+#include "O-RAN/ran_func_rc.h"
 
 static
 void init_read_ind_tbl(read_ind_fp (*read_ind_tbl)[SM_AGENT_IF_READ_V0_END])
@@ -70,6 +70,4 @@ sm_io_ag_ran_t init_ran_func_ag(void)
 
   return io;
 }
-
-
 

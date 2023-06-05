@@ -1,5 +1,5 @@
 #include "ran_func_tc.h"
-#include "../flexric/test/rnd/fill_rnd_data_tc.h"
+#include "../../flexric/test/rnd/fill_rnd_data_tc.h"
 #include <assert.h>
 
 void read_tc_sm(void* data)
