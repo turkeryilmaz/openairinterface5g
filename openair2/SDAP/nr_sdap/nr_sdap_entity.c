@@ -25,6 +25,16 @@
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
 
+#include "openair2/RRC/NR/rrc_gNB_UE_context.h"
+#include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
+
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <netinet/ip_icmp.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -55,6 +65,49 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
   LOG_D(SDAP, "QFI: %u\n R: %u\n D/C: %u\n", ctrl_pdu.QFI, ctrl_pdu.R, ctrl_pdu.DC);
   return;
 }
+
+static int get_single_ue_rnti(void)
+{
+  NR_UE_info_t *ue = NULL;
+  UE_iterator(RC.nrmac[0]->UE_info.list, it) {
+      if (it && ue)
+        return -1;
+      if (it)
+        ue = it;
+    }
+    if (!ue)
+      return -1;
+
+    // verify it exists in RRC as well
+  rrc_gNB_ue_context_t *rrcue = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], ue->rnti);
+  if (!rrcue)
+      return -1;
+
+  return ue->rnti;
+}
+
+static
+pthread_once_t once_bearer = PTHREAD_ONCE_INIT;
+// Forward declaration. Forget my sins.
+void rrc_gNB_trigger_new_bearer(int rnti);
+
+static
+uint64_t cnt = 0;
+
+static
+void create_bearer(void)
+{
+  int const rnti = get_single_ue_rnti();
+  assert(rnti > 0 && "Error finding the rnti");
+  // verify it exists in RRC as well
+  rrc_gNB_ue_context_t *rrcue = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], rnti);
+  if(!rrcue)
+    printf("Could not find the UE in RRC \n");
+//  assert(!rrcue && "Could not find UE");
+
+  rrc_gNB_trigger_new_bearer(rnti);
+}
+
 
 static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                               protocol_ctxt_t *ctxt_p,
@@ -92,7 +145,23 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   if(!pdcp_ent_has_sdap){
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
-    ret = nr_pdcp_data_req_drb(ctxt_p,
+
+    // mir 
+    // Naive L4/L3 packet classifier
+  struct iphdr* hdr = (struct iphdr*)sdu_buffer;
+
+  if(hdr->protocol == IPPROTO_TCP){
+    printf("TCP packet detected \n");
+  } else if(hdr->protocol == IPPROTO_UDP){
+    printf("UDP packet detected \n");
+  } else if(hdr->protocol == IPPROTO_ICMP){
+    printf("Ping packet detected \n");
+    pthread_once(&once_bearer, create_bearer);
+    sdap_drb_id += 1; //cnt%2; 
+    //cnt++;
+  }
+
+  ret = nr_pdcp_data_req_drb(ctxt_p,
                                srb_flag,
                                sdap_drb_id,
                                mui,
