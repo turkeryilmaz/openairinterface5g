@@ -316,26 +316,9 @@ set(E2_AGENT "OFF" CACHE STRING "O-RAN E2 Agent")
 set_property(CACHE E2_AGENT PROPERTY STRINGS "ON" "OFF")
 
 if(E2_AGENT)
-  # Check that the submodule was 
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openair2/E2AP/flexric/CMakeLists.txt)
-    message(STATUS "E2AP submoduled not detected, therefore $git submodule init && git submodule update.")
-    execute_process(COMMAND git submodule init)
-    execute_process(COMMAND git submodule update) 
-  else()
-    message(STATUS "E2AP submodule detected.")
-  endif()
-
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openair2/E2AP/flexric/CMakeLists.txt)
-    message(FATAL_ERROR "The submodules for E2 agent were not downloaded!")
-  endif()
-
-  execute_process(COMMAND git submodule foreach git pull) 
-  #execute_process(COMMAND git submodule update) 
-
   set(E2AP_DIR ${OPENAIR2_DIR}/E2AP)
   add_subdirectory ("${E2AP_DIR}")
 endif()
-
 
 ##################################################
 # ASN.1 grammar C code generation & dependencies #

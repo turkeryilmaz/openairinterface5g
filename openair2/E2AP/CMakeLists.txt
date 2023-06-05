@@ -1,3 +1,16 @@
+# Check that the submodule exists or init+update if not 
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/flexric/CMakeLists.txt)
+  message(STATUS "E2AP submoduled not detected, therefore $git submodule init && git submodule update.")
+  execute_process(COMMAND git submodule init)
+  execute_process(COMMAND git submodule update) 
+else()
+  message(STATUS "E2AP submodule detected.")
+endif()
+
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/flexric/CMakeLists.txt)
+  message(FATAL_ERROR "The submodules for E2 agent were not downloaded!")
+endif()
+
 
 set(BUILDING_LIBRARY "STATIC" CACHE STRING "Static or dynamic library")
 set_property(CACHE BUILDING_LIBRARY PROPERTY STRINGS "STATIC" "DYNAMIC")
