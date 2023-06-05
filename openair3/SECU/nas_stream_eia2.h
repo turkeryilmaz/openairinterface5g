@@ -19,21 +19,11 @@
  *      contact@openairinterface.org
  */
 
-/*! \file f1ap_decoder.h
- * \brief f1ap pdu decode procedures
- * \author EURECOM/NTUST
- * \date 2018
- * \version 0.1
- * \company Eurecom
- * \email: navid.nikaein@eurecom.fr, bing-kai.hong@eurecom.fr
- * \note
- * \warning
- */
+#ifndef OAI_NAS_STREAM_EIA2_H
+#define OAI_NAS_STREAM_EIA2_H
 
-#ifndef F1AP_ENB_ENCODER_H_
-#define F1AP_ENB_ENCODER_H_
+#include "secu_defs.h"
 
-int f1ap_decode_pdu(F1AP_F1AP_PDU_t *pdu, const uint8_t *const buffer, uint32_t length)
-__attribute__ ((warn_unused_result));
+void nas_stream_encrypt_eia2(nas_stream_cipher_t const* stream_cipher, uint8_t out[4]);
 
-#endif /* F1AP_ENB_ENCODER_H_ */
+#endif

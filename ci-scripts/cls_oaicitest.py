@@ -49,6 +49,7 @@ import concurrent.futures
 #import our libs
 import helpreadme as HELP
 import constants as CONST
+import cls_cluster as OC
 import sshconnection
 
 import cls_module_ue
@@ -230,7 +231,6 @@ class OaiCiTest():
 				messages.append(f'{uename}: initialized' if f.result() else f'{uename}: ERROR during Initialization')
 			[f.result() for f in futures]
 		HTML.CreateHtmlTestRowQueue('N/A', 'OK', messages)
-
 
 	def InitializeOAIUE(self,HTML,RAN,EPC,CONTAINERS):
 		if self.UEIPAddress == '' or self.UEUserName == '' or self.UEPassword == '' or self.UESourceCodePath == '':
@@ -505,54 +505,33 @@ class OaiCiTest():
 
 	def Ping_common(self, EPC, ue, RAN):
 		# Launch ping on the EPC side (true for ltebox and old open-air-cn)
-		# But for OAI-Rel14-CUPS, we launch from python executor
 		ping_status = 0
 		ueIP = ue.getIP()
 		if not ueIP:
 			return (False, f"UE {ue.getName()} has no IP address")
-		launchFromEpc = False
 		ping_log_file = f'ping_{self.testCase_id}_{ue.getName()}.log'
-		if re.match('OAI-Rel14-CUPS', EPC.Type, re.IGNORECASE):
-			launchFromEpc = False
 		ping_time = re.findall("-c *(\d+)",str(self.ping_args))
-		if launchFromEpc:
-			SSH = sshconnection.SSHConnection()
-			SSH.open(EPC.IPAddress, EPC.UserName, EPC.Password)
-			SSH.command('cd ' + EPC.SourceCodePath, '\$', 5)
-			SSH.command('cd scripts', '\$', 5)
-			# In case of a docker-based deployment, we need to ping from the trf-gen container
-			launchFromTrfContainer = False
-			if (re.match('OAI-Rel14-Docker', EPC.Type, re.IGNORECASE)) or (re.match('OAICN5G', EPC.Type, re.IGNORECASE)):
-				launchFromTrfContainer = True
-			if launchFromTrfContainer:
-				ping_status = SSH.command(f'docker exec -it prod-trf-gen /bin/bash -c "ping {self.ping_args} {ueIP}" 2>&1 | tee {ping_log_file}', '\$', int(ping_time[0])*1.5)
-			else:
-				ping_status = SSH.command(f'stdbuf -o0 ping {self.ping_args} {ueIP} 2>&1 | stdbuf -o0 tee {ping_log_file}', '\$', int(ping_time[0])*1.5)
-			#copy the ping log file to have it locally for analysis (ping stats)
-			SSH.copyin(EPC.IPAddress, EPC.UserName, EPC.Password, EPC.SourceCodePath + '/scripts/{ping_log_file}', '.')
-			SSH.close()
+		#target address is different depending on EPC type
+		if re.match('OAI-Rel14-Docker', EPC.Type, re.IGNORECASE):
+			Target = EPC.MmeIPAddress
+		elif re.match('OAICN5G', EPC.Type, re.IGNORECASE):
+			Target = EPC.MmeIPAddress
+		elif re.match('OC-OAI-CN5G', EPC.Type, re.IGNORECASE):
+			Target = "172.21.6.100"
 		else:
-			#target address is different depending on EPC type
-			if re.match('OAI-Rel14-Docker', EPC.Type, re.IGNORECASE):
-				Target = EPC.MmeIPAddress
-			elif re.match('OAICN5G', EPC.Type, re.IGNORECASE):
-				Target = EPC.MmeIPAddress
-			elif re.match('OC-OAI-CN5G', EPC.Type, re.IGNORECASE):
-				Target = "172.21.6.100"
-			else:
-				Target = EPC.IPAddress
-			#ping from module NIC rather than IP address to make sure round trip is over the air
-			interface = f'-I {ue.getIFName()}' if ue.getIFName() else ''
-			ping_cmd = f'{ue.getCmdPrefix()} ping {interface} {self.ping_args} {Target} &> /tmp/{ping_log_file}'
-			cmd = cls_cmd.getConnection(ue.getHost())
-			response = cmd.run(ping_cmd, timeout=int(ping_time[0])*1.5)
-			if response.returncode != 0:
-				ping_status = -1
-			else:
-				#copy the ping log file to have it locally for analysis (ping stats)
-				cmd.copyin(src=f'/tmp/{ping_log_file}', tgt=ping_log_file)
+			Target = EPC.IPAddress
+		#ping from module NIC rather than IP address to make sure round trip is over the air
+		interface = f'-I {ue.getIFName()}' if ue.getIFName() else ''
+		ping_cmd = f'{ue.getCmdPrefix()} ping {interface} {self.ping_args} {Target} &> /tmp/{ping_log_file}'
+		cmd = cls_cmd.getConnection(ue.getHost())
+		response = cmd.run(ping_cmd, timeout=int(ping_time[0])*1.5)
+		if response.returncode != 0:
+			ping_status = -1
+		else:
+			#copy the ping log file to have it locally for analysis (ping stats)
+			cmd.copyin(src=f'/tmp/{ping_log_file}', tgt=ping_log_file)
 
-			cmd.close()
+		cmd.close()
 
 		# TIMEOUT CASE
 		ue_header = f'UE {ue.getName()} ({ueIP})'
@@ -995,7 +974,9 @@ class OaiCiTest():
 			cn_target_ip = result.group('trf_ip_addr')
 			SSH.close()
 			cn_iperf_prefix = "docker exec  prod-trf-gen" # -w /iperf-2.0.13  necessary?
-		else: # ltebox, sabox
+		elif (re.match('OC-OAI-CN5G', EPC.Type, re.IGNORECASE)):
+			cn_target_ip = "172.21.6.102"
+		else: # lteboix, sabox
 			cn_target_ip = "192.172.0.1"
 			cn_iperf_prefix = ""
 
@@ -1076,6 +1057,20 @@ class OaiCiTest():
 			cmd.close()
 
 			self.Iperf_analyzeV2BIDIR(lock, ue.getHost(), ue.getName(), statusQueue, server_filename, client_filename)
+
+		elif self.iperf_direction == "IPERF3":
+			cmd = cls_cmd.getConnection(ue.getHost())
+			cmd.run(f'rm /tmp/{server_filename}', reportNonZero=False)
+			port = f'{5002+idx}'
+			cmd.run(f'{ue.getCmdPrefix()} iperf3 -c {cn_target_ip} -p {port} {iperf_opt} --get-server-output &> /tmp/{server_filename}', timeout=iperf_time*1.5)
+			cmd.copyin(f'/tmp/{server_filename}', server_filename)
+			cmd.close()
+			if udpIperf:
+				self.Iperf_analyzeV2Server(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, server_filename, 1)
+			else:
+				cmd = cls_cmd.getConnection(EPC.IPAddress)
+				self.Iperf_analyzeV2TCPOutput(lock, ue.getIP(), ue.getName(), statusQueue, iperf_opt, EPC, cmd, f'/tmp/{server_filename}')
+				cmd.close()
 
 		else :
 			raise Exception("Incorrect or missing IPERF direction in XML")
@@ -1216,7 +1211,6 @@ class OaiCiTest():
 		#result = re.search('iperf version 2.0.10', str(iperfStdout.strip()))
 		#if result is not None:
 		#	dummyIperfVersion = '2.0.10'
-
 		multi_jobs = []
 		ue_num = len(ues)
 		i = 0

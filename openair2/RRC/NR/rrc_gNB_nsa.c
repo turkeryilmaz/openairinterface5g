@@ -36,6 +36,8 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_CG-Config.h"
 //#include "NR_SRB-ToAddModList.h"
+#include "uper_encoder.h"
+#include "uper_decoder.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
 #include "openair2/RRC/LTE/rrc_eNB_GTPV1U.h"
@@ -43,7 +45,9 @@
 #include "executables/nr-softmodem.h"
 #include <openair2/RRC/NR/rrc_gNB_UE_context.h>
 #include <openair3/ocp-gtpu/gtp_itf.h>
-#include "UTIL/OSA/osa_defs.h"
+#include "openair3/SECU/secu_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include <openair2/RRC/NR/nr_rrc_proto.h>
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 #include "MESSAGES/asn1_msg.h"
@@ -121,8 +125,8 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
   gtpv1u_enb_create_tunnel_req_t  create_tunnel_req;
   gtpv1u_enb_create_tunnel_resp_t create_tunnel_resp;
   protocol_ctxt_t ctxt={0};
-  unsigned char *kUPenc = NULL;
-  unsigned char *kUPint = NULL;
+  uint8_t kUPenc[16] = {0};
+  uint8_t kUPint[16] = {0};
   int i;
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
@@ -212,8 +216,8 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
     LOG_I(RRC, "selecting integrity algorithm %d\n", UE->integrity_algorithm);
 
     /* derive UP security key */
-    nr_derive_key_up_enc(UE->ciphering_algorithm, UE->kgnb, &kUPenc);
-    nr_derive_key_up_int(UE->integrity_algorithm, UE->kgnb, &kUPint);
+    nr_derive_key(UP_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kUPenc);
+    nr_derive_key(UP_INT_ALG, UE->integrity_algorithm, UE->kgnb, kUPint);
 
     e_NR_CipheringAlgorithm cipher_algo;
     switch (UE->ciphering_algorithm) {
