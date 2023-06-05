@@ -86,23 +86,8 @@ if(E2AP_ENCODING STREQUAL "FLATBUFFERS")
   find_library(FlatCC
     NAMES flatccrt_d
     HINTS ${FlatCC_LIB_DIR} 
-    #"~/workspace/flatcc/lib/"
     )
 endif()
-
-###
-# set install options
-###
-#set(NEAR_RIC_INSTALL "FALSE" CACHE STRING "NEAR real time RIC install selection")
-#set_property(CACHE NEAR_RIC_INSTALL PROPERTY STRINGS "TRUE" "FALSE")
-#set(EMU_AGENT_INSTALL "FALSE" CACHE STRING "emulator of E2 agent")
-#set_property(CACHE EMU_AGENT_INSTALL PROPERTY STRINGS "TRUE" "FALSE")
-#set(XAPP_C_INSTALL "FALSE" CACHE STRING "XAPP in C install selection")
-#set_property(CACHE XAPP_C_INSTALL PROPERTY STRINGS "TRUE" "FALSE")
-#set(UNIT_TEST "TRUE" CACHE STRING "build test cases")
-#set_property(CACHE UNIT_TEST PROPERTY STRINGS "TRUE" "FALSE")
-
-
 
 include_directories(flexric/src)
 add_subdirectory(flexric/src/agent)
@@ -110,5 +95,4 @@ add_subdirectory(flexric/src/lib)
 add_subdirectory(flexric/src/sm)
 add_subdirectory(flexric/src/util)
 add_subdirectory(RAN_FUNCTION)
-
 
