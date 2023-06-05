@@ -209,7 +209,7 @@ void nr_csi_meas_reporting(int Mod_idP,
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-    if ((sched_ctrl->rrc_processing_timer > 0) || (sched_ctrl->ul_failure==1 && get_softmodem_params()->phy_test==0)) {
+    if ((sched_ctrl->rrc_processing_timer > 0) || (sched_ctrl->ul_failure && !get_softmodem_params()->phy_test)) {
       continue;
     }
     const NR_CSI_MeasConfig_t *csi_measconfig = ul_bwp->csi_MeasConfig;
@@ -821,6 +821,7 @@ static void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           evaluate_rsrp_report(UE,sched_ctrl,csi_report_id,payload,&cumul_bits,reportQuantity_type);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_CQI:
+          sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.print_report = true;
           cri_bitlen = csi_report->csi_meas_bitlen.cri_bitlen;
           if(cri_bitlen)
             evaluate_cri_report(payload,cri_bitlen,cumul_bits,sched_ctrl);
@@ -834,6 +835,7 @@ static void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,cqi_table);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_PMI_CQI:
+          sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.print_report = true;
           cri_bitlen = csi_report->csi_meas_bitlen.cri_bitlen;
           if(cri_bitlen)
             evaluate_cri_report(payload,cri_bitlen,cumul_bits,sched_ctrl);
@@ -850,6 +852,7 @@ static void extract_pucch_csi_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
           evaluate_cqi_report(payload,csi_report,cumul_bits,r_index,UE,cqi_table);
           break;
         case NR_CSI_ReportConfig__reportQuantity_PR_cri_RI_LI_PMI_CQI:
+          sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.print_report = true;
           cri_bitlen = csi_report->csi_meas_bitlen.cri_bitlen;
           if(cri_bitlen)
             evaluate_cri_report(payload,cri_bitlen,cumul_bits,sched_ctrl);
@@ -1216,7 +1219,8 @@ void nr_sr_reporting(gNB_MAC_INST *nrmac, frame_t SFN, sub_frame_t slot)
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
     const int n_slots_frame = nr_slots_per_frame[ul_bwp->scs];
-    if (sched_ctrl->ul_failure==1 || sched_ctrl->rrc_processing_timer>0) continue;
+    if (sched_ctrl->ul_failure || sched_ctrl->rrc_processing_timer > 0)
+      continue;
     NR_PUCCH_Config_t *pucch_Config = ul_bwp->pucch_Config;
 
     if (!pucch_Config || !pucch_Config->schedulingRequestResourceToAddModList)

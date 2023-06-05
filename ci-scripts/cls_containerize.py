@@ -800,7 +800,7 @@ class Containerize():
 			logging.debug('Removing test images locally')
 			myCmd = cls_cmd.LocalCmd()
 
-		imageNames = ['oai-enb', 'oai-gnb', 'oai-lte-ue', 'oai-nr-ue', 'oai-lte-ru', 'oai-nr-cuup']
+		imageNames = ['oai-enb', 'oai-gnb', 'oai-lte-ue', 'oai-nr-ue', 'oai-lte-ru', 'oai-nr-cuup', 'oai-gnb-aw2s']
 		for image in imageNames:
 			imageTag = ImageTagToUse(image, self.ranCommitID, self.ranBranch, self.ranAllowMerge)
 			cmd = f'docker rmi oai-ci/{imageTag}'
@@ -879,8 +879,8 @@ class Containerize():
 					cnt += 1
 			mySSH.command('docker inspect --format="ImageUsed: {{.Config.Image}}" ' + containerName, '\$', 5)
 			for stdoutLine in mySSH.getBefore().split('\n'):
-				if stdoutLine.count('ImageUsed: porcepix'):
-					usedImage = stdoutLine.replace('ImageUsed: porcepix', 'porcepix').strip()
+				if stdoutLine.count('ImageUsed: oai-ci'):
+					usedImage = stdoutLine.replace('ImageUsed: oai-ci', 'oai-ci').strip()
 					logging.debug('Used image is ' + usedImage)
 			if usedImage != '':
 				mySSH.command('docker image inspect --format "* Size     = {{.Size}} bytes\n* Creation = {{.Created}}\n* Id       = {{.Id}}" ' + usedImage, '\$', 5, silent=True)

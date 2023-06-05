@@ -19,32 +19,12 @@
  *      contact@openairinterface.org
  */
 
-#ifndef OSA_INTERNAL_H_
-#define OSA_INTERNAL_H_
+#ifndef AES_128_ECB_OAI_H
+#define AES_128_ECB_OAI_H
 
-#define FC_KENB         (0x11)
-#define FC_NH           (0x12)
-#define FC_KENB_STAR    (0x13)
-/* 33401 #A.7 Algorithm for key derivation function.
- * This FC should be used for:
- * - NAS Encryption algorithm
- * - NAS Integrity algorithm
- * - RRC Encryption algorithm
- * - RRC Integrity algorithm
- * - User Plane Encryption algorithm
- */
-#define FC_ALG_KEY_DER  (0x15)
-#define FC_KASME_TO_CK  (0x16)
+#include "aes_128.h"
+#include "common/utils/ds/byte_array.h"
 
-#define NR_FC_ALG_KEY_DER  (0x69)
-#define NR_FC_ALG_KEY_NG_RAN_STAR_DER  (0x70)
+void aes_128_ecb(const aes_128_t* k_iv, byte_array_t msg, size_t len_out, uint8_t out[len_out]);
 
-#ifndef hton_int32
-# define hton_int32(x)   \
-(((x & 0x000000FF) << 24) | ((x & 0x0000FF00) << 8) |  \
-((x & 0x00FF0000) >> 8) | ((x & 0xFF000000) >> 24))
 #endif
-
-// #define SECU_DEBUG
-
-#endif /* OSA_INTERNAL_H_ */

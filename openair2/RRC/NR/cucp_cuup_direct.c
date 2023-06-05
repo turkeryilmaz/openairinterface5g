@@ -29,7 +29,8 @@
 #include "nr_rrc_proto.h"
 #include "nr_rrc_extern.h"
 #include "openair2/COMMON/e1ap_messages_types.h"
-#include "UTIL/OSA/osa_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include "nr_pdcp/nr_pdcp_entity.h"
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_e1_api.h"
 #include <openair2/RRC/NR/rrc_gNB_UE_context.h>
@@ -38,6 +39,7 @@
 #include "common/ran_context.h"
 #include "openair2/F1AP/f1ap_common.h"
 #include "openair2/E1AP/e1ap_common.h"
+
 extern RAN_CONTEXT_t RC;
 
 void fill_e1ap_bearer_setup_resp(e1ap_bearer_setup_resp_t *resp,
@@ -99,12 +101,11 @@ void CU_update_UP_DL_tunnel(e1ap_bearer_setup_req_t *const req, instance_t insta
 }
 
 static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
-                                  rrc_gNB_ue_context_t  *ue_context_p,
+                                  rrc_gNB_ue_context_t *ue_context_p,
                                   e1ap_bearer_setup_req_t *const req,
                                   NR_DRB_ToAddModList_t *DRB_configList,
-                                  NR_SRB_ToAddModList_t *SRB_configList,
-                                  instance_t instance) {
-
+                                  instance_t instance)
+{
   gtpv1u_gnb_create_tunnel_req_t  create_tunnel_req={0};
   gtpv1u_gnb_create_tunnel_resp_t create_tunnel_resp={0};
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
@@ -134,24 +135,22 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
 
   nr_rrc_gNB_process_GTPV1U_CREATE_TUNNEL_RESP(ctxt_p, &create_tunnel_resp, 0);
 
-  uint8_t *kRRCenc = NULL;
-  uint8_t *kRRCint = NULL;
-  uint8_t *kUPenc = NULL;
-  uint8_t *kUPint = NULL;
+  uint8_t kRRCenc[16] = {0};
+  uint8_t kRRCint[16] = {0};
+  uint8_t kUPenc[16] = {0};
+  uint8_t kUPint[16] = {0};
   /* Derive the keys from kgnb */
   if (DRB_configList != NULL) {
-    nr_derive_key_up_enc(UE->ciphering_algorithm, UE->kgnb, &kUPenc);
-    nr_derive_key_up_int(UE->integrity_algorithm, UE->kgnb, &kUPint);
+    nr_derive_key(UP_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kUPenc);
+    nr_derive_key(UP_INT_ALG, UE->integrity_algorithm, UE->kgnb, kUPint);
   }
 
-  nr_derive_key_rrc_enc(UE->ciphering_algorithm, UE->kgnb, &kRRCenc);
-  nr_derive_key_rrc_int(UE->integrity_algorithm, UE->kgnb, &kRRCint);
+  nr_derive_key(RRC_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kRRCenc);
+  nr_derive_key(RRC_INT_ALG, UE->integrity_algorithm, UE->kgnb, kRRCint);
+
   /* Refresh SRBs/DRBs */
 
-  LOG_D(NR_RRC, "Configuring PDCP DRBs/SRBs for UE %x\n", UE->rnti);
-
-  nr_pdcp_add_srbs(ctxt_p->enb_flag, ctxt_p->rntiMaybeUEid, SRB_configList, (UE->integrity_algorithm << 4) | UE->ciphering_algorithm, kRRCenc, kRRCint);
-
+  LOG_D(NR_RRC, "Configuring PDCP DRBs for UE %x\n", UE->rnti);
   nr_pdcp_add_drbs(ctxt_p->enb_flag,
                    ctxt_p->rntiMaybeUEid,
                    0,
@@ -164,21 +163,6 @@ static int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
   return ret;
 }
 
-static NR_SRB_ToAddModList_t **generateSRB2_confList(gNB_RRC_UE_t *ue, NR_SRB_ToAddModList_t *SRB_configList, uint8_t xid)
-{
-  NR_SRB_ToAddModList_t **SRB_configList2 = NULL;
-
-  SRB_configList2 = &ue->SRB_configList2[xid];
-  if (*SRB_configList2 == NULL) {
-    *SRB_configList2 = CALLOC(1, sizeof(**SRB_configList2));
-    NR_SRB_ToAddMod_t *SRB2_config = CALLOC(1, sizeof(*SRB2_config));
-    SRB2_config->srb_Identity = 2;
-    asn1cSeqAdd(&(*SRB_configList2)->list, SRB2_config);
-    asn1cSeqAdd(&SRB_configList->list, SRB2_config);
-  }
-
-  return SRB_configList2;
-}
 static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, instance_t instance, uint8_t xid)
 {
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[instance], req->rnti);
@@ -187,29 +171,45 @@ static void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, UE->rnti, 0, 0, 0);
 
   fill_DRB_configList(&ctxt, ue_context_p, xid);
+  e1ap_bearer_setup_resp_t resp = {0};
+  resp.numPDUSessions = req->numPDUSessions;
+  for (int i = 0; i < resp.numPDUSessions; ++i) {
+    resp.pduSession[i].numDRBSetup = req->pduSession[i].numDRB2Setup;
+    for (int j = 0; j < req->pduSession[i].numDRB2Setup; j++) {
+      DRB_nGRAN_to_setup_t *req_drb = req->pduSession[i].DRBnGRanList + j;
+      DRB_nGRAN_setup_t *resp_drb = resp.pduSession[i].DRBnGRanList + j;
+      resp_drb->id = req_drb->id;
+      resp_drb->numQosFlowSetup = req_drb->numQosFlow2Setup;
+      for (int k = 0; k < resp_drb->numQosFlowSetup; k++)
+        resp_drb->qosFlows[k].id = req_drb->qosFlows[k].id;
+    }
+  }
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
-  // Fixme: xid not random, but almost!
-  NR_SRB_ToAddModList_t **SRB_configList2 = generateSRB2_confList(UE, UE->SRB_configList, UE->pduSession[0].xid);
   // GTP tunnel for UL
-  int ret = drb_config_gtpu_create(&ctxt, ue_context_p, req, UE->DRB_configList, *SRB_configList2, rrc->e1_inst);
+  int ret = drb_config_gtpu_create(&ctxt, ue_context_p, req, UE->DRB_configList, rrc->e1_inst);
   if (ret < 0) AssertFatal(false, "Unable to configure DRB or to create GTP Tunnel\n");
 
+  // Used to store teids: if monolithic, will simply be NULL
   if(!NODE_IS_CU(RC.nrrrc[ctxt.module_id]->node_type)) {
-    rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p, NULL);
+    // intentionally empty
   } else {
-    e1ap_bearer_setup_resp_t resp; // Used to store teids
     int remote_port = RC.nrrrc[ctxt.module_id]->eth_params_s.remote_portd;
     in_addr_t my_addr = inet_addr(RC.nrrrc[ctxt.module_id]->eth_params_s.my_addr);
     instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
     // GTP tunnel for DL
     fill_e1ap_bearer_setup_resp(&resp, req, gtpInst, UE->rnti, remote_port, my_addr);
-
-    prepare_and_send_ue_context_modification_f1(ue_context_p, &resp);
   }
+  // actually, we should receive the corresponding context setup response
+  // message at the RRC and always react to this one. So in the following, we
+  // just call the corresponding message handler
+  prepare_and_send_ue_context_modification_f1(ue_context_p, &resp);
 }
 
 static void cucp_cuup_bearer_context_mod_direct(e1ap_bearer_setup_req_t *const req, instance_t instance, uint8_t xid) {
+  // only update GTP tunnels if it is really a CU
+  if (!NODE_IS_CU(RC.nrrrc[0]->node_type))
+    return;
   instance_t gtpInst = getCxt(CUtype, instance)->gtpInst;
   CU_update_UP_DL_tunnel(req, gtpInst, req->rnti);
 }

@@ -28,6 +28,7 @@
  */
 
 #include "platform_types.h"
+#include "uper_decoder.h"
 
 /* MAC */
 #include "nr_mac_gNB.h"
@@ -1796,8 +1797,7 @@ static void nr_generate_Msg3_dcch_dtch_response(module_id_t module_idP,
   configure_UE_BWP(nr_mac, scc, sched_ctrl, NULL, UE, 0, 0);
 
   // Reset uplink failure flags/counters/timers at MAC so gNB will resume again scheduling resources for this UE
-  sched_ctrl->pusch_consecutive_dtx_cnt = 0;
-  sched_ctrl->ul_failure = 0;
+  nr_mac_reset_ul_failure(sched_ctrl);
 }
 
 static void nr_generate_Msg4(module_id_t module_idP,
@@ -2060,6 +2060,10 @@ static void nr_generate_Msg4(module_id_t module_idP,
 static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, sub_frame_t slot, NR_RA_t *ra)
 {
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[module_id]->UE_info, ra->rnti);
+  if (!UE) {
+    LOG_E(NR_MAC, "Cannot check Msg4 ACK/NACK, rnti %04x not in the table\n", ra->rnti);
+    return;
+  }
   const int current_harq_pid = ra->harq_pid;
 
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
