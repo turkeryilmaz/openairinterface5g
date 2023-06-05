@@ -539,6 +539,8 @@ init_SI(
   }
 
   LOG_D(RRC, "About to call rrc_mac_config_req_eNB for ngran_eNB\n");
+  lchannelType = Bearer_BCCH_BCH_e;
+  bcchTransportType = bch_TRANSPORT;
   rrc_mac_config_req_eNB_t tmp = {
       .CC_id = CC_id,
       .physCellId = carrier->physCellId,
@@ -1275,6 +1277,7 @@ extern void clean_eNb_dlsch(LTE_eNB_DLSCH_t *dlsch);
 void release_UE_in_freeList(module_id_t mod_id) {
   PHY_VARS_eNB                             *eNB_PHY = NULL;
   eNB_MAC_INST                             *eNB_MAC = RC.mac[mod_id];
+  int                                       CC_id;
   pthread_mutex_lock(&lock_ue_freelist);
 
   for(int ue_num = 0; ue_num < sizeofArray(eNB_MAC->UE_free_ctrl) ; ue_num++) {
@@ -1284,7 +1287,7 @@ void release_UE_in_freeList(module_id_t mod_id) {
     protocol_ctxt_t  ctxt;
     PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, mod_id, ENB_FLAG_YES, rnti, 0, 0, mod_id);
 
-    for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+    for (int CC_id = 0; CC_id < RC.nb_CC[0]; CC_id++) {
       eNB_PHY = RC.eNB[mod_id][CC_id];
       int id;
       // clean ULSCH entries for rnti
@@ -1440,6 +1443,8 @@ rrc_eNB_generate_SecurityModeCommand(
         DCCH);
 
   LOG_I(RRC, "calling rrc_data_req :securityModeCommand\n");
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(ctxt_pP, DCCH, rrc_eNB_mui++, SDU_CONFIRM_NO, size, buffer, PDCP_TRANSMISSION_MODE_CONTROL);
 }
 
@@ -1473,6 +1478,8 @@ rrc_eNB_generate_UECapabilityEnquiry(
         size,
         rrc_eNB_mui,
         DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -2163,6 +2170,8 @@ rrc_eNB_process_RRCConnectionReestablishmentComplete(
     LOG_D(RRC,
           "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
           ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+    lchannelType = Bearer_DCCH_e;
+    bcchTransportType = dlsch_TRANSPORT;
     rrc_data_req(
       ctxt_pP,
       DCCH,
@@ -2295,6 +2304,9 @@ rrc_eNB_generate_RRCConnectionRelease(
   }
 
   pthread_mutex_unlock(&rrc_release_freelist);
+
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
 
   rrc_data_req(ctxt_pP,
                DCCH,
@@ -2577,6 +2589,8 @@ rrc_eNB_generate_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *co
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -2860,6 +2874,8 @@ rrc_eNB_modify_dedicatedRRCConnectionReconfiguration(const protocol_ctxt_t *cons
   LOG_D(RRC,
         "[FRAME %05d][RRC_eNB][MOD %u][][--- PDCP_DATA_REQ/%d Bytes (rrcConnectionReconfiguration to UE %x MUI %d) --->][PDCP][MOD %u][RB %u]\n",
         ctxt_pP->frame, ctxt_pP->module_id, size, ue_context_pP->ue_context.rnti, rrc_eNB_mui, ctxt_pP->module_id, DCCH);
+  lchannelType = Bearer_DCCH_e;
+  bcchTransportType = dlsch_TRANSPORT;
   rrc_data_req(
     ctxt_pP,
     DCCH,
@@ -9707,6 +9723,8 @@ void *rrc_enb_process_itti_msg(void *notUsed) {
     }
     itti_poll_msg(TASK_RRC_ENB, &msg_p);
   }
+
+  msg_p = NULL;
   return NULL;
 }
 
