@@ -802,8 +802,10 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 }
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
-    int delta_prefix = UE->frame_parms.nb_prefix_samples0 - UE->frame_parms.nb_prefix_samples;
-    UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + delta_prefix);
+    if (IS_SOFTMODEM_RFSIM) {
+      int delta_prefix = UE->frame_parms.nb_prefix_samples0 - UE->frame_parms.nb_prefix_samples;
+      UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + delta_prefix);
+    }
     int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl : UE->rx_offset;
     LOG_I(NR_PHY, "Resynchronizing RX by %d samples (mode = %d)\n", rx_offset, UE->mode);
 
@@ -826,7 +828,7 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
 int computeSamplesShift(PHY_VARS_NR_UE *UE) {
   int rx_offset = get_softmodem_params()->sl_mode != 2 ? UE->rx_offset : UE->rx_offset_sl;
-  int samples_shift = -(rx_offset>>1);
+  int samples_shift = -(rx_offset >> 1);
   UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
   UE->max_pos_fil = 0; // reset IIR filter when sample shift is applied
   if (samples_shift != 0) {

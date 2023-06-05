@@ -83,6 +83,7 @@
 
 #define  IQ_SIZE                      (sizeof(int16_t) * 2)        /* I and Q are alternatively stored into buffers */
 #define  N_SYMB_SLOT                  (14)
+#define  N_SYMB_SLOT_SL               (13)
 
 /* SS/PBCH parameters :  see from TS 38.211 table 7.4.3.1-1: Resources within an SS/PBCH block for PSS... */
 #define  DMRS_PBCH_PER_RB             (N_SC_RB >> 4)               /* at 0+v, 4+v, 8+v for a resource block with v = NcellID modulo 4 */
