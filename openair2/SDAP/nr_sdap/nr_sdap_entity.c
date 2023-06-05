@@ -25,6 +25,13 @@
 #include <openair3/ocp-gtpu/gtp_itf.h>
 #include "openair2/LAYER2/nr_pdcp/nr_pdcp_ue_manager.h"
 
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <netinet/ip_icmp.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -92,7 +99,41 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   if(!pdcp_ent_has_sdap){
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
-    ret = nr_pdcp_data_req_drb(ctxt_p,
+
+// Flag only for the gNB defined
+#ifdef MIR_FLAG
+  // mir 
+  // Naive L4/L3 packet classifier
+  struct iphdr* hdr = (struct iphdr*)sdu_buffer;
+
+  if(hdr->protocol == IPPROTO_TCP){
+    struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+    uint16_t const src_port = ntohs(tcp->source);
+    uint16_t const dst_port = ntohs(tcp->dest);
+    //printf("TCP pkt src_port %d dst_port %d \n", src_port, dst_port);
+    
+    if (entity->is_gnb && entity->has_second_bearer && dst_port != 10101) {
+      sdap_drb_id += 1;  
+    }                  
+  } else if(hdr->protocol == IPPROTO_UDP){
+      struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
+      uint16_t const src_port = ntohs(udp->source);
+      uint16_t const dst_port = ntohs(udp->dest);
+     // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
+
+  } else if(hdr->protocol == IPPROTO_ICMP){
+    //printf("Ping packet detected \n");
+    if (entity->is_gnb && entity->has_second_bearer) {
+      sdap_drb_id += 1; 
+    }
+    printf("ping to bearer %ld\n", sdap_drb_id);
+    //cnt++;
+  }
+
+#endif
+
+//label:
+  ret = nr_pdcp_data_req_drb(ctxt_p,
                                srb_flag,
                                sdap_drb_id,
                                mui,
@@ -102,6 +143,12 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                                pt_mode,
                                sourceL2Id,
                                destinationL2Id);
+
+//  if(!ret && sdap_drb_id == 2){
+//     sdap_drb_id = 1;
+//     goto label;
+//  }
+
 
     if(!ret)
       LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);
@@ -407,11 +454,12 @@ void nr_sdap_ue_qfi2drb_config(nr_sdap_entity_t *existing_sdap_entity, rb_id_t p
 nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap_tx, ue_id_t ue_id, int pdusession_id, bool is_defaultDRB, uint8_t drb_identity, NR_QFI_t *mapped_qfi_2_add, uint8_t mappedQFIs2AddCount)
 {
   if (nr_sdap_get_entity(ue_id, pdusession_id)) {
-    LOG_E(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
+    LOG_I(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
     nr_sdap_entity_t *existing_sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
     rb_id_t pdcp_entity = existing_sdap_entity->default_drb;
     if(!is_gnb)
       nr_sdap_ue_qfi2drb_config(existing_sdap_entity, pdcp_entity, ue_id, mapped_qfi_2_add, mappedQFIs2AddCount, drb_identity, has_sdap_rx, has_sdap_tx);
+    existing_sdap_entity->has_second_bearer = 1;
     return existing_sdap_entity;
   }
 
@@ -425,6 +473,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap
 
   sdap_entity->ue_id = ue_id;
   sdap_entity->pdusession_id = pdusession_id;
+  sdap_entity->is_gnb = is_gnb;
 
   sdap_entity->tx_entity = nr_sdap_tx_entity;
   sdap_entity->rx_entity = nr_sdap_rx_entity;
