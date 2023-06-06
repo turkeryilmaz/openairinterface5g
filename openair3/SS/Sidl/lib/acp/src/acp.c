@@ -419,6 +419,7 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 	ACP_DEBUG_CLOG(ctx, "Sending message '%s'", acpGetMsgName(ACP_HEADER_SIZE, buffer));
 #endif
 
+	int ret = -	ACP_ERR_INTERNAL;
 
 	int sock = ACP_CTX_CAST(ctx)->sock;
 	if (ACP_CTX_CAST(ctx)->isServer) {
@@ -429,8 +430,6 @@ int acpSendMsg(acpCtx_t ctx, size_t size, const unsigned char* buffer)
 			SIDL_ASSERT(ACP_CTX_CAST(ctx)->lastPeer == -1);
 		}
 	}
-
-	int ret = 0;
 
 	/* Write SIDL message */
 	if (kind != ACP_NTF) {

@@ -850,13 +850,13 @@ int DU_handle_UE_CONTEXT_RELEASE_COMMAND(instance_t       instance,
             rnti, f1ap_ue_context_release_cmd->rnti);
   }
   else{
-    AssertFatal(ctxt.rntiMaybeUEid == rnti, "RNTI obtained through DU ID (%x) is different from CU ID (%lx)\n", rnti, ctxt.rntiMaybeUEid);
+    AssertFatal(ctxt.rntiMaybeUEid == rnti, "RNTI obtained through DU ID (%x) is different from CU ID (%#lx)\n", rnti, ctxt.rntiMaybeUEid);
   }
   int UE_out_of_sync = 0;
 
   if(RC.rrc && RC.rrc[instance]->node_type == ngran_eNB_DU){
     for (int n = 0; n < MAX_MOBILES_PER_ENB; ++n) {
-      if (RC.mac[instance]->UE_info.active[n] == true
+      if (RC.mac[instance]->UE_info.active[0][n] == true
           && rnti == UE_RNTI(instance, n)) {
         UE_out_of_sync = RC.mac[instance]->UE_info.UE_sched_ctrl[n].ul_out_of_sync;
         break;
@@ -1390,7 +1390,7 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(instance_t instance, f1ap_ue_contex
       F1AP_DRBs_Modified_Item_t *drbs_modified_item= &drbs_modified_item_ies->value.choice.DRBs_Modified_Item;
       /* dRBID */
       drbs_modified_item->dRBID = resp->drbs_to_be_modified[i].drb_id;
-      
+
       /* ULTunnels_Modified_List */
       for (int j=0;  j<resp->drbs_to_be_modified[i].up_dl_tnl_length;  j++) {
         /*  DLTunnels_Modified_Item */

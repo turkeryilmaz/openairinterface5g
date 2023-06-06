@@ -386,10 +386,10 @@ void *ss_gNB_drb_process_itti_msg(void *notUsed)
 void ss_gNB_drb_init(void)
 {
     LOG_A(GNB_APP, "[SS_DRB] Starting System Simulator DRB Thread\n");
-    char* host = RC.ss.DrbHost;
+    char* host = (char*)RC.ss.DrbHost;
 
     if (host == NULL) {
-        host = RC.ss.hostIp;
+        host = (char*)RC.ss.hostIp;
     }
 
     // Port number

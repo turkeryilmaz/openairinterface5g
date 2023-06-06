@@ -328,7 +328,7 @@ static inline void ss_gNB_read_from_socket(acpCtx_t ctx)
 void *ss_port_man_5G_NR_process_itti_msg(void *notUsed)
 {
   MessageDef *received_msg = NULL;
-  int result;
+  int result = EXIT_SUCCESS;
 
   itti_poll_msg(TASK_SS_PORTMAN_GNB, &received_msg);
 

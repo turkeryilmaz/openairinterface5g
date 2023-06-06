@@ -190,7 +190,7 @@ void *pdcp_stats_thread(void *param) {
                    pdcp_enb[0].rnti[UE_id],drb_id,
                    Pdcp_stats_tx_bytes[0][UE_id][drb_id],
                    (double)((Pdcp_stats_tx_bytes[0][UE_id][drb_id]-old_byte_cnt[UE_id][drb_id])<<3));
-           fprintf(fd,"                              rx_bytes %d, UL Throughput %e\n",             
+           fprintf(fd,"                              rx_bytes %d, UL Throughput %e\n",
                    Pdcp_stats_rx_bytes[0][UE_id][drb_id],
                    (double)((Pdcp_stats_rx_bytes[0][UE_id][drb_id]-old_byte_cnt_rx[UE_id][drb_id])<<3));
            old_byte_cnt[UE_id][drb_id]=Pdcp_stats_tx_bytes[0][UE_id][drb_id];
@@ -362,11 +362,11 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
       pdcp_pkt.seqnum_length =0 ;
       pdcp_pkt.is_retx = 0;
       pdcp_pkt.pdu_length =sdu_buffer_sizeP;
-      if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+      if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != UNDEFINED_TRANSPORT)
         LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
 
       lchannelType = Bearer_UNDEFINED_e;
-      bcchTransportType = NR_PLANE_UNDEFINED_E;
+      bcchTransportType = UNDEFINED_TRANSPORT;
       memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
       rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, NODE_IS_CU(RC.rrc[ctxt_pP->module_id]->node_type)?MBMS_FLAG_NO:MBMS_FLAG_YES, rb_idP, muiP,
                    confirmP, sdu_buffer_sizeP, pdcp_pdu_p,NULL,NULL);
@@ -566,11 +566,11 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
         pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
         pdcp_pkt.is_retx = false;
         pdcp_pkt.pdu_length = pdcp_pdu_size;
-        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != UNDEFINED_TRANSPORT)
           LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
 
         lchannelType = Bearer_UNDEFINED_e;
-        bcchTransportType = NR_PLANE_UNDEFINED_E;
+        bcchTransportType = UNDEFINED_TRANSPORT;
 
         memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
         rlc_status = pdcp_params.send_rlc_data_req_func(ctxt_pP, srb_flagP, MBMS_FLAG_NO, rb_idP, muiP,
@@ -630,7 +630,7 @@ bool pdcp_data_req(protocol_ctxt_t  *ctxt_pP,
         pdcp_pkt.seqnum_length = pdcp_p->seq_num_size;
         pdcp_pkt.is_retx = false;
         pdcp_pkt.pdu_length = pdcp_pdu_size;
-        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != NR_PLANE_UNDEFINED_E)
+        if (pdcp_pkt.channelType != Bearer_UNDEFINED_e && pdcp_pkt.BCCHTransport != UNDEFINED_TRANSPORT)
           LOG_LTE_PDCP_PDU(OAILOG_INFO, "DL_LTE_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer_pP, sdu_buffer_sizeP);
 
 
@@ -736,14 +736,13 @@ pdcp_data_ind(
   uint16_t     pdcp_uid=0;
 
   MessageDef  *message_p        = NULL;
-  uint8_t     *gtpu_buffer_p    = NULL;
   uint32_t    rx_hfn_for_count;
   int         pdcp_sn_for_count;
   int         security_ok;
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_IN);
   LOG_DUMPMSG(PDCP,DEBUG_PDCP,(char *)sdu_buffer_pP->data,sdu_buffer_sizeP,
               "[MSG] PDCP UL %s PDU on rb_id %ld\n", (srb_flagP)? "CONTROL" : "DATA", rb_idP);
-  LOG_D(PDCP, "ctxt->rntiMaybeUEid:%d\n", ctxt_pP->rntiMaybeUEid);
+  LOG_D(PDCP, "ctxt->rntiMaybeUEid: %ld\n", ctxt_pP->rntiMaybeUEid);
   pdcp_info_t pdcp_pkt;
   memset(&pdcp_pkt, 0, sizeof (pdcp_pkt));
 
@@ -1168,7 +1167,7 @@ pdcp_data_ind(
    */
   if (RC.ss.mode >= SS_SOFTMODEM) {
     if ((true == ctxt_pP->enb_flag) && (false == srb_flagP)) {
-      LOG_A(PDCP, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %ld len %u\n",
+      LOG_A(PDCP, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %#lx drb id %ld len %u\n",
             ctxt_pP->rntiMaybeUEid,
             rb_id,
             sdu_buffer_sizeP - payload_offset );
@@ -1296,7 +1295,7 @@ pdcp_data_ind(
       if( LOG_DEBUGFLAG(DEBUG_PDCP) )
 	log_dump(PDCP, pdcpHead+1, min(sdu_buffer_sizeP - payload_offset,30) , LOG_DUMP_CHAR,
 	         "Printing first bytes of PDCP SDU before adding it to the list: \n");
-      pushNotifiedFIFO(&pdcp_sdu_list, new_sdu_p); 
+      pushNotifiedFIFO(&pdcp_sdu_list, new_sdu_p);
 
     /* Print octets of incoming data in hexadecimal form */
       LOG_D(PDCP, "Following content has been received from RLC (%d,%d)(PDCP header has already been removed):\n",
@@ -1648,7 +1647,7 @@ pdcp_run (
             pc->rb_info[0].dl_format = E_PdcpCount_Srb;
             pc->rb_info[0].ul_count = 0;
             pc->rb_info[0].dl_count = 0;
-            LOG_D(PDCP, "SRB %d DL Count (dec): %d UL Count (dec): %d\n",  pc->rb_info[0].rb_id, 
+            LOG_D(PDCP, "SRB %d DL Count (dec): %d UL Count (dec): %d\n",  pc->rb_info[0].rb_id,
                   pc->rb_info[0].dl_count,
                   pc->rb_info[0].ul_count);
           }
@@ -2751,7 +2750,7 @@ uint64_t pdcp_module_init( uint64_t pdcp_optmask, int id) {
       nas_config(1, 1, 1, "enb");
       if(pdcp_optmask & ENB_NAS_USE_TUN_W_MBMS_BIT){
         netlink_init_mbms_tun("enm", 0);
-      	nas_config_mbms(1, 2, 1, "enm"); 
+      	nas_config_mbms(1, 2, 1, "enm");
       	LOG_I(PDCP, "ENB pdcp will use mbms tun interface\n");
       }
       LOG_I(PDCP, "ENB pdcp will use tun interface\n");
@@ -2893,7 +2892,7 @@ void pdcp_layer_init(void)
 
   RC.ss.ss_pdcp_api = calloc (1, sizeof(ss_rrc_pdcp_api_t));
   ss_rrc_pdcp_api_t *ss_pdcp_api = RC.ss.ss_pdcp_api;
-  
+
   if (RC.ss.mode == 1) {
     ss_pdcp_api->set_pdcp_cnt    = pdcp_fill_ss_pdcp_cnt;
   }

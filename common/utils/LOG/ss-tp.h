@@ -302,6 +302,7 @@ typedef struct nr_pdcp_pkt_info_s {
 
 typedef enum
 {
+	UNDEFINED_TRANSPORT = 0,
     bch_TRANSPORT=1,
     dlsch_TRANSPORT=2
 } BCCHTransportType_e;

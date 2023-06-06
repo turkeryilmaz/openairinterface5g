@@ -114,7 +114,6 @@ uint8_t vt_timer_setup(ss_set_timinfo_t tinfo, task_id_t task_id,instance_t inst
  */
 static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 {
-	  hashtable_rc_t           hash_rc;
 	  vt_timer_elm_t *timer_ele_p;
 
 
@@ -125,8 +124,8 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 		  LOG_D(ENB_SS_VT_TIMER,"VT_TIMER  Timeout sending  curr SFN %d SF %d\n",
 		  					SS_context.sfn,SS_context.sf);
 
-		  hash_rc = hashtable_get(SS_context.vt_timer_table, (hash_key_t)sfnSfKey, (void **)&timer_ele_p);
-
+		  hashtable_get(SS_context.vt_timer_table, (hash_key_t)sfnSfKey, (void **)&timer_ele_p);
+		  AssertFatal(timer_ele_p, "VT Timer - timer element is NULL");
 		  LOG_A(ENB_SS_VT_TIMER,"VT_TIMER Enter check SFN %d , SF %d taskID %d timer_ele.task_id instance %ld \n",
 						  tinfo.sfn,tinfo.sf, timer_ele_p->task_id,timer_ele_p->instance);
 
@@ -139,8 +138,7 @@ static inline void ss_vt_timer_check(ss_set_timinfo_t tinfo)
 		  {
 			  LOG_A(ENB_SS_VT_TIMER,"VT_TIMER Sent message to  taskID %d timer_ele.task_id instance %ld \n",
 			  						  timer_ele_p->task_id,timer_ele_p->instance);
-			  hash_rc = hashtable_remove(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
-
+			  hashtable_remove(SS_context.vt_timer_table, (hash_key_t)sfnSfKey);
 		  }
 		  LOG_D(ENB_SS_VT_TIMER,"VT_TIMER  Timeout sending done curr SFN %d SF %d\n",
 		 		  					SS_context.sfn,SS_context.sf);

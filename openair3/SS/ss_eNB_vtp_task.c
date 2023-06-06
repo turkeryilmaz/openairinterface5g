@@ -129,7 +129,7 @@ void ss_vtp_send_tinfo(
     }
     else
     {
-        LOG_A(ENB_SS_VTP, "[SS-VTP] acpSendMsg VTP_Send Success SFN %d SF %d virtualTime.Enable %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable);
+        LOG_D(ENB_SS_VTP, "[SS-VTP] acpSendMsg VTP_Send Success SFN %d SF %d virtualTime.Enable %d\n",tinfo->sfn,tinfo->sf,virtualTime.Enable);
         SS_context.vtinfo = *tinfo;
     }
     // Free allocated buffer
@@ -153,7 +153,7 @@ static int vtp_send_udp_msg(
 
   if (message_p)
   {
-    LOG_A(ENB_SS_VTP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
+    LOG_D(ENB_SS_VTP, "Sending UDP_DATA_REQ length %u offset %u buffer %d %d %d\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;
@@ -175,13 +175,13 @@ static int vtp_send_udp_msg(
  */
 static void vtp_send_proxy(void *msg, int msgLen)
 {
-  LOG_A(ENB_SS_VTP, "In sys_send_proxy\n");
+  LOG_D(ENB_SS_VTP, "In sys_send_proxy\n");
   uint32_t peerIpAddr;
   uint16_t peerPort = vtp_proxy_send_port;
 
   IPV4_STR_ADDR_TO_INT_NWBO(vtp_local_address, peerIpAddr, " BAD IP Address");
 
-  LOG_A(ENB_SS_VTP, "\nCell Config End of Buffer\n ");
+  LOG_D(ENB_SS_VTP, "\nCell Config End of Buffer\n ");
 
   /** Send to proxy */
   vtp_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);
@@ -190,7 +190,6 @@ static void vtp_send_proxy(void *msg, int msgLen)
 static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 {
       VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
-      LOG_A(ENB_SS_VTP,"itti_alloc %p\n", req);
       req->header.preamble = 0xFEEDC0DE;
       req->header.msg_id = SS_VTP_RESP;
       req->header.length = sizeof(proxy_ss_header_t);
@@ -199,12 +198,35 @@ static inline void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
       req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
       req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
 
-      LOG_A(ENB_SS_VTP, "VTP_ACK Command to proxy sent for cell_id: %d SFN %d SF %d\n",
-            req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf );
+      if ((req->tinfo.sfn % 32) == 0) {
+        LOG_D(ENB_SS_VTP, "VTP_ACK Command to proxy sent for cell_id: %d SFN %d SF %d\n",
+                req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf );
+      }
 
       vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 }
 
+#define SS_VTP_ENABLE 11
+
+static inline void ss_enable_vtp()
+{
+      VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
+      req->header.preamble = 0xFEEDC0DE;
+      req->header.msg_id = SS_VTP_ENABLE;
+      req->header.length = sizeof(proxy_ss_header_t);
+      req->header.cell_id = SS_context.SSCell_list[cellIndex].PhysicalCellId;
+
+      req->tinfo.sfn = 0;
+      req->tinfo.sf = 0;
+
+      LOG_A(ENB_SS_VTP, "VTP_ENABLE Command to proxy sent for cell_id: %d SFN %d SF %d\n",
+            req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf);
+
+      LOG_A(ENB_SS_VTP,"VTP_ENABLE Command to proxy sent for cell_id: %d\n",
+            req->header.cell_id );
+      vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
+
+}
 //------------------------------------------------------------------------------
 static bool isConnected = false;
 static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
@@ -220,7 +242,7 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
     while (1)
     {
         int userId = acpRecvMsg(ctx, &msgSize, buffer);
-        LOG_A(ENB_SS_VTP, "[SS-VTP] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+        LOG_D(ENB_SS_VTP, "[SS-VTP] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
         // Error handling
         if (userId < 0)
@@ -260,8 +282,8 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
 
         if (userId == MSG_SysVTEnquireTimingAck_userId)
         {
-            LOG_A(ENB_SS_VTP, "[SS-VTP] Received VTEnquireTimingAck Request\n");
-            LOG_D(ENB_SS_VTP, "fxn1:%s received VTEnquireTimingAck Request from TTCN \n", __FUNCTION__);
+            LOG_D(ENB_SS_VTP, "[SS-VTP] Received VTEnquireTimingAck Request\n");
+
 
             if (acpSysVTEnquireTimingAckDecSrv(ctx, buffer, msgSize, &virtualTime) != 0)
             {
@@ -274,12 +296,12 @@ static inline void ss_eNB_read_from_vtp_socket(acpCtx_t ctx, bool vtInit)
                 if (virtualTime->Enable) {
                     ss_send_vtp_resp(virtualTime);
 
-                    if (virtualTime->TimingInfo.SFN.d && (virtualTime->TimingInfo.SFN.v.Number & 32) == 0) {
-                        LOG_I(ENB_SS_VTP, "[SS-VTP] SFN: %d\n ",
+                    if (virtualTime->TimingInfo.SFN.d && (virtualTime->TimingInfo.SFN.v.Number % 32) == 0) {
+                        LOG_D(ENB_SS_VTP, "[SS-VTP] SFN: %d\n",
                                 virtualTime->TimingInfo.SFN.v.Number);
 
                         if (virtualTime->TimingInfo.Subframe.d) {
-                            LOG_I(ENB_SS_VTP, "[SS-VTP]SubFrame: %d\n ",
+                            LOG_D(ENB_SS_VTP, "[SS-VTP] SubFrame: %d\n",
                                     virtualTime->TimingInfo.Subframe.v.Number);
                         }
                     }
@@ -314,10 +336,9 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
             ss_set_timinfo_t tinfo;
             tinfo.sf = SS_UPD_TIM_INFO(received_msg).sf;
             tinfo.sfn = SS_UPD_TIM_INFO(received_msg).sfn;
-            LOG_D(ENB_SS_VTP, "fxn1:%s Received SS_UPD_TIM_INFO\n", __FUNCTION__);
             if(SS_UPD_TIM_INFO(received_msg).physCellId) {
               cellIndex = get_cell_index_pci(SS_UPD_TIM_INFO(received_msg).physCellId, SS_context.SSCell_list);
-              LOG_A(ENB_SS_VTP,"[VTP] cellIndex in SS_UPD_TIM_INFO: %d PhysicalCellId: %d \n",cellIndex,SS_context.SSCell_list[cellIndex].PhysicalCellId);
+              LOG_A(ENB_SS,"[VTP] cellIndex in SS_UPD_TIM_INFO: %d PhysicalCellId: %d \n",cellIndex,SS_context.SSCell_list[cellIndex].PhysicalCellId);
             }
 
             if (isConnected == true) {
@@ -332,14 +353,12 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
 
         case TERMINATE_MESSAGE:
         {
-            LOG_D(ENB_SS_VTP, "fxn1:%s Received TERMINATE_MESSAGE\n", __FUNCTION__);
             LOG_E(ENB_SS_VTP, "[SS-VTP] Terminate message %d:%s\n", ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
             itti_exit_task();
         }
         break;
 
         default:
-            LOG_D(ENB_SS_VTP, "fxn1:%s Received unhandled message\n", __FUNCTION__);
             LOG_E(ENB_SS_VTP, "[SS-VTP] Received unhandled message %d:%s\n",
                   ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
         }
@@ -349,7 +368,6 @@ void *ss_eNB_vtp_process_itti_msg(void *notUsed)
     }
     ss_eNB_read_from_vtp_socket(ctx_vtp_g, false);
 
-    LOG_D(ENB_SS_VTP, "Exit from fxn1:%s \n", __FUNCTION__);
     return NULL;
 }
 
@@ -401,6 +419,7 @@ static void ss_eNB_wait_first_msg(void)
         ss_eNB_read_from_vtp_socket(ctx_vtp_g, true);
         if (isConnected == true){
             LOG_A(ENB_SS_VTP, "[SS_VTP] VT-HANDSHAKE with Client Completed (on-start) \n");
+            RC.ss.vtp_ready = 1;
             break;
         }
         LOG_A(ENB_SS_VTP, "[SS_VTP] Waiting for VT-HANDSHAKE with Client(on-start) \n");
@@ -408,7 +427,7 @@ static void ss_eNB_wait_first_msg(void)
 }
 //------------------------------------------------------------------------------
 void* ss_eNB_vtp_task(void *arg) {
-  vtp_udpSockReq_t req;
+	vtp_udpSockReq_t req;
 	req.address = vtp_local_address;
 	req.port = vtp_proxy_recv_port;
 	vtp_send_init_udp(&req);
@@ -419,7 +438,7 @@ void* ss_eNB_vtp_task(void *arg) {
 
 		ss_eNB_wait_first_msg();
 
-		RC.ss.vtp_ready = 1;
+		ss_enable_vtp();
 		sleep(1);
 		while (1) {
 			(void) ss_eNB_vtp_process_itti_msg(NULL);

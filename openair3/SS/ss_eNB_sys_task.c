@@ -209,9 +209,8 @@ int cell_config_done_indication()
     pthread_cond_broadcast(&cell_config_done_cond);
     pthread_mutex_unlock(&cell_config_done_mutex);
   }
-
-  return 0;
 #endif
+  return 0;
 }
 
 /*
@@ -339,7 +338,8 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
   for (int enb_id = 0; enb_id < RC.nb_inst; enb_id++)
   {
     printf("eNB_Inst %d Number of CC configured %d\n", enb_id, RC.nb_CC[enb_id]);
-    MessageDef *msg_p = itti_alloc_new_message(TASK_ENB_APP, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
+    MessageDef *msg_p = itti_alloc_new_message(TASK_SYS, ENB_MODULE_ID_TO_INSTANCE(enb_id), RRC_CONFIGURATION_REQ);
+
     RRC_CONFIGURATION_REQ(msg_p) = RC.rrc[enb_id]->configuration;
     if (AddOrReconfigure->Basic.d == true)
     {
@@ -497,7 +497,7 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
               }
               RRC_CONFIGURATION_REQ(msg_p).schedulingInfo[cell_index][count].sib_MappingInfo.size = SIDL_SIB1_VAL.c1.v.systemInformationBlockType1.schedulingInfoList.v[k].sib_MappingInfo.d;
               count ++;
-            } 
+            }
           }
 
           RRC_CONFIGURATION_REQ(msg_p).schedulingInfo_count[cell_index] = count;
@@ -749,9 +749,9 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         cellConfig->dl_earfcn = SS_context.SSCell_list[cell_index].dl_earfcn;
         cellConfig->header.cell_index = cell_index;
         LOG_A(ENB_SS_SYS_TASK, "===Cell configuration received for cell_id: %d Initial attenuation: %d Max ref power: %d for DL_EARFCN: %d cell_index %d=== \n",
-            cellConfig->header.cell_id,
-            cellConfig->initialAttenuation, cellConfig->maxRefPower,
-            cellConfig->dl_earfcn, cell_index);
+              cellConfig->header.cell_id,
+              cellConfig->initialAttenuation, cellConfig->maxRefPower,
+              cellConfig->dl_earfcn, cell_index);
         sys_send_proxy((void *)cellConfig, sizeof(CellConfigReq_t), msg_queued, timer_tinfo);
       }
     }
@@ -1081,16 +1081,15 @@ int sys_handle_cell_config_req(struct SYSTEM_CTRL_REQ *req)
       //Increment nb_cc only from 2nd cell as the initilization is done for 1 CC
       if (cell_index)
       {
-
         //Increment the nb_CC supported as new cell is confiured.
-        if ((RC.nb_CC[0] ) >= MAX_NUM_CCs) {
-          LOG_E (ENB_SS_SYS_TASK,"[SYS] Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
+        if (RC.nb_CC[0] >= MAX_NUM_CCs) {
+          LOG_E (ENB_SS_SYS_TASK,"Can't add cell, MAX_NUM_CC reached (%d > %d) \n", RC.nb_CC[0], MAX_NUM_CCs);
         } else {
           RC.nb_CC[0] ++;
           //Set the number of MAC_CC to current configured CC value
           //*RC.nb_mac_CC= RC.nb_CC[0];
 
-          LOG_I (ENB_SS_SYS_TASK,"[SYS] CC-MGMT nb_cc is incremented current Configured RC.nb_CC %d current CC_index %d RC.nb_mac_CC %d\n",
+          LOG_I (ENB_SS_SYS_TASK,"CC-MGMT nb_cc is incremented current Configured RC.nb_CC %d current CC_index %d RC.nb_mac_CC %d\n",
                 RC.nb_CC[0],cell_index,*RC.nb_mac_CC);
         }
       }
@@ -2309,7 +2308,7 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
           sys_handle_pdcp_count_req(&(req->Request.v.PdcpCount));
           break;
         case SystemRequest_Type_PdcpHandoverControl:
-          LOG_A(ENB_SS_SYS_TASK, "[SYS] SystemRequest_Type PdcpHandoverControl received\n");
+          LOG_A(ENB_SS_SYS_TASK, "SystemRequest_Type PdcpHandoverControl received\n");
           enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpHandoverControl;
           enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
           bool resVal = true;
@@ -2355,24 +2354,24 @@ static void ss_task_sys_handle_req(struct SYSTEM_CTRL_REQ *req, ss_set_timinfo_t
     case SS_STATE_AS_SECURITY_ACTIVE:
       if (req->Request.d == SystemRequest_Type_RadioBearerList)
       {
-        LOG_A(ENB_SS_SYS_TASK, "ERROR!!! TODO SystemRequest_Type_RadioBearerList received\n");
+        LOG_E(ENB_SS_SYS_TASK, "ERROR!!! TODO SystemRequest_Type_RadioBearerList received\n");
         //sys_handle_cell_config_req(&(req->Request.v.Cell));
         //RC.ss.State = SS_STATE_AS_RBS_ACTIVE;
       }
       else
       {
-        LOG_A(ENB_SS_SYS_TASK, "Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+        LOG_E(ENB_SS_SYS_TASK, "Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
             SS_context.SSCell_list[cell_index].State, req->Request.d);
       }
       break;
 
     case SS_STATE_AS_RBS_ACTIVE:
-      LOG_A(ENB_SS_SYS_TASK, "Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+      LOG_E(ENB_SS_SYS_TASK, "Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
           SS_context.SSCell_list[cell_index].State, req->Request.d);
       break;
 
     default:
-      LOG_A(ENB_SS_SYS_TASK, "Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
+      LOG_E(ENB_SS_SYS_TASK, "Error ! SS_STATE %d  Invalid SystemRequest_Type %d received\n",
           SS_context.SSCell_list[cell_index].State, req->Request.d);
       break;
   }
@@ -2550,14 +2549,15 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
 
           g_log->sfn = tinfo.sfn;
           g_log->sf = (uint32_t)tinfo.sf;
-          LOG_A(ENB_SS_SYS_TASK, "[SYS] received SS_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
-
+          if (g_log->sfn % 64 == 0 && g_log->sf == 0) {
+            LOG_I(ENB_SS_SYS_TASK, "[SYS] received SS_UPD_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+          }
         }
         break;
 
       case SS_GET_TIM_INFO:
         {
-          LOG_A(ENB_SS_SYS_TASK, "received GET_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
+          LOG_D(ENB_SS_SYS_TASK, "received GET_TIM_INFO SFN: %d SF: %d\n", tinfo.sfn, tinfo.sf);
           ss_task_sys_handle_timing_info(&tinfo);
         }
         break;
@@ -2585,132 +2585,132 @@ void *ss_eNB_sys_process_itti_msg(void *notUsed)
         }
         break;
 
-      case SS_VNG_PROXY_REQ: {
-                               LOG_A(ENB_SS_SYS_TASK, "received %s from %s \n", ITTI_MSG_NAME(received_msg),
-                                   ITTI_MSG_ORIGIN_NAME(received_msg));
+      case SS_VNG_PROXY_REQ:
+        {
+          LOG_A(ENB_SS_SYS_TASK, "received %s from %s \n", ITTI_MSG_NAME(received_msg),
+                ITTI_MSG_ORIGIN_NAME(received_msg));
 
-                               VngCmdReq_t *req      = (VngCmdReq_t *)malloc(sizeof(VngCmdReq_t));
-                               req->header.preamble  = 0xFEEDC0DE;
-                               req->header.msg_id    = SS_VNG_CMD_REQ;
-                               req->header.length    = sizeof(proxy_ss_header_t);
-                               req->header.cell_id   = SS_VNG_PROXY_REQ(received_msg).cell_id;
-                               req->header.cell_index = get_cell_index_pci(req->header.cell_id , SS_context.SSCell_list);
-                               printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
-                               req->bw               = SS_VNG_PROXY_REQ(received_msg).bw;
-                               req->cmd              = SS_VNG_PROXY_REQ(received_msg).cmd;
-                               req->NocLevel         = SS_VNG_PROXY_REQ(received_msg).Noc_level;
+            VngCmdReq_t *req      = (VngCmdReq_t *)malloc(sizeof(VngCmdReq_t));
+            req->header.preamble  = 0xFEEDC0DE;
+            req->header.msg_id    = SS_VNG_CMD_REQ;
+            req->header.length    = sizeof(proxy_ss_header_t);
+            req->header.cell_id   = SS_VNG_PROXY_REQ(received_msg).cell_id;
+            req->header.cell_index = get_cell_index_pci(req->header.cell_id , SS_context.SSCell_list);
+            printf("VNG send to proxy cell_index %d\n",req->header.cell_index);
+            req->bw               = SS_VNG_PROXY_REQ(received_msg).bw;
+            req->cmd              = SS_VNG_PROXY_REQ(received_msg).cmd;
+            req->NocLevel         = SS_VNG_PROXY_REQ(received_msg).Noc_level;
 
-                               LOG_A(ENB_SS_SYS_TASK,"VNG Command for cell_id: %d CMD %d ",
-                                   req->header.cell_id, req->cmd);
-                               ss_set_timinfo_t timer_tinfo= {0};
-                               sys_send_proxy((void *)req, sizeof(VngCmdReq_t), 0, timer_tinfo);
-                             }
-                             break;
+            LOG_A(ENB_SS_SYS_TASK,"VNG Command for cell_id: %d CMD %d ",
+                    req->header.cell_id, req->cmd);
+            ss_set_timinfo_t timer_tinfo= {0};
+            sys_send_proxy((void *)req, sizeof(VngCmdReq_t), 0, timer_tinfo);
+        }
+        break;
 
-      case SS_GET_PDCP_CNT: /** FIXME */
-                             {
-                               LOG_A(ENB_SS_SYS_TASK, "received SS_GET_PDCP_CNT Count from PDCP size %d\n",
-                                   SS_GET_PDCP_CNT(received_msg).size);
-                               enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpCount;
-                               enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-                               bool resVal = true;
-                               struct PDCP_CountCnf_Type PdcpCount;
+    case SS_GET_PDCP_CNT: /** FIXME */
+    {
+      LOG_A(ENB_SS_SYS_TASK, "received SS_GET_PDCP_CNT Count from PDCP size %d\n",
+                      SS_GET_PDCP_CNT(received_msg).size);
+      enum SystemConfirm_Type_Sel cnfType = SystemConfirm_Type_PdcpCount;
+      enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+      bool resVal = true;
+      struct PDCP_CountCnf_Type PdcpCount;
 
 
-                               PdcpCount.d = PDCP_CountCnf_Type_Get;
-                               PdcpCount.v.Get.d = SS_GET_PDCP_CNT(received_msg).size;
-                               const size_t size = sizeof(struct PdcpCountInfo_Type) * PdcpCount.v.Get.d;
-                               PdcpCount.v.Get.v =(struct PdcpCountInfo_Type *)acpMalloc(size);
-                               for (int i = 0; i < PdcpCount.v.Get.d; i++)
-                               {
-                                 if (SS_GET_PDCP_CNT(received_msg).rb_info[i].is_srb == true)
-                                 {
-                                   PdcpCount.v.Get.v[i].RadioBearerId.d = RadioBearerId_Type_Srb;
-                                   PdcpCount.v.Get.v[i].RadioBearerId.v.Srb = SS_GET_PDCP_CNT(received_msg).rb_info[i].rb_id;
-                                 }
-                                 else
-                                 {
-                                   PdcpCount.v.Get.v[i].RadioBearerId.d = RadioBearerId_Type_Drb;
-                                   PdcpCount.v.Get.v[i].RadioBearerId.v.Drb = SS_GET_PDCP_CNT(received_msg).rb_info[i].rb_id - 3;
-                                 }
-                                 PdcpCount.v.Get.v[i].UL.d = true;
-                                 PdcpCount.v.Get.v[i].DL.d = true;
+      PdcpCount.d = PDCP_CountCnf_Type_Get;
+      PdcpCount.v.Get.d = SS_GET_PDCP_CNT(received_msg).size;
+      const size_t size = sizeof(struct PdcpCountInfo_Type) * PdcpCount.v.Get.d;
+      PdcpCount.v.Get.v =(struct PdcpCountInfo_Type *)acpMalloc(size);
+      for (int i = 0; i < PdcpCount.v.Get.d; i++)
+      {
+        if (SS_GET_PDCP_CNT(received_msg).rb_info[i].is_srb == true)
+        {
+          PdcpCount.v.Get.v[i].RadioBearerId.d = RadioBearerId_Type_Srb;
+          PdcpCount.v.Get.v[i].RadioBearerId.v.Srb = SS_GET_PDCP_CNT(received_msg).rb_info[i].rb_id;
+        }
+        else
+        {
+          PdcpCount.v.Get.v[i].RadioBearerId.d = RadioBearerId_Type_Drb;
+          PdcpCount.v.Get.v[i].RadioBearerId.v.Drb = SS_GET_PDCP_CNT(received_msg).rb_info[i].rb_id - 3;
+        }
+        PdcpCount.v.Get.v[i].UL.d = true;
+        PdcpCount.v.Get.v[i].DL.d = true;
 
-                                 PdcpCount.v.Get.v[i].UL.v.Format = SS_GET_PDCP_CNT(received_msg).rb_info[i].ul_format;
-                                 PdcpCount.v.Get.v[i].DL.v.Format = SS_GET_PDCP_CNT(received_msg).rb_info[i].dl_format;
+        PdcpCount.v.Get.v[i].UL.v.Format = SS_GET_PDCP_CNT(received_msg).rb_info[i].ul_format;
+        PdcpCount.v.Get.v[i].DL.v.Format = SS_GET_PDCP_CNT(received_msg).rb_info[i].dl_format;
 
-                                 int_to_bin(SS_GET_PDCP_CNT(received_msg).rb_info[i].ul_count, 32, PdcpCount.v.Get.v[i].UL.v.Value);
-                                 int_to_bin(SS_GET_PDCP_CNT(received_msg).rb_info[i].dl_count, 32, PdcpCount.v.Get.v[i].DL.v.Value);
-                               }
+        int_to_bin(SS_GET_PDCP_CNT(received_msg).rb_info[i].ul_count, 32, PdcpCount.v.Get.v[i].UL.v.Value);
+        int_to_bin(SS_GET_PDCP_CNT(received_msg).rb_info[i].dl_count, 32, PdcpCount.v.Get.v[i].DL.v.Value);
+      }
 
-                               send_sys_cnf(resType, resVal, cnfType, (void *)&PdcpCount);
-                              sys_confirm_done_indication();
-                             }
-                             break;
-
-      case UDP_DATA_IND:
-                             {
-                               proxy_ss_header_t hdr;
-                               attenuationConfigCnf_t attnCnf;
-                               VngCmdResp_t VngResp;
-                               LOG_A(ENB_SS_SYS_TASK, "received UDP_DATA_IND \n");
-                               enum SystemConfirm_Type_Sel cnfType;
-                               enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
-                               bool resVal = true;
-
-                               //if (attnCnf.header.preamble != 0xF00DC0DE ) break; /** TODO Log ! */
-                               memcpy(&hdr, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(proxy_ss_header_t));
-
-                               switch (hdr.msg_id)
-                               {
-                                 case SS_ATTN_LIST_CNF:
-                                   cnfType = SystemConfirm_Type_CellAttenuationList;
-                                   memcpy(&attnCnf, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(attenuationConfigCnf_t));
-                                   if(false == SS_context.send_atten_cnf) {
-                                     LOG_A(ENB_SS_SYS_TASK, "received Cell_Attenuation_Cnf from Proxy for cell : %d \n", attnCnf.header.cell_id);
-                                     SS_context.send_atten_cnf = true;
-                                     send_sys_cnf(resType, resVal, cnfType, NULL);
-                                     sys_confirm_done_indication();
-                                   }
-                                   break;
-
-                                 case SS_VNG_CMD_RESP:
-                                   memcpy(&VngResp, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(VngCmdResp_t));
-
-                                   MessageDef *vng_resp_p = itti_alloc_new_message(TASK_SYS, 0, SS_VNG_PROXY_RESP);
-                                   assert(vng_resp_p);
-
-                                   SS_VNG_PROXY_RESP(vng_resp_p).cell_id = VngResp.header.cell_id;
-                                   SS_VNG_PROXY_RESP(vng_resp_p).sfn_sf  = (tinfo.sfn << 4 | tinfo.sf);
-                                   SS_VNG_PROXY_RESP(vng_resp_p).status  = VngResp.status;
-
-                                   LOG_A(ENB_SS_SYS_TASK, "Sending CMD_RESP for CNF @ sfn: %d sf: %d\n", tinfo.sfn, tinfo.sf);
-
-                                   int res = itti_send_msg_to_task(TASK_VNG, 0, vng_resp_p);
-                                   if (res < 0)
-                                   {
-                                     LOG_A(ENB_SS_SYS_TASK, "[SS-VNG] Error in itti_send_msg_to_task\n");
-                                   }
-                                   else
-                                   {
-                                     LOG_A(ENB_SS_SYS_TASK, "[SS-VNG] Send ITTI message to %s\n", ITTI_MSG_DESTINATION_NAME(vng_resp_p));
-                                   }
-                                 default:
-                                   break;
-                               }
-                               break;
-                             }
-      case TERMINATE_MESSAGE:
-                             {
-                               itti_exit_task();
-                               break;
-                             }
-      default:
-                             LOG_A(ENB_SS_SYS_TASK, "Received unhandled message %d:%s\n",
-                                 ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
-                             break;
+      send_sys_cnf(resType, resVal, cnfType, (void *)&PdcpCount);
+      sys_confirm_done_indication();
     }
+    break;
 
+    case UDP_DATA_IND:
+    {
+      proxy_ss_header_t hdr;
+      attenuationConfigCnf_t attnCnf;
+      VngCmdResp_t VngResp;
+      LOG_A(ENB_SS_SYS_TASK, "received UDP_DATA_IND \n");
+      enum SystemConfirm_Type_Sel cnfType;
+      enum ConfirmationResult_Type_Sel resType = ConfirmationResult_Type_Success;
+      bool resVal = true;
+
+      //if (attnCnf.header.preamble != 0xF00DC0DE ) break; /** TODO Log ! */
+      memcpy(&hdr, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(proxy_ss_header_t));
+
+      switch (hdr.msg_id)
+      {
+        case SS_ATTN_LIST_CNF:
+          cnfType = SystemConfirm_Type_CellAttenuationList;
+          memcpy(&attnCnf, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(attenuationConfigCnf_t));
+          if(false == SS_context.send_atten_cnf) {
+            LOG_A(ENB_SS_SYS_TASK, "received Cell_Attenuation_Cnf from Proxy for cell : %d \n", attnCnf.header.cell_id);
+            SS_context.send_atten_cnf = true;
+            send_sys_cnf(resType, resVal, cnfType, NULL);
+            sys_confirm_done_indication();
+          }
+          break;
+
+        case SS_VNG_CMD_RESP:
+          memcpy(&VngResp, (SS_SYS_PROXY_MSG_CNF(received_msg).buffer), sizeof(VngCmdResp_t));
+
+          MessageDef *vng_resp_p = itti_alloc_new_message(TASK_SYS, 0, SS_VNG_PROXY_RESP);
+          assert(vng_resp_p);
+
+          SS_VNG_PROXY_RESP(vng_resp_p).cell_id = VngResp.header.cell_id;
+          SS_VNG_PROXY_RESP(vng_resp_p).sfn_sf  = (tinfo.sfn << 4 | tinfo.sf);
+          SS_VNG_PROXY_RESP(vng_resp_p).status  = VngResp.status;
+
+          LOG_A(ENB_SS_SYS_TASK, "Sending CMD_RESP for CNF @ sfn: %d sf: %d\n", tinfo.sfn, tinfo.sf);
+
+          int res = itti_send_msg_to_task(TASK_VNG, 0, vng_resp_p);
+          if (res < 0)
+          {
+            LOG_A(ENB_SS_SYS_TASK, "[SS-SYS] Error in itti_send_msg_to_task\n");
+          }
+          else
+          {
+            LOG_A(ENB_SS_SYS_TASK, "[SS-SYS] Send ITTI message to %s\n", ITTI_MSG_DESTINATION_NAME(vng_resp_p));
+          }
+        default:
+          break;
+      }
+      break;
+    }
+    case TERMINATE_MESSAGE:
+    {
+      itti_exit_task();
+      break;
+    }
+    default:
+      LOG_A(ENB_SS_SYS_TASK, "Received unhandled message %d:%s\n",
+            ITTI_MSG_ID(received_msg), ITTI_MSG_NAME(received_msg));
+      break;
+    }
     result = itti_free(ITTI_MSG_ORIGIN_ID(received_msg), received_msg);
     AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
     received_msg = NULL;

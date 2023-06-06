@@ -681,49 +681,50 @@ void fill_eMTC_configuration(MessageDef *msg_p,  ccparams_eMTC_t *eMTCconfig, in
 		 "Failed to parse eNB configuration file %s, enb %d unknown value \"%d\" for rach_maxHARQ_Msg3Tx choice: 1..8!\n",
 		 config_fname, cell_idx,eMTCconfig->ccparams.rach_maxHARQ_Msg3Tx);
 
+  static long preambleTransMax_CE_r13 = LTE_PreambleTransMax_n3;
   switch (eMTCconfig->preambleTransMax_CE_r13) {
   case 3:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n3;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n3;
     break;
 
   case 4:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n4;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n4;
     break;
 
   case 5:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n5;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n5;
     break;
 
   case 6:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n6;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n6;
     break;
 
   case 7:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n7;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n7;
     break;
 
   case 8:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n8;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n8;
     break;
 
   case 10:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n10;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n10;
     break;
 
   case 20:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n20;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n20;
     break;
 
   case 50:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n50;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n50;
     break;
 
   case 100:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n100;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n100;
     break;
 
   case 200:
-    RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13=  LTE_PreambleTransMax_n200;
+    preambleTransMax_CE_r13 =  LTE_PreambleTransMax_n200;
     break;
 
   default:
@@ -732,6 +733,8 @@ void fill_eMTC_configuration(MessageDef *msg_p,  ccparams_eMTC_t *eMTCconfig, in
 		 config_fname, cell_idx,eMTCconfig->preambleTransMax_CE_r13);
     break;
   }
+
+  RRC_CONFIGURATION_REQ (msg_p).radioresourceconfig_BR[cc_idx].preambleTransMax_CE_r13 = &preambleTransMax_CE_r13;
 
   switch (eMTCconfig->ccparams.pcch_defaultPagingCycle) {
   case 32:

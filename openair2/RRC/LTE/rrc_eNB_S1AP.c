@@ -248,7 +248,7 @@ rrc_eNB_S1AP_get_ue_ids(
             LOG_E(RRC, "Removing UE context eNB_ue_s1ap_id %u: did not find context\n",ue_desc_p->eNB_ue_s1ap_id);
           }
 
-          return NULL; 
+          return NULL;
         } else {
           LOG_E(S1AP, "[eNB %ld] In hashtable_get, couldn't find in s1ap_id2_s1ap_ids eNB_ue_s1ap_id %"PRIu32", because ue_initial_id is invalid in S1AP context\n",
                 rrc_instance_pP - RC.rrc[0],
@@ -776,9 +776,9 @@ rrc_eNB_send_S1AP_NAS_FIRST_REQ(
                   ue_context_pP->ue_context.rnti);
           }
         } else { // end if plmn_Identity != NULL
-          S1AP_NAS_FIRST_REQ(message_p).ue_identity.gummei.mcc = rrc->configuration.mcc[selected_plmn_identity];
-          S1AP_NAS_FIRST_REQ(message_p).ue_identity.gummei.mnc = rrc->configuration.mnc[selected_plmn_identity];
-          S1AP_NAS_FIRST_REQ(message_p).ue_identity.gummei.mnc_len = rrc->configuration.mnc_digit_length[selected_plmn_identity];
+          S1AP_NAS_FIRST_REQ(message_p).ue_identity.gummei.mcc = rrc->configuration.mcc[0][selected_plmn_identity];
+          S1AP_NAS_FIRST_REQ(message_p).ue_identity.gummei.mnc = rrc->configuration.mnc[0][selected_plmn_identity];
+          S1AP_NAS_FIRST_REQ(message_p).ue_identity.gummei.mnc_len = rrc->configuration.mnc_digit_length[0][selected_plmn_identity];
         } // end else (plmn_Identity == NULL)
 
         S1AP_NAS_FIRST_REQ (message_p).ue_identity.gummei.mme_code     = BIT_STRING_to_uint8 (&r_mme->mmec);
@@ -994,17 +994,18 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
       rrc_eNB_send_S1AP_INITIAL_CONTEXT_SETUP_RESP(&ctxt,ue_context_p);
     }
 
-    
+
     if (NODE_IS_CU(RC.rrc[ctxt.module_id]->node_type)) {
+
       struct eNB_RRC_INST_s *rrc= RC.rrc[0];
       MessageDef *message_p = itti_alloc_new_message (TASK_RRC_ENB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
       f1ap_ue_context_setup_t *req=&F1AP_UE_CONTEXT_SETUP_REQ (message_p);
       req->gNB_CU_ue_id     = 0;
       req->gNB_DU_ue_id = 0;
       req->rnti = ue_context_p->ue_context.rnti;
-      req->mcc  = rrc->configuration.mcc[0];
-      req->mnc  = rrc->configuration.mnc[0];
-      req->mnc_digit_length = rrc->configuration.mnc_digit_length[0];
+      req->mcc  = rrc->configuration.mcc[0][0];
+      req->mnc  = rrc->configuration.mnc[0][0];
+      req->mnc_digit_length = rrc->configuration.mnc_digit_length[0][0];
       req->nr_cellid        = rrc->nr_cellid;
       req->srbs_to_be_setup = malloc(sizeof(f1ap_srb_to_be_setup_t));
       req->srbs_to_be_setup_length = 1;
@@ -1027,7 +1028,7 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
       itti_send_msg_to_task (TASK_CU_F1, 0, message_p);
     }
   }
-  
+
   return (0);
 }
 
@@ -1739,10 +1740,10 @@ int rrc_eNB_process_PAGING_IND(MessageDef *msg_p, const char *msg_name, instance
     LOG_D(RRC,"[eNB %ld] In S1AP_PAGING_IND: MCC %d, MNC %d, TAC %d\n", instance, S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mcc,
           S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc, S1AP_PAGING_IND(msg_p).tac[tai_size]);
 
-    for (uint8_t j = 0; j < RC.rrc[instance]->configuration.num_plmn; j++) {
-      if (RC.rrc[instance]->configuration.mcc[j] == S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mcc
-          && RC.rrc[instance]->configuration.mnc[j] == S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc
-          && RC.rrc[instance]->configuration.tac == S1AP_PAGING_IND(msg_p).tac[tai_size]) {
+    for (uint8_t j = 0; j < RC.rrc[instance]->configuration.num_plmn[0]; j++) {
+      if (RC.rrc[instance]->configuration.mcc[0][j] == S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mcc
+          && RC.rrc[instance]->configuration.mnc[0][j] == S1AP_PAGING_IND(msg_p).plmn_identity[tai_size].mnc
+          && RC.rrc[instance]->configuration.tac[0] == S1AP_PAGING_IND(msg_p).tac[tai_size]) {
         for (uint8_t CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
           frame_type_t frame_type = RC.eNB[instance][CC_id]->frame_parms.frame_type;
           /* get nB from configuration */
@@ -2140,7 +2141,7 @@ int rrc_eNB_process_S1AP_PATH_SWITCH_REQ_ACK (MessageDef *msg_p,
 	   )
       ue_context_p->ue_context.ue_release_timer_rrc = ue_context_p->ue_context.ue_release_timer_thres_rrc;
   }
-  
+
     /* Security key */
     ue_context_p->ue_context.next_hop_chain_count=S1AP_PATH_SWITCH_REQ_ACK (msg_p).next_hop_chain_count;
     memcpy ( ue_context_p->ue_context.next_security_key,

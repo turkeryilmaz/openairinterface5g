@@ -196,7 +196,7 @@ init_SI(
   LTE_SystemInformationBlockType1_v1310_IEs_t *sib1_v13ext=(LTE_SystemInformationBlockType1_v1310_IEs_t *)NULL;
   LOG_D(RRC,"%s()\n\n\n\n",__FUNCTION__);
 
-  if (CC_id >= MAX_NUM_CCs) {
+  if (CC_id > MAX_NUM_CCs) {
       LOG_E(RRC,"%s CC_ID (%d) > MAX_NUM_CCs (%d) \r\n",__FUNCTION__, CC_id, MAX_NUM_CCs);
   }
 
@@ -5075,7 +5075,7 @@ rrc_eNB_generate_HO_RRCConnectionReconfiguration(const protocol_ctxt_t *const ct
                                                 )
 //-----------------------------------------------------------------------------
 {
-  uint16_t                            size;
+  uint16_t                            size = 0;
   int                                 i;
   uint8_t                             rv[2];
   // configure SRB1/SRB2, PhysicalConfigDedicated, MAC_MainConfig for UE
@@ -6259,7 +6259,7 @@ rrc_eNB_configure_rbs_handover(struct rrc_eNB_ue_context_s *ue_context_p, protoc
     }
   }
   // Add a new user (called during the HO procedure)
-  LOG_I(RRC, "rrc_eNB_target_add_ue_handover module_id %d rnti %ld, ciphering algo: %ld, integrity algo: %ld \n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, RC.ss.HOASSecurityCOnfig.Ciphering.ciphering_algorithm,RC.ss.HOASSecurityCOnfig.Integrity.integrity_algorithm);
+  LOG_I(RRC, "rrc_eNB_target_add_ue_handover module_id %d rnti %ld, ciphering algo: %ld, integrity algo: %d \n", ctxt_pP->module_id, ctxt_pP->rntiMaybeUEid, RC.ss.HOASSecurityCOnfig.Ciphering.ciphering_algorithm,RC.ss.HOASSecurityCOnfig.Integrity.integrity_algorithm);
       if(RC.ss.HOASSecurityCOnfig.isIntegrityInfoPresent && RC.ss.HOASSecurityCOnfig.Integrity.kRRCint)
       {
         for(int i=16;i<32;i++)
@@ -7151,9 +7151,9 @@ void rrc_eNB_as_security_configuration_req(
   if (NULL == ctxt_pP) {
     LOG_A(RRC, "No context to get PdcpCount\n");
   }
-  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%ld cipheringAlgorithm=%ld \n",
+  LOG_A (RRC, "Update PDCP context for RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d \n",
          ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm,
-         ASSecConfReq->Ciphering.ciphering_algorithm);
+         (int)ASSecConfReq->Ciphering.ciphering_algorithm);
   AssertFatal(ASSecConfReq!=NULL,"AS Security Config Request is NULL \n");
   memcpy(&RC.ss.HOASSecurityCOnfig,ASSecConfReq,sizeof(RrcAsSecurityConfigReq));
 
@@ -7176,8 +7176,8 @@ void rrc_eNB_as_security_configuration_req(
     h_rc = hashtable_get(pdcp_coll_p, key, (void **) &pdcp_p);
     if (h_rc == HASH_TABLE_OK)
     {
-      LOG_A(RRC, "Current PDCP Context pdcp_p=%p key = %ld rbid_ %d RNTI %d integrityProtAlgorithm=%ld cipheringAlgorithm=%ld\n",
-      pdcp_p, key,rbid_,ASSecConfReq->rnti, ASSecConfReq->Integrity.integrity_algorithm, ASSecConfReq->Ciphering.ciphering_algorithm);
+      LOG_A(RRC, "Current PDCP Context pdcp_p=%p key = %ld rbid_ %d RNTI %d integrityProtAlgorithm=%d cipheringAlgorithm=%d\n",
+      pdcp_p, key,rbid_,ASSecConfReq->rnti, (int)ASSecConfReq->Integrity.integrity_algorithm, (int)ASSecConfReq->Ciphering.ciphering_algorithm);
 
       AssertFatal(NULL != RC.ss.ss_pdcp_api, "SS PDCP APIs NULL \n");
       RC.ss.ss_pdcp_api->set_pdcp_cnt(pdcp_p, rb_idx, &pc);

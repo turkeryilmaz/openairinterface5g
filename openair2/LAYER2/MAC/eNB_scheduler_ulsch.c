@@ -168,7 +168,7 @@ rx_sdu(const module_id_t enb_mod_idP,
       UE_scheduling_control->ul_failure_timer = 0;
       UE_scheduling_control->ul_scheduled &= (~(1 << harq_pid));
       UE_scheduling_control->pusch_rx_num[CC_idP]++;
-      
+
       /* Update with smoothing: 3/4 of old value and 1/4 of new.
        * This is the logic that was done in the function
        * lte_est_timing_advance_pusch, maybe it's not necessary?
@@ -178,7 +178,7 @@ rx_sdu(const module_id_t enb_mod_idP,
       UE_scheduling_control->ta_update = (int)UE_scheduling_control->ta_update_f;
       int tmp_snr = (5 * ul_cqi - 640) / 10;
       UE_scheduling_control->pusch_snr[CC_idP] = tmp_snr;
-       
+
       if(tmp_snr > 0 && tmp_snr < 63) {
         double snr_filter_tpc=0.7;
         int snr_thres_tpc=30;
@@ -2014,7 +2014,7 @@ schedule_ulsch_rnti(module_id_t   module_idP,
     /* Power control */
     /*
      * Compute the expected ULSCH RX snr (for the stats)
-     * 
+     *
      */
     const int32_t snr = UE_sched_ctrl_ptr->pusch_snr[CC_id];
     const int32_t target_snr = mac->puSch10xSnr / 10;
@@ -2463,11 +2463,11 @@ schedule_ulsch_rnti(module_id_t   module_idP,
 
 bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, uint8_t SR_received)
 {
-  LOG_I(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
+  LOG_D(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
 
   if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)
   {
-    LOG_I(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
+    LOG_D(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
     return true;
   }
 
@@ -2497,19 +2497,19 @@ bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, ui
 
   LOG_I(MAC, "fxn:%s CC_id:%d RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous:%d RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles:%d \n",
       __FUNCTION__,
-      CC_id, 
-      RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous, 
+      CC_id,
+      RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous,
       RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles);
 
-  while (RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles) 
+  while (RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.NumOfCycles)
   {
     if ((RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter % RC.ss.ulgrant_info[CC_id].periodiGrantInfo.period.duration) == 0)
     {
       LOG_I(MAC, "%s subframe_counter value:%d\n", __FUNCTION__, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
       LOG_I(MAC, "%s ULGrant scheduled for current Frame %d Subframe:%d. Next ULGrant will be after %d subframe\n",
-          __FUNCTION__, 
-          frameP, 
-          subframeP, 
+          __FUNCTION__,
+          frameP,
+          subframeP,
           RC.ss.ulgrant_info[CC_id].periodiGrantInfo.period.duration);
 
       if (RC.ss.ulgrant_info[CC_id].periodiGrantInfo.transRepType.Continuous == 0)
@@ -2565,7 +2565,7 @@ schedule_ulsch_ss(module_id_t module_idP,
       LOG_D(MAC, "%s No UE found\n", __FUNCTION__);
       continue;
     }
-      
+
     /* if schedule is false, it means SFN/SF for ULGrant had not yet arrived */
 //    schedule = check_ulGrant_Schedule(frameP, subframeP, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
     schedule = check_ulGrant_Schedule(RC.eNB[0][CC_id]->UL_INFO.frame, RC.eNB[0][CC_id]->UL_INFO.subframe, CC_id, UE_info->UE_template[CC_id][UE_id].ul_SR);
@@ -2674,7 +2674,7 @@ schedule_ulsch_ss(module_id_t module_idP,
     schedule_ulsch_rnti_emtc(module_idP, frameP, subframeP, sched_subframe, emtc_active);
 
     if (is_prach_subframe0(cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,cc->tdd_Config!=NULL ? 1 : 0,
-                           cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex, 
+                           cc->radioResourceConfigCommon->prach_Config.prach_ConfigInfo.prach_ConfigIndex,
                            sched_frame, sched_subframe)) {
       int start_rb = get_prach_prb_offset(cc->tdd_Config!=NULL ? 1 : 0,
                                           cc->tdd_Config!=NULL ? cc->tdd_Config->subframeAssignment : 0,

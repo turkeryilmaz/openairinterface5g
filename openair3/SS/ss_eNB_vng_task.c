@@ -156,7 +156,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     while (1)
     {
     	int userId = acpRecvMsg(ctx, &msgSize, buffer);
-        LOG_A(ENB_SS_VNG, "[SS-VNG] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
+        LOG_D(ENB_SS_VNG, "[SS-VNG] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
     	// Error handling
     	if (userId < 0)
@@ -193,7 +193,7 @@ ss_eNB_read_from_vng_socket(acpCtx_t ctx)
     	}
     	else if (userId == MSG_VngProcess_userId)
     	{
-            int cell_index;
+            int cell_index = -1;
             LOG_A(ENB_SS_VNG, "[SS-VNG] Received VNG Control Request\n");
 
             if (acpVngProcessDecSrv(ctx, buffer, msgSize, &req) != 0)
