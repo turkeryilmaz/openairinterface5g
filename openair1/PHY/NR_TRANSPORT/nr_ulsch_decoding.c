@@ -155,6 +155,12 @@ NR_gNB_ULSCH_t new_gNB_ulsch(uint8_t max_ldpc_iterations, uint16_t N_RB_UL)
 void nr_processULSegment(void *arg)
 {
   ldpcDecode_t *rdata = (ldpcDecode_t *)arg;
+
+#ifdef TASK_MANAGER
+    if(*rdata->cancel == true);
+      return;
+#endif
+
   PHY_VARS_gNB *phy_vars_gNB = rdata->gNB;
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   t_nrLDPC_dec_params *p_decoderParms = &rdata->decoderParms;
@@ -610,6 +616,7 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
 
 #ifdef TASK_MANAGER
   ldpcDecode_t* arr = calloc(harq_process->C, sizeof(ldpcDecode_t));
+  _Atomic bool cancel = false;
   int idx_arr = 0;
 #endif
 
@@ -617,6 +624,7 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
 #ifdef TASK_MANAGER
     ldpcDecode_t* rdata = &arr[idx_arr]; 
+    rdata->cancel = &cancel;
     ++idx_arr; 
 #else      
       union ldpcReqUnion id = {.s = {ulsch->rnti, frame, nr_tti_rx, 0, 0}};

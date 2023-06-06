@@ -262,11 +262,11 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
            rdata->Kr_bytes - (ulsch_harq->F>>3) -((ulsch_harq->C>1)?3:0));
 
   } else {
-    if ( rdata->nbSegments != ulsch_harq->processedSegments ) {
-      // Let's forget about this optimization for now
+    if (rdata->nbSegments != ulsch_harq->processedSegments){
+#ifdef TASK_MANAGER
       printf("openair1/SCHED_NR/phy_procedures_nr_gNB.c:267 \n");
-      assert(0 != 0);
-#ifndef TASK_MANAGER
+      *rdata->cancel = true;
+#else
       int nb = abortTpoolJob(&gNB->threadPool, req->key);
       nb += abortNotifiedFIFOJob(&gNB->respDecode, req->key);
       gNB->nbDecode-=nb;
