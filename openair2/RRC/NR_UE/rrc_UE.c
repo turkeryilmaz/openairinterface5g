@@ -59,6 +59,7 @@
 #include "executables/softmodem-common.h"
 #include "plmn_data.h"
 #include "pdcp.h"
+#include "nr_pdcp/nr_pdcp.h"
 #include "UTIL/OSA/osa_defs.h"
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
@@ -1737,7 +1738,7 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
   nr_derive_key_rrc_int(NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm,
                         NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
                        &kRRCint);
-   LOG_I(NR_RRC, "driving kRRCenc, kRRCint and kUPenc from KgNB="
+   LOG_I(NR_RRC, "deriving kRRCenc, kRRCint and kUPenc from KgNB="
    "%02x%02x%02x%02x"
    "%02x%02x%02x%02x"
    "%02x%02x%02x%02x"
@@ -1787,10 +1788,9 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
      LOG_D(NR_RRC, "securityModeComplete Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
 
      for (i = 0; i < (enc_rval.encoded + 7) / 8; i++) {
-       LOG_T(NR_RRC, "%02x.", buffer[i]);
+       LOG_I(NR_RRC, "%02x.", buffer[i]);
      }
-
-     LOG_T(NR_RRC, "\n");
+     LOG_I(NR_RRC, "\n");
      rrc_data_req_nr_ue (ctxt_pP,
                       DCCH,
                       nr_rrc_mui++,
@@ -1798,9 +1798,14 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
                       (enc_rval.encoded + 7) / 8,
                       buffer,
                       PDCP_TRANSMISSION_MODE_CONTROL);
-   } else
-     LOG_W(NR_RRC,"securityModeCommand->criticalExtensions.present (%d) != NR_SecurityModeCommand__criticalExtensions_PR_securityModeCommand\n",
-		  securityModeCommand->criticalExtensions.present);
+      if (NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm != NR_CipheringAlgorithm_nea0) {
+        LOG_I(NR_RRC, "Calling nr_pdcp_config_set_smc");
+        nr_pdcp_config_set_smc(ctxt_pP->rntiMaybeUEid, false);
+      }
+    } else {
+      LOG_W(NR_RRC,"securityModeCommand->criticalExtensions.present (%d) != NR_SecurityModeCommand__criticalExtensions_PR_securityModeCommand\n",
+		        securityModeCommand->criticalExtensions.present);
+    }
  }
 
  //-----------------------------------------------------------------------------
@@ -2251,6 +2256,7 @@ nr_rrc_ue_establish_srb2(
            ie->nonCriticalExtension->masterCellGroup);
      }
 
+     updateKgNB(0, &(NR_UE_rrc_inst[ctxt_pP->module_id].kgnb[0]));
      if (ie->radioBearerConfig != NULL) {
        LOG_I(NR_RRC, "radio Bearer Configuration is present\n");
        nr_rrc_ue_process_RadioBearerConfig(ctxt_pP, gNB_index, ie->radioBearerConfig);
@@ -2603,14 +2609,14 @@ nr_rrc_ue_establish_srb2(
       case PHY_FIND_CELL_IND:
       {
         nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
-        LOG_D(RRC, "Received message %s with reports for %d cells.\n", 
+        LOG_D(RRC, "Received message %s with reports for %d cells.\n",
               ITTI_MSG_NAME (msg_p), nb_cells);
 
-        for (int i = 0 ; i < nb_cells; i++) 
+        for (int i = 0 ; i < nb_cells; i++)
         {
           rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
           rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
-          LOG_A (RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", 
+          LOG_D(RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n",
               PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
         }
         break;

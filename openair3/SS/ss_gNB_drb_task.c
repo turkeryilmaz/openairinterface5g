@@ -50,6 +50,7 @@
 
 #include "acpNrDrb.h"
 #include "ss_gNB_context.h"
+#include "ss_utils.h"
 
 extern RAN_CONTEXT_t RC;
 extern SSConfigContext_t SS_context;
@@ -65,26 +66,6 @@ enum MsgUserId
     MSG_NrDrbProcessFromSS_userId = 1,
     MSG_NrDrbProcessToSS_userId,
 };
-
-static void bits_copy_from_array(char *dst, int off, const char* src, int len)
-{
-    while (len-- > 0)
-    {
-        int bit = *src++ ? 1 : 0;
-        dst[off / 8] |= bit << (7 - off % 8);
-        off++;
-    }
-}
-
-static void bits_copy_to_array(char *dst, int off, const char* src, int len)
-{
-    while (len-- > 0)
-    {
-        int bit = src[off / 8] & (1 << (7 - off % 8));
-        *dst++ = bit ? 0x01 : 0x00;
-        off++;
-    }
-}
 
 static void ss_send_drb_data(ss_drb_pdu_ind_t *pdu_ind)
 {

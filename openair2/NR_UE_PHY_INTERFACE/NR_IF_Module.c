@@ -989,7 +989,7 @@ static void enqueue_nr_nfapi_msg(void *buffer, ssize_t len, nfapi_p7_message_hea
 				PHY_FIND_CELL_IND (message_p).cells[i].rsrp = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrp;
 				PHY_FIND_CELL_IND (message_p).cells[i].rsrq = cell_ind.lte_cell_search_indication.lte_found_cells[i].rsrq;
 
-				LOG_A(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
+				LOG_D(NR_PHY, "Cell No: %d PCI: %d EARFCN: %d RSRP: %d RSRQ: %d \n", PHY_FIND_CELL_IND (message_p).cell_nb,
 						PHY_FIND_CELL_IND (message_p).cells[i].cell_id,
 						PHY_FIND_CELL_IND (message_p).cells[i].earfcn,
 						PHY_FIND_CELL_IND (message_p).cells[i].rsrp,
