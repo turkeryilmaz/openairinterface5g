@@ -157,7 +157,7 @@ void nr_processULSegment(void *arg)
   ldpcDecode_t *rdata = (ldpcDecode_t *)arg;
 
 #ifdef TASK_MANAGER
-    if(*rdata->cancel == true);
+    if(*rdata->cancel == true)
       return;
 #endif
 
