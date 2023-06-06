@@ -777,7 +777,9 @@ typedef struct PHY_VARS_gNB_s {
   pthread_t L1_tx_thread;
   int L1_tx_thread_core;
   struct processingData_L1tx *msgDataTx;
+#ifndef  TASK_MANAGER
   int nbDecode;
+#endif
   void *scopeData;
   /// structure for analyzing high-level RT measurements
   rt_L1_profiling_t rt_L1_profiling; 

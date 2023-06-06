@@ -297,7 +297,7 @@ void nr_processULSegment(void *arg)
   }
 
 #ifdef TASK_MANAGER
-  if( phy_vars_gNB->ldpc_offload_flag)
+  if(phy_vars_gNB->ldpc_offload_flag == 0)
     nr_postDecode(rdata->gNB, rdata);
 #endif
 
@@ -330,8 +330,10 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
 
   int Kr;
   int Kr_bytes;
-    
+  
+#ifndef TASK_MANAGER
   phy_vars_gNB->nbDecode = 0;
+#endif
   harq_process->processedSegments = 0;
   
   // ------------------------------------------------------------------
@@ -645,9 +647,9 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       async_task_manager(&phy_vars_gNB->man, t);
 #else
       pushTpool(&phy_vars_gNB->threadPool, req);
-#endif
       phy_vars_gNB->nbDecode++;
       LOG_D(PHY, "Added a block to decode, in pipe: %d\n", phy_vars_gNB->nbDecode);
+#endif
       r_offset += E;
       offset += (Kr_bytes - (harq_process->F >> 3) - ((harq_process->C > 1) ? 3 : 0));
       //////////////////////////////////////////////////////////////////////////////////////////

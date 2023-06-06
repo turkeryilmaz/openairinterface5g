@@ -12,6 +12,7 @@
 #include <string.h>
 #include <poll.h>
 #include <sys/types.h>
+#include <sys/sysinfo.h>
 
 #include <fcntl.h>
 
@@ -413,7 +414,10 @@ void* worker_thread(void* arg)
   task_thread_args_t* args = (task_thread_args_t*)arg; 
   int const idx = args->idx;
 
-  pin_thread_to_core(idx+4);
+  int const log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  // Assuming: 2 x Physical cores = Logical cores
+  pin_thread_to_core(idx+log_cores/2);
 
   task_manager_t* man = args->man;
 

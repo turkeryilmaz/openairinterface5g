@@ -251,8 +251,11 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
   ulsch_harq->processedSegments++;
   LOG_D(PHY, "processing result of segment: %d, processed %d/%d\n",
 	rdata->segment_r, ulsch_harq->processedSegments, rdata->nbSegments);
+
+#ifndef TASK_MANAGER
   gNB->nbDecode--;
   LOG_D(PHY,"remain to decoded in subframe: %d\n", gNB->nbDecode);
+#endif
   if (decodeSuccess) {
     memcpy(ulsch_harq->b+rdata->offset,
            ulsch_harq->c[r],
@@ -261,6 +264,8 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
   } else {
     if ( rdata->nbSegments != ulsch_harq->processedSegments ) {
       // Let's forget about this optimization for now
+      printf("openair1/SCHED_NR/phy_procedures_nr_gNB.c:267 \n");
+      assert(0 != 0);
 #ifndef TASK_MANAGER
       int nb = abortTpoolJob(&gNB->threadPool, req->key);
       nb += abortNotifiedFIFOJob(&gNB->respDecode, req->key);

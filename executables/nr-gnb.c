@@ -52,6 +52,11 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "openair2/NR_PHY_INTERFACE/nr_sched_response.h"
+#include "common/utils/thread_pool/task_manager.h"
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/sysinfo.h>
 
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
@@ -87,6 +92,7 @@
 #include <openair1/PHY/NR_TRANSPORT/nr_ulsch.h>
 #include <openair1/PHY/NR_TRANSPORT/nr_dlsch.h>
 #include <PHY/NR_ESTIMATION/nr_ul_estimation.h>
+
 
 //#define USRP_DEBUG 1
 // Fix per CC openair rf/if device update
@@ -465,6 +471,13 @@ void init_gNB_Tpool(int inst) {
   PHY_VARS_gNB *gNB;
   gNB = RC.gNB[inst];
   gNB_L1_proc_t *proc = &gNB->proc;
+
+#ifdef TASK_MANAGER
+  int log_cores = get_nprocs_conf();
+  assert(log_cores > 0);
+  // Assuming: 2 x Physical cores = Logical cores
+  init_task_manager(&gNB->man, log_cores/2);
+#endif
 
   // ULSCH decoding threadpool
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
