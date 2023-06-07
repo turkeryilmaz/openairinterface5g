@@ -57,13 +57,6 @@ int xer_sprint_NR(char *string, size_t string_size, struct asn_TYPE_descriptor_s
 
 uint8_t do_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP, int abs_SF, NR_UE_RRC_INST_t* UE);
 
-/**
-\brief Generate configuration for SIB1 (gNB).
-@param carrier pointer to Carrier information
-@param configuration Pointer Configuration Request structure  
-@return size of encoded bit stream in bytes*/
-uint16_t do_SIB1_NR(rrc_gNB_carrier_data_t *carrier, gNB_RrcConfigurationReq *configuration);
-
 uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                     gNB_RrcConfigurationReq *configuration);
 
