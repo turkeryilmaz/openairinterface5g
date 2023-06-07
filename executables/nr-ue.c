@@ -802,10 +802,8 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 }
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
-    if (IS_SOFTMODEM_RFSIM) {
       int delta_prefix = UE->frame_parms.nb_prefix_samples0 - UE->frame_parms.nb_prefix_samples;
       UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + delta_prefix);
-    }
     int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl : UE->rx_offset;
     LOG_I(NR_PHY, "Resynchronizing RX by %d samples (mode = %d)\n", rx_offset, UE->mode);
 
@@ -991,7 +989,7 @@ void *UE_thread_SL(void *arg) {
       decoded_frame_rx++;
       // we do ++ first in the regular processing, so it will be begin of frame;
 
-      absolute_slot = UE->rx_ssb_frame * nb_slot_frame + UE->rx_ssb_slot - 1;
+      absolute_slot = UE->rx_ssb_frame * nb_slot_frame + UE->rx_ssb_slot + (nb_slot_frame - (UE->ssb_offset / UE->frame_parms.samples_per_slot0));
       LOG_D(NR_PHY, "Nearby UE: rx_stream = 1 and timestamp %ld, absolute_slot %d, slot %d, frame %d\n",
             timestamp, absolute_slot, UE->rx_ssb_slot, UE->rx_ssb_frame);
       continue;
@@ -1044,15 +1042,6 @@ void *UE_thread_SL(void *arg) {
                                            readBlockSize,
                                            UE->frame_parms.nb_antennas_rx), "");
 
-    if (!UE->sync_ref && IS_SOFTMODEM_RFSIM) {
-      int idx = read_time_stamp;
-      absolute_slot = UE->common_vars.rxdata[0][idx + 1];
-      curMsg->proc.nr_slot_rx = absolute_slot % nb_slot_frame;
-      curMsg->proc.thread_id   = absolute_slot % NR_RX_NB_TH;
-      curMsg->proc.nr_slot_tx  = (absolute_slot + DURATION_RX_TO_TX) % nb_slot_frame;
-      curMsg->proc.frame_rx    = (absolute_slot / nb_slot_frame) % MAX_FRAME_NUMBER;
-      curMsg->proc.frame_tx    = ((absolute_slot + DURATION_RX_TO_TX) / nb_slot_frame) % MAX_FRAME_NUMBER;
-    }
     if (slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
       uint16_t nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 :
@@ -1112,9 +1101,6 @@ void *UE_thread_SL(void *arg) {
 
     if (flags || IS_SOFTMODEM_RFSIM) {
       LOG_D(NR_PHY, "current slot goring to write USRP: %d\n", slot_nr);
-      if (UE->sync_ref) {
-        UE->common_vars.txdata[0][write_time_stamp] = absolute_slot;
-      }
       AssertFatal(writeBlockSize ==
                   UE->rfdevice.trx_write_func(&UE->rfdevice,
                                               writeTimestamp,

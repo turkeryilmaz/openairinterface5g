@@ -1474,10 +1474,6 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   NR_DL_UE_HARQ_t *harq = NULL;
   int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
-  int sym_offset = ue->frame_parms.get_samples_slot_timestamp(slot_rx,&ue->frame_parms,0);
-  if (slot_rx != 0 && IS_SOFTMODEM_RFSIM) {
-    sym_offset = sym_offset - (ue->frame_parms.ofdm_symbol_size + ue->frame_parms.nb_prefix_samples0);
-  }
 
   for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
     nr_ue_set_slsch_rx(ue, harq_pid);
@@ -1485,7 +1481,7 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
       harq = slsch->harq_processes[harq_pid];
       for (int aa = 0; aa < ue->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
-          nr_slot_fep_ul(&ue->frame_parms, &ue->common_vars.rxdata[aa][sym_offset], &rxdataF[aa][rx_offset], ofdm_symbol, slot_rx, 0);
+          nr_slot_fep_ul(&ue->frame_parms, ue->common_vars.rxdata[aa], &rxdataF[aa][rx_offset], ofdm_symbol, slot_rx, 0);
         }
         apply_nr_rotation_ul(&ue->frame_parms, rxdataF[aa], slot_rx, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
       }
