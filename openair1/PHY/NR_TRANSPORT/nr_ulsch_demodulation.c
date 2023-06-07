@@ -35,26 +35,23 @@ static inline
 int64_t time_now_us(void)
 {
   struct timespec tms;
-
   /* The C11 way */
   /* if (! timespec_get(&tms, TIME_UTC))  */
-
   /* POSIX.1-2008 way */
-  if (clock_gettime(CLOCK_REALTIME,&tms)) {
+  if (clock_gettime(CLOCK_REALTIME,&tms))
     return -1;
-  }
   /* seconds, multiplied with 1 million */
   int64_t micros = tms.tv_sec * 1000000;
   /* Add full microseconds */
   micros += tms.tv_nsec/1000;
   /* round up if necessary */
-  if (tms.tv_nsec % 1000 >= 500) {
+  if (tms.tv_nsec % 1000 >= 500)
     ++micros;
-  }
   return micros;
 }
 
-void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
+void nr_idft (int32_t *z, 
+              uint32_t Msc_PUSCH)
 {
 
   simde__m128i idft_in128[1][3240], idft_out128[1][3240];
@@ -318,16 +315,16 @@ void nr_idft(int32_t *z, uint32_t Msc_PUSCH)
 }
 
 
-void nr_ulsch_extract_rbs0(c16_t *rxdataF,
-                           int32_t *chF,
-                           int32_t *rxFext,
-                           int32_t *chFext,
-                           int rxoffset,
-                           int choffset,
-                           int aarx,
-                           int is_dmrs_symbol,
-                           nfapi_nr_pusch_pdu_t *pusch_pdu,
-                           NR_DL_FRAME_PARMS *frame_parms)
+void nr_ulsch_extract_rbs0 (c16_t *rxdataF,
+                            int32_t *chF,
+                            int32_t *rxFext,
+                            int32_t *chFext,
+                            int rxoffset,
+                            int choffset,
+                            int aarx,
+                            int is_dmrs_symbol,
+                            nfapi_nr_pusch_pdu_t *pusch_pdu,
+                            NR_DL_FRAME_PARMS *frame_parms)
 {
 
   uint8_t delta = 0;
@@ -771,23 +768,19 @@ void nr_ulsch_extract_rbs(c16_t **rxdataF,
         }
       }
     }
+
 #if 0 
     else {
-
       for (re = 0; re < nb_re_pusch; re++) {
-
       for (aatx = 0; aatx < pusch_pdu->nrOfLayers; aatx++) {
         ul_ch0 = &pusch_vars->ul_ch_estimates[aatx*frame_parms->nb_antennas_rx+aarx][pusch_vars->dmrs_symbol*frame_parms->ofdm_symbol_size]; // update channel estimates if new dmrs symbol are available
         ul_ch0_ext = &pusch_vars->ul_ch_estimates_ext[aatx*frame_parms->nb_antennas_rx+aarx][symbol*nb_re_pusch2];
         memcpy((void*)ul_ch0_ext,(void*)ul_ch0,nb_re_pusch*sizeof(int32_t));
       }
-
     } else {
-
       for (aatx = 0; aatx < pusch_pdu->nrOfLayers; aatx++) {
         ul_ch0 = &pusch_vars->ul_ch_estimates[aatx*frame_parms->nb_antennas_rx+aarx][pusch_vars->dmrs_symbol*frame_parms->ofdm_symbol_size]; // update channel estimates if new dmrs symbol are available
         ul_ch0_ext = &pusch_vars->ul_ch_estimates_ext[aatx*frame_parms->nb_antennas_rx+aarx][symbol*nb_re_pusch2];
-
         rxF_ext_index = 0;
         ul_ch0_ext_index = 0;
         ul_ch0_index = 0;
@@ -797,11 +790,9 @@ void nr_ulsch_extract_rbs(c16_t **rxdataF,
           if (++k >= frame_parms->ofdm_symbol_size) {
             k -= frame_parms->ofdm_symbol_size;
           }
-
-          #ifdef DEBUG_RB_EXT
+#ifdef DEBUG_RB_EXT
           printf("re = %d, is_dmrs_symbol = %d, symbol = %d\n", re, is_dmrs_symbol, symbol);
-          #endif
-
+#endif
           // save only data and respective channel estimates
           if (is_data_re == 1) {
             if (aatx == 0) {
@@ -809,21 +800,20 @@ void nr_ulsch_extract_rbs(c16_t **rxdataF,
               rxF_ext[rxF_ext_index + 1] = (rxF[(((start_re + re)*2) + 1) % (frame_parms->ofdm_symbol_size*2)]);
               rxF_ext_index +=2;
             }
-
             ul_ch0_ext[ul_ch0_ext_index] = ul_ch0[ul_ch0_index];
             ul_ch0_ext_index++;
-
-            #ifdef DEBUG_RB_EXT
+#ifdef DEBUG_RB_EXT
             printf("dmrs symb %d: rxF_ext[%d] = (%d,%d), ul_ch0_ext[%d] = (%d,%d)\n",
                  is_dmrs_symbol,rxF_ext_index>>1, rxF_ext[rxF_ext_index],rxF_ext[rxF_ext_index+1],
                  ul_ch0_ext_index,  ((int16_t*)&ul_ch0_ext[ul_ch0_ext_index])[0],  ((int16_t*)&ul_ch0_ext[ul_ch0_ext_index])[1]);
-            #endif          
+#endif
           } 
           ul_ch0_index++;
         }
       }
     }
 #endif
+
   }
 }
 
@@ -1344,7 +1334,12 @@ void nr_ulsch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
   simde_m_empty();
 }
 
-void inner_rx_qpsk(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length, int output_shift)
+void inner_rx_qpsk (int *rxF, 
+                    int *ul_ch, 
+                    int16_t *llr, 
+                    int aarx, 
+                    int length, 
+                    int output_shift)
 {
 #if !USE_128BIT
   register simde__m256i xmmp0, xmmp1, xmmp2, xmmp3, xmmp4;
@@ -1384,19 +1379,19 @@ void inner_rx_qpsk(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length, int
   }
 #else
   register simde__m128i xmmp0, xmmp1, xmmp2, xmmp3, xmmp4;
-  register simde__m128i complex_shuffle128 = simde_mm_set_epi8(13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2);
-  register simde__m128i conj128 = simde_mm_set_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
+  register simde__m128i complex_shuffle128 = simde_mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+  register simde__m128i conj128 = simde_mm_set_epi16(1, -1, 1, -1, 1, -1, 1, -1);
 
   simde__m128i *rxF128  = (simde__m128i*)rxF;
   simde__m128i *ulch128 = (simde__m128i*)ul_ch;
   simde__m128i  *llr128 = (simde__m128*)llr;
   for (int i = 0; i < (length >> 2); i++) {
-    xmmp0  = simde_mm_sign_epi16(ulch128[i], conj128);
-    xmmp0  = simde_mm_madd_epi16(xmmp0, rxF128[i]);
-    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmmp0  = simde_mm_madd_epi16(ulch128[i], rxF128[i]);
+    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmmp1  = simde_mm_shuffle_epi8(ulch128[i], complex_shuffle128);
+    xmmp1  = simde_mm_sign_epi16(xmmp1, conj128);
     xmmp1  = simde_mm_madd_epi16(xmmp1, rxF128[i]);
-    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmmp0  = simde_mm_srai_epi32(xmmp0, output_shift);
     xmmp1  = simde_mm_srai_epi32(xmmp1, output_shift);
     xmmp2  = simde_mm_unpacklo_epi32(xmmp0, xmmp1);
@@ -1413,18 +1408,18 @@ void inner_rx_qpsk(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length, int
     int i = (length>>1) - 1;
     simde__m64* llr64 = (simde__m64*)llr128;
     simde__m64 xmm0, xmm1, xmm2, xmm3, xmm4;
-    simde__m64 complex_shuffle64 = simde_mm_set_pi8(5,4,7,6,1,0,3,2);
-    simde__m64 conj64 = simde_mm_set_pi16(-1,1,-1,1);
+    simde__m64 complex_shuffle64 = simde_mm_set_pi8(5, 4, 7, 6, 1, 0, 3, 2);
+    simde__m64 conj64 = simde_mm_set_pi16(1, -1, 1, -1);
     simde__m64 *rxF64     = (simde__m64*)rxF;
     simde__m64 *ulch64    = (simde__m64*)ul_ch;
     simde__m64 QAM_amp    = simde_mm_set1_pi16(QAM16_n1);
 
-    xmm0 = simde_mm_sign_pi16(ulch64[i], conj64);
-    xmm0 = simde_mm_madd_pi16(xmm0, rxF64[i]);
-    // xmm0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmm0 = simde_mm_madd_pi16(ulch64[i], rxF64[i]);
+    // xmm0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i] 
     xmm1  = simde_mm_shuffle_pi8(ulch64[i], complex_shuffle64);
+    xmm1 = simde_mm_sign_pi16(xmm1, conj64);
     xmm1  = simde_mm_madd_pi16(xmm1, rxF64[i]);
-    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm0  = simde_mm_srai_pi32(xmm0, output_shift);
     xmm1  = simde_mm_srai_pi32(xmm1, output_shift);
     xmm2  = simde_mm_unpacklo_pi32(xmm0, xmm1);
@@ -1439,8 +1434,14 @@ void inner_rx_qpsk(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length, int
 #endif
 }
 
-void inner_rx_256qam(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length,int output_shift) {
-#if !USE_128BIT	
+void inner_rx_256qam (int *rxF, 
+                      int *ul_ch, 
+                      int16_t *llr, 
+                      int aarx, 
+                      int length,
+                      int output_shift) 
+{
+#if !USE_128BIT
   register simde__m256i xmmp0, xmmp1, xmmp2, xmmp3, xmmp4, xmmp5, xmmp6, xmmp7, xmmp8, xmmp9;
   register simde__m256i complex_shuffle256 = simde_mm256_set_epi8(29,28,31,30,25,24,27,26,21,20,23,22,17,16,19,18,13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2);
   register simde__m256i conj256 = simde_mm256_set_epi16(1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1);
@@ -1578,7 +1579,7 @@ void inner_rx_256qam(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length,in
 #else
   simde__m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6;
   simde__m128i complex_shuffle128 = simde_mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
-  simde__m128i conj128            = simde_mm_set_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
+  simde__m128i conj128            = simde_mm_set_epi16(1, -1, 1, -1, 1, -1, 1, -1);
   simde__m128i *rxF128            = (simde__m128i*)rxF;
   simde__m128i *ulch128           = (simde__m128i*)ul_ch;
   simde__m128i QAM_amp            = simde_mm_set1_epi16(QAM256_n1);
@@ -1587,12 +1588,12 @@ void inner_rx_256qam(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length,in
   simde__m128i *llr128            = (simde__m128i*)llr;	  
   for (int i = 0; i < (length >> 2); i++) 
   {
-    xmm0 = simde_mm_sign_epi16(ulch128[i], conj128);
-    xmm0  = simde_mm_madd_epi16(xmm0, rxF128[i]);
-    // xmm0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmm0  = simde_mm_madd_epi16(ulch128[i], rxF128[i]);
+    // xmm0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm1  = simde_mm_shuffle_epi8(ulch128[i], complex_shuffle128);
+    xmm1 = simde_mm_sign_epi16(xmm1, conj128);
     xmm1  = simde_mm_madd_epi16(xmm1, rxF128[i]);
-    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm0  = simde_mm_srai_epi32(xmm0, output_shift);
     xmm1  = simde_mm_srai_epi32(xmm1, output_shift);
     xmm2  = simde_mm_unpacklo_epi32(xmm0, xmm1);
@@ -1643,19 +1644,19 @@ void inner_rx_256qam(int *rxF, int *ul_ch, int16_t *llr, int aarx, int length,in
     int i = (length>>1) - 1;
     simde__m64 xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6;
     simde__m64 complex_shuffle64 = simde_mm_set_pi8(5,4,7,6,1,0,3,2);
-    simde__m64 conj64 = simde_mm_set_pi16(-1, 1, -1, 1);
+    simde__m64 conj64 = simde_mm_set_pi16(1, -1, 1, -1);
     simde__m64 *rxF64     = (simde__m64*)rxF;
     simde__m64 *ulch64    = (simde__m64*)ul_ch;
     simde__m64 QAM_amp    = simde_mm_set1_pi16(QAM256_n1);
     simde__m64 QAM_ampb   = simde_mm_set1_pi16(QAM256_n2);
     simde__m64 QAM_ampc   = simde_mm_set1_pi16(QAM256_n3);
 
-    xmm0 = simde_mm_sign_pi16(ulch64[i], conj64);
-    xmm0  = simde_mm_madd_pi16(xmm0, rxF64[i]);
-    // xmm0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmm0  = simde_mm_madd_pi16(ulch64[i], rxF64[i]);
+    // xmm0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm1  = simde_mm_shuffle_pi8(ulch64[i], complex_shuffle64);
+    xmm1 = simde_mm_sign_pi16(xmm1, conj64);
     xmm1  = simde_mm_madd_pi16(xmm1, rxF64[i]);
-    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm0  = simde_mm_srai_pi32(xmm0, output_shift);
     xmm1  = simde_mm_srai_pi32(xmm1, output_shift);
     xmm2  = simde_mm_unpacklo_pi32(xmm0, xmm1);
@@ -1776,7 +1777,7 @@ void inner_rx_64qam(int * restrict rxF, int * restrict ul_ch, int16_t *restrict 
 #else
   register simde__m128i xmmp0, xmmp1, xmmp2, xmmp3, xmmp4, xmmp6, xmmp7;
   register simde__m128i complex_shuffle128 = simde_mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
-  register simde__m128i conj128 = simde_mm_set_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
+  register simde__m128i conj128 = simde_mm_set_epi16(1, -1, 1, -1, 1, -1, 1, -1);
   // register simde__m128i conj128 = simde_mm_set_epi16(1, -1, 1, -1, 1, -1, 1, -1);
   register simde__m128i QAM_amp128  = simde_mm_set1_epi16(QAM64_n1);  // 4/sqrt(42)
   register simde__m128i QAM_amp128b = simde_mm_set1_epi16(QAM64_n2);  // 2/sqrt(42)
@@ -1786,14 +1787,12 @@ void inner_rx_64qam(int * restrict rxF, int * restrict ul_ch, int16_t *restrict 
   simde__m64 *llr64 = (simde__m64 *)llr;
   for (int i = 0; i < (length>>2); i++) 
   {
-    xmmp0  = simde_mm_sign_epi16(ulch128[i], conj128);
-    xmmp0  = simde_mm_madd_epi16(xmmp0, rxF128[i]);
-    // xmmp0  = simde_mm_madd_epi16(ulch128[i], rxF128[i]);
-    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
-    // xmmp1  = simde_mm_sign_epi16(xmmp1, conj128);
+    xmmp0  = simde_mm_madd_epi16(ulch128[i], rxF128[i]);
+    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmmp1  = simde_mm_shuffle_epi8(ulch128[i], complex_shuffle128);
+    xmmp1  = simde_mm_sign_epi16(xmmp1, conj128);
     xmmp1  = simde_mm_madd_epi16(xmmp1, rxF128[i]);
-    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmmp0  = simde_mm_srai_epi32(xmmp0, output_shift);
     xmmp1  = simde_mm_srai_epi32(xmmp1, output_shift);
     xmmp2  = simde_mm_unpacklo_epi32(xmmp0, xmmp1);
@@ -1845,12 +1844,12 @@ void inner_rx_64qam(int * restrict rxF, int * restrict ul_ch, int16_t *restrict 
     simde__m64 QAM_amp    = simde_mm_set1_pi16(QAM64_n1);
     simde__m64 QAM_ampb   = simde_mm_set1_pi16(QAM64_n2);
 
-    xmm0 = simde_mm_sign_pi16(ulch64[i], conj64);
-    xmm0  = simde_mm_madd_pi16(xmm0, rxF64[i]);
-    // xmm0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmm0  = simde_mm_madd_pi16(ulch64[i], rxF64[i]);
+    // xmm0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm1  = simde_mm_shuffle_pi8(ulch64[i], complex_shuffle64);
+    xmm1 = simde_mm_sign_pi16(xmm1, conj64);
     xmm1  = simde_mm_madd_pi16(xmm1, rxF64[i]);
-    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm0  = simde_mm_srai_pi32(xmm0, output_shift);
     xmm1  = simde_mm_srai_pi32(xmm1, output_shift);
     xmm2  = simde_mm_unpacklo_pi32(xmm0, xmm1);
@@ -1885,69 +1884,6 @@ void inner_rx_64qam(int * restrict rxF, int * restrict ul_ch, int16_t *restrict 
   }
 #endif
 }
-
-
-/*
-void inner_rx_64qam(int* rxF, int*  ul_ch, int16_t *  llr, int aarx, int length,int output_shift) {
-  simde__m256i xmmtmpD0,xmmtmpD1,xmmtmpD2,xmmtmpD3,xmmtmpD4,xmmtmpD6,xmmtmpD7;
-  simde__m256i complex_shuffle256 = simde_mm256_set_epi8(29,28,31,30,25,24,27,26,21,20,23,22,17,16,19,18,13,12,15,14,9,8,11,10,5,4,7,6,1,0,3,2);
-  simde__m256i conj256 = simde_mm256_set_epi16(1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1);
-
-  simde__m256i QAM_amp256  = simde_mm256_set1_epi16(QAM64_n1);  // 2/sqrt(10)
-  simde__m256i QAM_amp256b = simde_mm256_set1_epi16(QAM64_n2);
-  simde__m256i *rxF256  = (simde__m256i*)rxF;
-  simde__m256i *ulch256 = (simde__m256i*)ul_ch;
-  // need to use simde__m64 because llr output is not necessarily aligned to 256 bits, but it is always to 64 bits
-  simde__m256i shuffle_a = simde_mm256_set_epi32(0,3,6,1,4,7,2,5);
-  simde__m256i shuffle_b = simde_mm256_set_epi32(5,0,3,6,1,4,7,2);
-  simde__m256i shuffle_c = simde_mm256_set_epi32(2,5,0,3,6,1,4,7);
-
-  uint32_t  *llr32 = (uint32_t *)llr;   
-  simde__m256i *llr256 = (simde__m256i*)llr;
-  int const lim = (length>>3)+(length&0x7) > 0 ? 1 : 0;
-  for (int i=0; i< lim ;i++) {
-    xmmtmpD0  = simde_mm256_madd_epi16(ulch256[i],rxF256[i]);
-    // xmmtmpD0 ontains real part of 8 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
-    xmmtmpD1  = simde_mm256_shuffle_epi8(ulch256[i],complex_shuffle256);
-    xmmtmpD1  = simde_mm256_sign_epi16(xmmtmpD1,conj256);
-    xmmtmpD1  = simde_mm256_madd_epi16(xmmtmpD1,rxF256[i]);
-    // xmmtmpD1 contains imag part of 8 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
-    xmmtmpD0  = simde_mm256_srai_epi32(xmmtmpD0,output_shift);
-    xmmtmpD1  = simde_mm256_srai_epi32(xmmtmpD1,output_shift);
-    xmmtmpD2  = simde_mm256_unpacklo_epi32(xmmtmpD0,xmmtmpD1);
-    xmmtmpD3  = simde_mm256_unpackhi_epi32(xmmtmpD0,xmmtmpD1);
-    xmmtmpD4  = simde_mm256_packs_epi32(xmmtmpD2,xmmtmpD3);
-
-    // compute channel amplitude for LLR
-    xmmtmpD0 = simde_mm256_madd_epi16(ulch256[i],ulch256[i]);
-    xmmtmpD0 = simde_mm256_srai_epi32(xmmtmpD0,output_shift);
-    xmmtmpD0 = simde_mm256_packs_epi32(xmmtmpD0,xmmtmpD0);
-    xmmtmpD2 = simde_mm256_unpacklo_epi16(xmmtmpD0,xmmtmpD0);
-    xmmtmpD1 = simde_mm256_mulhrs_epi16(xmmtmpD2,QAM_amp256);
-    xmmtmpD6 = simde_mm256_mulhrs_epi16(xmmtmpD2,QAM_amp256b);
-
-    xmmtmpD2 = simde_mm256_abs_epi16(xmmtmpD4); // registers of even index in xmm0-> |y_R|, registers of odd index in xmm0-> |y_I|
-    xmmtmpD2 = simde_mm256_subs_epi16(xmmtmpD1,xmmtmpD2); // registers of even index in xmm0-> |y_R|-|h|^2, registers of odd index in xmm0-> |y_I|-|h|^2
-    xmmtmpD7 = simde_mm256_abs_epi16(xmmtmpD2);
-    xmmtmpD7 = simde_mm256_subs_epi16(xmmtmpD6,xmmtmpD7);
-
-    simde__m256i a =  simde_mm256_permutevar8x32_epi32(xmmtmpD4, shuffle_a);  
-    simde__m256i b =  simde_mm256_permutevar8x32_epi32(xmmtmpD2, shuffle_b);
-    simde__m256i c =  simde_mm256_permutevar8x32_epi32(xmmtmpD7, shuffle_c);
-
-    simde__m256i tmp = simde_mm256_blend_epi32(a, b, 0b10010010); 
-    llr256[0] = simde_mm256_blend_epi32(c, tmp, 0b00100100);
-
-    tmp = simde_mm256_blend_epi32(a, b, 0b01001001);
-    llr256[1] = simde_mm256_blend_epi32(c, tmp, 0b10010010);
-
-    tmp = simde_mm256_blend_epi32(a, b, 0b00100100);
-    llr256[2] = simde_mm256_blend_epi32(c,tmp, 0b01001001 );
-    llr256 += 3;
-  }
-}
-*/
-
 
 void inner_rx_16qam( int * rxF, int * ul_ch, int16_t * llr, int aarx, int length,int output_shift) {
 #if !USE_128BIT
@@ -2023,7 +1959,7 @@ void inner_rx_16qam( int * rxF, int * ul_ch, int16_t * llr, int aarx, int length
 #else
   register simde__m128i xmmp0, xmmp1, xmmp2, xmmp3, xmmp4, xmmp5;
   register simde__m128i complex_shuffle128 = simde_mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
-  register simde__m128i conj128 = simde_mm_set_epi16(-1, 1, -1, 1, -1, 1, -1, 1);
+  register simde__m128i conj128 = simde_mm_set_epi16(1, -1, 1, -1, 1, -1, 1, -1);
  
   register simde__m128i QAM_amp128  = simde_mm_set1_epi16(QAM16_n1);  // 2/sqrt(10)
   simde__m128i *rxF128  = (simde__m128i*)rxF;
@@ -2033,12 +1969,12 @@ void inner_rx_16qam( int * rxF, int * ul_ch, int16_t * llr, int aarx, int length
 
   for (int i = 0; i < (length >> 2); i++) 
   {
-    xmmp0  = simde_mm_sign_epi16(ulch128[i], conj128);
-    xmmp0  = simde_mm_madd_epi16(xmmp0, rxF128[i]);
-    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmmp0  = simde_mm_madd_epi16(ulch128[i], rxF128[i]);
+    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmmp1  = simde_mm_shuffle_epi8(ulch128[i], complex_shuffle128);
+    xmmp1  = simde_mm_sign_epi16(xmmp1, conj128);
     xmmp1  = simde_mm_madd_epi16(xmmp1, rxF128[i]);
-    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmmp0  = simde_mm_srai_epi32(xmmp0, output_shift);
     xmmp1  = simde_mm_srai_epi32(xmmp1, output_shift);
     xmmp2  = simde_mm_unpacklo_epi32(xmmp0, xmmp1);
@@ -2083,12 +2019,12 @@ void inner_rx_16qam( int * rxF, int * ul_ch, int16_t * llr, int aarx, int length
     simde__m64 *ulch64    = (simde__m64*)ul_ch;
     simde__m64 QAM_amp    = simde_mm_set1_pi16(QAM16_n1);
 
-    xmm0 = simde_mm_sign_pi16(ulch64[i], conj64);
-    xmm0  = simde_mm_madd_pi16(xmm0, rxF64[i]);
-    // xmm0 contains real part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    xmm0  = simde_mm_madd_pi16(ulch64[i], rxF64[i]);
+    // xmm0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm1  = simde_mm_shuffle_pi8(ulch64[i], complex_shuffle64);
+    xmm1 = simde_mm_sign_pi16(xmm1, conj64);
     xmm1  = simde_mm_madd_pi16(xmm1, rxF64[i]);
-    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of H_m[i]*R_m[i]
+    // xmm1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
     xmm0  = simde_mm_srai_pi32(xmm0, output_shift);
     xmm1  = simde_mm_srai_pi32(xmm1, output_shift);
     xmm2  = simde_mm_unpacklo_pi32(xmm0, xmm1);
