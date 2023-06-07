@@ -66,7 +66,10 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
   return;
 }
 
-static int get_single_ue_rnti(void)
+
+#ifdef MIR_FLAG
+
+int get_single_ue_rnti(void)
 {
   NR_UE_info_t *ue = NULL;
   UE_iterator(RC.nrmac[0]->UE_info.list, it) {
@@ -87,7 +90,6 @@ static int get_single_ue_rnti(void)
 }
 
 
-#ifdef MIR_FLAG
 
 //static_assert(0!=0, "Compiled");
 

@@ -77,4 +77,6 @@ void nr_rlc_entity_um_reestablishment(nr_rlc_entity_t *_entity);
 void nr_rlc_entity_um_delete(nr_rlc_entity_t *entity);
 int nr_rlc_entity_um_available_tx_space(nr_rlc_entity_t *entity);
 
+double nr_rlc_entity_um_sojourn_time(nr_rlc_entity_um_t const *entity);
+
 #endif /* _NR_RLC_ENTITY_UM_H_ */

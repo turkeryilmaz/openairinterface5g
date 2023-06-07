@@ -547,8 +547,8 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
     // sdu->sdu->time_of_arrival = 0;
     time_average_add(entity->common.txsdu_avg_time_to_tx, time_now, waited_time);
 
-    double av = time_average_get_average(entity->common.txsdu_avg_time_to_tx, time_average_now() );
-    printf("Average time in the RLC SDU %lf us \n", av);
+    // double av = time_average_get_average(entity->common.txsdu_avg_time_to_tx, time_average_now() );
+    // printf("Average time in the RLC SDU %lf us \n", av);
   }
 
   nr_rlc_free_sdu_segment(sdu);
@@ -576,6 +576,14 @@ int nr_rlc_entity_um_generate_pdu(nr_rlc_entity_t *_entity,
 
   return generate_tx_pdu(entity, buffer, size);
 }
+
+
+double nr_rlc_entity_um_sojourn_time(nr_rlc_entity_um_t const *entity)
+{
+  double const av = time_average_get_average(entity->common.txsdu_avg_time_to_tx, time_average_now() );
+  return av;
+}
+
 
 /*************************************************************************/
 /* SDU RX functions                                                      */

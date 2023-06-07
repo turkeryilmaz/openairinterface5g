@@ -1,6 +1,12 @@
 #include "ran_func_kpm.h"
 #include "../../flexric/test/rnd/fill_rnd_data_kpm.h"
 #include "../../flexric/src/util/time_now_us.h"
+#include "../../../LAYER2/nr_rlc/nr_rlc_oai_api.h"
+//#include "../../../LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
+//#include "../../../RRC/NR/nr_rrc_defs.h"
+//#include "../../../RRC/NR/rrc_gNB_UE_context.h"
+//#include "../../../../common/ran_context.h"
+
 #include <assert.h>
 #include <stdio.h>
 
@@ -36,26 +42,41 @@ ue_id_e2sm_t fill_ue_id_data(void)
   return ue_id_data;
 }
 
+// Forward declaration
+int get_single_ue_rnti(void);
+
 static 
 kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(void)
 {
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
 
+  int const rnti = get_single_ue_rnti();
+
+  int const srb_flag = 0;
+  int const rb_id = 4;
+  nr_rlc_statistics_t out[2] = {0};
+
+  bool rc = nr_rlc_get_statistics(rnti, srb_flag, rb_id, &out[0]);
+  assert(rc == true);
+
+  rc = nr_rlc_get_statistics(rnti, srb_flag, rb_id + 1, &out[1]);
+  assert(rc == false && "At least for one bearer");
+
   // Measurement Data
-  uint32_t num_drbs = 2;
+  uint32_t num_drbs = 1 + rc;
   msg_frm_1.meas_data_lst_len = num_drbs;  // (rand() % 65535) + 1;
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
 
   for (size_t i = 0; i < msg_frm_1.meas_data_lst_len; i++){
     // Measurement Record
-    msg_frm_1.meas_data_lst[i].meas_record_len = 1;  // (rand() % 65535) + 1;
+    msg_frm_1.meas_data_lst[i].meas_record_len = num_drbs;  // (rand() % 65535) + 1;
     msg_frm_1.meas_data_lst[i].meas_record_lst = calloc(msg_frm_1.meas_data_lst[i].meas_record_len, sizeof(meas_record_lst_t));
     assert(msg_frm_1.meas_data_lst[i].meas_record_lst != NULL && "Memory exhausted" );
 
     for (size_t j = 0; j < msg_frm_1.meas_data_lst[i].meas_record_len; j++){
       msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE; // rand()%END_MEAS_VALUE;
-      msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = (rand() % 256) + 0.1;
+      msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = out[0].txsdu_avg_time_to_tx;
     }
   }
 
@@ -89,7 +110,7 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(void)
 {
   kpm_ind_msg_format_3_t msg_frm_3 = {0};
 
-  uint32_t num_ues = 1;
+  uint32_t const num_ues = 1;
   msg_frm_3.ue_meas_report_lst_len = num_ues;  // (rand() % 65535) + 1;
 
   msg_frm_3.meas_report_per_ue = calloc(msg_frm_3.ue_meas_report_lst_len, sizeof(meas_report_per_ue_t));
@@ -145,7 +166,6 @@ kpm_ind_hdr_t fill_kpm_ind_hdr_sta(void)
 void read_kpm_sm(void* data)
 {
   assert(data != NULL);
-  //assert(data->type == KPM_STATS_V3_0);
 
   kpm_rd_ind_data_t* kpm = (kpm_rd_ind_data_t*)data;
 

@@ -170,4 +170,8 @@ nr_sdap_entity_t *nr_sdap_get_entity(ue_id_t ue_id, int pdusession_id);
 /* Entity Handling Related Functions */
 void delete_nr_sdap_entity(ue_id_t ue_id);
 
+
+// mir hack
+int get_single_ue_rnti(void);
+
 #endif
