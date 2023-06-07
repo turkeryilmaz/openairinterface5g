@@ -86,6 +86,11 @@ static int get_single_ue_rnti(void)
   return ue->rnti;
 }
 
+
+#ifdef MIR_FLAG
+
+//static_assert(0!=0, "Compiled");
+
 static
 pthread_once_t once_bearer = PTHREAD_ONCE_INIT;
 // Forward declaration. Forget my sins.
@@ -108,6 +113,7 @@ void create_bearer(void)
   rrc_gNB_trigger_new_bearer(rnti);
 }
 
+#endif
 
 static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                               protocol_ctxt_t *ctxt_p,
@@ -146,6 +152,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   if(!pdcp_ent_has_sdap){
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
 
+#ifdef MIR_FLAG
     // mir 
     // Naive L4/L3 packet classifier
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
@@ -160,6 +167,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
     sdap_drb_id += 1; //cnt%2; 
     //cnt++;
   }
+#endif
 
   ret = nr_pdcp_data_req_drb(ctxt_p,
                                srb_flag,

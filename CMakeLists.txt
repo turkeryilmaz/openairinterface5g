@@ -1583,6 +1583,8 @@ add_library(L2_NR
   ${GNB_APP_SRC}
   )
 
+target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
+
 add_library(e1_if
   ${NR_RRC_DIR}/cucp_cuup_direct.c
   ${NR_RRC_DIR}/cucp_cuup_e1ap.c
@@ -1596,7 +1598,6 @@ add_library(e1_pdcp_if
 
 target_link_libraries(e1_pdcp_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
-target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
 
 add_library(L2_LTE_NR
   ${L2_RRC_SRC}
@@ -2262,6 +2263,10 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   ${T_SOURCE}
   ${SHLIB_LOADER_SOURCES}
+  #L2_NR 
+  ${L2_NR_SRC}
+  ${MAC_NR_SRC}
+  ${GNB_APP_SRC}
   )
 
 target_link_libraries(nr-softmodem PRIVATE
@@ -2270,7 +2275,7 @@ target_link_libraries(nr-softmodem PRIVATE
   ITTI ${NAS_UE_LIB} lte_rrc nr_rrc
   ngap s1ap L2_LTE_NR L2_NR MAC_NR_COMMON NFAPI_COMMON_LIB NFAPI_LIB NFAPI_VNF_LIB NFAPI_PNF_LIB NFAPI_USER_LIB SIMU SIMU_ETH
   x2ap f1ap m2ap m3ap e1ap
-  -Wl,--end-group z dl)
+  -Wl,--end-group z dl  f1ap x2ap s1ap ngap nr_rrc )
 
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
@@ -2285,6 +2290,10 @@ endif()
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
+
+
+target_compile_definitions(nr-softmodem PRIVATE MIR_FLAG)
+
 
 add_executable(nr-cuup
   executables/nr-cuup.c

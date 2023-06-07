@@ -124,14 +124,14 @@ int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
   create_tunnel_req.num_tunnels = UE->nb_of_pdusessions;
   create_tunnel_req.ue_id = UE->rnti;
   int ret = gtpv1u_create_ngu_tunnel(getCxtE1(instance)->gtpInstN3,
-                                     &create_tunnel_req,
-                                     &create_tunnel_resp,
-                                     nr_pdcp_data_req_drb,
-                                     sdap_data_req);
+      &create_tunnel_req,
+      &create_tunnel_resp,
+      nr_pdcp_data_req_drb,
+      sdap_data_req);
 
   if (ret != 0) {
     LOG_E(NR_RRC,"rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ : gtpv1u_create_ngu_tunnel failed,start to release UE rnti %ld\n",
-          create_tunnel_req.ue_id);
+        create_tunnel_req.ue_id);
     return ret;
   }
 
@@ -154,17 +154,18 @@ int drb_config_gtpu_create(const protocol_ctxt_t *const ctxt_p,
 
   LOG_D(NR_RRC, "Configuring PDCP DRBs for UE %x\n", UE->rnti);
   nr_pdcp_add_drbs(ctxt_p->enb_flag,
-                   ctxt_p->rntiMaybeUEid,
-                   0,
-                   DRB_configList,
-                   (UE->integrity_algorithm << 4) | UE->ciphering_algorithm,
-                   kUPenc,
-                   kUPint,
-                   rlc_bearer2add_list);
+      ctxt_p->rntiMaybeUEid,
+      0,
+      DRB_configList,
+      (UE->integrity_algorithm << 4) | UE->ciphering_algorithm,
+      kUPenc,
+      kUPint,
+      get_softmodem_params()->sa ? UE->masterCellGroup->rlc_BearerToAddModList : NULL);
 
   return ret;
 }
 
+/*
 static NR_SRB_ToAddModList_t **generateSRB2_confList(gNB_RRC_UE_t *ue, NR_SRB_ToAddModList_t *SRB_configList, uint8_t xid)
 {
   NR_SRB_ToAddModList_t **SRB_configList2 = NULL;
@@ -180,10 +181,12 @@ static NR_SRB_ToAddModList_t **generateSRB2_confList(gNB_RRC_UE_t *ue, NR_SRB_To
 
   return SRB_configList2;
 }
+*/
 
 static 
 void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, instance_t instance, uint8_t xid)
 {
+/* 
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[instance], req->rnti);
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
@@ -201,6 +204,31 @@ void cucp_cuup_bearer_context_setup_direct(e1ap_bearer_setup_req_t *const req, i
   if(UE->DRB_configList != NULL && get_softmodem_params()->sa){
     assert(UE->DRB_configList->list.count == UE->masterCellGroup->rlc_BearerToAddModList->list.count);
   }
+
+*/
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[instance], req->rnti);
+    gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+    protocol_ctxt_t ctxt = {0};
+    PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, 0, GNB_FLAG_YES, UE->rnti, 0, 0, 0);
+
+    fill_DRB_configList(&ctxt, ue_context_p, xid);
+    e1ap_bearer_setup_resp_t resp = {0};
+    resp.numPDUSessions = req->numPDUSessions;
+    for (int i = 0; i < resp.numPDUSessions; ++i) {
+      resp.pduSession[i].numDRBSetup = req->pduSession[i].numDRB2Setup;
+      for (int j = 0; j < req->pduSession[i].numDRB2Setup; j++) {
+        DRB_nGRAN_to_setup_t *req_drb = req->pduSession[i].DRBnGRanList + j;
+        DRB_nGRAN_setup_t *resp_drb = resp.pduSession[i].DRBnGRanList + j;
+        resp_drb->id = req_drb->id;
+        resp_drb->numQosFlowSetup = req_drb->numQosFlow2Setup;
+        for (int k = 0; k < resp_drb->numQosFlowSetup; k++)
+          resp_drb->qosFlows[k].id = req_drb->qosFlows[k].id;
+      }
+  }
+
+
+
+
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt.module_id];
   // GTP tunnel for UL
