@@ -32,6 +32,14 @@
 #include "openair2/RRC/NR/nr_rrc_proto.h"
 #include <stdint.h>
 
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+
+
+
 /* from OAI */
 #include "oai_asn1.h"
 #include "nr_pdcp_oai_api.h"
@@ -932,6 +940,8 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
 {
   if (drb2add_list != NULL) {
     for (int i = 0; i < drb2add_list->list.count; i++) {
+      // assert(drb2add_list->list.count == rlc_bearer2add_list->list.count );
+      
       add_drb(enb_flag, rntiMaybeUEid, reestablish_ue_id, drb2add_list->list.array[i], rlc_bearer2add_list->list.array[i]->rlc_Config, security_modeP & 0x0f, (security_modeP >> 4) & 0x0f, kUPenc, kUPint);
     }
   } else

@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "nr_rlc_pdu.h"
 
@@ -480,6 +481,12 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   if (pdu_header_size + 1 > size)
     return 0;
 
+  // mir Save BW when using TCP Cubic
+  if(pdu_header_size + sdu->size > size ){
+    return 0;
+  } 
+
+
   entity->tx_list = entity->tx_list->next;
   if (entity->tx_list == NULL)
     entity->tx_end = NULL;
@@ -496,8 +503,11 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   if (pdu_size > size) {
     nr_rlc_sdu_segment_t *next_sdu;
     next_sdu = resegment(sdu, entity, size);
-    if (next_sdu == NULL)
+    printf("resegmenting \n");
+    if (next_sdu == NULL){
+      printf("next_sdu == NULL \n");
       return 0;
+    }
     /* put the second SDU back at the head of the TX list */
     next_sdu->next = entity->tx_list;
     entity->tx_list = next_sdu;
@@ -511,10 +521,19 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   }
 
   /* update tx_next if the SDU is an SDU segment and is the last */
-  if (!sdu->is_first && sdu->is_last)
+  if (!sdu->is_first && sdu->is_last){
+    printf("Updating the SN \n");
     entity->tx_next = (entity->tx_next + 1) % entity->sn_modulus;
+  }
 
   ret = serialize_sdu(entity, sdu, buffer, size);
+
+  //uint8_t* a = (uint8_t*) buffer;
+  //uint8_t* b = (uint8_t*)(buffer+1);
+  //uint8_t* c = (uint8_t*)(buffer+2);
+  //uint8_t* d = (uint8_t*)(buffer+3);
+
+  //printf("a %u b %u c %u d %u \n",*a, *b, *c, *d);
 
   entity->tx_size -= sdu->size;
 
@@ -525,8 +544,11 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
     uint64_t time_now = time_average_now();
     uint64_t waited_time = time_now - sdu->sdu->time_of_arrival;
     /* set time_of_arrival to 0 so as to update stats only once */
-    sdu->sdu->time_of_arrival = 0;
+    // sdu->sdu->time_of_arrival = 0;
     time_average_add(entity->common.txsdu_avg_time_to_tx, time_now, waited_time);
+
+    double av = time_average_get_average(entity->common.txsdu_avg_time_to_tx, time_average_now() );
+    printf("Average time in the RLC SDU %lf us \n", av);
   }
 
   nr_rlc_free_sdu_segment(sdu);
@@ -595,8 +617,8 @@ void nr_rlc_entity_um_recv_sdu(nr_rlc_entity_t *_entity,
   entity->common.bstatus.tx_size += compute_pdu_header_size(entity, sdu)
                                     + sdu->size;
 
-  if (entity->common.avg_time_is_on)
-    sdu->sdu->time_of_arrival = time_average_now();
+//  if (entity->common.avg_time_is_on)
+  sdu->sdu->time_of_arrival = time_average_now();
 }
 
 /*************************************************************************/
