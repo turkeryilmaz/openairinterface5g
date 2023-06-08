@@ -100,7 +100,7 @@ static void process_rlcBearerConfig(struct NR_CellGroupConfig__rlc_BearerToAddMo
 
         LOG_I(NR_MAC, "Adding LCID %d (%s %d)\n", lcid, lcid < 4 ? "SRB" : "DRB", lcid);
         for (i = 0; i < sched_ctrl->dl_lc_num; ++i)
-          LOG_E(NR_MAC, "bearer %d LCID %s %d\n", i, lcid < 4 ? "SRB" : "DRB", sched_ctrl->dl_lc_ids[i]);
+          LOG_D(NR_MAC, "bearer %d LCID %s %d\n", i, lcid < 4 ? "SRB" : "DRB", sched_ctrl->dl_lc_ids[i]);
       }
     }
   }
