@@ -950,13 +950,13 @@ rlc_op_status_t rrc_rlc_config_req   (
   ue = rlc_manager_get_ue(rlc_ue_manager, ctxt_pP->rntiMaybeUEid);
   if (srb_flagP) {
     if (ue->srb[rb_idP-1] != NULL) {
-      ue->srb[rb_idP-1]->delete(ue->srb[rb_idP-1]);
+      ue->srb[rb_idP-1]->delete_entity(ue->srb[rb_idP-1]);
       ue->srb[rb_idP-1] = NULL;
     } else
       LOG_W(RLC, "removing non allocated SRB %d, do nothing\n", (int)rb_idP);
   } else {
     if (ue->drb[rb_idP-1] != NULL) {
-      ue->drb[rb_idP-1]->delete(ue->drb[rb_idP-1]);
+      ue->drb[rb_idP-1]->delete_entity(ue->drb[rb_idP-1]);
       ue->drb[rb_idP-1] = NULL;
     } else
       LOG_W(RLC, "removing non allocated DRB %d, do nothing\n", (int)rb_idP);
