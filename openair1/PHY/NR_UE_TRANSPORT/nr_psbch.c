@@ -39,7 +39,7 @@
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 #include "openair1/PHY/NR_REFSIG/refsig_defs_ue.h"
 
-//#define DEBUG_PSBCH
+// #define DEBUG_PSBCH
 //#define DEBUG_PSBCH_ENCODING
 
 //#include "PHY_INTERFACE/defs.h"
@@ -78,17 +78,17 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
     rx_offset = (rx_offset)%(frame_parms->ofdm_symbol_size);
     struct complex16 *rxF        = (struct complex16 *)&rxdataF[aarx][(symbol+s_offset)*frame_parms->ofdm_symbol_size];
     struct complex16 *rxF_ext    = rxdataF_ext[aarx];
-#ifdef DEBUG_PSBCH
-    printf("extract_rbs (nushift %d): rx_offset=%d, symbol %u\n",frame_parms->nushift,
+//#ifdef DEBUG_PSBCH
+    LOG_I(NR_PHY,"extract_rbs (nushift %d): rx_offset=%d, symbol %u\n",frame_parms->nushift,
            (rx_offset + ((symbol+s_offset)*(frame_parms->ofdm_symbol_size))),symbol);
     int16_t *p = (int16_t *)rxF;
 
     for (int i =0; i<8; i++) {
-      printf("rxF [%d]= %d\n",i,rxF[i]);
-      printf("psbch extract rxF  %d %d addr %p\n", p[2*i], p[2*i+1], &p[2*i]);
+      LOG_I(NR_PHY,"rxF [%d]= %d\n",i,rxF[i]);
+      LOG_I(NR_PHY,"psbch extract rxF  %d %d addr %p\n", p[2*i], p[2*i+1], &p[2*i]);
     }
 
-#endif
+//#endif
 
     for (rb=0; rb<11; rb++) {
       j=0;
@@ -99,12 +99,12 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
               (i!=(nushiftmod4+4)) &&
               (i!=(nushiftmod4+8))) {
             rxF_ext[j]=rxF[rx_offset];
-#ifdef DEBUG_PSBCH
-            printf("rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",  (9*rb) + j,
+//#ifdef DEBUG_PSBCH
+            LOG_I(NR_PHY,"rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",  (9*rb) + j,
                    rxF_ext[j].r, rxF_ext[j].i,
                    rx_offset,
                    rxF[rx_offset].r,rxF[rx_offset].i);
-#endif
+//#endif
             j++;
           }
 
@@ -344,7 +344,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
                     symbol_offset,
                     frame_parms);
 
-    double log2_maxh = 0;
+    int log2_maxh = 0;
     if (symbol == 0) {
       int max_h = nr_psbch_channel_level(dl_ch_estimates_ext,
                                          frame_parms,

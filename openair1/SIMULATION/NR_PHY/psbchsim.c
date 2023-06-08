@@ -129,7 +129,7 @@ SCM_t channel_model = AWGN;
 int N_RB_DL = 273;
 int mu = 1;
 unsigned char psbch_phase = 0;
-int run_initial_sync = 1;
+int run_initial_sync = 0;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
@@ -143,21 +143,21 @@ void free_psbchsim_members(PHY_VARS_NR_UE *UE,
                            FILE *input_fd)
 {
   term_nr_ue_signal(UE, 1);
-  free(UE->slss);
-  free(UE);
+  if (UE->slss) free(UE->slss);
+  if (UE) free(UE);
 
   for (int i = 0; i < 2; i++) {
-    free(s_re[i]);
-    free(s_im[i]);
-    free(r_re[i]);
-    free(r_im[i]);
-    free(txdata[i]);
+    if (s_re[i]) free(s_re[i]);
+    if (s_im[i]) free(s_im[i]);
+    if (r_re[i]) free(r_re[i]);
+    if (r_im[i]) free(r_im[i]);
+    if (txdata[i]) free(txdata[i]);
   }
-  free(s_re);
-  free(s_im);
-  free(r_re);
-  free(r_im);
-  free(txdata);
+  if (s_re) free(s_re);
+  if (s_im) free(s_im);
+  if (r_re) free(r_re);
+  if (r_im) free(r_im);
+  if (txdata) free(txdata);
 
   if (input_fd)
     fclose(input_fd);
@@ -498,8 +498,8 @@ int main(int argc, char **argv)
 	LOG_I(NR_PHY,"slot %d, symbols 1...13, nb_prefix_samples %d\n",slot,UE->frame_parms.nb_prefix_samples);      
         PHY_ofdm_mod((int*)&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
                      (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +
-                                       UE->frame_parms.nb_prefix_samples0 +
-                                       UE->frame_parms.nb_prefix_samples], // Starting output offset at CP0 + PSBCH0 + CP1
+                                       UE->frame_parms.nb_prefix_samples0 /*+
+                                       UE->frame_parms.nb_prefix_samples*/], // Starting output offset at CP0 + PSBCH0 + CP1
                      UE->frame_parms.ofdm_symbol_size,
                      13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
                      UE->frame_parms.nb_prefix_samples,
@@ -520,6 +520,7 @@ int main(int argc, char **argv)
   AssertFatal((((frame_length_complex_samples - 1) << 1) + 1) < 2 * frame_length_complex_samples,
               "Invalid index %d >= %d\n", (((frame_length_complex_samples - 1)<< 1) + 1), 2 * frame_length_complex_samples);
   int n_errors = 0;
+  int exitsim =0;
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
     n_errors = 0;
     int n_errors_payload = 0;
@@ -568,11 +569,13 @@ int main(int argc, char **argv)
       int n_frames = 1;
       if (UE->is_synchronized_sl == 0) {
         UE_nr_rxtx_proc_t proc = {0};
+	LOG_I(NR_PHY,"Running initial synch\n");
         ret = nr_sl_initial_sync(&proc, UE, n_frames);
         if (ret != 0) {
           n_errors++;
         }
       } else {
+	LOG_I(NR_PHY,"Already synched, running PSBCH receiver directly\n");
         UE_nr_rxtx_proc_t proc = {0};
         UE->rx_offset_sl = 0;
         uint8_t ssb_index = 0;
@@ -587,11 +590,14 @@ int main(int argc, char **argv)
         int ssb_slot = (UE->symbol_offset / 14) + (n_hf * (UE->frame_parms.slots_per_frame >> 1));
         const uint32_t rxdataF_sz = UE->frame_parms.samples_per_slot_wCP;
         __attribute__ ((aligned(32))) c16_t rxdataF[UE->frame_parms.nb_antennas_rx][rxdataF_sz];
-        for (int i = UE->symbol_offset; i < UE->symbol_offset + 5; i++) {
+        for (int i = UE->symbol_offset; i < UE->symbol_offset + 13; i++) {
           nr_slot_fep(UE, &proc, i % UE->frame_parms.symbols_per_slot, rxdataF);
+	  for (int aa=0;aa<UE->frame_parms.nb_antennas_rx;aa++)
+             memcpy(UE->common_vars.rxdataF[aa],rxdataF,4*rxdataF_sz);
           nr_psbch_channel_estimation(UE, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc,
                                       0, ssb_slot, i % UE->frame_parms.symbols_per_slot,
                                       i - (UE->symbol_offset), ssb_index % 8, n_hf);
+	  if (i==0) i=4;
         }
         fapiPsbch_t result;
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
@@ -612,7 +618,7 @@ int main(int argc, char **argv)
         if (ret == 0) {
           int payload_ret = 0;
           for (int i = 0; i < NR_POLAR_PSBCH_PAYLOAD_BITS >> 3; i++) {
-            printf("result.decoded_output[i] %d, msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload %d,\n",
+            LOG_I(NR_PHY,"result.decoded_output[i] %d, msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload %d,\n",
                   result.decoded_output[i], ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * (3-i))) & 0xff));
             payload_ret += (result.decoded_output[i] == ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * (3-i))) & 0xff));
           }
@@ -627,7 +633,10 @@ int main(int argc, char **argv)
     printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR, n_trials, n_errors, n_errors_payload);
     if (((float)n_errors / (float)n_trials <= target_error_rate) && (n_errors_payload == 0)) {
       printf("PSBCH test OK\n");
+      exitsim=1;
+      break;
     }
+    if (exitsim == 1) break;
   } // NSR
 
   free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata, input_fd);
