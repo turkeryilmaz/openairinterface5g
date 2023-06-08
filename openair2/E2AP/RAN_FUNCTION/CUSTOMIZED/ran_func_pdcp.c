@@ -1,5 +1,5 @@
 #include "ran_func_pdcp.h"
-#include "../../flexric/test/rnd/fill_rnd_data_pdcp.h"
+#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_pdcp.h"
 #include <assert.h>
 
 void read_pdcp_sm(void* data)

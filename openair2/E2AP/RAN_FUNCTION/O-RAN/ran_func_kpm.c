@@ -1,6 +1,6 @@
 #include "ran_func_kpm.h"
-#include "../../flexric/test/rnd/fill_rnd_data_kpm.h"
-#include "../../flexric/src/util/time_now_us.h"
+#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_kpm.h"
+#include "openair2/E2AP/flexric/src/util/time_now_us.h"
 #include <assert.h>
 #include <stdio.h>
 

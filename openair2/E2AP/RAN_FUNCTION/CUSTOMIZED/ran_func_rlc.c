@@ -1,5 +1,5 @@
 #include "ran_func_rlc.h"
-#include "../../flexric/test/rnd/fill_rnd_data_rlc.h"
+#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_rlc.h"
 
 void read_rlc_sm(void* data)
 {

@@ -1,5 +1,5 @@
 #include "ran_func_gtp.h"
-#include "../../flexric/test/rnd/fill_rnd_data_gtp.h"
+#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_gtp.h"
 #include <assert.h>
 
 void read_gtp_sm(void * data)
