@@ -945,7 +945,9 @@ void nr_pdcp_remove_drb(ue_id_t ue_id, int drb_id)
   if (ue && ue->drb[drb_id-1] != NULL) {
     ue->drb[drb_id-1]->delete_entity(ue->drb[drb_id-1]);
     ue->drb[drb_id-1] = NULL;
-    LOG_I(PDCP, "%s:%d:%s: removed drb %d from UE %ld\n", __FILE__, __LINE__, __FUNCTION__, drb_id, ue_id);
+    nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, 10); /* default */
+    sdap->has_second_bearer = 0;
+    LOG_I(PDCP, "%s:%d:%s: removed drb %d from UE %ld and set SDAP\n", __FILE__, __LINE__, __FUNCTION__, drb_id, ue_id);
   } else if (ue) {
     LOG_W(PDCP, "%s:%d:%s: error: UE %ld has no DRB %d\n", __FILE__, __LINE__, __FUNCTION__, ue_id, drb_id);
   } else {

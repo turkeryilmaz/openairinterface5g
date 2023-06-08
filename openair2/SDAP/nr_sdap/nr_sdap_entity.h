@@ -78,6 +78,7 @@ typedef struct nr_sdap_entity_s {
   ue_id_t ue_id;
   rb_id_t default_drb;
   int is_gnb;
+  int has_second_bearer;
   int pdusession_id;
   qfi2drb_t qfi2drb_table[SDAP_MAX_QFI];
 

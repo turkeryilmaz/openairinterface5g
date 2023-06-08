@@ -105,13 +105,15 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
 
   if(hdr->protocol == IPPROTO_TCP){
-    printf("TCP packet detected \n");
+    //printf("TCP packet detected \n");
   } else if(hdr->protocol == IPPROTO_UDP){
-    printf("UDP packet detected \n");
+    //printf("UDP packet detected \n");
   } else if(hdr->protocol == IPPROTO_ICMP){
-    printf("Ping packet detected \n");
-    if (entity->is_gnb)
+    //printf("Ping packet detected \n");
+    if (entity->is_gnb && entity->has_second_bearer) {
       sdap_drb_id += 1; //cnt%2; 
+    }
+    printf("ping to bearer %ld\n", sdap_drb_id);
     //cnt++;
   }
 
@@ -435,6 +437,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap
     rb_id_t pdcp_entity = existing_sdap_entity->default_drb;
     if(!is_gnb)
       nr_sdap_ue_qfi2drb_config(existing_sdap_entity, pdcp_entity, ue_id, mapped_qfi_2_add, mappedQFIs2AddCount, drb_identity, has_sdap_rx, has_sdap_tx);
+    existing_sdap_entity->has_second_bearer = 1;
     return existing_sdap_entity;
   }
 
