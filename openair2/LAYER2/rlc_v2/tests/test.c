@@ -368,8 +368,8 @@ int test_main(void)
     }
   }
 
-  enb->delete(enb);
-  ue->delete(ue);
+  enb->delete_entity(enb);
+  ue->delete_entity(ue);
 
   free(sdu);
   free(pdu);

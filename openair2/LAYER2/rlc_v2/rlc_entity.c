@@ -68,7 +68,7 @@ rlc_entity_t *new_rlc_entity_am(
 
   ret->common.reestablishment = rlc_entity_am_reestablishment;
 
-  ret->common.delete = rlc_entity_am_delete;
+  ret->common.delete_entity = rlc_entity_am_delete;
 
   ret->common.deliver_sdu      = deliver_sdu;
   ret->common.deliver_sdu_data = deliver_sdu_data;
@@ -120,7 +120,7 @@ rlc_entity_t *new_rlc_entity_um(
 
   ret->common.reestablishment = rlc_entity_um_reestablishment;
 
-  ret->common.delete = rlc_entity_um_delete;
+  ret->common.delete_entity = rlc_entity_um_delete;
 
   ret->common.deliver_sdu      = deliver_sdu;
   ret->common.deliver_sdu_data = deliver_sdu_data;
