@@ -21,6 +21,7 @@
 #include "stddef.h"
 #include "platform_types.h"
 #include "fapi_nr_ue_constants.h"
+#include "PHY/impl_defs_top.h"
 #include "PHY/impl_defs_nr.h"
 #include "common/utils/nr/nr_common.h"
 
@@ -87,6 +88,7 @@ typedef struct {
 typedef struct {
   uint16_t rnti;
   uint8_t dci_format;
+  uint8_t coreset_type;
   int ss_type;
   // n_CCE index of first CCE for PDCCH reception
   int n_CCE;
@@ -115,7 +117,8 @@ typedef struct {
 } fapi_nr_pdsch_pdu_t;
 
 typedef struct {
-  uint8_t* pdu;   //  3bytes
+  bool decoded_pdu;
+  uint8_t pdu[3];
   uint8_t additional_bits;
   uint8_t ssb_index;
   uint8_t ssb_length;
@@ -389,8 +392,6 @@ typedef struct {
 } fapi_nr_ul_config_request_pdu_t;
 
 typedef struct {
-  //uint16_t sfn;
-  //uint16_t slot;
   uint16_t sfn;
   uint16_t slot;
   uint8_t number_pdus;
@@ -422,9 +423,6 @@ typedef struct {
 typedef struct {
   fapi_nr_dl_config_dci_dl_pdu_rel15_t dci_config_rel15;
 } fapi_nr_dl_config_dci_pdu;
-typedef struct{
-  uint8_t aperiodicSRS_ResourceTrigger;
-} fapi_nr_dl_srs_config_t;
 
 typedef enum{vrb_to_prb_mapping_non_interleaved = 0, vrb_to_prb_mapping_interleaved = 1} vrb_to_prb_mapping_t;
 
@@ -461,7 +459,6 @@ typedef struct {
   uint16_t dmrs_ports;
   uint8_t n_front_load_symb;
   uint8_t tci_state;
-  fapi_nr_dl_srs_config_t srs_config;
   uint8_t cbgti;
   uint8_t codeBlockGroupFlushIndicator;
   //  to be check the fields needed to L1 with NR_DL_UE_HARQ_t and NR_UE_DLSCH_t
@@ -482,6 +479,7 @@ typedef struct {
   uint8_t nscid;
   uint16_t dlDmrsScramblingId;
   uint16_t pduBitmap;
+  uint32_t k1_feedback;
 } fapi_nr_dl_config_dlsch_pdu_rel15_t;
 
 typedef struct {
@@ -505,6 +503,7 @@ typedef struct {
   uint16_t scramb_id;               // ScramblingID of the CSI-RS [3GPP TS 38.214, sec 5.2.2.3.1], Value: 0->1023
   uint8_t power_control_offset;     // Ratio of PDSCH EPRE to NZP CSI-RSEPRE [3GPP TS 38.214, sec 5.2.2.3.1], Value: 0->23 representing -8 to 15 dB in 1dB steps; 255: L1 is configured with ProfileSSS
   uint8_t power_control_offset_ss;  // Ratio of NZP CSI-RS EPRE to SSB/PBCH block EPRE [3GPP TS 38.214, sec 5.2.2.3.1], Values: 0: -3dB; 1: 0dB; 2: 3dB; 3: 6dB; 255: L1 is configured with ProfileSSS
+  uint8_t measurement_bitmap;       // bit 0 RSRP, bit 1 RI, bit 2 LI, bit 3 PMI, bit 4 CQI, bit 5 i1
 } fapi_nr_dl_config_csirs_pdu_rel15_t;
 
 
@@ -528,6 +527,11 @@ typedef struct {
   fapi_nr_dl_config_csiim_pdu_rel15_t csiim_config_rel15;
 } fapi_nr_dl_config_csiim_pdu;
 
+typedef struct {
+ int ta_frame;
+ int ta_slot;
+ int ta_command;
+} fapi_nr_ta_command_pdu;
 
 typedef struct {
   uint8_t pdu_type;
@@ -536,6 +540,7 @@ typedef struct {
     fapi_nr_dl_config_dlsch_pdu dlsch_config_pdu;
     fapi_nr_dl_config_csirs_pdu csirs_config_pdu;
     fapi_nr_dl_config_csiim_pdu csiim_config_pdu;
+    fapi_nr_ta_command_pdu ta_command_pdu;
   };
 } fapi_nr_dl_config_request_pdu_t;
 
@@ -652,6 +657,10 @@ typedef struct
   uint8_t prach_multiple_carriers_in_a_band;//0 = disabled 1 = enabled
 
 } fapi_nr_prach_config_t;
+
+typedef struct {
+  uint16_t target_Nid_cell;
+} fapi_nr_synch_request_t;
 
 typedef struct {
   uint32_t config_mask;

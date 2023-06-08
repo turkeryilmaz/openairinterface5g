@@ -61,6 +61,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
+#include "NR_ServingCellConfigCommonSIB.h"
 
 
 // ==========
@@ -158,10 +159,11 @@
 
 /*!\brief UE layer 2 status */
 typedef enum {
-    UE_CONNECTION_OK = 0,
-    UE_CONNECTION_LOST,
-    UE_PHY_RESYNCH,
-    UE_PHY_HO_PRACH
+  UE_NOT_SYNC = 0,
+  UE_SYNC,
+  UE_PERFORMING_RA,
+  UE_WAIT_TX_ACK_MSG4,
+  UE_CONNECTED
 } NR_UE_L2_STATE_t;
 
 typedef enum {
@@ -323,9 +325,6 @@ typedef struct {
   /// BeamfailurerecoveryConfig
   NR_BeamFailureRecoveryConfig_t RA_BeamFailureRecoveryConfig;
 
-  /// RA SearchSpace
-  NR_SearchSpace_t *ss;
-
   NR_PRACH_RESOURCES_t prach_resources;
 } RA_config_t;
 
@@ -334,7 +333,6 @@ typedef struct {
   bool ack_received;
   uint8_t  pucch_resource_indicator;
   uint16_t feedback_to_ul;
-  int is_common;
   frame_t dl_frame;
   int dl_slot;
   uint8_t ack;
@@ -354,19 +352,18 @@ typedef struct {
 } RAR_grant_t;
 
 typedef struct {
-  int n_HARQ_ACK;
+  NR_PUCCH_Resource_t *pucch_resource;
   uint32_t ack_payload;
   uint8_t sr_payload;
   uint32_t csi_part1_payload;
   uint32_t csi_part2_payload;
-  int resource_indicator;
-  int resource_set_id;
-  int is_common;
-  int initial_pucch_id;
-  NR_PUCCH_Resource_t *pucch_resource;
+  int n_sr;
+  int n_csi;
+  int n_harq;
   int n_CCE;
   int N_CCE;
-  int8_t delta_pucch;
+  int delta_pucch;
+  int initial_pucch_id;
 } PUCCH_sched_t;
 
 typedef struct {
@@ -374,12 +371,23 @@ typedef struct {
   uint32_t ssb_index;
   /// SSB RSRP in dBm
   short ssb_rsrp_dBm;
+  int consecutive_bch_failures;
 
-} NR_PHY_meas_t;
+} NR_SSB_meas_t;
+
+typedef struct NR_UL_TIME_ALIGNMENT {
+  /// TA command and TAGID received from the gNB
+  bool ta_apply;
+  int ta_command;
+  int ta_total;
+  uint32_t tag_id;
+  int frame;
+  int slot;
+} NR_UL_TIME_ALIGNMENT_t;
 
 /*!\brief Top level UE MAC structure */
 typedef struct {
-
+  NR_UE_L2_STATE_t state;
   NR_ServingCellConfigCommon_t    *scc;
   NR_ServingCellConfigCommonSIB_t *scc_SIB;
   NR_CellGroupConfig_t            *cg;
@@ -388,7 +396,7 @@ typedef struct {
   long                            physCellId;
   ////  MAC config
   int                             first_sync_frame;
-  bool                            sib1_decoded;
+  bool                            get_sib1;
   NR_DRX_Config_t                 *drx_Config;
   NR_SchedulingRequestConfig_t    *schedulingRequestConfig;
   NR_BSR_Config_t                 *bsr_Config;
@@ -399,12 +407,17 @@ typedef struct {
 
   NR_UE_DL_BWP_t current_DL_BWP;
   NR_UE_UL_BWP_t current_UL_BWP;
+  NR_UL_TIME_ALIGNMENT_t ul_time_alignment;
 
-  NR_BWP_Downlink_t               *DLbwp[MAX_NUM_BWP_UE];
-  NR_BWP_Uplink_t                 *ULbwp[MAX_NUM_BWP_UE];
-  NR_ControlResourceSet_t         *coreset[MAX_NUM_BWP_UE][FAPI_NR_MAX_CORESET_PER_BWP];
-  NR_SearchSpace_t                *SSpace[MAX_NUM_BWP_UE][FAPI_NR_MAX_SS];
+  NR_SearchSpace_t *otherSI_SS;
+  NR_SearchSpace_t *ra_SS;
+  NR_SearchSpace_t *paging_SS;
+  NR_ControlResourceSet_t *BWP_coresets[FAPI_NR_MAX_CORESET_PER_BWP];
+  NR_ControlResourceSet_t *coreset0;
+  NR_SearchSpace_t *BWP_searchspaces[FAPI_NR_MAX_SS];
+  NR_SearchSpace_t *search_space_zero;
 
+  bool phy_config_request_sent;
   frame_type_t frame_type;
 
   ///     Type0-PDCCH seach space
@@ -438,11 +451,12 @@ typedef struct {
   int first_ul_tx[NR_MAX_HARQ_PROCESSES];
   ////	FAPI-like interface message
   fapi_nr_ul_config_request_t *ul_config_request;
-  fapi_nr_dl_config_request_t dl_config_request;
+  fapi_nr_dl_config_request_t *dl_config_request;
 
   ///     Interface module instances
   nr_ue_if_module_t       *if_module;
   nr_phy_config_t         phy_config;
+  nr_synch_request_t      synch_request;
 
   /// BSR report flag management
   uint8_t BSR_reporting_active;
@@ -455,15 +469,13 @@ typedef struct {
   uint8_t PHR_reporting_active;
 
   NR_Type0_PDCCH_CSS_config_t type0_PDCCH_CSS_config;
-  NR_SearchSpace_t *search_space_zero;
-  NR_ControlResourceSet_t *coreset0;
   frequency_range_t frequency_range;
   uint16_t nr_band;
   uint8_t ssb_subcarrier_offset;
 
-  NR_PHY_meas_t phy_measurements;
+  NR_SSB_meas_t ssb_measurements;
 
-  dci_pdu_rel15_t def_dci_pdu_rel15[8];
+  dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
 
   // Defined for abstracted mode
   nr_downlink_indication_t dl_info;
@@ -504,7 +516,7 @@ typedef struct prach_association_pattern {
 typedef struct ssb_info {
   bool transmitted; // True if the SSB index is transmitted according to the SSB positions map configuration
   prach_occasion_info_t *mapped_ro[MAX_NB_RO_PER_SSB_IN_ASSOCIATION_PATTERN]; // List of mapped RACH Occasions to this SSB index
-  uint16_t nb_mapped_ro; // Total number of mapped ROs to this SSB index
+  uint32_t nb_mapped_ro; // Total number of mapped ROs to this SSB index
 } ssb_info_t;
 
 // List of all the possible SSBs and their details
@@ -512,8 +524,6 @@ typedef struct ssb_list_info {
   ssb_info_t tx_ssb[MAX_NB_SSB];
   uint8_t   nb_tx_ssb;
 } ssb_list_info_t;
-
-void config_dci_pdu(NR_UE_MAC_INST_t *mac, fapi_nr_dl_config_dci_dl_pdu_rel15_t *rel15, fapi_nr_dl_config_request_t *dl_config, int rnti_type, int ss_id);
 
 /*@}*/
 #endif /*__LAYER2_MAC_DEFS_H__ */

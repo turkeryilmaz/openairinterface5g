@@ -890,7 +890,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../common/config/config_userapi.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../common/oai_asn1.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../common/utils/time_meas.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../common/utils/backtrace.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../common/utils/time_stat.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../common/utils/load_module_shlib.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../common/utils/time_meas.c \
@@ -987,9 +986,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/ASYNC_IF/ringbuffer_queue.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/ASYNC_IF/message_queue.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/ASYNC_IF/link_manager.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/OCG/OCG.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/OCG/OCG_extern.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/OCG/OCG_vars.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/LISTS/list.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/LISTS/list.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/UTIL/LISTS/list2.c \
@@ -1003,7 +999,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_task.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_interface_management.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_ue_context_management.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/dummy_enb.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_rrc_message_transfer.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_warning_message_transmission.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_task.h \
@@ -1015,18 +1010,15 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_rrc_message_transfer.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_default_values.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_rrc_message_transfer.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_decoder.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_encoder.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_itti_messaging.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_itti_messaging.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_ue_context_management.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_decoder.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_paging.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_warning_message_transmission.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_encoder.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_task.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_du_system_information.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_system_information.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_rrc_message_transfer.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_cu_interface_management.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/F1AP/f1ap_handlers.c \
@@ -1346,6 +1338,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/NR_MAC_UE/nr_ue_dci_configuration.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/NR_MAC_UE/mac_extern.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_entity.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_timer_thread.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair2/LAYER2/nr_pdcp/nr_pdcp_integrity_nia2.h \
@@ -2097,7 +2090,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_interface.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../nfapi/open-nFAPI/sim_common/inc/vendor_ext.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/SCHED_NR/nr_prach_procedures.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair1/SCHED_NR/phy_procedures_nr_common.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/SCHED_NR/phy_procedures_nr_gNB.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/SCHED_NR/fapi_nr_l1.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/SCHED_NR/nr_ru_procedures.c \
@@ -2220,11 +2212,13 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_ESTIMATION/lte_dl_bf_channel_estimation.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_ESTIMATION/lte_sync_timefreq.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_ESTIMATION/filt16_32.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/nr_phy_scope.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/cdot_prod.c \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/nr_phy_scope.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/phy_scope_interface.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/phy_scope_interface.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/nr_phy_scope.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/nr_phy_scope.c \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/nr_phy_qt_scope.h \
+@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/nr_phy_qt_scope.cpp \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/file_output.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/dfts_load.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/TOOLS/alaw_lut.h \
@@ -2245,7 +2239,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/defs_L1_NB_IoT.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/phy_extern_ue.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/defs_gNB.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_REFSIG/primary_synch.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_REFSIG/lte_dl_cell_spec.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_REFSIG/defs_NB_IoT.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../openair1/PHY/LTE_REFSIG/lte_refsig.h \
@@ -2549,7 +2542,6 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/../executables/create_tasks.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../executables/softmodem-common.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../executables/rt_profiling.h \
-@CMAKE_CURRENT_SOURCE_DIR@/../executables/split_headers.h \
 @CMAKE_CURRENT_SOURCE_DIR@/../executables/create_tasks.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../executables/nr-uesoftmodem.c \
 @CMAKE_CURRENT_SOURCE_DIR@/../executables/nr-uesoftmodem.h \

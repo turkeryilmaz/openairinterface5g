@@ -41,7 +41,7 @@ $ docker pull oaisoftwarealliance/oai-amf:v1.5.0
 $ docker pull oaisoftwarealliance/oai-nrf:v1.5.0
 $ docker pull oaisoftwarealliance/oai-smf:v1.5.0
 $ docker pull oaisoftwarealliance/oai-spgwu-tiny:v1.5.0
-$ docker pull oaisoftwarealliance/trf-gen-cn5g:latest
+$ docker pull oaisoftwarealliance/trf-gen-cn5g:focal
 
 $ docker pull oaisoftwarealliance/oai-gnb:develop
 $ docker pull oaisoftwarealliance/oai-nr-ue:develop
@@ -250,7 +250,7 @@ Create entry for Second UE in docker-compose.yaml file as follows:
             OPC: 'C42449363BBAD02B66D16BC975D77CC1'
             DNN: oai
             NSSAI_SST: 1
-            USE_ADDITIONAL_OPTIONS: -E --sa --rfsim -r 106 --numerology 1 -C 3619200000 --nokrnmod --log_config.global_log_options level,nocolor,time
+            USE_ADDITIONAL_OPTIONS: -E --sa --rfsim -r 106 --numerology 1 -C 3619200000 --log_config.global_log_options level,nocolor,time
         depends_on:
             - oai-gnb
         networks:

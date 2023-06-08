@@ -54,18 +54,18 @@ int get_modchannel_index(char *buf, int debug, void *vdata, telnet_printfunc_t p
 int get_channel_params(char *buf, int debug, void *tdata, telnet_printfunc_t prnt);
 int get_currentchannels_type(char *buf, int debug, void *vdata, telnet_printfunc_t prnt);
 
-#define HELP_WEBIF_MODIFCHAN_STRING "Current channel index? <chanidx>"
+#define HELP_WEBIF_MODIFCHAN_STRING "<channel index>"
 static telnetshell_cmddef_t channelmod_cmdarray[] = {
     {"help", "", channelmod_print_help, {NULL}, 0, NULL},
     {"show", "<predef,current>", channelmod_show_cmd, {NULL}, TELNETSRV_CMDFLAG_TELNETONLY, NULL},
     {"show predef", "", channelmod_show_cmd, {NULL}, TELNETSRV_CMDFLAG_WEBSRVONLY, NULL},
     {"show current", "", channelmod_show_cmd, {NULL}, TELNETSRV_CMDFLAG_WEBSRVONLY, NULL},
     {"modify", "<channelid> <param> <value>", channelmod_modify_cmd, {NULL}, TELNETSRV_CMDFLAG_TELNETONLY, NULL},
-    {"show params", "<channelid> <param> <value>", channelmod_modify_cmd, {webfunc_getdata : get_currentchannels_type}, TELNETSRV_CMDFLAG_GETWEBTBLDATA | TELNETSRV_CMDFLAG_WEBSRV_SETRETURNTBL, NULL},
+    {"show params", "<channelid> <param> <value>", channelmod_modify_cmd, {.webfunc_getdata = get_currentchannels_type}, TELNETSRV_CMDFLAG_GETWEBTBLDATA | TELNETSRV_CMDFLAG_WEBSRV_SETRETURNTBL, NULL},
     {"show channelid",
      HELP_WEBIF_MODIFCHAN_STRING,
      channelmod_modify_cmd,
-     {webfunc_getdata : get_channel_params},
+     {.webfunc_getdata = get_channel_params},
      TELNETSRV_CMDFLAG_NEEDPARAM | TELNETSRV_CMDFLAG_WEBSRVONLY | TELNETSRV_CMDFLAG_GETWEBTBLDATA,
      NULL},
     {"", "", NULL, {NULL}, 0, NULL},
@@ -497,7 +497,7 @@ void get_cexp_doppler(struct complexd *cexp_doppler, channel_desc_t *chan_desc, 
     cexp_doppler[t_idx].i = cimag(tmp_cexp_doppler);
 
 #ifdef DOPPLER_DEBUG
-    printf("(%2i) t_us = %f, cos_theta = %f, fs = %f, cexp_doppler = (%f, %f)\n", t_idx, t * 1e6, cos_theta[t_idx], fs[t_idx], cexp_doppler[t_idx].r, cexp_doppler[t_idx].i);
+    printf("(%2u) t_us = %f, cos_theta = %f, fs = %f, cexp_doppler = (%f, %f)\n", t_idx, t * 1e6, cos_theta[t_idx], fs[t_idx], cexp_doppler[t_idx].r, cexp_doppler[t_idx].i);
 #endif
   }
 }

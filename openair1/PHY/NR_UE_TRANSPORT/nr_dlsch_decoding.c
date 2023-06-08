@@ -44,18 +44,18 @@
 #include "executables/nr-uesoftmodem.h"
 #include "PHY/CODING/nrLDPC_extern.h"
 #include "common/utils/nr/nr_common.h"
+#include "openair1/PHY/TOOLS/phy_scope_interface.h"
 
 //#define ENABLE_PHY_PAYLOAD_DEBUG 1
 
 #define OAI_UL_LDPC_MAX_NUM_LLR 27000//26112 // NR_LDPC_NCOL_BG1*NR_LDPC_ZMAX = 68*384
 //#define OAI_LDPC_MAX_NUM_LLR 27000//26112 // NR_LDPC_NCOL_BG1*NR_LDPC_ZMAX
 
-static uint64_t nb_total_decod =0;
-static uint64_t nb_error_decod =0;
+static extended_kpi_ue kpiStructure = {0};
 
-notifiedFIFO_t freeBlocks_dl;
-notifiedFIFO_elt_t *msgToPush_dl;
-int nbDlProcessing =0;
+extended_kpi_ue* getKPIUE(void) {
+  return &kpiStructure;
+}
 
 void nr_ue_dlsch_init(NR_UE_DLSCH_t *dlsch_list, int num_dlsch, uint8_t max_ldpc_iterations) {
   for (int i=0; i < num_dlsch; i++) {
@@ -70,7 +70,7 @@ void nr_dlsch_unscrambling(int16_t *llr, uint32_t size, uint8_t q, uint32_t Nid,
   nr_codeword_unscrambling(llr, size, q, Nid, n_RNTI);
 }
 
-bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool last, notifiedFIFO_t *nf_p) {
+bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool last, notifiedFIFO_t *nf_p, int b_size, uint8_t b[b_size], int *num_seg_ok, UE_nr_rxtx_proc_t *proc) {
   ldpcDecode_ue_t *rdata = (ldpcDecode_ue_t*) NotifiedFifoData(req);
   NR_DL_UE_HARQ_t *harq_process = rdata->harq_process;
   NR_UE_DLSCH_t *dlsch = (NR_UE_DLSCH_t *) rdata->dlsch;
@@ -83,10 +83,11 @@ bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool
   bool decodeSuccess = (rdata->decodeIterations < (1+dlsch->max_ldpc_iterations));
 
   if (decodeSuccess) {
-    memcpy(harq_process->b+rdata->offset,
+    memcpy(b+rdata->offset,
            harq_process->c[r],
            rdata->Kr_bytes - (harq_process->F>>3) -((harq_process->C>1)?3:0));
 
+    (*num_seg_ok)++;
   } else {
     if ( !last ) {
       int nb=abortTpoolJob(&get_nrUE_params()->Tpool, req->key);
@@ -99,7 +100,25 @@ bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool
 
   // if all segments are done
   if (last) {
-    if (decodeSuccess) {
+    kpiStructure.nb_total++;
+    kpiStructure.blockSize = dlsch->dlsch_config.TBS;
+    kpiStructure.dl_mcs = dlsch->dlsch_config.mcs;
+    kpiStructure.nofRBs = dlsch->dlsch_config.number_rbs;
+
+    if (*num_seg_ok == harq_process->C) {
+      if (harq_process->C > 1) {
+        /* check global CRC */
+        int A = dlsch->dlsch_config.TBS;
+        int crc_length = A > 3824 ? 3 : 2;
+        int crc_type   = A > 3824 ? CRC24_A : CRC16;
+        if (!check_crc(b, A + crc_length*8, 0 /* F - unused */, crc_type)) {
+          harq_process->ack = 0;
+          dlsch->last_iteration_cnt = dlsch->max_ldpc_iterations + 1;
+          LOG_E(PHY, " Frame %d.%d LDPC global CRC fails, but individual LDPC CRC succeeded. %d segs\n", proc->frame_rx, proc->nr_slot_rx, harq_process->C);
+          LOG_D(PHY, "DLSCH received nok \n");
+          return true; //stop
+        }
+      }
       //LOG_D(PHY,"[UE %d] DLSCH: Setting ACK for nr_slot_rx %d TBS %d mcs %d nb_rb %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id,nr_slot_rx,harq_process->TBS,harq_process->mcs,harq_process->nb_rb, harq_process->round);
       harq_process->status = SCH_IDLE;
@@ -114,6 +133,7 @@ bool nr_ue_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, bool
       dlsch->last_iteration_cnt = rdata->decodeIterations;
       LOG_D(PHY, "DLSCH received ok \n");
     } else {
+      kpiStructure.nb_nack++;
       //LOG_D(PHY,"[UE %d] DLSCH: Setting NAK for SFN/SF %d/%d (pid %d, status %d, round %d, TBS %d, mcs %d) Kr %d r %d harq_process->round %d\n",
       //      phy_vars_ue->Mod_id, frame, nr_slot_rx, harq_pid,harq_process->status, harq_process->round,harq_process->TBS,harq_process->mcs,Kr,r,harq_process->round);
       harq_process->ack = 0;
@@ -264,7 +284,7 @@ void nr_processDLSegment(void* arg) {
       if (no_iteration_ldpc > dlsch->max_ldpc_iterations)
         no_iteration_ldpc = dlsch->max_ldpc_iterations;
     } else {
-      LOG_D(PHY,"CRC NOT OK\n");
+      LOG_D(PHY,"%d.%d CRC NOT OK\n",rdata->proc->frame_rx,rdata->proc->nr_slot_rx);
       no_iteration_ldpc = dlsch->max_ldpc_iterations + 1;
     }
 
@@ -273,12 +293,6 @@ void nr_processDLSegment(void* arg) {
     }
 
     rdata->decodeIterations = no_iteration_ldpc;
-
-    nb_total_decod++;
-
-    if (no_iteration_ldpc > dlsch->max_ldpc_iterations) {
-      nb_error_decod++;
-    }
 
     for (int m=0; m < Kr>>3; m ++) {
       harq_process->c[r][m]= (uint8_t) llrProcBuf[m];
@@ -298,7 +312,9 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            uint32_t frame,
                            uint16_t nb_symb_sch,
                            uint8_t nr_slot_rx,
-                           uint8_t harq_pid) {
+                           uint8_t harq_pid,
+                           int b_size,
+                           uint8_t b[b_size]) {
   uint32_t A,E;
   uint32_t G;
   uint32_t ret,offset;
@@ -463,6 +479,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     rdata->offset = offset;
     rdata->dlsch = dlsch;
     rdata->dlsch_id = 0;
+    rdata->proc = proc;
     reset_meas(&rdata->ts_deinterleave);
     reset_meas(&rdata->ts_rate_unmatch);
     reset_meas(&rdata->ts_ldpc_decode);
@@ -473,6 +490,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     offset += (Kr_bytes - (harq_process->F>>3) - ((harq_process->C>1)?3:0));
     //////////////////////////////////////////////////////////////////////////////////////////
   }
+  int num_seg_ok = 0;
   for (r=0; r<nbDecode; r++) {
     notifiedFIFO_elt_t *req=pullTpool(&nf,  &get_nrUE_params()->Tpool);
     if (req == NULL)
@@ -480,7 +498,7 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
     bool last = false;
     if (r == nbDecode - 1)
       last = true;
-    bool stop = nr_ue_postDecode(phy_vars_ue, req, last, &nf);
+    bool stop = nr_ue_postDecode(phy_vars_ue, req, last, &nf, b_size, b, &num_seg_ok, proc);
     delNotifiedFIFO_elt(req);
     if (stop)
       break;

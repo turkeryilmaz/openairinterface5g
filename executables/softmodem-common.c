@@ -98,7 +98,7 @@ void get_common_options(uint32_t execmask) {
   uint32_t start_telnetsrv = 0, start_telnetclt = 0;
   uint32_t start_websrv = 0;
   uint32_t noS1 = 0, nokrnmod = 1, nonbiot = 0;
-  uint32_t rfsim = 0, do_forms = 0;
+  uint32_t rfsim = 0, do_forms = 0, do_forms_qt = 0;
   int nfapi_index = 0;
   char *logmem_filename = NULL;
   check_execmask(execmask);
@@ -146,7 +146,6 @@ void get_common_options(uint32_t execmask) {
   }
 
   if (nokrnmod) {
-    printf("nokrnmod bit enabled \n");
     set_softmodem_optmask(SOFTMODEM_NOKRNMOD_BIT);
   }
 
@@ -160,6 +159,10 @@ void get_common_options(uint32_t execmask) {
 
   if (do_forms) {
     set_softmodem_optmask(SOFTMODEM_DOSCOPE_BIT);
+  }
+
+  if (do_forms_qt) {
+    set_softmodem_optmask(SOFTMODEM_DOSCOPE_QT_BIT);
   }
 
   if (start_websrv) {
@@ -216,7 +219,7 @@ void signal_handler(int sig) {
       softmodem_printresources(sig,(telnet_printfunc_t)printf);
     if (sig != SOFTMODEM_RTSIGNAL) {
       printf("Linux signal %s...\n",strsignal(sig));
-      exit_function(__FILE__, __FUNCTION__, __LINE__,"softmodem starting exit procedure\n");
+      exit_function(__FILE__, __FUNCTION__, __LINE__, "softmodem starting exit procedure\n", OAI_EXIT_NORMAL);
     }
   }
 }

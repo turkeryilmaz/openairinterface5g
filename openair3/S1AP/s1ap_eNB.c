@@ -373,7 +373,7 @@ void s1ap_eNB_handle_sctp_association_resp(instance_t instance, sctp_new_associa
         timer_kind = timer_kind | SCTP_REQ_WAIT;
         
         if( s1ap_timer_setup( instance_p->sctp_req_timer, 0, TASK_S1AP, instance_p->instance,
-          timer_kind, S1AP_TIMER_ONE_SHOT, NULL, &s1ap_mme_data_p->timer_id) < 0 ) {
+          timer_kind, TIMER_ONE_SHOT, NULL, &s1ap_mme_data_p->timer_id) < 0 ) {
           S1AP_ERROR("Timer Start NG(SCTP retransmission wait timer) : MME=%d\n",s1ap_mme_data_p->cnx_id);
           s1ap_sctp_req( instance_p, s1ap_mme_data_p );
         }
@@ -694,7 +694,7 @@ static int s1ap_eNB_generate_s1_setup_request(
   ie->value.choice.Global_ENB_ID.eNB_ID.present = S1AP_ENB_ID_PR_macroENB_ID;
   MACRO_ENB_ID_TO_BIT_STRING(instance_p->eNB_id,
                              &ie->value.choice.Global_ENB_ID.eNB_ID.choice.macroENB_ID);
-  S1AP_INFO("%d -> %02x%02x%02x\n", instance_p->eNB_id,
+  S1AP_INFO("%u -> %02x%02x%02x\n", instance_p->eNB_id,
             ie->value.choice.Global_ENB_ID.eNB_ID.choice.macroENB_ID.buf[0],
             ie->value.choice.Global_ENB_ID.eNB_ID.choice.macroENB_ID.buf[1],
             ie->value.choice.Global_ENB_ID.eNB_ID.choice.macroENB_ID.buf[2]);
@@ -750,7 +750,7 @@ static int s1ap_eNB_generate_s1_setup_request(
   timer_kind = timer_kind | S1AP_MMEIND;
   timer_kind = timer_kind | S1_SETRSP_WAIT;
   
-  if( s1ap_timer_setup(instance_p->s1_setuprsp_wait_timer, 0, TASK_S1AP, instance_p->instance, timer_kind, S1AP_TIMER_ONE_SHOT,
+  if( s1ap_timer_setup(instance_p->s1_setuprsp_wait_timer, 0, TASK_S1AP, instance_p->instance, timer_kind, TIMER_ONE_SHOT,
     NULL, &s1ap_mme_data_p->timer_id) < 0 )
   {
     S1AP_ERROR("Timer Start NG(S1 Setup Response) : MME=%d\n",s1ap_mme_data_p->cnx_id);

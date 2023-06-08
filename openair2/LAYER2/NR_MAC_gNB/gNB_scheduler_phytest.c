@@ -35,20 +35,6 @@
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
 #include "executables/softmodem-common.h"
 #include "common/utils/nr/nr_common.h"
-#include "NR_SCS-SpecificCarrier.h"
-#include "NR_TDD-UL-DL-ConfigCommon.h"
-#include "NR_FrequencyInfoUL.h"
-#include "NR_RACH-ConfigGeneric.h"
-#include "NR_RACH-ConfigCommon.h"
-#include "NR_PUSCH-TimeDomainResourceAllocation.h"
-#include "NR_PUSCH-ConfigCommon.h"
-#include "NR_PUCCH-ConfigCommon.h"
-#include "NR_PDSCH-TimeDomainResourceAllocation.h"
-#include "NR_PDSCH-ConfigCommon.h"
-#include "NR_RateMatchPattern.h"
-#include "NR_RateMatchPatternLTE-CRS.h"
-#include "NR_SearchSpace.h"
-#include "NR_ControlResourceSet.h"
 
 //#define UL_HARQ_PRINT
 extern RAN_CONTEXT_t RC;
@@ -64,6 +50,7 @@ void nr_preprocessor_phytest(module_id_t module_id,
                              frame_t frame,
                              sub_frame_t slot)
 {
+  /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   if (!is_xlsch_in_slot(dlsch_slot_bitmap, slot))
     return;
   NR_UE_info_t *UE = RC.nrmac[module_id]->UE_info.list[0];
@@ -73,7 +60,9 @@ void nr_preprocessor_phytest(module_id_t module_id,
   const int CC_id = 0;
 
   const int tda = get_dl_tda(RC.nrmac[module_id], scc, slot);
-  NR_tda_info_t tda_info = nr_get_pdsch_tda_info(dl_bwp, tda);
+  NR_tda_info_t tda_info = get_dl_tda_info(dl_bwp, sched_ctrl->search_space->searchSpaceType->present, tda,
+                                           scc->dmrs_TypeA_Position, 1, NR_RNTI_C, sched_ctrl->coreset->controlResourceSetId, false);
+
   sched_ctrl->sched_pdsch.tda_info = tda_info;
   sched_ctrl->sched_pdsch.time_domain_allocation = tda;
 
@@ -204,6 +193,7 @@ uint64_t ulsch_slot_bitmap = (1 << 8);
 bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_t slot)
 {
   gNB_MAC_INST *nr_mac = RC.nrmac[module_id];
+  /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
   NR_COMMON_channels_t *cc = nr_mac->common_channels;
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   NR_UE_info_t *UE = nr_mac->UE_info.list[0];
@@ -219,7 +209,7 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int mu = ul_bwp->scs;
 
-  const struct NR_PUSCH_TimeDomainResourceAllocationList *tdaList = ul_bwp->tdaList;
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(ul_bwp, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
   const int temp_tda = get_ul_tda(nr_mac, scc, frame, slot);
   if (temp_tda < 0)
     return false;
@@ -227,7 +217,7 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
               "time domain assignment %d >= %d\n",
               temp_tda,
               tdaList->list.count);
-  int K2 = get_K2(ul_bwp->tdaList, temp_tda, mu);
+  int K2 = get_K2(tdaList, temp_tda, mu);
   const int sched_frame = frame + (slot + K2 >= nr_slots_per_frame[mu]);
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
   const int tda = get_ul_tda(nr_mac, scc, sched_frame, sched_slot);
@@ -254,11 +244,11 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
   else
     rbSize = target_ul_bw;
 
-  NR_tda_info_t tda_info = nr_get_pusch_tda_info(ul_bwp, tda);
+  NR_tda_info_t tda_info = get_ul_tda_info(ul_bwp, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C, tda);
   sched_ctrl->sched_pusch.tda_info = tda_info;
 
-  uint16_t *vrb_map_UL =
-      &RC.nrmac[module_id]->common_channels[CC_id].vrb_map_UL[sched_slot * MAX_BWP_SIZE];
+  const int buffer_index = ul_buffer_index(sched_frame, sched_slot, mu, nr_mac->vrb_map_UL_size);
+  uint16_t *vrb_map_UL = &nr_mac->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
   for (int i = rbStart; i < rbStart + rbSize; ++i) {
     if ((vrb_map_UL[i+BWPStart] & SL_to_bitmap(tda_info.startSymbolIndex, tda_info.nrOfSymbols)) != 0) {
       LOG_E(MAC,

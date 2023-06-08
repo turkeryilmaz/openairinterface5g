@@ -99,7 +99,6 @@ void du_task_handle_sctp_data_ind(instance_t instance, sctp_data_ind_t *sctp_dat
 void *F1AP_DU_task(void *arg) {
   //sctp_cu_init();
   LOG_I(F1AP, "Starting F1AP at DU\n");
-  //f1ap_eNB_prepare_internal_data();
   itti_mark_task_ready(TASK_DU_F1);
 
   // SCTP
@@ -107,11 +106,11 @@ void *F1AP_DU_task(void *arg) {
     MessageDef *msg = NULL;
     itti_receive_msg(TASK_DU_F1, &msg);
     instance_t myInstance=ITTI_MSG_DESTINATION_INSTANCE(msg);
-    LOG_I(F1AP, "DU Task Received %s for instance %ld\n",
+    LOG_D(F1AP, "DU Task Received %s for instance %ld\n",
           ITTI_MSG_NAME(msg),myInstance);
     switch (ITTI_MSG_ID(msg)) {
       case F1AP_SETUP_REQ: {
-        // this is not a true F1 message, but rather an ITTI message sent by enb_app
+        // this is not a true F1 message, but rather an ITTI message sent by gnb_app
         // 1. save the itti msg so that you can use it to sen f1ap_setup_req, fill the f1ap_setup_req message,
         // 2. store the message in f1ap context, that is also stored in RC
         // 2. send a sctp_association req
@@ -150,14 +149,7 @@ void *F1AP_DU_task(void *arg) {
       } break;
 
       case F1AP_UL_RRC_MESSAGE: // to rrc
-        if (RC.nrrrc && RC.nrrrc[0]->node_type == ngran_gNB_DU) {
-          DU_send_UL_NR_RRC_MESSAGE_TRANSFER(myInstance,
-                                             &F1AP_UL_RRC_MESSAGE(msg));
-        } else {
-          DU_send_UL_RRC_MESSAGE_TRANSFER(myInstance,
-                                          &F1AP_UL_RRC_MESSAGE(msg));
-        }
-
+        DU_send_UL_NR_RRC_MESSAGE_TRANSFER(myInstance, &F1AP_UL_RRC_MESSAGE(msg));
         break;
 
       case F1AP_UE_CONTEXT_SETUP_RESP:
@@ -171,6 +163,10 @@ void *F1AP_DU_task(void *arg) {
       case F1AP_UE_CONTEXT_RELEASE_REQ: // from MAC
         DU_send_UE_CONTEXT_RELEASE_REQUEST(myInstance,
                                            &F1AP_UE_CONTEXT_RELEASE_REQ(msg));
+        break;
+
+      case F1AP_UE_CONTEXT_RELEASE_COMPLETE:
+        DU_send_UE_CONTEXT_RELEASE_COMPLETE(myInstance, &F1AP_UE_CONTEXT_RELEASE_COMPLETE(msg));
         break;
 
       case TERMINATE_MESSAGE:

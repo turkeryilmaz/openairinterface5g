@@ -34,6 +34,7 @@
 #include <assert.h>
 #include "PHY/sse_intrin.h"
 #include "common/utils/assertions.h"
+#include "common/utils/utils.h"
 
 #if defined(__x86_64__) || defined(__i386__)
 #define simd_q15_t __m128i
@@ -94,8 +95,106 @@ extern "C" {
     int64_t i;
   } c64_t;
 
+  typedef struct {
+    int dim1;
+    int dim2;
+    int dim3;
+    int dim4;
+    uint8_t data[];
+  } fourDimArray_t;
+
+  static inline fourDimArray_t *allocateFourDimArray(int elmtSz, int dim1, int dim2, int dim3, int dim4)
+  {
+    int sz = elmtSz;
+    DevAssert(dim1 > 0);
+    sz *= dim1;
+    if (dim2) {
+      sz *= dim2;
+      if (dim3) {
+        sz *= dim3;
+        if (dim4)
+          sz *= dim4;
+      }
+    }
+    fourDimArray_t *tmp = (fourDimArray_t *)malloc16_clear(sizeof(*tmp) + sz);
+    AssertFatal(tmp, "no more memory\n");
+    *tmp = (fourDimArray_t){dim1, dim2, dim3, dim4};
+    return tmp;
+  }
+
+#define CheckArrAllocated(workingVar, elementType, ArraY, diM1, diM2, diM3, diM4, resizeAllowed)                           \
+  if (!(ArraY))                                                                                                            \
+    ArraY = allocateFourDimArray(sizeof(elementType), diM1, diM2, diM3, diM4);                                             \
+  else {                                                                                                                   \
+    if ((resizeAllowed)                                                                                                    \
+        && ((diM1) != (ArraY)->dim1 || (diM2) != (ArraY)->dim2 || (diM3) != (ArraY)->dim3 || (diM4) != (ArraY)->dim4)) {   \
+      LOG_I(PHY, "resizing %s to %d/%d/%d/%d\n", #ArraY, (diM1), (diM2), (diM3), (diM4));                                  \
+      free(ArraY);                                                                                                         \
+      ArraY = allocateFourDimArray(sizeof(elementType), diM1, diM2, diM3, diM4);                                           \
+    } else                                                                                                                 \
+      DevAssert((diM1) == (ArraY)->dim1 && (diM2) == (ArraY)->dim2 && (diM3) == (ArraY)->dim3 && (diM4) == (ArraY)->dim4); \
+  }
+
+#define cast1Darray(workingVar, elementType, ArraY) elementType *workingVar = (elementType *)((ArraY)->data);
+
+#define allocCast1D(workingVar, elementType, ArraY, dim1, resizeAllowed)           \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, 0, 0, 0, resizeAllowed); \
+  cast1Darray(workingVar, elementType, ArraY);
+
+#define cast2Darray(workingVar, elementType, ArraY) \
+  elementType(*workingVar)[(ArraY)->dim2] = (elementType(*)[(ArraY)->dim2])((ArraY)->data);
+
+#define allocCast2D(workingVar, elementType, ArraY, dim1, dim2, resizeAllowed)        \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, dim2, 0, 0, resizeAllowed); \
+  cast2Darray(workingVar, elementType, ArraY);
+
+#define cast3Darray(workingVar, elementType, ArraY) \
+  elementType(*workingVar)[(ArraY)->dim2][(ArraY)->dim3] = (elementType(*)[(ArraY)->dim2][(ArraY)->dim3])((ArraY)->data);
+
+#define allocCast3D(workingVar, elementType, ArraY, dim1, dim2, dim3, resizeAllowed)     \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, dim2, dim3, 0, resizeAllowed); \
+  cast3Darray(workingVar, elementType, ArraY);
+
+#define cast4Darray(workingVar, elementType, ArraY)                       \
+  elementType(*workingVar)[(ArraY)->dim2][(ArraY)->dim3][(ArraY)->dim4] = \
+      (elementType(*)[(ArraY)->dim2][(ArraY)->dim3][(ArraY)->dim4])((ArraY)->data);
+
+#define allocCast4D(workingVar, elementType, ArraY, dim1, dim2, dim3, dim4, resizeAllowed)  \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, dim2, dim3, dim4, resizeAllowed); \
+  cast4Darray(workingVar, elementType, ArraY);
+
+#define clearArray(ArraY, elementType) \
+  memset((ArraY)->data,                  \
+         0,                            \
+         sizeof(elementType) * (ArraY)->dim1 * max((ArraY)->dim2, 1) * max((ArraY)->dim3, 1) * max((ArraY)->dim4, 1))
+
 #define squaredMod(a) ((a).r*(a).r + (a).i*(a).i)
 #define csum(res, i1, i2) (res).r = (i1).r + (i2).r ; (res).i = (i1).i + (i2).i
+
+  __attribute__((always_inline)) inline uint32_t c16amp2(const c16_t a) {
+    return a.r * a.r + a.i * a.i;
+  }
+
+  __attribute__((always_inline)) inline c16_t c16sub(const c16_t a, const c16_t b) {
+    return (c16_t) {
+        .r = (int16_t) (a.r - b.r),
+        .i = (int16_t) (a.i - b.i)
+    };
+  }
+
+  __attribute__((always_inline)) inline c16_t c16Shift(const c16_t a, const int Shift) {
+    return (c16_t) {
+        .r = (int16_t)(a.r >> Shift),
+        .i = (int16_t)(a.i >> Shift)
+    };
+  }
+
+  __attribute__((always_inline)) inline c16_t c16addShift(const c16_t a, const c16_t b, const int Shift) {
+    return (c16_t) {
+        .r = (int16_t)((a.r + b.r) >> Shift),
+        .i = (int16_t)((a.i + b.i) >> Shift)
+    };
+  }
 
   __attribute__((always_inline)) inline c16_t c16mulShift(const c16_t a, const c16_t b, const int Shift) {
     return (c16_t) {
@@ -239,33 +338,26 @@ This function performs componentwise multiplication and accumulation of a comple
 
 The function implemented is : \f$\mathbf{y} = y + \alpha\mathbf{x}\f$
 */
-void multadd_real_vector_complex_scalar(int16_t *x,
-                                        int16_t *alpha,
-                                        int16_t *y,
-                                        uint32_t N);
+  void multadd_real_vector_complex_scalar(const int16_t *x, const int16_t *alpha, int16_t *y, uint32_t N);
 
-__attribute__((always_inline)) inline void multadd_real_four_symbols_vector_complex_scalar(int16_t *x,
-                                                                                           c16_t *alpha,
-                                                                                           c16_t *y)
-{
+  __attribute__((always_inline)) inline void multadd_real_four_symbols_vector_complex_scalar(const int16_t *x,
+                                                                                             c16_t *alpha,
+                                                                                             c16_t *y)
+  {
+    // do 8 multiplications at a time
+    const simd_q15_t alpha_r_128 = set1_int16(alpha->r);
+    const simd_q15_t alpha_i_128 = set1_int16(alpha->i);
 
-  // do 8 multiplications at a time
-  simd_q15_t alpha_r_128,alpha_i_128,yr,yi,*x_128=(simd_q15_t*)x;
-  simd_q15_t y_128;
-  y_128 = _mm_loadu_si128((simd_q15_t*)y);
+    const simd_q15_t *x_128 = (const simd_q15_t *)x;
+    const simd_q15_t yr = mulhi_s1_int16(alpha_r_128, *x_128);
+    const simd_q15_t yi = mulhi_s1_int16(alpha_i_128, *x_128);
 
-  alpha_r_128 = set1_int16(alpha->r);
-  alpha_i_128 = set1_int16(alpha->i);
+    simd_q15_t y_128 = _mm_loadu_si128((simd_q15_t *)y);
+    y_128 = _mm_adds_epi16(y_128, _mm_unpacklo_epi16(yr, yi));
+    y_128 = _mm_adds_epi16(y_128, _mm_unpackhi_epi16(yr, yi));
 
-
-  yr     = mulhi_s1_int16(alpha_r_128,x_128[0]);
-  yi     = mulhi_s1_int16(alpha_i_128,x_128[0]);
-  y_128   = _mm_adds_epi16(y_128,_mm_unpacklo_epi16(yr,yi));
-  y_128   = _mm_adds_epi16(y_128,_mm_unpackhi_epi16(yr,yi));
-
-  _mm_storeu_si128((simd_q15_t*)y, y_128);
-
-}
+    _mm_storeu_si128((simd_q15_t *)y, y_128);
+  }
 
 /*!\fn void multadd_complex_vector_real_scalar(int16_t *x,int16_t alpha,int16_t *y,uint8_t zero_flag,uint32_t N)
 This function performs componentwise multiplication and accumulation of a real scalar and a complex vector.

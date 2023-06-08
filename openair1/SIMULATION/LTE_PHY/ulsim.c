@@ -45,16 +45,16 @@
 #include "SCHED/sched_eNB.h"
 #include "SCHED_UE/sched_UE.h"
 #include "SIMULATION/TOOLS/sim.h"
-#include "OCG_vars.h"
 #include "unitary_defs.h"
 #include "dummy_functions.c"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "common/config/config_load_configmodule.h"
 #include "executables/thread-common.h"
 #include "executables/lte-softmodem.h"
-#include "executables/split_headers.h"
 #include "common/ran_context.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
+#include "openair1/PHY/LTE_TRANSPORT/dlsch_tbs_full.h"
+#include "PHY/phy_extern.h"
 
 const char *__asan_default_options()
 {
@@ -70,10 +70,7 @@ channel_desc_t *eNB2UE[NUMBER_OF_eNB_MAX][NUMBER_OF_UE_MAX];
 channel_desc_t *UE2eNB[NUMBER_OF_UE_MAX][NUMBER_OF_eNB_MAX];
 node_desc_t *enb_data[NUMBER_OF_eNB_MAX];
 node_desc_t *ue_data[NUMBER_OF_UE_MAX];
-//double sinr_bler_map[MCS_COUNT][2][16];
 
-extern uint16_t beta_ack[16],beta_ri[16],beta_cqi[16];
-//extern  char* namepointer_chMag ;
 THREAD_STRUCT thread_struct;
 nfapi_ue_release_request_body_t release_rntis;
 
@@ -91,14 +88,6 @@ static int cmpdouble(const void *p1, const void *p2) {
 }
 
 RAN_CONTEXT_t RC;
-int split73=0;
-void sendFs6Ul(PHY_VARS_eNB *eNB, int UE_id, int harq_pid, int segmentID, int16_t *data, int dataLen, int r_offset) {
-  AssertFatal(false, "Must not be called in this context\n");
-}
-void sendFs6Ulharq(enum pckType type, int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *uci, int frame, int subframe, uint8_t *harq_ack, uint8_t tdd_mapping_mode, uint16_t tdd_multiplexing_mask, uint16_t rnti, int32_t stat) {
-  AssertFatal(false, "Must not be called in this context\n");
-}
-
 extern void fep_full(RU_t *ru, int subframe);
 extern void ru_fep_full_2thread(RU_t *ru, int subframe);
 //extern void eNB_fep_full(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc);
@@ -417,42 +406,42 @@ int main(int argc, char **argv) {
   //  set_glog(LOG_DEBUG,LOG_HIGH);
   //hapZEbm:n:Y:X:x:s:w:e:q:d:D:O:c:r:i:f:y:c:oA:C:R:g:N:l:S:T:QB:PI:LF
   static paramdef_t options[] = {
-    { "awgn", "Use AWGN channel and not multipath", PARAMFLAG_BOOL, strptr:NULL, defintval:0, TYPE_INT, 0, NULL, NULL },
-    { "BnbRBs", "The LTE bandwith in RBs (100 is 20MHz)",0, iptr:&N_RB_DL,  defintval:25, TYPE_INT, 0 },
-    { "mcs", "The MCS to use", 0, iptr:&mcs,  defintval:10, TYPE_INT, 0 },
-    { "nb_frame", "number of frame in a test",0, iptr:&n_frames,  defintval:1, TYPE_INT, 0 },
-    { "snr", "starting snr", 0, dblptr:&snr0,  defdblval:-2.9, TYPE_DOUBLE, 0 },
-    { "wsnrInterrupt", "snr int ?", 0, dblptr:&snr_int,  defdblval:30, TYPE_DOUBLE, 0 },
-    { "e_snr_step", "step increasing snr",0, dblptr:&input_snr_step,  defdblval:0.2, TYPE_DOUBLE, 0 },
-    { "rb_dynamic", "number of rb in dynamic allocation",0, iptr:NULL,  defintval:0, TYPE_INT, 0 },
-    { "first_rb", "first rb used in dynamic allocation",0, iptr:&first_rb,  defintval:0, TYPE_INT, 0 },
-    { "osrs", "enable srs generation",PARAMFLAG_BOOL, iptr:&srs_flag,  defintval:0, TYPE_INT, 0 },
-    { "gchannel", "[A:M] Use 3GPP 25.814 SCM-A/B/C/D('A','B','C','D') or 36-101 EPA('E'), EVA ('F'),ETU('G') models (ignores delay spread and Ricean factor), Rayghleigh8 ('H'), Rayleigh1('I'), Rayleigh1_corr('J'), Rayleigh1_anticorr ('K'),  Rice8('L'), Rice1('M')",0, strptr:NULL,  defstrval:NULL, TYPE_STRING, 0 },
-    { "delay_chan", "Channel delay",0, iptr:&delay,  defintval:0, TYPE_INT, 0 },
-    { "Doppler", "Maximum doppler shift",0, dblptr:&maxDoppler,  defdblval:0.0, TYPE_DOUBLE, 0 },
-    { "Zdump", "dump table",PARAMFLAG_BOOL,  iptr:&dump_table, defintval:0, TYPE_INT, 0 },
-    { "Lparallel", "Enable parallel execution",0, strptr:NULL,  defstrval:NULL, TYPE_STRING,  0 },
-    { "Iterations", "Number of iterations of turbo decoder", 0, iptr:&max_turbo_iterations,  defintval:4, TYPE_INT, 0 },
-    { "Performance", "Display CPU perfomance of each L1 piece", PARAMFLAG_BOOL,  iptr:NULL,  defintval:0, TYPE_INT, 0 },
-    { "Q_cqi", "Enable CQI", PARAMFLAG_BOOL, iptr:&cqi_flag,  defintval:0, TYPE_INT, 0 },
-    { "prefix_extended","Extended prefix", PARAMFLAG_BOOL, iptr:&extended_prefix_flag,  defintval:0, TYPE_INT, 0 },
-    { "RI_beta", "TBD", 0, iptr:NULL,  defintval:0, TYPE_INT, 0 },
-    { "CQI_beta", "TBD",0, iptr:NULL,  defintval:0, TYPE_INT, 0 },
-    { "ACK_beta", "TBD",0, iptr:NULL,  defintval:0, TYPE_INT, 0 },
-    { "input_file", "input IQ data file",0, iptr:NULL,  defintval:0, TYPE_INT, 0 },
-    { "N0", "N0",0, iptr:&N0,  defintval:30, TYPE_INT, 0 },
-    { "EsubSampling","three quarters sub-sampling",PARAMFLAG_BOOL, iptr:&threequarter_fs, defintval:0, TYPE_INT, 0 },
-    { "TDD", "Enable TDD and set the tdd configuration mode",0, iptr:NULL,  defintval:25, TYPE_INT, 0 },
-    { "Subframe", "subframe to use",0, iptr:&subframe,  defintval:3, TYPE_INT, 0 },
-    { "xTransmission","transmission mode (1 or 2 are supported)",0, iptr:NULL,  defintval:25, TYPE_INT, 0 },
-    { "yN_rx", "TBD: n_rx",0, iptr:&n_rx,  defintval:1, TYPE_INT, 0 },
-    { "bundling_disable", "bundling disable",PARAMFLAG_BOOL,  iptr:&disable_bundling, defintval:0, TYPE_INT, 0 },
-    { "Y",  "n_ch_rlz",0, iptr:&n_ch_rlz,  defintval:1, TYPE_INT, 0 },
-    { "X",  "abstx", PARAMFLAG_BOOL,  iptr:&abstx, defintval:0, TYPE_INT, 0 },
-    { "Operf", "Set the percentage of effective rate to testbench the modem performance (typically 30 and 70, range 1-100)",0, iptr:&test_perf,  defintval:0, TYPE_INT, 0 },
-    { "verbose", "display debug text", PARAMFLAG_BOOL,  iptr:&verbose, defintval:0, TYPE_INT, 0 },
-    { "help", "display help and exit", PARAMFLAG_BOOL,  iptr:&help, defintval:0, TYPE_INT, 0 },
-    { "", "",0,  iptr:NULL, defintval:0, TYPE_INT, 0 },
+    { "awgn", "Use AWGN channel and not multipath", PARAMFLAG_BOOL, .strptr=NULL, .defintval=0, TYPE_INT, 0, NULL, NULL },
+    { "BnbRBs", "The LTE bandwith in RBs (100 is 20MHz)",0, .iptr=&N_RB_DL,  .defintval=25, TYPE_INT, 0 },
+    { "mcs", "The MCS to use", 0, .iptr=&mcs,  .defintval=10, TYPE_INT, 0 },
+    { "nb_frame", "number of frame in a test",0, .iptr=&n_frames,  .defintval=1, TYPE_INT, 0 },
+    { "snr", "starting snr", 0, .dblptr=&snr0,  .defdblval=-2.9, TYPE_DOUBLE, 0 },
+    { "wsnrInterrupt", "snr int ?", 0, .dblptr=&snr_int,  .defdblval=30, TYPE_DOUBLE, 0 },
+    { "e_snr_step", "step increasing snr",0, .dblptr=&input_snr_step,  .defdblval=0.2, TYPE_DOUBLE, 0 },
+    { "rb_dynamic", "number of rb in dynamic allocation",0, .iptr=NULL,  .defintval=0, TYPE_INT, 0 },
+    { "first_rb", "first rb used in dynamic allocation",0, .iptr=&first_rb,  .defintval=0, TYPE_INT, 0 },
+    { "osrs", "enable srs generation",PARAMFLAG_BOOL, .iptr=&srs_flag,  .defintval=0, TYPE_INT, 0 },
+    { "gchannel", "[A:M] Use 3GPP 25.814 SCM-A/B/C/D('A','B','C','D') or 36-101 EPA('E'), EVA ('F'),ETU('G') models (ignores delay spread and Ricean factor), Rayghleigh8 ('H'), Rayleigh1('I'), Rayleigh1_corr('J'), Rayleigh1_anticorr ('K'),  Rice8('L'), Rice1('M')",0, .strptr=NULL,  .defstrval=NULL, TYPE_STRING, 0 },
+    { "delay_chan", "Channel delay",0, .iptr=&delay,  .defintval=0, TYPE_INT, 0 },
+    { "Doppler", "Maximum doppler shift",0, .dblptr=&maxDoppler,  .defdblval=0.0, TYPE_DOUBLE, 0 },
+    { "Zdump", "dump table",PARAMFLAG_BOOL,  .iptr=&dump_table, .defintval=0, TYPE_INT, 0 },
+    { "Lparallel", "Enable parallel execution",0, .strptr=NULL,  .defstrval=NULL, TYPE_STRING,  0 },
+    { "Iterations", "Number of iterations of turbo decoder", 0, .iptr=&max_turbo_iterations,  .defintval=4, TYPE_INT, 0 },
+    { "Performance", "Display CPU perfomance of each L1 piece", PARAMFLAG_BOOL,  .iptr=NULL,  .defintval=0, TYPE_INT, 0 },
+    { "Q_cqi", "Enable CQI", PARAMFLAG_BOOL, .iptr=&cqi_flag,  .defintval=0, TYPE_INT, 0 },
+    { "prefix_extended","Extended prefix", PARAMFLAG_BOOL, .iptr=&extended_prefix_flag,  .defintval=0, TYPE_INT, 0 },
+    { "RI_beta", "TBD", 0, .iptr=NULL,  .defintval=0, TYPE_INT, 0 },
+    { "CQI_beta", "TBD",0, .iptr=NULL,  .defintval=0, TYPE_INT, 0 },
+    { "ACK_beta", "TBD",0, .iptr=NULL,  .defintval=0, TYPE_INT, 0 },
+    { "input_file", "input IQ data file",0, .iptr=NULL,  .defintval=0, TYPE_INT, 0 },
+    { "N0", "N0",0, .iptr=&N0,  .defintval=30, TYPE_INT, 0 },
+    { "EsubSampling","three quarters sub-sampling",PARAMFLAG_BOOL, .iptr=&threequarter_fs, .defintval=0, TYPE_INT, 0 },
+    { "TDD", "Enable TDD and set the tdd configuration mode",0, .iptr=NULL,  .defintval=25, TYPE_INT, 0 },
+    { "Subframe", "subframe to use",0, .iptr=&subframe,  .defintval=3, TYPE_INT, 0 },
+    { "xTransmission","transmission mode (1 or 2 are supported)",0, .iptr=NULL,  .defintval=25, TYPE_INT, 0 },
+    { "yN_rx", "TBD: n_rx",0, .iptr=&n_rx,  .defintval=1, TYPE_INT, 0 },
+    { "bundling_disable", "bundling disable",PARAMFLAG_BOOL,  .iptr=&disable_bundling, .defintval=0, TYPE_INT, 0 },
+    { "Y",  "n_ch_rlz",0, .iptr=&n_ch_rlz,  .defintval=1, TYPE_INT, 0 },
+    { "X",  "abstx", PARAMFLAG_BOOL,  .iptr=&abstx, .defintval=0, TYPE_INT, 0 },
+    { "Operf", "Set the percentage of effective rate to testbench the modem performance (typically 30 and 70, range 1-100)",0, .iptr=&test_perf,  .defintval=0, TYPE_INT, 0 },
+    { "verbose", "display debug text", PARAMFLAG_BOOL,  .iptr=&verbose, .defintval=0, TYPE_INT, 0 },
+    { "help", "display help and exit", PARAMFLAG_BOOL,  .iptr=&help, .defintval=0, TYPE_INT, 0 },
+    { "", "",0,  .iptr=NULL, .defintval=0, TYPE_INT, 0 },
   };
   struct option *long_options = parse_oai_options(options);
   int option_index;
@@ -817,7 +806,7 @@ int main(int argc, char **argv) {
 
   if (cqi_flag == 1) coded_bits_per_codeword-=UE->ulsch[0]->O;
 
-  rate = (double)dlsch_tbs25[get_I_TBS(mcs)][nb_rb-1]/(coded_bits_per_codeword);
+  rate = (double)TBStable[get_I_TBS(mcs)][nb_rb - 1] / (coded_bits_per_codeword);
   printf("Rate = %f (mod %d), coded bits %u\n",rate,get_Qm_ul(mcs),coded_bits_per_codeword);
 
   for (ch_realization=0; ch_realization<n_ch_rlz; ch_realization++) {
@@ -1014,14 +1003,11 @@ int main(int argc, char **argv) {
           if (abstx) {
             if (trials==0 && round==0 && SNR==snr0) { //generate a new channel
               hold_channel = 0;
-              flagMag=0;
             } else {
               hold_channel = 1;
-              flagMag = 1;
             }
           } else {
             hold_channel = 0;
-            flagMag=1;
           }
 
           ///////////////////////////////////////

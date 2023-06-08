@@ -45,6 +45,7 @@
 #include "LTE_MBMS-SessionInfoList-r9.h"
 #include "LTE_PMCH-InfoList-r9.h"
 
+#include "openair3/SECU/secu_defs.h"
 
 typedef rlc_op_status_t  (*send_rlc_data_req_func_t)(const protocol_ctxt_t *const,
 						     const srb_flag_t, const MBMS_flag_t,
@@ -161,17 +162,17 @@ typedef struct pdcp_s {
   bool is_srb;
 
   /* Configured security algorithms */
-  uint8_t cipheringAlgorithm;
-  uint8_t integrityProtAlgorithm;
+  eea_alg_id_e cipheringAlgorithm;
+  eia_alg_id_e integrityProtAlgorithm;
 
   /* User-Plane encryption key
    * Control-Plane RRC encryption key
    * Control-Plane RRC integrity key
    * These keys are configured by RRC layer
    */
-  uint8_t *kUPenc;
-  uint8_t *kRRCint;
-  uint8_t *kRRCenc;
+  uint8_t kUPenc[32];
+  uint8_t kRRCint[32];
+  uint8_t kRRCenc[32];
 
   uint8_t security_activated;
 
@@ -402,9 +403,7 @@ void pdcp_mbms_run            (
 void pdcp_run            (
   const protocol_ctxt_t *const  ctxt_pP);
 uint64_t pdcp_module_init (uint64_t pdcp_optmask, int ue_id);
-uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id);
 void pdcp_module_cleanup (void);
-void nr_ip_over_LTE_DRB_preconfiguration (void);
 void pdcp_layer_init     (void);
 void pdcp_layer_cleanup  (void);
 #define PDCP2NW_DRIVER_FIFO 21
@@ -420,10 +419,6 @@ pdcp_data_ind_func_t get_pdcp_data_ind_func(void);
 //-----------------------------------------------------------------------------
 int pdcp_fifo_flush_mbms_sdus                      ( const protocol_ctxt_t *const  ctxt_pP);
 int pdcp_fifo_read_input_mbms_sdus_fromtun       ( const protocol_ctxt_t *const  ctxt_pP);
-rlc_op_status_t cu_send_to_du(const protocol_ctxt_t *const ctxt_pP,
-			       const srb_flag_t srb_flagP, const MBMS_flag_t MBMS_flagP,
-			       const rb_id_t rb_idP, const mui_t muiP,
-			       confirm_t confirmP, sdu_size_t sdu_sizeP, mem_block_t *sdu_pP, const uint32_t *const, const uint32_t *const);
 
 /*
  * Following two types are utilized between NAS driver and PDCP

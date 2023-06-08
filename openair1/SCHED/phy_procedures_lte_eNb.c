@@ -46,11 +46,6 @@
 
 #include <time.h>
 
-#include "intertask_interface.h"
-#include <executables/split_headers.h> 
-
-#define MBMS_NFAPI_SCHEDULER
-
 #include "common/ran_context.h"
 extern RAN_CONTEXT_t RC;
 
@@ -123,7 +118,6 @@ lte_subframe_t get_subframe_direction(uint8_t Mod_id,uint8_t CC_id,uint8_t subfr
   return(subframe_select(&RC.eNB[Mod_id][CC_id]->frame_parms,subframe));
 }
 
-#ifdef MBMS_NFAPI_SCHEDULER
 void pmch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc, int fembms_flag) {
   int subframe = proc->subframe_tx;
   // This is DL-Cell spec pilots in Control region
@@ -152,46 +146,6 @@ void pmch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc, int fembms_flag) {
   }
   eNB->dlsch_MCH->active = 0;
 }
-#else
-void pmch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
-  MCH_PDU *mch_pduP=NULL;
-  //  uint8_t sync_area=255;
-  int             subframe = proc->subframe_tx;
-  AssertFatal (1 == 1, "pmch not tested for the moment, exiting\n");
-  // This is DL-Cell spec pilots in Control region
-  generate_pilots_slot (eNB, eNB->common_vars.txdataF, AMP, subframe << 1, 1);
-
-  // if mcch is active, send regardless of the node type: eNB or RN
-  // when mcch is active, MAC sched does not allow MCCH and MTCH multiplexing
-  /*
-    mch_pduP = mac_xface->get_mch_sdu(eNB->Mod_id,
-    eNB->CC_id,
-    proc->frame_tx,
-    subframe);
-  */
-  mch_pduP= &RC.mac[eNB->Mod_id]->common_channels[eNB->CC_id].MCH_pdu;
-  if ((mch_pduP->Pdu_size > 0) && (mch_pduP->sync_area == 0)) // TEST: only transmit mcch for sync area 0
-    LOG_D(PHY,"[eNB%"PRIu8"] Frame %d subframe %d : Got MCH pdu for MBSFN (MCS %"PRIu8", TBS %d) \n",
-          eNB->Mod_id,proc->frame_tx,subframe,mch_pduP->mcs,
-          eNB->dlsch_MCH->harq_processes[0]->TBS>>3);
-  else {
-    LOG_D(PHY,"[DeNB %"PRIu8"] Frame %d subframe %d : Do not transmit MCH pdu for MBSFN sync area %"PRIu8" (%s)\n",
-          eNB->Mod_id,proc->frame_tx,subframe,mch_pduP->sync_area,
-          (mch_pduP->Pdu_size == 0)? "Empty MCH PDU":"Let RN transmit for the moment");
-    mch_pduP = NULL;
-  }
-
-  if (mch_pduP) {
-    fill_eNB_dlsch_MCH (eNB, mch_pduP->mcs, 1, 0);
-    eNB->dlsch_MCH->harq_ids[proc->frame_tx%2][subframe] = 0;
-    eNB->dlsch_MCH->harq_processes[0]->pdu=(uint8_t *) mch_pduP->payload;
-    // Generate PMCH
-    generate_mch (eNB, proc, NULL/*(uint8_t *) mch_pduP->payload*/);
-  } else {
-    LOG_D (PHY, "[eNB/RN] Frame %d subframe %d: MCH not generated \n", proc->frame_tx, subframe);
-  }
-}
-#endif
 
 void common_signal_procedures_fembms (PHY_VARS_eNB *eNB,int frame, int subframe) {
   LTE_DL_FRAME_PARMS *fp=&eNB->frame_parms;
@@ -508,11 +462,9 @@ void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 
   if (NFAPI_MODE==NFAPI_MONOLITHIC || NFAPI_MODE==NFAPI_MODE_PNF) {
     if (is_fembms_pmch_subframe(frame,subframe,fp)) {
-#ifdef MBMS_NFAPI_SCHEDULER	    
       pmch_procedures(eNB,proc,1);
       LOG_D(MAC,"frame %d, subframe %d -> PMCH\n",frame,subframe);
       return;
-#endif
     }else if(is_fembms_cas_subframe(frame,subframe,fp) || is_fembms_nonMBSFN_subframe(frame,subframe,fp)){
          LOG_D(MAC,"frame %d, subframe %d -> CAS\n",frame,subframe);
 	common_signal_procedures_fembms(eNB,proc->frame_tx, proc->subframe_tx);
@@ -521,11 +473,7 @@ void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 
   if((!is_fembms_cas_subframe(frame,subframe,fp)) && (!is_fembms_nonMBSFN_subframe(frame,subframe,fp))){
     if (is_pmch_subframe(frame,subframe,fp)) {
-#ifdef MBMS_NFAPI_SCHEDULER	    
       pmch_procedures(eNB,proc,0);
-#else
-      pmch_procedures(eNB,proc);
-#endif
     } else {
       // this is not a pmch subframe, so generate PSS/SSS/PBCH
       common_signal_procedures(eNB,proc->frame_tx, proc->subframe_tx);
@@ -618,10 +566,8 @@ void phy_procedures_eNB_TX(PHY_VARS_eNB *eNB,
 
   if (NFAPI_MODE==NFAPI_MONOLITHIC || NFAPI_MODE==NFAPI_MODE_PNF) {
     if (is_fembms_pmch_subframe(frame,subframe,fp)) {
-#ifdef MBMS_NFAPI_SCHEDULER	    
       pmch_procedures(eNB,proc,1);
       return;
-#endif
     }else if(is_fembms_cas_subframe(frame,subframe,fp)){
 	common_signal_procedures_fembms(eNB,proc->frame_tx, proc->subframe_tx);
     }
@@ -724,12 +670,8 @@ void srs_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
   }
 }
 
-void fill_sr_indication(int UEid, PHY_VARS_eNB *eNB,uint16_t rnti,int frame,int subframe,uint32_t stat) {
-  if ( split73 == SPLIT73_DU ) {
-    sendFs6Ulharq(fs6ULindicationSr, UEid, eNB, NULL, frame, subframe, NULL,0,0, rnti, stat);
-    return;
-  }
-
+void fill_sr_indication(int UEid, PHY_VARS_eNB *eNB,uint16_t rnti,int frame,int subframe,uint32_t stat)
+{
   pthread_mutex_lock(&eNB->UL_INFO_mutex);
   nfapi_sr_indication_t       *sr_ind =         &eNB->UL_INFO.sr_ind;
   nfapi_sr_indication_body_t  *sr_ind_body =    &sr_ind->sr_indication_body;
@@ -1418,7 +1360,7 @@ void pusch_procedures(PHY_VARS_eNB *eNB,L1_rxtx_proc_t *proc) {
            rb<=ulsch_harq->nb_rb;
            rb++) {
         int rb2 = rb+ulsch_harq->first_rb;
-        eNB->rb_mask_ul[rb2>>5] |= (1<<(rb2&31));
+        eNB->rb_mask_ul[rb2>>5] |= (1L<<(rb2&31));
       }
 
       LOG_D(PHY,"[eNB %d] frame %d, subframe %d: Scheduling ULSCH Reception for UE %d \n", eNB->Mod_id, frame, subframe, i);
@@ -1862,12 +1804,8 @@ void fill_ulsch_harq_indication (PHY_VARS_eNB *eNB, LTE_UL_eNB_HARQ_t *ulsch_har
 
 #define packetError(ConD, fmt, args...) if (!(ConD)) { LOG_E(PHY, fmt, args); goodPacket=false; }
 
-void fill_uci_harq_indication (int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *uci, int frame, int subframe, uint8_t *harq_ack, uint8_t tdd_mapping_mode, uint16_t tdd_multiplexing_mask) {
-  if ( split73 == SPLIT73_DU ) {
-    sendFs6Ulharq(fs6ULindicationHarq, UEid, eNB, uci, frame, subframe, harq_ack, tdd_mapping_mode, tdd_multiplexing_mask, 0, 0);
-    return;
-  }
-  
+void fill_uci_harq_indication (int UEid, PHY_VARS_eNB *eNB, LTE_eNB_UCI *uci, int frame, int subframe, uint8_t *harq_ack, uint8_t tdd_mapping_mode, uint16_t tdd_multiplexing_mask)
+{
   int DLSCH_id=find_dlsch(uci->rnti,eNB,SEARCH_EXIST);
 
   //AssertFatal(DLSCH_id>=0,"DLSCH_id doesn't exist rnti:%x\n", uci->rnti);

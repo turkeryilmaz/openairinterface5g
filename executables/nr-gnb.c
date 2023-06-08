@@ -42,7 +42,7 @@
 
 #include "PHY/types.h"
 
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 
 #include "PHY/defs_gNB.h"
 #include "SCHED/sched_eNB.h"
@@ -51,6 +51,7 @@
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
+#include "openair2/NR_PHY_INTERFACE/nr_sched_response.h"
 
 #undef MALLOC //there are two conflicting definitions, so we better make sure we don't use it at all
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
@@ -110,7 +111,8 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
 #define L1STATSSTRLEN 16384
 
 
-void tx_func(void *param) {
+void tx_func(void *param) 
+{
 
   processingData_L1tx_t *info = (processingData_L1tx_t *) param;
   int frame_tx = info->frame;
@@ -138,11 +140,14 @@ void tx_func(void *param) {
     LOG_D(PHY,"gNB: %d.%d : calling RU TX function\n",syncMsgRU.frame_tx,syncMsgRU.slot_tx);
     ru_tx_func((void*)&syncMsgRU);
   }
+  /* this thread is done with the sched_info, decrease the reference counter */
+  deref_sched_response(info->sched_response_id);
   stop_meas(&info->gNB->phy_proc_tx);
 }
 
 
-void *L1_rx_thread(void *arg) {
+void *L1_rx_thread(void *arg) 
+{
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
 
   while (oai_exit == 0) {
@@ -153,7 +158,8 @@ void *L1_rx_thread(void *arg) {
   }
   return NULL;
 }
-
+/* to be added for URLLC, requires MAC scheduling to be split from UL indication 
+>>>>>>> origin/develop
 void *L1_tx_thread(void *arg) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
 
@@ -165,7 +171,9 @@ void *L1_tx_thread(void *arg) {
   }
   return NULL;
 }
-void rx_func(void *param) {
+*/
+void rx_func(void *param)
+{
   processingData_L1_t *info = (processingData_L1_t *) param;
   PHY_VARS_gNB *gNB = info->gNB;
   int frame_rx = info->frame_rx;
@@ -210,46 +218,11 @@ void rx_func(void *param) {
 
   T(T_GNB_PHY_DL_TICK, T_INT(gNB->Mod_id), T_INT(frame_tx), T_INT(slot_tx));
 
-  /* hack to remove UEs */
-  extern int rnti_to_remove[10];
-  extern volatile int rnti_to_remove_count;
-  extern pthread_mutex_t rnti_to_remove_mutex;
-  if (pthread_mutex_lock(&rnti_to_remove_mutex)) exit(1);
-  int up_removed = 0;
-  int down_removed = 0;
-  int pucch_removed = 0;
-  for (int i = 0; i < rnti_to_remove_count; i++) {
-    LOG_W(NR_PHY, "to remove rnti 0x%04x\n", rnti_to_remove[i]);
-    void clean_gNB_ulsch(NR_gNB_ULSCH_t *ulsch);
-    void clean_gNB_dlsch(NR_gNB_DLSCH_t *dlsch);
-    int j;
-    for (j = 0; j < NUMBER_OF_NR_ULSCH_MAX; j++)
-      if (gNB->ulsch[j]->rnti == rnti_to_remove[i]) {
-        gNB->ulsch[j]->rnti = 0;
-        gNB->ulsch[j]->harq_mask = 0;
-        int h;
-        for (h = 0; h < NR_MAX_ULSCH_HARQ_PROCESSES; h++) {
-          gNB->ulsch[j]->harq_processes[h]->status = SCH_IDLE;
-          gNB->ulsch[j]->harq_processes[h]->round  = 0;
-          gNB->ulsch[j]->harq_processes[h]->handled = 0;
-        }
-        up_removed++;
-      }
-
-    for (j = 0; j < gNB->max_nb_pucch; j++)
-      if (gNB->pucch[j]->active > 0 &&
-          gNB->pucch[j]->pucch_pdu.rnti == rnti_to_remove[i]) {
-        gNB->pucch[j]->active = 0;
-        gNB->pucch[j]->pucch_pdu.rnti = 0;
-        pucch_removed++;
-      }
-  }
-  if (rnti_to_remove_count) LOG_W(NR_PHY, "to remove rnti_to_remove_count=%d, up_removed=%d down_removed=%d pucch_removed=%d\n", rnti_to_remove_count, up_removed, down_removed, pucch_removed);
-  rnti_to_remove_count = 0;
-  if (pthread_mutex_unlock(&rnti_to_remove_mutex)) exit(1);
+  reset_active_stats(gNB, frame_tx);
+  reset_active_ulsch(gNB, frame_tx);
 
   // RX processing
-  int rx_slot_type         = nr_slot_select(cfg,frame_rx,slot_rx);
+  int rx_slot_type = nr_slot_select(cfg, frame_rx, slot_rx);
   if (rx_slot_type == NR_UPLINK_SLOT || rx_slot_type == NR_MIXED_SLOT) {
     // UE-specific RX processing for subframe n
     // TODO: check if this is correct for PARALLEL_RU_L1_TRX_SPLIT
@@ -292,26 +265,22 @@ void rx_func(void *param) {
     processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
     // so no need for checking for right slot
- #ifndef USE_MSGQ
-    if (get_softmodem_params()->reorder_thread_disable)
-      res = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
-    else
+    if (get_softmodem_params()->reorder_thread_disable) {
+      // call the TX function directly from this thread
+      syncMsg = gNB->msgDataTx;
+      syncMsg->gNB = gNB; 
+      syncMsg->timestamp_tx = info->timestamp_tx;
+      tx_func(syncMsg);
+    } else {
       res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
-    if (res == NULL)
-      return; // Tpool has been stopped
-    syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
-    syncMsg->gNB = gNB;
-    syncMsg->timestamp_tx = info->timestamp_tx;
-    res->key = slot_tx;
-    pushTpool(&gNB->threadPool, res);
-#else
-    syncMsg = gNB->msgDataTx;
-    syncMsg->gNB = gNB; 
-    syncMsg->timestamp_tx = info->timestamp_tx;
-    syncMsg->frame = frame_tx;
-    syncMsg->slot = slot_tx;
-    tx_func(syncMsg);
-#endif
+      if (res == NULL)
+        return; // Tpool has been stopped
+      syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
+      syncMsg->gNB = gNB;
+      syncMsg->timestamp_tx = info->timestamp_tx;
+      res->key = slot_tx;
+      pushTpool(&gNB->threadPool, res);
+    }
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
     if (res == NULL)
@@ -507,32 +476,30 @@ void init_gNB_Tpool(int inst) {
 
   // L1 RX result FIFO 
   initNotifiedFIFO(&gNB->resp_L1);
-#ifndef USE_MSGQ
-  notifiedFIFO_elt_t *msg = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, rx_func);
-  pushNotifiedFIFO(&gNB->resp_L1, msg); // to unblock the process in the beginning
-#endif
+  if (!get_softmodem_params()->reorder_thread_disable) {
+    notifiedFIFO_elt_t *msg = newNotifiedFIFO_elt(sizeof(processingData_L1_t), 0, &gNB->resp_L1, rx_func);
+    pushNotifiedFIFO(&gNB->resp_L1, msg); // to unblock the process in the beginning
+  }
   // L1 TX result FIFO 
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
   initNotifiedFIFO(&gNB->L1_tx_out);
  
-#ifdef USE_MSGQ
-  threadCreate(&gNB->L1_rx_thread, L1_rx_thread, (void *)gNB, "L1_rx_thread",
-               gNB->L1_rx_thread_core, OAI_PRIORITY_RT_MAX);
-//  threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread",
-//               gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
-#endif 
   if (get_softmodem_params()->reorder_thread_disable) {
+    // create the RX thread responsible for triggering RX processing and then TX processing if a single thread is used	  
+    threadCreate(&gNB->L1_rx_thread, L1_rx_thread, (void *)gNB, "L1_rx_thread",
+                 gNB->L1_rx_thread_core, OAI_PRIORITY_RT_MAX);
+    // if separate threads are used for RX and TX, create the TX thread
+ // threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread",
+ //              gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
+
     notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
     processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
     memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
     init_DLSCH_struct(gNB, msgDataTx);
     memset(msgDataTx->ssb, 0, 64*sizeof(NR_gNB_SSB_t));
-#ifndef USE_MSGQ
-    pushNotifiedFIFO(&gNB->L1_tx_out, msgL1Tx); // to unblock the process in the beginning
-#else
+    // this will be removed when the msgDataTx is not necessary anymore
     gNB->msgDataTx = msgDataTx;
-#endif    
   } else {
     // we create 2 threads for L1 tx processing
     for (int i=0; i < 2; i++) {
@@ -641,7 +608,7 @@ void init_eNB_afterRU(void) {
       for (i=0; i<gNB->RU_list[ru_id]->nb_rx; aa++,i++) {
         LOG_I(PHY,"Attaching RU %d antenna %d to gNB antenna %d\n",gNB->RU_list[ru_id]->idx,i,aa);
         gNB->prach_vars.rxsigF[aa]    =  gNB->RU_list[ru_id]->prach_rxsigF[0][i];
-        gNB->common_vars.rxdataF[aa]     =  gNB->RU_list[ru_id]->common.rxdataF[i];
+        gNB->common_vars.rxdataF[aa]     =  (c16_t *)gNB->RU_list[ru_id]->common.rxdataF[i];
       }
     }
 

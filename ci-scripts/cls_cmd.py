@@ -31,11 +31,21 @@ import subprocess as sp
 import os
 import paramiko
 import uuid
+import sys 
+
+SSHTIMEOUT=7
+
+# helper that returns either LocalCmd or RemoteCmd based on passed host name
+def getConnection(host, d=None):
+	if host is None or host.lower() in ["", "none", "localhost"]:
+		return LocalCmd(d=d)
+	else:
+		return RemoteCmd(host, d=d)
 
 # provides a partial interface for the legacy SSHconnection class (getBefore(), command())
 class Cmd(metaclass=abc.ABCMeta):
 	def cd(self, d, silent=False):
-		if d == None or d == '' or d == []:
+		if d == None or d == '':
 			self.cwd = None
 		elif d[0] == '/':
 			self.cwd = d
@@ -51,9 +61,13 @@ class Cmd(metaclass=abc.ABCMeta):
 	def run(self, line, timeout=300, silent=False):
 		return
 
-	@abc.abstractmethod
-	def command(self, commandline, expectedline, timeout, silent=False, resync=False):
-		return
+	def command(self, commandline, expectedline=None, timeout=300, silent=False, resync=False):
+		splitted = commandline.split(' ')
+		if splitted[0] == 'cd':
+			self.cd(' '.join(splitted[1:]), silent)
+		else:
+			self.run(commandline, timeout, silent)
+		return 0
 
 	@abc.abstractmethod
 	def close(self):
@@ -82,7 +96,12 @@ class LocalCmd(Cmd):
 		if not silent:
 			logging.info(line)
 		try:
-			ret = sp.run(line, shell=True, cwd=self.cwd, stdout=sp.PIPE, stderr=sp.STDOUT, timeout=timeout)
+			if line.strip().endswith('&'):
+				# if we wait for stdout, subprocess does not return before the end of the command
+				# however, we don't want to wait for commands with &, so just return fake command
+				ret = sp.run(line, shell=True, cwd=self.cwd, timeout=5)
+			else:
+				ret = sp.run(line, shell=True, cwd=self.cwd, stdout=sp.PIPE, stderr=sp.STDOUT, timeout=timeout)
 		except Exception as e:
 			ret = sp.CompletedProcess(args=line, returncode=255, stdout=f'Exception: {str(e)}'.encode('utf-8'))
 		if ret.stdout is None:
@@ -93,14 +112,6 @@ class LocalCmd(Cmd):
 		self.cp = ret
 		return ret
 
-	def command(self, commandline, expectedline=None, timeout=300, silent=False, resync=False):
-		line = [s for s in commandline.split(' ') if len(s) > 0]
-		if line[0] == 'cd':
-			self.cd(line[1], silent)
-		else:
-			self.run(line, timeout, silent)
-		return 0
-
 	def close(self):
 		pass
 
@@ -108,22 +119,28 @@ class LocalCmd(Cmd):
 		return self.cp.stdout
 
 	def copyin(self, scpIp, scpUser, scpPw, src, tgt):
-		logging.warning("LocalCmd emulating sshconnection.copyin() function")
 		self.run(f'cp -r {src} {tgt}')
 
 	def copyout(self, scpIp, scpUser, scpPw, src, tgt):
-		logging.warning("LocalCmd emulating sshconnection.copyout() function")
 		self.run(f'cp -r {src} {tgt}')
 
 class RemoteCmd(Cmd):
 	def __init__(self, hostname, d=None):
-		logging.getLogger('paramiko').setLevel(logging.INFO) # prevent spamming through Paramiko
+		cIdx = 0
+		logging.getLogger('paramiko').setLevel(logging.ERROR) # prevent spamming through Paramiko
 		self.client = paramiko.SSHClient()
 		self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 		cfg = RemoteCmd._lookup_ssh_config(hostname)
-		self.client.connect(**cfg)
 		self.cwd = d
 		self.cp = sp.CompletedProcess(args='', returncode=0, stdout='')
+		while cIdx < 3:
+			try:
+				self.client.connect(**cfg)
+				return
+			except:
+				logging.error(f'Could not connect to {hostname}, tried for {cIdx} time')
+				cIdx +=1
+		raise Exception ("Error: max retries, did not connect to host")
 
 	def _lookup_ssh_config(hostname):
 		ssh_config = paramiko.SSHConfig()
@@ -136,7 +153,7 @@ class RemoteCmd(Cmd):
 		ucfg = ssh_config.lookup(hostname)
 		if 'identityfile' not in ucfg or 'user' not in ucfg:
 			raise KeyError(f'no identityfile or user in SSH config for host {hostname}')
-		cfg = {'hostname':hostname, 'username':ucfg['user'], 'key_filename':ucfg['identityfile']}
+		cfg = {'hostname':hostname, 'username':ucfg['user'], 'key_filename':ucfg['identityfile'], 'timeout':SSHTIMEOUT}
 		if 'hostname' in ucfg:
 			cfg['hostname'] = ucfg['hostname'] # override user-given hostname with what is in config
 		if 'port' in ucfg:
@@ -146,32 +163,26 @@ class RemoteCmd(Cmd):
 		return cfg
 
 	def run(self, line, timeout=300, silent=False, reportNonZero=True):
-		if type(line) is list:
-			line = ' '.join(line)
 		if not silent:
-			logging.debug(line)
+			logging.info(line)
 		if self.cwd:
 			line = f"cd {self.cwd} && {line}"
-		args = line.split(' ')
 		try:
-			stdin, stdout, stderr = self.client.exec_command(line, timeout=timeout)
-			ret = sp.CompletedProcess(args=args, returncode=stdout.channel.recv_exit_status(), stdout=stdout.read(size=None) + stderr.read(size=None))
+			if line.strip().endswith('&'):
+				# if we wait for stdout, Paramiko does not return before the end of the command
+				# however, we don't want to wait for commands with &, so just return fake command
+				self.client.exec_command(line, timeout = 5)
+				ret = sp.CompletedProcess(args=line, returncode=0, stdout=b'')
+			else:
+				stdin, stdout, stderr = self.client.exec_command(line, timeout=timeout)
+				ret = sp.CompletedProcess(args=line, returncode=stdout.channel.recv_exit_status(), stdout=stdout.read(size=None) + stderr.read(size=None))
 		except Exception as e:
-			ret = sp.CompletedProcess(args=args, returncode=255, stdout=f'Exception: {str(e)}'.encode('utf-8'))
+			ret = sp.CompletedProcess(args=line, returncode=255, stdout=f'Exception: {str(e)}'.encode('utf-8'))
 		ret.stdout = ret.stdout.decode('utf-8').strip()
 		if reportNonZero and ret.returncode != 0:
-			cmd = ' '.join(ret.args)
-			logging.warning(f'command "{cmd}" returned non-zero returncode {ret.returncode}: output:\n{ret.stdout}')
+			logging.warning(f'command "{line}" returned non-zero returncode {ret.returncode}: output:\n{ret.stdout}')
 		self.cp = ret
 		return ret
-
-	def command(self, commandline, expectedline=None, timeout=300, silent=False, resync=False):
-		line = [s for s in commandline.split(' ') if len(s) > 0]
-		if line[0] == 'cd':
-			self.cd(line[1], silent)
-		else:
-			self.run(line, timeout, silent)
-		return 0
 
 	def close(self):
 		self.client.close()
@@ -180,7 +191,6 @@ class RemoteCmd(Cmd):
 		return self.cp.stdout
 
 	def copyout(self, src, tgt, recursive=False):
-		logging.warning("RemoteCmd emulating sshconnection.copyout() function, ignoring scpIp")
 		logging.debug(f"copyout: local:{src} -> remote:{tgt}")
 		if recursive:
 			tmpfile = f"{uuid.uuid4()}.tar"
@@ -198,7 +208,6 @@ class RemoteCmd(Cmd):
 			sftp.close()
 
 	def copyin(self, src, tgt, recursive=False):
-		logging.warning("RemoteCmd emulating sshconnection.copyout() function")
 		logging.debug(f"copyin: remote:{src} -> local:{tgt}")
 		if recursive:
 			tmpfile = f"{uuid.uuid4()}.tar"

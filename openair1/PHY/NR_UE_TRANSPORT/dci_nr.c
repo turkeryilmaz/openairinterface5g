@@ -38,7 +38,7 @@
 #include "executables/softmodem-common.h"
 #include "nr_transport_proto_ue.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_dci_defs.h"
-#include "PHY/phy_extern_nr_ue.h"
+#include "PHY/phy_extern.h"
 #include "PHY/CODING/coding_extern.h"
 #include "PHY/sse_intrin.h"
 #include "common/utils/nr/nr_common.h"
@@ -59,7 +59,6 @@ char nr_dci_format_string[8][30] = {
 
 //#define DEBUG_DCI_DECODING 1
 
-//#define NR_LTE_PDCCH_DCI_SWITCH
 //#define NR_PDCCH_DCI_DEBUG            // activates NR_PDCCH_DCI_DEBUG logs
 #ifdef NR_PDCCH_DCI_DEBUG
 #define LOG_DDD(a, ...) printf("<-NR_PDCCH_DCI_DEBUG (%s)-> " a, __func__, ##__VA_ARGS__ )
@@ -81,16 +80,17 @@ char nr_dci_format_string[8][30] = {
 
 
 static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
-                                       uint32_t *e_rx,
-                                       uint8_t coreset_time_dur,
-                                       uint8_t start_symbol,
-                                       uint32_t coreset_nbr_rb,
-                                       uint8_t reg_bundle_size_L,
-                                       uint8_t coreset_interleaver_size_R,
-                                       uint8_t n_shift,
-                                       uint8_t number_of_candidates,
-                                       uint16_t *CCE,
-                                       uint8_t *L) {
+                                              uint32_t *e_rx,
+                                              uint8_t coreset_time_dur,
+                                              uint8_t start_symbol,
+                                              uint32_t coreset_nbr_rb,
+                                              uint8_t reg_bundle_size_L,
+                                              uint8_t coreset_interleaver_size_R,
+                                              uint8_t n_shift,
+                                              uint8_t number_of_candidates,
+                                              uint16_t *CCE,
+                                              uint8_t *L)
+{
   /*
    * This function will do demapping and deinterleaving from llr containing demodulated symbols
    * Demapping will regroup in REG and bundles
@@ -131,7 +131,7 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
   uint32_t coreset_C = 0;
   uint16_t index_z, index_llr;
   int coreset_interleaved = 0;
-  int N_regs = coreset_nbr_rb*coreset_time_dur;
+  int N_regs = coreset_nbr_rb * coreset_time_dur;
 
   if (reg_bundle_size_L != 0) { // interleaving will be done only if reg_bundle_size_L != 0
     coreset_interleaved = 1;
@@ -140,12 +140,11 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
     reg_bundle_size_L = 6;
   }
 
-  int B_rb = reg_bundle_size_L/coreset_time_dur; // nb of RBs occupied by each REG bundle
-  int num_bundles_per_cce = 6/reg_bundle_size_L;
-  int n_cce = N_regs/6;
-  int max_bundles = n_cce*num_bundles_per_cce;
+  int B_rb = reg_bundle_size_L / coreset_time_dur; // nb of RBs occupied by each REG bundle
+  int num_bundles_per_cce = 6 / reg_bundle_size_L;
+  int n_cce = N_regs / 6;
+  int max_bundles = n_cce * num_bundles_per_cce;
   int f_bundle_j_list[max_bundles];
-
   // for each bundle
   for (int nb = 0; nb < max_bundles; nb++) {
     if (coreset_interleaved == 0)
@@ -164,11 +163,11 @@ static void nr_pdcch_demapping_deinterleaving(uint32_t *llr,
   // Get cce_list indices by bundle index in ascending order
   int f_bundle_j_list_ord[number_of_candidates][max_bundles];
   for (int c_id = 0; c_id < number_of_candidates; c_id++ ) {
-    int start_bund_cand = CCE[c_id]*num_bundles_per_cce;
-    int max_bund_per_cand = L[c_id]*num_bundles_per_cce;
+    int start_bund_cand = CCE[c_id] * num_bundles_per_cce;
+    int max_bund_per_cand = L[c_id] * num_bundles_per_cce;
     int f_bundle_j_list_id = 0;
     for(int nb = 0; nb < max_bundles; nb++) {
-      for(int bund_cand = start_bund_cand; bund_cand < start_bund_cand+max_bund_per_cand; bund_cand++){
+      for(int bund_cand = start_bund_cand; bund_cand < start_bund_cand + max_bund_per_cand; bund_cand++){
         if (f_bundle_j_list[bund_cand] == nb) {
           f_bundle_j_list_ord[c_id][f_bundle_j_list_id] = nb;
           f_bundle_j_list_id++;
@@ -316,11 +315,10 @@ void nr_pdcch_channel_level(int32_t rx_size,
       */
     }
 
-    DevAssert( nb_rb );
-    avg[aarx] = (((int32_t *)&avg128P)[0] +
-                 ((int32_t *)&avg128P)[1] +
-                 ((int32_t *)&avg128P)[2] +
-                 ((int32_t *)&avg128P)[3])/(nb_rb*9);
+    DevAssert(nb_rb);
+    avg[aarx] = 0;
+    for (int i = 0; i < 4; i++)
+      avg[aarx] += ((int32_t *)&avg128P)[i] / (nb_rb * 9);
     LOG_DDD("Channel level : %d\n",avg[aarx]);
   }
 
@@ -778,7 +776,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
     
 #endif
 #ifdef DEBUG_DCI_DECODING
-    printf("demapping: slot %d, mi %d\n",slot,get_mi(frame_parms,slot));
+    printf("demapping: slot %u, mi %d\n",slot,get_mi(frame_parms,slot));
 #endif
   }
 
@@ -936,6 +934,7 @@ uint8_t nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
           dci_ind->dci_list[dci_ind->number_of_dcis].N_CCE = L;
           dci_ind->dci_list[dci_ind->number_of_dcis].dci_format = rel15->dci_format_options[k];
           dci_ind->dci_list[dci_ind->number_of_dcis].ss_type = rel15->dci_type_options[k];
+          dci_ind->dci_list[dci_ind->number_of_dcis].coreset_type = rel15->coreset.CoreSetType;
           int n_rb, rb_offset;
           get_coreset_rballoc(rel15->coreset.frequency_domain_resource, &n_rb, &rb_offset);
           dci_ind->dci_list[dci_ind->number_of_dcis].cset_start = rel15->BWPStart + rb_offset;

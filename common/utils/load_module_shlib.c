@@ -69,8 +69,12 @@ char *loader_format_shlibpath(char *modname, char *version)
 char *tmpstr;
 char *shlibpath   =NULL;
 char *shlibversion=NULL;
-paramdef_t LoaderParams[] ={{"shlibpath", NULL, 0, strptr:&shlibpath, defstrval:NULL, TYPE_STRING, 0, NULL},
-                            {"shlibversion", NULL, 0, strptr:&shlibversion, defstrval:"", TYPE_STRING, 0, NULL}};
+// clang-format off
+paramdef_t LoaderParams[] = {
+    {"shlibpath",    NULL, 0, .strptr = &shlibpath,    .defstrval = NULL, TYPE_STRING, 0, NULL},
+    {"shlibversion", NULL, 0, .strptr = &shlibversion, .defstrval = "",   TYPE_STRING, 0, NULL}
+};
+// clang-format on
 
 int ret;
 
@@ -150,8 +154,7 @@ int load_module_version_shlib(char *modname, char *version, loader_shlibfunc_t *
     lib_idx = loader_data.numshlibs;
     ++loader_data.numshlibs;
     if (loader_data.numshlibs > loader_data.maxshlibs) {
-      fprintf(stderr, "[LOADER] can not load more than %d shlibs\n",
-              loader_data.maxshlibs);
+      fprintf(stderr, "[LOADER] can not load more than %u shlibs\n", loader_data.maxshlibs);
       ret = -1;
       goto load_module_shlib_exit;
     }

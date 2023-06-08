@@ -473,10 +473,10 @@ static void timeResponse (OAIgraph_t *graph, scopeData_t *p, int nb_UEs) {
   int uestart = 0; // xforms scope designed to display nb_UEs signals
 #endif
   for (int ue = uestart; ue < nb_UEs; ue++) {
-    if ( p->gNB->pusch_vars && p->gNB->pusch_vars[ue] &&
-         p->gNB->pusch_vars[ue]->ul_ch_estimates_time &&
-         p->gNB->pusch_vars[ue]->ul_ch_estimates_time[ant] ) {
-      scopeSample_t *data= (scopeSample_t *)p->gNB->pusch_vars[ue]->ul_ch_estimates_time[ant];
+    if (p->gNB->pusch_vars &&
+        p->gNB->pusch_vars[ue].ul_ch_estimates_time &&
+        p->gNB->pusch_vars[ue].ul_ch_estimates_time[ant] ) {
+      scopeSample_t *data= (scopeSample_t *)p->gNB->pusch_vars[ue].ul_ch_estimates_time[ant];
 
       if (data != NULL) {
         for (int i=0; i<len; i++) {
@@ -527,11 +527,10 @@ static void puschLLR (OAIgraph_t *graph, scopeData_t *p, int nb_UEs) {
   int coded_bits_per_codeword = num_re*Qm;
 
   for (int ue = uestart; ue < nb_UEs; ue++) {
-    if ( p->gNB->pusch_vars &&
-         p->gNB->pusch_vars[ue] &&
-         p->gNB->pusch_vars[ue]->llr ) {
-      int16_t *pusch_llr = (int16_t *)p->gNB->pusch_vars[ue]->llr;
-      float *llr, *bit;
+    if (p->gNB->pusch_vars &&
+        p->gNB->pusch_vars[ue].llr ) {
+      int16_t *pusch_llr = (int16_t *)p->gNB->pusch_vars[ue].llr;
+      float *llr=NULL, *bit=NULL;
       int nx = coded_bits_per_codeword;
 #ifdef WEBSRVSCOPE
       nx = websrv_cpllrbuff_tomsg(graph, pusch_llr, coded_bits_per_codeword, ue, 0, 0);
@@ -557,12 +556,11 @@ static void puschIQ (OAIgraph_t *graph, scopeData_t *p, int nb_UEs) {
   int uestart = 0; // xforms scope designed to display nb_UEs signals
 #endif
   for (int ue = uestart; ue < nb_UEs; ue++) {
-    if ( p->gNB->pusch_vars &&
-         p->gNB->pusch_vars[ue] &&
-         p->gNB->pusch_vars[ue]->rxdataF_comp &&
-         p->gNB->pusch_vars[ue]->rxdataF_comp[0] ) {
-      scopeSample_t *pusch_comp = (scopeSample_t *)p->gNB->pusch_vars[ue]->rxdataF_comp[0];
-      float *I, *Q;
+    if (p->gNB->pusch_vars &&
+        p->gNB->pusch_vars[ue].rxdataF_comp &&
+        p->gNB->pusch_vars[ue].rxdataF_comp[0] ) {
+      scopeSample_t *pusch_comp = (scopeSample_t *)p->gNB->pusch_vars[ue].rxdataF_comp[0];
+      float *I=NULL, *Q=NULL;
 #ifdef WEBSRVSCOPE
       newsz = websrv_cpiqbuff_tomsg(graph, pusch_comp, sz, 0, 0);
 #else
@@ -846,7 +844,7 @@ static void uePbchLLR  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_
   //const int antennas=data[pbchLlr]->colSz;
   // We take the first antenna only for now
   int16_t *llrs = (int16_t *) (data[pbchLlr]+1);
-  float *llr_pbch, *bit_pbch;
+  float *llr_pbch=NULL, *bit_pbch=NULL;
   int nx = sz;
 #ifdef WEBSRVSCOPE
   nx = websrv_cpllrbuff_tomsg(graph, llrs, sz, UE_id, 0, 0);
@@ -868,7 +866,7 @@ static void uePbchIQ  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_U
   scopeSample_t *pbch_comp = (scopeSample_t *) (data[pbchRxdataF_comp]+1);
   const int sz=data[pbchRxdataF_comp]->lineSz;
   int newsz = sz;
-  float *I, *Q;
+  float *I=NULL, *Q=NULL;
 #ifdef WEBSRVSCOPE
   newsz = websrv_cpiqbuff_tomsg(graph, pbch_comp, sz, 0, 0);
 #else
@@ -891,7 +889,7 @@ static void uePcchLLR  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_
   //int num_re = 4*273*12; // 12*frame_parms->N_RB_DL*num_pdcch_symbols
   //int Qm = 2;
   const int sz=data[pdcchLlr]->lineSz;
-  float *llr, *bit;
+  float *llr=NULL, *bit=NULL;
   int nx = sz;
   int16_t *pdcch_llr = (int16_t *)(data[pdcchLlr]+1);
 
@@ -915,7 +913,7 @@ static void uePcchIQ  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_U
   int newsz = sz;
   //const int antennas=data[pdcchRxdataF_comp]->colSz;
   // We take the first antenna only for now
-  float *I, *Q;
+  float *I=NULL, *Q=NULL;
   scopeSample_t *pdcch_comp = (scopeSample_t *) (data[pdcchRxdataF_comp]+1);
 #ifdef WEBSRVSCOPE
   newsz = websrv_cpiqbuff_tomsg(graph, pdcch_comp, sz, 0, 0);
@@ -935,7 +933,7 @@ static void uePdschLLR  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR
     return;
 
   const int sz = data[pdschLlr]->lineSz;
-  float *llr, *bit;
+  float *llr=NULL, *bit=NULL;
   int nx = sz;
   int16_t *pdsch_llr = (int16_t *)(data[pdschLlr]+1);
 
@@ -959,7 +957,7 @@ static void uePdschIQ  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_
 
   const int sz=data[pdschRxdataF_comp]->lineSz;
   int nz = sz;
-  float *I, *Q;
+  float *I=NULL, *Q=NULL;
   scopeSample_t *pdsch_comp = (scopeSample_t *) (data[pdschRxdataF_comp]+1);
 #ifdef WEBSRVSCOPE
   nz += websrv_cpiqbuff_tomsg(graph, pdsch_comp, sz, 0, 0);
@@ -1042,6 +1040,7 @@ STATICFORXSCOPE OAI_phy_scope_t *create_phy_scope_nrue(int ID)
   // LLR of PDCCH
   fdui->graph[5] = nrUEcommonGraph(uePcchLLR,
                                    FL_POINTS_XYPLOT, 0, curY, 500, 100, "PDCCH Log-Likelihood Ratios (LLR, mag)", FL_CYAN );
+  fl_set_xyplot_xgrid(fdui->graph[5].graph,FL_GRID_MAJOR);
   fdui->graph[5].chartid = SCOPEMSG_DATAID_LLR; // tells websrv frontend to use LLR chart for displaying
   fdui->graph[5].datasetid = 1; // tells websrv frontend to use dataset index 1 in LLR chart
   // I/Q PDCCH comp
@@ -1054,6 +1053,7 @@ STATICFORXSCOPE OAI_phy_scope_t *create_phy_scope_nrue(int ID)
   // LLR of PDSCH
   fdui->graph[7] = nrUEcommonGraph(uePdschLLR,
                                    FL_POINTS_XYPLOT, 0, curY, 500, 200, "PDSCH Log-Likelihood Ratios (LLR, mag)", FL_YELLOW );
+  fl_set_xyplot_xgrid(fdui->graph[7].graph,FL_GRID_MAJOR);
   fdui->graph[7].chartid = SCOPEMSG_DATAID_LLR; // tells websrv frontend to use LLR chart for displaying
   fdui->graph[7].datasetid = 2; // tells websrv frontend to use dataset index 2 in LLR chart
   // I/Q PDSCH comp
@@ -1137,51 +1137,6 @@ static void *nrUEscopeThread(void *arg) {
 }
 #endif
 
-pthread_mutex_t UEcopyDataMutex;
-
-void UEcopyData(PHY_VARS_NR_UE *ue, enum UEdataType type, void *dataIn, int elementSz, int colSz, int lineSz) {
-  // Local static copy of the scope data bufs
-  // The active data buf is alterned to avoid interference between the Scope thread (display) and the Rx thread (data input)
-  // Index of "2" could be set to the number of Rx threads + 1
-  static scopeGraphData_t *copyDataBufs[UEdataTypeNumberOfItems][3] = {0};
-  static int  copyDataBufsIdx[UEdataTypeNumberOfItems] = {0};
-
-  scopeData_t *tmp=(scopeData_t *)ue->scopeData;
-
-  if (tmp) {
-    // Begin of critical zone between UE Rx threads that might copy new data at the same time:
-    pthread_mutex_lock(&UEcopyDataMutex);
-    int newCopyDataIdx = (copyDataBufsIdx[type]<2)?copyDataBufsIdx[type]+1:0;
-    copyDataBufsIdx[type] = newCopyDataIdx;
-    pthread_mutex_unlock(&UEcopyDataMutex);
-    // End of critical zone between UE Rx threads
-
-    // New data will be copied in a different buffer than the live one
-    scopeGraphData_t *copyData= copyDataBufs[type][newCopyDataIdx];
-
-    if (copyData == NULL || copyData->dataSize < elementSz*colSz*lineSz) {
-      scopeGraphData_t *ptr=realloc(copyData, sizeof(scopeGraphData_t) + elementSz*colSz*lineSz);
-
-      if (!ptr) {
-        LOG_E(PHY,"can't realloc\n");
-        return;
-      } else {
-        copyData=ptr;
-      }
-    }
-
-    copyData->dataSize=elementSz*colSz*lineSz;
-    copyData->elementSz=elementSz;
-    copyData->colSz=colSz;
-    copyData->lineSz=lineSz;
-    memcpy(copyData+1, dataIn,  elementSz*colSz*lineSz);
-    copyDataBufs[type][newCopyDataIdx] = copyData;
-
-    // The new data just copied in the local static buffer becomes live now
-    ((scopeGraphData_t **)tmp->liveData)[type]=copyData;
-  }
-}
-
 STATICFORXSCOPE void nrUEinitScope(PHY_VARS_NR_UE *ue)
 {
   AssertFatal(ue->scopeData=malloc(sizeof(scopeData_t)),"");
@@ -1191,8 +1146,8 @@ STATICFORXSCOPE void nrUEinitScope(PHY_VARS_NR_UE *ue)
 #ifndef WEBSRVSCOPE
   pthread_t forms_thread;
   threadCreate(&forms_thread, nrUEscopeThread, ue, "scope", -1, OAI_PRIORITY_RT_LOW);
+  UEcopyDataMutexInit();
 #endif
-  pthread_mutex_init(&UEcopyDataMutex, NULL);
 }
 
 void nrscope_autoinit(void *dataptr) {

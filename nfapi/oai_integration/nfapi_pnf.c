@@ -52,6 +52,7 @@
 #include "common/utils/LOG/log.h"
 
 #include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "PHY/LTE_TRANSPORT/transport_proto.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair1/SCHED_NR/fapi_nr_l1.h"
@@ -495,7 +496,7 @@ void nfapi_nr_send_pnf_start_resp(nfapi_pnf_config_t *config, uint16_t phy_id) {
   memset(&start_resp, 0, sizeof(start_resp));
   start_resp.header.message_id = NFAPI_NR_PHY_MSG_TYPE_START_RESPONSE;
   start_resp.header.phy_id = phy_id;
-  start_resp.error_code = NFAPI_MSG_OK;
+  start_resp.error_code = NFAPI_NR_START_MSG_OK;
   nfapi_nr_pnf_start_resp(config, &start_resp);
 }
 
@@ -1219,8 +1220,10 @@ int pnf_phy_dl_tti_req(gNB_L1_rxtx_proc_t *proc, nfapi_pnf_p7_config_t *pnf_p7, 
       if (tx_data != NULL) {
         uint8_t *dlsch_sdu = (uint8_t *)tx_data->TLVs[0].value.direct;
         //NFAPI_TRACE(NFAPI_TRACE_INFO, "%s() DLSCH:pdu_index:%d handle_nfapi_dlsch_pdu(eNB, proc_rxtx, dlsch_pdu, transport_blocks:%d sdu:%p) eNB->pdcch_vars[proc->subframe_tx & 1].num_pdcch_symbols:%d\n", __FUNCTION__, rel8_pdu->pdu_index, rel8_pdu->transport_blocks, dlsch_sdu, eNB->pdcch_vars[proc->subframe_tx & 1].num_pdcch_symbols);
-        AssertFatal(msgTx->num_pdsch_slot < NUMBER_OF_NR_DLSCH_MAX,"Number of PDSCH PDUs %d exceeded the limit %d\n",
-          msgTx->num_pdsch_slot, NUMBER_OF_NR_DLSCH_MAX);
+        AssertFatal(msgTx->num_pdsch_slot < gNB->max_nb_pdsch,
+                    "Number of PDSCH PDUs %d exceeded the limit %d\n",
+                    msgTx->num_pdsch_slot,
+                    gNB->max_nb_pdsch);
         handle_nr_nfapi_pdsch_pdu(msgTx, pdsch_pdu, dlsch_sdu);
       } 
       else {
@@ -2146,10 +2149,13 @@ void configure_nr_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_add
   pnf.phys[0].udp.tx_port = vnf_p7_port;
   strcpy(pnf.phys[0].udp.tx_addr, vnf_ip_addr);
   strcpy(pnf.phys[0].local_addr, pnf_ip_addr);
-  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n",
-         __FUNCTION__,config->vnf_ip_addr, config->vnf_p5_port,
+  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%u rx:%u]\n",
+         __FUNCTION__,
+         config->vnf_ip_addr,
+         config->vnf_p5_port,
          pnf.phys[0].local_addr,
-         pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
+         pnf.phys[0].udp.tx_addr,
+         pnf.phys[0].udp.tx_port,
          pnf.phys[0].udp.rx_port);
   config->cell_search_req = &cell_search_request;
          
@@ -2197,11 +2203,13 @@ void configure_nfapi_pnf(char *vnf_ip_addr, int vnf_p5_port, char *pnf_ip_addr, 
   pnf.phys[0].udp.tx_port = vnf_p7_port;
   strcpy(pnf.phys[0].udp.tx_addr, vnf_ip_addr);
   strcpy(pnf.phys[0].local_addr, pnf_ip_addr);
-  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%d rx:%d]\n",
+  printf("%s() VNF:%s:%d PNF_PHY[addr:%s UDP:tx_addr:%s:%u rx:%u]\n",
          __FUNCTION__,
-         config->vnf_ip_addr, config->vnf_p5_port,
+         config->vnf_ip_addr,
+         config->vnf_p5_port,
          pnf.phys[0].local_addr,
-         pnf.phys[0].udp.tx_addr, pnf.phys[0].udp.tx_port,
+         pnf.phys[0].udp.tx_addr,
+         pnf.phys[0].udp.tx_port,
          pnf.phys[0].udp.rx_port);
   config->pnf_param_req = &pnf_param_request;
   config->pnf_config_req = &pnf_config_request;

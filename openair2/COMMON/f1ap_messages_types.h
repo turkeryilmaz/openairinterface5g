@@ -41,14 +41,14 @@
 #define F1AP_UL_RRC_MESSAGE(mSGpTR)                (mSGpTR)->ittiMsg.f1ap_ul_rrc_message
 #define F1AP_UE_CONTEXT_SETUP_REQ(mSGpTR)          (mSGpTR)->ittiMsg.f1ap_ue_context_setup_req
 #define F1AP_UE_CONTEXT_SETUP_RESP(mSGpTR)         (mSGpTR)->ittiMsg.f1ap_ue_context_setup_resp
-#define F1AP_UE_CONTEXT_RELEASE_RESP(mSGpTR)       (mSGpTR)->ittiMsg.f1ap_ue_context_release_resp
 #define F1AP_UE_CONTEXT_MODIFICATION_REQ(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_ue_context_modification_req
 #define F1AP_UE_CONTEXT_MODIFICATION_RESP(mSGpTR)  (mSGpTR)->ittiMsg.f1ap_ue_context_modification_resp
 #define F1AP_UE_CONTEXT_MODIFICATION_FAIL(mSGpTR)  (mSGpTR)->ittiMsg.f1ap_ue_context_modification_fail
 
 #define F1AP_DL_RRC_MESSAGE(mSGpTR)                (mSGpTR)->ittiMsg.f1ap_dl_rrc_message
 #define F1AP_UE_CONTEXT_RELEASE_REQ(mSGpTR)        (mSGpTR)->ittiMsg.f1ap_ue_context_release_req
-#define F1AP_UE_CONTEXT_RELEASE_CMD(mSGpTR)        (mSGpTR)->ittiMsg.f1ap_ue_context_release_req
+#define F1AP_UE_CONTEXT_RELEASE_CMD(mSGpTR)        (mSGpTR)->ittiMsg.f1ap_ue_context_release_cmd
+#define F1AP_UE_CONTEXT_RELEASE_COMPLETE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_ue_context_release_complete
 
 #define F1AP_PAGING_IND(mSGpTR)                    (mSGpTR)->ittiMsg.f1ap_paging_ind
 
@@ -73,7 +73,9 @@ typedef struct f1ap_net_ip_address_s {
 } f1ap_net_ip_address_t;
 
 typedef struct f1ap_cu_setup_req_s {
-   //
+  // This dummy element is to avoid CLANG warning: empty struct has size 0 in C, size 1 in C++
+  // To be removed if the structure is filled
+  uint32_t dummy;
 } f1ap_cu_setup_req_t;
 
 typedef struct cellIDs_s {
@@ -138,16 +140,16 @@ typedef struct f1ap_setup_req_s {
     struct fdd_s {
       uint32_t ul_nr_arfcn;
       uint8_t ul_scs;
-      uint8_t ul_nrb;
+      uint16_t ul_nrb;
 
       uint32_t dl_nr_arfcn;
       uint8_t dl_scs;
-      uint8_t dl_nrb;
+      uint16_t dl_nrb;
 
       uint32_t sul_active;
       uint32_t sul_nr_arfcn;
       uint8_t sul_scs;
-      uint8_t sul_nrb;
+      uint16_t sul_nrb;
 
       uint8_t ul_num_frequency_bands;
       uint16_t ul_nr_band[32];
@@ -163,12 +165,12 @@ typedef struct f1ap_setup_req_s {
 
       uint32_t nr_arfcn;
       uint8_t scs;
-      uint8_t nrb;
+      uint16_t nrb;
 
       uint32_t sul_active;
       uint32_t sul_nr_arfcn;
       uint8_t sul_scs;
-      uint8_t sul_nrb;
+      uint16_t sul_nrb;
 
       uint8_t num_frequency_bands;
       uint16_t nr_band[32];
@@ -339,7 +341,6 @@ typedef struct f1ap_drb_to_be_setup_s {
 
 typedef struct f1ap_srb_to_be_setup_s {
   long           srb_id;
-  rlc_mode_t     rlc_mode;
   uint8_t        lcid;
 } f1ap_srb_to_be_setup_t;
 
@@ -356,7 +357,7 @@ typedef struct cu_to_du_rrc_information_s {
   uint32_t   measConfig_length;
 }cu_to_du_rrc_information_t;
 
-typedef struct du_to_du_rrc_information_s {
+typedef struct du_to_cu_rrc_information_s {
   uint8_t * cellGroupConfig;
   uint32_t  cellGroupConfig_length;
   uint8_t * measGapConfig;
@@ -407,7 +408,7 @@ typedef struct f1ap_ue_context_setup_s {
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;
   int      rrc_container_length;
-} f1ap_ue_context_setup_t;
+} f1ap_ue_context_setup_t, f1ap_ue_context_modif_req_t, f1ap_ue_context_modif_resp_t;
 
 typedef enum F1ap_Cause_e {
   F1AP_CAUSE_NOTHING,  /* No components present */
@@ -423,8 +424,8 @@ typedef struct f1ap_ue_context_release_s {
   long          cause_value;
   uint8_t      *rrc_container;
   int           rrc_container_length;
-} f1ap_ue_context_release_req_t, f1ap_ue_context_release_cmd_t,
-  f1ap_ue_context_release_cplt_t;
+  int           srb_id;
+} f1ap_ue_context_release_req_t, f1ap_ue_context_release_cmd_t, f1ap_ue_context_release_complete_t;
 
 typedef struct f1ap_paging_ind_s {
   uint16_t ueidentityindexvalue;

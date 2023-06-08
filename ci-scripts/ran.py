@@ -99,6 +99,7 @@ class RANManagement():
 		self.cmd_prefix = '' # prefix before {lte,nr}-softmodem
 		self.node = ''
 		self.command = ''
+		self.command_fail = False
 
 
 #-----------------------------------------------------------
@@ -131,20 +132,16 @@ class RANManagement():
 		mySSH = SSH.SSHConnection()
 		mySSH.open(lIpAddr, lUserName, lPassWord)
 		
-		# Check if we build an 5G-NR gNB or an LTE eNB or an OCP eNB
-		result = re.search('--eNBocp', self.Build_eNB_args)
+		# Check if we build an 5G-NR gNB or an LTE eNB
+		result = re.search('--RU', self.Build_eNB_args)
 		if result is not None:
-			self.air_interface[self.eNB_instance] = 'ocp-enb'
+			self.air_interface[self.eNB_instance] = 'oairu'
 		else:
-			result = re.search('--RU', self.Build_eNB_args)
+			result = re.search('--gNB', self.Build_eNB_args)
 			if result is not None:
-				self.air_interface[self.eNB_instance] = 'oairu'
+				self.air_interface[self.eNB_instance] = 'nr-softmodem'
 			else:
-				result = re.search('--gNB', self.Build_eNB_args)
-				if result is not None:
-					self.air_interface[self.eNB_instance] = 'nr-softmodem'
-				else:
-					self.air_interface[self.eNB_instance] = 'lte-softmodem'
+				self.air_interface[self.eNB_instance] = 'lte-softmodem'
 		
 		# Worakround for some servers, we need to erase completely the workspace
 		if self.Build_eNB_forced_workspace_cleanup:
@@ -223,7 +220,7 @@ class RANManagement():
 			HTML.CreateHtmlTestRow(self.Build_eNB_args, 'OK', CONST.ALL_PROCESSES_OK)
 			self.backgroundBuildTestId[int(self.eNB_instance)] = self.testCase_id
 			return
-		mySSH.command('stdbuf -o0 ./build_oai ' + self.Build_eNB_args + ' 2>&1 | stdbuf -o0 tee compile_oai_enb.log', 'Bypassing the Tests|build have failed', 1500)
+		mySSH.command('stdbuf -o0 ./build_oai ' + self.Build_eNB_args + ' 2>&1 | stdbuf -o0 tee compile_oai_enb.log', 'BUILD SHOULD BE SUCCESSFUL|build have failed', 900)
 		mySSH.close()
 		self.checkBuildeNB(lIpAddr, lUserName, lPassWord, lSourcePath, self.testCase_id, HTML)
 
@@ -263,19 +260,24 @@ class RANManagement():
 		self.checkBuildeNB(lIpAddr, lUserName, lPassWord, lSourcePath, self.backgroundBuildTestId[int(self.eNB_instance)], HTML)
 
 	def CustomCommand(self, HTML):
-		if self.node == '' or self.node == "localhost":
-			cmd = cls_cmd.LocalCmd()
-		else:
-			cmd = cls_cmd.RemoteCmd(self.node)
+		cmd = cls_cmd.getConnection(self.node)
 		ret = cmd.run(self.command)
 		cmd.close()
-		logging.debug(f'CustomCommand: {self.command} returnCode: {ret.returncode} output: {ret.stdout}')
-		html_queue = SimpleQueue()
+		logging.debug(f"Custum command : {self.command} on node : {self.node} returnCode : {ret.returncode}")
 		status = 'OK'
-		if ret.returncode != 0:
-			html_queue.put(ret.stdout)
+		message = []
+		if ret.returncode != 0 and not self.command_fail:
+			message = [ret.stdout]
+			logging.warning(f'CustomCommand output: {message}')
 			status = 'Warning'
-		HTML.CreateHtmlTestRow(self.command, status, 1, html_queue)
+		if self.command_fail: # important command since it would make the pipeline fail, so show output in HTML
+			message = [ret.stdout]
+		if ret.returncode != 0 and self.command_fail:
+			message = [ret.stdout]
+			logging.error(f'CustomCommand failed: output: {message}')
+			status = 'KO'
+			self.prematureExit = True
+		HTML.CreateHtmlTestRowQueue(self.command, status, message)
 
 	def checkBuildeNB(self, lIpAddr, lUserName, lPassWord, lSourcePath, testcaseId, HTML):
 		HTML.testCase_id=testcaseId
@@ -286,7 +288,7 @@ class RANManagement():
 		mySSH.command('ls ran_build/build', '\$', 3)
 		mySSH.command('ls ran_build/build', '\$', 3)
 
-		#check if we have the build corresponding to the air interface keywords (nr-softmode, lte-softmodem, ocp-enb)
+		#check if we have the build corresponding to the air interface keywords (nr-softmode, lte-softmodem)
 		logging.info('CHECK Build with IP='+lIpAddr+' SourcePath='+lSourcePath)
 		result = re.search(self.air_interface[self.eNB_instance], mySSH.getBefore())
 		if result is None:
@@ -365,14 +367,9 @@ class RANManagement():
 		cwd = os.getcwd()
 		mySSH.copyout(lIpAddr,lUserName,lPassWord, cwd + "/active_net_interfaces.awk", "/tmp")
 		
-		if (self.pStatus < 0):
-			HTML.CreateHtmlTestRow(self.air_interface[self.eNB_instance] + ' ' + self.Initialize_eNB_args, 'KO', self.pStatus)
-			HTML.CreateHtmlTabFooter(False)
-			sys.exit(1)
-
 		#Get pcap on enb and/or gnb if enabled in the xml 
 		if self.eNB_Trace=='yes':
-			if ((self.air_interface[self.eNB_instance] == 'lte-softmodem') or (self.air_interface[self.eNB_instance] == 'ocp-enb')):
+			if self.air_interface[self.eNB_instance] == 'lte-softmodem':
 				pcapfile_prefix="enb_"
 			else:
 				pcapfile_prefix="gnb_"
@@ -457,7 +454,7 @@ class RANManagement():
 
 		#hack UHD_RFNOC_DIR variable for gNB / N310 on RHEL8 server:
 		#if the USRP address is in the xml then we are using an eth USRP (N3xx)
-		if (self.air_interface[self.eNB_instance] == 'lte-softmodem') or (self.air_interface[self.eNB_instance] == 'ocp-enb'):
+		if self.air_interface[self.eNB_instance] == 'lte-softmodem':
 			gNB = False
 		else:
 			gNB = True
@@ -473,7 +470,7 @@ class RANManagement():
 		monitor_file='../ci-scripts/stats_monitor.py'
 		conf_file='../ci-scripts/stats_monitor_conf.yaml'
 		if self.eNB_Stats=='yes':
-			if (self.air_interface[self.eNB_instance] == 'lte-softmodem') or (self.air_interface[self.eNB_instance] == 'ocp-enb'):
+			if self.air_interface[self.eNB_instance] == 'lte-softmodem':
 				mySSH.command('echo $USER; nohup python3 ' + monitor_file + ' ' + conf_file + ' ' + self.testCase_id + ' enb 2>&1 > enb_stats_monitor_execution.log &', '\$', 5)
 			else:
 				mySSH.command('echo $USER; nohup python3 ' + monitor_file + ' ' + conf_file + ' ' + self.testCase_id + ' gnb 2>&1 > gnb_stats_monitor_execution.log &', '\$', 5)
@@ -496,7 +493,7 @@ class RANManagement():
 					mySSH.command('killall --signal SIGKILL record', '\$', 5)
 				mySSH.close()
 				doLoop = False
-				logging.error('\u001B[1;37;41m eNB/gNB/ocp-eNB logging system did not show got sync! \u001B[0m')
+				logging.error('\u001B[1;37;41m eNB/gNB logging system did not show got sync! \u001B[0m')
 				HTML.CreateHtmlTestRow(self.air_interface[self.eNB_instance] + ' -O ' + config_file + extra_options, 'KO', CONST.ALL_PROCESSES_OK)
 				# In case of T tracer recording, we need to kill tshark on EPC side
 				localEpcIpAddr = EPC.IPAddress
@@ -553,7 +550,7 @@ class RANManagement():
 
 
 		HTML.CreateHtmlTestRow(f'{self.cmd_prefix} {self.air_interface[self.eNB_instance]} -O {config_file} {extra_options}', 'OK', CONST.ALL_PROCESSES_OK)
-		logging.debug('\u001B[1m Initialize eNB/gNB/ocp-eNB Completed\u001B[0m')
+		logging.debug('\u001B[1m Initialize eNB/gNB Completed\u001B[0m')
 
 	def CheckeNBProcess(self, status_queue):
 		try:
@@ -614,19 +611,19 @@ class RANManagement():
 		mySSH = SSH.SSHConnection()
 		mySSH.open(lIpAddr, lUserName, lPassWord)
 		mySSH.command('cd ' + lSourcePath + '/cmake_targets', '\$', 5)
-		if (self.air_interface[self.eNB_instance] == 'lte-softmodem') or (self.air_interface[self.eNB_instance] == 'ocp-enb'):
+		if self.air_interface[self.eNB_instance] == 'lte-softmodem':
 			nodeB_prefix = 'e'
 		else:
 			nodeB_prefix = 'g'
-		mySSH.command('stdbuf -o0  ps -aux | grep --color=never -e softmodem -e ocp-enb | grep -v grep', '\$', 5)
-		result = re.search('(-softmodem|ocp)', mySSH.getBefore())
+		mySSH.command('stdbuf -o0  ps -aux | grep --color=never -e softmodem | grep -v grep', '\$', 5)
+		result = re.search('-softmodem', mySSH.getBefore())
 		if result is not None:
-			mySSH.command('echo ' + lPassWord + ' | sudo -S killall --signal SIGINT -r .*-softmodem ocp-enb || true', '\$', 5)
+			mySSH.command('echo ' + lPassWord + ' | sudo -S killall --signal SIGINT -r .*-softmodem || true', '\$', 5)
 			time.sleep(10)
-			mySSH.command('stdbuf -o0  ps -aux | grep --color=never -e softmodem -e ocp-enb | grep -v grep', '\$', 5)
-			result = re.search('(-softmodem|ocp)', mySSH.getBefore())
+			mySSH.command('stdbuf -o0  ps -aux | grep --color=never -e softmodem | grep -v grep', '\$', 5)
+			result = re.search('-softmodem', mySSH.getBefore())
 			if result is not None:
-				mySSH.command('echo ' + lPassWord + ' | sudo -S killall --signal SIGKILL -r .*-softmodem ocp-enb || true', '\$', 5)
+				mySSH.command('echo ' + lPassWord + ' | sudo -S killall --signal SIGKILL -r .*-softmodem || true', '\$', 5)
 				time.sleep(5)
 		mySSH.command('rm -f my-lte-softmodem-run' + str(self.eNB_instance) + '.sh', '\$', 5)
 		#stopping tshark (valid if eNB and enabled in xml, will not harm otherwise)
@@ -1088,7 +1085,7 @@ class RANManagement():
 
 		#post processing depending on the node type
 		if not nodeB_prefix_found:
-			if (self.air_interface[self.eNB_instance] == 'lte-softmodem') or (self.air_interface[self.eNB_instance] == 'ocp-enb'):
+			if self.air_interface[self.eNB_instance] == 'lte-softmodem':
 				nodeB_prefix = 'e'
 			else:
 				nodeB_prefix = 'g'

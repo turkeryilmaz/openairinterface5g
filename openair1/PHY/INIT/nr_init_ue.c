@@ -19,7 +19,7 @@
  *      contact@openairinterface.org
  */
 
-#include "phy_init.h"
+#include "nr_phy_init.h"
 #include "PHY/phy_extern_nr_ue.h"
 #include "openair1/PHY/defs_RU.h"
 #include "openair1/PHY/impl_defs_nr.h"
@@ -36,14 +36,11 @@
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 
-
-extern uint16_t beta_cqi[16];
-
 void RCconfig_nrUE_prs(void *cfg)
 {
   int j = 0, k = 0, gNB_id = 0;
   char aprefix[MAX_OPTNAME_SIZE*2 + 8];
-  char str[7][100] = {'\0'}; int16_t n[7] = {0};
+  char str[7][100] = {{'\0'}}; int16_t n[7] = {0};
   PHY_VARS_NR_UE *ue  = (PHY_VARS_NR_UE *)cfg;
   prs_config_t *prs_config = NULL;
 
@@ -202,7 +199,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   // create shortcuts
   NR_DL_FRAME_PARMS *const fp            = &ue->frame_parms;
   NR_UE_COMMON *const common_vars        = &ue->common_vars;
-  NR_UE_PBCH  **const pbch_vars          = ue->pbch_vars;
   NR_UE_PRACH **const prach_vars         = ue->prach_vars;
   NR_UE_CSI_IM **const csiim_vars        = ue->csiim_vars;
   NR_UE_CSI_RS **const csirs_vars        = ue->csirs_vars;
@@ -235,9 +231,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     ue->bitrate[gNB_id] = 0;
     ue->total_received_bits[gNB_id] = 0;
 
-    ue->ul_time_alignment[gNB_id].apply_ta = 0;
-    ue->ul_time_alignment[gNB_id].ta_frame = -1;
-    ue->ul_time_alignment[gNB_id].ta_slot  = -1;
   }
   // init NR modulation lookup tables
   nr_generate_modulation_table();
@@ -298,19 +291,21 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     ue->tx_power_dBm[i]=-127;
 
   // init TX buffers
-  common_vars->txdata  = (int32_t **)malloc16( fp->nb_antennas_tx*sizeof(int32_t *) );
-  common_vars->txdataF = (int32_t **)malloc16( fp->nb_antennas_tx*sizeof(int32_t *) );
+  common_vars->txdata  = (c16_t **)malloc16(fp->nb_antennas_tx*sizeof(c16_t *));
+  common_vars->txdataF = (c16_t **)malloc16(fp->nb_antennas_tx*sizeof(c16_t *));
 
   for (i=0; i<fp->nb_antennas_tx; i++) {
-    common_vars->txdata[i]  = (int32_t *)malloc16_clear( fp->samples_per_subframe*10*sizeof(int32_t) );
-    common_vars->txdataF[i] = (int32_t *)malloc16_clear( fp->samples_per_slot_wCP*sizeof(int32_t) );
+    common_vars->txdata[i]  = (c16_t *)malloc16_clear((fp->samples_per_frame) * sizeof(c16_t));
+    common_vars->txdataF[i] = (c16_t *)malloc16_clear((fp->samples_per_frame) * sizeof(c16_t));
   }
 
   // init RX buffers
-  common_vars->rxdata   = (int32_t **)malloc16( fp->nb_antennas_rx*sizeof(int32_t *) );
+  common_vars->rxdata   = (c16_t **)malloc16( fp->nb_antennas_rx*sizeof(c16_t *));
+  common_vars->rxdataF   = (c16_t **)malloc16( fp->nb_antennas_rx*sizeof(c16_t *));
 
   for (i=0; i<fp->nb_antennas_rx; i++) {
-    common_vars->rxdata[i] = (int32_t *) malloc16_clear( (2*(fp->samples_per_frame)+fp->ofdm_symbol_size)*sizeof(int32_t) );
+    common_vars->rxdata[i] = (c16_t *)malloc16_clear((2 * (fp->samples_per_frame)+fp->ofdm_symbol_size) * sizeof(c16_t));
+    common_vars->rxdataF[i] = (c16_t *)malloc16_clear((2 * (fp->samples_per_frame)+fp->ofdm_symbol_size) * sizeof(c16_t));
   }
 
   // ceil(((NB_RB<<1)*3)/32) // 3 RE *2(QPSK)
@@ -355,7 +350,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   // DLSCH
   for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
     prach_vars[gNB_id] = (NR_UE_PRACH *)malloc16_clear(sizeof(NR_UE_PRACH));
-    pbch_vars[gNB_id] = (NR_UE_PBCH *)malloc16_clear(sizeof(NR_UE_PBCH));
     csiim_vars[gNB_id] = (NR_UE_CSI_IM *)malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = (NR_UE_CSI_RS *)malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = (NR_UE_SRS *)malloc16_clear(sizeof(NR_UE_SRS));
@@ -426,8 +420,10 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
   for (int i = 0; i < fp->nb_antennas_rx; i++) {
     free_and_zero(common_vars->rxdata[i]);
+    free_and_zero(common_vars->rxdataF[i]);
   }
   free_and_zero(common_vars->rxdata);
+  free_and_zero(common_vars->rxdataF);
 
   for (int slot = 0; slot < fp->slots_per_frame; slot++) {
     for (int symb = 0; symb < fp->symbols_per_slot; symb++)
@@ -472,7 +468,6 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     free_and_zero(ue->csirs_vars[gNB_id]);
     free_and_zero(ue->srs_vars[gNB_id]);
 
-    free_and_zero(ue->pbch_vars[gNB_id]);
     free_and_zero(ue->prach_vars[gNB_id]);
   }
 
@@ -519,7 +514,6 @@ void free_nr_ue_dl_harq(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_DLSCH_HARQ_PROCESSES
 
   for (int j=0; j < 2; j++) {
     for (int i=0; i<number_of_processes; i++) {
-      free_and_zero(harq_list[j][i].b);
 
       for (int r=0; r<a_segments; r++) {
         free_and_zero(harq_list[j][i].c[r]);
@@ -571,18 +565,10 @@ void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_DLSCH_HARQ_PR
     a_segments = (a_segments/273)+1;
   }
 
-  uint32_t dlsch_bytes = a_segments*1056;  // allocated bytes per segment
-
   for (int j=0; j<2; j++) {
     for (int i=0; i<number_of_processes; i++) {
       memset(harq_list[j] + i, 0, sizeof(NR_DL_UE_HARQ_t));
       init_downlink_harq_status(harq_list[j] + i);
-      harq_list[j][i].b = malloc16(dlsch_bytes);
-
-      if (harq_list[j][i].b)
-        memset(harq_list[j][i].b, 0, dlsch_bytes);
-      else
-        AssertFatal(true, "Unable to reset harq memory \"b\"\n");
 
       harq_list[j][i].c = malloc16(a_segments*sizeof(uint8_t *));
       harq_list[j][i].d = malloc16(a_segments*sizeof(int16_t *));
@@ -699,6 +685,8 @@ void init_N_TA_offset(PHY_VARS_NR_UE *ue){
     }
 
     ue->N_TA_offset = (int)(N_TA_offset * factor);
+    ue->ta_frame = -1;
+    ue->ta_slot = -1;
 
     LOG_I(PHY,"UE %d Setting N_TA_offset to %d samples (factor %f, UL Freq %lu, N_RB %d, mu %d)\n", ue->Mod_id, ue->N_TA_offset, factor, fp->ul_CarrierFreq, fp->N_RB_DL, fp->numerology_index);
   }

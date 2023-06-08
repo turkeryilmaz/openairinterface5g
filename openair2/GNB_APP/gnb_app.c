@@ -32,7 +32,6 @@
 #include <nr_pdcp/nr_pdcp.h>
 #include <softmodem-common.h>
 #include <nr-softmodem.h>
-#include <split_headers.h>
 
 #include "gnb_app.h"
 #include "assertions.h"
@@ -50,7 +49,7 @@
 #include "f1ap_du_task.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include <openair2/LAYER2/nr_pdcp/nr_pdcp.h>
-#include "openair2/LAYER2/PDCP_v10.1.0/pdcp.h"
+#include "openair2/LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 #include "openair2/E1AP/e1ap.h"
 #include "gnb_config.h"
 extern unsigned char NB_gNB_INST;
@@ -75,7 +74,7 @@ void configure_nr_rrc(uint32_t gnb_id)
     itti_send_msg_to_task (TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(gnb_id), msg_p);
 
   }
-  else AssertFatal(0,"NRRRC context for gNB %d not allocated\n",gnb_id);
+  else AssertFatal(0,"NRRRC context for gNB %u not allocated\n",gnb_id);
 }
 
 /*------------------------------------------------------------------------------*/
