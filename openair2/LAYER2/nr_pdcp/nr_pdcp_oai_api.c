@@ -908,7 +908,7 @@ static void add_drb(int is_gnb,
           __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
-  LOG_I(PDCP, "%s:%s:%d: added DRB for UE ID/RNTI %ld\n", __FILE__, __FUNCTION__, __LINE__, rntiMaybeUEid);
+  LOG_I(PDCP, "%s:%s:%d: added DRB %ld for UE ID/RNTI %ld\n", __FILE__, __FUNCTION__, __LINE__, s->drb_Identity, rntiMaybeUEid);
 }
 
 void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddModList_t *const srb2add_list, const uint8_t security_modeP, uint8_t *const kRRCenc, uint8_t *const kRRCint)
@@ -936,6 +936,22 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
     }
   } else
     LOG_W(PDCP, "nr_pdcp_add_drbs() with void list\n");
+}
+
+void nr_pdcp_remove_drb(ue_id_t ue_id, int drb_id)
+{
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+  nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+  if (ue && ue->drb[drb_id-1] != NULL) {
+    ue->drb[drb_id-1]->delete_entity(ue->drb[drb_id-1]);
+    ue->drb[drb_id-1] = NULL;
+    LOG_I(PDCP, "%s:%d:%s: removed drb %d from UE %ld\n", __FILE__, __LINE__, __FUNCTION__, drb_id, ue_id);
+  } else if (ue) {
+    LOG_W(PDCP, "%s:%d:%s: error: UE %ld has no DRB %d\n", __FILE__, __LINE__, __FUNCTION__, ue_id, drb_id);
+  } else {
+    LOG_E(PDCP, "%s:%d:%s: error: no such UE %ld\n", __FILE__, __LINE__, __FUNCTION__, ue_id);
+  }
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
 /* Dummy function due to dependency from LTE libraries */

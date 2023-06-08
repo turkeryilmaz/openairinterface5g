@@ -80,9 +80,34 @@ int add_bearer(char *buf, int debug, telnet_printfunc_t prnt)
   return 0;
 }
 
+void rrc_gNB_trigger_release_bearer(int rnti);
+int release_bearer(char *buf, int debug, telnet_printfunc_t prnt)
+{
+  int rnti = -1;
+  if (!buf) {
+    rnti = get_single_ue_rnti();
+    if (rnti < 1)
+      ERROR_MSG_RET("no UE found\n");
+  } else {
+    rnti = strtol(buf, NULL, 16);
+    if (rnti < 1 || rnti >= 0xfffe)
+      ERROR_MSG_RET("RNTI needs to be [1,0xfffe]\n");
+  }
+
+  // verify it exists in RRC as well
+  rrc_gNB_ue_context_t *rrcue = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], rnti);
+  if (!rrcue)
+    ERROR_MSG_RET("could not find UE with RNTI %04x\n", rnti);
+
+  rrc_gNB_trigger_release_bearer(rnti);
+  prnt("called rrc_gNB_trigger_release_bearer(%04x)\n", rnti);
+  return 0;
+}
+
 static telnetshell_cmddef_t bearercmds[] = {
   {"get_single_rnti", "", get_single_rnti},
   {"add_bearer", "[rnti(hex,opt)]", add_bearer},
+  {"release_bearer", "[rnti(hex,opt)]", release_bearer},
   {"", "", NULL},
 };
 

@@ -860,6 +860,22 @@ void nr_rlc_add_drb(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_Beare
   LOG_I(RLC, "%s:%s:%d: added DRB to UE with RNTI 0x%x\n", __FILE__, __FUNCTION__, __LINE__, rnti);
 }
 
+void nr_rlc_remove_drb(int rnti, int drb_id)
+{
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  nr_rlc_ue_t *ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
+  if (ue && ue->drb[drb_id-1] != NULL) {
+    ue->drb[drb_id-1]->delete(ue->drb[drb_id-1]);
+    ue->drb[drb_id-1] = NULL;
+    LOG_I(RLC, "%s:%d:%s: removed drb %d from UE with RNTI 0x%x\n", __FILE__, __LINE__, __FUNCTION__, drb_id, rnti);
+  } else if (ue) {
+    LOG_W(RLC, "%s:%d:%s: error: UE %04x has no DRB %d\n", __FILE__, __LINE__, __FUNCTION__, rnti, drb_id);
+  } else {
+    LOG_E(RLC, "%s:%d:%s: error: no such UE %04x\n", __FILE__, __LINE__, __FUNCTION__, rnti);
+  }
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
+}
+
 /* Dummy function due to dependency from LTE libraries */
 rlc_op_status_t rrc_rlc_config_asn1_req (const protocol_ctxt_t   * const ctxt_pP,
     const LTE_SRB_ToAddModList_t   * const srb2add_listP,

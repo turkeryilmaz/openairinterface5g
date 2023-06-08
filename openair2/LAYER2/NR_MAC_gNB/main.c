@@ -164,7 +164,7 @@ size_t dump_mac_stats(gNB_MAC_INST *gNB, char *output, size_t strlen, bool reset
                        UE->rnti,
                        stats->ulsch_total_bytes_scheduled, stats->ul.total_bytes);
 
-    for (int lc_id = 0; lc_id < 63; lc_id++) {
+    for (int lc_id = 0; lc_id < sched_ctrl->dl_lc_num; lc_id++) {
       if (stats->dl.lc_bytes[lc_id] > 0)
         output += snprintf(output,
                            end - output,

@@ -1197,6 +1197,17 @@ void nr_rrc_ue_process_masterCellGroup(const protocol_ctxt_t *const ctxt_pP,
                  sizeof(struct NR_CellGroupConfig__rlc_BearerToAddModList));
   }
 
+  if( cellGroupConfig->rlc_BearerToReleaseList != NULL){
+    //TODO (perform the RLC bearer addition/modification as specified in 5.3.5.5.4)
+    if(NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToAddModList != NULL){
+       // Laurent: there are cases where the not NULL value is also not coming from a previous malloc
+      // so it is better to let the potential memory leak than corrupting the heap     //free(NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToAddModList);
+    }
+    NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList = calloc(1, sizeof(struct NR_CellGroupConfig__rlc_BearerToReleaseList));
+    memcpy(NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList,cellGroupConfig->rlc_BearerToReleaseList,
+                 sizeof(struct NR_CellGroupConfig__rlc_BearerToReleaseList));
+  }
+
   if( cellGroupConfig->mac_CellGroupConfig != NULL){
     //TODO (configure the MAC entity of this cell group as specified in 5.3.5.5.5)
     LOG_I(RRC, "Received mac_CellGroupConfig from gNB\n");
@@ -2001,6 +2012,7 @@ nr_rrc_ue_establish_srb2(
    if (radioBearerConfig->drb_ToReleaseList != NULL) {
      for (i = 0; i < radioBearerConfig->drb_ToReleaseList->list.count; i++) {
        DRB_id = *radioBearerConfig->drb_ToReleaseList->list.array[i];
+       nr_pdcp_remove_drb(ctxt_pP->rntiMaybeUEid, DRB_id);
        free(NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1]);
      }
    }
@@ -2008,6 +2020,8 @@ nr_rrc_ue_establish_srb2(
    if (NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList != NULL) {
      for (i = 0; i < NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList->list.count; i++) {
        NR_LogicalChannelIdentity_t lcid = *NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList->list.array[i];
+       /* the RLC handles DRB IDs, and not using the LCID! */
+       nr_rlc_remove_drb(ctxt_pP->rntiMaybeUEid, lcid - 3);
        LOG_I(NR_RRC, "[FRAME %05d][RRC_UE][MOD %02d][][--- MAC_CONFIG_REQ (RB lcid %ld gNB %d release) --->][MAC_UE][MOD %02d][]\n",
            ctxt_pP->frame, ctxt_pP->module_id, lcid, 0, ctxt_pP->module_id);
        nr_rrc_mac_config_req_ue_logicalChannelBearer(ctxt_pP->module_id,0,0,lcid,false); //todo handle mac_LogicalChannelConfig

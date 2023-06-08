@@ -681,7 +681,7 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
                                    xid,
                                    SRB_configList2,
                                    DRB_configList,
-                                   NULL,
+                                   ue_p->DRB_ReleaseList,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -692,6 +692,8 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
                                    NULL,
                                    cellGroupConfig);
   LOG_DUMPMSG(NR_RRC,DEBUG_RRC,(char *)buffer,size,"[MSG] RRC Reconfiguration\n");
+  ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToReleaseList, ue_p->DRB_ReleaseList);
+  ue_p->DRB_ReleaseList = NULL;
 
   /* Free all NAS PDUs */
   for (int i = 0; i < ue_p->nb_of_pdusessions; i++) {
@@ -3123,6 +3125,65 @@ void rrc_gNB_trigger_new_bearer(int rnti)
   ue->pduSession[0].xid = xid; // hack: fake xid for ongoing PDU session
   LOG_W(RRC, "trigger new bearer %ld for UE %04x xid %d\n", drb->id, ue->rnti, xid);
   rrc->cucp_cuup.bearer_context_setup(&bearer_req, 0, xid);
+}
+
+void rrc_gNB_trigger_release_bearer(int rnti)
+{
+  /* get RRC and UE */
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, rnti);
+  if (ue_context_p == NULL) {
+    LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
+    return;
+  }
+  gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+
+  if (ue->established_drbs[1].status == DRB_INACTIVE) {
+    LOG_E(RRC, "no second bearer, aborting\n");
+    return;
+  }
+
+  // don't use E1: bearer release is not implemented, call directly
+  // into PDCP/SDAP and then send corresponding message via F1
+
+  int drb_id = 2;
+  ue->established_drbs[1].status = DRB_INACTIVE;
+  ue->DRB_ReleaseList = calloc(1, sizeof(*ue->DRB_ReleaseList));
+  AssertFatal(ue->DRB_ReleaseList != NULL, "out of memory\n");
+  NR_DRB_Identity_t *asn1_drb = malloc(sizeof(*asn1_drb));
+  AssertFatal(asn1_drb != NULL, "out of memory\n");
+  int idx = 0;
+  while (idx < ue->DRB_configList->list.count) {
+    const NR_DRB_ToAddMod_t *drbc = ue->DRB_configList->list.array[idx];
+    if (drbc->drb_Identity == drb_id)
+      break;
+    ++idx;
+  }
+  if (idx < ue->DRB_configList->list.count) {
+    nr_pdcp_remove_drb(rnti, drb_id);
+    asn_sequence_del(&ue->DRB_configList->list, idx, 1);
+  }
+  *asn1_drb = drb_id;
+  asn1cSeqAdd(&ue->DRB_ReleaseList->list, asn1_drb);
+
+  f1ap_drb_to_be_released_t drbs_to_be_released[1] = {{.rb_id = drb_id}};
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+    .gNB_CU_ue_id = 0xffffffff, /* filled by F1 for the moment */
+    .gNB_DU_ue_id = 0xffffffff, /* filled by F1 for the moment */
+    .rnti = ue->rnti,
+    .mcc = rrc->configuration.mcc[0],
+    .mnc = rrc->configuration.mnc[0],
+    .mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+    .nr_cellid = rrc->nr_cellid,
+    .servCellId = 0, /* TODO: correct value? */
+    .srbs_to_be_setup_length = 0,
+    .srbs_to_be_setup = NULL,
+    .drbs_to_be_setup_length = 0,
+    .drbs_to_be_setup = NULL,
+    .drbs_to_be_released_length = 1,
+    .drbs_to_be_released = drbs_to_be_released,
+  };
+  rrc->mac_rrc.ue_context_modification_request(&ue_context_modif_req);
 }
 
 int rrc_gNB_generate_pcch_msg(uint32_t tmsi, uint8_t paging_drx, instance_t instance, uint8_t CC_id){
