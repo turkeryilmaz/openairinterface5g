@@ -90,6 +90,41 @@ static int handle_ue_context_drbs_setup(int rnti,
   return drbs_len;
 }
 
+static int handle_ue_context_drbs_release(int rnti,
+                                          int drbs_len,
+                                          const f1ap_drb_to_be_released_t *req_drbs,
+                                          NR_CellGroupConfig_t *cellGroupConfig)
+{
+  DevAssert(req_drbs != NULL && cellGroupConfig != NULL);
+
+  cellGroupConfig->rlc_BearerToReleaseList = calloc(1, sizeof(*cellGroupConfig->rlc_BearerToReleaseList));
+  AssertFatal(cellGroupConfig->rlc_BearerToReleaseList != NULL, "out of memory\n");
+
+  /* Note: the actual GTP tunnels are already removed in the F1AP message
+   * decoding */
+  for (int i = 0; i < drbs_len; i++) {
+    const f1ap_drb_to_be_released_t *drb = &req_drbs[i];
+
+    long *lcid = malloc(sizeof(*lcid));
+    AssertFatal(lcid != NULL, "out of memory\n");
+    *lcid = drb->rb_id + 3; /* LCID is DRB + 3 */
+    int idx = 0;
+    while (idx < cellGroupConfig->rlc_BearerToAddModList->list.count) {
+      const NR_RLC_BearerConfig_t *bc = cellGroupConfig->rlc_BearerToAddModList->list.array[idx];
+      if (bc->logicalChannelIdentity == *lcid)
+        break;
+      ++idx;
+    }
+    if (idx < cellGroupConfig->rlc_BearerToAddModList->list.count) {
+      nr_rlc_remove_drb(rnti, drb->rb_id);
+      asn_sequence_del(&cellGroupConfig->rlc_BearerToAddModList->list, idx, 1);
+      int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToReleaseList->list, lcid);
+      DevAssert(ret == 0);
+    }
+  }
+  return drbs_len;
+}
+
 void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
 {
   gNB_MAC_INST *mac = RC.nrmac[0];
@@ -196,6 +231,11 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
                                                                 UE->CellGroup);
   }
 
+  if (req->drbs_to_be_released > 0) {
+    resp.drbs_to_be_released_length =
+        handle_ue_context_drbs_release(req->rnti, req->drbs_to_be_released_length, req->drbs_to_be_released, UE->CellGroup);
+  }
+
   if (req->rrc_container != NULL)
     nr_rlc_srb_recv_sdu(req->rnti, DCCH, req->rrc_container, req->rrc_container_length);
 
@@ -204,7 +244,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
           "RRC reconfiguration outcome unsuccessful, but no rollback mechanism implemented to come back to old configuration\n");
   }
 
-  if (req->srbs_to_be_setup_length > 0 || req->drbs_to_be_setup_length > 0) {
+  if (req->srbs_to_be_setup_length > 0 || req->drbs_to_be_setup_length > 0 || req->drbs_to_be_released_length > 0) {
     /* TODO: if we change e.g. BWP or MCS table, need to automatically call
      * configure_UE_BWP() (form nr_mac_update_timers()) after some time? */
 

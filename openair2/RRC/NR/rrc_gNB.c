@@ -48,6 +48,7 @@
 #include "common/utils/LOG/log.h"
 #include "COMMON/mac_rrc_primitives.h"
 #include "RRC/NR/MESSAGES/asn1_msg.h"
+#include "openair2/E1AP/e1ap_asnc.h"
 
 #include "NR_BCCH-BCH-Message.h"
 #include "NR_UL-DCCH-Message.h"
@@ -568,12 +569,8 @@ void fill_DRB_configList(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_contex
 
   if (!ue_p->DRB_configList)
     ue_p->DRB_configList = CALLOC(1, sizeof(*ue_p->DRB_configList));
-  else
-    memset(ue_p->DRB_configList, 0, sizeof(*ue_p->DRB_configList));
   if (!ue_p->DRB_configList2[xid])
     ue_p->DRB_configList2[xid] = CALLOC(1, sizeof(**ue_p->DRB_configList2));
-  else
-    memset(ue_p->DRB_configList2[xid], 0, sizeof(**ue_p->DRB_configList2));
   for (i = 0; i < ue_p->nb_of_pdusessions; i++) {
     if (ue_p->pduSession[i].status >= PDU_SESSION_STATUS_DONE) {
       continue;
@@ -680,7 +677,7 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
                                    xid,
                                    SRB_configList2,
                                    DRB_configList,
-                                   NULL,
+                                   ue_p->DRB_ReleaseList,
                                    NULL,
                                    NULL,
                                    NULL,
@@ -691,6 +688,8 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
                                    NULL,
                                    cellGroupConfig);
   LOG_DUMPMSG(NR_RRC,DEBUG_RRC,(char *)buffer,size,"[MSG] RRC Reconfiguration\n");
+  ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToReleaseList, ue_p->DRB_ReleaseList);
+  ue_p->DRB_ReleaseList = NULL;
 
   /* Free all NAS PDUs */
   for (int i = 0; i < ue_p->nb_of_pdusessions; i++) {
@@ -1007,20 +1006,21 @@ static void rrc_gNB_process_RRCReconfigurationComplete(const protocol_ctxt_t *co
   /* Refresh SRBs/DRBs */
   LOG_D(NR_RRC, "Configuring PDCP DRBs/SRBs for UE %04x\n", ue_p->rnti);
   ue_id_t reestablish_ue_id = 0;
-  if (DRB_configList && DRB_configList->list.array[0]->reestablishPDCP && *DRB_configList->list.array[0]->reestablishPDCP == NR_DRB_ToAddMod__reestablishPDCP_true) {
-    for (int i = 0; i < MAX_MOBILES_PER_GNB; i++) {
-      nr_reestablish_rnti_map_t *nr_reestablish_rnti_map = &(RC.nrrrc[ctxt_pP->module_id])->nr_reestablish_rnti_map[i];
-      if (nr_reestablish_rnti_map->ue_id == ctxt_pP->rntiMaybeUEid) {
-        ue_context_pP->ue_context.ue_reconfiguration_after_reestablishment_counter++;
-        reestablish_ue_id = nr_reestablish_rnti_map[i].c_rnti;
-        LOG_D(NR_RRC, "Removing reestablish_rnti_map[%d] UEid %lx, RNTI %04x\n", i, nr_reestablish_rnti_map->ue_id, nr_reestablish_rnti_map->c_rnti);
-        // clear current C-RNTI from map
-        nr_reestablish_rnti_map->ue_id = 0;
-        nr_reestablish_rnti_map->c_rnti = 0;
-        break;
-      }
-    }
-  }
+  // we don't consider Reestablishment right now, uncomment to prevent segfault
+  //if (DRB_configList && DRB_configList->list.array[0]->reestablishPDCP && *DRB_configList->list.array[0]->reestablishPDCP == NR_DRB_ToAddMod__reestablishPDCP_true) {
+  //  for (int i = 0; i < MAX_MOBILES_PER_GNB; i++) {
+  //    nr_reestablish_rnti_map_t *nr_reestablish_rnti_map = &(RC.nrrrc[ctxt_pP->module_id])->nr_reestablish_rnti_map[i];
+  //    if (nr_reestablish_rnti_map->ue_id == ctxt_pP->rntiMaybeUEid) {
+  //      ue_context_pP->ue_context.ue_reconfiguration_after_reestablishment_counter++;
+  //      reestablish_ue_id = nr_reestablish_rnti_map[i].c_rnti;
+  //      LOG_D(NR_RRC, "Removing reestablish_rnti_map[%d] UEid %lx, RNTI %04x\n", i, nr_reestablish_rnti_map->ue_id, nr_reestablish_rnti_map->c_rnti);
+  //      // clear current C-RNTI from map
+  //      nr_reestablish_rnti_map->ue_id = 0;
+  //      nr_reestablish_rnti_map->c_rnti = 0;
+  //      break;
+  //    }
+  //  }
+  //}
 
   nr_pdcp_add_srbs(ctxt_pP->enb_flag, ctxt_pP->rntiMaybeUEid, SRB_configList, (ue_p->integrity_algorithm << 4) | ue_p->ciphering_algorithm, kRRCenc, kRRCint);
 
@@ -3034,6 +3034,152 @@ rrc_gNB_generate_RRCRelease(
   nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_release_cmd, rrc);
 
   /* UE will be freed after UE context release complete */
+}
+
+void rrc_gNB_trigger_new_bearer(int rnti)
+{
+  /* get RRC and UE */
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, rnti);
+  if (ue_context_p == NULL) {
+    LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
+    return;
+  }
+  gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+
+  /* get the existing PDU sessoin */
+  if (ue->nb_of_pdusessions < 1) {
+    LOG_E(RRC, "no PDU session set up yet, cannot create additional bearer\n");
+    return;
+  }
+
+  if (ue->established_drbs[0].status != DRB_INACTIVE
+      && ue->established_drbs[1].status != DRB_INACTIVE) {
+    LOG_E(RRC, "already have two established bearers, aborting\n");
+    return;
+  }
+
+  e1ap_bearer_setup_req_t bearer_req = {0};
+  bearer_req.gNB_cu_cp_ue_id = ue->gNB_ue_ngap_id;
+  bearer_req.rnti = ue->rnti;
+  bearer_req.cipheringAlgorithm = ue->ciphering_algorithm;
+  memcpy(bearer_req.encryptionKey, ue->kgnb, sizeof(ue->kgnb));
+  bearer_req.integrityProtectionAlgorithm = ue->integrity_algorithm;
+  memcpy(bearer_req.integrityProtectionKey, ue->kgnb, sizeof(ue->kgnb));
+  bearer_req.ueDlAggMaxBitRate = 10000; /* probably does not matter */
+
+  pdu_session_to_setup_t *pdu = &bearer_req.pduSession[0];
+  //bearer_req.numPDUSessions++;
+  bearer_req.numPDUSessions = 1;
+  //pdu->sessionId = session->pdusession_id;
+  //pdu->sst = msg->allowed_nssai[i].sST;
+  //pdu->integrityProtectionIndication = rrc->security.do_drb_integrity ? E1AP_IntegrityProtectionIndication_required : E1AP_IntegrityProtectionIndication_not_needed;
+
+  //pdu->confidentialityProtectionIndication = rrc->security.do_drb_ciphering ? E1AP_ConfidentialityProtectionIndication_required : E1AP_ConfidentialityProtectionIndication_not_needed;
+  //pdu->teId = session->gtp_teid;
+  pdu->numDRB2Setup = 1; // One DRB per PDU Session. TODO: Remove hardcoding
+  DRB_nGRAN_to_setup_t *drb = &pdu->DRBnGRanList[0];
+  int drb_id = 2;
+  drb->id = drb_id;
+
+  drb->defaultDRB = E1AP_DefaultDRB_false;
+  drb->sDAP_Header_UL = !(rrc->configuration.enable_sdap);
+  drb->sDAP_Header_DL = !(rrc->configuration.enable_sdap);
+
+  drb->pDCP_SN_Size_UL = E1AP_PDCP_SN_Size_s_18;
+  drb->pDCP_SN_Size_DL = E1AP_PDCP_SN_Size_s_18;
+
+  drb->discardTimer = E1AP_DiscardTimer_infinity;
+  drb->reorderingTimer = E1AP_T_Reordering_ms0;
+
+  drb->rLC_Mode = E1AP_RLC_Mode_rlc_am;
+
+  drb->numCellGroups = 1; // assume one cell group associated with a DRB
+
+  for (int k=0; k < drb->numCellGroups; k++) {
+    cell_group_t *cellGroup = drb->cellGroupList + k;
+    cellGroup->id = 0; // MCG
+  }
+
+  int xid = rrc_gNB_get_next_transaction_identifier(0);
+  /* GIGANTIC HACK: DRBs would be added internally in fill_DRB_configList(),
+   * but it checks and will skip our request because the PDU session is up.
+   * Below, simply add the new bearer to DRB_configList so the reconfiguration
+   * will have all bearers */
+  generateDRB(ue,
+              drb_id,
+              &ue->pduSession[0],
+              rrc->configuration.enable_sdap,
+              rrc->security.do_drb_integrity,
+              rrc->security.do_drb_ciphering);
+  NR_DRB_ToAddMod_t *DRB_config = generateDRB_ASN1(&ue->established_drbs[drb_id - 1]);
+  asn1cSeqAdd(&ue->DRB_configList->list, DRB_config);
+  //asn1cSeqAdd(&ue->DRB_configList2[xid]->list, DRB_config);
+
+  /* associate the new bearer to it */
+  ue->xids[xid] = RRC_PDUSESSION_MODIFY;
+  ue->pduSession[0].xid = xid; // hack: fake xid for ongoing PDU session
+  LOG_W(RRC, "trigger new bearer %ld for UE %04x xid %d\n", drb->id, ue->rnti, xid);
+  rrc->cucp_cuup.bearer_context_setup(&bearer_req, 0, xid);
+}
+
+void rrc_gNB_trigger_release_bearer(int rnti)
+{
+  /* get RRC and UE */
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, rnti);
+  if (ue_context_p == NULL) {
+    LOG_E(RRC, "unknown UE RNTI %04x\n", rnti);
+    return;
+  }
+  gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+
+  if (ue->established_drbs[1].status == DRB_INACTIVE) {
+    LOG_E(RRC, "no second bearer, aborting\n");
+    return;
+  }
+
+  // don't use E1: bearer release is not implemented, call directly
+  // into PDCP/SDAP and then send corresponding message via F1
+
+  int drb_id = 2;
+  ue->established_drbs[1].status = DRB_INACTIVE;
+  ue->DRB_ReleaseList = calloc(1, sizeof(*ue->DRB_ReleaseList));
+  AssertFatal(ue->DRB_ReleaseList != NULL, "out of memory\n");
+  NR_DRB_Identity_t *asn1_drb = malloc(sizeof(*asn1_drb));
+  AssertFatal(asn1_drb != NULL, "out of memory\n");
+  int idx = 0;
+  while (idx < ue->DRB_configList->list.count) {
+    const NR_DRB_ToAddMod_t *drbc = ue->DRB_configList->list.array[idx];
+    if (drbc->drb_Identity == drb_id)
+      break;
+    ++idx;
+  }
+  if (idx < ue->DRB_configList->list.count) {
+    nr_pdcp_remove_drb(rnti, drb_id);
+    asn_sequence_del(&ue->DRB_configList->list, idx, 1);
+  }
+  *asn1_drb = drb_id;
+  asn1cSeqAdd(&ue->DRB_ReleaseList->list, asn1_drb);
+
+  f1ap_drb_to_be_released_t drbs_to_be_released[1] = {{.rb_id = drb_id}};
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+    .gNB_CU_ue_id = 0xffffffff, /* filled by F1 for the moment */
+    .gNB_DU_ue_id = 0xffffffff, /* filled by F1 for the moment */
+    .rnti = ue->rnti,
+    .mcc = rrc->configuration.mcc[0],
+    .mnc = rrc->configuration.mnc[0],
+    .mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+    .nr_cellid = rrc->nr_cellid,
+    .servCellId = 0, /* TODO: correct value? */
+    .srbs_to_be_setup_length = 0,
+    .srbs_to_be_setup = NULL,
+    .drbs_to_be_setup_length = 0,
+    .drbs_to_be_setup = NULL,
+    .drbs_to_be_released_length = 1,
+    .drbs_to_be_released = drbs_to_be_released,
+  };
+  rrc->mac_rrc.ue_context_modification_request(&ue_context_modif_req);
 }
 
 int rrc_gNB_generate_pcch_msg(uint32_t tmsi, uint8_t paging_drx, instance_t instance, uint8_t CC_id){

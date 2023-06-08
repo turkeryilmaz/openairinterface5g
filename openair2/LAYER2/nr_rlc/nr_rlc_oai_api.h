@@ -124,6 +124,7 @@ typedef struct NR_RLC_BearerConfig  NR_RLC_BearerConfig_t;
 
 void nr_rlc_add_srb(int rnti, int srb_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig);
 void nr_rlc_add_drb(int rnti, int drb_id, const NR_RLC_BearerConfig_t *rlc_BearerConfig);
+void nr_rlc_remove_drb(int rnti, int drb_id);
 
 void nr_rlc_remove_ue(int rnti);
 

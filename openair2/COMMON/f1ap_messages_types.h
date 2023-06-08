@@ -346,7 +346,7 @@ typedef struct f1ap_srb_to_be_setup_s {
 
 typedef struct f1ap_rb_failed_to_be_setup_s {
   long           rb_id;
-} f1ap_rb_failed_to_be_setup_t;
+} f1ap_rb_failed_to_be_setup_t, f1ap_drb_to_be_released_t;
 
 typedef struct cu_to_du_rrc_information_s {
   uint8_t * cG_ConfigInfo;
@@ -404,6 +404,8 @@ typedef struct f1ap_ue_context_setup_s {
   f1ap_srb_to_be_setup_t *srbs_to_be_setup;
   uint8_t  srbs_to_be_setup_length;
   uint8_t  srbs_failed_to_be_setup_length;
+  uint8_t drbs_to_be_released_length;
+  f1ap_drb_to_be_released_t *drbs_to_be_released;
   f1ap_rb_failed_to_be_setup_t *srbs_failed_to_be_setup;
   ReconfigurationCompl_t ReconfigComplOutcome;
   uint8_t *rrc_container;

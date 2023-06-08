@@ -35,8 +35,6 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-
-
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -164,19 +162,22 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
 #ifdef MIR_FLAG
   // mir 
-  // Naive L4/L3 packet classifier
+    // Naive L4/L3 packet classifier
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
-  
+
   if(hdr->protocol == IPPROTO_TCP){
-    printf("TCP packet detected \n");
+    //printf("TCP packet detected \n");
   } else if(hdr->protocol == IPPROTO_UDP){
-    printf("UDP packet detected \n");
+    //printf("UDP packet detected \n");
   } else if(hdr->protocol == IPPROTO_ICMP){
     //printf("Ping packet detected \n");
-    // pthread_once(&once_bearer, create_bearer);
-    // sdap_drb_id += 1; //cnt%2; 
+    if (entity->is_gnb && entity->has_second_bearer) {
+      sdap_drb_id += 1; //cnt%2; 
+    }
+    printf("ping to bearer %ld\n", sdap_drb_id);
     //cnt++;
   }
+
 #endif
 
   ret = nr_pdcp_data_req_drb(ctxt_p,
@@ -494,11 +495,12 @@ void nr_sdap_ue_qfi2drb_config(nr_sdap_entity_t *existing_sdap_entity, rb_id_t p
 nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap_tx, ue_id_t ue_id, int pdusession_id, bool is_defaultDRB, uint8_t drb_identity, NR_QFI_t *mapped_qfi_2_add, uint8_t mappedQFIs2AddCount)
 {
   if (nr_sdap_get_entity(ue_id, pdusession_id)) {
-    LOG_E(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
+    LOG_I(SDAP, "SDAP Entity for UE already exists with RNTI/UE ID: %lu and PDU SESSION ID: %d\n", ue_id, pdusession_id);
     nr_sdap_entity_t *existing_sdap_entity = nr_sdap_get_entity(ue_id, pdusession_id);
     rb_id_t pdcp_entity = existing_sdap_entity->default_drb;
     if(!is_gnb)
       nr_sdap_ue_qfi2drb_config(existing_sdap_entity, pdcp_entity, ue_id, mapped_qfi_2_add, mappedQFIs2AddCount, drb_identity, has_sdap_rx, has_sdap_tx);
+    existing_sdap_entity->has_second_bearer = 1;
     return existing_sdap_entity;
   }
 
@@ -512,6 +514,7 @@ nr_sdap_entity_t *new_nr_sdap_entity(int is_gnb, bool has_sdap_rx, bool has_sdap
 
   sdap_entity->ue_id = ue_id;
   sdap_entity->pdusession_id = pdusession_id;
+  sdap_entity->is_gnb = is_gnb;
 
   sdap_entity->tx_entity = nr_sdap_tx_entity;
   sdap_entity->rx_entity = nr_sdap_rx_entity;

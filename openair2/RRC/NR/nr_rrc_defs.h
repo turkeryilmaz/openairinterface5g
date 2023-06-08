@@ -240,6 +240,7 @@ typedef struct gNB_RRC_UE_s {
   NR_SRB_ToAddModList_t             *SRB_configList;
   NR_SRB_ToAddModList_t             *SRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   NR_DRB_ToAddModList_t             *DRB_configList;
+  NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
   NR_DRB_ToAddModList_t             *DRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   NR_DRB_ToReleaseList_t            *DRB_Release_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   drb_t                              established_drbs[NGAP_MAX_DRBS_PER_UE];

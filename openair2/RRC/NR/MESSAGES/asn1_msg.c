@@ -836,7 +836,7 @@ int16_t do_RRCReconfiguration(
 
     dl_dcch_msg.message.choice.c1->choice.rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration = ie;
 
-    if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    if (true) {
       xer_fprint(stdout, &asn_DEF_NR_DL_DCCH_Message, (void *)&dl_dcch_msg);
     }
 
