@@ -1881,17 +1881,17 @@ uint8_t do_SIB23(uint8_t Mod_id,
   //-----------------------------------------------------------------------------------------------------------------------------------------
   // UE Timers and Constants
   (*sib2)->ue_TimersAndConstants.t300
-    = rrconfig->ue_TimersAndConstants_t300;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t300;
   (*sib2)->ue_TimersAndConstants.t301
-    = rrconfig->ue_TimersAndConstants_t301;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t301;
   (*sib2)->ue_TimersAndConstants.t310
-    = rrconfig->ue_TimersAndConstants_t310;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t310;
   (*sib2)->ue_TimersAndConstants.n310
-    = rrconfig->ue_TimersAndConstants_n310;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_n310;
   (*sib2)->ue_TimersAndConstants.t311
-    = rrconfig->ue_TimersAndConstants_t311;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t311;
   (*sib2)->ue_TimersAndConstants.n311
-    = rrconfig->ue_TimersAndConstants_n311;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_n311;
 
   (*sib2)->freqInfo.additionalSpectrumEmission = 1;
   (*sib2)->freqInfo.ul_CarrierFreq = NULL;
