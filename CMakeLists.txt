@@ -46,7 +46,6 @@ include_directories(${CONFIG_INCLUDE_DIRS})
 pkg_search_module(CRYPTO libcrypto REQUIRED)
 include_directories(${CRYPTO_INCLUDE_DIRS})
 
-<<<<<<< HEAD
 add_list2_option(TP_PROTO "None" "Ethernet" "benetel4g" "benetel5g" "oran_fhlib_5g")
 if (${TP_PROTO} STREQUAL "oran_fhlib_5g")
   if(DEFINED ENV{RTE_SDK})
@@ -61,7 +60,6 @@ if (${TP_PROTO} STREQUAL "oran_fhlib_5g")
     message(FATAL_ERROR "RTE_TARGET is NOT defined")
   endif()
 endif()
-=======
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
 # installation)
@@ -79,7 +77,6 @@ check_option(${ASN1C_EXEC} -no-gen-UPER ASN1C_EXEC)
 check_option(${ASN1C_EXEC} -no-gen-JER ASN1C_EXEC)
 check_option(${ASN1C_EXEC} -no-gen-BER ASN1C_EXEC)
 check_option(${ASN1C_EXEC} -no-gen-OER ASN1C_EXEC)
->>>>>>> origin/develop
 
 #uhd 4.0 and iris installs by default in /usr/local
 include_directories("/usr/local/include/")
@@ -634,7 +631,7 @@ target_link_libraries(benetel_5g PRIVATE pthread dl rt m numa)
 
 # ORAN 5G library
 ######################################################################
-add_boolean_option(ORAN_BRONZE ON "Build support for Bronze version of ORAN FHI")
+add_boolean_option(ORAN_BRONZE ON "Build support for Bronze version of ORAN FHI" ON)
 if (ORAN_BRONZE)
   set(ORAN_FHLIB_5G_SOURCE
       ${OPENAIR_DIR}/radio/ETHERNET/oran/5g/sample-app-bronze.c

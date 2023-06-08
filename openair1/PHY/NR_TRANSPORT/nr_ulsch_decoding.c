@@ -118,7 +118,7 @@ static uint32_t prnt_crc_cnt = 0;
 #endif
 
 void nr_processULSegment(void *arg)
-
+{
     ldpcDecode_t *rdata = (ldpcDecode_t *)arg;
     PHY_VARS_gNB *phy_vars_gNB = rdata->gNB;
     NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
@@ -250,15 +250,11 @@ void nr_processULSegment(void *arg)
 #endif
     rdata->decodeIterations = no_iteration_ldpc;
     if (rdata->decodeIterations > p_decoderParms->numMaxIter) rdata->decodeIterations--;
-    /* remember that the data is ok to not decode it again in case of retransmission */
-    ulsch_harq->crc_ok[r] = true;
   } else {
 #ifdef PRINT_CRC_CHECK
       LOG_I(PHY,"CRC NOK\n");
 #endif
     rdata->decodeIterations = max_ldpc_iterations + 1;
-    /* set skip_ldpc_decoding to 1 to indicate to remaining threads that they shall not run LDPC decoding */
-    __atomic_store_n(&ulsch_harq->skip_ldpc_decoding, 1, __ATOMIC_SEQ_CST);
   }
 
   for (int m=0; m < Kr>>3; m ++) {
@@ -570,8 +566,6 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
   else {
     dtx_det = 0;
 
-    /* tell to the threads that LDPC decoding has to be done */
-    __atomic_store_n(&harq_process->skip_ldpc_decoding, 0, __ATOMIC_SEQ_CST);
 
     for (int r = 0; r < harq_process->C; r++) {
       int E = nr_get_E(G, harq_process->C, Qm, n_layers, r);
@@ -597,9 +591,6 @@ uint32_t nr_ulsch_decoding(PHY_VARS_gNB *phy_vars_gNB,
       rdata->ulsch = ulsch;
       rdata->ulsch_id = ULSCH_id;
       rdata->tbslbrm = pusch_pdu->maintenance_parms_v3.tbSizeLbrmBytes;
-      /* in case of a new rx, tell nr_processULSegment() to process the data, so set crc_ok[r] to false */
-      if (harq_process->new_rx)
-        harq_process->crc_ok[r] = false;
       pushTpool(&phy_vars_gNB->threadPool, req);
       phy_vars_gNB->nbDecode++;
       LOG_D(PHY, "Added a block to decode, in pipe: %d\n", phy_vars_gNB->nbDecode);

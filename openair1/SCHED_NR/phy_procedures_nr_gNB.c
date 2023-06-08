@@ -220,12 +220,13 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 //  if ((frame&127) == 0) dump_pdsch_stats(gNB);
 
   //apply the OFDM symbol rotation here
-  for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
-    apply_nr_rotation(fp, &gNB->common_vars.txdataF[aa][txdataF_offset], slot, 0, fp->Ncp == EXTENDED ? 12 : 14);
+  if(1/*(gNB->num_RU == 1) && (gNB->RU_list[0]->if_south != REMOTE_IF4p5)*/) {
+    for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
+      apply_nr_rotation(fp, &gNB->common_vars.txdataF[aa][txdataF_offset], slot, 0, fp->Ncp == EXTENDED ? 12 : 14);
 
-      T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
-          T_INT(frame), T_INT(slot),
-          T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
+        T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
+            T_INT(frame), T_INT(slot),
+            T_INT(aa), T_BUFFER(&gNB->common_vars.txdataF[aa][txdataF_offset], fp->samples_per_slot_wCP*sizeof(int32_t)));
     }
   }
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_TX+offset,0);
@@ -237,10 +238,8 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
   NR_gNB_ULSCH_t *ulsch = rdata->ulsch;
   int r = rdata->segment_r;
-  nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[rdata->ulsch_id].harq_process->ulsch_pdu;
+  nfapi_nr_pusch_pdu_t *pusch_pdu = &gNB->ulsch[rdata->ulsch_id].harq_process->ulsch_pdu;  
   bool decodeSuccess = (rdata->decodeIterations <= rdata->decoderParms.numMaxIter);
-  if (decodeSuccess)
-    (*decodeSuccessCount)++;
   ulsch_harq->processedSegments++;
   LOG_D(PHY, "processing result of segment: %d, processed %d/%d\n",
 	rdata->segment_r, ulsch_harq->processedSegments, rdata->nbSegments);
@@ -251,17 +250,24 @@ void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
            ulsch_harq->c[r],
            rdata->Kr_bytes - (ulsch_harq->F>>3) -((ulsch_harq->C>1)?3:0));
   } else {
-    LOG_D(PHY,"uplink segment error %d/%d\n",rdata->segment_r,rdata->nbSegments);
-    LOG_D(PHY, "ULSCH %d in error\n",rdata->ulsch_id);
+    if ( rdata->nbSegments != ulsch_harq->processedSegments ) {
+      int nb = abortTpoolJob(&gNB->threadPool, req->key);
+      nb += abortNotifiedFIFOJob(&gNB->respDecode, req->key);
+      gNB->nbDecode-=nb;
+      LOG_D(PHY,"uplink segment error %d/%d, aborted %d segments\n",rdata->segment_r,rdata->nbSegments, nb);
+      LOG_D(PHY, "ULSCH %d in error\n",rdata->ulsch_id);
+      AssertFatal(ulsch_harq->processedSegments+nb == rdata->nbSegments,"processed: %d, aborted: %d , total %d\n", ulsch_harq->processedSegments, nb, rdata->nbSegments);
+      ulsch_harq->processedSegments=rdata->nbSegments;
+    }
   }
 
   //int dumpsig=0;
   // if all segments are done
   if (rdata->nbSegments == ulsch_harq->processedSegments) {
     if (decodeSuccess && !gNB->pusch_vars[rdata->ulsch_id].DTX) {
-      LOG_D(PHY,
-            "[gNB %d] ULSCH: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, round %d, TBS %d, Max interation "
-            "(all seg) %d)\n",
+      LOG_D(PHY, 
+            "[gNB %d] ULSCH: Setting ACK for SFN/SF %d.%d (rnti %x, pid %d, ndi %d, status %d, roun d %d, TBS %d, Max interation "
+	    "(all seg) %d)\n",
             gNB->Mod_id,
             ulsch->frame,
             ulsch->slot,
@@ -405,7 +411,7 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
       notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
       if (req == NULL)
 	break; // Tpool has been stopped
-      nr_postDecode(gNB, req, &decodeSuccessCount);
+      nr_postDecode(gNB, req);
       delNotifiedFIFO_elt(req);
     }
   }

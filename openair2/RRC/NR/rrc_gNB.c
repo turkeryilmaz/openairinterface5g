@@ -107,15 +107,6 @@
 
 extern RAN_CONTEXT_t RC;
 
-extern void pdcp_config_set_security(const protocol_ctxt_t *const ctxt_pP,
-                                     pdcp_t *const pdcp_pP,
-                                     const rb_id_t rb_idP,
-                                     const uint16_t lc_idP,
-                                     const uint8_t security_modeP,
-                                     uint8_t *const kRRCenc,
-                                     uint8_t *const kRRCint,
-                                     uint8_t *const  kUPenc);
-
 static inline uint64_t bitStr_to_uint64(BIT_STRING_t *asn);
 
 mui_t rrc_gNB_mui = 0;
@@ -356,27 +347,6 @@ void apply_macrlc_config_reest(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *const ue
   nr_rrc_mac_update_cellgroup(ue_id, ue_p->masterCellGroup);
 
   nr_rrc_addmod_srbs(ctxt_pP->rntiMaybeUEid, ue_p->Srb, maxSRBs, ue_p->masterCellGroup->rlc_BearerToAddModList);
-}
-
-void apply_macrlc_config_reest(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *const ue_context_pP, const protocol_ctxt_t *const ctxt_pP, ue_id_t ue_id)
-{
-  rrc_mac_config_req_gNB(rrc->module_id,
-                         rrc->configuration.pdsch_AntennaPorts,
-                         rrc->configuration.pusch_AntennaPorts,
-                         rrc->configuration.sib1_tda,
-                         rrc->configuration.minRXTXTIME,
-                         NULL,
-                         NULL,
-                         NULL,
-                         0,
-                         ue_id,
-                         get_softmodem_params()->sa ? ue_context_pP->ue_context.masterCellGroup : NULL);
-
-  nr_rrc_rlc_config_asn1_req(ctxt_pP,
-                             ue_context_pP->ue_context.SRB_configList,
-                             NULL,
-                             NULL,
-                             get_softmodem_params()->sa ? ue_context_pP->ue_context.masterCellGroup->rlc_BearerToAddModList : NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -1006,8 +976,6 @@ rrc_gNB_generate_dedicatedRRCReconfiguration_release(
                                    NULL,
                                    NULL);
   LOG_DUMPMSG(NR_RRC,DEBUG_RRC,(char *)buffer,size, "[MSG] RRC Reconfiguration\n");
-
-  ue_context_pP->ue_context.pdu_session_release_command_flag = 1;
 
   /* Free all NAS PDUs */
   if (nas_length > 0) {
@@ -2176,6 +2144,7 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
             == -1)
           return -1;
         break;
+
       default:
         break;
     }
