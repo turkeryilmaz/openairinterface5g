@@ -199,8 +199,9 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss0_ext2 = &pss0_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = pss0_ext2[i].r * pss[i].r;
-      tmp.i = -pss0_ext2[i].i * pss[i].i;
+      tmp.r = (int16_t)((((int32_t)pss0_ext2[i].r) * pss[i].r)>>15);
+      tmp.i = 0;//-pss0_ext2[i].i * pss[i].i;
+      
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)
@@ -310,7 +311,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
         ue->frame_parms.Nid_SL = Nid1 + NUMBER_SSS_SEQUENCE * Nid2;
         *phase_max = phase;
 #ifdef DEBUG_SSS_NR
-        printf("(phase, Nid1) (%d,%d), metric_phase = %d, tot_metric = %d, phase_max = %d \n", phase, Nid1, metric, *tot_metric, *phase_max);
+        LOG_I(NR_PHY,"(phase, Nid1) (%d,%d), metric_phase = %d, tot_metric = %d, phase_max = %d \n", phase, Nid1, metric, *tot_metric, *phase_max);
 #endif
       }
     }
@@ -322,7 +323,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
     Nid1 = GET_NID1_SL(frame_parms->Nid_SL);
   }
 #if 1
-  LOG_I(NR_PHY, "Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
+  LOG_D(NR_PHY, "Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
 #endif
 
   if (Nid1 == N_ID_1_NUMBER) {

@@ -51,7 +51,7 @@ extern openair0_config_t openair0_cfg[];
 //static  nfapi_nr_config_request_t* config =&config_t;
 int cnt=0;
 
-#define DEBUG_INITIAL_SYNCH
+#define DEBUG_INITIAL_SYNCH 1
 #define DUMP_PBCH_CH_ESTIMATES 0
 
 // create a new node of SSB structure
@@ -289,8 +289,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       // ----------------------------------------------------------------------
       //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Offset = X - (144 + 144 + 2048 + 144)
       //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Offset = X - (144 + 2048 + 144)
-      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples;
-      uint32_t num_pss_prefix_samples_size = (ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;
+      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
+      uint32_t num_pss_prefix_samples_size = fp->nb_prefix_samples;/*(ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;*/
       LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
             num_pss_prefix_samples_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.N2_id);
       ue->ssb_offset = sync_pos - num_pss_prefix_samples_size - psbch_plus_prefix_size;
@@ -337,8 +337,8 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
     }
     if (ret == 0) break;
+  if (ret < 0) exit(-1);
   }
-
   if (ret == 0) {
     LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
           ue->Mod_id, ue->rx_offset_sl, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);

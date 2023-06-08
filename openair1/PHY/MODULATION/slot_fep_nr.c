@@ -251,7 +251,7 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 #endif
 
     c16_t *this_symbol = &rxdataF[aa][frame_parms->ofdm_symbol_size*symbol];
-    rotate_cpx_vector(this_symbol, &rot2, this_symbol, frame_parms->ofdm_symbol_size, 15);
+//    rotate_cpx_vector(this_symbol, &rot2, this_symbol, frame_parms->ofdm_symbol_size, 15);
   }
 
 #ifdef DEBUG_FEP
