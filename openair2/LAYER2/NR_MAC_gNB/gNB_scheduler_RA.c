@@ -43,6 +43,7 @@
 
 /* rlc */
 #include "openair2/LAYER2/nr_rlc/nr_rlc_oai_api.h"
+#include "openair2/RRC/NR/nr_rrc_defs.h"
 
 #include <executables/softmodem-common.h>
 extern RAN_CONTEXT_t RC;

@@ -23,6 +23,7 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "common/utils/LOG/log.h"
@@ -111,8 +112,9 @@ double time_average_get_average(time_average_t *t, uint64_t time)
 {
   remove_old(t, time);
 
-  if (t->r.size == 0)
-    return 0;
+  if (t->r.size == 0){
+    return 0.0;
+  }
 
   return (double)t->accumulated_value / t->r.size;
 }

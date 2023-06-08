@@ -1561,7 +1561,7 @@ add_library(L2
 target_link_libraries(L2 PRIVATE x2ap s1ap lte_rrc m2ap)
 target_link_libraries(L2 PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
 if(E2_AGENT)
-  target_link_libraries(L2 PUBLIC e2_agent e2_ran_func)
+  #  target_link_libraries(L2 PUBLIC e2_agent e2_ran_func)
   target_compile_definitions(L2 PRIVATE E2_AGENT)
 endif()
 
@@ -1596,7 +1596,7 @@ target_link_libraries(e1_pdcp_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
 if(E2_AGENT)
-  target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
+  #  target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
   target_compile_definitions(L2_NR PRIVATE E2_AGENT)
 endif()
 
@@ -2272,7 +2272,18 @@ add_executable(nr-softmodem
   ${OPENAIR1_DIR}/PHY/TOOLS/phy_scope_interface.c
   ${T_SOURCE}
   ${SHLIB_LOADER_SOURCES}
+  #L2_NR 
+  ${L2_NR_SRC}
+  ${MAC_NR_SRC}
+  ${GNB_APP_SRC}
   )
+
+if(E2_AGENT)
+  target_link_libraries(nr-softmodem PRIVATE e2_ran_func)
+  target_link_libraries(nr-softmodem PRIVATE e2_agent)
+  target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
+  target_compile_definitions(nr-softmodem PRIVATE MIR_FLAG)
+endif()
 
 target_link_libraries(nr-softmodem PRIVATE
   -Wl,--start-group
@@ -2292,12 +2303,11 @@ if (ENABLE_LDPC_T1)
   add_dependencies(nr-softmodem ldpc_t1)
 endif()
 
+
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(nr-softmodem PRIVATE
   asn1_lte_rrc asn1_nr_rrc asn1_s1ap asn1_ngap asn1_m2ap asn1_m3ap asn1_x2ap asn1_f1ap asn1_lpp)
-if(E2_AGENT)
-  target_compile_definitions(nr-softmodem PRIVATE E2_AGENT)
-endif()
+
 
 
 add_executable(nr-cuup

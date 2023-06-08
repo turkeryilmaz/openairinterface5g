@@ -1067,10 +1067,13 @@ const bool nr_rlc_get_statistics(
     if (rb_id >= 1 && rb_id <= 2)
       rb = ue->srb[rb_id - 1];
   } else {
-    if (rb_id >= 1 && rb_id <= 5)
+    if (rb_id >= 1 && rb_id <= 5){
       rb = ue->drb[rb_id - 1];
+      assert(rb != NULL);
+    }
   }
 
+  assert(rb != NULL);
   if (rb != NULL) {
     rb->get_stats(rb, out);
     ret = true;
