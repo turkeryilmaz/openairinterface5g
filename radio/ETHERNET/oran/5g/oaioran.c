@@ -187,13 +187,13 @@ int read_prach_data(ru_info_t *ru, int frame, int slot)
 			  if (sym_idx==0) {
 			    for (idx = 0; idx < 576/2; idx++)
 			    {
-			    	((int16_t*)dst)[idx] = ((int16_t)ntohs(src[idx]))>>4;
+			    	((int16_t*)dst)[idx] = ((int16_t)ntohs(src[idx]))>>2;
 			    }
 			  }
 			  else {
 			    for (idx = 0; idx < 576/2; idx++)
 			    {
-			    	((int16_t*)dst)[idx] += ((int16_t)ntohs(src[idx]))>>4;
+			    	((int16_t*)dst)[idx] += ((int16_t)ntohs(src[idx]))>>2;
 			    }
 			  }
 
@@ -336,8 +336,8 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                           payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
                           src1 = src2 + payload_len/2;
                           for (idx = 0; idx < payload_len/(2*sizeof(int16_t)); idx++) {
-                            ((int16_t *)dst1)[idx] = ((int16_t)ntohs(((uint16_t *)src1)[idx]))>>2;
-                            ((int16_t *)dst2)[idx] = ((int16_t)ntohs(((uint16_t *)src2)[idx]))>>2;
+                            ((int16_t *)dst1)[idx] = ((int16_t)ntohs(((uint16_t *)src1)[idx]))>>4;
+                            ((int16_t *)dst2)[idx] = ((int16_t)ntohs(((uint16_t *)src2)[idx]))>>4;
 			    //if (sym_idx==0 && idx<16) LOG_I(PHY,"%d: %d,%d\n",idx,((int16_t *)dst1)[idx],((int16_t *)dst1)[idx]);
                           }
                        } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
@@ -449,9 +449,6 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                      exit(-1);
                      printf("ptr ==NULL\n");
                 }
-
-		 LOG_I(PHY,"%d.%d ant %d sym %d : %p en %d\n",*frame,*slot,ant_id,sym_idx,pos,
-                       signal_energy_nodc(pos,4096));
               }//sym_ind
             }//ant_ind
           }//vv_inf
