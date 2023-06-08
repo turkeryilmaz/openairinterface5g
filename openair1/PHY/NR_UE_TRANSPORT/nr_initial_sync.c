@@ -109,11 +109,6 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
   NR_UE_SSB *best_ssb = NULL;
   NR_UE_SSB *current_ssb;
 
-#ifdef DEBUG_INITIAL_SYNCH
-  LOG_I(PHY,"[UE%d] Initial sync: starting PBCH detection (rx_offset %d)\n",ue->Mod_id,
-        ue->rx_offset);
-#endif
-
   uint8_t  N_L = (frame_parms->Lmax == 4)? 4:8;
   uint8_t  N_hf = (frame_parms->Lmax == 4)? 2:1;
 
@@ -196,9 +191,7 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
 }
 
-int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
-                    PHY_VARS_NR_UE *ue,
-                    int n_frames, int sa)
+nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int n_frames, int sa)
 {
 
   int32_t sync_pos, sync_pos_frame; // k_ssb, N_ssb_crb, sync_pos2,
@@ -207,7 +200,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   int frame_id;
 
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  int ret=-1;
+  nr_initial_sync_t ret = {-1, 0};
   int rx_power=0; //aarx,
   
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
@@ -308,13 +301,12 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
         ue->common_vars.freq_offset += freq_offset_sss;
       }
 
-      if (ret==0) { //we got sss channel
+      if (ret.cell_detected == 0) { // we got sss channel
         nr_gold_pbch(ue);
-        ret = nr_pbch_detection(proc, ue, 1, rxdataF);  // start pbch detection at first symbol after pss
+        ret.cell_detected = nr_pbch_detection(proc, ue, 1, rxdataF); // start pbch detection at first symbol after pss
       }
 
-      if (ret == 0) {
-
+      if (ret.cell_detected == 0) {
         // sync at symbol ue->symbol_offset
         // computing the offset wrt the beginning of the frame
         int mu = fp->numerology_index;
@@ -346,12 +338,12 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
 
         // we also need to take into account the shift by samples_per_frame in case the if is true
         if (ue->ssb_offset < sync_pos_frame){
-          ue->rx_offset = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
+          ret.rx_offset = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
           ue->init_sync_frame += 1;
         }
         else
-          ue->rx_offset = ue->ssb_offset - sync_pos_frame;
-      }   
+          ret.rx_offset = ue->ssb_offset - sync_pos_frame;
+      }
 
     /*
     int nb_prefix_samples0 = fp->nb_prefix_samples0;
@@ -370,8 +362,12 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
 
 
 #ifdef DEBUG_INITIAL_SYNCH
-      LOG_I(PHY,"TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
-            fp->Nid_cell,metric_tdd_ncp,phase_tdd_ncp,ret);
+      LOG_I(PHY,
+            "TDD Normal prefix: CellId %d metric %d, phase %d, pbch %d\n",
+            fp->Nid_cell,
+            metric_tdd_ncp,
+            phase_tdd_ncp,
+            ret.cell_detected);
 #endif
 
       }
@@ -384,7 +380,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
    }
   }
   else {
-    ret = -1;
+    ret.cell_detected = -1;
   }
 
   /* Consider this is a false detection if the offset is > 1000 Hz 
@@ -395,11 +391,11 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
 	  LOG_E(HW, "Ignore MIB with high freq offset [%d Hz] estimation \n",ue->common_vars.freq_offset);
   }*/
 
-  if (ret==0) {  // PBCH found so indicate sync to higher layers and configure frame parameters
+  if (ret.cell_detected == 0) { // PBCH found so indicate sync to higher layers and configure frame parameters
 
     //#ifdef DEBUG_INITIAL_SYNCH
 
-    LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n",ue->Mod_id, ue->rx_offset);
+    LOG_I(PHY, "[UE%d] In synch, rx_offset %d samples\n", ue->Mod_id, ret.rx_offset);
 
     //#endif
 
@@ -428,11 +424,10 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     LOG_I(PHY,"[UE%d] Initial sync : Estimated Nid_cell %d, Frame_type %d\n",ue->Mod_id,
           frame_parms->Nid_cell,frame_parms->frame_type);
 #endif
-
   }
 
   // gain control
-  if (ret!=0) { //we are not synched, so we cannot use rssi measurement (which is based on channel estimates)
+  if (ret.cell_detected != 0) { // we are not synched, so we cannot use rssi measurement (which is based on channel estimates)
     rx_power = 0;
 
     // do a measurement on the best guess of the PSS

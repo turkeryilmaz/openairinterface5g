@@ -33,15 +33,15 @@
 // The adjustment is performed once per frame based on the
 // last channel estimate of the receiver
 
-void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
-                        PHY_VARS_NR_UE *ue,
-                        module_id_t gNB_id,
-                        const int estimateSz,
-                        struct complex16 dl_ch_estimates_time[][estimateSz],
-                        uint8_t frame,
-                        uint8_t subframe,
-                        unsigned char clear,
-                        short coef)
+int nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
+                       PHY_VARS_NR_UE *ue,
+                       module_id_t gNB_id,
+                       const int estimateSz,
+                       struct complex16 dl_ch_estimates_time[][estimateSz],
+                       uint8_t frame,
+                       uint8_t subframe,
+                       unsigned char clear,
+                       short coef)
 {
 
   static int count_max_pos_ok = 0;
@@ -49,12 +49,11 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   int max_val = 0, max_pos = 0;
   const int sync_pos = 0;
   uint8_t sync_offset = 0;
+  int sampleShift = 0;
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_ADJUST_SYNCH, VCD_FUNCTION_IN);
 
   short ncoef = 32767 - coef;
-
-  LOG_D(PHY,"AbsSubframe %d: rx_offset (before) = %d\n",subframe,ue->rx_offset);
 
   // search for maximum position within the cyclic prefix
   for (int i = -frame_parms->nb_prefix_samples/2; i < frame_parms->nb_prefix_samples/2; i++) {
@@ -90,11 +89,9 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
     sync_offset = 0;
 
   if ( abs(diff) < (SYNCH_HYST+sync_offset) )
-    ue->rx_offset = 0;
-  else
-    ue->rx_offset = diff;
+    sampleShift = diff;
 
-  const int sample_shift = -(ue->rx_offset>>1);
+  const int sample_shift = -(sampleShift >> 1);
   // reset IIR filter for next offset calculation
   ue->max_pos_fil += sample_shift * 32768;
 
@@ -111,16 +108,19 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   }
 
 #ifdef DEBUG_PHY
-  LOG_I(PHY,"AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
-        subframe,
-        diff,
-        ue->rx_offset,
-        clear,
-        max_pos,
-        ue->max_pos_fil,
-        max_val,
-        sync_pos);
+  LOG_I(
+      PHY,
+      "AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
+      subframe,
+      diff,
+      sampleShift,
+      clear,
+      max_pos,
+      ue->max_pos_fil,
+      max_val,
+      sync_pos);
 #endif //DEBUG_PHY
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_ADJUST_SYNCH, VCD_FUNCTION_OUT);
+  return sampleShift;
 }

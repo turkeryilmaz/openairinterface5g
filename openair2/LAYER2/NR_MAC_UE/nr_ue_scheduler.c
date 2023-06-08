@@ -859,9 +859,6 @@ void nr_ue_aperiodic_srs_scheduling(NR_UE_MAC_INST_t *mac, long resource_trigger
     return;
   }
 
-  AssertFatal(slot_offset > DURATION_RX_TO_TX,
-              "Slot offset between DCI and aperiodic SRS (%d) needs to be higher than DURATION_RX_TO_TX (%d)\n",
-              slot_offset, DURATION_RX_TO_TX);
   int n_slots_frame = nr_slots_per_frame[current_UL_BWP->scs];
   int sched_slot = (slot + slot_offset) % n_slots_frame;
   NR_TDD_UL_DL_ConfigCommon_t *tdd_config = mac->tdd_UL_DL_ConfigurationCommon;
@@ -1412,13 +1409,6 @@ int nr_get_sf_retxBSRTimer(uint8_t sf_offset) {
 // Note: Msg3 tx in the uplink symbols of mixed slot
 int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t current_frame, int current_slot, frame_t *frame_tx, int *slot_tx, long k2)
 {
-  AssertFatal(k2 > DURATION_RX_TO_TX,
-              "Slot offset K2 (%ld) needs to be higher than DURATION_RX_TO_TX (%d). Please set min_rxtxtime at least to %d in gNB config file or gNBs.[0].min_rxtxtime=%d via command line.\n",
-              k2,
-              DURATION_RX_TO_TX,
-              DURATION_RX_TO_TX,
-              DURATION_RX_TO_TX);
-
   int delta = 0;
   NR_UE_UL_BWP_t *current_UL_BWP = &mac->current_UL_BWP;
 
@@ -1446,13 +1436,6 @@ int nr_ue_pusch_scheduler(NR_UE_MAC_INST_t *mac, uint8_t is_Msg3, frame_t curren
       default:
         AssertFatal(1 == 0, "Invalid numerology %i\n", mu);
     }
-
-    AssertFatal((k2 + delta) > DURATION_RX_TO_TX,
-                "Slot offset (%ld) for Msg3 needs to be higher than DURATION_RX_TO_TX (%d). Please set min_rxtxtime at least to %d in gNB config file or gNBs.[0].min_rxtxtime=%d via command line.\n",
-                k2,
-                DURATION_RX_TO_TX,
-                DURATION_RX_TO_TX,
-                DURATION_RX_TO_TX);
 
     *slot_tx = (current_slot + k2 + delta) % nr_slots_per_frame[mu];
     if (current_slot + k2 + delta >= nr_slots_per_frame[mu]){

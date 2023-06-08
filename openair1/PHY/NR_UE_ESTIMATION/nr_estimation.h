@@ -95,16 +95,16 @@ int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                 int rxdataFsize,
                                 c16_t rxdataF[][rxdataFsize]);
 
-void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
-                        PHY_VARS_NR_UE *ue,
-                        module_id_t gNB_id,
-			int estimateSz,
-			struct complex16 dl_ch_estimates_time [][estimateSz],
-                        uint8_t frame,
-                        uint8_t subframe,
-                        unsigned char clear,
-                        short coef);
-                      
+int nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
+                       PHY_VARS_NR_UE *ue,
+                       module_id_t gNB_id,
+                       int estimateSz,
+                       struct complex16 dl_ch_estimates_time[][estimateSz],
+                       uint8_t frame,
+                       uint8_t subframe,
+                       unsigned char clear,
+                       short coef);
+
 void nr_ue_measurements(PHY_VARS_NR_UE *ue,
                         UE_nr_rxtx_proc_t *proc,
                         NR_UE_DLSCH_t *dlsch,

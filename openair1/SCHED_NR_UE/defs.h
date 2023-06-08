@@ -100,9 +100,7 @@ void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, n
 
 void send_slot_ind(notifiedFIFO_t *nf, int slot);
 
-void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
-                           UE_nr_rxtx_proc_t *proc,
-                           nr_phy_data_t *phy_data);
+int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, nr_phy_data_t *phy_data);
 
 void pdsch_processing(PHY_VARS_NR_UE *ue,
                       UE_nr_rxtx_proc_t *proc,

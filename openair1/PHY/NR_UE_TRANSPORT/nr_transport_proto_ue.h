@@ -315,10 +315,11 @@ int dump_ue_stats(PHY_VARS_NR_UE *phy_vars_ue, UE_nr_rxtx_proc_t *proc, char* bu
   @param phy_vars_ue Pointer to UE variables
   @param mode current running mode
 */
-int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
-                    PHY_VARS_NR_UE *phy_vars_ue,
-                    int n_frames,
-                    int sa);
+typedef struct {
+  bool cell_detected;
+  int rx_offset;
+} nr_initial_sync_t;
+nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *phy_vars_ue, int n_frames, int sa);
 
 /*!
   \brief This function gets the carrier frequencies either from FP or command-line-set global variables, depending on the availability of the latter

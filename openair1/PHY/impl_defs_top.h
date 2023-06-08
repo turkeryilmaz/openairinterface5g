@@ -267,14 +267,6 @@
 #define TDD_CONFIG_NB_FRAMES                     (2)
 #define NR_MAX_SLOTS_PER_FRAME                   (160)                    /* number of slots per frame */
 
-/* FFS_NR_TODO it defines ue capability which is the number of slots     */
-/* - between reception of pdsch and tarnsmission of its acknowlegment    */
-/* - between reception of un uplink grant and its related transmission   */
-
-#define NR_UE_CAPABILITY_SLOT_RX_TO_TX (1)
-
-#define DURATION_RX_TO_TX (NR_UE_CAPABILITY_SLOT_RX_TO_TX)
-
 #define NR_MAX_ULSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 6.1 UE procedure for receiving the physical uplink shared channel */
 #define NR_MAX_DLSCH_HARQ_PROCESSES              (NR_MAX_HARQ_PROCESSES)  /* cf 38.214 5.1 UE procedure for receiving the physical downlink shared channel */
 #endif

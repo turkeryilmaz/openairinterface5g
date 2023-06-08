@@ -519,11 +519,8 @@ typedef struct {
   uint8_t               init_sync_frame;
   /// temporary offset during cell search prior to MIB decoding
   int              ssb_offset;
-  uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
-  int              rx_offset;      /// Timing offset
-  int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
-  int64_t          max_pos_fil;    /// Timing offset IIR filter
-  bool             apply_timing_offset;     /// Do time sync for current frame
+  uint16_t symbol_offset; /// offset in terms of symbols for detected ssb in sync
+  int64_t max_pos_fil; /// Timing offset IIR filter
   int              time_sync_cell;
 
   /// Timing Advance updates variables
@@ -683,6 +680,7 @@ typedef struct nr_rxtx_thread_data_s {
   notifiedFIFO_t txFifo;
   nr_phy_data_t phy_data;
   int tx_wait_for_dlsch;
+  int rx_offset;
 } nr_rxtx_thread_data_t;
 
 typedef struct LDPCDecode_ue_s {
