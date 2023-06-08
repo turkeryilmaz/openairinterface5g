@@ -1,5 +1,5 @@
 #include "ran_func_slice.h"
-#include "../../flexric/test/rnd/fill_rnd_data_slice.h"
+#include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_slice.h"
 #include <assert.h>
 #include <stdio.h>
 

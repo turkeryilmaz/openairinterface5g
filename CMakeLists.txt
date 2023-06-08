@@ -338,6 +338,30 @@ set_property(CACHE E2_AGENT PROPERTY STRINGS "ON" "OFF")
 if(E2_AGENT)
   set(E2AP_DIR ${OPENAIR2_DIR}/E2AP)
   add_subdirectory ("${E2AP_DIR}")
+  include_directories ("${E2AP_DIR}")
+  add_library(e2_ran_func
+          ${E2AP_DIR}/RAN_FUNCTION/init_ran_func.c
+          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_gtp.c
+          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_mac.c
+          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_pdcp.c
+          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_rlc.c
+          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_slice.c
+          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_tc.c
+          ${E2AP_DIR}/RAN_FUNCTION/O-RAN/ran_func_kpm.c
+          ${E2AP_DIR}/RAN_FUNCTION/O-RAN/ran_func_rc.c
+          # For testing purposes
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_mac.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_rlc.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_pdcp.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_gtp.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_slice.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_tc.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_kpm.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_rc.c
+          ${E2AP_DIR}/flexric/src/util/time_now_us.c
+          )
+  target_link_libraries(e2_ran_func PRIVATE nr_rrc asn1_nr_rrc_hdrs lte_rrc asn1_lte_rrc_hdrs)
+
 endif()
 
 ##################################################
