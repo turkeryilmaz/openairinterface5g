@@ -2,7 +2,7 @@
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/flexric/CMakeLists.txt)
   message(STATUS "E2AP submoduled not detected, therefore $git submodule init && git submodule update.")
   execute_process(COMMAND git submodule init)
-  execute_process(COMMAND git submodule update) 
+  execute_process(COMMAND git submodule update --init --recursive --remote)
 else()
   message(STATUS "E2AP submodule detected.")
 endif()
