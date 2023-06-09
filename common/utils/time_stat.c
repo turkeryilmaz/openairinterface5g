@@ -85,6 +85,8 @@ void time_average_add(time_average_t *t, uint64_t time, uint64_t value)
 {
   remove_old(t, time);
 
+  printf("Waited pkt value %ld us \n", value);
+
   if (t->r.size == t->r.maxsize) {
     t->r.maxsize *= 2;
     t->r.buffer = realloc(t->r.buffer, t->r.maxsize * sizeof(time_value_t));

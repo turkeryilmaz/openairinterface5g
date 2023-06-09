@@ -91,6 +91,7 @@ int get_single_ue_rnti(void)
     return ue->rnti;
   }
 
+/*
   //static_assert(0!=0, "Compiled");
 
   static
@@ -115,7 +116,7 @@ int get_single_ue_rnti(void)
 
    // rrc_gNB_trigger_new_bearer(rnti);
   }
-
+*/
 #endif
 
 
@@ -167,15 +168,22 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   if(hdr->protocol == IPPROTO_TCP){
     //printf("TCP packet detected \n");
+    struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
+    uint16_t const src_port = ntohs(tcp->source);
+    uint16_t const dst_port = ntohs(tcp->dest);
+    //printf("TCP pkt src_port %d dst_port %d \n", src_port, dst_port);
   } else if(hdr->protocol == IPPROTO_UDP){
     //printf("UDP packet detected \n");
+      struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
+      uint16_t const src_port = ntohs(udp->source);
+      uint16_t const dst_port = ntohs(udp->dest);
+     // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
   } else if(hdr->protocol == IPPROTO_ICMP){
     //printf("Ping packet detected \n");
     if (entity->is_gnb && entity->has_second_bearer) {
       sdap_drb_id += 1; //cnt%2; 
     }
     printf("ping to bearer %ld\n", sdap_drb_id);
-    //cnt++;
   }
 
 #endif

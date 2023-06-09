@@ -49,6 +49,8 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(void)
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
 
   int const rnti = get_single_ue_rnti();
+  if(rnti == -1)
+    printf("Unable to find RNTI, no stats filled\n");
 
   int const srb_flag = 0;
   int const rb_id = 1;
@@ -61,7 +63,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(void)
 //  assert(rc == false && "At least for one bearer");
 
   // Measurement Data
-  uint32_t num_drbs = 1 + rc;
+  uint32_t num_drbs = 1;
   msg_frm_1.meas_data_lst_len = num_drbs;  // (rand() % 65535) + 1;
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );

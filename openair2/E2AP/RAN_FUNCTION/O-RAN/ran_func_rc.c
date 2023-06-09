@@ -7,6 +7,11 @@
 #include <pthread.h>
 #include <unistd.h>
 
+// Forward declaration forget sins
+int get_single_ue_rnti(void);
+void rrc_gNB_trigger_new_bearer(int rnti);
+void rrc_gNB_trigger_release_bearer(int rnti);
+
 void read_rc_sm(void* data)
 {
   assert(data != NULL);
@@ -25,18 +30,35 @@ void read_rc_setup_sm(void* data)
 sm_ag_if_ans_t write_ctrl_rc_sm(void const* data)
 {
   assert(data != NULL);
-//  assert(data->type == RAN_CONTROL_CTRL_V1_03 );
+  //  assert(data->type == RAN_CONTROL_CTRL_V1_03 );
 
   rc_ctrl_req_data_t const* ctrl = (rc_ctrl_req_data_t const*)data;
   if(ctrl->hdr.format == FORMAT_1_E2SM_RC_CTRL_HDR){
     if(ctrl->hdr.frmt_1.ric_style_type == 1 && ctrl->hdr.frmt_1.ctrl_act_id == 2){
-      printf("QoS flow mapping configuration \n");
+
+      //mir
+      int const rnti = get_single_ue_rnti();
+    
+      printf("QoS flow mapping configuration with rnti %d \n", rnti);
       e2sm_rc_ctrl_msg_frmt_1_t const* frmt_1 = &ctrl->msg.frmt_1;
+      printf("int_ran %ld \n", frmt_1->ran_param[0].ran_param_val.flag_true->int_ran); 
+
       for(size_t i = 0; i < frmt_1->sz_ran_param; ++i){
         seq_ran_param_t const* rp = frmt_1->ran_param;
         if(rp[i].ran_param_id == 1){
           assert(rp[i].ran_param_val.type == ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE );
           printf("DRB ID %ld \n", rp[i].ran_param_val.flag_true->int_ran);
+          if(rp[i].ran_param_val.flag_true->int_ran == 5){
+            rrc_gNB_trigger_new_bearer(rnti);
+            printf("Creating a new bearer\n");
+          } else if(rp[i].ran_param_val.flag_true->int_ran == 4){
+            rrc_gNB_trigger_release_bearer(rnti);
+            printf("Releasing bearer\n");
+          } else{
+            assert(0!=0 && "Unknown int_ran");
+          }
+
+
         } else if(rp[i].ran_param_id == 2){
           assert(rp[i].ran_param_val.type == LIST_RAN_PARAMETER_VAL_TYPE);
           printf("List of QoS Flows to be modified \n");
