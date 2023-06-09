@@ -1234,12 +1234,12 @@ int nr_acknack_scheduling(gNB_MAC_INST *mac,
   int fb_size = get_pdsch_to_harq_feedback(pucch_Config, dci_format, pdsch_to_harq_feedback);
 
   for (int f = 0; f < fb_size; f++) {
-    // can't schedule ACKNACK before minimum feedback time
-    if(pdsch_to_harq_feedback[f] < minfbtime)
+   // can't schedule ACKNACK before minimum feedback time
+   if (pdsch_to_harq_feedback[f] < minfbtime)
       continue;
-    const int pucch_slot = (slot + pdsch_to_harq_feedback[f]) % n_slots_frame;
-    // check if the slot is UL
-    if(pucch_slot%nr_slots_period < first_ul_slot_period)
+   const int pucch_slot = (slot + pdsch_to_harq_feedback[f]) % n_slots_frame;
+   // check if the slot is UL
+   if (pucch_slot % nr_slots_period < first_ul_slot_period)
       continue;
     const int pucch_frame = (frame + ((slot + pdsch_to_harq_feedback[f]) / n_slots_frame)) & 1023;
     // we store PUCCH resources according to slot, TDD configuration and size of the vector containing PUCCH structures

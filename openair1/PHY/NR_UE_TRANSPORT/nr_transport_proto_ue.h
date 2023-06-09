@@ -286,7 +286,7 @@ int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uin
   \returns number of tx antennas or -1 if error
 */
 
-bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
+int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 const int estimateSz,
                 struct complex16 dl_ch_estimates[][estimateSz],
@@ -312,7 +312,7 @@ int dump_ue_stats(PHY_VARS_NR_UE *phy_vars_ue, UE_nr_rxtx_proc_t *proc, char* bu
   @param mode current running mode
 */
 typedef struct {
-  bool cell_detected;
+  bool cell_notdetected;
   int rx_offset;
 } nr_initial_sync_t;
 nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *phy_vars_ue, int n_frames, int sa);

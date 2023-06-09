@@ -41,7 +41,9 @@
 #include <stdatomic.h>
 #else
 #include <atomic>
+#ifndef _Atomic
 #define _Atomic(X) std::atomic<X>
+#endif
 #endif
 
 typedef enum {

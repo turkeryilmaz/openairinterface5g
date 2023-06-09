@@ -355,7 +355,7 @@ unsigned char sign(int8_t x) {
 const uint8_t pbch_deinterleaving_pattern[32] = {28, 0, 31, 30, 7,  29, 25, 27, 5,  8,  24, 9,  10, 11, 12, 13,
                                                  1,  4, 3,  14, 15, 16, 17, 2,  26, 18, 19, 20, 21, 22, 6,  23};
 
-bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
+int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 int estimateSz,
                 struct complex16 dl_ch_estimates[][estimateSz],
@@ -446,7 +446,7 @@ bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
           nr_pbch_alamouti(frame_parms,rxdataF_comp,symbol);
         } else if (mimo_mode != SISO) {
           LOG_I(PHY,"[PBCH][RX] Unsupported MIMO mode\n");
-          return false;
+          return(-1);
         }
     */
     int nb=symbol==2 ? 144 : 360;
@@ -489,8 +489,7 @@ bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
     nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, NULL, NULL, number_pdus, proc, NULL, NULL);
     if (ue->if_inst && ue->if_inst->dl_indication)
       ue->if_inst->dl_indication(&dl_indication);
-    // seems  polar_decoder_int16 returns 0 when succeed
-    return (!decoderState);
+    return(decoderState);
   }
   //  printf("polar decoder output 0x%08x\n",pbch_a_prime);
   // Decoder reversal
@@ -541,7 +540,7 @@ bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
   for (int i=0; i<4; i++)
     frame_number_4lsb |= ((result->xtra_byte>>i)&1)<<(3-i);
 
-  proc->frame_number_4lsb = frame_number_4lsb;
+  proc->decoded_frame_rx = frame_number_4lsb;
 #ifdef DEBUG_PBCH
   printf("xtra_byte %x payload %x\n", xtra_byte, payload);
 
@@ -558,5 +557,5 @@ bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
   if (ue->if_inst && ue->if_inst->dl_indication)
     ue->if_inst->dl_indication(&dl_indication);
 
-  return true;
+  return 0;
 }

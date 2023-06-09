@@ -43,9 +43,6 @@ int nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
                        unsigned char clear,
                        short coef)
 {
-
-  static int count_max_pos_ok = 0;
-  static int first_time = 1;
   int max_val = 0, max_pos = 0;
   const int sync_pos = 0;
   uint8_t sync_offset = 0;
@@ -88,38 +85,24 @@ int nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   else
     sync_offset = 0;
 
-  if ( abs(diff) < (SYNCH_HYST+sync_offset) )
+  if (abs(diff) > (NR_SYNCH_HYST + sync_offset))
     sampleShift = diff;
 
   const int sample_shift = -(sampleShift >> 1);
   // reset IIR filter for next offset calculation
   ue->max_pos_fil += sample_shift * 32768;
 
-  if(abs(diff)<5)
-    count_max_pos_ok ++;
-  else
-    count_max_pos_ok = 0;
-      
-  //printf("adjust sync count_max_pos_ok = %d\n",count_max_pos_ok);
-
-  if(count_max_pos_ok > 10 && first_time == 1) {
-    first_time = 0;
-    ue->time_sync_cell = 1;
-  }
-
-#ifdef DEBUG_PHY
-  LOG_I(
-      PHY,
-      "AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
-      subframe,
-      diff,
-      sampleShift,
-      clear,
-      max_pos,
-      ue->max_pos_fil,
-      max_val,
-      sync_pos);
-#endif //DEBUG_PHY
+  LOG_D(PHY,
+        "AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %ld, max_val = %d, sync_pos "
+        "%d\n",
+        subframe,
+        diff,
+        sampleShift,
+        clear,
+        max_pos,
+        ue->max_pos_fil,
+        max_val,
+        sync_pos);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_ADJUST_SYNCH, VCD_FUNCTION_OUT);
   return sampleShift;

@@ -521,7 +521,6 @@ typedef struct {
   int              ssb_offset;
   uint16_t symbol_offset; /// offset in terms of symbols for detected ssb in sync
   int64_t max_pos_fil; /// Timing offset IIR filter
-  int              time_sync_cell;
 
   /// Timing Advance updates variables
   /// Timing advance update computed from the TA command signalled from gNB
@@ -642,7 +641,7 @@ typedef struct {
   void *phy_sim_pdsch_dl_ch_estimates_ext;
   uint8_t *phy_sim_dlsch_b;
   notifiedFIFO_t phy_config_ind;
-  notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
+  notifiedFIFO_t tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
 } PHY_VARS_NR_UE;
 
 typedef struct {

@@ -81,7 +81,13 @@ typedef enum { SEARCH_EXIST=0,
                SEARCH_EXIST_RA
              } find_type_t;
 
-typedef enum { SCH_IDLE = 0, ACTIVE, IN_PROC, CBA_ACTIVE, DISABLED } SCH_status_t;
+typedef enum {
+  SCH_IDLE=0,
+  ACTIVE,
+  CBA_ACTIVE,
+  DISABLED
+} SCH_status_t;
+
 
 typedef enum {
   CEmodeA = 0,

@@ -30,7 +30,7 @@
  */
 
 /*!\brief Timing drift hysterisis in samples*/
-#define SYNCH_HYST 2
+#define NR_SYNCH_HYST 1
 
 /* A function to perform the channel estimation of DL PRS signal */
 int nr_prs_channel_estimation(uint8_t gNB_id,

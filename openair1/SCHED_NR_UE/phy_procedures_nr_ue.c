@@ -359,12 +359,13 @@ void nr_ue_measurement_procedures(uint16_t l,
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_MEASUREMENT_PROCEDURES, VCD_FUNCTION_OUT);
 }
 
-static bool nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
+static int nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
                                   UE_nr_rxtx_proc_t *proc,
                                   int estimateSz,
                                   struct complex16 dl_ch_estimates[][estimateSz],
-                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
-{
+                                 c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]) {
+
+  int ret = 0;
   DevAssert(ue);
 
   int frame_rx = proc->frame_rx;
@@ -375,7 +376,7 @@ static bool nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
 
   LOG_D(PHY,"[UE  %d] Frame %d Slot %d, Trying PBCH (NidCell %d, gNB_id %d)\n",ue->Mod_id,frame_rx,nr_slot_rx,ue->frame_parms.Nid_cell,gNB_id);
   fapiPbch_t result;
-  int ret = nr_rx_pbch(ue,
+  ret = nr_rx_pbch(ue,
                        proc,
                        estimateSz,
                        dl_ch_estimates,
@@ -385,7 +386,8 @@ static bool nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
                        &result,
                        rxdataF);
 
-  if (ret) {
+  if (ret==0) {
+
 #ifdef DEBUG_PHY_PROC
     uint16_t frame_tx;
     LOG_D(PHY,"[UE %d] frame %d, nr_slot_rx %d, Received PBCH (MIB): frame_tx %d. N_RB_DL %d\n",
@@ -400,7 +402,7 @@ static bool nr_ue_pbch_procedures(PHY_VARS_NR_UE *ue,
     LOG_E(PHY, "[UE %d] frame %d, nr_slot_rx %d, Error decoding PBCH!\n", ue->Mod_id, frame_rx, nr_slot_rx);
   }
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_PBCH_PROCEDURES, VCD_FUNCTION_OUT);
-  return ret;
+ return ret;
 }
 
 unsigned int nr_get_tx_amp(int power_dBm, int power_max_dBm, int N_RB_UL, int nb_rb)
@@ -686,7 +688,7 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   if (is_cw0_active != ACTIVE && is_cw1_active != ACTIVE) {
     // don't wait anymore
     const int ack_nack_slot = (proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) % ue->frame_parms.slots_per_frame;
-    send_slot_ind(ue->tx_resume_ind_fifo[ack_nack_slot], proc->nr_slot_rx);
+    send_slot_ind(&ue->tx_resume_ind_fifo[ack_nack_slot], proc->nr_slot_rx);
     return false;
   }
 
@@ -822,7 +824,8 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
 
   // DLSCH decoding finished! don't wait anymore
   const int ack_nack_slot = (proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) % ue->frame_parms.slots_per_frame;
-  send_slot_ind(ue->tx_resume_ind_fifo[ack_nack_slot], proc->nr_slot_rx);
+  if (dlsch[0].rnti_type != _SI_RNTI_ && dlsch[0].rnti_type != _RA_RNTI_)
+    send_slot_ind(&ue->tx_resume_ind_fifo[ack_nack_slot], proc->nr_slot_rx);
 
   if (ue->phy_sim_dlsch_b)
     memcpy(ue->phy_sim_dlsch_b, p_b, dlsch_bytes);
@@ -903,7 +906,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, nr_phy_da
             LOG_D(PHY," ------  Decode MIB: frame.slot %d.%d ------  \n", frame_rx%1024, nr_slot_rx);
             const int pbchSuccess = nr_ue_pbch_procedures(ue, proc, estimateSz, dl_ch_estimates, rxdataF);
 
-            if (ue->no_timing_correction == 0 && pbchSuccess) {
+            if (ue->no_timing_correction==0 && pbchSuccess == 0) {
               LOG_D(PHY,"start adjust sync slot = %d no timing %d\n", nr_slot_rx, ue->no_timing_correction);
               sampleShift =
                   nr_adjust_synch_ue(fp, ue, gNB_id, fp->ofdm_symbol_size, dl_ch_estimates_time, frame_rx, nr_slot_rx, 0, 16384);
@@ -1074,7 +1077,9 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
       nr_ue_dlsch_procedures(ue, proc, dlsch, llr);
     else
       // don't wait anymore
-      send_slot_ind(ue->tx_resume_ind_fifo[(proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) % ue->frame_parms.slots_per_frame], proc->nr_slot_rx);
+      send_slot_ind(
+          &ue->tx_resume_ind_fifo[(proc->nr_slot_rx + dlsch[0].dlsch_config.k1_feedback) % ue->frame_parms.slots_per_frame],
+          proc->nr_slot_rx);
 
     stop_meas(&ue->dlsch_procedures_stat);
     if (cpumeas(CPUMEAS_GETSTATE)) {
@@ -1211,4 +1216,5 @@ void nr_ue_prach_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc)
   }
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_UE_TX_PRACH, VCD_FUNCTION_OUT);
+
 }

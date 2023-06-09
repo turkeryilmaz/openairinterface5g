@@ -770,7 +770,9 @@ STATICFORXSCOPE void gNBinitScope(scopeParms_t *p)
 }
 static void ueWaterFall  (scopeGraphData_t **data, OAIgraph_t *graph, PHY_VARS_NR_UE *phy_vars_ue, int eNB_id, int UE_id) {
   // Received signal in time domain of receive antenna 0
-  genericWaterFall(graph,
+  if (phy_vars_ue->common_vars.rxdata[0])
+    // General race condition in scope
+    genericWaterFall(graph,
                    (scopeSample_t *) phy_vars_ue->common_vars.rxdata[0],
                    phy_vars_ue->frame_parms.samples_per_frame,
                    phy_vars_ue->frame_parms.slots_per_frame,
