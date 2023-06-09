@@ -355,15 +355,15 @@ unsigned char sign(int8_t x) {
 const uint8_t pbch_deinterleaving_pattern[32] = {28, 0, 31, 30, 7,  29, 25, 27, 5,  8,  24, 9,  10, 11, 12, 13,
                                                  1,  4, 3,  14, 15, 16, 17, 2,  26, 18, 19, 20, 21, 22, 6,  23};
 
-int nr_rx_pbch(PHY_VARS_NR_UE *ue,
-               UE_nr_rxtx_proc_t *proc,
-               int estimateSz,
-               struct complex16 dl_ch_estimates [][estimateSz],
-               NR_DL_FRAME_PARMS *frame_parms,
-               uint8_t i_ssb,
-               MIMO_mode_t mimo_mode,
-               fapiPbch_t *result,
-               c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+bool nr_rx_pbch(PHY_VARS_NR_UE *ue,
+                UE_nr_rxtx_proc_t *proc,
+                int estimateSz,
+                struct complex16 dl_ch_estimates[][estimateSz],
+                NR_DL_FRAME_PARMS *frame_parms,
+                uint8_t i_ssb,
+                MIMO_mode_t mimo_mode,
+                fapiPbch_t *result,
+                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   int max_h=0;
   int symbol;
@@ -446,7 +446,7 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
           nr_pbch_alamouti(frame_parms,rxdataF_comp,symbol);
         } else if (mimo_mode != SISO) {
           LOG_I(PHY,"[PBCH][RX] Unsupported MIMO mode\n");
-          return(-1);
+          return false;
         }
     */
     int nb=symbol==2 ? 144 : 360;
@@ -489,7 +489,8 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
     nr_fill_rx_indication(&rx_ind, FAPI_NR_RX_PDU_TYPE_SSB, ue, NULL, NULL, number_pdus, proc, NULL, NULL);
     if (ue->if_inst && ue->if_inst->dl_indication)
       ue->if_inst->dl_indication(&dl_indication);
-    return(decoderState);
+    // seems  polar_decoder_int16 returns 0 when succeed
+    return (!decoderState);
   }
   //  printf("polar decoder output 0x%08x\n",pbch_a_prime);
   // Decoder reversal
@@ -557,5 +558,5 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
   if (ue->if_inst && ue->if_inst->dl_indication)
     ue->if_inst->dl_indication(&dl_indication);
 
-  return 0;
+  return true;
 }

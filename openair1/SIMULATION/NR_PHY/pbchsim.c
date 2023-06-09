@@ -817,23 +817,25 @@ int main(int argc, char **argv)
                          &result,
                          rxdataF);
 
-	if (ret==0) {
-	  //UE->rx_ind.rx_indication_body->mib_pdu.ssb_index;  //not yet detected automatically
-	  //UE->rx_ind.rx_indication_body->mib_pdu.ssb_length; //Lmax, not yet detected automatically
-	  uint8_t gNB_xtra_byte=0;
-	  for (int i=0; i<8; i++)
-	    gNB_xtra_byte |= ((gNB->pbch.pbch_a>>(31-i))&1)<<(7-i);
- 
-	  payload_ret = (result.xtra_byte == gNB_xtra_byte);
-	  for (i=0;i<3;i++){
-	    payload_ret += (result.decoded_output[i] == ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload>>(8*i)) & 0xff));
-	  } 
-	  //printf("ret %d\n", payload_ret);
-	  if (payload_ret!=4) 
-	    n_errors_payload++;
-	}
+        if (ret) {
+          // UE->rx_ind.rx_indication_body->mib_pdu.ssb_index;  //not yet detected automatically
+          // UE->rx_ind.rx_indication_body->mib_pdu.ssb_length; //Lmax, not yet detected automatically
+          uint8_t gNB_xtra_byte = 0;
+          for (int i = 0; i < 8; i++)
+            gNB_xtra_byte |= ((gNB->pbch.pbch_a >> (31 - i)) & 1) << (7 - i);
 
-	if (ret!=0) n_errors++;
+          payload_ret = (result.xtra_byte == gNB_xtra_byte);
+          for (i = 0; i < 3; i++) {
+            payload_ret +=
+                (result.decoded_output[i] == ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * i)) & 0xff));
+          }
+          // printf("ret %d\n", payload_ret);
+          if (payload_ret != 4)
+            n_errors_payload++;
+        }
+
+        if (!ret)
+          n_errors++;
       }
     } //noise trials
     printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR,n_trials,n_errors,n_errors_payload);
