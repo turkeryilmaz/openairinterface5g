@@ -27,6 +27,18 @@ from typing import Optional, List
 from sl_check_log import LogChecker
 
 HOME_DIR = os.path.expanduser( '~' )
+
+DEFAULT_RFSIM_CMD = 'sudo -E RFSIMULATOR=127.0.0.1 \
+               /local/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
+               --rfsim --sl-mode 2 --rfsimulator.serverport 4048'
+
+DEFAULT_USRP_CMD = 'sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
+$HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
+--sl-mode 2 -r 50 --numerology 1 --band 38 -C 2600000000 --ue-rxgain 90 \
+--usrp-args "type=b200,serial=3150361" \
+--log_config.global_log_options time,nocolor \
+> ~/rx.log 2>&1'
+
 # ----------------------------------------------------------------------------
 # Command line argument parsing
 
@@ -34,11 +46,11 @@ parser = argparse.ArgumentParser(description="""
 Automated tests for 5G NR Sidelink Rx simulations
 """)
 
-parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=30, help="""
+parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=20, help="""
 How long to run the test before stopping to examine the logs
 """)
 
-parser.add_argument('--cmd', type=str, default='', help="""
+parser.add_argument('--cmd', type=str, default=DEFAULT_USRP_CMD, help="""
 Commands
 """)
 
@@ -65,6 +77,10 @@ directory from a previous run of the test
 
 parser.add_argument('--debug', action='store_true', help="""
 Enable debug logging (for this script only)
+""")
+
+parser.add_argument('--sci2', action='store_true', help="""
+Enable SCI2 log parsing (this will grep the logs for the SCI2 payload)
 """)
 
 OPTS = parser.parse_args()
@@ -205,14 +221,14 @@ def main(argv) -> int:
         passed = test_agent.run(OPTS.cmd)
 
     # Examine the logs to determine if the test passed
-    if not log_agent.analyze_nearby_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2):
+    if not log_agent.analyze_nearby_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2, sci2=OPTS.sci2):
         passed = False
 
     if not passed:
-        LOGGER.critical('FAILED')
+        LOGGER.critical("FAILED - Didn't get your text, sorry. Please try again!")
         return 1
 
-    LOGGER.info('PASSED')
+    LOGGER.info("PASSED - I got your text! Thanks!")
     return 0
 
 sys.exit(main(sys.argv))

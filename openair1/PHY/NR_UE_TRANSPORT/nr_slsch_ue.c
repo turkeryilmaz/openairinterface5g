@@ -246,16 +246,24 @@ void nr_ue_set_slsch(unsigned char harq_pid,
   harq->first_tx = 1;
 
   harq->status = ACTIVE;
-  srand(time(NULL));
   unsigned char *test_input = harq->a;
   uint64_t *sci_input = harq->a_sci2;
-  for (int i = 0; i < TBS / 8; i++)
-    test_input[i] = (unsigned char) (i+3);//rand();
-  test_input[0] = (unsigned char) (slot);
-  test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
-  test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
-  test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
-  LOG_D(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
+
+  bool payload_type_string = true;
+  if (payload_type_string) {
+    for (int i = 0; i < 32; i++) {
+      test_input[i] = get_softmodem_params()->sl_user_msg[i];
+    }
+  } else {
+    srand(time(NULL));
+    for (int i = 0; i < TBS / 8; i++)
+      test_input[i] = (unsigned char) (i+3);//rand();
+    test_input[0] = (unsigned char) (slot);
+    test_input[1] = (unsigned char) (frame & 0xFF); // 8 bits LSB
+    test_input[2] = (unsigned char) ((frame >> 8) & 0x3); //
+    test_input[3] = (unsigned char) ((frame & 0x111) << 5) + (unsigned char) (slot) + rand() % 256;
+    LOG_D(NR_PHY, "SLSCH_TX will send %u\n", test_input[3]);
+  }
   uint64_t u = pow(2,SCI2_LEN_SIZE) - 1;
   *sci_input = u;//rand() % (u - 0 + 1);
 }
@@ -716,6 +724,8 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                               dmrs_pos,
                               nb_rb);
   }
+
+  nr_ue_sl_pssch_rsrp_measurements(rxUE, harq_pid, 0, proc);
 
   //----------------------------------------------------------
   //--------------------- RBs extraction ---------------------

@@ -292,6 +292,55 @@ void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
         __FUNCTION__, ue->Mod_id, ssb_index, ue->measurements.ssb_rsrp_dBm[ssb_index], rsrp);
 }
 
+// This function implements:
+// - Sidelink SCH reference signal received power (SCH-RSRP)
+// Measurement units:
+// - RSRP:    W (dBW)
+// - RX Gain  dB
+void nr_ue_sl_pssch_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                      unsigned char harq_pid,
+                                      int adj_ue_index,
+                                      UE_nr_rxtx_proc_t *proc) {
+  uint32_t rsrp = 0;
+  int nb_re = 0;
+  NR_UE_DLSCH_t *slsch_ue_rx = ue->slsch_rx[0][0][0];
+  NR_DL_UE_HARQ_t *slsch_ue_rx_harq = slsch_ue_rx->harq_processes[harq_pid];
+  uint16_t start_sym      = slsch_ue_rx_harq->start_symbol;
+  uint8_t nb_symb_sch     = slsch_ue_rx_harq->nb_symbols;
+  uint16_t dmrs_pos       = slsch_ue_rx_harq->dlDmrsSymbPos;
+  uint16_t nb_rb          = ue->slsch_rx[0][0][0]->harq_processes[harq_pid]->nb_rb;
+
+  uint64_t rx_offset = 0;
+  if (get_softmodem_params()->sl_mode == 2) {
+    rx_offset = (proc->nr_slot_rx & 3) * ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size;
+  }
+
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+    for (int i = start_sym ; i < (start_sym + nb_symb_sch) ; i++) {
+      if (dmrs_pos & (1 << i)){
+        int16_t *rxF_pssch = (int16_t *)&ue->common_vars.common_vars_rx_data_per_thread[proc->thread_id].rxdataF[aarx][(i * ue->frame_parms.ofdm_symbol_size) + rx_offset];
+
+        for (int k = 0; k < nb_rb * NR_NB_SC_PER_RB; k += 4) {
+  #ifdef DEBUG_MEAS_UE
+        LOG_I(NR_PHY, "In %s rxF_pssch %d %d\n", __FUNCTION__, rxF_pssch[k * 2], rxF_pssch[k * 2 + 1]);
+  #endif
+          rsrp += (((int32_t)rxF_pssch[k * 2] * rxF_pssch[k * 2]) + ((int32_t)rxF_pssch[k * 2 + 1] * rxF_pssch[k * 2 + 1]));
+          nb_re++;
+        }
+      }
+    }
+  }
+
+  rsrp /= nb_re;
+  ue->measurements.rsrp_dBm[adj_ue_index] = 10 * log10(rsrp) +
+                                             30 - 10 * log10(pow(2, 30)) -
+                                             ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
+                                             dB_fixed(ue->frame_parms.ofdm_symbol_size);
+
+  LOG_I(NR_PHY, "In %s: [UE %d] adj_ue_index %d PSSCH-RSRP: %d dBm/RE (%d)\n",
+        __FUNCTION__, ue->Mod_id, adj_ue_index, ue->measurements.rsrp_dBm[adj_ue_index], rsrp);
+}
+
 // This function computes the received noise power
 // Measurement units:
 // - psd_awgn (AWGN power spectral density):     dBm/Hz

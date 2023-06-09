@@ -161,6 +161,8 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
 
 void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx);
 
+void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot);
+
 int phy_procedures_slot_parallelization_nrUE_RX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint8_t eNB_id, uint8_t abstraction_flag, uint8_t do_pdcch_flag, relaying_type_t r_type);
 
 void processSlotTX(void *arg);

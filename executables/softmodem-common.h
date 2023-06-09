@@ -108,6 +108,7 @@ extern "C"
 #define CONFIG_HLP_SYNC_REF      "Sync Reference in Sidelink\n"
 #define CONFIG_HLP_NID1          "Set NID1 value in Sidelink\n"
 #define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
+#define CONFIG_HLP_MSG           "Set SyncRef message in Sidelink\n"
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters common to eNodeB and UE                                                          */
@@ -143,6 +144,7 @@ extern "C"
 #define SYNC_REF            softmodem_params.sync_ref
 #define NID1                softmodem_params.nid1
 #define NID2                softmodem_params.nid2
+#define SL_USER_MSG         softmodem_params.sl_user_msg
 
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
 
@@ -189,6 +191,7 @@ extern int usrp_tx_thread;
     {"sync-ref",             CONFIG_HLP_SYNC_REF,     PARAMFLAG_BOOL, iptr:&SYNC_REF,                     defintval:0,           TYPE_INT,    0},                     \
     {"nid1",                 CONFIG_HLP_NID1,         0,              iptr:&NID1,                         defintval:10,          TYPE_INT,    0},                     \
     {"nid2",                 CONFIG_HLP_NID2,         0,              iptr:&NID2,                         defintval:1,           TYPE_INT,    0},                     \
+    {"message",              CONFIG_HLP_MSG,          0,              strptr:&SL_USER_MSG,                defstrval:"EpiScience",TYPE_STRING, 0},                     \
   }
 
 #define CONFIG_HLP_NSA           "Enable NSA mode \n"
@@ -290,6 +293,7 @@ typedef struct {
   int            sync_ref;
   int            nid1;
   int            nid2;
+  char           *sl_user_msg;
 } softmodem_params_t;
 
 extern uint64_t get_softmodem_optmask(void);
