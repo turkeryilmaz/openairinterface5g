@@ -387,6 +387,7 @@ typedef struct harq_error_s {
 typedef struct ss_system_ind_s
 {
     bool           bitmask; //Flag for presence of optional parameter repetitionsPerPreambleAttempt
+    uint16_t       hsfn;
     frame_t        sfn;
     sub_frame_t    sf;
     int            physCellId;

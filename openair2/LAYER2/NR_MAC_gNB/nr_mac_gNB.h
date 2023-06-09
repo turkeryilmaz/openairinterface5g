@@ -101,10 +101,6 @@
 
 extern const uint8_t nr_rv_round_map[4];
 
-#define MIN_NUM_PRBS_TO_SCHEDULE  5
-
-extern const uint8_t nr_rv_round_map[4];
-
 /*! \brief NR_list_t is a "list" (of users, HARQ processes, slices, ...).
  * Especially useful in the scheduler and to keep "classes" of users. */
 typedef struct {
@@ -759,10 +755,6 @@ typedef struct gNB_MAC_INST_s {
   nfapi_nr_ul_tti_request_t        *UL_tti_req_ahead[NFAPI_CC_MAX];
   int UL_tti_req_ahead_size;
   int vrb_map_UL_size;
-  /// NFAPI HI/DCI0 Config Request Structure
-  nfapi_nr_ul_dci_request_t         UL_dci_req[NFAPI_CC_MAX];
-  /// NFAPI DL PDU structure
-  nfapi_nr_tx_data_request_t        TX_req[NFAPI_CC_MAX];
 
   NR_UEs_t UE_info;
 
@@ -824,6 +816,9 @@ typedef struct gNB_MAC_INST_s {
   uint8_t min_grant_prb;
   uint8_t min_grant_mcs;
   bool identity_pm;
+  uint8_t grant_prb;
+  uint8_t grant_mcs;
+  uint8_t grant_rbStart;
   nr_mac_rrc_ul_if_t mac_rrc;
 
   int16_t frame;

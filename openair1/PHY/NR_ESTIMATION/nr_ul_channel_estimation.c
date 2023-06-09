@@ -290,16 +290,6 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
           noise_amp2 += c16amp2(c16sub(ul_ls_est[k], ul_ch[k]));
           noise_amp2 += c16amp2(c16sub(ul_ls_est[k + 1], ul_ch[k + 1]));
 
-      // Revert delay
-      pilot_cnt = 0;
-      ul_ch = &ul_ch_estimates[p * gNB->frame_parms.nb_antennas_rx + aarx][ch_offset];
-      int inv_delay_idx = get_delay_idx(-delay);
-      c16_t *ul_inv_delay_table = gNB->frame_parms.ul_delay_table[inv_delay_idx];
-      for (int n = 0; n < 3 * nb_rb_pusch; n++) {
-        for (int k_line = 0; k_line <= 1; k_line++) {
-          int k = pilot_cnt << 1;
-          ul_ch[k] = c16mulShift(ul_ch[k], ul_inv_delay_table[k], 8);
-          ul_ch[k + 1] = c16mulShift(ul_ch[k + 1], ul_inv_delay_table[k + 1], 8);
 #ifdef DEBUG_PUSCH
           re_offset = (k0 + (n << 2) + (k_line << 1)) % symbolSize;
           c16_t *rxF = &rxdataF[soffset + re_offset];

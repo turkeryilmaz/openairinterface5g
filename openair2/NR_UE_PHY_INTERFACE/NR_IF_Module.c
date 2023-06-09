@@ -67,6 +67,7 @@ queue_t nr_dl_tti_req_queue;
 queue_t nr_tx_req_queue;
 queue_t nr_ul_dci_req_queue;
 queue_t nr_ul_tti_req_queue;
+pthread_mutex_t mac_IF_mutex;
 
 void nrue_init_standalone_socket(int tx_port, int rx_port)
 {
@@ -811,7 +812,7 @@ void check_and_process_dci(nfapi_nr_dl_tti_request_t *dl_tti_request,
                           mac->scc_SIB->tdd_UL_DL_ConfigurationCommon,
                           ul_info.slot_tx,
                           mac->frame_type) && mac->ra.ra_state != RA_SUCCEEDED) {
-            nr_ue_scheduler(NULL, &ul_info);
+            nr_ue_ul_scheduler(&ul_info);
             nr_ue_prach_scheduler(ul_info.module_id, ul_info.frame_tx, ul_info.slot_tx);
         }
     }
@@ -1167,10 +1168,10 @@ int handle_dci(module_id_t module_id, int cc_id, unsigned int gNB_index, frame_t
 
 }
 
-void  handle_ssb_meas(NR_UE_MAC_INST_t *mac, uint8_t ssb_index, int16_t rsrp_dbm)
+void handle_ssb_meas(NR_UE_MAC_INST_t *mac, uint8_t ssb_index, int16_t rsrp_dbm)
 {
-  mac->phy_measurements.ssb_index = ssb_index;
-  mac->phy_measurements.ssb_rsrp_dBm = rsrp_dbm;
+  mac->ssb_measurements.ssb_index = ssb_index;
+  mac->ssb_measurements.ssb_rsrp_dBm = rsrp_dbm;
 }
 
 // L2 Abstraction Layer
@@ -1197,7 +1198,7 @@ int8_t handle_csirs_measurements(module_id_t module_id, frame_t frame, int slot,
   return nr_ue_process_csirs_measurements(module_id, frame, slot, csirs_measurements);
 }
 
-int8_t handle_pch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id){
+int8_t handle_pch(nr_downlink_indication_t *dl_info, int pdu_id){
   /* L1 assigns harq_pid, but in emulated L1 mode we need to assign
      the harq_pid based on the saved global g_harq_pid. Because we are
      emulating L1, no antenna measurements are conducted to calculate
@@ -1209,28 +1210,7 @@ int8_t handle_pch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_
                      dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
                      dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
   if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
-    nr_ue_send_sdu(dl_info, ul_time_alignment, pdu_id);
-
-  return 0;
-}
-
-int8_t handle_csirs_measurements(module_id_t module_id, frame_t frame, int slot, fapi_nr_csirs_measurements_t *csirs_measurements) {
-  return nr_ue_process_csirs_measurements(module_id, frame, slot, csirs_measurements);
-}
-
-int8_t handle_pch(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id){
-  /* L1 assigns harq_pid, but in emulated L1 mode we need to assign
-     the harq_pid based on the saved global g_harq_pid. Because we are
-     emulating L1, no antenna measurements are conducted to calculate
-     a harq_pid, therefore we must set it here. */
-  if (get_softmodem_params()->emulate_l1)
-    dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid = g_harq_pid;
-
-  update_harq_status(dl_info->module_id,
-                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.harq_pid,
-                     dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack);
-  if(dl_info->rx_ind->rx_indication_body[pdu_id].pdsch_pdu.ack_nack)
-    nr_ue_send_sdu(dl_info, ul_time_alignment, pdu_id);
+    nr_ue_send_sdu(dl_info, pdu_id);
 
   return 0;
 }
@@ -1256,33 +1236,17 @@ int nr_ue_ul_indication(nr_uplink_indication_t *ul_info)
 
   pthread_mutex_lock(&mac_IF_mutex);
 
-  NR_UE_L2_STATE_t ret=0;
   module_id_t module_id = ul_info->module_id;
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
 
-  NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon = mac->scc != NULL ? mac->scc->tdd_UL_DL_ConfigurationCommon : mac->scc_SIB->tdd_UL_DL_ConfigurationCommon;
   LOG_T(NR_MAC, "In %s():%d not calling scheduler mac->ra.ra_state = %d\n",
         __FUNCTION__, __LINE__, mac->ra.ra_state);
 
-  ret = nr_ue_scheduler(NULL, ul_info);
-  if (is_nr_UL_slot(tdd_UL_DL_ConfigurationCommon, ul_info->slot_tx, mac->frame_type)) {
-    nr_ue_pucch_scheduler(module_id, ul_info->frame_tx, ul_info->slot_tx, ul_info->phy_data);
-    if (!get_softmodem_params()->phy_test)
-      nr_ue_prach_scheduler(module_id, ul_info->frame_tx, ul_info->slot_tx);
-  }
+  NR_TDD_UL_DL_ConfigCommon_t *tdd_UL_DL_ConfigurationCommon = mac->scc != NULL ? mac->scc->tdd_UL_DL_ConfigurationCommon : mac->scc_SIB->tdd_UL_DL_ConfigurationCommon;
+  if (mac->phy_config_request_sent && is_nr_UL_slot(tdd_UL_DL_ConfigurationCommon, ul_info->slot_tx, mac->frame_type))
+    nr_ue_ul_scheduler(ul_info);
 
-  switch(ret){
-  case UE_CONNECTION_OK:
-    break;
-  case UE_CONNECTION_LOST:
-    break;
-  case UE_PHY_RESYNCH:
-    break;
-  case UE_PHY_HO_PRACH:
-    break;
-  default:
-    break;
-  }
+  pthread_mutex_unlock(&mac_IF_mutex);
 
   return 0;
 }
@@ -1328,6 +1292,7 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
         if (ret >= 0) {
           AssertFatal( nr_ue_if_module_inst[module_id] != NULL, "IF module is NULL!\n" );
           AssertFatal( nr_ue_if_module_inst[module_id]->scheduled_response != NULL, "scheduled_response is NULL!\n" );
+          fapi_nr_dl_config_request_t *dl_config = get_dl_config_request(mac, dl_info->slot);
           fill_scheduled_response(&scheduled_response, dl_config, NULL, NULL, dl_info->module_id, dl_info->cc_id, dl_info->frame, dl_info->slot, dl_info->phy_data);
           nr_ue_if_module_inst[module_id]->scheduled_response(&scheduled_response);
         }
@@ -1340,24 +1305,27 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
 
       for (int i = 0; i < dl_info->rx_ind->number_pdus; ++i) {
 
-        LOG_D(NR_MAC, "In %s sending DL indication to MAC. 1 PDU type %d of %d total number of PDUs \n",
-          __FUNCTION__,
-          dl_info->rx_ind->rx_indication_body[i].pdu_type,
-          dl_info->rx_ind->number_pdus);
+        fapi_nr_rx_indication_body_t rx_indication_body = dl_info->rx_ind->rx_indication_body[i];
+        LOG_D(NR_MAC, "Sending DL indication to MAC. 1 PDU type %d of %d total number of PDUs \n",
+              rx_indication_body.pdu_type,
+              dl_info->rx_ind->number_pdus);
 
         switch(rx_indication_body.pdu_type){
           case FAPI_NR_RX_PDU_TYPE_SSB:
-            handle_ssb_meas(mac,
-                            (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.ssb_index,
-                            (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.rsrp_dBm);
-            ret_mask |= (handle_bcch_bch(dl_info->module_id, dl_info->cc_id, dl_info->gNB_index, dl_info->phy_data,
-                                         (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.pdu,
-                                         (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.additional_bits,
-                                         (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.ssb_index,
-                                         (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.ssb_length,
-                                         (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.ssb_start_subcarrier,
-                                         (dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.cell_id)) << FAPI_NR_RX_PDU_TYPE_SSB;
-            free((dl_info->rx_ind->rx_indication_body+i)->ssb_pdu.pdu);
+            if(rx_indication_body.ssb_pdu.decoded_pdu) {
+              handle_ssb_meas(mac,
+                              rx_indication_body.ssb_pdu.ssb_index,
+                              rx_indication_body.ssb_pdu.rsrp_dBm);
+              ret_mask |= (handle_bcch_bch(dl_info->module_id, dl_info->cc_id, dl_info->gNB_index, dl_info->phy_data,
+                                           rx_indication_body.ssb_pdu.pdu,
+                                           rx_indication_body.ssb_pdu.additional_bits,
+                                           rx_indication_body.ssb_pdu.ssb_index,
+                                           rx_indication_body.ssb_pdu.ssb_length,
+                                           rx_indication_body.ssb_pdu.ssb_start_subcarrier,
+                                           rx_indication_body.ssb_pdu.cell_id)) << FAPI_NR_RX_PDU_TYPE_SSB;
+            }
+            else
+              handle_bch_failure(mac);
             break;
           case FAPI_NR_RX_PDU_TYPE_SIB:
             ret_mask |= (handle_bcch_dlsch(dl_info->module_id,
@@ -1376,16 +1344,10 @@ int nr_ue_dl_indication(nr_downlink_indication_t *dl_info)
             ret_mask |= (handle_csirs_measurements(dl_info->module_id,
                                                    dl_info->frame,
                                                    dl_info->slot,
-                                                   &rx_indication_body.csirs_measurements)) << FAPI_NR_CSIRS_IND;
-            break;
-          case FAPI_NR_CSIRS_IND:
-            ret_mask |= (handle_csirs_measurements(dl_info->module_id,
-                                                   dl_info->frame,
-                                                   dl_info->slot,
                                                    &(dl_info->rx_ind->rx_indication_body+i)->csirs_measurements)) << FAPI_NR_CSIRS_IND;
             break;
           case FAPI_NR_RX_PDU_TYPE_PCH:
-            ret_mask |= (handle_pch(dl_info, ul_time_alignment, i)) << FAPI_NR_RX_PDU_TYPE_RAR;
+            ret_mask |= (handle_pch(dl_info, i)) << FAPI_NR_RX_PDU_TYPE_RAR;
             break;
           default:
             break;

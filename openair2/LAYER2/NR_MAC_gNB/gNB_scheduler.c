@@ -40,7 +40,7 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
 
-#include "RRC/NR/nr_rrc_extern.h"
+#include "openair2/X2AP/x2ap_eNB.h"
 
 #include "nr_pdcp/nr_pdcp_oai_api.h"
 
@@ -58,18 +58,19 @@ const uint8_t nr_rv_round_map[4] = {0, 2, 3, 1};
 void clear_nr_nfapi_information(gNB_MAC_INST *gNB,
                                 int CC_idP,
                                 frame_t frameP,
-                                sub_frame_t slotP)
+                                sub_frame_t slotP,
+                                nfapi_nr_dl_tti_request_t *DL_req,
+                                nfapi_nr_tx_data_request_t *TX_req,
+                                nfapi_nr_ul_dci_request_t *UL_dci_req)
 {
+  /* called below and in simulators, so we assume a lock but don't require it */
+
   NR_ServingCellConfigCommon_t *scc = gNB->common_channels->ServingCellConfigCommon;
   const int num_slots = nr_slots_per_frame[*scc->ssbSubcarrierSpacing];
 
-  UL_tti_req_ahead_initialization(gNB, scc, num_slots, CC_idP, frameP);
+  UL_tti_req_ahead_initialization(gNB, scc, num_slots, CC_idP, frameP, slotP, *scc->ssbSubcarrierSpacing);
 
-  nfapi_nr_dl_tti_request_t *DL_req = &gNB->DL_req[0];
   nfapi_nr_dl_tti_pdcch_pdu_rel15_t **pdcch = (nfapi_nr_dl_tti_pdcch_pdu_rel15_t **)gNB->pdcch_pdu_idx[CC_idP];
-  nfapi_nr_ul_tti_request_t *future_ul_tti_req = &gNB->UL_tti_req_ahead[CC_idP][(slotP + num_slots - 1) % num_slots];
-  nfapi_nr_ul_dci_request_t *UL_dci_req = &gNB->UL_dci_req[0];
-  nfapi_nr_tx_data_request_t *TX_req = &gNB->TX_req[0];
 
   gNB->pdu_index[CC_idP] = 0;
 
@@ -100,6 +101,44 @@ void clear_nr_nfapi_information(gNB_MAC_INST *gNB,
 
 bool is_xlsch_in_slot(uint64_t bitmap, sub_frame_t slot) {
   return (bitmap >> (slot % 64)) & 0x01;
+}
+
+/* the structure nfapi_nr_ul_tti_request_t is very big, let's copy only what is necessary */
+static void copy_ul_tti_req(nfapi_nr_ul_tti_request_t *to, nfapi_nr_ul_tti_request_t *from)
+{
+  int i;
+
+  to->header = from->header;
+  to->SFN = from->SFN;
+  to->Slot = from->Slot;
+  to->n_pdus = from->n_pdus;
+  to->rach_present = from->rach_present;
+  to->n_ulsch = from->n_ulsch;
+  to->n_ulcch = from->n_ulcch;
+  to->n_group = from->n_group;
+
+  for (i = 0; i < from->n_pdus; i++) {
+    to->pdus_list[i].pdu_type = from->pdus_list[i].pdu_type;
+    to->pdus_list[i].pdu_size = from->pdus_list[i].pdu_size;
+
+    switch (from->pdus_list[i].pdu_type) {
+      case NFAPI_NR_UL_CONFIG_PRACH_PDU_TYPE:
+        to->pdus_list[i].prach_pdu = from->pdus_list[i].prach_pdu;
+        break;
+      case NFAPI_NR_UL_CONFIG_PUSCH_PDU_TYPE:
+        to->pdus_list[i].pusch_pdu = from->pdus_list[i].pusch_pdu;
+        break;
+      case NFAPI_NR_UL_CONFIG_PUCCH_PDU_TYPE:
+        to->pdus_list[i].pucch_pdu = from->pdus_list[i].pucch_pdu;
+        break;
+      case NFAPI_NR_UL_CONFIG_SRS_PDU_TYPE:
+        to->pdus_list[i].srs_pdu = from->pdus_list[i].srs_pdu;
+        break;
+    }
+  }
+
+  for (i = 0; i < from->n_group; i++)
+    to->groups_list[i] = from->groups_list[i];
 }
 
 void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_t slot, NR_Sched_Rsp_t *sched_info)
@@ -136,7 +175,8 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     void nr_pdcp_tick(int frame, int subframe);
     nr_rlc_tick(frame, slot >> *scc->ssbSubcarrierSpacing);
     nr_pdcp_tick(frame, slot >> *scc->ssbSubcarrierSpacing);
-    nr_rrc_trigger(&ctxt, 0 /*CC_id*/, frame, slot >> *scc->ssbSubcarrierSpacing);
+    if (is_x2ap_enabled())
+      x2ap_trigger();
   }
 
   for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
@@ -151,7 +191,8 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
     uint16_t *vrb_map_UL = cc[CC_id].vrb_map_UL;
     memcpy(&vrb_map_UL[prev_slot % size * MAX_BWP_SIZE], &gNB->ulprbbl, sizeof(uint16_t) * MAX_BWP_SIZE);
 
-    clear_nr_nfapi_information(gNB, CC_id, frame, slot);
+    clear_nr_nfapi_information(gNB, CC_id, frame, slot, &sched_info->DL_req, &sched_info->TX_req, &sched_info->UL_dci_req);
+  }
 
   if ((slot == 0) && (frame & 127) == 0) {
     char stats_output[16000] = {0};
@@ -207,13 +248,18 @@ void gNB_dlsch_ulsch_scheduler(module_id_t module_idP, frame_t frame, sub_frame_
   stop_meas(&gNB->schedule_dlsch);
 
   // This schedules Paging in slot
-  schedule_nr_PCH(module_idP, frame, slot);
+  schedule_nr_PCH(module_idP, frame, slot, &sched_info->DL_req, &sched_info->TX_req);
 
-  nr_sr_reporting(RC.nrmac[module_idP], frame, slot);
+  nr_sr_reporting(gNB, frame, slot);
 
   nr_schedule_pucch(gNB, frame, slot);
 
-  nr_schedule_pucch(RC.nrmac[module_idP], frame, slot);
+  /* TODO: we copy from gNB->UL_tti_req_ahead[0][current_index], ie. CC_id == 0,
+   * is more than 1 CC supported?
+   */
+  AssertFatal(MAX_NUM_CCs == 1, "only 1 CC supported\n");
+  const int current_index = ul_buffer_index(frame, slot, *scc->ssbSubcarrierSpacing, gNB->UL_tti_req_ahead_size);
+  copy_ul_tti_req(&sched_info->UL_tti_req, &gNB->UL_tti_req_ahead[0][current_index]);
 
   stop_meas(&gNB->eNB_scheduler);
   NR_SCHED_UNLOCK(&gNB->sched_lock);

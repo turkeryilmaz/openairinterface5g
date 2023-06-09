@@ -208,7 +208,7 @@ void oai_create_enb(void) {
   int bodge_counter=0;
   int FAPI_configured_for_a_CC = 0;
   /* MultiCell: Function modify for Multiple CC */
-  for (int CC_id=0; CC_id<RC.nb_CC[0]; CC_id++) {
+  for (int CC_id=0; CC_id<RC.nb_mac_CC[0]; CC_id++) {
     PHY_VARS_eNB *eNB = RC.eNB[0][CC_id];
     if (eNB == NULL)
     {
@@ -665,7 +665,7 @@ int phy_subframe_indication(struct nfapi_vnf_p7_config *config, uint16_t phy_id,
     } else {
       NFAPI_TRACE(NFAPI_TRACE_INFO, "[VNF] %s() RC.eNB:%p\n", __FUNCTION__, RC.eNB);
 
-      if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][0]->configured:%d\n", RC.eNB[0][0]->configured);
+      if (RC.eNB) NFAPI_TRACE(NFAPI_TRACE_INFO, "RC.eNB[0][CC_id]->configured:%d\n", RC.eNB[0][CC_id]->configured);
     }
   }
   return 0;

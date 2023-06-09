@@ -106,7 +106,7 @@ void nr_schedule_ulsch(module_id_t module_id, frame_t frame, sub_frame_t slot, n
 /* \brief default FR1 UL preprocessor init routine, returns preprocessor to call */
 nr_pp_impl_ul nr_init_fr1_ulsch_preprocessor(int CC_id);
 
-void schedule_nr_PCH(module_id_t module_idP, frame_t frameP, sub_frame_t slotP);
+void schedule_nr_PCH(module_id_t module_idP, frame_t frameP, sub_frame_t slotP, nfapi_nr_dl_tti_request_t *DL_req, nfapi_nr_tx_data_request_t *TX_req);
 
 /////// Random Access MAC-PHY interface functions and primitives ///////
 

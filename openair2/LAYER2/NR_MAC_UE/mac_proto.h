@@ -367,7 +367,7 @@ random-access procedure
 @param selected_rar_buffer the output buffer for storing the selected RAR header and RAR payload
 @returns timing advance or 0xffff if preamble doesn't match
 */
-int nr_ue_process_rar(nr_downlink_indication_t *dl_info, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment, int pdu_id);
+int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id);
 
 void nr_ue_contention_resolution(module_id_t module_id, int cc_id, frame_t frame, int slot, NR_PRACH_RESOURCES_t *prach_resources);
 
@@ -440,14 +440,6 @@ void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac);
 void configure_ss_coreset(NR_UE_MAC_INST_t *mac,
                           NR_ServingCellConfig_t *scd,
                           NR_BWP_Id_t dl_bwp_id);
-
-static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
-                                   uint8_t dci_format,
-                                   uint8_t dci_size,
-                                   uint16_t rnti,
-                                   int ss_type,
-                                   uint64_t *dci_pdu,
-                                   dci_pdu_rel15_t *dci_pdu_rel15);
 
 static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                                    nr_dci_format_t dci_format,

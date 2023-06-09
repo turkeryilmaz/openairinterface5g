@@ -61,6 +61,8 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfig.h"
 #include "NR_MeasConfig.h"
+#include "NR_ServingCellConfigCommonSIB.h"
+
 
 // ==========
 // NR UE defs
@@ -372,8 +374,19 @@ typedef struct {
   uint32_t ssb_index;
   /// SSB RSRP in dBm
   short ssb_rsrp_dBm;
+  int consecutive_bch_failures;
 
-} NR_PHY_meas_t;
+} NR_SSB_meas_t;
+
+typedef struct NR_UL_TIME_ALIGNMENT {
+  /// TA command and TAGID received from the gNB
+  bool ta_apply;
+  int ta_command;
+  int ta_total;
+  uint32_t tag_id;
+  int frame;
+  int slot;
+} NR_UL_TIME_ALIGNMENT_t;
 
 /*!\brief Top level UE MAC structure */
 typedef struct {
@@ -386,7 +399,7 @@ typedef struct {
   long                            physCellId;
   ////  MAC config
   int                             first_sync_frame;
-  bool                            sib1_decoded;
+  bool                            get_sib1;
   NR_DRX_Config_t                 *drx_Config;
   NR_SchedulingRequestConfig_t    *schedulingRequestConfig;
   NR_BSR_Config_t                 *bsr_Config;
@@ -397,12 +410,14 @@ typedef struct {
 
   NR_UE_DL_BWP_t current_DL_BWP;
   NR_UE_UL_BWP_t current_UL_BWP;
+  NR_UL_TIME_ALIGNMENT_t ul_time_alignment;
 
-  NR_BWP_Downlink_t               *DLbwp[MAX_NUM_BWP_UE];
-  NR_BWP_Uplink_t                 *ULbwp[MAX_NUM_BWP_UE];
-  NR_ControlResourceSet_t         *coreset[MAX_NUM_BWP_UE][FAPI_NR_MAX_CORESET_PER_BWP];
-  NR_SearchSpace_t                *SSpace[MAX_NUM_BWP_UE][FAPI_NR_MAX_SS];
+  NR_BWP_Downlink_t *DLbwp[MAX_NUM_BWP_UE];
+  NR_BWP_Uplink_t *ULbwp[MAX_NUM_BWP_UE];
+  NR_ControlResourceSet_t *coreset[MAX_NUM_BWP_UE][FAPI_NR_MAX_CORESET_PER_BWP];
+  NR_SearchSpace_t *SSpace[MAX_NUM_BWP_UE][FAPI_NR_MAX_SS];
 
+  bool phy_config_request_sent;
   frame_type_t frame_type;
 
   ///     Type0-PDCCH seach space
@@ -460,9 +475,9 @@ typedef struct {
   uint16_t nr_band;
   uint8_t ssb_subcarrier_offset;
 
-  NR_PHY_meas_t phy_measurements;
+  NR_SSB_meas_t ssb_measurements;
 
-  dci_pdu_rel15_t def_dci_pdu_rel15[8];
+  dci_pdu_rel15_t def_dci_pdu_rel15[NR_MAX_SLOTS_PER_FRAME][8];
 
   // Defined for abstracted mode
   nr_downlink_indication_t dl_info;

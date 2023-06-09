@@ -120,6 +120,7 @@ void tx_func(void *param)
   int absslot_tx = info->timestamp_tx/info->gNB->frame_parms.get_samples_per_slot(slot_tx,&info->gNB->frame_parms);
   int absslot_rx = absslot_tx-info->gNB->RU_list[0]->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
+  start_meas(&info->gNB->phy_proc_tx);
 
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_TX[rt_prof_idx]);
   phy_procedures_gNB_TX(info,
@@ -128,6 +129,19 @@ void tx_func(void *param)
                         1);
   clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.return_L1_TX[rt_prof_idx]);
 
+  if (get_softmodem_params()->reorder_thread_disable) {
+    PHY_VARS_gNB *gNB = info->gNB;
+    processingData_RU_t syncMsgRU;
+    syncMsgRU.frame_tx = frame_tx;
+    syncMsgRU.slot_tx = slot_tx;
+    syncMsgRU.ru = gNB->RU_list[0];
+    syncMsgRU.timestamp_tx = info->timestamp_tx;
+    LOG_D(PHY,"gNB: %d.%d : calling RU TX function\n",syncMsgRU.frame_tx,syncMsgRU.slot_tx);
+    ru_tx_func((void*)&syncMsgRU);
+  }
+  /* this thread is done with the sched_info, decrease the reference counter */
+  deref_sched_response(info->sched_response_id);
+  stop_meas(&info->gNB->phy_proc_tx);
 }
 
 
@@ -249,16 +263,22 @@ void rx_func(void *param)
     processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
     // so no need for checking for right slot
-    res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
-    if (res == NULL)
-      return; // Tpool has been stopped
-    syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
-    syncMsg->gNB = gNB;
-    syncMsg->timestamp_tx = info->timestamp_tx;
-    syncMsg->frame = frame_tx;
-    syncMsg->slot = slot_tx;
-    res->key = slot_tx;
-    pushTpool(&gNB->threadPool, res);
+    if (get_softmodem_params()->reorder_thread_disable) {
+      // call the TX function directly from this thread
+      syncMsg = gNB->msgDataTx;
+      syncMsg->gNB = gNB; 
+      syncMsg->timestamp_tx = info->timestamp_tx;
+      tx_func(syncMsg);
+    } else {
+      res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
+      if (res == NULL)
+        return; // Tpool has been stopped
+      syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
+      syncMsg->gNB = gNB;
+      syncMsg->timestamp_tx = info->timestamp_tx;
+      res->key = slot_tx;
+      pushTpool(&gNB->threadPool, res);
+    }
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
     if (res == NULL)
@@ -317,6 +337,11 @@ static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size
   const char *end = output + outputlen;
   output += print_meas_log(&gNB->phy_proc_tx, "L1 Tx processing", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_encoding_stats, "DLSCH encoding", NULL, NULL, output, end - output);
+  output += print_meas_log(&gNB->dlsch_scrambling_stats, "DLSCH scrambling", NULL, NULL, output, end-output);
+  output += print_meas_log(&gNB->dlsch_modulation_stats, "DLSCH modulation", NULL, NULL, output, end-output);
+  output += print_meas_log(&gNB->dlsch_layer_mapping_stats, "DLSCH layer mapping", NULL, NULL, output,end-output);
+  output += print_meas_log(&gNB->dlsch_resource_mapping_stats, "DLSCH resource mapping", NULL, NULL, output,end-output);
+  output += print_meas_log(&gNB->dlsch_precoding_stats, "DLSCH precoding", NULL, NULL, output,end-output);
   output += print_meas_log(&gNB->phy_proc_rx, "L1 Rx processing", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->ul_indication_stats, "UL Indication", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->rx_pusch_stats, "PUSCH inner-receiver", NULL, NULL, output, end - output);
@@ -456,23 +481,40 @@ void init_gNB_Tpool(int inst) {
   initNotifiedFIFO(&gNB->L1_tx_free);
   initNotifiedFIFO(&gNB->L1_tx_filled);
   initNotifiedFIFO(&gNB->L1_tx_out);
-  
-  // we create 2 threads for L1 tx processing
-  for (int i=0; i < 2; i++) {
+ 
+  if (get_softmodem_params()->reorder_thread_disable) {
+    // create the RX thread responsible for triggering RX processing and then TX processing if a single thread is used	  
+    threadCreate(&gNB->L1_rx_thread, L1_rx_thread, (void *)gNB, "L1_rx_thread",
+                 gNB->L1_rx_thread_core, OAI_PRIORITY_RT_MAX);
+    // if separate threads are used for RX and TX, create the TX thread
+ // threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread",
+ //              gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
+
     notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
     processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
     memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
     init_DLSCH_struct(gNB, msgDataTx);
     memset(msgDataTx->ssb, 0, 64*sizeof(NR_gNB_SSB_t));
-    pushNotifiedFIFO(&gNB->L1_tx_free, msgL1Tx); // to unblock the process in the beginning
+    // this will be removed when the msgDataTx is not necessary anymore
+    gNB->msgDataTx = msgDataTx;
+  } else {
+    // we create 2 threads for L1 tx processing
+    for (int i=0; i < 2; i++) {
+      notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
+      processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
+      memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
+      init_DLSCH_struct(gNB, msgDataTx);
+      memset(msgDataTx->ssb, 0, 64*sizeof(NR_gNB_SSB_t));
+      pushNotifiedFIFO(&gNB->L1_tx_free, msgL1Tx); // to unblock the process in the beginning
+    }
+  
+    LOG_I(PHY,"Creating thread for TX reordering and dispatching to RU\n");
+    threadCreate(&proc->pthread_tx_reorder, tx_reorder_thread, (void *)gNB, "thread_tx_reorder",
+                  gNB->RU_list[0] ? gNB->RU_list[0]->tpcores[1] : -1, OAI_PRIORITY_RT_MAX);
   }
 
   if ((!get_softmodem_params()->emulate_l1) && (!IS_SOFTMODEM_NOSTATS_BIT) && (NFAPI_MODE!=NFAPI_MODE_VNF))
      threadCreate(&proc->L1_stats_thread,nrL1_stats_thread,(void*)gNB,"L1_stats",-1,OAI_PRIORITY_RT_LOW);
-
-  LOG_I(PHY,"Creating thread for TX reordering and dispatching to RU\n");
-  threadCreate(&proc->pthread_tx_reorder, tx_reorder_thread, (void *)gNB, "thread_tx_reorder", 
-		  gNB->RU_list[0] ? gNB->RU_list[0]->tpcores[1] : -1, OAI_PRIORITY_RT_MAX);
 
 }
 
@@ -542,6 +584,7 @@ void init_eNB_afterRU(void) {
 
     gNB = RC.gNB[inst];
     gNB->ldpc_offload_flag = ldpc_offload_flag;
+    gNB->reorder_thread_disable = get_softmodem_params()->reorder_thread_disable;
 
     phy_init_nr_gNB(gNB);
 
@@ -620,6 +663,7 @@ void init_gNB(int single_thread_flag,int wait_for_sync) {
     gNB->prach_energy_counter = 0;
     gNB->chest_time = get_softmodem_params()->chest_time;
     gNB->chest_freq = get_softmodem_params()->chest_freq;
+
   }
   
 

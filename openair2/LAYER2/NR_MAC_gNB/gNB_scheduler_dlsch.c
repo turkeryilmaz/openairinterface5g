@@ -466,6 +466,7 @@ bool allocate_dl_retransmission(module_id_t module_id,
     uint16_t new_rbSize;
     bool success = nr_find_nb_rb(retInfo->Qm,
                                  retInfo->R,
+                                 1, // no transform precoding for DL
                                  layers,
                                  temp_tda.nrOfSymbols,
                                  temp_dmrs.N_PRB_DMRS * temp_dmrs.N_DMRS_SLOT,
@@ -768,6 +769,7 @@ void pf_dl(module_id_t module_id,
     //const int oh = 3 * sched_ctrl->dl_pdus_total + 2 * (frame == (sched_ctrl->ta_frame + 10) % 1024);
     nr_find_nb_rb(sched_pdsch->Qm,
                   sched_pdsch->R,
+                  1, // no transform precoding for DL
                   sched_pdsch->nrOfLayers,
                   tda_info->nrOfSymbols,
                   sched_pdsch->dmrs_parms.N_PRB_DMRS * sched_pdsch->dmrs_parms.N_DMRS_SLOT,
@@ -877,9 +879,14 @@ nr_pp_impl_dl nr_init_fr1_dlsch_preprocessor(int CC_id) {
 
 void nr_schedule_ue_spec(module_id_t module_id,
                          frame_t frame,
-                         sub_frame_t slot) {
-
+                         sub_frame_t slot,
+                         nfapi_nr_dl_tti_request_t *DL_req,
+                         nfapi_nr_tx_data_request_t *TX_req)
+{
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_id];
+  /* already mutex protected: held in gNB_dlsch_ulsch_scheduler() */
+  AssertFatal(pthread_mutex_trylock(&gNB_mac->sched_lock) == EBUSY,
+              "this function should be called with the scheduler mutex locked\n");
 
   if (!is_xlsch_in_slot(gNB_mac->dlsch_slot_bitmap[slot / 64], slot))
     return;
@@ -889,13 +896,14 @@ void nr_schedule_ue_spec(module_id_t module_id,
   const int CC_id = 0;
   NR_ServingCellConfigCommon_t *scc = gNB_mac->common_channels[CC_id].ServingCellConfigCommon;
   NR_UEs_t *UE_info = &gNB_mac->UE_info;
-  nfapi_nr_dl_tti_request_body_t *dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
+  nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
 
   UE_iterator(UE_info->list, UE) {
     NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
     NR_UE_DL_BWP_t *current_BWP = &UE->current_DL_BWP;
 
-    if (sched_ctrl->ul_failure==1 && get_softmodem_params()->phy_test==0) continue;
+    if (sched_ctrl->ul_failure && !get_softmodem_params()->phy_test)
+      continue;
 
     NR_sched_pdsch_t *sched_pdsch = &sched_ctrl->sched_pdsch;
     UE->mac_stats.dl.current_bytes = 0;
@@ -1318,6 +1326,7 @@ void nr_schedule_ue_spec(module_id_t module_id,
       UE->mac_stats.dl.total_rbs += sched_pdsch->rbSize;
       UE->mac_stats.dl.num_mac_sdu += sdus;
       UE->mac_stats.dl.current_rbs = sched_pdsch->rbSize;
+      UE->mac_stats.dl.total_sdu_bytes += dlsch_total_bytes;
 
       /* save retransmission information */
       harq->sched_pdsch = *sched_pdsch;
@@ -1356,9 +1365,9 @@ void nr_schedule_ue_spec(module_id_t module_id,
     tx_req->num_TLV = 1;
     tx_req->TLVs[0].length = TBS + 2;
     memcpy(tx_req->TLVs[0].value.direct, harq->transportBlock, TBS);
-    gNB_mac->TX_req[CC_id].Number_of_PDUs++;
-    gNB_mac->TX_req[CC_id].SFN = frame;
-    gNB_mac->TX_req[CC_id].Slot = slot;
+    TX_req->Number_of_PDUs++;
+    TX_req->SFN = frame;
+    TX_req->Slot = slot;
     /* mark UE as scheduled */
     sched_pdsch->rbSize = 0;
   }
@@ -1621,7 +1630,9 @@ void nr_fill_nfapi_dl_paging_pdu(int Mod_idP,
 
 void schedule_nr_PCH(module_id_t module_idP,
                      frame_t frameP,
-                     sub_frame_t slotP) {
+                     sub_frame_t slotP,
+                     nfapi_nr_dl_tti_request_t *DL_req,
+                     nfapi_nr_tx_data_request_t *TX_req) {
   gNB_MAC_INST *gNB_mac = RC.nrmac[module_idP];
   int CC_id;
   uint16_t pcch_sdu_length;
@@ -1638,7 +1649,7 @@ void schedule_nr_PCH(module_id_t module_idP,
     cc = &gNB_mac->common_channels[CC_id];
     scc = cc->ServingCellConfigCommon;
     pcch_sdu = &cc->PCCH_pdu.payload[0];
-    dl_req = &gNB_mac->DL_req[CC_id].dl_tti_request_body;
+    dl_req = &DL_req[CC_id].dl_tti_request_body;
 
     for (uint16_t i = 0; i < MAX_MOBILES_PER_GNB; i++) {
       ue_pf_po = &UE_PF_PO[CC_id][i];
@@ -1728,7 +1739,7 @@ void schedule_nr_PCH(module_id_t module_idP,
           }
         }
 
-        tx_req = &gNB_mac->TX_req[CC_id].pdu_list[gNB_mac->TX_req[CC_id].Number_of_PDUs++];
+        tx_req = &TX_req[CC_id].pdu_list[TX_req[CC_id].Number_of_PDUs++];
 
         // Data to be transmitted
         memcpy(tx_req->TLVs[0].value.direct, pcch_sdu, TBS);
@@ -1737,8 +1748,8 @@ void schedule_nr_PCH(module_id_t module_idP,
         tx_req->PDU_index  = pdu_index;
         tx_req->num_TLV = 1;
         tx_req->TLVs[0].length = tx_req->PDU_length + 2;
-        gNB_mac->TX_req[CC_id].SFN = frameP;
-        gNB_mac->TX_req[CC_id].Slot = slotP;
+        TX_req[CC_id].SFN = frameP;
+        TX_req[CC_id].Slot = slotP;
 
         // Trace MACPDU
         mac_pkt_info_t mac_pkt;

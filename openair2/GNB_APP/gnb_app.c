@@ -204,13 +204,6 @@ void *gNB_app_task(void *args_p)
     // Wait for a message
     itti_receive_msg (TASK_GNB_APP, &msg_p);
 
-      itti_send_msg_to_task (TASK_DU_F1, GNB_MODULE_ID_TO_INSTANCE(0), msg_p);
-    }
-  }
-  do {
-    // Wait for a message
-    itti_receive_msg (TASK_GNB_APP, &msg_p);
-
     msg_name = ITTI_MSG_NAME (msg_p);
     instance = ITTI_MSG_DESTINATION_INSTANCE (msg_p);
 
@@ -318,48 +311,8 @@ void *gNB_app_task(void *args_p)
     AssertFatal (result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
   } while (1);
 
-          LOG_W(GNB_APP, " %d gNB %s not associated with a AMF, retrying registration in %d seconds ...\n",
-                not_associated, not_associated > 1 ? "are" : "is", GNB_REGISTER_RETRY_DELAY);
-
-          // Restart the gNB registration process in GNB_REGISTER_RETRY_DELAY seconds 
-          if (timer_setup (GNB_REGISTER_RETRY_DELAY, 0, TASK_GNB_APP, INSTANCE_DEFAULT, TIMER_ONE_SHOT,
-                           NULL, &gnb_register_retry_timer_id) < 0) {
-            LOG_E(GNB_APP, " Can not start gNB register retry timer, use \"sleep\" instead!\n");
-
-            sleep(GNB_REGISTER_RETRY_DELAY);
-            // Restart the registration process 
-            registered_gnb = 0;
-            register_gnb_pending = gNB_app_register (gnb_id_start, gnb_id_end);//, gnb_properties_p);
-          }
-        }
-      }
-*/
-      break;
-
-    case F1AP_SETUP_RESP:
-      AssertFatal(NODE_IS_DU(node_type), "Should not have received F1AP_SETUP_RESP in CU/gNB\n");
-
-      LOG_I(GNB_APP, "Received %s: associated ngran_gNB_CU %s with %d cells to activate\n", ITTI_MSG_NAME (msg_p),
-      F1AP_SETUP_RESP(msg_p).gNB_CU_name,F1AP_SETUP_RESP(msg_p).num_cells_to_activate);
-      cell_to_activate = F1AP_SETUP_RESP(msg_p).num_cells_to_activate;
-      
-      gNB_app_handle_f1ap_setup_resp(&F1AP_SETUP_RESP(msg_p));
-
-      break;
-    case F1AP_GNB_CU_CONFIGURATION_UPDATE:
-      AssertFatal(NODE_IS_DU(node_type), "Should not have received F1AP_GNB_CU_CONFIGURATION_UPDATE in CU/gNB\n");
-
-static  void wait_cell_config_5G(char *thread_name) {
-  printf( "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);
-  pthread_mutex_lock( &cell_config_5G_done_mutex );
-      
-  while ( cell_config_5G_done < 0 )
-    pthread_cond_wait( &cell_config_5G_done_cond, &cell_config_5G_done_mutex );
-  
-  pthread_mutex_unlock(&cell_config_5G_done_mutex );
-  printf( "[SYS 5G]: got cell config (%s)\n", thread_name);
+  return NULL;
 }
-
 
 static  void wait_cell_config_5G(char *thread_name) {
   LOG_A(GNB_APP, "waiting for [SYS 5G] CELL CONFIG Indication (%s)\n",thread_name);

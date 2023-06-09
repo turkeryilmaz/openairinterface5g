@@ -323,7 +323,7 @@ typedef enum {
 {GNB_CONFIG_STRING_AMF_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 {GNB_CONFIG_STRING_AMF_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 {GNB_CONFIG_STRING_AMF_IP_ADDRESS_ACTIVE,              NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{GNB_CONFIG_STRING_AMF_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},
+{GNB_CONFIG_STRING_AMF_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 }
 
 #define GNB_AMF_IPV4_ADDRESS_IDX          0
@@ -397,7 +397,7 @@ typedef enum {
       {GNB_CONFIG_STRING_ENB_PORT_FOR_X2C,                   NULL,      0,        .uptr=NULL,                        .defintval=0L,         TYPE_UINT,     0}, \
       {GNB_CONFIG_STRING_GNB_INTERFACE_NAME_FOR_S1U,         NULL,      0,        .strptr=NULL,                      .defstrval=NULL,       TYPE_STRING,   0},	\
       {GNB_CONFIG_STRING_GNB_IPV4_ADDRESS_FOR_S1U,           NULL,      0,        .strptr=&gnb_ipv4_address_for_S1U, .defstrval="127.0.0.1",TYPE_STRING,   0}, \
-      {GNB_CONFIG_STRING_GNB_PORT_FOR_S1U,                   NULL,      0,        .uptr=&gnb_port_for_S1U,           .defintval=2152L,
+      {GNB_CONFIG_STRING_GNB_PORT_FOR_S1U,                   NULL,      0,        .uptr=&gnb_port_for_S1U,           .defintval=2152L,       TYPE_UINT,     0}	\
   }
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
@@ -426,6 +426,7 @@ typedef enum {
 /* L1 configuration section names   */
 #define CONFIG_STRING_L1_LIST                              "L1s"
 #define CONFIG_STRING_L1_CONFIG                            "l1_config"
+
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/

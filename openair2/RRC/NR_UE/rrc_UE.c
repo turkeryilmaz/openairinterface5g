@@ -58,6 +58,9 @@
 #include "nr-uesoftmodem.h"
 #include "plmn_data.h"
 #include "nr_pdcp/nr_pdcp_oai_api.h"
+#include "openair3/SECU/secu_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include "common/utils/LOG/log.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "conversions.h"
@@ -1655,18 +1658,22 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
      ul_dcch_msg.message.choice.c1->present = NR_UL_DCCH_MessageType__c1_PR_securityModeComplete;
    }
 
-   uint8_t *kRRCenc = NULL;
-   uint8_t *kUPenc = NULL;
-   uint8_t *kRRCint = NULL;
-  nr_derive_key_up_enc(NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
-                       NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
-                       &kUPenc);
-  nr_derive_key_rrc_enc(NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
-                        NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
-                       &kRRCenc);
-  nr_derive_key_rrc_int(NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm,
-                        NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
-                       &kRRCint);
+   uint8_t kRRCenc[16] = {0};
+   uint8_t kUPenc[16] = {0};
+   uint8_t kRRCint[16] = {0};
+   nr_derive_key(UP_ENC_ALG,
+                 NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
+                 NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                 kUPenc);
+   nr_derive_key(RRC_ENC_ALG,
+                 NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
+                 NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                 kRRCenc);
+   nr_derive_key(RRC_INT_ALG,
+                 NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm,
+                 NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                 kRRCint);
+
    LOG_I(NR_RRC, "driving kRRCenc, kRRCint and kUPenc from KgNB="
    "%02x%02x%02x%02x"
    "%02x%02x%02x%02x"
@@ -2009,10 +2016,16 @@ nr_rrc_ue_establish_srb2(
        }
      }
 
-     uint8_t *kRRCenc = NULL;
-     uint8_t *kRRCint = NULL;
-     nr_derive_key_rrc_enc(ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, &kRRCenc);
-     nr_derive_key_rrc_int(ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, &kRRCint);
+     uint8_t kRRCenc[16] = {0};
+     uint8_t kRRCint[16] = {0};
+     nr_derive_key(RRC_ENC_ALG,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                   kRRCenc);
+     nr_derive_key(RRC_INT_ALG,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                   kRRCint);
 
      // Refresh SRBs
      nr_pdcp_add_srbs(ctxt_pP->enb_flag,
@@ -2100,12 +2113,16 @@ nr_rrc_ue_establish_srb2(
        }
      }
 
-     uint8_t *kUPenc = NULL;
-     uint8_t *kUPint = NULL;
-
-     NR_UE_RRC_INST_t *ue_rrc = &NR_UE_rrc_inst[ctxt_pP->module_id];
-     nr_derive_key_up_enc(ue_rrc->cipheringAlgorithm, ue_rrc->kgnb, &kUPenc);
-     nr_derive_key_up_int(ue_rrc->integrityProtAlgorithm, ue_rrc->kgnb, &kUPint);
+     uint8_t kUPenc[16] = {0};
+     uint8_t kUPint[16] = {0};
+     nr_derive_key(UP_ENC_ALG,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].cipheringAlgorithm,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                   kUPenc);
+     nr_derive_key(UP_INT_ALG,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].integrityProtAlgorithm,
+                   NR_UE_rrc_inst[ctxt_pP->module_id].kgnb,
+                   kUPint);
 
      // Refresh DRBs
      nr_pdcp_add_drbs(ctxt_pP->enb_flag,
@@ -2469,23 +2486,6 @@ nr_rrc_ue_establish_srb2(
         // check if SRB2 is created, if yes request data_req on DCCH1 (SRB2)
         rb_id_t srb_id = NR_UE_rrc_inst[ue_mod_id].SRB2_config[0] == NULL ? DCCH : DCCH1;
         nr_pdcp_data_req_srb(ctxt.rntiMaybeUEid, srb_id, nr_rrc_mui++, length, buffer, deliver_pdu_srb_rlc, NULL);
-        break;
-      }
-
-      /* Cell_Search_5G s*/
-      case PHY_FIND_CELL_IND:
-      {
-        nb_cells = PHY_FIND_CELL_IND(msg_p).cell_nb;
-        LOG_D(RRC, "Received message %s with reports for %d cells.\n", 
-              ITTI_MSG_NAME (msg_p), nb_cells);
-
-        for (int i = 0 ; i < nb_cells; i++) 
-        {
-          rsrp_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrp;
-          rsrq_cell = PHY_FIND_CELL_IND(msg_p).cells[i].rsrq;
-          LOG_A (RRC, "PHY_FIND_CELL_IND Cell: %d RSRP: %d RSRQ: %d \n", 
-              PHY_FIND_CELL_IND(msg_p).cell_nb, rsrp_cell, rsrq_cell);
-        }
         break;
       }
 

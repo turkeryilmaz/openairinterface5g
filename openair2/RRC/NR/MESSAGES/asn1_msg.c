@@ -938,7 +938,7 @@ void fill_initial_SpCellConfig(int uid,
   NR_ControlResourceSet_t *coreset = calloc(1,sizeof(*coreset));
 
   uint64_t bitmap = get_ssb_bitmap(scc);
-  rrc_coreset_config(coreset, 0, curr_bwp, bitmap);
+  get_coreset_config(0, curr_bwp, bitmap);
 
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list,
                    coreset);
@@ -1152,6 +1152,42 @@ NR_RLC_BearerConfig_t *get_SRB_RLC_BearerConfig(long channelId,
   return rlc_BearerConfig;
 }
 
+static void nr_drb_config(struct NR_RLC_Config *rlc_Config, NR_RLC_Config_PR rlc_config_pr)
+{
+  switch (rlc_config_pr) {
+    case NR_RLC_Config_PR_um_Bi_Directional:
+      // RLC UM Bi-directional Bearer configuration
+      LOG_I(RLC, "RLC UM Bi-directional Bearer configuration selected \n");
+      rlc_Config->choice.um_Bi_Directional = calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional));
+      rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength =
+          calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength));
+      *rlc_Config->choice.um_Bi_Directional->ul_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength =
+          calloc(1, sizeof(*rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength));
+      *rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.sn_FieldLength = NR_SN_FieldLengthUM_size12;
+      rlc_Config->choice.um_Bi_Directional->dl_UM_RLC.t_Reassembly = NR_T_Reassembly_ms15;
+      break;
+    case NR_RLC_Config_PR_am:
+      // RLC AM Bearer configuration
+      rlc_Config->choice.am = calloc(1, sizeof(*rlc_Config->choice.am));
+      rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength = calloc(1, sizeof(*rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength));
+      *rlc_Config->choice.am->ul_AM_RLC.sn_FieldLength = NR_SN_FieldLengthAM_size18;
+      rlc_Config->choice.am->ul_AM_RLC.t_PollRetransmit = NR_T_PollRetransmit_ms45;
+      rlc_Config->choice.am->ul_AM_RLC.pollPDU = NR_PollPDU_p64;
+      rlc_Config->choice.am->ul_AM_RLC.pollByte = NR_PollByte_kB500;
+      rlc_Config->choice.am->ul_AM_RLC.maxRetxThreshold = NR_UL_AM_RLC__maxRetxThreshold_t32;
+      rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength = calloc(1, sizeof(*rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength));
+      *rlc_Config->choice.am->dl_AM_RLC.sn_FieldLength = NR_SN_FieldLengthAM_size18;
+      rlc_Config->choice.am->dl_AM_RLC.t_Reassembly = NR_T_Reassembly_ms15;
+      rlc_Config->choice.am->dl_AM_RLC.t_StatusProhibit = NR_T_StatusProhibit_ms15;
+      break;
+    default:
+      AssertFatal(false, "RLC config type %d not handled\n", rlc_config_pr);
+      break;
+  }
+  rlc_Config->present = rlc_config_pr;
+}
+
 NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR_RLC_Config_PR rlc_conf, long priority)
 {
   NR_RLC_BearerConfig_t *rlc_BearerConfig                  = calloc(1, sizeof(NR_RLC_BearerConfig_t));
@@ -1181,6 +1217,74 @@ NR_RLC_BearerConfig_t *get_DRB_RLC_BearerConfig(long lcChannelId, long drbId, NR
   rlc_BearerConfig->mac_LogicalChannelConfig                         = logicalChannelConfig;
 
   return rlc_BearerConfig;
+}
+
+/* returns a default radio bearer config suitable for NSA etc */
+NR_RadioBearerConfig_t *get_default_rbconfig(int eps_bearer_id,
+                                             int rb_id,
+                                             e_NR_CipheringAlgorithm ciphering_algorithm,
+                                             e_NR_SecurityConfig__keyToUse key_to_use)
+{
+  NR_RadioBearerConfig_t *rbconfig = calloc(1, sizeof(*rbconfig));
+  rbconfig->srb_ToAddModList = NULL;
+  rbconfig->srb3_ToRelease = NULL;
+  rbconfig->drb_ToAddModList = calloc(1,sizeof(*rbconfig->drb_ToAddModList));
+  NR_DRB_ToAddMod_t *drb_ToAddMod = calloc(1,sizeof(*drb_ToAddMod));
+  drb_ToAddMod->cnAssociation = calloc(1,sizeof(*drb_ToAddMod->cnAssociation));
+  drb_ToAddMod->cnAssociation->present = NR_DRB_ToAddMod__cnAssociation_PR_eps_BearerIdentity;
+  drb_ToAddMod->cnAssociation->choice.eps_BearerIdentity= eps_bearer_id;
+  drb_ToAddMod->drb_Identity = rb_id;
+  drb_ToAddMod->reestablishPDCP = NULL;
+  drb_ToAddMod->recoverPDCP = NULL;
+  drb_ToAddMod->pdcp_Config = calloc(1,sizeof(*drb_ToAddMod->pdcp_Config));
+  asn1cCalloc(drb_ToAddMod->pdcp_Config->drb, drb);
+  asn1cCallocOne(drb->discardTimer, NR_PDCP_Config__drb__discardTimer_infinity);
+  asn1cCallocOne(drb->pdcp_SN_SizeUL, NR_PDCP_Config__drb__pdcp_SN_SizeUL_len18bits);
+  asn1cCallocOne(drb->pdcp_SN_SizeDL, NR_PDCP_Config__drb__pdcp_SN_SizeDL_len18bits);
+  drb->headerCompression.present = NR_PDCP_Config__drb__headerCompression_PR_notUsed;
+  drb->headerCompression.choice.notUsed = 0;
+  drb->integrityProtection = NULL;
+  drb->statusReportRequired = NULL;
+  drb->outOfOrderDelivery = NULL;
+
+  drb_ToAddMod->pdcp_Config->moreThanOneRLC = NULL;
+  asn1cCallocOne(drb_ToAddMod->pdcp_Config->t_Reordering, NR_PDCP_Config__t_Reordering_ms100);
+  drb_ToAddMod->pdcp_Config->ext1 = NULL;
+
+  asn1cSeqAdd(&rbconfig->drb_ToAddModList->list,drb_ToAddMod);
+
+  rbconfig->drb_ToReleaseList = NULL;
+
+  asn1cCalloc(rbconfig->securityConfig, secConf);
+  asn1cCalloc(secConf->securityAlgorithmConfig, secConfAlgo);
+  secConfAlgo->cipheringAlgorithm = ciphering_algorithm;
+  secConfAlgo->integrityProtAlgorithm = NULL;
+  asn1cCallocOne(secConf->keyToUse, key_to_use);
+  return rbconfig;
+}
+
+void fill_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
+                                NR_RLC_BearerConfig_t **rlc_rbconfig)
+{
+  /* the EPS bearer ID is arbitrary; the rb_id is 1/the first DRB, it needs to
+   * match the one in get_DRB_RLC_BearerConfig(). No ciphering is to be
+   * configured */
+  *rbconfig = get_default_rbconfig(10, 1, NR_CipheringAlgorithm_nea0, NR_SecurityConfig__keyToUse_master);
+  AssertFatal(*rbconfig != NULL, "get_default_rbconfig() failed\n");
+  /* LCID is 4 because the RLC layer requires it to be 3+rb_id; the rb_id 1 is
+   * common with get_default_rbconfig() (first RB). We pre-configure RLC UM
+   * Bi-directional, priority is 1 */
+  *rlc_rbconfig = get_DRB_RLC_BearerConfig(4, 1, NR_RLC_Config_PR_um_Bi_Directional, 1);
+  AssertFatal(*rlc_rbconfig != NULL, "get_DRB_RLC_BearerConfig() failed\n");
+}
+
+void free_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
+                                NR_RLC_BearerConfig_t **rlc_rbconfig)
+{
+  ASN_STRUCT_FREE(asn_DEF_NR_RadioBearerConfig, *rbconfig);
+  *rbconfig = NULL;
+  ASN_STRUCT_FREE(asn_DEF_NR_RLC_BearerConfig, *rlc_rbconfig);
+  *rlc_rbconfig = NULL;
 }
 
 void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGroupConfig_t *ue_context_mastercellGroup, int use_rlc_um_for_drb, uint8_t configure_srb, uint8_t bearer_id_start, uint8_t nb_bearers_to_setup, long *priority,const int CC_id) {
@@ -1225,132 +1329,6 @@ void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig, NR_CellGr
     NR_RLC_BearerConfig_t *rlc_BearerConfig = get_DRB_RLC_BearerConfig(3 + i, i, rlc_conf, priority[i-1]);
     asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, rlc_BearerConfig);
     asn1cSeqAdd(&ue_context_mastercellGroup->rlc_BearerToAddModList->list, rlc_BearerConfig);
-  }
-}
-
-//TODO temp function (to remove once CSI meas config harmonization is done)
-void update_cqitables(struct NR_SetupRelease_PDSCH_Config *pdsch_Config,
-                     NR_CSI_MeasConfig_t *csi_MeasConfig) {
-  int nb_csi = csi_MeasConfig->csi_ReportConfigToAddModList->list.count;
-  for (int i = 0; i < nb_csi; i++) {
-    NR_CSI_ReportConfig_t *csirep = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[i];
-    if(csirep->cqi_Table) {
-      if(pdsch_Config->choice.setup->mcs_Table!=NULL)
-        *csirep->cqi_Table = NR_CSI_ReportConfig__cqi_Table_table2;
-      else
-        *csirep->cqi_Table = NR_CSI_ReportConfig__cqi_Table_table1;
-    }
-  }
-}
-
-void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
-                            const int uid,
-                            NR_UE_NR_Capability_t *uecap,
-                            const gNB_RrcConfigurationReq* configuration) {
-
-  NR_SpCellConfig_t *SpCellConfig = cellGroupConfig->spCellConfig;
-
-  if (SpCellConfig == NULL) return;
-
-  NR_ServingCellConfigCommon_t *scc = configuration ? configuration->scc : NULL;
-
-  if(scc) {
-
-    int curr_bwp = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
-    NR_UplinkConfig_t *uplinkConfig = SpCellConfig && SpCellConfig->spCellConfigDedicated ? SpCellConfig->spCellConfigDedicated->uplinkConfig : NULL;
-
-    uint8_t ul_max_layers = 1;
-    if (uecap &&
-        uecap->featureSets &&
-        uecap->featureSets->featureSetsUplinkPerCC &&
-        uecap->featureSets->featureSetsUplinkPerCC->list.count > 0) {
-      NR_FeatureSetUplinkPerCC_t *ul_feature_setup_per_cc = uecap->featureSets->featureSetsUplinkPerCC->list.array[0];
-      if (ul_feature_setup_per_cc->mimo_CB_PUSCH->maxNumberMIMO_LayersCB_PUSCH) {
-        switch (*ul_feature_setup_per_cc->mimo_CB_PUSCH->maxNumberMIMO_LayersCB_PUSCH) {
-          case NR_MIMO_LayersUL_twoLayers:
-            ul_max_layers = 2;
-            break;
-          case NR_MIMO_LayersUL_fourLayers:
-            ul_max_layers = 4;
-            break;
-          default:
-            ul_max_layers = 1;
-        }
-      }
-      ul_max_layers = min(ul_max_layers, configuration->pusch_AntennaPorts);
-      if (uplinkConfig->initialUplinkBWP->pusch_Config) {
-        NR_PUSCH_Config_t *pusch_Config = uplinkConfig->initialUplinkBWP->pusch_Config->choice.setup;
-        if (pusch_Config->maxRank == NULL) {
-          pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
-        }
-        *pusch_Config->maxRank = ul_max_layers;
-      }
-      if (uplinkConfig->pusch_ServingCellConfig == NULL) {
-        uplinkConfig->pusch_ServingCellConfig = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig));
-        uplinkConfig->pusch_ServingCellConfig->present = NR_SetupRelease_PUSCH_ServingCellConfig_PR_setup;
-        uplinkConfig->pusch_ServingCellConfig->choice.setup = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig->choice.setup));
-        uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1 = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1));
-        uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers = calloc(1, sizeof(*uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers));
-      }
-      *uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers = ul_max_layers;
-    }
-
-    long maxMIMO_Layers = uplinkConfig &&
-                                  uplinkConfig->pusch_ServingCellConfig &&
-                                  uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1 &&
-                                  uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers ?
-                              *uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers : 1;
-
-    // UL and SRS configuration
-    if (configuration->do_SRS && uplinkConfig && uplinkConfig->initialUplinkBWP) {
-      if (!uplinkConfig->initialUplinkBWP->srs_Config) {
-        uplinkConfig->initialUplinkBWP->srs_Config = calloc(1, sizeof(*uplinkConfig->initialUplinkBWP->srs_Config));
-      }
-      config_srs(scc,
-                 SpCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP->srs_Config,
-                 uecap,
-                 curr_bwp,
-                 uid,
-                 0,
-                 maxMIMO_Layers,
-                 configuration->do_SRS);
-    }
-
-    // Set DL MCS table
-    NR_BWP_DownlinkDedicated_t *bwp_Dedicated = SpCellConfig->spCellConfigDedicated->initialDownlinkBWP;
-    set_dl_mcs_table(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.subcarrierSpacing,
-                     configuration->force_256qam_off ? NULL : uecap, bwp_Dedicated, scc);
-    struct NR_ServingCellConfig__downlinkBWP_ToAddModList *DL_BWP_list = SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList;
-    struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig->uplinkBWP_ToAddModList;
-    if (DL_BWP_list) {
-      for (int i=0; i<DL_BWP_list->list.count; i++){
-        NR_BWP_Downlink_t *bwp = DL_BWP_list->list.array[i];
-        int scs = bwp->bwp_Common->genericParameters.subcarrierSpacing;
-        set_dl_mcs_table(scs, configuration->force_256qam_off ? NULL : uecap, bwp->bwp_Dedicated, scc);
-      }
-    }
-    if (configuration->do_SRS && UL_BWP_list) {
-      for (int i=0; i<UL_BWP_list->list.count; i++) {
-        NR_BWP_Uplink_t *ul_bwp = UL_BWP_list->list.array[i];
-        int bwp_size = NRRIV2BW(ul_bwp->bwp_Common->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
-        if (ul_bwp->bwp_Dedicated->pusch_Config) {
-          NR_PUSCH_Config_t *pusch_Config = ul_bwp->bwp_Dedicated->pusch_Config->choice.setup;
-          if (pusch_Config->maxRank == NULL) {
-            pusch_Config->maxRank = calloc(1, sizeof(*pusch_Config->maxRank));
-          }
-          *pusch_Config->maxRank = ul_max_layers;
-        }
-        config_srs(scc,
-                   ul_bwp->bwp_Dedicated->srs_Config,
-                   uecap,
-                   bwp_size,
-                   uid,
-                   i+1,
-                   maxMIMO_Layers,
-                   configuration->do_SRS);
-      }
-    }
-    update_cqitables(bwp_Dedicated->pdsch_Config, SpCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup);
   }
 }
 
@@ -1471,10 +1449,7 @@ int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
                 const uint8_t                transaction_id,
                 const uint8_t                *masterCellGroup,
                 int                          masterCellGroup_len,
-                const NR_ServingCellConfigCommon_t *scc,
-                const NR_ServingCellConfig_t        *servingcellconfigdedicated,
-                const gNB_RrcConfigurationReq *configuration,
-                const int                    CC_id)
+                const gNB_RrcConfigurationReq *configuration)
 //------------------------------------------------------------------------------
 {
     asn_enc_rval_t                                   enc_rval;

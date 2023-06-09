@@ -264,7 +264,6 @@ static void get_options(void) {
   paramdef_t cmdline_params[] =CMDLINE_NRUEPARAMS_DESC ;
   int numparams = sizeof(cmdline_params)/sizeof(paramdef_t);
   config_get(cmdline_params,numparams,NULL);
-  config_process_cmdline( cmdline_params,numparams,NULL);
 
   if (vcdflag > 0)
     ouput_vcd = 1;
@@ -285,9 +284,18 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
   UE->tx_power_max_dBm     = tx_max_power[CC_id];
   UE->rf_map.card          = card_offset;
   UE->rf_map.chain         = CC_id + chain_offset;
+  UE->max_ldpc_iterations  = nrUE_params.max_ldpc_iterations;
+  UE->UE_scan_carrier      = nrUE_params.UE_scan_carrier;
+  UE->UE_fo_compensation   = nrUE_params.UE_fo_compensation;
+  UE->if_freq              = nrUE_params.if_freq;
+  UE->if_freq_off          = nrUE_params.if_freq_off;
+  UE->chest_freq           = nrUE_params.chest_freq;
+  UE->chest_time           = nrUE_params.chest_time;
+  UE->no_timing_correction = nrUE_params.no_timing_correction;
+  UE->timing_advance       = nrUE_params.timing_advance;
 
-  LOG_I(PHY,"Set UE mode %d, UE_fo_compensation %d, UE_scan_carrier %d, UE_no_timing_correction %d \n, chest-freq %d\n",
-  	   UE->mode, UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq);
+  LOG_I(PHY,"Set UE_fo_compensation %d, UE_scan_carrier %d, UE_no_timing_correction %d \n, chest-freq %d, chest-time %d\n",
+        UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq, UE->chest_time);
 
   // Set FP variables
 
@@ -303,8 +311,7 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
   fp->ssb_start_subcarrier = nrUE_params.ssb_start_subcarrier;
   fp->ofdm_offset_divisor  = nrUE_params.ofdm_offset_divisor;
 
-  fp->ofdm_offset_divisor = nrUE_params.ofdm_offset_divisor;
-  UE->max_ldpc_iterations = nrUE_params.max_ldpc_iterations;
+  LOG_I(PHY, "Set UE nb_rx_antenna %d, nb_tx_antenna %d, threequarter_fs %d, ssb_start_subcarrier %d\n", fp->nb_antennas_rx, fp->nb_antennas_tx, fp->threequarter_fs, fp->ssb_start_subcarrier);
 
 }
 
@@ -376,6 +383,27 @@ static void init_pdcp(int ue_id) {
 // Stupid function addition because UE itti messages queues definition is common with eNB
 void *rrc_enb_process_msg(void *notUsed) {
   return NULL;
+}
+
+static bool stop_immediately = false;
+static void trigger_stop(int sig)
+{
+  if (!oai_exit)
+    itti_wait_tasks_unblock();
+}
+static void trigger_deregistration(int sig)
+{
+  if (!stop_immediately) {
+    MessageDef *msg = itti_alloc_new_message(TASK_RRC_UE_SIM, 0, NAS_DEREGISTRATION_REQ);
+    itti_send_msg_to_task(TASK_NAS_NRUE, 0, msg);
+    stop_immediately = true;
+    static const char m[] = "Press ^C again to trigger immediate shutdown\n";
+    __attribute__((unused)) int unused = write(STDOUT_FILENO, m, sizeof(m) - 1);
+    signal(SIGALRM, trigger_stop);
+    alarm(5);
+  } else {
+    itti_wait_tasks_unblock();
+  }
 }
 
 static void get_channel_model_mode() {

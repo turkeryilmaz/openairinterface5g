@@ -182,13 +182,6 @@ openair0_config_t openair0_cfg[MAX_CARDS];
 
 double cpuf;
 
-/* hack: pdcp_run() is required by 4G scheduler which is compiled into
- * nr-softmodem because of linker issues */
-void pdcp_run(const protocol_ctxt_t *const ctxt_pP)
-{
-  abort();
-}
-
 /** FC Cell config */
 pthread_cond_t cell_config_done_cond;
 pthread_mutex_t cell_config_done_mutex;
@@ -786,7 +779,7 @@ int main( int argc, char **argv ) {
   // wait for end of program
   printf("Entering ITTI signals handler\n");
   printf("TYPE <CTRL-C> TO TERMINATE\n");
-  itti_wait_tasks_end();
+  itti_wait_tasks_end(NULL);
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);

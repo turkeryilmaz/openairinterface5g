@@ -1156,18 +1156,10 @@ struct srb0_data {
 void deliver_sdu_srb0(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
                       char *buf, int size)
 {
-  int rnti = ctxt_pP->rntiMaybeUEid;
-  int i;
-  int j;
-
-  if (/*ctxt_pP->enb_flag != 1 ||*/ ctxt_pP->module_id != 0 /*||
-      ctxt_pP->instance != 0 || ctxt_pP->eNB_index != 0 ||
-      ctxt_pP->brOption != 0 */) {
-    LOG_E(RLC, "%s: ctxt_pP not handled (%d %d %ld %d %d)\n", __FUNCTION__,
-          ctxt_pP->enb_flag , ctxt_pP->module_id, ctxt_pP->instance,
-          ctxt_pP->eNB_index,  ctxt_pP->brOption);
-    exit(1);
-  }
+  struct srb0_data *s0 = (struct srb0_data *)deliver_sdu_data;
+  s0->send_initial_ul_rrc_message(s0->mac, s0->rnti, (unsigned char *)buf,
+                                  size, s0->rawUE);
+}
 
 void nr_rlc_activate_srb0(int rnti, struct gNB_MAC_INST_s *mac, void *rawUE,
                           void (*send_initial_ul_rrc_message)(
@@ -1187,126 +1179,6 @@ void nr_rlc_activate_srb0(int rnti, struct gNB_MAC_INST_s *mac, void *rawUE,
   srb0_data->mac       = mac;
   srb0_data->rnti      = rnti;
   srb0_data->rawUE     = rawUE;
-  srb0_data->send_initial_ul_rrc_message = send_initial_ul_rrc_message;
-
-  nr_rlc_manager_lock(nr_rlc_ue_manager);
-  ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
-  if (ue->srb0 != NULL) {
-    LOG_W(RLC, "SRB0 already exists for UE with RNTI 0x%x, do nothing\n", rnti);
-    free(srb0_data);
-    nr_rlc_manager_unlock(nr_rlc_ue_manager);
-    return;
-  }
-
-  nr_rlc_tm = new_nr_rlc_entity_tm(10000,
-                                   deliver_sdu_srb0, srb0_data);
-  nr_rlc_ue_add_srb_rlc_entity(ue, 0, nr_rlc_tm);
-
-  LOG_I(RLC, "activated srb0 for UE with RNTI 0x%x\n", rnti);
-  nr_rlc_manager_unlock(nr_rlc_ue_manager);
-}
-
-struct srb0_data {
-  int module_id;
-  int CC_id;
-  int rnti;
-  int uid;
-  void (*send_initial_ul_rrc_message)(module_id_t        module_id,
-                                      int                CC_id,
-                                      int                rnti,
-                                      int                uid,
-                                      const uint8_t      *sdu,
-                                      sdu_size_t         sdu_len);
-};
-
-void deliver_sdu_srb0(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
-                      char *buf, int size)
-{
-  struct srb0_data *s0 = (struct srb0_data *)deliver_sdu_data;
-  s0->send_initial_ul_rrc_message(s0->module_id, s0->CC_id, s0->rnti, s0->uid,
-                                  (unsigned char *)buf, size);
-}
-
-void nr_rlc_activate_srb0(int rnti, int module_id, int cc_id, int uid,
-                          void (*send_initial_ul_rrc_message)(
-                                    module_id_t        module_id,
-                                     int                CC_id,
-                                     int                rnti,
-                                     int                uid,
-                                     const uint8_t      *sdu,
-                                     sdu_size_t         sdu_len))
-{
-  nr_rlc_entity_t            *nr_rlc_tm;
-  nr_rlc_ue_t                *ue;
-  struct srb0_data           *srb0_data;
-
-  srb0_data = calloc(1, sizeof(struct srb0_data));
-  AssertFatal(srb0_data != NULL, "out of memory\n");
-
-  srb0_data->module_id = module_id;
-  srb0_data->CC_id     = cc_id;
-  srb0_data->rnti      = rnti;
-  srb0_data->uid       = uid;
-  srb0_data->send_initial_ul_rrc_message = send_initial_ul_rrc_message;
-
-  nr_rlc_manager_lock(nr_rlc_ue_manager);
-  ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rnti);
-  if (ue->srb0 != NULL) {
-    LOG_W(RLC, "SRB0 already exists for UE with RNTI 0x%x, do nothing\n", rnti);
-    free(srb0_data);
-    nr_rlc_manager_unlock(nr_rlc_ue_manager);
-    return;
-  }
-
-  nr_rlc_tm = new_nr_rlc_entity_tm(10000,
-                                   deliver_sdu_srb0, srb0_data);
-  nr_rlc_ue_add_srb_rlc_entity(ue, 0, nr_rlc_tm);
-
-  LOG_I(RLC, "activated srb0 for UE with RNTI 0x%x\n", rnti);
-  nr_rlc_manager_unlock(nr_rlc_ue_manager);
-}
-
-struct srb0_data {
-  int module_id;
-  int CC_id;
-  int rnti;
-  int uid;
-  void (*send_initial_ul_rrc_message)(module_id_t        module_id,
-                                      int                CC_id,
-                                      int                rnti,
-                                      int                uid,
-                                      const uint8_t      *sdu,
-                                      sdu_size_t         sdu_len);
-};
-
-void deliver_sdu_srb0(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
-                      char *buf, int size)
-{
-  struct srb0_data *s0 = (struct srb0_data *)deliver_sdu_data;
-  s0->send_initial_ul_rrc_message(s0->module_id, s0->CC_id, s0->rnti, s0->uid,
-                                  (unsigned char *)buf, size);
-}
-
-void nr_rlc_activate_srb0(int rnti, int module_id, int cc_id, int uid,
-                          void (*send_initial_ul_rrc_message)(
-                                    module_id_t        module_id,
-                                     int                CC_id,
-                                     int                rnti,
-                                     int                uid,
-                                     const uint8_t      *sdu,
-                                     sdu_size_t         sdu_len))
-{
-  nr_rlc_entity_t            *nr_rlc_tm;
-  nr_rlc_ue_t                *ue;
-  struct srb0_data           *srb0_data;
-
-  srb0_data = calloc(1, sizeof(struct srb0_data));
-  AssertFatal(srb0_data != NULL, "out of memory\n");
-
-  srb0_data->module_id = module_id;
-  srb0_data->CC_id     = cc_id;
-  srb0_data->rnti      = rnti;
-  srb0_data->uid       = uid;
   srb0_data->send_initial_ul_rrc_message = send_initial_ul_rrc_message;
 
   nr_rlc_manager_lock(nr_rlc_ue_manager);
@@ -1382,14 +1254,6 @@ rlc_op_status_t rrc_rlc_config_req   (
   }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
   return RLC_OP_STATUS_OK;
-}
-
-void nr_rlc_remove_ue(int rnti)
-{
-  LOG_W(RLC, "remove UE %x\n", rnti);
-  nr_rlc_manager_lock(nr_rlc_ue_manager);
-  nr_rlc_manager_remove_ue(nr_rlc_ue_manager, rnti);
-  nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
 
 void nr_rlc_remove_ue(int rnti)

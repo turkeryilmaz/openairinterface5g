@@ -40,6 +40,7 @@
 #include "aka_functions.h"
 #include "secu_defs.h"
 #include "kdf.h"
+#include "key_nas_deriver.h"
 #include "PduSessionEstablishRequest.h"
 #include "PduSessionEstablishmentAccept.h"
 #include "intertask_interface.h"
@@ -59,6 +60,7 @@ uint8_t  *registration_request_buf;
 uint32_t  registration_request_len;
 extern char *baseNetAddress;
 extern uint16_t NB_UE_INST;
+static nr_ue_nas_t nr_ue_nas;
 static ue_sa_security_key_t ** ue_security_key;
 static int _ul_nas_count = 0;
 static int _dl_nas_count = 0;
@@ -512,6 +514,12 @@ static void _calculate_nas_maci(int Mod_id, uint8_t dir, uint32_t count, uint8_t
       LOG_E(NAS, "Integrity algo %d is not supported\n", algo);
       return;
   }
+}
+
+nr_ue_nas_t *get_ue_nas_info(module_id_t module_id)
+{
+  DevAssert(module_id == 0);
+  return &nr_ue_nas;
 }
 
 void generateRegistrationRequest(as_nas_info_t *initialNasMsg, int Mod_id) {

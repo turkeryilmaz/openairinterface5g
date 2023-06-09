@@ -209,7 +209,7 @@ bool nr_ul_preprocessor_phytest(module_id_t module_id, frame_t frame, sub_frame_
   NR_UE_UL_BWP_t *ul_bwp = &UE->current_UL_BWP;
   const int mu = ul_bwp->scs;
 
-  const struct NR_PUSCH_TimeDomainResourceAllocationList *tdaList = ul_bwp->tdaList;
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tdaList = get_ul_tdalist(ul_bwp, sched_ctrl->coreset->controlResourceSetId, sched_ctrl->search_space->searchSpaceType->present, NR_RNTI_C);
   const int temp_tda = get_ul_tda(nr_mac, scc, frame, slot);
   if (temp_tda < 0)
     return false;

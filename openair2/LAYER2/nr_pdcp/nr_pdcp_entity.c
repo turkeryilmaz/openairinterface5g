@@ -248,7 +248,7 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
 
   entity->tx_next++;
 
-  entity->deliver_pdu(entity->deliver_pdu_data, entity, buf,
+  entity->deliver_pdu(entity->deliver_pdu_data, entity->rb_id, 0, buf,
                       header_size + size + integrity_size, sdu_id);
   entity->stats.txpdu_pkts++;
   entity->stats.txpdu_bytes += header_size + size + integrity_size;

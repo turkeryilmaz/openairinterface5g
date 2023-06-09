@@ -268,45 +268,6 @@ static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint
 
 }
 
-static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint16_t sfn_slot)
-{
-    /** Send VT ACK for SLOT */
-    if ( NULL != vt_ue_slot_ind)
-    {
-        LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
-                                            NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
-        NR_UL_IND_t ul_info = {
-                .vt_ue_slot_ind = *vt_ue_slot_ind,
-        };
-        check_and_process_slot_ind(vt_ue_slot_ind,  NFAPI_SFNSLOT2SFN(sfn_slot), NFAPI_SFNSLOT2SLOT(sfn_slot) );
-        send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
-        ul_info.vt_ue_slot_ind.sfn = 0;
-        ul_info.vt_ue_slot_ind.slot = 0;
-    } else {
-        LOG_D(NR_MAC, "VT is NULL\n");
-    }
-
-}
-
-static void send_vt_slot_ack(nfapi_ue_slot_indication_vt_t *vt_ue_slot_ind, uint16_t sfn_slot)
-{
-    /** Send VT ACK for SLOT */
-    if ( NULL != vt_ue_slot_ind)
-    {
-        LOG_D(NR_MAC, "Sfn [%d] Slot [%d] from %s\n", NFAPI_SFNSLOT2SFN(sfn_slot), 
-                                            NFAPI_SFNSLOT2SLOT(sfn_slot), __FUNCTION__);
-        NR_UL_IND_t ul_info = {
-                .vt_ue_slot_ind = *vt_ue_slot_ind,
-        };
-        send_nsa_standalone_msg(&ul_info, vt_ue_slot_ind->header.message_id);
-        ul_info.vt_ue_slot_ind.sfn = 0;
-        ul_info.vt_ue_slot_ind.slot = 0;
-    } else {
-        LOG_D(NR_MAC, "VT is NULL\n");
-    }
-
-}
-
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
 {
   LOG_I(MAC, "Clearing Queues\n");
@@ -431,7 +392,6 @@ static void *NRUE_phy_stub_standalone_pnf_task(void *arg)
                       mac->scc_SIB->tdd_UL_DL_ConfigurationCommon,
                       ul_info.slot_tx, mac->frame_type)) {
       LOG_D(NR_MAC, "Slot %d. calling nr_ue_ul_ind() and nr_ue_pucch_scheduler() from %s\n", ul_info.slot_tx, __FUNCTION__);
-      nr_ue_scheduler(NULL, &ul_info);
       nr_ue_prach_scheduler(mod_id, ul_info.frame_tx, ul_info.slot_tx);
       nr_ue_pucch_scheduler(mod_id, ul_info.frame_tx, ul_info.slot_tx, NULL);
     }
@@ -708,19 +668,15 @@ void UE_processing(nr_rxtx_thread_data_t *rxtxD) {
     if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
       nr_downlink_indication_t dl_indication;
       nr_fill_dl_indication(&dl_indication, NULL, NULL, proc, UE, &phy_data);
-      UE->if_inst->dl_indication(&dl_indication, NULL);
+      UE->if_inst->dl_indication(&dl_indication);
     }
 
     uint64_t a=rdtsc_oai();
-    phy_procedures_nrUE_RX(UE, proc, &phy_data);
-    LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
-#endif
-
-    if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa){
-      NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-      protocol_ctxt_t ctxt;
-      PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, UE->Mod_id, ENB_FLAG_NO, mac->crnti, proc->frame_rx, proc->nr_slot_rx, 0);
-      pdcp_run(&ctxt);
+    pbch_pdcch_processing(UE, proc, &phy_data);
+    if (phy_data.dlsch[0].active) {
+      // indicate to tx thread to wait for DLSCH decoding
+      const int ack_nack_slot = (proc->nr_slot_rx + phy_data.dlsch[0].dlsch_config.k1_feedback) % UE->frame_parms.slots_per_frame;
+      UE->tx_wait_for_dlsch[ack_nack_slot]++;
     }
 
     LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
@@ -790,7 +746,7 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 
-    LOG_I(PHY,"Resynchronizing RX by %d samples (mode = %d)\n",UE->rx_offset,UE->mode);
+    LOG_I(PHY,"Resynchronizing RX by %d samples\n",UE->rx_offset);
 
     if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
       // Resynchonize by slot (will work with numerology 1 only)

@@ -19,16 +19,25 @@
  *      contact@openairinterface.org
  */
 
-#ifndef MAC_RRC_DL_HANDLER_H
-#define MAC_RRC_DL_HANDLER_H
+#ifndef _NR_PDCP_SECURITY_H_
+#define _NR_PDCP_SECURITY_H_
 
-#include "platform_types.h"
-#include "f1ap_messages_types.h"
+#define NR_PDCP_DBG
 
-void ue_context_setup_request(const f1ap_ue_context_setup_t *req);
-void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req);
-void ue_context_release_command(const f1ap_ue_context_release_cmd_t *cmd);
+#ifdef NR_PDCP_DBG
 
-int dl_rrc_message(module_id_t module_id, const f1ap_dl_rrc_message_t *dl_rrc);
+#include "LOG/log.h"
 
-#endif /* MAC_RRC_DL_HANDLER_H */
+#define FNIN  LOG_D(PDCP, ">>> %s:%d\n",__FUNCTION__, __LINE__);
+#define FNOUT LOG_D(PDCP, "<<< %s:%d\n",__FUNCTION__, __LINE__);
+#define LOG_MSG(B, S, ...)  LOG_UDUMPMSG(PDCP, B, S, LOG_DUMP_CHAR, __VA_ARGS__);
+
+#else // NR_PDCP_DBG
+
+#define FNIN    printf(">>> %s:%d\n", __FUNCTION__, __LINE__);
+#define FNOUT   printf("<<< %s:%d\n", __FUNCTION__, __LINE__);
+#define LOG_MSG(B, S, ...) do {printf(__VA_ARGS__); for (int i = 0; i < S; ++i) printf("%02X", (uint8_t)B[i]); printf("\n"); } while(0);
+
+#endif // NR_PDCP_DBG
+
+#endif /* _NR_PDCP_SECURITY_H_ */

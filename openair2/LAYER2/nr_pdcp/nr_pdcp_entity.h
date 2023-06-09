@@ -35,6 +35,20 @@ typedef enum {
   NR_PDCP_SRB
 } nr_pdcp_entity_type_t;
 
+/**
+ * 3GPP TS 33.501
+ * RRC downlink ciphering (encryption) at the gNB shall start after sending the AS security mode command message.
+ * RRC uplink deciphering (decryption) at the gNB shall start after receiving and successful verification of the AS security mode complete message.
+ *
+ * RRC uplink ciphering (encryption) at the UE shall start after sending the AS security mode complete message.
+ * RRC downlink deciphering (decryption) at the UE shall start after receiving and successful verification of the AS security mode command message.
+*/
+typedef enum {
+  NR_PDCP_ENTITY_CIPHERING_OFF = 0,
+  NR_PDCP_ENTITY_CIPHERING_ON  = 1,
+  NR_PDCP_ENTITY_CIPHERING_SMC = 2, /* A Transient state to skip decryption @ gNB and encryption @ nrUE during SMC procedure */
+} nr_pdcp_entity_ciphering_state_t;
+
 typedef struct {
   //nr_pdcp_entity_type_t mode;
   /* PDU stats */
@@ -75,6 +89,8 @@ typedef struct nr_pdcp_entity_t {
   void (*recv_pdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size);
   void (*recv_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
                    int sdu_id);
+  int (*process_sdu)(struct nr_pdcp_entity_t *entity, char *buffer, int size,
+                     int sdu_id, char *pdu_buffer, int pdu_max_size);
   void (*delete_entity)(struct nr_pdcp_entity_t *entity);
   void (*get_stats)(struct nr_pdcp_entity_t *entity, nr_pdcp_statistics_t *out);
 
