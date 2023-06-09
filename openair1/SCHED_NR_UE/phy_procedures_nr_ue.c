@@ -1475,6 +1475,7 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
   int32_t **rxdataF = ue->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
 
+  bool payload_type_string = true;
   for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
     nr_ue_set_slsch_rx(ue, harq_pid);
     if (slsch->harq_processes[harq_pid]->status == ACTIVE) {
@@ -1486,8 +1487,12 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
         apply_nr_rotation_ul(&ue->frame_parms, rxdataF[aa], slot_rx, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
       }
       uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, 29008, 45727, proc);
-      if (ret != -1)
-        validate_rx_payload(harq, frame_rx, slot_rx);
+      if (ret != -1) {
+        if (payload_type_string)
+          validate_rx_payload_str(harq, frame_rx, slot_rx);
+        else
+          validate_rx_payload(harq, frame_rx, slot_rx);
+      }
     }
   }
   LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_rx, slot_rx);
@@ -1540,6 +1545,58 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
     LOG_D(PHY, "PSSCH test OK\n");
   }
 }
+
+void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
+  unsigned int errors_bit = 0;
+  unsigned char estimated_output_bit[HNA_SIZE];
+  unsigned char test_input_bit[HNA_SIZE];
+  unsigned int n_false_positive = 0;
+  unsigned char test_input[] = "EpiScience";
+  static uint16_t sum_passed = 0;
+  static uint16_t sum_failed = 0;
+
+  for (int i = 0; i < min(80, harq->TBS); i++) {
+    estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+    if(i % 8 == 0){
+      LOG_D(PHY,"TxByte : %c  vs  %c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+    }
+#if DEBUG_NR_PSSCHSIM
+    LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+#endif
+    if (estimated_output_bit[i] != test_input_bit[i]) {
+      errors_bit++;
+    }
+  }
+  if (errors_bit > 0) {
+    static unsigned char result[128];
+    for (int i = 0; i < min(128, harq->TBS/8); i++) {
+      result[i] = harq->b[i];
+      LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
+    }
+    unsigned char *usr_msg_ptr = &result[0];
+    LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
+    LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
+    n_false_positive++;
+    ++sum_failed;
+    LOG_D(PHY,"errors_bit %u\n", errors_bit);
+    LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
+    LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+  }
+  if (errors_bit == 0) {
+    static unsigned char result[128];
+    for (int i = 0; i < min(128, harq->TBS/8); i++) {
+      result[i] = harq->b[i];
+      LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
+    }
+    ++sum_passed;
+    unsigned char *usr_msg_ptr = &result[0];
+    LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
+    LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
+    LOG_I(PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+  }
+}
+
 int phy_procedures_nrUE_RX(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
                            uint8_t gNB_id,

@@ -30,7 +30,7 @@ import subprocess
 from subprocess import Popen
 import threading
 from typing import Dict
-from queue import *
+from queue import Queue
 from sl_check_log import LogChecker
 
 HOME_DIR = os.path.expanduser( '~' )
@@ -46,12 +46,20 @@ parser.add_argument('--launch', '-l', default='both', choices='syncref nearby bo
 Sidelink UE type to launch test scenario (default: %(default)s)
 """)
 
-parser.add_argument('--host', default='10.1.1.80', type=str, help="""
+parser.add_argument('--host', default='10.1.1.61', type=str, help="""
 Nearby Host IP (default: %(default)s)
 """)
 
-parser.add_argument('--user', '-u',  default='zaid', type=str, help="""
+parser.add_argument('--user', '-u', default=os.environ.get('USER'), type=str, help="""
 User id in Nearby Host (default: %(default)s)
+""")
+
+parser.add_argument('--att-host', default='10.1.1.78', type=str, help="""
+Host IP for adjusting attenuation (default: %(default)s)
+""")
+
+parser.add_argument('--att-user', default='zaid', type=str, help="""
+User id for adjusting attenuation (default: %(default)s)
 """)
 
 parser.add_argument('--repeat', '-r', default=1, type=int, help="""
@@ -62,12 +70,20 @@ parser.add_argument('--basic', '-b', action='store_true', help="""
 Basic test with basic shell commands
 """)
 
+parser.add_argument('--message', '-m', type=str, default='EpiScience', help="""
+The message to send from SyncRef UE to Nearby UE
+""")
+
 parser.add_argument('--commands', default='sl_cmds.txt', help="""
 The USRP Commands .txt file (default: %(default)s)
 """)
 
-parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=30, help="""
+parser.add_argument('--duration', '-d', metavar='SECONDS', type=int, default=20, help="""
 How long to run the test before stopping to examine the logs
+""")
+
+parser.add_argument('--att', type=int, default=-1, help="""
+Attenuation value
 """)
 
 parser.add_argument('--nid1', type=int, default=10, help="""
@@ -95,8 +111,16 @@ parser.add_argument('--debug', action='store_true', help="""
 Enable debug logging (for this script only)
 """)
 
-parser.add_argument('--test', '-t', default='usrp', choices='psbchsim rfsim usrp'.split(), help="""
-The kind of test scenario to run. The options include psbchsim, rfsim, or usrp. (default: %(default)s)
+parser.add_argument('--save', default=None, help="""
+The default Python log result with .txt extention (default: %(default)s)
+""")
+
+parser.add_argument('--sci2', action='store_true', help="""
+Enable SCI2 log parsing (this will grep the logs for the SCI2 payload)
+""")
+
+parser.add_argument('--test', '-t', default='usrp_b210', choices='psbchsim psschsim rfsim usrp_b210 usrp_n310'.split(), help="""
+The kind of test scenario to run. The options include psbchsim, psschsim, rfsim, or usrp_b210 usrp_n310. (default: %(default)s)
 """)
 
 OPTS = parser.parse_args()
@@ -106,12 +130,15 @@ logging.basicConfig(level=logging.DEBUG if OPTS.debug else logging.INFO,
                     format='>>> %(name)s: %(levelname)s: %(message)s')
 LOGGER = logging.getLogger(os.path.basename(sys.argv[0]))
 
+if OPTS.save:
+    out_fh = logging.FileHandler(filename=OPTS.save, mode='a')
+    LOGGER.addHandler(out_fh)
 # ----------------------------------------------------------------------------
 def redirect_output(cmd: str, filename: str) -> str:
-    cmd += ' >{} 2>&1'.format(filename)
+    cmd += f' >{filename} 2>&1'
     return cmd
 
-def thread_delay(thread_name: str, delay: int) -> None:
+def thread_delay(delay: int) -> None:
     count = 0
     while count < 1:
         time.sleep(delay)
@@ -127,7 +154,8 @@ class Command:
         self.parse_commands()
 
     def check_user(self) -> None:
-        if OPTS.test != 'usrp': return
+        if OPTS.test != 'usrp':
+            return
         if OPTS.launch != 'syncref' and OPTS.user == '':
             LOGGER.error("--user followed by [user id] is mandatory to connect to remote machine")
             sys.exit(1)
@@ -136,30 +164,34 @@ class Command:
         data_file = glob.glob(filename)
         if data_file:
             return filename
-        else:
-            LOGGER.error(f'The file {filename} does not exist!')
-            sys.exit(1)
+        LOGGER.error('The file %s does not exist!', filename)
+        sys.exit(1)
 
     def parse_commands(self) -> None:
         """
         Scan the provided commands file.
         """
         self.launch_cmds: Dict[str, str] = {}
-        if OPTS.test == 'usrp':
-            launch_cmds_re = re.compile(r'^\s*(\S*)usrp\S*\s*=\s*((\S+\s*)*)')
-        elif OPTS.test == 'rfsim':
+        if OPTS.test.lower() == 'usrp_b210':
+            launch_cmds_re = re.compile(r'^\s*(\S*)usrp_b210\S*\s*=\s*((\S+\s*)*)')
+        elif OPTS.test.lower() == 'usrp_n310':
+            launch_cmds_re = re.compile(r'^\s*(\S*)usrp_n310\S*\s*=\s*((\S+\s*)*)')
+        elif OPTS.test.lower() == 'rfsim':
             launch_cmds_re = re.compile(r'^\s*(\S*)rfsim\S*\s*=\s*((\S+\s*)*)')
-        elif OPTS.test == 'psbchsim':
+        elif OPTS.test.lower() == 'psbchsim':
             launch_cmds_re = re.compile(r'^\s*(\S*)psbchsim\S*\s*=\s*((\S+\s*)*)')
+        elif OPTS.test.lower() == 'psschsim':
+            launch_cmds_re = re.compile(r'^\s*(\S*)psschsim\S*\s*=\s*((\S+\s*)*)')
         else:
             LOGGER.error("Provided test option not valid! %s", OPTS.test)
-            exit(1)
+            sys.exit(1)
 
-        with open(self.filename, 'rt') as fh:
+        with open(self.filename, 'rt') as in_fh:
             nearby_cmd_continued = False
             syncref_cmd_continued = False
-            for line in fh:
-                if line == '\n': continue
+            for line in in_fh:
+                if line == '\n':
+                    continue
                 match = launch_cmds_re.match(line)
                 if match:
                     host_role = match.group(1)
@@ -187,9 +219,9 @@ class Command:
                 else:
                     LOGGER.debug('Unmatched line %r', line)
                     continue
-        if self.launch_cmds == {}:
-            LOGGER.error(f'usrp commands are not found in file: {self.filename} ')
-            exit()
+        if not self.launch_cmds:
+            LOGGER.error('usrp commands are not found in file: %s', self.filename)
+            sys.exit(1)
 
 class TestThread(threading.Thread):
     """
@@ -205,17 +237,17 @@ class TestThread(threading.Thread):
         self.log_agent = log_agent
 
     def run(self):
-        if self.queue.empty() == True:
+        if self.queue.empty():
             LOGGER.error("Queue is empty!")
             sys.exit(1)
         try:
             while not self.queue.empty():
                 job = self.queue.get()
                 if "nearby" == job:
-                    thread_delay(job, delay = 0)
+                    thread_delay(delay = 3)
                     self.launch_nearby(job)
                 if "syncref" == job and not OPTS.no_run:
-                    thread_delay(job, delay = self.delay)
+                    thread_delay(delay = self.delay)
                     self.launch_syncref(job)
             self.queue.task_done()
         except Exception as inst:
@@ -225,10 +257,11 @@ class TestThread(threading.Thread):
         LOGGER.info('Launching SyncRef UE')
         if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
         else: cmd = self.commands.launch_cmds[job]
+        cmd = cmd[:-1] + f' --message {OPTS.message}'
         proc = Popen(cmd, shell=True)
         LOGGER.info(f"syncref_proc = {proc}")
         if not OPTS.basic and not OPTS.no_run:
-            LOGGER.info(f"Process running... {job}")
+            LOGGER.info("Process running... %s", job)
             time.sleep(OPTS.duration)
             self.kill_process("syncref", proc)
 
@@ -237,7 +270,7 @@ class TestThread(threading.Thread):
         LOGGER.info('Launching Nearby UE')
         if OPTS.basic: cmd = redirect_output('uname -a', self.log_file)
         else: cmd = self.commands.launch_cmds[job]
-        if OPTS.test == 'usrp':
+        if 'usrp' in OPTS.test:
             cmd = cmd[:-1] + f' -d {OPTS.duration} --nid1 {OPTS.nid1} --nid2 {OPTS.nid2}'
             proc = Popen(["ssh", f"{user}@{host}", cmd],
                         shell=False,
@@ -259,7 +292,7 @@ class TestThread(threading.Thread):
                 LOGGER.info(f"Process running... {job}")
                 time.sleep(OPTS.duration)
                 self.kill_process("nearby", proc)
-            nearby_result = self.log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2)
+            nearby_result = self.log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2, OPTS.sci2)
             if nearby_result:
                 self.find_nearby_result_metric(nearby_result)
 
@@ -270,14 +303,17 @@ class TestThread(threading.Thread):
                 line = line.decode()
             if OPTS.test == 'usrp':
                 LOGGER.info(line.strip())
-            # 'SyncRef UE found. RSRP: -100 dBm/RE. It took {delta_time_s} seconds'
+            # 'SyncRef UE found. PSSCH-RSRP: -102 dBm/RE SSS-RSRP: -100 dBm/RE passed 99 total 100 It took {delta_time_s} seconds'
             if 'SyncRef UE found' in line:
-                fields = line.split(maxsplit=12)
+                fields = line.split(maxsplit=20)
                 if len(fields) > 6:
-                    ssb_rsrp = float(fields[-6])
+                    pssch_rsrp = float(fields[-13])
+                    ssb_rsrp = float(fields[-10])
+                    nb_decoded = int(fields[-7])
+                    total_rx = int(fields[-5])
                     sync_duration = float(fields[-2])
                     counting_duration = sync_duration - self.delay
-                    result_metric = (ssb_rsrp, sync_duration, counting_duration)
+                    result_metric = (pssch_rsrp, ssb_rsrp, nb_decoded, total_rx, sync_duration, counting_duration)
                     self.passed += [result_metric]
                     return
 
@@ -297,7 +333,22 @@ class TestThread(threading.Thread):
 
 # ----------------------------------------------------------------------------
 
+def set_attenuation(attenuation, host, user) -> Popen:
+    if OPTS.att >= 0:
+        LOGGER.info('Setting attenuation')
+        cmd = f'curl http://169.254.10.10/:CHAN:3:SETATT:{attenuation}'
+        Popen(["ssh", f"{user}@{host}", cmd],
+              shell=False,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE)
+        LOGGER.info(f"attenuation value = {attenuation}")
+        time.sleep(1)
+
+
 def main() -> int:
+    """
+    Main function to run sidelink test repeatedly for a given attenuation value.
+    """
     commands = Command(OPTS.commands)
     log_agent = LogChecker(OPTS, LOGGER)
     LOGGER.debug(f'Number of iterations {OPTS.repeat}')
@@ -308,6 +359,12 @@ def main() -> int:
     passed_metric = []
     num_tx_ssb = []
     num_passed = 0
+    total_rx_list = []
+    nb_decoded_list = []
+    pssch_rsrp_list = []
+    ssb_rsrp_list = []
+    sync_duration_list = []
+    set_attenuation(OPTS.att, OPTS.att_host, OPTS.att_user)
     for i in range(OPTS.repeat):
         threads = []
         queue = Queue()
@@ -319,23 +376,39 @@ def main() -> int:
             threads.append(th)
         for th in threads:
             th.join()
-        if num_passed != len(passed_metric):
-            # Examine the logs to determine if the test passed
-            (ssb_rsrp, sync_duration, counting_duration) = passed_metric[-1]
-            num_ssb = log_agent.analyze_syncref_logs(counting_duration)
-            num_tx_ssb += [num_ssb]
-            LOGGER.info(f"Trial {i+1}/{OPTS.repeat} PASSED. {num_ssb} SSB(s) were generated. Measured {ssb_rsrp} RSRP (dbm/RE)")
-        else:
-            LOGGER.info(f"Failure detected during {i+1}/{OPTS.repeat} trial(s).")
-        num_passed = len(passed_metric)
+        if 'nearby' in jobs:
+            if num_passed != len(passed_metric):
+                # Examine the logs to determine if the test passed
+                (pssch_rsrp, ssb_rsrp, nb_decoded, total_rx, sync_duration, counting_duration) = passed_metric[-1]
+                num_ssb = log_agent.analyze_syncref_logs(counting_duration)
+                num_tx_ssb += [num_ssb]
+                total_rx_list += [total_rx]
+                sync_duration_list += [sync_duration]
+                nb_decoded_list += [nb_decoded]
+                pssch_rsrp_list += [pssch_rsrp]
+                ssb_rsrp_list += [ssb_rsrp]
+                LOGGER.info(f"Trial {i+1}/{OPTS.repeat} PASSED. {num_ssb} SSB(s) were generated. Measured {ssb_rsrp} RSRP (dbm/RE)")
+            else:
+                LOGGER.info(f"Failure detected during {i+1}/{OPTS.repeat} trial(s).")
+            num_passed = len(passed_metric)
 
     LOGGER.info('#' * 42)
-    LOGGER.info(f"Number of passed = {len(passed_metric)}/{OPTS.repeat}")
-    if len(num_tx_ssb) > 0:
-        LOGGER.info(f"Avg number of SSB = {sum(num_tx_ssb) / len(num_tx_ssb)} ({num_tx_ssb})")
-    if len(passed_metric) > 0:
-        LOGGER.info(f"Avg SSB RSRP = {sum([result[0] for result in passed_metric]) / len(passed_metric)}")
-        LOGGER.info(f"Avg Sync duration (seconds) = {sum([result[1] for result in passed_metric]) / len(passed_metric)}")
-    return 0
+    if 'nearby' in jobs:
+        LOGGER.info(f"Number of passed = {len(passed_metric)}/{OPTS.repeat}")
+        if len(num_tx_ssb) > 0:
+            LOGGER.info(f"Avg number of SSB = {sum(num_tx_ssb) / len(num_tx_ssb)} ({num_tx_ssb})")
+        if len(passed_metric) > 0:
+            sum_nb_decoded, sum_total_rx = sum(nb_decoded_list), sum(total_rx_list)
+            avg_bler = (float) (sum_total_rx - sum_nb_decoded) / sum_total_rx if sum_total_rx > 0 else 1
+            LOGGER.info(f"Avg PSSCH RSRP = {sum(pssch_rsrp_list) / len(passed_metric):.2f}")
+            LOGGER.info(f"Avg SSB RSRP = {sum(ssb_rsrp_list) / len(passed_metric):.2f}")
+            LOGGER.info(f"Avg BLER = {avg_bler:.2f} with {sum_nb_decoded} / {sum_total_rx}")
+            LOGGER.info(f"Avg Sync duration (seconds) = {sum(sync_duration_list) / len(passed_metric):.2f}")
+            LOGGER.info(f"pssch_rsrp_list = {pssch_rsrp_list}")
+            LOGGER.info(f"ssb_rsrp_list = {ssb_rsrp_list}")
+            LOGGER.info(f"nb_decoded_list = {nb_decoded_list}")
+            LOGGER.info(f"total_rx_list = {total_rx_list}")
+            LOGGER.info('-' * 42)
+        return 0
 
 sys.exit(main())
