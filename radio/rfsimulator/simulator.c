@@ -623,12 +623,19 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
       samplesBlockHeader_t header= {t->typeStamp, nsamps, nbAnt, timestamp};
       fullwrite(b->conn_sock,&header, sizeof(header), t);
       sample_t tmpSamples[nsamps][nbAnt];
+      AssertFatal(nbAnt == 1, "nbAnt %d not handled yet\n", nbAnt);
 
       for(int a=0; a<nbAnt; a++) {
         sample_t *in=(sample_t *)samplesVoid[a];
 
-        for(int s=0; s<nsamps; s++)
-          tmpSamples[s][a]=in[s];
+        int s = 0;
+        for (; s < nsamps - 7; s += 8) {
+          simde__m256i sample = simde_mm256_loadu_si256(&in[s]);
+          simde_mm256_storeu_si256(&tmpSamples[s][a], sample);
+        }
+
+        for (; s < nsamps; s++)
+          tmpSamples[s][a] = in[s];
       }
 
       if (b->conn_sock >= 0 ) {
