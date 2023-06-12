@@ -88,7 +88,6 @@
 #include <openair1/PHY/NR_TRANSPORT/nr_dlsch.h>
 #include <PHY/NR_ESTIMATION/nr_ul_estimation.h>
 
-#define USE_MSGQ 1
 //#define USRP_DEBUG 1
 // Fix per CC openair rf/if device update
 // extern openair0_device openair0;
@@ -159,7 +158,6 @@ void *L1_rx_thread(void *arg)
   return NULL;
 }
 /* to be added for URLLC, requires MAC scheduling to be split from UL indication 
->>>>>>> origin/develop
 void *L1_tx_thread(void *arg) {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
 

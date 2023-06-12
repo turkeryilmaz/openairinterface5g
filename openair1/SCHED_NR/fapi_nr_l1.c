@@ -38,7 +38,6 @@
 #include "openair2/NR_PHY_INTERFACE/nr_sched_response.h"
 
 
-#define USE_MSGQ 1
 
 extern int oai_nfapi_dl_tti_req(nfapi_nr_dl_tti_request_t *dl_config_req);
 extern int oai_nfapi_tx_data_req(nfapi_nr_tx_data_request_t *tx_data_req);
