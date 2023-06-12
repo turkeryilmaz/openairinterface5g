@@ -1489,7 +1489,7 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
       uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, rxdataF, 29008, 45727, proc);
       if (ret != -1) {
         if (payload_type_string)
-          validate_rx_payload_str(harq, frame_rx, slot_rx);
+          validate_rx_payload_str(harq, slot_rx);
         else
           validate_rx_payload(harq, frame_rx, slot_rx);
       }
