@@ -1363,7 +1363,6 @@ void fill_initial_cellGroupConfig(int uid,
                                  const int CC_id)
 {
   NR_RLC_BearerConfig_t                            *rlc_BearerConfig     = NULL;
-  NR_LogicalChannelConfig_t                        *logicalChannelConfig = NULL;
   NR_MAC_CellGroupConfig_t                         *mac_CellGroupConfig  = NULL;
   NR_PhysicalCellGroupConfig_t	                   *physicalCellGroupConfig = NULL;
 
@@ -2161,6 +2160,7 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
   struct NR_SRB_ToAddMod *SRB2_config = NULL;
   NR_DL_DCCH_Message_t dl_dcch_msg = {0};
   NR_RRCReestablishment_t *rrcReestablishment = NULL;
+  int i = 0;
   ue_context_pP->ue_context.reestablishment_xid = Transaction_id;
   NR_SRB_ToAddModList_t **SRB_configList2 = NULL;
   SRB_configList2 = &ue_context_pP->ue_context.SRB_configList2[Transaction_id];
@@ -2170,19 +2170,22 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
   }
 
   *SRB_configList2 = CALLOC(1, sizeof(NR_SRB_ToAddModList_t));
-  dl_dcch_msg.message.present = NR_DL_DCCH_MessageType_PR_c1;
-  dl_dcch_msg.message.choice.c1 = calloc(1, sizeof(struct NR_DL_DCCH_MessageType__c1));
+  memset((void *)&dl_dcch_msg, 0, sizeof(NR_DL_DCCH_Message_t));
+  dl_dcch_msg.message.present           = NR_DL_DCCH_MessageType_PR_c1;
+  dl_dcch_msg.message.choice.c1 = calloc(1,sizeof(struct NR_DL_DCCH_MessageType__c1));
   dl_dcch_msg.message.choice.c1->present = NR_DL_DCCH_MessageType__c1_PR_rrcReestablishment;
-  dl_dcch_msg.message.choice.c1->choice.rrcReestablishment = CALLOC(1, sizeof(NR_RRCReestablishment_t));
+  dl_dcch_msg.message.choice.c1->choice.rrcReestablishment = CALLOC(1,sizeof(NR_RRCReestablishment_t));
   rrcReestablishment = dl_dcch_msg.message.choice.c1->choice.rrcReestablishment;
 
   // get old configuration of SRB2
   if (*SRB_configList != NULL) {
-    for (int i = 0; (i < (*SRB_configList)->list.count) && (i < 3); i++) {
-      LOG_D(NR_RRC, "(*SRB_configList)->list.array[%d]->srb_Identity=%ld\n", i, (*SRB_configList)->list.array[i]->srb_Identity);
-      if ((*SRB_configList)->list.array[i]->srb_Identity == 2) {
+    for (i = 0; (i < (*SRB_configList)->list.count) && (i < 3); i++) {
+      LOG_D(NR_RRC, "(*SRB_configList)->list.array[%d]->srb_Identity=%ld\n",
+            i, (*SRB_configList)->list.array[i]->srb_Identity);
+
+      if ((*SRB_configList)->list.array[i]->srb_Identity == 2 ) {
         SRB2_config = (*SRB_configList)->list.array[i];
-      } else if ((*SRB_configList)->list.array[i]->srb_Identity == 1) {
+      } else if ((*SRB_configList)->list.array[i]->srb_Identity == 1 ) {
         SRB1_config = (*SRB_configList)->list.array[i];
       }
     }
@@ -2276,8 +2279,8 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
   return ((enc_rval.encoded + 7) / 8);
 }
 
-int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier)
-{
+uint8_t
+do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier) {
   asn_enc_rval_t enc_rval;
   NR_UL_DCCH_Message_t ul_dcch_msg;
   NR_RRCReestablishmentComplete_t *rrcReestablishmentComplete;

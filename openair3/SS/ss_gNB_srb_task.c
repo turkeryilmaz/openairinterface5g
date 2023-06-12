@@ -441,7 +441,6 @@ void *ss_gNB_srb_process_itti_msg(void *notUsed)
   {
     switch (ITTI_MSG_ID(received_msg))
     {
-      LOG_A(GNB_APP, "[SS_SRB] Received msg_Id:%d\n", ITTI_MSG_ID(received_msg));
       case SS_NRRRC_PDU_IND:
         {
           task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);

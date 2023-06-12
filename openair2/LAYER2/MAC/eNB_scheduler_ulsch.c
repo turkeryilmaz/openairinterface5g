@@ -2436,11 +2436,11 @@ void schedule_ulsch_rnti_emtc(module_id_t   module_idP,
 }
 bool check_ulGrant_Schedule(frame_t frameP, sub_frame_t subframeP, int CC_id, uint8_t SR_received)
 {
-  LOG_I(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
+  LOG_D(MAC, "%s current frame:%d subframe:%d subframe_counter value:%d\n", __FUNCTION__, frameP, subframeP, RC.ss.ulgrant_info[CC_id].periodiGrantInfo.subframe_counter);
 
   if (RC.ss.ulgrant_info[CC_id].ulGrantType == NONE_PRESENT)
   {
-    LOG_I(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
+    LOG_D(MAC, "%s ulGrantType = NONE_PRESENT\n", __FUNCTION__);
     return true;
   }
 

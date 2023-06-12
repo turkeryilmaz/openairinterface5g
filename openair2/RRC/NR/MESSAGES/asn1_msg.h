@@ -191,7 +191,7 @@ int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
                               NR_ServingCellConfigCommon_t *scc,
                               rrc_gNB_carrier_data_t *carrier);
 
-int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
+uint8_t do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
 
 NR_MeasConfig_t *get_defaultMeasConfig(const gNB_RrcConfigurationReq *conf);
 

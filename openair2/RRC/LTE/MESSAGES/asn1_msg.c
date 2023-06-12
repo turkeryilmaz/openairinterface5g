@@ -29,7 +29,7 @@
  */
 
 /*! \file asn1_msg.c
- * \brief added primitives to build the asn1 messages for FeMBMS 
+ * \brief added primitives to build the asn1 messages for FeMBMS
  * \author Javier Morgade
  * \date 2019-2020
  * \version 1.0
@@ -659,8 +659,8 @@ int do_SIB1_MBMS(rrc_eNB_carrier_data_t *carrier,
 /*
  * Generate the configuration structure for CDRX feature
  */
-LTE_DRX_Config_t *do_DrxConfig(int CC_id, 
-                               RrcConfigurationReq *configuration, 
+LTE_DRX_Config_t *do_DrxConfig(int CC_id,
+                               RrcConfigurationReq *configuration,
                                LTE_UE_EUTRA_Capability_t *UEcap)
 //-----------------------------------------------------------------------------
 {
@@ -681,7 +681,7 @@ LTE_DRX_Config_t *do_DrxConfig(int CC_id,
     return NULL;
   }
 
-  /* Need UE capabilities */  
+  /* Need UE capabilities */
   if (!UEcap) {
     LOG_E(RRC,"[do_DrxConfig] No UEcap pointer\n");
     return NULL;
@@ -891,8 +891,8 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   LTE_MCC_MNC_Digit_t *dummy_mnc_1;
   LTE_MCC_MNC_Digit_t *dummy_mnc_2;
   asn_enc_rval_t enc_rval;
-  LTE_SchedulingInfo_t *schedulingInfo,*schedulingInfo2;
-  LTE_SIB_Type_t *sib_type,*sib_type2;
+  LTE_SchedulingInfo_t *schedulingInfo,*schedulingInfo2 = NULL;
+  LTE_SIB_Type_t *sib_type,*sib_type2 = NULL;
   uint8_t *buffer;
   LTE_BCCH_DL_SCH_Message_t *bcch_message;
   LTE_SystemInformationBlockType1_t **sib1;
@@ -1028,7 +1028,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
 	  (*sib1)->cellSelectionInfo.q_RxLevMin=configuration->q_RxLevMin[CC_id];
   }
   else
-  { 
+  {
 	  (*sib1)->cellSelectionInfo.q_RxLevMin=-65;
   }
 
@@ -1036,7 +1036,6 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   //(*sib1)->p_Max = CALLOC(1, sizeof(P_Max_t));
   // *((*sib1)->p_Max) = 23;
   (*sib1)->freqBandIndicator = configuration->eutra_band[CC_id];
-  int count =0;
   if (RC.ss.mode == SS_SOFTMODEM) {
     for(int i=0; i < configuration->schedulingInfo_count[CC_id]; i++) {
       schedulingInfo[i].si_Periodicity=configuration->schedulingInfo[CC_id][i].si_Periodicity;
@@ -1063,10 +1062,12 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
     asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,&schedulingInfo);
   }
   if(configuration->eMBMS_M2_configured){
+      AssertFatal(schedulingInfo2, "schedulingInfo2 is null \r\n");
        schedulingInfo2->si_Periodicity=LTE_SchedulingInfo__si_Periodicity_rf8;
   }
   if(configuration->eMBMS_M2_configured){
          *sib_type2=LTE_SIB_Type_sibType13_v920;
+         AssertFatal(schedulingInfo2, "schedulingInfo2 is null \r\n");
          asn1cSeqAdd(&schedulingInfo2->sib_MappingInfo.list,sib_type2);
          asn1cSeqAdd(&(*sib1)->schedulingInfoList.list,schedulingInfo2);
   }
@@ -1400,7 +1401,7 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
 
 uint8_t do_SIB23(uint8_t Mod_id,
 
-                 int CC_id, BOOLEAN_t brOption, 
+                 int CC_id, BOOLEAN_t brOption,
                  RrcConfigurationReq *configuration
                 ) {
   struct LTE_SystemInformation_r8_IEs__sib_TypeAndInfo__Member *sib2_part,*sib3_part;
@@ -1876,17 +1877,17 @@ uint8_t do_SIB23(uint8_t Mod_id,
   //-----------------------------------------------------------------------------------------------------------------------------------------
   // UE Timers and Constants
   (*sib2)->ue_TimersAndConstants.t300
-    = rrconfig->ue_TimersAndConstants_t300;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t300;
   (*sib2)->ue_TimersAndConstants.t301
-    = rrconfig->ue_TimersAndConstants_t301;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t301;
   (*sib2)->ue_TimersAndConstants.t310
-    = rrconfig->ue_TimersAndConstants_t310;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t310;
   (*sib2)->ue_TimersAndConstants.n310
-    = rrconfig->ue_TimersAndConstants_n310;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_n310;
   (*sib2)->ue_TimersAndConstants.t311
-    = rrconfig->ue_TimersAndConstants_t311;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_t311;
   (*sib2)->ue_TimersAndConstants.n311
-    = rrconfig->ue_TimersAndConstants_n311;
+    = configuration->radioresourceconfig[CC_id].ue_TimersAndConstants_n311;
 
   (*sib2)->freqInfo.additionalSpectrumEmission = 1;
   (*sib2)->freqInfo.ul_CarrierFreq = NULL;
@@ -4724,8 +4725,8 @@ ssize_t do_nrMeasurementReport(uint8_t *buffer,
   measurementReport->criticalExtensions.choice.c1.choice.measurementReport_r8.measResults.measId = measid;
   measurementReport->criticalExtensions.choice.c1.choice.measurementReport_r8.measResults.measResultPCell.rsrpResult = rsrp_s;
   measurementReport->criticalExtensions.choice.c1.choice.measurementReport_r8.measResults.measResultPCell.rsrqResult = rsrq_s;
-  asn1cCalloc(measurementReport->criticalExtensions.choice.c1.choice.measurementReport_r8.measResults.measResultNeighCells,  
-              measResultNeighCells); 
+  asn1cCalloc(measurementReport->criticalExtensions.choice.c1.choice.measurementReport_r8.measResults.measResultNeighCells,
+              measResultNeighCells);
   measResultNeighCells->present = LTE_MeasResults__measResultNeighCells_PR_measResultNeighCellListNR_r15;
   LTE_MeasResultListEUTRA_t  *measResultListEUTRA2=&measResultNeighCells->choice.measResultListEUTRA;
   asn1cSequenceAdd(measResultListEUTRA2->list, struct LTE_MeasResultEUTRA, measresulteutra_list);
@@ -4738,8 +4739,8 @@ ssize_t do_nrMeasurementReport(uint8_t *buffer,
   struct LTE_MeasResultEUTRA__measResult* measResult= &measresulteutra_list->measResult;
   asn1cCallocOne(measResult->rsrpResult, rsrp_tar);
   asn1cCallocOne(measResult->rsrqResult, rsrq_tar);
-  
-  
+
+
   asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_LTE_UL_DCCH_Message,
                                    NULL,
                                    &ul_dcch_msg,
@@ -4901,7 +4902,7 @@ uint8_t do_ULInformationTransfer(uint8_t **buffer, uint32_t pdu_length, uint8_t 
 }
 
 int do_HandoverPreparation(char *ho_buf, int ho_size, LTE_UE_EUTRA_Capability_t *ue_eutra_cap, int rrc_size) {
-  asn_enc_rval_t enc_rval;
+  asn_enc_rval_t enc_rval = {};
   LTE_HandoverPreparationInformation_t ho;
   LTE_HandoverPreparationInformation_r8_IEs_t *ho_info;
   LTE_UE_CapabilityRAT_Container_t *ue_cap_rat_container;

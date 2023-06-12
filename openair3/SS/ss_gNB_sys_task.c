@@ -61,7 +61,6 @@ typedef enum
   CellConfig = 2
 } sidl_msg_id;
 
-static bool reqCnfFlag_g = false;
 static void ss_task_sys_nr_handle_deltaValues(struct NR_SYSTEM_CTRL_REQ *req);
 
 int cell_config_5G_done=-1;
@@ -275,7 +274,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.integrity_algorithm = ASSecurity->v.StartRestart.Integrity.v.Algorithm;
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint,0,16);
-        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint, 0, ASSecurity->v.StartRestart.Integrity.v.KRRCint, 128);
+        bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint, 0, (const char*)ASSecurity->v.StartRestart.Integrity.v.KRRCint, 128);
         LOG_E(GNB_APP, "[SYS-GNB] kRRCint:\n");
         for(int i = 0; i < 16; i++) {
           LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
@@ -318,7 +317,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.ciphering_algorithm = ASSecurity->v.StartRestart.Ciphering.v.Algorithm;
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc,0,16);
-        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc, 0, ASSecurity->v.StartRestart.Ciphering.v.KRRCenc, 128);
+        bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc, 0, (const char*)ASSecurity->v.StartRestart.Ciphering.v.KRRCenc, 128);
         LOG_E(GNB_APP, "[SYS-GNB] kRRCenc:\n");
         for(int i = 0; i < 16; i++) {
           LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[i]);
@@ -326,7 +325,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
 
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc,0,16);
-        bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc, 0, ASSecurity->v.StartRestart.Ciphering.v.KUPenc, 128);
+        bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc, 0, (const char*)ASSecurity->v.StartRestart.Ciphering.v.KUPenc, 128);
         LOG_E(GNB_APP, "[SYS-GNB] kUPenc:\n");
         for(int i = 0; i < 16; i++) {
           LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[i]);

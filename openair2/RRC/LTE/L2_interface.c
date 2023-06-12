@@ -29,7 +29,7 @@
  */
 
 /*! \file l2_interface.c
- * \brief layer 2 interface, added support for FeMBMS RRC sublayer 
+ * \brief layer 2 interface, added support for FeMBMS RRC sublayer
  * \author Javier Morgade
  * \date 2020
  * \version 1.0
@@ -80,16 +80,11 @@ mac_rrc_data_req(
   eNB_RRC_INST *rrc;
   rrc_eNB_carrier_data_t *carrier;
   LTE_BCCH_BCH_Message_t *mib;
-  LTE_SystemInformationBlockType1_t *SIB1;
-  LTE_SchedulingInfo_t *SchedulingInfo;
-  LTE_SIB_Type_t *sib_type;
   LTE_BCCH_BCH_Message_MBMS_t *mib_fembms;
   rrc     = RC.rrc[Mod_idP];
   carrier = &rrc->carrier[CC_id];
   mib     = &carrier->mib;
   mib_fembms     = &carrier->mib_fembms;
-  SIB1    = &carrier->SIB1;
-  SchedulingInfo = &SIB1->schedulingInfoList.list;
 
   if((Srb_id & RAB_OFFSET) == BCCH_SI_MBMS){
     if (frameP%8 == 0) {
@@ -402,7 +397,7 @@ mac_rrc_data_ind(
       if (ue_context_p->ue_context.StatusRrc != RRC_RECONFIGURED) {
         LOG_E(RRC,"[eNB %d] Received C-RNTI ,but UE %x status(%d) not RRC_RECONFIGURED\n",module_idP,rntiP,ue_context_p->ue_context.StatusRrc);
         return (-1);
-      } 
+      }
       rrc_eNB_generate_defaultRRCConnectionReconfiguration(&ctxt,ue_context_p,0);
       ue_context_p->ue_context.StatusRrc = RRC_RECONFIGURED;
     }

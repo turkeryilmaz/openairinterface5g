@@ -307,7 +307,6 @@ void *udp_eNB_task(void *args_p)
   LOG_I(UDP_, " Entry in %s\n", __FUNCTION__);
 
   while(1) {
-    LOG_I(UDP_, " Fxn:%s line:%d\n", __FUNCTION__, __LINE__);
     itti_receive_msg(TASK_UDP, &received_message_p);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UDP_ENB_TASK, VCD_FUNCTION_IN);
 #if defined(LOG_UDP) && LOG_UDP > 0

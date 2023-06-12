@@ -168,32 +168,11 @@ static void ss_task_handle_drb_pdu_req(struct DRB_COMMON_REQ *req,int cell_index
     }
 
     SS_DRB_PDU_REQ(message_p).rnti = SS_context.SSCell_list[cell_index].ss_rnti_g;
-    uint8_t msg_queued = 0;
-    if (req->Common.TimingInfo.d == TimingInfo_Type_SubFrame)
-    {
-      ss_set_timinfo_t tinfo, timer_tinfo;
-      tinfo.sfn = req->Common.TimingInfo.v.SubFrame.SFN.v.Number;
-      tinfo.sf = req->Common.TimingInfo.v.SubFrame.Subframe.v.Number;
-      timer_tinfo = tinfo;
-      msg_queued = msg_can_be_queued(tinfo, &timer_tinfo);
-      LOG_A(ENB_SS_DRB_ACP,"VT_TIMER DRB  task received MSG for future  SFN %d , SF %d\n",tinfo.sfn,tinfo.sf);
+	if (!vt_timer_push_msg(&req->Common.TimingInfo, TASK_RRC_ENB,instance_g, message_p))
+	{
+		itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
+	}
 
-      if(msg_queued)
-      {
-        msg_queued = vt_timer_setup(timer_tinfo, TASK_RRC_ENB, instance_g,message_p);
-        LOG_A(ENB_SS_DRB_ACP, "DRB_PDU Queued as the scheduled SFN is %d SF: %d and curr SFN %d , SF %d",
-          tinfo.sfn,tinfo.sf, SS_context.sfn,SS_context.sf);
-      }
-    }
-    if (!msg_queued)
-    {
-      int send_res = itti_send_msg_to_task(TASK_RRC_ENB, instance_g, message_p);
-      if (send_res < 0)
-      {
-        LOG_A(ENB_SS_DRB_ACP, "[SS_DRB] Error in itti_send_msg_to_task");
-      }
-      LOG_A(ENB_SS_DRB_ACP, "Send res: %d", send_res);
-    }
   }
 }
 
@@ -303,10 +282,10 @@ void *ss_eNB_drb_process_itti_msg(void *notUsed)
                                 }
 				task_id_t origin_task = ITTI_MSG_ORIGIN_ID(received_msg);
 
-	    		if (origin_task == TASK_SS_PORTMAN)
+				if (origin_task == TASK_SS_PORTMAN)
 				{
 					LOG_D(ENB_SS_DRB, "[SS_DRB] DUMMY WAKEUP recevied from PORTMAN state %d \n", SS_context.SSCell_list[cell_index].State);
-                }
+				}
 				else
 	            {
 					LOG_A(ENB_SS_DRB, "[SS_DRB] Received SS_DRB_PDU_IND from RRC PDCP\n");

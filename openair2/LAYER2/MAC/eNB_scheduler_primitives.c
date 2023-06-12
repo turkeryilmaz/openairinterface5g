@@ -2071,7 +2071,7 @@ is_UE_active(module_id_t mod_idP,
              int ue_idP)
 //------------------------------------------------------------------------------
 {
-  return (RC.mac[mod_idP]->UE_info.active[ue_idP]);
+  return (RC.mac[mod_idP]->UE_info.active[0][ue_idP]);
 }
 
 //------------------------------------------------------------------------------
