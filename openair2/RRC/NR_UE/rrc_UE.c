@@ -1206,6 +1206,9 @@ void nr_rrc_ue_process_masterCellGroup(const protocol_ctxt_t *const ctxt_pP,
     NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList = calloc(1, sizeof(struct NR_CellGroupConfig__rlc_BearerToReleaseList));
     memcpy(NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList,cellGroupConfig->rlc_BearerToReleaseList,
                  sizeof(struct NR_CellGroupConfig__rlc_BearerToReleaseList));
+  } else {
+    free(NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList);
+    NR_UE_rrc_inst[ctxt_pP->module_id].cell_group_config->rlc_BearerToReleaseList = NULL;
   }
 
   if( cellGroupConfig->mac_CellGroupConfig != NULL){
