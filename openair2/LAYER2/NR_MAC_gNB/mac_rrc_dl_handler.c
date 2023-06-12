@@ -265,8 +265,8 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
 
     /* remove the rlc_BearerToReleaseList, we don't need it anymore */
     if (UE->CellGroup->rlc_BearerToReleaseList != NULL) {
-      for (int i = 0; UE->CellGroup->rlc_BearerToReleaseList->list.count; ++i)
-        free(UE->CellGroup->rlc_BearerToReleaseList->list.array[i]);
+      //for (int i = 0; UE->CellGroup->rlc_BearerToReleaseList->list.count; ++i)
+      //  free(UE->CellGroup->rlc_BearerToReleaseList->list.array[i]);
       free(UE->CellGroup->rlc_BearerToReleaseList->list.array);
       free(UE->CellGroup->rlc_BearerToReleaseList);
       UE->CellGroup->rlc_BearerToReleaseList = NULL;
