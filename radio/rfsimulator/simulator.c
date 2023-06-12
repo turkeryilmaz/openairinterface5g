@@ -624,18 +624,43 @@ static int rfsimulator_write_internal(rfsimulator_state_t *t, openair0_timestamp
       fullwrite(b->conn_sock,&header, sizeof(header), t);
       sample_t tmpSamples[nsamps][nbAnt];
       AssertFatal(nbAnt == 1, "nbAnt %d not handled yet\n", nbAnt);
+      /* below calculates: */
+      //for(int a=0; a<nbAnt; a++) {
+      //  sample_t *in=(sample_t *)samplesVoid[a];
+      //  for(int s=0; s<nsamps; s++)
+      //    tmpSamples[s][a]=in[s];
 
-      for(int a=0; a<nbAnt; a++) {
-        sample_t *in=(sample_t *)samplesVoid[a];
-
-        int s = 0;
+      int s = 0;
+      if (nbAnt == 1) {
+        sample_t *in = (sample_t *)samplesVoid[0];
         for (; s < nsamps - 7; s += 8) {
           simde__m256i sample = simde_mm256_loadu_si256(&in[s]);
-          simde_mm256_storeu_si256(&tmpSamples[s][a], sample);
+          simde_mm256_storeu_si256(&tmpSamples[s][0], sample);
         }
-
-        for (; s < nsamps; s++)
-          tmpSamples[s][a] = in[s];
+      } else if (nbAnt == 2) {
+        sample_t *in0 = (sample_t *)samplesVoid[0];
+        sample_t *in1 = (sample_t *)samplesVoid[1];
+        int s = 0;
+        for (; s < nsamps - 7; s += 8) {
+          simde__m256i s0 = simde_mm256_loadu_si256(&in0[s]);
+          simde__m256i s1 = simde_mm256_loadu_si256(&in1[s]);
+          simde__m256i lo = simde_mm256_unpacklo_epi32(s0, s1);
+          simde__m256i hi = simde_mm256_unpackhi_epi32(s0, s1);
+          simde__m256i out0 = simde_mm256_permute2x128_si256(lo, hi, 0x02);
+          simde__m256i out1 = simde_mm256_permute2x128_si256(lo, hi, 0x13);
+          simde_mm256_storeu_si256(tmpSamples[s], out0);
+          simde_mm256_storeu_si256(tmpSamples[s+4], out1);
+        }
+      } else if (nbAnt == 4) {
+        AssertFatal(false, "not implemented yet\n");
+      } else {
+        AssertFatal(false, "unhandled number of antennas: %d\n", nbAnt);
+      }
+      /* collect remaining samples */
+      for(int a=0; a<nbAnt; a++) {
+        sample_t *in=(sample_t *)samplesVoid[a];
+        for(; s<nsamps; s++)
+          tmpSamples[s][a]=in[s];
       }
 
       if (b->conn_sock >= 0 ) {
