@@ -3156,7 +3156,7 @@ void rrc_gNB_trigger_release_bearer(int rnti)
     ++idx;
   }
   if (idx < ue->DRB_configList->list.count) {
-    nr_pdcp_remove_drb(rnti, drb_id);
+    nr_pdcp_remove_drb(rnti, drb_id, ue->pduSession[0].param.pdusession_id);
     asn_sequence_del(&ue->DRB_configList->list, idx, 1);
   }
   *asn1_drb = drb_id;

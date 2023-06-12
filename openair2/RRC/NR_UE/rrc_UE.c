@@ -2012,7 +2012,8 @@ nr_rrc_ue_establish_srb2(
    if (radioBearerConfig->drb_ToReleaseList != NULL) {
      for (i = 0; i < radioBearerConfig->drb_ToReleaseList->list.count; i++) {
        DRB_id = *radioBearerConfig->drb_ToReleaseList->list.array[i];
-       nr_pdcp_remove_drb(ctxt_pP->rntiMaybeUEid, DRB_id);
+       LOG_W(RRC, "trigger PDCP remove DRB, PDU session is hardcoded to 10!\n");
+       nr_pdcp_remove_drb(ctxt_pP->rntiMaybeUEid, DRB_id, 10);
        free(NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1]);
      }
    }

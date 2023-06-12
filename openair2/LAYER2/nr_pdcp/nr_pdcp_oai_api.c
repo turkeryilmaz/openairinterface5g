@@ -938,15 +938,21 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
     LOG_W(PDCP, "nr_pdcp_add_drbs() with void list\n");
 }
 
-void nr_pdcp_remove_drb(ue_id_t ue_id, int drb_id)
+void nr_pdcp_remove_drb(ue_id_t ue_id, int drb_id, int pdu_session_id)
 {
   nr_pdcp_manager_lock(nr_pdcp_ue_manager);
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   if (ue && ue->drb[drb_id-1] != NULL) {
     ue->drb[drb_id-1]->delete_entity(ue->drb[drb_id-1]);
     ue->drb[drb_id-1] = NULL;
-    nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, 10); /* default */
-    sdap->has_second_bearer = 0;
+    nr_sdap_entity_t *sdap = nr_sdap_get_entity(ue_id, pdu_session_id);
+    if (sdap) {
+      if (1) {
+        NR_QFI_t qfi = 6;
+        nr_sdap_ue_qfi2drb_config(sdap, 0, ue_id, &qfi, 1, 1, false, false);
+      }
+      sdap->has_second_bearer = 0;
+    }
     LOG_I(PDCP, "%s:%d:%s: removed drb %d from UE %ld and set SDAP\n", __FILE__, __LINE__, __FUNCTION__, drb_id, ue_id);
   } else if (ue) {
     LOG_W(PDCP, "%s:%d:%s: error: UE %ld has no DRB %d\n", __FILE__, __LINE__, __FUNCTION__, ue_id, drb_id);
