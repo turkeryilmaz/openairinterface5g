@@ -55,7 +55,7 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
                       uint8_t *const kUPint,
                       struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list);
 
-void nr_pdcp_remove_drb(ue_id_t ue_id, int drb_id);
+void nr_pdcp_remove_drb(ue_id_t ue_id, int drb_id, int pdu_session_id);
 
 void nr_DRB_preconfiguration(ue_id_t crntiMaybeUEid);
 
