@@ -49,11 +49,13 @@ sm_ag_if_ans_t write_ctrl_rc_sm(void const* data)
           assert(rp[i].ran_param_val.type == ELEMENT_KEY_FLAG_TRUE_RAN_PARAMETER_VAL_TYPE );
           printf("DRB ID %ld \n", rp[i].ran_param_val.flag_true->int_ran);
           if(rp[i].ran_param_val.flag_true->int_ran == 5){
+            printf("[O-RAN RC]: Creating a new bearer\n");
+            fflush(stdout);
             rrc_gNB_trigger_new_bearer(rnti);
-            printf("Creating a new bearer\n");
           } else if(rp[i].ran_param_val.flag_true->int_ran == 4){
+            printf("[O-RAN RC]: Releasing bearer\n");
+            fflush(stdout);
             rrc_gNB_trigger_release_bearer(rnti);
-            printf("Releasing bearer\n");
           } else{
             assert(0!=0 && "Unknown int_ran");
           }

@@ -161,9 +161,10 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   if(!pdcp_ent_has_sdap){
     LOG_D(SDAP, "TX - DRB ID: %ld does not have SDAP\n", entity->qfi2drb_table[qfi].drb_id);
 
+// Flag only for the gNB defined
 #ifdef MIR_FLAG
   // mir 
-    // Naive L4/L3 packet classifier
+  // Naive L4/L3 packet classifier
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
 
   if(hdr->protocol == IPPROTO_TCP){
@@ -188,6 +189,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
 #endif
 
+label:
   ret = nr_pdcp_data_req_drb(ctxt_p,
                                srb_flag,
                                sdap_drb_id,
@@ -198,6 +200,12 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
                                pt_mode,
                                sourceL2Id,
                                destinationL2Id);
+
+  if(!ret && sdap_drb_id == 2){
+     sdap_drb_id = 1;
+     goto label;
+  }
+
 
     if(!ret)
       LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);
