@@ -939,14 +939,6 @@ static int rfsimulator_read(openair0_device *device, openair0_timestamp *ptimest
                  ? simde_mm256_set_epi16(h0, h1, h0, h1, h0, h1, h0, h1, h0, h1, h0, h1, h0, h1, h0, h1)
                  : simde_mm256_set_epi16(h0, h1, h2, h3, h0, h1, h2, h3, h0, h1, h2, h3, h0, h1, h2, h3));
           int i = 0;
-          for (; i < nsamps && ((t->nextRxTstamp + i) % 8) != 0; ++i) {
-            for (int a_tx=0; a_tx<nbAnt_tx; a_tx++) { //sum up signals from nbAnt_tx antennas
-              const sample_t sample = ptr->circularBuf[((t->nextRxTstamp + i) * nbAnt_tx + a_tx) % CirSize];
-              const unsigned factor = H_awgn_mimo[a][a_tx];
-              out[i].r += sample.r * factor >> 5;
-              out[i].i += sample.i * factor >> 5;
-            }
-          }
           //LOG_I(HW, "nbAnt_tx %d nsamps %d (nextRxTstamp+i) %ld CirSize %d\n",nbAnt_tx, nsamps, t->nextRxTstamp + i, CirSize);
           for (; i < nsamps - 7; i+=8) {//loop over nsamps
             simde__m256i sample = simde_mm256_loadu_si256(&ptr->circularBuf[(t->nextRxTstamp + i) % CirSize]);
