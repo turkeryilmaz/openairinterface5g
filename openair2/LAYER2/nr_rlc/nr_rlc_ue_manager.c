@@ -74,6 +74,18 @@ void nr_rlc_manager_unlock(nr_rlc_ue_manager_t *_m)
   }
 }
 
+
+// mir: hack
+/* must be called with lock acquired */
+int nr_rlc_manager_get_first_ue_rnti(nr_rlc_ue_manager_t *_m)
+{
+  assert(_m != NULL);
+  nr_rlc_ue_manager_internal_t *m = _m;
+  int const rnti = m->ue_count > 0 ? m->ue_list[0]->rnti: -1;
+  return rnti;
+}
+
+
 /* must be called with lock acquired */
 nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *_m, int rnti)
 {

@@ -48,6 +48,9 @@ void nr_rlc_manager_unlock(nr_rlc_ue_manager_t *m);
 nr_rlc_ue_t *nr_rlc_manager_get_ue(nr_rlc_ue_manager_t *m, int rnti);
 void nr_rlc_manager_remove_ue(nr_rlc_ue_manager_t *m, int rnti);
 
+// mir
+int nr_rlc_manager_get_first_ue_rnti(nr_rlc_ue_manager_t *_m);
+
 /***********************************************************************/
 /* ue functions                                                        */
 /***********************************************************************/

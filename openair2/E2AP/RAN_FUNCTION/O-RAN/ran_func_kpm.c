@@ -48,9 +48,13 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(void)
 {
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
 
-  int const rnti = get_single_ue_rnti();
-  if(rnti == -1)
-    printf("Unable to find RNTI, no stats filled\n");
+  int rnti = get_single_ue_rnti();
+  if(rnti == -1){
+    printf("Unable to find RNTI in RRC, trying in RLC \n");
+    rnti = nr_rlc_get_rnti();
+  }
+  assert(rnti != -1); 
+
 
   int const srb_flag = 0;
   int const rb_id = 1;

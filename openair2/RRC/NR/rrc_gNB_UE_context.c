@@ -86,6 +86,18 @@ rrc_gNB_ue_context_t *rrc_gNB_get_ue_context(gNB_RRC_INST *rrc_instance_pP, ue_i
   return RB_FIND(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, &temp);
 }
 
+// mir
+int rrc_gNB_get_first_ue_rnti(gNB_RRC_INST* rrc_instance_pP)
+{
+  assert(rrc_instance_pP != NULL);
+  rrc_gNB_ue_context_t *ue_context_p;
+  RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &(rrc_instance_pP->rrc_ue_head))
+  {
+    return ue_context_p->ue_context.rnti;
+  }
+  return -1;
+}
+
 rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_by_rnti(gNB_RRC_INST *rrc_instance_pP, rnti_t rntiP)
 {
   rrc_gNB_ue_context_t *ue_context_p;

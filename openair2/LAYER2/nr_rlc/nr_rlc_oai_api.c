@@ -1063,6 +1063,16 @@ void nr_rlc_activate_avg_time_to_tx(
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
 }
 
+// mir: Only hacks...
+int nr_rlc_get_rnti(void)
+{
+  nr_rlc_manager_lock(nr_rlc_ue_manager);
+  int const rnti = nr_rlc_manager_get_first_ue_rnti(nr_rlc_ue_manager);
+  nr_rlc_manager_unlock(nr_rlc_ue_manager);
+  return rnti;
+}
+
+
 /* returns false in case of error, true if everything ok */
 const bool nr_rlc_get_statistics(
   int rnti,

@@ -111,8 +111,7 @@ nr_rlc_entity_t *new_nr_rlc_entity_um(
 
 nr_rlc_entity_t *new_nr_rlc_entity_tm(
     int tx_maxsize,
-    void (*deliver_sdu)(void *deliver_sdu_data, struct nr_rlc_entity_t *entity,
-                      char *buf, int size),
+    void (*deliver_sdu)(void *deliver_sdu_data, struct nr_rlc_entity_t *entity, char *buf, int size),
     void *deliver_sdu_data);
 
 #endif /* _NR_RLC_ENTITY_H_ */

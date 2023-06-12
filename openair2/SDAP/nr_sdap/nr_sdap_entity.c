@@ -70,9 +70,11 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
 #ifdef MIR_FLAG
 
 //static_assert(0!=0 , "Compiling");
+int rrc_gNB_get_first_ue_rnti(gNB_RRC_INST* rrc_instance_pP);
 
 int get_single_ue_rnti(void)
   {
+    /*
     NR_UE_info_t *ue = NULL;
     UE_iterator(RC.nrmac[0]->UE_info.list, it) {
         if (it && ue)
@@ -89,6 +91,10 @@ int get_single_ue_rnti(void)
         return -1;
 
     return ue->rnti;
+*/
+
+  int rnti = rrc_gNB_get_first_ue_rnti(RC.nrrrc[0]);
+  return rnti;
   }
 
 /*

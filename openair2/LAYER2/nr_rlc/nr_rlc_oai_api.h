@@ -155,4 +155,6 @@ bool nr_rlc_get_statistics(
   int rb_id,
   nr_rlc_statistics_t *out);
 
+int nr_rlc_get_rnti(void);
+
 #endif
