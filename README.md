@@ -13,7 +13,12 @@
 </p>
 
 <p align="center">
-    <a href="https://jenkins-oai.eurecom.fr/job/RAN-Container-Parent/"><img src="https://img.shields.io/jenkins/build?jobUrl=https%3A%2F%2Fjenkins-oai.eurecom.fr%2Fjob%2FRAN-Container-Parent%2F&label=build%20Images"></a>
+    <a href="https://en.wikipedia.org/wiki/X86-64"><img src="https://img.shields.io/badge/platform-x86--64-informational"></a>
+    <a href="https://en.wikipedia.org/wiki/AArch64"><img src="https://img.shields.io/badge/platform-arm64-informational"></a>
+</p>
+
+<p align="center">
+    <a href="https://jenkins-oai.eurecom.fr/job/RAN-Container-Parent/"><img src="https://img.shields.io/jenkins/build?jobUrl=https%3A%2F%2Fjenkins-oai.eurecom.fr%2Fjob%2FRAN-Ubuntu18-Image-Builder%2F&label=build%20Images"></a>
 </p>
 
 <p align="center">
