@@ -39,7 +39,7 @@ static void nr_rlc_entity_get_stats(
   *out = entity->stats;
 //  if (entity->avg_time_is_on)
     out->txsdu_avg_time_to_tx = time_average_get_average(entity->txsdu_avg_time_to_tx, time_average_now());
-    printf("txsdu_avg_time_to_tx %lf \n", out->txsdu_avg_time_to_tx  );
+    //printf("txsdu_avg_time_to_tx %lf \n", out->txsdu_avg_time_to_tx  );
 //  else
 //    out->txsdu_avg_time_to_tx = 0;
 }

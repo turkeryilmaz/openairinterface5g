@@ -68,66 +68,16 @@ void nr_pdcp_submit_sdap_ctrl_pdu(ue_id_t ue_id, rb_id_t sdap_ctrl_pdu_drb, nr_s
 
 
 #ifdef MIR_FLAG
-
 //static_assert(0!=0 , "Compiling");
+
 int rrc_gNB_get_first_ue_rnti(gNB_RRC_INST* rrc_instance_pP);
 
 int get_single_ue_rnti(void)
-  {
-    /*
-    NR_UE_info_t *ue = NULL;
-    UE_iterator(RC.nrmac[0]->UE_info.list, it) {
-        if (it && ue)
-          return -1;
-        if (it)
-          ue = it;
-      }
-      if (!ue)
-        return -1;
-
-      // verify it exists in RRC as well
-    rrc_gNB_ue_context_t *rrcue = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], ue->rnti);
-    if (!rrcue)
-        return -1;
-
-    return ue->rnti;
-*/
-
+{
   int rnti = rrc_gNB_get_first_ue_rnti(RC.nrrrc[0]);
   return rnti;
-  }
-
-/*
-  //static_assert(0!=0, "Compiled");
-
-  static
-  pthread_once_t once_bearer = PTHREAD_ONCE_INIT;
-  // Forward declaration. Forget my sins.
-  void rrc_gNB_trigger_new_bearer(int rnti);
-
-  static
-  uint64_t cnt = 0;
-
-
-  static
-  void create_bearer(void)
-  {
-    int const rnti = get_single_ue_rnti();
-    assert(rnti > 0 && "Error finding the rnti");
-    // verify it exists in RRC as well
-    rrc_gNB_ue_context_t *rrcue = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[0], rnti);
-    if(!rrcue)
-      printf("Could not find the UE in RRC \n");
-  //  assert(!rrcue && "Could not find UE");
-
-   // rrc_gNB_trigger_new_bearer(rnti);
-  }
-*/
+}
 #endif
-
-
-
-
 
 
 static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
@@ -175,7 +125,7 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 
   if(hdr->protocol == IPPROTO_TCP){
     struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
-    uint16_t const src_port = ntohs(tcp->source);
+    //uint16_t const src_port = ntohs(tcp->source);
     uint16_t const dst_port = ntohs(tcp->dest);
     //printf("TCP pkt src_port %d dst_port %d \n", src_port, dst_port);
     
@@ -183,9 +133,9 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
       sdap_drb_id += 1;  
     }                  
   } else if(hdr->protocol == IPPROTO_UDP){
-      struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
-      uint16_t const src_port = ntohs(udp->source);
-      uint16_t const dst_port = ntohs(udp->dest);
+     // struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
+     // uint16_t const src_port = ntohs(udp->source);
+     // uint16_t const dst_port = ntohs(udp->dest);
      // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
 
   } else if(hdr->protocol == IPPROTO_ICMP){
@@ -214,7 +164,6 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
 //     sdap_drb_id = 1;
 //     goto label;
 //  }
-
 
     if(!ret)
       LOG_E(SDAP, "%s:%d:%s: PDCP refused PDU\n", __FILE__, __LINE__, __FUNCTION__);

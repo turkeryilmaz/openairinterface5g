@@ -6,6 +6,8 @@
 
 #include "../../../LAYER2/nr_rlc/nr_rlc_oai_api.h"
 
+// Forward declaration
+int get_single_ue_rnti(void);
 
 static 
 gnb_e2sm_t fill_gnb_data(void)
@@ -15,7 +17,9 @@ gnb_e2sm_t fill_gnb_data(void)
   // 6.2.3.16
   // Mandatory
   // AMF UE NGAP ID
-  gnb.amf_ue_ngap_id = 112358132134; // % 2^40;
+  int const rnti = nr_rlc_get_rnti();
+  // assert(rnti > 0);
+  gnb.amf_ue_ngap_id = rnti > 0 ? rnti : 112358132134; //gnb.amf_ue_ngap_id = 112358132134; // % 2^40;
 
   // Mandatory
   //GUAMI 6.2.3.17 
@@ -39,9 +43,6 @@ ue_id_e2sm_t fill_ue_id_data(void)
   return ue_id_data;
 }
 
-
-// Forward declaration
-int get_single_ue_rnti(void);
 
 static 
 kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(void)
