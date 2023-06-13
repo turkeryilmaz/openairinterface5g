@@ -313,7 +313,7 @@ The following features are valid for the gNB and the 5G-NR UE.
   - Channel rank computation up to 2x2 scenario
   - TPMI computation based on SRS up 4 antenna ports and 2 layers
 - MAC procedures to handle CSI measurement report
-  - evalution of RSRP report
+  - evaluation of RSRP report
   - evaluation of CQI report
 - MAC scheduling of SR reception
 - Bandwidth part (BWP) operation
