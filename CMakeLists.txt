@@ -2222,6 +2222,26 @@ target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs
 target_link_libraries(lte-uesoftmodem PRIVATE
                       asn1_lte_rrc asn1_s1ap asn1_m2ap asn1_m3ap asn1_x2ap)
 
+# multi-ue-proxy
+###################################################
+set (PROXY_DIR       ${OPENAIR_DIR}/nfapi/multi-ue-proxy)
+
+add_executable ( proxy
+  ${OPENAIR_DIR}/executables/proxy.cc
+  ${PROXY_DIR}/lte_proxy.cc
+  ${PROXY_DIR}/nr_proxy.cc
+  ${PROXY_DIR}/nfapiutils.c
+  ${PROXY_DIR}/nfapi_pnf.c
+  ${PROXY_DIR}/queue.c
+  ${T_SOURCE}
+  )
+
+target_link_libraries(proxy PRIVATE
+  -Wl,--start-group
+  SCTP_CLIENT ${T_LIB} CONFIG_LIB config UTIL L2_NR NFAPI_LIB NFAPI_PNF_LIB NFAPI_COMMON_LIB sctp
+  -Wl,--end-group z dl)
+
+#target_link_libraries(proxy PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})
 # nr-softmodem
 ###################################################
 
@@ -2555,7 +2575,7 @@ endforeach(myExe)
 if (${T_TRACER})
   foreach(i
         #all "add_executable" definitions (except tests, rb_tool, updatefw)
-        lte-softmodem lte-uesoftmodem nr-softmodem
+        lte-softmodem lte-uesoftmodem nr-softmodem proxy
         nr-uesoftmodem dlsim dlsim_tm4 dlsim_tm7
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
         syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim

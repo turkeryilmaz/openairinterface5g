@@ -1721,6 +1721,7 @@ typedef struct {
   uint32_t value[16384];                // tag=0: Only the most significant bytes of the size indicated by ‘length’ field are valid. Remaining bytes are zero padded to the nearest 32-bit bit boundary; Tag=2 Offset from the end of the control portion of the message to the payload is in the value field. Occupies 32-bits.
 } nfapi_srs_report_tlv_t;
 
+#define NFAPI_NR_SRS_IND_MAX_PDU 100
 typedef struct {
   uint32_t handle;                      // The handle passed to the PHY in the the UL_TTI.request SRS PDU.
   uint16_t rnti;                        // The RNTI passed to the PHY in the UL_TTI.request SRS PDU. Value: 1 -> 65535.

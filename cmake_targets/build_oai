@@ -91,6 +91,8 @@ Options:
   if -g is not specifies, Release mode is used.
 -G | --cmaketrace
    enable cmake debugging messages
+--proxy
+  Makes the multi-ue-proxy
 --eNB
   Makes the LTE softmodem
 --gNB
@@ -242,18 +244,24 @@ function main() {
        -G | --cmaketrace)
             CMAKE_CMD="$CMAKE_CMD --trace-expand"
             shift;;
+       --proxy)
+            CMAKE_C_FLAGS+=("-g -O2 -Wall")
+            CMAKE_CXX_FLAGS+=("-g -O3 -Wall -Wextra")
+            proxy=1
+            echo_info "Will compile proxy"
+            shift;;
        --eNB)
             eNB=1
             echo_info "Will compile eNB"
             shift;;
-      --gNB)
+       --gNB)
             gNB=1
             echo_info "Will compile gNB"
             shift;;
        --RU)
             RU=1
             echo_info "Will compile RRU"
-	    shift;;
+	          shift;;
        --UE)
             UE=1
             echo_info "Will compile UE"
@@ -502,6 +510,7 @@ function main() {
   fi
 
   execlist=""
+  [[ "$proxy" == "1" ]] && execlist="$execlist proxy"
   [[ "$eNB" == "1" ]] && execlist="$execlist lte-softmodem"
   [[ "$gNB" == "1" ]] && execlist="$execlist nr-softmodem nr-cuup"
   [[ "$RU" == "1" ]] &&  execlist="$execlist oairu"
