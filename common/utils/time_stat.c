@@ -83,9 +83,8 @@ static void remove_old(time_average_t *t, uint64_t time)
 
 void time_average_add(time_average_t *t, uint64_t time, uint64_t value)
 {
+  printf("Waited pkt value %ld us size before remove %d\n", value, t->r.size );
   remove_old(t, time);
-
-  printf("Waited pkt value %ld us \n", value);
 
   if (t->r.size == t->r.maxsize) {
     t->r.maxsize *= 2;

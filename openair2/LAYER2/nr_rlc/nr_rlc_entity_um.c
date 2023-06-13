@@ -521,13 +521,15 @@ static int generate_tx_pdu(nr_rlc_entity_um_t *entity, char *buffer, int size)
   entity->common.stats.txpdu_pkts++;
   entity->common.stats.txpdu_bytes += size;
 
+  /*
   if (sdu->sdu->time_of_arrival) {
     uint64_t time_now = time_average_now();
     uint64_t waited_time = time_now - sdu->sdu->time_of_arrival;
-    /* set time_of_arrival to 0 so as to update stats only once */
+    // set time_of_arrival to 0 so as to update stats only once 
     sdu->sdu->time_of_arrival = 0;
     time_average_add(entity->common.txsdu_avg_time_to_tx, time_now, waited_time);
   }
+*/
 
   nr_rlc_free_sdu_segment(sdu);
 

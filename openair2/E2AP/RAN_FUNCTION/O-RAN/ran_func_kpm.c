@@ -50,7 +50,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(void)
 
   int rnti = get_single_ue_rnti();
   if(rnti == -1){
-    printf("Unable to find RNTI in RRC, trying in RLC \n");
+    //printf("Unable to find RNTI in RRC, trying in RLC \n");
     rnti = nr_rlc_get_rnti();
   }
   assert(rnti != -1); 

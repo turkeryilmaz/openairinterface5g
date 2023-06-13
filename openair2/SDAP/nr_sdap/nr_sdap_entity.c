@@ -174,28 +174,31 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
   struct iphdr* hdr = (struct iphdr*)sdu_buffer;
 
   if(hdr->protocol == IPPROTO_TCP){
-    //printf("TCP packet detected \n");
     struct tcphdr* tcp = (struct tcphdr*)((uint32_t*)hdr + hdr->ihl);
     uint16_t const src_port = ntohs(tcp->source);
     uint16_t const dst_port = ntohs(tcp->dest);
     //printf("TCP pkt src_port %d dst_port %d \n", src_port, dst_port);
+    
+    if (entity->is_gnb && entity->has_second_bearer && dst_port != 10101) {
+      sdap_drb_id += 1;  
+    }                  
   } else if(hdr->protocol == IPPROTO_UDP){
-    //printf("UDP packet detected \n");
       struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
       uint16_t const src_port = ntohs(udp->source);
       uint16_t const dst_port = ntohs(udp->dest);
      // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
+
   } else if(hdr->protocol == IPPROTO_ICMP){
     //printf("Ping packet detected \n");
     if (entity->is_gnb && entity->has_second_bearer) {
-      sdap_drb_id += 1; //cnt%2; 
+      sdap_drb_id += 1; 
     }
     printf("ping to bearer %ld\n", sdap_drb_id);
   }
 
 #endif
 
-label:
+//label:
   ret = nr_pdcp_data_req_drb(ctxt_p,
                                srb_flag,
                                sdap_drb_id,
@@ -207,10 +210,10 @@ label:
                                sourceL2Id,
                                destinationL2Id);
 
-  if(!ret && sdap_drb_id == 2){
-     sdap_drb_id = 1;
-     goto label;
-  }
+//  if(!ret && sdap_drb_id == 2){
+//     sdap_drb_id = 1;
+//     goto label;
+//  }
 
 
     if(!ret)
