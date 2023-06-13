@@ -240,6 +240,9 @@ typedef struct NR_UE_RRC_INST_s {
     uint32_t destinationL2Id;
 
     NR_SRB_INFO SL_Discovery[NB_CNX_UE];
+    // active BWPs
+    NR_BWP_DownlinkDedicated_t *bwpd;
+    NR_BWP_UplinkDedicated_t *ubwpd;
 
     /* KeNB as computed from parameters within USIM card */
     uint8_t kgnb[32];
