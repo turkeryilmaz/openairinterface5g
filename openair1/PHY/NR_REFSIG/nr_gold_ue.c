@@ -71,7 +71,7 @@ void nr_gold_pssch(PHY_VARS_NR_UE* ue,
 {
   unsigned int x1, x2;
   uint8_t reset;
-  int pssch_dmrs_init_length = ((ue->frame_parms.N_RB_DL * 12) >> 5) + 1;
+  int pssch_dmrs_init_length = ((ue->frame_parms.N_RB_SL * 12) >> 5) + 1;
 
   for (int slot = 0; slot < ue->frame_parms.slots_per_frame; slot++) {
     for (int l = 0; l < ue->frame_parms.symbols_per_slot; l++) {
@@ -168,7 +168,7 @@ void nr_init_pssch_dmrs(PHY_VARS_NR_UE* ue,
   uint8_t reset, slot, symb;
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   uint32_t ***pssch_dmrs = ue->nr_gold_pssch_dmrs;
-  int pssch_dmrs_init_length =  ((fp->N_RB_UL * 12) >> 5) + 1;
+  int pssch_dmrs_init_length =  ((fp->N_RB_SL * 12) >> 5) + 1;
 
   for (slot = 0; slot < fp->slots_per_frame; slot++) {
     for (symb = 0; symb < fp->symbols_per_slot; symb++) {

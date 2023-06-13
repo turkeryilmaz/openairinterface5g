@@ -1098,7 +1098,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                uint8_t thread_id,
                                int gNB_id);
 
-void nr_ue_set_slsch(unsigned char harq_pid,
+void nr_ue_set_slsch(NR_DL_FRAME_PARMS *frame_parms,
+                     unsigned char harq_pid,
                      NR_UE_ULSCH_t *slsch,
                      uint32_t frame,
                      uint8_t slot);

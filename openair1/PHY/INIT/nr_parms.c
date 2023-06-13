@@ -329,8 +329,12 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   uint64_t dl_bw_khz = (12*config->carrier_config.dl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->dl_CarrierFreq = ((dl_bw_khz>>1) + config->carrier_config.dl_frequency)*1000 ;
 
-  if (get_softmodem_params()->sl_mode != 0) {
-    fp->sl_CarrierFreq = ((dl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
+  if (get_softmodem_params()->sl_mode == 2) {
+    uint64_t sl_bw_khz = (12*config->carrier_config.sl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
+    fp->sl_CarrierFreq = ((sl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
+    LOG_D(PHY, "sl_bw_kHz %lu\n", sl_bw_khz);
+    LOG_D(PHY, "sl_frequency %u\n", config->carrier_config.sl_frequency);
+    LOG_D(PHY, "sl_CarrierFreq %lu\n", fp->sl_CarrierFreq);
   }
   LOG_D(PHY, "dl_bw_kHz %lu\n", dl_bw_khz);
   LOG_D(PHY, "dl_frequency %u\n", config->carrier_config.dl_frequency);
@@ -342,6 +346,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   fp->numerology_index = config->ssb_config.scs_common;
   fp->N_RB_UL = config->carrier_config.ul_grid_size[fp->numerology_index];
   fp->N_RB_DL = config->carrier_config.dl_grid_size[fp->numerology_index];
+  fp->N_RB_SL = config->carrier_config.sl_grid_size[fp->numerology_index];
 
   fp->frame_type = get_frame_type(fp->nr_band, fp->numerology_index);
   int32_t uplink_frequency_offset = get_delta_duplex(fp->nr_band, fp->numerology_index);
@@ -353,15 +358,15 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
 
   AssertFatal(fp->ul_CarrierFreq == (fp->dl_CarrierFreq + uplink_frequency_offset), "Disagreement in uplink frequency for band %d: ul_CarrierFreq = %lu Hz vs expected %lu Hz\n", fp->nr_band, fp->ul_CarrierFreq, fp->dl_CarrierFreq + uplink_frequency_offset);
 
-  LOG_I(PHY,"Initializing frame parms for mu %d, N_RB %d, Ncp %d\n",fp->numerology_index, fp->N_RB_DL, Ncp);
+  LOG_I(PHY,"Initializing frame parms for mu %d, N_RB_DL %d, N_RB_SL %d, Ncp %d\n", fp->numerology_index, fp->N_RB_DL, fp->N_RB_SL, Ncp);
 
 
   if (Ncp == NFAPI_CP_EXTENDED)
     AssertFatal(fp->numerology_index == NR_MU_2,"Invalid cyclic prefix %d for numerology index %d\n", Ncp, fp->numerology_index);
 
   fp->Ncp = Ncp;
-
-  set_scs_parameters(fp, fp->numerology_index, fp->N_RB_DL);
+  int N_RB = (get_softmodem_params()->sl_mode == 2) ? fp->N_RB_SL : fp->N_RB_DL;
+  set_scs_parameters(fp, fp->numerology_index, N_RB);
 
   fp->slots_per_frame = 10* fp->slots_per_subframe;
   fp->symbols_per_slot = ((Ncp == NORMAL)? 14 : 12); // to redefine for different slot formats
@@ -385,6 +390,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   }
 
   fp->ssb_start_subcarrier = (12 * config->ssb_table.ssb_offset_point_a + sco);
+  //TODO: The following setting needs to be removed later;
   if (get_softmodem_params()->sl_mode == 2) {
       fp->ssb_start_subcarrier = 0;
   }

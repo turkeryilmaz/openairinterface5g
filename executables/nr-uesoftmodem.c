@@ -271,13 +271,14 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a              = (N_RB_UL - 20) >> 1;
+  nrUE_config->ssb_table.ssb_offset_point_a              = (fp->N_RB_SL - 11) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type             = TDD;
   nrUE_config->ssb_table.ssb_period                      = 1; //10ms
   nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
   nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
+  nrUE_config->carrier_config.sl_grid_size[mu]           = fp->N_RB_SL;
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
@@ -289,9 +290,6 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   fp->Ncp                                                = NORMAL;
   fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
   fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
-  fp->dl_CarrierFreq                                     = 3600000000;
-  fp->ul_CarrierFreq                                     = 3600000000;
-  fp->sl_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
@@ -580,7 +578,7 @@ int main( int argc, char **argv ) {
       memset(UE[CC_id],0,sizeof(PHY_VARS_NR_UE));
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-      if (get_softmodem_params()->sl_mode != 0) {
+      if (get_softmodem_params()->sl_mode == 2) {
         mac->if_module = NULL;
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
         nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, CC_id, SSB_positions);

@@ -272,7 +272,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   */
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  LOG_D(NR_PHY, "nr_initial SL sync ue RB_DL %d\n", fp->N_RB_DL);
+  LOG_D(NR_PHY, "nr_initial SL sync ue RB_SL %d\n", fp->N_RB_SL);
   int ret = -1;
   int32_t sync_pos = 0;
   for (int is = 0; is < n_frames; is++) {

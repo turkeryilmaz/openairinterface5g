@@ -148,7 +148,7 @@ void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
 
 void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
 {
-  int nb_rb = 106;
+  int nb_rb = ue->frame_parms.N_RB_SL;
   uint16_t nb_symb_sch = 12;
   uint8_t dmrsConfigType = 0;
   uint8_t nb_re_dmrs = 6;
@@ -198,7 +198,8 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   rel16_sl_rx->dmrs_config_type = dmrsConfigType;
 }
 
-void nr_ue_set_slsch(unsigned char harq_pid,
+void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
+                     unsigned char harq_pid,
                      NR_UE_ULSCH_t *slsch,
                      uint32_t frame,
                      uint8_t slot) {
@@ -207,7 +208,7 @@ void nr_ue_set_slsch(unsigned char harq_pid,
   uint8_t N_PRB_oh = 0;
   uint16_t nb_symb_sch = 12;
   uint8_t nb_re_dmrs = 6;
-  int nb_rb = 106;
+  int nb_rb = fp->N_RB_SL;
   uint8_t Imcs = 9;
   uint8_t Nl = 1; // number of layers
   uint16_t start_symbol = 1; // start from 0
@@ -289,8 +290,6 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   uint8_t mod_order         = pssch_pdu->qam_mod_order;
   uint8_t cdm_grps_no_data  = pssch_pdu->num_dmrs_cdm_grps_no_data;
   uint16_t dmrs_pos         = pssch_pdu->sl_dmrs_symb_pos;
-  frame_parms->first_carrier_offset = 0;
-  frame_parms->ofdm_symbol_size     = 2048;
 
   uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
   nb_dmrs_re_per_rb = 6 * cdm_grps_no_data;
@@ -389,7 +388,7 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   free_and_zero(tx_layers);
   free_and_zero(tx_precoding);
   ////////////////////////OFDM modulation/////////////////////////////
-  nr_ue_pssch_common_procedures(txUE, slot, &txUE->frame_parms, Nl, NR_LINK_TYPE_SL);
+  nr_ue_pssch_common_procedures(txUE, slot, &txUE->frame_parms, Nl, link_type_sl);
 }
 
 int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
@@ -421,7 +420,7 @@ int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
   uint16_t M_SCI2_Layer = G_SCI2_bits / SCI2_mod_order;
   uint16_t nb_re_sci1 = NB_RB_SCI1 * NR_NB_SC_PER_RB; //NB_RB_SCI1 needs to be from parameter.
 
-  int encoded_length = frame_parms->N_RB_UL * 14 * NR_NB_SC_PER_RB * mod_order * Nl;
+  int encoded_length = frame_parms->N_RB_SL * 14 * NR_NB_SC_PER_RB * mod_order * Nl;
   int16_t **tx_precoding = (int16_t **)malloc16_clear(Nl * sizeof(int16_t *));
   for (int nl = 0; nl < Nl; nl++)
     tx_precoding[nl] = (int16_t *)malloc16_clear((encoded_length << 1) * sizeof(int16_t));
@@ -615,20 +614,20 @@ uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
       c16_t *this_symbol = (c16_t *)&txdataF[ap][frame_parms->ofdm_symbol_size * s];
       c16_t rot = frame_parms->symbol_rotation[link_type][s + symb_offset];
       LOG_D(NR_PHY, "offset is %d rotating txdataF symbol %d (%d) => (%d.%d)\n", tx_offset, s, s + symb_offset, rot.r, rot.i);
-      if (frame_parms->N_RB_UL & 1) {
+      if (frame_parms->N_RB_SL & 1) {
         rotate_cpx_vector(this_symbol, &rot, this_symbol,
-                          (frame_parms->N_RB_UL + 1) * 6, 15);
+                          (frame_parms->N_RB_SL + 1) * 6, 15);
         rotate_cpx_vector(this_symbol + frame_parms->first_carrier_offset - 6,
                           &rot,
                           this_symbol + frame_parms->first_carrier_offset - 6,
-                          (frame_parms->N_RB_UL + 1) * 6, 15);
+                          (frame_parms->N_RB_SL + 1) * 6, 15);
       } else {
         rotate_cpx_vector(this_symbol, &rot, this_symbol,
-                          frame_parms->N_RB_UL * 6, 15);
+                          frame_parms->N_RB_SL * 6, 15);
         rotate_cpx_vector(this_symbol + frame_parms->first_carrier_offset,
                           &rot,
                           this_symbol + frame_parms->first_carrier_offset,
-                          frame_parms->N_RB_UL * 6, 15);
+                          frame_parms->N_RB_SL * 6, 15);
       }
     }
   }

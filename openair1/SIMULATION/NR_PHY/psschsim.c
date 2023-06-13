@@ -42,6 +42,7 @@
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
+#include "PHY/phy_vars_nr_ue.h"
 
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
@@ -84,8 +85,6 @@ double cpuf;
 uint16_t NB_UE_INST = 1;
 openair0_config_t openair0_cfg[MAX_CARDS];
 uint8_t const nr_rv_round_map[4] = {0, 2, 3, 1};
-const short conjugate[8]__attribute__((aligned(16))) = {-1,1,-1,1,-1,1,-1,1};
-const short conjugate2[8]__attribute__((aligned(16))) = {1,-1,1,-1,1,-1,1,-1};
 
 uint64_t get_softmodem_optmask(void) {return 0;}
 static softmodem_params_t softmodem_params;
@@ -105,9 +104,7 @@ uint8_t n_rx = 1;
 int ssb_subcarrier_offset = 0;
 FILE *input_fd = NULL;
 SCM_t channel_model = AWGN;
-int nb_rb = 106;
-int N_RB_UL = 106;
-int N_RB_DL = 106;
+int N_RB_SL = 106;
 int mu = 1;
 int loglvl = OAILOG_WARNING;
 int seed = 0;
@@ -177,12 +174,8 @@ static void get_sim_cl_opts(int argc, char **argv)
         n_trials = atoi(optarg);
         break;
 
-      case 'R':
-        N_RB_UL = atoi(optarg);
-        break;
-
       case 'r':
-        nb_rb = atoi(optarg);
+        N_RB_SL = atoi(optarg);
         break;
 
       case 's':
@@ -223,8 +216,7 @@ static void get_sim_cl_opts(int argc, char **argv)
           printf("-y Number of TX antennas used in eNB\n");
           printf("-z Number of RX antennas used in UE\n");
           printf("-W number of layer\n");
-          printf("-R N_RB_UL\n");
-          printf("-r nb_rb\n");
+          printf("-r N_RB_SL\n");
           printf("-F Input filename (.txt format) for RX conformance testing\n");
           printf("-m MCS\n");
           printf("-l number of symbol\n");
@@ -237,8 +229,7 @@ static void get_sim_cl_opts(int argc, char **argv)
 
 
 void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
-                                    int N_RB_UL,
-                                    int N_RB_DL,
+                                    int N_RB_SL,
                                     int mu,
                                     uint64_t position_in_burst)
 {
@@ -250,13 +241,12 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
 
   nrUE_config->ssb_config.scs_common               = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset     = ssb_subcarrier_offset;
-  nrUE_config->ssb_table.ssb_offset_point_a        = (N_RB_UL - 20) >> 1;
+  nrUE_config->ssb_table.ssb_offset_point_a        = (N_RB_SL - 11) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask = (rev_burst >> 32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type       = TDD;
   nrUE_config->ssb_table.ssb_period                = 1; //10ms
-  nrUE_config->carrier_config.dl_grid_size[mu]     = N_RB_DL;
-  nrUE_config->carrier_config.ul_grid_size[mu]     = N_RB_UL;
+  nrUE_config->carrier_config.sl_grid_size[mu]     = N_RB_SL;
   nrUE_config->carrier_config.num_tx_ant           = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant           = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                = 0;
@@ -271,8 +261,6 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
     fp->dl_CarrierFreq = 3600000000;
     fp->ul_CarrierFreq = 3600000000;
     fp->sl_CarrierFreq = 2600000000;
-    nrUE_config->carrier_config.dl_frequency               = fp->dl_CarrierFreq / 1000;
-    nrUE_config->carrier_config.uplink_frequency           = fp->ul_CarrierFreq / 1000;
     nrUE_config->carrier_config.sl_frequency               = fp->sl_CarrierFreq / 1000;
     fp->nr_band = 78;
   } else if (mu == 3) {
@@ -282,7 +270,7 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   }
 
   fp->threequarter_fs = 0;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
+  nrUE_config->carrier_config.sl_bandwidth = config_bandwidth(mu, N_RB_SL, fp->nr_band);
 
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   fp->ofdm_offset_divisor = UINT_MAX;
@@ -323,6 +311,10 @@ void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
         fs = 61.44e6;
         bw = 40e6;
       }
+      else if (N_RB == 52) {
+        fs = 30.72e6;
+        bw = 20e6;
+      }
       else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
       break;
     case 3:
@@ -356,6 +348,8 @@ int main(int argc, char **argv)
     exit_fun("[NR_PSSCHSIM] Error, configuration module init failed\n");
   }
   get_sim_cl_opts(argc, argv);
+  char user_msg[128] = "EpiScience";
+  get_softmodem_params()->sl_user_msg = user_msg;
   randominit(0);
   // logging initialization
   logInit();
@@ -363,8 +357,7 @@ int main(int argc, char **argv)
   load_nrLDPClib(NULL);
 
   PHY_VARS_NR_UE *txUE = malloc(sizeof(PHY_VARS_NR_UE));
-  txUE->frame_parms.N_RB_DL = N_RB_DL;
-  txUE->frame_parms.N_RB_UL = N_RB_UL;
+  txUE->frame_parms.N_RB_SL = N_RB_SL;
   txUE->frame_parms.Ncp = NORMAL;
   txUE->frame_parms.nb_antennas_tx = 1;
   txUE->frame_parms.nb_antennas_rx = n_rx;
@@ -376,11 +369,11 @@ int main(int argc, char **argv)
   initNotifiedFIFO(&rxUE->respDecode);
 
   uint64_t burst_position = 0x01;
-  nr_phy_config_request_psschsim(txUE, N_RB_UL, N_RB_DL, mu, burst_position);
-  nr_phy_config_request_psschsim(rxUE, N_RB_UL, N_RB_DL, mu, burst_position);
+  nr_phy_config_request_psschsim(txUE, N_RB_SL, mu, burst_position);
+  nr_phy_config_request_psschsim(rxUE, N_RB_SL, mu, burst_position);
 
   BW *bw_setting = malloc(sizeof(BW));
-  set_fs_bw(txUE, mu, N_RB_UL, bw_setting);
+  set_fs_bw(txUE, mu, N_RB_SL, bw_setting);
 
   double DS_TDL = 300e-9; //.03;
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model,
@@ -404,7 +397,7 @@ int main(int argc, char **argv)
   }
 #ifdef DEBUG_NR_PSSCHSIM
   for (int sf = 0; sf < 2; sf++) {
-    txUE->slsch[sf][0] = new_nr_ue_ulsch(nb_rb, 8, &txUE->frame_parms);
+    txUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB_SL, 8, &txUE->frame_parms);
     if (!txUE->slsch[sf][0]) {
       printf("Can't get ue ulsch structures.\n");
       exit(-1);
@@ -428,7 +421,7 @@ int main(int argc, char **argv)
   int32_t **txdata = txUE->common_vars.txdata;
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
   crcTableInit();
-  nr_ue_set_slsch(0, slsch_ue, frame, slot);
+  nr_ue_set_slsch(&txUE->frame_parms, 0, slsch_ue, frame, slot);
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
   printf("tx is done\n");
 
@@ -490,7 +483,7 @@ int main(int argc, char **argv)
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
             nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[aa], &rxdataF[aa][soffset], ofdm_symbol, slot, 0);
         }
-        apply_nr_rotation_ul(&rxUE->frame_parms, rxdataF[aa], slot, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, NR_LINK_TYPE_SL);
+        apply_nr_rotation_ul(&rxUE->frame_parms, rxdataF[aa], slot, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, link_type_sl);
       }
       uint32_t ret = nr_ue_slsch_rx_procedures(rxUE,
                                                harq_pid,
@@ -504,12 +497,17 @@ int main(int argc, char **argv)
       if (ret)
         n_errors++;
 
+      bool payload_type_string = true;
       for (int i = 0; i < 200; i++) {
         estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 #ifdef DEBUG_NR_PSSCHSIM
         if (i % 8 == 0) {
-           printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+          if (payload_type_string) {
+            printf("TxByte : %c  vs  %c : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+          } else {
+            printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+          }
         }
 #endif
         if (estimated_output_bit[i] != test_input_bit[i]) {
