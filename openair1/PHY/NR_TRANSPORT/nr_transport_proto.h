@@ -214,6 +214,25 @@ void nr_ulsch_channel_compensation(int **rxdataF_ext,
 */
 void nr_idft(int32_t *z, uint32_t Msc_PUSCH);
 
+
+void nr_ulsch_qpsk_qpsk(c16_t *stream0_in, c16_t *stream1_in, c16_t *stream0_out, c16_t *rho01, uint32_t length);
+
+void nr_ulsch_qam16_qam16(c16_t *stream0_in,
+                          c16_t *stream1_in,
+                          c16_t *ch_mag,
+                          c16_t *ch_mag_i,
+                          c16_t *stream0_out,
+                          c16_t *rho01,
+                          uint32_t length);
+
+void nr_ulsch_qam64_qam64(c16_t *stream0_in,
+                          c16_t *stream1_in,
+                          c16_t *ch_mag,
+                          c16_t *ch_mag_i,
+                          c16_t *stream0_out,
+                          c16_t *rho01,
+                          uint32_t length);
+
 /** \brief This function generates log-likelihood ratios (decoder input) for single-stream QPSK received waveforms.
     @param rxdataF_comp Compensated channel output
     @param ulsch_llr llr output
