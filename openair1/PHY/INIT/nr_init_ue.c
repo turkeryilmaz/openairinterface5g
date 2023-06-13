@@ -119,7 +119,7 @@ void phy_init_nr_ue_PSSCH(NR_UE_PSSCH *const pssch,
   pssch->sl_ch_magr0            = (int32_t **)malloc16_clear(NR_MAX_NB_LAYERS*fp->nb_antennas_rx * sizeof(int32_t *));
   AssertFatal(fp->nb_antennas_rx <= 4, "nb_antennas_rx > 4"); // Extend the max number of UE Rx antennas to 4
 
-  const size_t num = 7 * 2 * fp->N_RB_DL * 12;
+  const size_t num = 7 * 2 * fp->N_RB_SL * 12;
   for (int i = 0; i < fp->nb_antennas_rx; i++) {
     pssch->rxdataF_ext[i]              = (int32_t *)malloc16_clear(sizeof(int32_t) * num);
     pssch->rho[i]                      = (int32_t **)malloc16_clear(NR_MAX_NB_LAYERS*NR_MAX_NB_LAYERS * sizeof(int32_t *));
@@ -269,7 +269,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   ///////////
 
   // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
-  int pssch_dmrs_init_length =  ((fp->N_RB_UL * 12) >> 5) + 1;
+  int pssch_dmrs_init_length =  ((fp->N_RB_SL * 12) >> 5) + 1;
   ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
   uint32_t ***pssch_dmrs = ue->nr_gold_pssch_dmrs;
 
@@ -325,8 +325,10 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     }
   }
 
+  int N_RB = (get_softmodem_params()->sl_mode == 2) ? fp->N_RB_SL : fp->N_RB_DL;
+
   // ceil(((NB_RB<<1)*3)/32) // 3 RE *2(QPSK)
-  int pdcch_dmrs_init_length =  (((fp->N_RB_DL<<1)*3)>>5)+1;
+  int pdcch_dmrs_init_length =  (((N_RB<<1)*3)>>5)+1;
   //PDCCH DMRS init (gNB offset = 0)
   ue->nr_gold_pdcch[0] = (uint32_t ***)malloc16(fp->slots_per_frame*sizeof(uint32_t **));
   uint32_t ***pdcch_dmrs = ue->nr_gold_pdcch[0];
@@ -343,7 +345,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
   // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
-  int pdsch_dmrs_init_length =  ((fp->N_RB_DL*12)>>5)+1;
+  int pdsch_dmrs_init_length =  ((N_RB*12)>>5)+1;
 
   //PDSCH DMRS init (eNB offset = 0)
   ue->nr_gold_pdsch[0] = (uint32_t ****)malloc16(fp->slots_per_frame*sizeof(uint32_t ***));
@@ -407,7 +409,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     srs_vars[gNB_id]->active = false;
 
     // ceil((NB_RB*8(max allocation per RB)*2(QPSK))/32)
-    int csi_dmrs_init_length =  ((fp->N_RB_DL<<4)>>5)+1;
+    int csi_dmrs_init_length =  ((fp->N_RB_SL<<4)>>5)+1;
     ue->nr_csi_info = (nr_csi_info_t *)malloc16_clear(sizeof(nr_csi_info_t));
     ue->nr_csi_info->nr_gold_csi_rs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
     AssertFatal(ue->nr_csi_info->nr_gold_csi_rs != NULL, "NR init: csi reference signal malloc failed\n");
@@ -560,17 +562,18 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 void term_nr_ue_transport(PHY_VARS_NR_UE *ue)
 {
   const int N_RB_DL = ue->frame_parms.N_RB_DL;
+  const int N_RB_SL = ue->frame_parms.N_RB_SL;
   for (int i = 0; i < NUMBER_OF_CONNECTED_gNB_MAX; i++) {
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < RX_NB_TH_MAX; k++) {
         free_nr_ue_dlsch(&ue->dlsch[k][i][j], N_RB_DL);
         if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
-          free_nr_ue_dlsch(&ue->slsch_rx[k][i][j], N_RB_DL);
+          free_nr_ue_dlsch(&ue->slsch_rx[k][i][j], N_RB_SL);
         }
         if (j == 0) {
           free_nr_ue_ulsch(&ue->ulsch[k][i], N_RB_DL, &ue->frame_parms);
           if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
-            free_nr_ue_slsch(&ue->slsch[k][i], N_RB_DL, &ue->frame_parms);
+            free_nr_ue_slsch(&ue->slsch[k][i], N_RB_SL, &ue->frame_parms);
           }
         }
       }
@@ -592,7 +595,7 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
       for (int k = 0; k < RX_NB_TH_MAX; k++) {
         if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
           AssertFatal((ue->slsch_rx[k][i][j] =
-                       new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, ue->max_ldpc_iterations, ue->frame_parms.N_RB_DL)) != NULL,
+                       new_nr_ue_dlsch(1, NR_MAX_DLSCH_HARQ_PROCESSES, NSOFT, ue->max_ldpc_iterations, ue->frame_parms.N_RB_SL)) != NULL,
                        "Can't get ue slsch_rx structures\n");
         }
         if (get_softmodem_params()->sl_mode == 0 || get_softmodem_params()->sl_mode == 1) {
@@ -603,7 +606,7 @@ void init_nr_ue_transport(PHY_VARS_NR_UE *ue) {
         }
         if (j == 0) {
           if (get_softmodem_params()->sl_mode == 2 || get_softmodem_params()->sl_mode == 1) {
-            AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_UL, NR_MAX_ULSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL,
+            AssertFatal((ue->slsch[k][i] = new_nr_ue_slsch(ue->frame_parms.N_RB_SL, NR_MAX_ULSCH_HARQ_PROCESSES, &ue->frame_parms)) != NULL,
                          "Can't get ue slsch structures\n");
             LOG_D(NR_PHY, "slsch[%d][%d] => %p\n", k, i, ue->slsch[k][i]);
           }

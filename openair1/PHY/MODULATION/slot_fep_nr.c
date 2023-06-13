@@ -21,6 +21,7 @@
 
 #include "PHY/defs_nr_UE.h"
 #include "PHY/defs_gNB.h"
+#include "PHY/impl_defs_nr.h"
 #include "modulation_UE.h"
 #include "nr_modulation.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
@@ -238,9 +239,9 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
     stop_meas(&ue->rx_dft_stats);
 
     int symb_offset = (Ns%frame_parms->slots_per_subframe)*frame_parms->symbols_per_slot;
-    c16_t rot2 = frame_parms->symbol_rotation[NR_LINK_TYPE_DL][symbol + symb_offset];
+    c16_t rot2 = frame_parms->symbol_rotation[link_type_dl][symbol + symb_offset];
     if (get_softmodem_params()->sl_mode == 2)
-      rot2 = frame_parms->symbol_rotation[NR_LINK_TYPE_SL][symbol + symb_offset];
+      rot2 = frame_parms->symbol_rotation[link_type_sl][symbol + symb_offset];
     rot2.i=-rot2.i;
 
 #ifdef DEBUG_FEP
