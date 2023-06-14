@@ -1532,7 +1532,7 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
     }
   }
 
-  LOG_D(PHY,"TxRondm: %4u\n", randm_tx);
+  LOG_D(PHY,"TxRandm: %4u\n", randm_tx);
   LOG_D(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
   LOG_D(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
 

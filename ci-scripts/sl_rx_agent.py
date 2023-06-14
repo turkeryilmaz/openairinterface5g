@@ -34,7 +34,7 @@ DEFAULT_RFSIM_CMD = 'sudo -E RFSIMULATOR=127.0.0.1 \
 
 DEFAULT_USRP_CMD = 'sudo -E LD_LIBRARY_PATH=$HOME/openairinterface5g/cmake_targets/ran_build/build:$LD_LIBRARY_PATH \
 $HOME/openairinterface5g/cmake_targets/ran_build/build/nr-uesoftmodem \
---sl-mode 2 -r 50 --numerology 1 --band 38 -C 2600000000 --ue-rxgain 90 \
+--sl-mode 2 --rbsl 52 --numerology 1 --band 38 --SLC 2600000000 --ue-rxgain 90 \
 --usrp-args "type=b200,serial=3150361" \
 --log_config.global_log_options time,nocolor \
 > ~/rx.log 2>&1'
@@ -221,7 +221,8 @@ def main(argv) -> int:
         passed = test_agent.run(OPTS.cmd)
 
     # Examine the logs to determine if the test passed
-    if not log_agent.analyze_nearby_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2, sci2=OPTS.sci2):
+    result, user_msg = log_agent.analyze_nearby_logs(exp_nid1=OPTS.nid1, exp_nid2=OPTS.nid2, sci2=OPTS.sci2)
+    if not result or not user_msg:
         passed = False
 
     if not passed:

@@ -40,7 +40,7 @@ class LogChecker():
         total_rx = 0
         log_file = self.rxlog_file_path
         result = None
-        user_msg = ''
+        user_msg = None
 
         if self.OPTS.compress:
             log_file = f'{log_file}.bz2'
@@ -99,7 +99,7 @@ class LogChecker():
         result = f'SyncRef UE found. PSSCH-RSRP: {pssch_rsrp} dBm/RE. SSS-RSRP: {ssb_rsrp} dBm/RE passed {nb_decoded} total {total_rx} It took {delta_time_s} seconds'
         self.LOGGER.info(result)
         self.LOGGER.info(user_msg)
-        return [result]
+        return (result, user_msg)
 
     def get_analysis_messages_syncref(self, filename: str) -> Generator[str, None, None]:
         """
