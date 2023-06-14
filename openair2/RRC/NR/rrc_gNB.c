@@ -3167,6 +3167,7 @@ void rrc_gNB_trigger_release_bearer(int rnti)
   asn1cSeqAdd(&ue->DRB_ReleaseList->list, asn1_drb);
 
   f1ap_drb_to_be_released_t drbs_to_be_released = {.rb_id = drb_id};
+  LOG_E(RRC, "releasing bearer %d\n", drb_id);
   f1ap_ue_context_modif_req_t ue_context_modif_req = {
     .gNB_CU_ue_id = 0xffffffff, /* filled by F1 for the moment */
     .gNB_DU_ue_id = 0xffffffff, /* filled by F1 for the moment */
