@@ -292,16 +292,16 @@ class TestThread(threading.Thread):
                 LOGGER.info(f"Process running... {job}")
                 time.sleep(OPTS.duration)
                 self.kill_process("nearby", proc)
-            nearby_result = self.log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2, OPTS.sci2)
+            nearby_result, user_msg = self.log_agent.analyze_nearby_logs(OPTS.nid1, OPTS.nid2, OPTS.sci2)
             if nearby_result:
-                self.find_nearby_result_metric(nearby_result)
+                self.find_nearby_result_metric([nearby_result])
 
     def find_nearby_result_metric(self, remote_log):
         result_metric = None
         for line in remote_log:
             if type(line) is not str:
                 line = line.decode()
-            if OPTS.test == 'usrp':
+            if 'usrp' in OPTS.test:
                 LOGGER.info(line.strip())
             # 'SyncRef UE found. PSSCH-RSRP: -102 dBm/RE SSS-RSRP: -100 dBm/RE passed 99 total 100 It took {delta_time_s} seconds'
             if 'SyncRef UE found' in line:
@@ -387,7 +387,7 @@ def main() -> int:
                 nb_decoded_list += [nb_decoded]
                 pssch_rsrp_list += [pssch_rsrp]
                 ssb_rsrp_list += [ssb_rsrp]
-                LOGGER.info(f"Trial {i+1}/{OPTS.repeat} PASSED. {num_ssb} SSB(s) were generated. Measured {ssb_rsrp} RSRP (dbm/RE)")
+                LOGGER.info(f"Trial {i+1}/{OPTS.repeat} SYNCHED. {num_ssb} SSB(s) were generated. Measured {ssb_rsrp} RSRP (dbm/RE)")
             else:
                 LOGGER.info(f"Failure detected during {i+1}/{OPTS.repeat} trial(s).")
             num_passed = len(passed_metric)
