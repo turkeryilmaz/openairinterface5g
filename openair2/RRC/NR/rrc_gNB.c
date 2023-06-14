@@ -3150,7 +3150,7 @@ void rrc_gNB_trigger_release_bearer(int rnti)
   ue->established_drbs[1].status = DRB_INACTIVE;
   ue->DRB_ReleaseList = calloc(1, sizeof(*ue->DRB_ReleaseList));
   AssertFatal(ue->DRB_ReleaseList != NULL, "out of memory\n");
-  NR_DRB_Identity_t *asn1_drb = malloc(sizeof(*asn1_drb));
+  NR_DRB_Identity_t *asn1_drb = calloc(1, sizeof(*asn1_drb));
   AssertFatal(asn1_drb != NULL, "out of memory\n");
   int idx = 0;
   while (idx < ue->DRB_configList->list.count) {
@@ -3166,7 +3166,7 @@ void rrc_gNB_trigger_release_bearer(int rnti)
   *asn1_drb = drb_id;
   asn1cSeqAdd(&ue->DRB_ReleaseList->list, asn1_drb);
 
-  f1ap_drb_to_be_released_t drbs_to_be_released[1] = {{.rb_id = drb_id}};
+  f1ap_drb_to_be_released_t drbs_to_be_released = {.rb_id = drb_id};
   f1ap_ue_context_modif_req_t ue_context_modif_req = {
     .gNB_CU_ue_id = 0xffffffff, /* filled by F1 for the moment */
     .gNB_DU_ue_id = 0xffffffff, /* filled by F1 for the moment */
@@ -3181,8 +3181,9 @@ void rrc_gNB_trigger_release_bearer(int rnti)
     .drbs_to_be_setup_length = 0,
     .drbs_to_be_setup = NULL,
     .drbs_to_be_released_length = 1,
-    .drbs_to_be_released = drbs_to_be_released,
+    .drbs_to_be_released = &drbs_to_be_released,
   };
+  assert(ue_context_modif_req.drbs_to_be_released->rb_id < 6 && "Debug assert");
   rrc->mac_rrc.ue_context_modification_request(&ue_context_modif_req);
 }
 

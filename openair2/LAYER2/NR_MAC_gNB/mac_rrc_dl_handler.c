@@ -122,6 +122,9 @@ static int handle_ue_context_drbs_release(int rnti,
       DevAssert(ret == 0);
     }
   }
+
+  assert(cellGroupConfig->rlc_BearerToReleaseList->list.count > 0 && "Something went wrong");
+
   return drbs_len;
 }
 
@@ -231,7 +234,7 @@ void ue_context_modification_request(const f1ap_ue_context_modif_req_t *req)
                                                                 UE->CellGroup);
   }
 
-  if (req->drbs_to_be_released > 0) {
+  if (req->drbs_to_be_released_length > 0) {
     resp.drbs_to_be_released_length =
         handle_ue_context_drbs_release(req->rnti, req->drbs_to_be_released_length, req->drbs_to_be_released, UE->CellGroup);
   }

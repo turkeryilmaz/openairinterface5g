@@ -1579,6 +1579,8 @@ int CU_send_UE_CONTEXT_MODIFICATION_REQUEST(instance_t instance, f1ap_ue_context
           &drbs_toBeReleased_item_ies->value.choice.DRBs_ToBeReleased_Item;
       /* dRBID */
       drbs_toBeReleased_item->dRBID = f1ap_ue_context_modification_req->drbs_to_be_released[i].rb_id;
+      //mir
+      assert(f1ap_ue_context_modification_req->drbs_to_be_released[i].rb_id < 6);
       newGtpuDeleteOneTunnel(getCxt(CUtype, instance)->gtpInst, f1ap_ue_context_modification_req->rnti, f1ap_ue_context_modification_req->drbs_to_be_released[i].rb_id);
     }
   }
