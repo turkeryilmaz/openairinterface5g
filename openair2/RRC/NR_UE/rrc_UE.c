@@ -1962,9 +1962,9 @@ nr_rrc_ue_establish_srb2(
      for (cnt = 0; cnt < radioBearerConfig->drb_ToAddModList->list.count; cnt++) {
        DRB_id = radioBearerConfig->drb_ToAddModList->list.array[cnt]->drb_Identity;
        if (NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1]) {
-	 memcpy(NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1],
-		 radioBearerConfig->drb_ToAddModList->list.array[cnt], sizeof(NR_DRB_ToAddMod_t));
-       } else {
+         free(NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1]);
+       }
+       {
 	 //LOG_D(NR_RRC, "Adding DRB %ld %p\n", DRB_id-1, radioBearerConfig->drb_ToAddModList->list.array[cnt]);
 	 NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1] = radioBearerConfig->drb_ToAddModList->list.array[cnt];
 	 int j;
@@ -2017,7 +2017,7 @@ nr_rrc_ue_establish_srb2(
        DRB_id = *radioBearerConfig->drb_ToReleaseList->list.array[i];
        LOG_W(RRC, "trigger PDCP remove DRB, PDU session is hardcoded to 10!\n");
        nr_pdcp_remove_drb(ctxt_pP->rntiMaybeUEid, DRB_id, 10);
-       free(NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1]);
+       //free(NR_UE_rrc_inst[ctxt_pP->module_id].DRB_config[gNB_index][DRB_id-1]);
      }
    }
 
