@@ -429,6 +429,33 @@ int32_t init_xran(void)
     struct xran_buffer_list *pFthRxRachBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANTENNA_NR][XRAN_N_FE_BUF_LEN];
     struct xran_buffer_list *pFthRxSrsBuffer[XRAN_MAX_SECTOR_NR][XRAN_MAX_ANT_ARRAY_ELM_NR][XRAN_N_FE_BUF_LEN];
 
+    // get mixed slot information
+    int tdd_period=startupConfiguration.nTddPeriod;
+    int mixed_slot_index=-1;
+    int mixed_slot_num_DLsymb=-1;
+    int mixed_slot_num_ULsymb=-1;
+    int mixed_slot_ULstart_symb=-1;
+    for (int slot_idx=0;slot_idx < tdd_period;slot_idx++){
+      mixed_slot_num_DLsymb=0;
+      mixed_slot_num_ULsymb=0;
+      for (int symb_idx=0;symb_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; symb_idx++) {
+	if (startupConfiguration.sSlotConfig[slot_idx].nSymbolType[symb_idx]==0)
+	  mixed_slot_num_DLsymb++;	
+	else if (startupConfiguration.sSlotConfig[slot_idx].nSymbolType[symb_idx]==2)
+	  mixed_slot_index=slot_idx;
+	else if (startupConfiguration.sSlotConfig[slot_idx].nSymbolType[symb_idx]==1) {
+          if (mixed_slot_num_ULsymb==0) mixed_slot_ULstart_symb=symb_idx;		
+          mixed_slot_num_ULsymb++;
+	} 
+      }
+      if (mixed_slot_index>0) break;
+    }
+    if (mixed_slot_index<0) { 
+	   printf("Couldn't find the mixed slot, this is a problem\b");
+	   exit(-1);
+    }
+    printf("tdd_duration %d, mixed_slot_index %d, numDL symbols %d, first UL symbol %d, numUL symbols %d\n",
+	   tdd_period,mixed_slot_index,mixed_slot_num_DLsymb,mixed_slot_ULstart_symb,mixed_slot_num_ULsymb);
     for (nSectorNum = 0; nSectorNum < XRAN_MAX_SECTOR_NR; nSectorNum++)
     {
         nSectorIndex[nSectorNum] = nSectorNum;
@@ -570,9 +597,14 @@ int32_t init_xran(void)
                         void *sd_mb;
                         int elm_id;
                         struct xran_prb_map * p_rb_map = (struct xran_prb_map *)ptr;
-                        if (startupConfiguration.appMode == APP_O_DU)
+                        if (startupConfiguration.appMode == APP_O_DU) {
                             memcpy(ptr, &startupConfiguration.PrbMapDl, sizeof(struct xran_prb_map));
-                        else
+                            if ((j%tdd_period) == mixed_slot_index) {
+			       p_rb_map->prbMap[0].nStartSymb=0;
+			       p_rb_map->prbMap[0].numSymb = mixed_slot_num_DLsymb;    
+			    }
+			}
+    			else
                             memcpy(ptr, &startupConfiguration.PrbMapUl, sizeof(struct xran_prb_map));
 
                         for (elm_id = 0; elm_id < p_rb_map->nPrbElm; elm_id++){
@@ -673,8 +705,13 @@ int32_t init_xran(void)
                         int elm_id;
                         struct xran_prb_map * p_rb_map = (struct xran_prb_map *)ptr;
 
-                        if (startupConfiguration.appMode == APP_O_DU)
+                        if (startupConfiguration.appMode == APP_O_DU) {
                             memcpy(ptr, &startupConfiguration.PrbMapUl, sizeof(struct xran_prb_map));
+                            if ((j%tdd_period) == mixed_slot_index) {
+			       p_rb_map->prbMap[0].nStartSymb=mixed_slot_ULstart_symb;
+			       p_rb_map->prbMap[0].numSymb = mixed_slot_num_ULsymb;    
+			    }
+			}
                         else
                             memcpy(ptr, &startupConfiguration.PrbMapDl, sizeof(struct xran_prb_map));
 

@@ -316,6 +316,8 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                          src = pData;
                        }
                        else if(p_sec_desc->pData==NULL){
+			 LOG_E(PHY,"p_sec_desc->pData is NULL for sym_id %d\n",sym_id);      
+			 exit(-1);
                          return -1;
                        }else{
                          src =  p_sec_desc->pData;

@@ -1091,7 +1091,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
   prepare_scc(scc);
   paramdef_t SCCsParams[] = SCCPARAMS_DESC(scc);
   paramlist_def_t SCCsParamList = {GNB_CONFIG_STRING_SERVINGCELLCONFIGCOMMON, NULL, 0};
-
+ 
   // Serving Cell Config Dedicated
   NR_ServingCellConfig_t *scd = calloc(1,sizeof(NR_ServingCellConfig_t));
   memset((void*)scd,0,sizeof(NR_ServingCellConfig_t));

@@ -1358,9 +1358,9 @@ static void set_csi_meas_periodicity(const NR_ServingCellConfigCommon_t *scc, NR
   const int ideal_period = MAX_MOBILES_PER_GNB * 2 * n_slots_period / n_ul_slots_period; // 2 reports per UE
   const int first_ul_slot_period = tdd ? get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols) : 0;
   const int idx = (uid << 1) + is_rsrp;
-  const int offset = first_ul_slot_period + idx % n_ul_slots_period + (idx / n_ul_slots_period) * n_slots_period;
+  const int offset = first_ul_slot_period +  (idx % n_ul_slots_period) + (idx / n_ul_slots_period) * n_slots_period;
   AssertFatal(offset < 320, "Not enough UL slots to accomodate all possible UEs. Need to rework the implementation\n");
-
+  LOG_I(NR_RRC,"setting csi_meas_periodicity : offset %d, first_ul_slot_period %d, idx %d, n_ul_slots_period %d\n",offset,first_ul_slot_period,idx,n_ul_slots_period);
   if (ideal_period < 5) {
     csirep->reportConfigType.choice.periodic->reportSlotConfig.present = NR_CSI_ReportPeriodicityAndOffset_PR_slots4;
     csirep->reportConfigType.choice.periodic->reportSlotConfig.choice.slots4 = offset;
