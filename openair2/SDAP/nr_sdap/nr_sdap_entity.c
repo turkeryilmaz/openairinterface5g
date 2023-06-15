@@ -133,11 +133,14 @@ static bool nr_sdap_tx_entity(nr_sdap_entity_t *entity,
       sdap_drb_id += 1;  
     }                  
   } else if(hdr->protocol == IPPROTO_UDP){
-     // struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
-     // uint16_t const src_port = ntohs(udp->source);
-     // uint16_t const dst_port = ntohs(udp->dest);
-     // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
+      struct udphdr *udp = (struct udphdr *)((uint32_t*)hdr + hdr->ihl);
+      uint16_t const src_port = ntohs(udp->source);
+      uint16_t const dst_port = ntohs(udp->dest);
+      // printf("UDP pkt src_port %d dst_port %d \n", src_port, dst_port);
 
+      if (entity->is_gnb && entity->has_second_bearer && dst_port != 10101) {
+        sdap_drb_id += 1;  
+      }  
   } else if(hdr->protocol == IPPROTO_ICMP){
     //printf("Ping packet detected \n");
     if (entity->is_gnb && entity->has_second_bearer) {
