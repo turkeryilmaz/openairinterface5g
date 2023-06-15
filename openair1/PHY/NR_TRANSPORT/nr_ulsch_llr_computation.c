@@ -3740,3 +3740,14 @@ void nr_ulsch_qam64_qam64(c16_t *stream0_in,
   simde_mm_empty();
   simde_m_empty();
 }
+
+void nr_ulsch_shift_llr(int16_t **llr_layers, uint32_t nb_re, uint32_t rxdataF_ext_offset, int shift)
+{
+  simde__m128i *llr_layers0 = (simde__m128i *)&llr_layers[0][rxdataF_ext_offset];
+  simde__m128i *llr_layers1 = (simde__m128i *)&llr_layers[1][rxdataF_ext_offset];
+
+  for (int i = 0; i < nb_re >> 2; i++) {
+    llr_layers0[i] = simde_mm_srai_epi16(llr_layers0[i], shift);
+    llr_layers1[i] = simde_mm_srai_epi16(llr_layers1[i], shift);
+  }
+}

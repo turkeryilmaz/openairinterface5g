@@ -214,6 +214,7 @@ void nr_ulsch_channel_compensation(int **rxdataF_ext,
 */
 void nr_idft(int32_t *z, uint32_t Msc_PUSCH);
 
+void nr_ulsch_shift_llr(int16_t **llr_layers, uint32_t nb_re, uint32_t rxdataF_ext_offset, int shift);
 
 void nr_ulsch_qpsk_qpsk(c16_t *stream0_in, c16_t *stream1_in, c16_t *stream0_out, c16_t *rho01, uint32_t length);
 
