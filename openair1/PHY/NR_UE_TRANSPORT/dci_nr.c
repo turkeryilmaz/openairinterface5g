@@ -315,11 +315,10 @@ void nr_pdcch_channel_level(int32_t rx_size,
       */
     }
 
-    DevAssert( nb_rb );
-    avg[aarx] = (((int32_t *)&avg128P)[0] +
-                 ((int32_t *)&avg128P)[1] +
-                 ((int32_t *)&avg128P)[2] +
-                 ((int32_t *)&avg128P)[3])/(nb_rb*9);
+    DevAssert(nb_rb);
+    avg[aarx] = 0;
+    for (int i = 0; i < 4; i++)
+      avg[aarx] += ((int32_t *)&avg128P)[i] / (nb_rb * 9);
     LOG_DDD("Channel level : %d\n",avg[aarx]);
   }
 
@@ -365,7 +364,7 @@ void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
 #define NBR_RE_PER_RB_WITH_DMRS           12
   // after removing the 3 DMRS RE, the RB contains 9 RE with PDCCH
 #define NBR_RE_PER_RB_WITHOUT_DMRS         9
-  uint16_t c_rb, nb_rb = 0;
+  uint16_t c_rb;
   //uint8_t rb_count_bit;
   uint8_t i, j, aarx;
   int32_t *dl_ch0, *dl_ch0_ext, *rxF, *rxF_ext;
@@ -485,7 +484,6 @@ void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
           }
         }
 
-        nb_rb++;
         dl_ch0_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         rxF_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         dl_ch0 += 12;
@@ -507,7 +505,6 @@ void nr_pdcch_extract_rbs_single(uint32_t rxdataF_sz,
           }
         }
 
-        nb_rb++;
         dl_ch0_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         rxF_ext += NBR_RE_PER_RB_WITHOUT_DMRS;
         dl_ch0 += 12;
@@ -777,7 +774,7 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
     
 #endif
 #ifdef DEBUG_DCI_DECODING
-    printf("demapping: slot %d, mi %d\n",slot,get_mi(frame_parms,slot));
+    printf("demapping: slot %u, mi %d\n",slot,get_mi(frame_parms,slot));
 #endif
   }
 

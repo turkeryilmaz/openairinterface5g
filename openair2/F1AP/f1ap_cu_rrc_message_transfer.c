@@ -32,7 +32,6 @@
 
 #include "f1ap_common.h"
 #include "f1ap_encoder.h"
-#include "f1ap_decoder.h"
 #include "f1ap_itti_messaging.h"
 #include "f1ap_cu_rrc_message_transfer.h"
 #include "common/ran_context.h"
@@ -116,12 +115,12 @@ int CU_handle_INITIAL_UL_RRC_MESSAGE_TRANSFER(instance_t             instance,
     ccch_sdu_len = rrccont->value.choice.RRCContainer.size;
     memcpy(RRC_MAC_CCCH_DATA_IND (message_p).sdu, rrccont->value.choice.RRCContainer.buf,
            ccch_sdu_len);
-    NR_RRC_MAC_CCCH_DATA_IND (message_p).frame     = 0;
-    NR_RRC_MAC_CCCH_DATA_IND (message_p).sub_frame = 0;
+    NR_RRC_MAC_CCCH_DATA_IND (message_p).frame = 0;
+    NR_RRC_MAC_CCCH_DATA_IND (message_p).slot = 0;
     NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu_size  = ccch_sdu_len;
     NR_RRC_MAC_CCCH_DATA_IND (message_p).nr_cellid = nr_cellid; // CU instance
-    NR_RRC_MAC_CCCH_DATA_IND (message_p).rnti      = rnti;
-    NR_RRC_MAC_CCCH_DATA_IND (message_p).CC_id     = CC_id;
+    NR_RRC_MAC_CCCH_DATA_IND (message_p).rnti = rnti;
+    NR_RRC_MAC_CCCH_DATA_IND (message_p).CC_id = CC_id;
     if (du2cu) {
       NR_RRC_MAC_CCCH_DATA_IND (message_p).du_to_cu_rrc_container = malloc(sizeof(OCTET_STRING_t));
       NR_RRC_MAC_CCCH_DATA_IND (message_p).du_to_cu_rrc_container->size = du2cu->value.choice.DUtoCURRCContainer.size;

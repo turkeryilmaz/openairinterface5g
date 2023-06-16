@@ -61,8 +61,6 @@
 *
 *********************************************************************/
 
-#define INITIAL_SSS_NR    (7)
-
 void init_context_sss_nr(int amp)
 {
   int16_t x0[LENGTH_SSS_NR];

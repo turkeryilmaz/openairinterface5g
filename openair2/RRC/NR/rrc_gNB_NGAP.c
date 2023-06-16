@@ -47,7 +47,8 @@
 
 #include "S1AP_NAS-PDU.h"
 #include "executables/softmodem-common.h"
-#include "UTIL/OSA/osa_defs.h"
+#include "openair3/SECU/key_nas_deriver.h"
+
 #include "ngap_gNB_defs.h"
 #include "ngap_gNB_ue_context.h"
 #include "ngap_gNB_management_procedures.h"
@@ -68,6 +69,9 @@
 #include "NGAP_NonDynamic5QIDescriptor.h"
 #include "conversions.h"
 #include "RRC/NR/rrc_gNB_radio_bearers.h"
+
+#include "uper_encoder.h"
+
 extern RAN_CONTEXT_t RC;
 
 /* Masks for NGAP Encryption algorithms, NEA0 is always supported (not coded) */
@@ -124,22 +128,21 @@ nr_rrc_pdcp_config_security(
 )
 //------------------------------------------------------------------------------
 {
-  NR_SRB_ToAddModList_t              *SRB_configList = ue_context_pP->ue_context.SRB_configList;
-  (void)SRB_configList;
-  uint8_t                            *kRRCenc = NULL;
-  uint8_t                            *kRRCint = NULL;
-  uint8_t                            *kUPenc = NULL;
+  uint8_t kRRCenc[16] = {0};
+  uint8_t kRRCint[16] = {0};
+  uint8_t kUPenc[16] = {0};
   //uint8_t                            *k_kdf  = NULL;
   static int                          print_keys= 1;
   gNB_RRC_UE_t *UE = &ue_context_pP->ue_context;
 
   /* Derive the keys from kgnb */
   if (UE->Srb[1].Active || UE->Srb[2].Active) {
-    nr_derive_key_up_enc(UE->ciphering_algorithm, UE->kgnb, &kUPenc);
+    nr_derive_key(UP_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kUPenc);
   }
 
-  nr_derive_key_rrc_enc(UE->ciphering_algorithm, UE->kgnb, &kRRCenc);
-  nr_derive_key_rrc_int(UE->integrity_algorithm, UE->kgnb, &kRRCint);
+  nr_derive_key(RRC_ENC_ALG, UE->ciphering_algorithm, UE->kgnb, kRRCenc);
+  nr_derive_key(RRC_INT_ALG, UE->integrity_algorithm, UE->kgnb, kRRCint);
+
   if (!IS_SOFTMODEM_IQPLAYER) {
     SET_LOG_DUMP(DEBUG_SECURITY) ;
   }
@@ -320,7 +323,7 @@ static int decodePDUSessionResourceSetup(pdusession_t *session)
         /* mandatory PDUSessionType */
       case NGAP_ProtocolIE_ID_id_PDUSessionType:
         session->pdu_session_type = (uint8_t)pdusessionTransfer_ies->value.choice.PDUSessionType;
-        AssertFatal(session->pdu_session_type == PDUSessionType_ipv4, "To be developped: support not IPv4 sessions\n");
+        AssertFatal(session->pdu_session_type == PDUSessionType_ipv4 || session->pdu_session_type == PDUSessionType_ipv4v6, "To be developped: support not IPv4 sessions\n");
         break;
 
         /* optional SecurityIndication */
@@ -396,12 +399,7 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
     int ret = gtpv1u_create_ngu_tunnel(instance, &create_tunnel_req, &create_tunnel_resp, nr_pdcp_data_req_drb, sdap_data_req);
     if (ret != 0) {
       LOG_E(NR_RRC, "rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ : gtpv1u_create_ngu_tunnel failed,start to release UE %x\n", UE->rnti);
-      UE->ue_release_timer_ng = 1;
-      UE->ue_release_timer_thres_ng = 100;
-      UE->ue_release_timer = 0;
-      UE->ue_reestablishment_timer = 0;
-      UE->ul_failure_timer = 20000;
-      UE->ul_failure_timer = 0;
+      AssertFatal(false, "release timer not implemented\n");
       return (0);
     }
 
@@ -653,7 +651,7 @@ rrc_gNB_send_NGAP_UPLINK_NAS(
         //               NGAP_UPLINK_NAS (msg_p).nas_pdu.length,
         //               ue_context_pP);
         itti_send_msg_to_task (TASK_NGAP, ctxt_pP->instance, msg_p);
-        LOG_I(NR_RRC,"Send RRC GNB UL Information Transfer \n");
+        LOG_D(NR_RRC,"Send RRC GNB UL Information Transfer \n");
     }
 }
 
@@ -682,7 +680,7 @@ rrc_gNB_send_NGAP_PDUSESSION_SETUP_RESP(
       tmp->pdusession_id = session->param.pdusession_id;
       tmp->nb_of_qos_flow = session->param.nb_qos;
       tmp->gtp_teid = session->param.gNB_teid_N3;
-      tmp->pdu_session_type = session->param.pdu_session_type; // FixMe: IPv4 hardcoded here
+      tmp->pdu_session_type = session->param.pdu_session_type;
       tmp->gNB_addr.length = session->param.gNB_addr_N3.length;
       memcpy(tmp->gNB_addr.buffer, session->param.gNB_addr_N3.buffer, tmp->gNB_addr.length);
       for (int qos_flow_index = 0; qos_flow_index < tmp->nb_of_qos_flow; qos_flow_index++) {
@@ -783,7 +781,7 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
     for (int j=0; j < pdu->numDRB2Setup; j++) {
       DRB_nGRAN_to_setup_t *drb = pdu->DRBnGRanList + j;
 
-      drb->id = i + j + 1;
+      drb->id = i + j + UE->nb_of_pdusessions;
 
       drb->defaultDRB = E1AP_DefaultDRB_true;
 
@@ -1157,8 +1155,6 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
   }
 
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  UE->ue_release_timer_ng = 0;
-  UE->ue_release_timer_thres_rrc = 1000;
   PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, UE->rnti, 0, 0);
   ctxt.eNB_index = 0;
   rrc_gNB_generate_RRCRelease(&ctxt, ue_context_p);
@@ -1286,7 +1282,6 @@ int rrc_gNB_process_NGAP_PDUSESSION_RELEASE_COMMAND(MessageDef *msg_p, instance_
       UE->pduSession[j].param.pdusession_id = cmd->pdusession_release_params[pdusession].pdusession_id;
       UE->pduSession[j].cause = NGAP_CAUSE_RADIO_NETWORK;
       UE->pduSession[j].cause_value = 30;
-      pduSession->xid = xid;
       continue;
     }
     if (pduSession->status == PDU_SESSION_STATUS_FAILED) {

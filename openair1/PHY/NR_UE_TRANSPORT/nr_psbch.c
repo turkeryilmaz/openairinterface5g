@@ -84,7 +84,7 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
     int16_t *p = (int16_t *)rxF;
 
     for (int i =0; i<8; i++) {
-      LOG_I(NR_PHY,"rxF [%d]= %d\n",i,rxF[i]);
+      LOG_I(NR_PHY,"rxF_real [%d] = %d, rxF_im [%d] = %d\n", i, rxF[i].r, i, rxF[i].i);
       LOG_I(NR_PHY,"psbch extract rxF  %d %d addr %p\n", p[2*i], p[2*i+1], &p[2*i]);
     }
 

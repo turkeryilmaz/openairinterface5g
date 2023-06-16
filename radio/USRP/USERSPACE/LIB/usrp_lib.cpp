@@ -556,6 +556,7 @@ void *trx_usrp_write_thread(void * arg){
   signed char        last_packet;
   int                flags_gpio;
 
+  printf("trx_usrp_write_thread started on cpu %d\n",sched_getcpu());
   while(1){
     pthread_mutex_lock(&write_thread->mutex_write);
     while (write_thread->count_write == 0) {
@@ -664,7 +665,6 @@ int trx_usrp_write_init(openair0_device *device){
                (char*)"trx_usrp_write_thread",
                -1,
                OAI_PRIORITY_RT_MAX);
-
   return(0);
 }
 
@@ -1127,6 +1127,10 @@ extern "C" {
       device->type = USRP_X400_DEV;
       usrp_master_clock = 245.76e6;
       args += boost::str(boost::format(",master_clock_rate=%f") % usrp_master_clock);
+
+      // https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks
+      if (0 != system("sysctl -w net.core.rmem_max=62500000 net.core.wmem_max=62500000"))
+        LOG_W(HW, "Can't set kernel parameters for X4x0\n");
     }
 
     s->usrp = uhd::usrp::multi_usrp::make(args);
@@ -1224,6 +1228,8 @@ extern "C" {
         // from usrp_time_offset
         //openair0_cfg[0].samples_per_packet    = 2048;
         openair0_cfg[0].tx_sample_advance     = 15; //to be checked
+	openair0_cfg[0].tx_bw                 = 100e6;
+        openair0_cfg[0].rx_bw                 = 100e6;
         break;
 
       case 122880000:

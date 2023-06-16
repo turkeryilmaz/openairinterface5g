@@ -126,10 +126,10 @@ uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 FILE *input_fd = NULL;
 SCM_t channel_model = AWGN;
-int N_RB_DL = 273;
+int N_RB_SL = 273;
 int mu = 1;
 unsigned char psbch_phase = 0;
-int run_initial_sync = 0;
+int run_initial_sync = 1;
 int loglvl = OAILOG_WARNING;
 float target_error_rate = 0.01;
 int seed = 0;
@@ -167,8 +167,7 @@ void free_psbchsim_members(PHY_VARS_NR_UE *UE,
 }
 
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
-                                        int N_RB_DL,
-                                        int N_RB_UL,
+                                        int N_RB_SL,
                                         int mu,
                                         int Nid_SL,
                                         uint64_t position_in_burst)
@@ -187,8 +186,9 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type             = TDD;
   nrUE_config->ssb_table.ssb_period                      = 1; //10ms
-  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
-  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
+  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_SL;
+  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_SL;
+  nrUE_config->carrier_config.sl_grid_size[mu]           = N_RB_SL;
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
@@ -200,7 +200,9 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
-  fp->N_RB_DL = N_RB_DL;
+  fp->N_RB_SL = N_RB_SL;
+  fp->N_RB_UL = N_RB_SL;
+  fp->N_RB_DL = N_RB_SL;
   fp->Nid_cell = Nid_cell;
   fp->Nid_SL = Nid_SL;
   fp->nushift = 0; //No nushift in SL
@@ -211,12 +213,12 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->ofdm_offset_divisor = UINT_MAX;
   fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
-  int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_DL);
+  int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_SL);
   nrUE_config->carrier_config.dl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   init_timeshift_rotation(fp);
   init_symbol_rotation(fp);
-  LOG_I(NR_PHY, "nrUE configured\n");
+  printf("nrUE configured\n");
 }
 
 
@@ -313,7 +315,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 'R':
-        N_RB_DL = atoi(optarg);
+        N_RB_SL = atoi(optarg);
         break;
 
       case 's':
@@ -359,7 +361,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         printf("-p Conducting PSS and SSS testing\n");
         printf("-P PSBCH phase, allowed values 0-3\n");
         printf("-r set the random number generator seed (default: 0 = current time)\n");
-        printf("-R N_RB_DL\n");
+        printf("-R N_RB_SL\n");
         printf("-s Starting SNR, runs from SNR0 to SNR0 + 10 dB if not -S given. If -n 1, then just SNR is simulated\n");
         printf("-S Ending SNR, runs from SNR0 to SNR1\n");
         printf("-x Transmission mode (1,2,6 for the moment)\n");
@@ -385,9 +387,9 @@ int main(int argc, char **argv)
 
   PHY_VARS_NR_UE *UE = malloc16_clear(sizeof(*UE));
 
-  printf("Initializing UE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
+  printf("Initializing UE for mu %d, N_RB_SL %d\n", mu, N_RB_SL);
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
+  nr_phy_config_request_sim_psbchsim(UE, N_RB_SL, mu, Nid_SL, SSB_positions);
 
   double fs = 0;
   double scs = 30000;
@@ -395,27 +397,27 @@ int main(int argc, char **argv)
     case 1:
       scs = 30000;
       UE->frame_parms.Lmax = 1;
-      if (N_RB_DL == 217) {
+      if (N_RB_SL == 217) {
         fs = 122.88e6;
       }
-      else if (N_RB_DL == 245) {
+      else if (N_RB_SL == 245) {
         fs = 122.88e6;
       }
-      else if (N_RB_DL == 273) {
+      else if (N_RB_SL == 273) {
         fs = 122.88e6;
       }
-      else if (N_RB_DL == 106) {
+      else if (N_RB_SL == 106) {
         fs = 61.44e6;
       }
-      else AssertFatal(1==0,"Unsupported numerology for mu %d, N_RB %d\n",mu, N_RB_DL);
+      else AssertFatal(1==0,"Unsupported numerology for mu %d, N_RB %d\n",mu, N_RB_SL);
       break;
     case 3:
       UE->frame_parms.Lmax = 64;
       scs = 120000;
-      if (N_RB_DL == 66) {
+      if (N_RB_SL == 66) {
         fs = 122.88e6;
       }
-      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
+      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_SL);
       break;
   }
 
@@ -476,30 +478,26 @@ int main(int argc, char **argv)
       msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA = prb_offset;
 
       int slot_timestamp = UE->frame_parms.get_samples_slot_timestamp(slot, &UE->frame_parms, 0);
-//      UE->frame_parms.nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples;
+      UE->frame_parms.nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 : UE->frame_parms.nb_prefix_samples;
       int max_symbol_size = slot_timestamp + UE->frame_parms.nb_prefix_samples0 + UE->frame_parms.ofdm_symbol_size;
       AssertFatal(max_symbol_size < frame_length_complex_samples, "Invalid index %d\n", max_symbol_size);
       for (int aa = 0; aa < UE->frame_parms.nb_antennas_tx; aa++) {
- /*       apply_nr_rotation(&UE->frame_parms,
+        apply_nr_rotation(&UE->frame_parms,
                           UE->common_vars.txdataF[aa],
-                          slot, 0, 1, NR_LINK_TYPE_SL); // Conducts rotation on 0th symbol*/
-	LOG_I(NR_PHY,"slot %d, symbol 0, nb_prefix_samples0 %d\n",slot,UE->frame_parms.nb_prefix_samples0);      
+                          slot, 0, 1, link_type_sl); // Conducts rotation on 0th symbol
         PHY_ofdm_mod((int*)UE->common_vars.txdataF[aa],
                      (int*)&txdata[aa][slot_timestamp],
                      UE->frame_parms.ofdm_symbol_size,
                      1, // Takes IDFT of 1st symbol (first PSBCH)
                      UE->frame_parms.nb_prefix_samples0,
                      CYCLIC_PREFIX);
-	/*
         apply_nr_rotation(&UE->frame_parms,
                           UE->common_vars.txdataF[aa],
-                          slot, 1, 13, NR_LINK_TYPE_SL); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
-*/
-	LOG_I(NR_PHY,"slot %d, symbols 1...13, nb_prefix_samples %d\n",slot,UE->frame_parms.nb_prefix_samples);      
+                          slot, 1, 13, link_type_sl); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
         PHY_ofdm_mod((int*)&UE->common_vars.txdataF[aa][UE->frame_parms.ofdm_symbol_size], // Starting at PSS (in freq)
                      (int*)&txdata[aa][UE->frame_parms.ofdm_symbol_size +
-                                       UE->frame_parms.nb_prefix_samples0 /*+
-                                       UE->frame_parms.nb_prefix_samples*/], // Starting output offset at CP0 + PSBCH0 + CP1
+                                       UE->frame_parms.nb_prefix_samples0 +
+                                       UE->frame_parms.nb_prefix_samples], // Starting output offset at CP0 + PSBCH0 + CP1
                      UE->frame_parms.ofdm_symbol_size,
                      13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
                      UE->frame_parms.nb_prefix_samples,
@@ -520,7 +518,6 @@ int main(int argc, char **argv)
   AssertFatal((((frame_length_complex_samples - 1) << 1) + 1) < 2 * frame_length_complex_samples,
               "Invalid index %d >= %d\n", (((frame_length_complex_samples - 1)<< 1) + 1), 2 * frame_length_complex_samples);
   int n_errors = 0;
-  int exitsim =0;
   for (double SNR = snr0; SNR < snr1; SNR += 0.2) {
     n_errors = 0;
     int n_errors_payload = 0;
@@ -553,29 +550,27 @@ int main(int argc, char **argv)
               30.0e3,  // phase noise cutoff in kHz
               -500.0, // phase noise amplitude in dBc
               0.0,  // IQ imbalance (dB),
-	      0.0); // IQ phase imbalance (rad)
+	            0.0); // IQ phase imbalance (rad)
       }
 
       for (int i = 0; i < frame_length_complex_samples; i++) {
         double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
         double sigma2 = pow(10, sigma2_dB / 10);
         for (int aa = 0; aa < UE->frame_parms.nb_antennas_rx; aa++) {
-          UE->common_vars.rxdata[aa][i].r = (short) (r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0,1.0));
-          UE->common_vars.rxdata[aa][i].i = (short) (r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0,1.0));
+          UE->common_vars.rxdata[aa][i].r = (short)((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          UE->common_vars.rxdata[aa][i].i = (short)((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
 
       int ret = 0;
       int n_frames = 1;
-      if (UE->is_synchronized_sl == 0) {
+      if (UE->is_synchronized == 0) {
         UE_nr_rxtx_proc_t proc = {0};
-	LOG_I(NR_PHY,"Running initial synch\n");
         ret = nr_sl_initial_sync(&proc, UE, n_frames);
         if (ret != 0) {
           n_errors++;
         }
       } else {
-	LOG_I(NR_PHY,"Already synched, running PSBCH receiver directly\n");
         UE_nr_rxtx_proc_t proc = {0};
         UE->rx_offset_sl = 0;
         uint8_t ssb_index = 0;
@@ -592,12 +587,11 @@ int main(int argc, char **argv)
         __attribute__ ((aligned(32))) c16_t rxdataF[UE->frame_parms.nb_antennas_rx][rxdataF_sz];
         for (int i = UE->symbol_offset; i < UE->symbol_offset + 13; i++) {
           nr_slot_fep(UE, &proc, i % UE->frame_parms.symbols_per_slot, rxdataF);
-	  for (int aa=0;aa<UE->frame_parms.nb_antennas_rx;aa++)
-             memcpy(UE->common_vars.rxdataF[aa],rxdataF,4*rxdataF_sz);
+	        for (int aa = 0; aa < UE->frame_parms.nb_antennas_rx; aa++)
+             memcpy(UE->common_vars.rxdataF[aa],rxdataF, 4 * rxdataF_sz);
           nr_psbch_channel_estimation(UE, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc,
                                       0, ssb_slot, i % UE->frame_parms.symbols_per_slot,
                                       i - (UE->symbol_offset), ssb_index % 8, n_hf);
-	  if (i==0) i=4;
         }
         fapiPsbch_t result;
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
@@ -618,7 +612,7 @@ int main(int argc, char **argv)
         if (ret == 0) {
           int payload_ret = 0;
           for (int i = 0; i < NR_POLAR_PSBCH_PAYLOAD_BITS >> 3; i++) {
-            LOG_I(NR_PHY,"result.decoded_output[i] %d, msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload %d,\n",
+            printf("result.decoded_output[i] %d, msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload %d,\n",
                   result.decoded_output[i], ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * (3-i))) & 0xff));
             payload_ret += (result.decoded_output[i] == ((msgDataTx.ssb[ssb_index].ssb_pdu.ssb_pdu_rel15.bchPayload >> (8 * (3-i))) & 0xff));
           }
@@ -633,10 +627,7 @@ int main(int argc, char **argv)
     printf("SNR %f: trials %d, n_errors_crc = %d, n_errors_payload %d\n", SNR, n_trials, n_errors, n_errors_payload);
     if (((float)n_errors / (float)n_trials <= target_error_rate) && (n_errors_payload == 0)) {
       printf("PSBCH test OK\n");
-      exitsim=1;
-      break;
     }
-    if (exitsim == 1) break;
   } // NSR
 
   free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata, input_fd);

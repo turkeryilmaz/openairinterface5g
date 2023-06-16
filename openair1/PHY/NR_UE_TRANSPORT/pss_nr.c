@@ -49,6 +49,13 @@
 #include "PHY/NR_UE_TRANSPORT/cic_filter_nr.h"
 
 //#define DBG_PSS_NR
+static time_stats_t generic_time[TIME_LAST];
+static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is);
+
+c16_t *get_primary_synchro_nr2(const int nid2)
+{
+  return primary_synchro_nr2[nid2];
+}
 
 /*******************************************************************
 *
@@ -149,7 +156,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2, int pss_seq_offset)
 *
 *********************************************************************/
 
-void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
+static void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 {
 
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal frame_parms_ue->ofdm_symbol_size %d\n",
@@ -447,7 +454,7 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 *
 *********************************************************************/
 
-int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
+static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   unsigned int length = is == 0 ? frame_parms->samples_per_frame + (2 * frame_parms->ofdm_symbol_size) :
@@ -502,7 +509,7 @@ int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
                                          shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
-	if (get_softmodem_params()->sl_mode > 0) {
+	      if (get_softmodem_params()->sl_mode > 0) {
           //non-coherentely combine repeition of PSS 		
           const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
                                            &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples]),

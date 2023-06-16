@@ -653,10 +653,10 @@ int main(int argc, char **argv)
                               slot,
                               0,
                               12,
-                              NR_LINK_TYPE_DL);
+                              link_type_dl);
 
             PHY_ofdm_mod((int *)gNB->common_vars.txdataF[aa],
-            (int *)&txdata[aa][frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0)],
+            (int *)&txdata[aa][frame_parms->get_samples_slot_timestamp(slot,frame_parms,0)],
             frame_parms->ofdm_symbol_size,
             12,
             frame_parms->nb_prefix_samples,
@@ -667,7 +667,7 @@ int main(int argc, char **argv)
                               slot,
                               0,
                               14,
-                              NR_LINK_TYPE_DL);
+                              link_type_dl);
 
             /*nr_normal_prefix_mod(gNB->common_vars.txdataF[aa],
               &txdata[aa][frame_parms->get_samples_slot_timestamp(slot,frame_parms,0)],

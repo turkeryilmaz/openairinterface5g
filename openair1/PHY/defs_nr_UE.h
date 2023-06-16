@@ -248,6 +248,8 @@ typedef struct {
   int32_t N2_id;
   /// eNb_id user is synched to
   int32_t eNb_id;
+  /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
+  int32_t nid2;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
@@ -547,7 +549,8 @@ typedef struct {
   int              rx_offset;      /// Timing offset
   int              rx_offset_sl;    /// Timing offset for Sidelink
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
-  int              max_pos_fil;    /// Timing offset IIR filter
+  int64_t          max_pos_fil;    /// Timing offset IIR filter
+  bool             apply_timing_offset;     /// Do time sync for current frame
   int              time_sync_cell;
 
   /// Timing Advance updates variables

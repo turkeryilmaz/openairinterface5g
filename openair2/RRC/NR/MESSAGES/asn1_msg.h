@@ -82,22 +82,33 @@ void fill_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
                                 NR_RLC_BearerConfig_t **rlc_rbconfig);
 void free_nr_noS1_bearer_config(NR_RadioBearerConfig_t **rbconfig,
                                 NR_RLC_BearerConfig_t **rlc_rbconfig);
-
-
+/**
+ * @brief Function to fill out the master cell group config to be used in RRCReconfiguration.
+ *        If it is misused the ue_context_mastercellGroup, might lead to ASN1 encoding failure,
+ *        because in ue_context_mastercellGroup the rlc_BearerConfigs are added but never removed,
+ *        so the maximum number of rlc_BearerConfigs is exceeded.
+ *
+ * @param     cellGroupConfig             The MCG that will be used in do_RRCReconfiguration.
+ * @param     ue_context_mastercellGroup  The MCG that is stored in the ue context.
+ * @param[in] use_rlc_um_for_drb          Set to 1, if RLC uses 'Unacknowledged Mode' for the DRB.
+ * @param[in] configure_srb               Set to 1, if SRB2 needs be added to MCG.
+ * @param[in] drb_configList              The Data Radio Bearer list, to be added.
+ * @param[in] priority                    The priorities set for the Data Radio Bearers.
+ */
 void fill_mastercellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
                                 NR_CellGroupConfig_t *ue_context_mastercellGroup,
                                 int use_rlc_um_for_drb,
                                 uint8_t configure_srb,
-                                uint8_t bearer_id_start,
-                                uint8_t nb_bearers_to_setup,
+                                NR_DRB_ToAddModList_t *drb_configList,
                                 long *priority);
 
-int do_RRCSetup(rrc_gNB_ue_context_t         *const ue_context_pP,
-                uint8_t                      *const buffer,
-                const uint8_t                transaction_id,
-                const uint8_t                *masterCellGroup,
-                int                          masterCellGroup_len,
-                const gNB_RrcConfigurationReq *configuration);
+int do_RRCSetup(rrc_gNB_ue_context_t *const ue_context_pP,
+                uint8_t *const buffer,
+                const uint8_t transaction_id,
+                const uint8_t *masterCellGroup,
+                int masterCellGroup_len,
+                const gNB_RrcConfigurationReq *configuration,
+                NR_SRB_ToAddModList_t *SRBs);
 
 uint8_t do_NR_SecurityModeCommand(
                     const protocol_ctxt_t *const ctxt_pP,
@@ -165,15 +176,15 @@ uint8_t do_NR_ULInformationTransfer(uint8_t **buffer,
 uint8_t do_RRCReestablishmentRequest(uint8_t Mod_id, uint8_t *buffer, uint16_t c_rnti);
 
 int do_RRCReestablishment(const protocol_ctxt_t *const ctxt_pP,
-                              rrc_gNB_ue_context_t *const ue_context_pP,
-                              int CC_id,
-                              uint8_t *const buffer,
-                              size_t buffer_size,
-                              const uint8_t Transaction_id,
-                              NR_SRB_ToAddModList_t **SRB_configList,
-                              const uint8_t *masterCellGroup_from_DU,
-                              NR_ServingCellConfigCommon_t *scc,
-                              rrc_gNB_carrier_data_t *carrier);
+                          rrc_gNB_ue_context_t *const ue_context_pP,
+                          int CC_id,
+                          uint8_t *const buffer,
+                          size_t buffer_size,
+                          const uint8_t Transaction_id,
+                          NR_SRB_ToAddModList_t *SRB_configList,
+                          const uint8_t *masterCellGroup_from_DU,
+                          NR_ServingCellConfigCommon_t *scc,
+                          rrc_gNB_carrier_data_t *carrier);
 
 int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t rrc_TransactionIdentifier);
 

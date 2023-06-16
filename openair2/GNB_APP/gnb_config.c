@@ -83,6 +83,8 @@
 #include "NR_SearchSpace.h"
 #include "NR_ControlResourceSet.h"
 #include "NR_EUTRA-MBSFN-SubframeConfig.h"
+#include "uper_decoder.h"
+#include "uper_encoder.h"
 
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 #include "RRC/NR/nr_rrc_extern.h"
@@ -770,6 +772,12 @@ void RCconfig_NR_L1(void)
       RC.gNB[j]->pusch_thres = *(L1_ParamList.paramarray[j][L1_PUSCH_DTX_THRESHOLD].uptr);
       RC.gNB[j]->srs_thres = *(L1_ParamList.paramarray[j][L1_SRS_DTX_THRESHOLD].uptr);
       RC.gNB[j]->max_ldpc_iterations = *(L1_ParamList.paramarray[j][L1_MAX_LDPC_ITERATIONS].uptr);
+      RC.gNB[j]->L1_rx_thread_core = *(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr);
+      RC.gNB[j]->L1_tx_thread_core = *(L1_ParamList.paramarray[j][L1_TX_THREAD_CORE].iptr);
+      LOG_I(PHY,"L1_RX_THREAD_CORE %d (%d)\n",*(L1_ParamList.paramarray[j][L1_RX_THREAD_CORE].iptr),L1_RX_THREAD_CORE);
+      RC.gNB[j]->TX_AMP = (int16_t)(32767.0 / pow(10.0, .05 * (double)(*L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr)));
+      LOG_I(PHY, "TX_AMP = %d (-%d dBFS)\n", RC.gNB[j]->TX_AMP, *L1_ParamList.paramarray[j][L1_TX_AMP_BACKOFF_dB].uptr);
+      AssertFatal(RC.gNB[j]->TX_AMP > 300, "TX_AMP is too small, must be larger than 300 (is %d)\n", RC.gNB[j]->TX_AMP);
       if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
         // sf_ahead = 2; // Need 4 subframe gap between RX and TX
       } else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
@@ -1096,7 +1104,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
  
   config_get( GNBSParams,sizeof(GNBSParams)/sizeof(paramdef_t),NULL); 
   num_gnbs = GNBSParams[GNB_ACTIVE_GNBS_IDX].numelt;
-  AssertFatal (i<num_gnbs,"Failed to parse config file no %ith element in %s \n",i, GNB_CONFIG_STRING_ACTIVE_GNBS);
+  AssertFatal (i<num_gnbs,"Failed to parse config file no %uth element in %s \n",i, GNB_CONFIG_STRING_ACTIVE_GNBS);
 
   if (num_gnbs>0) {
 
@@ -1152,7 +1160,7 @@ void RCconfig_NRRRC(MessageDef *msg_p, uint32_t i, gNB_RRC_INST *rrc) {
     }
     fix_scd(scd);
 
-    printf("NRRRC %d: Southbound Transport %s\n",i,*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr));
+    printf("NRRRC %u: Southbound Transport %s\n",i,*(GNBParamList.paramarray[i][GNB_TRANSPORT_S_PREFERENCE_IDX].strptr));
 
     rrc->node_type = get_node_type();
     if (NODE_IS_CU(rrc->node_type)) {
@@ -1357,7 +1365,7 @@ int RCconfig_NR_NG(MessageDef *msg_p, uint32_t i) {
               NGAP_REGISTER_GNB_REQ (msg_p).cell_type = CELL_HOME_ENB;
             } else {
               AssertFatal (0,
-              "Failed to parse gNB configuration file %s, gnb %d unknown value \"%s\" for cell_type choice: CELL_MACRO_GNB or CELL_HOME_GNB !\n",
+              "Failed to parse gNB configuration file %s, gnb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_GNB or CELL_HOME_GNB !\n",
               RC.config_file_name, i, *(GNBParamList.paramarray[k][GNB_CELL_TYPE_IDX].strptr));
             }
             
@@ -1634,7 +1642,7 @@ int RCconfig_NR_X2(MessageDef *msg_p, uint32_t i) {
               X2AP_REGISTER_ENB_REQ (msg_p).cell_type = CELL_MACRO_GNB;
             }else {
               AssertFatal (0,
-                           "Failed to parse eNB configuration file %s, enb %d unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
+                           "Failed to parse eNB configuration file %s, enb %u unknown value \"%s\" for cell_type choice: CELL_MACRO_ENB or CELL_HOME_ENB !\n",
                            RC.config_file_name, i, *(GNBParamList.paramarray[k][GNB_CELL_TYPE_IDX].strptr));
             }
 
@@ -2231,7 +2239,7 @@ void nr_read_config_and_init(void) {
   if (RC.nb_nr_L1_inst>0) AssertFatal(l1_north_init_gNB()==0,"could not initialize L1 north interface\n");
 
   AssertFatal (gnb_nb <= RC.nb_nr_inst,
-               "Number of gNB is greater than gNB defined in configuration file (%d/%d)!",
+               "Number of gNB is greater than gNB defined in configuration file (%u/%u)!",
                gnb_nb, RC.nb_nr_inst);
 
   LOG_I(GNB_APP,"Allocating gNB_RRC_INST for %d instances\n",RC.nb_nr_inst);

@@ -156,14 +156,14 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
   while(fp->ofdm_symbol_size < N_RB_DL * 12)
     fp->ofdm_symbol_size <<= 1;
 
+  fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
+  // TODO: Temporarily setting fp->first_carrier_offset = 0 for SL until MAC is developed
   if (get_softmodem_params()->sl_mode == 2)
     fp->first_carrier_offset = 0;
-  else
-    fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
   fp->nb_prefix_samples    = fp->ofdm_symbol_size / 128 * 9;
   fp->nb_prefix_samples0   = fp->ofdm_symbol_size / 128 * (9 + (1 << mu));
-  LOG_W(PHY,"Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d, ofdm_symbol_size %d\n",
-        N_RB_DL,fp->first_carrier_offset,fp->nb_prefix_samples,fp->nb_prefix_samples0, fp->ofdm_symbol_size);
+  printf("Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d\n",
+        N_RB_DL,fp->first_carrier_offset,fp->nb_prefix_samples,fp->nb_prefix_samples0);
 }
 
 uint32_t get_samples_per_slot(int slot, NR_DL_FRAME_PARMS* fp)
@@ -227,8 +227,10 @@ int nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg,
 
   fp->half_frame_bit = 0;  // half frame bit initialized to 0 here
   fp->numerology_index = mu;
-
   set_scs_parameters(fp, mu, fp->N_RB_DL);
+  if (get_softmodem_params()->sl_mode != 0) {
+    set_scs_parameters(fp, mu, fp->N_RB_SL);
+  }
 
   fp->slots_per_frame = 10* fp->slots_per_subframe;
 
@@ -289,12 +291,16 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   uint64_t dl_bw_khz = (12*config->carrier_config.dl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->dl_CarrierFreq = ((dl_bw_khz>>1) + config->carrier_config.dl_frequency)*1000 ;
 
-  LOG_D(PHY,"dl_bw_kHz %lu\n",dl_bw_khz);
-  LOG_D(PHY,"dl_CarrierFreq %lu\n",fp->dl_CarrierFreq);
-
-  if (get_softmodem_params()->sl_mode != 0) {
-    fp->sl_CarrierFreq = ((dl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
+  if (get_softmodem_params()->sl_mode == 2) {
+    uint64_t sl_bw_khz = (12*config->carrier_config.sl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
+    fp->sl_CarrierFreq = ((sl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
+    LOG_D(PHY, "sl_bw_kHz %lu\n", sl_bw_khz);
+    LOG_D(PHY, "sl_frequency %u\n", config->carrier_config.sl_frequency);
+    LOG_D(PHY, "sl_CarrierFreq %lu\n", fp->sl_CarrierFreq);
   }
+  LOG_D(PHY, "dl_bw_kHz %lu\n", dl_bw_khz);
+  LOG_D(PHY, "dl_frequency %u\n", config->carrier_config.dl_frequency);
+  LOG_D(PHY, "dl_CarrierFreq %lu\n", fp->dl_CarrierFreq);
 
   uint64_t ul_bw_khz = (12*config->carrier_config.ul_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->ul_CarrierFreq = ((ul_bw_khz>>1) + config->carrier_config.uplink_frequency)*1000 ;
@@ -302,6 +308,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   fp->numerology_index = config->ssb_config.scs_common;
   fp->N_RB_UL = config->carrier_config.ul_grid_size[fp->numerology_index];
   fp->N_RB_DL = config->carrier_config.dl_grid_size[fp->numerology_index];
+  fp->N_RB_SL = config->carrier_config.sl_grid_size[fp->numerology_index];
 
   fp->frame_type = get_frame_type(fp->nr_band, fp->numerology_index);
   int32_t uplink_frequency_offset = get_delta_duplex(fp->nr_band, fp->numerology_index);
@@ -313,15 +320,15 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
 
   AssertFatal(fp->ul_CarrierFreq == (fp->dl_CarrierFreq + uplink_frequency_offset), "Disagreement in uplink frequency for band %d: ul_CarrierFreq = %lu Hz vs expected %lu Hz\n", fp->nr_band, fp->ul_CarrierFreq, fp->dl_CarrierFreq + uplink_frequency_offset);
 
-  LOG_I(PHY,"Initializing frame parms for mu %d, N_RB %d, Ncp %d\n",fp->numerology_index, fp->N_RB_DL, Ncp);
+  LOG_I(PHY,"Initializing frame parms for mu %d, N_RB_DL %d, N_RB_SL %d, Ncp %d\n", fp->numerology_index, fp->N_RB_DL, fp->N_RB_SL, Ncp);
 
 
   if (Ncp == NFAPI_CP_EXTENDED)
     AssertFatal(fp->numerology_index == NR_MU_2,"Invalid cyclic prefix %d for numerology index %d\n", Ncp, fp->numerology_index);
 
   fp->Ncp = Ncp;
-
-  set_scs_parameters(fp, fp->numerology_index, fp->N_RB_DL);
+  int N_RB = (get_softmodem_params()->sl_mode == 2) ? fp->N_RB_SL : fp->N_RB_DL;
+  set_scs_parameters(fp, fp->numerology_index, N_RB);
 
   fp->slots_per_frame = 10* fp->slots_per_subframe;
   fp->symbols_per_slot = ((Ncp == NORMAL)? 14 : 12); // to redefine for different slot formats
@@ -345,6 +352,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   }
 
   fp->ssb_start_subcarrier = (12 * config->ssb_table.ssb_offset_point_a + sco);
+  // TODO: Temporarily setting fp->ssb_start_subcarrier = 0 for SL until MAC is developed
   if (get_softmodem_params()->sl_mode == 2) {
       fp->ssb_start_subcarrier = 0;
   }
@@ -392,8 +400,6 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
   frame_parms->get_samples_per_slot = &get_samples_per_slot;
   frame_parms->get_samples_slot_timestamp = &get_samples_slot_timestamp;
   frame_parms->samples_per_frame = 10 * frame_parms->samples_per_subframe;
-
-  LOG_W(PHY, "samples_per_subframe %d/per second %d, wCP %d\n", frame_parms->samples_per_subframe, 1000*frame_parms->samples_per_subframe, frame_parms->samples_per_subframe_wCP);
 
 }
 

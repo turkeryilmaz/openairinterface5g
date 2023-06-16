@@ -68,6 +68,9 @@ void freq2time(uint16_t ofdm_symbol_size,
     case 4096:
       idft(IDFT_4096, freq_signal, time_signal, 1);
       break;
+    case 6144:
+      idft(IDFT_6144, freq_signal, time_signal, 1);
+      break;
     case 8192:
       idft(IDFT_8192, freq_signal, time_signal, 1);
       break;
@@ -257,7 +260,8 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 #ifdef DEBUG_PUSCH
           re_offset = (k0 + (n << 2) + (k_line << 1)) % symbolSize;
           c16_t *rxF = &rxdataF[soffset + re_offset];
-          printf("ch -> (%4d,%4d), ch_delay_comp -> (%4d,%4d)\n", ul_ls_est[k].r, ul_ls_est[k].i, ch16.r, ch16.i);
+          printf("pilot %4d: pil -> (%6d,%6d), rxF -> (%4d,%4d), ch -> (%4d,%4d)\n",
+                 pilot_cnt, pil->r, pil->i, rxF->r, rxF->i, ch.r, ch.i);
 #endif
 
           if (pilot_cnt == 0) {

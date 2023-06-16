@@ -153,6 +153,8 @@ struct NR_DL_FRAME_PARMS {
   int N_RB_DL;
   /// Number of resource blocks (RB) in UL
   int N_RB_UL;
+  /// Number of resource blocks (RB) in SL
+  int N_RB_SL;
   ///  total Number of Resource Block Groups: this is ceil(N_PRB/P)
   uint8_t N_RBG;
   /// Total Number of Resource Block Groups SubSets: this is P

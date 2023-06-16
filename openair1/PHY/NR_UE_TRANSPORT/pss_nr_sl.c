@@ -51,7 +51,7 @@ int nr_sl_generate_pss(c16_t *txdataF,
 
   /// Resource mapping
   uint8_t Nid2 = frame_parms->Nid_SL / 336;
-  LOG_I(PHY,"Nid_SL %d, Nid2\n",frame_parms->Nid_SL,Nid2);
+  LOG_I(NR_PHY, "Nid_SL %d, Nid2 %d\n", frame_parms->Nid_SL, Nid2);
   int16_t d_pss[LENGTH_PSS_NR];
   c16_t *primary_synchro = primary_synchro_nr[Nid2];
   c16_t *primary_synchro2 = primary_synchro_nr2[Nid2];

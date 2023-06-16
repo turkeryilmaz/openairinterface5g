@@ -297,7 +297,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    LOG_I(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+    printf("[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
           ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (NB_SYMBOLS_PBCH * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
@@ -306,7 +306,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
       for (int i = 0; i < 13; i++)
         nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset,
-                              false, rxdataF);
+                              false, rxdataF, link_type_sl);
       memcpy(ue->common_vars.rxdataF[0], rxdataF[0], rxdataF_sz * sizeof(int32_t));
       LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
       int freq_offset_sss = 0;
@@ -337,7 +337,6 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
       LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
     }
     if (ret == 0) break;
-  if (ret < 0) exit(-1);
   }
   if (ret == 0) {
     LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
@@ -415,7 +414,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     ue->ssb_offset = sync_pos - fp->nb_prefix_samples;
 
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos,ue->common_vars.eNb_id);
+    LOG_I(PHY, "[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos, ue->common_vars.nid2);
     LOG_I(PHY,"sync_pos %d ssb_offset %d \n",sync_pos,ue->ssb_offset);
 #endif
 
@@ -461,7 +460,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                               i,
                               is * fp->samples_per_frame + ue->ssb_offset,
                               false,
-                              rxdataF);
+                              rxdataF,
+                              link_type_dl);
 
 #ifdef DEBUG_INITIAL_SYNCH
       LOG_I(PHY,"Calling sss detection (normal CP)\n");
@@ -614,7 +614,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   } else {
 #ifdef DEBUG_INITIAL_SYNC
     LOG_I(PHY,"[UE%d] Initial sync : PBCH not ok\n",ue->Mod_id);
-    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n",ue->Mod_id,sync_pos,ue->common_vars.eNb_id);
+    LOG_I(PHY, "[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos, ue->common_vars.nid2);
     LOG_I(PHY,"[UE%d] Initial sync : Estimated Nid_cell %d, Frame_type %d\n",ue->Mod_id,
           frame_parms->Nid_cell,frame_parms->frame_type);
 #endif
@@ -695,7 +695,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                               l, // the UE PHY has no notion of the symbols to be monitored in the search space
                               is*fp->samples_per_frame+phy_pdcch_config->sfn*fp->samples_per_frame+ue->rx_offset,
                               true,
-                              rxdataF);
+                              rxdataF,
+                              link_type_dl);
 
         nr_pdcch_channel_estimation(ue,
                                     proc,
@@ -721,7 +722,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                                   m,
                                   is*fp->samples_per_frame+phy_pdcch_config->sfn*fp->samples_per_frame+ue->rx_offset,
                                   true,
-                                  rxdataF);
+                                  rxdataF,
+                                  link_type_dl);
           }
 
           uint8_t nb_re_dmrs;

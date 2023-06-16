@@ -99,11 +99,13 @@ SystemInformationBlockType1_nr_t;
 #define NR_UPLINK_SLOT                     (0x02)
 #define NR_MIXED_SLOT                      (0x03)
 
-#define NR_LINK_TYPE_DL                    (0x00)
-#define NR_LINK_TYPE_UL                    (0x01)
-#define NR_LINK_TYPE_SL                    (0x02)
-
 #define FRAME_DURATION_MICRO_SEC           (10000)  /* frame duration in microsecond */
+
+enum nr_Link {
+  link_type_dl,
+  link_type_ul,
+  link_type_sl,
+};
 
 typedef enum {
   ms0p5    = 500,                 /* duration is given in microsecond */

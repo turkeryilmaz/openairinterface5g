@@ -312,7 +312,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
       LOG_D(PHY,"Transform precoding being done on data- symbol: %d, nb_re_pusch: %d, y_offset: %d\n", l, nb_re_pusch, y_offset);
 
 #ifdef DEBUG_PUSCH_MAPPING
-      printf("NR_ULSCH_UE: y_offset %d\t nb_re_pusch %d \t Symbol %d \t nb_rb %d \n",
+      printf("NR_ULSCH_UE: y_offset %u\t nb_re_pusch %u \t Symbol %d \t nb_rb %d \n",
              y_offset, nb_re_pusch, l, nb_rb);
 #endif
     }
@@ -320,7 +320,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 #ifdef DEBUG_DFT_IDFT
     int32_t debug_symbols[MAX_NUM_NR_RE] __attribute__ ((aligned(16)));
     int offset = 0;
-    printf("NR_ULSCH_UE: available_bits: %d, mod_order: %d", available_bits,mod_order);
+    printf("NR_ULSCH_UE: available_bits: %u, mod_order: %d", available_bits,mod_order);
 
     for (int ll = 0; ll < (available_bits/mod_order); ll++) {
         debug_symbols[ll] = ulsch_ue->y[ll];     
@@ -617,7 +617,7 @@ uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
   for(ap = 0; ap < n_antenna_ports; ap++) {
     for (int s=0;s<NR_NUMBER_OF_SYMBOLS_PER_SLOT;s++){
       c16_t *this_symbol = &txdataF[ap][frame_parms->ofdm_symbol_size * s];
-      c16_t rot=frame_parms->symbol_rotation[1][s + symb_offset];
+      c16_t rot=frame_parms->symbol_rotation[link_type_ul][s + symb_offset];
       LOG_D(PHY,"rotating txdataF symbol %d (%d) => (%d.%d)\n",
 	    s,
 	    s + symb_offset,

@@ -795,24 +795,18 @@ void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
 }
 
 int computeSamplesShift(PHY_VARS_NR_UE *UE) {
-  int samples_shift = -(UE->rx_offset>>1);
+  int rx_offset = get_softmodem_params()->sl_mode != 2 ? UE->rx_offset : UE->rx_offset_sl;
+  int samples_shift = -(rx_offset >> 1);
+  UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
+  UE->max_pos_fil = 0; // reset IIR filter when sample shift is applied
   if (samples_shift != 0) {
     LOG_I(NR_PHY,"Adjusting frame in time by %i samples\n", samples_shift);
-    if (get_softmodem_params()->sl_mode == 0) {
-      UE->rx_offset = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
-    } else {
-      UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
-    }
-    UE->max_pos_fil += samples_shift << 15; // reset IIR filter when sample shift is applied
   }
   return samples_shift;
 }
 
 static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sync) {
-  uint16_t nb_prefix_samples0 = fp->nb_prefix_samples0;
-  if (get_softmodem_params()->sl_mode != 0) {
-    nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
-  }
+  uint16_t nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
   if (fp->numerology_index == 0)
     return fp->nb_prefix_samples0 + fp->ofdm_symbol_size;
   int num_samples = (slot % (fp->slots_per_subframe / 2)) ? fp->nb_prefix_samples : nb_prefix_samples0;
@@ -827,6 +821,7 @@ static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool s
     next_slot_first_symbol = get_firstSymSamp(slot+1, fp, sync);
   return rem_samples + next_slot_first_symbol;
 }
+
 
 int slot_to_flag_sl(uint8_t tdd_period, int slot, uint16_t slot_config, uint16_t num_slot_frame) {
   int flag, isUL, isULnext, isULbefore;
@@ -1241,14 +1236,13 @@ void *UE_thread(void *arg) {
 
     int readBlockSize, writeBlockSize;
 
-    if (slot_nr<(nb_slot_frame - 1)) {
-      readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized);
-      writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
-    } else {
-      UE->rx_offset_diff = computeSamplesShift(UE);
-      readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized) -
-                    UE->rx_offset_diff;
-      writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms)- UE->rx_offset_diff;
+    readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized);
+    writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
+    if (UE->apply_timing_offset && (slot_nr == nb_slot_frame-1)) {
+      const int sampShift = -(UE->rx_offset>>1);
+      readBlockSize  -= sampShift;
+      writeBlockSize -= sampShift;
+      UE->apply_timing_offset = false;
     }
 
     AssertFatal(readBlockSize ==
@@ -1285,6 +1279,8 @@ void *UE_thread(void *arg) {
       writeBlockSize -= UE->timing_advance - timing_advance;
       timing_advance = UE->timing_advance;
     }
+
+    nr_ue_rrc_timer_trigger(UE->Mod_id, curMsg.proc.frame_tx, curMsg.proc.nr_slot_tx);
 
     // Start TX slot processing here. It runs in parallel with RX slot processing
     notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), curMsg.proc.nr_slot_tx, &txFifo, processSlotTX);

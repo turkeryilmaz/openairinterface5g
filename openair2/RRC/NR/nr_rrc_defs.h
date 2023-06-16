@@ -37,7 +37,7 @@
 
 #include "collection/tree.h"
 #include "collection/linear_alloc.h"
-#include "nr_rrc_types.h"
+#include "nr_rrc_common.h"
 
 #include "common/ngran_types.h"
 #include "common/platform_constants.h"
@@ -62,7 +62,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_EstablishmentCause.h"
-#include "NR_SIB1.h"
+
 //-------------------
 
 #include "intertask_interface.h"
@@ -103,16 +103,6 @@ typedef enum {
   NR_RRC_HO_STARTED
 } NR_RRC_status_t;
 
-typedef enum UE_STATE_NR_e {
-  NR_RRC_INACTIVE=0,
-  NR_RRC_IDLE,
-  NR_RRC_SI_RECEIVED,
-  NR_RRC_CONNECTED,
-  NR_RRC_RECONFIGURED,
-  NR_RRC_HO_EXECUTION
-} NR_UE_STATE_t;
-
-
 #define RRM_FREE(p)       if ( (p) != NULL) { free(p) ; p=NULL ; }
 #define RRM_MALLOC(t,n)   (t *) malloc16( sizeof(t) * n )
 #define RRM_CALLOC(t,n)   (t *) malloc16( sizeof(t) * n)
@@ -129,39 +119,6 @@ typedef enum UE_STATE_NR_e {
 
 /* TS 36.331: RRC-TransactionIdentifier ::= INTEGER (0..3) */
 #define NR_RRC_TRANSACTION_IDENTIFIER_NUMBER 4
-
-typedef struct {
-  unsigned short                                      transport_block_size;      /*!< \brief Minimum PDU size in bytes provided by RLC to MAC layer interface */
-  unsigned short                                      max_transport_blocks;      /*!< \brief Maximum PDU size in bytes provided by RLC to MAC layer interface */
-  unsigned long                                       Guaranteed_bit_rate;       /*!< \brief Guaranteed Bit Rate (average) to be offered by MAC layer scheduling*/
-  unsigned long                                       Max_bit_rate;              /*!< \brief Maximum Bit Rate that can be offered by MAC layer scheduling*/
-  uint8_t                                             Delay_class;               /*!< \brief Delay class offered by MAC layer scheduling*/
-  uint8_t                                             Target_bler;               /*!< \brief Target Average Transport Block Error rate*/
-  uint8_t                                             Lchan_t;                   /*!< \brief Logical Channel Type (BCCH,CCCH,DCCH,DTCH_B,DTCH,MRBCH)*/
-} __attribute__ ((__packed__))  NR_LCHAN_DESC;
-
-typedef struct UE_RRC_INFO_NR_s {
-  NR_UE_STATE_t                                       State;
-  uint8_t                                             SIB1systemInfoValueTag;
-  uint32_t                                            SIStatus;
-  uint32_t                                            SIcnt;
-  uint8_t                                             MCCHStatus[8];             // MAX_MBSFN_AREA
-  uint16_t                                            SIwindowsize;              //!< Corresponds to the SIB1 si-WindowLength parameter. The unit is ms. Possible values are (final): 1,2,5,10,15,20,40
-  uint8_t                                             handoverTarget;
-  //HO_STATE_t ho_state;
-  uint16_t
-  SIperiod;                  //!< Corresponds to the SIB1 si-Periodicity parameter (multiplied by 10). Possible values are (final): 80,160,320,640,1280,2560,5120
-  unsigned short                                      UE_index;
-  uint32_t                                            T300_active;
-  uint32_t                                            T300_cnt;
-  uint32_t                                            T304_active;
-  uint32_t                                            T304_cnt;
-  uint32_t                                            T310_active;
-  uint32_t                                            T310_cnt;
-  uint32_t                                            N310_cnt;
-  uint32_t                                            N311_cnt;
-  rnti_t                                              rnti;
-} __attribute__ ((__packed__)) NR_UE_RRC_INFO;
 
 typedef struct UE_S_TMSI_NR_s {
   bool                                                presence;
@@ -201,48 +158,7 @@ typedef struct HANDOVER_INFO_NR_s {
   int                                                 size;               /* size of above message in bytes */
 } NR_HANDOVER_INFO;
 
-
-#define NR_RRC_HEADER_SIZE_MAX 64
-#define NR_RRC_BUFFER_SIZE_MAX 1024
-
-typedef struct {
-  char                                                Payload[NR_RRC_BUFFER_SIZE_MAX];
-  char                                                Header[NR_RRC_HEADER_SIZE_MAX];
-  uint16_t                                            payload_size;
-} NR_RRC_BUFFER;
-
 #define NR_RRC_BUFFER_SIZE                            sizeof(RRC_BUFFER_NR)
-
-
-typedef struct RB_INFO_NR_s {
-  uint16_t                                            Rb_id;  //=Lchan_id
-  NR_LCHAN_DESC Lchan_desc[2];
-  //MAC_MEAS_REQ_ENTRY *Meas_entry; //may not needed for NB-IoT
-} NR_RB_INFO;
-
-typedef struct NR_SRB_INFO_s {
-  uint16_t                                            Srb_id;         //=Lchan_id
-  NR_RRC_BUFFER                                          Rx_buffer;
-  NR_RRC_BUFFER                                          Tx_buffer;
-  NR_LCHAN_DESC                                          Lchan_desc[2];
-  unsigned int                                        Trans_id;
-  uint8_t                                             Active;
-} NR_SRB_INFO;
-
-
-typedef struct RB_INFO_TABLE_ENTRY_NR_s {
-  NR_RB_INFO                                          Rb_info;
-  uint8_t                                             Active;
-  uint32_t                                            Next_check_frame;
-  uint8_t                                             status;
-} NR_RB_INFO_TABLE_ENTRY;
-
-typedef struct SRB_INFO_TABLE_ENTRY_NR_s {
-  NR_SRB_INFO                                         Srb_info;
-  uint8_t                                             Active;
-  uint8_t                                             status;
-  uint32_t                                            Next_check_frame;
-} NR_SRB_INFO_TABLE_ENTRY;
 
 typedef struct nr_rrc_guami_s {
   uint16_t mcc;
@@ -320,9 +236,7 @@ typedef enum {
 } rrc_action_t;
 
 typedef struct gNB_RRC_UE_s {
-  uint8_t                            primaryCC_id;
-  NR_SRB_ToAddModList_t             *SRB_configList;
-  NR_SRB_ToAddModList_t             *SRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
+  uint8_t primaryCC_id;
   NR_DRB_ToAddModList_t             *DRB_configList;
   NR_DRB_ToAddModList_t             *DRB_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
   NR_DRB_ToReleaseList_t            *DRB_Release_configList2[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
@@ -360,7 +274,7 @@ typedef struct gNB_RRC_UE_s {
   NR_CipheringAlgorithm_t            ciphering_algorithm;
   e_NR_IntegrityProtAlgorithm        integrity_algorithm;
 
-  uint8_t                            StatusRrc;
+  NR_UE_STATE_t                      StatusRrc;
   rnti_t                             rnti;
   uint64_t                           random_ue_identity;
 
@@ -397,17 +311,6 @@ typedef struct gNB_RRC_UE_s {
   int nb_of_pdusessions;
   rrc_pdu_session_param_t pduSession[NGAP_MAX_PDU_SESSION];
   rrc_action_t xids[NR_RRC_TRANSACTION_IDENTIFIER_NUMBER];
-  uint32_t                           ul_failure_timer;
-  uint32_t                           ue_release_timer;
-  uint32_t                           ue_release_timer_thres;
-  uint32_t                           ue_release_timer_s1;
-  uint32_t                           ue_release_timer_thres_s1;
-  uint32_t                           ue_release_timer_ng;
-  uint32_t                           ue_release_timer_thres_ng;
-  uint32_t                           ue_release_timer_rrc;
-  uint32_t                           ue_release_timer_thres_rrc;
-  uint32_t                           ue_reestablishment_timer;
-  uint32_t                           ue_reestablishment_timer_thres;
   uint8_t e_rab_release_command_flag;
   uint32_t ue_rrc_inactivity_timer;
   uint32_t                           ue_reestablishment_counter;
@@ -473,8 +376,9 @@ typedef struct {
 } nr_security_configuration_t;
 
 typedef struct nr_mac_rrc_dl_if_s {
-  /* TODO add other message types as necessary */
   ue_context_setup_request_func_t ue_context_setup_request;
+  ue_context_modification_request_func_t ue_context_modification_request;
+  ue_context_release_command_func_t ue_context_release_command;
   dl_rrc_message_transfer_func_t dl_rrc_message_transfer;
 } nr_mac_rrc_dl_if_t;
 

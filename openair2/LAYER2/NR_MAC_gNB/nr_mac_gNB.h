@@ -467,10 +467,6 @@ typedef struct NR_bler_stats {
 */
 #define MAX_NR_OF_REPORTED_RS 4
 
-typedef enum NR_CSI_Report_Config {
-  CSI_Report_PR_cri_ri_li_pmi_cqi_report,
-  CSI_Report_PR_ssb_cri_report
-} NR_CSI_Report_Config_PR;
 struct CRI_RI_LI_PMI_CQI {
   uint8_t cri;
   uint8_t ri;
@@ -481,6 +477,7 @@ struct CRI_RI_LI_PMI_CQI {
   uint8_t wb_cqi_2tb;
   uint8_t cqi_table;
   uint8_t csi_report_id;
+  bool print_report;
 };
 
 typedef struct CRI_SSB_RSRP {
@@ -591,7 +588,9 @@ typedef struct {
   uint8_t current_harq_pid;
   int pusch_consecutive_dtx_cnt;
   int pucch_consecutive_dtx_cnt;
-  int ul_failure;
+  bool ul_failure;
+  int ul_failure_timer;
+  int release_timer;
   struct CSI_Report CSI_report;
   bool SR;
   /// information about every HARQ process
@@ -659,8 +658,10 @@ typedef struct NR_bler_options {
 } NR_bler_options_t;
 
 typedef struct nr_mac_rrc_ul_if_s {
-  /* TODO add other message types as necessary */
   ue_context_setup_response_func_t ue_context_setup_response;
+  ue_context_modification_response_func_t ue_context_modification_response;
+  ue_context_release_request_func_t ue_context_release_request;
+  ue_context_release_complete_func_t ue_context_release_complete;
   initial_ul_rrc_message_transfer_func_t initial_ul_rrc_message_transfer;
 } nr_mac_rrc_ul_if_t;
 

@@ -362,6 +362,12 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
     dftlen <<= 2;
     break;
 
+  case 184320:
+    // 100 MHz @ 184.32 Ms/s
+    Ncp = Ncp*6;
+    dftlen = dftlen*6;
+    break;
+
   default:
     AssertFatal(1==0,"sample rate %f MHz not supported for numerology %d\n", fp->samples_per_subframe / 1000.0, mu);
   }
@@ -450,7 +456,7 @@ int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t
       memcpy(prach, prach+(dftlen<<1), (Ncp<<2));
       // here we have | Prefix | Prach | Prach |
       prach_len = (dftlen*2)+Ncp;
-    } else if (prach_fmt_id == 5) { // 4xdftlen
+    } else if (prach_fmt_id == 5 || prach_fmt_id == 10) { // 4xdftlen
       // here we have | empty  | Prach | empty | empty | empty |
       memcpy(prach2+(dftlen<<1), prach2, (dftlen<<2));
       // here we have | empty  | Prach | Prach | empty | empty |

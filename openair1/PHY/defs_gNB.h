@@ -644,6 +644,8 @@ typedef struct PHY_VARS_gNB_s {
   /// CSI variables
   nr_csi_info_t *nr_csi_info;
 
+  // reference amplitude for TX
+  int16_t TX_AMP;
   // PUCCH0 Look-up table for cyclic-shifts
   NR_gNB_PUCCH0_LUT_t pucch0_lut;
 
@@ -682,6 +684,8 @@ typedef struct PHY_VARS_gNB_s {
   uint32_t ofdm_offset_divisor;
 
   int ldpc_offload_flag;
+
+  int reorder_thread_disable;
 
   int max_ldpc_iterations;
   /// indicate the channel estimation technique in time domain
@@ -765,6 +769,11 @@ typedef struct PHY_VARS_gNB_s {
   notifiedFIFO_t L1_tx_out;
   notifiedFIFO_t resp_RU_tx;
   tpool_t threadPool;
+  pthread_t L1_rx_thread;
+  int L1_rx_thread_core;
+  pthread_t L1_tx_thread;
+  int L1_tx_thread_core;
+  struct processingData_L1tx *msgDataTx;
   int nbDecode;
   void *scopeData;
   /// structure for analyzing high-level RT measurements
