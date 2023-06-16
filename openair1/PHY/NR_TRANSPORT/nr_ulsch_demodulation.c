@@ -1881,6 +1881,105 @@ void inner_rx_64qam_2layer (NR_DL_FRAME_PARMS *frame_parms,
   nr_ulsch_qam64_qam64((c16_t *)rxFext_comp[1], (c16_t *)rxFext_comp[0], ul_ch_mag1, ul_ch_mag0, llr_1, rho1, length);
 }
 
+void inner_rx_compensation_mag_mrc(int *rxF,
+                                   int *ul_ch,
+                                   int *rxF_comp,
+                                   int *rxF_ch_mag,
+                                   int *rxF_ch_magb,
+                                   int *rxF_ch_magc,
+                                   uint8_t m_order,
+                                   int aarx,
+                                   int length,
+                                   int output_shift) {
+  register simde__m128i xmmp0, xmmp1, xmmp2, xmmp3, xmmp4;
+  register simde__m128i complex_shuffle128 = simde_mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+  register simde__m128i conj128 = simde_mm_set_epi16(1, -1, 1, -1, 1, -1, 1, -1);
+  simde__m128i *rxF128  = (simde__m128i*)rxF;
+  simde__m128i *rxF128_comp = (simde__m128i*)rxF_comp;
+  simde__m128i *ulch128 = (simde__m128i*)ul_ch;
+  simde__m128i *ch128_mags[3];
+  ch128_mags[0] = (simde__m128i*) rxF_ch_mag;
+  ch128_mags[1] = (simde__m128i*) rxF_ch_magb;
+  ch128_mags[2] = (simde__m128i*) rxF_ch_magc;
+
+  // Prepare constant magnitudes for m_order > 2
+  simde__m128i QAM_amp128;
+  simde__m128i QAM_amp128b;
+  simde__m128i QAM_amp128c;
+  if(m_order == 4) {
+    QAM_amp128  = simde_mm_set1_epi16(QAM16_n1);
+  }
+  else if(m_order == 6) {
+    QAM_amp128  = simde_mm_set1_epi16(QAM64_n1);  // 4/sqrt(42)
+    QAM_amp128b = simde_mm_set1_epi16(QAM64_n2);  // 2/sqrt(42)
+  }
+  else if(m_order == 8){
+    QAM_amp128            = simde_mm_set1_epi16(QAM256_n1);
+    QAM_amp128b           = simde_mm_set1_epi16(QAM256_n2);
+    QAM_amp128c           = simde_mm_set1_epi16(QAM256_n3);
+  }
+
+  // Loop by every 4 REs
+  const int num_iter = (length >> 2) + ((length & 3) > 0 ? 1 : 0);
+  for (int i = 0; i < num_iter; i++) {
+    // Channel compensation
+    xmmp0  = simde_mm_madd_epi16(ulch128[i], rxF128[i]);
+    // xmmp0 contains real part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
+    xmmp1  = simde_mm_shuffle_epi8(ulch128[i], complex_shuffle128);
+    xmmp1  = simde_mm_sign_epi16(xmmp1, conj128);
+    xmmp1  = simde_mm_madd_epi16(xmmp1, rxF128[i]);
+    // xmmp1 contains imag part of 4 consecutive outputs (32-bit) of conj(H_m[i])*R_m[i]
+    xmmp0  = simde_mm_srai_epi32(xmmp0, output_shift);
+    xmmp1  = simde_mm_srai_epi32(xmmp1, output_shift);
+    xmmp2  = simde_mm_unpacklo_epi32(xmmp0, xmmp1);
+    xmmp3  = simde_mm_unpackhi_epi32(xmmp0, xmmp1);
+    xmmp4  = simde_mm_packs_epi32(xmmp2, xmmp3);  // xmmp4 is the compensated data
+
+    // Compute channel amplitude for LLR computation later
+    // ch_mag: xmmp1, ch_magb: xmmp2, ch_magc: xmmp3
+    if(m_order > 2){
+      xmmp0 = simde_mm_madd_epi16(ulch128[i], ulch128[i]); // |h|^2
+      xmmp0 = simde_mm_srai_epi32(xmmp0, output_shift);
+      xmmp0 = simde_mm_packs_epi32(xmmp0, xmmp0);
+      xmmp0 = simde_mm_unpacklo_epi16(xmmp0, xmmp0);
+
+      // Using switch case seems no faster
+      if(m_order == 4) {
+        xmmp1 = simde_mm_mulhrs_epi16(xmmp0, QAM_amp128);
+      }
+      else if(m_order == 6) {
+        xmmp1 = simde_mm_mulhrs_epi16(xmmp0, QAM_amp128);
+        xmmp2 = simde_mm_mulhrs_epi16(xmmp0, QAM_amp128b);
+      }
+      else if(m_order == 8){
+        xmmp1 = simde_mm_mulhrs_epi16(xmmp0, QAM_amp128);
+        xmmp2 = simde_mm_mulhrs_epi16(xmmp0, QAM_amp128b);
+        xmmp3 = simde_mm_mulhrs_epi16(xmmp0, QAM_amp128c);
+      }
+    }
+
+    // MRC (Maximal Ratio Combining, combining compensated signals and channel magnitude)
+    if (aarx == 0) {
+      rxF128_comp[i] = xmmp4;
+      if(m_order >= 4)
+        ch128_mags[0][i] = xmmp1;
+      if(m_order >= 6)
+        ch128_mags[1][i] = xmmp2;
+      if(m_order == 8)
+        ch128_mags[2][i] = xmmp3;
+    }
+    else {
+      rxF128_comp[i] = simde_mm_add_epi16(rxF128_comp[i], xmmp4);
+      if(m_order >= 4)
+        ch128_mags[0][i] = simde_mm_add_epi16(ch128_mags[0][i], xmmp1);
+      if(m_order >= 6)
+        ch128_mags[1][i] = simde_mm_add_epi16(ch128_mags[1][i], xmmp2);
+      if(m_order == 8)
+        ch128_mags[2][i] = simde_mm_add_epi16(ch128_mags[2][i], xmmp3);
+    }
+  }
+}
+
 void inner_rx_qpsk (int *rxF, 
                     int *ul_ch, 
                     int16_t *llr, 
@@ -2617,7 +2716,7 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
   int ulsch_id = rdata->ulsch_id;
   int slot = rdata->slot;
   NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ulsch_id];
-  // int16_t *s = rdata->s;
+  int16_t *s = rdata->s;
   for (int symbol = rdata->startSymbol; symbol < rdata->startSymbol+rdata->numSymbols; symbol++) 
   {
     int dmrs_symbol_flag = (rel15_ul->ul_dmrs_symb_pos >> symbol) & 0x01;
@@ -2639,18 +2738,21 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
     if (rel15_ul->nrOfLayers == 1)
     {
       int16_t *llr = &rdata->llr[0][pusch_vars->llr_offset[symbol]];
-      void (*inner_rx)(int *,int *,int16_t *,int,int,int);
-      if      (rel15_ul->qam_mod_order == 2) inner_rx = inner_rx_qpsk;
-      else if (rel15_ul->qam_mod_order == 4) inner_rx = inner_rx_16qam;
-      else if (rel15_ul->qam_mod_order == 6) inner_rx = inner_rx_64qam;
-      else if (rel15_ul->qam_mod_order == 8) inner_rx = inner_rx_256qam;
-      else    AssertFatal(1==0,"rel15_ul->qam_mod_order %d, pusch_pdu->dmrs_config_type %d\n",
-      rel15_ul->qam_mod_order,rel15_ul->dmrs_config_type);
+      // void (*inner_rx)(int *,int *,int16_t *,int,int,int);
+      // if      (rel15_ul->qam_mod_order == 2) inner_rx = inner_rx_qpsk;
+      // else if (rel15_ul->qam_mod_order == 4) inner_rx = inner_rx_16qam;
+      // else if (rel15_ul->qam_mod_order == 6) inner_rx = inner_rx_64qam;
+      // else if (rel15_ul->qam_mod_order == 8) inner_rx = inner_rx_256qam;
+      // else    AssertFatal(1==0,"rel15_ul->qam_mod_order %d, pusch_pdu->dmrs_config_type %d\n",
+      // rel15_ul->qam_mod_order,rel15_ul->dmrs_config_type);
 
       int soffset   = (slot&3)*frame_parms->symbols_per_slot*frame_parms->ofdm_symbol_size;
       int32_t rxFext[nb_re_pusch+8] __attribute__((aligned(32)));
+      int32_t rxF_comp[nb_re_pusch+8] __attribute__((aligned(32)));
+      int32_t rxF_ch_mags[3][nb_re_pusch+8] __attribute__((aligned(32)));; // rxF_ch_mags[0..2] for ul_ch_mag,ul_ch_magb,ul_ch_magc
       int32_t chFext[nb_re_pusch+8] __attribute__((aligned(32)));
-      // int16_t llr16[(nb_re_pusch*rel15_ul->qam_mod_order)+16] __attribute__((aligned(32)));
+      int16_t llr_temp[(nb_re_pusch*rel15_ul->qam_mod_order)+16] __attribute__((aligned(32)));
+      int16_t *llr_ptr = llr_temp;
       for (int aa=0;aa<frame_parms->nb_antennas_rx;aa++) {
         nr_ulsch_extract_rbs0(gNB->common_vars.rxdataF[aa],
                               gNB->pusch_vars[ulsch_id].ul_ch_estimates[aa],
@@ -2662,16 +2764,49 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
                               dmrs_symbol_flag, 
                               rel15_ul,
                               frame_parms);
-        // demodulation  
-        inner_rx(rxFext, chFext, llr, aa, nb_re_pusch, gNB->pusch_vars[ulsch_id].log2_maxh);
+        // demodulation
+        // inner_rx(rxFext, chFext, llr_temp, aa, nb_re_pusch, gNB->pusch_vars[ulsch_id].log2_maxh);
+        // Channel compensation, get channel magnitude and MRC
+        inner_rx_compensation_mag_mrc(rxFext,
+                                      chFext,
+                                      rxF_comp,
+                                      rxF_ch_mags[0],
+                                      rxF_ch_mags[1],
+                                      rxF_ch_mags[2],
+                                      rel15_ul->qam_mod_order,
+                                      aa,
+                                      nb_re_pusch,
+                                      gNB->pusch_vars[ulsch_id].log2_maxh
+                                      );
       }
+
+      // Perform IDFT if transform precoding is enabled
+      // TODO: Frequency equalizer
+      if(rel15_ul->transform_precoding == transformPrecoder_enabled){
+        nr_idft(rxF_comp, nb_re_pusch);
+      }
+
+      // LLR computation
+      if(rel15_ul->qam_mod_order == 2)
+        llr_ptr = (int16_t*) rxF_comp;  // dont call llr function if it's QPSK
+      else
+        nr_ulsch_compute_llr(rxF_comp,
+                             rxF_ch_mags[0],
+                             rxF_ch_mags[1],
+                             rxF_ch_mags[2],
+                             llr_temp,
+                             0, // nb_re=0 cuz no offset in ch_mags[]
+                             nb_re_pusch,
+                             0, // symbol=0 cuz no offset in ch_mags[]
+                             rel15_ul->qam_mod_order);
+
       // unscrambling
-      // simde__m64 *llr64 = (simde__m64 *) llr;
-      // for (int i=0;i<(nb_re_pusch*rel15_ul->qam_mod_order)>>2;i++) {
-      //   llr64[i] = simde_mm_mullo_pi16(((simde__m64 *)llr16)[i],((simde__m64 *)s)[i]);
-      // }
-      // s+=(nb_re_pusch*rel15_ul->qam_mod_order);
-      // llr+=(nb_re_pusch*rel15_ul->qam_mod_order);
+      simde__m64 *llr64 = (simde__m64 *) llr;
+      for (int i=0;i<(nb_re_pusch*rel15_ul->qam_mod_order)>>2;i++) {
+        llr64[i] = simde_mm_mullo_pi16(((simde__m64 *)llr_ptr)[i],((simde__m64 *)s)[i]);
+      }
+      s+=(nb_re_pusch*rel15_ul->qam_mod_order);
+      llr+=(nb_re_pusch*rel15_ul->qam_mod_order);
     }
     else
     {

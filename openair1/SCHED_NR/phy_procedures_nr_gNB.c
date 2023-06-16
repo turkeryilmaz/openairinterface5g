@@ -441,20 +441,20 @@ void nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int ULSCH
 	pusch_pdu->nrOfLayers,
 	G);
 
-  // if (gNB->use_pusch_tp == 0) {
-  nr_ulsch_layer_demapping(gNB->pusch_vars[ULSCH_id].llr,
-                           pusch_pdu->nrOfLayers,
-                           pusch_pdu->qam_mod_order,
-                           G,
-                           gNB->pusch_vars[ULSCH_id].llr_layers);
+    nr_ulsch_layer_demapping(gNB->pusch_vars[ULSCH_id].llr,
+                             pusch_pdu->nrOfLayers,
+                             pusch_pdu->qam_mod_order,
+                             G,
+                             gNB->pusch_vars[ULSCH_id].llr_layers);
 
+  if (gNB->use_pusch_tp == 0 || (gNB->use_pusch_tp == 1 && pusch_pdu->nrOfLayers > 1)) {
   //----------------------------------------------------------
   //------------------- ULSCH unscrambling -------------------
   //----------------------------------------------------------
     start_meas(&gNB->ulsch_unscrambling_stats);
     nr_ulsch_unscrambling(gNB->pusch_vars[ULSCH_id].llr, G, pusch_pdu->data_scrambling_id, pusch_pdu->rnti);
     stop_meas(&gNB->ulsch_unscrambling_stats);
-  // }
+  }
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
