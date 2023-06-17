@@ -258,95 +258,98 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
   
   read_prach_data(ru, *frame, *slot);
 
-       struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
+  struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
 #ifdef ORAN_BRONZE       
-       int num_eaxc = xranConf.neAxc;
-       int num_eaxc_ul = xranConf.neAxcUl;
+  int num_eaxc = xranConf.neAxc;
+  int num_eaxc_ul = xranConf.neAxcUl;
+  int nPRBs = xranConf.nULRBs;
+  int fftsize = 1<<xranConf.ru_conf.fftSize;
 #else
-       int num_eaxc = app_io_xran_fh_config[0].neAxc;
-       int num_eaxc_ul = app_io_xran_fh_config[0].neAxcUl;
+  int num_eaxc = app_io_xran_fh_config[0].neAxc;
+  int num_eaxc_ul = app_io_xran_fh_config[0].neAxcUl;
 #endif
-       uint32_t xran_max_antenna_nr = RTE_MAX(num_eaxc, num_eaxc_ul);
+  uint32_t xran_max_antenna_nr = RTE_MAX(num_eaxc, num_eaxc_ul);
        
-       int slot_offset_rxdata = 3&(*slot);
-       uint32_t slot_size = 4*14*4096;
-       uint8_t *rx_data = (uint8_t *)ru->rxdataF[0];
-       uint8_t *start_ptr = NULL;
-       for(uint16_t cc_id=0; cc_id<1/*nSectorNum*/; cc_id++){ // OAI does not support multiple CC yet.
-           for(uint8_t ant_id = 0; ant_id < xran_max_antenna_nr && ant_id<ru->nb_rx; ant_id++){
-              rx_data = (uint8_t *)ru->rxdataF[ant_id];
-              start_ptr = rx_data + (slot_size*slot_offset_rxdata);
-              // This loop would better be more inner to avoid confusion and maybe also errors.
-              for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+  int slot_offset_rxdata = 3&(*slot);
+  uint32_t slot_size = 4*14*4096;
+  uint8_t *rx_data = (uint8_t *)ru->rxdataF[0];
+  uint8_t *start_ptr = NULL;
+  for(uint16_t cc_id=0; cc_id<1/*nSectorNum*/; cc_id++){ // OAI does not support multiple CC yet.
+      for(uint8_t ant_id = 0; ant_id < xran_max_antenna_nr && ant_id<ru->nb_rx; ant_id++){
+         rx_data = (uint8_t *)ru->rxdataF[ant_id];
+         start_ptr = rx_data + (slot_size*slot_offset_rxdata);
+         // This loop would better be more inner to avoid confusion and maybe also errors.
+         for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
 
-		 LOG_D(PHY,"ORAN RX: CC %d, ant %d, sym %d, tti %d\n",cc_id,ant_id,sym_idx,tti);
-                 uint8_t *pData = xran_ctx->sFrontHaulRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
-                 uint8_t *pPrbMapData = xran_ctx->sFrontHaulRxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers->pData;
-                 struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
-                 ptr = pData;
-                 pos = (int32_t *)(start_ptr + (4*sym_idx*4096));
+            LOG_D(PHY,"ORAN RX: CC %d, ant %d, sym %d, tti %d\n",cc_id,ant_id,sym_idx,tti);
+            uint8_t *pData = xran_ctx->sFrontHaulRxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
+            uint8_t *pPrbMapData = xran_ctx->sFrontHaulRxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers->pData;
+            struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
+            ptr = pData;
+            pos = (int32_t *)(start_ptr + (4*sym_idx*4096));
 
-                 uint8_t *u8dptr;
-                 struct xran_prb_map *pRbMap = pPrbMap;
-                 int32_t sym_id = sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT;
-                 if(ptr && pos){
-                    uint32_t idxElm = 0;
-                    u8dptr = (uint8_t*)ptr;
-                    int16_t payload_len = 0;
+            uint8_t *u8dptr;
+            struct xran_prb_map *pRbMap = pPrbMap;
+            int32_t sym_id = sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT;
+            if(ptr && pos){
+               uint32_t idxElm = 0;
+               u8dptr = (uint8_t*)ptr;
+               int16_t payload_len = 0;
 
-                    uint8_t *src = (uint8_t *)u8dptr;
-                    // first half
-                    uint8_t  *src1 = (uint8_t *)u8dptr;
-                    uint8_t  *dst1 = (uint8_t *)pos;
-                    // second half
-                    uint8_t  *src2 = (uint8_t *)u8dptr;
-                    uint8_t  *dst2 = (uint8_t *)pos;
+               uint8_t *src = (uint8_t *)u8dptr;
 
-                    struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
+               struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
 
-		    LOG_D(PHY,"pRbMap->nPrbElm %d\n",pRbMap->nPrbElm);
-                    for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
-		        LOG_D(PHY,"prbMap[%d] : PRBstart %d nPRBs %d\n",
-			      idxElm,pRbMap->prbMap[idxElm].nRBStart,pRbMap->prbMap[idxElm].nRBSize);
-                       struct xran_section_desc *p_sec_desc = NULL;
-                       p_prbMapElm = &pRbMap->prbMap[idxElm];
+	       LOG_D(PHY,"pRbMap->nPrbElm %d\n",pRbMap->nPrbElm);
+               for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
+	          LOG_D(PHY,"prbMap[%d] : PRBstart %d nPRBs %d\n",
+	                idxElm,pRbMap->prbMap[idxElm].nRBStart,pRbMap->prbMap[idxElm].nRBSize);
+                  struct xran_section_desc *p_sec_desc = NULL;
+                  p_prbMapElm = &pRbMap->prbMap[idxElm];
+		  int pos_len=0;
+		  int neg_len=0;
+
+	          if (p_prbMapElm->nRBStart < (nPRBs>>1)) // there are PRBs left of DC
+		    neg_len = min((nPRBs*6) - (p_prbMapElm->nRBStart*12),
+				  p_prbMapElm->nRBSize*N_SC_PER_PRB);
+		  pos_len = (p_prbMapElm->nRBSize*N_SC_PER_PRB) - neg_len;
+
 #ifdef ORAN_BRONZE 
-                       p_sec_desc = p_prbMapElm->p_sec_desc[sym_id];
-                       if(pRbMap->nPrbElm==1 && idxElm==0){
-                         src = pData;
-                       }
-                       else if(p_sec_desc->pData==NULL){
-			 LOG_E(PHY,"p_sec_desc->pData is NULL for sym_id %d\n",sym_id);      
-			 exit(-1);
-                         return -1;
-                       }else{
-                         src =  p_sec_desc->pData;
-                       }
+                    p_sec_desc = p_prbMapElm->p_sec_desc[sym_id];
+                    if(pRbMap->nPrbElm==1 && idxElm==0){
+                      src = pData;
+                    }
+                    else if(p_sec_desc->pData==NULL){
+		      LOG_E(PHY,"p_sec_desc->pData is NULL for sym_id %d\n",sym_id);      
+		      exit(-1);
+                      return -1;
+                    }else{
+                      src =  p_sec_desc->pData;
+                    }
 
-                       src2 = src;
 
-                       if(p_sec_desc == NULL){
-                          printf ("p_sec_desc == NULL\n");
-                          exit(-1);
-                       }
-                       // Calculation of the pointer for the section in the buffer.
-                       // first half
-                       dst1 = (uint8_t *)(pos + p_prbMapElm->nRBStart*N_SC_PER_PRB);
-                       // second half
-                       dst2 = (uint8_t *)(pos + (p_prbMapElm->nRBStart*N_SC_PER_PRB + 3276/2) + 4096 - 3276);
-                       if(p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
-                          payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
-                          src1 = src2 + payload_len/2;
-                          for (idx = 0; idx < payload_len/(2*sizeof(int16_t)); idx++) {
-                            ((int16_t *)dst1)[idx] = ((int16_t)ntohs(((uint16_t *)src1)[idx]))>>4;
-                            ((int16_t *)dst2)[idx] = ((int16_t)ntohs(((uint16_t *)src2)[idx]))>>4;
-			    //if (sym_idx==0 && idx<16) LOG_I(PHY,"%d: %d,%d\n",idx,((int16_t *)dst1)[idx],((int16_t *)dst1)[idx]);
-                          }
-                       } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
-                          struct xranlib_decompress_request  bfp_decom_req_2;
-                          struct xranlib_decompress_response bfp_decom_rsp_2;
-                          struct xranlib_decompress_request  bfp_decom_req_1;
-                          struct xranlib_decompress_response bfp_decom_rsp_1;
+                    if(p_sec_desc == NULL){
+                       printf ("p_sec_desc == NULL\n");
+                       exit(-1);
+                    }
+                    // Calculation of the pointer for the section in the buffer.
+                    // positive half
+                    uint8_t *dst1 = (uint8_t *)(pos+(neg_len == 0 ? ((p_prbMapElm->nRBStart*N_SC_PER_PRB)-(nPRBs*6)) : 0));
+                    // negative half
+                    uint8_t *dst2 = (uint8_t *)(pos + (p_prbMapElm->nRBStart*N_SC_PER_PRB) + fftsize - (nPRBs*6));
+		    // NOTE: ggc 11 knows how to generate AVX2 for this!
+                    if(p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
+		       int32_t local_dst[p_prbMapElm->nRBSize*N_SC_PER_PRB] __attribute__((aligned(64)));	 
+                       for (idx = 0; idx < p_prbMapElm->nRBSize*N_SC_PER_PRB*2; idx++) 
+                          ((int16_t *)local_dst)[idx] = ((int16_t)ntohs(((uint16_t *)src)[idx]))>>2;
+
+		       memcpy((void*)dst2,(void*)local_dst,neg_len*4);
+		       memcpy((void*)dst1,(void*)&local_dst[neg_len],pos_len*4);
+                    } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
+                       struct xranlib_decompress_request  bfp_decom_req_2;
+                       struct xranlib_decompress_response bfp_decom_rsp_2;
+                       struct xranlib_decompress_request  bfp_decom_req_1;
+                       struct xranlib_decompress_response bfp_decom_rsp_1;
 
 
                           payload_len = (3* p_prbMapElm->iqWidth + 1)*p_prbMapElm->nRBSize;
@@ -355,7 +358,7 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
                           memset(&bfp_decom_rsp_2, 0, sizeof(struct xranlib_decompress_response));
                           memset(&bfp_decom_req_1, 0, sizeof(struct xranlib_decompress_request));
                           memset(&bfp_decom_rsp_1, 0, sizeof(struct xranlib_decompress_response));
-
+/*
                           bfp_decom_req_2.data_in    = (int8_t*)src2;
                           bfp_decom_req_2.numRBs     = p_prbMapElm->nRBSize/2;
                           bfp_decom_req_2.len        = payload_len/2;
@@ -381,11 +384,12 @@ int xran_fh_rx_read_slot(ru_info_t *ru, int *frame, int *slot){
 
                           xranlib_decompress_avx512(&bfp_decom_req_1, &bfp_decom_rsp_1);
                           payload_len = bfp_decom_rsp_1.len+first_half_len;
-                       }else {
-                          printf ("p_prbMapElm->compMethod == %d is not supported\n",
-                                   p_prbMapElm->compMethod);
-                          exit(-1);
-                       }
+  */
+           	    } else {
+                       printf ("p_prbMapElm->compMethod == %d is not supported\n",
+                                p_prbMapElm->compMethod);
+                       exit(-1);
+                    }
 #else
 
                        if(idxElm==0) src =  pData;
@@ -502,15 +506,17 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
   int idx = 0;
 
 
-       struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
+  struct xran_device_ctx *xran_ctx = xran_dev_get_ctx();
 #ifdef ORAN_BRONZE
-       int num_eaxc = xranConf.neAxc;
-       int num_eaxc_ul = xranConf.neAxcUl;
+  int num_eaxc = xranConf.neAxc;
+  int num_eaxc_ul = xranConf.neAxcUl;
+  int nPRBs = xranConf.nDLRBs;
+  int fftsize = 1<<xranConf.ru_conf.fftSize;
 #else
-       int num_eaxc = app_io_xran_fh_config[0].neAxc;
-       int num_eaxc_ul = app_io_xran_fh_config[0].neAxcUl;
+  int num_eaxc = app_io_xran_fh_config[0].neAxc;
+  int num_eaxc_ul = app_io_xran_fh_config[0].neAxcUl;
 #endif       
-       uint32_t xran_max_antenna_nr = RTE_MAX(num_eaxc, num_eaxc_ul);
+  uint32_t xran_max_antenna_nr = RTE_MAX(num_eaxc, num_eaxc_ul);
        /*
        for (nSectorNum = 0; nSectorNum < XRAN_MAX_SECTOR_NR; nSectorNum++)
        {
@@ -518,124 +524,128 @@ int xran_fh_tx_send_slot(ru_info_t *ru, int frame, int slot, uint64_t timestamp)
        }
        */
 
-       for(uint16_t cc_id=0; cc_id<1/*nSectorNum*/; cc_id++){ // OAI does not support multiple CC yet.
-           for(uint8_t ant_id = 0; ant_id < xran_max_antenna_nr && ant_id<ru->nb_tx; ant_id++){
-              // This loop would better be more inner to avoid confusion and maybe also errors.
-              for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
+  for(uint16_t cc_id=0; cc_id<1/*nSectorNum*/; cc_id++){ // OAI does not support multiple CC yet.
+      for(uint8_t ant_id = 0; ant_id < xran_max_antenna_nr && ant_id<ru->nb_tx; ant_id++){
+         // This loop would better be more inner to avoid confusion and maybe also errors.
+         for(int32_t sym_idx = 0; sym_idx < XRAN_NUM_OF_SYMBOL_PER_SLOT; sym_idx++) {
 
-                 uint8_t *pData = xran_ctx->sFrontHaulTxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
-                 uint8_t *pPrbMapData = xran_ctx->sFrontHaulTxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers->pData;
-                 struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
-                 ptr = pData;
-                 pos = &ru->txdataF_BF[ant_id][sym_idx * 4096 /*fp->ofdm_symbol_size*/]; // We had to use a different ru structure than benetel so the access to the buffer is not the same.
+            uint8_t *pData = xran_ctx->sFrontHaulTxBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers[sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT].pData;
+            uint8_t *pPrbMapData = xran_ctx->sFrontHaulTxPrbMapBbuIoBufCtrl[tti % XRAN_N_FE_BUF_LEN][cc_id][ant_id].sBufferList.pBuffers->pData;
+            struct xran_prb_map *pPrbMap = (struct xran_prb_map *)pPrbMapData;
+            ptr = pData;
+            pos = &ru->txdataF_BF[ant_id][sym_idx * 4096 /*fp->ofdm_symbol_size*/]; // We had to use a different ru structure than benetel so the access to the buffer is not the same.
 
-                 uint8_t *u8dptr;
-                 struct xran_prb_map *pRbMap = pPrbMap;
-                 int32_t sym_id = sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT;
-                 if(ptr && pos){
-                    uint32_t idxElm = 0;
-                    u8dptr = (uint8_t*)ptr;
-                    int16_t payload_len = 0;
+            uint8_t *u8dptr;
+            struct xran_prb_map *pRbMap = pPrbMap;
+            int32_t sym_id = sym_idx%XRAN_NUM_OF_SYMBOL_PER_SLOT;
+            if(ptr && pos){
+               uint32_t idxElm = 0;
+               u8dptr = (uint8_t*)ptr;
+               int16_t payload_len = 0;
 
-                    uint8_t *dst = (uint8_t *)u8dptr;
-                    // first half
-                    uint8_t  *dst1 = (uint8_t *)u8dptr;
-                    uint8_t  *src1 = (uint8_t *)pos;
-                    // second half
-                    uint8_t  *dst2 = (uint8_t *)u8dptr;
-                    uint8_t  *src2 = (uint8_t *)pos;
+               uint8_t *dst = (uint8_t *)u8dptr;
 
-                    struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
+               struct xran_prb_elm* p_prbMapElm = &pRbMap->prbMap[idxElm];
 
-                    for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
-                       struct xran_section_desc *p_sec_desc = NULL;
-                       p_prbMapElm = &pRbMap->prbMap[idxElm];
-                       p_sec_desc = 
+               for (idxElm = 0;  idxElm < pRbMap->nPrbElm; idxElm++) {
+                  struct xran_section_desc *p_sec_desc = NULL;
+                  p_prbMapElm = &pRbMap->prbMap[idxElm];
+                  p_sec_desc = 
 #ifdef ORAN_BRONZE 
-			       p_prbMapElm->p_sec_desc[sym_id];
+                  p_prbMapElm->p_sec_desc[sym_id];
 #else
 		       //assumes on section descriptor per symbol
-			       &p_prbMapElm->sec_desc[sym_id][0];
+	          &p_prbMapElm->sec_desc[sym_id][0];
 #endif
 
-                       payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
-                       dst =  xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
-                       dst2 = dst;
-                       dst1 = dst2 + payload_len/2;
+                  payload_len = p_prbMapElm->nRBSize*N_SC_PER_PRB*4L;
+                  dst =  xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
 
-                       if(p_sec_desc == NULL){
-                          printf ("p_sec_desc == NULL\n");
-                          exit(-1);
-                       }
-                       // Calculation of the pointer for the section in the buffer.
-                       // first half
-                       src1 = (uint8_t *)(pos + p_prbMapElm->nRBStart*N_SC_PER_PRB);
-                       // second half
-                       src2 = (uint8_t *)(pos + (p_prbMapElm->nRBStart*N_SC_PER_PRB + 3276/2) + 4096 - 3276);
-                       if(p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
-                         /* convert to Network order */
-                         for (idx = 0; idx < payload_len/(2*sizeof(uint16_t)); idx++)
-                         {
-                           ((uint16_t *)dst1)[idx] = htons(((uint16_t *)src1)[idx]);
-                           ((uint16_t *)dst2)[idx] = htons(((uint16_t *)src2)[idx]);
-                         }
-                       } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
-                          printf("idxElm=%d, compMeth==BLKFLOAT\n",idxElm);
-                          struct xranlib_compress_request  bfp_com_req;
-                          struct xranlib_compress_response bfp_com_rsp;
-
-                          memset(&bfp_com_req, 0, sizeof(struct xranlib_compress_request));
-                          memset(&bfp_com_rsp, 0, sizeof(struct xranlib_compress_response));
-
-                          bfp_com_req.data_in    = (int16_t*)src2;
-                          bfp_com_req.numRBs     = p_prbMapElm->nRBSize/2;
-                          bfp_com_req.len        = payload_len/2;
-                          bfp_com_req.compMethod = p_prbMapElm->compMethod;
-                          bfp_com_req.iqWidth    = p_prbMapElm->iqWidth;
-
-                          bfp_com_rsp.data_out   = (int8_t*)dst2;
-                          bfp_com_rsp.len        = 0;
-
-                          xranlib_compress_avx512(&bfp_com_req, &bfp_com_rsp);
-                          
-                          int16_t first_half_len = bfp_com_rsp.len;
-
-                          dst1 = dst2 + first_half_len;
-
-                          bfp_com_req.data_in    = (int16_t*)src1;
-                          bfp_com_req.numRBs     = p_prbMapElm->nRBSize/2;
-                          bfp_com_req.len        = payload_len/2;
-                          bfp_com_req.compMethod = p_prbMapElm->compMethod;
-                          bfp_com_req.iqWidth    = p_prbMapElm->iqWidth;
-
-                          bfp_com_rsp.data_out   = (int8_t*)dst1;
-                          bfp_com_rsp.len        = 0;
-
-                          xranlib_compress_avx512(&bfp_com_req, &bfp_com_rsp);
-                          payload_len = bfp_com_rsp.len+first_half_len;
-                       }else {
-                          printf ("p_prbMapElm->compMethod == %d is not supported\n",
-                                   p_prbMapElm->compMethod);
-                          exit(-1);
-                       }
-
-                       p_sec_desc->iq_buffer_offset = RTE_PTR_DIFF(dst, u8dptr);
-                       p_sec_desc->iq_buffer_len = payload_len;
-                       
-                       dst += payload_len;
-                       dst  = xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
-                   }
-
-                   // The tti should be updated as it increased.
-                   pRbMap->tti_id = tti;
-
-                } else {
+                  if(p_sec_desc == NULL){
+                     printf ("p_sec_desc == NULL\n");
                      exit(-1);
-                     printf("ptr ==NULL\n");
-                }
+                  }
+	          uint16_t *dst16 = (uint16_t *)dst;
+
+		  int pos_len=0;
+		  int neg_len=0;
+
+	          if (p_prbMapElm->nRBStart < (nPRBs>>1)) // there are PRBs left of DC
+		    neg_len = min((nPRBs*6) - (p_prbMapElm->nRBStart*12),
+				  p_prbMapElm->nRBSize*N_SC_PER_PRB);
+		  pos_len = (p_prbMapElm->nRBSize*N_SC_PER_PRB) - neg_len;
+                  // Calculation of the pointer for the section in the buffer.
+                  // start of positive frequency component 
+                  uint16_t *src1 = (uint16_t *)&pos[(neg_len==0)?((p_prbMapElm->nRBStart*N_SC_PER_PRB)-(nPRBs*6)):0];
+                  // start of negative frequency component
+                  uint16_t *src2 = (uint16_t *)&pos[(p_prbMapElm->nRBStart*N_SC_PER_PRB) + fftsize - (nPRBs*6)];
+
+                  if(p_prbMapElm->compMethod == XRAN_COMPMETHOD_NONE) {
+                         /* convert to Network order */
+                     uint32_t local_src[p_prbMapElm->nRBSize*N_SC_PER_PRB] __attribute__((aligned(64)));
+		     // NOTE: ggc 11 knows how to generate AVX2 for this!
+		     memcpy((void*)local_src,(void*)src2,neg_len*4);
+		     memcpy((void*)&local_src[neg_len],(void*)src1,pos_len*4);
+                     for (idx = 0; idx < (pos_len+neg_len)*2 ; idx++)
+		       ((uint16_t *)dst16)[idx] = htons(((uint16_t *)local_src)[idx]);
+                  } else if (p_prbMapElm->compMethod == XRAN_COMPMETHOD_BLKFLOAT) {
+                     printf("idxElm=%d, compMeth==BLKFLOAT\n",idxElm);
+                     struct xranlib_compress_request  bfp_com_req;
+                     struct xranlib_compress_response bfp_com_rsp;
+
+                     memset(&bfp_com_req, 0, sizeof(struct xranlib_compress_request));
+                     memset(&bfp_com_rsp, 0, sizeof(struct xranlib_compress_response));
+/*
+                     bfp_com_req.data_in    = (int16_t*)src2;
+                     bfp_com_req.numRBs     = first_len;//p_prbMapElm->nRBSize/2;
+                     bfp_com_req.len        = first_len;//payload_len/2;
+                     bfp_com_req.compMethod = p_prbMapElm->compMethod;
+                     bfp_com_req.iqWidth    = p_prbMapElm->iqWidth;
+
+                     bfp_com_rsp.data_out   = (int8_t*)dst2;
+                     bfp_com_rsp.len        = 0;
+
+                     xranlib_compress_avx512(&bfp_com_req, &bfp_com_rsp);
+                          
+                     int16_t first_half_len = bfp_com_rsp.len;
+
+                     dst1 = dst2 + first_half_len;
+
+                     bfp_com_req.data_in    = (int16_t*)src1;
+                     bfp_com_req.numRBs     = p_prbMapElm->nRBSize/2;
+                     bfp_com_req.len        = payload_len/2;
+                     bfp_com_req.compMethod = p_prbMapElm->compMethod;
+                     bfp_com_req.iqWidth    = p_prbMapElm->iqWidth;
+
+                     bfp_com_rsp.data_out   = (int8_t*)dst1;
+                     bfp_com_rsp.len        = 0;
+
+                     xranlib_compress_avx512(&bfp_com_req, &bfp_com_rsp);
+                     payload_len = bfp_com_rsp.len+first_half_len;
+  */
+     		     }else {
+                     printf ("p_prbMapElm->compMethod == %d is not supported\n",
+                              p_prbMapElm->compMethod);
+                     exit(-1);
+                  }
+
+                  p_sec_desc->iq_buffer_offset = RTE_PTR_DIFF(dst, u8dptr);
+                  p_sec_desc->iq_buffer_len = payload_len;
+                       
+                  dst += payload_len;
+                  dst  = xran_add_hdr_offset(dst, p_prbMapElm->compMethod);
               }
-            }
-          }
+
+              // The tti should be updated as it increased.
+              pRbMap->tti_id = tti;
+
+           } else {
+                exit(-1);
+                printf("ptr ==NULL\n");
+           }
+         }
+       }
+     }
 return(0);                                   
 
 }
