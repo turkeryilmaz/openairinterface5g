@@ -3746,6 +3746,20 @@ void nr_ulsch_shift_llr(int16_t **llr_layers, uint32_t nb_re, uint32_t rxdataF_e
   simde__m128i *llr_layers0 = (simde__m128i *)&llr_layers[0][rxdataF_ext_offset];
   simde__m128i *llr_layers1 = (simde__m128i *)&llr_layers[1][rxdataF_ext_offset];
 
+  uint8_t mem_offset = ((16 - ((long)llr_layers0)) & 0xF) >> 2;
+
+  if (mem_offset > 0) {
+    c16_t *llr_layers0_c16 = (c16_t *)&llr_layers[0][rxdataF_ext_offset];
+    c16_t *llr_layers1_c16 = (c16_t *)&llr_layers[1][rxdataF_ext_offset];
+    for (int i = 0; i < mem_offset; i++) 
+    {
+      llr_layers0_c16[i] = c16Shift(llr_layers0_c16[i], shift);
+      llr_layers1_c16[i] = c16Shift(llr_layers1_c16[i], shift);
+    }
+    llr_layers0 = (simde__m128i *)&llr_layers[0][rxdataF_ext_offset + (mem_offset << 1)];
+    llr_layers1 = (simde__m128i *)&llr_layers[1][rxdataF_ext_offset + (mem_offset << 1)];
+  }
+
   for (int i = 0; i < nb_re >> 2; i++) {
     llr_layers0[i] = simde_mm_srai_epi16(llr_layers0[i], shift);
     llr_layers1[i] = simde_mm_srai_epi16(llr_layers1[i], shift);

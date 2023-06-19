@@ -1347,8 +1347,12 @@ void inner_rx_qpsk_2layer (NR_DL_FRAME_PARMS *frame_parms,
                            int dmrs_symbol_flag,
                            int output_shift)
 {
-  int32_t rxFext[nb_rx_ant][length + 4] __attribute__((aligned(32)));
-  int32_t chFext[nb_layer*nb_rx_ant][length + 4] __attribute__((aligned(32)));
+  int add_shift = 0;
+  if (length % 8)
+    add_shift = 8 - length % 8;
+
+  int32_t rxFext[nb_rx_ant][length + add_shift] __attribute__((aligned(32)));
+  int32_t chFext[nb_layer*nb_rx_ant][length + add_shift] __attribute__((aligned(32)));
   for (int aarx = 0; aarx < nb_rx_ant; aarx++) 
   {
     for (int aatx = 0; aatx < nb_layer; aatx++) 
@@ -1365,8 +1369,8 @@ void inner_rx_qpsk_2layer (NR_DL_FRAME_PARMS *frame_parms,
                             frame_parms);
     }
   }
-  int32_t rho[nb_layer*nb_layer][length + 4] __attribute__((aligned(32)));
-  int32_t rxFext_comp[nb_layer][length + 4] __attribute__((aligned(32)));
+  int32_t rho[nb_layer*nb_layer][length + add_shift] __attribute__((aligned(32)));
+  int32_t rxFext_comp[nb_layer][length + add_shift] __attribute__((aligned(32)));
   for (int aarx = 0; aarx < nb_rx_ant; aarx++) 
   {
     for (int aatx = 0; aatx < nb_layer; aatx++) 
@@ -1374,7 +1378,7 @@ void inner_rx_qpsk_2layer (NR_DL_FRAME_PARMS *frame_parms,
       for (int atx = 0; atx < nb_layer; atx++) 
       {
 #ifdef USE_128BIT
-        simde__m128i mmtmpD0, mmtmpD1, mmtmpD2, mmtmpD3;
+        simde__m128i mmtmpD0, mmtmpD1, mmtmpD2, mmtmpD3, mmtmpD4;
         simde__m128i *rho128        = (simde__m128i *)rho[aatx*nb_layer+atx];
         simde__m128i *ul_ch128      = (simde__m128i *)chFext[aatx * nb_rx_ant + aarx];
         simde__m128i *ul_ch128_2    = (simde__m128i *)chFext[atx * nb_rx_ant + aarx];
@@ -1392,10 +1396,11 @@ void inner_rx_qpsk_2layer (NR_DL_FRAME_PARMS *frame_parms,
           mmtmpD1 = simde_mm_srai_epi32(mmtmpD1, output_shift);
           mmtmpD2 = simde_mm_unpacklo_epi32(mmtmpD0, mmtmpD1);
           mmtmpD3 = simde_mm_unpackhi_epi32(mmtmpD0, mmtmpD1);
+          mmtmpD4 = simde_mm_packs_epi32(mmtmpD2, mmtmpD3);
           if (aarx == 0)
-            rho128[i] = simde_mm_packs_epi32(mmtmpD2, mmtmpD3);
+            rho128[i] = mmtmpD4;
           else
-            rho128[i] = simde_mm_adds_epi16(rho128[i], simde_mm_packs_epi32(mmtmpD2, mmtmpD3));
+            rho128[i] = simde_mm_adds_epi16(rho128[i], mmtmpD4);
         }
 #else
         simde__m256i mmtmpD0, mmtmpD1, mmtmpD2, mmtmpD3, mmtmpD4;
@@ -1513,8 +1518,12 @@ void inner_rx_16qam_2layer (NR_DL_FRAME_PARMS *frame_parms,
                             int dmrs_symbol_flag,
                             int output_shift)
 {
-  int32_t rxFext[nb_rx_ant][length + 4] __attribute__((aligned(32)));
-  int32_t chFext[nb_layer*nb_rx_ant][length + 4] __attribute__((aligned(32)));
+  int add_shift = 0;
+  if (length % 8)
+    add_shift = 8 - length % 8;
+  
+  int32_t rxFext[nb_rx_ant][length + add_shift] __attribute__((aligned(32)));
+  int32_t chFext[nb_layer*nb_rx_ant][length + add_shift] __attribute__((aligned(32)));
   for (int aarx = 0; aarx < nb_rx_ant; aarx++) 
   {
     for (int aatx = 0; aatx < nb_layer; aatx++) 
@@ -1532,9 +1541,9 @@ void inner_rx_16qam_2layer (NR_DL_FRAME_PARMS *frame_parms,
     }
   }
   
-  int32_t rho[nb_layer*nb_layer][length + 4] __attribute__((aligned(32)));
-  int32_t rxFext_comp[nb_layer][length + 4] __attribute__((aligned(32)));
-  int32_t ul_ch_mag[nb_layer][length + 4] __attribute__((aligned(32)));
+  int32_t rho[nb_layer*nb_layer][length + add_shift] __attribute__((aligned(32)));
+  int32_t rxFext_comp[nb_layer][length + add_shift] __attribute__((aligned(32)));
+  int32_t ul_ch_mag[nb_layer][length + add_shift] __attribute__((aligned(32)));
   for (int aatx = 0; aatx < nb_layer; aatx++) 
   {
     for (int aarx = 0; aarx < nb_rx_ant; aarx++) 
@@ -1705,8 +1714,12 @@ void inner_rx_64qam_2layer (NR_DL_FRAME_PARMS *frame_parms,
                             int dmrs_symbol_flag,
                             int output_shift)
 {
-  int32_t rxFext[nb_rx_ant][length + 4] __attribute__((aligned(32)));
-  int32_t chFext[nb_layer*nb_rx_ant][length + 4] __attribute__((aligned(32)));
+  int add_shift = 0;
+  if (length % 8)
+    add_shift = 8 - length % 8;
+  
+  int32_t rxFext[nb_rx_ant][length + add_shift] __attribute__((aligned(32)));
+  int32_t chFext[nb_layer*nb_rx_ant][length + add_shift] __attribute__((aligned(32)));
   for (int aarx = 0; aarx < nb_rx_ant; aarx++) 
   {
     for (int aatx = 0; aatx < nb_layer; aatx++) 
@@ -1723,9 +1736,9 @@ void inner_rx_64qam_2layer (NR_DL_FRAME_PARMS *frame_parms,
                             frame_parms);
     }
   }
-  int32_t rho[nb_layer*nb_layer][length + 4] __attribute__((aligned(32)));
-  int32_t rxFext_comp[nb_layer][length + 4] __attribute__((aligned(32)));
-  int32_t ul_ch_mag[nb_layer][length + 4] __attribute__((aligned(32)));
+  int32_t rho[nb_layer*nb_layer][length + add_shift] __attribute__((aligned(32)));
+  int32_t rxFext_comp[nb_layer][length + add_shift] __attribute__((aligned(32)));
+  int32_t ul_ch_mag[nb_layer][length + add_shift] __attribute__((aligned(32)));
   for (int aatx = 0; aatx < nb_layer; aatx++) 
   {
     for (int aarx = 0; aarx < nb_rx_ant; aarx++) 
