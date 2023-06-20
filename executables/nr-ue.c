@@ -802,8 +802,6 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 }
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
-      int delta_prefix = UE->frame_parms.nb_prefix_samples0 - UE->frame_parms.nb_prefix_samples;
-      UE->rx_offset_sl = UE->frame_parms.samples_per_slot0 - (UE->frame_parms.ofdm_symbol_size + UE->frame_parms.nb_prefix_samples0 + delta_prefix);
     int rx_offset = (get_softmodem_params()->sl_mode == 2) ? UE->rx_offset_sl : UE->rx_offset;
     LOG_I(NR_PHY, "Resynchronizing RX by %d samples (mode = %d)\n", rx_offset, UE->mode);
 
@@ -933,16 +931,15 @@ void *UE_thread_SL(void *arg) {
       UE->lost_sync_sl = 0;
     }
 
-    if (sync_running_sl && UE->sync_ref == 0) {
-      LOG_I(NR_PHY, "Nearby UE: sync_running status.\n");
+    if (sync_running_sl) {
       notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
       if (res) {
         sync_running_sl = false;
         LOG_I(NR_PHY, "Nearby UE: sync_running was set to false due to valid res.\n");
         syncData_t *tmp=(syncData_t *)NotifiedFifoData(res);
         LOG_I(NR_PHY, "Nearby UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
-        if (UE->is_synchronized_sl && get_softmodem_params()->sl_mode < 2) {
-          decoded_frame_rx=(((mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused)<<4) | tmp->proc.decoded_frame_rx);
+        if (UE->is_synchronized_sl) {
+          decoded_frame_rx = tmp->proc.frame_rx;
           // shift the frame index with all the frames we trashed meanwhile we perform the synch search
           decoded_frame_rx=(decoded_frame_rx + UE->init_sync_frame + trashed_frames) % MAX_FRAME_NUMBER;
         }
@@ -971,7 +968,7 @@ void *UE_thread_SL(void *arg) {
       continue;
     }
 
-    if (start_rx_stream == 0 && UE->sync_ref == 0) {
+    if (start_rx_stream == 0) {
       start_rx_stream = 1;
       syncInFrame(UE, &timestamp);
       UE->rx_offset_sl = 0;
@@ -989,7 +986,7 @@ void *UE_thread_SL(void *arg) {
       decoded_frame_rx++;
       // we do ++ first in the regular processing, so it will be begin of frame;
 
-      absolute_slot = UE->rx_ssb_frame * nb_slot_frame + UE->rx_ssb_slot + (nb_slot_frame - (UE->ssb_offset / UE->frame_parms.samples_per_slot0));
+      absolute_slot = decoded_frame_rx * nb_slot_frame - 1;
       LOG_D(NR_PHY, "Nearby UE: rx_stream = 1 and timestamp %ld, absolute_slot %d, slot %d, frame %d\n",
             timestamp, absolute_slot, UE->rx_ssb_slot, UE->rx_ssb_frame);
       continue;

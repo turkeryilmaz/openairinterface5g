@@ -366,7 +366,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
 #endif
   }
-  if (ue->is_synchronized_sl == 1) {
+  else if (ue->is_synchronized_sl == 1) {
     for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
       nr_ue_set_slsch(&ue->frame_parms, harq_pid, ue->slsch[proc->thread_id][gNB_id], frame_tx, slot_tx);
       if (ue->slsch[proc->thread_id][gNB_id]->harq_processes[harq_pid]->status == ACTIVE) {
