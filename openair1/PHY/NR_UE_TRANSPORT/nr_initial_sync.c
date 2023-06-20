@@ -274,7 +274,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   LOG_D(NR_PHY, "nr_initial SL sync ue RB_SL %d\n", fp->N_RB_SL);
   int ret = -1;
-  int32_t sync_pos = 0;
+  int32_t sync_pos = 0, sync_pos_frame;
   for (int is = 0; is < n_frames; is++) {
     sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE);
     if (sync_pos >= fp->nb_prefix_samples) {
@@ -330,6 +330,27 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
         nr_gold_psbch(ue);
         NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
         ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
+      }
+      if (ret == 0) {
+        // sync at symbol ue->symbol_offset
+        // computing the offset wrt the beginning of the frame
+        int mu = fp->numerology_index;
+        int n_symb_prefix0 = (ue->symbol_offset / ( 7 * (1 << mu))) + 1;
+        sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) +
+                         (ue->symbol_offset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+
+        // for a correct computation of frame number to sync with the one decoded at MIB
+        // we need to take into account in which of the n_frames we got sync
+        ue->init_sync_frame = n_frames - 1 - is;
+
+        // we also need to take into account the shift by samples_per_frame in case the if is true
+        if (ue->ssb_offset < sync_pos_frame) {
+          ue->rx_offset_sl = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
+          ue->init_sync_frame += 1;
+        }
+        else {
+          ue->rx_offset_sl = ue->ssb_offset - sync_pos_frame;
+        }
       }
       LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
             fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
