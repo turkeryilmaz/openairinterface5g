@@ -273,6 +273,8 @@ void config_common_ue(NR_UE_MAC_INST_t *mac,
   mac->phy_config.Mod_id = module_id;
   mac->phy_config.CC_id = cc_idP;
   
+  ue_init_config_request(mac, *scc->ssbSubcarrierSpacing);
+
   // carrier config
   LOG_D(MAC, "Entering UE Config Common\n");
 
@@ -697,6 +699,7 @@ void ue_init_config_request(NR_UE_MAC_INST_t *mac, int scs)
 {
   int slots_per_frame = nr_slots_per_frame[scs];
   LOG_I(NR_MAC, "Initializing dl and ul config_request. num_slots = %d\n", slots_per_frame);
+  LOG_I(NR_MAC, "SSB SubCarrierSpacing = %d\n", scs);
   mac->dl_config_request = calloc(slots_per_frame, sizeof(*mac->dl_config_request));
   mac->ul_config_request = calloc(slots_per_frame, sizeof(*mac->ul_config_request));
   for (int i = 0; i < slots_per_frame; i++)
@@ -806,7 +809,10 @@ void nr_rrc_mac_config_req_scg(module_id_t module_id,
   AssertFatal(scell_group_config, "scell_group_config cannot be NULL\n");
 
   mac->cg = scell_group_config;
-  mac->servCellIndex = *scell_group_config->spCellConfig->servCellIndex;
+  if(scell_group_config->spCellConfig->servCellIndex)
+  {
+    mac->servCellIndex = *scell_group_config->spCellConfig->servCellIndex;
+  }
   if (scell_group_config->spCellConfig->reconfigurationWithSync) {
     if (scell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated) {
       ra->rach_ConfigDedicated = scell_group_config->spCellConfig->reconfigurationWithSync->rach_ConfigDedicated->choice.uplink;

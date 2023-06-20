@@ -789,7 +789,8 @@ static void config_pucch_resset0(NR_PUCCH_Config_t *pucch_Config, int uid, int c
   asn1cSeqAdd(&pucchresset->resourceList.list,pucchid);
   pucchresset->maxPayloadSize = NULL;
 
-  if(uecap) {
+  if(uecap && !(get_softmodem_params()->nsa)) 
+  {
     long *pucch_F0_2WithoutFH = uecap->phy_Parameters.phy_ParametersFRX_Diff->pucch_F0_2WithoutFH;
     AssertFatal(pucch_F0_2WithoutFH == NULL,"UE does not support PUCCH F0 without frequency hopping. Current configuration is without FH\n");
   }
@@ -821,7 +822,8 @@ static void config_pucch_resset1(NR_PUCCH_Config_t *pucch_Config, const NR_UE_NR
   asn1cSeqAdd(&pucchresset->resourceList.list,pucchressetid);
   pucchresset->maxPayloadSize = NULL;
 
-  if(uecap) {
+  if(uecap && !(get_softmodem_params()->nsa)) 
+  {
     long *pucch_F0_2WithoutFH = uecap->phy_Parameters.phy_ParametersFRX_Diff->pucch_F0_2WithoutFH;
     AssertFatal(pucch_F0_2WithoutFH == NULL,"UE does not support PUCCH F2 without frequency hopping. Current configuration is without FH\n");
   }

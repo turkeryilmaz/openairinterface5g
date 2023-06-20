@@ -56,14 +56,16 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(NR_UE_RRC_INST_t* rrc_inst) {
     for (int j = 0; j < NB_NR_UE_MAC_INST; j++)
       nr_ue_init_mac(j);
 
-    int scs = get_softmodem_params()->sa ?
-              get_softmodem_params()->numerology :
-              rrc_inst ?
-              *rrc_inst->scell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon->ssbSubcarrierSpacing :
-              - 1;
-    if (scs > -1)
-      ue_init_config_request(nr_ue_mac_inst, scs);
-
+    if(!get_softmodem_params()->nsa)
+    {
+      int scs = get_softmodem_params()->sa ?
+                get_softmodem_params()->numerology :
+                rrc_inst ?
+                *rrc_inst->scell_group_config->spCellConfig->reconfigurationWithSync->spCellConfigCommon->ssbSubcarrierSpacing :
+                - 1;
+      if (scs > -1)
+        ue_init_config_request(nr_ue_mac_inst, scs);
+    }
     if (rrc_inst && rrc_inst->scell_group_config) {
 
       nr_rrc_mac_config_req_scg(0, 0, rrc_inst->scell_group_config);

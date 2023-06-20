@@ -241,12 +241,15 @@ int8_t nr_rrc_ue_decode_secondary_cellgroup_config(const module_id_t module_id,
 
 // from LTE-RRC DL-DCCH RRCConnectionReconfiguration nr-secondary-cell-group-config (decoded)
 // RRCReconfiguration
-int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration){
+int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCReconfiguration_t *rrcReconfiguration)
+{
 
   switch(rrcReconfiguration->criticalExtensions.present){
     case NR_RRCReconfiguration__criticalExtensions_PR_rrcReconfiguration:
-      if(rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->radioBearerConfig != NULL){
-        if(NR_UE_rrc_inst[module_id].radio_bearer_config == NULL){
+      if(rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->radioBearerConfig != NULL)
+      {
+        if(NR_UE_rrc_inst[module_id].radio_bearer_config == NULL)
+        {
           NR_UE_rrc_inst[module_id].radio_bearer_config = rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->radioBearerConfig;                
         }else{
           if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
@@ -282,10 +285,11 @@ int8_t nr_rrc_ue_process_rrcReconfiguration(const module_id_t module_id, NR_RRCR
             nr_rrc_mac_config_req_scg(0, 0, cellGroupConfig);
           }
         }
-        else
+        else{
           nr_rrc_ue_decode_secondary_cellgroup_config(module_id,
                                                       rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->secondaryCellGroup->buf,
                                                       rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->secondaryCellGroup->size);
+         }
       }
       if(rrcReconfiguration->criticalExtensions.choice.rrcReconfiguration->measConfig != NULL){
         if(NR_UE_rrc_inst[module_id].meas_config == NULL){
@@ -353,7 +357,7 @@ void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, 
                                 msg_len); 
         
         if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
-          LOG_E(NR_RRC, "NR_RadioBearerConfig decode error\n");
+          LOG_E(NR_RRC, "NR_RadioBearerConfig decode error: %d\n", dec_rval.code);
           // free the memory
           SEQUENCE_free( &asn_DEF_NR_RadioBearerConfig, RadioBearerConfig, 1 );
           return;
@@ -387,7 +391,13 @@ void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, 
 NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* rrc_config_path){
   int nr_ue;
   if(NB_NR_UE_INST > 0){
+
+ /* RRC_INST allocation */
     NR_UE_rrc_inst = (NR_UE_RRC_INST_t *)calloc(NB_NR_UE_INST , sizeof(NR_UE_RRC_INST_t));
+    NR_UE_rrc_inst = (NR_UE_RRC_INST_t *)calloc(NB_NR_UE_INST , sizeof(NR_UE_RRC_INST_t));
+    NR_UE_rrc_inst->UECap = (OAI_NR_UECapability_t *)calloc(NB_NR_UE_INST , sizeof(OAI_NR_UECapability_t));
+    NR_UE_rrc_inst->UECap->UE_NR_Capability = (NR_UE_NR_Capability_t *)calloc(NB_NR_UE_INST , sizeof(NR_UE_NR_Capability_t));
+
     for(nr_ue=0;nr_ue<NB_NR_UE_INST;nr_ue++){
       // fill UE-NR-Capability @ UE-CapabilityRAT-Container here.
       NR_UE_rrc_inst[nr_ue].selected_plmn_identity = 1;
@@ -2647,13 +2657,13 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
 
             LTE_MeasObjectToAddMod_t *nr_meas_obj = NULL;
             asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
-                            &asn_DEF_NR_MeasObjectToAddMod,
+                            &asn_DEF_LTE_MeasObjectToAddMod,
                             (void **)&nr_meas_obj,
                             msg_buffer,
-                            msg_len);
+                            msg_len); 
             if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0))
             {
-              SEQUENCE_free(&asn_DEF_NR_MeasObjectToAddMod, nr_meas_obj, ASFM_FREE_EVERYTHING);
+              SEQUENCE_free(&asn_DEF_LTE_MeasObjectToAddMod, nr_meas_obj, ASFM_FREE_EVERYTHING);
               LOG_E(RRC, "Failed to decode measurement object (%zu bits) %d\n", dec_rval.consumed, dec_rval.code);
               break;
             }
@@ -2674,6 +2684,7 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
             } hdr;
             AssertFatal(msg_len >= sizeof(hdr), "Bad received msg\n");
             memcpy(&hdr, msg_buffer, sizeof(hdr));
+            
             LOG_I(NR_RRC, "We got an RRC_CONFIG_COMPLETE_REQ\n");
             uint32_t nr_RadioBearer_size = hdr.RadioBearer_size;
             uint32_t nr_SecondaryCellGroup_size = hdr.SecondaryCellGroup_size;
@@ -2727,14 +2738,17 @@ void *nr_rrc_timers_update() {
         NR_UE_Timers_Constants_t *timers = &NR_UE_rrc_inst[mod_id].timers_and_constants;
 
         // T304
-        if (timers->T304_active == 1) {
-          if ((timers->T304_cnt % 100) == 0) {
-            LOG_W(NR_RRC, "T304: %u\n", timers->T304_cnt);
+        if(!get_softmodem_params()->nsa)
+        {
+          if (timers->T304_active == 1) {
+            if ((timers->T304_cnt % 100) == 0) {
+              LOG_W(NR_RRC, "T304: %u\n", timers->T304_cnt);
+            }
+            if (timers->T304_cnt == 1) {
+              timers->T304_active = 0;
+            }
+            timers->T304_cnt--;
           }
-          if (timers->T304_cnt == 1) {
-            timers->T304_active = 0;
-          }
-          timers->T304_cnt--;
         }
 
       }

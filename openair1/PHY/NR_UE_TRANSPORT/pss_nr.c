@@ -347,9 +347,11 @@ void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 
 #endif
 
-  init_context_pss_nr(frame_parms_ue);
-
-  init_context_sss_nr(AMP);
+  if(!get_softmodem_params()->nsa)
+  {
+    init_context_pss_nr(frame_parms_ue);
+    init_context_sss_nr(AMP);
+  }
 }
 
 /*******************************************************************

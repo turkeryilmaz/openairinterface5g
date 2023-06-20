@@ -1944,24 +1944,21 @@ rrc_ue_process_rrcConnectionReconfiguration(
                 uint32_t SecondaryCellGroup_size;
                 uint8_t trans_id;
                 uint8_t padding[3];
-                uint8_t *buffer;
+                uint8_t buffer[total_size];
           } msg;
 
-          msg.buffer = calloc(total_size, sizeof(*msg.buffer));
-          AssertFatal(msg.buffer != NULL, "Error in memory allocation\n");
           msg.RadioBearer_size = nr_RadioBearer->size;
           msg.SecondaryCellGroup_size = nr_SecondaryCellGroup->size;
           msg.trans_id = rrcConnectionReconfiguration->rrc_TransactionIdentifier;
-          memcpy(msg.buffer, nr_RadioBearer->buf, nr_RadioBearer->size);
-          memcpy(msg.buffer + nr_RadioBearer->size, nr_SecondaryCellGroup->buf, nr_SecondaryCellGroup->size);
-
+          memcpy(&msg.buffer, nr_RadioBearer->buf, nr_RadioBearer->size);
+          memcpy((msg.buffer + nr_RadioBearer->size), nr_SecondaryCellGroup->buf, nr_SecondaryCellGroup->size);
+ 
           LOG_D(RRC, "nr_RadioBearerConfig1_r15 size %ld nr_SecondaryCellGroupConfig_r15 size %ld, sizeof(msg) = %zu\n",
                       nr_RadioBearer->size,
                       nr_SecondaryCellGroup->size,
                       sizeof(msg));
 
           nsa_sendmsg_to_nrue(&msg, sizeof(msg), RRC_CONFIG_COMPLETE_REQ);
-          free(msg.buffer);
           LOG_A(RRC, "Sent RRC_CONFIG_COMPLETE_REQ to the NR UE\n");
       }
 
@@ -6491,6 +6488,7 @@ void nsa_sendmsg_to_nrue(const void *message, size_t msg_len, Rrc_Msg_Type_t msg
     }
     n_msg.msg_type = msg_type;
     memcpy(n_msg.msg_buffer, message, msg_len);
+    
     size_t to_send = sizeof(n_msg.msg_type) + msg_len;
 
     struct sockaddr_in sa =

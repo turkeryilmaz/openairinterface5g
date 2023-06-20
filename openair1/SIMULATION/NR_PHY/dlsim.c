@@ -704,6 +704,7 @@ int main(int argc, char **argv)
   validate_input_pmi(pdsch_AntennaPorts, g_nrOfLayers, g_pmi);
 
   NR_UE_NR_Capability_t* UE_Capability_nr = CALLOC(1,sizeof(NR_UE_NR_Capability_t));
+  LOG_D(PHY,"prepare_sim_uecap dlsim\n");
   prepare_sim_uecap(UE_Capability_nr,scc,mu,
                     N_RB_DL,g_mcsTableIdx,0);
 
