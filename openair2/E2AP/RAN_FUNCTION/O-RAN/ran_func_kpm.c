@@ -1,37 +1,49 @@
 #include "ran_func_kpm.h"
 #include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_kpm.h"
 #include "openair2/E2AP/flexric/src/util/time_now_us.h"
+#include "common/ran_context.h"
+#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+#include "openair2/RRC/NR/rrc_gNB_UE_context.h"
 #include <assert.h>
 #include <stdio.h>
 
+static
+const int mod_id = 0;
+
 static 
-gnb_e2sm_t fill_gnb_data(void)
+gnb_e2sm_t fill_gnb_data(uint16_t rnti)
 {
   gnb_e2sm_t gnb = {0};
 
   // 6.2.3.16
   // Mandatory
   // AMF UE NGAP ID
-  gnb.amf_ue_ngap_id = 112358132134; // % 2^40;
+  // fill with openair3/NGAP/ngap_gNB_ue_context.h:61
+  struct rrc_gNB_ue_context_s *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[mod_id], rnti);
+  gnb.amf_ue_ngap_id = ue_context_p->ue_context.gNB_ue_ngap_id;
 
   // Mandatory
   //GUAMI 6.2.3.17 
-  gnb.guami.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
+  gnb.guami.plmn_id = (e2sm_plmn_t) {
+                                    .mcc = ue_context_p->ue_context.ue_guami.mcc,
+                                    .mnc = ue_context_p->ue_context.ue_guami.mnc,
+                                    .mnc_digit_len = ue_context_p->ue_context.ue_guami.mnc_len
+                                    };
   
-  gnb.guami.amf_region_id = (rand() % 2^8) + 0;
-  gnb.guami.amf_set_id = (rand() % 2^10) + 0;
-  gnb.guami.amf_ptr = (rand() % 2^6) + 0;
+  gnb.guami.amf_region_id = ue_context_p->ue_context.ue_guami.amf_region_id;
+  gnb.guami.amf_set_id = ue_context_p->ue_context.ue_guami.amf_set_id;
+  gnb.guami.amf_ptr = ue_context_p->ue_context.ue_guami.amf_pointer;
 
   return gnb;
 }
 
 static 
-ue_id_e2sm_t fill_ue_id_data(void)
+ue_id_e2sm_t fill_ue_id_data(uint16_t rnti)
 {
   ue_id_e2sm_t ue_id_data = {0};
 
   ue_id_data.type = GNB_UE_ID_E2SM;
-  ue_id_data.gnb = fill_gnb_data();
+  ue_id_data.gnb = fill_gnb_data(rnti);
 
   return ue_id_data;
 }
@@ -89,16 +101,26 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(void)
 {
   kpm_ind_msg_format_3_t msg_frm_3 = {0};
 
-  uint32_t num_ues = 1;
-  msg_frm_3.ue_meas_report_lst_len = num_ues;  // (rand() % 65535) + 1;
+  // get the number of connected UEs
+  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+  uint32_t num_ues = 0;
+  UE_iterator(UE_info->list, ue) {
+    if (ue)
+      num_ues += 1;
+  }
+
+  msg_frm_3.ue_meas_report_lst_len = num_ues == 0 ? 1: num_ues;  // (rand() % 65535) + 1;
 
   msg_frm_3.meas_report_per_ue = calloc(msg_frm_3.ue_meas_report_lst_len, sizeof(meas_report_per_ue_t));
   assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
 
-  for (size_t i = 0; i < msg_frm_3.ue_meas_report_lst_len; i++)
+  size_t ue_idx = 0;
+  UE_iterator(UE_info->list, UE)
   {
-    msg_frm_3.meas_report_per_ue[i].ue_meas_report_lst = fill_ue_id_data();
-    msg_frm_3.meas_report_per_ue[i].ind_msg_format_1 = fill_kpm_ind_msg_frm_1();
+    uint16_t const rnti = UE->rnti;
+    msg_frm_3.meas_report_per_ue[ue_idx].ue_meas_report_lst = fill_ue_id_data(rnti);
+    msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1();
+    ue_idx+=1;
   }
 
   return msg_frm_3;
