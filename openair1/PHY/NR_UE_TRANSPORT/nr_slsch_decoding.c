@@ -98,9 +98,7 @@ bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, b
 
   } else {
     if ( !last ) {
-      int nb=abortTpoolJob(&get_nrUE_params()->Tpool, req->key);
-      nb+=abortNotifiedFIFOJob(nf_p, req->key);
-      LOG_D(PHY,"downlink segment error %d/%d, aborted %d segments\n",rdata->segment_r,rdata->nbSegments, nb);
+      LOG_D(PHY,"downlink segment error %d/%d\n",rdata->segment_r, rdata->nbSegments);
       LOG_D(PHY, "SLSCH %d in error\n",rdata->dlsch_id);
       last = true;
     }
@@ -263,12 +261,13 @@ void nr_sl_processDLSegment(void* arg) {
     no_iteration_ldpc = nrLDPC_decoder(p_decoderParms,
                                        (int8_t *)&pl[0],
                                        llrProcBuf,
-                                       p_procTime);
+                                       p_procTime,
+                                       &harq_process->abort_decode);
     //VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_LDPC, VCD_FUNCTION_OUT);
 
     LOG_D(PHY,"no_iteration_ldpc = %d\n", no_iteration_ldpc);
     // Fixme: correct type is unsigned, but nrLDPC_decoder and all called behind use signed int
-    if (check_crc((uint8_t *)llrProcBuf,length_dec,harq_process->F,crc_type)) {
+    if (check_crc((uint8_t *)llrProcBuf,length_dec,crc_type)) {
       LOG_D(PHY,"Segment %u CRC OK\n",r);
       if (no_iteration_ldpc > dlsch->max_ldpc_iterations)
         no_iteration_ldpc = dlsch->max_ldpc_iterations;

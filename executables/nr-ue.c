@@ -892,18 +892,6 @@ void *UE_thread_SL(void *arg) {
   }
 
   while (!oai_exit) {
-    if (UE->lost_sync_sl && UE->sync_ref == 0) {
-      LOG_I(NR_PHY, "Sync UE: lost_sync status\n");
-      int nb = abortTpoolJob(&(get_nrUE_params()->Tpool),RX_JOB_ID);
-      nb += abortNotifiedFIFOJob(&nf, RX_JOB_ID);
-      LOG_I(PHY,"Number of aborted slots %d\n",nb);
-      for (int i=0; i<nb; i++)
-        pushNotifiedFIFO_nothreadSafe(&freeBlocks, newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX));
-      nbSlotProcessing = 0;
-      UE->is_synchronized_sl = 0;
-      UE->lost_sync_sl = 0;
-    }
-
     if (sync_running_sl && UE->sync_ref == 0) {
       LOG_I(NR_PHY, "Nearby UE: sync_running status.\n");
       notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
