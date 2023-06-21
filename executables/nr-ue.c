@@ -652,11 +652,6 @@ void processSlotTX(void *arg) {
   }
 }
 
-void processSlotRX_SL(void *arg) {
-  nr_rxtx_thread_data_t *rxtxD = (nr_rxtx_thread_data_t *) arg;
-  processSlotTX(rxtxD);
-}
-
 nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc) {
 
   nr_phy_data_t phy_data = {0};
@@ -682,7 +677,7 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc) {
     }
   }
 
-  if ((get_softmodem_params()->sl_mode != 2) && (rx_slot_type == NR_DOWNLINK_SLOT || rx_slot_type == NR_MIXED_SLOT)) {
+  if ((get_softmodem_params()->sl_mode != 2) && (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT)) {
 
     if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
       nr_downlink_indication_t dl_indication;
@@ -698,6 +693,11 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc) {
       UE->tx_wait_for_dlsch[ack_nack_slot]++;
     }
 
+    LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
+  }
+  ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
+  return phy_data;
+
 }
 
 void UE_dl_processing(void *arg) {
@@ -705,7 +705,10 @@ void UE_dl_processing(void *arg) {
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_t *phy_data = &rxtxD->phy_data;
-
+  if(get_softmodem_params()->sl_mode == 2) {
+    phy_procedures_nrUE_SL_RX(UE, proc, 0, &rxtxD->txFifo);
+    processSlotTX(rxtxD);
+  }
   pdsch_processing(UE, proc, phy_data);
 }
 
@@ -885,7 +888,7 @@ void *UE_thread_SL(void *arg) {
   int absolute_slot = 0, decoded_frame_rx = INT_MAX, trashed_frames = 0, start_rx_stream = 0;
 
   for (int i = 0; i < NR_RX_NB_TH + 1; i++) {// NR_RX_NB_TH working + 1 we are making to be pushed
-    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, processSlotRX);
+    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, UE_dl_processing);
     nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(newElt);
     initNotifiedFIFO(&curMsg->txFifo);
     pushNotifiedFIFO_nothreadSafe(&freeBlocks, newElt);
@@ -1067,7 +1070,7 @@ void *UE_thread_SL(void *arg) {
                                               flags), "");
       if (UE->sync_ref && IS_SOFTMODEM_RFSIM) {
         if (! UE->is_synchronized_sl) {
-          uint8_t sync_flag = UE->common_vars.rxdata[0][read_time_stamp + 1] & 0xFF;
+          uint8_t sync_flag = UE->common_vars.rxdata[0][read_time_stamp + 1].r & 0xFF;
           if (sync_flag > 0) {
             LOG_D(NR_PHY, "Sync achieved by Nearby\n");
             UE->is_synchronized_sl = 1;

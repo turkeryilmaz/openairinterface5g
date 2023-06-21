@@ -194,7 +194,8 @@ static void nr_processULSegment(void *arg)
                                ulsch_harq->d_to_be_cleared[r],
                                E,
                                ulsch_harq->F,
-                               Kr - ulsch_harq->F - 2 * (p_decoderParms->Z))
+                               Kr - ulsch_harq->F - 2 * (p_decoderParms->Z),
+                               false)
       == -1) {
     stop_meas(&phy_vars_gNB->ulsch_rate_unmatching_stats);
 

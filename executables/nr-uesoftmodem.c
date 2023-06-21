@@ -157,6 +157,7 @@ int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
 uint32_t       N_RB_SL    = 106;
+uint64_t SSB_positions = 0x01;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution
@@ -261,13 +262,10 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
                                         int N_RB_DL,
                                         int N_RB_UL,
                                         int N_RB_SL,
-                                        int mu,
-                                        int Nid_SL,
                                         int CC_id,
                                         uint64_t position_in_burst)
 {
   uint64_t rev_burst = 0;
-  uint64_t SSB_positions = 0x01;
   int mu = 1;
   uint8_t n_tx = 1;
   uint8_t n_rx = 1;
@@ -596,7 +594,7 @@ int main( int argc, char **argv ) {
       if (get_softmodem_params()->sl_mode != 0) {
         mac->if_module = NULL;
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
-        nr_phy_config_request_sl(UE[CC_id], N_RB_SL, N_RB_SL, N_RB_SL, CC_id);
+        nr_phy_config_request_sl(UE[CC_id], N_RB_SL, N_RB_SL, N_RB_SL, CC_id, SSB_positions);
       }
       if (get_softmodem_params()->sa) {
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);

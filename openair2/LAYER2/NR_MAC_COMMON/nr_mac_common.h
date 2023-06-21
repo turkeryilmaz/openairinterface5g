@@ -31,8 +31,6 @@
 #ifndef __LAYER2_NR_MAC_COMMON_H__
 #define __LAYER2_NR_MAC_COMMON_H__
 
-#include "platform_types.h"
-#include "commonDef.h"
 #include "NR_MIB.h"
 #include "NR_CellGroupConfig.h"
 #include "nr_mac.h"

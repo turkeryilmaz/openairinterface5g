@@ -36,41 +36,4 @@
 #include "openair1/PHY/NR_TRANSPORT/nr_transport_common_proto.h"
 #include "openair1/PHY/NR_TRANSPORT/nr_transport_proto.h"
 
-void nr_slsch_compute_llr(int32_t *rxdataF_comp,
-                          int32_t *ul_ch_mag,
-                          int32_t *ul_ch_magb,
-                          int16_t *ulsch_llr,
-                          uint32_t nb_rb,
-                          uint32_t nb_re,
-                          uint8_t  symbol,
-                          uint8_t  mod_order)
-{
-  switch(mod_order){
-    case 2:
-      nr_ulsch_qpsk_llr(rxdataF_comp,
-                        ulsch_llr,
-                        nb_re,
-                        symbol);
-      break;
-    case 4:
-      nr_ulsch_16qam_llr(rxdataF_comp,
-                         ul_ch_mag,
-                         ulsch_llr,
-                         nb_rb,
-                         nb_re,
-                         symbol);
-      break;
-    case 6:
-    nr_ulsch_64qam_llr(rxdataF_comp,
-                       ul_ch_mag,
-                       ul_ch_magb,
-                       ulsch_llr,
-                       nb_rb,
-                       nb_re,
-                       symbol);
-      break;
-    default:
-      LOG_E(PHY,"nr_slsch_compute_llr: invalid Qm value, symbol = %d, Qm = %d\n",symbol, mod_order);
-      break;
-  }
-}
+

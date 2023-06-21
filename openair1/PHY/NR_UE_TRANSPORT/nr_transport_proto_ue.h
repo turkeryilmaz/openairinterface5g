@@ -165,15 +165,6 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
                      uint8_t first_symbol_flag,
                      uint16_t nb_rb);
 
-void nr_slsch_compute_llr(int32_t *rxdataF_comp,
-                          int32_t *ul_ch_mag,
-                          int32_t *ul_ch_magb,
-                          int16_t *ulsch_llr,
-                          uint32_t nb_rb,
-                          uint32_t nb_re,
-                          uint8_t  symbol,
-                          uint8_t  mod_order);
-
 /** \fn dlsch_siso(NR_DL_FRAME_PARMS *frame_parms,
     int32_t **rxdataF_comp,
     int32_t **rxdataF_comp_i,
@@ -618,7 +609,92 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *ue,
                                uint32_t frame,
                                uint8_t slot);
 
+void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                               nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                               int16_t** tx_precoding,
+                               uint32_t **txdataF);
+
+int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                                   nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                                   unsigned int G_SCI2_bits,
+                                   uint8_t  SCI2_mod_order,
+                                   int16_t **tx_layers,
+                                   uint32_t **pssch_dmrs);                              
+
 void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid);
+
+void nr_slsch_qpsk_llr(int32_t *rxdataF_comp,
+                       int16_t *slsch_llr,                          
+                       uint32_t nb_re,
+                       uint8_t  symbol);
+
+
+/** \brief This function generates log-likelihood ratios (decoder input) for single-stream 16 QAM received waveforms.
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 16
+    @param slsch_llr llr output
+    @param nb_re number of RBs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+*/
+void nr_slsch_16qam_llr(int32_t *rxdataF_comp,
+                        int32_t *sl_ch_mag,
+                        int16_t  *slsch_llr,
+                        uint32_t nb_rb,
+                        uint32_t nb_re,
+                        uint8_t  symbol);
+
+
+/** \brief This function generates log-likelihood ratios (decoder input) for single-stream 64 QAM received waveforms.
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag  uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 64
+    @param sl_ch_magb uplink channel magnitude multiplied by the 2bd amplitude threshold in QAM 64
+    @param slsch_llr llr output
+    @param nb_re number of REs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+*/
+void nr_slsch_64qam_llr(int32_t *rxdataF_comp,
+                        int32_t *sl_ch_mag,
+                        int32_t *sl_ch_magb,
+                        int16_t  *slsch_llr,
+                        uint32_t nb_rb,
+                        uint32_t nb_re,
+                        uint8_t  symbol);
+
+/** \brief This function generates log-likelihood ratios (decoder input) for single-stream 256 QAM received waveforms.
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag  uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 256
+    @param sl_ch_magb uplink channel magnitude multiplied by the 2bd amplitude threshold in QAM 256
+    @param sl_ch_magc uplink channel magnitude multiplied by the 3rd amplitude threshold in QAM 256 
+    @param slsch_llr llr output
+    @param nb_re number of REs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+*/
+void nr_slsch_256qam_llr(int32_t *rxdataF_comp,
+                        int32_t *sl_ch_mag,
+                        int32_t *sl_ch_magb,
+                        int32_t *sl_ch_magc,
+                        int16_t  *slsch_llr,
+                        uint32_t nb_rb,
+                        uint32_t nb_re,
+                        uint8_t  symbol);
+
+/** \brief This function computes the log-likelihood ratios for 4, 16, and 64 QAM
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag  uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 64
+    @param sl_ch_magb uplink channel magnitude multiplied by the 2bd amplitude threshold in QAM 64
+    @param slsch_llr llr output
+    @param nb_re number of REs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+    @param mod_order modulation order
+*/
+void nr_slsch_compute_llr(int32_t *rxdataF_comp,
+                          int32_t *sl_ch_mag,
+                          int32_t *sl_ch_magb,
+                          int16_t  *slsch_llr,
+                          uint32_t nb_rb,
+                          uint32_t nb_re,
+                          uint8_t  symbol,
+                          uint8_t  mod_order);
 
 uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *ue,
                             unsigned char harq_pid,
