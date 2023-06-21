@@ -860,7 +860,6 @@ void nr_ulsch_qpsk_qpsk (c16_t *stream0_in,
  *   stream0_out: Output LLRs for 1st stream
  */
 
-static int after_llr = 0;
 
 void nr_ulsch_qam16_qam16(c16_t *stream0_in,
                           c16_t *stream1_in,
@@ -1940,7 +1939,7 @@ void nr_ulsch_qam16_qam16(c16_t *stream0_in,
     xmm1_128 = simde_mm_unpackhi_epi16(y0r_128[0], y1r_128[0]); // [L1(5), L2(5), L1(6), L2(6), L1(7), L2(7), L1(8), L2(8)]
     xmm2_128 = simde_mm_unpacklo_epi16(y0i_128[0], y1i_128[0]); // [L3(1), L4(1), L3(2), L4(2), L3(3), L4(3), L3(4), L4(4)]
     xmm3_128 = simde_mm_unpackhi_epi16(y0i_128[0], y1i_128[0]); // [L3(5), L4(5), L3(6), L4(6), L3(7), L4(7), L3(8), L4(8)]
-    simde__m128i* stream0_128i_out = (simde__m128 *) &stream0_256i_out[2 * i + 0];
+    simde__m128i* stream0_128i_out = (simde__m128i *) &stream0_256i_out[2 * i + 0];
     stream0_128i_out[0] = simde_mm_unpacklo_epi32(xmm0_128, xmm2_128); // 8 LLRs, 2 REs
     stream0_128i_out[1] = simde_mm_unpackhi_epi32(xmm0_128, xmm2_128); // 8 LLRs, 2 REs
     stream0_128i_out[2] = simde_mm_unpacklo_epi32(xmm1_128, xmm3_128); // 8 LLRs, 2 REs
@@ -1949,7 +1948,7 @@ void nr_ulsch_qam16_qam16(c16_t *stream0_in,
     xmm1_128 = simde_mm_unpackhi_epi16(y0r_128[1], y1r_128[1]); // [L1(13), L2(13), L1(14), L2(14), L1(15), L2(15), L1(16), L2(16)]
     xmm2_128 = simde_mm_unpacklo_epi16(y0i_128[1], y1i_128[1]); // [L3(9), L4(9), L3(10), L4(10), L3(11), L4(11), L3(12), L4(12)]
     xmm3_128 = simde_mm_unpackhi_epi16(y0i_128[1], y1i_128[1]); // [L3(13), L4(13), L3(14), L4(14), L3(15), L4(15), L3(16), L4(16)]
-    stream0_128i_out = (simde__m128 *) &stream0_256i_out[2 * i + 2];
+    stream0_128i_out = (simde__m128i *) &stream0_256i_out[2 * i + 2];
     stream0_128i_out[0] = simde_mm_unpacklo_epi32(xmm0_128, xmm2_128); // 8 LLRs, 2 REs
     stream0_128i_out[1] = simde_mm_unpackhi_epi32(xmm0_128, xmm2_128); // 8 LLRs, 2 REs
     stream0_128i_out[2] = simde_mm_unpacklo_epi32(xmm1_128, xmm3_128); // 8 LLRs, 2 REs

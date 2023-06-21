@@ -2762,7 +2762,9 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
       int soffset   = (slot&3)*frame_parms->symbols_per_slot*frame_parms->ofdm_symbol_size;
       int32_t rxFext[nb_re_pusch+8] __attribute__((aligned(32)));
       int32_t rxF_comp[nb_re_pusch+8] __attribute__((aligned(32)));
-      int32_t rxF_ch_mags[3][nb_re_pusch+8] __attribute__((aligned(32)));; // rxF_ch_mags[0..2] for ul_ch_mag,ul_ch_magb,ul_ch_magc
+      int32_t rxF_ch_mag[nb_re_pusch+8]  __attribute__((aligned(32)));
+      int32_t rxF_ch_magb[nb_re_pusch+8] __attribute__((aligned(32)));
+      int32_t rxF_ch_magc[nb_re_pusch+8] __attribute__((aligned(32)));
       int32_t chFext[nb_re_pusch+8] __attribute__((aligned(32)));
       int16_t llr_temp[(nb_re_pusch*rel15_ul->qam_mod_order)+16] __attribute__((aligned(32)));
       int16_t *llr_ptr = llr_temp;
@@ -2783,9 +2785,9 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
         inner_rx_compensation_mag_mrc(rxFext,
                                       chFext,
                                       rxF_comp,
-                                      rxF_ch_mags[0],
-                                      rxF_ch_mags[1],
-                                      rxF_ch_mags[2],
+                                      rxF_ch_mag,
+                                      rxF_ch_magb,
+                                      rxF_ch_magc,
                                       rel15_ul->qam_mod_order,
                                       aa,
                                       nb_re_pusch,
@@ -2804,9 +2806,9 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
         llr_ptr = (int16_t*) rxF_comp;  // dont call llr function if it's QPSK
       else
         nr_ulsch_compute_llr(rxF_comp,
-                             rxF_ch_mags[0],
-                             rxF_ch_mags[1],
-                             rxF_ch_mags[2],
+                             rxF_ch_mag,
+                             rxF_ch_magb,
+                             rxF_ch_magc,
                              llr_temp,
                              0, // nb_re=0 cuz no offset in ch_mags[]
                              nb_re_pusch,
