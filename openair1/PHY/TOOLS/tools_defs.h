@@ -34,6 +34,7 @@
 #include <assert.h>
 #include "PHY/sse_intrin.h"
 #include "common/utils/assertions.h"
+#include "common/utils/utils.h"
 
 #if defined(__x86_64__) || defined(__i386__)
 #define simd_q15_t __m128i
@@ -44,7 +45,7 @@
 #define mulhi_s1_int16(a,b) _mm_slli_epi16(_mm_mulhi_epi16(a,b),2)
 #define adds_int16(a,b) _mm_adds_epi16(a,b)
 #define mullo_int16(a,b) _mm_mullo_epi16(a,b)
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
 #define simd_q15_t int16x8_t
 #define simdshort_q15_t int16x4_t
 #define shiftright_int16(a,shift) vshrq_n_s16(a,shift)
@@ -53,7 +54,7 @@
 #define mulhi_s1_int16(a,b) vshlq_n_s16(vqdmulhq_s16(a,b),1)
 #define adds_int16(a,b) vqaddq_s16(a,b)
 #define mullo_int16(a,b) vmulq_s16(a,b)
-#define _mm_empty() 
+#define _mm_empty()
 #define _m_empty()
 #endif
 
@@ -74,6 +75,11 @@ extern "C" {
     float i;
   } cf_t;
 
+  typedef struct complex8 {
+    int8_t r;
+    int8_t i;
+  } c8_t;
+
   typedef struct complex16 {
     int16_t r;
     int16_t i;
@@ -89,8 +95,106 @@ extern "C" {
     int64_t i;
   } c64_t;
 
+  typedef struct {
+    int dim1;
+    int dim2;
+    int dim3;
+    int dim4;
+    uint8_t data[];
+  } fourDimArray_t;
+
+  static inline fourDimArray_t *allocateFourDimArray(int elmtSz, int dim1, int dim2, int dim3, int dim4)
+  {
+    int sz = elmtSz;
+    DevAssert(dim1 > 0);
+    sz *= dim1;
+    if (dim2) {
+      sz *= dim2;
+      if (dim3) {
+        sz *= dim3;
+        if (dim4)
+          sz *= dim4;
+      }
+    }
+    fourDimArray_t *tmp = (fourDimArray_t *)malloc16_clear(sizeof(*tmp) + sz);
+    AssertFatal(tmp, "no more memory\n");
+    *tmp = (fourDimArray_t){dim1, dim2, dim3, dim4};
+    return tmp;
+  }
+
+#define CheckArrAllocated(workingVar, elementType, ArraY, diM1, diM2, diM3, diM4, resizeAllowed)                           \
+  if (!(ArraY))                                                                                                            \
+    ArraY = allocateFourDimArray(sizeof(elementType), diM1, diM2, diM3, diM4);                                             \
+  else {                                                                                                                   \
+    if ((resizeAllowed)                                                                                                    \
+        && ((diM1) != (ArraY)->dim1 || (diM2) != (ArraY)->dim2 || (diM3) != (ArraY)->dim3 || (diM4) != (ArraY)->dim4)) {   \
+      LOG_I(PHY, "resizing %s to %d/%d/%d/%d\n", #ArraY, (diM1), (diM2), (diM3), (diM4));                                  \
+      free(ArraY);                                                                                                         \
+      ArraY = allocateFourDimArray(sizeof(elementType), diM1, diM2, diM3, diM4);                                           \
+    } else                                                                                                                 \
+      DevAssert((diM1) == (ArraY)->dim1 && (diM2) == (ArraY)->dim2 && (diM3) == (ArraY)->dim3 && (diM4) == (ArraY)->dim4); \
+  }
+
+#define cast1Darray(workingVar, elementType, ArraY) elementType *workingVar = (elementType *)((ArraY)->data);
+
+#define allocCast1D(workingVar, elementType, ArraY, dim1, resizeAllowed)           \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, 0, 0, 0, resizeAllowed); \
+  cast1Darray(workingVar, elementType, ArraY);
+
+#define cast2Darray(workingVar, elementType, ArraY) \
+  elementType(*workingVar)[(ArraY)->dim2] = (elementType(*)[(ArraY)->dim2])((ArraY)->data);
+
+#define allocCast2D(workingVar, elementType, ArraY, dim1, dim2, resizeAllowed)        \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, dim2, 0, 0, resizeAllowed); \
+  cast2Darray(workingVar, elementType, ArraY);
+
+#define cast3Darray(workingVar, elementType, ArraY) \
+  elementType(*workingVar)[(ArraY)->dim2][(ArraY)->dim3] = (elementType(*)[(ArraY)->dim2][(ArraY)->dim3])((ArraY)->data);
+
+#define allocCast3D(workingVar, elementType, ArraY, dim1, dim2, dim3, resizeAllowed)     \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, dim2, dim3, 0, resizeAllowed); \
+  cast3Darray(workingVar, elementType, ArraY);
+
+#define cast4Darray(workingVar, elementType, ArraY)                       \
+  elementType(*workingVar)[(ArraY)->dim2][(ArraY)->dim3][(ArraY)->dim4] = \
+      (elementType(*)[(ArraY)->dim2][(ArraY)->dim3][(ArraY)->dim4])((ArraY)->data);
+
+#define allocCast4D(workingVar, elementType, ArraY, dim1, dim2, dim3, dim4, resizeAllowed)  \
+  CheckArrAllocated(workingVar, elementType, ArraY, dim1, dim2, dim3, dim4, resizeAllowed); \
+  cast4Darray(workingVar, elementType, ArraY);
+
+#define clearArray(ArraY, elementType) \
+  memset((ArraY)->data,                  \
+         0,                            \
+         sizeof(elementType) * (ArraY)->dim1 * max((ArraY)->dim2, 1) * max((ArraY)->dim3, 1) * max((ArraY)->dim4, 1))
+
 #define squaredMod(a) ((a).r*(a).r + (a).i*(a).i)
 #define csum(res, i1, i2) (res).r = (i1).r + (i2).r ; (res).i = (i1).i + (i2).i
+
+  __attribute__((always_inline)) inline uint32_t c16amp2(const c16_t a) {
+    return a.r * a.r + a.i * a.i;
+  }
+
+  __attribute__((always_inline)) inline c16_t c16sub(const c16_t a, const c16_t b) {
+    return (c16_t) {
+        .r = (int16_t) (a.r - b.r),
+        .i = (int16_t) (a.i - b.i)
+    };
+  }
+
+  __attribute__((always_inline)) inline c16_t c16Shift(const c16_t a, const int Shift) {
+    return (c16_t) {
+        .r = (int16_t)(a.r >> Shift),
+        .i = (int16_t)(a.i >> Shift)
+    };
+  }
+
+  __attribute__((always_inline)) inline c16_t c16addShift(const c16_t a, const c16_t b, const int Shift) {
+    return (c16_t) {
+        .r = (int16_t)((a.r + b.r) >> Shift),
+        .i = (int16_t)((a.i + b.i) >> Shift)
+    };
+  }
 
   __attribute__((always_inline)) inline c16_t c16mulShift(const c16_t a, const c16_t b, const int Shift) {
     return (c16_t) {
@@ -98,14 +202,14 @@ extern "C" {
       .i = (int16_t)((a.r * b.i + a.i * b.r) >> Shift)
     };
   }
-  
+
   __attribute__((always_inline)) inline c16_t c16divShift(const c16_t a, const c16_t b, const int Shift) {
     return (c16_t) {
       .r = (int16_t)((a.r * b.r + a.i * b.i) >> Shift),
       .i = (int16_t)((a.r * b.i - a.i * b.r) >> Shift)
     };
   }
-  
+
   __attribute__((always_inline)) inline c16_t c16maddShift(const c16_t a, const c16_t b, c16_t c, const int Shift) {
     return (c16_t) {
       .r = (int16_t)(((a.r * b.r - a.i * b.i ) >> Shift) + c.r),
@@ -134,16 +238,24 @@ extern "C" {
     };
   }
 
+  __attribute__((always_inline)) inline cd_t cdMul(const cd_t a, const cd_t b)
+  {
+    return (cd_t) {
+        .r = a.r * b.r - a.i * b.i,
+        .i = a.r * b.i + a.i * b.r
+    };
+  }
 
   // On N complex numbers
-  //   y.r += (x * alpha.r) >> 14 
-  //   y.i += (x * alpha.i) >> 14 
+  //   y.r += (x * alpha.r) >> 14
+  //   y.i += (x * alpha.i) >> 14
   // See regular C implementation at the end
-  __attribute__((always_inline)) inline void c16multaddVectRealComplex(const int16_t *x,
+  static __attribute__((always_inline)) inline void c16multaddVectRealComplex(const int16_t *x,
                                                                        const c16_t *alpha,
                                                                        c16_t *y,
                                                                        const int N) {
-#ifdef __AVX2__
+#if defined(__x86_64__) || defined(__i386__)
+    // Default implementation for x86
     const int8_t makePairs[32] __attribute__((aligned(32)))={
       0,1,0+16,1+16,
       2,3,2+16,3+16,
@@ -154,26 +266,27 @@ extern "C" {
       12,13,12+16,13+16,
       14,15,14+16,15+16};
     
-    __m256i alpha256= _mm256_set1_epi32(*(int32_t *)alpha);
+    __m256i alpha256= simde_mm256_set1_epi32(*(int32_t *)alpha);
     __m128i *x128=(__m128i *)x;
     __m128i *y128=(__m128i *)y;
     AssertFatal(N%8==0,"Not implemented\n");
     for (int i=0; i<N/8; i++) {
-      const __m256i xduplicate=_mm256_broadcastsi128_si256(*x128);
-      const __m256i x_duplicate_ordered=_mm256_shuffle_epi8(xduplicate,*(__m256i*)makePairs);
-      const __m256i x_mul_alpha_shift15 =_mm256_mulhrs_epi16(alpha256, x_duplicate_ordered);
+      const __m256i xduplicate=simde_mm256_broadcastsi128_si256(*x128);
+      const __m256i x_duplicate_ordered=simde_mm256_shuffle_epi8(xduplicate,*(__m256i*)makePairs);
+      const __m256i x_mul_alpha_shift15 =simde_mm256_mulhrs_epi16(alpha256, x_duplicate_ordered);
       // Existing multiplication normalization is weird, constant table in alpha need to be doubled
-      const __m256i x_mul_alpha_x2= _mm256_adds_epi16(x_mul_alpha_shift15,x_mul_alpha_shift15);
-      *y128= _mm_adds_epi16(_mm256_extracti128_si256(x_mul_alpha_x2,0),*y128);
+      const __m256i x_mul_alpha_x2= simde_mm256_adds_epi16(x_mul_alpha_shift15,x_mul_alpha_shift15);
+      *y128= _mm_adds_epi16(simde_mm256_extracti128_si256(x_mul_alpha_x2,0),*y128);
       y128++;
-      *y128= _mm_adds_epi16(_mm256_extracti128_si256(x_mul_alpha_x2,1),*y128);
+      *y128= _mm_adds_epi16(simde_mm256_extracti128_si256(x_mul_alpha_x2,1),*y128);
       y128++;
       x128++;
     } 
     
-#elif defined(__x86_64__) || defined(__i386__) ||  defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
+    // Default implementation for ARM
     uint32_t i;
-    
+
     // do 8 multiplications at a time
     simd_q15_t alpha_r_128,alpha_i_128,yr,yi,*x_128=(simd_q15_t*)x,*y_128=(simd_q15_t*)y;
     int j;
@@ -188,23 +301,16 @@ extern "C" {
 
       yr     = mulhi_s1_int16(alpha_r_128,x_128[i]);
       yi     = mulhi_s1_int16(alpha_i_128,x_128[i]);
-#if defined(__x86_64__) || defined(__i386__)
-      y_128[j]   = _mm_adds_epi16(y_128[j],_mm_unpacklo_epi16(yr,yi));
-      j++;
-      y_128[j]   = _mm_adds_epi16(y_128[j],_mm_unpackhi_epi16(yr,yi));
-      j++;
-#elif defined(__arm__)
       int16x8x2_t yint;
       yint = vzipq_s16(yr,yi);
       y_128[j]   = adds_int16(y_128[j],yint.val[0]);
       j++;
       y_128[j]   = adds_int16(y_128[j],yint.val[1]);
- 
-      j++;
-#endif
-    }
 
+      j++;
+    }
 #else
+    // Almost dead code (BMC)
     for (int i=0; i<N; i++) {
       int tmpr=y[i].r+((x[i]*alpha->r)>>14);
       if (tmpr>INT16_MAX)
@@ -219,7 +325,6 @@ extern "C" {
       y[i].r=(int16_t)tmpr;
       y[i].i=(int16_t)tmpi;
     }
-
 #endif
   }
 //cmult_sv.h
@@ -233,34 +338,27 @@ This function performs componentwise multiplication and accumulation of a comple
 
 The function implemented is : \f$\mathbf{y} = y + \alpha\mathbf{x}\f$
 */
-void multadd_real_vector_complex_scalar(int16_t *x,
-                                        int16_t *alpha,
-                                        int16_t *y,
-                                        uint32_t N);
+  void multadd_real_vector_complex_scalar(const int16_t *x, const int16_t *alpha, int16_t *y, uint32_t N);
 
-__attribute__((always_inline)) inline void multadd_real_four_symbols_vector_complex_scalar(int16_t *x,
-                                                                                           c16_t *alpha,
-                                                                                           c16_t *y)
-{
+  __attribute__((always_inline)) inline void multadd_real_four_symbols_vector_complex_scalar(const int16_t *x,
+                                                                                             c16_t *alpha,
+                                                                                             c16_t *y)
+  {
+    // do 8 multiplications at a time
+    const simd_q15_t alpha_r_128 = set1_int16(alpha->r);
+    const simd_q15_t alpha_i_128 = set1_int16(alpha->i);
 
-  // do 8 multiplications at a time
-  simd_q15_t alpha_r_128,alpha_i_128,yr,yi,*x_128=(simd_q15_t*)x;
-  simd_q15_t y_128;
-  y_128 = _mm_loadu_si128((simd_q15_t*)y);
+    const simd_q15_t *x_128 = (const simd_q15_t *)x;
+    const simd_q15_t yr = mulhi_s1_int16(alpha_r_128, *x_128);
+    const simd_q15_t yi = mulhi_s1_int16(alpha_i_128, *x_128);
 
-  alpha_r_128 = set1_int16(alpha->r);
-  alpha_i_128 = set1_int16(alpha->i);
+    simd_q15_t y_128 = _mm_loadu_si128((simd_q15_t *)y);
+    y_128 = _mm_adds_epi16(y_128, _mm_unpacklo_epi16(yr, yi));
+    y_128 = _mm_adds_epi16(y_128, _mm_unpackhi_epi16(yr, yi));
 
+    _mm_storeu_si128((simd_q15_t *)y, y_128);
+  }
 
-  yr     = mulhi_s1_int16(alpha_r_128,x_128[0]);
-  yi     = mulhi_s1_int16(alpha_i_128,x_128[0]);
-  y_128   = _mm_adds_epi16(y_128,_mm_unpacklo_epi16(yr,yi));
-  y_128   = _mm_adds_epi16(y_128,_mm_unpackhi_epi16(yr,yi));
-
-  _mm_storeu_si128((simd_q15_t*)y, y_128);
-
-}
-  
 /*!\fn void multadd_complex_vector_real_scalar(int16_t *x,int16_t alpha,int16_t *y,uint8_t zero_flag,uint32_t N)
 This function performs componentwise multiplication and accumulation of a real scalar and a complex vector.
 @param x Vector input (Q1.15) in the format |Re0 Im0|Re1 Im 1| ...
@@ -431,6 +529,7 @@ This function performs optimized fixed-point radix-2 FFT/IFFT.
   SZ_DEF(128) \
   SZ_DEF(256) \
   SZ_DEF(512) \
+  SZ_DEF(768) \
   SZ_DEF(1024) \
   SZ_DEF(1536) \
   SZ_DEF(2048) \
@@ -440,10 +539,13 @@ This function performs optimized fixed-point radix-2 FFT/IFFT.
   SZ_DEF(8192) \
   SZ_DEF(9216) \
   SZ_DEF(12288) \
+  SZ_DEF(16384) \
   SZ_DEF(18432) \
   SZ_DEF(24576) \
+  SZ_DEF(32768) \
   SZ_DEF(36864) \
   SZ_DEF(49152) \
+  SZ_DEF(65536) \
   SZ_DEF(73728) \
   SZ_DEF(98304)
 
@@ -502,6 +604,8 @@ dft_size_idx_t get_dft(int ofdm_symbol_size)
       return DFT_256;
     case 512:
       return DFT_512;
+    case 768:
+      return DFT_768;
     case 1024:
       return DFT_1024;
     case 1536:
@@ -586,6 +690,8 @@ idft_size_idx_t get_idft(int ofdm_symbol_size)
       return IDFT_256;
     case 512:
       return IDFT_512;
+    case 768:
+      return IDFT_768;
     case 1024:
       return IDFT_1024;
     case 1536:
@@ -735,16 +841,10 @@ int32_t phy_phase_compensation_top(uint32_t pilot_type,
                                    uint32_t last_pilot,
                                    int32_t ignore_prefix);
 
-int32_t dot_product(int16_t *x,
-                    int16_t *y,
-                    uint32_t N, //must be a multiple of 8
-                    uint8_t output_shift);
-
-int64_t dot_product64(int16_t *x,
-                      int16_t *y,
-                      uint32_t N, //must be a multiple of 8
-                      uint8_t output_shift);
-
+c32_t dot_product(const c16_t *x,
+                  const c16_t *y,
+                  const uint32_t N, // must be a multiple of 8
+                  const int output_shift);
 
 /** @} */
 

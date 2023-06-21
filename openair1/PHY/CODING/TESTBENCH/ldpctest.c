@@ -36,11 +36,7 @@
 #define MAX_BLOCK_LENGTH 8448
 
 #ifndef malloc16
-#  ifdef __AVX2__
 #    define malloc16(x) memalign(32,x)
-#  else
-#    define malloc16(x) memalign(16,x)
-#  endif
 #endif
 
 #define NR_LDPC_PROFILER_DETAIL
@@ -302,7 +298,7 @@ int test_ldpc(short max_iterations,
       for (int j=0;j<n_segments;j++)
         for (int i = 0; i < block_length+(nrows-no_punctured_columns) * Zc - removed_bit; i++)
           if (channel_input[j][i]!=channel_input_optim[j][i]) {
-            printf("differ in seg %u pos %u (%u,%u)\n", j, i, channel_input[j][i], channel_input_optim[j][i]);
+            printf("differ in seg %d pos %d (%u,%u)\n", j, i, channel_input[j][i], channel_input_optim[j][i]);
             return (-1);
           }
       //else{
@@ -321,7 +317,7 @@ int test_ldpc(short max_iterations,
         for (int i = 2*Zc; i < (Kb+nrows-no_punctured_columns) * Zc-removed_bit; i++) {
 #ifdef DEBUG_CODER
           if ((i&0xf)==0)
-            printf("\ne %u..%u:    ",i,i+15);
+            printf("\ne %d..%d:    ",i,i+15);
 #endif
 
           if (channel_input_optim[j][i-2*Zc]==0)

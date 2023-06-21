@@ -38,6 +38,7 @@
 #include "PHY/LTE_TRANSPORT/transport_eNB.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
+#include "PHY/LTE_TRANSPORT/transport_vars.h"
 
 
 //#define DEBUG_ULSCH_MODULATION
@@ -47,7 +48,7 @@ void dft_lte(int32_t *z,struct complex16 *input, int32_t Msc_PUSCH, uint8_t Nsym
 
 #if defined(__x86_64__) || defined(__i386__)
   __m128i dft_in128[4][1200],dft_out128[4][1200];
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   int16x8_t dft_in128[4][1200],dft_out128[4][1200];
 #endif
   uint32_t *dft_in0=(uint32_t*)dft_in128[0],*dft_out0=(uint32_t*)dft_out128[0];
@@ -61,7 +62,7 @@ void dft_lte(int32_t *z,struct complex16 *input, int32_t Msc_PUSCH, uint8_t Nsym
   uint32_t i,ip;
 #if defined(__x86_64__) || defined(__i386__)
   __m128i norm128;
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   int16x8_t norm128;
 #endif
   //  printf("Doing lte_dft for Msc_PUSCH %d\n",Msc_PUSCH);
@@ -119,7 +120,7 @@ void dft_lte(int32_t *z,struct complex16 *input, int32_t Msc_PUSCH, uint8_t Nsym
     */
 #if defined(__x86_64__) || defined(__i386__)
     norm128 = _mm_set1_epi16(9459);
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
     norm128 = vdupq_n_s16(9459);
 #endif
     for (i=0; i<12; i++) {
@@ -127,7 +128,7 @@ void dft_lte(int32_t *z,struct complex16 *input, int32_t Msc_PUSCH, uint8_t Nsym
       ((__m128i*)dft_out0)[i] = _mm_slli_epi16(_mm_mulhi_epi16(((__m128i*)dft_out0)[i],norm128),1);
       ((__m128i*)dft_out1)[i] = _mm_slli_epi16(_mm_mulhi_epi16(((__m128i*)dft_out1)[i],norm128),1);
       ((__m128i*)dft_out2)[i] = _mm_slli_epi16(_mm_mulhi_epi16(((__m128i*)dft_out2)[i],norm128),1);
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
       ((int16x8_t*)dft_out0)[i] = vqdmulhq_s16(((int16x8_t*)dft_out0)[i],norm128);
       ((int16x8_t*)dft_out1)[i] = vqdmulhq_s16(((int16x8_t*)dft_out1)[i],norm128);
       ((int16x8_t*)dft_out2)[i] = vqdmulhq_s16(((int16x8_t*)dft_out2)[i],norm128);
@@ -416,12 +417,12 @@ void ulsch_modulation(int32_t **txdataF,
   nb_rb = ulsch->harq_processes[harq_pid]->nb_rb;
 
   if (nb_rb == 0) {
-    printf("ulsch_modulation.c: Frame %d, Subframe %d Illegal nb_rb %d\n",frame,subframe,nb_rb);
+    printf("ulsch_modulation.c: Frame %u, Subframe %u Illegal nb_rb %d\n",frame,subframe,nb_rb);
     return;
   }
 
   if (first_rb > frame_parms->N_RB_UL) {
-    printf("ulsch_modulation.c: Frame %d, Subframe %d Illegal first_rb %d\n",frame,subframe,first_rb);
+    printf("ulsch_modulation.c: Frame %u, Subframe %u Illegal first_rb %d\n",frame,subframe,first_rb);
     return;
   }
 
@@ -706,7 +707,7 @@ void ulsch_modulation(int32_t **txdataF,
     re_offset = re_offset0;
     symbol_offset = (uint32_t)frame_parms->ofdm_symbol_size*(l+(subframe*nsymb));
 #ifdef DEBUG_ULSCH_MODULATION
-    printf("ulsch_mod (SC-FDMA) symbol %d (subframe %d): symbol_offset %d\n",l,subframe,symbol_offset);
+    printf("ulsch_mod (SC-FDMA) symbol %d (subframe %u): symbol_offset %u\n",l,subframe,symbol_offset);
 #endif
     txptr = &txdataF[0][symbol_offset];
 

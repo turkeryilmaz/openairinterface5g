@@ -26,11 +26,13 @@ metadata:
   name: "ran-build"
 spec:
     runPolicy: "Serial"
+    nodeSelector:
+        kubernetes.io/hostname: acamas
     source:
         type: "Binary"
     strategy:
         dockerStrategy:
-            dockerfilePath: "docker/Dockerfile.build.rhel8.2"
+            dockerfilePath: "docker/Dockerfile.build.rhel9"
     output:
         to:
             kind: "ImageStreamTag"

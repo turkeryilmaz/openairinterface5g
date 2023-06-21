@@ -43,8 +43,6 @@
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
 
 #include "RRC/LTE/rrc_extern.h"
@@ -911,7 +909,7 @@ generate_Msg4(module_id_t module_idP,
                                         UE_RNTI(module_idP,UE_id),1,  // 1 transport block
                                         &cc[CC_idP].CCCH_pdu.payload[0], 0);  // not used in this case
 
-      if (rrc_sdu_length > 0 || (RRC_RECONFIGURED == mac_eNB_get_rrc_status(module_idP, ra->rnti))) {
+      if (rrc_sdu_length > 0) {
         LOG_D(MAC,
               "[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: UE_id %d, rrc_sdu_length %d\n",
               module_idP, CC_idP, frameP, subframeP, UE_id, rrc_sdu_length);
@@ -1396,10 +1394,16 @@ initiate_ra_proc(module_id_t module_idP,
       ra[i].RA_rnti = ra_rnti;
       ra[i].preamble_index = preamble_index;
       failure_cnt = 0;
-      LOG_D(MAC,
+      LOG_I(MAC,
             "[eNB %d][RAPROC] CC_id %d Frame %d Activating RAR generation in Frame %d, subframe %d for process %d, rnti %x, state %d\n",
-            module_idP, CC_id, frameP, ra[i].Msg2_frame,
-            ra[i].Msg2_subframe, i, ra[i].rnti, ra[i].state);
+            module_idP,
+            CC_id,
+            frameP,
+            ra[i].Msg2_frame,
+            ra[i].Msg2_subframe,
+            i,
+            ra[i].rnti,
+            ra[i].state);
       return;
     }
   }

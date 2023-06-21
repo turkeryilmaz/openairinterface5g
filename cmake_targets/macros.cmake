@@ -11,7 +11,7 @@ macro(add_option name val helpstr)
   add_definitions("-D${name}=${value}")
 endmacro(add_option)
 
-macro(add_boolean_option name val helpstr)
+macro(add_boolean_option name val helpstr adddef)
   if(DEFINED ${name})
     set(value ${${name}})
   else(DEFINED ${name})
@@ -19,9 +19,9 @@ macro(add_boolean_option name val helpstr)
   endif()
   set(${name} ${value} CACHE STRING "${helpstr}")
   set_property(CACHE ${name} PROPERTY TYPE BOOL)
-  if (${value})
+  if (${value} AND ${adddef})
     add_definitions("-D${name}")
-  endif (${value})
+  endif (${value} AND ${adddef})
 endmacro(add_boolean_option)
 
 macro(add_integer_option name val helpstr)
@@ -55,7 +55,7 @@ macro(add_list2_option name val helpstr)
   endif()
   set(${name} ${value} CACHE STRING "${helpstr}")
   set_property(CACHE ${name} PROPERTY STRINGS ${ARGN})
-  if(NOT "${value}" STREQUAL "False")
+  if(NOT "${value}" STREQUAL "None")
     add_definitions("-D${value}=1")
   endif()
 endmacro(add_list2_option)
@@ -82,17 +82,28 @@ function(make_version VERSION_VALUE)
   set(${VERSION_VALUE} "${RESULT}" PARENT_SCOPE)
 endfunction()
 
-macro(compile_asn1 asn1Source asn1cCmd ResultFlag)
-   # Warning: if you modify ASN.1 source file to generate new C files, cmake should be re-run instead of make
-   execute_process(COMMAND ${asn1cCmd}  ${asn1Source} RESULT_VARIABLE ret)
+macro(eval_boolean VARIABLE)
+  if(${ARGN})
+    set(${VARIABLE} ON)
+  else()
+    set(${VARIABLE} OFF)
+  endif()
+endmacro()
 
-   if (NOT ${ret} STREQUAL 0)
-      message(FATAL_ERROR "${ret}: error")
-   endif (NOT ${ret} STREQUAL 0)
-
-   add_custom_target (
-     ${ResultFlag} ALL
-     ${asn1cCmd} ${asn1Source}
-     DEPENDS ${asn1Source}
-   )
-endmacro(compile_asn1)
+function(check_option EXEC TEST_OPTION EXEC_HINT)
+  message(STATUS "Check if ${EXEC} supports ${TEST_OPTION}")
+  execute_process(COMMAND ${EXEC} ${TEST_OPTION}
+                  RESULT_VARIABLE CHECK_STATUS
+                  OUTPUT_VARIABLE CHECK_OUTPUT
+                  ERROR_VARIABLE CHECK_OUTPUT)
+  if(NOT ${CHECK_STATUS} EQUAL 1)
+    get_filename_component(EXEC_FILE ${EXEC} NAME)
+    message(FATAL_ERROR "Error message: ${CHECK_OUTPUT}\
+You might want to re-run ./build_oai -I
+Or provide a path to ${EXEC_FILE} using
+  ./build_oai ... --cmake-opt -D${EXEC_HINT}=/path/to/${EXEC_FILE}
+or directly with
+  cmake .. -D${EXEC_HINT}=/path/to/${EXEC_FILE}
+")
+  endif()
+endfunction()

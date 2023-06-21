@@ -22,6 +22,8 @@
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <sched.h>
+#include <stdbool.h>
+#include <signal.h>
 
 #include "T.h"
 #include "assertions.h"
@@ -35,19 +37,16 @@
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "common/utils/nr/nr_common.h"
 
-#include "sdr/COMMON/common_lib.h"
-#include "sdr/ETHERNET/USERSPACE/LIB/if_defs.h"
+#include "radio/COMMON/common_lib.h"
+#include "radio/ETHERNET/USERSPACE/LIB/if_defs.h"
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 #include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
-#include "SCHED/sched_common_vars.h"
-#include "PHY/MODULATION/modulation_vars.h"
 #include "PHY/NR_TRANSPORT/nr_dlsch.h"
 //#include "../../SIMU/USER/init_lte.h"
 
-#include "LAYER2/MAC/mac_vars.h"
 #include "RRC/LTE/rrc_vars.h"
 #include "PHY_INTERFACE/phy_interface_vars.h"
 #include "NR_IF_Module.h"
@@ -62,10 +61,11 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "UTIL/OPT/opt.h"
 #include "enb_config.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 #include "intertask_interface.h"
 
-#include "PHY/INIT/phy_init.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "system.h"
 #include <openair2/RRC/NR_UE/rrc_proto.h>
 #include <openair2/LAYER2/NR_MAC_UE/mac_defs.h>
@@ -85,6 +85,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #include "nr_nas_msg_sim.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
+#include "openair2/GNB_APP/gnb_paramdef.h"
 #include <openair1/PHY/NR_REFSIG/sss_nr.h>
 
 extern const char *duplex_mode[];
@@ -105,6 +106,8 @@ int config_sync_var=-1;
 instance_t CUuniqInstance=0;
 instance_t DUuniqInstance=0;
 
+int get_node_type() {return -1;}
+
 RAN_CONTEXT_t RC;
 int oai_exit = 0;
 
@@ -118,6 +121,8 @@ int                 vcdflag = 0;
 
 double          rx_gain_off = 0.0;
 char             *usrp_args = NULL;
+char             *tx_subdev = NULL;
+char             *rx_subdev = NULL;
 char       *rrc_config_path = NULL;
 char            *uecap_file = NULL;
 int               dumpframe = 0;
@@ -151,14 +156,7 @@ int     transmission_mode = 1;
 int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
-uint32_t       N_RB_DL    = 106;
-uint16_t           Nid_SL = 0;
-uint64_t SSB_positions = 0x01;
-int mu = 1;
-uint8_t n_tx = 1;
-uint8_t n_rx = 1;
-uint16_t Nid_cell = 0;
-int ssb_subcarrier_offset = 0;
+uint32_t       N_RB_SL    = 106;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution
@@ -168,8 +166,7 @@ uint8_t abstraction_flag=0;
 nr_bler_struct nr_bler_data[NR_NUM_MCS];
 nr_bler_struct nr_mimo_bler_data[NR_NUM_MCS];
 
-static void init_bler_table(void);
-static void init_mimo_bler_table(void);
+static void init_bler_table(char*);
 
 /*---------------------BMC: timespec helpers -----------------------------*/
 
@@ -218,10 +215,12 @@ int create_tasks_nrue(uint32_t ue_nb) {
   }
 
   itti_wait_ready(0);
+
   return 0;
 }
 
-void exit_function(const char *file, const char *function, const int line, const char *s) {
+void exit_function(const char *file, const char *function, const int line, const char *s, const int assert)
+{
   int CC_id;
 
   if (s != NULL) {
@@ -237,8 +236,12 @@ void exit_function(const char *file, const char *function, const int line, const
     }
   }
 
-  sleep(1); //allow lte-softmodem threads to exit first
-  exit(1);
+  if (assert) {
+    abort();
+  } else {
+    sleep(1); // allow lte-softmodem threads to exit first
+    exit(EXIT_SUCCESS);
+  }
 }
 
 uint64_t get_nrUE_optmask(void) {
@@ -257,18 +260,25 @@ nrUE_params_t *get_nrUE_params(void) {
 static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
                                         int N_RB_DL,
                                         int N_RB_UL,
+                                        int N_RB_SL,
                                         int mu,
                                         int Nid_SL,
                                         int CC_id,
                                         uint64_t position_in_burst)
 {
   uint64_t rev_burst = 0;
+  uint64_t SSB_positions = 0x01;
+  int mu = 1;
+  uint8_t n_tx = 1;
+  uint8_t n_rx = 1;
+  uint16_t Nid_cell = 0;
+  int ssb_subcarrier_offset = 0;
   for (int i = 0; i < 64; i++)
     rev_burst |= (((position_in_burst >> (63-i))&0x01) << i);
 
   NR_DL_FRAME_PARMS *fp                                  = &ue->frame_parms;
   fapi_nr_config_request_t *nrUE_config                  = &ue->nrUE_config;
-  nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
+  nrUE_config->cell_config.phy_cell_id                   = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
   nrUE_config->ssb_table.ssb_offset_point_a              = (fp->N_RB_SL - 11) >> 1;
@@ -278,7 +288,7 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->ssb_table.ssb_period                      = 1; //10ms
   nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
   nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
-  nrUE_config->carrier_config.sl_grid_size[mu]           = fp->N_RB_SL;
+  nrUE_config->carrier_config.sl_grid_size[mu]           = N_RB_SL;
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
@@ -286,16 +296,16 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.uplink_frequency           = downlink_frequency[CC_id][0] / 1000;
   nrUE_config->carrier_config.sl_frequency               = sidelink_frequency[CC_id][0] / 1000;
   LOG_D(NR_PHY, "SL Frequency %u\n", nrUE_config->carrier_config.sl_frequency);
-  ue->mac_enabled                                        = 1;
-  fp->Ncp                                                = NORMAL;
   fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
   fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
   fp->N_RB_DL = N_RB_DL;
+  fp->N_RB_UL = N_RB_UL;
+  fp->N_RB_SL = N_RB_SL;
   fp->Nid_cell = Nid_cell;
-  fp->Nid_SL = Nid_SL;
+  fp->Nid_SL = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
   fp->nushift = 0; //No nushift in SL
   fp->ssb_type = nr_ssb_type_C; //Note: case c for NR SL???
   fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
@@ -304,29 +314,26 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   fp->ofdm_offset_divisor = UINT_MAX;
   fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
+  int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_DL);
+  nrUE_config->carrier_config.dl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
 
   ue->slss = calloc(1, sizeof(*ue->slss));
   int len = sizeof(ue->slss->sl_mib) / sizeof(ue->slss->sl_mib[0]);
   for (int i = 0; i < len; i++) {
     ue->slss->sl_mib[i] = 0;
   }
-  #if 1
   ue->slss->sl_mib_length = 32;
   ue->slss->sl_numssb_withinperiod_r16 = 2;
   ue->slss->sl_timeinterval_r16 = 20;
   ue->slss->sl_timeoffsetssb_r16 = 2;
-
   ue->slss->sl_numssb_withinperiod_r16_copy = 2;
   ue->slss->sl_timeinterval_r16_copy = 20;
   ue->slss->sl_timeoffsetssb_r16_copy = 2;
-  #endif
-  ue->slss->slss_id = Nid_SL;
+  ue->slss->slss_id = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
   ue->is_synchronized_sl = 0;
   ue->UE_fo_compensation = 1;
   ue->UE_scan_carrier = 1;
   ue->sync_ref = get_softmodem_params()->sync_ref;
-  ue->configured = true;
   LOG_I(NR_PHY, "nrUE configured\n");
 }
 
@@ -336,7 +343,6 @@ static void get_options(void) {
   paramdef_t cmdline_params[] =CMDLINE_NRUEPARAMS_DESC ;
   int numparams = sizeof(cmdline_params)/sizeof(paramdef_t);
   config_get(cmdline_params,numparams,NULL);
-  config_process_cmdline( cmdline_params,numparams,NULL);
 
   if (vcdflag > 0)
     ouput_vcd = 1;
@@ -344,38 +350,7 @@ static void get_options(void) {
 
 // set PHY vars from command line
 void set_options(int CC_id, PHY_VARS_NR_UE *UE){
-  NR_DL_FRAME_PARMS *fp       = &UE->frame_parms;
-  paramdef_t cmdline_params[] = CMDLINE_NRUE_PHYPARAMS_DESC ;
-  int numparams               = sizeof(cmdline_params)/sizeof(paramdef_t);
-
-  UE->mode = normal_txrx;
-
-  config_get(cmdline_params,numparams,NULL);
-
-  int pindex = config_paramidx_fromname(cmdline_params,numparams, CALIBRX_OPT);
-  if ( (cmdline_params[pindex].paramflags &  PARAMFLAG_PARAMSET) != 0) UE->mode = rx_calib_ue;
-  
-  pindex = config_paramidx_fromname(cmdline_params,numparams, CALIBRXMED_OPT);
-  if ( (cmdline_params[pindex].paramflags &  PARAMFLAG_PARAMSET) != 0) UE->mode = rx_calib_ue_med;
-
-  pindex = config_paramidx_fromname(cmdline_params,numparams, CALIBRXBYP_OPT);              
-  if ( (cmdline_params[pindex].paramflags &  PARAMFLAG_PARAMSET) != 0) UE->mode = rx_calib_ue_byp;
-
-  pindex = config_paramidx_fromname(cmdline_params,numparams, DBGPRACH_OPT); 
-  if (cmdline_params[pindex].uptr)
-    if ( *(cmdline_params[pindex].uptr) > 0) UE->mode = debug_prach;
-
-  pindex = config_paramidx_fromname(cmdline_params,numparams,NOL2CONNECT_OPT ); 
-  if (cmdline_params[pindex].uptr)
-    if ( *(cmdline_params[pindex].uptr) > 0)  UE->mode = no_L2_connect;
-
-  pindex = config_paramidx_fromname(cmdline_params,numparams,CALIBPRACH_OPT );
-  if (cmdline_params[pindex].uptr)
-    if ( *(cmdline_params[pindex].uptr) > 0) UE->mode = calib_prach_tx;
-
-  pindex = config_paramidx_fromname(cmdline_params,numparams,DUMPFRAME_OPT );
-  if ((cmdline_params[pindex].paramflags & PARAMFLAG_PARAMSET) != 0)
-    UE->mode = rx_dump_frame;
+  NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
 
   // Init power variables
   tx_max_power[CC_id] = tx_max_power[0];
@@ -388,9 +363,18 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
   UE->tx_power_max_dBm     = tx_max_power[CC_id];
   UE->rf_map.card          = card_offset;
   UE->rf_map.chain         = CC_id + chain_offset;
+  UE->max_ldpc_iterations  = nrUE_params.max_ldpc_iterations;
+  UE->UE_scan_carrier      = nrUE_params.UE_scan_carrier;
+  UE->UE_fo_compensation   = nrUE_params.UE_fo_compensation;
+  UE->if_freq              = nrUE_params.if_freq;
+  UE->if_freq_off          = nrUE_params.if_freq_off;
+  UE->chest_freq           = nrUE_params.chest_freq;
+  UE->chest_time           = nrUE_params.chest_time;
+  UE->no_timing_correction = nrUE_params.no_timing_correction;
+  UE->timing_advance       = nrUE_params.timing_advance;
 
-  LOG_I(PHY,"Set UE mode %d, UE_fo_compensation %d, UE_scan_carrier %d, UE_no_timing_correction %d \n, chest-freq %d\n",
-  	   UE->mode, UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq);
+  LOG_I(PHY,"Set UE_fo_compensation %d, UE_scan_carrier %d, UE_no_timing_correction %d \n, chest-freq %d, chest-time %d\n",
+        UE->UE_fo_compensation, UE->UE_scan_carrier, UE->no_timing_correction, UE->chest_freq, UE->chest_time);
 
   // Set FP variables
 
@@ -399,10 +383,14 @@ void set_options(int CC_id, PHY_VARS_NR_UE *UE){
     LOG_I(PHY, "Set UE frame_type %d\n", fp->frame_type);
   }
 
-  LOG_I(PHY, "Set UE nb_rx_antenna %d, nb_tx_antenna %d, threequarter_fs %d, ssb_start_subcarrier %d\n", fp->nb_antennas_rx, fp->nb_antennas_tx, fp->threequarter_fs, fp->ssb_start_subcarrier);
+  fp->nb_antennas_rx       = nrUE_params.nb_antennas_rx;
+  fp->nb_antennas_tx       = nrUE_params.nb_antennas_tx;
+  fp->threequarter_fs      = nrUE_params.threequarter_fs;
+  fp->N_RB_DL              = nrUE_params.N_RB_DL;
+  fp->ssb_start_subcarrier = nrUE_params.ssb_start_subcarrier;
+  fp->ofdm_offset_divisor  = nrUE_params.ofdm_offset_divisor;
 
-  fp->ofdm_offset_divisor = nrUE_params.ofdm_offset_divisor;
-  UE->max_ldpc_iterations = nrUE_params.max_ldpc_iterations;
+  LOG_I(PHY, "Set UE nb_rx_antenna %d, nb_tx_antenna %d, threequarter_fs %d, ssb_start_subcarrier %d\n", fp->nb_antennas_rx, fp->nb_antennas_tx, fp->threequarter_fs, fp->ssb_start_subcarrier);
 
 }
 
@@ -442,7 +430,7 @@ void init_openair0(void) {
 
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
 
-    if (get_softmodem_params()->sl_mode != 0) {
+    if (get_softmodem_params()->sl_mode == 2) {
       nr_get_carrier_frequencies_sl(PHY_vars_UE_g[0][0], &sl_carrier);
       nr_rf_card_config_freq(&openair0_cfg[card], sl_carrier, sl_carrier, freq_off);
     }
@@ -452,6 +440,8 @@ void init_openair0(void) {
     openair0_cfg[card].configFilename = get_softmodem_params()->rf_config_file;
 
     if (usrp_args) openair0_cfg[card].sdr_addrs = usrp_args;
+    if (tx_subdev) openair0_cfg[card].tx_subdev = tx_subdev;
+    if (rx_subdev) openair0_cfg[card].rx_subdev = rx_subdev;
 
   }
 }
@@ -469,7 +459,7 @@ static void init_pdcp(int ue_id) {
   if (get_softmodem_params()->nsa && rlc_module_init(0) != 0) {
     LOG_I(RLC, "Problem at RLC initiation \n");
   }
-  pdcp_layer_init();
+  nr_pdcp_layer_init();
   nr_pdcp_module_init(pdcp_initmask, ue_id);
   pdcp_set_rlc_data_req_func((send_rlc_data_req_func_t) rlc_data_req);
   pdcp_set_pdcp_data_ind_func((pdcp_data_ind_func_t) pdcp_data_ind);
@@ -480,6 +470,39 @@ void *rrc_enb_process_msg(void *notUsed) {
   return NULL;
 }
 
+static bool stop_immediately = false;
+static void trigger_stop(int sig)
+{
+  if (!oai_exit)
+    itti_wait_tasks_unblock();
+}
+static void trigger_deregistration(int sig)
+{
+  if (!stop_immediately) {
+    MessageDef *msg = itti_alloc_new_message(TASK_RRC_UE_SIM, 0, NAS_DEREGISTRATION_REQ);
+    itti_send_msg_to_task(TASK_NAS_NRUE, 0, msg);
+    stop_immediately = true;
+    static const char m[] = "Press ^C again to trigger immediate shutdown\n";
+    __attribute__((unused)) int unused = write(STDOUT_FILENO, m, sizeof(m) - 1);
+    signal(SIGALRM, trigger_stop);
+    alarm(5);
+  } else {
+    itti_wait_tasks_unblock();
+  }
+}
+
+static void get_channel_model_mode() {
+  paramdef_t GNBParams[]  = GNBPARAMS_DESC;
+  config_get(GNBParams, sizeof(GNBParams)/sizeof(paramdef_t), NULL);
+  int num_xp_antennas = *GNBParams[GNB_PDSCH_ANTENNAPORTS_XP_IDX].iptr;
+
+  if (num_xp_antennas == 2)
+    init_bler_table("NR_MIMO2x2_AWGN_RESULTS_DIR");
+  else
+    init_bler_table("NR_AWGN_RESULTS_DIR");
+}
+
+int NB_UE_INST = 1;
 
 int main( int argc, char **argv ) {
   int set_exe_prio = 1;
@@ -490,12 +513,6 @@ int main( int argc, char **argv ) {
   if (set_exe_prio)
     set_priority(79);
 
-  if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1)
-  {
-    fprintf(stderr, "mlockall: %s\n", strerror(errno));
-    return EXIT_FAILURE;
-  }
-
   //uint8_t beta_ACK=0,beta_RI=0,beta_CQI=2;
   PHY_VARS_NR_UE *UE[MAX_NUM_CCs];
   start_background_system();
@@ -503,7 +520,7 @@ int main( int argc, char **argv ) {
   if ( load_configmodule(argc,argv,CONFIG_ENABLECMDLINEONLY) == NULL) {
     exit_fun("[SOFTMODEM] Error, configuration module init failed\n");
   }
-  set_softmodem_sighandler();
+  //set_softmodem_sighandler();
   CONFIG_SETRTFLAG(CONFIG_NOEXITONHELP);
   memset(openair0_cfg,0,sizeof(openair0_config_t)*MAX_CARDS);
   memset(tx_max_power,0,sizeof(int)*MAX_NUM_CCs);
@@ -539,26 +556,24 @@ int main( int argc, char **argv ) {
 
   init_NR_UE(1,uecap_file,rrc_config_path);
 
+  int mode_offset = get_softmodem_params()->nsa ? NUMBER_OF_UE_MAX : 1;
   uint16_t node_number = get_softmodem_params()->node_number;
-  ue_id_g = (node_number == 0) ? 0 : node_number - 1;
+  ue_id_g = (node_number == 0) ? 0 : node_number - 2;
   AssertFatal(ue_id_g >= 0, "UE id is expected to be nonnegative.\n");
   if(IS_SOFTMODEM_NOS1 || get_softmodem_params()->sa || get_softmodem_params()->nsa) {
     if(node_number == 0) {
       init_pdcp(0);
     }
     else {
-      init_pdcp(node_number);
+      init_pdcp(mode_offset + ue_id_g);
     }
   }
 
-  NB_UE_INST=1;
-  NB_INST=1;
   PHY_vars_UE_g = malloc(sizeof(PHY_VARS_NR_UE **));
   PHY_vars_UE_g[0] = malloc(sizeof(PHY_VARS_NR_UE *)*MAX_NUM_CCs);
   if (get_softmodem_params()->emulate_l1) {
     RCconfig_nr_ue_macrlc();
-    init_bler_table();
-    init_mimo_bler_table();
+    get_channel_model_mode();
   }
 
   if (get_softmodem_params()->do_ra)
@@ -570,18 +585,18 @@ int main( int argc, char **argv ) {
   if (!get_softmodem_params()->nsa && get_softmodem_params()->emulate_l1)
     start_oai_nrue_threads();
 
-  Nid_SL = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;
   if (!get_softmodem_params()->emulate_l1) {
     for (int CC_id=0; CC_id<MAX_NUM_CCs; CC_id++) {
       PHY_vars_UE_g[0][CC_id] = (PHY_VARS_NR_UE *)malloc(sizeof(PHY_VARS_NR_UE));
       UE[CC_id] = PHY_vars_UE_g[0][CC_id];
       memset(UE[CC_id],0,sizeof(PHY_VARS_NR_UE));
+
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-      if (get_softmodem_params()->sl_mode == 2) {
+      if (get_softmodem_params()->sl_mode != 0) {
         mac->if_module = NULL;
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
-        nr_phy_config_request_sl(UE[CC_id], N_RB_DL, N_RB_DL, mu, Nid_SL, CC_id, SSB_positions);
+        nr_phy_config_request_sl(UE[CC_id], N_RB_SL, N_RB_SL, N_RB_SL, CC_id);
       }
       if (get_softmodem_params()->sa) {
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
@@ -592,13 +607,16 @@ int main( int argc, char **argv ) {
                                   get_softmodem_params()->numerology,
                                   nr_band);
       } else {
-        if(mac->if_module != NULL && mac->if_module->phy_config_request != NULL)
+        if (mac->if_module != NULL && mac->if_module->phy_config_request != NULL) {
           mac->if_module->phy_config_request(&mac->phy_config);
+          mac->phy_config_request_sent = true;
+        }
         nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, &UE[CC_id]->nrUE_config,
-                               get_softmodem_params()->sl_mode == 0 ?
+                               ((get_softmodem_params()->sl_mode == 0) ?
                                *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
-                               UE[CC_id]->frame_parms.nr_band);
+                               UE[CC_id]->frame_parms.nr_band));
       }
+
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);
     }
 
@@ -613,7 +631,9 @@ int main( int argc, char **argv ) {
       initTpool("n", &UE[0]->threadPool, true);
       initNotifiedFIFO(&UE[0]->respDecode);
     }
+
     if(IS_SOFTMODEM_DOSCOPE) {
+      load_softscope("nrqt",PHY_vars_UE_g[0][0]);
       load_softscope("nr",PHY_vars_UE_g[0][0]);
     }
 
@@ -631,34 +651,47 @@ int main( int argc, char **argv ) {
 
   // Sleep a while before checking all parameters have been used
   // Some are used directly in external threads, asynchronously
-  sleep(20);
+  sleep(2);
   config_check_unknown_cmdlineopt(CONFIG_CHECKALLSECTIONS);
 
-  while(true)
-    sleep(3600);
+  // wait for end of program
+  printf("Entering ITTI signals handler\n");
+  printf("TYPE <CTRL-C> TO TERMINATE\n");
+  itti_wait_tasks_end(trigger_deregistration);
+  printf("Returned from ITTI signal handler\n");
+  oai_exit=1;
+  printf("oai_exit=%d\n",oai_exit);
 
   if (ouput_vcd)
     vcd_signal_dumper_close();
+
+  if (PHY_vars_UE_g && PHY_vars_UE_g[0]) {
+    for (int CC_id = 0; CC_id < MAX_NUM_CCs; CC_id++) {
+      PHY_VARS_NR_UE *phy_vars = PHY_vars_UE_g[0][CC_id];
+      if (phy_vars && phy_vars->rfdevice.trx_end_func)
+        phy_vars->rfdevice.trx_end_func(&phy_vars->rfdevice);
+    }
+  }
 
   return 0;
 }
 
 // Read in each MCS file and build BLER-SINR-TB table
-static void init_bler_table(void) {
+static void init_bler_table(char *env_string) {
   memset(nr_bler_data, 0, sizeof(nr_bler_data));
 
-  const char *awgn_results_dir = getenv("NR_AWGN_RESULTS_DIR");
+  const char *awgn_results_dir = getenv(env_string);
   if (!awgn_results_dir) {
-    LOG_W(NR_MAC, "No $NR_AWGN_RESULTS_DIR\n");
+    LOG_W(NR_MAC, "No %s\n", env_string);
     return;
   }
 
   for (unsigned int i = 0; i < NR_NUM_MCS; i++) {
     char fName[1024];
-    snprintf(fName, sizeof(fName), "%s/mcs%d_awgn_5G.csv", awgn_results_dir, i);
+    snprintf(fName, sizeof(fName), "%s/mcs%u_awgn_5G.csv", awgn_results_dir, i);
     FILE *pFile = fopen(fName, "r");
     if (!pFile) {
-      LOG_E(NR_MAC, "open %s: %s\n", fName, strerror(errno));
+      LOG_E(NR_MAC, "%s: open %s: %s\n", __func__, fName, strerror(errno));
       continue;
     }
     size_t bufSize = 1024;
@@ -692,59 +725,6 @@ static void init_bler_table(void) {
       nlines++;
     }
     nr_bler_data[i].length = nlines;
-    fclose(pFile);
-  }
-}
-
-// Read in each MCS file and build BLER-SINR-TB table
-static void init_mimo_bler_table(void) {
-  memset(nr_mimo_bler_data, 0, sizeof(nr_mimo_bler_data));
-
-  const char *awgn_results_dir = getenv("NR_MIMO2x2_AWGN_RESULTS_DIR");
-  if (!awgn_results_dir) {
-    LOG_W(NR_MAC, "No $NR_MIMO2x2_AWGN_RESULTS_DIR\n");
-    return;
-  }
-
-  for (unsigned int i = 0; i < NR_NUM_MCS; i++) {
-    char fName[1024];
-    snprintf(fName, sizeof(fName), "%s/mcs%d_cdlc_mimo2x2_dl.csv", awgn_results_dir, i);
-    FILE *pFile = fopen(fName, "r");
-    if (!pFile) {
-      LOG_E(NR_MAC, "open %s: %s\n", fName, strerror(errno));
-      continue;
-    }
-    size_t bufSize = 1024;
-    char * line = NULL;
-    char * token;
-    char * temp = NULL;
-    int nlines = 0;
-    while (getline(&line, &bufSize, pFile) > 0) {
-      if (!strncmp(line, "SNR", 3)) {
-        continue;
-      }
-
-      if (nlines > NR_NUM_SINR) {
-        LOG_E(NR_MAC, "BLER FILE ERROR - num lines greater than expected - file: %s\n", fName);
-        abort();
-      }
-
-      token = strtok_r(line, ";", &temp);
-      int ncols = 0;
-      while (token != NULL) {
-        if (ncols > NUM_BLER_COL) {
-          LOG_E(NR_MAC, "BLER FILE ERROR - num of cols greater than expected\n");
-          abort();
-        }
-
-        nr_mimo_bler_data[i].bler_table[nlines][ncols] = strtof(token, NULL);
-        ncols++;
-
-        token = strtok_r(NULL, ";", &temp);
-      }
-      nlines++;
-    }
-    nr_mimo_bler_data[i].length = nlines;
     fclose(pFile);
   }
 }

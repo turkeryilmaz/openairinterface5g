@@ -40,16 +40,14 @@
 #define VOID_PARAMETER                (void)   /* avoid a compiler warning for unused parameters of function */
 
 /* PSS parameters */
-#ifdef PHY_SIDE_LINK
-#define  NUMBER_PSS_SEQUENCE          (2)
-#define  PSS_SEQ_OFFSET               (22)    // 0 for NR, 22 for SL
-#else
 #define  NUMBER_PSS_SEQUENCE          (3)
+#define  NUMBER_PSS_SEQUENCE_SL       (2)
 #define  PSS_SEQ_OFFSET               (0)
-#endif
-#define  SPSS_SSSS_SUB_CARRIER_START  (2)     // 56 for NR, 2 for SL
-#define  PSS_SSS_SUB_CARRIER_START    (56)      // 56 for NR, 2 for SL
+#define  PSS_SEQ_OFFSET_SL            (22)
+#define  PSS_SSS_SUB_CARRIER_START    (56)
+#define  PSS_SSS_SUB_CARRIER_START_SL (2)
 #define  INVALID_PSS_SEQUENCE         (NUMBER_PSS_SEQUENCE)
+#define  INVALID_PSS_SEQUENCE_SL      (NUMBER_PSS_SEQUENCE_SL)
 #define  LENGTH_PSS_NR                (127)
 #define  N_SC_RB                      (12)     /* Resource block size in frequency domain expressed as a number if subcarriers */
 #define  SCALING_PSS_NR               (3)
@@ -70,7 +68,7 @@
 #define  SSS_SYMBOL_NB                ((2) + OFFSET_SS_PBCH)
 #define  PBCH_LAST_SYMBOL_NB          ((3) + OFFSET_SS_PBCH)
 
-#define  OFFSET_SS_PSBCH              -1
+#define  OFFSET_SS_PSBCH              0//-1
 #define  PSS0_SL_SYMBOL_NB            ((1) + OFFSET_SS_PSBCH)
 #define  PSS1_SL_SYMBOL_NB            ((2) + OFFSET_SS_PSBCH)
 #define  SSS0_SL_SYMBOL_NB            ((3) + OFFSET_SS_PSBCH)
@@ -81,7 +79,7 @@
 #define  NB_SYMBOLS_PBCH              (3)
 #define  NR_N_SYMBOLS_SSB             (4)
 
-#define  IQ_SIZE                      (sizeof(int16_t) * 2)        /* I and Q are alternatively stored into buffers */
+#define IQ_SIZE sizeof(c16_t) /* I and Q are alternatively stored into buffers */
 #define  N_SYMB_SLOT                  (14)
 #define  N_SYMB_SLOT_SL               (13)
 

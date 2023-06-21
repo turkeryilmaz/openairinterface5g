@@ -78,27 +78,34 @@ const uint32_t NR_LONG_BSR_TABLE[NR_LONG_BSR_TABLE_SIZE] ={
 };
 
 // start symbols for SSB types A,B,C,D,E
-uint16_t symbol_ssb_AC[8]={2,8,16,22,30,36,44,50};
-uint16_t symbol_ssb_BD[64]={4,8,16,20,32,36,44,48,60,64,72,76,88,92,100,104,144,148,156,160,172,176,184,188,200,204,212,216,228,232,240,244,284,288,
-                            296,300,312,316,324,328,340,344,352,356,368,372,380,384,424,428,436,440,452,456,464,468,480,484,492,496,508,512,520,524};
-uint16_t symbol_ssb_E[64]={8,12,16,20,32,36,40,44,64,68,72,76,88,92,96,100,120,124,128,132,144,148,152,156,176,180,184,188,200,204,208,212,288,292,
-                           296,300,312,316,320,324,344,348,352,356,368,372,376,380,400,404,408,412,424,428,432,436,456,460,464,468,480,484,488,492};
+static const uint16_t symbol_ssb_AC[8] = {2, 8, 16, 22, 30, 36, 44, 50};
+static const uint16_t symbol_ssb_BD[64] = {4,   8,   16,  20,  32,  36,  44,  48,  60,  64,  72,  76,  88,  92,  100, 104,
+                                           144, 148, 156, 160, 172, 176, 184, 188, 200, 204, 212, 216, 228, 232, 240, 244,
+                                           284, 288, 296, 300, 312, 316, 324, 328, 340, 344, 352, 356, 368, 372, 380, 384,
+                                           424, 428, 436, 440, 452, 456, 464, 468, 480, 484, 492, 496, 508, 512, 520, 524};
+static const uint16_t symbol_ssb_E[64] = {8,   12,  16,  20,  32,  36,  40,  44,  64,  68,  72,  76,  88,  92,  96,  100,
+                                          120, 124, 128, 132, 144, 148, 152, 156, 176, 180, 184, 188, 200, 204, 208, 212,
+                                          288, 292, 296, 300, 312, 316, 320, 324, 344, 348, 352, 356, 368, 372, 376, 380,
+                                          400, 404, 408, 412, 424, 428, 432, 436, 456, 460, 464, 468, 480, 484, 488, 492};
 
 const uint8_t nr_slots_per_frame[5] = {10, 20, 40, 80, 160};
 
 // Table 6.3.3.1-5 (38.211) NCS for preamble formats with delta_f_RA = 1.25 KHz
-uint16_t NCS_unrestricted_delta_f_RA_125[16] = {0,13,15,18,22,26,32,38,46,59,76,93,119,167,279,419};
-uint16_t NCS_restricted_TypeA_delta_f_RA_125[15]   = {15,18,22,26,32,38,46,55,68,82,100,128,158,202,237}; // high-speed case set Type A
-uint16_t NCS_restricted_TypeB_delta_f_RA_125[13]   = {15,18,22,26,32,38,46,55,68,82,100,118,137}; // high-speed case set Type B
+static const uint16_t NCS_unrestricted_delta_f_RA_125[16] = {0, 13, 15, 18, 22, 26, 32, 38, 46, 59, 76, 93, 119, 167, 279, 419};
+static const uint16_t NCS_restricted_TypeA_delta_f_RA_125[15] =
+    {15, 18, 22, 26, 32, 38, 46, 55, 68, 82, 100, 128, 158, 202, 237}; // high-speed case set Type A
+static const uint16_t NCS_restricted_TypeB_delta_f_RA_125[13] =
+    {15, 18, 22, 26, 32, 38, 46, 55, 68, 82, 100, 118, 137}; // high-speed case set Type B
 
 // Table 6.3.3.1-6 (38.211) NCS for preamble formats with delta_f_RA = 5 KHz
-uint16_t NCS_unrestricted_delta_f_RA_5[16] = {0,13,26,33,38,41,49,55,64,76,93,119,139,209,279,419};
-uint16_t NCS_restricted_TypeA_delta_f_RA_5[16]   = {36,57,72,81,89,94,103,112,121,132,137,152,173,195,216,237}; // high-speed case set Type A
-uint16_t NCS_restricted_TypeB_delta_f_RA_5[14]   = {36,57,60,63,65,68,71,77,81,85,97,109,122,137}; // high-speed case set Type B
+static const uint16_t NCS_unrestricted_delta_f_RA_5[16] = {0, 13, 26, 33, 38, 41, 49, 55, 64, 76, 93, 119, 139, 209, 279, 419};
+static const uint16_t NCS_restricted_TypeA_delta_f_RA_5[16] =
+    {36, 57, 72, 81, 89, 94, 103, 112, 121, 132, 137, 152, 173, 195, 216, 237}; // high-speed case set Type A
+static const uint16_t NCS_restricted_TypeB_delta_f_RA_5[14] =
+    {36, 57, 60, 63, 65, 68, 71, 77, 81, 85, 97, 109, 122, 137}; // high-speed case set Type B
 
 // Table 6.3.3.1-7 (38.211) NCS for preamble formats with delta_f_RA = 15 * 2mu KHz where mu = {0,1,2,3}
-uint16_t NCS_unrestricted_delta_f_RA_15[16] = {0,2,4,6,8,10,12,13,15,17,19,23,27,34,46,69};
-
+static const uint16_t NCS_unrestricted_delta_f_RA_15[16] = {0, 2, 4, 6, 8, 10, 12, 13, 15, 17, 19, 23, 27, 34, 46, 69};
 
 //	specification mapping talbe, table_38$x_$y_$z_c$a
 //	- $x: specification
@@ -312,80 +319,335 @@ const uint8_t table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[16][4]={
     {1,0,2,6}   // row index 16
 };
 
-void get_info_from_tda_tables(int default_abc,
-                              int tda,
-                              int dmrs_TypeA_Position,
-                              int normal_CP,
-                              bool *is_mapping_typeA,
-                              int *startSymbolIndex,
-                              int *nrOfSymbols) {
+// TS 38.211 - Table 6.3.1.5-1: Precoding matrix W for single-layer transmission using two antenna ports, 'n' = -1 and 'o' = -j
+const char table_38211_6_3_1_5_1[6][2][1] = {
+    {{'1'}, {'0'}}, // tpmi 0
+    {{'0'}, {'1'}}, // tpmi 1
+    {{'1'}, {'1'}}, // tpmi 2
+    {{'1'}, {'n'}}, // tpmi 3
+    {{'1'}, {'j'}}, // tpmi 4
+    {{'1'}, {'o'}}  // tpmi 5
+};
+
+// TS 38.211 - Table 6.3.1.5-2: Precoding matrix W for single-layer transmission using four antenna ports with transform precoding enabled, 'n' = -1 and 'o' = -j
+const char table_38211_6_3_1_5_2[28][4][1] = {
+    {{'1'}, {'0'}, {'0'}, {'0'}}, // tpmi 0
+    {{'0'}, {'1'}, {'0'}, {'0'}}, // tpmi 1
+    {{'0'}, {'0'}, {'1'}, {'0'}}, // tpmi 2
+    {{'0'}, {'0'}, {'0'}, {'1'}}, // tpmi 3
+    {{'1'}, {'0'}, {'1'}, {'0'}}, // tpmi 4
+    {{'1'}, {'0'}, {'n'}, {'0'}}, // tpmi 5
+    {{'1'}, {'0'}, {'j'}, {'0'}}, // tpmi 6
+    {{'1'}, {'0'}, {'o'}, {'0'}}, // tpmi 7
+    {{'0'}, {'1'}, {'0'}, {'1'}}, // tpmi 8
+    {{'0'}, {'1'}, {'0'}, {'n'}}, // tpmi 9
+    {{'0'}, {'1'}, {'0'}, {'j'}}, // tpmi 10
+    {{'0'}, {'1'}, {'0'}, {'o'}}, // tpmi 11
+    {{'1'}, {'1'}, {'1'}, {'n'}}, // tpmi 12
+    {{'1'}, {'1'}, {'j'}, {'j'}}, // tpmi 13
+    {{'1'}, {'1'}, {'n'}, {'1'}}, // tpmi 14
+    {{'1'}, {'1'}, {'o'}, {'o'}}, // tpmi 15
+    {{'1'}, {'j'}, {'1'}, {'j'}}, // tpmi 16
+    {{'1'}, {'j'}, {'j'}, {'1'}}, // tpmi 17
+    {{'1'}, {'j'}, {'n'}, {'o'}}, // tpmi 18
+    {{'1'}, {'j'}, {'o'}, {'n'}}, // tpmi 19
+    {{'1'}, {'n'}, {'1'}, {'1'}}, // tpmi 20
+    {{'1'}, {'n'}, {'j'}, {'o'}}, // tpmi 21
+    {{'1'}, {'n'}, {'n'}, {'n'}}, // tpmi 22
+    {{'1'}, {'n'}, {'o'}, {'j'}}, // tpmi 23
+    {{'1'}, {'o'}, {'1'}, {'o'}}, // tpmi 24
+    {{'1'}, {'o'}, {'j'}, {'n'}}, // tpmi 25
+    {{'1'}, {'o'}, {'n'}, {'j'}}, // tpmi 26
+    {{'1'}, {'o'}, {'o'}, {'1'}}  // tpmi 27
+};
+
+// TS 38.211 - Table 6.3.1.5-3: Precoding matrix W for single-layer transmission using four antenna ports with transform precoding disabled, 'n' = -1 and 'o' = -j
+const char table_38211_6_3_1_5_3[28][4][1] = {
+    {{'1'}, {'0'}, {'0'}, {'0'}}, // tpmi 0
+    {{'0'}, {'1'}, {'0'}, {'0'}}, // tpmi 1
+    {{'0'}, {'0'}, {'1'}, {'0'}}, // tpmi 2
+    {{'0'}, {'0'}, {'0'}, {'1'}}, // tpmi 3
+    {{'1'}, {'0'}, {'1'}, {'0'}}, // tpmi 4
+    {{'1'}, {'0'}, {'n'}, {'0'}}, // tpmi 5
+    {{'1'}, {'0'}, {'j'}, {'0'}}, // tpmi 6
+    {{'1'}, {'0'}, {'o'}, {'0'}}, // tpmi 7
+    {{'0'}, {'1'}, {'0'}, {'1'}}, // tpmi 8
+    {{'0'}, {'1'}, {'0'}, {'n'}}, // tpmi 9
+    {{'0'}, {'1'}, {'0'}, {'j'}}, // tpmi 10
+    {{'0'}, {'1'}, {'0'}, {'o'}}, // tpmi 11
+    {{'1'}, {'1'}, {'1'}, {'1'}}, // tpmi 12
+    {{'1'}, {'1'}, {'j'}, {'j'}}, // tpmi 13
+    {{'1'}, {'1'}, {'n'}, {'n'}}, // tpmi 14
+    {{'1'}, {'1'}, {'o'}, {'o'}}, // tpmi 15
+    {{'1'}, {'j'}, {'1'}, {'j'}}, // tpmi 16
+    {{'1'}, {'j'}, {'j'}, {'n'}}, // tpmi 17
+    {{'1'}, {'j'}, {'n'}, {'o'}}, // tpmi 18
+    {{'1'}, {'j'}, {'o'}, {'1'}}, // tpmi 19
+    {{'1'}, {'n'}, {'1'}, {'n'}}, // tpmi 20
+    {{'1'}, {'n'}, {'j'}, {'o'}}, // tpmi 21
+    {{'1'}, {'n'}, {'n'}, {'1'}}, // tpmi 22
+    {{'1'}, {'n'}, {'o'}, {'j'}}, // tpmi 23
+    {{'1'}, {'o'}, {'1'}, {'o'}}, // tpmi 24
+    {{'1'}, {'o'}, {'j'}, {'1'}}, // tpmi 25
+    {{'1'}, {'o'}, {'n'}, {'j'}}, // tpmi 26
+    {{'1'}, {'o'}, {'o'}, {'n'}}  // tpmi 27
+};
+
+// TS 38.211 - Table 6.3.1.5-4: Precoding matrix W for two-layer transmission using two antenna ports, 'n' = -1 and 'o' = -j
+const char table_38211_6_3_1_5_4[3][2][2] = {
+    {{'1', '0'}, {'0', '1'}}, // tpmi 0
+    {{'1', '1'}, {'1', 'n'}}, // tpmi 1
+    {{'1', '1'}, {'j', 'o'}}  // tpmi 2
+};
+
+// TS 38.211 - Table 6.3.1.5-5: Precoding matrix W for two-layer transmission using four antenna ports, 'n' = -1 and 'o' = -j
+const char table_38211_6_3_1_5_5[22][4][2] = {
+    {{'1', '0'}, {'0', '1'}, {'0', '0'}, {'0', '0'}}, // tpmi 0
+    {{'1', '0'}, {'0', '0'}, {'0', '1'}, {'0', '0'}}, // tpmi 1
+    {{'1', '0'}, {'0', '0'}, {'0', '0'}, {'0', '1'}}, // tpmi 2
+    {{'0', '0'}, {'1', '0'}, {'0', '1'}, {'0', '0'}}, // tpmi 3
+    {{'0', '0'}, {'1', '0'}, {'0', '0'}, {'0', '1'}}, // tpmi 4
+    {{'0', '0'}, {'0', '0'}, {'1', '0'}, {'0', '1'}}, // tpmi 5
+    {{'1', '0'}, {'0', '1'}, {'1', '0'}, {'0', 'o'}}, // tpmi 6
+    {{'1', '0'}, {'0', '1'}, {'1', '0'}, {'0', 'j'}}, // tpmi 7
+    {{'1', '0'}, {'0', '1'}, {'o', '0'}, {'0', '1'}}, // tpmi 8
+    {{'1', '0'}, {'0', '1'}, {'o', '0'}, {'0', 'n'}}, // tpmi 9
+    {{'1', '0'}, {'0', '1'}, {'n', '0'}, {'0', 'o'}}, // tpmi 10
+    {{'1', '0'}, {'0', '1'}, {'n', '0'}, {'0', 'j'}}, // tpmi 11
+    {{'1', '0'}, {'0', '1'}, {'j', '0'}, {'0', '1'}}, // tpmi 12
+    {{'1', '0'}, {'0', '1'}, {'j', '0'}, {'0', 'n'}}, // tpmi 13
+    {{'1', '1'}, {'1', '1'}, {'1', 'n'}, {'1', 'n'}}, // tpmi 14
+    {{'1', '1'}, {'1', '1'}, {'j', 'o'}, {'j', 'o'}}, // tpmi 15
+    {{'1', '1'}, {'j', 'j'}, {'1', 'n'}, {'j', 'o'}}, // tpmi 16
+    {{'1', '1'}, {'j', 'j'}, {'j', 'o'}, {'n', '1'}}, // tpmi 17
+    {{'1', '1'}, {'n', 'n'}, {'1', 'n'}, {'n', '1'}}, // tpmi 18
+    {{'1', '1'}, {'n', 'n'}, {'j', 'o'}, {'o', 'j'}}, // tpmi 19
+    {{'1', '1'}, {'o', 'o'}, {'1', 'n'}, {'o', 'j'}}, // tpmi 20
+    {{'1', '1'}, {'o', 'o'}, {'j', 'o'}, {'1', 'n'}}  // tpmi 21
+};
+
+// Default PUSCH time domain resource allocation tables from 38.214
+const uint8_t table_6_1_2_1_1_2[16][4] = {
+    {0, 0, 0, 14}, // row index 1
+    {0, 0, 0, 12}, // row index 2
+    {0, 0, 0, 10}, // row index 3
+    {1, 0, 2, 10}, // row index 4
+    {1, 0, 4, 10}, // row index 5
+    {1, 0, 4, 8}, // row index 6
+    {1, 0, 4, 6}, // row index 7
+    {0, 1, 0, 14}, // row index 8
+    {0, 1, 0, 12}, // row index 9
+    {0, 1, 0, 10}, // row index 10
+    {0, 2, 0, 14}, // row index 11
+    {0, 2, 0, 12}, // row index 12
+    {0, 2, 0, 10}, // row index 13
+    {1, 0, 8, 6}, // row index 14
+    {0, 3, 0, 14}, // row index 15
+    {0, 3, 0, 10} // row index 16
+};
+
+const uint8_t table_6_1_2_1_1_3[16][4] = {
+    {0, 0, 0, 8}, // row index 1
+    {0, 0, 0, 12}, // row index 2
+    {0, 0, 0, 10}, // row index 3
+    {1, 0, 2, 10}, // row index 4
+    {1, 0, 4, 4}, // row index 5
+    {1, 0, 4, 8}, // row index 6
+    {1, 0, 4, 6}, // row index 7
+    {0, 1, 0, 8}, // row index 8
+    {0, 1, 0, 12}, // row index 9
+    {0, 1, 0, 10}, // row index 10
+    {0, 2, 0, 6}, // row index 11
+    {0, 2, 0, 12}, // row index 12
+    {0, 2, 0, 10}, // row index 13
+    {1, 0, 8, 4}, // row index 14
+    {0, 3, 0, 8}, // row index 15
+    {0, 3, 0, 10} // row index 16
+};
+
+NR_tda_info_t get_ul_tda_info(const NR_UE_UL_BWP_t *ul_bwp, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type, int tda_index)
+{
+  NR_tda_info_t tda_info = {0};
+  NR_PUSCH_TimeDomainResourceAllocationList_t *tdalist = get_ul_tdalist(ul_bwp, controlResourceSetId, ss_type, rnti_type);
+  // Definition of value j in Table 6.1.2.1.1-4 of 38.214
+  int scs = ul_bwp->scs;
+  AssertFatal(scs >= 0 &&  scs < 5, "Subcarrier spacing indicatior %d invalid value\n", scs);
+  int j = scs == 0 ? 1 : scs;
+  if (tdalist) {
+    AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+    NR_PUSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
+    tda_info.mapping_type = tda->mappingType;
+    // As described in 38.331, when the field is absent the UE applies the value 1 when PUSCH SCS is 15/30KHz
+    // 2 when PUSCH SCS is 60KHz and 3 when PUSCH SCS is 120KHz. This equates to the parameter j.
+    tda_info.k2 = tda->k2 ? *tda->k2 : j;
+    int S, L;
+    SLIV2SL(tda->startSymbolAndLength, &S, &L);
+    tda_info.startSymbolIndex = S;
+    tda_info.nrOfSymbols = L;
+  } else {
+    bool normal_CP = ul_bwp->cyclicprefix ? false : true;
+    if (normal_CP) {
+      tda_info.mapping_type = table_6_1_2_1_1_2[tda_index][0];
+      tda_info.k2 = table_6_1_2_1_1_2[tda_index][1] + j;
+      tda_info.startSymbolIndex = table_6_1_2_1_1_2[tda_index][2];
+      tda_info.nrOfSymbols = table_6_1_2_1_1_2[tda_index][3];
+    } else {
+      tda_info.mapping_type = table_6_1_2_1_1_3[tda_index][0];
+      tda_info.k2 = table_6_1_2_1_1_3[tda_index][1] + j;
+      tda_info.startSymbolIndex = table_6_1_2_1_1_3[tda_index][2];
+      tda_info.nrOfSymbols = table_6_1_2_1_1_3[tda_index][3];
+    }
+  }
+  return tda_info;
+}
+
+NR_tda_info_t get_info_from_tda_tables(default_table_type_t table_type,
+                                       int tda,
+                                       int dmrs_TypeA_Position,
+                                       int normal_CP)
+{
+  NR_tda_info_t tda_info = {0};
+  bool is_mapping_typeA;
   int k0 = 0;
-  switch(default_abc){
-    case 1:
+  switch(table_type){
+    case defaultA:
       if (normal_CP){
         if (dmrs_TypeA_Position){
-          *is_mapping_typeA = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][0];
+          is_mapping_typeA = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][0];
           k0 = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][1];
-          *startSymbolIndex = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][2];
-          *nrOfSymbols = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][3];
+          tda_info.startSymbolIndex = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][2];
+          tda_info.nrOfSymbols = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos3[tda][3];
         }
         else{
-          *is_mapping_typeA = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][0];
+          is_mapping_typeA = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][0];
           k0 = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][1];
-          *startSymbolIndex = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][2];
-          *nrOfSymbols = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][3];
+          tda_info.startSymbolIndex = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][2];
+          tda_info.nrOfSymbols = table_5_1_2_1_1_2_time_dom_res_alloc_A_dmrs_typeA_pos2[tda][3];
         }
       }
       else{
         if (dmrs_TypeA_Position){
-          *is_mapping_typeA = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][0];
+          is_mapping_typeA = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][0];
           k0 = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][1];
-          *startSymbolIndex = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][2];
-          *nrOfSymbols = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][3];
+          tda_info.startSymbolIndex = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][2];
+          tda_info.nrOfSymbols = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos3[tda][3];
         }
         else{
-          *is_mapping_typeA = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][0];
+          is_mapping_typeA = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][0];
           k0 = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][1];
-          *startSymbolIndex = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][2];
-          *nrOfSymbols = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][3];
+          tda_info.startSymbolIndex = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][2];
+          tda_info.nrOfSymbols = table_5_1_2_1_1_3_time_dom_res_alloc_A_extCP_dmrs_typeA_pos2[tda][3];
         }
       }
       break;
-    case 2:
+    case defaultB:
       if (dmrs_TypeA_Position){
-        *is_mapping_typeA = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][0];
+        is_mapping_typeA = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][0];
         k0 = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][1];
-        *startSymbolIndex = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][2];
-        *nrOfSymbols = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][3];
+        tda_info.startSymbolIndex = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][2];
+        tda_info.nrOfSymbols = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos3[tda][3];
       }
       else{
-        *is_mapping_typeA = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][0];
+        is_mapping_typeA = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][0];
         k0 = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][1];
-        *startSymbolIndex = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][2];
-        *nrOfSymbols = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][3];
+        tda_info.startSymbolIndex = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][2];
+        tda_info.nrOfSymbols = table_5_1_2_1_1_4_time_dom_res_alloc_B_dmrs_typeA_pos2[tda][3];
       }
       break;
-    case 3:
+    case defaultC:
       if (dmrs_TypeA_Position){
-        *is_mapping_typeA = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][0];
+        is_mapping_typeA = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][0];
         k0 = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][1];
-        *startSymbolIndex = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][2];
-        *nrOfSymbols = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][3];
+        tda_info.startSymbolIndex = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][2];
+        tda_info.nrOfSymbols = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos3[tda][3];
       }
       else{
-        *is_mapping_typeA = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][0];
+        is_mapping_typeA = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][0];
         k0 = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][1];
-        *startSymbolIndex = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][2];
-        *nrOfSymbols = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][3];
+        tda_info.startSymbolIndex = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][2];
+        tda_info.nrOfSymbols = table_5_1_2_1_1_5_time_dom_res_alloc_C_dmrs_typeA_pos2[tda][3];
       }
       break;
     default:
-     AssertFatal(1==0,"Invalid default time domaing allocation type\n");
+     AssertFatal(1 == 0, "Invalid default time domaing allocation type\n");
   }
-  AssertFatal(k0==0,"Only k0 = 0 is supported\n");
+  AssertFatal(k0 == 0, "Only k0 = 0 is supported\n");
+  tda_info.mapping_type = is_mapping_typeA ? typeA : typeB;
+  return tda_info;
 }
 
-const char *prachfmt[]={"0","1","2","3", "A1","A2","A3","B1","B4","C0","C2","A1/B1","A2/B2","A3/B3"};
+default_table_type_t get_default_table_type(int mux_pattern)
+{
+  switch (mux_pattern) {
+    case 1:
+      return defaultA;
+    case 2:
+      return defaultB;
+    case 3:
+      return defaultC;
+    default :
+      AssertFatal(1 == 0, "Invalid multiplexing type %d\n", mux_pattern);
+  }
+}
+
+NR_tda_info_t set_tda_info_from_list(NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist, int tda_index)
+{
+  NR_tda_info_t tda_info = {0};
+  AssertFatal(tda_index < tdalist->list.count, "TDA index from DCI %d exceeds TDA list array size %d\n", tda_index, tdalist->list.count);
+  NR_PDSCH_TimeDomainResourceAllocation_t *tda = tdalist->list.array[tda_index];
+  tda_info.mapping_type = tda->mappingType;
+  int S, L;
+  SLIV2SL(tda->startSymbolAndLength, &S, &L);
+  tda_info.startSymbolIndex = S;
+  tda_info.nrOfSymbols = L;
+  return tda_info;
+}
+
+NR_tda_info_t get_dl_tda_info(const NR_UE_DL_BWP_t *dl_BWP, int ss_type, int tda_index, int dmrs_typeA_pos,
+                              int mux_pattern, nr_rnti_type_t rnti_type, int coresetid, bool sib1)
+{
+  NR_tda_info_t tda_info;
+  bool normal_CP = dl_BWP->cyclicprefix ? false : true;
+  // implements Table 5.1.2.1.1-1 of 38.214
+  NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist = get_dl_tdalist(dl_BWP, coresetid, ss_type, rnti_type);
+  switch (rnti_type) {
+    case NR_RNTI_SI:
+      if(sib1) {
+        default_table_type_t table_type = get_default_table_type(mux_pattern);
+        tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
+      }
+      else {
+        if(tdalist)
+          tda_info = set_tda_info_from_list(tdalist, tda_index);
+        else {
+          default_table_type_t table_type = get_default_table_type(mux_pattern);
+          tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
+        }
+      }
+      break;
+    case NR_RNTI_P:
+      if(tdalist)
+        tda_info = set_tda_info_from_list(tdalist, tda_index);
+      else {
+        default_table_type_t table_type = get_default_table_type(mux_pattern);
+        tda_info = get_info_from_tda_tables(table_type, tda_index, dmrs_typeA_pos, normal_CP);
+      }
+      break;
+    case NR_RNTI_C:
+    case NR_RNTI_CS:
+    case NR_RNTI_MCS_C:
+    case NR_RNTI_RA:
+    case NR_RNTI_TC:
+      if(tdalist)
+        tda_info = set_tda_info_from_list(tdalist, tda_index);
+      else
+        tda_info = get_info_from_tda_tables(defaultA, tda_index, dmrs_typeA_pos, normal_CP);
+      break;
+    default :
+      AssertFatal(1 == 0, "Invalid RNTI type\n");
+  }
+  return tda_info;
+}
 
 uint16_t get_NCS(uint8_t index, uint16_t format0, uint8_t restricted_set_config) {
 
@@ -422,855 +684,835 @@ uint16_t get_NCS(uint8_t index, uint16_t format0, uint8_t restricted_set_config)
   }
 }
 
-//38.211 Table 6.3.3.2-1
-int16_t table_6_3_3_2_1[16][5] = {
-//Length_RA, delta_f_RA_PRACH, delta_f_PUSCH, N_RA_RB, kbar
-{ 839,        1.25,             15,            6,      7},
-{ 839,        1.25,             30,            3,      1},
-{ 839,        1.25,             60,            2,    133},
-{ 839,           5,             15,           24,     12},
-{ 839,           5,             30,           12,     10},
-{ 839,           5,             60,            6,      7},
-{ 139,          15,             15,           12,      2},
-{ 139,          15,             30,            6,      2},
-{ 139,          15,             60,            3,      2},
-{ 139,          30,             15,           24,      2},
-{ 139,          30,             30,           12,      2},
-{ 139,          30,             60,            6,      2},
-{ 139,          60,             60,           12,      2},
-{ 139,          60,            120,            6,      2},
-{ 139,         120,             60,           24,      2},
-{ 139,         120,            120,           12,      2}
-};
+//from 38.211 Table 6.3.3.2-1
+static const int16_t N_RA_RB[16] = {6, 3, 2, 24, 12, 6, 12, 6, 3, 24, 12, 6, 12, 6, 24, 12};
 
 /* Function to get number of RBs required for prach occasion based on
  * 38.211 Table 6.3.3.2-1 */
 int16_t get_N_RA_RB (int delta_f_RA_PRACH,int delta_f_PUSCH) {
 	
-	int8_t index = 0;
-	switch(delta_f_RA_PRACH) {
-			case 0 : index = 6;
-		          if (delta_f_PUSCH == 0)
-			          index += 0;
-		          else if(delta_f_PUSCH == 1)
-			          index += 1;
-		          else
-			          index += 2;
-							break;
-
-		case 1 : index = 9;
-		         if (delta_f_PUSCH == 0)
-			         index += 0;
-		         else if(delta_f_PUSCH == 1)
-		           index += 1;
-		         else
-			          index += 2;
-	           break;
-
-		case 2 : index = 11;
-		         if (delta_f_PUSCH == 2)
-			         index += 0;
-		         else
-			         index += 1;
-		         break;		
-		
-		case 3: index = 13;
-		          if (delta_f_PUSCH == 2)
-			          index += 0;
-		          else
-			          index += 1;
-		          break;
-
-		default : index = 10;/*30khz prach scs and 30khz pusch scs*/
-				
-	}
-  
-	return table_6_3_3_2_1[index][3];
+  int8_t index = 0;
+  switch(delta_f_RA_PRACH) {
+    case 0 :
+      index = 6;
+      if (delta_f_PUSCH == 0)
+        index += 0;
+      else if(delta_f_PUSCH == 1)
+        index += 1;
+      else
+        index += 2;
+      break;
+    case 1 :
+      index = 9;
+      if (delta_f_PUSCH == 0)
+        index += 0;
+      else if(delta_f_PUSCH == 1)
+        index += 1;
+      else
+        index += 2;
+      break;
+    case 2 :
+      index = 11;
+      if (delta_f_PUSCH == 2)
+        index += 0;
+      else
+        index += 1;
+      break;		
+    case 3:
+      index = 13;
+      if (delta_f_PUSCH == 2)
+        index += 0;
+      else
+        index += 1;
+      break;
+    default : index = 10;/*30khz prach scs and 30khz pusch scs*/
+  }
+  return N_RA_RB[index];
 }	
 // Table 6.3.3.2-2: Random access configurations for FR1 and paired spectrum/supplementary uplink
 // the column 5, (SFN_nbr is a bitmap where we set bit to '1' in the position of the subframe where the RACH can be sent.
 // E.g. in row 4, and column 5 we have set value 512 ('1000000000') which means RACH can be sent at subframe 9.
 // E.g. in row 20 and column 5 we have set value 66  ('0001000010') which means RACH can be sent at subframe 1 or 6
-int64_t table_6_3_3_2_2_prachConfig_Index [256][9] = {
-//format,   format,       x,          y,        SFN_nbr,   star_symb,   slots_sfn,    occ_slot,  duration
-{0,          -1,          16,         1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{0,          -1,          16,         1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{0,          -1,          16,         1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{0,          -1,          16,         1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{0,          -1,          8,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{0,          -1,          8,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{0,          -1,          8,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{0,          -1,          8,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{0,          -1,          4,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{0,          -1,          4,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{0,          -1,          4,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{0,          -1,          4,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{0,          -1,          2,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{0,          -1,          2,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{0,          -1,          2,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{0,          -1,          2,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{0,          -1,          1,          0,          2,          0,         1,         1,          0},          // (subframe number)           1
-{0,          -1,          1,          0,          16,         0,         1,         1,          0},          // (subframe number)           4
-{0,          -1,          1,          0,          128,        0,         1,         1,          0},          // (subframe number)           7
-{0,          -1,          1,          0,          66,         0,         1,         1,          0},          // (subframe number)           1,6
-{0,          -1,          1,          0,          132,        0,         1,         1,          0},          // (subframe number)           2,7
-{0,          -1,          1,          0,          264,        0,         1,         1,          0},          // (subframe number)           3,8
-{0,          -1,          1,          0,          146,        0,         1,         1,          0},          // (subframe number)           1,4,7
-{0,          -1,          1,          0,          292,        0,         1,         1,          0},          // (subframe number)           2,5,8
-{0,          -1,          1,          0,          584,        0,         1,         1,          0},          // (subframe number)           3, 6, 9
-{0,          -1,          1,          0,          341,        0,         1,         1,          0},          // (subframe number)           0,2,4,6,8
-{0,          -1,          1,          0,          682,        0,         1,         1,          0},          // (subframe number)           1,3,5,7,9
-{0,          -1,          1,          0,          1023,       0,         1,         1,          0},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{1,          -1,          16,         1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{1,          -1,          16,         1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{1,          -1,          16,         1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{1,          -1,          16,         1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{1,          -1,          8,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{1,          -1,          8,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{1,          -1,          8,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{1,          -1,          8,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{1,          -1,          4,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{1,          -1,          4,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{1,          -1,          4,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{1,          -1,          4,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{1,          -1,          2,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{1,          -1,          2,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{1,          -1,          2,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{1,          -1,          2,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{1,          -1,          1,          0,          2,          0,         1,         1,          0},          // (subframe number)           1
-{1,          -1,          1,          0,          16,         0,         1,         1,          0},          // (subframe number)           4
-{1,          -1,          1,          0,          128,        0,         1,         1,          0},          // (subframe number)           7
-{1,          -1,          1,          0,          66,         0,         1,         1,          0},          // (subframe number)           1,6
-{1,          -1,          1,          0,          132,        0,         1,         1,          0},          // (subframe number)           2,7
-{1,          -1,          1,          0,          264,        0,         1,         1,          0},          // (subframe number)           3,8
-{1,          -1,          1,          0,          146,        0,         1,         1,          0},          // (subframe number)           1,4,7
-{1,          -1,          1,          0,          292,        0,         1,         1,          0},          // (subframe number)           2,5,8
-{1,          -1,          1,          0,          584,        0,         1,         1,          0},          // (subframe number)           3,6,9
-{2,          -1,          16,         1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{2,          -1,          8,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{2,          -1,          4,          0,          2,          0,         1,         1,          0},          // (subframe number)           1
-{2,          -1,          2,          0,          2,          0,         1,         1,          0},          // (subframe number)           1
-{2,          -1,          2,          0,          32,         0,         1,         1,          0},          // (subframe number)           5
-{2,          -1,          1,          0,          2,          0,         1,         1,          0},          // (subframe number)           1
-{2,          -1,          1,          0,          32,         0,         1,         1,          0},          // (subframe number)           5
-{3,          -1,          16,         1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{3,          -1,          16,         1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{3,          -1,          16,         1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{3,          -1,          16,         1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{3,          -1,          8,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{3,          -1,          8,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{3,          -1,          8,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{3,          -1,          4,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{3,          -1,          4,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{3,          -1,          4,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{3,          -1,          4,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{3,          -1,          2,          1,          2,          0,         1,         1,          0},          // (subframe number)           1
-{3,          -1,          2,          1,          16,         0,         1,         1,          0},          // (subframe number)           4
-{3,          -1,          2,          1,          128,        0,         1,         1,          0},          // (subframe number)           7
-{3,          -1,          2,          1,          512,        0,         1,         1,          0},          // (subframe number)           9
-{3,          -1,          1,          0,          2,          0,         1,         1,          0},          // (subframe number)           1
-{3,          -1,          1,          0,          16,         0,         1,         1,          0},          // (subframe number)           4
-{3,          -1,          1,          0,          128,        0,         1,         1,          0},          // (subframe number)           7
-{3,          -1,          1,          0,          66,         0,         1,         1,          0},          // (subframe number)           1,6
-{3,          -1,          1,          0,          132,        0,         1,         1,          0},          // (subframe number)           2,7
-{3,          -1,          1,          0,          264,        0,         1,         1,          0},          // (subframe number)           3,8
-{3,          -1,          1,          0,          146,        0,         1,         1,          0},          // (subframe number)           1,4,7
-{3,          -1,          1,          0,          292,        0,         1,         1,          0},          // (subframe number)           2,5,8
-{3,          -1,          1,          0,          584,        0,         1,         1,          0},          // (subframe number)           3, 6, 9
-{3,          -1,          1,          0,          341,        0,         1,         1,          0},          // (subframe number)           0,2,4,6,8
-{3,          -1,          1,          0,          682,        0,         1,         1,          0},          // (subframe number)           1,3,5,7,9
-{3,          -1,          1,          0,          1023,       0,         1,         1,          0},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xa1,       -1,          16,         0,          528,        0,          1,          6,          2},          // (subframe number)           4,9
-{0xa1,       -1,          16,         1,          16,         0,          2,          6,          2},          // (subframe number)           4
-{0xa1,       -1,          8,          0,          528,        0,          1,          6,          2},          // (subframe number)           4,9
-{0xa1,       -1,          8,          1,          16,         0,          2,          6,          2},          // (subframe number)           4
-{0xa1,       -1,          4,          0,          528,        0,          1,          6,          2},          // (subframe number)           4,9
-{0xa1,       -1,          4,          1,          528,        0,          1,          6,          2},          // (subframe number)           4,9
-{0xa1,       -1,          4,          0,          16,         0,          2,          6,          2},          // (subframe number)           4
-{0xa1,       -1,          2,          0,          528,        0,          1,          6,          2},          // (subframe number)           4,9
-{0xa1,       -1,          2,          0,          2,          0,          2,          6,          2},          // (subframe number)           1
-{0xa1,       -1,          2,          0,          16,         0,          2,          6,          2},          // (subframe number)           4
-{0xa1,       -1,          2,          0,          128,        0,          2,          6,          2},          // (subframe number)           7
-{0xa1,       -1,          1,          0,          16,         0,          1,          6,          2},          // (subframe number)           4
-{0xa1,       -1,          1,          0,          66,         0,          1,          6,          2},          // (subframe number)           1,6
-{0xa1,       -1,          1,          0,          528,        0,          1,          6,          2},          // (subframe number)           4,9
-{0xa1,       -1,          1,          0,          2,          0,          2,          6,          2},          // (subframe number)           1
-{0xa1,       -1,          1,          0,          128,        0,          2,          6,          2},          // (subframe number)           7
-{0xa1,       -1,          1,          0,          132,        0,          2,          6,          2},          // (subframe number)           2,7
-{0xa1,       -1,          1,          0,          146,        0,          2,          6,          2},          // (subframe number)           1,4,7
-{0xa1,       -1,          1,          0,          341,        0,          2,          6,          2},          // (subframe number)           0,2,4,6,8
-{0xa1,       -1,          1,          0,          1023,       0,          2,          6,          2},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xa1,       -1,          1,          0,          682,        0,          2,          6,          2},          // (subframe number)           1,3,5,7,9
-{0xa1,       0xb1,        2,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xa1,       0xb1,        2,          0,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xa1,       0xb1,        1,          0,          16,         0,          1,          7,          2},          // (subframe number)           4
-{0xa1,       0xb1,        1,          0,          66,         0,          1,          7,          2},          // (subframe number)           1,6
-{0xa1,       0xb1,        1,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xa1,       0xb1,        1,          0,          2,          0,          2,          7,          2},          // (subframe number)           1
-{0xa1,       0xb1,        1,          0,          128,        0,          2,          7,          2},          // (subframe number)           7
-{0xa1,       0xb1,        1,          0,          146,        0,          2,          7,          2},          // (subframe number)           1,4,7
-{0xa1,       0xb1,        1,          0,          341,        0,          2,          7,          2},          // (subframe number)           0,2,4,6,8
-{0xa2,       -1,          16,         1,          580,        0,          1,          3,          4},          // (subframe number)           2,6,9
-{0xa2,       -1,          16,         1,          16,         0,          2,          3,          4},          // (subframe number)           4
-{0xa2,       -1,          8,          1,          580,        0,          1,          3,          4},          // (subframe number)           2,6,9
-{0xa2,       -1,          8,          1,          16,         0,          2,          3,          4},          // (subframe number)           4
-{0xa2,       -1,          4,          0,          580,        0,          1,          3,          4},          // (subframe number)           2,6,9
-{0xa2,       -1,          4,          0,          16,         0,          2,          3,          4},          // (subframe number)           4
-{0xa2,       -1,          2,          1,          580,        0,          1,          3,          4},          // (subframe number)           2,6,9
-{0xa2,       -1,          2,          0,          2,          0,          2,          3,          4},          // (subframe number)           1
-{0xa2,       -1,          2,          0,          16,         0,          2,          3,          4},          // (subframe number)           4
-{0xa2,       -1,          2,          0,          128,        0,          2,          3,          4},          // (subframe number)           7
-{0xa2,       -1,          1,          0,          16,         0,          1,          3,          4},          // (subframe number)           4
-{0xa2,       -1,          1,          0,          66,         0,          1,          3,          4},          // (subframe number)           1,6
-{0xa2,       -1,          1,          0,          528,        0,          1,          3,          4},          // (subframe number)           4,9
-{0xa2,       -1,          1,          0,          2,          0,          2,          3,          4},          // (subframe number)           1
-{0xa2,       -1,          1,          0,          128,        0,          2,          3,          4},          // (subframe number)           7
-{0xa2,       -1,          1,          0,          132,        0,          2,          3,          4},          // (subframe number)           2,7
-{0xa2,       -1,          1,          0,          146,        0,          2,          3,          4},          // (subframe number)           1,4,7
-{0xa2,       -1,          1,          0,          341,        0,          2,          3,          4},          // (subframe number)           0,2,4,6,8
-{0xa2,       -1,          1,          0,          1023,       0,          2,          3,          4},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xa2,       -1,          1,          0,          682,        0,          2,          3,          4},          // (subframe number)           1,3,5,7,9
-{0xa2,       0xb2,        2,          1,          580,        0,          1,          3,          4},          // (subframe number)           2,6,9
-{0xa2,       0xb2,        2,          0,          16,         0,          2,          3,          4},          // (subframe number)           4
-{0xa2,       0xb2,        1,          0,          16,         0,          1,          3,          4},          // (subframe number)           4
-{0xa2,       0xb2,        1,          0,          66,         0,          1,          3,          4},          // (subframe number)           1,6
-{0xa2,       0xb2,        1,          0,          528,        0,          1,          3,          4},          // (subframe number)           4,9
-{0xa2,       0xb2,        1,          0,          2,          0,          2,          3,          4},          // (subframe number)           1
-{0xa2,       0xb2,        1,          0,          128,        0,          2,          3,          4},          // (subframe number)           7
-{0xa2,       0xb2,        1,          0,          146,        0,          2,          3,          4},          // (subframe number)           1,4,7
-{0xa2,       0xb2,        1,          0,          341,        0,          2,          3,          4},          // (subframe number)           0,2,4,6,8
-{0xa2,       0xb2,        1,          0,          1023,       0,          2,          3,          4},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xa3,       -1,          16,         1,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xa3,       -1,          16,         1,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xa3,       -1,          8,          1,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xa3,       -1,          8,          1,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xa3,       -1,          4,          0,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xa3,       -1,          4,          0,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xa3,       -1,          2,          1,          580,        0,          2,          2,          6},          // (subframe number)           2,6,9
-{0xa3,       -1,          2,          0,          2,          0,          2,          2,          6},          // (subframe number)           1
-{0xa3,       -1,          2,          0,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xa3,       -1,          2,          0,          128,        0,          2,          2,          6},          // (subframe number)           7
-{0xa3,       -1,          1,          0,          16,         0,          1,          2,          6},          // (subframe number)           4
-{0xa3,       -1,          1,          0,          66,         0,          1,          2,          6},          // (subframe number)           1,6
-{0xa3,       -1,          1,          0,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xa3,       -1,          1,          0,          2,          0,          2,          2,          6},          // (subframe number)           1
-{0xa3,       -1,          1,          0,          128,        0,          2,          2,          6},          // (subframe number)           7
-{0xa3,       -1,          1,          0,          132,        0,          2,          2,          6},          // (subframe number)           2,7
-{0xa3,       -1,          1,          0,          146,        0,          2,          2,          6},          // (subframe number)           1,4,7
-{0xa3,       -1,          1,          0,          341,        0,          2,          2,          6},          // (subframe number)           0,2,4,6,8
-{0xa3,       -1,          1,          0,          1023,       0,          2,          2,          6},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xa3,       -1,          1,          0,          682,        0,          2,          2,          6},          // (subframe number)           1,3,5,7,9
-{0xa3,       0xb3,        2,          1,          580,        0,          2,          2,          6},          // (subframe number)           2,6,9
-{0xa3,       0xb3,        2,          0,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xa3,       0xb3,        1,          0,          16,         0,          1,          2,          6},          // (subframe number)           4
-{0xa3,       0xb3,        1,          0,          66,         0,          1,          2,          6},          // (subframe number)           1,6
-{0xa3,       0xb3,        1,          0,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xa3,       0xb3,        1,          0,          2,          0,          2,          2,          6},          // (subframe number)           1
-{0xa3,       0xb3,        1,          0,          128,        0,          2,          2,          6},          // (subframe number)           7
-{0xa3,       0xb3,        1,          0,          146,        0,          2,          2,          6},          // (subframe number)           1,4,7
-{0xa3,       0xb3,        1,          0,          341,        0,          2,          2,          6},          // (subframe number)           0,2,4,6,8
-{0xa3,       0xb3,        1,          0,          1023,       0,          2,          2,          6},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xb1,       -1,          16,         0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xb1,       -1,          16,         1,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xb1,       -1,          8,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xb1,       -1,          8,          1,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xb1,       -1,          4,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xb1,       -1,          4,          1,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xb1,       -1,          4,          0,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xb1,       -1,          2,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xb1,       -1,          2,          0,          2,          0,          2,          7,          2},          // (subframe number)           1
-{0xb1,       -1,          2,          0,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xb1,       -1,          2,          0,          128,        0,          2,          7,          2},          // (subframe number)           7
-{0xb1,       -1,          1,          0,          16,         0,          1,          7,          2},          // (subframe number)           4
-{0xb1,       -1,          1,          0,          66,         0,          1,          7,          2},          // (subframe number)           1,6
-{0xb1,       -1,          1,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xb1,       -1,          1,          0,          2,          0,          2,          7,          2},          // (subframe number)           1
-{0xb1,       -1,          1,          0,          128,        0,          2,          7,          2},          // (subframe number)           7
-{0xb1,       -1,          1,          0,          132,        0,          2,          7,          2},          // (subframe number)           2,7
-{0xb1,       -1,          1,          0,          146,        0,          2,          7,          2},          // (subframe number)           1,4,7
-{0xb1,       -1,          1,          0,          341,        0,          2,          7,          2},          // (subframe number)           0,2,4,6,8
-{0xb1,       -1,          1,          0,          1023,       0,          2,          7,          2},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xb1,       -1,          1,          0,          682,        0,          2,          7,          2},          // (subframe number)           1,3,5,7,9
-{0xb4,       -1,          16,         0,          528,        0,          2,          1,          12},         // (subframe number)           4,9
-{0xb4,       -1,          16,         1,          16,         0,          2,          1,          12},         // (subframe number)           4
-{0xb4,       -1,          8,          0,          528,        0,          2,          1,          12},         // (subframe number)           4,9
-{0xb4,       -1,          8,          1,          16,         0,          2,          1,          12},         // (subframe number)           4
-{0xb4,       -1,          4,          0,          528,        0,          2,          1,          12},         // (subframe number)           4,9
-{0xb4,       -1,          4,          0,          16,         0,          2,          1,          12},         // (subframe number)           4
-{0xb4,       -1,          4,          1,          528,        0,          2,          1,          12},         // (subframe number)           4,9
-{0xb4,       -1,          2,          0,          528,        0,          2,          1,          12},         // (subframe number)           4,9
-{0xb4,       -1,          2,          0,          2,          0,          2,          1,          12},         // (subframe number)           1
-{0xb4,       -1,          2,          0,          16,         0,          2,          1,          12},         // (subframe number)           4
-{0xb4,       -1,          2,          0,          128,        0,          2,          1,          12},         // (subframe number)           7
-{0xb4,       -1,          1,          0,          2,          0,          2,          1,          12},         // (subframe number)           1
-{0xb4,       -1,          1,          0,          16,         0,          2,          1,          12},         // (subframe number)           4
-{0xb4,       -1,          1,          0,          128,        0,          2,          1,          12},         // (subframe number)           7
-{0xb4,       -1,          1,          0,          66,         0,          2,          1,          12},         // (subframe number)           1,6
-{0xb4,       -1,          1,          0,          132,        0,          2,          1,          12},         // (subframe number)           2,7
-{0xb4,       -1,          1,          0,          528,        0,          2,          1,          12},         // (subframe number)           4,9
-{0xb4,       -1,          1,          0,          146,        0,          2,          1,          12},         // (subframe number)           1,4,7
-{0xb4,       -1,          1,          0,          341,        0,          2,          1,          12},         // (subframe number)           0,2,4,6,8
-{0xb4,       -1,          1,          0,          1023,       0,          2,          1,          12},         // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xb4,       -1,          1,          0,          682,        0,          2,          1,          12},         // (subframe number)           1,3,5,7,9
-{0xc0,       -1,          8,          1,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xc0,       -1,          4,          1,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xc0,       -1,          4,          0,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xc0,       -1,          2,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xc0,       -1,          2,          0,          2,          0,          2,          7,          2},          // (subframe number)           1
-{0xc0,       -1,          2,          0,          16,         0,          2,          7,          2},          // (subframe number)           4
-{0xc0,       -1,          2,          0,          128,        0,          2,          7,          2},          // (subframe number)           7
-{0xc0,       -1,          1,          0,          16,         0,          1,          7,          2},          // (subframe number)           4
-{0xc0,       -1,          1,          0,          66,         0,          1,          7,          2},          // (subframe number)           1,6
-{0xc0,       -1,          1,          0,          528,        0,          1,          7,          2},          // (subframe number)           4,9
-{0xc0,       -1,          1,          0,          2,          0,          2,          7,          2},          // (subframe number)           1
-{0xc0,       -1,          1,          0,          128,        0,          2,          7,          2},          // (subframe number)           7
-{0xc0,       -1,          1,          0,          132,        0,          2,          7,          2},          // (subframe number)           2,7
-{0xc0,       -1,          1,          0,          146,        0,          2,          7,          2},          // (subframe number)           1,4,7
-{0xc0,       -1,          1,          0,          341,        0,          2,          7,          2},          // (subframe number)           0,2,4,6,8
-{0xc0,       -1,          1,          0,          1023,       0,          2,          7,          2},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xc0,       -1,          1,          0,          682,        0,          2,          7,          2},          // (subframe number)           1,3,5,7,9
-{0xc2,       -1,          16,         1,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xc2,       -1,          16,         1,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xc2,       -1,          8,          1,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xc2,       -1,          8,          1,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xc2,       -1,          4,          0,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xc2,       -1,          4,          0,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xc2,       -1,          2,          1,          580,        0,          2,          2,          6},          // (subframe number)           2,6,9
-{0xc2,       -1,          2,          0,          2,          0,          2,          2,          6},          // (subframe number)           1
-{0xc2,       -1,          2,          0,          16,         0,          2,          2,          6},          // (subframe number)           4
-{0xc2,       -1,          2,          0,          128,        0,          2,          2,          6},          // (subframe number)           7
-{0xc2,       -1,          1,          0,          16,         0,          1,          2,          6},          // (subframe number)           4
-{0xc2,       -1,          1,          0,          66,         0,          1,          2,          6},          // (subframe number)           1,6
-{0xc2,       -1,          1,          0,          528,        0,          1,          2,          6},          // (subframe number)           4,9
-{0xc2,       -1,          1,          0,          2,          0,          2,          2,          6},          // (subframe number)           1
-{0xc2,       -1,          1,          0,          128,        0,          2,          2,          6},          // (subframe number)           7
-{0xc2,       -1,          1,          0,          132,        0,          2,          2,          6},          // (subframe number)           2,7
-{0xc2,       -1,          1,          0,          146,        0,          2,          2,          6},          // (subframe number)           1,4,7
-{0xc2,       -1,          1,          0,          341,        0,          2,          2,          6},          // (subframe number)           0,2,4,6,8
-{0xc2,       -1,          1,          0,          1023,       0,          2,          2,          6},          // (subframe number)           0,1,2,3,4,5,6,7,8,9
-{0xc2,       -1,          1,          0,          682,        0,          2,          2,          6}                    // (subframe number)           1,3,5,7,9
+static const int64_t table_6_3_3_2_2_prachConfig_Index[256][9] = {
+    // format,   format,       x,          y,        SFN_nbr,   star_symb,   slots_sfn,    occ_slot,  duration
+    {0, -1, 16, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {0, -1, 16, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {0, -1, 16, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {0, -1, 16, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {0, -1, 8, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {0, -1, 8, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {0, -1, 8, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {0, -1, 8, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {0, -1, 4, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {0, -1, 4, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {0, -1, 4, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {0, -1, 4, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {0, -1, 2, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {0, -1, 2, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {0, -1, 2, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {0, -1, 2, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {0, -1, 1, 0, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {0, -1, 1, 0, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {0, -1, 1, 0, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {0, -1, 1, 0, 66, 0, 1, 1, 0}, // (subframe number)           1,6
+    {0, -1, 1, 0, 132, 0, 1, 1, 0}, // (subframe number)           2,7
+    {0, -1, 1, 0, 264, 0, 1, 1, 0}, // (subframe number)           3,8
+    {0, -1, 1, 0, 146, 0, 1, 1, 0}, // (subframe number)           1,4,7
+    {0, -1, 1, 0, 292, 0, 1, 1, 0}, // (subframe number)           2,5,8
+    {0, -1, 1, 0, 584, 0, 1, 1, 0}, // (subframe number)           3, 6, 9
+    {0, -1, 1, 0, 341, 0, 1, 1, 0}, // (subframe number)           0,2,4,6,8
+    {0, -1, 1, 0, 682, 0, 1, 1, 0}, // (subframe number)           1,3,5,7,9
+    {0, -1, 1, 0, 1023, 0, 1, 1, 0}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {1, -1, 16, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {1, -1, 16, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {1, -1, 16, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {1, -1, 16, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {1, -1, 8, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {1, -1, 8, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {1, -1, 8, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {1, -1, 8, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {1, -1, 4, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {1, -1, 4, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {1, -1, 4, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {1, -1, 4, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {1, -1, 2, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {1, -1, 2, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {1, -1, 2, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {1, -1, 2, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {1, -1, 1, 0, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {1, -1, 1, 0, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {1, -1, 1, 0, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {1, -1, 1, 0, 66, 0, 1, 1, 0}, // (subframe number)           1,6
+    {1, -1, 1, 0, 132, 0, 1, 1, 0}, // (subframe number)           2,7
+    {1, -1, 1, 0, 264, 0, 1, 1, 0}, // (subframe number)           3,8
+    {1, -1, 1, 0, 146, 0, 1, 1, 0}, // (subframe number)           1,4,7
+    {1, -1, 1, 0, 292, 0, 1, 1, 0}, // (subframe number)           2,5,8
+    {1, -1, 1, 0, 584, 0, 1, 1, 0}, // (subframe number)           3,6,9
+    {2, -1, 16, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {2, -1, 8, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {2, -1, 4, 0, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {2, -1, 2, 0, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {2, -1, 2, 0, 32, 0, 1, 1, 0}, // (subframe number)           5
+    {2, -1, 1, 0, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {2, -1, 1, 0, 32, 0, 1, 1, 0}, // (subframe number)           5
+    {3, -1, 16, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {3, -1, 16, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {3, -1, 16, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {3, -1, 16, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {3, -1, 8, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {3, -1, 8, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {3, -1, 8, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {3, -1, 4, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {3, -1, 4, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {3, -1, 4, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {3, -1, 4, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {3, -1, 2, 1, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {3, -1, 2, 1, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {3, -1, 2, 1, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {3, -1, 2, 1, 512, 0, 1, 1, 0}, // (subframe number)           9
+    {3, -1, 1, 0, 2, 0, 1, 1, 0}, // (subframe number)           1
+    {3, -1, 1, 0, 16, 0, 1, 1, 0}, // (subframe number)           4
+    {3, -1, 1, 0, 128, 0, 1, 1, 0}, // (subframe number)           7
+    {3, -1, 1, 0, 66, 0, 1, 1, 0}, // (subframe number)           1,6
+    {3, -1, 1, 0, 132, 0, 1, 1, 0}, // (subframe number)           2,7
+    {3, -1, 1, 0, 264, 0, 1, 1, 0}, // (subframe number)           3,8
+    {3, -1, 1, 0, 146, 0, 1, 1, 0}, // (subframe number)           1,4,7
+    {3, -1, 1, 0, 292, 0, 1, 1, 0}, // (subframe number)           2,5,8
+    {3, -1, 1, 0, 584, 0, 1, 1, 0}, // (subframe number)           3, 6, 9
+    {3, -1, 1, 0, 341, 0, 1, 1, 0}, // (subframe number)           0,2,4,6,8
+    {3, -1, 1, 0, 682, 0, 1, 1, 0}, // (subframe number)           1,3,5,7,9
+    {3, -1, 1, 0, 1023, 0, 1, 1, 0}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xa1, -1, 16, 0, 528, 0, 1, 6, 2}, // (subframe number)           4,9
+    {0xa1, -1, 16, 1, 16, 0, 2, 6, 2}, // (subframe number)           4
+    {0xa1, -1, 8, 0, 528, 0, 1, 6, 2}, // (subframe number)           4,9
+    {0xa1, -1, 8, 1, 16, 0, 2, 6, 2}, // (subframe number)           4
+    {0xa1, -1, 4, 0, 528, 0, 1, 6, 2}, // (subframe number)           4,9
+    {0xa1, -1, 4, 1, 528, 0, 1, 6, 2}, // (subframe number)           4,9
+    {0xa1, -1, 4, 0, 16, 0, 2, 6, 2}, // (subframe number)           4
+    {0xa1, -1, 2, 0, 528, 0, 1, 6, 2}, // (subframe number)           4,9
+    {0xa1, -1, 2, 0, 2, 0, 2, 6, 2}, // (subframe number)           1
+    {0xa1, -1, 2, 0, 16, 0, 2, 6, 2}, // (subframe number)           4
+    {0xa1, -1, 2, 0, 128, 0, 2, 6, 2}, // (subframe number)           7
+    {0xa1, -1, 1, 0, 16, 0, 1, 6, 2}, // (subframe number)           4
+    {0xa1, -1, 1, 0, 66, 0, 1, 6, 2}, // (subframe number)           1,6
+    {0xa1, -1, 1, 0, 528, 0, 1, 6, 2}, // (subframe number)           4,9
+    {0xa1, -1, 1, 0, 2, 0, 2, 6, 2}, // (subframe number)           1
+    {0xa1, -1, 1, 0, 128, 0, 2, 6, 2}, // (subframe number)           7
+    {0xa1, -1, 1, 0, 132, 0, 2, 6, 2}, // (subframe number)           2,7
+    {0xa1, -1, 1, 0, 146, 0, 2, 6, 2}, // (subframe number)           1,4,7
+    {0xa1, -1, 1, 0, 341, 0, 2, 6, 2}, // (subframe number)           0,2,4,6,8
+    {0xa1, -1, 1, 0, 1023, 0, 2, 6, 2}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xa1, -1, 1, 0, 682, 0, 2, 6, 2}, // (subframe number)           1,3,5,7,9
+    {0xa1, 0xb1, 2, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xa1, 0xb1, 2, 0, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xa1, 0xb1, 1, 0, 16, 0, 1, 7, 2}, // (subframe number)           4
+    {0xa1, 0xb1, 1, 0, 66, 0, 1, 7, 2}, // (subframe number)           1,6
+    {0xa1, 0xb1, 1, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xa1, 0xb1, 1, 0, 2, 0, 2, 7, 2}, // (subframe number)           1
+    {0xa1, 0xb1, 1, 0, 128, 0, 2, 7, 2}, // (subframe number)           7
+    {0xa1, 0xb1, 1, 0, 146, 0, 2, 7, 2}, // (subframe number)           1,4,7
+    {0xa1, 0xb1, 1, 0, 341, 0, 2, 7, 2}, // (subframe number)           0,2,4,6,8
+    {0xa2, -1, 16, 1, 580, 0, 1, 3, 4}, // (subframe number)           2,6,9
+    {0xa2, -1, 16, 1, 16, 0, 2, 3, 4}, // (subframe number)           4
+    {0xa2, -1, 8, 1, 580, 0, 1, 3, 4}, // (subframe number)           2,6,9
+    {0xa2, -1, 8, 1, 16, 0, 2, 3, 4}, // (subframe number)           4
+    {0xa2, -1, 4, 0, 580, 0, 1, 3, 4}, // (subframe number)           2,6,9
+    {0xa2, -1, 4, 0, 16, 0, 2, 3, 4}, // (subframe number)           4
+    {0xa2, -1, 2, 1, 580, 0, 1, 3, 4}, // (subframe number)           2,6,9
+    {0xa2, -1, 2, 0, 2, 0, 2, 3, 4}, // (subframe number)           1
+    {0xa2, -1, 2, 0, 16, 0, 2, 3, 4}, // (subframe number)           4
+    {0xa2, -1, 2, 0, 128, 0, 2, 3, 4}, // (subframe number)           7
+    {0xa2, -1, 1, 0, 16, 0, 1, 3, 4}, // (subframe number)           4
+    {0xa2, -1, 1, 0, 66, 0, 1, 3, 4}, // (subframe number)           1,6
+    {0xa2, -1, 1, 0, 528, 0, 1, 3, 4}, // (subframe number)           4,9
+    {0xa2, -1, 1, 0, 2, 0, 2, 3, 4}, // (subframe number)           1
+    {0xa2, -1, 1, 0, 128, 0, 2, 3, 4}, // (subframe number)           7
+    {0xa2, -1, 1, 0, 132, 0, 2, 3, 4}, // (subframe number)           2,7
+    {0xa2, -1, 1, 0, 146, 0, 2, 3, 4}, // (subframe number)           1,4,7
+    {0xa2, -1, 1, 0, 341, 0, 2, 3, 4}, // (subframe number)           0,2,4,6,8
+    {0xa2, -1, 1, 0, 1023, 0, 2, 3, 4}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xa2, -1, 1, 0, 682, 0, 2, 3, 4}, // (subframe number)           1,3,5,7,9
+    {0xa2, 0xb2, 2, 1, 580, 0, 1, 3, 4}, // (subframe number)           2,6,9
+    {0xa2, 0xb2, 2, 0, 16, 0, 2, 3, 4}, // (subframe number)           4
+    {0xa2, 0xb2, 1, 0, 16, 0, 1, 3, 4}, // (subframe number)           4
+    {0xa2, 0xb2, 1, 0, 66, 0, 1, 3, 4}, // (subframe number)           1,6
+    {0xa2, 0xb2, 1, 0, 528, 0, 1, 3, 4}, // (subframe number)           4,9
+    {0xa2, 0xb2, 1, 0, 2, 0, 2, 3, 4}, // (subframe number)           1
+    {0xa2, 0xb2, 1, 0, 128, 0, 2, 3, 4}, // (subframe number)           7
+    {0xa2, 0xb2, 1, 0, 146, 0, 2, 3, 4}, // (subframe number)           1,4,7
+    {0xa2, 0xb2, 1, 0, 341, 0, 2, 3, 4}, // (subframe number)           0,2,4,6,8
+    {0xa2, 0xb2, 1, 0, 1023, 0, 2, 3, 4}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xa3, -1, 16, 1, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xa3, -1, 16, 1, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xa3, -1, 8, 1, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xa3, -1, 8, 1, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xa3, -1, 4, 0, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xa3, -1, 4, 0, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xa3, -1, 2, 1, 580, 0, 2, 2, 6}, // (subframe number)           2,6,9
+    {0xa3, -1, 2, 0, 2, 0, 2, 2, 6}, // (subframe number)           1
+    {0xa3, -1, 2, 0, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xa3, -1, 2, 0, 128, 0, 2, 2, 6}, // (subframe number)           7
+    {0xa3, -1, 1, 0, 16, 0, 1, 2, 6}, // (subframe number)           4
+    {0xa3, -1, 1, 0, 66, 0, 1, 2, 6}, // (subframe number)           1,6
+    {0xa3, -1, 1, 0, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xa3, -1, 1, 0, 2, 0, 2, 2, 6}, // (subframe number)           1
+    {0xa3, -1, 1, 0, 128, 0, 2, 2, 6}, // (subframe number)           7
+    {0xa3, -1, 1, 0, 132, 0, 2, 2, 6}, // (subframe number)           2,7
+    {0xa3, -1, 1, 0, 146, 0, 2, 2, 6}, // (subframe number)           1,4,7
+    {0xa3, -1, 1, 0, 341, 0, 2, 2, 6}, // (subframe number)           0,2,4,6,8
+    {0xa3, -1, 1, 0, 1023, 0, 2, 2, 6}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xa3, -1, 1, 0, 682, 0, 2, 2, 6}, // (subframe number)           1,3,5,7,9
+    {0xa3, 0xb3, 2, 1, 580, 0, 2, 2, 6}, // (subframe number)           2,6,9
+    {0xa3, 0xb3, 2, 0, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xa3, 0xb3, 1, 0, 16, 0, 1, 2, 6}, // (subframe number)           4
+    {0xa3, 0xb3, 1, 0, 66, 0, 1, 2, 6}, // (subframe number)           1,6
+    {0xa3, 0xb3, 1, 0, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xa3, 0xb3, 1, 0, 2, 0, 2, 2, 6}, // (subframe number)           1
+    {0xa3, 0xb3, 1, 0, 128, 0, 2, 2, 6}, // (subframe number)           7
+    {0xa3, 0xb3, 1, 0, 146, 0, 2, 2, 6}, // (subframe number)           1,4,7
+    {0xa3, 0xb3, 1, 0, 341, 0, 2, 2, 6}, // (subframe number)           0,2,4,6,8
+    {0xa3, 0xb3, 1, 0, 1023, 0, 2, 2, 6}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xb1, -1, 16, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xb1, -1, 16, 1, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xb1, -1, 8, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xb1, -1, 8, 1, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xb1, -1, 4, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xb1, -1, 4, 1, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xb1, -1, 4, 0, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xb1, -1, 2, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xb1, -1, 2, 0, 2, 0, 2, 7, 2}, // (subframe number)           1
+    {0xb1, -1, 2, 0, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xb1, -1, 2, 0, 128, 0, 2, 7, 2}, // (subframe number)           7
+    {0xb1, -1, 1, 0, 16, 0, 1, 7, 2}, // (subframe number)           4
+    {0xb1, -1, 1, 0, 66, 0, 1, 7, 2}, // (subframe number)           1,6
+    {0xb1, -1, 1, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xb1, -1, 1, 0, 2, 0, 2, 7, 2}, // (subframe number)           1
+    {0xb1, -1, 1, 0, 128, 0, 2, 7, 2}, // (subframe number)           7
+    {0xb1, -1, 1, 0, 132, 0, 2, 7, 2}, // (subframe number)           2,7
+    {0xb1, -1, 1, 0, 146, 0, 2, 7, 2}, // (subframe number)           1,4,7
+    {0xb1, -1, 1, 0, 341, 0, 2, 7, 2}, // (subframe number)           0,2,4,6,8
+    {0xb1, -1, 1, 0, 1023, 0, 2, 7, 2}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xb1, -1, 1, 0, 682, 0, 2, 7, 2}, // (subframe number)           1,3,5,7,9
+    {0xb4, -1, 16, 0, 528, 0, 2, 1, 12}, // (subframe number)           4,9
+    {0xb4, -1, 16, 1, 16, 0, 2, 1, 12}, // (subframe number)           4
+    {0xb4, -1, 8, 0, 528, 0, 2, 1, 12}, // (subframe number)           4,9
+    {0xb4, -1, 8, 1, 16, 0, 2, 1, 12}, // (subframe number)           4
+    {0xb4, -1, 4, 0, 528, 0, 2, 1, 12}, // (subframe number)           4,9
+    {0xb4, -1, 4, 0, 16, 0, 2, 1, 12}, // (subframe number)           4
+    {0xb4, -1, 4, 1, 528, 0, 2, 1, 12}, // (subframe number)           4,9
+    {0xb4, -1, 2, 0, 528, 0, 2, 1, 12}, // (subframe number)           4,9
+    {0xb4, -1, 2, 0, 2, 0, 2, 1, 12}, // (subframe number)           1
+    {0xb4, -1, 2, 0, 16, 0, 2, 1, 12}, // (subframe number)           4
+    {0xb4, -1, 2, 0, 128, 0, 2, 1, 12}, // (subframe number)           7
+    {0xb4, -1, 1, 0, 2, 0, 2, 1, 12}, // (subframe number)           1
+    {0xb4, -1, 1, 0, 16, 0, 2, 1, 12}, // (subframe number)           4
+    {0xb4, -1, 1, 0, 128, 0, 2, 1, 12}, // (subframe number)           7
+    {0xb4, -1, 1, 0, 66, 0, 2, 1, 12}, // (subframe number)           1,6
+    {0xb4, -1, 1, 0, 132, 0, 2, 1, 12}, // (subframe number)           2,7
+    {0xb4, -1, 1, 0, 528, 0, 2, 1, 12}, // (subframe number)           4,9
+    {0xb4, -1, 1, 0, 146, 0, 2, 1, 12}, // (subframe number)           1,4,7
+    {0xb4, -1, 1, 0, 341, 0, 2, 1, 12}, // (subframe number)           0,2,4,6,8
+    {0xb4, -1, 1, 0, 1023, 0, 2, 1, 12}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xb4, -1, 1, 0, 682, 0, 2, 1, 12}, // (subframe number)           1,3,5,7,9
+    {0xc0, -1, 8, 1, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xc0, -1, 4, 1, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xc0, -1, 4, 0, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xc0, -1, 2, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xc0, -1, 2, 0, 2, 0, 2, 7, 2}, // (subframe number)           1
+    {0xc0, -1, 2, 0, 16, 0, 2, 7, 2}, // (subframe number)           4
+    {0xc0, -1, 2, 0, 128, 0, 2, 7, 2}, // (subframe number)           7
+    {0xc0, -1, 1, 0, 16, 0, 1, 7, 2}, // (subframe number)           4
+    {0xc0, -1, 1, 0, 66, 0, 1, 7, 2}, // (subframe number)           1,6
+    {0xc0, -1, 1, 0, 528, 0, 1, 7, 2}, // (subframe number)           4,9
+    {0xc0, -1, 1, 0, 2, 0, 2, 7, 2}, // (subframe number)           1
+    {0xc0, -1, 1, 0, 128, 0, 2, 7, 2}, // (subframe number)           7
+    {0xc0, -1, 1, 0, 132, 0, 2, 7, 2}, // (subframe number)           2,7
+    {0xc0, -1, 1, 0, 146, 0, 2, 7, 2}, // (subframe number)           1,4,7
+    {0xc0, -1, 1, 0, 341, 0, 2, 7, 2}, // (subframe number)           0,2,4,6,8
+    {0xc0, -1, 1, 0, 1023, 0, 2, 7, 2}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xc0, -1, 1, 0, 682, 0, 2, 7, 2}, // (subframe number)           1,3,5,7,9
+    {0xc2, -1, 16, 1, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xc2, -1, 16, 1, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xc2, -1, 8, 1, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xc2, -1, 8, 1, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xc2, -1, 4, 0, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xc2, -1, 4, 0, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xc2, -1, 2, 1, 580, 0, 2, 2, 6}, // (subframe number)           2,6,9
+    {0xc2, -1, 2, 0, 2, 0, 2, 2, 6}, // (subframe number)           1
+    {0xc2, -1, 2, 0, 16, 0, 2, 2, 6}, // (subframe number)           4
+    {0xc2, -1, 2, 0, 128, 0, 2, 2, 6}, // (subframe number)           7
+    {0xc2, -1, 1, 0, 16, 0, 1, 2, 6}, // (subframe number)           4
+    {0xc2, -1, 1, 0, 66, 0, 1, 2, 6}, // (subframe number)           1,6
+    {0xc2, -1, 1, 0, 528, 0, 1, 2, 6}, // (subframe number)           4,9
+    {0xc2, -1, 1, 0, 2, 0, 2, 2, 6}, // (subframe number)           1
+    {0xc2, -1, 1, 0, 128, 0, 2, 2, 6}, // (subframe number)           7
+    {0xc2, -1, 1, 0, 132, 0, 2, 2, 6}, // (subframe number)           2,7
+    {0xc2, -1, 1, 0, 146, 0, 2, 2, 6}, // (subframe number)           1,4,7
+    {0xc2, -1, 1, 0, 341, 0, 2, 2, 6}, // (subframe number)           0,2,4,6,8
+    {0xc2, -1, 1, 0, 1023, 0, 2, 2, 6}, // (subframe number)           0,1,2,3,4,5,6,7,8,9
+    {0xc2, -1, 1, 0, 682, 0, 2, 2, 6} // (subframe number)           1,3,5,7,9
 };
 // Table 6.3.3.2-3: Random access configurations for FR1 and unpaired spectrum
-int64_t table_6_3_3_2_3_prachConfig_Index [256][9] = {
-//format,     format,      x,         y,     SFN_nbr,   star_symb,   slots_sfn,  occ_slot,  duration
-{0,            -1,         16,        1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{0,            -1,         8,         1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{0,            -1,         4,         1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{0,            -1,         2,         0,         512,         0,        1,        1,         0},         // (subrame number 9)
-{0,            -1,         2,         1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{0,            -1,         2,         0,         16,          0,        1,        1,         0},         // (subrame number 4)
-{0,            -1,         2,         1,         16,          0,        1,        1,         0},         // (subrame number 4)
-{0,            -1,         1,         0,         512,         0,        1,        1,         0},         // (subrame number 9)
-{0,            -1,         1,         0,         256,         0,        1,        1,         0},         // (subrame number 8)
-{0,            -1,         1,         0,         128,         0,        1,        1,         0},         // (subrame number 7)
-{0,            -1,         1,         0,         64,          0,        1,        1,         0},         // (subrame number 6)
-{0,            -1,         1,         0,         32,          0,        1,        1,         0},         // (subrame number 5)
-{0,            -1,         1,         0,         16,          0,        1,        1,         0},         // (subrame number 4)
-{0,            -1,         1,         0,         8,           0,        1,        1,         0},         // (subrame number 3)
-{0,            -1,         1,         0,         4,           0,        1,        1,         0},         // (subrame number 2)
-{0,            -1,         1,         0,         66,          0,        1,        1,         0},         // (subrame number 1,6)
-{0,            -1,         1,         0,         66,          7,        1,        1,         0},         // (subrame number 1,6)
-{0,            -1,         1,         0,         528,         0,        1,        1,         0},         // (subrame number 4,9)
-{0,            -1,         1,         0,         264,         0,        1,        1,         0},         // (subrame number 3,8)
-{0,            -1,         1,         0,         132,         0,        1,        1,         0},         // (subrame number 2,7)
-{0,            -1,         1,         0,         768,         0,        1,        1,         0},         // (subrame number 8,9)
-{0,            -1,         1,         0,         784,         0,        1,        1,         0},         // (subrame number 4,8,9)
-{0,            -1,         1,         0,         536,         0,        1,        1,         0},         // (subrame number 3,4,9)
-{0,            -1,         1,         0,         896,         0,        1,        1,         0},         // (subrame number 7,8,9)
-{0,            -1,         1,         0,         792,         0,        1,        1,         0},         // (subrame number 3,4,8,9)
-{0,            -1,         1,         0,         960,         0,        1,        1,         0},         // (subrame number 6,7,8,9)
-{0,            -1,         1,         0,         594,         0,        1,        1,         0},         // (subrame number 1,4,6,9)
-{0,            -1,         1,         0,         682,         0,        1,        1,         0},         // (subrame number 1,3,5,7,9)
-{1,            -1,         16,        1,         128,         0,        1,        1,         0},         // (subrame number 7)
-{1,            -1,         8,         1,         128,         0,        1,        1,         0},         // (subrame number 7)
-{1,            -1,         4,         1,         128,         0,        1,        1,         0},         // (subrame number 7)
-{1,            -1,         2,         0,         128,         0,        1,        1,         0},         // (subrame number 7)
-{1,            -1,         2,         1,         128,         0,        1,        1,         0},         // (subrame number 7)
-{1,            -1,         1,         0,         128,         0,        1,        1,         0},         // (subrame number 7)
-{2,            -1,         16,        1,         64,          0,        1,        1,         0},         // (subrame number 6)
-{2,            -1,         8,         1,         64,          0,        1,        1,         0},         // (subrame number 6)
-{2,            -1,         4,         1,         64,          0,        1,        1,         0},         // (subrame number 6)
-{2,            -1,         2,         0,         64,          7,        1,        1,         0},         // (subrame number 6)
-{2,            -1,         2,         1,         64,          7,        1,        1,         0},         // (subrame number 6)
-{2,            -1,         1,         0,         64,          7,        1,        1,         0},         // (subrame number 6)
-{3,            -1,         16,        1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{3,            -1,         8,         1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{3,            -1,         4,         1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{3,            -1,         2,         0,         512,         0,        1,        1,         0},         // (subrame number 9)
-{3,            -1,         2,         1,         512,         0,        1,        1,         0},         // (subrame number 9)
-{3,            -1,         2,         0,         16,          0,        1,        1,         0},         // (subrame number 4)
-{3,            -1,         2,         1,         16,          0,        1,        1,         0},         // (subrame number 4)
-{3,            -1,         1,         0,         512,         0,        1,        1,         0},         // (subrame number 9)
-{3,            -1,         1,         0,         256,         0,        1,        1,         0},         // (subrame number 8)
-{3,            -1,         1,         0,         128,         0,        1,        1,         0},         // (subrame number 7)
-{3,            -1,         1,         0,         64,          0,        1,        1,         0},         // (subrame number 6)
-{3,            -1,         1,         0,         32,          0,        1,        1,         0},         // (subrame number 5)
-{3,            -1,         1,         0,         16,          0,        1,        1,         0},         // (subrame number 4)
-{3,            -1,         1,         0,         8,           0,        1,        1,         0},         // (subrame number 3)
-{3,            -1,         1,         0,         4,           0,        1,        1,         0},         // (subrame number 2)
-{3,            -1,         1,         0,         66,          0,        1,        1,         0},         // (subrame number 1,6)
-{3,            -1,         1,         0,         66,          7,        1,        1,         0},         // (subrame number 1,6)
-{3,            -1,         1,         0,         528,         0,        1,        1,         0},         // (subrame number 4,9)
-{3,            -1,         1,         0,         264,         0,        1,        1,         0},         // (subrame number 3,8)
-{3,            -1,         1,         0,         132,         0,        1,        1,         0},         // (subrame number 2,7)
-{3,            -1,         1,         0,         768,         0,        1,        1,         0},         // (subrame number 8,9)
-{3,            -1,         1,         0,         784,         0,        1,        1,         0},         // (subrame number 4,8,9)
-{3,            -1,         1,         0,         536,         0,        1,        1,         0},         // (subrame number 3,4,9)
-{3,            -1,         1,         0,         896,         0,        1,        1,         0},         // (subrame number 7,8,9)
-{3,            -1,         1,         0,         792,         0,        1,        1,         0},         // (subrame number 3,4,8,9)
-{3,            -1,         1,         0,         594,         0,        1,        1,         0},         // (subrame number 1,4,6,9)
-{3,            -1,         1,         0,         682,         0,        1,        1,         0},         // (subrame number 1,3,5,7,9)
-{0xa1,         -1,         16,        1,         512,         0,         2,         6,         2},         // (subrame number 9)
-{0xa1,         -1,         8,         1,         512,         0,         2,         6,         2},         // (subrame number 9)
-{0xa1,         -1,         4,         1,         512,         0,         1,         6,         2},         // (subrame number 9)
-{0xa1,         -1,         2,         1,         512,         0,         1,         6,         2},         // (subrame number 9)
-{0xa1,         -1,         2,         1,         528,         7,         1,         3,         2},         // (subrame number 4,9)
-{0xa1,         -1,         2,         1,         640,         7,         1,         3,         2},         // (subrame number 7,9)
-{0xa1,         -1,         2,         1,         640,         0,         1,         6,         2},         // (subrame number 7,9)
-{0xa1,         -1,         2,         1,         768,         0,         2,         6,         2},         // (subrame number 8,9)
-{0xa1,         -1,         2,         1,         528,         0,         2,         6,         2},         // (subrame number 4,9)
-{0xa1,         -1,         2,         1,         924,         0,         1,         6,         2},         // (subrame number 2,3,4,7,8,9)
-{0xa1,         -1,         1,         0,         512,         0,         2,         6,         2},         // (subrame number 9)
-{0xa1,         -1,         1,         0,         512,         7,         1,         3,         2},         // (subrame number 9)
-{0xa1,         -1,         1,         0,         512,         0,         1,         6,         2},         // (subrame number 9)
-{0xa1,         -1,         1,         0,         768,         0,         2,         6,         2},         // (subrame number 8,9)
-{0xa1,         -1,         1,         0,         528,         0,         1,         6,         2},         // (subrame number 4,9)
-{0xa1,         -1,         1,         0,         640,         7,         1,         3,         2},         // (subrame number 7,9)
-{0xa1,         -1,         1,         0,         792,         0,         1,         6,         2},         // (subrame number 3,4,8,9)
-{0xa1,         -1,         1,         0,         792,         0,         2,         6,         2},         // (subrame number 3,4,8,9)
-{0xa1,         -1,         1,         0,         682,         0,         1,         6,         2},         // (subrame number 1,3,5,7,9)
-{0xa1,         -1,         1,         0,         1023,        7,         1,         3,         2},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xa2,         -1,         16,        1,         512,         0,         2,         3,         4},         // (subrame number 9)
-{0xa2,         -1,         8,         1,         512,         0,         2,         3,         4},         // (subrame number 9)
-{0xa2,         -1,         4,         1,         512,         0,         1,         3,         4},         // (subrame number 9)
-{0xa2,         -1,         2,         1,         640,         0,         1,         3,         4},         // (subrame number 7,9)
-{0xa2,         -1,         2,         1,         768,         0,         2,         3,         4},         // (subrame number 8,9)
-{0xa2,         -1,         2,         1,         640,         9,         1,         1,         4},         // (subrame number 7,9)
-{0xa2,         -1,         2,         1,         528,         9,         1,         1,         4},         // (subrame number 4,9)
-{0xa2,         -1,         2,         1,         528,         0,         2,         3,         4},         // (subrame number 4,9)
-{0xa2,         -1,         16,        1,         924,         0,         1,         3,         4},         // (subrame number 2,3,4,7,8,9)
-{0xa2,         -1,         1,         0,         4,           0,         1,         3,         4},         // (subrame number 2)
-{0xa2,         -1,         1,         0,         128,         0,         1,         3,         4},         // (subrame number 7)
-{0xa2,         -1,         2,         1,         512,         0,         1,         3,         4},         // (subrame number 9)
-{0xa2,         -1,         1,         0,         512,         0,         2,         3,         4},         // (subrame number 9)
-{0xa2,         -1,         1,         0,         512,         9,         1,         1,         4},         // (subrame number 9)
-{0xa2,         -1,         1,         0,         512,         0,         1,         3,         4},         // (subrame number 9)
-{0xa2,         -1,         1,         0,         132,         0,         1,         3,         4},         // (subrame number 2,7)
-{0xa2,         -1,         1,         0,         768,         0,         2,         3,         4},         // (subrame number 8,9)
-{0xa2,         -1,         1,         0,         528,         0,         1,         3,         4},         // (subrame number 4,9)
-{0xa2,         -1,         1,         0,         640,         9,         1,         1,         4},         // (subrame number 7,9)
-{0xa2,         -1,         1,         0,         792,         0,         1,         3,         4},         // (subrame number 3,4,8,9)
-{0xa2,         -1,         1,         0,         792,         0,         2,         3,         4},         // (subrame number 3,4,8,9)
-{0xa2,         -1,         1,         0,         682,         0,         1,         3,         4},         // (subrame number 1,3,5,7,9)
-{0xa2,         -1,         1,         0,         1023,        9,         1,         1,         4},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xa3,         -1,         16,        1,         512,         0,         2,         2,         6},         // (subrame number 9)
-{0xa3,         -1,         8,         1,         512,         0,         2,         2,         6},         // (subrame number 9)
-{0xa3,         -1,         4,         1,         512,         0,         1,         2,         6},         // (subrame number 9)
-{0xa3,         -1,         2,         1,         528,         7,         1,         1,         6},         // (subrame number 4,9)
-{0xa3,         -1,         2,         1,         640,         7,         1,         1,         6},         // (subrame number 7,9)
-{0xa3,         -1,         2,         1,         640,         0,         1,         2,         6},         // (subrame number 7,9)
-{0xa3,         -1,         2,         1,         528,         0,         2,         2,         6},         // (subrame number 4,9)
-{0xa3,         -1,         2,         1,         768,         0,         2,         2,         6},         // (subrame number 8,9)
-{0xa3,         -1,         2,         1,         924,         0,         1,         2,         6},         // (subrame number 2,3,4,7,8,9)
-{0xa3,         -1,         1,         0,         4,           0,         1,         2,         6},         // (subrame number 2)
-{0xa3,         -1,         1,         0,         128,         0,         1,         2,         6},         // (subrame number 7)
-{0xa3,         -1,         2,         1,         512,         0,         1,         2,         6},         // (subrame number 9)
-{0xa3,         -1,         1,         0,         512,         0,         2,         2,         6},         // (subrame number 9)
-{0xa3,         -1,         1,         0,         512,         7,         1,         1,         6},         // (subrame number 9)
-{0xa3,         -1,         1,         0,         512,         0,         1,         2,         6},         // (subrame number 9)
-{0xa3,         -1,         1,         0,         132,         0,         1,         2,         6},         // (subrame number 2,7)
-{0xa3,         -1,         1,         0,         768,         0,         2,         2,         6},         // (subrame number 8,9)
-{0xa3,         -1,         1,         0,         528,         0,         1,         2,         6},         // (subrame number 4,9)
-{0xa3,         -1,         1,         0,         640,         7,         1,         1,         6},         // (subrame number 7,9)
-{0xa3,         -1,         1,         0,         792,         0,         1,         2,         6},         // (subrame number 3,4,8,9)
-{0xa3,         -1,         1,         0,         792,         0,         2,         2,         6},         // (subrame number 3,4,8,9)
-{0xa3,         -1,         1,         0,         682,         0,         1,         2,         6},         // (subrame number 1,3,5,7,9)
-{0xa3,         -1,         1,         0,         1023,        7,         1,         1,         6},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xb1,         -1,         4,         1,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xb1,         -1,         2,         1,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xb1,         -1,         2,         1,         640,         2,         1,         6,         2},         // (subrame number 7,9)
-{0xb1,         -1,         2,         1,         528,         8,         1,         3,         2},         // (subrame number 4,9)
-{0xb1,         -1,         2,         1,         528,         2,         2,         6,         2},         // (subrame number 4,9)
-{0xb1,         -1,         1,         0,         512,         2,         2,         6,         2},         // (subrame number 9)
-{0xb1,         -1,         1,         0,         512,         8,         1,         3,         2},         // (subrame number 9)
-{0xb1,         -1,         1,         0,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xb1,         -1,         1,         0,         768,         2,         2,         6,         2},         // (subrame number 8,9)
-{0xb1,         -1,         1,         0,         528,         2,         1,         6,         2},         // (subrame number 4,9)
-{0xb1,         -1,         1,         0,         640,         8,         1,         3,         2},         // (subrame number 7,9)
-{0xb1,         -1,         1,         0,         682,         2,         1,         6,         2},         // (subrame number 1,3,5,7,9)
-{0xb4,         -1,         16,        1,         512,         0,         2,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         8,         1,         512,         0,         2,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         4,         1,         512,         2,         1,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         2,         1,         512,         0,         1,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         2,         1,         512,         2,         1,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         2,         1,         640,         2,         1,         1,         12},        // (subrame number 7,9)
-{0xb4,         -1,         2,         1,         528,         2,         1,         1,         12},        // (subrame number 4,9)
-{0xb4,         -1,         2,         1,         528,         0,         2,         1,         12},        // (subrame number 4,9)
-{0xb4,         -1,         2,         1,         768,         0,         2,         1,         12},        // (subrame number 8,9)
-{0xb4,         -1,         2,         1,         924,         0,         1,         1,         12},        // (subrame number 2,3,4,7,8,9)
-{0xb4,         -1,         1,         0,         2,           0,         1,         1,         12},        // (subrame number 1)
-{0xb4,         -1,         1,         0,         4,           0,         1,         1,         12},        // (subrame number 2)
-{0xb4,         -1,         1,         0,         16,          0,         1,         1,         12},        // (subrame number 4)
-{0xb4,         -1,         1,         0,         128,         0,         1,         1,         12},        // (subrame number 7)
-{0xb4,         -1,         1,         0,         512,         0,         1,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         1,         0,         512,         2,         1,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         1,         0,         512,         0,         2,         1,         12},        // (subrame number 9)
-{0xb4,         -1,         1,         0,         528,         2,         1,         1,         12},        // (subrame number 4,9)
-{0xb4,         -1,         1,         0,         640,         2,         1,         1,         12},        // (subrame number 7,9)
-{0xb4,         -1,         1,         0,         768,         0,         2,         1,         12},        // (subrame number 8,9)
-{0xb4,         -1,         1,         0,         792,         2,         1,         1,         12},        // (subrame number 3,4,8,9)
-{0xb4,         -1,         1,         0,         682,         2,         1,         1,         12},        // (subrame number 1,3,5,7,9)
-{0xb4,         -1,         1,         0,         1023,        0,         2,         1,         12},        // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xb4,         -1,         1,         0,         1023,        2,         1,         1,         12},        // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xc0,         -1,         16,        1,         512,         2,         2,         6,         2},         // (subrame number 9)
-{0xc0,         -1,         8,         1,         512,         2,         2,         6,         2},         // (subrame number 9)
-{0xc0,         -1,         4,         1,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xc0,         -1,         2,         1,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xc0,         -1,         2,         1,         768,         2,         2,         6,         2},         // (subrame number 8,9)
-{0xc0,         -1,         2,         1,         640,         2,         1,         6,         2},         // (subrame number 7,9)
-{0xc0,         -1,         2,         1,         640,         8,         1,         3,         2},         // (subrame number 7,9)
-{0xc0,         -1,         2,         1,         528,         8,         1,         3,         2},         // (subrame number 4,9)
-{0xc0,         -1,         2,         1,         528,         2,         2,         6,         2},         // (subrame number 4,9)
-{0xc0,         -1,         2,         1,         924,         2,         1,         6,         2},         // (subrame number 2,3,4,7,8,9)
-{0xc0,         -1,         1,         0,         512,         2,         2,         6,         2},         // (subrame number 9)
-{0xc0,         -1,         1,         0,         512,         8,         1,         3,         2},         // (subrame number 9)
-{0xc0,         -1,         1,         0,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xc0,         -1,         1,         0,         768,         2,         2,         6,         2},         // (subrame number 8,9)
-{0xc0,         -1,         1,         0,         528,         2,         1,         6,         2},         // (subrame number 4,9)
-{0xc0,         -1,         1,         0,         640,         8,         1,         3,         2},         // (subrame number 7,9)
-{0xc0,         -1,         1,         0,         792,         2,         1,         6,         2},         // (subrame number 3,4,8,9)
-{0xc0,         -1,         1,         0,         792,         2,         2,         6,         2},         // (subrame number 3,4,8,9)
-{0xc0,         -1,         1,         0,         682,         2,         1,         6,         2},         // (subrame number 1,3,5,7,9)
-{0xc0,         -1,         1,         0,         1023,        8,         1,         3,         2},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xc2,         -1,         16,        1,         512,         2,         2,         2,         6},         // (subrame number 9)
-{0xc2,         -1,         8,         1,         512,         2,         2,         2,         6},         // (subrame number 9)
-{0xc2,         -1,         4,         1,         512,         2,         1,         2,         6},         // (subrame number 9)
-{0xc2,         -1,         2,         1,         512,         2,         1,         2,         6},         // (subrame number 9)
-{0xc2,         -1,         2,         1,         768,         2,         2,         2,         6},         // (subrame number 8,9)
-{0xc2,         -1,         2,         1,         640,         2,         1,         2,         6},         // (subrame number 7,9)
-{0xc2,         -1,         2,         1,         640,         8,         1,         1,         6},         // (subrame number 7,9)
-{0xc2,         -1,         2,         1,         528,         8,         1,         1,         6},         // (subrame number 4,9)
-{0xc2,         -1,         2,         1,         528,         2,         2,         2,         6},         // (subrame number 4,9)
-{0xc2,         -1,         2,         1,         924,         2,         1,         2,         6},         // (subrame number 2,3,4,7,8,9)
-{0xc2,         -1,         8,         1,         512,         8,         2,         1,         6},         // (subrame number 9)
-{0xc2,         -1,         4,         1,         512,         8,         1,         1,         6},         // (subrame number 9)
-{0xc2,         -1,         1,         0,         512,         2,         2,         2,         6},         // (subrame number 9)
-{0xc2,         -1,         1,         0,         512,         8,         1,         1,         6},         // (subrame number 9)
-{0xc2,         -1,         1,         0,         512,         2,         1,         2,         6},         // (subrame number 9)
-{0xc2,         -1,         1,         0,         768,         2,         2,         2,         6},         // (subrame number 8,9)
-{0xc2,         -1,         1,         0,         528,         2,         1,         2,         6},         // (subrame number 4,9)
-{0xc2,         -1,         1,         0,         640,         8,         1,         1,         6},         // (subrame number 7,9)
-{0xc2,         -1,         1,         0,         792,         2,         1,         2,         6},         // (subrame number 3,4,8,9)
-{0xc2,         -1,         1,         0,         792,         2,         2,         2,         6},         // (subrame number 3,4,8,9)
-{0xc2,         -1,         1,         0,         682,         2,         1,         2,         6},         // (subrame number 1,3,5,7,9)
-{0xc2,         -1,         1,         0,         1023,        8,         1,         1,         6},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xa1,         0xb1,       2,         1,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xa1,         0xb1,       2,         1,         528,         8,         1,         3,         2},         // (subrame number 4,9)
-{0xa1,         0xb1,       2,         1,         640,         8,         1,         3,         2},         // (subrame number 7,9)
-{0xa1,         0xb1,       2,         1,         640,         2,         1,         6,         2},         // (subrame number 7,9)
-{0xa1,         0xb1,       2,         1,         528,         2,         2,         6,         2},         // (subrame number 4,9)
-{0xa1,         0xb1,       2,         1,         768,         2,         2,         6,         2},         // (subrame number 8,9)
-{0xa1,         0xb1,       1,         0,         512,         2,         2,         6,         2},         // (subrame number 9)
-{0xa1,         0xb1,       1,         0,         512,         8,         1,         3,         2},         // (subrame number 9)
-{0xa1,         0xb1,       1,         0,         512,         2,         1,         6,         2},         // (subrame number 9)
-{0xa1,         0xb1,       1,         0,         768,         2,         2,         6,         2},         // (subrame number 8,9)
-{0xa1,         0xb1,       1,         0,         528,         2,         1,         6,         2},         // (subrame number 4,9)
-{0xa1,         0xb1,       1,         0,         640,         8,         1,         3,         2},         // (subrame number 7,9)
-{0xa1,         0xb1,       1,         0,         792,         2,         2,         6,         2},         // (subrame number 3,4,8,9)
-{0xa1,         0xb1,       1,         0,         682,         2,         1,         6,         2},         // (subrame number 1,3,5,7,9)
-{0xa1,         0xb1,       1,         0,         1023,        8,         1,         3,         2},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xa2,         0xb2,       2,         1,         512,         0,         1,         3,         4},         // (subrame number 9)
-{0xa2,         0xb2,       2,         1,         528,         6,         1,         2,         4},         // (subrame number 4,9)
-{0xa2,         0xb2,       2,         1,         640,         6,         1,         2,         4},         // (subrame number 7,9)
-{0xa2,         0xb2,       2,         1,         528,         0,         2,         3,         4},         // (subrame number 4,9)
-{0xa2,         0xb2,       2,         1,         768,         0,         2,         3,         4},         // (subrame number 8,9)
-{0xa2,         0xb2,       1,         0,         512,         0,         2,         3,         4},         // (subrame number 9)
-{0xa2,         0xb2,       1,         0,         512,         6,         1,         2,         4},         // (subrame number 9)
-{0xa2,         0xb2,       1,         0,         512,         0,         1,         3,         4},         // (subrame number 9)
-{0xa2,         0xb2,       1,         0,         768,         0,         2,         3,         4},         // (subrame number 8,9)
-{0xa2,         0xb2,       1,         0,         528,         0,         1,         3,         4},         // (subrame number 4,9)
-{0xa2,         0xb2,       1,         0,         640,         6,         1,         2,         4},         // (subrame number 7,9)
-{0xa2,         0xb2,       1,         0,         792,         0,         1,         3,         4},         // (subrame number 3,4,8,9)
-{0xa2,         0xb2,       1,         0,         792,         0,         2,         3,         4},         // (subrame number 3,4,8,9)
-{0xa2,         0xb2,       1,         0,         682,         0,         1,         3,         4},         // (subrame number 1,3,5,7,9)
-{0xa2,         0xb2,       1,         0,         1023,        6,         1,         2,         4},         // (subrame number 0,1,2,3,4,5,6,7,8,9)
-{0xa3,         0xb3,       2,         1,         512,         0,         1,         2,         6},         // (subrame number 9)
-{0xa3,         0xb3,       2,         1,         528,         2,         1,         2,         6},         // (subrame number 4,9)
-{0xa3,         0xb3,       2,         1,         640,         0,         1,         2,         6},         // (subrame number 7,9)
-{0xa3,         0xb3,       2,         1,         640,         2,         1,         2,         6},         // (subrame number 7,9)
-{0xa3,         0xb3,       2,         1,         528,         0,         2,         2,         6},         // (subrame number 4,9)
-{0xa3,         0xb3,       2,         1,         768,         0,         2,         2,         6},         // (subrame number 8,9)
-{0xa3,         0xb3,       1,         0,         512,         0,         2,         2,         6},         // (subrame number 9)
-{0xa3,         0xb3,       1,         0,         512,         2,         1,         2,         6},         // (subrame number 9)
-{0xa3,         0xb3,       1,         0,         512,         0,         1,         2,         6},         // (subrame number 9)
-{0xa3,         0xb3,       1,         0,         768,         0,         2,         2,         6},         // (subrame number 8,9)
-{0xa3,         0xb3,       1,         0,         528,         0,         1,         2,         6},         // (subrame number 4,9)
-{0xa3,         0xb3,       1,         0,         640,         2,         1,         2,         6},         // (subrame number 7,9)
-{0xa3,         0xb3,       1,         0,         792,         0,         2,         2,         6},         // (subrame number 3,4,8,9)
-{0xa3,         0xb3,       1,         0,         682,         0,         1,         2,         6},         // (subrame number 1,3,5,7,9)
-{0xa3,         0xb3,       1,         0,         1023,        2,         1,         2,         6}          // (subrame number 0,1,2,3,4,5,6,7,8,9)
+static const int64_t table_6_3_3_2_3_prachConfig_Index[256][9] = {
+    // format,     format,      x,         y,     SFN_nbr,   star_symb,   slots_sfn,  occ_slot,  duration
+    {0, -1, 16, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {0, -1, 8, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {0, -1, 4, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {0, -1, 2, 0, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {0, -1, 2, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {0, -1, 2, 0, 16, 0, 1, 1, 0}, // (subrame number 4)
+    {0, -1, 2, 1, 16, 0, 1, 1, 0}, // (subrame number 4)
+    {0, -1, 1, 0, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {0, -1, 1, 0, 256, 0, 1, 1, 0}, // (subrame number 8)
+    {0, -1, 1, 0, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {0, -1, 1, 0, 64, 0, 1, 1, 0}, // (subrame number 6)
+    {0, -1, 1, 0, 32, 0, 1, 1, 0}, // (subrame number 5)
+    {0, -1, 1, 0, 16, 0, 1, 1, 0}, // (subrame number 4)
+    {0, -1, 1, 0, 8, 0, 1, 1, 0}, // (subrame number 3)
+    {0, -1, 1, 0, 4, 0, 1, 1, 0}, // (subrame number 2)
+    {0, -1, 1, 0, 66, 0, 1, 1, 0}, // (subrame number 1,6)
+    {0, -1, 1, 0, 66, 7, 1, 1, 0}, // (subrame number 1,6)
+    {0, -1, 1, 0, 528, 0, 1, 1, 0}, // (subrame number 4,9)
+    {0, -1, 1, 0, 264, 0, 1, 1, 0}, // (subrame number 3,8)
+    {0, -1, 1, 0, 132, 0, 1, 1, 0}, // (subrame number 2,7)
+    {0, -1, 1, 0, 768, 0, 1, 1, 0}, // (subrame number 8,9)
+    {0, -1, 1, 0, 784, 0, 1, 1, 0}, // (subrame number 4,8,9)
+    {0, -1, 1, 0, 536, 0, 1, 1, 0}, // (subrame number 3,4,9)
+    {0, -1, 1, 0, 896, 0, 1, 1, 0}, // (subrame number 7,8,9)
+    {0, -1, 1, 0, 792, 0, 1, 1, 0}, // (subrame number 3,4,8,9)
+    {0, -1, 1, 0, 960, 0, 1, 1, 0}, // (subrame number 6,7,8,9)
+    {0, -1, 1, 0, 594, 0, 1, 1, 0}, // (subrame number 1,4,6,9)
+    {0, -1, 1, 0, 682, 0, 1, 1, 0}, // (subrame number 1,3,5,7,9)
+    {1, -1, 16, 1, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {1, -1, 8, 1, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {1, -1, 4, 1, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {1, -1, 2, 0, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {1, -1, 2, 1, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {1, -1, 1, 0, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {2, -1, 16, 1, 64, 0, 1, 1, 0}, // (subrame number 6)
+    {2, -1, 8, 1, 64, 0, 1, 1, 0}, // (subrame number 6)
+    {2, -1, 4, 1, 64, 0, 1, 1, 0}, // (subrame number 6)
+    {2, -1, 2, 0, 64, 7, 1, 1, 0}, // (subrame number 6)
+    {2, -1, 2, 1, 64, 7, 1, 1, 0}, // (subrame number 6)
+    {2, -1, 1, 0, 64, 7, 1, 1, 0}, // (subrame number 6)
+    {3, -1, 16, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {3, -1, 8, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {3, -1, 4, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {3, -1, 2, 0, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {3, -1, 2, 1, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {3, -1, 2, 0, 16, 0, 1, 1, 0}, // (subrame number 4)
+    {3, -1, 2, 1, 16, 0, 1, 1, 0}, // (subrame number 4)
+    {3, -1, 1, 0, 512, 0, 1, 1, 0}, // (subrame number 9)
+    {3, -1, 1, 0, 256, 0, 1, 1, 0}, // (subrame number 8)
+    {3, -1, 1, 0, 128, 0, 1, 1, 0}, // (subrame number 7)
+    {3, -1, 1, 0, 64, 0, 1, 1, 0}, // (subrame number 6)
+    {3, -1, 1, 0, 32, 0, 1, 1, 0}, // (subrame number 5)
+    {3, -1, 1, 0, 16, 0, 1, 1, 0}, // (subrame number 4)
+    {3, -1, 1, 0, 8, 0, 1, 1, 0}, // (subrame number 3)
+    {3, -1, 1, 0, 4, 0, 1, 1, 0}, // (subrame number 2)
+    {3, -1, 1, 0, 66, 0, 1, 1, 0}, // (subrame number 1,6)
+    {3, -1, 1, 0, 66, 7, 1, 1, 0}, // (subrame number 1,6)
+    {3, -1, 1, 0, 528, 0, 1, 1, 0}, // (subrame number 4,9)
+    {3, -1, 1, 0, 264, 0, 1, 1, 0}, // (subrame number 3,8)
+    {3, -1, 1, 0, 132, 0, 1, 1, 0}, // (subrame number 2,7)
+    {3, -1, 1, 0, 768, 0, 1, 1, 0}, // (subrame number 8,9)
+    {3, -1, 1, 0, 784, 0, 1, 1, 0}, // (subrame number 4,8,9)
+    {3, -1, 1, 0, 536, 0, 1, 1, 0}, // (subrame number 3,4,9)
+    {3, -1, 1, 0, 896, 0, 1, 1, 0}, // (subrame number 7,8,9)
+    {3, -1, 1, 0, 792, 0, 1, 1, 0}, // (subrame number 3,4,8,9)
+    {3, -1, 1, 0, 594, 0, 1, 1, 0}, // (subrame number 1,4,6,9)
+    {3, -1, 1, 0, 682, 0, 1, 1, 0}, // (subrame number 1,3,5,7,9)
+    {0xa1, -1, 16, 1, 512, 0, 2, 6, 2}, // (subrame number 9)
+    {0xa1, -1, 8, 1, 512, 0, 2, 6, 2}, // (subrame number 9)
+    {0xa1, -1, 4, 1, 512, 0, 1, 6, 2}, // (subrame number 9)
+    {0xa1, -1, 2, 1, 512, 0, 1, 6, 2}, // (subrame number 9)
+    {0xa1, -1, 2, 1, 528, 7, 1, 3, 2}, // (subrame number 4,9)
+    {0xa1, -1, 2, 1, 640, 7, 1, 3, 2}, // (subrame number 7,9)
+    {0xa1, -1, 2, 1, 640, 0, 1, 6, 2}, // (subrame number 7,9)
+    {0xa1, -1, 2, 1, 768, 0, 2, 6, 2}, // (subrame number 8,9)
+    {0xa1, -1, 2, 1, 528, 0, 2, 6, 2}, // (subrame number 4,9)
+    {0xa1, -1, 2, 1, 924, 0, 1, 6, 2}, // (subrame number 2,3,4,7,8,9)
+    {0xa1, -1, 1, 0, 512, 0, 2, 6, 2}, // (subrame number 9)
+    {0xa1, -1, 1, 0, 512, 7, 1, 3, 2}, // (subrame number 9)
+    {0xa1, -1, 1, 0, 512, 0, 1, 6, 2}, // (subrame number 9)
+    {0xa1, -1, 1, 0, 768, 0, 2, 6, 2}, // (subrame number 8,9)
+    {0xa1, -1, 1, 0, 528, 0, 1, 6, 2}, // (subrame number 4,9)
+    {0xa1, -1, 1, 0, 640, 7, 1, 3, 2}, // (subrame number 7,9)
+    {0xa1, -1, 1, 0, 792, 0, 1, 6, 2}, // (subrame number 3,4,8,9)
+    {0xa1, -1, 1, 0, 792, 0, 2, 6, 2}, // (subrame number 3,4,8,9)
+    {0xa1, -1, 1, 0, 682, 0, 1, 6, 2}, // (subrame number 1,3,5,7,9)
+    {0xa1, -1, 1, 0, 1023, 7, 1, 3, 2}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xa2, -1, 16, 1, 512, 0, 2, 3, 4}, // (subrame number 9)
+    {0xa2, -1, 8, 1, 512, 0, 2, 3, 4}, // (subrame number 9)
+    {0xa2, -1, 4, 1, 512, 0, 1, 3, 4}, // (subrame number 9)
+    {0xa2, -1, 2, 1, 640, 0, 1, 3, 4}, // (subrame number 7,9)
+    {0xa2, -1, 2, 1, 768, 0, 2, 3, 4}, // (subrame number 8,9)
+    {0xa2, -1, 2, 1, 640, 9, 1, 1, 4}, // (subrame number 7,9)
+    {0xa2, -1, 2, 1, 528, 9, 1, 1, 4}, // (subrame number 4,9)
+    {0xa2, -1, 2, 1, 528, 0, 2, 3, 4}, // (subrame number 4,9)
+    {0xa2, -1, 16, 1, 924, 0, 1, 3, 4}, // (subrame number 2,3,4,7,8,9)
+    {0xa2, -1, 1, 0, 4, 0, 1, 3, 4}, // (subrame number 2)
+    {0xa2, -1, 1, 0, 128, 0, 1, 3, 4}, // (subrame number 7)
+    {0xa2, -1, 2, 1, 512, 0, 1, 3, 4}, // (subrame number 9)
+    {0xa2, -1, 1, 0, 512, 0, 2, 3, 4}, // (subrame number 9)
+    {0xa2, -1, 1, 0, 512, 9, 1, 1, 4}, // (subrame number 9)
+    {0xa2, -1, 1, 0, 512, 0, 1, 3, 4}, // (subrame number 9)
+    {0xa2, -1, 1, 0, 132, 0, 1, 3, 4}, // (subrame number 2,7)
+    {0xa2, -1, 1, 0, 768, 0, 2, 3, 4}, // (subrame number 8,9)
+    {0xa2, -1, 1, 0, 528, 0, 1, 3, 4}, // (subrame number 4,9)
+    {0xa2, -1, 1, 0, 640, 9, 1, 1, 4}, // (subrame number 7,9)
+    {0xa2, -1, 1, 0, 792, 0, 1, 3, 4}, // (subrame number 3,4,8,9)
+    {0xa2, -1, 1, 0, 792, 0, 2, 3, 4}, // (subrame number 3,4,8,9)
+    {0xa2, -1, 1, 0, 682, 0, 1, 3, 4}, // (subrame number 1,3,5,7,9)
+    {0xa2, -1, 1, 0, 1023, 9, 1, 1, 4}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xa3, -1, 16, 1, 512, 0, 2, 2, 6}, // (subrame number 9)
+    {0xa3, -1, 8, 1, 512, 0, 2, 2, 6}, // (subrame number 9)
+    {0xa3, -1, 4, 1, 512, 0, 1, 2, 6}, // (subrame number 9)
+    {0xa3, -1, 2, 1, 528, 7, 1, 1, 6}, // (subrame number 4,9)
+    {0xa3, -1, 2, 1, 640, 7, 1, 1, 6}, // (subrame number 7,9)
+    {0xa3, -1, 2, 1, 640, 0, 1, 2, 6}, // (subrame number 7,9)
+    {0xa3, -1, 2, 1, 528, 0, 2, 2, 6}, // (subrame number 4,9)
+    {0xa3, -1, 2, 1, 768, 0, 2, 2, 6}, // (subrame number 8,9)
+    {0xa3, -1, 2, 1, 924, 0, 1, 2, 6}, // (subrame number 2,3,4,7,8,9)
+    {0xa3, -1, 1, 0, 4, 0, 1, 2, 6}, // (subrame number 2)
+    {0xa3, -1, 1, 0, 128, 0, 1, 2, 6}, // (subrame number 7)
+    {0xa3, -1, 2, 1, 512, 0, 1, 2, 6}, // (subrame number 9)
+    {0xa3, -1, 1, 0, 512, 0, 2, 2, 6}, // (subrame number 9)
+    {0xa3, -1, 1, 0, 512, 7, 1, 1, 6}, // (subrame number 9)
+    {0xa3, -1, 1, 0, 512, 0, 1, 2, 6}, // (subrame number 9)
+    {0xa3, -1, 1, 0, 132, 0, 1, 2, 6}, // (subrame number 2,7)
+    {0xa3, -1, 1, 0, 768, 0, 2, 2, 6}, // (subrame number 8,9)
+    {0xa3, -1, 1, 0, 528, 0, 1, 2, 6}, // (subrame number 4,9)
+    {0xa3, -1, 1, 0, 640, 7, 1, 1, 6}, // (subrame number 7,9)
+    {0xa3, -1, 1, 0, 792, 0, 1, 2, 6}, // (subrame number 3,4,8,9)
+    {0xa3, -1, 1, 0, 792, 0, 2, 2, 6}, // (subrame number 3,4,8,9)
+    {0xa3, -1, 1, 0, 682, 0, 1, 2, 6}, // (subrame number 1,3,5,7,9)
+    {0xa3, -1, 1, 0, 1023, 7, 1, 1, 6}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xb1, -1, 4, 1, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xb1, -1, 2, 1, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xb1, -1, 2, 1, 640, 2, 1, 6, 2}, // (subrame number 7,9)
+    {0xb1, -1, 2, 1, 528, 8, 1, 3, 2}, // (subrame number 4,9)
+    {0xb1, -1, 2, 1, 528, 2, 2, 6, 2}, // (subrame number 4,9)
+    {0xb1, -1, 1, 0, 512, 2, 2, 6, 2}, // (subrame number 9)
+    {0xb1, -1, 1, 0, 512, 8, 1, 3, 2}, // (subrame number 9)
+    {0xb1, -1, 1, 0, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xb1, -1, 1, 0, 768, 2, 2, 6, 2}, // (subrame number 8,9)
+    {0xb1, -1, 1, 0, 528, 2, 1, 6, 2}, // (subrame number 4,9)
+    {0xb1, -1, 1, 0, 640, 8, 1, 3, 2}, // (subrame number 7,9)
+    {0xb1, -1, 1, 0, 682, 2, 1, 6, 2}, // (subrame number 1,3,5,7,9)
+    {0xb4, -1, 16, 1, 512, 0, 2, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 8, 1, 512, 0, 2, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 4, 1, 512, 2, 1, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 2, 1, 512, 0, 1, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 2, 1, 512, 2, 1, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 2, 1, 640, 2, 1, 1, 12}, // (subrame number 7,9)
+    {0xb4, -1, 2, 1, 528, 2, 1, 1, 12}, // (subrame number 4,9)
+    {0xb4, -1, 2, 1, 528, 0, 2, 1, 12}, // (subrame number 4,9)
+    {0xb4, -1, 2, 1, 768, 0, 2, 1, 12}, // (subrame number 8,9)
+    {0xb4, -1, 2, 1, 924, 0, 1, 1, 12}, // (subrame number 2,3,4,7,8,9)
+    {0xb4, -1, 1, 0, 2, 0, 1, 1, 12}, // (subrame number 1)
+    {0xb4, -1, 1, 0, 4, 0, 1, 1, 12}, // (subrame number 2)
+    {0xb4, -1, 1, 0, 16, 0, 1, 1, 12}, // (subrame number 4)
+    {0xb4, -1, 1, 0, 128, 0, 1, 1, 12}, // (subrame number 7)
+    {0xb4, -1, 1, 0, 512, 0, 1, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 1, 0, 512, 2, 1, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 1, 0, 512, 0, 2, 1, 12}, // (subrame number 9)
+    {0xb4, -1, 1, 0, 528, 2, 1, 1, 12}, // (subrame number 4,9)
+    {0xb4, -1, 1, 0, 640, 2, 1, 1, 12}, // (subrame number 7,9)
+    {0xb4, -1, 1, 0, 768, 0, 2, 1, 12}, // (subrame number 8,9)
+    {0xb4, -1, 1, 0, 792, 2, 1, 1, 12}, // (subrame number 3,4,8,9)
+    {0xb4, -1, 1, 0, 682, 2, 1, 1, 12}, // (subrame number 1,3,5,7,9)
+    {0xb4, -1, 1, 0, 1023, 0, 2, 1, 12}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xb4, -1, 1, 0, 1023, 2, 1, 1, 12}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xc0, -1, 16, 1, 512, 2, 2, 6, 2}, // (subrame number 9)
+    {0xc0, -1, 8, 1, 512, 2, 2, 6, 2}, // (subrame number 9)
+    {0xc0, -1, 4, 1, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xc0, -1, 2, 1, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xc0, -1, 2, 1, 768, 2, 2, 6, 2}, // (subrame number 8,9)
+    {0xc0, -1, 2, 1, 640, 2, 1, 6, 2}, // (subrame number 7,9)
+    {0xc0, -1, 2, 1, 640, 8, 1, 3, 2}, // (subrame number 7,9)
+    {0xc0, -1, 2, 1, 528, 8, 1, 3, 2}, // (subrame number 4,9)
+    {0xc0, -1, 2, 1, 528, 2, 2, 6, 2}, // (subrame number 4,9)
+    {0xc0, -1, 2, 1, 924, 2, 1, 6, 2}, // (subrame number 2,3,4,7,8,9)
+    {0xc0, -1, 1, 0, 512, 2, 2, 6, 2}, // (subrame number 9)
+    {0xc0, -1, 1, 0, 512, 8, 1, 3, 2}, // (subrame number 9)
+    {0xc0, -1, 1, 0, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xc0, -1, 1, 0, 768, 2, 2, 6, 2}, // (subrame number 8,9)
+    {0xc0, -1, 1, 0, 528, 2, 1, 6, 2}, // (subrame number 4,9)
+    {0xc0, -1, 1, 0, 640, 8, 1, 3, 2}, // (subrame number 7,9)
+    {0xc0, -1, 1, 0, 792, 2, 1, 6, 2}, // (subrame number 3,4,8,9)
+    {0xc0, -1, 1, 0, 792, 2, 2, 6, 2}, // (subrame number 3,4,8,9)
+    {0xc0, -1, 1, 0, 682, 2, 1, 6, 2}, // (subrame number 1,3,5,7,9)
+    {0xc0, -1, 1, 0, 1023, 8, 1, 3, 2}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xc2, -1, 16, 1, 512, 2, 2, 2, 6}, // (subrame number 9)
+    {0xc2, -1, 8, 1, 512, 2, 2, 2, 6}, // (subrame number 9)
+    {0xc2, -1, 4, 1, 512, 2, 1, 2, 6}, // (subrame number 9)
+    {0xc2, -1, 2, 1, 512, 2, 1, 2, 6}, // (subrame number 9)
+    {0xc2, -1, 2, 1, 768, 2, 2, 2, 6}, // (subrame number 8,9)
+    {0xc2, -1, 2, 1, 640, 2, 1, 2, 6}, // (subrame number 7,9)
+    {0xc2, -1, 2, 1, 640, 8, 1, 1, 6}, // (subrame number 7,9)
+    {0xc2, -1, 2, 1, 528, 8, 1, 1, 6}, // (subrame number 4,9)
+    {0xc2, -1, 2, 1, 528, 2, 2, 2, 6}, // (subrame number 4,9)
+    {0xc2, -1, 2, 1, 924, 2, 1, 2, 6}, // (subrame number 2,3,4,7,8,9)
+    {0xc2, -1, 8, 1, 512, 8, 2, 1, 6}, // (subrame number 9)
+    {0xc2, -1, 4, 1, 512, 8, 1, 1, 6}, // (subrame number 9)
+    {0xc2, -1, 1, 0, 512, 2, 2, 2, 6}, // (subrame number 9)
+    {0xc2, -1, 1, 0, 512, 8, 1, 1, 6}, // (subrame number 9)
+    {0xc2, -1, 1, 0, 512, 2, 1, 2, 6}, // (subrame number 9)
+    {0xc2, -1, 1, 0, 768, 2, 2, 2, 6}, // (subrame number 8,9)
+    {0xc2, -1, 1, 0, 528, 2, 1, 2, 6}, // (subrame number 4,9)
+    {0xc2, -1, 1, 0, 640, 8, 1, 1, 6}, // (subrame number 7,9)
+    {0xc2, -1, 1, 0, 792, 2, 1, 2, 6}, // (subrame number 3,4,8,9)
+    {0xc2, -1, 1, 0, 792, 2, 2, 2, 6}, // (subrame number 3,4,8,9)
+    {0xc2, -1, 1, 0, 682, 2, 1, 2, 6}, // (subrame number 1,3,5,7,9)
+    {0xc2, -1, 1, 0, 1023, 8, 1, 1, 6}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xa1, 0xb1, 2, 1, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xa1, 0xb1, 2, 1, 528, 8, 1, 3, 2}, // (subrame number 4,9)
+    {0xa1, 0xb1, 2, 1, 640, 8, 1, 3, 2}, // (subrame number 7,9)
+    {0xa1, 0xb1, 2, 1, 640, 2, 1, 6, 2}, // (subrame number 7,9)
+    {0xa1, 0xb1, 2, 1, 528, 2, 2, 6, 2}, // (subrame number 4,9)
+    {0xa1, 0xb1, 2, 1, 768, 2, 2, 6, 2}, // (subrame number 8,9)
+    {0xa1, 0xb1, 1, 0, 512, 2, 2, 6, 2}, // (subrame number 9)
+    {0xa1, 0xb1, 1, 0, 512, 8, 1, 3, 2}, // (subrame number 9)
+    {0xa1, 0xb1, 1, 0, 512, 2, 1, 6, 2}, // (subrame number 9)
+    {0xa1, 0xb1, 1, 0, 768, 2, 2, 6, 2}, // (subrame number 8,9)
+    {0xa1, 0xb1, 1, 0, 528, 2, 1, 6, 2}, // (subrame number 4,9)
+    {0xa1, 0xb1, 1, 0, 640, 8, 1, 3, 2}, // (subrame number 7,9)
+    {0xa1, 0xb1, 1, 0, 792, 2, 2, 6, 2}, // (subrame number 3,4,8,9)
+    {0xa1, 0xb1, 1, 0, 682, 2, 1, 6, 2}, // (subrame number 1,3,5,7,9)
+    {0xa1, 0xb1, 1, 0, 1023, 8, 1, 3, 2}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xa2, 0xb2, 2, 1, 512, 0, 1, 3, 4}, // (subrame number 9)
+    {0xa2, 0xb2, 2, 1, 528, 6, 1, 2, 4}, // (subrame number 4,9)
+    {0xa2, 0xb2, 2, 1, 640, 6, 1, 2, 4}, // (subrame number 7,9)
+    {0xa2, 0xb2, 2, 1, 528, 0, 2, 3, 4}, // (subrame number 4,9)
+    {0xa2, 0xb2, 2, 1, 768, 0, 2, 3, 4}, // (subrame number 8,9)
+    {0xa2, 0xb2, 1, 0, 512, 0, 2, 3, 4}, // (subrame number 9)
+    {0xa2, 0xb2, 1, 0, 512, 6, 1, 2, 4}, // (subrame number 9)
+    {0xa2, 0xb2, 1, 0, 512, 0, 1, 3, 4}, // (subrame number 9)
+    {0xa2, 0xb2, 1, 0, 768, 0, 2, 3, 4}, // (subrame number 8,9)
+    {0xa2, 0xb2, 1, 0, 528, 0, 1, 3, 4}, // (subrame number 4,9)
+    {0xa2, 0xb2, 1, 0, 640, 6, 1, 2, 4}, // (subrame number 7,9)
+    {0xa2, 0xb2, 1, 0, 792, 0, 1, 3, 4}, // (subrame number 3,4,8,9)
+    {0xa2, 0xb2, 1, 0, 792, 0, 2, 3, 4}, // (subrame number 3,4,8,9)
+    {0xa2, 0xb2, 1, 0, 682, 0, 1, 3, 4}, // (subrame number 1,3,5,7,9)
+    {0xa2, 0xb2, 1, 0, 1023, 6, 1, 2, 4}, // (subrame number 0,1,2,3,4,5,6,7,8,9)
+    {0xa3, 0xb3, 2, 1, 512, 0, 1, 2, 6}, // (subrame number 9)
+    {0xa3, 0xb3, 2, 1, 528, 2, 1, 2, 6}, // (subrame number 4,9)
+    {0xa3, 0xb3, 2, 1, 640, 0, 1, 2, 6}, // (subrame number 7,9)
+    {0xa3, 0xb3, 2, 1, 640, 2, 1, 2, 6}, // (subrame number 7,9)
+    {0xa3, 0xb3, 2, 1, 528, 0, 2, 2, 6}, // (subrame number 4,9)
+    {0xa3, 0xb3, 2, 1, 768, 0, 2, 2, 6}, // (subrame number 8,9)
+    {0xa3, 0xb3, 1, 0, 512, 0, 2, 2, 6}, // (subrame number 9)
+    {0xa3, 0xb3, 1, 0, 512, 2, 1, 2, 6}, // (subrame number 9)
+    {0xa3, 0xb3, 1, 0, 512, 0, 1, 2, 6}, // (subrame number 9)
+    {0xa3, 0xb3, 1, 0, 768, 0, 2, 2, 6}, // (subrame number 8,9)
+    {0xa3, 0xb3, 1, 0, 528, 0, 1, 2, 6}, // (subrame number 4,9)
+    {0xa3, 0xb3, 1, 0, 640, 2, 1, 2, 6}, // (subrame number 7,9)
+    {0xa3, 0xb3, 1, 0, 792, 0, 2, 2, 6}, // (subrame number 3,4,8,9)
+    {0xa3, 0xb3, 1, 0, 682, 0, 1, 2, 6}, // (subrame number 1,3,5,7,9)
+    {0xa3, 0xb3, 1, 0, 1023, 2, 1, 2, 6} // (subrame number 0,1,2,3,4,5,6,7,8,9)
 };
 // Table 6.3.3.2-4: Random access configurations for FR2 and unpaired spectrum
-int64_t table_6_3_3_2_4_prachConfig_Index [256][10] = {
-//format,      format,       x,          y,           y,              SFN_nbr,       star_symb,   slots_sfn,  occ_slot,  duration
-{0xa1,          -1,          16,         1,          -1,          567489872400,          0,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          16,         1,          -1,          586406201480,          0,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          -1,          8,          1,           2,          550293209600,          0,          2,          6,          2},          // (subframe number :9,19,29,39)
-{0xa1,          -1,          8,          1,          -1,          567489872400,          0,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          8,          1,          -1,          586406201480,          0,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          -1,          4,          1,          -1,          567489872400,          0,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          4,          1,          -1,          567489872400,          0,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          4,          1,          -1,          586406201480,          0,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          -1,          2,          1,          -1,          551911719040,          0,          2,          6,          2},          // (subframe number :7,15,23,31,39)
-{0xa1,          -1,          2,          1,          -1,          567489872400,          0,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          2,          1,          -1,          567489872400,          0,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          2,          1,          -1,          586406201480,          0,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          -1,          1,          0,          -1,          549756338176,          7,          1,          3,          2},          // (subframe number :19,39)
-{0xa1,          -1,          1,          0,          -1,          168,                   0,          1,          6,          2},          // (subframe number :3,5,7)
-{0xa1,          -1,          1,          0,          -1,          567489331200,          7,          1,          3,          2},          // (subframe number :24,29,34,39)
-{0xa1,          -1,          1,          0,          -1,          550293209600,          7,          2,          3,          2},          // (subframe number :9,19,29,39)
-{0xa1,          -1,          1,          0,          -1,          687195422720,          0,          1,          6,          2},          // (subframe number :17,19,37,39)
-{0xa1,          -1,          1,          0,          -1,          550293209600,          0,          2,          6,          2},          // (subframe number :9,19,29,39)
-{0xa1,          -1,          1,          0,          -1,          567489872400,          0,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          1,          0,          -1,          567489872400,          7,          1,          3,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          -1,          1,          0,          -1,          10920,                 7,          1,          3,          2},          // (subframe number :3,5,7,9,11,13)
-{0xa1,          -1,          1,          0,          -1,          586405642240,          7,          1,          3,          2},          // (subframe number :23,27,31,35,39)
-{0xa1,          -1,          1,          0,          -1,          551911719040,          0,          1,          6,          2},          // (subframe number :7,15,23,31,39)
-{0xa1,          -1,          1,          0,          -1,          586405642240,          0,          1,          6,          2},          // (subframe number :23,27,31,35,39)
-{0xa1,          -1,          1,          0,          -1,          965830828032,          7,          2,          3,          2},          // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xa1,          -1,          1,          0,          -1,          586406201480,          7,          1,          3,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          -1,          1,          0,          -1,          586406201480,          0,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          -1,          1,          0,          -1,          733007751850,          0,          1,          6,          2},          // (subframe number :1,3,5,7,…,37,39)
-{0xa1,          -1,          1,          0,          -1,          1099511627775,         7,          1,          3,          2},          // (subframe number :0,1,2,…,39)
-{0xa2,          -1,          16,         1,          -1,          567489872400,          0,          2,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          16,         1,          -1,          586406201480,          0,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          -1,          8,          1,          -1,          567489872400,          0,          2,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          8,          1,          -1,          586406201480,          0,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          -1,          8,          1,           2,          550293209600,          0,          2,          3,          4},          // (subframe number :9,19,29,39)
-{0xa2,          -1,          4,          1,          -1,          567489872400,          0,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          4,          1,          -1,          567489872400,          0,          2,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          4,          1,          -1,          586406201480,          0,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          -1,          2,          1,          -1,          551911719040,          0,          2,          3,          4},          // (subframe number :7,15,23,31,39)
-{0xa2,          -1,          2,          1,          -1,          567489872400,          0,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          2,          1,          -1,          567489872400,          0,          2,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          2,          1,          -1,          586406201480,          0,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          -1,          1,          0,          -1,          549756338176,          5,          1,          2,          4},          // (subframe number :19,39)
-{0xa2,          -1,          1,          0,          -1,          168,                   0,          1,          3,          4},          // (subframe number :3,5,7)
-{0xa2,          -1,          1,          0,          -1,          567489331200,          5,          1,          2,          4},          // (subframe number :24,29,34,39)
-{0xa2,          -1,          1,          0,          -1,          550293209600,          5,          2,          2,          4},          // (subframe number :9,19,29,39)
-{0xa2,          -1,          1,          0,          -1,          687195422720,          0,          1,          3,          4},          // (subframe number :17,19,37,39)
-{0xa2,          -1,          1,          0,          -1,          550293209600,          0,          2,          3,          4},          // (subframe number :9, 19, 29, 39)
-{0xa2,          -1,          1,          0,          -1,          551911719040,          0,          1,          3,          4},          // (subframe number :7,15,23,31,39)
-{0xa2,          -1,          1,          0,          -1,          586405642240,          5,          1,          2,          4},          // (subframe number :23,27,31,35,39)
-{0xa2,          -1,          1,          0,          -1,          586405642240,          0,          1,          3,          4},          // (subframe number :23,27,31,35,39)
-{0xa2,          -1,          1,          0,          -1,          10920,                 5,          1,          2,          4},          // (subframe number :3,5,7,9,11,13)
-{0xa2,          -1,          1,          0,          -1,          10920,                 0,          1,          3,          4},          // (subframe number :3,5,7,9,11,13)
-{0xa2,          -1,          1,          0,          -1,          567489872400,          5,          1,          2,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          1,          0,          -1,          567489872400,          0,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          -1,          1,          0,          -1,          965830828032,          5,          2,          2,          4},          // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xa2,          -1,          1,          0,          -1,          586406201480,          5,          1,          2,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          -1,          1,          0,          -1,          586406201480,          0,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          -1,          1,          0,          -1,          733007751850,          0,          1,          3,          4},          // (subframe number :1,3,5,7,…,37,39)
-{0xa2,          -1,          1,          0,          -1,          1099511627775,         5,          1,          2,          4},          // (subframe number :0,1,2,…,39)
-{0xa3,          -1,          16,         1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          16,         1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          -1,          8,          1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          8,          1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          -1,          8,          1,           2,          550293209600,          0,          2,          2,          6},          // (subframe number :9,19,29,39)
-{0xa3,          -1,          4,          1,          -1,          567489872400,          0,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          4,          1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          4,          1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          -1,          2,          1,          -1,          567489872400,          0,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          2,          1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          2,          1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          -1,          1,          0,          -1,          549756338176,          7,          1,          1,          6},          // (subframe number :19,39)
-{0xa3,          -1,          1,          0,          -1,          168,                   0,          1,          2,          6},          // (subframe number :3,5,7)
-{0xa3,          -1,          1,          0,          -1,          10752,                 2,          1,          2,          6},          // (subframe number :9,11,13)
-{0xa3,          -1,          1,          0,          -1,          567489331200,          7,          1,          1,          6},          // (subframe number :24,29,34,39)
-{0xa3,          -1,          1,          0,          -1,          550293209600,          7,          2,          1,          6},          // (subframe number :9,19,29,39)
-{0xa3,          -1,          1,          0,          -1,          687195422720,          0,          1,          2,          6},          // (subframe number :17,19,37,39)
-{0xa3,          -1,          1,          0,          -1,          550293209600,          0,          2,          2,          6},          // (subframe number :9,19,29,39)
-{0xa3,          -1,          1,          0,          -1,          551911719040,          0,          1,          2,          6},          // (subframe number :7,15,23,31,39)
-{0xa3,          -1,          1,          0,          -1,          586405642240,          7,          1,          1,          6},          // (subframe number :23,27,31,35,39)
-{0xa3,          -1,          1,          0,          -1,          586405642240,          0,          1,          2,          6},          // (subframe number :23,27,31,35,39)
-{0xa3,          -1,          1,          0,          -1,          10920,                 0,          1,          2,          6},          // (subframe number :3,5,7,9,11,13)
-{0xa3,          -1,          1,          0,          -1,          10920,                 7,          1,          1,          6},          // (subframe number :3,5,7,9,11,13)
-{0xa3,          -1,          1,          0,          -1,          567489872400,          0,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          1,          0,          -1,          567489872400,          7,          1,          1,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          -1,          1,          0,          -1,          965830828032,          7,          2,          1,          6},          // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xa3,          -1,          1,          0,          -1,          586406201480,          7,          1,          1,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          -1,          1,          0,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          -1,          1,          0,          -1,          733007751850,          0,          1,          2,          6},          // (subframe number :1,3,5,7,…,37,39)
-{0xa3,          -1,          1,          0,          -1,          1099511627775,         7,          1,          1,          6},          // (subframe number :0,1,2,…,39)
-{0xb1,          -1,          16,         1,          -1,          567489872400,          2,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xb1,          -1,          8,          1,          -1,          567489872400,          2,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xb1,          -1,          8,          1,           2,          550293209600,          2,          2,          6,          2},          // (subframe number :9,19,29,39)
-{0xb1,          -1,          4,          1,          -1,          567489872400,          2,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xb1,          -1,          2,          1,          -1,          567489872400,          2,          2,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xb1,          -1,          2,          1,          -1,          586406201480,          2,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb1,          -1,          1,          0,          -1,          549756338176,          8,          1,          3,          2},          // (subframe number :19,39)
-{0xb1,          -1,          1,          0,          -1,          168,                   2,          1,          6,          2},          // (subframe number :3,5,7)
-{0xb1,          -1,          1,          0,          -1,          567489331200,          8,          1,          3,          2},          // (subframe number :24,29,34,39)
-{0xb1,          -1,          1,          0,          -1,          550293209600,          8,          2,          3,          2},          // (subframe number :9,19,29,39)
-{0xb1,          -1,          1,          0,          -1,          687195422720,          2,          1,          6,          2},          // (subframe number :17,19,37,39)
-{0xb1,          -1,          1,          0,          -1,          550293209600,          2,          2,          6,          2},          // (subframe number :9,19,29,39)
-{0xb1,          -1,          1,          0,          -1,          551911719040,          2,          1,          6,          2},          // (subframe number :7,15,23,31,39)
-{0xb1,          -1,          1,          0,          -1,          586405642240,          8,          1,          3,          2},          // (subframe number :23,27,31,35,39)
-{0xb1,          -1,          1,          0,          -1,          586405642240,          2,          1,          6,          2},          // (subframe number :23,27,31,35,39)
-{0xb1,          -1,          1,          0,          -1,          10920,                 8,          1,          3,          2},          // (subframe number :3,5,7,9,11,13)
-{0xb1,          -1,          1,          0,          -1,          567489872400,          8,          1,          3,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xb1,          -1,          1,          0,          -1,          567489872400,          2,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xb1,          -1,          1,          0,          -1,          586406201480,          8,          1,          3,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb1,          -1,          1,          0,          -1,          965830828032,          8,          2,          3,          2},          // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xb1,          -1,          1,          0,          -1,          586406201480,          2,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb1,          -1,          1,          0,          -1,          733007751850,          2,          1,          6,          2},          // (subframe number :1,3,5,7,…,37,39)
-{0xb1,          -1,          1,          0,          -1,          1099511627775,         8,          1,          3,          2},          // (subframe number :0,1,2,…,39)
-{0xb4,          -1,          16,         1,           2,          567489872400,          0,          2,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          16,         1,           2,          586406201480,          0,          1,          1,          12},         // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb4,          -1,          8,          1,           2,          567489872400,          0,          2,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          8,          1,           2,          586406201480,          0,          1,          1,          12},         // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb4,          -1,          8,          1,           2,          550293209600,          0,          2,          1,          12},         // (subframe number :9,19,29,39)
-{0xb4,          -1,          4,          1,          -1,          567489872400,          0,          1,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          4,          1,          -1,          567489872400,          0,          2,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          4,          1,           2,          586406201480,          0,          1,          1,          12},         // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb4,          -1,          2,          1,          -1,          551911719040,          2,          2,          1,          12},         // (subframe number :7,15,23,31,39)
-{0xb4,          -1,          2,          1,          -1,          567489872400,          0,          1,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          2,          1,          -1,          567489872400,          0,          2,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          2,          1,          -1,          586406201480,          0,          1,          1,          12},         // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb4,          -1,          1,          0,          -1,          549756338176,          2,          2,          1,          12},         // (subframe number :19, 39)
-{0xb4,          -1,          1,          0,          -1,          687195422720,          0,          1,          1,          12},         // (subframe number :17, 19, 37, 39)
-{0xb4,          -1,          1,          0,          -1,          567489331200,          2,          1,          1,          12},         // (subframe number :24,29,34,39)
-{0xb4,          -1,          1,          0,          -1,          550293209600,          2,          2,          1,          12},         // (subframe number :9,19,29,39)
-{0xb4,          -1,          1,          0,          -1,          550293209600,          0,          2,          1,          12},         // (subframe number :9,19,29,39)
-{0xb4,          -1,          1,          0,          -1,          551911719040,          0,          1,          1,          12},         // (subframe number :7,15,23,31,39)
-{0xb4,          -1,          1,          0,          -1,          551911719040,          0,          2,          1,          12},         // (subframe number :7,15,23,31,39)
-{0xb4,          -1,          1,          0,          -1,          586405642240,          0,          1,          1,          12},         // (subframe number :23,27,31,35,39)
-{0xb4,          -1,          1,          0,          -1,          586405642240,          2,          2,          1,          12},         // (subframe number :23,27,31,35,39)
-{0xb4,          -1,          1,          0,          -1,          698880,                0,          1,          1,          12},         // (subframe number :9,11,13,15,17,19)
-{0xb4,          -1,          1,          0,          -1,          10920,                 2,          1,          1,          12},         // (subframe number :3,5,7,9,11,13)
-{0xb4,          -1,          1,          0,          -1,          567489872400,          0,          1,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          1,          0,          -1,          567489872400,          2,          2,          1,          12},         // (subframe number :4,9,14,19,24,29,34,39)
-{0xb4,          -1,          1,          0,          -1,          965830828032,          2,          2,          1,          12},         // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xb4,          -1,          1,          0,          -1,          586406201480,          0,          1,          1,          12},         // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb4,          -1,          1,          0,          -1,          586406201480,          2,          1,          1,          12},         // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xb4,          -1,          1,          0,          -1,          44739240,              2,          1,          1,          12},         // (subframe number :3, 5, 7, …, 23,25)
-{0xb4,          -1,          1,          0,          -1,          44739240,              0,          2,          1,          12},         // (subframe number :3, 5, 7, …, 23,25)
-{0xb4,          -1,          1,          0,          -1,          733007751850,          0,          1,          1,          12},         // (subframe number :1,3,5,7,…,37,39)
-{0xb4,          -1,          1,          0,          -1,          1099511627775,         2,          1,          1,          12},         // (subframe number :0, 1, 2,…, 39)
-{0xc0,          -1,          16,         1,          -1,          567489872400,          0,          2,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          16,         1,          -1,          586406201480,          0,          1,          7,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc0,          -1,          8,          1,          -1,          567489872400,          0,          1,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          8,          1,          -1,          586406201480,          0,          1,          7,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc0,          -1,          8,          1,           2,          550293209600,          0,          2,          7,          2},          // (subframe number :9,19,29,39)
-{0xc0,          -1,          4,          1,          -1,          567489872400,          0,          1,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          4,          1,          -1,          567489872400,          0,          2,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          4,          1,          -1,          586406201480,          0,          1,          7,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc0,          -1,          2,          1,          -1,          551911719040,          0,          2,          7,          2},          // (subframe number :7,15,23,31,39)
-{0xc0,          -1,          2,          1,          -1,          567489872400,          0,          1,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          2,          1,          -1,          567489872400,          0,          2,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          2,          1,          -1,          586406201480,          0,          1,          7,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc0,          -1,          1,          0,          -1,          549756338176,          8,          1,          3,          2},          // (subframe number :19,39)
-{0xc0,          -1,          1,          0,          -1,          168,                   0,          1,          7,          2},          // (subframe number :3,5,7)
-{0xc0,          -1,          1,          0,          -1,          567489331200,          8,          1,          3,          2},          // (subframe number :24,29,34,39)
-{0xc0,          -1,          1,          0,          -1,          550293209600,          8,          2,          3,          2},          // (subframe number :9,19,29,39)
-{0xc0,          -1,          1,          0,          -1,          687195422720,          0,          1,          7,          2},          // (subframe number :17,19,37,39)
-{0xc0,          -1,          1,          0,          -1,          550293209600,          0,          2,          7,          2},          // (subframe number :9,19,29,39)
-{0xc0,          -1,          1,          0,          -1,          586405642240,          8,          1,          3,          2},          // (subframe number :23,27,31,35,39)
-{0xc0,          -1,          1,          0,          -1,          551911719040,          0,          1,          7,          2},          // (subframe number :7,15,23,31,39)
-{0xc0,          -1,          1,          0,          -1,          586405642240,          0,          1,          7,          2},          // (subframe number :23,27,31,35,39)
-{0xc0,          -1,          1,          0,          -1,          10920,                 8,          1,          3,          2},          // (subframe number :3,5,7,9,11,13)
-{0xc0,          -1,          1,          0,          -1,          567489872400,          8,          1,          3,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          1,          0,          -1,          567489872400,          0,          1,          7,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc0,          -1,          1,          0,          -1,          965830828032,          8,          2,          3,          2},          // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xc0,          -1,          1,          0,          -1,          586406201480,          8,          1,          3,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc0,          -1,          1,          0,          -1,          586406201480,          0,          1,          7,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc0,          -1,          1,          0,          -1,          733007751850,          0,          1,          7,          2},          // (subframe number :1,3,5,7,…,37,39)
-{0xc0,          -1,          1,          0,          -1,          1099511627775,         8,          1,          3,          2},          // (subframe number :0,1,2,…,39)
-{0xc2,          -1,          16,         1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          16,         1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc2,          -1,          8,          1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          8,          1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc2,          -1,          8,          1,           2,          550293209600,          0,          2,          2,          6},          // (subframe number :9,19,29,39)
-{0xc2,          -1,          4,          1,          -1,          567489872400,          0,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          4,          1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          4,          1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc2,          -1,          2,          1,          -1,          551911719040,          2,          2,          2,          6},          // (subframe number :7,15,23,31,39)
-{0xc2,          -1,          2,          1,          -1,          567489872400,          0,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          2,          1,          -1,          567489872400,          0,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          2,          1,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc2,          -1,          1,          0,          -1,          549756338176,          2,          1,          2,          6},          // (subframe number :19,39)
-{0xc2,          -1,          1,          0,          -1,          168,                   0,          1,          2,          6},          // (subframe number :3,5,7)
-{0xc2,          -1,          1,          0,          -1,          567489331200,          7,          1,          1,          6},          // (subframe number :24,29,34,39)
-{0xc2,          -1,          1,          0,          -1,          550293209600,          7,          2,          1,          6},          // (subframe number :9,19,29,39)
-{0xc2,          -1,          1,          0,          -1,          687195422720,          0,          1,          2,          6},          // (subframe number :17,19,37,39)
-{0xc2,          -1,          1,          0,          -1,          550293209600,          2,          2,          2,          6},          // (subframe number :9,19,29,39)
-{0xc2,          -1,          1,          0,          -1,          551911719040,          2,          1,          2,          6},          // (subframe number :7,15,23,31,39)
-{0xc2,          -1,          1,          0,          -1,          10920,                 7,          1,          1,          6},          // (subframe number :3,5,7,9,11,13)
-{0xc2,          -1,          1,          0,          -1,          586405642240,          7,          2,          1,          6},          // (subframe number :23,27,31,35,39)
-{0xc2,          -1,          1,          0,          -1,          586405642240,          0,          1,          2,          6},          // (subframe number :23,27,31,35,39)
-{0xc2,          -1,          1,          0,          -1,          567489872400,          7,          2,          1,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          1,          0,          -1,          567489872400,          2,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xc2,          -1,          1,          0,          -1,          965830828032,          7,          2,          1,          6},          // (subframe number :13,14,15, 29,30,31,37,38,39)
-{0xc2,          -1,          1,          0,          -1,          586406201480,          7,          1,          1,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc2,          -1,          1,          0,          -1,          586406201480,          0,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xc2,          -1,          1,          0,          -1,          733007751850,          0,          1,          2,          6},          // (subframe number :1,3,5,7,…,37,39)
-{0xc2,          -1,          1,          0,          -1,          1099511627775,         7,          1,          1,          6},          // (subframe number :0,1,2,…,39)
-{0xa1,          0xb1,        16,         1,          -1,          567489872400,          2,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          0xb1,        16,         1,          -1,          586406201480,          2,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          0xb1,        8,          1,          -1,          567489872400,          2,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          0xb1,        8,          1,          -1,          586406201480,          2,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          0xb1,        4,          1,          -1,          567489872400,          2,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          0xb1,        4,          1,          -1,          586406201480,          2,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          0xb1,        2,          1,          -1,          567489872400,          2,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          0xb1,        1,          0,          -1,          549756338176,          8,          1,          3,          2},          // (subframe number :19,39)
-{0xa1,          0xb1,        1,          0,          -1,          550293209600,          8,          1,          3,          2},          // (subframe number :9,19,29,39)
-{0xa1,          0xb1,        1,          0,          -1,          687195422720,          2,          1,          6,          2},          // (subframe number :17,19,37,39)
-{0xa1,          0xb1,        1,          0,          -1,          550293209600,          2,          2,          6,          2},          // (subframe number :9,19,29,39)
-{0xa1,          0xb1,        1,          0,          -1,          586405642240,          8,          1,          3,          2},          // (subframe number :23,27,31,35,39)
-{0xa1,          0xb1,        1,          0,          -1,          551911719040,          2,          1,          6,          2},          // (subframe number :7,15,23,31,39)
-{0xa1,          0xb1,        1,          0,          -1,          586405642240,          2,          1,          6,          2},          // (subframe number :23,27,31,35,39)
-{0xa1,          0xb1,        1,          0,          -1,          567489872400,          8,          1,          3,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          0xb1,        1,          0,          -1,          567489872400,          2,          1,          6,          2},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa1,          0xb1,        1,          0,          -1,          586406201480,          2,          1,          6,          2},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa1,          0xb1,        1,          0,          -1,          733007751850,          2,          1,          6,          2},          // (subframe number :1,3,5,7,…,37,39)
-{0xa2,          0xb2,        16,         1,          -1,          567489872400,          2,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          0xb2,        16,         1,          -1,          586406201480,          2,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          0xb2,        8,          1,          -1,          567489872400,          2,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          0xb2,        8,          1,          -1,          586406201480,          2,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          0xb2,        4,          1,          -1,          567489872400,          2,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          0xb2,        4,          1,          -1,          586406201480,          2,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          0xb2,        2,          1,          -1,          567489872400,          2,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          0xb2,        1,          0,          -1,          549756338176,          6,          1,          2,          4},          // (subframe number :19,39)
-{0xa2,          0xb2,        1,          0,          -1,          550293209600,          6,          1,          2,          4},          // (subframe number :9,19,29,39)
-{0xa2,          0xb2,        1,          0,          -1,          687195422720,          2,          1,          3,          4},          // (subframe number :17,19,37,39)
-{0xa2,          0xb2,        1,          0,          -1,          550293209600,          2,          2,          3,          4},          // (subframe number :9,19,29,39)
-{0xa2,          0xb2,        1,          0,          -1,          586405642240,          6,          1,          2,          4},          // (subframe number :23,27,31,35,39)
-{0xa2,          0xb2,        1,          0,          -1,          551911719040,          2,          1,          3,          4},          // (subframe number :7,15,23,31,39)
-{0xa2,          0xb2,        1,          0,          -1,          586405642240,          2,          1,          3,          4},          // (subframe number :23,27,31,35,39)
-{0xa2,          0xb2,        1,          0,          -1,          567489872400,          6,          1,          2,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          0xb2,        1,          0,          -1,          567489872400,          2,          1,          3,          4},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa2,          0xb2,        1,          0,          -1,          586406201480,          2,          1,          3,          4},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa2,          0xb2,        1,          0,          -1,          733007751850,          2,          1,          3,          4},          // (subframe number :1,3,5,7,…,37,39)
-{0xa3,          0xb3,        16,         1,          -1,          567489872400,          2,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          0xb3,        16,         1,          -1,          586406201480,          2,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          0xb3,        8,          1,          -1,          567489872400,          2,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          0xb3,        8,          1,          -1,          586406201480,          2,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          0xb3,        4,          1,          -1,          567489872400,          2,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          0xb3,        4,          1,          -1,          586406201480,          2,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          0xb3,        2,          1,          -1,          567489872400,          2,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          0xb3,        1,          0,          -1,          549756338176,          2,          1,          2,          6},          // (subframe number :19,39)
-{0xa3,          0xb3,        1,          0,          -1,          550293209600,          2,          1,          2,          6},          // (subframe number :9,19,29,39)
-{0xa3,          0xb3,        1,          0,          -1,          687195422720,          2,          1,          2,          6},          // (subframe number :17,19,37,39)
-{0xa3,          0xb3,        1,          0,          -1,          550293209600,          2,          2,          2,          6},          // (subframe number :9,19,29,39)
-{0xa3,          0xb3,        1,          0,          -1,          551911719040,          2,          1,          2,          6},          // (subframe number :7,15,23,31,39)
-{0xa3,          0xb3,        1,          0,          -1,          586405642240,          2,          1,          2,          6},          // (subframe number :23,27,31,35,39)
-{0xa3,          0xb3,        1,          0,          -1,          586405642240,          2,          2,          2,          6},          // (subframe number :23,27,31,35,39)
-{0xa3,          0xb3,        1,          0,          -1,          567489872400,          2,          1,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          0xb3,        1,          0,          -1,          567489872400,          2,          2,          2,          6},          // (subframe number :4,9,14,19,24,29,34,39)
-{0xa3,          0xb3,        1,          0,          -1,          586406201480,          2,          1,          2,          6},          // (subframe number :3,7,11,15,19,23,27,31,35,39)
-{0xa3,          0xb3,        1,          0,          -1,          733007751850,          2,          1,          2,          6}           // (subframe number :1,3,5,7,…,37,39)
+static const int64_t table_6_3_3_2_4_prachConfig_Index[256][10] = {
+    // format,      format,       x,          y,           y,              SFN_nbr,       star_symb,   slots_sfn,  occ_slot,
+    // duration
+    {0xa1, -1, 16, 1, -1, 567489872400, 0, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 16, 1, -1, 586406201480, 0, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, -1, 8, 1, 2, 550293209600, 0, 2, 6, 2}, // (subframe number :9,19,29,39)
+    {0xa1, -1, 8, 1, -1, 567489872400, 0, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 8, 1, -1, 586406201480, 0, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, -1, 4, 1, -1, 567489872400, 0, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 4, 1, -1, 567489872400, 0, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 4, 1, -1, 586406201480, 0, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, -1, 2, 1, -1, 551911719040, 0, 2, 6, 2}, // (subframe number :7,15,23,31,39)
+    {0xa1, -1, 2, 1, -1, 567489872400, 0, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 2, 1, -1, 567489872400, 0, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 2, 1, -1, 586406201480, 0, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, -1, 1, 0, -1, 549756338176, 7, 1, 3, 2}, // (subframe number :19,39)
+    {0xa1, -1, 1, 0, -1, 168, 0, 1, 6, 2}, // (subframe number :3,5,7)
+    {0xa1, -1, 1, 0, -1, 567489331200, 7, 1, 3, 2}, // (subframe number :24,29,34,39)
+    {0xa1, -1, 1, 0, -1, 550293209600, 7, 2, 3, 2}, // (subframe number :9,19,29,39)
+    {0xa1, -1, 1, 0, -1, 687195422720, 0, 1, 6, 2}, // (subframe number :17,19,37,39)
+    {0xa1, -1, 1, 0, -1, 550293209600, 0, 2, 6, 2}, // (subframe number :9,19,29,39)
+    {0xa1, -1, 1, 0, -1, 567489872400, 0, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 1, 0, -1, 567489872400, 7, 1, 3, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, -1, 1, 0, -1, 10920, 7, 1, 3, 2}, // (subframe number :3,5,7,9,11,13)
+    {0xa1, -1, 1, 0, -1, 586405642240, 7, 1, 3, 2}, // (subframe number :23,27,31,35,39)
+    {0xa1, -1, 1, 0, -1, 551911719040, 0, 1, 6, 2}, // (subframe number :7,15,23,31,39)
+    {0xa1, -1, 1, 0, -1, 586405642240, 0, 1, 6, 2}, // (subframe number :23,27,31,35,39)
+    {0xa1, -1, 1, 0, -1, 965830828032, 7, 2, 3, 2}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xa1, -1, 1, 0, -1, 586406201480, 7, 1, 3, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, -1, 1, 0, -1, 586406201480, 0, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, -1, 1, 0, -1, 733007751850, 0, 1, 6, 2}, // (subframe number :1,3,5,7,…,37,39)
+    {0xa1, -1, 1, 0, -1, 1099511627775, 7, 1, 3, 2}, // (subframe number :0,1,2,…,39)
+    {0xa2, -1, 16, 1, -1, 567489872400, 0, 2, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 16, 1, -1, 586406201480, 0, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, -1, 8, 1, -1, 567489872400, 0, 2, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 8, 1, -1, 586406201480, 0, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, -1, 8, 1, 2, 550293209600, 0, 2, 3, 4}, // (subframe number :9,19,29,39)
+    {0xa2, -1, 4, 1, -1, 567489872400, 0, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 4, 1, -1, 567489872400, 0, 2, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 4, 1, -1, 586406201480, 0, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, -1, 2, 1, -1, 551911719040, 0, 2, 3, 4}, // (subframe number :7,15,23,31,39)
+    {0xa2, -1, 2, 1, -1, 567489872400, 0, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 2, 1, -1, 567489872400, 0, 2, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 2, 1, -1, 586406201480, 0, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, -1, 1, 0, -1, 549756338176, 5, 1, 2, 4}, // (subframe number :19,39)
+    {0xa2, -1, 1, 0, -1, 168, 0, 1, 3, 4}, // (subframe number :3,5,7)
+    {0xa2, -1, 1, 0, -1, 567489331200, 5, 1, 2, 4}, // (subframe number :24,29,34,39)
+    {0xa2, -1, 1, 0, -1, 550293209600, 5, 2, 2, 4}, // (subframe number :9,19,29,39)
+    {0xa2, -1, 1, 0, -1, 687195422720, 0, 1, 3, 4}, // (subframe number :17,19,37,39)
+    {0xa2, -1, 1, 0, -1, 550293209600, 0, 2, 3, 4}, // (subframe number :9, 19, 29, 39)
+    {0xa2, -1, 1, 0, -1, 551911719040, 0, 1, 3, 4}, // (subframe number :7,15,23,31,39)
+    {0xa2, -1, 1, 0, -1, 586405642240, 5, 1, 2, 4}, // (subframe number :23,27,31,35,39)
+    {0xa2, -1, 1, 0, -1, 586405642240, 0, 1, 3, 4}, // (subframe number :23,27,31,35,39)
+    {0xa2, -1, 1, 0, -1, 10920, 5, 1, 2, 4}, // (subframe number :3,5,7,9,11,13)
+    {0xa2, -1, 1, 0, -1, 10920, 0, 1, 3, 4}, // (subframe number :3,5,7,9,11,13)
+    {0xa2, -1, 1, 0, -1, 567489872400, 5, 1, 2, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 1, 0, -1, 567489872400, 0, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, -1, 1, 0, -1, 965830828032, 5, 2, 2, 4}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xa2, -1, 1, 0, -1, 586406201480, 5, 1, 2, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, -1, 1, 0, -1, 586406201480, 0, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, -1, 1, 0, -1, 733007751850, 0, 1, 3, 4}, // (subframe number :1,3,5,7,…,37,39)
+    {0xa2, -1, 1, 0, -1, 1099511627775, 5, 1, 2, 4}, // (subframe number :0,1,2,…,39)
+    {0xa3, -1, 16, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 16, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, -1, 8, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 8, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, -1, 8, 1, 2, 550293209600, 0, 2, 2, 6}, // (subframe number :9,19,29,39)
+    {0xa3, -1, 4, 1, -1, 567489872400, 0, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 4, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 4, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, -1, 2, 1, -1, 567489872400, 0, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 2, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 2, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, -1, 1, 0, -1, 549756338176, 7, 1, 1, 6}, // (subframe number :19,39)
+    {0xa3, -1, 1, 0, -1, 168, 0, 1, 2, 6}, // (subframe number :3,5,7)
+    {0xa3, -1, 1, 0, -1, 10752, 2, 1, 2, 6}, // (subframe number :9,11,13)
+    {0xa3, -1, 1, 0, -1, 567489331200, 7, 1, 1, 6}, // (subframe number :24,29,34,39)
+    {0xa3, -1, 1, 0, -1, 550293209600, 7, 2, 1, 6}, // (subframe number :9,19,29,39)
+    {0xa3, -1, 1, 0, -1, 687195422720, 0, 1, 2, 6}, // (subframe number :17,19,37,39)
+    {0xa3, -1, 1, 0, -1, 550293209600, 0, 2, 2, 6}, // (subframe number :9,19,29,39)
+    {0xa3, -1, 1, 0, -1, 551911719040, 0, 1, 2, 6}, // (subframe number :7,15,23,31,39)
+    {0xa3, -1, 1, 0, -1, 586405642240, 7, 1, 1, 6}, // (subframe number :23,27,31,35,39)
+    {0xa3, -1, 1, 0, -1, 586405642240, 0, 1, 2, 6}, // (subframe number :23,27,31,35,39)
+    {0xa3, -1, 1, 0, -1, 10920, 0, 1, 2, 6}, // (subframe number :3,5,7,9,11,13)
+    {0xa3, -1, 1, 0, -1, 10920, 7, 1, 1, 6}, // (subframe number :3,5,7,9,11,13)
+    {0xa3, -1, 1, 0, -1, 567489872400, 0, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 1, 0, -1, 567489872400, 7, 1, 1, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, -1, 1, 0, -1, 965830828032, 7, 2, 1, 6}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xa3, -1, 1, 0, -1, 586406201480, 7, 1, 1, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, -1, 1, 0, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, -1, 1, 0, -1, 733007751850, 0, 1, 2, 6}, // (subframe number :1,3,5,7,…,37,39)
+    {0xa3, -1, 1, 0, -1, 1099511627775, 7, 1, 1, 6}, // (subframe number :0,1,2,…,39)
+    {0xb1, -1, 16, 1, -1, 567489872400, 2, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb1, -1, 8, 1, -1, 567489872400, 2, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb1, -1, 8, 1, 2, 550293209600, 2, 2, 6, 2}, // (subframe number :9,19,29,39)
+    {0xb1, -1, 4, 1, -1, 567489872400, 2, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb1, -1, 2, 1, -1, 567489872400, 2, 2, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb1, -1, 2, 1, -1, 586406201480, 2, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb1, -1, 1, 0, -1, 549756338176, 8, 1, 3, 2}, // (subframe number :19,39)
+    {0xb1, -1, 1, 0, -1, 168, 2, 1, 6, 2}, // (subframe number :3,5,7)
+    {0xb1, -1, 1, 0, -1, 567489331200, 8, 1, 3, 2}, // (subframe number :24,29,34,39)
+    {0xb1, -1, 1, 0, -1, 550293209600, 8, 2, 3, 2}, // (subframe number :9,19,29,39)
+    {0xb1, -1, 1, 0, -1, 687195422720, 2, 1, 6, 2}, // (subframe number :17,19,37,39)
+    {0xb1, -1, 1, 0, -1, 550293209600, 2, 2, 6, 2}, // (subframe number :9,19,29,39)
+    {0xb1, -1, 1, 0, -1, 551911719040, 2, 1, 6, 2}, // (subframe number :7,15,23,31,39)
+    {0xb1, -1, 1, 0, -1, 586405642240, 8, 1, 3, 2}, // (subframe number :23,27,31,35,39)
+    {0xb1, -1, 1, 0, -1, 586405642240, 2, 1, 6, 2}, // (subframe number :23,27,31,35,39)
+    {0xb1, -1, 1, 0, -1, 10920, 8, 1, 3, 2}, // (subframe number :3,5,7,9,11,13)
+    {0xb1, -1, 1, 0, -1, 567489872400, 8, 1, 3, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb1, -1, 1, 0, -1, 567489872400, 2, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb1, -1, 1, 0, -1, 586406201480, 8, 1, 3, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb1, -1, 1, 0, -1, 965830828032, 8, 2, 3, 2}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xb1, -1, 1, 0, -1, 586406201480, 2, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb1, -1, 1, 0, -1, 733007751850, 2, 1, 6, 2}, // (subframe number :1,3,5,7,…,37,39)
+    {0xb1, -1, 1, 0, -1, 1099511627775, 8, 1, 3, 2}, // (subframe number :0,1,2,…,39)
+    {0xb4, -1, 16, 1, 2, 567489872400, 0, 2, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 16, 1, 2, 586406201480, 0, 1, 1, 12}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb4, -1, 8, 1, 2, 567489872400, 0, 2, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 8, 1, 2, 586406201480, 0, 1, 1, 12}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb4, -1, 8, 1, 2, 550293209600, 0, 2, 1, 12}, // (subframe number :9,19,29,39)
+    {0xb4, -1, 4, 1, -1, 567489872400, 0, 1, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 4, 1, -1, 567489872400, 0, 2, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 4, 1, 2, 586406201480, 0, 1, 1, 12}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb4, -1, 2, 1, -1, 551911719040, 2, 2, 1, 12}, // (subframe number :7,15,23,31,39)
+    {0xb4, -1, 2, 1, -1, 567489872400, 0, 1, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 2, 1, -1, 567489872400, 0, 2, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 2, 1, -1, 586406201480, 0, 1, 1, 12}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb4, -1, 1, 0, -1, 549756338176, 2, 2, 1, 12}, // (subframe number :19, 39)
+    {0xb4, -1, 1, 0, -1, 687195422720, 0, 1, 1, 12}, // (subframe number :17, 19, 37, 39)
+    {0xb4, -1, 1, 0, -1, 567489331200, 2, 1, 1, 12}, // (subframe number :24,29,34,39)
+    {0xb4, -1, 1, 0, -1, 550293209600, 2, 2, 1, 12}, // (subframe number :9,19,29,39)
+    {0xb4, -1, 1, 0, -1, 550293209600, 0, 2, 1, 12}, // (subframe number :9,19,29,39)
+    {0xb4, -1, 1, 0, -1, 551911719040, 0, 1, 1, 12}, // (subframe number :7,15,23,31,39)
+    {0xb4, -1, 1, 0, -1, 551911719040, 0, 2, 1, 12}, // (subframe number :7,15,23,31,39)
+    {0xb4, -1, 1, 0, -1, 586405642240, 0, 1, 1, 12}, // (subframe number :23,27,31,35,39)
+    {0xb4, -1, 1, 0, -1, 586405642240, 2, 2, 1, 12}, // (subframe number :23,27,31,35,39)
+    {0xb4, -1, 1, 0, -1, 698880, 0, 1, 1, 12}, // (subframe number :9,11,13,15,17,19)
+    {0xb4, -1, 1, 0, -1, 10920, 2, 1, 1, 12}, // (subframe number :3,5,7,9,11,13)
+    {0xb4, -1, 1, 0, -1, 567489872400, 0, 1, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 1, 0, -1, 567489872400, 2, 2, 1, 12}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xb4, -1, 1, 0, -1, 965830828032, 2, 2, 1, 12}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xb4, -1, 1, 0, -1, 586406201480, 0, 1, 1, 12}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb4, -1, 1, 0, -1, 586406201480, 2, 1, 1, 12}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xb4, -1, 1, 0, -1, 44739240, 2, 1, 1, 12}, // (subframe number :3, 5, 7, …, 23,25)
+    {0xb4, -1, 1, 0, -1, 44739240, 0, 2, 1, 12}, // (subframe number :3, 5, 7, …, 23,25)
+    {0xb4, -1, 1, 0, -1, 733007751850, 0, 1, 1, 12}, // (subframe number :1,3,5,7,…,37,39)
+    {0xb4, -1, 1, 0, -1, 1099511627775, 2, 1, 1, 12}, // (subframe number :0, 1, 2,…, 39)
+    {0xc0, -1, 16, 1, -1, 567489872400, 0, 2, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 16, 1, -1, 586406201480, 0, 1, 7, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc0, -1, 8, 1, -1, 567489872400, 0, 1, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 8, 1, -1, 586406201480, 0, 1, 7, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc0, -1, 8, 1, 2, 550293209600, 0, 2, 7, 2}, // (subframe number :9,19,29,39)
+    {0xc0, -1, 4, 1, -1, 567489872400, 0, 1, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 4, 1, -1, 567489872400, 0, 2, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 4, 1, -1, 586406201480, 0, 1, 7, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc0, -1, 2, 1, -1, 551911719040, 0, 2, 7, 2}, // (subframe number :7,15,23,31,39)
+    {0xc0, -1, 2, 1, -1, 567489872400, 0, 1, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 2, 1, -1, 567489872400, 0, 2, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 2, 1, -1, 586406201480, 0, 1, 7, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc0, -1, 1, 0, -1, 549756338176, 8, 1, 3, 2}, // (subframe number :19,39)
+    {0xc0, -1, 1, 0, -1, 168, 0, 1, 7, 2}, // (subframe number :3,5,7)
+    {0xc0, -1, 1, 0, -1, 567489331200, 8, 1, 3, 2}, // (subframe number :24,29,34,39)
+    {0xc0, -1, 1, 0, -1, 550293209600, 8, 2, 3, 2}, // (subframe number :9,19,29,39)
+    {0xc0, -1, 1, 0, -1, 687195422720, 0, 1, 7, 2}, // (subframe number :17,19,37,39)
+    {0xc0, -1, 1, 0, -1, 550293209600, 0, 2, 7, 2}, // (subframe number :9,19,29,39)
+    {0xc0, -1, 1, 0, -1, 586405642240, 8, 1, 3, 2}, // (subframe number :23,27,31,35,39)
+    {0xc0, -1, 1, 0, -1, 551911719040, 0, 1, 7, 2}, // (subframe number :7,15,23,31,39)
+    {0xc0, -1, 1, 0, -1, 586405642240, 0, 1, 7, 2}, // (subframe number :23,27,31,35,39)
+    {0xc0, -1, 1, 0, -1, 10920, 8, 1, 3, 2}, // (subframe number :3,5,7,9,11,13)
+    {0xc0, -1, 1, 0, -1, 567489872400, 8, 1, 3, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 1, 0, -1, 567489872400, 0, 1, 7, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc0, -1, 1, 0, -1, 965830828032, 8, 2, 3, 2}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xc0, -1, 1, 0, -1, 586406201480, 8, 1, 3, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc0, -1, 1, 0, -1, 586406201480, 0, 1, 7, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc0, -1, 1, 0, -1, 733007751850, 0, 1, 7, 2}, // (subframe number :1,3,5,7,…,37,39)
+    {0xc0, -1, 1, 0, -1, 1099511627775, 8, 1, 3, 2}, // (subframe number :0,1,2,…,39)
+    {0xc2, -1, 16, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 16, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc2, -1, 8, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 8, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc2, -1, 8, 1, 2, 550293209600, 0, 2, 2, 6}, // (subframe number :9,19,29,39)
+    {0xc2, -1, 4, 1, -1, 567489872400, 0, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 4, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 4, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc2, -1, 2, 1, -1, 551911719040, 2, 2, 2, 6}, // (subframe number :7,15,23,31,39)
+    {0xc2, -1, 2, 1, -1, 567489872400, 0, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 2, 1, -1, 567489872400, 0, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 2, 1, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc2, -1, 1, 0, -1, 549756338176, 2, 1, 2, 6}, // (subframe number :19,39)
+    {0xc2, -1, 1, 0, -1, 168, 0, 1, 2, 6}, // (subframe number :3,5,7)
+    {0xc2, -1, 1, 0, -1, 567489331200, 7, 1, 1, 6}, // (subframe number :24,29,34,39)
+    {0xc2, -1, 1, 0, -1, 550293209600, 7, 2, 1, 6}, // (subframe number :9,19,29,39)
+    {0xc2, -1, 1, 0, -1, 687195422720, 0, 1, 2, 6}, // (subframe number :17,19,37,39)
+    {0xc2, -1, 1, 0, -1, 550293209600, 2, 2, 2, 6}, // (subframe number :9,19,29,39)
+    {0xc2, -1, 1, 0, -1, 551911719040, 2, 1, 2, 6}, // (subframe number :7,15,23,31,39)
+    {0xc2, -1, 1, 0, -1, 10920, 7, 1, 1, 6}, // (subframe number :3,5,7,9,11,13)
+    {0xc2, -1, 1, 0, -1, 586405642240, 7, 2, 1, 6}, // (subframe number :23,27,31,35,39)
+    {0xc2, -1, 1, 0, -1, 586405642240, 0, 1, 2, 6}, // (subframe number :23,27,31,35,39)
+    {0xc2, -1, 1, 0, -1, 567489872400, 7, 2, 1, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 1, 0, -1, 567489872400, 2, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xc2, -1, 1, 0, -1, 965830828032, 7, 2, 1, 6}, // (subframe number :13,14,15, 29,30,31,37,38,39)
+    {0xc2, -1, 1, 0, -1, 586406201480, 7, 1, 1, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc2, -1, 1, 0, -1, 586406201480, 0, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xc2, -1, 1, 0, -1, 733007751850, 0, 1, 2, 6}, // (subframe number :1,3,5,7,…,37,39)
+    {0xc2, -1, 1, 0, -1, 1099511627775, 7, 1, 1, 6}, // (subframe number :0,1,2,…,39)
+    {0xa1, 0xb1, 16, 1, -1, 567489872400, 2, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, 0xb1, 16, 1, -1, 586406201480, 2, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, 0xb1, 8, 1, -1, 567489872400, 2, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, 0xb1, 8, 1, -1, 586406201480, 2, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, 0xb1, 4, 1, -1, 567489872400, 2, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, 0xb1, 4, 1, -1, 586406201480, 2, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, 0xb1, 2, 1, -1, 567489872400, 2, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, 0xb1, 1, 0, -1, 549756338176, 8, 1, 3, 2}, // (subframe number :19,39)
+    {0xa1, 0xb1, 1, 0, -1, 550293209600, 8, 1, 3, 2}, // (subframe number :9,19,29,39)
+    {0xa1, 0xb1, 1, 0, -1, 687195422720, 2, 1, 6, 2}, // (subframe number :17,19,37,39)
+    {0xa1, 0xb1, 1, 0, -1, 550293209600, 2, 2, 6, 2}, // (subframe number :9,19,29,39)
+    {0xa1, 0xb1, 1, 0, -1, 586405642240, 8, 1, 3, 2}, // (subframe number :23,27,31,35,39)
+    {0xa1, 0xb1, 1, 0, -1, 551911719040, 2, 1, 6, 2}, // (subframe number :7,15,23,31,39)
+    {0xa1, 0xb1, 1, 0, -1, 586405642240, 2, 1, 6, 2}, // (subframe number :23,27,31,35,39)
+    {0xa1, 0xb1, 1, 0, -1, 567489872400, 8, 1, 3, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, 0xb1, 1, 0, -1, 567489872400, 2, 1, 6, 2}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa1, 0xb1, 1, 0, -1, 586406201480, 2, 1, 6, 2}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa1, 0xb1, 1, 0, -1, 733007751850, 2, 1, 6, 2}, // (subframe number :1,3,5,7,…,37,39)
+    {0xa2, 0xb2, 16, 1, -1, 567489872400, 2, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, 0xb2, 16, 1, -1, 586406201480, 2, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, 0xb2, 8, 1, -1, 567489872400, 2, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, 0xb2, 8, 1, -1, 586406201480, 2, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, 0xb2, 4, 1, -1, 567489872400, 2, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, 0xb2, 4, 1, -1, 586406201480, 2, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, 0xb2, 2, 1, -1, 567489872400, 2, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, 0xb2, 1, 0, -1, 549756338176, 6, 1, 2, 4}, // (subframe number :19,39)
+    {0xa2, 0xb2, 1, 0, -1, 550293209600, 6, 1, 2, 4}, // (subframe number :9,19,29,39)
+    {0xa2, 0xb2, 1, 0, -1, 687195422720, 2, 1, 3, 4}, // (subframe number :17,19,37,39)
+    {0xa2, 0xb2, 1, 0, -1, 550293209600, 2, 2, 3, 4}, // (subframe number :9,19,29,39)
+    {0xa2, 0xb2, 1, 0, -1, 586405642240, 6, 1, 2, 4}, // (subframe number :23,27,31,35,39)
+    {0xa2, 0xb2, 1, 0, -1, 551911719040, 2, 1, 3, 4}, // (subframe number :7,15,23,31,39)
+    {0xa2, 0xb2, 1, 0, -1, 586405642240, 2, 1, 3, 4}, // (subframe number :23,27,31,35,39)
+    {0xa2, 0xb2, 1, 0, -1, 567489872400, 6, 1, 2, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, 0xb2, 1, 0, -1, 567489872400, 2, 1, 3, 4}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa2, 0xb2, 1, 0, -1, 586406201480, 2, 1, 3, 4}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa2, 0xb2, 1, 0, -1, 733007751850, 2, 1, 3, 4}, // (subframe number :1,3,5,7,…,37,39)
+    {0xa3, 0xb3, 16, 1, -1, 567489872400, 2, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, 0xb3, 16, 1, -1, 586406201480, 2, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, 0xb3, 8, 1, -1, 567489872400, 2, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, 0xb3, 8, 1, -1, 586406201480, 2, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, 0xb3, 4, 1, -1, 567489872400, 2, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, 0xb3, 4, 1, -1, 586406201480, 2, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, 0xb3, 2, 1, -1, 567489872400, 2, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, 0xb3, 1, 0, -1, 549756338176, 2, 1, 2, 6}, // (subframe number :19,39)
+    {0xa3, 0xb3, 1, 0, -1, 550293209600, 2, 1, 2, 6}, // (subframe number :9,19,29,39)
+    {0xa3, 0xb3, 1, 0, -1, 687195422720, 2, 1, 2, 6}, // (subframe number :17,19,37,39)
+    {0xa3, 0xb3, 1, 0, -1, 550293209600, 2, 2, 2, 6}, // (subframe number :9,19,29,39)
+    {0xa3, 0xb3, 1, 0, -1, 551911719040, 2, 1, 2, 6}, // (subframe number :7,15,23,31,39)
+    {0xa3, 0xb3, 1, 0, -1, 586405642240, 2, 1, 2, 6}, // (subframe number :23,27,31,35,39)
+    {0xa3, 0xb3, 1, 0, -1, 586405642240, 2, 2, 2, 6}, // (subframe number :23,27,31,35,39)
+    {0xa3, 0xb3, 1, 0, -1, 567489872400, 2, 1, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, 0xb3, 1, 0, -1, 567489872400, 2, 2, 2, 6}, // (subframe number :4,9,14,19,24,29,34,39)
+    {0xa3, 0xb3, 1, 0, -1, 586406201480, 2, 1, 2, 6}, // (subframe number :3,7,11,15,19,23,27,31,35,39)
+    {0xa3, 0xb3, 1, 0, -1, 733007751850, 2, 1, 2, 6} // (subframe number :1,3,5,7,…,37,39)
 };
-
 
 int get_format0(uint8_t index,
                 uint8_t unpaired,
@@ -1292,10 +1534,9 @@ int get_format0(uint8_t index,
   return format;
 }
 
-int64_t *get_prach_config_info(frequency_range_t freq_range,
-                               uint8_t index,
-                               uint8_t unpaired) {
-  int64_t *prach_config_info_p;
+const int64_t *get_prach_config_info(frequency_range_t freq_range, uint8_t index, uint8_t unpaired)
+{
+  const int64_t *prach_config_info_p;
 
   if (freq_range == FR2) { //FR2
     prach_config_info_p = table_6_3_3_2_4_prachConfig_Index[index];
@@ -1312,9 +1553,10 @@ int64_t *get_prach_config_info(frequency_range_t freq_range,
 
 void find_aggregation_candidates(uint8_t *aggregation_level,
                                  uint8_t *nr_of_candidates,
-                                 NR_SearchSpace_t *ss,
-                                 int L) {
-  AssertFatal(L>=1 && L<=16,"L %d not ok\n",L);
+                                 const NR_SearchSpace_t *ss,
+                                 int L)
+{
+  AssertFatal(L>=1 && L<=16,"L %d not ok\n", L);
   *nr_of_candidates = 0;
   switch(L) {
     case 1:
@@ -1767,50 +2009,41 @@ int get_nr_prach_info_from_index(uint8_t index,
 }
 
 //Table 6.3.3.1-3: Mapping from logical index i to sequence number u for preamble formats with L_RA = 839
-uint16_t table_63313[838] = {
-129, 710, 140, 699, 120, 719, 210, 629, 168, 671, 84 , 755, 105, 734, 93 , 746, 70 , 769, 60 , 779,
-2  , 837, 1  , 838, 56 , 783, 112, 727, 148, 691, 80 , 759, 42 , 797, 40 , 799, 35 , 804, 73 , 766,
-146, 693, 31 , 808, 28 , 811, 30 , 809, 27 , 812, 29 , 810, 24 , 815, 48 , 791, 68 , 771, 74 , 765,
-178, 661, 136, 703, 86 , 753, 78 , 761, 43 , 796, 39 , 800, 20 , 819, 21 , 818, 95 , 744, 202, 637,
-190, 649, 181, 658, 137, 702, 125, 714, 151, 688, 217, 622, 128, 711, 142, 697, 122, 717, 203, 636,
-118, 721, 110, 729, 89 , 750, 103, 736, 61 , 778, 55 , 784, 15 , 824, 14 , 825, 12 , 827, 23 , 816,
-34 , 805, 37 , 802, 46 , 793, 207, 632, 179, 660, 145, 694, 130, 709, 223, 616, 228, 611, 227, 612,
-132, 707, 133, 706, 143, 696, 135, 704, 161, 678, 201, 638, 173, 666, 106, 733, 83 , 756, 91 , 748,
-66 , 773, 53 , 786, 10 , 829, 9  , 830, 7  , 832, 8  , 831, 16 , 823, 47 , 792, 64 , 775, 57 , 782,
-104, 735, 101, 738, 108, 731, 208, 631, 184, 655, 197, 642, 191, 648, 121, 718, 141, 698, 149, 690,
-216, 623, 218, 621, 152, 687, 144, 695, 134, 705, 138, 701, 199, 640, 162, 677, 176, 663, 119, 720,
-158, 681, 164, 675, 174, 665, 171, 668, 170, 669, 87 , 752, 169, 670, 88 , 751, 107, 732, 81 , 758,
-82 , 757, 100, 739, 98 , 741, 71 , 768, 59 , 780, 65 , 774, 50 , 789, 49 , 790, 26 , 813, 17 , 822,
-13 , 826, 6  , 833, 5  , 834, 33 , 806, 51 , 788, 75 , 764, 99 , 740, 96 , 743, 97 , 742, 166, 673,
-172, 667, 175, 664, 187, 652, 163, 676, 185, 654, 200, 639, 114, 725, 189, 650, 115, 724, 194, 645,
-195, 644, 192, 647, 182, 657, 157, 682, 156, 683, 211, 628, 154, 685, 123, 716, 139, 700, 212, 627,
-153, 686, 213, 626, 215, 624, 150, 689, 225, 614, 224, 615, 221, 618, 220, 619, 127, 712, 147, 692,
-124, 715, 193, 646, 205, 634, 206, 633, 116, 723, 160, 679, 186, 653, 167, 672, 79 , 760, 85 , 754,
-77 , 762, 92 , 747, 58 , 781, 62 , 777, 69 , 770, 54 , 785, 36 , 803, 32 , 807, 25 , 814, 18 , 821,
-11 , 828, 4  , 835, 3  , 836, 19 , 820, 22 , 817, 41 , 798, 38 , 801, 44 , 795, 52 , 787, 45 , 794,
-63 , 776, 67 , 772, 72 , 767, 76 , 763, 94 , 745, 102, 737, 90 , 749, 109, 730, 165, 674, 111, 728,
-209, 630, 204, 635, 117, 722, 188, 651, 159, 680, 198, 641, 113, 726, 183, 656, 180, 659, 177, 662,
-196, 643, 155, 684, 214, 625, 126, 713, 131, 708, 219, 620, 222, 617, 226, 613, 230, 609, 232, 607,
-262, 577, 252, 587, 418, 421, 416, 423, 413, 426, 411, 428, 376, 463, 395, 444, 283, 556, 285, 554,
-379, 460, 390, 449, 363, 476, 384, 455, 388, 451, 386, 453, 361, 478, 387, 452, 360, 479, 310, 529,
-354, 485, 328, 511, 315, 524, 337, 502, 349, 490, 335, 504, 324, 515, 323, 516, 320, 519, 334, 505,
-359, 480, 295, 544, 385, 454, 292, 547, 291, 548, 381, 458, 399, 440, 380, 459, 397, 442, 369, 470,
-377, 462, 410, 429, 407, 432, 281, 558, 414, 425, 247, 592, 277, 562, 271, 568, 272, 567, 264, 575,
-259, 580, 237, 602, 239, 600, 244, 595, 243, 596, 275, 564, 278, 561, 250, 589, 246, 593, 417, 422,
-248, 591, 394, 445, 393, 446, 370, 469, 365, 474, 300, 539, 299, 540, 364, 475, 362, 477, 298, 541,
-312, 527, 313, 526, 314, 525, 353, 486, 352, 487, 343, 496, 327, 512, 350, 489, 326, 513, 319, 520,
-332, 507, 333, 506, 348, 491, 347, 492, 322, 517, 330, 509, 338, 501, 341, 498, 340, 499, 342, 497,
-301, 538, 366, 473, 401, 438, 371, 468, 408, 431, 375, 464, 249, 590, 269, 570, 238, 601, 234, 605,
-257, 582, 273, 566, 255, 584, 254, 585, 245, 594, 251, 588, 412, 427, 372, 467, 282, 557, 403, 436,
-396, 443, 392, 447, 391, 448, 382, 457, 389, 450, 294, 545, 297, 542, 311, 528, 344, 495, 345, 494,
-318, 521, 331, 508, 325, 514, 321, 518, 346, 493, 339, 500, 351, 488, 306, 533, 289, 550, 400, 439,
-378, 461, 374, 465, 415, 424, 270, 569, 241, 598, 231, 608, 260, 579, 268, 571, 276, 563, 409, 430,
-398, 441, 290, 549, 304, 535, 308, 531, 358, 481, 316, 523, 293, 546, 288, 551, 284, 555, 368, 471,
-253, 586, 256, 583, 263, 576, 242, 597, 274, 565, 402, 437, 383, 456, 357, 482, 329, 510, 317, 522,
-307, 532, 286, 553, 287, 552, 266, 573, 261, 578, 236, 603, 303, 536, 356, 483, 355, 484, 405, 434,
-404, 435, 406, 433, 235, 604, 267, 572, 302, 537, 309, 530, 265, 574, 233, 606, 367, 472, 296, 543,
-336, 503, 305, 534, 373, 466, 280, 559, 279, 560, 419, 420, 240, 599, 258, 581, 229, 610
-};
+static const uint16_t table_63313[838] = {
+    129, 710, 140, 699, 120, 719, 210, 629, 168, 671, 84,  755, 105, 734, 93,  746, 70,  769, 60,  779, 2,   837, 1,   838, 56,
+    783, 112, 727, 148, 691, 80,  759, 42,  797, 40,  799, 35,  804, 73,  766, 146, 693, 31,  808, 28,  811, 30,  809, 27,  812,
+    29,  810, 24,  815, 48,  791, 68,  771, 74,  765, 178, 661, 136, 703, 86,  753, 78,  761, 43,  796, 39,  800, 20,  819, 21,
+    818, 95,  744, 202, 637, 190, 649, 181, 658, 137, 702, 125, 714, 151, 688, 217, 622, 128, 711, 142, 697, 122, 717, 203, 636,
+    118, 721, 110, 729, 89,  750, 103, 736, 61,  778, 55,  784, 15,  824, 14,  825, 12,  827, 23,  816, 34,  805, 37,  802, 46,
+    793, 207, 632, 179, 660, 145, 694, 130, 709, 223, 616, 228, 611, 227, 612, 132, 707, 133, 706, 143, 696, 135, 704, 161, 678,
+    201, 638, 173, 666, 106, 733, 83,  756, 91,  748, 66,  773, 53,  786, 10,  829, 9,   830, 7,   832, 8,   831, 16,  823, 47,
+    792, 64,  775, 57,  782, 104, 735, 101, 738, 108, 731, 208, 631, 184, 655, 197, 642, 191, 648, 121, 718, 141, 698, 149, 690,
+    216, 623, 218, 621, 152, 687, 144, 695, 134, 705, 138, 701, 199, 640, 162, 677, 176, 663, 119, 720, 158, 681, 164, 675, 174,
+    665, 171, 668, 170, 669, 87,  752, 169, 670, 88,  751, 107, 732, 81,  758, 82,  757, 100, 739, 98,  741, 71,  768, 59,  780,
+    65,  774, 50,  789, 49,  790, 26,  813, 17,  822, 13,  826, 6,   833, 5,   834, 33,  806, 51,  788, 75,  764, 99,  740, 96,
+    743, 97,  742, 166, 673, 172, 667, 175, 664, 187, 652, 163, 676, 185, 654, 200, 639, 114, 725, 189, 650, 115, 724, 194, 645,
+    195, 644, 192, 647, 182, 657, 157, 682, 156, 683, 211, 628, 154, 685, 123, 716, 139, 700, 212, 627, 153, 686, 213, 626, 215,
+    624, 150, 689, 225, 614, 224, 615, 221, 618, 220, 619, 127, 712, 147, 692, 124, 715, 193, 646, 205, 634, 206, 633, 116, 723,
+    160, 679, 186, 653, 167, 672, 79,  760, 85,  754, 77,  762, 92,  747, 58,  781, 62,  777, 69,  770, 54,  785, 36,  803, 32,
+    807, 25,  814, 18,  821, 11,  828, 4,   835, 3,   836, 19,  820, 22,  817, 41,  798, 38,  801, 44,  795, 52,  787, 45,  794,
+    63,  776, 67,  772, 72,  767, 76,  763, 94,  745, 102, 737, 90,  749, 109, 730, 165, 674, 111, 728, 209, 630, 204, 635, 117,
+    722, 188, 651, 159, 680, 198, 641, 113, 726, 183, 656, 180, 659, 177, 662, 196, 643, 155, 684, 214, 625, 126, 713, 131, 708,
+    219, 620, 222, 617, 226, 613, 230, 609, 232, 607, 262, 577, 252, 587, 418, 421, 416, 423, 413, 426, 411, 428, 376, 463, 395,
+    444, 283, 556, 285, 554, 379, 460, 390, 449, 363, 476, 384, 455, 388, 451, 386, 453, 361, 478, 387, 452, 360, 479, 310, 529,
+    354, 485, 328, 511, 315, 524, 337, 502, 349, 490, 335, 504, 324, 515, 323, 516, 320, 519, 334, 505, 359, 480, 295, 544, 385,
+    454, 292, 547, 291, 548, 381, 458, 399, 440, 380, 459, 397, 442, 369, 470, 377, 462, 410, 429, 407, 432, 281, 558, 414, 425,
+    247, 592, 277, 562, 271, 568, 272, 567, 264, 575, 259, 580, 237, 602, 239, 600, 244, 595, 243, 596, 275, 564, 278, 561, 250,
+    589, 246, 593, 417, 422, 248, 591, 394, 445, 393, 446, 370, 469, 365, 474, 300, 539, 299, 540, 364, 475, 362, 477, 298, 541,
+    312, 527, 313, 526, 314, 525, 353, 486, 352, 487, 343, 496, 327, 512, 350, 489, 326, 513, 319, 520, 332, 507, 333, 506, 348,
+    491, 347, 492, 322, 517, 330, 509, 338, 501, 341, 498, 340, 499, 342, 497, 301, 538, 366, 473, 401, 438, 371, 468, 408, 431,
+    375, 464, 249, 590, 269, 570, 238, 601, 234, 605, 257, 582, 273, 566, 255, 584, 254, 585, 245, 594, 251, 588, 412, 427, 372,
+    467, 282, 557, 403, 436, 396, 443, 392, 447, 391, 448, 382, 457, 389, 450, 294, 545, 297, 542, 311, 528, 344, 495, 345, 494,
+    318, 521, 331, 508, 325, 514, 321, 518, 346, 493, 339, 500, 351, 488, 306, 533, 289, 550, 400, 439, 378, 461, 374, 465, 415,
+    424, 270, 569, 241, 598, 231, 608, 260, 579, 268, 571, 276, 563, 409, 430, 398, 441, 290, 549, 304, 535, 308, 531, 358, 481,
+    316, 523, 293, 546, 288, 551, 284, 555, 368, 471, 253, 586, 256, 583, 263, 576, 242, 597, 274, 565, 402, 437, 383, 456, 357,
+    482, 329, 510, 317, 522, 307, 532, 286, 553, 287, 552, 266, 573, 261, 578, 236, 603, 303, 536, 356, 483, 355, 484, 405, 434,
+    404, 435, 406, 433, 235, 604, 267, 572, 302, 537, 309, 530, 265, 574, 233, 606, 367, 472, 296, 543, 336, 503, 305, 534, 373,
+    466, 280, 559, 279, 560, 419, 420, 240, 599, 258, 581, 229, 610};
 
 uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
                             uint8_t nb_preambles,
@@ -1880,40 +2113,41 @@ uint8_t compute_nr_root_seq(NR_RACH_ConfigCommon_t *rach_config,
 // When l' = l0, it is represented by 1
 // E.g. when symbol duration is 12 in colomn 7, value 1057 ('10000100001') which means l' =  l0, 5, 10.
 
-int32_t table_7_4_1_1_2_3_pdsch_dmrs_positions_l [13][8] = {                             // Duration in symbols
-{-1,          -1,          -1,         -1,          1,          1,         1,         1},       //2              // (DMRS l' position)
-{0,            0,           0,          0,          1,          1,         1,         1},       //3              // (DMRS l' position)
-{0,            0,           0,          0,          1,          1,         1,         1},       //4               // (DMRS l' position)
-{0,            0,           0,          0,          1,          17,        17,       17},       //5               // (DMRS l' position)
-{0,            0,           0,          0,          1,          17,        17,       17},       //6               // (DMRS l' position)
-{0,            0,           0,          0,          1,          17,        17,       17},       //7               // (DMRS l' position)
-{0,          128,         128,        128,          1,          65,        73,       73},       //8               // (DMRS l' position)
-{0,          128,         128,        128,          1,         129,       145,      145},       //9               // (DMRS l' position)
-{0,          512,         576,        576,          1,         129,       145,      145},       //10              // (DMRS l' position)
-{0,          512,         576,        576,          1,         257,       273,      585},       //11              // (DMRS l' position)
-{0,          512,         576,       2336,          1,         513,       545,      585},       //12              // (DMRS l' position)
-{0,         2048,        2176,       2336,          1,         513,       545,      585},       //13              // (DMRS l' position)
-{0,         2048,        2176,       2336,         -1,          -1,       -1,        -1},       //14              // (DMRS l' position)
+static const int32_t table_7_4_1_1_2_3_pdsch_dmrs_positions_l[13][8] = {
+    // Duration in symbols
+    {-1, -1, -1, -1, 1, 1, 1, 1}, // 2              // (DMRS l' position)
+    {0, 0, 0, 0, 1, 1, 1, 1}, // 3              // (DMRS l' position)
+    {0, 0, 0, 0, 1, 1, 1, 1}, // 4               // (DMRS l' position)
+    {0, 0, 0, 0, 1, 17, 17, 17}, // 5               // (DMRS l' position)
+    {0, 0, 0, 0, 1, 17, 17, 17}, // 6               // (DMRS l' position)
+    {0, 0, 0, 0, 1, 17, 17, 17}, // 7               // (DMRS l' position)
+    {0, 128, 128, 128, 1, 65, 73, 73}, // 8               // (DMRS l' position)
+    {0, 128, 128, 128, 1, 129, 145, 145}, // 9               // (DMRS l' position)
+    {0, 512, 576, 576, 1, 129, 145, 145}, // 10              // (DMRS l' position)
+    {0, 512, 576, 576, 1, 257, 273, 585}, // 11              // (DMRS l' position)
+    {0, 512, 576, 2336, 1, 513, 545, 585}, // 12              // (DMRS l' position)
+    {0, 2048, 2176, 2336, 1, 513, 545, 585}, // 13              // (DMRS l' position)
+    {0, 2048, 2176, 2336, -1, -1, -1, -1}, // 14              // (DMRS l' position)
 };
-
 
 // TS 38.211 Table 7.4.1.1.2-4: PDSCH DMRS positions l' within a slot for double-symbol DMRS and intra-slot frequency hopping disabled.
 // The first 4 colomns are PDSCH mapping type A and the last 4 colomns are PDSCH mapping type B.
 // When l' = l0, it is represented by 1
 
-int32_t table_7_4_1_1_2_4_pdsch_dmrs_positions_l [12][8] = {                             // Duration in symbols
-{-1,          -1,          -1,         -1,         -1,         -1,        -1,         -1},       //<4              // (DMRS l' position)
-{0,            0,          -1,         -1,         -1,         -1,        -1,         -1},       //4               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,          3,        -1,         -1},       //5               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,          3,        -1,         -1},       //6               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,          3,        -1,         -1},       //7               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,         99,        -1,         -1},       //8               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,         99,        -1,         -1},       //9               // (DMRS l' position)
-{0,          768,          -1,         -1,          3,        387,        -1,         -1},       //10              // (DMRS l' position)
-{0,          768,          -1,         -1,          3,        387,        -1,         -1},       //11              // (DMRS l' position)
-{0,          768,          -1,         -1,          3,        771,        -1,         -1},       //12              // (DMRS l' position)
-{0,         3072,          -1,         -1,          3,        771,        -1,         -1},       //13              // (DMRS l' position)
-{0,         3072,          -1,         -1,          -1,        -1,        -1,         -1},       //14              // (DMRS l' position)
+static const int32_t table_7_4_1_1_2_4_pdsch_dmrs_positions_l[12][8] = {
+    // Duration in symbols
+    {-1, -1, -1, -1, -1, -1, -1, -1}, //<4              // (DMRS l' position)
+    {0, 0, -1, -1, -1, -1, -1, -1}, // 4               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 3, -1, -1}, // 5               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 3, -1, -1}, // 6               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 3, -1, -1}, // 7               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 99, -1, -1}, // 8               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 99, -1, -1}, // 9               // (DMRS l' position)
+    {0, 768, -1, -1, 3, 387, -1, -1}, // 10              // (DMRS l' position)
+    {0, 768, -1, -1, 3, 387, -1, -1}, // 11              // (DMRS l' position)
+    {0, 768, -1, -1, 3, 771, -1, -1}, // 12              // (DMRS l' position)
+    {0, 3072, -1, -1, 3, 771, -1, -1}, // 13              // (DMRS l' position)
+    {0, 3072, -1, -1, -1, -1, -1, -1}, // 14              // (DMRS l' position)
 };
 
 // TS 38.211 Table 6.4.1.1.3-3: PUSCH DMRS positions l' within a slot for single-symbol DMRS and intra-slot frequency hopping disabled.
@@ -1921,41 +2155,84 @@ int32_t table_7_4_1_1_2_4_pdsch_dmrs_positions_l [12][8] = {                    
 // When l' = l0, it is represented by 1
 // E.g. when symbol duration is 12 in colomn 7, value 1057 ('10000100001') which means l' =  l0, 5, 10.
 
-int32_t table_6_4_1_1_3_3_pusch_dmrs_positions_l [12][8] = {                             // Duration in symbols
-{-1,          -1,          -1,         -1,          1,          1,         1,         1},       //<4              // (DMRS l' position)
-{0,            0,           0,          0,          1,          1,         1,         1},       //4               // (DMRS l' position)
-{0,            0,           0,          0,          1,         17,        17,        17},       //5               // (DMRS l' position)
-{0,            0,           0,          0,          1,         17,        17,        17},       //6               // (DMRS l' position)
-{0,            0,           0,          0,          1,         17,        17,        17},       //7               // (DMRS l' position)
-{0,          128,         128,        128,          1,         65,        73,        73},       //8               // (DMRS l' position)
-{0,          128,         128,        128,          1,         65,        73,        73},       //9               // (DMRS l' position)
-{0,          512,         576,        576,          1,        257,       273,       585},       //10              // (DMRS l' position)
-{0,          512,         576,        576,          1,        257,       273,       585},       //11              // (DMRS l' position)
-{0,          512,         576,       2336,          1,       1025,      1057,       585},       //12              // (DMRS l' position)
-{0,         2048,        2176,       2336,          1,       1025,      1057,       585},       //13              // (DMRS l' position)
-{0,         2048,        2176,       2336,          1,       1025,      1057,       585},       //14              // (DMRS l' position)
+static const int32_t table_6_4_1_1_3_3_pusch_dmrs_positions_l[12][8] = {
+    // Duration in symbols
+    {-1, -1, -1, -1, 1, 1, 1, 1}, //<4              // (DMRS l' position)
+    {0, 0, 0, 0, 1, 1, 1, 1}, // 4               // (DMRS l' position)
+    {0, 0, 0, 0, 1, 17, 17, 17}, // 5               // (DMRS l' position)
+    {0, 0, 0, 0, 1, 17, 17, 17}, // 6               // (DMRS l' position)
+    {0, 0, 0, 0, 1, 17, 17, 17}, // 7               // (DMRS l' position)
+    {0, 128, 128, 128, 1, 65, 73, 73}, // 8               // (DMRS l' position)
+    {0, 128, 128, 128, 1, 65, 73, 73}, // 9               // (DMRS l' position)
+    {0, 512, 576, 576, 1, 257, 273, 585}, // 10              // (DMRS l' position)
+    {0, 512, 576, 576, 1, 257, 273, 585}, // 11              // (DMRS l' position)
+    {0, 512, 576, 2336, 1, 1025, 1057, 585}, // 12              // (DMRS l' position)
+    {0, 2048, 2176, 2336, 1, 1025, 1057, 585}, // 13              // (DMRS l' position)
+    {0, 2048, 2176, 2336, 1, 1025, 1057, 585}, // 14              // (DMRS l' position)
 };
-
 
 // TS 38.211 Table 6.4.1.1.3-4: PUSCH DMRS positions l' within a slot for double-symbol DMRS and intra-slot frequency hopping disabled.
 // The first 4 colomns are PUSCH mapping type A and the last 4 colomns are PUSCH mapping type B.
 // When l' = l0, it is represented by 1
 
-int32_t table_6_4_1_1_3_4_pusch_dmrs_positions_l [12][8] = {                             // Duration in symbols
-{-1,          -1,          -1,         -1,         -1,         -1,        -1,         -1},       //<4              // (DMRS l' position)
-{0,            0,          -1,         -1,         -1,         -1,        -1,         -1},       //4               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,          3,        -1,         -1},       //5               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,          3,        -1,         -1},       //6               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,          3,        -1,         -1},       //7               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,         99,        -1,         -1},       //8               // (DMRS l' position)
-{0,            0,          -1,         -1,          3,         99,        -1,         -1},       //9               // (DMRS l' position)
-{0,          768,          -1,         -1,          3,        387,        -1,         -1},       //10              // (DMRS l' position)
-{0,          768,          -1,         -1,          3,        387,        -1,         -1},       //11              // (DMRS l' position)
-{0,          768,          -1,         -1,          3,       1539,        -1,         -1},       //12              // (DMRS l' position)
-{0,         3072,          -1,         -1,          3,       1539,        -1,         -1},       //13              // (DMRS l' position)
-{0,         3072,          -1,         -1,          3,       1539,        -1,         -1},       //14              // (DMRS l' position)
+static const int32_t table_6_4_1_1_3_4_pusch_dmrs_positions_l[12][8] = {
+    // Duration in symbols
+    {-1, -1, -1, -1, -1, -1, -1, -1}, //<4              // (DMRS l' position)
+    {0, 0, -1, -1, -1, -1, -1, -1}, // 4               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 3, -1, -1}, // 5               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 3, -1, -1}, // 6               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 3, -1, -1}, // 7               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 99, -1, -1}, // 8               // (DMRS l' position)
+    {0, 0, -1, -1, 3, 99, -1, -1}, // 9               // (DMRS l' position)
+    {0, 768, -1, -1, 3, 387, -1, -1}, // 10              // (DMRS l' position)
+    {0, 768, -1, -1, 3, 387, -1, -1}, // 11              // (DMRS l' position)
+    {0, 768, -1, -1, 3, 1539, -1, -1}, // 12              // (DMRS l' position)
+    {0, 3072, -1, -1, 3, 1539, -1, -1}, // 13              // (DMRS l' position)
+    {0, 3072, -1, -1, 3, 1539, -1, -1}, // 14              // (DMRS l' position)
 };
 
+// TS 38.212
+static const uint16_t table_7_3_1_1_2_2_1layer[28] = {0,  1,  2,  3,  12, 13, 14, 15, 16, 17, 18, 19, 32, 33,
+                                                      34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47};
+static const uint16_t table_7_3_1_1_2_2_2layers[22] = {4,  5,  6,  7,  8,  9,  20, 21, 22, 23, 24,
+                                                       25, 26, 27, 48, 49, 50, 51, 52, 53, 54, 55};
+static const uint16_t table_7_3_1_1_2_2_3layers[7] = {10, 28, 29, 56, 57, 58, 59};
+static const uint16_t table_7_3_1_1_2_2_4layers[5] = {11, 30, 31, 60, 61};
+static const uint16_t table_7_3_1_1_2_2B_1layer[16] = {0, 1, 2, 3, 15, 16, 17, 18, 19, 20, 21, 22, 23, 12, 24, 25};
+static const uint16_t table_7_3_1_1_2_2B_2layers[14] = {4, 5, 6, 7, 8, 9, 13, 26, 27, 28, 29, 30, 31, 32};
+static const uint16_t table_7_3_1_1_2_2B_3layers[3] = {10, 14, 33};
+static const uint16_t table_7_3_1_1_2_2B_4layers[3] = {11, 34, 35};
+static const uint16_t table_7_3_1_1_2_2A_1layer[16] = {0, 1, 2, 3, 12, 13, 14, 15, 16, 17, 18, 19, 20, 10, 21, 22};
+static const uint16_t table_7_3_1_1_2_2A_2layers[14] = {4, 5, 6, 7, 8, 9, 11, 23, 24, 25, 26, 27, 28, 29};
+static const uint16_t table_7_3_1_1_2_3A[16] = {0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 4, 14, 15};
+static const uint16_t table_7_3_1_1_2_4_1layer_fullyAndPartialAndNonCoherent[6] = {0, 1, 3, 4, 5, 6};
+static const uint16_t table_7_3_1_1_2_4_2layers_fullyAndPartialAndNonCoherent[3] = {2, 7, 8};
+static const uint16_t table_7_3_1_1_2_4A_1layer[3] = {0, 1, 3};
+static const uint16_t table_7_3_1_1_2_28[3][15] = {
+    {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+static const uint16_t table_7_3_1_1_2_29[3][15] = {
+    {0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 0, 3, 4, 0, 5, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0},
+};
+static const uint16_t table_7_3_1_1_2_30[3][15] = {
+    {0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 0, 3, 4, 0, 5, 0, 0, 6, 0, 0, 0, 0},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0},
+};
+static const uint16_t table_7_3_1_1_2_31[3][15] = {
+    {0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 0, 3, 4, 0, 5, 0, 0, 6, 0, 0, 0, 0},
+    {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14},
+};
+static const uint16_t table_7_3_1_1_2_32[3][15] = {
+    {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
 
 void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs){
 
@@ -2126,24 +2403,33 @@ void nr_get_tbs_dl(nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
 
 // the following tables contain 10 times the value reported in 214 (in line with SCF specification and to avoid fractional values)
 //Table 5.1.3.1-1 of 38.214
-uint16_t Table_51311[29][2] = {{2,1200},{2,1570},{2,1930},{2,2510},{2,3080},{2,3790},{2,4490},{2,5260},{2,6020},{2,6790},{4,3400},{4,3780},{4,4340},{4,4900},{4,5530},{4,6160},
-                               {4,6580},{6,4380},{6,4660},{6,5170},{6,5670},{6,6160},{6,6660},{6,7190},{6,7720},{6,8220},{6,8730}, {6,9100}, {6,9480}};
+static const uint16_t Table_51311[29][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260},
+                                            {2, 6020}, {2, 6790}, {4, 3400}, {4, 3780}, {4, 4340}, {4, 4900}, {4, 5530}, {4, 6160},
+                                            {4, 6580}, {6, 4380}, {6, 4660}, {6, 5170}, {6, 5670}, {6, 6160}, {6, 6660}, {6, 7190},
+                                            {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480}};
 
 //Table 5.1.3.1-2 of 38.214
 // Imcs values 20 and 26 have been multiplied by 2 to avoid the floating point
-uint16_t Table_51312[28][2] = {{2,1200},{2,1930},{2,3080},{2,4490},{2,6020},{4,3780},{4,4340},{4,4900},{4,5530},{4,6160},{4,6580},{6,4660},{6,5170},{6,5670},{6,6160},{6,6660},
-                               {6,7190},{6,7720},{6,8220},{6,8730},{8,6825},{8,7110},{8,7540},{8,7970},{8,8410},{8,8850},{8,9165},{8,9480}};
+static const uint16_t Table_51312[28][2] = {{2, 1200}, {2, 1930}, {2, 3080}, {2, 4490}, {2, 6020}, {4, 3780}, {4, 4340},
+                                            {4, 4900}, {4, 5530}, {4, 6160}, {4, 6580}, {6, 4660}, {6, 5170}, {6, 5670},
+                                            {6, 6160}, {6, 6660}, {6, 7190}, {6, 7720}, {6, 8220}, {6, 8730}, {8, 6825},
+                                            {8, 7110}, {8, 7540}, {8, 7970}, {8, 8410}, {8, 8850}, {8, 9165}, {8, 9480}};
 
 //Table 5.1.3.1-3 of 38.214
-uint16_t Table_51313[29][2] = {{2,300},{2,400},{2,500},{2,640},{2,780},{2,990},{2,1200},{2,1570},{2,1930},{2,2510},{2,3080},{2,3790},{2,4490},{2,5260},{2,6020},{4,3400},
-                              {4,3780},{4,4340},{4,4900},{4,5530},{4,6160},{6,4380},{6,4660},{6,5170},{6,5670},{6,6160},{6,6660},{6,7190},{6,7720}};
+static const uint16_t Table_51313[29][2] = {{2, 300},  {2, 400},  {2, 500},  {2, 640},  {2, 780},  {2, 990},  {2, 1200}, {2, 1570},
+                                            {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260}, {2, 6020}, {4, 3400},
+                                            {4, 3780}, {4, 4340}, {4, 4900}, {4, 5530}, {4, 6160}, {6, 4380}, {6, 4660}, {6, 5170},
+                                            {6, 5670}, {6, 6160}, {6, 6660}, {6, 7190}, {6, 7720}};
 
-uint16_t Table_61411[28][2] = {{2,1200},{2,1570},{2,1930},{2,2510},{2,3080},{2,3790},{2,4490},{2,5260},{2,6020},{2,6790},{4,3400},{4,3780},{4,4340},{4,4900},{4,5530},{4,6160},
-                               {4,6580},{6,4660},{6,5170},{6,5670},{6,6160},{6,6660},{6,7190},{6,7720},{6,8220},{6,8730},{6,9100},{6,9480}};
+static const uint16_t Table_61411[28][2] = {{2, 1200}, {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490},
+                                            {2, 5260}, {2, 6020}, {2, 6790}, {4, 3400}, {4, 3780}, {4, 4340}, {4, 4900},
+                                            {4, 5530}, {4, 6160}, {4, 6580}, {6, 4660}, {6, 5170}, {6, 5670}, {6, 6160},
+                                            {6, 6660}, {6, 7190}, {6, 7720}, {6, 8220}, {6, 8730}, {6, 9100}, {6, 9480}};
 
-uint16_t Table_61412[28][2] = {{2,300},{2,400},{2,500},{2,640},{2,780},{2,990},{2,1200},{2,1570},{2,1930},{2,2510},{2,3080},{2,3790},{2,4490},{2,5260},{2,6020},{2,6790},
-                               {4,3780},{4,4340},{4,4900},{4,5530},{4,6160},{4,6580},{4,6990},{4,7720},{6,5670},{6,6160},{6,6660},{6,7720}};
-
+static const uint16_t Table_61412[28][2] = {{2, 300},  {2, 400},  {2, 500},  {2, 640},  {2, 780},  {2, 990},  {2, 1200},
+                                            {2, 1570}, {2, 1930}, {2, 2510}, {2, 3080}, {2, 3790}, {2, 4490}, {2, 5260},
+                                            {2, 6020}, {2, 6790}, {4, 3780}, {4, 4340}, {4, 4900}, {4, 5530}, {4, 6160},
+                                            {4, 6580}, {4, 6990}, {4, 7720}, {6, 5670}, {6, 6160}, {6, 6660}, {6, 7720}};
 
 uint8_t nr_get_Qm_dl(uint8_t Imcs, uint8_t table_idx) {
   switch(table_idx) {
@@ -2305,31 +2591,10 @@ uint32_t nr_get_code_rate_ul(uint8_t Imcs, uint8_t table_idx) {
   }
 }
 
-static inline uint8_t is_codeword_disabled(uint8_t format, uint8_t Imcs, uint8_t rv) {
-  return ((format==NFAPI_NR_DL_DCI_FORMAT_1_1)&&(Imcs==26)&&(rv==1));
-}
-
-static inline uint8_t get_table_idx(uint8_t mcs_table, uint8_t dci_format, uint8_t rnti_type, uint8_t ss_type) {
-  if ((mcs_table == NFAPI_NR_MCS_TABLE_QAM256) && (dci_format == NFAPI_NR_DL_DCI_FORMAT_1_1) && ((rnti_type==NFAPI_NR_RNTI_C)||(rnti_type==NFAPI_NR_RNTI_CS)))
-    return 2;
-  else if ((mcs_table == NFAPI_NR_MCS_TABLE_QAM64_LOW_SE) && (rnti_type!=NFAPI_NR_RNTI_new) && (rnti_type==NFAPI_NR_RNTI_C) && (ss_type==NFAPI_NR_SEARCH_SPACE_TYPE_UE_SPECIFIC))
-    return 3;
-  else if (rnti_type==NFAPI_NR_RNTI_new)
-    return 3;
-  else if ((mcs_table == NFAPI_NR_MCS_TABLE_QAM256) && (rnti_type==NFAPI_NR_RNTI_CS) && (dci_format == NFAPI_NR_DL_DCI_FORMAT_1_1))
-    return 2; // Condition mcs_table not configured in sps_config necessary here but not yet implemented
-  /*else if((mcs_table == NFAPI_NR_MCS_TABLE_QAM64_LOW_SE) &&  (rnti_type==NFAPI_NR_RNTI_CS))
-   *  table_idx = 3;
-   * Note: the commented block refers to the case where the mcs_table is from sps_config*/
-  else
-    return 1;
-}
-
-
 // Table 5.1.2.2.1-1 38.214
 uint8_t getRBGSize(uint16_t bwp_size, long rbg_size_config) {
   
-  AssertFatal(bwp_size<276,"BWP Size > 275\n");
+  AssertFatal(bwp_size < 276,"Invalid BWP Size > 275\n");
   
   if (bwp_size < 37)  return (rbg_size_config ? 4 : 2);
   if (bwp_size < 73)  return (rbg_size_config ? 8 : 4);
@@ -2340,8 +2605,7 @@ uint8_t getRBGSize(uint16_t bwp_size, long rbg_size_config) {
 uint8_t getNRBG(uint16_t bwp_size, uint16_t bwp_start, long rbg_size_config) {
 
   uint8_t rbg_size = getRBGSize(bwp_size,rbg_size_config);
-
-  return (uint8_t)ceil((bwp_size+(bwp_start % rbg_size))/rbg_size);
+  return (uint8_t)ceil((float)(bwp_size+(bwp_start % rbg_size))/(float)rbg_size);
 }
 
 uint8_t getAntPortBitWidth(NR_SetupRelease_DMRS_DownlinkConfig_t *typeA, NR_SetupRelease_DMRS_DownlinkConfig_t *typeB) {
@@ -2487,8 +2751,8 @@ uint8_t get_L_ptrs(uint8_t mcs1, uint8_t mcs2, uint8_t mcs3, uint8_t I_mcs, uint
 *
 *********************************************************************/
 
-uint8_t get_K_ptrs(uint16_t nrb0, uint16_t nrb1, uint16_t N_RB) {
-
+uint8_t get_K_ptrs(uint32_t nrb0, uint32_t nrb1, uint32_t N_RB)
+{
   if (N_RB < nrb0) {
     LOG_D(PHY,"PUSH PT-RS is not present.\n");
     return -1;
@@ -2555,38 +2819,18 @@ uint16_t get_nr_srs_offset(NR_SRS_PeriodicityAndOffset_t periodicityAndOffset) {
 
 // Set the transform precoding status according to 6.1.3 of 3GPP TS 38.214 version 16.3.0 Release 16:
 // - "UE procedure for applying transform precoding on PUSCH"
-uint8_t get_transformPrecoding(const NR_BWP_UplinkCommon_t *initialUplinkBWP,
-                               const NR_PUSCH_Config_t *pusch_config,
-                               const NR_BWP_UplinkDedicated_t *ubwp,
-                               uint8_t *dci_format,
-                               int rnti_type,
-                               uint8_t configuredGrant){
+long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant)
+{
+  if (configuredGrant && current_UL_BWP->configuredGrantConfig && current_UL_BWP->configuredGrantConfig->transformPrecoder)
+    return *current_UL_BWP->configuredGrantConfig->transformPrecoder;
 
-  if (configuredGrant) {
-    if (ubwp->configuredGrantConfig) {
-      if (ubwp->configuredGrantConfig->choice.setup->transformPrecoder) {
-        return *ubwp->configuredGrantConfig->choice.setup->transformPrecoder;
-      }
-    }
-  }
+  if (dci_format == NR_UL_DCI_FORMAT_0_1 && current_UL_BWP && current_UL_BWP->pusch_Config && current_UL_BWP->pusch_Config->transformPrecoder)
+    return *current_UL_BWP->pusch_Config->transformPrecoder;
 
-  if (rnti_type != NR_RNTI_RA && rnti_type != NR_RNTI_TC) {
-    if (*dci_format != NR_UL_DCI_FORMAT_0_0) {
-      if (pusch_config && pusch_config->transformPrecoder != NULL) {
-        return *pusch_config->transformPrecoder;
-      }
-    }
-  }
+  if (current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
+    return NR_PUSCH_Config__transformPrecoder_enabled;
 
-  if (initialUplinkBWP->rach_ConfigCommon->choice.setup->msg3_transformPrecoder == NULL) {
-    return 1; // Transformprecoding disabled
-  } else {
-    LOG_D(PHY, "MAC_COMMON: Transform Precodig enabled through msg3_transformPrecoder\n");
-    return 0; // Enabled
-  }
-
-  LOG_E(MAC, "In %s: could not fetch transform precoder status...\n", __FUNCTION__);
-  return -1;
+  return NR_PUSCH_Config__transformPrecoder_disabled;
 }
 
 uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
@@ -2599,13 +2843,18 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
     n_antenna_port = *pusch_Config->maxRank;
   }
   else {
-    if(srs_config != NULL && srs_resource_indicator.nbits > 0) {
+    uint8_t sri = srs_resource_indicator.nbits > 0 ? srs_resource_indicator.val : 0;
+    if(srs_config != NULL) {
       for(int rs = 0; rs < srs_config->srs_ResourceSetToAddModList->list.count; rs++) {
         NR_SRS_ResourceSet_t *srs_resource_set = srs_config->srs_ResourceSetToAddModList->list.array[rs];
-        if(srs_resource_set->usage == NR_SRS_ResourceSet__usage_codebook) {
-          NR_SRS_Resource_t *srs_resource = srs_config->srs_ResourceToAddModList->list.array[srs_resource_indicator.val];
-          AssertFatal(srs_resource != NULL,"SRS resource indicated by DCI does not exist\n");
-          n_antenna_port = 1<<srs_resource->nrofSRS_Ports;
+        // When multiple SRS resources are configured by SRS-ResourceSet with usage set to 'codebook',
+        // the UE shall expect that higher layer parameters nrofSRS-Ports in SRS-Resource in SRS-ResourceSet
+        // shall be configured with the same value for all these SRS resources.
+        if (srs_resource_set->usage == NR_SRS_ResourceSet__usage_codebook) {
+          NR_SRS_Resource_t *srs_resource = srs_config->srs_ResourceToAddModList->list.array[sri];
+          AssertFatal(srs_resource != NULL, "SRS resource indicated by DCI does not exist\n");
+          n_antenna_port = 1 << srs_resource->nrofSRS_Ports;
+          break;
         }
       }
     }
@@ -2613,67 +2862,463 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
   return n_antenna_port;
 }
 
-uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
-                     const NR_BWP_UplinkCommon_t *initialUplinkBWP,
+// #define DEBUG_SRS_RESOURCE_IND
+uint8_t compute_srs_resource_indicator(NR_PUSCH_ServingCellConfig_t *pusch_servingcellconfig,
+                                       NR_PUSCH_Config_t *pusch_Config,
+                                       NR_SRS_Config_t *srs_config,
+                                       nr_srs_feedback_t *srs_feedback,
+                                       uint32_t *val)
+{
+  uint8_t nbits = 0;
+
+  // SRI occupies a number of bits which is dependent upon the uplink transmission scheme, and it is used to determine
+  // the antenna ports and uplink transmission beam to use for PUSCH transmission. In the case of codebook based
+  // transmission, the SRI is used to select between SRS Resources belonging to different antenna panels
+  // (kind of directional antenna). There can be up to 2 SRS Resources (2 antenna panels). In the case of non-codebook
+  // based transmission, the SRI is used to select one or more SRS Resources from a set of N_SRS resources. The number
+  // of SRS Resources selected corresponds to the number of layers (rank) to be transmitted.
+  if (val) {
+    *val = 0;
+  }
+
+  if (srs_config && pusch_Config && pusch_Config->txConfig != NULL) {
+
+    if (*pusch_Config->txConfig == NR_PUSCH_Config__txConfig_codebook) {
+
+#ifdef DEBUG_SRS_RESOURCE_IND
+      LOG_I(NR_MAC, "*pusch_Config->txConfig = NR_PUSCH_Config__txConfig_codebook\n");
+#endif
+
+      // TS 38.212 - Section 7.3.1.1.2: SRS resource indicator has ceil(log2(N_SRS)) bits according to
+      // Tables 7.3.1.1.2-32, 7.3.1.1.2-32A and 7.3.1.1.2-32B if the higher layer parameter txConfig = codebook,
+      // where N_SRS is the number of configured SRS resources in the SRS resource set configured by higher layer
+      // parameter srs-ResourceSetToAddModList, and associated with the higher layer parameter usage of value codeBook.
+      int count = 0;
+      for (int i=0; i<srs_config->srs_ResourceSetToAddModList->list.count; i++) {
+        if (srs_config->srs_ResourceSetToAddModList->list.array[i]->usage == NR_SRS_ResourceSet__usage_codebook) {
+          count++;
+        }
+      }
+      if (count>0) {
+        nbits = ceil(log2(count));
+        if (val && srs_feedback && nbits > 0) {
+          *val = table_7_3_1_1_2_32[count-2][srs_feedback->sri];
+        }
+      }
+
+#ifdef DEBUG_SRS_RESOURCE_IND
+      LOG_I(NR_MAC, "srs_config->srs_ResourceSetToAddModList->list.count = %i\n", srs_config->srs_ResourceSetToAddModList->list.count);
+      LOG_I(NR_MAC, "count = %i\n", count);
+#endif
+
+    } else {
+
+#ifdef DEBUG_SRS_RESOURCE_IND
+      LOG_I(NR_MAC, "*pusch_Config->txConfig = NR_PUSCH_Config__txConfig_nonCodebook\n");
+#endif
+
+      // TS 38.212 - Section 7.3.1.1.2: SRS resource indicator has ceil(log2(sum(k = 1 until min(Lmax,N_SRS) of binomial(N_SRS,k))))
+      // bits according to Tables 7.3.1.1.2-28/29/30/31 if the higher layer parameter txConfig = nonCodebook, where
+      // N_SRS is the number of configured SRS resources in the SRS resource set configured by higher layer parameter
+      // srs-ResourceSetToAddModList, and associated with the higher layer parameter usage of value nonCodeBook and:
+      //
+      // - if UE supports operation with maxMIMO-Layers and the higher layer parameter maxMIMO-Layers of
+      // PUSCH-ServingCellConfig of the serving cell is configured, Lmax is given by that parameter;
+      //
+      // - otherwise, Lmax is given by the maximum number of layers for PUSCH supported by the UE for the serving cell
+      // for non-codebook based operation.
+      int Lmax = 0;
+      if (pusch_servingcellconfig != NULL) {
+        if (pusch_servingcellconfig->ext1->maxMIMO_Layers != NULL) {
+          Lmax = *pusch_servingcellconfig->ext1->maxMIMO_Layers;
+        } else {
+          AssertFatal(1 == 0, "MIMO on PUSCH not supported, maxMIMO_Layers needs to be set to 1\n");
+        }
+      } else {
+        AssertFatal(1 == 0, "MIMO on PUSCH not supported, maxMIMO_Layers needs to be set to 1\n");
+      }
+      int lmin = 0;
+      int lsum = 0;
+      int count = 0;
+      for (int i = 0; i < srs_config->srs_ResourceSetToAddModList->list.count; i++) {
+        if (srs_config->srs_ResourceSetToAddModList->list.array[i]->usage == NR_SRS_ResourceSet__usage_nonCodebook) {
+          count++;
+        }
+      }
+      lmin = count < Lmax ? count : Lmax;
+      for (int k=1;k<=lmin;k++) {
+        lsum += binomial(count,k);
+      }
+      if (lsum>0) {
+        nbits = ceil(log2(lsum));
+        if (val && srs_feedback && nbits > 0) {
+          switch(Lmax) {
+            case 1:
+              *val = table_7_3_1_1_2_28[count-2][srs_feedback->sri];
+              break;
+            case 2:
+              *val = table_7_3_1_1_2_29[count-2][srs_feedback->sri];
+              break;
+            case 3:
+              *val = table_7_3_1_1_2_30[count-2][srs_feedback->sri];
+              break;
+            case 4:
+              *val = table_7_3_1_1_2_31[count-2][srs_feedback->sri];
+              break;
+            default:
+              LOG_E(NR_MAC, "%s (%d) - Invalid Lmax %d\n", __FUNCTION__, __LINE__, Lmax);
+          }
+        }
+      }
+
+#ifdef DEBUG_SRS_RESOURCE_IND
+      LOG_I(NR_MAC, "srs_config->srs_ResourceSetToAddModList->list.count = %i\n", srs_config->srs_ResourceSetToAddModList->list.count);
+      LOG_I(NR_MAC, "count = %i\n", count);
+      LOG_I(NR_MAC, "Lmax = %i\n", Lmax);
+      LOG_I(NR_MAC, "lsum = %i\n", lsum);
+#endif
+
+    }
+  }
+
+  return nbits;
+}
+
+uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
+                                      NR_SRS_Config_t *srs_config,
+                                      dci_field_t srs_resource_indicator,
+                                      nr_srs_feedback_t *srs_feedback,
+                                      const uint8_t *nrOfLayers,
+                                      uint32_t *val) {
+
+  // It is only applicable to codebook based transmission. This field occupies 0 bits for non-codebook based
+  // transmission. It also occupies 0 bits for codebook based transmission using a single antenna port.
+  uint8_t nbits = 0;
+  if (val) {
+    *val = 0;
+  }
+
+  uint8_t pusch_antenna_ports = get_pusch_nb_antenna_ports(pusch_Config, srs_config, srs_resource_indicator);
+  if ((pusch_Config && pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook) ||
+      pusch_antenna_ports == 1) {
+    return nbits;
+  }
+
+  long max_rank = *pusch_Config->maxRank;
+  long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
+  long *codebookSubset = pusch_Config->codebookSubset;
+
+  if (pusch_antenna_ports == 2) {
+
+    if (max_rank == 1) {
+      // - 1 or 3 bits according to Table 7.3.1.1.2-5 for 2 antenna ports, if txConfig = codebook, ul-FullPowerTransmission
+      //   is not configured or configured to fullpowerMode2 or configured to fullpower, and according to whether transform
+      //   precoder is enabled or disabled, and the values of higher layer parameters maxRank and codebookSubset;
+      // - 2 bits according to Table 7.3.1.1.2-5A for 2 antenna ports, if txConfig = codebook, ul-FullPowerTransmission =
+      //   fullpowerMode1, maxRank=1, and according to whether transform precoder is enabled or disabled, and the values
+      //   of higher layer parameter codebookSubset;
+      if (ul_FullPowerTransmission && *ul_FullPowerTransmission == NR_PUSCH_Config__ext1__ul_FullPowerTransmission_r16_fullpowerMode1) {
+        nbits = 2;
+        if (val && srs_feedback) {
+          AssertFatal(srs_feedback->tpmi <= 2,"TPMI %d is invalid!\n", srs_feedback->tpmi);
+          *val = srs_feedback->tpmi;
+        }
+      } else {
+        if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+          nbits = 1;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 1,"TPMI %d is invalid!\n", srs_feedback->tpmi);
+            *val = srs_feedback->tpmi;
+          }
+        } else {
+          nbits = 3;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 5,"TPMI %d is invalid!\n", srs_feedback->tpmi);
+            *val = srs_feedback->tpmi;
+          }
+        }
+      }
+    } else {
+      // - 2 or 4 bits according to Table 7.3.1.1.2-4 for 2 antenna ports, if txConfig = codebook, ul-FullPowerTransmission
+      //   is not configured or configured to fullpowerMode2 or configured to fullpower, and according to whether transform
+      //   precoder is enabled or disabled, and the values of higher layer parameters maxRank and codebookSubset;
+      // - 2 bits according to Table 7.3.1.1.2-4A for 2 antenna ports, if txConfig = codebook, ul-FullPowerTransmission =
+      //   fullpowerMode1, transform precoder is disabled, maxRank=2, and codebookSubset=nonCoherent;
+      if (ul_FullPowerTransmission && *ul_FullPowerTransmission == NR_PUSCH_Config__ext1__ul_FullPowerTransmission_r16_fullpowerMode1) {
+        nbits = 2;
+        if (val && srs_feedback) {
+          AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 2) || (*nrOfLayers==2 && srs_feedback->tpmi == 0),
+                      "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          *val = *nrOfLayers==1 ? table_7_3_1_1_2_4A_1layer[srs_feedback->tpmi] : 2;
+        }
+      } else {
+        if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+          nbits = 2;
+          if (val && srs_feedback) {
+            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 1) || (*nrOfLayers==2 && srs_feedback->tpmi == 0),
+                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            *val = *nrOfLayers==1 ? srs_feedback->tpmi : 2;
+          }
+        } else {
+          nbits = 4;
+          if (val && srs_feedback) {
+            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 5) || (*nrOfLayers==2 && srs_feedback->tpmi <= 2),
+                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            *val = *nrOfLayers==1 ? table_7_3_1_1_2_4_1layer_fullyAndPartialAndNonCoherent[srs_feedback->tpmi] :
+                                    table_7_3_1_1_2_4_2layers_fullyAndPartialAndNonCoherent[srs_feedback->tpmi];
+          }
+        }
+      }
+    }
+
+  } else if (pusch_antenna_ports == 4) {
+
+    if (max_rank == 1) {
+      // - 2, 4, or 5 bits according to Table 7.3.1.1.2-3 for 4 antenna ports, if txConfig = codebook, ul-FullPowerTransmission
+      //   is not configured or configured to fullpowerMode2 or configured to fullpower, and according to whether transform
+      //   precoder is enabled or disabled, and the values of higher layer parameters maxRank, and codebookSubset;
+      // - 3 or 4 bits according to Table 7.3.1.1.2-3A for 4 antenna ports, if txConfig = codebook, ul-FullPowerTransmission =
+      //   fullpowerMode1, maxRank=1, and according to whether transform precoder is enabled or disabled, and the values
+      //   of higher layer parameter codebookSubset;
+      if (ul_FullPowerTransmission && *ul_FullPowerTransmission == NR_PUSCH_Config__ext1__ul_FullPowerTransmission_r16_fullpowerMode1) {
+        if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+          nbits = 3;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 3 || srs_feedback->tpmi == 13, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        } else {
+          nbits = 4;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 15, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        }
+        if (val && srs_feedback) {
+          *val = table_7_3_1_1_2_3A[srs_feedback->tpmi];
+        }
+      } else {
+        if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+          nbits = 2;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 3, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        } else if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_partialAndNonCoherent) {
+          nbits = 4;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 11, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        } else {
+          nbits = 5;
+          if (val && srs_feedback) {
+            AssertFatal(srs_feedback->tpmi <= 27, "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        }
+        if (val && srs_feedback) {
+          *val = srs_feedback->tpmi;
+        }
+      }
+    } else {
+      // - 4, 5, or 6 bits according to Table 7.3.1.1.2-2 for 4 antenna ports, if txConfig = codebook, ul-FullPowerTransmission
+      //   is not configured or configured to fullpowerMode2 or configured to fullpower, and according to whether transform
+      //   precoder is enabled or disabled, and the values of higher layer parameters maxRank, and codebookSubset;
+      // - 4 or 5 bits according to Table 7.3.1.1.2-2A for 4 antenna ports, if txConfig = codebook, ul-FullPowerTransmission =
+      //   fullpowerMode1, maxRank=2, transform precoder is disabled, and according to the values of higher layer parameter
+      //   codebookSubset;
+      // - 4 or 6 bits according to Table 7.3.1.1.2-2B for 4 antenna ports, if txConfig = codebook, ul-FullPowerTransmission =
+      //   fullpowerMode1, maxRank=3 or 4, transform precoder is disabled, and according to the values of higher layer
+      //   parameter codebookSubset;
+      if (ul_FullPowerTransmission && *ul_FullPowerTransmission == NR_PUSCH_Config__ext1__ul_FullPowerTransmission_r16_fullpowerMode1) {
+        if (max_rank == 2) {
+          if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+            nbits = 4;
+            if (val && srs_feedback) {
+              AssertFatal((*nrOfLayers==1 && (srs_feedback->tpmi <= 3 || srs_feedback->tpmi==13)) || (*nrOfLayers==2 && srs_feedback->tpmi <= 6),
+                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            }
+          } else {
+            nbits = 5;
+            if (val && srs_feedback) {
+              AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 15) || (*nrOfLayers==2 && srs_feedback->tpmi <= 13),
+                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            }
+          }
+          if (val && srs_feedback) {
+            *val = *nrOfLayers==1 ? table_7_3_1_1_2_2A_1layer[srs_feedback->tpmi] : table_7_3_1_1_2_2A_2layers[srs_feedback->tpmi];
+          }
+        } else {
+          if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+            nbits = 4;
+            if (val && srs_feedback) {
+              AssertFatal((*nrOfLayers==1 && (srs_feedback->tpmi <= 3 || srs_feedback->tpmi == 13)) || (*nrOfLayers==2 && srs_feedback->tpmi <= 6) ||
+                          (*nrOfLayers==3 && srs_feedback->tpmi <= 1) || (*nrOfLayers==4 && srs_feedback->tpmi == 0),
+                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            }
+          } else {
+            nbits = 6;
+            if (val && srs_feedback) {
+              AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 15) || (*nrOfLayers==2 && srs_feedback->tpmi <= 13) ||
+                          (*nrOfLayers==3 && srs_feedback->tpmi <= 2) || (*nrOfLayers==4 && srs_feedback->tpmi <= 2),
+                          "TPMI %d is invalid!\n", srs_feedback->tpmi);
+            }
+          }
+          if (val && srs_feedback) {
+            switch (*nrOfLayers) {
+              case 1:
+                *val = table_7_3_1_1_2_2B_1layer[srs_feedback->tpmi];
+                break;
+              case 2:
+                *val = table_7_3_1_1_2_2B_2layers[srs_feedback->tpmi];
+                break;
+              case 3:
+                *val = table_7_3_1_1_2_2B_3layers[srs_feedback->tpmi];
+                break;
+              case 4:
+                *val = table_7_3_1_1_2_2B_4layers[srs_feedback->tpmi];
+                break;
+              default:
+                LOG_E(NR_MAC,"Number of layers %d is invalid!\n", *nrOfLayers);
+            }
+          }
+        }
+      } else {
+        if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent) {
+          nbits = 4;
+          if (val && srs_feedback) {
+            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 3) || (*nrOfLayers==2 && srs_feedback->tpmi <= 5) ||
+                        (*nrOfLayers==3 && srs_feedback->tpmi == 0) || (*nrOfLayers==4 && srs_feedback->tpmi == 0),
+                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        } else if (codebookSubset && *codebookSubset == NR_PUSCH_Config__codebookSubset_partialAndNonCoherent) {
+          nbits = 5;
+          if (val && srs_feedback) {
+            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 11) || (*nrOfLayers==2 && srs_feedback->tpmi <= 13) ||
+                        (*nrOfLayers==3 && srs_feedback->tpmi <= 2) || (*nrOfLayers==4 && srs_feedback->tpmi <= 2),
+                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        } else {
+          nbits = 6;
+          if (val && srs_feedback) {
+            AssertFatal((*nrOfLayers==1 && srs_feedback->tpmi <= 28) || (*nrOfLayers==2 && srs_feedback->tpmi <= 22) ||
+                        (*nrOfLayers==3 && srs_feedback->tpmi <= 7) || (*nrOfLayers==4 && srs_feedback->tpmi <= 5),
+                        "TPMI %d is invalid!\n", srs_feedback->tpmi);
+          }
+        }
+        if (val && srs_feedback) {
+          switch (*nrOfLayers) {
+            case 1:
+              *val = table_7_3_1_1_2_2_1layer[srs_feedback->tpmi];
+              break;
+            case 2:
+              *val = table_7_3_1_1_2_2_2layers[srs_feedback->tpmi];
+              break;
+            case 3:
+              *val = table_7_3_1_1_2_2_3layers[srs_feedback->tpmi];
+              break;
+            case 4:
+              *val = table_7_3_1_1_2_2_4layers[srs_feedback->tpmi];
+              break;
+            default:
+              LOG_E(NR_MAC,"Number of layers %d is invalid!\n", *nrOfLayers);
+          }
+        }
+      }
+    }
+
+  }
+
+  return nbits;
+}
+
+NR_PDSCH_TimeDomainResourceAllocationList_t *get_dl_tdalist(const NR_UE_DL_BWP_t *DL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type)
+{
+  if (!DL_BWP)
+    return NULL;
+  // see table 5.1.2.1.1-1 in 38.214
+  if ((rnti_type == NR_RNTI_CS || rnti_type == NR_RNTI_C || rnti_type == NR_RNTI_MCS_C) && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
+      && (DL_BWP->pdsch_Config && DL_BWP->pdsch_Config->pdsch_TimeDomainAllocationList))
+    return DL_BWP->pdsch_Config->pdsch_TimeDomainAllocationList->choice.setup;
+  else
+    return DL_BWP->tdaList_Common;
+}
+
+NR_PUSCH_TimeDomainResourceAllocationList_t *get_ul_tdalist(const NR_UE_UL_BWP_t *UL_BWP, int controlResourceSetId, int ss_type, nr_rnti_type_t rnti_type)
+{
+  if ((rnti_type == NR_RNTI_CS || rnti_type == NR_RNTI_C || rnti_type == NR_RNTI_MCS_C) && !(ss_type == NR_SearchSpace__searchSpaceType_PR_common && controlResourceSetId == 0)
+      && (UL_BWP->pusch_Config && UL_BWP->pusch_Config->pusch_TimeDomainAllocationList))
+    return UL_BWP->pusch_Config->pusch_TimeDomainAllocationList->choice.setup;
+  else
+    return UL_BWP->tdaList_Common;
+}
+
+uint16_t get_rb_bwp_dci(nr_dci_format_t format,
+                        int ss_type,
+                        uint16_t cset0_bwp_size,
+                        uint16_t ul_bwp_size,
+                        uint16_t dl_bwp_size,
+                        uint16_t initial_ul_bwp_size,
+                        uint16_t initial_dl_bwp_size)
+{
+  uint16_t N_RB;
+  if (format == NR_UL_DCI_FORMAT_0_0 || format == NR_UL_DCI_FORMAT_0_1) {
+    if(format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common)
+      N_RB = initial_ul_bwp_size;
+    else
+      N_RB = ul_bwp_size;
+  }
+  else {
+    if(format == NR_DL_DCI_FORMAT_1_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common) {
+      N_RB = cset0_bwp_size ? cset0_bwp_size : initial_dl_bwp_size;
+    }
+    else
+      N_RB = dl_bwp_size;
+  }
+  return N_RB;
+}
+
+uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
+                     const NR_UE_UL_BWP_t *UL_BWP,
                      const NR_CellGroupConfig_t *cg,
                      dci_pdu_rel15_t *dci_pdu,
                      nr_dci_format_t format,
                      nr_rnti_type_t rnti_type,
-                     uint16_t N_RB,
+                     NR_ControlResourceSet_t *coreset,
                      int bwp_id,
-                     NR_ControlResourceSetId_t coreset_id,
-                     uint16_t cset0_bwp_size) {
+                     int ss_type,
+                     uint16_t cset0_bwp_size,
+                     uint16_t alt_size)
+{
 
   uint16_t size = 0;
   uint16_t numRBG = 0;
   long rbg_size_config;
   int num_entries = 0;
 
-  const NR_BWP_DownlinkDedicated_t *bwpd = NULL;
-  const NR_BWP_UplinkDedicated_t *ubwpd = NULL;
-  const NR_BWP_DownlinkCommon_t *bwpc = NULL;
-  const NR_BWP_UplinkCommon_t *ubwpc = NULL;
-  NR_PDSCH_Config_t *pdsch_Config = NULL;
-  NR_PUSCH_Config_t *pusch_Config = NULL;
-  NR_PUCCH_Config_t *pucch_Config = NULL;
-  NR_PDCCH_Config_t *pdcch_Config = NULL;
-  NR_SRS_Config_t *srs_config = NULL;
-  if(bwp_id > 0) {
-    AssertFatal(cg!=NULL,"Cellgroup is null and bwp_id!=0");
-    bwpd=cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[bwp_id-1]->bwp_Dedicated;
-    bwpc=cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.array[bwp_id-1]->bwp_Common;
-    ubwpd=cg->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_id-1]->bwp_Dedicated;
-    ubwpc=cg->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.array[bwp_id-1]->bwp_Common;
-    pdsch_Config = (bwpd->pdsch_Config) ? bwpd->pdsch_Config->choice.setup : NULL;
-    pdcch_Config = (bwpd->pdcch_Config) ? bwpd->pdcch_Config->choice.setup : NULL;
-    pucch_Config = (ubwpd->pucch_Config) ? ubwpd->pucch_Config->choice.setup : NULL;
-    pusch_Config = (ubwpd->pusch_Config) ? ubwpd->pusch_Config->choice.setup : NULL;
-    srs_config = (ubwpd->srs_Config) ? ubwpd->srs_Config->choice.setup : NULL;
-  }
-  else if (cg){
-    bwpc = initialDownlinkBWP;
-    ubwpc = initialUplinkBWP;
-    bwpd = cg->spCellConfig && cg->spCellConfig->spCellConfigDedicated ?
-           cg->spCellConfig->spCellConfigDedicated->initialDownlinkBWP : NULL;
-    ubwpd = cg->spCellConfig && cg->spCellConfig->spCellConfigDedicated && cg->spCellConfig->spCellConfigDedicated->uplinkConfig ?
-            cg->spCellConfig->spCellConfigDedicated->uplinkConfig->initialUplinkBWP : NULL;
-    pdsch_Config = (bwpd && bwpd->pdsch_Config) ? bwpd->pdsch_Config->choice.setup : NULL;
-    pdcch_Config = (bwpd && bwpd->pdcch_Config) ? bwpd->pdcch_Config->choice.setup : NULL;
-    pucch_Config = (ubwpd && ubwpd->pucch_Config) ? ubwpd->pucch_Config->choice.setup : NULL;
-    pusch_Config = (ubwpd && ubwpd->pusch_Config) ? ubwpd->pusch_Config->choice.setup :  NULL;
-    srs_config = (ubwpd && ubwpd->srs_Config) ? ubwpd->srs_Config->choice.setup: NULL;
-  }
+  NR_PDSCH_Config_t *pdsch_Config = DL_BWP ? DL_BWP->pdsch_Config : NULL;
+  NR_PUSCH_Config_t *pusch_Config = UL_BWP ? UL_BWP->pusch_Config : NULL;
+  NR_PUCCH_Config_t *pucch_Config = UL_BWP ? UL_BWP->pucch_Config : NULL;
+  NR_SRS_Config_t *srs_config = UL_BWP ? UL_BWP->srs_Config : NULL;
 
-  int n_ul_bwp=1,n_dl_bwp=1;
+  uint16_t N_RB = cset0_bwp_size;
+  if (DL_BWP)
+    N_RB = get_rb_bwp_dci(format,
+                          ss_type,
+                          cset0_bwp_size,
+                          UL_BWP->BWPSize,
+                          DL_BWP->BWPSize,
+                          UL_BWP->initial_BWPSize,
+                          DL_BWP->initial_BWPSize);
+
   switch(format) {
-    /*Only sizes for 0_0 and 1_0 are correct at the moment*/
     case NR_UL_DCI_FORMAT_0_0:
       /// fixed: Format identifier 1, Hop flag 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2 Time Domain assgnmt 4 --20
       size += 20;
-      size += (uint8_t)ceil( log2( (N_RB*(N_RB+1))>>1 ) ); // Freq domain assignment -- hopping scenario to be updated
-      int dci_10_size = nr_dci_size(initialDownlinkBWP,initialUplinkBWP,cg,dci_pdu,NR_DL_DCI_FORMAT_1_0, rnti_type, N_RB, bwp_id, coreset_id, cset0_bwp_size);
-      AssertFatal(dci_10_size >= size, "NR_UL_DCI_FORMAT_0_0 size is bigger than NR_DL_DCI_FORMAT_1_0! 3GPP TS 38.212 Section 7.3.1.0: DCI size alignment is not fully implemented");
-      size += dci_10_size - size; // Padding to match 1_0 size
+      dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >>1)); // Freq domain assignment -- hopping scenario to be updated
+      size += dci_pdu->frequency_domain_assignment.nbits;
+      if(alt_size >= size)
+        size += alt_size - size; // Padding to match 1_0 size
+      else if (ss_type == NR_SearchSpace__searchSpaceType_PR_common) {
+        dci_pdu->frequency_domain_assignment.nbits -= (size - alt_size);
+        size = alt_size;
+      }
       // UL/SUL indicator assumed to be 0
       break;
 
@@ -2691,14 +3336,11 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         size += dci_pdu->ul_sul_indicator.nbits;
       }
       // BWP Indicator
-      n_ul_bwp = 0;
-      if (cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
-          cg->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList)
-         n_ul_bwp = cg->spCellConfig->spCellConfigDedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
-      if (n_ul_bwp < 2)
-        dci_pdu->bwp_indicator.nbits = n_ul_bwp;
+      if (UL_BWP->n_ul_bwp < 2)
+        dci_pdu->bwp_indicator.nbits = UL_BWP->n_ul_bwp;
       else
         dci_pdu->bwp_indicator.nbits = 2;
+      LOG_D(NR_MAC, "BWP indicator nbits %d, num UL BWPs %d\n", dci_pdu->bwp_indicator.nbits, UL_BWP->n_ul_bwp);
       size += dci_pdu->bwp_indicator.nbits;
       // Freq domain assignment
       if (pusch_Config) {
@@ -2706,30 +3348,23 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
           rbg_size_config = 1;
         else
           rbg_size_config = 0;
-        numRBG = getNRBG(NRRIV2BW(ubwpc->genericParameters.locationAndBandwidth, MAX_BWP_SIZE),
-                         NRRIV2PRBOFFSET(ubwpc->genericParameters.locationAndBandwidth, MAX_BWP_SIZE),
-                         rbg_size_config);
+        numRBG = getNRBG(UL_BWP->BWPSize, UL_BWP->BWPStart, rbg_size_config);
         if (pusch_Config->resourceAllocation == 0)
           dci_pdu->frequency_domain_assignment.nbits = numRBG;
         else if (pusch_Config->resourceAllocation == 1)
-          dci_pdu->frequency_domain_assignment.nbits = (int)ceil( log2( (N_RB*(N_RB+1))>>1 ) );
+          dci_pdu->frequency_domain_assignment.nbits = (int)ceil(log2((N_RB * (N_RB + 1)) >> 1));
         else
-          dci_pdu->frequency_domain_assignment.nbits = ((int)ceil( log2( (N_RB*(N_RB+1))>>1 ) )>numRBG) ? (int)ceil( log2( (N_RB*(N_RB+1))>>1 ) )+1 : numRBG+1;
-      }
-      else dci_pdu->frequency_domain_assignment.nbits = (int)ceil( log2( (N_RB*(N_RB+1))>>1 ) );
-      LOG_D(NR_MAC,"PUSCH Frequency Domain Assignment nbits %d, N_RB %d\n",dci_pdu->frequency_domain_assignment.nbits,N_RB);
-      size += dci_pdu->frequency_domain_assignment.nbits;
-      // Time domain assignment
-      if (pusch_Config==NULL || pusch_Config->pusch_TimeDomainAllocationList==NULL) {
-        if (ubwpc->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList==NULL)
-          num_entries = 16; // num of entries in default table
-        else
-          num_entries = ubwpc->pusch_ConfigCommon->choice.setup->pusch_TimeDomainAllocationList->list.count;
+          dci_pdu->frequency_domain_assignment.nbits = ((int)ceil(log2((N_RB * (N_RB + 1)) >> 1)) > numRBG) ? (int)ceil(log2((N_RB * (N_RB + 1)) >> 1)) + 1 : numRBG + 1;
       }
       else
-        num_entries = pusch_Config->pusch_TimeDomainAllocationList->choice.setup->list.count;
+        dci_pdu->frequency_domain_assignment.nbits = (int)ceil(log2((N_RB * (N_RB + 1)) >> 1));
+      LOG_D(NR_MAC, "PUSCH Frequency Domain Assignment nbits %d, N_RB %d\n", dci_pdu->frequency_domain_assignment.nbits, N_RB);
+      size += dci_pdu->frequency_domain_assignment.nbits;
+      // Time domain assignment
+      NR_PUSCH_TimeDomainResourceAllocationList_t *tdalistul = get_ul_tdalist(UL_BWP, coreset->controlResourceSetId, ss_type, rnti_type);
+      num_entries = tdalistul ?  tdalistul->list.count : 16; // 16 in default table
       dci_pdu->time_domain_assignment.nbits = (int)ceil(log2(num_entries));
-      LOG_D(NR_MAC,"PUSCH Time Domain Allocation nbits %d, pusch_Config %p\n",dci_pdu->time_domain_assignment.nbits,pusch_Config);
+      LOG_D(NR_MAC, "PUSCH Time Domain Allocation nbits %d, pusch_Config %p\n", dci_pdu->time_domain_assignment.nbits, pusch_Config);
       size += dci_pdu->time_domain_assignment.nbits;
       // Frequency Hopping flag
       if (pusch_Config && 
@@ -2739,106 +3374,38 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         size += 1;
       }
       // 1st DAI
-      if (cg->physicalCellGroupConfig &&
-          cg->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook==NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic)
+      if (DL_BWP->pdsch_HARQ_ACK_Codebook && *DL_BWP->pdsch_HARQ_ACK_Codebook == NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic)
         dci_pdu->dai[0].nbits = 2;
       else
         dci_pdu->dai[0].nbits = 1;
       size += dci_pdu->dai[0].nbits;
-      LOG_D(NR_MAC,"DAI1 nbits %d\n",dci_pdu->dai[0].nbits);
+      LOG_D(NR_MAC, "DAI1 nbits %d\n", dci_pdu->dai[0].nbits);
       // 2nd DAI
-      if (cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig && 
-          cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup &&
-          cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup->codeBlockGroupTransmission != NULL) { //TODO not sure about that
+      if (DL_BWP->pdsch_servingcellconfig && DL_BWP->pdsch_servingcellconfig->codeBlockGroupTransmission != NULL) {
         dci_pdu->dai[1].nbits = 2;
         size += dci_pdu->dai[1].nbits;
       }
       // SRS resource indicator
-      if (srs_config &&
-          pusch_Config && 
-          pusch_Config->txConfig != NULL){
-        int count=0;
-        if (*pusch_Config->txConfig == NR_PUSCH_Config__txConfig_codebook){
-          for (int i=0; i<srs_config->srs_ResourceSetToAddModList->list.count; i++) {
-            if (srs_config->srs_ResourceSetToAddModList->list.array[i]->usage == NR_SRS_ResourceSet__usage_codebook)
-              count++;
-          }
-          if (count>1) {
-            dci_pdu->srs_resource_indicator.nbits = 1;
-            size += dci_pdu->srs_resource_indicator.nbits;
-          }
-        }
-        else {
-          int lmin,Lmax = 0;
-          int lsum = 0;
-          if ( cg->spCellConfig->spCellConfigDedicated->uplinkConfig &&
-               cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig != NULL) {
-            if ( cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers != NULL)
-              Lmax = *cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->ext1->maxMIMO_Layers;
-            else
-              AssertFatal(1==0,"MIMO on PUSCH not supported, maxMIMO_Layers needs to be set to 1\n");
-          }
-          else
-            AssertFatal(1==0,"MIMO on PUSCH not supported, maxMIMO_Layers needs to be set to 1\n");
-          for (int i=0; i<srs_config->srs_ResourceSetToAddModList->list.count; i++) {
-            if (srs_config->srs_ResourceSetToAddModList->list.array[i]->usage == NR_SRS_ResourceSet__usage_nonCodebook)
-              count++;
-            if (count < Lmax) lmin = count;
-            else lmin = Lmax;
-            for (int k=1;k<=lmin;k++) {
-              lsum += binomial(count,k);
-            }
-          }
-          dci_pdu->srs_resource_indicator.nbits = (int)ceil(log2(lsum));
-          size += dci_pdu->srs_resource_indicator.nbits;
-        }
-      } else dci_pdu->srs_resource_indicator.nbits = 0;
-      LOG_D(NR_MAC,"dci_pdu->srs_resource_indicator.nbits %d\n",dci_pdu->srs_resource_indicator.nbits);
+      dci_pdu->srs_resource_indicator.nbits = compute_srs_resource_indicator(UL_BWP->pusch_servingcellconfig, pusch_Config, srs_config, NULL, NULL);
+      size += dci_pdu->srs_resource_indicator.nbits;
+      LOG_D(NR_MAC, "dci_pdu->srs_resource_indicator.nbits %d\n", dci_pdu->srs_resource_indicator.nbits);
       // Precoding info and number of layers
-      long transformPrecoder = get_transformPrecoding(initialUplinkBWP, pusch_Config, ubwpd, (uint8_t*)&format, rnti_type, 0);
-       
-      uint8_t pusch_antenna_ports = get_pusch_nb_antenna_ports(pusch_Config, srs_config, dci_pdu->srs_resource_indicator);
-	   
-      dci_pdu->precoding_information.nbits=0;
-      if (pusch_Config && 
-          pusch_Config->txConfig != NULL){
-        if (*pusch_Config->txConfig == NR_PUSCH_Config__txConfig_codebook){
-          if (pusch_antenna_ports > 1) {
-            if (pusch_antenna_ports == 4) {
-              if ((transformPrecoder == NR_PUSCH_Config__transformPrecoder_disabled) && (*pusch_Config->maxRank>1))
-                dci_pdu->precoding_information.nbits = 6-(*pusch_Config->codebookSubset);
-              else {
-                if(*pusch_Config->codebookSubset == NR_PUSCH_Config__codebookSubset_nonCoherent)
-                  dci_pdu->precoding_information.nbits = 2;
-                else
-                  dci_pdu->precoding_information.nbits = 5-(*pusch_Config->codebookSubset);
-              }
-            }
-            else {
-              AssertFatal(pusch_antenna_ports==2,"Not valid number of antenna ports");
-              if ((transformPrecoder == NR_PUSCH_Config__transformPrecoder_disabled) && (*pusch_Config->maxRank==2))
-                dci_pdu->precoding_information.nbits = 4-(*pusch_Config->codebookSubset);
-              else
-                dci_pdu->precoding_information.nbits = 3-(*pusch_Config->codebookSubset);
-            }
-          }
-        }
-      }
+      dci_pdu->precoding_information.nbits = compute_precoding_information(pusch_Config, srs_config, dci_pdu->srs_resource_indicator, NULL, NULL, NULL);
       size += dci_pdu->precoding_information.nbits;
-      LOG_D(NR_MAC,"dci_pdu->precoding_informaiton.nbits=%d\n",dci_pdu->precoding_information.nbits);
+      LOG_D(NR_MAC, "dci_pdu->precoding_informaiton.nbits=%d\n", dci_pdu->precoding_information.nbits);
       // Antenna ports
+      long transformPrecoder = get_transformPrecoding(UL_BWP, format, 0);
       NR_DMRS_UplinkConfig_t *NR_DMRS_UplinkConfig = NULL;
-      int xa=0;
-      int xb=0;
-      if(pusch_Config &&
-         pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA != NULL){
+      int xa = 0;
+      int xb = 0;
+      if (pusch_Config && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA != NULL) {
         NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeA->choice.setup;
-        xa = ul_ant_bits(NR_DMRS_UplinkConfig,transformPrecoder);
+        xa = ul_ant_bits(NR_DMRS_UplinkConfig, transformPrecoder);
       }
       if(pusch_Config &&
          pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB != NULL){
         NR_DMRS_UplinkConfig = pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup;
-        xb = ul_ant_bits(NR_DMRS_UplinkConfig,transformPrecoder);
+        xb = ul_ant_bits(NR_DMRS_UplinkConfig, transformPrecoder);
       }
       if (xa>xb)
         dci_pdu->antenna_ports.nbits = xa;
@@ -2853,16 +3420,15 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         dci_pdu->srs_request.nbits = 3;
       size += dci_pdu->srs_request.nbits;
       // CSI request
-      if (cg->spCellConfig->spCellConfigDedicated->csi_MeasConfig != NULL) {
-        if (cg->spCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup->reportTriggerSize != NULL) {
-          dci_pdu->csi_request.nbits = *cg->spCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup->reportTriggerSize;
+      if (UL_BWP->csi_MeasConfig != NULL) {
+        if (UL_BWP->csi_MeasConfig->reportTriggerSize != NULL) {
+          dci_pdu->csi_request.nbits = *UL_BWP->csi_MeasConfig->reportTriggerSize;
           size += dci_pdu->csi_request.nbits;
         }
       }
       // CBGTI
-      if (cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig &&
-          cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->codeBlockGroupTransmission != NULL) {
-        int num = cg->spCellConfig->spCellConfigDedicated->uplinkConfig->pusch_ServingCellConfig->choice.setup->codeBlockGroupTransmission->choice.setup->maxCodeBlockGroupsPerTransportBlock;
+      if (UL_BWP->pusch_servingcellconfig && UL_BWP->pusch_servingcellconfig->codeBlockGroupTransmission != NULL) {
+        int num = UL_BWP->pusch_servingcellconfig->codeBlockGroupTransmission->choice.setup->maxCodeBlockGroupsPerTransportBlock;
         dci_pdu->cbgti.nbits = 2 + (num<<1);
         size += dci_pdu->cbgti.nbits;
       }
@@ -2898,20 +3464,17 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       // 3GPP TS 38.212 Section 7.3.1.0: DCI size alignment
       // Size of DCI format 1_0 is given by the size of CORESET 0 if CORESET 0 is configured for the cell and the size
       // of initial DL bandwidth part if CORESET 0 is not configured for the cell
-      if(cset0_bwp_size>0) {
-        N_RB = cset0_bwp_size;
-      }
-
       size = 28;
-      size += (uint8_t)ceil( log2( (N_RB*(N_RB+1))>>1 ) ); // Freq domain assignment
-
-      dci_pdu->frequency_domain_assignment.nbits = (int)ceil( log2( (N_RB*(N_RB+1))>>1 ) );
+      dci_pdu->frequency_domain_assignment.nbits = (uint8_t)ceil(log2((N_RB * (N_RB + 1)) >> 1)); // Freq domain assignment
+      size += dci_pdu->frequency_domain_assignment.nbits;
+      if(ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific && alt_size >= size)
+        size += alt_size - size; // Padding to match 0_0 size
       dci_pdu->time_domain_assignment.nbits = 4;
       dci_pdu->vrb_to_prb_mapping.nbits = 1;
       break;
 
     case NR_DL_DCI_FORMAT_1_1:
-      LOG_D(NR_MAC,"DCI_FORMAT 1_1 : pdsch_Config %p, pucch_Config %p\n",pdsch_Config,pucch_Config);
+      LOG_D(NR_MAC, "DCI_FORMAT 1_1 : pdsch_Config %p, pucch_Config %p\n", pdsch_Config, pucch_Config);
       // General note: 0 bits condition is ignored as default nbits is 0.
       // Format identifier
       size = 1;
@@ -2922,11 +3485,8 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       }
 
       // BWP Indicator
-      n_dl_bwp = 0;
-      if (cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList)
-         n_dl_bwp = cg->spCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList->list.count;
-      if (n_dl_bwp < 2)
-        dci_pdu->bwp_indicator.nbits = n_dl_bwp;
+      if (DL_BWP->n_dl_bwp < 2)
+        dci_pdu->bwp_indicator.nbits = DL_BWP->n_dl_bwp;
       else
         dci_pdu->bwp_indicator.nbits = 2;
       size += dci_pdu->bwp_indicator.nbits;
@@ -2934,26 +3494,17 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       if (pdsch_Config) rbg_size_config = pdsch_Config->rbg_Size;
       else rbg_size_config = 0;
       
-      numRBG = getNRBG(NRRIV2BW(bwpc->genericParameters.locationAndBandwidth, MAX_BWP_SIZE),
-                       NRRIV2PRBOFFSET(bwpc->genericParameters.locationAndBandwidth, MAX_BWP_SIZE),
-                       rbg_size_config);
+      numRBG = getNRBG(DL_BWP->BWPSize, DL_BWP->BWPStart, rbg_size_config);
       if (pdsch_Config && pdsch_Config->resourceAllocation == 0)
          dci_pdu->frequency_domain_assignment.nbits = numRBG;
       else if (pdsch_Config == NULL || pdsch_Config->resourceAllocation == 1)
-         dci_pdu->frequency_domain_assignment.nbits = (int)ceil( log2( (N_RB*(N_RB+1))>>1 ) );
+         dci_pdu->frequency_domain_assignment.nbits = (int)ceil(log2((N_RB * (N_RB + 1)) >> 1));
       else
-         dci_pdu->frequency_domain_assignment.nbits = ((int)ceil( log2( (N_RB*(N_RB+1))>>1 ) )>numRBG) ? (int)ceil( log2( (N_RB*(N_RB+1))>>1 ) )+1 : numRBG+1;
+         dci_pdu->frequency_domain_assignment.nbits = ((int)ceil(log2((N_RB * (N_RB + 1)) >> 1)) > numRBG) ? (int)ceil(log2((N_RB * (N_RB + 1)) >> 1)) + 1 : numRBG + 1;
       size += dci_pdu->frequency_domain_assignment.nbits;
       LOG_D(NR_MAC,"dci_pdu->frequency_domain_assignment.nbits %d (N_RB %d)\n",dci_pdu->frequency_domain_assignment.nbits,N_RB);
-      // Time domain assignment (see table 5.1.2.1.1-1 in 38.214
-      if (pdsch_Config == NULL || pdsch_Config->pdsch_TimeDomainAllocationList==NULL) {
-        if (bwpc->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList==NULL)
-          num_entries = 16; // num of entries in default table
-        else
-          num_entries = bwpc->pdsch_ConfigCommon->choice.setup->pdsch_TimeDomainAllocationList->list.count;
-      }
-      else
-        num_entries = pdsch_Config->pdsch_TimeDomainAllocationList->choice.setup->list.count;
+      NR_PDSCH_TimeDomainResourceAllocationList_t *tdalist = get_dl_tdalist(DL_BWP, coreset->controlResourceSetId, ss_type, rnti_type);
+      num_entries = tdalist ?  tdalist->list.count : 16; // 16 in default table
       dci_pdu->time_domain_assignment.nbits = (int)ceil(log2(num_entries));
       LOG_D(NR_MAC,"pdsch tda.nbits= %d\n",dci_pdu->time_domain_assignment.nbits);
       size += dci_pdu->time_domain_assignment.nbits;
@@ -2995,8 +3546,7 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       // HARQ PID
       size += 4;
       // DAI
-      if (cg->physicalCellGroupConfig &&
-          cg->physicalCellGroupConfig->pdsch_HARQ_ACK_Codebook == NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic) { // FIXME in case of more than one serving cell
+      if (DL_BWP->pdsch_HARQ_ACK_Codebook && *DL_BWP->pdsch_HARQ_ACK_Codebook == NR_PhysicalCellGroupConfig__pdsch_HARQ_ACK_Codebook_dynamic) { // FIXME in case of more than one serving cell
         dci_pdu->dai[0].nbits = 2;
         size += dci_pdu->dai[0].nbits;
       }
@@ -3018,15 +3568,9 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
       size += dci_pdu->antenna_ports.nbits;
       LOG_D(NR_MAC,"dci_pdu->antenna_ports.nbits %d\n",dci_pdu->antenna_ports.nbits);
       // Tx Config Indication
-      for (int i = 0; i < pdcch_Config->controlResourceSetToAddModList->list.count; i++) {
-        if (pdcch_Config->controlResourceSetToAddModList->list.array[i]->controlResourceSetId == coreset_id) {
-          long *isTciEnable = pdcch_Config->controlResourceSetToAddModList->list.array[i]->tci_PresentInDCI;
-          if (isTciEnable != NULL) {
-            dci_pdu->transmission_configuration_indication.nbits = 3;
-            size += dci_pdu->transmission_configuration_indication.nbits;
-          }
-          break;
-        }
+      if (coreset->tci_PresentInDCI != NULL) {
+        dci_pdu->transmission_configuration_indication.nbits = 3;
+        size += dci_pdu->transmission_configuration_indication.nbits;
       }
       // SRS request
       if (cg->spCellConfig->spCellConfigDedicated->supplementaryUplink==NULL)
@@ -3035,16 +3579,14 @@ uint16_t nr_dci_size(const NR_BWP_DownlinkCommon_t *initialDownlinkBWP,
         dci_pdu->srs_request.nbits = 3;
       size += dci_pdu->srs_request.nbits;
       // CBGTI
-      if (cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig &&
-          cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup &&
-          cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup->codeBlockGroupTransmission != NULL) {
-        uint8_t maxCBGperTB = (cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup->codeBlockGroupTransmission->choice.setup->maxCodeBlockGroupsPerTransportBlock + 1) * 2;
+      if (DL_BWP->pdsch_servingcellconfig && DL_BWP->pdsch_servingcellconfig->codeBlockGroupTransmission != NULL) {
+        uint8_t maxCBGperTB = (DL_BWP->pdsch_servingcellconfig->codeBlockGroupTransmission->choice.setup->maxCodeBlockGroupsPerTransportBlock + 1) * 2;
         long *maxCWperDCI_rrc = pdsch_Config->maxNrofCodeWordsScheduledByDCI;
         uint8_t maxCW = (maxCWperDCI_rrc == NULL) ? 1 : *maxCWperDCI_rrc;
         dci_pdu->cbgti.nbits = maxCBGperTB * maxCW;
         size += dci_pdu->cbgti.nbits;
         // CBGFI
-        if (cg->spCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup->codeBlockGroupTransmission->choice.setup->codeBlockGroupFlushIndicator) {
+        if (DL_BWP->pdsch_servingcellconfig->codeBlockGroupTransmission->choice.setup->codeBlockGroupFlushIndicator) {
           dci_pdu->cbgfi.nbits = 1;
           size += dci_pdu->cbgfi.nbits;
         }
@@ -3155,7 +3697,14 @@ int is_nr_UL_slot(NR_TDD_UL_DL_ConfigCommon_t	*tdd_UL_DL_ConfigurationCommon, sl
   else return(slot_in_period >= slots1+tdd_UL_DL_ConfigurationCommon->pattern2->nrofDownlinkSlots ? 1 : 0);    
 }
 
-int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Position,int NrOfSymbols, int startSymbol, mappingType_t mappingtype, int length) {
+int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
+                       int dci_format,
+                       int dmrs_TypeA_Position,
+                       int NrOfSymbols,
+                       int startSymbol,
+                       mappingType_t mappingtype,
+                       int length)
+{
 
   int dmrs_AdditionalPosition = 0;
   NR_DMRS_DownlinkConfig_t *dmrs_config = NULL;
@@ -3164,8 +3713,8 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Posi
 
   int l0 = 0; // type B
   if (mappingtype == typeA) {
-    if (dmrs_TypeA_Position == NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos2) l0=2;
-    else if (dmrs_TypeA_Position == NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos3) l0=3;
+    if (dmrs_TypeA_Position == NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos2) l0 = 2;
+    else if (dmrs_TypeA_Position == NR_ServingCellConfigCommon__dmrs_TypeA_Position_pos3) l0 = 3;
     else AssertFatal(1==0,"Illegal dmrs_TypeA_Position %d\n",(int)dmrs_TypeA_Position);
   }
   // in case of DCI FORMAT 1_0 or dedicated pdsch config not received additionposition = pos2, len1 should be used
@@ -3174,7 +3723,8 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Posi
 
   if (pdsch_Config != NULL) {
     if (mappingtype == typeA) { // Type A
-      if (pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA && pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->present == NR_SetupRelease_DMRS_DownlinkConfig_PR_setup)
+      if (dci_format != NR_DL_DCI_FORMAT_1_0 &&
+          pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA && pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->present == NR_SetupRelease_DMRS_DownlinkConfig_PR_setup)
         dmrs_config = (NR_DMRS_DownlinkConfig_t *)pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeA->choice.setup;
     } else if (mappingtype == typeB) {
       if (pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeB && pdsch_Config->dmrs_DownlinkForPDSCH_MappingTypeB->present == NR_SetupRelease_DMRS_DownlinkConfig_PR_setup)
@@ -3183,10 +3733,9 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Posi
       AssertFatal(1==0,"Incorrect Mappingtype\n");
     }
 
-    AssertFatal(dmrs_config != NULL," DMRS configs not present in PDSCH DMRS Downlink config\n");
-
     // default values of additionalposition is pos2
-    if (dmrs_config->dmrs_AdditionalPosition != NULL) dmrs_AdditionalPosition = *dmrs_config->dmrs_AdditionalPosition;
+    if (dmrs_config && dmrs_config->dmrs_AdditionalPosition != NULL)
+      dmrs_AdditionalPosition = *dmrs_config->dmrs_AdditionalPosition;
   }
 
   uint8_t ld, row, column;
@@ -3237,12 +3786,36 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,int dmrs_TypeA_Posi
   return l_prime;
 }
 
+uint8_t get_pdsch_mcs_table(long *mcs_Table, int dci_format, int rnti_type, int ss_type)
+{
+
+  // Set downlink MCS table (Semi-persistent scheduling ignored for now)
+  uint8_t mcsTableIdx = 0; // default value
+  if (mcs_Table &&
+      *mcs_Table == NR_PDSCH_Config__mcs_Table_qam256 &&
+      dci_format == NR_DL_DCI_FORMAT_1_1 &&
+      rnti_type == NR_RNTI_C)
+    mcsTableIdx = 1;
+  else if (rnti_type != NR_RNTI_MCS_C &&
+           mcs_Table &&
+           *mcs_Table == NR_PDSCH_Config__mcs_Table_qam64LowSE &&
+           ss_type == NR_SearchSpace__searchSpaceType_PR_ue_Specific)
+    mcsTableIdx = 2;
+  else if (rnti_type == NR_RNTI_MCS_C)
+    mcsTableIdx = 2;
+
+  LOG_D(NR_MAC,"DL MCS Table Index: %d\n", mcsTableIdx);
+  return mcsTableIdx;
+
+}
+
 uint8_t get_pusch_mcs_table(long *mcs_Table,
                             int is_tp,
                             int dci_format,
                             int rnti_type,
                             int target_ss,
-                            bool config_grant) {
+                            bool config_grant)
+{
 
   // implementing 6.1.4.1 in 38.214
   if (mcs_Table != NULL) {
@@ -3250,7 +3823,7 @@ uint8_t get_pusch_mcs_table(long *mcs_Table,
       if (*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256)
         return 1;
       else
-        return (2+(is_tp<<1));
+        return (2 + (is_tp << 1));
     }
     else {
       if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam256) &&
@@ -3261,14 +3834,12 @@ uint8_t get_pusch_mcs_table(long *mcs_Table,
       if ((*mcs_Table == NR_PUSCH_Config__mcs_Table_qam64LowSE) &&
           (target_ss == NR_SearchSpace__searchSpaceType_PR_ue_Specific) &&
           ((rnti_type == NR_RNTI_C ) || (rnti_type == NR_RNTI_SP_CSI)))
-        return (2+(is_tp<<1));
+        return (2 + (is_tp << 1));
       if (rnti_type == NR_RNTI_MCS_C)
-        return (2+(is_tp<<1));
-      AssertFatal(1==0,"Invalid configuration to set MCS table");
+        return (2 + (is_tp << 1));
     }
   }
-  else
-    return (0+(is_tp*3));
+  return (0 + (is_tp * 3));
 }
 
 
@@ -3509,12 +4080,12 @@ uint8_t get_BG(uint32_t A, uint16_t R) {
     return 1;
 }
 
-uint32_t get_Y(NR_SearchSpace_t *ss, int slot, rnti_t rnti) {
+uint32_t get_Y(const NR_SearchSpace_t *ss, int slot, rnti_t rnti) {
 
   if(ss->searchSpaceType->present == NR_SearchSpace__searchSpaceType_PR_common)
     return 0;
 
-  const int cid = *ss->controlResourceSetId%3;
+  const int cid = *ss->controlResourceSetId % 3;
   const uint32_t A[3] = {39827, 39829, 39839};
   const uint32_t D = 65537;
   uint32_t Y;
@@ -3633,11 +4204,11 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     case (NR_SubcarrierSpacing_kHz120 << 3) | NR_SubcarrierSpacing_kHz60:
       AssertFatal(index_4msb < 12, "38.213 Table 13-7 4 MSB out of range\n");
-      if(index_4msb & 0x7){
+      if (index_4msb < 8) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 1;
-      }else if(index_4msb & 0x18){
+      } else if (index_4msb < 12) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 2;
-      }else{ ; }
+      }
 
       type0_PDCCH_CSS_config->num_rbs     = table_38213_13_7_c2[index_4msb];
       type0_PDCCH_CSS_config->num_symbols = table_38213_13_7_c3[index_4msb];
@@ -3650,9 +4221,9 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     case (NR_SubcarrierSpacing_kHz120 << 3) | NR_SubcarrierSpacing_kHz120:
       AssertFatal(index_4msb < 8, "38.213 Table 13-8 4 MSB out of range\n");
-      if(index_4msb & 0x3){
+      if (index_4msb < 4) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 1;
-      }else if(index_4msb & 0x0c){
+      } else if (index_4msb < 8) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 3;
       }
 
@@ -3675,9 +4246,9 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     case (NR_SubcarrierSpacing_kHz240 << 3) | NR_SubcarrierSpacing_kHz120:
       AssertFatal(index_4msb < 8, "38.213 Table 13-10 4 MSB out of range\n");
-      if(index_4msb & 0x3){
+      if (index_4msb < 4) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 1;
-      }else if(index_4msb & 0x0c){
+      } else if (index_4msb < 8) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 2;
       }
       type0_PDCCH_CSS_config->num_rbs     = table_38213_13_10_c2[index_4msb];
@@ -4005,7 +4576,7 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0, NR_Type0_PDCCH_CSS_config_t *ty
 }
 
 
-void find_period_offest_SR (NR_SchedulingRequestResourceConfig_t *SchedulingReqRec, int *period, int *offset) {
+void find_period_offset_SR(const NR_SchedulingRequestResourceConfig_t *SchedulingReqRec, int *period, int *offset) {
   NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR P_O = SchedulingReqRec->periodicityAndOffset->present;
   switch (P_O){
     case NR_SchedulingRequestResourceConfig__periodicityAndOffset_PR_sl1:
@@ -4065,29 +4636,32 @@ void find_period_offest_SR (NR_SchedulingRequestResourceConfig_t *SchedulingReqR
   }
 }
 
-uint16_t compute_pucch_prb_size(uint8_t format,
-                                uint8_t nr_prbs,
-                                uint16_t O_tot,
-                                uint16_t O_csi,
-                                NR_PUCCH_MaxCodeRate_t *maxCodeRate,
-                                uint8_t Qm,
-                                uint8_t n_symb,
-                                uint8_t n_re_ctrl) {
-
-  uint16_t O_crc;
-
-  if (O_tot<12)
-    O_crc = 0;
+int compute_pucch_crc_size(int O_uci)
+{
+  if (O_uci < 12)
+    return 0;
   else{
-    if (O_tot<20)
-      O_crc = 6;
+    if (O_uci < 20)
+      return 6;
     else {
-      if (O_tot<360)
-        O_crc = 11;
+      if (O_uci < 360)
+        return 11;
       else
         AssertFatal(1==0,"Case for segmented PUCCH not yet implemented");
     }
   }
+}
+
+uint16_t compute_pucch_prb_size(uint8_t format,
+                                uint8_t nr_prbs,
+                                uint16_t O_uci,
+                                NR_PUCCH_MaxCodeRate_t *maxCodeRate,
+                                uint8_t Qm,
+                                uint8_t n_symb,
+                                uint8_t n_re_ctrl)
+{
+  int O_crc = compute_pucch_crc_size(O_uci);
+  int O_tot = O_uci + O_crc;
 
   int rtimes100;
   switch(*maxCodeRate){
@@ -4118,25 +4692,27 @@ uint16_t compute_pucch_prb_size(uint8_t format,
 
   float r = (float)rtimes100/100;
 
-  if (O_csi == O_tot) {
-    if ((O_tot+O_csi)>(nr_prbs*n_re_ctrl*n_symb*Qm*r))
-      AssertFatal(1==0,"MaxCodeRate %.2f can't support %d UCI bits and %d CRC bits with %d PRBs",
-                  r,O_tot,O_crc,nr_prbs);
-  }
+  AssertFatal(O_tot <= (nr_prbs * n_re_ctrl * n_symb * Qm * r),
+              "MaxCodeRate %.2f can't support %d UCI bits and %d CRC bits with %d PRBs",
+              r,
+              O_tot,
+              O_crc,
+              nr_prbs);
 
   if (format==2){
     // TODO fix this for multiple CSI reports
-    for (int i=1; i<=nr_prbs; i++){
-      if((O_tot+O_crc)<=(i*n_symb*Qm*n_re_ctrl*r) &&
-         (O_tot+O_crc)>((i-1)*n_symb*Qm*n_re_ctrl*r))
+    for (int i = nr_prbs; i > 0; i--) {
+      // compute code rate factor for next prb value
+      int next_prb_factor = (i - 1) * n_symb * Qm * n_re_ctrl * r;
+      // if it does not sa
+      if (O_tot > next_prb_factor)
         return i;
     }
-    AssertFatal(1==0,"MaxCodeRate %.2f can't support %d UCI bits and %d CRC bits with at most %d PRBs",
-                r,O_tot,O_crc,nr_prbs);
   }
   else{
     AssertFatal(1==0,"Not yet implemented");
   }
+  return 0;
 }
 
 int get_dlbw_tbslbrm(int scc_bwpsize,

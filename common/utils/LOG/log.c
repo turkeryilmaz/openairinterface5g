@@ -45,6 +45,7 @@
 #include "common/config/config_userapi.h"
 #include <time.h>
 #include <sys/time.h>
+#include "common/utils/LOG/log_extern.h"
 
 // main log variables
 
@@ -66,32 +67,30 @@ char __log_mem_filename[1024]={0};
 char * log_mem_filename = &__log_mem_filename[0];
 char logmem_filename[1024] = {0};
 
-mapping log_level_names[] = {
-  {"error",  OAILOG_ERR},
-  {"warn",   OAILOG_WARNING},
-  {"analysis", OAILOG_ANALYSIS},
-  {"info",   OAILOG_INFO},
-  {"debug",  OAILOG_DEBUG},
-  {"trace",  OAILOG_TRACE},
-  {NULL, -1}
-};
+const mapping log_level_names[] = {{"error", OAILOG_ERR},
+                                   {"warn", OAILOG_WARNING},
+                                   {"analysis", OAILOG_ANALYSIS},
+                                   {"info", OAILOG_INFO},
+                                   {"debug", OAILOG_DEBUG},
+                                   {"trace", OAILOG_TRACE},
+                                   {NULL, -1}};
 
-mapping log_options[] = {
-  {"nocolor", FLAG_NOCOLOR  },
-  {"level",   FLAG_LEVEL  },
-  {"thread",  FLAG_THREAD },
-  {"line_num",    FLAG_FILE_LINE },
-  {"function", FLAG_FUNCT},
-  {"time",     FLAG_TIME},
-  {"thread_id", FLAG_THREAD_ID},
-  {NULL,-1}
-};
-
+const mapping log_options[] = {{"nocolor", FLAG_NOCOLOR},
+                               {"level", FLAG_LEVEL},
+                               {"thread", FLAG_THREAD},
+                               {"line_num", FLAG_FILE_LINE},
+                               {"function", FLAG_FUNCT},
+                               {"time", FLAG_TIME},
+                               {"thread_id", FLAG_THREAD_ID},
+                               {"wall_clock", FLAG_REAL_TIME},
+                               {NULL, -1}};
 
 mapping log_maskmap[] = LOG_MASKMAP_INIT;
 
-char *log_level_highlight_start[] = {LOG_RED, LOG_ORANGE, LOG_GREEN, "", LOG_BLUE, LOG_CYBL};  /*!< \brief Optional start-format strings for highlighting */
-char *log_level_highlight_end[]   = {LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET};   /*!< \brief Optional end-format strings for highlighting */
+static const char *log_level_highlight_start[] =
+    {LOG_RED, LOG_ORANGE, LOG_GREEN, "", LOG_BLUE, LOG_CYBL}; /*!< \brief Optional start-format strings for highlighting */
+static const char *log_level_highlight_end[] =
+    {LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET, LOG_RESET}; /*!< \brief Optional end-format strings for highlighting */
 static void log_output_memory(log_component_t *c, const char *file, const char *func, int line, int comp, int level, const char* format,va_list args);
 
 
@@ -310,7 +309,7 @@ void  log_getconfig(log_t *g_log)
 
   for (int i=MIN_LOG_COMPONENTS; i < MAX_LOG_PREDEF_COMPONENTS; i++) {
     if(g_log->log_component[i].name == NULL) {
-      g_log->log_component[i].name = malloc(16);
+      g_log->log_component[i].name = malloc(17);
       sprintf((char *)g_log->log_component[i].name,"comp%i?",i);
       logparams_logfile[i].paramflags = PARAMFLAG_DONOTREAD;
       logparams_level[i].paramflags = PARAMFLAG_DONOTREAD;
@@ -464,7 +463,6 @@ int logInit (void)
   register_log_component("OTG_GP","dat",OTG_GP);
   register_log_component("OTG_GP_BG","dat",OTG_GP_BG);
   register_log_component("OTG_JITTER","dat",OTG_JITTER);
-  register_log_component("OCG","",OCG);
   register_log_component("PERF","",PERF);
   register_log_component("OIP","",OIP);
   register_log_component("OCM","log",OCM);
@@ -475,8 +473,6 @@ int logInit (void)
   register_log_component("ENB_APP","log",ENB_APP);
   register_log_component("MCE_APP","log",MCE_APP);
   register_log_component("MME_APP","log",MME_APP);
-  register_log_component("FLEXRAN_AGENT","log",FLEXRAN_AGENT);
-  register_log_component("PROTO_AGENT","log",PROTO_AGENT);
   register_log_component("TMR","",TMR);
   register_log_component("EMU","log",EMU);
   register_log_component("USIM","txt",USIM);
@@ -489,6 +485,7 @@ int logInit (void)
   register_log_component("SDAP","",SDAP);
   register_log_component("S1AP","",S1AP);
   register_log_component("F1AP","",F1AP);
+  register_log_component("E1AP","",E1AP);
   register_log_component("M2AP","",M2AP);
   register_log_component("M3AP","",M3AP);
   register_log_component("SCTP","",SCTP);
@@ -515,6 +512,9 @@ int logInit (void)
   for (i=MAX_LOG_PREDEF_COMPONENTS; i < MAX_LOG_COMPONENTS; i++) {
     memset(&(g_log->log_component[i]),0,sizeof(log_component_t));
   }
+
+  AssertFatal(!((g_log->flag & FLAG_TIME) && (g_log->flag & FLAG_REAL_TIME)),
+		   "Invalid log options: time and wall_clock both set but are mutually exclusive\n");
 
   g_log->flag =  g_log->flag | FLAG_INITIALIZED;
   printf("log init done\n");
@@ -558,10 +558,12 @@ static inline int log_header(log_component_t *c,
   else
     l[0] = 0;
 
+  // output time information
   char timeString[32];
-  if ( flag & FLAG_TIME ) {
+  if ((flag & FLAG_TIME) || (flag & FLAG_REAL_TIME)) {
     struct timespec t;
-    if (clock_gettime(CLOCK_MONOTONIC, &t) == -1)
+    const clockid_t clock = flag & FLAG_TIME ? CLOCK_MONOTONIC : CLOCK_REALTIME;
+    if (clock_gettime(clock, &t) == -1)
         abort();
     snprintf(timeString, sizeof(timeString), "%lu.%06lu ",
              t.tv_sec,
@@ -755,8 +757,7 @@ void close_component_filelog(int comp)
  * with string value NULL
  */
 /* map a string to an int. Takes a mapping array and a string as arg */
-int map_str_to_int(mapping *map,
-		           const char *str)
+int map_str_to_int(const mapping *map, const char *str)
 {
   while (1) {
     if (map->name == NULL) {
@@ -772,8 +773,7 @@ int map_str_to_int(mapping *map,
 }
 
 /* map an int to a string. Takes a mapping array and a value */
-char *map_int_to_str(mapping *map,
-		             int val)
+char *map_int_to_str(const mapping *map, const int val)
 {
   while (1) {
     if (map->name == NULL) {

@@ -396,12 +396,10 @@ int main(int argc, char **argv)
     exit(-1);
   }
 #ifdef DEBUG_NR_PSSCHSIM
-  for (int sf = 0; sf < 2; sf++) {
-    txUE->slsch[sf][0] = new_nr_ue_ulsch(N_RB_SL, 8, &txUE->frame_parms);
-    if (!txUE->slsch[sf][0]) {
-      printf("Can't get ue ulsch structures.\n");
-      exit(-1);
-    }
+  txUE->slsch[0] = new_nr_ue_ulsch(N_RB_SL, 8, &txUE->frame_parms);
+  if (!txUE->slsch[0]) {
+    printf("Can't get ue ulsch structures.\n");
+    exit(-1);
   }
 #endif
   get_softmodem_params()->sync_ref = false;
@@ -409,23 +407,23 @@ int main(int argc, char **argv)
   get_softmodem_params()->sync_ref = true;
   init_nr_ue_transport(rxUE);
 
-  NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0][0];
+  NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0];
   unsigned char harq_pid = 0;
   NR_DL_UE_HARQ_t *harq_process_rxUE = slsch_ue_rx->harq_processes[harq_pid];
-  NR_UL_UE_HARQ_t *harq_process_txUE = txUE->slsch[0][0]->harq_processes[harq_pid];
+  NR_UL_UE_HARQ_t *harq_process_txUE = txUE->slsch[0]->harq_processes[harq_pid];
   DevAssert(harq_process_txUE);
 
   int frame = 0;
   int slot = 0;
   int soffset = (slot & 3) * rxUE->frame_parms.symbols_per_slot * rxUE->frame_parms.ofdm_symbol_size;
   int32_t **txdata = txUE->common_vars.txdata;
-  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0][0];
+  NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0];
   crcTableInit();
   nr_ue_set_slsch(&txUE->frame_parms, 0, slsch_ue, frame, slot);
   nr_ue_slsch_tx_procedures(txUE, harq_pid, frame, slot);
   printf("tx is done\n");
 
-  int32_t **rxdataF = rxUE->common_vars.common_vars_rx_data_per_thread[0].rxdataF;
+  c16_t **rxdataF = rxUE->common_vars.rxdataF;
   UE_nr_rxtx_proc_t proc;
   proc.thread_id = 0;
 
@@ -481,7 +479,7 @@ int main(int argc, char **argv)
 #endif
       for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
-            nr_slot_fep_ul(&rxUE->frame_parms, rxUE->common_vars.rxdata[aa], &rxdataF[aa][soffset], ofdm_symbol, slot, 0);
+            nr_slot_fep_ul(&rxUE->frame_parms, (int32_t *)rxUE->common_vars.rxdata[aa], (int32_t *)&rxdataF[aa][soffset], ofdm_symbol, slot, 0);
         }
         apply_nr_rotation_ul(&rxUE->frame_parms, rxdataF[aa], slot, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, link_type_sl);
       }
@@ -491,7 +489,7 @@ int main(int argc, char **argv)
                                                slot,
                                                rxdataF,
                                                harq_process_txUE->B_multiplexed,
-                                               txUE->slsch[0][0]->Nidx,
+                                               txUE->slsch[0]->Nidx,
                                                &proc);
 
       if (ret)
@@ -500,13 +498,13 @@ int main(int argc, char **argv)
       bool payload_type_string = true;
       for (int i = 0; i < 200; i++) {
         estimated_output_bit[i] = (harq_process_rxUE->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-        test_input_bit[i] = (txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+        test_input_bit[i] = (txUE->slsch[0]->harq_processes[harq_pid]->a[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
 #ifdef DEBUG_NR_PSSCHSIM
         if (i % 8 == 0) {
           if (payload_type_string) {
-            printf("TxByte : %c  vs  %c : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+            printf("TxByte : %c  vs  %c : RxByte\n", txUE->slsch[0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
           } else {
-            printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0][0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
+            printf("TxByte : %2u  vs  %2u : RxByte\n", txUE->slsch[0]->harq_processes[harq_pid]->a[i / 8], harq_process_rxUE->b[i / 8]);
           }
         }
 #endif

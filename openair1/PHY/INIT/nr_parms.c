@@ -19,67 +19,27 @@
  *      contact@openairinterface.org
  */
 
-#include "phy_init.h"
+#include "nr_phy_init.h"
 #include "common/utils/nr/nr_common.h"
 #include "common/utils/LOG/log.h"
 #include "executables/softmodem-common.h"
 
 /// Subcarrier spacings in Hz indexed by numerology index
-uint32_t nr_subcarrier_spacing[MAX_NUM_SUBCARRIER_SPACING] = {15e3, 30e3, 60e3, 120e3, 240e3};
-uint16_t nr_slots_per_subframe[MAX_NUM_SUBCARRIER_SPACING] = {1, 2, 4, 8, 16};
+static const uint32_t nr_subcarrier_spacing[MAX_NUM_SUBCARRIER_SPACING] = {15e3, 30e3, 60e3, 120e3, 240e3};
+static const uint16_t nr_slots_per_subframe[MAX_NUM_SUBCARRIER_SPACING] = {1, 2, 4, 8, 16};
 
 // Table 5.4.3.3-1 38-101
-int nr_ssb_table[48][3] = {
-  {1, 15, nr_ssb_type_A},
-  {2, 15, nr_ssb_type_A},
-  {3, 15, nr_ssb_type_A},
-  {5, 15, nr_ssb_type_A},
-  {5, 30, nr_ssb_type_B},
-  {7, 15, nr_ssb_type_A},
-  {8, 15, nr_ssb_type_A},
-  {12, 15, nr_ssb_type_A},
-  {14, 15, nr_ssb_type_A},
-  {18, 15, nr_ssb_type_A},
-  {20, 15, nr_ssb_type_A},
-  {25, 15, nr_ssb_type_A},
-  {26, 15, nr_ssb_type_A},
-  {28, 15, nr_ssb_type_A},
-  {29, 15, nr_ssb_type_A},
-  {30, 15, nr_ssb_type_A},
-  {34, 15, nr_ssb_type_A},
-  {34, 30, nr_ssb_type_C},
-  {38, 15, nr_ssb_type_A},
-  {38, 30, nr_ssb_type_C},
-  {39, 15, nr_ssb_type_A},
-  {39, 30, nr_ssb_type_C},
-  {40, 30, nr_ssb_type_C},
-  {41, 15, nr_ssb_type_A},
-  {41, 30, nr_ssb_type_C},
-  {46, 30, nr_ssb_type_C},
-  {48, 30, nr_ssb_type_C},
-  {50, 30, nr_ssb_type_C},
-  {51, 15, nr_ssb_type_A},
-  {53, 15, nr_ssb_type_A},
-  {65, 15, nr_ssb_type_A},
-  {66, 15, nr_ssb_type_A},
-  {66, 30, nr_ssb_type_B},
-  {70, 15, nr_ssb_type_A},
-  {71, 15, nr_ssb_type_A},
-  {74, 15, nr_ssb_type_A},
-  {75, 15, nr_ssb_type_A},
-  {76, 15, nr_ssb_type_A},
-  {77, 30, nr_ssb_type_C},
-  {78, 30, nr_ssb_type_C},
-  {79, 30, nr_ssb_type_C},
-  {90, 15, nr_ssb_type_A},
-  {90, 30, nr_ssb_type_C},
-  {91, 15, nr_ssb_type_A},
-  {92, 15, nr_ssb_type_A},
-  {93, 15, nr_ssb_type_A},
-  {94, 15, nr_ssb_type_A},
-  {96, 30, nr_ssb_type_C}
-};
-
+static const int nr_ssb_table[48][3] = {
+    {1, 15, nr_ssb_type_A},  {2, 15, nr_ssb_type_A},  {3, 15, nr_ssb_type_A},  {5, 15, nr_ssb_type_A},  {5, 30, nr_ssb_type_B},
+    {7, 15, nr_ssb_type_A},  {8, 15, nr_ssb_type_A},  {12, 15, nr_ssb_type_A}, {14, 15, nr_ssb_type_A}, {18, 15, nr_ssb_type_A},
+    {20, 15, nr_ssb_type_A}, {25, 15, nr_ssb_type_A}, {26, 15, nr_ssb_type_A}, {28, 15, nr_ssb_type_A}, {29, 15, nr_ssb_type_A},
+    {30, 15, nr_ssb_type_A}, {34, 15, nr_ssb_type_A}, {34, 30, nr_ssb_type_C}, {38, 15, nr_ssb_type_A}, {38, 30, nr_ssb_type_C},
+    {39, 15, nr_ssb_type_A}, {39, 30, nr_ssb_type_C}, {40, 30, nr_ssb_type_C}, {41, 15, nr_ssb_type_A}, {41, 30, nr_ssb_type_C},
+    {46, 30, nr_ssb_type_C}, {48, 30, nr_ssb_type_C}, {50, 30, nr_ssb_type_C}, {51, 15, nr_ssb_type_A}, {53, 15, nr_ssb_type_A},
+    {65, 15, nr_ssb_type_A}, {66, 15, nr_ssb_type_A}, {66, 30, nr_ssb_type_B}, {70, 15, nr_ssb_type_A}, {71, 15, nr_ssb_type_A},
+    {74, 15, nr_ssb_type_A}, {75, 15, nr_ssb_type_A}, {76, 15, nr_ssb_type_A}, {77, 30, nr_ssb_type_C}, {78, 30, nr_ssb_type_C},
+    {79, 30, nr_ssb_type_C}, {90, 15, nr_ssb_type_A}, {90, 30, nr_ssb_type_C}, {91, 15, nr_ssb_type_A}, {92, 15, nr_ssb_type_A},
+    {93, 15, nr_ssb_type_A}, {94, 15, nr_ssb_type_A}, {96, 30, nr_ssb_type_C}};
 
 void set_Lmax(NR_DL_FRAME_PARMS *fp) {
 
@@ -196,13 +156,13 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
   while(fp->ofdm_symbol_size < N_RB_DL * 12)
     fp->ofdm_symbol_size <<= 1;
 
+  fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
+  // TODO: Temporarily setting fp->first_carrier_offset = 0 for SL until MAC is developed
   if (get_softmodem_params()->sl_mode == 2)
     fp->first_carrier_offset = 0;
-  else
-    fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
   fp->nb_prefix_samples    = fp->ofdm_symbol_size / 128 * 9;
   fp->nb_prefix_samples0   = fp->ofdm_symbol_size / 128 * (9 + (1 << mu));
-  LOG_I(PHY,"Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d\n",
+  printf("Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d\n",
         N_RB_DL,fp->first_carrier_offset,fp->nb_prefix_samples,fp->nb_prefix_samples0);
 }
 
@@ -221,12 +181,12 @@ uint32_t get_samples_per_slot(int slot, NR_DL_FRAME_PARMS* fp)
 uint32_t get_slot_from_timestamp(openair0_timestamp timestamp_rx, NR_DL_FRAME_PARMS* fp)
 {
    uint32_t slot_idx = 0;
-   int samples_till_the_slot = 0;
+   int samples_till_the_slot = fp->get_samples_per_slot(slot_idx,fp)-1;
    timestamp_rx = timestamp_rx%fp->samples_per_frame;
 
     while (timestamp_rx > samples_till_the_slot) {
-        samples_till_the_slot += fp->get_samples_per_slot(slot_idx,fp);
         slot_idx++;
+        samples_till_the_slot += fp->get_samples_per_slot(slot_idx,fp);
      }
    return slot_idx; 
 }
@@ -267,8 +227,10 @@ int nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg,
 
   fp->half_frame_bit = 0;  // half frame bit initialized to 0 here
   fp->numerology_index = mu;
-
   set_scs_parameters(fp, mu, fp->N_RB_DL);
+  if (get_softmodem_params()->sl_mode != 0) {
+    set_scs_parameters(fp, mu, fp->N_RB_SL);
+  }
 
   fp->slots_per_frame = 10* fp->slots_per_subframe;
 
@@ -390,7 +352,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   }
 
   fp->ssb_start_subcarrier = (12 * config->ssb_table.ssb_offset_point_a + sco);
-  //TODO: The following setting needs to be removed later;
+  // TODO: Temporarily setting fp->ssb_start_subcarrier = 0 for SL until MAC is developed
   if (get_softmodem_params()->sl_mode == 2) {
       fp->ssb_start_subcarrier = 0;
   }
@@ -442,7 +404,7 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
 }
 
 void nr_init_frame_parms_ue_sl(NR_DL_FRAME_PARMS *frame_parms, uint64_t sidelink_frequency, uint16_t nr_band) {
-  LOG_D(NR_PHY,"SL init parameters. SL freq %lu\n", sidelink_frequency);
+  LOG_D(NR_PHY, "SL init parameters. SL freq %lu\n", sidelink_frequency);
   frame_parms->sl_CarrierFreq = sidelink_frequency;
   frame_parms->nr_band = nr_band;
 }

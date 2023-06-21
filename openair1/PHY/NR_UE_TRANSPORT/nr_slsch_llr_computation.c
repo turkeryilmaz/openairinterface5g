@@ -34,7 +34,7 @@
 #include "PHY/sse_intrin.h"
 #include "PHY/impl_defs_top.h"
 #include "openair1/PHY/NR_TRANSPORT/nr_transport_common_proto.h"
-
+#include "openair1/PHY/NR_TRANSPORT/nr_transport_proto.h"
 
 void nr_slsch_compute_llr(int32_t *rxdataF_comp,
                           int32_t *ul_ch_mag,

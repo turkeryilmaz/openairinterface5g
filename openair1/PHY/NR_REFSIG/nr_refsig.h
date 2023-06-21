@@ -32,10 +32,13 @@
 @param PHY_VARS_gNB* gNB structure provides configuration, frame parameters and the pointers to the 32 bits sequence storage tables
  */
 void nr_init_pbch_dmrs(PHY_VARS_gNB* gNB);
-/*!\brief This function generates the NR Gold sequence (38-211, Sec 5.2.1) for the PBCH DMRS.
+
+/*
+This function generates NR Gold Sequence(ts 138.211) for the PRS.
 @param PHY_VARS_gNB* gNB structure provides configuration, frame parameters and the pointers to the 32 bits sequence storage tables
- */
-void nr_init_psbch_dmrs(PHY_VARS_gNB* gNB);
+*/
+void nr_init_prs(PHY_VARS_gNB* gNB);
+
 /*!\brief This function generates the NR Gold sequence (38-211, Sec 5.2.1) for the PDCCH DMRS.
 @param PHY_VARS_gNB* gNB structure provides configuration, frame parameters and the pointers to the 32 bits sequence storage tables
 @param Nid is used for the initialization of x2, Physical cell Id by default or upper layer configured pdcch_scrambling_ID

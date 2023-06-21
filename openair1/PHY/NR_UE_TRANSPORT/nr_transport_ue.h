@@ -35,21 +35,9 @@
 #include "PHY/impl_defs_top.h"
 #include "nfapi_nr_interface_scf.h"
 #include "PHY/CODING/nrLDPC_decoder/nrLDPC_types.h"
-
-//#include "PHY/defs_nr_UE.h"
+#include "nfapi/open-nFAPI/nfapi/public_inc/fapi_nr_ue_interface.h"
 #include "../NR_TRANSPORT/nr_transport_common_proto.h"
-/*#ifndef STANDALONE_COMPILE
-#include "UTIL/LISTS/list.h"
-#endif
-*/
-#include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
 
-
-// structures below implement 36-211 and 36-212
-
-/** @addtogroup _PHY_TRANSPORT_
- * @{
- */
 
 typedef enum {
  NEW_TRANSMISSION_HARQ,
@@ -66,10 +54,6 @@ typedef struct {
   harq_result_t tx_status;
   /// Status Flag indicating for this ULSCH (idle,active,disabled)
   SCH_status_t status;
-  /// Subframe scheduling indicator (i.e. Transmission opportunity indicator)
-  uint8_t subframe_scheduling_flag;
-  /// Subframe cba scheduling indicator (i.e. Transmission opportunity indicator)
-  uint8_t subframe_cba_scheduling_flag;
   /// Last TPC command
   uint8_t TPC;
   /// The payload + CRC size in bits, "B" from 36-212
@@ -104,16 +88,10 @@ typedef struct {
   uint8_t n_DMRS;
   /// n_DMRS2 for cyclic shift of DMRS
   uint8_t n_DMRS2;
-  /// Flag to indicate that this is a control only ULSCH (i.e. no MAC SDU)
-  uint8_t control_only;
-  /// Flag to indicate that this is a calibration ULSCH (i.e. no MAC SDU and filled with TDD calibration information)
-  //  int calibration_flag;
   /// Number of soft channel bits
   uint32_t G;
   // Number of modulated symbols carrying data
   uint32_t num_of_mod_symbols;
-  // decode phich
-  uint8_t decode_phich;
   // Encoder BG
   uint8_t BG;
   // LDPC lifting size
@@ -200,6 +178,8 @@ typedef struct {
   uint8_t max_ldpc_iterations;
   /// number of iterations used in last LDPC decoding in sidelink decoding
   uint8_t last_iteration_cnt;
+  /// NDAPI struct for UE
+  nfapi_nr_ue_pusch_pdu_t pusch_pdu;
 } NR_UE_ULSCH_t;
 
 typedef struct {
@@ -304,6 +284,9 @@ typedef struct {
   uint16_t pduBitmap;
 
   nfapi_nr_pssch_pdu_t pssch_pdu;
+  /// Last index of LLR buffer that contains information.
+  /// Used for computing LDPC decoder R
+  int llrLen;
 } NR_DL_UE_HARQ_t;
 
 typedef struct {
@@ -313,6 +296,10 @@ typedef struct {
   uint8_t rnti_type;
   /// Active flag for DLSCH demodulation
   uint8_t active;
+  /// Structure to hold dlsch config from MAC
+  fapi_nr_dl_config_dlsch_pdu_rel15_t dlsch_config;
+  /// Number of MIMO layers (streams) 
+  uint8_t Nl;
   /// accumulated tx power adjustment for PUCCH
   int8_t g_pucch;
   /// Transmission mode
@@ -351,53 +338,11 @@ typedef struct {
   uint8_t max_ldpc_iterations;
   /// number of iterations used in last turbo decoding
   uint8_t last_iteration_cnt;
+  /// bit mask of PT-RS ofdm symbol indicies
+  uint16_t ptrs_symbols;
+  // PTRS symbol index, to be updated every PTRS symbol within a slot.
+  uint8_t ptrs_symbol_index;
 } NR_UE_DLSCH_t;
-
-typedef enum {format0_0,
-              format0_1,
-              format1_0,
-              format1_1,
-              format2_0,
-              format2_1,
-              format2_2,
-              format2_3
-             } NR_DCI_format_t;
-
-
-typedef enum {nr_pucch_format0=0,
-              nr_pucch_format1,
-              nr_pucch_format2,
-              nr_pucch_format3,
-              nr_pucch_format4
-             } NR_PUCCH_FMT_t;
-
-typedef struct {
-  /// Length of DCI in bits
-  uint8_t dci_length;
-  /// Aggregation level
-  uint8_t L;
-  /// Position of first CCE of the dci
-  int firstCCE;
-  /// flag to indicate that this is a RA response
-  bool ra_flag;
-  /// rnti
-  rnti_t rnti;
-  /// rnti type
-  //crc_scrambled_t rnti_type;
-  /// Format
-  NR_DCI_format_t format;
-  /// search space
-  dci_space_t search_space;
-  /// DCI pdu
-  uint64_t dci_pdu[2];
-//#if defined(UPGRADE_RAT_NR)
-#if 1
-  /// harq information
-  uint8_t harq_pid_pusch;
-  /// delay between current slot and slot to transmit
-  uint8_t number_slots_rx_to_tx;
-#endif
-} NR_DCI_ALLOC_t;
 
 typedef struct {
   long  sl_numssb_withinperiod_r16;

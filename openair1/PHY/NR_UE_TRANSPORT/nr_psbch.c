@@ -35,21 +35,16 @@
 #include "PHY/sse_intrin.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/LTE_REFSIG/lte_refsig.h"
-#include "PHY/INIT/phy_init.h"
 #include "openair1/SCHED_NR_UE/defs.h"
 #include <openair1/PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h>
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
+#include "openair1/PHY/NR_REFSIG/refsig_defs_ue.h"
 
-//#define DEBUG_PSBCH
+// #define DEBUG_PSBCH
 //#define DEBUG_PSBCH_ENCODING
 
 //#include "PHY_INTERFACE/defs.h"
 
-
-#define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
-#define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
 
 static void nr_psbch_quantize(int16_t *psbch_llr8,
                              int16_t *psbch_llr,
@@ -64,7 +59,7 @@ static void nr_psbch_quantize(int16_t *psbch_llr8,
   }
 }
 
-static uint16_t nr_psbch_extract(int **rxdataF,
+static uint16_t nr_psbch_extract(c16_t **rxdataF,
                                 const int estimateSz,
                                 struct complex16 dl_ch_estimates[][estimateSz],
                                 struct complex16 rxdataF_ext[][PSBCH_MAX_RE_PER_SYMBOL],
@@ -84,17 +79,17 @@ static uint16_t nr_psbch_extract(int **rxdataF,
     rx_offset = (rx_offset)%(frame_parms->ofdm_symbol_size);
     struct complex16 *rxF        = (struct complex16 *)&rxdataF[aarx][(symbol+s_offset)*frame_parms->ofdm_symbol_size];
     struct complex16 *rxF_ext    = rxdataF_ext[aarx];
-#ifdef DEBUG_PSBCH
-    printf("extract_rbs (nushift %d): rx_offset=%d, symbol %u\n",frame_parms->nushift,
+//#ifdef DEBUG_PSBCH
+    LOG_I(NR_PHY,"extract_rbs (nushift %d): rx_offset=%d, symbol %u\n",frame_parms->nushift,
            (rx_offset + ((symbol+s_offset)*(frame_parms->ofdm_symbol_size))),symbol);
     int16_t *p = (int16_t *)rxF;
 
     for (int i =0; i<8; i++) {
-      printf("rxF [%d]= %d\n",i,rxF[i]);
-      printf("psbch extract rxF  %d %d addr %p\n", p[2*i], p[2*i+1], &p[2*i]);
+      LOG_I(NR_PHY,"rxF_real [%d] = %d, rxF_im [%d] = %d\n", i, rxF[i].r, i, rxF[i].i);
+      LOG_I(NR_PHY,"psbch extract rxF  %d %d addr %p\n", p[2*i], p[2*i+1], &p[2*i]);
     }
 
-#endif
+//#endif
 
     for (rb=0; rb<11; rb++) {
       j=0;
@@ -105,12 +100,12 @@ static uint16_t nr_psbch_extract(int **rxdataF,
               (i!=(nushiftmod4+4)) &&
               (i!=(nushiftmod4+8))) {
             rxF_ext[j]=rxF[rx_offset];
-#ifdef DEBUG_PSBCH
-            printf("rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",  (9*rb) + j,
+//#ifdef DEBUG_PSBCH
+            LOG_I(NR_PHY,"rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",  (9*rb) + j,
                    rxF_ext[j].r, rxF_ext[j].i,
                    rx_offset,
                    rxF[rx_offset].r,rxF[rx_offset].i);
-#endif
+//#endif
             j++;
           }
 
@@ -298,7 +293,7 @@ static void nr_psbch_unscrambling(NR_UE_PSBCH *psbch,
 void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
 {
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
-  int **txdataF = ue->common_vars.txdataF;
+  c16_t **txdataF = ue->common_vars.txdataF;
   uint8_t ssb_index = 0; //TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
   int txdataF_offset = slot * fp->samples_per_slot_wCP;
 
@@ -341,7 +336,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
     __attribute__ ((aligned(32))) struct complex16 rxdataF_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_ext[frame_parms->nb_antennas_rx][PSBCH_MAX_RE_PER_SYMBOL];
     memset(dl_ch_estimates_ext,0, sizeof  dl_ch_estimates_ext);
-    nr_psbch_extract(nr_ue_common_vars->common_vars_rx_data_per_thread[proc->thread_id].rxdataF,
+    nr_psbch_extract(nr_ue_common_vars->rxdataF,
                     estimateSz,
                     dl_ch_estimates,
                     rxdataF_ext,
@@ -350,7 +345,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
                     symbol_offset,
                     frame_parms);
 
-    double log2_maxh = 0;
+    int log2_maxh = 0;
     if (symbol == 0) {
       int max_h = nr_psbch_channel_level(dl_ch_estimates_ext,
                                          frame_parms,

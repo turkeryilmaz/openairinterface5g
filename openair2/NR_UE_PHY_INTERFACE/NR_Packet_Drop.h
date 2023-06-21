@@ -35,43 +35,39 @@
 
 typedef struct NR_UL_TIME_ALIGNMENT NR_UL_TIME_ALIGNMENT_t;
 
-typedef struct
-{
-    float sinr;
-    float rsrp;
-    float rsrq;
-    uint8_t source;
-    uint8_t pmi;
-    uint8_t ri;
-    uint8_t cqi;
-    uint8_t area_code;
+typedef struct {
+  float sinr;
+  float rsrp;
+  float rsrq;
+  uint8_t source;
+  uint8_t pmi;
+  uint8_t ri;
+  uint8_t cqi;
+  uint8_t area_code;
 } nr_channel_status;
 
-typedef struct nr_phy_channel_params_t
-{
-    uint16_t sfn_slot;
-    uint16_t message_id;
-    uint16_t nb_of_csi;
-    nr_channel_status csi[NR_NUM_LAYER];
+typedef struct nr_phy_channel_params_t {
+  uint16_t sfn_slot;
+  uint16_t message_id;
+  uint16_t nb_of_csi;
+  nr_channel_status csi[NR_NUM_LAYER];
 } nr_phy_channel_params_t;
 
-typedef struct
-{
-    uint8_t slot;
-    uint16_t rnti[MAX_NR_CHAN_PARAMS];
-    uint8_t mcs[MAX_NR_CHAN_PARAMS];
-    uint8_t rvIndex[MAX_NR_CHAN_PARAMS];
-    float sinr;
-    uint16_t num_pdus;
-    bool drop_flag[MAX_NR_CHAN_PARAMS];
-    bool latest;
-    uint8_t area_code;
+typedef struct {
+  uint8_t slot;
+  uint16_t rnti[MAX_NR_CHAN_PARAMS];
+  uint8_t mcs[MAX_NR_CHAN_PARAMS];
+  uint8_t rvIndex[MAX_NR_CHAN_PARAMS];
+  float sinr;
+  uint16_t num_pdus;
+  bool drop_flag[MAX_NR_CHAN_PARAMS];
+  bool latest;
+  uint8_t area_code;
 } slot_rnti_mcs_s;
 
-typedef struct
-{
-    uint16_t length;
-    float bler_table[NR_NUM_SINR][NUM_BLER_COL];
+typedef struct {
+  uint16_t length;
+  float bler_table[NR_NUM_SINR][NUM_BLER_COL];
 } nr_bler_struct;
 
 extern nr_bler_struct nr_bler_data[NR_NUM_MCS];

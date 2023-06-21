@@ -34,7 +34,6 @@
 #include "sched_nr.h"
 #include "PHY/MODULATION/modulation_common.h"
 #include "PHY/MODULATION/nr_modulation.h"
-#include "PHY/LTE_TRANSPORT/if4_tools.h"
 
 #include "common/utils/LOG/log.h"
 #include "common/utils/system.h"
@@ -167,7 +166,7 @@ void nr_feptx_ofdm(RU_t *ru,int frame_tx,int tti_tx) {
 
   LOG_D(PHY,"feptx_ofdm (TXPATH): frame %d, slot %d: txp (time %p) %d dB, txp (freq) %d dB\n",
 	frame_tx,slot,txdata,dB_fixed(signal_energy((int32_t*)txdata,fp->get_samples_per_slot(
-  slot,fp))),dB_fixed(signal_energy_nodc(ru->common.txdataF_BF[aa],2*slot_sizeF)));
+    slot,fp))),dB_fixed(signal_energy_nodc(ru->common.txdataF_BF[aa],2*slot_sizeF)));
 
 }
 
@@ -213,8 +212,8 @@ void nr_feptx_prec(RU_t *ru,int frame_tx,int tti_tx) {
       bw  = ru->beam_weights[0];
       for (l=0;l<fp->symbols_per_slot;l++) {
         for (aa=0;aa<ru->nb_tx;aa++) {
-          nr_beam_precoding(ru->common.txdataF,
-                            ru->common.txdataF_BF,
+          nr_beam_precoding((c16_t **)ru->common.txdataF,
+                            (c16_t **)ru->common.txdataF_BF,
                             fp,
                             bw,
                             tti_tx,
@@ -308,8 +307,8 @@ void nr_feptx(void *arg) {
      AssertFatal(1==0,"This needs to be fixed, do not use beamforming.\n");
      int32_t ***bw  = ru->beam_weights[0];
      for(int i=0; i<fp->symbols_per_slot; ++i){
-       nr_beam_precoding(ru->gNB_list[0]->common_vars.txdataF,
-                         ru->common.txdataF_BF,
+       nr_beam_precoding((c16_t **)ru->gNB_list[0]->common_vars.txdataF,
+                         (c16_t **)ru->common.txdataF_BF,
                          fp,
                          bw,
                          slot,

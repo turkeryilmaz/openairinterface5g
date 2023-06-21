@@ -43,10 +43,8 @@
 #include "PHY/phy_vars.h"
 
 #include "SCHED/sched_eNB.h"
-#include "SCHED/sched_common_vars.h"
 #include "LAYER2/MAC/mac_vars.h"
 
-#include "OCG_vars.h"
 #include "common/utils/LOG/log.h"
 #include "UTIL/LISTS/list.h"
 
@@ -679,7 +677,7 @@ int main(int argc, char **argv) {
   nfapi_tx_request_t TX_req;
   Sched_Rsp_t sched_resp;
   int pa=dB0;
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
   FILE    *proc_fd = NULL;
   char buf[64];
   memset(buf,0,sizeof(buf));
@@ -1109,14 +1107,6 @@ int main(int argc, char **argv) {
 	  cc->MCH_pdu.payload[ii] = (char)(taus() & 0xff);
   eNB->frame_parms.Nid_cell_mbsfn=0;
 #endif
-
-
-  if(get_thread_worker_conf() == WORKER_ENABLE) {
-    extern void init_td_thread(PHY_VARS_eNB *);
-    extern void init_te_thread(PHY_VARS_eNB *);
-    init_td_thread(eNB);
-    init_te_thread(eNB);
-  }
 
   // callback functions required for phy_procedures_tx
   //  eNB_id_i = UE->n_connected_eNB;

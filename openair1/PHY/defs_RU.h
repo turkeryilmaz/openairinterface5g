@@ -35,7 +35,7 @@
 
 
 #include "common_lib.h"
-#include "openairinterface5g_limits.h"
+#include "common/openairinterface5g_limits.h"
 #include "time_meas.h"
 #include "defs_common.h"
 #include "nfapi_nr_interface_scf.h"
@@ -655,6 +655,8 @@ typedef struct RU_t_s {
   int txfh_core_id;
   /// number of RU interfaces
   int num_fd;
+  /// Core id of ru_thread
+  int ru_thread_core;
   /// list of cores for RU ThreadPool
   int tpcores[16];
   /// number of cores for RU ThreadPool

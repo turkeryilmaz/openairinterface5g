@@ -37,113 +37,109 @@
 #include "MAC/mac.h"
 #include "NR_MAC_UE/mac_defs.h"
 #include "../NR/MESSAGES/asn1_msg.h"
+#include "LAYER2/NR_MAC_COMMON/nr_mac.h"
 
 typedef uint32_t channel_t;
 
-int8_t
-nr_mac_rrc_data_ind_ue(
-    const module_id_t     module_id,
-    const int             CC_id,
-    const uint8_t         gNB_index,
-    const frame_t         frame,
-    const sub_frame_t     sub_frame,
-    const rnti_t          rnti,
-    const channel_t       channel,
-    const uint8_t*        pduP,
-    const sdu_size_t      pdu_len){
-    sdu_size_t      sdu_size = 0;
-    protocol_ctxt_t ctxt;
-    PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_id, 0, rnti, frame, sub_frame, gNB_index); // sub_frame is slot for SL
+int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
+                              const int CC_id,
+                              const uint8_t gNB_index,
+                              const frame_t frame,
+                              const int slot,
+                              const rnti_t rnti,
+                              const channel_t channel,
+                              const uint8_t* pduP,
+                              const sdu_size_t pdu_len)
+{
+  protocol_ctxt_t ctxt;
+  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_id, GNB_FLAG_NO, NOT_A_RNTI, frame / 20, frame % 20, gNB_index);
+  sdu_size_t sdu_size = 0;
 
-    switch(channel){
-      case NR_BCCH_BCH:
-        AssertFatal( nr_rrc_ue_decode_NR_BCCH_BCH_Message(module_id, gNB_index, (uint8_t*)pduP, pdu_len) == 0, "UE decode BCCH-BCH error!\n");
-        break;
+  switch(channel){
+    case NR_BCCH_BCH:
+      AssertFatal(nr_rrc_ue_decode_NR_BCCH_BCH_Message(module_id, gNB_index, (uint8_t*)pduP, pdu_len) == 0, "UE decode BCCH-BCH error!\n");
+      break;
 
-      case NR_BCCH_DL_SCH:
-        if (pdu_len>0) {
-          LOG_T(NR_RRC, "[UE %d] Received SDU for NR-BCCH-DL-SCH on SRB %u from gNB %d\n", module_id, channel & RAB_OFFSET,
-                gNB_index);
+    case NR_BCCH_DL_SCH:
+      if (pdu_len>0) {
+        LOG_T(NR_RRC, "[UE %d] Received SDU for NR-BCCH-DL-SCH on SRB %u from gNB %d\n", module_id, channel & RAB_OFFSET,
+              gNB_index);
 
-          MessageDef *message_p;
-          int msg_sdu_size = BCCH_SDU_SIZE;
+        MessageDef *message_p;
+        int msg_sdu_size = BCCH_SDU_SIZE;
 
-          if (pdu_len > msg_sdu_size) {
-            LOG_E(NR_RRC, "SDU larger than NR-BCCH-DL-SCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
-            sdu_size = msg_sdu_size;
-          } else {
-            sdu_size = pdu_len;
-          }
-
-          message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_BCCH_DATA_IND);
-          memset(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, 0, BCCH_SDU_SIZE);
-          memcpy(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).frame = frame; //frameP
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).sub_frame = sub_frame; //sub_frameP
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu_size = sdu_size;
-          NR_RRC_MAC_BCCH_DATA_IND (message_p).gnb_index = gNB_index;
-          itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
+        if (pdu_len > msg_sdu_size) {
+          LOG_E(NR_RRC, "SDU larger than NR-BCCH-DL-SCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
+          sdu_size = msg_sdu_size;
+        } else {
+          sdu_size = pdu_len;
         }
-        break;
 
-      case CCCH:
-        if (pdu_len>0) {
-          LOG_T(NR_RRC,"[UE %d] Received SDU for CCCH on SRB %u from gNB %d\n",module_id,channel & RAB_OFFSET,gNB_index);
+        message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_BCCH_DATA_IND);
+        memset(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, 0, BCCH_SDU_SIZE);
+        memcpy(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).frame = frame; //frameP
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).slot = slot;
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu_size = sdu_size;
+        NR_RRC_MAC_BCCH_DATA_IND (message_p).gnb_index = gNB_index;
+        itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
+      }
+      break;
 
-          MessageDef *message_p;
-          int msg_sdu_size = CCCH_SDU_SIZE;
+    case CCCH:
+      if (pdu_len>0) {
+        LOG_T(NR_RRC,"[UE %d] Received SDU for CCCH on SRB %u from gNB %d\n",module_id,channel & RAB_OFFSET,gNB_index);
 
-          if (pdu_len > msg_sdu_size) {
-            LOG_E(NR_RRC, "SDU larger than CCCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
-            sdu_size = msg_sdu_size;
-          } else {
-            sdu_size =  pdu_len;
-          }
+        MessageDef *message_p;
+        int msg_sdu_size = CCCH_SDU_SIZE;
 
-          message_p = itti_alloc_new_message (TASK_MAC_UE, 0, NR_RRC_MAC_CCCH_DATA_IND);
-          memset (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
-          memcpy (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).frame     = frame; //frameP
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).sub_frame = sub_frame; //sub_frameP
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu_size  = sdu_size;
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).gnb_index = gNB_index;
-          NR_RRC_MAC_CCCH_DATA_IND (message_p).rnti      = rnti;  //rntiP
-          itti_send_msg_to_task (TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE( module_id ), message_p);
+        if (pdu_len > msg_sdu_size) {
+          LOG_E(NR_RRC, "SDU larger than CCCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
+          sdu_size = msg_sdu_size;
+        } else {
+          sdu_size =  pdu_len;
         }
-        break;
 
-      case MIBSLCH:
-        LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
-        if (decode_MIB_SL_NR(&ctxt, (uint8_t* const) pduP, 5) >= 0)
-          LOG_D(NR_RRC, "Received  MIB_SL: %x.%x.%x.%x.%x\n", pduP[0], pduP[1], pduP[2], pduP[3], pduP[4]);
-        else
-          LOG_E(NR_RRC, "Received bogus MIB_SL\n");
-        break;
+        message_p = itti_alloc_new_message (TASK_MAC_UE, 0, NR_RRC_MAC_CCCH_DATA_IND);
+        memset (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
+        memcpy (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
+        NR_RRC_MAC_CCCH_DATA_IND (message_p).frame     = frame; //frameP
+        NR_RRC_MAC_CCCH_DATA_IND (message_p).slot = slot;
+        NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu_size  = sdu_size;
+        NR_RRC_MAC_CCCH_DATA_IND (message_p).gnb_index = gNB_index;
+        NR_RRC_MAC_CCCH_DATA_IND (message_p).rnti      = rnti;  //rntiP
+        itti_send_msg_to_task (TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE( module_id ), message_p);
+      }
+      break;
+    
+    case MIBSLCH:
+      LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
+      if (decode_MIB_SL_NR(&ctxt, (uint8_t* const) pduP, 5) >= 0)
+        LOG_D(NR_RRC, "Received  MIB_SL: %x.%x.%x.%x.%x\n", pduP[0], pduP[1], pduP[2], pduP[3], pduP[4]);
+      else
+        LOG_E(NR_RRC, "Received bogus MIB_SL\n");
+      break;
 
-      default:
-        break;
-    }
+    default:
+      break;
+  }
 
-    return(0);
+  return(0);
 }
 
 int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
-                              const int         CC_id,
-                              const uint8_t     gNB_id,
-                              const frame_t     frameP,
-                              const rb_id_t     Srb_id,
-                              uint8_t           *buffer_pP){
+                              const int CC_id,
+                              const uint8_t gNB_id,
+                              const frame_t frameP,
+                              const rb_id_t Srb_id,
+                              uint8_t *buffer_pP)
+{
   protocol_ctxt_t ctxt;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, Mod_idP, GNB_FLAG_NO, NOT_A_RNTI, frameP / 20, frameP % 20, gNB_id);
   int ret_size = 0;
-
-  switch(Srb_id){
+  switch(Srb_id) {
 
     case CCCH:
-
-      // TODO: Enable timer T300
-      //NR_UE_rrc_inst[Mod_idP].Info[gNB_id].T300_active = 1;
-      //NR_UE_rrc_inst[Mod_idP].Info[gNB_id].T300_cnt = 0;
 
       LOG_D(NR_RRC, "nr_mac_rrc_data_req_ue: Payload size = %i\n", NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
       memcpy(buffer_pP, (uint8_t*)NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.Payload, NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
@@ -171,39 +167,12 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
   return 0;
 }
 
-uint8_t
-rrc_data_req_nr_ue(
-  const protocol_ctxt_t   *const ctxt_pP,
-  const rb_id_t                  rb_idP,
-  const mui_t                    muiP,
-  const confirm_t                confirmP,
-  const sdu_size_t               sdu_sizeP,
-  uint8_t                 *const buffer_pP,
-  const pdcp_transmission_mode_t modeP
-)
+int8_t nr_rrc_RA_succeeded(const module_id_t mod_id, const uint8_t gNB_index)
 {
-    MessageDef *message_p;
-    // Uses a new buffer to avoid issue with PDCP buffer content that could be changed by PDCP (asynchronous message handling).
-    uint8_t *message_buffer;
-    message_buffer = itti_malloc (TASK_RRC_UE, TASK_PDCP_UE, sdu_sizeP);
-    LOG_D(RRC,"Sending RRC message for SRB %ld, sdu_size %d\n",rb_idP, sdu_sizeP);
-    memcpy (message_buffer, buffer_pP, sdu_sizeP);
-    message_p = itti_alloc_new_message ( TASK_RRC_UE, 0, RRC_DCCH_DATA_REQ);
-    RRC_DCCH_DATA_REQ (message_p).frame     = ctxt_pP->frame;
-    RRC_DCCH_DATA_REQ (message_p).enb_flag  = ctxt_pP->enb_flag;
-    RRC_DCCH_DATA_REQ (message_p).rb_id     = rb_idP;
-    RRC_DCCH_DATA_REQ (message_p).muip      = muiP;
-    RRC_DCCH_DATA_REQ (message_p).confirmp  = confirmP;
-    RRC_DCCH_DATA_REQ (message_p).sdu_size  = sdu_sizeP;
-    RRC_DCCH_DATA_REQ (message_p).sdu_p     = message_buffer;
-    RRC_DCCH_DATA_REQ (message_p).mode      = modeP;
-    RRC_DCCH_DATA_REQ (message_p).module_id = ctxt_pP->module_id;
-    RRC_DCCH_DATA_REQ (message_p).rnti      = ctxt_pP->rnti;
-    RRC_DCCH_DATA_REQ (message_p).eNB_index = ctxt_pP->eNB_index;
-    itti_send_msg_to_task (
-      TASK_PDCP_UE,
-      ctxt_pP->instance,
-      message_p);
-    return true; // TODO should be changed to a CNF message later, currently RRC lite does not used the returned value anyway.
-
+  if (NR_UE_rrc_inst[mod_id].timers_and_constants.T304_active == true) {
+    LOG_W(NR_RRC, "T304 was stoped with value %i\n", NR_UE_rrc_inst[mod_id].timers_and_constants.T304_cnt);
+    NR_UE_rrc_inst[mod_id].timers_and_constants.T304_active = false;
+    NR_UE_rrc_inst[mod_id].timers_and_constants.T304_cnt = 0;
+  }
+  return 0;
 }

@@ -26,6 +26,8 @@ metadata:
   name: "ran-base"
 spec:
     runPolicy: "Serial"
+    nodeSelector:
+        kubernetes.io/hostname: acamas
     source:
         type: "Binary"
         secrets:
@@ -41,7 +43,7 @@ spec:
             destinationDir: rhsm-ca
     strategy:
         dockerStrategy:
-            dockerfilePath: "docker/Dockerfile.base.rhel8.2"
+            dockerfilePath: "docker/Dockerfile.base.rhel9"
     output:
         to:
             kind: "ImageStreamTag"

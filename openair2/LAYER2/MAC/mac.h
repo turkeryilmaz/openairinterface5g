@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "COMMON/platform_constants.h"
+#include "common/platform_constants.h"
 #include "LTE_BCCH-BCH-Message.h"
 #include "LTE_RadioResourceConfigCommon.h"
 #include "LTE_RadioResourceConfigCommonSIB.h"
@@ -74,7 +74,7 @@
 #include "PHY/defs_common.h" // for PRACH_RESOURCES_t
 #include "PHY/LTE_TRANSPORT/transport_common.h"
 
-#include "sdr/COMMON/common_lib.h"
+#include "radio/COMMON/common_lib.h"
 
 /** @defgroup _mac  MAC
  * @ingroup _oai2
@@ -161,6 +161,8 @@
 
 
 #define U_PLANE_INACTIVITY_VALUE 0   /* defined 10ms order (zero means infinity) */
+
+static const int cqi_to_mcs[16]= {0, 0, 1, 2, 4, 6, 8, 11, 13, 16, 18, 20, 23, 25, 27, 28};
 
 /*
  * eNB part
@@ -450,7 +452,7 @@ typedef struct {
 #define CC_ACT_DEACT 27
 //TTN (for D2D)
 #define MIBSLCH 8
-#define SL_DISCOVERY 9 //LCID (fake)
+#define SL_DISCOVERY 8 //LCID (fake)
 #define MAX_NUM_DEST 10
 
 // ULSCH LCHAN IDs
@@ -505,66 +507,18 @@ typedef struct {
 } __attribute__ ((__packed__)) ULDCH_PDU;
 
 /*!\brief RA process state*/
-typedef enum {
-  IDLE = 0,
-  MSG2,
-  WAITMSG3,
-  MSG4,
-  WAITMSG4ACK,
-  MSGCRNTI,
-  MSGCRNTI_ACK
-} RA_state;
-
-/*!\brief  UE ULSCH scheduling states*/
-typedef enum {
-  S_UL_NONE = 0,
-  S_UL_WAITING,
-  S_UL_SCHEDULED,
-  S_UL_BUFFERED,
-  S_UL_NUM_STATUS
-} UE_ULSCH_STATUS;
-
+typedef enum { IDLE = 0, MSG2, WAITMSG3, MSG4, WAITMSG4ACK, MSGCRNTI, MSGCRNTI_ACK } RA_state;
 /*!\brief  UE DLSCH scheduling states*/
-typedef enum {
-  S_DL_NONE = 0,
-  S_DL_WAITING,
-  S_DL_SCHEDULED,
-  S_DL_BUFFERED,
-  S_DL_NUM_STATUS
-} UE_DLSCH_STATUS;
-
-/*!\brief  scheduling policy for the contention-based access */
-typedef enum {
-  CBA_ES = 0,     /// equal share of RB among groups w
-  CBA_ES_S,     /// equal share of RB among groups with small allocation
-  CBA_PF,     /// proportional fair (kind of)
-  CBA_PF_S,     /// proportional fair (kind of) with small RB allocation
-  CBA_RS      /// random allocation
-} CBA_POLICY;
-
+typedef enum { S_DL_NONE = 0, S_DL_SCHEDULED } UE_DLSCH_STATUS;
 /*!\brief  scheduler mode */
 typedef enum {
-  SCHED_MODE_DEFAULT = 0,     /// default cheduler
-  SCHED_MODE_FAIR_RR      /// fair raund robin
+  SCHED_MODE_DEFAULT = 0, /// default cheduler
+  SCHED_MODE_FAIR_RR /// fair raund robin
 } SCHEDULER_MODES;
-
-/*! \brief temporary struct for ULSCH sched */
-typedef struct {
-  rnti_t rnti;
-  uint16_t subframe;
-  uint16_t serving_num;
-  UE_ULSCH_STATUS status;
-} eNB_ULSCH_INFO;
-
 /*! \brief temp struct for DLSCH sched */
 typedef struct {
-  rnti_t rnti;
-  uint16_t weight;
-  uint16_t subframe;
-  uint16_t serving_num;
   UE_DLSCH_STATUS status;
 } eNB_DLSCH_INFO;
-
 /*! \brief eNB overall statistics */
 typedef struct {
   /// num BCCH PDU per CC
@@ -1143,16 +1097,6 @@ typedef struct {
   int8_t   crnti_harq_pid;
 } RA_t;
 
-
-/*! \brief subband bitmap confguration (for ALU icic algo purpose), in test phase */
-typedef struct {
-  uint8_t sbmap[13];  //13 = number of SB MAX for 100 PRB
-  uint8_t periodicity;
-  uint8_t first_subframe;
-  uint8_t sb_size;
-  uint8_t nb_active_sb;
-} SBMAP_CONF;
-
 /*! \brief UE_list_t is a "list" of users within UE_info_t. Especial useful in
  * the scheduler and to keep "classes" of users. */
 typedef struct {
@@ -1404,9 +1348,6 @@ typedef struct eNB_MAC_INST_s {
   /// UL handle
   uint32_t ul_handle;
   UE_info_t UE_info;
-
-  ///subband bitmap configuration
-  SBMAP_CONF sbmap_conf;
   /// CCE table used to build DCI scheduling information
   int CCE_table[NFAPI_CC_MAX][800];
   ///  active flag for Other lcid
@@ -1558,8 +1499,6 @@ typedef struct {
   uint16_t crnti;
   /// C-RNTI of UE before HO
   rnti_t crnti_before_ho; ///user id (rnti) of connected UEs
-  rnti_t crnti_for_ho;
-  bool ho_active;
   /// uplink active flag
   uint8_t ul_active;
   /// pointer to RRC PHY configuration
@@ -1725,14 +1664,8 @@ typedef struct {
   // to make sure that different UEs RA starts within a number of frames difference.
 
   eth_params_t         eth_params_n;
-  LTE_PhysCellId_t     targetPhysCellId;
 
 } UE_MAC_INST;
-/*! \brief ID of the neighboring cells used for HO*/
-typedef struct {
-  uint16_t cell_ids[6];
-  uint8_t n_adj_cells;
-} neigh_cell_id_t;
 
 typedef struct {
   volatile uint8_t flag;

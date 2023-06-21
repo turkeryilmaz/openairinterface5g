@@ -48,7 +48,6 @@
 #include "SCHED/defs.h"
 #include "SCHED/vars.h"
 #include "LAYER2/MAC/vars.h"
-#include "OCG_vars.h"
 #include "UTIL/LOG/log.h"
 #include "UTIL/LISTS/list.h"
 
@@ -310,7 +309,7 @@ int main(int argc, char **argv)
 
   opp_enabled=1; // to enable the time meas
 
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
   FILE    *proc_fd = NULL;
   char buf[64];
 

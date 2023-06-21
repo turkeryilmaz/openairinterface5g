@@ -44,8 +44,6 @@
 /* to declare ue variables */
 #include "PHY/phy_vars_nr_ue.h"
 #include "PHY/LTE_TRANSPORT/transport_vars.h"
-#include "SCHED/sched_common_vars.h"
-#include "PHY/MODULATION/modulation_vars.h"
 
 #include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
@@ -243,7 +241,7 @@ int init_test(unsigned char N_tx, unsigned char N_rx, unsigned char transmission
   int mu = 1;
   int n_ssb_crb = 0;
   int ssb_subcarrier_offset = 0;
-  nr_init_frame_parms_ue(frame_parms, config, frame_parms->nr_band);
+  nr_init_frame_parms_ue(frame_parms, mu, extended_prefix_flag, N_RB_DL, n_ssb_crb, ssb_subcarrier_offset);
   PHY_vars_UE->frame_parms.Nid_cell = (3 * N_ID_1_NUMBER) + N_ID_2_NUMBER; /* set to unvalid value */
 
   //phy_init_nr_top(frame_parms);

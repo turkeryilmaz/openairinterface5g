@@ -71,7 +71,7 @@
 
 #include <time.h>
 #include "openair1/SCHED/sched_common_extern.h"
-#include "targets/RT/USER/lte-softmodem.h"
+#include "executables/lte-softmodem.h"
 #include "common/ran_context.h"
 
 void feptx0(RU_t *ru,
@@ -618,7 +618,7 @@ void init_fep_thread(RU_t *ru,
 void kill_fep_thread(RU_t *ru)
 {
   RU_proc_t *proc = &ru->proc;
-  if (proc->pthread_fep == 0)
+  if (proc->pthread_fep[0] == 0)
     return;
   pthread_mutex_lock( &proc->mutex_fep[0] );
   proc->instance_cnt_fep[0]         = 0;

@@ -38,11 +38,11 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 #include "nfapi/oai_integration/vendor_ext.h"
 #include "UTIL/OPT/opt.h"
-#include "OCG.h"
-#include "OCG_extern.h"
 #include "PHY/LTE_TRANSPORT/transport_common_proto.h"
+#include "PHY/defs_eNB.h"
 
 #include "RRC/LTE/rrc_extern.h"
+#include "RRC/LTE/rrc_eNB_UE_context.h"
 #include "RRC/L2_INTERFACE/openair_rrc_L2_interface.h"
 
 #include "assertions.h"
@@ -50,11 +50,6 @@
 
 #include "intertask_interface.h"
 
-#include "ENB_APP/flexran_agent_defs.h"
-#include "flexran_agent_ran_api.h"
-#include "header.pb-c.h"
-#include "flexran.pb-c.h"
-#include "flexran_agent_mac.h"
 #include <dlfcn.h>
 #include <openair2/LAYER2/MAC/mac.h>
 #include "common/utils/lte/prach_utils.h"
@@ -448,7 +443,7 @@ rx_sdu(const module_id_t enb_mod_idP,
         break;
 
       case CRNTI:
-        old_rnti = (((uint16_t) payload_ptr[1]) << 8) + payload_ptr[0];
+        old_rnti = (((uint16_t) payload_ptr[0]) << 8) + payload_ptr[1];
         old_UE_id = find_UE_id(enb_mod_idP, old_rnti);
         LOG_I(MAC, "[eNB %d] Frame %d, Subframe %d CC_id %d MAC CE_LCID %d (ce %d/%d): CRNTI %x (UE_id %d) in Msg3\n",
               enb_mod_idP,
@@ -472,6 +467,7 @@ rx_sdu(const module_id_t enb_mod_idP,
                   old_rnti,
                   old_UE_id);
             UE_id = old_UE_id;
+            current_rnti = old_rnti;
             /* Clear timer */
             UE_scheduling_control = &UE_info->UE_sched_ctrl[UE_id];
             UE_template_ptr = &UE_info->UE_template[CC_idP][UE_id];
@@ -491,13 +487,10 @@ rx_sdu(const module_id_t enb_mod_idP,
             UE_template_ptr->ul_SR = 1;
             UE_scheduling_control->crnti_reconfigurationcomplete_flag = 1;
             UE_info->UE_template[UE_PCCID(enb_mod_idP, UE_id)][UE_id].configured = 1;
-            current_rnti = old_rnti;
-            RA_t *ra = (RA_t *) & RC.mac[enb_mod_idP]->common_channels[CC_idP].ra[0];
-            ra->rnti = old_rnti;
-            ra->state = MSG4;
-            ra->Msg4_frame = frameP + ((subframeP > 5) ? 1 : 0);
-            ra->Msg4_subframe = (subframeP + 4) % 10;
-            LOG_I(MAC, "Msg4 frame %u subframe %u, %s %d\n", ra->Msg4_frame, ra->Msg4_subframe, __FUNCTION__, __LINE__);
+            cancel_ra_proc(enb_mod_idP,
+                           CC_idP,
+                           frameP,
+                           current_rnti);
           } else {
             /* TODO: if the UE did random access (followed by a MAC uplink with
              * CRNTI) because none of its scheduling request was granted, then
@@ -1067,24 +1060,6 @@ bytes_to_bsr_index(int32_t nbytes)
   }
 
   return (i - 1);
-}
-
-//-----------------------------------------------------------------------------
-/*
- * Add ue info in eNB_ulsch_info[module_idP][CC_id][UE_id] struct
- */
-void
-add_ue_ulsch_info(module_id_t module_idP,
-                  int CC_id,
-                  int UE_id,
-                  sub_frame_t subframeP,
-                  UE_ULSCH_STATUS status)
-//-----------------------------------------------------------------------------
-{
-  eNB_ulsch_info[module_idP][CC_id][UE_id].rnti     = UE_RNTI(module_idP, UE_id);
-  eNB_ulsch_info[module_idP][CC_id][UE_id].subframe = subframeP;
-  eNB_ulsch_info[module_idP][CC_id][UE_id].status   = status;
-  eNB_ulsch_info[module_idP][CC_id][UE_id].serving_num++;
 }
 
 //-----------------------------------------------------------------------------
@@ -1792,7 +1767,6 @@ schedule_ulsch_rnti(module_id_t   module_idP,
       ul_req_tmp_body->tl.tag = NFAPI_UL_CONFIG_REQUEST_BODY_TAG;
       mac->ul_handle++;
       ul_req_tmp->sfn_sf = sched_frame << 4 | sched_subframeP;
-      add_ue_ulsch_info(module_idP, CC_id, UE_id, subframeP, S_UL_SCHEDULED);
       LOG_D(MAC,
             "[eNB %d] CC_id %d Frame %d, subframeP %d: Generated ULSCH DCI for "
             "next UE_id %d, format 0\n",
@@ -2290,11 +2264,6 @@ void schedule_ulsch_rnti_emtc(module_id_t   module_idP,
                                                  (frameP * 10) + subframeP);
             ul_req_tmp->number_of_pdus++;
             eNB->ul_handle++;
-            add_ue_ulsch_info(module_idP,
-                              CC_id,
-                              UE_id,
-                              subframeP,
-                              S_UL_SCHEDULED);
             LOG_D(MAC,"[eNB %d] CC_id %d Frame %d, subframeP %d: Generated ULSCH DCI for next UE_id %d, format 0\n",
                   module_idP,
                   CC_id,
