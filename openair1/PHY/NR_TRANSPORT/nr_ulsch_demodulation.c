@@ -2796,8 +2796,17 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
       }
 
       // Perform IDFT if transform precoding is enabled
-      // TODO: Frequency equalizer
       if(rel15_ul->transform_precoding == transformPrecoder_enabled){
+        // Perform frequency equalization
+        if(rel15_ul->qam_mod_order > 2){
+          nr_freq_equalization(NULL,
+                               rxF_comp,
+                               rxF_ch_mag,
+                               rxF_ch_magb,
+                               symbol,
+                               nb_re_pusch,
+                               rel15_ul->qam_mod_order);
+        }
         nr_idft(rxF_comp, nb_re_pusch);
       }
 

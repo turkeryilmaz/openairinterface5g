@@ -472,7 +472,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
         if (++k >= frame_parms->ofdm_symbol_size)
           k -= frame_parms->ofdm_symbol_size;
-      } //for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++) 
+      } //for (i=0; i< nb_rb*NR_NB_SC_PER_RB; i++)
     }//for (l=start_symbol; l<start_symbol+number_of_symbols; l++)
   }//for (nl=0; nl < Nl; nl++)
 
