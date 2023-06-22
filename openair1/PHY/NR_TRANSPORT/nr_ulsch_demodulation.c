@@ -2733,7 +2733,6 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
   for (int symbol = rdata->startSymbol; symbol < rdata->startSymbol+rdata->numSymbols; symbol++) 
   {
     int dmrs_symbol_flag = (rel15_ul->ul_dmrs_symb_pos >> symbol) & 0x01;
-    // printf("symbol: %d, dmrs_symbol_flag: %d\n", symbol, dmrs_symbol_flag);
     int nb_re_pusch = gNB->pusch_vars[ulsch_id].ul_valid_re_per_slot[symbol];
     // this needs to be reworded for parrellization, we need a table which give dmrs symbol location
     // used for chennel estimate, they are being run in parallel!
@@ -2750,7 +2749,7 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
     if (nb_re_pusch == 0) continue;
     if (rel15_ul->nrOfLayers == 1)
     {
-      int16_t *llr = &rdata->llr[0][pusch_vars->llr_offset[symbol]];
+      int16_t *llr = &rdata->llr[pusch_vars->llr_offset[symbol]];
       // void (*inner_rx)(int *,int *,int16_t *,int,int,int);
       // if      (rel15_ul->qam_mod_order == 2) inner_rx = inner_rx_qpsk;
       // else if (rel15_ul->qam_mod_order == 4) inner_rx = inner_rx_16qam;
@@ -2860,7 +2859,7 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
                rel15_ul,
                (int32_t**)gNB->common_vars.rxdataF, 
                gNB->pusch_vars[ulsch_id].ul_ch_estimates, 
-               rdata->llr,
+               rdata->llr_layers,
                rel15_ul->nrOfLayers, 
                frame_parms->nb_antennas_rx, 
                soffset,
@@ -2869,11 +2868,27 @@ void nr_pusch_symbol_processing_noprecoding(void *arg)
                rel15_ul->rb_size, // ofdm size
                dmrs_symbol_flag,
                gNB->pusch_vars[ulsch_id].log2_maxh);
+
+      // layer de-mapping
+      int16_t* llr_cw = &rdata->llr[pusch_vars->llr_offset[symbol] * rel15_ul->nrOfLayers];
+      for (int i = 0; i < (nb_re_pusch); i++) 
+      {
+        for (int l = 0; l < rel15_ul->nrOfLayers; l++) 
+        {
+          for (int m = 0; m < rel15_ul->qam_mod_order; m++) 
+          {
+            llr_cw[i*rel15_ul->nrOfLayers*rel15_ul->qam_mod_order+l*rel15_ul->qam_mod_order+m] = rdata->llr_layers[l][pusch_vars->llr_offset[symbol] + i*rel15_ul->qam_mod_order+m];
+          }
+        }
+      }
+      // unscrambling
+      simde__m64 *llr64 = (simde__m64 *) &rdata->llr[pusch_vars->llr_offset[symbol] * rel15_ul->nrOfLayers];
+      for (int i = 0; i < (nb_re_pusch*rel15_ul->qam_mod_order*rel15_ul->nrOfLayers)>>2; i++) {
+        llr64[i] = simde_mm_mullo_pi16(((simde__m64 *)llr64)[i], ((simde__m64 *)s)[i]);
+      }
+      s += (nb_re_pusch*rel15_ul->qam_mod_order*rel15_ul->nrOfLayers);
     }
   }
-
-  //  int64_t end = time_now_us(); 
-  //  printf("Elapsed time = %ld tstamp %ld  id %lu \n", end - now, end,  pthread_self());
 }
 
 /* Zero Forcing Rx function: nr_det_HhH()
@@ -4050,9 +4065,9 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
       rdata->startSymbol = symbol;
       rdata->numSymbols = numSymbols;
       rdata->ulsch_id=ulsch_id;
-      // rdata->llr = &pusch_vars->llr[pusch_vars->llr_offset[symbol]];
-      rdata->llr = pusch_vars->llr_layers;
-      rdata->s   = &s[pusch_vars->llr_offset[symbol]];
+      rdata->llr = pusch_vars->llr;
+      rdata->llr_layers = pusch_vars->llr_layers;
+      rdata->s   = &s[pusch_vars->llr_offset[symbol]*rel15_ul->nrOfLayers];
 
 #ifdef TASK_MANAGER
     task_t const t = {.args = rdata, .func = &nr_pusch_symbol_processing_noprecoding };

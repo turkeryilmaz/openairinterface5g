@@ -793,7 +793,8 @@ typedef struct puschSymbolProc_s {
   int slot;
   int startSymbol;
   int numSymbols;
-  int16_t **llr;
+  int16_t *llr;
+  int16_t **llr_layers;
   int16_t *s;
 } puschSymbolProc_t;
 
