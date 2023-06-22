@@ -191,6 +191,8 @@ void derive_keys_xor(uint8_t key[16], uint8_t rand[16], uint8_t ck[16], uint8_t 
   for (int i = 0; i < 16; ++i) {
     res[i] = key[i] ^ rand[i];
   }
+  printf("key: "); for (int i = 0; i < 16; ++i) printf("%02x", key[i]); printf("\n");
+  printf("rand: "); for (int i = 0; i < 16; ++i) printf("%02x", rand[i]); printf("\n");
   printf("res: "); for (int i = 0; i < 16; ++i) printf("%02x", res[i]); printf("\n");
 
   // AK
@@ -294,6 +296,71 @@ void derive_kausf(uint8_t ck[16], uint8_t ik[16], uint8_t sqn[6], uint8_t kausf[
   kdf(key, data, 32, kausf);
 }
 
+void derive_mk(uint8_t ck[16], uint8_t ik[16], uint8_t sqn[6], uint8_t *mk, uicc_t *uicc) {
+  uint8_t S[256]={0};
+  uint8_t key[32];
+  printf(">>> %s\n", __FUNCTION__);
+
+  memcpy(&key[0], ck, 16);
+  memcpy(&key[16], ik, 16);  //KEY
+  printf("Key: "); for (int i = 0; i < 32; ++i) printf("%02x", key[i]); printf("\n");
+  printf("sqn: "); for (int i = 0; i < 6; ++i) printf("%02x", sqn[i]); printf("\n");
+
+  S[0] = 0x20;
+  printf("%s, nmc_sz=%d\n", uicc->imsiStr, uicc->nmc_size);
+
+  servingNetworkName (S+1, uicc->imsiStr, uicc->nmc_size);
+  int netNamesize = strlen((char*)S+1);
+  S[1 + netNamesize] = (uint8_t)((netNamesize & 0xff00) >> 8);
+  S[2 + netNamesize] = (uint8_t)(netNamesize & 0x00ff);
+  for (int i = 0; i < 6; i++) {
+    S[3 + netNamesize + i] = sqn[i];
+  }
+  S[9 + netNamesize] = 0x00;
+  S[10 + netNamesize] = 0x06;
+  printf("Key: "); for (int i = 0; i < 11 + netNamesize; ++i) printf("%02x", S[i]); printf("\n");
+
+  uint8_t ck_ik_[32]; // CK' + IK'
+
+  byte_array_t data = {.buf = S, .len = 11 + netNamesize};
+  kdf(key, data, 32, ck_ik_);
+  printf("ck': "); for (int i = 0; i < 16; ++i)  printf("%02x", ck_ik_[i]); printf("\n");
+  printf("ik': "); for (int i = 16; i < 32; ++i) printf("%02x", ck_ik_[i]); printf("\n");
+
+  memcpy(&key[0], ck_ik_ + 16, 16);
+  memcpy(&key[16], ck_ik_, 16);  //KEY
+  printf("Key2: "); for (int i = 0; i < 32; ++i) printf("%02x", key[i]); printf("\n");
+
+  // PRF' calculation (RFC 5448 cl. 3.4.1)
+  int outBitsNum = 1664; // bits
+  int blockSize = 256; // bits
+  int prfIters = (outBitsNum + blockSize - 1) / blockSize; // 7 iters
+  int mkLen = 0; // resulting MK length
+  uint8_t out[32];
+  for (int i = 0; i < prfIters; i++) {
+    int sLen = 0; // length of string for key derivation
+    if (i != 0) {
+      memcpy(S, out, 32);
+      sLen += 32;
+    }
+    memcpy(S + sLen, "EAP-AKA'", 8);
+    sLen += 8;
+    memcpy(S + sLen, uicc->imsiStr, strlen(uicc->imsiStr));
+    sLen += strlen(uicc->imsiStr);
+    S[sLen] = (uint8_t)(i + 1);
+    sLen++;
+    printf("S: "); for (int j = 0; j < sLen; ++j) printf("%02x", S[j]); printf("\n");
+
+    byte_array_t data = {.buf = S, .len = sLen};
+    kdf(key, data, 32, out);
+
+    for (int j = 0; j < 32; j++) {
+      mk[mkLen + j] = out[j];
+    }
+    mkLen += 32;
+  }
+}
+
 void derive_kseaf(uint8_t kausf[32], uint8_t kseaf[32], uicc_t *uicc) {
   uint8_t S[100]={0};
   S[0] = 0x6C;  //FC
@@ -375,6 +442,113 @@ void derive_kgnb(uint8_t kamf[32], uint32_t count, uint8_t *kgnb){
   printf("\n");
 }
 
+// Hacky approach to detect if eapMessage is present in authentication_Request,
+// then the auth type is EAP-AKA'.
+// Returns the offset of eapMsg in eapMessage if present, zero otherwise.
+int detect_eap_msg(uint8_t *buf)
+{
+  int offset = -1;
+
+  // suppose here that 'abba' is 2 octets length in authentication_Request
+  int mandatory_fields_length = 7;
+
+  if (buf[mandatory_fields_length] == 0x21) { // rand field is present
+    offset = 0;
+  } else if (buf[mandatory_fields_length] == 0x20) { // autn field is present
+    offset = 0;
+  } else if (buf[mandatory_fields_length] == 0x78) {
+    // if rand or autn is present, more likely, the auth type is 5G-AKA,
+    // otherwise eapMessage should be present
+    offset = mandatory_fields_length + 3;
+  }
+
+  AssertFatal (offset != -1, "Failed, neither 5G-AKA nor EAP-AKA' detected\n");
+
+  return offset;
+}
+
+int parse_eap_msg_len(uint8_t *buf)
+{
+  int len_offset = 2; // length offset in eapMsg
+  int len = ((int)buf[len_offset] << 8) + ((int)buf[len_offset + 1]);
+  return len;
+}
+
+void parse_eap_msg_rand(uint8_t *buf, uint8_t rand[16])
+{
+  int mandatory_fields_length = 8; // offset for beginning of attributes in eapMsg
+  int eap_msg_len = parse_eap_msg_len(buf);
+  int off = mandatory_fields_length;
+
+  while (buf[off] != 0x01) {
+    off += buf[off + 1] * 4;
+    AssertFatal (off < eap_msg_len, "Failed, no RAND attribute found in eapMsg\n");
+  }
+
+  off += 4;
+  for (int i = 0; i < 16; i++) {
+    rand[i] = buf[off + i];
+  }
+}
+
+void parse_eap_msg_autn(uint8_t *buf, uint8_t autn[6])
+{
+  int mandatory_fields_length = 8; // offset for beginning of attributes in eapMsg
+  int eap_msg_len = parse_eap_msg_len(buf);
+  int off = mandatory_fields_length;
+
+  while (buf[off] != 0x02) {
+    off += buf[off + 1] * 4;
+    AssertFatal (off < eap_msg_len, "Failed, no AUTN attribute found in eapMsg\n");
+  }
+
+  off += 4;
+  for (int i = 0; i < 6; i++) {
+    autn[i] = buf[off + i];
+  }
+}
+
+void make_eap_msg(int Mod_id, OctetString *msg)
+{
+  uint8_t tmpl[] = { 0x02, 0x00, // code & id
+                     0x00 , 0x00, // len
+                     0x32, 0x01, 0x00, 0x00, // type & subtype & reserved
+
+                     /* res attribute */
+                     0x03, 0x05, // attributeType & len
+                     0x00, 0x80, // reslen
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // res (to be set)
+
+                     /* mac attribute */
+                     0x0B, 0x05, 0x00, 0x00, // attributeType & len & reserved
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mac (placeholder for now, to be calculated)
+  };
+  int len = sizeof(tmpl);
+  uint8_t *lenPtr = &tmpl[2];
+  uint8_t *resPtr = &tmpl[8 + 4];
+  uint8_t *macPtr = &tmpl[8 + (4 + 16) + 4];
+
+  // set len field
+  lenPtr[0] = (uint8_t)((len >> 8) & 0xFF);
+  lenPtr[1] = (uint8_t)(len & 0xFF);
+
+  // set res attribute
+  memcpy(resPtr, ue_security_key[Mod_id]->res, 16);
+
+  // calc and set mac attribute
+  uint8_t *mk = ue_security_key[Mod_id]->mk; // EAP-AKA' master-key
+  uint8_t kaut[32];
+  uint8_t mac[32];
+  memcpy(kaut, mk + 16, 32); // RFC 5448 cl. 3.3 K_aut to be used for computing MAC
+  byte_array_t data = {.buf = tmpl, .len = len};
+  kdf(kaut, data, 16, mac);
+  memcpy(macPtr, mac, 16);
+
+  msg->length = len;
+  msg->value = calloc(1, msg->length);
+  memcpy(msg->value, tmpl, msg->length);
+}
+
 void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
   LOG_FUNC_IN;
   uint8_t ak[6];
@@ -388,18 +562,41 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
     // Allocate new memory
     ue_security_key[Mod_id]=(ue_sa_security_key_t *)calloc(1,sizeof(ue_sa_security_key_t));
   }
+  uint8_t *mk       = ue_security_key[Mod_id]->mk; // EAP-AKA' master-key
   uint8_t *kausf    = ue_security_key[Mod_id]->kausf;
   uint8_t *kseaf    = ue_security_key[Mod_id]->kseaf;
   uint8_t *kamf     = ue_security_key[Mod_id]->kamf;
   uint8_t *knas_int = ue_security_key[Mod_id]->knas_int;
   uint8_t *knas_enc = ue_security_key[Mod_id]->knas_enc;
-  uint8_t *output   = ue_security_key[Mod_id]->res;
+  uint8_t *xres     = ue_security_key[Mod_id]->res;
   uint8_t *rand     = ue_security_key[Mod_id]->rand;
   uint8_t *kgnb     = ue_security_key[Mod_id]->kgnb;
 
-  // get RAND for authentication request
-  for(int index = 0; index < 16;index++){
-    rand[index] = buf[8+index];
+  int eap_msg_offset = detect_eap_msg(buf);
+  int eap_msg_len = 0;
+
+  if (eap_msg_offset) {
+    eap_msg_len = parse_eap_msg_len(&buf[eap_msg_offset]);
+  }
+
+  printf("eap_msg_offset: %d eap_msg_len: %d\n", eap_msg_offset, eap_msg_len);
+
+  if (!eap_msg_offset) {
+    // get RAND from authentication request, it is located by 8 octets offset,
+    // suppose here that 'abba' is 2 octets length
+    for (int index = 0; index < 16;index++){
+      rand[index] = buf[8+index];
+    }
+
+    // get AUTN from authentication request, it is located by 26 octets offset,
+    // suppose here that 'abba' is 2 octets length
+    for(int index = 0; index < 6; index++){
+      sqn[index] = buf[26+index];
+    }
+  } else {
+    parse_eap_msg_rand(&buf[eap_msg_offset], rand);
+
+    parse_eap_msg_autn(&buf[eap_msg_offset], sqn);
   }
 
   uint8_t resTemp[16];
@@ -411,24 +608,32 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
   derive_keys_xor(uicc->key, rand, ck, ik, ak, resTemp);
 #endif
 
-  transferRES(ck, ik, resTemp, rand, output, uicc);
+  if (!eap_msg_offset) {
+    transferRES(ck, ik, resTemp, rand, xres, uicc); // calc XRES_Star
 
-  for(int index = 0; index < 6; index++){
-    sqn[index] = buf[26+index];
+    derive_kausf(ck, ik, sqn, kausf, uicc);
+  } else {
+    memcpy(xres, resTemp, 16); // no XRES_Star in EAP-AKA'
+
+    derive_mk(ck, ik, sqn, mk, uicc);
+    memcpy(kausf, mk + 144, 32); // KAUSF is EMSK in RFC 5448 cl. 3.3
   }
 
-  derive_kausf(ck, ik, sqn, kausf, uicc);
   derive_kseaf(kausf, kseaf, uicc);
   derive_kamf(kseaf, kamf, 0x0000, uicc);
   derive_knas(0x02, _nas_integrity_algo, kamf, knas_int);
   derive_knas(0x01, _nas_ciphering_algo, kamf, knas_enc);
-  derive_kgnb(kamf,0,kgnb);
+  derive_kgnb(kamf, 0, kgnb);
 
-  printf("xres:");     for(int i = 0; i < 16; i++) printf("%02x", output[i]);   printf("\n");
+  printf("xres:");     for(int i = 0; i < 16; i++) printf("%02x", xres[i]);     printf("\n");
+  printf("mk:");       for(int i = 0; i < 48; i++) printf("%02x", mk[i]);       printf("\n");
   printf("kausf:");    for(int i = 0; i < 32; i++) printf("%02x", kausf[i]);    printf("\n");
   printf("kseaf:");    for(int i = 0; i < 32; i++) printf("%02x", kseaf[i]);    printf("\n");
   printf("kamf:");     for(int i = 0; i < 32; i++) printf("%02x", kamf[i]);     printf("\n");
   printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", knas_int[i]); printf("\n");
+  printf("knas_enc:"); for(int i = 0; i < 16; i++) printf("%02x", knas_enc[i]); printf("\n");
+  printf("rand:");     for(int i = 0; i < 16; i++) printf("%02x", rand[i]);     printf("\n");
+  printf("kgnb:");     for(int i = 0; i < 32; i++) printf("%02x", kgnb[i]);     printf("\n");
 
   LOG_FUNC_OUT;
 }
@@ -649,11 +854,9 @@ void generateIdentityResponse(as_nas_info_t *initialNasMsg, uint8_t identitytype
 
 static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, uint8_t *buf, uicc_t *uicc){
   LOG_FUNC_IN;
+  int eap_msg_offset = detect_eap_msg(buf);
+
   derive_ue_keys(Mod_id,buf,uicc);
-  OctetString res;
-  res.length = 16;
-  res.value = calloc(1,16);
-  memcpy(res.value,ue_security_key[Mod_id]->res,16);
 
   int size = sizeof(mm_msg_header_t);
   fgs_nas_message_t nas_msg;
@@ -675,8 +878,24 @@ static void generateAuthenticationResp(int Mod_id,as_nas_info_t *initialNasMsg, 
   size += 1;
 
   //set response parameter
-  mm_msg->fgs_auth_response.authenticationresponseparameter.res = res;
-  size += 18;
+  if (!eap_msg_offset) {
+    OctetString res;
+    res.length = 16;
+    res.value = calloc(1,16);
+    memcpy(res.value,ue_security_key[Mod_id]->res,16);
+
+    mm_msg->fgs_auth_response.presencemask |= FGS_AUTHENTICATION_RESPONSE_AUTH_RESPONSE_PARAM_PRESENT;
+    mm_msg->fgs_auth_response.authenticationresponseparameter.res = res;
+    size += 18;
+  } else {
+    OctetString eapMsg;
+    make_eap_msg(Mod_id, &eapMsg);
+
+    mm_msg->fgs_auth_response.presencemask |= FGS_AUTHENTICATION_RESPONSE_EAP_MESSAGE_PRESENT;
+    mm_msg->fgs_auth_response.eapmessage.eapMsg = eapMsg;
+    size += 3 + eapMsg.length;
+  }
+
   // encode the message
   initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
 

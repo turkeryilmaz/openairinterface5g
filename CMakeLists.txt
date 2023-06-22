@@ -1794,6 +1794,7 @@ set(libnas_ies_OBJS
   ${NAS_SRC}COMMON/IES/AuthenticationParameterAutn.c
   ${NAS_SRC}COMMON/IES/AuthenticationParameterRand.c
   ${NAS_SRC}COMMON/IES/AuthenticationResponseParameter.c
+  ${NAS_SRC}COMMON/IES/EapMessage.c
   ${NAS_SRC}COMMON/IES/CipheringKeySequenceNumber.c
   ${NAS_SRC}COMMON/IES/Cli.c
   ${NAS_SRC}COMMON/IES/CsfbResponse.c
