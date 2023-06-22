@@ -621,8 +621,8 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
 
   derive_kseaf(kausf, kseaf, uicc);
   derive_kamf(kseaf, kamf, 0x0000, uicc);
-  derive_knas(0x02, _nas_integrity_algo, kamf, knas_int);
-  derive_knas(0x01, _nas_ciphering_algo, kamf, knas_enc);
+  derive_knas(0x02, _nas_integrity_algo, kamf, knas_int); // _nas_integrity_algo is unknown here
+  derive_knas(0x01, _nas_ciphering_algo, kamf, knas_enc); // _nas_integrity_algo is unknown here
   derive_kgnb(kamf, 0, kgnb);
 
   printf("xres:");     for(int i = 0; i < 16; i++) printf("%02x", xres[i]);     printf("\n");
@@ -630,8 +630,8 @@ void derive_ue_keys(int Mod_id, uint8_t *buf, uicc_t *uicc) {
   printf("kausf:");    for(int i = 0; i < 32; i++) printf("%02x", kausf[i]);    printf("\n");
   printf("kseaf:");    for(int i = 0; i < 32; i++) printf("%02x", kseaf[i]);    printf("\n");
   printf("kamf:");     for(int i = 0; i < 32; i++) printf("%02x", kamf[i]);     printf("\n");
-  printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", knas_int[i]); printf("\n");
-  printf("knas_enc:"); for(int i = 0; i < 16; i++) printf("%02x", knas_enc[i]); printf("\n");
+  /* printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", knas_int[i]); printf("\n"); */
+  /* printf("knas_enc:"); for(int i = 0; i < 16; i++) printf("%02x", knas_enc[i]); printf("\n"); */
   printf("rand:");     for(int i = 0; i < 16; i++) printf("%02x", rand[i]);     printf("\n");
   printf("kgnb:");     for(int i = 0; i < 32; i++) printf("%02x", kgnb[i]);     printf("\n");
 
@@ -1698,6 +1698,8 @@ void *nas_nrue_task(void *args_p)
 
             derive_knas(0x02, _nas_integrity_algo, ue_security_key[Mod_id]->kamf, ue_security_key[Mod_id]->knas_int);
             derive_knas(0x01, _nas_ciphering_algo, ue_security_key[Mod_id]->kamf, ue_security_key[Mod_id]->knas_enc);
+            printf("knas_int:"); for(int i = 0; i < 16; i++) printf("%02x", ue_security_key[Mod_id]->knas_int[i]); printf("\n");
+            printf("knas_enc:"); for(int i = 0; i < 16; i++) printf("%02x", ue_security_key[Mod_id]->knas_enc[i]); printf("\n");
 
             nas_itti_kgnb_refresh_req(ue_security_key[Mod_id]->kgnb, instance);
             generateSecurityModeComplete(Mod_id,&initialNasMsg);
