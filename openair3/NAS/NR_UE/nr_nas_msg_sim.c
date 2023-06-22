@@ -913,28 +913,28 @@ int nas_itti_kgnb_refresh_req(const uint8_t kgnb[32], int instance){
   return itti_send_msg_to_task(TASK_RRC_NRUE, instance, message_p);
 }
 
-static int addImeisv(int Mod_id,MM_msg *mm_msg)
+static int addImeisv(int Mod_id, FGSMobileIdentity *fgsmobileidentity)
 {
   int i=0;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac01 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac02 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac03 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac04 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac05 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac06 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac07 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digittac08 = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit09    = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit10    = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit11    = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit12    = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit13    = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digit14    = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitsv1   = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.digitsv2   = getImeisvDigit(Mod_id,i++);
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.spare  = 0x0f;
-  mm_msg->fgs_security_mode_complete.fgsmobileidentity.imeisv.oddeven = 1;
+  fgsmobileidentity->imeisv.typeofidentity = FGS_MOBILE_IDENTITY_IMEISV;
+  fgsmobileidentity->imeisv.digittac01 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac02 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac03 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac04 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac05 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac06 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac07 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digittac08 = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digit09    = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digit10    = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digit11    = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digit12    = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digit13    = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digit14    = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digitsv1   = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.digitsv2   = getImeisvDigit(Mod_id,i++);
+  fgsmobileidentity->imeisv.spare  = 0x0f;
+  fgsmobileidentity->imeisv.oddeven = 1;
   return 19;
 }
 
@@ -975,7 +975,7 @@ static void generateSecurityModeComplete(int Mod_id,as_nas_info_t *initialNasMsg
   /* Workaround fix for the issue in TTCN till imeisv is supported by TTCN */
   if(0)
   {
-    size += addImeisv(Mod_id, mm_msg);
+    size += addImeisv(Mod_id, &mm_msg->fgs_security_mode_complete.fgsmobileidentity);
   }
 
   mm_msg->fgs_security_mode_complete.fgsnasmessagecontainer.nasmessagecontainercontents.value  = registration_request_buf;
@@ -1438,12 +1438,15 @@ void generateServiceRequestInner(as_nas_info_t *initialNasMsg, int Mod_id) {
   mm_msg->fgs_service_request.naskeysetidentifier.naskeysetidentifier = 0;
   size += 1;
 
-  size += addImeisv(Mod_id, mm_msg);
+  size += addImeisv(Mod_id, &mm_msg->fgs_service_request.fgsmobileidentity);
 
   // encode the message
   initialNasMsg->data = (Byte_t *)malloc(size * sizeof(Byte_t));
-
   initialNasMsg->length = mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data), size);
+
+  // HACK: TTCN decrypts the piggybacked msg. Thus, need to encrypt it using expected NAS Count == 2
+  _ul_nas_count = 2;
+  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data, initialNasMsg->length);
 }
 
 void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
@@ -1469,7 +1472,7 @@ void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
   mm_msg->fgs_service_request.naskeysetidentifier.naskeysetidentifier = 0;
   size += 1;
 
-  size += addImeisv(Mod_id, mm_msg);
+  size += addImeisv(Mod_id, &mm_msg->fgs_service_request.fgsmobileidentity);
 
   as_nas_info_t serviceRequestInnerNasMsg;
   generateServiceRequestInner(&serviceRequestInnerNasMsg, Mod_id);
@@ -1483,8 +1486,8 @@ void generateServiceRequest(as_nas_info_t *initialNasMsg, int Mod_id) {
   initialNasMsg->length = mm_msg_encode(mm_msg, (uint8_t*)(initialNasMsg->data), size);
 
   // HACK: TTCN decrypts the piggybacked msg. Thus, need to encrypt it using expected NAS Count == 2
-  _ul_nas_count = 2;
-  _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + 11, initialNasMsg->length - 11);
+  /* _ul_nas_count = 2; */
+  /* _encrypt_nas_msg(Mod_id, _ul_nas_count, initialNasMsg->data + 11, initialNasMsg->length - 11); */
 }
 
 uint8_t get_msg_type(uint8_t *pdu_buffer, uint32_t length) {
