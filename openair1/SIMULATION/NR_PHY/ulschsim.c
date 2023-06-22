@@ -128,6 +128,11 @@ int main(int argc, char **argv)
   FILE *output_fd = NULL;
   //uint8_t write_output_file = 0;
   int trial, n_trials = 1, n_errors = 0, n_false_positive = 0;
+  unsigned char *estimated_output_bit;
+  unsigned char *test_input_bit;
+  test_input_bit       = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
+  estimated_output_bit = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
+  unsigned int errors_bit    = 0;
   uint8_t n_tx = 1, n_rx = 1, nb_codewords = 1;
   //uint8_t transmission_mode = 1;
   uint16_t Nid_cell = 0;
@@ -611,7 +616,7 @@ int main(int argc, char **argv)
       errors_bit = 0;
 
       for (i = 0; i < TBS; i++) {
-        estimated_output_bit[i] = (ulsch_gNB->harq_processes[harq_pid]->b[i/8] & (1 << (i & 7))) >> (i & 7);
+        estimated_output_bit[i] = (harq_process_gNB[harq_pid].b[i/8] & (1 << (i & 7))) >> (i & 7);
         test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
         printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
 

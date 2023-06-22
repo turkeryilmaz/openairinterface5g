@@ -138,8 +138,7 @@ void free_psbchsim_members(PHY_VARS_NR_UE *UE,
                            double **s_im,
                            double **r_re,
                            double **r_im,
-                           c16_t **txdata,
-                           FILE *input_fd)
+                           c16_t **txdata)
 {
 
   for (int i = 0; i < 2; i++) {
@@ -614,7 +613,7 @@ int main(int argc, char **argv)
     }
   } // NSR
 
-  free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata, input_fd);
+  free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata);
 
   return 0;
 }
