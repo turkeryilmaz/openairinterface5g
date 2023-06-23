@@ -751,8 +751,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI = bin_to_int(AddOrReconfigure->Active.v.C_RNTI.v, 16);
         SS_context.SSCell_list[cell_index].ss_rnti_g = RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI;
         LOG_A(ENB_SS_SYS_TASK, "C_RNTI present in Active Cell Config %d\n", RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI);
-      } else {
-        RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].b_C_RNTI_Present = false;
       }
       if (AddOrReconfigure->Active.v.RachProcedureConfig.d == true)
       {
