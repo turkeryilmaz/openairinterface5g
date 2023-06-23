@@ -38,6 +38,18 @@ gnb_e2sm_t fill_gnb_data(uint16_t rnti)
   return gnb;
 }
 
+static
+    gnb_e2sm_t fill_rnd_gnb_data(void)
+{
+  gnb_e2sm_t gnb = {0};
+  gnb.amf_ue_ngap_id = (rand() % 2^40) + 0;
+  gnb.guami.plmn_id = (e2sm_plmn_t) {.mcc = 505, .mnc = 1, .mnc_digit_len = 2};
+  gnb.guami.amf_region_id = (rand() % 2^8) + 0;
+  gnb.guami.amf_set_id = (rand() % 2^10) + 0;
+  gnb.guami.amf_ptr = (rand() % 2^6) + 0;
+  return gnb;
+}
+
 static 
 ue_id_e2sm_t fill_ue_id_data(uint16_t rnti)
 {
@@ -46,6 +58,15 @@ ue_id_e2sm_t fill_ue_id_data(uint16_t rnti)
   ue_id_data.type = GNB_UE_ID_E2SM;
   ue_id_data.gnb = fill_gnb_data(rnti);
 
+  return ue_id_data;
+}
+
+static
+ue_id_e2sm_t fill_rnd_ue_id_data()
+{
+  ue_id_e2sm_t ue_id_data = {0};
+  ue_id_data.type = GNB_UE_ID_E2SM;
+  ue_id_data.gnb = fill_rnd_gnb_data();
   return ue_id_data;
 }
 
@@ -180,6 +201,64 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
   return msg_frm_1;
 }
 
+static kpm_ind_msg_format_1_t fill_rnd_kpm_ind_msg_frm_1(void)
+{
+  kpm_ind_msg_format_1_t msg_frm_1 = {0};
+
+  // Measurement Data
+  msg_frm_1.meas_data_lst_len = 1;  // (rand() % 65535) + 1;
+  msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
+  assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
+
+  for (size_t i = 0; i < msg_frm_1.meas_data_lst_len; i++)
+  {
+    // Incomplete Flag
+    msg_frm_1.meas_data_lst[i].incomplete_flag = calloc(1, sizeof(enum_value_e));
+    assert(msg_frm_1.meas_data_lst[i].incomplete_flag != NULL && "Memory exhausted");
+    *msg_frm_1.meas_data_lst[i].incomplete_flag = TRUE_ENUM_VALUE;
+
+    // Measurement Record
+    msg_frm_1.meas_data_lst[i].meas_record_len = 1;
+    msg_frm_1.meas_data_lst[i].meas_record_lst = calloc(msg_frm_1.meas_data_lst[i].meas_record_len, sizeof(meas_record_lst_t));
+    assert(msg_frm_1.meas_data_lst[i].meas_record_lst != NULL && "Memory exhausted" );
+
+    for (size_t j = 0; j < msg_frm_1.meas_data_lst[i].meas_record_len; j++)
+    {
+      msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
+      msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = time_now_us();
+    }
+  }
+
+  // Measurement Information - OPTIONAL
+  msg_frm_1.meas_info_lst_len = 1;
+  msg_frm_1.meas_info_lst = calloc(msg_frm_1.meas_info_lst_len, sizeof(meas_info_format_1_lst_t));
+  assert(msg_frm_1.meas_info_lst != NULL && "Memory exhausted" );
+
+  for (size_t i = 0; i < msg_frm_1.meas_info_lst_len; i++)
+  {
+    // Measurement Type
+    char* s = "timestamp";
+    msg_frm_1.meas_info_lst[i].meas_type.name.len = strlen(s) + 1;
+    msg_frm_1.meas_info_lst[i].meas_type.name.buf = malloc(strlen(s) + 1);
+    assert(msg_frm_1.meas_info_lst[i].meas_type.name.buf != NULL && "memory exhausted");
+    memcpy(msg_frm_1.meas_info_lst[i].meas_type.name.buf, s, strlen(s));
+    msg_frm_1.meas_info_lst[i].meas_type.name.buf[strlen(s)] = '\0';
+
+    // Label Information
+    msg_frm_1.meas_info_lst[i].label_info_lst_len = 1;
+    msg_frm_1.meas_info_lst[i].label_info_lst = calloc(msg_frm_1.meas_info_lst[i].label_info_lst_len, sizeof(label_info_lst_t));
+    assert(msg_frm_1.meas_info_lst[i].label_info_lst != NULL && "Memory exhausted" );
+
+    for (size_t j = 0; j < msg_frm_1.meas_info_lst[i].label_info_lst_len; j++)
+    {
+      msg_frm_1.meas_info_lst[i].label_info_lst[j].noLabel = malloc(sizeof(enum_value_e));
+      *msg_frm_1.meas_info_lst[i].label_info_lst[j].noLabel = TRUE_ENUM_VALUE;
+    }
+  }
+
+  return msg_frm_1;
+}
+
 static
 kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(kpm_act_def_format_1_t const act_def_fr1)
 {
@@ -199,14 +278,20 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(kpm_act_def_format_1_t const a
   assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
 
   // TODO: handle the case when the number of UE is 0, if (msg_frm_3.ue_meas_report_lst_len > 0)
-  size_t ue_idx = 0;
-  UE_iterator(UE_info->list, UE)
-  {
-    uint16_t const rnti = UE->rnti;
-    msg_frm_3.meas_report_per_ue[ue_idx].ue_meas_report_lst = fill_ue_id_data(rnti);
-    msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(UE, ue_idx, act_def_fr1);
-    ue_idx+=1;
+  if (num_ues > 0) {
+    size_t ue_idx = 0;
+    UE_iterator(UE_info->list, UE)
+    {
+      uint16_t const rnti = UE->rnti;
+      msg_frm_3.meas_report_per_ue[ue_idx].ue_meas_report_lst = fill_ue_id_data(rnti);
+      msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(UE, ue_idx, act_def_fr1);
+      ue_idx+=1;
+    }
+  } else {
+    msg_frm_3.meas_report_per_ue[0].ue_meas_report_lst = fill_rnd_ue_id_data();
+    msg_frm_3.meas_report_per_ue[0].ind_msg_format_1 = fill_rnd_kpm_ind_msg_frm_1();
   }
+
 
   return msg_frm_3;
 }
