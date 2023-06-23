@@ -48,8 +48,44 @@ ue_id_e2sm_t fill_ue_id_data(uint16_t rnti)
   return ue_id_data;
 }
 
+void copy_ba_to_str(const uint8_t* buffer, size_t length, char* str) {
+  memcpy(str, buffer, length);
+  str[length] = '\0';
+}
+
+double dl_thr_st_val[MAX_MOBILES_PER_GNB] = {0};
+double dl_thr_avg_val[MAX_MOBILES_PER_GNB] = {0};
+int dl_thr_count[MAX_MOBILES_PER_GNB] = {0};
+void cal_dl_thr_bps(uint64_t const dl_total_bytes, uint32_t const gran_period_ms, size_t const ue_idx) {
+  size_t count_max = 1000/gran_period_ms;
+  // DL
+  if (dl_thr_count[ue_idx] == 0)
+    dl_thr_st_val[ue_idx] = dl_total_bytes;
+  dl_thr_count[ue_idx] += 1;
+  if (dl_thr_count[ue_idx] == count_max) {
+    dl_thr_avg_val[ue_idx] = (dl_total_bytes - dl_thr_st_val[ue_idx])*8;
+    dl_thr_count[ue_idx] = 0;
+  }
+}
+
+double ul_thr_st_val[MAX_MOBILES_PER_GNB] = {0};
+double ul_thr_avg_val[MAX_MOBILES_PER_GNB] = {0};
+int ul_thr_count[MAX_MOBILES_PER_GNB] = {0};
+void cal_ul_thr_bps(uint64_t const ul_total_bytes, uint32_t const gran_period_ms, size_t const ue_idx) {
+  size_t count_max = 1000/gran_period_ms;
+  // UL
+  if (ul_thr_count[ue_idx] == 0)
+    ul_thr_st_val[ue_idx] = ul_total_bytes;
+  ul_thr_avg_val[ue_idx] += 1;
+  if (ul_thr_count[ue_idx] == count_max) {
+    ul_thr_avg_val[ue_idx] = (ul_total_bytes - ul_thr_st_val[ue_idx])*8;
+    ul_thr_count[ue_idx] = 0;
+  }
+}
+
+
 static 
-kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* UE, kpm_act_def_format_1_t act_def_fr1)
+kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t const ue_idx, kpm_act_def_format_1_t const act_def_fr1)
 {
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
 
@@ -59,6 +95,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* UE, kpm_act_def_form
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
 
+
   size_t const rec_data_len = act_def_fr1.meas_info_lst_len; // Recoding Data Length
   for (size_t i = 0; i < msg_frm_1.meas_data_lst_len; i++){
     // Measurement Record
@@ -66,8 +103,25 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* UE, kpm_act_def_form
     msg_frm_1.meas_data_lst[i].meas_record_lst = calloc(msg_frm_1.meas_data_lst[i].meas_record_len, sizeof(meas_record_lst_t));
     assert(msg_frm_1.meas_data_lst[i].meas_record_lst != NULL && "Memory exhausted" );
     for (size_t j = 0; j < msg_frm_1.meas_data_lst[i].meas_record_len; j++) {
-      msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
-      msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = UE->dl_thr_ue; // TODO
+      meas_type_t meas_info_type = act_def_fr1.meas_info_lst[j].meas_type;
+      if (meas_info_type.type == NAME_MEAS_TYPE) {
+        size_t length = meas_info_type.name.len;
+        char meas_info_name_str[length + 1];
+        copy_ba_to_str(meas_info_type.name.buf, length, meas_info_name_str);
+        if (strcmp(meas_info_name_str, "DRB.IPThpDl.QCI") == 0 ? true : false) {
+          msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
+          cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
+          msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = dl_thr_avg_val[ue_idx];
+        } else if (strcmp(meas_info_name_str, "DRB.IPThpUl.QCI") == 0 ? true : false) {
+          msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
+          cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
+          msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = ul_thr_avg_val[ue_idx];
+        } else {
+          msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
+          msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = 1234;
+        }
+      }
+
     }
   }
 
@@ -105,7 +159,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* UE, kpm_act_def_form
 }
 
 static
-kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(kpm_act_def_format_1_t act_def_fr1)
+kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(kpm_act_def_format_1_t const act_def_fr1)
 {
   kpm_ind_msg_format_3_t msg_frm_3 = {0};
 
@@ -122,12 +176,13 @@ kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(kpm_act_def_format_1_t act_def
   msg_frm_3.meas_report_per_ue = calloc(msg_frm_3.ue_meas_report_lst_len, sizeof(meas_report_per_ue_t));
   assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
 
+  // TODO: handle the case when the number of UE is 0, if (msg_frm_3.ue_meas_report_lst_len > 0)
   size_t ue_idx = 0;
   UE_iterator(UE_info->list, UE)
   {
     uint16_t const rnti = UE->rnti;
     msg_frm_3.meas_report_per_ue[ue_idx].ue_meas_report_lst = fill_ue_id_data(rnti);
-    msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(UE, act_def_fr1);
+    msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(UE, ue_idx, act_def_fr1);
     ue_idx+=1;
   }
 
@@ -177,7 +232,7 @@ void read_kpm_sm(void* data)
   assert(data != NULL);
   //assert(data->type == KPM_STATS_V3_0);
 
-  kpm_rd_ind_data_t* kpm = (kpm_rd_ind_data_t*)data;
+  kpm_rd_ind_data_t* const kpm = (kpm_rd_ind_data_t*)data;
 
   assert(kpm->act_def!= NULL && "Cannot be NULL");
   if(kpm->act_def->type == FORMAT_4_ACTION_DEFINITION){
