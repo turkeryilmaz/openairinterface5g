@@ -4,6 +4,7 @@
 #include "common/ran_context.h"
 #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
 #include "openair2/RRC/NR/rrc_gNB_UE_context.h"
+#include "openair2/E2AP/RAN_FUNCTION/CUSTOMIZED/ran_func_rlc.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -90,39 +91,60 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
 
   // Measurement Data
-  uint32_t num_drbs = 1;
+  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+  uint32_t num_drbs = num_act_rb(UE_info);
   msg_frm_1.meas_data_lst_len = num_drbs;  // (rand() % 65535) + 1;
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
 
 
   size_t const rec_data_len = act_def_fr1.meas_info_lst_len; // Recoding Data Length
-  for (size_t i = 0; i < msg_frm_1.meas_data_lst_len; i++){
+  size_t meas_data_idx = 0;
+  for (int rb_id = 1; rb_id < 6; ++rb_id) {
+    nr_rlc_statistics_t rb_rlc = {0};
+    const int srb_flag = 0;
+    const bool rc = nr_rlc_get_statistics(UE->rnti, srb_flag, rb_id, &rb_rlc);
+    if(!rc) continue;
+
     // Measurement Record
-    msg_frm_1.meas_data_lst[i].meas_record_len = rec_data_len;
-    msg_frm_1.meas_data_lst[i].meas_record_lst = calloc(msg_frm_1.meas_data_lst[i].meas_record_len, sizeof(meas_record_lst_t));
-    assert(msg_frm_1.meas_data_lst[i].meas_record_lst != NULL && "Memory exhausted" );
-    for (size_t j = 0; j < msg_frm_1.meas_data_lst[i].meas_record_len; j++) {
+    meas_data_lst_t* meas_data = &msg_frm_1.meas_data_lst[meas_data_idx];
+    meas_data->meas_record_len = rec_data_len;
+    meas_data->meas_record_lst = calloc(meas_data->meas_record_len, sizeof(meas_record_lst_t));
+    assert(meas_data->meas_record_lst != NULL && "Memory exhausted");
+    for (size_t j = 0; j < meas_data->meas_record_len; j++) {
+      meas_record_lst_t* meas_record = &meas_data->meas_record_lst[j];
       meas_type_t meas_info_type = act_def_fr1.meas_info_lst[j].meas_type;
       if (meas_info_type.type == NAME_MEAS_TYPE) {
+        // Get Meas Info Name from Action Definition
         size_t length = meas_info_type.name.len;
         char meas_info_name_str[length + 1];
         copy_ba_to_str(meas_info_type.name.buf, length, meas_info_name_str);
-        if (strcmp(meas_info_name_str, "DRB.IPThpDl.QCI") == 0 ? true : false) {
-          msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
-          cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
-          msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = dl_thr_avg_val[ue_idx];
-        } else if (strcmp(meas_info_name_str, "DRB.IPThpUl.QCI") == 0 ? true : false) {
-          msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
-          cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
-          msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = ul_thr_avg_val[ue_idx];
-        } else {
-          msg_frm_1.meas_data_lst[i].meas_record_lst[j].value = REAL_MEAS_VALUE;
-          msg_frm_1.meas_data_lst[i].meas_record_lst[j].real_val = 1234;
-        }
-      }
 
+        // Get value based on Meas Info Name
+        if (strcmp(meas_info_name_str, "DRB.IPThpDl.QCI") == 0 ? true : false) {
+          meas_record->value = REAL_MEAS_VALUE;
+          cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
+          meas_record->real_val = dl_thr_avg_val[ue_idx];
+        } else if (strcmp(meas_info_name_str, "DRB.IPThpUl.QCI") == 0 ? true : false) {
+          meas_record->value = REAL_MEAS_VALUE;
+          cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
+          meas_record->real_val = ul_thr_avg_val[ue_idx];
+        } else if (strcmp(meas_info_name_str, "DRB.RlcSduDelayDl") == 0 ? true : false) {
+          meas_record->value = REAL_MEAS_VALUE;
+          active_avg_to_tx(UE_info);
+          meas_record->real_val = rb_rlc.txsdu_avg_time_to_tx;
+        } else {
+          printf("not implement value for measurement name %s\n", meas_info_name_str);
+          meas_record->value = REAL_MEAS_VALUE;
+          meas_record->real_val = 1234;
+        }
+      } else {
+        printf("not implement value for measurement type %d\n", meas_info_type.type);
+        meas_record->value = REAL_MEAS_VALUE;
+        meas_record->real_val = 1234;
+      }
     }
+    meas_data_idx++;
   }
 
   // Measurement Information - OPTIONAL
