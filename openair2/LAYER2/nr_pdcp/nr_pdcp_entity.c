@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "nr_pdcp_security_nea1.h"
 #include "nr_pdcp_security_nea2.h"
 #include "nr_pdcp_integrity_nia2.h"
 #include "nr_pdcp_integrity_nia1.h"
@@ -342,14 +343,15 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
     entity->has_integrity = 0;
     if (entity->free_integrity != NULL) {
       entity->free_integrity(entity->integrity_context);
+      entity->free_integrity = NULL;
     }
-    entity->free_integrity = NULL;
   }
 
   if (integrity_algorithm != 0 && integrity_algorithm != -1) {
     entity->has_integrity = 1;
     if (entity->free_integrity != NULL) {
       entity->free_integrity(entity->integrity_context);
+      entity->free_integrity = NULL;
     }
     if (integrity_algorithm == 2) {
       entity->integrity_context = nr_pdcp_integrity_nia2_init(entity->integrity_key);
@@ -369,24 +371,31 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
     entity->has_ciphering = NR_PDCP_ENTITY_CIPHERING_OFF;
     if (entity->free_security != NULL) {
       entity->free_security(entity->security_context);
+      entity->free_security = NULL;
     }
-    entity->free_security = NULL;
   }
 
   if (ciphering_algorithm != 0 && ciphering_algorithm != -1) {
-    if (ciphering_algorithm != 2) {
-      LOG_E(PDCP, "FATAL: only nea2 supported for the moment\n");
-      exit(1);
-    }
     entity->has_ciphering = entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_ON?NR_PDCP_ENTITY_CIPHERING_ON:NR_PDCP_ENTITY_CIPHERING_SMC;
     LOG_I(PDCP, "%s: entity->has_ciphering %d\n", __FUNCTION__, entity->has_ciphering);
     if (entity->free_security != NULL) {
       entity->free_security(entity->security_context);
+      entity->free_security = NULL;
     }
-    entity->security_context = nr_pdcp_security_nea2_init(entity->ciphering_key);
-    entity->cipher = nr_pdcp_security_nea2_cipher;
-    entity->free_security = nr_pdcp_security_nea2_free_security;
+    if (ciphering_algorithm == 2) {
+      entity->security_context = nr_pdcp_security_nea2_init(entity->ciphering_key);
+      entity->cipher = nr_pdcp_security_nea2_cipher;
+      entity->free_security = nr_pdcp_security_nea2_free_security;
+    } else if (ciphering_algorithm == 1) {
+      entity->security_context = nr_pdcp_security_nea1_init(entity->ciphering_key);
+      entity->cipher = nr_pdcp_security_nea1_cipher;
+      entity->free_security = nr_pdcp_security_nea1_free_security;
+    } else {
+      LOG_E(PDCP, "FATAL: only nea1 and nea2 supported for the moment\n");
+      exit(1);
+    }
   }
+
   FNOUT;
 }
 

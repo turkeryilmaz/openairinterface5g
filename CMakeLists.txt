@@ -1368,6 +1368,7 @@ set(NR_PDCP_SRC
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_sdu.c
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_timer_thread.c
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_security_nea2.c
+  ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_security_nea1.c
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_integrity_nia2.c
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/nr_pdcp_integrity_nia1.c
   ${OPENAIR2_DIR}/LAYER2/nr_pdcp/asn1_utils.c
@@ -1794,6 +1795,7 @@ set(libnas_ies_OBJS
   ${NAS_SRC}COMMON/IES/AuthenticationParameterAutn.c
   ${NAS_SRC}COMMON/IES/AuthenticationParameterRand.c
   ${NAS_SRC}COMMON/IES/AuthenticationResponseParameter.c
+  ${NAS_SRC}COMMON/IES/EapMessage.c
   ${NAS_SRC}COMMON/IES/CipheringKeySequenceNumber.c
   ${NAS_SRC}COMMON/IES/Cli.c
   ${NAS_SRC}COMMON/IES/CsfbResponse.c

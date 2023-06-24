@@ -103,6 +103,9 @@
 
 /* Security Key for SA UE */
 typedef struct {
+  uint8_t mk[256]; // EAP-AKA' master-key.
+                   // PRF' produces as many bits of output as is needed,
+                   // lets define 256 bytes MK.
   uint8_t kausf[32];
   uint8_t kseaf[32];
   uint8_t kamf[32];
