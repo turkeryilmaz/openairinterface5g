@@ -1074,6 +1074,7 @@ static bool test_pucch0_vrb_occupation(const NR_sched_pucch_t *pucch, uint16_t *
     else
       prb = pucch->prb_start;
     if ((vrb_map_UL[bwp_start+prb] & symb) != 0) {
+      LOG_I(NR_MAC,"pucch0_vrb %d symb %d vrb_map %x\n",bwp_start+prb,symb,vrb_map_UL[bwp_start+prb]);
       return false;
       break;
     }
