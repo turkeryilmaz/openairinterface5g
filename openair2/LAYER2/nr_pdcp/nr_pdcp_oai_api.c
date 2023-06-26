@@ -888,12 +888,12 @@ static void deliver_pdu_srb(void *_ue, nr_pdcp_entity_t *entity,
 
 srb_found:
   LOG_D(PDCP, "%s(): (srb %d) calling rlc_data_req size %d\n", __func__, srb_id, size);
-  LOG_MSG(buf, size, "%s: PDCP => RLC: ", __FUNCTION__);
+  LOG_MSG(buf, size, "%s: PDCP => RLC, rb_id=%d: ", __FUNCTION__, srb_id);
   //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
   //printf("\n");
   if ((RC.nrrrc == NULL) || (!NODE_IS_CU(node_type))) {
     if (entity->is_gnb) {
-      f1ap_dl_rrc_message_t dl_rrc = {.old_gNB_DU_ue_id = 0xFFFFFF, .rrc_container = (uint8_t *)buf, .rrc_container_length = size, .rnti = ue->rntiMaybeUEid, .srb_id = DCCH};
+      f1ap_dl_rrc_message_t dl_rrc = {.old_gNB_DU_ue_id = 0xFFFFFF, .rrc_container = (uint8_t *)buf, .rrc_container_length = size, .rnti = ue->rntiMaybeUEid, .srb_id = srb_id};
       gNB_RRC_INST *rrc = RC.nrrrc[0];
       rrc->mac_rrc.dl_rrc_message_transfer(0, &dl_rrc);
     } else { // UE

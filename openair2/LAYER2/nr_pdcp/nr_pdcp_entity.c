@@ -112,7 +112,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
   LOG_I(PDCP, "%s: Entity security status(%d): ciphering %d, integrity check %d\n", __FUNCTION__, entity->has_ciphering,
         entity->has_ciphering?entity->ciphering_algorithm:-1, entity->has_integrity?entity->integrity_algorithm:-1);
-  LOG_MSG(_buffer, size, "RLC => PDCP: rcvd_count=%zu, rcvd_sn=%d: ", rcvd_count, rcvd_sn);
+  LOG_MSG(_buffer, size, "RLC => PDCP: rcvd_count=%zu, rcvd_sn=%d, rb_id=%d: ", rcvd_count, rcvd_sn, entity->rb_id);
 
   if (entity->has_ciphering)
   {
