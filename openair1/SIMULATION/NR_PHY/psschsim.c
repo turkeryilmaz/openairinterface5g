@@ -481,7 +481,14 @@ int main(int argc, char **argv)
         for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
             nr_slot_fep_ul(&rxUE->frame_parms, (int32_t *)rxUE->common_vars.rxdata[aa], (int32_t *)&rxdataF[aa][soffset], ofdm_symbol, slot, 0);
         }
-        apply_nr_rotation_ul(&rxUE->frame_parms, rxdataF[aa], slot, 0, NR_NUMBER_OF_SYMBOLS_PER_SLOT, link_type_sl);
+        apply_nr_rotation_RX(&rxUE->frame_parms,
+                             rxdataF[aa],
+                             &rxUE->frame_parms.symbol_rotation[2],
+                             slot,
+                             &rxUE->frame_parms.N_RB_SL,
+                             0,
+                             0,
+                             NR_NUMBER_OF_SYMBOLS_PER_SLOT);
       }
       uint32_t ret = nr_ue_slsch_rx_procedures(rxUE,
                                                harq_pid,
