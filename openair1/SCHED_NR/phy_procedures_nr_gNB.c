@@ -221,7 +221,13 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 //  if ((frame&127) == 0) dump_pdsch_stats(gNB);
   //apply the OFDM symbol rotation here
   for (aa=0; aa<cfg->carrier_config.num_tx_ant.value; aa++) {
-    apply_nr_rotation(fp, &gNB->common_vars.txdataF[aa][txdataF_offset], slot, 0, fp->Ncp == EXTENDED ? 12 : 14, link_type_dl);
+    apply_nr_rotation_TX(fp,
+                         &gNB->common_vars.txdataF[aa][txdataF_offset],
+                         fp->symbol_rotation[0],
+                         slot,
+                         fp->N_RB_DL,
+                         0,
+                         fp->Ncp == EXTENDED ? 12 : 14);
 
     T(T_GNB_PHY_DL_OUTPUT_SIGNAL, T_INT(0),
       T_INT(frame), T_INT(slot),
