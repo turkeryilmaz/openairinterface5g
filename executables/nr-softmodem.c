@@ -732,8 +732,9 @@ int main( int argc, char **argv ) {
      
   printf("[E2-AGENT]: mcc = %d mnc = %d mnc_digit = %d nd_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
 
+  bool init_agent = false;
   init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
-//   }
+  init_agent = true;
 
 #endif // E2_AGENT
 
@@ -793,6 +794,10 @@ int main( int argc, char **argv ) {
   printf("Returned from ITTI signal handler\n");
   oai_exit=1;
   printf("oai_exit=%d\n",oai_exit);
+
+#ifdef E2_AGENT
+  if (init_agent) stop_agent_api();
+#endif
 
   // cleanup
   if (RC.nb_nr_L1_inst > 0)
