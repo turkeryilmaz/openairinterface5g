@@ -1,7 +1,7 @@
-#ifndef RAN_FUNC_SM_RAN_CTRL_READ_WRITE_AGENT_H
-#define RAN_FUNC_SM_RAN_CTRL_READ_WRITE_AGENT_H
+#ifndef NR_RAN_FUNC_SM_RAN_CTRL_READ_WRITE_AGENT_H
+#define NR_RAN_FUNC_SM_RAN_CTRL_READ_WRITE_AGENT_H
 
-#include "../../flexric/src/agent/e2_agent_api.h"
+#include "E2AP/flexric/src/agent/e2_agent_api.h"
 
 void read_rc_sm(void *);
 

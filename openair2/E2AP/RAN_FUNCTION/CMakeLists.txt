@@ -1,2 +1,2 @@
-add_subdirectory(CUSTOMIZED)
-add_subdirectory(O-RAN)
+add_subdirectory(LTE)
+add_subdirectory(NR)

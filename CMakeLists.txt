@@ -285,16 +285,39 @@ set_property(CACHE E2_AGENT PROPERTY STRINGS "ON" "OFF")
 if(E2_AGENT)
   set(E2AP_DIR ${OPENAIR2_DIR}/E2AP)
   include_directories ("${E2AP_DIR}")
+  add_library(nr_e2_ran_func
+          ${E2AP_DIR}/RAN_FUNCTION/NR/init_ran_func.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_gtp.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_mac.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_pdcp.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_rlc.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_slice.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_tc.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/O-RAN/ran_func_kpm.c
+          ${E2AP_DIR}/RAN_FUNCTION/NR/O-RAN/ran_func_rc.c
+          # For testing purposes
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_mac.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_rlc.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_pdcp.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_gtp.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_slice.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_tc.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_kpm.c
+          ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_rc.c
+          ${E2AP_DIR}/flexric/src/util/time_now_us.c
+          )
+  target_link_libraries(nr_e2_ran_func PRIVATE nr_rrc asn1_nr_rrc_hdrs lte_rrc asn1_lte_rrc_hdrs)
+
   add_library(e2_ran_func
-          ${E2AP_DIR}/RAN_FUNCTION/init_ran_func.c
-          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_gtp.c
-          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_mac.c
-          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_pdcp.c
-          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_rlc.c
-          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_slice.c
-          ${E2AP_DIR}/RAN_FUNCTION/CUSTOMIZED/ran_func_tc.c
-          ${E2AP_DIR}/RAN_FUNCTION/O-RAN/ran_func_kpm.c
-          ${E2AP_DIR}/RAN_FUNCTION/O-RAN/ran_func_rc.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/init_ran_func.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/CUSTOMIZED/ran_func_gtp.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/CUSTOMIZED/ran_func_mac.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/CUSTOMIZED/ran_func_pdcp.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/CUSTOMIZED/ran_func_rlc.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/CUSTOMIZED/ran_func_slice.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/CUSTOMIZED/ran_func_tc.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/O-RAN/ran_func_kpm.c
+          ${E2AP_DIR}/RAN_FUNCTION/LTE/O-RAN/ran_func_rc.c
           # For testing purposes
           ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_mac.c
           ${E2AP_DIR}/flexric/test/rnd/fill_rnd_data_rlc.c
@@ -1484,7 +1507,7 @@ target_link_libraries(e1_pdcp_if PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 target_link_libraries(L2_NR PRIVATE f1ap x2ap s1ap ngap nr_rrc e1ap)
 if(E2_AGENT)
-  target_link_libraries(L2_NR PUBLIC e2_agent e2_ran_func)
+  target_link_libraries(L2_NR PUBLIC e2_agent nr_e2_ran_func)
   target_compile_definitions(L2_NR PRIVATE E2_AGENT)
 endif()
 

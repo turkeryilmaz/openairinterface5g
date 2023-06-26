@@ -1,5 +1,5 @@
-#ifndef SM_MAC_READ_WRITE_AGENT_H
-#define SM_MAC_READ_WRITE_AGENT_H
+#ifndef NR_RAN_FUNC_SM_MAC_READ_WRITE_AGENT_H
+#define NR_RAN_FUNC_SM_MAC_READ_WRITE_AGENT_H
 
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
 #include "common/ran_context.h"

@@ -52,6 +52,11 @@
 
 //#undef FRAME_LENGTH_COMPLEX_SAMPLES //there are two conflicting definitions, so we better make sure we don't use it at all
 
+#ifdef E2_AGENT
+#include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
+#include "openair2/E2AP/RAN_FUNCTION/LTE/init_ran_func.h"
+#endif
+
 #include <openair1/PHY/phy_extern_ue.h>
 
 #include "PHY/phy_vars.h"
@@ -519,6 +524,40 @@ int main ( int argc, char **argv )
     pdcp_run(&ctxt);
   }
 
+#ifdef E2_AGENT
+
+  //////////////////////////////////
+  //////////////////////////////////
+  //// Init the E2 Agent
+  sm_io_ag_ran_t io = init_ran_func_ag();
+
+  // OAI Wrapper
+  e2_agent_args_t oai_args = RCconfig_E2agent();
+  AssertFatal(oai_args.sm_dir != NULL , "Please, specify the directory where the SMs are located in the config file, i.e., e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; sm_dir = \"/usr/local/lib/flexric/\");} ");
+  AssertFatal(oai_args.ip != NULL , "Please, specify the IP address of the nearRT-RIC in the config file, i.e., e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; sm_dir = \"/usr/local/lib/flexric/\"");
+
+  fr_args_t args = {.ip = oai_args.ip}; // init_fr_args(0, NULL);
+  memcpy(args.libs_dir, oai_args.sm_dir, 128);
+
+  sleep(1);
+  const eNB_RRC_INST* rrc = RC.rrc[0]; // mod_id = 0
+  assert(rrc != NULL && "rrc cannot be NULL");
+
+  const int mcc = rrc->configuration.mcc[0];
+  const int mnc = rrc->configuration.mnc[0];
+  const int mnc_digit_len = rrc->configuration.mnc_digit_length[0];
+  const ngran_node_t node_type = ngran_eNB;
+  int nb_id = rrc->configuration.cell_identity;
+  int cu_du_id = 0;
+
+  printf("[E2-AGENT]: mcc = %d mnc = %d mnc_digit = %d nd_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+
+  bool init_agent = false;
+  init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
+  init_agent = true;
+
+#endif // E2_AGENT
+
   // init UE_PF_PO and mutex lock
   pthread_mutex_init(&ue_pf_po_mutex, NULL);
   memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*MAX_MOBILES_PER_ENB*MAX_NUM_CCs);
@@ -641,6 +680,10 @@ int main ( int argc, char **argv )
   oai_exit=1;
   LOG_I(ENB_APP,"oai_exit=%d\n",oai_exit);
   // stop threads
+
+#ifdef E2_AGENT
+  if (init_agent) stop_agent_api();
+#endif
 
   #if 0 //Disable clean up because this tends to crash (and unnecessary)
   if (RC.nb_inst == 0) {
