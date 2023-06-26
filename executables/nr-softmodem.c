@@ -721,16 +721,16 @@ int main( int argc, char **argv ) {
   if (node_type == ngran_gNB) {
     nb_id = rrc->configuration.cell_identity;
   } else if (node_type == ngran_gNB_DU) {
-    cu_du_id = rrc->node_id + 1; // Hack to avoid been 0
     nb_id = rrc->configuration.cell_identity;
+    cu_du_id = rrc->configuration.cell_identity;
   } else if (node_type == ngran_gNB_CU) {
-    cu_du_id = rrc->node_id + 1;
     nb_id = rrc->configuration.cell_identity;
+    cu_du_id = rrc->node_id;
   } else {
     LOG_E(NR_RRC, "not supported ran type detect\n");
   }
      
-  printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+  printf("[E2-AGENT]: mcc = %d mnc = %d mnc_digit = %d nd_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
 
   init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
 //   }
