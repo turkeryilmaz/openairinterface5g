@@ -414,7 +414,7 @@ int nr_rx_psbch( PHY_VARS_NR_UE *ue,
       frame_parms->ssb_index += (((result->xtra_byte >> (7 - i)) & 0x01) << (3 + i));
   }
 
-  ue->symbol_offset = 0; 
+  ue->symbol_offset = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * frame_parms->symbols_per_slot + 1; // + 1: The 1st PSBCH symbol
   if (frame_parms->half_frame_bit)
   ue->symbol_offset += (frame_parms->slots_per_frame>>1)*frame_parms->symbols_per_slot;
 
