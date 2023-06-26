@@ -84,7 +84,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
-#include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
+#include "openair2/E2AP/RAN_FUNCTION/NR/init_ran_func.h"
 #endif
 
 
