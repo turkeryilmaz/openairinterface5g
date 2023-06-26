@@ -361,8 +361,8 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
 
         // In the configuration file it is in seconds. For RRC it has to be in milliseconds
         RRCcfg->rrc_inactivity_timer_thres = (*ENBParamList.paramarray[i][ENB_RRC_INACTIVITY_THRES_IDX].uptr) * 1000;
-        RRCcfg->cell_identity = enb_id;
         for(int M=0; M < MAX_NUM_CCs; M++) {
+          RRCcfg->cell_identity[M] = enb_id;
           RRCcfg->tac[M] = *ENBParamList.paramarray[i][ENB_TRACKING_AREA_CODE_IDX].uptr;
           RRCcfg->cellBarred[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__cellBarred_notBarred;
           RRCcfg->intraFreqReselection[M] = LTE_SystemInformationBlockType1__cellAccessRelatedInfo__intraFreqReselection_allowed;

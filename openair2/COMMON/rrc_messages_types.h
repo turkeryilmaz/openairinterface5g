@@ -391,7 +391,7 @@ typedef struct Cell_ActiveParam_s {
 
 // eNB: ENB_APP -> RRC messages
 typedef struct RrcConfigurationReq_s {
-  uint32_t                cell_identity;
+  uint32_t                cell_identity[MAX_NUM_CCs];
   uint16_t                tac[MAX_NUM_CCs];
   long                      cellBarred[MAX_NUM_CCs];
   long                      intraFreqReselection[MAX_NUM_CCs];
