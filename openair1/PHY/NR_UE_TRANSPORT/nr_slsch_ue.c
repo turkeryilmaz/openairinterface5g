@@ -1016,7 +1016,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   uint16_t pssch_start_rb = slsch_ue_rx_harq->start_rb;
   uint16_t start_sym      = slsch_ue_rx_harq->start_symbol;
   uint8_t nb_symb_sch     = slsch_ue_rx_harq->nb_symbols;
-  uint8_t mod_order       = nr_get_Qm_ul(slsch_ue_rx_harq->mcs, 0);
+  uint8_t mod_order       = 2; //nr_get_Qm_ul(slsch_ue_rx_harq->mcs, 0);
   uint16_t dmrs_pos       = slsch_ue_rx_harq->dlDmrsSymbPos;
   uint8_t dmrs_config     = slsch_ue_rx_harq->dmrsConfigType;
   uint8_t SCI2_mod_order  = 2;

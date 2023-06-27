@@ -861,7 +861,7 @@ int slot_to_flag_sl(uint8_t tdd_period, int slot, uint16_t slot_config, uint16_t
 void *UE_thread_SL(void *arg) {
   PHY_VARS_NR_UE *UE = (PHY_VARS_NR_UE *) arg;
   openair0_timestamp timestamp, writeTimestamp;
-  void *rxp[NB_ANTENNAS_RX], *txp[NB_ANTENNAS_TX];
+  void *rxp[UE->frame_parms.nb_antennas_rx], *txp[UE->frame_parms.nb_antennas_tx];
   AssertFatal(0 == openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]), "");
   UE->rfdevice.host_type = RAU_HOST;
   AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");

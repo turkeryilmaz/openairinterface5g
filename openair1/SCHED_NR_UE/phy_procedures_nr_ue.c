@@ -317,9 +317,9 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
       apply_nr_rotation_TX(&ue->frame_parms,
                            ue->common_vars.txdataF[aa],
-                           &ue->frame_parms.symbol_rotation[2],
+                           ue->frame_parms.symbol_rotation[2],
                            slot_tx,
-                           &ue->frame_parms.N_RB_SL,
+                           ue->frame_parms.N_RB_SL,
                            0,
                            1); // Conducts rotation on 0th symbol
       PHY_ofdm_mod((int*)&ue->common_vars.txdataF[aa][txdataF_offset],
@@ -330,9 +330,9 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
                     CYCLIC_PREFIX);
       apply_nr_rotation_TX(&ue->frame_parms,
                            ue->common_vars.txdataF[aa],
-                           &ue->frame_parms.symbol_rotation[2],
+                           ue->frame_parms.symbol_rotation[2],
                            slot_tx,
-                           &ue->frame_parms.N_RB_SL,
+                           ue->frame_parms.N_RB_SL,
                            1,
                            NR_NUMBER_OF_SYMBOLS_PER_SLOT - 1); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
       PHY_ofdm_mod((int*)&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
@@ -1041,9 +1041,9 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
         }
         apply_nr_rotation_RX(&ue->frame_parms,
                              rxdataF[aa],
-                             &ue->frame_parms.symbol_rotation[2],
+                             ue->frame_parms.symbol_rotation[2],
                              slot_rx,
-                             &ue->frame_parms.N_RB_SL,
+                             ue->frame_parms.N_RB_SL,
                              0,
                              0,
                              NR_NUMBER_OF_SYMBOLS_PER_SLOT);

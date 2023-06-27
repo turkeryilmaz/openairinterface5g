@@ -63,16 +63,16 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   int nb_rb = ue->frame_parms.N_RB_SL;
   uint16_t nb_symb_sch = 12;
   uint8_t dmrsConfigType = 0;
-  uint8_t nb_re_dmrs = 6;
+  //uint8_t nb_re_dmrs = 6;
   uint8_t Nl = 1; // number of layers
   uint8_t Imcs = 9;
   uint16_t dmrsSymbPos = 16 + 1024; // symbol 4 and 10
-  uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
+  //uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
   uint16_t start_symbol = 1; // start from 0
 
-  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
-  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
-  unsigned int TBS = get_softmodem_params()->sl_mode != 0 ? 2048 : nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
+  uint8_t mod_order = 2; //nr_get_Qm_ul(Imcs, 0);
+  uint16_t code_rate = 6790; //nr_get_code_rate_ul(Imcs, 0);
+  unsigned int TBS = 2048; //nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
   LOG_I(NR_PHY, "\nTBS %u mod_order %d\n", TBS, mod_order);
 
   NR_UE_DLSCH_t *slsch_ue_rx = ue->slsch_rx[0][0];
@@ -98,7 +98,8 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   rel16_sl_rx->target_code_rate     = code_rate;
   rel16_sl_rx->pssch_data.tb_size   = TBS >> 3; // bytes
   rel16_sl_rx->pssch_data.sci2_size = SCI2_LEN_SIZE >> 3;
-  rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = get_BG(TBS, code_rate);
+  rel16_sl_rx->maintenance_parms_v3.ldpcBaseGraph = 2; // get_BG(TBS, code_rate);
+
   rel16_sl_rx->nr_of_symbols  = nb_symb_sch; // number of symbols per slot
   rel16_sl_rx->start_symbol_index = start_symbol;
   rel16_sl_rx->ul_dmrs_symb_pos = harq->dlDmrsSymbPos;
@@ -135,11 +136,11 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   sci1->mcs = Imcs;
   uint16_t dmrsSymbPos = sci1->dmrs_pattern; // symbol 4 and 10
   uint8_t dmrsConfigType = 0;
-  uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
-  uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
-  uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
+  //uint8_t length_dmrs = get_num_dmrs(dmrsSymbPos);
+  uint16_t code_rate = 6790; //nr_get_code_rate_ul(Imcs, 0);
+  uint8_t mod_order = 2; //nr_get_Qm_ul(Imcs, 0);
   uint16_t N_RE_prime = NR_NB_SC_PER_RB * nb_symb_sch - nb_re_dmrs - N_PRB_oh;
-  unsigned int TBS = get_softmodem_params()->sl_mode != 0 ? 2048 : nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
+  unsigned int TBS = 2048; // nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
 
   harq->pssch_pdu.mcs_index = Imcs;
   harq->pssch_pdu.nrOfLayers = Nl;
