@@ -1123,40 +1123,14 @@ int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
 
   k = nushift;
 
-#ifdef DEBUG_PBCH
-  printf("PSBCH Channel Estimation : gNB_id %d ch_offset %d, OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n", proc->gNB_id, ch_offset, ue->frame_parms.ofdm_symbol_size, ue->frame_parms.Ncp, Ns, k, symbol);
-#endif
+  #ifdef DEBUG_CH
+  printf("PSBCH Channel Estimation : ThreadId %d, gNB_id %d ch_offset %d, OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n",proc->thread_id, gNB_id,ch_offset,ue->frame_parms.ofdm_symbol_size,
+         ue->frame_parms.Ncp,Ns,k, symbol);
+  #endif
 
-  switch (k) {
-  case 0:
-    fl = filt16a_l0;
-    fm = filt16a_m0;
-    fr = filt16a_r0;
-    break;
-
-  case 1:
-    fl = filt16a_l1;
-    fm = filt16a_m1;
-    fr = filt16a_r1;
-    break;
-
-  case 2:
-    fl = filt16a_l2;
-    fm = filt16a_m2;
-    fr = filt16a_r2;
-    break;
-
-  case 3:
-    fl = filt16a_l3;
-    fm = filt16a_m3;
-    fr = filt16a_r3;
-    break;
-
-  default:
-    msg("pbch_channel_estimation: k=%d -> ERROR\n",k);
-    return(-1);
-    break;
-  }
+  fl = (int16_t *)filt16a_l0;
+  fm = (int16_t *)filt16a_m0;
+  fr = (int16_t *)filt16a_r0;
 
   idft_size_idx_t idftsizeidx;
   
