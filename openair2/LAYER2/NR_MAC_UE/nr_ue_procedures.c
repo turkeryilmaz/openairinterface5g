@@ -184,12 +184,6 @@ void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
   mac->scheduling_info.retxBSR_SF = MAC_UE_BSR_TIMER_NOT_RUNNING;
   mac->BSR_reporting_active = BSR_TRIGGER_NONE;
 
-  mac->first_sync_frame = -1;
-  mac->get_sib1 = false;
-  mac->phy_config_request_sent = false;
-  mac->state = UE_NOT_SYNC;
-  memset(&mac->ssb_measurements, 0, sizeof(mac->ssb_measurements));
-
   for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
     LOG_D(NR_MAC, "Applying default logical channel config for LCGID %d\n", i);
     mac->scheduling_info.Bj[i] = -1;
@@ -268,8 +262,6 @@ int8_t nr_ue_decode_mib(module_id_t module_id,
   nr_mac_rrc_data_ind_ue(module_id, cc_id, gNB_index, 0, 0, 0, NR_BCCH_BCH, (uint8_t *) pduP, 3);    //  fixed 3 bytes MIB PDU
     
   AssertFatal(mac->mib != NULL, "nr_ue_decode_mib() mac->mib == NULL\n");
-
-  mac->ssb_measurements.consecutive_bch_failures = 0; // resetting decoding failures
 
   uint16_t frame = (mac->mib->systemFrameNumber.buf[0] >> mac->mib->systemFrameNumber.bits_unused);
   uint16_t frame_number_4lsb = 0;
@@ -806,7 +798,8 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     }
 
     if(rnti != ra->ra_rnti && rnti != SI_RNTI)
-      AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val >= DURATION_RX_TO_TX, "PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d).\n",
+      AssertFatal(1 + dci->pdsch_to_harq_feedback_timing_indicator.val > DURATION_RX_TO_TX,
+                  "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d).\n",
                   1 + dci->pdsch_to_harq_feedback_timing_indicator.val, DURATION_RX_TO_TX);
 
     // set the harq status at MAC for feedback
@@ -1132,8 +1125,9 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
     // according to TS 38.213 Table 9.2.3-1
     uint8_t feedback_ti = pucch_Config->dl_DataToUL_ACK->list.array[dci->pdsch_to_harq_feedback_timing_indicator.val][0];
 
-    AssertFatal(feedback_ti>=DURATION_RX_TO_TX,"PDSCH to HARQ feedback time (%d) cannot be less than DURATION_RX_TO_TX (%d). Min feedback time set in config file (min_rxtxtime).\n",
-                feedback_ti,DURATION_RX_TO_TX);
+    AssertFatal(feedback_ti > DURATION_RX_TO_TX,
+                "PDSCH to HARQ feedback time (%d) needs to be higher than DURATION_RX_TO_TX (%d). Min feedback time set in config file (min_rxtxtime).\n",
+                feedback_ti, DURATION_RX_TO_TX);
 
     // set the harq status at MAC for feedback
     set_harq_status(mac,
@@ -4087,7 +4081,7 @@ int nr_ue_process_rar(nr_downlink_indication_t *dl_info, int pdu_id)
     // MCS
     rar_grant.mcs = (unsigned char) (rar->UL_GRANT_4 >> 4);
     // time alloc
-    rar_grant.Msg3_t_alloc = (unsigned char) (rar->UL_GRANT_3 & 0x07);
+    rar_grant.Msg3_t_alloc = (unsigned char) (rar->UL_GRANT_3 & 0x0f);
     // frequency alloc
     rar_grant.Msg3_f_alloc = (uint16_t) ((rar->UL_GRANT_3 >> 4) | (rar->UL_GRANT_2 << 4) | ((rar->UL_GRANT_1 & 0x03) << 12));
     // frequency hopping

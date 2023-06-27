@@ -2234,13 +2234,12 @@ static const uint16_t table_7_3_1_1_2_32[3][15] = {
     {0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 
-void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs){
-
+void get_delta_arfcn(int i, uint32_t nrarfcn, uint64_t N_OFFs)
+{
   uint32_t delta_arfcn = nrarfcn - N_OFFs;
 
-  if(delta_arfcn%(nr_bandtable[i].step_size)!=0)
-    AssertFatal(1==0, "nrarfcn %u is not on the channel raster for step size %lu", nrarfcn, nr_bandtable[i].step_size);
-
+  if(delta_arfcn % (nr_bandtable[i].step_size) != 0)
+    LOG_E(NR_MAC, "nrarfcn %u is not on the channel raster for step size %lu\n", nrarfcn, nr_bandtable[i].step_size);
 }
 
 uint32_t to_nrarfcn(int nr_bandP,
@@ -2335,17 +2334,16 @@ uint64_t from_nrarfcn(int nr_bandP,
   AssertFatal(nrarfcn >= N_OFFs,"nrarfcn %u < N_OFFs[%d] %llu\n", nrarfcn, nr_bandtable[i].band, (long long unsigned int)N_OFFs);
   get_delta_arfcn(i, nrarfcn, N_OFFs);
 
-  frequency = 1000*(F_REF_Offs_khz + (nrarfcn - N_REF_Offs) * deltaFglobal);
+  frequency = 1000 * (F_REF_Offs_khz + (nrarfcn - N_REF_Offs) * deltaFglobal);
 
-  LOG_I(NR_MAC, "Computing frequency (pointA %llu => %llu KHz (freq_min %llu KHz, NR band %d N_OFFs %llu))\n",
-    (unsigned long long)nrarfcn,
-    (unsigned long long)frequency/1000,
-    (unsigned long long)freq_min,
-    nr_bandP,
-    (unsigned long long)N_OFFs);
+  LOG_D(NR_MAC, "Computing frequency (nrarfcn %llu => %llu KHz (freq_min %llu KHz, NR band %d N_OFFs %llu))\n",
+        (unsigned long long)nrarfcn,
+        (unsigned long long)frequency/1000,
+        (unsigned long long)freq_min,
+        nr_bandP,
+        (unsigned long long)N_OFFs);
 
   return frequency;
-
 }
 
 void nr_get_tbs_dl(nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
@@ -2590,27 +2588,6 @@ uint32_t nr_get_code_rate_ul(uint8_t Imcs, uint8_t table_idx) {
       return 0;
   }
 }
-
-static inline uint8_t is_codeword_disabled(uint8_t format, uint8_t Imcs, uint8_t rv) {
-  return ((format==NFAPI_NR_DL_DCI_FORMAT_1_1)&&(Imcs==26)&&(rv==1));
-}
-
-static inline uint8_t get_table_idx(uint8_t mcs_table, uint8_t dci_format, uint8_t rnti_type, uint8_t ss_type) {
-  if ((mcs_table == NFAPI_NR_MCS_TABLE_QAM256) && (dci_format == NFAPI_NR_DL_DCI_FORMAT_1_1) && ((rnti_type==NFAPI_NR_RNTI_C)||(rnti_type==NFAPI_NR_RNTI_CS)))
-    return 2;
-  else if ((mcs_table == NFAPI_NR_MCS_TABLE_QAM64_LOW_SE) && (rnti_type!=NFAPI_NR_RNTI_new) && (rnti_type==NFAPI_NR_RNTI_C) && (ss_type==NFAPI_NR_SEARCH_SPACE_TYPE_UE_SPECIFIC))
-    return 3;
-  else if (rnti_type==NFAPI_NR_RNTI_new)
-    return 3;
-  else if ((mcs_table == NFAPI_NR_MCS_TABLE_QAM256) && (rnti_type==NFAPI_NR_RNTI_CS) && (dci_format == NFAPI_NR_DL_DCI_FORMAT_1_1))
-    return 2; // Condition mcs_table not configured in sps_config necessary here but not yet implemented
-  /*else if((mcs_table == NFAPI_NR_MCS_TABLE_QAM64_LOW_SE) &&  (rnti_type==NFAPI_NR_RNTI_CS))
-   *  table_idx = 3;
-   * Note: the commented block refers to the case where the mcs_table is from sps_config*/
-  else
-    return 1;
-}
-
 
 // Table 5.1.2.2.1-1 38.214
 uint8_t getRBGSize(uint16_t bwp_size, long rbg_size_config) {
@@ -4225,11 +4202,11 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     case (NR_SubcarrierSpacing_kHz120 << 3) | NR_SubcarrierSpacing_kHz60:
       AssertFatal(index_4msb < 12, "38.213 Table 13-7 4 MSB out of range\n");
-      if(index_4msb & 0x7){
+      if (index_4msb < 8) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 1;
-      }else if(index_4msb & 0x18){
+      } else if (index_4msb < 12) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 2;
-      }else{ ; }
+      }
 
       type0_PDCCH_CSS_config->num_rbs     = table_38213_13_7_c2[index_4msb];
       type0_PDCCH_CSS_config->num_symbols = table_38213_13_7_c3[index_4msb];
@@ -4242,9 +4219,9 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     case (NR_SubcarrierSpacing_kHz120 << 3) | NR_SubcarrierSpacing_kHz120:
       AssertFatal(index_4msb < 8, "38.213 Table 13-8 4 MSB out of range\n");
-      if(index_4msb & 0x3){
+      if (index_4msb < 4) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 1;
-      }else if(index_4msb & 0x0c){
+      } else if (index_4msb < 8) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 3;
       }
 
@@ -4267,9 +4244,9 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     case (NR_SubcarrierSpacing_kHz240 << 3) | NR_SubcarrierSpacing_kHz120:
       AssertFatal(index_4msb < 8, "38.213 Table 13-10 4 MSB out of range\n");
-      if(index_4msb & 0x3){
+      if (index_4msb < 4) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 1;
-      }else if(index_4msb & 0x0c){
+      } else if (index_4msb < 8) {
         type0_PDCCH_CSS_config->type0_pdcch_ss_mux_pattern = 2;
       }
       type0_PDCCH_CSS_config->num_rbs     = table_38213_13_10_c2[index_4msb];

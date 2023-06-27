@@ -91,42 +91,24 @@ void deref_sched_response(int _)
   exit(1);
 }
 
-int nr_postDecode_sim(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req) {
+int nr_postDecode_sim(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req, int *nb_ok)
+{
   ldpcDecode_t *rdata = (ldpcDecode_t*) NotifiedFifoData(req);
   NR_UL_gNB_HARQ_t *ulsch_harq = rdata->ulsch_harq;
-  NR_gNB_ULSCH_t *ulsch = rdata->ulsch;
   int r = rdata->segment_r;
 
   bool decodeSuccess = (rdata->decodeIterations <= rdata->decoderParms.numMaxIter);
   ulsch_harq->processedSegments++;
-  gNB->nbDecode--;
 
   if (decodeSuccess) {
     memcpy(ulsch_harq->b+rdata->offset,
            ulsch_harq->c[r],
            rdata->Kr_bytes - (ulsch_harq->F>>3) -((ulsch_harq->C>1)?3:0));
-  } else {
-    if ( rdata->nbSegments != ulsch_harq->processedSegments ) {
-      int nb=abortTpoolJob(&gNB->threadPool, req->key);
-      nb+=abortNotifiedFIFOJob(&gNB->respDecode, req->key);
-      gNB->nbDecode-=nb;
-      AssertFatal(ulsch_harq->processedSegments+nb == rdata->nbSegments,"processed: %d, aborted: %d, total %d\n",
-      ulsch_harq->processedSegments, nb, rdata->nbSegments);
-      ulsch_harq->processedSegments=rdata->nbSegments;
-      return 1;
-    }
   }
 
-  // if all segments are done 
-  if (rdata->nbSegments == ulsch_harq->processedSegments) {
-    if (decodeSuccess) {
-      return 0;
-    } else {
-      return 1;
-      }
-
-    }
-    ulsch->last_iteration_cnt = rdata->decodeIterations;
+  // if all segments are done
+  if (rdata->nbSegments == ulsch_harq->processedSegments)
+    return *nb_ok == rdata->nbSegments;
   return 0;
 }
 
@@ -504,10 +486,6 @@ int main(int argc, char **argv)
   short channel_output_fixed[16 * 68 * 384];
   short channel_output_uncoded[16 * 68 * 384];
   unsigned int errors_bit_uncoded = 0;
-  unsigned int errors_bit = 0;
-
-  unsigned char test_input_bit[16 * 68 * 384];
-  unsigned char estimated_output_bit[16 * 68 * 384];
 
   /////////////////////////[adk] preparing UL harq_process parameters/////////////////////////
   ///////////
@@ -616,35 +594,18 @@ int main(int argc, char **argv)
                            rel15_ul->qam_mod_order,
                            rel15_ul->nrOfLayers);
 
-      nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul,
-                              frame, subframe, harq_pid, G);
-      while (gNB->nbDecode > 0) {
-        notifiedFIFO_elt_t *req=pullTpool(&gNB->respDecode, &gNB->threadPool);
-        ret = nr_postDecode_sim(gNB, req);
-        delNotifiedFIFO_elt(req);
-      }
+     int nbDecode = nr_ulsch_decoding(gNB, UE_id, channel_output_fixed, frame_parms, rel15_ul, frame, subframe, harq_pid, G);
+     int nb_ok = 0;
+     if (nbDecode > 0)
+       while (nbDecode > 0) {
+         notifiedFIFO_elt_t *req = pullTpool(&gNB->respDecode, &gNB->threadPool);
+         ret = nr_postDecode_sim(gNB, req, &nb_ok);
+         delNotifiedFIFO_elt(req);
+         nbDecode--;
+       }
 
       if (ret)
         n_errors++;
-
-      //count errors
-      errors_bit = 0;
-
-      for (i = 0; i < TBS; i++) {
-        estimated_output_bit[i] = (ulsch_gNB->harq_process->b[i / 8] & (1 << (i & 7))) >> (i & 7);
-        test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-
-        if (estimated_output_bit[i] != test_input_bit[i]) {
-          errors_bit++;
-        }
-      }
-/*
-      if (errors_bit > 0) {
-        n_false_positive++;
-        if (n_trials == 1)
-          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
-      }
-      printf("\n");*/
     }
     
     printf("*****************************************\n");

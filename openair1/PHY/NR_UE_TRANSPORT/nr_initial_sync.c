@@ -254,7 +254,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
     ue->ssb_offset = sync_pos - fp->nb_prefix_samples;
 
 #ifdef DEBUG_INITIAL_SYNCH
-    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos,ue->common_vars.eNb_id);
+    LOG_I(PHY, "[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos, ue->common_vars.nid2);
     LOG_I(PHY,"sync_pos %d ssb_offset %d \n",sync_pos,ue->ssb_offset);
 #endif
 
@@ -300,7 +300,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                               i,
                               is * fp->samples_per_frame + ue->ssb_offset,
                               false,
-                              rxdataF);
+                              rxdataF,
+                              link_type_dl);
 
 #ifdef DEBUG_INITIAL_SYNCH
       LOG_I(PHY,"Calling sss detection (normal CP)\n");
@@ -453,7 +454,7 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
   } else {
 #ifdef DEBUG_INITIAL_SYNC
     LOG_I(PHY,"[UE%d] Initial sync : PBCH not ok\n",ue->Mod_id);
-    LOG_I(PHY,"[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n",ue->Mod_id,sync_pos,ue->common_vars.eNb_id);
+    LOG_I(PHY, "[UE%d] Initial sync : Estimated PSS position %d, Nid2 %d\n", ue->Mod_id, sync_pos, ue->common_vars.nid2);
     LOG_I(PHY,"[UE%d] Initial sync : Estimated Nid_cell %d, Frame_type %d\n",ue->Mod_id,
           frame_parms->Nid_cell,frame_parms->frame_type);
 #endif
@@ -534,7 +535,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                               l, // the UE PHY has no notion of the symbols to be monitored in the search space
                               is*fp->samples_per_frame+phy_pdcch_config->sfn*fp->samples_per_frame+ue->rx_offset,
                               true,
-                              rxdataF);
+                              rxdataF,
+                              link_type_dl);
 
         nr_pdcch_channel_estimation(ue,
                                     proc,
@@ -560,7 +562,8 @@ int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                                   m,
                                   is*fp->samples_per_frame+phy_pdcch_config->sfn*fp->samples_per_frame+ue->rx_offset,
                                   true,
-                                  rxdataF);
+                                  rxdataF,
+                                  link_type_dl);
           }
 
           uint8_t nb_re_dmrs;
