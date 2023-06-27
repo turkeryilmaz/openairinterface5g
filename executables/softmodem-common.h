@@ -58,7 +58,7 @@ extern "C"
 #define CONFIG_HLP_PHYTST        "test UE phy layer, mac disabled\n"
 #define CONFIG_HLP_DORA          "test gNB  and UE with RA procedures\n"
 #define CONFIG_HLP_SA            "run gNB in standalone mode\n"
-#define CONFIG_HLP_SL_MODE       "sets the NR sidelink mode (0: not in sidelink mode, 1: in-coverage/gNB, 2: out-of-coverage/no gNB)"
+#define CONFIG_HLP_SL_MODE       "sets the NR sidelink mode (0: not in sidelink mode, 1: in-coverage/gNB, 2: out-of-coverage/no gNB)\n"
 #define CONFIG_HLP_EXTS          "tells hardware to use an external timing reference\n"
 #define CONFIG_HLP_DMRSSYNC      "tells RU to insert DMRS in subframe 1 slot 0"
 #define CONFIG_HLP_CLK           "tells hardware to use a clock reference (0:internal, 1:external, 2:gpsdo)\n"
@@ -194,6 +194,7 @@ extern int usrp_tx_thread;
 
 // clang-format off
 #define CMDLINE_PARAMS_CHECK_DESC {         \
+    { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
