@@ -86,7 +86,7 @@ static int16_t ssb_index_from_prach(module_id_t module_idP,
   uint8_t fdm = cfg->prach_config.num_prach_fd_occasions.value;
   
   uint8_t total_RApreambles = MAX_NUM_NR_PRACH_PREAMBLES;
-  if( scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->totalNumberOfRA_Preambles != NULL)
+  if(scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->totalNumberOfRA_Preambles != NULL)
     total_RApreambles = *scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->totalNumberOfRA_Preambles;	
   
   float  num_ssb_per_RO = ssb_per_rach_occasion[cfg->prach_config.ssb_per_rach.value];	
@@ -135,7 +135,7 @@ static int16_t ssb_index_from_prach(module_id_t module_idP,
   }
 
   //  prach_occasion_id = subframe_index * N_t_slot * N_RA_slot * fdm + N_RA_slot_index * N_t_slot * fdm + freq_index + fdm * start_symbol_index; 
-  prach_occasion_id = (((frameP % (cc->max_association_period * config_period))/config_period)*cc->total_prach_occasions_per_config_period) +
+  prach_occasion_id = (((frameP % (cc->max_association_period * config_period)) / config_period) * cc->total_prach_occasions_per_config_period) +
                       (RA_sfn_index + slot_index) * N_t_slot * fdm + start_symbol_index * fdm + freq_index; 
 
   //one RO is shared by one or more SSB
@@ -145,7 +145,7 @@ static int16_t ssb_index_from_prach(module_id_t module_idP,
   else if ( num_ssb_per_RO > 1) {
     index = (prach_occasion_id * (int)num_ssb_per_RO)% num_active_ssb ;
     for(int j = 0;j < num_ssb_per_RO;j++) {
-      if(preamble_index <  (((j+1) * total_RApreambles) / num_ssb_per_RO))
+      if(preamble_index <  (((j + 1) * total_RApreambles) / num_ssb_per_RO))
         index = index + j;
     }
   }
@@ -289,37 +289,37 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
 
     uint8_t fdm = cfg->prach_config.num_prach_fd_occasions.value;
     // prach is scheduled according to configuration index and tables 6.3.3.2.2 to 6.3.3.2.4
-    if ( get_nr_prach_info_from_index(config_index,
-                                      (int)frameP,
-                                      (int)slotP,
-                                      scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
-                                      mu,
-                                      cc->frame_type,
-                                      &format,
-                                      &start_symbol,
-                                      &N_t_slot,
-                                      &N_dur,
-                                      &RA_sfn_index,
-                                      &N_RA_slot,
-                                      &config_period) ) {
+    if (get_nr_prach_info_from_index(config_index,
+                                     (int)frameP,
+                                     (int)slotP,
+                                     scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencyPointA,
+                                     mu,
+                                     cc->frame_type,
+                                     &format,
+                                     &start_symbol,
+                                     &N_t_slot,
+                                     &N_dur,
+                                     &RA_sfn_index,
+                                     &N_RA_slot,
+                                     &config_period)) {
 
-      uint16_t format0 = format&0xff;      // first column of format from table
-      uint16_t format1 = (format>>8)&0xff; // second column of format from table
+      uint16_t format0 = format & 0xff;      // first column of format from table
+      uint16_t format1 = (format >> 8) & 0xff; // second column of format from table
 
       if (N_RA_slot > 1) { //more than 1 PRACH slot in a subframe
-        if (slotP%2 == 1)
+        if (slotP % 2 == 1)
           slot_index = 1;
         else
           slot_index = 0;
-      }else if (N_RA_slot <= 1) { //1 PRACH slot in a subframe
+      } else if (N_RA_slot <= 1) { //1 PRACH slot in a subframe
         slot_index = 0;
       }
 
       UL_tti_req->SFN = frameP;
       UL_tti_req->Slot = slotP;
       UL_tti_req->rach_present = 1;
-      for (int fdm_index=0; fdm_index < fdm; fdm_index++) { // one structure per frequency domain occasion
-        for (int td_index=0; td_index<N_t_slot; td_index++) {
+      for (int fdm_index = 0; fdm_index < fdm; fdm_index++) { // one structure per frequency domain occasion
+        for (int td_index = 0; td_index < N_t_slot; td_index++) {
 
           prach_occasion_id = (((frameP % (cc->max_association_period * config_period))/config_period) * cc->total_prach_occasions_per_config_period) +
                               (RA_sfn_index + slot_index) * N_t_slot * fdm + td_index * fdm + fdm_index;
@@ -548,20 +548,6 @@ static void start_ra_contention_resolution_timer(NR_RA_t *ra, const long ra_Cont
         ra->contention_resolution_timer);
 }
 
-static bool beam_is_active(const NR_TDD_UL_DL_Pattern_t *tdd, int mu, const int16_t *tdd_beam_association, int slot, int16_t ra_beam)
-{
-  if (tdd_beam_association == NULL) // no beams configured
-    return true;
-  DevAssert(tdd != NULL);
-
-  const int n_slots_frame = nr_slots_per_frame[mu];
-  uint8_t tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
-  int num_tdd_period = slot / tdd_period_slot;
-  int16_t current_beam = tdd_beam_association[num_tdd_period];
-  return current_beam == -1 /* no beams */
-         || current_beam == ra_beam;
-}
-
 static void nr_generate_Msg3_retransmission(module_id_t module_idP,
                                             int CC_id,
                                             frame_t frame,
@@ -582,14 +568,15 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
   const int sched_slot = (slot + K2) % nr_slots_per_frame[mu];
 
   if (is_xlsch_in_slot(nr_mac->ulsch_slot_bitmap[sched_slot / 64], sched_slot)) {
-    // beam association for FR2
-    if (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] >= 257) {
-      // FR2
-      const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-      if (!beam_is_active(tdd, mu, nr_mac->tdd_beam_association, sched_slot, ra->beam_id))
-        return;
+    const int n_slots_frame = nr_slots_per_frame[mu];
+    bool ret_ul = beam_allocation_procedure(&nr_mac->beam_info, sched_frame, sched_slot, ra->beam_id, n_slots_frame);
+    if (!ret_ul)
+      return;
+    bool ret_dci = beam_allocation_procedure(&nr_mac->beam_info, frame, slot, ra->beam_id, n_slots_frame);
+    if (!ret_dci) {
+      reset_beam_status(&nr_mac->beam_info, sched_frame, sched_slot, ra->beam_id, n_slots_frame);
+      return;
     }
-
     int fh = 0;
     int startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
     int StartSymbolIndex, NrOfSymbols;
@@ -748,7 +735,10 @@ static int get_feasible_msg3_tda(frame_type_t frame_type,
                                  uint64_t ulsch_slot_bitmap[3],
                                  const NR_PUSCH_TimeDomainResourceAllocationList_t *tda_list,
                                  int slots_per_frame,
+                                 int frame,
                                  int slot,
+                                 NR_RA_t *ra,
+                                 NR_beam_info_t *beam_info,
                                  const NR_TDD_UL_DL_Pattern_t *tdd)
 {
   DevAssert(tda_list != NULL);
@@ -764,7 +754,9 @@ static int get_feasible_msg3_tda(frame_type_t frame_type,
   for (int i = 0; i < tda_list->list.count; i++) {
     // check if it is UL
     long k2 = *tda_list->list.array[i]->k2;
-    int temp_slot = (slot + k2 + mu_delta) % slots_per_frame; // msg3 slot according to 8.3 in 38.213
+    int abs_slot = slot + k2 + mu_delta;
+    int temp_frame = (frame + (abs_slot / slots_per_frame)) & 1023;
+    int temp_slot = abs_slot % slots_per_frame; // msg3 slot according to 8.3 in 38.213
     if (!is_xlsch_in_slot(ulsch_slot_bitmap[temp_slot / 64], temp_slot))
       continue;
 
@@ -785,9 +777,14 @@ static int get_feasible_msg3_tda(frame_type_t frame_type,
     if ((slot_mask & msg3_mask) != msg3_mask)
       continue;
 
+    // check if it is possible to allocate MSG3 in a beam in this slot
+    if (!beam_allocation_procedure(beam_info, temp_frame, temp_slot, ra->beam_id, slots_per_frame))
+      continue;
+      
     // is in mixed slot with more or equal than 3 symbols, or UL slot
-    int tda = i;
-    return tda;
+    ra->Msg3_frame = temp_frame;
+    ra->Msg3_slot = temp_slot;
+    return i;
   }
 
   return -1; // invalid
@@ -798,8 +795,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
                              NR_ServingCellConfigCommon_t *scc,
                              sub_frame_t current_slot,
                              frame_t current_frame,
-                             NR_RA_t *ra,
-                             int16_t *tdd_beam_association)
+                             NR_RA_t *ra)
 {
   // msg3 is scheduled in mixed slot in the following TDD period
   DevAssert(ra->Msg3_tda_id >= 0 && ra->Msg3_tda_id < 16);
@@ -812,24 +808,17 @@ static void nr_get_Msg3alloc(module_id_t module_id,
 
   const NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
   int mu = ul_bwp->scs;
-  const int n_slots_frame = nr_slots_per_frame[mu];
 
   int startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
   SLIV2SL(startSymbolAndLength, &ra->msg3_startsymb, &ra->msg3_nbSymb);
 
-  long k2 = *pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->k2;
-  int abs_slot = current_slot + k2 + DELTA[mu];
-  ra->Msg3_slot = abs_slot % n_slots_frame;
-  ra->Msg3_frame = (current_frame + (abs_slot / n_slots_frame)) % 1024;
-
   LOG_I(NR_MAC,
-        "UE %04x: Msg3 scheduled at %d.%d (%d.%d k2 %ld TDA %u)\n",
+        "UE %04x: Msg3 scheduled at %d.%d (%d.%d TDA %u)\n",
         ra->rnti,
         ra->Msg3_frame,
         ra->Msg3_slot,
         current_frame,
         current_slot,
-        k2,
         ra->Msg3_tda_id);
   const int buffer_index = ul_buffer_index(ra->Msg3_frame, ra->Msg3_slot, mu, mac->vrb_map_UL_size);
   uint16_t *vrb_map_UL = &mac->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
@@ -1213,22 +1202,28 @@ static void nr_generate_Msg2(module_id_t module_idP,
     LOG_E(NR_MAC, "UE RA-RNTI %04x TC-RNTI %04x: Msg2 not monitored by UE\n", ra->RA_rnti, ra->rnti);
     return;
   }
+
   const NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  if (!beam_is_active(tdd, ul_bwp->scs, nr_mac->tdd_beam_association, slotP, ra->beam_id)) {
-    LOG_I(NR_MAC, "UE RA-RNTI %04x TC-RNTI %04x: beam %d inactive\n", ra->RA_rnti, ra->rnti, ra->beam_id);
-    return;
-  }
-
   ra->Msg3_tda_id = get_feasible_msg3_tda(cc->frame_type,
                                           DELTA[ul_bwp->scs],
                                           nr_mac->ulsch_slot_bitmap,
                                           ul_bwp->tdaList_Common,
                                           nr_slots_per_frame[ul_bwp->scs],
+                                          frameP,
                                           slotP,
+                                          ra,
+                                          &nr_mac->beam_info,
                                           tdd);
   if (ra->Msg3_tda_id < 0 || ra->Msg3_tda_id > 15) {
     LOG_W(NR_MAC, "UE RNTI %04x %d.%d: infeasible Msg3 TDA\n", ra->rnti, frameP, slotP);
+    return;
+  }
+
+  const int n_slots_frame = nr_slots_per_frame[dl_bwp->scs];
+  bool ret = beam_allocation_procedure(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
+  if (!ret) {
+    reset_beam_status(&nr_mac->beam_info, ra->Msg3_frame, ra->Msg3_slot, ra->beam_id, n_slots_frame);
     return;
   }
 
@@ -1275,6 +1270,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
   if (rbStart > (BWPSize - rbSize)) {
     LOG_W(NR_MAC, "%s(): cannot find free vrb_map for RA RNTI %04x!\n", __func__, ra->RA_rnti);
+    reset_beam_status(&nr_mac->beam_info, ra->Msg3_frame, ra->Msg3_slot, ra->beam_id, n_slots_frame);
+    reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
     return;
   }
 
@@ -1282,6 +1279,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
   nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
   if (dl_req->nPDUs > NFAPI_NR_MAX_DL_TTI_PDUS - 2) {
     LOG_W(NR_MAC, "UE %04x: %d.%d FAPI DL structure is full\n", ra->rnti, frameP, slotP);
+    reset_beam_status(&nr_mac->beam_info, ra->Msg3_frame, ra->Msg3_slot, ra->beam_id, n_slots_frame);
+    reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
     return;
   }
 
@@ -1290,6 +1289,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
   if (CCEIndex < 0) {
     LOG_W(NR_MAC, "UE %04x: %d.%d cannot find free CCE for Msg2!\n", ra->rnti, frameP, slotP);
+    reset_beam_status(&nr_mac->beam_info, ra->Msg3_frame, ra->Msg3_slot, ra->beam_id, n_slots_frame);
+    reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
     return;
   }
 
@@ -1453,7 +1454,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   nfapi_nr_pdu_t *tx_req = &TX_req->pdu_list[TX_req->Number_of_PDUs];
 
   // Program UL processing for Msg3
-  nr_get_Msg3alloc(module_idP, CC_id, scc, slotP, frameP, ra, nr_mac->tdd_beam_association);
+  nr_get_Msg3alloc(module_idP, CC_id, scc, slotP, frameP, ra);
   nr_add_msg3(module_idP, CC_id, frameP, slotP, ra, (uint8_t *)&tx_req->TLVs[0].value.direct[0]);
 
   // Start RA contention resolution timer in Msg3 transmission slot (current slot + K2)
@@ -1753,6 +1754,11 @@ static void nr_generate_Msg4(module_id_t module_idP,
       mac_sdu_length = srb_status.bytes_in_buffer;
     }
 
+    const int n_slots_frame = nr_slots_per_frame[dl_bwp->scs];
+    bool ret = beam_allocation_procedure(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
+    if (!ret)
+      return;
+
     long BWPStart = 0;
     long BWPSize = 0;
     NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config = NULL;
@@ -1777,6 +1783,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
 
     if (CCEIndex < 0) {
       LOG_E(NR_MAC, "%s(): cannot find free CCE for RA RNTI 0x%04x!\n", __func__, ra->rnti);
+      reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
       return;
     }
 
@@ -1784,6 +1791,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
     if (dl_req->nPDUs > NFAPI_NR_MAX_DL_TTI_PDUS - 2) {
       LOG_I(NR_MAC, "UE %04x: %d.%d FAPI DL structure is full\n", ra->rnti, frameP, slotP);
+      reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
       return;
     }
 
@@ -1847,6 +1855,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
 
     if (rbStart > (BWPSize - rbSize)) {
       LOG_E(NR_MAC, "%s(): cannot find free vrb_map for RNTI %04x!\n", __func__, ra->rnti);
+      reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
       return;
     }
 
@@ -1855,9 +1864,10 @@ static void nr_generate_Msg4(module_id_t module_idP,
 
     LOG_D(NR_MAC, "Msg4 r_pucch %d (CCEIndex %d, delta_PRI %d)\n", r_pucch, CCEIndex, delta_PRI);
 
-    int alloc = nr_acknack_scheduling(nr_mac, UE, frameP, slotP, r_pucch, 1);
+    int alloc = nr_acknack_scheduling(nr_mac, UE, frameP, slotP, ra->beam_id, r_pucch, 1);
     if (alloc < 0) {
       LOG_D(NR_MAC,"Couldn't find a pucch allocation for ack nack (msg4) in frame %d slot %d\n",frameP,slotP);
+      reset_beam_status(&nr_mac->beam_info, frameP, slotP, ra->beam_id, n_slots_frame);
       return;
     }
 
