@@ -184,11 +184,8 @@ void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *txUE,
   unsigned int G_SCI2_bits = harq_process_ul_ue->B_sci2;
 
   //////////////////SLSCH data and control multiplexing//////////////
-  uint32_t available_bits = 0;
   uint32_t M_SCI2_bits = G_SCI2_bits * Nl;
   uint32_t M_data_bits = G_slsch_bits;
-  available_bits += M_SCI2_bits;
-  available_bits += M_data_bits;
   uint8_t  SCI2_mod_order = 2;
 
   nr_pssch_data_control_multiplexing(harq_process_ul_ue->f,
@@ -1038,7 +1035,6 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   int avgs = 0;
   int avg[16];
   int32_t median[16];
-  uint32_t rxdataF_ext_offset = 0;
   uint32_t sci2_offset = 0;
   uint32_t data_offset = num_sci2_samples;
   uint32_t diff_re_comp;
@@ -1316,8 +1312,6 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
         memcpy(&slsch_llr_layers_adj[aatx*rxUE->frame_parms.nb_antennas_rx][data_offset * 2],
                 &slsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                 sizeof(uint32_t) * (nb_rb * NR_NB_SC_PER_RB - nb_re_sci1));
-
-        rxdataF_ext_offset += nb_rb * NR_NB_SC_PER_RB - nb_re_sci1;
         data_offset += nb_rb * NR_NB_SC_PER_RB - nb_re_sci1;
       } else {
         if (allocatable_sci2_re > 0) {
@@ -1356,7 +1350,6 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
 
           data_offset += diff_re;
         }
-        rxdataF_ext_offset += nb_rb * NR_NB_SC_PER_RB - nb_re_sci1;
         if (allocatable_sci2_re > 0) {
           nb_re_SCI2 -= allocatable_sci2_re;
         }
