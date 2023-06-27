@@ -273,6 +273,7 @@ int pnf_nr_param_request(nfapi_pnf_config_t *config, nfapi_nr_pnf_param_request_
   resp.pnf_param_general.shared_bands = pnf->shared_bands;
   resp.pnf_param_general.shared_pa = pnf->shared_pa;
   resp.pnf_param_general.maximum_total_power = pnf->max_total_power;
+  resp.num_tlvs = 1;
   resp.pnf_phy.tl.tag = NFAPI_PNF_PHY_TAG;
   resp.pnf_phy.number_of_phys = 1;
 
@@ -295,6 +296,7 @@ int pnf_nr_param_request(nfapi_pnf_config_t *config, nfapi_nr_pnf_param_request_
     for(int j = 0; j < 0; ++j) {
       resp.pnf_phy.phy[i].excluded_rf_config[j].rf_config_index = pnf->phys[i].excluded_rfs[j];
     }
+    resp.num_tlvs++;
   }
   nfapi_nr_pnf_pnf_param_resp(config, &resp);
   return 0;
@@ -1077,6 +1079,10 @@ int nr_config_request(nfapi_pnf_config_t *config, nfapi_pnf_phy_config_t *phy, n
   nfapi_resp.header.message_id = NFAPI_NR_PHY_MSG_TYPE_CONFIG_RESPONSE;
   nfapi_resp.header.phy_id = phy_info->id;
   nfapi_resp.error_code = 0;
+  nfapi_resp.num_invalid_tlvs = 0;
+  nfapi_resp.num_invalid_tlvs_configured_in_idle = 0;
+  nfapi_resp.num_invalid_tlvs_configured_in_running = 0;
+  nfapi_resp.num_missing_tlvs = 0;
   nfapi_nr_pnf_config_resp(config, &nfapi_resp);
   printf("[PNF] Sent NFAPI_PNF_CONFIG_RESPONSE phy_id:%d\n", phy_info->id);
 
