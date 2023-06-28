@@ -123,69 +123,36 @@ void tx_func(void *param)
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
   start_meas(&info->gNB->phy_proc_tx);
 
-  // Moved the scheduler for enabling Rx-Tx separate threads
 
   PHY_VARS_gNB *gNB = info->gNB;
   module_id_t module_id = gNB->Mod_id;
   uint8_t CC_id = gNB->CC_id;
-  NR_IF_Module_t   *ifi        = gNB->if_inst;
-  NR_Sched_Rsp_t   *sched_info;
+  NR_IF_Module_t *ifi = gNB->if_inst;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
 
-  if (NFAPI_MODE != NFAPI_MODE_PNF) {
-      gNB_MAC_INST     *mac        = RC.nrmac[module_id];
-      if (ifi->CC_mask==0) {
-        ifi->current_frame    = frame_tx;
-        ifi->current_slot = slot_tx;
-      } else {
-        AssertFatal(frame_tx!= ifi->current_frame,"CC_mask %x is not full and frame has changed\n",ifi->CC_mask);
-        AssertFatal(slot_tx!= ifi->current_slot,"CC_mask %x is not full and slot has changed\n",ifi->CC_mask);
-      }
 
-      ifi->CC_mask |= (1<<CC_id);
+  if (NFAPI_MODE != NFAPI_MODE_PNF && get_softmodem_params()->reorder_thread_disable) {
+	  gNB_MAC_INST *mac = RC.nrmac[module_id];
 
-      if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
-        /*
-        eNB_dlsch_ulsch_scheduler(module_id,
-            (UL_info->frame+((UL_info->slot>(9-sl_ahead))?1:0)) % 1024,
-            (UL_info->slot+sl_ahead)%10);
-        */
-        nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
-        int spf = get_spf(cfg);
-        sched_info = allocate_sched_response();
-        // clear UL DCI prior to handling ULSCH
-        sched_info->UL_dci_req.numPdus = 0;
-        gNB_dlsch_ulsch_scheduler(module_id,
-                                  (frame_tx + ((slot_tx > (spf - 1)) ? 1 : 0)) % 1024,
-                                  (slot_tx) % spf,
-                                  sched_info);
+	  if (ifi->CC_mask==0) {
+		  ifi->current_frame = frame_tx;
+		  ifi->current_slot = slot_tx;
+	  } else {
+		  AssertFatal(frame_tx != ifi->current_frame,"CC_mask %x is not full and frame has changed\n",ifi->CC_mask);
+		  AssertFatal(slot_tx != ifi->current_slot,"CC_mask %x is not full and slot has changed\n",ifi->CC_mask);
+	  }
 
-        ifi->CC_mask            = 0;
-        sched_info->module_id   = module_id;
-        sched_info->CC_id       = CC_id;
-        sched_info->frame       = (frame_tx + ((slot_tx>(spf-1)) ? 1 : 0)) % 1024;
-        sched_info->slot        = (slot_tx)%spf;
+	  ifi->CC_mask |= (1<<CC_id);
 
-  #ifdef DUMP_FAPI
-        dump_dl(sched_info);
-  #endif
+	  if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
+		  nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
+		  int spf = get_spf(cfg);
+		  int frame = (frame_tx+((slot_tx>(spf-1))?1:0)) & 1023;
+		  int slot = slot_tx%spf;
+		  gNB->if_inst->NR_mac_scheduler(module_id,CC_id,frame,slot);
+	  }
+  }
 
-        AssertFatal(ifi->NR_Schedule_response!=NULL,
-                    "nr_schedule_response is null (mod %d, cc %d)\n",
-                    module_id,
-                    CC_id);
-
-        ifi->NR_Schedule_response(sched_info);
-        LOG_D(NR_PHY,
-              "NR_Schedule_response: SFN SLOT:%d %d dl_pdus:%d\n",
-              sched_info->frame,
-              sched_info->slot,
-              sched_info->DL_req.dl_tti_request_body.nPDUs);
-      }
-    }
-
-
-  // Move ended
 
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
   if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
@@ -326,20 +293,20 @@ void rx_func(void *param)
   gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
 //  pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
-/*
+
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
-  if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
+  if (((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) && !get_softmodem_params()->reorder_thread_disable) {
     notifiedFIFO_elt_t *res;
     processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
     // so no need for checking for right slot
-    if (get_softmodem_params()->reorder_thread_disable) {
+    /*if (get_softmodem_params()->reorder_thread_disable) {
       // call the TX function directly from this thread
       syncMsg = gNB->msgDataTx;
       syncMsg->gNB = gNB; 
       syncMsg->timestamp_tx = info->timestamp_tx;
       tx_func(syncMsg);
-    } else {
+    } else {*/
       res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
       if (res == NULL)
         return; // Tpool has been stopped
@@ -348,7 +315,7 @@ void rx_func(void *param)
       syncMsg->timestamp_tx = info->timestamp_tx;
       res->key = slot_tx;
       pushTpool(&gNB->threadPool, res);
-    }
+    //}
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
     if (res == NULL)
@@ -361,7 +328,7 @@ void rx_func(void *param)
     res->key = slot_tx;
     pushNotifiedFIFO(&gNB->L1_tx_out, res);
   }
-*/
+
 #if 0
   LOG_D(PHY, "rxtx:%lld nfapi:%lld phy:%lld tx:%lld rx:%lld prach:%lld ofdm:%lld ",
         softmodem_stats_rxtx_sf.diff_now, nfapi_meas.diff_now,
@@ -486,9 +453,7 @@ void *tx_reorder_thread(void* param) {
   resL1Reserve = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
   AssertFatal(resL1Reserve != NULL, "pullTpool() did not return start message in %s\n", __func__);
   int next_tx_slot=((processingData_L1tx_t *)NotifiedFifoData(resL1Reserve))->slot;
-  
-  LOG_I(PHY,"tx_reorder_thread started\n");
-  
+
   while (!oai_exit) {
     notifiedFIFO_elt_t *resL1;
     if (resL1Reserve) {
@@ -540,7 +505,6 @@ void init_gNB_Tpool(int inst) {
   initTpool(get_softmodem_params()->threadPoolConfig, &gNB->threadPool, cpumeas(CPUMEAS_GETSTATE));
   // ULSCH decoder result FIFO
   initNotifiedFIFO(&gNB->respDecode);
-
   // L1 RX result FIFO 
   initNotifiedFIFO(&gNB->resp_L1);
   if (!get_softmodem_params()->reorder_thread_disable) {
