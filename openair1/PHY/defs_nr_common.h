@@ -69,10 +69,6 @@
 
 #define NR_PBCH_DMRS_LENGTH 144 // in mod symbols
 #define NR_PBCH_DMRS_LENGTH_DWORD 10 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
-#define NR_PSBCH_MAX_NB_CARRIERS 132
-#define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
-#define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
-#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
 
 /*used for the resource mapping*/
 #define NR_MAX_PDCCH_DMRS_LENGTH 576 // 16(L)*2(QPSK)*3(3 DMRS symbs per REG)*6(REG per CCE)
@@ -184,9 +180,6 @@ struct NR_DL_FRAME_PARMS {
   ///  total Number of Resource Block Groups: this is ceil(N_PRB/P)
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
-
-  uint16_t tdd_slot_config;
-  uint8_t tdd_period;
   uint8_t tdd_config;
   /// Sidelink Cell ID
   uint16_t Nid_SL;
@@ -281,18 +274,9 @@ struct NR_DL_FRAME_PARMS {
   uint8_t ssb_index;
   /// OFDM symbol offset divisor for UL
   uint32_t ofdm_offset_divisor;
+  uint16_t tdd_slot_config;
+  uint8_t tdd_period;
 };
-
-/* NR Sidelink PSBCH payload fields
-   TODO: This will be removed in the future and
-   filled in by the upper layers once developed. */
-typedef struct {
-  uint32_t coverageIndicator : 1;
-  uint32_t tddConfig : 12;
-  uint32_t DFN : 10;
-  uint32_t slotIndex : 7;
-  uint32_t reserved : 2;
-} PSBCH_payload;
 
 /* NR Sidelink PSSCH SCI2 payload fields */
 typedef struct {

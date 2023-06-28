@@ -201,7 +201,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
       // This is H*(PSS) = R* \cdot PSS
       tmp.r = (int16_t)((((int32_t)pss0_ext2[i].r) * pss[i].r)>>15);
       tmp.i = 0;//-pss0_ext2[i].i * pss[i].i;
-      
+
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)

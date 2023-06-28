@@ -580,6 +580,24 @@ typedef struct {
   uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
 } NR_UE_PSBCH;
 
+#define NR_PSBCH_MAX_NB_CARRIERS 132
+#define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
+#define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
+#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+
+/* NR Sidelink PSBCH payload fields
+   TODO: This will be removed in the future and
+   filled in by the upper layers once developed. */
+typedef struct {
+  uint32_t coverageIndicator : 1;
+  uint32_t tddConfig : 12;
+  uint32_t DFN : 10;
+  uint32_t slotIndex : 7;
+  uint32_t reserved : 2;
+} PSBCH_payload;
+
+#define PBCH_A 24
+
 typedef struct {
   int16_t amp;
   bool active;
@@ -640,8 +658,6 @@ typedef struct {
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
   int is_synchronized_sl;
-  /// \brief Indicator that UE lost frame synchronization on Sidelink
-  int lost_sync_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
   /// \brief Indicator that UE is an SynchRef UE

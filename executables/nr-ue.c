@@ -875,8 +875,6 @@ void *UE_thread_SL(void *arg) {
   NR_UE_MAC_INST_t *mac = get_mac_inst(0);
   int timing_advance = UE->timing_advance;
 
-  UE->lost_sync_sl = 0;
-
   UE->is_synchronized_sl = 0;
 
   UE->sync_ref = get_softmodem_params()->sync_ref;

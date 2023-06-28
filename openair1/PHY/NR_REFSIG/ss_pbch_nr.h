@@ -42,12 +42,9 @@
 /* PSS parameters */
 #define  NUMBER_PSS_SEQUENCE          (3)
 #define  NUMBER_PSS_SEQUENCE_SL       (2)
-#define  PSS_SEQ_OFFSET               (0)
-#define  PSS_SEQ_OFFSET_SL            (22)
 #define  PSS_SSS_SUB_CARRIER_START    (56)
 #define  PSS_SSS_SUB_CARRIER_START_SL (2)
 #define  INVALID_PSS_SEQUENCE         (NUMBER_PSS_SEQUENCE)
-#define  INVALID_PSS_SEQUENCE_SL      (NUMBER_PSS_SEQUENCE_SL)
 #define  LENGTH_PSS_NR                (127)
 #define  N_SC_RB                      (12)     /* Resource block size in frequency domain expressed as a number if subcarriers */
 #define  SCALING_PSS_NR               (3)
