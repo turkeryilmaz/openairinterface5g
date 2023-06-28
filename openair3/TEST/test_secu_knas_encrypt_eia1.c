@@ -24,6 +24,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include "test_util.h"
+
 #include "conversions.h"
 #include "secu_defs.h"
 

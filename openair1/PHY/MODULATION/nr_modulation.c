@@ -609,7 +609,7 @@ void init_symbol_rotation(NR_DL_FRAME_PARMS *fp) {
   const double Ncp0=16*64 + (144*64*(1/(float)(1<<fp->numerology_index)));
   const double Ncp1=(144*64*(1/(float)(1<<fp->numerology_index)));
 
-  for (uint8_t ll = 0; ll < sizeof(f)/sizeof(f[0]); ll++){
+  for (uint8_t ll = 0; ll < 2; ll++){
 
     double f0 = f[ll];
     LOG_D(PHY, "Doing symbol rotation calculation for gNB TX/RX, f0 %f Hz, Nsymb %d\n", f0, nsymb);

@@ -69,7 +69,6 @@ void nr_ulsch_16qam_llr(int32_t *rxdataF_comp,
                         uint32_t nb_rb,
                         uint32_t nb_re,
                         uint8_t  symbol)
-
 {
 
 #if defined(__x86_64__) || defined(__i386__)

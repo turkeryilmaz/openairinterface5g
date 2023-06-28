@@ -128,11 +128,6 @@ int main(int argc, char **argv)
   FILE *output_fd = NULL;
   //uint8_t write_output_file = 0;
   int trial, n_trials = 1, n_errors = 0, n_false_positive = 0;
-  unsigned char *estimated_output_bit;
-  unsigned char *test_input_bit;
-  test_input_bit       = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
-  estimated_output_bit = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
-  unsigned int errors_bit    = 0;
   uint8_t n_tx = 1, n_rx = 1, nb_codewords = 1;
   //uint8_t transmission_mode = 1;
   uint16_t Nid_cell = 0;
@@ -152,7 +147,7 @@ int main(int argc, char **argv)
   int loglvl = OAILOG_WARNING;
   uint64_t SSB_positions=0x01;
   uint16_t nb_symb_sch = 12;
-  uint16_t nb_rb = 106;
+  uint16_t nb_rb = 50;
   uint8_t Imcs = 9;
   uint8_t Nl = 1;
   uint8_t max_ldpc_iterations = 5;
@@ -517,7 +512,7 @@ int main(int argc, char **argv)
   ////////////////////////////////////////////////////////////////////////////////////////////
 
   for (i = 0; i < TBS / 8; i++)
-    test_input[i] = (unsigned char) (i+3);//rand();
+    test_input[i] = (unsigned char) rand();
 
 #ifdef DEBUG_NR_ULSCHSIM
   for (i = 0; i < TBS / 8; i++) printf("test_input[i]=%hhu \n",test_input[i]);
@@ -611,26 +606,6 @@ int main(int argc, char **argv)
 
       if (ret)
         n_errors++;
-
-      //count errors
-      errors_bit = 0;
-
-      for (i = 0; i < TBS; i++) {
-        estimated_output_bit[i] = (harq_process_gNB[harq_pid].b[i/8] & (1 << (i & 7))) >> (i & 7);
-        test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
-        printf("tx bit: %u, rx bit: %u\n",test_input_bit[i],estimated_output_bit[i]);
-
-        if (estimated_output_bit[i] != test_input_bit[i]) {
-          errors_bit++;
-        }
-      }
-
-      if (errors_bit > 0) {
-        n_false_positive++;
-        if (n_trials == 1)
-          printf("errors_bit %u (trial %d)\n", errors_bit, trial);
-      }
-      printf("\n");
     }
     
     printf("*****************************************\n");

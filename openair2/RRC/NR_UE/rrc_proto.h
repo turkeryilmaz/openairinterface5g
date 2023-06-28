@@ -158,9 +158,6 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len);
 
 int get_from_lte_ue_fd();
 
-int decode_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP,
-                     uint8_t*               const sdu,
-                     const uint8_t          sdu_len);
 void nr_ue_rrc_timer_trigger(int module_id, int frame, int slot);
 
 void configure_spcell(NR_UE_RRC_INST_t *rrc, NR_SpCellConfig_t *spcell_config);

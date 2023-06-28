@@ -8,8 +8,6 @@
 #include "PHY/NR_ESTIMATION/nr_ul_estimation.h"
 #include "PHY/defs_nr_common.h"
 #include "common/utils/nr/nr_common.h"
-#include "openair1/PHY/NR_TRANSPORT/nr_transport_common_proto.h"
-
 
 //#define DEBUG_CH_COMP
 //#define DEBUG_RB_EXT

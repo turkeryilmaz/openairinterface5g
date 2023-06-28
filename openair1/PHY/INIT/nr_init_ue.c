@@ -781,6 +781,10 @@ void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
   load_dftslib();
   init_context_synchro_nr(frame_parms);
   generate_ul_reference_signal_sequences(SHRT_MAX);
+  if (get_softmodem_params()->sl_mode == 2) {
+    initTpool("n", &ue->threadPool, true);
+    initNotifiedFIFO(&ue->respDecode);
+  }
 }
 
 void phy_term_nr_top(void)

@@ -39,7 +39,6 @@
 #include <stdbool.h>
 #include "common/utils/nr/nr_common.h"
 #include "NR_CellGroupConfig.h"
-#include "openair1/PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 
 #define NR_SHORT_BSR_TABLE_SIZE 32
 #define NR_LONG_BSR_TABLE_SIZE 256

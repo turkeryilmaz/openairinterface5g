@@ -35,8 +35,6 @@
 #include "assertions.h"
 #include "rrc_vars.h"
 #include "MAC/mac.h"
-#include "NR_MAC_UE/mac_defs.h"
-#include "../NR/MESSAGES/asn1_msg.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
 
 typedef uint32_t channel_t;
@@ -61,8 +59,6 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
                               const uint8_t* pduP,
                               const sdu_size_t pdu_len)
 {
-  protocol_ctxt_t ctxt;
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_id, GNB_FLAG_NO, NOT_A_RNTI, frame / 20, frame % 20, gNB_index);
   sdu_size_t sdu_size = 0;
 
   switch(channel){
@@ -121,14 +117,6 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
         itti_send_msg_to_task (TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE( module_id ), message_p);
       }
       break;
-    
-    case MIBSLCH:
-      LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
-      if (decode_MIB_SL_NR(&ctxt, (uint8_t* const) pduP, 5) >= 0)
-        LOG_D(NR_RRC, "Received  MIB_SL: %x.%x.%x.%x.%x\n", pduP[0], pduP[1], pduP[2], pduP[3], pduP[4]);
-      else
-        LOG_E(NR_RRC, "Received bogus MIB_SL\n");
-      break;
 
     default:
       break;
@@ -144,9 +132,6 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
                               const rb_id_t Srb_id,
                               uint8_t *buffer_pP)
 {
-  protocol_ctxt_t ctxt;
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, Mod_idP, GNB_FLAG_NO, NOT_A_RNTI, frameP / 20, frameP % 20, gNB_id);
-  int ret_size = 0;
   switch(Srb_id) {
 
     case CCCH:
@@ -158,13 +143,6 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
       }
 
       return NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size;
-
-    case MIBCH:
-      ret_size = do_MIB_SL_NR(&ctxt, frameP, &NR_UE_rrc_inst[Mod_idP]);
-      memcpy((void*)buffer_pP, (void*)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
-      LOG_D(NR_RRC, "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
-            frameP / 10, frameP % 10, buffer_pP[0], buffer_pP[1], buffer_pP[2], buffer_pP[3], buffer_pP[4]);
-      return (ret_size);
 
     case DCCH:
       AssertFatal(1==0, "SRB1 not implemented yet!\n");

@@ -162,8 +162,8 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
     fp->first_carrier_offset = 0;
   fp->nb_prefix_samples    = fp->ofdm_symbol_size / 128 * 9;
   fp->nb_prefix_samples0   = fp->ofdm_symbol_size / 128 * (9 + (1 << mu));
-  printf("Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d\n",
-        N_RB_DL,fp->first_carrier_offset,fp->nb_prefix_samples,fp->nb_prefix_samples0);
+  LOG_W(PHY,"Init: N_RB_DL %d, first_carrier_offset %d, nb_prefix_samples %d,nb_prefix_samples0 %d, ofdm_symbol_size %d\n",
+        N_RB_DL,fp->first_carrier_offset,fp->nb_prefix_samples,fp->nb_prefix_samples0, fp->ofdm_symbol_size);
 }
 
 uint32_t get_samples_per_slot(int slot, NR_DL_FRAME_PARMS* fp)
@@ -291,16 +291,13 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   uint64_t dl_bw_khz = (12*config->carrier_config.dl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->dl_CarrierFreq = ((dl_bw_khz>>1) + config->carrier_config.dl_frequency)*1000 ;
 
+  LOG_D(PHY,"dl_bw_kHz %lu\n",dl_bw_khz);
+  LOG_D(PHY,"dl_CarrierFreq %lu\n",fp->dl_CarrierFreq);
+
   if (get_softmodem_params()->sl_mode == 2) {
-    uint64_t sl_bw_khz = (12*config->carrier_config.sl_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
+    uint64_t sl_bw_khz = (12 * config->carrier_config.sl_grid_size[config->ssb_config.scs_common]) * (15 << config->ssb_config.scs_common);
     fp->sl_CarrierFreq = ((sl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
-    LOG_D(PHY, "sl_bw_kHz %lu\n", sl_bw_khz);
-    LOG_D(PHY, "sl_frequency %u\n", config->carrier_config.sl_frequency);
-    LOG_D(PHY, "sl_CarrierFreq %lu\n", fp->sl_CarrierFreq);
   }
-  LOG_D(PHY, "dl_bw_kHz %lu\n", dl_bw_khz);
-  LOG_D(PHY, "dl_frequency %u\n", config->carrier_config.dl_frequency);
-  LOG_D(PHY, "dl_CarrierFreq %lu\n", fp->dl_CarrierFreq);
 
   uint64_t ul_bw_khz = (12*config->carrier_config.ul_grid_size[config->ssb_config.scs_common])*(15<<config->ssb_config.scs_common);
   fp->ul_CarrierFreq = ((ul_bw_khz>>1) + config->carrier_config.uplink_frequency)*1000 ;
@@ -400,6 +397,8 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
   frame_parms->get_samples_per_slot = &get_samples_per_slot;
   frame_parms->get_samples_slot_timestamp = &get_samples_slot_timestamp;
   frame_parms->samples_per_frame = 10 * frame_parms->samples_per_subframe;
+
+  LOG_W(PHY, "samples_per_subframe %d/per second %d, wCP %d\n", frame_parms->samples_per_subframe, 1000*frame_parms->samples_per_subframe, frame_parms->samples_per_subframe_wCP);
 
 }
 

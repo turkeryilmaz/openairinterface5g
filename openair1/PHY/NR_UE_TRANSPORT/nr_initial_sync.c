@@ -51,7 +51,7 @@ extern openair0_config_t openair0_cfg[];
 //static  nfapi_nr_config_request_t* config =&config_t;
 int cnt=0;
 
-#define DEBUG_INITIAL_SYNCH 1
+#define DEBUG_INITIAL_SYNCH
 #define DUMP_PBCH_CH_ESTIMATES 0
 
 // create a new node of SSB structure

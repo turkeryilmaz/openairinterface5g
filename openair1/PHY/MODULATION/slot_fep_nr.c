@@ -50,11 +50,9 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  bool is_synced = ue->is_synchronized;
-  if(get_softmodem_params()->sl_mode == 2) {
-    is_synced = ue->is_synchronized_sl;
-  }
-  if (is_synced) {
+
+  if (get_softmodem_params()->sl_mode == 2 && ue->is_synchronized_sl ||
+      get_softmodem_params()->sl_mode != 2 && ue->is_synchronized) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   } else {
@@ -136,13 +134,8 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  if (get_softmodem_params()->sl_mode == 2) {
-    if (ue->is_synchronized_sl) {
-      nb_prefix_samples  = frame_parms->nb_prefix_samples;
-      nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
-    }
-  }
-  if (pbch_decoded) {
+
+  if (pbch_decoded || (get_softmodem_params()->sl_mode == 2 && ue->is_synchronized_sl)) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   }
@@ -254,6 +247,7 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
   rxdata_offset += frame_parms->ofdm_symbol_size * symbol;
 
   // use OFDM symbol from within 1/8th of the CP to avoid ISI
+  rxdata_offset -= (nb_prefix_samples / frame_parms->ofdm_offset_divisor);
 
   int16_t *rxdata_ptr;
 

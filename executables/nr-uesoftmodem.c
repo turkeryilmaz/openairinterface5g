@@ -156,8 +156,9 @@ int     transmission_mode = 1;
 int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
-uint32_t       N_RB_SL    = 106;
-uint64_t SSB_positions = 0x01;
+uint32_t          N_RB_DL = 106;
+uint32_t          N_RB_SL = 106;
+uint64_t    SSB_positions = 0x01;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution
@@ -165,7 +166,6 @@ uint64_t SSB_positions = 0x01;
 uint8_t abstraction_flag=0;
 
 nr_bler_struct nr_bler_data[NR_NUM_MCS];
-nr_bler_struct nr_mimo_bler_data[NR_NUM_MCS];
 
 static void init_bler_table(char*);
 
@@ -542,7 +542,7 @@ int main( int argc, char **argv ) {
 
   init_opt() ;
   load_nrLDPClib(NULL);
-
+ 
   if (ouput_vcd) {
     vcd_signal_dumper_init("/tmp/openair_dump_nrUE.vcd");
   }
@@ -596,7 +596,7 @@ int main( int argc, char **argv ) {
         LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
         nr_phy_config_request_sl(UE[CC_id], N_RB_SL, N_RB_SL, N_RB_SL, CC_id, SSB_positions);
       }
-      if (get_softmodem_params()->sa) {
+      if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
         uint16_t nr_band = get_band(downlink_frequency[CC_id][0],uplink_frequency_offset[CC_id][0]);
         mac->nr_band = nr_band;
         nr_init_frame_parms_ue_sa(&UE[CC_id]->frame_parms,
@@ -623,15 +623,12 @@ int main( int argc, char **argv ) {
     pthread_mutex_init(&ue_pf_po_mutex, NULL);
     memset (&UE_PF_PO[0][0], 0, sizeof(UE_PF_PO_t)*NUMBER_OF_UE_MAX*MAX_NUM_CCs);
     set_latency_target();
-    mlockall(MCL_CURRENT | MCL_FUTURE);
-    if (get_softmodem_params()->sl_mode == 2) {
-      crcTableInit();
-      initTpool("n", &UE[0]->threadPool, true);
-      initNotifiedFIFO(&UE[0]->respDecode);
+
+    if(IS_SOFTMODEM_DOSCOPE_QT) {
+      load_softscope("nrqt",PHY_vars_UE_g[0][0]);
     }
 
     if(IS_SOFTMODEM_DOSCOPE) {
-      load_softscope("nrqt",PHY_vars_UE_g[0][0]);
       load_softscope("nr",PHY_vars_UE_g[0][0]);
     }
 

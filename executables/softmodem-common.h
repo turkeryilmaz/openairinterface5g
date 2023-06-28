@@ -56,7 +56,6 @@ extern "C"
 
 #define CONFIG_HLP_DUMPFRAME     "dump UE received frame to rxsig_frame0.dat and exit\n"
 #define CONFIG_HLP_PHYTST        "test UE phy layer, mac disabled\n"
-#define CONFIG_HLP_SL_PHYTST     "test SL UE phy layer, mac disabled\n"
 #define CONFIG_HLP_DORA          "test gNB  and UE with RA procedures\n"
 #define CONFIG_HLP_SA            "run gNB in standalone mode\n"
 #define CONFIG_HLP_SL_MODE       "sets the NR sidelink mode (0: not in sidelink mode, 1: in-coverage/gNB, 2: out-of-coverage/no gNB)"
@@ -120,7 +119,6 @@ extern "C"
 #define TP_CONFIG           softmodem_params.threadPoolConfig
 #define CONTINUOUS_TX       softmodem_params.continuous_tx
 #define PHY_TEST            softmodem_params.phy_test
-#define SL_PHY_TEST         softmodem_params.sl_phy_test
 #define DO_RA               softmodem_params.do_ra
 #define SA                  softmodem_params.sa
 #define SL_MODE             softmodem_params.sl_mode
@@ -326,7 +324,6 @@ typedef struct {
   char           *threadPoolConfig;
   int            reorder_thread_disable;
   int            phy_test;
-  int            sl_phy_test;
   int            do_ra;
   int            sa;
   uint8_t        sl_mode;
