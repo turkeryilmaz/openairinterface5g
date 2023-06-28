@@ -323,7 +323,7 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   #endif
   ue->slss->slss_id = Nid_SL;
   ue->is_synchronized_sl = 0;
-  ue->UE_fo_compensation = 1;
+  ue->UE_fo_compensation = 0;
   ue->UE_scan_carrier = 1;
   ue->sync_ref = get_softmodem_params()->sync_ref;
   ue->configured = true;
