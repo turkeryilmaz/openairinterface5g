@@ -500,7 +500,10 @@ int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change)
 static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is)
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
-  int *nid2 = (int *)get_softmodem_params()->sl_mode == 0 ? &ue->common_vars.nid2 : &ue->common_vars.N2_id;
+  int *nid2 = (int *)&ue->common_vars.nid2;
+  if (get_softmodem_params()->sl_mode == 2) {
+    *nid2 = (int *)&ue->common_vars.N2_id;
+  }
   int *f_off = (int *)&ue->common_vars.freq_offset;
   unsigned int n, ar, peak_position, pss_source;
   int64_t peak_value;
