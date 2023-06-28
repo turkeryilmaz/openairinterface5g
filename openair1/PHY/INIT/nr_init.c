@@ -38,7 +38,6 @@
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "SCHED_NR/fapi_nr_l1.h"
 #include "nfapi_nr_interface.h"
-#include "executables/softmodem-common.h"
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
 
 

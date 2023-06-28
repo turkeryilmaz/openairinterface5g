@@ -322,7 +322,6 @@ typedef struct {
   char           *threadPoolConfig;
   int            reorder_thread_disable;
   int            phy_test;
-  int            sl_phy_test;
   int            do_ra;
   int            sa;
   uint8_t        sl_mode;

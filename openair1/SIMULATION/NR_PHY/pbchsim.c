@@ -657,7 +657,7 @@ int main(int argc, char **argv)
                                  12);
 
             PHY_ofdm_mod((int *)gNB->common_vars.txdataF[aa],
-            (int *)&txdata[aa][frame_parms->get_samples_slot_timestamp(slot, frame_parms, 0)],
+            (int *)&txdata[aa][frame_parms->get_samples_slot_timestamp(slot,frame_parms,0)],
             frame_parms->ofdm_symbol_size,
             12,
             frame_parms->nb_prefix_samples,

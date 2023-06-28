@@ -60,7 +60,7 @@
 #define SYNCHRO_FFT_SIZE_MAX           (8192)                       /* maximum size of fft for synchronisation */
 
 #define  NO_RATE_CHANGE                (1)
-#define INITIAL_PSS_NR                 (7)
+
 #ifdef PSS_DECIMATOR
   #define  RATE_CHANGE                 (SYNCHRO_FFT_SIZE_MAX/SYNCHRO_FFT_SIZE_PSS)
   #define  SYNCHRO_FFT_SIZE_PSS        (256)
