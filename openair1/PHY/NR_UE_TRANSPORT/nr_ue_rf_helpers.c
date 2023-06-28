@@ -46,6 +46,7 @@ void nr_get_carrier_frequencies(PHY_VARS_NR_UE *ue, uint64_t *dl_carrier, uint64
   }
 }
 
+
 void nr_get_carrier_frequencies_sl(PHY_VARS_NR_UE *ue, uint64_t *sl_carrier) {
 
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
@@ -122,6 +123,7 @@ void nr_rf_card_config_freq(openair0_config_t *openair0_cfg,
 
   }
 }
+
 
 void nr_sl_rf_card_config_freq(PHY_VARS_NR_UE *ue, openair0_config_t *openair0_cfg, int freq_offset) {
 

@@ -165,135 +165,6 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
                      uint8_t first_symbol_flag,
                      uint16_t nb_rb);
 
-/** \fn dlsch_siso(NR_DL_FRAME_PARMS *frame_parms,
-    int32_t **rxdataF_comp,
-    int32_t **rxdataF_comp_i,
-    uint8_t l,
-    uint16_t nb_rb)
-    \brief This function does the first stage of llr computation for SISO, by just extracting the pilots, PBCH and primary/secondary synchronization sequences.
-    @param frame_parms Frame descriptor structure
-    @param rxdataF_comp Compensated channel output
-    @param rxdataF_comp_i Compensated channel output for interference
-    @param l symbol in sub-frame
-    @param nb_rb Number of RBs in this allocation
-*/
-
-void dlsch_siso(NR_DL_FRAME_PARMS *frame_parms,
-                int32_t **rxdataF_comp,
-                int32_t **rxdataF_comp_i,
-                uint8_t l,
-                     uint16_t nb_rb);
-
-/** \fn dlsch_alamouti(NR_DL_FRAME_PARMS *frame_parms,
-    int32_t **rxdataF_comp,
-    int32_t **dl_ch_mag,
-    int32_t **dl_ch_magb,
-    uint8_t symbol,
-    uint16_t nb_rb)
-    \brief This function does Alamouti combining on RX and prepares LLR inputs by skipping pilots, PBCH and primary/secondary synchronization signals.
-    @param frame_parms Frame descriptor structure
-    @param rxdataF_comp Compensated channel output
-    @param dl_ch_mag First squared-magnitude of channel (16QAM and 64QAM) for LLR computation.  Alamouti combining should be performed on this as well. Result is stored in first antenna position
-    @param dl_ch_magb Second squared-magnitude of channel (64QAM only) for LLR computation.  Alamouti combining should be performed on this as well. Result is stored in first antenna position
-    @param symbol Symbol in sub-frame
-    @param nb_rb Number of RBs in this allocation
-*/
-void dlsch_alamouti(NR_DL_FRAME_PARMS *frame_parms,
-                    int32_t **rxdataF_comp,
-                    int32_t **dl_ch_mag,
-                    int32_t **dl_ch_magb,
-                    uint8_t symbol,
-                    uint16_t nb_rb);
-
-/** \fn dlsch_antcyc(NR_DL_FRAME_PARMS *frame_parms,
-    int32_t **rxdataF_comp,
-    int32_t **dl_ch_mag,
-    int32_t **dl_ch_magb,
-    uint8_t symbol,
-    uint16_t nb_rb)
-    \brief This function does antenna selection (based on antenna cycling pattern) on RX and prepares LLR inputs by skipping pilots, PBCH and primary/secondary synchronization signals.  Note that this is not LTE, it is just included for comparison purposes.
-    @param frame_parms Frame descriptor structure
-    @param rxdataF_comp Compensated channel output
-    @param dl_ch_mag First squared-magnitude of channel (16QAM and 64QAM) for LLR computation.  Alamouti combining should be performed on this as well. Result is stored in first antenna position
-    @param dl_ch_magb Second squared-magnitude of channel (64QAM only) for LLR computation.  Alamouti combining should be performed on this as well. Result is stored in first antenna position
-    @param symbol Symbol in sub-frame
-    @param nb_rb Number of RBs in this allocation
-*/
-void dlsch_antcyc(NR_DL_FRAME_PARMS *frame_parms,
-                  int32_t **rxdataF_comp,
-                  int32_t **dl_ch_mag,
-                  int32_t **dl_ch_magb,
-                  uint8_t symbol,
-                  uint16_t nb_rb);
-
-/** \fn dlsch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
-    int32_t **rxdataF_comp,
-    int32_t **rxdataF_comp_i,
-    int32_t **rho,
-    int32_t **rho_i,
-    int32_t **dl_ch_mag,
-    int32_t **dl_ch_magb,
-    uint8_t symbol,
-    uint16_t nb_rb,
-    uint8_t dual_stream_UE)
-
-    \brief This function does maximal-ratio combining for dual-antenna receivers.
-    @param frame_parms Frame descriptor structure
-    @param rxdataF_comp Compensated channel output
-    @param rxdataF_comp_i Compensated channel output for interference
-    @param rho Cross correlation between spatial channels
-    @param rho_i Cross correlation between signal and inteference channels
-    @param dl_ch_mag First squared-magnitude of channel (16QAM and 64QAM) for LLR computation.  Alamouti combining should be performed on this as well. Result is stored in first antenna position
-    @param dl_ch_magb Second squared-magnitude of channel (64QAM only) for LLR computation.  Alamouti combining should be performed on this as well. Result is stored in first antenna position
-    @param symbol Symbol in sub-frame
-    @param nb_rb Number of RBs in this allocation
-    @param dual_stream_UE Flag to indicate dual-stream detection
-*/
-void dlsch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
-                         int32_t **rxdataF_comp,
-                         int32_t **rxdataF_comp_i,
-                         int32_t **rho,
-                         int32_t **rho_i,
-                         int32_t **dl_ch_mag,
-                         int32_t **dl_ch_magb,
-                         int32_t **dl_ch_mag_i,
-                         int32_t **dl_ch_magb_i,
-                         uint8_t symbol,
-                         uint16_t nb_rb,
-                         uint8_t dual_stream_UE);
-
-void dlsch_detection_mrc_TM34(NR_DL_FRAME_PARMS *frame_parms,
-                              NR_UE_PDSCH *lte_ue_pdsch_vars,
-                              int harq_pid,
-                              int round,
-                              unsigned char symbol,
-                              unsigned short nb_rb,
-                              unsigned char dual_stream_UE);
-
-/** \fn dlsch_extract_rbs(int32_t **rxdataF,
-    int32_t **dl_ch_estimates,
-    int32_t **rxdataF_ext,
-    int32_t **dl_ch_estimates_ext,
-    unsigned char symbol
-    uint8_t pilots,
-    uint8_t config_type,
-    unsigned short start_rb,
-    unsigned short nb_rb_pdsch,
-    uint8_t n_dmrs_cdm_groups,
-    uint8_t Nl,
-    NR_DL_FRAME_PARMS *frame_parms,
-    uint16_t dlDmrsSymbPos)
-    \brief This function extracts the received resource blocks, both channel estimates and data symbols,
-    for the current allocation and for multiple layer antenna gNB transmission.
-    @param rxdataF Raw FFT output of received signal
-    @param dl_ch_estimates Channel estimates of current slot
-    @param rxdataF_ext FFT output for RBs in this allocation
-    @param dl_ch_estimates_ext Channel estimates for RBs in this allocation
-    @param Nl nb of antenna layers
-    @param symbol Symbol to extract
-    @param n_dmrs_cdm_groups
-    @param frame_parms Pointer to frame descriptor
-*/
 
 void nr_slsch_extract_rbs(int32_t **rxdataF,
                           NR_UE_PSSCH *pssch_vars,
@@ -305,52 +176,6 @@ void nr_slsch_extract_rbs(int32_t **rxdataF,
                           NR_DL_UE_HARQ_t *harq,
                           int chest_time_type);
 
-/** \fn dlsch_extract_rbs_TM7(int32_t **rxdataF,
-    int32_t **dl_bf_ch_estimates,
-    int32_t **rxdataF_ext,
-    int32_t **dl_bf_ch_estimates_ext,
-    uint32_t *rb_alloc,
-    uint8_t symbol,
-    uint8_t subframe,
-    uint32_t high_speed_flag,
-    NR_DL_FRAME_PARMS *frame_parms)
-    \brief This function extracts the received resource blocks, both channel estimates and data symbols,
-    for the current allocation and for single antenna eNB transmission.
-    @param rxdataF Raw FFT output of received signal
-    @param dl_bf_ch_estimates Beamforming channel estimates of current slot
-    @param rxdataF_ext FFT output for RBs in this allocation
-    @param dl_bf_ch_estimates_ext Beamforming channel estimates for RBs in this allocation
-    @param rb_alloc RB allocation vector
-    @param symbol Symbol to extract
-    @param subframe Subframe number
-    @param high_speed_flag
-    @param frame_parms Pointer to frame descriptor
-*/
-uint16_t dlsch_extract_rbs_TM7(int32_t **rxdataF,
-                               int32_t **dl_bf_ch_estimates,
-                               int32_t **rxdataF_ext,
-                               int32_t **dl_bf_ch_estimates_ext,
-                               uint32_t *rb_alloc,
-                               uint8_t symbol,
-                               uint8_t subframe,
-                               uint32_t high_speed_flag,
-                               NR_DL_FRAME_PARMS *frame_parms);
-
-/** \brief This function performs channel compensation (matched filtering) on the received RBs for this allocation.  In addition, it computes the squared-magnitude of the channel with weightings for 16QAM/64QAM detection as well as dual-stream detection (cross-correlation)
-    @param rxdataF_ext Frequency-domain received signal in RBs to be demodulated
-    @param dl_ch_estimates_ext Frequency-domain channel estimates in RBs to be demodulated
-    @param dl_ch_mag First Channel magnitudes (16QAM/64QAM)
-    @param dl_ch_magb Second weighted Channel magnitudes (64QAM)
-    @param rxdataF_comp Compensated received waveform
-    @param rho Cross-correlation between two spatial channels on each RX antenna
-    @param frame_parms Pointer to frame descriptor
-    @param symbol Symbol on which to operate
-    @param first_symbol_flag set to 1 on first DLSCH symbol
-    @param mod_order Modulation order of allocation
-    @param nb_rb Number of RBs in allocation
-    @param output_shift Rescaling for compensated output (should be energy-normalizing)
-    @param phy_measurements Pointer to UE PHY measurements
-*/
 void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
                                    int nbRx,
                                    c16_t rxdataF_ext[][rx_size_symbol],
@@ -369,19 +194,6 @@ void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
                                    unsigned short nb_rb,
                                    unsigned char output_shift,
                                    PHY_NR_MEASUREMENTS *measurements);
-
-void nr_dlsch_channel_compensation_core(int **rxdataF_ext,
-                                     int **dl_ch_estimates_ext,
-                                     int **dl_ch_mag,
-                                     int **dl_ch_magb,
-                                     int **rxdataF_comp,
-                                     int ***rho,
-                                     unsigned char n_tx,
-                                     unsigned char n_rx,
-                                     unsigned char mod_order,
-                                     unsigned char output_shift,
-                                     int length,
-                                     int start_point);
 
 void nr_dlsch_scale_channel(uint32_t rx_size_symbol,
                             int32_t dl_ch_estimates_ext[][rx_size_symbol],
@@ -423,35 +235,6 @@ uint8_t nr_zero_forcing_rx(uint32_t rx_size_symbol,
                            int shift,
                            unsigned char symbol,
                            int length);
-
-//This function is used to compute multiplications in Hhermitian * H matrix
-void conjch0_mult_ch1(int *ch0,
-                      int *ch1,
-                      int32_t *ch0conj_ch1,
-                      unsigned short nb_rb,
-                      unsigned char output_shift0);
-
-void construct_HhH_elements(int *ch0conj_ch0,
-                         int *ch1conj_ch1,
-                         int *ch2conj_ch2,
-                         int *ch3conj_ch3,
-                         int *ch0conj_ch1,
-                         int *ch1conj_ch0,
-                         int *ch2conj_ch3,
-                         int *ch3conj_ch2,
-                         int32_t *after_mf_00,
-                         int32_t *after_mf_01,
-                         int32_t *after_mf_10,
-                         int32_t *after_mf_11,
-                         unsigned short nb_rb);
-
-void dlsch_channel_level_TM34_meas(int *ch00,
-                                   int *ch01,
-                                   int *ch10,
-                                   int *ch11,
-                                   int *avg_0,
-                                   int *avg_1,
-                                   unsigned short nb_rb);
 
 void nr_dlsch_channel_level(uint32_t rx_size_symbol,
                             int32_t dl_ch_estimates_ext[][rx_size_symbol],
@@ -832,9 +615,9 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t *proc,
                       c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 int nr_psbch_detection(UE_nr_rxtx_proc_t *proc,
-		              PHY_VARS_NR_UE *ue,
-                      int psbch_initial_symbol,
-                      NR_UE_PDCCH_CONFIG *phy_pdcch_config);
+                       PHY_VARS_NR_UE *ue,
+                       int psbch_initial_symbol,
+                       NR_UE_PDCCH_CONFIG *phy_pdcch_config);
 
 #ifndef modOrder
 #define modOrder(I_MCS,I_TBS) ((I_MCS-I_TBS)*2+2) // Find modulation order from I_TBS and I_MCS
@@ -843,12 +626,12 @@ int nr_psbch_detection(UE_nr_rxtx_proc_t *proc,
 int dump_ue_stats(PHY_VARS_NR_UE *phy_vars_ue, UE_nr_rxtx_proc_t *proc, char* buffer, int length, runmode_t mode, int input_level_dBm);
 
 void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
-                 uint16_t N_RB_UL,
-                 NR_DL_FRAME_PARMS* frame_parms);
+                      uint16_t N_RB_UL,
+                      NR_DL_FRAME_PARMS* frame_parms);
 
 int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
-                    PHY_VARS_NR_UE *phy_vars_ue,
-                    int n_frames);
+                       PHY_VARS_NR_UE *phy_vars_ue,
+                       int n_frames);
 
 /*!
   \brief This function performs the initial cell search procedure - PSS detection, SSS detection and PBCH detection.  At the
@@ -875,7 +658,7 @@ void nr_get_carrier_frequencies(PHY_VARS_NR_UE *ue,
 
 /*!
   \brief This function gets the carrier frequencies either from FP or command-line-set global variables, depending on the availability of the latter
-  @param fp         Pointer to frame params
+  @param ue         Pointer to PHY UE
   @param sl_Carrier Pointer to SL carrier to be set
 */
 void nr_get_carrier_frequencies_sl(PHY_VARS_NR_UE *ue,
@@ -899,8 +682,8 @@ void nr_rf_card_config_freq(openair0_config_t *openair0_cfg,
                             int freq_offset);
 
 void nr_sl_rf_card_config_freq(PHY_VARS_NR_UE *ue,
-                            openair0_config_t *openair0_cfg,
-                            int freq_offset);
+                               openair0_config_t *openair0_cfg,
+                               int freq_offset);
 
 void nr_pdcch_unscrambling(int16_t *z,
                            uint16_t scrambling_RNTI,

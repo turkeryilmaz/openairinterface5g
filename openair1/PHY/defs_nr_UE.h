@@ -42,7 +42,6 @@
 #include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 #include "CODING/nrPolar_tools/nr_polar_pssch_defs.h"
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
@@ -237,10 +236,11 @@ typedef struct {
   /// - first index: rx antenna [0..nb_antennas_rx[
   /// - second index: sample [0..2*FRAME_LENGTH_COMPLEX_SAMPLES+2048[
   c16_t **rxdata;
-  /// \brief Holds the received data in the frequency domain.
-  /// For IFFT_FPGA this points to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER.
-  /// - first index: tx antenna [0..nb_antennas_tx[
-  /// - second index: sample [0..FRAME_LENGTH_COMPLEX_SAMPLES_NO_PREFIX[
+
+    /// \brief Holds the received data in time domain.
+  /// Should point to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER.
+  /// - first index: rx antenna [0..nb_antennas_rx[
+  /// - second index: sample [0..2*FRAME_LENGTH_COMPLEX_SAMPLES+2048[
   c16_t **rxdataF;
 
   /// holds output of the sync correlator

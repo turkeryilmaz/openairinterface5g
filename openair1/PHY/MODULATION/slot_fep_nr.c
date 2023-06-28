@@ -51,8 +51,8 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
 
-  if (get_softmodem_params()->sl_mode == 2 && ue->is_synchronized_sl ||
-      get_softmodem_params()->sl_mode != 2 && ue->is_synchronized) {
+  if ((get_softmodem_params()->sl_mode == 2 && ue->is_synchronized_sl) ||
+      (get_softmodem_params()->sl_mode != 2 && ue->is_synchronized)) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   } else {

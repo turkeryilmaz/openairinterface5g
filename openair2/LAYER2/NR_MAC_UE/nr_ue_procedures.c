@@ -242,6 +242,7 @@ int get_rnti_type(NR_UE_MAC_INST_t *mac, uint16_t rnti)
     return rnti_type;
 }
 
+
 int8_t nr_ue_decode_mib(module_id_t module_id,
                         int cc_id,
                         uint8_t gNB_index,

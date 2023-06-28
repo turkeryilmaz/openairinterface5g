@@ -296,7 +296,7 @@ typedef struct {
   /// RNTI type
   uint8_t rnti_type;
   /// Active flag for DLSCH demodulation
-  uint8_t active;
+  bool active;
   /// Structure to hold dlsch config from MAC
   fapi_nr_dl_config_dlsch_pdu_rel15_t dlsch_config;
   /// Number of MIMO layers (streams) 

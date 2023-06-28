@@ -188,12 +188,6 @@ typedef struct {
 typedef struct {
   /// Nfapi ULSCH PDU
   nfapi_nr_pusch_pdu_t ulsch_pdu;
-  /// Nfapi SLSCH PDU
-  nfapi_nr_pssch_pdu_t slsch_pdu;
-  /// Frame where current HARQ round was sent
-  uint32_t frame;
-  /// Slot where current HARQ round was sent
-  uint32_t slot;
   /// Index of current HARQ round for this DLSCH
   uint8_t round;
   bool new_rx;
