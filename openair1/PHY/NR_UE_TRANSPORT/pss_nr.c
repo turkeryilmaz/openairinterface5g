@@ -502,7 +502,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   int *nid2 = (int *)&ue->common_vars.nid2;
   if (get_softmodem_params()->sl_mode == 2) {
-    *nid2 = (int *)&ue->common_vars.N2_id;
+    nid2 = (int *)&ue->common_vars.N2_id;
   }
   int *f_off = (int *)&ue->common_vars.freq_offset;
   unsigned int n, ar, peak_position, pss_source;
