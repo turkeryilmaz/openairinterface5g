@@ -1139,7 +1139,9 @@ void *ru_thread( void *param ) {
   wait_sync("ru_thread");
 
   processingData_L1_t *syncMsg;
-  notifiedFIFO_elt_t *res;
+  processingData_L1tx_t *syncMsgTx;
+
+  notifiedFIFO_elt_t *res, *resTx;
 
   if(!emulate_rf) {
     // Start RF device if any
@@ -1286,10 +1288,12 @@ void *ru_thread( void *param ) {
     // At this point, all information for subframe has been received on FH interface
     if (!get_softmodem_params()->reorder_thread_disable) {
       res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
+      resTx = pullTpool(&gNB->L1_tx_out, &gNB->threadPool);
       if (res == NULL)
         break; // Tpool has been stopped
     } else  {
       res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
+      resTx=newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
     }
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
@@ -1299,10 +1303,22 @@ void *ru_thread( void *param ) {
     syncMsg->slot_tx = proc->tti_tx;
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
-    if (!get_softmodem_params()->reorder_thread_disable) 
+
+    syncMsgTx = (processingData_L1tx_t *)NotifiedFifoData(resTx);
+    syncMsgTx->gNB = gNB;
+    syncMsgTx->frame = proc->frame_tx;
+    syncMsgTx->slot = proc->tti_tx;
+    syncMsgTx->timestamp_tx = proc->timestamp_tx;
+    resTx->key = proc->tti_tx;
+
+    if (!get_softmodem_params()->reorder_thread_disable) {
       pushTpool(&gNB->threadPool, res);
-    else 
+      pushTpool(&gNB->threadPool, resTx);
+    }
+    else {
       pushNotifiedFIFO(&gNB->resp_L1, res);
+      pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
+    }
   }
 
   printf( "Exiting ru_thread \n");

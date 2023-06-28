@@ -56,8 +56,9 @@ void handle_nr_nfapi_ssb_pdu(processingData_L1tx_t *msgTx,int frame,int slot,
   uint8_t i_ssb = dl_tti_pdu->ssb_pdu.ssb_pdu_rel15.SsbBlockIndex;
 
   LOG_D(PHY,"%d.%d : ssb index %d pbch_pdu: %x\n",frame,slot,i_ssb,dl_tti_pdu->ssb_pdu.ssb_pdu_rel15.bchPayload);
-  if (msgTx->ssb[i_ssb].active)
+  if (msgTx->ssb[i_ssb].active) {
     AssertFatal(1==0,"SSB PDU with index %d already active\n",i_ssb);
+  }
   else {
     msgTx->ssb[i_ssb].active = true;
     memcpy((void*)&msgTx->ssb[i_ssb].ssb_pdu,&dl_tti_pdu->ssb_pdu,sizeof(dl_tti_pdu->ssb_pdu));
@@ -142,7 +143,6 @@ void nr_schedule_response(NR_Sched_Rsp_t *Sched_INFO)
 
   AssertFatal(RC.gNB!=NULL,"RC.gNB is null\n");
   AssertFatal(RC.gNB[Mod_id]!=NULL,"RC.gNB[%d] is null\n",Mod_id);
-
   PHY_VARS_gNB *gNB = RC.gNB[Mod_id];
   start_meas(&gNB->schedule_response_stats);
 
