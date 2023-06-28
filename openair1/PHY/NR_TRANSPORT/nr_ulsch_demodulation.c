@@ -1919,7 +1919,8 @@ void inner_rx_compensation_mag_mrc(int *rxF,
   simde__m128i QAM_amp128;
   simde__m128i QAM_amp128b;
   simde__m128i QAM_amp128c;
-  if(m_order == 4) {
+  if(m_order == 2)  output_shift += 3; // ref: nr_ulsch_qpsk_llr(), no need to call QPSK after
+  else if(m_order == 4) {
     QAM_amp128  = simde_mm_set1_epi16(QAM16_n1);
   }
   else if(m_order == 6) {
