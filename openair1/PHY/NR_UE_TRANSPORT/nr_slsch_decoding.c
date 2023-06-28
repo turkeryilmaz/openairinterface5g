@@ -91,7 +91,7 @@ bool nr_ue_sl_postDecode(PHY_VARS_NR_UE *phy_vars_ue, notifiedFIFO_elt_t *req, b
 
   bool decodeSuccess = (rdata->decodeIterations < (1+dlsch->max_ldpc_iterations));
 
-  if (decodeSuccess) {
+  if (1) {
     memcpy(harq_process->b+rdata->offset,
            harq_process->c[r],
            rdata->Kr_bytes - (harq_process->F>>3) -((harq_process->C>1)?3:0));

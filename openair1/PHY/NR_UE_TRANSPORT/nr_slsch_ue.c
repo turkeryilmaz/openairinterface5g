@@ -161,7 +161,7 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   uint8_t mod_order = nr_get_Qm_ul(Imcs, 0);
   uint16_t code_rate = nr_get_code_rate_ul(Imcs, 0);
   unsigned int TBS = 2048;//nr_compute_tbs(mod_order, code_rate, nb_rb, nb_symb_sch, nb_re_dmrs * length_dmrs, 0, 0, Nl);
-  LOG_I(NR_PHY, "\nTBS %u mod_order %d\n", TBS, mod_order);
+  LOG_D(NR_PHY, "\nTBS %u mod_order %d\n", TBS, mod_order);
 
   NR_UE_DLSCH_t *slsch_ue_rx = ue->slsch_rx[0][0][0];
   NR_DL_UE_HARQ_t *harq = slsch_ue_rx->harq_processes[harq_pid];
@@ -250,7 +250,7 @@ void nr_ue_set_slsch(NR_DL_FRAME_PARMS *fp,
   unsigned char *test_input = harq->a;
   uint64_t *sci_input = harq->a_sci2;
 
-  bool payload_type_string = true;
+  bool payload_type_string = false;
   if (payload_type_string) {
     for (int i = 0; i < 32; i++) {
       test_input[i] = get_softmodem_params()->sl_user_msg[i];
