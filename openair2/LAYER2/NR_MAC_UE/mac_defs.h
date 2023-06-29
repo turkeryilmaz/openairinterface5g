@@ -385,6 +385,18 @@ typedef struct NR_UL_TIME_ALIGNMENT {
   int slot;
 } NR_UL_TIME_ALIGNMENT_t;
 
+typedef struct {
+  long  sl_numssb_withinperiod_r16;
+  long  sl_timeoffsetssb_r16;
+  long  sl_timeinterval_r16;
+  long  sl_numssb_withinperiod_r16_copy;
+  long  sl_timeinterval_r16_copy;
+  long  sl_timeoffsetssb_r16_copy;
+  uint16_t slss_id;
+  uint8_t sl_mib_length;
+  uint8_t sl_mib[5];
+} NR_SLSS_t;
+
 /*!\brief Top level UE MAC structure */
 typedef struct {
   NR_UE_L2_STATE_t state;

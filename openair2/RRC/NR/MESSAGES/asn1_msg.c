@@ -245,6 +245,10 @@ uint8_t do_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP, int abs_slot, NR_UE_R
   AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
                enc_rval.failed_type->name, enc_rval.encoded);
 
+  if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
+    xer_fprint(stdout, &asn_DEF_NR_SBCCH_SL_BCH_Message, (void *)&UE->SL_mib_tx);
+  }
+
   return ((enc_rval.encoded + 7) / 8);
 }
 

@@ -403,31 +403,39 @@ void print_sl_preconf_params(NR_SL_PreconfigurationNR_r16_t* sl_preconfiguration
                              NR_SL_BWP_ConfigCommon_r16_t* sl_bwp_conf_cmn,
                              struct NR_SL_ResourcePool_r16* nr_sl_rxpool)
 {
-  LOG_D(NR_RRC, "sl_OffsetDFN: %lu\n", *(sl_preconfigurations->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16));
-  LOG_D(NR_RRC, "sl_NumSSB_WithinPeriod: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16));
-  LOG_D(NR_RRC, "sl_TimeOffsetSSB: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16));
-  LOG_D(NR_RRC, "sl_TimeInterval: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16));
-  LOG_D(NR_RRC, "sl_NumSSB_WithinPeriod: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16));
-  LOG_D(NR_RRC, "sl_TimeOffsetSSB: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16));
-  LOG_D(NR_RRC, "sl_TimeInterval: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16));
-  LOG_D(NR_RRC, "sl_NumSSB_WithinPeriod: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16));
-  LOG_D(NR_RRC, "sl_TimeOffsetSSB: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16));
-  LOG_D(NR_RRC, "sl_TimeInterval: %lu\n", *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16));
-  LOG_D(NR_RRC, "sl_SSID: %lu\n", *(sl_sync_config->sl_SSID_r16));
-  LOG_D(NR_RRC, "syncTxThreshIC: %lu\n", *(sl_sync_config->txParameters_r16.syncTxThreshIC_r16));
-  LOG_D(NR_RRC, "syncTxThreshOoC_r16: %lu\n", *(sl_sync_config->txParameters_r16.syncTxThreshOoC_r16));
-  LOG_D(NR_RRC, "buf: %p\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf);
-  LOG_D(NR_RRC, "size: %lu\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->size);
-  LOG_D(NR_RRC, "bits_unused: %d\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->bits_unused);
-  LOG_D(NR_RRC, "referenceSubcarrierSpacing: %lu\n", sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
-  ->sl_TDD_Configuration_r16->referenceSubcarrierSpacing);
-  LOG_D(NR_RRC, "dl_UL_TransmissionPeriodicity: %lu\n", sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
-  ->sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity);
-  LOG_D(NR_RRC, "sl_LengthSymbols: %lu\n", *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_LengthSymbols_r16));
-  LOG_D(NR_RRC, "sl_StartSymbol: %lu\n", *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_StartSymbol_r16));
-  LOG_D(NR_RRC, "sl_SubchannelSize: %lu\n", *(nr_sl_rxpool->sl_SubchannelSize_r16));
-  LOG_D(NR_RRC, "sl_StartRB_Subchannel_r16: %lu\n", *(nr_sl_rxpool->sl_StartRB_Subchannel_r16));
-  LOG_D(NR_RRC, "sl_NumSubchannel: %lu\n", *(nr_sl_rxpool->sl_NumSubchannel_r16));
+  struct NR_SL_SSB_TimeAllocation_r16 *sl = sl_sync_config->sl_SSB_TimeAllocation1_r16;
+  LOG_D(NR_MAC, "sl_OffsetDFN: %lu\n", *sl_preconfigurations->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16); // Integer (1 ..1000)
+  LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *sl->sl_NumSSB_WithinPeriod_r16);
+  LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *sl->sl_TimeOffsetSSB_r16);
+  LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *sl->sl_TimeInterval_r16);
+
+  sl = sl_sync_config->sl_SSB_TimeAllocation2_r16;
+  LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *sl->sl_NumSSB_WithinPeriod_r16);
+  LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *sl->sl_TimeOffsetSSB_r16);
+  LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *sl->sl_TimeInterval_r16);
+
+  sl = sl_sync_config->sl_SSB_TimeAllocation3_r16;
+  LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *sl->sl_NumSSB_WithinPeriod_r16);
+  LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *sl->sl_TimeOffsetSSB_r16);
+  LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *sl->sl_TimeInterval_r16);
+
+  LOG_D(NR_MAC, "sl_SSID: %lu\n", *sl_sync_config->sl_SSID_r16);
+  LOG_D(NR_MAC, "syncTxThreshIC: %lu\n", *sl_sync_config->txParameters_r16.syncTxThreshIC_r16);
+  LOG_D(NR_MAC, "syncTxThreshOoC_r16: %lu\n", *sl_sync_config->txParameters_r16.syncTxThreshOoC_r16);
+  LOG_D(NR_MAC, "buf: %p\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf);
+  LOG_D(NR_MAC, "size: %lu\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->size);
+  LOG_D(NR_MAC, "bits_unused: %d\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->bits_unused);
+
+  struct NR_TDD_UL_DL_ConfigCommon *sl_TDD_Configuration_r16 = sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16->sl_TDD_Configuration_r16;
+  LOG_D(NR_MAC, "referenceSubcarrierSpacing: %lu\n", sl_TDD_Configuration_r16->referenceSubcarrierSpacing);
+  LOG_D(NR_MAC, "dl_UL_TransmissionPeriodicity: %lu\n", sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity);
+
+  struct NR_SL_BWP_Generic_r16	*sl_BWP_Generic_r16 = sl_bwp_conf_cmn->sl_BWP_Generic_r16;
+  LOG_D(NR_MAC, "sl_LengthSymbols: %lu\n", *sl_BWP_Generic_r16->sl_LengthSymbols_r16);
+  LOG_D(NR_MAC, "sl_StartSymbol: %lu\n", *sl_BWP_Generic_r16->sl_StartSymbol_r16);
+  LOG_D(NR_MAC, "sl_SubchannelSize: %lu\n", *nr_sl_rxpool->sl_SubchannelSize_r16);
+  LOG_D(NR_MAC, "sl_StartRB_Subchannel_r16: %lu\n", *nr_sl_rxpool->sl_StartRB_Subchannel_r16);
+  LOG_D(NR_MAC, "sl_NumSubchannel: %lu\n", *nr_sl_rxpool->sl_NumSubchannel_r16);
 }
 
 void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
@@ -435,44 +443,28 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
   LOG_I(NR_RRC, "Initializing Sidelink Sync configuration for UE\n");
   UE->SL_Preconfiguration[gNB_index] = malloc16_clear(sizeof(NR_SL_PreconfigurationNR_r16_t));
 
-  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16 =
-      malloc16_clear(sizeof(struct NR_SidelinkPreconfigNR_r16__sl_PreconfigFreqInfoList_r16));
-  struct NR_SidelinkPreconfigNR_r16__sl_PreconfigFreqInfoList_r16 *freq_info =
-      UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16;
+  asn1cCalloc(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16, freq_info);
 
   NR_SL_FreqConfigCommon_r16_t *freq_conf_cmn = malloc16_clear(sizeof(NR_SL_FreqConfigCommon_r16_t));
   freq_conf_cmn->sl_SyncConfigList_r16 = malloc16_clear(sizeof(struct NR_SL_SyncConfigList_r16));
-  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16 = malloc16_clear(sizeof(long));
-  *(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16) = 1; // Integer (1 ..1000)
+  asn1cCallocOne(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16, 1); // Integer (1 ..1000)
 
   /*IE SL-SyncConfig */
   NR_SL_SyncConfig_r16_t  *sl_sync_config = malloc16_clear(sizeof(NR_SL_SyncConfig_r16_t));
-  sl_sync_config->sl_SSB_TimeAllocation1_r16 = malloc16_clear(sizeof(NR_SL_SSB_TimeAllocation_r16_t));
-  sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16 = malloc16_clear(sizeof(long));
-  sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16 = malloc16_clear(sizeof(long));
-  sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16 = malloc16_clear(sizeof(long));
+  asn1cCalloc(sl_sync_config->sl_SSB_TimeAllocation1_r16, ta1);
+  asn1cCallocOne(ta1->sl_NumSSB_WithinPeriod_r16, NR_SL_SSB_TimeAllocation_r16__sl_NumSSB_WithinPeriod_r16_n2);
+  asn1cCallocOne(ta1->sl_TimeOffsetSSB_r16, 1);
+  asn1cCallocOne(ta1->sl_TimeInterval_r16, 2);
 
-  *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16) = 1;
-  *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16) = 1;
-  *(sl_sync_config->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16) = 2;
+  asn1cCalloc(sl_sync_config->sl_SSB_TimeAllocation2_r16, ta2);
+  asn1cCallocOne(ta2->sl_NumSSB_WithinPeriod_r16, NR_SL_SSB_TimeAllocation_r16__sl_NumSSB_WithinPeriod_r16_n2);
+  asn1cCallocOne(ta2->sl_TimeOffsetSSB_r16, 1);
+  asn1cCallocOne(ta2->sl_TimeInterval_r16, 2);
 
-  sl_sync_config->sl_SSB_TimeAllocation2_r16 = malloc16_clear(sizeof(NR_SL_SSB_TimeAllocation_r16_t));
-  sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16 = malloc16_clear(sizeof(long));
-  sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16 = malloc16_clear(sizeof(long));
-  sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16 = malloc16_clear(sizeof(long));
-
-  *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_NumSSB_WithinPeriod_r16) = 1;
-  *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeOffsetSSB_r16) = 1;
-  *(sl_sync_config->sl_SSB_TimeAllocation2_r16->sl_TimeInterval_r16) = 2;
-
-  sl_sync_config->sl_SSB_TimeAllocation3_r16 = malloc16_clear(sizeof(NR_SL_SSB_TimeAllocation_r16_t));
-  sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16 = malloc16_clear(sizeof(long));
-  sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16 = malloc16_clear(sizeof(long));
-  sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16 = malloc16_clear(sizeof(long));
-
-  *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_NumSSB_WithinPeriod_r16) = 1;
-  *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeOffsetSSB_r16) = 1;
-  *(sl_sync_config->sl_SSB_TimeAllocation3_r16->sl_TimeInterval_r16) = 2;
+  asn1cCalloc(sl_sync_config->sl_SSB_TimeAllocation3_r16, ta3);
+  asn1cCallocOne(ta3->sl_NumSSB_WithinPeriod_r16, NR_SL_SSB_TimeAllocation_r16__sl_NumSSB_WithinPeriod_r16_n2);
+  asn1cCallocOne(ta3->sl_TimeOffsetSSB_r16, 1);
+  asn1cCallocOne(ta3->sl_TimeInterval_r16, 2);
 
   sl_sync_config->sl_SSID_r16 = malloc16_clear(sizeof(long));
   *(sl_sync_config->sl_SSID_r16) = 338 + get_softmodem_params()->node_number;
@@ -483,11 +475,10 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
   sl_sync_config->txParameters_r16.syncTxThreshOoC_r16 = malloc16_clear(sizeof(long));
   *(sl_sync_config->txParameters_r16.syncTxThreshOoC_r16) = 0; // INTEGER (0..13)
 
-  sl_sync_config->txParameters_r16.syncInfoReserved_r16 = malloc16_clear(sizeof(BIT_STRING_t));
-  sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf = malloc16_clear(sizeof(uint8_t));
-  sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf = NULL;
-  sl_sync_config->txParameters_r16.syncInfoReserved_r16->size = 0;
-  sl_sync_config->txParameters_r16.syncInfoReserved_r16->bits_unused = 1;
+  asn1cCalloc(sl_sync_config->txParameters_r16.syncInfoReserved_r16, syncInfo);
+  syncInfo->buf = malloc16_clear(sizeof(uint8_t));
+  syncInfo->size = 0;
+  syncInfo->bits_unused = 1;
 
   ASN_SEQUENCE_ADD(&freq_conf_cmn->sl_SyncConfigList_r16->list, sl_sync_config);
   ASN_SEQUENCE_ADD(&freq_info->list, freq_conf_cmn);
@@ -498,26 +489,17 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
       freq_info->list.array[0]->sl_BWP_List_r16;
 
   /* TODO SL-PreconfigurationNR, Not all IEs needed for demo*/
-  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16 =
-      malloc16_clear(sizeof(struct NR_SL_PreconfigGeneral_r16));
-  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16->sl_TDD_Configuration_r16 =
-      malloc16_clear(sizeof(struct NR_TDD_UL_DL_ConfigCommon));
-  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
-  ->sl_TDD_Configuration_r16->referenceSubcarrierSpacing = 30;
-  UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16
-  ->sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity = 2;
+  asn1cCalloc(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16, PreconfigGeneral);
+  asn1cCalloc(PreconfigGeneral->sl_TDD_Configuration_r16, TDD_Config);
+  TDD_Config->referenceSubcarrierSpacing = 30;
+  TDD_Config->pattern1.dl_UL_TransmissionPeriodicity = 2;
 
   NR_SL_BWP_ConfigCommon_r16_t *sl_bwp_conf_cmn =
       malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
-  sl_bwp_conf_cmn->sl_BWP_Generic_r16 =
-      malloc16_clear(sizeof(struct NR_SL_BWP_Generic_r16));
-  sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_LengthSymbols_r16 =
-      malloc16_clear(sizeof(long));
 
-  *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_LengthSymbols_r16) = 0; //sym7=0
-  sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_StartSymbol_r16 =
-      malloc16_clear(sizeof(long));
-  *(sl_bwp_conf_cmn->sl_BWP_Generic_r16->sl_StartSymbol_r16) = 0;
+  asn1cCalloc(sl_bwp_conf_cmn->sl_BWP_Generic_r16, BWP_Generic);
+  asn1cCallocOne(BWP_Generic->sl_LengthSymbols_r16, 0);  //sym7 = 0
+  asn1cCallocOne(BWP_Generic->sl_StartSymbol_r16, 0);
 
   sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16 =
       malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16));
@@ -528,16 +510,9 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
   struct NR_SL_ResourcePool_r16  *nr_sl_rxpool =
       malloc16_clear(sizeof(struct NR_SL_ResourcePool_r16));
 
-  nr_sl_rxpool->sl_SubchannelSize_r16 =
-      malloc16_clear(sizeof(long));
-  nr_sl_rxpool->sl_StartRB_Subchannel_r16 =
-      malloc16_clear(sizeof(long));
-  nr_sl_rxpool->sl_NumSubchannel_r16 =
-      malloc16_clear(sizeof(long));
-
-  *(nr_sl_rxpool->sl_SubchannelSize_r16) = 10;
-  *(nr_sl_rxpool->sl_StartRB_Subchannel_r16) = 2;
-  *(nr_sl_rxpool->sl_NumSubchannel_r16) = 1;
+  asn1cCallocOne(nr_sl_rxpool->sl_SubchannelSize_r16, 10);
+  asn1cCallocOne(nr_sl_rxpool->sl_StartRB_Subchannel_r16, 2);
+  asn1cCallocOne(nr_sl_rxpool->sl_NumSubchannel_r16, 1);
 
   ASN_SEQUENCE_ADD(&sl_rxpool_list->list, nr_sl_rxpool);
   ASN_SEQUENCE_ADD(&sl_bwp_list->list, sl_bwp_conf_cmn);
