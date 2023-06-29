@@ -362,7 +362,6 @@ int main(int argc, char **argv)
   //unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
   unsigned int n_errors = 0;
-  unsigned int n_false_positive = 0;
   //double modulated_input[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
   //short channel_output_uncoded[HNA_SIZE];
@@ -379,7 +378,6 @@ int main(int argc, char **argv)
   nr_ue_set_slsch_rx(rxUE, 0);
   for (double SNR = snr0; SNR < snr1; SNR += snr_step) {
     n_errors = 0;
-    n_false_positive = 0;
     errors_bit = 0;
 
     for (int trial = 0; trial < n_trials; trial++) {
@@ -452,7 +450,6 @@ int main(int argc, char **argv)
         }
       }
       if (errors_bit > 0) {
-        n_false_positive++;
           printf("errors_bit %u (trial %d)\n", errors_bit, trial);
       }
     } // trial

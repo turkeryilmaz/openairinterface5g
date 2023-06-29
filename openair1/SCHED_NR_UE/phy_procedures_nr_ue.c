@@ -1065,7 +1065,6 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
   unsigned int errors_bit = 0;
   unsigned char estimated_output_bit[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
-  unsigned int n_false_positive = 0;
   unsigned char test_input[harq->TBS / 8];
   uint32_t frame_tx = 0;
   uint32_t slot_tx = 0;
@@ -1099,7 +1098,6 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
   LOG_D(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
 
   if (errors_bit > 0) {
-    n_false_positive++;
     LOG_D(PHY,"errors_bit %u\n", errors_bit);
     LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
   }
@@ -1112,7 +1110,6 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
   unsigned int errors_bit = 0;
   unsigned char estimated_output_bit[HNA_SIZE];
   unsigned char test_input_bit[HNA_SIZE];
-  unsigned int n_false_positive = 0;
   unsigned char test_input[] = "EpiScience";
   static uint16_t sum_passed = 0;
   static uint16_t sum_failed = 0;
@@ -1139,7 +1136,6 @@ void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
     unsigned char *usr_msg_ptr = &result[0];
     LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
     LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
-    n_false_positive++;
     ++sum_failed;
     LOG_D(PHY,"errors_bit %u\n", errors_bit);
     LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
