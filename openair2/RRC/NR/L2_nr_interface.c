@@ -83,27 +83,13 @@ uint16_t mac_rrc_nr_data_req(const module_id_t Mod_idP,
   // MIBCH
   if ((Srb_id & RAB_OFFSET) == MIBCH) {
 
-    asn_enc_rval_t enc_rval;
-    uint8_t sfn_msb = (uint8_t)((frameP>>4)&0x3f);
+    int encode_size = 3;
     rrc_gNB_carrier_data_t *carrier = &RC.nrrrc[Mod_idP]->carrier;
-    NR_BCCH_BCH_Message_t *mib = &carrier->mib;
-
-    mib->message.choice.mib->systemFrameNumber.buf[0] = sfn_msb << 2;
-    enc_rval = uper_encode_to_buffer(&asn_DEF_NR_BCCH_BCH_Message,
-                                     NULL,
-                                     (void *) mib,
-                                     carrier->MIB,
-                                     24);
-    LOG_D(NR_RRC, "Encoded MIB for frame %d sfn_msb %d (%p), bits %lu\n", frameP, sfn_msb, carrier->MIB,
-          enc_rval.encoded);
-    buffer_pP[0] = carrier->MIB[0];
-    buffer_pP[1] = carrier->MIB[1];
-    buffer_pP[2] = carrier->MIB[2];
+    int encoded = encode_MIB_NR(carrier->mib, frameP, buffer_pP, encode_size);
+    DevAssert(encoded == encode_size);
     LOG_D(NR_RRC, "MIB PDU buffer_pP[0]=%x , buffer_pP[1]=%x, buffer_pP[2]=%x\n", buffer_pP[0], buffer_pP[1],
           buffer_pP[2]);
-    AssertFatal (enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n",
-                 enc_rval.failed_type->name, enc_rval.encoded);
-    return 3;
+    return encode_size;
   }
 
   // TODO BCCH SIB1 SIBs
@@ -147,4 +133,33 @@ int8_t nr_mac_rrc_bwp_switch_req(const module_id_t     module_idP,
   nr_rrc_reconfiguration_req(ue_context_p, &ctxt, dl_bwp_id, ul_bwp_id);
 
   return 0;
+}
+
+void nr_mac_gNB_rrc_ul_failure(const module_id_t Mod_instP,
+                               const int CC_idP,
+                               const frame_t frameP,
+                               const sub_frame_t subframeP,
+                               const rnti_t rntiP) {
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[Mod_instP], rntiP);
+
+  if (ue_context_p != NULL) {
+    LOG_D(RRC,"Frame %d, Subframe %d: UE %x UL failure, activating timer\n",frameP,subframeP,rntiP);
+    if(ue_context_p->ue_context.ul_failure_timer == 0)
+      ue_context_p->ue_context.ul_failure_timer=1;
+  } else {
+    LOG_D(RRC,"Frame %d, Subframe %d: UL failure: UE %x unknown \n",frameP,subframeP,rntiP);
+  }
+}
+
+void nr_mac_gNB_rrc_ul_failure_reset(const module_id_t Mod_instP,
+                                     const frame_t frameP,
+                                     const sub_frame_t subframeP,
+                                     const rnti_t rntiP) {
+  rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(RC.nrrrc[Mod_instP], rntiP);
+  if (ue_context_p != NULL) {
+    LOG_W(RRC,"Frame %d, Subframe %d: UE %x UL failure reset, deactivating timer\n",frameP,subframeP,rntiP);
+    ue_context_p->ue_context.ul_failure_timer=0;
+  } else {
+    LOG_W(RRC,"Frame %d, Subframe %d: UL failure reset: UE %x unknown \n",frameP,subframeP,rntiP);
+  }
 }
