@@ -285,7 +285,7 @@ void fh_if5_south_out(RU_t *ru, int frame, int slot, uint64_t timestamp) {
   for (int aid=0;aid<ru->nb_tx;aid++) buffs[aid] = (void*)&ru->common.txdata[aid][offset]; 
   struct timespec txmeas;
   clock_gettime(CLOCK_MONOTONIC, &txmeas);
-  LOG_D(PHY,"IF5 TX %d.%d, TS %llu, buffs[0] %p, buffs[1] %p ener0 %f dB, tx start %d\n",frame,slot,(unsigned long long)timestamp,buffs[0],buffs[1],
+  LOG_I(PHY,"IF5 TX %d.%d, TS %llu, buffs[0] %p, buffs[1] %p ener0 %f dB, tx start %d\n",frame,slot,(unsigned long long)timestamp,buffs[0],buffs[1],
   10*log10((double)signal_energy(buffs[0],ru->nr_frame_parms->get_samples_per_slot(slot,ru->nr_frame_parms))),(int)txmeas.tv_nsec);
   ru->ifdevice.trx_write_func2(&ru->ifdevice,
   		               timestamp,
@@ -1023,7 +1023,7 @@ void ru_tx_func(void *param) {
   clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.start_RU_TX[rt_prof_idx]);
   // do TX front-end processing if needed (precoding and/or IDFTs)
   if (ru->feptx_prec) ru->feptx_prec(ru,frame_tx,slot_tx);
-
+  LOG_I(NR_PHY,"TX %d.%d TS %llu\n",frame_tx,slot_tx,info->timestamp_tx);
   // do OFDM with/without TX front-end processing  if needed
   if ((ru->fh_north_asynch_in == NULL) && (ru->feptx_ofdm)) ru->feptx_ofdm(ru,frame_tx,slot_tx);
 
@@ -1207,7 +1207,7 @@ void *ru_thread( void *param ) {
     else AssertFatal(1==0, "No fronthaul interface at south port");
 
 
-    if (initial_wait == 1 && proc->frame_rx < 300 && ru->fh_south_in == rx_rf) {
+    if (initial_wait == 1 && proc->frame_rx < 300 /*&& ru->fh_south_in == rx_rf*/) {
        if (proc->frame_rx>0 && ((proc->frame_rx % 100) == 0) && proc->tti_rx==0) {
           LOG_I(PHY,"delay processing to let RX stream settle, frame %d (trials %d)\n",proc->frame_rx,ru->rx_fhaul.trials);
           print_meas(&ru->rx_fhaul,"rx_fhaul",NULL,NULL);
