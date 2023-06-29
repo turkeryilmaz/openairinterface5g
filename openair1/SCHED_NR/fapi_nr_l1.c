@@ -60,6 +60,7 @@ void handle_nr_nfapi_ssb_pdu(processingData_L1tx_t *msgTx,int frame,int slot,
     AssertFatal(1==0,"SSB PDU with index %d already active\n",i_ssb);
   }
   else {
+	LOG_I(PHY, "SSB Not active, making it active:%d\n",i_ssb);
     msgTx->ssb[i_ssb].active = true;
     memcpy((void*)&msgTx->ssb[i_ssb].ssb_pdu,&dl_tti_pdu->ssb_pdu,sizeof(dl_tti_pdu->ssb_pdu));
   }

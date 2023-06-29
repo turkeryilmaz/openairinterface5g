@@ -167,7 +167,9 @@ void phy_procedures_gNB_TX(processingData_L1tx_t *msgTx,
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_PROCEDURES_gNB_COMMON_TX,1);
   for (int i=0; i<fp->Lmax; i++) {
+	  LOG_I(PHY, "SSB: %d.%d\n",i, msgTx->ssb[i].active);
     if (msgTx->ssb[i].active) {
+      LOG_I(PHY, "PHY PROC SSB Active, making it inactive:%d\n",i);
       nr_common_signal_procedures(gNB,frame,slot,msgTx->ssb[i].ssb_pdu);
       msgTx->ssb[i].active = false;
     }
