@@ -1391,6 +1391,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                           -1,
                           layer_llr);
   int16_t *dst_data = llr[0] + num_sci2_symbs * slsch_ue_rx_harq->Nl;
+  int16_t *src_data = layer_llr[0] + num_sci2_symbs;
+  for (int i = 0; i < NR_MAX_NB_LAYERS; i++)
+    free(layer_llr[i]);
   // For Data
   nr_dlsch_layer_demapping(&dst_data,
                           Nl,
@@ -1398,7 +1401,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                           num_data_symbs,
                           slsch_ue_rx_harq->codeword,
                           -1,
-                          &layer_llr[0] + num_sci2_symbs);
+                          &src_data);
   ////////////////////////////////////////////////////////
   /////////////// Unscrambling ///////////////////////////
   nr_codeword_unscrambling_sl(llr[0], multiplex_input_len,
@@ -1415,6 +1418,8 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                             slsch_ue_rx->harq_processes[0], frame,
                             nb_symb_sch, slot, harq_pid);
   ///////////////////////////////////////////////////////
+  for (int i = 0; i < nb_codewords; i++)
+    free(llr[i]);
   return ret;
 
 }
