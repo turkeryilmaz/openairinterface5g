@@ -206,13 +206,13 @@ void nr_dlsch_scale_channel(uint32_t rx_size_symbol,
                             unsigned short nb_rb);
 
 /* Apply layer demapping */
-void nr_dlsch_layer_demapping(int16_t **llr_cw,
+void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
                               uint8_t Nl,
                               uint8_t mod_order,
                               uint32_t length,
                               int32_t codeword_TB0,
                               int32_t codeword_TB1,
-                              int16_t **llr_layers);
+                              int16_t *llr_layers[NR_MAX_NB_LAYERS]) ;
 
 void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint8_t start_symbol,

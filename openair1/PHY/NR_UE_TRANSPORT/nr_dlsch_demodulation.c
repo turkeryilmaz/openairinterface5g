@@ -2103,12 +2103,12 @@ uint8_t nr_zero_forcing_rx(uint32_t rx_size_symbol,
 }
 
 void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
-                                     uint8_t Nl,
-                                     uint8_t mod_order,
-                                     uint32_t length,
-                                     int32_t codeword_TB0,
-                                     int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]) {
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int32_t codeword_TB0,
+                              int32_t codeword_TB1,
+                              int16_t *llr_layers[NR_MAX_NB_LAYERS]) {
 
   switch (Nl) {
     case 1:

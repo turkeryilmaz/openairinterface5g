@@ -85,6 +85,7 @@ void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid)
   harq->dlDmrsSymbPos = dmrsSymbPos;
   harq->mcs = Imcs;
   harq->dmrsConfigType = dmrsConfigType;
+  harq->n_dmrs_cdm_groups = 1;
   harq->R = code_rate;
   harq->nb_symbols = nb_symb_sch;
   harq->codeword = 0;

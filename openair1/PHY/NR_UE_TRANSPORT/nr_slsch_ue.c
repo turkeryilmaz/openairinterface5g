@@ -1003,12 +1003,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                             uint32_t Nidx,
                             UE_nr_rxtx_proc_t *proc) {
   int UE_id = 0;
-  int16_t **slsch_llr = rxUE->pssch_vars[UE_id]->llr;
-  int16_t **slsch_llr_layers = rxUE->pssch_vars[UE_id]->llr_layers;
-  int16_t **slsch_llr_layers_adj = rxUE->pssch_vars[UE_id]->llr_layers_adj;
   NR_UE_DLSCH_t *slsch_ue_rx = rxUE->slsch_rx[0][0];
   NR_DL_UE_HARQ_t *slsch_ue_rx_harq = slsch_ue_rx->harq_processes[harq_pid];
-  uint16_t nb_rb          = slsch_ue_rx_harq->nb_rb ;
+  uint16_t nb_rb          = slsch_ue_rx_harq->nb_rb;
   uint16_t bwp_start      = slsch_ue_rx_harq->BWPStart;
   uint16_t pssch_start_rb = slsch_ue_rx_harq->start_rb;
   uint16_t start_sym      = slsch_ue_rx_harq->start_symbol;
@@ -1019,14 +1016,31 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   uint8_t SCI2_mod_order  = 2;
   uint8_t Nl              = slsch_ue_rx_harq->Nl;
   // TODO: has to be checked if rx has access to these info.
-  int nb_re_SCI2 = slsch_ue_rx->harq_processes[0]->B_sci2/SCI2_mod_order;
-  uint8_t nb_re_dmrs = 6 * slsch_ue_rx_harq->n_dmrs_cdm_groups;
+  int nb_re_SCI2 = slsch_ue_rx->harq_processes[0]->B_sci2 / SCI2_mod_order;
+
+  uint8_t nb_re_dmrs;
+  if (slsch_ue_rx_harq->dmrsConfigType == NFAPI_NR_DMRS_TYPE1) {
+    nb_re_dmrs = 6 * slsch_ue_rx_harq->n_dmrs_cdm_groups;
+  } else {
+    nb_re_dmrs = 4 * slsch_ue_rx_harq->n_dmrs_cdm_groups;
+  }
   uint32_t dmrs_data_re = 12 - nb_re_dmrs;
-  uint16_t length_dmrs = get_num_dmrs(dmrs_pos);
+  uint16_t dmrs_len = get_num_dmrs(slsch_ue_rx_harq->dlDmrsSymbPos);
   uint32_t rx_size_symbol = rxUE->slsch_rx[0][0]->dlsch_config.number_rbs * NR_NB_SC_PER_RB;
   unsigned int G = nr_get_G(nb_rb, nb_symb_sch,
-                            nb_re_dmrs, length_dmrs, mod_order,
+                            nb_re_dmrs, dmrs_len, mod_order,
                             Nl);
+  const uint32_t rx_llr_buf_sz = ((G + 15) / 16) * 16;
+  const uint32_t nb_codewords = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
+  int16_t* llr[2];
+  for (int i = 0; i < nb_codewords; i++) {
+    llr[i] = (int16_t *)malloc16_clear(rx_llr_buf_sz * sizeof(int16_t));
+  }
+  int16_t* layer_llr[NR_MAX_NB_LAYERS];
+  const uint32_t rx_llr_layer_size = (G + Nl - 1) / Nl;
+  for (int i=0; i < NR_MAX_NB_LAYERS; i++)
+    layer_llr[i] = (int16_t *)malloc16_clear(rx_llr_layer_size*sizeof(int16_t));
+  int16_t **slsch_llr_layers = rxUE->pssch_vars[UE_id]->llr_layers;
   uint16_t num_data_symbs = (G << 1) / mod_order;
   uint32_t M_SCI2_bits = slsch_ue_rx->harq_processes[0]->B_sci2 * Nl;
   uint16_t num_sci2_symbs = (M_SCI2_bits << 1) / SCI2_mod_order;
@@ -1309,7 +1323,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                              sym,
                              mod_order);
 
-        memcpy(&slsch_llr_layers_adj[aatx*rxUE->frame_parms.nb_antennas_rx][data_offset * 2],
+        memcpy(&layer_llr[aatx*rxUE->frame_parms.nb_antennas_rx][data_offset * 2],
                 &slsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB],
                 sizeof(uint32_t) * (nb_rb * NR_NB_SC_PER_RB - nb_re_sci1));
         data_offset += nb_rb * NR_NB_SC_PER_RB - nb_re_sci1;
@@ -1325,9 +1339,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                                sym,
                                SCI2_mod_order);
 
-          memcpy(&slsch_llr_layers_adj[aatx*rxUE->frame_parms.nb_antennas_rx][sci2_offset * 2],
-                  &slsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB],
-                  sizeof(uint32_t) * allocatable_sci2_re);
+          memcpy(&layer_llr[aatx*rxUE->frame_parms.nb_antennas_rx][sci2_offset * 2],
+                 &slsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * slsch_ue_rx_harq->nb_rb * NR_NB_SC_PER_RB],
+                 sizeof(uint32_t) * allocatable_sci2_re);
 
           sci2_offset += allocatable_sci2_re;
         }
@@ -1344,9 +1358,9 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                                sym,
                                mod_order);
 
-          memcpy(&slsch_llr_layers_adj[aatx*rxUE->frame_parms.nb_antennas_rx][data_offset * 2],
-                &slsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB + offset],
-                sizeof(uint32_t) * diff_re);
+          memcpy(&layer_llr[aatx*rxUE->frame_parms.nb_antennas_rx][data_offset * 2],
+                 &slsch_llr_layers[aatx*rxUE->frame_parms.nb_antennas_rx][sym * nb_rb * NR_NB_SC_PER_RB + offset],
+                 sizeof(uint32_t) * diff_re);
 
           data_offset += diff_re;
         }
@@ -1364,21 +1378,19 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   LOG_M(filename,"rxdata_ext",rxdataF_ext[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   sprintf(filename,"rxdata_comp_%d.m", slot);
   LOG_M(filename,"rxdata_comp",rxUE->pssch_vars[UE_id]->rxdataF_comp[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
-  sprintf(filename,"slsch_llr_layers_adj.m");
-  LOG_M(filename,"slsch_llr_layers_adj",slsch_llr_layers_adj[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  sprintf(filename,"layer_llr.m");
+  LOG_M(filename,"layer_llr",layer_llr[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   #endif
   /////////////// Layer demapping ////////////////////////
   // For SCI2
-  nr_dlsch_layer_demapping(slsch_llr,
+  nr_dlsch_layer_demapping(llr,
                           Nl,
                           SCI2_mod_order,
                           num_sci2_symbs,
                           slsch_ue_rx_harq->codeword,
                           -1,
-                          slsch_llr_layers_adj);
-
-  int16_t *dst_data = slsch_llr[0] + num_sci2_symbs * slsch_ue_rx_harq->Nl;
-  int16_t *src_data = slsch_llr_layers_adj[0] + num_sci2_symbs;
+                          layer_llr);
+  int16_t *dst_data = llr[0] + num_sci2_symbs * slsch_ue_rx_harq->Nl;
   // For Data
   nr_dlsch_layer_demapping(&dst_data,
                           Nl,
@@ -1386,19 +1398,19 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                           num_data_symbs,
                           slsch_ue_rx_harq->codeword,
                           -1,
-                          &src_data);
+                          &layer_llr[0] + num_sci2_symbs);
   ////////////////////////////////////////////////////////
   /////////////// Unscrambling ///////////////////////////
-  nr_codeword_unscrambling_sl(slsch_llr[0], multiplex_input_len,
+  nr_codeword_unscrambling_sl(llr[0], multiplex_input_len,
                               slsch_ue_rx->harq_processes[0]->B_sci2,
                               Nidx, Nl);
   ///////////////////////////////////////////////////////
   #ifdef DEBUG_PSSCH_MAPPING
   sprintf(filename,"llr_decoding.m");
-  LOG_M(filename,"llr_decoding",slsch_llr[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
+  LOG_M(filename,"llr_decoding",llr[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   #endif
   /////////////// Decoding SLSCH and SCIA2 //////////////
-  uint32_t ret = nr_slsch_decoding(rxUE, proc, slsch_llr[0],
+  uint32_t ret = nr_slsch_decoding(rxUE, proc, llr[0],
                             &rxUE->frame_parms, slsch_ue_rx,
                             slsch_ue_rx->harq_processes[0], frame,
                             nb_symb_sch, slot, harq_pid);
