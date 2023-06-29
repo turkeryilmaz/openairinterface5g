@@ -297,7 +297,7 @@ void nr_csi_meas_reporting(int Mod_idP,
         // verify resources are free
         for (int i = start; i < start + len; ++i) {
           if((vrb_map_UL[i+bwp_start] & mask) != 0) {
-            LOG_E(NR_MAC, "%4d.%2d VRB MAP in %4d.%2d not free. Can't schedule CSI reporting on PUCCH.\n", frame, slot, sched_frame, sched_slot);
+            LOG_E(NR_MAC, "%4d.%2d VRB MAP in %4d.%2d not free (start %d len %d). Can't schedule CSI reporting on PUCCH.\n", frame, slot, sched_frame, sched_slot,start,len);
             memset(curr_pucch, 0, sizeof(*curr_pucch));
           }
           else
