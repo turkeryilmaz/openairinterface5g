@@ -125,7 +125,7 @@ uint16_t Nid_SL = 336 + 10;
 uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 SCM_t channel_model = AWGN;
-int N_RB_SL = 273;
+int N_RB_SL = 106;
 int mu = 1;
 unsigned char psbch_phase = 0;
 int run_initial_sync = 1;
@@ -172,28 +172,21 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a              = 0;
+  nrUE_config->ssb_table.ssb_offset_point_a              = (N_RB_SL - 11) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type             = TDD;
   nrUE_config->ssb_table.ssb_period                      = 1; //10ms
-  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_SL;
-  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_SL;
   nrUE_config->carrier_config.sl_grid_size[mu]           = N_RB_SL;
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
-  nrUE_config->carrier_config.dl_frequency               = 450000;
-  nrUE_config->carrier_config.uplink_frequency           = 450000;
   nrUE_config->carrier_config.sl_frequency               = 450000;
-  fp->dl_CarrierFreq                                     = 2600000000;
-  fp->ul_CarrierFreq                                     = 2600000000;
+  fp->sl_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
   fp->N_RB_SL = N_RB_SL;
-  fp->N_RB_UL = N_RB_SL;
-  fp->N_RB_DL = N_RB_SL;
   fp->Nid_cell = Nid_cell;
   fp->Nid_SL = Nid_SL;
   fp->nushift = 0; //No nushift in SL
@@ -392,7 +385,7 @@ int main(int argc, char **argv)
       else if (N_RB_SL == 106) {
         fs = 61.44e6;
       }
-      else AssertFatal(1==0,"Unsupported numerology for mu %d, N_RB %d\n",mu, N_RB_SL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_SL);
       break;
     case 3:
       UE->frame_parms.Lmax = 64;
@@ -400,7 +393,7 @@ int main(int argc, char **argv)
       if (N_RB_SL == 66) {
         fs = 122.88e6;
       }
-      else AssertFatal(1 == 0,"Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_SL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_SL);
       break;
   }
 
@@ -555,7 +548,7 @@ int main(int argc, char **argv)
 
       int ret = 0;
       int n_frames = 1;
-      if (UE->is_synchronized == 0) {
+      if (UE->is_synchronized_sl == 0) {
         UE_nr_rxtx_proc_t proc = {0};
         ret = nr_sl_initial_sync(&proc, UE, n_frames);
         if (ret != 0) {
