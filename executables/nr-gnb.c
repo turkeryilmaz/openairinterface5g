@@ -116,6 +116,7 @@ void tx_func(void *param)
 {
 
   processingData_L1tx_t *info = (processingData_L1tx_t *) param;
+
   int frame_tx = info->frame;
   int slot_tx = info->slot;
   int absslot_tx = info->timestamp_tx/info->gNB->frame_parms.get_samples_per_slot(slot_tx,&info->gNB->frame_parms);
@@ -151,15 +152,14 @@ void tx_func(void *param)
 		  int slot = slot_tx%spf;
 		  gNB->if_inst->NR_mac_scheduler(module_id,CC_id,frame,slot);
 	  }
+	  gNB->msgDataTx->timestamp_tx = info->timestamp_tx;
 	  info = gNB->msgDataTx;
 	  info->gNB = gNB;
   }
 
 
-  LOG_I(PHY,"TX_FUNC Going for remaining TX Execution\n");
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
   if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
-	  LOG_I(PHY,"TX_FUNC entered remaining TX Execution\n");
 	  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_TX[rt_prof_idx]);
 	  phy_procedures_gNB_TX(info,
 			  frame_tx,
