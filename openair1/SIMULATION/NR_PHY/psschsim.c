@@ -32,8 +32,6 @@
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_nr_UE.h"
-#include "PHY/defs_gNB.h"
-#include "PHY/INIT/phy_init.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/MODULATION/nr_modulation.h"
 #include "PHY/MODULATION/modulation_eNB.h"
@@ -43,14 +41,12 @@
 #include "PHY/NR_TRANSPORT/nr_ulsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/phy_vars_nr_ue.h"
-
+#include "openair1/PHY/INIT/nr_phy_init.h"
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
-#include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
 #include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
 #include "common/utils/threadPool/thread-pool.h"
-#include "openair2/LAYER2/NR_MAC_COMMON/nr_mac_common.h"
 #include "executables/nr-uesoftmodem.h"
 #include "PHY/impl_defs_top.h"
 #include "PHY/MODULATION/modulation_common.h"
@@ -251,7 +247,6 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   nrUE_config->carrier_config.num_rx_ant           = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                = 0;
 
-  ue->mac_enabled = 1;
   ue->is_synchronized_sl = 1;
   if (mu == 0) {
     fp->dl_CarrierFreq = 2600000000;
@@ -270,11 +265,8 @@ void nr_phy_config_request_psschsim(PHY_VARS_NR_UE *ue,
   }
 
   fp->threequarter_fs = 0;
-  nrUE_config->carrier_config.sl_bandwidth = config_bandwidth(mu, N_RB_SL, fp->nr_band);
-
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   fp->ofdm_offset_divisor = UINT_MAX;
-  ue->configured = 1;
   LOG_I(NR_PHY, "tx UE configured\n");
 }
 
@@ -287,53 +279,6 @@ void set_sci(SCI_1_A *sci, uint8_t mcs) {
   sci->freq_res = 1;
   sci->time_res = 1;
   sci->mcs = mcs;
-}
-
-void set_fs_bw(PHY_VARS_NR_UE *UE, int mu, int N_RB, BW *bw_setting) {
-  double scs = 0, fs = 0, bw = 0;
-  switch (mu) {
-    case 1:
-      scs = 30000;
-      UE->frame_parms.Lmax = 1;
-      if (N_RB == 217) {
-        fs = 122.88e6;
-        bw = 80e6;
-      }
-      else if (N_RB == 245) {
-        fs = 122.88e6;
-        bw = 90e6;
-      }
-      else if (N_RB == 273) {
-        fs = 122.88e6;
-        bw = 100e6;
-      }
-      else if (N_RB == 106) {
-        fs = 61.44e6;
-        bw = 40e6;
-      }
-      else if (N_RB == 52) {
-        fs = 30.72e6;
-        bw = 20e6;
-      }
-      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
-      break;
-    case 3:
-      UE->frame_parms.Lmax = 64;
-      scs = 120000;
-      if (N_RB == 66) {
-        fs = 122.88e6;
-        bw = 100e6;
-      }
-      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
-      break;
-    default:
-      AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB);
-      break;
-  }
-  bw_setting->scs = scs;
-  bw_setting->fs = fs;
-  bw_setting->bw = bw;
-  return;
 }
 
 nrUE_params_t nrUE_params;
@@ -372,31 +317,19 @@ int main(int argc, char **argv)
   nr_phy_config_request_psschsim(txUE, N_RB_SL, mu, burst_position);
   nr_phy_config_request_psschsim(rxUE, N_RB_SL, mu, burst_position);
 
-  BW *bw_setting = malloc(sizeof(BW));
-  set_fs_bw(txUE, mu, N_RB_SL, bw_setting);
-
-  double DS_TDL = 300e-9; //.03;
-  channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model,
-                                               bw_setting->fs,
-                                               bw_setting->bw,
-                                               DS_TDL,
-                                               0, 0, 0, 0);
-
-  if (UE2UE == NULL) {
-    printf("Problem generating channel model. Exiting.\n");
-    free(bw_setting);
-    exit(-1);
-  }
+  int bw_index = get_supported_band_index(mu, txUE->frame_parms.nr_band, N_RB_SL);
+  txUE->nrUE_config.carrier_config.sl_bandwidth = get_supported_bw_mhz(txUE->frame_parms.nr_band > 256 ? FR2 : FR1, bw_index);
 
   if (init_nr_ue_signal(txUE, 1) != 0 || init_nr_ue_signal(rxUE, 1) != 0) {
     printf("Error at UE NR initialization.\n");
-    free(bw_setting);
     free(txUE);
     free(rxUE);
     exit(-1);
   }
 #ifdef DEBUG_NR_PSSCHSIM
-  txUE->slsch[0] = new_nr_ue_ulsch(N_RB_SL, 8, &txUE->frame_parms);
+
+  nr_init_ul_harq_processes(txUE->ul_harq_processes, NR_MAX_ULSCH_HARQ_PROCESSES, txUE->frame_parms.N_RB_SL, txUE->frame_parms.nb_antennas_tx);
+
   if (!txUE->slsch[0]) {
     printf("Can't get ue ulsch structures.\n");
     exit(-1);
@@ -416,7 +349,7 @@ int main(int argc, char **argv)
   int frame = 0;
   int slot = 0;
   int soffset = (slot & 3) * rxUE->frame_parms.symbols_per_slot * rxUE->frame_parms.ofdm_symbol_size;
-  int32_t **txdata = txUE->common_vars.txdata;
+  c16_t **txdata = txUE->common_vars.txdata;
   NR_UE_ULSCH_t *slsch_ue = txUE->slsch[0];
   crcTableInit();
   nr_ue_set_slsch(&txUE->frame_parms, 0, slsch_ue, frame, slot);
@@ -425,7 +358,6 @@ int main(int argc, char **argv)
 
   c16_t **rxdataF = rxUE->common_vars.rxdataF;
   UE_nr_rxtx_proc_t proc;
-  proc.thread_id = 0;
 
   //unsigned int errors_bit_uncoded = 0;
   unsigned int errors_bit = 0;
@@ -463,8 +395,8 @@ int main(int argc, char **argv)
         double sigma2_dB = 20 * log10((double)AMP / 4) - SNR;
         double sigma2 = pow(10, sigma2_dB / 10);
         for (int aa = 0; aa < rxUE->frame_parms.nb_antennas_rx; aa++) {
-          ((short*) rxUE->common_vars.rxdata[aa])[2 * i] = (short) ((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
-          ((short*) rxUE->common_vars.rxdata[aa])[2 * i + 1] = (short) ((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          rxUE->common_vars.rxdata[aa][i].r = (short)((r_re[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
+          rxUE->common_vars.rxdata[aa][i].i = (short)((r_im[aa][i] + sqrt(sigma2 / 2) * gaussdouble(0.0, 1.0)));
         }
       }
 #ifdef DEBUG_NR_PSSCHSIM
@@ -483,9 +415,9 @@ int main(int argc, char **argv)
         }
         apply_nr_rotation_RX(&rxUE->frame_parms,
                              rxdataF[aa],
-                             &rxUE->frame_parms.symbol_rotation[2],
+                             rxUE->frame_parms.symbol_rotation[2],
                              slot,
-                             &rxUE->frame_parms.N_RB_SL,
+                             rxUE->frame_parms.N_RB_SL,
                              0,
                              0,
                              NR_NUMBER_OF_SYMBOLS_PER_SLOT);
@@ -547,9 +479,6 @@ int main(int argc, char **argv)
   term_nr_ue_signal(txUE, 1);
   free(txUE);
   free(rxUE);
-
-  free_channel_desc_scm(UE2UE);
-  free(bw_setting);
 
   loader_reset();
   logTerm();
