@@ -398,7 +398,7 @@ void scheduler(module_id_t module_id,int CC_id,int frame,int slot) {
 
   // clear UL DCI prior to handling ULSCH
   sched_info->UL_dci_req.numPdus = 0;
-
+  LOG_I(NR_MAC,"Callign scheduler for %d.%d\n",frame,slot);
   gNB_dlsch_ulsch_scheduler(module_id, frame, slot, sched_info);
   ifi->CC_mask            = 0;
   sched_info->module_id   = module_id;

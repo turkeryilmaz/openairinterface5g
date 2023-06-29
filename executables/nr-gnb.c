@@ -133,7 +133,7 @@ void tx_func(void *param)
 
   if (NFAPI_MODE != NFAPI_MODE_PNF && get_softmodem_params()->reorder_thread_disable) {
 	  gNB_MAC_INST *mac = RC.nrmac[module_id];
-
+/*
 	  if (ifi->CC_mask==0) {
 		  ifi->current_frame = frame_tx;
 		  ifi->current_slot = slot_tx;
@@ -145,12 +145,12 @@ void tx_func(void *param)
 	  ifi->CC_mask |= (1<<CC_id);
 
 	  if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
-		  nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
+*/		  nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
 		  int spf = get_spf(cfg);
 		  int frame = (frame_tx+((slot_tx>(spf-1))?1:0)) & 1023;
 		  int slot = slot_tx%spf;
-		  gNB->if_inst->NR_mac_scheduler(module_id,CC_id,frame,slot);
-	  }
+		  ifi->NR_mac_scheduler(module_id,CC_id,frame,slot);
+/*	  }*/
   }
 
 
