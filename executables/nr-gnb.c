@@ -131,6 +131,7 @@ void tx_func(void *param)
   NR_IF_Module_t *ifi = gNB->if_inst;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
 
+  if (absslot_tx < 2000) return;
 
   if (NFAPI_MODE != NFAPI_MODE_PNF && get_softmodem_params()->reorder_thread_disable) {
 	  gNB_MAC_INST *mac = RC.nrmac[module_id];

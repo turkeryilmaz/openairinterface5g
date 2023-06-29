@@ -346,7 +346,7 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem) {
   TS -= device->txrx_offset; 
   int TSinc = (6*256*device->sampling_rate_ratio_d)/device->sampling_rate_ratio_n;
   int len=256;
-  LOG_I(PHY,"in eth send: TS %llu (%llu),txrx_offset %d,d %d, n %d, buff[0] %p buff[1] %p\n",
+  LOG_D(PHY,"in eth send: TS %llu (%llu),txrx_offset %d,d %d, n %d, buff[0] %p buff[1] %p\n",
         (unsigned long long)TS,(unsigned long long)timestamp,device->txrx_offset,device->sampling_rate_ratio_d,device->sampling_rate_ratio_n,
 	buff[0],buff[1]);
   for (int offset=0;offset<nsamps;offset+=256,TS+=TSinc) {
@@ -397,7 +397,7 @@ void *trx_eth_write_udp_cmd(udpTXelem_t *udpTXelem) {
     } // aid
   } // offset
   free(buff);  
-  LOG_I(NR_PHY,"Returning from eth send\n");
+  LOG_D(NR_PHY,"Returning from eth send\n");
   return(NULL);
 }
 
@@ -431,7 +431,7 @@ void *udp_write_thread(void *arg) {
    while (oai_exit == 0) {
       notifiedFIFO_elt_t *res = pullNotifiedFIFO(utx->resp);
       udpTXelem_t *udptxelem = (udpTXelem_t *)NotifiedFifoData(res);
-      LOG_I(PHY,"Pulled from TX FH FIFO, TS %llu, nsamps %d, nant %d\n",(unsigned long long)udptxelem->timestamp,udptxelem->nsamps,udptxelem->nant);
+      LOG_D(PHY,"Pulled from TX FH FIFO, TS %llu, nsamps %d, nant %d\n",(unsigned long long)udptxelem->timestamp,udptxelem->nsamps,udptxelem->nant);
       start_meas(&utx->device->tx_fhaul);
       trx_eth_write_udp_cmd(udptxelem);
       stop_meas(&utx->device->tx_fhaul);
