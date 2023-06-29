@@ -114,7 +114,7 @@ uint16_t Nid_SL = 336 + 10;
 uint64_t SSB_positions = 0x01;
 int ssb_subcarrier_offset = 0;
 SCM_t channel_model = AWGN;
-int N_RB_DL = 273;
+int N_RB_SL = 106;
 int mu = 1;
 unsigned char psbch_phase = 0;
 int run_initial_sync = 1;
@@ -154,8 +154,7 @@ void free_psbchsim_members(channel_desc_t *UE2UE,
 }
 
 void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
-                                        int N_RB_DL,
-                                        int N_RB_UL,
+                                        int N_RB_SL,
                                         int mu,
                                         int Nid_SL,
                                         uint64_t position_in_burst)
@@ -169,26 +168,22 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   nrUE_config->cell_config.phy_cell_id                   = Nid_SL; // TODO
   nrUE_config->ssb_config.scs_common                     = mu;
   nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
-  nrUE_config->ssb_table.ssb_offset_point_a              = 0;
+  nrUE_config->ssb_table.ssb_offset_point_a              = (N_RB_SL - 11) >> 1;
   nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
   nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
   nrUE_config->cell_config.frame_duplex_type             = TDD;
   nrUE_config->ssb_table.ssb_period                      = 1; //10ms
-  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
-  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
+  nrUE_config->carrier_config.sl_grid_size[mu]           = N_RB_SL;
   nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
   nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
   nrUE_config->tdd_table.tdd_period                      = 0;
-  nrUE_config->carrier_config.dl_frequency               = 450000;
-  nrUE_config->carrier_config.uplink_frequency           = 450000;
   nrUE_config->carrier_config.sl_frequency               = 450000;
   ue->mac_enabled                                        = 1;
-  fp->dl_CarrierFreq                                     = 2600000000;
-  fp->ul_CarrierFreq                                     = 2600000000;
+  fp->sl_CarrierFreq                                     = 2600000000;
   fp->nb_antennas_tx = n_tx;
   fp->nb_antennas_rx = n_rx;
   fp->nb_antenna_ports_gNB = n_tx;
-  fp->N_RB_DL = N_RB_DL;
+  fp->N_RB_SL = N_RB_SL;
   fp->Nid_cell = Nid_cell;
   fp->Nid_SL = Nid_SL;
   fp->nushift = 0; //No nushift in SL
@@ -199,7 +194,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->ofdm_offset_divisor = UINT_MAX;
   fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
-  nrUE_config->carrier_config.dl_bandwidth = config_bandwidth(mu, N_RB_DL, fp->nr_band);
+  nrUE_config->carrier_config.sl_bandwidth = config_bandwidth(mu, N_RB_SL, fp->nr_band);
 
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   init_timeshift_rotation(fp);
@@ -300,7 +295,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         break;
 
       case 'R':
-        N_RB_DL = atoi(optarg);
+        N_RB_SL = atoi(optarg);
         break;
 
       case 's':
@@ -346,7 +341,7 @@ static void get_sim_cl_opts(int argc, char **argv)
         printf("-p Conducting PSS and SSS testing\n");
         printf("-P PSBCH phase, allowed values 0-3\n");
         printf("-r set the random number generator seed (default: 0 = current time)\n");
-        printf("-R N_RB_DL\n");
+        printf("-R N_RB_SL\n");
         printf("-s Starting SNR, runs from SNR0 to SNR0 + 10 dB if not -S given. If -n 1, then just SNR is simulated\n");
         printf("-S Ending SNR, runs from SNR0 to SNR1\n");
         printf("-x Transmission mode (1,2,6 for the moment)\n");
@@ -372,9 +367,9 @@ int main(int argc, char **argv)
 
   PHY_VARS_NR_UE *UE = malloc16_clear(sizeof(*UE));
 
-  printf("Initializing UE for mu %d, N_RB_DL %d\n", mu, N_RB_DL);
+  printf("Initializing UE for mu %d, N_RB_SL %d\n", mu, N_RB_SL);
   snr1 = snr1set == 0 ? snr0 + 10 : snr1;
-  nr_phy_config_request_sim_psbchsim(UE, N_RB_DL, N_RB_DL, mu, Nid_SL, SSB_positions);
+  nr_phy_config_request_sim_psbchsim(UE, N_RB_SL, mu, Nid_SL, SSB_positions);
 
   double fs = 0;
   double scs = 30000;
@@ -383,32 +378,32 @@ int main(int argc, char **argv)
     case 1:
       scs = 30000;
       UE->frame_parms.Lmax = 1;
-      if (N_RB_DL == 217) {
+      if (N_RB_SL == 217) {
         fs = 122.88e6;
         bw = 80e6;
       }
-      else if (N_RB_DL == 245) {
+      else if (N_RB_SL == 245) {
         fs = 122.88e6;
         bw = 90e6;
       }
-      else if (N_RB_DL == 273) {
+      else if (N_RB_SL == 273) {
         fs = 122.88e6;
         bw = 100e6;
       }
-      else if (N_RB_DL == 106) {
+      else if (N_RB_SL == 106) {
         fs = 61.44e6;
         bw = 40e6;
       }
-      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_SL);
       break;
     case 3:
       UE->frame_parms.Lmax = 64;
       scs = 120000;
-      if (N_RB_DL == 66) {
+      if (N_RB_SL == 66) {
         fs = 122.88e6;
         bw = 100e6;
       }
-      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_DL);
+      else AssertFatal(1 == 0, "Unsupported numerology for mu %d, N_RB %d\n", mu, N_RB_SL);
       break;
   }
   channel_desc_t *UE2UE = new_channel_desc_scm(n_tx, n_rx, channel_model, fs, bw, 300e-9, 0, 0, 0, 0);
@@ -564,7 +559,7 @@ int main(int argc, char **argv)
 
       int ret = 0;
       int n_frames = 1;
-      if (UE->is_synchronized == 0) {
+      if (UE->is_synchronized_sl == 0) {
         UE_nr_rxtx_proc_t proc = {0};
         ret = nr_sl_initial_sync(&proc, UE, n_frames);
         if (ret != 0) {
