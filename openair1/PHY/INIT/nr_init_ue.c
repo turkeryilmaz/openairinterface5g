@@ -321,18 +321,20 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   /////////////////////////PSSCH DMRS init/////////////////////////
   ///////////
 
-  // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
-  int pssch_dmrs_init_length =  ((fp->N_RB_SL * 12) >> 5) + 1;
-  ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
-  uint32_t ***pssch_dmrs = ue->nr_gold_pssch_dmrs;
+  if (get_softmodem_params()->sl_mode == 2) {
+    // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
+    int pssch_dmrs_init_length =  ((fp->N_RB_SL * 12) >> 5) + 1;
+    ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
+    uint32_t ***pssch_dmrs = ue->nr_gold_pssch_dmrs;
 
-  for (slot=0; slot<fp->slots_per_frame; slot++) {
-    pssch_dmrs[slot] = (uint32_t **)malloc16(fp->symbols_per_slot * sizeof(uint32_t *));
-    AssertFatal(pssch_dmrs[slot] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d - malloc failed\n", slot);
+    for (slot=0; slot<fp->slots_per_frame; slot++) {
+      pssch_dmrs[slot] = (uint32_t **)malloc16(fp->symbols_per_slot * sizeof(uint32_t *));
+      AssertFatal(pssch_dmrs[slot] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d - malloc failed\n", slot);
 
-    for (symb=0; symb<fp->symbols_per_slot; symb++) {
-      pssch_dmrs[slot][symb] = (uint32_t *)malloc16(pssch_dmrs_init_length * sizeof(uint32_t));
-      AssertFatal(pssch_dmrs[slot][symb] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
+      for (symb=0; symb<fp->symbols_per_slot; symb++) {
+        pssch_dmrs[slot][symb] = (uint32_t *)malloc16(pssch_dmrs_init_length * sizeof(uint32_t));
+        AssertFatal(pssch_dmrs[slot][symb] != NULL, "init_nr_ue_signal: pssch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
+      }
     }
   }
 
@@ -354,8 +356,8 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   ///////////
   ////////////////////////////////////////////////////////////////////////////////////////////
 
-  for (i = 0; i < 160; i++)
-    ue->tx_power_dBm[i] = -127;
+  for (i=0; i<10; i++)
+    ue->tx_power_dBm[i]=-127;
 
   // init TX buffers
   common_vars->txdata  = (c16_t **)malloc16(fp->nb_antennas_tx*sizeof(c16_t *));
@@ -418,24 +420,28 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
   // SLSCH
-  for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
-    ue->pssch_vars[gNB_id] = (NR_UE_PSSCH *)malloc16_clear(sizeof(NR_UE_PSSCH));
-    phy_init_nr_ue_PSSCH(ue->pssch_vars[gNB_id], fp);
+  if (get_softmodem_params()->sl_mode == 2) {
+    for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
+      ue->pssch_vars[gNB_id] = (NR_UE_PSSCH *)malloc16_clear(sizeof(NR_UE_PSSCH));
+      phy_init_nr_ue_PSSCH(ue->pssch_vars[gNB_id], fp);
+    }
   }
 
   for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
     prach_vars[gNB_id] = (NR_UE_PRACH *)malloc16_clear(sizeof(NR_UE_PRACH));
-    psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
     csiim_vars[gNB_id] = (NR_UE_CSI_IM *)malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = (NR_UE_CSI_RS *)malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = (NR_UE_SRS *)malloc16_clear(sizeof(NR_UE_SRS));
+    if (get_softmodem_params()->sl_mode == 2) {
+      psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
+    }
 
     csiim_vars[gNB_id]->active = false;
     csirs_vars[gNB_id]->active = false;
     srs_vars[gNB_id]->active = false;
 
     // ceil((NB_RB*8(max allocation per RB)*2(QPSK))/32)
-    int csi_dmrs_init_length =  ((fp->N_RB_SL<<4)>>5)+1;
+    int csi_dmrs_init_length =  ((N_RB<<4)>>5)+1;
     ue->nr_csi_info = (nr_csi_info_t *)malloc16_clear(sizeof(nr_csi_info_t));
     ue->nr_csi_info->nr_gold_csi_rs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
     AssertFatal(ue->nr_csi_info->nr_gold_csi_rs != NULL, "NR init: csi reference signal malloc failed\n");
@@ -544,7 +550,9 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     free_and_zero(ue->csirs_vars[gNB_id]);
     free_and_zero(ue->srs_vars[gNB_id]);
 
-    free_and_zero(ue->psbch_vars[gNB_id]);
+    if (get_softmodem_params()->sl_mode != 0) {
+      free_and_zero(ue->psbch_vars[gNB_id]);
+    }
     free_and_zero(ue->prach_vars[gNB_id]);
   }
 
@@ -663,10 +671,11 @@ void nr_init_dl_harq_processes(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_DLSCH_HARQ_PR
         harq_list[j][i].c[r] = malloc16_clear(1056);
         harq_list[j][i].d[r] = malloc16_clear(sz);
       }
+      harq_list[j][i].status  = 0;
+      harq_list[j][i].DLround = 0;
     }
   }
 }
-
 
 void nr_init_ul_harq_processes(NR_UL_UE_HARQ_t harq_list[NR_MAX_ULSCH_HARQ_PROCESSES], int number_of_processes, int num_rb, int num_ant_tx) {
 

@@ -51,7 +51,7 @@
 #define  NUMBER_SSS_SEQUENCE          (336)
 #define  INVALID_SSS_SEQUENCE         (NUMBER_SSS_SEQUENCE)
 #define  LENGTH_SSS_NR                (127)
-#define  SCALING_METRIC_SSS_NR        (19)//(15)
+#define  SCALING_METRIC_SSS_NR        (15)//(19)
 
 #define  N_ID_2_NUMBER                (NUMBER_PSS_SEQUENCE)
 #define  N_ID_2_NUMBER_SL             (NUMBER_PSS_SEQUENCE_SL)
@@ -99,7 +99,7 @@ EXTERN int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 void init_context_sss_nr(int amp);
 void free_context_sss_nr(void);
 
-void insert_sss_nr(c16_t *sss_time,
+void insert_sss_nr(int16_t *sss_time,
                    NR_DL_FRAME_PARMS *frame_parms);
 
 int rx_sss_sl_nr(PHY_VARS_NR_UE *ue,

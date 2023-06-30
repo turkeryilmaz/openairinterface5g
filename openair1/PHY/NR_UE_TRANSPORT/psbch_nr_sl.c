@@ -120,8 +120,6 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
   LOG_D(NR_PHY, "PSBCH SL generation started with DFN %u slotIndex %u for abs_slot %d\n",
                 psbch_payload.DFN, psbch_payload.slotIndex, abs_slot);
 
-  NR_UE_PSBCH m_psbch;
-  ue->psbch_vars[0] = &m_psbch;
   NR_UE_PSBCH *psbch = ue->psbch_vars[0];
   memset((void *)psbch, 0, sizeof(NR_UE_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);
