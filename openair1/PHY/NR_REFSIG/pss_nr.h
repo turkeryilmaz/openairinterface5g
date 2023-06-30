@@ -91,7 +91,7 @@ EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32
 = { NULL, NULL, NULL}
 #endif
 ;
-EXTERN int16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
+EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
 = { NULL, NULL, NULL}
 #endif
@@ -110,7 +110,7 @@ void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue);
 void free_context_synchro_nr(void);
 int set_pss_nr(int ofdm_symbol_size);
 int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change);
-int16_t *get_primary_synchro_nr2(const int nid2);
+c16_t *get_primary_synchro_nr2(const int nid2);
 #endif
 #undef EXTERN
 
