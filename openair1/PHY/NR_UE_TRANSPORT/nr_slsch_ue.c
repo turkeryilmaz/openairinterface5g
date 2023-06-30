@@ -1382,12 +1382,13 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
   LOG_M(filename,"layer_llr",layer_llr[0],5*(rxUE->frame_parms.ofdm_symbol_size), 1, 13);
   #endif
   /////////////// Layer demapping ////////////////////////
+  int32_t codeword_TB0 = (int32_t) slsch_ue_rx_harq->codeword;
   // For SCI2
   nr_dlsch_layer_demapping(llr,
                           Nl,
                           SCI2_mod_order,
                           num_sci2_symbs,
-                          slsch_ue_rx_harq->codeword,
+                          codeword_TB0,
                           -1,
                           layer_llr);
   int16_t *dst_data = llr[0] + num_sci2_symbs * slsch_ue_rx_harq->Nl;
@@ -1399,7 +1400,7 @@ uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *rxUE,
                           Nl,
                           mod_order,
                           num_data_symbs,
-                          slsch_ue_rx_harq->codeword,
+                          codeword_TB0,
                           -1,
                           &src_data);
   ////////////////////////////////////////////////////////
