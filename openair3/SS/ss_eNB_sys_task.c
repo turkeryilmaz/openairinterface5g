@@ -703,6 +703,12 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
             RRC_CONFIGURATION_REQ(msg_p).tac[cell_index] += (SIB1_CELL_ACCESS_REL_INFO.trackingAreaCode[i] << (15 - i));
           }
           LOG_A(ENB_SS_SYS_TASK, "[SIB1] tac: 0x%x\n", RRC_CONFIGURATION_REQ(msg_p).tac[cell_index]);
+          RRC_CONFIGURATION_REQ(msg_p).cell_identity[cell_index] = 0;
+          for (int i = 0; i < 28; i++)
+          {
+            RRC_CONFIGURATION_REQ(msg_p).cell_identity[cell_index] += (SIB1_CELL_ACCESS_REL_INFO.cellIdentity[i] << (27 - i));
+          }
+          LOG_A(ENB_SS_SYS_TASK, "[SIB1] Cell Identity: 0x%x\n", RRC_CONFIGURATION_REQ(msg_p).cell_identity[cell_index]);
           RRC_CONFIGURATION_REQ(msg_p).cellBarred[cell_index] = SIB1_CELL_ACCESS_REL_INFO.cellBarred;
           RRC_CONFIGURATION_REQ(msg_p).intraFreqReselection[cell_index] = SIB1_CELL_ACCESS_REL_INFO.intraFreqReselection;
         }
@@ -751,8 +757,6 @@ int sys_add_reconfig_cell(struct SYSTEM_CTRL_REQ *req)
         RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI = bin_to_int(AddOrReconfigure->Active.v.C_RNTI.v, 16);
         SS_context.SSCell_list[cell_index].ss_rnti_g = RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI;
         LOG_A(ENB_SS_SYS_TASK, "C_RNTI present in Active Cell Config %d\n", RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].C_RNTI);
-      } else {
-        RRC_CONFIGURATION_REQ(msg_p).ActiveParam[cell_index].b_C_RNTI_Present = false;
       }
       if (AddOrReconfigure->Active.v.RachProcedureConfig.d == true)
       {

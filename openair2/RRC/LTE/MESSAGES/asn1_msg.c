@@ -998,12 +998,11 @@ uint8_t do_SIB1(rrc_eNB_carrier_data_t *carrier,
   (*sib1)->cellAccessRelatedInfo.trackingAreaCode.size = 2;
   (*sib1)->cellAccessRelatedInfo.trackingAreaCode.bits_unused = 0;
   // 28 bits
-  /* MultiCell: Now using "configuration->Need Cell[CC_id]" except "configuration->cell identity" for multiple CC */
   if(NULL == (*sib1)->cellAccessRelatedInfo.cellIdentity.buf){(*sib1)->cellAccessRelatedInfo.cellIdentity.buf = MALLOC(8);}
-  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[0] = (configuration->Nid_cell[CC_id] >> 20) & 0xff;
-  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[1] = (configuration->Nid_cell[CC_id] >> 12) & 0xff;
-  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[2] = (configuration->Nid_cell[CC_id] >> 4) & 0xff;
-  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[3] = (configuration->Nid_cell[CC_id] << 4) & 0xf0;
+  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[0] = (configuration->cell_identity[CC_id] >> 20) & 0xff;
+  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[1] = (configuration->cell_identity[CC_id] >> 12) & 0xff;
+  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[2] = (configuration->cell_identity[CC_id] >> 4) & 0xff;
+  (*sib1)->cellAccessRelatedInfo.cellIdentity.buf[3] = (configuration->cell_identity[CC_id] << 4) & 0xf0;
   (*sib1)->cellAccessRelatedInfo.cellIdentity.size=4;
   (*sib1)->cellAccessRelatedInfo.cellIdentity.bits_unused=4;
 
