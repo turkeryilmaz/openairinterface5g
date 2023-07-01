@@ -41,7 +41,6 @@
 #include "nr_rlc/nr_rlc_oai_api.h"
 #include "RRC/NR/MESSAGES/asn1_msg.h"
 #include <pthread.h>
-#include "openair2/RRC/NR/MESSAGES/asn1_msg.h"
 
 static NR_UE_MAC_INST_t *nr_ue_mac_inst; 
 

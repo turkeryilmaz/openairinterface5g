@@ -398,56 +398,16 @@ void process_nsa_message(NR_UE_RRC_INST_t *rrc, nsa_message_t nsa_message_type, 
 
 }
 
-void print_sl_preconf_params(NR_SL_PreconfigurationNR_r16_t* sl_preconfigurations,
-                             NR_SL_SyncConfig_r16_t* sl_sync_config,
-                             NR_SL_BWP_ConfigCommon_r16_t* sl_bwp_conf_cmn,
-                             struct NR_SL_ResourcePool_r16* nr_sl_rxpool)
-{
-  struct NR_SL_SSB_TimeAllocation_r16 *sl = sl_sync_config->sl_SSB_TimeAllocation1_r16;
-  LOG_D(NR_MAC, "sl_OffsetDFN: %lu\n", *sl_preconfigurations->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16); // Integer (1 ..1000)
-  LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *sl->sl_NumSSB_WithinPeriod_r16);
-  LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *sl->sl_TimeOffsetSSB_r16);
-  LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *sl->sl_TimeInterval_r16);
-
-  sl = sl_sync_config->sl_SSB_TimeAllocation2_r16;
-  LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *sl->sl_NumSSB_WithinPeriod_r16);
-  LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *sl->sl_TimeOffsetSSB_r16);
-  LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *sl->sl_TimeInterval_r16);
-
-  sl = sl_sync_config->sl_SSB_TimeAllocation3_r16;
-  LOG_D(NR_MAC, "sl_NumSSB_WithinPeriod: %lu\n", *sl->sl_NumSSB_WithinPeriod_r16);
-  LOG_D(NR_MAC, "sl_TimeOffsetSSB: %lu\n", *sl->sl_TimeOffsetSSB_r16);
-  LOG_D(NR_MAC, "sl_TimeInterval: %lu\n", *sl->sl_TimeInterval_r16);
-
-  LOG_D(NR_MAC, "sl_SSID: %lu\n", *sl_sync_config->sl_SSID_r16);
-  LOG_D(NR_MAC, "syncTxThreshIC: %lu\n", *sl_sync_config->txParameters_r16.syncTxThreshIC_r16);
-  LOG_D(NR_MAC, "syncTxThreshOoC_r16: %lu\n", *sl_sync_config->txParameters_r16.syncTxThreshOoC_r16);
-  LOG_D(NR_MAC, "buf: %p\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->buf);
-  LOG_D(NR_MAC, "size: %lu\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->size);
-  LOG_D(NR_MAC, "bits_unused: %d\n", sl_sync_config->txParameters_r16.syncInfoReserved_r16->bits_unused);
-
-  struct NR_TDD_UL_DL_ConfigCommon *sl_TDD_Configuration_r16 = sl_preconfigurations->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16->sl_TDD_Configuration_r16;
-  LOG_D(NR_MAC, "referenceSubcarrierSpacing: %lu\n", sl_TDD_Configuration_r16->referenceSubcarrierSpacing);
-  LOG_D(NR_MAC, "dl_UL_TransmissionPeriodicity: %lu\n", sl_TDD_Configuration_r16->pattern1.dl_UL_TransmissionPeriodicity);
-
-  struct NR_SL_BWP_Generic_r16	*sl_BWP_Generic_r16 = sl_bwp_conf_cmn->sl_BWP_Generic_r16;
-  LOG_D(NR_MAC, "sl_LengthSymbols: %lu\n", *sl_BWP_Generic_r16->sl_LengthSymbols_r16);
-  LOG_D(NR_MAC, "sl_StartSymbol: %lu\n", *sl_BWP_Generic_r16->sl_StartSymbol_r16);
-  LOG_D(NR_MAC, "sl_SubchannelSize: %lu\n", *nr_sl_rxpool->sl_SubchannelSize_r16);
-  LOG_D(NR_MAC, "sl_StartRB_Subchannel_r16: %lu\n", *nr_sl_rxpool->sl_StartRB_Subchannel_r16);
-  LOG_D(NR_MAC, "sl_NumSubchannel: %lu\n", *nr_sl_rxpool->sl_NumSubchannel_r16);
-}
-
-void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
+void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
 {
   LOG_I(NR_RRC, "Initializing Sidelink Sync configuration for UE\n");
-  UE->SL_Preconfiguration[gNB_index] = malloc16_clear(sizeof(NR_SL_PreconfigurationNR_r16_t));
+  UE->SL_Preconfiguration[SyncRef_index] = malloc16_clear(sizeof(NR_SL_PreconfigurationNR_r16_t));
 
-  asn1cCalloc(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16, freq_info);
+  asn1cCalloc(UE->SL_Preconfiguration[SyncRef_index]->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16, freq_info);
 
   NR_SL_FreqConfigCommon_r16_t *freq_conf_cmn = malloc16_clear(sizeof(NR_SL_FreqConfigCommon_r16_t));
   freq_conf_cmn->sl_SyncConfigList_r16 = malloc16_clear(sizeof(struct NR_SL_SyncConfigList_r16));
-  asn1cCallocOne(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16, 1); // Integer (1 ..1000)
+  asn1cCallocOne(UE->SL_Preconfiguration[SyncRef_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16, 1); // Integer (1 ..1000)
 
   /*IE SL-SyncConfig */
   NR_SL_SyncConfig_r16_t  *sl_sync_config = malloc16_clear(sizeof(NR_SL_SyncConfig_r16_t));
@@ -475,11 +435,6 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
   sl_sync_config->txParameters_r16.syncTxThreshOoC_r16 = malloc16_clear(sizeof(long));
   *(sl_sync_config->txParameters_r16.syncTxThreshOoC_r16) = 0; // INTEGER (0..13)
 
-  asn1cCalloc(sl_sync_config->txParameters_r16.syncInfoReserved_r16, syncInfo);
-  syncInfo->buf = malloc16_clear(sizeof(uint8_t));
-  syncInfo->size = 0;
-  syncInfo->bits_unused = 1;
-
   ASN_SEQUENCE_ADD(&freq_conf_cmn->sl_SyncConfigList_r16->list, sl_sync_config);
   ASN_SEQUENCE_ADD(&freq_info->list, freq_conf_cmn);
 
@@ -489,10 +444,10 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
       freq_info->list.array[0]->sl_BWP_List_r16;
 
   /* TODO SL-PreconfigurationNR, Not all IEs needed for demo*/
-  asn1cCalloc(UE->SL_Preconfiguration[gNB_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16, PreconfigGeneral);
+  asn1cCalloc(UE->SL_Preconfiguration[SyncRef_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16, PreconfigGeneral);
   asn1cCalloc(PreconfigGeneral->sl_TDD_Configuration_r16, TDD_Config);
-  TDD_Config->referenceSubcarrierSpacing = 30;
-  TDD_Config->pattern1.dl_UL_TransmissionPeriodicity = 2;
+  TDD_Config->referenceSubcarrierSpacing = NR_SubcarrierSpacing_kHz30;
+  TDD_Config->pattern1.dl_UL_TransmissionPeriodicity = NR_TDD_UL_DL_Pattern__dl_UL_TransmissionPeriodicity_ms5;
 
   NR_SL_BWP_ConfigCommon_r16_t *sl_bwp_conf_cmn =
       malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
@@ -518,10 +473,6 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t gNB_index)
   ASN_SEQUENCE_ADD(&sl_bwp_list->list, sl_bwp_conf_cmn);
 
   LOG_I(NR_RRC, "Initialization of Sidelink Sync Pre-configuration for UE ... Done\n");
-  print_sl_preconf_params(UE->SL_Preconfiguration[gNB_index],
-                          sl_sync_config,
-                          sl_bwp_conf_cmn,
-                          nr_sl_rxpool);
 }
 
 NR_UE_RRC_INST_t* openair_rrc_top_init_ue_nr(char* uecap_file, char* rrc_config_path)
