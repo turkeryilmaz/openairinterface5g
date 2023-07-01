@@ -2,7 +2,13 @@
 #include "SIMULATION/TOOLS/sim.h"
 #include "PHY/CODING/nrSmallBlock/nr_small_block_defs.h"
 #include "coding_unitary_defs.h"
+#include "executables/softmodem-common.h"
 
+uint64_t get_softmodem_optmask(void) {return 0;}
+static softmodem_params_t softmodem_params;
+softmodem_params_t *get_softmodem_params(void) {
+  return &softmodem_params;
+}
 //#define DEBUG_SMALLBLOCKTEST
 
 

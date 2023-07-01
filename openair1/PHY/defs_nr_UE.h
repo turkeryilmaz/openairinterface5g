@@ -39,6 +39,7 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -244,6 +245,10 @@ typedef struct {
   int32_t *sync_corr;
   /// estimated frequency offset (in radians) for all subcarriers
   int32_t freq_offset;
+  // N2_id - assigned based on in coverage status received in pss
+  int32_t N2_id;
+  /// eNb_id user is synched to
+  int32_t eNb_id;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
 } NR_UE_COMMON;
@@ -317,6 +322,47 @@ typedef struct {
   uint16_t slot;
   fapi_nr_dl_config_dci_dl_pdu_rel15_t pdcch_config[FAPI_NR_MAX_SS];
 } NR_UE_PDCCH_CONFIG;
+
+typedef struct {
+  /// Total number of PDU received
+  uint32_t dci_received;
+  /// Total number of DCI False detection (diagnostic mode)
+  uint32_t dci_false;
+  /// Total number of DCI missed (diagnostic mode)
+  uint32_t dci_missed;
+
+  /*
+#ifdef NR_PDCCH_DEFS_NR_UE
+  int nb_searchSpaces;
+  // CORESET structure, where maximum number of CORESETs to be handled is 3 (according to 38.331 V15.1.0)
+  NR_UE_PDCCH_CORESET coreset[NR_NBR_CORESET_ACT_BWP];
+  // SEARCHSPACE structure, where maximum number of SEARCHSPACEs to be handled is 10 (according to 38.331 V15.1.0)
+  // Each SearchSpace is associated with one ControlResourceSet
+  NR_UE_PDCCH_SEARCHSPACE searchSpace[NR_NBR_SEARCHSPACE_ACT_BWP];
+
+  int n_RB_BWP[NR_NBR_SEARCHSPACE_ACT_BWP];
+  uint32_t nb_search_space;
+  #endif*/
+} NR_UE_PDCCH;
+
+#define PSBCH_A 32
+#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
+#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
+
+typedef struct {
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  //uint32_t pdu_fer;
+  uint32_t psbch_a;
+  uint32_t psbch_a_interleaved;
+  uint32_t psbch_a_prime;
+  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
+} NR_UE_PSBCH;
 
 #define NR_PSBCH_MAX_NB_CARRIERS 132
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
@@ -440,10 +486,13 @@ typedef struct {
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
 
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PDCCH     *pdcch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_SLSS_t       *slss;
   NR_UE_PRS       *prs_vars[NR_MAX_PRS_COMB_SIZE];
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
@@ -465,7 +514,10 @@ typedef struct {
   /// PBCH DMRS sequence
   uint32_t nr_gold_pbch[2][64][NR_PBCH_DMRS_LENGTH_DWORD];
 
-  /// PDSCH DMRS
+  /// PSBCH DMRS sequence
+  uint32_t nr_gold_psbch[NR_PSBCH_DMRS_LENGTH_DWORD];
+  
+    /// PDSCH DMRS
   uint32_t ****nr_gold_pdsch[NUMBER_OF_CONNECTED_eNB_MAX];
 
   // Scrambling IDs used in PDSCH DMRS
@@ -534,6 +586,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
+  int              rx_offset_sl;    /// Timing offset for Sidelink
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame
@@ -651,6 +704,8 @@ typedef struct {
   int dl_errors;
   _Atomic(int) dl_stats[16];
   void* scopeData;
+  uint32_t rx_ssb_slot;
+  uint32_t rx_ssb_frame;
   // Pointers to hold PDSCH data only for phy simulators
   void *phy_sim_rxdataF;
   void *phy_sim_pdsch_llr;

@@ -37,6 +37,12 @@
 
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 
+#ifdef DEFINE_VARIABLES_PSS_NR_H
+#define EXTERN
+#else
+#define EXTERN  extern
+#endif
+
 /************** CODE GENERATION ***********************************/
 
 //#define PSS_DECIMATOR                          /* decimation of sample is done between time correlation */
@@ -54,7 +60,7 @@
 #define TIME_RATE_CHANGE              (TIME_PSS+1)
 #define TIME_SSS                      (TIME_RATE_CHANGE+1)
 #define TIME_LAST                     (TIME_SSS+1)
-
+#define INITIAL_PSS_NR                (7)
 /* PSS configuration */
 
 #define SYNCHRO_FFT_SIZE_MAX           (8192)                       /* maximum size of fft for synchronisation */
@@ -75,11 +81,37 @@
 #define SYNC_TMP_SIZE                  (NB_ANTENNAS_RX*SYNCHRO_FFT_SIZE_MAX*IQ_SIZE) /* to be aligned with existing lte synchro */
 #define SYNCF_TMP_SIZE                 (SYNCHRO_FFT_SIZE_MAX*IQ_SIZE)
 
+/************* STRUCTURES *****************************************/
+
+
+/************** VARIABLES *****************************************/
+
+EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
+#ifdef INIT_VARIABLES_PSS_NR_H
+= { NULL, NULL, NULL}
+#endif
+;
+EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
+#ifdef INIT_VARIABLES_PSS_NR_H
+= { NULL, NULL, NULL}
+#endif
+;
+EXTERN c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE] __attribute__((aligned(32)));
+#ifdef INIT_VARIABLES_PSS_NR_H
+= { NULL, NULL, NULL}
+#endif
+;
+
+#ifndef DEFINE_HEADER_ONLY
+
+/************** FUNCTION ******************************************/
+
 void init_context_synchro_nr(NR_DL_FRAME_PARMS *frame_parms_ue);
 void free_context_synchro_nr(void);
+int set_pss_nr(int ofdm_symbol_size);
 int pss_synchro_nr(PHY_VARS_NR_UE *PHY_vars_UE, int is, int rate_change);
-int16_t *get_primary_synchro_nr2(const int nid2);
+c16_t *get_primary_synchro_nr2(const int nid2);
+#endif
+#undef EXTERN
 
 #endif /* PSS_NR_H */
-
-

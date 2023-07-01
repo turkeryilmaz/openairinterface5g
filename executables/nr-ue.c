@@ -33,6 +33,8 @@
 #include "executables/softmodem-common.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "radio/COMMON/common_lib.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
+#include "common/utils/nr/nr_common.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
 
 /*
@@ -99,7 +101,8 @@
 typedef enum {
   pss = 0,
   pbch = 1,
-  si = 2
+  si = 2,
+  psbch = 3,
 } sync_mode_t;
 
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg);
@@ -376,7 +379,12 @@ static void UE_synch(void *arg) {
   sync_mode_t sync_mode = pbch;
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
-  UE->is_synchronized = 0;
+  if (get_softmodem_params()->sl_mode == 2) {
+    UE->is_synchronized_sl = 0;
+    sync_mode = psbch;
+  } else {
+    UE->is_synchronized = 0;
+  }
 
   if (UE->UE_scan == 0) {
 
@@ -392,7 +400,6 @@ static void UE_synch(void *arg) {
 
     }
 
-    sync_mode = pbch;
   } else {
     LOG_E(PHY,"Fixme!\n");
     /*
@@ -492,9 +499,53 @@ static void UE_synch(void *arg) {
       break;
 
     case si:
-    default:
       break;
 
+    case psbch: {
+      int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
+      if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
+
+        // rerun with new cell parameters and frequency-offset
+        freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
+        hw_slot_offset = ((UE->rx_offset_sl << 1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
+                         round((float)((UE->rx_offset << 1) % UE->frame_parms.samples_per_subframe) / UE->frame_parms.samples_per_slot0);
+
+        LOG_I(PHY,"Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
+              hw_slot_offset,
+              freq_offset,
+              openair0_cfg[UE->rf_map.card].rx_gain[0],
+              openair0_cfg[UE->rf_map.card].rx_freq[0],
+              openair0_cfg[UE->rf_map.card].tx_freq[0]);
+        nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
+        UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
+
+        if (UE->UE_scan_carrier == 1) {
+          UE->UE_scan_carrier = 0;
+        } else {
+          if (initial_synch_sl == 0) {
+            UE->is_synchronized_sl = 1;
+            LOG_I(NR_PHY, "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
+                  GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL),
+                  UE->measurements.ssb_rsrp_dBm[0]);
+          }
+        }
+      } else {
+        LOG_I(NR_PHY, "No SyncRef UE found\n");
+        if (UE->UE_scan_carrier == 1) {
+          LOG_I(PHY, "Initial sync failed: trying carrier off %d Hz\n", freq_offset);
+
+          if (freq_offset >= 0)
+            freq_offset += 100;
+          freq_offset *= -1;
+          nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
+          UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
+        }
+      }
+      break;
+    }
+
+    default:
+      break;
   }
 }
 

@@ -52,9 +52,7 @@
 static time_stats_t generic_time[TIME_LAST];
 static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is);
 
-static int16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE] = {0};
-static c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE] = {0};
-int16_t *get_primary_synchro_nr2(const int nid2)
+c16_t *get_primary_synchro_nr2(const int nid2)
 {
   return primary_synchro_nr2[nid2];
 }
@@ -81,9 +79,8 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   int16_t x[LENGTH_PSS_NR];
 
   c16_t primary_synchro[LENGTH_PSS_NR] = {0};
-  int16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
+  c16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
 
-#define INITIAL_PSS_NR (7)
   const int16_t x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
   assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
   memcpy(x, x_initial, sizeof(x_initial));
@@ -99,7 +96,9 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   /* PSS is directly mapped to subcarrier without modulation 38.211 */
   for (int i=0; i < LENGTH_PSS_NR; i++) {
     primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR; /* Maximum value for type short int ie int16_t */
-    primary_synchro2[i] = d_pss[i];
+    primary_synchro[i].i = 0;
+    primary_synchro2[i].r = d_pss[i];
+    primary_synchro2[i].i = d_pss[i];
   }
 
 #ifdef DBG_PSS_NR
@@ -141,84 +140,22 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   unsigned int subcarrier_start = get_softmodem_params()->sl_mode == 0 ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
-  c16_t synchroF_tmp[fp->ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(synchroF_tmp, 0, sizeof(synchroF_tmp));
-  for (int i=0; i < LENGTH_PSS_NR; i++) {
-    synchroF_tmp[k % fp->ofdm_symbol_size] = primary_synchro[i];
+
+  c16_t in[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
+  memset(in, 0, sizeof(in));
+  for (int i = 0; i < LENGTH_PSS_NR; i++) {
+    in[k]= primary_synchro[i];
     k++;
+    if (k == fp->ofdm_symbol_size) k = 0;
   }
 
-  /* IFFT will give temporal signal of Pss */
-  idft((int16_t)get_idft(fp->ofdm_symbol_size),
-       (int16_t *)synchroF_tmp, /* complex input but legacy type is wrong*/
-       (int16_t *)primary_synchro_time_nr[N_ID_2], /* complex output */
-       1); /* scaling factor */
-
-#ifdef DBG_PSS_NR
-
-  if (N_ID_2 == 0) {
-    char output_file[255];
-    char sequence_name[255];
-    sprintf(output_file, "%s%d_%u%s","pss_seq_t_", N_ID_2, length, ".m");
-    sprintf(sequence_name, "%s%d_%u","pss_seq_t_", N_ID_2, length);
-
-    printf("file %s sequence %s\n", output_file, sequence_name);
-
-    LOG_M(output_file, sequence_name, primary_synchro_time, length, 1, 1);
-    sprintf(output_file, "%s%d_%u%s","pss_seq_f_", N_ID_2, length, ".m");
-    sprintf(sequence_name, "%s%d_%u","pss_seq_f_", N_ID_2, length);
-    LOG_M(output_file, sequence_name, synchroF_tmp, length, 1, 1);
+  c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
+  memset(out, 0, sizeof(out));
+  memset(primary_synchro_time_nr[N_ID_2], 0, sizeof(int16_t) * fp->ofdm_symbol_size);
+  idft((int16_t)get_idft(fp->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
+  for (unsigned int i = 0; i < fp->ofdm_symbol_size; i++) {
+    primary_synchro_time_nr[N_ID_2][i] = out[i];
   }
-
-#endif
-
-
-
-#if 0
-
-/* it allows checking that process of idft on a signal and then dft gives same signal with limited errors */
-
-  if ((N_ID_2 == 0) && (length == 256)) {
-
-    LOG_M("pss_f00.m","pss_f00",synchro_tmp,length,1,1);
-
-
-    bzero(synchroF_tmp, size);
-
-  
-
-    /* get pss in the time domain by applying an inverse FFT */
-    dft((int16_t)get_dft(length),
-    	synchro_tmp,           /* complex input */
-        synchroF_tmp,          /* complex output */
-        1);                 /* scaling factor */
-
-    if ((N_ID_2 == 0) && (length == 256)) {
-      LOG_M("pss_f_0.m","pss_f_0",synchroF_tmp,length,1,1);
-    }
-
-    /* check Pss */
-    k = length - (LENGTH_PSS_NR/2);
-
-#define LIMIT_ERROR_FFT   (10)
-
-    for (int i=0; i < LENGTH_PSS_NR; i++) {
-      if (abs(synchroF_tmp[2*k] - primary_synchro[i].r) > LIMIT_ERROR_FFT) {
-      printf("Pss Error[%d] Compute %d Reference %d \n", k, synchroF_tmp[2*k], primary_synchro[i].r);
-      }
-    
-      if (abs(synchroF_tmp[2*k+1] - primary_synchro[i].i) > LIMIT_ERROR_FFT) {
-        printf("Pss Error[%d] Compute %d Reference %d\n", (2*k+1), synchroF_tmp[2*k+1], primary_synchro[i].i);
-      }
-
-      k++;
-
-      if (k >= length) {
-        k-=length;
-      }
-    }
-  }
-#endif
 }
 
 /*******************************************************************
@@ -563,6 +500,9 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   int *nid2 = (int *)&ue->common_vars.nid2;
+  if (get_softmodem_params()->sl_mode == 2) {
+    nid2 = (int *)&ue->common_vars.N2_id;
+  }
   int *f_off = (int *)&ue->common_vars.freq_offset;
   unsigned int n, ar, peak_position, pss_source;
   int64_t peak_value;
@@ -602,7 +542,6 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
     pss_index_start = GET_NID2(ue->target_Nid_cell);
     pss_index_end = pss_index_start + 1;
   }
-
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++) {
     for (n = 0; n < length; n += 8) { //
 
@@ -618,13 +557,17 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
                                          shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
-        //((short*)pss_corr_ue[pss_index])[2*n] += ((short*) &result)[0];   /* real part */
-        //((short*)pss_corr_ue[pss_index])[2*n+1] += ((short*) &result)[1]; /* imaginary part */
-        //((short*)&synchro_out)[0] += ((int*) &result)[0];               /* real part */
-        //((short*)&synchro_out)[1] += ((int*) &result)[1];               /* imaginary part */
-
+	      if (get_softmodem_params()->sl_mode > 0) {
+          //non-coherentely combine repeition of PSS
+          const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
+                                           &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples]),
+                                           frame_parms->ofdm_symbol_size,
+                                           shift);
+          const c64_t r64 = {.r = result.r, .i = result.i};
+          pss_corr_ue += squaredMod(r64);
+	      }
       }
-      
+
       /* calculate the absolute value of sync_corr[n] */
       avg[pss_index]+=pss_corr_ue;
       if (pss_corr_ue > peak_value) {
@@ -670,6 +613,8 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++)
     avg[pss_index] /= (length / 4);
 
+  LOG_I(NR_PHY, "[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n",
+        pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value), dB_fixed64(avg[pss_source]), ffo_est);
   *nid2 = pss_source;
 
   LOG_I(PHY,"[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n", pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est);

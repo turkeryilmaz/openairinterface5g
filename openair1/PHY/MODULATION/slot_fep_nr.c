@@ -21,11 +21,13 @@
 
 #include "PHY/defs_nr_UE.h"
 #include "PHY/defs_gNB.h"
+#include "PHY/impl_defs_nr.h"
 #include "modulation_UE.h"
 #include "nr_modulation.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
 #include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
 #include <common/utils/LOG/log.h>
+#include "executables/softmodem-common.h"
 
 //#define DEBUG_FEP
 
@@ -48,7 +50,9 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  if (ue->is_synchronized) {
+
+  if ((get_softmodem_params()->sl_mode == 2 && ue->is_synchronized_sl) ||
+      (get_softmodem_params()->sl_mode != 2 && ue->is_synchronized)) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   } else {
@@ -130,7 +134,8 @@ int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
 
   unsigned int nb_prefix_samples;
   unsigned int nb_prefix_samples0;
-  if (pbch_decoded) {
+
+  if (pbch_decoded || (get_softmodem_params()->sl_mode == 2 && ue->is_synchronized_sl)) {
     nb_prefix_samples  = frame_parms->nb_prefix_samples;
     nb_prefix_samples0 = frame_parms->nb_prefix_samples0;
   }

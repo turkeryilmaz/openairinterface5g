@@ -280,6 +280,54 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
 */
 int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_max);
 
+/*!
+\fn int nr_sl_generate_psbch_dmrs
+\brief Generation of the DMRS for the PSBCH
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
+                              c16_t *txdataF,
+                              int16_t amp,
+                              uint8_t ssb_start_symbol,
+                              NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_pss
+\brief Generation of the NR PSS
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_pss(c16_t *txdataF,
+                    int16_t amp,
+                    uint8_t ssb_start_symbol,
+                    NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_sss
+\brief Generation of the NR SSS
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_sss(c16_t *txdataF,
+                    int16_t amp,
+                    uint8_t ssb_start_symbol,
+                    NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_sl_pbch
+\brief Generation of the PBCH
+@param
+@returns 0 on success
+ */
+int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
+                         c16_t *txdataF,
+                         int16_t amp,
+                         uint8_t ssb_start_symbol,
+                         uint8_t n_hf,
+                         int sfn,
+                         NR_DL_FRAME_PARMS *frame_parms);
+
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
@@ -294,18 +342,44 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                fapiPbch_t* result,
                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
+/*! \brief receiver for the PBCH
+  \returns number of tx antennas or -1 if error
+*/
+
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot);
+
+int nr_rx_psbch(PHY_VARS_NR_UE *ue,
+                UE_nr_rxtx_proc_t *proc,
+                const int estimateSz,
+                struct complex16 dl_ch_estimates[][estimateSz],
+                NR_UE_PSBCH *nr_ue_psbch_vars,
+                NR_DL_FRAME_PARMS *frame_parms,
+                uint8_t eNB_id,
+                uint8_t i_ssb,
+                MIMO_mode_t mimo_mode,
+                NR_UE_PDCCH_CONFIG *phy_pdcch_config,
+                fapiPsbch_t* result);
+
 int nr_pbch_detection(UE_nr_rxtx_proc_t *proc,
                       PHY_VARS_NR_UE *ue,
                       int pbch_initial_symbol,
                       nr_phy_data_t *phy_data,
                       c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
+int nr_psbch_detection(UE_nr_rxtx_proc_t *proc,
+                       PHY_VARS_NR_UE *ue,
+                       int psbch_initial_symbol,
+                       NR_UE_PDCCH_CONFIG *phy_pdcch_config);
 
 #ifndef modOrder
 #define modOrder(I_MCS,I_TBS) ((I_MCS-I_TBS)*2+2) // Find modulation order from I_TBS and I_MCS
 #endif
 
 int dump_ue_stats(PHY_VARS_NR_UE *phy_vars_ue, UE_nr_rxtx_proc_t *proc, char* buffer, int length, runmode_t mode, int input_level_dBm);
+
+int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
+                       PHY_VARS_NR_UE *phy_vars_ue,
+                       int n_frames);
 
 /*!
   \brief This function performs the initial cell search procedure - PSS detection, SSS detection and PBCH detection.  At the

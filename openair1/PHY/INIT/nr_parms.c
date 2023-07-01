@@ -236,6 +236,9 @@ int nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg,
   fp->numerology_index = mu;
 
   set_scs_parameters(fp, mu, fp->N_RB_DL);
+  if (get_softmodem_params()->sl_mode != 0) {
+    set_scs_parameters(fp, mu, fp->N_RB_SL);
+  }
 
   fp->slots_per_frame = 10* fp->slots_per_subframe;
 

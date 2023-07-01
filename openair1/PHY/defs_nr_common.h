@@ -83,6 +83,7 @@
 #define NR_MAX_NB_PORTS 32
 
 #define NR_MAX_PDSCH_TBS 3824
+#define NR_MAX_SIB_LENGTH 2976 // 3GPP TS 38.331 section 5.2.1 - The physical layer imposes a limit to the maximum size a SIB can take. The maximum SIB1 or SI message size is 2976 bits.
 
 #define MAX_NUM_NR_DLSCH_SEGMENTS_PER_LAYER 36
 
@@ -266,6 +267,19 @@ struct NR_DL_FRAME_PARMS {
   uint8_t tdd_period;
 };
 
+/// Enumeration of SL_channel_config
+typedef enum {
+  NO_SL=0,
+  PSCCH_12_EVEN=1,
+  PSCCH_12_ODD=2,
+  PSCCH_34_EVEN=3,
+  PSCCH_34_ODD=4,
+  PSSCH_12=5,
+  PSSCH_34=6,
+  PSDCH=7,
+  PSBCH=8,
+  MAX_SLTYPES=9
+} NR_SL_chan_t;
 // PRS config structures
 typedef struct {
     uint16_t PRSResourceSetPeriod[2];   // [slot period, slot offset] of a PRS resource set

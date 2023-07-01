@@ -1219,10 +1219,15 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/MODULATION/slot_fep_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr_sl.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr_sl.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_generate_psbch_dmrs_sl.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/psbch_nr_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/cic_filter_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c

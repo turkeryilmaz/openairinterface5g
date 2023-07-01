@@ -54,7 +54,8 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
 
   short ncoef = 32767 - coef;
 
-  LOG_D(PHY,"AbsSubframe %d: rx_offset (before) = %d\n",subframe,ue->rx_offset);
+  LOG_D(NR_PHY, "AbsSubframe %d: rx_offset (before) = %d\n", subframe,
+        get_softmodem_params()->sl_mode != 2 ? ue->rx_offset : ue->rx_offset_sl);
 
   // search for maximum position within the cyclic prefix
   for (int i = -frame_parms->nb_prefix_samples/2; i < frame_parms->nb_prefix_samples/2; i++) {
@@ -89,10 +90,17 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   else
     sync_offset = 0;
 
-  if ( abs(diff) < (SYNCH_HYST+sync_offset) )
-    ue->rx_offset = 0;
-  else
-    ue->rx_offset = diff;
+  if ( abs(diff) < (SYNCH_HYST+sync_offset) ) {
+    if (get_softmodem_params()->sl_mode == 0)
+      ue->rx_offset = 0;
+    else
+      ue->rx_offset_sl = 0;
+  } else {
+    if (get_softmodem_params()->sl_mode == 0)
+      ue->rx_offset = diff;
+    else
+      ue->rx_offset_sl = diff;
+  }
 
   const int sample_shift = -(ue->rx_offset>>1);
   // reset IIR filter for next offset calculation
@@ -114,7 +122,7 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   LOG_I(PHY,"AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
         subframe,
         diff,
-        ue->rx_offset,
+        rx_offset,
         clear,
         max_pos,
         ue->max_pos_fil,
