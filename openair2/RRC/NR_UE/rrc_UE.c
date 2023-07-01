@@ -453,8 +453,8 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
       malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
 
   asn1cCalloc(sl_bwp_conf_cmn->sl_BWP_Generic_r16, BWP_Generic);
-  asn1cCallocOne(BWP_Generic->sl_LengthSymbols_r16, 0);  //sym7 = 0
-  asn1cCallocOne(BWP_Generic->sl_StartSymbol_r16, 0);
+  asn1cCallocOne(BWP_Generic->sl_LengthSymbols_r16, NR_SL_BWP_Generic_r16__sl_LengthSymbols_r16_sym7);
+  asn1cCallocOne(BWP_Generic->sl_StartSymbol_r16, NR_SL_BWP_Generic_r16__sl_StartSymbol_r16_sym0);
 
   sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16 =
       malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16));
@@ -465,7 +465,7 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
   struct NR_SL_ResourcePool_r16  *nr_sl_rxpool =
       malloc16_clear(sizeof(struct NR_SL_ResourcePool_r16));
 
-  asn1cCallocOne(nr_sl_rxpool->sl_SubchannelSize_r16, 10);
+  asn1cCallocOne(nr_sl_rxpool->sl_SubchannelSize_r16, NR_SL_ResourcePool_r16__sl_SubchannelSize_r16_n10);
   asn1cCallocOne(nr_sl_rxpool->sl_StartRB_Subchannel_r16, 2);
   asn1cCallocOne(nr_sl_rxpool->sl_NumSubchannel_r16, 1);
 
