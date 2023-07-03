@@ -673,18 +673,6 @@ __attribute__((always_inline)) static inline void bfly4_256(simde__m256i *x0,
   dy3i = simde_mm256_sub_epi32(x1r_2,simde_mm256_add_epi32(x2i_2,x3r_2));
   *(y3) = simde_mm256_add_epi16(*(x0),cpack_256(dy3r,dy3i));
 }
-static inline void ibfly4(simde__m128i *x0,
-                          simde__m128i *x1,
-                          simde__m128i *x2,
-                          simde__m128i *x3,
-                          simde__m128i *y0,
-                          simde__m128i *y1,
-                          simde__m128i *y2,
-                          simde__m128i *y3,
-                          simde__m128i *tw1,
-                          simde__m128i *tw2,
-                          simde__m128i *tw3) __attribute__((always_inline));
-
 __attribute__((always_inline)) static inline void ibfly4_256(simde__m256i *x0,
                                                              simde__m256i *x1,
                                                              simde__m256i *x2,
