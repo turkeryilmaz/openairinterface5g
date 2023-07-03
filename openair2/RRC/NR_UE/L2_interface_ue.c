@@ -41,13 +41,11 @@
 
 typedef uint32_t channel_t;
 
-void nr_mac_rrc_sync_ind(const module_id_t module_id,
-                         const frame_t frame,
-                         const bool in_sync)
+void nr_mac_rrc_sync_ind(const module_id_t module_id, const frame_t frame, const bool in_sync)
 {
   MessageDef *message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_SYNC_IND);
-  NR_RRC_MAC_SYNC_IND (message_p).frame = frame;
-  NR_RRC_MAC_SYNC_IND (message_p).in_sync = in_sync;
+  NR_RRC_MAC_SYNC_IND(message_p).frame = frame;
+  NR_RRC_MAC_SYNC_IND(message_p).in_sync = in_sync;
   itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
 }
 
@@ -58,21 +56,25 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
                               const int slot,
                               const rnti_t rnti,
                               const channel_t channel,
-                              const uint8_t* pduP,
+                              const uint8_t *pduP,
                               const sdu_size_t pdu_len)
 {
   protocol_ctxt_t ctxt;
   PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, module_id, GNB_FLAG_NO, NOT_A_RNTI, frame / 20, frame % 20, gNB_index);
   sdu_size_t sdu_size = 0;
 
-  switch(channel){
+  switch (channel) {
     case NR_BCCH_BCH:
-      AssertFatal(nr_rrc_ue_decode_NR_BCCH_BCH_Message(module_id, gNB_index, (uint8_t*)pduP, pdu_len) == 0, "UE decode BCCH-BCH error!\n");
+      AssertFatal(nr_rrc_ue_decode_NR_BCCH_BCH_Message(module_id, gNB_index, (uint8_t *)pduP, pdu_len) == 0,
+                  "UE decode BCCH-BCH error!\n");
       break;
 
     case NR_BCCH_DL_SCH:
-      if (pdu_len>0) {
-        LOG_T(NR_RRC, "[UE %d] Received SDU for NR-BCCH-DL-SCH on SRB %u from gNB %d\n", module_id, channel & RAB_OFFSET,
+      if (pdu_len > 0) {
+        LOG_T(NR_RRC,
+              "[UE %d] Received SDU for NR-BCCH-DL-SCH on SRB %u from gNB %d\n",
+              module_id,
+              channel & RAB_OFFSET,
               gNB_index);
 
         MessageDef *message_p;
@@ -86,19 +88,19 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
         }
 
         message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_BCCH_DATA_IND);
-        memset(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, 0, BCCH_SDU_SIZE);
-        memcpy(NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
-        NR_RRC_MAC_BCCH_DATA_IND (message_p).frame = frame; //frameP
-        NR_RRC_MAC_BCCH_DATA_IND (message_p).slot = slot;
-        NR_RRC_MAC_BCCH_DATA_IND (message_p).sdu_size = sdu_size;
-        NR_RRC_MAC_BCCH_DATA_IND (message_p).gnb_index = gNB_index;
+        memset(NR_RRC_MAC_BCCH_DATA_IND(message_p).sdu, 0, BCCH_SDU_SIZE);
+        memcpy(NR_RRC_MAC_BCCH_DATA_IND(message_p).sdu, pduP, sdu_size);
+        NR_RRC_MAC_BCCH_DATA_IND(message_p).frame = frame; // frameP
+        NR_RRC_MAC_BCCH_DATA_IND(message_p).slot = slot;
+        NR_RRC_MAC_BCCH_DATA_IND(message_p).sdu_size = sdu_size;
+        NR_RRC_MAC_BCCH_DATA_IND(message_p).gnb_index = gNB_index;
         itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
       }
       break;
 
     case CCCH:
-      if (pdu_len>0) {
-        LOG_T(NR_RRC,"[UE %d] Received SDU for CCCH on SRB %u from gNB %d\n",module_id,channel & RAB_OFFSET,gNB_index);
+      if (pdu_len > 0) {
+        LOG_T(NR_RRC, "[UE %d] Received SDU for CCCH on SRB %u from gNB %d\n", module_id, channel & RAB_OFFSET, gNB_index);
 
         MessageDef *message_p;
         int msg_sdu_size = CCCH_SDU_SIZE;
@@ -107,24 +109,24 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
           LOG_E(NR_RRC, "SDU larger than CCCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
           sdu_size = msg_sdu_size;
         } else {
-          sdu_size =  pdu_len;
+          sdu_size = pdu_len;
         }
 
-        message_p = itti_alloc_new_message (TASK_MAC_UE, 0, NR_RRC_MAC_CCCH_DATA_IND);
-        memset (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, 0, CCCH_SDU_SIZE);
-        memcpy (NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
-        NR_RRC_MAC_CCCH_DATA_IND (message_p).frame     = frame; //frameP
-        NR_RRC_MAC_CCCH_DATA_IND (message_p).slot = slot;
-        NR_RRC_MAC_CCCH_DATA_IND (message_p).sdu_size  = sdu_size;
-        NR_RRC_MAC_CCCH_DATA_IND (message_p).gnb_index = gNB_index;
-        NR_RRC_MAC_CCCH_DATA_IND (message_p).rnti      = rnti;  //rntiP
-        itti_send_msg_to_task (TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE( module_id ), message_p);
+        message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_CCCH_DATA_IND);
+        memset(NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu, 0, CCCH_SDU_SIZE);
+        memcpy(NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu, pduP, sdu_size);
+        NR_RRC_MAC_CCCH_DATA_IND(message_p).frame = frame; // frameP
+        NR_RRC_MAC_CCCH_DATA_IND(message_p).slot = slot;
+        NR_RRC_MAC_CCCH_DATA_IND(message_p).sdu_size = sdu_size;
+        NR_RRC_MAC_CCCH_DATA_IND(message_p).gnb_index = gNB_index;
+        NR_RRC_MAC_CCCH_DATA_IND(message_p).rnti = rnti; // rntiP
+        itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(module_id), message_p);
       }
       break;
 
     case MIBSLCH:
       LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
-      if (decode_MIB_SL_NR(&ctxt, (uint8_t* const) pduP, 5) >= 0)
+      if (decode_MIB_SL_NR(&ctxt, (uint8_t *const)pduP, 5) >= 0)
         LOG_D(NR_RRC, "Received  MIB_SL: %x.%x.%x.%x.%x\n", pduP[0], pduP[1], pduP[2], pduP[3], pduP[4]);
       else
         LOG_E(NR_RRC, "Received bogus MIB_SL\n");
@@ -134,7 +136,7 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
       break;
   }
 
-  return(0);
+  return (0);
 }
 
 int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
@@ -145,31 +147,39 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
                               uint8_t *buffer_pP)
 {
   int ret_size = 0;
-  switch(Srb_id) {
-
+  switch (Srb_id) {
     case CCCH:
 
       LOG_D(NR_RRC, "nr_mac_rrc_data_req_ue: Payload size = %i\n", NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
-      memcpy(buffer_pP, (uint8_t*)NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.Payload, NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
-      for(int i = 0; i<NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size; i++) {
-        LOG_D(NR_RRC,"(%i): %i\n", i, buffer_pP[i]);
+      memcpy(buffer_pP,
+             (uint8_t *)NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.Payload,
+             NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size);
+      for (int i = 0; i < NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size; i++) {
+        LOG_D(NR_RRC, "(%i): %i\n", i, buffer_pP[i]);
       }
 
       return NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size;
 
     case MIBCH:
       ret_size = do_MIB_SL_NR(frameP, &NR_UE_rrc_inst[Mod_idP]);
-      memcpy((void*)buffer_pP, (void*)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
-      LOG_D(NR_RRC, "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
-            frameP / 10, frameP % 10, buffer_pP[0], buffer_pP[1], buffer_pP[2], buffer_pP[3], buffer_pP[4]);
+      memcpy((void *)buffer_pP, (void *)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
+      LOG_D(NR_RRC,
+            "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
+            frameP / 10,
+            frameP % 10,
+            buffer_pP[0],
+            buffer_pP[1],
+            buffer_pP[2],
+            buffer_pP[3],
+            buffer_pP[4]);
       return (ret_size);
 
     case DCCH:
-      AssertFatal(1==0, "SRB1 not implemented yet!\n");
+      AssertFatal(1 == 0, "SRB1 not implemented yet!\n");
     case DCCH1:
-      AssertFatal(1==0, "SRB2 not implemented yet!\n");
+      AssertFatal(1 == 0, "SRB2 not implemented yet!\n");
     default:
-      AssertFatal(1==0, "Invalid SRB id!\n");
+      AssertFatal(1 == 0, "Invalid SRB id!\n");
   }
 
   return 0;
@@ -178,7 +188,7 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success)
 {
   MessageDef *message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_RA_IND);
-  NR_RRC_MAC_RA_IND (message_p).frame = frame;
-  NR_RRC_MAC_RA_IND (message_p).RA_succeeded = success;
+  NR_RRC_MAC_RA_IND(message_p).frame = frame;
+  NR_RRC_MAC_RA_IND(message_p).RA_succeeded = success;
   itti_send_msg_to_task(TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE(mod_id), message_p);
 }
