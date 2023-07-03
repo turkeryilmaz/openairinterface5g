@@ -56,7 +56,6 @@
 #define NR_POLAR_PSBCH_E 1792   //uint16_t
 #define NR_POLAR_PSBCH_E_DWORD 56 // NR_POLAR_PSBCH_E/32
 
-
 #define NR_POLAR_PSBCH_AGGREGATION_LEVEL 0 //uint8_t
 #define NR_POLAR_PSBCH_MESSAGE_TYPE 3      //int8_t
 #define NR_POLAR_PSBCH_PAYLOAD_BITS 32     //uint16_t

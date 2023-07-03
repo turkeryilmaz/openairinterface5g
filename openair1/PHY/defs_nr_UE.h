@@ -39,7 +39,6 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
-#include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
