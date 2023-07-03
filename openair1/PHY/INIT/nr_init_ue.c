@@ -311,7 +311,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
 
-  int N_RB = (get_softmodem_params()->sl_mode == 2) ? fp->N_RB_SL : fp->N_RB_DL;
+  int N_RB = (get_softmodem_params()->sl_mode == MODE_2) ? fp->N_RB_SL : fp->N_RB_DL;
 
   // ceil(((NB_RB<<1)*3)/32) // 3 RE *2(QPSK)
   int pdcch_dmrs_init_length =  (((N_RB<<1)*3)>>5)+1;
@@ -358,7 +358,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     csiim_vars[gNB_id] = (NR_UE_CSI_IM *)malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = (NR_UE_CSI_RS *)malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = (NR_UE_SRS *)malloc16_clear(sizeof(NR_UE_SRS));
-    if (get_softmodem_params()->sl_mode == 2) {
+    if (get_softmodem_params()->sl_mode == MODE_2) {
       psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
     }
 
@@ -476,7 +476,7 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     free_and_zero(ue->csirs_vars[gNB_id]);
     free_and_zero(ue->srs_vars[gNB_id]);
 
-    if (get_softmodem_params()->sl_mode != 0) {
+    if (get_softmodem_params()->sl_mode != NOT_SL_MODE) {
       free_and_zero(ue->psbch_vars[gNB_id]);
     }
     free_and_zero(ue->prach_vars[gNB_id]);

@@ -124,6 +124,12 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
+typedef enum {
+  NOT_SL_MODE=0,
+  MODE_1,
+  MODE_2
+} NR_SL_MODE_t;
+
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
 typedef struct {
@@ -441,7 +447,7 @@ typedef struct {
   /// \brief Indicator that UE is synchronized to a gNB
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
-  int is_synchronized_sl;
+  bool is_synchronized_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
   /// \brief Indicator that UE is an SynchRef UE

@@ -99,10 +99,10 @@
 #define TX_JOB_ID 100
 
 typedef enum {
-  pss = 0,
-  pbch = 1,
-  si = 2,
-  psbch = 3,
+  PSS = 0,
+  PBCH = 1,
+  SI = 2,
+  PSBCH = 3,
 } sync_mode_t;
 
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg);
@@ -376,14 +376,14 @@ static void UE_synch(void *arg) {
   syncData_t *syncD=(syncData_t *) arg;
   int i, hw_slot_offset;
   PHY_VARS_NR_UE *UE = syncD->UE;
-  sync_mode_t sync_mode = pbch;
+  sync_mode_t sync_mode = PBCH;
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
-  if (get_softmodem_params()->sl_mode == 2) {
-    UE->is_synchronized_sl = 0;
-    sync_mode = psbch;
+  if (get_softmodem_params()->sl_mode == MODE_2) {
+    UE->is_synchronized_sl = false;
+    sync_mode = PSBCH;
   } else {
-    UE->is_synchronized = 0;
+    UE->is_synchronized = false;
   }
 
   if (UE->UE_scan == 0) {
@@ -452,7 +452,7 @@ static void UE_synch(void *arg) {
 
       break;
     */
-    case pbch:
+    case PBCH:
       LOG_I(PHY, "[UE thread Synch] Running Initial Synch \n");
 
       uint64_t dl_carrier, ul_carrier;
@@ -498,10 +498,10 @@ static void UE_synch(void *arg) {
       }
       break;
 
-    case si:
+    case SI:
       break;
 
-    case psbch: {
+    case PSBCH: {
       int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
       if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
 
@@ -523,7 +523,7 @@ static void UE_synch(void *arg) {
           UE->UE_scan_carrier = 0;
         } else {
           if (initial_synch_sl == 0) {
-            UE->is_synchronized_sl = 1;
+            UE->is_synchronized_sl = true;
             LOG_I(NR_PHY, "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
                   GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL),
                   UE->measurements.ssb_rsrp_dBm[0]);

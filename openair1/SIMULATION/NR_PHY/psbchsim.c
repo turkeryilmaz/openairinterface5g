@@ -361,7 +361,7 @@ static void get_sim_cl_opts(int argc, char **argv)
 int main(int argc, char **argv)
 {
   get_softmodem_params()->sa = 1;
-  get_softmodem_params()->sl_mode = 2;
+  get_softmodem_params()->sl_mode = MODE_2;
   if (load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY) == 0) {
     exit_fun("[NR_PSBCHSIM] Error, configuration module init failed\n");
   }
@@ -440,7 +440,7 @@ int main(int argc, char **argv)
   UE->slss->sl_timeoffsetssb_r16 = 0;
   UE->slss->slss_id = Nid_SL;
 
-  UE->is_synchronized_sl = run_initial_sync ? 0 : 1;
+  UE->is_synchronized_sl = run_initial_sync ? false : true;
   UE->UE_fo_compensation = (cfo / scs) != 0.0 ? 1 : 0; // if a frequency offset is set then perform fo estimation and compensation
 
   if (init_nr_ue_signal(UE, 1) != 0) {

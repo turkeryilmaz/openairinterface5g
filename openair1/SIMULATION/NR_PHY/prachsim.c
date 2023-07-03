@@ -141,7 +141,7 @@ int NB_UE_INST = 1;
 int main(int argc, char **argv){
 
   char c;
-  get_softmodem_params()->sl_mode = 0;
+  get_softmodem_params()->sl_mode = NOT_SL_MODE;
   double sigma2, sigma2_dB = 0, SNR, snr0 = -2.0, snr1 = 0.0, ue_speed0 = 0.0, ue_speed1 = 0.0;
   double **s_re, **s_im, **r_re, **r_im, iqim = 0.0, delay_avg = 0, ue_speed = 0, fs=-1, bw;
   int i, l, aa, aarx, trial, n_frames = 1, prach_start, rx_prach_start; //, ntrials=1;
