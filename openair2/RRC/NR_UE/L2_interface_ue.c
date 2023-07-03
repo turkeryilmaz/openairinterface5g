@@ -121,7 +121,7 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
         itti_send_msg_to_task (TASK_RRC_NRUE, GNB_MODULE_ID_TO_INSTANCE( module_id ), message_p);
       }
       break;
-    
+
     case MIBSLCH:
       LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
       if (decode_MIB_SL_NR(&ctxt, (uint8_t* const) pduP, 5) >= 0)
@@ -144,8 +144,6 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
                               const rb_id_t Srb_id,
                               uint8_t *buffer_pP)
 {
-  protocol_ctxt_t ctxt;
-  PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt, Mod_idP, GNB_FLAG_NO, NOT_A_RNTI, frameP / 20, frameP % 20, gNB_id);
   int ret_size = 0;
   switch(Srb_id) {
 
@@ -160,7 +158,7 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
       return NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size;
 
     case MIBCH:
-      ret_size = do_MIB_SL_NR(&ctxt, frameP, &NR_UE_rrc_inst[Mod_idP]);
+      ret_size = do_MIB_SL_NR(frameP, &NR_UE_rrc_inst[Mod_idP]);
       memcpy((void*)buffer_pP, (void*)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
       LOG_D(NR_RRC, "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
             frameP / 10, frameP % 10, buffer_pP[0], buffer_pP[1], buffer_pP[2], buffer_pP[3], buffer_pP[4]);

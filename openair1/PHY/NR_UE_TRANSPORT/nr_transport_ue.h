@@ -167,5 +167,6 @@ typedef struct {
   uint8_t ptrs_symbol_index;
 } NR_UE_DLSCH_t;
 
+
 /**@}*/
 #endif

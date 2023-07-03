@@ -862,7 +862,7 @@ int nr_rrc_mac_config_req_ue_sl(module_id_t                     module_id,
         mac->SL_Preconfiguration->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]->sl_SyncConfigList_r16;
     // TO-DO:: Add discovery mode
   }
-  if (directFrameNumber_r16 < 1025) mac->directFrameNumber_r16 = directFrameNumber_r16;
+  mac->directFrameNumber_r16 = directFrameNumber_r16;
   return 0;
 }
 

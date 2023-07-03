@@ -198,7 +198,7 @@ int xer_nr_sprint (char *string, size_t string_size, asn_TYPE_descriptor_t *td, 
 //------------------------------------------------------------------------------
 //TTN for D2D
 // NR : 3GPP 38.331 (Section 5.8.5.3)
-uint8_t do_MIB_SL_NR(const protocol_ctxt_t* const ctxt_pP, int abs_slot, NR_UE_RRC_INST_t* UE)
+uint8_t do_MIB_SL_NR(int abs_slot, NR_UE_RRC_INST_t* UE)
 {
    asn_enc_rval_t enc_rval;
    uint16_t frame = abs_slot / 20;
