@@ -105,7 +105,7 @@ static int vtp_send_init_udp(const vtp_udpSockReq_t *req)
 {
   // Create and alloc new message
   MessageDef *message_p;
-  message_p = itti_alloc_new_message(TASK_VTP, 0, UDP_INIT);
+  message_p = itti_alloc_new_message(TASK_UDP, 0, UDP_INIT);
   if (message_p == NULL)
   {
     return -1;
@@ -168,7 +168,10 @@ void ss_vtp_send_tinfo(
     virtualTime.TimingInfo.HSFN.d = false;
     virtualTime.TimingInfo.HSFN.v.Number = 0;
 
-    _ss_log_vt(&virtualTime, " <= ");
+    if (((tinfo->sfn % 32) == 0) && (tinfo->sf == 0) && (tinfo->slot == 0))
+    {
+        _ss_log_vt(&virtualTime, " <= ");
+    }
 
     /* Encode message
      */
@@ -210,11 +213,10 @@ static int vtp_send_udp_msg(
   // Create and alloc new message
   MessageDef *message_p = NULL;
   udp_data_req_t *udp_data_req_p = NULL;
-  message_p = itti_alloc_new_message(TASK_VTP, 0, UDP_DATA_REQ);
+  message_p = itti_alloc_new_message(TASK_UDP, 0, UDP_DATA_REQ);
 
   if (message_p)
   {
-    LOG_A(GNB_APP, "Sending UDP_DATA_REQ length %u offset %u buffer %x %x %x\n", buffer_len, buffer_offset, buffer[0], buffer[1], buffer[2]);
     udp_data_req_p = &message_p->ittiMsg.udp_data_req;
     udp_data_req_p->peer_address = peerIpAddr;
     udp_data_req_p->peer_port = peerPort;
@@ -236,13 +238,10 @@ static int vtp_send_udp_msg(
  */
 static void vtp_send_proxy(void *msg, int msgLen)
 {
-    LOG_A(GNB_APP, "In sys_send_proxy\n");
     uint32_t peerIpAddr;
     uint16_t peerPort = vtp_proxy_send_port;
 
     IPV4_STR_ADDR_TO_INT_NWBO(vtp_local_address, peerIpAddr, " BAD IP Address");
-
-    LOG_A(GNB_APP, "\nCell Config End of Buffer\n ");
 
     /** Send to proxy */
     vtp_send_udp_msg((uint8_t *)msg, msgLen, 0, peerIpAddr, peerPort);
@@ -252,7 +251,6 @@ static void vtp_send_proxy(void *msg, int msgLen)
 static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 {
     VtpCmdReq_t *req = (VtpCmdReq_t *)malloc(sizeof(VtpCmdReq_t));
-    LOG_A(GNB_APP,"itti_alloc %p\n", req);
     req->header.preamble = 0xFEEDC0DE;
     req->header.msg_id = SS_VTP_RESP;
     req->header.length = sizeof(proxy_ss_header_t);
@@ -286,9 +284,6 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
     req->tinfo.sfn = virtualTime->TimingInfo.SFN.v.Number;
     req->tinfo.sf = virtualTime->TimingInfo.Subframe.v.Number;
 
-    LOG_A(GNB_APP, "VTP_ACK Command to proxy sent for cell_id: %d SFN: %d SF: %d mu: %d slot: %d\n",
-        req->header.cell_id,req->tinfo.sfn ,req->tinfo.sf, req->tinfo.mu, req->tinfo.slot);
-
     vtp_send_proxy((void *)req, sizeof(VtpCmdReq_t));
 
 }
@@ -296,7 +291,6 @@ static void ss_send_vtp_resp(struct VirtualTimeInfo_Type *virtualTime)
 //------------------------------------------------------------------------------
 static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
 {
-    struct VirtualTimeInfo_Type *virtualTime = NULL;
     const size_t size = 16 * 1024;
     unsigned char *buffer = (unsigned char *)acpMalloc(size);
     assert(buffer);
@@ -307,7 +301,6 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
     while (1)
     {
         int userId = acpRecvMsg(ctx, &msgSize, buffer);
-        LOG_A(GNB_APP, "[SS-VTP] Received msgSize=%d, userId=%d\n", (int)msgSize, userId);
 
         // Error handling
         if (userId < 0)
@@ -340,15 +333,19 @@ static inline uint8_t ss_gNB_read_from_vtp_socket(acpCtx_t ctx)
         }
         else if (userId == MSG_SysVTEnquireTimingAck_userId)
         {
-
+            struct VirtualTimeInfo_Type *virtualTime = NULL;
             if (acpSysVTEnquireTimingAckDecSrv(ctx, buffer, msgSize, &virtualTime) != 0)
             {
                 LOG_E(GNB_APP, "[SS-VTP] acpVngProcessDecSrv failed \n");
                 break;
             }
 
+            AssertFatal(virtualTime != NULL, "VT struct is null (%p)", virtualTime);
             ss_send_vtp_resp(virtualTime);
-            _ss_log_vt(virtualTime, " => ");
+            if ((virtualTime->TimingInfo.SFN.v.Number % 32) == 0 && (virtualTime->TimingInfo.Subframe.v.Number == 0)
+                && (virtualTime->TimingInfo.Slot.v.SlotOffset.v.Numerology1 == 0)) {
+                _ss_log_vt(virtualTime, " => ");
+            }
 
             acpSysVTEnquireTimingAckFreeSrv(virtualTime);
             // TODo forward the message to sys_task ACK

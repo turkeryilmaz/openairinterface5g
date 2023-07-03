@@ -31,6 +31,8 @@
  */
 
 #include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -68,7 +70,14 @@ queue_t nr_tx_req_queue;
 queue_t nr_ul_dci_req_queue;
 queue_t nr_ul_tti_req_queue;
 
-void nrue_init_standalone_socket(int tx_port, int rx_port)
+static bool is_ipaddress(const char* s)
+{
+	struct sockaddr_in sa;
+	return 1 == inet_pton(AF_INET, s, &sa.sin_addr);
+}
+
+
+static void nrue_init_ip_socket(const char* addr, int tx_port, int rx_port)
 {
   {
     struct sockaddr_in server_address;
@@ -84,7 +93,7 @@ void nrue_init_standalone_socket(int tx_port, int rx_port)
       return;
     }
 
-    if (inet_pton(server_address.sin_family, stub_eth_params.remote_addr, &server_address.sin_addr) <= 0)
+    if (inet_pton(server_address.sin_family, addr, &server_address.sin_addr) <= 0)
     {
       LOG_E(NR_MAC, "Invalid standalone PNF Address\n");
       close(sd);
@@ -128,8 +137,88 @@ void nrue_init_standalone_socket(int tx_port, int rx_port)
     ue_rx_sock_descriptor = sd;
     LOG_T(NR_RRC, "Successfully set up rx_socket in %s.\n", __FUNCTION__);
   }
-  LOG_D(NR_RRC, "NRUE standalone socket info: tx_port %d  rx_port %d on %s.\n",
-        tx_port, rx_port, stub_eth_params.remote_addr);
+  LOG_I(NR_RRC, "NRUE standalone socket info: tx_port %d  rx_port %d on %s.\n",
+        tx_port, rx_port, addr);
+}
+
+static bool nrue_init_unixsocket(const char *addr)
+{
+	{
+		struct sockaddr_un server_address;
+		int addr_len = sizeof(server_address);
+
+		server_address.sun_family = AF_UNIX;
+		snprintf(server_address.sun_path, sizeof(server_address.sun_path), "%s.tx", addr);
+		LOG_I(NR_RRC,"Proxy::TX Socket address: %s \r\n", server_address.sun_path);
+		int sd = socket(server_address.sun_family, SOCK_DGRAM, 0);
+		if (sd < 0)
+		{
+			assert(false);
+		}
+
+		if (connect(sd, (struct sockaddr *)&server_address, addr_len) < 0)
+		{
+			LOG_E(NR_RRC,"Proxy::Connection TX to standalone PNF failed: %s\n", strerror(errno));
+			close(sd);
+			assert(false);
+		}
+
+		assert(ue_tx_sock_descriptor == -1);
+		ue_tx_sock_descriptor = sd;
+	}
+
+	{
+		struct sockaddr_un server_address;
+		struct sockaddr_un client_address;
+
+		server_address.sun_family = AF_UNIX;
+		snprintf(server_address.sun_path, sizeof(server_address.sun_path), "%s.rx", addr);
+		srand(0xdeadc0de);
+
+		client_address.sun_family = AF_UNIX;
+		snprintf(client_address.sun_path, sizeof(client_address.sun_path), "%s_%d.rx", addr, rand());
+		unlink(client_address.sun_path);
+		LOG_I(NR_RRC,"Proxy::RX Socket address: Proxy: %s UE: %s \r\n", server_address.sun_path, client_address.sun_path);
+
+		int sd = socket(server_address.sun_family, SOCK_DGRAM, 0);
+		if (sd < 0)
+		{
+			assert(false);
+		}
+
+		assert(sd);
+
+		if( 0 != (bind(sd, (struct sockaddr*)&client_address, sizeof(struct sockaddr_un))))
+		{
+			LOG_E(NR_RRC,"Proxy::Connection RX to standalone PNF failed: %d %s\n",errno, strerror(errno));
+			close(sd);
+			assert(false);
+		}
+
+		// handshake
+		uint8_t buffer[4] = {0xde,0xad,0xc0,0xde};
+		sendto(sd, buffer, sizeof(buffer), 0, (const struct sockaddr *)&server_address, sizeof(server_address));
+
+		assert(ue_rx_sock_descriptor == -1);
+		ue_rx_sock_descriptor = sd;
+	}
+
+	LOG_I(NR_RRC,"Proxy::NRUE standalone Unix socket, on %s.\n", addr);
+	return true;
+}
+
+void nrue_init_standalone_socket(int tx_port, int rx_port)
+{
+	printf("--- %s \n", getenv("PROXY_ADDR"));
+	const char *standalone_addr = getenv("PROXY_ADDR") ? getenv("PROXY_ADDR") : stub_eth_params.remote_addr;
+  if(is_ipaddress(standalone_addr))
+  {
+    nrue_init_ip_socket(standalone_addr, tx_port, rx_port);
+  }
+  else
+  {
+    nrue_init_unixsocket(standalone_addr);
+  }
 }
 
 void send_nsa_standalone_msg(NR_UL_IND_t *UL_INFO, uint16_t msg_id)
@@ -731,7 +820,7 @@ void check_and_process_slot_ind(nfapi_ue_slot_indication_vt_t *slot_ind, uint16_
         slot_ind->slot = slot;
         LOG_D(NR_PHY, "[%d, %d] SLOT Indication\n", frame, slot);
     }
-    
+
     if (pthread_mutex_unlock(&mac->mutex_dl_info)) abort();
 }
 
@@ -1145,7 +1234,7 @@ int handle_bcch_bch(module_id_t module_id, int cc_id,
 			  gNB_index,
 			  phy_data,
 			  additional_bits,
-			  ssb_length,  //  Lssb = 64 is not support    
+			  ssb_length,  //  Lssb = 64 is not support
 			  ssb_index,
 			  pduP,
 			  ssb_start_subcarrier,
@@ -1416,21 +1505,14 @@ void RCconfig_nr_ue_macrlc(void) {
   if (MACRLC_ParamList.numelt > 0) {
     for (j = 0; j < MACRLC_ParamList.numelt; j++) {
       if (strcmp(*(MACRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        stub_eth_params.local_if_name = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
-        stub_eth_params.my_addr = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
-        stub_eth_params.remote_addr = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_ADDRESS_IDX].strptr));
-        stub_eth_params.my_portc =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTC_IDX].iptr);
-        stub_eth_params.remote_portc =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTC_IDX].iptr);
-        stub_eth_params.my_portd =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTD_IDX].iptr);
-        stub_eth_params.remote_portd =
-            *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTD_IDX].iptr);
-        stub_eth_params.transp_preference = ETH_UDP_MODE;
+        stub_eth_params.local_if_name = strdup(*(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
+        stub_eth_params.my_addr =       strdup(*(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
+        stub_eth_params.remote_addr =   strdup(*(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_ADDRESS_IDX].strptr));
+        stub_eth_params.my_portc =           *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTC_IDX].iptr);
+        stub_eth_params.remote_portc =       *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTC_IDX].iptr);
+        stub_eth_params.my_portd =           *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_PORTD_IDX].iptr);
+        stub_eth_params.remote_portd =       *(MACRLC_ParamList.paramarray[j][MACRLC_REMOTE_N_PORTD_IDX].iptr);
+        stub_eth_params.transp_preference =  ETH_UDP_MODE;
       }
     }
   }
