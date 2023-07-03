@@ -291,7 +291,7 @@ static void genericPowerPerAntena(OAIgraph_t  *graph, const int nb_ant, const sc
   float *values, *time;
   oai_xygraph_getbuff(graph, &time, &values, len, 0);
 
-  printf("************Number of Antennas: %i", nb_ant);
+  //printf("************Number of Antennas: %i", nb_ant);
 
   for (int ant=0; ant<nb_ant; ant++) {
     if (data[ant] != NULL) {
