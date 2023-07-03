@@ -539,27 +539,6 @@ typedef struct {
   fapi_nr_dl_config_dci_dl_pdu_rel15_t pdcch_config[FAPI_NR_MAX_SS];
 } NR_UE_PDCCH_CONFIG;
 
-typedef struct {
-  /// Total number of PDU received
-  uint32_t dci_received;
-  /// Total number of DCI False detection (diagnostic mode)
-  uint32_t dci_false;
-  /// Total number of DCI missed (diagnostic mode)
-  uint32_t dci_missed;
-
-  /*
-#ifdef NR_PDCCH_DEFS_NR_UE
-  int nb_searchSpaces;
-  // CORESET structure, where maximum number of CORESETs to be handled is 3 (according to 38.331 V15.1.0)
-  NR_UE_PDCCH_CORESET coreset[NR_NBR_CORESET_ACT_BWP];
-  // SEARCHSPACE structure, where maximum number of SEARCHSPACEs to be handled is 10 (according to 38.331 V15.1.0)
-  // Each SearchSpace is associated with one ControlResourceSet
-  NR_UE_PDCCH_SEARCHSPACE searchSpace[NR_NBR_SEARCHSPACE_ACT_BWP];
-
-  int n_RB_BWP[NR_NBR_SEARCHSPACE_ACT_BWP];
-  uint32_t nb_search_space;
-  #endif*/
-} NR_UE_PDCCH;
 
 #define PSBCH_A 32
 #define PSBCH_MAX_RE_PER_SYMBOL (11*12)

@@ -289,9 +289,7 @@ static int do_pss_sss_extract_nr(
       }
 
       k++;
-
       if (k == frame_parms->ofdm_symbol_size) k = 0;
-      
     }
   }
 
