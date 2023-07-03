@@ -9,29 +9,29 @@
 This document tells about the reference guide for the setup of the environment for NSA 5G configuration using the openair interface code base. This shall be the reference setup before we start the testing on the SequansRD . Since the NSA was not tested by OAI in the CI, there are few things to be taken into account to bring up the setup. This document is being created to identify the issues and resolve them and provide the steps to easily re-create the NSA setup. Once this is achieved the next step is to have the SequansRD based NSA setup.
 
 The NSA mode functional is shown in the following image:
-![](/images/Multi-UE-Proxy.png)
+![](images/Multi-UE-Proxy.png)
 
 ## 2 Message flow for NSA setup
 Following slides show the message flow between the LTE-UE and NR-UE of OAI and the communication between eNB/gNB for NSA setup.
 Also the important logs to be verified for the NSA setup are documented in the document
 
-![](/images/NSA_Mode.png)
+![](images/NSA_Mode.png)
 
-![](/images/NSA_Sockets_Routing.png)
+![](images/NSA_Sockets_Routing.png)
 
-![](/images/NSA_Mode_FlowDiagram.png)
+![](images/NSA_Mode_FlowDiagram.png)
 
 4: LOG_A(RRC, "Initial ueCapabilityEnquiry sent to NR UE with size %zu\n", requestedFreqBandsNR->size);\
 7: LOG_A(NR_RRC, "Sent initial NRUE Capability response to LTE UE\n");\
 9:LOG_A(RRC,"NR_UECapabilityInformation Encoded %zd bits (%zd bytes)\n",enc_rval.encoded,(enc_rval.encoded+7)/8);\
 
-![](/images/NSA_Mode_FlowDiagram_2.png)
+![](images/NSA_Mode_FlowDiagram_2.png)
 
 11: LOG_A(RRC, "Generating RRCCConnectionReconfigurationRequest (NRUE Measurement Report Request).\n");\
 14: LOG_A(RRC, "Encoded measurement object %zu bits (%zu bytes) and sent to NR UE\n", enc_rval.encoded, (enc_rval.encoded + 7)/8);\
 23: LOG_A(NR_RRC, "Populated NR_UE_RRC_MEASUREMENT information and sent to LTE UE\n");\
 
-![](/images/NSA_Mode_FlowDiagram_3.png)
+![](images/NSA_Mode_FlowDiagram_3.png)
 
 27: LOG_A(RRC, PROTOCOL_RRC_CTXT_UE_FMT" Logical Channel DL-DCCH, Generate NR UECapabilityEnquiry (bytes %d)\n" PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP), size);\
 31: LOG_A(RRC, "Second ueCapabilityEnquiry (request for NR capabilities) sent to NR UE with size %zu\n" requestedFreqBandsNR->size);\
