@@ -844,13 +844,13 @@ void nr_ulsch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
       }
 
       if (rho) {
-        __m128i *rho128[2];
+        simde__m128i *rho128[2];
         for (int aatx2 = 0; aatx2 < nrOfLayers; aatx2++) {
-          rho128[0] = (__m128i *) &rho[0][aatx * nrOfLayers + aatx2][(symbol * (nb_re + off))];
+          rho128[0] = (simde__m128i *) &rho[0][aatx * nrOfLayers + aatx2][(symbol * (nb_re + off))];
           for (int aa = 1; aa < n_rx; aa++) {
-            rho128[1] = (__m128i *) &rho[aa][aatx * nrOfLayers + aatx2][(symbol * (nb_re + off))];
+            rho128[1] = (simde__m128i *) &rho[aa][aatx * nrOfLayers + aatx2][(symbol * (nb_re + off))];
             for (i = 0; i < nb_rb_0 * 3; i++) {
-              rho128[0][i] = _mm_adds_epi16(rho128[0][i], rho128[1][i]);
+              rho128[0][i] = simde_mm_adds_epi16(rho128[0][i], rho128[1][i]);
             }
           }
         }
