@@ -175,6 +175,8 @@ rrc_gNB_ue_context_t *rrc_gNB_create_ue_context(rnti_t rnti,
 {
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc_instance_pP, rnti);
 
+  /* TODO: this should not matter, we can have multiple UEs at different DUs
+   * with the same RNTI! */
   if (ue_context_p) {
     LOG_E(NR_RRC, "Cannot create new UE context, already exist rnti: %04x\n", rnti);
     return ue_context_p;
@@ -188,10 +190,10 @@ rrc_gNB_ue_context_t *rrc_gNB_create_ue_context(rnti_t rnti,
   ue->rnti = rnti;
   ue->random_ue_identity = ue_identityP;
   f1_ue_data_t ue_data = {.secondary_ue = du_ue_id};
-  AssertFatal(cu_get_f1_ue_data(ue->rnti) == NULL,
+  AssertFatal(cu_get_f1_ue_data(ue->gNB_ue_ngap_id) == NULL,
               "UE F1 Context for ID %d already exists, logic bug\n",
               ue->gNB_ue_ngap_id);
-  cu_add_f1_ue_data(ue->rnti, &ue_data);
+  cu_add_f1_ue_data(ue->gNB_ue_ngap_id, &ue_data);
 
   RB_INSERT(rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head, ue_context_p);
   LOG_I(NR_RRC,
