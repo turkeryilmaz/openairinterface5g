@@ -619,7 +619,7 @@ int rrc_gNB_process_NGAP_DOWNLINK_NAS(MessageDef *msg_p, instance_t instance, mu
   AssertFatal(!NODE_IS_DU(RC.nrrrc[ctxt.module_id]->node_type), "illegal node type DU: receiving NGAP messages at this node\n");
   /* Transfer data to PDCP */
   rb_id_t srb_id = UE->Srb[2].Active ? DCCH1 : DCCH;
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(UE->gNB_ue_ngap_id);
+  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(UE->rnti);
   DevAssert(ue_data != NULL);
   f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = UE->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = srb_id};
   deliver_dl_rrc_message_data_t data = {.rrc = RC.nrrrc[instance], .dl_rrc = &dl_rrc};
