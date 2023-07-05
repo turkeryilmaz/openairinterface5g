@@ -3028,28 +3028,28 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
   }
 }
 
-int decode_MIB_SL_NR(const protocol_ctxt_t *const ctxt_pP, uint8_t *const sdu, const uint8_t sdu_len)
+int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t sdu_len)
 {
-  memcpy((void *)&NR_UE_rrc_inst[ctxt_pP->module_id].SL_MIB, (void *)sdu, sdu_len);
+  memcpy((void *)&NR_UE_rrc_inst[mod_id].SL_MIB, (void *)sdu, sdu_len);
 
   asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
                                                  &asn_DEF_NR_SBCCH_SL_BCH_Message,
-                                                 (void **)&NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0],
+                                                 (void **)&NR_UE_rrc_inst[mod_id].mib_sl[0],
                                                  (const void *)sdu,
                                                  sdu_len);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     LOG_E(NR_RRC,
           "[UE %d] Frame %d : Failed to decode SBCCH_SL_BCH_Message (%zu bytes)\n",
-          ctxt_pP->module_id,
+          mod_id,
           ctxt_pP->frame,
           dec_rval.consumed);
     return -1;
   }
-  NR_SBCCH_SL_BCH_MessageType_t *mib_sl = NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0];
+  NR_SBCCH_SL_BCH_MessageType_t *mib_sl = NR_UE_rrc_inst[mod_id].mib_sl[0];
   struct NR_MasterInformationBlockSidelink *mib_sl_buf = mib_sl->choice.c1->choice.masterInformationBlockSidelink;
   struct NR_MasterInformationBlockSidelink *mib_sl_rrc_buf =
-         NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
+         NR_UE_rrc_inst[mod_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
 
   LOG_D(NR_RRC,
         "Decoded MIBSL SFN.SLOT %d.%d, InCoverage %d\n",
@@ -3057,7 +3057,7 @@ int decode_MIB_SL_NR(const protocol_ctxt_t *const ctxt_pP, uint8_t *const sdu, c
         *mib_sl_buf->slotIndex_r16.buf,
         (int)mib_sl_rrc_buf->inCoverage_r16);
 
-  nr_rrc_mac_config_req_ue_sl(ctxt_pP->module_id,
+  nr_rrc_mac_config_req_ue_sl(mod_id,
                               0,
                               0,
                               0,
