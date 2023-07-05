@@ -3046,15 +3046,15 @@ int decode_MIB_SL_NR(const protocol_ctxt_t *const ctxt_pP, uint8_t *const sdu, c
           dec_rval.consumed);
     return -1;
   }
-  NR_SBCCH_SL_BCH_MessageType_t *mib_sl = &NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl;
-  struct NR_MasterInformationBlockSidelink *mib_sl_buf = mib_sl[0].choice.c1->choice.masterInformationBlockSidelink;
+  NR_SBCCH_SL_BCH_MessageType_t *mib_sl = NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0];
+  struct NR_MasterInformationBlockSidelink *mib_sl_buf = mib_sl->choice.c1->choice.masterInformationBlockSidelink;
   struct NR_MasterInformationBlockSidelink *mib_sl_rrc_buf =
-      &NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
+         NR_UE_rrc_inst[ctxt_pP->module_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
 
   LOG_D(NR_RRC,
         "Decoded MIBSL SFN.SLOT %d.%d, InCoverage %d\n",
-        mib_sl_buf->directFrameNumber_r16.buf,
-        mib_sl_buf->slotIndex_r16.buf,
+        *mib_sl_buf->directFrameNumber_r16.buf,
+        *mib_sl_buf->slotIndex_r16.buf,
         (int)mib_sl_rrc_buf->inCoverage_r16);
 
   nr_rrc_mac_config_req_ue_sl(ctxt_pP->module_id,
@@ -3063,8 +3063,8 @@ int decode_MIB_SL_NR(const protocol_ctxt_t *const ctxt_pP, uint8_t *const sdu, c
                               0,
                               0,
                               NULL,
-                              mib_sl_buf->directFrameNumber_r16.buf,
-                              mib_sl_buf->slotIndex_r16.buf);
+                              *mib_sl_buf->directFrameNumber_r16.buf,
+                              *mib_sl_buf->slotIndex_r16.buf);
   return (0);
 }
 
