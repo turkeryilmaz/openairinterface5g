@@ -277,7 +277,6 @@ typedef enum {
   PSSCH_12=5,
   PSSCH_34=6,
   PSDCH=7,
-  PSBCH=8,
   MAX_SLTYPES=9
 } NR_SL_chan_t;
 // PRS config structures
