@@ -124,7 +124,7 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
 
     case MIBSLCH:
       LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
-      if (decode_MIB_SL_NR(module_id, (uint8_t *const)pduP, 5) >= 0)
+      if (decode_MIB_SL_NR(module_id, (uint8_t *const)pduP, 5, frame) >= 0)
         LOG_D(NR_RRC, "Received  MIB_SL: %x.%x.%x.%x.%x\n", pduP[0], pduP[1], pduP[2], pduP[3], pduP[4]);
       else
         LOG_E(NR_RRC, "Received bogus MIB_SL\n");

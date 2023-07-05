@@ -161,7 +161,8 @@ int get_from_lte_ue_fd();
 
 int decode_MIB_SL_NR(const module_id_t      mod_id,
                      uint8_t*               const sdu,
-                     const uint8_t          sdu_len);
+                     const uint8_t          sdu_len,
+                     const frame_t          frame);
 void nr_ue_rrc_timer_trigger(int module_id, int frame, int slot);
 
 void configure_spcell(NR_UE_RRC_INST_t *rrc, NR_SpCellConfig_t *spcell_config);

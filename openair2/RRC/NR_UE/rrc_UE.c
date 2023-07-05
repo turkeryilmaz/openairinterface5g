@@ -3028,7 +3028,7 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
   }
 }
 
-int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t sdu_len)
+int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t sdu_len, const frame_t frame)
 {
   memcpy((void *)&NR_UE_rrc_inst[mod_id].SL_MIB, (void *)sdu, sdu_len);
 
@@ -3042,7 +3042,7 @@ int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t
     LOG_E(NR_RRC,
           "[UE %d] Frame %d : Failed to decode SBCCH_SL_BCH_Message (%zu bytes)\n",
           mod_id,
-          ctxt_pP->frame,
+          frame,
           dec_rval.consumed);
     return -1;
   }
