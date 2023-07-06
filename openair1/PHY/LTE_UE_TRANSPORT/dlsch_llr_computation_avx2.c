@@ -606,7 +606,7 @@ void qam64_qam16_avx2(short *stream0_in,
     ch_mag_int  = simde_mm256_unpacklo_epi64(xmm2,xmm3);
     */
 
-    seperate_real_imag_parts(&ch_mag_int, &xmm2, ch_mag_256i_i[i], ch_mag_256i_i[i + 1]);
+    simde_mm256_separate_real_imag_parts(&ch_mag_int, &xmm2, ch_mag_256i_i[i], ch_mag_256i_i[i+1]);
 
     y0r_one_over_sqrt_21   = simde_mm256_mulhi_epi16(y0r, ONE_OVER_SQRT_42);
     y0r_three_over_sqrt_21 = simde_mm256_mulhi_epi16(y0r, THREE_OVER_SQRT_42);

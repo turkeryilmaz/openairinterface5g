@@ -2866,6 +2866,7 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                           current_DL_BWP->initial_BWPSize);
   else
     N_RB = mac->type0_PDCCH_CSS_config.num_rbs;
+
   switch(dci_format) {
 
   case NR_DL_DCI_FORMAT_1_0:

@@ -642,7 +642,8 @@ void nr_ulsch_channel_compensation(int **rxdataF_ext,
       QAM_amp128  = _mm_set1_epi16(QAM64_n1); //
       QAM_amp128b = _mm_set1_epi16(QAM64_n2);
       QAM_amp128c = _mm_setzero_si128();
-    } else if (mod_order == 8) {
+    }
+    else if (mod_order == 8) {
       QAM_amp128  = _mm_set1_epi16(QAM256_n1); //
       QAM_amp128b = _mm_set1_epi16(QAM256_n2);
       QAM_amp128c = _mm_set1_epi16(QAM256_n3);
@@ -1140,7 +1141,7 @@ void nr_ulsch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
       }
 
     }
-#elif defined(__arm__) || defined(__aarch64__)
+    #elif defined(__arm__) || defined(__aarch64__)
     rxdataF_comp128_0   = (int16x8_t *)&rxdataF_comp[0][symbol*frame_parms->N_RB_DL*12];
     rxdataF_comp128_1   = (int16x8_t *)&rxdataF_comp[1][symbol*frame_parms->N_RB_DL*12];
     ul_ch_mag128_0      = (int16x8_t *)&ul_ch_mag[0][symbol*frame_parms->N_RB_DL*12];

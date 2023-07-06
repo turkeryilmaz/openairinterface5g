@@ -121,17 +121,15 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   }
 
 #ifdef DEBUG_PHY
-  LOG_I(
-      PHY,
-      "AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
-      subframe,
-      diff,
-      rx_offset,
-      clear,
-      max_pos,
-      ue->max_pos_fil,
-      max_val,
-      sync_pos);
+  LOG_I(PHY,"AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
+        subframe,
+        diff,
+        ue->rx_offset,
+        clear,
+        max_pos,
+        ue->max_pos_fil,
+        max_val,
+        sync_pos);
 #endif //DEBUG_PHY
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_ADJUST_SYNCH, VCD_FUNCTION_OUT);
