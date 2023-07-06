@@ -208,27 +208,41 @@ $ sudo iptables -P FORWARD ACCEPT
 ```
 Pulling container images:
 ```bash
-$docker pull rdefosseoai/oai-hss
-$docker pull rdefosseoai/magma-mme
-$docker pull rdefosseoai/oai-spgwc
-$docker pull rdefosseoai/oai-spgwu-tiny
+$ docker pull oaisoftwarealliance/oai-spgwc:latest
+$ docker pull  oaisoftwarealliance/magma-mme:latest
+$ docker pull oaisoftwarealliance/oai-hss:latest
+$ docker pull oaisoftwarealliance/oai-spgwu-tiny:latest
 ```
 Re-tag the container images:
 ```bash
-$docker image tag rdefosseoai/oai-hss:latest oai-hss:latest
-$docker image tag rdefosseoai/magma-mme:latest magma-mme:latest
-$docker image tag rdefosseoai/oai-spgwc:latest oai-spgwc:latest
-$docker image tag rdefosseoai/oai-spgwu-tiny:latest oai-spgwu-tiny:latest
-$docker logout
+$ docker image tag oaisoftwarealliance/oai-hss:latest oai-hss:production
+$ docker image tag oaisoftwarealliance/oai-spgwu-tiny:latest oai-spgwu-tiny:production
+$ docker image tag oaisoftwarealliance/oai-spgwc:latest oai-spgwc:production
+$ docker image tag oaisoftwarealliance/magma-mme:latest magma-mme:master
+$ docker logout
+```
 
-$cd <PATHTOEPC>
-$cd docker-compose/magma-mme-demo
-$docker-compose up -d db_init
+Clone the EPC repository for getting the docker-compose file
+
+```
+$ git clone https://github.com/OPENAIRINTERFACE/openair-epc-fed.git
+
+```
+set the PATHTOEPC to the cloned directory. Now need to update the submodules to get the access to oai_db.cql file to initilize the database container
+```
+$ cd <PATHTOEPC>
+git submodule init
+git submodule update --recursive
+```
+Bring up the database continer by following the commands
+```
+$ cd docker-compose/magma-mme-demo
+$ docker-compose up -d db_init
 Creating network "demo-oai-private-net" with the default driver
 Creating network "demo-oai-public-net" with the default driver
 Creating demo-cassandra ... done
 Creating demo-db-init   ... done
-$docker logs demo-db-init --follow
+$ docker logs demo-db-init --follow
 Connection error: ('Unable to connect to any servers', {'192.168.61.2': error(111, "Tried connecting to [('192.168.61.2', 9042)]. Last error: Connection refused")})
 Connection error: ('Unable to connect to any servers', {'192.168.61.2': error(111, "Tried connecting to [('192.168.61.2', 9042)]. Last error: Connection refused")})
 Connection error: ('Unable to connect to any servers', {'192.168.61.2': error(111, "Tried connecting to [('192.168.61.2', 9042)]. Last error: Connection refused")})
@@ -242,7 +256,7 @@ You must have the "OK" message in the demo-db-init container logs, in order to p
 **NOTE: the error messages are normal. They do not prevent the system from working properly.**
 Remove prod-db-init container:
 ```bash
-$docker rm -f demo-db-init
+$ docker rm -f demo-db-init
 ```
 On your EPC docker host, check the routing table and identify the default gateway:
 ```bash
@@ -251,8 +265,8 @@ Destination Gateway Genmask Flags Metric Ref Use Iface 0.0.0.0 192.168.253.1 0.0
 ```
 Use the default gateway as DNS in the magma-mme-demo and Edit/modify the docker-compose ﬁle in order to:
 ```bash
-$cd <PATHTOEPC>/sequansRD/EPC/docker-compose/magma-mme-demo
-$vi docker-compose.yml
+$ cd <PATHTOEPC>/sequansRD/EPC/docker-compose/magma-mme-demo
+$ vi docker-compose.yml
 ```
 - DEFAULT_DNS_IPV4_ADDRESS: 192.168.253.1
 - In services, go to magma_mme and change the name of image to "magma-mme:master" and container_name to "demo-magma-mme" e.g.
@@ -265,7 +279,7 @@ $vi docker-compose.yml
 **NOTE: Please make sure you add the proper route in the eNB server as shown earlier**
 Now we can start EPC:
 ```bash
-$docker-compose up -d oai_spgwu
+$ docker-compose up -d oai_spgwu
 Creating demo-redis   ... done
 Creating demo-oai-hss ... done
 Creating demo-magma-mme ... done
@@ -295,33 +309,33 @@ $ docker inspect --format="{{range .NetworkSettings.Networks}}{{.IPAddress}}{{en
 **NOTE: MME has a short life. It is better to compose it every time before using it. Each time you modify the docker-compose ﬁle, you have to repeat docker-compose up -d oai_spgwu. Each time you reboot your machine or you see with "docker ps -a" that an EPC component has exited you have to restart from scratch following these steps:**
 
 ```bash
-$cd <PATHTOEPC>/docker-compose/magma-mme-demo
-$docker-compose down
-$docker ps -a
+$ cd <PATHTOEPC>/docker-compose/magma-mme-demo
+$ docker-compose down
+$ docker ps -a
 ```
 make sure that linux kernel allows IP forwarding:
 
 ```bash
-$sudo sysctl net.ipv4.conf.all.forwarding=1
-$sudo iptables -P FORWARD ACCEPT
-$sudo iptables \--list
+$ sudo sysctl net.ipv4.conf.all.forwarding=1
+$ sudo iptables -P FORWARD ACCEPT
+$ sudo iptables \--list
 ```
 Restart Database
 ```bash
-$docker-compose up -d db_init
-$docker logs demo-db-init  --follow
-$docker rm -f demo-db-init
+$ docker-compose up -d db_init
+$ docker logs demo-db-init  --follow
+$ docker rm -f demo-db-init
 ```
 please make sure the last line is OK otherwise you need to repeat the previous steps
 Restart **EPC**
 ```bash
-$docker-compose up -d oai_spgwu
-$docker ps -a
+$ docker-compose up -d oai_spgwu
+$ docker ps -a
 ```
 For restart from scratch, run the below shell script also :
 ```bash
-$cd <PATHTOEPC>/sequansRD/EPC/docker-compose/magma-mme-demo
-$./startEPC.sh
+$ cd <PATHTOEPC>/sequansRD/EPC/docker-compose/magma-mme-demo
+$ ./startEPC.sh
 ```
 In order to check errors in MME and HSS you can do the follow:
 ```bash
