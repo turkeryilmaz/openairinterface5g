@@ -104,7 +104,14 @@ endif()
 
 # Atlas is required by some packages, but not found in pkg-config
 # So, here are some hacks here. Hope this gets fixed in future!
-if(EXISTS "/usr/include/atlas/cblas.h" OR EXISTS "/usr/include/cblas.h")
+if(EXISTS "/usr/include/aarch64-linux-gnu/cblas.h" AND CROSS_COMPILER EQUAL 1)
+  message(STATUS "include the file for the cross-compiler")
+  include_directories("/usr/aarch64-linux-gnu/include")
+  LINK_DIRECTORIES("/usr/aarch64-linux-gnu/lib")
+  list(APPEND ATLAS_LIBRARIES cblas)
+  list(APPEND ATLAS_LIBRARIES atlas)
+  list(APPEND ATLAS_LIBRARIES lapack)
+elseif(EXISTS "/usr/include/atlas/cblas.h" OR EXISTS "/usr/include/cblas.h")
   include_directories("/usr/include/atlas")
   LINK_DIRECTORIES("/usr/lib/lapack")
   LINK_DIRECTORIES("/usr/lib64")
@@ -186,7 +193,10 @@ eval_boolean(AUTODETECT_AVX2 DEFINED CPUFLAGS AND CPUFLAGS MATCHES "avx2")
 add_boolean_option(AVX2 ${AUTODETECT_AVX2} "Whether AVX2 intrinsics is available on the host processor" ON)
 
 message(STATUS "CPU architecture is ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+if (CROSS_COMPILER EQUAL 1)
+  message(STATUS "setting as aarch64")
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -gdwarf-2 -lgcc -lrt")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
   # The following intrinsics are assumed to be available on any x86 system
   # (avx, f16c, fma, gnfi, mmx, pclmul, sse, sse2, sse3, xop)
   set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -DSIMDE_X86_AVX_NATIVE -DSIMDE_X86_AVX_NATIVE -DSIMDE_X86_F16C_NATIVE -DSIMDE_X86_FMA_NATIVE -DSIMDE_X86_GFNI_NATIVE -DSIMDE_X86_MMX_NATIVE -DSIMDE_X86_PCLMUL_NATIVE -DSIMDE_X86_SSE2_NATIVE -DSIMDE_X86_SSE3_NATIVE -DSIMDE_X86_SSE_NATIVE -DSIMDE_X86_XOP_HAVE_COM_ -DSIMDE_X86_XOP_NATIVE")
@@ -217,8 +227,11 @@ else()
   message(FATAL_ERROR "compile for CPU architecture ${CPUARCH}, CMAKE_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=native")
-
+if (!CROSS_COMPILER EQUAL 1)
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=native")
+else ()
+  set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=armv8-a")
+endif()
 # add autotools definitions that were maybe used!
 add_definitions("-DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_FCNTL_H=1 -DHAVE_ARPA_INET_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_SOCKET_H=1 -DHAVE_STRERROR=1 -DHAVE_SOCKET=1 -DHAVE_MEMSET=1 -DHAVE_GETTIMEOFDAY=1 -DHAVE_STDLIB_H=1 -DHAVE_MALLOC=1 -DHAVE_LIBSCTP")
 

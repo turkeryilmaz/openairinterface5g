@@ -609,26 +609,41 @@ check_install_oai_software() {
             specific_packages="libz-dev"
             ;;
     esac
+    if [[ "$CROSS_COMPILER" == 1 ]]; then
+      echo "install package for corss_compiler"
+      $SUDO apt-get install -y \
+        libatlas-base-dev:arm64 \
+        libblas-dev:arm64 \
+        liblapack-dev:arm64 \
+        liblapacke-dev:arm64 \
+        libreadline-dev:arm64 \
+        libgnutls28-dev:arm64 \
+        libconfig-dev:arm64 \
+        libsctp-dev:arm64 \
+        libssl-dev:arm64 \
+        libtool:arm64 \
+        zlib1g-dev:arm64
+    fi
     $SUDO apt-get install -y \
     $specific_packages \
-	automake  \
-	build-essential \
-	$CMAKE \
+        automake  \
+        build-essential \
+        $CMAKE \
         ninja-build \
-	pkg-config \
-	git \
-	libatlas-base-dev \
-	libblas-dev \
-	liblapack-dev \
-	liblapacke-dev \
-	libreadline-dev \
-	libgnutls28-dev \
-	libconfig-dev \
-	libsctp-dev  \
-	libssl-dev  \
-	libtool  \
-	patch \
-	openssl \
+        pkg-config \
+        git \
+        libatlas-base-dev \
+        libblas-dev \
+        liblapack-dev \
+        liblapacke-dev \
+        libreadline-dev \
+        libgnutls28-dev \
+        libconfig-dev \
+        libsctp-dev  \
+        libssl-dev  \
+        libtool  \
+        patch \
+        openssl \
         zlib1g-dev \
         xxd
 
