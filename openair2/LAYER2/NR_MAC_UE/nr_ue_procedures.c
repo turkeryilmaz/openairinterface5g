@@ -443,22 +443,14 @@ int nr_ue_process_dci_indication_pdu(module_id_t module_id,int cc_id, int gNB_in
 
   LOG_D(MAC,"Received dci indication (rnti %x,dci format %d,n_CCE %d,payloadSize %d,payload %llx)\n",
 	dci->rnti,dci->dci_format,dci->n_CCE,dci->payloadSize,*(unsigned long long*)dci->payloadBits);
-  int8_t ret = nr_extract_dci_info(mac,
-                                   dci->dci_format,
-                                   dci->payloadSize,
-                                   dci->rnti,
-                                   dci->ss_type,
-                                   (uint64_t *)dci->payloadBits,
-                                   def_dci_pdu_rel15,
-                                   slot);
+  const int ret = nr_extract_dci_info(mac, dci->dci_format, dci->payloadSize, dci->rnti, dci->ss_type, (uint64_t *)dci->payloadBits, def_dci_pdu_rel15, slot);
   if ((ret & 1) == 1)
     return -1;
   else if (ret == 2) {
-    dci->dci_format = NR_UL_DCI_FORMAT_0_0;
+    dci->dci_format = (dci->dci_format == NR_UL_DCI_FORMAT_0_0) ? NR_DL_DCI_FORMAT_1_0 : NR_UL_DCI_FORMAT_0_0;
     def_dci_pdu_rel15 = &mac->def_dci_pdu_rel15[slot][dci->dci_format];
   }
-  int8_t ret_proc = nr_ue_process_dci(module_id, cc_id, gNB_index, frame, slot, def_dci_pdu_rel15, dci);
-  return ret_proc;
+  return nr_ue_process_dci(module_id, cc_id, gNB_index, frame, slot, def_dci_pdu_rel15, dci);
 }
 
 int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, frame_t frame, int slot, dci_pdu_rel15_t *dci, fapi_nr_dci_indication_pdu_t *dci_ind) {
@@ -660,6 +652,8 @@ int8_t nr_ue_process_dci(module_id_t module_id, int cc_id, uint8_t gNB_index, fr
 
     dl_config->dl_config_list[dl_config->number_pdus].dlsch_config_pdu.rnti = rnti;
     fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config_pdu_1_0 = &dl_config->dl_config_list[dl_config->number_pdus].dlsch_config_pdu.dlsch_config_rel15;
+
+    dlsch_config_pdu_1_0->pduBitmap = 0;
 
     NR_PDSCH_Config_t *pdsch_config = current_DL_BWP ? current_DL_BWP->pdsch_Config : NULL;
     if (dci_ind->ss_type == NR_SearchSpace__searchSpaceType_PR_common) {
@@ -2855,6 +2849,7 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                                    dci_pdu_rel15_t *dci_pdu_rel15,
                                    int slot)
 {
+  LOG_D(MAC,"nr_extract_dci_info : dci_pdu %lx, size %d, format %d\n", *dci_pdu, dci_size, dci_format);
   int pos = 0;
   int fsize = 0;
   int rnti_type = get_rnti_type(mac, rnti);
@@ -2871,7 +2866,6 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
                           current_DL_BWP->initial_BWPSize);
   else
     N_RB = mac->type0_PDCCH_CSS_config.num_rbs;
-  LOG_D(MAC, "nr_extract_dci_info : dci_pdu %lx, size %d\n", *dci_pdu, dci_size);
   switch(dci_format) {
 
   case NR_DL_DCI_FORMAT_1_0:
@@ -3253,9 +3247,14 @@ static uint8_t nr_extract_dci_info(NR_UE_MAC_INST_t *mac,
 #ifdef DEBUG_EXTRACT_DCI
 	LOG_I(MAC,"Format indicator %d (%d bits)=> %d (0x%lx)\n",dci_pdu_rel15->format_indicator,1,dci_size-pos,*dci_pdu);
 #endif
-  if (dci_pdu_rel15->format_indicator == 1)
-    return 1; // discard dci, format indicator not corresponding to dci_format
-  fsize = dci_pdu_rel15->frequency_domain_assignment.nbits;
+
+        //switch to DCI_1_0
+        if (dci_pdu_rel15->format_indicator == 1) {
+          dci_pdu_rel15 = &mac->def_dci_pdu_rel15[slot][NR_DL_DCI_FORMAT_1_0];
+          return 2 + nr_extract_dci_info(mac, NR_DL_DCI_FORMAT_1_0, dci_size, rnti, ss_type, dci_pdu, dci_pdu_rel15, slot);
+        }
+
+	fsize = dci_pdu_rel15->frequency_domain_assignment.nbits;
 	pos+=fsize;
 	dci_pdu_rel15->frequency_domain_assignment.val = (*dci_pdu>>(dci_size-pos))&((1<<fsize)-1);
 #ifdef DEBUG_EXTRACT_DCI

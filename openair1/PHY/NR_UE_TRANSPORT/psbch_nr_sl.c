@@ -271,7 +271,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
 
   /// QPSK modulation
   int16_t mod_psbch_e[NR_POLAR_PSBCH_E];
-  for (int i = 0; i<NR_POLAR_PSBCH_E> > 1; i++) {
+  for (int i = 0; i < NR_POLAR_PSBCH_E >> 1; i++) {
     AssertFatal(((i << 1) >> 5) < NR_POLAR_PSBCH_E_DWORD,
                 "Invalid index into psbch->psbch_e. Index %d > %d\n",
                 ((i << 1) >> 5),

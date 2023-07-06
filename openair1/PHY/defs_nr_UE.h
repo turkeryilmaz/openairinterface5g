@@ -466,7 +466,6 @@ typedef struct {
   nr_synch_request_t synch_request;
 
   NR_UE_PSBCH *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
-  NR_UE_PDCCH *pdcch_vars[RX_NB_TH_MAX][NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];

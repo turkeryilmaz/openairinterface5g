@@ -190,7 +190,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
                      c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
   int id = get_softmodem_params()->sl_mode == NOT_SL_MODE ? ue->common_vars.eNb_id : ue->common_vars.N2_id;
-  int16_t *pss = primary_synchro_nr2[id];
+  c16_t *pss = primary_synchro_nr2[id];
   c16_t tmp, tmp2;
   c16_t *sss0_ext3 = &sss0_ext[0][0];
   for (uint8_t aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
@@ -198,8 +198,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss0_ext2 = &pss0_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = (int16_t)((((int32_t)pss0_ext2[i].r) * pss[i]) >> 15);
-      tmp.i = 0; //-pss0_ext2[i].i * pss[i];
+      tmp.r = (int16_t)((((int32_t)pss0_ext2[i].r) * pss[i].r) >> 15);
+      tmp.i = 0; //(int16_t)((((int32_t)pss0_ext2[i].r) * pss[i].i) >> 15);
 
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
@@ -223,8 +223,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss1_ext2 = &pss1_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = pss1_ext2[i].r * pss[i];
-      tmp.i = -pss1_ext2[i].i * pss[i];
+      tmp.r = pss1_ext2[i].r * pss[i].r;
+      tmp.i = -pss1_ext2[i].i * pss[i].i;
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)
