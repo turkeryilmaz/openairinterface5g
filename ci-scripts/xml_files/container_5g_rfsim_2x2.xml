@@ -26,19 +26,10 @@
         <htmlTabIcon>wrench</htmlTabIcon>
         <repeatCount>1</repeatCount>
 	<TestCaseRequestedList>
- 111111
- 100001
- 000000
- 000001
- 000002
- 000003
- 020001
- 020002
  030001
  030011
  030002
  030022
- 100001
         </TestCaseRequestedList>
         <TestCaseExclusionList></TestCaseExclusionList>
 
@@ -100,6 +91,7 @@
         <testCase id="030001">
                 <class>Iperf</class>
 		<desc>Iperf UDP Downlink</desc>
+                <cn_iperf_prefix>docker exec -d rfsim5g-oai-ext-dn</cn_iperf_prefix>
 		<iperf_args>-B 12.1.1.2 -u -i 1 -s</iperf_args>
 		<direction>DL</direction>
 		<id>rfsim5g_2x2</id>
@@ -124,7 +116,7 @@
 		<desc>Iperf UDP Uplink</desc>
 		<iperf_args>-u -i 1 -s</iperf_args>
 		<direction>UL</direction>
-		<id>oai_rfsim_2x2</id>
+		<id>rfsim5g_2x2</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
 		<iperf_profile>single-ue</iperf_profile>
@@ -135,7 +127,7 @@
 		<desc>Iperf UDP Uplink</desc>
 		<iperf_args>-B 12.1.1.2 -c 192.168.72.135 -u -i 1 -t 10 -b 1M</iperf_args>
 		<direction>UL</direction>
-		<id>oai_rfsim_2x2</id>
+		<id>rfsim5g_2x2</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
 		<iperf_profile>single-ue</iperf_profile>
