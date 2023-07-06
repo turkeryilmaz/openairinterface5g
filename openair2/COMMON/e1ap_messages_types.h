@@ -216,8 +216,8 @@ typedef struct pdu_session_setup_s {
 } pdu_session_setup_t;
 
 typedef struct e1ap_bearer_setup_resp_s {
-  uint64_t gNB_cu_cp_ue_id;
-  uint64_t gNB_cu_up_ue_id;
+  uint32_t gNB_cu_cp_ue_id;
+  uint32_t gNB_cu_up_ue_id;
   int numDRBs;
   drb_setup_t DRBList[E1AP_MAX_NUM_DRBS];
   int numPDUSessions;
