@@ -63,13 +63,6 @@
 
 #define INITIAL_SSS_NR    (7)
 
-static const int16_t phase_re_nr[PHASE_HYPOTHESIS_NUMBER]
-    // -pi/3 ---- pi/3
-    = {16384, 20173, 23571, 26509, 28932, 30791, 32051, 32687, 32687, 32051, 30791, 28932, 26509, 23571, 20173, 16384};
-
-static const int16_t phase_im_nr[PHASE_HYPOTHESIS_NUMBER] // -pi/3 ---- pi/3
-    = {-28377, -25821, -22762, -19260, -15383, -11207, -6813, -2286, 2286, 6813, 11207, 15383, 19260, 22762, 25821, 28377};
-
 static int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 
 void init_context_sss_nr(int amp)
@@ -78,7 +71,7 @@ void init_context_sss_nr(int amp)
   int16_t x1[LENGTH_SSS_NR];
   int16_t dss_current;
   int m0, m1;
-  int nid_2_num = get_softmodem_params()->sl_mode == 0 ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
+  int nid_2_num = get_softmodem_params()->sl_mode == NOT_SL_MODE ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
 
   const int x0_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
   const int x1_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
@@ -132,8 +125,7 @@ void init_context_sss_nr(int amp)
 
 //#define DEBUG_SSS_NR
 //#define DEBUG_PLOT_SSS
-void insert_sss_nr(int16_t *sss_time,
-                   NR_DL_FRAME_PARMS *frame_parms)
+void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
 {
   const unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
   int Nid2 = GET_NID2(frame_parms->Nid_cell);
@@ -162,24 +154,26 @@ void insert_sss_nr(int16_t *sss_time,
     */
 
   unsigned int k = ofdm_symbol_size - ((LENGTH_SSS_NR/2)+1);
-  c16_t synchroF_tmp[2048] __attribute__((aligned(32)));
-  c16_t synchro_tmp[2048] __attribute__((aligned(32)));
-  bzero(synchroF_tmp, sizeof(synchroF_tmp));
 
   /* SSS is directly mapped to subcarrier */
-  for (int i=0; i<LENGTH_SSS_NR; i++) {
-    synchroF_tmp[k % ofdm_symbol_size].r = d_sss[Nid2][Nid1][i];
+  c16_t in[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
+  memset(in, 0, sizeof(in));
+  for (int i = 0; i < LENGTH_SSS_NR; i++) {
+    in[i].r = d_sss[Nid2][Nid1][i];
+    in[i].i = 0;
     k++;
+    if (k == frame_parms->ofdm_symbol_size)
+      k = 0;
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
-  idft(IDFT_2048,
-       (int16_t *)synchroF_tmp, /* complex input */
-       (int16_t *)synchro_tmp, /* complex output */
-       1); /* scaling factor */
-
-  /* then get final sss in time */
-  memcpy(sss_time, synchro_tmp, ofdm_symbol_size * sizeof(c16_t));
+  c16_t out[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
+  memset(out, 0, sizeof(out));
+  memset(sss_time, 0, sizeof(int16_t) * ofdm_symbol_size);
+  idft(IDFT_2048, (int16_t *)&in, (int16_t *)&out, 1);
+  for (unsigned int i = 0; i < ofdm_symbol_size; i++) {
+    sss_time[i] = out[i];
+  }
 }
 
 /*******************************************************************
@@ -198,16 +192,16 @@ static int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
                          c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                          c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int16_t *pss = get_primary_synchro_nr2(ue->common_vars.nid2);
+  c16_t *pss = get_primary_synchro_nr2(ue->common_vars.nid2);
 
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     c16_t *sss_ext2 = sss_ext[aarx];
     c16_t *pss_ext2 = pss_ext[aarx];
     for (int i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      const int tmp_re = pss_ext2[i].r * pss[i];
-      const int tmp_im = -pss_ext2[i].i * pss[i];
-      
+      const int tmp_re = pss_ext2[i].r * pss[i].r;
+      const int tmp_im = -pss_ext2[i].i * pss[i].i;
+
       const int32_t amp = tmp_re * tmp_re + tmp_im * tmp_im;
       const int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)
@@ -270,9 +264,8 @@ static int do_pss_sss_extract_nr(
 
   for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     int pss_symbol = 0;
-    int sss_symbol = get_softmodem_params()->sl_mode == 0 ?
-                     (SSS_SYMBOL_NB - PSS_SYMBOL_NB) :
-                     (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB) ;
+    int sss_symbol =
+        get_softmodem_params()->sl_mode == NOT_SL_MODE ? (SSS_SYMBOL_NB - PSS_SYMBOL_NB) : (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB);
     unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
 
     c16_t *pss_rxF = rxdataF[aarx] + pss_symbol * ofdm_symbol_size;
@@ -281,11 +274,9 @@ static int do_pss_sss_extract_nr(
     c16_t *pss_rxF_ext = pss_ext[aarx];
     c16_t *sss_rxF_ext = sss_ext[aarx];
 
-    unsigned int k = frame_parms->first_carrier_offset +
-                     frame_parms->ssb_start_subcarrier +
-                     ((get_softmodem_params()->sl_mode == 0) ?
-                     PSS_SSS_SUB_CARRIER_START :
-                     PSS_SSS_SUB_CARRIER_START_SL);
+    unsigned int k =
+        frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier
+        + ((get_softmodem_params()->sl_mode == NOT_SL_MODE) ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL);
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
@@ -372,7 +363,7 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
   uint8_t i;
   c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
   c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
-  uint8_t Nid2 = GET_NID2(ue->common_vars.nid2);
+  uint8_t Nid2 = get_softmodem_params()->sl_mode == NOT_SL_MODE ? GET_NID2(ue->common_vars.nid2) : ue->common_vars.N2_id;
   uint16_t Nid1;
   uint8_t phase;
   NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;
@@ -395,19 +386,6 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
   write_output("rxdataF0_sss.m","rxF0_sss",&ue->common_vars.rxdataF[0][(SSS_SYMBOL_NB-PSS_SYMBOL_NB)*frame_parms->ofdm_symbol_size],frame_parms->ofdm_symbol_size,1,1);
   write_output("pss_ext.m","pss_ext",pss_ext,LENGTH_PSS_NR,1,1);
 
-#endif
-
-#if 0
-  int16_t *p = (int16_t *)sss_ext[0];
-  int16_t *p2 = (int16_t *)pss_ext[0];
-
-  for (int i = 0; i < LENGTH_SSS_NR; i++) {
-    printf("sss ref  [%i] : %d %d \n", i, d_sss[0][0][i], d_sss[0][0][i]);
-    printf("sss ext  [%i] : %d %d \n", i, p[2*i], p[2*i+1]);
-
-    printf("pss ref [%i] : %d %d \n", i, primary_synchro_nr2[0][2*i], primary_synchro_nr2[0][2*i+1]);
-    printf("pss ext [%i] : %d %d \n", i, p2[2*i], p2[2*i+1]);
-  }
 #endif
 
   // get conjugated channel estimate from PSS, H* = R* \cdot PSS
@@ -440,17 +418,6 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
 
 #endif
 
-#if 0
-        int16_t *ps = (int16_t *)pss_ext;
-
-        for (int i = 0; i < LENGTH_SSS_NR; i++) {
-          printf("sss ref  [%i] : %d \n", i, d_sss[0][0][i]);
-          printf("sss ext  [%i] : %d %d \n", i, sss[i].r, sss[i].i);
-
-          printf("pss ref [%i] : %d %d \n", i, primary_synchro_nr2[0][2*i], primary_synchro_nr2[0][2*i+1]);
-          printf("pss ext [%i] : %d %d \n", i, ps[2*i], ps[2*i+1]);
-        }
-#endif
 
   /* for phase evaluation, one uses an array of possible phase shifts */
   /* then a correlation is done between received signal with a shift pĥase and the reference signal */
@@ -497,7 +464,6 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
 
 //#ifdef DEBUG_SSS_NR
   
-#define SSS_METRIC_FLOOR_NR   (30000)
   if (*tot_metric > SSS_METRIC_FLOOR_NR) {	
     Nid2 = GET_NID2(frame_parms->Nid_cell);
     Nid1 = GET_NID1(frame_parms->Nid_cell);
