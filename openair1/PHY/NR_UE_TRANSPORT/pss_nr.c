@@ -83,7 +83,6 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   c16_t primary_synchro[LENGTH_PSS_NR] = {0};
   int16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
 
-#define INITIAL_PSS_NR (7)
   const int16_t x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
   assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
   memcpy(x, x_initial, sizeof(x_initial));
