@@ -31,10 +31,7 @@
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
 #include "openair1/PHY/NR_REFSIG/pss_nr.h"
 
-int nr_sl_generate_pss(c16_t *txdataF,
-                       int16_t amp,
-                       uint8_t ssb_start_symbol,
-                       NR_DL_FRAME_PARMS *frame_parms)
+int nr_sl_generate_pss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR_DL_FRAME_PARMS *frame_parms)
 {
   const int x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
   int16_t x[LENGTH_PSS_NR];
@@ -45,8 +42,8 @@ int nr_sl_generate_pss(c16_t *txdataF,
     x[i + INITIAL_PSS_NR] = (x[i + 4] + x[i]) % (2);
 
 #ifdef NR_PSS_DEBUG
-  write_output("d_pss.m", "d_pss", (void*)d_pss, NR_PSS_LENGTH, 1, 0);
-  printf("PSS: ofdm_symbol_size %d, first_carrier_offset %d\n",frame_parms->ofdm_symbol_size,frame_parms->first_carrier_offset);
+  write_output("d_pss.m", "d_pss", (void *)d_pss, NR_PSS_LENGTH, 1, 0);
+  printf("PSS: ofdm_symbol_size %d, first_carrier_offset %d\n", frame_parms->ofdm_symbol_size, frame_parms->first_carrier_offset);
 #endif
 
   /// Resource mapping
@@ -58,7 +55,8 @@ int nr_sl_generate_pss(c16_t *txdataF,
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
-  if (k >= frame_parms->ofdm_symbol_size) k -= frame_parms->ofdm_symbol_size;
+  if (k >= frame_parms->ofdm_symbol_size)
+    k -= frame_parms->ofdm_symbol_size;
 
   int l = ssb_start_symbol + 1;
   for (int i = 0; i < NR_PSS_LENGTH; i++) {
@@ -72,12 +70,13 @@ int nr_sl_generate_pss(c16_t *txdataF,
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
-      k-=frame_parms->ofdm_symbol_size;
+      k -= frame_parms->ofdm_symbol_size;
   }
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
   k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
-  if (k >= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
+  if (k >= frame_parms->ofdm_symbol_size)
+    k -= frame_parms->ofdm_symbol_size;
 
   l = ssb_start_symbol + 2;
 
@@ -90,28 +89,35 @@ int nr_sl_generate_pss(c16_t *txdataF,
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
-      k-=frame_parms->ofdm_symbol_size;
+      k -= frame_parms->ofdm_symbol_size;
   }
 
 #ifdef NR_PSS_DEBUG
-  LOG_M("pss_0.m", "pss_0",
-    (void*)&txdataF[0][ssb_start_symbol*frame_parms->ofdm_symbol_size],
-    frame_parms->ofdm_symbol_size, 1, 1);
+  LOG_M("pss_0.m",
+        "pss_0",
+        (void *)&txdataF[0][ssb_start_symbol * frame_parms->ofdm_symbol_size],
+        frame_parms->ofdm_symbol_size,
+        1,
+        1);
   char buffer[frame_parms->ofdm_symbol_size];
   for (int i = 1; i < 3; i++) {
     bzero(buffer, sizeof(buffer));
-    LOG_I(NR_PHY, "PSS %d = %s\n", i, hexdump(&txdataF[frame_parms->ofdm_symbol_size*i],
-                                       frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
+    LOG_I(NR_PHY,
+          "PSS %d = %s\n",
+          i,
+          hexdump(&txdataF[frame_parms->ofdm_symbol_size * i], frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
   }
 #endif
   k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
-  if (k >= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
+  if (k >= frame_parms->ofdm_symbol_size)
+    k -= frame_parms->ofdm_symbol_size;
   c16_t in[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
-    in[k]= primary_synchro[i];
+    in[k] = primary_synchro[i];
     k++;
-    if (k == frame_parms->ofdm_symbol_size) k = 0;
+    if (k == frame_parms->ofdm_symbol_size)
+      k = 0;
   }
 
   c16_t out[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));

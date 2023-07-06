@@ -483,11 +483,7 @@ typedef enum nr_ssb_and_cset_mux_pattern_type_e {
   NR_SSB_AND_CSET_MUX_PATTERN_TYPE3
 } nr_ssb_and_cset_mux_pattern_type_t;
 
-typedef enum {
-  SFN_C_MOD_2_EQ_0,
-  SFN_C_MOD_2_EQ_1,
-  SFN_C_IMPOSSIBLE
-} SFN_C_TYPE;
+typedef enum { SFN_C_MOD_2_EQ_0, SFN_C_MOD_2_EQ_1, SFN_C_IMPOSSIBLE } SFN_C_TYPE;
 
 typedef struct Type0_PDCCH_CSS_config_s {
   int32_t num_rbs;

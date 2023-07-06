@@ -54,7 +54,9 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
 
   short ncoef = 32767 - coef;
 
-  LOG_D(NR_PHY, "AbsSubframe %d: rx_offset (before) = %d\n", subframe,
+  LOG_D(NR_PHY,
+        "AbsSubframe %d: rx_offset (before) = %d\n",
+        subframe,
         get_softmodem_params()->sl_mode != 2 ? ue->rx_offset : ue->rx_offset_sl);
 
   // search for maximum position within the cyclic prefix
@@ -90,7 +92,7 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   else
     sync_offset = 0;
 
-  if ( abs(diff) < (SYNCH_HYST+sync_offset) ) {
+  if (abs(diff) < (SYNCH_HYST + sync_offset)) {
     if (get_softmodem_params()->sl_mode == NOT_SL_MODE)
       ue->rx_offset = 0;
     else
@@ -119,15 +121,17 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   }
 
 #ifdef DEBUG_PHY
-  LOG_I(PHY,"AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
-        subframe,
-        diff,
-        rx_offset,
-        clear,
-        max_pos,
-        ue->max_pos_fil,
-        max_val,
-        sync_pos);
+  LOG_I(
+      PHY,
+      "AbsSubframe %d: diff = %i, rx_offset (final) = %i : clear = %d, max_pos = %d, max_pos_fil = %d, max_val = %d, sync_pos %d\n",
+      subframe,
+      diff,
+      rx_offset,
+      clear,
+      max_pos,
+      ue->max_pos_fil,
+      max_val,
+      sync_pos);
 #endif //DEBUG_PHY
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_UE_ADJUST_SYNCH, VCD_FUNCTION_OUT);

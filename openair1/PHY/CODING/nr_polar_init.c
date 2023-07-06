@@ -204,7 +204,7 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, ui
     newPolarInitNode->payloadBits = NR_POLAR_PSBCH_PAYLOAD_BITS;
     newPolarInitNode->encoderLength = NR_POLAR_PSBCH_E;
     newPolarInitNode->crcCorrectionBits = NR_POLAR_PSBCH_CRC_ERROR_CORRECTION_BITS;
-    newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
+    newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits); // G_P
   } else {
     AssertFatal(1 == 0, "[nr_polar_init] Incorrect Message Type(%d)", messageType);
   }

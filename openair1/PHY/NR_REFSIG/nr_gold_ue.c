@@ -59,7 +59,9 @@ void nr_gold_psbch(PHY_VARS_NR_UE* ue)
 
   for (int n = 0; n < NR_PSBCH_DMRS_LENGTH_DWORD; n++) {
     AssertFatal(n < sizeof(ue->nr_gold_psbch) / sizeof(ue->nr_gold_psbch[0]),
-                "Invalid nr_gold_psbch index %d > %d\n", n, NR_PSBCH_DMRS_LENGTH_DWORD);
+                "Invalid nr_gold_psbch index %d > %d\n",
+                n,
+                NR_PSBCH_DMRS_LENGTH_DWORD);
     ue->nr_gold_psbch[n] = lte_gold_generic(&x1, &x2, reset);
     reset = 0;
   }

@@ -121,8 +121,7 @@ void init_context_sss_nr(int amp)
 
 //#define DEBUG_SSS_NR
 //#define DEBUG_PLOT_SSS
-void insert_sss_nr(c16_t *sss_time,
-                   NR_DL_FRAME_PARMS *frame_parms)
+void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
 {
   const unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
   int Nid2 = GET_NID2(frame_parms->Nid_cell);
@@ -159,7 +158,8 @@ void insert_sss_nr(c16_t *sss_time,
     in[i].r = d_sss[Nid2][Nid1][i];
     in[i].i = 0;
     k++;
-    if (k == frame_parms->ofdm_symbol_size) k = 0;
+    if (k == frame_parms->ofdm_symbol_size)
+      k = 0;
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
@@ -260,9 +260,8 @@ static int do_pss_sss_extract_nr(
 
   for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     int pss_symbol = 0;
-    int sss_symbol = get_softmodem_params()->sl_mode == NOT_SL_MODE ?
-                     (SSS_SYMBOL_NB - PSS_SYMBOL_NB) :
-                     (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB) ;
+    int sss_symbol =
+        get_softmodem_params()->sl_mode == NOT_SL_MODE ? (SSS_SYMBOL_NB - PSS_SYMBOL_NB) : (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB);
     unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
 
     c16_t *pss_rxF = rxdataF[aarx] + pss_symbol * ofdm_symbol_size;
@@ -271,11 +270,9 @@ static int do_pss_sss_extract_nr(
     c16_t *pss_rxF_ext = pss_ext[aarx];
     c16_t *sss_rxF_ext = sss_ext[aarx];
 
-    unsigned int k = frame_parms->first_carrier_offset +
-                     frame_parms->ssb_start_subcarrier +
-                     ((get_softmodem_params()->sl_mode == NOT_SL_MODE) ?
-                     PSS_SSS_SUB_CARRIER_START :
-                     PSS_SSS_SUB_CARRIER_START_SL);
+    unsigned int k =
+        frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier
+        + ((get_softmodem_params()->sl_mode == NOT_SL_MODE) ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL);
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 

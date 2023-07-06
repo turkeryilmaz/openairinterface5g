@@ -359,7 +359,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   fp->ssb_start_subcarrier = (12 * config->ssb_table.ssb_offset_point_a + sco);
   // TODO: Temporarily setting fp->ssb_start_subcarrier = 0 for SL until MAC is developed
   if (get_softmodem_params()->sl_mode == MODE_2) {
-      fp->ssb_start_subcarrier = 0;
+    fp->ssb_start_subcarrier = 0;
   }
   set_Lmax(fp);
 

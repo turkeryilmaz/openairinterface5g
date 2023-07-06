@@ -20,16 +20,16 @@
  */
 
 /*! \file PHY/NR_TRANSPORT/nr_psbch.c
-* \brief Top-level routines for generating the PSBCH/BCH physical/transport channel V15.1 03/2018
-* \author Guy De Souza
-* \thanks Special Thanks to Son Dang for helpful contributions and testing
-* \date 2018
-* \version 0.1
-* \company Eurecom
-* \email: desouza@eurecom.fr
-* \note
-* \warning
-*/
+ * \brief Top-level routines for generating the PSBCH/BCH physical/transport channel V15.1 03/2018
+ * \author Guy De Souza
+ * \thanks Special Thanks to Son Dang for helpful contributions and testing
+ * \date 2018
+ * \version 0.1
+ * \company Eurecom
+ * \email: desouza@eurecom.fr
+ * \note
+ * \warning
+ */
 
 #include "PHY/defs_gNB.h"
 #include "PHY/defs_nr_UE.h"
@@ -48,7 +48,8 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
                            int32_t *txdataF,
                            int16_t amp,
                            uint8_t ssb_start_symbol,
-                           NR_DL_FRAME_PARMS *frame_parms) {
+                           NR_DL_FRAME_PARMS *frame_parms)
+{
   int dmrs_modulations_per_slot = 32;
   int16_t mod_dmrs[NR_PSBCH_DMRS_LENGTH << 1];
   LOG_D(NR_PHY, "PSBCH DMRS mapping started at symbol %d\n", ssb_start_symbol);
@@ -57,19 +58,27 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   for (int m = 0; m < NR_PSBCH_DMRS_LENGTH; m++) {
     AssertFatal(((m << 1) >> 5) < NR_PSBCH_DMRS_LENGTH_DWORD, "Invalid index size %d\n", (m << 1) >> 5);
     int idx = (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 3);
-    AssertFatal(((idx << 1) + 1) < (sizeof(nr_qpsk_mod_table) / sizeof(nr_qpsk_mod_table[0])), "Invalid index size %d\n", (idx << 1) + 1);
+    AssertFatal(((idx << 1) + 1) < (sizeof(nr_qpsk_mod_table) / sizeof(nr_qpsk_mod_table[0])),
+                "Invalid index size %d\n",
+                (idx << 1) + 1);
     AssertFatal((m << 1) + 1 < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index size %d\n", (idx << 1) + 1);
     mod_dmrs[m << 1] = nr_qpsk_mod_table[idx << 1];
     mod_dmrs[(m << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
 #ifdef DEBUG_PSBCH_DMRS
-    printf("m %d idx %d gold seq %d b0-b1 %d-%d mod_dmrs %d %d\n", m, idx, gold_psbch_dmrs[(m << 1) >> 5], (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 1),
-           (((gold_psbch_dmrs[((m << 1) + 1) >> 5]) >> (((m << 1)+1) & 0x1f)) & 1), mod_dmrs[(m << 1)], mod_dmrs[(m << 1)+1]);
+    printf("m %d idx %d gold seq %d b0-b1 %d-%d mod_dmrs %d %d\n",
+           m,
+           idx,
+           gold_psbch_dmrs[(m << 1) >> 5],
+           (((gold_psbch_dmrs[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 1),
+           (((gold_psbch_dmrs[((m << 1) + 1) >> 5]) >> (((m << 1) + 1) & 0x1f)) & 1),
+           mod_dmrs[(m << 1)],
+           mod_dmrs[(m << 1) + 1]);
 #endif
   }
 
   /// Resource mapping
   // PSBCH DMRS are mapped  within the SSB block on every fourth subcarrier starting from nushift of symbols 1, 2, 3
-  ///symbol 0  [0+nushift:4:236+nushift] -- 33 mod symbols
+  /// symbol 0  [0+nushift:4:236+nushift] -- 33 mod symbols
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
   int l = ssb_start_symbol;
   int m = 0;
@@ -77,45 +86,44 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
 #ifdef DEBUG_PSBCH_DMRS
     printf("m %d at k %d of l %d\n", m, k, l);
 #endif
-    AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index into mod_dmrs. Index %d > %lu\n",
-              (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
+    AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])),
+                "Invalid index into mod_dmrs. Index %d > %lu\n",
+                (m << 1) + 1,
+                (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
     int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
     AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
     ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
     ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
-    printf("(%d,%d)\n",
-           ((int16_t *)txdataF)[(idx) << 1],
-           ((int16_t *)txdataF)[((idx) << 1)+1]);
+    printf("(%d,%d)\n", ((int16_t *)txdataF)[(idx) << 1], ((int16_t *)txdataF)[((idx) << 1) + 1]);
 #endif
-    k+=4;
+    k += 4;
     if (k >= frame_parms->ofdm_symbol_size)
-      k-=frame_parms->ofdm_symbol_size;
+      k -= frame_parms->ofdm_symbol_size;
   }
 
   int N_SSSB_Symb = 13;
   l = ssb_start_symbol + 5;
-  while (l < N_SSSB_Symb)
-  {
+  while (l < N_SSSB_Symb) {
     int mod_count = 0;
     while (m < NR_PSBCH_DMRS_LENGTH) {
 #ifdef DEBUG_PSBCH_DMRS
       printf("m %d at k %d of l %d\n", m, k, l);
 #endif
-      AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])), "Invalid index into mod_dmrs. Index %d > %lu\n",
-                (m << 1) + 1, (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
+      AssertFatal(((m << 1) + 1) < (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])),
+                  "Invalid index into mod_dmrs. Index %d > %lu\n",
+                  (m << 1) + 1,
+                  (sizeof(mod_dmrs) / sizeof(mod_dmrs[0])));
       int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
       AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
       ((int16_t *)txdataF)[idx] = (amp * mod_dmrs[m << 1]) >> 15;
       ((int16_t *)txdataF)[idx + 1] = (amp * mod_dmrs[(m << 1) + 1]) >> 15;
 #ifdef DEBUG_PSBCH_DMRS
-      printf("(%d,%d)\n",
-             ((int16_t *)txdataF)[idx],
-             ((int16_t *)txdataF)[(idx)+1]);
+      printf("(%d,%d)\n", ((int16_t *)txdataF)[idx], ((int16_t *)txdataF)[(idx) + 1]);
 #endif
-      k+=4;
+      k += 4;
       if (k >= frame_parms->ofdm_symbol_size)
-        k-=frame_parms->ofdm_symbol_size;
+        k -= frame_parms->ofdm_symbol_size;
       mod_count++;
       m++;
       if (mod_count == dmrs_modulations_per_slot)
@@ -125,7 +133,7 @@ int nr_generate_psbch_dmrs(uint32_t *gold_psbch_dmrs,
   }
 
 #ifdef DEBUG_PSBCH_DMRS
-  write_output("txdataF_psbch_dmrs.m", "txdataF_psbch_dmrs", txdataF[0], frame_parms->samples_per_frame_wCP>>1, 1, 1);
+  write_output("txdataF_psbch_dmrs.m", "txdataF_psbch_dmrs", txdataF[0], frame_parms->samples_per_frame_wCP >> 1, 1, 1);
 #endif
   return 0;
 }
@@ -136,7 +144,8 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
                                 uint16_t M,
                                 uint16_t length,
                                 uint8_t encoded,
-                                uint32_t unscrambling_mask) {
+                                uint32_t unscrambling_mask)
+{
   uint32_t *psbch_e = psbch->psbch_e;
   uint8_t reset = 1;
   uint32_t x1, s = 0;
@@ -160,7 +169,7 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
   if (!encoded) {
     /// 1st Scrambling
     for (int i = 0; i < length; ++i) {
-      if ((unscrambling_mask>>i)&1)
+      if ((unscrambling_mask >> i) & 1)
         psbch->psbch_a_prime ^= ((psbch->psbch_a_interleaved >> i) & 1) << i;
       else {
         if (((k + offset) & 0x1f) == 0) {
@@ -169,7 +178,7 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
         }
 
         psbch->psbch_a_prime ^= (((psbch->psbch_a_interleaved >> i) & 1) ^ ((s >> ((k + offset) & 0x1f)) & 1)) << i;
-        k++;                  /// k increase only when payload bit is not special bit
+        k++; /// k increase only when payload bit is not special bit
       }
     }
   } else {
@@ -179,8 +188,10 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-      AssertFatal((i >> 5) < NR_POLAR_PSBCH_E_DWORD, "Invalid index into psbch->psbch_e. Index %d > %d\n",
-                 (i >> 5), NR_POLAR_PSBCH_E_DWORD);
+      AssertFatal((i >> 5) < NR_POLAR_PSBCH_E_DWORD,
+                  "Invalid index into psbch->psbch_e. Index %d > %d\n",
+                  (i >> 5),
+                  NR_POLAR_PSBCH_E_DWORD);
       psbch_e[i >> 5] ^= (((s >> ((i + offset) & 0x1f)) & 1) << (i & 0x1f));
     }
   }
@@ -192,19 +203,23 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
                          uint8_t ssb_start_symbol,
                          uint8_t n_hf,
                          int abs_slot,
-                         NR_DL_FRAME_PARMS *frame_parms) {
+                         NR_DL_FRAME_PARMS *frame_parms)
+{
   LOG_I(NR_PHY, "PSBCH SL generation started\n");
 
   /* payload is 56 bits */
   uint16_t nb_slots = ue->frame_parms.slots_per_frame;
-  PSBCH_payload psbch_payload;                   // NR Side Link Payload for Rel 16
-  psbch_payload.coverageIndicator = 0;           // 1 bit
-  psbch_payload.tddConfig = 0xFFF;               // 12 bits for TDD configuration
-  psbch_payload.DFN = abs_slot / nb_slots;       // 10 bits for DFN
+  PSBCH_payload psbch_payload; // NR Side Link Payload for Rel 16
+  psbch_payload.coverageIndicator = 0; // 1 bit
+  psbch_payload.tddConfig = 0xFFF; // 12 bits for TDD configuration
+  psbch_payload.DFN = abs_slot / nb_slots; // 10 bits for DFN
   psbch_payload.slotIndex = abs_slot % nb_slots; // 7 bits for Slot Index //frame_parms-
-  psbch_payload.reserved = 0;                    // 2 bits reserved
-  LOG_D(NR_PHY, "PSBCH SL generation started with DFN %u slotIndex %u for abs_slot %d\n",
-                psbch_payload.DFN, psbch_payload.slotIndex, abs_slot);
+  psbch_payload.reserved = 0; // 2 bits reserved
+  LOG_D(NR_PHY,
+        "PSBCH SL generation started with DFN %u slotIndex %u for abs_slot %d\n",
+        psbch_payload.DFN,
+        psbch_payload.slotIndex,
+        abs_slot);
 
   NR_UE_PSBCH m_psbch;
   ue->psbch_vars[0] = &m_psbch;
@@ -215,9 +230,9 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
 
   psbch->psbch_a_prime = 0;
 
-  #ifdef DEBUG_PSBCH_ENCODING
-    printf("PSBCH payload = 0x%08x\n",psbch->psbch_a);
-  #endif
+#ifdef DEBUG_PSBCH_ENCODING
+  printf("PSBCH payload = 0x%08x\n", psbch->psbch_a);
+#endif
 
   // Encoder reversal
   uint64_t a_reversed = 0;
@@ -225,13 +240,18 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
     a_reversed |= (((uint64_t)psbch->psbch_a_interleaved >> i) & 1) << (31 - i);
 
   /// CRC, coding and rate matching
-  polar_encoder_fast(&a_reversed, (void*)psbch->psbch_e, 0, 0,
-                     NR_POLAR_PSBCH_MESSAGE_TYPE, NR_POLAR_PSBCH_PAYLOAD_BITS, NR_POLAR_PSBCH_AGGREGATION_LEVEL);
+  polar_encoder_fast(&a_reversed,
+                     (void *)psbch->psbch_e,
+                     0,
+                     0,
+                     NR_POLAR_PSBCH_MESSAGE_TYPE,
+                     NR_POLAR_PSBCH_PAYLOAD_BITS,
+                     NR_POLAR_PSBCH_AGGREGATION_LEVEL);
 
 #ifdef DEBUG_PSBCH_ENCODING
   printf("PSBCH SL generation started\n");
   printf("Channel coding:\n");
-  for (int i=0; i<NR_POLAR_PSBCH_E_DWORD; i++)
+  for (int i = 0; i < NR_POLAR_PSBCH_E_DWORD; i++)
     printf("sl_psbch_e[%d]: 0x%08x\n", i, psbch->psbch_e[i]);
   printf("\n");
 #endif
@@ -243,47 +263,52 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_PSBCH_ENCODING
   printf("Scrambling:\n");
 
-  for (int i=0; i<NR_POLAR_PSBCH_E_DWORD; i++) {
+  for (int i = 0; i < NR_POLAR_PSBCH_E_DWORD; i++) {
     printf("sl_psbch_e[%d]: 0x%08x\n", i, psbch->psbch_e[i]);
-}
+  }
   printf("\n");
 #endif
 
   /// QPSK modulation
   int16_t mod_psbch_e[NR_POLAR_PSBCH_E];
-  for (int i = 0; i < NR_POLAR_PSBCH_E >> 1; i++) {
-    AssertFatal(((i << 1) >> 5) < NR_POLAR_PSBCH_E_DWORD, "Invalid index into psbch->psbch_e. Index %d > %d\n",
-                ((i << 1) >> 5), NR_POLAR_PSBCH_E_DWORD);
+  for (int i = 0; i<NR_POLAR_PSBCH_E> > 1; i++) {
+    AssertFatal(((i << 1) >> 5) < NR_POLAR_PSBCH_E_DWORD,
+                "Invalid index into psbch->psbch_e. Index %d > %d\n",
+                ((i << 1) >> 5),
+                NR_POLAR_PSBCH_E_DWORD);
     uint8_t idx = ((psbch->psbch_e[(i << 1) >> 5] >> ((i << 1) & 0x1f)) & 3);
-    AssertFatal(((idx << 1) + 1) < 8, "Invalid index into nr_qpsk_mod_table. Index %d > 8\n",
-                (idx << 1) + 1);
-    AssertFatal(((i << 1) + 1) < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])), "Invalid index into mod_psbch_e. Index %d > %lu\n",
-                (i << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
+    AssertFatal(((idx << 1) + 1) < 8, "Invalid index into nr_qpsk_mod_table. Index %d > 8\n", (idx << 1) + 1);
+    AssertFatal(((i << 1) + 1) < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])),
+                "Invalid index into mod_psbch_e. Index %d > %lu\n",
+                (i << 1) + 1,
+                sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
     mod_psbch_e[i << 1] = nr_qpsk_mod_table[idx << 1];
     mod_psbch_e[(i << 1) + 1] = nr_qpsk_mod_table[(idx << 1) + 1];
 #ifdef DEBUG_PSBCH
-    printf("i %d idx %d  mod_psbch %d %d\n", i, idx, mod_psbch_e[2*i], mod_psbch_e[2*i+1]);
+    printf("i %d idx %d  mod_psbch %d %d\n", i, idx, mod_psbch_e[2 * i], mod_psbch_e[2 * i + 1]);
 #endif
   }
 
   /// Resource mapping
-  nushift = 0; //config->cell_config.phy_cell_id.value &3;
+  nushift = 0; // config->cell_config.phy_cell_id.value &3;
   // PSBCH modulated symbols are mapped  within the SSB block on symbols 1, 2, 3 excluding the subcarriers used for the PSBCH DMRS
-  ///symbol 1  [0:132] -- 99 mod symbols
+  /// symbol 1  [0:132] -- 99 mod symbols
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
   int l = ssb_start_symbol;
   int m = 0;
 
   for (int ssb_sc_idx = 0; ssb_sc_idx < NR_PSBCH_MAX_NB_CARRIERS; ssb_sc_idx++) {
-    if ((ssb_sc_idx & 3) == nushift) {  //skip DMRS
+    if ((ssb_sc_idx & 3) == nushift) { // skip DMRS
       k++;
       continue;
     } else {
 #ifdef DEBUG_PSBCH
       printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
 #endif
-      AssertFatal(((m << 1) + 1) < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])), "Invalid index into mod_psbch_e. Index %d > %lu\n",
-                (m << 1) + 1, sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
+      AssertFatal(((m << 1) + 1) < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])),
+                  "Invalid index into mod_psbch_e. Index %d > %lu\n",
+                  (m << 1) + 1,
+                  sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0]));
       int idx = (l * frame_parms->ofdm_symbol_size + k) << 1;
       AssertFatal((idx + 1) < frame_parms->samples_per_frame_wCP, "txdataF index %d invalid!\n", idx + 1);
       ((int16_t *)txdataF)[idx] = (amp * mod_psbch_e[m << 1]) >> 15;
@@ -293,30 +318,30 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
     }
 
     if (k >= frame_parms->ofdm_symbol_size)
-      k-=frame_parms->ofdm_symbol_size;
+      k -= frame_parms->ofdm_symbol_size;
   }
 
- int N_SSSB_Symb = 14;
-  ///symbol 5  to N_SSSB_Symb [0:132] -- 99 mod symbols
+  int N_SSSB_Symb = 14;
+  /// symbol 5  to N_SSSB_Symb [0:132] -- 99 mod symbols
   l = ssb_start_symbol + 5;
   AssertFatal(m == 99, "m does not equal 99");
   m = 99;
-  while (l < N_SSSB_Symb - 1)
-  {
+  while (l < N_SSSB_Symb - 1) {
     k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
 
     for (int ssb_sc_idx = 0; ssb_sc_idx < NR_PSBCH_MAX_NB_CARRIERS; ssb_sc_idx++) {
-      if ((ssb_sc_idx & 3) == nushift) {  //skip DMRS
+      if ((ssb_sc_idx & 3) == nushift) { // skip DMRS
         k++;
         continue;
       } else {
-  #ifdef DEBUG_PSBCH
+#ifdef DEBUG_PSBCH
         printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
-  #endif
+#endif
 
         AssertFatal((m << 1) + 1 < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])),
                     "Indexing outside of mod_psbch_e bounds. %d > %lu",
-                    (m << 1) + 1 , (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])));
+                    (m << 1) + 1,
+                    (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])));
 
         ((int16_t *)txdataF)[(l * frame_parms->ofdm_symbol_size + k) << 1] = (amp * mod_psbch_e[m << 1]) >> 15;
         ((int16_t *)txdataF)[((l * frame_parms->ofdm_symbol_size + k) << 1) + 1] = (amp * mod_psbch_e[(m << 1) + 1]) >> 15;
@@ -325,7 +350,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
       }
 
       if (k >= frame_parms->ofdm_symbol_size)
-        k-=frame_parms->ofdm_symbol_size;
+        k -= frame_parms->ofdm_symbol_size;
     }
     l++;
   }
@@ -335,8 +360,10 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
     if (i >= 1 && i <= 4)
       continue;
     bzero(buffer, sizeof(buffer));
-    LOG_I(NR_PHY, "PSBCH %d = %s\n", i, hexdump(&txdataF[frame_parms->ofdm_symbol_size*i],
-                                   frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
+    LOG_I(NR_PHY,
+          "PSBCH %d = %s\n",
+          i,
+          hexdump(&txdataF[frame_parms->ofdm_symbol_size * i], frame_parms->ofdm_symbol_size, buffer, sizeof(buffer)));
   }
 #endif
   return 0;

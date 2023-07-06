@@ -2287,8 +2287,12 @@ void *rrc_nrue_task(void *args_p)
          break;
 
        case NRRRC_SLOT_PROCESS:
-         LOG_D(NR_RRC, "[UE %d] Receided %s: frame %d slot %d\n",
-               ue_mod_id, ITTI_MSG_NAME (msg_p), NRRRC_SLOT_PROCESS (msg_p).frame, NRRRC_SLOT_PROCESS (msg_p).slot);
+         LOG_D(NR_RRC,
+               "[UE %d] Receided %s: frame %d slot %d\n",
+               ue_mod_id,
+               ITTI_MSG_NAME(msg_p),
+               NRRRC_SLOT_PROCESS(msg_p).frame,
+               NRRRC_SLOT_PROCESS(msg_p).slot);
          NR_UE_Timers_Constants_t *timers = &NR_UE_rrc_inst[ue_mod_id].timers_and_constants;
          nr_rrc_handle_timers(timers);
          break;

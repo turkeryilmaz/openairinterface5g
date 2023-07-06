@@ -65,7 +65,7 @@
 #define  SSS_SYMBOL_NB                ((2) + OFFSET_SS_PBCH)
 #define  PBCH_LAST_SYMBOL_NB          ((3) + OFFSET_SS_PBCH)
 
-#define  OFFSET_SS_PSBCH              0//-1
+#define OFFSET_SS_PSBCH 0 //-1
 #define  PSS0_SL_SYMBOL_NB            ((1) + OFFSET_SS_PSBCH)
 #define  PSS1_SL_SYMBOL_NB            ((2) + OFFSET_SS_PSBCH)
 #define  SSS0_SL_SYMBOL_NB            ((3) + OFFSET_SS_PSBCH)
@@ -78,7 +78,7 @@
 
 #define IQ_SIZE sizeof(c16_t) /* I and Q are alternatively stored into buffers */
 #define  N_SYMB_SLOT                  (14)
-#define  N_SYMB_SLOT_SL               (13)
+#define N_SYMB_SLOT_SL (13)
 
 /* SS/PBCH parameters :  see from TS 38.211 table 7.4.3.1-1: Resources within an SS/PBCH block for PSS... */
 #define  DMRS_PBCH_PER_RB             (N_SC_RB >> 4)               /* at 0+v, 4+v, 8+v for a resource block with v = NcellID modulo 4 */

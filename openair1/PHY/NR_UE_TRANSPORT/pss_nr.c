@@ -137,16 +137,18 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int subcarrier_start = get_softmodem_params()->sl_mode == NOT_SL_MODE ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
+  unsigned int subcarrier_start =
+      get_softmodem_params()->sl_mode == NOT_SL_MODE ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
   c16_t in[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
   memset(in, 0, sizeof(in));
   for (int i = 0; i < LENGTH_PSS_NR; i++) {
-    in[k]= primary_synchro[i];
+    in[k] = primary_synchro[i];
     k++;
-    if (k == fp->ofdm_symbol_size) k = 0;
+    if (k == fp->ofdm_symbol_size)
+      k = 0;
   }
 
   c16_t out[sizeof(int16_t) * fp->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -524,7 +526,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   pss_source = 0;
 
   int maxval=0;
-  int max_size = get_softmodem_params()->sl_mode == NOT_SL_MODE ?  NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int max_size = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int j = 0; j < max_size; j++)
     for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
       maxval = max(maxval, abs(primary_synchro_time_nr[j][i].r));
@@ -557,15 +559,16 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
                                          shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
-	      if (get_softmodem_params()->sl_mode > NOT_SL_MODE) {
-          //non-coherentely combine repeition of PSS
+        if (get_softmodem_params()->sl_mode > NOT_SL_MODE) {
+          // non-coherentely combine repeition of PSS
           const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
-                                           &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples]),
+                                           &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size
+                                                        + frame_parms->nb_prefix_samples]),
                                            frame_parms->ofdm_symbol_size,
                                            shift);
           const c64_t r64 = {.r = result.r, .i = result.i};
           pss_corr_ue += squaredMod(r64);
-	      }
+        }
       }
 
       /* calculate the absolute value of sync_corr[n] */
@@ -613,8 +616,14 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++)
     avg[pss_index] /= (length / 4);
 
-  LOG_I(NR_PHY, "[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n",
-        pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value), dB_fixed64(avg[pss_source]), ffo_est);
+  LOG_I(NR_PHY,
+        "[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n",
+        pss_source,
+        peak_position,
+        (unsigned long long)peak_value,
+        dB_fixed64(peak_value),
+        dB_fixed64(avg[pss_source]),
+        ffo_est);
   *nid2 = pss_source;
 
   LOG_I(PHY,"[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n", pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est);

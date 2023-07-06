@@ -164,12 +164,13 @@ const int32_t table_38213_13_10_c4[16] = { 0,  8,  0,  8,-41, 25,-41, 49, reserv
 
 const float   table_38213_13_11_c1[16] = { 0,  0,  2,  2,  5,  5,  7,  7,  0,  5,  0,  0,  2,  2,  5,  5};	//	O
 const int32_t table_38213_13_11_c2[16] = { 1,  2,  1,  2,  1,  2,  1,  2,  1,  1,  1,  1,  1,  1,  1,  1};
-const float   table_38213_13_11_c3[16] = { 1, 0.5f, 1, 0.5f, 1, 0.5f, 1, 0.5f,  1,  1,  1,  1,  1,  1,  1,  1};	//	M
+const float table_38213_13_11_c3[16] = {1, 0.5f, 1, 0.5f, 1, 0.5f, 1, 0.5f, 1, 1, 1, 1, 1, 1, 1, 1}; //	M
 const int32_t table_38213_13_11_c4[16] = { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  1,  2,  1,  2};	// i is even as default
 
 const float   table_38213_13_12_c1[16] = { 0, 0, 2.5f, 2.5f, 5, 5, 0, 2.5f, 5, 7.5f, 7.5f, 7.5f, 0, 5, reserved, reserved}; // O, index 14-15 reserved
 const int32_t table_38213_13_12_c2[16] = { 1,  2,  1,  2,  1,  2,  2,  2,  2,  1,  2,  2,  1,  1,  reserved,  reserved}; // index 14-15 reserved
-const float   table_38213_13_12_c3[16] = { 1, 0.5f, 1, 0.5f, 1, 0.5f, 0.5f, 0.5f, 0.5f, 1, 0.5f, 0.5f, 1, 1,  reserved,  reserved}; // M, index 14-15 reserved
+const float table_38213_13_12_c3[16] =
+    {1, 0.5f, 1, 0.5f, 1, 0.5f, 0.5f, 0.5f, 0.5f, 1, 0.5f, 0.5f, 1, 1, reserved, reserved}; // M, index 14-15 reserved
 
 const int32_t table_38213_10_1_1_c2[5] = { 0, 0, 4, 2, 1 };
 
@@ -4301,7 +4302,7 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
   // type0-pdcch search space
   float big_o = 0.0f;
   float big_m = 0.0f;
-  type0_PDCCH_CSS_config->sfn_c = SFN_C_IMPOSSIBLE;   //  only valid for mux=1
+  type0_PDCCH_CSS_config->sfn_c = SFN_C_IMPOSSIBLE; //  only valid for mux=1
   type0_PDCCH_CSS_config->n_c = UINT_MAX;
   type0_PDCCH_CSS_config->number_of_search_space_per_slot = UINT_MAX;
   type0_PDCCH_CSS_config->first_symbol_index = UINT_MAX;
@@ -4316,9 +4317,9 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
     uint32_t temp = (uint32_t)(big_o*(1<<scs_pdcch)) + (uint32_t)(type0_PDCCH_CSS_config->ssb_index*big_m);
     type0_PDCCH_CSS_config->n_c = temp / num_slot_per_frame;
-    if((temp/num_slot_per_frame) & 0x1){
+    if ((temp / num_slot_per_frame) & 0x1) {
       type0_PDCCH_CSS_config->sfn_c = SFN_C_MOD_2_EQ_1;
-    }else{
+    } else {
       type0_PDCCH_CSS_config->sfn_c = SFN_C_MOD_2_EQ_0;
     }
 
@@ -4461,8 +4462,8 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 //    AssertFatal(first_symbol_index!=UINT_MAX,"");
 //    mac->type0_pdcch_dci_config.monitoring_symbols_within_slot = (0x3fff << first_symbol_index) & (0x3fff >> (14-coreset_duration-first_symbol_index)) & 0x3fff;
 
-  AssertFatal(type0_PDCCH_CSS_config->sfn_c!=SFN_C_IMPOSSIBLE,"");
-  AssertFatal(type0_PDCCH_CSS_config->n_c!=UINT_MAX,"");
+  AssertFatal(type0_PDCCH_CSS_config->sfn_c != SFN_C_IMPOSSIBLE, "");
+  AssertFatal(type0_PDCCH_CSS_config->n_c != UINT_MAX, "");
 
   type0_PDCCH_CSS_config->n_0 = ((uint32_t)(big_o*(1<<scs_pdcch)) + (uint32_t)(type0_PDCCH_CSS_config->ssb_index*big_m))%num_slot_per_frame;
   type0_PDCCH_CSS_config->cset_start_rb = ssb_offset_point_a - type0_PDCCH_CSS_config->rb_offset;

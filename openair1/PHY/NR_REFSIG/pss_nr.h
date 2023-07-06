@@ -40,7 +40,7 @@
 #ifdef DEFINE_VARIABLES_PSS_NR_H
 #define EXTERN
 #else
-#define EXTERN  extern
+#define EXTERN extern
 #endif
 
 /************** CODE GENERATION ***********************************/
@@ -60,7 +60,7 @@
 #define TIME_RATE_CHANGE              (TIME_PSS+1)
 #define TIME_SSS                      (TIME_RATE_CHANGE+1)
 #define TIME_LAST                     (TIME_SSS+1)
-#define INITIAL_PSS_NR                (7)
+#define INITIAL_PSS_NR (7)
 /* PSS configuration */
 
 #define SYNCHRO_FFT_SIZE_MAX           (8192)                       /* maximum size of fft for synchronisation */
@@ -83,22 +83,21 @@
 
 /************* STRUCTURES *****************************************/
 
-
 /************** VARIABLES *****************************************/
 
-EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
+EXTERN c16_t *primary_synchro_nr[NUMBER_PSS_SEQUENCE] __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
-= { NULL, NULL, NULL}
+= {NULL, NULL, NULL}
 #endif
 ;
-EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE]  __attribute__((aligned(32)));
+EXTERN c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE] __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
-= { NULL, NULL, NULL}
+= {NULL, NULL, NULL}
 #endif
 ;
 EXTERN c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE] __attribute__((aligned(32)));
 #ifdef INIT_VARIABLES_PSS_NR_H
-= { NULL, NULL, NULL}
+= {NULL, NULL, NULL}
 #endif
 ;
 

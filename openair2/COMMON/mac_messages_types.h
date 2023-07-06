@@ -54,7 +54,7 @@
 #define RRC_MAC_MCCH_DATA_IND(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_mcch_data_ind
 #define RRC_MAC_PCCH_DATA_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_pcch_data_req
 
-#define RRC_MAC_DRX_CONFIG_REQ(mSGpTR)           (mSGpTR)->ittiMsg.rrc_mac_drx_config_req
+#define RRC_MAC_DRX_CONFIG_REQ(mSGpTR) (mSGpTR)->ittiMsg.rrc_mac_drx_config_req
 
 // Some constants from "LAYER2/MAC/defs.h"
 #define BCCH_SDU_SIZE                           (512)
