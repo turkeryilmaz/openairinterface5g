@@ -123,6 +123,8 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
+typedef enum { SL_MODE_NONE = 0, SL_MODE_1, SL_MODE_2 } NR_SL_MODE_t;
+
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
 typedef struct {
@@ -246,6 +248,7 @@ typedef struct {
   int32_t freq_offset;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
+  int32_t sl_nid2;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
@@ -395,7 +398,7 @@ typedef struct {
   /// \brief Indicator that UE is synchronized to a gNB
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
-  int is_synchronized_sl;
+  bool is_synchronized_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
   /// \brief Indicator that UE is an SynchRef UE
@@ -534,6 +537,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
+  int rx_offset_sl; /// Timing offset
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame
