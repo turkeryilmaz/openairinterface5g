@@ -2382,6 +2382,7 @@ static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, i
     e1ap_bearer_setup_req_t req = {0};
     req.numPDUSessionsMod = UE->nb_of_pdusessions;
     req.gNB_cu_cp_ue_id = UE->gNB_ue_ngap_id;
+    req.gNB_cu_up_ue_id = UE->gNB_ue_ngap_id;
     req.rnti = UE->rnti;
     for (int i = 0; i < req.numPDUSessionsMod; i++) {
       req.pduSessionMod[i].numDRB2Modify = resp->drbs_to_be_setup_length;
