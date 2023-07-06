@@ -157,9 +157,16 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
 
     case MIBCH:
       ret_size = do_MIB_SL_NR(frameP, &NR_UE_rrc_inst[Mod_idP]);
-      memcpy((void*)buffer_pP, (void*)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
-      LOG_D(NR_RRC, "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
-            frameP / 10, frameP % 10, buffer_pP[0], buffer_pP[1], buffer_pP[2], buffer_pP[3], buffer_pP[4]);
+      memcpy((void *)buffer_pP, (void *)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
+      LOG_D(NR_RRC,
+            "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
+            frameP / 10,
+            frameP % 10,
+            buffer_pP[0],
+            buffer_pP[1],
+            buffer_pP[2],
+            buffer_pP[3],
+            buffer_pP[4]);
       return (ret_size);
 
     case DCCH:

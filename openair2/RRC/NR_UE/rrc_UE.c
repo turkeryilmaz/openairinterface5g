@@ -410,7 +410,7 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
   asn1cCallocOne(UE->SL_Preconfiguration[SyncRef_index]->sidelinkPreconfigNR_r16.sl_OffsetDFN_r16, 1); // Integer (1 ..1000)
 
   /*IE SL-SyncConfig */
-  NR_SL_SyncConfig_r16_t  *sl_sync_config = malloc16_clear(sizeof(NR_SL_SyncConfig_r16_t));
+  NR_SL_SyncConfig_r16_t *sl_sync_config = malloc16_clear(sizeof(NR_SL_SyncConfig_r16_t));
   asn1cCalloc(sl_sync_config->sl_SSB_TimeAllocation1_r16, ta1);
   asn1cCallocOne(ta1->sl_NumSSB_WithinPeriod_r16, NR_SL_SSB_TimeAllocation_r16__sl_NumSSB_WithinPeriod_r16_n2);
   asn1cCallocOne(ta1->sl_TimeOffsetSSB_r16, 1);
@@ -438,10 +438,8 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
   ASN_SEQUENCE_ADD(&freq_conf_cmn->sl_SyncConfigList_r16->list, sl_sync_config);
   ASN_SEQUENCE_ADD(&freq_info->list, freq_conf_cmn);
 
-  freq_info->list.array[0]->sl_BWP_List_r16 =
-      malloc16_clear(sizeof(struct NR_SL_FreqConfigCommon_r16__sl_BWP_List_r16));
-  struct NR_SL_FreqConfigCommon_r16__sl_BWP_List_r16 *sl_bwp_list =
-      freq_info->list.array[0]->sl_BWP_List_r16;
+  freq_info->list.array[0]->sl_BWP_List_r16 = malloc16_clear(sizeof(struct NR_SL_FreqConfigCommon_r16__sl_BWP_List_r16));
+  struct NR_SL_FreqConfigCommon_r16__sl_BWP_List_r16 *sl_bwp_list = freq_info->list.array[0]->sl_BWP_List_r16;
 
   /* TODO SL-PreconfigurationNR, Not all IEs needed for demo*/
   asn1cCalloc(UE->SL_Preconfiguration[SyncRef_index]->sidelinkPreconfigNR_r16.sl_PreconfigGeneral_r16, PreconfigGeneral);
@@ -449,21 +447,18 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
   TDD_Config->referenceSubcarrierSpacing = NR_SubcarrierSpacing_kHz30;
   TDD_Config->pattern1.dl_UL_TransmissionPeriodicity = NR_TDD_UL_DL_Pattern__dl_UL_TransmissionPeriodicity_ms5;
 
-  NR_SL_BWP_ConfigCommon_r16_t *sl_bwp_conf_cmn =
-      malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
+  NR_SL_BWP_ConfigCommon_r16_t *sl_bwp_conf_cmn = malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
 
   asn1cCalloc(sl_bwp_conf_cmn->sl_BWP_Generic_r16, BWP_Generic);
   asn1cCallocOne(BWP_Generic->sl_LengthSymbols_r16, NR_SL_BWP_Generic_r16__sl_LengthSymbols_r16_sym7);
   asn1cCallocOne(BWP_Generic->sl_StartSymbol_r16, NR_SL_BWP_Generic_r16__sl_StartSymbol_r16_sym0);
 
-  sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16 =
-      malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16));
+  sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16 = malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16));
   sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16 =
       malloc16_clear(sizeof(struct NR_SL_BWP_PoolConfigCommon_r16__sl_RxPool_r16));
   struct NR_SL_BWP_PoolConfigCommon_r16__sl_RxPool_r16 *sl_rxpool_list =
       sl_bwp_conf_cmn->sl_BWP_PoolConfigCommon_r16->sl_RxPool_r16;
-  struct NR_SL_ResourcePool_r16  *nr_sl_rxpool =
-      malloc16_clear(sizeof(struct NR_SL_ResourcePool_r16));
+  struct NR_SL_ResourcePool_r16 *nr_sl_rxpool = malloc16_clear(sizeof(struct NR_SL_ResourcePool_r16));
 
   asn1cCallocOne(nr_sl_rxpool->sl_SubchannelSize_r16, NR_SL_ResourcePool_r16__sl_SubchannelSize_r16_n10);
   asn1cCallocOne(nr_sl_rxpool->sl_StartRB_Subchannel_r16, 2);
@@ -2885,17 +2880,13 @@ int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t
                                                  sdu_len);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
-    LOG_E(NR_RRC,
-          "[UE %d] Frame %d : Failed to decode SBCCH_SL_BCH_Message (%zu bytes)\n",
-          mod_id,
-          frame,
-          dec_rval.consumed);
+    LOG_E(NR_RRC, "[UE %d] Frame %d : Failed to decode SBCCH_SL_BCH_Message (%zu bytes)\n", mod_id, frame, dec_rval.consumed);
     return -1;
   }
   NR_SBCCH_SL_BCH_MessageType_t *mib_sl = NR_UE_rrc_inst[mod_id].mib_sl[0];
   struct NR_MasterInformationBlockSidelink *mib_sl_buf = mib_sl->choice.c1->choice.masterInformationBlockSidelink;
   struct NR_MasterInformationBlockSidelink *mib_sl_rrc_buf =
-         NR_UE_rrc_inst[mod_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
+      NR_UE_rrc_inst[mod_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
 
   LOG_D(NR_RRC,
         "Decoded MIBSL SFN.SLOT %d.%d, InCoverage %d\n",
@@ -2903,14 +2894,7 @@ int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t
         *mib_sl_buf->slotIndex_r16.buf,
         (int)mib_sl_rrc_buf->inCoverage_r16);
 
-  nr_rrc_mac_config_req_ue_sl(mod_id,
-                              0,
-                              0,
-                              0,
-                              0,
-                              NULL,
-                              *mib_sl_buf->directFrameNumber_r16.buf,
-                              *mib_sl_buf->slotIndex_r16.buf);
+  nr_rrc_mac_config_req_ue_sl(mod_id, 0, 0, 0, 0, NULL, *mib_sl_buf->directFrameNumber_r16.buf, *mib_sl_buf->slotIndex_r16.buf);
   return (0);
 }
 

@@ -232,12 +232,12 @@ typedef struct NR_UE_RRC_INST_s {
 
   NR_MIB_t *mib;
 
-  NR_SBCCH_SL_BCH_MessageType_t    SL_mib_tx;
+  NR_SBCCH_SL_BCH_MessageType_t SL_mib_tx;
 
-  NR_SBCCH_SL_BCH_MessageType_t    *mib_sl[NB_CNX_UE];
-  uint8_t                           SL_MIB[5];
+  NR_SBCCH_SL_BCH_MessageType_t *mib_sl[NB_CNX_UE];
+  uint8_t SL_MIB[5];
 
-  NR_SL_PreconfigurationNR_r16_t    *SL_Preconfiguration[NB_CNX_UE];
+  NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration[NB_CNX_UE];
 
   uint32_t sourceL2Id;
   uint32_t groupL2Id;

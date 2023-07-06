@@ -819,41 +819,35 @@ void nr_rrc_mac_config_req_scg(module_id_t module_id,
   build_ssb_to_ro_map(mac);
 }
 
-int nr_rrc_mac_config_req_ue_sl(module_id_t                     module_id,
-                                int                             cc_idP,
-                                const uint32_t *                const sourceL2Id,
-                                const uint32_t *                const destinationL2Id,
-                                const uint32_t *                const groupL2Id,
-                                NR_SL_PreconfigurationNR_r16_t  *SL_Preconfiguration_r16,
-                                uint32_t                        directFrameNumber_r16,
-                                long                            slotIndex_r16)
+int nr_rrc_mac_config_req_ue_sl(module_id_t module_id,
+                                int cc_idP,
+                                const uint32_t *const sourceL2Id,
+                                const uint32_t *const destinationL2Id,
+                                const uint32_t *const groupL2Id,
+                                NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration_r16,
+                                uint32_t directFrameNumber_r16,
+                                long slotIndex_r16)
 {
-
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
 
   if (SL_Preconfiguration_r16) {
-
-    LOG_I(NR_MAC,"Getting SL parameters\n");
+    LOG_I(NR_MAC, "Getting SL parameters\n");
 
     mac->SL_Preconfiguration = SL_Preconfiguration_r16;
 
     struct NR_SidelinkPreconfigNR_r16__sl_PreconfigFreqInfoList_r16 *freq_info =
-          SL_Preconfiguration_r16->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16;
+        SL_Preconfiguration_r16->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16;
 
-    //Assumption: Both NR-SL-FreqInfoList and NR-SL-SyncConfigList should have only one element (Spec. 38331 Release 16)
+    // Assumption: Both NR-SL-FreqInfoList and NR-SL-SyncConfigList should have only one element (Spec. 38331 Release 16)
     AssertFatal(freq_info->list.count == 1, "Number of elements in NR-SL-FreqInfoList should be 1");
     for (int i = 0; i < freq_info->list.count; i++) {
       NR_SL_SyncConfigList_r16_t *sync_conf = freq_info->list.array[i]->sl_SyncConfigList_r16;
       AssertFatal(sync_conf->list.count == 1, "Number of elements in NR-SL-SyncConfigList should be 1");
       for (int j = 0; j < sync_conf->list.count; j++) {
-        mac->slss.sl_numssb_withinperiod_r16 =
-        *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16);
-        mac->slss.sl_timeoffsetssb_r16 =
-        *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16);
-        mac->slss.sl_timeinterval_r16 =
-        *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16);
-        mac->slss.slss_id =
-        *(sync_conf->list.array[j]->sl_SSID_r16);
+        mac->slss.sl_numssb_withinperiod_r16 = *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_NumSSB_WithinPeriod_r16);
+        mac->slss.sl_timeoffsetssb_r16 = *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_TimeOffsetSSB_r16);
+        mac->slss.sl_timeinterval_r16 = *(sync_conf->list.array[j]->sl_SSB_TimeAllocation1_r16->sl_TimeInterval_r16);
+        mac->slss.slss_id = *(sync_conf->list.array[j]->sl_SSID_r16);
       }
     }
 
@@ -865,4 +859,3 @@ int nr_rrc_mac_config_req_ue_sl(module_id_t                     module_id,
   mac->directFrameNumber_r16 = directFrameNumber_r16;
   return 0;
 }
-
