@@ -408,9 +408,7 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
     if (symbol == 0)
       symbol += 4; // skip to accommodate PSS and SSS
   }
-  // legacy code use int16, but it is complex16
-  UEscopeCopy(ue, psbchRxdataF_comp, psbch_unClipped, sizeof(struct complex16), frame_parms->nb_antennas_rx, psbch_e_rx_idx / 2);
-  UEscopeCopy(ue, psbchLlr, psbch_e_rx, sizeof(int16_t), frame_parms->nb_antennas_rx, psbch_e_rx_idx);
+
 #ifdef DEBUG_PSBCH
   for (int cnt = 0; cnt < NR_POLAR_PSBCH_E; cnt++)
     printf("psbch rx llr %d\n", *(psbch_e_rx + cnt));

@@ -123,11 +123,7 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
-typedef enum {
-  NOT_SL_MODE=0,
-  MODE_1,
-  MODE_2
-} NR_SL_MODE_t;
+typedef enum { NOT_SL_MODE = 0, MODE_1, MODE_2 } NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -254,6 +250,8 @@ typedef struct {
   int32_t nid2;
   /// N2_id PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t N2_id;
+  /// eNb_id user is synched to
+  int32_t eNb_id;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
@@ -465,12 +463,13 @@ typedef struct {
 
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
-  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRS       *prs_vars[NR_MAX_PRS_COMB_SIZE];
+  NR_SLSS_t *slss;
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
   NR_UL_UE_HARQ_t  ul_harq_processes[NR_MAX_ULSCH_HARQ_PROCESSES];
@@ -490,6 +489,9 @@ typedef struct {
 
   /// PBCH DMRS sequence
   uint32_t nr_gold_pbch[2][64][NR_PBCH_DMRS_LENGTH_DWORD];
+
+  /// PSBCH DMRS sequence
+  uint32_t nr_gold_psbch[NR_PSBCH_DMRS_LENGTH_DWORD];
 
   /// PDSCH DMRS
   uint32_t ****nr_gold_pdsch[NUMBER_OF_CONNECTED_eNB_MAX];
@@ -688,6 +690,8 @@ typedef struct {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
+  uint32_t rx_ssb_slot;
+  uint32_t rx_ssb_frame;
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {

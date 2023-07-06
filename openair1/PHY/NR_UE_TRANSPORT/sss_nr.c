@@ -63,8 +63,6 @@
 
 #define INITIAL_SSS_NR    (7)
 
-static int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
-
 void init_context_sss_nr(int amp)
 {
   int16_t x0[LENGTH_SSS_NR];

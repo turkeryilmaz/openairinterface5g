@@ -190,7 +190,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
                      c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
   int id = get_softmodem_params()->sl_mode == NOT_SL_MODE ? ue->common_vars.eNb_id : ue->common_vars.N2_id;
-  c16_t *pss = primary_synchro_nr2[id];
+  c16_t *pss = (c16_t *)get_primary_synchro_nr2(id);
   c16_t tmp, tmp2;
   c16_t *sss0_ext3 = &sss0_ext[0][0];
   for (uint8_t aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
