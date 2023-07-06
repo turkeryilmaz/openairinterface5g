@@ -52,7 +52,7 @@
 static time_stats_t generic_time[TIME_LAST];
 static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is);
 
-int16_t *get_primary_synchro_nr2(const int nid2)
+c16_t *get_primary_synchro_nr2(const int nid2)
 {
   return primary_synchro_nr2[nid2];
 }
@@ -79,7 +79,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   int16_t x[LENGTH_PSS_NR];
 
   c16_t primary_synchro[LENGTH_PSS_NR] = {0};
-  int16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
+  c16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
 
   const int16_t x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
   assert(N_ID_2 < NUMBER_PSS_SEQUENCE);
@@ -96,7 +96,9 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   /* PSS is directly mapped to subcarrier without modulation 38.211 */
   for (int i=0; i < LENGTH_PSS_NR; i++) {
     primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR; /* Maximum value for type short int ie int16_t */
-    primary_synchro2[i] = d_pss[i];
+    primary_synchro[i].i = 0;
+    primary_synchro2[i].r = d_pss[i];
+    primary_synchro2[i].i = d_pss[i];
   }
 
 #ifdef DBG_PSS_NR

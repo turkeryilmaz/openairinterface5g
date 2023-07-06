@@ -99,7 +99,7 @@ EXTERN int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 void init_context_sss_nr(int amp);
 void free_context_sss_nr(void);
 
-void insert_sss_nr(int16_t *sss_time,
+void insert_sss_nr(c16_t *sss_time,
                    NR_DL_FRAME_PARMS *frame_parms);
 
 int rx_sss_sl_nr(PHY_VARS_NR_UE *ue,
