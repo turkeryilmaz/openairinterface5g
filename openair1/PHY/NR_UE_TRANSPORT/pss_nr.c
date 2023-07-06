@@ -52,9 +52,9 @@
 static time_stats_t generic_time[TIME_LAST];
 static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, int is);
 
-static c16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE] = {0};
+static int16_t *primary_synchro_nr2[NUMBER_PSS_SEQUENCE] = {0};
 static c16_t *primary_synchro_time_nr[NUMBER_PSS_SEQUENCE] = {0};
-c16_t *get_primary_synchro_nr2(const int nid2)
+int16_t *get_primary_synchro_nr2(const int nid2)
 {
   return primary_synchro_nr2[nid2];
 }
@@ -81,7 +81,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   int16_t x[LENGTH_PSS_NR];
 
   c16_t primary_synchro[LENGTH_PSS_NR] = {0};
-  c16_t *pss = get_primary_synchro_nr2(N_ID_2); /* pss in complex with alternatively i then q */
+  int16_t *primary_synchro2 = primary_synchro_nr2[N_ID_2]; /* pss in complex with alternatively i then q */
 
 #define INITIAL_PSS_NR (7)
   const int16_t x_initial[INITIAL_PSS_NR] = {0, 1, 1, 0, 1, 1, 1};
@@ -99,9 +99,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   /* PSS is directly mapped to subcarrier without modulation 38.211 */
   for (int i=0; i < LENGTH_PSS_NR; i++) {
     primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR; /* Maximum value for type short int ie int16_t */
-    primary_synchro[i].i = 0;
-    pss[i].r = d_pss[i];
-    pss[i].i = d_pss[i];
+    primary_synchro2[i] = d_pss[i];
   }
 
 #ifdef DBG_PSS_NR
@@ -181,7 +179,7 @@ static void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n", frame_parms_ue->ofdm_symbol_size);
   int pss_sequence = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int i = 0; i < pss_sequence; i++) {
-    primary_synchro_nr2[i] = malloc16_clear(LENGTH_PSS_NR * sizeof(c16_t));
+    primary_synchro_nr2[i] = malloc16_clear(LENGTH_PSS_NR * sizeof(int16_t));
     AssertFatal(primary_synchro_nr2[i], "Fatal memory allocation problem \n");
     primary_synchro_time_nr[i] = malloc16_clear(frame_parms_ue->ofdm_symbol_size * sizeof(c16_t));
     AssertFatal(primary_synchro_time_nr[i], "Fatal memory allocation problem \n");
@@ -542,6 +540,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
     pss_index_start = GET_NID2(ue->target_Nid_cell);
     pss_index_end = pss_index_start + 1;
   }
+
   for (int pss_index = pss_index_start; pss_index < pss_index_end; pss_index++) {
     for (n = 0; n < length; n += 8) { //
 
