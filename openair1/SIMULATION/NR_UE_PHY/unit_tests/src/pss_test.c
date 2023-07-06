@@ -119,7 +119,7 @@ void test_synchro_pss_nr(PHY_VARS_NR_UE *PHY_VARS_NR_UE, int position_symbol, in
 
   /* search pss */
   synchro_position = pss_synchro_nr(PHY_VARS_NR_UE, rate_change);
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
 
   if (pss_sequence_number < pss_sequence) {
     NID2_value = pss_sequence_number;
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
   test_synchro_pss_nr(PHY_vars_UE, 0, INVALID_PSS_SEQUENCE, &test);
 
 #endif
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
 
   for (int index_position = 0; index_position < size_test_position; index_position++) {
     for (int number_pss_sequence = 0; number_pss_sequence < pss_sequence; number_pss_sequence++) {
