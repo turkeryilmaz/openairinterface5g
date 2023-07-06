@@ -123,11 +123,7 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
-typedef enum {
-  NOT_SL_MODE=0,
-  MODE_1,
-  MODE_2
-} NR_SL_MODE_t;
+typedef enum { NOT_SL_MODE = 0, MODE_1, MODE_2 } NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -330,8 +326,8 @@ typedef struct {
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
 #define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11*12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL*14)
+#define PSBCH_MAX_RE_PER_SYMBOL (11 * 12)
+#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL * 14)
 
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
@@ -352,7 +348,7 @@ typedef struct {
   /// \brief Total number of consecutive PDU errors.
   uint32_t pdu_errors_conseq;
   /// \brief FER (in percent) .
-  //uint32_t pdu_fer;
+  // uint32_t pdu_fer;
   uint32_t psbch_a;
   uint32_t psbch_a_interleaved;
   uint32_t psbch_a_prime;
@@ -466,7 +462,7 @@ typedef struct {
   nr_synch_request_t synch_request;
 
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
-  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -560,7 +556,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
-  int              rx_offset_sl;      /// Timing offset
+  int rx_offset_sl; /// Timing offset
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame

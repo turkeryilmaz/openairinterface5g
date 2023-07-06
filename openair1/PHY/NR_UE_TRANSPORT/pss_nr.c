@@ -138,7 +138,8 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   * sample 0 is for continuous frequency which is used here
   */
 
-  unsigned int subcarrier_start = get_softmodem_params()->sl_mode == NOT_SL_MODE ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
+  unsigned int subcarrier_start =
+      get_softmodem_params()->sl_mode == NOT_SL_MODE ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
   c16_t synchroF_tmp[fp->ofdm_symbol_size] __attribute__((aligned(32)));
@@ -587,7 +588,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   pss_source = 0;
 
   int maxval=0;
-  int max_size = get_softmodem_params()->sl_mode == NOT_SL_MODE ?  NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int max_size = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int j = 0; j < max_size; j++)
     for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
       maxval = max(maxval, abs(primary_synchro_time_nr[j][i].r));
@@ -621,15 +622,16 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
                                          shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
-	      if (get_softmodem_params()->sl_mode > NOT_SL_MODE) {
-          //non-coherentely combine repeition of PSS
+        if (get_softmodem_params()->sl_mode > NOT_SL_MODE) {
+          // non-coherentely combine repeition of PSS
           const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
-                                           &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size+frame_parms->nb_prefix_samples]),
+                                           &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size
+                                                        + frame_parms->nb_prefix_samples]),
                                            frame_parms->ofdm_symbol_size,
                                            shift);
           const c64_t r64 = {.r = result.r, .i = result.i};
           pss_corr_ue += squaredMod(r64);
-	      }
+        }
       }
 
       /* calculate the absolute value of sync_corr[n] */

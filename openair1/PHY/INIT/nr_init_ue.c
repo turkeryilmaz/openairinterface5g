@@ -37,7 +37,6 @@
 #include "SCHED_NR_UE/harq_nr.h"
 #include "executables/softmodem-common.h"
 
-
 void RCconfig_nrUE_prs(void *cfg)
 {
   int j = 0, k = 0, gNB_id = 0;
@@ -201,7 +200,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   // create shortcuts
   NR_DL_FRAME_PARMS *const fp            = &ue->frame_parms;
   NR_UE_COMMON *const common_vars        = &ue->common_vars;
-  NR_UE_PSBCH **const psbch_vars         = ue->psbch_vars;
+  NR_UE_PSBCH **const psbch_vars = ue->psbch_vars;
   NR_UE_PRACH **const prach_vars         = ue->prach_vars;
   NR_UE_CSI_IM **const csiim_vars        = ue->csiim_vars;
   NR_UE_CSI_RS **const csirs_vars        = ue->csirs_vars;
@@ -310,7 +309,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     common_vars->rxdata[i] = (c16_t *)malloc16_clear((2 * (fp->samples_per_frame)+fp->ofdm_symbol_size) * sizeof(c16_t));
     common_vars->rxdataF[i] = (c16_t *)malloc16_clear((2 * (fp->samples_per_frame)+fp->ofdm_symbol_size) * sizeof(c16_t));
   }
-
 
   int N_RB = (get_softmodem_params()->sl_mode == MODE_2) ? fp->N_RB_SL : fp->N_RB_DL;
 

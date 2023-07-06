@@ -475,28 +475,31 @@ static void UE_synch(void *arg) {
          In that MR, we will call nr_sl_initial_sync for the SL case. */
       int initial_synch_sl = nr_initial_sync(&syncD->proc, UE, 2, get_softmodem_params()->sa);
       if (initial_synch_sl >= 0) {
-
         // rerun with new cell parameters and frequency-offset
         freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
-        hw_slot_offset = ((UE->rx_offset_sl << 1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
-                         round((float)((UE->rx_offset << 1) % UE->frame_parms.samples_per_subframe) / UE->frame_parms.samples_per_slot0);
+        hw_slot_offset =
+            ((UE->rx_offset_sl << 1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe)
+            + round((float)((UE->rx_offset << 1) % UE->frame_parms.samples_per_subframe) / UE->frame_parms.samples_per_slot0);
 
-        LOG_I(PHY,"Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
+        LOG_I(PHY,
+              "Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
               hw_slot_offset,
               freq_offset,
               openair0_cfg[UE->rf_map.card].rx_gain[0],
               openair0_cfg[UE->rf_map.card].rx_freq[0],
               openair0_cfg[UE->rf_map.card].tx_freq[0]);
         nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
-        UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
+        UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
 
         if (UE->UE_scan_carrier == 1) {
           UE->UE_scan_carrier = 0;
         } else {
           if (initial_synch_sl == 0) {
             UE->is_synchronized_sl = true;
-            LOG_I(NR_PHY, "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
-                  GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL),
+            LOG_I(NR_PHY,
+                  "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
+                  GET_NID1_SL(UE->frame_parms.Nid_SL),
+                  GET_NID2_SL(UE->frame_parms.Nid_SL),
                   UE->measurements.ssb_rsrp_dBm[0]);
           }
         }
