@@ -289,9 +289,7 @@ static int do_pss_sss_extract_nr(
       }
 
       k++;
-
       if (k == frame_parms->ofdm_symbol_size) k = 0;
-      
     }
   }
 
@@ -503,7 +501,7 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
   int re = 0;
   int im = 0;
   if (Nid1 == N_ID_1_NUMBER) {
-    LOG_I(NR_PHY,"Failed to detect SSS after PSS\n");
+    LOG_I(PHY,"Failed to detect SSS after PSS\n");
     return -1;
   }
   d = (int16_t *)&d_sss[Nid2][Nid1];

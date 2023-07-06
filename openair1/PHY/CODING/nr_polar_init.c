@@ -193,7 +193,7 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, ui
     newPolarInitNode->payloadBits = messageLength;
     newPolarInitNode->crcCorrectionBits = NR_POLAR_PUCCH_CRC_ERROR_CORRECTION_BITS;
     //LOG_D(PHY,"New polar node, encoderLength %d, aggregation_level %d\n",newPolarInitNode->encoderLength,aggregation_level);
-  } else if (messageType == 3) { // PSBCH
+  } else if (messageType == NR_POLAR_PSBCH_MESSAGE_TYPE) {
     newPolarInitNode->n_max = NR_POLAR_PSBCH_N_MAX;
     newPolarInitNode->i_il = NR_POLAR_PSBCH_I_IL;
     newPolarInitNode->i_seg = NR_POLAR_PSBCH_I_SEG;
