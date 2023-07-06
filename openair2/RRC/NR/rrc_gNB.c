@@ -228,7 +228,11 @@ static void nr_rrc_addmod_drbs(int rnti,
   }
 }
 
-void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
+typedef struct deliver_dl_rrc_message_data_s {
+  const gNB_RRC_INST *rrc;
+  f1ap_dl_rrc_message_t *dl_rrc;
+} deliver_dl_rrc_message_data_t;
+static void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
 {
   DevAssert(deliver_pdu_data != NULL);
   deliver_dl_rrc_message_data_t *data = (deliver_dl_rrc_message_data_t *)deliver_pdu_data;
@@ -236,6 +240,17 @@ void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_i
   data->dl_rrc->rrc_container_length = size;
   DevAssert(data->dl_rrc->srb_id == srb_id);
   data->rrc->mac_rrc.dl_rrc_message_transfer(data->dl_rrc);
+}
+
+
+void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue_p, uint8_t srb_id, const uint8_t* buffer, int size)
+{
+  DevAssert(size > 0);
+  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
+  DevAssert(ue_data != NULL);
+  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = srb_id};
+  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
+  nr_pdcp_data_req_srb(ue_p->rnti, srb_id, rrc_gNB_mui++, size, (unsigned char *const)buffer, rrc_deliver_dl_rrc_message, &data);
 }
 
 ///---------------------------------------------------------------------------------------------------------------///
@@ -687,11 +702,7 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
           ue_context_pP->ue_context.rnti);
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
 
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
@@ -798,11 +809,7 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
         ctxt_pP->module_id,
         DCCH);
 
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     // nr_mac_update_cellgroup() already done with cellGroupConfig
@@ -956,11 +963,7 @@ rrc_gNB_modify_dedicatedRRCReconfiguration(
         DCCH);
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     uint32_t delay_ms = ue_p->masterCellGroup && ue_p->masterCellGroup->spCellConfig && ue_p->masterCellGroup->spCellConfig->spCellConfigDedicated
@@ -1041,11 +1044,7 @@ rrc_gNB_generate_dedicatedRRCReconfiguration_release(
         DCCH);
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     uint32_t delay_ms = ue_p->masterCellGroup && ue_p->masterCellGroup->spCellConfig && ue_p->masterCellGroup->spCellConfig->spCellConfigDedicated
@@ -1250,11 +1249,7 @@ void rrc_gNB_generate_RRCReestablishment(const protocol_ctxt_t *ctxt_pP,
     apply_macrlc_config_reest(rrc, ue_context_pP, ctxt_pP, ctxt_pP->rntiMaybeUEid);
   }
 
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 }
 
 /// @brief Function used in RRCReestablishmentComplete procedure to update the NGU Tunnels.
@@ -1437,11 +1432,7 @@ void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *const ctx
           DCCH);
 
     nr_rrc_mac_update_cellgroup(ue_context_pP->ue_context.rnti, cellGroupConfig);
-    const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-    DevAssert(ue_data != NULL);
-    f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-    deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-    nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+    nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
   }
 
   if (NODE_IS_DU(RC.nrrrc[ctxt_pP->module_id]->node_type) || NODE_IS_MONOLITHIC(RC.nrrrc[ctxt_pP->module_id]->node_type)) {
@@ -1497,11 +1488,7 @@ int nr_rrc_reconfiguration_req(rrc_gNB_ue_context_t         *const ue_context_pP
   nr_rrc_mac_update_cellgroup(ue_context_pP->ue_context.rnti, masterCellGroup);
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue_p->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue_p->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 
   if (NODE_IS_DU(rrc->node_type) || NODE_IS_MONOLITHIC(rrc->node_type)) {
     uint32_t delay_ms = ue_p->masterCellGroup && ue_p->masterCellGroup->spCellConfig && ue_p->masterCellGroup->spCellConfig->spCellConfigDedicated
@@ -2969,11 +2956,7 @@ rrc_gNB_generate_UECapabilityEnquiry(
   AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
 
   const gNB_RRC_UE_t *ue = &ue_context_pP->ue_context;
-  const f1_ue_data_t *ue_data = cu_get_f1_ue_data(ue->rnti);
-  DevAssert(ue_data != NULL);
-  f1ap_dl_rrc_message_t dl_rrc = {.gNB_CU_ue_id = ue->rnti, .gNB_DU_ue_id = ue_data->secondary_ue, .srb_id = DCCH};
-  deliver_dl_rrc_message_data_t data = {.rrc = rrc, .dl_rrc = &dl_rrc};
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_dl_rrc_message, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue, DCCH, buffer, size);
 }
 
 typedef struct deliver_ue_ctxt_release_data_t {

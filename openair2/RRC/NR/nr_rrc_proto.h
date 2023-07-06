@@ -173,10 +173,6 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
 
 int rrc_gNB_generate_pcch_msg(uint32_t tmsi, uint8_t paging_drx, instance_t instance, uint8_t CC_id);
 
-typedef struct deliver_dl_rrc_message_data_s {
-  gNB_RRC_INST *rrc;
-  f1ap_dl_rrc_message_t *dl_rrc;
-} deliver_dl_rrc_message_data_t;
-void rrc_deliver_dl_rrc_message(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id);
+void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue_p, uint8_t srb_id, const uint8_t* buffer, int size);
 
 #endif
