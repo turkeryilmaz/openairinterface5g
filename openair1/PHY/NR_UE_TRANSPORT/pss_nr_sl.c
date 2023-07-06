@@ -54,7 +54,7 @@ int nr_sl_generate_pss(c16_t *txdataF,
   LOG_I(NR_PHY, "Nid_SL %d, Nid2 %d\n", frame_parms->Nid_SL, Nid2);
   int16_t d_pss[LENGTH_PSS_NR];
   c16_t *primary_synchro = primary_synchro_nr[Nid2];
-  int16_t *primary_synchro2 = primary_synchro_nr2[Nid2];
+  c16_t *primary_synchro2 = primary_synchro_nr2[Nid2];
 
   // PSS occupies a predefined position (subcarriers 2-128, symbol 0) within the SSB block starting from
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
@@ -68,7 +68,7 @@ int nr_sl_generate_pss(c16_t *txdataF,
     txdataF[(l * frame_parms->ofdm_symbol_size + k)].i = 0;
     primary_synchro[i].r = (d_pss[i] * SHRT_MAX) >> SCALING_PSS_NR;
     primary_synchro[i].i = 0;
-    primary_synchro2[i] = d_pss[i];
+    primary_synchro2[i].r = d_pss[i];
     k++;
 
     if (k >= frame_parms->ofdm_symbol_size)
