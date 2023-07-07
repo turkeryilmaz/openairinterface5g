@@ -18,6 +18,14 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
+/*! \file openair1/PHY/NR_UE_TRANSPORT/pss_nr_sl.c
+ * \brief Top-level TX routines for encoding and generating the PSS Symbol in the SSB
+ * \author M. Elkadi, D. Kim
+ * \date 2022
+ * \version 0.1
+ * \company EpiSci
+ * \email: melissa@episci.com, dkim@episci.com
+ */
 
 #include <stdio.h>
 #include <assert.h>

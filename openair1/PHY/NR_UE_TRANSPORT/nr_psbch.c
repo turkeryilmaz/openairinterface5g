@@ -19,16 +19,15 @@
  *      contact@openairinterface.org
  */
 
-/*! \file PHY/LTE_TRANSPORT/psbch.c
- * \brief Top-level routines for generating and decoding  the PSBCH/BCH physical/transport channel V8.6 2009-03
- * \author R. Knopp, F. Kaltenberger
- * \date 2011
+/*! \file openair1/PHY/NR_UE_TRANSPORT/nr_psbch.c
+ * \brief Top-level RX routines for decoding the PSBCH
+ * \author M. Elkadi, D. Kim
+ * \date 2022
  * \version 0.1
- * \company Eurecom
- * \email: knopp@eurecom.fr,florian.kaltenberger.fr
- * \note
- * \warning
+ * \company EpiSci
+ * \email: melissa@episci.com, dkim@episci.com
  */
+
 #include "PHY/defs_nr_UE.h"
 #include "PHY/CODING/coding_extern.h"
 #include "PHY/phy_extern_nr_ue.h"
@@ -81,39 +80,32 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
                                  uint32_t s_offset,
                                  NR_DL_FRAME_PARMS *frame_parms)
 {
-  uint16_t rb;
-  uint8_t i, j, aarx;
-  int nushiftmod4 = 0; // frame_parms->nushift;
+  int nushiftmod4 = frame_parms->nushift;
   AssertFatal(symbol == 0 || symbol < 14, "symbol %d illegal for PSBCH extraction\n", symbol);
 
-  for (aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
+  for (uint8_t aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     unsigned int rx_offset = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
     rx_offset = (rx_offset) % (frame_parms->ofdm_symbol_size);
     struct complex16 *rxF = (struct complex16 *)&rxdataF[aarx][(symbol + s_offset) * frame_parms->ofdm_symbol_size];
     struct complex16 *rxF_ext = rxdataF_ext[aarx];
-    //#ifdef DEBUG_PSBCH
     LOG_I(NR_PHY,
           "extract_rbs (nushift %d): rx_offset=%d, symbol %u\n",
           frame_parms->nushift,
           (rx_offset + ((symbol + s_offset) * (frame_parms->ofdm_symbol_size))),
           symbol);
-    int16_t *p = (int16_t *)rxF;
 
     for (int i = 0; i < 8; i++) {
       LOG_I(NR_PHY, "rxF_real [%d] = %d, rxF_im [%d] = %d\n", i, rxF[i].r, i, rxF[i].i);
-      LOG_I(NR_PHY, "psbch extract rxF  %d %d addr %p\n", p[2 * i], p[2 * i + 1], &p[2 * i]);
     }
 
-    //#endif
-
-    for (rb = 0; rb < 11; rb++) {
+    uint8_t j;
+    for (int rb = 0; rb < 11; rb++) {
       j = 0;
 
       if (symbol == 0 || ((symbol > 4) && (symbol <= 13))) {
-        for (i = 0; i < 12; i++) {
+        for (int i = 0; i < 12; i++) {
           if ((i != nushiftmod4) && (i != (nushiftmod4 + 4)) && (i != (nushiftmod4 + 8))) {
             rxF_ext[j] = rxF[rx_offset];
-            //#ifdef DEBUG_PSBCH
             LOG_I(NR_PHY,
                   "rxF ext[%d] = (%d,%d) rxF [%u]= (%d,%d)\n",
                   (9 * rb) + j,
@@ -122,29 +114,22 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
                   rx_offset,
                   rxF[rx_offset].r,
                   rxF[rx_offset].i);
-            //#endif
             j++;
           }
-
           rx_offset = (rx_offset + 1) % (frame_parms->ofdm_symbol_size);
-          // rx_offset = (rx_offset >= frame_parms->ofdm_symbol_size) ? (rx_offset - frame_parms->ofdm_symbol_size + 1) :
-          // (rx_offset+1);
         }
-
         rxF_ext += 9;
       }
     }
 
     struct complex16 *dl_ch0 = &dl_ch_estimates[aarx][((symbol + s_offset) * (frame_parms->ofdm_symbol_size))];
-
-    // printf("dl_ch0 addr %p\n",dl_ch0);
     struct complex16 *dl_ch0_ext = dl_ch_estimates_ext[aarx];
 
-    for (rb = 0; rb < 11; rb++) {
+    for (int rb = 0; rb < 11; rb++) {
       j = 0;
 
       if (symbol == 0 || ((symbol > 4) && (symbol <= 13))) {
-        for (i = 0; i < 12; i++) {
+        for (int i = 0; i < 12; i++) {
           if ((i != nushiftmod4) && (i != (nushiftmod4 + 4)) && (i != (nushiftmod4 + 8))) {
             dl_ch0_ext[j] = dl_ch0[i];
 #ifdef DEBUG_PSBCH
@@ -170,9 +155,6 @@ static uint16_t nr_psbch_extract(c16_t **rxdataF,
   return (0);
 }
 
-//__m128i avg128;
-
-// compute average channel_level on each (TX,RX) antenna pair
 int nr_psbch_channel_level(struct complex16 dl_ch_estimates_ext[][PSBCH_MAX_RE_PER_SYMBOL],
                            NR_DL_FRAME_PARMS *frame_parms,
                            int nb_re)
@@ -207,20 +189,12 @@ int nr_psbch_channel_level(struct complex16 dl_ch_estimates_ext[][PSBCH_MAX_RE_P
       // to be filled in
 #endif
       dl_ch128 += 3;
-      /*
-      if (rb==0) {
-      print_shorts("dl_ch128",&dl_ch128[0]);
-      print_shorts("dl_ch128",&dl_ch128[1]);
-      print_shorts("dl_ch128",&dl_ch128[2]);
-      }*/
     }
 
     avg1 = (((int *)&avg128)[0] + ((int *)&avg128)[1] + ((int *)&avg128)[2] + ((int *)&avg128)[3]) / (nb_rb * 12);
 
     if (avg1 > avg2)
       avg2 = avg1;
-
-    // LOG_I(PHY,"Channel level : %d, %d\n",avg1, avg2);
   }
 
   return (avg2);
@@ -257,33 +231,22 @@ static void nr_psbch_unscrambling(NR_UE_PSBCH *psbch,
                                   uint32_t psbch_a_prime,
                                   uint32_t *psbch_a_interleaved)
 {
-  uint8_t reset, offset;
-  uint32_t x1, x2, s = 0;
-  uint8_t k = 0;
-  reset = 1;
-  // x1 is set in first call to lte_gold_generic
-  x2 = Nid; // this is c_init
-
-  // The Gold sequence is shifted by nushift* M, so we skip (nushift*M /32) double words
+  uint32_t x1, s = 0;
+  uint32_t x2 = Nid;
+  uint8_t reset = 1;
   for (int i = 0; i < (uint16_t)ceil(((float)M) / 32); i++) {
     s = lte_gold_generic(&x1, &x2, reset);
     reset = 0;
   }
 
-  // Scrambling is now done with offset (nushift*M)%32
-  offset = 0; //(nushift*M)&0x1f;
-
+  uint8_t k = 0;
+  uint8_t offset = 0;
   for (int i = 0; i < length; i++) {
-    /*if (((i+offset)&0x1f)==0) {
-      s = lte_gold_generic(&x1, &x2, reset);
-      reset = 0;
-    }*/
     if (bitwise) {
       if (((k + offset) & 0x1f) == 0 && (!((unscrambling_mask >> i) & 1))) {
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-
       *psbch_a_interleaved ^= ((unscrambling_mask >> i) & 1)
                                   ? ((psbch_a_prime >> i) & 1) << i
                                   : (((psbch_a_prime >> i) & 1) ^ ((s >> ((k + offset) & 0x1f)) & 1)) << i;
@@ -305,15 +268,12 @@ static void nr_psbch_unscrambling(NR_UE_PSBCH *psbch,
         s = lte_gold_generic(&x1, &x2, reset);
         reset = 0;
       }
-
       if (((s >> ((i + offset) & 0x1f)) & 1) == 1)
         demod_psbch_e[i] = -demod_psbch_e[i];
 
 #ifdef DEBUG_PSBCH_ENCODING
-
       if (i < 8)
         printf("s %d demod_psbch_e[i] %d\n", ((s >> ((i + offset) & 0x1f)) & 1), demod_psbch_e[i]);
-
 #endif
     }
   }
@@ -323,7 +283,7 @@ void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot)
 {
   NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
   c16_t **txdataF = ue->common_vars.txdataF;
-  uint8_t ssb_index = 0; // TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
+  uint8_t ssb_index = 0; // TODO: Need to properly get this value, based on mu.
   int txdataF_offset = slot * fp->samples_per_slot_wCP;
 
   uint16_t ssb_start_symbol = 0;
@@ -360,7 +320,7 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                 fapiPsbch_t *result)
 {
   NR_UE_COMMON *nr_ue_common_vars = &ue->common_vars;
-  uint8_t ssb_index = 0; // TODO: Need update to get 0 or 1 from parameter in case of mu = 1.
+  uint8_t ssb_index = 0; // TODO: Need to properly get this value, based on mu.
   int symbol_offset = ue->is_synchronized > 0 ? (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index)
                                                     * frame_parms->symbols_per_slot
                                               : 0;
@@ -398,15 +358,15 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                                   nb_re,
                                   rxdataF_comp,
                                   frame_parms,
-                                  log2_maxh); // log2_maxh+I0_shift
+                                  log2_maxh);
 
-    int nb = 198; // QPSK 2 bits 99*2 (m from TX side)
+    int nb = 198; // QPSK 2 bits 99*2 (m from TX side). See 38.211-8.4.3
     nr_psbch_quantize(psbch_e_rx + psbch_e_rx_idx, (short *)rxdataF_comp[0], nb);
     memcpy(psbch_unClipped + psbch_e_rx_idx, rxdataF_comp[0], nb * sizeof(int16_t));
     psbch_e_rx_idx += nb;
 
     if (symbol == 0)
-      symbol += 4; // skip to accommodate PSS and SSS
+      symbol += 4; // Skip PSS0 (sym 1), PSS1 (sym 2), SSS0 (sym 3) and SSS1 (sym 4)
   }
 
 #ifdef DEBUG_PSBCH
@@ -414,9 +374,8 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
     printf("psbch rx llr %d\n", *(psbch_e_rx + cnt));
 
 #endif
-  // un-scrambling
   uint16_t M = NR_POLAR_PSBCH_E;
-  uint8_t nushift = 0; //(Lmax==4)? i_ssb&3 : i_ssb&7;
+  uint8_t nushift = 0;
   uint32_t psbch_a_interleaved = 0;
   uint32_t psbch_a_prime = 0;
   nr_psbch_unscrambling(nr_ue_psbch_vars,
@@ -429,7 +388,6 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
                         0,
                         psbch_a_prime,
                         &psbch_a_interleaved);
-  // polar decoding de-rate matching
   uint64_t tmp = 0;
   uint32_t decoderState = polar_decoder_int16(psbch_e_rx,
                                               (uint64_t *)&tmp,
@@ -450,20 +408,19 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
     result->decoded_output[i] = (uint8_t)((payload >> ((3 - i) << 3)) & 0xff);
 
   frame_parms->half_frame_bit = (result->xtra_byte >> 4) & 0x01; // computing the half frame index from the extra byte
-  frame_parms->ssb_index = i_ssb; // ssb index corresponds to i_ssb for Lmax = 4,8
+  frame_parms->ssb_index = i_ssb; // ssb index corresponds to i_ssb for Lmax = 4, 8
 
-  if (frame_parms->Lmax == 64) { // for Lmax = 64 ssb index 4th,5th and 6th bits are in extra byte
+  if (frame_parms->Lmax == 64) { // for Lmax = 64 ssb index 4th, 5th, and 6th bits are in the extra byte
     for (int i = 0; i < 3; i++)
       frame_parms->ssb_index += (((result->xtra_byte >> (7 - i)) & 0x01) << (3 + i));
   }
 
-  ue->symbol_offset = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index) * frame_parms->symbols_per_slot
-                      + 1; // + 1: The 1st PSBCH symbol
+  ue->symbol_offset = (ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16 * ssb_index)
+                      * frame_parms->symbols_per_slot + 1; // + 1 is to account for the 1st PSBCH symbol (sym 0)
   if (frame_parms->half_frame_bit)
     ue->symbol_offset += (frame_parms->slots_per_frame >> 1) * frame_parms->symbols_per_slot;
 
   uint8_t frame_number_4lsb = 0;
-
   for (int i = 0; i < 4; i++)
     frame_number_4lsb |= ((result->xtra_byte >> i) & 1) << (3 - i);
 
@@ -479,14 +436,13 @@ int nr_rx_psbch(PHY_VARS_NR_UE *ue,
 
 #ifdef DEBUG_PSBCH
   printf("xtra_byte %x payload %x\n", result->xtra_byte, payload);
-
   for (int i = 0; i < (NR_POLAR_PSBCH_PAYLOAD_BITS >> 3); i++) {
-    //     printf("unscrambling psbch_a[%d] = %x \n", i,psbch_a[i]);
     printf("[PSBCH] decoder payload[%d] = %x\n", i, result->decoded_output[i]);
   }
-  // TODO: Handle MAC Layer on RX
 
 #if 0
+  TODO: Once MAC layer is implemented, the handling of these nfapi ids should be implemented as below:
+
   nr_downlink_indication_t dl_indication;
   fapi_nr_rx_indication_t *rx_ind = calloc(1, sizeof(*rx_ind));
   uint16_t number_pdus = 1;

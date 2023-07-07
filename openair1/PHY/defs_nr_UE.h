@@ -123,7 +123,11 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
-typedef enum { NOT_SL_MODE = 0, MODE_1, MODE_2 } NR_SL_MODE_t;
+typedef enum {
+  NOT_SL_MODE=0,
+  MODE_1,
+  MODE_2
+} NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -463,7 +467,7 @@ typedef struct {
 
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
-  NR_UE_PSBCH *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];

@@ -19,16 +19,13 @@
  *      contact@openairinterface.org
  */
 
-/*! \file PHY/NR_TRANSPORT/nr_psbch.c
- * \brief Top-level routines for generating the PSBCH/BCH physical/transport channel V15.1 03/2018
- * \author Guy De Souza
- * \thanks Special Thanks to Son Dang for helpful contributions and testing
- * \date 2018
+/*! \file openair1/PHY/NR_UE_TRANSPORT/nr_psbch_sl.c
+ * \brief Top-level TX routines for encoding and generating the PSBCH (Sidelink Broadcast Channel)
+ * \author M. Elkadi, D. Kim
+ * \date 2022
  * \version 0.1
- * \company Eurecom
- * \email: desouza@eurecom.fr
- * \note
- * \warning
+ * \company EpiSci
+ * \email: melissa@episci.com, dkim@episci.com
  */
 
 #include "PHY/defs_gNB.h"
@@ -143,31 +140,25 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
                                 uint8_t nushift,
                                 uint16_t M,
                                 uint16_t length,
-                                uint8_t encoded,
+                                bool encoded,
                                 uint32_t unscrambling_mask)
 {
-  uint32_t *psbch_e = psbch->psbch_e;
   uint8_t reset = 1;
   uint32_t x1, s = 0;
   uint32_t x2 = Nid;
-  // The Gold sequence is shifted by nushift* M, so we skip (nushift*M /32) double words
   for (int i = 0; i < (uint16_t)ceil(((float)M) / 32); i++) {
     s = lte_gold_generic(&x1, &x2, reset);
     reset = 0;
   }
 
-  // Scrambling is now done with offset (nushift*M)%32
-  uint8_t offset = 0; //(nushift*M)&0x1f;
+  uint8_t offset = 0;
 #ifdef DEBUG_PSBCH_ENCODING
   printf("Scrambling params: nushift %d M %d length %d encoded %d offset %d\n", nushift, M, length, encoded, offset);
-#endif
-#ifdef DEBUG_PSBCH_ENCODING
   printf("s: %04x\t", s);
 #endif
 
   int k = 0;
-  if (!encoded) {
-    /// 1st Scrambling
+  if (encoded == false) {
     for (int i = 0; i < length; ++i) {
       if ((unscrambling_mask >> i) & 1)
         psbch->psbch_a_prime ^= ((psbch->psbch_a_interleaved >> i) & 1) << i;
@@ -176,13 +167,12 @@ static void nr_psbch_scrambling(NR_UE_PSBCH *psbch,
           s = lte_gold_generic(&x1, &x2, reset);
           reset = 0;
         }
-
         psbch->psbch_a_prime ^= (((psbch->psbch_a_interleaved >> i) & 1) ^ ((s >> ((k + offset) & 0x1f)) & 1)) << i;
-        k++; /// k increase only when payload bit is not special bit
+        k++;
       }
     }
   } else {
-    /// 2nd Scrambling
+    uint32_t *psbch_e = psbch->psbch_e;
     for (int i = 0; i < length; ++i) {
       if (((i + offset) & 0x1f) == 0) {
         s = lte_gold_generic(&x1, &x2, reset);
@@ -259,7 +249,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
   /// Scrambling
   uint16_t M = NR_POLAR_PSBCH_E;
   uint8_t nushift = 0;
-  nr_psbch_scrambling(psbch, (uint32_t)frame_parms->Nid_SL, nushift, M, NR_POLAR_PSBCH_E, 1, 0);
+  nr_psbch_scrambling(psbch, (uint32_t)frame_parms->Nid_SL, nushift, M, NR_POLAR_PSBCH_E, true, 0);
 #ifdef DEBUG_PSBCH_ENCODING
   printf("Scrambling:\n");
 
@@ -271,7 +261,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
 
   /// QPSK modulation
   int16_t mod_psbch_e[NR_POLAR_PSBCH_E];
-  for (int i = 0; i<NR_POLAR_PSBCH_E> > 1; i++) {
+  for (int i = 0; i < NR_POLAR_PSBCH_E >> 1; i++) {
     AssertFatal(((i << 1) >> 5) < NR_POLAR_PSBCH_E_DWORD,
                 "Invalid index into psbch->psbch_e. Index %d > %d\n",
                 ((i << 1) >> 5),
@@ -290,7 +280,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
   }
 
   /// Resource mapping
-  nushift = 0; // config->cell_config.phy_cell_id.value &3;
+  nushift = 0;
   // PSBCH modulated symbols are mapped  within the SSB block on symbols 1, 2, 3 excluding the subcarriers used for the PSBCH DMRS
   /// symbol 1  [0:132] -- 99 mod symbols
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier;
@@ -322,7 +312,7 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
   }
 
   int N_SSSB_Symb = 14;
-  /// symbol 5  to N_SSSB_Symb [0:132] -- 99 mod symbols
+  /// symbol 5 to N_SSSB_Symb [0:132] -- 99 mod symbols
   l = ssb_start_symbol + 5;
   AssertFatal(m == 99, "m does not equal 99");
   m = 99;
@@ -337,7 +327,6 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_PSBCH
         printf("m %d ssb_sc_idx %d at k %d of l %d\n", m, ssb_sc_idx, k, l);
 #endif
-
         AssertFatal((m << 1) + 1 < (sizeof(mod_psbch_e) / sizeof(mod_psbch_e[0])),
                     "Indexing outside of mod_psbch_e bounds. %d > %lu",
                     (m << 1) + 1,
