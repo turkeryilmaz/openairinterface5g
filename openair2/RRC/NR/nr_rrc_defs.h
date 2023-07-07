@@ -379,11 +379,6 @@ typedef struct cucp_cuup_if_s {
   cucp_cuup_bearer_context_setup_func_t bearer_context_mod;
 } cucp_cuup_if_t;
 
-typedef struct nr_reestablish_rnti_map_s {
-  ue_id_t ue_id;
-  rnti_t c_rnti;
-} nr_reestablish_rnti_map_t;
-
 //---NR---(completely change)---------------------
 typedef struct gNB_RRC_INST_s {
 
@@ -430,8 +425,6 @@ typedef struct gNB_RRC_INST_s {
 
   // security configuration (preferred algorithms)
   nr_security_configuration_t security;
-
-  nr_reestablish_rnti_map_t nr_reestablish_rnti_map[MAX_MOBILES_PER_GNB];
 
   nr_mac_rrc_dl_if_t mac_rrc;
   cucp_cuup_if_t cucp_cuup;

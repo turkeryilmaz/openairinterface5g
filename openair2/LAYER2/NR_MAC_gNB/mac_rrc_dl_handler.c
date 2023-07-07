@@ -296,7 +296,10 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     du_add_f1_ue_data(dl_rrc->gNB_DU_ue_id, &new_ue_data);
   }
 
-  AssertFatal(dl_rrc->old_gNB_DU_ue_id == NULL, "changing RNTI not implemented yet\n");
+  if (dl_rrc->old_gNB_DU_ue_id != NULL) {
+    nr_rlc_remove_ue(*dl_rrc->old_gNB_DU_ue_id);
+    mac_remove_nr_ue(mac, *dl_rrc->old_gNB_DU_ue_id);
+  }
 
   /* the DU ue id is the RNTI */
   nr_rlc_srb_recv_sdu(dl_rrc->gNB_DU_ue_id, dl_rrc->srb_id, dl_rrc->rrc_container, dl_rrc->rrc_container_length);
