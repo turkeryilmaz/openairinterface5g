@@ -4,6 +4,49 @@
 static
 const int mod_id = 0;
 
+size_t get_number_drbs_per_ue(NR_UE_info_t * const UE)
+{
+  size_t num_drbs = 0;
+
+  for (int rb_id = 1; rb_id<=5 ; rb_id++)
+  {
+    nr_rlc_statistics_t rlc = {0};
+    const int srb_flag = 0;
+    const bool rc = nr_rlc_get_statistics(UE->rnti, srb_flag, rb_id, &rlc);
+    if(rc)
+      num_drbs++;
+  }
+
+
+  return num_drbs;
+}
+
+nr_rlc_statistics_t* rlc_stat_per_ue(NR_UE_info_t * const UE)
+{
+  assert(UE != NULL);
+
+  size_t num_drbs = get_number_drbs_per_ue(UE);
+  assert(num_drbs != 0 && "Number of DRBs per UE must be greater than 0");
+
+  nr_rlc_statistics_t *rlc_stat_list = calloc(num_drbs, sizeof(nr_rlc_statistics_t));
+  assert(rlc_stat_list != NULL && "Memory exhausted");
+
+  size_t j = 0;
+
+  for (int rb_id = 1; rb_id<=5 ; rb_id++)
+  {
+    nr_rlc_statistics_t rlc = {0};
+    const int srb_flag = 0;
+    const bool rc = nr_rlc_get_statistics(UE->rnti, srb_flag, rb_id, &rlc);
+    if(rc){
+      rlc_stat_list[j] = rlc;
+      j++;
+    }
+  }
+
+  return rlc_stat_list;
+}
+
 uint32_t num_act_rb(NR_UEs_t* const UE_info)
 {
   assert(UE_info!= NULL);

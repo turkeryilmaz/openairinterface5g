@@ -5,6 +5,43 @@
 static
 const int mod_id = 0;
 
+size_t get_number_connected_ues(void)
+{
+  size_t num_ues = 0;
+
+  for (size_t i = 0; i < RC.nb_nr_macrlc_inst; i++) {
+    UE_iterator(RC.nrmac[i]->UE_info.list, ue)
+    {
+      if (ue) num_ues += 1;
+    }    
+  }
+
+  return num_ues;
+}
+
+NR_UE_info_t * connected_ues_list(void)
+{
+  size_t num_ues = get_number_connected_ues();
+
+  NR_UE_info_t * ue_list = calloc(num_ues, sizeof(NR_UE_info_t));
+  assert(ue_list != NULL && "Memory exhausted");
+
+  size_t j = 0;
+
+  for (size_t i = 0; i < RC.nb_nr_macrlc_inst; i++) {
+    UE_iterator(RC.nrmac[i]->UE_info.list, ue)
+    {
+      if (ue)
+      {
+        ue_list[j] = *ue;
+        j++;
+      }
+    }    
+  }
+
+  return ue_list;
+}
+
 void read_mac_sm(void* data)
 {
   assert(data != NULL);

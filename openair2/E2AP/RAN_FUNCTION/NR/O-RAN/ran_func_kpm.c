@@ -1,10 +1,12 @@
 #include "ran_func_kpm.h"
 #include "openair2/E2AP/flexric/test/rnd/fill_rnd_data_kpm.h"
 #include "openair2/E2AP/flexric/src/util/time_now_us.h"
-#include "common/ran_context.h"
-#include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+// #include "common/ran_context.h"
+// #include "openair2/LAYER2/NR_MAC_gNB/mac_proto.h"
+#include "openair2/LAYER2/NR_MAC_gNB/nr_mac_gNB.h"
 #include "openair2/RRC/NR/rrc_gNB_UE_context.h"
 #include "E2AP/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_rlc.h"
+#include "E2AP/RAN_FUNCTION/NR/CUSTOMIZED/ran_func_mac.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -107,34 +109,48 @@ void cal_ul_thr_bps(uint64_t const ul_total_bytes, uint32_t const gran_period_ms
 
 
 static 
-kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t const ue_idx, kpm_act_def_format_1_t const act_def_fr1)
+kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t const ue_idx, kpm_act_def_format_4_t const * act_def_fr_4)
 {
   kpm_ind_msg_format_1_t msg_frm_1 = {0};
 
-  // Measurement Data
-  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
-  uint32_t num_drbs = num_act_rb(UE_info);
-  msg_frm_1.meas_data_lst_len = num_drbs;  // (rand() % 65535) + 1;
+  // Measurement Data Per UE
+
+  // taken as the total number of PRBs of all UEs
+  // NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+  // uint32_t num_drbs = num_act_rb(UE_info);
+  
+  msg_frm_1.meas_data_lst_len = get_number_drbs_per_ue(UE);  // number of DRBs per UE
+  nr_rlc_statistics_t* rlc_stat_list = rlc_stat_per_ue(UE);  // RLC statistics per UE
+  
+  printf("Number of DRBs per UE is %lu\n", msg_frm_1.meas_data_lst_len);
+
   msg_frm_1.meas_data_lst = calloc(msg_frm_1.meas_data_lst_len, sizeof(*msg_frm_1.meas_data_lst));
   assert(msg_frm_1.meas_data_lst != NULL && "Memory exhausted" );
 
 
-  size_t const rec_data_len = act_def_fr1.meas_info_lst_len; // Recoding Data Length
-  size_t meas_data_idx = 0;
-  for (int rb_id = 1; rb_id < 6; ++rb_id) {
-    nr_rlc_statistics_t rb_rlc = {0};
-    const int srb_flag = 0;
-    const bool rc = nr_rlc_get_statistics(UE->rnti, srb_flag, rb_id, &rb_rlc);
-    if(!rc) continue;
+  size_t const rec_data_len = act_def_fr_4->action_def_format_1.meas_info_lst_len; // record data list length corresponds to info list length from action definition
+  // size_t meas_data_idx = 0;
+  // for (int rb_id = 1; rb_id < 6; ++rb_id) {
+  //   nr_rlc_statistics_t rb_rlc = {0};
+  //   const int srb_flag = 0;
+  //   const bool rc = nr_rlc_get_statistics(UE->rnti, srb_flag, rb_id, &rb_rlc);
+  //   if(!rc) continue;
 
-    // Measurement Record
-    meas_data_lst_t* meas_data = &msg_frm_1.meas_data_lst[meas_data_idx];
+  for (size_t i = 0; i<msg_frm_1.meas_data_lst_len; i++)  // each meas data element corresponds to one DRB per UE
+  {
+    meas_data_lst_t* meas_data = &msg_frm_1.meas_data_lst[i];
+    
+    // Measurement Record per UE
     meas_data->meas_record_len = rec_data_len;
+
     meas_data->meas_record_lst = calloc(meas_data->meas_record_len, sizeof(meas_record_lst_t));
     assert(meas_data->meas_record_lst != NULL && "Memory exhausted");
-    for (size_t j = 0; j < meas_data->meas_record_len; j++) {
+
+    for (size_t j = 0; j < meas_data->meas_record_len; j++)
+    {
       meas_record_lst_t* meas_record = &meas_data->meas_record_lst[j];
-      meas_type_t meas_info_type = act_def_fr1.meas_info_lst[j].meas_type;
+      meas_type_t meas_info_type = act_def_fr_4->action_def_format_1.meas_info_lst[j].meas_type;
+
       if (meas_info_type.type == NAME_MEAS_TYPE) {
         // Get Meas Info Name from Action Definition
         size_t length = meas_info_type.name.len;
@@ -144,16 +160,17 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
         // Get value based on Meas Info Name
         if (strcmp(meas_info_name_str, "DRB.IPThpDl.QCI") == 0 ? true : false) {
           meas_record->value = REAL_MEAS_VALUE;
-          cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
+          cal_dl_thr_bps(UE->mac_stats.dl.total_bytes, act_def_fr_4->action_def_format_1.gran_period_ms, ue_idx);
           meas_record->real_val = dl_thr_avg_val[ue_idx];
         } else if (strcmp(meas_info_name_str, "DRB.IPThpUl.QCI") == 0 ? true : false) {
           meas_record->value = REAL_MEAS_VALUE;
-          cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr1.gran_period_ms, ue_idx);
+          cal_ul_thr_bps(UE->mac_stats.ul.total_bytes, act_def_fr_4->action_def_format_1.gran_period_ms, ue_idx);
           meas_record->real_val = ul_thr_avg_val[ue_idx];
         } else if (strcmp(meas_info_name_str, "DRB.RlcSduDelayDl") == 0 ? true : false) {
           meas_record->value = REAL_MEAS_VALUE;
-          active_avg_to_tx(UE_info);
-          meas_record->real_val = rb_rlc.txsdu_avg_time_to_tx;
+          // active_avg_to_tx(UE_info);
+          nr_rlc_activate_avg_time_to_tx(UE->rnti, i+1, 1);  // for specific DRB ID per UE
+          meas_record->real_val = rlc_stat_list[i].txsdu_avg_time_to_tx;
         } else {
           printf("not implement value for measurement name %s\n", meas_info_name_str);
           meas_record->value = REAL_MEAS_VALUE;
@@ -165,7 +182,7 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
         meas_record->real_val = 1234;
       }
     }
-    meas_data_idx++;
+    // meas_data_idx++;
   }
 
   // Measurement Information - OPTIONAL
@@ -176,14 +193,14 @@ kpm_ind_msg_format_1_t fill_kpm_ind_msg_frm_1(NR_UE_info_t* const UE, size_t con
   // Get measInfo from action definition
   for (size_t i = 0; i < msg_frm_1.meas_info_lst_len; i++) {
     // Measurement Type
-    msg_frm_1.meas_info_lst[i].meas_type.type = act_def_fr1.meas_info_lst[i].meas_type.type;
+    msg_frm_1.meas_info_lst[i].meas_type.type = act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.type;
     // Measurement Name
-    if (act_def_fr1.meas_info_lst[i].meas_type.type == NAME_MEAS_TYPE) {
-      msg_frm_1.meas_info_lst[i].meas_type.name.buf = calloc(act_def_fr1.meas_info_lst[i].meas_type.name.len, sizeof(uint8_t));
-      memcpy(msg_frm_1.meas_info_lst[i].meas_type.name.buf, act_def_fr1.meas_info_lst[i].meas_type.name.buf, act_def_fr1.meas_info_lst[i].meas_type.name.len);
-      msg_frm_1.meas_info_lst[i].meas_type.name.len = act_def_fr1.meas_info_lst[i].meas_type.name.len;
+    if (act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.type == NAME_MEAS_TYPE) {
+      msg_frm_1.meas_info_lst[i].meas_type.name.buf = calloc(act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.name.len, sizeof(uint8_t));
+      memcpy(msg_frm_1.meas_info_lst[i].meas_type.name.buf, act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.name.buf, act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.name.len);
+      msg_frm_1.meas_info_lst[i].meas_type.name.len = act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.name.len;
     } else {
-      msg_frm_1.meas_info_lst[i].meas_type.id = act_def_fr1.meas_info_lst[i].meas_type.id;
+      msg_frm_1.meas_info_lst[i].meas_type.id = act_def_fr_4->action_def_format_1.meas_info_lst[i].meas_type.id;
     }
 
 
@@ -260,38 +277,63 @@ static kpm_ind_msg_format_1_t fill_rnd_kpm_ind_msg_frm_1(void)
 }
 
 static
-kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3_sta(kpm_act_def_format_1_t const act_def_fr1)
+kpm_ind_msg_format_3_t fill_kpm_ind_msg_frm_3(const kpm_act_def_format_4_t * act_def_fr_4)
 {
   kpm_ind_msg_format_3_t msg_frm_3 = {0};
 
   // get the number of connected UEs
-  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
-  uint32_t num_ues = 0;
-  UE_iterator(UE_info->list, ue) {
-    if (ue)
-      num_ues += 1;
-  }
+  // NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+  // uint32_t num_ues = 0;
+  // UE_iterator(UE_info->list, ue) {
+  //   if (ue)
+  //     num_ues += 1;
+  // }
 
-  msg_frm_3.ue_meas_report_lst_len = num_ues == 0 ? 1: num_ues;  // (rand() % 65535) + 1;
+  // uint32_t num_ues = 0;
+  // get the number of connected UEs
+  // if (strcmp("My OAI-MONO", (char *)ind_hdr.kpm_ric_ind_hdr_format_1.sender_name->buf) == 0 || strcmp("My OAI-DU", (char *)ind_hdr.kpm_ric_ind_hdr_format_1.sender_name->buf) == 0)
+  // {
+    // take the number of connected UEs at MAC/RLC level
+    // static gNB_MAC_INST    *nrmac;
 
-  msg_frm_3.meas_report_per_ue = calloc(msg_frm_3.ue_meas_report_lst_len, sizeof(meas_report_per_ue_t));
-  assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
 
-  // TODO: handle the case when the number of UE is 0, if (msg_frm_3.ue_meas_report_lst_len > 0)
-  if (num_ues > 0) {
-    size_t ue_idx = 0;
-    UE_iterator(UE_info->list, UE)
+    
+    
+
+    msg_frm_3.ue_meas_report_lst_len = get_number_connected_ues();  // (rand() % 65535) + 1;
+    assert(msg_frm_3.ue_meas_report_lst_len != 0 && "Number of UEs to report must be greater than 0");
+
+    printf("Number of connected UEs is %lu\n", msg_frm_3.ue_meas_report_lst_len);
+    NR_UE_info_t * ue_list = connected_ues_list();
+
+    
+    msg_frm_3.meas_report_per_ue = calloc(msg_frm_3.ue_meas_report_lst_len, sizeof(meas_report_per_ue_t));
+    assert(msg_frm_3.meas_report_per_ue != NULL && "Memory exhausted");
+
+    for (size_t i = 0; i<msg_frm_3.ue_meas_report_lst_len; i++)
     {
-      uint16_t const rnti = UE->rnti;
-      msg_frm_3.meas_report_per_ue[ue_idx].ue_meas_report_lst = fill_ue_id_data(rnti);
-      msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(UE, ue_idx, act_def_fr1);
-      ue_idx+=1;
+      msg_frm_3.meas_report_per_ue[i].ue_meas_report_lst = fill_ue_id_data(ue_list[i].rnti);
+      msg_frm_3.meas_report_per_ue[i].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(&ue_list[i], i, act_def_fr_4);
     }
-  } else {
-    msg_frm_3.meas_report_per_ue[0].ue_meas_report_lst = fill_rnd_ue_id_data();
-    msg_frm_3.meas_report_per_ue[0].ind_msg_format_1 = fill_rnd_kpm_ind_msg_frm_1();
-  }
 
+
+    // size_t ue_idx = 0;
+    // UE_iterator(nrmac->UE_info.list, UE)
+    // {
+    //   uint16_t const rnti = UE->rnti;
+    //   msg_frm_3.meas_report_per_ue[ue_idx].ue_meas_report_lst = fill_ue_id_data(rnti);
+    //   msg_frm_3.meas_report_per_ue[ue_idx].ind_msg_format_1 = fill_kpm_ind_msg_frm_1(UE, ue_idx, act_def_fr1);
+    //   ue_idx+=1;
+    // }
+
+
+  // }
+  // else if (strcmp("My OAI-CU", (char *)ind_hdr.kpm_ric_ind_hdr_format_1.sender_name->buf) == 0)
+  // {
+  //   // take the number of connected UEs at RRC level
+
+  // }
+  
 
   return msg_frm_3;
 }
@@ -334,6 +376,17 @@ kpm_ind_hdr_t fill_kpm_ind_hdr_sta(void)
   return hdr;
 }
 
+// static
+// kpm_ind_msg_t fill_ind_msg(void)
+// {
+//   kpm_ind_msg_t ind_msg = {0};
+
+//   ind_msg.type = FORMAT_3_INDICATION_MESSAGE;
+//   ind_msg.frm_3 = fill_kpm_ind_msg_frm_3();  //&kpm->act_def->frm_4);
+
+//   return ind_msg;
+// }
+
 void read_kpm_sm(void* data)
 {
   assert(data != NULL);
@@ -344,6 +397,7 @@ void read_kpm_sm(void* data)
   assert(kpm->act_def!= NULL && "Cannot be NULL");
   if(kpm->act_def->type == FORMAT_4_ACTION_DEFINITION){
 
+    // this should be in fill_kpm_ind_msg_frm_3 function, to filter the corresponding UEs
     if(kpm->act_def->frm_4.matching_cond_lst[0].test_info_lst.test_cond_type == CQI_TEST_COND_TYPE
         && *kpm->act_def->frm_4.matching_cond_lst[0].test_info_lst.test_cond == GREATERTHAN_TEST_COND){
       printf("Matching condition: UEs with CQI greater than %ld \n", *kpm->act_def->frm_4.matching_cond_lst[0].test_info_lst.int_value );
@@ -355,8 +409,11 @@ void read_kpm_sm(void* data)
     kpm->ind.hdr = fill_kpm_ind_hdr_sta(); 
     // 7.8 Supported RIC Styles and E2SM IE Formats
     // Format 4 corresponds to indication message 3
+
+    // kpm->ind.msg = fill_ind_msg();
+
     kpm->ind.msg.type = FORMAT_3_INDICATION_MESSAGE;
-    kpm->ind.msg.frm_3 = fill_kpm_ind_msg_frm_3_sta(kpm->act_def->frm_4.action_def_format_1);
+    kpm->ind.msg.frm_3 = fill_kpm_ind_msg_frm_3(&kpm->act_def->frm_4);
   } else {
      kpm->ind.hdr = fill_kpm_ind_hdr(); 
      kpm->ind.msg = fill_kpm_ind_msg(); 
