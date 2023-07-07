@@ -385,6 +385,10 @@ cd cmake_targets
 node_id=2
 sudo -E LD_LIBRARY_PATH=/home/firecell/openairinterface5G/openairinterface5g/cmake_targets/ran_build/build: taskset --cpu-list 2 ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/episci/proxy_ue.nfapi.conf --L2-emul 5 --nokrnmod 1 --noS1 --num-ues 1 --node-number 2 --log_config.global_log_options level,nocolor,time,thread_id --nsa | tee ue.log 2>&1
 ```
+Note: If error "[MAC] E No $OPENAIR_DIR" is received on execution of lte-uesoftmodem, use below command for execution.
+```
+sudo -E OPENAIR_DIR=../ LD_LIBRARY_PATH=/home/firecell/openairinterface5G/openairinterface5g/cmake_targets/ran_build/build: taskset --cpu-list 2 ./ran_build/build/lte-uesoftmodem -O ../ci-scripts/conf_files/episci/proxy_ue.nfapi.conf --L2-emul 5 --nokrnmod 1 --noS1 --num-ues 1 --node-number 2 --log_config.global_log_options level,nocolor,time,thread_id --nsa | tee ue.log 2>&1
+```
 #### 3.7.4 Launch gNB in Terminal 4
 ```bash
 cd .../openairinterface5g
