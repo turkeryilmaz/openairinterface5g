@@ -227,7 +227,7 @@ else()
   message(FATAL_ERROR "compile for CPU architecture ${CPUARCH}, CMAKE_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-if (!CROSS_COMPILER EQUAL 1)
+if (NOT CROSS_COMPILER EQUAL 1)
   set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=native")
 else ()
   set(C_FLAGS_PROCESSOR "${C_FLAGS_PROCESSOR} -march=armv8-a")
