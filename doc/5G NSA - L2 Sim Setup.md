@@ -115,19 +115,12 @@ plmn_list = ({mcc = 001; mnc = 01; mnc_length = 2;})
 
 _Note: Above configuration is with reference to workiong configuraton on Firecell's setup. On different machine, this configuration shall be udpated w.r.t new setup's environment. _
 
-### 3.2 Generate NV files
-```bash
-cd openairinterface5g/cmake_targets
-1. ./nas_sim_tools/build/conf2uedata -c ../ci-scripts/conf_files/episci/episci_ue_test_sfr.conf -o .
-2. ./nas_sim_tools/build/usim -g -c ../ci-scripts/conf_files/episci/episci_ue_test_sfr.conf -o .
-3. ./nas_sim_tools/build/nvram -g -c ../ci-scripts/conf_files/episci/episci_ue_test_sfr.conf -o .
-```
-### 3.3 Build Proxy
+### 3.2 Build Proxy
 ```bash
 cd .../oai-lte-multi-ue-proxy
 make
 ```
-### 3.4 Deploy EPC
+### 3.3 Deploy EPC
 For running the System Simulator this step is not mandatory since it is not used when running with the TTCN environment.
 The ﬁrst step is to install some mandatory packages from Ubuntu distribution:
 - apt-transport-https
@@ -143,7 +136,7 @@ $sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release
 ```
 Now it is possible to download the docker package and install it
 ```bash
-$sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg--dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+$sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 ```
 Update apt-get list of packages
 ```bash
@@ -260,8 +253,8 @@ $ docker rm -f demo-db-init
 ```
 On your EPC docker host, check the routing table and identify the default gateway:
 ```bash
-$ route -n Kernel IP routing table
-Destination Gateway Genmask Flags Metric Ref Use Iface 0.0.0.0 192.168.253.1 0.0.0.0 UG 100 0 0 enp1s0 ...
+$ route -n 
+Kernel IP routing table Destination Gateway Genmask Flags Metric Ref Use Iface 0.0.0.0 192.168.253.1 0.0.0.0 UG 100 0 0 enp1s0 ...
 ```
 Use the default gateway as DNS in the magma-mme-demo and Edit/modify the docker-compose ﬁle in order to:
 ```bash
@@ -279,6 +272,10 @@ $ vi docker-compose.yml
 **NOTE: Please make sure you add the proper route in the eNB server as shown earlier**
 Now we can start EPC:
 ```bash
+$ cd docker-compose/magma-mme-demo
+$ docker-compose up -d db_init
+$ docker logs demo-db-init --follow
+
 $ docker-compose up -d oai_spgwu
 Creating demo-redis   ... done
 Creating demo-oai-hss ... done
@@ -342,13 +339,25 @@ In order to check errors in MME and HSS you can do the follow:
 $ docker logs demo-oai-hss 2>&1 > hss.log
 $ docker logs demo-magma-mme 2>&1 > mme.log
 ```
-### 3.5 Build OAI
+### 3.4 Build OAI
 ```bash
 cd .../openairinterface5g
 source oaienv
 cd cmake_targets
 sudo ./build_oai --UE --eNB --nrUE --gNB
+
+
 ```
+
+### 3.5 Generate NV files
+```bash
+cd openairinterface5g/cmake_targets
+1. ./nas_sim_tools/build/conf2uedata -c ../ci-scripts/conf_files/episci/episci_ue_test_sfr.conf -o .
+2. ./nas_sim_tools/build/usim -g -c ../ci-scripts/conf_files/episci/episci_ue_test_sfr.conf -o .
+3. ./nas_sim_tools/build/nvram -g -c ../ci-scripts/conf_files/episci/episci_ue_test_sfr.conf -o .
+
+```
+
 ### 3.6 Run NSA mode with the script
 ```bash
 ./proxy_testscript.py --num-ues 1 --mode=nsa --duration=300
