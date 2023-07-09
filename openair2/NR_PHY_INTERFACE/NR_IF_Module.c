@@ -394,11 +394,11 @@ void scheduler(module_id_t module_id,int CC_id,int frame,int slot) {
   //gNB_MAC_INST     *mac        = RC.nrmac[module_id];
 
   NR_Sched_Rsp_t   *sched_info;
+  LOG_D(NR_MAC,"Calling scheduler for %d.%d\n",frame,slot);
   sched_info = allocate_sched_response();
 
   // clear UL DCI prior to handling ULSCH
   sched_info->UL_dci_req.numPdus = 0;
-  LOG_D(NR_MAC,"Callign scheduler for %d.%d\n",frame,slot);
   gNB_dlsch_ulsch_scheduler(module_id, frame, slot, sched_info);
   ifi->CC_mask            = 0;
   sched_info->module_id   = module_id;
@@ -495,27 +495,6 @@ void NR_UL_indication(NR_UL_IND_t *UL_info) {
   if (get_softmodem_params()->emulate_l1) {
     free_unqueued_nfapi_indications(rach_ind, uci_ind, rx_ind, crc_ind);
   }
-  if (NFAPI_MODE != NFAPI_MODE_PNF && !get_softmodem_params()->reorder_thread_disable) {
-      gNB_MAC_INST *mac = RC.nrmac[module_id];
-      if (ifi->CC_mask==0) {
-        ifi->current_frame    = UL_info->frame;
-        ifi->current_slot = UL_info->slot;
-      } else {
-        AssertFatal(UL_info->frame != ifi->current_frame,"CC_mask %x is not full and frame has changed\n",ifi->CC_mask);
-        AssertFatal(UL_info->slot != ifi->current_slot,"CC_mask %x is not full and slot has changed\n",ifi->CC_mask);
-      }
-
-      ifi->CC_mask |= (1<<CC_id);
-
-      if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
-        nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
-        int spf = get_spf(cfg);
-        int frame = (UL_info->frame+((UL_info->slot>(spf-1-ifi->sl_ahead))?1:0)) & 1023;
-        int slot = (UL_info->slot+ifi->sl_ahead)%spf;
-        scheduler(module_id,CC_id,frame,slot);
-      }
-  }
-
 }
 
 NR_IF_Module_t *NR_IF_Module_init(int Mod_id) {

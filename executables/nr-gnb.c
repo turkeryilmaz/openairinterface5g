@@ -131,37 +131,18 @@ void tx_func(void *param)
   NR_IF_Module_t *ifi = gNB->if_inst;
   nfapi_nr_config_request_scf_t *cfg = &gNB->gNB_config;
 
-  if (absslot_tx < 2000) return;
+  if (absslot_tx >= 2000)  {
 
-  if (NFAPI_MODE != NFAPI_MODE_PNF && get_softmodem_params()->reorder_thread_disable) {
-	  gNB_MAC_INST *mac = RC.nrmac[module_id];
-/*
-	  if (ifi->CC_mask==0) {
-		  ifi->current_frame = frame_tx;
-		  ifi->current_slot = slot_tx;
-	  } else {
-		  AssertFatal(frame_tx != ifi->current_frame,"CC_mask %x is not full and frame has changed\n",ifi->CC_mask);
-		  AssertFatal(slot_tx != ifi->current_slot,"CC_mask %x is not full and slot has changed\n",ifi->CC_mask);
-	  }
-
-	  ifi->CC_mask |= (1<<CC_id);
-
-	  if (ifi->CC_mask == ((1<<MAX_NUM_CCs)-1)) {
-*/
-       	          nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
-		  int spf = get_spf(cfg);
-		  int frame = (frame_tx+((slot_tx>(spf-1))?1:0)) & 1023;
-		  int slot = slot_tx%spf;
-		  ifi->NR_mac_scheduler(module_id,CC_id,frame,slot);
-/*	  }*/
+    if (NFAPI_MODE != NFAPI_MODE_PNF && get_softmodem_params()->reorder_thread_disable) {
+	  ifi->NR_mac_scheduler(module_id,CC_id,frame_tx,slot_tx);
 	  gNB->msgDataTx->timestamp_tx = info->timestamp_tx;
 	  info = gNB->msgDataTx;
 	  info->gNB = gNB;
-  }
+    }
 
 
-  int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
-  if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
+    int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
+    if ((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) {
 	  clock_gettime(CLOCK_MONOTONIC,&info->gNB->rt_L1_profiling.start_L1_TX[rt_prof_idx]);
 	  phy_procedures_gNB_TX(info,
 			  frame_tx,
@@ -179,9 +160,11 @@ void tx_func(void *param)
 		  LOG_D(PHY,"gNB: %d.%d : calling RU TX function\n",syncMsgRU.frame_tx,syncMsgRU.slot_tx);
 		  ru_tx_func((void*)&syncMsgRU);
 	  }
-	  /* this thread is done with the sched_info, decrease the reference counter */
-	  deref_sched_response(info->sched_response_id);
 	  stop_meas(&info->gNB->phy_proc_tx);
+    }  
+    /* this thread is done with the sched_info, decrease the reference counter */
+    LOG_D(NR_PHY,"Calling deref_sched_response for id %d (tx_func) in %d.%d\n",info->sched_response_id,frame_tx,slot_tx);
+    deref_sched_response(info->sched_response_id);
   }
 }
 
@@ -234,21 +217,6 @@ void rx_func(void *param)
     handle_nr_slot_ind(frame_rx, slot_rx);
     stop_meas(&nfapi_meas);
 
-    /*if (gNB->UL_INFO.rx_ind.rx_indication_body.number_of_pdus||
-        gNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs ||
-        gNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs ||
-        gNB->UL_INFO.rach_ind.number_of_pdus ||
-        gNB->UL_INFO.cqi_ind.number_of_cqis
-       ) {
-      LOG_D(PHY, "UL_info[rx_ind:%05d:%d harqs:%05d:%d crcs:%05d:%d rach_pdus:%0d.%d:%d cqis:%d] RX:%04d%d TX:%04d%d \n",
-            NFAPI_SFNSF2DEC(gNB->UL_INFO.rx_ind.sfn_sf),   gNB->UL_INFO.rx_ind.rx_indication_body.number_of_pdus,
-            NFAPI_SFNSF2DEC(gNB->UL_INFO.harq_ind.sfn_sf), gNB->UL_INFO.harq_ind.harq_indication_body.number_of_harqs,
-            NFAPI_SFNSF2DEC(gNB->UL_INFO.crc_ind.sfn_sf),  gNB->UL_INFO.crc_ind.crc_indication_body.number_of_crcs,
-            gNB->UL_INFO.rach_ind.sfn, gNB->UL_INFO.rach_ind.slot,gNB->UL_INFO.rach_ind.number_of_pdus,
-            gNB->UL_INFO.cqi_ind.number_of_cqis,
-            frame_rx, slot_rx,
-            frame_tx, slot_tx);
-    }*/
   }
   // ****************************************
 
@@ -299,6 +267,12 @@ void rx_func(void *param)
   gNB->if_inst->NR_UL_indication(&gNB->UL_INFO);
 //  pthread_mutex_unlock(&gNB->UL_INFO_mutex);
   stop_meas(&gNB->ul_indication_stats);
+/*
+  nfapi_nr_config_request_scf_t *cfg = &mac->config[CC_id];
+  int spf = get_spf(cfg);
+  int frame = (frame_tx+((slot_tx>(spf-1))?1:0)) & 1023;
+  int slot = slot_tx%spf;*/
+  if (!get_softmodem_params()->reorder_thread_disable) gNB->if_inst->NR_mac_scheduler(gNB->Mod_id,gNB->CC_id,frame_tx,slot_tx);
 
   int tx_slot_type = nr_slot_select(cfg,frame_tx,slot_tx);
   if (((tx_slot_type == NR_DOWNLINK_SLOT || tx_slot_type == NR_MIXED_SLOT) && NFAPI_MODE != NFAPI_MODE_PNF) && !get_softmodem_params()->reorder_thread_disable) {
@@ -306,21 +280,14 @@ void rx_func(void *param)
     processingData_L1tx_t *syncMsg;
     // Its a FIFO so it maitains the order in which the MAC fills the messages
     // so no need for checking for right slot
-    /*if (get_softmodem_params()->reorder_thread_disable) {
-      // call the TX function directly from this thread
-      syncMsg = gNB->msgDataTx;
-      syncMsg->gNB = gNB; 
-      syncMsg->timestamp_tx = info->timestamp_tx;
-      tx_func(syncMsg);
-    } else {*/
-      res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
-      if (res == NULL)
-        return; // Tpool has been stopped
-      syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
-      syncMsg->gNB = gNB;
-      syncMsg->timestamp_tx = info->timestamp_tx;
-      res->key = slot_tx;
-      pushTpool(&gNB->threadPool, res);
+    res = pullTpool(&gNB->L1_tx_filled, &gNB->threadPool);
+    if (res == NULL)
+      return; // Tpool has been stopped
+    syncMsg = (processingData_L1tx_t *)NotifiedFifoData(res);
+    syncMsg->gNB = gNB;
+    syncMsg->timestamp_tx = info->timestamp_tx;
+    res->key = slot_tx;
+    pushTpool(&gNB->threadPool, res);
     //}
   } else if (get_softmodem_params()->continuous_tx) {
     notifiedFIFO_elt_t *res = pullTpool(&gNB->L1_tx_free, &gNB->threadPool);
