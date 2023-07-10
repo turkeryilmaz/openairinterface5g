@@ -694,6 +694,7 @@ install_simde_from_source(){
     $SUDO rm -rf /tmp/simde
     git clone https://github.com/simd-everywhere/simde-no-tests.git /tmp/simde
     cd /tmp/simde
+    git checkout v0.7.2
     # brute force copy into /usr/include
     $SUDO \cp -rv ../simde /usr/include
 }
