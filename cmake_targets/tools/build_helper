@@ -622,7 +622,10 @@ check_install_oai_software() {
         libsctp-dev:arm64 \
         libssl-dev:arm64 \
         libtool:arm64 \
-        zlib1g-dev:arm64
+        zlib1g-dev:arm64 \
+        binutils-aarch64-linux-gnu \
+        gcc-aarch64-linux-gnu \
+        g++-aarch64-linux-gnu
     fi
     $SUDO apt-get install -y \
     $specific_packages \
