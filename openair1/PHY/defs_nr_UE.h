@@ -123,7 +123,7 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
-typedef enum { NOT_SL_MODE = 0, MODE_1, MODE_2 } NR_SL_MODE_t;
+typedef enum { SL_MODE_NONE = 0, SL_MODE_1, SL_MODE_2 } NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -252,6 +252,7 @@ typedef struct {
   int32_t eNb_id;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
+  int32_t sl_nid2;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
@@ -347,6 +348,7 @@ typedef struct {
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+
 
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
@@ -564,7 +566,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
-  int rx_offset_sl; /// Timing offset for Sidelink
+  int rx_offset_sl; /// Timing offset
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame

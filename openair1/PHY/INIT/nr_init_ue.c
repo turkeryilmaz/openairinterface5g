@@ -36,6 +36,7 @@
 #include "executables/softmodem-common.h"
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
+#include "executables/softmodem-common.h"
 
 void RCconfig_nrUE_prs(void *cfg)
 {
@@ -310,10 +311,10 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     common_vars->rxdataF[i] = (c16_t *)malloc16_clear((2 * (fp->samples_per_frame)+fp->ofdm_symbol_size) * sizeof(c16_t));
   }
 
-  int N_RB = (get_softmodem_params()->sl_mode == MODE_2) ? fp->N_RB_SL : fp->N_RB_DL;
+  int N_RB = (get_softmodem_params()->sl_mode == SL_MODE_2) ? fp->N_RB_SL : fp->N_RB_DL;
 
   // ceil(((NB_RB<<1)*3)/32) // 3 RE *2(QPSK)
-  int pdcch_dmrs_init_length = (((N_RB << 1) * 3) >> 5) + 1;
+  int pdcch_dmrs_init_length =  (((N_RB<<1)*3)>>5)+1;
   //PDCCH DMRS init (gNB offset = 0)
   ue->nr_gold_pdcch[0] = (uint32_t ***)malloc16(fp->slots_per_frame*sizeof(uint32_t **));
   uint32_t ***pdcch_dmrs = ue->nr_gold_pdcch[0];
@@ -330,7 +331,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
   // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
-  int pdsch_dmrs_init_length = ((N_RB * 12) >> 5) + 1;
+  int pdsch_dmrs_init_length =  ((N_RB*12)>>5)+1;
 
   //PDSCH DMRS init (eNB offset = 0)
   ue->nr_gold_pdsch[0] = (uint32_t ****)malloc16(fp->slots_per_frame*sizeof(uint32_t ***));
@@ -357,7 +358,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     csiim_vars[gNB_id] = (NR_UE_CSI_IM *)malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = (NR_UE_CSI_RS *)malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = (NR_UE_SRS *)malloc16_clear(sizeof(NR_UE_SRS));
-    if (get_softmodem_params()->sl_mode == MODE_2) {
+    if (get_softmodem_params()->sl_mode == SL_MODE_2) {
       psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
     }
 
@@ -366,7 +367,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     srs_vars[gNB_id]->active = false;
 
     // ceil((NB_RB*8(max allocation per RB)*2(QPSK))/32)
-    int csi_dmrs_init_length = ((N_RB << 4) >> 5) + 1;
+    int csi_dmrs_init_length =  ((N_RB<<4)>>5)+1;
     ue->nr_csi_info = (nr_csi_info_t *)malloc16_clear(sizeof(nr_csi_info_t));
     ue->nr_csi_info->nr_gold_csi_rs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
     AssertFatal(ue->nr_csi_info->nr_gold_csi_rs != NULL, "NR init: csi reference signal malloc failed\n");
@@ -475,7 +476,7 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     free_and_zero(ue->csirs_vars[gNB_id]);
     free_and_zero(ue->srs_vars[gNB_id]);
 
-    if (get_softmodem_params()->sl_mode != NOT_SL_MODE) {
+    if (get_softmodem_params()->sl_mode != SL_MODE_NONE) {
       free_and_zero(ue->psbch_vars[gNB_id]);
     }
     free_and_zero(ue->prach_vars[gNB_id]);

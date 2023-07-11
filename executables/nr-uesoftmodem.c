@@ -331,7 +331,7 @@ void init_openair0(void) {
       openair0_cfg[card].duplex_mode = duplex_mode_FDD;
 
     openair0_cfg[card].Mod_id = 0;
-    openair0_cfg[card].num_rb_dl = (get_softmodem_params()->sl_mode == MODE_2) ? frame_parms->N_RB_SL : frame_parms->N_RB_DL;
+    openair0_cfg[card].num_rb_dl = (get_softmodem_params()->sl_mode == SL_MODE_2) ? frame_parms->N_RB_SL : frame_parms->N_RB_DL;
     openair0_cfg[card].clock_source = get_softmodem_params()->clock_source;
     openair0_cfg[card].time_source = get_softmodem_params()->timing_source;
     openair0_cfg[card].tune_offset = get_softmodem_params()->tune_offset;
@@ -349,7 +349,7 @@ void init_openair0(void) {
 
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
 
-    if (get_softmodem_params()->sl_mode == MODE_2) {
+    if (get_softmodem_params()->sl_mode == SL_MODE_2) {
       nr_get_carrier_frequencies_sl(PHY_vars_UE_g[0][0], &sl_carrier);
       nr_rf_card_config_freq(&openair0_cfg[card], sl_carrier, sl_carrier, freq_off);
     }
