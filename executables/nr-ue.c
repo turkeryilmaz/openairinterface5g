@@ -380,7 +380,7 @@ static void UE_synch(void *arg) {
   static int freq_offset=0;
   if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     UE->is_synchronized_sl = false;
-    sync_mode = PSBCH;
+    sync_mode = SYNC_MODE_PSBCH;
   } else {
     UE->is_synchronized = false;
   }
