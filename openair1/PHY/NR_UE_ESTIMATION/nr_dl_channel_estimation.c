@@ -608,7 +608,7 @@ int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
 #endif
 
   // generate pilot
-  nr_pbch_dmrs_rx(dmrss,ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0]);
+  nr_pbch_dmrs_rx(dmrss,ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0],0);
 
   for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
 
@@ -729,15 +729,17 @@ int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
 }
 
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
+                                NR_DL_FRAME_PARMS *fp,
                                int estimateSz,
                                struct complex16 dl_ch_estimates[][estimateSz],
-                               struct complex16 dl_ch_estimates_time[][ue->frame_parms.ofdm_symbol_size],
+                               struct complex16 dl_ch_estimates_time[][fp->ofdm_symbol_size],
                                UE_nr_rxtx_proc_t *proc,
                                unsigned char symbol,
                                int dmrss,
                                uint8_t ssb_index,
                                uint8_t n_hf,
-                               c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                               c16_t rxdataF[][fp->samples_per_slot_wCP],
+                               bool sidelink)
 {
   int Ns = proc->nr_slot_rx;
   int pilot[200] __attribute__((aligned(16)));
@@ -748,25 +750,47 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
   int ch_offset,symbol_offset;
   //int slot_pbch;
 
-  uint8_t nushift;
-  nushift =  ue->frame_parms.Nid_cell%4;
-  ue->frame_parms.nushift = nushift;
-  unsigned int  ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
-  if (ssb_offset>= ue->frame_parms.ofdm_symbol_size) ssb_offset-=ue->frame_parms.ofdm_symbol_size;
+  uint8_t nushift = 0, lastsymbol = 0;
 
-  ch_offset     = ue->frame_parms.ofdm_symbol_size*symbol;
+  uint32_t *gold_seq = NULL;
 
-  AssertFatal(dmrss >= 0 && dmrss < 3,
+  if (sidelink) {
+
+    AssertFatal(dmrss == 0 || (dmrss >= 5 && dmrss <= 12),
+	      "symbol %d is illegal for PSBCH DM-RS \n",
+	      dmrss);
+
+    sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
+    uint16_t slssid = fp->Nid_cell;
+
+    gold_seq = sl_phy_params->init_params.psbch_dmrs_gold_sequences[slssid];
+    lastsymbol = 12;
+
+  } else {
+
+    nushift =  ue->frame_parms.Nid_cell%4;
+    ue->frame_parms.nushift = nushift;
+
+    AssertFatal(dmrss >= 0 && dmrss < 3,
 	      "symbol %d is illegal for PBCH DM-RS \n",
 	      dmrss);
 
-  symbol_offset = ue->frame_parms.ofdm_symbol_size*symbol;
+    gold_seq = ue->nr_gold_pbch[n_hf][ssb_index];
+    lastsymbol = 2;
+  }
+
+  unsigned int  ssb_offset = fp->first_carrier_offset + fp->ssb_start_subcarrier;
+  if (ssb_offset>= fp->ofdm_symbol_size) ssb_offset-= fp->ofdm_symbol_size;
+
+  ch_offset     = fp->ofdm_symbol_size*symbol;
+
+  symbol_offset = fp->ofdm_symbol_size*symbol;
 
 
   k = nushift;
 
 #ifdef DEBUG_PBCH
-  printf("PBCH Channel Estimation : gNB_id %d ch_offset %d, OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n", proc->gNB_id, ch_offset, ue->frame_parms.ofdm_symbol_size, ue->frame_parms.Ncp, Ns, k, symbol);
+  printf("PBCH Channel Estimation : gNB_id %d ch_offset %d, OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n", proc->gNB_id, ch_offset, fp->ofdm_symbol_size, fp->Ncp, Ns, k, symbol);
 #endif
 
   switch (k) {
@@ -802,7 +826,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
 
   idft_size_idx_t idftsizeidx;
   
-  switch (ue->frame_parms.ofdm_symbol_size) {
+  switch (fp->ofdm_symbol_size) {
   case 128:
     idftsizeidx = IDFT_128;
     break;
@@ -849,7 +873,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
   }
   
   // generate pilot
-  nr_pbch_dmrs_rx(dmrss,ue->nr_gold_pbch[n_hf][ssb_index], &pilot[0]);
+  nr_pbch_dmrs_rx(dmrss,gold_seq, &pilot[0], sidelink);
 
   for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
 
@@ -981,7 +1005,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
 
     }
 
-    if( dmrss == 2) // update time statistics for last PBCH symbol
+    if( dmrss == lastsymbol) // update time statistics for last PBCH symbol
     {
       // do ifft of channel estimate
       LOG_D(PHY,"Channel Impulse Computation Slot %d Symbol %d ch_offset %d\n", Ns, symbol, ch_offset);
@@ -992,7 +1016,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     }
   }
 
-  if (dmrss == 2)
+  if (!sidelink && dmrss == lastsymbol)
     UEscopeCopy(ue, pbchDlChEstimateTime, (void*)dl_ch_estimates_time, sizeof(struct complex16), ue->frame_parms.nb_antennas_rx, ue->frame_parms.ofdm_symbol_size);
 
   return(0);

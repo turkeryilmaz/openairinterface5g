@@ -39,6 +39,7 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "PHY/defs_nr_sl_UE.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -234,10 +235,10 @@ typedef struct {
   /// - second index: sample [0..2*FRAME_LENGTH_COMPLEX_SAMPLES+2048[
   c16_t **rxdata;
 
-    /// \brief Holds the received data in time domain.
+  /// \brief Holds the received data in the frequency domain.
   /// Should point to the same memory as PHY_vars->rx_vars[a].RX_DMA_BUFFER.
   /// - first index: rx antenna [0..nb_antennas_rx[
-  /// - second index: sample [0..2*FRAME_LENGTH_COMPLEX_SAMPLES+2048[
+  /// - second index: symbol [0..28*ofdm_symbol_size[
   c16_t **rxdataF;
 
   /// holds output of the sync correlator
@@ -662,16 +663,29 @@ typedef struct {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
+
+  //Sidelink parameters
+  sl_nr_sidelink_mode_t sl_mode;
+  sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
+
+  //Sidelink Rx action decided by MAC 
+  sl_nr_tx_config_type_enum_t sl_tx_action;
+  SL_NR_UE_PSBCH_TX_t psbch_vars;
+
 } nr_phy_data_tx_t;
 
 typedef struct nr_phy_data_s {
   NR_UE_PDCCH_CONFIG phy_pdcch_config;
   NR_UE_DLSCH_t dlsch[2];
+
+  //Sidelink Rx action decided by MAC 
+  sl_nr_rx_config_type_enum_t sl_rx_action;
+
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

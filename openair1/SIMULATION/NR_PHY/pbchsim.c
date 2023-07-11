@@ -801,10 +801,10 @@ int main(int argc, char **argv)
           nr_slot_fep(UE,
                       &proc,
                       i%frame_parms->symbols_per_slot,
-                      rxdataF);
+                      rxdataF, link_type_dl);
 
-          nr_pbch_channel_estimation(UE,estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc, 
-				     i%frame_parms->symbols_per_slot,i-(UE->symbol_offset+1),ssb_index%8,n_hf,rxdataF);
+          nr_pbch_channel_estimation(UE,&UE->frame_parms, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc, 
+				     i%frame_parms->symbols_per_slot,i-(UE->symbol_offset+1),ssb_index%8,n_hf,rxdataF,0);
 
         }
 	fapiPbch_t result;

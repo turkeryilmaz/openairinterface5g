@@ -51,7 +51,8 @@ int slot_fep(PHY_VARS_UE *phy_vars_ue,
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 unsigned char symbol,
-                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
+                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                uint32_t linktype);
 
 int nr_slot_fep_init_sync(PHY_VARS_NR_UE *ue,
                           UE_nr_rxtx_proc_t *proc,

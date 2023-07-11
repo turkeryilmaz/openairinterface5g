@@ -265,6 +265,7 @@ void polar_encoder_dci(uint32_t *in,
 static inline void polar_rate_matching(const t_nrPolar_params *polarParams,void *in,void *out) __attribute__((always_inline));
 
 static inline void polar_rate_matching(const t_nrPolar_params *polarParams,void *in,void *out) {
+  int i = 0;
 
   // handle rate matching with a single 128 bit word using bit shuffling
   // can be done with SIMD intrisics if needed
@@ -304,11 +305,17 @@ static inline void polar_rate_matching(const t_nrPolar_params *polarParams,void 
   }					     
   // These are based on LUTs for byte and short word groups
   else if (polarParams->groupsize == 8)
-    for (int i=0; i<polarParams->encoderLength>>3; i++) ((uint8_t *)out)[i] = ((uint8_t *)in)[polarParams->rm_tab[i]];
+    for (i=0; i<polarParams->encoderLength>>3; i++) ((uint8_t *)out)[i] = ((uint8_t *)in)[polarParams->rm_tab[i]];
   else // groupsize==16
-    for (int i=0; i<polarParams->encoderLength>>4; i++) {
+    for (i=0; i<polarParams->encoderLength>>4; i++) {
       ((uint16_t *)out)[i] = ((uint16_t *)in)[polarParams->rm_tab[i]];
     }
+
+  // handle remaining bits which do not fill a full group
+  for(i=i*polarParams->groupsize; i<polarParams->encoderLength; i++) {
+    uint8_t pi = polarParams->rate_matching_pattern[i];
+    ((uint8_t *)out)[i>>3] |= ( ((((uint8_t *)in)[pi >> 3] >> (pi & 7)) & 1) << (i&7));
+  }
 }
 
 void build_polar_tables(t_nrPolar_params *polarParams) {
@@ -406,8 +413,8 @@ void build_polar_tables(t_nrPolar_params *polarParams) {
   }
 #ifdef DEBUG_POLAR_ENCODER
   groupcnt++;
-  #endif
-  if ((ccnt+1)<mingroupsize) mingroupsize=ccnt+1;
+#endif
+  //if ((ccnt+1)<mingroupsize) mingroupsize=ccnt+1;
 #ifdef DEBUG_POLAR_ENCODER
   printf("group %d (size %d): (%d:%d) => (%d:%d)\n",groupcnt,ccnt+1,
              firstingroup_in,firstingroup_in+ccnt,
@@ -435,8 +442,7 @@ void build_polar_tables(t_nrPolar_params *polarParams) {
       break;
   }
 
-  polarParams->rm_tab = (int *)malloc(sizeof(int) * (polarParams->encoderLength >> shift));
-
+  polarParams->rm_tab=(int *)malloc(sizeof(int)*((polarParams->encoderLength+mingroupsize-1)/mingroupsize));
   // rerun again to create groups
   int tcnt = 0;
   for (int outpos = 0; outpos < polarParams->encoderLength; outpos += mingroupsize, tcnt++)
@@ -723,7 +729,7 @@ void polar_encoder_fast(uint64_t *A,
       D[0] ^= (Cprime_i & polarParams->G_N_tab[off + i][0]);
     }
   }
-  memset((void*)out,0,polarParams->encoderLength>>3);
+  memset((void*)out,0,(polarParams->encoderLength + 7)>>3);
   polar_rate_matching(polarParams,(void *)D, out);
 
   polarReturn;

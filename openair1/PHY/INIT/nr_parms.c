@@ -426,7 +426,31 @@ void nr_dump_frame_parms(NR_DL_FRAME_PARMS *fp)
   LOG_I(PHY,"fp->samples_per_frame=%d\n",fp->samples_per_frame);
   LOG_I(PHY,"fp->dl_CarrierFreq=%lu\n",fp->dl_CarrierFreq);
   LOG_I(PHY,"fp->ul_CarrierFreq=%lu\n",fp->ul_CarrierFreq);
+  LOG_I(PHY,"fp->Nid_cell=%d\n",fp->Nid_cell);
+  LOG_I(PHY,"fp->first_carrier_offset=%d\n",fp->first_carrier_offset);
+  LOG_I(PHY,"fp->ssb_start_subcarrier=%d\n",fp->ssb_start_subcarrier);
 }
 
+void sl_init_frame_parameters(PHY_VARS_NR_UE *UE) {
 
+  NR_DL_FRAME_PARMS *nr_fp = &UE->frame_parms;
+  NR_DL_FRAME_PARMS *sl_fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+
+  memcpy(sl_fp, nr_fp, sizeof(NR_DL_FRAME_PARMS));
+  sl_fp->ofdm_offset_divisor = 8; // What is this used for?
+
+  sl_fp->att_tx = 1;
+  sl_fp->att_rx = 1;
+  // band47 //UL freq will be set to Sidelink freq
+  sl_fp->ul_CarrierFreq = 5880000000;
+
+  sl_fp->ssb_start_subcarrier = UE->SL_UE_PHY_PARAMS.sl_config.sl_bwp_config.sl_ssb_offset_point_a;
+  sl_fp->Nid_cell = UE->SL_UE_PHY_PARAMS.sl_config.sl_sync_source.rx_slss_id;
+
+#ifdef DEBUG_INIT
+  LOG_I(PHY, "Dumping Sidelink Frame Parameters\n");
+  nr_dump_frame_parms(sl_fp);
+#endif
+
+}
 

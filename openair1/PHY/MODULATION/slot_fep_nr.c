@@ -37,7 +37,8 @@
 int nr_slot_fep(PHY_VARS_NR_UE *ue,
                 UE_nr_rxtx_proc_t *proc,
                 unsigned char symbol,
-                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                uint32_t linktype)
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   NR_UE_COMMON *common_vars      = &ue->common_vars;
@@ -98,7 +99,7 @@ int nr_slot_fep(PHY_VARS_NR_UE *ue,
 
     apply_nr_rotation_RX(frame_parms,
                          rxdataF[aa],
-                         frame_parms->symbol_rotation[0],
+                         frame_parms->symbol_rotation[linktype],
                          Ns,
                          frame_parms->N_RB_DL,
                          0,

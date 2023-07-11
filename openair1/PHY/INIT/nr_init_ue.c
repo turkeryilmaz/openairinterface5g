@@ -35,6 +35,7 @@
 #include "PHY/MODULATION/nr_modulation.h"
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
+#include "PHY/NR_REFSIG/nr_mod_table.h"
 
 void RCconfig_nrUE_prs(void *cfg)
 {
@@ -393,6 +394,15 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   return 0;
 }
 
+static void sl_ue_free(PHY_VARS_NR_UE *UE) {
+
+  if (UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation) {
+    free_and_zero(UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[0]);
+    free_and_zero(UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[1]);
+    free_and_zero(UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation);
+  }
+}
+
 void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 {
   const NR_DL_FRAME_PARMS* fp = &ue->frame_parms;
@@ -502,6 +512,8 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
     free_and_zero(ue->prs_vars[idx]);
   }
+
+  sl_ue_free(ue);
 }
 
 void free_nr_ue_dl_harq(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_DLSCH_HARQ_PROCESSES], int number_of_processes, int num_rb) {
@@ -698,4 +710,249 @@ void phy_term_nr_top(void)
 {
   free_ul_reference_signal_sequences();
   free_context_synchro_nr();
+}
+
+static void sl_init_psbch_dmrs_gold_sequences(PHY_VARS_NR_UE *UE)
+{
+  unsigned int x1, x2;
+  uint16_t slss_id;
+  uint8_t reset;
+
+  for (slss_id = 0; slss_id < SL_NR_NUM_SLSS_IDs; slss_id++) {
+
+    reset = 1;
+    x2 = slss_id;
+
+#ifdef SL_DEBUG_INIT
+     printf("\nPSBCH DMRS GOLD SEQ for SLSSID :%d  :\n", slss_id);
+#endif
+
+    for (uint8_t n=0; n<SL_NR_NUM_PSBCH_DMRS_RE_DWORD; n++) {
+      UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_gold_sequences[slss_id][n] = lte_gold_generic(&x1, &x2, reset);
+      reset = 0;
+
+#ifdef SL_DEBUG_INIT_DATA
+      printf("%x\n",SL_UE_INIT_PARAMS.sl_psbch_dmrs_gold_sequences[slss_id][n]);
+#endif
+
+    }
+  }
+}
+
+
+static void sl_generate_psbch_dmrs_qpsk_sequences(PHY_VARS_NR_UE *UE,
+                                                  struct complex16 *modulated_dmrs_sym,
+                                                  uint16_t slss_id) {
+
+  uint8_t idx = 0;
+  uint32_t *sl_dmrs_sequence = UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_gold_sequences[slss_id];
+
+#ifdef SL_DEBUG_INIT
+  printf("SIDELINK INIT: PSBCH DMRS Generation with slss_id:%d\n", slss_id);
+#endif
+
+  /// QPSK modulation
+  for (int m=0; m<SL_NR_NUM_PSBCH_DMRS_RE; m++) {
+
+    idx = (((sl_dmrs_sequence[(m<<1)>>5])>>((m<<1)&0x1f))&3);
+    modulated_dmrs_sym[m].r = nr_qpsk_mod_table[2*idx];
+    modulated_dmrs_sym[m].i = nr_qpsk_mod_table[(2*idx) + 1];
+
+#ifdef SL_DEBUG_INIT_DATA
+    printf("m:%d gold seq: %d b0-b1: %d-%d DMRS Symbols: %d %d\n", m, sl_dmrs_sequence[(m<<1)>>5], (((sl_dmrs_sequence[(m<<1)>>5])>>((m<<1)&0x1f))&1),
+           (((sl_dmrs_sequence[((m<<1)+1)>>5])>>(((m<<1)+1)&0x1f))&1), modulated_dmrs_sym[m].r, modulated_dmrs_sym[m].i);
+    printf("idx:%d, qpsk_table.r:%d, qpsk_table.i:%d\n", idx, nr_qpsk_mod_table[2*idx], nr_qpsk_mod_table[(2*idx) + 1]);
+#endif
+  }
+
+#ifdef SL_DUMP_INIT_SAMPLES
+  char filename[40], varname[25];
+  sprintf(filename,"sl_psbch_dmrs_slssid_%d.m", slss_id);
+  sprintf(varname,"sl_dmrs_id_%d.m", slss_id);
+  LOG_M(filename, varname, (void*)modulated_dmrs_sym, SL_NR_NUM_PSBCH_DMRS_RE, 1, 1);
+#endif
+
+}
+
+
+static void sl_generate_pss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint8_t n_sl_id2, uint16_t scaling) {
+
+  int i = 0, m = 0;
+  int16_t x[SL_NR_PSS_SEQUENCE_LENGTH];
+  const int x_initial[7] = {0, 1, 1 , 0, 1, 1, 1};
+  int16_t *sl_pss = sl_init_params->sl_pss[n_sl_id2];
+  int16_t *sl_pss_for_sync = sl_init_params->sl_pss_for_sync[n_sl_id2];
+
+  LOG_D(PHY, "SIDELINK PSBCH INIT: PSS Generation with N_SL_id2:%d\n", n_sl_id2);
+
+#ifdef SL_DEBUG_INIT
+  printf("SIDELINK: PSS Generation with N_SL_id2:%d\n", n_sl_id2);
+#endif
+
+  /// Sequence generation
+  for (i=0; i < 7; i++)
+    x[i] = x_initial[i];
+
+  for (i=0; i < (SL_NR_PSS_SEQUENCE_LENGTH - 7); i++) {
+    x[i+7] = (x[i + 4] + x[i]) %2;
+  }
+
+  for (i=0; i < SL_NR_PSS_SEQUENCE_LENGTH; i++) {
+    m = (i + 22 + 43*n_sl_id2) % SL_NR_PSS_SEQUENCE_LENGTH;
+    sl_pss_for_sync[i] = (1 - 2*x[m]);
+    sl_pss[i] = sl_pss_for_sync[i] * scaling;
+
+#ifdef SL_DEBUG_INIT_DATA
+  printf("m:%d, sl_pss[%d]:%d\n", m, i, sl_pss[i]);
+#endif
+
+  }
+
+#ifdef SL_DUMP_INIT_SAMPLES
+  LOG_M("sl_pss_seq.m", "sl_pss", (void*)sl_pss, SL_NR_PSS_SEQUENCE_LENGTH, 1, 0);
+#endif
+
+
+
+}
+
+static void sl_generate_sss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint16_t slss_id, uint16_t scaling) {
+
+  int i = 0;
+  int m0, m1;
+  int n_sl_id1, n_sl_id2;
+  int16_t *sl_sss = sl_init_params->sl_sss[slss_id];
+  int16_t *sl_sss_for_sync = sl_init_params->sl_sss_for_sync[slss_id];
+
+  int16_t x0[SL_NR_SSS_SEQUENCE_LENGTH], x1[SL_NR_SSS_SEQUENCE_LENGTH];
+  const int x_initial[7] = { 1, 0, 0, 0, 0, 0, 0 };
+
+  n_sl_id1 = slss_id % 336;
+  n_sl_id2 = slss_id / 336;
+
+  LOG_D(PHY, "SIDELINK INIT: SSS Generation with N_SL_id1:%d N_SL_id2:%d\n", n_sl_id1, n_sl_id2);
+
+#ifdef SL_DEBUG_INIT
+  printf("SIDELINK: SSS Generation with slss_id:%d, N_SL_id1:%d, N_SL_id2:%d\n", slss_id, n_sl_id1, n_sl_id2);
+#endif
+
+  for ( i=0 ; i < 7 ; i++) {
+    x0[i] = x_initial[i];
+    x1[i] = x_initial[i];
+  }
+
+  for ( i=0 ; i < SL_NR_SSS_SEQUENCE_LENGTH - 7 ; i++) {
+    x0[i+7] = (x0[i + 4] + x0[i]) % 2;
+    x1[i+7] = (x1[i + 1] + x1[i]) % 2;
+  }
+
+  m0 = 15*(n_sl_id1/112) + (5*n_sl_id2);
+  m1 = n_sl_id1 % 112;
+
+  for (i = 0; i < SL_NR_SSS_SEQUENCE_LENGTH ; i++) {
+    sl_sss_for_sync[i] = (1 - 2*x0[(i + m0) % SL_NR_SSS_SEQUENCE_LENGTH] ) * (1 - 2*x1[(i + m1) % SL_NR_SSS_SEQUENCE_LENGTH] );
+    sl_sss[i] = sl_sss_for_sync[i] * scaling;
+
+#ifdef SL_DEBUG_INIT_DATA
+  printf("m0:%d, m1:%d, sl_sss_for_sync[%d]:%d, sl_sss[%d]:%d\n", m0, m1, i, sl_sss_for_sync[i], i, sl_sss[i]);
+#endif
+
+  }
+
+#ifdef SL_DUMP_PSBCH_TX_SAMPLES
+  LOG_M("sl_sss_seq.m", "sl_sss", (void*)sl_sss, SL_NR_SSS_SEQUENCE_LENGTH, 1, 0);
+  LOG_M("sl_sss_forsync_seq.m", "sl_sss_for_sync", (void*)sl_sss_for_sync, SL_NR_SSS_SEQUENCE_LENGTH, 1, 0);
+#endif
+
+}
+
+// This cannot be done at init time as ofdm symbol size, ssb start subcarrier depends on configuration
+// done at SLSS read time.
+static void sl_generate_pss_ifft_samples(sl_nr_ue_phy_params_t *sl_ue_params, SL_NR_UE_INIT_PARAMS_t *sl_init_params) {
+
+  uint8_t id2 = 0;
+  int16_t *sl_pss = NULL;
+  NR_DL_FRAME_PARMS *sl_fp = &sl_ue_params->sl_frame_params;
+  int16_t scaling_factor = AMP;
+
+  int16_t *pss_F = NULL; // IQ samples in freq domain
+  int32_t *pss_T = NULL;
+
+  uint16_t k = 0;
+
+  pss_F = malloc16_clear(2*sizeof(int16_t) * sl_fp->ofdm_symbol_size);
+
+  LOG_I(PHY, "SIDELINK INIT: Generation of PSS time domain samples. scaling_factor:%d\n", scaling_factor);
+
+  for (id2 = 0; id2 < SL_NR_NUM_IDs_IN_PSS; id2++) {
+
+    k = sl_fp->first_carrier_offset + sl_fp->ssb_start_subcarrier + 2; // PSS in from REs 2-129
+    if (k >= sl_fp->ofdm_symbol_size) k -= sl_fp->ofdm_symbol_size;
+
+    pss_T = &sl_init_params->sl_pss_for_correlation[id2][0];
+    sl_pss = sl_init_params->sl_pss[id2];
+
+    memset(pss_T, 0, sl_fp->ofdm_symbol_size * sizeof(pss_T[0]));
+    memset(pss_F, 0, sl_fp->ofdm_symbol_size * 2 * sizeof(pss_F[0]));
+
+    for (int i=0; i < SL_NR_PSS_SEQUENCE_LENGTH; i++) {
+
+      pss_F[2*k] = (sl_pss[i] * scaling_factor) >> 15;
+      //pss_F[2*k] = (sl_pss[i]/23170) * 4192;
+      //pss_F[2*k+1] = 0;
+
+#ifdef SL_DEBUG_INIT_DATA
+      printf("id:%d, k:%d, pss_F[%d]:%d, sl_pss[%d]:%d\n", id2, k, 2*k, pss_F[2*k], i, sl_pss[i]);
+#endif
+
+      k++;
+      if (k == sl_fp->ofdm_symbol_size) k=0;
+
+    }
+
+      idft((int16_t)get_idft(sl_fp->ofdm_symbol_size),
+                  pss_F,          /* complex input */
+                  (int16_t *)&pss_T[0],  /* complex output */
+                  1);                 /* scaling factor */
+
+  }
+
+#ifdef SL_DUMP_PSBCH_TX_SAMPLES
+  LOG_M("sl_pss_TD_id0.m", "pss_TD_0", (void*)sl_init_params->sl_pss_for_correlation[0], sl_fp->ofdm_symbol_size, 1, 1);
+  LOG_M("sl_pss_TD_id1.m", "pss_TD_1", (void*)sl_init_params->sl_pss_for_correlation[1], sl_fp->ofdm_symbol_size, 1, 1);
+#endif
+
+  free(pss_F);
+
+}
+
+void sl_ue_phy_init(PHY_VARS_NR_UE *UE) {
+
+  uint16_t scaling_value = ONE_OVER_SQRT2_Q15;
+
+  NR_DL_FRAME_PARMS *sl_fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+
+  if (!UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation) {
+    UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation = (int32_t **)malloc16_clear(SL_NR_NUM_IDs_IN_PSS *sizeof(int32_t *) );
+    UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[0] = (int32_t *)malloc16_clear( sizeof(int32_t)*sl_fp->ofdm_symbol_size);
+    UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[1] = (int32_t *)malloc16_clear( sizeof(int32_t)*sl_fp->ofdm_symbol_size);
+  }
+  LOG_I(PHY, "SIDELINK INIT: GENERATE PSS, SSS, GOLD SEQUENCES AND PSBCH DMRS SEQUENCES FOR ALL possible SLSS IDs 0- 671\n");
+
+  // Generate PSS sequences for IDs 0,1 used in PSS
+  sl_generate_pss(&UE->SL_UE_PHY_PARAMS.init_params,0, scaling_value);
+  sl_generate_pss(&UE->SL_UE_PHY_PARAMS.init_params,1, scaling_value);
+
+  // Generate psbch dmrs Gold Sequences and modulated dmrs symbols
+  sl_init_psbch_dmrs_gold_sequences(UE);
+  for (int slss_id = 0; slss_id < SL_NR_NUM_SLSS_IDs; slss_id++) {
+    sl_generate_psbch_dmrs_qpsk_sequences(UE, UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_modsym[slss_id], slss_id);
+    sl_generate_sss(&UE->SL_UE_PHY_PARAMS.init_params, slss_id, scaling_value);
+  }
+
+  // Generate PSS time domain samples used for correlation during SLSS reception.
+  sl_generate_pss_ifft_samples(&UE->SL_UE_PHY_PARAMS, &UE->SL_UE_PHY_PARAMS.init_params);
+
+  init_symbol_rotation(sl_fp);
+  init_timeshift_rotation(sl_fp);
 }

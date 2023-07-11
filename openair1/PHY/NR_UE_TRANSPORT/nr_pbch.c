@@ -244,7 +244,7 @@ int nr_pbch_channel_level(struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER
   return(avg2);
 }
 
-static void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
+void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
 					 struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
 					 int nb_re,
 					 struct complex16 rxdataF_comp[][PBCH_MAX_RE_PER_SYMBOL],
@@ -300,7 +300,7 @@ void nr_pbch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
 #endif
 }
 
-static void nr_pbch_unscrambling(int16_t *demod_pbch_e,
+void nr_pbch_unscrambling(int16_t *demod_pbch_e,
                                  uint16_t Nid,
                                  uint8_t nushift,
                                  uint16_t M,
@@ -362,7 +362,7 @@ static void nr_pbch_unscrambling(int16_t *demod_pbch_e,
   }
 }
 
-static void nr_pbch_quantize(int16_t *pbch_llr8,
+void nr_pbch_quantize(int16_t *pbch_llr8,
                              int16_t *pbch_llr,
                              uint16_t len) {
   for (int i=0; i<len; i++) {
