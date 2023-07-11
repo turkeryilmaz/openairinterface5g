@@ -97,6 +97,5 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
               uint8_t *phase_max,
               int *freq_offset_sss,
               c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
-
 #endif /* SSS_NR_H */
 

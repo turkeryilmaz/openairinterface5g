@@ -96,6 +96,8 @@ void display_test_configuration_pss(int position, int pss_sequence_number);
 
 void display_test_configuration_sss(int sss_sequence_number);
 
+int set_pss_nr(int ofdm_symbol_size);
+
 void set_random_rx_buffer(PHY_VARS_NR_UE *PHY_vars_UE, int amp);
 
 void set_sequence_pss(PHY_VARS_NR_UE *PHY_vars_UE, int position_symbol, int pss_sequence_number);
