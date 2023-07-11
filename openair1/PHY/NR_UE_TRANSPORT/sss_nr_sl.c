@@ -194,7 +194,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
                      c16_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                      c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int id = get_softmodem_params()->sl_mode == NOT_SL_MODE ? ue->common_vars.eNb_id : ue->common_vars.N2_id;
+  int id = get_softmodem_params()->sl_mode == SL_MODE_NONE ? ue->common_vars.eNb_id : ue->common_vars.sl_nid2;
   c16_t *pss = (c16_t *)get_primary_synchro_nr2(id);
   c16_t tmp, tmp2;
   c16_t *sss0_ext3 = &sss0_ext[0][0];
@@ -299,7 +299,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
      cosinus cos(x + y) = cos(x)cos(y) - sin(x)sin(y)
      sinus   sin(x + y) = sin(x)cos(y) + cos(x)sin(y) */
   uint16_t Nid1;
-  uint8_t Nid2 = ue->common_vars.N2_id;
+  uint8_t Nid2 = ue->common_vars.sl_nid2;
   *tot_metric = INT_MIN;
   c16_t *sss0 = &sss0_ext[0][0];
   c16_t *sss1 = &sss1_ext[0][0];

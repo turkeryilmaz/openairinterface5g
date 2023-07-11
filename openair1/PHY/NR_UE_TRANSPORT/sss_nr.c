@@ -152,25 +152,23 @@ void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
     */
 
   unsigned int k = ofdm_symbol_size - ((LENGTH_SSS_NR/2)+1);
+  c16_t synchroF_tmp[2048] __attribute__((aligned(32)));
+  c16_t synchro_tmp[2048] __attribute__((aligned(32)));
+  bzero(synchroF_tmp, sizeof(synchroF_tmp));
 
   /* SSS is directly mapped to subcarrier */
-  c16_t in[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(in, 0, sizeof(in));
-  for (int i = 0; i < LENGTH_SSS_NR; i++) {
-    in[i].r = d_sss[Nid2][Nid1][i];
-    k++;
-    if (k == frame_parms->ofdm_symbol_size)
-      k = 0;
+  for (int i=0; i<LENGTH_SSS_NR; i++) {
+    synchroF_tmp[k % ofdm_symbol_size].r = d_sss[Nid2][Nid1][i];
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
-  c16_t out[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(out, 0, sizeof(out));
-  memset(sss_time, 0, sizeof(int16_t) * ofdm_symbol_size);
-  idft(IDFT_2048, (int16_t *)&in, (int16_t *)&out, 1);
-  for (unsigned int i = 0; i < ofdm_symbol_size; i++) {
-    sss_time[i] = out[i];
-  }
+  idft(IDFT_2048,
+       (int16_t *)synchroF_tmp, /* complex input */
+       (int16_t *)synchro_tmp, /* complex output */
+       1); /* scaling factor */
+
+  /* then get final sss in time */
+  memcpy(sss_time, synchro_tmp, ofdm_symbol_size * sizeof(c16_t));
 }
 
 /*******************************************************************
@@ -484,6 +482,8 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
   }
 
 //#ifdef DEBUG_SSS_NR
+  
+#define SSS_METRIC_FLOOR_NR   (30000)
   if (*tot_metric > SSS_METRIC_FLOOR_NR) {	
     Nid2 = GET_NID2(frame_parms->Nid_cell);
     Nid1 = GET_NID1(frame_parms->Nid_cell);

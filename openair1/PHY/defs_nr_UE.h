@@ -248,7 +248,7 @@ typedef struct {
   int32_t freq_offset;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
-  /// N2_id PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
+  /// PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t sl_nid2;
   /// eNb_id user is synched to
   int32_t eNb_id;
@@ -331,21 +331,6 @@ typedef struct {
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
-
-typedef struct {
-  /// \brief Total number of PDU errors.
-  uint32_t pdu_errors;
-  /// \brief Total number of PDU errors 128 frames ago.
-  uint32_t pdu_errors_last;
-  /// \brief Total number of consecutive PDU errors.
-  uint32_t pdu_errors_conseq;
-  /// \brief FER (in percent) .
-  // uint32_t pdu_fer;
-  uint32_t psbch_a;
-  uint32_t psbch_a_interleaved;
-  uint32_t psbch_a_prime;
-  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
-} NR_UE_PSBCH;
 
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
@@ -478,7 +463,6 @@ typedef struct {
 
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
-  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
