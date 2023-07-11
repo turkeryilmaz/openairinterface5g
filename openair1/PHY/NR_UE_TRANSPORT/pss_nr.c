@@ -138,7 +138,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
   */
 
   unsigned int subcarrier_start =
-      get_softmodem_params()->sl_mode == NOT_SL_MODE ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
+      get_softmodem_params()->sl_mode == SL_MODE_NONE ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL;
   unsigned int  k = fp->first_carrier_offset + fp->ssb_start_subcarrier + subcarrier_start;
   if (k>= fp->ofdm_symbol_size) k-=fp->ofdm_symbol_size;
 
@@ -176,7 +176,7 @@ void generate_pss_nr(NR_DL_FRAME_PARMS *fp, int N_ID_2)
 static void init_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue)
 {
   AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n", frame_parms_ue->ofdm_symbol_size);
-  int pss_sequence = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == SL_MODE_NONE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int i = 0; i < pss_sequence; i++) {
     primary_synchro_nr2[i] = malloc16_clear(LENGTH_PSS_NR * sizeof(int16_t));
     AssertFatal(primary_synchro_nr2[i], "Fatal memory allocation problem \n");
@@ -496,8 +496,8 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
   int *nid2 = (int *)&ue->common_vars.nid2;
-  if (get_softmodem_params()->sl_mode == MODE_2) {
-    nid2 = (int *)&ue->common_vars.N2_id;
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
+    nid2 = (int *)&ue->common_vars.sl_nid2;
   }
   int *f_off = (int *)&ue->common_vars.freq_offset;
   unsigned int n, ar, peak_position, pss_source;
@@ -520,7 +520,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   pss_source = 0;
 
   int maxval=0;
-  int max_size = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int max_size = get_softmodem_params()->sl_mode == SL_MODE_NONE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   for (int j = 0; j < max_size; j++)
     for (int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
       maxval = max(maxval, abs(primary_synchro_time_nr[j][i].r));
@@ -533,7 +533,7 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   /* Correlation computation is based on a a dot product which is realized thank to SIMS extensions */
 
   uint16_t pss_index_start = 0;
-  uint16_t pss_index_end = get_softmodem_params()->sl_mode == NOT_SL_MODE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  uint16_t pss_index_end = get_softmodem_params()->sl_mode == SL_MODE_NONE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
   if (ue->target_Nid_cell != -1) {
     pss_index_start = GET_NID2(ue->target_Nid_cell);
     pss_index_end = pss_index_start + 1;
@@ -548,17 +548,18 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
       for (ar=0; ar<frame_parms->nb_antennas_rx; ar++) {
 
         /* perform correlation of rx data and pss sequence ie it is a dot product */
+        int index = n + is * frame_parms->samples_per_frame;
         const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
-                                         &(rxdata[ar][n + is * frame_parms->samples_per_frame]),
+                                         &(rxdata[ar][index]),
                                          frame_parms->ofdm_symbol_size,
                                          shift);
         const c64_t r64 = {.r = result.r, .i = result.i};
         pss_corr_ue += squaredMod(r64);
-        if (get_softmodem_params()->sl_mode > NOT_SL_MODE) {
+        if (get_softmodem_params()->sl_mode > SL_MODE_NONE) {
           // non-coherentely combine repeition of PSS
+          int shift_for_pss1 = frame_parms->ofdm_symbol_size + frame_parms->nb_prefix_samples;
           const c32_t result = dot_product(primary_synchro_time_nr[pss_index],
-                                           &(rxdata[ar][n + is * frame_parms->samples_per_frame + frame_parms->ofdm_symbol_size
-                                                        + frame_parms->nb_prefix_samples]),
+                                           &(rxdata[ar][index + shift_for_pss1]),
                                            frame_parms->ofdm_symbol_size,
                                            shift);
           const c64_t r64 = {.r = result.r, .i = result.i};

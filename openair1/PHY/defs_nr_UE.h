@@ -123,11 +123,7 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
-typedef enum {
-  NOT_SL_MODE=0,
-  MODE_1,
-  MODE_2
-} NR_SL_MODE_t;
+typedef enum { SL_MODE_NONE = 0, SL_MODE_1, SL_MODE_2 } NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -253,7 +249,7 @@ typedef struct {
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
   /// N2_id PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
-  int32_t N2_id;
+  int32_t sl_nid2;
   /// eNb_id user is synched to
   int32_t eNb_id;
 } NR_UE_COMMON;
@@ -362,6 +358,21 @@ typedef struct {
   uint32_t reserved : 2;
 } PSBCH_payload;
 
+typedef struct {
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  // uint32_t pdu_fer;
+  uint32_t psbch_a;
+  uint32_t psbch_a_interleaved;
+  uint32_t psbch_a_prime;
+  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
+} NR_UE_PSBCH;
+
 #define PBCH_A 24
 
 typedef struct {
@@ -423,7 +434,7 @@ typedef struct {
   /// \brief Indicator that UE is synchronized to a gNB
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
-  int is_synchronized_sl;
+  bool is_synchronized_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
   /// \brief Indicator that UE is an SynchRef UE
@@ -469,6 +480,7 @@ typedef struct {
   nr_synch_request_t synch_request;
   NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -566,6 +578,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
+  int rx_offset_sl; /// Timing offset
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame

@@ -89,10 +89,13 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
   else
     sync_offset = 0;
 
-  if ( abs(diff) < (SYNCH_HYST+sync_offset) )
+  if (abs(diff) < (SYNCH_HYST + sync_offset)) {
     ue->rx_offset = 0;
-  else
+    ue->rx_offset_sl = 0;
+  } else {
     ue->rx_offset = diff;
+    ue->rx_offset_sl = diff;
+  }
 
   const int sample_shift = -(ue->rx_offset>>1);
   // reset IIR filter for next offset calculation
