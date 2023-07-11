@@ -252,6 +252,7 @@ typedef struct {
   int32_t eNb_id;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
+  /// PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t sl_nid2;
 } NR_UE_COMMON;
 
@@ -328,6 +329,21 @@ typedef struct {
 #define PSBCH_A 32
 #define PSBCH_MAX_RE_PER_SYMBOL (11 * 12)
 #define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL * 14)
+#define NR_PSBCH_MAX_NB_CARRIERS 132
+#define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
+#define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
+#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+
+/* NR Sidelink PSBCH payload fields
+   TODO: This will be removed in the future and
+   filled in by the upper layers once developed. */
+typedef struct {
+  uint32_t coverageIndicator : 1;
+  uint32_t tddConfig : 12;
+  uint32_t DFN : 10;
+  uint32_t slotIndex : 7;
+  uint32_t reserved : 2;
+} PSBCH_payload;
 
 typedef struct {
   /// \brief Total number of PDU errors.
@@ -343,23 +359,6 @@ typedef struct {
   uint32_t psbch_a_prime;
   uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
 } NR_UE_PSBCH;
-
-#define NR_PSBCH_MAX_NB_CARRIERS 132
-#define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
-#define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
-#define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
-
-
-/* NR Sidelink PSBCH payload fields
-   TODO: This will be removed in the future and
-   filled in by the upper layers once developed. */
-typedef struct {
-  uint32_t coverageIndicator : 1;
-  uint32_t tddConfig : 12;
-  uint32_t DFN : 10;
-  uint32_t slotIndex : 7;
-  uint32_t reserved : 2;
-} PSBCH_payload;
 
 #define PBCH_A 24
 
@@ -466,9 +465,8 @@ typedef struct {
 
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
-
-  NR_UE_PSBCH *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
@@ -684,8 +682,6 @@ typedef struct {
   int dl_errors;
   _Atomic(int) dl_stats[16];
   void* scopeData;
-  uint32_t rx_ssb_slot;
-  uint32_t rx_ssb_frame;
   // Pointers to hold PDSCH data only for phy simulators
   void *phy_sim_rxdataF;
   void *phy_sim_pdsch_llr;
@@ -697,6 +693,8 @@ typedef struct {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
+  uint32_t rx_ssb_slot;
+  uint32_t rx_ssb_frame;
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {

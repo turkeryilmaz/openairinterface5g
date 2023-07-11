@@ -18,6 +18,14 @@
  * For more information about the OpenAirInterface (OAI) Software Alliance:
  *      contact@openairinterface.org
  */
+/*! \file openair1/PHY/NR_UE_TRANSPORT/pss_nr_sl.c
+ * \brief Top-level TX routines for encoding and generating the SSS Symbol in the SSB
+ * \author M. Elkadi, D. Kim
+ * \date 2022
+ * \version 0.1
+ * \company EpiSci
+ * \email: melissa@episci.com, dkim@episci.com
+ */
 
 #include <stdio.h>
 #include <assert.h>
@@ -38,7 +46,6 @@ int nr_sl_generate_sss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR
   const int x0_initial[7] = {1, 0, 0, 0, 0, 0, 0};
   const int x1_initial[7] = {1, 0, 0, 0, 0, 0, 0};
 
-  /// Sequence generation
   int Nid = frame_parms->Nid_SL;
   int Nid1 = GET_NID1_SL(Nid);
   int Nid2 = GET_NID2_SL(Nid);
@@ -59,8 +66,6 @@ int nr_sl_generate_sss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR
 #ifdef NR_SSS_DEBUG
   write_output("d_sss.m", "d_sss", (void *)d_sss, NR_SSS_LENGTH, 1, 1);
 #endif
-
-  /// Resource mapping
 
   // SSS occupies a predefined position (subcarriers 2-129, symbol 3) within the SSB block starting from
   int k = frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier + PSS_SSS_SUB_CARRIER_START_SL;
@@ -189,8 +194,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
                      c16_t pss1_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                      c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  int id = get_softmodem_params()->sl_mode == SL_MODE_NONE ? ue->common_vars.eNb_id : ue->common_vars.N2_id;
-  c16_t *pss = primary_synchro_nr2[id];
+  int id = get_softmodem_params()->sl_mode == SL_MODE_NONE ? ue->common_vars.eNb_id : ue->common_vars.sl_nid2;
+  c16_t *pss = (c16_t *)get_primary_synchro_nr2(id);
   c16_t tmp, tmp2;
   c16_t *sss0_ext3 = &sss0_ext[0][0];
   for (uint8_t aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
@@ -198,8 +203,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss0_ext2 = &pss0_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = (int16_t)((((int32_t)pss0_ext2[i].r) * pss[i].r) >> 15);
-      tmp.i = 0; //(int16_t)((((int32_t)pss0_ext2[i].r) * pss[i].i) >> 15);
+      tmp.r = pss0_ext2[i].r * pss[i].r;
+      tmp.i = -pss0_ext2[i].i * pss[i].i;
 
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
@@ -294,7 +299,7 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
      cosinus cos(x + y) = cos(x)cos(y) - sin(x)sin(y)
      sinus   sin(x + y) = sin(x)cos(y) + cos(x)sin(y) */
   uint16_t Nid1;
-  uint8_t Nid2 = ue->common_vars.N2_id;
+  uint8_t Nid2 = ue->common_vars.sl_nid2;
   *tot_metric = INT_MIN;
   c16_t *sss0 = &sss0_ext[0][0];
   c16_t *sss1 = &sss1_ext[0][0];
@@ -306,12 +311,10 @@ int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, int32_t *tot_metri
       d = (int16_t *)&d_sss[Nid2][Nid1];
       // This is the inner product using one particular value of each unknown parameter
       for (int i = 0; i < LENGTH_SSS_NR; i++) {
-        metric_re += d[i]
-                         * (((phase_re_nr[phase] * sss0[i].r) >> SCALING_METRIC_SSS_NR)
-                            - ((phase_im_nr[phase] * sss0[i].i) >> SCALING_METRIC_SSS_NR))
-                     + d[i]
-                           * (((phase_re_nr[phase] * sss1[i].r) >> SCALING_METRIC_SSS_NR)
-                              - ((phase_im_nr[phase] * sss1[i].i) >> SCALING_METRIC_SSS_NR));
+        metric_re += d[i] * (((phase_re_nr[phase] * sss0[i].r) >> SCALING_METRIC_SSS_NR)
+                          - ((phase_im_nr[phase] * sss0[i].i) >> SCALING_METRIC_SSS_NR))
+                   + d[i] * (((phase_re_nr[phase] * sss1[i].r) >> SCALING_METRIC_SSS_NR)
+                          - ((phase_im_nr[phase] * sss1[i].i) >> SCALING_METRIC_SSS_NR));
       }
       metric = metric_re;
       if (metric > *tot_metric) {

@@ -61,6 +61,8 @@
 *
 *********************************************************************/
 
+#define INITIAL_SSS_NR    (7)
+
 void init_context_sss_nr(int amp)
 {
   int16_t x0[LENGTH_SSS_NR];
@@ -150,26 +152,23 @@ void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
     */
 
   unsigned int k = ofdm_symbol_size - ((LENGTH_SSS_NR/2)+1);
+  c16_t synchroF_tmp[2048] __attribute__((aligned(32)));
+  c16_t synchro_tmp[2048] __attribute__((aligned(32)));
+  bzero(synchroF_tmp, sizeof(synchroF_tmp));
 
   /* SSS is directly mapped to subcarrier */
-  c16_t in[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(in, 0, sizeof(in));
-  for (int i = 0; i < LENGTH_SSS_NR; i++) {
-    in[i].r = d_sss[Nid2][Nid1][i];
-    in[i].i = 0;
-    k++;
-    if (k == frame_parms->ofdm_symbol_size)
-      k = 0;
+  for (int i=0; i<LENGTH_SSS_NR; i++) {
+    synchroF_tmp[k % ofdm_symbol_size].r = d_sss[Nid2][Nid1][i];
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
-  c16_t out[sizeof(int16_t) * ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(out, 0, sizeof(out));
-  memset(sss_time, 0, sizeof(int16_t) * ofdm_symbol_size);
-  idft(IDFT_2048, (int16_t *)&in, (int16_t *)&out, 1);
-  for (unsigned int i = 0; i < ofdm_symbol_size; i++) {
-    sss_time[i] = out[i];
-  }
+  idft(IDFT_2048,
+       (int16_t *)synchroF_tmp, /* complex input */
+       (int16_t *)synchro_tmp, /* complex output */
+       1); /* scaling factor */
+
+  /* then get final sss in time */
+  memcpy(sss_time, synchro_tmp, ofdm_symbol_size * sizeof(c16_t));
 }
 
 /*******************************************************************
@@ -188,16 +187,16 @@ static int pss_ch_est_nr(PHY_VARS_NR_UE *ue,
                          c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR],
                          c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
-  c16_t *pss = get_primary_synchro_nr2(ue->common_vars.nid2);
+  int16_t *pss = get_primary_synchro_nr2(ue->common_vars.nid2);
 
   for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
     c16_t *sss_ext2 = sss_ext[aarx];
     c16_t *pss_ext2 = pss_ext[aarx];
     for (int i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      const int tmp_re = pss_ext2[i].r * pss[i].r;
-      const int tmp_im = -pss_ext2[i].i * pss[i].i;
-
+      const int tmp_re = pss_ext2[i].r * pss[i];
+      const int tmp_im = -pss_ext2[i].i * pss[i];
+      
       const int32_t amp = tmp_re * tmp_re + tmp_im * tmp_im;
       const int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)
