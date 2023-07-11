@@ -250,8 +250,6 @@ typedef struct {
   int32_t nid2;
   /// PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t sl_nid2;
-  /// eNb_id user is synched to
-  int32_t eNb_id;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
@@ -324,13 +322,11 @@ typedef struct {
   fapi_nr_dl_config_dci_dl_pdu_rel15_t pdcch_config[FAPI_NR_MAX_SS];
 } NR_UE_PDCCH_CONFIG;
 
-#define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11 * 12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL * 14)
 #define NR_PSBCH_MAX_NB_CARRIERS 132
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
+
 
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
@@ -463,13 +459,14 @@ typedef struct {
 
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
+
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_PRS       *prs_vars[NR_MAX_PRS_COMB_SIZE];
-  NR_SLSS_t *slss;
+  NR_SLSS_t       *slss;
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
   NR_UL_UE_HARQ_t  ul_harq_processes[NR_MAX_ULSCH_HARQ_PROCESSES];

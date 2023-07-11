@@ -38,13 +38,6 @@
 
 #include "pss_nr.h"
 
-#ifdef DEFINE_VARIABLES_SSS_NR_H
-#define EXTERN
-#define INIT_VARIABLES_SSS_NR_H
-#else
-#define EXTERN extern
-#endif
-
 /************** DEFINE ********************************************/
 
 #define  SAMPLES_IQ                   (sizeof(int16_t)*2)
@@ -95,7 +88,8 @@ EXTERN int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 void init_context_sss_nr(int amp);
 void free_context_sss_nr(void);
 
-void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms);
+void insert_sss_nr(int16_t *sss_time,
+                   NR_DL_FRAME_PARMS *frame_parms);
 
 int rx_sss_nr(PHY_VARS_NR_UE *ue,
               UE_nr_rxtx_proc_t *proc,
@@ -104,7 +98,5 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
               int *freq_offset_sss,
               c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
-#undef INIT_VARIABLES_SSS_NR_H
-#undef EXTERN
 #endif /* SSS_NR_H */
 

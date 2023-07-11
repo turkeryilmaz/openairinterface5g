@@ -123,7 +123,8 @@ void init_context_sss_nr(int amp)
 
 //#define DEBUG_SSS_NR
 //#define DEBUG_PLOT_SSS
-void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
+void insert_sss_nr(int16_t *sss_time,
+                   NR_DL_FRAME_PARMS *frame_parms)
 {
   const unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
   int Nid2 = GET_NID2(frame_parms->Nid_cell);
@@ -159,6 +160,7 @@ void insert_sss_nr(c16_t *sss_time, NR_DL_FRAME_PARMS *frame_parms)
   /* SSS is directly mapped to subcarrier */
   for (int i=0; i<LENGTH_SSS_NR; i++) {
     synchroF_tmp[k % ofdm_symbol_size].r = d_sss[Nid2][Nid1][i];
+    k++;
   }
 
   /* get sss in the frequency domain by applying an inverse FFT */
