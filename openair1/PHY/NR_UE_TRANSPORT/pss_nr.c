@@ -326,11 +326,10 @@ void set_frame_context_pss_nr(NR_DL_FRAME_PARMS *frame_parms_ue, int rate_change
 
   /* pss reference have to be rebuild with new parameters ie ofdm symbol size */
   init_context_synchro_nr(frame_parms_ue);
-  
+
 #ifdef SYNCHRO_DECIMAT
   set_pss_nr(frame_parms_ue->ofdm_symbol_size);
 #endif
-
 }
 
 /*******************************************************************
