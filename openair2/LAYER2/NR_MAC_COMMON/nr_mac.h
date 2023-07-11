@@ -38,6 +38,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "common/utils/nr/nr_common.h"
+#include "UTIL/OPT/opt.h"
 #include "NR_CellGroupConfig.h"
 
 #define NR_SHORT_BSR_TABLE_SIZE 32
@@ -618,6 +619,37 @@ typedef struct NR_tda_info {
   int nrOfSymbols;
   long k2;
 } NR_tda_info_t;
+
+/* In Wireshark, only these RNTI Types are support today */
+static inline int map_nr_rnti_type(nr_rnti_type_t r_type)
+{
+	switch(r_type) {
+		case NR_RNTI_C:
+			return WS_C_RNTI;
+		case NR_RNTI_RA:
+			return WS_RA_RNTI;
+		case NR_RNTI_P:
+			return WS_P_RNTI;
+		case NR_RNTI_CS:
+			return WS_CS_RNTI;
+		case NR_RNTI_SI:
+			return WS_SI_RNTI;
+		case NR_RNTI_new:
+			return WS_NO_RNTI;
+
+		case NR_RNTI_TC:
+		case NR_RNTI_SP_CSI:
+		case NR_RNTI_SFI:
+		case NR_RNTI_INT:
+		case NR_RNTI_TPC_PUSCH:
+		case NR_RNTI_TPC_PUCCH:
+		case NR_RNTI_TPC_SRS:
+		case NR_RNTI_MCS_C:
+		default:
+			return WS_NO_RNTI;
+	}
+	return WS_NO_RNTI;
+}
 
 #endif /*__LAYER2_MAC_H__ */
 

@@ -547,10 +547,10 @@ check_install_additional_tools (){
   if [[ "$OS_BASEDISTRO" == "debian" ]]; then
     case "$(get_distribution_release)" in
         "ubuntu18.04")
-            optional_packages="python-dev python-pip python-pyroute2 python python-numpy python-scipy python-matplotlib ctags"
+            optional_packages="python-dev python-pip python-pyroute2 python python-numpy python-scipy python-matplotlib ctags liblttng-ust-dev"
             ;;
         "ubuntu20.04" | "ubuntu21.04" | "ubuntu22.04" | "debian11" )
-            optional_packages="python3 python3-pip python3-dev python3-scipy python3-matplotlib python3-pyroute2 universal-ctags"
+            optional_packages="python3 python3-pip python3-dev python3-scipy python3-matplotlib python3-pyroute2 universal-ctags liblttng-ust-dev"
             ;;
     esac
     PACKAGE_LIST="\
@@ -574,7 +574,8 @@ check_install_additional_tools (){
       libXft-devel \
       xforms \
       xforms-devel \
-      xmlstarlet"
+      xmlstarlet \
+      lttng-ust-devel"
   fi
     $SUDO $INSTALLER install -y $PACKAGE_LIST $optional_packages
 }
@@ -653,11 +654,21 @@ check_install_oai_software() {
       blas \
       blas-devel \
       vim-common \
-      zlib-devel
+      zlib-devel \
+      libuuid1 \
+      libpopt0 \
+      liburcu0
   fi
 
     install_asn1c_from_source $1
     install_simde_from_source $1
+    install_libuuid $1
+    install_libxml2 $1
+    install_popt_1_18_from_source $1
+    install_userspace_rcu $1
+    install_lttng_modules_2_13_from_source $1
+    install_lttng_ust_2_13_from_source $1
+    install_lttng_tools_2_13_from_source $1
 }
 
 install_asn1c_from_source(){
@@ -691,6 +702,73 @@ install_simde_from_source(){
     cd /tmp/simde
     # brute force copy into /usr/include
     $SUDO \cp -rv ../simde /usr/include
+}
+
+install_libuuid() {
+  echo_info "\nInstalling libuuid."
+  sudo apt-get install uuid-dev -y
+}
+
+
+install_libxml2(){
+  echo_info "\nInstalling libxml2."
+  sudo apt-get install libxml2-dev -y
+}
+
+install_popt_1_18_from_source() {
+  echo_info "\nInstalling popt_1_18."
+  cd $(mktemp -d) &&
+  wget http://ftp.rpm.org/popt/releases/popt-1.x/popt-1.18.tar.gz
+  tar -xf popt-1.18.tar.gz && cd popt-1.18
+  ./configure && make -j16 && $SUDO make install
+}
+
+install_userspace_rcu() {
+    echo_info "\nInstalling U-RCU from source."
+    cd /tmp
+    $SUDO rm -rf /tmp/urcu
+    git clone https://github.com/urcu/userspace-rcu.git /tmp/urcu
+    cd /tmp/urcu
+    git checkout stable-0.12
+    ./bootstrap && ./configure && make
+    $SUDO make install
+    $SUDO ldconfig
+}
+
+
+install_lttng_modules_2_13_from_source() {
+    echo_info "\nInstalling LTTng Modules."
+    cd $(mktemp -d) &&
+    wget https://lttng.org/files/lttng-modules/lttng-modules-latest-2.13.tar.bz2 &&
+    tar -xf lttng-modules-latest-2.13.tar.bz2 &&
+    cd lttng-modules-2.13.* &&
+    make &&
+    $SUDO make modules_install &&
+    $SUDO depmod -a
+}
+
+install_lttng_ust_2_13_from_source() {
+    echo_info "\nInstalling LTTng UST."
+    cd $(mktemp -d) &&
+    wget https://lttng.org/files/lttng-ust/lttng-ust-latest-2.13.tar.bz2 &&
+    tar -xf lttng-ust-latest-2.13.tar.bz2 &&
+    cd lttng-ust-2.13.* &&
+    ./configure --disable-numa &&
+    make &&
+    $SUDO make install &&
+    $SUDO ldconfig
+}
+
+install_lttng_tools_2_13_from_source() {
+    echo_info "\nInstalling LTTng Tools."
+    cd $(mktemp -d) &&
+    wget https://lttng.org/files/lttng-tools/lttng-tools-latest-2.13.tar.bz2 &&
+    tar -xf lttng-tools-latest-2.13.tar.bz2 &&
+    cd lttng-tools-2.13.* &&
+    ./configure &&
+    make &&
+    $SUDO make install &&
+    $SUDO ldconfig
 }
 
 #################################################

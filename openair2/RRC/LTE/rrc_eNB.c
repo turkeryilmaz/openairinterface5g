@@ -5605,6 +5605,7 @@ rrc_eNB_decode_ccch(
           PROTOCOL_RRC_CTXT_UE_ARGS(ctxt_pP));
     return -1;
   }
+  //LOG_P(OAILOG_DEBUG, "UL CCCH:", buffer, buffer_length);
 
   if (ul_ccch_msg->message.present == LTE_UL_CCCH_MessageType_PR_c1) {
     switch (ul_ccch_msg->message.choice.c1.present) {
@@ -6307,6 +6308,7 @@ rrc_eNB_decode_dcch(
 
     LOG_T(RRC, "\n");
   }
+  //LOG_P(OAILOG_DEBUG, "UL DCCH:", Rx_sdu, sdu_sizeP);
 
   if ((dec_rval.code != RC_OK) && (dec_rval.consumed == 0)) {
     LOG_E(RRC, PROTOCOL_RRC_CTXT_UE_FMT" Failed to decode UL-DCCH (%zu bytes)\n",

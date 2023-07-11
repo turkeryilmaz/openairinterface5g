@@ -259,6 +259,7 @@ add_definitions("-DPACKAGE_BUGREPORT=\"openair4g-devel@lists.eurecom.fr\"")
 add_boolean_option(DEBUG_ASN1      False "ASN1 coder/decoder Debug" OFF)
 #add_boolean_option(DEBUG_MAC_INTERFACE False "print MAC-RLC PDU exchange to stdout") # if true, make sure that global and PDCP log levels are trace, not found in code, commented out, to be removed
 add_boolean_option(T_TRACER            True  "Activate the T tracer, a debugging/monitoring framework" ON)
+add_boolean_option(ENABLE_LTTNG        False "Activate the LTTNG tracer, a debugging/monitoring framework" ON)
 add_boolean_option(UE_AUTOTEST_TRACE   False "Activate UE autotest specific logs" ON)
 add_boolean_option(UE_DEBUG_TRACE      False "Activate UE debug trace" ON)
 add_boolean_option(UE_TIMING_TRACE     False "Activate UE timing trace" ON)
@@ -617,6 +618,7 @@ include_directories(${OPENAIR_DIR}/common/utils/hashtable)
 
 add_library(UTIL
   ${OPENAIR_DIR}/common/utils/LOG/log.c
+  ${OPENAIR_DIR}/common/utils/LOG/ss-tp.c
   ${OPENAIR_DIR}/common/utils/LOG/vcd_signal_dumper.c
   ${OPENAIR2_DIR}/UTIL/MATH/oml.c
   ${OPENAIR2_DIR}/UTIL/OPT/probe.c
@@ -627,6 +629,7 @@ add_library(UTIL
   ${OPENAIR_DIR}/common/utils/time_stat.c
 )
 target_link_libraries(UTIL PUBLIC ${T_LIB})
+target_link_libraries(UTIL PUBLIC lttng-ust)
 
 set(SECURITY_SRC
   ${OPENAIR3_DIR}/SECU/secu_defs.c
@@ -1970,6 +1973,9 @@ target_link_libraries(lte-softmodem PRIVATE
 target_link_libraries(lte-softmodem PRIVATE pthread m CONFIG_LIB rt sctp)
 target_link_libraries(lte-softmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+if (${ENABLE_LTTNG})
+  target_link_libraries(lte-softmodem PUBLIC lttng-ust)
+endif()
 
 if(E2_AGENT)
   target_compile_definitions(lte-softmodem PRIVATE E2_AGENT)
@@ -2030,7 +2036,9 @@ target_link_libraries(lte-uesoftmodem PRIVATE
 target_link_libraries(lte-uesoftmodem PRIVATE pthread m CONFIG_LIB rt sctp)
 target_link_libraries(lte-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(lte-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
-
+if (${ENABLE_LTTNG})
+  target_link_libraries(lte-uesoftmodem PUBLIC lttng-ust)
+endif()
 # force the generation of ASN.1 so that we don't need to wait during the build
 target_link_libraries(lte-uesoftmodem PRIVATE
                       asn1_lte_rrc asn1_s1ap asn1_m2ap asn1_m3ap asn1_x2ap)
@@ -2067,6 +2075,10 @@ target_link_libraries(nr-softmodem PRIVATE
   -Wl,--end-group z dl)
 
 target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt sctp)
+if (${ENABLE_LTTNG})
+  target_link_libraries(nr-softmodem PRIVATE lttng-ust)
+endif()
+target_link_libraries(nr-softmodem PRIVATE pthread m CONFIG_LIB rt crypt ${CRYPTO_LIBRARIES} ${OPENSSL_LIBRARIES} sctp ${ATLAS_LIBRARIES})
 target_link_libraries(nr-softmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-softmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
@@ -2095,11 +2107,17 @@ add_executable(nr-cuup
   )
 
 target_link_libraries(nr-cuup PRIVATE
+	-Wl,--start-group
+	UTIL
+	-Wl,--end-group z dl)
+target_link_libraries(nr-cuup PRIVATE
                       CONFIG_LIB ITTI SCTP_CLIENT
                       GTPV1U e1ap e1_pdcp_if f1ap SIMU_ETH
                       z sctp dl pthread shlib_loader ${T_LIB})
 target_link_libraries(nr-cuup PRIVATE asn1_lte_rrc_hdrs asn1_nr_rrc_hdrs)
-                     
+if (${ENABLE_LTTNG})
+  target_link_libraries(nr-cuup PRIVATE lttng-ust)
+endif()
 # nr-uesoftmodem is  UE implementation
 #######################################
 
@@ -2131,6 +2149,9 @@ target_link_libraries(nr-uesoftmodem PRIVATE
 target_link_libraries(nr-uesoftmodem PRIVATE pthread m CONFIG_LIB rt)
 target_link_libraries(nr-uesoftmodem PRIVATE ${T_LIB})
 target_link_libraries(nr-uesoftmodem PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
+if (${ENABLE_LTTNG})
+  target_link_libraries(nr-uesoftmodem PRIVATE lttng-ust)
+endif()
 
 add_dependencies( nr-uesoftmodem ldpc_orig ldpc_optim ldpc_optim8seg ldpc )
 if (ENABLE_LDPC_CUDA)

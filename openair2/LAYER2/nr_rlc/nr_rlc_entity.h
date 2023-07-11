@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "LOG/ss-log.h"
 #include "common/utils/time_stat.h"
 
 #define NR_SDU_MAX 16000   /* max NR PDCP SDU size is 9000, let's take more */

@@ -27,6 +27,7 @@
 #include "rlc_asn1_utils.h"
 #include "rlc_ue_manager.h"
 #include "rlc_entity.h"
+#include "rlc_entity_um.h"
 
 #include <stdint.h>
 
@@ -54,7 +55,7 @@ void mac_rlc_data_ind     (
   rlc_entity_t *rb;
   int rnti;
   int channel_id;
-
+  lte_rlc_pkt_info_t rlc_info;
   if (enb_flagP == 1 && module_idP != 0) {
     LOG_E(RLC, "%s:%d:%s: fatal, module_id must be 0 for eNB\n",
           __FILE__, __LINE__, __FUNCTION__);
@@ -83,6 +84,12 @@ void mac_rlc_data_ind     (
     rnti = rntiP;
     channel_id = channel_idP;
   }
+  rlc_info.channelId = channel_id - 1;
+  rlc_info.ueid = rnti;
+  if (channel_id > 2)
+	  rlc_info.channelType = 5;
+  else
+	  rlc_info.channelType = 4;
 
   rlc_manager_lock(rlc_ue_manager);
   ue = rlc_manager_get_ue(rlc_ue_manager, rnti);
@@ -94,6 +101,18 @@ void mac_rlc_data_ind     (
   }
 
   if (rb != NULL) {
+    rlc_info.pduLength = tb_sizeP;
+    if(rb->mode==RLC_MODE_AM) {
+      rlc_info.rlcMode = 4; /** TODO AM Mode */
+      rlc_info.sequenceNumberLength = 10; /*TODO */
+      LOG_LTE_RLC_P(OAILOG_INFO, "UL_RLC_AM_PDU", -1, -1, rlc_info, (unsigned char *)buffer_pP, tb_sizeP);
+    } else if(rb->mode==RLC_MODE_UM) {
+      rlc_entity_um_t *entity = (rlc_entity_um_t *)rb;
+      rlc_info.rlcMode = 2; /** TODO UM Mode */
+      rlc_info.sequenceNumberLength = entity->sn_field_length;
+      LOG_LTE_RLC_P(OAILOG_INFO, "UL_RLC_UM_PDU", -1, -1, rlc_info, (unsigned char *)buffer_pP, tb_sizeP);
+    }
+
     rb->set_time(rb, rlc_current_time);
     rb->recv_pdu(rb, buffer_pP, tb_sizeP);
   } else {
@@ -123,6 +142,9 @@ tbs_size_t mac_rlc_data_req(
   rlc_ue_t *ue;
   rlc_entity_t *rb;
   int maxsize;
+  lte_rlc_pkt_info_t rlc_info;
+  rlc_info.direction                 = 1 /* Downlink */;
+  rlc_info.ueid                      = rntiP;
 
   rlc_manager_lock(rlc_ue_manager);
   ue = rlc_manager_get_ue(rlc_ue_manager, rntiP);
@@ -140,7 +162,6 @@ tbs_size_t mac_rlc_data_req(
       rb = NULL;
   }
 
-
   if (rb != NULL) {
     rb->set_time(rb, rlc_current_time);
     maxsize = tb_sizeP;
@@ -149,6 +170,41 @@ tbs_size_t mac_rlc_data_req(
     LOG_E(RLC, "%s:%d:%s: fatal: data req for unknown RB\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
     ret = 0;
+  }
+  switch ((channel_idP))
+  {
+    case 1 ... 2:
+      rlc_info.channelType = 4;  /*  CHANNEL_TYPE_SRB */
+      rlc_info.channelId = channel_idP - 1;
+      break;
+    case 3 ... 7:
+      rlc_info.channelType = 5; /* CHANNEL_TYPE_DRB */
+      rlc_info.channelId = channel_idP - 3;
+      break;
+  }
+  if (ret!=0) {
+    char *rlcstr;
+
+    rlc_info.pduLength = ret;
+    if(rb->mode==RLC_MODE_AM) {
+      rlc_info.rlcMode = 4; /** TODO AM Mode */
+      rlc_info.sequenceNumberLength = 10;
+      rlcstr = "DL_RLC_AM_PDU";
+    } else if(rb->mode==RLC_MODE_UM) {
+      rlc_entity_um_t *entity = (rlc_entity_um_t *)rb;
+      rlc_info.rlcMode = 2; /** TODO UM Mode */
+      rlc_info.sequenceNumberLength = entity->sn_field_length;
+      rlcstr = "DL_RLC_UM_PDU";
+    } else if(rb->mode==RLC_MODE_TM) {
+      rlc_info.rlcMode = 1; /** TODO TM Mode */
+      rlcstr = "DL_RLC_TM_PDU";
+    } else {
+      rlc_info.rlcMode = 0; /** TODO NONE Mode */
+    }
+
+    if(rb->mode==RLC_MODE_AM || rb->mode==RLC_MODE_UM) {
+      LOG_LTE_RLC_P(OAILOG_INFO, rlcstr, -1, -1, rlc_info, (unsigned char *)buffer_pP, ret);
+    }
   }
 
   rlc_manager_unlock(rlc_ue_manager);
@@ -514,7 +570,7 @@ static void max_retx_reached(void *_ue, rlc_entity_t *entity)
   exit(1);
 
 rb_found:
-  LOG_D(RLC, "max RETX reached on %s %d\n",
+  LOG_I(RLC, "max RETX reached on %s %d\n",
         is_srb ? "SRB" : "DRB",
         rb_id);
 

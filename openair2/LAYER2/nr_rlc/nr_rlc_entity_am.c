@@ -691,7 +691,6 @@ void nr_rlc_entity_am_recv_pdu(nr_rlc_entity_t *_entity,
 
   nr_rlc_pdu_decoder_init(&decoder, buffer, size);
   dc = nr_rlc_pdu_decoder_get_bits(&decoder, 1); R(decoder);
-
   if (dc == 0)
     return process_control_pdu(entity, buffer, size);
 
@@ -1666,7 +1665,8 @@ int nr_rlc_entity_am_generate_pdu(nr_rlc_entity_t *_entity,
       return ret;
   }
 
-  return generate_tx_pdu(entity, buffer, size);
+  ret = generate_tx_pdu(entity, buffer, size);
+  return ret;
 }
 
 /*************************************************************************/

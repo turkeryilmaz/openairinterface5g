@@ -28,7 +28,7 @@
 #include "nr_rlc_entity_tm.h"
 
 #include "LOG/log.h"
-
+#include "LOG/ss-log.h"
 #include "common/utils/time_stat.h"
 
 static void nr_rlc_entity_get_stats(

@@ -19,6 +19,10 @@
  *      contact@openairinterface.org
  */
 
+/* from openair */
+#include "rlc.h"
+
+/* from new rlc module */
 #include "rlc_entity.h"
 
 #include <stdlib.h>
@@ -78,6 +82,7 @@ rlc_entity_t *new_rlc_entity_am(
 
   ret->common.max_retx_reached      = max_retx_reached;
   ret->common.max_retx_reached_data = max_retx_reached_data;
+  ret->common.mode                  = RLC_MODE_AM;
 
   ret->rx_maxsize         = rx_maxsize;
   ret->tx_maxsize         = tx_maxsize;
@@ -124,6 +129,8 @@ rlc_entity_t *new_rlc_entity_um(
 
   ret->common.deliver_sdu      = deliver_sdu;
   ret->common.deliver_sdu_data = deliver_sdu_data;
+
+  ret->common.mode                  = RLC_MODE_UM;
 
   ret->sn_field_length    = sn_field_length;
   ret->rx_maxsize         = rx_maxsize;

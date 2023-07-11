@@ -598,10 +598,20 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
     NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
     const int8_t harq_pid = UE_scheduling_control->feedback_ul_harq.head;
 
-    if (sduP)
+    if (sduP) {
       T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
         T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(harq_pid),
         T_BUFFER(sduP, sdu_lenP));
+
+       // Trace MACPDU
+       mac_pkt_info_t mac_pkt;
+       mac_pkt.direction = DIR_UPLINK;
+       mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_C);
+       mac_pkt.rnti      = current_rnti;
+       mac_pkt.harq_pid  = harq_pid;
+       mac_pkt.preamble  = -1; /* TODO */
+       LOG_MAC_P(OAILOG_DEBUG, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+    }
 
     UE->mac_stats.ul.total_bytes += sdu_lenP;
     LOG_D(NR_MAC, "[gNB %d][PUSCH %d] CC_id %d %d.%d Received ULSCH sdu from PHY (rnti %04x) ul_cqi %d TA %d sduP %p, rssi %d\n",
@@ -691,7 +701,16 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
     T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
       T_INT(rntiP), T_INT(frameP), T_INT(slotP), T_INT(-1) /* harq_pid */,
       T_BUFFER(sduP, sdu_lenP));
-    
+
+    // Trace MACPDU
+    mac_pkt_info_t mac_pkt;
+    mac_pkt.direction = DIR_UPLINK;
+    mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_TC);
+    mac_pkt.rnti      = rntiP;
+    mac_pkt.harq_pid  = -1;
+    mac_pkt.preamble  = -1; /* TODO */
+    LOG_MAC_P(OAILOG_DEBUG, "MAC_UL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sduP, (int)sdu_lenP);
+
     /* we don't know this UE (yet). Check whether there is a ongoing RA (Msg 3)
      * and check the corresponding UE's RNTI match, in which case we activate
      * it. */

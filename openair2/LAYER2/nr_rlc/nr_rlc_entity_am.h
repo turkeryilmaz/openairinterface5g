@@ -26,6 +26,8 @@
 #include "nr_rlc_sdu.h"
 #include "nr_rlc_pdu.h"
 
+#include "LOG/ss-log.h"
+
 typedef struct {
   nr_rlc_entity_t common;
 

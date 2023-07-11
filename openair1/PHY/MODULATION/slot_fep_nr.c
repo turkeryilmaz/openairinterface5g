@@ -281,10 +281,10 @@ int nr_slot_fep_ul(NR_DL_FRAME_PARMS *frame_parms,
 
 void apply_nr_rotation_RX(NR_DL_FRAME_PARMS *frame_parms,
 			  c16_t *rxdataF,
-                          c16_t *rot,
+        c16_t *rot,
 			  int slot,
-                          int nb_rb,
-                          int soffset,
+        int nb_rb,
+        int soffset,
 			  int first_symbol,
 			  int nsymb)
 {

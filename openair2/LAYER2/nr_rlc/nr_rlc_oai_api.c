@@ -27,6 +27,8 @@
 #include "nr_rlc_asn1_utils.h"
 #include "nr_rlc_ue_manager.h"
 #include "nr_rlc_entity.h"
+#include "nr_rlc_entity_am.h"
+#include "nr_rlc_entity_um.h"
 #include "nr_rlc_oai_api.h"
 #include "NR_RLC-BearerConfig.h"
 #include "NR_DRB-ToAddMod.h"
@@ -37,6 +39,7 @@
 #include "NR_RLC-Config.h"
 #include "common/ran_context.h"
 #include "NR_UL-CCCH-Message.h"
+#include "opt.h"
 
 #include "openair2/F1AP/f1ap_du_rrc_message_transfer.h"
 
@@ -79,6 +82,12 @@ void mac_rlc_data_ind     (
     T(T_ENB_RLC_MAC_UL, T_INT(module_idP), T_INT(rntiP),
       T_INT(channel_idP), T_INT(tb_sizeP));
 
+
+  // Trace UL RLC PDU Here
+  nr_rlc_pkt_info_t rlc_pkt;
+  rlc_pkt.direction = DIRECTION_UPLINK;
+  rlc_pkt.ueid      = rntiP;
+
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rntiP);
 
@@ -86,14 +95,46 @@ void mac_rlc_data_ind     (
 	  LOG_I(RLC, "RLC instance for the given UE was not found \n");
 
   switch (channel_idP) {
-  case 0:        rb = ue->srb0;                 break;
-  case 1 ... 3:  rb = ue->srb[channel_idP - 1]; break;
-  case 4 ... 32: rb = ue->drb[channel_idP - 4]; break;
-  default:       rb = NULL;                     break;
+    case 0:        rb = ue->srb0;                 break;
+    case 1 ... 3:  rb = ue->srb[channel_idP - 1]; break;
+    case 4 ... 32: rb = ue->drb[channel_idP - 4]; break;
+    default:       rb = NULL;                     break;
   }
 
   if (rb != NULL) {
-	LOG_D(RLC, "RB found! (channel ID %d) \n", channel_idP);
+    char *rlcstr;
+	 LOG_D(RLC, "RB found! (channel ID %d) \n", channel_idP);
+
+    rlc_pkt.bearerType                    = -1; //To be filled
+    rlc_pkt.bearerId                      = -1; //To be filled
+    rlc_pkt.pduLength                     = tb_sizeP;
+    switch(rb->stats.mode) {
+      case NR_RLC_AM:
+        {
+          nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t *)rb;
+          rlc_pkt.sequenceNumberLength = entity->sn_field_length;
+          rlc_pkt.rlcMode = 4;
+          rlcstr = "UL_RLC_AM_PDU";
+        }
+        break;
+      case NR_RLC_UM:
+        {
+          nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)rb;
+          rlc_pkt.sequenceNumberLength = entity->sn_field_length;
+          rlc_pkt.rlcMode = 2;
+          rlcstr = "UL_RLC_UM_PDU";
+        }
+        break;
+      case NR_RLC_TM:
+        {
+          rlc_pkt.sequenceNumberLength = 0;
+          rlc_pkt.rlcMode = 1;
+          rlcstr = "UL_RLC_TM_PDU";
+        }
+        break;
+	  }
+     LOG_RLC_P(OAILOG_INFO, rlcstr, -1, -1, rlc_pkt, (unsigned char *)buffer_pP, tb_sizeP);
+
     rb->set_time(rb, nr_rlc_current_time);
     rb->recv_pdu(rb, buffer_pP, tb_sizeP);
   } else {
@@ -124,6 +165,11 @@ tbs_size_t mac_rlc_data_req(
   nr_rlc_entity_t *rb;
   int maxsize;
 
+  // Trace UL RLC PDU Here
+  nr_rlc_pkt_info_t rlc_pkt;
+  rlc_pkt.direction = DIRECTION_DOWNLINK;
+  rlc_pkt.ueid      = rntiP;
+
   nr_rlc_manager_lock(nr_rlc_ue_manager);
   ue = nr_rlc_manager_get_ue(nr_rlc_ue_manager, rntiP);
 
@@ -148,7 +194,50 @@ tbs_size_t mac_rlc_data_req(
   }
 
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
-
+  switch ((channel_idP)) {
+    case 0:
+      rlc_pkt.bearerType = CHANNEL_TYPE_SRB;
+      rlc_pkt.bearerId   = channel_idP - 1;
+      break;
+    case 1 ... 3:
+      rlc_pkt.bearerType = CHANNEL_TYPE_SRB;
+      rlc_pkt.bearerId   = 0;
+      break;
+    case 4 ... 32:
+      rlc_pkt.bearerType = CHANNEL_TYPE_DRB;
+      rlc_pkt.bearerId   = channel_idP - 4;
+      break;
+  }
+  if (ret!=0) {
+    char *rlcstr;
+    rlc_pkt.pduLength = ret;
+    switch(rb->stats.mode) {
+      case NR_RLC_AM:
+        {
+          nr_rlc_entity_am_t *entity = (nr_rlc_entity_am_t *)rb;
+          rlc_pkt.sequenceNumberLength = entity->sn_field_length;
+          rlc_pkt.rlcMode = 4;
+          rlcstr = "DL_RLC_AM_PDU";
+        }
+        break;
+      case NR_RLC_UM:
+        {
+          nr_rlc_entity_um_t *entity = (nr_rlc_entity_um_t *)rb;
+          rlc_pkt.sequenceNumberLength = entity->sn_field_length;
+          rlc_pkt.rlcMode = 2;
+          rlcstr = "DL_RLC_UM_PDU";
+        }
+        break;
+      case NR_RLC_TM:
+        {
+          rlc_pkt.sequenceNumberLength = 0;
+          rlc_pkt.rlcMode = 1;
+          rlcstr = "DL_RLC_TM_PDU";
+        }
+        break;
+	  }
+	  LOG_RLC_P(OAILOG_INFO, rlcstr, -1, -1, rlc_pkt, (unsigned char *)buffer_pP, ret);
+  }
   if (enb_flagP)
     T(T_ENB_RLC_MAC_DL, T_INT(module_idP), T_INT(rntiP),
       T_INT(channel_idP), T_INT(ret));

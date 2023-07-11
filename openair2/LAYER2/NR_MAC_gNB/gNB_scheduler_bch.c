@@ -608,6 +608,15 @@ void schedule_nr_sib1(module_id_t module_idP,
       TX_req->Slot = slotP;
 
       type0_PDCCH_CSS_config->active = false;
+
+      // Trace MACPDU
+      mac_pkt_info_t mac_pkt;
+      mac_pkt.direction = DIR_DOWNLINK;
+      mac_pkt.rnti_type = map_nr_rnti_type(NR_RNTI_SI);
+      mac_pkt.rnti      = SI_RNTI;
+      mac_pkt.harq_pid  = 0;
+      mac_pkt.preamble  = -1; /* TODO */
+      LOG_MAC_P(OAILOG_DEBUG, "MAC_DL_PDU", frameP, slotP, mac_pkt, (uint8_t *)sib1_payload, (int)sib1_sdu_length);
     }
   }
 }
