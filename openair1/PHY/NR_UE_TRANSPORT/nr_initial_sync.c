@@ -151,8 +151,8 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
     __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
 
     for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
-      nr_pbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time, 
-                                 proc,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf,rxdataF);
+      nr_pbch_channel_estimation(ue,&ue->frame_parms, estimateSz, dl_ch_estimates, dl_ch_estimates_time, 
+                                 proc,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf,rxdataF,false, frame_parms->Nid_cell);
 
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPbch_t result = {0};
