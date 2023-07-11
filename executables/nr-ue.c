@@ -98,10 +98,10 @@
 #define TX_JOB_ID 100
 
 typedef enum {
-  PSS = 0,
-  PBCH = 1,
-  SI = 2,
-  PSBCH = 3,
+  SYNC_MODE_PSS = 0,
+  SYNC_MODE_PBCH = 1,
+  SYNC_MODE_SI = 2,
+  SYNC_MODE_PSBCH = 3,
 } sync_mode_t;
 
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg);
@@ -375,10 +375,10 @@ static void UE_synch(void *arg) {
   syncData_t *syncD=(syncData_t *) arg;
   int i, hw_slot_offset;
   PHY_VARS_NR_UE *UE = syncD->UE;
-  sync_mode_t sync_mode = PBCH;
+  sync_mode_t sync_mode = SYNC_MODE_PBCH;
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
-  if (get_softmodem_params()->sl_mode == MODE_2) {
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     UE->is_synchronized_sl = false;
     sync_mode = PSBCH;
   } else {
@@ -421,7 +421,7 @@ static void UE_synch(void *arg) {
   }
 
   switch (sync_mode) {
-    case PBCH:
+    case SYNC_MODE_PBCH:
       LOG_I(PHY, "[UE thread Synch] Running Initial Synch \n");
 
       uint64_t dl_carrier, ul_carrier;
@@ -467,56 +467,11 @@ static void UE_synch(void *arg) {
       }
       break;
 
-    case SI:
+    case SYNC_MODE_SI:
       break;
 
-    case PSBCH: {
-      /* The call below to nr_initial_sync is temporary until MR2204 is approved.
-         In that MR, we will call nr_sl_initial_sync for the SL case. */
-      int initial_synch_sl = nr_initial_sync(&syncD->proc, UE, 2, get_softmodem_params()->sa);
-      if (initial_synch_sl >= 0) {
-        // rerun with new cell parameters and frequency-offset
-        freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
-        hw_slot_offset =
-            ((UE->rx_offset_sl << 1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe)
-            + round((float)((UE->rx_offset << 1) % UE->frame_parms.samples_per_subframe) / UE->frame_parms.samples_per_slot0);
-
-        LOG_I(PHY,
-              "Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
-              hw_slot_offset,
-              freq_offset,
-              openair0_cfg[UE->rf_map.card].rx_gain[0],
-              openair0_cfg[UE->rf_map.card].rx_freq[0],
-              openair0_cfg[UE->rf_map.card].tx_freq[0]);
-        nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
-        UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
-
-        if (UE->UE_scan_carrier == 1) {
-          UE->UE_scan_carrier = 0;
-        } else {
-          if (initial_synch_sl == 0) {
-            UE->is_synchronized_sl = true;
-            LOG_I(NR_PHY,
-                  "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
-                  GET_NID1_SL(UE->frame_parms.Nid_SL),
-                  GET_NID2_SL(UE->frame_parms.Nid_SL),
-                  UE->measurements.ssb_rsrp_dBm[0]);
-          }
-        }
-      } else {
-        LOG_I(NR_PHY, "No SyncRef UE found\n");
-        if (UE->UE_scan_carrier == 1) {
-          LOG_I(PHY, "Initial sync failed: trying carrier off %d Hz\n", freq_offset);
-
-          if (freq_offset >= 0)
-            freq_offset += 100;
-          freq_offset *= -1;
-          nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
-          UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
-        }
-      }
+    case SYNC_MODE_PSBCH:
       break;
-    }
 
     default:
       break;

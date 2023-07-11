@@ -123,7 +123,7 @@ typedef enum {
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
 
-typedef enum { NOT_SL_MODE = 0, MODE_1, MODE_2 } NR_SL_MODE_t;
+typedef enum { SL_MODE_NONE = 0, SL_MODE_1, SL_MODE_2 } NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -248,7 +248,7 @@ typedef struct {
   int32_t freq_offset;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
-  int32_t N2_id;
+  int32_t sl_nid2;
 } NR_UE_COMMON;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
@@ -325,9 +325,7 @@ typedef struct {
 #define NR_PSBCH_MAX_NB_MOD_SYMBOLS 99
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
-#define PSBCH_A 32
-#define PSBCH_MAX_RE_PER_SYMBOL (11 * 12)
-#define PSBCH_MAX_RE (PSBCH_MAX_RE_PER_SYMBOL * 14)
+
 
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
