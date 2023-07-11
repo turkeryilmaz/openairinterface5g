@@ -124,12 +124,7 @@ int nr_sl_generate_pss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR
       k = 0;
   }
 
-  c16_t out[sizeof(int16_t) * frame_parms->ofdm_symbol_size] __attribute__((aligned(32)));
-  memset(out, 0, sizeof(out));
   memset(primary_synchro_time_nr_sl[Nid2], 0, sizeof(int16_t) * frame_parms->ofdm_symbol_size);
-  idft((int16_t)get_idft(frame_parms->ofdm_symbol_size), (int16_t *)in, (int16_t *)out, 1);
-  for (unsigned int i = 0; i < frame_parms->ofdm_symbol_size; i++) {
-    primary_synchro_time_nr_sl[Nid2][i] = out[i];
-  }
+  idft((int16_t)get_idft(frame_parms->ofdm_symbol_size), (int16_t *)in, (int16_t *)primary_synchro_time_nr_sl[Nid2], 1);
   return 0;
 }
