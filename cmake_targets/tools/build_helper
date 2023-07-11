@@ -597,6 +597,22 @@ check_install_oai_software() {
         echo_error "Your distribution $(get_distribution_release) is not supported by oai !"
         exit 1
     fi
+  if [[ "$CROSS_COMPILER" == 1 ]]; then
+      # Add arm64 list for apt (installer)
+      $SUDO dpkg --add-architecture arm64
+      echo -e \
+"deb [arch=arm64] http://ports.ubuntu.com/ focal main restricted\n"\
+"deb [arch=arm64] http://ports.ubuntu.com/ focal-updates main restricted\n"\
+"deb [arch=arm64] http://ports.ubuntu.com/ focal universe\n"\
+"deb [arch=arm64] http://ports.ubuntu.com/ focal-updates universe\n"\
+"deb [arch=arm64] http://ports.ubuntu.com/ focal multiverse\n"\
+"deb [arch=arm64] http://ports.ubuntu.com/ focal-updates multiverse\n"\
+"deb [arch=arm64] http://ports.ubuntu.com/ focal-backports main restricted universe multiverse"\
+      | $SUDO tee /etc/apt/sources.list.d/arm-cross-compile-sources.list
+      # Specify native arch
+      $SUDO cp /etc/apt/sources.list "/etc/apt/sources.list.`date`.backup"
+      $SUDO sed -i -E "s/(deb)\ (http:.+)/\1\ [arch=amd64]\ \2/" /etc/apt/sources.list
+  fi
     $SUDO $INSTALLER update -y
   if [[ "$OS_BASEDISTRO" == "debian" ]]; then
     $SUDO apt install -y software-properties-common
@@ -611,7 +627,7 @@ check_install_oai_software() {
     esac
     if [[ "$CROSS_COMPILER" == 1 ]]; then
       echo "install package for corss_compiler"
-      $SUDO apt-get install -y \
+      $SUDO $INSTALLER install -y \
         libatlas-base-dev:arm64 \
         libblas-dev:arm64 \
         liblapack-dev:arm64 \
@@ -627,7 +643,7 @@ check_install_oai_software() {
         gcc-aarch64-linux-gnu \
         g++-aarch64-linux-gnu
     fi
-    $SUDO apt-get install -y \
+    $SUDO $INSTALLER install -y \
     $specific_packages \
         automake  \
         build-essential \
