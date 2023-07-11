@@ -338,21 +338,6 @@ typedef struct {
   uint32_t reserved : 2;
 } PSBCH_payload;
 
-typedef struct {
-  /// \brief Total number of PDU errors.
-  uint32_t pdu_errors;
-  /// \brief Total number of PDU errors 128 frames ago.
-  uint32_t pdu_errors_last;
-  /// \brief Total number of consecutive PDU errors.
-  uint32_t pdu_errors_conseq;
-  /// \brief FER (in percent) .
-  // uint32_t pdu_fer;
-  uint32_t psbch_a;
-  uint32_t psbch_a_interleaved;
-  uint32_t psbch_a_prime;
-  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
-} NR_UE_PSBCH;
-
 #define PBCH_A 24
 
 typedef struct {
@@ -460,7 +445,6 @@ typedef struct {
   nr_synch_request_t synch_request;
 
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
-  NR_UE_PSBCH *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];

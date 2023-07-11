@@ -200,7 +200,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   // create shortcuts
   NR_DL_FRAME_PARMS *const fp            = &ue->frame_parms;
   NR_UE_COMMON *const common_vars        = &ue->common_vars;
-  NR_UE_PSBCH **const psbch_vars         = ue->psbch_vars;
   NR_UE_PRACH **const prach_vars         = ue->prach_vars;
   NR_UE_CSI_IM **const csiim_vars        = ue->csiim_vars;
   NR_UE_CSI_RS **const csirs_vars        = ue->csirs_vars;
@@ -357,9 +356,6 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     csiim_vars[gNB_id] = (NR_UE_CSI_IM *)malloc16_clear(sizeof(NR_UE_CSI_IM));
     csirs_vars[gNB_id] = (NR_UE_CSI_RS *)malloc16_clear(sizeof(NR_UE_CSI_RS));
     srs_vars[gNB_id] = (NR_UE_SRS *)malloc16_clear(sizeof(NR_UE_SRS));
-    if (get_softmodem_params()->sl_mode == SL_MODE_2) {
-      psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
-    }
 
     csiim_vars[gNB_id]->active = false;
     csirs_vars[gNB_id]->active = false;
