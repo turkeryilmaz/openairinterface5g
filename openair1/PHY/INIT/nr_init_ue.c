@@ -33,7 +33,6 @@
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/NR_REFSIG/nr_refsig.h"
 #include "PHY/MODULATION/nr_modulation.h"
-#include "executables/softmodem-common.h"
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 #include "executables/softmodem-common.h"
@@ -361,6 +360,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
     if (get_softmodem_params()->sl_mode == SL_MODE_2) {
       psbch_vars[gNB_id] = (NR_UE_PSBCH *)malloc16_clear(sizeof(NR_UE_PSBCH));
     }
+
 
     csiim_vars[gNB_id]->active = false;
     csirs_vars[gNB_id]->active = false;

@@ -306,13 +306,13 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int n_frames
       //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Offset = X - (144 + 144 + 2048 + 144)
       //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Offset = X - (144 + 2048 + 144)
       uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
-      uint32_t num_pss_prefix_samples_size = fp->nb_prefix_samples; /*(ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;*/
+      uint32_t num_pss_prefix_samples_size = fp->nb_prefix_samples; /*(ue->common_vars.sl_nid2 + 1) * fp->nb_prefix_samples;*/
       LOG_I(NR_PHY,
-            "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
+            "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, sl_nid2 %d\n",
             num_pss_prefix_samples_size,
             psbch_plus_prefix_size,
             sync_pos,
-            ue->common_vars.N2_id);
+            ue->common_vars.sl_nid2);
       ue->ssb_offset = sync_pos - num_pss_prefix_samples_size - psbch_plus_prefix_size;
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
@@ -321,7 +321,7 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int n_frames
            ue->Mod_id,
            n_frames,
            sync_pos,
-           ue->common_vars.N2_id,
+           ue->common_vars.sl_nid2,
            ue->ssb_offset);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (N_SYMB_SLOT_SL * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;

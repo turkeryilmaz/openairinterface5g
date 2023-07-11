@@ -182,7 +182,7 @@ typedef enum {
 #define GNB_LOCAL_S_PORTD_IDX           12
 #define GNB_REMOTE_S_PORTD_IDX          13
 #define GNB_PDSCH_ANTENNAPORTS_N1_IDX   14
-#define GNB_PDSCH_ANTENNAPORTS_N2_IDX   15
+#define GNB_PDSCH_ANTENNAPORTS_sl_nid2X   15
 #define GNB_PDSCH_ANTENNAPORTS_XP_IDX   16
 #define GNB_PUSCH_ANTENNAPORTS_IDX      17
 #define GNB_SIB1_TDA_IDX                18
