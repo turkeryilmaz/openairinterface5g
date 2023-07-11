@@ -819,14 +819,9 @@ void nr_rrc_mac_config_req_scg(module_id_t module_id,
   build_ssb_to_ro_map(mac);
 }
 
-int nr_rrc_mac_config_req_ue_sl(module_id_t module_id,
+int nr_rrc_mac_config_req_mib_sl(module_id_t module_id,
                                 int cc_idP,
-                                const uint32_t *const sourceL2Id,
-                                const uint32_t *const destinationL2Id,
-                                const uint32_t *const groupL2Id,
-                                NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration_r16,
-                                uint32_t directFrameNumber_r16,
-                                long slotIndex_r16)
+                                NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration_r16)
 {
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
 
@@ -856,6 +851,5 @@ int nr_rrc_mac_config_req_ue_sl(module_id_t module_id,
         mac->SL_Preconfiguration->sidelinkPreconfigNR_r16.sl_PreconfigFreqInfoList_r16->list.array[0]->sl_SyncConfigList_r16;
     // TO-DO:: Add discovery mode
   }
-  mac->directFrameNumber_r16 = directFrameNumber_r16;
   return 0;
 }

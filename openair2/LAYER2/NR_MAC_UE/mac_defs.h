@@ -65,7 +65,6 @@
 #include "NR_ServingCellConfigCommonSIB.h"
 
 /* PHY */
-#include "openair1/PHY/NR_UE_TRANSPORT/nr_transport_ue.h"
 
 // ==========
 // NR UE defs
@@ -501,8 +500,6 @@ typedef struct {
   uint32_t sourceL2Id;
   uint32_t groupL2Id;
   uint32_t destinationL2Id;
-  uint32_t directFrameNumber_r16;
-  int slotIndex_r16;
   NR_SLSS_t slss;
 
 } NR_UE_MAC_INST_t;

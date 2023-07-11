@@ -58,12 +58,15 @@
 
 #define RRC_MAC_DRX_CONFIG_REQ(mSGpTR)          (mSGpTR)->ittiMsg.rrc_mac_drx_config_req
 
+#define NR_RRC_MAC_SBCCH_DATA_IND(mSGpTR)       (mSGpTR)->ittiMsg.nr_rrc_mac_sbcch_data_ind
+
 // Some constants from "LAYER2/MAC/defs.h"
 #define BCCH_SDU_SIZE                           (512)
 #define BCCH_SDU_MBMS_SIZE                      (512)
 #define CCCH_SDU_SIZE                           (1024)
 #define MCCH_SDU_SIZE                           (512)
 #define PCCH_SDU_SIZE                           (512)
+#define SBCH_SDU_SIZE                           (512)
 
 //-------------------------------------------------------------------------------------------//
 // Messages between RRC and MAC layers
@@ -187,6 +190,24 @@ typedef struct RrcMacPcchDataReq_s {
   uint8_t   sdu[PCCH_SDU_SIZE];
   uint8_t   enb_index;
 } RrcMacPcchDataReq;
+
+typedef struct NRRrcMacSbcchDataReq_s {
+  uint32_t  frame;
+  uint8_t   slot;
+  uint32_t  sdu_size;
+  uint8_t   sdu[SBCH_SDU_SIZE];
+  uint8_t   syncref_index;
+} NRRrcMacSbchDataReq;
+
+typedef struct NRRrcMacSbcchDataInd_s {
+  uint32_t  frame;
+  uint8_t   slot;
+  uint32_t  sdu_size;
+  uint8_t   sdu[SBCH_SDU_SIZE];
+  uint8_t   syncref_index;
+  uint8_t   rsrq;
+  uint8_t   rsrp;
+} NRRrcMacSbchDataInd;
 
 /* RRC configures DRX context (MAC timers) of a UE */
 typedef struct rrc_mac_drx_config_req_s {

@@ -55,7 +55,7 @@
  */
 int xer_sprint_NR(char *string, size_t string_size, struct asn_TYPE_descriptor_s *td, void *sptr);
 
-uint8_t do_MIB_SL_NR(int abs_SF, NR_UE_RRC_INST_t *UE);
+uint8_t do_MIB_SL_NR(uint16_t frame, uint8_t slot, NR_UE_RRC_INST_t *UE);
 
 uint8_t do_SIB23_NR(rrc_gNB_carrier_data_t *carrier,
                     gNB_RrcConfigurationReq *configuration);

@@ -38,6 +38,7 @@
 #include "NR_MAC_UE/mac_defs.h"
 #include "../NR/MESSAGES/asn1_msg.h"
 #include "LAYER2/NR_MAC_COMMON/nr_mac.h"
+#include "executables/softmodem-common.h"
 
 typedef uint32_t channel_t;
 
@@ -120,12 +121,29 @@ int8_t nr_mac_rrc_data_ind_ue(const module_id_t module_id,
       }
       break;
 
-    case MIBSLCH:
-      LOG_D(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
-      if (decode_MIB_SL_NR(module_id, (uint8_t *const)pduP, 5, frame) >= 0)
-        LOG_D(NR_RRC, "Received  MIB_SL: %x.%x.%x.%x.%x\n", pduP[0], pduP[1], pduP[2], pduP[3], pduP[4]);
-      else
-        LOG_E(NR_RRC, "Received bogus MIB_SL\n");
+    case NR_SBCCH_SLBCH:
+      if (pdu_len>0) {
+        LOG_T(NR_RRC, "[UE %d] Received SDU for MIBSL\n", module_id);
+
+        MessageDef *message_p;
+        int msg_sdu_size = SBCH_SDU_SIZE;
+
+        if (pdu_len > msg_sdu_size) {
+          LOG_E(NR_RRC, "SDU larger than SBCH SDU buffer size (%d, %d)", sdu_size, msg_sdu_size);
+          sdu_size = msg_sdu_size;
+        } else {
+          sdu_size = pdu_len;
+        }
+
+        message_p = itti_alloc_new_message(TASK_MAC_UE, 0, NR_RRC_MAC_SBCCH_DATA_IND);
+        memset(NR_RRC_MAC_SBCCH_DATA_IND (message_p).sdu, 0, SBCH_SDU_SIZE);
+        memcpy(NR_RRC_MAC_SBCCH_DATA_IND (message_p).sdu, pduP, sdu_size);
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).frame = frame;
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).slot = slot;
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).sdu_size = sdu_size;
+        NR_RRC_MAC_SBCCH_DATA_IND (message_p).syncref_index = gNB_index;
+        itti_send_msg_to_task(TASK_RRC_NRUE, UE_MODULE_ID_TO_INSTANCE(module_id), message_p);
+      }
       break;
 
     default:
@@ -155,19 +173,24 @@ int8_t nr_mac_rrc_data_req_ue(const module_id_t Mod_idP,
 
       return NR_UE_rrc_inst[Mod_idP].Srb0[gNB_id].Tx_buffer.payload_size;
 
-    case MIBCH:
-      ret_size = do_MIB_SL_NR(frameP, &NR_UE_rrc_inst[Mod_idP]);
-      memcpy((void *)buffer_pP, (void *)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
-      LOG_D(NR_RRC,
-            "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
-            frameP / 10,
-            frameP % 10,
-            buffer_pP[0],
-            buffer_pP[1],
-            buffer_pP[2],
-            buffer_pP[3],
-            buffer_pP[4]);
-      return (ret_size);
+    case NR_SBCCH_SLBCH:
+      {
+        uint8_t scs_ssb = get_softmodem_params()->numerology;
+        uint16_t frame = frameP / nr_slots_per_frame[scs_ssb];
+        uint8_t slot = frameP % nr_slots_per_frame[scs_ssb];
+        ret_size = do_MIB_SL_NR(frame, slot, &NR_UE_rrc_inst[Mod_idP]);
+        memcpy((void *)buffer_pP, (void *)NR_UE_rrc_inst[Mod_idP].SL_MIB, ret_size);
+        LOG_D(NR_RRC,
+              "MIB-SL for %d.%d: %x.%x.%x.%x.%x\n",
+              frame,
+              slot,
+              buffer_pP[0],
+              buffer_pP[1],
+              buffer_pP[2],
+              buffer_pP[3],
+              buffer_pP[4]);
+        return (ret_size);
+      }
 
     case DCCH:
       AssertFatal(1==0, "SRB1 not implemented yet!\n");

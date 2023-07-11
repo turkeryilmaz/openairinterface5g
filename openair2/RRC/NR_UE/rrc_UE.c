@@ -74,7 +74,6 @@
 #include "SIMULATION/TOOLS/sim.h" // for taus
 
 #include "nr_nas_msg_sim.h"
-#include <openair2/RRC/NR/nr_rrc_proto.h>
 #include "NR_SL-SyncConfig-r16.h"
 #include "NR_SL-ResourcePool-r16.h"
 #include "NR_SL-BWP-Config-r16.h"
@@ -446,6 +445,10 @@ void init_SL_preconfig_NR(NR_UE_RRC_INST_t *UE, const uint8_t SyncRef_index)
   asn1cCalloc(PreconfigGeneral->sl_TDD_Configuration_r16, TDD_Config);
   TDD_Config->referenceSubcarrierSpacing = NR_SubcarrierSpacing_kHz30;
   TDD_Config->pattern1.dl_UL_TransmissionPeriodicity = NR_TDD_UL_DL_Pattern__dl_UL_TransmissionPeriodicity_ms5;
+  TDD_Config->pattern1.nrofDownlinkSlots   = 7;
+  TDD_Config->pattern1.nrofDownlinkSymbols = 6;
+  TDD_Config->pattern1.nrofUplinkSlots     = 2;
+  TDD_Config->pattern1.nrofUplinkSymbols   = 4;
 
   NR_SL_BWP_ConfigCommon_r16_t *sl_bwp_conf_cmn = malloc16_clear(sizeof(NR_SL_BWP_ConfigCommon_r16_t));
 
@@ -2407,6 +2410,15 @@ void *rrc_nrue_task(void *args_p)
                                                   NR_RRC_MAC_BCCH_DATA_IND (msg_p).rsrp);
          break;
 
+       case NR_RRC_MAC_SBCCH_DATA_IND:
+         LOG_D(NR_RRC, "[UE %d] Received %s: frameP %d, SyncRef UE %d\n", ue_mod_id, ITTI_MSG_NAME (msg_p),
+               NR_RRC_MAC_SBCCH_DATA_IND (msg_p).frame, NR_RRC_MAC_SBCCH_DATA_IND (msg_p).syncref_index);
+         nr_rrc_ue_decode_MIB_SL(ue_mod_id,
+                          NR_RRC_MAC_SBCCH_DATA_IND (msg_p).sdu,
+                          NR_RRC_MAC_SBCCH_DATA_IND (msg_p).sdu_size,
+                          NR_RRC_MAC_SBCCH_DATA_IND (msg_p).frame);
+         break;
+
        case NR_RRC_MAC_CCCH_DATA_IND:
          LOG_D(NR_RRC, "[UE %d] RNTI %x Received %s: frameP %d, gNB %d\n",
                ue_mod_id,
@@ -2869,7 +2881,7 @@ void process_lte_nsa_msg(nsa_msg_t *msg, int msg_len)
     }
 }
 
-int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t sdu_len, const frame_t frame)
+int nr_rrc_ue_decode_MIB_SL(const module_id_t mod_id, uint8_t *const sdu, const uint8_t sdu_len, const frame_t frame)
 {
   memcpy((void *)&NR_UE_rrc_inst[mod_id].SL_MIB, (void *)sdu, sdu_len);
 
@@ -2885,16 +2897,14 @@ int decode_MIB_SL_NR(const module_id_t mod_id, uint8_t *const sdu, const uint8_t
   }
   NR_SBCCH_SL_BCH_MessageType_t *mib_sl = NR_UE_rrc_inst[mod_id].mib_sl[0];
   struct NR_MasterInformationBlockSidelink *mib_sl_buf = mib_sl->choice.c1->choice.masterInformationBlockSidelink;
-  struct NR_MasterInformationBlockSidelink *mib_sl_rrc_buf =
-      NR_UE_rrc_inst[mod_id].mib_sl[0]->choice.c1->choice.masterInformationBlockSidelink;
 
   LOG_D(NR_RRC,
         "Decoded MIBSL SFN.SLOT %d.%d, InCoverage %d\n",
         *mib_sl_buf->directFrameNumber_r16.buf,
         *mib_sl_buf->slotIndex_r16.buf,
-        (int)mib_sl_rrc_buf->inCoverage_r16);
+        (int)mib_sl_buf->inCoverage_r16);
 
-  nr_rrc_mac_config_req_ue_sl(mod_id, 0, 0, 0, 0, NULL, *mib_sl_buf->directFrameNumber_r16.buf, *mib_sl_buf->slotIndex_r16.buf);
+  nr_rrc_mac_config_req_mib_sl(mod_id, 0, NULL);
   return (0);
 }
 

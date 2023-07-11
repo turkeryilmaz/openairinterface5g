@@ -59,6 +59,7 @@
 // Definitions for MAC control and data
 #define NR_BCCH_DL_SCH 3 // SI
 #define NR_BCCH_BCH 5    // MIB
+#define NR_SBCCH_SLBCH 6 // MIB-SL
 #define CCCH_PAYLOAD_SIZE_MAX 512 
 #define RAR_PAYLOAD_SIZE_MAX  128
 #define MAX_CSI_REPORTCONFIG  48

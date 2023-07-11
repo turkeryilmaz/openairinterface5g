@@ -112,14 +112,9 @@ void nr_rrc_mac_config_req_sib1(module_id_t module_id,
                                 int cc_idP,
                                 NR_ServingCellConfigCommonSIB_t *scc);
 
-int nr_rrc_mac_config_req_ue_sl(module_id_t module_id,
+int nr_rrc_mac_config_req_mib_sl(module_id_t module_id,
                                 int cc_idP,
-                                const uint32_t *const sourceL2Id,
-                                const uint32_t *const destinationL2Id,
-                                const uint32_t *const groupL2Id,
-                                NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration_r16,
-                                uint32_t directFrameNumber_r16,
-                                long slotIndex_r16);
+                                NR_SL_PreconfigurationNR_r16_t *SL_Preconfiguration_r16);
 
 NR_SLSS_t *nr_ue_get_slss(module_id_t Mod_id, int CC_id, frame_t frame_tx, int slot_tx);
 
