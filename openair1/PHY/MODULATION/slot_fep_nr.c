@@ -21,7 +21,6 @@
 
 #include "PHY/defs_nr_UE.h"
 #include "PHY/defs_gNB.h"
-#include "PHY/impl_defs_nr.h"
 #include "modulation_UE.h"
 #include "nr_modulation.h"
 #include "PHY/LTE_ESTIMATION/lte_estimation.h"
