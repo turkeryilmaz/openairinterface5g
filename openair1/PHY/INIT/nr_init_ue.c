@@ -582,6 +582,11 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
       phy_term_nr_ue__PSSCH(ue, SyncRef_id, fp);
     }
   }
+  if (get_softmodem_params()->sl_mode == 2) {
+    for (int SyncRef_id = 0; SyncRef_id < NUMBER_OF_CONNECTED_SyncRefUE_MAX; SyncRef_id++) {
+      phy_term_nr_ue__PSSCH(ue, SyncRef_id, fp);
+    }
+  }
 
   for (int gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
 

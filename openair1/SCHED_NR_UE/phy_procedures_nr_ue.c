@@ -362,7 +362,7 @@ void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
     }
 #endif
   }
-  else if (ue->is_synchronized_sl == 1) {
+  else if (ue->sync_ref && ((slot_tx == 1) || (slot_tx == 4))) {
     for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
       nr_ue_set_slsch(&ue->frame_parms, harq_pid, ue->slsch[gNB_id], frame_tx, slot_tx);
       if (ue->slsch[0]->harq_processes[harq_pid]->status == ACTIVE) {
@@ -978,58 +978,20 @@ int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
                            uint8_t synchRefUE_id,
                            notifiedFIFO_t *txFifo) {
 
-  if (ue->sync_ref || ue->is_synchronized_sl == 0) {
+  if (ue->sync_ref || ue->is_synchronized_sl == 0 || (proc->nr_slot_rx != 1 && proc->nr_slot_rx != 4)) {
     return (0);
   }
 
   int frame_rx = proc->frame_rx;
   int slot_rx = proc->nr_slot_rx;
-  /* In RFSIM we currently align the slots by sending the
-     slot information at the start of every packet. In order
-     to maintain slot consistency, if we offset the buffers
-     below, we will miss the slot, and it will not be properly
-     updated. Therefore, we should not conduct the proecedure
-     below for the RFSIMULATOR. */
-  const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
-  __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
-  if (!IS_SOFTMODEM_RFSIM) {
-    const int estimateSz = ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size;
-    for (int ssb_index = 0; ssb_index < ue->frame_parms.Lmax; ssb_index++) {
-      int ssb_start_symbol = nr_get_ssb_start_symbol(&ue->frame_parms, ssb_index);
-      int ssb_slot = ssb_start_symbol/ue->frame_parms.symbols_per_slot;
-      int ssb_slot_2 = (ue->nrUE_config.ssb_table.ssb_period == 0) ? ssb_slot+(ue->frame_parms.slots_per_frame>>1) : -1;
-      if (ssb_slot == slot_rx || ssb_slot_2 == slot_rx) {
-        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[ue->frame_parms.nb_antennas_rx][estimateSz];
-        __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[ue->frame_parms.nb_antennas_rx][ue->frame_parms.ofdm_symbol_size];
-        for (int i = 0; i < 13; i++) {
-          if (i >= 1 && i <= 4)
-            continue;
-          nr_slot_fep(ue, proc, (ssb_start_symbol+i)%(ue->frame_parms.symbols_per_slot), rxdataF);
-          nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
-                                      proc, 0, 0, i, i, ssb_index&7, ssb_slot_2 == slot_rx);
-          memcpy(ue->common_vars.rxdataF[0], rxdataF[0], rxdataF_sz * sizeof(int32_t));
-        }
-        nr_ue_sl_ssb_rsrp_measurements(ue, ssb_index&7, proc);
-        // resetting ssb index for PBCH detection if there is a stronger SSB index
-        if (ue->measurements.ssb_rsrp_dBm[ssb_index] > ue->measurements.ssb_rsrp_dBm[ue->frame_parms.ssb_index])
-          ue->frame_parms.ssb_index = ssb_index;
-        if (ssb_index == ue->frame_parms.ssb_index) {
-          fapiPsbch_t result;
-          NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
-          nr_rx_psbch(ue, proc, estimateSz, dl_ch_estimates, ue->psbch_vars[0],
-                      &ue->frame_parms, 0, ssb_index&7, SISO, &phy_pdcch_config, &result);
-          LOG_D(NR_PHY, "start adjust sync slot = %d\n", proc->nr_slot_rx);
-          nr_adjust_synch_ue(&ue->frame_parms, ue, 0, ue->frame_parms.ofdm_symbol_size, dl_ch_estimates_time, proc->frame_rx, proc->nr_slot_rx, 0, 16384);
-        }
-      }
-    }
-  }
 
   NR_UE_DLSCH_t   *slsch = ue->slsch_rx[synchRefUE_id][0];
   NR_DL_UE_HARQ_t *harq = NULL;
   uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
+  const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
+  __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
 
-  bool payload_type_string = true;
+  bool payload_type_string = false;
   for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
     nr_ue_set_slsch_rx(ue, harq_pid);
     if (slsch->harq_processes[harq_pid]->status == ACTIVE) {
@@ -1070,10 +1032,8 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
   uint32_t slot_tx = 0;
   unsigned char  randm_tx =0;
 
-
   for (int i = 0; i < harq->TBS / 8; i++)
     test_input[i] = (unsigned char) (i + 3);
-
   for (int i = 0; i < min(80, harq->TBS); i++) {
     estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
     test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
@@ -1085,9 +1045,9 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
       if(i  > 8 * 3)
           LOG_D(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
     }
-#if DEBUG_NR_PSSCHSIM
+
     LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
-#endif
+
     if ((i  >= 8 * 4) && (i  < 8 * 9) && (estimated_output_bit[i] != test_input_bit[i])) {
       errors_bit++;
     }
@@ -1096,7 +1056,7 @@ void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
   LOG_D(PHY,"TxRandm: %4u\n", randm_tx);
   LOG_D(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
   LOG_D(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
-
+  LOG_I(PHY,"RxSlot %4u\n", (uint8_t) slot_rx);
   if (errors_bit > 0) {
     LOG_D(PHY,"errors_bit %u\n", errors_bit);
     LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);

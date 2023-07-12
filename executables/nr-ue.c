@@ -1027,9 +1027,7 @@ void *UE_thread_SL(void *arg) {
       nbSlotProcessing--;
       nr_rxtx_thread_data_t *tmp = (nr_rxtx_thread_data_t *)res->msgData;
       if (tmp->proc.decoded_frame_rx != -1)
-        decoded_frame_rx=(((mac->mib->systemFrameNumber.buf[0] >>
-                            mac->mib->systemFrameNumber.bits_unused) << 4) |
-                          tmp->proc.decoded_frame_rx);
+        decoded_frame_rx = tmp->proc.frame_rx;
       else
          decoded_frame_rx=-1;
       pushNotifiedFIFO_nothreadSafe(&freeBlocks,res);
@@ -1063,15 +1061,6 @@ void *UE_thread_SL(void *arg) {
                                               writeBlockSize,
                                               UE->frame_parms.nb_antennas_tx,
                                               flags), "");
-      if (UE->sync_ref && IS_SOFTMODEM_RFSIM) {
-        if (! UE->is_synchronized_sl) {
-          uint8_t sync_flag = UE->common_vars.rxdata[0][read_time_stamp + 1].r & 0xFF;
-          if (sync_flag > 0) {
-            LOG_D(NR_PHY, "Sync achieved by Nearby\n");
-            UE->is_synchronized_sl = 1;
-          }
-        }
-      }
     }
     for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++) {
       memset(txp[i], 0, writeBlockSize);

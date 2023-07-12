@@ -329,7 +329,7 @@ static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
   ue->slss->sl_timeoffsetssb_r16_copy = 2;
   ue->slss->slss_id = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
   ue->is_synchronized_sl = 0;
-  ue->UE_fo_compensation = 1;
+  ue->UE_fo_compensation = 0;
   ue->UE_scan_carrier = 1;
   ue->sync_ref = get_softmodem_params()->sync_ref;
   LOG_I(NR_PHY, "nrUE configured\n");
