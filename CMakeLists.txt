@@ -46,6 +46,13 @@ include_directories(${CONFIG_INCLUDE_DIRS})
 pkg_search_module(CRYPTO libcrypto REQUIRED)
 include_directories(${CRYPTO_INCLUDE_DIRS})
 
+if (CROSS_COMPILER)
+  include_directories("${CMAKE_CURRENT_LIST_DIR}/cmake_targets/ran_build/build/ldpc/generator_bnProc")
+  include_directories("${CMAKE_CURRENT_LIST_DIR}/cmake_targets/ran_build/build/ldpc/generator_bnProc_avx512")
+  include_directories("${CMAKE_CURRENT_LIST_DIR}/cmake_targets/ran_build/build/ldpc/generator_cnProc")
+  include_directories("${CMAKE_CURRENT_LIST_DIR}/cmake_targets/ran_build/build/ldpc/generator_cnProc_avx512")
+endif()
+
 # Check if asn1c is installed, and check if it supports all options we need
 # a user can provide ASN1C_EXEC to override an asn1c to use (e.g., parallel
 # installation)
@@ -180,7 +187,7 @@ add_list_string_option(CMAKE_BUILD_TYPE "RelWithDebInfo" "Choose the type of bui
 # in case /proc/cpuinfo exists we want to inspect available Intrinsics
 # -so not to go always through SIMDE emulation
 # -so to avoid AVX512 instructions generation by gcc   
-if(EXISTS "/proc/cpuinfo")
+if(EXISTS "/proc/cpuinfo" AND NOT CROSS_COMPILER)
   file(STRINGS "/proc/cpuinfo" CPUFLAGS REGEX flags LIMIT_COUNT 1)
 else()
   message(WARNING "did not find /proc/cpuinfo -- not setting any x86-specific compilation variables")
@@ -1009,11 +1016,17 @@ set(PHY_NR_CODINGIF
 )
 
 add_library(ldpc_orig MODULE ${PHY_LDPC_ORIG_SRC} )
-target_link_libraries(ldpc_orig PRIVATE ldpc_gen_HEADERS)
+if (NOT CROSS_COMPILER)
+  target_link_libraries(ldpc_orig PRIVATE ldpc_gen_HEADERS)
+endif()
 add_library(ldpc_optim MODULE ${PHY_LDPC_OPTIM_SRC} )
-target_link_libraries(ldpc_optim PRIVATE ldpc_gen_HEADERS)
+if (NOT CROSS_COMPILER)
+  target_link_libraries(ldpc_optim PRIVATE ldpc_gen_HEADERS)
+endif()
 add_library(ldpc_optim8seg MODULE ${PHY_LDPC_OPTIM8SEG_SRC} )
-target_link_libraries(ldpc_optim8seg PRIVATE ldpc_gen_HEADERS)
+if (NOT CROSS_COMPILER)
+  target_link_libraries(ldpc_optim8seg PRIVATE ldpc_gen_HEADERS)
+endif()
 add_library(ldpc_cl MODULE ${PHY_LDPC_CL_SRC} )
 target_link_libraries(ldpc_cl OpenCL)
 add_dependencies(ldpc_cl nrLDPC_decoder_kernels_CL)
@@ -1036,12 +1049,14 @@ if (ENABLE_LDPC_CUDA)
 endif()
 
 add_library(ldpc MODULE ${PHY_LDPC_OPTIM8SEGMULTI_SRC} )
-target_link_libraries(ldpc PRIVATE ldpc_gen_HEADERS)
-
+if (NOT CROSS_COMPILER)
+  target_link_libraries(ldpc PRIVATE ldpc_gen_HEADERS)
+endif()
 add_library(ldpc_parityCheck MODULE ${PHY_LDPC_OPTIM8SEGMULTI_SRC} )
 target_compile_definitions(ldpc_parityCheck PUBLIC NR_LDPC_ENABLE_PARITY_CHECK)
-target_link_libraries(ldpc_parityCheck  PRIVATE ldpc_gen_HEADERS)
-
+if (NOT CROSS_COMPILER)
+  target_link_libraries(ldpc_parityCheck  PRIVATE ldpc_gen_HEADERS)
+endif()
 add_library(coding MODULE ${PHY_TURBOSRC} )
 
 add_library(dfts MODULE ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts.c ${OPENAIR1_DIR}/PHY/TOOLS/oai_dfts_neon.c)
@@ -2706,7 +2721,9 @@ if(OAI_NW_DRIVER_USE_NETLINK)
 endif()
 make_driver(ue_ip ${OPENAIR2_DIR}/NETWORK_DRIVER/UE_IP ${ue_ip_src})
 
-include(${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/CMakeLists.txt)
+if (NOT CROSS_COMPILER)
+  include(${OPENAIR1_DIR}/PHY/CODING/nrLDPC_decoder/nrLDPC_tools/CMakeLists.txt)
+endif()
 
 add_subdirectory(common)
 add_subdirectory(doc)

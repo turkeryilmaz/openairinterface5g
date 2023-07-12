@@ -60,7 +60,6 @@ OPTIONAL_LIBRARIES="telnetsrv enbscope uescope nrscope nrqtscope ldpc_cuda ldpc_
 RU=0
 CMAKE_C_FLAGS=()
 CMAKE_CXX_FLAGS=()
-CROSS_COMPILER=0
 
 function print_help() {
   echo_info "
@@ -180,10 +179,6 @@ function main() {
   until [ -z "$1" ]
   do
     case "$1" in
-       --cross-compiler)
-            CROSS_COMPILER=1
-            CMAKE_CMD="$CMAKE_CMD -DCROSS_COMPILER=1"
-            shift;;
        --arch-native)
             CMAKE_C_FLAGS+=("-march=native")
             CMAKE_CXX_FLAGS+=("-march=native")
