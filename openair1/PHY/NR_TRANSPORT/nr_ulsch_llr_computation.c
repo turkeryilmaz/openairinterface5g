@@ -38,10 +38,9 @@
 #define USE_128BIT
 #endif
 
-static const int16_t ones[8] __attribute__((aligned(16))) = {0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff};
+#ifdef USE_128BIT
 
-static const int16_t ones256[16] __attribute__((aligned(32))) = {0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff,
-                                                                 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff};
+static const int16_t ones[8] __attribute__((aligned(16))) = {0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff};
 
 // calculate interference magnitude
 // tmp_result = ones in shorts corr. to interval 2<=x<=4, tmp_result2 interval < 2, tmp_result3 interval 4<x<6 and tmp_result4
@@ -70,6 +69,77 @@ static inline simde__m128i interference_abs_64qam_epi16(simde__m128i psi,
   return simde_mm_or_si128(tmp_result, tmp_result3); 
 }
 
+// Calculates psi_a = psi_r * a_r + psi_i * a_i
+static inline simde__m128i prodsum_psi_a_epi16(simde__m128i psi_r, simde__m128i a_r, simde__m128i psi_i, simde__m128i a_i)
+{
+  simde__m128i tmp_result = simde_mm_mulhi_epi16(psi_r, a_r);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
+  simde__m128i tmp_result2 = simde_mm_mulhi_epi16(psi_i, a_i);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
+  return simde_mm_adds_epi16(tmp_result, tmp_result2);
+}
+
+// Calculate interference magnitude
+static inline simde__m128i interference_abs_epi16(simde__m128i psi, simde__m128i int_ch_mag, simde__m128i c1, simde__m128i c2)
+{
+  simde__m128i tmp_result = simde_mm_cmplt_epi16(psi, int_ch_mag);
+  simde__m128i tmp_result2 = simde_mm_xor_si128(tmp_result, (*(simde__m128i *)&ones[0]));
+  tmp_result = simde_mm_and_si128(tmp_result, c1);
+  tmp_result2 = simde_mm_and_si128(tmp_result2, c2);
+  return simde_mm_or_si128(tmp_result, tmp_result2);
+}
+
+// Calculates a_sq = int_ch_mag * (a_r^2 + a_i^2) * scale_factor
+static inline simde__m128i square_a_epi16(simde__m128i a_r, simde__m128i a_i, simde__m128i int_ch_mag, simde__m128i scale_factor)
+{
+  simde__m128i tmp_result = simde_mm_mulhi_epi16(a_r, a_r);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
+  tmp_result = simde_mm_mulhi_epi16(tmp_result, scale_factor);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
+  tmp_result = simde_mm_mulhi_epi16(tmp_result, int_ch_mag);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
+  simde__m128i tmp_result2 = simde_mm_mulhi_epi16(a_i, a_i);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
+  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, scale_factor);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
+  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, int_ch_mag);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
+  return simde_mm_adds_epi16(tmp_result, tmp_result2);
+}
+
+// calculates a_sq = int_ch_mag*(a_r^2 + a_i^2)*scale_factor for 64-QAM
+static inline simde__m128i square_a_64qam_epi16(simde__m128i a_r, simde__m128i a_i, simde__m128i int_ch_mag, simde__m128i scale_factor)
+{
+  simde__m128i tmp_result = simde_mm_mulhi_epi16(a_r, a_r);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
+  tmp_result = simde_mm_mulhi_epi16(tmp_result, scale_factor);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 3);
+  tmp_result = simde_mm_mulhi_epi16(tmp_result, int_ch_mag);
+  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
+  simde__m128i tmp_result2 = simde_mm_mulhi_epi16(a_i, a_i);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
+  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, scale_factor);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 3);
+  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, int_ch_mag);
+  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
+  return simde_mm_adds_epi16(tmp_result, tmp_result2);
+}
+
+simde__m128i max_epi16(simde__m128i m0, simde__m128i m1, simde__m128i m2, simde__m128i m3, simde__m128i m4, simde__m128i m5, simde__m128i m6, simde__m128i m7)
+{
+  simde__m128i a0 = simde_mm_max_epi16(m0, m1);
+  simde__m128i a1 = simde_mm_max_epi16(m2, m3);
+  simde__m128i a2 = simde_mm_max_epi16(m4, m5);
+  simde__m128i a3 = simde_mm_max_epi16(m6, m7);
+  simde__m128i b0 = simde_mm_max_epi16(a0, a1);
+  simde__m128i b1 = simde_mm_max_epi16(a2, a3);
+  return simde_mm_max_epi16(b0, b1);
+}
+
+#else
+
+static const int16_t ones256[16] __attribute__((aligned(32))) = {0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff,
+                                                                 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff};
 
 // calculate interference magnitude
 // tmp_result = ones in shorts corr. to interval 2<=x<=4, tmp_result2 interval < 2, tmp_result3 interval 4<x<6 and tmp_result4
@@ -98,16 +168,6 @@ static inline simde__m256i interference_abs_64qam_epi16_256(simde__m256i psi,
   return simde_mm256_or_si256(tmp_result, tmp_result3);
 }
 
-// Calculates psi_a = psi_r * a_r + psi_i * a_i
-static inline simde__m128i prodsum_psi_a_epi16(simde__m128i psi_r, simde__m128i a_r, simde__m128i psi_i, simde__m128i a_i)
-{
-  simde__m128i tmp_result = simde_mm_mulhi_epi16(psi_r, a_r);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
-  simde__m128i tmp_result2 = simde_mm_mulhi_epi16(psi_i, a_i);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
-  return simde_mm_adds_epi16(tmp_result, tmp_result2);
-}
-
 // calculates psi_a = psi_r*a_r + psi_i*a_i
 static inline simde__m256i prodsum_psi_a_epi16_256(simde__m256i psi_r, simde__m256i a_r, simde__m256i psi_i, simde__m256i a_i)
 {
@@ -119,16 +179,6 @@ static inline simde__m256i prodsum_psi_a_epi16_256(simde__m256i psi_r, simde__m2
 }
 
 // Calculate interference magnitude
-static inline simde__m128i interference_abs_epi16(simde__m128i psi, simde__m128i int_ch_mag, simde__m128i c1, simde__m128i c2)
-{
-  simde__m128i tmp_result = simde_mm_cmplt_epi16(psi, int_ch_mag);
-  simde__m128i tmp_result2 = simde_mm_xor_si128(tmp_result, (*(simde__m128i *)&ones[0]));
-  tmp_result = simde_mm_and_si128(tmp_result, c1);
-  tmp_result2 = simde_mm_and_si128(tmp_result2, c2);
-  return simde_mm_or_si128(tmp_result, tmp_result2);
-}
-
-// Calculate interference magnitude
 static inline simde__m256i interference_abs_epi16_256(simde__m256i psi, simde__m256i int_ch_mag, simde__m256i c1, simde__m256i c2)
 {
   simde__m256i tmp_result = simde_mm256_cmpgt_epi16(int_ch_mag, psi);
@@ -136,24 +186,6 @@ static inline simde__m256i interference_abs_epi16_256(simde__m256i psi, simde__m
   tmp_result = simde_mm256_and_si256(tmp_result, c1);
   tmp_result2 = simde_mm256_and_si256(tmp_result2, c2);
   return simde_mm256_or_si256(tmp_result, tmp_result2);
-}
-
-// Calculates a_sq = int_ch_mag * (a_r^2 + a_i^2) * scale_factor
-static inline simde__m128i square_a_epi16(simde__m128i a_r, simde__m128i a_i, simde__m128i int_ch_mag, simde__m128i scale_factor)
-{
-  simde__m128i tmp_result = simde_mm_mulhi_epi16(a_r, a_r);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
-  tmp_result = simde_mm_mulhi_epi16(tmp_result, scale_factor);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
-  tmp_result = simde_mm_mulhi_epi16(tmp_result, int_ch_mag);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
-  simde__m128i tmp_result2 = simde_mm_mulhi_epi16(a_i, a_i);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
-  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, scale_factor);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
-  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, int_ch_mag);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
-  return simde_mm_adds_epi16(tmp_result, tmp_result2);
 }
 
 // Calculates a_sq = int_ch_mag * (a_r^2 + a_i^2) * scale_factor
@@ -175,25 +207,6 @@ static inline simde__m256i square_a_epi16_256(simde__m256i a_r, simde__m256i a_i
 }
 
 // calculates a_sq = int_ch_mag*(a_r^2 + a_i^2)*scale_factor for 64-QAM
-static inline simde__m128i square_a_64qam_epi16(simde__m128i a_r, simde__m128i a_i, simde__m128i int_ch_mag, simde__m128i scale_factor)
-{
-  simde__m128i tmp_result = simde_mm_mulhi_epi16(a_r, a_r);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
-  tmp_result = simde_mm_mulhi_epi16(tmp_result, scale_factor);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 3);
-  tmp_result = simde_mm_mulhi_epi16(tmp_result, int_ch_mag);
-  tmp_result = simde_mm_slli_epi16(tmp_result, 1);
-  simde__m128i tmp_result2 = simde_mm_mulhi_epi16(a_i, a_i);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
-  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, scale_factor);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 3);
-  tmp_result2 = simde_mm_mulhi_epi16(tmp_result2, int_ch_mag);
-  tmp_result2 = simde_mm_slli_epi16(tmp_result2, 1);
-  return simde_mm_adds_epi16(tmp_result, tmp_result2);
-}
-
-
-// calculates a_sq = int_ch_mag*(a_r^2 + a_i^2)*scale_factor for 64-QAM
 static inline simde__m256i square_a_64qam_epi16_256(simde__m256i a_r, simde__m256i a_i, simde__m256i int_ch_mag, simde__m256i scale_factor)
 {
   simde__m256i tmp_result = simde_mm256_mulhi_epi16(a_r, a_r);
@@ -211,17 +224,6 @@ static inline simde__m256i square_a_64qam_epi16_256(simde__m256i a_r, simde__m25
   return simde_mm256_adds_epi16(tmp_result, tmp_result2);
 }
 
-simde__m128i max_epi16(simde__m128i m0, simde__m128i m1, simde__m128i m2, simde__m128i m3, simde__m128i m4, simde__m128i m5, simde__m128i m6, simde__m128i m7)
-{
-  simde__m128i a0 = simde_mm_max_epi16(m0, m1);
-  simde__m128i a1 = simde_mm_max_epi16(m2, m3);
-  simde__m128i a2 = simde_mm_max_epi16(m4, m5);
-  simde__m128i a3 = simde_mm_max_epi16(m6, m7);
-  simde__m128i b0 = simde_mm_max_epi16(a0, a1);
-  simde__m128i b1 = simde_mm_max_epi16(a2, a3);
-  return simde_mm_max_epi16(b0, b1);
-}
-
 simde__m256i max_epi16_256(simde__m256i m0, simde__m256i m1, simde__m256i m2, simde__m256i m3, simde__m256i m4, simde__m256i m5, simde__m256i m6, simde__m256i m7)
 {
   simde__m256i a0 = simde_mm256_max_epi16(m0, m1);
@@ -232,6 +234,8 @@ simde__m256i max_epi16_256(simde__m256i m0, simde__m256i m1, simde__m256i m2, si
   simde__m256i b1 = simde_mm256_max_epi16(a2, a3);
   return simde_mm256_max_epi16(b0, b1);
 }
+
+#endif
 
 //----------------------------------------------------------------------------------------------
 // QPSK
