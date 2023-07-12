@@ -516,6 +516,7 @@ void handle_nr_ul_harq(const int CC_idP,
   }
   /* for no-harq case, the harq is already reused in ulsch scheduler, no need to handle it again */
   if (get_softmodem_params()->no_harq) {
+    NR_SCHED_UNLOCK(&nrmac->sched_lock);
     return;
   }
   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
@@ -600,6 +601,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
   if (UE && UE_waiting_CFRA_msg3 == false) {
 
     NR_UE_sched_ctrl_t *UE_scheduling_control = &UE->UE_sched_ctrl;
+    int8_t harq_pid = UE_scheduling_control->feedback_ul_harq.head;
 
     if (sduP)
       T(T_GNB_MAC_UL_PDU_WITH_DATA, T_INT(gnb_mod_idP), T_INT(CC_idP),
