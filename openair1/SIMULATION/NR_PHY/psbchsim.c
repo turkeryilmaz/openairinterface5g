@@ -612,7 +612,7 @@ int main(int argc, char **argv)
     if (((float)n_errors / (float)n_trials <= target_error_rate) && (n_errors_payload == 0)) {
       printf("PSBCH test OK\n");
     }
-  } // NSR
+  } // SNR
 
   free_psbchsim_members(UE, s_re, s_im, r_re, r_im, txdata);
 

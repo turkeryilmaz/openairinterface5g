@@ -2266,7 +2266,7 @@ target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
   )
 target_link_libraries(nr_psbchsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
-  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
+  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl shlib_loader
 )
 target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
@@ -2277,10 +2277,11 @@ target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
   ${T_SOURCE}
   ${SHLIB_LOADER_SOURCES}
   )
-target_link_libraries(nr_psschsim
+target_link_libraries(nr_psschsim PRIVATE
   -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
-  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl
+  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl shlib_loader
   )
+target_link_libraries(nr_psschsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 add_executable(nr_pucchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c

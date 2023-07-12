@@ -26,30 +26,31 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include "common/config/config_userapi.h"
-#include "common/utils/load_module_shlib.h"
 #include "common/utils/LOG/log.h"
-#include "common/ran_context.h"
+#include "common/utils/load_module_shlib.h"
+#include "common/utils/nr/nr_common.h"
 #include "PHY/types.h"
 #include "PHY/defs_nr_common.h"
 #include "PHY/defs_nr_UE.h"
-#include "PHY/NR_REFSIG/refsig_defs_ue.h"
-#include "PHY/MODULATION/nr_modulation.h"
+#include "openair1/PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/MODULATION/modulation_eNB.h"
 #include "PHY/MODULATION/modulation_UE.h"
+#include "PHY/MODULATION/nr_modulation.h"
+#include "PHY/INIT/nr_phy_init.h"
 #include "PHY/NR_TRANSPORT/nr_transport_proto.h"
-#include "PHY/NR_TRANSPORT/nr_dlsch.h"
-#include "PHY/NR_TRANSPORT/nr_ulsch.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
-#include "PHY/phy_vars_nr_ue.h"
-#include "openair1/PHY/INIT/nr_phy_init.h"
+#include "PHY/NR_UE_ESTIMATION/nr_estimation.h"
+#include "PHY/phy_vars.h"
 #include "SCHED_NR/sched_nr.h"
 #include "openair1/SIMULATION/TOOLS/sim.h"
 #include "openair1/SIMULATION/RF/rf.h"
+#include "openair1/SIMULATION/NR_PHY/nr_unitary_defs.h"
 #include "openair1/SIMULATION/NR_PHY/nr_dummy_functions.c"
-#include "common/utils/threadPool/thread-pool.h"
-#include "executables/nr-uesoftmodem.h"
-#include "PHY/impl_defs_top.h"
-#include "PHY/MODULATION/modulation_common.h"
+#include "openair1/PHY/MODULATION/nr_modulation.h"
+#include "openair1/PHY/NR_REFSIG/pss_nr.h"
+#include <executables/softmodem-common.h>
+#include <executables/nr-uesoftmodem.h>
+#include "openair1/SCHED_NR_UE/defs.h"
 
 #define DEBUG_NR_PSSCHSIM
 
@@ -76,7 +77,6 @@ typedef struct {
 
 #define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 #define SCI2_LEN_SIZE 35
-RAN_CONTEXT_t RC;
 double cpuf;
 uint16_t NB_UE_INST = 1;
 openair0_config_t openair0_cfg[MAX_CARDS];
