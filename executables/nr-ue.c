@@ -1096,7 +1096,6 @@ void *UE_thread(void *arg) {
   initNotifiedFIFO_nothreadSafe(&freeBlocks);
 
   int timing_advance = UE->timing_advance;
-  NR_UE_MAC_INST_t *mac = get_mac_inst(0);
 
   bool syncRunning=false;
   const int nb_slot_frame = UE->frame_parms.slots_per_frame;
