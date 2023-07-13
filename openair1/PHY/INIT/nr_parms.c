@@ -42,9 +42,16 @@ static const int nr_ssb_table[48][3] = {
     {93, 15, nr_ssb_type_A}, {94, 15, nr_ssb_type_A}, {96, 30, nr_ssb_type_C}};
 
 void set_Lmax(NR_DL_FRAME_PARMS *fp) {
-
-  if (get_softmodem_params()->sl_mode == 2) {
-    fp->Lmax = 1;
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
+    int sl_NumSSB_WithinPeriod = 1; //TODO: Needs to be updated from RRC parameters
+    int sl_TimeOffsetSSB = 1; //TODO: Needs to be updated from RRC parameters
+    int sl_TimeInterval = 1; //TODO: Needs to be updated from RRC parameters
+    if ((sl_NumSSB_WithinPeriod == 4) && ((sl_TimeOffsetSSB % fp->slots_per_frame) + 3 * sl_TimeInterval < NR_NUMBER_OF_SUBFRAMES_PER_FRAME * 2))
+      fp->Lmax = 4;
+    else if ((sl_NumSSB_WithinPeriod == 2) && ((sl_TimeOffsetSSB % fp->slots_per_frame) + sl_TimeInterval < NR_NUMBER_OF_SUBFRAMES_PER_FRAME))
+      fp->Lmax = 2;
+    else
+      fp->Lmax = 1;
     return;
   }
   // definition of Lmax according to ts 38.213 section 4.1
@@ -158,7 +165,7 @@ void set_scs_parameters (NR_DL_FRAME_PARMS *fp, int mu, int N_RB_DL)
 
   fp->first_carrier_offset = fp->ofdm_symbol_size - (N_RB_DL * 12 / 2);
   // TODO: Temporarily setting fp->first_carrier_offset = 0 for SL until MAC is developed
-  if (get_softmodem_params()->sl_mode == 2)
+  if (get_softmodem_params()->sl_mode == SL_MODE_2)
     fp->first_carrier_offset = 0;
   fp->nb_prefix_samples    = fp->ofdm_symbol_size / 128 * 9;
   fp->nb_prefix_samples0   = fp->ofdm_symbol_size / 128 * (9 + (1 << mu));
@@ -228,7 +235,7 @@ int nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg,
   fp->half_frame_bit = 0;  // half frame bit initialized to 0 here
   fp->numerology_index = mu;
   set_scs_parameters(fp, mu, fp->N_RB_DL);
-  if (get_softmodem_params()->sl_mode != 0) {
+  if (get_softmodem_params()->sl_mode != SL_MODE_NONE) {
     set_scs_parameters(fp, mu, fp->N_RB_SL);
   }
 
@@ -294,7 +301,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   LOG_D(PHY,"dl_bw_kHz %lu\n",dl_bw_khz);
   LOG_D(PHY,"dl_CarrierFreq %lu\n",fp->dl_CarrierFreq);
 
-  if (get_softmodem_params()->sl_mode == 2) {
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     uint64_t sl_bw_khz = (12 * config->carrier_config.sl_grid_size[config->ssb_config.scs_common]) * (15 << config->ssb_config.scs_common);
     fp->sl_CarrierFreq = ((sl_bw_khz >> 1) + config->carrier_config.sl_frequency) * 1000;
   }
@@ -324,7 +331,7 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
     AssertFatal(fp->numerology_index == NR_MU_2,"Invalid cyclic prefix %d for numerology index %d\n", Ncp, fp->numerology_index);
 
   fp->Ncp = Ncp;
-  int N_RB = (get_softmodem_params()->sl_mode == 2) ? fp->N_RB_SL : fp->N_RB_DL;
+  int N_RB = (get_softmodem_params()->sl_mode == SL_MODE_2) ? fp->N_RB_SL : fp->N_RB_DL;
   set_scs_parameters(fp, fp->numerology_index, N_RB);
 
   fp->slots_per_frame = 10* fp->slots_per_subframe;
@@ -350,8 +357,8 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
 
   fp->ssb_start_subcarrier = (12 * config->ssb_table.ssb_offset_point_a + sco);
   // TODO: Temporarily setting fp->ssb_start_subcarrier = 0 for SL until MAC is developed
-  if (get_softmodem_params()->sl_mode == 2) {
-      fp->ssb_start_subcarrier = 0;
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
+    fp->ssb_start_subcarrier = 0;
   }
   set_Lmax(fp);
 

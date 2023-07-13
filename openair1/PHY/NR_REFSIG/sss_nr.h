@@ -74,26 +74,23 @@
 #define  SSS_START_IDX                (3)      /* [0:PSBCH 1:PSS0 2:PSS1 3:SSS0 4:SSS1] */
 #define  NUM_SSS_SYMBOLS              (2)
 
-#define SSS_METRIC_FLOOR_NR   (30000)
-
 /************** VARIABLES *****************************************/
 
 #define PHASE_HYPOTHESIS_NUMBER       (16)
-#define INDEX_NO_PHASE_DIFFERENCE     (3)          /* this is for no phase shift case */
+#define INDEX_NO_PHASE_DIFFERENCE (3) /* this is for no phase shift case */
 
+/* These EXTERNS will be used in SL. They are utilized in MR2204 */
 EXTERN const int16_t phase_re_nr[PHASE_HYPOTHESIS_NUMBER]
 #ifdef INIT_VARIABLES_SSS_NR_H
-// -pi/3 ---- pi/3
-= {16384,20173,23571,26509,28932,30791,32051,32687,32687,32051,30791,
-   28932,26509,23571,20173,16384}
+    // -pi/3 ---- pi/3
+    = {16384, 20173, 23571, 26509, 28932, 30791, 32051, 32687, 32687, 32051, 30791, 28932, 26509, 23571, 20173, 16384}
 #endif
 ;
 
 EXTERN const int16_t phase_im_nr[PHASE_HYPOTHESIS_NUMBER]
 #ifdef INIT_VARIABLES_SSS_NR_H
-// -pi/3 ---- pi/3
-= {-28377,-25821,-22762,-19260,-15383,-11207,-6813,-2286,2286,6813,11207,
-   15383,19260,22762,25821,28377}
+    // -pi/3 ---- pi/3
+    = {-28377, -25821, -22762, -19260, -15383, -11207, -6813, -2286, 2286, 6813, 11207, 15383, 19260, 22762, 25821, 28377}
 #endif
 ;
 

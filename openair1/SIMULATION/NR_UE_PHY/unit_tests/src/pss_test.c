@@ -119,7 +119,7 @@ void test_synchro_pss_nr(PHY_VARS_NR_UE *PHY_VARS_NR_UE, int position_symbol, in
 
   /* search pss */
   synchro_position = pss_synchro_nr(PHY_VARS_NR_UE, rate_change);
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == SL_MODE_NONE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
 
   if (pss_sequence_number < pss_sequence) {
     NID2_value = pss_sequence_number;
@@ -133,7 +133,7 @@ void test_synchro_pss_nr(PHY_VARS_NR_UE *PHY_VARS_NR_UE, int position_symbol, in
     int test_margin = PSS_DETECTION_MARGIN_MAX; /* warning correlation results give an offset position between 0 and 12 */
     int delta_position = abs(position_symbol - (synchro_position*rate_change));
     printf("%s ", test->test_current);
-    if (PHY_VARS_NR_UE->common_vars.eNb_id == pss_sequence_number) {
+    if (PHY_VARS_NR_UE->common_vars.gNb_id == pss_sequence_number) {
       if ( delta_position !=  0) {
         if (delta_position > test_margin*rate_change) {
         printf("Test is fail due to wrong position %d instead of %d \n", (synchro_position*rate_change), position_symbol);
@@ -152,7 +152,7 @@ void test_synchro_pss_nr(PHY_VARS_NR_UE *PHY_VARS_NR_UE, int position_symbol, in
       }
     }
     else {
-      printf("Test is fail due to wrong NID2 detection %d instead of %d \n", PHY_VARS_NR_UE->common_vars.eNb_id, NID2_value);
+      printf("Test is fail due to wrong NID2 detection %d instead of %d \n", PHY_VARS_NR_UE->common_vars.gNb_id, NID2_value);
       test->number_of_fail++;
     }
   }
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
   test_synchro_pss_nr(PHY_vars_UE, 0, INVALID_PSS_SEQUENCE, &test);
 
 #endif
-  int pss_sequence = get_softmodem_params()->sl_mode == 0 ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
+  int pss_sequence = get_softmodem_params()->sl_mode == SL_MODE_NONE ? NUMBER_PSS_SEQUENCE : NUMBER_PSS_SEQUENCE_SL;
 
   for (int index_position = 0; index_position < size_test_position; index_position++) {
     for (int number_pss_sequence = 0; number_pss_sequence < pss_sequence; number_pss_sequence++) {

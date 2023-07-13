@@ -203,7 +203,7 @@ extern int usrp_tx_thread;
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
-    { .s5 = { NULL } },                     \
+    { .s2 = { config_check_intrange, {0,2} }},\
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
