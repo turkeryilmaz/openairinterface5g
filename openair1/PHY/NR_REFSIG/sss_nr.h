@@ -51,7 +51,7 @@
 #define  NUMBER_SSS_SEQUENCE          (336)
 #define  INVALID_SSS_SEQUENCE         (NUMBER_SSS_SEQUENCE)
 #define  LENGTH_SSS_NR                (127)
-#define  SCALING_METRIC_SSS_NR        (19)//(15)
+#define  SCALING_METRIC_SSS_NR        (15)//(19)
 
 #define  N_ID_2_NUMBER                (NUMBER_PSS_SEQUENCE)
 #define  N_ID_2_NUMBER_SL             (NUMBER_PSS_SEQUENCE_SL)
@@ -64,12 +64,6 @@
 #define  GET_NID1_SL(Nid_SL)          (Nid_SL%NUMBER_SSS_SEQUENCE)
 
 #define  PSS_SC_START_NR              (52)     /* see from TS 38.211 table 7.4.3.1-1: Resources within an SS/PBCH block for PSS... */
-#define  SSS_START_IDX                (3)      /* [0:PSBCH 1:PSS0 2:PSS1 3:SSS0 4:SSS1] */
-#define  NUM_SSS_SYMBOLS              (2)
-
-#define  SSS_START_IDX                (3)      /* [0:PSBCH 1:PSS0 2:PSS1 3:SSS0 4:SSS1] */
-#define  NUM_SSS_SYMBOLS              (2)
-#define  INITIAL_SSS_NR               (7)
 
 #define  SSS_START_IDX                (3)      /* [0:PSBCH 1:PSS0 2:PSS1 3:SSS0 4:SSS1] */
 #define  NUM_SSS_SYMBOLS              (2)
@@ -101,10 +95,10 @@ EXTERN int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
 void init_context_sss_nr(int amp);
 void free_context_sss_nr(void);
 
-void insert_sss_nr(c16_t *sss_time,
+void insert_sss_nr(int16_t *sss_time,
                    NR_DL_FRAME_PARMS *frame_parms);
 
-int rx_sss_sl_nr(PHY_VARS_NR_UE *ue,
+int rx_sss_sl_nr(PHY_VARS_NR_UE *ue, 
                  UE_nr_rxtx_proc_t *proc,
                  int32_t *tot_metric,
                  uint8_t *phase_max,
