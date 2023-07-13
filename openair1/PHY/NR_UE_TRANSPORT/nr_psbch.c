@@ -25,7 +25,7 @@
  * \date 2022
  * \version 0.1
  * \company EpiSci
- * \email: melissa@episci.com, dkim@episci.com
+ * \email: melissa@episci.com, david.kim@episci.com
  */
 
 #include "PHY/defs_nr_UE.h"

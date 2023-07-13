@@ -140,8 +140,12 @@ void free_psbchsim_members(PHY_VARS_NR_UE *UE,
                            double **r_im,
                            c16_t **txdata)
 {
+  term_nr_ue_signal(UE, 1);
+  free(UE->slss);
+  free(UE);
 
   for (int i = 0; i < 2; i++) {
+    if (s_re[i]) free(s_re[i]);
     if (s_im[i]) free(s_im[i]);
     if (r_re[i]) free(r_re[i]);
     if (r_im[i]) free(r_im[i]);
@@ -198,7 +202,7 @@ void nr_phy_config_request_sim_psbchsim(PHY_VARS_NR_UE *ue,
   fp->first_carrier_offset = 0;
   fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
   int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_SL);
-  nrUE_config->carrier_config.dl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
+  nrUE_config->carrier_config.sl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
   nr_init_frame_parms_ue(fp, nrUE_config, fp->nr_band);
   init_timeshift_rotation(fp);
   init_symbol_rotation(fp);
@@ -352,7 +356,7 @@ static void get_sim_cl_opts(int argc, char **argv)
 int main(int argc, char **argv)
 {
   get_softmodem_params()->sa = 1;
-  get_softmodem_params()->sl_mode = 2;
+  get_softmodem_params()->sl_mode = SL_MODE_2;
   if (load_configmodule(argc, argv, CONFIG_ENABLECMDLINEONLY) == 0) {
     exit_fun("[NR_PSBCHSIM] Error, configuration module init failed\n");
   }
@@ -572,7 +576,7 @@ int main(int argc, char **argv)
         for (int i = UE->symbol_offset; i < UE->symbol_offset + 13; i++) {
           nr_slot_fep(UE, &proc, i % UE->frame_parms.symbols_per_slot, rxdataF);
 	        for (int aa = 0; aa < UE->frame_parms.nb_antennas_rx; aa++)
-             memcpy(UE->common_vars.rxdataF[aa],rxdataF, 4 * rxdataF_sz);
+             memcpy(UE->common_vars.rxdataF[aa], rxdataF, 4 * rxdataF_sz);
           nr_psbch_channel_estimation(UE, estimateSz, dl_ch_estimates, dl_ch_estimates_time, &proc,
                                       0, ssb_slot, i % UE->frame_parms.symbols_per_slot,
                                       i - (UE->symbol_offset), ssb_index % 8, n_hf);

@@ -24,7 +24,7 @@
  * \date 2022
  * \version 0.1
  * \company EpiSci
- * \email: melissa@episci.com, dkim@episci.com
+ * \email: melissa@episci.com, david.kim@episci.com
  */
 
 #include <stdio.h>
@@ -195,7 +195,7 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
                      c16_t sss1_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR])
 {
   int id = ue->common_vars.sl_nid2;
-  c16_t *pss = (c16_t *)get_primary_synchro_nr2(id);
+  int16_t *pss = get_primary_synchro_nr2_sl(id);
   c16_t tmp, tmp2;
   c16_t *sss0_ext3 = &sss0_ext[0][0];
   for (uint8_t aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
@@ -203,8 +203,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss0_ext2 = &pss0_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = pss0_ext2[i].r * pss[i].r;
-      tmp.i = -pss0_ext2[i].i * pss[i].i;
+      tmp.r = pss0_ext2[i].r * pss[i];
+      tmp.i = -pss0_ext2[i].i * pss[i];
 
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
@@ -228,8 +228,8 @@ int pss_sl_ch_est_nr(PHY_VARS_NR_UE *ue,
     c16_t *pss1_ext2 = &pss1_ext[aarx][0];
     for (uint8_t i = 0; i < LENGTH_PSS_NR; i++) {
       // This is H*(PSS) = R* \cdot PSS
-      tmp.r = pss1_ext2[i].r * pss[i].r;
-      tmp.i = -pss1_ext2[i].i * pss[i].i;
+      tmp.r = pss1_ext2[i].r * pss[i];
+      tmp.i = -pss1_ext2[i].i * pss[i];
       int32_t amp = (((int32_t)tmp.r) * tmp.r) + ((int32_t)tmp.i) * tmp.i;
       int shift = log2_approx(amp) / 2;
       // This is R(SSS) \cdot H*(PSS)

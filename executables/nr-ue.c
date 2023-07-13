@@ -473,6 +473,7 @@ static void UE_synch(void *arg) {
       break;
 
     case SYNC_MODE_SI:
+      break;
 
     case SYNC_MODE_PSBCH: {
       int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
