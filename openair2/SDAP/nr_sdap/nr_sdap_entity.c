@@ -512,8 +512,8 @@ bool nr_sdap_delete_ue_entities(ue_id_t ue_id)
   int upperBound = 0;
   bool ret = false;
 
-  if (entityPtr == NULL && (ue_id) * (ue_id - SDAP_MAX_UE_ID) > 0) {
-    LOG_W(SDAP, "SDAP entities not established or Invalid range of ue_id [0, 65536]\n");
+  if (entityPtr == NULL || ue_id < 0x1 || ue_id > 0xffef) {
+    LOG_W(SDAP, "SDAP entities not established or Invalid range of ue_id [0, 65519]\n");
     return ret;
   }
 

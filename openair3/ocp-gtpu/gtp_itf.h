@@ -76,11 +76,14 @@ extern "C" {
 
   int gtpv1u_delete_ngu_tunnel( const instance_t instance,
                                 gtpv1u_gnb_delete_tunnel_req_t *req);
-  
-  int gtpv1u_update_ngu_tunnel( const instance_t                              instanceP,
-                                const gtpv1u_gnb_create_tunnel_req_t *const  create_tunnel_req_pP,
-                                const ue_id_t                                  prior_rnti
-                                );
+  /**
+   * @brief Updates the GTPU instances, with the new UEid after RRC Reestablishment
+   * @param[in] instanceP         GTP Entpoint instance.
+   * @param[in] ue_id             Unique identifier for the User Equipment. ID Range [0, 65536].
+   * @param[in] reestablish_ue_id Unique identifier for the OLD ue ID. ID Range [0, 65536].
+   * @return                      !GTPNOK, if successfully updated instance, GTPNOK otherwise.
+   */
+  int gtpu_ngu_tunnel_reestablishment(const instance_t instanceP, const ue_id_t ue_id, const ue_id_t reestablish_ue_id);
 
   // New API
   teid_t newGtpuCreateTunnel(instance_t instance,
