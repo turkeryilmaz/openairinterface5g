@@ -798,7 +798,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
-  int              rx_offset_sl;    /// Timing offset for Sidelink
+  int              rx_offset_sl;   /// Timing offset for Sidelink
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame

@@ -25,7 +25,7 @@
  * \date 2022
  * \version 0.1
  * \company EpiSci
- * \email: melissa@episci.com, dkim@episci.com
+ * \email: melissa@episci.com, david.kim@episci.com
  */
 
 #include "PHY/defs_gNB.h"
@@ -211,8 +211,6 @@ int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
         psbch_payload.slotIndex,
         abs_slot);
 
-  NR_UE_PSBCH m_psbch;
-  ue->psbch_vars[0] = &m_psbch;
   NR_UE_PSBCH *psbch = ue->psbch_vars[0];
   memset((void *)psbch, 0, sizeof(NR_UE_PSBCH));
   psbch->psbch_a = *((uint32_t *)&psbch_payload);

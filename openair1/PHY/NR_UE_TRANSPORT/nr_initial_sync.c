@@ -298,14 +298,14 @@ int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
     } else {
       ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
     }
-    printf("[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+    LOG_D(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
           ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
     if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (N_SYMB_SLOT_SL * fp->ofdm_symbol_size))) {
       uint8_t phase_tdd_ncp;
       int32_t metric_tdd_ncp = 0;
       const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
       __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
-      for (int i = 0; i < 13; i++)
+      for (int i = 0; i < N_SYMB_SLOT_SL; i++)
         nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset,
                               false, rxdataF, link_type_sl);
       memcpy(ue->common_vars.rxdataF[0], rxdataF[0], rxdataF_sz * sizeof(int32_t));

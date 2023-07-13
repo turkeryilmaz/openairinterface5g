@@ -2258,7 +2258,7 @@ target_link_libraries(nr_pbchsim PRIVATE
 target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 
-  add_executable(nr_psbchsim
+add_executable(nr_psbchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${T_SOURCE}
@@ -2271,7 +2271,7 @@ target_link_libraries(nr_psbchsim PRIVATE
 target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
 
 
-  add_executable(nr_psschsim
+add_executable(nr_psschsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psschsim.c
   ${OPENAIR_DIR}/common/utils/nr/nr_common.c
   ${T_SOURCE}

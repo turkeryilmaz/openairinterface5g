@@ -24,7 +24,7 @@
  * \date 2022
  * \version 0.1
  * \company EpiSci
- * \email: melissa@episci.com, dkim@episci.com
+ * \email: melissa@episci.com, david.kim@episci.com
  */
 
 #include <stdio.h>
@@ -37,10 +37,28 @@
 #include "PHY/phy_extern.h"
 #include "PHY/NR_UE_TRANSPORT/nr_transport_proto_ue.h"
 #include "PHY/NR_REFSIG/ss_pbch_nr.h"
-#include "openair1/PHY/NR_REFSIG/pss_nr.h"
+#include "PHY/NR_REFSIG/pss_nr.h"
 
 static int16_t *primary_synchro_nr2_sl[NUMBER_PSS_SEQUENCE] = {0};
 static c16_t *primary_synchro_time_nr_sl[NUMBER_PSS_SEQUENCE] = {0};
+int16_t *get_primary_synchro_nr2_sl(const int nid2)
+{
+  return primary_synchro_nr2_sl[nid2];
+}
+
+/*******************************************************************
+*
+* NAME :         nr_sl_generate_pss
+*
+* PARAMETERS :   structure NR_DL_FRAME_PARMS give frame parameters
+*
+* RETURN :       generate binary psss sequences (this is a m-sequence)
+*
+* DESCRIPTION :  3GPP TS 38.211 8.4.2.2 Primary synchronisation signal
+*                Sequence generation
+*
+*********************************************************************/
+
 int nr_sl_generate_pss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR_DL_FRAME_PARMS *frame_parms)
 {
   int16_t d_pss[LENGTH_PSS_NR];
@@ -127,4 +145,48 @@ int nr_sl_generate_pss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR
   memset(primary_synchro_time_nr_sl[Nid2], 0, sizeof(int16_t) * frame_parms->ofdm_symbol_size);
   idft((int16_t)get_idft(frame_parms->ofdm_symbol_size), (int16_t *)in, (int16_t *)primary_synchro_time_nr_sl[Nid2], 1);
   return 0;
+}
+
+/*******************************************************************
+*
+* NAME :         init_context_pss_nr_sl
+*
+* PARAMETERS :   structure NR_DL_FRAME_PARMS give frame parameters
+*
+* RETURN :       generate binary psss sequences (this is a m-sequence)
+*
+* DESCRIPTION :  3GPP TS 38.211 8.4.2.2 Primary synchronisation signal
+*                Sequence generation
+*
+*********************************************************************/
+
+void init_context_pss_nr_sl(NR_DL_FRAME_PARMS *frame_parms_ue)
+{
+  AssertFatal(frame_parms_ue->ofdm_symbol_size > 127, "illegal ofdm_symbol_size %d\n", frame_parms_ue->ofdm_symbol_size);
+  for (int i = 0; i < NUMBER_PSS_SEQUENCE_SL; i++) {
+    primary_synchro_nr2_sl[i] = malloc16_clear(LENGTH_PSS_NR * sizeof(int16_t));
+    AssertFatal(primary_synchro_nr2_sl[i], "Fatal memory allocation problem \n");
+    primary_synchro_time_nr_sl[i] = malloc16_clear(frame_parms_ue->ofdm_symbol_size * sizeof(c16_t));
+    AssertFatal(primary_synchro_time_nr_sl[i], "Fatal memory allocation problem \n");
+  }
+}
+
+/*******************************************************************
+*
+* NAME :         free_context_pss_nr_sl
+*
+* PARAMETERS :   none
+*
+* RETURN :       none
+*
+* DESCRIPTION :  free context related to pss
+*
+*********************************************************************/
+
+void free_context_pss_nr_sl(void)
+{
+  for (int i = 0; i < NUMBER_PSS_SEQUENCE_SL; i++) {
+    free_and_zero(primary_synchro_nr2_sl[i]);
+    free_and_zero(primary_synchro_time_nr_sl[i]);
+  }
 }

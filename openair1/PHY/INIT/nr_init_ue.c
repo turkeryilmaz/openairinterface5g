@@ -371,7 +371,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   /////////////////////////PSSCH DMRS init/////////////////////////
   ///////////
 
-  if (get_softmodem_params()->sl_mode == 2) {
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     // ceil(((NB_RB*6(k)*2(QPSK)/32) // 3 RE *2(QPSK)
     int pssch_dmrs_init_length =  ((fp->N_RB_SL * 12) >> 5) + 1;
     ue->nr_gold_pssch_dmrs = (uint32_t ***)malloc16(fp->slots_per_frame * sizeof(uint32_t **));
@@ -469,7 +469,7 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   }
 
   // SLSCH
-  if (get_softmodem_params()->sl_mode == 2) {
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     for (gNB_id = 0; gNB_id < ue->n_connected_gNB; gNB_id++) {
       ue->pssch_vars[gNB_id] = (NR_UE_PSSCH *)malloc16_clear(sizeof(NR_UE_PSSCH));
       phy_init_nr_ue_PSSCH(ue->pssch_vars[gNB_id], fp);
@@ -578,12 +578,7 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
     // PDSCH
   }
-  if (get_softmodem_params()->sl_mode == 2) {
-    for (int SyncRef_id = 0; SyncRef_id < NUMBER_OF_CONNECTED_SyncRefUE_MAX; SyncRef_id++) {
-      phy_term_nr_ue__PSSCH(ue, SyncRef_id, fp);
-    }
-  }
-  if (get_softmodem_params()->sl_mode == 2) {
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     for (int SyncRef_id = 0; SyncRef_id < NUMBER_OF_CONNECTED_SyncRefUE_MAX; SyncRef_id++) {
       phy_term_nr_ue__PSSCH(ue, SyncRef_id, fp);
     }
@@ -851,7 +846,7 @@ void phy_init_nr_top(PHY_VARS_NR_UE *ue) {
   load_dftslib();
   init_context_synchro_nr(frame_parms);
   generate_ul_reference_signal_sequences(SHRT_MAX);
-  if (get_softmodem_params()->sl_mode == 2) {
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
     initTpool("n", &ue->threadPool, true);
     initNotifiedFIFO(&ue->respDecode);
   }
