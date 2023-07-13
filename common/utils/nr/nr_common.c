@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include "assertions.h"
 #include "nr_common.h"
+#include "executables/softmodem-common.h"
 
 const char *duplex_mode[]={"FDD","TDD"};
 
@@ -338,12 +339,17 @@ int get_first_ul_slot(int nrofDownlinkSlots, int nrofDownlinkSymbols, int nrofUp
 
 int get_dmrs_port(int nl, uint16_t dmrs_ports)
 {
-
+  int nb_of_ports;
+  if (get_softmodem_params()->sl_mode == 2) {
+    nb_of_ports = 2;
+  } else {
+    nb_of_ports = 12;
+  }
   if (dmrs_ports == 0) return 0; // dci 1_0
   int p = -1;
   int found = -1;
-  for (int i=0; i<12; i++) { // loop over dmrs ports
-    if((dmrs_ports>>i)&0x01) { // check if current bit is 1
+  for (int i = 0; i < nb_of_ports; i++) {
+    if ((dmrs_ports >> i) & 0x01) { // check if current bit is 1
       found++;
       if (found == nl) { // found antenna port number corresponding to current layer
         p = i;
@@ -351,7 +357,7 @@ int get_dmrs_port(int nl, uint16_t dmrs_ports)
       }
     }
   }
-  AssertFatal(p>-1,"No dmrs port corresponding to layer %d found\n",nl);
+  AssertFatal(p > -1, "No dmrs port corresponding to layer %d found\n", nl);
   return p;
 }
 

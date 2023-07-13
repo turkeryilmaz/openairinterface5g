@@ -229,7 +229,7 @@ void nr_ulsch_qpsk_llr(int32_t *rxdataF_comp,
     @param symbol OFDM symbol index in sub-frame
 */
 void nr_ulsch_16qam_llr(int32_t *rxdataF_comp,
-                        int32_t **ul_ch_mag,
+                        int32_t *ul_ch_mag,
                         int16_t  *ulsch_llr,
                         uint32_t nb_rb,
                         uint32_t nb_re,
@@ -245,8 +245,8 @@ void nr_ulsch_16qam_llr(int32_t *rxdataF_comp,
     @param symbol OFDM symbol index in sub-frame
 */
 void nr_ulsch_64qam_llr(int32_t *rxdataF_comp,
-                        int32_t **ul_ch_mag,
-                        int32_t **ul_ch_magb,
+                        int32_t *ul_ch_mag,
+                        int32_t *ul_ch_magb,
                         int16_t  *ulsch_llr,
                         uint32_t nb_rb,
                         uint32_t nb_re,
@@ -262,9 +262,9 @@ void nr_ulsch_64qam_llr(int32_t *rxdataF_comp,
     @param symbol OFDM symbol index in sub-frame
 */
 void nr_ulsch_256qam_llr(int32_t *rxdataF_comp,
-                        int32_t **ul_ch_mag,
-                        int32_t **ul_ch_magb,
-                        int32_t **ul_ch_magc,
+                        int32_t *ul_ch_mag,
+                        int32_t *ul_ch_magb,
+                        int32_t *ul_ch_magc,
                         int16_t  *ulsch_llr,
                         uint32_t nb_rb,
                         uint32_t nb_re,

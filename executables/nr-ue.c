@@ -33,7 +33,15 @@
 #include "executables/softmodem-common.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "radio/COMMON/common_lib.h"
+#include "LAYER2/nr_pdcp/nr_pdcp_entity.h"
+#include "SCHED_NR_UE/pucch_uci_ue_nr.h"
+#include "openair2/NR_UE_PHY_INTERFACE/NR_IF_Module.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
+#include "common/utils/nr/nr_common.h"
+//#define DEBUG_PHY_SL_PROC
+#include "pdcp.h"
 #include "LAYER2/nr_pdcp/nr_pdcp_oai_api.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
 
 /*
  *  NR SLOT PROCESSING SEQUENCE
@@ -97,9 +105,10 @@
 #define TX_JOB_ID 100
 
 typedef enum {
-  pss = 0,
-  pbch = 1,
-  si = 2
+  SYNC_MODE_PSS = 0,
+  SYNC_MODE_PBCH = 1,
+  SYNC_MODE_SI = 2,
+  SYNC_MODE_PSBCH = 3,
 } sync_mode_t;
 
 static void *NRUE_phy_stub_standalone_pnf_task(void *arg);
@@ -158,14 +167,12 @@ void init_nr_ue_vars(PHY_VARS_NR_UE *ue,
   ue->dci_thres   = 0;
   ue->target_Nid_cell = -1;
 
-  // initialize all signal buffers
   init_nr_ue_signal(ue, nb_connected_gNB);
-
-  // intialize transport
   init_nr_ue_transport(ue);
 
-  // init N_TA offset
-  init_N_TA_offset(ue);
+  if (get_softmodem_params()->sl_mode != 2) {
+    init_N_TA_offset(ue);
+  }
 }
 
 void init_nrUE_standalone_thread(int ue_idx)
@@ -373,10 +380,15 @@ static void UE_synch(void *arg) {
   syncData_t *syncD=(syncData_t *) arg;
   int i, hw_slot_offset;
   PHY_VARS_NR_UE *UE = syncD->UE;
-  sync_mode_t sync_mode = pbch;
+  sync_mode_t sync_mode = SYNC_MODE_PBCH;
   //int CC_id = UE->CC_id;
   static int freq_offset=0;
-  UE->is_synchronized = 0;
+  if (get_softmodem_params()->sl_mode == SL_MODE_2) {
+    UE->is_synchronized_sl = false;
+    sync_mode = SYNC_MODE_PSBCH;
+  } else {
+    UE->is_synchronized = false;
+  }
 
   if (UE->UE_scan == 0) {
 
@@ -392,7 +404,6 @@ static void UE_synch(void *arg) {
 
     }
 
-    sync_mode = pbch;
   } else {
     LOG_E(PHY,"Fixme!\n");
     /*
@@ -415,37 +426,7 @@ static void UE_synch(void *arg) {
   }
 
   switch (sync_mode) {
-    /*
-    case pss:
-      LOG_I(PHY,"[SCHED][UE] Scanning band %d (%d), freq %u\n",bands_to_scan.band_info[current_band].band, current_band,bands_to_scan.band_info[current_band].dl_min+current_offset);
-      //lte_sync_timefreq(UE,current_band,bands_to_scan.band_info[current_band].dl_min+current_offset);
-      current_offset += 20000000; // increase by 20 MHz
-
-      if (current_offset > bands_to_scan.band_info[current_band].dl_max-bands_to_scan.band_info[current_band].dl_min) {
-        current_band++;
-        current_offset=0;
-      }
-
-      if (current_band==bands_to_scan.nbands) {
-        current_band=0;
-        oai_exit=1;
-      }
-
-      for (i=0; i<openair0_cfg[UE->rf_map.card].rx_num_channels; i++) {
-        downlink_frequency[UE->rf_map.card][UE->rf_map.chain+i] = bands_to_scan.band_info[current_band].dl_min+current_offset;
-        uplink_frequency_offset[UE->rf_map.card][UE->rf_map.chain+i] = bands_to_scan.band_info[current_band].ul_min-bands_to_scan.band_info[0].dl_min + current_offset;
-        openair0_cfg[UE->rf_map.card].rx_freq[UE->rf_map.chain+i] = downlink_frequency[CC_id][i];
-        openair0_cfg[UE->rf_map.card].tx_freq[UE->rf_map.chain+i] = downlink_frequency[CC_id][i]+uplink_frequency_offset[CC_id][i];
-        openair0_cfg[UE->rf_map.card].rx_gain[UE->rf_map.chain+i] = UE->rx_total_gain_dB;
-
-        if (UE->UE_scan_carrier) {
-          openair0_cfg[UE->rf_map.card].autocal[UE->rf_map.chain+i] = 1;
-        }
-      }
-
-      break;
-    */
-    case pbch:
+    case SYNC_MODE_PBCH:
       LOG_I(PHY, "[UE thread Synch] Running Initial Synch \n");
 
       uint64_t dl_carrier, ul_carrier;
@@ -491,10 +472,54 @@ static void UE_synch(void *arg) {
       }
       break;
 
-    case si:
-    default:
+    case SYNC_MODE_SI:
       break;
 
+    case SYNC_MODE_PSBCH: {
+      int initial_synch_sl = nr_sl_initial_sync(&syncD->proc, UE, 2);
+      if (initial_synch_sl >= 0) { // gNB will work as SyncRef UE in simulation.
+
+        // rerun with new cell parameters and frequency-offset
+        freq_offset = UE->common_vars.freq_offset; // frequency offset computed with pss in initial sync
+        hw_slot_offset = ((UE->rx_offset_sl << 1) / UE->frame_parms.samples_per_subframe * UE->frame_parms.slots_per_subframe) +
+                         round((float)((UE->rx_offset << 1) % UE->frame_parms.samples_per_subframe) / UE->frame_parms.samples_per_slot0);
+
+        LOG_I(PHY,"Got synch: hw_slot_offset %d, carrier off %d Hz, rxgain %f (DL %f Hz, UL %f Hz)\n",
+              hw_slot_offset,
+              freq_offset,
+              openair0_cfg[UE->rf_map.card].rx_gain[0],
+              openair0_cfg[UE->rf_map.card].rx_freq[0],
+              openair0_cfg[UE->rf_map.card].tx_freq[0]);
+        nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
+        UE->rfdevice.trx_set_freq_func(&UE->rfdevice,&openair0_cfg[0]);
+
+        if (UE->UE_scan_carrier == 1) {
+          UE->UE_scan_carrier = 0;
+        } else {
+          if (initial_synch_sl == 0) {
+            UE->is_synchronized_sl = 1;
+            LOG_I(NR_PHY, "SyncRef UE found with Nid1 %d and Nid2 %d SSS-RSRP %d dBm/RE\n",
+                  GET_NID1_SL(UE->frame_parms.Nid_SL), GET_NID2_SL(UE->frame_parms.Nid_SL),
+                  UE->measurements.ssb_rsrp_dBm[0]);
+          }
+        }
+      } else {
+        LOG_I(NR_PHY, "No SyncRef UE found\n");
+        if (UE->UE_scan_carrier == 1) {
+          LOG_I(PHY, "Initial sync failed: trying carrier off %d Hz\n", freq_offset);
+
+          if (freq_offset >= 0)
+            freq_offset += 100;
+          freq_offset *= -1;
+          nr_sl_rf_card_config_freq(UE, &openair0_cfg[UE->rf_map.card], freq_offset);
+          UE->rfdevice.trx_set_freq_func(&UE->rfdevice, &openair0_cfg[0]);
+        }
+      }
+      break;
+    }
+
+    default:
+      break;
   }
 }
 
@@ -561,8 +586,7 @@ void processSlotTX(void *arg) {
   nr_phy_data_tx_t phy_data = {0};
 
   LOG_D(PHY,"%d.%d => slot type %d\n", proc->frame_tx, proc->nr_slot_tx, proc->tx_slot_type);
-  if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT){
-
+  if (proc->tx_slot_type == NR_UPLINK_SLOT || proc->tx_slot_type == NR_MIXED_SLOT || (get_softmodem_params()->sl_mode == 2)) {
     // wait for rx slots to send indication (if any) that DLSCH decoding is finished
     for(int i=0; i < rxtxD->tx_wait_for_dlsch; i++) {
       notifiedFIFO_elt_t *res = pullNotifiedFIFO(UE->tx_resume_ind_fifo[proc->nr_slot_tx]);
@@ -571,7 +595,7 @@ void processSlotTX(void *arg) {
 
     // trigger L2 to run ue_scheduler thru IF module
     // [TODO] mapping right after NR initial sync
-    if(UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
+    if (get_softmodem_params()->sl_mode != 2 && UE->if_inst != NULL && UE->if_inst->ul_indication != NULL) {
       start_meas(&UE->ue_ul_indication_stats);
       nr_uplink_indication_t ul_indication;
       memset((void*)&ul_indication, 0, sizeof(ul_indication));
@@ -589,10 +613,15 @@ void processSlotTX(void *arg) {
       stop_meas(&UE->ue_ul_indication_stats);
     }
 
-    phy_procedures_nrUE_TX(UE, proc, &phy_data);
+    if (get_softmodem_params()->sl_mode == 0) {
+      phy_procedures_nrUE_TX(UE, proc, &phy_data);
+    } else {
+      phy_procedures_nrUE_SL_TX(UE, proc, 0);
+    }
   }
-
-  RU_write(rxtxD);
+  if (get_softmodem_params()->sl_mode == 0) {
+    RU_write(rxtxD);
+  }
 }
 
 nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc) {
@@ -620,7 +649,7 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc) {
     }
   }
 
-  if (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT){
+  if ((get_softmodem_params()->sl_mode != 2) && (proc->rx_slot_type == NR_DOWNLINK_SLOT || proc->rx_slot_type == NR_MIXED_SLOT)) {
 
     if(UE->if_inst != NULL && UE->if_inst->dl_indication != NULL) {
       nr_downlink_indication_t dl_indication;
@@ -638,9 +667,9 @@ nr_phy_data_t UE_dl_preprocessing(PHY_VARS_NR_UE *UE, UE_nr_rxtx_proc_t *proc) {
 
     LOG_D(PHY, "In %s: slot %d, time %llu\n", __FUNCTION__, proc->nr_slot_rx, (rdtsc_oai()-a)/3500);
   }
-
   ue_ta_procedures(UE, proc->nr_slot_tx, proc->frame_tx);
   return phy_data;
+
 }
 
 void UE_dl_processing(void *arg) {
@@ -648,14 +677,20 @@ void UE_dl_processing(void *arg) {
   UE_nr_rxtx_proc_t *proc = &rxtxD->proc;
   PHY_VARS_NR_UE    *UE   = rxtxD->UE;
   nr_phy_data_t *phy_data = &rxtxD->phy_data;
-
+  if(get_softmodem_params()->sl_mode == 2) {
+    phy_procedures_nrUE_SL_RX(UE, proc, 0, &rxtxD->txFifo);
+    processSlotTX(rxtxD);
+  }
   pdsch_processing(UE, proc, phy_data);
 }
 
 void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockSize) {
   void *dummy_tx[UE->frame_parms.nb_antennas_tx];
   int16_t dummy_tx_data[UE->frame_parms.nb_antennas_tx][2*writeBlockSize]; // 2 because the function we call use pairs of int16_t implicitly as complex numbers
-  memset(dummy_tx_data, 0, sizeof(dummy_tx_data));
+  if (!UE->is_synchronized_sl)
+    memset(dummy_tx_data, 0, sizeof(dummy_tx_data));
+  else
+    memset(dummy_tx_data, 0x1, sizeof(dummy_tx_data));
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     dummy_tx[i]=dummy_tx_data[i];
 
@@ -693,6 +728,7 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 
       if (IS_SOFTMODEM_RFSIM)
         dummyWrite(UE,*timestamp, UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms));
+
       if (toTrash)
         for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
           free(rxp[i]);
@@ -702,52 +738,310 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 }
 
 void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp) {
-
-    LOG_I(PHY,"Resynchronizing RX by %d samples\n",UE->rx_offset);
-
+    int rx_offset = (get_softmodem_params()->sl_mode != 0) ? UE->rx_offset_sl : UE->rx_offset;
     if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
       // Resynchonize by slot (will work with numerology 1 only)
-      for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe/2 ) {
-	int unitTransfer=size>UE->frame_parms.samples_per_subframe/2 ? UE->frame_parms.samples_per_subframe/2 : size ;
-	AssertFatal(unitTransfer ==
-		    UE->rfdevice.trx_read_func(&UE->rfdevice,
-					       timestamp,
-					       (void **)UE->common_vars.rxdata,
-					       unitTransfer,
-					       UE->frame_parms.nb_antennas_rx),"");
+      for (int size = rx_offset; size > 0; size -= UE->frame_parms.samples_per_subframe / 2) {
+	      int unitTransfer = size > UE->frame_parms.samples_per_subframe / 2 ? UE->frame_parms.samples_per_subframe / 2 : size ;
+	      AssertFatal(unitTransfer == UE->rfdevice.trx_read_func(&UE->rfdevice,
+					                                                     timestamp,
+					                                                     (void **)UE->common_vars.rxdata,
+					                                                     unitTransfer,
+					                                                     UE->frame_parms.nb_antennas_rx),"");
       }
     } else {
       *timestamp += UE->frame_parms.get_samples_per_slot(1,&UE->frame_parms);
-      for ( int size=UE->rx_offset ; size > 0 ; size -= UE->frame_parms.samples_per_subframe ) {
-	int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
-	// we write before read because gNB waits for UE to write and both executions halt
-	// this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
-	if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer);
-	AssertFatal(unitTransfer ==
-		    UE->rfdevice.trx_read_func(&UE->rfdevice,
-					       timestamp,
-					       (void **)UE->common_vars.rxdata,
-					       unitTransfer,
-					       UE->frame_parms.nb_antennas_rx),"");
-	*timestamp += unitTransfer; // this does not affect the read but needed for RFSIM write
+      for (int size = rx_offset; size > 0; size -= UE->frame_parms.samples_per_subframe) {
+	      int unitTransfer=size>UE->frame_parms.samples_per_subframe ? UE->frame_parms.samples_per_subframe : size ;
+	      // we write before read because gNB waits for UE to write and both executions halt
+	      // this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
+        if (IS_SOFTMODEM_RFSIM) dummyWrite(UE,*timestamp, unitTransfer); 
+          AssertFatal(unitTransfer ==
+                      UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                                timestamp,
+                                                (void **)UE->common_vars.rxdata,
+                                                unitTransfer,
+                                                UE->frame_parms.nb_antennas_rx),"");
+          *timestamp += unitTransfer; // this does not affect the read but needed for RFSIM write
       }
     }
 }
 
-static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp) {
+int computeSamplesShift(PHY_VARS_NR_UE *UE) {
+  int rx_offset = get_softmodem_params()->sl_mode != 2 ? UE->rx_offset : UE->rx_offset_sl;
+  int samples_shift = -(rx_offset >> 1);
+  UE->rx_offset_sl = 0; // reset so that it is not applied falsely in case of SSB being only in every second frame
+  UE->max_pos_fil = 0; // reset IIR filter when sample shift is applied
+  if (samples_shift != 0) {
+    LOG_I(NR_PHY,"Adjusting frame in time by %i samples\n", samples_shift);
+  }
+  return samples_shift;
+}
+
+static inline int get_firstSymSamp(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sync) {
+  uint16_t nb_prefix_samples0 = sync ? fp->nb_prefix_samples0 : fp->nb_prefix_samples;
   if (fp->numerology_index == 0)
     return fp->nb_prefix_samples0 + fp->ofdm_symbol_size;
-  int num_samples = (slot%(fp->slots_per_subframe/2)) ? fp->nb_prefix_samples : fp->nb_prefix_samples0;
+  int num_samples = (slot % (fp->slots_per_subframe / 2)) ? fp->nb_prefix_samples : nb_prefix_samples0;
   num_samples += fp->ofdm_symbol_size;
   return num_samples;
 }
 
-static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp) {
-  int rem_samples = fp->get_samples_per_slot(slot, fp) - get_firstSymSamp(slot, fp);
+static inline int get_readBlockSize(uint16_t slot, NR_DL_FRAME_PARMS *fp, bool sync) {
+  int rem_samples = fp->get_samples_per_slot(slot, fp) - get_firstSymSamp(slot, fp, sync);
   int next_slot_first_symbol = 0;
   if (slot < (fp->slots_per_frame-1))
-    next_slot_first_symbol = get_firstSymSamp(slot+1, fp);
+    next_slot_first_symbol = get_firstSymSamp(slot+1, fp, sync);
   return rem_samples + next_slot_first_symbol;
+}
+
+
+int slot_to_flag_sl(uint8_t tdd_period, int slot, uint16_t slot_config, uint16_t num_slot_frame) {
+  int flag, isUL, isULnext, isULbefore;
+  int num_period_slot = get_nb_periods_per_frame(tdd_period);
+  slot = slot % (num_slot_frame / num_period_slot);
+  isUL = (slot_config >> slot) & 0x1;// indicator to show if the slot is UL or DL
+
+  if (slot > 0) {
+    //checking if previous slot is UL
+    isULbefore = (slot_config >> (slot - 1)) & 0x1;
+  } else {
+    isULbefore = 0;
+  }
+  if (slot < (num_slot_frame / num_period_slot) - 1) {
+    // checking if next slot is UL
+    isULnext = (slot_config >> (slot+1)) & 0x1;
+  } else {
+    isULnext = 0;
+  }
+
+  if (isUL) {
+    if (slot == 0 || !isULbefore) {
+      flag = 2; // first slot should start transmission
+    } else if (slot == (num_slot_frame / num_period_slot) - 1 || !isULnext) {
+      flag = 3; // last slot that should stop transmission
+    } else {
+      flag = 1; // it is niether first nor last slot.
+    }
+  } else {
+    flag = 0; // don't transmit at all
+  }
+  LOG_D(NR_PHY, "### slot(%d), UL(%d), flag(%d)\n", slot, isUL, flag);
+  return flag;
+}
+
+void *UE_thread_SL(void *arg) {
+  PHY_VARS_NR_UE *UE = (PHY_VARS_NR_UE *) arg;
+  openair0_timestamp timestamp, writeTimestamp;
+  void *rxp[UE->frame_parms.nb_antennas_rx], *txp[UE->frame_parms.nb_antennas_tx];
+  AssertFatal(0 == openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]), "");
+  UE->rfdevice.host_type = RAU_HOST;
+  AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");
+
+  notifiedFIFO_t nf;
+  initNotifiedFIFO(&nf);
+  notifiedFIFO_t freeBlocks;
+  initNotifiedFIFO_nothreadSafe(&freeBlocks);
+  int nbSlotProcessing = 0;
+
+  int timing_advance = UE->timing_advance;
+
+  UE->is_synchronized_sl = 0;
+
+  UE->sync_ref = get_softmodem_params()->sync_ref;
+  bool sync_running_sl = false;
+  const int nb_slot_frame = UE->frame_parms.slots_per_frame;
+  int absolute_slot = 0, decoded_frame_rx = INT_MAX, trashed_frames = 0, start_rx_stream = 0;
+
+  for (int i = 0; i < NR_RX_NB_TH + 1; i++) {// NR_RX_NB_TH working + 1 we are making to be pushed
+    notifiedFIFO_elt_t *newElt = newNotifiedFIFO_elt(sizeof(nr_rxtx_thread_data_t), RX_JOB_ID, &nf, UE_dl_processing);
+    nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(newElt);
+    initNotifiedFIFO(&curMsg->txFifo);
+    pushNotifiedFIFO_nothreadSafe(&freeBlocks, newElt);
+  }
+
+  while (!oai_exit) {
+    if (sync_running_sl && UE->sync_ref == 0) {
+      LOG_I(NR_PHY, "Nearby UE: sync_running status.\n");
+      notifiedFIFO_elt_t *res=tryPullTpool(&nf,&(get_nrUE_params()->Tpool));
+      if (res) {
+        sync_running_sl = false;
+        LOG_I(NR_PHY, "Nearby UE: sync_running was set to false due to valid res.\n");
+        syncData_t *tmp=(syncData_t *)NotifiedFifoData(res);
+        LOG_I(NR_PHY, "Nearby UE: UE->is_synchronized_sl = %d\n", UE->is_synchronized_sl);
+        if (UE->is_synchronized_sl) {
+          decoded_frame_rx = tmp->proc.frame_rx;
+          // shift the frame index with all the frames we trashed meanwhile we perform the synch search
+          decoded_frame_rx=(decoded_frame_rx + UE->init_sync_frame + trashed_frames) % MAX_FRAME_NUMBER;
+        }
+        delNotifiedFIFO_elt(res);
+        start_rx_stream = 0;
+      } else {
+        LOG_I(PHY, "Nearby UE: sync_running_sl still in readFrame due to INVALID res.\n");
+        readFrame(UE, &timestamp, true);
+        trashed_frames += 2;
+        continue;
+      }
+    }
+
+    AssertFatal(!sync_running_sl, "At this point synchronization can't be running\n");
+
+    if (UE->is_synchronized_sl == 0 && UE->sync_ref == 0) {
+      LOG_I(NR_PHY, "Nearby UE: UE->is_synchronized_sl == 0 && UE->sync_ref == 0)\n");
+      readFrame(UE, &timestamp, false);
+      notifiedFIFO_elt_t *Msg=newNotifiedFIFO_elt(sizeof(syncData_t), 0, &nf, UE_synch);
+      syncData_t *syncMsg = (syncData_t *)NotifiedFifoData(Msg);
+      syncMsg->UE = UE;
+      memset(&syncMsg->proc, 0, sizeof(syncMsg->proc));
+      pushTpool(&(get_nrUE_params()->Tpool), Msg);
+      trashed_frames=0;
+      sync_running_sl =true;
+      continue;
+    }
+
+    if (start_rx_stream == 0) {
+      start_rx_stream = 1;
+      syncInFrame(UE, &timestamp);
+      UE->rx_offset_sl = 0;
+      UE->time_sync_cell = 0;
+      uint16_t nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 :
+                                                             UE->frame_parms.nb_prefix_samples;
+      AssertFatal (UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0 ==
+                   UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                              &timestamp,
+                                              (void **)UE->common_vars.rxdata,
+                                              UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0,
+                                              UE->frame_parms.nb_antennas_rx), "Could not read in first symbol");
+      // we have the decoded frame index in the return of the synch process
+      // and we shifted above to the first slot of next frame
+      decoded_frame_rx++;
+      // we do ++ first in the regular processing, so it will be begin of frame;
+
+      absolute_slot = decoded_frame_rx * nb_slot_frame - 1;
+      LOG_D(NR_PHY, "Nearby UE: rx_stream = 1 and timestamp %ld, absolute_slot %d, slot %d, frame %d\n",
+            timestamp, absolute_slot, UE->rx_ssb_slot, UE->rx_ssb_frame);
+      continue;
+    }
+
+
+    absolute_slot++;
+    // Fix me: will be wrong when slot 1 is slow, as slot 2 finishes
+    // Slot 3 will overlap if NR_RX_NB_TH is 2
+    // this is general failure in UE !!
+    int slot_nr = absolute_slot % nb_slot_frame;
+
+    notifiedFIFO_elt_t *msgToPush;
+    AssertFatal((msgToPush=pullNotifiedFIFO_nothreadSafe(&freeBlocks)) != NULL,"chained list failure");
+    nr_rxtx_thread_data_t *curMsg=(nr_rxtx_thread_data_t *)NotifiedFifoData(msgToPush);
+    curMsg->UE = UE;
+    // update thread index for received subframe
+    curMsg->proc.CC_id       = UE->CC_id;
+    curMsg->proc.nr_slot_rx  = slot_nr;
+    curMsg->proc.nr_slot_tx  = (absolute_slot + DURATION_RX_TO_TX) % nb_slot_frame;
+    curMsg->proc.frame_rx    = (absolute_slot/nb_slot_frame) % MAX_FRAME_NUMBER;
+    curMsg->proc.frame_tx    = ((absolute_slot+DURATION_RX_TO_TX)/nb_slot_frame) % MAX_FRAME_NUMBER;
+    curMsg->proc.decoded_frame_rx=-1;
+    LOG_D(NR_PHY, "Process slot %d total gain %d\n", slot_nr, UE->rx_total_gain_dB);
+
+    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
+    uint64_t write_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
+    uint64_t read_time_stamp = UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, 0);
+    for (int i = 0; i<UE->frame_parms.nb_antennas_rx; i++)
+      rxp[i] = (void *)&UE->common_vars.rxdata[i][read_time_stamp];
+    for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++)
+      txp[i] = (void *)&UE->common_vars.txdata[i][write_time_stamp];
+
+    int readBlockSize, writeBlockSize;
+    if (slot_nr < (nb_slot_frame - 1)) {
+      readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl);
+      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms);
+    } else {
+      UE->rx_offset_diff = computeSamplesShift(UE);
+      readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized_sl) - UE->rx_offset_diff;
+      writeBlockSize = UE->frame_parms.get_samples_per_slot(slot_nr, &UE->frame_parms) - UE->rx_offset_diff;
+    }
+
+    AssertFatal(readBlockSize ==
+                UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                           &timestamp,
+                                           rxp,
+                                           readBlockSize,
+                                           UE->frame_parms.nb_antennas_rx), "");
+
+    if (slot_nr == (nb_slot_frame - 1)) {
+      // read in first symbol of next frame and adjust for timing drift
+      uint16_t nb_prefix_samples0 = UE->is_synchronized_sl ? UE->frame_parms.nb_prefix_samples0 :
+                                                             UE->frame_parms.nb_prefix_samples;
+
+      int first_symbols = UE->frame_parms.ofdm_symbol_size + nb_prefix_samples0;
+      if (first_symbols > 0) {
+        openair0_timestamp ignore_timestamp;
+        AssertFatal(first_symbols ==
+                    UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                               &ignore_timestamp,
+                                               (void **)UE->common_vars.rxdata,
+                                               first_symbols,
+                                               UE->frame_parms.nb_antennas_rx),"");
+      } else {
+        LOG_E(NR_PHY, "Can't compensate: diff =%d\n", first_symbols);
+      }
+    }
+
+    curMsg->proc.timestamp_tx = timestamp +
+                                UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX) -
+                                firstSymSamp;
+
+    while (nbSlotProcessing >= NR_RX_NB_TH) {
+      notifiedFIFO_elt_t *res = pullTpool(&nf, &(get_nrUE_params()->Tpool));
+      if (res == NULL)
+        break; // Tpool has been stopped
+      nbSlotProcessing--;
+      nr_rxtx_thread_data_t *tmp = (nr_rxtx_thread_data_t *)res->msgData;
+      if (tmp->proc.decoded_frame_rx != -1)
+        decoded_frame_rx = tmp->proc.frame_rx;
+      else
+         decoded_frame_rx=-1;
+      pushNotifiedFIFO_nothreadSafe(&freeBlocks,res);
+    }
+
+    if (UE->sync_ref == 0 && decoded_frame_rx > 0 && decoded_frame_rx != curMsg->proc.frame_rx)
+      LOG_E(NR_PHY, "Sync UE: Decoded frame index (%d) is not compatible with current context (%d), "
+                    "UE should go back to synch mode\n", decoded_frame_rx, curMsg->proc.frame_rx);
+
+    // use previous timing_advance value to compute writeTimestamp
+    writeTimestamp = timestamp +
+                     UE->frame_parms.get_samples_slot_timestamp(slot_nr, &UE->frame_parms, DURATION_RX_TO_TX) -
+                     firstSymSamp - openair0_cfg[0].tx_sample_advance - UE->N_TA_offset - timing_advance;
+
+    // but use current UE->timing_advance value to compute writeBlockSize
+    if (UE->timing_advance != timing_advance) {
+      writeBlockSize -= UE->timing_advance - timing_advance;
+      timing_advance = UE->timing_advance;
+    }
+
+    int flags = 1;
+    NR_DL_FRAME_PARMS *fp = &UE->frame_parms;
+    flags = slot_to_flag_sl(fp->tdd_period, slot_nr, fp->tdd_slot_config, fp->slots_per_frame);
+
+    if (flags || IS_SOFTMODEM_RFSIM) {
+      LOG_D(NR_PHY, "current slot goring to write USRP: %d\n", slot_nr);
+      AssertFatal(writeBlockSize ==
+                  UE->rfdevice.trx_write_func(&UE->rfdevice,
+                                              writeTimestamp,
+                                              txp,
+                                              writeBlockSize,
+                                              UE->frame_parms.nb_antennas_tx,
+                                              flags), "");
+    }
+    for (int i = 0; i < UE->frame_parms.nb_antennas_tx; i++) {
+      memset(txp[i], 0, writeBlockSize);
+    }
+    nbSlotProcessing++;
+    LOG_D(NR_PHY, "Number of slots being processed at the moment: %d\n", nbSlotProcessing);
+    pushTpool(&(get_nrUE_params()->Tpool), msgToPush);
+  } // while !oai_exit
+
+  return NULL;
 }
 
 void *UE_thread(void *arg) {
@@ -887,14 +1181,14 @@ void *UE_thread(void *arg) {
     }*/
 #endif
 
-    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms);
+    int firstSymSamp = get_firstSymSamp(slot_nr, &UE->frame_parms, UE->is_synchronized);
     for (int i=0; i<UE->frame_parms.nb_antennas_rx; i++)
       rxp[i] = (void *)&UE->common_vars.rxdata[i][firstSymSamp+
                UE->frame_parms.get_samples_slot_timestamp(slot_nr,&UE->frame_parms,0)];
 
     int readBlockSize, writeBlockSize;
 
-    readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms);
+    readBlockSize=get_readBlockSize(slot_nr, &UE->frame_parms, UE->is_synchronized);
     writeBlockSize=UE->frame_parms.get_samples_per_slot((slot_nr + DURATION_RX_TO_TX) % nb_slot_frame, &UE->frame_parms);
     if (UE->apply_timing_offset && (slot_nr == nb_slot_frame-1)) {
       const int sampShift = -(UE->rx_offset>>1);
@@ -995,18 +1289,27 @@ void init_NR_UE(int nb_inst,
 }
 
 void init_NR_UE_threads(int nb_inst) {
-  int inst;
-
   pthread_t threads[nb_inst];
+  pthread_t threadsSL[nb_inst];
 
-  for (inst=0; inst < nb_inst; inst++) {
+  for (int inst = 0; inst < nb_inst; inst++) {
     PHY_VARS_NR_UE *UE = PHY_vars_UE_g[inst][0];
 
-    LOG_I(PHY,"Intializing UE Threads for instance %d (%p,%p)...\n",inst,PHY_vars_UE_g[inst],PHY_vars_UE_g[inst][0]);
-    threadCreate(&threads[inst], UE_thread, (void *)UE, "UEthread", -1, OAI_PRIORITY_RT_MAX);
-    if (!IS_SOFTMODEM_NOSTATS_BIT) {
-      pthread_t stat_pthread;
-      threadCreate(&stat_pthread, nrL1_UE_stats_thread, UE, "L1_UE_stats", -1, OAI_PRIORITY_RT_LOW);
+    if (get_softmodem_params()->sl_mode == 0) {
+      LOG_I(NR_PHY, "Intializing UE Threads for instance %d (%p,%p)...\n", inst, PHY_vars_UE_g[inst], PHY_vars_UE_g[inst][0]);
+      threadCreate(&threads[inst], UE_thread, (void *)UE, "UEthread", -1, OAI_PRIORITY_RT_MAX);
+      if (!IS_SOFTMODEM_NOSTATS_BIT) {
+        pthread_t stat_pthread;
+        threadCreate(&stat_pthread, nrL1_UE_stats_thread, UE, "L1_UE_stats", -1, OAI_PRIORITY_RT_LOW);
+      }
+    }
+    else if (get_softmodem_params()->sl_mode == 2) {
+      LOG_I(NR_PHY, "Intializing Sidelink UE Threads for instance %d (%p,%p)...\n", inst, PHY_vars_UE_g[inst], PHY_vars_UE_g[inst][0]);
+      threadCreate(&threadsSL[inst], UE_thread_SL, (void *)UE, "UEthreadSL", -1, OAI_PRIORITY_RT_MAX);
+    }
+    else {
+      LOG_I(NR_PHY,"Need implementation...\n");
+      abort();
     }
   }
 }

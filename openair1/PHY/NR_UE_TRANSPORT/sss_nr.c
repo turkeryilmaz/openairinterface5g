@@ -63,22 +63,13 @@
 
 #define INITIAL_SSS_NR    (7)
 
-static const int16_t phase_re_nr[PHASE_HYPOTHESIS_NUMBER]
-    // -pi/3 ---- pi/3
-    = {16384, 20173, 23571, 26509, 28932, 30791, 32051, 32687, 32687, 32051, 30791, 28932, 26509, 23571, 20173, 16384};
-
-static const int16_t phase_im_nr[PHASE_HYPOTHESIS_NUMBER] // -pi/3 ---- pi/3
-    = {-28377, -25821, -22762, -19260, -15383, -11207, -6813, -2286, 2286, 6813, 11207, 15383, 19260, 22762, 25821, 28377};
-
-static int16_t d_sss[N_ID_2_NUMBER][N_ID_1_NUMBER][LENGTH_SSS_NR];
-
 void init_context_sss_nr(int amp)
 {
   int16_t x0[LENGTH_SSS_NR];
   int16_t x1[LENGTH_SSS_NR];
   int16_t dss_current;
   int m0, m1;
-  int nid_2_num = get_softmodem_params()->sl_mode == 0 ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
+  int nid_2_num = get_softmodem_params()->sl_mode == SL_MODE_NONE ? N_ID_2_NUMBER : N_ID_2_NUMBER_SL;
 
   const int x0_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
   const int x1_initial[INITIAL_SSS_NR] = { 1, 0, 0, 0, 0, 0, 0 };
@@ -270,9 +261,8 @@ static int do_pss_sss_extract_nr(
 
   for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
     int pss_symbol = 0;
-    int sss_symbol = get_softmodem_params()->sl_mode == 0 ?
-                     (SSS_SYMBOL_NB - PSS_SYMBOL_NB) :
-                     (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB) ;
+    int sss_symbol =
+        get_softmodem_params()->sl_mode == SL_MODE_NONE ? (SSS_SYMBOL_NB - PSS_SYMBOL_NB) : (SSS0_SL_SYMBOL_NB - PSS0_SL_SYMBOL_NB);
     unsigned int ofdm_symbol_size = frame_parms->ofdm_symbol_size;
 
     c16_t *pss_rxF = rxdataF[aarx] + pss_symbol * ofdm_symbol_size;
@@ -281,11 +271,9 @@ static int do_pss_sss_extract_nr(
     c16_t *pss_rxF_ext = pss_ext[aarx];
     c16_t *sss_rxF_ext = sss_ext[aarx];
 
-    unsigned int k = frame_parms->first_carrier_offset +
-                     frame_parms->ssb_start_subcarrier +
-                     ((get_softmodem_params()->sl_mode == 0) ?
-                     PSS_SSS_SUB_CARRIER_START :
-                     PSS_SSS_SUB_CARRIER_START_SL);
+    unsigned int k =
+        frame_parms->first_carrier_offset + frame_parms->ssb_start_subcarrier
+        + ((get_softmodem_params()->sl_mode == SL_MODE_NONE) ? PSS_SSS_SUB_CARRIER_START : PSS_SSS_SUB_CARRIER_START_SL);
 
     if (k>= frame_parms->ofdm_symbol_size) k-=frame_parms->ofdm_symbol_size;
 
@@ -372,7 +360,7 @@ int rx_sss_nr(PHY_VARS_NR_UE *ue,
   uint8_t i;
   c16_t pss_ext[NB_ANTENNAS_RX][LENGTH_PSS_NR];
   c16_t sss_ext[NB_ANTENNAS_RX][LENGTH_SSS_NR];
-  uint8_t Nid2 = GET_NID2(ue->common_vars.nid2);
+  uint8_t Nid2 = get_softmodem_params()->sl_mode == SL_MODE_NONE ? GET_NID2(ue->common_vars.nid2) : ue->common_vars.sl_nid2;
   uint16_t Nid1;
   uint8_t phase;
   NR_DL_FRAME_PARMS *frame_parms=&ue->frame_parms;

@@ -81,30 +81,6 @@ unsigned char offset_mumimo_llr_drange[29][3]={{8,8,8},{7,7,7},{7,7,7},{7,7,7},{
 #define print_ints(s,x) printf("%s = %d %d %d %d\n",s,(x)[0],(x)[1],(x)[2],(x)[3])
 #define print_shorts(s,x) printf("%s = [%d+j*%d, %d+j*%d, %d+j*%d, %d+j*%d]\n",s,(x)[0],(x)[1],(x)[2],(x)[3],(x)[4],(x)[5],(x)[6],(x)[7])
 
-/* compute H_h_H matrix inversion up to 4x4 matrices */
-uint8_t nr_zero_forcing_rx(uint32_t rx_size_symbol,
-                           unsigned char n_rx,
-                           unsigned char n_tx,//number of layer
-                           int32_t rxdataF_comp[][n_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
-                           int32_t dl_ch_mag[][n_rx][rx_size_symbol],
-                           int32_t dl_ch_magb[][n_rx][rx_size_symbol],
-                           int32_t dl_ch_magr[][n_rx][rx_size_symbol],
-                           int32_t dl_ch_estimates_ext[][rx_size_symbol],
-                           unsigned short nb_rb,
-                           unsigned char mod_order,
-                           int shift,
-                           unsigned char symbol,
-                           int length);
-
-/* Apply layer demapping */
-static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
-                                     uint8_t Nl,
-                                     uint8_t mod_order,
-                                     uint32_t length,
-                                     int32_t codeword_TB0,
-                                     int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]);
-
 /* compute LLR */
 static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int nbRx,
@@ -168,8 +144,6 @@ static void nr_dlsch_extract_rbs(uint32_t rxdataF_sz,
                                  uint16_t dlDmrsSymbPos,
                                  int chest_time_type);
 
-static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol, int32_t dl_ch_estimates_ext[][rx_size_symbol], int32_t *median, int n_tx, int n_rx, int length);
-
 /** \brief This function performs channel compensation (matched filtering) on the received RBs for this allocation.  In addition, it computes the squared-magnitude of the channel with weightings for
    16QAM/64QAM detection as well as dual-stream detection (cross-correlation)
     @param rxdataF_ext Frequency-domain received signal in RBs to be demodulated
@@ -186,62 +160,6 @@ static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol, int32_t dl_ch
     @param output_shift Rescaling for compensated output (should be energy-normalizing)
     @param phy_measurements Pointer to UE PHY measurements
 */
-
-void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
-                                   int nbRx,
-                                   c16_t rxdataF_ext[][rx_size_symbol],
-                                   int32_t dl_ch_estimates_ext[][rx_size_symbol],
-                                   int32_t dl_ch_mag[][nbRx][rx_size_symbol],
-                                   int32_t dl_ch_magb[][nbRx][rx_size_symbol],
-                                   int32_t dl_ch_magr[][nbRx][rx_size_symbol],
-                                   int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
-                                   int ***rho,
-                                   NR_DL_FRAME_PARMS *frame_parms,
-                                   uint8_t n_layers,
-                                   unsigned char symbol,
-                                   int length,
-                                   uint8_t first_symbol_flag,
-                                   unsigned char mod_order,
-                                   unsigned short nb_rb,
-                                   unsigned char output_shift,
-                                   PHY_NR_MEASUREMENTS *measurements);
-
-/** \brief This function computes the average channel level over all allocated RBs and antennas (TX/RX) in order to compute output shift for compensated signal
-    @param dl_ch_estimates_ext Channel estimates in allocated RBs
-    @param frame_parms Pointer to frame descriptor
-    @param avg Pointer to average signal strength
-    @param pilots_flag Flag to indicate pilots in symbol
-    @param nb_rb Number of allocated RBs
-*/
-static void nr_dlsch_channel_level(uint32_t rx_size_symbol,
-                                   int32_t dl_ch_estimates_ext[][rx_size_symbol],
-                                   NR_DL_FRAME_PARMS *frame_parms,
-                                   uint8_t n_tx,
-                                   int32_t *avg,
-                                   uint8_t symbol,
-                                   uint32_t len,
-                                   unsigned short nb_rb);
-
-void nr_dlsch_scale_channel(uint32_t rx_size_symbol,
-                            int32_t dl_ch_estimates_ext[][rx_size_symbol],
-                            NR_DL_FRAME_PARMS *frame_parms,
-                            uint8_t n_tx,
-                            uint8_t n_rx,
-                            uint8_t symbol,
-                            uint8_t pilots,
-                            uint32_t len,
-                            unsigned short nb_rb);
-void nr_dlsch_detection_mrc(uint32_t rx_size_symbol,
-                            short n_tx,
-                            short n_rx,
-                            int32_t rxdataF_comp[][n_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
-                            int ***rho,
-                            int32_t dl_ch_mag[][n_rx][rx_size_symbol],
-                            int32_t dl_ch_magb[][n_rx][rx_size_symbol],
-                            int32_t dl_ch_magr[][n_rx][rx_size_symbol],
-                            unsigned char symbol,
-                            unsigned short nb_rb,
-                            int length);
 
 /* Main Function */
 int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
@@ -1399,7 +1317,7 @@ void nr_dlsch_channel_level(uint32_t rx_size_symbol,
 #endif
 }
 
-static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol, int32_t dl_ch_estimates_ext[][rx_size_symbol], int32_t *median, int n_tx, int n_rx, int length)
+void nr_dlsch_channel_level_median(uint32_t rx_size_symbol, int32_t dl_ch_estimates_ext[][rx_size_symbol], int32_t *median, int n_tx, int n_rx, int length)
 {
 
 #if defined(__x86_64__)||defined(__i386__)
@@ -2184,13 +2102,13 @@ uint8_t nr_zero_forcing_rx(uint32_t rx_size_symbol,
   return 0;
 }
 
-static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
-                                     uint8_t Nl,
-                                     uint8_t mod_order,
-                                     uint32_t length,
-                                     int32_t codeword_TB0,
-                                     int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]) {
+void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int32_t codeword_TB0,
+                              int32_t codeword_TB1,
+                              int16_t *llr_layers[NR_MAX_NB_LAYERS]) {
 
   switch (Nl) {
     case 1:

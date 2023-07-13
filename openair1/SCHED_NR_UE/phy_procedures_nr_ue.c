@@ -50,6 +50,8 @@
 #endif
 #include "executables/softmodem-common.h"
 #include "executables/nr-uesoftmodem.h"
+#include "LAYER2/NR_MAC_UE/mac_proto.h"
+#include "openair1/PHY/MODULATION/nr_modulation.h"
 #include "SCHED_NR_UE/pucch_uci_ue_nr.h"
 #include <openair1/PHY/TOOLS/phy_scope_interface.h>
 
@@ -59,6 +61,7 @@
 //#define NR_PUCCH_SCHED
 //#define NR_PUCCH_SCHED_DEBUG
 //#define NR_PDSCH_DEBUG
+#define HNA_SIZE 6 * 68 * 384 // [hna] 16 segments, 68*Zc
 
 #ifndef PUCCH
 #define PUCCH
@@ -262,6 +265,112 @@ void ue_ta_procedures(PHY_VARS_NR_UE *ue, int slot_tx, int frame_tx)
     ue->ta_frame = -1;
     ue->ta_slot = -1;
   }
+}
+
+bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot)
+{
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+
+  if ((frame * fp->slots_per_frame + slot) % (16 * fp->slots_per_frame) == 0) {
+    ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16_copy;
+    ue->slss->sl_timeoffsetssb_r16 = frame * fp->slots_per_frame + ue->slss->sl_timeoffsetssb_r16_copy;
+  }
+
+  if (ue->slss->sl_numssb_withinperiod_r16 > 0) {
+    if (frame * fp->slots_per_frame + slot == ue->slss->sl_timeoffsetssb_r16) {
+      ue->slss->sl_timeoffsetssb_r16 = ue->slss->sl_timeoffsetssb_r16 + ue->slss->sl_timeinterval_r16;
+      ue->slss->sl_numssb_withinperiod_r16 = ue->slss->sl_numssb_withinperiod_r16 - 1;
+      LOG_I(PHY,"*** SL-SSB slot allocation  %d.%d ***\n", frame, slot); 
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+  return true;
+}
+
+void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue,
+                               UE_nr_rxtx_proc_t *proc,
+                               uint8_t gNB_id)
+{
+  int slot_tx = proc->nr_slot_tx;
+  int frame_tx = proc->frame_tx;
+  AssertFatal(frame_tx >= 0 && frame_tx < 1024, "frame_tx %d is not in 0...1023\n",frame_tx);
+  AssertFatal(slot_tx >= 0 && slot_tx < 20, "slot_tx %d is not in 0...19\n", slot_tx);
+
+  if (get_softmodem_params()->sl_mode == 2) {
+    ue->tx_power_dBm[slot_tx] = -127;
+    int num_samples_per_slot = ue->frame_parms.slots_per_frame * ue->frame_parms.samples_per_slot_wCP;
+    for(int i = 0; i < ue->frame_parms.nb_antennas_tx; ++i) {
+      AssertFatal(i < sizeof(ue->common_vars.txdataF), "Array index %d is over the Array size %lu\n", i, sizeof(ue->common_vars.txdataF));
+      memset(ue->common_vars.txdataF[i], 0, sizeof(int32_t) * num_samples_per_slot);
+    }
+  }
+
+  if (ue->sync_ref && phy_ssb_slot_allocation_sl(ue, frame_tx, slot_tx)) {
+    nr_sl_common_signal_procedures(ue, frame_tx, slot_tx);
+    const int txdataF_offset = slot_tx * ue->frame_parms.samples_per_slot_wCP;
+    LOG_D(NR_PHY, "%s() %d. slot %d txdataF_offset %d\n", __FUNCTION__, __LINE__, slot_tx, txdataF_offset);
+    uint16_t nb_prefix_samples0 = ue->is_synchronized_sl ? ue->frame_parms.nb_prefix_samples0 : ue->frame_parms.nb_prefix_samples;
+    int slot_timestamp = ue->frame_parms.get_samples_slot_timestamp(slot_tx, &ue->frame_parms, 0);
+    for (int aa = 0; aa < ue->frame_parms.nb_antennas_tx; aa++) {
+      apply_nr_rotation_TX(&ue->frame_parms,
+                           ue->common_vars.txdataF[aa],
+                           ue->frame_parms.symbol_rotation[2],
+                           slot_tx,
+                           ue->frame_parms.N_RB_SL,
+                           0,
+                           1); // Conducts rotation on 0th symbol
+      PHY_ofdm_mod((int*)&ue->common_vars.txdataF[aa][txdataF_offset],
+                   (int*)&ue->common_vars.txdata[aa][slot_timestamp],
+                    ue->frame_parms.ofdm_symbol_size,
+                    1, // Takes IDFT of 1st symbol (first PSBCH)
+                    nb_prefix_samples0,
+                    CYCLIC_PREFIX);
+      apply_nr_rotation_TX(&ue->frame_parms,
+                           ue->common_vars.txdataF[aa],
+                           ue->frame_parms.symbol_rotation[2],
+                           slot_tx,
+                           ue->frame_parms.N_RB_SL,
+                           1,
+                           NR_NUMBER_OF_SYMBOLS_PER_SLOT - 1); // Conducts rotation on symbols located 1 (PSS) to 13 (guard)
+      PHY_ofdm_mod((int*)&ue->common_vars.txdataF[aa][ue->frame_parms.ofdm_symbol_size + txdataF_offset], // Starting at PSS (in freq)
+                   (int*)&ue->common_vars.txdata[aa][ue->frame_parms.ofdm_symbol_size +
+                                      nb_prefix_samples0 +
+                                      ue->frame_parms.nb_prefix_samples +
+                                      slot_timestamp], // Starting output offset at CP0 + PSBCH0 + CP1
+                    ue->frame_parms.ofdm_symbol_size,
+                    13, // Takes IDFT of remaining 13 symbols (PSS to guard)... Notice the offset of the input and output above
+                    ue->frame_parms.nb_prefix_samples,
+                    CYCLIC_PREFIX);
+    }
+#ifdef DEBUG_PHY_PROC
+    char buffer1[ue->frame_parms.ofdm_symbol_size];
+    for (int i = 0; i < 13; i++) {
+      bzero(buffer1, sizeof(buffer1));
+      LOG_I(NR_PHY, "%s(): %d After rotation txdataF[%d] = %s\n",
+           __FUNCTION__, __LINE__,  txdataF_offset + (ue->frame_parms.ofdm_symbol_size * i),
+           hexdump((void *)&ue->common_vars.txdataF[0][txdataF_offset + (ue->frame_parms.ofdm_symbol_size * i)], ue->frame_parms.ofdm_symbol_size, buffer1, sizeof(buffer1)));
+    }
+    char buffer0[ue->frame_parms.ofdm_symbol_size];
+    for (int i = 0; i < 13; i++) {
+      bzero(buffer0, sizeof(buffer0));
+      LOG_I(NR_PHY, "%s(): %d Time domain txdata[%d] = %s\n",
+           __FUNCTION__, __LINE__,  slot_timestamp + ue->frame_parms.ofdm_symbol_size * i,
+           hexdump((void *)&ue->common_vars.txdata[0][slot_timestamp + ue->frame_parms.ofdm_symbol_size * i], ue->frame_parms.ofdm_symbol_size, buffer0, sizeof(buffer0)));
+    }
+#endif
+  }
+  else if (ue->sync_ref && ((slot_tx == 1) || (slot_tx == 4))) {
+    for (uint8_t harq_pid = 0; harq_pid < 1; harq_pid++) {
+      nr_ue_set_slsch(&ue->frame_parms, harq_pid, ue->slsch[gNB_id], frame_tx, slot_tx);
+      if (ue->slsch[0]->harq_processes[harq_pid]->status == ACTIVE) {
+        nr_ue_slsch_tx_procedures(ue, harq_pid, frame_tx, slot_tx);
+      }
+    }
+  }
+  LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_tx, slot_tx);
 }
 
 void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue,
@@ -864,6 +973,148 @@ bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
   return dec;
 }
 
+int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           uint8_t synchRefUE_id,
+                           notifiedFIFO_t *txFifo) {
+
+  if (ue->sync_ref || ue->is_synchronized_sl == 0 || (proc->nr_slot_rx != 1 && proc->nr_slot_rx != 4)) {
+    return (0);
+  }
+
+  int frame_rx = proc->frame_rx;
+  int slot_rx = proc->nr_slot_rx;
+
+  NR_UE_DLSCH_t   *slsch = ue->slsch_rx[synchRefUE_id][0];
+  NR_DL_UE_HARQ_t *harq = NULL;
+  uint64_t rx_offset = (slot_rx&3)*(ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size);
+  const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
+  __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
+
+  bool payload_type_string = false;
+  for (unsigned char harq_pid = 0; harq_pid < 1; harq_pid++) {
+    nr_ue_set_slsch_rx(ue, harq_pid);
+    if (slsch->harq_processes[harq_pid]->status == ACTIVE) {
+      harq = slsch->harq_processes[harq_pid];
+      for (int aa = 0; aa < ue->frame_parms.nb_antennas_rx; aa++) {
+        for (int ofdm_symbol = 0; ofdm_symbol < NR_NUMBER_OF_SYMBOLS_PER_SLOT; ofdm_symbol++) {
+          nr_slot_fep_ul(&ue->frame_parms, (int32_t*)ue->common_vars.rxdata[aa], (int32_t*)&rxdataF[aa][rx_offset], ofdm_symbol, slot_rx, 0);
+          memcpy(&ue->common_vars.rxdataF[0][rx_offset], &rxdataF[0][rx_offset], rxdataF_sz * sizeof(int32_t));
+        }
+        apply_nr_rotation_RX(&ue->frame_parms,
+                             rxdataF[aa],
+                             ue->frame_parms.symbol_rotation[2],
+                             slot_rx,
+                             ue->frame_parms.N_RB_SL,
+                             0,
+                             0,
+                             NR_NUMBER_OF_SYMBOLS_PER_SLOT);
+      }
+      uint32_t ret = nr_ue_slsch_rx_procedures(ue, harq_pid, frame_rx, slot_rx, ue->common_vars.rxdata, 29008, 45727, proc);
+      if (ret != -1) {
+        if (payload_type_string)
+          validate_rx_payload_str(harq, slot_rx);
+        else
+          validate_rx_payload(harq, frame_rx, slot_rx);
+      }
+    }
+  }
+  LOG_D(PHY,"****** end Sidelink TX-Chain for AbsSlot %d.%d ******\n", frame_rx, slot_rx);
+  return (0);
+}
+
+void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx) {
+  unsigned int errors_bit = 0;
+  unsigned char estimated_output_bit[HNA_SIZE];
+  unsigned char test_input_bit[HNA_SIZE];
+  unsigned char test_input[harq->TBS / 8];
+  uint32_t frame_tx = 0;
+  uint32_t slot_tx = 0;
+  unsigned char  randm_tx =0;
+
+  for (int i = 0; i < harq->TBS / 8; i++)
+    test_input[i] = (unsigned char) (i + 3);
+  for (int i = 0; i < min(80, harq->TBS); i++) {
+    estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+    if(i % 8 == 0){
+      if(i == 8 * 0) slot_tx = harq->b[0];
+      if(i == 8 * 1) frame_tx = harq->b[1];
+      if(i == 8 * 2) frame_tx += (harq->b[2] << 8);
+      if(i == 8 * 3) randm_tx = harq->b[3];
+      if(i  > 8 * 3)
+          LOG_D(PHY,"TxByte : %4u  vs  %4u : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+    }
+
+    LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+
+    if ((i  >= 8 * 4) && (i  < 8 * 9) && (estimated_output_bit[i] != test_input_bit[i])) {
+      errors_bit++;
+    }
+  }
+
+  LOG_D(PHY,"TxRandm: %4u\n", randm_tx);
+  LOG_D(PHY,"TxFrame: %4u  vs  %4u : RxFrame\n", frame_tx, (uint32_t) frame_rx);
+  LOG_D(PHY,"TxSlot : %4u  vs  %4u : RxSlot \n", slot_tx,  (uint8_t) slot_rx);
+  LOG_I(PHY,"RxSlot %4u\n", (uint8_t) slot_rx);
+  if (errors_bit > 0) {
+    LOG_D(PHY,"errors_bit %u\n", errors_bit);
+    LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
+  }
+  if (errors_bit == 0) {
+    LOG_D(PHY, "PSSCH test OK\n");
+  }
+}
+
+void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot) {
+  unsigned int errors_bit = 0;
+  unsigned char estimated_output_bit[HNA_SIZE];
+  unsigned char test_input_bit[HNA_SIZE];
+  unsigned char test_input[] = "EpiScience";
+  static uint16_t sum_passed = 0;
+  static uint16_t sum_failed = 0;
+
+  for (int i = 0; i < min(80, harq->TBS); i++) {
+    estimated_output_bit[i] = (harq->b[i / 8] & (1 << (i & 7))) >> (i & 7);
+    test_input_bit[i] = (test_input[i / 8] & (1 << (i & 7))) >> (i & 7); // Further correct for multiple segments
+    if(i % 8 == 0){
+      LOG_D(PHY,"TxByte : %c  vs  %c : RxByte\n", test_input[i / 8], harq->b[i / 8]);
+    }
+#if DEBUG_NR_PSSCHSIM
+    LOG_I(NR_PHY, "tx bit: %u, rx bit: %u\n", test_input_bit[i], estimated_output_bit[i]);
+#endif
+    if (estimated_output_bit[i] != test_input_bit[i]) {
+      errors_bit++;
+    }
+  }
+  if (errors_bit > 0) {
+    static unsigned char result[128];
+    for (int i = 0; i < min(128, harq->TBS/8); i++) {
+      result[i] = harq->b[i];
+      LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
+    }
+    unsigned char *usr_msg_ptr = &result[0];
+    LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
+    LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
+    ++sum_failed;
+    LOG_D(PHY,"errors_bit %u\n", errors_bit);
+    LOG_D(PHY,"We exit here for debugging  fn %s line %d\n", __FUNCTION__, __LINE__);
+    LOG_I(PHY, "PSSCH test NG with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+  }
+  if (errors_bit == 0) {
+    static unsigned char result[128];
+    for (int i = 0; i < min(128, harq->TBS/8); i++) {
+      result[i] = harq->b[i];
+      LOG_D(PHY, "result[%d]=%c\n", i, result[i]);
+    }
+    ++sum_passed;
+    unsigned char *usr_msg_ptr = &result[0];
+    LOG_I(NR_PHY, "Received your text! It says: %s\n", usr_msg_ptr);
+    LOG_I(PHY, "Decoded_payload for slot %d: %s\n", slot, result);
+    LOG_I(PHY, "PSSCH test OK with %d / %d = %4.2f\n", sum_passed, (sum_passed + sum_failed), (float) sum_passed / (float) (sum_passed + sum_failed));
+  }
+}
+
 void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
                            UE_nr_rxtx_proc_t *proc,
                            nr_phy_data_t *phy_data) {
@@ -1215,7 +1466,6 @@ void pdsch_processing(PHY_VARS_NR_UE *ue,
   LOG_D(PHY," ****** end RX-Chain  for AbsSubframe %d.%d ******  \n", frame_rx%1024, nr_slot_rx);
   UEscopeCopy(ue, commonRxdataF, rxdataF, sizeof(int32_t), ue->frame_parms.nb_antennas_rx, rxdataF_sz);
 }
-
 
 // todo:
 // - power control as per 38.213 ch 7.4

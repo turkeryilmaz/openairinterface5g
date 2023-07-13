@@ -39,6 +39,8 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "CODING/nrPolar_tools/nr_polar_psbch_defs.h"
+#include "CODING/nrPolar_tools/nr_polar_pssch_defs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,6 +94,7 @@
 /// suppress compiler warning for unused arguments
 #define UNUSED(x) (void)x;
 
+#define NB_RB_SCI1 20
 #include "impl_defs_top.h"
 #include "impl_defs_nr.h"
 #include "time_meas.h"
@@ -122,6 +125,8 @@ typedef enum {
   NR_PDSCH_EST,
   NR_SSS_EST,
 } NR_CHANNEL_EST_t;
+
+typedef enum { SL_MODE_NONE = 0, SL_MODE_1, SL_MODE_2 } NR_SL_MODE_t;
 
 #define debug_msg if (((mac_xface->frame%100) == 0) || (mac_xface->frame < 50)) msg
 
@@ -244,9 +249,229 @@ typedef struct {
   int32_t *sync_corr;
   /// estimated frequency offset (in radians) for all subcarriers
   int32_t freq_offset;
+  // N2_id - assigned based on in coverage status received in pss
+  int32_t N2_id;
+  /// eNb_id user is synched to
+  int32_t eNb_id;
   /// nid2 is the PSS value, the PCI (physical cell id) will be: 3*NID1 (SSS value) + NID2 (PSS value)
   int32_t nid2;
+  /// PSS value converted to the PCI (physical cell id) by 3*NID1 (SSS value) + NID2 (PSS value)
+  int32_t sl_nid2;
 } NR_UE_COMMON;
+
+typedef struct {//from gNB code for PSSCH Rx
+  /// \brief Holds the received data in the frequency domain for the allocated RBs in repeated format.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..2*ofdm_symbol_size[
+  int32_t **rxdataF_ext;
+  /// \brief Hold the channel estimates in time domain based on DRS.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..4*ofdm_symbol_size[
+  int32_t **sl_ch_estimates_time;
+  /// \brief Hold the channel estimates in frequency domain based on DRS.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_estimates;
+  /// \brief Uplink channel estimates extracted in PRBS.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_estimates_ext;
+  /// \brief Holds the compensated signal.
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **rxdataF_comp;
+  /// \brief Magnitude of the UL channel estimates. Used for 2nd-bit level thresholds in LLR computation
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_mag;
+  /// \brief Magnitude of the UL channel estimates scaled for 3rd bit level thresholds in LLR computation
+  /// - first index: rx antenna id [0..nb_antennas_rx[
+  /// - second index: ? [0..12*N_RB_UL*frame_parms->symbols_per_tti[
+  int32_t **sl_ch_magb;
+  /// \brief Cross-correlation of two UE signals.
+  /// - first index: rx antenna [0..nb_antennas_rx[
+  /// - second index: symbol [0..]
+  int32_t ***rho;
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh;
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh0;
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh1;
+  /// \brief Magnitude of Uplink Channel first layer (16QAM level/First 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_mag0;
+  /// \brief Magnitude of Uplink Channel second layer (16QAM level/First 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_mag1[8][8];
+  /// \brief Magnitude of Uplink Channel, first layer (2nd 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_magb0;
+  /// \brief Magnitude of Uplink Channel second layer (2nd 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_UL[
+  int32_t **sl_ch_magb1[8][8];
+  /// measured RX power based on DRS
+  /// \brief Magnitude of Downlink Channel, first layer (256QAM level).
+  int32_t **sl_ch_magr0;
+  int slsch_power[8];
+  /// total signal over antennas
+  int slsch_power_tot;
+  /// measured RX noise power
+  int slsch_noise_power[8];
+  /// total noise over antennas
+  int slsch_noise_power_tot;
+  /// \brief llr values.
+  /// - first index: ? [0..1179743] (hard coded)
+  int16_t **llr;
+  /// \brief llr values per layer.
+  /// - first index: ? [0..3] (hard coded)
+  /// - first index: ? [0..1179743] (hard coded)
+  int16_t **llr_layers;
+  int16_t **llr_layers_adj;
+  /// DMRS symbol index, to be updated every DMRS symbol within a slot.
+  uint8_t dmrs_symbol;
+  // PTRS symbol index, to be updated every PTRS symbol within a slot.
+  uint8_t ptrs_symbol_index;
+  /// bit mask of PT-RS ofdm symbol indicies
+  uint16_t ptrs_symbols;
+  // PTRS subcarriers per OFDM symbol
+  int32_t ptrs_re_per_slot;
+  /// \brief Estimated phase error based upon PTRS on each symbol .
+  /// - first index: ? [0..7] Number of Antenna
+  /// - second index: ? [0...14] smybol per slot
+  int32_t **ptrs_phase_per_slot;
+  /// \brief Total RE count after DMRS/PTRS RE's are extracted from respective symbol.
+  /// - first index: ? [0...14] smybol per slot
+  int16_t *sl_valid_re_per_slot;
+  /// flag to verify if channel level computation is done
+  uint8_t cl_done;
+  /// flag to indicate DTX on reception
+  int DTX;
+
+  // The following are for Polar coding.
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  //uint32_t pdu_fer;
+  uint32_t pssch_a;
+  uint32_t pssch_a_interleaved;
+  uint32_t pssch_a_prime;
+  uint32_t pssch_e[NR_POLAR_PSSCH_E_DWORD];
+} NR_UE_PSSCH;
+
+typedef struct {
+  int frame;
+  int dump_frame;
+  uint16_t rnti;
+  int round_trials[8];
+  int total_bytes_tx;
+  int total_bytes_rx;
+  int current_Qm;
+  int current_RI;
+  int power[NB_ANTENNAS_RX];
+  int noise_power[NB_ANTENNAS_RX];
+  int DTX;
+  int sync_pos;
+} NR_UE_SLSCH_STATS_t;
+
+typedef struct {
+  /// \brief Received frequency-domain signal after extraction.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_DL[
+  int32_t **rxdataF_ext;
+  /// \brief Received frequency-domain ue specific pilots.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..12*N_RB_DL[
+  int32_t **rxdataF_uespec_pilots;
+  /// \brief Received frequency-domain signal after extraction and channel compensation.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_DL[
+  int32_t **rxdataF_comp0;
+  /// \brief Hold the channel estimates in frequency domain.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: samples? [0..symbols_per_tti*(ofdm_symbol_size+LTE_CE_FILTER_LENGTH)[
+  int32_t **dl_ch_estimates;
+  /// \brief Downlink channel estimates extracted in PRBS.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_DL[
+  int32_t **dl_ch_estimates_ext;
+  /// \brief Downlink beamforming channel estimates in frequency domain.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: samples? [0..symbols_per_tti*(ofdm_symbol_size+LTE_CE_FILTER_LENGTH)[
+  int32_t **dl_bf_ch_estimates;
+  /// \brief Downlink beamforming channel estimates.
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_DL[
+  int32_t **dl_bf_ch_estimates_ext;
+  /// \brief Downlink PMIs extracted in PRBS and grouped in subbands.
+  /// - first index: ressource block [0..N_RB_DL[
+  uint8_t *pmi_ext;
+  /// \brief Magnitude of Downlink Channel first layer (16QAM level/First 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_DL[
+  int32_t **dl_ch_mag0;
+  /// \brief Magnitude of Downlink Channel, first layer (2nd 64QAM level).
+  /// - first index: ? [0..7] (hard coded) FIXME! accessed via \c nb_antennas_rx
+  /// - second index: ? [0..168*N_RB_DL[
+  int32_t **dl_ch_magb0;
+  /// \brief Magnitude of Downlink Channel, first layer (256QAM level).
+  int32_t **dl_ch_magr0;
+  /// \brief Cross-correlation Matrix of the gNB Tx channel signals.
+  /// - first index: aatx*n_rx+aarx for all aatx=[0..n_tx[ and aarx=[0..nb_rx[
+  /// - second index: symbol [0..]
+  int32_t ***rho;
+  /// \brief Pointers to llr vectors (2 TBs).
+  /// - first index: ? [0..1] (hard coded)
+  /// - second index: ? [0..1179743] (hard coded)
+  int16_t *llr[2];
+  /// Pointers to layer llr vectors (4 layers).
+  int16_t *layer_llr[4];
+  /// \f$\log_2(\max|H_i|^2)\f$
+  int16_t log2_maxh;
+  /// \f$\log_2(\max|H_i|^2)\f$ //this is for TM3-4 layer1 channel compensation
+  int16_t log2_maxh0;
+  /// \f$\log_2(\max|H_i|^2)\f$ //this is for TM3-4 layer2 channel commpensation
+  int16_t log2_maxh1;
+  /// \brief LLR shifts for subband scaling.
+  /// - first index: ? [0..168*N_RB_DL[
+  uint8_t *llr_shifts;
+  /// \brief Pointer to LLR shifts.
+  /// - first index: ? [0..168*N_RB_DL[
+  uint8_t *llr_shifts_p;
+  /// \brief Pointers to llr vectors (128-bit alignment).
+  /// - first index: ? [0..0] (hard coded)
+  /// - second index: ? [0..]
+  int16_t **llr128;
+  /// \brief Pointers to llr vectors (128-bit alignment).
+  /// - first index: ? [0..0] (hard coded)
+  /// - second index: ? [0..]
+  int16_t **llr128_2ndstream;
+  //uint32_t *rb_alloc;
+  //uint8_t Qm[2];
+  //MIMO_mode_t mimo_mode;
+  // llr offset per ofdm symbol
+  uint32_t llr_offset[14];
+  // llr length per ofdm symbol
+  uint32_t llr_length[14];
+  // llr offset per ofdm symbol
+  uint32_t dl_valid_re[14];
+  /// \brief Estimated phase error based upon PTRS on each symbol .
+  /// - first index: ? [0..7] Number of Antenna
+  /// - second index: ? [0...14] smybol per slot
+  int32_t **ptrs_phase_per_slot;
+  /// \brief Estimated phase error based upon PTRS on each symbol .
+  /// - first index: ? [0..7] Number of Antenna
+  /// - second index: ? [0...14] smybol per slot
+  int32_t **ptrs_re_per_slot;
+} NR_UE_PDSCH;
 
 #define NR_PRS_IDFT_OVERSAMP_FACTOR 1  // IDFT oversampling factor for NR PRS channel estimates in time domain, ALLOWED value 16x, and 1x is default(ie. IDFT size is frame_params->ofdm_symbol_size)
 typedef struct {
@@ -323,6 +548,7 @@ typedef struct {
 #define NR_PSBCH_DMRS_LENGTH 297 // in mod symbols
 #define NR_PSBCH_DMRS_LENGTH_DWORD 20 // ceil(2(QPSK)*NR_PBCH_DMRS_LENGTH/32)
 
+
 /* NR Sidelink PSBCH payload fields
    TODO: This will be removed in the future and
    filled in by the upper layers once developed. */
@@ -333,6 +559,21 @@ typedef struct {
   uint32_t slotIndex : 7;
   uint32_t reserved : 2;
 } PSBCH_payload;
+
+typedef struct {
+  /// \brief Total number of PDU errors.
+  uint32_t pdu_errors;
+  /// \brief Total number of PDU errors 128 frames ago.
+  uint32_t pdu_errors_last;
+  /// \brief Total number of consecutive PDU errors.
+  uint32_t pdu_errors_conseq;
+  /// \brief FER (in percent) .
+  // uint32_t pdu_fer;
+  uint32_t psbch_a;
+  uint32_t psbch_a_interleaved;
+  uint32_t psbch_a_prime;
+  uint32_t psbch_e[NR_POLAR_PSBCH_E_DWORD];
+} NR_UE_PSBCH;
 
 #define PBCH_A 24
 
@@ -395,7 +636,7 @@ typedef struct {
   /// \brief Indicator that UE is synchronized to a gNB
   int is_synchronized;
   /// \brief Indicator that UE is synchronized to a SyncRef UE on Sidelink
-  int is_synchronized_sl;
+  bool is_synchronized_sl;
   /// \brief Target gNB Nid_cell when UE is resynchronizing
   int target_Nid_cell;
   /// \brief Indicator that UE is an SynchRef UE
@@ -440,10 +681,25 @@ typedef struct {
   fapi_nr_config_request_t nrUE_config;
   nr_synch_request_t synch_request;
 
+  NR_UE_PSSCH     *pssch_vars[NUMBER_OF_CONNECTED_SyncRefUE_MAX];
   NR_UE_PRACH     *prach_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_PSBCH     *psbch_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_IM    *csiim_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_CSI_RS    *csirs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
   NR_UE_SRS       *srs_vars[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_DLSCH_t   *dlsch[NUMBER_OF_CONNECTED_gNB_MAX][NR_MAX_NB_LAYERS>4 ? 2:1]; // two RxTx Threads
+  NR_UE_DLSCH_t   *slsch_rx[NUMBER_OF_CONNECTED_SyncRefUE_MAX][NR_MAX_NB_LAYERS_SL>4 ? 2:1]; // two RxTx Threads
+  NR_UE_ULSCH_t   *ulsch[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_ULSCH_t   *slsch[NUMBER_OF_CONNECTED_SyncRefUE_MAX];
+  NR_UE_DLSCH_t   *dlsch_SI[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_DLSCH_t   *dlsch_ra[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_DLSCH_t   *dlsch_p[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_UE_DLSCH_t   *dlsch_MCH[NUMBER_OF_CONNECTED_gNB_MAX];
+  NR_SLSS_t       *slss;
+
+  /// statistics for SLSCH measurement collection
+  NR_UE_SLSCH_STATS_t slsch_stats[NUMBER_OF_NR_SLSCH_STATS_MAX];
+
   NR_UE_PRS       *prs_vars[NR_MAX_PRS_COMB_SIZE];
   uint8_t          prs_active_gNBs;
   NR_DL_UE_HARQ_t  dl_harq_processes[2][NR_MAX_DLSCH_HARQ_PROCESSES];
@@ -461,9 +717,14 @@ typedef struct {
 
 #endif
 
+  uint16_t pssch_gold_init;
+  uint16_t pssch_gold_init_rx;
 
   /// PBCH DMRS sequence
   uint32_t nr_gold_pbch[2][64][NR_PBCH_DMRS_LENGTH_DWORD];
+
+  /// PSBCH DMRS sequence
+  uint32_t nr_gold_psbch[NR_PSBCH_DMRS_LENGTH_DWORD];
 
   /// PDSCH DMRS
   uint32_t ****nr_gold_pdsch[NUMBER_OF_CONNECTED_eNB_MAX];
@@ -482,6 +743,9 @@ typedef struct {
 
   /// PUSCH DMRS sequence
   uint32_t ****nr_gold_pusch_dmrs;
+
+  /// PSSCH DMRS sequence
+  uint32_t ***nr_gold_pssch_dmrs;
 
   // PRS sequence per gNB, per resource
   uint32_t *****nr_gold_prs;
@@ -534,6 +798,7 @@ typedef struct {
   int              ssb_offset;
   uint16_t         symbol_offset;  /// offset in terms of symbols for detected ssb in sync
   int              rx_offset;      /// Timing offset
+  int              rx_offset_sl;   /// Timing offset for Sidelink
   int              rx_offset_diff; /// Timing adjustment for ofdm symbol0 on HW USRP
   int64_t          max_pos_fil;    /// Timing offset IIR filter
   bool             apply_timing_offset;     /// Do time sync for current frame
@@ -571,6 +836,17 @@ typedef struct {
 
   uint8_t max_ldpc_iterations;
 
+  int ldpc_offload_flag;
+
+  /// PDSCH Varaibles
+  PDSCH_CONFIG_DEDICATED pdsch_config_dedicated[NUMBER_OF_CONNECTED_gNB_MAX];
+
+  /// PUSCH Varaibles
+  PUSCH_CONFIG_DEDICATED pusch_config_dedicated[NUMBER_OF_CONNECTED_gNB_MAX];
+
+  /// PUSCH contention-based access vars
+  PUSCH_CA_CONFIG_DEDICATED  pusch_ca_config_dedicated[NUMBER_OF_eNB_MAX]; // lola
+
   /// SRS variables
   nr_srs_info_t *nr_srs_info;
 
@@ -604,6 +880,29 @@ typedef struct {
   time_stats_t ulsch_rate_matching_stats;
   time_stats_t ulsch_interleaving_stats;
   time_stats_t ulsch_multiplexing_stats;
+
+  time_stats_t slsch_encoding_stats;
+  time_stats_t slsch_ldpc_encoding_stats;
+  time_stats_t slsch_modulation_stats;
+  time_stats_t slsch_segmentation_stats;
+  time_stats_t slsch_rate_matching_stats;
+  time_stats_t slsch_interleaving_stats;
+  time_stats_t slsch_multiplexing_stats;
+
+  time_stats_t rx_pssch_stats;
+  time_stats_t sl_indication_stats;
+  time_stats_t schedule_response_stats;
+  time_stats_t slsch_decoding_stats;
+  time_stats_t slsch_rate_unmatching_stats;
+  time_stats_t slsch_ldpc_decoding_stats;
+  time_stats_t slsch_deinterleaving_stats;
+  time_stats_t slsch_unscrambling_stats;
+  time_stats_t slsch_channel_estimation_stats;
+  time_stats_t slsch_ptrs_processing_stats;
+  time_stats_t slsch_channel_compensation_stats;
+  time_stats_t slsch_rbs_extraction_stats;
+  time_stats_t slsch_mrc_stats;
+  time_stats_t slsch_llr_stats;
 
   time_stats_t generic_stat;
   time_stats_t generic_stat_bis[LTE_SLOTS_PER_SUBFRAME];
@@ -643,6 +942,15 @@ typedef struct {
   /// RF and Interface devices per CC
   openair0_device rfdevice;
 
+  notifiedFIFO_t respDecode;
+  // notifiedFIFO_t resp_L1;
+  // notifiedFIFO_t L1_tx_free;
+  // notifiedFIFO_t L1_tx_filled;
+  // notifiedFIFO_t L1_tx_out;
+  // notifiedFIFO_t resp_RU_tx;
+  tpool_t threadPool;
+  int nbDecode;
+
 #if ENABLE_RAL
   hash_table_t    *ral_thresholds_timed;
   SLIST_HEAD(ral_thresholds_gen_poll_s, ral_threshold_phy_t) ral_thresholds_gen_polled[RAL_LINK_PARAM_GEN_MAX];
@@ -662,6 +970,8 @@ typedef struct {
   notifiedFIFO_t phy_config_ind;
   notifiedFIFO_t *tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
   int tx_wait_for_dlsch[NR_MAX_SLOTS_PER_FRAME];
+  uint32_t rx_ssb_slot;
+  uint32_t rx_ssb_frame;
 } PHY_VARS_NR_UE;
 
 typedef struct nr_phy_data_tx_s {
@@ -688,10 +998,14 @@ typedef struct nr_rxtx_thread_data_s {
 typedef struct LDPCDecode_ue_s {
   PHY_VARS_NR_UE *phy_vars_ue;
   NR_DL_UE_HARQ_t *harq_process;
+  NR_UL_UE_HARQ_t *slsch_harq;
   t_nrLDPC_dec_params decoderParms;
   NR_UE_DLSCH_t *dlsch;
+  NR_UE_ULSCH_t *slsch;
   short* dlsch_llr;
+  short* slsch_llr;
   int dlsch_id;
+  int slsch_id;
   int harq_pid;
   int rv_index;
   int A;
@@ -710,6 +1024,19 @@ typedef struct LDPCDecode_ue_s {
   time_stats_t ts_ldpc_decode;
   UE_nr_rxtx_proc_t *proc;
 } ldpcDecode_ue_t;
+
+struct ldpcReqId_ue {
+  uint16_t rnti;
+  uint16_t frame;
+  uint8_t  subframe;
+  uint8_t  codeblock;
+  uint16_t spare;
+} __attribute__((packed));
+
+union ldpcReqUnion_ue {
+  struct ldpcReqId_ue s;
+  uint64_t p;
+};
 
 #include "SIMULATION/ETH_TRANSPORT/defs.h"
 #endif

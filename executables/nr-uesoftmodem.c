@@ -86,6 +86,7 @@ unsigned short config_frames[4] = {2,9,11,13};
 #include "nr_nas_msg_sim.h"
 #include <openair1/PHY/MODULATION/nr_modulation.h>
 #include "openair2/GNB_APP/gnb_paramdef.h"
+#include <openair1/PHY/NR_REFSIG/sss_nr.h>
 
 extern const char *duplex_mode[];
 THREAD_STRUCT thread_struct;
@@ -144,7 +145,6 @@ double rx_gain[MAX_NUM_CCs][4] = {{110,0,0,0},{20,0,0,0}};
 // UE and OAI config variables
 
 openair0_config_t openair0_cfg[MAX_CARDS];
-int16_t           node_synch_ref[MAX_NUM_CCs];
 int               otg_enabled;
 double            cpuf;
 
@@ -156,7 +156,9 @@ int     transmission_mode = 1;
 int            numerology = 0;
 int           oaisim_flag = 0;
 int            emulate_rf = 0;
-uint32_t       N_RB_DL    = 106;
+uint32_t          N_RB_DL = 106;
+uint32_t          N_RB_SL = 106;
+uint64_t    SSB_positions = 0x01;
 
 /* see file openair2/LAYER2/MAC/main.c for why abstraction_flag is needed
  * this is very hackish - find a proper solution
@@ -256,6 +258,84 @@ nrUE_params_t *get_nrUE_params(void) {
   return &nrUE_params;
 }
 
+static void nr_phy_config_request_sl(PHY_VARS_NR_UE *ue,
+                                        int N_RB_DL,
+                                        int N_RB_UL,
+                                        int N_RB_SL,
+                                        int CC_id,
+                                        uint64_t position_in_burst)
+{
+  uint64_t rev_burst = 0;
+  int mu = 1;
+  uint8_t n_tx = 1;
+  uint8_t n_rx = 1;
+  uint16_t Nid_cell = 0;
+  int ssb_subcarrier_offset = 0;
+  for (int i = 0; i < 64; i++)
+    rev_burst |= (((position_in_burst >> (63-i))&0x01) << i);
+
+  NR_DL_FRAME_PARMS *fp                                  = &ue->frame_parms;
+  fapi_nr_config_request_t *nrUE_config                  = &ue->nrUE_config;
+  nrUE_config->cell_config.phy_cell_id                   = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;
+  nrUE_config->ssb_config.scs_common                     = mu;
+  nrUE_config->ssb_table.ssb_subcarrier_offset           = 0;
+  nrUE_config->ssb_table.ssb_offset_point_a              = (fp->N_RB_SL - 11) >> 1;
+  nrUE_config->ssb_table.ssb_mask_list[1].ssb_mask       = (rev_burst)&(0xFFFFFFFF);
+  nrUE_config->ssb_table.ssb_mask_list[0].ssb_mask       = (rev_burst>>32)&(0xFFFFFFFF);
+  nrUE_config->cell_config.frame_duplex_type             = TDD;
+  nrUE_config->ssb_table.ssb_period                      = 1; //10ms
+  nrUE_config->carrier_config.dl_grid_size[mu]           = N_RB_DL;
+  nrUE_config->carrier_config.ul_grid_size[mu]           = N_RB_UL;
+  nrUE_config->carrier_config.sl_grid_size[mu]           = N_RB_SL;
+  nrUE_config->carrier_config.num_tx_ant                 = fp->nb_antennas_tx;
+  nrUE_config->carrier_config.num_rx_ant                 = fp->nb_antennas_rx;
+  nrUE_config->tdd_table.tdd_period                      = 0;
+  nrUE_config->carrier_config.dl_frequency               = downlink_frequency[CC_id][0] / 1000;
+  nrUE_config->carrier_config.uplink_frequency           = downlink_frequency[CC_id][0] / 1000;
+  nrUE_config->carrier_config.sl_frequency               = sidelink_frequency[CC_id][0] / 1000;
+  LOG_D(NR_PHY, "SL Frequency %u\n", nrUE_config->carrier_config.sl_frequency);
+  fp->tdd_period                                         = 6; // 6 indicates 5ms (see get_nb_periods_per_frame())
+  fp->tdd_slot_config                                    = 0b0000111111; // 1 -> UL, 0-> DL for each slot , LSB is the slot 0
+  fp->nb_antennas_tx = n_tx;
+  fp->nb_antennas_rx = n_rx;
+  fp->nb_antenna_ports_gNB = n_tx;
+  fp->N_RB_DL = N_RB_DL;
+  fp->N_RB_UL = N_RB_UL;
+  fp->N_RB_SL = N_RB_SL;
+  fp->Nid_cell = Nid_cell;
+  fp->Nid_SL = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
+  fp->nushift = 0; //No nushift in SL
+  fp->ssb_type = nr_ssb_type_C; //Note: case c for NR SL???
+  fp->freq_range = mu < 2 ? nr_FR1 : nr_FR2;
+  fp->nr_band = get_softmodem_params()->band; //Note: NR SL uses for n38 and n47
+  fp->threequarter_fs = 0;
+  fp->ofdm_offset_divisor = UINT_MAX;
+  fp->first_carrier_offset = 0;
+  fp->ssb_start_subcarrier = 12 * ue->nrUE_config.ssb_table.ssb_offset_point_a + ssb_subcarrier_offset;
+  int bw_index = get_supported_band_index(mu, fp->nr_band, N_RB_DL);
+  nrUE_config->carrier_config.dl_bandwidth = get_supported_bw_mhz(fp->nr_band > 256 ? FR2 : FR1, bw_index);
+
+  ue->slss = calloc(1, sizeof(*ue->slss));
+  int len = sizeof(ue->slss->sl_mib) / sizeof(ue->slss->sl_mib[0]);
+  for (int i = 0; i < len; i++) {
+    ue->slss->sl_mib[i] = 0;
+  }
+  ue->slss->sl_mib_length = 32;
+  ue->slss->sl_numssb_withinperiod_r16 = 2;
+  ue->slss->sl_timeinterval_r16 = 20;
+  ue->slss->sl_timeoffsetssb_r16 = 2;
+  ue->slss->sl_numssb_withinperiod_r16_copy = 2;
+  ue->slss->sl_timeinterval_r16_copy = 20;
+  ue->slss->sl_timeoffsetssb_r16_copy = 2;
+  ue->slss->slss_id = get_softmodem_params()->nid1 + get_softmodem_params()->nid2 * NUMBER_SSS_SEQUENCE;;
+  ue->is_synchronized_sl = 0;
+  ue->UE_fo_compensation = 0;
+  ue->UE_scan_carrier = 1;
+  ue->sync_ref = get_softmodem_params()->sync_ref;
+  LOG_I(NR_PHY, "nrUE configured\n");
+}
+
+
 static void get_options(void) {
 
   paramdef_t cmdline_params[] =CMDLINE_NRUEPARAMS_DESC ;
@@ -330,7 +410,7 @@ void init_openair0(void) {
       openair0_cfg[card].duplex_mode = duplex_mode_FDD;
 
     openair0_cfg[card].Mod_id = 0;
-    openair0_cfg[card].num_rb_dl = frame_parms->N_RB_DL;
+    openair0_cfg[card].num_rb_dl = (get_softmodem_params()->sl_mode == SL_MODE_2) ? frame_parms->N_RB_SL : frame_parms->N_RB_DL;
     openair0_cfg[card].clock_source = get_softmodem_params()->clock_source;
     openair0_cfg[card].time_source = get_softmodem_params()->timing_source;
     openair0_cfg[card].tune_offset = get_softmodem_params()->tune_offset;
@@ -348,7 +428,7 @@ void init_openair0(void) {
 
     nr_rf_card_config_freq(&openair0_cfg[card], ul_carrier, dl_carrier, freq_off);
 
-    if (get_softmodem_params()->sl_mode == 2) {
+    if (get_softmodem_params()->sl_mode == SL_MODE_2) {
       nr_get_carrier_frequencies_sl(PHY_vars_UE_g[0][0], &sl_carrier);
       nr_rf_card_config_freq(&openair0_cfg[card], sl_carrier, sl_carrier, freq_off);
     }
@@ -511,7 +591,11 @@ int main( int argc, char **argv ) {
 
       set_options(CC_id, UE[CC_id]);
       NR_UE_MAC_INST_t *mac = get_mac_inst(0);
-
+      if (get_softmodem_params()->sl_mode != 0) {
+        mac->if_module = NULL;
+        LOG_I(HW, "Setting mac->if_module = NULL b/c we config PHY in nr_phy_config_request_sl (for now - TODO)\n");
+        nr_phy_config_request_sl(UE[CC_id], N_RB_SL, N_RB_SL, N_RB_SL, CC_id, SSB_positions);
+      }
       if (get_softmodem_params()->sa) { // set frame config to initial values from command line and assume that the SSB is centered on the grid
         uint16_t nr_band = get_softmodem_params()->band;
         mac->nr_band = nr_band;
@@ -520,15 +604,15 @@ int main( int argc, char **argv ) {
                                   uplink_frequency_offset[CC_id][0],
                                   get_softmodem_params()->numerology,
                                   nr_band);
-      }
-      else{
-        DevAssert(mac->if_module != NULL && mac->if_module->phy_config_request != NULL);
-        mac->if_module->phy_config_request(&mac->phy_config);
-        mac->phy_config_request_sent = true;
-        fapi_nr_config_request_t *nrUE_config = &UE[CC_id]->nrUE_config;
-
-        nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, nrUE_config,
-        *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0]);
+      } else {
+        if (mac->if_module != NULL && mac->if_module->phy_config_request != NULL) {
+          mac->if_module->phy_config_request(&mac->phy_config);
+          mac->phy_config_request_sent = true;
+        }
+        nr_init_frame_parms_ue(&UE[CC_id]->frame_parms, &UE[CC_id]->nrUE_config,
+                               ((get_softmodem_params()->sl_mode == 0) ?
+                               *mac->scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] :
+                               UE[CC_id]->frame_parms.nr_band));
       }
 
       init_nr_ue_vars(UE[CC_id], 0, abstraction_flag);

@@ -23,6 +23,15 @@
 #define __PHY_EXTERN_NR_UE__H__
 
 #include "PHY/defs_nr_UE.h"
+
+extern uint64_t downlink_frequency[MAX_NUM_CCs][4];
+extern int32_t uplink_frequency_offset[MAX_NUM_CCs][4];
+extern uint64_t sidelink_frequency[MAX_NUM_CCs][4];
+
+extern const short conjugate[8],conjugate2[8];
+extern int number_of_cards;
+
+
 extern PHY_VARS_NR_UE ***PHY_vars_UE_g;
 
 extern uint64_t downlink_frequency[MAX_NUM_CCs][4];

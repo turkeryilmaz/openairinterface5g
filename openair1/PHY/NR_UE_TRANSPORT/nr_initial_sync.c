@@ -44,6 +44,7 @@
 #include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "executables/softmodem-common.h"
 
 extern openair0_config_t openair0_cfg[];
 //static  nfapi_nr_config_request_t config_t;
@@ -197,8 +198,188 @@ int nr_pbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int pbch_ini
 
 }
 
+int nr_psbch_detection(UE_nr_rxtx_proc_t * proc, PHY_VARS_NR_UE *ue, int psbch_initial_symbol, NR_UE_PDCCH_CONFIG *phy_pdcch_config)
+{
+  NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
+  int ret = -1;
+  NR_UE_SSB *best_ssb = NULL;
+  NR_UE_SSB *current_ssb;
+  uint8_t  N_L = 2;
+  uint8_t  N_hf = 0;
+  for (int l = 0; l < N_L; l++) {
+    current_ssb = create_ssb_node(l, N_hf);
+    start_meas(&ue->dlsch_channel_estimation_stats);
+    // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
+    for (int i = psbch_initial_symbol; i < 13; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
+      nr_psbch_dmrs_correlation(ue, proc, 0, 0, i, i - psbch_initial_symbol, current_ssb);
+    }
+    stop_meas(&ue->dlsch_channel_estimation_stats);
+
+    current_ssb->metric = current_ssb->c_re*current_ssb->c_re + current_ssb->c_im*current_ssb->c_im;
+
+    // generate a list of SSB structures
+    if (best_ssb == NULL)
+      best_ssb = current_ssb;
+    else
+      best_ssb = insert_into_list(best_ssb, current_ssb);
+
+  }
+  NR_UE_SSB *temp_ptr = best_ssb;
+  while (ret != 0 && temp_ptr != NULL) {
+    start_meas(&ue->dlsch_channel_estimation_stats);
+    const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
+    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
+    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
+
+    for (int i = psbch_initial_symbol; i < 13; i++) {
+      if (i >= 1 && i <= 4)
+        continue;
+      nr_psbch_channel_estimation(ue, estimateSz, dl_ch_estimates, dl_ch_estimates_time,
+                                  proc, 0, 0, i, i - psbch_initial_symbol, temp_ptr->i_ssb, temp_ptr->n_hf);
+    }
+    stop_meas(&ue->dlsch_channel_estimation_stats);
+    nr_ue_sl_ssb_rsrp_measurements(ue, temp_ptr->i_ssb, proc);
+    fapiPsbch_t result;
+    ret = nr_rx_psbch(ue, proc, estimateSz, dl_ch_estimates, ue->psbch_vars[0], frame_parms,
+                      0, temp_ptr->i_ssb, SISO, phy_pdcch_config, &result);
+    temp_ptr = temp_ptr->next_ssb;
+  }
+  free_list(best_ssb);
+  return ret;
+}
+
 char duplex_string[2][4] = {"FDD","TDD"};
 char prefix_string[2][9] = {"NORMAL","EXTENDED"};
+
+int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
+                       PHY_VARS_NR_UE *ue,
+                       int n_frames)
+{
+  /*   Initial synchronisation
+   *
+  *                                 1 radio frame = 10 ms
+  *     <--------------------------------------------------------------------------->
+  *     -----------------------------------------------------------------------------
+  *     |                                 Received UE data buffer                    |
+  *     ----------------------------------------------------------------------------
+  *                     -------------------------------------------------
+  *     <-------------->| psbch | spss | spss | ssss | ssss | psbch |....
+  *                     -------------------------------------------------
+  *          sync_pos            SL S-SSB/PSBCH block
+  */
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_IN);
+  NR_DL_FRAME_PARMS *fp = &ue->frame_parms;
+  NR_UE_PDCCH_CONFIG phy_pdcch_config = {0};
+  LOG_D(NR_PHY, "nr_initial SL sync ue RB_SL %d\n", fp->N_RB_SL);
+  int ret = -1;
+  int32_t sync_pos = 0, sync_pos_frame;
+  for (int is = 0; is < n_frames; is++) {
+    sync_pos = pss_synchro_nr(ue, is, NO_RATE_CHANGE); //NOT the location where the slot boundry is set
+    if (sync_pos >= fp->nb_prefix_samples) {
+      // In 5G SL, the first SSB symbol is the PSBCH, so we need adjust the SSB
+      // offset accordingly (psbch_plus_prefix_size). Additionally, there are 2
+      // PSS symbols. So in the case where we correlate on the second PSS,
+      // we need to adjust the SSB offset accordingly (subtracting first PSS prefix).
+      // However, if we correlated on the second PSS, we do not need to include
+      // the size of the first PSS0, becasue the correlation occurs on each individual PSS.
+      // The sync position (sync_pos) is the start of the found PSS + nb_prefix_samples.
+      // PSBCH PREFIX | PSBCH 0 | PSS 0 PREFIX | PSS 0 | PSS 1 PREFIX | PSS 1 |
+      //      144     |  2048   |      144     | 2048  |      144     | 2048  |
+      // ----------------------------------------------------------------------
+      //      144     |  2048   |      144     |   -   |      144     |   X   | SSB Offset = X - (144 + 144 + 2048 + 144)
+      //      144     |  2048   |      144     |   X   |      144     | 2048  | SSB Offset = X - (144 + 2048 + 144)
+      uint32_t psbch_plus_prefix_size = fp->ofdm_symbol_size + fp->nb_prefix_samples0;
+      uint32_t num_pss_prefix_samples_size = fp->nb_prefix_samples;/*(ue->common_vars.N2_id + 1) * fp->nb_prefix_samples;*/
+      LOG_I(NR_PHY, "This is num_pss_prefix_samples_size %d, psbch_plus_prefix_size %d, sync_pos %d, N2_id %d\n",
+            num_pss_prefix_samples_size, psbch_plus_prefix_size, sync_pos, ue->common_vars.N2_id);
+      ue->ssb_offset = sync_pos - num_pss_prefix_samples_size - psbch_plus_prefix_size;
+    } else {
+      ue->ssb_offset = sync_pos + (fp->samples_per_subframe * 10) - fp->nb_prefix_samples;
+    }
+    LOG_D(NR_PHY, "[UE%d] Initial SL sync : n_frames %d Estimated PSS position %d, Nid2 %d  ssb_offset %d\n",
+          ue->Mod_id, n_frames, sync_pos, ue->common_vars.N2_id, ue->ssb_offset);
+    if (sync_pos < (NR_NUMBER_OF_SUBFRAMES_PER_FRAME * fp->samples_per_subframe - (N_SYMB_SLOT_SL * fp->ofdm_symbol_size))) {
+      uint8_t phase_tdd_ncp;
+      int32_t metric_tdd_ncp = 0;
+      const uint32_t rxdataF_sz = ue->frame_parms.samples_per_slot_wCP;
+      __attribute__ ((aligned(32))) c16_t rxdataF[ue->frame_parms.nb_antennas_rx][rxdataF_sz];
+      for (int i = 0; i < N_SYMB_SLOT_SL; i++)
+        nr_slot_fep_init_sync(ue, proc, i, is * fp->samples_per_frame + ue->ssb_offset,
+                              false, rxdataF, link_type_sl);
+      memcpy(ue->common_vars.rxdataF[0], rxdataF[0], rxdataF_sz * sizeof(int32_t));
+      LOG_I(NR_PHY, "Calling sss detection (normal CP)\n");
+      int freq_offset_sss = 0;
+      ret = rx_sss_sl_nr(ue, proc, &metric_tdd_ncp, &phase_tdd_ncp, &freq_offset_sss);
+      if (ue->UE_fo_compensation) {
+        double sampling_time = 1 / (1.0e3 * fp->samples_per_subframe);
+        double off_angle = -2 * M_PI * sampling_time * freq_offset_sss;
+        int start = is * fp->samples_per_frame + ue->ssb_offset;
+        int end = start + NR_N_SYMBOLS_SSB * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+        for (int n = start; n < end; n++) {
+          for (int ar = 0; ar < fp->nb_antennas_rx; ar++) {
+            double re = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n]);
+            double im = ((double)(((short *)ue->common_vars.rxdata[ar]))[2 * n + 1]);
+            ((short *)ue->common_vars.rxdata[ar])[2 * n] = (short)(round(re * cos(n * off_angle) - im * sin(n * off_angle)));
+            ((short *)ue->common_vars.rxdata[ar])[2 * n + 1] = (short)(round(re * sin(n * off_angle) + im *cos(n * off_angle)));
+          }
+        }
+        ue->common_vars.freq_offset += freq_offset_sss;
+      }
+      if (ret == 0) {
+        nr_gold_psbch(ue);
+        ret = nr_psbch_detection(proc, ue, 0, &phy_pdcch_config);
+      }
+      if (ret == 0) {
+        // sync at symbol ue->symbol_offset
+        // computing the offset wrt the beginning of the frame
+        int mu = fp->numerology_index;
+        int n_symb_prefix0 = (ue->symbol_offset / ( 7 * (1 << mu))) + 1;
+        sync_pos_frame = n_symb_prefix0 * (fp->ofdm_symbol_size + fp->nb_prefix_samples0) +
+                         (ue->symbol_offset - n_symb_prefix0) * (fp->ofdm_symbol_size + fp->nb_prefix_samples);
+
+        // for a correct computation of frame number to sync with the one decoded at MIB
+        // we need to take into account in which of the n_frames we got sync
+        ue->init_sync_frame = n_frames - 1 - is;
+
+        // we also need to take into account the shift by samples_per_frame in case the if is true
+        if (ue->ssb_offset < sync_pos_frame) {
+          ue->rx_offset_sl = fp->samples_per_frame - sync_pos_frame + ue->ssb_offset;
+          ue->init_sync_frame += 1;
+        }
+        else {
+          ue->rx_offset_sl = ue->ssb_offset - sync_pos_frame;
+        }
+      }
+      LOG_I(NR_PHY, "TDD Normal prefix: CellId %d metric %d, phase %d, psbch %d\n",
+            fp->Nid_cell, metric_tdd_ncp, phase_tdd_ncp, ret);
+    } else {
+      LOG_I(NR_PHY, "TDD Normal prefix: SSS error condition: sync_pos %d\n", sync_pos);
+    }
+    if (ret == 0) break;
+  }
+  if (ret == 0) {
+    LOG_I(NR_PHY, "[UE %d] rx_offset %d Measured Carrier Frequency %.0f Hz (offset %d Hz)\n",
+          ue->Mod_id, ue->rx_offset_sl, openair0_cfg[0].rx_freq[0] + ue->common_vars.freq_offset, ue->common_vars.freq_offset);
+    if (ue->UE_scan_carrier == 0) {
+      ue->psbch_vars[0]->pdu_errors_conseq = 0;
+    }
+  } else {
+    LOG_I(NR_PHY, "[UE%d] Initial sync :  PSBCH not ok. Estimated PSS position %d, Nid1 %d, Nid2 %d, Frame_type %d\n",
+          ue->Mod_id, sync_pos, GET_NID1_SL(fp->Nid_SL), GET_NID2_SL(fp->Nid_SL), fp->frame_type);
+    ue->psbch_vars[0]->pdu_errors_last = ue->psbch_vars[0]->pdu_errors;
+    ue->psbch_vars[0]->pdu_errors++;
+    ue->psbch_vars[0]->pdu_errors_conseq++;
+    int rx_power = 0;
+    ue->measurements.rx_power_avg[0] = rx_power / fp->nb_antennas_rx;
+    ue->measurements.rx_power_avg_dB[0] = dB_fixed(ue->measurements.rx_power_avg[0]);
+    LOG_I(NR_PHY, "[UE%d] Gain Control - Initial sync : Estimated power: %d dB\n", ue->Mod_id, ue->measurements.rx_power_avg_dB[0]);
+  }
+
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_NR_INITIAL_UE_SYNC, VCD_FUNCTION_OUT);
+  return ret;
+}
 
 int nr_initial_sync(UE_nr_rxtx_proc_t *proc,
                     PHY_VARS_NR_UE *ue,

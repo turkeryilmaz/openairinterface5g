@@ -37,6 +37,8 @@
 #include "PHY/phy_extern_nr_ue.h"
 #include "common/utils/LOG/log.h"
 #include "PHY/sse_intrin.h"
+#include "openair1/PHY/NR_REFSIG/sss_nr.h"
+#include "openair1/PHY/NR_REFSIG/ss_pbch_nr.h"
 
 //#define k1 1000
 #define k1 ((long long int) 1000)
@@ -234,6 +236,89 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
     ssb_index,
     ue->measurements.ssb_rsrp_dBm[ssb_index],
     rsrp);
+}
+
+// This function implements:
+// - Sidelink SS reference signal received power (SSS-RSRP)
+// Measurement units:
+// - RSRP:    W (dBW)
+// - RX Gain  dB
+void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                    int ssb_index,
+                                    UE_nr_rxtx_proc_t *proc) {
+  uint32_t rsrp = 0;
+  int nb_re = 0;
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+    for (int i = 0; i < NUM_SSS_SYMBOLS; i++) {
+      uint8_t l_sss = (SSS_START_IDX + i) % ue->frame_parms.symbols_per_slot;
+      int16_t *rxF_sss = (int16_t *)&ue->common_vars.rxdataF[aarx][(l_sss * ue->frame_parms.ofdm_symbol_size)];
+      for (int k = PSS_SSS_SUB_CARRIER_START_SL; k < (PSS_SSS_SUB_CARRIER_START_SL + LENGTH_SSS_NR); k++) {
+#ifdef DEBUG_MEAS_UE
+      LOG_I(NR_PHY, "In %s rxF_sss %d %d\n", __FUNCTION__, rxF_sss[k * 2], rxF_sss[k * 2 + 1]);
+#endif
+        rsrp += (((int32_t)rxF_sss[k * 2] * rxF_sss[k * 2]) + ((int32_t)rxF_sss[k * 2 + 1] * rxF_sss[k * 2 + 1]));
+        nb_re++;
+      }
+    }
+  }
+
+  rsrp /= nb_re;
+  ue->measurements.ssb_rsrp_dBm[ssb_index] = 10 * log10(rsrp) +
+                                             30 - 10 * log10(pow(2, 30)) -
+                                             ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
+                                             dB_fixed(ue->frame_parms.ofdm_symbol_size);
+
+  LOG_D(NR_PHY, "In %s: [UE %d] ssb %d SS-RSRP: %d dBm/RE (%d)\n",
+        __FUNCTION__, ue->Mod_id, ssb_index, ue->measurements.ssb_rsrp_dBm[ssb_index], rsrp);
+}
+
+// This function implements:
+// - Sidelink SCH reference signal received power (SCH-RSRP)
+// Measurement units:
+// - RSRP:    W (dBW)
+// - RX Gain  dB
+void nr_ue_sl_pssch_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                      unsigned char harq_pid,
+                                      int adj_ue_index,
+                                      UE_nr_rxtx_proc_t *proc) {
+  uint32_t rsrp = 0;
+  int nb_re = 0;
+  NR_UE_DLSCH_t *slsch_ue_rx = ue->slsch_rx[0][0];
+  NR_DL_UE_HARQ_t *slsch_ue_rx_harq = slsch_ue_rx->harq_processes[harq_pid];
+  uint16_t start_sym      = slsch_ue_rx_harq->start_symbol;
+  uint8_t nb_symb_sch     = slsch_ue_rx_harq->nb_symbols;
+  uint16_t dmrs_pos       = slsch_ue_rx_harq->dlDmrsSymbPos;
+  uint16_t nb_rb          = ue->slsch_rx[0][0]->harq_processes[harq_pid]->nb_rb;
+
+  uint64_t rx_offset = 0;
+  if (get_softmodem_params()->sl_mode == 2) {
+    rx_offset = (proc->nr_slot_rx & 3) * ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size;
+  }
+
+  for (int aarx = 0; aarx < ue->frame_parms.nb_antennas_rx; aarx++) {
+    for (int i = start_sym ; i < (start_sym + nb_symb_sch) ; i++) {
+      if (dmrs_pos & (1 << i)){
+        int16_t *rxF_pssch = (int16_t *)&ue->common_vars.rxdataF[aarx][(i * ue->frame_parms.ofdm_symbol_size) + rx_offset];
+
+        for (int k = 0; k < nb_rb * NR_NB_SC_PER_RB; k += 4) {
+  #ifdef DEBUG_MEAS_UE
+        LOG_I(NR_PHY, "In %s rxF_pssch %d %d\n", __FUNCTION__, rxF_pssch[k * 2], rxF_pssch[k * 2 + 1]);
+  #endif
+          rsrp += (((int32_t)rxF_pssch[k * 2] * rxF_pssch[k * 2]) + ((int32_t)rxF_pssch[k * 2 + 1] * rxF_pssch[k * 2 + 1]));
+          nb_re++;
+        }
+      }
+    }
+  }
+
+  rsrp /= nb_re;
+  ue->measurements.rsrp_dBm[adj_ue_index] = 10 * log10(rsrp) +
+                                             30 - 10 * log10(pow(2, 30)) -
+                                             ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0]) -
+                                             dB_fixed(ue->frame_parms.ofdm_symbol_size);
+
+  LOG_I(NR_PHY, "In %s: [UE %d] adj_ue_index %d PSSCH-RSRP: %d dBm/RE (%d)\n",
+        __FUNCTION__, ue->Mod_id, adj_ue_index, ue->measurements.rsrp_dBm[adj_ue_index], rsrp);
 }
 
 // This function computes the received noise power

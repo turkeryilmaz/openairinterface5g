@@ -16,7 +16,13 @@
 //#define DEBUG_DCI_POLAR_PARAMS
 //#define DEBUG_POLAR_TIMING
 //#define DEBUG_POLARTEST
+#include "executables/softmodem-common.h"
 
+uint64_t get_softmodem_optmask(void) {return 0;}
+static softmodem_params_t softmodem_params;
+softmodem_params_t *get_softmodem_params(void) {
+  return &softmodem_params;
+}
 
 int main(int argc, char *argv[])
 {

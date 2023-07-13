@@ -40,7 +40,9 @@
 
 #define NR_PUSCH_x 2 // UCI placeholder bit TS 38.212 V15.4.0 subclause 5.3.3.1
 #define NR_PUSCH_y 3 // UCI placeholder bit
+#define NR_PSSCH_x 4 // SCI2 placeholder bit
 
+extern short nr_qpsk_mod_table[8];
 // Functions below implement 36-211 and 36-212
 
 /** @addtogroup _PHY_TRANSPORT_
@@ -163,12 +165,105 @@ void nr_dlsch_256qam_llr(NR_DL_FRAME_PARMS *frame_parms,
                      uint8_t first_symbol_flag,
                      uint16_t nb_rb);
 
+
+void nr_slsch_extract_rbs(int32_t **rxdataF,
+                          NR_UE_PSSCH *pssch_vars,
+                          int slot,
+                          unsigned char symbol,
+                          uint8_t is_dmrs_symbol,
+                          nfapi_nr_pssch_pdu_t *pusch_pdu,
+                          NR_DL_FRAME_PARMS *frame_parms,
+                          NR_DL_UE_HARQ_t *harq,
+                          int chest_time_type);
+
+void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
+                                   int nbRx,
+                                   c16_t rxdataF_ext[][rx_size_symbol],
+                                   int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                                   int32_t dl_ch_mag[][nbRx][rx_size_symbol],
+                                   int32_t dl_ch_magb[][nbRx][rx_size_symbol],
+                                   int32_t dl_ch_magr[][nbRx][rx_size_symbol],
+                                   int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                                   int ***rho,
+                                   NR_DL_FRAME_PARMS *frame_parms,
+                                   uint8_t n_layers,
+                                   unsigned char symbol,
+                                   int length,
+                                   uint8_t first_symbol_flag,
+                                   unsigned char mod_order,
+                                   unsigned short nb_rb,
+                                   unsigned char output_shift,
+                                   PHY_NR_MEASUREMENTS *measurements);
+
+void nr_dlsch_scale_channel(uint32_t rx_size_symbol,
+                            int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                            NR_DL_FRAME_PARMS *frame_parms,
+                            uint8_t n_tx,
+                            uint8_t n_rx,
+                            uint8_t symbol,
+                            uint8_t pilots,
+                            uint32_t len,
+                            unsigned short nb_rb);
+
+/* Apply layer demapping */
+void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
+                              uint8_t Nl,
+                              uint8_t mod_order,
+                              uint32_t length,
+                              int32_t codeword_TB0,
+                              int32_t codeword_TB1,
+                              int16_t *llr_layers[NR_MAX_NB_LAYERS]) ;
+
 void nr_dlsch_deinterleaving(uint8_t symbol,
                              uint8_t start_symbol,
                              uint16_t L,
                              uint16_t *llr,
                              uint16_t *llr_deint,
                              uint16_t nb_rb_pdsch);
+
+/* compute H_h_H matrix inversion up to 4x4 matrices */
+uint8_t nr_zero_forcing_rx(uint32_t rx_size_symbol,
+                           unsigned char n_rx,
+                           unsigned char n_tx,//number of layer
+                           int32_t rxdataF_comp[][n_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                           int32_t dl_ch_mag[][n_rx][rx_size_symbol],
+                           int32_t dl_ch_magb[][n_rx][rx_size_symbol],
+                           int32_t dl_ch_magr[][n_rx][rx_size_symbol],
+                           int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                           unsigned short nb_rb,
+                           unsigned char mod_order,
+                           int shift,
+                           unsigned char symbol,
+                           int length);
+
+void nr_dlsch_channel_level(uint32_t rx_size_symbol,
+                            int32_t dl_ch_estimates_ext[][rx_size_symbol],
+			                      NR_DL_FRAME_PARMS *frame_parms,
+			                      uint8_t n_tx,
+			                      int32_t *avg,
+			                      uint8_t symbol,
+			                      uint32_t len,
+			                      unsigned short nb_rb);
+
+void nr_dlsch_channel_level_median(uint32_t rx_size_symbol,
+                                   int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                                   int32_t *median,
+                                   int n_tx,
+                                   int n_rx,
+                                   int length);
+
+
+void nr_dlsch_detection_mrc(uint32_t rx_size_symbol,
+                            short n_tx,
+                            short n_rx,
+                            int32_t rxdataF_comp[][n_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                            int ***rho,
+                            int32_t dl_ch_mag[][n_rx][rx_size_symbol],
+                            int32_t dl_ch_magb[][n_rx][rx_size_symbol],
+                            int32_t dl_ch_magr[][n_rx][rx_size_symbol],
+                            unsigned char symbol,
+                            unsigned short nb_rb,
+                            int length);
 
 void nr_conjch0_mult_ch1(int *ch0,
                          int *ch1,
@@ -215,6 +310,29 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                      uint8_t harq_pid,
                      unsigned int G);
 
+int nr_slsch_encoding(PHY_VARS_NR_UE *ue,
+                     NR_UE_ULSCH_t *slsch,
+                     NR_DL_FRAME_PARMS* frame_parms,
+                     uint8_t harq_pid,
+                     unsigned int G);
+
+uint32_t nr_slsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
+                         UE_nr_rxtx_proc_t *proc,
+                         short *dlsch_llr,
+                         NR_DL_FRAME_PARMS *frame_parms,
+                         NR_UE_DLSCH_t *dlsch,
+                         NR_DL_UE_HARQ_t *harq_process,
+                         uint32_t frame,
+                         uint16_t nb_symb_sch,
+                         uint8_t nr_slot_rx,
+                         uint8_t harq_pid);
+
+void nr_attach_crc_to_payload(unsigned char *in,
+                              uint8_t *out,
+                              int max_payload_bytes,
+                              uint32_t in_size,
+                              uint32_t *out_size);
+
 /*! \brief Perform PUSCH scrambling. TS 38.211 V15.4.0 subclause 6.3.1.1
   @param[in] in, Pointer to input bits
   @param[in] size, of input bits
@@ -230,6 +348,19 @@ void nr_pusch_codeword_scrambling(uint8_t *in,
                                   bool uci_on_pusch,
                                   uint32_t* out);
 
+/*! \brief Perform PSSCH scrambling. TS 38.211 V16.10.0 subclause 8.3.1.1
+  @param[in] in, Pointer to input bits
+  @param[in] size, of input bits
+  @param[in] control_size, of control input bits
+  @param[in] Nid, cell id
+  @param[out] out, the scrambled bits
+*/
+void nr_pusch_codeword_scrambling_sl(uint8_t *in,
+                                      uint32_t size,
+                                      uint32_t SCI2_bits,
+                                      uint16_t Nid,
+                                      uint32_t* out);
+
 /** \brief Perform the following functionalities:
     - encoding
     - scrambling
@@ -244,9 +375,126 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                                int gNB_id,
                                nr_phy_data_tx_t *phy_data);
 
+void nr_ue_set_slsch(NR_DL_FRAME_PARMS *frame_parms,
+                     unsigned char harq_pid,
+                     NR_UE_ULSCH_t *slsch,
+                     uint32_t frame,
+                     uint8_t slot);
+
+/** \brief Perform the following functionalities:
+    - encoding
+    - scrambling
+    - modulation
+    - transform precoding
+*/
+void nr_ue_slsch_tx_procedures(PHY_VARS_NR_UE *ue,
+                               unsigned char harq_pid,
+                               uint32_t frame,
+                               uint8_t slot);
+
+void physical_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                               nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                               int16_t** tx_precoding,
+                               uint32_t **txdataF);
+
+int16_t** virtual_resource_mapping(NR_DL_FRAME_PARMS *frame_parms,
+                                   nfapi_nr_ue_pssch_pdu_t *pssch_pdu,
+                                   unsigned int G_SCI2_bits,
+                                   uint8_t  SCI2_mod_order,
+                                   int16_t **tx_layers,
+                                   uint32_t **pssch_dmrs);                              
+
+void nr_ue_set_slsch_rx(PHY_VARS_NR_UE *ue, unsigned char harq_pid);
+
+void nr_slsch_qpsk_llr(int32_t *rxdataF_comp,
+                       int16_t *slsch_llr,                          
+                       uint32_t nb_re,
+                       uint8_t  symbol);
+
+
+/** \brief This function generates log-likelihood ratios (decoder input) for single-stream 16 QAM received waveforms.
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 16
+    @param slsch_llr llr output
+    @param nb_re number of RBs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+*/
+void nr_slsch_16qam_llr(int32_t *rxdataF_comp,
+                        int32_t *sl_ch_mag,
+                        int16_t  *slsch_llr,
+                        uint32_t nb_rb,
+                        uint32_t nb_re,
+                        uint8_t  symbol);
+
+
+/** \brief This function generates log-likelihood ratios (decoder input) for single-stream 64 QAM received waveforms.
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag  uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 64
+    @param sl_ch_magb uplink channel magnitude multiplied by the 2bd amplitude threshold in QAM 64
+    @param slsch_llr llr output
+    @param nb_re number of REs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+*/
+void nr_slsch_64qam_llr(int32_t *rxdataF_comp,
+                        int32_t *sl_ch_mag,
+                        int32_t *sl_ch_magb,
+                        int16_t  *slsch_llr,
+                        uint32_t nb_rb,
+                        uint32_t nb_re,
+                        uint8_t  symbol);
+
+/** \brief This function generates log-likelihood ratios (decoder input) for single-stream 256 QAM received waveforms.
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag  uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 256
+    @param sl_ch_magb uplink channel magnitude multiplied by the 2bd amplitude threshold in QAM 256
+    @param sl_ch_magc uplink channel magnitude multiplied by the 3rd amplitude threshold in QAM 256 
+    @param slsch_llr llr output
+    @param nb_re number of REs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+*/
+void nr_slsch_256qam_llr(int32_t *rxdataF_comp,
+                        int32_t *sl_ch_mag,
+                        int32_t *sl_ch_magb,
+                        int32_t *sl_ch_magc,
+                        int16_t  *slsch_llr,
+                        uint32_t nb_rb,
+                        uint32_t nb_re,
+                        uint8_t  symbol);
+
+/** \brief This function computes the log-likelihood ratios for 4, 16, and 64 QAM
+    @param rxdataF_comp Compensated channel output
+    @param sl_ch_mag  uplink channel magnitude multiplied by the 1st amplitude threshold in QAM 64
+    @param sl_ch_magb uplink channel magnitude multiplied by the 2bd amplitude threshold in QAM 64
+    @param slsch_llr llr output
+    @param nb_re number of REs for this allocation
+    @param symbol OFDM symbol index in sub-frame
+    @param mod_order modulation order
+*/
+void nr_slsch_compute_llr(int32_t *rxdataF_comp,
+                          int32_t *sl_ch_mag,
+                          int32_t *sl_ch_magb,
+                          int16_t  *slsch_llr,
+                          uint32_t nb_rb,
+                          uint32_t nb_re,
+                          uint8_t  symbol,
+                          uint8_t  mod_order);
+
+uint32_t nr_ue_slsch_rx_procedures(PHY_VARS_NR_UE *ue,
+                            unsigned char harq_pid,
+                            uint32_t frame,
+                            uint8_t slot,
+                            c16_t **rxdata,
+                            uint32_t multiplex_input_len,
+                            uint32_t Nidx,
+                            UE_nr_rxtx_proc_t *proc);
 
 /** \brief This function does IFFT for PUSCH
 */
+uint8_t nr_ue_pssch_common_procedures(PHY_VARS_NR_UE *UE,
+                                      uint8_t slot,
+                                      NR_DL_FRAME_PARMS *frame_parms,
+                                      uint8_t n_antenna_ports,
+                                      int link_type);
 
 uint8_t nr_ue_pusch_common_procedures(PHY_VARS_NR_UE *UE,
                                       uint8_t slot,
@@ -280,6 +528,48 @@ int32_t nr_rx_pdcch(PHY_VARS_NR_UE *ue,
 */
 int rx_sss(PHY_VARS_NR_UE *phy_vars_ue,int32_t *tot_metric,uint8_t *flip_max,uint8_t *phase_max);
 
+/*!
+\fn int nr_sl_generate_psbch_dmrs
+\brief Generation of the DMRS for the PSBCH
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_psbch_dmrs(uint32_t *gold_pbch_dmrs,
+                              c16_t *txdataF,
+                              int16_t amp,
+                              uint8_t ssb_start_symbol,
+                              NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_pss
+\brief Generation of the NR PSS
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_pss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_sss
+\brief Generation of the NR SSS
+@param
+@returns 0 on success
+ */
+int nr_sl_generate_sss(c16_t *txdataF, int16_t amp, uint8_t ssb_start_symbol, NR_DL_FRAME_PARMS *frame_parms);
+
+/*!
+\fn int nr_generate_sl_pbch
+\brief Generation of the PBCH
+@param
+@returns 0 on success
+ */
+int nr_generate_sl_psbch(PHY_VARS_NR_UE *ue,
+                         c16_t *txdataF,
+                         int16_t amp,
+                         uint8_t ssb_start_symbol,
+                         uint8_t n_hf,
+                         int sfn,
+                         NR_DL_FRAME_PARMS *frame_parms);
+
 /*! \brief receiver for the PBCH
   \returns number of tx antennas or -1 if error
 */
@@ -294,18 +584,48 @@ int nr_rx_pbch(PHY_VARS_NR_UE *ue,
                fapiPbch_t* result,
                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
+/*! \brief receiver for the PBCH
+  \returns number of tx antennas or -1 if error
+*/
+
+void nr_sl_common_signal_procedures(PHY_VARS_NR_UE *ue, int frame, int slot);
+
+int nr_rx_psbch(PHY_VARS_NR_UE *ue,
+                UE_nr_rxtx_proc_t *proc,
+                const int estimateSz,
+                struct complex16 dl_ch_estimates[][estimateSz],
+                NR_UE_PSBCH *nr_ue_psbch_vars,
+                NR_DL_FRAME_PARMS *frame_parms,
+                uint8_t eNB_id,
+                uint8_t i_ssb,
+                MIMO_mode_t mimo_mode,
+                NR_UE_PDCCH_CONFIG *phy_pdcch_config,
+                fapiPsbch_t *result);
+
 int nr_pbch_detection(UE_nr_rxtx_proc_t *proc,
                       PHY_VARS_NR_UE *ue,
                       int pbch_initial_symbol,
                       nr_phy_data_t *phy_data,
                       c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
+int nr_psbch_detection(UE_nr_rxtx_proc_t *proc,
+                       PHY_VARS_NR_UE *ue,
+                       int psbch_initial_symbol,
+                       NR_UE_PDCCH_CONFIG *phy_pdcch_config);
 
 #ifndef modOrder
 #define modOrder(I_MCS,I_TBS) ((I_MCS-I_TBS)*2+2) // Find modulation order from I_TBS and I_MCS
 #endif
 
 int dump_ue_stats(PHY_VARS_NR_UE *phy_vars_ue, UE_nr_rxtx_proc_t *proc, char* buffer, int length, runmode_t mode, int input_level_dBm);
+
+void free_nr_ue_slsch(NR_UE_ULSCH_t **slschptr,
+                      uint16_t N_RB_UL,
+                      NR_DL_FRAME_PARMS* frame_parms);
+
+int nr_sl_initial_sync(UE_nr_rxtx_proc_t *proc,
+                       PHY_VARS_NR_UE *phy_vars_ue,
+                       int n_frames);
 
 /*!
   \brief This function performs the initial cell search procedure - PSS detection, SSS detection and PBCH detection.  At the
@@ -410,6 +730,15 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 
 void dump_nrdlsch(PHY_VARS_NR_UE *ue,uint8_t gNB_id,uint8_t nr_slot_rx,unsigned int *coded_bits_per_codeword,int round,  unsigned char harq_pid);
+
+void nr_pssch_data_control_multiplexing(uint8_t *in_slssh,
+                                        uint8_t *in_sci2,
+                                        uint32_t slssh_bits,
+                                        uint32_t SCI2_bits,
+                                        uint8_t Nl,
+                                        uint8_t Q_SCI2,
+                                        uint8_t* out);
+
 void nr_a_sum_b(c16_t *input_x, c16_t *input_y, unsigned short nb_rb);
 /**@}*/
 #endif

@@ -42,6 +42,7 @@
   {"uecap_file",               CONFIG_HLP_UECAP_FILE,          0,               .strptr=&uecap_file,                      .defstrval="./uecap_ports1.xml", TYPE_STRING,   0}, \
   {"rrc_config_path",          CONFIG_HLP_RRC_CFG_PATH,        0,               .strptr=&rrc_config_path,                 .defstrval="./",                 TYPE_STRING,   0}, \
   {"ue-idx-standalone",        NULL,                           0,               .u16ptr=&ue_idx_standalone,               .defuintval=0xFFFF,              TYPE_UINT16,   0}, \
+  {"SLC",                      CONFIG_HLP_SLF,                 0,               .u64ptr=&(sidelink_frequency[0][0]),      .defuintval=2600000000,          TYPE_UINT64,   0}, \
   {"ue-rxgain",                    CONFIG_HLP_UERXG,           0,               .dblptr=&(rx_gain[0][0]),            .defdblval=110,    TYPE_DOUBLE,   0}, \
   {"ue-rxgain-off",                CONFIG_HLP_UERXGOFF,        0,               .dblptr=&rx_gain_off,                .defdblval=0,      TYPE_DOUBLE,   0}, \
   {"ue-txgain",                    CONFIG_HLP_UETXG,           0,               .dblptr=&(tx_gain[0][0]),            .defdblval=0,      TYPE_DOUBLE,   0}, \

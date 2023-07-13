@@ -67,6 +67,14 @@ int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
                              NR_UE_SSB *current_ssb,
                              c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
+int nr_psbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
+                             UE_nr_rxtx_proc_t *proc,
+                             uint8_t gNB_id,
+                             unsigned char Ns,
+                             unsigned char symbol,
+                             int dmrss,
+                             NR_UE_SSB *current_ssb);                             
+
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                                int estimateSz,
                                struct complex16 dl_ch_estimates[][estimateSz],
@@ -77,6 +85,18 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                                uint8_t ssb_index,
                                uint8_t n_hf,
                                c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
+
+int nr_psbch_channel_estimation(PHY_VARS_NR_UE *ue,
+                               int estimateSz,
+			       struct complex16 dl_ch_estimates [][estimateSz],
+			       struct complex16 dl_ch_estimates_time [][estimateSz],
+			       UE_nr_rxtx_proc_t *proc,
+                               uint8_t gNB_id,
+                               unsigned char Ns,
+                               unsigned char symbol,
+                               int dmrss,
+                               uint8_t ssb_index,
+                               uint8_t n_hf);
 
 int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                 UE_nr_rxtx_proc_t *proc,
@@ -114,6 +134,15 @@ void nr_ue_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
                                  uint8_t gNB_index,
                                  UE_nr_rxtx_proc_t *proc,
                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
+
+void nr_ue_sl_ssb_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                    int ssb_index,
+                                    UE_nr_rxtx_proc_t *proc);
+
+void nr_ue_sl_pssch_rsrp_measurements(PHY_VARS_NR_UE *ue,
+                                      unsigned char harq_pid,
+                                      int adj_ue_index,
+                                      UE_nr_rxtx_proc_t *proc);
 
 void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
                             UE_nr_rxtx_proc_t *proc,

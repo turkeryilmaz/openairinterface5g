@@ -52,7 +52,6 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 /////////////////////////parameters and variables initialization/////////////////////////
 ///////////
 
-  unsigned int crc = 1;
   NR_UL_UE_HARQ_t *harq_process = &ue->ul_harq_processes[harq_pid];
   uint16_t nb_rb = ulsch->pusch_pdu.rb_size;
   uint32_t A = ulsch->pusch_pdu.pusch_data.tb_size<<3;
@@ -92,35 +91,8 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
 
     int max_payload_bytes = MAX_NUM_NR_ULSCH_SEGMENTS_PER_LAYER*ulsch->pusch_pdu.nrOfLayers*1056;
 
-    if (A > 3824) {
-      // Add 24-bit crc (polynomial A) to payload
-      crc = crc24a(harq_process->a,A)>>8;
-      harq_process->a[A>>3] = ((uint8_t*)&crc)[2];
-      harq_process->a[1+(A>>3)] = ((uint8_t*)&crc)[1];
-      harq_process->a[2+(A>>3)] = ((uint8_t*)&crc)[0];
-      //printf("CRC %x (A %d)\n",crc,A);
-      //printf("a0 %d a1 %d a2 %d\n", a[A>>3], a[1+(A>>3)], a[2+(A>>3)]);
+    nr_attach_crc_to_payload(harq_process->a, harq_process->b, max_payload_bytes, A, &harq_process->B);
 
-      harq_process->B = A+24;
-
-      AssertFatal((A/8)+4 <= max_payload_bytes,"A %d is too big (A/8+4 = %d > %d)\n",A,(A/8)+4,max_payload_bytes);
-
-      memcpy(harq_process->b,harq_process->a,(A/8)+4);
-    }
-    else {
-      // Add 16-bit crc (polynomial A) to payload
-      crc = crc16(harq_process->a,A)>>16;
-      harq_process->a[A>>3] = ((uint8_t*)&crc)[1];
-      harq_process->a[1+(A>>3)] = ((uint8_t*)&crc)[0];
-      //printf("CRC %x (A %d)\n",crc,A);
-      //printf("a0 %d a1 %d \n", a[A>>3], a[1+(A>>3)]);
-
-      harq_process->B = A+16;
-
-      AssertFatal((A/8)+3 <= max_payload_bytes,"A %d is too big (A/8+3 = %d > %d)\n",A,(A/8)+3,max_payload_bytes);
-
-      memcpy(harq_process->b,harq_process->a,(A/8)+3);  // using 3 bytes to mimic the case of 24 bit crc
-    }
 ///////////
 ///////////////////////////////////////////////////////////////////////////
 
@@ -257,7 +229,8 @@ int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                               F,
                               Kr-F-2*(*pz),
                               ulsch->pusch_pdu.pusch_data.rv_index,
-                              E) == -1)
+                              E,
+                              false) == -1)
       return -1;
 
     stop_meas(&ue->ulsch_rate_matching_stats);

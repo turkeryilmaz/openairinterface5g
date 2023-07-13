@@ -109,6 +109,7 @@ extern "C"
 #define CONFIG_HLP_SYNC_REF      "Sync Reference in Sidelink\n"
 #define CONFIG_HLP_NID1          "Set NID1 value in Sidelink\n"
 #define CONFIG_HLP_NID2          "Set NID2 value in Sidelink\n"
+#define CONFIG_HLP_MSG           "Set SyncRef message in Sidelink\n"
 
 /*-----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            command line parameters common to eNodeB and UE                                                          */
@@ -143,6 +144,7 @@ extern "C"
 #define SYNC_REF            softmodem_params.sync_ref
 #define NID1                softmodem_params.nid1
 #define NID2                softmodem_params.nid2
+#define SL_USER_MSG         softmodem_params.sl_user_msg
 
 #define REORDER_THREAD_DISABLE    softmodem_params.reorder_thread_disable
 #define DEFAULT_RFCONFIG_FILE    "/usr/local/etc/syriq/ue.band7.tm1.PRB100.NR40.dat";
@@ -201,7 +203,7 @@ extern int usrp_tx_thread;
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
-    { .s5 = { NULL } },                     \
+    { .s2 = { config_check_intrange, {0,2} }},\
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
     { .s5 = { NULL } },                     \
@@ -349,6 +351,7 @@ typedef struct {
   int            sync_ref;
   int            nid1;
   int            nid2;
+  char           *sl_user_msg;
 } softmodem_params_t;
 
 extern uint64_t get_softmodem_optmask(void);

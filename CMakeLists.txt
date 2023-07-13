@@ -971,6 +971,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_scrambling.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/scrambling_luts.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/srs_modulation_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_transport_common.c
   )
 
   set(PHY_NR_SRC
@@ -1026,17 +1027,27 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/MODULATION/slot_fep_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/pss_nr_sl.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/sss_nr_sl.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_generate_psbch_dmrs_sl.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/psbch_nr_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/cic_filter_nr.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_initial_sync.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ue_rf_helpers.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_pbch.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_psbch.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_demodulation.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_coding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_decoding.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_dlsch_llr_computation.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_demodulation.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_transport_common.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_coding.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_decoding.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_tbs_tools.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_prach_common.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_sch_dmrs.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_sch_dmrs_sl.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_prach.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/dci_nr.c
@@ -1044,6 +1055,7 @@ set(PHY_SRC_UE
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/csi_rx.c
   ${OPENAIR1_DIR}/PHY/NR_TRANSPORT/nr_uci_tools_common.c
   ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_ulsch_ue.c
+  ${OPENAIR1_DIR}/PHY/NR_UE_TRANSPORT/nr_slsch_ue.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/ul_ref_seq_nr.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/nr_dmrs_rx.c
   ${OPENAIR1_DIR}/PHY/NR_REFSIG/dmrs_nr.c
@@ -2246,7 +2258,31 @@ target_link_libraries(nr_pbchsim PRIVATE
 target_link_libraries(nr_pbchsim PRIVATE asn1_nr_rrc_hdrs asn1_lte_rrc_hdrs)
 
 
-#PUCCH ---> Prashanth
+add_executable(nr_psbchsim
+  ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psbchsim.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
+target_link_libraries(nr_psbchsim PRIVATE
+  -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
+  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl shlib_loader
+)
+target_link_libraries(nr_psbchsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
+
+
+add_executable(nr_psschsim
+  ${OPENAIR1_DIR}/SIMULATION/NR_PHY/psschsim.c
+  ${OPENAIR_DIR}/common/utils/nr/nr_common.c
+  ${T_SOURCE}
+  ${SHLIB_LOADER_SOURCES}
+  )
+target_link_libraries(nr_psschsim PRIVATE
+  -Wl,--start-group UTIL SIMU PHY_COMMON PHY_NR_COMMON PHY_NR PHY_NR_UE SCHED_NR_LIB CONFIG_LIB MAC_NR_COMMON -Wl,--end-group
+  m pthread ${ATLAS_LIBRARIES} ${T_LIB} ITTI dl shlib_loader
+  )
+target_link_libraries(nr_psschsim PRIVATE asn1_nr_rrc asn1_lte_rrc)
+
 add_executable(nr_pucchsim
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/pucchsim.c
   ${OPENAIR1_DIR}/SIMULATION/NR_PHY/nr_dummy_functions.c
@@ -2372,7 +2408,7 @@ if (${T_TRACER})
         lte-softmodem lte-uesoftmodem nr-softmodem
         nr-uesoftmodem dlsim dlsim_tm4 dlsim_tm7
         ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim
-        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_pucchsim
+        syncsim nr_ulsim nr_dlsim nr_dlschsim nr_pbchsim nr_psbchsim nr_pucchsim
         nr_ulschsim ldpctest polartest smallblocktest cu_test du_test
         #all "add_library" definitions
         ITTI lte_rrc nr_rrc s1ap x2ap m2ap m3ap f1ap

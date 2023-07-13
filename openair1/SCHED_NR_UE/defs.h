@@ -87,6 +87,11 @@ typedef struct {
   uint8_t xtra_byte;
 } fapiPbch_t;
 
+typedef struct {
+  uint8_t decoded_output[NR_POLAR_PSBCH_PAYLOAD_BITS];
+  uint8_t xtra_byte;
+} fapiPsbch_t;
+
 /** @addtogroup _PHY_PROCEDURES_
  * @{
  */
@@ -98,6 +103,45 @@ typedef struct {
 */
 void phy_procedures_nrUE_TX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, nr_phy_data_tx_t *phy_data);
 
+/*! \brief Scheduling for UE SL TX procedures in normal slots.
+  @param ue Pointer to UE variables on which to act
+  @param proc Pointer to RXn-TXnp4 proc information
+  @param gNB_id Local id of gNB on which to act, 0 in case of sidelink
+*/
+void phy_procedures_nrUE_SL_TX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint8_t gNB_id);
+
+/*! \brief check weather if current slot in current frame is suitable for SL SSB time slot allocation.
+  @param ue Pointer to UE variables on which to act
+  @param frame frame number
+  @param slot slot number
+*/
+bool phy_ssb_slot_allocation_sl(PHY_VARS_NR_UE *ue, int frame, int slot);
+
+/*! \brief Scheduling for UE RX procedures in normal subframes.
+  @param ue                     Pointer to UE variables on which to act
+  @param proc                   Pointer to proc information
+  @param dlsch_parallel         use multithreaded dlsch processing
+  @param phy_pdcch_config       PDCCH Config for this slot
+  @param txFifo                 Result fifo if PDSCH is run in parallel
+*/
+
+/*! \brief Scheduling for UE Sidelink RX procedures in normal subframes.
+  @param ue                     Pointer to UE variables on which to act
+  @param proc                   Pointer to proc information
+  @param synchRefUE_id          Local id of synchRefUE on which to act
+  @param txFifo                 Result fifo if PSSCH is run in parallel
+*/
+int phy_procedures_nrUE_SL_RX(PHY_VARS_NR_UE *ue,
+                           UE_nr_rxtx_proc_t *proc,
+                           uint8_t synchRefUE_id,
+                           notifiedFIFO_t *txFifo);
+
+void validate_rx_payload(NR_DL_UE_HARQ_t *harq, int frame_rx, int slot_rx);
+
+void validate_rx_payload_str(NR_DL_UE_HARQ_t *harq, int slot);
+
+void processSlotTX(void *arg);
+
 void send_slot_ind(notifiedFIFO_t *nf, int slot);
 
 void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
@@ -107,8 +151,6 @@ void pbch_pdcch_processing(PHY_VARS_NR_UE *ue,
 void pdsch_processing(PHY_VARS_NR_UE *ue,
                       UE_nr_rxtx_proc_t *proc,
                       nr_phy_data_t *phy_data);
-
-int phy_procedures_slot_parallelization_nrUE_RX(PHY_VARS_NR_UE *ue, UE_nr_rxtx_proc_t *proc, uint8_t abstraction_flag, uint8_t do_pdcch_flag, relaying_type_t r_type);
 
 void processSlotTX(void *arg);
 
