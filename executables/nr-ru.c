@@ -1285,14 +1285,8 @@ void *ru_thread( void *param ) {
     } // end if (slot_type == NR_UPLINK_SLOT || slot_type == NR_MIXED_SLOT) {
 
     // At this point, all information for subframe has been received on FH interface
-    if (!get_softmodem_params()->reorder_thread_disable) {
-      res = pullTpool(&gNB->resp_L1, &gNB->threadPool);
-      if (res == NULL)
-        break; // Tpool has been stopped
-    } else  {
-      res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
-      resTx=newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
-    }
+    res=newNotifiedFIFO_elt(sizeof(processingData_L1_t),0, &gNB->resp_L1,NULL);
+    resTx=newNotifiedFIFO_elt(sizeof(processingData_L1tx_t),0, &gNB->L1_tx_out,NULL);
     syncMsg = (processingData_L1_t *)NotifiedFifoData(res);
     syncMsg->gNB = gNB;
     syncMsg->frame_rx = proc->frame_rx;
@@ -1302,19 +1296,14 @@ void *ru_thread( void *param ) {
     syncMsg->timestamp_tx = proc->timestamp_tx;
     res->key = proc->tti_rx;
 
-    if (!get_softmodem_params()->reorder_thread_disable) {
-      pushTpool(&gNB->threadPool, res);
-    }
-    else {
-    	syncMsgTx = (processingData_L1tx_t *)NotifiedFifoData(resTx);
-    	syncMsgTx->gNB = gNB;
-    	syncMsgTx->frame = proc->frame_tx;
-    	syncMsgTx->slot = proc->tti_tx;
-    	syncMsgTx->timestamp_tx = proc->timestamp_tx;
-    	resTx->key = proc->tti_tx;
-    	pushNotifiedFIFO(&gNB->resp_L1, res);
-        pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
-    }
+    syncMsgTx = (processingData_L1tx_t *)NotifiedFifoData(resTx);
+    syncMsgTx->gNB = gNB;
+    syncMsgTx->frame = proc->frame_tx;
+    syncMsgTx->slot = proc->tti_tx;
+    syncMsgTx->timestamp_tx = proc->timestamp_tx;
+    resTx->key = proc->tti_tx;
+    pushNotifiedFIFO(&gNB->resp_L1, res);
+    pushNotifiedFIFO(&gNB->L1_tx_out, resTx);
   }
 
   printf( "Exiting ru_thread \n");
