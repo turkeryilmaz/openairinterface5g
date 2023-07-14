@@ -26,6 +26,7 @@
 
 #include "executables/softmodem-common.h"
 #include "common/utils/LOG/vcd_signal_dumper.h"
+#include "executables/nr-uesoftmodem.h"
 
 //#define DEBUG_PHY
 
@@ -105,16 +106,14 @@ void nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
 
   printf("** Frame: %u, ue->rx_offset: %d, ue->rx_offset_TO: %d\n", frame, ue->rx_offset, ue->rx_offset_TO);
 
-  extern tdriftComp;
+  if (tdriftComp == 0)
   {
-    TO_I_Ctrl += diff; //integral of all offsets
     ue->rx_offset = 0;
     ue->rx_offset_TO = 0; //PI controller
     ue->rx_offset_slot = 1;
     ue->rx_offset_comp = 0;
   }
 
-  if (tdriftComp == 0)
 
   const int sample_shift = -(ue->rx_offset>>1);
   // reset IIR filter for next offset calculation
