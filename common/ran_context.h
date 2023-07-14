@@ -39,6 +39,18 @@
 #include "radio/SS/ss_config.h"
 #include "RRC/NR/nr_rrc_defs.h"
 
+// Used for loopback message routing in DRB-specific TC's
+typedef enum {
+  DRB_MacPdu = 0,
+  DRB_RlcPdu,
+  DRB_RlcSdu,
+  DRB_PdcpPdu,
+  DRB_PdcpSdu,
+  DRB_SdapPdu,
+  DRB_SdapSdu,
+  DRB_data_type_qty
+} nr_drb_data_t;
+
 // forward declarations to avoid including the full typess ***eNB;
 struct PHY_VARS_gNB_s;
 struct PHY_VARS_eNB_NB_IoT_s;
@@ -133,6 +145,8 @@ typedef struct {
   struct ss_config_s ss;
   // Variable to store Transaction ID for SS in case of RRCReconfiguration
   long rrc_Transaction_Identifier;
+  // Loopback mode can operate on either sdap, pdcp or rlc
+  nr_drb_data_t nr_drb_data_type;
   RBConfig RB_Config[MAX_NUM_CCs][MAX_RBS];
   NRRBConfig NR_RB_Config[MAX_NUM_CCs][MAX_NR_RBS];
 } RAN_CONTEXT_t;

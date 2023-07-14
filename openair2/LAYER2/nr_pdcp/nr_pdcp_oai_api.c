@@ -110,6 +110,13 @@ typedef struct {
 
 static rlc_data_req_queue q;
 
+static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
+                              const rb_id_t rb_id,
+                              const mui_t muiP,
+                              const confirm_t confirmP,
+                              const sdu_size_t sdu_buffer_size,
+                              unsigned char *const sdu_buffer);
+
 static void *rlc_data_req_thread(void *_)
 {
   int i;
@@ -798,7 +805,6 @@ rb_found:
     memblock = get_free_mem_block(size, __FUNCTION__);
     memcpy(memblock->data, buf, size);
     LOG_D(PDCP, "%s(): (drb %d) calling rlc_data_req size %d\n", __func__, rb_id, size);
-    LOG_MSG(memblock->data, size, "%s: from RLC to PDCP: ", __FUNCTION__);
     //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
     //printf("\n");
     enqueue_rlc_data_req(&ctxt, 0, MBMS_FLAG_NO, rb_id, sdu_id, 0, size, memblock);
@@ -923,8 +929,8 @@ srb_found:
 
 void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
 {
-  MessageDef      *msg_p;
-  int             result;
+  MessageDef      *msg_p = NULL;
+  int             result = 0;
   protocol_ctxt_t ctxt = {.module_id = 0, .enb_flag = 1, .instance = 0, .rntiMaybeUEid = 0, .frame = -1, .subframe = -1, .eNB_index = 0, .brOption = false};
 
   while (1) {
@@ -932,9 +938,10 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
     if (msg_p == NULL){
      break;
     }
-    switch (ITTI_MSG_ID(msg_p)) {
+    switch (ITTI_MSG_ID(msg_p))
+    {
     case RRC_DCCH_DATA_REQ:
-      LOG_D(PDCP, "Received RRC_DCCH_DATA_REQ type at PDCP task \n");
+      LOG_I(PDCP, "Received RRC_DCCH_DATA_REQ type at PDCP task \n");
       PROTOCOL_CTXT_SET_BY_MODULE_ID(
           &ctxt,
           RRC_DCCH_DATA_REQ(msg_p).module_id,
@@ -958,8 +965,32 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
       result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), RRC_DCCH_DATA_REQ(msg_p).sdu_p);
       AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
       break;
+
+    case SS_DRB_PDU_REQ:
+    {
+      LOG_I(PDCP, "Received SS_DRB_PDU_REQ type at PDCP task\n");
+
+      instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(msg_p);
+      PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
+                                    instance,
+                                    GNB_FLAG_YES,
+                                    SS_DRB_PDU_REQ(msg_p).rnti,
+                                    msg_p->ittiMsgHeader.lte_time.frame,
+                                    msg_p->ittiMsgHeader.lte_time.slot);
+
+      pdcp_data_req_drb(&ctxt,
+                        SS_DRB_PDU_REQ(msg_p).drb_id,
+                        0,
+                        0,
+                        SS_DRB_PDU_REQ(msg_p).sdu_size,
+                        SS_DRB_PDU_REQ(msg_p).sdu);
+    }
+    break;
+
     case NR_DTCH_DATA_REQ:
-      LOG_D(PDCP, "Received NR_DTCH_DATA_REQ type at PDCP task \n");
+    {
+      int result = 0;
+      LOG_I(PDCP, "Received NR_DTCH_DATA_REQ type at PDCP task \n");
       PROTOCOL_CTXT_SET_BY_MODULE_ID(&ctxt,
                                      NR_DTCH_DATA_REQ(msg_p).module_id,
                                      NR_DTCH_DATA_REQ(msg_p).gnb_flag,
@@ -968,9 +999,28 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
                                      0,
                                      NR_DTCH_DATA_REQ(msg_p).gNB_index);
 
-      LOG_A(PDCP, "Sending packet to PDCP, Calling pdcp_data_req ue 0x%lx drb id %ld len %u\n",
+      LOG_I(PDCP, "Sending packet to PDCP, Calling pdcp_data_req ue 0x%lx drb id %ld len %u\n",
             ctxt.rntiMaybeUEid, NR_DTCH_DATA_REQ(msg_p).rb_id, NR_DTCH_DATA_REQ(msg_p).sdu_size);
-      result = pdcp_data_req(&ctxt,
+
+      if(ctxt_pP->enb_flag) {
+        LOG_I(PDCP, "Sending validated PDCP SDU to DBR task at gNB, rb_id=%ld\n", NR_DTCH_DATA_REQ(msg_p).rb_id);
+
+        MessageDef *message_p = itti_alloc_new_message(TASK_SS_DRB, 0, SS_DRB_PDU_IND);
+        AssertFatal(message_p != NULL, "Failed to allocate msg\n");
+
+        SS_DRB_PDU_IND(message_p).drb_id = NR_DTCH_DATA_REQ(msg_p).rb_id;
+        SS_DRB_PDU_IND(message_p).frame = NR_DTCH_DATA_REQ(msg_p).frame;
+        SS_DRB_PDU_IND(message_p).subframe = 0;
+        /* SS_DRB_PDU_IND(message_p).physCellId left unset as not critical for the message*/
+        SS_DRB_PDU_IND(message_p).sdu_size = NR_DTCH_DATA_REQ(msg_p).sdu_size;
+        memcpy(SS_DRB_PDU_IND(message_p).sdu, NR_DTCH_DATA_REQ(msg_p).sdu_p, NR_DTCH_DATA_REQ(msg_p).sdu_size);
+
+        result = itti_send_msg_to_task(TASK_SS_DRB, NR_DTCH_DATA_REQ(msg_p).module_id, message_p);
+        if (result < 0) {
+          LOG_E(PDCP, "Error in itti_send_msg_to_task!\n");
+        }
+      } else {
+        result = pdcp_data_req(&ctxt,
                             SRB_FLAG_NO,
                             NR_DTCH_DATA_REQ(msg_p).rb_id,
                             NR_DTCH_DATA_REQ(msg_p).muip,
@@ -979,14 +1029,17 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
                             NR_DTCH_DATA_REQ(msg_p).sdu_p,
                             NR_DTCH_DATA_REQ(msg_p).mode,
                             NULL, NULL);
-      if (result != true)
-        LOG_E(PDCP, "PDCP data request failed!\n");
-
+        if (result != true) {
+          LOG_E(PDCP, "PDCP data request failed!\n");
+        }
+      }
       result = itti_free(ITTI_MSG_ORIGIN_ID(msg_p), NR_DTCH_DATA_REQ(msg_p).sdu_p);
       AssertFatal(result == EXIT_SUCCESS, "Failed to free memory (%d)!\n", result);
-      break;
+    }
+    break;
+
     case RRC_PCCH_DATA_REQ:
-      LOG_D(PDCP, "PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", RRC_PCCH_DATA_REQ(msg_p).CC_id, RRC_PCCH_DATA_REQ(msg_p).sdu_size);
+      LOG_I(PDCP, "PDCP Received RRC_PCCH_DATA_REQ CC_id %d length %d \n", RRC_PCCH_DATA_REQ(msg_p).CC_id, RRC_PCCH_DATA_REQ(msg_p).sdu_size);
 
       RC.nrrrc[ctxt_pP->module_id]->carrier.sizeof_paging = RRC_PCCH_DATA_REQ(msg_p).sdu_size;
       memcpy(RC.nrrrc[ctxt_pP->module_id]->carrier.paging, RRC_PCCH_DATA_REQ(msg_p).sdu_p, RRC_PCCH_DATA_REQ(msg_p).sdu_size);
@@ -1119,10 +1172,10 @@ void add_drb_am(int is_gnb, ue_id_t rntiMaybeUEid, ue_id_t reestablish_ue_id, st
                                   has_sdap_rx, has_sdap_tx,
                                   deliver_sdu_drb, ue, deliver_pdu_drb, ue,
                                   sn_size_dl, t_reordering, discard_timer,
-                                  has_ciphering ? ciphering_algorithm : 0,
-                                  has_integrity ? integrity_algorithm : 0,
-                                  has_ciphering ? ciphering_key : NULL,
-                                  has_integrity ? integrity_key : NULL);
+                                  ciphering_algorithm,
+                                  integrity_algorithm,
+                                  ciphering_key,
+                                  integrity_key);
     nr_pdcp_ue_add_drb_pdcp_entity(ue, drb_id, pdcp_drb);
 
     if (reestablish_ue_id > 0) {
@@ -1150,11 +1203,19 @@ static void add_drb(int is_gnb,
                     unsigned char *ciphering_key,
                     unsigned char *integrity_key)
 {
+  FNIN;
+
+  if (rlc_Config == NULL) {
+    LOG_E(PDCP, "%s:%d:%s: fatal: NULL RLC config\n", __FILE__, __LINE__, __FUNCTION__);
+    exit(1);
+  }
+
   switch (rlc_Config->present) {
   case NR_RLC_Config_PR_am:
     add_drb_am(is_gnb, rntiMaybeUEid, reestablish_ue_id, s, ciphering_algorithm, integrity_algorithm, ciphering_key, integrity_key);
     break;
   case NR_RLC_Config_PR_um_Bi_Directional:
+    LOG_I(PDCP, "NR_RLC_Config_PR_um_Bi_Directional calls add_drb_am()\n");
     // add_drb_um(rntiMaybeUEid, s);
     /* hack */
     add_drb_am(is_gnb, rntiMaybeUEid, reestablish_ue_id, s, ciphering_algorithm, integrity_algorithm, ciphering_key, integrity_key);
@@ -1164,11 +1225,14 @@ static void add_drb(int is_gnb,
           __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
-  LOG_I(PDCP, "%s:%s:%d: added DRB for UE ID/RNTI %ld\n", __FILE__, __FUNCTION__, __LINE__, rntiMaybeUEid);
+  LOG_D(PDCP, "%s: added DRB for UE ID/RNTI %ld\n", __FUNCTION__, rntiMaybeUEid);
+
+  FNOUT;
 }
 
 void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddModList_t *const srb2add_list, const uint8_t security_modeP, uint8_t *const kRRCenc, uint8_t *const kRRCint)
 {
+  FNIN;
   if (srb2add_list != NULL) {
     for (int i = 0; i < srb2add_list->list.count; i++) {
       add_srb(enb_flag, rntiMaybeUEid, srb2add_list->list.array[i], security_modeP & 0x0f, (security_modeP >> 4) & 0x0f, kRRCenc, kRRCint);
@@ -1182,6 +1246,7 @@ void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddMo
   if (kRRCint) {
     free(kRRCint);
   }
+  FNOUT;
 }
 
 void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
@@ -1193,6 +1258,7 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
                       uint8_t *const kUPint,
                       struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list)
 {
+  FNIN;
   if (drb2add_list != NULL) {
     for (int i = 0; i < drb2add_list->list.count; i++) {
       if (rlc_bearer2add_list != NULL) {
@@ -1207,12 +1273,17 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
         }
       }
     }
-  } else
+  } else {
     LOG_W(PDCP, "nr_pdcp_add_drbs() with void list\n");
-  if (kUPenc)
+  }
+  if (kUPenc) {
     free(kUPenc);
-  if (kUPint)
+  }
+  if (kUPint) {
     free(kUPint);
+  }
+
+  FNOUT;
 }
 
 /* Dummy function due to dependency from LTE libraries */
@@ -1326,7 +1397,8 @@ void pdcp_config_set_security(
         const uint8_t security_modeP,
         uint8_t *const kRRCenc_pP,
         uint8_t *const kRRCint_pP,
-        uint8_t *const kUPenc_pP)
+        uint8_t *const kUPenc_pP,
+        uint8_t *const kUPint_pP)
 {
   FNIN;
   nr_pdcp_ue_t *ue;
@@ -1428,7 +1500,6 @@ static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
   return 1;
 }
 
-
 static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
                               const rb_id_t rb_id,
                               const mui_t muiP,
@@ -1436,7 +1507,7 @@ static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
                               const sdu_size_t sdu_buffer_size,
                               unsigned char *const sdu_buffer)
 {
-  LOG_D(PDCP, "%s() called, size %d\n", __func__, sdu_buffer_size);
+  LOG_I(PDCP, "%s() called, size %d\n", __func__, sdu_buffer_size);
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
   ue_id_t ue_id = ctxt_pP->rntiMaybeUEid;
@@ -1488,6 +1559,7 @@ static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
   pdcp_pkt.pdu_length         = sdu_buffer_size;
 
   LOG_PDCP_P(OAILOG_INFO, "DL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer, sdu_buffer_size);
+  LOG_MSG((unsigned char *)sdu_buffer, sdu_buffer_size, "%s: sz=%d\n", __FUNCTION__, sdu_buffer_size);
   rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);

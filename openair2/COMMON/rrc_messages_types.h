@@ -153,6 +153,8 @@ typedef struct SecurityActTimeList_s {
 typedef struct AS_IntegrityInfo_s {
         e_LTE_SecurityAlgorithmConfig__integrityProtAlgorithm integrity_algorithm;
         uint8_t                  *kRRCint;
+        bool isUPIntegrityInfoPresent;
+        uint8_t                  *kUPint;
         SecurityActTimeList      ActTimeList;
 }AS_IntegrityInfo;
 

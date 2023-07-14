@@ -1784,8 +1784,8 @@ int8_t nr_rrc_ue_decode_ccch( const protocol_ctxt_t *const ctxt_pP, const NR_SRB
     if ( LOG_DEBUGFLAG(DEBUG_ASN1) ) {
       xer_fprint(stdout, &asn_DEF_NR_UL_DCCH_Message, (void *)&ul_dcch_msg);
     }
-     log_dump(MAC, buffer, 16, LOG_DUMP_CHAR, "securityModeComplete payload: ");
-     LOG_D(NR_RRC, "securityModeComplete Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
+     log_dump(NR_RRC, buffer, (enc_rval.encoded+7)/8, LOG_DUMP_CHAR, "securityModeComplete payload: ");
+     LOG_I(NR_RRC, "securityModeComplete Encoded %zd bits (%zd bytes)\n", enc_rval.encoded, (enc_rval.encoded+7)/8);
 
      for (i = 0; i < (enc_rval.encoded + 7) / 8; i++) {
        LOG_I(NR_RRC, "%02x.", buffer[i]);

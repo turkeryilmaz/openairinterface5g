@@ -122,11 +122,13 @@ mui_t                               rrc_gNB_mui = 0;
 uint8_t first_rrcreconfiguration = 0;
 
 
-// temp static storage for AS Security settings to be applied for SRB1 and SRB2
+// temp static storage of AS Security settings for SRB1 and SRB2
 static e_NR_IntegrityProtAlgorithm _int_algo = 0;
 static NR_CipheringAlgorithm_t     _cip_algo = 0;
-static uint8_t _nr_cp_int_key[16] = {0};
-static uint8_t _nr_cp_cip_key[16] = {0};
+static uint8_t _nr_control_plane_int_key[16] = {0};
+static uint8_t _nr_control_plane_cip_key[16] = {0};
+static uint8_t    _nr_data_plane_int_key[16] = {0};
+static uint8_t    _nr_data_plane_cip_key[16] = {0};
 
 ///---------------------------------------------------------------------------------------------------------------///
 ///---------------------------------------------------------------------------------------------------------------///
@@ -917,10 +919,9 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
                     size,
                     buffer,
                     PDCP_TRANSMISSION_MODE_CONTROL);
-      }
       // rrc_pdcp_config_asn1_req
-
-      break;
+    }
+    break;
 
     case ngran_gNB_DU:
       // nothing to do for DU
@@ -1646,9 +1647,13 @@ rrc_gNB_process_RRCReconfigurationComplete(
 
   kRRCenc = (uint8_t*)malloc(16);
   kRRCint = (uint8_t*)malloc(16);
-  AssertFatal(kRRCint && kRRCenc, "malloc failed");
-  memcpy(kRRCenc, _nr_cp_cip_key, 16);
-  memcpy(kRRCint, _nr_cp_int_key, 16);
+  kUPint = (uint8_t*)malloc(16);
+  kUPenc = (uint8_t*)malloc(16);
+  AssertFatal(kRRCint && kRRCenc && kUPint && kUPenc, "malloc failed\n");
+  memcpy(kRRCenc, _nr_control_plane_cip_key, 16);
+  memcpy(kRRCint, _nr_control_plane_int_key, 16);
+  memcpy(kUPint, _nr_data_plane_int_key, 16);
+  memcpy(kUPenc, _nr_data_plane_int_key, 16);
 
   LOG_D(NR_RRC, "Configuring PDCP DRBs/SRBs for UE %04x\n", ue_context_pP->ue_context.rnti);
 
@@ -1674,7 +1679,7 @@ rrc_gNB_process_RRCReconfigurationComplete(
                    ctxt_pP->rntiMaybeUEid,
                    reestablish_ue_id,
                    DRB_configList,
-                   (ue_context_pP->ue_context.integrity_algorithm << 4) | ue_context_pP->ue_context.ciphering_algorithm,
+                   (_int_algo << 4) | _cip_algo,
                    kUPenc,
                    kUPint,
                    get_softmodem_params()->sa ? ue_context_pP->ue_context.masterCellGroup->rlc_BearerToAddModList : NULL);
@@ -4678,15 +4683,19 @@ void *rrc_gnb_task(void *args_p) {
           msg_p->ittiMsgHeader.lte_time.frame, msg_p->ittiMsgHeader.lte_time.slot);
 
         if (_int_algo > 0) {
-          memcpy(&(_nr_cp_int_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[0]), 16);
+          memcpy(&(_nr_control_plane_int_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[0]), 16);
+          memcpy(&(_nr_data_plane_int_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kUPint[0]), 16);
         } else {
-          memset(&(_nr_cp_int_key[0]), 0, 16);
+          memset(&(_nr_control_plane_int_key[0]), 0, 16);
+          memset(&(_nr_data_plane_int_key[0]), 0, 16);
         }
 
         if (_cip_algo > 0) {
-          memcpy(&(_nr_cp_cip_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[0]), 16);
+          memcpy(&(_nr_control_plane_cip_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kRRCenc[0]), 16);
+          memcpy(&(_nr_data_plane_cip_key[0]), &(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Ciphering.kUPenc[0]), 16);
         } else {
-          memset(&(_nr_cp_cip_key[0]), 0, 16);
+          memset(&(_nr_control_plane_cip_key[0]), 0, 16);
+          memset(&(_nr_data_plane_cip_key[0]), 0, 16);
         }
 
         int unused = 0;

@@ -158,8 +158,10 @@ void mac_rlc_data_ind     (
     T(T_ENB_RLC_MAC_UL, T_INT(module_idP), T_INT(rntiP),
       T_INT(channel_idP), T_INT(tb_sizeP));
 
+  LOG_UDUMPMSG(RLC, buffer_pP, tb_sizeP, LOG_DUMP_CHAR, "%s: ", __FUNCTION__);
+
   if (RC.ss.mode >= SS_SOFTMODEM) {
-    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4)) {
+    if ((tb_sizeP != 0) && (true == enb_flagP) && (channel_idP >= 4) && (RC.nr_drb_data_type == DRB_RlcPdu)) {
       int drb_id = channel_idP - 3;
       int result;
       LOG_A(RLC, "Sending packet to SS, Calling SS_DRB_PDU_IND ue %x drb id %d size %u\n", rntiP, drb_id, tb_sizeP);
@@ -179,11 +181,11 @@ void mac_rlc_data_ind     (
         }
       }
 
+      RC.nr_drb_data_type = DRB_data_type_qty;
       return;
     }
   }
 
-  // Trace UL RLC PDU Here
   nr_rlc_pkt_info_t rlc_pkt;
   rlc_pkt.direction = DIRECTION_UPLINK;
   rlc_pkt.ueid      = rntiP;
@@ -239,7 +241,6 @@ tbs_size_t mac_rlc_data_req(
   nr_rlc_entity_t *rb;
   int maxsize;
 
-  // Trace UL RLC PDU Here
   nr_rlc_pkt_info_t rlc_pkt;
   rlc_pkt.direction = DIRECTION_DOWNLINK;
   rlc_pkt.ueid      = rntiP;
@@ -630,6 +631,8 @@ rb_found:
   is_enb = nr_rlc_manager_get_enb_flag(nr_rlc_ue_manager);
   ctx.enb_flag = is_enb;
 
+  LOG_UDUMPMSG(RLC, buf, size, LOG_DUMP_CHAR, "%s: ", __FUNCTION__);
+
   if (is_enb) {
     T(T_ENB_RLC_UL,
       T_INT(0 /*ctxt_pP->module_id*/),
@@ -681,7 +684,7 @@ rb_found:
     exit(1);
   }
   memcpy(memblock->data, buf, size);
-  LOG_D(PDCP, "Calling PDCP layer from RLC in %s\n", __FUNCTION__);
+  LOG_I(RLC, "Calling PDCP layer from RLC in %s\n", __FUNCTION__);
   if (!pdcp_data_ind(&ctx, is_srb, 0, rb_id, size, memblock, NULL, NULL)) {
     LOG_E(RLC, "%s:%d:%s: ERROR: pdcp_data_ind failed\n", __FILE__, __LINE__, __FUNCTION__);
     /* what to do in case of failure? for the moment: nothing */
@@ -722,7 +725,7 @@ static void successful_delivery(void *_ue, nr_rlc_entity_t *entity, int sdu_id)
   exit(1);
 
 rb_found:
-  LOG_D(RLC, "sdu %d was successfully delivered on %s %d\n",
+  LOG_I(RLC, "sdu %d was successfully delivered on %s %d\n",
         sdu_id,
         is_srb ? "SRB" : "DRB",
         rb_id);
@@ -820,7 +823,7 @@ void *rlc_enb_task(void *arg)
         if (RC.ss.mode >= SS_SOFTMODEM) {
           protocol_ctxt_t ctxt;
           instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-          LOG_D(RLC, "RLC received SS_DRB_PDU_REQ DRB_ID:%d SDU_SIZE:%d\n",
+          LOG_I(RLC, "RLC received SS_DRB_PDU_REQ DRB_ID:%d SDU_SIZE:%d\n",
               SS_DRB_PDU_REQ(received_msg).drb_id, SS_DRB_PDU_REQ(received_msg).sdu_size);
           PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt,
               instance,

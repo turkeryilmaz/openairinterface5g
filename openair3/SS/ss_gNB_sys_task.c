@@ -262,7 +262,7 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
   MessageDef *msg_p = itti_alloc_new_message(TASK_SYS_GNB, INSTANCE_DEFAULT, RRC_AS_SECURITY_CONFIG_REQ);
   if(msg_p)
   {
-    LOG_E(GNB_APP,"[SYS-GNB] AS Security Request Received\n");
+    LOG_I(GNB_APP,"[SYS-GNB] AS Security Request Received\n");
     RRC_AS_SECURITY_CONFIG_REQ(msg_p).rnti = SS_context.ss_rnti_g;
 
     switch(ASSecurity->d) {
@@ -275,9 +275,21 @@ static void sys_handle_nr_as_security_req(struct NR_AS_Security_Type *ASSecurity
         RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint = CALLOC(1,16);
         memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint,0,16);
         bits_copy_from_array((char*)RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint, 0, (const char*)ASSecurity->v.StartRestart.Integrity.v.KRRCint, 128);
-        LOG_E(GNB_APP, "[SYS-GNB] kRRCint:\n");
+        LOG_I(GNB_APP, "[SYS-GNB] kRRCint:\n");
         for(int i = 0; i < 16; i++) {
-          LOG_E(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+          LOG_I(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kRRCint[i]);
+        }
+
+        if (ASSecurity->v.StartRestart.Integrity.v.KUPint.d == true) {
+          RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.isUPIntegrityInfoPresent = true;
+          RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kUPint = CALLOC(1, 16);
+          memset(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kUPint, 0, 16);
+          bits_copy_from_array(RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kUPint, 0, ASSecurity->v.StartRestart.Integrity.v.KUPint.v, 128);
+
+          LOG_I(GNB_APP, "[SYS-GNB] kUPint:\n");
+          for(int i = 0; i < 16; i++) {
+            LOG_I(GNB_APP, "%02x\n", RRC_AS_SECURITY_CONFIG_REQ(msg_p).Integrity.kUPint[i]);
+          }
         }
 
         if(ASSecurity->v.StartRestart.Integrity.v.ActTimeList.d == true)

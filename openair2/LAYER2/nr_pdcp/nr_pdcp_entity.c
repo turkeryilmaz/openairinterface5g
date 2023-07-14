@@ -31,6 +31,8 @@
 #include "nr_pdcp_integrity_nia1.h"
 #include "nr_pdcp_sdu.h"
 
+#include "MAC/mac.h"  // for DCCH
+
 #include "LOG/log.h"
 // 2DO: REMOVE, FOR DEBUG PURPOSES ONLY
 #include "nr_pdcp_security.h"
@@ -93,7 +95,6 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
     entity->stats.rxpdu_dd_pkts++;
     entity->stats.rxpdu_dd_bytes += size;
 
-
     return;
   }
 
@@ -116,7 +117,8 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
   if (entity->has_ciphering)
   {
-    if (entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_SMC) {
+    // 3GPP TS 33.501 6.7.4, Security Mode Command is on SRB1
+    if (entity->type == NR_PDCP_SRB && entity->rb_id == DCCH && entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_SMC) {
       LOG_I(PDCP, "%s: Skip deciphering during Security Mode Command\n", __FUNCTION__);
     } else {
       LOG_I(PDCP, "%s: Deciphering...\n", __FUNCTION__);
@@ -206,7 +208,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   FNOUT;
 }
 
-// RRC to PDCP
+// RRC/SDAP to PDCP
 static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
                                     char *buffer, int size, int sdu_id)
 {
@@ -256,7 +258,8 @@ static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
   LOG_I(PDCP, "Entity security status (%d): ciphering %d, integrity check %d\n", entity->has_ciphering,
         entity->has_ciphering?entity->ciphering_algorithm:-1, entity->has_integrity?entity->integrity_algorithm:-1);
 
-  if (entity->has_integrity){
+  if (entity->has_integrity)
+  {
     uint8_t integrity[4] = {0};
     LOG_I(PDCP, "%s: Integrity protection...\n", __FUNCTION__);
     LOG_MSG(buf, header_size + size, "rbid=%d cnt=%d dir=%d, buffer(%d): ", entity->rb_id, count, entity->is_gnb ? 1 : 0, header_size + size);
@@ -270,13 +273,14 @@ static void nr_pdcp_entity_recv_sdu(nr_pdcp_entity_t *entity,
     memcpy((unsigned char *)buf + header_size + size, integrity, 4);
 
   } else if (integrity_size == 4) {
-    // set MAC-I to 0 for SRBs with integrity not active
+   // set MAC-I to 0 for SRBs with integrity not active
     memset(buf + header_size + size, 0, 4);
   }
 
   if (entity->has_ciphering)
   {
-    if (entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_SMC) {
+     // 3GPP TS 33.501 6.7.4, Security Mode Command is on SRB1
+     if (entity->type == NR_PDCP_SRB && entity->rb_id == DCCH && entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_SMC) {
       /* 3GPP TS 33.501, 6.7.4: RRC DL ciphering @gNB shall start after sending the AS security mode command message */
       LOG_I(PDCP, "%s: Skip ciphering during Security Mode Command\n", __FUNCTION__);
       if (!entity->is_gnb && count > 0) {
@@ -376,7 +380,9 @@ static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
   }
 
   if (ciphering_algorithm != 0 && ciphering_algorithm != -1) {
-    entity->has_ciphering = entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_ON?NR_PDCP_ENTITY_CIPHERING_ON:NR_PDCP_ENTITY_CIPHERING_SMC;
+    if (entity->type == NR_PDCP_SRB && entity->rb_id == DCCH && entity->has_ciphering == NR_PDCP_ENTITY_CIPHERING_OFF) {
+      entity->has_ciphering = NR_PDCP_ENTITY_CIPHERING_SMC;
+    }
     LOG_I(PDCP, "%s: entity->has_ciphering %d\n", __FUNCTION__, entity->has_ciphering);
     if (entity->free_security != NULL) {
       entity->free_security(entity->security_context);
