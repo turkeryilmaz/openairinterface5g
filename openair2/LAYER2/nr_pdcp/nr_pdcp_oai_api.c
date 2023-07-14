@@ -42,8 +42,6 @@
 #include "gnb_config.h"
 #include "executables/softmodem-common.h"
 
-// 2DO: REMOVE, FOR DEBUG PURPOSES ONLY
-#include "nr_pdcp_security.h"
 
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
@@ -894,7 +892,7 @@ static void deliver_pdu_srb(void *_ue, nr_pdcp_entity_t *entity,
 
 srb_found:
   LOG_D(PDCP, "%s(): (srb %d) calling rlc_data_req size %d\n", __func__, srb_id, size);
-  LOG_MSG(buf, size, "%s: PDCP => RLC, rb_id=%d: ", __FUNCTION__, srb_id);
+  LOG_DUMPMSG(PDCP, DEBUG_PDCP, buf, size, "%s: PDCP => RLC, rb_id=%d: ", __FUNCTION__, srb_id);
   //for (i = 0; i < size; i++) printf(" %2.2x", (unsigned char)memblock->data[i]);
   //printf("\n");
   if ((RC.nrrrc == NULL) || (!NODE_IS_CU(node_type))) {
@@ -932,6 +930,8 @@ void pdcp_run(const protocol_ctxt_t *const  ctxt_pP)
   MessageDef      *msg_p = NULL;
   int             result = 0;
   protocol_ctxt_t ctxt = {.module_id = 0, .enb_flag = 1, .instance = 0, .rntiMaybeUEid = 0, .frame = -1, .subframe = -1, .eNB_index = 0, .brOption = false};
+
+  SET_LOG_DUMP(DEBUG_PDCP);
 
   while (1) {
     itti_poll_msg(ctxt_pP->enb_flag ? TASK_PDCP_ENB : TASK_PDCP_UE, &msg_p);
@@ -1203,7 +1203,6 @@ static void add_drb(int is_gnb,
                     unsigned char *ciphering_key,
                     unsigned char *integrity_key)
 {
-  FNIN;
 
   if (rlc_Config == NULL) {
     LOG_E(PDCP, "%s:%d:%s: fatal: NULL RLC config\n", __FILE__, __LINE__, __FUNCTION__);
@@ -1227,12 +1226,10 @@ static void add_drb(int is_gnb,
   }
   LOG_D(PDCP, "%s: added DRB for UE ID/RNTI %ld\n", __FUNCTION__, rntiMaybeUEid);
 
-  FNOUT;
 }
 
 void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddModList_t *const srb2add_list, const uint8_t security_modeP, uint8_t *const kRRCenc, uint8_t *const kRRCint)
 {
-  FNIN;
   if (srb2add_list != NULL) {
     for (int i = 0; i < srb2add_list->list.count; i++) {
       add_srb(enb_flag, rntiMaybeUEid, srb2add_list->list.array[i], security_modeP & 0x0f, (security_modeP >> 4) & 0x0f, kRRCenc, kRRCint);
@@ -1246,7 +1243,6 @@ void nr_pdcp_add_srbs(eNB_flag_t enb_flag, ue_id_t rntiMaybeUEid, NR_SRB_ToAddMo
   if (kRRCint) {
     free(kRRCint);
   }
-  FNOUT;
 }
 
 void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
@@ -1258,7 +1254,6 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
                       uint8_t *const kUPint,
                       struct NR_CellGroupConfig__rlc_BearerToAddModList *rlc_bearer2add_list)
 {
-  FNIN;
   if (drb2add_list != NULL) {
     for (int i = 0; i < drb2add_list->list.count; i++) {
       if (rlc_bearer2add_list != NULL) {
@@ -1283,7 +1278,6 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
     free(kUPint);
   }
 
-  FNOUT;
 }
 
 /* Dummy function due to dependency from LTE libraries */
@@ -1400,7 +1394,6 @@ void pdcp_config_set_security(
         uint8_t *const kUPenc_pP,
         uint8_t *const kUPint_pP)
 {
-  FNIN;
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
   ue_id_t ue_id = ctxt_pP->rntiMaybeUEid;
@@ -1424,16 +1417,15 @@ void pdcp_config_set_security(
 
     integrity_algorithm = (security_modeP>>4) & 0xf;
     ciphering_algorithm = security_modeP & 0x0f;
-    LOG_MSG(kRRCint_pP, 16, "%s: (%d) kRRCint_pP: ", __FUNCTION__, integrity_algorithm);
-    LOG_MSG(kRRCenc_pP, 16, "%s: (%d) kRRCenc_pP: ", __FUNCTION__, ciphering_algorithm);
-    rb->set_security(rb, integrity_algorithm, (char*)kRRCint_pP, ciphering_algorithm, (char*)kRRCenc_pP);
+    LOG_DUMPMSG(PDCP, DEBUG_PDCP, kRRCint_pP, 16, "%s: (%d) kRRCint_pP: ", __FUNCTION__, integrity_algorithm);
+    LOG_DUMPMSG(PDCP, DEBUG_PDCP, kRRCenc_pP, 16, "%s: (%d) kRRCenc_pP: ", __FUNCTION__, ciphering_algorithm);
+    rb->set_security(rb, integrity_algorithm, kRRCint_pP, ciphering_algorithm, kRRCenc_pP);
   } else {
     LOG_E(PDCP, "%s:%d:%s: TODO\n", __FILE__, __LINE__, __FUNCTION__);
     exit(1);
   }
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
-  FNOUT;
 }
 
 static bool pdcp_data_req_srb(protocol_ctxt_t  *ctxt_pP,
@@ -1559,7 +1551,7 @@ static bool pdcp_data_req_drb(protocol_ctxt_t  *ctxt_pP,
   pdcp_pkt.pdu_length         = sdu_buffer_size;
 
   LOG_PDCP_P(OAILOG_INFO, "DL_PDCP_PDU", -1, -1, (pdcp_pkt), (unsigned char *)sdu_buffer, sdu_buffer_size);
-  LOG_MSG((unsigned char *)sdu_buffer, sdu_buffer_size, "%s: sz=%d\n", __FUNCTION__, sdu_buffer_size);
+  LOG_DUMPMSG(PDCP, DEBUG_PDCP, (unsigned char *)sdu_buffer, sdu_buffer_size, "%s: sz=%d: ", __FUNCTION__, sdu_buffer_size);
   rb->recv_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
@@ -1683,7 +1675,6 @@ const bool nr_pdcp_get_statistics(ue_id_t ue_id, int srb_flag, int rb_id, nr_pdc
 
 void nr_pdcp_config_set_smc(ue_id_t crntiMaybeUEid, bool complete)
 {
-  FNIN;
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
 
@@ -1696,5 +1687,4 @@ void nr_pdcp_config_set_smc(ue_id_t crntiMaybeUEid, bool complete)
     }
   }
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
-  FNOUT;
 }
